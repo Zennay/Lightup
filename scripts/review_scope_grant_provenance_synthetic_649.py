@@ -1,0 +1,132 @@
+#!/usr/bin/env python3
+"""Strict, unwired, synthetic-only #649 provenance shape review.
+
+This is *never* an issuance decision, real consent, a grant, or target authority.
+It imports no LightUp production modules and accesses no network or database.
+"""
+from __future__ import annotations
+
+import json
+import os
+import sys
+import unicodedata
+from dataclasses import dataclass
+from enum import Enum
+
+SCHEMA = "lightup.scope649.provenance.synthetic.v1"
+MAX_STDIN = 16384
+MAX_ITEMS = 32
+MAX_TEXT = 128
+
+
+class ReviewStatus(Enum):
+    HOLD = "HOLD"
+    REVIEW_ONLY = "REVIEW_ONLY"
+
+    def __bool__(self) -> bool:
+        return False
+
+
+@dataclass(frozen=True, slots=True)
+class ReviewReceipt:
+    status: ReviewStatus
+    authorization_verified: bool = False
+    consent_verified: bool = False
+    permit_issued: bool = False
+    dispatch_allowed: bool = False
+    execution_enabled: bool = False
+    merge_approved: bool = False
+    release_approved: bool = False
+
+    def __bool__(self) -> bool:
+        return False
+
+
+def _clean_text(value: object) -> bool:
+    """Pure exact-builtin check; never call a foreign object's methods."""
+    if type(value) is not str or not 1 <= len(value) <= MAX_TEXT:
+        return False
+    if not value.strip() or value != value.strip():
+        return False
+    if unicodedata.normalize("NFC", value) != value:
+        return False
+    # For fictional review notes, do not accept bidi overrides or controls.
+    for char in value:
+        category = unicodedata.category(char)
+        if category in {"Cc", "Cf", "Cs", "Co", "Cn", "Zl", "Zp"}:
+            return False
+    return True
+
+
+def review_batch(value: object) -> ReviewReceipt:
+    """Review exact synthetic data shapes. All failures yield HOLD atomically."""
+    hold = ReviewReceipt(ReviewStatus.HOLD)
+    if type(value) is not dict or set(value) != {"schema", "synthetic_only", "items"}:
+        return hold
+    if type(value["schema"]) is not str or value["schema"] != SCHEMA:
+        return hold
+    if value["synthetic_only"] is not True:
+        return hold
+    items = value["items"]
+    if type(items) is not list or not 1 <= len(items) <= MAX_ITEMS:
+        return hold
+    for item in items:
+        if type(item) is not dict or set(item) != {"approved_by", "reference"}:
+            return hold
+        if not _clean_text(item["approved_by"]) or not _clean_text(item["reference"]):
+            return hold
+    return ReviewReceipt(ReviewStatus.REVIEW_ONLY)
+
+
+def _pairs_unique(pairs: list[tuple[str, object]]) -> dict[str, object]:
+    result: dict[str, object] = {}
+    for name, value in pairs:
+        if name in result:
+            raise ValueError("duplicate key")
+        result[name] = value
+    return result
+
+
+def parse_and_review(raw: bytes) -> ReviewReceipt:
+    """Bounded canonical JSON intake, no reads other than caller-supplied bytes."""
+    if type(raw) is not bytes or not 1 <= len(raw) <= MAX_STDIN:
+        return ReviewReceipt(ReviewStatus.HOLD)
+    try:
+        content = raw.decode("utf-8", "strict")
+        value = json.loads(
+            content,
+            object_pairs_hook=_pairs_unique,
+            parse_constant=lambda _: (_ for _ in ()).throw(ValueError()),
+        )
+    except (UnicodeError, ValueError, TypeError, RecursionError):
+        return ReviewReceipt(ReviewStatus.HOLD)
+    return review_batch(value)
+
+
+_HOLD = (
+    b'{"status":"HOLD","authorization_verified":false,"consent_verified":false,'
+    b'"permit_issued":false,"dispatch_allowed":false,"execution_enabled":false,'
+    b'"merge_approved":false,"release_approved":false}\n'
+)
+_REVIEW_ONLY = _HOLD.replace(b'"status":"HOLD"', b'"status":"REVIEW_ONLY"')
+
+
+def main() -> int:
+    """StdIn -> one privacy-minimal receipt; even REVIEW_ONLY never returns 0."""
+    try:
+        incoming = sys.stdin.buffer.read(MAX_STDIN + 1)
+        status = parse_and_review(incoming).status
+    except (OSError, AttributeError, TypeError, ValueError):
+        status = ReviewStatus.HOLD
+    receipt = _REVIEW_ONLY if status is ReviewStatus.REVIEW_ONLY else _HOLD
+    try:
+        written = os.write(1, receipt)
+        if type(written) is not int or written != len(receipt):
+            return 2
+    except (OSError, TypeError, ValueError):
+        return 2
+    return 3 if status is ReviewStatus.REVIEW_ONLY else 2
+
+
+if __name__ == "__main__":
+    sys.exit(main())
