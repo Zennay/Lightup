@@ -1,7 +1,7 @@
 # Non-release integration proof of our new membership regressions composed with
-# the *existing* #301 test-fixture owner's exact immutable SHA.
+# both independent #301 test-fixture and #1535 warning-fix owner commits.
 # Never merges, dispatches, deploys, contacts real targets, or edits owner refs.
-name: Scope 1563 + owner 301 compatibility (offline)
+name: Scope 1563 + owners 301/1535 compatibility
 
 on:
   pull_request:
@@ -40,6 +40,8 @@ jobs:
           EXACT_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
           EXACT_OWNER_SHA: 89c7973a330550cd5b8fad23abb54e4a81f85639
           OWNER_TEST_PATH: tests/test_scope_legacy_falsy_window_301_red_20261014.py
+          EXACT_WARNING_FIX_SHA: f8b91596d48f318cb75050b70ccbf5a50d2cd106
+          OWNER_WARNING_PATH: src/lightup/capability_registry_history_report.py
         shell: bash
         run: |
           set -euo pipefail
@@ -47,10 +49,13 @@ jobs:
           git -c credential.helper= fetch --no-tags --depth=1 origin "$EXACT_OWNER_SHA"
           test "$(git rev-parse FETCH_HEAD)" = "$EXACT_OWNER_SHA"
           git show "$EXACT_OWNER_SHA:$OWNER_TEST_PATH" > "$OWNER_TEST_PATH"
-          test "$(git diff --name-only | wc -l)" -eq 1
-          test "$(git diff --name-only)" = "$OWNER_TEST_PATH"
+          git -c credential.helper= fetch --no-tags --depth=1 origin "$EXACT_WARNING_FIX_SHA"
+          test "$(git rev-parse FETCH_HEAD)" = "$EXACT_WARNING_FIX_SHA"
+          git show "$EXACT_WARNING_FIX_SHA:$OWNER_WARNING_PATH" > "$OWNER_WARNING_PATH"
+          test "$(git diff --name-only | wc -l)" -eq 2
+          test "$(git diff --name-only)" = "$(printf '%s\n%s' "$OWNER_WARNING_PATH" "$OWNER_TEST_PATH")"
           git diff --check
-          printf 'BASE_HEAD=%s\nCOMPOSED_FIXTURE_SHA=%s\nSINGLE_TEMPORARY_FILE=%s\n' "$EXACT_HEAD" "$EXACT_OWNER_SHA" "$OWNER_TEST_PATH"
+          printf 'BASE_HEAD=%s\nCOMPOSED_FIXTURE_SHA=%s\nTEMPORARY_OWNER_FIXTURE=%s\n' "$EXACT_HEAD" "$EXACT_OWNER_SHA" "$OWNER_TEST_PATH"
       - name: Python runtime
         uses: actions/setup-python@v6
         with:
@@ -75,5 +80,5 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test "$(git diff --name-only)" = 'tests/test_scope_legacy_falsy_window_301_red_20261014.py'
+          test "$(git diff --name-only)" = "$(printf 'src/lightup/capability_registry_history_report.py\ntests/test_scope_legacy_falsy_window_301_red_20261014.py')"
           git diff --check
