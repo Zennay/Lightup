@@ -149,9 +149,9 @@ class OfflineWorkerOverlapTests(unittest.TestCase):
         self.assertEqual(review.check(encode(altered)), "HOLD")
 
     def test_no_file_network_subprocess_reads_during_check(self):
-        with mock.patch("builtins.open", side_effect=AssertionError("file I/O")), \\
-             mock.patch("subprocess.run", side_effect=AssertionError("process")), \\
-             mock.patch("socket.socket", side_effect=AssertionError("network")):
+        with (mock.patch("builtins.open", side_effect=AssertionError("file I/O")),
+              mock.patch("subprocess.run", side_effect=AssertionError("process")),
+              mock.patch("socket.socket", side_effect=AssertionError("network"))):
             self.assertEqual(review.check(encode(GOOD)), "REVIEW_ONLY")
 
     def test_cli_receipt_only_false_authority_fields(self):
