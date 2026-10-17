@@ -246,8 +246,24 @@ def _worktree_blobs_match_head(raw: object) -> bool:
             metadata = target.lstat()
             if not stat.S_ISREG(metadata.st_mode) or metadata.st_size > 1048576:
                 return False
-            flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_NONBLOCK", 0)
-            fd = os.open(target, flags)
+            # Resolve each component via an anchored directory descriptor,
+            # forbidding every intermediate symlink even if a parent path is
+            # switched between the earlier lstat and the actual open().
+            nofollow = getattr(os, "O_NOFOLLOW", None)
+            directory = getattr(os, "O_DIRECTORY", None)
+            if nofollow is None or directory is None:
+                return False
+            folder_flags = os.O_RDONLY | directory | nofollow
+            dir_fd = os.open(root, folder_flags)
+            try:
+                for part in components[:-1]:
+                    next_fd = os.open(part, folder_flags, dir_fd=dir_fd)
+                    os.close(dir_fd)
+                    dir_fd = next_fd
+                leaf_flags = os.O_RDONLY | nofollow | getattr(os, "O_NONBLOCK", 0)
+                fd = os.open(components[-1], leaf_flags, dir_fd=dir_fd)
+            finally:
+                os.close(dir_fd)
             with os.fdopen(fd, "rb") as handle:
                 current = os.fstat(handle.fileno())
                 if not stat.S_ISREG(current.st_mode) or current.st_size > 1048576:
