@@ -72,7 +72,7 @@ function portfolioSummary(){
   const d=entry.draft;
   const own=LightUpScopeNetwork.inspect(d.requested_assets,d.excluded_assets).filter(w=>w.code==='global_range'||w.code==='exclusion_overlap'||w.code==='included_overlap');
   inventory.push({
-   file_label:entry.file,revision_sha256:entry.hash,proposal:d.proposal_name,unverified_client_label:d.client_label,
+   revision_sha256:entry.hash,proposal:d.proposal_name,unverified_client_label:d.client_label,
    requested_mode:d.requested_mode,requested_risk:d.requested_risk,
    asset_count:d.requested_assets.length,excluded_count:d.excluded_assets.length,
    proposed_window_local:d.proposed_window_local,
