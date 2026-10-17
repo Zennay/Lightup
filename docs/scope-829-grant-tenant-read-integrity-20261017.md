@@ -27,9 +27,8 @@ temporary SQLite database and entirely fictional tenants A and B. Each test
 uses the real DomainStore constructor and public grant APIs.
 
 - Five normal tests: canonical tenant A current grant; independent tenant B
-  and operator controls; foreign engagement rejection; expiry; and a passing
-  **source vulnerability witness** that proves the mismatched grant appears in
-  both the list and current-grant response, without mutating the database.
+  and operator controls; foreign engagement rejection; expiry; and a durable
+  database immutability check that remains green before *and* after a fix.
 - Six explicitly **expected source failures**: client read, operator read,
   client current-grant, operator current-grant, mixed valid/corrupt rows,
   and a persisted unknown client ID.
@@ -62,3 +61,15 @@ follows from this evidence. Genuine client + operator consent, per-use
 revocation, security/privacy review, approved-release exact-head CI on the
 permanent named VPS runner and explicit human GO remain mandatory.
 Avoid redundant canonical workflow dispatch while issue #1144 is unresolved.
+
+## Source-owner local repair oracle
+
+A **throwaway** VPS checkout was temporarily edited to add the extra
+`client_id=?` condition to the read query; five out of six source RED methods
+then passed as ordinary tests, and the sixth did too. The initial strict
+invocation of all 11 tests was 10 PASS, one failure in the *old positive
+witness* test: it had asserted that the unsafe behavior must remain present.
+That fixture has now been corrected to assert **only immutable durable state**,
+which should hold both before and after a fix. Re-run the full strict suite on
+the latest exact branch commit before considering the proposed source-owner
+change ready. No production source was committed.
