@@ -124,6 +124,15 @@ def request_inbox_json(
         return _missing()
 
     bound = max(1, min(50, max_rows))
+    # Do not ask the clarification index to interpret corrupt identities.
+    # Keep missing/malformed/other-tenant entries indistinguishable.
+    for req in requests[:bound]:
+        if (
+            req.client_id != client_id
+            or type(req.request_id) is not str
+            or re.fullmatch(r"[A-Za-z0-9-]{1,80}", req.request_id) is None
+        ):
+            return _missing()
     from .request_clarifications import thread_states
     clarification_badges = thread_states(
         store, auth, [req.request_id for req in requests[:bound]],
