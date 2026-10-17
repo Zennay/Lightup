@@ -23,6 +23,7 @@ jobs:
       (github.event_name == 'workflow_dispatch' &&
        github.ref_name == 'chatgpt/scope-1563-membership-metamorphic-20261017')
     runs-on: ubuntu-latest
+    timeout-minutes: 12
     strategy:
       fail-fast: false
       matrix:
@@ -39,6 +40,21 @@ jobs:
           EXPECTED_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         run: |
           test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
+      - name: Fail closed on committed history before running project Python
+        shell: bash
+        env:
+          EXACT_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$EXACT_HEAD"
+          git diff --exit-code
+          git diff --cached --exit-code
+          test -z "$(git ls-files --others --exclude-standard)"
+          set +e
+          python3 scripts/scope_1563_exact_tree_boundary_20261017.py --expected-head "$EXACT_HEAD"
+          gate_result=$?
+          set -e
+          test "$gate_result" -eq 3
       - name: Python runtime
         uses: actions/setup-python@v6
         with:
