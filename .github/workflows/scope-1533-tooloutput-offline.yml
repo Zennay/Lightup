@@ -51,6 +51,10 @@ jobs:
           PY
       - name: Offline review with original source REDs
         run: python -I -S -B -m unittest discover -s tests -p 'test_scope_tooloutput_shape_1533_20261017.py' -v
+      - name: Existing original main orchestration regression (synthetic fixtures)
+        env:
+          PYTHONPATH: src
+        run: python -B -m unittest discover -s tests -p 'test_orchestration.py' -v
       - name: Strict post-fix gate must identify all nine original source REDs
         shell: bash
         run: |
