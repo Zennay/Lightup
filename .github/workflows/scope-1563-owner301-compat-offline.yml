@@ -1,0 +1,79 @@
+# Non-release integration proof of our new membership regressions composed with
+# the *existing* #301 test-fixture owner's exact immutable SHA.
+# Never merges, dispatches, deploys, contacts real targets, or edits owner refs.
+name: Scope 1563 + owner 301 compatibility (offline)
+
+on:
+  pull_request:
+    paths:
+      - 'tests/test_scope_membership_metamorphic_20261017.py'
+      - 'scripts/scope_1563_membership_mutation_proof_20261017.py'
+      - 'docs/scope-1563-membership-metamorphic-20261017.md'
+      - '.github/workflows/scope-1563-owner301-compat-offline.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: scope-1563-owner301-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  offline-owner-fixture-composition:
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ['3.11', '3.14']
+    steps:
+      - name: Read exact PR head without write credentials
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 1
+      - name: Pin branch and independent owner fixture
+        env:
+          EXACT_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+          EXACT_OWNER_SHA: 89c7973a330550cd5b8fad23abb54e4a81f85639
+          OWNER_TEST_PATH: tests/test_scope_legacy_falsy_window_301_red_20261014.py
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$EXACT_HEAD"
+          git -c credential.helper= fetch --no-tags --depth=1 origin "$EXACT_OWNER_SHA"
+          test "$(git rev-parse FETCH_HEAD)" = "$EXACT_OWNER_SHA"
+          git show "$EXACT_OWNER_SHA:$OWNER_TEST_PATH" > "$OWNER_TEST_PATH"
+          test "$(git diff --name-only | wc -l)" -eq 1
+          test "$(git diff --name-only)" = "$OWNER_TEST_PATH"
+          git diff --check
+          printf 'BASE_HEAD=%s\nCOMPOSED_FIXTURE_SHA=%s\nSINGLE_TEMPORARY_FILE=%s\n' "$EXACT_HEAD" "$EXACT_OWNER_SHA" "$OWNER_TEST_PATH"
+      - name: Python runtime
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Prove pure offline acceptance and test-suite mutation sensitivity
+        env:
+          PYTHONPATH: src:tests
+          PYTHONDONTWRITEBYTECODE: '1'
+        run: |
+          python -m unittest discover -s tests -p 'test_scope_membership_metamorphic_20261017.py' -v
+          python scripts/scope_1563_membership_mutation_proof_20261017.py
+          python -m unittest discover -s tests -p 'test_scope_legacy_falsy_window_301_red_20261014.py' -v
+      - name: Full unit / producer integration / original safety canaries
+        env:
+          PYTHONPATH: src:tests
+          PYTHONDONTWRITEBYTECODE: '1'
+        run: |
+          python -m unittest discover -s tests
+          python -m unittest discover -s tests/integration
+          python scripts/check_safety_canaries.py
+      - name: Ensure only the temporary owner fixture was overlaid
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git diff --name-only)" = 'tests/test_scope_legacy_falsy_window_301_red_20261014.py'
+          git diff --check
