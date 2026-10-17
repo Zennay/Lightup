@@ -297,6 +297,56 @@ raise SystemExit(entry['main']([]))
                 self.assertEqual(child.stderr, b"")
                 self.assertEqual(json.loads(child.stdout)["status"], "HOLD")
 
+
+    def test_every_json_split_position_preserves_exact_eof_semantics(self):
+        # Exercise every byte seam (including escaped braces and quotes) in a
+        # single isolated child without dozens of expensive process launches.
+        program = """import io,json,runpy,sys
+entry=runpy.run_path('scripts/review_scope_tooloutput_synthetic_1533.py')
+valid=json.dumps({"schema":"lightup.scope1533.synthetic.v1",
+                  "synthetic_only":True,"items":[
+                    {"summary":'escaped { braces } backslash \\\\ quote "',
+                     "kind":"note","payload_hex":"00ff"}]}).encode()
+class Fragmented:
+    def __init__(self, slices):
+        self.slices=list(slices)+[b'']
+    def read(self, limit):
+        part=self.slices.pop(0)
+        if len(part)>limit: raise AssertionError('wrong bounded read budget')
+        return part
+class Stdin: pass
+real_in,real_out=sys.stdin,sys.stdout
+try:
+    for cut in range(1,len(valid)):
+        for trailer,expected_status,expected_exit in (
+            (b'', 'REVIEW_ONLY', 3),(b'EVIL_EXTRA_BYTES', 'HOLD', 2)):
+            fake=Stdin()
+            fake.buffer=Fragmented((valid[:cut],valid[cut:],trailer))
+            sink=io.StringIO()
+            sys.stdin=fake
+            sys.stdout=sink
+            code=entry['main']([])
+            receipt=json.loads(sink.getvalue())
+            if code!=expected_exit or receipt['status']!=expected_status:
+                raise AssertionError(('chunk-seam',cut,code,receipt['status']))
+            for flag in ('authorization_verified','consent_verified',
+                         'permit_issued','dispatch_allowed','execution_enabled',
+                         'merge_approved','release_approved'):
+                if receipt[flag] is not False:
+                    raise AssertionError(('authority-escape',cut,flag))
+finally:
+    sys.stdin=real_in
+    sys.stdout=real_out
+print('ALL_JSON_BYTE_SEAMS_REMAIN_NON_AUTHORIZING')
+"""
+        child = subprocess.run(
+            [sys.executable, "-I", "-S", "-B", "-c", program],
+            cwd=ROOT, input=b"", capture_output=True, timeout=8,
+        )
+        self.assertEqual(child.returncode, 0, child.stderr)
+        self.assertEqual(child.stdout, b"ALL_JSON_BYTE_SEAMS_REMAIN_NON_AUTHORIZING\n")
+        self.assertEqual(child.stderr, b"")
+
     def test_real_cli_under_original_native_no_io_tripwire(self):
         # Reuse the existing owner's unchanged guard fixture. This is a
         # Python-level interposition test, not a kernel sandbox or consent.
