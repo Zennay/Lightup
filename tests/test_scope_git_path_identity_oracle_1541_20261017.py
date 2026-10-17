@@ -6,6 +6,9 @@ scans, handlers, grants or release. Original source REDs live in a separate file
 from __future__ import annotations
 
 from pathlib import Path
+import os
+import subprocess
+import tempfile
 import sys
 import unittest
 
@@ -135,6 +138,84 @@ class ByteExactGitPathOracleTests(unittest.TestCase):
         self.assert_hold(b"M\0a.py\0",
                          b"1\t1\ta.py\0" + b"1\t1\tb.py\0")
         self.assert_hold(b"M\0a.py\0M\0b.py\0", b"1\t1\ta.py\0")
+
+
+    @unittest.skipUnless(os.name == "posix", "POSIX Git byte-path fixture")
+    def test_actual_git_z_outputs_keep_unicode_and_tab_identity(self):
+        with tempfile.TemporaryDirectory(prefix="scope1541-actual-git-") as tmp:
+            repo = Path(tmp) / "repo"
+            repo.mkdir()
+            no_hooks = Path(tmp) / "empty-hooks"
+            no_hooks.mkdir()
+            env = {**os.environ, "GIT_CONFIG_NOSYSTEM": "1",
+                   "GIT_CONFIG_GLOBAL": os.devnull, "GIT_TERMINAL_PROMPT": "0"}
+            def git(*args):
+                cp = subprocess.run(
+                    ["git", "-C", str(repo), *args], env=env,
+                    stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE, timeout=10, check=False,
+                )
+                self.assertEqual(cp.returncode, 0, "synthetic Git fixture failed")
+                return cp.stdout
+            git("init", "-q")
+            git("config", "user.name", "Local Fixture")
+            git("config", "user.email", "local@example.invalid")
+            git("config", "core.hooksPath", str(no_hooks))
+            git("config", "core.quotePath", "true")
+            names = (b"caf\\xc3\\xa9.py", b"part\\tname.py")
+            for name in names:
+                with open(os.fsencode(repo) + b"/" + name, "wb") as fp:
+                    fp.write(b"safe = 1\\n")
+            git("add", "-A")
+            git("commit", "-qm", "synthetic before")
+            base = git("rev-parse", "HEAD").strip().decode("ascii")
+            for name in names:
+                with open(os.fsencode(repo) + b"/" + name, "wb") as fp:
+                    fp.write(b"safe = 2\\n")
+            git("add", "-A")
+            git("commit", "-qm", "synthetic after")
+            head = git("rev-parse", "HEAD").strip().decode("ascii")
+            stat = git("diff", "--numstat", "-z", "-M", "--no-color", base, head)
+            status = git("diff", "--name-status", "-z", "-M", "--no-color", base, head)
+            files = parse_git_path_outputs(status, stat)
+            self.assertEqual({x.path for x in files}, {"café.py", "part\\tname.py"})
+            self.assertTrue(all((x.additions, x.deletions) == (1, 1) for x in files))
+            self.assertEqual(len(files), 2)
+
+    @unittest.skipUnless(os.name == "posix", "POSIX Git byte-path fixture")
+    def test_actual_git_z_invalid_utf8_is_hold_atomically(self):
+        with tempfile.TemporaryDirectory(prefix="scope1541-invalid-git-") as tmp:
+            repo = Path(tmp)
+            env = {**os.environ, "GIT_CONFIG_NOSYSTEM": "1",
+                   "GIT_CONFIG_GLOBAL": os.devnull, "GIT_TERMINAL_PROMPT": "0"}
+            def git(*args):
+                cp = subprocess.run(
+                    ["git", "-C", str(repo), *args], env=env,
+                    stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE, timeout=10, check=False,
+                )
+                self.assertEqual(cp.returncode, 0, "synthetic Git fixture failed")
+                return cp.stdout
+            git("init", "-q")
+            git("config", "user.name", "Local Fixture")
+            git("config", "user.email", "local@example.invalid")
+            git("config", "core.hooksPath", os.devnull)
+            for name in (b"\\xfe.py", b"\\xff.py"):
+                with open(os.fsencode(repo) + b"/" + name, "wb") as fp:
+                    fp.write(b"safe = 1\\n")
+            git("add", "-A")
+            git("commit", "-qm", "synthetic before")
+            base = git("rev-parse", "HEAD").strip().decode("ascii")
+            for name in (b"\\xfe.py", b"\\xff.py"):
+                with open(os.fsencode(repo) + b"/" + name, "wb") as fp:
+                    fp.write(b"safe = 2\\n")
+            git("add", "-A")
+            git("commit", "-qm", "synthetic after")
+            head = git("rev-parse", "HEAD").strip().decode("ascii")
+            self.assert_hold(
+                git("diff", "--name-status", "-z", "-M", "--no-color", base, head),
+                git("diff", "--numstat", "-z", "-M", "--no-color", base, head),
+            )
 
 
 if __name__ == "__main__":
