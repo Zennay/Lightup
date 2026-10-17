@@ -38,6 +38,22 @@ class ReviewReceipt:
     merge_approved: bool = False
     release_approved: bool = False
 
+    def __post_init__(self) -> None:
+        """A review receipt cannot be forged into an apparent authority claim.
+
+        This is a local invariant, not a defense against code deliberately
+        bypassing frozen dataclasses via object.__setattr__.
+        """
+        if type(self.status) is not ReviewStatus:
+            raise ValueError("review status must be the exact non-authorizing enum")
+        for name in (
+            "authorization_verified", "consent_verified", "permit_issued",
+            "dispatch_allowed", "execution_enabled", "merge_approved",
+            "release_approved",
+        ):
+            if getattr(self, name) is not False:
+                raise ValueError("synthetic review receipts cannot claim authority")
+
     def __bool__(self) -> bool:
         return False
 
