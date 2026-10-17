@@ -165,3 +165,21 @@ production source, another worker or live authorization state.
 The complete isolated suite now contains **23 tests** (16 process-environment
 and 7 Git-tree acceptance cases) on Python 3.11/3.14 when the final exact-head
 workflow completes. This is only diagnostic non-authorizing evidence.
+
+## W8 — future runtime override families fail closed
+
+The previous explicit list of interpreter/dynamic-loader overrides left
+unrecognized variables (e.g. `LD_BIND_NOW`, `DYLD_FALLBACK_LIBRARY_PATH`,
+`PYTHONPYCACHEPREFIX`, `PYTHONUSERBASE` and `PYTHONBREAKPOINT`) silently
+passing into a REVIEW_ONLY diagnostic. New fixture tests reproduced **16
+negative-case failures** across standalone and hosted-looking environments
+before the fix. The lightweight reviewer now rejects any key beginning
+with `GIT_`, `LD_`, `DYLD_` or uppercase `PYTHON`, even with empty
+values. The existing exception is deliberately restricted to precisely
+the previously documented GitHub setup-python `LD_LIBRARY_PATH`
+toolcache profile and does NOT exempt other LD_* names or paths.
+
+This remains a **negative environment string review**; environment keys
+are supplied by a caller, can change later, and do not constitute binary,
+repository, consent, grant or release attestation. The hosted toolcache
+profile is not cryptographic provenance. DRAFT/HOLD persists.

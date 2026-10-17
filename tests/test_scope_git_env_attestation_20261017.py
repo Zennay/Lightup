@@ -263,6 +263,41 @@ class EnvironmentFenceTests(unittest.TestCase):
             HiddenDict(GIT_DIR="fictional-git-path")
         )["status"], "HOLD")
 
+    def test_unknown_loader_and_python_environment_families_hold(self):
+        # Names outside the previously enumerated set can still influence
+        # dynamic linking, module search, startup or bytecode behavior.
+        names = (
+            "LD_BIND_NOW", "LD_ORIGIN_PATH", "LD_DEBUG_OUTPUT",
+            "DYLD_FALLBACK_LIBRARY_PATH", "DYLD_FORCE_FLAT_NAMESPACE",
+            "DYLD_UNKNOWN_FUTURE", "PYTHONPYCACHEPREFIX", "PYTHONUSERBASE",
+            "PYTHONPLATLIBDIR", "PYTHONWARNINGS", "PYTHONBREAKPOINT",
+            "PYTHONSAFEPATH", "PYTHONUNKNOWN_FUTURE",
+        )
+        for name in names:
+            with self.subTest(name=name):
+                for value in ("", "/fictional/override"):
+                    self.assertEqual(
+                        module().review_environment({name: value})["status"],
+                        "HOLD",
+                    )
+
+    def test_hosted_profile_rejects_additional_loader_injection(self):
+        root = "/opt/hostedtoolcache/Python/3.14.8/x64"
+        hosted = {
+            "GITHUB_ACTIONS": "true", "GITHUB_EVENT_NAME": "push",
+            "GITHUB_REF": "refs/heads/chatgpt/scope-auth-git-env-fence-20261017-0115",
+            "GITHUB_SHA": "a" * 40, "RUNNER_OS": "Linux",
+            "pythonLocation": root, "Python_ROOT_DIR": root,
+            "LD_LIBRARY_PATH": root + "/lib",
+        }
+        self.assertEqual(module().review_environment(hosted)["status"], "REVIEW_ONLY")
+        for name in ("LD_BIND_NOW", "DYLD_FALLBACK_LIBRARY_PATH", "PYTHONUSERBASE"):
+            with self.subTest(name=name):
+                self.assertEqual(
+                    module().review_environment(dict(hosted, **{name: ""}))["status"],
+                    "HOLD",
+                )
+
     def test_cli_disallows_grant_switch(self):
         child=subprocess.run(
             [sys.executable,str(SCRIPT),"--grant"],

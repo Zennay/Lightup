@@ -20,14 +20,10 @@ def _receipt(status: str) -> dict[str, bool | str]:
     }
 
 
-# Conservative runtime-loader interference list; no value inspection.
-# The interpreter/loader may already have processed these by script start,
-# so the result is only a NEGATIVE attestation, never process integrity proof.
-_HOST_RUNTIME_OVERRIDES = frozenset({
-    "LD_PRELOAD", "LD_LIBRARY_PATH", "LD_AUDIT", "LD_DEBUG",
-    "DYLD_INSERT_LIBRARIES", "DYLD_LIBRARY_PATH",
-    "PYTHONPATH", "PYTHONHOME", "PYTHONSTARTUP", "PYTHONINSPECT",
-})
+# Broader prefixes remain fail-closed even when new runtime toggles appear.
+# Linux/macOS dynamic loader and Python startup settings may have acted
+# before this script runs. This is strictly negative evidence, not trust.
+_OVERRIDE_PREFIXES = ("GIT_", "LD_", "DYLD_", "PYTHON")
 
 
 def _expected_hosted_toolcache_path(environment: Mapping, value: str) -> bool:
@@ -69,7 +65,7 @@ def review_environment(environment: object) -> dict[str, bool | str]:
                 # setup-python's exact GitHub-hosted toolcache lib search path.
                 # This is a read-only string profile, NOT library provenance.
                 continue
-            if key.startswith("GIT_") or key in _HOST_RUNTIME_OVERRIDES:
+            if key.startswith(_OVERRIDE_PREFIXES):
                 return _receipt("HOLD")
     except Exception:
         # A hostile custom Mapping must not turn a bad environment into
