@@ -58,10 +58,27 @@ def _clean_text(value: object) -> bool:
     return True
 
 
+def _has_exact_keys(value: object, expected: frozenset[str]) -> bool:
+    """Validate keys *before* hashing/looking up against trusted names.
+
+    Even an exact built-in dict can contain hostile key objects whose __eq__
+    runs on collisions during set equality. Only then compare builtin str keys.
+    """
+    if type(value) is not dict or len(value) != len(expected):
+        return False
+    if not all(type(key) is str for key in value):
+        return False
+    return set(value) == expected
+
+
+_ROOT_KEYS = frozenset({"schema", "synthetic_only", "items"})
+_ENTRY_KEYS = frozenset({"approved_by", "reference"})
+
+
 def review_batch(value: object) -> ReviewReceipt:
     """Review exact synthetic data shapes. All failures yield HOLD atomically."""
     hold = ReviewReceipt(ReviewStatus.HOLD)
-    if type(value) is not dict or set(value) != {"schema", "synthetic_only", "items"}:
+    if not _has_exact_keys(value, _ROOT_KEYS):
         return hold
     if type(value["schema"]) is not str or value["schema"] != SCHEMA:
         return hold
@@ -71,7 +88,7 @@ def review_batch(value: object) -> ReviewReceipt:
     if type(items) is not list or not 1 <= len(items) <= MAX_ITEMS:
         return hold
     for item in items:
-        if type(item) is not dict or set(item) != {"approved_by", "reference"}:
+        if not _has_exact_keys(item, _ENTRY_KEYS):
             return hold
         if not _clean_text(item["approved_by"]) or not _clean_text(item["reference"]):
             return hold
