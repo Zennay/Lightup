@@ -312,8 +312,12 @@ def evaluate(cases: tuple[WitnessCase, ...] | None = None) -> dict[str, object]:
             signal.signal(signal.SIGALRM, prior_handler)
     except _WitnessTimeLimit:
         return _receipt("HOLD", "offline_witness_time_budget_exceeded")
-    except Exception:
-        # No potentially sensitive input, error, or exception messages appear.
+    except BaseException:
+        # The offline CLI MUST NEVER emit an accidental success exit 0 through
+        # a scope callback raising SystemExit(0), KeyboardInterrupt or
+        # GeneratorExit. This intentionally differs from normal application
+        # interrupt propagation: no non-HOLD path may escape this witness.
+        # No potentially sensitive input, error, or exception is echoed.
         return _receipt("HOLD", "offline_witness_evaluation_failed")
 
 
