@@ -4,12 +4,9 @@
 name: Scope 1563 + owners 301/1535 compatibility
 
 on:
+  # All source-only intrusions must trigger the immutable base guard too.
   pull_request:
-    paths:
-      - 'tests/test_scope_membership_metamorphic_20261017.py'
-      - 'scripts/scope_1563_membership_mutation_proof_20261017.py'
-      - 'docs/scope-1563-membership-metamorphic-20261017.md'
-      - '.github/workflows/scope-1563-owner301-compat-offline.yml'
+    types: [opened, synchronize, reopened, ready_for_review]
   workflow_dispatch:
 
 permissions:
@@ -21,7 +18,12 @@ concurrency:
 
 jobs:
   offline-owner-fixture-composition:
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    if: >-
+      (github.event_name == 'pull_request' &&
+       github.event.pull_request.head.repo.full_name == github.repository &&
+       github.head_ref == 'chatgpt/scope-1563-membership-metamorphic-20261017') ||
+      (github.event_name == 'workflow_dispatch' &&
+       github.ref_name == 'chatgpt/scope-1563-membership-metamorphic-20261017')
     runs-on: ubuntu-latest
     timeout-minutes: 12
     strategy:
@@ -50,6 +52,10 @@ jobs:
         run: |
           set -euo pipefail
           test "$(git rev-parse HEAD)" = "$EXACT_HEAD"
+          # Before invoking any PR project code, reject pre-existing dirty state.
+          git diff --exit-code
+          git diff --cached --exit-code
+          test -z "$(git ls-files --others --exclude-standard)"
           # Mandatory immutable-base owner tree check BEFORE any temporary
           # foreign owner blobs are overlaid. Exit 3 means REVIEW_ONLY.
           set +e
