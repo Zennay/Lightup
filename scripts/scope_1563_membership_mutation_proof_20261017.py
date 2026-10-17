@@ -28,6 +28,43 @@ from lightup.scope import ScopeDecision, ScopePolicy, ScopeReason  # noqa: E402
 
 REAL_DECIDE = ScopePolicy.decide
 
+# A test-count-only check can be defeated by replacing a security case with an
+# unrelated method while preserving the total. Require all named contracts.
+REQUIRED_TEST_METHODS = frozenset({
+    "test_undeclared_public_hostname_is_invariant_under_grant_substitution",
+    "test_undeclared_public_network_is_invariant_under_grant_substitution",
+    "test_invalid_target_cannot_be_rescued_by_grant_or_auth_flag",
+    "test_unrelated_declared_hosts_cannot_change_membership",
+    "test_unrelated_declared_networks_cannot_change_membership",
+    "test_public_ipv6_outside_declared_prefix_stays_out_of_scope",
+    "test_untrusted_authorization_shape_and_label_cannot_mint_membership",
+    "test_unlisted_subdomain_parent_and_suffix_do_not_inherit_host_grant",
+    "test_ipv4_right_neighbor_of_declared_cidr_remains_unlisted",
+    "test_ipv6_right_neighbor_of_declared_prefix_remains_unlisted",
+    "test_generated_global_ipv4_nonmembers_do_not_gain_scope",
+    "test_normalized_host_is_not_rebound_to_a_declared_identity",
+    "test_nonmember_recheck_after_untrusted_grant_replacement_stays_denied",
+})
+
+
+def suite_manifest_valid() -> bool:
+    suite = unittest.defaultTestLoader.loadTestsFromModule(suite_module)
+    names: list[str] = []
+
+    def collect(node):
+        if isinstance(node, unittest.TestSuite):
+            for subcase in node:
+                collect(subcase)
+        elif isinstance(node, suite_module.ScopeMembershipMetamorphicTests):
+            names.append(node._testMethodName)
+        else:
+            names.append("<unrecognized test fixture>")
+
+    collect(suite)
+    return len(names) == len(REQUIRED_TEST_METHODS) and set(names) == REQUIRED_TEST_METHODS
+
+
+
 
 def run_suite() -> unittest.TestResult:
     suite = unittest.defaultTestLoader.loadTestsFromModule(suite_module)
@@ -133,7 +170,7 @@ def mutation_detected(result: unittest.TestResult, expected_test_prefix: str) ->
     evidence that a fail-open change was caught by the intended assertion.
     """
     if (
-        result.testsRun != 13 or result.errors or result.expectedFailures
+        result.testsRun != len(REQUIRED_TEST_METHODS) or result.errors or result.expectedFailures
         or result.unexpectedSuccesses or not result.failures
     ):
         return False
@@ -146,8 +183,11 @@ def mutation_detected(result: unittest.TestResult, expected_test_prefix: str) ->
 
 
 def main() -> int:
+    if not suite_manifest_valid():
+        print("HOLD: required membership safety test manifest is incomplete or substituted")
+        return 2
     baseline = run_suite()
-    if not baseline.wasSuccessful() or baseline.testsRun != 13:
+    if not baseline.wasSuccessful() or baseline.testsRun != len(REQUIRED_TEST_METHODS):
         print(
             "HOLD: all 13 negative regressions must pass first; "
             f"ran={baseline.testsRun} failures={len(baseline.failures)} "
