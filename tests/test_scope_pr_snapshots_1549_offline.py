@@ -36,7 +36,17 @@ class SnapshotReviewTests(unittest.TestCase):
         receipt, code = adapter.evaluate(raw)
         self.assertEqual((receipt["status"], code), ("HOLD", 2))
         self.assertEqual(receipt["waves"], [])
-        self.assertEqual(receipt["protocol"], "PR_SNAPSHOT_V1")
+        # A recognized V2 envelope retains V2 protocol even when rejected.
+        # Unrecognized or malformed input remains generic V1 HOLD.
+        try:
+            decoded = json.loads(raw)
+        except (ValueError, TypeError, UnicodeError):
+            decoded = None
+        is_v2 = (type(decoded) is dict and
+                 type(decoded.get("version")) is int and
+                 decoded["version"] == 2 and len(raw) <= adapter.core.MAX_INPUT)
+        expected = "PR_SNAPSHOT_V2_DOUBLE_READ" if is_v2 else "PR_SNAPSHOT_V1"
+        self.assertEqual(receipt["protocol"], expected)
         self.assertTrue(all(receipt[name] is False for name in adapter.OFF_FLAGS))
 
     def review(self, raw, waves):
