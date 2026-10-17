@@ -267,6 +267,32 @@ class PairReview649Tests(unittest.TestCase):
                 self.assertFalse(receipt.authorization_verified)
                 self.assertFalse(receipt.dispatch_allowed)
 
+    def test_actual_cli_waits_for_fragmented_stdin_until_eof(self):
+        # Separate real OS writes exercise bounded buffered reader behavior,
+        # not a mocked in-memory input. No network, no real authorization.
+        data = encode(packet())
+        process = subprocess.Popen(
+            [sys.executable, "-I", "-S", "-B", str(PAIR_CLI)],
+            stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+        )
+        try:
+            assert process.stdin is not None
+            for chunk in (data[:1], data[1:8], data[8:37], data[37:]):
+                process.stdin.write(chunk)
+                process.stdin.flush()
+            process.stdin.close()
+            assert process.stdout is not None and process.stderr is not None
+            output = process.stdout.read()
+            errors = process.stderr.read()
+            exit_code = process.wait(timeout=10)
+            self.assertEqual(exit_code, 3)
+            self.assertEqual(errors, b"")
+            self.assertEqual(json.loads(output)["status"], "REVIEW_ONLY")
+        finally:
+            if process.poll() is None:
+                process.kill()
+                process.wait(timeout=10)
+
     def test_stdin_error_or_broken_output_is_hold(self):
         class BadStdin:
             class buffer:
