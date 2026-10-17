@@ -26,7 +26,7 @@ Inputs over 8192 bytes, bad UTF-8, duplicate JSON keys, unknown keys (including 
 
 ## Invocation without keys in command-line arguments or environment
 
-The pure API is `verify_attestation(raw, secret, now_utc, expected_key_id)`; `now_utc` must be an exact timezone-aware `datetime` in UTC. For an isolated **fictional-only** CLI demonstration, an explicitly inherited file descriptor numbered 3–255 carries the synthetic key. Never supply keys via argv, environment, or user-facing chat. Example (using only a throwaway fake secret and fictional attestation, **not** production credentials):
+The pure API is `verify_attestation(raw, secret, now_utc, expected_key_id)`; `now_utc` must be an exact timezone-aware `datetime` in UTC. For an isolated **fictional-only** CLI demonstration, an explicitly inherited file descriptor numbered 3–255 carries the synthetic key. The FD must refer to a regular disposable fixture file or an anonymous pipe; socket/device descriptors are rejected. A non-terminating/unclosed key pipe fails closed after a bounded two-second read budget, rather than hanging the CLI. Never supply keys via argv, environment, or user-facing chat. Example (using only a throwaway fake secret and fictional attestation, **not** production credentials):
 
 ```bash
 PYTHONPATH=src python -m lightup.scope_audit_anchor_auth_offline \
@@ -37,7 +37,7 @@ PYTHONPATH=src python -m lightup.scope_audit_anchor_auth_offline \
 PYTHONPATH=src python -m unittest discover -s tests -p test_scope_audit_anchor_auth_offline.py -v
 ```
 
-Exit code **3** / `REVIEW_ONLY` means only that the fictional MAC and temporal shape validated against the provided key. Exit code **2** / `HOLD` means no approval. `consent_verified`, `authorization_granted` and `release_approved` are always literal `false`. Key material is not logged; there is no routine for copying or persisting it, and Python immutable byte buffers cannot be guaranteed wiped from memory. Use synthetic secrets exclusively for this incubating test.
+Exit code **3** / `REVIEW_ONLY` means only that the fictional MAC and temporal shape validated against the provided key. Exit code **2** / `HOLD` means no approval. `consent_verified`, `authorization_granted` and `release_approved` are always literal `false`. Key material is not logged; the verifier does not store it persistently, but Python immutable byte buffers cannot be guaranteed wiped from memory. Test the FD with a throwaway key only. The CLI's read timeout is an availability guard, **not** key-custody protection. Use synthetic secrets exclusively for this incubating test.
 
 ## Offline in-batch duplicate and chronology review
 
