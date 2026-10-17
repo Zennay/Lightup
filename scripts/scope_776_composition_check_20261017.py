@@ -8,6 +8,8 @@ inside disposable, private filesystem copies only.
 from __future__ import annotations
 
 import argparse
+import ast
+from collections import Counter
 import hashlib
 import json
 import os
@@ -214,6 +216,45 @@ def verify_result(label: str, code: int, output: str, *, strict: bool,
     print(label + "=PASS")
 
 
+def verify_original_strict_red_identities(root: Path, code: int,
+                                          output: str) -> None:
+    # Every source RED is independently named in owner-pinned files; strict
+    # unittest emits separate headers for each failing subTest variant.
+    expected_methods = set()
+    for path in (
+        OWN_FILE,
+        SOURCE_BLOBS[648][1],
+        SOURCE_BLOBS[775][1],
+    ):
+        contents = (root / path).read_text(encoding="utf-8")
+        tree = ast.parse(contents, filename=path)
+        names = {
+            node.name for node in ast.walk(tree)
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+            and node.name.startswith("test_source_red_")
+        }
+        if not names or expected_methods.intersection(names):
+            raise RuntimeError("scope776_original_red_method_manifest_collision")
+        expected_methods.update(names)
+    if len(expected_methods) != 18:
+        raise RuntimeError("scope776_original_red_method_count_changed")
+
+    observed = Counter(
+        name for kind, name in re.findall(
+            r"(?m)^(FAIL|ERROR): (test_source_red_[a-z0-9_]+) \\(", output
+        )
+    )
+    expected = Counter({name: 1 for name in expected_methods})
+    expected["test_source_red_all_three_invalid_dimensions_rejected_at_construction"] = 3
+    expected["test_source_red_bool_risk_is_not_an_enum_even_if_equal"] = 7
+    if (code == 0 or observed != expected
+            or not re.search(r"(?m)^Ran 26 tests in ", output)
+            or "FAILED (failures=26)" not in output
+            or re.search(r"(?m)^ERROR: ", output)):
+        raise RuntimeError("scope776_original_strict_source_RED_identity_or_cause_drift")
+    print("scope776_original_exact_18_source_RED_methods_26_failing_subcases=PASS")
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Offline #776 held source composition")
     parser.add_argument("--full", action="store_true",
@@ -240,6 +281,8 @@ def main() -> int:
         code, output = run_unittest(root, False, PATTERN)
         verify_result("scope776_original_26_with_18_expected_source_RED",
                       code, output, strict=False)
+        strict_code, strict_out = run_unittest(root, True, PATTERN)
+        verify_original_strict_red_identities(root, strict_code, strict_out)
 
         owner = root / OWNER_SOURCE
         source = owner.read_text(encoding="utf-8")
