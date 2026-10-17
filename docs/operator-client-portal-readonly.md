@@ -71,3 +71,15 @@ The desk is available **only** when explicitly running the guarded factory/launc
 4. Use the existing **Assessments** screen to perform authorized review. Do not treat the desk's informational badges as permission for real target interaction.
 
 **No deployment, release promotion or execution authorization is implied.** This opt-in screen cannot grant or revoke consent and cannot run tools.
+
+## Tenant-isolated assessment request receipts
+
+The guarded portal additionally contains a **Request receipts** section, listing up to 30 newest saved requests with links to:
+
+`GET /portal/<client_id>/requests/<request_id>`
+
+This new **read-only** WSGI handler displays request ID, status, requested assets, requested mode/risk, submission timestamp, available decision timestamp and HTML-escaped client notes. It explicitly says that the receipt is **not** an authorization grant or verified client consent. It does not create or edit any grants, sessions, assessment requests or approvals.
+
+The receipt is looked up via the existing `DomainStore.get_assessment_request` and a tenant-scoped portal read context. A client session for another client is denied by the dispatcher/domain checks; operators retain read-only cross-client portal visibility. The link list is bounded with an explicit truncation notice.
+
+This feature is part of the **opt-in guarded** web variant only, so it does not change the active source owner for the original webapp or its route list.
