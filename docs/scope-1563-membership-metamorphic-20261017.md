@@ -93,6 +93,28 @@ Both exclusively issue-owned CI workflows now check \`git diff --cached --exit-c
 
 Connected permitted zSSH, exact \`bf4fcf083987c74333210e69d6e8ad44279bbfe2\`: **28/28 Git/tree/CI tests PASS, 86/86 producer integrations PASS and original safety canaries PASS**; exact audit receipt \`REVIEW_ONLY ... added_paths 7 checked_commits 38\`; checkout clean. Full hosted CI on the ultimately updated HEAD must be verified separately and is not release authorization.
 
+## W17 — fail-closed pre-execution CI fence and complete PR coverage (2026-10-17)
+
+Two real workflow ordering/coverage gaps were closed **without touching runtime or foreign-owner files**:
+
+1. The primary GitHub-hosted workflow formerly ran project Python tests **before** its own immutable-history review. Its new immediately-post-checkout, pre-setup-python step pins the exact HEAD, refuses dirty tracked/index/nonignored-untracked state and requires the history reviewer to return literal non-authorizing **exit 3** before any project test. The post-test immutable gate remains as a separate defense.
+2. The independent #301/#1535 composition workflow formerly had a **pull_request.paths filter**. A source-only malicious revision could skip this otherwise independent gate. It now triggers on every change to the exact #1563 branch (and skips all other branch heads), and verifies clean original checkout **before** history review and external owner-file overlays. Original owner blobs remain temporary, unstaged, exact-SHA pinned, and source owners retain ownership.
+
+Three additional regression methods in the existing own test file guard **both workflows** for no path-filter bypass, pre-execution audit order, and clean index/untracked preflight. All changes are contained in the original seven issue-owned paths. This is an **offline CI integrity repair**, not a runtime authorization fix.
+
+Actual permitted connected zSSH on source **HEAD `11ea6df518b2f6ae123a779c0c0a34e7e3de8127`** (before this documentation-only change), using automatically removed isolated checkout:
+- **31/31** own temporary-Git / CI guard regression methods ordinary PASS.
+- **7/7** original membership-before-grant methods PASS.
+- **Four/four** deliberate unsafe scope mutations rejected with genuine assertions (no crash counted as success).
+- **86/86** genuine original producer integration tests PASS.
+- Original unchanged full unit suite: **1,275 methods, five existing ordinary FAIL and 23 expected source failures**, the same #301 wall-clock and #1535 registry-history failures already reproduced on main, so project CI is NOT all green.
+- Exact branch history gate: `REVIEW_ONLY / exit 3`, seven owned paths, **42 linear commits**; index and working tree clean.
+- New source-head [focused hosted run #39068343988](https://github.com/Zennay/Lightup/actions/runs/39068343988) **SUCCESS 2/2** (Python 3.11 and 3.14).
+- New source-head [composition hosted run #39068343991](https://github.com/Zennay/Lightup/actions/runs/39068343991) **SUCCESS 2/2** (Python 3.11 and 3.14).
+- Original [hosted preflight #39068344004](https://github.com/Zennay/Lightup/actions/runs/39068344004) **FAIL** in both Python jobs; producer dependency **SKIPPED**. Permanent named runner proof remains independent and is NOT claimed.
+
+**Limitations:** the offline history reviewer itself is branch-local, not a trusted external attestator, and its favorable exit code is never deploy/release approval. Authorization correctness, canonical original full-green suite, independent security/privacy, real authenticated two-party consent with at-use revocation, exact approved-SHA permanent registered VPS CI, and explicit human GO remain unsatisfied. No merge, real permit, scan, production handler, shared-runner change or deploy.
+
 ## Stop conditions
 
 No existing `src/lightup` sources, `tests/test_scope.py`, shared workflows, state/database, activation, execution, target workers, deployment or peer-worker files are modified. Scope #364 and existing PR #1263 remain independent. A green negative unit suite **is not** evidence of usable positive authority, authenticated two-party consent, at-use revocation, independent security/privacy review, passing full exact-head hosted plus registered VPS CI or HUMAN GO.
