@@ -81,3 +81,9 @@ Real regression before the final fix: a file modified in place *during* a file r
 A negative real subprocess test showed O_NOFOLLOW on the terminal file alone did not reject a symbolic link in a parent directory, and a path containing a dot component was admitted as equivalent. A dedicated fail-closed path walker now opens each directory by its already-open parent descriptor with O_DIRECTORY + O_NOFOLLOW and then opens the final file by that pinned directory descriptor. It rejects empty, dot, parent-traversal and NUL path segments. Directory descriptors are closed on every error path; only an explicitly supplied ordinary bounded file may be hashed, and no file contents or user pathname are emitted in a receipt.
 
 Original failing cases (a symlinked parent and a dot component) were reproduced before the fix and now PASS alongside the earlier terminal-symlink, FIFO, TOCTOU, privacy and scope-byte tests. This remains unprivileged offline local input hardening and provides no authority to scan or issue grants.
+
+## W7: immutable hosted workflow dependencies
+
+Previously the own offline hosted review job used floating actions/checkout@v5 and actions/setup-python@v6 action tags. On the connected zSSH host, read-only git ls-remote of the two upstream tag refs recorded checkout v5 as fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 and setup-python v6 as ece7cb06caefa5fff74198d8649806c4678c61a1. Our own hosted-only workflow now pins these exact 40-character Git commit objects. A dedicated regression rejects floating action tags and verifies both pins remain literal.
+
+The workflow still admits only owner same-repository pull requests and exact PR head, has read-only repository permissions, checkout credentials are not persisted, Python 3.11/3.14 hosted tests remain isolated from the permanent VPS queue. Pinning action commits reduces floating supply-chain drift; it is not proof of any client's authorization or release approval.

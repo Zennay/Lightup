@@ -164,5 +164,14 @@ class ScopeDocumentAcceptance(unittest.TestCase):
                 self.invoke(["--scope-document",alias_path],expect=2)
 
 
+    def test_owned_hosted_workflow_action_dependencies_are_immutable(self):
+        workflow = (SCRIPT.parents[1] / ".github/workflows" /
+                    "scope-1551-consent-revocation-offline.yml").read_text("utf-8")
+        self.assertIn("actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09", workflow)
+        self.assertIn("actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1", workflow)
+        self.assertNotIn("actions/checkout@v", workflow)
+        self.assertNotIn("actions/setup-python@v", workflow)
+
+
 if __name__ == "__main__":
     unittest.main()
