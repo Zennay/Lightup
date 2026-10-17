@@ -46,6 +46,14 @@ def _reject_constant(value: str) -> None:
     raise InvalidChain("nonfinite numeric constant")
 
 
+def _strict_json_int(value: str) -> int:
+    # JSON's -0 is otherwise silently normalized to integer 0, erasing the
+    # exact lexical input while keeping the same fictional audit digest.
+    if value == "-0":
+        raise InvalidChain("noncanonical negative zero")
+    return int(value)
+
+
 def _hex(value: object) -> bool:
     return type(value) is str and HEX_HASH.fullmatch(value) is not None
 
@@ -90,6 +98,7 @@ def _review(raw: bytes, expected_tip: str) -> int:
             raw.decode("utf-8", errors="strict"),
             object_pairs_hook=_unique_object,
             parse_constant=_reject_constant,
+            parse_int=_strict_json_int,
         )
     except (UnicodeDecodeError, ValueError, TypeError) as exc:
         raise InvalidChain("invalid JSON") from exc
