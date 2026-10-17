@@ -99,6 +99,21 @@ class ReviewBytesTests(unittest.TestCase):
                 candidate = ("@@ -1 +1 @@\n-old\n+new" + symbol).encode("utf-8")
                 self.hold(encoded(document(candidate)))
 
+    def test_invisible_unicode_format_and_spacing_glyphs_are_held(self):
+        # These printable Unicode categories can look empty to a human even
+        # though the original changed Git patch contains extra UTF-8 bytes.
+        ambiguous = ("\u034f", "\ufe0f", "\ufe00", "\u2800", "\u3164",
+                     "\u115f", "\u1160", "\uffa0", "\u00a0", "\u2007",
+                     "\u202f", "\u0301")
+        for symbol in ambiguous:
+            with self.subTest(char=repr(symbol)):
+                raw = ("@@ -1 +1 @@\n-old\n+new" + symbol).encode("utf-8")
+                self.hold(encoded(document(raw)))
+
+    def test_positive_visible_precomposed_unicode_remains_review_only(self):
+        raw = "@@ -1 +1 @@\n-# cafe\n+# café 日本語 한글".encode("utf-8")
+        self.assertEqual(reviewer.evaluate(encoded(document(raw))), reviewer.REVIEW_ONLY)
+
     def test_wrong_hunk_line_counts_hold(self):
         for raw in (
             b"@@ -1 +1 @@\n-old",

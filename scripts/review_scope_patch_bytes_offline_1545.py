@@ -63,11 +63,18 @@ def _exact_patch_text(raw: bytes) -> str:
         raise Hold("invalid UTF-8") from None
     if not value or "\ufffd" in value or "\r" in value or "\0" in value:
         raise Hold("lossy or ambiguous patch")
+    if unicodedata.normalize("NFC", value) != value:
+        raise Hold("non-canonical Unicode patch text")
+    # Some invisible characters are categorised as letters or symbols rather
+    # than format/controls: Hangul fillers and the visually blank Braille cell.
+    blank_glyphs = {"\u115f", "\u1160", "\u3164", "\uffa0", "\u2800"}
     for char in value:
         if char in "\n\t":
             continue
         category = unicodedata.category(char)
-        if category in {"Cc", "Cf", "Cs", "Zl", "Zp"}:
+        if (category in {"Cc", "Cf", "Cs", "Zl", "Zp", "Mn", "Me"}
+                or (category == "Zs" and char != " ")
+                or char in blank_glyphs):
             raise Hold("invisible or ambiguous patch character")
     return value
 

@@ -154,3 +154,25 @@ PASS + one deliberately unresolved original source expectedFailure**. New
 hosted evidence belongs only to whichever *final exact SHA* passes in GitHub
 Actions; earlier green hosted runs refer to superseded code SHA, not this W5
 repair rehearsal. Remains completely DRAFT/HOLD without source-owner merge.
+
+## W7 — ambiguous Unicode patch-content RED-to-GREEN (own CLI only)
+
+The original self-contained fictional patch reviewer accepted additional
+visually invisible Unicode as legitimate changed source. Newly introduced
+real negative cases initially produced **12 failing subtests**: combining
+grapheme joiner, both variation selectors, Braille blank, four Hangul filler
+forms, non-breaking space, figure space, narrow no-break space, and combining
+acute accent. The original production/source-owner code was NOT edited.
+
+Only the isolated opt-in validator was hardened with exact NFC canonicality,
+nonspacing/enclosing mark and atypical separator rejection, and explicit
+visually blank Braille/Hangul fillers. Existing positive controls including
+fully visible precomposed `café`, Japanese and composed Korean remain reviewable
+as fictional REVIEW_ONLY exit 3; all 12 negative subcases now return HOLD
+exit 2 with fixed false consent/grant/scan/dispatch/merge/release flags.
+
+Connected permitted zSSH actual Python 3.14.4: **27 test methods executed;
+26 ordinary PASS + 1 deliberately unchanged original-source expectedFailure**.
+The 12 initial red subtest failures and the green rerun are both evidenced in
+the same isolated checkout. No live targets, scanners, network or permissions.
+Host-based CI at the updated final commit must be checked independently.
