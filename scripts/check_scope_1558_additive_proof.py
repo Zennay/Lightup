@@ -50,7 +50,7 @@ def validate_owned_changes(
     root: Path, expected_base: str, owned_files: frozenset[str]
 ) -> frozenset[str]:
     """Fail closed when any added path is foreign or base/history changed."""
-    if type(root) is not Path or not root.is_dir():
+    if not isinstance(root, Path) or not root.is_dir():
         raise InvalidOwnership("repository path")
     if type(expected_base) is not str or len(expected_base) != 40 or any(
         char not in "0123456789abcdef" for char in expected_base
