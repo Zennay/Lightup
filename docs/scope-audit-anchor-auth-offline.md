@@ -53,8 +53,37 @@ PYTHONPATH=src python -m lightup.scope_audit_anchor_batch_offline \
 PYTHONPATH=src python -m unittest discover -s tests -p 'test_scope_audit_anchor*offline.py' -v
 ```
 
+## Conditional cross-batch replay continuity (offline, no durable registry)
+
+An extra **unwired** helper `scope_audit_anchor_replay_update_offline.py` can compare two fictional ledger snapshots against a **previous snapshot hash pinned independently by a trustworthy external channel**. This closes an in-memory review blind spot *only if* that old anchored ledger really is from a trusted custodian; it is **not** a global or production replay database.
+
+The input is one UTF-8 JSON object with exactly `schema`, `before`, `after`, and `incoming`:
+
+- Root `schema`: `LIGHTUP-FICTIONAL-MAC-REPLAY-UPDATE-V1`.
+- Each ledger `before` / `after`: exactly `{"schema":"LIGHTUP-FICTIONAL-MAC-REPLAY-LEDGER-V1","key_id":"...","entries":[...]}`; no more than **256** strictly timestamp-ordered entries, no duplicates of nonce/tip.
+- Each entry: **only** `nonce`, `tip_sha256` and `issued_at` as exact canonical fictional receipt fields (32/64 lowercase hex and canonical UTC).
+- `incoming`: a complete, real synthetic HMAC batch envelope of 1–32 individually valid signed fictional receipts, with unexpired MACs from the externally provided key.
+- CLI `--expected-ledger-tip`: an independent lowercase SHA-256 over `b"LIGHTUP-FICTIONAL-MAC-REPLAY-LEDGER-V1\\x00"` plus canonical `before` ledger JSON. The helper `compute_ledger_anchor` only calculates this candidate hash; **it does not authenticate its origin**, and an attacker controlling both the ledger and this expected value can fabricate continuity.
+- `after.entries` must equal `before.entries` followed by **exactly** the newly MAC-checked receipt identities. New entries must remain strictly newer than all previous records, with no reused nonce or tip. Any historical rewrite, removal, duplicate, future/expired receipt, malformed input or missing anchor produces atomic `HOLD`.
+- Maximum complete input: **524,288 bytes**; independently validated ledger and batch limits still apply.
+
+```bash
+PYTHONPATH=src python -m lightup.scope_audit_anchor_replay_update_offline \
+  --synthetic-only \
+  --expected-key-id fictional-batch-checker \
+  --expected-ledger-tip <64-lowercase-hex-previously-trusted-ledger-hash> \
+  --key-fd 3 \
+  3< /secure/private/path/to/disposable-fictional-test-key.bin \
+  < fictional-replay-update.json
+
+PYTHONPATH=src python -m unittest discover -s tests \
+  -p 'test_scope_audit_anchor*offline.py' -v
+```
+
+**Risk boundary:** No ledger or nonce is persisted, no external anchor is fetched/authenticated, and no atomic real-world storage transaction or cross-process replay lock is implemented. A client **must not** conclude that a global replay was prevented merely because this single offline input produced `REVIEW_ONLY`. The previous ledger would require separate authenticated tamper-resistant storage, immutable versioning, compare-and-swap, signer-to-principal binding and key revocation before any such assurance could be claimed. As elsewhere, consent/grant/release flags always remain `false`.
+
 ## Worker ownership and release fence
 
-Exactly six entirely new, independently owned source/tests/docs/isolated CI files on `chatgpt/scope-hmac-anchor-auth-20261017-w1` based on untouched `main`. Separate from active #1556 / PR #1557 checkpoint workers, #1551 two-party review and #554 durable source-owner. No changes to other workers' files, existing workflows, runner registration, production functionality, real grants or target access.
+Exactly ten entirely new, independently owned source/tests/docs/isolated CI files on `chatgpt/scope-hmac-anchor-auth-20261017-w1` based on untouched `main`. Separate from active #1556 / PR #1557 checkpoint workers, #1551 two-party review and #554 durable source-owner. No changes to other workers' files, existing workflows, runner registration, production functionality, real grants or target access.
 
 **No merge, deploy, active scan, real consent, grant issuance, handler dispatch or release.** Independent privacy/security review, trusted key management and binding to an authenticated principal, real at-use revocation and real client/operator consent, named VPS exact-head CI, and explicit human GO remain required.
