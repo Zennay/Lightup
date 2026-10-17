@@ -25,6 +25,21 @@ def _constant_text(node: ast.AST) -> str | None:
     """Bounded AST-only constant folding; never eval or import anything."""
     if isinstance(node, ast.Constant) and type(node.value) is str:
         text = node.value
+    elif (
+        isinstance(node, ast.Call)
+        and isinstance(node.func, ast.Attribute)
+        and node.func.attr == "join"
+        and isinstance(node.func.value, ast.Constant)
+        and type(node.func.value.value) is str
+        and len(node.args) == 1
+        and not node.keywords
+        and isinstance(node.args[0], (ast.Tuple, ast.List))
+        and len(node.args[0].elts) <= 16
+    ):
+        # Bounded immutable string-literal join only; no user call is run.
+        separator = _constant_text(node.func.value)
+        parts = [_constant_text(part) for part in node.args[0].elts]
+        text = separator.join(parts) if separator is not None and all(part is not None for part in parts) else None
     elif isinstance(node, ast.BinOp) and isinstance(node.op, ast.Add):
         left = _constant_text(node.left)
         right = _constant_text(node.right)
@@ -443,6 +458,28 @@ class RuntimeIsolationStaticTests(unittest.TestCase):
             "import importlib\nimportlib.import_module(f\"lightup.{dynamic}\")",
         )
         for source in patterns:
+            with self.subTest(source=source):
+                self.assertFalse(references_review_module(source))
+
+    def test_static_joined_loader_names_are_detected(self):
+        samples = (
+            "import importlib\nimportlib.import_module(''.join(('lightup.', 'scope_literal_control_review_20261016')))",
+            "import importlib\nimportlib.import_module('.'.join(('lightup', 'scope_literal_control_review_20261016')))",
+            "__import__('lightup', fromlist=[''.join(('scope_literal_', 'control_review_20261016'))])",
+            "exec(''.join(['import lightup.', 'scope_literal_control_review_20261016']))",
+        )
+        for source in samples:
+            with self.subTest(source=source):
+                self.assertTrue(references_review_module(source))
+
+    def test_static_joined_loader_negative_controls(self):
+        samples = (
+            "import importlib\nimportlib.import_module(''.join(('lightup.', dynamic)))",
+            "import importlib\nimportlib.import_module(''.join(('lightup.', 'other_module')))",
+            "__import__('other', fromlist=[''.join(('scope_literal_', 'control_review_20261016'))])",
+            "exec(''.join(['import lightup.', dynamic]))",
+        )
+        for source in samples:
             with self.subTest(source=source):
                 self.assertFalse(references_review_module(source))
 
