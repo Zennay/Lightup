@@ -187,7 +187,7 @@ def messages_for_request(
         rows = db.execute(
             "SELECT message_id,author_id,author_role,message_kind,message_body,created_at "
             "FROM assessment_clarifications WHERE request_id=? AND client_id=? "
-            "ORDER BY created_at ASC,message_id ASC LIMIT ?",
+            "ORDER BY created_at DESC,message_id DESC LIMIT ?",
             (request_id, request.client_id, MAX_VISIBLE + 1),
         ).fetchall()
         total_row = db.execute(
@@ -195,10 +195,15 @@ def messages_for_request(
             "WHERE request_id=? AND client_id=?",
             (request_id, request.client_id),
         ).fetchone()
-    visible = rows[:MAX_VISIBLE]
+    # Display the newest conversation window in chronological order. Earlier
+    # messages may be omitted, but the waiting state always uses the newest
+    # durable row, never an outdated first-page record.
+    latest_kind = rows[0][3] if rows else None
+    visible = list(reversed(rows[:MAX_VISIBLE]))
     state = (
-        "Awaiting client reply" if visible and visible[-1][3] == "question"
-        else "Awaiting operator review" if visible else "No clarification yet"
+        "Awaiting client reply" if latest_kind == "question"
+        else "Awaiting operator review" if latest_kind == "reply"
+        else "No clarification yet"
     )
     return {
         "schema": "lightup.request-clarifications.v1",
@@ -268,6 +273,55 @@ def render_thread_html(snapshot: dict, auth: AuthState, *,
            if snapshot["partial"] else "")
         + cards + form
     )
+
+
+def thread_states(
+    store: DomainStore, auth: AuthState, request_ids: list[str],
+    *, client_id: str | None = None,
+) -> dict[str, str]:
+    """Single bounded DB read for inbox badges; no message bodies disclosed.
+
+    A badge is a planning reminder, not verified consent or reviewer approval.
+    """
+    ctx = _context(auth)
+    if len(request_ids) > 120 or any(not _safe_id(i) for i in request_ids):
+        raise ClarificationDenied("Invalid or oversized request list")
+    if client_id is not None:
+        if not _safe_id(client_id):
+            raise ClarificationDenied("Malformed client identity")
+        if ctx.role is not Role.OPERATOR and ctx.client_id != client_id:
+            raise ClarificationDenied("Another client's inbox is unavailable")
+    if not request_ids:
+        return {}
+    # Per-request latest message kind only: no notes or author identity leave
+    # this service, and each message is constrained to its stored tenant ID.
+    placeholders = ",".join("?" for _ in request_ids)
+    with sqlite3.connect(store.path, timeout=10) as db:
+        rows = db.execute(
+            "SELECT m.request_id,m.client_id,m.message_kind "
+            "FROM assessment_clarifications m "
+            "JOIN assessment_requests r ON m.request_id=r.request_id "
+            "WHERE m.request_id IN (" + placeholders + ") "
+            "AND m.client_id=r.client_id "
+            "AND NOT EXISTS("
+            "SELECT 1 FROM assessment_clarifications newer "
+            "WHERE newer.request_id=m.request_id AND newer.client_id=m.client_id "
+            "AND (newer.created_at > m.created_at OR "
+            "(newer.created_at=m.created_at AND newer.message_id>m.message_id)))",
+            tuple(request_ids),
+        ).fetchall()
+    results = {}
+    for req_id, stored_client, kind in rows:
+        if client_id is not None and stored_client != client_id:
+            continue
+        if ctx.role is not Role.OPERATOR and stored_client != ctx.client_id:
+            continue
+        results[req_id] = (
+            "Awaiting client reply" if kind == "question"
+            else "Awaiting operator review" if kind == "reply"
+            else "Unknown message state"
+        )
+    return results
 
 
 def client_thread_json(
