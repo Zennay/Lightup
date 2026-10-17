@@ -87,7 +87,14 @@ PYTHONPATH=src python -m lightup.cli lab-baseline --expect-fixture
 python lab/vuln_fixture.py --profile exposed --port 18081 &
 PYTHONPATH=src python -m lightup.cli lab-assess http://127.0.0.1:18081/ \
   --profile exposed
+
+# Pre-merge change security review (offline, works on any repo)
+PYTHONPATH=src python -m lightup.cli review-change --base origin/main --head HEAD
 ```
+
+`review-change` produces an inferred PASS / PASS_WITH_WARNING / REVIEW_REQUIRED /
+BLOCK verdict with Markdown, JSON and SARIF output, and ships as a GitHub Action
+(`action.yml`). See `docs/change-review.md`.
 
 The `plan` command is intentionally non-invasive: it only emits a structured plan.
 

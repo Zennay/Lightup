@@ -1,0 +1,44 @@
+name: LightUp change review
+description: >-
+  Offline pre-merge security review of a pull request diff. Produces an
+  inferred PASS / PASS_WITH_WARNING / REVIEW_REQUIRED / BLOCK verdict, a job
+  summary and SARIF for GitHub code scanning. No network access, no target
+  interaction, no secrets required.
+inputs:
+  base:
+    description: Base revision (defaults to the pull request base SHA).
+    default: ""
+  head:
+    description: Head revision.
+    default: HEAD
+  fail-on:
+    description: never | warning | review | block
+    default: block
+  sarif-file:
+    description: Where to write SARIF.
+    default: lightup-change-review.sarif
+outputs:
+  verdict:
+    description: The change review verdict.
+    value: ${{ steps.review.outputs.verdict }}
+runs:
+  using: composite
+  steps:
+    - name: Review change
+      id: review
+      shell: bash
+      env:
+        LIGHTUP_BASE: ${{ inputs.base || github.event.pull_request.base.sha || 'origin/main' }}
+        LIGHTUP_HEAD: ${{ inputs.head }}
+        LIGHTUP_FAIL_ON: ${{ inputs.fail-on }}
+        LIGHTUP_SARIF: ${{ inputs.sarif-file }}
+        PYTHONPATH: ${{ github.action_path }}/src
+      run: |
+        set +e
+        python3 -m lightup.cli review-change --repo . \
+          --base "$LIGHTUP_BASE" --head "$LIGHTUP_HEAD" \
+          --sarif-output "$LIGHTUP_SARIF" --json-output lightup-change-review.json \
+          --fail-on "$LIGHTUP_FAIL_ON" > /dev/null
+        status=$?
+        python3 -c 'import json;print("verdict="+json.load(open("lightup-change-review.json"))["verdict"])' >> "$GITHUB_OUTPUT" || true
+        exit $status
