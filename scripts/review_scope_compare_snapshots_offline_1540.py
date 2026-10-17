@@ -41,12 +41,16 @@ def _convert(raw: bytes) -> bytes:
     if type(source) is not list or not 2 <= len(source) <= 32:
         raise review.InvalidProposal("snapshot count")
     normalized = []
+    seen_heads = set()
     for snap in source:
         if type(snap) is not dict or set(snap) != _SNAPSHOT_FIELDS:
             raise review.InvalidProposal("snapshot field set")
         if (not _sha(snap["base_sha"]) or snap["base_sha"] != base
                 or not _sha(snap["head_sha"])):
             raise review.InvalidProposal("snapshot refs")
+        if snap["head_sha"] in seen_heads:
+            raise review.InvalidProposal("duplicate source commit head")
+        seen_heads.add(snap["head_sha"])
         if type(snap["compare_status"]) is not str or snap["compare_status"] != "ahead":
             raise review.InvalidProposal("snapshot compare relation")
         if (type(snap["ahead_by"]) is not int or not 1 <= snap["ahead_by"] <= 10000
