@@ -1,14 +1,10 @@
 name: Scope 1563 membership-before-grant offline
 
 on:
+  # Every new head commit must be checked, including a source-only intrusion.
+  # Path filters here would let an unowned-only change escape the gate.
   pull_request:
-    paths:
-      - 'tests/test_scope_membership_metamorphic_20261017.py'
-      - 'docs/scope-1563-membership-metamorphic-20261017.md'
-      - '.github/workflows/scope-1563-membership-offline.yml'
-      - 'scripts/scope_1563_membership_mutation_proof_20261017.py'
-      - 'scripts/scope_1563_exact_tree_boundary_20261017.py'
-      - 'tests/test_scope_1563_exact_tree_boundary_20261017.py'
+    types: [opened, synchronize, reopened, ready_for_review]
   workflow_dispatch:
 
 permissions:
@@ -20,7 +16,12 @@ concurrency:
 
 jobs:
   membership-no-authority:
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    if: >-
+      (github.event_name == 'pull_request' &&
+       github.event.pull_request.head.repo.full_name == github.repository &&
+       github.head_ref == 'chatgpt/scope-1563-membership-metamorphic-20261017') ||
+      (github.event_name == 'workflow_dispatch' &&
+       github.ref_name == 'chatgpt/scope-1563-membership-metamorphic-20261017')
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
