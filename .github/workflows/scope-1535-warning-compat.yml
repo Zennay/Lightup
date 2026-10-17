@@ -56,6 +56,30 @@ jobs:
           assert not git("status", "--porcelain=v1", "--untracked-files=all")
           print("scope1535_exact_owned_tree=PASS")
           PY
+      - name: Byte-exact source-only escape fix and identical Python AST
+        shell: bash
+        run: |
+          python - <<'PY'
+          import ast
+          import pathlib
+          import subprocess
+          import warnings
+          base = "e73b7445c87ad239bdb03c50a99078ef93163b02"
+          path = "src/lightup/capability_registry_history_report.py"
+          before = subprocess.check_output(["git", "show", f"{base}:{path}"])
+          after = pathlib.Path(path).read_bytes()
+          bad_escape = bytes([92, 96])  # slash-backtick, invalid Python escape
+          fixed_escape = bytes([92, 92, 96])
+          assert before.count(bad_escape) == 2, "unexpected original escape sites"
+          assert after == before.replace(bad_escape, fixed_escape), "unreviewed source edit"
+          with warnings.catch_warnings():
+              warnings.simplefilter("ignore", SyntaxWarning)
+              warnings.simplefilter("ignore", DeprecationWarning)
+              original_tree = ast.dump(ast.parse(before.decode("utf-8")), include_attributes=False)
+              fixed_tree = ast.dump(ast.parse(after.decode("utf-8")), include_attributes=False)
+          assert original_tree == fixed_tree, "changed Python execution semantics"
+          print("scope1535_exact_escape_fix=PASS; original_python_ast_identical=PASS")
+          PY
       - name: Warning-free original renderer import contract
         run: python -I -S -B -m unittest discover -s tests -p 'test_scope_registry_warning_1535_20261017.py' -v
       - name: Original report output regression contract
