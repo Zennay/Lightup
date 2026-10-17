@@ -101,3 +101,9 @@ Journal v1 has exactly: schema_version integer 1, proposal_sha, scope_sha256, th
 Raw journal <=32 KiB, strictly typed keys, no duplicate JSON names or escaped aliases. Hash must exactly match an independently stored lowercase SHA-256 pin. Misbound, stale, altered, replaced, oversized, missing, symlinked or FIFO files, unsupported flags and any revocation fail closed. All output is privacy-minimal; eight authority/dispatch/scan/release flags always false; process exits REVIEW_ONLY=3 or HOLD=2, never 0. The original original scope document remains <=64 KiB; input timeline remains <=128 KiB.
 
 Negative regression demonstrates revocation deletion with an old externally held journal pin yields HOLD. Recalculating the digest of an attacker-supplied empty journal may yield REVIEW_ONLY, but still never conveys consent, authenticated actors, durable custody, real-time revocation completeness or execution authority. Mandatory governance and release gate remain DRAFT/HOLD.
+
+## W9: deterministic pinned raw-journal byte mutation safety
+
+The new detached revocation journal review is now covered by a 3,000-case deterministic byte mutation test (seed 1551): bit-flip, delete, insert and truncate, always starting from an identical valid fictional journal but retaining the **original independently pinned raw SHA-256**. Each of the 3,000 altered byte streams must return HOLD, and all eight execution/authorization flags must remain false. This specifically tests byte-exact pinning rather than semantic JSON normalization. A separately exercised replacement of the actors and later recomputed attacker-controlled journal pin shows that REVIEW_ONLY merely means internally consistent untrusted records, never a permit or credential.
+
+All work remains exclusively in the scope-authorization owner branch, in offline synthetic tests, not wired to actual grants, scanners, active adapters, or production CI. No real consent source is contacted.

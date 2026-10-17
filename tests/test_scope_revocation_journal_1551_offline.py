@@ -184,5 +184,38 @@ class DetachedJournalSafety(unittest.TestCase):
             self.assertNotIn(forbidden,source)
 
 
+    def test_3000_pinned_journal_byte_mutations_all_hold(self):
+        import random
+        rng = random.Random(1551)
+        original = self.journal_path.read_bytes()
+        for index in range(3000):
+            mutated = bytearray(original)
+            offset = rng.randrange(len(mutated))
+            variant = index % 4
+            if variant == 0:
+                mutated[offset] ^= 1
+            elif variant == 1:
+                del mutated[offset]
+            elif variant == 2:
+                mutated[offset:offset] = b"x"
+            else:
+                mutated = mutated[:offset]
+            outcome = journal_review.review(raw(self.batch), SCOPE, bytes(mutated), self.pin)
+            self.assertEqual("HOLD", outcome["status"], (index,variant))
+            self.assertTrue(all(outcome[k] is False
+                                for k in journal_review.claim.AUTHORITY_FLAGS))
+
+    def test_replaced_self_pinned_empty_journal_still_not_authority(self):
+        self.journal["principals"]["client"] = "client:forged"
+        self.save_journal()
+        self.request(expected=2)
+        self.journal = make_journal(self.batch)
+        self.save_journal()
+        result = self.request()
+        self.assertEqual("UNAUTHENTICATED_JOURNAL_CONSISTENCY_ONLY",result["reason"])
+        self.assertNotIn("approval",result)
+        self.assertNotIn("permit",result)
+
+
 if __name__ == "__main__":
     unittest.main()
