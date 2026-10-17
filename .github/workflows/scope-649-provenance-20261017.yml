@@ -98,8 +98,8 @@ jobs:
               stderr=subprocess.PIPE, timeout=35, check=False,
           )
           stderr = run.stderr
-          failures = set(re.findall(r"^FAIL: (test_[a-z0-9_]+) \\(", stderr, re.M))
-          errors = set(re.findall(r"^ERROR: (test_[a-z0-9_]+) \\(", stderr, re.M))
+          failures = set(re.findall(r"^FAIL: (test_[a-z0-9_]+) \(", stderr, re.M))
+          errors = set(re.findall(r"^ERROR: (test_[a-z0-9_]+) \(", stderr, re.M))
           assert run.returncode != 0, "owner source changed; re-review needed"
           assert failures == expected_failures, ("source FAIL identity changed", sorted(failures))
           assert errors == expected_errors, ("source ERROR identity changed", sorted(errors))
