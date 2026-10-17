@@ -89,6 +89,24 @@ class SnapshotReviewTests(unittest.TestCase):
     def test_independent_branches_parallel_wave(self):
         self.review(wire([entry(8, B), entry(2, C), entry(5, D)]), [[2, 5, 8]])
 
+    def test_v3_repo_and_root_branch_bound_fingerprint_changes_without_sha_change(self):
+        row = repo_entry(42, B, A, "main", "feature/own")
+        original, co = adapter.evaluate(wire_v3([row], [row]))
+        moved = dict(row, base_ref="release")
+        changed, cc = adapter.evaluate(wire_v3([moved], [moved], root_ref="release"))
+        other_repo = "Another/Lightup"
+        repointed = dict(row, base_repository=other_repo,
+                         head_repository=other_repo)
+        foreign, cf = adapter.evaluate(wire_v3(
+            [repointed], [repointed], repository=other_repo))
+        self.assertEqual((co, cc, cf), (3, 3, 3))
+        self.assertEqual(original["waves"], changed["waves"])
+        self.assertEqual(original["waves"], foreign["waves"])
+        self.assertNotEqual(original["derived_graph_sha256"], changed["derived_graph_sha256"])
+        self.assertNotEqual(original["derived_graph_sha256"], foreign["derived_graph_sha256"])
+        for receipt in (original, changed, foreign):
+            self.assertTrue(all(receipt[k] is False for k in adapter.OFF_FLAGS))
+
     def test_v3_64_stacked_prs_and_independent_reordered_waves(self):
         # Maximum bounded stack: each prior branch ref must be named exactly.
         rows = []
