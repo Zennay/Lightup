@@ -203,6 +203,19 @@ class PairReview649Tests(unittest.TestCase):
                             base.ReviewStatus.HOLD,
                         )
 
+    def test_blank_filler_glyphs_hold_even_when_paired_values_match(self):
+        # Both snapshots sharing the same visually blank Unicode filler still
+        # must not create a false success-looking REVIEW_ONLY shape receipt.
+        for filler in ("\u115f", "\u1160", "\u3164", "\uffa0", "\u2800"):
+            for field in ("approved_by", "reference"):
+                before, after = record(), record()
+                before[field] = "SYNTH" + filler + "649"
+                after[field] = "SYNTH" + filler + "649"
+                data = packet([{"before": before, "after": after}])
+                with self.subTest(filler=hex(ord(filler)), field=field):
+                    self.assertIs(pair.review_pair_batch(data).status, base.ReviewStatus.HOLD)
+                    self.assertIs(pair.parse_and_compare(encode(data)).status, base.ReviewStatus.HOLD)
+
     def test_exact_duplicate_json_key_and_nonfinite_rejection(self):
         valid = encode(packet())
         bad = (
