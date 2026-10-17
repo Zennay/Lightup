@@ -12,11 +12,13 @@ import random
 import tempfile
 import unittest
 from pathlib import Path
+from urllib.parse import urlencode
 from unittest.mock import patch
 
 from lightup.domain import DomainStore, Role
 from lightup.webapp import create_app
 from lightup.webapp.app import ANONYMOUS
+from lightup.webapp.security import RequestRejected
 
 
 class DuplicateSessionCookieAcceptance(unittest.TestCase):
@@ -136,8 +138,9 @@ class DuplicateSessionCookieAcceptance(unittest.TestCase):
     def test_red_wsgi_duplicate_must_not_gain_operator_access(self):
         status, headers, _ = self._wsgi(
             f"lightup_session={self.client_token}; lightup_session={self.operator_token}")
-        self.assertEqual(status, "303 See Other")
-        self.assertEqual(headers.get("Location"), "/login")
+        self.assertIn(status, ("403 Forbidden", "303 See Other"))
+        if status == "303 See Other":
+            self.assertEqual(headers.get("Location"), "/login")
         self.assertNotIn("Set-Cookie", headers)
         self.assertIsNotNone(self.store.session_context(self.operator_token))
         self.assertIsNotNone(self.store.session_context(self.client_token))
@@ -201,6 +204,38 @@ class DuplicateSessionCookieAcceptance(unittest.TestCase):
             "lightup_session = " + self.operator_token
             + " ; theme=ok; lightup_session=" + self.client_token)
 
+    @unittest.expectedFailure
+    def test_red_duplicate_public_login_must_not_issue_fresh_session(self):
+        # Critical companion to auth prelookup: POST /login is a public route.
+        # Merely returning ANONYMOUS from _authenticate is insufficient because
+        # the public login handler can still issue a new session.
+        payload = urlencode({
+            "email": "scope686-op@lightup.test",
+            "password": "fictional-password",
+        }).encode("ascii")
+        env = {
+            "REQUEST_METHOD": "POST", "PATH_INFO": "/login",
+            "CONTENT_LENGTH": str(len(payload)),
+            "CONTENT_TYPE": "application/x-www-form-urlencoded",
+            "wsgi.input": io.BytesIO(payload),
+            "HTTP_COOKIE": "lightup_session=" + self.client_token
+            + "; lightup_session=" + self.operator_token,
+        }
+        out = {}
+        with patch.object(self.store, "create_session") as create_session:
+            with patch.object(self.store, "revoke_session") as revoke_session:
+                with patch.object(self.store, "session_context", wraps=self.store.session_context) as lookup:
+                    b"".join(self.app(env, lambda s, h: out.update(status=s, headers=dict(h))))
+                    lookup.assert_not_called()
+                    create_session.assert_not_called()
+                    revoke_session.assert_not_called()
+        self.assertIn(out["status"], ("403 Forbidden", "303 See Other"))
+        if out["status"] == "303 See Other":
+            self.assertEqual(out["headers"].get("Location"), "/login")
+        self.assertNotIn("Set-Cookie", out["headers"])
+        self.assertIsNotNone(self.store.session_context(self.operator_token))
+        self.assertIsNotNone(self.store.session_context(self.client_token))
+
     def test_single_session_with_repeated_unrelated_cookie_is_valid(self):
         header = ("theme=one; lightup_session=" + self.operator_token
                   + "; theme=two; lightup_session_extra=irrelevant")
@@ -208,7 +243,7 @@ class DuplicateSessionCookieAcceptance(unittest.TestCase):
         self.assertTrue(auth.signed_in)
         self.assertTrue(auth.is_operator)
 
-    def test_owner_fix_rehearsal_turns_ten_original_source_reds_green(self):
+    def test_owner_fix_rehearsal_turns_eleven_original_source_reds_green(self):
         # A *test-local witness only*, not a production parser or a wired
         # middleware: reproduces the narrowly specified duplicate count
         # admission invariant for the exact synthetic cookie shapes below.
@@ -236,26 +271,41 @@ class DuplicateSessionCookieAcceptance(unittest.TestCase):
             "test_red_duplicate_cannot_create_client",
             "test_red_duplicate_three_cookie_variants_prelookup",
             "test_red_duplicate_mixed_spaces_prelookup",
+            "test_red_duplicate_public_login_must_not_issue_fresh_session",
         )
-        with patch.object(self.app, "_authenticate", side_effect=illustrative_prelookup_gate):
-            for name in exact_red_cases:
-                with self.subTest(red_source_witness=name):
-                    # Direct invocation intentionally bypasses the unittest
-                    # expectedFailure runner: any assertion now fails normally.
-                    getattr(self, name)()
-            self.test_single_operator_session_remains_authorized()
-            self.test_single_client_session_retains_tenant()
-            self.test_single_session_with_repeated_unrelated_cookie_is_valid()
+        raw_validate = self.app.security.validate
 
-            # Deterministic adversarial batches; no network, no real clients.
-            rng = random.Random(686)
-            for index in range(128):
-                sessions = rng.choices((self.operator_token, self.client_token), k=rng.randint(2, 5))
-                segments = ["lightup_session=" + token for token in sessions]
-                segments.extend("pref=" + str(i) for i in range(rng.randint(0, 4)))
-                rng.shuffle(segments)
-                with self.subTest(iteration=index, count=len(sessions)):
-                    self._assert_ambiguous_denied_prelookup("; ".join(segments))
+        def illustrative_wsgi_ingress_guard(environ):
+            raw = environ.get("HTTP_COOKIE", "")
+            if isinstance(raw, str):
+                occurrences = sum(
+                    part.partition("=")[0].strip() == "lightup_session"
+                    for part in raw.split(";")
+                )
+                if occurrences > 1:
+                    raise RequestRejected("ambiguous session cookie")
+            return raw_validate(environ)
+
+        with patch.object(self.app, "_authenticate", side_effect=illustrative_prelookup_gate):
+            with patch.object(self.app.security, "validate", side_effect=illustrative_wsgi_ingress_guard):
+                for name in exact_red_cases:
+                    with self.subTest(red_source_witness=name):
+                        # Direct invocation intentionally bypasses the unittest
+                        # expectedFailure runner: any assertion now fails normally.
+                        getattr(self, name)()
+                self.test_single_operator_session_remains_authorized()
+                self.test_single_client_session_retains_tenant()
+                self.test_single_session_with_repeated_unrelated_cookie_is_valid()
+
+                # Deterministic adversarial batches; no network, no real clients.
+                rng = random.Random(686)
+                for index in range(128):
+                    sessions = rng.choices((self.operator_token, self.client_token), k=rng.randint(2, 5))
+                    segments = ["lightup_session=" + token for token in sessions]
+                    segments.extend("pref=" + str(i) for i in range(rng.randint(0, 4)))
+                    rng.shuffle(segments)
+                    with self.subTest(iteration=index, count=len(sessions)):
+                        self._assert_ambiguous_denied_prelookup("; ".join(segments))
 
         # A values-only de-duplication fix is *not* sufficient when the
         # duplicated credential bytes are identical.
