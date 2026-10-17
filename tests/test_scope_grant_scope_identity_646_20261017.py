@@ -175,6 +175,49 @@ class CanonicalGrantScopeAcceptance(unittest.TestCase):
             self.issue(None)
         self.assertEqual(self.durable_count(), 0)
 
+    @_SOURCE_CONTRACT
+    def test_source_red_forged_class_metadata_does_not_mint_scope_identity(self):
+        # A forged __class__ can fool an isinstance-only future repair.
+        # The owner invariant is the stricter type(scope) is ScopeDefinition.
+        class Spoof:
+            assets = ("offline.example.invalid",)
+            max_risk = RiskLevel.STANDARD
+            allowed_capabilities = ("web-baseline",)
+            excluded_assets = ()
+
+            @property
+            def __class__(self):
+                return ScopeDefinition
+
+        spoof = Spoof()
+        self.assertIsNot(type(spoof), ScopeDefinition)
+        with self.assertRaises((ValueError, TypeError)):
+            self.issue(spoof)
+        self.assertEqual(self.durable_count(), 0)
+
+    @_SOURCE_CONTRACT
+    def test_source_red_rejects_foreign_scope_without_accessing_fields(self):
+        # No untrusted property or other code should run to validate identity.
+        class ForeignFieldTrap:
+            def __init__(self):
+                object.__setattr__(self, "reads", 0)
+
+            def __getattribute__(self, name):
+                if name in {
+                    "assets", "excluded_assets", "allowed_capabilities",
+                    "max_risk",
+                }:
+                    reads = object.__getattribute__(self, "reads")
+                    object.__setattr__(self, "reads", reads + 1)
+                    raise RuntimeError("scope field trap was evaluated")
+                return object.__getattribute__(self, name)
+
+        trap = ForeignFieldTrap()
+        with self.assertRaises((ValueError, TypeError)):
+            self.issue(trap)
+        self.assertEqual(trap.reads, 0)
+        self.assertEqual(self.durable_count(), 0)
+
 
 if __name__ == "__main__":
     unittest.main()
