@@ -4,6 +4,8 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum, IntEnum
 
+from .timewindow import canonical_instant, evaluation_instant
+
 
 class EngagementStatus(str, Enum):
     DRAFT = "draft"
@@ -61,10 +63,12 @@ class AuthorizationGrant:
     recurring_retest_allowed: bool = False
 
     def is_current(self, now: datetime | None = None) -> bool:
-        now = now or datetime.now(timezone.utc)
-        if now.tzinfo is None:
-            raise ValueError("authorization time must be timezone-aware")
-        return self.valid_from <= now <= self.valid_until
+        now = evaluation_instant(now)
+        start = canonical_instant(self.valid_from)
+        until = canonical_instant(self.valid_until)
+        if start is None or until is None:
+            return False
+        return start <= now <= until
 
 
 @dataclass(frozen=True)

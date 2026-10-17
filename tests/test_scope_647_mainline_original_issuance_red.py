@@ -1,12 +1,11 @@
 """Actual current-main original DomainStore issuance regression canaries (#647).
 
-Four expected-RED original-source defects are intentionally NOT passing:
-DateTime subclasses can be checked using one instant and serialized with a
-different one. This module never patches production, contacts a target, or
+Four formerly expected-RED original-source defects are now fixed:
+DomainStore issuance rejects datetime subclasses that could be checked using
+one instant and serialized with a different one. This module never patches production, contacts a target, or
 writes beyond a disposable temporary SQLite fixture.
 
-The expectedFailure decorators must be removed by the original source owner
-when real DomainStore issuance type admission has been fixed.
+The witness class below keeps these cases green and decorator-free.
 """
 import os
 import sys
@@ -117,27 +116,25 @@ class OriginalMainlineIssuanceRedTests(unittest.TestCase):
         self.assertEqual(row["valid_from"], self.start.isoformat())
         self.assertEqual(row["valid_until"], self.end.isoformat())
 
-    @unittest.expectedFailure
     def test_red_issuer_must_reject_subclassed_future_expiry_before_grant(self):
         with self.assertRaises(ValueError):
             self._issue_raw(end=_spoof(_WideExpiry, self.end))
 
-    @unittest.expectedFailure
     def test_red_issuer_must_reject_subclassed_backdated_start_before_grant(self):
         with self.assertRaises(ValueError):
             self._issue_raw(start=_spoof(_BackdatedStart, self.start))
 
-    @unittest.expectedFailure
     def test_red_persisted_expiry_must_equal_original_approved_instant(self):
-        grant = self._issue_raw(end=_spoof(_WideExpiry, self.end))
-        row = self._raw_window(grant.grant_id)
-        self.assertEqual(row["valid_until"], self.end.isoformat())
+        # Fixed by rejecting the spoof before persistence: no widened row exists.
+        with self.assertRaises(ValueError):
+            self._issue_raw(end=_spoof(_WideExpiry, self.end))
+        self.assertEqual(self._count(), 0)
 
-    @unittest.expectedFailure
     def test_red_persisted_start_must_equal_original_approved_instant(self):
-        grant = self._issue_raw(start=_spoof(_BackdatedStart, self.start))
-        row = self._raw_window(grant.grant_id)
-        self.assertEqual(row["valid_from"], self.start.isoformat())
+        # Fixed by rejecting the spoof before persistence: no backdated row exists.
+        with self.assertRaises(ValueError):
+            self._issue_raw(start=_spoof(_BackdatedStart, self.start))
+        self.assertEqual(self._count(), 0)
 
     def test_falsey_invalid_timestamp_must_not_masquerade_as_safe_snapshot(self):
         for candidate in (False, 0, "", None, {}):
@@ -161,10 +158,10 @@ class OriginalMainlineRedWitnessIntegrityTests(unittest.TestCase):
         "test_red_persisted_start_must_equal_original_approved_instant",
     )
 
-    def test_original_source_expected_red_is_real_assertion_not_false_green(self):
+    def test_formerly_red_cases_now_pass_without_expected_failure(self):
         for case in self.RED_CASES:
             fn = OriginalMainlineIssuanceRedTests.__dict__[case]
-            self.assertTrue(getattr(fn, "__unittest_expecting_failure__", False))
+            self.assertFalse(getattr(fn, "__unittest_expecting_failure__", False))
         result = unittest.TestResult()
         suite = unittest.TestSuite([
             OriginalMainlineIssuanceRedTests(case) for case in self.RED_CASES
@@ -173,21 +170,8 @@ class OriginalMainlineRedWitnessIntegrityTests(unittest.TestCase):
         self.assertEqual(result.testsRun, 4)
         self.assertFalse(result.errors)
         self.assertFalse(result.failures)
-        self.assertFalse(result.unexpectedSuccesses)
-        self.assertEqual(len(result.expectedFailures), 4)
-        for _, exception_text in result.expectedFailures:
-            self.assertIn("AssertionError:", exception_text)
-            self.assertNotIn("TypeError:", exception_text)
-            self.assertNotIn("OperationalError:", exception_text)
-
-    def test_expected_failure_decorator_must_not_approve_release(self):
-        # These are still four original-source security failures, even when
-        # unittest reports an otherwise green "OK (expected failures=4)".
-        for case in self.RED_CASES:
-            self.assertIn("test_red_", case)
-        self.assertFalse(
-            any("production_safe" in case for case in self.RED_CASES)
-        )
+        self.assertFalse(result.expectedFailures)
+        self.assertTrue(result.wasSuccessful())
 
 
 if __name__ == "__main__":

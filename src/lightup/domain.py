@@ -37,6 +37,7 @@ from .engagements import (
     ScopeDefinition,
 )
 from .models import RetestStatus, Severity
+from .timewindow import require_instant
 
 
 class Role(str, Enum):
@@ -737,8 +738,8 @@ class DomainStore:
         recurring_retest_allowed: bool = False,
     ) -> AuthorizationGrant:
         ctx.require_operator("record_authorization_grant")
-        if valid_from.tzinfo is None or valid_until.tzinfo is None:
-            raise ValueError("grant validity must be timezone-aware")
+        valid_from = require_instant(valid_from, "grant valid_from")
+        valid_until = require_instant(valid_until, "grant valid_until")
         if valid_until <= valid_from:
             raise ValueError("grant validity window is empty")
         if not reference.strip() or not approved_by.strip():
