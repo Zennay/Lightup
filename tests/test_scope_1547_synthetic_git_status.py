@@ -195,6 +195,71 @@ class SyntheticGate(unittest.TestCase):
         with patch.object(review.sys, "stdin", Source()), patch.object(review.sys, "stdout", ShortSink()):
             self.assertEqual(review.main(), 2)
 
+    def test_fragmentation_limits_and_corrupt_read_types_hold(self):
+        from unittest.mock import patch
+        good = packet(b"M\0file.py\0")
+
+        class Source:
+            def __init__(self, parts):
+                self.parts = list(parts)
+                self.buffer = self
+
+            def read(self, count):
+                value = self.parts.pop(0) if self.parts else b""
+                return value
+
+        class Sink:
+            def __init__(self):
+                self.buffer = self
+                self.payload = bytearray()
+
+            def write(self, value):
+                self.payload.extend(value)
+                return len(value)
+
+            def flush(self):
+                pass
+
+        for fragments in (
+            [good[i:i+1] for i in range(len(good))] + [b""],
+            [b"x"] * 257,
+            [good[:3], "not bytes", good[3:]],
+            [good[:3], None, good[3:]],
+        ):
+            with self.subTest(piece_count=len(fragments)):
+                sink = Sink()
+                with patch.object(review.sys, "stdin", Source(fragments)), patch.object(review.sys, "stdout", sink):
+                    self.assertEqual(review.main(), 2)
+                self.assertEqual(json.loads(sink.payload)["decision"], "HOLD")
+
+    def test_real_disposable_git_add_modify_delete_stream(self):
+        with tempfile.TemporaryDirectory() as temp:
+            repo = Path(temp)
+
+            def git(*argv):
+                return subprocess.run(
+                    ["git", "-c", "core.hooksPath=/dev/null", "-C", str(repo), *argv],
+                    capture_output=True, check=True, timeout=8,
+                ).stdout
+
+            git("init", "-q")
+            (repo / "modify.py").write_text("a\n", encoding="utf-8")
+            (repo / "delete.py").write_text("old\n", encoding="utf-8")
+            git("add", ".")
+            git("-c", "user.email=fixture@example.invalid", "-c",
+                "user.name=Fixture", "commit", "-qm", "original")
+            (repo / "modify.py").write_text("b\n", encoding="utf-8")
+            (repo / "add.py").write_text("new\n", encoding="utf-8")
+            (repo / "delete.py").unlink()
+            git("add", "-A")
+            git("-c", "user.email=fixture@example.invalid", "-c",
+                "user.name=Fixture", "commit", "-qm", "changes")
+            stream = git("diff", "--name-status", "-z", "HEAD~1", "HEAD")
+            self.assertEqual(review.review_stream(stream), 3)
+            self.assertEqual(
+                set(stream.split(b"\0")[::2]) - {b""}, {b"A", b"M", b"D"}
+            )
+
     def test_real_disposable_git_zero_delimited_output(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
