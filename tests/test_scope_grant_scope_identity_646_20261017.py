@@ -149,8 +149,24 @@ class CanonicalGrantScopeAcceptance(unittest.TestCase):
             excluded_assets=canonical.excluded_assets,
         )
         object.__setattr__(unstable, "_scope646_risk_reads", 0)
-        with self.assertRaises((ValueError, TypeError)):
+        try:
             self.issue(unstable)
+        except (ValueError, TypeError):
+            # The desired source-owner behavior: deny before persistence.
+            pass
+        else:
+            # On the unpatched source this reaches SQLite with risk=5.
+            with sqlite3.connect(self.store.path) as connection:
+                stored = connection.execute(
+                    "SELECT max_risk FROM authorization_grants "
+                    "WHERE engagement_id=?", (self.engagement.engagement_id,)
+                ).fetchone()
+            if stored is not None:
+                self.assertNotEqual(
+                    stored[0], int(RiskLevel.DESTRUCTIVE_LAB_ONLY),
+                    "unpatched source persisted destructive risk after safe validation",
+                )
+            self.fail("noncanonical scope subclass passed issuance")
         self.assertEqual(self.durable_count(), 0)
 
     @_SOURCE_CONTRACT
