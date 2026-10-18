@@ -24,10 +24,37 @@ python3 scope-escalation/board.py \
   --workspace /private/NEW-scope-escalation-room
 ```
 
+### Alternative: direct existing-account login (no intermediate source export)
+
+For an original persisted LightUp account, this command uses the **unchanged original** `authenticated_casebook` source and tenant/lockout policy. The password is requested interactively from the terminal, never in CLI args or config. It builds a private room directly from that one original snapshot without writing a second plaintext source file:
+
+```sh
+umask 077
+PYTHONPATH=src python3 scope-escalation/authenticated_workspace.py \
+  --database /private/ORIGINAL-domain.sqlite \
+  --email EXISTING-LIGHTUP-ACCOUNT \
+  --client EXACT-CLIENT-ID \
+  --workspace /private/NEW-original-authenticated-room
+```
+
+An original client account may omit `--client`; an operator must select a real permitted client ID. Interactive authentication can mutate **original account lockout metadata** as designed; this companion never changes grants, requests, risks, STOP, source rows, scans or worker state. The generated standalone HTML is still private and **does not verify action-time revocation or independent client consent**.
+
+### Recipient source-bound inspection
+
+If a recipient already has the exact previously authenticated original PRIVATE Casebook JSON from an independently verified channel, they can inspect an offline package before opening it:
+
+```sh
+python3 scope-escalation/workspace_inspect.py \
+  --source /private/ORIGINAL-casebook.json \
+  --workspace /private/RECEIVED-scope-room
+```
+
+This read-only recipient command checks every expected file byte against independently recomputed source artifacts, rejects unsafe mode/symlink/directory inventory and checks the unsigned final manifest. It returns **2 REVIEW_ONLY** when locally coherent or **3 HOLD** when inconsistent, never 0/authority. The optional direct-login route does not automatically save original source JSON; obtain an **independently authenticated** equivalent exact original source file if later inspection by another recipient is required. Matching SHA-256 bytes are not a signature or proof of sender/recipient authority.
+
 The workspace **must not exist**. Its parent must not be writable by group/others. The builder uses Python's standard library, rejects symlink or group-readable original files, BOM, duplicate JSON keys, nonfinite JSON, unsupported source versions, false-authority contradictions, duplicate record identities, incomplete engagement cases and contradictory original counts. It creates a mode 0700 directory with these mode 0600 files:
 
 - `PRIVATE-board.html`: standalone browser UI with inline SHA-256 pinned scripts/styles and Content Security Policy `connect-src 'none'`; contains tenant, original IDs and historical source observations.
-- `PRIVATE-queue.csv`: private original IDs and human action suggestions; **not suitable for direct spreadsheet execution** without a separate CSV formula-safety viewer.
+- `PRIVATE-queue.csv`: private original IDs and human action suggestions; formula-escaped on export (including Unicode-obscured leading formulas), though recipients should still use a restricted spreadsheet viewer.
 - `aggregate.json`: no original identifiers, tenant, timestamps, notes or source hash.
 - `START-HERE.txt`: workflow and permissions warning.
 - `manifest.json`: unsigned exact file hashes and byte lengths, written last.
