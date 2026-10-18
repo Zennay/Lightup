@@ -267,7 +267,9 @@ def _safe_csv_cell(value):
     """Prevent Unicode-obscured formula interpretation in private CSV viewers."""
     original = str(value)
     normalized = unicodedata.normalize("NFKC", original)
-    normalized = normalized.lstrip("\\ufeff\\u200b\\u2060\\u200e\\u200f\\u202a\\u202b\\u202c\\u202d\\u202e\\t\\r\\n ")
+    while normalized and (normalized[0].isspace() or
+                          unicodedata.category(normalized[0]) in ("Cf", "Cc", "Zl", "Zp")):
+        normalized = normalized[1:]
     if normalized.startswith(("=", "+", "-", "@")):
         return "'" + original
     return original
