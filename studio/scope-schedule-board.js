@@ -278,7 +278,7 @@ function renderScenarios(){
   $('scenarioRevert').disabled=!chosen||!scenarioShifts.has(chosen.key);
   $('scenarioClear').disabled=!shown().length;
   $('scenarioArrange').disabled=!shown().length;
-  $('scenarioExport').disabled=!entries.length;
+  $('scenarioExport').disabled=!entries.length || entries.some(e=>!e.sourceHash);
   const changes=$('scenarioChanges');changes.replaceChildren();
   if(!scenarioShifts.size)append(changes,'p','No time adjustments proposed.','muted');
   entries.forEach((e,i)=>{
@@ -307,7 +307,7 @@ function scenarioPacket(){
       const proposed=scenarioShifts.get(e.key);
       const valid=e.interval.state==='resolved';
       const duration=valid ? e.interval.end-e.interval.start:0;
-      return {local_ordinal:i+1,requested_mode:e.mode,requested_risk:e.risk,state:valid?'DRAFT_PLANNED':'HOLD_MISSING_UTC',
+      return {local_ordinal:i+1,source_file_sha256:e.sourceHash,requested_mode:e.mode,requested_risk:e.risk,state:valid?'DRAFT_PLANNED':'HOLD_MISSING_UTC',
         original_start_utc:valid?new Date(e.interval.start).toISOString():null,
         original_end_utc:valid?new Date(e.interval.end).toISOString():null,
         scenario_start_utc:valid?new Date(proposed===undefined?e.interval.start:proposed).toISOString():null,
@@ -360,7 +360,7 @@ function decodeScenario(snapshot){
     'authorization','client_consent','operator_consent','grant','risk_approved','scan',
     'execution','release','note','proposals','unavailable_utc','proposed_time_overlap_pairs',
     'proposed_unavailability_overlap_pairs']);
-  const rowKeys=new Set(['local_ordinal','requested_mode','requested_risk','state','original_start_utc',
+  const rowKeys=new Set(['local_ordinal','source_file_sha256','requested_mode','requested_risk','state','original_start_utc',
     'original_end_utc','scenario_start_utc','scenario_end_utc','shifted']);
   const blockKeys=new Set(['start','end']);
   if(!record(snapshot)||!exactKeys(snapshot,rootKeys) ||
@@ -380,6 +380,9 @@ function decodeScenario(snapshot){
     const source=entries[i],row=snapshot.proposals[i],resolved=source.interval.state==='resolved';
     if(!record(row)||!exactKeys(row,rowKeys)||row.local_ordinal!==i+1||
        row.requested_mode!==source.mode||row.requested_risk!==source.risk||
+       typeof row.source_file_sha256!=='string' ||
+       !/^[a-f0-9]{64}$/.test(row.source_file_sha256) ||
+       row.source_file_sha256!==source.sourceHash||
        row.state!==(resolved?'DRAFT_PLANNED':'HOLD_MISSING_UTC')||
        typeof row.shifted!=='boolean')throw Error('mismatched source');
     if(!resolved){
@@ -461,7 +464,9 @@ $('scenarioClear').addEventListener('click',()=>{
   render();
 });
 $('scenarioExport').addEventListener('click',()=>{
-  if(!entries.length)return;
+  if(!entries.length||entries.some(e=>!e.sourceHash)){
+    $('status').textContent='HOLD: source SHA-256 is unavailable. This browser cannot export a source-bound scenario.';return;
+  }
   const blob=new Blob([JSON.stringify(scenarioPacket(),null,2)+'\n'],{type:'application/json'});
   const url=URL.createObjectURL(blob),a=document.createElement('a');
   a.href=url;a.download='lightup-schedule-review-only.json';
@@ -495,7 +500,13 @@ $('files').addEventListener('change',async ev=>{
   for(const file of list){
     try{
       if(file.size===0||file.size>MAX_FILE_BYTES)throw Error('size');
-      const decoded=new TextDecoder('utf-8',{fatal:true}).decode(await file.arrayBuffer());
+      const raw=await file.arrayBuffer();
+      const decoded=new TextDecoder('utf-8',{fatal:true}).decode(raw);
+      let sourceHash=null;
+      if(globalThis.crypto && crypto.subtle && globalThis.TextEncoder){
+        const digest=await crypto.subtle.digest('SHA-256',raw);
+        sourceHash=Array.from(new Uint8Array(digest),byte=>byte.toString(16).padStart(2,'0')).join('');
+      }
       const data=JSON.parse(decoded);
       const draft=parseDraft(data);
       if(!draft)throw Error('schema');
@@ -503,7 +514,7 @@ $('files').addEventListener('change',async ev=>{
       const key=JSON.stringify({name:draft.name,mode:draft.mode,risk:draft.risk,
         local:draft.local,utc:draft.utc,assets:data.requested_assets,excluded:data.excluded_assets});
       if(entries.some(x=>x.key===key)){duplicate++;continue;}
-      entries.push({...draft,key});accepted++;
+      entries.push({...draft,key,sourceHash});accepted++;
     }catch(_){rejected++;}
   }
   if(accepted && !anchorChangedByUser){
