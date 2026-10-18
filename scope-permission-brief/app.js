@@ -427,6 +427,46 @@ function applyPending(){
  }));
  renderPending();
 }
+/* A zero-script human change paper: a preview, NOT consent or a scope permit. */
+function pendingPaper(){
+ const model=pendingRecord();if(!model)return null;
+ const e=v=>String(v).replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+ const lines=[
+  ['Declared assets',model.before.proposed_assets_count,model.proposed.proposed_assets_count],
+  ['Exclusions',model.before.excluded_assets_count,model.proposed.excluded_assets_count],
+  ['Requested risk',model.before.requested_risk,model.proposed.requested_risk],
+  ['Mode',model.before.requested_mode,model.proposed.requested_mode],
+  ['Tentative window status',model.before.window_status,model.proposed.window_status]
+ ];
+ const rows=lines.map(([label,a,b])=>'<tr><th>'+e(label)+'</th><td>'+e(a)+'</td><td>'+e(b)+'</td></tr>').join('');
+ const impact=model.literal_impact;
+ const followupCodes=impact?.attention_codes||[];
+ const advice=followupCodes.length?
+  '<ul>'+followupCodes.map(code=>'<li>'+e(code.replaceAll('_',' '))+' — independent human review required</li>').join('')+'</ul>':
+  '<p>No elevated category detected; original bytes differ and fresh human preparation is still required.</p>';
+ const delta=impact?
+  '<p>Literal included entries: +'+e(impact.proposed_assets.added)+' / −'+e(impact.proposed_assets.removed)+
+  '; excluded entries: +'+e(impact.exclusions.added)+' / −'+e(impact.exclusions.removed)+
+  '. These are only case-insensitive string counts, never CIDR or DNS equivalence.</p>':'';
+ return '<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'+
+  '<meta name="referrer" content="no-referrer"><meta http-equiv="Content-Security-Policy" content="default-src &#39;none&#39;; style-src &#39;unsafe-inline&#39;; base-uri &#39;none&#39;; form-action &#39;none&#39;; object-src &#39;none&#39;">'+
+  '<title>LightUp pending source change · REVIEW ONLY / HOLD</title>'+
+  '<style>body{font:15px/1.6 system-ui,sans-serif;max-width:900px;margin:auto;padding:25px;color:#14273c}h1{font-size:29px}h2{margin-top:28px;border-bottom:1px solid #b8c8d7}p{overflow-wrap:anywhere}.banner{background:#fff0dd;border:2px solid #a75933;padding:16px}.hash{font:12px/1.6 monospace;overflow-wrap:anywhere}table{border-collapse:collapse;width:100%;margin:14px 0}td,th{border:1px solid #bac7d3;padding:9px;text-align:left}th{background:#e8edf5}li{padding:5px}footer{border-top:1px solid #bbb;margin-top:35px;font-size:12px}@media print{body{padding:0}}</style></head><body>'+
+  '<p>LIGHTUP / LOCAL HUMAN CHANGE DISCUSSION</p><h1>Pending scope revision — not applied</h1>'+
+  '<div class="banner"><strong>REVIEW_ONLY_HOLD</strong>: This proposed new source has NOT replaced the original or its human preparation. No client identity, consent, operator approval, risk signoff, grant, permission, scan or deploy is created by this report.</div>'+
+  '<p class="hash">Accepted source SHA-256: '+e(model.previous_source_sha256)+'<br>Proposed source SHA-256: '+e(model.proposed_source_sha256)+'</p>'+
+  '<h2>Generic category changes</h2><table><thead><tr><th>Category</th><th>Accepted</th><th>Proposed</th></tr></thead><tbody>'+rows+'</tbody></table>'+delta+
+  '<h2>Human questions before replacement</h2>'+advice+
+  '<p>Both client and operator must reopen the full proposed original locally and independently verify all precise targets, exclusions, stop instructions, current revocation and permission boundaries in the authenticated system. Do not use an anonymous summary for a grant.</p>'+
+  '<footer>Only aggregate numbers, fixed categories and document-level SHA-256 appear. No raw targets, notes, per-asset hashes, identities, filenames or contacts. Literal string comparison is not effective scope equivalence. Current prior human work remains valid only for the old original bytes and is never transferred if the staged source is applied.</footer></body></html>';
+}
+function exportPendingPaper(){
+ const text=pendingPaper();if(!text)return;
+ const url=URL.createObjectURL(new Blob([text],{type:'text/html;charset=utf-8'})),a=document.createElement('a');
+ a.href=url;a.download='lightup-unapplied-scope-change-brief-HOLD.html';
+ document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+
 function exportPending(){
  const record=pendingRecord();if(!record)return;
  const url=URL.createObjectURL(new Blob([JSON.stringify(record,null,2)+'\n'],{type:'application/json'}));
@@ -490,6 +530,7 @@ $('source').addEventListener('change',event=>loadFile(event.target.files?.[0]));
 $('pendingDiscard').addEventListener('click',discardPending);
 $('pendingApply').addEventListener('click',applyPending);
 $('pendingExport').addEventListener('click',exportPending);
+$('pendingPaper').addEventListener('click',exportPendingPaper);
 $('clear').addEventListener('click',()=>{hold('Source forgotten');document.dispatchEvent(new CustomEvent('lightup:brief-forget'));$('source').value='';$('reply').value='';$('preview').textContent='';$('receipt').textContent='';});
 $('export').addEventListener('click',download);
 $('textExport').addEventListener('click',downloadText);
