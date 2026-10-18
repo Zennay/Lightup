@@ -10,7 +10,8 @@ let revision=0;
 function reset(){
  revision++;
  uploads.client=null;uploads.operator=null;
- $('reconcileClient').value='';$('reconcileOperator').value='';
+ $('reconcileClient').value='';$('reconcileOperator').value='';$('reconcileCombined').value='';
+ $('reconcileCombinedState').textContent='No combined human preparation imported';
  $('reconcileClientState').textContent='No client preparation note';
  $('reconcileOperatorState').textContent='No operator preparation note';
  refresh();
@@ -90,6 +91,68 @@ function model(){
   notice:'Self-labelled human replies are NOT verified identity, client consent, operator approval, grant, authority, executable permission or release.'
  };
 }
+/* Recover a privacy-minimal human desk without persisting local files/browser state.
+   Exact source and exact question identities are required; no consent is recovered. */
+async function restoreCombined(file){
+ const source=current(), baseline=model();
+ if(!source||!baseline){$('reconcileCombinedState').textContent='Load the original Studio source first · HOLD';return;}
+ if(!file||file.size===0||file.size>MAX){
+  $('reconcileCombinedState').textContent='Missing or oversized combined return · HOLD';return;
+ }
+ const token=revision,sha=source.source_sha256;
+ try{
+  const bytes=await file.arrayBuffer();
+  demand(bytes.byteLength>0&&bytes.byteLength<=MAX);
+  const text=new TextDecoder('utf-8',{fatal:true,ignoreBOM:true}).decode(bytes);
+  demand(!text.startsWith('\ufeff'));
+  runtime.assertUnambiguousJSON(text);
+  const pkt=JSON.parse(text);
+  demand(pkt&&typeof pkt==='object'&&!Array.isArray(pkt));
+  demand(Object.keys(pkt).length===Object.keys(baseline).length&&
+   Object.keys(pkt).every(key=>Object.hasOwn(baseline,key)));
+  for(const key of Object.keys(baseline)){
+   if(['client_note_present','operator_note_present','questions','attention_count'].includes(key))continue;
+   demand(same(pkt[key],baseline[key]));
+  }
+  demand(typeof pkt.client_note_present==='boolean'&&typeof pkt.operator_note_present==='boolean');
+  demand(Array.isArray(pkt.questions)&&pkt.questions.length===baseline.questions.length);
+  const recovered={client:null,operator:null};
+  for(const role of roles)if(pkt[role+'_note_present']){
+   recovered[role]={source_sha256:sha,role,statuses:{}};
+  }
+  for(let i=0;i<baseline.questions.length;i++){
+   const q=pkt.questions[i],expected=baseline.questions[i];
+   demand(q&&typeof q==='object'&&!Array.isArray(q));
+   demand(Object.keys(q).length===4&&Object.keys(q).every(k=>
+    ['code','assigned_role','reported_status','next_action'].includes(k)));
+   demand(q.code===expected.code&&q.assigned_role===expected.assigned_role);
+   const role=q.assigned_role,present=Boolean(recovered[role]);
+   const allowed=present?states:['not_reported'];
+   demand(allowed.includes(q.reported_status));
+   const next=q.reported_status==='not_reported'?'await_'+role+'_response':
+    q.reported_status==='unanswered'?'ask_'+role:
+    q.reported_status==='question_sent'?'follow_up_'+role:'independently_verify';
+   demand(q.next_action===next);
+   if(present)recovered[role].statuses[q.code]=q.reported_status;
+  }
+  demand(pkt.attention_count===pkt.questions.filter(x=>x.reported_status!=='answered_unverified').length);
+  demand(token===revision&&current()?.source_sha256===sha);
+  const conflict=roles.some(role=>uploads[role] &&
+   !same(uploads[role].statuses,recovered[role]?.statuses??null));
+  if(conflict&&!confirm('This combined note would replace loaded unverified human work. Replace both role notes?'))return;
+  uploads.client=recovered.client;uploads.operator=recovered.operator;
+  for(const role of roles){
+   $('reconcile'+cap(role)+'State').textContent=recovered[role]?
+    'Combined source-matched '+role+' preparation restored · UNVERIFIED / HOLD':
+    'No '+role+' note in combined source-matched packet · HOLD';
+  }
+  $('reconcileCombinedState').textContent='Combined human preparation restored atomically against original source bytes · UNVERIFIED / HOLD';
+  refresh();
+ }catch(_){
+  $('reconcileCombinedState').textContent='Combined note rejected: invalid source, role, status or authority fields · HOLD';
+ }
+}
+
 function writeFile(filename,mime,body){
  const objectURL=URL.createObjectURL(new Blob([body],{type:mime}));
  const a=document.createElement('a');a.href=objectURL;a.download=filename;document.body.append(a);a.click();a.remove();
@@ -167,6 +230,7 @@ function refresh(){
 }
 $('reconcileClient').addEventListener('change',e=>read('client',e.target.files?.[0]));
 $('reconcileOperator').addEventListener('change',e=>read('operator',e.target.files?.[0]));
+$('reconcileCombined').addEventListener('change',e=>restoreCombined(e.target.files?.[0]));
 $('reconcileJSON').addEventListener('click',()=>{
  const m=model();if(m)writeFile('lightup-human-reply-reconciliation-HOLD.json','application/json',JSON.stringify(m,null,2)+'\n');
 });
