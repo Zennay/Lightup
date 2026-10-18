@@ -1,8 +1,21 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-WMF+jZulZWOAcvrckliyKbQjpH6ZDli8kYbL5J0ObXg='; style-src 'sha256-AwjXpv5sx1tfU2ICao/QArGc5FJ0GfifDR7aoFMRpsQ='; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-JymZlay5SdYb8Hc1Ju4jmJ21BXD2UzckrqxcTmj5RDs='; style-src 'sha256-2FjiKmQzz9E3ViLndW0jMDypaprcOBFbdtBAUI2fmh0='; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'">
 <title>LightUp · Private Scope Packet Vault (Offline)</title><style>
 :root{font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#090f1c;color:#e9f1ff;color-scheme:dark}*{box-sizing:border-box}body{margin:0}main{max-width:940px;padding:24px;margin:auto}header{padding:30px 0 22px}.eyebrow{color:#7ed3fd;font-size:12px;letter-spacing:.16em;font-weight:800}h1{font-size:clamp(34px,6vw,58px);line-height:1.02;letter-spacing:-.04em;margin:16px 0}h2{font-size:20px;margin:0 0 12px}h3{font-size:15px;margin:24px 0 10px}.lead{color:#afc3de;font-size:18px;line-height:1.6;max-width:750px}.hold{border:1px solid #eec06c;background:#2f2419;border-radius:10px;color:#ffe5ac;font-weight:700;font-size:12px;letter-spacing:.06em;padding:12px 16px;line-height:1.6}section{background:#111c30;border:1px solid #324158;border-radius:16px;padding:24px;margin-bottom:18px;box-shadow:0 6px 36px #0002}section p,li{color:#bfcbdf;line-height:1.65}section strong{color:#fff}label{display:block;font-size:14px;font-weight:650;color:#dfeafa}input,select{display:block;width:100%;margin-top:9px;padding:12px 13px;border:1px solid #60718d;border-radius:10px;background:#0b1425;color:#fff;font:inherit}input:focus,button:focus-visible{outline:3px solid #75bcff;outline-offset:2px}.picker{cursor:pointer;border:1px dashed #659de1;padding:17px;border-radius:12px;background:#102942}.picker input{border:0;padding:0;background:none}.grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:20px}button{font:inherit;border:0;border-radius:10px;padding:12px 18px;cursor:pointer;font-weight:700;background:#80cdfb;color:#071727}button.secondary{background:#23324c;color:#ecf6ff;border:1px solid #50617b}button:disabled{opacity:.5;cursor:not-allowed}.status{font-size:14px}.items{display:grid;gap:10px;margin-top:12px}.item{display:flex;align-items:center;justify-content:space-between;gap:18px;padding:13px;border:1px solid #40536f;border-radius:10px;background:#14223a;overflow-wrap:anywhere}.item small{color:#b1c1d6;display:block;margin-top:4px}.item button{flex-shrink:0;padding:9px 13px}.message{padding:16px;border-left:4px solid #7bcdff;background:#122b46;min-height:56px;border-radius:5px;line-height:1.5}.message.error{border-color:#eab3a0;background:#391e25}footer{padding:0 0 40px}footer small{color:#90a4be}ol{padding-left:24px}@media(max-width:650px){.grid{grid-template-columns:1fr}.item{align-items:flex-start;flex-direction:column}section{padding:17px}main{padding:12px}.item button{width:100%}}
+/* Source inspection is private text, never rendered as imported HTML. */
+.checkline{display:flex;align-items:center;gap:10px;margin-top:12px;font-weight:500;color:#cfe0f7;font-size:13px}
+.checkline input{display:inline-block;width:17px;height:17px;margin:0;flex-shrink:0}
+.subtle{font-size:13px;color:#acc4de}
+.comparison{white-space:pre-wrap;overflow-wrap:anywhere;max-height:420px;overflow:auto;
+background:#080e1c;border:1px solid #526882;border-radius:10px;padding:14px;
+font-size:12px;line-height:1.5;color:#f0f5fa;tab-size:2}
+.comparison .removed{display:block;background:#402328;color:#ffc8c0}
+.comparison .added{display:block;background:#153b31;color:#acf3d4}
+.comparison .same{display:block}
+select{font-size:13px;background:#0b1425;color:#fff;border:1px solid #60718d;border-radius:9px;
+padding:9px 12px;width:100%;margin-top:9px}
+
 </style><script>
 "use strict";
 
@@ -22,14 +35,22 @@
   const ENC = new TextEncoder();
   const DEC = new TextDecoder("utf-8", {fatal: true});
   const allowed = /\.(json|md|txt|ics|csv)$/i;
+  const handoffRoutes = ["private-archive", "client-review", "operator-review"];
+  const clientReviewRoles = ["Client proposal — unverified", "Scope revision — unverified", "Schedule handoff — unverified"];
   const roles = ["Unclassified", "Client proposal — unverified", "Operator review — unverified", "Scope revision — unverified", "Schedule handoff — unverified"];
   function validRole(role) { return typeof role === "string" && roles.includes(role); }
   const $ = (id) => document.getElementById(id);
   const els = {
     files: $("files"), list: $("file-list"), summary: $("file-summary"),
-    seal: $("seal"), password: $("seal-password"), confirm: $("seal-confirm"),
+    seal: $("seal"), selectAll: $("select-all"), selectNone: $("select-none"),
+    password: $("seal-password"), confirm: $("seal-confirm"),
     clear: $("clear"), openFile: $("open-file"), openPassword: $("open-password"),
     unlock: $("unlock"), lock: $("lock"), recovered: $("recovered"),
+    mergeMode: $("merge-mode"), handoffRoute: $("handoff-route"),
+    before: $("compare-before"), after: $("compare-after"),
+    previewFile: $("preview-file"), compareFiles: $("compare-files"),
+    hidePreview: $("hide-preview"), comparisonOutput: $("comparison-output"),
+    comparisonSummary: $("comparison-summary"),
     message: $("message")
   };
   let entries = [];
@@ -85,6 +106,7 @@
   function scrub() {
     for (const entry of entries) entry.bytes.fill(0);
     entries = [];
+    clearPreview();
     els.files.value = "";
     els.openFile.value = "";
     els.password.value = "";
@@ -95,8 +117,24 @@
   function paint() {
     els.list.replaceChildren();
     els.recovered.replaceChildren();
+    const beforeValue = els.before.value, afterValue = els.after.value;
+    els.before.replaceChildren();
+    els.after.replaceChildren();
+    for (const dropdown of [els.before, els.after]) {
+      const placeholder = document.createElement("option");
+      placeholder.value = ""; placeholder.textContent = "Choose a local draft";
+      dropdown.append(placeholder);
+      entries.forEach((entry, index) => {
+        const option = document.createElement("option");
+        option.value = String(index); option.textContent = entry.name;
+        dropdown.append(option);
+      });
+    }
+    if (entries[Number(beforeValue)] && beforeValue !== "") els.before.value = beforeValue;
+    if (entries[Number(afterValue)] && afterValue !== "") els.after.value = afterValue;
     const total = entries.reduce((n, e) => n + e.bytes.length, 0);
-    els.summary.textContent = entries.length + " local file(s), " + total.toLocaleString() + " bytes in tab memory. All packet contents remain unapproved.";
+    const selectedCount = entries.filter((item) => item.selected).length;
+    els.summary.textContent = entries.length + " local file(s), " + total.toLocaleString() + " bytes in tab memory; " + selectedCount + " selected for encrypted export. All contents remain unapproved.";
     entries.forEach((entry, index) => {
       const box = document.createElement("div");
       box.className = "item";
@@ -110,6 +148,7 @@
       remove.type = "button"; remove.className = "secondary"; remove.textContent = "Remove";
       remove.addEventListener("click", () => {
         if (busy) return;
+        clearPreview();
         entry.bytes.fill(0);
         entries.splice(index, 1);
         touch(); paint();
@@ -129,6 +168,18 @@
         touch(); notice("Self-reported role updated in tab memory; this is not independent identity or authorization.");
       });
       text.append(role);
+      const select = document.createElement("label"); select.className = "checkline";
+      const checkbox = document.createElement("input"); checkbox.type = "checkbox";
+      checkbox.checked = entry.selected;
+      checkbox.setAttribute("aria-label", "Include " + entry.name + " in encrypted handoff");
+      checkbox.addEventListener("change", () => {
+        if (busy) return;
+        entry.selected = checkbox.checked;
+        touch(); paint();
+      });
+      const caption = document.createElement("span"); caption.textContent = "Include in next encrypted handoff";
+      select.append(checkbox, caption);
+      text.append(select);
       box.append(text, remove);
       els.list.append(box);
       const recovered = document.createElement("div");
@@ -149,7 +200,7 @@
       recovered.append(info, download);
       els.recovered.append(recovered);
     });
-    els.seal.disabled = busy || entries.length === 0 || !window.isSecureContext || !window.crypto || !window.crypto.subtle;
+    els.seal.disabled = busy || selectedCount === 0 || !window.isSecureContext || !window.crypto || !window.crypto.subtle;
     els.unlock.disabled = busy || !window.isSecureContext || !window.crypto || !window.crypto.subtle;
     els.files.disabled = busy;
     els.openFile.disabled = busy;
@@ -215,9 +266,10 @@
           const bytes = new Uint8Array(await file.arrayBuffer());
           invariant(bytes.length === file.size);
           DEC.decode(bytes); // Only canonical UTF-8 text drafts, not arbitrary binary payloads.
-          staged.push({name, bytes, hash: await digest(bytes), role: roles[0]});
+          staged.push({name, bytes, hash: await digest(bytes), role: roles[0], selected: true});
         }
         entries.push(...staged);
+        clearPreview();
         notice("New local draft files loaded. They are not persisted until you explicitly export an encrypted vault.");
       } catch (err) {
         for (const item of staged) item.bytes.fill(0);
@@ -228,12 +280,23 @@
   async function seal() {
     await inProgress(async () => {
       supportsCrypto();
-      invariant(entries.length > 0 && entries.length <= MAX_FILES);
+      const outgoing = entries.filter((entry) => entry.selected);
+      invariant(outgoing.length > 0 && outgoing.length <= MAX_FILES);
       const passphrase = els.password.value;
       const confirm = els.confirm.value;
+      const route = els.handoffRoute.value;
       els.password.value = ""; els.confirm.value = "";
       if (passphrase.length < 14 || passphrase.length > 256 || passphrase !== confirm) {
         notice("Use a matching 14–256 character passphrase. There is no account reset or recovery.", true);
+        return;
+      }
+      invariant(handoffRoutes.includes(route));
+      if (route === "client-review") invariant(outgoing.every((entry) => clientReviewRoles.includes(entry.role)));
+      const manifest = outgoing.map((entry) => entry.name + " [" + entry.role + "]").join("\n");
+      if (!window.confirm("Intended route: " + route
+        + "\n\nInclude exactly these local files?\n" + manifest
+        + "\n\nThis does not verify recipient identity or confer consent. Continue encrypting?")) {
+        notice("Encryption cancelled before creating a packet; no files were sent or downloaded.");
         return;
       }
       const salt = crypto.getRandomValues(new Uint8Array(16));
@@ -241,8 +304,9 @@
       const payload = {
         schema: "lightup.offline.scope-packet.payload.v1",
         createdUtc: new Date().toISOString(),
+        handoffRoute: route,
         authority: {may_authorize: false, may_consent: false, may_grant: false, may_scan: false, may_dispatch: false, may_deploy: false, may_release: false},
-        files: entries.map((entry) => ({name: entry.name, length: entry.bytes.length, sha256: entry.hash, role: entry.role, base64: b64(entry.bytes)}))
+        files: outgoing.map((entry) => ({name: entry.name, length: entry.bytes.length, sha256: entry.hash, role: entry.role, base64: b64(entry.bytes)}))
       };
       const cleartext = ENC.encode(JSON.stringify(payload));
       try {
@@ -259,17 +323,22 @@
         const blob = new Blob([JSON.stringify(envelope)], {type: "application/json"});
         invariant(blob.size <= MAX_ENVELOPE_BYTES);
         save(blob, "lightup-private-scope-packet.lightup-vault.json");
-        notice("Encrypted packet downloaded. File names and content are encrypted. Save the passphrase separately; this file is NOT an approval or permit.");
+        notice("Selected " + outgoing.length + " file(s) encrypted into a new packet. Unselected local files stay in memory, but were excluded from this download. No permissions created.");
       } finally { cleartext.fill(0); }
     });
   }
   function validatePayload(body) {
-    strictKeys(body, ["schema", "createdUtc", "authority", "files"]);
+    const hasRoute = Object.prototype.hasOwnProperty.call(body, "handoffRoute");
+    strictKeys(body, hasRoute ?
+      ["schema", "createdUtc", "handoffRoute", "authority", "files"] :
+      ["schema", "createdUtc", "authority", "files"]);
+    if (hasRoute) invariant(handoffRoutes.includes(body.handoffRoute));
     invariant(body.schema === "lightup.offline.scope-packet.payload.v1");
     invariant(typeof body.createdUtc === "string" && /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\.\d{3}Z$/.test(body.createdUtc));
     strictKeys(body.authority, ["may_authorize", "may_consent", "may_grant", "may_scan", "may_dispatch", "may_deploy", "may_release"]);
     invariant(Object.values(body.authority).every((x) => x === false));
     invariant(Array.isArray(body.files) && body.files.length > 0 && body.files.length <= MAX_FILES);
+    return hasRoute ? body.handoffRoute : "private-archive";
   }
   async function unlock() {
     await inProgress(async () => {
@@ -294,13 +363,14 @@
       const staged = [];
       try {
         const payload = parseCanonicalJson(DEC.decode(cleartext));
-        validatePayload(payload);
+        const importedRoute = validatePayload(payload);
         const names = new Set();
         let total = 0;
         for (const record of payload.files) {
           const hasRole = Object.prototype.hasOwnProperty.call(record, "role");
           strictKeys(record, hasRole ? ["name", "length", "sha256", "role", "base64"] : ["name", "length", "sha256", "base64"]);
           if (hasRole) invariant(validRole(record.role));
+          if (importedRoute === "client-review") invariant(clientReviewRoles.includes(record.role));
           const name = nameOf(record.name);
           invariant(!names.has(name));
           names.add(name);
@@ -309,14 +379,40 @@
           total += record.length;
           invariant(total <= MAX_TOTAL_BYTES);
           const bytes = unb64(record.base64, MAX_FILE_BYTES);
-          staged.push({name, bytes, hash: record.sha256, role: hasRole ? record.role : roles[0]});
+          staged.push({name, bytes, hash: record.sha256, role: hasRole ? record.role : roles[0], selected: true});
           invariant(bytes.length === record.length && (await digest(bytes)) === record.sha256);
           DEC.decode(bytes);
         }
-        // Atomic replacement: previous plaintext is forgotten only after entire authenticated packet validates.
-        for (const item of entries) item.bytes.fill(0);
-        entries = staged;
-        notice("Encrypted packet restored locally. Verify each scope draft with the real client and operator. This vault grants no authorization.");
+        if (els.mergeMode.checked) {
+          // Never accept filename collisions with different bytes or review roles.
+          // An atomic failure leaves the entire previous workspace intact.
+          const merged = [...entries];
+          const byName = new Map(entries.map((item) => [item.name, item]));
+          let newCount = 0;
+          let priorTotal = entries.reduce((n, item) => n + item.bytes.length, 0);
+          for (const item of staged) {
+            const current = byName.get(item.name);
+            if (current) {
+              invariant(current.hash === item.hash && current.role === item.role && current.bytes.length === item.bytes.length);
+              item.bytes.fill(0);
+            } else {
+              invariant(merged.length < MAX_FILES && priorTotal + item.bytes.length <= MAX_TOTAL_BYTES);
+              merged.push(item);
+              byName.set(item.name, item);
+              priorTotal += item.bytes.length;
+              newCount++;
+            }
+          }
+          entries = merged;
+          clearPreview();
+          notice(newCount + " new local file(s) merged atomically from " + importedRoute + " handoff. Roles/recipient identities remain unverified.");
+        } else {
+          // Atomic replacement: previous plaintext is forgotten only after authenticated validation.
+          for (const item of entries) item.bytes.fill(0);
+          entries = staged;
+          clearPreview();
+          notice("Encrypted " + importedRoute + " packet restored locally. Verify drafts with real client/operator; the vault grants no authorization.");
+        }
       } catch (err) {
         for (const item of staged) item.bytes.fill(0);
         throw err;
@@ -324,7 +420,97 @@
     });
   }
 
+
+  // Review-only viewer: DOM text nodes, never HTML execution or browser navigation.
+  // Bounded line-level diff avoids quadratic work beyond 400 lines per file.
+  const MAX_REVIEW_LINES = 400;
+  const MAX_REVIEW_COLUMNS = 2048;
+  function clearPreview() {
+    els.comparisonOutput.replaceChildren();
+    els.comparisonOutput.hidden = true;
+    els.comparisonSummary.textContent =
+      "No private text visible. Viewing or comparing drafts cannot verify scope or grant permission.";
+  }
+  function reviewEntry(selector) {
+    const value = selector.value;
+    invariant(/^(?:0|[1-9][0-9]?)$/.test(value) && Number(value) < entries.length);
+    const entry = entries[Number(value)];
+    invariant(entry && entry.bytes.length <= MAX_FILE_BYTES);
+    const raw = DEC.decode(entry.bytes).replace(/\r\n?/g, "\n");
+    const lines = raw.split("\n");
+    invariant(lines.length <= MAX_REVIEW_LINES && lines.every((line) => line.length <= MAX_REVIEW_COLUMNS));
+    return {entry, lines};
+  }
+  function displayRows(rows) {
+    els.comparisonOutput.replaceChildren();
+    const fragment = document.createDocumentFragment();
+    for (const row of rows) {
+      const line = document.createElement("span");
+      line.className = row.kind;
+      // textContent, not innerHTML: imported script/markup can never execute.
+      line.textContent = row.prefix + row.text + "\n";
+      fragment.append(line);
+    }
+    els.comparisonOutput.append(fragment);
+    els.comparisonOutput.hidden = false;
+  }
+  function preview() {
+    if (busy) return;
+    touch(); clearPreview();
+    try {
+      const {entry, lines} = reviewEntry(els.before);
+      displayRows(lines.map((text) => ({kind: "same", prefix: "  ", text})));
+      els.comparisonSummary.textContent = "Local read-only preview: " + entry.name + ". "
+        + lines.length + " lines. No scope/identity/consent status has been established.";
+    } catch {
+      notice("Local preview held: select a valid bounded UTF-8 draft (400 lines max, 2048 characters per line).", true);
+    }
+  }
+  function compare() {
+    if (busy) return;
+    touch(); clearPreview();
+    try {
+      invariant(els.before.value !== els.after.value);
+      const old = reviewEntry(els.before), current = reviewEntry(els.after);
+      const a = old.lines, b = current.lines;
+      // Dynamic-programming LCS, 401 x 401 finite grid, avoids misleading positional diff.
+      const dp = Array.from({length: a.length + 1}, () => new Uint16Array(b.length + 1));
+      for (let i = a.length - 1; i >= 0; i--) {
+        for (let j = b.length - 1; j >= 0; j--) {
+          dp[i][j] = a[i] === b[j] ? dp[i + 1][j + 1] + 1
+            : Math.max(dp[i + 1][j], dp[i][j + 1]);
+        }
+      }
+      const rows = [];
+      let i = 0, j = 0, removed = 0, added = 0;
+      while (i < a.length || j < b.length) {
+        if (i < a.length && j < b.length && a[i] === b[j]) {
+          rows.push({kind: "same", prefix: "  ", text: a[i++]}); j++;
+        } else if (i < a.length && (j >= b.length || dp[i + 1][j] >= dp[i][j + 1])) {
+          rows.push({kind: "removed", prefix: "- ", text: a[i++]}); removed++;
+        } else {
+          rows.push({kind: "added", prefix: "+ ", text: b[j++]}); added++;
+        }
+      }
+      displayRows(rows);
+      els.comparisonSummary.textContent =
+        "Read-only comparison: " + old.entry.name + " → " + current.entry.name
+        + ". " + added + " added, " + removed + " removed lines. Source documents may still lack authenticated identity, consent or authorization.";
+    } catch {
+      notice("Comparison held: choose two distinct bounded local UTF-8 drafts (400 lines max, 2048 characters per line).", true);
+    }
+  }
+
   els.files.addEventListener("change", addFiles);
+  els.previewFile.addEventListener("click", preview);
+  els.compareFiles.addEventListener("click", compare);
+  els.hidePreview.addEventListener("click", () => { touch(); clearPreview(); });
+  els.selectAll.addEventListener("click", () => {
+    if (busy) return; entries.forEach((entry) => {entry.selected = true;}); touch(); paint();
+  });
+  els.selectNone.addEventListener("click", () => {
+    if (busy) return; entries.forEach((entry) => {entry.selected = false;}); touch(); paint();
+  });
   els.seal.addEventListener("click", seal);
   els.unlock.addEventListener("click", unlock);
   els.clear.addEventListener("click", () => {
@@ -368,12 +554,28 @@
 <p>Each export uses a new random 256-bit AES-GCM key derived from your passphrase with PBKDF2-SHA256 (600,000 iterations). LightUp never stores, recovers, or transmits your passphrase.</p>
 <div class="grid"><label>Passphrase (14+ characters)<input id="seal-password" type="password" autocomplete="new-password" minlength="14" maxlength="256"></label>
 <label>Confirm passphrase<input id="seal-confirm" type="password" autocomplete="new-password" minlength="14" maxlength="256"></label></div>
-<div class="actions"><button id="seal" type="button">Download encrypted .lightup-vault.json</button><button id="clear" type="button" class="secondary">Forget all plaintext</button></div>
+<label>Intended offline handoff route (self-reported; recipient identity is NOT verified)
+<select id="handoff-route">
+<option value="private-archive">Private archive / internal preparation</option>
+<option value="client-review">Client review — only client proposals, revisions, schedules</option>
+<option value="operator-review">Operator review — selected assessment paperwork</option>
+</select></label>
+<p class="subtle">Client-review exports refuse operator-labelled or unclassified files; every encrypted export shows the exact selected filenames for a final local confirmation. This routing choice never authenticates the recipient or grants rights.</p>
+<p class="subtle">To prepare a smaller recipient handoff, select only the intended files in the inventory. All files remain selected by default. Never treat an encrypted handoff as recipient identity or consent.</p>
+<div class="actions"><button id="seal" type="button">Download selected encrypted packet</button><button id="select-all" type="button" class="secondary">Select all</button><button id="select-none" type="button" class="secondary">Select none</button><button id="clear" type="button" class="secondary">Forget all plaintext</button></div>
 </section>
 <section aria-labelledby="unlock-title"><h2 id="unlock-title">3. Restore a saved packet</h2>
-<p>Load one locally saved encrypted vault. Its authenticity depends on knowing the passphrase and trusting where you got the file. Encryption alone does <strong>not</strong> prove client identity, consent, scope approval or authorization.</p>
+<p>Load one locally saved encrypted vault. Its encrypted inner payload also preserves the self-reported intended handoff route when present. Its authenticity depends on knowing the passphrase and trusting where you got the file. Encryption alone does <strong>not</strong> prove client identity, consent, scope approval or authorization.</p>
 <div class="grid"><label>Encrypted vault file<input id="open-file" type="file" accept=".json"></label><label>Passphrase<input id="open-password" type="password" autocomplete="off" maxlength="256"></label></div>
-<div class="actions"><button id="unlock" type="button">Unlock locally</button><button id="lock" type="button" class="secondary">Lock immediately</button></div></section>
-<section aria-labelledby="review-title"><h2 id="review-title">4. Handle review material</h2><p>Files stay in tab memory only. Download a recovered original only after an explicit click. The workspace forgets plaintext when hidden or idle for five minutes.</p><div id="recovered" class="items"></div>
+<label class="checkline"><input id="merge-mode" type="checkbox"> Merge files into the current offline workspace instead of replacing it. Identical names + content are kept once; any disagreement aborts the entire import.</label>
+<div class="actions"><button id="unlock" type="button">Unlock / merge locally</button><button id="lock" type="button" class="secondary">Lock immediately</button></div></section>
+<section aria-labelledby="compare-title"><h2 id="compare-title">4. Inspect &amp; compare private drafts</h2>
+<p>View a local text-only excerpt, or compare two draft revisions side by side as line-level additions/removals. All content remains on this device and is never executed or sent anywhere. This is a <strong>text comparison</strong>, not a scope-policy verdict or an authorization review.</p>
+<div class="grid"><label>Original draft<select id="compare-before" aria-label="Original draft"><option value="">Choose a file</option></select></label><label>Changed draft<select id="compare-after" aria-label="Changed draft"><option value="">Choose another file</option></select></label></div>
+<div class="actions"><button id="preview-file" type="button" class="secondary">View original text</button><button id="compare-files" type="button">Compare local text</button><button id="hide-preview" type="button" class="secondary">Hide sensitive contents</button></div>
+<p id="comparison-summary" class="status" aria-live="polite">Nothing is displayed until you request a preview or comparison. Maximum 400 lines per file, 2,048 characters per line, for bounded inspection.</p>
+<pre id="comparison-output" class="comparison" hidden aria-label="Private text comparison output"></pre>
+</section>
+<section aria-labelledby="review-title"><h2 id="review-title">5. Handle review material</h2><p>Files stay in tab memory only. Download a recovered original only after an explicit click. The workspace forgets plaintext when hidden or idle for five minutes.</p><div id="recovered" class="items"></div>
 <h3>Required real-world next steps</h3><ol><li>Have the actual client identify and approve their exact targets through the separately authenticated system.</li><li>Obtain independent operator approval, exact scope/risks and the active grant window.</li><li>Re-check revocation at action time and pass original security/privacy and CI release gates.</li></ol><p>Opening or sealing this packet performs none of those steps.</p></section>
 <footer><p id="message" class="message" role="status" aria-live="polite">Offline draft handling only. Never use this vault as execution permission.</p><small>No trackers · No network calls · No persistent browser storage · No target contact</small></footer></main></body></html>
