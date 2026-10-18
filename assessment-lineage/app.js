@@ -554,6 +554,71 @@
     reportHashes=[];undoBatch=null;resetFilters();fictional=true;
     render();message("FICTIONAL offline demonstration loaded; no source evidence or permission.");
   }
+
+  // A PRIVATE workroom contains only inert base64 template text; never eval it.
+  // No original data loads until the operator explicitly chooses to import it.
+  const privateTemplate=document.getElementById("originalPrivateBundle");
+  const hasPrivateBundle=privateTemplate instanceof HTMLTemplateElement;
+  $("loadPrivateBundle").hidden=!hasPrivateBundle;
+  $("embeddedAvailability").textContent=hasPrivateBundle?
+    "A PRIVATE original-source workroom is attached to this file. Its sources "+
+    "remain inert until you explicitly load them. Never upload or share this HTML.":
+    "This is the public offline standalone; no private source data is embedded.";
+  function exactBundleShape(bundle){
+    admit(exact(bundle,["schema","status",...FLAGS,"catalog_b64","reports_b64"])&&
+      bundle.schema==="lightup.private_lineage_bundle.v1"&&
+      bundle.status==="PRIVATE_UNTRUSTED_SOURCE_ONLY"&&flags(bundle)&&
+      typeof bundle.catalog_b64==="string"&&Array.isArray(bundle.reports_b64)&&
+      bundle.reports_b64.length>=1&&bundle.reports_b64.length<=8);
+  }
+  function decodedPrivateFile(value,index,maximum){
+    admit(typeof value==="string"&&value.length>0&&
+      value.length<=Math.ceil(maximum/3)*4+4&&
+      value.length%4===0&&/^[A-Za-z0-9+/]*={0,2}$/.test(value));
+    const binary=atob(value);
+    admit(binary.length>=1&&binary.length<=maximum);
+    const bytes=Uint8Array.from(binary,c=>c.charCodeAt(0));
+    return new File([bytes],"PRIVATE-original-slot-"+index+".json",
+      {type:"application/json"});
+  }
+  async function loadPrivateBundle(){
+    if(!hasPrivateBundle)return;
+    if((catalog||reports.length)&&!confirm(
+      "Clear current private work and replace it with the original source files "+
+      "inside this PRIVATE HTML? This does not scan, grant or evaluate."))return;
+    try{
+      const raw=privateTemplate.content.textContent;
+      admit(typeof raw==="string"&&raw.length>0&&raw.length<=5_000_000);
+      const bundle=parse(raw);exactBundleShape(bundle);
+      const sourceCatalog=await read(decodedPrivateFile(bundle.catalog_b64,0,MAX_CATALOG),
+        MAX_CATALOG);
+      const nextCatalog=parseCatalog(sourceCatalog.result),nextReports=[],nextHashes=[];
+      for(let i=0;i<bundle.reports_b64.length;i++){
+        const imported=await read(decodedPrivateFile(bundle.reports_b64[i],i+1,MAX_REPORT),
+          MAX_REPORT);
+        nextReports.push(parseReport(imported.result));
+        nextHashes.push(imported.digest);
+      }
+      harmonize(nextReports);
+      // All source files are fully canonical and mutually consistent before ANY mutation.
+      catalog=nextCatalog;reports=nextReports;catalogHash=sourceCatalog.digest;
+      reportHashes=nextHashes;reviews=new Map();undoBatch=null;fictional=false;
+      resetFilters();render();
+      // The template is no longer needed after import and should not linger in DOM.
+      privateTemplate.content.replaceChildren();
+      $("loadPrivateBundle").disabled=true;
+      $("embeddedAvailability").textContent=
+        "PRIVATE original files admitted in memory. Embedded template cleared. "+
+        "Source report membership is not verified until reviewed below.";
+      message("Private originals loaded from inert offline HTML. No network, scanner, "+
+        "authenticated consent or grants used.");
+    }catch(_){
+      message("HOLD: embedded PRIVATE original source rejected. "+
+        "Existing review workspace preserved.",true);
+    }
+  }
+  $("loadPrivateBundle").addEventListener("click",loadPrivateBundle);
+
   $("catalogFile").addEventListener("change",async e=>{
     const file=e.target.files?.[0];if(!file)return;e.target.value="";
     try{
