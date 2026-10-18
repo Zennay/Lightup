@@ -12,7 +12,7 @@ const STAGES=[
 ];
 const STATUSES=['todo','waiting','prepared'];
 const $=id=>document.getElementById(id);
-let entries=[], active=null, dirty=false, editEpoch=0, bulkPlan=null;
+let entries=[], active=null, dirty=false, editEpoch=0, bulkPlan=null, packetDraft=null;
 const flags=()=>({authenticated:false,client_consent:false,operator_consent:false,authorization:false,risk_approved:false,grant:false,revocation_checked:false,execution:false,scan:false,release:false});
 const fresh=()=>Object.fromEntries(STAGES.map(([id])=>[id,{status:'todo',owner:'',due:'',next_action:''}]));
 function notice(msg){$('message').textContent=msg;}
@@ -147,7 +147,11 @@ function attention(r){
 function clearBulkPreview(message='Preview expired after a change; recompute before applying.'){
  bulkPlan=null;$('bulkApply').disabled=true;$('bulkResult').textContent=message;
 }
-function setDirty(){dirty=true;editEpoch++;clearBulkPreview();$('save').disabled=!entries.length;$('csv').disabled=!entries.length;$('print').disabled=!entries.length;}
+function clearPacketPreview(message='Source or coordination data changed. Create a new preview before download.'){
+ packetDraft=null;$('packetDownload').disabled=true;$('packetStatus').textContent=message;
+ $('packetText').textContent='No prepared packet.';
+}
+function setDirty(){dirty=true;editEpoch++;clearPacketPreview();clearBulkPreview();$('save').disabled=!entries.length;$('csv').disabled=!entries.length;$('print').disabled=!entries.length;}
 function make(tag,txt,cls){const el=document.createElement(tag);if(txt!==undefined)el.textContent=txt;if(cls)el.className=cls;return el;}
 function brief(){
  const lines=['LIGHTUP / HUMAN SCOPE COORDINATION — NON-AUTHORIZING','State: REVIEW_ONLY · DRAFT-HOLD',
@@ -198,7 +202,7 @@ function renderList(){
   b.append(make('small',(r.source_attached?'Source loaded':'SOURCE MISSING · HOLD')+
     ' · '+unresolved(r)+' unresolved prep tasks'+(overdue(r)?' · '+overdue(r)+' overdue':'')+
     (roleOverlap(r)?' · SAME ROLE LABEL REVIEW':'')));
-  b.addEventListener('click',()=>{active=r.source_sha256;renderList();renderDetail();});
+  b.addEventListener('click',()=>{active=r.source_sha256;clearPacketPreview();renderList();renderDetail();});
   list.append(b);
  }
 }
@@ -341,6 +345,92 @@ $('bulkApply').addEventListener('click',()=>{
   setDirty();render();$('bulkResult').textContent='Applied to '+count+' preparation entries. No approval, consent or authorization changed.';
  }catch(e){clearBulkPreview('Batch HOLD: '+e.message+' No changes made.');}
 });
+
+const PACKET_STAGES={
+ client:['client_evidence','client_consent'],
+ operator:['scope_boundary','operator_review','window_stop','privacy_handoff']
+};
+function packetSelection(scope){
+ if(scope==='current')return entries.filter(r=>r.source_sha256===active);
+ if(scope==='visible')return visibleQueue();
+ if(scope==='all')return entries.slice();
+ throw Error('Unsupported packet selection.');
+}
+function mdText(value){
+ // Treat untrusted user labels/notes as text, never as a trusted Markdown instruction.
+ return String(value??'').replace(/[\\r\\n\\t]+/g,' ').replace(/[\\u0000-\\u001f\\u007f]/g,' ')
+  .replace(/([\\\\`*_{}\\[\\]<>#!|])/g,'\\$1').slice(0,450);
+}
+function makePacket(audience,selected){
+ const labels=audience==='client'?['Ownership evidence','Client coordination — not consent']:
+  ['Exact scope and exclusions','Independent operator preparation — not approval','Risk/window/STOP','Privacy and incident handoff'];
+ const keys=PACKET_STAGES[audience];
+ const lines=[
+  '# LightUp · Private '+(audience==='client'?'client':'operator')+' preparation request',
+  '',
+  '**DRAFT/HOLD · REVIEW_ONLY · NON-AUTHORIZING.**',
+  'This offline note is for requesting missing paperwork only. It is neither a signed request nor verified permission.',
+  'Authenticated client consent: FALSE. Authenticated operator approval: FALSE. Risk approval: FALSE.',
+  'Grant: FALSE. Action-time revocation checked: FALSE. Scan: FALSE. Execution: FALSE. Release: FALSE.',
+  '',
+  'Source drafts: '+selected.length+' · Source hashes are unsigned local file-continuity hints.',
+  ''
+ ];
+ let unresolvedCount=0, unbound=0;
+ for(let i=0;i<selected.length;i++){
+  const r=selected[i];if(!r.source_attached)unbound++;
+  lines.push('## '+(i+1)+'. '+mdText(r.name||'Untitled source draft'));
+  lines.push('Original source SHA-256 (unsigned): '+r.source_sha256);
+  lines.push('Local source custody: '+(r.source_attached?'ATTACHED IN CURRENT SESSION':'UNBOUND · RE-ATTACH SOURCE · HOLD'));
+  lines.push('Risk requested (unapproved): '+r.requested_risk);
+  if(audience==='operator')lines.push('Proposed UTC window (not booked): '+(r.planned_utc?
+    r.planned_utc.start+' to '+r.planned_utc.end:'unresolved / not supplied'));
+  lines.push('');
+  for(let k=0;k<keys.length;k++){
+   const task=r.tasks[keys[k]];
+   if(task.status==='prepared'){
+    lines.push('- '+labels[k]+': preparatory paperwork marked prepared but **UNVERIFIED**. No actual approval implied.');
+    continue;
+   }
+   unresolvedCount++;
+   lines.push('- **'+labels[k]+'** — '+(task.status==='waiting'?'blocked / waiting':'not started'));
+   lines.push('  - Requested next action: '+mdText(task.next_action||'Please coordinate the relevant human review.'));
+   if(task.due)lines.push('  - Suggested paperwork target: '+task.due+' (not a scheduled assessment).');
+  }
+  lines.push('');
+ }
+ lines.push('---','This document never creates or records consent, verified ownership, authenticated identity, grant, release or permission for real target contact.');
+ lines.push('Send only through independently approved channels, after manually checking recipients and private content.','');
+ return {text:lines.join('\\n'),unresolvedCount,unbound};
+}
+for(const id of ['packetAudience','packetScope'])$(id).addEventListener('change',()=>clearPacketPreview('Recipient or selection changed; preview again.'));
+$('packetDiscard').addEventListener('click',()=>clearPacketPreview('Packet discarded. No records changed.'));
+$('packetPreview').addEventListener('click',()=>{
+ clearPacketPreview();
+ try{
+  const audience=$('packetAudience').value,scope=$('packetScope').value;
+  if(!Object.prototype.hasOwnProperty.call(PACKET_STAGES,audience))throw Error('Unknown recipient.');
+  const selected=packetSelection(scope);
+  if(!selected.length)throw Error('Select or import source drafts first.');
+  const built=makePacket(audience,selected);
+  packetDraft={epoch:editEpoch,audience,scope,digests:selected.map(r=>r.source_sha256),text:built.text};
+  $('packetText').textContent=built.text;
+  $('packetStatus').textContent='LOCAL PREVIEW: '+selected.length+' draft(s), '+built.unresolvedCount+
+   ' open preparation requests, '+built.unbound+' source-unbound HOLD(s). Check text and recipient before exporting.';
+  $('packetDownload').disabled=false;
+ }catch(e){$('packetStatus').textContent='Packet HOLD: '+e.message;}
+});
+$('packetDownload').addEventListener('click',()=>{
+ if(!packetDraft||packetDraft.epoch!==editEpoch){clearPacketPreview();return;}
+ const {audience,scope,digests,text}=packetDraft;
+ if(audience!==$('packetAudience').value||scope!==$('packetScope').value||
+  JSON.stringify(packetSelection(scope).map(r=>r.source_sha256))!==JSON.stringify(digests)){
+  clearPacketPreview('Selection changed; recompute packet.');return;
+ }
+ if(!confirm('Download this PRIVATE, UNSIGNED '+audience+' follow-up note? Review recipient and any user-entered action text manually. This is NOT authenticated consent, approval or authority.'))return;
+ download('lightup-'+audience+'-paperwork-request-private.md',text+'\\n','text/markdown;charset=utf-8');
+ $('packetStatus').textContent='Private local Markdown saved. No message sent and no authentication/grant state changed.';
+});
 function download(name,data,type){
  const url=URL.createObjectURL(new Blob([data],{type}));
  const a=make('a');a.href=url;a.download=name;document.body.append(a);a.click();a.remove();
@@ -399,11 +489,11 @@ $('restoreInput').addEventListener('change',async event=>{
   const next=parsed.records.map(cleanRecord);
   if(next.some(r=>!r)||new Set(next.map(r=>r.source_sha256)).size!==next.length)throw Error('Invalid, duplicated or malformed source-bound record.');
   if(entries.length&&!confirm('Replace your current in-memory board? Save it first if needed.'))return;
-  entries=next;active=entries[0]?.source_sha256||null;dirty=false;editEpoch++;clearBulkPreview();render();
+  entries=next;active=entries[0]?.source_sha256||null;dirty=false;editEpoch++;clearBulkPreview();clearPacketPreview();render();
   notice('Restored tracking only. Studio source files deliberately remain UNBOUND until exact SHA-256 re-attachment. ALL authorization flags false.');
  }catch(e){notice('Restore HOLD: '+e.message+' Existing board unchanged.');}
 });
-$('filter').addEventListener('change',()=>{clearBulkPreview();renderList();});
+$('filter').addEventListener('change',()=>{clearBulkPreview();clearPacketPreview();renderList();});
 $('sort').addEventListener('change',renderList);
 $('save').addEventListener('click',()=>{
  if(!entries.length)return;
@@ -430,7 +520,7 @@ $('csv').addEventListener('click',()=>{
 $('print').addEventListener('click',()=>{if(entries.length)window.print();});
 $('reset').addEventListener('click',()=>{
  if(entries.length&&!confirm('Clear all in-memory coordination work? Save it first if needed.'))return;
- entries=[];active=null;dirty=false;editEpoch++;clearBulkPreview();$('sourceUpload').value='';$('restoreInput').value='';render();notice('Memory cleared. No source records changed.');
+ entries=[];active=null;dirty=false;editEpoch++;clearBulkPreview();clearPacketPreview();$('sourceUpload').value='';$('restoreInput').value='';render();notice('Memory cleared. No source records changed.');
 });
 window.addEventListener('beforeunload',event=>{if(dirty&&entries.length){event.preventDefault();event.returnValue='';}});
 render();
