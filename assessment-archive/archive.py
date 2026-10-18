@@ -307,6 +307,38 @@ def view(args):
     return 2 if source["status"] == "REVIEW_ONLY" else 3
 
 
+def diff(args):
+    """Compare two owner-private indices without reading original source assets."""
+    before = load_manifest(args.previous)
+    after = load_manifest(args.current)
+    old_hashes = {item["sha256"] for item in before["entries"]}
+    new_hashes = {item["sha256"] for item in after["entries"]}
+    previous_counts = Counter(r["kind"] for r in before["entries"])
+    current_counts = Counter(r["kind"] for r in after["entries"])
+    kinds = sorted(set(previous_counts) | set(current_counts))
+    result = {
+        "schema": "lightup.assessment_archive_diff.v1",
+        "status": "HOLD" if "HOLD" in (before["status"], after["status"]) else "REVIEW_ONLY",
+        "previous_source_count": before["source_count"],
+        "current_source_count": after["source_count"],
+        "unchanged_count": len(old_hashes & new_hashes),
+        "added_count": len(new_hashes - old_hashes),
+        "absent_count": len(old_hashes - new_hashes),
+        "source_class_shifts": [
+            {"source_class": kind, "previous": previous_counts[kind],
+             "current": current_counts[kind], "delta": current_counts[kind] - previous_counts[kind]}
+            for kind in kinds
+        ],
+        **{key: False for key in FLAGS},
+    }
+    if not args.aggregate_only:
+        result["new_private_sha256"] = sorted(new_hashes - old_hashes)
+        result["absent_private_sha256"] = sorted(old_hashes - new_hashes)
+    publish(args.output, encode(result))
+    print("OFFLINE_ARCHIVE_DIFF_CREATED — ABSENT DOES NOT MEAN FIXED; NO AUTHORITY")
+    return 2 if result["status"] == "REVIEW_ONLY" else 3
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description="LightUp offline archive; holds all authorization and release.")
     subs = parser.add_subparsers(dest="command", required=True)
@@ -323,9 +355,14 @@ def main(argv=None):
     p.add_argument("--manifest", required=True)
     p.add_argument("--output", required=True)
     p.add_argument("--aggregate-only", action="store_true")
+    p = subs.add_parser("diff", help="Compare two original private archive snapshots, no source reads")
+    p.add_argument("--previous", required=True)
+    p.add_argument("--current", required=True)
+    p.add_argument("--output", required=True)
+    p.add_argument("--aggregate-only", action="store_true")
     args = parser.parse_args(argv)
     try:
-        return {"capture": capture, "verify": verify, "share": share, "view": view}[args.command](args)
+        return {"capture": capture, "verify": verify, "share": share, "view": view, "diff": diff}[args.command](args)
     except (Hold, OSError, ValueError, TypeError, UnicodeError, OverflowError,
             RecursionError, BadZipFile):
         print("ASSESSMENT_ARCHIVE_HOLD — invalid, inaccessible or changed local source", file=sys.stderr)
