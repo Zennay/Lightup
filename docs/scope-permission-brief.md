@@ -38,6 +38,14 @@ Buttons prepare **fresh client- and operator-specific JSON response templates** 
 
 The **Forget draft & answers** action clears current source, replies, and the entire volatile revision timeline. The optional timeline-only clear leaves the current source unchanged. Temporary parsing failures do not create false revision events or erase accepted drafts. This is a usable human coordination feature, never an executable policy / authorization amendment.
 
+## Human-readable scope change impact (literal, not an authorization verdict)
+
+When replacing one accepted Studio proposal with another inside the same browser tab, LightUp now analyzes **literal, case-insensitive** membership of the two `requested_assets` and `excluded_assets` string arrays. It reports **aggregate counts only** of added, removed and retained entries for both lists; original hostnames/IPs, excluded strings, and per-asset fingerprints never cross the event into review history or exported files. In addition, the review tracks private safety-note change as a boolean, selected activity-code changes, title/client-label changes as booleans, and tentative UTC/local window differences. It does **not** normalize network CIDRs, resolve DNS, check effective policy membership, verify ownership, or produce an authorization verdict: different textual entries may denote equal numeric ranges or aliases.
+
+Changes that merit extra **human attention** receive fixed category prompts: added literal included entries, removed literal exclusions, raised risk, requested assessment mode escalation, newly proposed private-lab network activity, modified window/STOP time, scope restriction changes, and modified private safety notes. These are **review priorities, not authenticated execution decisions**. On a changed source, the role-specific original brief gains two extra human-only questions to re-confirm source ownership and independently reassess enforceable authorization boundaries.
+
+The revision tab displays literal aggregate changes and fixed review advice, extends the anonymous revision JSON and spreadsheet-safe CSV with these categories, and can export a **script-free, printable HTML impact pack** for the latest change. The handoff contains only original/new document-level SHA-256 fingerprints, summary counts, fixed category descriptors and fresh human-review instructions. It carries **no raw assets, contacts, notes, secrets, per-item hashes, permission grants, consent proofs or action authorizations**. Equal counts and absent elevated codes never remove HOLD.
+
 ## Strict import and privacy boundaries
 
 - Maximum one 64-KiB original UTF-8 file; invalid bytes, unsupported schema, empty asset list, malformed activities, duplicate JSON keys **at any depth**, unsafe prototype-style keys, unknown authority fields, ambiguous source boolean flags and unsafe control text are refused. Multi-line safety notes are accepted (line breaks and tabs only) but never rendered or re-exported.
