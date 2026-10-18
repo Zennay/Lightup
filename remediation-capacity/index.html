@@ -8,6 +8,8 @@
 <link rel="stylesheet" href="./style.css">
 <script src="./planner.js" defer></script>
 <script src="./draft.js" defer></script>
+<script src="./casework-original-v1.js" defer></script>
+<script src="./casework-review.js" defer></script>
 <script src="./app.js" defer></script>
 </head>
 <body>
@@ -71,9 +73,28 @@
   </div>
   <p id="draft-status" class="subtle" aria-live="polite">No saved draft restored. Browsers store nothing for you.</p>
 </section>
+<section class="panel" aria-labelledby="casework-review-title">
+  <p class="eyebrow">04 / ORIGINAL CASEWORK HANDOFF</p>
+  <h2 id="casework-review-title">Review existing Casework planning blockers</h2>
+  <p>Import an original <code>lightup.remediation_casework_draft</code> v1 file created by the separate authorised-export-based Casework product. The original source CSV above must be reloaded first. We use the pinned original Casework v1 parser, require an identical source revision and show only grouped human planning stages, blockers and missing owner labels.</p>
+  <div class="upload">
+    <label for="casework-packet">Original private Casework JSON</label>
+    <input id="casework-packet" type="file" accept=".json,application/json">
+    <button id="clear-casework" type="button" class="secondary">Forget Casework summary</button>
+  </div>
+  <label class="ack"><input id="casework-ack" type="checkbox"> I independently confirmed the selected exported Casework draft and original findings CSV came from the same intended <strong>client and engagement</strong>. This is not identity or scope authentication.</label>
+  <button id="review-casework" type="button">Review read-only casework summary</button>
+  <p id="casework-feedback" class="subtle" aria-live="polite">No Casework record reviewed.</p>
+  <div id="casework-summary" hidden>
+    <div id="casework-status-cards" class="stats"></div>
+    <div class="table-scroll"><table><thead><tr><th scope="col">Severity</th><th scope="col">Source cases</th><th scope="col">Blocked</th><th scope="col">Unlabelled owners</th><th scope="col">Undated</th><th scope="col">Human retest coordination</th><th scope="col">Self-reported complete (unverified)</th></tr></thead><tbody id="casework-risk-table"></tbody></table></div>
+    <p class="subtle">Casework “completed” is a self-reported human work stage, <strong>never proof of a fix or authorised retest</strong>. Casework imports never change the current capacity plan or grant execution rights.</p>
+    <button id="export-casework-summary" type="button" class="secondary">Export aggregate Casework discussion</button>
+  </div>
+</section>
 <section id="results" hidden aria-labelledby="results-title">
   <div class="panel">
-    <p class="eyebrow">04 / HUMAN PLANNING PREVIEW</p>
+    <p class="eyebrow">05 / HUMAN PLANNING PREVIEW</p>
     <h2 id="results-title">Capacity allocation</h2>
     <div class="stats" id="stats" aria-live="polite"></div>
     <p class="subtle">A fully allocated estimate only means it fits in this draft plan. It does not mean work has started, a vulnerability was fixed, or an authorised retest has happened.</p>
@@ -93,7 +114,7 @@
     <div id="weekly" class="weeks"></div>
   </div>
   <div class="panel" aria-labelledby="history-title">
-    <p class="eyebrow">05 / HISTORICAL LOAD CHANGE</p>
+    <p class="eyebrow">06 / HISTORICAL LOAD CHANGE</p>
     <h2 id="history-title">Compare repair workload between two original reports</h2>
     <p>Import one <em>earlier</em> authenticated LightUp findings CSV. Compare it with the current CSV above, using exactly the current hour assumptions. A record missing from the newer source is <strong>not proven fixed</strong>. The CSVs do not authenticate client or assessment identity.</p>
     <div class="upload">
@@ -113,7 +134,7 @@
     </div>
   </div>
   <div class="panel">
-    <p class="eyebrow">06 / CAPACITY WHAT-IF</p>
+    <p class="eyebrow">07 / CAPACITY WHAT-IF</p>
     <h2>What if the team had more capacity?</h2>
     <p>Compare the baseline with an alternative number of engineers. This does not hire, assign or book anyone; assumptions remain unchanged except staffing.</p>
     <div class="scenario-controls">
@@ -124,7 +145,7 @@
     <div id="comparison" aria-live="polite"></div>
   </div>
   <div class="panel" aria-labelledby="milestone-title">
-    <p class="eyebrow">07 / RISK MILESTONES</p>
+    <p class="eyebrow">08 / RISK MILESTONES</p>
     <h2 id="milestone-title">Can urgent risks fit into the target sprint?</h2>
     <p>Try a hypothetical milestone for critical findings, or critical and high findings together. Calculate the remaining estimated hours at the selected week and smallest modelled staffing level (up to 30 engineers) needed to fit the proposal. This is not an agreed SLA or permission to retest.</p>
     <div class="grid">
@@ -136,7 +157,7 @@
     <button id="milestone-export" type="button" class="secondary" hidden>Export aggregate milestone draft</button>
   </div>
   <div class="panel" aria-labelledby="contingency-title">
-    <p class="eyebrow">08 / CAPACITY INTERRUPTION PLANNING</p>
+    <p class="eyebrow">09 / CAPACITY INTERRUPTION PLANNING</p>
     <h2 id="contingency-title">What if the team temporarily loses capacity?</h2>
     <p>Compare your current estimated recovery plan to one disrupted week and an ongoing hypothetical reduction. Neither scenario changes real staff allocation, scope permission, working calendars or any previously authorised assessment.</p>
     <div class="grid">
