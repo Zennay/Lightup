@@ -18,7 +18,7 @@
   const STAGES = ["unreviewed", "owner-follow-up", "source-recheck", "human-acknowledged"];
   const $ = id => document.getElementById(id);
   const text = (id, value) => { $(id).textContent = String(value); };
-  const state = { snapshots: [], changes: [], sha: [], notes: new Map(), details: new Map(), editKey: null };
+  const state = { snapshots: [], changes: [], sha: [], notes: new Map(), details: new Map(), lineageNotes: new Map(), editKey: null };
   function hold(message) { throw Error(message); }
   function isObject(x) { return x !== null && typeof x === "object" && !Array.isArray(x); }
   function literal(x, n) {
@@ -227,6 +227,75 @@
     const visible = labels.filter(k => typeof record[k] === "string").map(k => k + ": " + record[k]);
     return visible.join(" · ") || "original record present (no status assertion)";
   }
+  // Advisory original-recorded request → grant lineage review. An unchanged grant
+  // can still need urgent HUMAN attention when its original request has changed.
+  // This is not a new compatibility or consent check and never infers a permit.
+  function sourceLineage() {
+    if (state.snapshots.length !== 2) return [];
+    const earlier=state.snapshots[0].maps, later=state.snapshots[1].maps;
+    const changedRequests=new Set(state.changes.filter(c=>c.category==="requests").map(c=>c.id));
+    const changedGrants=new Set(state.changes.filter(c=>c.category==="grants").map(c=>c.id));
+    const ids=[...new Set([...earlier.grants.keys(),...later.grants.keys()])].sort();
+    const items=[];
+    for (const id of ids) {
+      const a=earlier.grants.get(id), b=later.grants.get(id);
+      const requestIds=[...new Set([a?.approved_request_id,b?.approved_request_id]
+        .filter(x=>typeof x==="string" && x.length>0))];
+      const reasons=[];
+      if(changedGrants.has(id)) reasons.push("ORIGINAL_GRANT_ROW_CHANGED");
+      if(requestIds.some(x=>changedRequests.has(x))) reasons.push("RECORDED_REQUEST_SOURCE_CHANGED");
+      if([a,b].some(x=>x && x.approved_request_id===null)) reasons.push("NO_RECORDED_REQUEST_BINDING");
+      if([a,b].some(x=>x && typeof x.request_link_observation==="string" &&
+         x.request_link_observation.startsWith("HOLD_"))) reasons.push("ORIGINAL_REQUEST_LINK_HOLD");
+      const missing=requestIds.some(x=>!earlier.requests.has(x) || !later.requests.has(x));
+      if(missing) reasons.push("REQUEST_SOURCE_MISSING_IN_AT_LEAST_ONE_SNAPSHOT");
+      if(requestIds.some(x=>{
+        const first=earlier.requests.get(x), second=later.requests.get(x);
+        return (first && first.status!=="approved") || (second && second.status!=="approved");
+      })) reasons.push("REQUEST_NOT_RECORDED_APPROVED_IN_BOTH_SNAPSHOTS");
+      if(!reasons.length) continue;
+      const requestStatus=requestIds.map(rid=>{
+        const oldReq=earlier.requests.get(rid), newReq=later.requests.get(rid);
+        return {id:rid,before:oldReq?.status||"not recorded",after:newReq?.status||"not recorded"};
+      });
+      items.push({
+        id, oldEngagement:a?.engagement_id??null, newEngagement:b?.engagement_id??null,
+        oldLink:a?.approved_request_id??null, newLink:b?.approved_request_id??null,
+        oldObservation:a?.request_link_observation??null, newObservation:b?.request_link_observation??null,
+        requestStatus, reasons, stage:state.lineageNotes.get(id)||"unreviewed"
+      });
+    }
+    return items;
+  }
+  function renderLineage() {
+    const entries=sourceLineage();
+    const body=$("lineageRows");
+    body.replaceChildren();
+    for(const item of entries){
+      const tr=document.createElement("tr");
+      td(tr,item.id);
+      td(tr,[item.oldEngagement||"not recorded",item.newEngagement||"not recorded"].join(" → "));
+      td(tr,[item.oldLink||"not recorded",item.newLink||"not recorded"].join(" → "));
+      td(tr,item.requestStatus.map(x=>x.id+": "+x.before+" → "+x.after).join("; ")||"NO REQUEST");
+      td(tr,[item.oldObservation||"not recorded",item.newObservation||"not recorded"].join(" → "));
+      td(tr,item.reasons.join("; "));
+      const col=document.createElement("td");
+      const select=document.createElement("select");
+      select.setAttribute("aria-label","Human original binding follow-up for grant "+item.id);
+      for(const stage of STAGES){
+        const opt=document.createElement("option");opt.value=stage;opt.textContent=stage;
+        select.appendChild(opt);
+      }
+      select.value=item.stage;
+      select.addEventListener("change",()=>{state.lineageNotes.set(item.id,select.value);renderLineage();});
+      col.appendChild(select);tr.appendChild(col);body.appendChild(tr);
+    }
+    const requestDriven=entries.filter(x=>x.reasons.includes("RECORDED_REQUEST_SOURCE_CHANGED")).length;
+    const holdLike=entries.filter(x=>x.reasons.some(r=>r.includes("HOLD")||r.includes("MISSING")||r.includes("NOT_RECORDED")||r.includes("NO_RECORDED"))).length;
+    text("lineageSummary",entries.length+" original grant records require human lineage attention; "+
+      requestDriven+" linked to changed original requests (even if the grant itself did not change); "+
+      holdLike+" with missing/held/inconsistent recorded links. Recorded linkage never proves current permission.");
+  }
   function impactEngagements() {
     if (state.snapshots.length !== 2) return;
     const older=state.snapshots[0].maps, newer=state.snapshots[1].maps;
@@ -309,6 +378,7 @@
     text("provenance","Old " + state.snapshots[0].doc.as_of + " · SHA-256 " + state.sha[0] +
       " | New " + state.snapshots[1].doc.as_of + " · SHA-256 " + state.sha[1]);
     impactEngagements();
+    renderLineage();
     $("results").hidden = false;
   }
   async function readSnapshot(file) {
@@ -327,7 +397,7 @@
   async function load() {
     text("error","");
     $("results").hidden = true;
-    state.snapshots=[];state.changes=[];state.sha=[];state.notes.clear();state.details.clear();state.editKey=null;
+    state.snapshots=[];state.changes=[];state.sha=[];state.notes.clear();state.details.clear();state.editKey=null;state.lineageNotes.clear();
     try {
       const files = [$("older").files[0],$("newer").files[0]];
       if (!files[0] || !files[1]) hold("Select two private original Casebook JSON exports");
@@ -340,7 +410,7 @@
       state.changes = changed(a.parsed,b.parsed);
       render();
     } catch (e) {
-      state.snapshots=[];state.changes=[];state.sha=[];state.notes.clear();state.details.clear();state.editKey=null;
+      state.snapshots=[];state.changes=[];state.sha=[];state.notes.clear();state.details.clear();state.editKey=null;state.lineageNotes.clear();
       text("error","HOLD: " + (e && e.message ? e.message : "invalid source"));
     }
   }
@@ -364,6 +434,9 @@
       changed_record_count:state.changes.length,
       urgent_review_count:state.changes.filter(c=>c.priority==="urgent").length,
       human_stage_counts:Object.fromEntries(STAGES.map(s=>[s,state.changes.filter(c=>(state.notes.get(c.category+":"+c.id)||"unreviewed")===s).length])),
+      recorded_grant_linkage_attention_count:sourceLineage().length,
+      recorded_linkage_stage_counts:Object.fromEntries(STAGES.map(stage=>[stage,sourceLineage().filter(
+        c=>(state.lineageNotes.get(c.id)||"unreviewed")===stage).length])),
       categories:groups
     };
     save(new Blob([JSON.stringify(data,null,2)+"\n"],{type:"application/json"}),"lightup-casebook-change-aggregate.json");
@@ -383,6 +456,13 @@
       tenant_original_id:state.snapshots[0].doc.client_id,
       source_sha256_unsigned:state.sha,
       source_times:state.snapshots.map(x=>x.doc.as_of),
+      recorded_binding_review:sourceLineage().map(item=>({
+        grant_original_id:item.id,old_engagement:item.oldEngagement,new_engagement:item.newEngagement,
+        old_approved_request:item.oldLink,new_approved_request:item.newLink,
+        old_observation:item.oldObservation,new_observation:item.newObservation,
+        request_status:item.requestStatus,reasons:item.reasons,
+        human_stage:state.lineageNotes.get(item.id)||"unreviewed"
+      })),
       changes:state.changes.map(c=>({
         category:c.category,original_id:c.id,change:c.kind,priority:c.priority,
         changed_source_fields:c.fieldNames,
