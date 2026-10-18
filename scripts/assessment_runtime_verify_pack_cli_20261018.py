@@ -36,6 +36,19 @@ ANNOTATED_KEYS = frozenset((
     "human_summary_sha256",
 ))
 
+FOLLOWUP_CAPS = {
+    "READ-ME.txt": 4_096,
+    "human-summary.html": 131_072,
+    "human-worklist.csv": 131_072,
+    "manifest.json": 8_192,
+}
+FOLLOWUP_KEYS = frozenset((
+    "format", "comparison_status", "case_count", "human_stages",
+    "human_summary_sha256", "human_worklist_sha256",
+    "source_authenticated", "authorized", "consent_verified",
+    "dispatch_allowed", "release_allowed",
+))
+
 BRIEF_CAPS = {
     "READ-ME.txt": 4_096,
     "review.html": 1_048_576,
@@ -102,6 +115,33 @@ def _inspect_brief(content):
     return manifest["status"]
 
 
+def _inspect_followup(content):
+    manifest = _json(content["manifest.json"])
+    if type(manifest) is not dict or set(manifest) != FOLLOWUP_KEYS:
+        raise ValueError("invalid follow-up manifest")
+    counts = manifest["human_stages"]
+    stage_names = ("todo", "investigating", "waiting", "planned", "reviewed")
+    if (manifest["format"] != "lightup.ordinal_human_followup.v1"
+            or manifest["comparison_status"] not in ("REVIEW_ONLY", "HOLD")
+            or type(manifest["case_count"]) is not int
+            or not 1 <= manifest["case_count"] <= 64
+            or type(counts) is not dict or set(counts) != set(stage_names)
+            or any(type(counts[key]) is not int or counts[key] < 0 for key in stage_names)
+            or sum(counts.values()) != manifest["case_count"]):
+        raise ValueError("invalid human planning counts")
+    if any(manifest[key] is not False for key in (
+            "authorized", "consent_verified", "dispatch_allowed",
+            "release_allowed", "source_authenticated")):
+        raise ValueError("follow-up claims authority")
+    for key, name in (("human_summary_sha256", "human-summary.html"),
+                      ("human_worklist_sha256", "human-worklist.csv")):
+        if not _hex(manifest[key]) or manifest[key] != sha256(content[name]).hexdigest():
+            raise ValueError("follow-up member mismatch")
+    if not content["human-worklist.csv"].startswith(b"case,priority,"):
+        raise ValueError("invalid source worklist")
+    return manifest["comparison_status"]
+
+
 def inspect(path):
     fd = os.open(
         path,
@@ -125,7 +165,8 @@ def inspect_bytes(raw: bytes):
         names = set(member.filename for member in entries)
         caps = (CAPS if names == set(CAPS) else
                 ANNOTATED_CAPS if names == set(ANNOTATED_CAPS) else
-                BRIEF_CAPS if names == set(BRIEF_CAPS) else None)
+                BRIEF_CAPS if names == set(BRIEF_CAPS) else
+                FOLLOWUP_CAPS if names == set(FOLLOWUP_CAPS) else None)
         if caps is None or len(entries) != len(caps):
             raise ValueError("unexpected archive members")
         content = {}
@@ -140,6 +181,8 @@ def inspect_bytes(raw: bytes):
             content[member.filename] = data
     if caps is BRIEF_CAPS:
         return _inspect_brief(content)
+    if caps is FOLLOWUP_CAPS:
+        return _inspect_followup(content)
     manifest = _json(content["manifest.json"])
     annotated = caps is ANNOTATED_CAPS
     expected_keys = MANIFEST_KEYS | (ANNOTATED_KEYS if annotated else frozenset())

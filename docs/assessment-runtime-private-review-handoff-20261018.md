@@ -145,3 +145,17 @@ The nine-file source-bound packet preserves seven original members except the ve
 ### Single-snapshot source handling for a saved review
 
 The source-bound human follow-up command opens and reads its explicitly selected original private ZIP **only once**. It hands that same bounded raw byte snapshot directly to the offline inspector, then reuses exactly those bytes to copy the original members. This prevents a user-controlled file path from being replaced between inspection and packaging. The original read-only inspector retains its ordinary path-based CLI, while exposing `inspect_bytes` for already-opened private snapshots; no additional release or QA gate is introduced.
+
+## Separate minimized recipient handoff AFTER human review
+
+After the browser's source-bound saved review has been attached to an original seven-file package, the resulting valid **nine-file private ZIP** can be turned into a small **four-file human-only handoff** without disclosing the original scenario IDs or source SHA fingerprints:
+
+```bash
+PYTHONPATH=src:scripts python scripts/assessment_runtime_human_handoff_cli_20261018.py \
+  /private/ORIGINAL-annotated-nine-file-review.zip \
+  --output /private/NEW-private-recipient-handoff.zip
+```
+
+The source annotated packet is snapshotted once, inspected using its original source/manifest/plan binding, and never revisited. The output contains only `human-summary.html` (ordinal case labels, human stages, route, due date and metric names), `human-worklist.csv` (original suggested human-only regression follow-up), `READ-ME.txt` and `manifest.json` (source status, aggregate stage counts and unsigned recipient-member SHA-256 hashes, all authorization/consent/dispatch/release flags false). It has **no** original scenario IDs, URLs, clients, source record JSON, source byte fingerprints, private interactive desk, grants or imported raw human planning JSON. Numeric metric combinations or dates could nevertheless be identifying: this is minimized private disclosure, NOT anonymous public data. A recipient cannot use this smaller packet to impersonate a source report or restore an authorization.
+
+The same read-only `assessment_runtime_verify_pack_cli_20261018.py` product inspector now admits this exact fourth fixed layout and checks aggregated stage-count coherence, hashes and all no-authority flags. The original full private and redacted metric packets remain unaffected. Source HOLD stays HOLD, and publication uses the original atomic `0600` new-only output primitive.

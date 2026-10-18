@@ -20,7 +20,7 @@ from assessment_runtime_verify_pack_cli_20261018 import inspect_bytes as inspect
 from assessment_runtime_verify_pack_cli_20261018 import _json, CAPS
 
 MAX_REVIEW = 131_072
-MAX_PACK = 1_500_000
+MAX_PACK = 1_700_000
 MAX_ATTACHED = 1_700_000
 STAGES = frozenset(("todo", "investigating", "waiting", "planned", "reviewed"))
 ROUTES = frozenset(("unassigned", "lab-runtime", "scope-review",
