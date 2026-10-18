@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-bqG2PqyZtJOgnf5khe3SB4p06Dgw7n+x318Y1jSmsM4='; style-src 'sha256-TiOd9PyKZRDLiF8oPZCj9XLIGyiDzv8lQfbkTPjAf8c='; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-cF9/3n5p1UUvC9IPlprhZ/d5D3CiKaX9qTvoAZ0CkKE='; style-src 'sha256-TiOd9PyKZRDLiF8oPZCj9XLIGyiDzv8lQfbkTPjAf8c='; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'">
 <title>LightUp · Private Scope Packet Vault (Offline)</title><style>
 :root{font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#090f1c;color:#e9f1ff;color-scheme:dark}*{box-sizing:border-box}body{margin:0}main{max-width:940px;padding:24px;margin:auto}header{padding:30px 0 22px}.eyebrow{color:#7ed3fd;font-size:12px;letter-spacing:.16em;font-weight:800}h1{font-size:clamp(34px,6vw,58px);line-height:1.02;letter-spacing:-.04em;margin:16px 0}h2{font-size:20px;margin:0 0 12px}h3{font-size:15px;margin:24px 0 10px}.lead{color:#afc3de;font-size:18px;line-height:1.6;max-width:750px}.hold{border:1px solid #eec06c;background:#2f2419;border-radius:10px;color:#ffe5ac;font-weight:700;font-size:12px;letter-spacing:.06em;padding:12px 16px;line-height:1.6}section{background:#111c30;border:1px solid #324158;border-radius:16px;padding:24px;margin-bottom:18px;box-shadow:0 6px 36px #0002}section p,li{color:#bfcbdf;line-height:1.65}section strong{color:#fff}label{display:block;font-size:14px;font-weight:650;color:#dfeafa}input,select{display:block;width:100%;margin-top:9px;padding:12px 13px;border:1px solid #60718d;border-radius:10px;background:#0b1425;color:#fff;font:inherit}input:focus,button:focus-visible{outline:3px solid #75bcff;outline-offset:2px}.picker{cursor:pointer;border:1px dashed #659de1;padding:17px;border-radius:12px;background:#102942}.picker input{border:0;padding:0;background:none}.grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:20px}button{font:inherit;border:0;border-radius:10px;padding:12px 18px;cursor:pointer;font-weight:700;background:#80cdfb;color:#071727}button.secondary{background:#23324c;color:#ecf6ff;border:1px solid #50617b}button:disabled{opacity:.5;cursor:not-allowed}.status{font-size:14px}.items{display:grid;gap:10px;margin-top:12px}.item{display:flex;align-items:center;justify-content:space-between;gap:18px;padding:13px;border:1px solid #40536f;border-radius:10px;background:#14223a;overflow-wrap:anywhere}.item small{color:#b1c1d6;display:block;margin-top:4px}.item button{flex-shrink:0;padding:9px 13px}.message{padding:16px;border-left:4px solid #7bcdff;background:#122b46;min-height:56px;border-radius:5px;line-height:1.5}.message.error{border-color:#eab3a0;background:#391e25}footer{padding:0 0 40px}footer small{color:#90a4be}ol{padding-left:24px}@media(max-width:650px){.grid{grid-template-columns:1fr}.item{align-items:flex-start;flex-direction:column}section{padding:17px}main{padding:12px}.item button{width:100%}}
 /* Source inspection is private text, never rendered as imported HTML. */
@@ -619,12 +619,20 @@ font-weight:650;line-height:1.45;color:#bdcee8}
           total += record.length;
           invariant(total <= MAX_TOTAL_BYTES);
           const bytes = unb64(record.base64, MAX_FILE_BYTES);
-          staged.push({name, bytes, hash: record.sha256, role: hasRole ? record.role : roles[0], selected: true, stage: hasDossier ? record.stage : "unsorted", note: hasDossier ? record.note : ""});
+          staged.push({name, bytes, hash: record.sha256,
+            role: hasRole ? record.role : roles[0], selected: true,
+            stage: hasDossier ? record.stage : "unsorted",
+            note: hasDossier ? record.note : "",
+            hasPrivateMetadata: hasDossier});
           invariant(bytes.length === record.length && (await digest(bytes)) === record.sha256);
           DEC.decode(bytes);
         }
         if (els.mergeMode.checked) {
           // Never accept filename collisions with different bytes or review roles.
+          // If a client handoff intentionally omitted PRIVATE metadata, preserve
+          // the already-open operator memo/stage instead of treating the absent
+          // values as a contradictory new declaration. Explicit private
+          // metadata conflicts still hold atomically.
           // An atomic failure leaves the entire previous workspace intact.
           const merged = [...entries];
           const byName = new Map(entries.map((item) => [item.name, item]));
@@ -635,7 +643,8 @@ font-weight:650;line-height:1.45;color:#bdcee8}
             if (current) {
               invariant(current.hash === item.hash && current.role === item.role &&
                 current.bytes.length === item.bytes.length &&
-                current.stage === item.stage && current.note === item.note);
+                (!item.hasPrivateMetadata ||
+                  (current.stage === item.stage && current.note === item.note)));
               item.bytes.fill(0);
             } else {
               invariant(merged.length < MAX_FILES && priorTotal + item.bytes.length <= MAX_TOTAL_BYTES);
@@ -842,7 +851,7 @@ font-weight:650;line-height:1.45;color:#bdcee8}
 <section aria-labelledby="unlock-title"><h2 id="unlock-title">3. Restore a saved packet</h2>
 <p>Load one locally saved encrypted vault. Its encrypted inner payload also preserves the self-reported intended handoff route when present. Its authenticity depends on knowing the passphrase and trusting where you got the file. Encryption alone does <strong>not</strong> prove client identity, consent, scope approval or authorization.</p>
 <div class="grid"><label>Encrypted vault file<input id="open-file" type="file" accept=".json"></label><label>Passphrase<input id="open-password" type="password" autocomplete="off" maxlength="256"></label></div>
-<label class="checkline"><input id="merge-mode" type="checkbox"> Merge files into the current offline workspace instead of replacing it. Identical names + content are kept once; any disagreement aborts the entire import.</label>
+<label class="checkline"><input id="merge-mode" type="checkbox"> Merge files into the current offline workspace instead of replacing it. Matching names + bytes + roles are kept once. Existing private notes survive a client packet that intentionally omits them; explicit contradictory private metadata still aborts the entire import.</label>
 <div class="actions"><button id="unlock" type="button">Unlock / merge locally</button><button id="lock" type="button" class="secondary">Lock immediately</button></div></section>
 <section aria-labelledby="compare-title"><h2 id="compare-title">4. Inspect &amp; compare private drafts</h2>
 <p>View a local text-only excerpt, or compare two draft revisions side by side as line-level additions/removals. All content remains on this device and is never executed or sent anywhere. This is a <strong>text comparison</strong>, not a scope-policy verdict or an authorization review.</p>
