@@ -540,32 +540,6 @@ class LightUpWebApp:
             "<label>Engagement name</label><input name=\"name\" required>"
             "<button>Create engagement</button></form></div>"
         )
-        if auth.is_operator:
-            request_section = (
-                "<h2>Assessment request submissions</h2>"
-                "<p class=\"sub\">Read-only operator view. Only the client's "
-                "own signed-in users may submit an assessment request. "
-                "Review existing requests from the operator Assessments page.</p>"
-            )
-        else:
-            request_section = (
-                "<h2>Request an assessment</h2>"
-                "<div class=\"card\">"
-                f"<form method=\"post\" action=\"/portal/{_e(client_id)}/requests\">"
-                f"{self._csrf_field(auth)}"
-                "<label>Assets (comma-separated hostnames/systems you own)</label>"
-                "<input name=\"assets\" required>"
-                "<label>Requested risk level</label><select name=\"risk\">"
-                "<option value=\"1\">1 — Passive</option>"
-                "<option value=\"2\">2 — Low impact</option>"
-                "<option value=\"3\" selected>3 — Standard</option>"
-                "<option value=\"4\">4 — Elevated</option></select>"
-                "<label>Notes</label><textarea name=\"notes\" rows=\"3\"></textarea>"
-                "<button>Submit request</button>"
-                "<p class=\"meta\">Submitting a request starts a review. Active testing "
-                "begins only after you provide written authorization and an operator "
-                "approves scope and risk.</p></form></div>"
-            )
         body = (
             f"<h1>{_e(client.name)}</h1>"
             f"<p class=\"sub\">Portal: <a href=\"/portal/{_e(client.client_id)}\">"
@@ -717,6 +691,32 @@ class LightUpWebApp:
             f"<p class=\"meta\">Requested risk: {_risk(r.requested_risk)}</p></div>"
             for r in requests
         ) or "<p class=\"empty\">No assessment requests yet.</p>"
+        if auth.is_operator:
+            request_section = (
+                "<h2>Assessment request submissions</h2>"
+                "<p class=\"sub\">Read-only operator view. Only the client's "
+                "own signed-in users may submit an assessment request. "
+                "Review existing requests from the operator Assessments page.</p>"
+            )
+        else:
+            request_section = (
+                "<h2>Request an assessment</h2>"
+                "<div class=\"card\">"
+                f"<form method=\"post\" action=\"/portal/{_e(client_id)}/requests\">"
+                f"{self._csrf_field(auth)}"
+                "<label>Assets (comma-separated hostnames/systems you own)</label>"
+                "<input name=\"assets\" required>"
+                "<label>Requested risk level</label><select name=\"risk\">"
+                "<option value=\"1\">1 — Passive</option>"
+                "<option value=\"2\">2 — Low impact</option>"
+                "<option value=\"3\" selected>3 — Standard</option>"
+                "<option value=\"4\">4 — Elevated</option></select>"
+                "<label>Notes</label><textarea name=\"notes\" rows=\"3\"></textarea>"
+                "<button>Submit request</button>"
+                "<p class=\"meta\">Submitting a request starts a review. Active testing "
+                "begins only after you provide written authorization and an operator "
+                "approves scope and risk.</p></form></div>"
+            )
         body = (
             f"<h1>{_e(client.name)}</h1>"
             "<p class=\"sub\">Your security posture, in plain terms.</p>"
