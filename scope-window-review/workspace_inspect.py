@@ -17,6 +17,7 @@ import sys
 SCHEMA = "lightup.scope_window_workspace.v1"
 ARTIFACTS = {
     "original-private-casebook.json": 512 * 1024,
+    "human-engagement-inbox.html": 1024 * 1024,
     "human-review-board.html": 1024 * 1024,
     "human-review-agenda.json": 3 * 1024 * 1024,
     "human-review-calendar.ics": 1024 * 1024,
@@ -119,9 +120,22 @@ def inspect(path: Path) -> dict:
                     for key in ("items", "hold", "review_only")) or
                 totals["items"] != totals["hold"] + totals["review_only"]):
             raise WorkspaceHold("declared workspace human review counts contradictory")
+        original_cases = info.get("engagement_inbox_counts")
+        if (type(original_cases) is not dict
+                or set(original_cases) != {
+                    "cases", "human_hold", "without_recorded_grant",
+                    "risk_source_pending"
+                } or any(type(v) is not int or not 0 <= v <= 200
+                         for v in original_cases.values())
+                or original_cases["human_hold"] > original_cases["cases"]
+                or original_cases["without_recorded_grant"] > original_cases["cases"]
+                or original_cases["risk_source_pending"] > original_cases["cases"]):
+            raise WorkspaceHold("original engagement inbox counts contradict manifest")
         return {
             "status": info["status"], "files": len(ARTIFACTS),
             "human_review_items": totals["items"], "human_hold": totals["hold"],
+            "engagement_cases": original_cases["cases"],
+            "without_recorded_grant": original_cases["without_recorded_grant"],
             "source_attestation": False, "authorization_granted": False,
             "execution_allowed": False,
         }
@@ -137,7 +151,10 @@ def main(argv: list[str] | None = None) -> int:
         report = inspect(args.workspace)
         print(f"{report['status']}: {report['files']} intact PRIVATE workspace artifacts; "
               f"{report['human_review_items']} human items; "
-              f"{report['human_hold']} HOLD; unsigned source; NO AUTHORIZATION.")
+              f"{report['human_hold']} window HOLD; "
+              f"{report['engagement_cases']} original engagements, "
+              f"{report['without_recorded_grant']} with no recorded grant; "
+              "unsigned source; NO AUTHORIZATION.")
         return 3 if report["status"] == "HOLD" else 2
     except (WorkspaceHold, OSError, ValueError) as exc:
         print(f"HOLD: private workspace not admitted ({type(exc).__name__}); "
