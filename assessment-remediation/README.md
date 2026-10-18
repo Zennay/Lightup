@@ -218,3 +218,47 @@ second checkout or a manually constructed report. Original separately exported
 client findings are still selected locally, never embedded into the HTML or
 uploaded to a server. The optional original review-room ZIP remains separate
 and does not contain either original source file.
+
+## Private human-only team editing and exact-baseline return
+
+A separate complete portable team workflow now lets a trusted human reviewer
+edit local follow-up notes **without receiving the original client CSV, lab
+benchmark cohort JSON, target data, scanner controls or original security
+records**. This is distinct from the operator's source-rich local Studio.
+
+After producing a genuine source-bound private human link draft with bridge.py
+(and independently verifying the source owner/client/engagement), run:
+
+    python3 assessment-remediation/team_handoff.py prepare \
+      --links /private/lightup-followup/reviewed-links.json \
+      --output-dir /private/lightup-followup --prefix team-01
+
+This creates two **new exclusive 0600 private files** in that 0700 operator
+folder: team-01-team-handoff.json (full source IDs and human notes plus baseline
+SHA-256 and literal-false authority fields), and team-01-team-room.html
+(standalone browser editor, immutable source membership). The browser works
+fully offline with no network requests, storage, accounts, permissions or
+external assets. A human reviewer loads the JSON, edits only the human stage,
+reviewer, next action and local note per original pair, and saves the unsigned
+lightup-private-team-return.json to a **confidential** destination.
+
+The original owner must separately verify that the returned file came from the
+intended reviewer and concerns the same actual engagement. An original source
+digest or handoff alone is NOT identity/approval verification. The operator can
+then restore human notes only against the **exact original owner mapping**:
+
+    python3 assessment-remediation/team_handoff.py receive \
+      --links /private/lightup-followup/reviewed-links.json \
+      --returned /private/returned-team-human-notes.json \
+      --output-dir /private/lightup-followup --prefix after-team-01
+
+Only after an exact raw-original SHA-256 baseline match, literal four false
+authority flags, exact original scenario/finding link membership, unique IDs
+and bounded human annotation fields will receive publish a *new* private
+after-team-01-reviewed-links.json. If the original owner draft has since
+changed, the entire return is HOLD and does not overwrite it. No source
+engagement/consent, original client findings, real retest status or scan
+authority is updated. The operator can use this new human link draft with
+bridge.py and the two exact original source files to render a newer private
+human review dossier. This is a source-bound **human notes roundtrip**, not
+a digitally signed collaboration or an automatic reviewer approval.
