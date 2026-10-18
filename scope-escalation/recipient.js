@@ -174,6 +174,7 @@
       $("identity").textContent="Recipient reviewer label: "+original.reviewer+
         " · "+original.rows.length+" source-bound human follow-ups.";
       $("export").disabled=false;
+      $("resume").disabled=false;
       refreshSummary();
       notify("Original-bound PRIVATE handoff loaded locally. Reviewer label is unverified.");
     } catch (_) {notify("Private handoff refused; current human notes preserved.",true);}
@@ -183,6 +184,64 @@
     due:card.querySelector('[data-field="due"]').value,
     stage:card.querySelector('[data-field="stage"]').value,
     next:card.querySelector('[data-field="next"]').value
+  });
+  $("resume").addEventListener("click",()=>{
+    if (!packet) { notify("Import the original PRIVATE handoff first",true); return; }
+    $("resumeFile").click();
+  });
+  $("resumeFile").addEventListener("change",async event=>{
+    const file=event.target.files[0];event.target.value="";
+    if (!file || !packet) return;
+    try {
+      const returned=await canonicalFile(file);
+      if (!exact(returned,baseKeys) ||
+          returned.schema!=="lightup.scope_escalation_reviewer_reply.v1" ||
+          returned.status!=="REVIEW_ONLY" || returned.authority!==false ||
+          flags.some(flag=>returned[flag]!==false) ||
+          returned.source_sha256!==packet.source_sha256 ||
+          returned.source_as_of!==packet.source_as_of ||
+          returned.client_id!==packet.client_id ||
+          returned.packet_id!==packet.packet_id ||
+          returned.reviewer!==packet.reviewer ||
+          !Array.isArray(returned.rows) ||
+          returned.rows.length!==packet.rows.length ||
+          cards.children.length!==packet.rows.length) {
+        throw Error("wrong original private handoff");
+      }
+      const changes=[];
+      for (let i=0;i<returned.rows.length;i++) {
+        const row=returned.rows[i],original=packet.rows[i];
+        if (!exact(row,["key","tier","attention","action",
+                         "observations","baseline","proposed"]) ||
+            row.key!==original.key || row.tier!==original.tier ||
+            row.attention!==original.attention ||
+            row.action!==original.action ||
+            JSON.stringify(row.observations)!==JSON.stringify(original.observations) ||
+            JSON.stringify(row.baseline)!==JSON.stringify(original.baseline) ||
+            !human(row.proposed) || row.proposed.owner!==packet.reviewer) {
+          throw Error("stale/partial private human notes");
+        }
+        if (["due","stage","next"].some(k=>row.proposed[k]!==row.baseline[k])) {
+          changes.push(row.key);
+        }
+      }
+      if (!confirm("Restore "+changes.length+" source-bound PRIVATE human draft "+
+          "changes to the SAME original reviewer handoff? Any current local unsaved edits "+
+          "will be replaced. This does not authenticate the sender or authorize activity.")) return;
+      // All source and human input accepted before any local human fields are updated.
+      [...cards.children].forEach((card,i)=>{
+        const proposal=returned.rows[i].proposed;
+        ["stage","due","next"].forEach(field=>{
+          card.querySelector('[data-field="'+field+'"]').value=proposal[field];
+        });
+      });
+      edited=true;
+      refreshSummary();
+      notify("Original-bound PRIVATE human draft resumed in tab memory. "+
+        "Re-export PRIVATE reply after any changes; no authorization inferred.");
+    } catch (_) {
+      notify("PRIVATE draft refused; existing human notes retained",true);
+    }
   });
   $("export").addEventListener("click",()=>{
     if (!packet || cards.children.length!==packet.rows.length) {
