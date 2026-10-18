@@ -17,6 +17,14 @@ The published standalone build is generated from these exact owned source files;
 
 No free-text asset identities, domain names, requested notes, uploaded filenames, client labels, browser contacts or credentials appear in generated handoff JSON/CSV. The **local progress backup** intentionally includes manually entered short *reference labels* so the user can resume work; choose generic labels without private data and handle that local file privately.
 
+## Connected offline Withdrawal Desk review intake
+
+The app can import the **review-only exported JSON packet** produced by the separately owned [Withdrawal Desk PR #1577](https://github.com/Zennay/Lightup/pull/1577) without modifying its branch, routines or files. Import requires the *exact original Studio-v1 proposal bytes* already in this workspace; the full packet must match all source SHA-256 IDs, risks and declared asset/exclusion counts. The separate `withdrawal-import.js` parser requires every nested authority, consent, grant, actual revocation, handler-stop, dispatch, scan, deploy and release field to be **literally false**. It admits only the upstream eight human task code/status pairs and bounded intent/urgency strings; malformed, mixed-source or inconsistent imports fail atomically. A separate local review copy can be removed, but **this never cancels a genuine stop/revocation request**.
+
+Matching dossiers are visually flagged with intent, urgency, proposed UTC time and the number of external actions still without even an unverified request. Any previously prepared local human stop/client/operator/owner action is reopened for review; optional scope/scheduling/privacy actions are reopened when relevant. Existing pairwise discussion notes for those source bytes are cleared. Nothing is sent to the network. The importer **cannot** stop tools, contact customers, revoke grants or authenticate a person; an urgent external flag means only that an untrusted local file declared urgency.
+
+Versioned **v4 local backup** includes the minimal bound external review notes while remaining backward-compatible with v1, v2 and v3 backup files. Structured review JSON, action CSV and printable HTML include only the per-dossier self-reported intent/urgency/outstanding counts — no raw asset identities, personal details or contact notes. This is a **human preparatory handoff**, never at-use revocation enforcement or permission.
+
 ## Complete role-based preparation action desk (offline only)
 
 The register now has an **action work queue** over every imported proposal, with separate filters for `client`, `operator`, and `joint` human coordination roles. Each of the existing eight preparation activities has its own optional locally entered ISO `YYYY-MM-DD` **target follow-up date**. Dates do not reserve a UTC assessment window, grant time-limited permission, or represent a regulatory deadline; they simply let a human organise their next conversation.
