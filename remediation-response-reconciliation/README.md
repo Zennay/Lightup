@@ -10,6 +10,13 @@ This standalone **offline, multi-owner HUMAN follow-up register** is a read-only
 - [Open the three-file development version](index.html) with local `app.js` and `style.css` alongside it.
 - Rebuild after source changes with `python3 build_standalone.py`; `python3 build_standalone.py --check` confirms the exact committed bundle. These are build/integrity commands, not QA suites. Do not assert a VPS build unless actually executed by the permitted runner/zSSH.
 
+## Human review & team operations
+
+- Each original request now has a **PRIVATE details expander** showing its exact original request identifier, locally declared owner and issued timestamp, full original instructions, the entire received HUMAN reply text, and its unverified status. Viewing a reply does not verify the sender, source or remediation.
+- Filter by local human stages, upcoming tentative dates (within seven UTC days), tentatively overdue dates, unplanned work, source original ID, request kind or alias. Sort by original packet, date, alias or local human status. These are **planning hints only**, never execution windows, SLAs or authenticated identities.
+- Select exact original request IDs individually or select **all rows in the current filter**. Selections can span filter views; the explicit preview displays original finding IDs, full request IDs, self-declared owners and old → proposed HUMAN-only stages before a separate confirmation. A changed original register, selected ID set or local HUMAN baseline invalidates application.
+- The standalone **anonymous aggregate counts CSV** contains only HUMAN request type, unverified reply stage, local review stage and count. It does not contain original finding/request IDs, aliases, source SHA, response bodies, evidence fingerprints, targets or client context. The original PRIVATE per-ID CSV is separate with its own acknowledgement.
+
 ## Workflow
 
 1. Open `index.html` with `app.js` and `style.css` alongside it, without an internet connection. No credentials, server, account, installation or internet access required.
