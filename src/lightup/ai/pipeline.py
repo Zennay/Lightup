@@ -110,7 +110,8 @@ def _admit_review_findings(labrun_result: dict, target_label: str) -> tuple[tupl
                 or len(fix) > _MAX_CURRENT_FIX_CHARS):
             raise ValueError("review findings require canonical non-empty current remediation text")
         finding_target = finding.get("target", target_label)
-        if type(finding_target) is not str or len(finding_target) > _MAX_FINDING_TEXT_CHARS:
+        if (type(finding_target) is not str or not finding_target.strip()
+                or len(finding_target) > _MAX_FINDING_TEXT_CHARS):
             raise ValueError("review finding target must be bounded plain text")
         # Freeze the same finding-local target used by verification, advice,
         # serialized review and reporting before ANY model call.
@@ -178,10 +179,22 @@ class AssessmentReviewPipeline:
         if type(labrun_result) is not dict:
             raise ValueError("review input must be an ordinary dictionary")
         # Single-lane runs carry "target"; planner-driven runs carry "targets".
-        target_label = (labrun_result.get("target")
-                        or ", ".join(labrun_result.get("targets", [])))
-        if type(target_label) is not str:
-            raise ValueError("review target label must be plain text")
+        # Preserve the original single-target or planner-list fallback without
+        # accepting malformed iterable or caller-defined string subclasses.
+        run_target = labrun_result.get("target")
+        run_targets = labrun_result.get("targets", [])
+        if run_target:
+            if type(run_target) is not str or len(run_target) > _MAX_FINDING_TEXT_CHARS:
+                raise ValueError("review run target must be bounded plain text")
+            target_label = run_target
+        else:
+            if (type(run_targets) is not list or len(run_targets) > _MAX_REVIEW_FINDINGS
+                    or any(type(value) is not str
+                           or len(value) > _MAX_FINDING_TEXT_CHARS for value in run_targets)):
+                raise ValueError("review run targets must be bounded plain-text strings")
+            target_label = ", ".join(run_targets)
+            if len(target_label) > _MAX_FINDING_TEXT_CHARS:
+                raise ValueError("review run target label is too long")
         admitted = _admit_review_findings(labrun_result, target_label)
         reviewed: list[ReviewedFinding] = []
         for finding, evidence_summary, evidence_ids, current_fix, finding_target in admitted:
