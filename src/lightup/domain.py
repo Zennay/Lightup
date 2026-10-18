@@ -998,7 +998,12 @@ class DomainStore:
     def get_current_grant(
         self, ctx: AccessContext, engagement_id: str, now: datetime | None = None
     ) -> AuthorizationGrant | None:
-        now = now or utcnow()
+        now = utcnow() if now is None else now
+        if (
+            type(now) is not datetime or now.tzinfo is None
+            or now.utcoffset() is None
+        ):
+            raise ValueError("current grant lookup requires exact timezone-aware datetime")
         for grant in self.list_authorization_grants(ctx, engagement_id):
             if grant.is_current(now):
                 return grant
