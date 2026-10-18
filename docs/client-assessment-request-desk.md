@@ -54,7 +54,7 @@ python -m lightup.client_request_cli export \
   --output /private/client-requests.html
 ```
 
-This creates a **new exclusive 0600 HTML file** with the client's stored
+The snapshot now includes an **accessible, no-script status dashboard** linking to\nclient requests by submitted, under-review, administratively-approved and\nrejected status. Statuses and next-step copy do not imply a permission, grant\nor scan right.\n\nThis creates a **new exclusive 0600 HTML file** with the client's stored
 request status history (up to 200 entries). Original text is HTML-escaped.
 It requires no scripts, external styles, network connections or browser login,
 and the original SQLite records are never changed. A saved HTML copy is
