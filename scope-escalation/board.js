@@ -144,10 +144,12 @@
   }
   function reviewerRow(row, reviewer, returned) {
     const keys=returned?
-      ["key","tier","attention","baseline","proposed"]:
-      ["key","tier","attention","baseline"];
+      ["key","tier","attention","action","observations","baseline","proposed"]:
+      ["key","tier","attention","action","observations","baseline"];
     if (!exactKeys(row,keys) || !textOk(row.key,200) ||
-        !textOk(row.attention,120) ||
+        !textOk(row.attention,120) || !textOk(row.action,200) ||
+        !Array.isArray(row.observations) || row.observations.length>400 ||
+        !row.observations.every(x=>textOk(x,230)) ||
         !["HOLD","PENDING","REVIEW"].includes(row.tier) ||
         !validateHuman(row.baseline) ||
         row.baseline.owner!==reviewer) return false;
@@ -167,7 +169,9 @@
       if (!reviewerRow(row,doc.reviewer,returned) ||
           i===undefined || seen.has(row.key) ||
           row.tier!==meta.tasks[i].tier ||
-          row.attention!==meta.tasks[i].attention) return null;
+          row.attention!==meta.tasks[i].attention ||
+          row.action!==meta.tasks[i].action ||
+          JSON.stringify(row.observations)!==JSON.stringify(meta.tasks[i].flags)) return null;
       seen.add(row.key);
       mapped.push(i);
     }
@@ -223,7 +227,8 @@
       client_id:meta.client_id,reviewer,packet_id:packetId,
       rows:picked.map(({card,index})=>({
         key:meta.tasks[index].key,tier:meta.tasks[index].tier,
-        attention:meta.tasks[index].attention,baseline:entry(card)
+        attention:meta.tasks[index].attention,action:meta.tasks[index].action,
+        observations:meta.tasks[index].flags,baseline:entry(card)
       })),
       source_authenticated:false,client_consent_verified:false,
       operator_consent_verified:false,authorization_granted:false,
@@ -274,6 +279,8 @@
         const older=original.rows[i],newer=reply.rows[i];
         if (older.key!==newer.key || older.tier!==newer.tier ||
             older.attention!==newer.attention ||
+            older.action!==newer.action ||
+            JSON.stringify(older.observations)!==JSON.stringify(newer.observations) ||
             !sameHuman(older.baseline,newer.baseline) ||
             !sameHuman(entry(cards[mapped[i]]),older.baseline)) {
           throw Error("stale or incomplete original human handoff");
