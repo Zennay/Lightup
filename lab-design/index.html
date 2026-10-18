@@ -8,7 +8,7 @@
 </header><main>
 <section class="panel" id="sources"><div class="section"><h2>01 / Catalog</h2><span>PRIVATE · LOCAL ONLY</span></div>
 <p>Start with an entirely fictional demonstration or import a previously saved private Lab Design Catalog v1 JSON. Data stays in browser memory until Forget or closing the page; no network or background persistence.</p>
-<div class="controls"><button id="demo">Load fictional demo</button><label class="pick">Import PRIVATE catalog<input type="file" accept=".json,application/json" id="load"></label>
+<div class="controls"><button id="originalProfiles" type="button">Load original fixture profiles</button><button id="demo">Load fictional demo</button><label class="pick">Import PRIVATE catalog<input type="file" accept=".json,application/json" id="load"></label>
 <label class="pick">Append PRIVATE catalog<input type="file" accept=".json,application/json" id="appendCatalog" disabled></label><button id="forget" class="outline">Forget all</button></div><p>Want native examples? From the LightUp repository root, run <code>python3 lab-design/fixture_catalog.py --output /private/path/fixture-design.json</code>, then import that PRIVATE JSON and explicitly accept it. This reads installed fixture definitions only — it does not start a fixture server.</p>
 <p id="status" role="status" aria-live="polite"></p>
 <div id="stats" class="stats"></div><div id="staging" class="staged" hidden><h3>Replacement preview — not applied</h3>
@@ -39,4 +39,5 @@
 <div id="printSummary" class="print-summary"></div><p id="exportStatus" role="status" aria-live="polite"></p>
 <p class="footer-note">Separate authentically verified client/operator consent, revoke-at-use, original source-owner security repairs, the complete required hosted and named VPS CI, independent privacy/security review and explicit HUMAN GO remain mandatory before any production activity. This editor cannot satisfy those requirements.</p></section>
 </main><footer>LightUp · Lab-only planning · no network or execution · <a href="https://github.com/Zennay/Lightup/issues/1593">Issue #1593</a></footer>
+<script src="fixture-pack.js" defer></script>
 <script src="app.js" defer></script></body></html>

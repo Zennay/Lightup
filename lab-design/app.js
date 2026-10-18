@@ -355,6 +355,27 @@
       notify("status","HOLD: duplicated ID, invalid source or over-capacity append. Prior catalog preserved.",true);
     }
   }
+  function originalProfiles(){
+    try{
+      const pack=globalThis.LightUpOriginalFixturePack;
+      fail(pack&&pack.version==="lightup.installed_fixture_pack.v1"&&
+        pack.status==="DRAFT_ONLY"&&pack.source_identity_authenticated===false&&
+        pack.fixture_started===false&&pack.built_in_fixtures_only===true&&
+        ["authorized","consent_verified","dispatch_allowed","release_allowed"]
+          .every(k=>pack[k]===false));
+      const source=pack.source_sha256;
+      fail(source&&typeof source==="object"&&!Array.isArray(source)&&
+        Object.keys(source).length===2&&Object.values(source).every(
+          value=>typeof value==="string"&&/^[a-f0-9]{64}$/.test(value)));
+      staged=validateCatalog(pack.catalog);
+      showStage();
+      notify("status","ORIGINAL source declarations bundled at build time: "+
+        staged.length+" named fixture profiles staged, not applied. "+
+        "Source SHA-256 values are UNSIGNED byte fingerprints; no fixture or scan started.");
+    }catch(_){
+      notify("status","HOLD: bundled source declarations unavailable or malformed. Existing catalog preserved.",true);
+    }
+  }
   function demo(){
     if(items.length&&!confirm("Replace existing PRIVATE catalog with fictional demo? Save your original first."))return;
     const next=[
@@ -438,6 +459,7 @@
   $("clear").addEventListener("click",resetEditor);
   $("delete").addEventListener("click",deleteScenario);
   $("groundMode").addEventListener("change",toggleFindingMode);
+  $("originalProfiles").addEventListener("click",originalProfiles);
   $("demo").addEventListener("click",demo);
   $("forget").addEventListener("click",forget);
   $("appendCatalog").addEventListener("change",e=>{

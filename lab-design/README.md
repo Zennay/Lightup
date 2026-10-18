@@ -19,6 +19,12 @@
 - **Standalone human handoff brief:** download a completely script-free, no-network HTML briefing with only numeric scenario, target and planted severity totals, fixed disclaimers and explicit false authority fields. The browser print layout is independently redacted: original capability IDs and staged source-diff scenario identities are excluded even when visible in the private editor. The fictional demo is labeled in all exported formats.
 - **Aggregate redacted REVIEW_ONLY JSON** carries only scenario/target/IPv6 counts and expected-finding counts by severity. No original target IP, scenario/finding ID, name, description, title or capability name; four authority flags are literal false. Print only aggregate human review information.
 
+## One-click original fixture profiles — bundled into offline Studio
+
+The **Load original fixture profiles** button makes the same installed `PROFILES` and `expected_findings` data available without a command line. The deterministic standalone build runs the safe source packer `make_fixture_pack.py`, reads original `src/lightup/labfixtures.py` and `src/lightup/workers/http_baseline.py`, and embeds three original lab profile declarations plus unsigned SHA-256 fingerprints of these exact checked-out source files in `fixture-pack.js`. The browser button **stages** that catalog against whatever you are editing and shows the private scenario differences first. Nothing is replaced until explicit acceptance.
+
+All embedded targets are original-compatible numeric loopback fixture identities. The source pack and its SHA-256 are **not signed**, do not authenticate runtime behavior, do not prove findings and give **no scan, grant, consent or release authority**. The packer never constructs a fixture handler, binds a port, connects to a target or invokes a worker. If installed fixture definitions change, rebuild the standalone HTML and inspect the new source-bound draft; it is not automatically updated over the network.
+
 ## Import the actual installed LightUp lab fixture profiles
 
 The new opt-in `lab-design/fixture_catalog.py` reads **original** `lightup.labfixtures.PROFILES` and `expected_findings` declarations to produce a PRIVATE Studio catalog. It never constructs or starts the fixture HTTP server, invokes workers, contacts a target or assumes an external assessment is authorized.
