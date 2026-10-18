@@ -11,10 +11,15 @@ import argparse
 from getpass import getpass
 import json
 import sys
+from pathlib import Path
 
 from .auth_casebook import CasebookHold, _auth_actor, _source_snapshot
 from .revocation_stop import StopLedgerError, record_authenticated_stop
 from .stop_exposure import _read_exposure
+from .request_binding_readiness_cli import (
+    _assets as canonical_request_assets,
+    _source_snapshot as original_request_binding_source,
+)
 
 
 def _short(value: object, maximum: int = 180) -> str:
@@ -102,6 +107,60 @@ def _detail(database: str, user_id: str, client_id: str | None, eid: str) -> Non
     print(json.dumps(detail, sort_keys=True, indent=2))
 
 
+def _shortlist(db: str, actor: str, source: dict, engagement: str) -> None:
+    """Original source-owner administrative shortlist, never a grant."""
+    print("Private request-binding preview; no asset is contacted or authorized.")
+    proposed = input("Exact canonical asset literal(s), comma-separated: ").strip()
+    risk_literal = input("Proposed risk 1-4: ").strip()
+    try:
+        if risk_literal not in ("1", "2", "3", "4"):
+            raise ValueError("proposed risk must be a canonical integer")
+        if not proposed or len(proposed) > 8192:
+            raise ValueError("bounded canonical literal proposal required")
+        # The ORIGINAL source-owner request-bound predicate remains the sole
+        # matching criterion. This local menu never creates real credentials,
+        # consent, a grant or authority from a candidate label.
+        assets = canonical_request_assets(proposed.split(","))
+        report = original_request_binding_source(
+            Path(db), engagement_id=engagement, client_id=source["client_id"],
+            assets=assets, risk=int(risk_literal),
+            include_request_ids=False, include_labels=False,
+            include_assets=False, operator_user_id=actor,
+        )
+        authority = report.get("authority")
+        if (report.get("format") != "lightup.request_binding_preparation.v1"
+                or report.get("disposition") not in (
+                    "REVIEW_ONLY_SINGLE_CANDIDATE",
+                    "HOLD_AMBIGUOUS_CANDIDATES",
+                    "HOLD_NO_CANDIDATE",
+                )
+                or type(authority) is not dict
+                or any(value is not False for value in authority.values())
+                or not {"client_consent_verified","operator_consent_verified",
+                        "authorization_granted","execution_allowed",
+                        "release_approved"}.issubset(authority)):
+            raise ValueError("source-owner read not admitted")
+        summary = report["summary"]
+        print(json.dumps({
+            "status": report["disposition"],
+            "summary": {
+                "recorded_requests": summary["recorded_requests"],
+                "approved_candidate_matches": summary["approved_candidate_matches"],
+                "approved_but_not_compatible": summary["approved_but_not_compatible"],
+                "unbound_legacy_grant_rows": summary["unbound_legacy_grant_rows"],
+                "mismatch_reason_counts_non_authorizing": summary["mismatch_reason_counts_non_authorizing"],
+            },
+            "client_consent_verified": False,
+            "operator_consent_verified": False,
+            "authorization_granted": False,
+            "execution_allowed": False,
+            "release_approved": False,
+        }, sort_keys=True, indent=2))
+        print("Administrative shortlist is NOT independent consent, a stored grant, or a runtime permit.")
+    except (ValueError, TypeError, KeyError, PermissionError, OSError, OverflowError):
+        print("HOLD: original persisted operator, proposal or request-source integrity refused.")
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         prog="python -m lightup.scope_ops",
@@ -121,20 +180,23 @@ def main(argv: list[str] | None = None) -> int:
         while True:
             source = _load(args.database, actor, args.client)
             _list_cases(source)
-            print("Choose: [I]nspect exact case, [S]TOP exact case, [R]efresh, [Q]uit")
+            print("Choose: [I]nspect, [B]inding candidate shortlist, [S]TOP, [R]efresh, [Q]uit")
             choice = input("Action: ").strip().lower()
             if choice in ("q", "quit"):
                 print("Review closed; authorization_granted=false")
                 return 2
             if choice in ("r", "refresh"):
                 continue
-            if choice not in ("i", "inspect", "s", "stop"):
+            if choice not in ("i", "inspect", "s", "stop", "b", "binding"):
                 print("Unknown action; no mutation")
                 continue
             eid = input("Exact existing engagement ID: ").strip()
             row = _case(source, eid)
             if choice in ("i", "inspect"):
                 _detail(args.database, actor, args.client, eid)
+                continue
+            if choice in ("b", "binding"):
+                _shortlist(args.database, actor, source, eid)
                 continue
 
             # Existing original DomainStore/STOP source still revalidates the
