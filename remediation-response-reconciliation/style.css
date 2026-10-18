@@ -17,3 +17,20 @@ td details summary{cursor:pointer;color:#87dcbf;font-weight:650}
 .ownerHandoff select{max-width:500px;margin-top:.4rem}
 .ownerHandoff button{min-width:220px}
 @media(max-width:650px){.ownerHandoff button{width:100%}}
+
+/* PRIVATE self-declared HUMAN recipient brief, no browser-side execution actions */
+.briefItems{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr));gap:1rem}
+.briefCard{border:1px solid #41576c;background:#0c1c2d;border-radius:12px;padding:1rem;min-width:0}
+.briefCard h3{font-size:1.1rem;overflow-wrap:anywhere;margin:.15rem 0;color:#b0efd6}
+.briefCard p{margin:.5rem 0;overflow-wrap:anywhere}
+.briefCard details{border-top:1px solid #2d465e;padding-top:.65rem;margin-top:.8rem}
+.briefCard summary{cursor:pointer;color:#91ead0;font-weight:650}
+@media print {
+  header .eyebrow,#briefFile,#briefLoad,#briefForget,#briefPrint,#briefSearch,#briefFilter,
+  label[for=briefFile],.filters,footer{display:none!important}
+  :root{color-scheme:light;background:white;color:black}
+  body,main,section,.briefCard{background:white!important;color:black!important;box-shadow:none;border-color:#999}
+  .briefCard{break-inside:avoid}
+  #briefIdentity,#briefCount,.briefCard h3,.briefCard p{color:black!important}
+  .briefCard details:not([open]){display:block}
+}
