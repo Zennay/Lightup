@@ -69,8 +69,11 @@ def _workspace(blob):
                 raise Hold("incomplete or unexpected workspace ZIP members")
             if new_map:
                 from content_map import verify as verify_private_content_map
-                expected_content = (expected - {"private-original-source-map.json",
-                                                 "ORIGINAL-HUMAN-START-HERE.txt"}) | {"workspace-home.html"}
+                expected_content = {name for name in expected
+                                    if not name.startswith("original-private-agenda-")
+                                    and name not in {"private-original-source-map.json",
+                                                     "ORIGINAL-HUMAN-START-HERE.txt"}}
+                expected_content.add("workspace-home.html")
                 verify_private_content_map(z, expected_content,
                                            mapping["source_count"], mapping["reference_date"])
             if any(i.file_size > MAX_BYTES for i in infos
