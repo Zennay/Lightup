@@ -18,6 +18,14 @@ What an operator can actually do:
 
 This is intentionally a *relationship impact/work coordination viewer*, not another source owner, casebook replacement, client consent UI or inferred validity gate. It only follows exact original keys `requests.request_id`, `grants.approved_request_id`, `grants.engagement_id`, `engagements.engagement_id`, `risk_approvals.engagement_id`. A request is **not** linked directly to an engagement absent its stored grant relationship.
 
+## Newly delivered operator workflows
+
+**Connected impact dossiers:** select any original request, grant, engagement or risk decision to see the exact shortest recorded reference paths. The new selected-source actions offer either an **anonymous selected impact aggregate** (counts only, without original identifiers) or a **recipient-confirmed PRIVATE standalone HTML / structured JSON dossier** with original tenant, exact source SHA-256, paths, source observations and saved human-only notes. The portable HTML has no executable scripts, no external links/assets and a deny-by-default Content Security Policy. These exports are source-reference interpretation, not authentication, consent, revocation or approval.
+
+**Human group follow-up drafting:** select a source row and prepare bounded follow-up entries for the connected component's *unassigned* source-HOLD/pending/out-of-window rows, records with unresolved source references, or no-grant engagement observations. Choose non-approving human stage, self-declared reviewer, next action and proposed follow-up date. After one explicit confirmation the application adds those actions to the **local browser memory only**. Existing human notes are never replaced. These entries appear in the schedule and are transported only by the existing recipient-confirmed PRIVATE notes handoff.
+
+**Original source admission alignment:** the private CLI packager now validates whole Casebook source families, duplicates, counts, caseboard engagement membership and per-engagement recorded grants/risk rows, request/engagement/grant/risk shapes and source-declared HOLD/expiry/pending totals before publishing. A packet that cannot satisfy this original-source contract is refused **before** creating a workspace. Recipient inspection uses the same admission function to detect malformed or contradictory source files. Neither tool performs account authentication, changes the source database nor claims private file integrity proves issuer authenticity.
+
 ## Start with genuine original data
 
 Use the unchanged original authenticated Casebook exporter, which applies the existing DomainStore identity/lockout and tenant selection; do **not** fabricate a client grant, source approval, role, or proof. Inspect its supported CLI usage:
