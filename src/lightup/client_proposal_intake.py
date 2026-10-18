@@ -6,6 +6,7 @@ Never silently drop exclusions, schedule restrictions, or lab activity requests.
 """
 from __future__ import annotations
 
+import hashlib
 import json
 from pathlib import Path
 
@@ -122,10 +123,14 @@ def load_studio_proposal(filename: str) -> dict:
     if listed:
         explanation.append("Requested planning activities (NOT permissions): " + ", ".join(listed))
     explanation.append(notes.strip())
+    # Exact bytes are a review continuity hint, never an authenticated signature.
+    raw_sha256 = hashlib.sha256(raw).hexdigest()
+    explanation.append("Untrusted proposal-file SHA-256 (not consent): " + raw_sha256)
     native = prepare_request(
         proposal["requested_assets"], proposal["requested_risk"],
         "\n".join(explanation),
     )
+    native["proposal_file_sha256"] = raw_sha256
     native["source_format"] = "lightup.scope_proposal_draft/v1"
     native["source_verified"] = False
     native["scope_fingerprint_authenticated"] = False
