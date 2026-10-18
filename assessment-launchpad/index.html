@@ -51,6 +51,12 @@
       </div>
       <label for="studio-select">Original scenario (one at a time)</label>
       <select id="studio-select" disabled><option value="">Choose a locally imported original Studio catalog</option></select>
+      <div class="scaffold-controls">
+        <div><label for="studio-scheme">Human-chosen scheme</label><select id="studio-scheme"><option value="http">HTTP lab only</option><option value="https">HTTPS lab only</option></select></div>
+        <div><label for="studio-port">Human-chosen explicit port (1–65535)</label><input id="studio-port" type="number" min="1" max="65535" step="1" placeholder="e.g. 18080"></div>
+      </div>
+      <button id="studio-scaffold" type="button" class="quiet" disabled>Prepare URL batch from selected original lab IPs</button>
+      <p class="fine">This only drafts local text. You choose protocol and port; no port is assumed, no DNS or endpoint contacted. Existing unsaved batch selections require confirmation before replacement.</p>
       <p id="studio-status" role="status" aria-live="polite">No original Studio draft imported. Plain lab-batch preparation remains available.</p>
       <div class="buttons"><button id="studio-export" type="button" disabled>Download exact private studio-catalog.json</button></div>
       <p class="fine">Browser matching is only an advisory operator preview. The native <code>build.py --catalog-file ... --scenario-id ...</code> and original <code>read_selected_lab_design</code> validators must still approve the complete byte-exact source before any handoff.</p>
