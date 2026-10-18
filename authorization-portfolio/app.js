@@ -13,6 +13,7 @@ const states=['new','triage','escalate','discussed'];
 const teams=['unassigned','security','privacy','client-operations','platform'];
 const HASH=/^[a-f0-9]{64}$/;
 let reports=[];
+let historical=null;
 const reportLimit=12;
 const unknown=()=>{throw Error('HOLD: source schema/contents are ambiguous, altered or unsupported. Use the original operator JSON exporter.');};
 const object=v=>v!==null&&typeof v==='object'&&!Array.isArray(v);
@@ -329,6 +330,77 @@ async function admit(files){
  for(const r of next)delete r.recordMap;
  reports=next;setMessage('feedback','Imported '+next.length+' original, untrusted report scopes. No source identity or authorization was verified.');$('priorityFilter').value='all';$('stateFilter').value='all';draw();
 }
+async function importHistory(files){
+ if(files.length<2||files.length>8||files.some(f=>!f||!f.size||f.size>2000000)||files.reduce((n,f)=>n+f.size,0)>8000000)throw Error('HOLD: choose 2–8 existing original reports (2 MiB/file; 8 MiB total).');
+ const next=[],scopes=new Set(),digests=new Set();
+ for(const file of files){
+  const bytes=await file.arrayBuffer(),str=new TextDecoder('utf-8',{fatal:true}).decode(bytes);
+  if(str.charCodeAt(0)===0xfeff||str.length>2000000)unknown();
+  const r=validateReport(parseStrict(str)),hash=await digest(bytes);
+  if(hash){if(digests.has(hash))throw Error('HOLD: duplicate byte-identical source revision.');digests.add(hash);}
+  scopes.add(r.scope);next.push(r);
+ }
+ if(scopes.size!==1)throw Error('HOLD: all historical source selections must be identical.');
+ const revisions=next.map((r,i)=>{
+  const earlier=i?next[i-1].recordMap:null;
+  const changes={new:0,changed:0,absent:0,unchanged:0};
+  if(earlier){
+   for(const [key,record] of r.recordMap){
+    const before=earlier.get(key);changes[!before?'new':before.revision===record.revision?'unchanged':'changed']++;
+   }
+   for(const key of earlier.keys())if(!r.recordMap.has(key))changes.absent++;
+  }
+  return {slot:i+1,selection:r.description,pending:r.counts.pending,
+   historical_decisions:r.counts.historical_decisions,stored_grants:r.counts.grants,
+   severity:{...r.severity},flags:{...r.flagCount},changes};
+ });
+ // No original record pseudonyms, filenames, scope fingerprint, byte hash,
+ // real asset or client identity survives the local comparison.
+ historical={disposition:'REVIEW_ONLY',authority:{...stamp.authority},display_order_unverified:true,source_unsigned:true,revisions};
+ drawHistory();
+ setMessage('historyFeedback','Imported '+revisions.length+' original copies with one matching source selection. Display order is unverified; changes, absence and approvals are not permission or repairs.');
+}
+function drawHistory(){
+ const root=$('historyPanel');root.replaceChildren();if(!historical)return;
+ const table=e('table'),thead=e('thead'),row=e('tr');
+ for(const name of ['Selected position*','Critical flags','High flags','Pending requests','Stored grants','New records','Changed','Absent','Unchanged'])row.append(e('th',name));
+ thead.append(row);table.append(thead);
+ const body=e('tbody');
+ for(const r of historical.revisions){
+  const row=e('tr');
+  for(const value of ['#'+r.slot,r.severity.critical,r.severity.high,r.pending,r.stored_grants,r.slot===1?'baseline':r.changes.new,r.slot===1?'—':r.changes.changed,r.slot===1?'—':r.changes.absent,r.slot===1?'—':r.changes.unchanged])row.append(e('td',value));
+  body.append(row);
+ }
+ table.append(body);root.append(table);
+ const flags=new Set(historical.revisions.flatMap(r=>Object.keys(r.flags)));
+ const bands=name=>CRITICAL.has(name)?0:HIGH.has(name)?1:MEDIUM.has(name)?2:3;
+ if(flags.size){
+  root.append(e('h3','Reported source warning trajectory by fixed flag category'));
+  const grid=e('table'),header=e('tr');header.append(e('th','Original exporter warning'));
+  historical.revisions.forEach(r=>header.append(e('th','Selected #'+r.slot)));
+  header.append(e('th','First-to-last difference*'));
+  const h=e('thead');h.append(header);grid.append(h);const body=e('tbody');
+  for(const name of [...flags].sort((a,b)=>bands(a)-bands(b)||a.localeCompare(b))){
+   const row=e('tr');row.append(e('td',name.replaceAll('_',' ')));
+   const counts=historical.revisions.map(r=>r.flags[name]||0);
+   for(const count of counts)row.append(e('td',count));
+   row.append(e('td',counts.at(-1)-counts[0]));body.append(row);
+  }
+  grid.append(body);root.append(grid);
+ }
+ const first=historical.revisions[0],last=historical.revisions.at(-1);
+ root.append(e('p','Source first-to-last (selected order) differences: critical flag count '+(last.severity.critical-first.severity.critical)+'; high flag count '+(last.severity.high-first.severity.high)+'. Not an authenticated timeline or security outcome.','callout'));
+ root.append(e('p','*The reviewer selects file order. A missing record is NOT resolved or revoked; a recorded approval is NOT verified client/operator consent.','hint'));
+}
+function exportHistorical(){
+ if(!historical){setMessage('historyFeedback','HOLD: import an original same-selection history first.');return;}
+ const quote=v=>'"'+String(v).replaceAll('"','""')+'"';
+ const rows=[['selected_position_unverified','critical_reported_flags','high_reported_flags','medium_reported_flags','pending_requests','historical_administrative_decisions_not_consent','stored_grants_not_authorization','new_rows','changed_rows','absent_rows_not_remediated','unchanged_rows','review_only','source_unsigned','client_consent_verified','operator_consent_verified','authorization_granted','execution_allowed','release_approved']];
+ for(const r of historical.revisions)rows.push([r.slot,r.severity.critical,r.severity.high,r.severity.medium,r.pending,r.historical_decisions,r.stored_grants,r.changes.new,r.changes.changed,r.changes.absent,r.changes.unchanged,'REVIEW_ONLY',true,false,false,false,false,false]);
+ download('lightup-authorization-historical-source-summary.csv',rows.map(r=>r.map(quote).join(',')).join('\r\n')+'\r\n','text/csv');
+ setMessage('historyFeedback','Downloaded private local aggregate review; selected file order and source origin remain unauthenticated.');
+}
+
 async function save(){
  if(!reports.length||reports.some(r=>!r.digest))throw Error('HOLD: secure browser SHA-256 unavailable; private exact-source resume disabled.');
  const draft={...stamp,sources:reports.map(r=>({byte_sha256:r.digest,state:r.state,team:r.team,due:r.due,flag_discussion:r.flagActions}))};
@@ -358,6 +430,9 @@ async function restore(file){
  changed.forEach((data,i)=>Object.assign(reports[i],data));draw();
  setMessage('exportFeedback','Restored only local human discussion stages against exact reopened original bytes; no approval/consent or permission restored.');
 }
+$('historyFiles').addEventListener('change',async event=>{try{await importHistory([...event.target.files]);}catch(error){setMessage('historyFeedback',error.message.startsWith('HOLD')?error.message:'HOLD: historical source rejected; prior view preserved.');}finally{event.target.value='';}});
+$('clearHistory').addEventListener('click',()=>{historical=null;$('historyPanel').replaceChildren();setMessage('historyFeedback','Historical summary forgotten.');});
+$('exportHistory').addEventListener('click',exportHistorical);
 $('sourceFiles').addEventListener('change',async ev=>{try{await admit([...ev.target.files]);}catch(err){setMessage('feedback',err.message.startsWith('HOLD')?err.message:'HOLD: source import failed; existing reports unchanged.');}finally{ev.target.value='';}});
 $('clear').addEventListener('click',()=>{reports=[];$('overview').hidden=true;setMessage('feedback','Forgot all original source summaries and local stages.');setMessage('exportFeedback','');});
 $('priorityFilter').addEventListener('change',draw);$('stateFilter').addEventListener('change',draw);
