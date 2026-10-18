@@ -1,0 +1,37 @@
+# Scope Readiness Workspace — private local human coordination (DRAFT/HOLD)
+
+Open `coordination/scope-readiness.html` locally from this PR checkout. This is a **user-facing, static coordination product**: no installation, network, account, database, service, targets, DNS, API calls or browser persistence. It is deliberately separate from the actively owned authorization domain/source and the separate Studio, client CLI and operator desk branches.
+
+## What it delivers
+
+1. Import one or several **real LightUp Scope Planning Studio v1** `lightup.scope_proposal_draft` JSON files produced by [Scope Proposal Studio PR #1567](https://github.com/Zennay/Lightup/pull/1567). Each source is bounded to 64 KiB; up to 20 different versions per board. Reject non-`DRAFT_ONLY` or explicitly positive authority/consent/grant fields. The imported asset values, client free-text notes and source files never enter exports. Each record receives SHA-256 of **its exact original UTF-8 source bytes** (not the Studio's stable fingerprint).
+2. Plan six concrete preparation tracks **per distinct draft version**: client identity/asset ownership evidence, exact scope/exclusions, client consent coordination, independent operator review, risk/window/revocation & STOP coordination, and evidence privacy/incident handoff. Each track has an optional coordinator label, target date, next action/blocker and one of *not started*, *waiting* or *prepared but unverified*. **A prepared checklist is not a signature or validated permission.**
+3. Track aggregate outstanding preparation work, overdue target dates and the number of sources that must be re-attached. Filter for incomplete, source-missing or risk-4 cases. Operator-friendly details and a printable review brief identify specific blockers.
+4. Download a **private local, review-only workspace JSON** containing source SHA hints, limited proposal metadata and user-entered coordination actions, without target identities, raw asset names, full Studio payloads or notes. Restoration is atomic, revalidates strict version/security/state structure, and **marks every source as unbound** until the same original file is reselected and SHA-256 matched. Older notes cannot silently acquire new source meaning.
+5. Export a private, formula-safe CSV action register suitable for coordination spreadsheets. Every row expressly says authorization **NO**. Only user clicks download files; no auto-save to browser storage, telemetry or remote upload.
+6. Unsaved-change confirmation, full local reset, source file batch atomicity, bounded tracking input and accessible mobile-friendly layout.
+
+## Readiness is not authorization
+
+This is a paperwork tracking board, not an approval queue. Even if every row says **prepared**, the board remains **REVIEW_ONLY / DRAFT-HOLD**, all exported `authenticated`, `client_consent`, `operator_consent`, `authorization`, `risk_approved`, `grant`, `revocation_checked`, `execution`, `scan`, and `release` security flags are **literal false**. Imported source labels, source SHA-256, due dates, coordinator names, prepared fields, selected risk levels and printouts are **self-reported** and do not establish authenticated identity, possession of an asset, client consent, operator approval, approval of a proposed risk-4 activity, action-time scope/revocation enforcement or permission to contact a target.
+
+Source validation is about **local format and source continuity**, not domain validation. A standalone HTML file must never be allowed to create `DomainStore` records, grants, operator approvals or scan/execution requests. For real workflows use the separately authenticated request/approval routes after the original release gates; independently verify client asset ownership and action-time revocation.
+
+For privacy, exported snapshots still contain human-entered owner labels, action notes, calendar targets, source fingerprints and possible project labels. Store/share them as potentially sensitive internal casework; avoid pasting personal data, credentials, asset hostnames or client secrets into action notes. The source asset contents are never sent to the board export. An exported JSON or CSV is unsigned and editable.
+
+## Relationship to other active work
+
+- [#1567 Studio](https://github.com/Zennay/Lightup/pull/1567): creates the proposal; this workspace consumes its v1 export, **does not edit or replace** any Studio-owned code.
+- [#1572 Scope Schedule Board](https://github.com/Zennay/Lightup/pull/1572): operator time-window what-if scheduling; this workspace instead tracks **human follow-up workstreams** and source-bound document custody.
+- [#1571 Client request desk](https://github.com/Zennay/Lightup/pull/1571) and [#1569 Operator readiness](https://github.com/Zennay/Lightup/pull/1569): authenticated request and operator-facing tools; this workspace is an offline **planning** companion, not a substitute for those capabilities.
+- [#1570](https://github.com/Zennay/Lightup/pull/1570), [#1566](https://github.com/Zennay/Lightup/pull/1566), [#177](https://github.com/Zennay/Lightup/issues/177), [#829](https://github.com/Zennay/Lightup/issues/829): domain-source owners and release-critical provenance, revocation and scope bindings. None of their files are touched.
+
+## Example workflow
+
+Create `lightup-scope-draft.json` in the Studio. Open the local `coordination/scope-readiness.html`; select one or more Studio drafts. Assign a coordinator label and action date to each missing workstream. Mark a task **prepared but unverified** when the preparatory artifact is gathered; keep real sign-offs in the authenticated systems. Export the private register before closing the tab. When resuming, import that register and re-attach the exact Studio JSON files; unbound sources remain prominently HOLD. Export a CSV and send it only through separately approved internal channels.
+
+The v1 snapshot schema is `kind: lightup.scope_readiness_workspace`, `schema_version: 1`, `disposition: REVIEW_ONLY`, mandatory false `security` flags, and an array of strict per-source action registers. Snapshot maximum 256 KiB; source maximum 64 KiB; no silent partial batch import.
+
+## Release posture
+
+**Notion: INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD.** An add-only isolated product draft branch is not a safe live launch. Do not merge or deploy while release remains held. Mandatory existing hosted and permanent registered VPS CI, exact-head integration and ownership review, independent security/privacy, authentic independent client/operator consent and at-use revocation checks, durable request-to-grant evidence, and explicit HUMAN GO remain prerequisites for a legitimate release. No tests/regression/QA suites are added or run in this work package, and none of those gates are changed.
