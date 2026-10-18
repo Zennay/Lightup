@@ -22,9 +22,29 @@ The private workboard now automatically ranks original **missing comparison case
 
 **Save PRIVATE source-bound human draft** (optional) exports *only* SHA-256 of original catalog raw bytes, ordered SHA-256 of each original imported completed comparison report, one local human stage per original lab scenario and four literal false authority flags. The browser does not store those hashes or stages anywhere automatically. **Restore an exact-source PRIVATE draft** requires *all* identical original file bytes, case membership and source order to have been reimported. An invalid or mismatched draft leaves current human work untouched. The implementation computes hashes with browser Web Crypto and fails gracefully if unavailable; it never sends source bytes, and never includes those hashes or source identities in the **anonymous** JSON/CSV/HTML exports. The private draft is sensitive correlation metadata and must not be shared as an anonymous artifact or relied on as source authenticity, consent or remediation evidence.
 
+### One PRIVATE self-contained workroom from genuine existing lab source files
+
+This workflow does **not** create a lab run. To avoid manually selecting the same sources every time, [private_workroom.py](private_workroom.py) makes a second, deliberately sensitive, standalone HTML file containing only **your own original existing** Lab Scenario Studio private JSON and 1–8 completed original comparator cohort reports. It embeds raw JSON bytes **only as inert base64 in an HTML template**, never as active script or a network payload. The existing standalone app checks and admits the original JSON *after an operator explicitly clicks* **Load embedded PRIVATE originals**. Incomplete, duplicated, contradictory or incompatible source packs produce HOLD and preserve any already open browser workspace.
+
+Inputs **must** be regular owner-owned files with mode \`0600\` (no group/other access, no symlinks); each private catalog is <=1 MiB and each original finished report <=256 KiB. Example, after downloading the branch's \`standalone.html\` plus \`private_workroom.py\` into one private directory:
+
+\`\`\`bash
+python3 assessment-lineage/private_workroom.py \
+  --catalog /private/lab-original.json \
+  --report /private/original-cohort-A.json \
+  --report /private/original-cohort-B.json \
+  --output /private/lightup-PRIVATE-workroom.html
+\`\`\`
+
+The output **must not already exist**. Creation uses exclusive O_EXCL mode \`0600\`, owner-only files and current checked-in static standalone JS/CSS SHA256 pins, never a user-supplied HTML template. The new PRIVATE HTML contains sensitive source byte strings: store it separately and **never share or upload** it, unlike aggregate-only anonymous exports. No network requests, dynamic imports, credentials, database access, shell invocation, tool/scanner execution or CI run is done by this helper.
+
+When opened, the browser still displays the no-authority original source import boundary; nothing runs or auto-loads. Click **Load embedded PRIVATE originals** to atomically admit exactly the original source catalog and reports. Only source identities and declared ground-truth counts remain in memory after admission, not original IPs, descriptions or finding IDs. The original byte-bound private stage resume continues to work if browser crypto is available, because the in-memory source SHA-256 corresponds to the exact embedded original bytes. Template text is cleared after successful admission. A copied PRIVATE HTML is still a copy of original sensitive sources even after browser memory clears it; deleting the original file requires separate human action.
+
+The standalone public checked-in version carries **no original source bundle**. Browser previews through GitHub's own file renderer are not a live deployed app; download the HTML files and open on a trusted offline workstation. Both original source modules are separate unmerged DRAFT branches and are not asserted to be production-integrated.
+
 ### Source boundary and standalone build
 
-Only these new isolated paths are owned: \`assessment-lineage/{app.js,index.html,style.css,standalone.html,build_standalone.py,README.md}\`. No modifications to original labeval, labrunner, auth/domain/grant/consent, original assessment PRs, scanner/handler, tests/QA or CI workflows. Build reproducibly with the Python standard library: \`python3 assessment-lineage/build_standalone.py\`. Inspection may use Node syntax check only; do not write or run a QA/regression suite under 17 October policy.
+Only these new isolated paths are owned: \`assessment-lineage/{app.js,index.html,style.css,standalone.html,build_standalone.py,private_workroom.py,README.md}\`. No modifications to original labeval, labrunner, auth/domain/grant/consent, original assessment PRs, scanner/handler, tests/QA or CI workflows. Build reproducibly with the Python standard library: \`python3 assessment-lineage/build_standalone.py\`. Inspection may use Node syntax check only; do not write or run a QA/regression suite under 17 October policy.
 
 Files are untrusted and **not authenticated**, even if source format matches. Original source exact-head hosted and permanently registered named VPS CI, independent security/privacy review, real separate authenticated client and operator consent with action-time revocation, original authorization issue source fixes and explicit human GO all remain necessary before *any* merge, deployment or active target behavior. This isolated draft offers **no** such permission. No branch merge or production deployment is implied by GitHub “mergeable”.
 
