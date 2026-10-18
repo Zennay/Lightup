@@ -63,7 +63,13 @@
 <label>Native PRIVATE Casework v1 JSON<input id="caseworkImport" type="file" accept=".json,application/json" disabled></label>
 <div><p id="caseworkState">No native Casework imported.</p><button id="caseworkImportButton">Attach original Casework read-only</button><button class="secondary" id="detachCasework" disabled>Detach original Casework</button></div>
 </div></section>
-<section class="card"><h2>6 · Original-finding evidence coverage (PRIVATE)</h2>
+<section class="card"><h2>6 · Original Evidence Review v2 integration (read-only)</h2>
+<p>Import the complete original independently shared Evidence Review v2 PRIVATE packet. It must match exactly the same original finding source SHA and every original finding ID. Human evidence stage and a human retest-request reference indicator appear in the unified coverage table. A reference is not an approved retest request or proof that remediation succeeded.</p>
+<div class="grid">
+<label>Native PRIVATE Evidence Review v2 JSON<input id="evidenceImport" type="file" accept=".json,application/json" disabled></label>
+<div><p id="evidenceState">No native Evidence Review imported.</p><button id="evidenceImportButton">Attach Evidence Review v2 read-only</button><button class="secondary" id="detachEvidence" disabled>Detach Evidence Review</button></div>
+</div></section>
+<section class="card"><h2>7 · Original-finding evidence coverage (PRIVATE)</h2>
 <p>Review which exact original findings have local fingerprints in this desk, prioritising critical/high rows without any local registration. Absence in this browser is <strong>not</strong> proof that evidence does not exist elsewhere. Original source retest labels are only source claims.</p>
 <p id="coverageSummary" role="status"></p>
 <div class="grid">
@@ -78,9 +84,9 @@
 <p id="coverageShown"></p>
 <div class="scroll"><table><thead><tr>
 <th>Original ID</th><th>Severity</th><th>Source retest claim</th>
-<th>Local files</th><th>Human review</th><th>Follow-up</th><th>Original Casework v1 human status / owner / date</th><th>Human action</th>
+<th>Local files</th><th>Human review</th><th>Follow-up</th><th>Original Casework v1 human status / owner / date</th><th>Original Evidence Review v2 human stage / retest reference</th><th>Human action</th>
 </tr></thead><tbody id="coverageRows"></tbody></table></div></section>
-<section class="card"><h2>7 · Offline handoff</h2>
+<section class="card"><h2>8 · Offline handoff</h2>
 <div class="grid">
 <div><h3>PRIVATE human draft</h3><p>Includes original source SHA, self-declared context, filenames, checksums, and human notes. Protect exported data separately.</p><button id="export" disabled>Export PRIVATE JSON</button></div>
 <div><h3>Restore PRIVATE draft</h3><p>Load only with the exact same original CSV, client and engagement. Reject incomplete, mismatched or elevated authority packets.</p>
