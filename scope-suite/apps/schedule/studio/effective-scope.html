@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="referrer" content="no-referrer"><title>LightUp · Effective Scope Explorer</title>
+<style>
+:root{font:15px/1.55 system-ui,Segoe UI,sans-serif;color:#f1f7fc;background:#0b1524;--line:#40526a;--mint:#82e5cb;--muted:#afc1d3}
+*{box-sizing:border-box}body{margin:0}header{padding:27px max(20px,calc((100vw - 1210px)/2));background:#112139;border-bottom:1px solid #374e68}.brand{font-size:.8rem;letter-spacing:.13em;font-weight:800;color:var(--mint)}h1{font-size:clamp(30px,4vw,45px);margin:4px 0;letter-spacing:-.04em}p{color:var(--muted)}main{max-width:1250px;margin:auto;padding:23px 18px 65px}.grid{display:grid;grid-template-columns:1.1fr 1fr;gap:17px}.card{background:#14233a;border:1px solid var(--line);border-radius:16px;padding:20px;margin:0 0 17px;min-width:0}.card h2{margin:0 0 9px;font-size:1.2rem}input{width:100%;background:#0b1728;color:#fff;border:1px solid #657a94;padding:12px;border-radius:8px;font:inherit}.banner{border:1px solid #92774f;background:#2e271e;color:#ffe9c6;border-radius:10px;padding:13px;margin-bottom:20px}.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(125px,1fr));gap:11px}.stat{background:#203346;border-radius:8px;padding:12px;min-width:0}.stat strong{color:var(--mint);display:block;font-size:1.25rem;overflow-wrap:anywhere}.pill{border:1px solid #6c8197;padding:3px 9px;border-radius:30px;font-size:.72rem;font-weight:800}.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:15px}button{padding:10px 14px;border-radius:8px;border:1px solid #66819e;background:#2d4760;color:#f8ffff;font:inherit;font-weight:750;cursor:pointer}button.primary{background:var(--mint);color:#102728;border-color:var(--mint)}button:disabled{opacity:.4;cursor:not-allowed}.scroll{max-height:650px;overflow:auto}.row{background:#1e3048;border-radius:8px;padding:11px;margin:8px 0;overflow-wrap:anywhere}.row strong{display:block}small{color:var(--muted)}pre{max-height:520px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;padding:13px;border:1px solid #3d516a;border-radius:9px;background:#091626;font:12px/1.5 Consolas,monospace}.alert{color:#ffe0b1;background:#33291f;padding:9px;margin:8px 0;border-left:3px solid #dcb16e}.empty{color:var(--muted)}@media(max-width:850px){.grid{grid-template-columns:1fr}header{padding:20px}}@media print{body{background:#fff;color:#000}header,.actions,.inputs{display:none}.card{border:0;background:#fff;color:#000}.row,.stat{color:#000;background:#eee}pre{color:#000;background:#fff;max-height:none}}
+</style></head><body>
+<header><div class="brand">LIGHTUP / LOCAL SCOPE PLANNING</div><h1>Effective Scope Explorer</h1><p>Inspect proposed IPv4/IPv6 ranges, explicitly excluded address space and the remaining coverage in human-readable CIDR segments. All data remains local.</p></header>
+<main>
+<div class="banner"><strong>Review aid only.</strong> These ranges are user-entered proposals, not a verified authorization policy. No DNS lookups, identity/asset ownership checks, grants, consent, revocation verification, network contact or scanning occur. Operators must separately review exclusions and true scope membership.</div>
+<div class="grid">
+<section>
+<div class="card inputs"><h2>Import scope proposal</h2>
+<p>Use a v1 JSON draft exported by Scope Proposal Studio. File stays in memory (≤64 KiB); this page does not contact a server or save browser storage.</p>
+<input id="file" type="file" accept=".json,application/json">
+<p id="status" role="status" aria-live="polite">No proposal loaded.</p>
+<div class="actions"><button id="export" class="primary" disabled>Export coverage preview</button><button id="print" disabled>Print coverage brief</button><button id="clear">Clear</button></div>
+</div>
+<div class="card"><h2>Proposal detail <span class="pill">DRAFT ONLY</span></h2>
+<p id="identity">Import a proposal to inspect.</p>
+<div class="stats">
+<div class="stat"><strong id="ipv4">—</strong>IPv4 address count</div>
+<div class="stat"><strong id="ipv6">—</strong>IPv6 address count</div>
+<div class="stat"><strong id="hosts">—</strong>Exact hostnames</div>
+<div class="stat"><strong id="segments">—</strong>Displayed CIDR segments</div></div>
+<h3>Manual-review warnings</h3><div id="warnings" aria-live="polite"><p class="empty">No inputs.</p></div></div>
+<div class="card"><h2>Declared source inputs</h2><div id="inputs" class="scroll"><p class="empty">No proposal.</p></div></div>
+</section>
+<section>
+<div class="card"><h2>Remaining proposed address space</h2><p>Numeric preview after subtracting IP/CIDR exclusions. The segment list is bounded; a truncated preview never represents the complete proposed range.</p>
+<div id="coverage" class="scroll"><p class="empty">Import a scope draft.</p></div></div>
+<div class="card"><h2>Bounded review export</h2><pre id="json">No coverage data.</pre></div>
+</section>
+</div>
+<p><a href="./index.html" style="color:#82e5cb">← Back to planning workspace</a></p></main>
+<script src="./scope-network.js"></script><script src="./scope-fingerprint.js"></script><script src="./planning-window.js"></script>
+<script>
+(function(){
+'use strict';
+const $=id=>document.getElementById(id);
+let draft=null,review=null;
+function txt(parent,tag,value,cls){const e=document.createElement(tag);e.textContent=value;if(cls)e.className=cls;parent.append(e);return e;}
+function valid(d) {
+ return d&&!Array.isArray(d)&&d.schema_version===1&&d.kind==='lightup.scope_proposal_draft'&&d.state==='DRAFT_ONLY'&&
+ d.authorization===false&&d.client_consent===false&&d.operator_consent===false&&d.grant===false&&d.execution===false&&
+ typeof d.proposal_name==='string'&&d.proposal_name.length<=120&&typeof d.client_label==='string'&&d.client_label.length<=100&&
+ typeof d.notes==='string'&&d.notes.length<=3000&&['authorized_assessment','analysis_only'].includes(d.requested_mode)&&
+ Number.isInteger(d.requested_risk)&&d.requested_risk>=1&&d.requested_risk<=4&&
+ Array.isArray(d.requested_assets)&&d.requested_assets.length>0&&d.requested_assets.length<=80&&
+ Array.isArray(d.excluded_assets)&&d.excluded_assets.length<=80&&
+ [...d.requested_assets,...d.excluded_assets].every(v=>typeof v==='string'&&v.length<=253&&LightUpScopeNetwork.parse(v)!==null)&&
+ d.proposed_window_local&&typeof d.proposed_window_local==='object'&&
+ ['start','end'].every(k=>d.proposed_window_local[k]===null||(typeof d.proposed_window_local[k]==='string'&&/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(d.proposed_window_local[k])))&&
+ LightUpPlanningWindow.validateStored(d.proposed_window_local,d.proposed_window_utc)&&
+ d.proposed_activities&&typeof d.proposed_activities==='object'&&
+ ['passive_analysis','configuration_review','private_lab_network_checks'].every(k=>typeof d.proposed_activities[k]==='boolean');
+}
+function clear(){
+ draft=null;review=null;$('identity').textContent='Import a proposal to inspect.';
+ for(const key of ['ipv4','ipv6','hosts','segments'])$(key).textContent='—';
+ for(const id of ['warnings','inputs','coverage'])$(id).replaceChildren();
+ $('status').textContent='No proposal loaded.';$('json').textContent='No coverage data.';
+ $('export').disabled=true;$('print').disabled=true;
+}
+function render(){
+ if(!draft){clear();return;}
+ const source=LightUpScopeNetwork.describeEffective(draft.requested_assets,draft.excluded_assets,180);
+ if(!source){clear();$('status').textContent='Invalid or ambiguous scope refused.';return;}
+ review={
+  kind:'lightup.scope_coverage_preview',schema_version:1,disposition:'REVIEW_ONLY',
+  authenticated:false,asset_ownership_verified:false,client_consent:false,operator_consent:false,
+  authorization:false,scope_approved:false,grant:false,revocation_checked:false,execution:false,scan:false,release:false,
+  unsigned_revision_sha256:draft.scope_fingerprint_sha256||null,proposal_name:draft.proposal_name,
+  unverified_client_label:draft.client_label,requested_risk:draft.requested_risk,
+  requested_mode:draft.requested_mode,
+  declared_assets:draft.requested_assets,declared_exclusions:draft.excluded_assets,
+  proposed_window_utc:draft.proposed_window_utc||null,
+  effective_numeric_cidrs:source.groups,
+  effective_hostnames:source.hostnames,
+  effective_address_counts:source.total,preview_truncated:source.truncated,
+  limitations:'Exact numeric CIDR subtraction and literal hostname comparison only; no DNS, ownership, authorization, consent, at-use revocation or enforcement.'
+ };
+ $('status').textContent='Untrusted proposal imported. No scope authorization exists.';
+ $('identity').textContent=(draft.proposal_name||'Unnamed')+' · '+draft.requested_mode+' · risk '+draft.requested_risk+' · client label '+(draft.client_label||'none');
+ $('ipv4').textContent=source.total.ipv4;$('ipv6').textContent=source.total.ipv6;
+ $('hosts').textContent=source.total.hostnames;$('segments').textContent=source.groups.length+(source.truncated?' +':'');
+ const warnings=$('warnings');warnings.replaceChildren();
+ const items=LightUpScopeNetwork.inspect(draft.requested_assets,draft.excluded_assets);
+ if(source.truncated)txt(warnings,'p','CIDR preview truncated at 180 rows; exported review is also incomplete.','alert');
+ if(!items.length&&!source.truncated)txt(warnings,'p','No local syntax/overlap warnings detected. Independent review is still mandatory.','empty');
+ for(const w of items)txt(warnings,'div',(w.level==='error'?'ERROR: ':'REVIEW: ')+w.message,'alert');
+ const inputs=$('inputs');inputs.replaceChildren();
+ txt(inputs,'h3','Proposed includes ('+draft.requested_assets.length+')');
+ for(const value of draft.requested_assets)txt(inputs,'div','+ '+value,'row');
+ txt(inputs,'h3','Explicit exclusions ('+draft.excluded_assets.length+')');
+ if(!draft.excluded_assets.length)txt(inputs,'p','No exclusions declared.','empty');
+ for(const value of draft.excluded_assets)txt(inputs,'div','− '+value,'row');
+ const container=$('coverage');container.replaceChildren();
+ if(!source.groups.length&&!source.hostnames.length)txt(container,'p','No address space remains after declared exclusions.','empty');
+ for(const g of source.groups){
+  const box=document.createElement('div');box.className='row';container.append(box);
+  txt(box,'strong',g.asset);txt(box,'small',g.family.toUpperCase()+' · '+g.address_count+' address(es) · '+g.start+' → '+g.end);
+ }
+ if(source.hostnames.length)txt(container,'h3','Exact hostnames (not DNS-resolved)');
+ for(const h of source.hostnames)txt(container,'div',h,'row');
+ if(source.truncated)txt(container,'p','PREVIEW TRUNCATED — use a smaller scope before relying on any displayed review material.','alert');
+ $('json').textContent=JSON.stringify(review,null,2);
+ $('export').disabled=false;$('print').disabled=false;
+}
+$('file').addEventListener('change',async e=>{
+ const file=e.target.files[0];e.target.value='';if(!file)return;
+ try{
+  if(file.size>65536)throw Error('file limit exceeded');
+  const d=JSON.parse(await file.text(),(k,v)=>['__proto__','constructor','prototype'].includes(k)?undefined:v);
+  if(!valid(d))throw Error('unsupported or unsafe schema');
+  const digest=await LightUpScopeDigest.fingerprint(d);
+  if(d.scope_fingerprint_sha256!==undefined&&(!digest||digest!==d.scope_fingerprint_sha256))throw Error('scope SHA mismatch');
+  d.scope_fingerprint_sha256=digest;draft=d;render();
+ }catch(error){clear();$('status').textContent='Import refused: '+error.message;}
+});
+function download(name,body){
+ const blob=new Blob([body],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');
+ a.href=url;a.download=name;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),500);
+}
+$('export').addEventListener('click',()=>{if(review)download('lightup-effective-scope-preview.json',JSON.stringify(review,null,2)+'\n');});
+$('print').addEventListener('click',()=>{if(review)window.print();});
+$('clear').addEventListener('click',clear);
+})();
+</script></body></html>
