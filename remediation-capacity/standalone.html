@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-+q+vVBgp5v/82io5FbCWD/HkYYA1zuWjCOJeLRrhgj0=' 'sha256-+BUFw8sWBny56R1w8vht6y/1yefwZ3AyMSSBTDo5iso='; style-src 'sha256-zVywJm1zj7vaylmQUpfb9Vr5eCe6rDxI1GytJWQt8vU='; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-nyhEU1/9gXC1a0TU7XNU7UhW9afJ3EzHmifMNhTwOpU=' 'sha256-pVirB8Nw9VcjgfHGIlPWVW6r8wuJyQWZoF+DRXuSRzg='; style-src 'sha256-zVywJm1zj7vaylmQUpfb9Vr5eCe6rDxI1GytJWQt8vU='; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <title>LightUp | Remediation Capacity Studio — offline draft</title>
 <style>:root{color-scheme:dark;--bg:#0a1119;--panel:#111e29;--edge:#304451;--text:#edf5f7;--muted:#a4bac8;--teal:#7ee4bd;--amber:#f9d48a;--blue:#7cb8ff}
 *{box-sizing:border-box}
@@ -136,6 +136,7 @@ footer{padding:22px 0 60px}
     <p>Downloads contain only counts, hour estimates and planning weeks. They contain no original findings, client identity or source filename. Share only after an independent human privacy review.</p>
     <div class="actions"><button id="export-json" type="button" class="secondary">Export aggregate JSON</button>
       <button id="export-csv" type="button" class="secondary">Export aggregate CSV</button>
+      <button id="export-md" type="button" class="secondary">Export discussion Markdown</button>
       <button type="button" id="print">Print review</button></div>
   </div>
 </section>
@@ -283,7 +284,30 @@ footer{padding:22px 0 60px}
       w.portions.filter(p=>p.severity===s).reduce((a,p)=>a+p.hours,0))]);
     return [headers.map(escape).join(','),...rows.map(row=>row.map(escape).join(','))].join('\r\n')+'\r\n';
   }
-  root.LightUpCapacity = Object.freeze({parseCSV,plan,summary,csvReport,DEFAULT_HOURS,MAX_BYTES,MAX_ROWS});
+  function markdownReport(plan) {
+    const data=summary(plan);
+    const lines=[
+      '# LightUp — remediation capacity discussion draft',
+      '',
+      '**REVIEW_ONLY · DRAFT/HOLD. No authentication, consent, grant, scan, execution, retest verification, deployment or release.**',
+      '',
+      'This is an unsigned aggregate planning estimate only; source-reported fixed does not mean verified repair.',
+      '',
+      '- Source records: '+data.source_count,
+      '- Total estimated repair effort: '+data.total_estimated_hours+' h',
+      '- Hours tentatively assigned to weekly buckets: '+data.assigned_hours+' h',
+      '- Backlog beyond modelled capacity: '+data.backlog_hours+' h across '+data.backlog_findings+' records',
+      '',
+      '| Week | Week beginning (UTC) | Capacity (h) | Planned (h) | Critical (h) | High (h) | Medium (h) | Low (h) | Info (h) |',
+      '| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |'
+    ];
+    for(const w of data.sprint_weeks) lines.push(
+      '| '+[w.week,w.start,w.available_hours,w.allocated_hours,...SEVERITIES.map(s=>w.severity_hours[s])].join(' | ')+' |'
+    );
+    lines.push('','Human follow-up: confirm source client/engagement externally, review estimates and staffing, assign owners through existing authorised channels, verify repairs/retests separately.','');
+    return lines.join('\n');
+  }
+  root.LightUpCapacity = Object.freeze({parseCSV,plan,summary,csvReport,markdownReport,DEFAULT_HOURS,MAX_BYTES,MAX_ROWS});
 })(window);
 </script>
 <script>/* LightUp Remediation Capacity Studio — no persistence, no network, no execution. */
@@ -466,6 +490,13 @@ footer{padding:22px 0 60px}
     if (!ok) return;
     download('lightup-capacity-weeks.csv',engine.csvReport(result),'text/csv;charset=utf-8');
     setFeedback('Weekly aggregate CSV exported. No individual findings included.');
+  });
+  el('export-md').addEventListener('click',()=>{
+    if (!result) return;
+    const ok=window.confirm('Export a private, aggregate-only Markdown planning brief for human discussion? It is NOT authorization or proof of completed work.');
+    if (!ok) return;
+    download('lightup-capacity-discussion.md',engine.markdownReport(result),'text/markdown;charset=utf-8');
+    setFeedback('Unsigned aggregate discussion brief exported. No original finding details included.');
   });
   el('print').addEventListener('click',()=>{if(result)window.print();});
   const now = new Date();
