@@ -14,6 +14,7 @@ import sys
 from .revocation_stop import (
     StopLedgerError, authenticate_domain_user, engagement_inbox,
     initialize_authenticated_stop_ledger, status_for_actor,
+    _private_receipt,
 )
 from .stop_batch import record_authenticated_stop_batch
 from .stop_acknowledgment import pending_stops, acknowledge_stop
@@ -83,6 +84,13 @@ def _choose(db: str, actor: str, email: str, password: str) -> None:
         db, engagements=selected, email=email, password=password, reason=reason,
     )
     print(f"STOP_RECORDED_BATCH: {result['recorded_count']} engagements.")
+    receipt = input("Private receipt NEW filename (blank skips): ").strip()
+    if receipt:
+        try:
+            _private_receipt(receipt, result)
+            print("Private 0600 receipt atomically published.")
+        except StopLedgerError:
+            print("STOP ALREADY RECORDED; private receipt was NOT published.")
     print("Authorizing, dispatching or restarting an assessment: NEVER.")
 
 
