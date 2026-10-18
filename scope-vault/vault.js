@@ -327,6 +327,102 @@
       }
     });
   }
+
+  // Local review-copy preparation only. Never edit the source byte array,
+  // generate authorizing metadata or make claims that redaction is complete.
+  async function createPrivacyCopy() {
+    await inProgress(async () => {
+      supportsCrypto();
+      const rawIndex = els.redactSource.value;
+      const manualTerm = els.redactTerm.value;
+      const auto = els.redactCredentials.checked;
+      els.redactTerm.value = "";
+      invariant(/^(0|[1-9]\d?)$/.test(rawIndex));
+      const index = Number(rawIndex);
+      invariant(index < entries.length && entries.length < MAX_FILES);
+      invariant(manualTerm.length === 0 ||
+        (manualTerm.length >= 6 && manualTerm.length <= 128 &&
+        !/[\u0000-\u001f\u007f]/.test(manualTerm)));
+      invariant(auto || manualTerm.length >= 6);
+      const source = entries[index];
+      const original = DEC.decode(source.bytes);
+      let changed = original;
+      let replacements = 0;
+      const mask = (label) => () => { replacements++; return "[LIGHTUP-REDACTED-" + label + "]"; };
+      if (auto) {
+        // A complete bounded PEM block is required. Truncated/unpaired headers
+        // still trigger the original client safety hold after substitution.
+        changed = changed.replace(
+          /-----BEGIN (?:RSA |EC |DSA |OPENSSH )?PRIVATE KEY-----[\s\S]{0,131072}?-----END (?:RSA |EC |DSA |OPENSSH )?PRIVATE KEY-----/gi,
+          mask("PRIVATE-KEY")
+        );
+        changed = changed.replace(
+          /\bAuthorization\s*:\s*Bearer\s+[^\s"'<>]{10,}/gi,
+          mask("BEARER")
+        );
+        changed = changed.replace(
+          /\b(?:api[_ -]?key|secret[_ -]?(?:key|token)|access[_ -]?token|password)\s*[:=]\s*["']?[^\s"'<>]{12,}/gi,
+          mask("CREDENTIAL")
+        );
+        changed = changed.replace(/\bAKIA[0-9A-Z]{16}\b/g, mask("ACCESS-KEY"));
+        changed = changed.replace(
+          /\b(?:session[_ -]?cookie|set-cookie)\s*[:=]\s*[^\r\n]{24,}/gi,
+          mask("COOKIE")
+        );
+      }
+      if (manualTerm.length) {
+        const occurrences = changed.split(manualTerm).length - 1;
+        if (occurrences) {
+          replacements += occurrences;
+          changed = changed.split(manualTerm).join("[LIGHTUP-REDACTED-PRIVATE-TERM]");
+        }
+      }
+      invariant(replacements > 0);
+      const edited = ENC.encode(changed);
+      try {
+        invariant(edited.length > 0 && edited.length <= MAX_FILE_BYTES);
+        // Refuse residual recognized credentials; heuristic inability to find
+        // others is never treated as evidence of safety.
+        invariant(!likelyCredentialContent(edited));
+        invariant(entries.reduce((sum, item) => sum + item.bytes.length, 0) +
+          edited.length <= MAX_TOTAL_BYTES);
+        const hash = await digest(edited);
+        const stem = source.name.replace(/\.[^.]+$/, "").slice(0, 62);
+        const proposed = stem + "-privacy-" + hash.slice(0, 12) + ".txt";
+        const name = nameOf(proposed);
+        invariant(!entries.some((item) => item.name === name));
+        const approved = window.confirm("Create a distinct edited TEXT copy of " +
+          source.name + " with " + replacements + " redaction(s)?\n\n" +
+          "The source remains untouched; the new copy is NOT selected for export " +
+          "and remains NEEDS HUMAN CLARIFICATION until you inspect its full contents. " +
+          "Masking can alter document structure and is never a certificate that no secrets remain.");
+        if (!approved) {
+          edited.fill(0);
+          els.redactSummary.textContent = "Local privacy edit cancelled; original unchanged.";
+          return;
+        }
+        entries.push({
+          name, bytes: edited, hash, role: source.role,
+          selected: false, stage: "clarify",
+          note: "Local privacy derivative from source SHA-256 " + source.hash +
+            ". Masked " + replacements + " recognized/literal occurrence(s). " +
+            "Review full text before any independent human handoff."
+        });
+        els.stageFilter.value = "all";
+        touch(); paint();
+        els.before.value = String(index);
+        els.after.value = String(entries.length - 1);
+        els.redactSummary.textContent = "Created local copy: " + name +
+          ". " + replacements + " replacement(s), new SHA-256 " + hash.slice(0, 16) +
+          "…; original unchanged. New copy is NOT selected and is not approved for sharing.";
+        notice("Privacy edit added to offline inventory. Compare both versions and manually check for remaining confidential details.");
+      } catch (error) {
+        edited.fill(0);
+        throw error;
+      }
+    });
+  }
+
   async function seal(archive = false) {
     await inProgress(async () => {
       supportsCrypto();
@@ -609,6 +705,11 @@
     }
   }
 
+  els.redactCreate.addEventListener("click", createPrivacyCopy);
+  els.redactClear.addEventListener("click", () => {
+    els.redactTerm.value = ""; touch();
+    els.redactSummary.textContent = "Sensitive term input cleared from the form.";
+  });
   els.files.addEventListener("change", addFiles);
   els.previewFile.addEventListener("click", preview);
   els.compareFiles.addEventListener("click", compare);
