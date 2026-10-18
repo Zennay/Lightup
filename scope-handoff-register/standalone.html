@@ -3,10 +3,12 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-vHgnCvfNvMjMtZRVldGfxvz1LuU3Ngi6aMbNzS38hRg='; style-src 'sha256-o7cK1NXj+Eu3YamlentTjaSqIG/ht4qNEb4OgJ+Eg6s='; img-src 'none'; connect-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-ndI0d25yyuy3sy3/yLhMBeGNsYrc+QY4oj9c+hHokBY='; style-src 'sha256-7uWoPZnp0Qd9U+s/pVdYPmNxnlzY5rsp3l2FXAmL1OY='; img-src 'none'; connect-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'">
   <title>LightUp · Scope Handoff Register</title>
   <style>:root{font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;color-scheme:dark;--bg:#0b111c;--panel:#172236;--line:#31445e;--text:#f2f6ff;--muted:#b8c7dc;--accent:#77bfff;--warn:#ffd89c}
 *{box-sizing:border-box}body{background:linear-gradient(145deg,#0d1626,#111826 58%,#0d1320);color:var(--text);margin:0;min-height:100vh}header,main,footer{max-width:1160px;margin:auto;padding:24px}header{padding-top:45px}.topline{display:flex;align-items:center;justify-content:space-between;gap:16px;font-size:.76rem;letter-spacing:.15em;color:var(--accent)}.flag{background:#43321e;color:var(--warn);padding:8px 12px;border-radius:30px;border:1px solid #6e5530;font-size:.7rem}h1{font-size:clamp(1.9rem,5vw,3.6rem);max-width:750px;margin:35px 0 15px;line-height:1.11;letter-spacing:-.045em}h2{font-size:1.25rem;margin:0 0 8px;letter-spacing:-.02em}h3{margin:0 0 10px;font-size:1.07rem}p{color:var(--muted);line-height:1.55}header>p{max-width:780px}main{display:grid;gap:23px}.panel{border:1px solid var(--line);border-radius:17px;padding:25px;background:var(--panel);box-shadow:0 18px 44px #0002}.section-head{display:flex;align-items:start;justify-content:space-between;gap:24px;flex-wrap:wrap}.section-head p{margin:0 0 14px}.toolbar,.actions{display:flex;align-items:end;gap:12px;flex-wrap:wrap;margin:14px 0}.toolbar>label{display:grid;gap:6px;flex:1;min-width:180px;font-size:.86rem;color:var(--muted)}input,select,textarea,button,.button{font:inherit;border-radius:10px}input,select,textarea{padding:11px 12px;color:var(--text);background:#0c1525;border:1px solid #52617b;min-width:0}button,.button{display:inline-block;color:var(--text);padding:11px 14px;background:#253d59;border:1px solid #64809c;cursor:pointer;white-space:normal;text-align:center}button:hover,.button:hover{background:#31567c}button:focus-visible,.button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid var(--accent);outline-offset:2px}.button.primary{background:#086ab3;border-color:#5eb7ff;font-weight:700}button[disabled]{opacity:.45;cursor:not-allowed}.notice{padding:11px 14px;background:#101b2a;border-left:3px solid var(--accent);white-space:pre-wrap}.notice.error{border-color:#ff8181;color:#ffcdcd}.stats{display:flex;flex-wrap:wrap;gap:9px;margin:14px 0}.metric{padding:9px 14px;border-radius:12px;border:1px solid #405577;background:#0e1a2b;font-size:.9rem}.metric strong{font-size:1.25rem;margin-right:6px}.boards{display:grid;grid-template-columns:repeat(auto-fill,minmax(255px,1fr));gap:12px}.card{display:grid;text-align:left;gap:9px;white-space:normal;background:#102136;border:1px solid #3e5877;padding:17px}.card.selected{outline:2px solid #80c9ff}.card-title{font-size:1.08rem;font-weight:700;overflow-wrap:anywhere}.meta{font-size:.82rem;color:var(--muted)}.chips{display:flex;flex-wrap:wrap;gap:5px}.chip{font-size:.72rem;padding:4px 7px;border-radius:6px;background:#34455e}.chip.alert{background:#674827;color:#fff2d9}.controls{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:15px}.controls label{display:grid;gap:5px;min-width:190px;flex:1;color:var(--muted)}.checkrow{display:grid;grid-template-columns:1fr 170px;gap:14px;align-items:center;padding:11px 0;border-bottom:1px solid #334860}.checkrow label{font-weight:600}.checkrow small{color:var(--muted);display:block;margin-top:4px}.summary{background:#102136;border:1px solid #344c67;border-radius:12px;padding:15px}.warning{border-left:3px solid #d69e53;padding:11px 14px;background:#2e261d;color:#f9e8d2}.small{font-size:.83rem}footer{font-size:.82rem;color:#94a7bf;padding-bottom:50px}@media(max-width:600px){header,main,footer{padding-left:15px;padding-right:15px}.panel{padding:17px}.checkrow{grid-template-columns:1fr}.topline{align-items:start;flex-direction:column}.controls{flex-direction:column}.controls label{width:100%}}@media print{*{color:#000!important;box-shadow:none!important;background:white!important}header,main{padding:5px}.panel{break-inside:avoid;border:1px solid #888}.toolbar,.actions,.button,#clear,footer{display:none!important}.boards{grid-template-columns:repeat(2,1fr)}.warning{border:1px solid #888}body{font-size:11pt}}
+
+.bulkbar{display:flex;align-items:center;flex-wrap:wrap;gap:16px;border-top:1px solid var(--line);margin-top:22px;padding-top:19px}.bulkbar>div{flex:2;min-width:230px}.bulkbar p{margin:3px 0}.bulkbar>label{display:grid;gap:6px;flex:1;min-width:210px;color:var(--muted);font-size:.86rem}.bulkbar button{max-width:260px;white-space:normal}@media print{.bulkbar{display:none!important}}
 </style>
   
 </head>
@@ -19,10 +21,15 @@
 <main>
   <section class="panel">
     <div class="section-head"><div><h2>1. Concepten inladen</h2><p>Maximaal 16 Studio-v1 JSON-bestanden, elk maximaal 64 KiB. Iedere bestandsinhoud krijgt een eigen SHA-256.</p></div><label class="button primary">Studio-concepten kiezen<input id="imports" type="file" accept=".json,application/json" multiple hidden></label></div>
-    <div class="toolbar"><label>Zoeken <input type="search" id="search" placeholder="Referentie, risiconiveau of actie"></label><label>Filter <select id="filter"><option value="all">Alle concepten</option><option value="attention">Open actiepunten</option><option value="ready">Voorbereiding afgerond</option></select></label><button id="clear" type="button">Alles vergeten</button></div>
+    <div class="toolbar"><label>Zoeken <input type="search" id="search" placeholder="Referentie, risiconiveau of actie"></label><label>Filter <select id="filter"><option value="all">Alle concepten</option><option value="attention">Open actiepunten</option><option value="ready">Voorbereiding afgerond</option><option value="high-risk">Risico 4</option><option value="revision">Gekoppelde revisies</option></select></label><label>Risicosortering <select id="sort"><option value="risk">Hoog risico eerst</option><option value="progress">Meeste open acties</option><option value="added">Inleesvolgorde</option></select></label><button id="clear" type="button">Alles vergeten</button></div>
     <p id="notice" class="notice" role="status" aria-live="polite">Er zijn nog geen concepten ingeladen.</p>
     <div id="stats" class="stats" aria-live="polite"></div>
     <div id="boards" class="boards"></div>
+    <div class="bulkbar">
+      <div><h3>Gedeeld voorbereidingsoverleg</h3><p class="small">Zet één specifiek open actiepunt voor alle zichtbare concepten op ‘In gesprek’. Reeds voorbereide of te herziene acties worden nooit overschreven.</p></div>
+      <label>Actie <select id="bulkTask"><option value="owner">Ownership/contact route</option><option value="assets">Asset-/uitsluitingsgrenzen</option><option value="risk">Risico en activiteiten</option><option value="schedule">Tijdvenster</option><option value="stops">Stop-/incidentroute</option><option value="privacy">Privacy/evidence</option><option value="client">Cliënt-aanvraagroute</option><option value="operator">Operator-reviewroute</option></select></label>
+      <button id="bulkStart" type="button">Markeer zichtbaar open werk ‘In gesprek’</button>
+    </div>
   </section>
   <section class="panel">
     <div class="section-head"><div><h2>2. Menselijke vervolgacties</h2><p>Lokale voorbereiding, geen klant-/operatorauthenticatie. Controleer identiteit en toestemming altijd afzonderlijk in het echte LightUp-domein.</p></div></div>
@@ -214,9 +221,24 @@
     return w;
   }
   const prepared = r => TASKS.filter(([id])=>r.tasks[id]==="prepared").length;
-  function render() {
+  function visibleRecords() {
     const query=$("search").value.trim().toLowerCase();
     const filter=$("filter").value;
+    return records.filter(r=>{
+      if(filter==="attention" && prepared(r)===TASKS.length)return false;
+      if(filter==="ready" && prepared(r)!==TASKS.length)return false;
+      if(filter==="high-risk" && r.source.risk!==4)return false;
+      if(filter==="revision" && !r.replaces)return false;
+      const searchable=(r.reference+" risk "+r.source.risk+" "+TASKS.filter(([id])=>r.tasks[id]!=="prepared").map(x=>x[1]).join(" ")).toLowerCase();
+      return searchable.includes(query);
+    }).sort((a,b)=>{
+      const mode=$("sort").value;
+      if(mode==="risk")return b.source.risk-a.source.risk || warnings(b).length-warnings(a).length;
+      if(mode==="progress")return prepared(a)-prepared(b);
+      return records.indexOf(a)-records.indexOf(b);
+    });
+  }
+  function render() {
     $("stats").replaceChildren();
     const stats=[["Concepten",records.length],["Acties voorbereid",records.reduce((n,r)=>n+prepared(r),0)],["Open/vervolg",records.reduce((n,r)=>n+TASKS.length-prepared(r),0)],["Discussiepunten",records.reduce((n,r)=>n+warnings(r).length,0)]];
     for (const [label,val] of stats) {
@@ -224,11 +246,7 @@
       m.append(node("strong","",val),node("span","",label));$("stats").append(m);
     }
     const boards=$("boards");boards.replaceChildren();
-    for (const r of records) {
-      if (filter==="attention" && prepared(r)===TASKS.length) continue;
-      if (filter==="ready" && prepared(r)!==TASKS.length) continue;
-      const searchable=(r.reference+" risk "+r.source.risk+" "+TASKS.filter(([id])=>r.tasks[id]!=="prepared").map(x=>x[1]).join(" ")).toLowerCase();
-      if (!searchable.includes(query)) continue;
+    for (const r of visibleRecords()) {
       const card=node("button","card"+(active===r.sha?" selected":""));
       card.type="button";card.setAttribute("aria-pressed",String(active===r.sha));
       card.append(node("span","card-title",r.reference),node("span","meta","SHA-256 "+r.sha.slice(0,16)+"…"),node("span","meta","Risico "+r.source.risk+" · "+(r.source.mode==="analysis_only"?"Analysevoorstel":"Actieve modus voorgesteld")+" · "+r.source.assets.length+" assetregels"));
@@ -372,7 +390,17 @@
     try{restore(await readBounded(e.target.files[0],RESTORE_SIZE));}catch(err){show("Herstel geweigerd zonder wijzigingen: "+err.message,true);}
     e.target.value="";
   });
-  $("search").addEventListener("input",render);$("filter").addEventListener("change",render);
+  $("search").addEventListener("input",render);$("filter").addEventListener("change",render);$("sort").addEventListener("change",render);
+  $("bulkStart").addEventListener("click",()=>{
+    const task=$("bulkTask").value;
+    assert(TASKS.some(([id])=>id===task),"Geen erkende actie.");
+    const targets=visibleRecords().filter(r=>r.tasks[task]==="open");
+    if(!targets.length){show("Geen zichtbare dossiers met een open status voor dit actiepunt.");return;}
+    if(!confirm("Alleen actie '"+TASKS.find(([id])=>id===task)[1]+"' voor "+targets.length+" zichtbare dossiers op ‘In gesprek’ zetten? Dit verleent geen toestemming."))return;
+    targets.forEach(r=>{r.tasks[task]="working";});
+    show("Voorbereidingsoverleg gestart voor "+targets.length+" lokale dossiers; geen enkele actie op ‘voorbereid’ gezet.");
+    render();
+  });
   $("clear").addEventListener("click",()=>{
     if(!records.length || !confirm("Alle in-memory concepten en taakstatussen definitief vergeten?"))return;
     records.splice(0);active=null;show("Alle lokale conceptgegevens uit deze browserpagina gewist.");render();
