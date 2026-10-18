@@ -70,8 +70,8 @@ function importSource(raw){
 checkDuplicateKeys(raw);var x=JSON.parse(raw),c=x&&x.casebook;
 if(!O(x)||x.schema!=="lightup.scope_stop_casework_brief.v1"||
 !["HOLD","REVIEW_ONLY"].includes(x.status)||x.source_snapshots_atomic_together!==false||
-!F(x)||!W(x.client_id)||!O(c)||c.schema!=="lightup.auth_casebook.v1"||
-c.client_id!==x.client_id||c.status!=="REVIEW_ONLY"||
+!F(x)||!W(x.client_id)||!O(c)||flags.slice(0,6).some(k=>c[k]!==false)||c.schema!=="lightup.auth_casebook.v1"||
+c.client_id!==x.client_id||c.status!=="REVIEW_ONLY"||!O(c.declared_counts)||["requests","engagements","grants","risk_approvals"].some(k=>!Array.isArray(c[k])||!N(c.declared_counts[k],200)||c[k].length!==c.declared_counts[k])||
 !Array.isArray(c.case_overview)||c.case_overview.length>200||
 !Array.isArray(x.engagements)||!O(x.summary)||!N(x.selected_count,32)||x.selected_count===0||
 x.selected_count!==x.engagements.length||x.selected_count!==x.summary.selected)throw Error("schema");
@@ -165,7 +165,8 @@ E("print").addEventListener("click",function(){if(report)window.print();});
 E("export").addEventListener("click",function(){
 if(!report)return;var stageCounts={unreviewed:0,investigating:0,escalated:0,documented:0};
 for(var r of report.engagements)stageCounts[stages.get(r.engagement_id)||"unreviewed"]++;
-var aggregate={schema:"lightup.scope_stop_anonymous.v1",status:"REVIEW_ONLY_OR_HOLD",counts:report.summary,human_stages:stageCounts,
+var safeCounts={selected:report.summary.selected,active_stop_observations:report.summary.active_stop_observations,no_stop_recorded_not_authority:report.summary.no_stop_recorded_not_authority,stop_source_hold:report.summary.stop_source_hold,cases_requiring_human_attention:report.summary.cases_requiring_human_attention,original_requests:report.summary.original_requests,original_grants:report.summary.original_grants};
+var aggregate={schema:"lightup.scope_stop_anonymous.v1",status:"REVIEW_ONLY_OR_HOLD",counts:safeCounts,human_stages:stageCounts,
  comparison:older?{compared:changes.size,changed:Array.from(changes.values()).filter(a=>a.length).length,
  stop_disappearance_hold:Array.from(changes.values()).filter(a=>a.some(x=>x.startsWith("HOLD:"))).length}:null,source_snapshots_atomic_together:false,authorization_granted:false,execution_allowed:false,release_approved:false};
 var blob=new Blob([JSON.stringify(aggregate,null,2)+"\n"],{type:"application/json"}),url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download="lightup-scope-stop-anonymous.json";a.click();setTimeout(function(){URL.revokeObjectURL(url);},200);
