@@ -232,6 +232,14 @@ clearly client-supplied predecessor reference in its *notes only*.
 The existing database has no authoritative revision-lineage relation: the
 note/reference and SHA-256 are **untrusted hints**, not signatures or bindings.
 
+Scope difference comparisons now use the **effective same-family CIDR union**.
+For example, two adjacent IPv4 `/25` blocks representing precisely the same
+range as one `/24` do not trigger an artificial expansion warning. IPv4
+and IPv6 are evaluated independently; DNS hostnames remain literal and are
+never resolved to IP addresses. Any genuinely newly covered asset or elevated
+risk still requires `--confirm-scope-expansion`. These are review hints only,
+not authorization-policy decisions.
+
 The optional **private visual comparison** is an escaped, no-script/no-network
 HTML snapshot saved to a *new* file with mode `0600`; it shows before/after
 assets, added/widened and removed/narrowed declarations, risks and next steps.
