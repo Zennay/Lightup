@@ -370,6 +370,42 @@ def _publish(root, outputs):
         raise
 
 
+def build_private_workspace(original: bytes, data: dict, root: Path) -> None:
+    """Build from exact original authenticated snapshot bytes; never alter source."""
+    digest = sha256(original).hexdigest()
+    queue = _queue(data)
+    app = Path(__file__).with_name("board.js").read_bytes()
+    if len(app) > 48 * 1024:
+        raise Hold("board JS source too large")
+    script = app.decode("utf-8", "strict")
+    anonymous = {
+        "schema": "lightup.scope_escalation_aggregate.v1",
+        "status": "REVIEW_ONLY",
+        "authority": False,
+        "human_followups": len(queue),
+        "tier_counts": {k: sum(t["tier"] == k for t in queue)
+                        for k in ("HOLD", "PENDING", "REVIEW")},
+        "family_counts": {k: sum(t["family"] == k for t in queue)
+                          for k in ("engagement", "request")},
+    }
+    info = ("LIGHTUP · PRIVATE SCOPE ESCALATION BOARD · DRAFT/HOLD\n"
+            "Open PRIVATE-board.html offline. Every file is owner-only.\n"
+            "The board is a retrospective human work queue, not consent, at-use STOP,\n"
+            "source signature, risk approval, grant, scan instruction or release.\n"
+            "PRIVATE-queue.csv includes original record IDs: keep private.\n"
+            "Browser notes are in memory only; separately export PRIVATE handoff.\n"
+            "Reopen identical original source to restore; changed bytes HOLD.\n"
+            "Absent/missing records are NEVER verified revoked, fixed or cleared.\n"
+            "No source files or original domain records are modified.\n")
+    outputs = {
+        "PRIVATE-board.html": _page(data, queue, digest, script),
+        "PRIVATE-queue.csv": _csv(queue),
+        "aggregate.json": json.dumps(anonymous, indent=2, sort_keys=True).encode(),
+        "START-HERE.txt": info.encode(),
+    }
+    _publish(root, outputs)
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--source", required=True,
@@ -379,38 +415,7 @@ def main(argv=None):
     args = parser.parse_args(argv)
     try:
         original, data = _read_source(Path(args.source))
-        digest = sha256(original).hexdigest()
-        queue = _queue(data)
-        app = Path(__file__).with_name("board.js").read_bytes()
-        if len(app) > 48 * 1024:
-            raise Hold("board JS source too large")
-        script = app.decode("utf-8", "strict")
-        anonymous = {
-            "schema": "lightup.scope_escalation_aggregate.v1",
-            "status": "REVIEW_ONLY",
-            "authority": False,
-            "human_followups": len(queue),
-            "tier_counts": {k: sum(t["tier"] == k for t in queue)
-                            for k in ("HOLD", "PENDING", "REVIEW")},
-            "family_counts": {k: sum(t["family"] == k for t in queue)
-                              for k in ("engagement", "request")},
-        }
-        info = ("LIGHTUP · PRIVATE SCOPE ESCALATION BOARD · DRAFT/HOLD\n"
-                "Open PRIVATE-board.html offline. Every file is owner-only.\n"
-                "The board is a retrospective human work queue, not consent, at-use STOP,\n"
-                "source signature, risk approval, grant, scan instruction or release.\n"
-                "PRIVATE-queue.csv includes original record IDs: keep private.\n"
-                "Browser notes are in memory only; separately export PRIVATE handoff.\n"
-                "Reopen identical original source to restore; changed bytes HOLD.\n"
-                "Absent/missing records are NEVER verified revoked, fixed or cleared.\n"
-                "No source files or original domain records are modified.\n")
-        outputs = {
-            "PRIVATE-board.html": _page(data, queue, digest, script),
-            "PRIVATE-queue.csv": _csv(queue),
-            "aggregate.json": json.dumps(anonymous, indent=2, sort_keys=True).encode(),
-            "START-HERE.txt": info.encode(),
-        }
-        _publish(Path(args.workspace), outputs)
+        build_private_workspace(original, data, Path(args.workspace))
         print("REVIEW_ONLY: private offline human board created; never an authority verdict")
         return 2
     except (Hold, ValueError, OSError, UnicodeError, TypeError, KeyError):
