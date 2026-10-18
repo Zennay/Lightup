@@ -127,7 +127,12 @@ $('export-json').addEventListener('click',()=>{
  dirty=false;$('export-message').textContent='PRIVATE source-bound human dependency draft exported.';}
  catch(e){$('export-message').textContent='HOLD: '+e.message;}
 });
-function safeCsv(value){let s=String(value??'');if(/^[\s\u200b-\u200f\ufeff]*[=+@-]/u.test(s))s="'"+s;return '"'+s.replace(/"/g,'""')+'"';}
+function safeCsv(value){
+ let s=String(value??'');
+ const invisible=/^[\s\u0000-\u001f\u007f-\u009f\u00ad\u034f\u061c\u180e\u200b-\u200f\u202a-\u202e\u2060-\u206f\ufeff]*/u;
+ if(/^[=+\-@]/.test(s.replace(invisible,'')))s="'"+s;
+ return '"'+s.replace(/"/g,'""')+'"';
+}
 $('export-csv').addEventListener('click',()=>{
  if(!state||!$('source-ack').checked||!$('export-ack').checked)return;
  try{const v=g.LightUpHumanDependencies.graph(state,links,efforts,$('start').value||null);
