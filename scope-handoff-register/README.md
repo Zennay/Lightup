@@ -17,6 +17,20 @@ The published standalone build is generated from these exact owned source files;
 
 No free-text asset identities, domain names, requested notes, uploaded filenames, client labels, browser contacts or credentials appear in generated handoff JSON/CSV. The **local progress backup** intentionally includes manually entered short *reference labels* so the user can resume work; choose generic labels without private data and handle that local file privately.
 
+## Integrated Studio v1 provenance and cross-proposal coordination
+
+This standalone product includes **unchanged source snapshots** of the already existing Studio v1 parser and fingerprint and UTC conversion modules (source on [Scope Planning Studio PR #1567](https://github.com/Zennay/Lightup/pull/1567)):
+
+- `studio-network-v1.js` — original `studio/scope-network.js` blob `f82c148488b1066e6f49b4110fab12fa48982e4d`
+- `studio-fingerprint-v1.js` — original `studio/scope-fingerprint.js` blob `44238a1ef62e730a1307b42a8505c49067e5ca10`
+- `studio-window-v1.js` — original `studio/planning-window.js` blob `1eeeb0a582080b8a387db7854b794fe55d7c04d1`
+
+The source-owner Studio files were **not changed**. Their original functions now validate imported canonical host/IP/CIDR syntax, any stored Studio semantic SHA-256 fingerprint, and source-local-wall/UTC-offset consistency before a proposal is admitted to the handoff board. Both the immutable original **file-byte** SHA-256 and the Studio's stable, unsigned **semantic** scope revision SHA-256 are shown in the human export as separate non-authorizing identifiers. No trust in user-provided SHA fields, consent, network access, client identity, real schedule or release is inferred.
+
+The revised board uses local `effectiveCoverage` and `coverageDifference` to reason about IPv4 and IPv6 numeric intervals **after explicit exclusions** and literal exact-hostname equality. A new pairwise review agenda exposes which two dossiers share possible effective numeric/literal scope, proposed UTC window, or both. It links back to each proposal's local human action work. The script-free full HTML packet and review-only JSON contain only generic counts/flags and dossier indexes — never the original IP/hostname strings or imported personal notes. Numeric interval overlap is not proof that two projects have a common owner or tenant; literal hostnames are not resolved through DNS and recorded windows are not reservations.
+
+**Integration limitations:** a Studio draft export may also include volatile `exported_at_utc`; the exact-byte SHA records that input separately from the deterministic semantic Studio revision. No source byte or semantic SHA is a signature, provenance credential, or permission. If Studio v1 modules change in their separately owned PR, human review must reconcile the vendored source before integration.
+
 ## Actual Studio v1 contract
 
 Required: `kind: "lightup.scope_proposal_draft"`, `schema_version: 1`, `state: "DRAFT_ONLY"`, `requested_assets` and `excluded_assets` (arrays of strings), `requested_mode` (`analysis_only` or `authorized_assessment`), `requested_risk` (integer 1–4), the **object** `proposed_activities` with three boolean flags (`passive_analysis`, `configuration_review`, `private_lab_network_checks`), and `proposed_window_local`. The six original safety fields `authorization`, `client_consent`, `operator_consent`, `grant`, `execution`, `revocation_checked` must all be literally `false`. A resolved UTC planning proposal is a scheduling hint only.
