@@ -41,3 +41,17 @@ PYTHONPATH=src:scripts python scripts/assessment_runtime_review_handoff_cli_2026
 ```
 
 The two cohort inputs must contain matching scenario identities; source run and record IDs must not be replayed between baseline/candidate. Bundling itself cannot verify that a source case was genuinely collected; fingerprints and records are still caller-supplied. Bundle success prints `PRIVATE_LAB_COHORT_WRITTEN — UNVERIFIED; NOT AUTHORIZED` and exits 2; any rejected input prints only `LAB_COHORT_HOLD` and exits 3. Neither exit grants any permission.
+
+## Direct integration with the original interactive human Review Desk (#1576)
+
+The previously independent printable-review CLI can also save the original **#1515 comparator's exact JSON result schema** directly to a new private file, without copying or reimplementing its scoring rules. This connects current original benchmark cases with the existing [offline Review Desk #1576](https://github.com/Zennay/Lightup/pull/1576) without editing that owner's source:
+
+```bash
+PYTHONPATH=src:scripts python scripts/assessment_runtime_review_handoff_cli_20261018.py \
+  /private/NEW-baseline-cohort.json /private/NEW-candidate-cohort.json \
+  --cohort --format desk-json --output /private/NEW-reviewdesk-input.json
+```
+
+Download/open the original [Review Desk standalone HTML](https://github.com/Zennay/Lightup/blob/chatgpt/lightup-assessment-reviewdesk-20261018/assessment-review/standalone.html) **locally**, then use its file import to read the saved JSON. It recognizes the original single-case or cohort comparison data shape. The CLI reuses the original #1515 `_display`/`_output` serializers, not a locally invented contract. No network, website, backend or grant is involved; the browser consumes a user-selected file. **The intermediary JSON is source-rich and may contain raw scenario IDs and metric values; unlike the privacy-minimal desk's downstream exports, this JSON must remain private.** Use the separate HTML format when the human recipient must not see source scenario IDs.
+
+Regressions remain `HOLD`, with explicit false permission flags. Unlike an invalid or replayed record, a canonical regression produces a real JSON result so the browser can triage it. This import is evidence for *human preparation only*, never permission to scan, grant, deploy or merge.

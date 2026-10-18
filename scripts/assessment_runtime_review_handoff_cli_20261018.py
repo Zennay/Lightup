@@ -16,10 +16,12 @@ import stat
 import tempfile
 
 from assessment_runtime_compare_cli_1513 import (
+    _output as _original_single_result,
     _dict_no_duplicates,
     _parse_case_document,
     _reject_nonfinite,
 )
+from assessment_runtime_compare_cohort_cli_1513 import _display as _original_cohort_result
 from lightup.ai.assessment_runtime_diff_1513 import compare_lab_evaluations
 from lightup.ai.assessment_runtime_cohort_1513 import compare_lab_cohorts
 
@@ -189,7 +191,9 @@ def main(argv=None):
     parser.add_argument("--cohort", action="store_true",
                         help="Input files contain arrays of 1–64 case exports")
     parser.add_argument("--output", required=True,
-                        help="New private HTML report (existing files are refused)")
+                        help="New private output file (existing files are refused)")
+    parser.add_argument("--format", choices=("html", "desk-json"), default="html",
+                        help="Printable HTML or exact original JSON result for offline Review Desk #1576")
     args = parser.parse_args(argv)
     try:
         before, first_sha = _load(args.baseline, args.cohort)
@@ -207,7 +211,17 @@ def main(argv=None):
         if result.status not in ("REVIEW_ONLY", "HOLD") or not metrics_ready:
             print("LAB_REVIEW_HOLD")
             return 3
-        document = _build_report(result, first_sha, second_sha, args.cohort)
+        if args.format == "desk-json":
+            # Delegate output shape to *unchanged* original #1515 CLI serializers.
+            # The separate #1576 browser reads this exact comparison-result format.
+            summary = (_original_cohort_result(result) if args.cohort
+                       else _original_single_result(result))
+            document = json.dumps(summary, sort_keys=True, separators=(",", ":"),
+                                  allow_nan=False).encode("utf-8")
+            if len(document) > COHORT_LIMIT:
+                raise ValueError("private comparison result over limit")
+        else:
+            document = _build_report(result, first_sha, second_sha, args.cohort)
         _write_exclusive(args.output, document)
     except (OSError, ValueError, TypeError, KeyError, OverflowError,
             UnicodeError, RecursionError, AttributeError):
