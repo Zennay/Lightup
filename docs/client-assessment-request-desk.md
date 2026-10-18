@@ -8,6 +8,65 @@ persisted-user, active-client and transaction-level checks. This CLI cannot
 approve a request, make a grant, launch a scan, contact a target or accept a
 fictional client/operator identity.
 
+## Interactive client request desk (full workflow)
+
+The original CLI now has a real interactive local terminal workspace.
+Clients do not need to manually assemble every separate preview and submit
+command or copy a SHA-256 for ordinary menu-based submissions.
+
+```sh
+python -m lightup.client_request_cli desk \
+  --db /private/lightup.sqlite --email client@example.org
+# Direct installed module entry is also available:
+python -m lightup.client_request_desk \
+  --db /private/lightup.sqlite --email client@example.org
+```
+
+The desk requires a **private interactive TTY** and authenticates with
+`DomainStore.authenticate` using a hidden password prompt. It then offers:
+
+1. **Own request inbox:** latest 30 current tenant-owned request statuses,
+   preserving the independent operator review meaning.
+2. **Manual request creation:** guided exact hostname/IP/CIDR entry,
+   risk 1–4, and explanation; canonicalizes with the native domain binding
+   parser. Shows the full normalized request before submission.
+3. **Existing Studio v1 import:** reads the exported JSON locally using the
+   same strict Studio importer as `preview --proposal`. Exclusions,
+   scheduled windows and private lab activities still HOLD rather than
+   silently disappearing.
+4. **Revision after rejection:** choose a genuinely rejected own request,
+   then manual or Studio replacement. Shows changes and requires a separate
+   typed expansion acknowledgement if assets or risk widen. Never edits the
+   original rejected record.
+5. **Inspect own stored request** by ID, including originally requested assets,
+   risk and notes; no operator impersonation or cross-tenant access.
+6. **Export private HTML inbox:** at most the most recent 200 stored requests
+   into a new exclusive permission-`0600` file, without scripts or network.
+   Earlier requests remain in SQLite and are **not** claimed to be exported
+   if the client has more than 200.
+
+Every submission requires explicitly typing `SUBMIT NEW REQUEST`.
+A still-open exact duplicate causes a warning and requires typing
+`REPEAT REQUEST` as well. These are extra human safeguards, not atomic
+server-side deduplication. No request is submitted merely by importing
+a Studio draft or viewing an inbox. For rejected revision expansion,
+the client must additionally type `ACKNOWLEDGE EXPANSION`.
+Even an approved assessment request is **not** a grant or scan permit.
+
+The multi-action desk checks persisted user role/tenant, active-client state
+and credential-update generation before each menu action, then checks again
+**immediately before** writing a request or exporting a sensitive HTML file.
+A changed password, deactivated client or tenant/role change terminates
+the session. The native `DomainStore.submit_assessment_request` still
+enforces actual client provenance inside its own write transaction; the
+desk's freshness check is not a replacement for that security boundary.
+
+This is strictly a **local request-accounting CLI**. It does not connect to
+targets, create sessions for the browser, issue grants, approve requests,
+dispatch handlers, verify target ownership, or turn a planning document into
+client/operator consent. The original explicit noninteractive CLI remains
+supported for reproducible use.
+
 ## Operator prerequisites
 
 Only use with your **existing**, privately held LightUp database that already
