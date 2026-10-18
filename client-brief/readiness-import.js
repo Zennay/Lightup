@@ -76,6 +76,7 @@ async function readAndSummarize(file){
   throw Error('Incomplete selected engagement review records.');
  const counts=Object.fromEntries(Object.keys(BAD_FLAGS).map(k=>[k,0]));
  let observedGrants=0,reviewRequests=0;
+ const grantIds=new Set();
  for(const entry of p.engagements){
   if(!record(entry)||!integer(entry.grants,MAX_ROWS)||!integer(entry.requests,MAX_ROWS)
     ||!Array.isArray(entry.grant_findings)||entry.grant_findings.length!==entry.grants
@@ -89,19 +90,37 @@ async function readAndSummarize(file){
      ||!['missing','invalid','recorded_coherent_review_only'].includes(item.binding)
      ||!['invalid','expired','within_window','future'].includes(item.window))
     throw Error('Malformed grant review record.');
+   if(grantIds.has(item.identity_key))throw Error('Repeated stored grant identity.');
+   grantIds.add(item.identity_key);
    flags(item.flags,'grant').forEach(k=>counts[k]++);
   }
  }
  if(observedGrants!==p.summary.grants)
   throw Error('Incomplete grant review collection; no partial summary.');
+ if(p.request_history.length!==p.summary.requests)throw Error('Incomplete original request lifecycle history.');
+ const knownRequests=new Map();
+ for(const row of p.request_history){
+  if(!record(row)||!SHA.test(row.source_key||'')||!SHA.test(row.identity_key||'')
+    ||!['submitted','under_review','approved','rejected'].includes(row.status)
+    ||knownRequests.has(row.identity_key))throw Error('Malformed or duplicate request history.');
+  flags(row.flags,'history');
+  knownRequests.set(row.identity_key,row);
+ }
+ const pendingSeen=new Set();
  for(const row of p.review_queue){
   if(!record(row)||!SHA.test(row.source_key||'')||!SHA.test(row.identity_key||'')
     ||!['submitted','under_review'].includes(row.status))
    throw Error('Malformed pending request record.');
+  const original=knownRequests.get(row.identity_key);
+  if(!original||pendingSeen.has(row.identity_key)||original.source_key!==row.source_key
+    ||original.status!==row.status||JSON.stringify(original.flags)!==JSON.stringify(row.flags))
+   throw Error('Pending request is not an exact member of original history.');
+  pendingSeen.add(row.identity_key);
   flags(row.flags,'request').forEach(k=>counts[k]++);
   reviewRequests++;
  }
- if(reviewRequests!==p.summary.pending_requests)throw Error('Incomplete client-wide review queue.');
+ if(reviewRequests!==p.summary.pending_requests||[...knownRequests.values()].filter(x=>['submitted','under_review'].includes(x.status)).length!==reviewRequests)
+  throw Error('Incomplete client-wide review queue.');
  // Compare every original source flag counter with independently read record rows
  // except orphan grants (not necessarily attributable to a selected engagement).
  for(const [k,v] of Object.entries(p.summary.flag_counts)){
