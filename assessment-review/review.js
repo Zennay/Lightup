@@ -39,6 +39,7 @@
       baseline >= 0 && candidate >= 0 && typeof regression === "boolean");
     if (COUNTERS.has(name)) {
       ensure(Number.isSafeInteger(baseline) && Number.isSafeInteger(candidate) &&
+        Number.isSafeInteger(delta) && delta === candidate - baseline &&
         baseline <= 1e9 && candidate <= 1e9);
     }
     if (SCORES.has(name)) ensure(baseline <= 1 && candidate <= 1);
@@ -83,6 +84,7 @@
         Array.isArray(doc.regressed_scenarios) && doc.regressed_scenarios.length <= 64 &&
         doc.regressed_scenarios.every(safeLabel) && !duplicates(doc.regressed_scenarios));
       cases = doc.comparisons.map(x => parseComparison(x, true));
+      ensure(cases.every(c => c.changes.length === METRICS.length));
       ensure(!duplicates(cases.map(x => x.sourceId)));
       const regressed = cases.filter(x => x.regressions.length).map(x => x.sourceId);
       ensure(regressed.length === doc.regressed_scenarios.length &&
@@ -234,6 +236,61 @@
     const safe = /^[=+\-@\t]/.test(s) ? "'" + s : s;
     return '"' + safe.replaceAll('"','""') + '"';
   }
+
+  // Restore only human planning state, never underlying metrics, source identity,
+  // release verdict or authority. A byte-identical original source is required.
+  async function restoreReview(file) {
+    if (!report || !digest) {
+      alert("HOLD · Load the exact original lab report in a browser with SHA-256 support first.", "error");
+      return;
+    }
+    try {
+      ensure(file && file.name.toLowerCase().endsWith(".json") &&
+        file.size > 0 && file.size <= 131072);
+      const saved = JSON.parse(await file.text());
+      ensure(exactKeys(saved, ["schema","source_sha256","source_kind","source_status",
+        ...AUTH,"release_approved","scan_allowed","review_only","cases","warning"]));
+      ensure(saved.schema === "lightup-offline-human-triage-v1" &&
+        saved.source_sha256 === digest && saved.source_kind === sourceKind &&
+        saved.source_status === report.verdict && saved.release_approved === false &&
+        saved.scan_allowed === false && saved.review_only === true &&
+        boolFalseAuthority(saved) && Array.isArray(saved.cases) &&
+        saved.cases.length === report.cases.length);
+      const expected = reviewExport().cases;
+      const updates = [];
+      for (let i = 0; i < expected.length; i++) {
+        const row = saved.cases[i], current = expected[i];
+        ensure(exactKeys(row, ["case","priority","source_status",
+          "metric_regressions","human_stage","follow_up_date"]));
+        ensure(row.case === current.case && row.priority === current.priority &&
+          row.source_status === current.source_status &&
+          Array.isArray(row.metric_regressions) &&
+          row.metric_regressions.length === current.metric_regressions.length &&
+          row.metric_regressions.every((name,j) => name === current.metric_regressions[j]) &&
+          STAGES.has(row.human_stage));
+        const due = row.follow_up_date;
+        ensure(due === null || (typeof due === "string" &&
+          /^\d{4}-\d{2}-\d{2}$/.test(due) &&
+          !Number.isNaN(Date.parse(due + "T00:00:00Z")) &&
+          new Date(due + "T00:00:00Z").toISOString().startsWith(due)));
+        updates.push({stage: row.human_stage, due: due || ""});
+      }
+      updates.forEach((step,i) => Object.assign(report.cases[i], step));
+      alert("Saved human follow-up restored for the exact same local report. No approval imported.", "good");
+      render();
+    } catch (_) {
+      alert("HOLD · Saved review does not match the source bytes or canonical planning schema. No changes applied.", "error");
+    } finally {
+      $("restore-file").value = "";
+    }
+  }
+  $("restore-button").addEventListener("click", () => {
+    if (!report) return;
+    $("restore-file").click();
+  });
+  $("restore-file").addEventListener("change", async e => {
+    if (e.target.files[0]) await restoreReview(e.target.files[0]);
+  });
   $("file").addEventListener("change", async e => {if(e.target.files[0]) await load(e.target.files[0]);});
   $("clear").addEventListener("click", reset);
   $("filter").addEventListener("change", renderQueue);
