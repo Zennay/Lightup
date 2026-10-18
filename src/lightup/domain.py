@@ -177,6 +177,7 @@ CREATE TABLE IF NOT EXISTS authorization_grants (
     valid_until TEXT NOT NULL,
     recurring_retest_allowed INTEGER NOT NULL DEFAULT 0,
     created_at TEXT NOT NULL,
+    approved_request_id TEXT REFERENCES assessment_requests(request_id),
     FOREIGN KEY (engagement_id) REFERENCES engagements(engagement_id) ON DELETE CASCADE
 );
 
@@ -338,6 +339,22 @@ class DomainStore:
         self.path = str(path)
         with self._connect() as con:
             con.executescript(SCHEMA)
+            # Existing deployments have unbound legacy grants. Migrate the
+            # nullable provenance field without manufacturing an approval.
+            # Legacy rows remain inert on the current-grant read boundary.
+            columns = {
+                column["name"]
+                for column in con.execute("PRAGMA table_info(authorization_grants)").fetchall()
+            }
+            if "approved_request_id" not in columns:
+                con.execute(
+                    "ALTER TABLE authorization_grants "
+                    "ADD COLUMN approved_request_id TEXT REFERENCES assessment_requests(request_id)"
+                )
+            con.execute(
+                "CREATE INDEX IF NOT EXISTS idx_authorization_grants_request "
+                "ON authorization_grants(approved_request_id)"
+            )
 
     @contextmanager
     def _connect(self):
