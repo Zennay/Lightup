@@ -107,7 +107,11 @@ def inspect(directory: Path) -> None:
             raise Refused("incomplete recipient manifest")
         requested = set(references)
         base = set(EXPECTED)
-        if requested not in (base, base | {"PRIVATE-review.json"}):
+        if requested not in (
+            base, base | {"PRIVATE-review.json"},
+            base | {"PRIVATE-ready.html"},
+            base | {"PRIVATE-ready.html", "PRIVATE-review.json"},
+        ):
             raise Refused("unexpected recipient files")
         expected_all = requested | {"manifest.json"}
         names = os.listdir(dirfd)
@@ -116,8 +120,12 @@ def inspect(directory: Path) -> None:
         limits = dict(EXPECTED)
         if "PRIVATE-review.json" in requested:
             limits["PRIVATE-review.json"] = 262144
+        if "PRIVATE-ready.html" in requested:
+            limits["PRIVATE-ready.html"] = 1300000
         original_source = None
         review_source = None
+        original_app = None
+        ready_source = None
         for filename, max_size in limits.items():
             reference = references[filename]
             if type(reference) is not dict or set(reference) != {"sha256", "bytes"}:
@@ -139,12 +147,18 @@ def inspect(directory: Path) -> None:
                 original_source = raw
             elif filename == "PRIVATE-review.json":
                 review_source = raw
+            elif filename == "PRIVATE-ready.html":
+                ready_source = raw
             elif filename == "standalone.html":
                 from app_integrity import InvalidApp, admit_standalone
                 try:
                     admit_standalone(raw)
+                    original_app = raw
                 except InvalidApp as exc:
                     raise Refused("private application CSP mismatch") from exc
+        if ready_source is not None:
+            from ready_room import admit_ready
+            admit_ready(original_app, original_source, ready_source)
         if review_source is not None:
             from review_binding import admit_private_review
             admit_private_review(original_source, review_source)
