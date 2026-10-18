@@ -118,10 +118,41 @@
     };
   }
   function newRecord(sha,source) {
-    return {sha,source,reference:"Dossier "+String(records.length+1),tasks:Object.fromEntries(TASKS.map(([id])=>[id,"open"]))};
+    return {sha,source,reference:"Dossier "+String(records.length+1),replaces:null,tasks:Object.fromEntries(TASKS.map(([id])=>[id,"open"]))};
+  }
+  // Explicit human-declared revision lineage. Shared file contents never prove shared client identity.
+  function revisionDelta(r) {
+    const old=records.find(x=>x.sha===r.replaces);
+    if(!old)return null;
+    const count=(from,to)=>({added:[...new Set(to)].filter(x=>!new Set(from).has(x)).length,
+      removed:[...new Set(from)].filter(x=>!new Set(to).has(x)).length});
+    return {assets:count(old.source.assets,r.source.assets),
+      exclusions:count(old.source.excluded,r.source.excluded),
+      risk_changed:old.source.risk!==r.source.risk,
+      risk_increased:r.source.risk>old.source.risk,
+      mode_changed:old.source.mode!==r.source.mode,
+      time_window_presence_changed:old.source.hasWindow!==r.source.hasWindow,
+      possible_expansion:count(old.source.assets,r.source.assets).added>0 ||
+        count(old.source.excluded,r.source.excluded).removed>0 || r.source.risk>old.source.risk ||
+        (old.source.mode==="analysis_only" && r.source.mode==="authorized_assessment")};
+  }
+  function setRevision(r,priorSha) {
+    if (!priorSha) {r.replaces=null;return;}
+    assert(priorSha!==r.sha && records.some(x=>x.sha===priorSha),"Ongeldige revisierelatie.");
+    assert(!records.some(x=>x!==r&&x.replaces===priorSha),"De voorganger is al gekoppeld aan een andere opvolger.");
+    let cursor=priorSha;
+    const visited=new Set();
+    while(cursor) {
+      assert(cursor!==r.sha && !visited.has(cursor),"Cyclische revisiehistorie geweigerd.");
+      visited.add(cursor); cursor=records.find(x=>x.sha===cursor)?.replaces??null;
+    }
+    r.replaces=priorSha;
   }
   function warnings(r) {
     const w=[];
+    const rev=revisionDelta(r);
+    if (rev?.possible_expansion) w.push("revisie_mogelijke_scopeuitbreiding");
+    if (rev?.mode_changed) w.push("revisie_modusgewijzigd");
     if (r.source.risk===4) w.push("hoog_risico");
     if (r.source.mode==="authorized_assessment") w.push("actieve_modus_voorgesteld");
     if (!r.source.excluded.length) w.push("geen_exclusies_opgegeven");
@@ -152,6 +183,7 @@
       card.append(node("span","card-title",r.reference),node("span","meta","SHA-256 "+r.sha.slice(0,16)+"…"),node("span","meta","Risico "+r.source.risk+" · "+(r.source.mode==="analysis_only"?"Analysevoorstel":"Actieve modus voorgesteld")+" · "+r.source.assets.length+" assetregels"));
       const chips=node("span","chips");
       chips.append(node("span","chip",prepared(r)+"/"+TASKS.length+" voorbereidingen"));
+      if(r.replaces) chips.append(node("span","chip","Revisie van "+r.replaces.slice(0,10)+"…"));
       for (const warning of warnings(r)) chips.append(node("span","chip alert",warning.replaceAll("_"," ")));
       card.append(chips);
       card.addEventListener("click",()=>{active=r.sha;render();});
@@ -173,6 +205,27 @@
     const del=node("button","","Verwijder alleen dit concept");del.type="button";
     del.addEventListener("click",()=>{if(!confirm("Dit concept en de lokale voorbereidingsantwoorden verwijderen?"))return;records.splice(records.indexOf(r),1);active=records[0]?.sha??null;show("Concept uit alleen dit browsersessie-register verwijderd.");render();});
     controls.append(del);detail.append(controls);
+    const relation=node("div","controls");
+    const revLabel=node("label","","Voorganger koppelen (handmatig, geen eigendomsbewijs)");
+    const revSelect=node("select");
+    const none=node("option","","Geen voorganger");none.value="";revSelect.append(none);
+    for(const other of records) if(other.sha!==r.sha) {
+      const opt=node("option","",other.reference+" · "+other.sha.slice(0,10)+"…");
+      opt.value=other.sha;revSelect.append(opt);
+    }
+    revSelect.value=r.replaces||"";
+    revSelect.addEventListener("change",()=>{
+      if(revSelect.value && !confirm("Verklaar uitsluitend voor lokale review dat dit een nieuwe versie van dezelfde bron is. Bestaande voorbereiding wordt NIET geërfd. Koppelen?")) {revSelect.value=r.replaces||"";return;}
+      try{setRevision(r,revSelect.value);show("Revisielijn bijgewerkt. Acties en toestemming van andere versies zijn niet gekopieerd.");render();}
+      catch(err){show("Revisiekoppeling geweigerd: "+err.message,true);revSelect.value=r.replaces||"";}
+    });
+    revLabel.append(revSelect);relation.append(revLabel);detail.append(relation);
+    const rev=revisionDelta(r);
+    if(rev) detail.append(node("p","summary","Letterlijke revisieverschillen (geen eigendom of CIDR-dekking): assets +"+rev.assets.added+"/−"+rev.assets.removed+
+      ", exclusies +"+rev.exclusions.added+"/−"+rev.exclusions.removed+
+      ", risicotoename: "+(rev.risk_increased?"ja":"nee")+", modus gewijzigd: "+(rev.mode_changed?"ja":"nee")+
+      ". Mogelijke uitbreiding: "+(rev.possible_expansion?"JA — onafhankelijke herbeoordeling nodig":"niet uit deze signalen gebleken")+
+      ". Voorbereidingsacties blijven apart; geen automatische overname."));
     const hint=node("p","summary","Reviewpunten: "+(warnings(r).length?warnings(r).join(", ").replaceAll("_"," "):"Geen automatisch aangemerkte signalen. Dat bewijst geen veilige scope.")+". Exacte asset-overlap betekent niet gedeeld eigendom of geldige toestemming.");
     detail.append(hint);
     for (const [id,title,description] of TASKS) {
@@ -218,13 +271,13 @@
   const authority=()=>({...DENIAL});
   function snapshot() {
     return {kind:"lightup.scope_handoff_local_progress",schema_version:1,state:"REVIEW_ONLY_HOLD",authority:authority(),
-      entries:records.map(r=>({sha256:r.sha,reference:r.reference,tasks:{...r.tasks}}))};
+      entries:records.map(r=>({sha256:r.sha,reference:r.reference,replaces:r.replaces,tasks:{...r.tasks}}))};
   }
   function report() {
     return {kind:"lightup.scope_handoff_review_register",schema_version:1,state:"REVIEW_ONLY_HOLD",authority:authority(),
       notice:"Unverified local human preparation; no authorization, consent, identity or ownership assertion.",
       entries:records.map((r,i)=>({
-        dossier:"D"+String(i+1).padStart(2,"0"),source_sha256:r.sha,
+        dossier:"D"+String(i+1).padStart(2,"0"),source_sha256:r.sha,replaces_source_sha256:r.replaces,revision:revisionDelta(r),
         proposed_risk:r.source.risk,proposed_mode:r.source.mode,
         asset_count:r.source.assets.length,excluded_count:r.source.excluded.length,
         review_codes:warnings(r),tasks:Object.fromEntries(TASKS.map(([id])=>[id,r.tasks[id]])),
@@ -240,10 +293,16 @@
       assert(isPlain(entry)&&typeof entry.sha256==="string" && /^[a-f0-9]{64}$/.test(entry.sha256) && shaMap.has(entry.sha256) && !found.has(entry.sha256),"Bron-SHA mist, is dubbel of niet gelijk.");
       assert(typeof entry.reference==="string"&&entry.reference.length>0&&entry.reference.length<=32 && isPlain(entry.tasks),"Ongeldige lokale label-/takenstructuur.");
       assert(Object.keys(entry.tasks).length===TASKS.length && TASKS.every(([id])=>STATUSES.includes(entry.tasks[id])),"Taakset of status is vervormd.");
+      assert(entry.replaces===null || (typeof entry.replaces==="string" && shaMap.has(entry.replaces)),"Vreemde revisievoorganger.");
       found.add(entry.sha256);updates.push([shaMap.get(entry.sha256),entry]);
     }
+    // Validate the entire proposed revision graph before applying any local updates.
+    const simulated=new Map(updates.map(([r,e])=>[r.sha,e.replaces]));
+    for(const [sha] of simulated){const visited=new Set([sha]);let cursor=simulated.get(sha);while(cursor){assert(!visited.has(cursor),"Cyclische revisielijn.");visited.add(cursor);cursor=simulated.get(cursor)||null;}}
+    const targets=updates.map(([,e])=>e.replaces).filter(Boolean);
+    assert(new Set(targets).size===targets.length,"Dubbele voorganger kan niet twee opvolgers hebben.");
     if (!confirm("De huidige lokale voorbereidingsstatussen vervangen voor exact deze bronbestanden?"))return;
-    updates.forEach(([r,e])=>{r.reference=e.reference;r.tasks={...e.tasks};});
+    updates.forEach(([r,e])=>{r.reference=e.reference;r.replaces=e.replaces;r.tasks={...e.tasks};});
     show("Lokale voorbereidingsstatussen atomisch hersteld voor identieke originele bestandsbytes.");
     render();
   }
