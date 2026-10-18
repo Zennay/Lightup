@@ -102,4 +102,25 @@ def prepare_rejected_revision(
         "scan_allowed": False,
         "dispatch_allowed": False,
     })
+    # Bind the complete proposed revision, not merely the rejected original.
+    # A changed asset/risk/notes value after preview must require a new review.
+    revision_identity = {
+        "format": "LIGHTUP_CLIENT_REJECTED_REVISION_V1",
+        "original_id": original.request_id,
+        "original_record_sha256": version,
+        "proposed_assets": payload["requested_assets"],
+        "proposed_risk": payload["requested_risk"],
+        "proposed_notes": payload["notes"],
+        "newly_introduced_assets": introduced,
+        "removed_or_narrowed_assets": removed,
+        "risk_increased": bool(wider_risk),
+        "needs_scope_expansion_confirmation": expansion,
+    }
+    revision_bytes = json.dumps(
+        revision_identity, ensure_ascii=True, sort_keys=True,
+        separators=(",", ":"),
+    ).encode("ascii")
+    payload["revision_sha256"] = hashlib.sha256(revision_bytes).hexdigest()
+    payload["revision_authenticated"] = False
+    payload["revision_authorized"] = False
     return payload
