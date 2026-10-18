@@ -1,0 +1,344 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>LightUp | Lab trajectory</title><meta http-equiv="Content-Security-Policy" content="default-src 'none'; base-uri 'none'; form-action 'none'; connect-src 'none'; img-src 'none'; object-src 'none'; frame-src 'none'; style-src 'sha256-cPlj9sIASTpN4yCvVcNFeFX4z/fFTuvm42lf3M/LgQQ='; script-src 'sha256-5oZ3hx35KoIk7wLWjWNkeB4WSJaZlwPgTAlaQwEaAA4='"><style>:root{color-scheme:dark;--bg:#09121c;--surface:#132233;--stroke:#284055;--ink:#e9f5ff;--muted:#a8bed0;--accent:#64e2c1;--warn:#f6c784;--red:#ed877f}*{box-sizing:border-box}body{font:15px/1.55 system-ui,-apple-system,Segoe UI,sans-serif;margin:0;background:radial-gradient(circle at 70% 0%,#193952 0,#09121c 45%);color:var(--ink)}.top{height:74px;border-bottom:1px solid var(--stroke);display:flex;align-items:center;justify-content:space-between;padding:0 max(22px,calc((100vw - 1240px)/2))}.brand{display:flex;gap:12px;align-items:center;font-weight:800;letter-spacing:.15em}.brand .icon{font-size:30px;color:var(--accent)}.brand small{display:block;letter-spacing:.18em;font-size:10px;color:var(--muted)}.state{font-size:11px;letter-spacing:.15em;border:1px solid var(--accent);color:var(--accent);padding:9px 12px;border-radius:30px}main{max-width:1240px;margin:auto;padding:38px 22px 100px}.hero{max-width:850px;padding:30px 0 55px}.eyebrow,.step{color:var(--accent);font-size:11px;font-weight:800;letter-spacing:.16em}h1{font-size:clamp(37px,6vw,75px);letter-spacing:-.06em;line-height:1.08;margin:19px 0}h1 em{font-style:normal;color:var(--accent)}h2{font-size:clamp(20px,2.4vw,29px);letter-spacing:-.035em;margin:8px 0}p{color:var(--muted);max-width:900px}.hero>p:not(.eyebrow){font-size:19px}.fence{margin-top:22px;padding:16px 20px;border-left:4px solid var(--warn);background:#293126;color:#f5e0c0;font-weight:650}.surface{background:linear-gradient(140deg,#15293b,#0f1f2f);border:1px solid var(--stroke);padding:26px;border-radius:15px;margin-bottom:22px;min-width:0}.section-top{display:flex;justify-content:space-between;gap:20px;align-items:end}.section-top p{margin:5px 0 18px}.import-row,.tools{display:flex;align-items:center;flex-wrap:wrap;gap:12px}.file-button,button{display:inline-flex;align-items:center;justify-content:center;background:var(--accent);color:#08251e;border:1px solid var(--accent);border-radius:8px;padding:12px 16px;font:inherit;font-weight:800;cursor:pointer}.file-button input{position:absolute;clip-path:inset(50%);width:1px;height:1px}.quiet{background:transparent;color:var(--ink);border-color:#476277}button:hover,.file-button:hover{filter:brightness(1.09)}button:focus-visible,.file-button:focus-within,select:focus-visible,textarea:focus-visible{outline:3px solid var(--warn);outline-offset:3px}.fine{font-size:12px}.message{margin-top:14px;padding:11px 14px;border:1px solid #345068;border-radius:6px;color:var(--ink)}.message.bad{border-color:var(--red);color:#ffbdbb}.cards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:13px;margin-bottom:22px}.cards article{background:#142b39;border:1px solid var(--stroke);padding:20px;border-radius:12px}.cards span,.cards small{display:block;color:var(--muted);font-size:12px}.cards strong{display:block;font-size:36px;letter-spacing:-.05em;color:var(--accent);margin:6px 0}.tools label,article label{font-size:13px;font-weight:700;color:var(--muted)}select,textarea{background:#071725;color:var(--ink);border:1px solid #507185;border-radius:7px;padding:10px 12px;font:inherit}article label{display:block;margin:16px 0 7px}select,textarea{max-width:100%;width:100%}.tools select{width:auto;min-width:210px}.grid{display:grid;grid-template-columns:1.3fr 1fr;gap:20px}.grid .surface{margin:0 0 22px}.table-scroll{overflow:auto;max-width:100%}table{border-collapse:collapse;width:100%;font-size:13px;white-space:nowrap}th,td{border-bottom:1px solid #294050;text-align:left;padding:11px 13px}th{font-size:11px;text-transform:uppercase;letter-spacing:.09em;color:#b7cddd}tbody tr:hover{background:#233848}.matrix td,.matrix th{text-align:center}.matrix td:first-child,.matrix th:first-child{text-align:left;position:sticky;left:0;background:#132738;min-width:180px}.matrix tbody tr{cursor:pointer}.matrix tbody tr.active td{outline:1px solid var(--accent)}.heat-0{color:#80c6ac}.heat-1{background:#493b34;color:#ffc4a3}.heat-2{background:#703b3a;color:#fff}.heat-3{background:#963c40;color:#fff}.followup{margin-top:20px;border-left:3px solid var(--accent);padding:12px;background:#1d343a;color:var(--ink)}footer{padding:24px;text-align:center;border-top:1px solid var(--stroke);color:var(--muted);font-size:12px}.skip{position:absolute;left:-10000px}.skip:focus{left:15px;top:10px;z-index:10;background:#fff;color:#000;padding:8px}@media(max-width:850px){.cards{grid-template-columns:repeat(2,1fr)}.grid{grid-template-columns:1fr}.section-top{display:block}}@media(max-width:530px){.cards{grid-template-columns:1fr}.state{font-size:9px}.top{padding:12px}.surface{padding:17px}main{padding:12px 14px}}@media print{body{background:white;color:black;font-size:12px}.top,.hero,.import-row,.tools,#notes,#focus,article label,footer,.file-button,.quiet,.message,.fine{display:none!important}main{padding:0}.surface,.cards article{break-inside:avoid;background:white;border:1px solid #999;color:black}h2,.cards strong{color:black}p,.cards span,.cards small,.step{color:#333}table th,table td{color:black;border-color:#bbb}.matrix td:first-child,.matrix th:first-child{background:white;color:black}.grid{display:block}.followup{color:black;background:white}}</style></head>
+<body><a class="skip" href="#main">Skip to workspace</a>
+<header class="top"><div class="brand"><span class="icon" aria-hidden="true">◈</span><span>LIGHTUP <small>LAB TRAJECTORY</small></span></div><span class="state">OFFLINE · REVIEW ONLY</span></header>
+<main id="main">
+<section class="hero"><p class="eyebrow">ASSESSMENT RUNTIME / ANALYST WORKSPACE</p><h1>Understand the drift.<br><em>Never assume permission.</em></h1>
+<p>Compare <strong>3–12 already-exported</strong> canonical LightUp lab-cohort JSON comparison reports. Trace where regressions persist, emerge or recover, without connecting to assets or running assessments.</p>
+<div class="fence">INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD. An offline trend is neither source authentication nor a scan, authorization, consent, release or remediation verdict.</div></section>
+<section class="surface" aria-labelledby="import-title"><div class="section-top"><div><span class="step">01 / SOURCE</span><h2 id="import-title">Import existing lab results</h2><p>Choose files in desired display order (earliest first). Order and provenance are not authenticated. All files must share the exact original baseline and scenario membership.</p></div></div>
+<div class="import-row"><label class="file-button">Choose 3–12 JSON reports<input id="files" type="file" accept=".json,application/json" multiple></label><button id="forget" type="button" class="quiet">Forget locally</button></div>
+<p class="fine">Per file max 256 KiB. No upload, browser storage, network calls or credentials. All-or-nothing import; malformed or ambiguous sources are rejected.</p>
+<p id="message" class="message" role="status" aria-live="polite">No source loaded.</p></section>
+<div id="workspace" hidden>
+<section class="cards" aria-label="Aggregate status"><article><span>Imported revisions</span><strong id="revision-count">—</strong><small>Unverified sequence</small></article><article><span>Paired lab scenarios</span><strong id="scenario-count">—</strong><small>Canonical source members</small></article><article><span>Regressed metric observations</span><strong id="regression-count">—</strong><small>All revisions</small></article><article><span>Persistent regressed metrics</span><strong id="persistent-count">—</strong><small>Regressed at every revision</small></article></section>
+<section class="surface" aria-labelledby="landscape-title"><div class="section-top"><div><span class="step">02 / LANDSCAPE</span><h2 id="landscape-title">Longitudinal regression landscape</h2><p>Each cell counts source scenarios with the indicated adverse metric change in that user-ordered revision. Select a metric to drill down.</p></div><div class="tools"><label for="metric">Metric</label><select id="metric"></select></div></div>
+<div class="table-scroll"><table class="matrix"><thead id="matrix-head"></thead><tbody id="matrix-body"></tbody></table></div>
+<p class="fine">Red shades indicate larger counts, not risk approval. Runtime and cost remain informational only and are excluded from regressions.</p></section>
+<section class="grid">
+<article class="surface"><span class="step">03 / DETAILS</span><h2 id="details-title">Selected metric</h2><p id="trend-summary">Choose a metric above to see the trajectory.</p><div class="table-scroll"><table><thead><tr><th>Source position</th><th>Cases regressed</th><th>Baseline sum</th><th>Candidate sum</th><th>Delta</th></tr></thead><tbody id="trend-rows"></tbody></table></div></article>
+<article class="surface"><span class="step">04 / HUMAN FOLLOW-UP</span><h2>Review notes</h2><label for="focus">Review topic</label><select id="focus"><option value="regressions">Persistent and emerging regressions</option><option value="policy">Policy/scope drift</option><option value="evidence">Evidence and coverage</option><option value="efficiency">Runtime and compute cost</option></select>
+<label for="notes">Local human discussion notes (not exported)</label><textarea id="notes" maxlength="600" rows="5" placeholder="Questions for a separate human review. No secrets or identities."></textarea>
+<div class="followup" id="followup">Human judgement required; no action is scheduled.</div></article></section>
+<section class="surface" aria-labelledby="handoff-title"><span class="step">05 / HANDOFF</span><h2 id="handoff-title">Privacy-minimal handoff</h2><p>Only aggregate metrics and ordered report positions leave this browser on explicit download. No scenario identities, raw source bytes, source file names, local notes, assets, identities, credentials or source fingerprints.</p>
+<div class="import-row"><button id="json" type="button">Export aggregate JSON</button><button id="csv" type="button">Export aggregate CSV</button><button id="print" type="button" class="quiet">Print analyst brief</button></div><p class="fine">Exports are unsigned REVIEW_ONLY planning summaries with all security authority flags false. Treat downloaded files as private.</p></section>
+</div></main><footer>LightUp offline assessment analysis · No authenticated origin · No network · No execution · No granted authority</footer>
+<script>"use strict";
+/* Isolated offline longitudinal analysis of pre-existing LightUp assessment
+   comparator JSON. No target interaction, no permissions, no persistence. */
+(() => {
+  const NAMES = ["valid_findings","invalid_findings","missed_findings","coverage_assessed",
+    "coverage_unknown","scope_violations","policy_violations","human_interventions",
+    "tool_calls","evidence_quality","reproducibility","remediation_quality",
+    "retest_correctness","runtime_seconds","compute_cost_usd"];
+  const HIGH = new Set(["valid_findings","coverage_assessed","evidence_quality",
+    "reproducibility","remediation_quality","retest_correctness"]);
+  const LOW = new Set(["invalid_findings","missed_findings","scope_violations","policy_violations"]);
+  const COUNTERS = new Set(NAMES.slice(0,9));
+  const SCORES = new Set(NAMES.slice(9,13));
+  const AUTH = ["authorized","consent_verified","dispatch_allowed","release_allowed"];
+  const $ = id => document.getElementById(id);
+  const REQUIRE = ok => {if(!ok) throw new Error("Untrusted, incomplete or incompatible source.");};
+  const exact = (obj, keys) => obj !== null && typeof obj === "object" &&
+    !Array.isArray(obj) && Object.keys(obj).length === keys.length &&
+    keys.every(k => Object.hasOwn(obj,k));
+  const finite = x => typeof x === "number" && Number.isFinite(x);
+  const close = (a,b) => Math.abs(a-b) <= Math.max(1,Math.abs(a),Math.abs(b))*1e-8;
+  const label = x => typeof x === "string" && x.length > 0 && x.length <= 256 &&
+    x === x.trim() && /^[\x20-\x7e]+$/.test(x);
+  const nice = name => name.replaceAll("_"," ");
+  const fmt = x => Number.isInteger(x) ? String(x) : String(Number(x.toPrecision(7)));
+  const authority = () => ({authorized:false,consent_verified:false,
+    dispatch_allowed:false,release_allowed:false});
+  let revisions = [], selected = "valid_findings";
+
+  // Strict recursive JSON reader: rejects duplicate keys (also escaped aliases),
+  // malformed literals, nonfinite numbers and excessively nested documents.
+  // JSON.parse alone silently replaces duplicate object keys.
+  function strictJSON(source) {
+    let pos=0, nodes=0;
+    function white() {while(pos<source.length && /\s/.test(source[pos])) pos++;}
+    function string() {
+      REQUIRE(source[pos] === '"');
+      const start=pos++;
+      let escaped=false;
+      while(pos<source.length) {
+        const char=source[pos++];
+        if (!escaped && char === '"') return JSON.parse(source.slice(start,pos));
+        if (!escaped && char === "\\") escaped=true;
+        else escaped=false;
+      }
+      REQUIRE(false);
+    }
+    function value(depth) {
+      REQUIRE(depth < 28 && ++nodes < 90000);
+      white(); const ch=source[pos];
+      if(ch === '"') return string();
+      if(ch === "{") {
+        pos++; const obj=Object.create(null), keys=new Set(); white();
+        if(source[pos] === "}") {pos++;return obj;}
+        for(;;) {
+          white(); REQUIRE(source[pos] === '"');
+          const key=string(); REQUIRE(!keys.has(key)); keys.add(key);
+          white(); REQUIRE(source[pos++] === ":");
+          obj[key]=value(depth+1); white();
+          if(source[pos] === "}") {pos++;return obj;}
+          REQUIRE(source[pos++] === ",");
+        }
+      }
+      if(ch === "[") {
+        pos++; const items=[]; white();
+        if(source[pos] === "]") {pos++;return items;}
+        for(;;) {
+          items.push(value(depth+1)); REQUIRE(items.length<=90000); white();
+          if(source[pos] === "]") {pos++;return items;}
+          REQUIRE(source[pos++] === ",");
+        }
+      }
+      if(source.startsWith("true",pos)) {pos+=4;return true;}
+      if(source.startsWith("false",pos)) {pos+=5;return false;}
+      if(source.startsWith("null",pos)) {pos+=4;return null;}
+      const match=source.slice(pos).match(/^-?(?:0|[1-9][0-9]*)(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?/);
+      REQUIRE(!!match);
+      pos+=match[0].length;
+      const number=Number(match[0]); REQUIRE(Number.isFinite(number));
+      return number;
+    }
+    const result=value(0); white(); REQUIRE(pos===source.length);
+    return result;
+  }
+
+  function decodeChange(raw) {
+    REQUIRE(exact(raw,["name","baseline","candidate","delta","regression"]) &&
+      NAMES.includes(raw.name) && finite(raw.baseline) && finite(raw.candidate) &&
+      finite(raw.delta) && typeof raw.regression === "boolean" &&
+      raw.baseline>=0 && raw.candidate>=0);
+    if(COUNTERS.has(raw.name)) REQUIRE(Number.isSafeInteger(raw.baseline) &&
+      Number.isSafeInteger(raw.candidate) && Number.isSafeInteger(raw.delta) &&
+      raw.baseline<=1e9 && raw.candidate<=1e9 &&
+      raw.candidate-raw.baseline === raw.delta);
+    if(SCORES.has(raw.name)) REQUIRE(raw.baseline<=1 && raw.candidate<=1);
+    if(raw.name==="runtime_seconds"||raw.name==="compute_cost_usd")
+      REQUIRE(raw.baseline<=1e12 && raw.candidate<=1e12);
+    REQUIRE(close(raw.candidate-raw.baseline,raw.delta));
+    const bad=(HIGH.has(raw.name) && raw.candidate<raw.baseline) ||
+      (LOW.has(raw.name) && raw.candidate>raw.baseline);
+    REQUIRE(raw.regression===bad);
+    return {baseline:raw.baseline,candidate:raw.candidate,delta:raw.delta,regression:bad};
+  }
+
+  function decodeReport(doc) {
+    REQUIRE(exact(doc,["status","regressed_scenarios","comparisons",...AUTH]) &&
+      AUTH.every(k=>doc[k]===false) &&
+      (doc.status==="HOLD"||doc.status==="REVIEW_ONLY") &&
+      Array.isArray(doc.comparisons) && doc.comparisons.length>=1 &&
+      doc.comparisons.length<=64 &&
+      Array.isArray(doc.regressed_scenarios) &&
+      doc.regressed_scenarios.length<=64);
+    const cases=new Map();
+    for(const raw of doc.comparisons) {
+      REQUIRE(exact(raw,["scenario_id","status","regressions","changes"]) &&
+        label(raw.scenario_id) && !cases.has(raw.scenario_id) &&
+        (raw.status==="HOLD"||raw.status==="REVIEW_ONLY") &&
+        Array.isArray(raw.regressions) && Array.isArray(raw.changes) &&
+        raw.changes.length===NAMES.length && raw.regressions.length<=NAMES.length);
+      const metrics=Object.create(null);
+      for(const change of raw.changes) {
+        REQUIRE(typeof change?.name==="string" && !Object.hasOwn(metrics,change.name));
+        metrics[change.name]=decodeChange(change);
+      }
+      REQUIRE(NAMES.every(n=>Object.hasOwn(metrics,n)));
+      const expected=NAMES.filter(n=>metrics[n].regression);
+      REQUIRE(raw.regressions.length===expected.length &&
+        raw.regressions.every((n,i)=>n===expected[i]));
+      REQUIRE(raw.status===(expected.length?"HOLD":"REVIEW_ONLY"));
+      cases.set(raw.scenario_id,{metrics,regressions:expected});
+    }
+    const flagged=[...cases].filter(([_,item])=>item.regressions.length).map(([id])=>id);
+    REQUIRE(doc.regressed_scenarios.length===flagged.length &&
+      doc.regressed_scenarios.every(id=>label(id) && flagged.includes(id)) &&
+      new Set(doc.regressed_scenarios).size===flagged.length &&
+      doc.status===(flagged.length?"HOLD":"REVIEW_ONLY"));
+    return {cases,verdict:doc.status};
+  }
+
+  function enforceSameBaseline(reports) {
+    const first=reports[0], ids=[...first.cases.keys()].sort();
+    for(const doc of reports.slice(1)) {
+      const nextIds=[...doc.cases.keys()].sort();
+      REQUIRE(nextIds.length===ids.length && nextIds.every((id,i)=>id===ids[i]));
+      for(const id of ids) for(const name of NAMES) {
+        const left=first.cases.get(id).metrics[name].baseline;
+        const right=doc.cases.get(id).metrics[name].baseline;
+        REQUIRE(left===right);
+      }
+    }
+  }
+
+  async function loadFiles(list) {
+    REQUIRE(list.length>=3 && list.length<=12);
+    const decoder=new TextDecoder("utf-8",{fatal:true});
+    const parsed=[];
+    for(const file of list) {
+      REQUIRE(file.size>0 && file.size<=262144);
+      const bytes=await file.arrayBuffer();
+      REQUIRE(bytes.byteLength===file.size);
+      parsed.push(decodeReport(strictJSON(decoder.decode(bytes))));
+    }
+    enforceSameBaseline(parsed);
+    return parsed;
+  }
+  function snapshot(rev,name) {
+    const values=[...rev.cases.values()].map(x=>x.metrics[name]);
+    return {cases:values.filter(x=>x.regression).length,
+      baseline:values.reduce((n,x)=>n+x.baseline,0),
+      candidate:values.reduce((n,x)=>n+x.candidate,0),
+      delta:values.reduce((n,x)=>n+x.delta,0)};
+  }
+  function movement(name) {
+    const ids=[...revisions[0].cases.keys()];
+    let persistent=0,emerged=0,recovered=0,ever=0,volatile=0;
+    for(const id of ids) {
+      const observations=revisions.map(r=>r.cases.get(id).metrics[name].regression);
+      const count=observations.filter(Boolean).length;
+      if(count) ever++;
+      if(count===revisions.length) persistent++;
+      if(!observations[0] && observations.at(-1)) emerged++;
+      if(observations[0] && !observations.at(-1)) recovered++;
+      if(observations.slice(1).some((v,i)=>v!==observations[i])) volatile++;
+    }
+    return {persistent,emerged,recovered,ever,volatile};
+  }
+  function allRegressions() {
+    return revisions.reduce((sum,rev)=>sum+[...rev.cases.values()].reduce(
+      (n,c)=>n+c.regressions.length,0),0);
+  }
+  function add(parent,tag,value,css) {
+    const el=document.createElement(tag);
+    if(value!==undefined) el.textContent=String(value);
+    if(css) el.className=css;
+    parent.append(el); return el;
+  }
+  function showMessage(message,bad=false) {
+    $("message").textContent=message; $("message").className="message"+(bad?" bad":"");
+  }
+  function reset() {
+    revisions=[]; $("workspace").hidden=true; $("files").value="";
+    $("notes").value=""; showMessage("All imported source data and local notes cleared.");
+  }
+  function metricsRows() {
+    const head=$("matrix-head"), body=$("matrix-body");
+    head.replaceChildren();body.replaceChildren();
+    const hr=add(head,"tr");
+    add(hr,"th","Metric");
+    revisions.forEach((_,i)=>add(hr,"th","R"+(i+1)));
+    add(hr,"th","Persistent");
+    for(const name of NAMES) {
+      const tr=add(body,"tr");
+      tr.tabIndex=0; tr.setAttribute("role","button"); tr.setAttribute("aria-label","Review "+nice(name));
+      if(name===selected) tr.className="active";
+      add(tr,"th",nice(name));
+      revisions.forEach(r=>{
+        const count=snapshot(r,name).cases;
+        const td=add(tr,"td",String(count),count===0?"heat-0":count<3?"heat-1":count<8?"heat-2":"heat-3");
+        td.title=count+" of "+r.cases.size+" source cases with adverse change";
+      });
+      add(tr,"td",String(movement(name).persistent));
+      tr.addEventListener("click",()=>choose(name));
+      tr.addEventListener("keydown",e=>{
+        if(e.key==="Enter"||e.key===" "){e.preventDefault();choose(name);}
+      });
+    }
+  }
+  function choose(name) {
+    selected=name; $("metric").value=name;
+    [...$("matrix-body").rows].forEach((row,i)=>row.className=NAMES[i]===name?"active":"");
+    const m=movement(name);
+    $("details-title").textContent=nice(name);
+    $("trend-summary").textContent=m.ever+" case(s) ever regressed; "+m.persistent+
+      " persist across all reports; "+m.emerged+" newly regressed by last; "+
+      m.recovered+" recovered by last; "+m.volatile+" changed flag state. "+
+      "These are derived from untrusted offline JSON, not independently verified outcomes.";
+    const tbody=$("trend-rows");tbody.replaceChildren();
+    revisions.forEach((r,i)=>{
+      const v=snapshot(r,name),row=add(tbody,"tr");
+      [String(i+1),String(v.cases),fmt(v.baseline),fmt(v.candidate),
+        (v.delta>0?"+":"")+fmt(v.delta)].forEach(x=>add(row,"td",x));
+    });
+  }
+  function followupText() {
+    const focus=$("focus").value;
+    const text={
+      regressions:"Review persistent or newly regressed lab metric classes with the relevant source owner. User-entered order is not authenticated run chronology.",
+      policy:"Escalate any scope_violations or policy_violations regression to an independent scope reviewer; no permission to run or expand assessment scope is inferred.",
+      evidence:"Inspect offline lab ground truth, validated findings, missed findings and rubric/evidence quality with independent human review; source reports are not proof of remediation.",
+      efficiency:"Review offline runtime/cost changes as informational planning data only. Faster or cheaper comparisons do not establish safe or authorized execution."
+    };
+    $("followup").textContent=text[focus];
+  }
+  function exportModel() {
+    REQUIRE(revisions.length>=3);
+    const entries=revisions.map((report,i)=>({
+      position:i+1,source_verdict:report.verdict,scenario_count:report.cases.size,
+      metric_regressions:[...report.cases.values()].reduce((n,c)=>n+c.regressions.length,0),
+      metrics:NAMES.map(name=>({name,...snapshot(report,name)}))
+    }));
+    return {format:"lightup.assessment_trends.aggregate",version:1,
+      verdict:"REVIEW_ONLY",phase:"INCUBATE_M3_M7_DRAFT_HOLD",
+      source_order:"USER_SELECTED_UNVERIFIED",source_authenticated:false,
+      source_comparison_only:true,metrics:NAMES.map(name=>({name,...movement(name)})),
+      revisions:entries,...authority()};
+  }
+  function download(name,content,type) {
+    const url=URL.createObjectURL(new Blob([content],{type}));
+    const a=document.createElement("a");a.href=url;a.download=name;a.hidden=true;
+    document.body.append(a);a.click();a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),1000);
+  }
+  function csv() {
+    const rows=[["position","metric","regressed_cases","baseline_aggregate",
+      "candidate_aggregate","delta_aggregate","persistent_cases"]];
+    for(let i=0;i<revisions.length;i++) for(const name of NAMES) {
+      const s=snapshot(revisions[i],name);
+      rows.push([i+1,name,s.cases,s.baseline,s.candidate,s.delta,movement(name).persistent]);
+    }
+    // Headers and metric labels are fixed code-owned enum strings; only numbers are exported.
+    return "REVIEW_ONLY,NO_AUTHORITY,NO_CONSENT,NO_DISPATCH,NO_RELEASE\r\n"+
+      rows.map(line=>line.join(",")).join("\r\n")+"\r\n";
+  }
+  function render() {
+    $("workspace").hidden=false;
+    $("revision-count").textContent=String(revisions.length);
+    $("scenario-count").textContent=String(revisions[0].cases.size);
+    $("regression-count").textContent=String(allRegressions());
+    $("persistent-count").textContent=String(NAMES.reduce((n,name)=>n+movement(name).persistent,0));
+    const select=$("metric");select.replaceChildren();
+    for(const name of NAMES) {
+      const option=add(select,"option",nice(name));option.value=name;
+    }
+    metricsRows();choose(selected);followupText();
+    showMessage(revisions.length+" locally supplied cohort reports accepted. All comparisons remain untrusted and non-authorizing.");
+  }
+
+  $("files").addEventListener("change",async ev=>{
+    // No mixing old and new reports. A failed import removes previous content.
+    revisions=[];$("workspace").hidden=true;$("notes").value="";
+    const files=[...ev.target.files];
+    try {
+      const accepted=await loadFiles(files);
+      revisions=accepted;render();
+    } catch (_) {
+      revisions=[];$("workspace").hidden=true;
+      showMessage("HOLD — invalid, duplicated, incomplete or baseline-mismatched source set. No partial data imported.",true);
+    }
+  });
+  $("forget").addEventListener("click",reset);
+  $("metric").addEventListener("change",ev=>choose(ev.target.value));
+  $("focus").addEventListener("change",followupText);
+  $("json").addEventListener("click",()=>download("lightup-lab-trends-review-only.json",
+    JSON.stringify(exportModel(),null,2)+"\n","application/json"));
+  $("csv").addEventListener("click",()=>download("lightup-lab-trends-review-only.csv",
+    csv(),"text/csv;charset=utf-8"));
+  $("print").addEventListener("click",()=>window.print());
+})();</script></body></html>
