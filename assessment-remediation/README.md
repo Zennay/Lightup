@@ -328,3 +328,39 @@ When used without the two optional original source paths, receive remains a
 private human-note import only and writes the reviewed-links + diff/count files.
 Use NEW unused output prefixes; no existing source file or output is replaced.
 A team reply is not signed: explicitly verify real recipient/sender out of band.
+
+### Team-specific minimum-disclosure assignment
+
+Instead of sending every original human link to one reviewer, a private owner
+can create a source-limited team kit for one or more **already mapped original
+lab scenario IDs**. Explicit scenario labels are read verbatim from the
+original source and need not be disclosed to unrelated reviewers:
+
+    python3 assessment-remediation/team_handoff.py prepare \
+      --links /private/lightup-followup/reviewed-links.json \
+      --scenario owned-lab-case-A --scenario owned-lab-case-B \
+      --output-dir /private/lightup-followup --prefix focused-team
+
+The resulting standalone HTML and private ZIP contain ONLY the selected
+scenario/finding pairs and their existing original human annotations, never
+the full operator mapping, raw client CSV or lab report. Unknown, repeated,
+ambiguous or unmapped scenario selections fail closed. This is confidential
+source minimization, NOT scope authorization.
+
+The owner must return a selected subset **against the exact original selected
+handoff** as well as the complete unchanged original private source baseline:
+
+    python3 assessment-remediation/team_handoff.py receive \
+      --links /private/lightup-followup/reviewed-links.json \
+      --handoff /private/lightup-followup/focused-team-team-handoff.json \
+      --returned /private/returned-focused-team.json \
+      --output-dir /private/lightup-followup --prefix after-focused-team
+
+The receiver refuses added/deleted/different source link IDs and checks the
+original per-pair human baseline against the full unchanged operator source.
+Only the **selected** pairs may receive human note changes; all unselected
+original source links remain byte-for-byte equal in the new private mapping.
+An owner receiving the old full-membership handoff may continue using receive
+without --handoff, preserving prior behavior. This is still unsigned human-only
+coordination; sender/client verification remains outside the CLI and no
+live LightUp finding, permission or retest status is changed.

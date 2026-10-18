@@ -121,7 +121,23 @@ def target(output_dir, prefix, suffix):
 def prepare(args):
     original = read_regular(args.links, MAX_LINKS)
     mapping = admit_original(original)
-    handoff = envelope(TEAM_SCHEMA, original, mapping)
+    if args.scenario:
+        selected_scenarios = set(args.scenario)
+        fail_if(len(args.scenario) != len(selected_scenarios) or
+                len(selected_scenarios) > 64 or
+                any(type(v) is not str or not v for v in selected_scenarios),
+                "ambiguous private scenario selection")
+        selected_links = [
+            row for row in mapping["links"]
+            if row["scenario_id"] in selected_scenarios
+        ]
+        fail_if(not selected_links or
+                {row["scenario_id"] for row in selected_links} != selected_scenarios,
+                "a chosen scenario has no existing human original links")
+        filtered = {**mapping, "links": selected_links}
+    else:
+        filtered = mapping
+    handoff = envelope(TEAM_SCHEMA, original, filtered)
     # Team draft is an untrusted human annotation workflow, not a verified
     # source or signed authority; original finding data is not embedded.
     portable = read_regular(str(HERE / "team-room.html"), 131072)
@@ -165,13 +181,30 @@ def receive(args):
         (row["scenario_id"], row["finding_id"]): row
         for row in team["entries"]
     }
-    fail_if(set(received_by_identity) != set(original_by_identity),
+    if args.handoff:
+        source_handoff_raw = read_regular(args.handoff, MAX_LINKS)
+        source_handoff = read_team(source_handoff_raw, TEAM_SCHEMA)
+        fail_if(source_handoff["original_links_sha256"] != sha256(original_raw).hexdigest()
+                or source_handoff["comparison_sha256"] != source["comparison_sha256"]
+                or source_handoff["findings_sha256"] != source["findings_sha256"],
+                "private selected source handoff no longer binds the owner baseline")
+        expected_pairs = {
+            (row["scenario_id"], row["finding_id"]): row
+            for row in source_handoff["entries"]
+        }
+        fail_if(any(key not in original_by_identity or
+                    original_by_identity[key] != value
+                    for key, value in expected_pairs.items()),
+                "selected private human handoff altered source baseline content")
+    else:
+        expected_pairs = original_by_identity
+    fail_if(set(received_by_identity) != set(expected_pairs),
             "team return attempted original source identity/link membership edits")
     updated = []
     updated_count = 0
     for current in source["links"]:
         ident = (current["scenario_id"], current["finding_id"])
-        proposed = received_by_identity[ident]
+        proposed = received_by_identity.get(ident, current)
         if any(proposed[key] != current[key] for key in FIELDS):
             updated_count += 1
         updated.append({
@@ -222,8 +255,9 @@ def receive(args):
     fail_if(len(admitted["links"]) != len(source["links"]),
             "team update changed membership")
     fail_if(read_regular(args.links, MAX_LINKS) != original_raw or
-            read_regular(args.returned, MAX_LINKS) != returned_raw,
-            "human team baseline/return changed during private receipt")
+            read_regular(args.returned, MAX_LINKS) != returned_raw or
+            (args.handoff and read_regular(args.handoff, MAX_LINKS) != source_handoff_raw),
+            "human team baseline/selected handoff/return changed during receipt")
     publish(destination, encode(latest))
     publish(diff_destination, private_diff)
     publish(aggregate_destination, encode(aggregate))
@@ -266,7 +300,12 @@ def main(argv=None):
         command.add_argument("--links", required=True, help="Original private source-bound links JSON")
         command.add_argument("--output-dir", required=True, help="Existing owner-only 0700 folder")
         command.add_argument("--prefix", required=True, help="New unused output name prefix")
+        if name == "prepare":
+            command.add_argument("--scenario", action="append", default=[],
+                                 help="Select existing original scenario IDs for minimal team disclosure")
         if name == "receive":
+            command.add_argument("--handoff",
+                                 help="Original source handoff JSON, required for any selected subset return")
             command.add_argument("--returned", required=True,
                                  help="Human team-return JSON exported from team room")
             command.add_argument("--comparison", help="Optional exact original canonical benchmark JSON")
