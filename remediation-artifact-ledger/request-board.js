@@ -196,8 +196,11 @@ const OWNER_KEYS=['kind','schema_version','disposition','source_contract','sourc
 const OWNER_ROW=['request_id','finding_id','request_kind','instructions','due_date','human_stage','human_response'];
 function ownerPacketFor(alias){
  const c=current();
- const originals=state.requests.filter(r=>r.assignee===alias&&r.human_stage!=='closed_human').slice(0,60);
- if(!alias||!originals.length)problem('Select a HUMAN owner with outstanding PRIVATE requests.');
+ const all=state.requests.filter(r=>r.assignee===alias&&r.human_stage!=='closed_human');
+ const page=Number($('ownerPacketPage').value||0);
+ if(!alias||!all.length||!Number.isSafeInteger(page)||page<0||page%60!==0||page>=all.length)
+  problem('Select an existing ORIGINAL HUMAN owner request packet page.');
+ const originals=all.slice(page,page+60);
  return {kind:'lightup.private_human_evidence_owner_handoff',schema_version:1,
   disposition:'UNVERIFIED_HUMAN_REQUEST_ONLY',source_contract:'lightup.finding_export._COLUMNS_v1',
   source_sha256:c.sha,client_reference:c.client,engagement_reference:c.engagement,
@@ -213,7 +216,8 @@ function exportOwnerPacket(){
  const packet=ownerPacketFor(alias);
  if(!confirm('Export '+packet.requests.length+' PRIVATE owner-specific HUMAN evidence requests for "'+
   alias+'"? This shares no full Casework, file contents, filenames, SHA fingerprints or other owners. The recipient and secure channel are NOT authenticated by this application.'))return;
- B.download('LightUp-PRIVATE-human-owner-request.json',JSON.stringify(packet,null,2)+'\n','application/json');
+ const part=1+Number($('ownerPacketPage').value||0)/60;
+ B.download('LightUp-PRIVATE-human-owner-request-part-'+part+'.json',JSON.stringify(packet,null,2)+'\n','application/json');
  alert('Exported owner-specific PRIVATE HUMAN request packet for '+alias+'. No request has been delivered or marked authorized.');
 }
 function admitOwnerReply(data,c){
@@ -302,14 +306,20 @@ function render(){
    'requestImportButton','requestBatchMode','requestBatchKind',
    'requestBatchInstructions','requestBatchDue','requestBatchPreviewButton'])
   $(id).disabled=!enabled;
- const currentOwner=$('requestOwner').value;
+ const currentOwner=$('requestOwner').value,previousOwnerPage=$('ownerPacketPage').value;
  $('requestOwner').replaceChildren();
  $('requestOwner').append(new Option('Choose HUMAN recipient alias',''));
  const assignees=[...new Set(state.requests.filter(r=>r.assignee.trim()&&r.human_stage!=='closed_human').map(r=>r.assignee))].sort();
  for(const alias of assignees)$('requestOwner').append(new Option(alias,alias));
  if(assignees.includes(currentOwner))$('requestOwner').value=currentOwner;
+ const pages=$('ownerPacketPage');pages.replaceChildren();
+ const owner=$('requestOwner').value,ownerRows=state.requests.filter(r=>r.assignee===owner&&r.human_stage!=='closed_human');
+ for(let offset=0;offset<ownerRows.length;offset+=60){const to=Math.min(offset+60,ownerRows.length);
+  pages.append(new Option('HUMAN requests '+(offset+1)+'–'+to+' / '+ownerRows.length,String(offset)));}
+ if([...pages.options].some(op=>op.value===previousOwnerPage))pages.value=previousOwnerPage;
+ pages.disabled=!enabled||!ownerRows.length;
  $('requestOwner').disabled=!enabled||!assignees.length;
- $('ownerPacketExport').disabled=!enabled||!$('requestOwner').value;
+ $('ownerPacketExport').disabled=!enabled||!owner||!ownerRows.length;
  $('ownerReplyImport').disabled=!enabled;$('ownerReplyPreviewButton').disabled=!enabled;
  $('ownerReplyApply').disabled=!enabled||!state.ownerReplyPending;
  $('requestExport').disabled=!state.binding;
@@ -385,7 +395,8 @@ function bind(id,event,fn){
   try{await fn();}catch(e){alert(e.message||'Invalid PRIVATE human request',true);}
  });
 }
-bind('requestOwner','change',render);
+bind('ownerPacketPage','change',render);
+bind('requestOwner','change',()=>{$('ownerPacketPage').value='';render();});
 bind('ownerPacketExport','click',exportOwnerPacket);
 bind('ownerReplyPreviewButton','click',previewOwnerReply);
 bind('ownerReplyApply','click',applyOwnerReply);
