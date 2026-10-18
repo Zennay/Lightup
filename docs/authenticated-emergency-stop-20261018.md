@@ -90,6 +90,17 @@ For a manually selected incident scope of 1–32 existing engagements, the new n
 
 Authentication uses existing password and lockout. A client may select only its own tenant, while a genuine operator may explicitly select multiple tenants. This is a deny-only incident intake, not a batch grant, and it never runs tools or changes the original assessment scope. The CLI prints only a bounded aggregate status; per-engagement STOP IDs appear in the optional private 0600 receipt, never public stdout. Failure to create a receipt after database commit cannot undo stops. The reason is stored privately; avoid secrets in shell arguments.
 
+## Interactive original-account incident control room
+
+An operator or client can use all the existing deny-only workflows in a single guided private terminal instead of constructing multiple commands:
+
+    PYTHONPATH=src python -m lightup.stop_ops \
+      --database /private/path/lightup.sqlite \
+      --email original-registered-account@example.invalid
+
+The menu authenticates with the genuine DomainStore credentials, then offers real persisted engagement inbox, bounded 1–32 engagement incident STOP, one engagement history, operator pending STOP queue, distinct-operator acknowledgment and operator-only schema initialization. It does not expose an authorization, restart, grant, scan, model or dispatch command. Batch action requires selecting listed row numbers and typing the literal STOP plus exact count; acknowledgment and ledger initialization also require explicit confirmation. Source access is tenant-rechecked, and every database mutation uses the existing authenticated source-level writer. The process ends on q or after a bounded number of interactions.
+
+After a successfully committed batch, the operator can optionally enter a NEW private receipt destination. An exclusive atomic 0600 file may then be created. Failure to publish the file reports that the STOP is already committed; it never falsely reports cancellation. The operator controls the terminal, and any displayed private engagement/STOP IDs must not be copied to public logs or issue trackers. Account password is held in this foreground terminal process until it ends; close the process on a shared computer.
 ## Opt-in original tool-policy STOP integration candidate
 
 The new src/lightup/stop_policy_adapter.py composes (rather than replaces) the original ExecutionPolicy and ToolExecutor in a separate NEW source file. The original registry, mode, risk and evidence gates remain installed. It requires the exact immutable RunContext instance and matches real authorization grant client/engagement lineage. It reads the original SQLite STOP ledger before and after the original policy decision; active or uncertain STOP yields a denied PolicyDecision. The only installed entrypoint is an explicit developer opt-in:
