@@ -19,7 +19,7 @@ const exactKeys = (v,allowed) => Object.keys(v).every(k => allowed.has(k));
 const validString = (s,n) => typeof s === 'string' && s.length <= n;
 const str = s => String(s == null ? '' : s);
 const minutes = v => Number.isInteger(v) && v >= -840 && v <= 840;
-let entries = [], blackouts = [], scenarioShifts = new Map(), laneAssignments = new Map(), anchorUTC = 0, anchorChangedByUser = false;
+let entries = [], blackouts = [], scenarioShifts = new Map(), laneAssignments = new Map(), pinnedKeys = new Set(), anchorUTC = 0, anchorChangedByUser = false;
 
 function validLocal(value) {
   if (value === null) return true;
@@ -242,6 +242,18 @@ function renderInventory(){
     });
     controls.append(laneSelect);
     if(entry.interval.state==='resolved'){
+      const pinLabel=document.createElement('label');
+      pinLabel.style.display='inline-flex';pinLabel.style.gap='8px';pinLabel.style.alignItems='center';
+      const pin=document.createElement('input');pin.type='checkbox';pin.checked=pinnedKeys.has(entry.key);
+      pin.style.width='auto';pin.setAttribute('aria-label','Keep current proposed time for draft #'+(index+1));
+      pin.addEventListener('change',()=>{
+        if(pin.checked)pinnedKeys.add(entry.key);else pinnedKeys.delete(entry.key);
+        $('status').textContent=pin.checked?'Local planning time pinned for batch arrangement. This does not book any resource.':
+          'Local planning time unpinned; batch arrangement may move it.';
+        render();
+      });
+      pinLabel.append(pin,document.createTextNode('Pin proposed time in batch rearrangement'));
+      controls.append(pinLabel);
       const focus=append(controls,'button','Focus UTC timeline');
       focus.type='button';focus.addEventListener('click',()=>{
         $('anchor').value=fmtDate(entry.interval.start);
@@ -254,7 +266,7 @@ function renderInventory(){
     remove.addEventListener('click',()=>{
       if(!window.confirm('Remove this imported proposal from the local board? Its original file will stay unchanged. Previously exported scenario ordinals may no longer match.'))return;
       const removed=entries.splice(index,1)[0];
-      scenarioShifts.delete(removed.key);laneAssignments.delete(removed.key);
+      scenarioShifts.delete(removed.key);laneAssignments.delete(removed.key);pinnedKeys.delete(removed.key);
       $('status').textContent='One local proposal removed. Source file untouched. Re-export the private scenario if needed.';
       render();
     });
@@ -278,6 +290,7 @@ function render(){
   for(const [i] of spacing.blocks)active.add(i);
   $('blocked').textContent=blackouts.length;
   $('changed').textContent=scenarioShifts.size;
+  $('pinned').textContent=pinnedKeys.size;
   renderBlocks();
   renderInventory();
   $('total').textContent=entries.length;$('timed').textContent=timed.length;
@@ -466,7 +479,7 @@ function scenarioPacket(){
       const proposed=scenarioShifts.get(e.key);
       const valid=e.interval.state==='resolved';
       const duration=valid ? e.interval.end-e.interval.start:0;
-      return {local_ordinal:i+1,review_lane:laneAssignments.get(e.key)||1,source_file_sha256:e.sourceHash,requested_mode:e.mode,requested_risk:e.risk,state:valid?'DRAFT_PLANNED':'HOLD_MISSING_UTC',
+      return {local_ordinal:i+1,review_lane:laneAssignments.get(e.key)||1,pinned_time:pinnedKeys.has(e.key),source_file_sha256:e.sourceHash,requested_mode:e.mode,requested_risk:e.risk,state:valid?'DRAFT_PLANNED':'HOLD_MISSING_UTC',
         original_start_utc:valid?new Date(e.interval.start).toISOString():null,
         original_end_utc:valid?new Date(e.interval.end).toISOString():null,
         scenario_start_utc:valid?new Date(proposed===undefined?e.interval.start:proposed).toISOString():null,
@@ -503,7 +516,19 @@ function arrangeAll(){
   if(!policy.valid){$('status').textContent='HOLD: correct UTC workday boundaries first.';return;}
   const perLane=new Map([1,2,3,4].map(lane=>[lane,blackouts.map(b=>({start:b.start,end:b.end}))]));
   const proposals=new Map();
-  for(const e of current){
+  // Before moving a single unpinned proposal, reserve all local pinned times.
+  // If a pin clashes with another pin, work hours or global unavailability, HOLD atomically.
+  for(const e of current.filter(entry=>pinnedKeys.has(entry.key))){
+    const busy=perLane.get(e.lane);
+    if(!withinWorkHours(e.interval,policy)||
+        busy.some(b=>e.interval.start<b.end+BUFFER&&b.start<e.interval.end+BUFFER)){
+      $('status').textContent='HOLD: pinned proposed times conflict with each other, unavailable blocks or UTC workday settings. Unpin/reschedule first. No changes applied.';
+      return;
+    }
+    busy.push({start:e.interval.start,end:e.interval.end});
+    proposals.set(e.key,e.interval.start);
+  }
+  for(const e of current.filter(entry=>!pinnedKeys.has(entry.key))){
     const busy=perLane.get(e.lane);
     const slot=firstFit(e.interval,busy,policy);
     if(!slot || Math.abs(slot.start-e.original.start)>31*DAY){
@@ -529,7 +554,7 @@ function decodeScenario(snapshot){
     'execution','release','note','proposals','unavailable_utc','workday_utc',
     'proposed_time_overlap_pairs','proposed_unavailability_overlap_pairs','proposed_outside_workday_count',
     'proposed_buffer_violation_count']);
-  const rowKeys=new Set(['local_ordinal','review_lane','source_file_sha256','requested_mode','requested_risk','state','original_start_utc',
+  const rowKeys=new Set(['local_ordinal','review_lane','pinned_time','source_file_sha256','requested_mode','requested_risk','state','original_start_utc',
     'original_end_utc','scenario_start_utc','scenario_end_utc','shifted']);
   const blockKeys=new Set(['start','end']);
   if(!record(snapshot)||!exactKeys(snapshot,rootKeys) ||
@@ -562,11 +587,12 @@ function decodeScenario(snapshot){
       snapshot.proposed_outside_workday_count>entries.length))throw Error('invalid workday count');
   const effectivePolicy={enabled:policy.enabled,valid:true,start_utc:policy.start,
     end_utc:policy.end,weekdays:policy.weekdays};
-  const shifts=new Map(),assignedLanes=new Map(),busy=[],resolvedIntervals=[];
+  const shifts=new Map(),assignedLanes=new Map(),restoredPins=new Set(),busy=[],resolvedIntervals=[];
   for(let i=0;i<entries.length;i++){
     const source=entries[i],row=snapshot.proposals[i],resolved=source.interval.state==='resolved';
     if(!record(row)||!exactKeys(row,rowKeys)||row.local_ordinal!==i+1||
        (own(row,'review_lane')&&(!Number.isInteger(row.review_lane)||row.review_lane<1||row.review_lane>4))||
+       (own(row,'pinned_time')&&typeof row.pinned_time!=='boolean')||
        row.requested_mode!==source.mode||row.requested_risk!==source.risk||
        typeof row.source_file_sha256!=='string' ||
        !/^[a-f0-9]{64}$/.test(row.source_file_sha256) ||
@@ -575,7 +601,8 @@ function decodeScenario(snapshot){
        typeof row.shifted!=='boolean')throw Error('mismatched source');
     if(!resolved){
       if(row.original_start_utc!==null||row.original_end_utc!==null||
-         row.scenario_start_utc!==null||row.scenario_end_utc!==null||row.shifted)throw Error('invalid hold');
+         row.scenario_start_utc!==null||row.scenario_end_utc!==null||row.shifted||
+         row.pinned_time===true)throw Error('invalid hold');
       assignedLanes.set(source.key,own(row,'review_lane')?row.review_lane:1);
       continue;
     }
@@ -587,6 +614,7 @@ function decodeScenario(snapshot){
        Math.abs(a-source.interval.start)>31*DAY ||
        row.shifted!==(a!==source.interval.start))throw Error('invalid proposed window');
     if(row.shifted)shifts.set(source.key,a);
+    if(row.pinned_time===true)restoredPins.add(source.key);
     assignedLanes.set(source.key,own(row,'review_lane')?row.review_lane:1);
     resolvedIntervals.push({start:a,end:b});
   }
@@ -613,7 +641,7 @@ function decodeScenario(snapshot){
        e.interval.start<b.end && b.start<e.interval.end).length,0)!==
        snapshot.proposed_unavailability_overlap_pairs)
     throw Error('inconsistent overlap claims');
-  return {shifts,busy,policy,assignedLanes};
+  return {shifts,busy,policy,assignedLanes,restoredPins};
 }
 $('scenarioImport').addEventListener('change',async ev=>{
   const file=ev.target.files&&ev.target.files[0];ev.target.value='';
@@ -623,7 +651,7 @@ $('scenarioImport').addEventListener('change',async ev=>{
     const text=new TextDecoder('utf-8',{fatal:true}).decode(await file.arrayBuffer());
     const candidate=JSON.parse(text),next=decodeScenario(candidate);
     // The entire replacement is committed at once: no partial restoration on invalid input.
-    scenarioShifts=next.shifts;laneAssignments=next.assignedLanes;blackouts=next.busy;
+    scenarioShifts=next.shifts;laneAssignments=next.assignedLanes;pinnedKeys=next.restoredPins;blackouts=next.busy;
     $('hoursEnabled').checked=next.policy.enabled;
     $('hoursStart').value=next.policy.start;
     $('hoursEnd').value=next.policy.end;
@@ -689,9 +717,9 @@ function escapeReviewHtml(value) {
 function renderPrivateReviewBrief(packet) {
   const p=packet.workday_utc;
   const esc=escapeReviewHtml;
-  const header=['#','Review lane','Source file SHA-256 (unsigned)','Risk / mode','Original UTC','Proposed UTC','Shifted'];
+  const header=['#','Review lane','Pinned (local only)','Source file SHA-256 (unsigned)','Risk / mode','Original UTC','Proposed UTC','Shifted'];
   const rows=packet.proposals.map(row=>[
-    row.local_ordinal,row.review_lane,row.source_file_sha256,
+    row.local_ordinal,row.review_lane,row.pinned_time?'Yes':'No',row.source_file_sha256,
     'Risk '+row.requested_risk+' / '+row.requested_mode,
     row.original_start_utc===null?'No resolved UTC window':
       row.original_start_utc+' to '+row.original_end_utc,
@@ -998,7 +1026,7 @@ $('files').addEventListener('change',async ev=>{
 $('clear').addEventListener('click',()=>{
   if(!entries.length && !blackouts.length)return;
   if(!window.confirm('Clear all imported drafts and unavailable periods from this tab?'))return;
-  entries=[];blackouts=[];scenarioShifts.clear();laneAssignments.clear();$('scenarioStart').value='';$('status').textContent='Local drafts and scenarios cleared; no persisted history.';render();
+  entries=[];blackouts=[];scenarioShifts.clear();laneAssignments.clear();pinnedKeys.clear();$('scenarioStart').value='';$('status').textContent='Local drafts and scenarios cleared; no persisted history.';render();
 });
 $('print').addEventListener('click',()=>{if(entries.length)window.print();});
 function icsTimestamp(n){return new Date(n).toISOString().replace(/[-:]/g,'').replace('.000Z','Z');}
