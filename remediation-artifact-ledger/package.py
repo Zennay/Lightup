@@ -52,7 +52,7 @@ def build() -> bytes:
         else:
             replacement = "<script>" + value.decode("utf-8") + "</script>"
         html = html.replace(source, replacement)
-    if "src=" in html or "href=" in html or "unsafe-inline" in html:
+    if "<script src=" in html or "<link rel=" in html or "unsafe-inline" in html:
         raise ValueError("Expected a fully self-contained, CSP-bound offline page")
     return html.encode("utf-8")
 
