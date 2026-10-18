@@ -59,6 +59,59 @@
     return raw;
   }
 
+  const studioSelect = document.getElementById("studio-select");
+  const studioStatus = document.getElementById("studio-status");
+  const studioExport = document.getElementById("studio-export");
+  const previewCommand = document.getElementById("command");
+  let studio = null;
+
+  function selectedStudio() {
+    return studio?.rows.find(row => row.scenario_id === studioSelect.value) || null;
+  }
+
+  function activeStudioBinding() {
+    const selected = selectedStudio();
+    if (!selected) return null;
+    const endpointIps = [];
+    for (const endpoint of list) {
+      const sourceAuthority = endpoint.match(/^https?:\/\/([^/?#]+)/)?.[1] || "";
+      const port = sourceAuthority.match(/:([0-9]{1,5})$/)?.[1];
+      if (!port || Number(port) < 1 || Number(port) > 65535) return null;
+      let parsed;
+      try { parsed = new URL(endpoint); } catch (_) { return null; }
+      endpointIps.push(parsed.hostname.replace(/^\[|\]$/g, "").toLowerCase());
+    }
+    const declared = selected.targets.map(value => value.toLowerCase());
+    if (endpointIps.length !== declared.length ||
+        new Set(endpointIps).size !== endpointIps.length ||
+        new Set(declared).size !== declared.length ||
+        !endpointIps.every(ip => declared.includes(ip))) return null;
+    return selected;
+  }
+
+  function renderStudio() {
+    const selected = selectedStudio();
+    const bound = activeStudioBinding();
+    if (!studio) {
+      studioStatus.textContent = "No original Studio draft imported. Plain lab-batch preparation remains available.";
+    } else if (!selected) {
+      studioStatus.textContent = "Private Studio draft loaded. Choose one original scenario; this is not source authentication.";
+    } else if (!bound) {
+      studioStatus.textContent = "HOLD: the chosen Studio scenario requires exactly one explicit URL+port for each original declared lab IP. No Studio export yet.";
+    } else {
+      const count = bound.expected_findings === null
+        ? "UNKNOWN (not zero)"
+        : String(bound.expected_findings.length) + " self-declared, unverified expected findings";
+      studioStatus.textContent = "Draft match: " + bound.targets.length +
+        " original lab IPs, " + count +
+        ". Only the original native schema, scope and byte-source checks may accept this draft.";
+    }
+    studioExport.disabled = !bound;
+    previewCommand.textContent = "lightup lab-assess --targets-file ./targets.txt" +
+      (bound ? " --catalog-file ./studio-catalog.json --scenario-id " + bound.scenario_id : "") +
+      " --preview-only";
+  }
+
   function status(message, isError = false) {
     feedback.textContent = message;
     feedback.classList.toggle("error", isError);
@@ -105,6 +158,7 @@
     empty.hidden = list.length !== 0;
     manifest.disabled = list.length === 0;
     receipt.disabled = list.length === 0;
+    renderStudio();
   }
 
   function download(filename, payload, mime) {
@@ -183,6 +237,88 @@
     input.value = "";
     render();
     status(String(list.length) + " private URLs restored as a local proposed batch. No contact or authorization.");
+  });
+
+  document.getElementById("studio-import").addEventListener("click", async () => {
+    const picker = document.getElementById("studio-file");
+    const file = picker.files?.[0];
+    if (!file) { status("Choose a private Studio JSON file first.", true); return; }
+    if (!Number.isSafeInteger(file.size) || file.size < 1 || file.size > 262144) {
+      status("Studio draft held: expected an existing file of at most 256 KiB.", true);
+      picker.value = "";
+      return;
+    }
+    let candidate;
+    try {
+      const bytes = new Uint8Array(await file.arrayBuffer());
+      if (bytes.length !== file.size) throw new Error("Source changed while reading.");
+      const decoded = new TextDecoder("utf-8", {fatal: true}).decode(bytes);
+      const document = JSON.parse(decoded);
+      const flags = ["authorized", "consent_verified", "dispatch_allowed", "release_allowed"];
+      if (!document || Array.isArray(document) || typeof document !== "object" ||
+          document.schema !== "lightup.lab_design_catalog.v1" ||
+          document.status !== "DRAFT_ONLY" ||
+          flags.some(key => document[key] !== false) ||
+          !Array.isArray(document.scenarios) ||
+          document.scenarios.length < 1 || document.scenarios.length > 32) {
+        throw new Error("Source is not the original Studio v1 DRAFT_ONLY format.");
+      }
+      const names = new Set();
+      for (const row of document.scenarios) {
+        if (!row || typeof row !== "object" || Array.isArray(row) ||
+            typeof row.scenario_id !== "string" ||
+            !/^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/.test(row.scenario_id) ||
+            names.has(row.scenario_id) ||
+            typeof row.name !== "string" || !Array.isArray(row.targets) ||
+            !row.targets.length || row.targets.length > 16 ||
+            row.targets.some(ip => typeof ip !== "string" || ip.length > 45) ||
+            (row.expected_findings !== null && !Array.isArray(row.expected_findings))) {
+          throw new Error("Catalog contains a noncanonical draft scenario.");
+        }
+        names.add(row.scenario_id);
+      }
+      // Preserve the *exact original bytes* for subsequent native admission.
+      // Browser JSON.parse cannot reject duplicate JSON keys: Python source
+      // read_selected_lab_design is mandatory and authoritative, never skipped.
+      candidate = {raw: bytes, rows: document.scenarios};
+    } catch (e) {
+      picker.value = "";
+      status("Studio HOLD, previous private selection kept. " + e.message, true);
+      return;
+    }
+    studio = candidate;
+    studioSelect.replaceChildren();
+    const prompt = document.createElement("option");
+    prompt.value = "";
+    prompt.textContent = "Select one original draft scenario";
+    studioSelect.appendChild(prompt);
+    for (const row of studio.rows) {
+      const option = document.createElement("option");
+      option.value = row.scenario_id;
+      option.textContent = row.name.slice(0, 100) + " (" + row.scenario_id + ")";
+      studioSelect.appendChild(option);
+    }
+    studioSelect.disabled = false;
+    picker.value = "";
+    renderStudio();
+    status("Original Studio bytes loaded locally for human preparation; authority NOT verified.");
+  });
+
+  studioSelect.addEventListener("change", renderStudio);
+
+  document.getElementById("studio-clear").addEventListener("click", () => {
+    studio = null;
+    studioSelect.replaceChildren();
+    studioSelect.disabled = true;
+    document.getElementById("studio-file").value = "";
+    renderStudio();
+    status("Private Studio draft discarded from the offline editor memory.");
+  });
+
+  studioExport.addEventListener("click", () => {
+    if (!studio || !activeStudioBinding()) return;
+    download("studio-catalog.json", studio.raw, "application/json");
+    status("Original Studio source bytes exported PRIVATE. The native original schema and scope gate must still admit them.");
   });
 
   document.getElementById("clear").addEventListener("click", () => {
