@@ -39,3 +39,13 @@
 .withdrawal-step strong{font-size:.8rem;overflow-wrap:anywhere}
 .withdrawal-step span{color:#f6dccd}
 @media(max-width:600px){.withdrawal-step{grid-template-columns:1fr}.withdrawal-step .meta{grid-column:1}}
+
+.permission-board{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px}
+.permission-card{background:#10283a;border:1px solid #547ea5;border-radius:12px;padding:16px}
+.permission-questions{display:grid;gap:7px;margin:13px 0}
+.permission-question{display:grid;grid-template-columns:minmax(120px,2fr) auto auto;gap:10px;align-items:center;padding:8px;border-bottom:1px solid #39556d}
+.permission-question strong{font-size:.83rem}
+.permission-question .chip{white-space:normal}
+@media(max-width:760px){.permission-question{grid-template-columns:1fr 1fr}.permission-question strong{grid-column:1/-1}}
+@media(max-width:540px){.permission-board{grid-template-columns:1fr}.permission-question{grid-template-columns:1fr}.permission-question strong{grid-column:auto}}
+@media print{.permission-card .actions{display:none!important}.permission-card{break-inside:avoid}}
