@@ -21,9 +21,11 @@
   const $ = (id) => document.getElementById(id);
   const els = {
     files: $("files"), list: $("file-list"), summary: $("file-summary"),
-    seal: $("seal"), password: $("seal-password"), confirm: $("seal-confirm"),
+    seal: $("seal"), selectAll: $("select-all"), selectNone: $("select-none"),
+    password: $("seal-password"), confirm: $("seal-confirm"),
     clear: $("clear"), openFile: $("open-file"), openPassword: $("open-password"),
     unlock: $("unlock"), lock: $("lock"), recovered: $("recovered"),
+    mergeMode: $("merge-mode"),
     message: $("message")
   };
   let entries = [];
@@ -90,7 +92,8 @@
     els.list.replaceChildren();
     els.recovered.replaceChildren();
     const total = entries.reduce((n, e) => n + e.bytes.length, 0);
-    els.summary.textContent = entries.length + " local file(s), " + total.toLocaleString() + " bytes in tab memory. All packet contents remain unapproved.";
+    const selectedCount = entries.filter((item) => item.selected).length;
+    els.summary.textContent = entries.length + " local file(s), " + total.toLocaleString() + " bytes in tab memory; " + selectedCount + " selected for encrypted export. All contents remain unapproved.";
     entries.forEach((entry, index) => {
       const box = document.createElement("div");
       box.className = "item";
@@ -123,6 +126,18 @@
         touch(); notice("Self-reported role updated in tab memory; this is not independent identity or authorization.");
       });
       text.append(role);
+      const select = document.createElement("label"); select.className = "checkline";
+      const checkbox = document.createElement("input"); checkbox.type = "checkbox";
+      checkbox.checked = entry.selected;
+      checkbox.setAttribute("aria-label", "Include " + entry.name + " in encrypted handoff");
+      checkbox.addEventListener("change", () => {
+        if (busy) return;
+        entry.selected = checkbox.checked;
+        touch(); paint();
+      });
+      const caption = document.createElement("span"); caption.textContent = "Include in next encrypted handoff";
+      select.append(checkbox, caption);
+      text.append(select);
       box.append(text, remove);
       els.list.append(box);
       const recovered = document.createElement("div");
@@ -143,7 +158,7 @@
       recovered.append(info, download);
       els.recovered.append(recovered);
     });
-    els.seal.disabled = busy || entries.length === 0 || !window.isSecureContext || !window.crypto || !window.crypto.subtle;
+    els.seal.disabled = busy || selectedCount === 0 || !window.isSecureContext || !window.crypto || !window.crypto.subtle;
     els.unlock.disabled = busy || !window.isSecureContext || !window.crypto || !window.crypto.subtle;
     els.files.disabled = busy;
     els.openFile.disabled = busy;
@@ -209,7 +224,7 @@
           const bytes = new Uint8Array(await file.arrayBuffer());
           invariant(bytes.length === file.size);
           DEC.decode(bytes); // Only canonical UTF-8 text drafts, not arbitrary binary payloads.
-          staged.push({name, bytes, hash: await digest(bytes), role: roles[0]});
+          staged.push({name, bytes, hash: await digest(bytes), role: roles[0], selected: true});
         }
         entries.push(...staged);
         notice("New local draft files loaded. They are not persisted until you explicitly export an encrypted vault.");
@@ -222,7 +237,8 @@
   async function seal() {
     await inProgress(async () => {
       supportsCrypto();
-      invariant(entries.length > 0 && entries.length <= MAX_FILES);
+      const outgoing = entries.filter((entry) => entry.selected);
+      invariant(outgoing.length > 0 && outgoing.length <= MAX_FILES);
       const passphrase = els.password.value;
       const confirm = els.confirm.value;
       els.password.value = ""; els.confirm.value = "";
@@ -236,7 +252,7 @@
         schema: "lightup.offline.scope-packet.payload.v1",
         createdUtc: new Date().toISOString(),
         authority: {may_authorize: false, may_consent: false, may_grant: false, may_scan: false, may_dispatch: false, may_deploy: false, may_release: false},
-        files: entries.map((entry) => ({name: entry.name, length: entry.bytes.length, sha256: entry.hash, role: entry.role, base64: b64(entry.bytes)}))
+        files: outgoing.map((entry) => ({name: entry.name, length: entry.bytes.length, sha256: entry.hash, role: entry.role, base64: b64(entry.bytes)}))
       };
       const cleartext = ENC.encode(JSON.stringify(payload));
       try {
@@ -253,7 +269,7 @@
         const blob = new Blob([JSON.stringify(envelope)], {type: "application/json"});
         invariant(blob.size <= MAX_ENVELOPE_BYTES);
         save(blob, "lightup-private-scope-packet.lightup-vault.json");
-        notice("Encrypted packet downloaded. File names and content are encrypted. Save the passphrase separately; this file is NOT an approval or permit.");
+        notice("Selected " + outgoing.length + " file(s) encrypted into a new packet. Unselected local files stay in memory, but were excluded from this download. No permissions created.");
       } finally { cleartext.fill(0); }
     });
   }
@@ -303,14 +319,38 @@
           total += record.length;
           invariant(total <= MAX_TOTAL_BYTES);
           const bytes = unb64(record.base64, MAX_FILE_BYTES);
-          staged.push({name, bytes, hash: record.sha256, role: hasRole ? record.role : roles[0]});
+          staged.push({name, bytes, hash: record.sha256, role: hasRole ? record.role : roles[0], selected: true});
           invariant(bytes.length === record.length && (await digest(bytes)) === record.sha256);
           DEC.decode(bytes);
         }
-        // Atomic replacement: previous plaintext is forgotten only after entire authenticated packet validates.
-        for (const item of entries) item.bytes.fill(0);
-        entries = staged;
-        notice("Encrypted packet restored locally. Verify each scope draft with the real client and operator. This vault grants no authorization.");
+        if (els.mergeMode.checked) {
+          // Never accept filename collisions with different bytes or review roles.
+          // An atomic failure leaves the entire previous workspace intact.
+          const merged = [...entries];
+          const byName = new Map(entries.map((item) => [item.name, item]));
+          let newCount = 0;
+          let priorTotal = entries.reduce((n, item) => n + item.bytes.length, 0);
+          for (const item of staged) {
+            const current = byName.get(item.name);
+            if (current) {
+              invariant(current.hash === item.hash && current.role === item.role && current.bytes.length === item.bytes.length);
+              item.bytes.fill(0);
+            } else {
+              invariant(merged.length < MAX_FILES && priorTotal + item.bytes.length <= MAX_TOTAL_BYTES);
+              merged.push(item);
+              byName.set(item.name, item);
+              priorTotal += item.bytes.length;
+              newCount++;
+            }
+          }
+          entries = merged;
+          notice(newCount + " new local file(s) merged atomically. Existing matching files kept; source identities/roles remain unverified.");
+        } else {
+          // Atomic replacement: previous plaintext is forgotten only after authenticated validation.
+          for (const item of entries) item.bytes.fill(0);
+          entries = staged;
+          notice("Encrypted packet restored locally. Verify drafts with real client/operator; the vault grants no authorization.");
+        }
       } catch (err) {
         for (const item of staged) item.bytes.fill(0);
         throw err;
@@ -319,6 +359,12 @@
   }
 
   els.files.addEventListener("change", addFiles);
+  els.selectAll.addEventListener("click", () => {
+    if (busy) return; entries.forEach((entry) => {entry.selected = true;}); touch(); paint();
+  });
+  els.selectNone.addEventListener("click", () => {
+    if (busy) return; entries.forEach((entry) => {entry.selected = false;}); touch(); paint();
+  });
   els.seal.addEventListener("click", seal);
   els.unlock.addEventListener("click", unlock);
   els.clear.addEventListener("click", () => {
