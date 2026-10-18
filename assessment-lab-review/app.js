@@ -97,9 +97,35 @@ function el(tag,text,cls){
  const e=document.createElement(tag);if(text!==undefined)e.textContent=text;
  if(cls)e.className=cls;return e;
 }
+function endpointOrdinal(f){
+ const direct=source.targets.indexOf(f.target);
+ if(direct>=0)return direct+1;
+ // Only a unique literal URL-host correspondence gets a local ordinal.
+ // Never resolve DNS, infer ownership, collapse ambiguous ports or grant scope.
+ const candidates=[];
+ source.targets.forEach((value,i)=>{
+  try{
+   const url=new URL(value);
+   const host=url.hostname;
+   if(f.target===host||f.target===host.replace(/^\[|\]$/g,""))candidates.push(i+1);
+  }catch(_){}
+ });
+ return candidates.length===1?candidates[0]:0;
+}
 function sourcePosition(f){
- const i=source.targets.indexOf(f.target);
- return i>=0?"endpoint "+(i+1):"source-reported asset (unmatched)";
+ const n=endpointOrdinal(f);
+ return n?"endpoint "+n+" (unverified match)":"source-reported asset (unmatched)";
+}
+function buildEndpointFilter(){
+ const select=$("filter");
+ select.querySelector("#endpoint-options")?.remove();
+ const group=document.createElement("optgroup");group.id="endpoint-options";
+ group.label="Declared source endpoint (local ordinal only)";
+ source.targets.forEach((_,i)=>{
+  const opt=el("option","Endpoint "+(i+1));opt.value="endpoint:"+(i+1);group.append(opt);
+ });
+ const unmatched=el("option","Unmatched source-reported assets");
+ unmatched.value="endpoint:0";group.append(unmatched);select.append(group);
 }
 function updateSummary(){
  const sev=Object.fromEntries(SEVERITIES.map(s=>[s,0]));
@@ -125,7 +151,7 @@ function render(){
  const tbody=$("findings");tbody.replaceChildren();
  let shown=0;
  source.findings.forEach((f,i)=>{
-  const n=notes[i];if(filter&&filter!==f.severity&&filter!==n.stage)return;
+  const n=notes[i];if(filter&&filter!==f.severity&&filter!==n.stage&&filter!=="endpoint:"+endpointOrdinal(f))return;
   shown++;
   const tr=document.createElement("tr");
   const meta=el("div");meta.append(el("strong","#"+(i+1)+" · "+f.severity.toUpperCase()+" · "+sourcePosition(f)));
@@ -175,6 +201,7 @@ async function importSource(file){
  const hash=(globalThis.crypto&&crypto.subtle)?await sha256(bytes):"";
  if(source&&dirty&&!confirm("Replace existing unsaved private human notes?"))return;
  source=parsed;sourceHash=hash;notes=parsed.findings.map(initialNote);dirty=false;lastBulkUndo=null;
+ filter="";$("filter").value="";buildEndpointFilter();
  $("private").disabled=!hash;$("resume").disabled=!hash;
  $("workspace").hidden=false;updateSummary();render();
  status(hash?"Original private lab source admitted in memory. HUMAN REVIEW ONLY. Source hash is unsigned.":"Original private lab source admitted for local read-only review. Browser has no WebCrypto: private source-bound save/resume is disabled.");
@@ -202,7 +229,8 @@ async function resume(file){
 function visibleOrdinals(){
  if(!source)return [];
  return source.findings.map((f,i)=>({f,i})).filter(({f,i})=>
-  !filter||filter===f.severity||filter===notes[i].stage).map(({i})=>i);
+  !filter||filter===f.severity||filter===notes[i].stage||
+  filter==="endpoint:"+endpointOrdinal(f)).map(({i})=>i);
 }
 $("applyBulk").addEventListener("click",()=>{
  if(!source)return;
