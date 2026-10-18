@@ -5,6 +5,7 @@ if(!engine)throw Error('Original LightUp Casework source module required.');
 const $=id=>document.getElementById(id);
 const LIMIT_CSV=1048576, LIMIT_JSON=2097152;
 const DECISIONS=Object.freeze(['missing','submitted','needs_changes','ready_for_authorized_retest']);
+const HUMAN_BIDI_CONTROL=/[\u202a-\u202e\u2066-\u2069]/;
 const EVIDENCE_FIELDS=Object.freeze([
  ['change_reference',240,'Patch/change ticket reference'],
  ['deployment_reference',240,'Deployment/rollout record reference'],
@@ -21,7 +22,7 @@ function normalizeEvidence(raw){
  const value={};
  for(const [name,max] of EVIDENCE_FIELDS){
   const field=raw[name];
-  if(typeof field!=='string'||field.length>max||field.includes('\u0000'))
+  if(typeof field!=='string'||field.length>max||field.includes('\u0000')||HUMAN_BIDI_CONTROL.test(field))
    throw Error('Invalid evidence reference '+name+'.');
   value[name]=field;
  }
@@ -79,9 +80,11 @@ function strictJSON(s){
  return JSON.parse(s);
 }
 function exactFields(a,b){return ['finding_id','title','severity','retest_status','remediation'].every(k=>a[k]===b[k]);}
-function safeText(v,max){return typeof v==='string'&&v.length<=max&&![...v].some(c=>c==='\u0000') ? v : null;}
+function safeText(v,max){return typeof v==='string'&&v.length<=max&&!v.includes('\u0000')&&!HUMAN_BIDI_CONTROL.test(v) ? v : null;}
 function validReview(row,ids){
- if(!row||Object.getPrototypeOf(row)!==Object.prototype||!ids.has(row.finding_id))throw Error('Unknown review finding.');
+ if(!row||Object.getPrototypeOf(row)!==Object.prototype||!ids.has(row.finding_id)||
+    Object.keys(row).some(key=>!['finding_id','stage','reference','reviewer','next_step','evidence'].includes(key)))
+  throw Error('Unknown review finding or unauthorized local review field.');
  if(!DECISIONS.includes(row.stage))throw Error('Unsupported review stage.');
  const reference=safeText(row.reference,240),reviewer=safeText(row.reviewer,120),next=safeText(row.next_step,500);
  if(reference===null||reviewer===null||next===null)throw Error('Invalid review text.');
@@ -96,7 +99,7 @@ function snapshot(){
   source_sha256:sourceHash,authenticated:false,tenant_verified:false,source_authorized:false,
   assessment_authorized:false,grant:false,client_consent:false,operator_consent:false,
   execution:false,scan:false,audit_verdict:false,retest_verified:false,release:false,
-  review:source.map(f=>review.get(f.finding_id)),
+  review:source.map(f=>validReview(review.get(f.finding_id),new Set([f.finding_id]))),
   revision_register:revisions,
   warning:'References and local stages are unverified human notes, not evidence authenticity, remediation proof or retest results.'};
 }
@@ -396,6 +399,7 @@ function updateTeamCount(){
   String(selectedTeamRows().length)+' source findings in this locally declared routing group':'Select a team to scope a private export.';
 }
 function teamPacket(rows){
+ for(const {finding:f,coordination:r} of rows)validReview(r,new Set([f.finding_id]));
  const selected=$('packTeam').value;
  if(!sourceHash||!selected||!rows.length)throw Error('Choose a populated local routing group.');
  const team=selected==='unassigned'?null:selected.slice(5);
@@ -568,6 +572,8 @@ $('restore').addEventListener('click',async()=>{
   if(!packet||packet.kind!=='lightup.remediation_evidence_coordination'||packet.schema_version!==1||
      packet.disposition!=='UNVERIFIED_OFFLINE_HUMAN_COORDINATION'||
      packet.source_contract!=='lightup.finding_export._COLUMNS_v1'||
+     Object.keys(packet).some(k=>!['kind','schema_version','disposition','source_contract','source_sha256',
+       'review','revision_register','warning',...flags].includes(k))||
      flags.some(k=>packet[k]!==false)||packet.source_sha256!==sourceHash||
      !Array.isArray(packet.review)||packet.review.length!==source.length)throw Error('Invalid review file, unsafe authority claim or different source.');
   const ids=new Set(source.map(f=>f.finding_id)),next=new Map();
@@ -639,6 +645,7 @@ $('applyBulk').addEventListener('click',()=>{
 $('exportHumanAgenda').addEventListener('click',()=>{
  try{
   if(!sourceHash)throw Error('Original source required for private human agenda.');
+  snapshot();
   const rows=humanFollowupItems().slice(0,100);
   if(!rows.length)throw Error('No local follow-up candidates.');
   if(!confirm('Download PRIVATE original IDs, local teams and human follow-up proposals for '+rows.length+
@@ -802,6 +809,7 @@ $('aggregate').addEventListener('click',()=>{
 });
 $('brief').addEventListener('click',()=>{
  if(!sourceHash)return;
+ snapshot(); /* refuse exporting untrusted human reference controls in a private brief */
  const m=count(),rows=source.map(f=>({f,c:casework?.get(f.finding_id),r:review.get(f.finding_id)}));
  const escape=s=>String(s).replace(/[\x00-\x1f\x7f\r\n]/g,' ').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\\/g,'\\\\').replace(/\|/g,'\\|').replace(/[\x60\[\]*_]/g,'\\$&').slice(0,800);
  const lines=['# Private LightUp remediation-evidence coordination','',
