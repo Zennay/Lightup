@@ -49,3 +49,10 @@
 @media(max-width:760px){.permission-question{grid-template-columns:1fr 1fr}.permission-question strong{grid-column:1/-1}}
 @media(max-width:540px){.permission-board{grid-template-columns:1fr}.permission-question{grid-template-columns:1fr}.permission-question strong{grid-column:auto}}
 @media print{.permission-card .actions{display:none!important}.permission-card{break-inside:avoid}}
+
+.urgent-row{border-color:#cd8865;background:#3a261e}
+.urgent-row .meta{color:#ffe1c8}
+#coordBoard .action-main strong{overflow-wrap:anywhere}
+@media(max-width:760px){#coordBoard .action-row{grid-template-columns:1fr 1fr}#coordBoard .action-row .action-main{grid-column:1/-1}}
+@media(max-width:530px){#coordBoard .action-row{grid-template-columns:1fr}#coordBoard .action-row .action-main{grid-column:auto}}
+@media print{#coordBoard .action-row button{display:none!important}}
