@@ -512,6 +512,9 @@ function exportCoverage(){
 
 /* Derived PRIVATE human work queue. Never a target/execution queue or remediation verdict. */
 function actionItems(){
+ const requests=window.LightUpArtifactRequests?window.LightUpArtifactRequests.currentRows():[];
+ const byFinding=new Map();
+ for(const r of requests){if(!byFinding.has(r.finding_id))byFinding.set(r.finding_id,[]);byFinding.get(r.finding_id).push(r);}
  const counts=new Map();
  for(const r of state.rows){
   const n=counts.get(r.finding_id)||{files:0,followUp:0};
@@ -523,9 +526,13 @@ function actionItems(){
   const cw=state.casework&&state.casework.get(f.finding_id);
   const ev=state.evidence&&state.evidence.get(f.finding_id);
   const n=counts.get(f.finding_id)||{files:0,followUp:0};
+  const activeHumanRequests=(byFinding.get(f.finding_id)||[]).filter(r=>r.human_stage!=='closed_human');
   const reasons=[];
   if(!n.files)reasons.push('No LOCAL fingerprint recorded');
   if(n.followUp)reasons.push('Local HUMAN follow-up recorded');
+  if(activeHumanRequests.length)reasons.push(activeHumanRequests.length+' LOCAL HUMAN evidence requests outstanding');
+  if(activeHumanRequests.some(r=>r.human_stage==='needs_changes'))reasons.push('LOCAL HUMAN evidence request needs changes');
+  if(activeHumanRequests.some(r=>r.due_date&&r.due_date<today))reasons.push('Tentative HUMAN request date passed');
   if(cw){
    if(!cw.owner.trim())reasons.push('Casework HUMAN owner not assigned');
    if(cw.status==='blocked'||cw.blocker.trim())reasons.push('Casework HUMAN blocker');
@@ -540,10 +547,11 @@ function actionItems(){
   const base={critical:5,high:4,medium:3,low:2,info:1}[f.severity]||1;
   const score=base*10+(reasons.includes('Casework HUMAN blocker')?5:0)+
     (reasons.includes('Tentative Casework HUMAN date passed')?4:0)+
-    (n.files?0:2)+(n.followUp?3:0);
+    (n.files?0:2)+(n.followUp?3:0)+(activeHumanRequests.length?3:0);
   return {finding_id:f.finding_id,severity:f.severity,
     casework_status:cw?cw.status:'not imported',owner:cw?cw.owner:'',due_date:cw?cw.due_date||'':'',
     evidence_stage:ev?ev.stage:'not imported',local_files:n.files,local_followup:n.followUp,
+    human_requests:activeHumanRequests.length,
     reasons,score};
  }).sort((a,b)=>b.score-a.score||a.finding_id.localeCompare(b.finding_id));
 }
@@ -553,7 +561,7 @@ function filteredActionItems(){
   mode==='critical_high'&&['critical','high'].includes(x.severity)&&x.reasons.length||
   mode==='missing_file'&&!x.local_files||
   mode==='blocked'&&x.reasons.some(r=>r.includes('blocker')||r.includes('date passed'))||
-  mode==='human_followup'&&(x.local_followup||x.reasons.includes('Evidence Review HUMAN follow-up')));
+  mode==='human_followup'&&(x.local_followup||x.human_requests||x.reasons.includes('Evidence Review HUMAN follow-up')));
 }
 function renderActions(){
  const body=$('actionRows');body.replaceChildren();
@@ -565,7 +573,7 @@ function renderActions(){
   const tr=document.createElement('tr');
   const values=[item.finding_id,item.severity,item.owner||'unassigned',
    item.casework_status+(item.due_date?' · '+item.due_date:''),
-   item.evidence_stage,String(item.local_files),
+   item.evidence_stage,String(item.local_files),String(item.human_requests),
    item.reasons.join(' · ')||'No LOCAL action gap identified'];
   for(const value of values){const td=document.createElement('td');td.textContent=value;tr.append(td);}
   const td=document.createElement('td'),go=document.createElement('button');go.type='button';go.textContent='File local evidence';
@@ -583,9 +591,9 @@ function exportHumanQueue(){
  if(!work.length)fail('No original HUMAN action rows match current filter.');
  if(!confirm('Download PRIVATE original finding IDs, source digest, local human owners and HUMAN follow-up gaps? Verify recipient and storage separately. No authorization is created.'))return;
  const heads=['source_sha256','original_finding_id','source_severity_claim','human_casework_owner','human_casework_stage',
- 'human_tentative_due_date','human_evidence_review_stage','local_fingerprint_count','local_human_followup_count','local_human_followup_reasons'];
+ 'human_tentative_due_date','human_evidence_review_stage','local_fingerprint_count','local_human_followup_count','active_human_request_count','local_human_followup_reasons'];
  const rows=work.map(x=>[state.sha,x.finding_id,x.severity,x.owner,x.casework_status,x.due_date,
-  x.evidence_stage,String(x.local_files),String(x.local_followup),x.reasons.join('; ')]);
+  x.evidence_stage,String(x.local_files),String(x.local_followup),String(x.human_requests),x.reasons.join('; ')]);
  download('LightUp-PRIVATE-original-human-evidence-action-queue.csv',ESCAPE+
  [heads,...rows].map(x=>x.map(csvCell).join(',')).join('\r\n')+'\r\n','text/csv;charset=utf-8');
 }
@@ -723,6 +731,7 @@ function privateScriptlessBrief(){
   local.get(file.finding_id).push(file);
  }
  const briefRows=actionItems();
+ const requests=window.LightUpArtifactRequests?window.LightUpArtifactRequests.currentRows():[];
  let body='';
  for(let i=0;i<briefRows.length;i++){
   const row=briefRows[i],source=findings.get(row.finding_id);
@@ -750,6 +759,15 @@ function privateScriptlessBrief(){
     htmlEscape(file.human_reviewer)+'</td><td>'+htmlEscape(file.human_note)+'</td></tr>';
    body+='</tbody></table>';
   }else body+='<p><em>No file fingerprint registered in this LOCAL browser only. This does not prove absence of evidence elsewhere.</em></p>';
+  const matchingRequests=requests.filter(r=>r.finding_id===row.finding_id);
+  if(matchingRequests.length){
+   body+='<h3>PRIVATE HUMAN evidence requests ('+matchingRequests.length+')</h3><dl>';
+   for(const request of matchingRequests)body+=item('HUMAN request type',request.request_kind)+
+    item('Unverified HUMAN owner',request.assignee)+item('Tentative HUMAN request date',request.due_date)+
+    item('HUMAN request stage',request.human_stage)+item('Original-bound HUMAN request instructions',request.instructions)+
+    item('Unverified HUMAN reply',request.human_response);
+   body+='</dl>';
+  }
   body+='</section>';
  }
  const html='<!doctype html><html lang="en"><head><meta charset="utf-8">'+
@@ -844,6 +862,7 @@ window.LightUpArtifactLedgerBridge=Object.freeze({
 const notifyRequestBoard=()=>window.dispatchEvent(new Event('lightup-original-human-context'));
 const originalRenderSummary=renderSummary;
 renderSummary=function(){originalRenderSummary();notifyRequestBoard();};
+window.addEventListener('lightup-human-requests-updated',()=>{renderActions();});
 
 render();
 })();
