@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self'; script-src 'self'; img-src 'none'; connect-src 'none'; form-action 'none'; object-src 'none'; base-uri 'none'">
+<title>LightUp — Offline Scope Workbench</title>
+<link rel="stylesheet" href="style.css">
+<script defer src="app.js"></script>
+<script defer src="document-tray.js"></script>
+<script defer src="apps/casework/casework/remediation-engine.js"></script>
+<script defer src="casework-tray.js"></script>
+<script defer src="work-queue.js"></script>
+</head>
+<body>
+<header class="bar"><a href="#home" class="logo">◈ <strong>LightUp</strong><span> Offline Workbench</span></a><span class="hold">DRAFT / HOLD · NIET GEAUTORISEERD</span></header>
+<main id="home">
+<section class="hero">
+<p class="eyebrow">ÉÉN LOKALE WERKRUIMTE · 10 GEBUNDELDE COMPONENTEN</p>
+<h1>Van scopeconcept naar een duidelijke menselijke bespreking.</h1>
+<p class="lede">Werk met de bestaande LightUp-tools zonder tien verschillende GitHub-branches te openen. Deze download bevat vastgepinde exemplaren van de huidige concept-apps. Alles blijft lokaal en iedere goedkeuring moet plaatsvinden via het afzonderlijke, werkelijk geauthenticeerde proces.</p>
+<div class="hero-actions"><a class="primary" href="#workflow">Start een workflow ↓</a><a class="secondary" href="LightUp-offline-workbench.zip" download>Download de hele werkbank (.zip)</a></div>
+<p class="caution">Geen scanner · geen grant · geen uitvoeringsrechten · geen actieve targetverbinding · geen opgeslagen accounts of sessies. De apps blijven afzonderlijke draftproducten, niet één autorisatiesysteem.</p>
+</section>
+<section class="section tray" id="documents" aria-labelledby="documents-title">
+<div class="section-head"><div><p class="eyebrow">NIEUW · DOCUMENTROUTING ZONDER GEDEELDE TOESTEMMING</p><h2 id="documents-title">Lokale documentlade</h2></div><p>Tijdelijke bestanden koppelen op exacte SHA-256 bronbytes en handmatig doorgeven aan de juiste offline app.</p></div>
+<div class="tray-shell">
+<div class="tray-top"><div><h3>Documenten uit je eigen offline workflow</h3><p>Selecteer maximaal 24 herkende JSON-documenten. Maximaal 256 KiB per bestand, 64 KiB voor originele Studio-concepten. Hele selecties worden geweigerd zodra één bestand ongeldig is.</p></div><strong id="tray-count" aria-live="polite">0 / 24</strong></div>
+<label class="tray-drop" id="tray-drop" for="tray-files"><strong>Bestanden kiezen of hierheen slepen</strong><span>Alleen ondersteunde lokale LightUp DRAFT/HOLD JSON; geen mappen, account- of netwerkkoppeling.</span><input type="file" id="tray-files" accept=".json,application/json" multiple></label>
+<p class="tray-feedback" id="tray-status" role="status" aria-live="polite">Geen documenten geopend. De hele lade blijft uitsluitend in het geheugen van dit tabblad.</p>
+<p class="tray-summary" id="tray-summary" aria-live="polite">0 originele Studio-documenten.</p>
+<div id="tray-empty" class="tray-empty">De lade is leeg. Begin bijvoorbeeld met een originele `lightup.scope_proposal_draft` JSON-export vanuit Studio.</div>
+<div class="tray-list" id="tray-list"></div>
+<div class="tray-controls"><button id="tray-export" type="button" disabled>Exporteer afgeschermde SHA-inventaris</button><button class="tray-clear" id="tray-clear" type="button" disabled>Vergeet alle documenten</button></div>
+<p class="tray-footnote"><strong>Geen automatische bronoverdracht.</strong> Gebruik “Download originele bytes”, open de genoemde zelfstandige app en kies het bestand daar opnieuw. De ontvangende app moet haar eigen originele importcontroles uitvoeren. Een leesbaar document, gelijk SHA-256, getoond risiconiveau of lokale status is nooit een grant of toestemmingsbewijs. De inventaris bevat SHA’s die bestanden kunnen koppelen; deel deze niet onnodig. Sluiten van dit tabblad wist de in-memory lade.</p>
+</div>
+</section>
+<section id="casework-desk" class="section" aria-labelledby="casework-title">
+<div class="section-head"><div><p class="eyebrow">NIEUW · BEVINDINGEN NAAR HERSTELPLANNING</p><h2 id="casework-title">Offline bevindingenwerkbank</h2></div><p>Gebruik bestaande via de echte LightUp-CLI geautoriseerd geëxporteerde samenvattingen als lokale bron. Hier vindt geen nieuwe authenticatie plaats.</p></div>
+<div class="tray-shell casework-shell">
+<div class="tray-top"><div><h3>Een CSV uit het originele LightUp findings-exportproces</h3>
+<p>Selecteer één of meer bestaande samenvattings-CSV's met de vijf originele velden: finding_id, title, severity, retest_status, remediation. Niet een scan uitvoeren, credentials verzamelen of een tenant kiezen. Geen ruwe titels of identifiers op deze pagina.</p></div><strong id="casework-count">0 / 4</strong></div>
+<label class="tray-drop" for="casework-files"><strong>Open oorspronkelijke findings-CSV's (max. 1 MiB per stuk)</strong><span>Maximaal vier bestanden tegelijk, 3 MiB totaal. Beperk toegang: CSV's kunnen gevoelige bevindingen bevatten.</span><input type="file" id="casework-files" accept=".csv,text/csv" multiple></label>
+<p id="casework-status" class="tray-feedback" role="status" aria-live="polite">Geen findings-CSV geladen. Originele toestemming en herkomst zijn niet vastgesteld.</p>
+<div id="casework-empty" class="tray-empty">Geen lokale CSV's. Gebruik eerst het bestaande geauthenticeerde LightUp-exportproces. Deze bundel kan dat niet uitvoeren.</div>
+<div id="casework-sources" class="tray-list"></div>
+<div class="tray-controls"><button type="button" id="casework-inventory" disabled>Download geanonimiseerde bevindingen-samenvatting</button><button type="button" class="tray-clear" id="casework-forget" disabled>Vergeet alle CSV-bronnen</button></div>
+<section class="casework-compare-panel" aria-label="Vergelijk twee bestaande exports"><h3>Bronverversing vooraf bekijken</h3><p>Vergelijk de inhoud van twee aangeleverde exports zonder oude herstelacties of echte LightUp-reteststatus aan te passen. Dit is alleen zinvol wanneer een mens extern vaststelt dat beide bij dezelfde cliënt én hetzelfde assessment horen.</p>
+<div class="casework-selects"><label>Vorige bron<select id="casework-baseline" aria-label="Eerdere bron"></select></label><label>Nieuwe bron<select id="casework-candidate" aria-label="Nieuwe bron"></select></label></div>
+<label class="casework-confirm"><input type="checkbox" id="casework-same-source"> Ik heb onafhankelijk de echte identiteit van cliënt en engagement voor beide exports vergeleken. Dit vinkje is geen toestemming, accountverificatie of retest.</label>
+<button type="button" id="casework-compare" disabled>Toon alleen bronverschillen</button><div id="casework-comparison" aria-live="polite"></div>
+</section>
+<p class="tray-footnote">De vijfveldige CSV wordt uitsluitend met de ongewijzigde parser van Remediation Casework uit PR #1568 gelezen. Deze lokale lade toont alleen tellingen; originele inhoud blijft in tabgeheugen voor handmatig downloaden. Open daarna Casework in een apart tabblad. Geen bron- of tenantvalidatie, databasewijziging, retest of release. <a target="_blank" rel="noopener" href="apps/casework/casework/index.html">Open de originele Casework-werkruimte →</a></p>
+</div></section>
+<section class="section" id="human-workqueue" aria-labelledby="work-title">
+<div class="section-head"><div><p class="eyebrow">SAMENGEBRACHT · MENSELIJKE OPVOLGING</p><h2 id="work-title">Actiewerkvoorraad uit scope en bevindingen</h2></div><p>Op basis van de tijdelijk geladen bronmetadata. Statussen zijn uitsluitend lokale bespreeknotities — geen echte tickets, toestemming of controles.</p></div>
+<div class="tray-shell work-shell">
+<div class="tray-top"><div><h3 id="work-count">0 opdrachten voor menselijke voorbereiding</h3><p id="work-summary">Geen documenten geladen.</p></div></div>
+<div class="work-toolbar"><label for="work-filter">Bekijk<select id="work-filter"><option value="all">Alle vervolgstappen</option><option value="urgent">Dringend</option><option value="high">Hoge aandacht</option><option value="scope">Scope</option><option value="remediation">Herstel</option><option value="pending">Nog niet voorbereid</option><option value="prepared">Gemeld als voorbereid</option></select></label>
+<div class="tray-controls"><button id="work-export" disabled type="button">Download anonieme werkvoorraad JSON</button><button id="work-csv" disabled type="button">Download werkvoorraad CSV</button><button id="work-reset" class="tray-clear" type="button">Zet lokale gesprekstatussen terug</button></div></div>
+<div id="work-queue-list" class="work-items" aria-live="polite"></div>
+<p class="tray-footnote"><strong>Geen autoriserende workflow.</strong> Het markeren van ‘voorbereid’ verandert geen aanvraag, eigenaarschap, client-/operatorbesluit, STOP, grant, scanner, ticket of retest. Ga voor echte actie altijd naar het bestaande geauthenticeerde LightUp-proces of het echte noodkanaal. De informatie hier kan onjuist zijn en blijft in deze tab.</p>
+</div></section>
+<section class="overview" aria-label="Overzicht"><article><span class="number">10</span><span>lokale componenten</span></article><article><span class="number">00</span><span>live API-koppelingen in deze launcher</span></article><article><span class="number">01</span><span>downloadbare offline bundel</span></article><article><span class="number">HOLD</span><span>vastgezette release-status</span></article></section>
+<section id="workflow" class="section">
+<div class="section-head"><div><p class="eyebrow">KIES JE WERKSTROOM</p><h2>Wat wil je vandaag voorbereiden?</h2></div><p>De route is advies voor documentvoorbereiding, nooit automatische toestemming.</p></div>
+<div class="journeys" role="group" aria-label="Soort werkstroom">
+<button class="journey active" data-route="proposal" aria-pressed="true"><strong>Nieuw scopeconcept</strong><span>Opstellen, bespreken en overdragen</span></button>
+<button class="journey" data-route="revision" aria-pressed="false"><strong>Gewijzigde scope</strong><span>Impact, planning en herbeoordeling</span></button>
+<button class="journey" data-route="stop" aria-pressed="false"><strong>STOP / intrekking</strong><span>Menselijke urgente overdracht</span></button>
+<button class="journey" data-route="lab" aria-pressed="false"><strong>Labresultaten</strong><span>Alleen offline cohortanalyse</span></button>
+<button class="journey" data-route="repair" aria-pressed="false"><strong>Herstelplanning</strong><span>Geautoriseerde bevindingen → lokaal actieplan</span></button>
+</div>
+<div class="route-panel" aria-live="polite"><p class="eyebrow">VOORGESTELDE VOLGORDE</p><h3 id="route-title">Nieuw scopeconcept</h3><p id="route-help">Begin met een niet-geautoriseerde Studio-v1 export. Lees de afzonderlijke bronwaarschuwingen.</p><ol id="route-steps"></ol><div class="route-warning" id="route-warning">Na de laatste stap geldt nog steeds DRAFT/HOLD. Alleen het echte, onafhankelijke autorisatieproces kan rechten afgeven.</div></div>
+</section>
+<section class="section catalog" id="catalog"><div class="section-head"><div><p class="eyebrow">ALLE GEÏNTEGREERDE BRONNEN</p><h2>Open een offline onderdeel</h2></div><label class="search">Zoek op functie <input id="search" type="search" autocomplete="off" placeholder="bijv. scope, toestemming, tijd"></label></div>
+<div class="cards" id="cards">
+<article class="card" data-key="studio" data-words="scope opstellen proposal assets cidr analyse concept"><div class="card-top"><span>01 · VOORBEREIDEN</span><span>PR #1567</span></div><h3>Scope Planning Studio</h3><p>Maak en vergelijk voorlopige Studio-v1 scopebestanden; bekijk CIDR, uitsluitingen en tijdvoorstellen.</p><a target="_blank" rel="noopener" href="apps/studio/studio/index.html">Open Studio →</a></article>
+<article class="card" data-key="briefing" data-words="briefing privacy risicogesprek asset verbergen review"><div class="card-top"><span>02 · BESPREKEN</span><span>PR #1580</span></div><h3>Scope Briefing</h3><p>Lees een concept met afgeschermde assetgegevens, risico-alerts en voorlopige menselijke bespreekvragen.</p><a target="_blank" rel="noopener" href="apps/briefing/scope-briefing/standalone.html">Open briefing →</a></article>
+<article class="card" data-key="permission" data-words="client operator vragen toestemming consent permission wijzigingen"><div class="card-top"><span>03 · VRAGEN</span><span>PR #1578</span></div><h3>Permission Brief</h3><p>Bespreek brongebonden vragen met cliënt en operator. Antwoorden blijven ongeverifieerd.</p><a target="_blank" rel="noopener" href="apps/permission/scope-permission-brief/standalone.html">Open vragen →</a></article>
+<article class="card" data-key="schedule" data-words="schedule planning utc agenda kalender time"><div class="card-top"><span>04 · PLANNEN</span><span>PR #1572</span></div><h3>Scope Schedule Board</h3><p>Bekijk een voorlopige tijdlijn en mogelijke overlap zonder een echt scantijdstip te reserveren.</p><a target="_blank" rel="noopener" href="apps/schedule/studio/scope-schedule-board.html">Open planning →</a></article>
+<article class="card" data-key="handoff" data-words="handoff agenda gezamenlijke acties stopper opvolgen dossiers"><div class="card-top"><span>05 · OVERDRAGEN</span><span>PR #1579</span></div><h3>Handoff Register</h3><p>Bundel menselijke vervolgacties en brongebonden gesprekken uit bestaande conceptstromen.</p><a target="_blank" rel="noopener" href="apps/handoff/scope-handoff-register/standalone.html">Open overdracht →</a></article>
+<article class="card" data-key="readiness" data-words="readiness voorbereiding autorisatie klaar risico lineage revisions"><div class="card-top"><span>06 · BEOORDELEN</span><span>PR #1573</span></div><h3>Readiness Workspace</h3><p>Maak onvolledige of verouderde voorbereidingsinformatie zichtbaar. Geen GO-status.</p><a target="_blank" rel="noopener" href="apps/readiness/coordination/scope-readiness-standalone.html">Open voorbereiding →</a></article>
+<article class="card" data-key="withdrawal" data-words="withdrawal revocation stop intrekking urgent coordinator"><div class="card-top"><span>07 · STOP / SIGNALEREN</span><span>PR #1577</span></div><h3>Withdrawal Desk</h3><p>Leg voorlopige STOP-overdrachtsacties vast; echte intrekking moet buiten de browser plaatsvinden.</p><a target="_blank" rel="noopener" href="apps/withdrawal/withdrawal-desk/standalone.html">Open STOP-desk →</a></article>
+<article class="card" data-key="vault" data-words="vault versleuteling privacy encrypt documenten"><div class="card-top"><span>08 · LOKAAL BEWAREN</span><span>PR #1574</span></div><h3>Private Packet Vault</h3><p>Maak lokaal een private scope-documentoverdracht. Zelf beheren; geen aangetoond geauthenticeerd kanaal.</p><a target="_blank" rel="noopener" href="apps/vault/scope-vault/standalone.html">Open kluis →</a></article>
+<article class="card" data-key="assessment" data-words="assessment lab resultaten metrics regressies triage vergelijk"><div class="card-top"><span>09 · LAB ONLY</span><span>PR #1576</span></div><h3>Assessment Review Desk</h3><p>Beoordeel reeds geproduceerde synthetische labvergelijkingen zonder live scans uit te voeren.</p><a target="_blank" rel="noopener" href="apps/assessment/assessment-review/standalone.html">Open labreview →</a></article>
+<article class="card" data-key="casework" data-words="casework bevindingen finding remediation herstel kwetsbaarheid repair tickets taken retest csv planning"><div class="card-top"><span>10 · HERSTELPLAN</span><span>PR #1568</span></div><h3>Remediation Casework</h3><p>Laad een eerder via het echte geautoriseerde LightUp-proces geëxporteerde findings-CSV en maak een lokaal herstelplan met teams, deadlines en vervolgacties. Niets wordt teruggeschreven naar LightUp.</p><a target="_blank" rel="noopener" href="apps/casework/casework/index.html">Open herstelplan →</a></article>
+</div>
+<p id="no-results" hidden>Geen passend onderdeel. Wis je zoektekst en probeer opnieuw.</p></section>
+<section class="rules section"><div><p class="eyebrow">VEILIG GEBRUIK</p><h2>Wat deze download nooit kan bewijzen</h2><p>Een hash, lokale vinklijst, voorsteldatum of geüploade concept-JSON toont geen identiteit of bevoegdheid aan. De werkbank koppelt niet aan een echte grant store, intrekkingsdienst, runner of scanner.</p></div><div class="rules-list"><p><strong>✓ Wel:</strong> concepten bespreken, exportbestanden lokaal uitwisselen, voorlopige taken voorbereiden.</p><p><strong>✕ Niet:</strong> cliënt- of operatortoestemming authenticeren, netwerkassets autoriseren, rechten uitgeven, actieve scans starten, grants intrekken of een release uitrollen.</p><p><strong>Voor productie:</strong> oorspronkelijke gehoste én permanent geregistreerde VPS-CI, onafhankelijke security/privacyreview, #177/#182/#829 integraties, echt geauthenticeerde cliënt-/operatorbesluiten, action-time revocation en expliciete HUMAN GO.</p></div></section>
+<footer>LightUp · Offline Workbench · bronkopieën uit open DRAFT/HOLD-PR’s. <a href="manifest.json">Bekijk de SHA-256 bronmanifestatie</a> · <a href="README.md">Lees de instructies</a>. Laat geen gevoelige documenten achter op gedeelde computers.</footer>
+</main></body></html>

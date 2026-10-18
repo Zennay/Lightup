@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="referrer" content="no-referrer">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'unsafe-inline'; img-src 'none'; connect-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'">
+<title>LightUp · Scope Readiness Workspace</title>
+<style>
+:root{font:15px/1.5 system-ui,sans-serif;color:#eef5ff;background:#091220;--panel:#132238;--border:#31455f;--mint:#71dec7;--muted:#b2c5dc;--warn:#f3c879;--red:#ff9c9c}
+*{box-sizing:border-box}body{margin:0}.actionGrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.actionLane{border:1px solid var(--border);border-radius:12px;padding:13px;background:#0d1b2c;min-width:0}.actionLane h3{margin:0 0 7px}.actionLane button{width:100%;display:block;text-align:left;margin:7px 0;background:#182d45;border:1px solid #49627c;font-size:.85rem;font-weight:500;overflow-wrap:anywhere}.actionLane button strong{display:block}.actionLane button span{font-size:.78rem;color:var(--muted)}@media(max-width:900px){.actionGrid{grid-template-columns:1fr 1fr}}@media(max-width:530px){.actionGrid{grid-template-columns:1fr}}header{padding:28px max(22px,calc((100vw - 1230px)/2));border-bottom:1px solid var(--border);background:#102036}
+.tag{color:var(--mint);font-size:.78rem;font-weight:800;letter-spacing:.14em}h1{margin:2px 0;font-size:clamp(25px,3vw,38px);letter-spacing:-.03em}h2{margin:0 0 10px;font-size:1.15rem}h3{margin:0 0 10px;font-size:1rem}p{margin:8px 0;color:var(--muted)}main{max-width:1260px;padding:22px 18px 60px;margin:auto}
+.grid{display:grid;grid-template-columns: minmax(310px,1.1fr) minmax(330px,1.7fr);gap:18px}.card{padding:20px;background:var(--panel);border:1px solid var(--border);border-radius:15px;min-width:0;margin-bottom:18px}.wide{grid-column:1/-1}
+button,input,select,textarea{font:inherit;border-radius:8px}button{cursor:pointer;border:1px solid #65829b;background:#233952;color:#eef7ff;padding:10px 13px;font-weight:700}button.primary{background:var(--mint);border-color:var(--mint);color:#072122}button:disabled{opacity:.45;cursor:not-allowed}button:hover:not(:disabled){filter:brightness(1.12)}
+input,textarea,select{display:block;background:#0a192b;color:white;border:1px solid #657b96;width:100%;padding:10px;margin:4px 0 12px}input:focus,textarea:focus,select:focus,button:focus-visible{outline:2px solid var(--mint);outline-offset:2px}label{font-weight:650;display:block}textarea{resize:vertical;min-height:75px}.row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.row>*{flex:1}.row button{flex:0 0 auto}.toolbar{display:flex;gap:9px;flex-wrap:wrap;align-items:center}.toolbar select{max-width:250px;margin:0}.pill{display:inline-block;border:1px solid #6a819c;border-radius:90px;padding:4px 9px;font-size:.8rem;font-weight:800}.hold{color:var(--warn)}.bad{color:var(--red)}.small{font-size:.87rem;color:var(--muted)}.alert{padding:14px 17px;border:1px solid #ab8a51;background:#302719;border-radius:12px;color:#ffe3a8;margin-bottom:18px}.alert strong{color:white}.stats{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px}.stat{border:1px solid var(--border);border-radius:12px;padding:14px;background:#0c1b2e}.num{font-size:1.8rem;color:var(--mint);font-weight:800;display:block}.list{display:grid;gap:10px}.item{border:1px solid #45607d;border-radius:10px;background:#0d1d31;padding:12px;text-align:left;width:100%}.item.active{outline:2px solid var(--mint)}.item strong{display:block;overflow-wrap:anywhere}.item small{display:block;color:var(--muted)}.item span{font-weight:500}
+table{width:100%;border-collapse:collapse}th,td{border-bottom:1px solid var(--border);padding:10px;vertical-align:top;text-align:left}th{color:var(--mint);font-size:.8rem}td select{margin:0;min-width:140px}td input{margin:0}td .small{display:block}.scroll{overflow:auto}
+.chip{border-radius:50px;background:#253954;padding:5px 9px;font-size:.78rem;display:inline-block;margin-right:5px}.live{font-weight:850;color:var(--warn)}.preview{white-space:pre-wrap;overflow-wrap:anywhere;max-height:280px;overflow:auto;background:#071322;padding:12px;border:1px solid #33495f;border-radius:8px;color:#c9d9e7;font-size:.78rem}
+.hidden{display:none}.hint{padding:10px;border-left:3px solid var(--warn);background:#27291f;margin:12px 0;color:#f6dbb2}.truncate{overflow-wrap:anywhere}.two{display:grid;grid-template-columns:1fr 1fr;gap:12px}footer{color:var(--muted);font-size:.85rem;margin-top:14px}
+@media(max-width:900px){.grid{grid-template-columns:1fr}.stats{grid-template-columns:1fr 1fr}}@media(max-width:530px){.stats,.two{grid-template-columns:1fr}.card{padding:14px}}
+@media print{body{background:white;color:black}header,.controls,#sourceUpload,#restoreInput,.toolbar,button,footer{display:none!important}.card{border:0;background:white;color:black;padding:3px}.grid{display:block}table{font-size:11px}td,th{color:black;background:white;border-color:#777}.stat,.item{color:black;background:#f0f0f0}.small,p{color:#333}.live{color:#555}}
+</style>
+</head>
+<body>
+<header><div class="tag">LIGHTUP / SCOPE AUTHORIZATION / PRIVATE LOCAL DESK</div><h1>Scope Readiness Workspace</h1><p>Coordinate the human work required before any assessment request could be considered. Every entry is a planning claim, not consent, permission, signed approval, access token or execution authority.</p></header>
+<main>
+<div class="alert"><strong>ALL ITEMS REMAIN ON HOLD.</strong> This local tool cannot verify who submitted a file, establish asset ownership, authenticate a client/operator, approve risk, create a grant, check revocation or start a scan. Use real LightUp authenticated approval and at-use policy gates separately. Files never leave this tab unless you explicitly export them.</div>
+<section class="card controls" aria-label="Import and export">
+<h2>1 · Load an existing Studio scope draft</h2>
+<div class="two">
+<div><label for="sourceUpload">LightUp Studio v1 JSON (maximum 64 KiB per file)</label><input type="file" id="sourceUpload" accept=".json,application/json" multiple><p class="small">Up to 20 bounded draft revisions. Source SHA-256 fingerprints are recalculated from exact imported file bytes. No network/DNS/storage.</p></div>
+<div><label for="restoreInput">Or restore a private readiness workspace JSON</label><input type="file" id="restoreInput" accept=".json,application/json"><p class="small">Restores local tracking only. Original Studio source files must be re-attached to match their SHA-256. No imported review is trusted as an authorization record.</p></div>
+</div>
+<div class="card" style="background:#0a192b;border-radius:10px;margin:12px 0">
+<h3>Merge separately saved private workspaces (review-only)</h3>
+<p>Combine separate offline action registers without overwriting any existing task. Exact same-source conflicts HOLD; new records arrive source-unbound.</p>
+<label for="mergeInput">Choose a second private workspace JSON (maximum 256 KiB)</label>
+<input id="mergeInput" type="file" accept=".json,application/json">
+<div class="toolbar"><button id="mergeApply" type="button" disabled>Apply conflict-free merge</button><button id="mergeDiscard" type="button">Discard merge preview</button></div>
+<p id="mergeStatus" role="status" aria-live="polite" class="small">No merge staged. Conflicting records must be manually reconciled; no silent replacement.</p><ul id="mergeConflicts" class="list" aria-label="Safe conflict summary"></ul>
+</div>
+<div class="toolbar"><button id="save" type="button" class="primary" disabled>Save private JSON</button><button id="csv" type="button" disabled>Export action CSV</button><button id="print" type="button" disabled>Print review brief</button><button id="reset" type="button">Clear workspace</button></div>
+<p id="message" role="status" aria-live="polite">Open a Studio draft or restore a saved workspace. Local browser memory only.</p>
+</section>
+<section class="card"><h2>2 · Review workload (never authorization)</h2>
+<div class="stats"><div class="stat"><span class="num" id="count">0</span>Drafts</div><div class="stat"><span class="num" id="unbound">0</span>Unbound source files</div><div class="stat"><span class="num" id="blockers">0</span>Open preparation tasks</div><div class="stat"><span class="num" id="overdue">0</span>Overdue action targets</div><div class="stat"><span class="num" id="roleOverlap">0</span>Client/operator label overlaps</div></div>
+</section>
+<section class="card controls" aria-label="Lossless client intake routing">
+<h2>Studio → authenticated client request · lossless routing preview</h2>
+<p>See whether the current draft contains exclusions, schedules or private-lab intentions that a native persistent assessment request could silently lose. This is a structural preview of the separately owned draft client CLI, not client authentication or permission.</p>
+<label for="intakeSource">Original locally attached Studio draft</label>
+<select id="intakeSource"><option value="">Select original source</option></select>
+<div class="toolbar"><button id="intakePreview" type="button">Review native intake limitations</button><button id="intakeAssign" type="button" disabled>Create missing preparation follow-ups</button><button id="intakeExport" type="button" disabled>Save unsigned routing note</button></div>
+<p id="intakeStatus" role="status" class="small">No draft selected. Never submit widened or narrowed scope automatically.</p>
+<div id="intakeResult" class="list"></div>
+</section>
+<section class="card controls" aria-label="Source-bound revision impact review">
+<h2>Scope revision impact · human re-review</h2>
+<p>Compare two original locally attached Studio v1 files before reusing paperwork. Changed target declarations, exclusions, timing and risk remain unverified. No scope widening, authenticated approval or execution is permitted by this screen.</p>
+<div class="two">
+<div><label for="revisionFrom">Original / baseline Studio revision</label><select id="revisionFrom"><option value="">Choose attached baseline</option></select></div>
+<div><label for="revisionTo">Updated Studio revision</label><select id="revisionTo"><option value="">Choose attached update</option></select></div>
+</div>
+<div class="toolbar"><button id="revisionCompare" type="button">Compare local originals</button><button id="revisionLink" type="button" disabled>Record unsigned parent → updated relationship</button><button id="revisionCarry" type="button" disabled>Copy missing follow-up logistics to updated draft</button><button id="revisionReopen" class="primary" disabled type="button">Reopen impacted preparation + add missing actions</button><button id="revisionExport" disabled type="button">Export anonymous revision handoff</button><button id="revisionDiscard" type="button">Clear comparison</button></div>
+<p id="revisionStatus" class="small" role="status" aria-live="polite">Requires both exact original Studio source files to be loaded in this tab. Previously restored records stay unbound until reattached.</p>
+<div class="list" id="revisionChanges" aria-live="polite"></div>
+</section>
+<section class="card" aria-label="Persistent local revision lineage">
+<h2>Scope revision history · private local graph</h2>
+<p>Recorded relationships survive private workspace save/restore but remain unsigned and untrusted. Missing parent sources, forks and prepared-but-unverified tasks are visible; no chain here establishes real client identity, consent, approval or grant.</p>
+<div class="toolbar"><button id="lineageDownload" disabled type="button">Export anonymous revision history</button></div>
+<p id="lineageStatus" class="small" aria-live="polite">No source relationships recorded.</p>
+<div class="list" id="lineageList"></div>
+</section>
+<section class="card" aria-label="Preparation action board">
+<h2>Priority workstreams · actionable follow-ups</h2><p>Navigate directly to an incomplete paperwork task. Categories represent human preparation only, not approval status or asset execution rights.</p>
+<label for="boardScope">Which local versions can have active follow-ups?</label>
+<select id="boardScope"><option value="tips">Local revision tips only (default; NOT approved)</option><option value="all">All, including superseded local versions (review carefully)</option></select>
+<label for="boardView">Show action board</label><select id="boardView"><option value="open">All incomplete preparation</option><option value="overdue">Overdue paperwork actions</option><option value="unassigned">No follow-up coordinator</option><option value="waiting">Waiting / blocked</option></select>
+<div class="actionGrid" id="actionBoard"><p>No preparation tasks loaded.</p></div>
+</section>
+<section class="card controls" aria-label="Bulk human coordination">
+<h2>3 · Batch follow-up planner</h2>
+<p>Prepare recurring action assignments across multiple proposals. Only empty fields on incomplete paperwork tasks may be filled. Never copies prepared evidence, consent, operator decisions or grants.</p>
+<div class="two">
+<div><label for="bulkStage">Workstream</label><select id="bulkStage">
+<option value="client_evidence">Client identity and ownership preparation</option>
+<option value="scope_boundary">Scope and exclusions preparation</option>
+<option value="client_consent">Client review coordination — NOT consent</option>
+<option value="operator_review">Operator review coordination — NOT approval</option>
+<option value="window_stop">Window, risk and STOP preparation</option>
+<option value="privacy_handoff">Privacy and incident handoff preparation</option>
+</select></div>
+<div><label for="bulkAudience">Drafts to consider</label><select id="bulkAudience">
+<option value="visible">Current filtered draft queue</option>
+<option value="attached">Only drafts with source files attached</option>
+<option value="all">All drafts (including unbound HOLD)</option>
+</select></div>
+</div>
+<div class="two">
+<div><label for="bulkOwner">Unverified follow-up coordinator label (optional)</label><input id="bulkOwner" maxlength="80" autocomplete="off" placeholder="Team or coordinator"></div>
+<div><label for="bulkDue">Target date (optional)</label><input id="bulkDue" type="date"></div>
+</div>
+<label for="bulkNext">Next action template (optional, 350 characters)</label>
+<textarea id="bulkNext" maxlength="350" rows="2" placeholder="Request written asset-ownership statement through authenticated channel; never paste credentials."></textarea>
+<div class="toolbar"><button id="bulkPreview" type="button">Preview eligible changes</button><button id="bulkApply" class="primary" type="button" disabled>Apply previewed assignments</button><button id="bulkDiscard" type="button">Discard preview</button><button id="bulkUndo" type="button" disabled>Undo last applied batch</button></div>
+<p id="bulkResult" role="status" aria-live="polite" class="small">No batch changes are pending. Import real Studio drafts first.</p>
+</section>
+<section class="card controls" aria-label="Private follow-up packet preparation">
+<h2>4 · Separated client/operator preparation briefs</h2>
+<p>Produce a locally downloaded request-for-information brief tailored to either client-side or operator-side paperwork. It cannot send messages, authenticate recipients or represent a granted authorization.</p>
+<div class="two">
+<div><label for="packetAudience">Preparation recipient</label><select id="packetAudience"><option value="client">Client-side: ownership and client coordination only</option><option value="operator">Operator-side: scope, independent review, STOP and privacy only</option></select></div>
+<div><label for="packetScope">Drafts in the brief</label><select id="packetScope"><option value="current">Selected draft only</option><option value="visible">Current filtered draft queue</option><option value="all">All drafts</option></select></div>
+</div>
+<div class="toolbar"><button id="packetPreview" type="button">Generate private preview</button><button id="packetDownload" class="primary" type="button" disabled>Download reviewed Markdown</button><button id="packetDiscard" type="button">Discard packet</button></div>
+<p id="packetStatus" class="small" aria-live="polite">Local preview only; original source values stay private. No client/operator permission claims.</p>
+<pre class="preview" id="packetText">No prepared packet.</pre>
+<hr style="border:0;border-top:1px solid var(--border);margin:20px 0">
+<h3>Private paperwork due-date handoff (.ics VTODO)</h3>
+<p>Generate an anonymous list of <strong>paperwork tasks only</strong> for an offline calendar/task app. No client names, asset identities, real assessment events, bookings or actual permission. Importing the downloaded file into a connected calendar may upload it to that calendar provider.</p>
+<label for="todoScope">Task selection</label>
+<select id="todoScope"><option value="visible">Filtered draft queue</option><option value="current">Selected draft</option><option value="all">All drafts</option></select>
+<div class="toolbar"><button id="todoExport" type="button" disabled>Export private VTODO deadlines (.ics)</button></div>
+<p id="todoStatus" role="status" aria-live="polite" class="small">Only incomplete paperwork tasks with an assigned target date are exported. No automatic synchronization.</p>
+</section>
+<div class="grid">
+<section class="card"><h2>5 · Draft register</h2><label for="filter">Show drafts</label><select id="filter"><option value="tips">Local revision tips (NOT approved)</option><option value="all">All drafts including earlier versions</option><option value="superseded">Superseded local revisions</option><option value="hold">Preparation incomplete</option><option value="missing">Source file not re-attached</option><option value="risk">Risk 4 proposed</option><option value="overdue">Overdue follow-up actions</option><option value="collision">Same client/operator coordinator label</option></select>
+<label for="sort">Sort review queue</label><select id="sort"><option value="priority">Attention first (missing source, overdue, risk)</option><option value="name">Draft name</option><option value="due">Earliest pending action date</option></select><div class="list" id="drafts"><p>No drafts imported.</p></div></section>
+<section class="card"><h2>6 · Human coordination tasks</h2><div id="detail"><p>Select a Studio draft. You can plan review tasks and assign follow-ups; none can mark real client consent or operator approval complete.</p></div></section>
+<section class="card wide"><h2>7 · Local review handoff</h2><p>This brief is a snapshot of unresolved preparation work. All authentication, consent, scope approval, grant, risk clearance and revocation statuses are explicitly false.</p><pre class="preview" id="brief">No review yet.</pre></section>
+</div>
+<footer>Private draft · REVIEW_ONLY / DRAFT-HOLD · no remote assets, scripts, network services, cookies, browser persistence, account sessions, grant mutations or scanning. Source hashes detect stale local references, not signatures.</footer>
+</main>
+<script src="./strict-local-json.js" defer></script>
+<script src="./scope-local-lineage.js" defer></script>
+<script src="./scope-revision-review.js" defer></script>
+<script src="./scope-readiness.js" defer></script>
+</body></html>

@@ -1,0 +1,816 @@
+{
+  "kind": "lightup.offline_scope_workbench",
+  "schema_version": 1,
+  "state": "DRAFT_HOLD_REVIEW_ONLY",
+  "authenticated": false,
+  "consent_verified": false,
+  "authorized": false,
+  "grant_issued": false,
+  "scan_allowed": false,
+  "dispatch_allowed": false,
+  "deploy_allowed": false,
+  "release_allowed": false,
+  "note": "Git SHA and raw-file SHA256 are only byte identifiers, NEVER signatures, ownership, consent or permits.",
+  "components": [
+    {
+      "name": "studio",
+      "pr": 1567,
+      "commit": "71d9e5f760ef2bff46a72b979173bb3181179afb",
+      "state": "DRAFT_HOLD"
+    },
+    {
+      "name": "schedule",
+      "pr": 1572,
+      "commit": "b9bfaf439cdd506f5cd7292b25c14db017fb5dc6",
+      "state": "DRAFT_HOLD"
+    },
+    {
+      "name": "readiness",
+      "pr": 1573,
+      "commit": "1786ee9e8034736aa0f1ff1b3904f2b1b5305678",
+      "state": "DRAFT_HOLD"
+    },
+    {
+      "name": "vault",
+      "pr": 1574,
+      "commit": "49a569b2125a80dcaac21655febc07861afa0df2",
+      "state": "DRAFT_HOLD"
+    },
+    {
+      "name": "assessment",
+      "pr": 1576,
+      "commit": "bb5c2299d3697781db7093aaea79ed418f1cc07c",
+      "state": "DRAFT_HOLD"
+    },
+    {
+      "name": "withdrawal",
+      "pr": 1577,
+      "commit": "0235d93fe285edc0cc49ea3aec3580b7dc4e1338",
+      "state": "DRAFT_HOLD"
+    },
+    {
+      "name": "permission",
+      "pr": 1578,
+      "commit": "f88df4b9732fb180cf77e92ed9af90b752316200",
+      "state": "DRAFT_HOLD"
+    },
+    {
+      "name": "handoff",
+      "pr": 1579,
+      "commit": "78ad5e20dd8ea03a3f548b5f83648b923a6598d7",
+      "state": "DRAFT_HOLD"
+    },
+    {
+      "name": "briefing",
+      "pr": 1580,
+      "commit": "22afcb7669ce078be504e288b03b8adf2b4412d8",
+      "state": "DRAFT_HOLD"
+    },
+    {
+      "name": "casework",
+      "pr": 1568,
+      "commit": "9c73e8468ce271bf8c6bef4cac071e5ad9c1806b",
+      "state": "DRAFT_HOLD"
+    }
+  ],
+  "files": [
+    {
+      "component": "assessment",
+      "pr": 1576,
+      "commit": "bb5c2299d3697781db7093aaea79ed418f1cc07c",
+      "source_path": "assessment-review/build_standalone.py",
+      "bundled_path": "apps/assessment/assessment-review/build_standalone.py",
+      "sha256": "15324977369de2f66799c4398b4135151d544236b351277410fdd6e049685c68",
+      "bytes": 1593
+    },
+    {
+      "component": "assessment",
+      "pr": 1576,
+      "commit": "bb5c2299d3697781db7093aaea79ed418f1cc07c",
+      "source_path": "assessment-review/index.html",
+      "bundled_path": "apps/assessment/assessment-review/index.html",
+      "sha256": "aadc53852ea0c36b706c8726d063de08e0fb78c1d91cb2036701d712eebe7fed",
+      "bytes": 7887
+    },
+    {
+      "component": "assessment",
+      "pr": 1576,
+      "commit": "bb5c2299d3697781db7093aaea79ed418f1cc07c",
+      "source_path": "assessment-review/review.js",
+      "bundled_path": "apps/assessment/assessment-review/review.js",
+      "sha256": "8077677cccc9ae2923ca499d0fcef138781cc684ebc880bc0c631577066b1c36",
+      "bytes": 29857
+    },
+    {
+      "component": "assessment",
+      "pr": 1576,
+      "commit": "bb5c2299d3697781db7093aaea79ed418f1cc07c",
+      "source_path": "assessment-review/standalone.html",
+      "bundled_path": "apps/assessment/assessment-review/standalone.html",
+      "sha256": "3f578faae06b40dea47cfac8e8318fa8db5dd117b5f3f7e0d5a7853e426fbe29",
+      "bytes": 46033
+    },
+    {
+      "component": "assessment",
+      "pr": 1576,
+      "commit": "bb5c2299d3697781db7093aaea79ed418f1cc07c",
+      "source_path": "assessment-review/style.css",
+      "bundled_path": "apps/assessment/assessment-review/style.css",
+      "sha256": "88025279f3d3c909d2df3490d7027efd55eeb28aad28a1eac97e9673eafa9831",
+      "bytes": 8241
+    },
+    {
+      "component": "assessment",
+      "pr": 1576,
+      "commit": "bb5c2299d3697781db7093aaea79ed418f1cc07c",
+      "source_path": "docs/assessment-review-desk.md",
+      "bundled_path": "apps/assessment/docs/assessment-review-desk.md",
+      "sha256": "a87d35d3df54dbc1b286f4105f3b674676189c09251ce5530121609fd6641c9a",
+      "bytes": 7104
+    },
+    {
+      "component": "briefing",
+      "pr": 1580,
+      "commit": "22afcb7669ce078be504e288b03b8adf2b4412d8",
+      "source_path": "scope-briefing/README.md",
+      "bundled_path": "apps/briefing/scope-briefing/README.md",
+      "sha256": "471b669602f5a0aea75b22521ae96f7a4d9e48fcec858270c7ae391c12903983",
+      "bytes": 5341
+    },
+    {
+      "component": "briefing",
+      "pr": 1580,
+      "commit": "22afcb7669ce078be504e288b03b8adf2b4412d8",
+      "source_path": "scope-briefing/app.js",
+      "bundled_path": "apps/briefing/scope-briefing/app.js",
+      "sha256": "eea9157e0a97d1ffaa2ebd851d1859a769794b6d64fa0e96b520e898e5830024",
+      "bytes": 18147
+    },
+    {
+      "component": "briefing",
+      "pr": 1580,
+      "commit": "22afcb7669ce078be504e288b03b8adf2b4412d8",
+      "source_path": "scope-briefing/build_standalone.py",
+      "bundled_path": "apps/briefing/scope-briefing/build_standalone.py",
+      "sha256": "b812c26a27c7c6b1d6500cdf6aa445186758849fe8154daaaee75c93ca8040a1",
+      "bytes": 2241
+    },
+    {
+      "component": "briefing",
+      "pr": 1580,
+      "commit": "22afcb7669ce078be504e288b03b8adf2b4412d8",
+      "source_path": "scope-briefing/index.html",
+      "bundled_path": "apps/briefing/scope-briefing/index.html",
+      "sha256": "3edc045755e06a1eb47dd2adebfa6d9f9d5b2e72a087d40822d5b67b8bf8d8e3",
+      "bytes": 5960
+    },
+    {
+      "component": "briefing",
+      "pr": 1580,
+      "commit": "22afcb7669ce078be504e288b03b8adf2b4412d8",
+      "source_path": "scope-briefing/standalone.html",
+      "bundled_path": "apps/briefing/scope-briefing/standalone.html",
+      "sha256": "06391b4defcc024bb9a71e1db5bc72c2755f6139e9c2de591bae4eea0937305c",
+      "bytes": 29234
+    },
+    {
+      "component": "briefing",
+      "pr": 1580,
+      "commit": "22afcb7669ce078be504e288b03b8adf2b4412d8",
+      "source_path": "scope-briefing/style.css",
+      "bundled_path": "apps/briefing/scope-briefing/style.css",
+      "sha256": "05ded0ce7cd97e315b9c284f71ec76451e12c9ae9d00fc11e4bd9d0d27098038",
+      "bytes": 5076
+    },
+    {
+      "component": "casework",
+      "pr": 1568,
+      "commit": "9c73e8468ce271bf8c6bef4cac071e5ad9c1806b",
+      "source_path": "casework/README.md",
+      "bundled_path": "apps/casework/casework/README.md",
+      "sha256": "e6b99ae010b16867a40220fd6939a4d808dad875d013d9b4fb738bbc12d1f1c8",
+      "bytes": 9934
+    },
+    {
+      "component": "casework",
+      "pr": 1568,
+      "commit": "9c73e8468ce271bf8c6bef4cac071e5ad9c1806b",
+      "source_path": "casework/index.html",
+      "bundled_path": "apps/casework/casework/index.html",
+      "sha256": "e063038701a9c7bab94434b697de387b8cf6cf68078c9d1d9588fa1b838f23fd",
+      "bytes": 11895
+    },
+    {
+      "component": "casework",
+      "pr": 1568,
+      "commit": "9c73e8468ce271bf8c6bef4cac071e5ad9c1806b",
+      "source_path": "casework/remediation-app.js",
+      "bundled_path": "apps/casework/casework/remediation-app.js",
+      "sha256": "51ed77103946bc3582b0cb9bc0a321fae2135e2c58f5365793a15f8afc2ec3ee",
+      "bytes": 21312
+    },
+    {
+      "component": "casework",
+      "pr": 1568,
+      "commit": "9c73e8468ce271bf8c6bef4cac071e5ad9c1806b",
+      "source_path": "casework/remediation-engine.js",
+      "bundled_path": "apps/casework/casework/remediation-engine.js",
+      "sha256": "c293c564ecb11434e45423d244b7beba599b6afe3ebbc85121882e91b8aa1225",
+      "bytes": 10856
+    },
+    {
+      "component": "casework",
+      "pr": 1568,
+      "commit": "9c73e8468ce271bf8c6bef4cac071e5ad9c1806b",
+      "source_path": "casework/remediation-schedule.js",
+      "bundled_path": "apps/casework/casework/remediation-schedule.js",
+      "sha256": "4ec9f7ae396cad504ab122072b5c78dec5158a1def360adff3085dcd78ecaa0d",
+      "bytes": 1916
+    },
+    {
+      "component": "handoff",
+      "pr": 1579,
+      "commit": "78ad5e20dd8ea03a3f548b5f83648b923a6598d7",
+      "source_path": "scope-handoff-register/README.md",
+      "bundled_path": "apps/handoff/scope-handoff-register/README.md",
+      "sha256": "c8f308780b3b12297e2ac35af23d894285dbc980503634dc12d9bc6f8c0732d3",
+      "bytes": 19381
+    },
+    {
+      "component": "handoff",
+      "pr": 1579,
+      "commit": "78ad5e20dd8ea03a3f548b5f83648b923a6598d7",
+      "source_path": "scope-handoff-register/app.js",
+      "bundled_path": "apps/handoff/scope-handoff-register/app.js",
+      "sha256": "33347d1c16c254936b445d10a430f010173151f2c1db0dd0d048b257c1f492a0",
+      "bytes": 69188
+    },
+    {
+      "component": "handoff",
+      "pr": 1579,
+      "commit": "78ad5e20dd8ea03a3f548b5f83648b923a6598d7",
+      "source_path": "scope-handoff-register/build_standalone.py",
+      "bundled_path": "apps/handoff/scope-handoff-register/build_standalone.py",
+      "sha256": "dd8f475192120984ce40af45f0892f082829d38c684f1b2262e0b83bd01b17b0",
+      "bytes": 2132
+    },
+    {
+      "component": "handoff",
+      "pr": 1579,
+      "commit": "78ad5e20dd8ea03a3f548b5f83648b923a6598d7",
+      "source_path": "scope-handoff-register/human-coordination.js",
+      "bundled_path": "apps/handoff/scope-handoff-register/human-coordination.js",
+      "sha256": "427142d9d992bc7ae940ea616298a4ca17ea156b793081aa0dc48cc93b252331",
+      "bytes": 6317
+    },
+    {
+      "component": "handoff",
+      "pr": 1579,
+      "commit": "78ad5e20dd8ea03a3f548b5f83648b923a6598d7",
+      "source_path": "scope-handoff-register/index.html",
+      "bundled_path": "apps/handoff/scope-handoff-register/index.html",
+      "sha256": "df3afca4bc1980fea567e10b4a232da3980ae2a1c0da3605821cb1ac39190db8",
+      "bytes": 9369
+    },
+    {
+      "component": "handoff",
+      "pr": 1579,
+      "commit": "78ad5e20dd8ea03a3f548b5f83648b923a6598d7",
+      "source_path": "scope-handoff-register/permission-reply-import.js",
+      "bundled_path": "apps/handoff/scope-handoff-register/permission-reply-import.js",
+      "sha256": "498a3327c1c779dcddb648107fff77607d4bcf1e26416f529eb6425170980a91",
+      "bytes": 7008
+    },
+    {
+      "component": "handoff",
+      "pr": 1579,
+      "commit": "78ad5e20dd8ea03a3f548b5f83648b923a6598d7",
+      "source_path": "scope-handoff-register/standalone.html",
+      "bundled_path": "apps/handoff/scope-handoff-register/standalone.html",
+      "sha256": "28b21d16331c426100f59b182a10fef8b677bdec31e8cbe4f2684fc54d8693d6",
+      "bytes": 122853
+    },
+    {
+      "component": "handoff",
+      "pr": 1579,
+      "commit": "78ad5e20dd8ea03a3f548b5f83648b923a6598d7",
+      "source_path": "scope-handoff-register/studio-fingerprint-v1.js",
+      "bundled_path": "apps/handoff/scope-handoff-register/studio-fingerprint-v1.js",
+      "sha256": "5f89ce8c7a979787048c355da8e0c9e2688819b287c1a4811df824d58e04c90e",
+      "bytes": 2360
+    },
+    {
+      "component": "handoff",
+      "pr": 1579,
+      "commit": "78ad5e20dd8ea03a3f548b5f83648b923a6598d7",
+      "source_path": "scope-handoff-register/studio-network-v1.js",
+      "bundled_path": "apps/handoff/scope-handoff-register/studio-network-v1.js",
+      "sha256": "6a06c93b7395b9c8b0b3b857e04ed677559b6fef4e2a9ef894b993cbfd25abe4",
+      "bytes": 10296
+    },
+    {
+      "component": "handoff",
+      "pr": 1579,
+      "commit": "78ad5e20dd8ea03a3f548b5f83648b923a6598d7",
+      "source_path": "scope-handoff-register/studio-window-v1.js",
+      "bundled_path": "apps/handoff/scope-handoff-register/studio-window-v1.js",
+      "sha256": "17f1536e80c390016bfb60a7655ccec55ad462d980cdf29dbee7a263d10b7a21",
+      "bytes": 4742
+    },
+    {
+      "component": "handoff",
+      "pr": 1579,
+      "commit": "78ad5e20dd8ea03a3f548b5f83648b923a6598d7",
+      "source_path": "scope-handoff-register/style.css",
+      "bundled_path": "apps/handoff/scope-handoff-register/style.css",
+      "sha256": "d16ff321d859cbf6c8e3b509b42377613a18ca2b04dd73832c90d317509d7d85",
+      "bytes": 8501
+    },
+    {
+      "component": "handoff",
+      "pr": 1579,
+      "commit": "78ad5e20dd8ea03a3f548b5f83648b923a6598d7",
+      "source_path": "scope-handoff-register/withdrawal-import.js",
+      "bundled_path": "apps/handoff/scope-handoff-register/withdrawal-import.js",
+      "sha256": "f0c84c6f9f162647392e57ddd2bd8d4549fbfa5d17b9edeaccd9b2360908b94c",
+      "bytes": 4908
+    },
+    {
+      "component": "permission",
+      "pr": 1578,
+      "commit": "f88df4b9732fb180cf77e92ed9af90b752316200",
+      "source_path": "docs/scope-permission-brief.md",
+      "bundled_path": "apps/permission/docs/scope-permission-brief.md",
+      "sha256": "604f72e425185e41449f84cc80ef5cc13ef72056317a94c0fc45b1dd44a1a937",
+      "bytes": 20961
+    },
+    {
+      "component": "permission",
+      "pr": 1578,
+      "commit": "f88df4b9732fb180cf77e92ed9af90b752316200",
+      "source_path": "scope-permission-brief/app.js",
+      "bundled_path": "apps/permission/scope-permission-brief/app.js",
+      "sha256": "36c591adf1a4ce845c108ee8e2eedb494ba13e63adf8962c2e3cb88ef96683e4",
+      "bytes": 41539
+    },
+    {
+      "component": "permission",
+      "pr": 1578,
+      "commit": "f88df4b9732fb180cf77e92ed9af90b752316200",
+      "source_path": "scope-permission-brief/build_standalone.py",
+      "bundled_path": "apps/permission/scope-permission-brief/build_standalone.py",
+      "sha256": "b9a27007ac072331570a6f3a1b10c10a6f009ef5c39f3c28d0b8e012b7bf0dcb",
+      "bytes": 2856
+    },
+    {
+      "component": "permission",
+      "pr": 1578,
+      "commit": "f88df4b9732fb180cf77e92ed9af90b752316200",
+      "source_path": "scope-permission-brief/index.html",
+      "bundled_path": "apps/permission/scope-permission-brief/index.html",
+      "sha256": "8000e225bb2ffa2befb333ac8c57dfbef7249dc30ffe0aabcace5a42652f7b93",
+      "bytes": 11928
+    },
+    {
+      "component": "permission",
+      "pr": 1578,
+      "commit": "f88df4b9732fb180cf77e92ed9af90b752316200",
+      "source_path": "scope-permission-brief/reconciliation.js",
+      "bundled_path": "apps/permission/scope-permission-brief/reconciliation.js",
+      "sha256": "a8eb4df4d60b15b11329dcbecc75503d9429ecf7649d2ad2adc6df9e56e38c4e",
+      "bytes": 14931
+    },
+    {
+      "component": "permission",
+      "pr": 1578,
+      "commit": "f88df4b9732fb180cf77e92ed9af90b752316200",
+      "source_path": "scope-permission-brief/revision.js",
+      "bundled_path": "apps/permission/scope-permission-brief/revision.js",
+      "sha256": "1bc705a0649bdef6423b457400fa530a1b1a39fc00d15f1afc8a6ea9e777d6bc",
+      "bytes": 13231
+    },
+    {
+      "component": "permission",
+      "pr": 1578,
+      "commit": "f88df4b9732fb180cf77e92ed9af90b752316200",
+      "source_path": "scope-permission-brief/standalone.html",
+      "bundled_path": "apps/permission/scope-permission-brief/standalone.html",
+      "sha256": "313b72db8edcf6f71ad3b6ccc0119769bac19d49d4f2b13a2f1785d134698056",
+      "bytes": 89075
+    },
+    {
+      "component": "permission",
+      "pr": 1578,
+      "commit": "f88df4b9732fb180cf77e92ed9af90b752316200",
+      "source_path": "scope-permission-brief/style.css",
+      "bundled_path": "apps/permission/scope-permission-brief/style.css",
+      "sha256": "d37432b0d35b7056b71a8ab26467f2f83b28c2dfd548325cd06a790485698336",
+      "bytes": 7339
+    },
+    {
+      "component": "readiness",
+      "pr": 1573,
+      "commit": "1786ee9e8034736aa0f1ff1b3904f2b1b5305678",
+      "source_path": "coordination/build-standalone.py",
+      "bundled_path": "apps/readiness/coordination/build-standalone.py",
+      "sha256": "0f9b5d5120a5b29de2ddfc8d5318ffcd0d4b516e344b3274f2f97fa718f3bdb2",
+      "bytes": 4164
+    },
+    {
+      "component": "readiness",
+      "pr": 1567,
+      "commit": "71d9e5f760ef2bff46a72b979173bb3181179afb",
+      "source_path": "studio/planning-window.js",
+      "bundled_path": "apps/readiness/coordination/planning-window.js",
+      "sha256": "17f1536e80c390016bfb60a7655ccec55ad462d980cdf29dbee7a263d10b7a21",
+      "bytes": 4742
+    },
+    {
+      "component": "readiness",
+      "pr": 1567,
+      "commit": "71d9e5f760ef2bff46a72b979173bb3181179afb",
+      "source_path": "studio/scope-fingerprint.js",
+      "bundled_path": "apps/readiness/coordination/scope-fingerprint.js",
+      "sha256": "5f89ce8c7a979787048c355da8e0c9e2688819b287c1a4811df824d58e04c90e",
+      "bytes": 2360
+    },
+    {
+      "component": "readiness",
+      "pr": 1573,
+      "commit": "1786ee9e8034736aa0f1ff1b3904f2b1b5305678",
+      "source_path": "coordination/scope-local-lineage.js",
+      "bundled_path": "apps/readiness/coordination/scope-local-lineage.js",
+      "sha256": "292114465a82bd61762d08084efefb6e7fb2656a9f04ed362cf9b6cf70b59592",
+      "bytes": 4636
+    },
+    {
+      "component": "readiness",
+      "pr": 1567,
+      "commit": "71d9e5f760ef2bff46a72b979173bb3181179afb",
+      "source_path": "studio/scope-network.js",
+      "bundled_path": "apps/readiness/coordination/scope-network.js",
+      "sha256": "6a06c93b7395b9c8b0b3b857e04ed677559b6fef4e2a9ef894b993cbfd25abe4",
+      "bytes": 10296
+    },
+    {
+      "component": "readiness",
+      "pr": 1573,
+      "commit": "1786ee9e8034736aa0f1ff1b3904f2b1b5305678",
+      "source_path": "coordination/scope-readiness-standalone.html",
+      "bundled_path": "apps/readiness/coordination/scope-readiness-standalone.html",
+      "sha256": "51d6fbdf055cfd2ae11e8c761e5078b97cebd15722a34d7a87b92de52e6cb8fe",
+      "bytes": 108143
+    },
+    {
+      "component": "readiness",
+      "pr": 1573,
+      "commit": "1786ee9e8034736aa0f1ff1b3904f2b1b5305678",
+      "source_path": "coordination/scope-readiness.html",
+      "bundled_path": "apps/readiness/coordination/scope-readiness.html",
+      "sha256": "eab706caf08c85b3951a6eb84bd5e83920559ce516b05d247647635987091deb",
+      "bytes": 19335
+    },
+    {
+      "component": "readiness",
+      "pr": 1573,
+      "commit": "1786ee9e8034736aa0f1ff1b3904f2b1b5305678",
+      "source_path": "coordination/scope-readiness.js",
+      "bundled_path": "apps/readiness/coordination/scope-readiness.js",
+      "sha256": "f9c841f4321966cfe4e8ab84fbdb3f52502d4969aef1de2429346e10223fc427",
+      "bytes": 72574
+    },
+    {
+      "component": "readiness",
+      "pr": 1573,
+      "commit": "1786ee9e8034736aa0f1ff1b3904f2b1b5305678",
+      "source_path": "coordination/scope-revision-review.js",
+      "bundled_path": "apps/readiness/coordination/scope-revision-review.js",
+      "sha256": "18239323490e839df1211edb1bfc4148f2c2c966a75eea3887e5731e20babcef",
+      "bytes": 8615
+    },
+    {
+      "component": "readiness",
+      "pr": 1573,
+      "commit": "1786ee9e8034736aa0f1ff1b3904f2b1b5305678",
+      "source_path": "coordination/strict-local-json.js",
+      "bundled_path": "apps/readiness/coordination/strict-local-json.js",
+      "sha256": "81d6a0be6bffcfdcd2606ec4948a1c48ec23d04decb5724e9af8ea4a9130ed32",
+      "bytes": 2914
+    },
+    {
+      "component": "readiness",
+      "pr": 1573,
+      "commit": "1786ee9e8034736aa0f1ff1b3904f2b1b5305678",
+      "source_path": "docs/scope-readiness-workspace.md",
+      "bundled_path": "apps/readiness/docs/scope-readiness-workspace.md",
+      "sha256": "8d6e55fedd38e157b2627495333c8a0bcae18862d4799abb113c34608e4cf5b3",
+      "bytes": 26730
+    },
+    {
+      "component": "schedule",
+      "pr": 1572,
+      "commit": "b9bfaf439cdd506f5cd7292b25c14db017fb5dc6",
+      "source_path": "docs/scope-schedule-board.md",
+      "bundled_path": "apps/schedule/docs/scope-schedule-board.md",
+      "sha256": "06dc7b03194efed7288e2be0394d140d04ce5ee683042876ff14d7b52ce74752",
+      "bytes": 18155
+    },
+    {
+      "component": "schedule",
+      "pr": 1567,
+      "commit": "71d9e5f760ef2bff46a72b979173bb3181179afb",
+      "source_path": "studio/effective-scope.html",
+      "bundled_path": "apps/schedule/studio/effective-scope.html",
+      "sha256": "e809b6878ed12f63a9fe1993698ea572b951296d854f27f3935434fece8069c9",
+      "bytes": 11985
+    },
+    {
+      "component": "schedule",
+      "pr": 1567,
+      "commit": "71d9e5f760ef2bff46a72b979173bb3181179afb",
+      "source_path": "studio/engagement-handoff.html",
+      "bundled_path": "apps/schedule/studio/engagement-handoff.html",
+      "sha256": "acbd94d870e6606d2064e904ed45a6bc5ffe12ae63123ac254ad39ed4d648b7a",
+      "bytes": 18407
+    },
+    {
+      "component": "schedule",
+      "pr": 1567,
+      "commit": "71d9e5f760ef2bff46a72b979173bb3181179afb",
+      "source_path": "studio/index.html",
+      "bundled_path": "apps/schedule/studio/index.html",
+      "sha256": "b916a1b91dea724ed0481004f0a70e8561d74aaa174340265aad49575a844b2a",
+      "bytes": 3989
+    },
+    {
+      "component": "schedule",
+      "pr": 1567,
+      "commit": "71d9e5f760ef2bff46a72b979173bb3181179afb",
+      "source_path": "studio/planning-window.js",
+      "bundled_path": "apps/schedule/studio/planning-window.js",
+      "sha256": "17f1536e80c390016bfb60a7655ccec55ad462d980cdf29dbee7a263d10b7a21",
+      "bytes": 4742
+    },
+    {
+      "component": "schedule",
+      "pr": 1567,
+      "commit": "71d9e5f760ef2bff46a72b979173bb3181179afb",
+      "source_path": "studio/scope-change-review.html",
+      "bundled_path": "apps/schedule/studio/scope-change-review.html",
+      "sha256": "109626ba3aaabbfc1cfe11c9beca0d50e94613b01fab829146935ed54211ca07",
+      "bytes": 16278
+    },
+    {
+      "component": "schedule",
+      "pr": 1567,
+      "commit": "71d9e5f760ef2bff46a72b979173bb3181179afb",
+      "source_path": "studio/scope-fingerprint.js",
+      "bundled_path": "apps/schedule/studio/scope-fingerprint.js",
+      "sha256": "5f89ce8c7a979787048c355da8e0c9e2688819b287c1a4811df824d58e04c90e",
+      "bytes": 2360
+    },
+    {
+      "component": "schedule",
+      "pr": 1567,
+      "commit": "71d9e5f760ef2bff46a72b979173bb3181179afb",
+      "source_path": "studio/scope-network.js",
+      "bundled_path": "apps/schedule/studio/scope-network.js",
+      "sha256": "6a06c93b7395b9c8b0b3b857e04ed677559b6fef4e2a9ef894b993cbfd25abe4",
+      "bytes": 10296
+    },
+    {
+      "component": "schedule",
+      "pr": 1567,
+      "commit": "71d9e5f760ef2bff46a72b979173bb3181179afb",
+      "source_path": "studio/scope-portfolio.html",
+      "bundled_path": "apps/schedule/studio/scope-portfolio.html",
+      "sha256": "a44ebf68013d1ed97baecbe7e53d37fbb06ad4ec398c197b27f06c74284c2ff3",
+      "bytes": 17329
+    },
+    {
+      "component": "schedule",
+      "pr": 1567,
+      "commit": "71d9e5f760ef2bff46a72b979173bb3181179afb",
+      "source_path": "studio/scope-proposal.html",
+      "bundled_path": "apps/schedule/studio/scope-proposal.html",
+      "sha256": "fd030bd1623acc1f79f845cbf85fab5b6eff54f210363152d46ec3912d097454",
+      "bytes": 22466
+    },
+    {
+      "component": "schedule",
+      "pr": 1572,
+      "commit": "b9bfaf439cdd506f5cd7292b25c14db017fb5dc6",
+      "source_path": "studio/scope-schedule-board.html",
+      "bundled_path": "apps/schedule/studio/scope-schedule-board.html",
+      "sha256": "21793a362e7d6a7bfacbe65b35c409559fd470e58c2c3c4f66a7701b6e1bb6b5",
+      "bytes": 17472
+    },
+    {
+      "component": "schedule",
+      "pr": 1572,
+      "commit": "b9bfaf439cdd506f5cd7292b25c14db017fb5dc6",
+      "source_path": "studio/scope-schedule-board.js",
+      "bundled_path": "apps/schedule/studio/scope-schedule-board.js",
+      "sha256": "5148d5cf209564134531b94357347b0ac0452d5bcc0929cd3749ad09e376ec44",
+      "bytes": 71980
+    },
+    {
+      "component": "studio",
+      "pr": 1567,
+      "commit": "71d9e5f760ef2bff46a72b979173bb3181179afb",
+      "source_path": "docs/scope-proposal-studio.md",
+      "bundled_path": "apps/studio/docs/scope-proposal-studio.md",
+      "sha256": "a1ee1fb5aee1f4ec1fce01a4afa9d5048f97e01bb6bcb5d5d31f6c0227229098",
+      "bytes": 10620
+    },
+    {
+      "component": "studio",
+      "pr": 1567,
+      "commit": "71d9e5f760ef2bff46a72b979173bb3181179afb",
+      "source_path": "studio/effective-scope.html",
+      "bundled_path": "apps/studio/studio/effective-scope.html",
+      "sha256": "e809b6878ed12f63a9fe1993698ea572b951296d854f27f3935434fece8069c9",
+      "bytes": 11985
+    },
+    {
+      "component": "studio",
+      "pr": 1567,
+      "commit": "71d9e5f760ef2bff46a72b979173bb3181179afb",
+      "source_path": "studio/engagement-handoff.html",
+      "bundled_path": "apps/studio/studio/engagement-handoff.html",
+      "sha256": "acbd94d870e6606d2064e904ed45a6bc5ffe12ae63123ac254ad39ed4d648b7a",
+      "bytes": 18407
+    },
+    {
+      "component": "studio",
+      "pr": 1567,
+      "commit": "71d9e5f760ef2bff46a72b979173bb3181179afb",
+      "source_path": "studio/index.html",
+      "bundled_path": "apps/studio/studio/index.html",
+      "sha256": "b916a1b91dea724ed0481004f0a70e8561d74aaa174340265aad49575a844b2a",
+      "bytes": 3989
+    },
+    {
+      "component": "studio",
+      "pr": 1567,
+      "commit": "71d9e5f760ef2bff46a72b979173bb3181179afb",
+      "source_path": "studio/planning-window.js",
+      "bundled_path": "apps/studio/studio/planning-window.js",
+      "sha256": "17f1536e80c390016bfb60a7655ccec55ad462d980cdf29dbee7a263d10b7a21",
+      "bytes": 4742
+    },
+    {
+      "component": "studio",
+      "pr": 1567,
+      "commit": "71d9e5f760ef2bff46a72b979173bb3181179afb",
+      "source_path": "studio/scope-change-review.html",
+      "bundled_path": "apps/studio/studio/scope-change-review.html",
+      "sha256": "109626ba3aaabbfc1cfe11c9beca0d50e94613b01fab829146935ed54211ca07",
+      "bytes": 16278
+    },
+    {
+      "component": "studio",
+      "pr": 1567,
+      "commit": "71d9e5f760ef2bff46a72b979173bb3181179afb",
+      "source_path": "studio/scope-fingerprint.js",
+      "bundled_path": "apps/studio/studio/scope-fingerprint.js",
+      "sha256": "5f89ce8c7a979787048c355da8e0c9e2688819b287c1a4811df824d58e04c90e",
+      "bytes": 2360
+    },
+    {
+      "component": "studio",
+      "pr": 1567,
+      "commit": "71d9e5f760ef2bff46a72b979173bb3181179afb",
+      "source_path": "studio/scope-network.js",
+      "bundled_path": "apps/studio/studio/scope-network.js",
+      "sha256": "6a06c93b7395b9c8b0b3b857e04ed677559b6fef4e2a9ef894b993cbfd25abe4",
+      "bytes": 10296
+    },
+    {
+      "component": "studio",
+      "pr": 1567,
+      "commit": "71d9e5f760ef2bff46a72b979173bb3181179afb",
+      "source_path": "studio/scope-portfolio.html",
+      "bundled_path": "apps/studio/studio/scope-portfolio.html",
+      "sha256": "a44ebf68013d1ed97baecbe7e53d37fbb06ad4ec398c197b27f06c74284c2ff3",
+      "bytes": 17329
+    },
+    {
+      "component": "studio",
+      "pr": 1567,
+      "commit": "71d9e5f760ef2bff46a72b979173bb3181179afb",
+      "source_path": "studio/scope-proposal.html",
+      "bundled_path": "apps/studio/studio/scope-proposal.html",
+      "sha256": "fd030bd1623acc1f79f845cbf85fab5b6eff54f210363152d46ec3912d097454",
+      "bytes": 22466
+    },
+    {
+      "component": "vault",
+      "pr": 1574,
+      "commit": "49a569b2125a80dcaac21655febc07861afa0df2",
+      "source_path": "docs/private-scope-packet-vault.md",
+      "bundled_path": "apps/vault/docs/private-scope-packet-vault.md",
+      "sha256": "2bd8eb541a24b144a2e72633436dbd5d6f8436d417dc66ed3a586a8c043c67e5",
+      "bytes": 20074
+    },
+    {
+      "component": "vault",
+      "pr": 1574,
+      "commit": "49a569b2125a80dcaac21655febc07861afa0df2",
+      "source_path": "scope-vault/build_standalone.py",
+      "bundled_path": "apps/vault/scope-vault/build_standalone.py",
+      "sha256": "f551df31d8e01d15647d749424de326bdc0072c77ee2dcdd110e1d4c42e66e41",
+      "bytes": 2005
+    },
+    {
+      "component": "vault",
+      "pr": 1574,
+      "commit": "49a569b2125a80dcaac21655febc07861afa0df2",
+      "source_path": "scope-vault/index.html",
+      "bundled_path": "apps/vault/scope-vault/index.html",
+      "sha256": "48586da568134e8ace5e5a5ff90414250b0d938ded6fabb017f721277a223832",
+      "bytes": 12118
+    },
+    {
+      "component": "vault",
+      "pr": 1574,
+      "commit": "49a569b2125a80dcaac21655febc07861afa0df2",
+      "source_path": "scope-vault/standalone.html",
+      "bundled_path": "apps/vault/scope-vault/standalone.html",
+      "sha256": "39351fd3300d265eb9edec6d5307dedea1ce5d6f5fbdcdb8d34543f565777465",
+      "bytes": 81282
+    },
+    {
+      "component": "vault",
+      "pr": 1574,
+      "commit": "49a569b2125a80dcaac21655febc07861afa0df2",
+      "source_path": "scope-vault/style.css",
+      "bundled_path": "apps/vault/scope-vault/style.css",
+      "sha256": "699125b0886bd4e10521cd84dc9cad4a70a9e30344df734e13ffbc7c384f9231",
+      "bytes": 4898
+    },
+    {
+      "component": "vault",
+      "pr": 1574,
+      "commit": "49a569b2125a80dcaac21655febc07861afa0df2",
+      "source_path": "scope-vault/vault.js",
+      "bundled_path": "apps/vault/scope-vault/vault.js",
+      "sha256": "c5b7b718242ab3d2cf071eae74b20fead1ede7503bcf7165761a6f3dbccd73c0",
+      "bytes": 64214
+    },
+    {
+      "component": "withdrawal",
+      "pr": 1577,
+      "commit": "0235d93fe285edc0cc49ea3aec3580b7dc4e1338",
+      "source_path": "docs/scope-withdrawal-coordination-desk.md",
+      "bundled_path": "apps/withdrawal/docs/scope-withdrawal-coordination-desk.md",
+      "sha256": "f8c8a46a80897642ce475bc1a8e8f2e539adb690b5ec27c8d0bfc0dd02e42ea2",
+      "bytes": 6853
+    },
+    {
+      "component": "withdrawal",
+      "pr": 1577,
+      "commit": "0235d93fe285edc0cc49ea3aec3580b7dc4e1338",
+      "source_path": "withdrawal-desk/build_standalone.py",
+      "bundled_path": "apps/withdrawal/withdrawal-desk/build_standalone.py",
+      "sha256": "f3991edad84c78ba6c4c6debec8d1e33cf733ccb2db9cc48a2e8f5b890cd4fd3",
+      "bytes": 1746
+    },
+    {
+      "component": "withdrawal",
+      "pr": 1577,
+      "commit": "0235d93fe285edc0cc49ea3aec3580b7dc4e1338",
+      "source_path": "withdrawal-desk/desk.js",
+      "bundled_path": "apps/withdrawal/withdrawal-desk/desk.js",
+      "sha256": "8fcc66b59ef625b7da54662450600ce16010547a65eaade3411ca9e740347c96",
+      "bytes": 19361
+    },
+    {
+      "component": "withdrawal",
+      "pr": 1577,
+      "commit": "0235d93fe285edc0cc49ea3aec3580b7dc4e1338",
+      "source_path": "withdrawal-desk/index.html",
+      "bundled_path": "apps/withdrawal/withdrawal-desk/index.html",
+      "sha256": "896ec63115bcaa76e053ebdce4110dfdcbc59dda41d50eb14542125083b824b1",
+      "bytes": 5952
+    },
+    {
+      "component": "withdrawal",
+      "pr": 1577,
+      "commit": "0235d93fe285edc0cc49ea3aec3580b7dc4e1338",
+      "source_path": "withdrawal-desk/standalone.html",
+      "bundled_path": "apps/withdrawal/withdrawal-desk/standalone.html",
+      "sha256": "76bc9f28cc87cb930560fe5c03e14785901b50cfac9c3807d8a91e0b378475e1",
+      "bytes": 29005
+    },
+    {
+      "component": "withdrawal",
+      "pr": 1577,
+      "commit": "0235d93fe285edc0cc49ea3aec3580b7dc4e1338",
+      "source_path": "withdrawal-desk/style.css",
+      "bundled_path": "apps/withdrawal/withdrawal-desk/style.css",
+      "sha256": "88262af4891617e3825eda602fe6908f1194461fa042ad812e34e549d416812b",
+      "bytes": 3647
+    }
+  ]
+}
