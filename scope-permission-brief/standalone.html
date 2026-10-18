@@ -4,12 +4,26 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="referrer" content="no-referrer">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-FQbtMdebIy7ngti7xm1t5xlCQKlCM0uvxm4OBZrztO8='; style-src 'sha256-ZWM6cFd1uLlhWoE3LbGH5MU0MjN3liGinQZddcZePiI='; img-src 'none'; connect-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-oqDZnvdqnIMCuulYu/O2SAXPLh0FHZyMexvYZ60ovD4=' 'sha256-4OkEAWxhHrFuedLhB6ImY9ulTF/EhAwNsFfM2uKAb9E='; style-src 'sha256-N58KLjfpC7L3pgbnd/3h6Ztmy8klJ9Fu6NqhNE8tfS0='; img-src 'none'; connect-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'">
 <title>LightUp · Scope Permission Brief</title>
 <style>
 :root{color-scheme:dark;font:15px/1.55 system-ui,-apple-system,Segoe UI,sans-serif;--bg:#0a1020;--surface:#121e32;--line:#35455d;--muted:#b8c5d8;--mint:#7de5cd;--warn:#eac081;color:#f2f8ff;background:var(--bg)}
 *{box-sizing:border-box}body{margin:0}header{border-bottom:1px solid #31445a;background:linear-gradient(140deg,#132945,#111a2d 62%,#15283b)}.head{max-width:1100px;margin:auto;padding:40px 20px 35px}h1{font-size:clamp(28px,4vw,45px);line-height:1.13;letter-spacing:-.04em;max-width:870px;margin:7px 0 17px}h2{font-size:19px;line-height:1.25;margin:0 0 10px}p{margin:8px 0;color:var(--muted)}.eyebrow{letter-spacing:.12em;text-transform:uppercase;font-weight:800;color:var(--mint);font-size:11px;margin-bottom:7px}main{max-width:1100px;margin:0 auto;padding:25px 20px 45px}.notice{border:1px solid #ad8755;background:#2a241e;color:#ffe7bb;border-radius:13px;padding:16px 19px;margin-bottom:20px}.controls{display:grid;grid-template-columns:1.3fr 1fr;gap:17px;margin-bottom:20px}.controls>div,.panel,.metric{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:20px}.filelabel{display:inline-block;font-weight:750;background:var(--mint);color:#071d23;border-radius:8px;padding:9px 15px;cursor:pointer;margin:14px 0 6px}.filelabel:focus-within{outline:3px solid white}#source{display:block;max-width:100%;color:var(--muted);font:inherit}#source::file-selector-button{border:0;border-radius:6px;padding:6px 9px;margin-right:10px}fieldset{border:0;padding:0;margin:14px 0}legend{font-weight:750;padding:0;margin-bottom:7px}fieldset label{display:block;margin:5px 0}.buttons{display:flex;flex-wrap:wrap;gap:9px;margin-top:17px}button{padding:10px 13px;border:1px solid var(--mint);background:var(--mint);color:#102028;border-radius:8px;font:inherit;font-weight:760;cursor:pointer}button:hover:not(:disabled){filter:brightness(1.08)}button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #c1fff3;outline-offset:3px}button:disabled{opacity:.45;cursor:not-allowed}.subtle{background:transparent;color:#edf5ff;border-color:#6a7f99}.metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:17px}.metric{padding:15px}.metric div{color:var(--muted)}.metric strong{display:block;font-size:25px}.metric small{color:var(--muted)}.details{display:grid;grid-template-columns:1fr 1fr;gap:17px;margin-bottom:17px}.details p{line-height:1.65}.anchor{margin-top:20px;font-weight:760;color:var(--warn)}.panel{margin-bottom:17px}.row{display:flex;justify-content:space-between;gap:10px}.counter{text-align:right;min-width:100px}.counter strong{font-size:23px;display:block}.counter small{font-size:11px;color:var(--muted)}.question{border-top:1px solid var(--line);padding:13px 0;display:grid;grid-template-columns:1fr auto;gap:18px;align-items:center}.question h3{font-size:15px;margin:0}.question p{margin:4px 0;font-size:13px}.question label{font-size:12px;color:var(--muted);display:block}.question select{border:1px solid #70829c;background:#071426;color:white;border-radius:8px;padding:10px;font:inherit;max-width:190px}.tag{font-size:11px;font-weight:760;color:var(--warn)}pre{white-space:pre-wrap;overflow-wrap:anywhere;font:12px/1.5 ui-monospace,Consolas,monospace;max-height:420px;overflow:auto;background:#070f1c;color:#dfeefa;border:1px solid #3c5069;padding:16px;border-radius:10px}.receipt{font-size:12px;overflow-wrap:anywhere}footer{margin-top:18px;padding:15px 0;color:#a5b5ca;font-size:12px;border-top:1px solid #35455d}@media(max-width:750px){.controls,.details{grid-template-columns:1fr}.metrics{grid-template-columns:1fr 1fr}.question{grid-template-columns:1fr}.row{display:block}.counter{text-align:left}}@media print{*{color:#000!important;background:#fff!important;box-shadow:none!important}header,.controls,.buttons,footer{display:none!important}.panel,.metric{border:1px solid #ccc;break-inside:avoid}.question select{border:0}.notice{border:1px solid #aaa}.metrics{grid-template-columns:repeat(4,1fr)}pre{max-height:none;white-space:pre-wrap}}
+/* Isolated offline two-role return desk. */
+.inputs-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:18px 0}
+.inputs-row>div{border:1px solid var(--line);padding:15px;border-radius:10px;background:#0d1b2e;min-width:0}
+.inputs-row label{display:block;font-weight:750;margin:0 0 8px}
+.inputs-row input{display:block;width:100%;max-width:100%;color:var(--muted);font:inherit}
+.inputs-row p{font-size:12px;overflow-wrap:anywhere}
+.subnote{margin:16px 0}
+#reconcileBoard{max-height:600px;overflow:auto;border-top:1px solid var(--line)}
+#reconcileBoard .question .tag{white-space:nowrap}
+#reconciliation .receipt{overflow-wrap:anywhere}
+@media(max-width:750px){.inputs-row{grid-template-columns:1fr}}
+@media print{#reconciliation .inputs-row,#reconciliation .buttons{display:none!important}#reconcileBoard{max-height:none}}
+
 </style>
+
 
 </head>
 <body>
@@ -44,6 +58,20 @@
  <div class="eyebrow">SOURCE-BOUND · PRIVATE DATA OMITTED</div><h2>Handoff preview</h2><p>Only count, category, source SHA-256 and generic question states are exported. No client name, targets, IPs, domains, notes, filenames or source bytes.</p>
  <pre id="preview"></pre><h3>Human-readable handoff (not consent)</h3><pre id="handoff"></pre><p id="receipt" class="receipt"></p>
 </section>
+<section class="panel" id="reconciliation" aria-label="Independent human preparation replies">
+ <div class="eyebrow">4. CLIENT + OPERATOR RETURN DESK · NON-AUTHORIZING</div>
+ <h2>Bring two private human preparation replies together</h2>
+ <p>Load separate role-labelled JSON review notes exported from this same original Studio draft. These labels do <strong>not</strong> authenticate the sender. A return can only change the questions assigned to its own role; contradictory, wrong-source or authority-bearing packets are rejected.</p>
+ <div class="inputs-row">
+  <div><label for="reconcileClient">Client preparation note (JSON)</label><input type="file" id="reconcileClient" accept=".json,application/json"><p role="status" id="reconcileClientState">No client preparation note</p></div>
+  <div><label for="reconcileOperator">Operator preparation note (JSON)</label><input type="file" id="reconcileOperator" accept=".json,application/json"><p role="status" id="reconcileOperatorState">No operator preparation note</p></div>
+ </div>
+ <p class="notice subnote" id="reconcileStatus" role="status" aria-live="polite">No source loaded · HOLD</p>
+ <p class="receipt" id="reconcileSummary"></p>
+ <div id="reconcileBoard" aria-label="Unverified cross-role followup queue"></div>
+ <div class="buttons"><button id="reconcileJSON" disabled>Export combined HOLD summary</button><button id="reconcileCSV" disabled>Download follow-up actions CSV</button><button class="subtle" id="reconcileForget">Forget both reply notes</button></div>
+ <p>This read-only human follow-up board never reconciles actual consent, client identity, operator identity, revocation, authorization, tenant membership or approval. A reply marked “answered” still requires an independently verified decision in the protected system.</p>
+</section>
 </div>
 <footer>LightUp · INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD. Never use this file or its exports as evidence of consent, scope membership, a grant or release.</footer>
 </main>
@@ -74,7 +102,9 @@ const questionCatalog={
  network_activity:['client','Network interaction expectations','Clarify that proposed lab checks cannot be performed against public or unapproved targets.']
 };
 function hold(message){
- epoch++;current=null;questions=[];$('workspace').hidden=true;$('export').disabled=true;$('textExport').disabled=true;$('print').disabled=true;
+ epoch++;current=null;questions=[];
+ document.dispatchEvent(new CustomEvent('lightup:brief-source-change'));
+ $('workspace').hidden=true;$('export').disabled=true;$('textExport').disabled=true;$('print').disabled=true;
  $('handoff').textContent='';$('replyState').textContent='No review note imported.';
  $('sourceState').textContent=message+' · HOLD';
 }
@@ -332,11 +362,18 @@ async function loadFile(file){
   if(token!==epoch)return;
   current={draft,window,sha256};
   questions=questionIds(draft,window).map(code=>({code,role:questionCatalog[code][0],status:'unanswered'}));
+  document.dispatchEvent(new CustomEvent('lightup:brief-source-change'));
+
   $('workspace').hidden=false;$('export').disabled=false;$('textExport').disabled=false;$('print').disabled=false;
   $('sourceState').textContent='Source loaded · '+draft.requested_assets.length+' proposed assets · REVIEW_ONLY/HOLD';
   render();
  }catch(_){if(token===epoch)hold('Invalid, ambiguous or unsafe Studio draft');}
 }
+/* Only privacy-minimal snapshot/strict parser are exposed to the adjacent offline reconciliation view. */
+window.LightUpBriefRuntime=Object.freeze({
+ snapshot:()=>{const m=exportModel();return m?JSON.parse(JSON.stringify(m)):null;},
+ assertUnambiguousJSON
+});
 $('source').addEventListener('change',event=>loadFile(event.target.files?.[0]));
 $('clear').addEventListener('click',()=>{hold('Source forgotten');$('source').value='';$('reply').value='';$('preview').textContent='';$('receipt').textContent='';});
 $('export').addEventListener('click',download);
@@ -344,6 +381,155 @@ $('textExport').addEventListener('click',downloadText);
 $('reply').addEventListener('change',event=>importReview(event.target.files?.[0]));
 $('print').addEventListener('click',()=>{if(current)window.print();});
 document.querySelectorAll('[name="audience"]').forEach(el=>el.addEventListener('change',refreshExport));
+})();
+</script>
+<script>
+/* LightUp: bounded offline human reply reconciliation. No identity, consent, approval or execution. */
+(() => {
+'use strict';
+const $=id=>document.getElementById(id);
+const runtime=window.LightUpBriefRuntime;
+const roles=['client','operator'],states=['unanswered','question_sent','answered_unverified'];
+const MAX=65536;
+const uploads={client:null,operator:null};
+let revision=0;
+function reset(){
+ revision++;
+ uploads.client=null;uploads.operator=null;
+ $('reconcileClient').value='';$('reconcileOperator').value='';
+ $('reconcileClientState').textContent='No client preparation note';
+ $('reconcileOperatorState').textContent='No operator preparation note';
+ refresh();
+}
+function demand(condition){if(!condition)throw Error('Unsafe or incompatible local packet');}
+function same(a,b){return JSON.stringify(a)===JSON.stringify(b);}
+function current(){return runtime.snapshot();}
+function accept(packet,source,role){
+ demand(packet&&typeof packet==='object'&&!Array.isArray(packet));
+ const skip=['audience','question_states','outstanding_questions'];
+ demand(Object.keys(packet).length===Object.keys(source).length);
+ demand(Object.keys(packet).every(k=>Object.hasOwn(source,k)));
+ for(const key of Object.keys(source)){
+  if(skip.includes(key))continue;
+  demand(same(packet[key],source[key]));
+ }
+ demand(packet.audience===role);
+ demand(Array.isArray(packet.question_states)&&packet.question_states.length===source.question_states.length);
+ const statuses={};
+ for(let i=0;i<source.question_states.length;i++){
+  const got=packet.question_states[i],known=source.question_states[i];
+  demand(got&&typeof got==='object'&&!Array.isArray(got));
+  demand(Object.keys(got).length===3&&Object.keys(got).every(k=>['code','role','status'].includes(k)));
+  demand(got.code===known.code&&got.role===known.role&&states.includes(got.status));
+  // Each self-labelled role may only report progress on its own assigned questions.
+  demand(got.role===role||got.status==='unanswered');
+  if(got.role===role)statuses[got.code]=got.status;
+ }
+ demand(packet.outstanding_questions===packet.question_states.filter(q=>q.status!=='answered_unverified').length);
+ return Object.freeze({source_sha256:source.source_sha256,role,statuses:Object.freeze(statuses)});
+}
+async function read(role,file){
+ const source=current();
+ if(!source){$('reconcile'+cap(role)+'State').textContent='Load an original Studio draft first · HOLD';return;}
+ if(!file || file.size===0 || file.size>MAX){$('reconcile'+cap(role)+'State').textContent='Invalid local review size · HOLD';return;}
+ const token=revision,sha=source.source_sha256;
+ try{
+  const bytes=await file.arrayBuffer();
+  demand(bytes.byteLength>0&&bytes.byteLength<=MAX);
+  const text=new TextDecoder('utf-8',{fatal:true,ignoreBOM:true}).decode(bytes);
+  demand(!text.startsWith('\ufeff'));
+  runtime.assertUnambiguousJSON(text);
+  const pkt=JSON.parse(text);
+  const accepted=accept(pkt,source,role);
+  demand(token===revision && current()?.source_sha256===sha);
+  if(uploads[role]&&!same(uploads[role].statuses,accepted.statuses)){
+   // Replacing a human reply must never silently discard the first source.
+   if(!confirm('A different '+role+' preparation note is already loaded. Replace this unverified note?'))return;
+  }
+  uploads[role]=accepted;
+  $('reconcile'+cap(role)+'State').textContent='Self-labelled '+role+' note checked against exact draft bytes · UNVERIFIED / HOLD';
+  refresh();
+ }catch(_){
+  $('reconcile'+cap(role)+'State').textContent='Rejected: unrelated, contradictory or unsafe '+role+' note · HOLD';
+ }
+}
+function cap(s){return s[0].toUpperCase()+s.slice(1);}
+function model(){
+ const source=current();if(!source)return null;
+ const items=source.question_states.map(q=>{
+  const reported=uploads[q.role]?.statuses[q.code]||'not_reported';
+  // A returned status is only an unverified human statement.
+  const action=reported==='not_reported'?'await_'+q.role+'_response':
+   reported==='unanswered'?'ask_'+q.role:
+   reported==='question_sent'?'follow_up_'+q.role:'independently_verify';
+  return {code:q.code,assigned_role:q.role,reported_status:reported,next_action:action};
+ });
+ return {
+  kind:'lightup.scope_permission_reply_reconciliation',schema_version:1,
+  disposition:'REVIEW_ONLY_HOLD',source_kind:source.source_kind,source_sha256:source.source_sha256,
+  client_note_present:uploads.client!==null,operator_note_present:uploads.operator!==null,
+  requested_mode:source.requested_mode,requested_risk:source.requested_risk,
+  proposed_assets_count:source.proposed_assets_count,excluded_assets_count:source.excluded_assets_count,
+  window_status:source.window_status,
+  questions:items,attention_count:items.filter(q=>q.reported_status!=='answered_unverified').length,
+  ...{flags:structuredClone(source.flags)},
+  notice:'Self-labelled human replies are NOT verified identity, client consent, operator approval, grant, authority, executable permission or release.'
+ };
+}
+function writeFile(filename,mime,body){
+ const objectURL=URL.createObjectURL(new Blob([body],{type:mime}));
+ const a=document.createElement('a');a.href=objectURL;a.download=filename;document.body.append(a);a.click();a.remove();
+ setTimeout(()=>URL.revokeObjectURL(objectURL),1000);
+}
+function csvCell(value){
+ // Currently all fields are internal fixed enums and SHA256; retain spreadsheet-injection fence.
+ let s=String(value);
+ if(/^[=+\-@\t\r\n]/.test(s))s="'"+s;
+ return '"'+s.replaceAll('"','""')+'"';
+}
+function csv(m){
+ const rows=[['question_code','assigned_role','reported_status','next_action','source_sha256','disposition']];
+ for(const q of m.questions)rows.push([q.code,q.assigned_role,q.reported_status,q.next_action,m.source_sha256,m.disposition]);
+ return rows.map(row=>row.map(csvCell).join(',')).join('\r\n')+'\r\n';
+}
+function refresh(){
+ const modelNow=model();
+ $('reconcileBoard').replaceChildren();
+ const active=Boolean(modelNow);
+ $('reconcileJSON').disabled=!active;
+ $('reconcileCSV').disabled=!active;
+ if(!active){
+  $('reconcileStatus').textContent='Load an original Studio proposal to start · HOLD';
+  $('reconcileSummary').textContent='';return;
+ }
+ const n=modelNow.questions.length;
+ const present=Number(modelNow.client_note_present)+Number(modelNow.operator_note_present);
+ $('reconcileStatus').textContent=present+'/2 self-labelled role notes received · '+modelNow.attention_count+'/'+n+' follow-ups still unverified or missing · HOLD';
+ $('reconcileSummary').textContent='Source SHA-256: '+modelNow.source_sha256+' · This is a coordination summary only; none of the replies is independently authenticated.';
+ for(const item of modelNow.questions){
+  const row=document.createElement('div');row.className='question';
+  const left=document.createElement('div'),title=document.createElement('h3'),msg=document.createElement('p');
+  title.textContent=item.code.replaceAll('_',' ');
+  msg.textContent='Assigned to '+item.assigned_role+' · '+item.reported_status.replaceAll('_',' ')+' · Next: '+item.next_action.replaceAll('_',' ');
+  left.append(title,msg);
+  const tag=document.createElement('strong');
+  tag.className='tag';
+  tag.textContent=item.reported_status==='answered_unverified'?'UNVERIFIED RESPONSE':'FOLLOW UP';
+  row.append(left,tag);
+  $('reconcileBoard').append(row);
+ }
+}
+$('reconcileClient').addEventListener('change',e=>read('client',e.target.files?.[0]));
+$('reconcileOperator').addEventListener('change',e=>read('operator',e.target.files?.[0]));
+$('reconcileJSON').addEventListener('click',()=>{
+ const m=model();if(m)writeFile('lightup-human-reply-reconciliation-HOLD.json','application/json',JSON.stringify(m,null,2)+'\n');
+});
+$('reconcileCSV').addEventListener('click',()=>{
+ const m=model();if(m)writeFile('lightup-human-followups-HOLD.csv','text/csv;charset=utf-8',csv(m));
+});
+$('reconcileForget').addEventListener('click',reset);
+document.addEventListener('lightup:brief-source-change',reset);
+refresh();
 })();
 </script>
 </body></html>
