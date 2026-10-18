@@ -308,5 +308,24 @@ $('reset').addEventListener('click',()=>{
  $('search').value='';$('severity').value='';$('workflow').value='';
  inform('Workspace cleared; no browser storage or server request was used.');render();
 });
-resetRefreshUI();render();
+/* Read-only bootstrap for an authenticated export assembled by the existing
+ * LightUp DomainStore CLI. The HTML copy is portable and not a live login. */
+async function openEmbeddedExport(){
+ const embedded=$('preloadedCsv');
+ if(!embedded)return;
+ try{
+  const envelope=JSON.parse(embedded.textContent);
+  if(!envelope||typeof envelope.csv_base64!=='string'||envelope.csv_base64.length>1400000||
+   envelope.format!=='lightup.authenticated_findings_handoff_v1')throw Error('Unsupported embedded export.');
+  const binary=atob(envelope.csv_base64),bytes=new Uint8Array(binary.length);
+  for(let i=0;i<binary.length;i++)bytes[i]=binary.charCodeAt(i);
+  const source=LightUpCasework.parseCSV(new TextDecoder('utf-8',{fatal:true}).decode(bytes));
+  const hash=await LightUpCasework.digest(source);
+  findings=source;cases=source.map(LightUpCasework.newCase);fingerprint=hash;
+  sourceLabel='Previously authenticated CLI export (copied offline; NOT live authentication)';
+  edited=true;
+  render();inform('Opened '+source.length+' findings from an authorized export generated earlier. Local HTML contents can be changed, so current identity/permission and actual retest must be independently rechecked. Save your casework JSON before closing.');
+ }catch(err){inform('Embedded source cannot be opened: '+(err.message||'invalid bundled source')+'. Existing local UI remains available.');}
+}
+resetRefreshUI();render();openEmbeddedExport();
 })();
