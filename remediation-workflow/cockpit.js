@@ -101,9 +101,39 @@ function reviewDocument(packet,source,hash){
  if(found.size!==source.length)fail('Evidence has incomplete exact original source coverage.');
  return found;
 }
+/* Exact original five-field source plus complete original local Casework.
+ * A self-reported owner/date/status never proves remediation or approval. */
+function caseworkDocument(packet,source,sha){
+ const permitted=['kind','schema_version','disposition',...FLAGS,'source_contract',
+   'source_sha256','findings','cases','instructions'];
+ keysExact(packet,permitted);
+ if(packet.source_sha256!==sha||FLAGS.some(k=>packet[k]!==false))
+  fail('Casework has a missing/different canonical source fingerprint or claims authority.');
+ const loaded=C.loadPacket(packet);
+ if(loaded.findings.length!==source.length||loaded.cases.length!==source.length)
+  fail('Incomplete original Casework records.');
+ const reference=new Map(source.map(x=>[x.finding_id,x]));
+ for(const f of loaded.findings){
+  const original=reference.get(f.finding_id);
+  if(!original||FIELDS.some(k=>f[k]!==original[k]))
+   fail('Original Casework source fields mismatch current CSV.');
+ }
+ const cases=new Map();
+ const today=new Date().toISOString().slice(0,10);
+ for(const c of loaded.cases){
+  if(cases.has(c.finding_id))fail('Duplicate local Casework record.');
+  const active=c.status!=='completed'&&c.status!=='deferred';
+  cases.set(c.finding_id,{
+   stage:c.status,blocked:c.status==='blocked',overdue:active&&!!c.due_date&&c.due_date<today,
+   unowned:!c.owner.trim()
+  });
+ }
+ if(cases.size!==source.length)fail('Incomplete Casework plan.');
+ return cases;
+}
 function wipe(){
  joined=null;$('results').hidden=true;$('digest').textContent='';
- $('csv').value='';$('evidence').value='';$('capacity').value='';$('same').checked=false;
+ $('csv').value='';$('evidence').value='';$('casework').value='';$('capacity').value='';$('same').checked=false;
  $('severity').value='';$('kind').value='';$('agenda').replaceChildren();$('matrix').replaceChildren();
 }
 const checkSame=()=>{if(!$('same').checked)fail('Independently confirm the SAME original client and exact engagement before joining sources.');};
@@ -115,7 +145,11 @@ async function load(){
  const source=C.parseCSV(csv),sha=await C.digest(source);
  if(!sha||!/^[a-f0-9]{64}$/.test(sha))fail('Canonical original source SHA-256 is unavailable; no unsafe fallback.');
  const evidence=reviewDocument(strictJSON(await readFile($('evidence').files[0],2097152)),source,sha);
- let capacity=null, summary=null;
+ let capacity=null, summary=null, casework=null;
+ if($('casework').files.length){
+  const packet=strictJSON(await readFile($('casework').files[0],2097152));
+  casework=caseworkDocument(packet,source,sha);
+ }
  if($('capacity').files.length){
   const capacityText=await readFile($('capacity').files[0],D.MAX_DRAFT_BYTES);
   const capacityRows=P.parseCSV(csv);
@@ -127,8 +161,11 @@ async function load(){
  const records=source.map(f=>{
   const rev=evidence.get(f.finding_id), missing=EVIDENCE.slice(0,4).filter(k=>!rev.evidence[k].trim());
   const urgent=LEVELS.indexOf(f.severity);
+  const c=casework?.get(f.finding_id)||{stage:'none',blocked:false,overdue:false,unowned:false};
   return {id:f.finding_id,severity:f.severity,regression:f.retest_status==='regression',
-   stage:rev.stage,missing,priority:(5-urgent)*30+(f.retest_status==='regression'?45:0)+missing.length*7+(rev.stage==='needs_changes'?25:0)};
+   stage:rev.stage,caseStage:c.stage,blocked:c.blocked,overdue:c.overdue,unowned:c.unowned,missing,
+   priority:(5-urgent)*30+(f.retest_status==='regression'?45:0)+missing.length*7+
+    (rev.stage==='needs_changes'?25:0)+(c.blocked?35:0)+(c.overdue?25:0)};
  }).sort((a,b)=>b.priority-a.priority||a.id.localeCompare(b.id));
  joined={records,sha,summary};
  $('results').hidden=false;$('digest').textContent='Unsigned canonical findings fingerprint: '+sha+
@@ -142,6 +179,8 @@ function render(){
  $('urgent').textContent=records.filter(r=>r.severity==='critical'||r.severity==='high').length;
  $('gaps').textContent=records.filter(r=>r.missing.length).length;
  $('regressions').textContent=records.filter(r=>r.regression).length;
+ $('blocked').textContent=records.filter(r=>r.blocked).length;
+ $('overdue').textContent=records.filter(r=>r.overdue).length;
  $('backlog').textContent=summary?String(summary.backlog_hours)+' h':'—';
  $('available').textContent=summary?String(summary.sprint_weeks.reduce((n,w)=>n+w.available_hours,0))+' h':'—';
  const tbody=$('matrix');tbody.replaceChildren();
@@ -149,6 +188,7 @@ function render(){
   const rs=records.filter(r=>r.severity===severity),b=summary?.priority_bands?.[severity];
   const cells=[severity,rs.length,rs.filter(r=>r.regression).length,
    rs.filter(r=>r.missing.length).length,rs.filter(r=>r.stage==='needs_changes').length,
+   rs.filter(r=>r.blocked).length,rs.filter(r=>r.overdue).length,
    b?b.estimated_hours+' h':'not modelled'];
   const tr=document.createElement('tr');
   for(const cell of cells){const td=document.createElement('td');td.textContent=String(cell);tr.append(td);}
@@ -157,14 +197,16 @@ function render(){
  const filtered=records.filter(r=>(!$('severity').value||r.severity===$('severity').value)&&
    (!$('kind').value||($('kind').value==='missing'&&r.missing.length)||
    ($('kind').value==='changes'&&r.stage==='needs_changes')||
-   ($('kind').value==='regression'&&r.regression)));
+   ($('kind').value==='regression'&&r.regression)||
+   ($('kind').value==='blocked'&&r.blocked)||($('kind').value==='overdue'&&r.overdue)));
  $('queueCount').textContent=filtered.length;
  const holder=$('agenda');holder.replaceChildren();
  for(const r of filtered.slice(0,36)){
   const card=document.createElement('article');card.className='item';
   const heading=document.createElement('h3');heading.textContent=r.id;
   const short=document.createElement('small');short.textContent=r.severity.toUpperCase()+(r.regression?' · SOURCE REGRESSION':'');
-  const detail=document.createElement('p');detail.textContent='Local stage: '+r.stage+' · Missing human references: '+r.missing.length+'/4';
+  const detail=document.createElement('p');detail.textContent='Local review: '+r.stage+' · Local Casework: '+r.caseStage+
+   (r.blocked?' (blocked)':'')+(r.overdue?' (overdue plan)':'')+' · Missing references: '+r.missing.length+'/4';
   const note=document.createElement('p');note.textContent=r.missing.length?'Follow up on '+r.missing.join(', ')+'.':'All four references present (unverified).';
   card.append(short,heading,detail,note);holder.append(card);
  }
@@ -176,11 +218,12 @@ function download(filename,value,type){
 }
 function csvCell(value){return '"'+String(value).replace(/"/g,'""')+'"';}
 function aggregateCSV(){
- const lines=[['severity','source_findings','source_regressions','local_evidence_reference_gaps','human_changes_needed','estimated_hours','estimated_unscheduled_hours']];
+ const lines=[['severity','source_findings','source_regressions','local_evidence_reference_gaps','human_changes_needed','casework_blocked','casework_overdue','estimated_hours','estimated_unscheduled_hours']];
  for(const s of LEVELS){
   const rs=joined.records.filter(r=>r.severity===s),band=joined.summary?.priority_bands?.[s];
   lines.push([s,rs.length,rs.filter(x=>x.regression).length,rs.filter(x=>x.missing.length).length,
-   rs.filter(x=>x.stage==='needs_changes').length,band?band.estimated_hours:'',band?band.unscheduled_hours:'']);
+   rs.filter(x=>x.stage==='needs_changes').length,rs.filter(x=>x.blocked).length,
+   rs.filter(x=>x.overdue).length,band?band.estimated_hours:'',band?band.unscheduled_hours:'']);
  }
  return lines.map(row=>row.map(csvCell).join(',')).join('\r\n')+'\r\n';
 }
@@ -195,6 +238,7 @@ function privateMarkdown(){
   lines.push('### '+s);
   for(const r of joined.records.filter(x=>x.severity===s)){
    lines.push('- '+escape(r.id)+' · local: '+r.stage+' · source regression: '+(r.regression?'YES':'no')+
+    ' · local Casework: '+r.caseStage+(r.blocked?' (BLOCKED)':'')+(r.overdue?' (OVERDUE)':'')+
     ' · missing descriptive references: '+(r.missing.length?r.missing.join(', '):'none reported (UNVERIFIED)'));
   }
   lines.push('');

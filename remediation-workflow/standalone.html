@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="referrer" content="no-referrer">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-wpPFZOyxFDTkVCPSRLe+ulmbav4+u8hRIYgukbiqEiU=' 'sha256-7uVWP+8F4rK20N4waCez9ECs4twj73TKRFULKGnKH8E=' 'sha256-k063sX7gui1MHh7KSFsfBDpeNsiUePvLBCuTQLOmh0c=' 'sha256-xaZ87pb5Eyg3CtGL5ClgEnQppw1UA7J+t+eOYW9v2O4='; style-src 'unsafe-inline'; connect-src 'none'; img-src 'none'; font-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-wpPFZOyxFDTkVCPSRLe+ulmbav4+u8hRIYgukbiqEiU=' 'sha256-7uVWP+8F4rK20N4waCez9ECs4twj73TKRFULKGnKH8E=' 'sha256-k063sX7gui1MHh7KSFsfBDpeNsiUePvLBCuTQLOmh0c=' 'sha256-A1nvjrFRy11eymBmW2eggWM7u1mdtnCsrMioCnXZM0Q='; style-src 'unsafe-inline'; connect-src 'none'; img-src 'none'; font-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <title>LightUp · Remediation Coordination Cockpit</title>
 <style>
 :root{font:15px/1.5 system-ui,sans-serif;background:#0c1423;color:#f0f6ff;--panel:#16273a;--line:#445f75;--muted:#bed0e1;--accent:#81f3c6}
@@ -21,10 +21,11 @@ a{color:var(--accent)}.muted{font-size:.88rem}.links{display:flex;gap:16px;flex-
 </style></head><body>
 <header><small>LIGHTUP · SOURCE-BOUND HUMAN REMEDIATION</small><h1>Coordination Cockpit</h1><p>Combine the existing Evidence Review Board and Capacity Studio into one local, decision-ready human follow-up view.</p></header>
 <main><div class="warning"><strong>INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD</strong><br>This is an offline coordination draft, NOT authentication, a client/operator approval, a verified patch, a retest permit, or authority to execute anything. Load only privately and independently authorized original exports. Hashes link contents, never identity or consent. No customer data is sent anywhere.</div>
-<section class="card"><h2>1 · Join original source and private working drafts</h2><p>Use the <em>exact same original CSV</em> exported through existing authorized LightUp access in all apps. Evidence JSON comes from Evidence Review Board; optional capacity draft comes from Capacity Studio. Imports never change the source files.</p>
+<section class="card"><h2>1 · Join original source and private working drafts</h2><p>Use the <em>exact same original CSV</em> exported through existing authorized LightUp access in all apps. Evidence JSON comes from Evidence Review Board; optional original Casework private JSON adds blockers and overdue planning, and capacity drafts come from Capacity Studio. Imports never change the source files.</p>
 <div class="grid files">
 <label>Original five-column findings CSV (required)<input id="csv" type="file" accept=".csv,text/csv"></label>
 <label>Evidence Review private JSON (required)<input id="evidence" type="file" accept=".json,application/json"></label>
+<label>Original Casework private draft JSON (optional)<input id="casework" type="file" accept=".json,application/json"></label>
 <label>Capacity Studio working draft JSON (optional)<input id="capacity" type="file" accept=".json,application/json"></label></div>
 <p><label><input id="same" type="checkbox">I independently confirmed that these private drafts and the original findings refer to the same authorized client and exact engagement. This statement grants no permission.</label></p>
 <div class="controls"><button id="load" class="primary">Load source-bound workspace</button><button id="clear">Forget all local data</button></div>
@@ -32,10 +33,10 @@ a{color:var(--accent)}.muted{font-size:.88rem}.links{display:flex;gap:16px;flex-
 <section class="card" hidden><h2>Original standalone workspaces</h2><div class="links"><a href="../remediation-evidence/standalone.html">Open Evidence Review Board</a><a href="../remediation-capacity/standalone.html">Open Capacity Studio</a><a href="../remediation-evidence/team-reply-standalone.html">Open private Team Reply Desk</a></div><p class="muted">All linked apps are static local files inside the complete repository checkout; private documents stay under your control. Links do not carry imported data or unlock one another.</p></section>
 <section id="results" hidden>
 <section class="card"><h2>2 · Joined source overview</h2><p>Independent, originally exported source severity/retest values combined with self-reported local evidence references and hypothetical staffing. An absent evidence reference is a follow-up prompt, not proof of a vulnerability.</p>
-<div class="stats"><div class="stat"><strong id="count">0</strong>Original findings</div><div class="stat"><strong id="urgent">0</strong>Critical/high</div><div class="stat"><strong id="gaps">0</strong>Incomplete local evidence dossiers</div><div class="stat"><strong id="regressions">0</strong>Source-reported regressions</div><div class="stat"><strong id="backlog">—</strong>Estimated backlog hours (if planned)</div><div class="stat"><strong id="available">—</strong>Modelled capacity hours (if planned)</div></div>
-<div class="scroll"><table><thead><tr><th>Original severity</th><th>Source findings</th><th>Source regressions</th><th>Unverified reference gaps</th><th>Human changes needed</th><th>Capacity estimate (hours)</th></tr></thead><tbody id="matrix"></tbody></table></div></section>
+<div class="stats"><div class="stat"><strong id="count">0</strong>Original findings</div><div class="stat"><strong id="urgent">0</strong>Critical/high</div><div class="stat"><strong id="gaps">0</strong>Incomplete local evidence dossiers</div><div class="stat"><strong id="regressions">0</strong>Source-reported regressions</div><div class="stat"><strong id="blocked">0</strong>Locally blocked Casework items</div><div class="stat"><strong id="overdue">0</strong>Locally overdue plans</div><div class="stat"><strong id="backlog">—</strong>Estimated backlog hours (if planned)</div><div class="stat"><strong id="available">—</strong>Modelled capacity hours (if planned)</div></div>
+<div class="scroll"><table><thead><tr><th>Original severity</th><th>Source findings</th><th>Source regressions</th><th>Unverified reference gaps</th><th>Human changes needed</th><th>Local blockers</th><th>Overdue local plans</th><th>Capacity estimate (hours)</th></tr></thead><tbody id="matrix"></tbody></table></div></section>
 <section class="card"><h2>3 · Human follow-up queue</h2><p>Highest original severity, original source regressions, self-reported missing references and locally flagged changes are shown first. This is not a vulnerability risk score, verified remediation, or automatic assignment.</p>
-<div class="grid"><label>Original severity<select id="severity"><option value="">All severities</option><option>critical</option><option>high</option><option>medium</option><option>low</option><option>info</option></select></label><label>Human follow-up type<select id="kind"><option value="">All follow-ups</option><option value="missing">Missing evidence references</option><option value="changes">Needs human changes</option><option value="regression">Original source regression</option></select></label></div>
+<div class="grid"><label>Original severity<select id="severity"><option value="">All severities</option><option>critical</option><option>high</option><option>medium</option><option>low</option><option>info</option></select></label><label>Human follow-up type<select id="kind"><option value="">All follow-ups</option><option value="missing">Missing evidence references</option><option value="changes">Needs human changes</option><option value="regression">Original source regression</option><option value="blocked">Local Casework blocker</option><option value="overdue">Overdue local Casework plan</option></select></label></div>
 <p><strong id="queueCount">0</strong> current human follow-up entries. Only finding IDs and local unverified stage labels are displayed, never raw proof artifacts.</p><div id="agenda" class="agenda"></div>
 <div class="controls"><button id="aggregate">Export source-bound aggregate CSV</button><button id="private">Export PRIVATE human handoff Markdown</button></div>
 <p class="muted">Aggregate CSV has no source IDs, names, titles, reference text or private notes. Private handoff includes finding IDs and must only be transferred via an independently approved confidential channel. Neither export is a security verdict.</p></section></section>
@@ -747,9 +748,39 @@ function reviewDocument(packet,source,hash){
  if(found.size!==source.length)fail('Evidence has incomplete exact original source coverage.');
  return found;
 }
+/* Exact original five-field source plus complete original local Casework.
+ * A self-reported owner/date/status never proves remediation or approval. */
+function caseworkDocument(packet,source,sha){
+ const permitted=['kind','schema_version','disposition',...FLAGS,'source_contract',
+   'source_sha256','findings','cases','instructions'];
+ keysExact(packet,permitted);
+ if(packet.source_sha256!==sha||FLAGS.some(k=>packet[k]!==false))
+  fail('Casework has a missing/different canonical source fingerprint or claims authority.');
+ const loaded=C.loadPacket(packet);
+ if(loaded.findings.length!==source.length||loaded.cases.length!==source.length)
+  fail('Incomplete original Casework records.');
+ const reference=new Map(source.map(x=>[x.finding_id,x]));
+ for(const f of loaded.findings){
+  const original=reference.get(f.finding_id);
+  if(!original||FIELDS.some(k=>f[k]!==original[k]))
+   fail('Original Casework source fields mismatch current CSV.');
+ }
+ const cases=new Map();
+ const today=new Date().toISOString().slice(0,10);
+ for(const c of loaded.cases){
+  if(cases.has(c.finding_id))fail('Duplicate local Casework record.');
+  const active=c.status!=='completed'&&c.status!=='deferred';
+  cases.set(c.finding_id,{
+   stage:c.status,blocked:c.status==='blocked',overdue:active&&!!c.due_date&&c.due_date<today,
+   unowned:!c.owner.trim()
+  });
+ }
+ if(cases.size!==source.length)fail('Incomplete Casework plan.');
+ return cases;
+}
 function wipe(){
  joined=null;$('results').hidden=true;$('digest').textContent='';
- $('csv').value='';$('evidence').value='';$('capacity').value='';$('same').checked=false;
+ $('csv').value='';$('evidence').value='';$('casework').value='';$('capacity').value='';$('same').checked=false;
  $('severity').value='';$('kind').value='';$('agenda').replaceChildren();$('matrix').replaceChildren();
 }
 const checkSame=()=>{if(!$('same').checked)fail('Independently confirm the SAME original client and exact engagement before joining sources.');};
@@ -761,7 +792,11 @@ async function load(){
  const source=C.parseCSV(csv),sha=await C.digest(source);
  if(!sha||!/^[a-f0-9]{64}$/.test(sha))fail('Canonical original source SHA-256 is unavailable; no unsafe fallback.');
  const evidence=reviewDocument(strictJSON(await readFile($('evidence').files[0],2097152)),source,sha);
- let capacity=null, summary=null;
+ let capacity=null, summary=null, casework=null;
+ if($('casework').files.length){
+  const packet=strictJSON(await readFile($('casework').files[0],2097152));
+  casework=caseworkDocument(packet,source,sha);
+ }
  if($('capacity').files.length){
   const capacityText=await readFile($('capacity').files[0],D.MAX_DRAFT_BYTES);
   const capacityRows=P.parseCSV(csv);
@@ -773,8 +808,11 @@ async function load(){
  const records=source.map(f=>{
   const rev=evidence.get(f.finding_id), missing=EVIDENCE.slice(0,4).filter(k=>!rev.evidence[k].trim());
   const urgent=LEVELS.indexOf(f.severity);
+  const c=casework?.get(f.finding_id)||{stage:'none',blocked:false,overdue:false,unowned:false};
   return {id:f.finding_id,severity:f.severity,regression:f.retest_status==='regression',
-   stage:rev.stage,missing,priority:(5-urgent)*30+(f.retest_status==='regression'?45:0)+missing.length*7+(rev.stage==='needs_changes'?25:0)};
+   stage:rev.stage,caseStage:c.stage,blocked:c.blocked,overdue:c.overdue,unowned:c.unowned,missing,
+   priority:(5-urgent)*30+(f.retest_status==='regression'?45:0)+missing.length*7+
+    (rev.stage==='needs_changes'?25:0)+(c.blocked?35:0)+(c.overdue?25:0)};
  }).sort((a,b)=>b.priority-a.priority||a.id.localeCompare(b.id));
  joined={records,sha,summary};
  $('results').hidden=false;$('digest').textContent='Unsigned canonical findings fingerprint: '+sha+
@@ -788,6 +826,8 @@ function render(){
  $('urgent').textContent=records.filter(r=>r.severity==='critical'||r.severity==='high').length;
  $('gaps').textContent=records.filter(r=>r.missing.length).length;
  $('regressions').textContent=records.filter(r=>r.regression).length;
+ $('blocked').textContent=records.filter(r=>r.blocked).length;
+ $('overdue').textContent=records.filter(r=>r.overdue).length;
  $('backlog').textContent=summary?String(summary.backlog_hours)+' h':'—';
  $('available').textContent=summary?String(summary.sprint_weeks.reduce((n,w)=>n+w.available_hours,0))+' h':'—';
  const tbody=$('matrix');tbody.replaceChildren();
@@ -795,6 +835,7 @@ function render(){
   const rs=records.filter(r=>r.severity===severity),b=summary?.priority_bands?.[severity];
   const cells=[severity,rs.length,rs.filter(r=>r.regression).length,
    rs.filter(r=>r.missing.length).length,rs.filter(r=>r.stage==='needs_changes').length,
+   rs.filter(r=>r.blocked).length,rs.filter(r=>r.overdue).length,
    b?b.estimated_hours+' h':'not modelled'];
   const tr=document.createElement('tr');
   for(const cell of cells){const td=document.createElement('td');td.textContent=String(cell);tr.append(td);}
@@ -803,14 +844,16 @@ function render(){
  const filtered=records.filter(r=>(!$('severity').value||r.severity===$('severity').value)&&
    (!$('kind').value||($('kind').value==='missing'&&r.missing.length)||
    ($('kind').value==='changes'&&r.stage==='needs_changes')||
-   ($('kind').value==='regression'&&r.regression)));
+   ($('kind').value==='regression'&&r.regression)||
+   ($('kind').value==='blocked'&&r.blocked)||($('kind').value==='overdue'&&r.overdue)));
  $('queueCount').textContent=filtered.length;
  const holder=$('agenda');holder.replaceChildren();
  for(const r of filtered.slice(0,36)){
   const card=document.createElement('article');card.className='item';
   const heading=document.createElement('h3');heading.textContent=r.id;
   const short=document.createElement('small');short.textContent=r.severity.toUpperCase()+(r.regression?' · SOURCE REGRESSION':'');
-  const detail=document.createElement('p');detail.textContent='Local stage: '+r.stage+' · Missing human references: '+r.missing.length+'/4';
+  const detail=document.createElement('p');detail.textContent='Local review: '+r.stage+' · Local Casework: '+r.caseStage+
+   (r.blocked?' (blocked)':'')+(r.overdue?' (overdue plan)':'')+' · Missing references: '+r.missing.length+'/4';
   const note=document.createElement('p');note.textContent=r.missing.length?'Follow up on '+r.missing.join(', ')+'.':'All four references present (unverified).';
   card.append(short,heading,detail,note);holder.append(card);
  }
@@ -822,11 +865,12 @@ function download(filename,value,type){
 }
 function csvCell(value){return '"'+String(value).replace(/"/g,'""')+'"';}
 function aggregateCSV(){
- const lines=[['severity','source_findings','source_regressions','local_evidence_reference_gaps','human_changes_needed','estimated_hours','estimated_unscheduled_hours']];
+ const lines=[['severity','source_findings','source_regressions','local_evidence_reference_gaps','human_changes_needed','casework_blocked','casework_overdue','estimated_hours','estimated_unscheduled_hours']];
  for(const s of LEVELS){
   const rs=joined.records.filter(r=>r.severity===s),band=joined.summary?.priority_bands?.[s];
   lines.push([s,rs.length,rs.filter(x=>x.regression).length,rs.filter(x=>x.missing.length).length,
-   rs.filter(x=>x.stage==='needs_changes').length,band?band.estimated_hours:'',band?band.unscheduled_hours:'']);
+   rs.filter(x=>x.stage==='needs_changes').length,rs.filter(x=>x.blocked).length,
+   rs.filter(x=>x.overdue).length,band?band.estimated_hours:'',band?band.unscheduled_hours:'']);
  }
  return lines.map(row=>row.map(csvCell).join(',')).join('\r\n')+'\r\n';
 }
@@ -841,6 +885,7 @@ function privateMarkdown(){
   lines.push('### '+s);
   for(const r of joined.records.filter(x=>x.severity===s)){
    lines.push('- '+escape(r.id)+' · local: '+r.stage+' · source regression: '+(r.regression?'YES':'no')+
+    ' · local Casework: '+r.caseStage+(r.blocked?' (BLOCKED)':'')+(r.overdue?' (OVERDUE)':'')+
     ' · missing descriptive references: '+(r.missing.length?r.missing.join(', '):'none reported (UNVERIFIED)'));
   }
   lines.push('');
