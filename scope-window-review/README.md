@@ -4,6 +4,42 @@
 
 This feature fills a human-operations gap alongside the **original authenticated Authorization Casebook** and the separate **emergency STOP/Incident Room**. Existing Casebook shows retrospective grant windows but does not provide a ready-to-open *private scheduled human review board* and an *identity-free calendar reminder*. This independent child branch changes **only** new files in `scope-window-review/`, based on the held integrated PR #1624 pinned at `8e14d9389699e6bf9b912042e40f17eff2fd95f4`. No original source-owner, CLI authorization, web portal, scan, CI, QA, STOP or existing test paths are modified.
 
+## Complete one-command private review workspace
+
+Generate the interactive board, machine-readable private agenda, generic .ics reminders
+and an artifact integrity manifest **from one original Casebook snapshot**.
+Use an existing owner-only 0700 parent directory and a **new** workspace path:
+
+```sh
+umask 077
+PYTHONPATH=src python3 scope-window-review/window_review.py \
+  --database /private/domain.sqlite --email ORIGINAL_OPERATOR_EMAIL \
+  --client EXACT_ORIGINAL_TENANT_ID \
+  --workspace /private/NEW-lightup-human-window-room \
+  --lead-days 7 --future-days 45 --daily-capacity 8
+```
+
+Or replace `--database /private/domain.sqlite --email ... --client ...` with
+`--casebook /private/ORIGINAL-exported-casebook.json` when using an offline
+source snapshot. Only the original persisted account login path can authenticate
+at the time it is called; neither a subsequently opened HTML report nor a
+file hash becomes client consent, scan permission, or proof of live STOP.
+
+The new directory contains:
+- `human-review-board.html`: responsive, entirely offline private human case desk.
+- `human-review-agenda.json`: original-ID-bearing planning data for human review only.
+- `human-review-calendar.ics`: generic, redacted and non-authorizing reminders.
+- `human-review-manifest.json`: exact SHA-256 + byte length of the other three
+  generated artifacts, original-source byte digest, prepared-at timestamp and
+  literal false authority flags. A checksum does **not** authenticate its author.
+
+Directory is newly created mode 0700, individual files 0600 and exclusive
+non-overwriting. On ordinary partial failure only newly created files/directories
+are cleaned; an incomplete private workspace must never be construed as an
+approved source or a completed handoff. The final manifest is published last.
+No network traffic, shared host, scheduler, scan, model call, consent or
+original SQLite grant/STOP mutation is performed by this workspace composer.
+
 ## One-step original authenticated operator workflow (preferred)
 
 From the held LightUp source checkout and on a trusted local machine, use the **original stored account, actual tenant, existing DomainStore authentication/lockout**, with no intermediate plaintext Casebook export:
