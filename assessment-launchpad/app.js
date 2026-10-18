@@ -253,18 +253,18 @@
       const bytes = new Uint8Array(await file.arrayBuffer());
       if (bytes.length !== file.size) throw new Error("Source changed while reading.");
       const decoded = new TextDecoder("utf-8", {fatal: true}).decode(bytes);
-      const document = JSON.parse(decoded);
+      const catalogDoc = JSON.parse(decoded);
       const flags = ["authorized", "consent_verified", "dispatch_allowed", "release_allowed"];
-      if (!document || Array.isArray(document) || typeof document !== "object" ||
-          document.schema !== "lightup.lab_design_catalog.v1" ||
-          document.status !== "DRAFT_ONLY" ||
-          flags.some(key => document[key] !== false) ||
-          !Array.isArray(document.scenarios) ||
-          document.scenarios.length < 1 || document.scenarios.length > 32) {
+      if (!catalogDoc || Array.isArray(catalogDoc) || typeof catalogDoc !== "object" ||
+          catalogDoc.schema !== "lightup.lab_design_catalog.v1" ||
+          catalogDoc.status !== "DRAFT_ONLY" ||
+          flags.some(key => catalogDoc[key] !== false) ||
+          !Array.isArray(catalogDoc.scenarios) ||
+          catalogDoc.scenarios.length < 1 || catalogDoc.scenarios.length > 32) {
         throw new Error("Source is not the original Studio v1 DRAFT_ONLY format.");
       }
       const names = new Set();
-      for (const row of document.scenarios) {
+      for (const row of catalogDoc.scenarios) {
         if (!row || typeof row !== "object" || Array.isArray(row) ||
             typeof row.scenario_id !== "string" ||
             !/^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/.test(row.scenario_id) ||
@@ -280,7 +280,7 @@
       // Preserve the *exact original bytes* for subsequent native admission.
       // Browser JSON.parse cannot reject duplicate JSON keys: Python source
       // read_selected_lab_design is mandatory and authoritative, never skipped.
-      candidate = {raw: bytes, rows: document.scenarios};
+      candidate = {raw: bytes, rows: catalogDoc.scenarios};
     } catch (e) {
       picker.value = "";
       status("Studio HOLD, previous private selection kept. " + e.message, true);
