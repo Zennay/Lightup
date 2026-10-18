@@ -216,7 +216,7 @@
     input.addEventListener("change",()=>{r.reference=input.value.trim().slice(0,32)||"Naamloos dossier";render();});
     lab.append(input);controls.append(lab);
     const del=node("button","","Verwijder alleen dit concept");del.type="button";
-    del.addEventListener("click",()=>{if(!confirm("Dit concept en de lokale voorbereidingsantwoorden verwijderen?"))return;records.splice(records.indexOf(r),1);active=records[0]?.sha??null;show("Concept uit alleen dit browsersessie-register verwijderd.");render();});
+    del.addEventListener("click",()=>{if(!confirm("Dit concept en de lokale voorbereidingsantwoorden verwijderen?"))return;records.splice(records.indexOf(r),1);for(const x of records)if(x.replaces===r.sha)x.replaces=null;active=records[0]?.sha??null;show("Concept en afhankelijke revisiekoppeling(en) uit deze browsersessie verwijderd; andere taakstatussen behouden.");render();});
     controls.append(del);detail.append(controls);
     const relation=node("div","controls");
     const revLabel=node("label","","Voorganger koppelen (handmatig, geen eigendomsbewijs)");
@@ -300,11 +300,12 @@
   function restore(o) {
     assert(isPlain(o)&&o.kind==="lightup.scope_handoff_local_progress"&&o.schema_version===1&&o.state==="REVIEW_ONLY_HOLD","Geen compatibele lokale voortgang.");
     assert(isPlain(o.authority)&&Object.keys(DENIAL).length===Object.keys(o.authority).length && Object.entries(DENIAL).every(([k,v])=>o.authority[k]===v),"Autorisatievlaggen mogen nooit waar zijn.");
-    assert(Array.isArray(o.entries) && o.entries.length===records.length && records.length>0,"Open eerst precies de oorspronkelijke conceptversies.");
+    assert(Array.isArray(o.entries) && o.entries.length===records.length && records.length>0 && o.entries.length<=MAX,"Open eerst precies de oorspronkelijke conceptversies.");
     const shaMap=new Map(records.map(x=>[x.sha,x])),found=new Set(),updates=[];
     for (const entry of o.entries) {
       assert(isPlain(entry)&&typeof entry.sha256==="string" && /^[a-f0-9]{64}$/.test(entry.sha256) && shaMap.has(entry.sha256) && !found.has(entry.sha256),"Bron-SHA mist, is dubbel of niet gelijk.");
       assert(typeof entry.reference==="string"&&entry.reference.length>0&&entry.reference.length<=32 && isPlain(entry.tasks),"Ongeldige lokale label-/takenstructuur.");
+      assert(Object.keys(entry).length===4 && ["sha256","reference","replaces","tasks"].every(k=>Object.hasOwn(entry,k)),"Onbekende of ontbrekende statusvelden.");
       assert(Object.keys(entry.tasks).length===TASKS.length && TASKS.every(([id])=>STATUSES.includes(entry.tasks[id])),"Taakset of status is vervormd.");
       assert(entry.replaces===null || (typeof entry.replaces==="string" && shaMap.has(entry.replaces)),"Vreemde revisievoorganger.");
       found.add(entry.sha256);updates.push([shaMap.get(entry.sha256),entry]);
