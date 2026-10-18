@@ -16,6 +16,7 @@ from pathlib import Path
 import shutil
 import stat
 import sys
+import unicodedata
 
 MAX_BYTES = 512 * 1024
 MAX_ROWS = 200
@@ -262,6 +263,16 @@ def _queue(data):
     return tasks
 
 
+def _safe_csv_cell(value):
+    """Prevent Unicode-obscured formula interpretation in private CSV viewers."""
+    original = str(value)
+    normalized = unicodedata.normalize("NFKC", original)
+    normalized = normalized.lstrip("\\ufeff\\u200b\\u2060\\u200e\\u200f\\u202a\\u202b\\u202c\\u202d\\u202e\\t\\r\\n ")
+    if normalized.startswith(("=", "+", "-", "@")):
+        return "'" + original
+    return original
+
+
 def _csv(tasks):
     output = io.StringIO(newline="")
     writer = csv.writer(output, lineterminator="\r\n")
@@ -269,8 +280,9 @@ def _csv(tasks):
                      "Source observation", "Human next action", "Owner (blank)",
                      "Due date (blank)", "Human stage (blank)"])
     for t in tasks:
-        writer.writerow([t["family"], t["id"], t["tier"], t["attention"],
-                         t["action"], "", "", ""])
+        writer.writerow([_safe_csv_cell(v) for v in
+                         [t["family"], t["id"], t["tier"], t["attention"],
+                          t["action"], "", "", ""]])
     # Source IDs are retained only in this PRIVATE CSV; not intended for spreadsheet execution.
     return output.getvalue().encode("utf-8")
 
