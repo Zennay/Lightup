@@ -103,7 +103,23 @@
 <div class="scroll"><table><thead><tr>
 <th>Original ID</th><th>Source severity</th><th>Human owner</th><th>Casework HUMAN stage/date</th><th>Evidence Review HUMAN stage</th><th>Local file fingerprints</th><th>Outstanding PRIVATE HUMAN requests</th><th>Human follow-up reasons</th><th>Local filing</th>
 </tr></thead><tbody id="actionRows"></tbody></table></div></section>
-<section class="card"><h2>9 · Unified PRIVATE HUMAN workspace handoff</h2>
+<section class="card"><h2>9 · Original evidence provenance and cross-reference review (PRIVATE)</h2>
+<p>Review exact LOCAL SHA-256 reuse across original findings, differing bytes under the same original finding+filename label, inconsistent file size claims and stale HUMAN request fingerprint references. These are HUMAN provenance follow-up signals only: legitimate evidence reuse is normal in some remediations, and local absence is not proof of missing client evidence, tampering or a verified fix.</p>
+<p id="provenanceSummary" role="status"></p>
+<div class="grid">
+<label>PRIVATE LOCAL provenance signals<select id="provenanceFilter">
+<option value="all">All LOCAL original-source signals</option>
+<option value="cross_finding_reuse">Same bytes linked to multiple original findings</option>
+<option value="same_name_different_bytes">Same filename label with different bytes</option>
+<option value="inconsistent_local_size">Same SHA-256 with conflicting local size metadata</option>
+<option value="human_request_unlinked">HUMAN request referencing an unregistered LOCAL hash</option>
+</select></label>
+<div><p>Export confidential original finding IDs, LOCAL filenames and byte digests only after verifying the receiver. No original file bytes are included.</p>
+<button id="provenanceExport" disabled>Export PRIVATE local provenance review CSV</button></div>
+</div><p id="provenanceShown"></p>
+<div class="scroll"><table><thead><tr><th>Human review signal</th><th>Original IDs</th><th>LOCAL file labels</th><th>Byte hash references</th><th>Interpretation (not verdict)</th><th>Local human action</th></tr></thead>
+<tbody id="provenanceRows"></tbody></table></div></section>
+<section class="card"><h2>10 · Unified PRIVATE HUMAN workspace handoff</h2>
 <p>Transfer the current LOCAL file fingerprints together with read-only imported Casework v1, Evidence Review v2 and PRIVATE HUMAN evidence requests/responses as one source-bound PRIVATE file. The recipient must load the same independently obtained original five-column findings CSV and type the same independently verified client/engagement labels before restoring. The bundled records contain no evidence file bytes and cannot establish authorization.</p>
 <div class="grid">
 <div><h3>Export current combined HUMAN workspace</h3><p>Private original source SHA, human status/date/reviewer, original finding IDs, local filenames and fingerprints. Independently approve the storage and recipient.</p><button id="unifiedExport" disabled>Download PRIVATE unified JSON</button></div>
@@ -113,7 +129,7 @@
 <pre id="unifiedPreview" class="migration" hidden></pre>
 <button id="applyUnified" disabled>Confirm atomic PRIVATE human restore</button>
 <p class="subtle">Import never writes to original Casework/Evidence modules. No target, scanner, credentials, grant, verified retest, session or actual source authentication is included.</p></section>
-<section class="card"><h2>10 · PRIVATE human evidence requests and owner responses</h2>
+<section class="card"><h2>11 · PRIVATE human evidence requests and owner responses</h2>
 <p>Turn original source-bound LOCAL evidence gaps into HUMAN follow-up requests. Draft an original finding-specific request, choose the evidence required and tentative human owner/date, and record an unverified HUMAN response. This desk is offline: it does not send requests, start assessments, confirm fixes, authorize testing or modify original Casework/Evidence Review source records. Keep recipient verification separate.</p>
 <p id="requestBound" class="fingerprint"></p>
 <div class="grid">
@@ -177,7 +193,7 @@
 </div>
 <p id="requestMessage" class="notice" role="status" aria-live="polite">No original-source-bound HUMAN request was sent or authorized.</p>
 </section>
-<section class="card"><h2>11 · Individual local handoff</h2>
+<section class="card"><h2>12 · Individual local handoff</h2>
 <div class="grid">
 <div><h3>PRIVATE human draft</h3><p>Includes original source SHA, self-declared context, filenames, checksums, and human notes. Protect exported data separately.</p><button id="export" disabled>Export PRIVATE JSON</button></div>
 <div><h3>Restore PRIVATE draft</h3><p>Load only with the exact same original CSV, client and engagement. Reject incomplete, mismatched or elevated authority packets.</p>
