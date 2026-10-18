@@ -1,8 +1,10 @@
 # LightUp Scope Handoff Register — offline human preparation
 
-Open **`scope-handoff-register/index.html`** directly in a current browser. No installation, account, server, internet connection, remote scripts, API, storage, cookie, database write or live-target connection is required. The file references only its sibling `app.js` and `style.css`.
+Open **`scope-handoff-register/standalone.html`** as a single downloaded file, or open **`scope-handoff-register/index.html`** with its sibling `app.js` and `style.css`, directly in a current browser. No installation, account, server, internet connection, remote scripts, API, storage, cookie, database write or live-target connection is required. The multi-file page references only its sibling `app.js` and `style.css`. The portable single file embeds both under SHA-256 pinned inline CSP hashes. Regenerate the same bundle via `python3 scope-handoff-register/build_standalone.py`; it needs only the Python standard library.
 
 **Project phase: INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD.** The register is *not* an authorization engine, engagement admission, consent workflow, identity or ownership proof, operator grant, release gate or scanner. Its statuses mean only that someone has prepared a human discussion. No test, QA, scan, grant, handler dispatch, deployment or real assessment is performed.
+
+The published standalone build is generated from these exact owned source files; do not edit its inline payload independently. It is a handoff artifact, **not a deployed portal**.
 
 ## What a user can do
 
