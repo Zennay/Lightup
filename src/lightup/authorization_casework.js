@@ -73,9 +73,15 @@
   };
   const count = () => {
     const set = cases.filter(c => read(c.id).status !== 'locally_documented');
+    const now = new Date();
+    const today = [String(now.getFullYear()).padStart(4,'0'),
+      String(now.getMonth()+1).padStart(2,'0'),
+      String(now.getDate()).padStart(2,'0')].join('-');
+    const overdue = set.filter(c => read(c.id).due && read(c.id).due < today).length;
     control('workspaceTotals').textContent = cases.length + ' local cases · ' +
       set.length + ' need follow-up · ' +
-      cases.filter(c => read(c.id).status === 'escalated').length + ' escalated';
+      cases.filter(c => read(c.id).status === 'escalated').length + ' escalated · ' +
+      overdue + ' overdue action dates';
   };
   const matches = c => {
     const needle = control('workspaceSearch').value.toLocaleLowerCase();
@@ -155,6 +161,31 @@
     control('workspaceUnsaved').textContent = 'Local action plan exported';
     inform('Saved locally. Export is REVIEW_ONLY, unsigned, sensitive and never grants authority.');
   };
+  const bulkUpdate = mode => {
+    saveEditor();
+    const filtered = sorted().filter(c => read(c.id).status !== 'locally_documented');
+    const eligible = filtered.filter(c =>
+      mode === 'assign' ? !read(c.id).owner : read(c.id).status !== 'escalated');
+    const owner = control('workspaceBulkOwner').value.trim();
+    if (mode === 'assign' && (!owner || owner.length > 90 ||
+        /[\u0000-\u001f]/.test(owner))) {
+      inform('Enter a bounded responsible person/team before assigning cases.');
+      return;
+    }
+    if (!eligible.length) {inform('No eligible unresolved cases in the current filters.');return;}
+    const label = mode === 'assign' ? 'assign' : 'escalate';
+    if (!window.confirm('Locally '+label+' '+eligible.length+' filtered issues? This will not change the LightUp database or authorize anything.'))return;
+    for (const c of eligible) {
+      const p={...read(c.id)};
+      if (mode === 'assign') p.owner=owner;
+      else p.status='escalated';
+      if (!valid(p)) {inform('HOLD: encountered invalid local data.');return;}
+      plans[c.id]=p;
+    }
+    mark();
+    render();
+    inform(eligible.length+' local follow-up cases updated. Export a private action plan to retain changes; authorization remains unverified.');
+  };
   const exportPlan = () => {
     saveEditor();
     const payload = {
@@ -210,6 +241,8 @@
     control(id).addEventListener('change', saveEditor);
   for (const id of ['workspaceSearch','workspaceState','workspaceCritical'])
     control(id).addEventListener('input',renderList);
+  control('workspaceBulkAssign').addEventListener('click',()=>bulkUpdate('assign'));
+  control('workspaceBulkEscalate').addEventListener('click',()=>bulkUpdate('escalate'));
   control('workspaceExport').addEventListener('click',exportPlan);
   control('workspaceCsv').addEventListener('click',exportCsv);
   control('workspaceImport').addEventListener('change',async event=>{
