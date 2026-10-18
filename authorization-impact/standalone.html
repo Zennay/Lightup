@@ -68,7 +68,9 @@ tbody button{font-size:11px;padding:5px 7px}
 <div class="lane"><header>④ Recorded risk decisions</header><div id="lane-risk_approvals"></div></div></div>
 <p class="caption">A reference follows only recorded original request→grant→engagement→risk IDs. It never fabricates a direct request/engagement relationship, never rechecks eligibility, and never calls a target or live database.</p></section>
 <section class="grid"><div class="card"><h2 id="focus-title">03 / Select one original source record</h2><p id="focus-description">Select a source record to inspect its connected original references.</p>
-<div class="flex" id="focus-list"></div><div class="divider"></div><h3>Potential follow-up and absent source rows</h3><ol id="impact-list"></ol>
+<div class="flex" id="focus-list"></div><div class="divider"></div>
+<h3>Exact original reference paths</h3><p class="caption">These paths show the shortest source-record connection, including backwards references and shared-engagement siblings. An indirect path is NOT the selected request's permission for another grant or tenant.</p>
+<div class="table-wrap" style="max-height:230px"><table><thead><tr><th>Distance</th><th>Recorded source link sequence</th><th></th></tr></thead><tbody id="reference-paths"></tbody></table></div><div class="divider"></div><h3>Potential follow-up and absent source rows</h3><ol id="impact-list"></ol>
 <div class="warning">Human impact review only: a missing reference is an unresolved historical source observation, not proof that a customer cancelled approval or a target is safe.</div></div>
 <div class="card"><h2>04 / Local human-only follow-up</h2><fieldset id="review-fields" disabled style="border:0;padding:0;margin:0">
 <label class="field">Stage<select id="stage"><option value="unreviewed">Unreviewed</option><option value="investigating">Investigating</option><option value="waiting-client">Waiting for genuine client contact</option><option value="waiting-operator">Waiting for original operator</option><option value="escalated">Escalated</option><option value="documented">Documented, not approved</option></select></label>
@@ -185,16 +187,37 @@ function item(parent,tag,value,classname){
 var e=document.createElement(tag);e.textContent=String(value);if(classname)e.className=classname;parent.appendChild(e);return e;
 }
 function connected(root){
-var edgesList=edges(),map=new Map(nodes().map(function(n){return [n.key,n];})),found=new Set([root]),queue=[root],broken=[];
+var edgesList=edges(),map=new Map(nodes().map(function(n){return [n.key,n];})),found=new Set([root]),queue=[root],broken=[],paths=new Map([[root,[root]]]);
 while(queue.length){
 var key=queue.shift();
 edgesList.forEach(function(e){
 if(e.from!==key&&e.to!==key)return;
 var other=e.from===key?e.to:e.from;
 if(!map.has(other)){broken.push({from:key,missing:other,kind:e.kind});return;}
-if(!found.has(other)){found.add(other);queue.push(other);}
+if(!found.has(other)){found.add(other);paths.set(other,paths.get(key).concat([other]));queue.push(other);}
 });}
-return {found:found,broken:broken};
+return {found:found,broken:broken,paths:paths};
+}
+function describePath(route){
+var all=new Map(nodes().map(function(n){return [n.key,n];})),allEdges=edges(),text=[];
+route.forEach(function(key,index){
+var n=all.get(key);text.push(n?n.label+" ["+n.id+"]":"MISSING SOURCE");
+if(index+1<route.length){
+var next=route[index+1],e=allEdges.find(function(edge){return edge.from===key&&edge.to===next||edge.from===next&&edge.to===key;});
+if(e)text.push((e.from===key?"→ ":"← ")+e.kind);
+}
+});
+return text.join(" · ");
+}
+function renderPaths(){
+var host=el("reference-paths");host.replaceChildren();if(!source||!selection)return;
+var graph=connected(selection),all=nodes();
+all.filter(function(n){return graph.found.has(n.key)&&n.key!==selection;}).sort(function(a,b){return graph.paths.get(a.key).length-graph.paths.get(b.key).length||a.id.localeCompare(b.id);}).forEach(function(n){
+var route=graph.paths.get(n.key),tr=document.createElement("tr");
+item(tr,"td",route.length-1+" hop"+(route.length===2?"":"s"));
+item(tr,"td",describePath(route));
+tr.appendChild(document.createElement("td"));host.appendChild(tr);
+});
 }
 function focusedNodes(){
 if(!source||!selection)return {members:[],broken:[]};
@@ -202,7 +225,7 @@ var view=connected(selection);
 return {members:nodes().filter(function(n){return view.found.has(n.key);}),broken:view.broken};
 }
 function render(){
-var all=nodes(),e=edges(),map=new Map(all.map(function(n){return [n.key,n];}));var chosen=focusedNodes();
+var all=nodes(),e=edges(),map=new Map(all.map(function(n){return [n.key,n];}));var chosen=focusedNodes();renderPaths();
 el("count-requests").textContent=source?source.requests.length:0;
 el("count-grants").textContent=source?source.grants.length:0;
 el("count-engagements").textContent=source?source.engagements.length:0;
