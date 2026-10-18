@@ -25,7 +25,8 @@ import warnings
 from urllib.parse import quote
 
 from .domain import AccountLockedError, DomainStore
-from .grant_request_binding import _asset, approved_request_is_compatible
+from .grant_request_binding import (_asset, approved_request_is_compatible,
+                                    assets_within_approved_request)
 
 MAX_ROWS = 500
 MAX_BYTES = 2_000_000
@@ -63,6 +64,43 @@ def _assets(raw: list[str]) -> tuple[str, ...]:
             # Canonical explicit network spelling, no silently normalized CIDR.
             raise ValueError("IP/network must be in canonical spelling")
     return tuple(raw)
+
+
+def _explain_source_mismatch(row: sqlite3.Row, *, client_id: str,
+                             assets: tuple[str, ...], risk: int,
+                             now: str, compatible: bool) -> list[str]:
+    """Human-only classifications; never an alternative authorization evaluator."""
+    if row["status"] != "approved":
+        return ["NOT_ADMINISTRATIVELY_APPROVED"]
+    reasons = []
+    if row["requested_mode"] != "authorized_assessment":
+        reasons.append("REQUEST_MODE_NOT_AUTHORIZED_ASSESSMENT")
+    if (row["client_id"] != client_id
+            or row["requester_role"] not in ("client_admin", "client_member")
+            or row["requester_client"] != client_id
+            or row["reviewer_role"] != "operator"
+            or row["reviewer_client"] is not None
+            or row["requested_by"] == row["decided_by"]):
+        reasons.append("SOURCE_ROLE_OR_TENANT_PROVENANCE_MISMATCH")
+    claimed_risk = row["requested_risk"]
+    if type(claimed_risk) is not int or not (1 <= risk <= claimed_risk <= 4):
+        reasons.append("PROPOSED_RISK_NOT_COVERED")
+    if not assets_within_approved_request(row["requested_assets_json"], assets):
+        reasons.append("PROPOSED_LITERAL_SCOPE_NOT_COVERED")
+    try:
+        created = datetime.fromisoformat(row["created_at"])
+        decided = datetime.fromisoformat(row["decided_at"])
+        observed = datetime.fromisoformat(now)
+        if (any(dt.tzinfo is None or dt.utcoffset() is None
+                for dt in (created, decided, observed))
+                or not created <= decided <= observed):
+            reasons.append("DECISION_CHRONOLOGY_INVALID")
+    except (TypeError, ValueError, OverflowError):
+        reasons.append("DECISION_CHRONOLOGY_INVALID")
+    if compatible:
+        # The installed owner predicate is the sole source of match truth.
+        return []
+    return reasons or ["SOURCE_OWNER_OTHER_INTEGRITY_CHECK_REQUIRED"]
 
 
 def _private_output(path: Path, body: str) -> None:
@@ -147,6 +185,10 @@ def _source_snapshot(db: Path, *, engagement_id: str, client_id: str | None,
             )
             if compatible:
                 matched.append(request["request_id"])
+            reasons = _explain_source_mismatch(
+                request, client_id=engagement["client_id"], assets=assets,
+                risk=risk, now=now, compatible=compatible,
+            )
             token = hashlib.sha256(
                 ("lightup.private.request-review.v1:" + request["request_id"]).encode("utf-8")
             ).hexdigest()[:16]
@@ -162,6 +204,7 @@ def _source_snapshot(db: Path, *, engagement_id: str, client_id: str | None,
                     "not_administratively_approved"
                 ),
                 "previously_bound_grant_rows": bound[request["request_id"]],
+                "review_flags_non_authorizing": reasons,
                 "review_action": (
                     "Reconfirm independently with actual client and operator and "
                     "request-to-grant source owner; do not infer consent or grant authority."
@@ -177,7 +220,11 @@ def _source_snapshot(db: Path, *, engagement_id: str, client_id: str | None,
              engagement["client_id"], engagement_id, list(assets), risk],
             ensure_ascii=True, separators=(",", ":"),
         ).encode("ascii")).hexdigest()
+        mismatch_reasons = Counter(
+            reason for entry in items for reason in entry["review_flags_non_authorizing"]
+        )
         summary = {
+            "mismatch_reason_counts_non_authorizing": dict(sorted(mismatch_reasons.items())),
             "recorded_requests": len(operator_requests),
             "approved_candidate_matches": len(matched),
             "approved_but_not_compatible": sum(
@@ -234,8 +281,9 @@ def _html(report: dict) -> str:
                 row["ordinal"], row["private_reference"],
                 row["request_id"] or "redacted",
                 row["stored_status"], row["requested_risk"],
-                row["request_source_status"], row["previously_bound_grant_rows"],
-                row["review_action"],
+                row["request_source_status"],
+                ", ".join(row["review_flags_non_authorizing"]) or "NO_RECORDED_MISMATCH",
+                row["previously_bound_grant_rows"], row["review_action"],
             )
         ) + "</tr>")
     source, summary = report["source"], report["summary"]
@@ -274,11 +322,15 @@ def _html(report: dict) -> str:
         " · matching candidates: " + str(summary["approved_candidate_matches"]) +
         " · stored grant rows: " + str(summary["prior_stored_grant_rows"]) +
         " · unbound legacy rows: " + str(summary["unbound_legacy_grant_rows"]) +
+        "</p><p>Original source mismatch themes (human explanation only): "
+        + esc(", ".join(k + ": " + str(v)
+                        for k, v in summary["mismatch_reason_counts_non_authorizing"].items())
+              or "No recorded mismatch categories") +
         "</p></section>"
         "<section><h2>Historical requests for independent review</h2>"
         "<div style='overflow-x:auto'><table><thead><tr><th>#</th><th>Private token</th>"
         "<th>Request ID (opt-in)</th><th>Admin status</th><th>Requested risk</th>"
-        "<th>Offline match</th><th>Previously linked stored grants</th><th>Human follow-up</th>"
+        "<th>Offline match</th><th>Reasons (human only)</th><th>Previously linked stored grants</th><th>Human follow-up</th>"
         "</tr></thead><tbody>" + "".join(cells) +
         "</tbody></table></div></section><section><h2>Required human controls</h2><ol>"
         + "".join("<li>" + esc(v) + "</li>" for v in report["caveats"]) +
@@ -292,10 +344,12 @@ def _csv(report: dict) -> str:
     stream = io.StringIO(newline="")
     w = csv.writer(stream, lineterminator="\r\n")
     cols = ("ordinal", "private_reference", "request_id", "stored_status",
-            "requested_risk", "request_source_status", "previously_bound_grant_rows")
+            "requested_risk", "request_source_status", "review_flags_non_authorizing",
+            "previously_bound_grant_rows")
     w.writerow(cols + ("review_only", "consent_verified", "grant_issued", "execution_allowed"))
     for row in report["candidates"]:
-        values = [row[k] if row[k] is not None else "" for k in cols]
+        values = [(";".join(row[k]) if k == "review_flags_non_authorizing" else
+                   row[k] if row[k] is not None else "") for k in cols]
         # Every nonnumeric cell is escaped to prevent spreadsheet formulas.
         safe = [("'" + v) if type(v) is str and
                 (v.lstrip("\ufeff \t\r\n").startswith(("=", "+", "-", "@")) or

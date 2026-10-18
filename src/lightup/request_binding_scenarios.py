@@ -166,6 +166,7 @@ def format_html(report: dict) -> str:
                     item["request_id"] or "redacted",
                     item["stored_status"], item["requested_risk"],
                     item["request_source_status"],
+                    ", ".join(item["review_flags_non_authorizing"]) or "NO_RECORDED_MISMATCH",
                     item["previously_bound_grant_rows"],
                 )
             ) + "</tr>")
@@ -180,7 +181,7 @@ def format_html(report: dict) -> str:
             '</p><div style="overflow-x:auto"><table><thead><tr><th>#</th>'
             '<th>Private request token</th><th>Original request ID (opt-in)</th>'
             '<th>Stored status</th><th>Requested risk</th><th>Matching</th>'
-            '<th>Prior stored grant rows ≠ permission</th></tr></thead><tbody>' +
+            '<th>Human mismatch reasons</th><th>Prior stored grant rows ≠ permission</th></tr></thead><tbody>' +
             "".join(rows) + "</tbody></table></div></section>"
         )
     transitions = "".join(
