@@ -20,3 +20,7 @@
 
 /* Explicit prominence for source-change impact and reissue actions */
 #revisionHistory ul{margin:12px 0;padding-left:21px}#revisionHistory li{line-height:1.45;margin:7px 0;color:var(--warn)}#revisionHistory .revision-entry p{margin:8px 0}
+
+/* Local combined human desk rehydration, no persistence or auth claims. */
+.restore-row{padding:14px 16px;border-radius:10px;background:#0d1b2e;border:1px solid var(--line);margin:15px 0}.restore-row label{display:block;font-weight:750}.restore-row input{display:block;max-width:100%;margin:8px 0}.restore-row small{color:var(--muted)}.restore-row p{font-size:12px;overflow-wrap:anywhere}
+@media print{.restore-row{display:none!important}}
