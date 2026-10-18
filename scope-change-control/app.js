@@ -168,7 +168,7 @@
         const kind = !old ? "added" : !newer ? "missing-source" : "changed";
         let priority = kind === "missing-source" ? "urgent" : "review";
         if (category === "grants" || category === "case_overview") priority = "urgent";
-        if (newer && Object.values(newer).some(x => typeof x === "string" && (x.startsWith("HOLD_") || x === "STOP_ACTIVE"))) priority = "urgent";
+        if ([old,newer].some(row => row && (row.status === "approved" || Object.values(row).some(x => typeof x === "string" && x.startsWith("HOLD_"))))) priority = "urgent";
         const fieldNames = old && newer ? [...new Set([...Object.keys(old), ...Object.keys(newer)])]
           .filter(k => canonical(old[k]) !== canonical(newer[k])).sort() : [];
         output.push({category, id, kind, priority, fieldNames, before: old || null, after: newer || null});
@@ -321,8 +321,43 @@
       if (!Array.isArray(doc.changes) || doc.changes.length !== state.changes.length)
         hold("Private handoff original change membership mismatch");
       const expected=new Map(state.changes.map(c=>[c.category+":"+c.id,c]));
+      // The native authenticated CLI emits the same source-bound private schema
+      // but a different (non-stage) change-row structure. Never trust its label:
+      // convert only after exact source digests and actual original rows match.
+      const native=isObject(doc.aggregate_without_original_ids);
+      let rows=doc.changes;
+      if (native) {
+        const aggregate=doc.aggregate_without_original_ids;
+        if (aggregate.snapshot_count!==2 ||
+            aggregate.changed_record_count!==state.changes.length ||
+            aggregate.urgent_review_count!==state.changes.filter(c=>c.priority==="urgent").length ||
+            !isObject(aggregate.source_delta_counts))
+          hold("Native source-review aggregate inconsistent");
+        const counts=Object.create(null);
+        rows=doc.changes.map(row=>{
+          if(!isObject(row) || !CATEGORIES.some(a=>a[0]===row.family) ||
+             !literal(row.original_id,180) || row.human_follow_up!=="UNREVIEWED")
+            hold("Native source-review row not admitted");
+          const kinds={NEW_SOURCE_ROW:"added",MISSING_FROM_NEW_SOURCE:"missing-source",
+                       SOURCE_FIELDS_CHANGED:"changed"};
+          if(!Object.hasOwn(kinds,row.change) ||
+             !["URGENT_HUMAN_REVIEW","REVIEW_ONLY"].includes(row.priority))
+            hold("Native source-review classification not admitted");
+          const group=row.family+"/"+row.change+"/"+row.priority;
+          counts[group]=(counts[group]||0)+1;
+          return {
+            category:row.family,original_id:row.original_id,
+            change:kinds[row.change],
+            priority:row.priority==="URGENT_HUMAN_REVIEW"?"urgent":"review",
+            changed_source_fields:row.changed_fields_only,
+            local_human_stage:"unreviewed"
+          };
+        });
+        if (canonical(counts)!==canonical(aggregate.source_delta_counts))
+          hold("Native source-review classification totals differ");
+      }
       const stages=new Map();
-      for(const row of doc.changes){
+      for(const row of rows){
         if(!isObject(row) || !literal(row.category,100) || !literal(row.original_id,180))
           hold("Private handoff original ID missing");
         const key=row.category+":"+row.original_id;
@@ -339,7 +374,7 @@
       // Commit the entire restored review only after every source-bound record agrees.
       state.notes=stages;
       render();
-      text("restore-status","Private local human stages restored against exact original source bytes. No authorization changes.");
+      text("restore-status",native ? "Authenticated-CLI source review admitted; all original human stages start unreviewed. No permissions inferred." : "Private local human stages restored against exact original source bytes. No authorization changes.");
     } catch(e){
       text("error","HOLD: "+(e && e.message ? e.message : "private follow-up not admitted"));
       text("restore-status","");
