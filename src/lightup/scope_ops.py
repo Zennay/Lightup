@@ -170,7 +170,10 @@ def _export_private_case(
     """Authentic one-case PRIVATE export for the offline operator room."""
     print("Create a NEW, exclusive, owner-only private source JSON, never shared automatically.")
     print("Optional original request binding: exact comma-separated canonical literals, no target calls.")
-    raw = input("Proposed asset literals (ENTER for no binding preview): ").strip()
+    scenario_file = input("Private 2-8 original scenario JSON path (ENTER for none): ").strip()
+    if len(scenario_file) > 1200:
+        raise ScopeBriefHold("bounded original scenario path required")
+    raw = "" if scenario_file else input("Proposed asset literals (ENTER for no binding preview): ").strip()
     risk: int | None = None
     assets: tuple[str, ...] = ()
     if raw:
@@ -187,8 +190,9 @@ def _export_private_case(
     result = compose_scope_incident_brief(
         db, email=email, password=password, client_id=client_id,
         engagement_ids=(engagement,),
-        proposal_engagement=engagement if assets else None,
+        proposal_engagement=engagement if assets or scenario_file else None,
         proposal_assets=assets, proposal_risk=risk,
+        scenario_file=scenario_file or None,
     )
     if (result.get("schema") != "lightup.scope_stop_casework_brief.v1"
             or result.get("authorization_granted") is not False
