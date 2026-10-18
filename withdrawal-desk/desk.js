@@ -203,7 +203,9 @@
       if(pending.some(x=>x.hash===hash))throw Error('HOLD: duplicate source files in selection.');
       pending.push({hash,meta});
     }
-    if(cases.length+pending.filter(p=>!cases.some(c=>c.sha===p.hash)).length>MAX_FILES)\n      throw Error('HOLD: at most 16 distinct source drafts in one workspace.');\n    // Atomic import: apply only after all files have passed size, UTF-8, schema and digest preflight.
+    if(cases.length+pending.filter(p=>!cases.some(c=>c.sha===p.hash)).length>MAX_FILES)
+      throw Error('HOLD: at most 16 distinct source drafts in one workspace.');
+    // Atomic import: apply only after all files have passed size, UTF-8, schema and digest preflight.
     for(const p of pending){
       const old=cases.find(x=>x.sha===p.hash);
       if(old){
