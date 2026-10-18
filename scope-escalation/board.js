@@ -61,6 +61,66 @@
     anchor.remove();
     setTimeout(() => URL.revokeObjectURL(url), 5000);
   }
+
+  function refreshWorkload() {
+    const assigned = new Map();
+    let unfinished = 0;
+    let selected = 0;
+    for (const card of cards) {
+      if (card.querySelector('[data-pick="1"]').checked) selected++;
+      const h = entry(card);
+      if (h.owner.trim()) assigned.set(h.owner.trim(), (assigned.get(h.owner.trim()) || 0) + 1);
+      if (h.stage !== "human_followup_complete") unfinished++;
+    }
+    const top = [...assigned].sort((a,b) => b[1] - a[1]).slice(0,12);
+    const other = Math.max(0, assigned.size - top.length);
+    document.getElementById("workload").textContent =
+      selected + " selected · " + unfinished + " human follow-ups not marked complete · " +
+      (top.length ? top.map(([k,v]) => k + ": " + v).join(" | ") : "No self-declared reviewers yet") +
+      (other ? " | " + other + " additional reviewer labels" : "") +
+      ". Reviewer labels are self-declared, not authenticated.";
+  }
+  cards.forEach(card => {
+    card.addEventListener("input", refreshWorkload);
+    card.addEventListener("change", refreshWorkload);
+  });
+  document.getElementById("selectVisible").addEventListener("click", () => {
+    cards.filter(card => !card.hidden).forEach(card => {
+      card.querySelector('[data-pick="1"]').checked = true;
+    });
+    refreshWorkload();
+  });
+  document.getElementById("clearSelected").addEventListener("click", () => {
+    cards.forEach(card => { card.querySelector('[data-pick="1"]').checked = false; });
+    refreshWorkload();
+  });
+  document.getElementById("applyBulk").addEventListener("click", () => {
+    const selected = cards.filter(c => c.querySelector('[data-pick="1"]').checked);
+    const owner = document.getElementById("bulkOwner").value.trim();
+    const stage = document.getElementById("bulkStage").value;
+    const due = document.getElementById("bulkDue").value;
+    const preserve = document.getElementById("skipExisting").checked;
+    if (!selected.length) { fail("select at least one human review card"); return; }
+    if (!textOk(owner,80) || !dayOk(due) || (stage && !stages.has(stage)) ||
+        (!owner && !due && !stage)) { fail("select valid HUMAN follow-up changes"); return; }
+    const candidates = selected.filter(card => {
+      if (!preserve) return true;
+      const h = entry(card);
+      return !h.owner && !h.due && h.stage === "unassigned" && !h.next;
+    });
+    if (!candidates.length) { fail("no unedited selected cards (preservation is enabled)"); return; }
+    if (!window.confirm("Apply HUMAN-only reviewer / stage / tentative date to " +
+        candidates.length + " selected local record(s)? This cannot approve, grant, " +
+        "revoke or execute anything.")) return;
+    candidates.forEach(card => {
+      if (owner) card.querySelector('[data-field="owner"]').value = owner;
+      if (due) card.querySelector('[data-field="due"]').value = due;
+      if (stage) card.querySelector('[data-field="stage"]').value = stage;
+    });
+    touched = true;
+    refreshWorkload();
+    status.textContent = candidates.length + " HUMAN-only changes applied locally. PRIVATE export required.";
+  });
   function refresh() {
     const tier = document.getElementById("filter").value;
     const phrase = document.getElementById("search").value.toLocaleLowerCase();
@@ -154,10 +214,12 @@
           obj.rows[i].human[field];
       }));
       touched = false;
+      refreshWorkload();
       status.textContent = "Exact-source human notes restored. Not client consent or authorization.";
     } catch (_) {
       fail("private handoff refused; current human notes preserved");
     }
   });
   refresh();
+  refreshWorkload();
 })();
