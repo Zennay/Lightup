@@ -18,12 +18,15 @@
   const allowed = /\.(json|md|txt|ics|csv)$/i;
   const handoffRoutes = ["private-archive", "client-review", "operator-review"];
   const clientReviewRoles = ["Client proposal — unverified", "Scope revision — unverified", "Schedule handoff — unverified"];
+  const prepStages = ["unsorted", "clarify", "drafting", "ready", "historical"];
+  const stageLabels = {unsorted: "Unsorted", clarify: "Needs human clarification", drafting: "Preparation in progress", ready: "Prepared for human review — NOT approved", historical: "Historical draft — NOT current"};
+  const MAX_NOTE_CHARS = 600;
   const roles = ["Unclassified", "Client proposal — unverified", "Operator review — unverified", "Scope revision — unverified", "Schedule handoff — unverified"];
   function validRole(role) { return typeof role === "string" && roles.includes(role); }
   const $ = (id) => document.getElementById(id);
   const els = {
     files: $("files"), list: $("file-list"), summary: $("file-summary"),
-    seal: $("seal"), selectAll: $("select-all"), selectNone: $("select-none"),
+    seal: $("seal"), rekey: $("rekey"), selectAll: $("select-all"), selectNone: $("select-none"), selectRoute: $("select-route"), stageFilter: $("stage-filter"),
     password: $("seal-password"), confirm: $("seal-confirm"),
     clear: $("clear"), openFile: $("open-file"), openPassword: $("open-password"),
     unlock: $("unlock"), lock: $("lock"), recovered: $("recovered"),
@@ -115,8 +118,11 @@
     if (entries[Number(afterValue)] && afterValue !== "") els.after.value = afterValue;
     const total = entries.reduce((n, e) => n + e.bytes.length, 0);
     const selectedCount = entries.filter((item) => item.selected).length;
-    els.summary.textContent = entries.length + " local file(s), " + total.toLocaleString() + " bytes in tab memory; " + selectedCount + " selected for encrypted export. All contents remain unapproved.";
+    const clarifyCount = entries.filter((item) => item.stage === "clarify").length;
+    const preparedCount = entries.filter((item) => item.stage === "ready").length;
+    els.summary.textContent = entries.length + " local file(s), " + total.toLocaleString() + " bytes in tab memory; " + selectedCount + " selected for encrypted export; " + clarifyCount + " need clarification, " + preparedCount + " prepared for HUMAN REVIEW ONLY. No items approved.";
     entries.forEach((entry, index) => {
+      if (els.stageFilter.value !== "all" && entry.stage !== els.stageFilter.value) return;
       const box = document.createElement("div");
       box.className = "item";
       const text = document.createElement("div");
@@ -149,6 +155,36 @@
         touch(); notice("Self-reported role updated in tab memory; this is not independent identity or authorization.");
       });
       text.append(role);
+      const stageLabel = document.createElement("label");
+      stageLabel.textContent = "Private preparation stage (never a grant)";
+      const stage = document.createElement("select");
+      stage.setAttribute("aria-label", "Unverified local preparation stage for " + entry.name);
+      for (const key of prepStages) {
+        const option = document.createElement("option");
+        option.value = key; option.textContent = stageLabels[key]; stage.append(option);
+      }
+      stage.value = entry.stage;
+      stage.addEventListener("change", () => {
+        if (busy) return;
+        entry.stage = stage.value; touch(); paint();
+        notice("Preparation stage saved to temporary local memory only. Re-encrypt an archive to save it.");
+      });
+      stageLabel.append(stage);
+      text.append(stageLabel);
+      const noteLabel = document.createElement("label");
+      noteLabel.textContent = "Internal review note (encrypted in archive; excluded from client handoff)";
+      const memo = document.createElement("textarea");
+      memo.setAttribute("aria-label", "Internal private note for " + entry.name);
+      memo.maxLength = MAX_NOTE_CHARS; memo.rows = 2;
+      memo.placeholder = "Human follow-up only; avoid secrets and personal data";
+      memo.value = entry.note;
+      memo.addEventListener("input", () => {
+        if (busy) return;
+        entry.note = memo.value.slice(0, MAX_NOTE_CHARS);
+        touch();
+      });
+      noteLabel.append(memo);
+      text.append(noteLabel);
       const select = document.createElement("label"); select.className = "checkline";
       const checkbox = document.createElement("input"); checkbox.type = "checkbox";
       checkbox.checked = entry.selected;
@@ -247,7 +283,7 @@
           const bytes = new Uint8Array(await file.arrayBuffer());
           invariant(bytes.length === file.size);
           DEC.decode(bytes); // Only canonical UTF-8 text drafts, not arbitrary binary payloads.
-          staged.push({name, bytes, hash: await digest(bytes), role: roles[0], selected: true});
+          staged.push({name, bytes, hash: await digest(bytes), role: roles[0], selected: true, stage: "unsorted", note: ""});
         }
         entries.push(...staged);
         clearPreview();
@@ -360,7 +396,7 @@
           total += record.length;
           invariant(total <= MAX_TOTAL_BYTES);
           const bytes = unb64(record.base64, MAX_FILE_BYTES);
-          staged.push({name, bytes, hash: record.sha256, role: hasRole ? record.role : roles[0], selected: true});
+          staged.push({name, bytes, hash: record.sha256, role: hasRole ? record.role : roles[0], selected: true, stage: hasDossier ? record.stage : "unsorted", note: hasDossier ? record.note : ""});
           invariant(bytes.length === record.length && (await digest(bytes)) === record.sha256);
           DEC.decode(bytes);
         }
