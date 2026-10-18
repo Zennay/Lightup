@@ -12,6 +12,7 @@ import hashlib
 import json
 
 from .request_binding_readiness_cli import AUTHORITY
+from .request_binding_handoff import QUESTIONS
 
 STYLE = """
 :root{font:15px/1.5 system-ui,sans-serif;color:#edf4ff;background:#0c1424;color-scheme:dark}
@@ -59,6 +60,7 @@ const dateValid=v=>v===''||(/^20[2-9]\d-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12]\d|3[01]
 const exact=(obj,required)=>obj!==null&&typeof obj==='object'&&!Array.isArray(obj)&&
  required.every(k=>Object.prototype.hasOwnProperty.call(obj,k))&&Object.keys(obj).length===required.length;
 const source=JSON.parse($('sourceData').textContent);
+const questions=JSON.parse($('questionsData').textContent);
 const flagsFalse=['client_consent_verified','operator_consent_verified','authorization_granted','execution_allowed','release_approved'];
 const fixedAuthority=Object.fromEntries(flagsFalse.map(k=>[k,false]));
 const approved=source.disposition==='REVIEW_ONLY_SCENARIOS';
@@ -104,7 +106,7 @@ function selectControl(values,current,onChange){
  select.addEventListener('change',()=>onChange(select.value));return select;
 }
 function draw(){
- drawStats();const cases=filtered(),root=$('cases');root.replaceChildren();
+ drawStats();drawThemes();const cases=filtered(),root=$('cases');root.replaceChildren();
  $('count').textContent=cases.length+' original request rows in the selected human view';
  for(const r of cases.slice(0,500)){
   const row=text('article',undefined,'case'),top=text('div',undefined,'casehead');
@@ -119,7 +121,7 @@ function draw(){
   row.append(flag);
   const fields=text('div',undefined,'fieldgrid');
   const stateLabel=text('label','Human discussion stage (unverified)');
-  stateLabel.append(selectControl(allowedStatus,r.local.stage,v=>{r.local.stage=v;drawStats();setMsg('Local review stage updated; not saved unless explicitly exported.');}));
+  stateLabel.append(selectControl(allowedStatus,r.local.stage,v=>{r.local.stage=v;drawStats();drawThemes();setMsg('Local review stage updated; not saved unless explicitly exported.');}));
   const ownerLabel=text('label','Human follow-up channel (unverified)');
   ownerLabel.append(selectControl(allowedOwner,r.local.owner,v=>{r.local.owner=v;drawStats();setMsg('Locally assigned channel; no real notification sent.');}));
   const dueLabel=text('label','Tentative follow-up date (UTC)');
@@ -133,6 +135,46 @@ function draw(){
  }
  if(cases.length>500)root.append(text('p','First 500 cases displayed; use filters. All records remain available in private draft.','notice'));
  if(!cases.length)root.append(text('p','No matching human review cases.','empty'));
+}
+function drawThemes(){
+ const root=$('themes');root.replaceChildren();
+ const totals=new Map();
+ for(const r of allCases())for(const code of r.flags){
+  const original=questions[code];if(!original)continue;
+  const record=totals.get(code)||{occurrences:0,keys:new Set(),unreviewed:0,escalated:0};
+  record.occurrences++;record.keys.add(r.token);
+  if(r.local.stage==='unreviewed')record.unreviewed++;
+  if(r.local.stage==='escalated')record.escalated++;
+  totals.set(code,record);
+ }
+ const order={security_owner:0,client:1,operator:2};
+ const sorted=[...totals].sort((a,b)=>
+  order[questions[a[0]][0]]-order[questions[b[0]][0]]||
+  b[1].unreviewed-a[1].unreviewed||a[0].localeCompare(b[0]));
+ $('themeCount').textContent=sorted.length+' source-reported reason categories, not verified vulnerabilities';
+ for(const [reason,tot] of sorted){
+  const box=text('article',undefined,'case');
+  box.append(text('h3',reason.replaceAll('_',' ')));
+  box.append(text('p','Human follow-up: '+questions[reason][0].replaceAll('_',' ')+
+   ' · '+tot.occurrences+' across alternatives · '+tot.keys.size+
+   ' distinct original pseudonymous records · '+tot.unreviewed+' unreviewed · '+
+   tot.escalated+' locally escalated (NOT sourceowner action)'));
+  box.append(text('p',questions[reason][1],'hint'));
+  const actions=text('div',undefined,'controls');
+  for(const [stage,label] of [['question_prepared','Prepare unanswered'],
+                               ['escalated','Escalate unanswered']]){
+   const button=text('button',label);button.addEventListener('click',()=>{
+    const affected=allCases().filter(row=>row.flags.includes(reason)&&row.local.stage==='unreviewed');
+    if(!affected.length){setMsg('No unreviewed original rows for this category.');return;}
+    if(!confirm('Change '+affected.length+' local, unreviewed case stages to '+
+      stage.replaceAll('_',' ')+'? This does NOT notify a client/operator or approve/revoke a grant.'))return;
+    for(const row of affected)drafts.get(row.key).stage=stage;
+    draw();setMsg('Changed '+affected.length+' local HUMAN-ONLY stages; no backend, scan, consent or grant was touched.');
+   });actions.append(button);
+  }
+  box.append(actions);root.append(box);
+ }
+ if(!sorted.length)root.append(text('p','No recorded mismatch reason. This does not certify permission.','hint'));
 }
 function download(filename,payload,type){
  const data=new Blob([payload],{type});const url=URL.createObjectURL(data),a=text('a');
@@ -186,7 +228,14 @@ async function restore(file){
  setMsg('Original-byte source-bounded local human notes restored. No authority, grants, consent or revocation were restored.');
 }
 function aggregate(){
- const counts={};
+ const counts={},themes={};
+ for(const r of allCases())for(const reason of r.flags){
+  if(!Object.hasOwn(questions,reason))continue;
+  if(!themes[reason])themes[reason]={source_reason:reason,source_occurrences:0,local_unreviewed:0,
+    human_owner:questions[reason][0]};
+  themes[reason].source_occurrences++;
+  if(r.local.stage==='unreviewed')themes[reason].local_unreviewed++;
+ }
  for(const r of allCases()){
   const key=r.slot+':'+r.local.owner+':'+r.local.stage+':'+r.status;
   if(!counts[key])counts[key]={slot:r.slot,owner:r.local.owner,stage:r.local.stage,source_match:r.status,count:0};
@@ -194,7 +243,8 @@ function aggregate(){
  }
  return {format:'lightup.binding_human_coordination_aggregate_v1',disposition:'REVIEW_ONLY',
   authority:{...fixedAuthority},source_is_unsigned:true,may_contain_multiple_alternatives:true,
-  summary:Object.values(counts).sort((a,b)=>a.slot-b.slot||a.owner.localeCompare(b.owner)||a.stage.localeCompare(b.stage))};
+  summary:Object.values(counts).sort((a,b)=>a.slot-b.slot||a.owner.localeCompare(b.owner)||a.stage.localeCompare(b.stage)),
+  human_source_reason_themes:Object.values(themes).sort((a,b)=>a.source_reason.localeCompare(b.source_reason))};
 }
 function exportAggregate(kind){
  const data=aggregate();if(kind==='json')download('lightup-binding-human-aggregate.json',
@@ -242,6 +292,7 @@ def render(report: dict) -> str:
     if len(scopes) > 8 or any(item.get("authority") != AUTHORITY for item in scopes):
         raise ValueError("invalid scope report boundary")
     source_payload = _safe_payload(report)
+    question_payload = json.dumps(QUESTIONS, sort_keys=True, ensure_ascii=True)
     if len(source_payload) > 1_500_000:
         raise ValueError("source too large for private interactive offline view")
     fingerprint = hashlib.sha256(json.dumps(
@@ -287,6 +338,12 @@ def render(report: dict) -> str:
         'these counts are NOT distinct permissions or approved actions. '
         'Original source revision SHA-256 (unsigned, not verified): <code>' +
         escape(scopes[0]["source"]["source_revision_sha256_unsigned"]) + '</code></p>'
+        '<section><h2>Original source problems · human follow-up queue</h2>'
+        '<p>The current canonical source owner remains responsible for actual grants and request integrity. '
+        'These groups show fixed human questions and the number of original source rows affected. '
+        'Bulk buttons modify only previously UNREVIEWED local discussion stages after confirmation, '
+        'never actual request or consent status. Original scope alternatives can duplicate records.</p>'
+        '<p id="themeCount" class="hint"></p><div id="themes" class="cards"></div></section>'
         '<section><h2>Original request source · private local human triage</h2>'
         '<p>Source fields are read-only. Human assignments and notes exist in memory only until explicitly '
         'exported to a PRIVATE file; no browser storage or network sync occurs.</p>'
@@ -321,5 +378,7 @@ def render(report: dict) -> str:
         'Original exact-head hosted+named VPS CI, security/privacy, independent real consent '
         'and at-use revocation and HUMAN GO remain required.</footer>'
         '<script type="application/json" id="sourceData" data-fingerprint="' + fingerprint +
-        '">' + source_payload + '</script><script>' + SCRIPT + '</script></body></html>'
+        '">' + source_payload + '</script>'
+        '<script type="application/json" id="questionsData">' + question_payload + '</script>'
+        '<script>' + SCRIPT + '</script></body></html>'
     )

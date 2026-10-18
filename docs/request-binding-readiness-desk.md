@@ -65,3 +65,8 @@ Source importer refuses malformed historical request/grant lineage identities an
 5. For resumption, reopen the same original HTML source copy, import the matching PRIVATE draft; the entire import is refused on schema, source revision, proposal, row identity, authority, or value inconsistency. **No human stage is automatically carried over to changed source records.**
 
 Data stays in browser memory until explicit file downloads. Clearing local state or closing the document does not change stored LightUp request, grant or session records. The original source must be reauthenticated and re-exported before treating it as fresh evidence.
+
+
+## Source reason-driven human follow-up (offline)
+
+The new original-source issue panel groups request-binding mismatch categories emitted by the existing canonical #1570 predicate explanation. Each group lists the fixed human question and intended client/operator/security-source-owner channel, counts both occurrence frequency across human alternatives and distinct original pseudonymous request records, and differentiates still-unreviewed versus locally escalated work. The operator may explicitly confirm **Prepare unanswered** or **Escalate unanswered** for an entire reason; this changes only local unreviewed human discussion states, never already handled cases or any original backend request/grant/consent status. Aggregate JSON includes fixed source reason categories and source-only counts, without original record IDs, names, asset details or operator notes.
