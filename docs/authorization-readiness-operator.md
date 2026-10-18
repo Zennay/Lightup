@@ -8,6 +8,7 @@ An authenticated LightUp operator can now produce a real, local **assessment/gra
 
 - HTML dashboard: per-client/engagement queue, assessment request and approval counts, stored grant counts, time-window labels and concrete operator follow-up steps.
 - JSON report for incident/project tracking, explicitly marked REVIEW_ONLY with every consent/grant/scan/release boolean false.
+- CSV operator action register with a row per stored grant (or a no-grant row), concrete follow-up, review flags, tenant and engagement. Spreadsheet formula-prefix values and embedded control characters are neutralized; raw scope hosts, approval references and grant IDs are never included.
 - One read-only SQLite transaction using mode=ro and query_only=ON; normal DomainStore login bookkeeping may occur during authentication but assessment data is never mutated.
 - The desk also checks stored current-role provenance: the submitted request must point to a same-tenant client member/admin, the reviewer must point to a different persisted operator, and the recorded administrative decision must predate grant creation. It highlights UNTRUSTED_APPROVED_REQUEST_ORIGIN and INVALID_GRANT_CREATION_TIME. This is conservative corroboration; changing current user roles cannot retroactively authenticate past consent.
 - Every grant is flagged UNBOUND_APPROVAL_REQUEST because the original schema has no immutable approved-request→grant binding. Even if an approved request has a matching tenant, conservative literal/strict-CIDR asset subset and risk, that is not authorization.
@@ -26,7 +27,7 @@ From a LightUp checkout:
 
 For a tenant-minimized report, add --client-id with the exact existing client ID. Add --engagement-id to further restrict to one job; a specified engagement must belong to the selected client. Tenant-incoherent grants are still checked by the owning engagement ID so bad duplicated grant.client_id fields cannot hide them. A selected client or engagement must exist or the export fails closed.
 
-Use a fresh filename ending in .json for machine-readable output. The password is requested **interactively** through the original authentication layer; passwords cannot be supplied as CLI flags. Only a persisted real operator account may export. Non-interactive and unauthenticated use fails closed.
+Use a fresh filename ending in .json for structured machine-readable output or .csv for a spreadsheet-safe action queue. Every CSV record is labelled REVIEW_ONLY and cannot serve as a grant or consent record. The password is requested **interactively** through the original authentication layer; passwords cannot be supplied as CLI flags. Only a persisted real operator account may export. Non-interactive and unauthenticated use fails closed.
 
 An output path must not already exist. Created report files use mode 0600 and no-follow flags where available. No browser network request, scripts, target requests or cookies: the HTML is entirely static with restrictive CSP. Each inspected table is bounded to 3,000 rows, and output to 2 MiB; oversized sources HOLD rather than produce misleading partial reviews. Retain files locally, do not serve publicly.
 
