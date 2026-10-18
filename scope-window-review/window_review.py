@@ -272,14 +272,29 @@ def derive(casebook: dict, *, now: datetime, lead_days: int,
     events.sort(key=lambda x: (x["review_date_utc"], x["human_priority"] != "HOLD",
                                x["engagement_id"] or "", x["grant_id"]))
     summary = Counter(item["human_priority"] for item in events)
+    # All original engagements matter even if they have no grant window.
+    # This remains retrospective HUMAN priority, never a new authorization.
+    engagement_attention_hold = sum(
+        stale or item["attention"].startswith("HOLD_") or
+        item["attention"] in ("NO_GRANT_RECORDED",
+                              "RISK_DECISION_PENDING_SOURCE_REVIEW")
+        for item in casebook["case_overview"]
+    )
+    engagements_without_grant = sum(
+        item["grant_count"] == 0 for item in casebook["case_overview"]
+    )
     return {
-        "schema": SCHEMA, "status": "HOLD" if stale or summary["HOLD"] else "REVIEW_ONLY",
+        "schema": SCHEMA, "status": "HOLD" if (
+            stale or summary["HOLD"] or engagement_attention_hold
+        ) else "REVIEW_ONLY",
         "source": "unsigned_original_casebook_retrospective",
         "as_of": as_of.isoformat(), "prepared_at": now.isoformat(),
         "stale_source_over_24h": stale,
         "limits": {"lead_days": lead_days, "future_days": future_days,
                    "daily_capacity": daily_capacity},
         "capacity_shifted_items": shifted,
+        "engagement_human_hold": engagement_attention_hold,
+        "engagement_without_grant": engagements_without_grant,
         "client_id": casebook["client_id"],
         "original_source_sha256": casebook.get("_private_original_sha256", ""),
         "items": events,
@@ -442,8 +457,11 @@ def main(argv=None) -> int:
         else:
             private_publish(out, payload)
         counts = agenda["declared_counts"]
-        print(f"{agenda['status']}: {counts['items']} planned human review entries; "
-              f"{counts['hold']} HOLD; no authorization/consent/execution.")
+        print(f"{agenda['status']}: {counts['items']} planned grant-window follow-ups; "
+              f"{counts['hold']} window HOLD; "
+              f"{agenda['engagement_human_hold']} original engagement HUMAN HOLD, "
+              f"{agenda['engagement_without_grant']} no recorded grant; "
+              "no authorization/consent/execution.")
         return 3 if agenda["status"] == "HOLD" else 2
     except (ReviewHold, OSError, ValueError) as exc:
         print(f"HOLD: no authority or execution; {type(exc).__name__}: {exc}", file=sys.stderr)
