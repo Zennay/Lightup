@@ -17,10 +17,15 @@
 <main>
   <section class="panel">
     <div class="section-head"><div><h2>1. Concepten inladen</h2><p>Maximaal 16 Studio-v1 JSON-bestanden, elk maximaal 64 KiB. Iedere bestandsinhoud krijgt een eigen SHA-256.</p></div><label class="button primary">Studio-concepten kiezen<input id="imports" type="file" accept=".json,application/json" multiple hidden></label></div>
-    <div class="toolbar"><label>Zoeken <input type="search" id="search" placeholder="Referentie, risiconiveau of actie"></label><label>Filter <select id="filter"><option value="all">Alle concepten</option><option value="attention">Open actiepunten</option><option value="ready">Voorbereiding afgerond</option></select></label><button id="clear" type="button">Alles vergeten</button></div>
+    <div class="toolbar"><label>Zoeken <input type="search" id="search" placeholder="Referentie, risiconiveau of actie"></label><label>Filter <select id="filter"><option value="all">Alle concepten</option><option value="attention">Open actiepunten</option><option value="ready">Voorbereiding afgerond</option><option value="high-risk">Risico 4</option><option value="revision">Gekoppelde revisies</option></select></label><label>Risicosortering <select id="sort"><option value="risk">Hoog risico eerst</option><option value="progress">Meeste open acties</option><option value="added">Inleesvolgorde</option></select></label><button id="clear" type="button">Alles vergeten</button></div>
     <p id="notice" class="notice" role="status" aria-live="polite">Er zijn nog geen concepten ingeladen.</p>
     <div id="stats" class="stats" aria-live="polite"></div>
     <div id="boards" class="boards"></div>
+    <div class="bulkbar">
+      <div><h3>Gedeeld voorbereidingsoverleg</h3><p class="small">Zet één specifiek open actiepunt voor alle zichtbare concepten op ‘In gesprek’. Reeds voorbereide of te herziene acties worden nooit overschreven.</p></div>
+      <label>Actie <select id="bulkTask"><option value="owner">Ownership/contact route</option><option value="assets">Asset-/uitsluitingsgrenzen</option><option value="risk">Risico en activiteiten</option><option value="schedule">Tijdvenster</option><option value="stops">Stop-/incidentroute</option><option value="privacy">Privacy/evidence</option><option value="client">Cliënt-aanvraagroute</option><option value="operator">Operator-reviewroute</option></select></label>
+      <button id="bulkStart" type="button">Markeer zichtbaar open werk ‘In gesprek’</button>
+    </div>
   </section>
   <section class="panel">
     <div class="section-head"><div><h2>2. Menselijke vervolgacties</h2><p>Lokale voorbereiding, geen klant-/operatorauthenticatie. Controleer identiteit en toestemming altijd afzonderlijk in het echte LightUp-domein.</p></div></div>
