@@ -127,7 +127,7 @@ function validateReport(r){
  for(const [k,v] of Object.entries(flagCount))severity[CRITICAL.has(k)?'critical':HIGH.has(k)?'high':MEDIUM.has(k)?'medium':'routine']+=v;
  const priority=severity.critical?'critical':severity.high?'high':severity.medium?'medium':'routine';
  // Strict data minimization: no names, source rows, scope identifiers or private notes kept.
- return {scope:r.scope_fingerprint,description:r.scope_description,counts:{clients:s.clients,engagements:s.engagements,requests:s.requests,grants:s.grants,pending:s.pending_requests,historical_decisions:r.request_history.filter(item=>['approved','rejected'].includes(item.status)).length},severity,priority,flagCount,flagActions:Object.fromEntries(Object.keys(flagCount).map(k=>[k,{state:'new',team:'unassigned'}])),state:'new',team:'unassigned',due:'',digest:null,recordMap,overlap:{shared:0,changed:0,unchanged:0}};
+ return {scope:r.scope_fingerprint,description:r.scope_description,counts:{clients:s.clients,engagements:s.engagements,requests:s.requests,grants:s.grants,pending:s.pending_requests,historical_decisions:r.request_history.filter(item=>['approved','rejected'].includes(item.status)).length},severity,priority,flagCount,flagActions:Object.fromEntries(Object.keys(flagCount).map(k=>[k,{state:'new',team:'unassigned',note:''}])),state:'new',team:'unassigned',due:'',digest:null,recordMap,overlap:{shared:0,changed:0,unchanged:0}};
 }
 function validDue(v){
  if(v==='')return true;
@@ -182,6 +182,34 @@ function draw(){
  if(!list.childElementCount)list.append(e('p','No matching scopes.'));
  drawCapacity();drawThemes();drawFlagActions();
 }
+function humanQuestion(flag){
+ switch(flag){
+  case 'TENANT_LINEAGE_MISMATCH':case 'ORPHAN_GRANT':
+   return 'Hold client-facing interpretation; ask domain tenant-lineage owner to reconcile the original persisted record without copying it into this file.';
+  case 'INVALID_APPROVED_REQUEST_BINDING':case 'UNBOUND_APPROVAL_REQUEST':
+  case 'NO_COMPATIBLE_APPROVED_REQUEST':case 'AMBIGUOUS_APPROVED_REQUEST_MATCH':
+   return 'Coordinate authentic client-origin request and separate operator-review provenance with grant source owner; never infer consent from a match.';
+  case 'UNTRUSTED_APPROVED_REQUEST_ORIGIN':case 'INVALID_CLIENT_REQUEST_ORIGIN':
+  case 'UNTRUSTED_ADMINISTRATIVE_APPROVAL':
+   return 'Verify separately authenticated client and operator request roles with identity owner before interpreting any stored approval.';
+  case 'INVALID_GRANT_WINDOW':case 'EXPIRED_GRANT_WINDOW':case 'INVALID_GRANT_CREATION_TIME':
+  case 'INVALID_REQUEST_CREATION_TIME':
+   return 'Ask responsible owner to reconcile original recorded UTC lifecycle and action-time expiry/revocation; do not extend a window locally.';
+  case 'CLOSED_ENGAGEMENT_GRANT':case 'INACTIVE_CLIENT_GRANT':
+   return 'Escalate engagement/client lifecycle status to the authorized owner; do not use the stored grant for active work.';
+  case 'INVALID_GRANT_ASSETS':case 'INVALID_REQUEST_ASSETS':
+  case 'INVALID_REQUEST_RISK':case 'NON_AUTHORIZED_ASSESSMENT_MODE':
+   return 'Request a fresh independently reviewed canonical scope, exclusions, activity mode and risk; never silently widen it.';
+  case 'PENDING_OPERATOR_REVIEW':
+   return 'Coordinate an independent operator review of the genuine client request; pending is not client/operator consent.';
+  case 'RECORDED_ADMINISTRATIVE_APPROVAL':
+   return 'Verify what was administratively approved; this record is not a consent signature, approved scan or grant.';
+  case 'RECORDED_ADMINISTRATIVE_REJECTION':
+   return 'Confirm the client-facing rejection notice and appropriate human next steps; do not reverse the decision offline.';
+  default:
+   return 'Request source-owner clarification; unrecognized or ambiguous evidence must remain HOLD and non-authorizing.';
+ }
+}
 function drawFlagActions(){
  const root=$('flagActions');root.replaceChildren();
  const ranking=name=>CRITICAL.has(name)?'critical':HIGH.has(name)?'high':MEDIUM.has(name)?'medium':'routine';
@@ -193,11 +221,11 @@ function drawFlagActions(){
  const summary=e('p',selected.length+' of '+entries.length+' original source flag/category pairs shown · '+entries.filter(x=>x.action.state==='escalate').length+' local escalations · '+entries.filter(x=>x.action.state==='discussed').length+' discussed but NOT verified fixed','hint');
  root.append(summary);
  if(!selected.length){root.append(e('p','No matching flagged categories.'));return;}
- const table=e('table'),head=e('tr');for(const title of ['Scope','Original warning category','Reported count*','Priority','Human stage','Discussion team'])head.append(e('th',title));
+ const table=e('table'),head=e('tr');for(const title of ['Scope','Original warning category','Reported count*','Priority','Human review question','Human stage','Discussion team','Private human note (resume only)'])head.append(e('th',title));
  const thead=e('thead');thead.append(head);table.append(thead);
  const body=e('tbody');for(const item of selected){
   const row=e('tr'),action=item.action;
-  for(const text of [label(item.source),item.flag.replaceAll('_',' '),item.count,item.priority.toUpperCase()])row.append(e('td',text));
+  for(const text of [label(item.source),item.flag.replaceAll('_',' '),item.count,item.priority.toUpperCase(),humanQuestion(item.flag)])row.append(e('td',text));
   const stateCell=e('td'),stateSelect=e('select');
   for(const status of states){const opt=e('option',({new:'Unreviewed',triage:'In triage',escalate:'Escalate',discussed:'Discussed · unverified'})[status]);opt.value=status;opt.selected=action.state===status;stateSelect.append(opt);}
   stateSelect.setAttribute('aria-label',label(item.source)+' '+item.flag+' human stage');stateSelect.addEventListener('change',()=>{action.state=stateSelect.value;drawFlagActions();});
@@ -205,7 +233,12 @@ function drawFlagActions(){
   const teamCell=e('td'),teamSelect=e('select');
   for(const team of teams){const opt=e('option',team.replaceAll('-',' '));opt.value=team;opt.selected=action.team===team;teamSelect.append(opt);}
   teamSelect.setAttribute('aria-label',label(item.source)+' '+item.flag+' discussion team');teamSelect.addEventListener('change',()=>{action.team=teamSelect.value;});
-  teamCell.append(teamSelect);row.append(teamCell);body.append(row);
+  teamCell.append(teamSelect);row.append(teamCell);
+  const noteCell=e('td'),note=e('input');note.type='text';note.maxLength=180;note.value=action.note;
+  note.setAttribute('aria-label',label(item.source)+' '+item.flag+' PRIVATE human note, never exported in aggregate');
+  note.placeholder='Private 180-character reviewer note';
+  note.addEventListener('change',()=>{action.note=note.value;});
+  noteCell.append(note);row.append(noteCell);body.append(row);
  }
  table.append(body);root.append(table);
  root.append(e('p','*Different scopes or export times can repeat the same stored record. All locally selected stages and teams are self-reports; none authenticates consent, source repairs or approvals.','hint'));
@@ -262,7 +295,7 @@ function drawCapacity(){
  target.append(count);
 }
 function exportData(){
- return {format:'lightup.authorization_portfolio_aggregate_v1',disposition:'REVIEW_ONLY',authority:{...stamp.authority},overlap_unverified:true,untrusted_source:true,scope_count:reports.length,scopes:reports.map((r,i)=>({slot:i+1,priority:r.priority,discussion_status:r.state,follow_up_team:r.team,human_target_date_utc:r.due,selection:r.description,counts:{...r.counts},severity:{...r.severity},overlap:{...r.overlap},flags:{...r.flagCount},human_flag_discussion:Object.fromEntries(Object.entries(r.flagActions).map(([k,v])=>[k,{...v}]))}))};
+ return {format:'lightup.authorization_portfolio_aggregate_v1',disposition:'REVIEW_ONLY',authority:{...stamp.authority},overlap_unverified:true,untrusted_source:true,scope_count:reports.length,scopes:reports.map((r,i)=>({slot:i+1,priority:r.priority,discussion_status:r.state,follow_up_team:r.team,human_target_date_utc:r.due,selection:r.description,counts:{...r.counts},severity:{...r.severity},overlap:{...r.overlap},flags:{...r.flagCount},human_flag_discussion:Object.fromEntries(Object.entries(r.flagActions).map(([k,v])=>[k,{state:v.state,team:v.team}]))}))};
 }
 function download(name,content,type){const url=URL.createObjectURL(new Blob([content],{type}));const a=e('a');a.href=url;a.download=name;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);}
 function output(kind){
@@ -276,10 +309,10 @@ function output(kind){
  }
  if(kind==='flag-register'){
   const quote=v=>'"'+String(v).replaceAll('"','""')+'"';
-  const rows=[['scope_slot','original_fixed_source_flag','reported_occurrences_overlap_unverified','follow_up_band','local_human_stage_unverified','local_team','disposition','client_consent_verified','operator_consent_verified','authorization_granted','execution_allowed','release_approved']];
+  const rows=[['scope_slot','original_fixed_source_flag','reported_occurrences_overlap_unverified','follow_up_band','fixed_human_review_question','local_human_stage_unverified','local_team','disposition','client_consent_verified','operator_consent_verified','authorization_granted','execution_allowed','release_approved']];
   result.scopes.forEach(scope=>Object.entries(scope.flags).forEach(([flag,count])=>{
    const a=scope.human_flag_discussion[flag],band=CRITICAL.has(flag)?'critical':HIGH.has(flag)?'high':MEDIUM.has(flag)?'medium':'routine';
-   rows.push([scope.slot,flag,count,band,a.state,a.team,'REVIEW_ONLY',false,false,false,false,false]);
+   rows.push([scope.slot,flag,count,band,humanQuestion(flag),a.state,a.team,'REVIEW_ONLY',false,false,false,false,false]);
   }));
   download('lightup-authorization-flag-discussion-register.csv',rows.map(r=>r.map(quote).join(',')).join('\r\n')+'\r\n','text/csv');
  }
@@ -404,11 +437,12 @@ function exportHistorical(){
 async function save(){
  if(!reports.length||reports.some(r=>!r.digest))throw Error('HOLD: secure browser SHA-256 unavailable; private exact-source resume disabled.');
  const draft={...stamp,sources:reports.map(r=>({byte_sha256:r.digest,state:r.state,team:r.team,due:r.due,flag_discussion:r.flagActions}))};
- download('lightup-authorization-private-resume.json',JSON.stringify(draft,null,2)+'\n','application/json');
+ const serialized=JSON.stringify(draft,null,2)+'\n';if(serialized.length>131072)throw Error('HOLD: private reviewer draft too large. Shorten human notes.');
+ download('lightup-authorization-private-resume.json',serialized,'application/json');
  setMessage('exportFeedback','Saved PRIVATE original-byte-bound unverified local stages. Keep this file private; SHA-256 is not a signature.');
 }
 async function restore(file){
- if(!reports.length||reports.some(r=>!r.digest)||!file||file.size>32768||file.size===0)throw Error('HOLD: open the exact original reports first, with secure SHA-256 available.');
+ if(!reports.length||reports.some(r=>!r.digest)||!file||file.size>131072||file.size===0)throw Error('HOLD: open the exact original reports first, with secure SHA-256 available.');
  const str=new TextDecoder('utf-8',{fatal:true}).decode(await file.arrayBuffer());if(str.charCodeAt(0)===0xfeff)unknown();
  const d=parseStrict(str);
  if(!keys(d,['format','disposition','authority','sources'])||d.format!==stamp.format||d.disposition!=='REVIEW_ONLY'||!literalFalse(d.authority)||!Array.isArray(d.sources)||d.sources.length!==reports.length)unknown();
@@ -421,11 +455,11 @@ async function restore(file){
    if(!object(imported)||Object.keys(imported).length!==Object.keys(current).length)unknown();
    for(const key of Object.keys(current)){
     const a=imported[key];
-    if(!keys(a,['state','team'])||!states.includes(a.state)||!teams.includes(a.team))unknown();
+    if(!keys(a,['state','team'],['note'])||!states.includes(a.state)||!teams.includes(a.team)||a.note!==undefined&&(typeof a.note!=='string'||a.note.length>180))unknown();
    }
    if(Object.keys(imported).some(k=>!Object.hasOwn(current,k)))unknown();
   }
-  return {state:r.state,team,due,flagActions:imported===undefined?current:imported};
+  return {state:r.state,team,due,flagActions:imported===undefined?current:Object.fromEntries(Object.entries(imported).map(([key,a])=>[key,{state:a.state,team:a.team,note:a.note??''}]))};
  });
  changed.forEach((data,i)=>Object.assign(reports[i],data));draw();
  setMessage('exportFeedback','Restored only local human discussion stages against exact reopened original bytes; no approval/consent or permission restored.');
