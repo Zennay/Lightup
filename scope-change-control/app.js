@@ -535,6 +535,35 @@
         });
         if (canonical(counts)!==canonical(aggregate.source_delta_counts))
           hold("Native source-review classification totals differ");
+        // New native CLI packets explicitly preserve dependent UNCHANGED grants
+        // whose originally referenced assessment request changed. Older native
+        // packets remain readable only when neither extension is claimed.
+        const hasDependencies=doc.unchanged_grant_request_dependencies!==undefined;
+        const hasCount=aggregate.linked_unchanged_grant_attention_count!==undefined;
+        if(hasDependencies!==hasCount)
+          hold("Native unchanged-grant dependency envelope is incomplete");
+        if(hasDependencies){
+          const before=state.snapshots[0].maps, now=state.snapshots[1].maps;
+          const changedGrantIds=new Set(state.changes.filter(c=>c.category==="grants").map(c=>c.id));
+          const expectedDependencies=sourceLineage().filter(item=>
+            item.reasons.includes("RECORDED_REQUEST_SOURCE_CHANGED") &&
+            !changedGrantIds.has(item.id)).map(item=>{
+            const old=before.grants.get(item.id), current=now.grants.get(item.id);
+            const rid=current?.approved_request_id;
+            const reqOld=before.requests.get(rid), reqNew=now.requests.get(rid);
+            return {
+              original_grant_id:item.id,recorded_request_id:rid,
+              original_engagement_id:current.engagement_id,
+              recorded_request_status_before:reqOld?.status||"not recorded",
+              recorded_request_status_after:reqNew?.status||"not recorded",
+              human_follow_up:"UNREVIEWED",authority_claim:false
+            };
+          });
+          if(!Array.isArray(doc.unchanged_grant_request_dependencies) ||
+             aggregate.linked_unchanged_grant_attention_count!==expectedDependencies.length ||
+             canonical(doc.unchanged_grant_request_dependencies)!==canonical(expectedDependencies))
+            hold("Native unchanged grant/request impact differs from actual original source");
+        }
       }
       const stages=new Map();
       const restoredDetails=new Map();
