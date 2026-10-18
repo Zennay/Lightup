@@ -4,16 +4,16 @@
 
 ## Use it
 
-Open [scope-vault/index.html](../scope-vault/index.html) in a modern browser that supports secure-context Web Crypto. The page has **no dependencies, backend, network requests or persistent browser storage**. Save the three files \`index.html\`, \`style.css\` and \`vault.js\` side by side, then open \`index.html\`. A browser that denies Web Crypto to file URLs will refuse encryption; use a browser that permits Web Crypto in a local secure context. Do not host on a public site or disable CSP to work around it.
+Open [scope-vault/index.html](../scope-vault/index.html) in a modern browser that supports secure-context Web Crypto. The page has **no dependencies, backend, network requests or persistent browser storage**. Save the three files `index.html`, `style.css` and `vault.js` side by side, then open `index.html`. A browser that denies Web Crypto to file URLs will refuse encryption; use a browser that permits Web Crypto in a local secure context. Do not host on a public site or disable CSP to work around it.
 
 1. Choose one or more *non-secret*, UTF-8 draft files (.json, .md, .txt, .ics or .csv; up to 12 files, 512 KiB each, 2 MiB total). Studio v1 proposals, private coordination drafts and anonymous schedule handoffs can be preserved **as opaque files**. The vault never validates their authorization semantics and never replaces the canonical source-side validation.
-2. Enter the same passphrase of at least 14 characters twice. Click **Download encrypted** to obtain \`lightup-private-scope-packet.lightup-vault.json\`. Store the passphrase separately. There is no backend and no recovery service.
+2. Enter the same passphrase of at least 14 characters twice. Click **Download encrypted** to obtain `lightup-private-scope-packet.lightup-vault.json`. Store the passphrase separately. There is no backend and no recovery service.
 3. To restore, choose the saved encrypted JSON and enter the passphrase. The entire payload must pass authenticated decryption, exact schema checks, digest verification, UTF-8 validation, filename and byte limits **before** any prior in-memory workspace is replaced.
 4. Original decrypted files are downloaded only by an explicit secondary click and confirmation. Anyone with access to that plaintext download can see the contents. Click **Lock immediately** to clear retained in-tab buffers. Hiding the tab automatically locks unless an operation is in progress; inactivity also locks after five minutes. The browser and OS may retain transient copies outside JavaScript's control.
 
 ## File format
 
-Outer JSON exposes only the cryptographic parameters and encrypted bytes: exact version, PBKDF2-SHA256, 600,000 iterations, 16-byte random salt, AES-256-GCM, 12-byte random IV, and ciphertext including an authenticated 128-bit tag. Each export uses fresh cryptographic randomness. The AES-GCM additional authenticated data is the constant \`LIGHTUP-SCOPE-PACKET-V1\`. **Filenames, file count, timestamps, content and per-file SHA-256 digests are encrypted.**
+Outer JSON exposes only the cryptographic parameters and encrypted bytes: exact version, PBKDF2-SHA256, 600,000 iterations, 16-byte random salt, AES-256-GCM, 12-byte random IV, and ciphertext including an authenticated 128-bit tag. Each export uses fresh cryptographic randomness. The AES-GCM additional authenticated data is the constant `LIGHTUP-SCOPE-PACKET-V1`. **Filenames, file count, timestamps, content and per-file SHA-256 digests are encrypted.**
 
 The authenticated inner payload has a version, UTC time, an explicit set of literally false action/consent/release flags, and a bounded collection of UTF-8 files with original name, byte size, SHA-256 and encoded bytes. The SHA-256 values are integrity fingerprints, **not signatures, client identity or evidence that consent was granted**. Restoration is atomic with respect to application-level state.
 
@@ -29,4 +29,4 @@ The format is intentionally **not interoperable with actual LightUp execution gr
 
 ## Isolation
 
-This branch adds only \`scope-vault/index.html\`, \`scope-vault/style.css\`, \`scope-vault/vault.js\` and this documentation. It does not modify the active owners' PRs #1566, #1567, #1569, #1570, #1571, #1572 or #1573; production \`src/lightup\` code, policies, consent/grant stores, CI/workflows, VPS runners, network adapters and deployment are untouched.
+This branch adds only `scope-vault/index.html`, `scope-vault/style.css`, `scope-vault/vault.js` and this documentation. It does not modify the active owners' PRs #1566, #1567, #1569, #1570, #1571, #1572 or #1573; production `src/lightup` code, policies, consent/grant stores, CI/workflows, VPS runners, network adapters and deployment are untouched.
