@@ -298,8 +298,12 @@ class LightUpWebApp:
             except TenantIsolationError:
                 return Response(_page("Forbidden", "", "<h1>Forbidden</h1>", auth),
                                 status="403 Forbidden")
-            except (KeyError, ValueError) as exc:
-                body = f"<h1>Request failed</h1><p class=\"sub\">{_e(exc)}</p>"
+            except (KeyError, ValueError):
+                # Domain exceptions can include client-controlled identifiers,
+                # grant references or database field content. Never echo them.
+                body = ("<h1>Request failed</h1>"
+                        "<p class=\"sub\">The request could not be processed. "
+                        "Check the information and try again.</p>")
                 return Response(_page("Error", "", body, auth), status="400 Bad Request")
         return Response(_page("Not found", "", "<h1>Not found</h1>", ANONYMOUS),
                         status="404 Not Found")
