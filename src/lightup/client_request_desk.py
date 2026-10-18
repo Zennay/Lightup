@@ -51,8 +51,21 @@ def _ask(label: str, *, max_chars: int = _MAX_INPUT) -> str:
 
 
 def _notes() -> str:
-    print("Notes/constraints: enter one line (up to 4000 chars); never paste credentials.")
-    return _ask("Description: ", max_chars=4000)
+    print("Explain scope purpose, safety conditions and STOP instructions.")
+    print("Enter multiple lines; a single '.' line finishes. No credentials.")
+    collected: list[str] = []
+    total = 0
+    for _ in range(80):
+        line = input("Notes > ")
+        if line == ".":
+            break
+        if "\\x00" in line or total + len(line) + 1 > 4000:
+            raise ClientRequestError("notes must not exceed 4000 chars or contain NUL")
+        collected.append(line)
+        total += len(line) + 1
+    else:
+        raise ClientRequestError("maximum 80 note lines, terminate with a single dot")
+    return "\\n".join(collected).strip()
 
 
 def _manual_proposal() -> dict:
@@ -98,6 +111,17 @@ def _decision(db: DomainStore, ctx, *, payload: dict, previous_id: str | None = 
         print("Untrusted Studio file SHA-256: " + payload["proposal_file_sha256"])
     print("Review SHA-256 (unsigned): " + payload["intake_sha256"])
     print("A submitted or approved request is NOT consent or a scan permit.")
+    local_path = _ask(
+        "Optional new private HTML proposal preview (.html), Enter to skip: ",
+        max_chars=2048,
+    )
+    if local_path:
+        from .client_intake_preview import render_client_intake_preview
+
+        save_private_snapshot(
+            Path(local_path).expanduser(), render_client_intake_preview(payload)
+        )
+        print("Saved unsigned preview (no request submitted): " + local_path)
 
     # A client-side duplicate check helps humans notice repeat submissions,
     # but does not claim atomic server-side deduplication.
@@ -166,6 +190,18 @@ def _revise(db: DomainStore, ctx, check_session=None) -> None:
     ) if revised["removed_or_narrowed_assets"] else "No removed assets.")
     print("Requested risk: " + str(revised["previous_risk"])
           + " → " + str(revised["requested_risk"]))
+    comparison_path = _ask(
+        "Optional private before/after HTML comparison (.html), Enter to skip: ",
+        max_chars=2048,
+    )
+    if comparison_path:
+        from .client_revision_review import render_revision_review
+
+        save_private_snapshot(
+            Path(comparison_path).expanduser(),
+            render_revision_review(original, revised),
+        )
+        print("Saved unsigned comparison; source rejection unchanged.")
     _decision(
         db, ctx, payload=revised, previous_id=original.request_id,
         expanded=revised["scope_expansion_requires_confirmation"],
