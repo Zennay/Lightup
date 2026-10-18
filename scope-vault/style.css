@@ -11,3 +11,13 @@ font-size:12px;line-height:1.5;color:#f0f5fa;tab-size:2}
 .comparison .same{display:block}
 select{font-size:13px;background:#0b1425;color:#fff;border:1px solid #60718d;border-radius:9px;
 padding:9px 12px;width:100%;margin-top:9px}
+
+/* Private casework fields never render imported HTML or grant status. */
+.item > div{min-width:0;flex:1;width:100%}
+.item textarea{display:block;min-height:72px;width:100%;margin-top:8px;padding:10px 12px;
+font:inherit;font-size:13px;line-height:1.5;color:#eef6ff;background:#0b1425;
+border:1px solid #60718d;border-radius:10px;resize:vertical;max-height:190px}
+.item textarea:focus-visible,.item select:focus-visible{outline:3px solid #75bcff;outline-offset:2px}
+.item > div > label:not(.checkline){display:block;margin-top:13px;font-size:12px;
+font-weight:650;line-height:1.45;color:#bdcee8}
+.item > div > label:not(.checkline) select{font-weight:500}
