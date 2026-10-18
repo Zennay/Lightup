@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-Nk0AbSpPxC28rIUks6VzoJ5RsCTzDPJh/rnEa4zEkYs=' 'sha256-XMtQDosv10ZmjMB0iY2VdpRHgdBl4Jmbon7aUAJi0R8='; style-src 'sha256-HRPGGJYObS8TfeWJidLquBzN/a2cquH4jfGj5JxMfXo='; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-Nk0AbSpPxC28rIUks6VzoJ5RsCTzDPJh/rnEa4zEkYs=' 'sha256-k063sX7gui1MHh7KSFsfBDpeNsiUePvLBCuTQLOmh0c=' 'sha256-I/gbRgywuVMkok5BRDVcIdUZd6ghEnF/ifk2axYL5Cs='; style-src 'sha256-8+rvRgvLttnHFOnqKH7yoO8ncKiscqyCae/UQEJ0kcw='; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <title>LightUp | Remediation Capacity Studio — offline draft</title>
 <style>:root{color-scheme:dark;--bg:#0a1119;--panel:#111e29;--edge:#304451;--text:#edf5f7;--muted:#a4bac8;--teal:#7ee4bd;--amber:#f9d48a;--blue:#7cb8ff}
 *{box-sizing:border-box}
@@ -62,7 +62,10 @@ footer{padding:22px 0 60px}
 .availability-field{font-variant-numeric:tabular-nums}.availability-field input{max-width:180px}.week:has(.fill[style="width: 0%;"]){border-left:3px solid var(--amber);padding-left:14px}@media print{#week-availability{display:none!important}}
 
 #priority-bands td{font-variant-numeric:tabular-nums}#priority-bands td:first-child{text-transform:capitalize;font-weight:750}#priority-bands tr.outstanding-row td{border-bottom:1px solid #806f40}#priority-bands tr.outstanding-row td:nth-last-child(-n+2){color:var(--amber)}@media print{#priority-bands tr.outstanding-row td{color:#111!important}}
+
+.file-label{display:inline-flex;align-items:center;justify-content:center;cursor:pointer;padding:11px 16px;border:1px solid var(--teal);color:var(--text);background:#203341;border-radius:8px;font-weight:700}.file-label:focus-within{outline:3px solid var(--teal)}#reopen-working-draft{max-width:250px}.panel:has(#resume-title){border-color:#51746e}#draft-status{padding:8px 0} @media print{.panel:has(#resume-title){display:none!important}}
 </style>
+
 
 
 </head>
@@ -115,9 +118,21 @@ footer{padding:22px 0 60px}
   </form>
   <p class="subtle">Priority: source-reported regressions first, then critical → high → medium → low → info. Estimates are placeholders, not SLAs or retest authorisations. Sprint weeks are seven-day planning buckets; available capacity is per working week.</p>
 </section>
+<section class="panel" aria-labelledby="resume-title">
+  <p class="eyebrow">03 / PRIVATE SESSION HANDOFF</p>
+  <h2 id="resume-title">Save or reopen this planning draft</h2>
+  <p>Save only the bounded staffing and effort assumptions, the selected additional-team scenario and a SHA-256 fingerprint of the original report. <strong>No original finding IDs, titles, customer data, remediation text or consent are saved.</strong></p>
+  <p>To resume, <strong>first reload exactly the same authorised findings CSV</strong> in section 01, then choose the previously saved private draft. A source fingerprint is an unsigned consistency check, never authentication or approval.</p>
+  <div class="actions">
+    <button id="save-working-draft" type="button" class="secondary" disabled>Save private working draft</button>
+    <label class="file-label" for="reopen-working-draft">Reopen private draft</label>
+    <input id="reopen-working-draft" type="file" accept=".json,application/json">
+  </div>
+  <p id="draft-status" class="subtle" aria-live="polite">No saved draft restored. Browsers store nothing for you.</p>
+</section>
 <section id="results" hidden aria-labelledby="results-title">
   <div class="panel">
-    <p class="eyebrow">03 / HUMAN PLANNING PREVIEW</p>
+    <p class="eyebrow">04 / HUMAN PLANNING PREVIEW</p>
     <h2 id="results-title">Capacity allocation</h2>
     <div class="stats" id="stats" aria-live="polite"></div>
     <p class="subtle">A fully allocated estimate only means it fits in this draft plan. It does not mean work has started, a vulnerability was fixed, or an authorised retest has happened.</p>
@@ -137,7 +152,7 @@ footer{padding:22px 0 60px}
     <div id="weekly" class="weeks"></div>
   </div>
   <div class="panel" aria-labelledby="history-title">
-    <p class="eyebrow">04 / HISTORICAL LOAD CHANGE</p>
+    <p class="eyebrow">05 / HISTORICAL LOAD CHANGE</p>
     <h2 id="history-title">Compare repair workload between two original reports</h2>
     <p>Import one <em>earlier</em> authenticated LightUp findings CSV. Compare it with the current CSV above, using exactly the current hour assumptions. A record missing from the newer source is <strong>not proven fixed</strong>. The CSVs do not authenticate client or assessment identity.</p>
     <div class="upload">
@@ -157,7 +172,7 @@ footer{padding:22px 0 60px}
     </div>
   </div>
   <div class="panel">
-    <p class="eyebrow">05 / CAPACITY WHAT-IF</p>
+    <p class="eyebrow">06 / CAPACITY WHAT-IF</p>
     <h2>What if the team had more capacity?</h2>
     <p>Compare the baseline with an alternative number of engineers. This does not hire, assign or book anyone; assumptions remain unchanged except staffing.</p>
     <div class="scenario-controls">
@@ -436,6 +451,102 @@ footer{padding:22px 0 60px}
   root.LightUpCapacity = Object.freeze({parseCSV,compareReports,plan,summary,csvReport,markdownReport,DEFAULT_HOURS,MAX_BYTES,MAX_ROWS});
 })(window);
 </script>
+<script>/* LightUp offline, user-controlled source-bound capacity working draft.
+ * An exact source fingerprint binds a non-authorizing local planning proposal.
+ * No storage, network, consent, secrets, credentials, grants or execution.
+ */
+(function (root) {
+  'use strict';
+  const SCHEMA='lightup.remediation_capacity_working_draft.v1';
+  const FLAGS=['authorization','consent','grant','scan','execute','dispatch','retest_verified','deploy','release'];
+  const OPTION_KEYS=['start','weeks','engineers','workDays','hoursPerDay','reserve','hours','weekAvailability'];
+  const SEVERITIES=['critical','high','medium','low','info'];
+  const MAX_DRAFT_BYTES=8192;
+  const MAX_CSV_BYTES=1048576;
+  const exactKeys=(obj,keys)=>{
+    if(!obj||typeof obj!=='object'||Array.isArray(obj))throw new Error('Invalid private draft object');
+    const actual=Object.keys(obj).sort();
+    if(actual.length!==keys.length || actual.some((v,i)=>v!==keys.slice().sort()[i]))
+      throw new Error('Unexpected or missing private draft fields');
+  };
+  const integer=(n,min,max)=>{
+    if(typeof n!=='number'||!Number.isSafeInteger(n)||n<min||n>max)
+      throw new Error('Invalid bounded planning assumption');
+    return n;
+  };
+  async function fingerprint(file) {
+    if(!file||!file.size||file.size>MAX_CSV_BYTES)throw new Error('First import the exact original findings CSV');
+    if(!root.crypto?.subtle)throw new Error('Browser SHA-256 unavailable; cannot bind a draft to its source');
+    const bytes=await file.arrayBuffer();
+    if(bytes.byteLength>MAX_CSV_BYTES)throw new Error('Original source exceeds bound');
+    const digest=await root.crypto.subtle.digest('SHA-256',bytes);
+    return [...new Uint8Array(digest)].map(v=>v.toString(16).padStart(2,'0')).join('');
+  }
+  function normalizedOptions(raw) {
+    exactKeys(raw,OPTION_KEYS);
+    if(typeof raw.start!=='string'||!/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(raw.start))
+      throw new Error('Invalid planning date');
+    const weeks=integer(raw.weeks,1,12);
+    exactKeys(raw.hours,SEVERITIES);
+    const hours=Object.fromEntries(SEVERITIES.map(severity=>[severity,integer(raw.hours[severity],1,200)]));
+    if(!Array.isArray(raw.weekAvailability)||raw.weekAvailability.length!==weeks)
+      throw new Error('Inconsistent saved weekly availability');
+    return {
+      start:raw.start,
+      weeks,engineers:integer(raw.engineers,1,30),
+      workDays:integer(raw.workDays,1,5),
+      hoursPerDay:integer(raw.hoursPerDay,1,10),
+      reserve:integer(raw.reserve,0,80),
+      hours,weekAvailability:raw.weekAvailability.map(value=>integer(value,0,100))
+    };
+  }
+  function envelope(sourceSha,sourceCount,raw,staffScenario) {
+    if(typeof sourceSha!=='string'||!/^[0-9a-f]{64}$/.test(sourceSha))
+      throw new Error('Missing source SHA-256');
+    const count=integer(sourceCount,1,350);
+    const options=normalizedOptions(raw);
+    const scenario=integer(staffScenario,0,10);
+    return {
+      schema:SCHEMA,review_only:true,
+      authorization:false,consent:false,grant:false,scan:false,execute:false,
+      dispatch:false,retest_verified:false,deploy:false,release:false,
+      source_sha256:sourceSha,source_count:count,
+      options,staff_scenario_additional_engineers:scenario
+    };
+  }
+  function exportDraft(sourceSha,sourceCount,raw,staffScenario) {
+    const packet=envelope(sourceSha,sourceCount,raw,staffScenario);
+    // Canonical compact JSON means duplicate/confusable keys fail re-import.
+    const serialized=JSON.stringify(packet);
+    if(new TextEncoder().encode(serialized).byteLength>MAX_DRAFT_BYTES)
+      throw new Error('Oversized working draft');
+    return serialized+'\n';
+  }
+  function importDraft(text,sourceSha,sourceCount,findings,planner) {
+    if(typeof text!=='string'||new TextEncoder().encode(text).byteLength>MAX_DRAFT_BYTES)
+      throw new Error('Oversized private draft');
+    // Canonical-only JSON: duplicate keys, whitespace changes, unknown encodings,
+    // decomposed aliases and number coercions cannot silently enter a draft.
+    const stripped=text.endsWith('\n')?text.slice(0,-1):text;
+    if(!stripped||stripped.includes('\n'))throw new Error('Noncanonical private draft');
+    let parsed;
+    try{parsed=JSON.parse(stripped);}catch{throw new Error('Malformed private draft JSON');}
+    if(JSON.stringify(parsed)!==stripped)throw new Error('Noncanonical or duplicate-key draft');
+    exactKeys(parsed,['schema','review_only',...FLAGS,'source_sha256','source_count',
+      'options','staff_scenario_additional_engineers']);
+    if(parsed.schema!==SCHEMA||parsed.review_only!==true||
+      FLAGS.some(k=>parsed[k]!==false))throw new Error('Draft contains an authority claim or unsupported version');
+    if(parsed.source_sha256!==sourceSha||parsed.source_count!==sourceCount)
+      throw new Error('Draft does not belong to the exact re-imported findings CSV');
+    const canonical=envelope(sourceSha,sourceCount,parsed.options,parsed.staff_scenario_additional_engineers);
+    if(JSON.stringify(canonical)!==stripped)throw new Error('Noncanonical planning draft');
+    // Planner validation is a prerequisite; caller only mutates UI after return.
+    const plan=planner.plan(findings,canonical.options);
+    return Object.freeze({options:canonical.options,scenario:canonical.staff_scenario_additional_engineers,plan});
+  }
+  root.LightUpDraft=Object.freeze({fingerprint,exportDraft,importDraft,MAX_DRAFT_BYTES});
+})(window);
+</script>
 <script>/* LightUp Remediation Capacity Studio — no persistence, no network, no execution. */
 (function () {
   'use strict';
@@ -473,6 +584,9 @@ footer{padding:22px 0 60px}
     clearHistory();
     el('source-status').textContent = 'No report loaded. All files stay in this browser tab.';
     el('generate').disabled = true;
+    el('save-working-draft').disabled = true;
+    el('reopen-working-draft').value='';
+    el('draft-status').textContent='No saved draft restored. Browsers store nothing for you.';
     el('results').hidden = true;
     el('stats').replaceChildren();
     el('weekly').replaceChildren();
@@ -485,6 +599,8 @@ footer{padding:22px 0 60px}
     const file = source.files && source.files[0];
     findings = null; result = null; lastOptions = null;
     el('generate').disabled = true;
+    el('save-working-draft').disabled = true;
+    el('draft-status').textContent='New source: older plans must be independently reviewed again.';
     el('results').hidden = true;
     clearHistory();
     if (!file) return;
@@ -543,9 +659,12 @@ footer{padding:22px 0 60px}
       render();
       renderComparison();
       el('results').hidden = false;
+      el('save-working-draft').disabled = false;
+      el('draft-status').textContent='Current computed plan can be saved after confirming a private local file.';
       setFeedback('Draft allocations prepared offline. Nothing has been assigned or executed.');
     } catch (err) {
       result = null; el('results').hidden=true;
+      el('save-working-draft').disabled=true;
       setFeedback('Plan held: '+(err instanceof Error?err.message:'Invalid inputs'),true);
     }
   });
@@ -735,6 +854,91 @@ footer{padding:22px 0 60px}
     download('lightup-capacity-discussion.md',engine.markdownReport(result),'text/markdown;charset=utf-8');
     setFeedback('Unsigned aggregate discussion brief exported. No original finding details included.');
   });
+
+  // Source-bound, user-controlled resume: no browser persistence or implicit restore.
+  function numericWorkingOptions(options) {
+    if(!options)throw new Error('Generate a current proposal before saving');
+    const names=['weeks','engineers','workDays','hoursPerDay','reserve'];
+    const normalized={start:options.start};
+    for(const name of names) normalized[name]=Number(options[name]);
+    normalized.hours=Object.fromEntries(['critical','high','medium','low','info']
+      .map(severity=>[severity,Number(options.hours[severity])]));
+    normalized.weekAvailability=options.weekAvailability.map(Number);
+    return normalized;
+  }
+  el('save-working-draft').addEventListener('click',async()=>{
+    const file=source.files?.[0];
+    const planSnapshot=result, optionsSnapshot=lastOptions;
+    if(!file||!planSnapshot||!optionsSnapshot){
+      el('draft-status').textContent='HOLD: load an original CSV and generate a proposal first.';
+      return;
+    }
+    if(!window.confirm('Save ONLY this proposed team/effort/availability configuration and an unsigned exact-source fingerprint? It grants no permission and remains a private file you control.'))return;
+    el('save-working-draft').disabled=true;
+    try {
+      const digest=await window.LightUpDraft.fingerprint(file);
+      if(source.files?.[0]!==file||result!==planSnapshot||lastOptions!==optionsSnapshot)
+        throw new Error('Source or plan changed during export; review again');
+      const packet=window.LightUpDraft.exportDraft(
+        digest,planSnapshot.sourceCount,numericWorkingOptions(optionsSnapshot),
+        Number(el('extra-engineers').value)
+      );
+      download('lightup-capacity-working-draft.json',packet,'application/json;charset=utf-8');
+      el('draft-status').textContent='Private working draft downloaded. Reopen only with the exact same original CSV.';
+    }catch(err){
+      el('draft-status').textContent='HOLD: '+(err instanceof Error?err.message:'Draft export refused');
+    }finally{
+      el('save-working-draft').disabled=!result;
+    }
+  });
+  el('reopen-working-draft').addEventListener('change',async()=>{
+    const imported=el('reopen-working-draft').files?.[0];
+    const original=source.files?.[0], currentFindings=findings;
+    if(!imported)return;
+    // File selection is cleared immediately after reading so re-selection works.
+    if(!original||!currentFindings){
+      el('draft-status').textContent='HOLD: first load the exact original authorised CSV.';
+      el('reopen-working-draft').value='';
+      return;
+    }
+    if(!window.confirm('Restore an unsigned private plan only after reopening the exact same CSV? This does not confirm current permission, identity, remediation, revocation or retest.')){
+      el('reopen-working-draft').value='';
+      return;
+    }
+    try{
+      if(imported.size===0||imported.size>window.LightUpDraft.MAX_DRAFT_BYTES)
+        throw new Error('Private draft size is invalid');
+      const text=new TextDecoder('utf-8',{fatal:true}).decode(await imported.arrayBuffer());
+      const digest=await window.LightUpDraft.fingerprint(original);
+      if(original!==source.files?.[0]||currentFindings!==findings)
+        throw new Error('CSV changed during restore');
+      const restored=window.LightUpDraft.importDraft(
+        text,digest,findings.length,findings,engine
+      );
+      // Only commit the new UI state after every schema/source/plan check.
+      clearHistory();
+      const opts=restored.options;
+      for(const name of ['start','weeks','engineers','workDays','hoursPerDay','reserve'])
+        el('settings').elements.namedItem(name).value=String(opts[name]);
+      for(const severity of ['critical','high','medium','low','info'])
+        el('settings').elements.namedItem(severity).value=String(opts.hours[severity]);
+      renderWeekAvailability();
+      Array.from(el('week-availability').querySelectorAll('input'))
+        .forEach((input,index)=>{input.value=String(opts.weekAvailability[index]);});
+      el('extra-engineers').value=String(restored.scenario);
+      lastOptions=opts;result=restored.plan;
+      render();renderComparison();
+      el('results').hidden=false;
+      el('save-working-draft').disabled=false;
+      el('draft-status').textContent='REVIEW_ONLY: same-source planning assumptions restored. No authorization, verified repair, or earlier source comparison carried over.';
+      setFeedback('Private capacity proposal resumed; verify all assumptions before sharing.');
+    }catch(err){
+      el('draft-status').textContent='HOLD: '+(err instanceof Error?err.message:'Unsafe draft');
+    }finally{
+      el('reopen-working-draft').value='';
+    }
+  });
+
   el('print').addEventListener('click',()=>{if(result)window.print();});
   const now = new Date();
   el('settings').elements.namedItem('start').value = [
