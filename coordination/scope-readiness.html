@@ -6,7 +6,7 @@
 <title>LightUp · Scope Readiness Workspace</title>
 <style>
 :root{font:15px/1.5 system-ui,sans-serif;color:#eef5ff;background:#091220;--panel:#132238;--border:#31455f;--mint:#71dec7;--muted:#b2c5dc;--warn:#f3c879;--red:#ff9c9c}
-*{box-sizing:border-box}body{margin:0}header{padding:28px max(22px,calc((100vw - 1230px)/2));border-bottom:1px solid var(--border);background:#102036}
+*{box-sizing:border-box}body{margin:0}.actionGrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.actionLane{border:1px solid var(--border);border-radius:12px;padding:13px;background:#0d1b2c;min-width:0}.actionLane h3{margin:0 0 7px}.actionLane button{width:100%;display:block;text-align:left;margin:7px 0;background:#182d45;border:1px solid #49627c;font-size:.85rem;font-weight:500;overflow-wrap:anywhere}.actionLane button strong{display:block}.actionLane button span{font-size:.78rem;color:var(--muted)}@media(max-width:900px){.actionGrid{grid-template-columns:1fr 1fr}}@media(max-width:530px){.actionGrid{grid-template-columns:1fr}}header{padding:28px max(22px,calc((100vw - 1230px)/2));border-bottom:1px solid var(--border);background:#102036}
 .tag{color:var(--mint);font-size:.78rem;font-weight:800;letter-spacing:.14em}h1{margin:2px 0;font-size:clamp(25px,3vw,38px);letter-spacing:-.03em}h2{margin:0 0 10px;font-size:1.15rem}h3{margin:0 0 10px;font-size:1rem}p{margin:8px 0;color:var(--muted)}main{max-width:1260px;padding:22px 18px 60px;margin:auto}
 .grid{display:grid;grid-template-columns: minmax(310px,1.1fr) minmax(330px,1.7fr);gap:18px}.card{padding:20px;background:var(--panel);border:1px solid var(--border);border-radius:15px;min-width:0;margin-bottom:18px}.wide{grid-column:1/-1}
 button,input,select,textarea{font:inherit;border-radius:8px}button{cursor:pointer;border:1px solid #65829b;background:#233952;color:#eef7ff;padding:10px 13px;font-weight:700}button.primary{background:var(--mint);border-color:var(--mint);color:#072122}button:disabled{opacity:.45;cursor:not-allowed}button:hover:not(:disabled){filter:brightness(1.12)}
@@ -33,6 +33,11 @@ table{width:100%;border-collapse:collapse}th,td{border-bottom:1px solid var(--bo
 </section>
 <section class="card"><h2>2 · Review workload (never authorization)</h2>
 <div class="stats"><div class="stat"><span class="num" id="count">0</span>Drafts</div><div class="stat"><span class="num" id="unbound">0</span>Unbound source files</div><div class="stat"><span class="num" id="blockers">0</span>Open preparation tasks</div><div class="stat"><span class="num" id="overdue">0</span>Overdue action targets</div><div class="stat"><span class="num" id="roleOverlap">0</span>Client/operator label overlaps</div></div>
+</section>
+<section class="card" aria-label="Preparation action board">
+<h2>Priority workstreams · actionable follow-ups</h2><p>Navigate directly to an incomplete paperwork task. Categories represent human preparation only, not approval status or asset execution rights.</p>
+<label for="boardView">Show action board</label><select id="boardView"><option value="open">All incomplete preparation</option><option value="overdue">Overdue paperwork actions</option><option value="unassigned">No follow-up coordinator</option><option value="waiting">Waiting / blocked</option></select>
+<div class="actionGrid" id="actionBoard"><p>No preparation tasks loaded.</p></div>
 </section>
 <section class="card controls" aria-label="Bulk human coordination">
 <h2>3 · Batch follow-up planner</h2>
