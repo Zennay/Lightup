@@ -47,9 +47,11 @@ The desk requires a **private interactive TTY** and authenticates with
    silently disappearing.
 4. **Revision after rejection:** select one of the latest 15 rejected
    tenant-owned requests by number, or enter its full request ID for an older
-   rejection. Then choose manual or Studio replacement. Shows changes and
-   requires separate typed expansion acknowledgement for wider scope/risk.
-   Never edits the original rejected record.
+   rejection. When editing manually, **unchanged assets, risk and notes can be
+   kept directly**; only the fields the client chooses to modify need
+   re-entry. Alternatively import a new Studio export. The comparison shows
+   changes and requires a separate typed acknowledgement for wider scope/risk.
+   The original rejected record is never modified.
 5. **Inspect own stored request** by ID, including originally requested assets,
    risk and notes; no operator impersonation or cross-tenant access.
 6. **Export private HTML inbox:** at most the most recent 200 stored requests
