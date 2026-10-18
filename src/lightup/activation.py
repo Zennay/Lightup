@@ -6,7 +6,7 @@ from enum import Enum
 from secrets import token_urlsafe
 
 from .models import Authorization, Target
-from .scope import ScopePolicy
+from .scope import ScopeDecision, ScopePolicy, ScopeReason
 
 
 class ActivationMode(str, Enum):
@@ -73,6 +73,26 @@ def _target_authority_snapshot(target: Target) -> Target:
     )
 
 
+def _scope_policy_snapshot(policy: ScopePolicy) -> ScopePolicy:
+    """Read a strictly canonical immutable scope policy before making a decision."""
+    if (
+        type(policy) is not ScopePolicy
+        or type(policy.allow_private_lab) is not bool
+        or type(policy.require_authorization_for_public) is not bool
+        or type(policy.explicit_hosts) is not frozenset
+        or type(policy.explicit_networks) is not tuple
+        or any(type(host) is not str for host in policy.explicit_hosts)
+        or any(type(network) is not str for network in policy.explicit_networks)
+    ):
+        raise PermissionError("scope policy is not canonical")
+    return ScopePolicy(
+        allow_private_lab=policy.allow_private_lab,
+        explicit_hosts=frozenset(policy.explicit_hosts),
+        explicit_networks=tuple(policy.explicit_networks),
+        require_authorization_for_public=policy.require_authorization_for_public,
+    )
+
+
 def _activation_policy_snapshot(policy: ActivationPolicy) -> ActivationPolicy:
     # A frozen dataclass may still be changed through object.__setattr__.
     if type(policy) is not ActivationPolicy or type(policy.mode) is not ActivationMode:
@@ -97,6 +117,12 @@ class ActivationGate:
         activation_policy.validate()
         self.scope_policy = scope_policy
         self.activation_policy = activation_policy
+        # Bind original object identity and immutable contents at construction.
+        # A later public attribute rebinding cannot elevate a pre-existing gate.
+        self._bound_scope_policy = scope_policy
+        self._bound_activation_policy = activation_policy
+        self._bound_scope_values = _scope_policy_snapshot(scope_policy)
+        self._bound_activation_values = _activation_policy_snapshot(activation_policy)
 
     def issue(self, target: Target, capability_id: str) -> ExecutionPermit:
         # Evaluate an independent canonical snapshot so a ScopePolicy callback
@@ -108,7 +134,18 @@ class ActivationGate:
             or any(ord(char) < 33 or ord(char) == 127 for char in capability_id)
         ):
             raise PermissionError("capability identity is not canonical")
+        if (
+            self.scope_policy is not self._bound_scope_policy
+            or self.activation_policy is not self._bound_activation_policy
+        ):
+            raise PermissionError("activation gate policy binding changed")
         activation = _activation_policy_snapshot(self.activation_policy)
+        scope = _scope_policy_snapshot(self.scope_policy)
+        if (
+            activation != self._bound_activation_values
+            or scope != self._bound_scope_values
+        ):
+            raise PermissionError("activation gate policy contents changed")
         # Preserve object provenance as well as field values: swapping an
         # otherwise identical Authorization instance is still identity drift.
         caller_authorization = target.authorization
@@ -116,7 +153,19 @@ class ActivationGate:
         if target.authorization is not caller_authorization:
             raise PermissionError("target authorization identity changed before scope decision")
         snapshot_authorization = snapshot.authorization
-        decision = self.scope_policy.decide(snapshot)
+        decision = scope.decide(snapshot)
+        # A policy response is an input to permit issuance, not authority by
+        # annotation alone. Reject forged/noncanonical results before reading it.
+        expected_host = ScopePolicy.normalize_host(snapshot.value)
+        if (
+            type(decision) is not ScopeDecision
+            or type(decision.allowed) is not bool
+            or type(decision.reason) is not ScopeReason
+            or type(decision.normalized_host) is not str
+            or expected_host is None
+            or decision.normalized_host != expected_host
+        ):
+            raise PermissionError("scope policy returned a noncanonical decision")
         if not decision.allowed:
             raise PermissionError(f"target denied by scope gate: {decision.reason.value}")
 
@@ -152,8 +201,13 @@ class ActivationGate:
         ):
             raise PermissionError("target authorization changed during permit issuance")
 
-        if _activation_policy_snapshot(self.activation_policy) != activation:
-            raise PermissionError("activation policy changed during permit issuance")
+        if (
+            self.scope_policy is not self._bound_scope_policy
+            or self.activation_policy is not self._bound_activation_policy
+            or _scope_policy_snapshot(self.scope_policy) != scope
+            or _activation_policy_snapshot(self.activation_policy) != activation
+        ):
+            raise PermissionError("gate policy changed during permit issuance")
 
         return ExecutionPermit(
             permit_id=token_urlsafe(24),

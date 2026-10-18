@@ -23,3 +23,7 @@ The same source issue also leaves `ActivationPolicy` externally mutable despite 
 ## Grant object substitution fence
 
 A freshly constructed `Authorization` instance with the same visible owner/reference/window is **not** the same object as the original caller authority. The gate now also pins both the original and independent scope-snapshot authorization **object references**. A substitution to a same-valued new instance on either side results in HOLD before permit issuance. This is local object-provenance consistency only, not durable grant-ID or issuer verification and not a proof against all concurrent swaps.
+
+## Bound policies and returned decision integrity (#1476, #1482)
+
+At gate construction the actual original scope/activation-policy object references and strictly canonical copies of their built-in values are retained. At issuance, switching either policy object (even for a same-valued alternative) or changing its canonical fields fails closed. Scope is decided from the copy, not from a potentially rebound field. Both original object references and their values are checked again before a permit is returned. A policy decision must also be an exact `ScopeDecision` containing an exact boolean, a real `ScopeReason` member, and a plain normalized host identical to the current detached target normalization; ambiguous or forged decisions cannot flow to a permit. This fixes the in-process policy rebinding and decision-envelope gaps, but cannot attest to long-term consent or source database approval.
