@@ -596,20 +596,23 @@ function exportHumanQueue(){
 const UNIFIED_FIELDS=['kind','schema_version','disposition','source_contract','source_sha256',
  'source_count','client_reference','engagement_reference','casework','evidence_review',
  'attachments','warning',...AUTH_FLAGS];
+const UNIFIED_V2_FIELDS=[...UNIFIED_FIELDS,'human_requests'];
 function nativeSnapshot(map){
  if(!map)return null;
  return state.findings.map(f=>({...map.get(f.finding_id)}));
 }
+function apiContext(){return {sha:state.sha,client:state.client,engagement:state.engagement,findings:state.findings,artifacts:state.rows};}
 function unifiedPrivatePacket(){
  if(!state.sha)fail('Load the original source before PRIVATE handoff.');
  return {
-  kind:'lightup.private_unified_human_evidence_workspace',schema_version:1,
+  kind:'lightup.private_unified_human_evidence_workspace',schema_version:2,
   disposition:'PRIVATE_HUMAN_REVIEW_ONLY',source_contract:'lightup.finding_export._COLUMNS_v1',
   source_sha256:state.sha,source_count:state.findings.length,
   client_reference:state.client,engagement_reference:state.engagement,
   ...Object.fromEntries(AUTH_FLAGS.map(k=>[k,false])),
   casework:nativeSnapshot(state.casework),evidence_review:nativeSnapshot(state.evidence),
   attachments:state.rows.map(x=>({...x})),
+  human_requests:window.LightUpArtifactRequests.snapshot(),
   warning:'This is an untrusted private human workflow snapshot. No file bytes, grants, assessment authority, verification of fixes, or source authenticity are included.'
  };
 }
@@ -626,10 +629,11 @@ async function previewUnified(){
  if(!state.sha)fail('Import an independently verified original findings CSV first.');
  const sha=state.sha,client=state.client,engagement=state.engagement;
  const raw=strictJSON(await fileReader($('unifiedImport').files[0],MAX_NATIVE_CASEWORK),MAX_NATIVE_CASEWORK);
+ const fields=raw&&raw.schema_version===2?UNIFIED_V2_FIELDS:UNIFIED_FIELDS;
  if(!raw||Object.getPrototypeOf(raw)!==Object.prototype||
-  Object.keys(raw).length!==UNIFIED_FIELDS.length||
-  Object.keys(raw).some(k=>!UNIFIED_FIELDS.includes(k))||
-  raw.kind!=='lightup.private_unified_human_evidence_workspace'||raw.schema_version!==1||
+  Object.keys(raw).length!==fields.length||
+  Object.keys(raw).some(k=>!fields.includes(k))||
+  raw.kind!=='lightup.private_unified_human_evidence_workspace'||![1,2].includes(raw.schema_version)||
   raw.disposition!=='PRIVATE_HUMAN_REVIEW_ONLY'||
   raw.source_contract!=='lightup.finding_export._COLUMNS_v1'||
   raw.source_sha256!==sha||raw.source_count!==state.findings.length||
@@ -659,12 +663,15 @@ async function previewUnified(){
   if(new Set(evidence.map(v=>v.finding_id)).size!==ids.size)
    fail('Repeated or absent original Evidence Review finding.');
  }
+ const api=window.LightUpArtifactRequests;
+ if(!api)fail('Original HUMAN follow-up desk required for private handoff.');
+ const requests=api.validateSnapshot(raw.schema_version===2?raw.human_requests:[],apiContext());
  if(state.sha!==sha||state.client!==client||state.engagement!==engagement)
   fail('Original source/context changed while importing PRIVATE unified handoff; retry.');
  state.pendingHandoff={
   sha,client,engagement,oldRows:JSON.stringify(state.rows),
   oldCasework:serializeNative(state.casework),oldEvidence:serializeNative(state.evidence),
-  attachments,casework,evidence
+  oldHumanRequests:api.snapshotJSON(),attachments,casework,evidence,requests
  };
  $('unifiedPreview').textContent=[
   'ORIGINAL private source digest: '+sha,
@@ -673,6 +680,7 @@ async function previewUnified(){
   'Candidate LOCAL file fingerprints: '+attachments.length,
   'Candidate original Casework: '+(casework?casework.length+' exact human records':'absent'),
   'Candidate original Evidence Review: '+(evidence?evidence.length+' exact human records':'absent'),
+  'Candidate PRIVATE HUMAN follow-up requests: '+requests.length+' (not sent)'),
   'All records matched original finding IDs and the same original SHA-256.',
   'Applying replaces all local PRIVATE human views, never the original source, grants or retest authorization.'
  ].join('\n');
@@ -685,12 +693,14 @@ function applyUnified(){
  if(state.sha!==p.sha||state.client!==p.client||state.engagement!==p.engagement||
   JSON.stringify(state.rows)!==p.oldRows||
   serializeNative(state.casework)!==p.oldCasework||
-  serializeNative(state.evidence)!==p.oldEvidence)
+  serializeNative(state.evidence)!==p.oldEvidence||
+  window.LightUpArtifactRequests.snapshotJSON()!==p.oldHumanRequests)
   fail('Original source or HUMAN records changed since preview. Refusing stale unified restore.');
  if(!confirm('Replace ALL current LOCAL human views with this original source-bound PRIVATE handoff? This cannot grant security authority or prove remediation.'))return;
  state.rows=p.attachments.map(x=>({...x}));
  state.casework=p.casework?new Map(p.casework.map(x=>[x.finding_id,{...x}])):null;
  state.evidence=p.evidence?new Map(p.evidence.map(x=>[x.finding_id,{...x,evidence:{...x.evidence}}])):null;
+ window.LightUpArtifactRequests.restore(p.requests);
  state.selected.clear();state.bulk=null;state.undo=[];state.pendingHandoff=null;
  $('unifiedPreview').hidden=true;$('applyUnified').disabled=true;
  render();message('Unified PRIVATE HUMAN workspace restored atomically for exact original source. No original authority or evidence bytes were transferred.',false);
@@ -812,7 +822,9 @@ bind('filter','input',()=>{state.filter=$('filter').value.toLowerCase().trim();r
 bind('forget','click',()=>{if(confirm('Forget all original findings and local human notes in memory?')){
  state.findings=[];state.sha='';state.rows=[];state.client='';state.engagement='';state.verify=null;state.filter='';state.pending=null;state.selected.clear();state.bulk=null;state.undo=[];state.casework=null;state.evidence=null;state.pendingHandoff=null;state.pending=null;$('unifiedPreview').hidden=true;$('applyUnified').disabled=true;$('migrationResult').hidden=true;
  for(const id of ['client','engagement','filter','original','newSource','addFiles','privateImport','caseworkImport','evidenceImport','unifiedImport','verify'])$(id).value='';
- $('finding').replaceChildren();render();message('Local workspace forgotten. Previously downloaded files are not deleted.',false);
+ $('finding').replaceChildren();render();
+ if(window.LightUpArtifactRequests)window.LightUpArtifactRequests.forgetUnconditionally();
+ message('Local workspace forgotten. Previously downloaded files are not deleted.',false);
 }});
 /* Stable read-only bridge to independent PRIVATE HUMAN request board.
    It cannot mutate original sources or authority decisions. */
