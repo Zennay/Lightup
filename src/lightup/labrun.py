@@ -366,6 +366,10 @@ def main_assess(argv: list[str] | None = None) -> int:
                              "ground truth (see lab/vuln_fixture.py)")
     parser.add_argument("--no-review", action="store_true",
                         help="skip the verifier/remediation/report review pass")
+    parser.add_argument(
+        "--preview-only", action="store_true",
+        help="validate lab inputs and show normalized hosts without planning, models or network calls",
+    )
     args = parser.parse_args(argv)
 
     expected = expected_findings(PROFILES[args.profile]) if args.profile else None
@@ -400,6 +404,19 @@ def main_assess(argv: list[str] | None = None) -> int:
             targets=tuple(endpoints),
             expected_findings=expected,
         )
+        if args.preview_only:
+            # Input review is non-authorizing. Avoid echoing URLs (which can
+            # contain credentials/query details) or the contents of a manifest.
+            print(json.dumps({
+                "mode": "LAB_INPUT_PREVIEW_ONLY",
+                "lab_host_candidates": list(scenario.targets),
+                "endpoint_count": len(scenario.endpoints),
+                "plan_created": False,
+                "model_called": False,
+                "target_interaction_performed": False,
+                "authorization_granted": False,
+            }, indent=2))
+            return 0
         gateway = (load_gateway(args.gateway_config) if args.gateway_config
                    else scripted_demo_gateway(tuple(endpoints)))
         result = run_planned_assessment(gateway, scenario, args.db)
