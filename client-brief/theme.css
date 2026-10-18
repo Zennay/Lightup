@@ -17,3 +17,5 @@
 
 /* Reviewer-declared, non-authorizing aggregate report timeline. */
 .history-table-scroll{max-width:100%;overflow-x:auto;margin-top:16px}.history-table-scroll table{min-width:750px;width:100%;border-collapse:collapse}.history-table-scroll th,.history-table-scroll td{border-bottom:1px solid #44516a;padding:9px;text-align:left;white-space:nowrap}.history-table-scroll th{font-size:.82rem;color:#bdcddb}@media print{#report-history-panel{display:none!important}}
+
+.history-chart{display:grid;grid-template-columns:repeat(auto-fit,minmax(185px,1fr));gap:12px;margin:18px 0}.history-bar{border:1px solid #47546a;border-radius:12px;padding:11px;min-width:0}.history-bar strong{display:block;margin-bottom:10px;font-size:.85rem}.history-bar label{display:block;font-size:.78rem;margin-top:7px}.history-bar progress{display:block;width:100%;height:14px;margin:5px 0;border:0} @media print{.history-chart{break-inside:avoid}}

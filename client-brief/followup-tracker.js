@@ -99,14 +99,20 @@ function nextDay(s){
  return dt.toISOString().slice(0,10).replace(/-/g,'');
 }
 function icsEsc(s){return String(s).replace(/\\/g,'\\\\').replace(/;/g,'\\;').replace(/,/g,'\\,').replace(/\r?\n/g,'\\n');}
+function randomCalendarUID(){
+ if(!global.crypto||typeof global.crypto.getRandomValues!=='function')
+  throw Error('Secure random values unavailable; cannot create non-identifying calendar IDs.');
+ const bytes=new Uint8Array(16);global.crypto.getRandomValues(bytes);
+ const random=[...bytes].map(b=>b.toString(16).padStart(2,'0')).join('');
+ return 'lightup-human-'+random+'@lightup.local';
+}
 async function toCalendar(info,records){
- const sourceDigest=await signature(info);
  const states=collect(info,records),lines=['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//LightUp//Human Offline Discussion Preview//EN','CALSCALE:GREGORIAN','METHOD:PUBLISH','X-WR-CALNAME:LightUp tentative human discussions'];
  let count=0;
  info.actions.forEach((a,i)=>{
   const v=states[info.keys[i]];if(!v.date)return;
   // Source categories are derived from original offline display, not operator IDs.
-  lines.push('BEGIN:VEVENT','UID:lightup-human-'+i+'-'+sourceDigest.slice(0,20)+'@lightup.local',
+  lines.push('BEGIN:VEVENT','UID:'+randomCalendarUID(),
    'DTSTAMP:'+new Date().toISOString().replace(/[-:]/g,'').replace(/\.\d{3}/,''),'DTSTART;VALUE=DATE:'+icsDate(v.date),
    'DTEND;VALUE=DATE:'+nextDay(v.date),'STATUS:TENTATIVE','CLASS:PRIVATE',
    'TRANSP:TRANSPARENT','SUMMARY:'+icsEsc('Tentative human security discussion: '+a.title),
