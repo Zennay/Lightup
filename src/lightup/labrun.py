@@ -400,6 +400,67 @@ def _deliver_lab_result(payload: dict, output: str | None) -> None:
     }, indent=2))
 
 
+
+def _admit_explicit_lab_url(value: str) -> str:
+    """Narrow the user-facing lab URL contract before any provider or tool.
+
+    The original LabScenario / scope gate is mandatory *in addition* to this
+    syntactic fence. Never resolve DNS or include rejected values in errors.
+    """
+    from urllib.parse import urlsplit
+    if (type(value) is not str or not 1 <= len(value) <= 2048
+            or value != value.strip()
+            or any(ord(char) < 33 or ord(char) == 127 for char in value)):
+        raise ValueError("lab URL must be bounded printable text")
+    try:
+        url = urlsplit(value)
+        if (url.scheme not in ("http", "https") or not url.netloc
+                or not url.hostname or url.username is not None
+                or url.password is not None or url.fragment):
+            raise ValueError("invalid lab URL")
+        # Reading port forces detection of invalid/out-of-range port strings;
+        # an explicit empty ':' is not a canonical optional port.
+        port = url.port
+        if url.netloc.endswith(":") and port is None:
+            raise ValueError("invalid lab URL port")
+        if port is not None and not 1 <= port <= 65535:
+            raise ValueError("invalid lab URL port")
+    except ValueError:
+        raise ValueError("lab URL was not admitted") from None
+    return value
+
+
+def _read_lab_targets_file(filename: str) -> list[str]:
+    """Read only one explicitly chosen small regular local file, never a pipe."""
+    import os
+    import stat
+    fd = -1
+    try:
+        flags = os.O_RDONLY | getattr(os, "O_NONBLOCK", 0)
+        flags |= getattr(os, "O_NOFOLLOW", 0)
+        fd = os.open(filename, flags)
+        info = os.fstat(fd)
+        if not stat.S_ISREG(info.st_mode) or not 0 <= info.st_size <= 16_384:
+            raise ValueError("lab targets manifest is not a bounded regular file")
+        with os.fdopen(fd, "rb") as source:
+            fd = -1
+            raw = source.read(16_385)
+        if len(raw) > 16_384:
+            raise ValueError("lab targets manifest exceeds 16 KiB")
+        decoded = raw.decode("utf-8")
+        if "\x00" in decoded:
+            raise ValueError("lab targets manifest contains NUL bytes")
+        return [
+            line.strip() for line in decoded.splitlines()
+            if line.strip() and not line.lstrip().startswith("#")
+        ]
+    except (OSError, UnicodeError, ValueError) as exc:
+        raise ValueError("local lab targets manifest was not admitted") from None
+    finally:
+        if fd >= 0:
+            os.close(fd)
+
+
 def main_assess(argv: list[str] | None = None) -> int:
     """CLI: planner-driven lab assessment with optional real gateway config."""
     import argparse
@@ -460,24 +521,12 @@ def main_assess(argv: list[str] | None = None) -> int:
     try:
         endpoints = ([args.url] if args.url is not None else []) + list(args.target)
         if args.targets_file is not None:
-            # Local, bounded manifest only; no network discovery or implicit
-            # permission. LabScenario validates ALL endpoints before planning.
-            with Path(args.targets_file).open("rb") as source:
-                raw = source.read(16_385)
-            if len(raw) > 16_384:
-                raise ValueError("lab targets file exceeds 16 KiB")
-            lines = raw.decode("utf-8")
-            if "\x00" in lines:
-                raise ValueError("lab targets file contains NUL bytes")
-            endpoints.extend(
-                line.strip() for line in lines.splitlines()
-                if line.strip() and not line.lstrip().startswith("#")
-            )
+            endpoints.extend(_read_lab_targets_file(args.targets_file))
         if not endpoints and args.targets_file is None and args.catalog_file is None:
             endpoints = ["http://127.0.0.1:18080/"]
-        if (not endpoints or len(endpoints) > 16
-                or any(not endpoint or len(endpoint) > 2048 for endpoint in endpoints)):
-            raise ValueError("lab assessment requires 1–16 bounded explicit lab URLs")
+        if not endpoints or len(endpoints) > 16:
+            raise ValueError("lab assessment requires 1–16 explicit lab URLs")
+        endpoints = [_admit_explicit_lab_url(endpoint) for endpoint in endpoints]
         if len(set(endpoints)) != len(endpoints):
             raise ValueError("duplicate lab endpoint is not allowed")
         if args.profile and len(endpoints) != 1:
