@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-cF9/3n5p1UUvC9IPlprhZ/d5D3CiKaX9qTvoAZ0CkKE='; style-src 'sha256-TiOd9PyKZRDLiF8oPZCj9XLIGyiDzv8lQfbkTPjAf8c='; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-Iul0Ke5ytCGLqR70sNctmNBuOaGMqRb1i+qLIUlGjps='; style-src 'sha256-ly97SKZCWz9m1wg+hn1KrYh2cBx6ImLvi3ydBZA//9U='; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'">
 <title>LightUp · Private Scope Packet Vault (Offline)</title><style>
 :root{font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#090f1c;color:#e9f1ff;color-scheme:dark}*{box-sizing:border-box}body{margin:0}main{max-width:940px;padding:24px;margin:auto}header{padding:30px 0 22px}.eyebrow{color:#7ed3fd;font-size:12px;letter-spacing:.16em;font-weight:800}h1{font-size:clamp(34px,6vw,58px);line-height:1.02;letter-spacing:-.04em;margin:16px 0}h2{font-size:20px;margin:0 0 12px}h3{font-size:15px;margin:24px 0 10px}.lead{color:#afc3de;font-size:18px;line-height:1.6;max-width:750px}.hold{border:1px solid #eec06c;background:#2f2419;border-radius:10px;color:#ffe5ac;font-weight:700;font-size:12px;letter-spacing:.06em;padding:12px 16px;line-height:1.6}section{background:#111c30;border:1px solid #324158;border-radius:16px;padding:24px;margin-bottom:18px;box-shadow:0 6px 36px #0002}section p,li{color:#bfcbdf;line-height:1.65}section strong{color:#fff}label{display:block;font-size:14px;font-weight:650;color:#dfeafa}input,select{display:block;width:100%;margin-top:9px;padding:12px 13px;border:1px solid #60718d;border-radius:10px;background:#0b1425;color:#fff;font:inherit}input:focus,button:focus-visible{outline:3px solid #75bcff;outline-offset:2px}.picker{cursor:pointer;border:1px dashed #659de1;padding:17px;border-radius:12px;background:#102942}.picker input{border:0;padding:0;background:none}.grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:20px}button{font:inherit;border:0;border-radius:10px;padding:12px 18px;cursor:pointer;font-weight:700;background:#80cdfb;color:#071727}button.secondary{background:#23324c;color:#ecf6ff;border:1px solid #50617b}button:disabled{opacity:.5;cursor:not-allowed}.status{font-size:14px}.items{display:grid;gap:10px;margin-top:12px}.item{display:flex;align-items:center;justify-content:space-between;gap:18px;padding:13px;border:1px solid #40536f;border-radius:10px;background:#14223a;overflow-wrap:anywhere}.item small{color:#b1c1d6;display:block;margin-top:4px}.item button{flex-shrink:0;padding:9px 13px}.message{padding:16px;border-left:4px solid #7bcdff;background:#122b46;min-height:56px;border-radius:5px;line-height:1.5}.message.error{border-color:#eab3a0;background:#391e25}footer{padding:0 0 40px}footer small{color:#90a4be}ol{padding-left:24px}@media(max-width:650px){.grid{grid-template-columns:1fr}.item{align-items:flex-start;flex-direction:column}section{padding:17px}main{padding:12px}.item button{width:100%}}
 /* Source inspection is private text, never rendered as imported HTML. */
@@ -33,6 +33,15 @@ font-weight:650;line-height:1.45;color:#bdcee8}
 #redact-term{font-family:ui-monospace,Consolas,monospace}
 #redact-source{font-size:13px}
 #redact-create{background:#aee6fb}
+
+/* Review-only Studio v1 source-bound workboard */
+#studio-summary .item{display:block;white-space:normal;line-height:1.55;overflow-wrap:anywhere}
+#studio-assets{min-height:48px;max-height:320px}
+#studio-status{border-left:3px solid #7bcdff;padding:12px;background:#15263b;border-radius:5px}
+#studio-inspect-title + p{max-width:820px}
+#studio-source{width:100%}
+details{border:1px solid #435575;padding:14px;border-radius:10px;margin-top:14px;background:#0d1a2c}
+details summary{cursor:pointer;font-weight:650;color:#d1ebfe}
 
 </style><script>
 "use strict";
@@ -82,6 +91,10 @@ font-weight:650;line-height:1.45;color:#bdcee8}
     unlock: $("unlock"), lock: $("lock"), recovered: $("recovered"),
     mergeMode: $("merge-mode"), handoffRoute: $("handoff-route"),
     before: $("compare-before"), after: $("compare-after"),
+    studioSource: $("studio-source"), studioInspect: $("studio-inspect"), studioBulk: $("studio-bulk"), studioBulkExport: $("studio-bulk-export"),
+    studioFlag: $("studio-flag"), studioReport: $("studio-report"),
+    studioClear: $("studio-clear"), studioStatus: $("studio-status"),
+    studioSummary: $("studio-summary"), studioAssets: $("studio-assets"),
     redactSource: $("redact-source"), redactTerm: $("redact-term"),
     redactCredentials: $("redact-credentials"), redactCreate: $("redact-create"),
     redactClear: $("redact-clear"), redactSummary: $("redact-summary"),
@@ -93,6 +106,8 @@ font-weight:650;line-height:1.45;color:#bdcee8}
   let entries = [];
   let busy = false;
   let lastAction = Date.now();
+  let inspectedStudio = null;
+  let inspectedPortfolio = null;
 
   function touch() { lastAction = Date.now(); }
   function notice(message, error = false) {
@@ -143,6 +158,10 @@ font-weight:650;line-height:1.45;color:#bdcee8}
   function scrub() {
     for (const entry of entries) entry.bytes.fill(0);
     entries = [];
+    inspectedStudio = null;
+    inspectedPortfolio = null;
+    els.studioStatus.textContent = "Locked. No proposal inspection retained.";
+    els.studioSummary.replaceChildren(); els.studioAssets.textContent = "";
     els.stageFilter.value = "all";
     clearPreview();
     els.files.value = "";
@@ -159,6 +178,7 @@ font-weight:650;line-height:1.45;color:#bdcee8}
     els.recovered.replaceChildren();
     const beforeValue = els.before.value, afterValue = els.after.value;
     const redactValue = els.redactSource.value;
+    const studioValue = els.studioSource.value;
     els.before.replaceChildren();
     els.after.replaceChildren();
     for (const dropdown of [els.before, els.after]) {
@@ -170,6 +190,20 @@ font-weight:650;line-height:1.45;color:#bdcee8}
         option.value = String(index); option.textContent = entry.name;
         dropdown.append(option);
       });
+    }
+    els.studioSource.replaceChildren();
+    const studioPlaceholder = document.createElement("option");
+    studioPlaceholder.value = ""; studioPlaceholder.textContent = "Choose a Studio v1 JSON draft";
+    els.studioSource.append(studioPlaceholder);
+    entries.forEach((entry, index) => {
+      if (!entry.name.toLowerCase().endsWith(".json")) return;
+      const option = document.createElement("option");
+      option.value = String(index); option.textContent = entry.name;
+      els.studioSource.append(option);
+    });
+    if (studioValue !== "" && entries[Number(studioValue)] &&
+        entries[Number(studioValue)].name.toLowerCase().endsWith(".json")) {
+      els.studioSource.value = studioValue;
     }
     els.redactSource.replaceChildren();
     const redactPlaceholder = document.createElement("option");
@@ -203,6 +237,9 @@ font-weight:650;line-height:1.45;color:#bdcee8}
       remove.addEventListener("click", () => {
         if (busy) return;
         clearPreview();
+        inspectedStudio = null; els.studioAssets.textContent = "";
+        els.studioSummary.replaceChildren();
+        els.studioStatus.textContent = "Source selection changed; inspect a current exact file.";
         entry.bytes.fill(0);
         entries.splice(index, 1);
         touch(); paint();
@@ -356,6 +393,8 @@ font-weight:650;line-height:1.45;color:#bdcee8}
           staged.push({name, bytes, hash: await digest(bytes), role: roles[0], selected: true, stage: "unsorted", note: ""});
         }
         entries.push(...staged);
+        inspectedStudio = null;
+        els.studioSummary.replaceChildren(); els.studioAssets.textContent = "";
         clearPreview();
         notice("New local draft files loaded. They are not persisted until you explicitly export an encrypted vault.");
       } catch (err) {
@@ -655,12 +694,16 @@ font-weight:650;line-height:1.45;color:#bdcee8}
             }
           }
           entries = merged;
+          inspectedStudio = null;
+          els.studioSummary.replaceChildren(); els.studioAssets.textContent = "";
           clearPreview();
           notice(newCount + " new local file(s) merged atomically from " + importedRoute + " handoff. Roles/recipient identities remain unverified.");
         } else {
           // Atomic replacement: previous plaintext is forgotten only after authenticated validation.
           for (const item of entries) item.bytes.fill(0);
           entries = staged;
+          inspectedStudio = null;
+          els.studioSummary.replaceChildren(); els.studioAssets.textContent = "";
           clearPreview();
           notice("Encrypted " + importedRoute + " packet restored locally. Verify drafts with real client/operator; the vault grants no authorization.");
         }
@@ -671,6 +714,314 @@ font-weight:650;line-height:1.45;color:#bdcee8}
     });
   }
 
+
+
+  // Read-only offline adapter for exactly the *draft* Studio v1 producer format.
+  // Not an authority policy, membership checker, operator decision or grant.
+  function parseStudioStrict(source) {
+    invariant(source.bytes.length > 0 && source.bytes.length <= 64 * 1024);
+    const raw = DEC.decode(source.bytes);
+    const stack = [];
+    for (let i = 0; i < raw.length; i++) {
+      const ch = raw[i];
+      if (ch === '{' || ch === '[') stack.push({type: ch, keys: ch === '{' ? new Set() : null});
+      else if (ch === '}' || ch === ']') {
+        invariant(stack.length && stack[stack.length - 1].type === (ch === '}' ? '{' : '['));
+        stack.pop();
+      } else if (ch === '"') {
+        const start = i;
+        i++;
+        while (i < raw.length) {
+          if (raw[i] === '\\') { i += 2; continue; }
+          if (raw[i] === '"') break;
+          i++;
+        }
+        invariant(i < raw.length);
+        const key = JSON.parse(raw.slice(start, i + 1));
+        let next = i + 1;
+        while (next < raw.length && /\s/.test(raw[next])) next++;
+        if (raw[next] === ':') {
+          invariant(stack.length && stack[stack.length - 1].type === '{');
+          invariant(!['__proto__','prototype','constructor'].includes(key));
+          const keys = stack[stack.length - 1].keys;
+          invariant(!keys.has(key));
+          keys.add(key);
+        }
+      }
+    }
+    invariant(stack.length === 0);
+    const p = JSON.parse(raw);
+    invariant(p !== null && typeof p === 'object' && !Array.isArray(p));
+    const root = [
+      'schema_version','kind','state','authorization','client_consent',
+      'operator_consent','grant','execution','revocation_checked',
+      'proposal_name','client_label','requested_assets','excluded_assets',
+      'requested_mode','requested_risk','notes','proposed_activities',
+      'proposed_window_local','proposed_window_utc','exported_at_utc'
+    ];
+    invariant(Object.keys(p).every(k => root.includes(k) || k === 'scope_fingerprint_sha256'));
+    invariant(root.every(k => Object.prototype.hasOwnProperty.call(p,k)));
+    invariant(p.schema_version === 1 && p.kind === 'lightup.scope_proposal_draft' && p.state === 'DRAFT_ONLY');
+    for (const k of ['authorization','client_consent','operator_consent','grant','execution','revocation_checked']) {
+      invariant(p[k] === false);
+    }
+    const str=(s,max)=>typeof s==='string' && s.length<=max && !/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/.test(s);
+    invariant(str(p.proposal_name,300) && str(p.client_label,300) && str(p.notes,3000));
+    invariant(p.requested_mode === 'analysis_only' || p.requested_mode === 'authorized_assessment');
+    invariant(Number.isInteger(p.requested_risk) && p.requested_risk >= 1 && p.requested_risk <= 4);
+    for (const k of ['requested_assets','excluded_assets']) {
+      invariant(Array.isArray(p[k]) && p[k].length<=80);
+      invariant(p[k].every(v=>str(v,255) && v.length>0 && v === v.trim() && v === v.normalize('NFC')));
+      invariant(new Set(p[k]).size === p[k].length);
+    }
+    invariant(p.proposed_activities !== null && typeof p.proposed_activities === 'object' &&
+      !Array.isArray(p.proposed_activities));
+    const activityKeys = ['passive_analysis','configuration_review','private_lab_network_checks'];
+    strictKeys(p.proposed_activities,activityKeys);
+    invariant(activityKeys.every(k=>typeof p.proposed_activities[k]==='boolean'));
+    invariant(p.proposed_window_local !== null && typeof p.proposed_window_local === 'object' &&
+      !Array.isArray(p.proposed_window_local));
+    invariant(Object.keys(p.proposed_window_local).every(k=>['start','end'].includes(k)));
+    for(const key of ['start','end']) invariant(
+      p.proposed_window_local[key] === null || str(p.proposed_window_local[key],40));
+    const utc = p.proposed_window_utc;
+    invariant(utc && typeof utc==='object' && !Array.isArray(utc));
+    invariant(Object.keys(utc).every(k=>[
+      'status','timezone','start','end','start_offset_minutes','end_offset_minutes'
+    ].includes(k)));
+    invariant(str(utc.status,50) && str(utc.timezone,120));
+    if (utc.status === 'resolved') {
+      const iso=/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\.\d{3}Z$/;
+      invariant(typeof utc.start==='string' && iso.test(utc.start) &&
+        typeof utc.end==='string' && iso.test(utc.end) &&
+        !Number.isNaN(Date.parse(utc.start)) && !Number.isNaN(Date.parse(utc.end)) &&
+        utc.start<utc.end &&
+        Number.isInteger(utc.start_offset_minutes) && Math.abs(utc.start_offset_minutes)<=840 &&
+        Number.isInteger(utc.end_offset_minutes) && Math.abs(utc.end_offset_minutes)<=840);
+    } else {
+      invariant(utc.start === null && utc.end === null);
+    }
+    invariant(str(p.exported_at_utc,40));
+    if(Object.prototype.hasOwnProperty.call(p,'scope_fingerprint_sha256')) {
+      invariant(typeof p.scope_fingerprint_sha256==='string' &&
+        /^[a-f0-9]{64}$/.test(p.scope_fingerprint_sha256));
+      // Studio's canonical digest needs the source-owner fingerprint algorithm.
+      // It is NOT reproduced or treated as verified here.
+    }
+    return p;
+  }
+
+  function studioReview(p) {
+    const concerns = [];
+    const add=(code,message)=>concerns.push({code,message});
+    if(!p.requested_assets.length) add('MISSING_PROPOSED_ASSETS','No proposed assets recorded for independent client/operator review.');
+    if(!p.excluded_assets.length) add('EXCLUSIONS_NOT_DECLARED','No explicit exclusions recorded; operator must independently decide excluded assets.');
+    if(p.requested_risk===4) add('RISK4_ESCALATION','Risk 4 requires distinct human escalation and an approved risk record.');
+    if(p.proposed_activities.private_lab_network_checks)
+      add('PRIVATE_LAB_PROVENANCE','Private lab network activity needs independent scope, isolation and approved lab-only handling.');
+    if(p.requested_mode==='authorized_assessment')
+      add('ACTIVE_MODE_NEEDS_REAL_GRANT','Requested active assessment mode is not an actual issued authorization.');
+    if(!p.proposed_activities.passive_analysis && !p.proposed_activities.configuration_review &&
+       !p.proposed_activities.private_lab_network_checks)
+      add('NO_ACTIVITIES','No assessment activities explicitly proposed.');
+    if(p.proposed_window_utc.status !== 'resolved')
+      add('UTC_WINDOW_UNRESOLVED','Local requested time has no resolved UTC planning evidence.');
+    else add('UTC_WINDOW_UNAPPROVED','Resolved UTC timestamps are tentative and not an operator-approved booking.');
+    if(p.proposed_activities.private_lab_network_checks && p.requested_mode==='analysis_only')
+      add('MODE_ACTIVITY_MISMATCH','Private-lab network checks are proposed alongside analysis-only mode. Clarify intended scope.');
+    if(p.notes.trim().length<15) add('SAFETY_NOTES_INCOMPLETE','Safety / stop conditions should be independently clarified.');
+    // Always include non-negotiable human checks, even if other fields look good.
+    add('CLIENT_IDENTITY_AND_ASSET_CONTROL','Verify real client, tenant, ownership and exact allowed targets through authenticated systems.');
+    add('OPERATOR_CONSENT_AND_REVOCATION','Require separate operator consent, permitted execution window and revocation check at action time.');
+    add('CI_SECURITY_HUMAN_GO','The repository CI, independent security/privacy review and explicit human GO remain external gates.');
+    return concerns;
+  }
+
+  function clearStudioInspection(message='Private proposal view hidden.') {
+    inspectedStudio=null;
+    inspectedPortfolio=null;
+    els.studioSummary.replaceChildren();
+    els.studioAssets.textContent='';
+    els.studioStatus.textContent=message;
+  }
+  function inspectStudio() {
+    if(busy)return;
+    clearStudioInspection();
+    touch();
+    try {
+      const id=els.studioSource.value;
+      invariant(/^(0|[1-9]\d?)$/.test(id) && Number(id)<entries.length);
+      const entry=entries[Number(id)];
+      invariant(entry.name.toLowerCase().endsWith('.json'));
+      const p=parseStudioStrict(entry);
+      const concerns=studioReview(p);
+      inspectedStudio={index:Number(id),hash:entry.hash,concerns,
+        summary:{risk:p.requested_risk,mode:p.requested_mode,
+          proposed:p.requested_assets.length,excluded:p.excluded_assets.length,
+          utc:p.proposed_window_utc.status}};
+      const head=document.createElement('div');
+      head.className='item';
+      head.textContent='Draft only · Risk '+p.requested_risk+' · Mode '+p.requested_mode+
+        ' · '+p.requested_assets.length+' proposed assets · '+
+        p.excluded_assets.length+' exclusions · UTC '+p.proposed_window_utc.status;
+      els.studioSummary.append(head);
+      for(const concern of concerns){
+        const item=document.createElement('div');item.className='item';
+        const span=document.createElement('span');
+        span.textContent=concern.code+': '+concern.message;
+        item.append(span);els.studioSummary.append(item);
+      }
+      // Raw proposed identities are shown ONLY in the private tab on deliberate disclosure.
+      els.studioAssets.textContent=
+        'PROPOSED (NOT AUTHORIZED):\n'+p.requested_assets.join('\n')+
+        '\n\nEXCLUDED (NOT ENFORCED):\n'+p.excluded_assets.join('\n');
+      els.studioStatus.textContent='Read-only offline source inspection: '+concerns.length+
+        ' human review checks. Original SHA-256 '+entry.hash.slice(0,16)+
+        '…; Studio embedded fingerprint, client identity, assets and UTC claims are NOT authenticated.';
+      notice('Scope proposal inspected locally. Nothing was authorized, dispatched or submitted.');
+    } catch {
+      clearStudioInspection('HOLD: not an exact bounded Studio v1 proposal, ambiguous JSON keys, or unsupported values. Original remains unchanged.');
+      notice('Scope proposal inspection refused; no trusted client/operator authority was created.',true);
+    }
+  }
+
+  function inspectStudioPortfolio() {
+    if (busy) return;
+    touch(); clearStudioInspection();
+    try {
+      const candidates=entries.filter(item=>item.name.toLowerCase().endsWith('.json'));
+      invariant(candidates.length>0 && candidates.length<=MAX_FILES);
+      const records=[];
+      let rejected=0;
+      for (const entry of candidates) {
+        try {
+          const p=parseStudioStrict(entry);
+          const warnings=studioReview(p);
+          records.push({hash:entry.hash,risk:p.requested_risk,mode:p.requested_mode,
+            assets:p.requested_assets.length,exclusions:p.excluded_assets.length,
+            utc:p.proposed_window_utc.status,concerns:warnings});
+        } catch {rejected++; }
+      }
+      invariant(records.length>0);
+      inspectedPortfolio={
+        snapshot:entries.map(entry=>entry.name+'\n'+entry.hash),
+        records:records.map(({hash,risk,mode,assets,exclusions,utc,concerns})=>({
+          source_sha256:hash,requested_risk:risk,requested_mode:mode,
+          proposed_assets_count:assets,excluded_assets_count:exclusions,
+          proposed_utc_status:utc,human_followup_codes:concerns.map(x=>x.code)
+        })),
+        excluded_count:rejected
+      };
+      const summary=document.createElement('div');summary.className='item';
+      summary.textContent=records.length+' self-reported Studio v1 drafts inspected · '+
+        rejected+' unknown/incompatible JSON document(s) excluded · '+
+        records.filter(x=>x.risk===4).length+' high-risk draft(s) · '+
+        records.filter(x=>x.utc!=='resolved').length+' unresolved UTC window(s). '+
+        'This is human preparation, never evidence of consent or authority.';
+      els.studioSummary.append(summary);
+      const aggregate=new Map();
+      for (const record of records) for(const x of record.concerns)
+        aggregate.set(x.code,(aggregate.get(x.code)||0)+1);
+      for (const [code,n] of [...aggregate.entries()].sort((a,b)=>b[1]-a[1])) {
+        const line=document.createElement('div');line.className='item';
+        line.textContent=n+' of '+records.length+' draft(s) need human follow-up: '+code;
+        els.studioSummary.append(line);
+      }
+      for (const record of records) {
+        const row=document.createElement('div');row.className='item';
+        row.textContent='Local source SHA-256 '+record.hash.slice(0,16)+
+          '… · risk '+record.risk+' · '+record.mode+
+          ' · '+record.assets+' proposed / '+record.exclusions+' excluded'+
+          ' · UTC '+record.utc+' · '+record.concerns.length+' review questions';
+        els.studioSummary.append(row);
+      }
+      els.studioStatus.textContent='Private portfolio review only. For notes and anonymous file-bound export, inspect ONE exact source. '+rejected+' incompatible file(s) excluded.';
+      els.studioAssets.textContent='';
+      notice('Local portfolio overview prepared without raw asset or client labels. Nothing authorized.');
+    } catch {
+      clearStudioInspection('HOLD: import a well-formed bounded Studio v1 JSON source before making a local portfolio view.');
+      notice('Portfolio review unavailable; no authority was established.',true);
+    }
+  }
+
+
+  function exportStudioPortfolio() {
+    if(busy)return;
+    try {
+      invariant(inspectedPortfolio && Array.isArray(inspectedPortfolio.records) &&
+        inspectedPortfolio.records.length>0);
+      const snapshot=entries.map(entry=>entry.name+'\n'+entry.hash);
+      invariant(JSON.stringify(snapshot)===JSON.stringify(inspectedPortfolio.snapshot));
+      if(!window.confirm(
+        'Download an anonymous UNSIGNED portfolio preparation handoff? It includes source SHA-256 fingerprints, risk, proposed counts, UTC status and generic follow-up codes. No filenames or raw assets. Hashes are correlation hints, NOT identity or consent.'))return;
+      const packet={
+        kind:'lightup.offline.studio_scope_portfolio_human_preparation.v1',
+        state:'REVIEW_ONLY_NOT_AUTHORIZED',
+        authority:{authorized:false,client_consent_verified:false,
+          operator_consent_verified:false,grant_issued:false,
+          dispatch_allowed:false,scan_allowed:false,release_allowed:false},
+        included_count:inspectedPortfolio.records.length,
+        excluded_unsupported_json_count:inspectedPortfolio.excluded_count,
+        sources:inspectedPortfolio.records
+      };
+      const output=JSON.stringify(packet,null,2)+'\n';
+      invariant(ENC.encode(output).length<=32*1024);
+      save(new Blob([output],{type:'application/json'}),
+        'lightup-anonymous-portfolio-review.json');
+      touch();notice('Anonymous multi-proposal human review handoff downloaded. No consent, grant or release rights created.');
+    }catch{
+      notice('HOLD: rebuild the local portfolio overview after import/removal changes. No review report exported.',true);
+    }
+  }
+
+  function currentStudio() {
+    invariant(inspectedStudio && entries[inspectedStudio.index] &&
+      entries[inspectedStudio.index].hash===inspectedStudio.hash &&
+      els.studioSource.value===String(inspectedStudio.index));
+    return inspectedStudio;
+  }
+  function flagStudio() {
+    if(busy)return;
+    try {
+      const inspection=currentStudio();
+      const entry=entries[inspection.index];
+      const missing=inspection.concerns.map(x=>x.code).join(', ');
+      const append='Studio v1 human follow-up ['+inspection.hash.slice(0,12)+']: '+missing;
+      invariant(append.length + entry.note.length + 2 <= MAX_NOTE_CHARS);
+      if(!window.confirm('Mark this local proposal Needs clarification and add anonymized human follow-up codes to its PRIVATE encrypted note? This is not an operator decision, signature or authorization.'))return;
+      entry.note=(entry.note ? entry.note+'\n':'')+append;
+      entry.stage='clarify';
+      touch();paint();
+      notice('Review checklist codes appended to private in-memory note. Save a full encrypted archive to retain them; no approval exists.');
+    }catch {
+      notice('HOLD: re-inspect current source or clear existing private note before adding follow-up. No changes made.',true);
+    }
+  }
+  function exportStudioReport() {
+    if(busy)return;
+    try {
+      const inspection=currentStudio();
+      invariant(window.confirm('Download an anonymous UNSIGNED preparation checklist? It excludes source filenames, assets, notes, client labels and identity, and is NOT proof of consent or release approval.'));
+      const packet={
+        kind:'lightup.offline.studio_scope_human_preparation.v1',
+        state:'REVIEW_ONLY_NOT_AUTHORIZED',
+        authority:{authorized:false,client_consent_verified:false,
+          operator_consent_verified:false,grant_issued:false,
+          dispatch_allowed:false,scan_allowed:false,release_allowed:false},
+        source_sha256:inspection.hash,
+        proposed_counts:{assets:inspection.summary.proposed,exclusions:inspection.summary.excluded},
+        requested_mode:inspection.summary.mode,
+        requested_risk:inspection.summary.risk,
+        proposed_utc_status:inspection.summary.utc,
+        human_followup_codes:inspection.concerns.map(x=>x.code)
+      };
+      const contents=JSON.stringify(packet,null,2)+'\n';
+      save(new Blob([contents],{type:'application/json'}),'lightup-anonymous-review-checklist.json');
+      touch();notice('Unsigned anonymous preparation checklist downloaded. No identities verified or permissions granted.');
+    }catch {
+      notice('HOLD: inspect a current exact Studio v1 source before exporting the anonymous checklist.',true);
+    }
+  }
 
   // Review-only viewer: DOM text nodes, never HTML execution or browser navigation.
   // Bounded line-level diff avoids quadratic work beyond 400 lines per file.
@@ -757,6 +1108,16 @@ font-weight:650;line-height:1.45;color:#bdcee8}
     els.redactTerm.value = ""; touch();
     els.redactSummary.textContent = "Sensitive term input cleared from the form.";
   });
+  els.studioInspect.addEventListener("click",inspectStudio);
+  els.studioBulk.addEventListener("click",inspectStudioPortfolio);
+  els.studioBulkExport.addEventListener("click",exportStudioPortfolio);
+  els.studioFlag.addEventListener("click",flagStudio);
+  els.studioReport.addEventListener("click",exportStudioReport);
+  els.studioClear.addEventListener("click",()=>{
+    touch();clearStudioInspection();
+    notice('Private proposal inspection hidden and no source changed.');
+  });
+  els.studioSource.addEventListener("change",()=>{clearStudioInspection();touch();});
   els.files.addEventListener("change", addFiles);
   els.previewFile.addEventListener("click", preview);
   els.compareFiles.addEventListener("click", compare);
@@ -860,8 +1221,18 @@ font-weight:650;line-height:1.45;color:#bdcee8}
 <p id="comparison-summary" class="status" aria-live="polite">Nothing is displayed until you request a preview or comparison. Maximum 400 lines per file, 2,048 characters per line, for bounded inspection.</p>
 <pre id="comparison-output" class="comparison" hidden aria-label="Private text comparison output"></pre>
 </section>
+<section aria-labelledby="studio-inspect-title">
+<h2 id="studio-inspect-title">5. Scope Planning Studio v1 · local review desk</h2>
+<p>Read an <strong>exact original</strong> Scope Planning Studio v1 JSON draft already loaded in the vault. See proposed scope, exclusions, risk, activities and UTC scheduling flags without querying DNS, scanning or issuing authority. Recognized input is still untrusted and self-reported.</p>
+<label>Select original Studio v1 proposal<select id="studio-source"><option value="">Select a local JSON draft</option></select></label>
+<div class="actions"><button id="studio-inspect" type="button">Inspect draft locally</button><button id="studio-bulk" type="button" class="secondary">Review all local Studio v1 proposals</button>
+<button id="studio-bulk-export" type="button" class="secondary">Export anonymous portfolio handoff</button><button id="studio-flag" type="button" class="secondary">Add missing decisions to private review note</button><button id="studio-report" type="button" class="secondary">Export anonymous review checklist</button><button id="studio-clear" type="button" class="secondary">Hide proposal inspection</button></div>
+<p id="studio-status" aria-live="polite" class="status">Nothing inspected. This review is not authenticated or authorizing.</p>
+<div id="studio-summary" class="items" aria-label="Offline scope preparation findings"></div>
+<details><summary>Show proposed asset labels in this private tab only</summary><p>Labels are unverified user input. Do not copy them into an anonymous handoff report.</p><pre id="studio-assets" class="comparison"></pre></details>
+</section>
 <section aria-labelledby="redact-title">
-<h2 id="redact-title">5. Create a privacy-edited review copy</h2>
+<h2 id="redact-title">6. Create a privacy-edited review copy</h2>
 <p>Prepare a distinct, <strong>unverified</strong> text derivative from one local draft. Replace common credentials and, optionally, one exact private term without altering the original. Each derivative receives a new SHA-256 fingerprint and stays unselected for sharing until you inspect it. This is <strong>not</strong> an assurance that no secrets remain.</p>
 <div class="grid">
 <label>Local source file<select id="redact-source" aria-label="Original file for privacy editing"><option value="">Choose a local draft</option></select></label>
@@ -870,6 +1241,6 @@ font-weight:650;line-height:1.45;color:#bdcee8}
 <div class="actions"><button id="redact-create" type="button">Create local edited copy</button><button id="redact-clear" type="button" class="secondary">Clear private term</button></div>
 <p class="subtle" id="redact-summary" aria-live="polite">No copy prepared. Sensitive values are never shown in redaction summaries. Compare the new derivative with the original and inspect all contents before any human-approved handoff.</p>
 </section>
-<section aria-labelledby="review-title"><h2 id="review-title">6. Handle review material</h2><p>Files stay in tab memory only. Download a recovered original only after an explicit click. The workspace forgets plaintext when hidden or idle for five minutes.</p><div id="recovered" class="items"></div>
+<section aria-labelledby="review-title"><h2 id="review-title">7. Handle review material</h2><p>Files stay in tab memory only. Download a recovered original only after an explicit click. The workspace forgets plaintext when hidden or idle for five minutes.</p><div id="recovered" class="items"></div>
 <h3>Required real-world next steps</h3><ol><li>Have the actual client identify and approve their exact targets through the separately authenticated system.</li><li>Obtain independent operator approval, exact scope/risks and the active grant window.</li><li>Re-check revocation at action time and pass original security/privacy and CI release gates.</li></ol><p>Opening or sealing this packet performs none of those steps.</p></section>
 <footer><p id="message" class="message" role="status" aria-live="polite">Offline draft handling only. Never use this vault as execution permission.</p><small>No trackers · No network calls · No persistent browser storage · No target contact</small></footer></main></body></html>
