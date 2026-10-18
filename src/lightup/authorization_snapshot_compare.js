@@ -14,7 +14,7 @@ function records(data){
     if(!row || typeof row!=='object'||!SHA.test(row.identity_key)||!SHA.test(row.source_key)||
        out.has(row.identity_key)||typeof client!=='string'||typeof engagement!=='string'||
        !Array.isArray(flags)||flags.length>40||
-       flags.some(f=>typeof f!=='string'||f.length>100)||typeof action!=='string)
+       flags.some(f=>typeof f!=='string'||f.length>100)||typeof action!=='string')
       throw Error('Malformed or duplicate source identity');
     out.set(row.identity_key,{id:row.identity_key,key:row.source_key,kind,
       client:client.slice(0,150),engagement:engagement.slice(0,150),
