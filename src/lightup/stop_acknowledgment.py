@@ -14,7 +14,8 @@ from uuid import uuid4
 
 from .domain import Role
 from .revocation_stop import (
-    StopLedgerError, _literal, _open_existing_db, authenticate_domain_user,
+    StopLedgerError, _literal, _open_existing_db, _stop_schema_current,
+    authenticate_domain_user,
 )
 
 _ACK_SCHEMA = """
@@ -50,6 +51,8 @@ def _ack_after_login(db_path: str, *, stop_id: str, actor_id: str) -> dict:
     try:
         con.execute("BEGIN IMMEDIATE")
         _require_operator(con, actor_id)
+        if not _stop_schema_current(con):
+            raise StopLedgerError("STOP schema mismatch: HOLD")
         event = con.execute(
             "SELECT s.stop_id,s.actor_id,s.engagement_id,s.client_id "
             "FROM authorization_stop_events AS s "
@@ -107,6 +110,8 @@ def _pending_after_login(db_path: str, *, actor_id: str) -> dict:
         con.execute("PRAGMA query_only=ON")
         con.execute("BEGIN")
         _require_operator(con, actor_id)
+        if not _stop_schema_current(con):
+            raise StopLedgerError("STOP schema mismatch: HOLD")
         ack_table = con.execute(
             "SELECT 1 FROM sqlite_master WHERE type='table' "
             "AND name='authorization_stop_acknowledgments'"
