@@ -5,7 +5,7 @@ const MAX_FILE = 16 * 1024 * 1024, MAX_DOCS = 120, MAX_IMPORT = 1024 * 1024;
 const STAGES = ['unreviewed', 'human_review', 'follow_up', 'archived'];
 const AUTH_FLAGS = ['authenticated','tenant_verified','source_authorized','assessment_authorized','grant','client_consent','operator_consent','execution','scan','audit_verdict','retest_verified','release'];
 const $ = id => document.getElementById(id);
-const state = {findings:[], sha:'', rows:[], client:'', engagement:'', filter:'', verify:null, pending:null, selected:new Set(), bulk:null, undo:[]};
+const state = {findings:[], sha:'', rows:[], client:'', engagement:'', filter:'', verify:null, pending:null, selected:new Set(), bulk:null, undo:[], casework:null};
 const encoder = new TextEncoder();
 const ESCAPE = '\uFEFF';
 function fail(message) { throw new Error(message); }
@@ -131,7 +131,10 @@ function renderSummary(){
  $('summary').textContent=state.findings.length+' original findings · '+state.rows.length+' local file fingerprints · '+STAGES.map(s=>s+': '+counts[s]).join(' · ');
  $('source').textContent=state.sha?'Original canonical source SHA-256: '+state.sha:'No original CSV loaded.';
  for(const id of ['addFiles','export','aggregate','privateImport','forget','verify'])$(id).disabled=!state.sha;
- $('coverageExport').disabled=!state.sha;renderCoverage();
+ $('coverageExport').disabled=!state.sha;
+ $('caseworkImport').disabled=!state.sha;$('detachCasework').disabled=!state.casework;
+ $('caseworkState').textContent=state.casework ? 'Native original Casework v1: '+state.casework.size+' HUMAN records (READ-ONLY)' : 'No native Casework imported.';
+ renderCoverage();
 }
 async function loadSource(){
  const file=$('original').files[0];if(!file)fail('Select an original findings CSV.');
@@ -147,7 +150,7 @@ async function loadSource(){
    if(!confirm('New original source or context. Discard ALL existing private notes and attachments?'))return;
  }
  state.findings=findings;state.sha=hash;state.client=client;state.engagement=engagement;
- state.selected.clear();state.bulk=null;state.undo=[];
+ state.selected.clear();state.bulk=null;state.undo=[];state.casework=null;
  if(state.rows.length && (oldSource !== hash || oldClient !== client || oldEngagement !== engagement))state.rows=[];state.verify=null;
  $('finding').replaceChildren();
  for(const f of findings){const op=document.createElement('option');op.value=f.finding_id;op.textContent=f.finding_id+' · '+f.severity+' · '+f.title.slice(0,75);$('finding').append(op);}
@@ -266,7 +269,7 @@ function applyMigration(){
  if(!confirm('Replace this HUMAN workspace with the new unverified original source? '+
    staged.dropped+' non-identical/absent-source records are removed from current memory; keep your separate OLD private backup. Missing is NEVER proven fixed.'))return;
  state.findings=staged.newFindings;state.sha=staged.newSha;state.rows=staged.retained;
- state.selected.clear();state.bulk=null;state.undo=[];
+ state.selected.clear();state.bulk=null;state.undo=[];state.casework=null;
  state.pending=null;state.verify=null;state.filter='';$('filter').value='';
  $('migrationResult').hidden=true;$('migrationPreview').textContent='';
  $('sameEngagement').checked=false;$('ackBackup').checked=false;
@@ -342,6 +345,36 @@ function undoBulk(){
 }
 
 
+
+/* ORIGINAL native Casework v1 is imported READ-ONLY for human coordination.
+   An accepted original source digest is not a proof of customer authorization. */
+async function importCasework(){
+ if(!state.sha)fail('Load original independently checked findings CSV first.');
+ const file=$('caseworkImport').files[0];
+ const sourceAtStart=state.sha,context=state.client+'|'+state.engagement;
+ const raw=strictJSON(await fileReader(file,MAX_IMPORT));
+ const packet=LightUpCasework.loadPacket(raw);
+ if(packet.source_sha256!==sourceAtStart)
+  fail('Native Casework source digest absent or different from this ORIGINAL findings source.');
+ if(sourceFingerprint(packet.findings)!==sourceFingerprint(state.findings))
+  fail('Native Casework original findings content differs. Human notes cannot cross source.');
+ if(state.sha!==sourceAtStart||state.client+'|'+state.engagement!==context)
+  fail('Original source or declared context changed during Casework import; retry.');
+ const cases=packet.cases.map(c=>LightUpCasework.cleanCase(c,new Set(state.findings.map(f=>f.finding_id))));
+ if(cases.length!==state.findings.length||new Set(cases.map(c=>c.finding_id)).size!==cases.length)
+  fail('Incomplete native Casework original finding coverage.');
+ if(!confirm('Attach native PRIVATE Casework human planning READ-ONLY for this locally declared engagement? The source digest cannot authenticate a client or prove remediation.'))return;
+ state.casework=new Map(cases.map(c=>[c.finding_id,c]));
+ $('caseworkImport').value='';
+ render();
+ message('Original Casework v1 attached read-only to '+cases.length+' exact ORIGINAL findings. No planning, status, grants or source claims were changed.',false);
+}
+function detachCasework(){
+ if(!state.casework)return;
+ if(!confirm('Detach read-only imported PRIVATE Casework context from the current browser memory?'))return;
+ state.casework=null;render();message('Native Casework human overlay detached. Original source and local artifact ledger remain unchanged.',false);
+}
+
 function coverageRows(){
  const counts=new Map();
  for(const r of state.rows){
@@ -367,9 +400,11 @@ function renderCoverage(){
    a.finding_id.localeCompare(b.finding_id));
  for(const f of visible){
   const tr=document.createElement('tr');
+  const cw=state.casework&&state.casework.get(f.finding_id);
   for(const value of [f.finding_id,f.severity,
    f.retest_status+' (source claim only)',String(f.count),
-   String(f.review),String(f.followup)]){
+   String(f.review),String(f.followup),
+   cw ? cw.status+' · '+(cw.owner||'unassigned')+' · '+(cw.due_date||'no human date') : 'not imported']){
    const td=document.createElement('td');td.textContent=value;tr.append(td);
   }
   const td=document.createElement('td'),open=document.createElement('button');
@@ -416,6 +451,8 @@ function bind(id,event,fn){$(id).addEventListener(event,async()=>{try{await fn()
 bind('load','click',loadSource);bind('add','click',addFiles);
 bind('export','click',exportPrivate);bind('aggregate','click',exportAggregate);
 bind('restore','click',importPrivate);bind('verify','change',verifyFile);
+bind('caseworkImportButton','click',importCasework);
+bind('detachCasework','click',detachCasework);
 bind('coverageFilter','change',renderCoverage);
 bind('coverageExport','click',exportCoverage);
 bind('selectVisible','click',selectVisible);
@@ -427,8 +464,8 @@ bind('previewMigration','click',previewMigration);
 bind('applyMigration','click',applyMigration);
 bind('filter','input',()=>{state.filter=$('filter').value.toLowerCase().trim();render();});
 bind('forget','click',()=>{if(confirm('Forget all original findings and local human notes in memory?')){
- state.findings=[];state.sha='';state.rows=[];state.client='';state.engagement='';state.verify=null;state.filter='';state.pending=null;state.selected.clear();state.bulk=null;state.undo=[];$('migrationResult').hidden=true;
- for(const id of ['client','engagement','filter','original','newSource','addFiles','privateImport','verify'])$(id).value='';
+ state.findings=[];state.sha='';state.rows=[];state.client='';state.engagement='';state.verify=null;state.filter='';state.pending=null;state.selected.clear();state.bulk=null;state.undo=[];state.casework=null;$('migrationResult').hidden=true;
+ for(const id of ['client','engagement','filter','original','newSource','addFiles','privateImport','caseworkImport','verify'])$(id).value='';
  $('finding').replaceChildren();render();message('Local workspace forgotten. Previously downloaded files are not deleted.',false);
 }});
 render();
