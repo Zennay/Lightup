@@ -48,14 +48,14 @@ def reject_duplicates(pairs: list[tuple[str, object]]) -> dict:
     return result
 
 
-def read_bytes(path: Path, cap: int) -> bytes:
+def read_bytes(path: Path, cap: int, *, private: bool = True) -> bytes:
     if path.is_symlink():
         raise Hold("symlinked private source refused")
     fd = os.open(path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
     try:
         s = os.fstat(fd)
         if (not stat.S_ISREG(s.st_mode) or s.st_uid != os.getuid()
-                or stat.S_IMODE(s.st_mode) & 0o077 or not 0 < s.st_size <= cap):
+                or (private and stat.S_IMODE(s.st_mode) & 0o077) or not 0 < s.st_size <= cap):
             raise Hold("source file is not a bounded regular file")
         # Read exactly observed bytes, refuse a concurrent source mutation.
         payload = os.read(fd, cap + 1)
@@ -275,11 +275,25 @@ def bundle(folder: Path, outfile: Path, template: Path, explicit_private: bool) 
     if (outfile.suffix.lower() != ".html" or outfile.is_symlink() or outfile.exists()
             or outfile.parent.resolve(strict=True) != root):
         raise Hold("PRIVATE bundle must be a NEW file inside its original restricted capture directory")
-    template_bytes = read_bytes(template, 200_000)
+    template_bytes = read_bytes(template, 200_000, private=False)
     try:
         html = template_bytes.decode("utf-8", "strict")
     except UnicodeError as exc:
         raise Hold("original offline app template is not valid UTF-8") from exc
+    # Original PRIVATE sources must never be inserted into a script-modified
+    # template. Do not allow custom template URLs/paths from the operator.
+    for tag in ("style", "script"):
+        start, end = f"<{tag}>", f"</{tag}>"
+        if html.count(start) != 1 or html.count(end) != 1:
+            raise Hold("operator app inline CSP source structure changed")
+        inline = html.split(start, 1)[1].split(end, 1)[0]
+        pin = base64.b64encode(hashlib.sha256(inline.encode("utf-8")).digest()).decode("ascii")
+        if f"{tag}-src 'sha256-{pin}'" not in html:
+            raise Hold("operator app exact inline CSP fingerprint mismatch")
+    for directive in ("default-src 'none'", "connect-src 'none'",
+                      "form-action 'none'", "object-src 'none'"):
+        if directive not in html:
+            raise Hold("private operator bundle requires strict offline CSP")
     marker = '<template id="lightup-private-bundle"></template>'
     if html.count(marker) != 1:
         raise Hold("expected original private bundle slot absent from offline app")
@@ -314,7 +328,6 @@ def cli() -> int:
     b = sub.add_parser("bundle", help="assemble a standalone offline local HTML with embedded PRIVATE originals")
     b.add_argument("--dir", required=True)
     b.add_argument("--output", required=True)
-    b.add_argument("--template", default=str(Path(__file__).with_name("standalone.html")))
     b.add_argument("--include-private-source-data", action="store_true")
     args = parser.parse_args()
     os.umask(0o077)
@@ -326,7 +339,7 @@ def cli() -> int:
         if args.mode == "list":
             return list_snapshots(Path(args.dir))
         if args.mode == "bundle":
-            return bundle(Path(args.dir), Path(args.output), Path(args.template), args.include_private_source_data)
+            return bundle(Path(args.dir), Path(args.output), Path(__file__).with_name("standalone.html"), args.include_private_source_data)
     except (Hold, OSError, ValueError, UnicodeError) as exc:
         # Never print raw source data, original assets/clients, or credentials.
         print(f"{HOLD_MESSAGE} ({type(exc).__name__})", file=sys.stderr)
