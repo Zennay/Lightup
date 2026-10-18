@@ -68,7 +68,7 @@ function guidance(work,links,efforts,start){
  const hypotheticalLate=graphResult.dates?graphResult.rows
   .filter(row=>row.human_due&&graphResult.dates[row.finding_id]>row.human_due)
   .map(row=>({finding_id:row.finding_id,existing_human_due:row.human_due,indicative_chain_date:graphResult.dates[row.finding_id]})):[];
- return {bottlenecks:bottlenecks.slice(0,15),contradictions,hypotheticalLate};
+ return {bottlenecks,contradictions,hypotheticalLate};
 }
 g.LightUpHumanDependencies=Object.freeze({original,clean,empty,graph,packet,restore,guidance});
 })(window);
