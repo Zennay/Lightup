@@ -296,7 +296,7 @@ def _page(data, tasks, digest, script):
         flags = "".join("<li>" + esc(f) + "</li>" for f in t["flags"])
         groups.append(
             '<article class="task" data-tier="' + t["tier"] + '" data-key="' + esc(t["key"]) + '">'
-            '<header><span class="pill ' + t["tier"].lower() + '">' + t["tier"] + '</span>'
+            '<header><label class="pick"><input type="checkbox" data-pick="1" aria-label="Select human follow-up for ' + esc(t["id"]) + '"></label><span class="pill ' + t["tier"].lower() + '">' + t["tier"] + '</span>'
             '<small>' + esc(t["family"]) + '</small><strong>' + esc(t["id"]) + '</strong></header>'
             '<p class="observation">' + esc(t["attention"]) + '</p>'
             '<p>' + esc(t["action"]) + '</p>'
@@ -310,7 +310,7 @@ def _page(data, tasks, digest, script):
             '<label class="wide">Human next step <textarea maxlength="500" data-field="next"></textarea></label>'
             '</div></article>'
         )
-    style = """body{margin:0;background:#0b1420;color:#e9eff7;font:15px system-ui,sans-serif}main{max-width:1160px;margin:auto;padding:28px 20px 100px}h1{font-size:2.3rem;margin:.3em 0}p{line-height:1.5}.muted{color:#9fb2c8}.banner{background:#321e26;border:1px solid #db6672;border-radius:14px;padding:16px;margin:18px 0}.controls{position:sticky;top:0;z-index:2;background:#15253a;border:1px solid #33485e;padding:14px;border-radius:14px;display:flex;gap:10px;flex-wrap:wrap;align-items:center}button,input,select,textarea{background:#101e30;color:#f4f6fa;border:1px solid #5b728e;border-radius:8px;padding:9px;font:inherit}button{cursor:pointer;background:#204771}.task{background:#17283b;border:1px solid #314459;border-radius:15px;padding:18px;margin:12px 0;break-inside:avoid}.task header{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.task strong{overflow-wrap:anywhere}.task small{text-transform:uppercase;color:#bbcade}.pill{font-weight:700;font-size:.8rem;border-radius:8px;padding:5px 9px;border:1px solid currentColor}.hold{color:#ff9494}.pending{color:#ffe0a4}.review{color:#a2d5f4}.observation{color:#b9d4f1;font-family:monospace;overflow-wrap:anywhere}.edit{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:14px}.edit label{display:flex;flex-direction:column;gap:5px;color:#c8d9ea}.edit .wide{grid-column:1/-1}.edit textarea{min-height:48px}details{color:#b6c8dc;overflow-wrap:anywhere}#status{font-weight:700}.counts{display:flex;gap:18px;flex-wrap:wrap;padding:8px 0 18px}.counts strong{font-size:1.2em}@media(max-width:690px){.edit{grid-template-columns:1fr}.controls{position:static}}@media print{.controls,.edit,button{display:none!important}body{background:white;color:black}.task{background:white;color:black;border:1px solid #555}.banner{color:black;background:white}details{display:block}}"""
+    style = """body{margin:0;background:#0b1420;color:#e9eff7;font:15px system-ui,sans-serif}main{max-width:1160px;margin:auto;padding:28px 20px 100px}h1{font-size:2.3rem;margin:.3em 0}p{line-height:1.5}.muted{color:#9fb2c8}.banner{background:#321e26;border:1px solid #db6672;border-radius:14px;padding:16px;margin:18px 0}.controls{position:sticky;top:0;z-index:2;background:#15253a;border:1px solid #33485e;padding:14px;border-radius:14px;display:flex;gap:10px;flex-wrap:wrap;align-items:center}button,input,select,textarea{background:#101e30;color:#f4f6fa;border:1px solid #5b728e;border-radius:8px;padding:9px;font:inherit}button{cursor:pointer;background:#204771}.task{background:#17283b;border:1px solid #314459;border-radius:15px;padding:18px;margin:12px 0;break-inside:avoid}.task header{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.task strong{overflow-wrap:anywhere}.task small{text-transform:uppercase;color:#bbcade}.pill{font-weight:700;font-size:.8rem;border-radius:8px;padding:5px 9px;border:1px solid currentColor}.hold{color:#ff9494}.pending{color:#ffe0a4}.review{color:#a2d5f4}.observation{color:#b9d4f1;font-family:monospace;overflow-wrap:anywhere}.edit{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:14px}.edit label{display:flex;flex-direction:column;gap:5px;color:#c8d9ea}.edit .wide{grid-column:1/-1}.edit textarea{min-height:48px}details{color:#b6c8dc;overflow-wrap:anywhere}#status{font-weight:700}.counts{display:flex;gap:18px;flex-wrap:wrap;padding:8px 0 18px} .counts strong{font-size:1.2em}.bulk{border:1px solid #3e536a;padding:18px;border-radius:14px;background:#14243a;margin:16px 0}.bulkRow{display:flex;gap:12px;flex-wrap:wrap;align-items:end;margin-top:12px}.bulkRow label{display:flex;flex-direction:column;gap:6px}.bulkRow input[type=checkbox]{margin-right:6px}.pick input{min-width:20px;min-height:20px}@media(max-width:690px){.edit{grid-template-columns:1fr}.controls{position:static}}@media print{.controls,.edit,.bulk,.pick,button{display:none!important}body{background:white;color:black}.task{background:white;color:black;border:1px solid #555}.banner{color:black;background:white}details{display:block}}"""
     css_hash = base64.b64encode(sha256(style.encode()).digest()).decode()
     script_hash = base64.b64encode(sha256(script.encode()).digest()).decode()
     csp = ("default-src 'none'; script-src 'sha256-" + script_hash +
@@ -346,8 +346,18 @@ def _page(data, tasks, digest, script):
             '<button id="restore">Restore PRIVATE human handoff</button>'
             '<input type="file" id="restoreFile" accept=".json,application/json" hidden>'
             '<button id="anon">Export anonymous workload counts</button>'
+            '<button id="selectVisible">Select visible</button><button id="clearSelected">Clear selection</button>'
             '<span id="status" role="status" aria-live="polite">Human-only changes stay in this tab.</span>'
-            '</div><section id="tasks">' + "".join(groups) + '</section>'
+            '</div><section class="bulk"><strong>Bulk HUMAN coordination (never authorization)</strong>'
+            '<div class="bulkRow"><label>Reviewer <input id="bulkOwner" maxlength="80" autocomplete="off"></label>'
+            '<label>Human stage <select id="bulkStage">' +
+            "".join('<option value="' + esc(st) + '">' + esc(st.replace("_", " ")) + '</option>'
+                    for st in sorted(REVIEW_STATUSES)) + '</select></label>'
+            '<label>Tentative UTC due <input type="date" id="bulkDue"></label>'
+            '<label><input type="checkbox" id="skipExisting" checked> Preserve existing human edits</label>'
+            '<button id="applyBulk">Apply selected HUMAN-only fields</button></div>'
+            '<p id="workload" class="muted" role="status">No reviewer allocation yet.</p></section>'
+            '<section id="tasks">' + "".join(groups) + '</section>'
             '<script type="application/json" id="source">' + raw_json + '</script>'
             '<script>' + script + '</script></main></body></html>').encode("utf-8")
 
