@@ -181,7 +181,10 @@ def build(database: str, email: str, password: str, client: str | None,
         # Original owner program is executed only in its *offline import* mode.
         # It must not see a password, DB path, real target or untrusted URL.
         command = [
-            sys.executable, "-I", "-S", "-B", str(script),
+            # Preserve owner-script sibling imports while ignoring external Python env.
+            # Python -I suppresses the script directory and breaks original
+            # board_html/workspace_bundle imports; -E -S -B keeps those local.
+            sys.executable, "-E", "-S", "-B", str(script),
             "--casebook", str(original), "--workspace", str(window),
             "--lead-days", str(lead_days), "--future-days", str(future_days),
             "--daily-capacity", str(daily_capacity),
