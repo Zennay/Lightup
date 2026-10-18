@@ -196,6 +196,15 @@ if(n.family==="engagements"){var c=source.case_overview.find(function(r){return 
 return x.status;
 }
 function troubled(n){var s=status(n);return s.includes("HOLD")||s.includes("PENDING")||s.includes("EXPIRED")||s.includes("FUTURE");}
+function firstHumanAttentionSource(){
+var all=nodes(),present=new Set(all.map(function(n){return n.key;})),sources=new Set();
+edges().forEach(function(link){
+if(!present.has(link.from)&&present.has(link.to))sources.add(link.to);
+if(!present.has(link.to)&&present.has(link.from))sources.add(link.from);
+});
+var candidates=all.filter(function(n){return troubled(n)||sources.has(n.key)||n.family==="engagements"&&source.case_overview.some(function(c){return c.engagement_id===n.id&&c.attention==="NO_GRANT_RECORDED";});});
+return (candidates[0]||all[0]||{}).key||null;
+}
 function setMessage(m){el("status").textContent=m;}
 function item(parent,tag,value,classname){
 var e=document.createElement(tag);e.textContent=String(value);if(classname)e.className=classname;parent.appendChild(e);return e;
@@ -408,7 +417,7 @@ var decoder=new TextDecoder("utf-8",{fatal:true,ignoreBOM:true}),raw=decoder.dec
 if(raw.charCodeAt(0)===0xfeff)throw Error("ambiguous UTF-8 BOM");
 var candidate=validate(strictJSON(raw));
 if(source||human.size)throw Error("source is already active");
-source=candidate;sourceSHA=hash;fictional=false;selection=null;human.clear();hypothetical.clear();assigned=true;
+source=candidate;sourceSHA=hash;fictional=false;selection=null;human.clear();hypothetical.clear();selection=firstHumanAttentionSource();assigned=true;
 render();
 setMessage("PRIVATE Casebook automatically opened from this owner-private offline packet. Original source bytes SHA-256 bound. REVIEW_ONLY / HUMAN HOLD. No current consent or authorization checked.");
 await loadEmbeddedReview();
@@ -445,7 +454,7 @@ if(source){
 if(!capturePendingHuman())return;
 if(!confirm("Replacing the original source will CLEAR the existing local human review notes. Export the private source-bound handoff before switching. Continue?"))return;
 }
-source=candidate;sourceSHA=hash;fictional=!!asDemo;selection=null;human.clear();hypothetical.clear();render();
+source=candidate;sourceSHA=hash;fictional=!!asDemo;selection=null;human.clear();hypothetical.clear();selection=firstHumanAttentionSource();render();
 setMessage((fictional?"FICTIONAL DEMO":"Source bytes loaded locally")+". REVIEW_ONLY, never permission."+(hash?"":" Browser SHA unavailable; private resume/export disabled."));
 }catch(e){setMessage("HOLD: corrupt, duplicate-key, malformed or unsupported casebook. Earlier source and notes preserved.");}
 }
