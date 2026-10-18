@@ -27,3 +27,7 @@ The original complete workspace, all previous manifests/choices, every independe
 Mandatory original hosted/permanent named VPS exact-head CI, source owner, independent security/privacy approval, real separate authenticated client/operator consent with action-time revocation, #177/#182/#829 integration and explicit HUMAN GO all remain required before real release or active assessment. No QA/regression/test suites are created or executed by this product workflow.
 
 To generate the NEXT full offline human assessment workspace in the same operator action, use [collaboration_cycle.py](COLLABORATION-CYCLE.md) with the same original inputs and `--next-as-of YYYY-MM-DD`. It combines the conflict-free multi-human proposal and full source-bound new review cycle entirely in memory and publishes only a new private 0600 ZIP.
+
+## When original human proposals conflict
+
+The strict disjoint merge intentionally stops with HOLD if two reviewers modify the same original agenda/slot. Use the [independent original human mediation Studio](PRIVATE-MEDIATION.md) to display all such already-validated proposals and require an explicit human selection (including `keep original`) for each contested local source slot. Only after a human explicitly exports a NEW complete private bundle should the original human return/review-cycle CLI receive the result. Automatic merge rules stay unchanged.

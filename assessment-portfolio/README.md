@@ -130,3 +130,7 @@ Use [portfolio_merge.py](PORTFOLIO-COLLABORATION.md) to combine 2–12 **complet
 ### One-command multi-human collaboration into NEXT review workspace
 
 Use [collaboration_cycle.py](COLLABORATION-CYCLE.md) to merge 2–12 disjoint all-agenda human proposals and directly produce a new complete original-source-bound private human review cycle ZIP **in one operator command**, without extracting an intermediate proposal to disk. The original workspace, manifest/choices, reviewer bundles and HOLD remain immutable; real assessment and authorization are untouched. Optional hypothetical role capacity carries forward only after explicit independent human reconfirmation.
+
+### Human mediation for overlapping original review proposals
+
+When [multi-reviewer original human portfolio merge](PORTFOLIO-COLLABORATION.md) rejects overlapping original agenda/slot edits, generate a [standalone private original-source mediation Studio](PRIVATE-MEDIATION.md) via `portfolio_mediation.py` with the same original workspace/manifest/choices plus all reviewed source-bound bundles. Every original conflict requires an **explicit human choice** between contributor drafts or retaining the original human stage/role/date. The owner-private offline HTML only exports a new complete `--proposal-bundle` after every contested slot and independent private human-only acknowledgement; it does not silently merge, verify security findings, grant consent, or alter originals.

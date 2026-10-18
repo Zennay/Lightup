@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="referrer" content="no-referrer">
+@@CSP@@
+<title>LightUp · Human review mediation</title>
+<style>@@CSS@@</style>
+</head>
+<body>
+<header>
+<div class="eyebrow">LIGHTUP / ASSESSMENT RUNTIME / ORIGINAL HUMAN COORDINATION</div>
+<h1>Different reviews.<br><span>One human decision per conflict.</span></h1>
+<p>Compare independently exported original-source human planning proposals. The browser never picks a winner when two contributors edit the same original agenda/slot. Only a human may explicitly resolve those local planning fields.</p>
+<div class="hold">INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD · <span id="originalStatus">HOLD</span> · NO GO</div>
+</header>
+<div id="feedback" role="status" aria-live="polite">No original source, review, consent or finding has been changed.</div>
+<section class="stats">
+<div><small>Original agendas</small><strong id="agendaCount">—</strong></div>
+<div><small>Independent proposals</small><strong id="contributorCount">—</strong></div>
+<div><small>Human slots contested</small><strong id="conflictCount">—</strong></div>
+<div><small>Awaiting explicit human choice</small><strong id="unresolvedCount">—</strong></div>
+</section>
+<section class="panel">
+<h2>Original human proposal differences</h2>
+<p>Contributor numbers are the order of local private files; they do not authenticate an actual reviewer. Only source-neutral human planning fields are shown. Choose each contested row explicitly; you can keep its original prior values instead of any proposal.</p>
+<div class="toolbar">
+<label>View <select id="filter"><option value="conflicts">Unresolved conflicts first</option><option value="all">All changed human slots</option><option value="resolved">Explicitly resolved conflicts</option><option value="single">Single-contributor edits</option></select></label>
+<button id="reset" type="button">Reset all human conflict choices</button>
+</div>
+<div class="scroll"><table>
+<thead><tr><th>Agenda / slot</th><th>Original human values</th><th>Private candidate values</th><th>Human choice</th></tr></thead>
+<tbody id="rows"></tbody>
+</table></div>
+</section>
+<section class="panel">
+<h2>Private human mediation preview</h2>
+<p>Every original slot is retained. For single-contributor rows the proposed human-only edit is retained by default. Contested rows have no default winner.</p>
+<div class="grid">
+<div><strong id="retainedCount">0</strong><small>Single-source or human-selected edits</small></div>
+<div><strong id="keptCount">0</strong><small>Human decisions to keep original</small></div>
+<div><strong id="diffCount">0</strong><small>Proposed human changes from original</small></div>
+</div>
+</section>
+<section class="panel handoff">
+<h2>Export one complete original-bound human bundle</h2>
+<p>Only after every contested original slot has been explicitly resolved, download a new private bundle compatible with the existing <code>workspace_return.py --proposal-bundle</code>, <code>review_cycle.py --proposal-bundle</code> and offline Review Studio Restore ALL flow. This never automatically writes a source or issues authorization.</p>
+<label class="check"><input id="confirm" type="checkbox"> I explicitly reviewed these ORIGINAL human planning conflicts. This is only a PRIVATE human proposal, not evidence validation, remediation completion, client/operator consent, grant, work dispatch or GO.</label>
+<button id="export" type="button">Download resolved PRIVATE all-agenda human proposal JSON</button>
+</section>
+<aside><strong>Release and action HOLD remain unchanged.</strong>
+<p>Unsigned SHA-256 fingerprints are byte correlations, not source ownership or reviewer identity. Human planning changes neither prove a verified security finding nor resolve remediation. Existing exact-head hosted/permanent named VPS CI, source owner, independent privacy/security, separately authenticated client and operator consent with at-use revocation, and HUMAN GO are mandatory before any actual client assessment, merge or deployment.</p></aside>
+<footer>Standalone owner-private offline HTML · no network, browser persistence, scanner, external assets or credentials.</footer>
+<script id="lightupPrivateHumanSource" type="application/json">@@PAYLOAD@@</script>
+<script>@@SCRIPT@@</script>
+</body></html>
