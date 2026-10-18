@@ -28,6 +28,7 @@
   let revisions = [], selected = "valid_findings";
   let revisionFocus = 0;
   let discussionStages=Object.create(null);
+  let sourceHashes=[];
 
   // Strict recursive JSON reader: rejects duplicate keys (also escaped aliases),
   // malformed literals, nonfinite numbers and excessively nested documents.
@@ -152,18 +153,27 @@
     }
   }
 
+  async function byteDigest(bytes) {
+    if(!globalThis.crypto || !globalThis.crypto.subtle) return null;
+    const digest=await globalThis.crypto.subtle.digest("SHA-256",bytes);
+    return [...new Uint8Array(digest)].map(x=>x.toString(16).padStart(2,"0")).join("");
+  }
   async function loadFiles(list) {
     REQUIRE(list.length>=3 && list.length<=12);
     const decoder=new TextDecoder("utf-8",{fatal:true});
-    const parsed=[];
+    const parsed=[], hashes=[], originalTexts=new Set();
     for(const file of list) {
       REQUIRE(file.size>0 && file.size<=262144);
       const bytes=await file.arrayBuffer();
       REQUIRE(bytes.byteLength===file.size);
-      parsed.push(decodeReport(strictJSON(decoder.decode(bytes))));
+      const source=decoder.decode(bytes);
+      REQUIRE(!originalTexts.has(source));
+      originalTexts.add(source);
+      parsed.push(decodeReport(strictJSON(source)));
+      hashes.push(await byteDigest(bytes));
     }
     enforceSameBaseline(parsed);
-    return parsed;
+    return {parsed,hashes};
   }
   function snapshot(rev,name) {
     const values=[...rev.cases.values()].map(x=>x.metrics[name]);
@@ -200,8 +210,10 @@
     $("message").textContent=message; $("message").className="message"+(bad?" bad":"");
   }
   function reset() {
-    revisions=[];discussionStages=Object.create(null);revisionFocus=0; $("workspace").hidden=true; $("files").value="";
-    $("notes").value=""; showMessage("All imported source data and local notes cleared.");
+    revisions=[];sourceHashes=[];discussionStages=Object.create(null);revisionFocus=0; $("workspace").hidden=true; $("files").value="";
+    $("notes").value="";$("draft-file").value="";
+    $("draft-state").textContent="Private source bindings and local discussion stages were cleared.";
+    showMessage("All imported source data and local notes cleared.");
   }
   function metricsRows() {
     const head=$("matrix-head"), body=$("matrix-body");
@@ -305,6 +317,9 @@
     const previous=revisions[revisionFocus];
     revisions[revisionFocus]=revisions[target];
     revisions[target]=previous;
+    const previousHash=sourceHashes[revisionFocus];
+    sourceHashes[revisionFocus]=sourceHashes[target];
+    sourceHashes[target]=previousHash;
     revisionFocus=target;
     render();
     showMessage("Local source order changed; all aggregate trajectories were recalculated. Chronology remains unverified.");
@@ -402,16 +417,21 @@
       const option=add(select,"option",nice(name));option.value=name;
     }
     renderOrder();metricsRows();renderCaseRows();renderActions();choose(selected);followupText();
+    $("save-draft").disabled=!sourceHashes.length || sourceHashes.some(x=>!x);
+    if(sourceHashes.some(x=>!x))
+      $("draft-state").textContent="Browser WebCrypto unavailable: private draft save/restore is disabled, but lab trend analysis remains available.";
     showMessage(revisions.length+" locally supplied cohort reports accepted. All comparisons remain untrusted and non-authorizing.");
   }
 
   $("files").addEventListener("change",async ev=>{
     // No mixing old and new reports. A failed import removes previous content.
-    revisions=[];revisionFocus=0;discussionStages=Object.create(null);$("workspace").hidden=true;$("notes").value="";
+    revisions=[];sourceHashes=[];revisionFocus=0;discussionStages=Object.create(null);$("workspace").hidden=true;$("notes").value="";
     const files=[...ev.target.files];
     try {
       const accepted=await loadFiles(files);
-      revisions=accepted;render();
+      revisions=accepted.parsed;
+      sourceHashes=accepted.hashes;
+      render();
     } catch (_) {
       revisions=[];$("workspace").hidden=true;
       showMessage("HOLD — invalid, duplicated, incomplete or baseline-mismatched source set. No partial data imported.",true);
@@ -423,6 +443,68 @@
   $("earlier").addEventListener("click",()=>moveReport(-1));
   $("later").addEventListener("click",()=>moveReport(1));
   $("case-filter").addEventListener("change",renderCaseRows);
+  const DISCUSSION_STAGES=new Set([
+    "unreviewed","discussing","awaiting-independent-review",
+    "followup-proposed","discussion-recorded"
+  ]);
+  function privateDraft() {
+    REQUIRE(revisions.length>=3 && sourceHashes.length===revisions.length &&
+      sourceHashes.every(x=>typeof x==="string" && /^[a-f0-9]{64}$/.test(x)));
+    return {format:"lightup.assessment_trends.private_draft",version:1,
+      status:"DRAFT_ONLY",source_authenticated:false,
+      source_sha256:sourceHashes.slice(),
+      discussion:actionItems().filter(x=>x.stage!=="unreviewed").map(x=>({
+        metric:x.metric,stage:x.stage
+      })),...authority()};
+  }
+  async function restoreDraft(file) {
+    REQUIRE(revisions.length>=3 && sourceHashes.length===revisions.length &&
+      sourceHashes.every(x=>typeof x==="string" && /^[a-f0-9]{64}$/.test(x)));
+    REQUIRE(file && file.size>0 && file.size<=16384);
+    const bytes=await file.arrayBuffer();
+    REQUIRE(bytes.byteLength===file.size);
+    const decoded=new TextDecoder("utf-8",{fatal:true}).decode(bytes);
+    const doc=strictJSON(decoded);
+    REQUIRE(exact(doc,["format","version","status","source_authenticated",
+      "source_sha256","discussion",...AUTH]) &&
+      doc.format==="lightup.assessment_trends.private_draft" &&
+      doc.version===1 && doc.status==="DRAFT_ONLY" &&
+      doc.source_authenticated===false && AUTH.every(k=>doc[k]===false) &&
+      Array.isArray(doc.source_sha256) &&
+      doc.source_sha256.length===sourceHashes.length &&
+      doc.source_sha256.every((value,i)=>
+        typeof value==="string" && /^[a-f0-9]{64}$/.test(value) &&
+        value===sourceHashes[i]) &&
+      Array.isArray(doc.discussion) && doc.discussion.length<=NAMES.length);
+    const next=Object.create(null);
+    const allowed=new Set(actionItems().map(x=>x.metric));
+    for(const row of doc.discussion) {
+      REQUIRE(exact(row,["metric","stage"]) && allowed.has(row.metric) &&
+        DISCUSSION_STAGES.has(row.stage) && !Object.hasOwn(next,row.metric));
+      next[row.metric]=row.stage;
+    }
+    discussionStages=next;
+    renderActions();
+  }
+  $("save-draft").addEventListener("click",()=>{
+    try {
+      download("lightup-private-lab-review-draft.json",
+        JSON.stringify(privateDraft(),null,2),"application/json");
+      $("draft-state").textContent="A private, source-byte-bound local draft was explicitly downloaded; it is not an authorization or signed attestation.";
+    } catch (_) {
+      $("draft-state").textContent="Draft HOLD: source hashes unavailable. Offline analysis remains available.";
+    }
+  });
+  $("draft-file").addEventListener("change",async event=>{
+    try {
+      await restoreDraft(event.target.files[0]);
+      $("draft-state").textContent="Private discussion stages restored against exact reopened source bytes and current displayed order (not authenticated origin).";
+    } catch (_) {
+      $("draft-state").textContent="Draft HOLD: incompatible source bytes/order, duplicate or malformed fields. Existing discussion stages were preserved.";
+    } finally {
+      event.target.value="";
+    }
+  });
   $("forget").addEventListener("click",reset);
   $("metric").addEventListener("change",ev=>choose(ev.target.value));
   $("focus").addEventListener("change",followupText);
