@@ -59,7 +59,7 @@ def admitted_casebook_envelope(doc: object) -> dict:
     return doc
 
 
-def source_file(path: Path) -> dict:
+def source_file(path: Path, *, include_bytes: bool = False) -> dict:
     # Open once with O_NOFOLLOW; reject FIFOs, links, devices and oversized input.
     flags = os.O_RDONLY | getattr(os, "O_CLOEXEC", 0) | getattr(os, "O_NOFOLLOW", 0)
     fd = os.open(path, flags)
@@ -80,6 +80,10 @@ def source_file(path: Path) -> dict:
         raise ReviewHold("malformed original Casebook JSON") from exc
     admitted_casebook_envelope(doc)
     doc["_private_original_sha256"] = hashlib.sha256(raw).hexdigest()
+    if include_bytes:
+        # Only the explicitly requested PRIVATE workspace retains original
+        # source bytes. Ordinary reports and inspector never embed the source.
+        doc["_private_original_raw"] = raw
     return doc
 
 
@@ -408,10 +412,12 @@ def main(argv=None) -> int:
                 raise ReviewHold("original authenticated Casebook is too large")
             source = admitted_casebook_envelope(dict(original))
             source["_private_original_sha256"] = hashlib.sha256(raw).hexdigest()
+            if args.workspace:
+                source["_private_original_raw"] = raw
         else:
             if args.email or args.client:
                 raise ReviewHold("offline file import does not accept account selectors")
-            source = source_file(args.casebook)
+            source = source_file(args.casebook, include_bytes=bool(args.workspace))
         agenda = derive(source, now=datetime.now(timezone.utc), lead_days=args.lead_days,
                         future_days=args.future_days, daily_capacity=args.daily_capacity)
         if args.agenda_json:
@@ -426,7 +432,8 @@ def main(argv=None) -> int:
             payload = b""
         if args.workspace:
             from workspace_bundle import create_workspace
-            create_workspace(out, agenda)
+            create_workspace(out, agenda,
+                             original_bytes=source["_private_original_raw"])
         else:
             private_publish(out, payload)
         counts = agenda["declared_counts"]
