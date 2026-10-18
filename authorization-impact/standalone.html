@@ -99,7 +99,7 @@ tbody button{font-size:11px;padding:5px 7px}
 <div class="actions"><button id="scenario-export-anon" type="button" class="secondary" disabled>Anonymous hypothetical counts</button><button id="scenario-export-private" type="button" disabled>PRIVATE what-if human briefing JSON</button></div>
 <p class="caption">The private briefing requires an exact original source SHA-256 and explicit recipient confirmation; the anonymous one exports only record/engagement counts. A hypothetical missing record never proves an actual revocation or an approved scope decision.</p></section>
 <footer><p class="caption">LightUp · isolated original-source companion · fully offline · private exports stay with the operator · PLAN/LAB ONLY / DRAFT/HOLD. Human notes are never original domain evidence.</p></footer>
-</main><template id="original-casebook-b64" data-source-sha256=""></template><script>
+</main><template id="original-casebook-b64" data-source-sha256=""></template><template id="private-review-b64" data-review-sha256=""></template><script>
 (function(){
 "use strict";
 var source=null,sourceSHA=null,fictional=false,selection=null,human=new Map(),hypothetical=new Set(),MAX=524288,REV_LIMIT=262144;
@@ -369,6 +369,28 @@ if(!STAGES.includes(stage)||reviewer.length>80||next.length>180||note.length>100
 if(stage==="unreviewed"&&!reviewer&&!next&&!due&&!note)human.delete(selection);
 else human.set(selection,{stage:stage,reviewer:reviewer,next:next,due:due,note:note});
 }
+async function loadEmbeddedReview(){
+var holder=el("private-review-b64");if(!holder)return;
+var encoded=holder.content.textContent.trim(),declared=holder.getAttribute("data-review-sha256");
+if(!encoded)return;
+try{
+if(!source||!sourceSHA||fictional||human.size)throw Error("original source not admitted");
+if(!/^[A-Za-z0-9+/]+={0,2}$/.test(encoded)||encoded.length>350000||!/^[0-9a-f]{64}$/.test(declared))throw Error("private review envelope invalid");
+var binary=atob(encoded),bytes=new Uint8Array(binary.length);
+for(var k=0;k<binary.length;k++)bytes[k]=binary.charCodeAt(k);
+if(bytes.length<2||bytes.length>REV_LIMIT)throw Error("private review length");
+var digest=await sha256(bytes.buffer);
+if(!digest||digest!==declared)throw Error("private review byte digest mismatch");
+var decoded=new TextDecoder("utf-8",{fatal:true,ignoreBOM:true}).decode(bytes);
+if(decoded.charCodeAt(0)===0xfeff)throw Error("private review BOM");
+var incoming=admitPrivateReviewPacket(strictJSON(decoded));
+human=incoming;render();
+setMessage("PRIVATE original source and matching human review notes opened automatically in this tab; all authority remains false.");
+}catch(e){
+setMessage("HOLD: original source loaded, but PRIVATE human notes were NOT restored because revision/format validation failed. Nothing is authorized. Use original file picker if needed.");
+}finally{holder.content.replaceChildren();holder.removeAttribute("data-review-sha256");}
+}
+
 async function loadEmbeddedOriginal(){
 var holder=el("original-casebook-b64");if(!holder)return;
 var encoded=holder.content.textContent.trim(),declared=holder.getAttribute("data-source-sha256");
@@ -388,6 +410,7 @@ if(source||human.size)throw Error("source is already active");
 source=candidate;sourceSHA=hash;fictional=false;selection=null;human.clear();hypothetical.clear();
 render();
 setMessage("PRIVATE Casebook automatically opened from this owner-private offline packet. Original source bytes SHA-256 bound. REVIEW_ONLY / HUMAN HOLD. No current consent or authorization checked.");
+await loadEmbeddedReview();
 }catch(e){
 source=null;sourceSHA=null;selection=null;human.clear();hypothetical.clear();render();
 setMessage("HOLD: PRIVATE embedded Casebook could not be admitted. Use the original source file picker only after confirming legitimate private provenance.");
@@ -574,6 +597,15 @@ if(!sourceSHA||!source||fictional||!capturePendingHuman())return;
 if(!confirm("This PRIVATE file includes original source IDs, tenant ID, reviewers and notes. Confirm local authorized recipient and destination."))return;
 download("PRIVATE-lightup-scope-impact-review.json","application/json",JSON.stringify({schema:"lightup.scope_impact_private_review.v1",status:"REVIEW_ONLY",source_schema:source.schema,source_sha256:sourceSHA,client_id:source.client_id,as_of:source.as_of,rows:humanRows(),source_authenticated:false,client_consent_verified:false,operator_consent_verified:false,authorization_granted:false,execution_allowed:false,release_approved:false},null,2)+"\n");
 });
+function admitPrivateReviewPacket(p){
+if(!object(p)||p.schema!=="lightup.scope_impact_private_review.v1"||p.status!=="REVIEW_ONLY"||p.source_schema!==source.schema||p.client_id!==source.client_id||p.as_of!==source.as_of||p.source_sha256!==sourceSHA||!FALSE_FLAGS.every(function(k){return p[k]===false;})||!Array.isArray(p.rows)||p.rows.length>800)fail();
+var keys=new Set(nodes().map(function(n){return n.key;})),replacement=new Map();
+for(var r of p.rows){
+if(!object(r)||!keys.has(r.source_key)||replacement.has(r.source_key)||!STAGES.includes(r.stage)||typeof r.reviewer!=="string"||r.reviewer.length>80||typeof r.next_action!=="string"||r.next_action.length>180||typeof r.note!=="string"||r.note.length>1000||typeof r.due_date!=="string"||r.due_date.length>10||/[\x00-\x08\x0B-\x1F]/.test(r.reviewer+r.next_action+r.note)||r.due_date&&(!/^\d{4}-\d{2}-\d{2}$/.test(r.due_date)||new Date(r.due_date+"T00:00:00Z").toISOString().slice(0,10)!==r.due_date))fail();
+replacement.set(r.source_key,{stage:r.stage,reviewer:r.reviewer,next:r.next_action,due:r.due_date,note:r.note});
+}
+return replacement;
+}
 el("private-import").addEventListener("change",async function(){
 var file=this.files&&this.files[0];this.value="";
 if(!source||!sourceSHA||fictional||!file||file.size>REV_LIMIT||file.size<2){setMessage("HOLD: private review and exact source SHA required.");return;}
@@ -581,12 +613,7 @@ try{
 var privateBytes=await strictFileBytes(file),p=strictJSON(privateBytes.raw);
 if(!capturePendingHuman())return;
 if(human.size&&!confirm("Replace current local human notes with the exact-source PRIVATE return packet?"))return;
-if(!object(p)||p.schema!=="lightup.scope_impact_private_review.v1"||p.status!=="REVIEW_ONLY"||p.source_schema!==source.schema||p.client_id!==source.client_id||p.as_of!==source.as_of||p.source_sha256!==sourceSHA||!FALSE_FLAGS.every(function(k){return p[k]===false;})||!Array.isArray(p.rows)||p.rows.length>800)fail();
-var keys=new Set(nodes().map(function(n){return n.key;})),replacement=new Map();
-for(var r of p.rows){
-if(!object(r)||!keys.has(r.source_key)||replacement.has(r.source_key)||!STAGES.includes(r.stage)||typeof r.reviewer!=="string"||r.reviewer.length>80||typeof r.next_action!=="string"||r.next_action.length>180||typeof r.note!=="string"||r.note.length>1000||typeof r.due_date!=="string"||r.due_date.length>10||/[\x00-\x08\x0B-\x1F]/.test(r.reviewer+r.next_action+r.note)||r.due_date&&(!/^\d{4}-\d{2}-\d{2}$/.test(r.due_date)||new Date(r.due_date+"T00:00:00Z").toISOString().slice(0,10)!==r.due_date))fail();
-replacement.set(r.source_key,{stage:r.stage,reviewer:r.reviewer,next:r.next_action,due:r.due_date,note:r.note});
-}
+var replacement=admitPrivateReviewPacket(p);
 human=replacement;render();setMessage("PRIVATE human review restored for the exact same original source bytes (review-only).");
 }catch(e){setMessage("HOLD: review not source-bound, malformed or inconsistent. Earlier human data preserved.");}
 });
