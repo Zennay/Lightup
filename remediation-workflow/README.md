@@ -7,6 +7,7 @@
 - [Download one-file offline Coordination Cockpit](./standalone.html). Double-click the file to use it locally. No backend, keys, installation, network, browser storage, or raw evidence transfer.
 - [Original Evidence Review Board](../remediation-evidence/standalone.html) — edit private local evidence-reference dossiers and create an unsigned `lightup.remediation_evidence_coordination` JSON.
 - [Original Capacity Studio](../remediation-capacity/standalone.html) — prepare local hypothetical staffing and export a canonical `lightup.remediation_capacity_working_draft.v1` JSON.
+- [Original Remediation Funding Studio](../remediation-funding/standalone.html) — model hypothetical financing, release scenarios and urgent financial exposure using ONLY existing Capacity Studio aggregate JSON, no original finding rows or people.
 - [Original private team reply desk](../remediation-evidence/team-reply-standalone.html) — reply to a single-team offline source-bound handoff.
 
 This is a **new composition branch** based on an immutable original Evidence Review snapshot, not a modification of the original branches. Source lineage: [original Casework #1568](https://github.com/Zennay/Lightup/pull/1568), [Evidence Review #1623](https://github.com/Zennay/Lightup/pull/1623), [Capacity Studio #1583](https://github.com/Zennay/Lightup/pull/1583). The original Casework, Capacity Planner and Capacity Draft source scripts have exact bytes SHA-256 pinned by `package.py`. None of those modules has been edited in this integration.
@@ -41,6 +42,12 @@ Original Casework import requires a non-null matching canonical source SHA-256, 
 The join will refuse partial/different source files, missing original findings, unknown extra authority fields, inconsistent row IDs, duplicated JSON keys, noncanonical capacity working drafts, stale snapshots, missing SHA-256 and invalid bounded payloads. Evidence fingerprints use the original Casework canonical ID-sorted, five-field source SHA-256. The optional Capacity Studio working draft independently binds the exact original **raw CSV bytes** and recalculates the original source-only capacity model; an evidence SHA alone is never accepted as a raw CSV match.
 
 The current browser tab stores all imported private content **in memory only**. New imports clear the previous dashboard before evaluation. The private Markdown contains original finding IDs; protect the export. Aggregate CSV never includes finding IDs, titles, hosts, people, source text, evidence references or other personal case notes. Nothing is uploaded by this product, and nothing is automatically assigned or dispatched.
+
+## Complete planning-to-funding handoff
+
+The original [Remediation Funding Studio #1586](https://github.com/Zennay/Lightup/pull/1586), at source snapshot `b23b87e4797412053b006180239b8206f8708d09`, is copied without modification into the isolated composition branch and included in the offline workspace ZIP. This separately sourced original owner app is **not** merged into its active original branch or into main.
+
+After optionally loading a canonical source-bound Capacity Studio **working draft** in the Cockpit, use **Export PRIVATE aggregate to Funding Studio**. The button exports only `LightUpCapacity.summary(plan)`, the existing original `lightup.remediation_capacity_draft.v1` schema. It is validated against the currently loaded original CSV and original working draft before export, and then rechecked by the original Funding Studio strict 64-KiB intake. No finding ID, title, owner, notes, original source bytes, asset or privileged identity is exported. The Funding Studio independently models internal/external rates, weekly cash releases, estimated funding gaps and conservative critical/high exposure. It is a hypothetical human discussion tool; no funds are moved, scans started, approvals issued or findings fixed.
 
 ## Original source revision comparison (no inferred repair)
 

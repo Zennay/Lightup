@@ -351,6 +351,17 @@ function privateMarkdown(){
 $('load').addEventListener('click',()=>{load().catch(e=>{joined=null;$('results').hidden=true;status(e.message,true);});});
 $('clear').addEventListener('click',()=>{wipe();status('Original and private drafts cleared from this page memory.');});
 $('severity').addEventListener('change',render);$('kind').addEventListener('change',render);
+$('fundingExport').addEventListener('click',()=>{
+ try{
+  if(!joined?.summary)fail('Import an exact-source Capacity Studio working draft before exporting its original aggregate summary.');
+  checkSame();
+  if(!confirm('Export the original unsigned aggregate Capacity Studio summary for offline Funding Studio? No client IDs, approval, fixes or permissions are included.'))return;
+  const data=JSON.stringify(joined.summary,null,2)+'\n';
+  if(size(data)>65536)fail('Aggregate exceeds original funding intake bound.');
+  download('lightup-capacity-draft.json',data,'application/json;charset=utf-8');
+  status('Original aggregate Capacity Studio JSON exported for separate offline Funding Studio review. No client source IDs included.');
+ }catch(e){status(e.message,true);}
+});
 $('revisionAggregate').addEventListener('click',()=>{
  if(!joined?.revision){status('First load a previous original source CSV.',true);return;}
  download('lightup-original-source-delta-aggregate.json',

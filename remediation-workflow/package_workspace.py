@@ -12,10 +12,11 @@ DEST = ROOT / "remediation-workflow" / "LightUp-Remediation-Workspace.zip"
 
 # Immutable owner artifacts, no original branches or owner source modifications.
 CONTENT = {
-    "remediation-workflow/standalone.html": "7bc797b8077e93c0a2e95ad4f54e8e9454d097e271aae99c89cc1fc77fe31134",
+    "remediation-workflow/standalone.html": "7ffea638261c4661dc49c95b72195162ab008b095937ed44690d9bddbbfb2c4a",
     "remediation-evidence/standalone.html": "a818110f7078aa8a9981ea9857cc898221cd01b9b7490493a8945357d0ee967f",
     "remediation-evidence/team-reply-standalone.html": "9bcc56688e3f56336f0ac2e49032d34f04f392e36fff4c1ee620d667ad86c08e",
     "remediation-capacity/standalone.html": "88a8e13ff62915f96a6ef74fccc2fe513e2fc92582a4d48e7fd2cc4fd7ab1659",
+    "remediation-funding/standalone.html": "c118071dc2cb5e85ba204113f2f65bcc3e56f419ed9a46b49916477b651f125a",
 }
 INDEX = """<!doctype html><html lang="en"><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -28,6 +29,7 @@ INDEX = """<!doctype html><html lang="en"><meta charset="utf-8">
 <li><a href="remediation-evidence/standalone.html">Evidence Review Board</a> — original findings, private human reference dossiers and unsigned evidence JSON.</li>
 <li><a href="remediation-capacity/standalone.html">Capacity Studio</a> — hypothetical week-by-week staffing plans and exact-CSV working draft JSON.</li>
 <li><a href="remediation-workflow/standalone.html">Coordination Cockpit</a> — joins original snapshots, optional private Evidence/Casework/Capacity drafts, and human revision follow-up without inferring repairs.</li>
+<li><a href="remediation-funding/standalone.html">Funding Studio</a> — original aggregate-only staffing budget, cash release and urgent backlog exposure planning.</li>
 <li><a href="remediation-evidence/team-reply-standalone.html">Private Team Reply Desk</a> — edit a single-team human reply packet; independently confirm recipients before sharing.</li>
 </ol><p><small>No executable target client, data, credentials, permissions, private findings or secrets are included in this distribution. All apps use local in-memory data; outputs are private and manually downloaded. Original source stays unchanged. Original mandatory CI/security/privacy/consent/HUMAN GO gates are not waived.</small></p></html>"""
 
@@ -39,6 +41,7 @@ INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD.
 3. Optionally import those exact original CSV bytes into Capacity Studio.
 4. Export private Evidence JSON, optionally original Casework JSON and Capacity draft JSON.
 5. Open Coordination Cockpit and select the exact original CSV with those files.
+5a. From Cockpit, export aggregate Capacity Studio JSON and import it into Funding Studio to discuss modelled costs.
 6. Optional historical original CSV comparison shows added/changed/absent findings.
 7. Independently confirm exact same client and engagement. Inspect human coordination.
 8. Exports contain unverified local coordination notes, not proof of remediation.
