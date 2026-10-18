@@ -13,6 +13,12 @@
   let result = null;
   let lastOptions = null;
   let historyReview = null;
+  let milestoneDraft = null;
+  function clearMilestone() {
+    milestoneDraft=null;
+    el('milestone-result').replaceChildren();
+    el('milestone-export').hidden=true;
+  }
   const source = el('source');
   const feedback = el('feedback');
   const setFeedback = (msg, error=false) => {
@@ -31,6 +37,7 @@
   el('previous').addEventListener('change',()=>{historyReview=null;el('history-data').hidden=true;el('same-engagement').checked=false;});
   function forget() {
     findings = null; result = null; lastOptions = null;
+    clearMilestone();
     source.value = '';
     clearHistory();
     el('source-status').textContent = 'No report loaded. All files stay in this browser tab.';
@@ -49,6 +56,7 @@
   source.addEventListener('change',async () => {
     const file = source.files && source.files[0];
     findings = null; result = null; lastOptions = null;
+    clearMilestone();
     el('generate').disabled = true;
     el('save-working-draft').disabled = true;
     el('draft-status').textContent='New source: older plans must be independently reviewed again.';
@@ -107,6 +115,7 @@
       };
       result = engine.plan(findings,lastOptions);
       clearHistory();
+      clearMilestone();
       render();
       renderComparison();
       el('results').hidden = false;
@@ -306,6 +315,45 @@
     setFeedback('Unsigned aggregate discussion brief exported. No original finding details included.');
   });
 
+
+  function showRiskMilestone(value) {
+    const view=el('milestone-result');view.replaceChildren();
+    const summary=$('div',undefined,'milestone-overview');
+    const status=value.fit_by_target_week
+      ? 'Fits the estimated risk workload by week '+value.target_week
+      : 'Estimated '+value.remaining_estimated_hours+' hours still outside week '+value.target_week;
+    summary.append($('strong',status),
+      $('p','Original risk-band estimate: '+value.required_estimated_hours+' h · provisionally allocated by target week: '+value.provisionally_allocated_hours+' h.'),
+      $('p',value.smallest_modelled_team===null
+        ? 'No staffing level up to 30 engineers fits this risk milestone under these week-by-week capacity limits.'
+        : 'Smallest modelled team for this milestone: '+value.smallest_modelled_team+' engineers.'),
+      $('p','REVIEW_ONLY — estimates do not mean actual fixes, booked work, authorisation, verified retest or contractual dates.','subtle'));
+    view.append(summary);
+    el('milestone-export').hidden=false;
+  }
+  el('milestone-calculate').addEventListener('click',()=>{
+    clearMilestone();
+    if(!result||!findings||!lastOptions){
+      el('milestone-result').append($('p','HOLD: generate a current plan first.','feedback error'));return;
+    }
+    try{
+      milestoneDraft=engine.riskMilestone(
+        findings,lastOptions,el('milestone-week').value,el('milestone-band').value
+      );
+      showRiskMilestone(milestoneDraft);
+    }catch(err){
+      el('milestone-result').append($('p','HOLD: '+(err instanceof Error?err.message:'Invalid risk milestone'),'feedback error'));
+    }
+  });
+  for(const id of ['milestone-band','milestone-week']) el(id).addEventListener('change',clearMilestone);
+  el('milestone-export').addEventListener('click',()=>{
+    if(!milestoneDraft)return;
+    if(!window.confirm('Export a private, unsigned AGGREGATE risk planning estimate, NOT a grant, SLA, completion claim or retest?'))return;
+    const data={schema:'lightup.remediation_milestone_draft.v1',...milestoneDraft};
+    download('lightup-risk-milestone-draft.json',JSON.stringify(data,null,2)+'\n','application/json;charset=utf-8');
+    setFeedback('Non-authorising, privacy-minimal risk milestone exported for human review.');
+  });
+
   // Source-bound, user-controlled resume: no browser persistence or implicit restore.
   function numericWorkingOptions(options) {
     if(!options)throw new Error('Generate a current proposal before saving');
@@ -378,6 +426,7 @@
         .forEach((input,index)=>{input.value=String(opts.weekAvailability[index]);});
       el('extra-engineers').value=String(restored.scenario);
       lastOptions=opts;result=restored.plan;
+      clearMilestone();
       render();renderComparison();
       el('results').hidden=false;
       el('save-working-draft').disabled=false;
