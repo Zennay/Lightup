@@ -129,6 +129,8 @@ def main(argv: list[str] | None = None) -> int:
         command.add_argument("--asset", action="append", help="replacement canonical in-scope asset; repeat")
         command.add_argument("--risk", type=int, choices=(1, 2, 3, 4), help="replacement risk")
         command.add_argument("--notes", help="replacement client notes")
+        if name == "revise-preview":
+            command.add_argument("--output", help="new private .html visual revision comparison")
         if name == "revise-submit":
             command.add_argument("--expect-original-sha256", required=True,
                                  help="exact prior-review snapshot hash from revise-preview")
@@ -190,6 +192,14 @@ def main(argv: list[str] | None = None) -> int:
                 )
                 if args.command == "revise-preview":
                     output = revision
+                    if args.output:
+                        from .client_revision_review import render_revision_review
+                        from .client_request_snapshot import save_private_snapshot
+
+                        save_private_snapshot(
+                            Path(args.output), render_revision_review(original, revision)
+                        )
+                        output["private_comparison_saved"] = str(Path(args.output))
                 else:
                     expected = args.expect_original_sha256
                     if (type(expected) is not str or len(expected) != 64
