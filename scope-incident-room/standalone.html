@@ -110,16 +110,22 @@ async function digestText(text){
  var hash=await crypto.subtle.digest("SHA-256",bytes);
  return [...new Uint8Array(hash)].map(x=>x.toString(16).padStart(2,"0")).join("");
 }
-function packetRows(){
- return report.engagements.map(function(r){
+function packetRows(ids){
+ if(!report||!Array.isArray(ids)||!ids.length||ids.length>32||
+  new Set(ids).size!==ids.length||ids.some(id=>!W(id)))
+   throw Error("invalid original private case selection");
+ var chosen=new Set(ids);
+ var selected=report.engagements.filter(r=>chosen.has(r.engagement_id));
+ if(selected.length!==chosen.size)throw Error("foreign original case");
+ return selected.map(function(r){
   return {engagement_id:r.engagement_id,base_stage:stages.get(r.engagement_id)||"unreviewed",
    casebook_attention:r.casebook_attention,original_next_action:r.casebook_next_human_action,
    stop_source:r.stop_observation};
  });
 }
-async function issuedPacket(){
+async function issuedPacket(ids){
  if(!report||!sourceDigest||report.engagements.length>32)throw Error("private source missing");
- var records=packetRows();
+ var records=packetRows(ids);
  var token=(await digestText(JSON.stringify(["lightup.scope_team_packet.v1",sourceDigest,records]))).slice(0,32);
  return {schema:"lightup.scope_team_packet.v1",status:"HUMAN_REVIEW_ONLY",
   source_sha256:sourceDigest,token:token,case_count:records.length,records:records,authority:false};
@@ -512,12 +518,13 @@ E("search").addEventListener("input",render);
 E("focus").addEventListener("change",render);
 E("teamPacket").addEventListener("click",async function(){
  if(!report||!sourceDigest)return;
- if(!window.confirm("Create a PRIVATE operator-issued team packet containing original case IDs and source observations? The packet is not an authorization or authenticated instruction."))return;
+ if(!window.confirm("Export ONLY "+E("rows").querySelectorAll("tr").length+" visible filtered private original cases to a team? Review the filter first. This is NOT consent or authorization."))return;
  try{
-  var packet=await issuedPacket(),raw=JSON.stringify(packet,null,2)+"\n";
+  var selected=[...E("rows").querySelectorAll("tr")].map(tr=>tr.dataset.originalEngagement);
+  var packet=await issuedPacket(selected),raw=JSON.stringify(packet,null,2)+"\n";
   if(new TextEncoder().encode(raw).length>65536)throw Error("packet size");
   download(packet,"lightup-PRIVATE-team-packet.json");
-  E("message").textContent="PRIVATE source-bound team packet exported locally. Share only under original operator confidentiality controls.";
+  E("message").textContent="PRIVATE packet exported for "+packet.case_count+" filtered original cases only. Share exclusively with authorized team.";
  }catch(e){E("message").textContent="HOLD: no source-bound private team packet was exported.";}
 });
 E("teamReturn").addEventListener("change",async function(){
@@ -535,7 +542,8 @@ E("teamReturn").addEventListener("change",async function(){
    !W(proposed.declared_team)||proposed.declared_team.length>80||
    !W(proposed.declared_reviewer)||proposed.declared_reviewer.length>80||
    !Array.isArray(proposed.records))throw Error("original return schema");
-  var packet=await issuedPacket();
+   var requestedIds=proposed.records.map(r=>O(r)?r.engagement_id:null);
+  var packet=await issuedPacket(requestedIds);
   if(proposed.source_sha256!==packet.source_sha256||
    proposed.token!==packet.token||
    proposed.case_count!==packet.case_count||
