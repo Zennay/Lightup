@@ -262,3 +262,21 @@ authority is updated. The operator can use this new human link draft with
 bridge.py and the two exact original source files to render a newer private
 human review dossier. This is a source-bound **human notes roundtrip**, not
 a digitally signed collaboration or an automatic reviewer approval.
+
+### Review returned human edits before re-rendering the dossier
+
+The source-owner return command now additionally creates two owner-only new
+files alongside the updated private link draft:
+
+- PREFIX-private-team-diff.html: offline scriptless **before/after** human-only
+  notes, source pair labels, changed fields and original exact baseline digest.
+  Text is escaped, restrictive CSP is hash-pinned; no original security
+  measurement, finding or permission value is changed or presented as approved.
+- PREFIX-human-changes.json: only aggregate counts of changed human stage,
+  reviewer, next-action and note fields, and anonymous stage distribution.
+  No source identifiers, notes, original SHA values, names, client or target.
+
+Use the private diff to understand exactly which human annotations arrived
+before manually choosing whether to use PREFIX-reviewed-links.json as the
+new private operator source. No collaboration export authenticates the sender,
+and nothing automatically updates actual LightUp findings or schedules work.

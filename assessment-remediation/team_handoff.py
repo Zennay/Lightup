@@ -171,7 +171,13 @@ def receive(args):
             **{key: proposed[key] for key in FIELDS},
         })
     latest = {**source, "links": updated}
+    from team_diff import describe
+    private_diff, aggregate = describe(
+        source["links"], updated, sha256(original_raw).hexdigest()
+    )
     destination = target(args.output_dir, args.prefix, "-reviewed-links.json")
+    diff_destination = target(args.output_dir, args.prefix, "-private-team-diff.html")
+    aggregate_destination = target(args.output_dir, args.prefix, "-human-changes.json")
     # No manual changes to real original client data or lab reports:
     # this is a new strict mapping v1, accepted later only by bridge.py
     # when both separately authorized exported sources match.
@@ -182,9 +188,12 @@ def receive(args):
             read_regular(args.returned, MAX_LINKS) != returned_raw,
             "human team baseline/return changed during private receipt")
     publish(destination, encode(latest))
+    publish(diff_destination, private_diff)
+    publish(aggregate_destination, encode(aggregate))
     print("PRIVATE_TEAM_RETURN_ACCEPTED — " + str(updated_count) +
           " human-only notes changed; " + str(len(updated)) +
           " original source links preserved.")
+    print("Private scriptless before/after human dossier and ID-free change counts created.")
     print("The return was NOT sender-authenticated; operator must verify human recipient.")
     print("Use the new mapping with unchanged original source exports through bridge.py.")
     return 2
