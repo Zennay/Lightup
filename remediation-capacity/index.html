@@ -65,6 +65,16 @@
     <div class="stats" id="stats" aria-live="polite"></div>
     <p class="subtle">A fully allocated estimate only means it fits in this draft plan. It does not mean work has started, a vulnerability was fixed, or an authorised retest has happened.</p>
   </div>
+  <div class="panel" aria-labelledby="risk-title">
+    <h2 id="risk-title">Priority-band backlog and estimated scheduling horizon</h2>
+    <p>Track outstanding planned hours by original source severity. “Scheduled” only means a local estimate fits; it never represents completed remediation or a confirmed retest.</p>
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th scope="col">Severity</th><th scope="col">Records</th><th scope="col">Source regressions</th><th scope="col">Estimated effort</th><th scope="col">Tentatively allocated</th><th scope="col">Unallocated</th><th scope="col">Latest full-allocation week</th></tr></thead>
+        <tbody id="priority-bands"></tbody>
+      </table>
+    </div>
+  </div>
   <div class="panel">
     <h2>Weekly workload</h2>
     <div id="weekly" class="weeks"></div>
