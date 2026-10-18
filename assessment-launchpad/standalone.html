@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="referrer" content="no-referrer">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-soFZjJDlPbfYBUtwntzeieHUSOX7L4FsUw65hTmH/xQ='; style-src 'sha256-6UjF33fZOGkcUTyqIX53n4/Ios7JAfzYtGcueBZ3y3Y='; connect-src 'none'; img-src 'none'; object-src 'none'; form-action 'none'; base-uri 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-7LxlFPqAZizYFAPilCag/byMzNwbxU0SEMZ6VcmfS0E='; style-src 'sha256-Gtwruba7TdWXHQwpJdVhTjBMksvSM9Jetv3LYFiVPOA='; connect-src 'none'; img-src 'none'; object-src 'none'; form-action 'none'; base-uri 'none'">
   <title>LightUp · Lab Launchpad</title>
   <style>:root{font:16px/1.5 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#0b1522;color:#e5f0fa;color-scheme:dark}
 *{box-sizing:border-box}
@@ -54,6 +54,11 @@ details summary{color:#b8e3f1;font-weight:750;cursor:pointer}
 details[open] summary{margin-bottom:14px}
 #studio-status{background:#12283a;border-left:3px solid #84cee0;border-radius:8px;padding:12px 16px;min-height:50px}
 #studio-area .buttons{margin-bottom:13px}
+
+.scaffold-controls{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px;margin:12px 0}
+.scaffold-controls input[type=number]{display:block;width:100%;padding:12px 14px;background:#0c1828;border:1px solid #46627b;border-radius:12px;color:#e4f5ff;font:inherit}
+.scaffold-controls input[type=number]:focus-visible{outline:3px solid #74dff0;outline-offset:3px}
+@media(max-width:760px){.scaffold-controls{grid-template-columns:1fr;gap:4px}}
 </style>
 
 </head>
@@ -99,6 +104,12 @@ details[open] summary{margin-bottom:14px}
       </div>
       <label for="studio-select">Original scenario (one at a time)</label>
       <select id="studio-select" disabled><option value="">Choose a locally imported original Studio catalog</option></select>
+      <div class="scaffold-controls">
+        <div><label for="studio-scheme">Human-chosen scheme</label><select id="studio-scheme"><option value="http">HTTP lab only</option><option value="https">HTTPS lab only</option></select></div>
+        <div><label for="studio-port">Human-chosen explicit port (1–65535)</label><input id="studio-port" type="number" min="1" max="65535" step="1" placeholder="e.g. 18080"></div>
+      </div>
+      <button id="studio-scaffold" type="button" class="quiet" disabled>Prepare URL batch from selected original lab IPs</button>
+      <p class="fine">This only drafts local text. You choose protocol and port; no port is assumed, no DNS or endpoint contacted. Existing unsaved batch selections require confirmation before replacement.</p>
       <p id="studio-status" role="status" aria-live="polite">No original Studio draft imported. Plain lab-batch preparation remains available.</p>
       <div class="buttons"><button id="studio-export" type="button" disabled>Download exact private studio-catalog.json</button></div>
       <p class="fine">Browser matching is only an advisory operator preview. The native <code>build.py --catalog-file ... --scenario-id ...</code> and original <code>read_selected_lab_design</code> validators must still approve the complete byte-exact source before any handoff.</p>
@@ -226,6 +237,7 @@ details[open] summary{margin-bottom:14px}
         " original lab IPs, " + count +
         ". Only the original native schema, scope and byte-source checks may accept this draft.";
     }
+    document.getElementById("studio-scaffold").disabled = !selected;
     studioExport.disabled = !bound;
     previewCommand.textContent = "lightup lab-assess --targets-file ./targets.txt" +
       (bound ? " --catalog-file ./studio-catalog.json --scenario-id " + bound.scenario_id : "") +
@@ -425,6 +437,40 @@ details[open] summary{margin-bottom:14px}
   });
 
   studioSelect.addEventListener("change", renderStudio);
+  document.getElementById("studio-scaffold").addEventListener("click", () => {
+    const selected = selectedStudio();
+    if (!selected) { status("Choose an original draft Studio scenario first.", true); return; }
+    const scheme = document.getElementById("studio-scheme").value;
+    const portText = document.getElementById("studio-port").value;
+    if (!["http", "https"].includes(scheme) || !/^[1-9][0-9]{0,4}$/.test(portText) ||
+        Number(portText) > 65535) {
+      status("Choose an explicit HTTP(S) scheme and a valid numeric port (1–65535).", true);
+      return;
+    }
+    let prepared;
+    try {
+      prepared = selected.targets.map(rawIp => {
+        const bracketed = rawIp.includes(":") ? "[" + rawIp + "]" : rawIp;
+        return admit(scheme + "://" + bracketed + ":" + portText + "/");
+      });
+      if (prepared.length !== selected.targets.length ||
+          new Set(prepared).size !== prepared.length) {
+        throw new Error("Original scenario has duplicate or unusable lab addresses.");
+      }
+    } catch (e) {
+      status("No batch replaced: " + e.message + " Original native validation remains required.", true);
+      return;
+    }
+    if (list.length && !window.confirm(
+      "Replace all current local lab URL entries with URLs prepared from the selected Studio draft? No network or assessment will be run."
+    )) return;
+    list.splice(0, list.length, ...prepared);
+    input.value = "";
+    render();
+    status(prepared.length + " human-proposed lab URLs prepared from the original draft. No command executed, no consent inferred.");
+  });
+
+
 
   document.getElementById("studio-clear").addEventListener("click", () => {
     studio = null;
