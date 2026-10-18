@@ -192,7 +192,7 @@ def _read_report(database: Path, *, client_id: str | None = None,
                 raise ValueError("engagement does not belong to selected client")
             client_id = selected["client_id"]
         if client_id is not None:
-            clients = _rows(con, "SELECT client_id,name FROM clients WHERE client_id=? ORDER BY name", (client_id,))
+            clients = _rows(con, "SELECT client_id,name,status FROM clients WHERE client_id=? ORDER BY name", (client_id,))
             if len(clients) != 1:
                 raise ValueError("selected client missing")
             if engagement_id is not None:
@@ -229,7 +229,7 @@ def _read_report(database: Path, *, client_id: str | None = None,
                      "ORDER BY user_id", (client_id, client_id),
             )
         else:
-            clients = _rows(con, "SELECT client_id,name FROM clients ORDER BY name")
+            clients = _rows(con, "SELECT client_id,name,status FROM clients ORDER BY name")
             engagements = _rows(
                 con, "SELECT engagement_id,client_id,name,status FROM engagements ORDER BY created_at")
             requests = _rows(
@@ -243,6 +243,7 @@ def _read_report(database: Path, *, client_id: str | None = None,
         con.rollback()
 
     by_client = {c["client_id"]: c["name"] for c in clients}
+    client_status = {c["client_id"]: c["status"] for c in clients}
     users_by_id = {u["user_id"]: u for u in users}
     by_engagement = {e["engagement_id"]: e for e in engagements}
     requests_by_client: dict[str, list] = defaultdict(list)
@@ -290,6 +291,10 @@ def _read_report(database: Path, *, client_id: str | None = None,
             entry["attention"] = "Review existing grant records; none proves client/operator consent."
         for grant in own_grants:
             problems = []
+            if engagement["status"] == "closed":
+                problems.append("CLOSED_ENGAGEMENT_GRANT")
+            if client_status.get(own) != "active":
+                problems.append("INACTIVE_CLIENT_GRANT")
             binding = "missing"
             bound_id = grant["approved_request_id"]
             if grant["client_id"] != own:
