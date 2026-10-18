@@ -45,6 +45,7 @@
     el('casework-summary').hidden=true;
     el('casework-status-cards').replaceChildren();
     el('casework-risk-table').replaceChildren();
+    el('casework-triage').replaceChildren();
     el('casework-feedback').textContent='No Casework record reviewed.';
   }
   el('clear-casework').addEventListener('click',clearCasework);
@@ -430,6 +431,20 @@
   });
 
 
+  const CASEWORK_TRIAGE=Object.freeze([
+    ['critical_high_blocked','Urgent cases blocked','Discuss recorded blockers with an independently authorised remediation owner.','urgent'],
+    ['critical_high_unowned','Urgent cases without local owner labels','Obtain a human-only proposal for an accountable remediation contact.','urgent'],
+    ['critical_high_undated','Urgent cases without proposed dates','Discuss a realistic, not yet committed remediation window.','urgent'],
+    ['source_regression_locally_completed','Source regressions locally labelled completed','Resolve original source vs self-reported progress conflict; do not infer a fix.','urgent'],
+    ['source_regression_deferred','Source regressions locally deferred','Discuss deferred regression risk and independently approved next steps.','urgent'],
+    ['retest_coordination_without_owner','Proposed retest coordination lacks an owner label','Agree who will request separate real retest authorisation.','review'],
+    ['blocked_without_note','Locally blocked cases without explanatory notes','Request private human clarification before treating estimates as achievable.','review']
+  ]);
+  function caseworkTriageRows(summary){
+    return CASEWORK_TRIAGE.map(([code,label,nextStep,priority])=>({
+      code,label,nextStep,priority,count:summary.human_review_flags[code]||0
+    })).filter(item=>item.count>0);
+  }
   function showCaseworkSummary(summary) {
     const cards=el('casework-status-cards');
     cards.replaceChildren();
@@ -453,6 +468,14 @@
       for(const value of [severity,v.total,v.blocked,v.missing_owner,
         v.undated,v.ready_for_retest,v.locally_completed_unverified])row.append($('td',value));
       rows.append(row);
+    }
+    const triage=el('casework-triage');triage.replaceChildren();
+    const todo=caseworkTriageRows(summary);
+    if(!todo.length)triage.append($('p','No source-linked local planning contradictions were reported in these categories. This is not verification of repairs, permission or release.','subtle'));
+    for(const item of todo){
+      const card=$('article',undefined,'triage-card');
+      card.append($('strong',item.count+' · '+item.label),$('p',item.nextStep));
+      triage.append(card);
     }
     el('casework-summary').hidden=false;
   }
@@ -494,6 +517,21 @@
     download('lightup-capacity-casework-review.json',
       JSON.stringify(reviewedCasework,null,2)+'\n','application/json;charset=utf-8');
     setFeedback('Only group-level unsigned Casework notes exported.');
+  });
+
+
+  el('export-casework-triage').addEventListener('click',()=>{
+    if(!reviewedCasework||!el('casework-ack').checked)return;
+    if(!window.confirm('Export the UNASSIGNED INTERNAL human discussion suggestions as aggregate counts only? This does not create a work order, retest, finding closure or permission.'))return;
+    const quote=x=>'"'+String(x).replace(/"/g,'""')+'"';
+    const columns=['severity','reason_code','count','suggested_human_discussion','authority'];
+    const lines=[columns.map(quote).join(',')];
+    for(const row of caseworkTriageRows(reviewedCasework)){
+      lines.push([row.priority,row.code,row.count,row.nextStep,'REVIEW_ONLY'].map(quote).join(','));
+    }
+    download('lightup-casework-human-discussion.csv',lines.join('\r\n')+'\r\n',
+      'text/csv;charset=utf-8');
+    setFeedback('Private, static-label aggregate discussion register exported. No cases or identities included.');
   });
 
   // Source-bound, user-controlled resume: no browser persistence or implicit restore.
