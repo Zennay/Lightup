@@ -319,12 +319,15 @@ function applyBulk(){
  if(state.undo.length>20)state.undo.shift();
  const changes=new Map(p.entries.map(x=>[x.key,x]));
  for(const r of state.rows){const x=changes.get(rowKey(r));if(x){r.human_stage=x.afterStage;r.human_reviewer=x.afterReviewer;}}
+ state.undo[state.undo.length-1].applied=JSON.stringify(state.rows);
  state.bulk=null;render();message('Applied '+p.entries.length+' PRIVATE human status changes. Undo is available.',false);
 }
 function undoBulk(){
- const previous=state.undo.pop();
+ const previous=state.undo[state.undo.length-1];
  if(!previous)return;
- if(previous.sha!==state.sha)fail('Original source changed: undo refused.');
+ if(previous.sha!==state.sha||JSON.stringify(state.rows)!==previous.applied)
+  fail('Human notes or source changed since the last batch; undo refused to prevent lost edits.');
+ state.undo.pop();
  state.rows=JSON.parse(previous.rows);state.bulk=null;render();
  message('Restored previous private human-review fields in memory only.',false);
 }
@@ -362,7 +365,7 @@ bind('previewMigration','click',previewMigration);
 bind('applyMigration','click',applyMigration);
 bind('filter','input',()=>{state.filter=$('filter').value.toLowerCase().trim();render();});
 bind('forget','click',()=>{if(confirm('Forget all original findings and local human notes in memory?')){
- state.findings=[];state.sha='';state.rows=[];state.client='';state.engagement='';state.verify=null;state.filter='';state.pending=null;$('migrationResult').hidden=true;
+ state.findings=[];state.sha='';state.rows=[];state.client='';state.engagement='';state.verify=null;state.filter='';state.pending=null;state.selected.clear();state.bulk=null;state.undo=[];$('migrationResult').hidden=true;
  for(const id of ['client','engagement','filter','original','newSource','addFiles','privateImport','verify'])$(id).value='';
  $('finding').replaceChildren();render();message('Local workspace forgotten. Previously downloaded files are not deleted.',false);
 }});
