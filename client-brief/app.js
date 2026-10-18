@@ -172,6 +172,48 @@ function exportHumanActions(){
   note('Human-only actions exported as formula-safe CSV. No permission or remediation performed.');
  }catch(e){note('Human action export refused: '+e.message,true);}
 }
+let followupRecords={},followupTag=null;
+function followupInfo(){
+ const x=LightUpFollowup.source(state,LightUpBriefActions.fromState(state,{includeOperator:false}));
+ const tag=JSON.stringify([x.fingerprint,x.previous,x.actions.map(a=>[a.origin,a.title,a.level,a.source_count,a.next_human_step])]);
+ if(followupTag!==tag){followupTag=tag;followupRecords={};}
+ return x;
+}
+function followupSummary(){
+ if(!state)return null;
+ try{return LightUpFollowup.overview(followupInfo(),followupRecords);}catch(_){return null;}
+}
+function followupOverviewHTML(){
+ const x=followupSummary();if(!x)return '<p>Source hash unavailable: tracking requires original source CSV and WebCrypto.</p>';
+ return '<p>'+x.categories+' original source-derived conversation categories (human notes only). '+Object.entries(x.counts).map(([k,v])=>H(k.replaceAll('_',' '))+': '+v).join(' · ')+'. No verified approval or remediation.</p>';
+}
+function followupUI(){
+ const host=$('followup-board');if(!state){host.textContent='Load source findings first.';return;}
+ let info;try{info=followupInfo();}catch(e){host.textContent=e.message;return;}
+ const select=(values,current)=>values.map(k=>'<option value="'+H(k)+'"'+(k===current?' selected':'')+'>'+H(k.replaceAll('_',' '))+'</option>').join('');
+ host.innerHTML=followupOverviewHTML()+'<div class="action-grid">'+info.actions.map((a,i)=>{
+  const row=followupRecords[info.keys[i]]||LightUpFollowup.blank();
+  return '<article class="action-row" data-index="'+i+'"><strong>'+H(a.level.toUpperCase())+' · '+H(a.title)+'</strong><p>'+a.source_count+' source records · '+H(a.next_human_step)+'</p><div class="followup-controls"><label>Discussion role<select data-field="role" data-index="'+i+'">'+select(LightUpFollowup.roles,row.role)+'</select></label><label>Self-reported discussion phase<select data-field="phase" data-index="'+i+'">'+select(LightUpFollowup.phases,row.phase)+'</select></label><label>Tentative follow-up date<input data-field="date" data-index="'+i+'" type="date" value="'+H(row.date)+'"></label></div></article>';
+ }).join('')+'</div>';
+}
+async function saveFollowup(){
+ if(!state)return note('Open current source findings first.',true);
+ try{const info=followupInfo(),draft=await LightUpFollowup.make(info,followupRecords);
+  if(!confirm('Save private unsigned conversation planning only? This never records consent, grant, remediation or actual authorization.'))return;
+  download(JSON.stringify(draft,null,2)+'\n','lightup-human-discussion-source-bound-DRAFT.json','application/json;charset=utf-8');
+  $('followup-status').textContent='Private human discussion plan saved to your device.';
+ }catch(e){$('followup-status').textContent='Not saved: '+e.message;}
+}
+async function loadFollowup(){
+ if(!state)return note('Open original source findings before restoring.',true);
+ const f=$('followup-file').files[0];if(!f)return note('Choose a saved human discussion draft.',true);
+ $('followup-load').disabled=true;
+ try{const info=followupInfo(),incoming=await LightUpFollowup.read(f,info);
+  if(!confirm('Restore human discussion choices for the exact same source action categories? This does not restore permission or approvals.'))return;
+  followupRecords=incoming;followupUI();$('followup-status').textContent='Private human-only discussion stages restored.';
+ }catch(e){$('followup-status').textContent='Source-bound draft rejected; previous choices retained.';note('Discussion restore refused: '+e.message,true);}
+ finally{$('followup-load').disabled=false;}
+}
 function note(text, bad=false) { $('message').textContent=text; $('message').style.color=bad?'#ff9fac':'#b6e3d9'; }
 async function sha256(bytes) {
  if (!globalThis.crypto || !crypto.subtle) return null;
@@ -298,11 +340,12 @@ function render() {
  renderStudio();
  renderStudioChanges();
  renderActions();
+ followupUI();
  $('internal-readiness').disabled=$('audience').value!=='Internal operators only';
  $('source-info').textContent=sourceSummary();
  const heading=$('report-title').value.trim().slice(0,100)||'Security findings — executive brief';
  $('preview').innerHTML='<p class="eyebrow">LOCAL PREVIEW / UNSIGNED</p><h3>'+H(heading)+'</h3>'+narrative(severity,retest,state.changes)+
- '<h3>Human follow-up plan</h3><div class="roadmap">'+planHTML(road)+'</div><h3>Matching local Casework summary (unverified)</h3>'+caseworkSummaryHTML()+'<h3>Operator scope readiness (unsigned)</h3>'+(canExportReadiness()?readinessSummaryHTML():'<p>Operator details are omitted from client-facing copies. Select Internal operators only and opt in to include an internal aggregate.</p>')+'<h3>Human follow-up queue, not orders</h3>'+humanActionsHTML()+'<h3>Original source detail</h3>'+detailsHTML()+
+ '<h3>Human follow-up plan</h3><div class="roadmap">'+planHTML(road)+'</div><h3>Matching local Casework summary (unverified)</h3>'+caseworkSummaryHTML()+'<h3>Operator scope readiness (unsigned)</h3>'+(canExportReadiness()?readinessSummaryHTML():'<p>Operator details are omitted from client-facing copies. Select Internal operators only and opt in to include an internal aggregate.</p>')+'<h3>Human follow-up queue, not orders</h3>'+humanActionsHTML()+'<h3>Self-reported human discussion status, not approval</h3>'+followupOverviewHTML()+'<h3>Original source detail</h3>'+detailsHTML()+
  '<p class="hint">Client/operator consent, actual execution authority, approved scope, live revocation and verified retest must be established separately through genuine authenticated systems. This document is DRAFT/HOLD only.</p>';
  }catch(e){note(String(e.message),true);$('preview').textContent='Cannot render until planning inputs are corrected.';}
 }
@@ -318,6 +361,7 @@ function reportData() {
   earlier_sha256:state.older?.sha??null,severity_counts:severity,source_retest_counts:retest,
   source_changes:diff?{added:diff.added.length,changed:diff.changed.length,absent_unverified:diff.missing.length,unchanged:diff.unchanged.length}:null,
   human_action_register:humanPlan(),
+  human_discussion_aggregate:followupSummary(),
   proposed_scope_change_review:state.studioChange?{...state.studioChange,changes_are_authorized:false}:null,
   proposed_scope_review:state.studio?{...state.studio,notes:[...state.studio.notes],ownership_verified:false,permission_inferred:false}:null,
   operator_readiness_review:canExportReadiness()?{grant_rows:state.readiness.records,pending_client_wide_requests:state.readiness.pending_client_wide,groups:state.readiness.risk_groups.map(x=>({name:x.name,count:x.count})),issue_counts:state.readiness.issue_codes.map(x=>({label:x.label,count:x.count})),authenticated_now:false,permission_inferred:false}:null,
@@ -335,6 +379,7 @@ function staticHTML(data) {
  const studio=state.studio?'<h2>Original proposed scope, not approved</h2>'+studioSummaryHTML():'<p>No original Studio proposed scope attached. No authority inferred.</p>';
  const studioChanges=state.studioChange?'<h2>Original proposed scope revision change</h2>'+studioChangesHTML():'<p>No older Studio proposal compared.</p>';
  const humanActions='<h2>Proposed human follow-up actions (not assignments)</h2>'+humanActionsHTML();
+ const humanDiscussion='<h2>Human-only discussion progress (unverified)</h2>'+followupOverviewHTML();
  const casework=state.casework?'<h2>Existing self-reported Casework planning</h2>'+caseworkSummaryHTML():'<p>No matching local Casework packet attached.</p>';
  const readiness=canExportReadiness()?'<h2>INTERNAL ONLY: unsigned operator scope-readiness blockers</h2>'+readinessSummaryHTML():'<p>Internal operator readiness details withheld from this exported report.</p>';
  const details=$('details').checked?'<h2>Sensitive source detail — private recipients only</h2>'+detailsHTML():'<p>Individual finding identifiers, titles and remediation text are intentionally excluded from this redacted brief.</p>';
@@ -342,7 +387,7 @@ function staticHTML(data) {
  '<h2>Severity distribution</h2><table><thead><tr><th>Source severity</th><th>Count</th></tr></thead><tbody>'+rows+'</tbody></table>'+
  '<h2>Source-reported retest states</h2><table><thead><tr><th>Source state</th><th>Count</th></tr></thead><tbody>'+sourceRows+'</tbody></table>'+changes+
  '<h2>Illustrative follow-up roadmap</h2>'+road.map(g=>'<article><strong>'+H(g.label)+'</strong><p>'+g.amount+' findings; discuss within '+g.days+' calendar days'+(g.due==='Not specified'?' (no reference date)':' from the reference date, by '+H(g.due))+'. Not an SLA, order or booked activity.</p><p>Local follow-up stage: '+H(g.discussion.replaceAll('_',' '))+' (self-reported)</p><p>'+H(g.reason)+'</p></article>').join('')+
- studio+studioChanges+casework+readiness+humanActions+details+'<h2>Evidence and provenance caveat</h2><p class="meta">'+H(sourceSummary())+'</p><p class="muted">Original report values are untrusted unless authenticated separately. This file contains no live permissions and has not checked current grants or independently verified remediation.</p></body></html>';
+ studio+studioChanges+casework+readiness+humanActions+humanDiscussion+details+'<h2>Evidence and provenance caveat</h2><p class="meta">'+H(sourceSummary())+'</p><p class="muted">Original report values are untrusted unless authenticated separately. This file contains no live permissions and has not checked current grants or independently verified remediation.</p></body></html>';
 }
 function download(content,name,mime) {
  const blob=new Blob([content],{type:mime}),url=URL.createObjectURL(blob);
@@ -362,7 +407,7 @@ function exportJSON() {
  catch(e){note('JSON export refused: '+e.message,true);}
 }
 function forget() {
- state=null;$('studio-previous').value='';$('studio-previous-confirm').checked=false;$('studio-compare-status').textContent='No earlier version compared.';$('studio-change-summary').replaceChildren();$('human-actions').replaceChildren();$('studio-file').value='';$('studio-confirm').checked=false;$('studio-status').textContent='No scope proposal imported.';$('studio-summary').replaceChildren();$('session-file').value='';$('session-status').textContent='No working draft restored.';$('readiness-file').value='';$('readiness-confirm').checked=false;$('readiness-status').textContent='No operator snapshot loaded.';$('readiness-summary').replaceChildren();$('casework-file').value='';$('casework-confirm').checked=false;$('casework-status').textContent='No Casework loaded.';$('current').value='';$('previous').value='';$('same-scope').checked=false;$('details').checked=false;
+ state=null;followupTag=null;followupRecords={};$('followup-board').replaceChildren();$('followup-file').value='';$('followup-status').textContent='No local discussion plan saved.';$('studio-previous').value='';$('studio-previous-confirm').checked=false;$('studio-compare-status').textContent='No earlier version compared.';$('studio-change-summary').replaceChildren();$('human-actions').replaceChildren();$('studio-file').value='';$('studio-confirm').checked=false;$('studio-status').textContent='No scope proposal imported.';$('studio-summary').replaceChildren();$('session-file').value='';$('session-status').textContent='No working draft restored.';$('readiness-file').value='';$('readiness-confirm').checked=false;$('readiness-status').textContent='No operator snapshot loaded.';$('readiness-summary').replaceChildren();$('casework-file').value='';$('casework-confirm').checked=false;$('casework-status').textContent='No Casework loaded.';$('current').value='';$('previous').value='';$('same-scope').checked=false;$('details').checked=false;
  $('workspace').hidden=true;$('internal-readiness').checked=false;['urgent','medium','low'].forEach(key=>$(key+'-decision').value='discussion_pending');$('kpis').replaceChildren();$('changes').replaceChildren();$('preview').replaceChildren();
  note('In-memory findings forgotten. Previously downloaded files must be deleted separately.');
 }
@@ -378,6 +423,21 @@ $('studio-clear').addEventListener('click',clearStudio);
 $('studio-compare').addEventListener('click',compareStudio);
 $('studio-compare-clear').addEventListener('click',clearStudioChanges);
 $('human-actions-export').addEventListener('click',exportHumanActions);
+$('followup-save').addEventListener('click',saveFollowup);
+$('followup-load').addEventListener('click',loadFollowup);
+$('followup-board').addEventListener('change',event=>{
+ const input=event.target,field=input.dataset?.field,index=Number(input.dataset?.index);
+ if(!['role','phase','date'].includes(field)||!Number.isInteger(index))return;
+ try{
+  const info=followupInfo();if(index<0||index>=info.keys.length)throw Error('Unknown original action category.');
+  const key=info.keys[index],before=followupRecords[key]||LightUpFollowup.blank();
+  const candidate={...before,[field]:input.value};
+  // All edits use the same strict source-bound record validator as private export.
+  followupRecords[key]=LightUpFollowup.collect(info,{...followupRecords,[key]:candidate})[key];
+  followupUI();
+  $('followup-status').textContent='Local conversation updated only. Save privately if needed; nothing is automatically approved.';
+ }catch(e){note('Discussion edit refused: '+e.message,true);followupUI();}
+});
 $('audience').addEventListener('change',()=>{if($('audience').value!=='Internal operators only')$('internal-readiness').checked=false;render();});
 $('forget').addEventListener('click',forget);
 $('html-export').addEventListener('click',exportHTML);

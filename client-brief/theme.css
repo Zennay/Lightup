@@ -10,3 +10,7 @@
 @media print{#human-actions-panel{display:none!important}}
 
 .action-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.8rem}.action-row{border:1px solid #3c546c;border-radius:11px;padding:1rem;background:#1c3047;break-inside:avoid}.action-row strong{color:#eff7fa}.action-row p{margin:.35rem 0;font-size:.86rem}@media(max-width:700px){.action-grid{grid-template-columns:1fr}}@media print{.action-grid{display:block}.action-row{background:white;color:#172334;border:1px solid #aaa;margin:0 0 .5rem}.action-row strong{color:#172334}}
+
+/* Human-only discussion tracker, never an authorization interface. */
+.followup-controls{display:grid;grid-template-columns:repeat(3,minmax(115px,1fr));gap:12px;margin-top:12px}.followup-controls label{min-width:0}.followup-controls select,.followup-controls input{width:100%}@media(max-width:660px){.followup-controls{grid-template-columns:1fr}}
+@media print{#followup-panel{display:none!important}}

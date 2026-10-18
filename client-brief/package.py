@@ -28,6 +28,7 @@ SCRIPT_TAGS = {
     "studio-scope-fingerprint.js": '<script src="studio-scope-fingerprint.js"></script>',
     "studio-proposal-import.js": '<script src="studio-proposal-import.js"></script>',
     "human-actions.js": '<script src="human-actions.js"></script>',
+    "followup-tracker.js": '<script src="followup-tracker.js"></script>',
     "app.js": '<script src="app.js"></script>',
 }
 
