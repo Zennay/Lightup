@@ -129,6 +129,14 @@ def main(argv: list[str] | None = None) -> int:
     sub = parser.add_subparsers(dest="command", required=True)
     preview = sub.add_parser("preview", help="offline literal scope preview (no database access)")
     submit = sub.add_parser("submit", help="persist one request after client authentication")
+    handoff = sub.add_parser(
+        "studio-handoff",
+        help="privately review full Studio v1 scope, retaining restrictions; NEVER submit",
+    )
+    handoff.add_argument("--proposal", required=True, help="existing local Studio v1 JSON")
+    handoff.add_argument(
+        "--output", required=True, help="new private .html or .json report; never overwritten"
+    )
     desk = sub.add_parser("desk", help="interactive authenticated client request workspace")
     desk.add_argument("--db", required=True, help="existing private LightUp SQLite database")
     desk.add_argument("--email", required=True, help="real persisted client account email")
@@ -179,6 +187,30 @@ def main(argv: list[str] | None = None) -> int:
         from .client_request_desk import main as open_client_desk
 
         return open_client_desk(["--db", args.db, "--email", args.email])
+    if args.command == "studio-handoff":
+        from .client_studio_handoff import prepare_studio_handoff, save_studio_handoff
+
+        try:
+            packet = prepare_studio_handoff(args.proposal)
+            saved = Path(args.output).expanduser()
+            save_studio_handoff(saved, packet)
+            print(json.dumps({
+                "saved": str(saved),
+                "state": packet["state"],
+                "held_for_native_submission": packet["held_for_native_submission"],
+                "held_constraints": packet["held_constraints"],
+                "source_file_sha256": packet["source_file_sha256"],
+                "client_authenticated": False,
+                "operator_approved": False,
+                "authorization": False,
+                "grant_issued": False,
+                "scan_allowed": False,
+                "message": "Private offline handoff only; no request submitted or grant issued",
+            }, indent=2))
+            return 0
+        except (ValueError, PermissionError, OSError, UnicodeError) as exc:
+            print("Studio handoff refused: " + str(exc), file=sys.stderr)
+            return 2
     try:
         if args.command in ("preview", "submit"):
             if bool(args.asset) == bool(args.proposal):
