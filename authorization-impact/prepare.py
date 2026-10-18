@@ -269,8 +269,14 @@ def _write_private(dirfd: int, name: str, data: bytes) -> dict[str, object]:
     }
 
 
-def publish(source: Path, destination: Path) -> None:
-    original = _read_private(source, SOURCE_LIMIT)
+def publish_bytes(original: bytes, destination: Path, *, fresh_original_auth: bool = False) -> None:
+    """Package original source bytes; does not authenticate or change the source.
+
+    The optional provenance label records which trusted caller performed the
+    authentication. It does not change the source's six false authority flags.
+    """
+    if type(original) is not bytes or not 2 <= len(original) <= SOURCE_LIMIT:
+        raise Refused("source length")
     _validate_source(original)
     app = _read_private(Path(__file__).resolve().with_name("standalone.html"), APP_LIMIT, require_private=False)
     if b"<title>LightUp | Scope Impact Map</title>" not in app:
@@ -282,9 +288,13 @@ def publish(source: Path, destination: Path) -> None:
         "2. Import casebook.json through 'Load PRIVATE Casebook JSON'.\n"
         "3. Inspect stored source relationships and add human-only notes.\n"
         "4. Export anonymous counts, or confirm a private recipient for PRIVATE notes.\n\n"
-        "The source was exported separately by the unchanged original Casebook\n"
-        "authentication workflow. This packaging step does not authenticate\n"
-        "its origin, assert current consent, revoke a grant or authorize scans.\n"
+        ("The original Casebook authentication was performed freshly before\n"
+         "creating this packet; it still grants no current execution consent.\n"
+         if fresh_original_auth else
+         "The source was exported separately by original Casebook login; this\n"
+         "packaging step does not authenticate the file origin or freshness.\n")
+        + "Neither workflow can assert current consent, revoke a grant,\n"
+        "check action-time STOP state, or authorize target scans.\n"
         "A SHA-256 is only a byte revision identifier, not proof of issuer.\n"
         "The entire folder contains private information: keep access owner-only.\n"
         "No network, model, grant, STOP, scan, deployment or authorization work.\n"
@@ -340,6 +350,12 @@ def publish(source: Path, destination: Path) -> None:
                 os.rmdir(destination)
             except OSError:
                 pass
+
+
+def publish(source: Path, destination: Path) -> None:
+    """Preserve the original strict private-file-only operator workflow."""
+    original = _read_private(source, SOURCE_LIMIT)
+    publish_bytes(original, destination)
 
 
 def main() -> int:
