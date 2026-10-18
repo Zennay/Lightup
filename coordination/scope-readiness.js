@@ -191,8 +191,10 @@ function brief(){
 function renderActionBoard(){
  const root=$('actionBoard');root.replaceChildren();
  const view=$('boardView').value,today=new Date().toISOString().slice(0,10);
+ const graph=LightUpLocalLineage.inspect(entries),tips=new Set(graph.tips);
+ const boardRecords=$('boardScope').value==='all'?entries:entries.filter(r=>tips.has(r.source_sha256));
  for(const [id,title] of STAGES){
-  const items=entries.filter(r=>{
+  const items=boardRecords.filter(r=>{
    const t=r.tasks[id];
    if(t.status==='prepared')return false;
    if(view==='overdue')return Boolean(t.due&&t.due<today);
@@ -225,6 +227,7 @@ function renderActionBoard(){
  }
 }
 $('boardView').addEventListener('change',renderActionBoard);
+$('boardScope').addEventListener('change',renderActionBoard);
 function clearIntakePreview(message='Source/record changed. Repeat routing preview.'){
  intakeRoutePreview=null;
  $('intakeAssign').disabled=true;$('intakeExport').disabled=true;$('intakeResult').replaceChildren();
@@ -329,7 +332,8 @@ function renderLineage(){
  try{graph=LightUpLocalLineage.inspect(entries);}
  catch(e){$('lineageStatus').textContent='LOCAL ANCESTRY HOLD: '+e.message; $('lineageDownload').disabled=true;return;}
  $('lineageDownload').disabled=!graph.linked;
- $('lineageStatus').textContent=graph.linked+' local source link(s); '+
+ $('lineageStatus').textContent=graph.tips.length+' local branch tip(s); '+graph.superseded.length+
+  ' superseded predecessor(s); '+graph.linked+' local source link(s); '+
   graph.orphans+' missing parent source(s); '+graph.forks.length+
   ' fork(s). ALL unsigned and non-authorizing.';
  if(!entries.length){list.append(make('p','Import original Studio sources to begin local tracking.','small'));return;}
@@ -349,7 +353,9 @@ function renderLineage(){
    entry.missingParent?'PARENT MISSING · HOLD · '+entry.parent.slice(0,12):
    'Unsigned human link to '+(parent.name||'Untitled')+' · '+entry.parent.slice(0,12),
    entry.missingParent?'bad':'small'));
-  container.append(make('p',(entry.changes.length?entry.changes.length+' change category/categories':'No tracked difference categories')+
+  container.append(make('p',(graph.superseded.includes(entry.sha)?'SUPERSEDED LOCAL REVISION · review history only':
+  'LOCAL TIP ONLY · no evidence of external latest/approval')+
+  ' · '+(entry.changes.length?entry.changes.length+' change category/categories':'No tracked difference categories')+
    ' · '+entry.affected.length+' impacted workstream(s)'+
    (r.source_attached?' · local source attached':' · SOURCE UNBOUND HOLD'),'small'));
   const prepared=entry.affected.filter(k=>r.tasks[k]?.status==='prepared').length;
@@ -553,13 +559,18 @@ function renderStats(){
 }
 function visibleQueue(){
  const filter=$('filter').value;
- return entries.filter(r=>filter==='all'||filter==='hold'&&unresolved(r)>0||
+ const graph=LightUpLocalLineage.inspect(entries);
+ const tips=new Set(graph.tips),superseded=new Set(graph.superseded);
+ return entries.filter(r=>filter==='all'||filter==='tips'&&tips.has(r.source_sha256)||
+  filter==='superseded'&&superseded.has(r.source_sha256)||
+  filter==='hold'&&unresolved(r)>0||
   filter==='missing'&&!r.source_attached||filter==='risk'&&r.requested_risk===4||
   filter==='overdue'&&overdue(r)>0||filter==='collision'&&roleOverlap(r));
 }
 function renderList(){
  const list=$('drafts');list.replaceChildren();
  const selected=visibleQueue();
+ const graph=LightUpLocalLineage.inspect(entries),earlier=new Set(graph.superseded);
  const sort=$('sort').value;
  selected.sort((a,b)=>sort==='name'?a.name.localeCompare(b.name):
   sort==='due'?firstDue(a).localeCompare(firstDue(b)):
@@ -571,7 +582,8 @@ function renderList(){
   b.append(make('small',(r.client_label||'No client label')+' · risk '+r.requested_risk+' · '+r.requested_mode));
   b.append(make('small',(r.source_attached?'Source loaded':'SOURCE MISSING · HOLD')+
     ' · '+unresolved(r)+' unresolved prep tasks'+(overdue(r)?' · '+overdue(r)+' overdue':'')+
-    (roleOverlap(r)?' · SAME ROLE LABEL REVIEW':'')));
+    (roleOverlap(r)?' · SAME ROLE LABEL REVIEW':'')+
+    (earlier.has(r.source_sha256)?' · SUPERSEDED LOCAL VERSION · NOT AUTHORIZED':' · LOCAL TIP · NOT AUTHORIZED')));
   b.addEventListener('click',()=>{active=r.source_sha256;clearPacketPreview();renderList();renderDetail();});
   list.append(b);
  }
@@ -581,7 +593,11 @@ function renderDetail(){
  if(!r){box.append(make('p','Select a Studio draft to track separate client and operator preparation.'));return;}
  box.append(make('h3',r.name));
  box.append(make('p','Source SHA-256: '+r.source_sha256,'small truncate'));
- const summary=make('p',(r.source_attached?'Source file bound to this exact local session.':'Original source file must be re-attached before relying on continuity.')+
+ const previous=new Set(LightUpLocalLineage.inspect(entries).superseded);
+ const summary=make('p',(previous.has(r.source_sha256)?
+  'SUPERSEDED LOCAL DRAFT — retain only for review. Do not reuse old scope instructions without fresh original-source review. ':
+  'Local branch tip is NOT an authenticated approved latest version. ')+
+  (r.source_attached?'Source file bound to this exact local session.':'Original source file must be re-attached before relying on continuity.')+
   ' · '+r.asset_count+' proposed assets / '+r.excluded_count+' exclusions · risk '+r.requested_risk,'hint');
  box.append(summary);
  const roleMsg=make('p',roleOverlap(r)?'Client and operator use the same UNVERIFIED coordinator label. Verify independent roles in authenticated systems.':'','hint');roleMsg.id='roleWarning';box.append(roleMsg);
