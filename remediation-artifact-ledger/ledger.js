@@ -137,7 +137,7 @@ function renderSummary(){
  $('evidenceImport').disabled=!state.sha;$('detachEvidence').disabled=!state.evidence;
  $('evidenceState').textContent=state.evidence?'Native original Evidence Review v2: '+state.evidence.size+' HUMAN records (READ-ONLY)':'No native Evidence Review imported.';
  $('caseworkState').textContent=state.casework ? 'Native original Casework v1: '+state.casework.size+' HUMAN records (READ-ONLY)' : 'No native Casework imported.';
- renderCoverage();
+ renderCoverage();$('actionExport').disabled=!state.sha;renderActions();
 }
 async function loadSource(){
  const file=$('original').files[0];if(!file)fail('Select an original findings CSV.');
@@ -492,6 +492,87 @@ function exportCoverage(){
    rows.map(r=>r.map(csvCell).join(',')).join('\r\n')+'\r\n','text/csv;charset=utf-8');
 }
 
+
+/* Derived PRIVATE human work queue. Never a target/execution queue or remediation verdict. */
+function actionItems(){
+ const counts=new Map();
+ for(const r of state.rows){
+  const n=counts.get(r.finding_id)||{files:0,followUp:0};
+  n.files++;if(r.human_stage==='follow_up')n.followUp++;
+  counts.set(r.finding_id,n);
+ }
+ const today=new Date().toISOString().slice(0,10);
+ return state.findings.map(f=>{
+  const cw=state.casework&&state.casework.get(f.finding_id);
+  const ev=state.evidence&&state.evidence.get(f.finding_id);
+  const n=counts.get(f.finding_id)||{files:0,followUp:0};
+  const reasons=[];
+  if(!n.files)reasons.push('No LOCAL fingerprint recorded');
+  if(n.followUp)reasons.push('Local HUMAN follow-up recorded');
+  if(cw){
+   if(!cw.owner.trim())reasons.push('Casework HUMAN owner not assigned');
+   if(cw.status==='blocked'||cw.blocker.trim())reasons.push('Casework HUMAN blocker');
+   if(cw.due_date&&cw.due_date<today&&cw.status!=='completed'&&cw.status!=='deferred')
+    reasons.push('Tentative Casework HUMAN date passed');
+   if(!cw.next_action.trim()&&cw.status!=='completed')reasons.push('Casework HUMAN next action missing');
+  }
+  if(ev){
+   if(ev.stage==='missing'||ev.stage==='needs_changes')reasons.push('Evidence Review HUMAN follow-up');
+   if(!ev.evidence.retest_request_reference.trim())reasons.push('No local HUMAN retest request reference');
+  }
+  const base={critical:5,high:4,medium:3,low:2,info:1}[f.severity]||1;
+  const score=base*10+(reasons.includes('Casework HUMAN blocker')?5:0)+
+    (reasons.includes('Tentative Casework HUMAN date passed')?4:0)+
+    (n.files?0:2)+(n.followUp?3:0);
+  return {finding_id:f.finding_id,severity:f.severity,
+    casework_status:cw?cw.status:'not imported',owner:cw?cw.owner:'',due_date:cw?cw.due_date||'':'',
+    evidence_stage:ev?ev.stage:'not imported',local_files:n.files,local_followup:n.followUp,
+    reasons,score};
+ }).sort((a,b)=>b.score-a.score||a.finding_id.localeCompare(b.finding_id));
+}
+function filteredActionItems(){
+ const mode=$('actionFilter').value;
+ return actionItems().filter(x=>mode==='all'||
+  mode==='critical_high'&&['critical','high'].includes(x.severity)&&x.reasons.length||
+  mode==='missing_file'&&!x.local_files||
+  mode==='blocked'&&x.reasons.some(r=>r.includes('blocker')||r.includes('date passed'))||
+  mode==='human_followup'&&(x.local_followup||x.reasons.includes('Evidence Review HUMAN follow-up')));
+}
+function renderActions(){
+ const body=$('actionRows');body.replaceChildren();
+ const original=actionItems(),visible=filteredActionItems();
+ $('actionSummary').textContent=original.length+' original findings · '+
+ original.filter(x=>x.reasons.length).length+' with LOCAL HUMAN follow-up signals. '+
+ 'Priorities are illustrative and based only on unverified source/HUMAN notes; no security severity has been validated.';
+ for(const item of visible){
+  const tr=document.createElement('tr');
+  const values=[item.finding_id,item.severity,item.owner||'unassigned',
+   item.casework_status+(item.due_date?' · '+item.due_date:''),
+   item.evidence_stage,String(item.local_files),
+   item.reasons.join(' · ')||'No LOCAL action gap identified'];
+  for(const value of values){const td=document.createElement('td');td.textContent=value;tr.append(td);}
+  const td=document.createElement('td'),go=document.createElement('button');go.type='button';go.textContent='File local evidence';
+  go.addEventListener('click',()=>{
+   $('finding').value=item.finding_id;$('filter').value=item.finding_id;state.filter=item.finding_id.toLowerCase();
+   render();$('addFiles').focus();message('Prepared LOCAL evidence filing for original ID '+item.finding_id+'. No scan or remediation action issued.',false);
+  });
+  td.append(go);tr.append(td);body.append(tr);
+ }
+ $('actionShown').textContent=visible.length+' LOCAL HUMAN source-bound action rows';
+}
+function exportHumanQueue(){
+ if(!state.sha)fail('Load the independently checked original CSV first.');
+ const work=filteredActionItems();
+ if(!work.length)fail('No original HUMAN action rows match current filter.');
+ if(!confirm('Download PRIVATE original finding IDs, source digest, local human owners and HUMAN follow-up gaps? Verify recipient and storage separately. No authorization is created.'))return;
+ const heads=['source_sha256','original_finding_id','source_severity_claim','human_casework_owner','human_casework_stage',
+ 'human_tentative_due_date','human_evidence_review_stage','local_fingerprint_count','local_human_followup_count','local_human_followup_reasons'];
+ const rows=work.map(x=>[state.sha,x.finding_id,x.severity,x.owner,x.casework_status,x.due_date,
+  x.evidence_stage,String(x.local_files),String(x.local_followup),x.reasons.join('; ')]);
+ download('LightUp-PRIVATE-original-human-evidence-action-queue.csv',ESCAPE+
+ [heads,...rows].map(x=>x.map(csvCell).join(',')).join('\r\n')+'\r\n','text/csv;charset=utf-8');
+}
+
 function csvCell(raw){
  let s=String(raw);
  // Force text treatment for Unicode-obscured spreadsheet formulas.
@@ -518,6 +599,8 @@ bind('export','click',exportPrivate);bind('aggregate','click',exportAggregate);
 bind('restore','click',importPrivate);bind('verify','change',verifyFile);
 bind('evidenceImportButton','click',importEvidenceV2);
 bind('detachEvidence','click',detachEvidence);
+bind('actionFilter','change',renderActions);
+bind('actionExport','click',exportHumanQueue);
 bind('caseworkImportButton','click',importCasework);
 bind('detachCasework','click',detachCasework);
 bind('coverageFilter','change',renderCoverage);
