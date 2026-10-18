@@ -11,7 +11,6 @@ import base64
 import hashlib
 import json
 import os
-import re
 import stat
 import sys
 from pathlib import Path
@@ -98,10 +97,18 @@ def check_standalone(raw: bytes) -> str:
         fail()
     if html.count("</body>") != 1 or BUNDLE_MARKER in html:
         fail()
-    parts = TEMPLATE_PATTERN.findall(html)
-    if len(parts) != 2 or {k for k, _ in parts} != {"script", "style"}:
+    # Find actual top-level inline CSS/JS; JS intentionally contains an HTML
+    # handoff string with its own literal '<style>' fragments. A global regex
+    # would misidentify that inert source string as another HTML style element.
+    style_start, style_end = html.find("<style>"), html.find("</style>")
+    script_start, script_end = html.find("<script>"), html.find("</script>")
+    if not (0 <= style_start < style_end < script_start < script_end):
         fail()
-    for kind, payload in parts:
+    if html.count("<script>") != 1 or html.count("</script>") != 1:
+        fail()
+    css = html[style_start + len("<style>"):style_end]
+    js = html[script_start + len("<script>"):script_end]
+    for payload in (css, js):
         code = base64.b64encode(hashlib.sha256(payload.encode("utf-8")).digest()).decode()
         if html.count("sha256-" + code) != 1:
             fail()
