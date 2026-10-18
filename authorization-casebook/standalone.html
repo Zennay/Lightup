@@ -65,7 +65,12 @@ footer{padding:29px 0 0;color:#8da0be;font-size:12px;line-height:1.6}#message{mi
 <div style="overflow-x:auto"><table><thead><tr><th>Attention</th><th>Original engagement</th><th>Suggested next review</th><th>Local stage</th></tr></thead><tbody id="review-queue"></tbody></table></div>
 <p id="queue-empty" class="muted">Load a private source snapshot to populate the operator queue.</p>
 </section>
-<footer>LightUp authorization casebook · Local, read-only browser; no network, storage, scanner, target or model · Every export remains REVIEW_ONLY.</footer>
+<section class="card" style="margin-top:16px" aria-label="Private original source changes">
+<h2>06 / Original source change inbox</h2>
+<p class="small">After loading a same-tenant earlier source, inspect exactly which original request, engagement, grant or risk record appeared, disappeared or changed. All IDs stay inside this local PRIVATE browser view. Changes are retrospective source assertions, not trustworthy chronology.</p>
+<div style="overflow-x:auto"><table><thead><tr><th>Change</th><th>Source type</th><th>Private ID</th><th>Earlier</th><th>Current</th></tr></thead><tbody id="changed-rows"></tbody></table></div>
+<p id="changed-empty" class="muted">Import two PRIVATE source snapshots for the same tenant to populate this inbox.</p>
+</section><footer>LightUp authorization casebook · Local, read-only browser; no network, storage, scanner, target or model · Every export remains REVIEW_ONLY.</footer>
 </main>
 <script>
 (function(){
@@ -164,24 +169,55 @@ risk.forEach(function(r){card("Risk decision "+r.approval_id,[
 if(!grants.length)card("No stored grant source",["No original grant row is linked to this engagement within the selected tenant.","This is an observation, not a security verdict."]);
 }
 
-function comparisonCounts(){
-var result={new_records:0,missing_records:0,changed_statuses:0,baseline_provided:!!previous};
-if(!snapshot||!previous)return result;
-var shapes=[
-["requests","request_id","status"],
-["engagements","engagement_id","status"],
-["grants","grant_id","request_link_observation"],
-["risk_approvals","approval_id","status"]
-];
-for(var shape of shapes){
-var category=shape[0],id=shape[1],field=shape[2],
-old=new Map(previous[category].map(function(x){return [x[id],x];})),
-current=new Map(snapshot[category].map(function(x){return [x[id],x];}));
-current.forEach(function(row,key){if(!old.has(key))result.new_records++;
-else if(row[field]!==old.get(key)[field])result.changed_statuses++;});
-old.forEach(function(row,key){if(!current.has(key))result.missing_records++;});
+
+function sourceShape(row,family){
+if(family==="requests")return [row.status,row.requested_mode,row.requested_risk,row.decision_recorded].join("|");
+if(family==="engagements")return row.status;
+if(family==="grants")return [row.request_link_observation,row.validity_observation,row.approved_request_id,row.max_risk].join("|");
+return [row.status,row.decision_provenance_observation,row.requested_risk,row.source_tenant_matches].join("|");
 }
-return result;
+function comparisonEntries(){
+if(!snapshot||!previous)return [];
+var changes=[],shapes=[
+["requests","request_id","request"],
+["engagements","engagement_id","engagement"],
+["grants","grant_id","grant"],
+["risk_approvals","approval_id","risk"]];
+for(var shape of shapes){
+var family=shape[0],id=shape[1],label=shape[2],
+old=new Map(previous[family].map(function(x){return [x[id],x];})),
+now=new Map(snapshot[family].map(function(x){return [x[id],x];}));
+now.forEach(function(current,key){
+var earlier=old.get(key);
+if(!earlier)changes.push({type:label,id:key,change:"NEW_ORIGINAL_ROW",before:"—",after:sourceShape(current,family)});
+else if(sourceShape(current,family)!==sourceShape(earlier,family))
+changes.push({type:label,id:key,change:"SOURCE_FIELDS_CHANGED",before:sourceShape(earlier,family),after:sourceShape(current,family)});
+});
+old.forEach(function(earlier,key){if(!now.has(key))changes.push({type:label,id:key,change:"MISSING_FROM_CURRENT",before:sourceShape(earlier,family),after:"—"});});
+}
+return changes;
+}
+function comparisonCounts(){
+var changes=comparisonEntries();
+return {
+new_records:changes.filter(function(x){return x.change==="NEW_ORIGINAL_ROW";}).length,
+missing_records:changes.filter(function(x){return x.change==="MISSING_FROM_CURRENT";}).length,
+changed_statuses:changes.filter(function(x){return x.change==="SOURCE_FIELDS_CHANGED";}).length,
+baseline_provided:!!previous
+};
+}
+function renderChanges(){
+var host=elt("changed-rows");host.replaceChildren();
+var entries=comparisonEntries();
+elt("changed-empty").hidden=!!entries.length;
+elt("changed-empty").textContent=previous?"No changed original source fields found, or imported sources declare identical rows.":"Import two PRIVATE source snapshots for the same tenant to populate this inbox.";
+entries.sort(function(a,b){return a.type.localeCompare(b.type)||a.id.localeCompare(b.id);});
+for(var e of entries.slice(0,800)){
+var tr=document.createElement("tr");
+[e.change,e.type,e.id,e.before,e.after].forEach(function(value,index){
+var td=document.createElement("td");td.textContent=value;if(index===2)td.className="id";tr.appendChild(td);
+});host.appendChild(tr);
+}
 }
 function renderComparison(){
 var changes=comparisonCounts();
@@ -225,7 +261,7 @@ for(var item of list.filter(function(x){return x.at&&word(x.at);}).sort(function
 var li=document.createElement("li"),time=document.createElement("small"),title=document.createElement("strong"),badge=document.createElement("em");
 time.textContent=item.at;title.textContent=item.type+": "+item.state;badge.textContent=item.id;li.append(time,title,badge);timeline.appendChild(li);
 }
-detail();renderComparison();renderQueue();
+detail();renderComparison();renderQueue();renderChanges();
 elt("origin").textContent=snapshot?(fictional?"FICTIONAL DEMO — ":"PRIVATE UNVERIFIED ORIGINAL EXPORT — ")+"Recorded records, no authority; no original consent or runtime grant verification.": "No authenticated source. Nothing here can validate authorization.";
 }
 elt("file").addEventListener("change",async function(){var file=this.files&&this.files[0];this.value="";if(!file)return;if(file.size<2||file.size>MAX_BYTES){elt("message").textContent="HOLD: file size exceeds private bound.";return;}try{var s=parse(await file.text());snapshot=s;previous=null;fictional=false;selectedCase=null;localStages.clear();elt("message").textContent="Private casebook loaded locally (REVIEW_ONLY).";render();}catch(e){elt("message").textContent="HOLD: invalid/corrupt/unsupported original source. Previous snapshot preserved."; }});
