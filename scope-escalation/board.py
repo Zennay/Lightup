@@ -375,7 +375,7 @@ def _recipient_page() -> bytes:
             or st.st_size < 1 or script_file.is_symlink()):
         raise Hold("recipient JS source unavailable")
     script = script_file.read_bytes().decode("utf-8", "strict")
-    style = """*{box-sizing:border-box}body{margin:0;background:#0c1622;color:#e7f0fb;font:15px system-ui,sans-serif}main{max-width:940px;margin:auto;padding:24px}h1{font-size:2.1rem}.muted{color:#b7ccde}header{display:flex;gap:12px;flex-wrap:wrap;align-items:center;background:#1d3148;padding:17px;border-radius:12px}input,select,textarea,button{font:inherit;background:#132438;color:#f2f6ff;padding:9px;border:1px solid #68839b;border-radius:8px}input[type=file]{max-width:100%}button{cursor:pointer;background:#21567c}button:disabled{opacity:.45;cursor:not-allowed}textarea{resize:vertical;min-height:90px}.notice{background:#382332;border:1px solid #e48192;border-radius:12px;padding:14px;margin:20px 0;line-height:1.6}.row{border:1px solid #465f78;border-radius:12px;background:#182c42;margin:14px 0;padding:17px}.row h2{font-size:1.2rem;overflow-wrap:anywhere}.form{display:grid;grid-template-columns:1fr 1fr;gap:16px}.form label{display:flex;flex-direction:column;gap:8px}.form label:last-child{grid-column:1/-1}#status{padding:10px;background:#18334b;border-radius:9px}#status[data-hold=true]{background:#4e2635}@media(max-width:650px){.form{grid-template-columns:1fr}.form label:last-child{grid-column:auto}}@media print{header,button,input,select,textarea{display:none!important}body,.row{background:white;color:black}}"""
+    style = """*{box-sizing:border-box}body{margin:0;background:#0c1622;color:#e7f0fb;font:15px system-ui,sans-serif}main{max-width:940px;margin:auto;padding:24px}h1{font-size:2.1rem}.muted{color:#b7ccde}header{display:flex;gap:12px;flex-wrap:wrap;align-items:center;background:#1d3148;padding:17px;border-radius:12px}input,select,textarea,button{font:inherit;background:#132438;color:#f2f6ff;padding:9px;border:1px solid #68839b;border-radius:8px}input[type=file]{max-width:100%}button{cursor:pointer;background:#21567c}button:disabled{opacity:.45;cursor:not-allowed}textarea{resize:vertical;min-height:90px}.notice{background:#382332;border:1px solid #e48192;border-radius:12px;padding:14px;margin:20px 0;line-height:1.6}.row{border:1px solid #465f78;border-radius:12px;background:#182c42;margin:14px 0;padding:17px}.row h2{font-size:1.2rem;overflow-wrap:anywhere}.form{display:grid;grid-template-columns:1fr 1fr;gap:16px}.form label{display:flex;flex-direction:column;gap:8px}.form label:last-child{grid-column:1/-1}.recipient-tools{display:flex;gap:14px;align-items:end;flex-wrap:wrap;margin:18px 0}.recipient-tools label{display:flex;flex-direction:column;gap:7px}.recipient-tools #summary{width:100%}.row[hidden]{display:none}#status{padding:10px;background:#18334b;border-radius:9px}#status[data-hold=true]{background:#4e2635}@media(max-width:650px){.form{grid-template-columns:1fr}.form label:last-child{grid-column:auto}}@media print{header,button,input,select,textarea{display:none!important}body,.row{background:white;color:black}}"""
     css_hash = base64.b64encode(sha256(style.encode()).digest()).decode()
     js_hash = base64.b64encode(sha256(script.encode()).digest()).decode()
     csp = ("default-src 'none'; script-src 'sha256-" + js_hash +
@@ -394,6 +394,14 @@ to interact with a target. Check the recipient channel separately. Never upload 
 <header><label>Open separately verified PRIVATE reviewer handoff
 <input type="file" id="import" accept=".json,application/json"></label>
 <button id="export" disabled>Export PRIVATE human reply</button></header>
+<section class="recipient-tools"><label>Find selected original ID
+<input type="search" id="search" autocomplete="off" maxlength="180"></label>
+<label>Show
+<select id="focus"><option value="ALL">All selected human tasks</option>
+<option value="HOLD">Historical source HOLD</option><option value="PENDING">Human pending</option>
+<option value="CHANGED">Edited since handoff</option>
+<option value="UNFINISHED">Human follow-up still open</option></select></label>
+<p id="summary" class="muted" role="status">No private reviewer work loaded.</p></section>
 <p id="identity" class="muted">No source-bound handoff imported.</p>
 <p id="status" role="status" aria-live="polite">Only human review fields are editable; no network or persistence.</p>
 <section id="cards"></section>
