@@ -130,7 +130,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--db", required=True, help="existing LightUp domain database")
     parser.add_argument("--email", required=True)
     parser.add_argument("--client-id", required=True)
-    parser.add_argument("--engagement-id", help="optionally restrict to one engagement")
+    parser.add_argument("--engagement-id", required=True, help="exact approved engagement, checked against selected client")
     parser.add_argument(
         "--output", required=True,
         help="new private .html file; existing files are never replaced",
