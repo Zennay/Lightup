@@ -11,7 +11,7 @@ const KINDS=['missing_evidence','patch_change','deployment_record','rollback_pla
 const STAGES=['draft','requested_human','submitted_unverified','needs_changes','closed_human'];
 const MAX_ROWS=200,MAX_BATCH=40,MAX_FILE=1048576;
 const FIELDS=['request_id','finding_id','request_kind','assignee','due_date','instructions','linked_sha256','human_stage','human_response','created_utc','updated_utc'];
-const state={binding:null,requests:[],preview:null,filter:'open'};
+const state={binding:null,requests:[],preview:null,ownerReplyPending:null,filter:'open'};
 function problem(t){throw Error(t);}
 function alert(t,error=false){$('requestMessage').textContent=t;$('requestMessage').dataset.error=String(error);}
 function exactKeys(o,keys){
@@ -101,7 +101,7 @@ async function importPrivate(){
  if(!same(B.context())||JSON.stringify(bindingFor(B.context()))!==source||
     JSON.stringify(state.requests)!==before)problem('Source or local HUMAN requests changed during private import.');
  if(!confirm('Replace ALL '+state.requests.length+' current PRIVATE human requests with '+rows.length+' original source-bound request records? Keep your old PRIVATE export separately.'))return;
- state.requests=rows;state.preview=null;$('requestImport').value='';render();
+ state.requests=rows;state.preview=null;state.ownerReplyPending=null;$('requestImport').value='';render();
  alert('Imported '+rows.length+' PRIVATE HUMAN requests for identical original source. No retest or authorization inferred.');
 }
 function make(id,kind,assignee,due,instructions,linked=''){
@@ -178,7 +178,7 @@ function forget(){
  if(!state.binding)return;
  if(!confirm('Discard '+state.requests.length+' LOCAL HUMAN request records and bind the desk to the currently loaded original source? Protect any prior PRIVATE exported handoff first.'))return;
  const c=B.context();state.binding=c.sha?bindingFor(c):null;
- state.requests=[];state.preview=null;render();alert('Private request desk started fresh for current original source.');
+ state.requests=[];state.preview=null;state.ownerReplyPending=null;render();alert('Private request desk started fresh for current original source.');
 }
 function tag(name,text){
  const t=document.createElement(name);t.textContent=text;return t;
@@ -187,6 +187,106 @@ function field(parent,name,initial,max){
  const label=tag('label',name),input=document.createElement('textarea');
  input.value=initial;input.maxLength=max;input.rows=2;label.append(input);parent.append(label);return input;
 }
+
+/* Privacy-minimal, owner-specific HUMAN response handoff. A reply is untrusted
+   human text; no identity proof, assessment execution, retest or grant. */
+const OWNER_KEYS=['kind','schema_version','disposition','source_contract','source_sha256',
+ 'client_reference','engagement_reference','recipient_alias','reply_kind','issued_utc',
+ 'reply_utc','requests',...FLAGS];
+const OWNER_ROW=['request_id','finding_id','request_kind','instructions','due_date','human_stage','human_response'];
+function ownerPacketFor(alias){
+ const c=current();
+ const originals=state.requests.filter(r=>r.assignee===alias&&r.human_stage!=='closed_human').slice(0,60);
+ if(!alias||!originals.length)problem('Select a HUMAN owner with outstanding PRIVATE requests.');
+ return {kind:'lightup.private_human_evidence_owner_handoff',schema_version:1,
+  disposition:'UNVERIFIED_HUMAN_REQUEST_ONLY',source_contract:'lightup.finding_export._COLUMNS_v1',
+  source_sha256:c.sha,client_reference:c.client,engagement_reference:c.engagement,
+  recipient_alias:alias,reply_kind:'owner_request',issued_utc:new Date().toISOString(),
+  reply_utc:null,...Object.fromEntries(FLAGS.map(x=>[x,false])),
+  requests:originals.map(r=>({request_id:r.request_id,finding_id:r.finding_id,
+   request_kind:r.request_kind,instructions:r.instructions,due_date:r.due_date,
+   human_stage:'requested_human',human_response:''}))
+ };
+}
+function exportOwnerPacket(){
+ const c=current(),alias=$('requestOwner').value;
+ const packet=ownerPacketFor(alias);
+ if(!confirm('Export '+packet.requests.length+' PRIVATE owner-specific HUMAN evidence requests for "'+
+  alias+'"? This shares no full Casework, file contents, filenames, SHA fingerprints or other owners. The recipient and secure channel are NOT authenticated by this application.'))return;
+ B.download('LightUp-PRIVATE-human-owner-request.json',JSON.stringify(packet,null,2)+'\n','application/json');
+ alert('Exported owner-specific PRIVATE HUMAN request packet for '+alias+'. No request has been delivered or marked authorized.');
+}
+function admitOwnerReply(data,c){
+ if(!exactKeys(data,OWNER_KEYS)||data.kind!=='lightup.private_human_evidence_owner_handoff'||
+ data.schema_version!==1||data.disposition!=='UNVERIFIED_HUMAN_REQUEST_ONLY'||
+ data.source_contract!=='lightup.finding_export._COLUMNS_v1'||
+ data.source_sha256!==c.sha||data.client_reference!==c.client||
+ data.engagement_reference!==c.engagement||FLAGS.some(k=>data[k]!==false)||
+ data.reply_kind!=='unverified_human_reply'||typeof data.recipient_alias!=='string'||
+ !data.recipient_alias.trim()||data.recipient_alias.length>120||
+ !Array.isArray(data.requests)||data.requests.length<1||data.requests.length>60||
+ typeof data.reply_utc!=='string')
+  problem('PRIVATE reply sheet format/source or all-false authority envelope invalid.');
+ stamp(data.issued_utc);stamp(data.reply_utc);
+ const alias=data.recipient_alias;
+ const seen=new Set(),updates=[];
+ for(const row of data.requests){
+  if(!exactKeys(row,OWNER_ROW))problem('Unknown HUMAN reply fields.');
+  if(typeof row.request_id!=='string'||seen.has(row.request_id))problem('Repeated HUMAN response request ID.');
+  seen.add(row.request_id);
+  const original=state.requests.find(x=>x.request_id===row.request_id);
+  if(!original||original.assignee!==alias||
+    original.finding_id!==row.finding_id||original.request_kind!==row.request_kind||
+    original.instructions!==row.instructions||original.due_date!==row.due_date)
+   problem('Human reply has stale, changed, cross-owner or unknown ORIGINAL request context.');
+  if(!['submitted_unverified','needs_changes'].includes(row.human_stage))
+   problem('Owner reply must be submitted_unverified or needs_changes, never authorizing or closed.');
+  str(row.human_response,1800,'HUMAN reply',true);
+  updates.push({request_id:row.request_id,finding_id:row.finding_id,
+   previous_stage:original.human_stage,next_stage:row.human_stage,
+   previous_text:original.human_response,next_text:row.human_response});
+ }
+ return {alias,updates};
+}
+async function previewOwnerReply(){
+ const c=current(),start=JSON.stringify(bindingFor(c)),
+   baseline=JSON.stringify(state.requests);
+ const data=B.strictJSON(await fileText($('ownerReplyImport').files[0]),MAX_FILE);
+ const admitted=admitOwnerReply(data,c);
+ if(start!==JSON.stringify(bindingFor(B.context()))||
+  baseline!==JSON.stringify(state.requests)||!same(B.context()))
+  problem('ORIGINAL source or HUMAN request baseline changed while reading owner reply.');
+ state.ownerReplyPending={source:start,baseline,rows:admitted.updates,alias:admitted.alias};
+ $('ownerReplyPreview').textContent=[
+  'PRIVATE HUMAN owner response preview — NOT identity-authenticated',
+  'Owner alias (unverified): '+admitted.alias,'Original source SHA-256: '+c.sha,
+  'Request replies: '+admitted.updates.length,
+  ...admitted.updates.map(x=>x.finding_id+' / '+x.request_id.slice(0,12)+
+   ' · '+x.previous_stage+' → '+x.next_stage+
+   ' · previous human response '+x.previous_text.length+' chars, new '+x.next_text.length+' chars'),
+  'Import NEVER proves identity, permission, remediation or retest; confirm sender out of band.'
+ ].join('\n');
+ $('ownerReplyPreview').hidden=false;$('ownerReplyApply').disabled=false;
+ $('ownerReplyImport').value='';
+ alert('Owner-specific HUMAN reply staged, nothing applied. Independently verify its actual sender.');
+}
+function applyOwnerReply(){
+ const p=state.ownerReplyPending,c=current();
+ if(!p)problem('Preview an independently obtained HUMAN owner reply first.');
+ if(p.source!==JSON.stringify(bindingFor(c))||p.baseline!==JSON.stringify(state.requests))
+  problem('ORIGINAL source or HUMAN request records changed after reply preview.');
+ if(!confirm('Apply '+p.rows.length+' UNVERIFIED HUMAN responses allegedly from "'+
+   p.alias+'"? This does not authenticate the respondent, grant execution or verify remediation.'))return;
+ const now=new Date().toISOString(),changes=new Map(p.rows.map(r=>[r.request_id,r]));
+ for(const row of state.requests){
+  const newData=changes.get(row.request_id);
+  if(newData){row.human_stage=newData.next_stage;row.human_response=newData.next_text;row.updated_utc=now;}
+ }
+ state.ownerReplyPending=null;state.preview=null;
+ $('ownerReplyPreview').hidden=true;$('ownerReplyApply').disabled=true;render();
+ alert('Applied '+p.rows.length+' UNVERIFIED HUMAN replies to original-source PRIVATE drafts. No authentic identity or retest claim.');
+}
+
 function render(){
  const c=B.context();
  if(c.sha&&!state.binding)state.binding=bindingFor(c);
@@ -202,6 +302,16 @@ function render(){
    'requestImportButton','requestBatchMode','requestBatchKind',
    'requestBatchInstructions','requestBatchDue','requestBatchPreviewButton'])
   $(id).disabled=!enabled;
+ const currentOwner=$('requestOwner').value;
+ $('requestOwner').replaceChildren();
+ $('requestOwner').append(new Option('Choose HUMAN recipient alias',''));
+ const assignees=[...new Set(state.requests.filter(r=>r.assignee.trim()&&r.human_stage!=='closed_human').map(r=>r.assignee))].sort();
+ for(const alias of assignees)$('requestOwner').append(new Option(alias,alias));
+ if(assignees.includes(currentOwner))$('requestOwner').value=currentOwner;
+ $('requestOwner').disabled=!enabled||!assignees.length;
+ $('ownerPacketExport').disabled=!enabled||!$('requestOwner').value;
+ $('ownerReplyImport').disabled=!enabled;$('ownerReplyPreviewButton').disabled=!enabled;
+ $('ownerReplyApply').disabled=!enabled||!state.ownerReplyPending;
  $('requestExport').disabled=!state.binding;
  $('requestClear').disabled=!state.binding;
  $('requestBatchApply').disabled=!enabled||!state.preview;
@@ -275,6 +385,10 @@ function bind(id,event,fn){
   try{await fn();}catch(e){alert(e.message||'Invalid PRIVATE human request',true);}
  });
 }
+bind('requestOwner','change',render);
+bind('ownerPacketExport','click',exportOwnerPacket);
+bind('ownerReplyPreviewButton','click',previewOwnerReply);
+bind('ownerReplyApply','click',applyOwnerReply);
 bind('requestFinding','change',render);
 bind('requestCreate','click',createOne);
 bind('requestExport','click',exportPrivate);
@@ -307,10 +421,10 @@ window.LightUpArtifactRequests=Object.freeze({
  restore(rows){
   const c=current();
   const next=this.validateSnapshot(rows,c);
-  state.requests=next;state.preview=null;render();
+  state.requests=next;state.preview=null;state.ownerReplyPending=null;render();
  },
  forgetUnconditionally(){
-  state.requests=[];state.preview=null;state.binding=null;
+  state.requests=[];state.preview=null;state.ownerReplyPending=null;state.binding=null;
   render();
  }
 });
