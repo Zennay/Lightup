@@ -116,7 +116,7 @@ function render(){
   note.addEventListener('change',()=>{row.human_note=bounded(note.value,1200,'note',false);});
   const nc=document.createElement('td');nc.append(note);tr.append(nc);
   const actions=document.createElement('td'),verify=document.createElement('button');verify.textContent='Recheck local file';
-  verify.type='button';verify.addEventListener('click',()=>{$('verify').click();state.verify=i;message('Choose the SAME local file. The content stays in your browser.',false);});
+  verify.type='button';verify.addEventListener('click',()=>{state.verify={key:rowKey(row),row,source:state.sha};$('verify').click();message('Choose the SAME local file. The content stays in your browser.',false);});
   const remove=document.createElement('button');remove.type='button';remove.textContent='Remove';
   remove.addEventListener('click',()=>{if(confirm('Remove this local human record? This cannot remove external source evidence.')){state.selected.delete(rowKey(row));state.rows.splice(i,1);state.bulk=null;state.undo=[];render();}});
   actions.append(verify,remove);tr.append(actions);
@@ -181,12 +181,15 @@ async function addFiles(){
 }
 async function verifyFile(){
  const file=$('verify').files[0];$('verify').value='';
- const idx=state.verify;state.verify=null;
- if(idx===null||idx>=state.rows.length||!file)return;
+ const ref=state.verify;state.verify=null;
+ if(!ref||!file)return;
+ const x=state.rows.find(r=>rowKey(r)===ref.key);
+ if(!x||x!==ref.row||state.sha!==ref.source)
+  fail('Original source or selected fingerprint changed before local recheck; retry.');
  if(file.size>MAX_FILE)fail('File larger than permitted local size.');
- const x=state.rows[idx],sourceAtStart=state.sha;
  const got=await digest(await file.arrayBuffer());
- if(state.sha!==sourceAtStart||state.rows[idx]!==x)fail('Original fingerprint changed during recheck; retry.');
+ if(state.sha!==ref.source||!state.rows.includes(x)||rowKey(x)!==ref.key)
+  fail('Original fingerprint changed during local recheck; retry.');
  message(got===x.sha256&&file.size===x.byte_length?
   'Byte digest and length MATCH locally. This does not validate content truth, chronology, authenticity or remediation.':
   'MISMATCH: the selected file differs from the recorded bytes. No record was changed.',
@@ -414,6 +417,7 @@ async function importEvidenceV2(){
  data.disposition!=='UNVERIFIED_OFFLINE_HUMAN_COORDINATION'||
  data.source_contract!=='lightup.finding_export._COLUMNS_v1'||
  data.source_sha256!==sourceAtStart||AUTH_FLAGS.some(k=>data[k]!==false)||
+ Object.keys(data).some(k=>!['kind','schema_version','disposition','source_contract','source_sha256','review','revision_register','warning',...AUTH_FLAGS].includes(k))||
  !Array.isArray(data.review)||data.review.length!==state.findings.length||
  !Array.isArray(data.revision_register)||data.revision_register.length>350)
   fail('Native original Evidence Review v2 source, non-authority flags or full original review differ.');
