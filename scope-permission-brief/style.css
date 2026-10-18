@@ -12,3 +12,8 @@
 #reconciliation .receipt{overflow-wrap:anywhere}
 @media(max-width:750px){.inputs-row{grid-template-columns:1fr}}
 @media print{#reconciliation .inputs-row,#reconciliation .buttons{display:none!important}#reconcileBoard{max-height:none}}
+
+/* Source-byte revision timeline: local review only, no authorization. */
+.revision-entry{padding:16px;margin:12px 0;background:#101d2c;border:1px solid var(--line);border-left:4px solid #eac081;border-radius:8px;overflow-wrap:anywhere}
+.revision-entry h3{margin:0 0 8px;font-size:15px}.revision-entry p{font-size:13px}.revision-entry strong{display:block;color:var(--warn);font-size:13px}
+@media print{#revisionBoard .buttons{display:none!important}}
