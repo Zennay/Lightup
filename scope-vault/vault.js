@@ -667,6 +667,223 @@
   }
 
 
+
+  // Read-only offline adapter for exactly the *draft* Studio v1 producer format.
+  // Not an authority policy, membership checker, operator decision or grant.
+  function parseStudioStrict(source) {
+    invariant(source.bytes.length > 0 && source.bytes.length <= 64 * 1024);
+    const raw = DEC.decode(source.bytes);
+    const stack = [];
+    for (let i = 0; i < raw.length; i++) {
+      const ch = raw[i];
+      if (ch === '{' || ch === '[') stack.push({type: ch, keys: ch === '{' ? new Set() : null});
+      else if (ch === '}' || ch === ']') {
+        invariant(stack.length && stack[stack.length - 1].type === (ch === '}' ? '{' : '['));
+        stack.pop();
+      } else if (ch === '"') {
+        const start = i;
+        i++;
+        while (i < raw.length) {
+          if (raw[i] === '\\') { i += 2; continue; }
+          if (raw[i] === '"') break;
+          i++;
+        }
+        invariant(i < raw.length);
+        const key = JSON.parse(raw.slice(start, i + 1));
+        let next = i + 1;
+        while (next < raw.length && /\s/.test(raw[next])) next++;
+        if (raw[next] === ':') {
+          invariant(stack.length && stack[stack.length - 1].type === '{');
+          invariant(!['__proto__','prototype','constructor'].includes(key));
+          const keys = stack[stack.length - 1].keys;
+          invariant(!keys.has(key));
+          keys.add(key);
+        }
+      }
+    }
+    invariant(stack.length === 0);
+    const p = JSON.parse(raw);
+    invariant(p !== null && typeof p === 'object' && !Array.isArray(p));
+    const root = [
+      'schema_version','kind','state','authorization','client_consent',
+      'operator_consent','grant','execution','revocation_checked',
+      'proposal_name','client_label','requested_assets','excluded_assets',
+      'requested_mode','requested_risk','notes','proposed_activities',
+      'proposed_window_local','proposed_window_utc','exported_at_utc'
+    ];
+    invariant(Object.keys(p).every(k => root.includes(k) || k === 'scope_fingerprint_sha256'));
+    invariant(root.every(k => Object.prototype.hasOwnProperty.call(p,k)));
+    invariant(p.schema_version === 1 && p.kind === 'lightup.scope_proposal_draft' && p.state === 'DRAFT_ONLY');
+    for (const k of ['authorization','client_consent','operator_consent','grant','execution','revocation_checked']) {
+      invariant(p[k] === false);
+    }
+    const str=(s,max)=>typeof s==='string' && s.length<=max && !/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/.test(s);
+    invariant(str(p.proposal_name,300) && str(p.client_label,300) && str(p.notes,3000));
+    invariant(p.requested_mode === 'analysis_only' || p.requested_mode === 'authorized_assessment');
+    invariant(Number.isInteger(p.requested_risk) && p.requested_risk >= 1 && p.requested_risk <= 4);
+    for (const k of ['requested_assets','excluded_assets']) {
+      invariant(Array.isArray(p[k]) && p[k].length<=80);
+      invariant(p[k].every(v=>str(v,255) && v.length>0 && v === v.trim() && v === v.normalize('NFC')));
+      invariant(new Set(p[k]).size === p[k].length);
+    }
+    invariant(p.proposed_activities !== null && typeof p.proposed_activities === 'object' &&
+      !Array.isArray(p.proposed_activities));
+    const activityKeys = ['passive_analysis','configuration_review','private_lab_network_checks'];
+    strictKeys(p.proposed_activities,activityKeys);
+    invariant(activityKeys.every(k=>typeof p.proposed_activities[k]==='boolean'));
+    invariant(p.proposed_window_local !== null && typeof p.proposed_window_local === 'object' &&
+      !Array.isArray(p.proposed_window_local));
+    invariant(Object.keys(p.proposed_window_local).every(k=>['start','end'].includes(k)));
+    for(const key of ['start','end']) invariant(
+      p.proposed_window_local[key] === null || str(p.proposed_window_local[key],40));
+    const utc = p.proposed_window_utc;
+    invariant(utc && typeof utc==='object' && !Array.isArray(utc));
+    invariant(Object.keys(utc).every(k=>[
+      'status','timezone','start','end','start_offset_minutes','end_offset_minutes'
+    ].includes(k)));
+    invariant(str(utc.status,50) && str(utc.timezone,120));
+    if (utc.status === 'resolved') {
+      const iso=/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\.\d{3}Z$/;
+      invariant(typeof utc.start==='string' && iso.test(utc.start) &&
+        typeof utc.end==='string' && iso.test(utc.end) &&
+        !Number.isNaN(Date.parse(utc.start)) && !Number.isNaN(Date.parse(utc.end)) &&
+        utc.start<utc.end &&
+        Number.isInteger(utc.start_offset_minutes) && Math.abs(utc.start_offset_minutes)<=840 &&
+        Number.isInteger(utc.end_offset_minutes) && Math.abs(utc.end_offset_minutes)<=840);
+    } else {
+      invariant(utc.start === null && utc.end === null);
+    }
+    invariant(str(p.exported_at_utc,40));
+    if(Object.prototype.hasOwnProperty.call(p,'scope_fingerprint_sha256')) {
+      invariant(typeof p.scope_fingerprint_sha256==='string' &&
+        /^[a-f0-9]{64}$/.test(p.scope_fingerprint_sha256));
+      // Studio's canonical digest needs the source-owner fingerprint algorithm.
+      // It is NOT reproduced or treated as verified here.
+    }
+    return p;
+  }
+
+  function studioReview(p) {
+    const concerns = [];
+    const add=(code,message)=>concerns.push({code,message});
+    if(!p.requested_assets.length) add('MISSING_PROPOSED_ASSETS','No proposed assets recorded for independent client/operator review.');
+    if(!p.excluded_assets.length) add('EXCLUSIONS_NOT_DECLARED','No explicit exclusions recorded; operator must independently decide excluded assets.');
+    if(p.requested_risk===4) add('RISK4_ESCALATION','Risk 4 requires distinct human escalation and an approved risk record.');
+    if(p.proposed_activities.private_lab_network_checks)
+      add('PRIVATE_LAB_PROVENANCE','Private lab network activity needs independent scope, isolation and approved lab-only handling.');
+    if(p.requested_mode==='authorized_assessment')
+      add('ACTIVE_MODE_NEEDS_REAL_GRANT','Requested active assessment mode is not an actual issued authorization.');
+    if(!p.proposed_activities.passive_analysis && !p.proposed_activities.configuration_review &&
+       !p.proposed_activities.private_lab_network_checks)
+      add('NO_ACTIVITIES','No assessment activities explicitly proposed.');
+    if(p.proposed_window_utc.status !== 'resolved')
+      add('UTC_WINDOW_UNRESOLVED','Local requested time has no resolved UTC planning evidence.');
+    else add('UTC_WINDOW_UNAPPROVED','Resolved UTC timestamps are tentative and not an operator-approved booking.');
+    if(p.proposed_activities.private_lab_network_checks && p.requested_mode==='analysis_only')
+      add('MODE_ACTIVITY_MISMATCH','Private-lab network checks are proposed alongside analysis-only mode. Clarify intended scope.');
+    if(p.notes.trim().length<15) add('SAFETY_NOTES_INCOMPLETE','Safety / stop conditions should be independently clarified.');
+    // Always include non-negotiable human checks, even if other fields look good.
+    add('CLIENT_IDENTITY_AND_ASSET_CONTROL','Verify real client, tenant, ownership and exact allowed targets through authenticated systems.');
+    add('OPERATOR_CONSENT_AND_REVOCATION','Require separate operator consent, permitted execution window and revocation check at action time.');
+    add('CI_SECURITY_HUMAN_GO','The repository CI, independent security/privacy review and explicit human GO remain external gates.');
+    return concerns;
+  }
+
+  function clearStudioInspection(message='Private proposal view hidden.') {
+    inspectedStudio=null;
+    els.studioSummary.replaceChildren();
+    els.studioAssets.textContent='';
+    els.studioStatus.textContent=message;
+  }
+  function inspectStudio() {
+    if(busy)return;
+    clearStudioInspection();
+    touch();
+    try {
+      const id=els.studioSource.value;
+      invariant(/^(0|[1-9]\d?)$/.test(id) && Number(id)<entries.length);
+      const entry=entries[Number(id)];
+      invariant(entry.name.toLowerCase().endsWith('.json'));
+      const p=parseStudioStrict(entry);
+      const concerns=studioReview(p);
+      inspectedStudio={index:Number(id),hash:entry.hash,concerns,
+        summary:{risk:p.requested_risk,mode:p.requested_mode,
+          proposed:p.requested_assets.length,excluded:p.excluded_assets.length,
+          utc:p.proposed_window_utc.status}};
+      const head=document.createElement('div');
+      head.className='item';
+      head.textContent='Draft only · Risk '+p.requested_risk+' · Mode '+p.requested_mode+
+        ' · '+p.requested_assets.length+' proposed assets · '+
+        p.excluded_assets.length+' exclusions · UTC '+p.proposed_window_utc.status;
+      els.studioSummary.append(head);
+      for(const concern of concerns){
+        const item=document.createElement('div');item.className='item';
+        const span=document.createElement('span');
+        span.textContent=concern.code+': '+concern.message;
+        item.append(span);els.studioSummary.append(item);
+      }
+      // Raw proposed identities are shown ONLY in the private tab on deliberate disclosure.
+      els.studioAssets.textContent=
+        'PROPOSED (NOT AUTHORIZED):\n'+p.requested_assets.join('\n')+
+        '\n\nEXCLUDED (NOT ENFORCED):\n'+p.excluded_assets.join('\n');
+      els.studioStatus.textContent='Read-only offline source inspection: '+concerns.length+
+        ' human review checks. Original SHA-256 '+entry.hash.slice(0,16)+
+        '…; Studio embedded fingerprint, client identity, assets and UTC claims are NOT authenticated.';
+      notice('Scope proposal inspected locally. Nothing was authorized, dispatched or submitted.');
+    } catch {
+      clearStudioInspection('HOLD: not an exact bounded Studio v1 proposal, ambiguous JSON keys, or unsupported values. Original remains unchanged.');
+      notice('Scope proposal inspection refused; no trusted client/operator authority was created.',true);
+    }
+  }
+  function currentStudio() {
+    invariant(inspectedStudio && entries[inspectedStudio.index] &&
+      entries[inspectedStudio.index].hash===inspectedStudio.hash &&
+      els.studioSource.value===String(inspectedStudio.index));
+    return inspectedStudio;
+  }
+  function flagStudio() {
+    if(busy)return;
+    try {
+      const inspection=currentStudio();
+      const entry=entries[inspection.index];
+      const missing=inspection.concerns.map(x=>x.code).join(', ');
+      const append='Studio v1 human follow-up ['+inspection.hash.slice(0,12)+']: '+missing;
+      invariant(append.length + entry.note.length + 2 <= MAX_NOTE_CHARS);
+      if(!window.confirm('Mark this local proposal Needs clarification and add anonymized human follow-up codes to its PRIVATE encrypted note? This is not an operator decision, signature or authorization.'))return;
+      entry.note=(entry.note ? entry.note+'\n':'')+append;
+      entry.stage='clarify';
+      touch();paint();
+      notice('Review checklist codes appended to private in-memory note. Save a full encrypted archive to retain them; no approval exists.');
+    }catch {
+      notice('HOLD: re-inspect current source or clear existing private note before adding follow-up. No changes made.',true);
+    }
+  }
+  function exportStudioReport() {
+    if(busy)return;
+    try {
+      const inspection=currentStudio();
+      invariant(window.confirm('Download an anonymous UNSIGNED preparation checklist? It excludes source filenames, assets, notes, client labels and identity, and is NOT proof of consent or release approval.'));
+      const packet={
+        kind:'lightup.offline.studio_scope_human_preparation.v1',
+        state:'REVIEW_ONLY_NOT_AUTHORIZED',
+        authority:{authorized:false,client_consent_verified:false,
+          operator_consent_verified:false,grant_issued:false,
+          dispatch_allowed:false,scan_allowed:false,release_allowed:false},
+        source_sha256:inspection.hash,
+        proposed_counts:{assets:inspection.summary.proposed,exclusions:inspection.summary.excluded},
+        requested_mode:inspection.summary.mode,
+        requested_risk:inspection.summary.risk,
+        proposed_utc_status:inspection.summary.utc,
+        human_followup_codes:inspection.concerns.map(x=>x.code)
+      };
+      const contents=JSON.stringify(packet,null,2)+'\n';
+      save(new Blob([contents],{type:'application/json'}),'lightup-anonymous-review-checklist.json');
+      touch();notice('Unsigned anonymous preparation checklist downloaded. No identities verified or permissions granted.');
+    }catch {
+      notice('HOLD: inspect a current exact Studio v1 source before exporting the anonymous checklist.',true);
+    }
+  }
+
   // Review-only viewer: DOM text nodes, never HTML execution or browser navigation.
   // Bounded line-level diff avoids quadratic work beyond 400 lines per file.
   const MAX_REVIEW_LINES = 400;
@@ -752,6 +969,14 @@
     els.redactTerm.value = ""; touch();
     els.redactSummary.textContent = "Sensitive term input cleared from the form.";
   });
+  els.studioInspect.addEventListener("click",inspectStudio);
+  els.studioFlag.addEventListener("click",flagStudio);
+  els.studioReport.addEventListener("click",exportStudioReport);
+  els.studioClear.addEventListener("click",()=>{
+    touch();clearStudioInspection();
+    notice('Private proposal inspection hidden and no source changed.');
+  });
+  els.studioSource.addEventListener("change",()=>{clearStudioInspection();touch();});
   els.files.addEventListener("change", addFiles);
   els.previewFile.addEventListener("click", preview);
   els.compareFiles.addEventListener("click", compare);
