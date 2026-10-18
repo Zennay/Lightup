@@ -280,6 +280,30 @@
     const cell=v=>'"'+String(v).replaceAll('"','""')+'"';
     return "\ufeff"+rows.map(r=>r.map(cell).join(",")).join("\r\n")+"\r\n";
   }
+  function coordinationIcs(){
+    const dated=coordination().entries.filter(x=>x.kind==="local_preparation" && x.due_day);
+    if(!dated.length) return null;
+    const now=new Date().toISOString().replaceAll("-","").replaceAll(":","").replace(/\.\d{3}Z$/,"Z");
+    const fold=value=>{
+      const pieces=[];for(let i=0;i<value.length;i+=72)pieces.push((i>0?" ":"")+value.slice(i,i+72));
+      return pieces.join("\r\n");
+    };
+    const ics=["BEGIN:VCALENDAR","VERSION:2.0","CALSCALE:GREGORIAN",
+      "PRODID:-//LightUp//Offline Review Tasks//EN"];
+    for(const t of dated){
+      const day=t.due_day.replaceAll("-","");
+      const next=new Date(Date.parse(t.due_day+"T00:00:00.000Z")+86400000).toISOString().slice(0,10).replaceAll("-","");
+      ics.push("BEGIN:VEVENT",
+        fold("UID:lightup-human-"+t.source_sha256+"-"+t.code+"@offline.invalid"),
+        "DTSTAMP:"+now,"DTSTART;VALUE=DATE:"+day,"DTEND;VALUE=DATE:"+next,
+        "STATUS:TENTATIVE","TRANSP:TRANSPARENT","CLASS:PRIVATE",
+        "SUMMARY:LightUp human scope review (REVIEW ONLY)",
+        fold("DESCRIPTION:Human follow-up "+t.code+". No asset scan, authorization, client consent, grant or actual appointment."),
+        "END:VEVENT");
+    }
+    ics.push("END:VCALENDAR");
+    return ics.map(fold).join("\r\n")+"\r\n";
+  }
   function renderPermission(){
     const area=$("permissionBoard");area.replaceChildren();
     const attached=records.filter(r=>r.permission);
@@ -847,6 +871,16 @@
       "<p>Persoonsgegevens, bestandsnamen, vrije tekst en originele asset-identiteiten zijn niet opgenomen. Deze handoff heeft geen handtekening, actuele geldigheid of onafhankelijk herkomstbewijs.</p>",
       "<p>Conceptdossiers: "+data.entries.length+". De SHA-256 is een byte-identificatie, géén autorisatie- of identiteitshandtekening.</p>"
     ];
+    const follow=coordination().entries;
+    if(follow.length) {
+      parts.push("<h2>Geprioriteerde menselijke opvolgagenda</h2>",
+        "<p>Open lokale acties "+esc(follow.length)+". Eerste 40 prioriteitsitems hieronder; de volledige agenda is afzonderlijk als JSON/CSV beschikbaar.</p>",
+        "<table><thead><tr><th>Dossier</th><th>Menselijke actie (geen uitvoermachtiging)</th><th>Prioriteit</th></tr></thead><tbody>");
+      for(const x of follow.slice(0,40))parts.push("<tr><td>"+esc(x.dossier)+"</td><td>"+
+        esc(x.kind+" / "+x.code+" / "+x.role+" / "+x.action)+(x.due_day?"<br>Doeldatum "+esc(x.due_day):"")+
+        "</td><td>"+esc(x.priority)+"</td></tr>");
+      parts.push("</tbody></table>");
+    }
     if(data.review_agenda.length){
       parts.push("<h2>Gedeelde menselijke review-agenda</h2><table><thead><tr><th>Voorstellen</th><th>Lokale overlapindicatoren</th></tr></thead><tbody>");
       for(const x of data.review_agenda)parts.push("<tr><td>"+esc(x.dossier_a)+" / "+esc(x.dossier_b)+
@@ -939,6 +973,13 @@
   });
   $("coordJson").addEventListener("click",()=>records.length?json(coordination(),"lightup-review-only-coordination.json"):show("Laad eerst concepten.",true));
   $("coordCsv").addEventListener("click",()=>records.length?download(coordinationCsv(),"lightup-review-only-coordination.csv","text/csv;charset=utf-8"):show("Laad eerst concepten.",true));
+  $("coordIcs").addEventListener("click",()=>{
+    if(!records.length){show("Laad eerst concepten.",true);return;}
+    const body=coordinationIcs();
+    if(!body){show("Er zijn geen open lokale taken met een doeldatum om als agenda te exporteren.");return;}
+    if(!confirm("Dit exporteert uitsluitend ALLE-DAAGSE menselijke opvolgacties, geen scanmomenten. Kalenders kunnen bron-SHA's naar cloudaccounts synchroniseren. Dit bevestigt geen toestemming. Exporteren?"))return;
+    download(body,"lightup-offline-human-followups.ics","text/calendar;charset=utf-8");
+  });
   $("save").addEventListener("click",()=>records.length?json(snapshot(),"lightup-local-progress.json"):show("Laad eerst concepten.",true));
   $("export").addEventListener("click",()=>records.length?json(report(),"lightup-review-only-handoff.json"):show("Laad eerst concepten.",true));
   $("csv").addEventListener("click",()=>records.length?download(csv(),"lightup-handoff-actions.csv","text/csv;charset=utf-8"):show("Laad eerst concepten.",true));
