@@ -37,3 +37,6 @@ Notion LightUp remains INCUBATE/DRAFT/HOLD. Original STOP PR #1619 is RED in exi
 No main merge or release before original source-owner approval, exact-head hosted and permanently registered named VPS CI, independent security/privacy review, separately authenticated client/operator consent with revocation at each use, and explicit HUMAN GO.
 
 Sources: https://github.com/Zennay/Lightup/pull/1619 ; https://github.com/Zennay/Lightup/pull/1620 ; https://app.notion.com/p/3ed9e19ac9558117b639f2254fe0e165
+## Historical private comparison
+
+After importing the latest source, load a second older original private briefing for exactly the same tenant and selected engagement set. The offline caseboard highlights recorded STOP changes, stored-grant count changes and original case attention changes. A STOP that appears to disappear is an explicit HOLD warning, never authority or a restoration of service. Comparisons use only local in-memory files, enforce earlier timestamps and equal case membership, preserve the previous comparison on invalid import, and export only anonymous change counts; neither original source IDs nor private snapshots are exported. Snapshot timestamps are untrusted historical claims and never a live guarantee.

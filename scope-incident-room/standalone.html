@@ -31,7 +31,8 @@ th{color:#aec0dc;font-size:10px;text-transform:uppercase;letter-spacing:.06em}td
 <p>Review original single-tenant requests, grant links and risk decisions next to independently sampled emergency STOP evidence. This room has <b>no approval, grant, target, dispatch or resume buttons.</b></p>
 <section class="panel"><h2>01 / Private original-domain source</h2>
 <p>Generate with <code>python -m lightup.scope_incident_brief --database PRIVATE.sqlite --email ACCOUNT --client EXACT_TENANT --output NEW_PRIVATE.json</code>. Use a trusted workstation. File contents stay in this tab.</p>
-<div class="actions"><label class="load">Import private briefing<input id="file" type="file" accept=".json,application/json"></label>
+<div class="actions"><label class="load">Import latest private briefing<input id="file" type="file" accept=".json,application/json"></label>
+<label class="load">Compare older private briefing<input id="previous" type="file" accept=".json,application/json"></label>
 <button class="secondary" id="export" disabled>Export anonymous totals</button>
 <button class="secondary" id="print" disabled>Print briefing</button></div>
 <div id="message" aria-live="polite" role="status">No private source imported.</div>
@@ -42,15 +43,15 @@ th{color:#aec0dc;font-size:10px;text-transform:uppercase;letter-spacing:.06em}td
 <div class="metric"><strong id="stops">—</strong><small>Recorded STOPs</small></div>
 <div class="metric"><strong id="holds">—</strong><small>STOP source unavailable</small></div>
 <div class="metric"><strong id="attention">—</strong><small>Human attention cases</small></div></section>
-<section class="panel"><div class="bar"><div><h2>02 / Human incident caseboard</h2><p class="muted">Private source IDs are not included in anonymous exports. Local follow-up stages are not saved to browser storage.</p></div>
+<section class="panel"><div class="bar"><div><h2>02 / Human incident caseboard</h2><p class="muted">Private source IDs are not included in anonymous exports. Compare historical snapshots of the same tenant and case set; vanished STOP is HOLD. Stages are tab-only.</p></div>
 <input id="search" type="search" placeholder="Filter case / STOP state" disabled></div>
-<div style="overflow:auto"><table><thead><tr><th style="width:22%">Engagement</th><th style="width:20%">STOP source</th><th style="width:12%">Grants</th><th style="width:28%">Casebook attention</th><th style="width:18%">Follow-up</th></tr></thead><tbody id="rows"></tbody></table></div>
+<div style="overflow:auto"><table><thead><tr><th style="width:22%">Engagement</th><th style="width:20%">STOP source</th><th style="width:12%">Grants</th><th style="width:28%">Casebook attention</th><th style="width:18%">Follow-up</th><th style="width:17%">Previous source</th></tr></thead><tbody id="rows"></tbody></table></div>
 <div id="empty">Import original private source for the caseboard.</div></section>
 <footer class="muted">Original private retrospective evidence only. Never live execution clearance.</footer></main>
 <script>
 (function(){
 "use strict";
-var report=null,stages=new Map(),MAX=524288;
+var report=null,older=null,changes=new Map(),stages=new Map(),MAX=524288;
 function E(x){return document.getElementById(x);}
 function O(x){return x!==null&&typeof x==="object"&&!Array.isArray(x);}
 function W(x){return typeof x==="string"&&x.length>0&&x.length<=180&&![...x].some(c=>c.charCodeAt(0)<32||c.charCodeAt(0)===127);}
@@ -100,6 +101,28 @@ x.summary.original_requests!==c.declared_counts.requests||x.summary.original_gra
 x.status!==(needs||c.declared_counts.grant_link_hold||c.declared_counts.foreign_tenant_row_count?"HOLD":"REVIEW_ONLY"))throw Error("counts");
 return x;}
 function TD(tr,value,cls){var e=document.createElement("td");e.textContent=String(value);if(cls)e.className=cls;tr.appendChild(e);}
+function reconcile(latest,prior){
+ if(latest.client_id!==prior.client_id || latest.selected_count!==prior.selected_count ||
+    latest.selected_engagements_only!==prior.selected_engagements_only ||
+    !Number.isFinite(Date.parse(latest.snapshot_at)) ||
+    !Number.isFinite(Date.parse(prior.snapshot_at)) ||
+    Date.parse(prior.snapshot_at)>=Date.parse(latest.snapshot_at))throw Error("prior source identity");
+ var baseline=new Map(prior.engagements.map(function(r){return [r.engagement_id,r];}));
+ var delta=new Map();
+ for(var row of latest.engagements){
+  var old=baseline.get(row.engagement_id);
+  if(!old)throw Error("missing original case");
+  var details=[];
+  if(old.stop_observation!==row.stop_observation)
+    details.push(old.stop_observation==="STOP_ACTIVE"&&row.stop_observation!=="STOP_ACTIVE"?
+      "HOLD: STOP DISAPPEARED":"STOP SOURCE CHANGED");
+  if(old.grant_source_count!==row.grant_source_count)details.push("GRANT COUNT CHANGED");
+  if(old.casebook_attention!==row.casebook_attention)details.push("CASE ATTENTION CHANGED");
+  delta.set(row.engagement_id,details);
+ }
+ if(delta.size!==baseline.size)throw Error("case membership changed");
+ return delta;
+}
 function render(){
 if(!report)return;var query=E("search").value.toLowerCase().trim(),tbody=E("rows");tbody.replaceChildren();var n=0;
 for(var r of report.engagements){
@@ -111,7 +134,10 @@ TD(tr,r.grant_source_count===null?"HOLD":r.grant_source_count);
 TD(tr,r.casebook_attention+" / "+r.casebook_next_human_action,"muted");
 var cell=document.createElement("td"),s=document.createElement("select");s.setAttribute("aria-label","Human stage for "+r.engagement_id);
 ["unreviewed","investigating","escalated","documented"].forEach(function(stage){var op=document.createElement("option");op.value=stage;op.textContent=stage;s.appendChild(op);});
-s.value=stages.get(r.engagement_id)||"unreviewed";s.addEventListener("change",function(){stages.set(r.engagement_id,s.value);});cell.appendChild(s);tr.appendChild(cell);tbody.appendChild(tr);
+s.value=stages.get(r.engagement_id)||"unreviewed";s.addEventListener("change",function(){stages.set(r.engagement_id,s.value);});cell.appendChild(s);tr.appendChild(cell);
+ TD(tr,older ? ((changes.get(r.engagement_id)||[]).join(" / ")||"NO CHANGE") : "NOT COMPARED",
+ older&&(changes.get(r.engagement_id)||[]).length ? "risk":"muted");
+ tbody.appendChild(tr);
 }
 E("empty").hidden=n>0;E("empty").textContent="No original cases match the current filter.";
 E("count").textContent=report.summary.selected;E("stops").textContent=report.summary.active_stop_observations;
@@ -119,15 +145,29 @@ E("holds").textContent=report.summary.stop_source_hold;E("attention").textConten
 E("file").addEventListener("change",async function(){
 var f=this.files&&this.files[0];this.value="";if(!f)return;
 if(f.size<2||f.size>MAX){E("message").textContent="HOLD: source exceeds private file bound.";return;}
-try{var next=importSource(await f.text());report=next;stages.clear();E("search").value="";E("search").disabled=false;E("export").disabled=false;E("print").disabled=false;E("message").textContent="Imported locally · "+next.status+" · never authorized";render();}
+try{var next=importSource(await f.text());report=next;older=null;changes.clear();stages.clear();E("search").value="";E("search").disabled=false;E("export").disabled=false;E("print").disabled=false;E("message").textContent="Imported locally · "+next.status+" · never authorized";render();}
 catch(e){E("message").textContent="HOLD: malformed, contradictory or unsupported original source. Previous caseboard retained.";}}
 );
+E("previous").addEventListener("change",async function(){
+ var f=this.files&&this.files[0];this.value="";if(!f)return;
+ if(!report){E("message").textContent="HOLD: import latest first.";return;}
+ if(f.size<2||f.size>MAX){E("message").textContent="HOLD: prior file size.";return;}
+ try{
+  var prior=importSource(await f.text()),delta=reconcile(report,prior);
+  older=prior;changes=delta;render();
+  var n=Array.from(delta.values()).filter(a=>a.length).length;
+  var danger=Array.from(delta.values()).some(a=>a.some(x=>x.startsWith("HOLD:")));
+  E("message").textContent=(danger?"HOLD: recorded STOP disappeared. ":"Historical review only. ")+n+" changed cases, never authorization.";
+ }catch(e){E("message").textContent="HOLD: prior file inconsistent, stale or mismatched. Prior comparison preserved.";}
+});
 E("search").addEventListener("input",render);
 E("print").addEventListener("click",function(){if(report)window.print();});
 E("export").addEventListener("click",function(){
 if(!report)return;var stageCounts={unreviewed:0,investigating:0,escalated:0,documented:0};
 for(var r of report.engagements)stageCounts[stages.get(r.engagement_id)||"unreviewed"]++;
-var aggregate={schema:"lightup.scope_stop_anonymous.v1",status:"REVIEW_ONLY_OR_HOLD",counts:report.summary,human_stages:stageCounts,source_snapshots_atomic_together:false,authorization_granted:false,execution_allowed:false,release_approved:false};
+var aggregate={schema:"lightup.scope_stop_anonymous.v1",status:"REVIEW_ONLY_OR_HOLD",counts:report.summary,human_stages:stageCounts,
+ comparison:older?{compared:changes.size,changed:Array.from(changes.values()).filter(a=>a.length).length,
+ stop_disappearance_hold:Array.from(changes.values()).filter(a=>a.some(x=>x.startsWith("HOLD:"))).length}:null,source_snapshots_atomic_together:false,authorization_granted:false,execution_allowed:false,release_approved:false};
 var blob=new Blob([JSON.stringify(aggregate,null,2)+"\n"],{type:"application/json"}),url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download="lightup-scope-stop-anonymous.json";a.click();setTimeout(function(){URL.revokeObjectURL(url);},200);
 });
 })();
