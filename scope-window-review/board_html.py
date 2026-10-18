@@ -118,7 +118,9 @@ const rowByOriginal=new Map(rows.map(row=>[
 const legalStages=new Set(['unreviewed','investigating','escalated','documented']);
 const requiredTop=['schema','status','source_digest','note','authorization_granted',
   'execution_allowed','release_approved','entries'];
-const requiredEntry=['grant_id','engagement_id','human_stage'];
+const entryV1=['grant_id','engagement_id','human_stage'];
+const entryV2=['grant_id','engagement_id','human_stage',
+  'human_owner','human_next_action'];
 const exactKeys=(obj,fields)=>obj!==null && typeof obj==='object' &&
   !Array.isArray(obj) && Object.keys(obj).sort().join('|')===[...fields].sort().join('|');
 let proposed=null;
@@ -139,7 +141,8 @@ restoreInput.addEventListener('change',async()=>{
   if(raw!==JSON.stringify(data,null,2)+'\\n')
    throw Error('Non-canonical or duplicate-key private handoff.');
   if(!exactKeys(data,requiredTop) ||
-     data.schema!=='lightup.scope_window_human_handoff.v1' ||
+     !['lightup.scope_window_human_handoff.v1',
+       'lightup.scope_window_human_handoff.v2'].includes(data.schema) ||
      data.status!=='REVIEW_ONLY' ||
      data.source_digest!==document.body.dataset.digest ||
      typeof data.note!=='string' || data.note.length>500 ||
@@ -149,27 +152,38 @@ restoreInput.addEventListener('change',async()=>{
    throw Error('Original source digest, schema, or safety flags differ.');
   const chosen=new Map();
   for(const entry of data.entries){
-   if(!exactKeys(entry,requiredEntry) || typeof entry.grant_id!=='string' ||
-      !legalStages.has(entry.human_stage) ||
-      (entry.engagement_id!==null && typeof entry.engagement_id!=='string'))
-    throw Error('Unknown private human-stage row.');
+   const isV2=data.schema.endsWith('.v2');
+   if(!exactKeys(entry,isV2?entryV2:entryV1) ||
+      typeof entry.grant_id!=='string' || !legalStages.has(entry.human_stage) ||
+      (entry.engagement_id!==null && typeof entry.engagement_id!=='string') ||
+      (isV2 && (!safeText(entry.human_owner,60) ||
+                !safeText(entry.human_next_action,280))))
+    throw Error('Unknown or unsafe private human review row.');
    const key=JSON.stringify([entry.grant_id,entry.engagement_id]);
    const matched=rowByOriginal.get(key);
    if(!matched || chosen.has(matched.dataset.key))
     throw Error('Duplicate, missing, or mismatching original case.');
-   chosen.set(matched.dataset.key,entry.human_stage);
+   chosen.set(matched.dataset.key,{
+     human_stage:entry.human_stage,
+     human_owner:isV2?entry.human_owner:'',
+     human_next_action:isV2?entry.human_next_action:''
+   });
   }
   const expected=new Map(rows.map(row=>[
-   row.dataset.key,row.querySelector('.stage').value
+   row.dataset.key,localEntry(row)
   ]));
-  const changed=[...chosen].filter(([key,value])=>value!==expected.get(key));
+  const changed=[...chosen].filter(([key,value])=>
+    JSON.stringify(value)!==JSON.stringify(expected.get(key)));
   proposed={chosen,expected};
   const sample=changed.slice(0,8).map(([key,value])=>{
     const row=rows.find(r=>r.dataset.key===key);
-    return (row?.dataset.grant||'')+': '+expected.get(key)+' → '+value;
+    return (row?.dataset.grant||'')+': '+
+      expected.get(key).human_stage+' → '+value.human_stage+
+      (value.human_owner?' · human assignee noted':'')+
+      (value.human_next_action?' · next action noted':'');
   });
   preview.textContent='Private source-bound human preview: '+
-    changed.length+' proposed stage change(s), '+chosen.size+
+    changed.length+' proposed local follow-up change(s), '+chosen.size+
     ' total returned row(s). '+(sample.length?sample.join(' | '):'No stage changes.')+
     ' Only these local human fields can change. Verify sender and exact tenant externally.';
   applyButton.disabled=!changed.length;
@@ -186,19 +200,21 @@ applyButton.addEventListener('click',()=>{
   return;
  }
  if([...proposed.expected].some(([key,before])=>
-    rows.find(row=>row.dataset.key===key)?.querySelector('.stage').value!==before)){
+     JSON.stringify(localEntry(rows.find(row=>row.dataset.key===key)))!==
+       JSON.stringify(before))){
   clearProposal('HOLD — local human stages changed since preview; reselect the private file.');
   return;
  }
- const modified=[...proposed.chosen].filter(([key,stage])=>
-   stage!==proposed.expected.get(key));
- for(const [key,stage] of modified){
+ const modified=[...proposed.chosen].filter(([key,entry])=>
+   JSON.stringify(entry)!==JSON.stringify(proposed.expected.get(key)));
+ for(const [key,entry] of modified){
   const row=rows.find(r=>r.dataset.key===key);
-  row.querySelector('.stage').value=stage;
-  if(stage==='unreviewed')stages.delete(key);
-  else stages.set(key,stage);
+  row.querySelector('.stage').value=entry.human_stage;
+  row.querySelector('.owner').value=entry.human_owner;
+  row.querySelector('.next').value=entry.human_next_action;
+  edits.set(key,entry);
  }
- clearProposal('Applied '+modified.length+' locally reviewed human stage(s). No original data, grant, STOP, consent or scanner changed.');
+ clearProposal('Applied '+modified.length+' local human stages/assignees/follow-ups. No original data, grant, STOP, consent or scanner changed.');
  restoreInput.value='';
 });
 refresh();
