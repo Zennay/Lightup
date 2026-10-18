@@ -27,6 +27,12 @@ For each week, the upper bound of nominally funded critical/high hours is min(ur
 
 The source Capacity Studio's remaining backlog hours are **not** silently presented as completed or included in already allocated work. Their estimated additional cost is displayed separately, excluding future fixed setup. This estimator is intentionally simple: it does not account for taxes, contracts, overtime, salary law, skill premiums, financing, fixed recurring subscriptions or currency FX. No claim of accuracy beyond the declared hypothetical assumptions is made.
 
+## Phased cash release and continuity
+
+The **phased funding** section is an additional complete offline workflow over the same previously exported aggregate. Choose *all funding upfront*, *equal releases* or *custom integer percentages per week* (total must equal 100%). Modelled cash arrives in the nominated week, unused funds carry forward and the one-time setup cost must be funded before labour receives cash. Labour hours that cannot be financed in their originally proposed week stay **unfunded**; they do not silently shift to another week or become fixed findings. All staged results remain an unsigned hypothesis, not an actual bank balance, cashflow commitment, scheduled repair or permission.
+
+The app reports weekly deposits, setup coverage, paid hypothetical labour, remaining unpaid work hours, carried cash, and conservative uncertain critical/high exposure. Fractional funded hours are **rounded down** to tenths so the UI never claims to have financed more work than the numerical model supports. The separately confirmed staged report export contains only aggregate money, hours, weeks, risk bounds and literal false authority fields. It does not include a client's original CSV, IDs, contacts, grant details or customer financial credentials. Changing any financial assumptions invalidates old on-screen results before further export.
+
 ## Security and scope boundaries
 
 - Source input schema must be the original unsigned review-only aggregate export. Its claimed "review only" controls do **not** authenticate the real client/engagement, source bytes or current consent. Only its totals are used as untrusted planning numbers.
