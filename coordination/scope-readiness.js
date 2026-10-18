@@ -81,7 +81,12 @@ function validDraft(d){
  if(!noDuplicates(d.requested_assets)||!noDuplicates(d.excluded_assets))return false;
  if(!plain(d.proposed_activities)||Object.keys(d.proposed_activities).some(k=>!['passive_analysis','configuration_review','private_lab_network_checks'].includes(k))||
   !['passive_analysis','configuration_review','private_lab_network_checks'].every(k=>typeof d.proposed_activities[k]==='boolean'))return false;
- if(!plain(d.proposed_window_local)||!validUtcWindow(d))return false;
+ if(!plain(d.proposed_window_local))return false;
+ if(d.proposed_window_utc===undefined){
+  // Earlier Studio v1 exports may omit UTC evidence. Admit only unscheduled
+  // sources, never infer a real local/UTC assessment window.
+  if(d.proposed_window_local.start!==null||d.proposed_window_local.end!==null)return false;
+ }else if(!validUtcWindow(d))return false;
  if(!['start','end'].every(k=>d.proposed_window_local[k]===null||validText(d.proposed_window_local[k],80)))return false;
  // Any stored source digest is only a continuity hint. Never treat it as trusted identity.
  if(d.scope_fingerprint_sha256!==undefined && !/^[0-9a-f]{64}$/.test(d.scope_fingerprint_sha256))return false;
@@ -104,7 +109,7 @@ function sourceRecord(d,digest){
  return {
   source_sha256:digest,name:d.proposal_name||'Untitled scope draft',client_label:d.client_label,
   requested_mode:d.requested_mode,requested_risk:d.requested_risk,asset_count:d.requested_assets.length,
-  excluded_count:d.excluded_assets.length,planned_utc:d.proposed_window_utc.status==='resolved'?
+  excluded_count:d.excluded_assets.length,planned_utc:d.proposed_window_utc?.status==='resolved'?
    {start:d.proposed_window_utc.start,end:d.proposed_window_utc.end}:null,
   source_attached:true,tasks:fresh(),revision_link:null
  };
