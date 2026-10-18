@@ -340,7 +340,7 @@
       state.changes = changed(a.parsed,b.parsed);
       render();
     } catch (e) {
-      state.snapshots=[];state.changes=[];state.sha=[];state.notes.clear();
+      state.snapshots=[];state.changes=[];state.sha=[];state.notes.clear();state.details.clear();state.editKey=null;
       text("error","HOLD: " + (e && e.message ? e.message : "invalid source"));
     }
   }
