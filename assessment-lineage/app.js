@@ -14,9 +14,25 @@
   const FLAGS = ["authorized","consent_verified","dispatch_allowed","release_allowed"];
   const LEVELS = ["critical","high","medium","low","info"];
   const STAGES = ["needs_review","in_discussion","documented"];
+  const ROUTES = ["unrouted","source_owner","scope_policy","finding_quality",
+    "evidence_scoring","operations"];
+  const ACTIONS = ["verify_original_source","request_original_evidence",
+    "discuss_lab_method","document_human_followup","none_recorded"];
+  const ROUTE_LABELS = {
+    unrouted:"Not routed",source_owner:"Original source owner",
+    scope_policy:"Scope / policy reviewer",finding_quality:"Findings / coverage reviewer",
+    evidence_scoring:"Evidence / scoring reviewer",operations:"Operations reviewer"
+  };
+  const ACTION_LABELS = {
+    verify_original_source:"Verify original source files",
+    request_original_evidence:"Request original supporting evidence",
+    discuss_lab_method:"Discuss lab method with source owner",
+    document_human_followup:"Document human follow-up",
+    none_recorded:"No next human action recorded"
+  };
   const TOKEN = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
   const MAX_CATALOG = 1048576, MAX_REPORT = 262144;
-  let catalog=null, reports=[], reviews=new Map(), humanNotes=new Map(), fictional=false;
+  let catalog=null, reports=[], reviews=new Map(), humanNotes=new Map(), humanRoutes=new Map(), humanActions=new Map(), fictional=false;
   let mismatchRevealed=false;
   let catalogHash=null, reportHashes=[];
   function admit(ok){if(!ok)throw Error("Incompatible or unsafe private source");}
@@ -480,6 +496,39 @@
       "Private note removed from memory.";
   }
 
+  function humanRouteFor(s){return humanRoutes.get(s.id)||"unrouted";}
+  function humanActionFor(s){return humanActions.get(s.id)||"none_recorded";}
+  function sourceRouteHint(s){
+    const p=priority(s);
+    return ["source_owner","scope_policy","finding_quality","evidence_scoring",
+      "operations","unrouted"][p];
+  }
+  function setHumanPlan(){
+    if(!catalog||!reports.length){message("Load genuine completed source reports first.",true);return;}
+    const index=Number($("inspectCase").value);
+    if(!Number.isSafeInteger(index)||index<0||index>=catalog.length)return;
+    const route=$("humanRoute").value,action=$("humanAction").value;
+    if(!ROUTES.includes(route)||!ACTIONS.includes(action)){
+      message("HOLD: unknown human planning option.",true);return;
+    }
+    const id=catalog[index].id;
+    if(route==="unrouted")humanRoutes.delete(id);else humanRoutes.set(id,route);
+    if(action==="none_recorded")humanActions.delete(id);else humanActions.set(id,action);
+    undoBatch=null;
+    render();
+    $("inspectCase").value=String(index);renderInspector();
+    message("Private proposed human reviewer route and next human action saved in memory. "+
+      "This is not an assignment, verified finding, grant or execution request.");
+  }
+  function adoptSourceHint(){
+    if(!catalog||!reports.length)return;
+    const index=Number($("inspectCase").value);
+    if(!Number.isSafeInteger(index)||index<0||index>=catalog.length)return;
+    $("humanRoute").value=sourceRouteHint(catalog[index]);
+    $("humanPlanState").textContent="Suggested human discussion group only. "+
+      "Click Save human plan to adopt locally; no staff are contacted.";
+  }
+
   function numberLabel(n){
     return Number.isInteger(n)?String(n):n.toPrecision(6).replace(/\.?0+($|e)/,"$1");
   }
@@ -489,6 +538,9 @@
     if(!catalog||!reports.length){
       panel.textContent="Import the original scenario catalog and a completed comparator report first.";
       $("privateCaseNote").value="";
+      $("humanRoute").value="unrouted";$("humanAction").value="none_recorded";
+      $("sourceRouteHint").textContent="";
+      $("humanPlanState").textContent="Load original sources first.";
       $("privateNoteState").textContent="Load original sources first.";
       return;
     }
@@ -500,6 +552,11 @@
       Number(old)<catalog.length?old:"0";
     const index=Number(selector.value),scenario=catalog[index];
     $("privateCaseNote").value=humanNotes.get(scenario.id)||"";
+    $("humanRoute").value=humanRouteFor(scenario);
+    $("humanAction").value=humanActionFor(scenario);
+    $("sourceRouteHint").textContent="Proposed source-flag discussion group: "+
+      ROUTE_LABELS[sourceRouteHint(scenario)]+". Never an authenticated assignment.";
+    $("humanPlanState").textContent="Human planning fields are PRIVATE and unsigned.";
     $("privateNoteState").textContent="PRIVATE human notes are local and never appear in anonymous exports.";
     const rows=METRICS.map(metric=>[
       metric.replaceAll("_"," "),
@@ -876,6 +933,8 @@
     $(id).addEventListener("change",render);
   $("inspectCase").addEventListener("change",renderInspector);
   $("saveCaseNote").addEventListener("click",saveCaseNote);
+  $("saveHumanPlan").addEventListener("click",setHumanPlan);
+  $("adoptSourceHint").addEventListener("click",adoptSourceHint);
   $("revealMismatch").addEventListener("click",toggleMismatch);
   $("sourceOrder").addEventListener("change",renderSourceOrder);
   $("sourceEarlier").addEventListener("click",()=>chooseSource(-1));
