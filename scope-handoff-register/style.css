@@ -12,3 +12,15 @@
 
 .pair-status{display:grid;gap:6px;color:var(--muted);font-size:.83rem;margin-top:14px}
 .pair-status select{width:100%;max-width:380px}
+
+.task-controls{display:grid;grid-template-columns:minmax(130px,1fr) minmax(148px,1fr);gap:10px;align-items:end}
+.task-controls>select,.task-controls input{width:100%}
+.task-controls label{display:grid;gap:4px}
+.action-queue{display:grid;gap:8px;margin:15px 0}
+.action-row{display:grid;grid-template-columns:minmax(165px,2fr) auto minmax(125px,1fr) auto;gap:15px;align-items:center;background:#111e31;border:1px solid #3b5271;padding:10px 12px;border-radius:11px}
+.action-main{display:grid;gap:5px;min-width:0}
+.action-row .chip{max-width:180px;text-align:center}
+.action-row button{font-size:.84rem}
+@media(max-width:780px){.action-row{grid-template-columns:1fr 1fr}.action-row .action-main{grid-column:1 / -1}}
+@media(max-width:580px){.task-controls{grid-template-columns:1fr}.action-row{grid-template-columns:1fr}.action-row .action-main{grid-column:auto}}
+@media print{.action-row button,.task-controls{display:none!important}.action-row{break-inside:avoid}}
