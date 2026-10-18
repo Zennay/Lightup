@@ -58,6 +58,44 @@ approved source or a completed handoff. The final manifest is published last.
 No network traffic, shared host, scheduler, scan, model call, consent or
 original SQLite grant/STOP mutation is performed by this workspace composer.
 
+## Human follow-up after a genuine original-source refresh
+
+A new original persisted-domain Casebook changes its source fingerprint: **do not
+blindly load the old human note into the new dashboard**. An offline
+human-only carryover tool can instead propose preservation only for grant
+identities whose **entire original grant row, linked engagement and caseboard,
+all related grants, risk decisions and linked request records are unchanged**.
+Disappeared, edited or newly out-of-horizon rows are explicitly withheld.
+No account authentication, approval, grant, STOP or original SQLite write
+occurs in this separate retrospective handoff utility.
+
+Before running, an operator must independently verify both original Casebook
+sources, tenant, note issuer and exact review policy. Use the earlier
+`human-review-agenda.json` file's `prepared_at` as `--old-review-at`
+if the original review was not made immediately after source export:
+
+```sh
+python3 scope-window-review/rebase_handoff.py \
+  --old-casebook /private/ORIGINAL-OLD-casebook.json \
+  --new-casebook /private/ORIGINAL-NEW-casebook.json \
+  --previous-note /private/ORIGINAL-human-followup-v2.json \
+  --old-review-at 2026-10-18T18:00:00+00:00 \
+  --acknowledge-same-tenant \
+  --output /private/NEW-human-followup-proposal.json
+```
+
+This creates a new 0600 **candidate-only** v2 note in a 0700 owner-only
+directory and reports anonymous counts of preserved/changed/missing/out-of-view
+entries, always with exit status **3 HOLD**. Open a **new** private board
+generated from the exact new Casebook with identical lead/horizon/capacity
+settings; use its local handoff-import preview, verify the source and sender
+again, tick the independent confirmation and apply **human stages/aliases/
+notes only in the browser tab**. No automatic import or grants are executed.
+When no entries are safe to carry, the private proposal is empty; an
+operator must review the new source manually. Previously issued v1 notes
+have no old-source carried-over path here; use the original stage-only import
+only against the exact original board when compatible.
+
 ## One-step original authenticated operator workflow (preferred)
 
 From the held LightUp source checkout and on a trusted local machine, use the **original stored account, actual tenant, existing DomainStore authentication/lockout**, with no intermediate plaintext Casebook export:
