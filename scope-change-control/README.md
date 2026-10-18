@@ -36,7 +36,7 @@ Aggregate export omits tenant, IDs, timestamps, fingerprints, targets and privat
 
 ## Ownership and release boundary
 
-All new files live solely in **scope-change-control/**. No original source-owner paths are changed: original grant source [#1614](https://github.com/Zennay/Lightup/pull/1614), Casebook [#1620](https://github.com/Zennay/Lightup/pull/1620), Casebook/STOP composition [#1624](https://github.com/Zennay/Lightup/pull/1624) and original Scope Window Review [#1626](https://github.com/Zennay/Lightup/pull/1626) remain owned separately.
+All newly authored integration files live solely in **scope-change-control/**. This branch also merges the seven unchanged source-owner Scope Window Review files from [PR #1626](https://github.com/Zennay/Lightup/pull/1626) with a two-parent history-preserving merge. No original source-owner paths are edited: original grant source [#1614](https://github.com/Zennay/Lightup/pull/1614), Casebook [#1620](https://github.com/Zennay/Lightup/pull/1620), Casebook/STOP composition [#1624](https://github.com/Zennay/Lightup/pull/1624) and original Scope Window Review [#1626](https://github.com/Zennay/Lightup/pull/1626) remain owned separately.
 
 **INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD. DO NOT MERGE TO MAIN OR DEPLOY** before original exact-head hosted + permanently registered named VPS CI, original source-owner acceptance, independent security/privacy review, separately authenticated actual client/operator consent, real action-time revocation, canonical #177/#182/#829 execution-gate integration and explicit HUMAN GO.
 
@@ -80,3 +80,31 @@ This non-mutating local inspector reads all seven files via no-follow bounded ow
 The operator source-delta table now offers **Add follow-up** for each actual changed original source row. The offline dialog accepts a bounded self-declared reviewer alias, next human action, private note and optional exact UTC calendar day. Inputs are never written to original DomainStore, browser storage or a remote service. These human fields do **not** identify an authenticated person or approve any source decision. A team must independently verify the recipient before clicking the existing PRIVATE export confirmation.
 
 The browser now stores human-only fields in an exact original-source-bound private export, and the private return restores them atomically only when both original source bytes, tenant, original membership, changed field names, human stage and the source-change classification still match. The anonymous aggregate never includes these note fields. A native CLI review starts with deliberately empty human fields and an unreviewed stage. Missing, stale or changed source records cannot inherit old notes automatically.
+## Route D: one-account consolidated Scope Operations Room (three real offline operator apps)
+
+This branch now physically integrates the original held [Scope Window Review #1626](https://github.com/Zennay/Lightup/pull/1626) and original held [Casebook/STOP #1624](https://github.com/Zennay/Lightup/pull/1624). The source-owner Window Review seven files are exact original Git blobs on a two-parent merge. Original owner branches remain untouched.
+
+The new combined_room.py makes one authentic original DomainStore account read and builds two separate private offline product workspaces from the SAME newly authenticated original Casebook snapshot: Change Control (historic changes and private human actions), original Window Review (recorded grant windows and generic identity-free UTC reminders), and original Engagement Inbox (every engagement including those with NO recorded grants and pending risk review). It creates a third static one-file navigation launchpad OPEN-ROOM.html for those three applications, and a top-level private COMPLETE-MANIFEST.json last after the two original child manifests. Nothing in this room is a live permission decision.
+
+From the repository checkout, with an older authentic owner-private 0600 Casebook JSON and a real original account:
+
+    umask 077
+    PYTHONPATH=src python3 scope-change-control/combined_room.py \
+      --database /private/domain.sqlite --email EXISTING_ACCOUNT \
+      --client EXACT_ORIGINAL_TENANT \
+      --previous /private/OLDER-ORIGINAL.json \
+      --room /private/NEW-LIGHTUP-SCOPE-ROOM \
+      --lead-days 7 --future-days 45 --daily-capacity 8
+
+An original client account can omit --client; an operator must select exactly one original tenant. The password is an interactive original-account password prompt (never written into a file or command). Output must be a NEW owner-only directory under a trusted parent that is not group/world writable. Every child private file is mode 0600 and each private directory mode 0700. The runner calls unchanged original Window Review only with its offline --casebook input, never a second DB login or grant, STOP or target operation. Ordinary publication errors clean the own new private directory and never overwrite another location. Do not infer live STOP clearance from an absence of a recorded STOP.
+
+The private room contains the original Newer/Older source, private human review, anonymous aggregate and standalone Change Control in change-control/; the original owner Window Review human-review board, every-engagement inbox, private agenda, generic .ics calendar and manifest in window-review/; plus the scriptless OPEN-ROOM.html, READ-FIRST.txt and private COMPLETE-MANIFEST.json at the root. Open the launchpad locally on an authorized offline workstation. The independent Window Review and Change Control private files remain local; do not upload the directory or reuse its source hashes as authority.
+
+Receiving-person read-only technical check:
+
+    PYTHONPATH=src python3 scope-change-control/combined_inspect.py \
+      --room /private/NEW-LIGHTUP-SCOPE-ROOM
+
+The combined inspector reuses both actual original product inspectors, verifies both child manifests, byte-equal current Casebook records, and the static launchpad/room manifest. It outputs privacy-minimal figures only. Exit 2 means technically coherent HISTORIC HUMAN HOLD, exit 3 means invalid/incomplete HOLD. Neither means authentication, authorization, current consent, revocation, successful scan or release. It never contacts a target or mutates the original domain.
+
+All original release requirements remain: exact-head original hosted plus permanently registered named VPS CI, independent source-owner/security/privacy review, genuine separate authenticated client/operator consent with action-time revocation, original #177/#182/#829 and explicit HUMAN GO. This is DRAFT/HOLD, NOT deployed and NOT merged to main.
