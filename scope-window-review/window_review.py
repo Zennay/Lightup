@@ -6,6 +6,7 @@ authorization gate, task dispatcher or network client.
 from __future__ import annotations
 
 import argparse
+import hashlib
 from collections import Counter
 from datetime import datetime, timedelta, timezone
 import json
@@ -14,7 +15,6 @@ from pathlib import Path
 import stat
 import sys
 import tempfile
-import uuid
 
 SCHEMA = "lightup.scope_window_review.v1"
 SOURCE_SCHEMA = "lightup.auth_casebook.v1"
@@ -72,6 +72,7 @@ def source_file(path: Path) -> dict:
         raise ReviewHold("unknown original Casebook provenance")
     if any(doc.get(key) is not False for key in AUTHORITY_FLAGS):
         raise ReviewHold("Casebook asserts or omits non-authority flags")
+    doc["_private_original_sha256"] = hashlib.sha256(raw).hexdigest()
     return doc
 
 
@@ -262,7 +263,9 @@ def derive(casebook: dict, *, now: datetime, lead_days: int,
         "limits": {"lead_days": lead_days, "future_days": future_days,
                    "daily_capacity": daily_capacity},
         "capacity_shifted_items": shifted,
-        "client_id": casebook["client_id"], "items": events,
+        "client_id": casebook["client_id"],
+        "original_source_sha256": casebook.get("_private_original_sha256", ""),
+        "items": events,
         "declared_counts": {"items": len(events),
                             "hold": summary["HOLD"],
                             "review_only": summary["REVIEW_ONLY"]},
@@ -285,7 +288,7 @@ def ics(agenda: dict) -> bytes:
         start = f"{day}T090000Z"
         end = f"{day}T091500Z"
         lines.extend([
-            "BEGIN:VEVENT", f"UID:{uuid.uuid4()}@lightup-review.invalid",
+            "BEGIN:VEVENT", f"UID:human-{day}-{priority.lower()}@lightup-review.invalid",
             f"DTSTAMP:{now}", f"DTSTART:{start}", f"DTEND:{end}",
             "SUMMARY:LightUp human follow-up (NOT AUTHORIZATION)",
             "DESCRIPTION:Unsigned retrospective " + priority +
@@ -295,7 +298,15 @@ def ics(agenda: dict) -> bytes:
         ])
     lines.append("END:VCALENDAR")
     # No source text is used in ICS, so no untrusted ICS property injection.
-    return ("\r\n".join(lines) + "\r\n").encode("utf-8")
+    # RFC 5545: fold content lines at max 75 UTF-8 octets using CRLF+space.
+    folded = []
+    for line in lines:
+        encoded = line.encode("utf-8")
+        while len(encoded) > 75:
+            folded.append(encoded[:75])
+            encoded = b" " + encoded[75:]
+        folded.append(encoded)
+    return b"\r\n".join(folded) + b"\r\n"
 
 
 def ensure_private_destination(path: Path) -> None:
