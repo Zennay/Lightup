@@ -46,5 +46,29 @@ function graph(w,links,efforts,start){
 }
 function packet(w,links,efforts){const p=clean(w,links,efforts);return {kind:'lightup.private_human_dependency_draft',schema_version:1,disposition:'LOCAL_HUMAN_PLANNING_ONLY',source_sha256:w.source_sha256,casework_sha256:w.casework_sha256,links:p.links,efforts:p.efforts,instructions:'Unverified private human estimates only; no verified remediation, consent, grant, scanner, retest, tenant or authorization.',...Object.fromEntries(AUTH.map(k=>[k,false]))};}
 function restore(w,raw){shape(raw,DEP,'private dependencies');if(raw.kind!=='lightup.private_human_dependency_draft'||raw.schema_version!==1||raw.disposition!=='LOCAL_HUMAN_PLANNING_ONLY'||raw.source_sha256!==w.source_sha256||raw.casework_sha256!==w.casework_sha256||typeof raw.instructions!=='string'||raw.instructions.length>1500||AUTH.some(k=>raw[k]!==false))stop('Private human dependency packet conflicts with current original source or human notes.');return clean(w,raw.links,raw.efforts);}
-g.LightUpHumanDependencies=Object.freeze({original,clean,empty,graph,packet,restore});
+/* Derived human-first recommendations; original source and due dates are read-only. */
+function guidance(work,links,efforts,start){
+ const graphResult=graph(work,links,efforts,start);
+ const byId=new Map(graphResult.rows.map(row=>[row.finding_id,row]));
+ const children=new Map(graphResult.rows.map(row=>[row.finding_id,[]]));
+ for(const link of links)children.get(link.from).push(link.to);
+ const downstream=id=>{
+  const visited=new Set(),stack=children.get(id).slice();
+  while(stack.length){const n=stack.pop();if(visited.has(n))continue;visited.add(n);stack.push(...children.get(n));}
+  return visited.size;
+ };
+ const rank=['critical','high','medium','low','info'];
+ const bottlenecks=graphResult.rows
+  .filter(row=>row.human_status!=='completed'&&row.human_status!=='deferred')
+  .map(row=>({...row,downstream_count:downstream(row.finding_id)}))
+  .sort((a,b)=>b.downstream_count-a.downstream_count||rank.indexOf(a.severity)-rank.indexOf(b.severity)||a.finding_id.localeCompare(b.finding_id));
+ const dates=new Map(work.cases.map(c=>[c.finding_id,c.due_date]));
+ const contradictions=links.filter(link=>dates.get(link.from)&&dates.get(link.to)&&dates.get(link.from)>dates.get(link.to))
+  .map(link=>({...link,human_prerequisite_due:dates.get(link.from),human_dependent_due:dates.get(link.to)}));
+ const hypotheticalLate=graphResult.dates?graphResult.rows
+  .filter(row=>row.human_due&&graphResult.dates[row.finding_id]>row.human_due)
+  .map(row=>({finding_id:row.finding_id,existing_human_due:row.human_due,indicative_chain_date:graphResult.dates[row.finding_id]})):[];
+ return {bottlenecks:bottlenecks.slice(0,15),contradictions,hypotheticalLate};
+}
+g.LightUpHumanDependencies=Object.freeze({original,clean,empty,graph,packet,restore,guidance});
 })(window);
