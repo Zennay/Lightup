@@ -36,6 +36,7 @@ h3{font-size:15px;margin:20px 0 9px}.source-card{border:1px solid #455877;border
 <p>Generate with <code>python -m lightup.scope_incident_brief --database PRIVATE.sqlite --email ACCOUNT --client EXACT_TENANT --output NEW_PRIVATE.json</code>. Use a trusted workstation. File contents stay in this tab.</p>
 <div class="actions"><label class="load">Import latest private briefing<input id="file" type="file" accept=".json,application/json"></label>
 <label class="load">Compare older private briefing<input id="previous" type="file" accept=".json,application/json"></label>
+<label class="load">Refresh original source (human review)<input id="refreshSource" type="file" accept=".json,application/json"></label>
 <button class="secondary" id="export" disabled>Export anonymous totals</button>
 <button class="secondary" id="print" disabled>Print briefing</button>
 <button class="secondary" id="saveStages" disabled>Save private follow-up</button>
@@ -45,6 +46,13 @@ h3{font-size:15px;margin:20px 0 9px}.source-card{border:1px solid #455877;border
 <a href="team.html" style="color:#ccdbff" rel="noreferrer">Open offline team-only workspace</a>
 <label class="load">Restore saved follow-up<input id="restoreStages" type="file" accept=".json,application/json"></label></div>
 <div id="message" aria-live="polite" role="status">No private source imported.</div>
+<section class="panel" id="sourceRefresh" hidden aria-label="Original source refresh preview">
+<h2>Review original source changes before refreshing</h2>
+<p>The new file must be the same original tenant and have a later self-declared timestamp. Those timestamps are NOT signed evidence. Local human stages and team notes are preserved only for literally unchanged original source records. Any changed or removed case loses its old local follow-up. This never changes stored grants, source STOP, consent, runtime authorization or targets.</p>
+<div id="sourceRefreshRows"></div>
+<button class="secondary" id="rejectRefresh">Cancel source refresh</button>
+<button id="applyRefresh">Apply newer private source with safe human continuity</button>
+</section>
 <section class="panel" id="teamReview" hidden aria-label="Manual private team return preview">
 <h2>Review PRIVATE team return before applying</h2>
 <p>Team identity is self-declared and UNVERIFIED. Inspect every proposed local stage and note below, then independently check the sender and the tenant. Nothing here can grant permission, clear STOP or update the original database.</p>
@@ -94,7 +102,7 @@ h3{font-size:15px;margin:20px 0 9px}.source-card{border:1px solid #455877;border
 <script>
 (function(){
 "use strict";
-var report=null,older=null,changes=new Map(),stages=new Map(),teamNotes=new Map(),pendingTeam=null,selectedCase=null,sourceDigest=null,MAX=524288;
+var report=null,older=null,changes=new Map(),stages=new Map(),teamNotes=new Map(),pendingTeam=null,pendingRefresh=null,selectedCase=null,sourceDigest=null,MAX=524288;
 function E(x){return document.getElementById(x);}
 function O(x){return x!==null&&typeof x==="object"&&!Array.isArray(x);}
 function W(x){return typeof x==="string"&&x.length>0&&x.length<=180&&![...x].some(c=>c.charCodeAt(0)<32||c.charCodeAt(0)===127);}
@@ -150,6 +158,64 @@ function previewTeamReview(proposed,changed){
  });
  E("teamReview").hidden=false;
  E("teamReview").scrollIntoView({block:"start",behavior:"smooth"});
+}
+function discardSourceRefresh(){
+ pendingRefresh=null;E("sourceRefreshRows").replaceChildren();E("sourceRefresh").hidden=true;
+}
+function localHumanVersion(){
+ return JSON.stringify([
+  report&&report.client_id,sourceDigest,
+  [...stages.entries()].sort((a,b)=>a[0].localeCompare(b[0])),
+  [...teamNotes.entries()].sort((a,b)=>a[0].localeCompare(b[0])),
+ ]);
+}
+function originalCaseSource(source,eid){
+ var entry=source.engagements.find(r=>r.engagement_id===eid);
+ if(!entry)return null;
+ var c=source.casebook,caseRow=c.case_overview.find(r=>r.engagement_id===eid);
+ if(!caseRow)return null;
+ var grantRows=c.grants.filter(g=>g.engagement_id===eid);
+ var riskRows=c.risk_approvals.filter(r=>r.engagement_id===eid);
+ // Original assessment requests are tenant-level. A request revision is
+ // ambiguous for engagement ownership: conservatively reset all local
+ // follow-ups when ANY original tenant request changes.
+ return JSON.stringify([entry,caseRow,grantRows,riskRows,c.requests,
+  source.binding_review&&source.binding_review.engagement_id===eid?source.binding_review:null]);
+}
+function previewSourceRefresh(next,digest){
+ if(!report||!sourceDigest||!digest||next.client_id!==report.client_id||
+  next.source_snapshots_atomic_together!==false||
+  !Number.isFinite(Date.parse(report.snapshot_at))||
+  !Number.isFinite(Date.parse(next.snapshot_at))||
+  Date.parse(next.snapshot_at)<=Date.parse(report.snapshot_at))
+  throw Error("unsigned source refresh identity/timestamp mismatch");
+ var previous=new Set(report.engagements.map(r=>r.engagement_id)),preserve=new Set(),details=[];
+ for(var row of next.engagements){
+  var eid=row.engagement_id,was=previous.delete(eid);
+  if(was&&originalCaseSource(report,eid)===originalCaseSource(next,eid)){
+   preserve.add(eid);
+   details.push({eid:eid,action:"UNCHANGED SOURCE · preserve local human notes/stage"});
+  }else details.push({eid:eid,action:was?
+   "HOLD / CHANGED ORIGINAL RECORD · reset local human follow-up":
+   "NEW ORIGINAL RECORD · unreviewed"});
+ }
+ for(var removed of previous)details.push({eid:removed,action:"REMOVED ORIGINAL ENGAGEMENT · discard local follow-up, NEVER 'fixed'"});
+ var sourceVersion=localHumanVersion();
+ discardSourceRefresh();discardTeamReview();
+ pendingRefresh={next:next,digest:digest,preserve:preserve,
+  details:details,sourceVersion:sourceVersion};
+ var info=document.createElement("p");
+ info.textContent="Unchanged: "+preserve.size+
+  " | Other new/changed/removed: "+(details.length-preserve.size)+
+  ". NO source cleanup is asserted.";
+ E("sourceRefreshRows").appendChild(info);
+ details.forEach(function(item){
+  var row=document.createElement("div");row.className="source-line";
+  row.textContent=item.eid+" — "+item.action;
+  E("sourceRefreshRows").appendChild(row);
+ });
+ E("sourceRefresh").hidden=false;
+ E("sourceRefresh").scrollIntoView({block:"start",behavior:"smooth"});
 }
 function packetRows(ids){
  if(!report||!Array.isArray(ids)||!ids.length||ids.length>32||
@@ -547,9 +613,50 @@ var f=this.files&&this.files[0];this.value="";if(!f)return;
 if(f.size<2||f.size>MAX){E("message").textContent="HOLD: source exceeds private file bound.";return;}
 try{
  var next=importSource(await privateText(f)),digest=await digestFile(f);
- report=next;sourceDigest=digest;older=null;changes.clear();stages.clear();teamNotes.clear();discardTeamReview();selectedCase=null;E("detail").hidden=true;E("binding").hidden=true;E("search").value="";E("search").disabled=false;E("focus").disabled=false;E("focus").value="all";E("export").disabled=false;E("handoff").disabled=false;E("teamPacket").disabled=!sourceDigest;E("saveStages").disabled=!sourceDigest;E("print").disabled=false;E("message").textContent="Imported locally · "+next.status+" · never authorized";render();}
+ report=next;sourceDigest=digest;older=null;changes.clear();stages.clear();teamNotes.clear();discardTeamReview();discardSourceRefresh();selectedCase=null;E("detail").hidden=true;E("binding").hidden=true;E("search").value="";E("search").disabled=false;E("focus").disabled=false;E("focus").value="all";E("export").disabled=false;E("handoff").disabled=false;E("teamPacket").disabled=!sourceDigest;E("saveStages").disabled=!sourceDigest;E("print").disabled=false;E("message").textContent="Imported locally · "+next.status+" · never authorized";render();}
 catch(e){E("message").textContent="HOLD: malformed, contradictory or unsupported original source. Previous caseboard retained.";}}
 );
+E("refreshSource").addEventListener("change",async function(){
+ var f=this.files&&this.files[0];this.value="";if(!f)return;
+ if(!report||!sourceDigest||f.size<2||f.size>MAX){
+  E("message").textContent="HOLD: load an authenticated original source first.";return;
+ }
+ try{
+  var next=importSource(await privateText(f)),digest=await digestFile(f);
+  previewSourceRefresh(next,digest);
+  E("message").textContent="Original source refresh held for per-case review. Nothing modified.";
+ }catch(e){
+  E("message").textContent="HOLD: refreshed source identity, timestamp, size or counters refused. Current private casework retained.";
+ }
+});
+E("rejectRefresh").addEventListener("click",function(){
+ discardSourceRefresh();
+ E("message").textContent="Source refresh cancelled. Private local casework unchanged.";
+});
+E("applyRefresh").addEventListener("click",function(){
+ if(!pendingRefresh||!report||!sourceDigest||
+  localHumanVersion()!==pendingRefresh.sourceVersion){
+  discardSourceRefresh();
+  E("message").textContent="HOLD: local source or human follow-up changed during preview. Refresh rejected.";
+  return;
+ }
+ if(!window.confirm("Apply this newer original PRIVATE source? Only literally unchanged case records retain human notes/stages. Others RESET for fresh human review; removed cases are not treated as repaired. Never authorization."))return;
+ var next=pendingRefresh.next,digest=pendingRefresh.digest,
+     keep=pendingRefresh.preserve;
+ var savedStages=new Map(),savedNotes=new Map();
+ for(var row of next.engagements){
+  if(!keep.has(row.engagement_id))continue;
+  if(stages.has(row.engagement_id))savedStages.set(row.engagement_id,stages.get(row.engagement_id));
+  if(teamNotes.has(row.engagement_id))savedNotes.set(row.engagement_id,teamNotes.get(row.engagement_id));
+ }
+ report=next;sourceDigest=digest;stages=savedStages;teamNotes=savedNotes;
+ older=null;changes.clear();selectedCase=null;
+ E("detail").hidden=true;E("binding").hidden=true;E("search").value="";
+ E("focus").value="all";E("saveStages").disabled=!digest;E("teamPacket").disabled=!digest;
+ discardSourceRefresh();discardTeamReview();render();
+ E("message").textContent="Original source updated locally. Only "+keep.size+
+  " literally unchanged cases retained HUMAN stage/notes. Changed/removed cases reset or dropped; never authority.";
+});
 E("previous").addEventListener("change",async function(){
  var f=this.files&&this.files[0];this.value="";if(!f)return;
  if(!report){E("message").textContent="HOLD: import latest first.";return;}
