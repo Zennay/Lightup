@@ -10,3 +10,10 @@
 td details{max-width:350px;min-width:170px}
 td details summary{cursor:pointer;color:#87dcbf;font-weight:650}
 @media(max-width:700px){.bulk{display:block}.bulk>*{margin:.6rem 0;display:block}.bulk label:first-child{display:flex}}
+
+.ownerHandoff{padding:1.1rem;margin-top:1.4rem;border-radius:12px;background:#0c1b2d;border:1px solid #365d70}
+.ownerHandoff h3{font-size:1.02rem;margin:.15rem 0}
+.ownerHandoff .filters{align-items:end}
+.ownerHandoff select{max-width:500px;margin-top:.4rem}
+.ownerHandoff button{min-width:220px}
+@media(max-width:650px){.ownerHandoff button{width:100%}}
