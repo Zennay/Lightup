@@ -115,6 +115,10 @@
       deferred:0,locally_completed_unverified:0
     }]));
     let assigned=0,withDueDate=0,blockedWithNotes=0;
+    const advisories={critical_high_blocked:0,critical_high_unowned:0,
+      critical_high_undated:0,source_regression_locally_completed:0,
+      source_regression_deferred:0,retest_coordination_without_owner:0,
+      blocked_without_note:0};
     for(const row of loaded.cases) {
       const originalRow=reference.get(row.finding_id);
       if(!originalRow)throw Error('Unknown Casework source ID');
@@ -131,6 +135,17 @@
       if(row.status==='ready_for_retest')segment.ready_for_retest++;
       if(row.status==='deferred')segment.deferred++;
       if(row.status==='completed')segment.locally_completed_unverified++;
+      const urgent=originalRow.severity==='critical'||originalRow.severity==='high';
+      if(urgent&&row.status==='blocked')advisories.critical_high_blocked++;
+      if(urgent&&!row.owner.trim())advisories.critical_high_unowned++;
+      if(urgent&&!row.due_date)advisories.critical_high_undated++;
+      if(originalRow.retest_status==='regression'&&row.status==='completed')
+        advisories.source_regression_locally_completed++;
+      if(originalRow.retest_status==='regression'&&row.status==='deferred')
+        advisories.source_regression_deferred++;
+      if(row.status==='ready_for_retest'&&!row.owner.trim())
+        advisories.retest_coordination_without_owner++;
+      if(row.status==='blocked'&&!row.blocker.trim())advisories.blocked_without_note++;
     }
     // Discard all source identifiers, case notes, owners and expiry metadata;
     // the result is only aggregate, untrusted human self-report.
@@ -142,7 +157,8 @@
       matched_original_source_locally:true,client_engagement_authenticated:false,
       source_records:current.length,assigned_owner_labels:assigned,
       source_casework_due_dates:withDueDate,blocked_with_local_notes:blockedWithNotes,
-      source_casework_statuses:statuses,severity_statuses:severity
+      source_casework_statuses:statuses,severity_statuses:severity,
+      human_review_flags:advisories
     });
   }
   root.LightUpCapacityCasework=Object.freeze({review,MAX_BYTES});
