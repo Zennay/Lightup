@@ -91,7 +91,8 @@ function intake(text){
   fields(w.severity_hours,BANDS);
   if(BANDS.reduce((sum,s)=>sum+int(w.severity_hours[s],0,3000,'severity hours'),0)!==w.allocated_hours)fail('Weekly risk hours inconsistent');
   weekHours+=w.allocated_hours;
-  return Object.freeze({week:w.week,start:w.start,capacity:w.available_hours,hours:w.allocated_hours});
+  return Object.freeze({week:w.week,start:w.start,capacity:w.available_hours,hours:w.allocated_hours,
+   risk_hours:Object.freeze(Object.fromEntries(BANDS.map(b=>[b,w.severity_hours[b]])))});
  });
  if(weekHours!==data.assigned_hours)fail('Aggregate weeks do not match source total');
  return Object.freeze({
@@ -143,6 +144,26 @@ function project(source,raw) {
     proposed_hours:w.proposed_hours
   });
  });
+ // Funding allocation is a money bound, not an authenticated ordering of individual cases.
+ // Report the pessimistic and optimistic urgent-hour coverage rather than inventing case order.
+ const urgentWeekBounds=fundingSchedule.map((funded,i)=>{
+   const severity=source.weeks[i].risk_hours;
+   const urgent=severity.critical+severity.high;
+   const ordinary=source.weeks[i].hours-urgent;
+   const fundedHours=Math.min(source.weeks[i].hours,funded.provisionally_funded_hours);
+   const minimum=Math.max(0,fundedHours-ordinary);
+   const maximum=Math.min(urgent,fundedHours);
+   return Object.freeze({
+     week:funded.week,urgent_scheduled_hours:urgent,
+     nominally_funded_urgent_minimum_hours:Math.round(minimum*10)/10,
+     nominally_funded_urgent_maximum_hours:Math.round(maximum*10)/10,
+     urgent_potentially_unfunded_minimum_hours:Math.round((urgent-maximum)*10)/10,
+     urgent_potentially_unfunded_maximum_hours:Math.round((urgent-minimum)*10)/10
+   });
+ });
+ const urgentTotal=urgentWeekBounds.reduce((sum,v)=>sum+v.urgent_scheduled_hours,0);
+ const urgentAtRiskMin=urgentWeekBounds.reduce((sum,v)=>sum+v.urgent_potentially_unfunded_minimum_hours,0);
+ const urgentAtRiskMax=urgentWeekBounds.reduce((sum,v)=>sum+v.urgent_potentially_unfunded_maximum_hours,0);
  const fundingGap=Math.max(0,Math.round((roundedTotal-cfg.funding)*100)/100);
  return Object.freeze({
   schema:'lightup.remediation_funding_discussion_v1',review_only:true,
@@ -156,6 +177,11 @@ function project(source,raw) {
   modeled_internal_share_pct:100-cfg.outsourced_pct,modeled_external_share_pct:cfg.outsourced_pct,
   hourly_blended_rate:Math.round(perHour*100)/100,contingency_pct:cfg.contingency_pct,
   one_time_cost:cfg.fixed_cost,
+  critical_high_proposed_hours:urgentTotal,
+  critical_high_potential_unfunded_hours_minimum:Math.round(urgentAtRiskMin*10)/10,
+  critical_high_potential_unfunded_hours_maximum:Math.round(urgentAtRiskMax*10)/10,
+  critical_high_outside_source_plan_hours:source.risk.critical.backlog+source.risk.high.backlog,
+  weekly_critical_high_funding_bounds:Object.freeze(urgentWeekBounds),
   weeks:Object.freeze(weekly.map(Object.freeze)),funding:Object.freeze(fundingSchedule)
  });
 }
