@@ -70,7 +70,7 @@ tbody button{font-size:11px;padding:5px 7px}
 <section class="grid"><div class="card"><h2 id="focus-title">03 / Select one original source record</h2><p id="focus-description">Select a source record to inspect its connected original references.</p>
 <div class="flex" id="focus-list"></div><div class="divider"></div>
 <h3>Exact original reference paths</h3><p class="caption">These paths show the shortest source-record connection, including backwards references and shared-engagement siblings. An indirect path is NOT the selected request's permission for another grant or tenant.</p>
-<div class="table-wrap" style="max-height:230px"><table><thead><tr><th>Distance</th><th>Recorded source link sequence</th><th></th></tr></thead><tbody id="reference-paths"></tbody></table></div><div class="divider"></div><h3>Potential follow-up and absent source rows</h3><ol id="impact-list"></ol>
+<div class="table-wrap" style="max-height:230px"><table><thead><tr><th>Distance</th><th>Recorded source link sequence</th><th></th></tr></thead><tbody id="reference-paths"></tbody></table></div><div class="divider"></div><div class="actions"><button id="selected-anonymous" type="button" class="secondary" disabled>Anonymous selected impact</button><button id="selected-private-html" type="button" disabled>PRIVATE offline selected dossier</button><button id="selected-private-json" type="button" disabled>PRIVATE selected JSON</button></div><p class="caption">A selected private dossier contains original row IDs, tenant, reference paths and self-reported human notes, and requires recipient confirmation. The anonymous export contains counts only.</p><div class="divider"></div><h3>Potential follow-up and absent source rows</h3><ol id="impact-list"></ol>
 <div class="warning">Human impact review only: a missing reference is an unresolved historical source observation, not proof that a customer cancelled approval or a target is safe.</div></div>
 <div class="card"><h2>04 / Local human-only follow-up</h2><fieldset id="review-fields" disabled style="border:0;padding:0;margin:0">
 <label class="field">Stage<select id="stage"><option value="unreviewed">Unreviewed</option><option value="investigating">Investigating</option><option value="waiting-client">Waiting for genuine client contact</option><option value="waiting-operator">Waiting for original operator</option><option value="escalated">Escalated</option><option value="documented">Documented, not approved</option></select></label>
@@ -262,6 +262,9 @@ el("review-fields").disabled=!node;
 el("anonymous").disabled=!source;
 el("private-export").disabled=!source||!sourceSHA||fictional;
 el("private-import").disabled=!source||!sourceSHA||fictional;
+el("selected-anonymous").disabled=!node;
+el("selected-private-json").disabled=!node||!sourceSHA||fictional;
+el("selected-private-html").disabled=!node||!sourceSHA||fictional;
 renderInbox();renderSchedule();
 }
 function renderSchedule(){
@@ -315,6 +318,40 @@ setMessage((fictional?"FICTIONAL DEMO":"Source bytes loaded locally")+". REVIEW_
 function download(name,type,contents){
 var url=URL.createObjectURL(new Blob([contents],{type:type})),a=document.createElement("a");a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(function(){URL.revokeObjectURL(url);},1200);
 }
+
+function safeDossierText(s){return String(s).replace(/[&<>"']/g,function(x){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[x];});}
+function selectedDossier(){
+if(!source||!sourceSHA||fictional||!selection)throw Error("source required");
+var all=nodes(),found=all.find(function(n){return n.key===selection;});if(!found)throw Error("missing selected source");
+var graph=connected(selection),counts={requests:0,grants:0,engagements:0,risk_approvals:0},attention=0;
+var records=all.filter(function(n){return graph.found.has(n.key);}).map(function(n){
+counts[n.family]++;if(troubled(n))attention++;
+var h=human.get(n.key)||{};
+return {family:n.family,original_id:n.id,recorded_observation:status(n),source_path:describePath(graph.paths.get(n.key)),human_stage:h.stage||"unreviewed",human_reviewer:h.reviewer||"",human_action:h.next||"",human_date:h.due||"",human_note:h.note||""};
+});
+return {schema:"lightup.scope_impact_private_dossier.v1",status:"REVIEW_ONLY",source_tenant:source.client_id,source_as_of:source.as_of,source_sha256:sourceSHA,selected_source_key:selection,source_counts:counts,source_attention:attention,missing_source_references:graph.broken.map(function(x){return {from:x.from,missing:x.missing,reason:x.kind};}),records:records,source_authenticated:false,client_consent_verified:false,operator_consent_verified:false,authorization_granted:false,execution_allowed:false,release_approved:false};
+}
+function selectedDossierHTML(d){
+var tr=d.records.map(function(r){return "<tr>"+["family","original_id","source_path","recorded_observation","human_stage","human_reviewer","human_action","human_date","human_note"].map(function(k){return "<td>"+safeDossierText(r[k])+"</td>";}).join("")+"</tr>";}).join("");
+var missing=d.missing_source_references.map(function(m){return "<li>"+safeDossierText(m.from)+" → "+safeDossierText(m.missing)+" · "+safeDossierText(m.reason)+" (unresolved, NOT revoked)</li>";}).join("");
+return '<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="Content-Security-Policy" content="default-src &#39;none&#39;; style-src &#39;unsafe-inline&#39;; connect-src &#39;none&#39;; img-src &#39;none&#39;; script-src &#39;none&#39;"><title>PRIVATE LightUp source impact</title><style>body{font:14px/1.5 system-ui,sans-serif;margin:32px;color:#13213c}table{border-collapse:collapse;width:100%;font-size:12px}td,th{border:1px solid #aab6cb;padding:8px;text-align:left;vertical-align:top;overflow-wrap:anywhere}th{background:#e1e8f5}.hold{background:#fff0d6;border-left:5px solid #bc7744;padding:13px}small{overflow-wrap:anywhere}</style></head><body><h1>PRIVATE · LightUp Scope Impact</h1><p class="hold">ORIGINAL SOURCE OBSERVATION, NOT LIVE PERMISSION. Recorded grants/paths, human notes, hashes and missing references are NOT authenticated consent, STOP/revocation truth, risk clearance, human release or scan authority. All authority flags are false.</p><p>Private tenant: '+safeDossierText(d.source_tenant)+'<br>Original selected row: '+safeDossierText(d.selected_source_key)+'<br>Original source as-of (unverified): '+safeDossierText(d.source_as_of)+'<br>Exact source byte SHA-256 (unsigned): <small>'+safeDossierText(d.source_sha256)+'</small></p><p>Connected records: '+d.records.length+'; source attention: '+d.source_attention+'; missing references: '+d.missing_source_references.length+'.</p><h2>Missing source references — human HOLD</h2><ul>'+(missing||'<li>No missing source reference in selected graph. This does NOT prove any release or consent.</li>')+'</ul><h2>Recorded relationship paths and private human-only notes</h2><table><thead><tr>'+["Type","Original ID","Source path","Recorded state","Human stage","Reviewer label","Next human action","Due","Private note"].map(function(t){return "<th>"+t+"</th>";}).join("")+'</tr></thead><tbody>'+tr+'</tbody></table><p>Strictly private offline HTML without scripts, external assets or network permission. Keep with intended authorized recipient.</p></body></html>';
+}
+function exportSelectedDossier(kind){
+try{
+var doc=selectedDossier();
+if(!confirm("PRIVATE: This selected-source packet includes original tenant, IDs, exact recorded reference paths and human notes. Confirm an authorized recipient and private delivery before creating it."))return;
+if(kind==="html")download("PRIVATE-lightup-selected-impact.html","text/html;charset=utf-8",selectedDossierHTML(doc));
+else download("PRIVATE-lightup-selected-impact.json","application/json",JSON.stringify(doc,null,2)+"\n");
+setMessage("PRIVATE human impact dossier exported locally; no authorization issued.");
+}catch(e){setMessage("HOLD: exact real source SHA and selected original row required.");}
+}
+function exportSelectedAnonymous(){
+if(!source||!selection)return;
+var view=connected(selection),ns=nodes().filter(function(n){return view.found.has(n.key);}),counts={requests:0,grants:0,engagements:0,risk_approvals:0};
+ns.forEach(function(n){counts[n.family]++;});
+download("lightup-selected-impact-anonymous.json","application/json",JSON.stringify({schema:"lightup.scope_impact_selected_anonymous.v1",status:"REVIEW_ONLY",related_records:ns.length,related_family_counts:counts,attention_rows:ns.filter(troubled).length,missing_references:view.broken.length,source_authenticated:false,client_consent_verified:false,operator_consent_verified:false,authorization_granted:false,execution_allowed:false,release_approved:false},null,2)+"\n");
+}
+
 function humanRows(){
 return Array.from(human.entries()).sort(function(a,b){return a[0].localeCompare(b[0]);}).map(function(entry){return {source_key:entry[0],stage:entry[1].stage,reviewer:entry[1].reviewer,next_action:entry[1].next,due_date:entry[1].due,note:entry[1].note};});
 }
@@ -328,6 +365,9 @@ el("search").addEventListener("input",render);el("related").addEventListener("ch
 el("clear").addEventListener("click",function(){source=null;sourceSHA=null;fictional=false;selection=null;human.clear();el("search").value="";render();setMessage("Private source and human notes cleared from this tab.");});
 el("save-review").addEventListener("click",function(){try{readFields();render();setMessage("Human-only note stored in tab memory. No original source has been edited.");}catch(e){setMessage("HOLD: review fields invalid. Nothing saved.");}});
 el("anonymous").addEventListener("click",function(){if(source)download("lightup-scope-impact-anonymous.json","application/json",JSON.stringify(anonymous(),null,2)+"\n");});
+el("selected-anonymous").addEventListener("click",exportSelectedAnonymous);
+el("selected-private-json").addEventListener("click",function(){exportSelectedDossier("json");});
+el("selected-private-html").addEventListener("click",function(){exportSelectedDossier("html");});
 el("private-export").addEventListener("click",function(){
 if(!sourceSHA||!source||fictional)return;
 if(!confirm("This PRIVATE file includes original source IDs, tenant ID, reviewers and notes. Confirm local authorized recipient and destination."))return;
