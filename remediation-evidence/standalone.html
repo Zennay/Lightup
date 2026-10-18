@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="referrer" content="no-referrer">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-wpPFZOyxFDTkVCPSRLe+ulmbav4+u8hRIYgukbiqEiU=' 'sha256-K9zZYnZSi0X8OGaBZHv3WEzoJvXC/faxSfYkYVHIAC0='; style-src 'unsafe-inline'; connect-src 'none'; img-src 'none'; font-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-wpPFZOyxFDTkVCPSRLe+ulmbav4+u8hRIYgukbiqEiU=' 'sha256-UAqiQpR8UjyRS1HCQmchAqRe4JMBLmcmzoWqn4/VWa0='; style-src 'unsafe-inline'; connect-src 'none'; img-src 'none'; font-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <title>LightUp · Remediation Evidence Review</title>
 <style>
 :root{font:15px/1.5 system-ui,sans-serif;color:#eef5fc;background:#0b1420;--panel:#152538;--stroke:#456178;--muted:#bdd1e0;--accent:#79e9cc}*{box-sizing:border-box}body{margin:0}header{padding:28px max(20px,calc((100% - 1180px)/2));background:#102237;border-bottom:1px solid var(--stroke)}.eyebrow{font-weight:800;letter-spacing:.14em;color:var(--accent);font-size:.75rem}h1{font-size:clamp(27px,4vw,42px);line-height:1.1;letter-spacing:-.045em;margin:5px 0}p{color:var(--muted)}main{max-width:1220px;margin:auto;padding:20px 20px 80px}.warning{padding:17px 21px;border-radius:12px;background:#382c25;border:1px solid #ad9376;color:#fff0d7}.warning strong{color:#ffe0a7}.card{border:1px solid var(--stroke);background:var(--panel);padding:19px;border-radius:14px;margin:18px 0}h2{margin:0 0 6px;font-size:1.35rem}h3{font-size:1.05rem;margin:0}label{display:block;font-weight:650;min-width:0;margin:8px 0}input,select,textarea{width:100%;font:inherit;color:#fff;background:#0b1a2b;border:1px solid #65839d;border-radius:8px;padding:10px 12px;display:block;margin:5px 0 0}input[type=checkbox]{width:auto;display:inline-block;vertical-align:middle;margin:0 8px 0 0}button{font:inherit;cursor:pointer;background:#26465b;color:#fff;border:1px solid #6a8ca5;border-radius:8px;padding:11px 15px;font-weight:700}button:hover{border-color:var(--accent)}button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid var(--accent);outline-offset:2px}.primary{background:var(--accent);color:#0a2925;border-color:var(--accent)}.row,.files{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px}.buttons{display:flex;flex-wrap:wrap;gap:10px;margin:14px 0}.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin:20px 0}.stat{background:#20384d;border-radius:10px;border:1px solid var(--stroke);padding:12px;color:var(--muted)}.stat strong{font-size:2rem;line-height:1.25;display:block;color:var(--accent)}.board{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,370px),1fr));gap:13px}.finding{padding:17px;border:1px solid #52758f;background:#13283b;border-radius:13px;min-width:0;overflow-wrap:anywhere}.finding h3{font-size:1.12rem;line-height:1.3}.detail{font-size:.8rem;margin:6px 0;color:#c1d3e2}.cues{padding:11px 11px 11px 27px;border:1px solid #856d51;background:#332a24;border-radius:8px;font-size:.85rem;color:#ffead0}.cues li+li{margin-top:5px}.field span{font-size:.85rem}.field textarea{min-height:76px;resize:vertical}#status[data-error=true]{color:#ffb9ad}#status{min-height:28px;font-weight:700}#fingerprint{overflow-wrap:anywhere;font:12px/1.6 ui-monospace,monospace;color:var(--muted)}.foot{font-size:.83rem}a{color:var(--accent)}[hidden]{display:none!important}@media print{body{background:white;color:#111}header,.warning,.files,.buttons,.field,#actions,#status{display:none!important}main{padding:0}.card,.finding{color:#000;background:#fff;border-color:#aaa;break-inside:avoid}p,.detail,.stat{color:#333}.cues{background:white;color:#000}.board{display:block}.finding{margin:10px 0}}
@@ -22,10 +22,10 @@
 <div class="buttons"><button id="previewRefresh">Preview source changes</button><button id="applyRefresh" disabled>Apply human-reviewed refresh</button></div>
 <p id="refreshSummary" role="status">No refresh preview.</p></section>
 <section id="dashboard" class="card" hidden><h2>2. Human review summary</h2><p>All counts reflect original summary records and local, editable coordination notes only.</p>
-<div class="stats"><div class="stat"><strong id="total">0</strong>Original findings</div><div class="stat"><strong id="urgent">0</strong>Critical/high</div><div class="stat"><strong id="no_reference">0</strong>No evidence reference</div><div class="stat"><strong id="needs_changes">0</strong>Needs human changes</div><div class="stat"><strong id="retest">0</strong>Local retest requests</div><div class="stat"><strong id="contradictions">0</strong>Warning conditions</div></div>
+<div class="stats"><div class="stat"><strong id="total">0</strong>Original findings</div><div class="stat"><strong id="urgent">0</strong>Critical/high</div><div class="stat"><strong id="no_reference">0</strong>No evidence reference</div><div class="stat"><strong id="needs_changes">0</strong>Needs human changes</div><div class="stat"><strong id="retest">0</strong>Local retest requests</div><div class="stat"><strong id="contradictions">0</strong>Warning conditions</div><div class="stat"><strong id="blocked">0</strong>Blocked local cases</div><div class="stat"><strong id="overdue">0</strong>Overdue local plans</div><div class="stat"><strong id="next7">0</strong>Due within 7 days (local)</div></div>
 </section>
 <section id="boardSection" class="card" hidden><h2>3. Coordinate each finding</h2><p>Review stages never change the original source or authorize active retest. A reference is descriptive text only; actual evidence must remain in an approved separate authenticated system.</p>
-<label>Show findings <select id="filter"><option value="all">All findings</option><option value="urgent">Critical/high only</option><option value="gaps">Evidence gaps and follow-ups</option><option value="retest">Local retest requests</option><option value="contradictions">Source/local status contradictions</option></select></label>
+<label>Show findings <select id="filter"><option value="all">All findings</option><option value="urgent">Critical/high only</option><option value="gaps">Evidence gaps and follow-ups</option><option value="retest">Local retest requests</option><option value="blocked">Blocked original local Casework items</option><option value="overdue">Overdue original local planning dates</option><option value="contradictions">Source/local status contradictions</option></select></label>
 <div class="card"><h3>Apply human coordination to current filtered findings</h3><p>Bulk changes affect only the <strong id="bulkCount">0</strong> displayed local review entries, never original source statuses, casework fields, actual evidence, grants or retests. You must confirm before applying.</p><div class="row"><label>Set local human stage<select id="bulkStage"><option value="">Do not change stage</option><option value="missing">Missing reference / follow-up</option><option value="submitted">Submitted for human review</option><option value="needs_changes">Human changes needed</option><option value="ready_for_authorized_retest">Coordinate authorized retest</option></select></label><label>Assign local human reviewer/team<input type="text" id="bulkReviewer" maxlength="120" placeholder="Optional; leave blank to preserve"></label></div><div class="buttons"><button id="applyBulk">Apply to filtered records after confirmation</button></div></div>
 <p class="foot">Showing <strong id="shown">0</strong> records. Content stays in memory until you explicitly download a private file.</p>
 <div id="board" class="board"></div></section>
@@ -319,11 +319,24 @@ function updateSource(newSource,matchedCases){
  source=newSource;casework=matchedCases;review=new Map(newSource.map(f=>[f.finding_id,stageStart(f.finding_id)]));
  changed=false;refreshCandidate=null;render();
 }
+function localDay(date){
+ return String(date.getFullYear()).padStart(4,'0')+'-'+String(date.getMonth()+1).padStart(2,'0')+'-'+String(date.getDate()).padStart(2,'0');
+}
+function localWindow(){
+ const now=new Date(),end=new Date(now.getFullYear(),now.getMonth(),now.getDate()+7);
+ return {today:localDay(now),next7:localDay(end)};
+}
 function count(){
- const metrics={total:source.length,urgent:0,no_reference:0,needs_changes:0,retest:0,contradictions:0};
+ const metrics={total:source.length,urgent:0,no_reference:0,needs_changes:0,retest:0,contradictions:0,blocked:0,overdue:0,next7:0};
+ const window=localWindow();
  for(const f of source){
   const r=review.get(f.finding_id),c=casework?.get(f.finding_id);
   if(SEV.indexOf(f.severity)<=1)metrics.urgent++;
+  if(c?.status==='blocked')metrics.blocked++;
+  if(c?.due_date&&c.status!=='completed'&&c.status!=='deferred'){
+   if(c.due_date<window.today)metrics.overdue++;
+   else if(c.due_date<=window.next7)metrics.next7++;
+  }
   if(!r.reference.trim())metrics.no_reference++;
   if(r.stage==='needs_changes')metrics.needs_changes++;
   if(r.stage==='ready_for_authorized_retest')metrics.retest++;
@@ -338,6 +351,11 @@ function humanQueue(f,c,r){
  const cues=[];
  if(f.retest_status==='regression')cues.push('Source reports regression: escalate to source owner.');
  if(c?.status==='blocked')cues.push('Casework is blocked: coordinate blocker with human owner.');
+ const window=localWindow();
+ if(c?.due_date&&c.status!=='completed'&&c.status!=='deferred'){
+  if(c.due_date<window.today)cues.push('Local Casework planning date overdue; not an approved SLA.');
+  else if(c.due_date<=window.next7)cues.push('Local planning date within seven days; coordinate with human owner.');
+ }
  if(c?.status==='completed'&&f.retest_status!=='fixed')cues.push('Local completed is NOT a verified source fix.');
  if(f.retest_status==='fixed')cues.push('Source reports fixed; independently confirm current approved retest.');
  if(r.stage==='ready_for_authorized_retest'&&!r.reference.trim())cues.push('Retest requested locally without a reference.');
@@ -357,6 +375,8 @@ function included(f,c,r,filter){
  if(filter==='urgent'&&SEV.indexOf(f.severity)>1)return false;
  if(filter==='gaps'&&r.reference.trim()&&cues.length===0)return false;
  if(filter==='retest'&&r.stage!=='ready_for_authorized_retest')return false;
+ if(filter==='blocked'&&c?.status!=='blocked')return false;
+ if(filter==='overdue'&&(!c?.due_date||c.status==='completed'||c.status==='deferred'||c.due_date>=localWindow().today))return false;
  if(filter==='contradictions'&&!cues.some(x=>/NOT|conflict|without/.test(x)))return false;
  return true;
 }
@@ -381,6 +401,7 @@ function render(){
   const heading=el('h3','',f.title);section.append(heading);
   section.append(el('p','detail',f.severity.toUpperCase()+' · Source retest: '+f.retest_status+' · Local casework: '+(c?.status||'not loaded')));
   section.append(el('p','detail','Finding '+f.finding_id));
+  if(c) section.append(el('p','detail','Original local plan · owner: '+(c.owner||'unassigned')+' · due: '+(c.due_date||'not planned')));
   if(cues.length){const ul=el('ul','cues');for(const cue of cues)ul.append(el('li','',cue));section.append(ul);}
   const selectLabel=el('label','field'),select=document.createElement('select');
   selectLabel.append(el('span','','Human coordination stage'));
