@@ -292,7 +292,8 @@ def _read_report(database: Path, *, client_id: str | None = None,
 
     # Orphans cannot be safely attributed to any engagement or client.
     orphan_count = sum(g["engagement_id"] not in by_engagement for g in grants) if client_id is None else 0
-    counter["ORPHAN_GRANT"] = orphan_count
+    if client_id is None:
+        counter["ORPHAN_GRANT"] = orphan_count
     report = {
         "format": "lightup.authorization_readiness_operator_v1",
         "disposition": "REVIEW_ONLY",
@@ -304,6 +305,7 @@ def _read_report(database: Path, *, client_id: str | None = None,
             "A compatible requested asset/risk is only a conservative comparison; canonical scope, identity, ownership, approval provenance, and runtime revocation are not verified.",
             "A within_window grant is NOT currently authorized. Review does not issue, edit or revoke grants.",
             "All grant records remain unverified. Do not merge, deploy or scan on this report.",
+            "Scoped exports intentionally omit unrelated tenant data and do not claim to inventory all orphan grants.",
         ],
         "summary": {
             "clients": len(clients),
@@ -375,6 +377,13 @@ def _interactive_workspace(report: dict, nonce: str) -> str:
         <label class="toggle"><input id="workspaceCritical" type="checkbox">Critical concerns only</label>
       </div>
       <p class="muted" id="workspaceTotals"></p>
+      <div class="workspaceBulk">
+        <label>Bulk owner (unassigned filtered cases only)
+          <input id="workspaceBulkOwner" maxlength="90" autocomplete="off" placeholder="Responsible team or operator">
+        </label>
+        <button id="workspaceBulkAssign" type="button">Assign filtered unassigned</button>
+        <button id="workspaceBulkEscalate" type="button">Escalate filtered unresolved</button>
+      </div>
       <div class="workspaceGrid">
         <nav id="workspaceCases" class="caseList" aria-label="Authorization cases"></nav>
         <div id="workspaceEditor" class="caseEditor">
@@ -412,7 +421,7 @@ def _interactive_workspace(report: dict, nonce: str) -> str:
     </section>'''
     css = r'''
     .workspace{border-top:2px solid #375067;margin-top:32px;padding:24px 0}
-    .actions,.workspaceExports{display:flex;gap:13px;flex-wrap:wrap;align-items:end;margin:18px 0}
+    .actions,.workspaceExports,.workspaceBulk{display:flex;gap:13px;flex-wrap:wrap;align-items:end;margin:18px 0}
     label{display:block;font-size:.87rem;font-weight:700;color:#dfecfa}
     input,textarea,select{display:block;width:100%;border:1px solid #63738b;
       background:#0e1829;color:#fff;border-radius:8px;padding:10px;margin-top:5px;font:inherit}
@@ -428,8 +437,9 @@ def _interactive_workspace(report: dict, nonce: str) -> str:
     .caseEditor{border:1px solid #455a76;background:#142239;padding:18px;border-radius:12px}
     .caseEditor h3{margin-top:0;overflow-wrap:anywhere}.caseEditor>label{margin-top:15px}
     .editorGrid{display:grid;grid-template-columns:1fr 1fr;gap:13px;margin:18px 0}
-    .workspaceExports button,.importLabel{background:#244254;color:#e8fafa;cursor:pointer;
+    .workspaceExports button,.workspaceBulk button,.importLabel{background:#244254;color:#e8fafa;cursor:pointer;
       border:1px solid #70b9ac;border-radius:8px;padding:11px 15px;font-weight:750}
+    .workspaceBulk label{flex:1;min-width:260px}
     .importLabel input{max-width:310px;font-size:.82rem}
     @media(max-width:800px){.workspaceGrid{grid-template-columns:1fr}.editorGrid{grid-template-columns:1fr}}
     @media print{.workspace{display:none}}
