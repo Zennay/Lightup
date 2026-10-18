@@ -14,7 +14,7 @@ What an operator can actually do:
 4. Export a **counts-only anonymous aggregate JSON** with no original IDs, hosts, targets, paths, contacts, notes or per-item outcomes.
 5. Export a **PRIVATE** notes handoff only after a recipient confirmation. It contains original IDs, tenant, notes and SHA-256 of the exact source file bytes; recipient import restores notes only against that exact byte-for-byte original source revision. Bad, stale or mismatched files leave prior review state unchanged.
 6. Prepare a portable private workspace with the Python standard-library-only [packager](prepare.py): 0700 new directory, original private JSON plus app/instructions as 0600 files, SHA-256 manifest written last, exclusive no-overwrite, fsync and cleanup after ordinary failures.
-7. Inspect a received private bundle with the separate stdlib-only [recipient inspector](inspect.py), which rejects modified files, unsafe symlinks/permissions, unexpected contents, inconsistent manifest/byte digests or unsupported source metadata. This is **only self-consistency against an untrusted local manifest**, never proof of sender or permission.
+7. Inspect a received private bundle with the separate stdlib-only [recipient inspector](workspace_inspect.py), which rejects modified files, unsafe symlinks/permissions, unexpected contents, inconsistent manifest/byte digests or unsupported source metadata. This is **only self-consistency against an untrusted local manifest**, never proof of sender or permission.
 
 This is intentionally a *relationship impact/work coordination viewer*, not another source owner, casebook replacement, client consent UI or inferred validity gate. It only follows exact original keys `requests.request_id`, `grants.approved_request_id`, `grants.engagement_id`, `engagements.engagement_id`, `risk_approvals.engagement_id`. A request is **not** linked directly to an engagement absent its stored grant relationship.
 
@@ -39,7 +39,7 @@ The command **must** create a previously nonexistent output directory. It refuse
 Before opening a received private folder, reconcile local files against their local manifest:
 
 ```bash
-python3 authorization-impact/inspect.py /private/path/NEW-impact-workspace
+python3 authorization-impact/workspace_inspect.py /private/path/NEW-impact-workspace
 ```
 
 The inspector prints a source-redacted `REVIEW_ONLY` and exits **2** for a locally coherent packet, otherwise a generic `HOLD`/exit **3**. The manifest and hashes do not authenticate any sender, signature, customer or grant. Only then open the output `standalone.html` in a local browser (no HTTP server), import `casebook.json` with the browser's file picker, select an original source record and review its relationships. Keep the entire workspace owner-private. No browser upload, remote URL, persistent browser storage, DNS, scan, provider, grant, STOP, policy mutation or database update occurs.
