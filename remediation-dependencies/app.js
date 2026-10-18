@@ -35,7 +35,7 @@ function humanById(id){return state.cases.find(c=>c.finding_id===id);}
 function putSelect(select){select.replaceChildren();for(const f of state.findings){let option=E('option',f.finding_id+' — '+f.title.slice(0,56));option.value=f.finding_id;select.append(option);}}
 function renderOwnerFilter(){
  const select=$('owner-filter'),old=select.value;
- ownerLabels=[...new Set(state.cases.map(c=>c.owner).filter(x=>typeof x==='string'&&x.length))].sort();
+ ownerLabels=[...new Set(state.cases.map(c=>c.owner).filter(x=>typeof x==='string'&&x.trim().length))].sort();
  select.replaceChildren();
  const add=(value,title)=>{const option=E('option',title);option.value=value;select.append(option);};
  add('all','All original human owners');add('unassigned','(Unassigned human work)');
@@ -44,7 +44,7 @@ function renderOwnerFilter(){
 }
 function visibleRow(row,critical){
  const owner=$('owner-filter').value;
- if(owner==='unassigned'&&row.owner)return false;
+ if(owner==='unassigned'&&row.owner.trim())return false;
  if(owner.startsWith('id:')&&ownerLabels[Number(owner.slice(3))]!==row.owner)return false;
  const filter=$('filter').value;
  if(filter==='waiting'&&!row.waiting.length)return false;
