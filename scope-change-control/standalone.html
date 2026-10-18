@@ -1,0 +1,731 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-5CqRtN6YF/NIAcdd8XwTnAIrXBS9it1p8hxZ+qq9PVA='; style-src 'sha256-aD2cj76CutRUfJRbDO/hyVdkq6dAOm5T2Zno6Rpf1Ec='; connect-src 'none'; img-src 'none'; font-src 'none'; object-src 'none'; form-action 'none'; base-uri 'none'">
+<title>LightUp | Casebook Change Control · Private</title>
+<style>:root{font-family:Inter,ui-sans-serif,system-ui,-apple-system,Segoe UI,sans-serif;color:#eaf0f8;background:#090f1b;line-height:1.5}*{box-sizing:border-box}body{margin:0}header,main,footer{max-width:1200px;padding:24px;margin:auto}header{padding-top:65px;padding-bottom:44px}.eyebrow{font-size:12px;letter-spacing:.15em;color:#7ee1ce;font-weight:750}h1{font-size:clamp(2.4rem,5vw,4.2rem);line-height:1.04;margin:17px 0}em{font-style:normal;color:#75d9bc}h2{font-size:1.45rem;margin:0 0 14px}p{color:#b5c2d5;max-width:92ch}code{color:#9af2d9}.badges{display:flex;gap:12px;flex-wrap:wrap;margin-top:30px}.badges strong{font-size:11px;letter-spacing:.06em;color:#aee8e0;padding:8px 12px;border:1px solid #30504f;border-radius:20px}section{background:#111b2a;border:1px solid #24354a;border-radius:20px;padding:28px;margin:0 0 22px}.files{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:20px;margin:24px 0}.files label{display:flex;flex-direction:column;gap:10px;color:#e2e9f4;font-weight:600}input[type=file]{width:100%;border:1px solid #334b63;border-radius:8px;padding:12px;background:#091524;color:#b9cde2}button{cursor:pointer;border:0;border-radius:9px;background:#6fe4c4;color:#07231f;padding:11px 17px;font:inherit;font-weight:700}button:hover{filter:brightness(1.12)}button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid #fff;outline-offset:3px}.outline{color:#90e4d2;background:transparent;border:1px solid #5a8b82}#error{color:#ffbaaa;min-height:1.2em}.meta{border-top:1px solid #314158;border-bottom:1px solid #314158;margin:20px 0;overflow-wrap:anywhere}.meta p{font-size:.85rem;max-width:none}.summary{font-size:1.25rem;font-weight:700;color:#f3ddaa}.filter{display:flex;gap:12px;align-items:center;margin:24px 0;font-weight:600}select{padding:8px 12px;background:#1a2a3c;color:#eef4ff;border:1px solid #506782;border-radius:6px;font:inherit;max-width:250px}.table-wrap{overflow-x:auto}table{width:100%;border-collapse:collapse;min-width:930px}th{text-align:left;color:#86d5c6;text-transform:uppercase;letter-spacing:.06em;font-size:11px;background:#162638}td,th{border-bottom:1px solid #2a3c50;padding:14px 12px}td{font-size:.87rem;overflow-wrap:anywhere;max-width:230px}tr:hover{background:#182538}.explain{border-left:3px solid #ecb975;padding:12px 18px;background:#211f23;max-width:none}.actions{display:flex;flex-wrap:wrap;gap:18px;align-items:center}.confirm{display:flex;align-items:center;gap:8px;color:#dae4ee;font-size:.9rem}footer{font-size:.8rem;color:#98a5b9;padding-top:20px;padding-bottom:60px}@media(max-width:700px){header{padding-top:35px}section{padding:19px}.actions{display:grid}}
+.impact{border-top:1px solid #34455c;padding:25px 0 4px;margin:26px 0}.impact h3{font-size:1.15rem;color:#99e5d3;margin:0 0 8px}.impact p{font-size:.88rem}.impact td{max-width:245px}
+dialog{width:min(94vw,640px);max-height:88vh;overflow-y:auto;background:#111b2a;color:#eaf0f8;border:1px solid #507669;border-radius:18px;padding:28px;box-shadow:0 25px 100px #000a}
+dialog::backdrop{background:#080e19dd}dialog label{display:block;font-weight:650;color:#d7ece6;margin:15px 0}dialog input,dialog textarea{width:100%;display:block;background:#091524;color:#eaf0f8;border:1px solid #38586b;padding:11px;border-radius:8px;margin-top:6px;font:inherit}dialog input:focus-visible,dialog textarea:focus-visible{outline:2px solid #94ffe1;outline-offset:2px}.compact{font-size:.8rem;padding:7px 11px;white-space:nowrap}dialog .actions{margin-top:18px}
+</style>
+
+</head>
+<body>
+<header><span class="eyebrow">LIGHTUP / OPERATOR WORKSPACE / PRIVATE</span>
+<h1>Casebook <em>Change Control</em></h1>
+<p>Compare two original persisted-domain snapshots before taking any human follow-up action. This is a historical source observation, never proof of permission, STOP clearance or current consent.</p>
+<div class="badges"><strong>INCUBATE M3/M7</strong><strong>PLAN / LAB ONLY</strong><strong>REVIEW ONLY · HUMAN HOLD</strong></div>
+</header>
+<main>
+<section aria-labelledby="source-heading">
+<h2 id="source-heading">1 · Select original private snapshots</h2>
+<p>Export twice, at different times, using the existing authenticated <code>python -m lightup.auth_casebook</code> command. Files are read only in this browser. The selected tenant must match exactly.</p>
+<div class="files">
+<label>Older original Casebook JSON<input id="older" type="file" accept=".json,application/json"></label>
+<label>Newer original Casebook JSON<input id="newer" type="file" accept=".json,application/json"></label>
+</div>
+<button id="load" type="button">Compare original sources</button>
+<p id="error" role="alert" aria-live="polite"></p>
+</section>
+<section id="results" hidden aria-labelledby="results-heading">
+<h2 id="results-heading">2 · Source change register</h2>
+<div class="meta"><p><b>Original tenant:</b> <span id="tenant"></span></p><p id="provenance"></p></div>
+<p class="summary" id="summary" role="status"></p>
+<label class="filter">Review priority
+<select id="kind"><option value="all">All changes</option><option value="urgent">Urgent human follow-up</option><option value="review">Other source changes</option></select>
+</label>
+<div class="table-wrap"><table>
+<thead><tr><th scope="col">Priority</th><th scope="col">Source family</th><th scope="col">Delta</th><th scope="col">Original identifier</th><th scope="col">Changed original fields</th><th scope="col">Recorded signals · before → after</th><th scope="col">Local human stage</th><th scope="col">Private human follow-up</th></tr></thead>
+<tbody id="changes"></tbody>
+</table></div>
+<div class="impact">
+<h3>Recorded engagement impact · human coordination only</h3>
+<p id="impactSummary" role="status"></p>
+<div class="table-wrap"><table><thead><tr>
+<th scope="col">Original engagement</th><th scope="col">Earlier source attention</th><th scope="col">Later source attention</th><th scope="col">Changed source families</th><th scope="col">Changes</th><th scope="col">Urgent</th><th scope="col">Human follow-up outstanding</th>
+</tr></thead><tbody id="impactRows"></tbody></table></div>
+<p>Original assessment requests lack an engagement relationship in this Casebook export. Their changes remain tenant-level work and are deliberately not linked to an engagement or authority.</p>
+</div>
+<div class="impact" aria-labelledby="lineageHeading">
+<h3 id="lineageHeading">Original request → grant dependencies · human source follow-up</h3>
+<p>This is a recorded historical reference only, not an approval, active grant or actual consent. A request change can make an unchanged grant worth reviewing. Missing, invalid or held source relationships always need an independently authenticated human investigation.</p>
+<p id="lineageSummary" role="status"></p>
+<div class="table-wrap"><table><thead><tr><th scope="col">Original grant</th><th scope="col">Recorded engagement old → new</th><th scope="col">Recorded request reference old → new</th><th scope="col">Original request status old → new</th><th scope="col">Original link observation</th><th scope="col">Human attention reasons</th><th scope="col">Local human stage</th><th scope="col">PRIVATE follow-up</th></tr></thead><tbody id="lineageRows"></tbody></table></div>
+<p>Changes to a recorded request are not silently discarded because the linked grant row itself was unchanged. This table never issues or validates a grant, never clears STOP, and all its human stages are local annotations only.</p></div>
+<p class="explain"><b>Missing original row ≠ revoked or repaired.</b> An approved request, a recorded grant window, a reassuring source delta or a locally acknowledged task never grants execution authority. All original records remain unchanged. Local stages disappear when this page is closed.</p>
+</section>
+<section aria-labelledby="handoff-heading">
+<h2 id="handoff-heading">3 · Privacy-separated handoff</h2>
+<p>Aggregates contain no original IDs, original timestamps, tenant, source digest, private notes or raw inputs. A private review file retains sensitive exact original IDs and unsigned source byte fingerprints and must stay inside authorized private channels.</p>
+<div class="files"><label>PRIVATE browser return or original CLI review JSON (optional)<input id="restore-file" type="file" accept=".json,application/json"></label></div><button id="restore" class="outline" type="button">Restore source-bound human stages</button><p id="restore-status" role="status" aria-live="polite"></p>
+<div class="actions">
+<button id="aggregate" type="button">Export anonymous aggregate JSON</button>
+<label class="confirm"><input id="confirm" type="checkbox"> I verified the recipient and private disclosure scope</label>
+<button id="private" class="outline" type="button">Export PRIVATE human follow-up JSON</button>
+</div>
+</section>
+</main>
+<dialog id="humanDialog" aria-labelledby="humanDialogTitle">
+<h2 id="humanDialogTitle">Human-only follow-up</h2>
+<p><strong id="detailIdentity"></strong> · local note, not recorded authorization</p>
+<label>Reviewer alias (self-declared, not authenticated)<input id="reviewerAlias" maxlength="80" autocomplete="off"></label>
+<label>Next human action<input id="nextHumanAction" maxlength="240" autocomplete="off"></label>
+<label>Optional local UTC due date<input id="humanDue" type="date"></label>
+<label>PRIVATE human note<textarea id="humanNote" maxlength="1200" rows="5"></textarea></label>
+<p id="dialogError" role="alert"></p>
+<div class="actions"><button id="saveHuman" type="button">Save local follow-up</button><button type="button" class="outline" id="cancelHuman">Cancel</button></div>
+<p>No original request, scope, grant, risk, STOP or client consent is changed. This alias and note will appear only in a separately confirmed PRIVATE export.</p>
+</dialog>
+<footer>Offline browser-only · No uploads, storage, network calls, grants, real STOP, scans, target access or dispatch. Source SHA-256 is correlation only, not authenticity. Original exact-head CI, original-source/security/privacy review, independent client/operator consent and action-time revocation, and explicit HUMAN GO remain mandatory before any release.</footer>
+<script>/* LightUp Casebook Change Control — entirely offline advisory tool.
+   Original source files are never changed. No identity/consent/permission inference. */
+"use strict";
+(function () {
+  const EXPECTED = "lightup.auth_casebook.v1";
+  const LIMIT = 524288;
+  const CATEGORIES = [
+    ["requests", "request_id", 200],
+    ["engagements", "engagement_id", 200],
+    ["grants", "grant_id", 200],
+    ["risk_approvals", "approval_id", 200],
+    ["case_overview", "engagement_id", 200]
+  ];
+  const FLAGS = [
+    "source_authenticated", "client_consent_verified", "operator_consent_verified",
+    "authorization_granted", "execution_allowed", "release_approved"
+  ];
+  const STAGES = ["unreviewed", "owner-follow-up", "source-recheck", "human-acknowledged"];
+  const $ = id => document.getElementById(id);
+  const text = (id, value) => { $(id).textContent = String(value); };
+  const state = { snapshots: [], changes: [], sha: [], notes: new Map(), details: new Map(), lineageNotes: new Map(), lineageDetails: new Map(), editKey: null };
+  function hold(message) { throw Error(message); }
+  function isObject(x) { return x !== null && typeof x === "object" && !Array.isArray(x); }
+  function literal(x, n) {
+    return typeof x === "string" && x.length > 0 && x.length <= n &&
+      x === x.trim() && !/[\u0000-\u001f\u007f]/.test(x);
+  }
+  function nonnegative(x, n) { return Number.isSafeInteger(x) && x >= 0 && x <= n; }
+  function exactIso(s) {
+    if (typeof s !== "string" || s.length > 80 || !/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d+)?(?:Z|[+-]\d\d:\d\d)$/.test(s)) hold("Snapshot time missing timezone");
+    const value = Date.parse(s);
+    if (!Number.isFinite(value)) hold("Snapshot timestamp invalid");
+    return value;
+  }
+  function canonical(x) {
+    if (Array.isArray(x)) return "[" + x.map(canonical).join(",") + "]";
+    if (isObject(x)) return "{" + Object.keys(x).sort().map(k => JSON.stringify(k) + ":" + canonical(x[k])).join(",") + "}";
+    return JSON.stringify(x);
+  }
+  // Exact recursive JSON decoder, unlike JSON.parse it refuses duplicate object keys.
+  function strictJSON(source) {
+    let i = 0, tokens = 0;
+    const ws = () => { while (i < source.length && /\s/.test(source[i])) i++; };
+    function string() {
+      const start = i++;
+      while (i < source.length) {
+        let ch = source[i++];
+        if (ch === '"') return JSON.parse(source.slice(start, i));
+        if (ch === "\\") {
+          if (i >= source.length) hold("Truncated JSON escape");
+          let esc = source[i++];
+          if (esc === "u") {
+            if (!/^[0-9a-fA-F]{4}$/.test(source.slice(i, i + 4))) hold("Bad Unicode escape");
+            i += 4;
+          } else if (!'"\\/bfnrt'.includes(esc)) hold("Unknown JSON escape");
+        } else if (ch.charCodeAt(0) < 32) hold("Unescaped JSON control");
+      }
+      hold("Unterminated JSON string");
+    }
+    function value(depth) {
+      if (++tokens > 100000 || depth > 25) hold("Overlarge nested JSON");
+      ws();
+      const ch = source[i];
+      if (ch === '"') return string();
+      if (ch === "{") {
+        i++; ws();
+        const obj = Object.create(null);
+        if (source[i] === "}") { i++; return obj; }
+        while (true) {
+          ws(); if (source[i] !== '"') hold("JSON object key required");
+          const k = string(); ws();
+          if (Object.hasOwn(obj, k)) hold("Duplicate JSON key");
+          if (source[i++] !== ":") hold("JSON colon required");
+          obj[k] = value(depth + 1); ws();
+          const close = source[i++];
+          if (close === "}") return obj;
+          if (close !== ",") hold("JSON object comma required");
+        }
+      }
+      if (ch === "[") {
+        i++; ws();
+        const arr = [];
+        if (source[i] === "]") { i++; return arr; }
+        while (true) {
+          arr.push(value(depth + 1)); ws();
+          const close = source[i++];
+          if (close === "]") return arr;
+          if (close !== ",") hold("JSON array comma required");
+        }
+      }
+      const tail = source.slice(i);
+      const m = /^(?:true|false|null|-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?)/.exec(tail);
+      if (!m) hold("Malformed JSON scalar");
+      i += m[0].length;
+      const parsed = JSON.parse(m[0]);
+      if (typeof parsed === "number" && !Number.isFinite(parsed)) hold("Nonfinite JSON number");
+      return parsed;
+    }
+    const result = value(0);
+    ws();
+    if (i !== source.length) hold("Trailing JSON content");
+    return result;
+  }
+  function rowsFor(doc, category, idField, max) {
+    const data = doc[category];
+    if (!Array.isArray(data) || data.length > max) hold("Invalid or excessive " + category);
+    const seen = new Set();
+    for (const row of data) {
+      if (!isObject(row) || !literal(row[idField], 180) || seen.has(row[idField])) hold("Duplicate/invalid " + category + " identity");
+      seen.add(row[idField]);
+    }
+    return data;
+  }
+  function admit(doc) {
+    if (!isObject(doc) || doc.schema !== EXPECTED || doc.status !== "REVIEW_ONLY" ||
+      doc.source !== "original_persisted_domain_unverified" || !literal(doc.client_id, 180))
+      hold("Not an original held Casebook source");
+    FLAGS.forEach(k => { if (doc[k] !== false) hold("Unauthorized source assertion: " + k); });
+    const when = exactIso(doc.as_of);
+    if (!isObject(doc.declared_counts)) hold("Missing original count declarations");
+    const maps = Object.create(null);
+    for (const [cat, id, cap] of CATEGORIES) {
+      const rows = rowsFor(doc, cat, id, cap);
+      maps[cat] = new Map(rows.map(row => [row[id], row]));
+      if (cat !== "case_overview" && doc.declared_counts[cat] !== rows.length) hold("Original count mismatch " + cat);
+    }
+    if (maps.engagements.size !== maps.case_overview.size) hold("Casebook engagement coverage mismatch");
+    for (const [id, entry] of maps.case_overview) {
+      if (!maps.engagements.has(id) || !literal(entry.status, 80) ||
+        !literal(entry.attention, 180) || !literal(entry.next_review_action, 180) ||
+        !nonnegative(entry.grant_count, 200) || !nonnegative(entry.risk_record_count, 200) ||
+        entry.status !== maps.engagements.get(id).status)
+        hold("Original case row inconsistent");
+      const count = [...maps.grants.values()].filter(g => g.engagement_id === id).length;
+      const risk = [...maps.risk_approvals.values()].filter(r => r.engagement_id === id).length;
+      if (count !== entry.grant_count || risk !== entry.risk_record_count) hold("Casebook lineage counts disagree");
+    }
+    for (const g of maps.grants.values()) {
+      if (g.engagement_id !== null && !maps.engagements.has(g.engagement_id)) hold("Unknown grant engagement");
+      if (!literal(g.request_link_observation, 180) || !literal(g.validity_observation, 180) ||
+        !nonnegative(g.max_risk, 5)) hold("Unrecognized recorded grant");
+      if (g.approved_request_id !== null && !literal(g.approved_request_id, 180)) hold("Bad grant request link");
+    }
+    for (const r of maps.risk_approvals.values()) {
+      if (r.engagement_id !== null && !maps.engagements.has(r.engagement_id)) hold("Unknown risk engagement");
+      if (typeof r.source_tenant_matches !== "boolean" ||
+          !literal(r.decision_provenance_observation, 180)) hold("Bad risk lineage observation");
+    }
+    for (const r of maps.requests.values()) {
+      if (!["submitted", "under_review", "approved", "rejected"].includes(r.status) ||
+        !nonnegative(r.requested_risk, 5) || typeof r.decision_recorded !== "boolean") hold("Bad request record");
+    }
+    for (const n of ["foreign_tenant_row_count","case_attention_hold","grant_link_hold","pending_risk_review"]) {
+      if (!nonnegative(doc.declared_counts[n], 1000)) hold("Original aggregate missing " + n);
+    }
+    if (doc.declared_counts.case_attention_hold !== [...maps.case_overview.values()].filter(x => x.attention.startsWith("HOLD_")).length) hold("Case HOLD count mismatch");
+    if (doc.declared_counts.grant_link_hold !== [...maps.grants.values()].filter(x => x.request_link_observation.startsWith("HOLD_")).length) hold("Grant HOLD count mismatch");
+    return {doc, maps, when};
+  }
+  function changed(before, after) {
+    const output = [];
+    for (const [category] of CATEGORIES) {
+      const a = before.maps[category], b = after.maps[category];
+      const ids = [...new Set([...a.keys(), ...b.keys()])].sort();
+      for (const id of ids) {
+        const old = a.get(id), newer = b.get(id);
+        if (old && newer && canonical(old) === canonical(newer)) continue;
+        const kind = !old ? "added" : !newer ? "missing-source" : "changed";
+        let priority = kind === "missing-source" ? "urgent" : "review";
+        if (category === "grants" || category === "case_overview") priority = "urgent";
+        if ([old,newer].some(row => row && (row.status === "approved" || Object.values(row).some(x => typeof x === "string" && x.startsWith("HOLD_"))))) priority = "urgent";
+        const fieldNames = old && newer ? [...new Set([...Object.keys(old), ...Object.keys(newer)])]
+          .filter(k => canonical(old[k]) !== canonical(newer[k])).sort() : [];
+        output.push({category, id, kind, priority, fieldNames, before: old || null, after: newer || null});
+      }
+    }
+    return output;
+  }
+  const td = (tr, val) => { const cell = document.createElement("td"); cell.textContent = String(val); tr.appendChild(cell); return cell; };
+
+  function field(value,max,label) {
+    if (typeof value!=="string" || value.length>max || /[\u0000-\u001f\u007f]/.test(value))
+      hold("Invalid human-only "+label);
+    return value;
+  }
+  function humanDetails(value) {
+    if (!isObject(value)) hold("Human-only private case notes must be an object");
+    const reviewer=field(value.reviewer,80,"reviewer alias");
+    const action=field(value.next_action,240,"next action");
+    const note=field(value.note,1200,"human note");
+    const due=field(value.due_utc,24,"human due date");
+    if (due!=="" && (!/^\d{4}-\d\d-\d\d$/.test(due) || !Number.isFinite(Date.parse(due+"T00:00:00Z")) || new Date(due+"T00:00:00Z").toISOString().slice(0,10)!==due))
+      hold("Invalid optional UTC human due date");
+    return {reviewer,next_action:action,note,due_utc:due};
+  }
+  function editHuman(key) {
+    const lineageKey=key.startsWith("lineage:");
+    if (state.snapshots.length!==2 || !(lineageKey ?
+      sourceLineage().some(item=>"lineage:"+item.id===key) :
+      state.changes.some(c=>c.category+":"+c.id===key))) return;
+    state.editKey=key;
+    const entry=(lineageKey?state.lineageDetails:state.details).get(key)||{reviewer:"",next_action:"",note:"",due_utc:""};
+    text("detailIdentity",key);
+    $("reviewerAlias").value=entry.reviewer;
+    $("nextHumanAction").value=entry.next_action;
+    $("humanNote").value=entry.note;
+    $("humanDue").value=entry.due_utc;
+    $("humanDialog").showModal();
+  }
+  function saveHumanDetail() {
+    if (!state.editKey || !(state.editKey.startsWith("lineage:") ?
+      sourceLineage().some(item=>"lineage:"+item.id===state.editKey) :
+      state.changes.some(c=>c.category+":"+c.id===state.editKey)))
+      return;
+    try {
+      const item=humanDetails({
+        reviewer:$("reviewerAlias").value,
+        next_action:$("nextHumanAction").value,
+        note:$("humanNote").value,
+        due_utc:$("humanDue").value,
+      });
+      (state.editKey.startsWith("lineage:")?state.lineageDetails:state.details).set(state.editKey,item);
+      state.editKey=null;
+      $("humanDialog").close();
+      render();
+    } catch(e) { text("dialogError","HOLD: "+e.message); }
+  }
+
+  function observedSignals(record) {
+    if (!record) return "not recorded in selected source";
+    const labels = ["status", "attention", "request_link_observation", "validity_observation", "decision_provenance_observation"];
+    const visible = labels.filter(k => typeof record[k] === "string").map(k => k + ": " + record[k]);
+    return visible.join(" · ") || "original record present (no status assertion)";
+  }
+  // Advisory original-recorded request → grant lineage review. An unchanged grant
+  // can still need urgent HUMAN attention when its original request has changed.
+  // This is not a new compatibility or consent check and never infers a permit.
+  function sourceLineage() {
+    if (state.snapshots.length !== 2) return [];
+    const earlier=state.snapshots[0].maps, later=state.snapshots[1].maps;
+    const changedRequests=new Set(state.changes.filter(c=>c.category==="requests").map(c=>c.id));
+    const changedGrants=new Set(state.changes.filter(c=>c.category==="grants").map(c=>c.id));
+    const ids=[...new Set([...earlier.grants.keys(),...later.grants.keys()])].sort();
+    const items=[];
+    for (const id of ids) {
+      const a=earlier.grants.get(id), b=later.grants.get(id);
+      const requestIds=[...new Set([a?.approved_request_id,b?.approved_request_id]
+        .filter(x=>typeof x==="string" && x.length>0))];
+      const reasons=[];
+      if(changedGrants.has(id)) reasons.push("ORIGINAL_GRANT_ROW_CHANGED");
+      if(requestIds.some(x=>changedRequests.has(x))) reasons.push("RECORDED_REQUEST_SOURCE_CHANGED");
+      if([a,b].some(x=>x && x.approved_request_id===null)) reasons.push("NO_RECORDED_REQUEST_BINDING");
+      if([a,b].some(x=>x && typeof x.request_link_observation==="string" &&
+         x.request_link_observation.startsWith("HOLD_"))) reasons.push("ORIGINAL_REQUEST_LINK_HOLD");
+      const missing=requestIds.some(x=>!earlier.requests.has(x) || !later.requests.has(x));
+      if(missing) reasons.push("REQUEST_SOURCE_MISSING_IN_AT_LEAST_ONE_SNAPSHOT");
+      if(requestIds.some(x=>{
+        const first=earlier.requests.get(x), second=later.requests.get(x);
+        return (first && first.status!=="approved") || (second && second.status!=="approved");
+      })) reasons.push("REQUEST_NOT_RECORDED_APPROVED_IN_BOTH_SNAPSHOTS");
+      if(!reasons.length) continue;
+      const requestStatus=requestIds.map(rid=>{
+        const oldReq=earlier.requests.get(rid), newReq=later.requests.get(rid);
+        return {id:rid,before:oldReq?.status||"not recorded",after:newReq?.status||"not recorded"};
+      });
+      items.push({
+        id, oldEngagement:a?.engagement_id??null, newEngagement:b?.engagement_id??null,
+        oldLink:a?.approved_request_id??null, newLink:b?.approved_request_id??null,
+        oldObservation:a?.request_link_observation??null, newObservation:b?.request_link_observation??null,
+        requestStatus, reasons, stage:state.lineageNotes.get(id)||"unreviewed"
+      });
+    }
+    return items;
+  }
+  function renderLineage() {
+    const entries=sourceLineage();
+    const body=$("lineageRows");
+    body.replaceChildren();
+    for(const item of entries){
+      const tr=document.createElement("tr");
+      td(tr,item.id);
+      td(tr,[item.oldEngagement||"not recorded",item.newEngagement||"not recorded"].join(" → "));
+      td(tr,[item.oldLink||"not recorded",item.newLink||"not recorded"].join(" → "));
+      td(tr,item.requestStatus.map(x=>x.id+": "+x.before+" → "+x.after).join("; ")||"NO REQUEST");
+      td(tr,[item.oldObservation||"not recorded",item.newObservation||"not recorded"].join(" → "));
+      td(tr,item.reasons.join("; "));
+      const col=document.createElement("td");
+      const select=document.createElement("select");
+      select.setAttribute("aria-label","Human original binding follow-up for grant "+item.id);
+      for(const stage of STAGES){
+        const opt=document.createElement("option");opt.value=stage;opt.textContent=stage;
+        select.appendChild(opt);
+      }
+      select.value=item.stage;
+      select.addEventListener("change",()=>{state.lineageNotes.set(item.id,select.value);renderLineage();});
+      col.appendChild(select);tr.appendChild(col);
+      const human=document.createElement("td"),edit=document.createElement("button");
+      edit.type="button";edit.className="outline compact";
+      edit.textContent=state.lineageDetails.has("lineage:"+item.id)?"Edit local note":"Add follow-up";
+      edit.addEventListener("click",()=>editHuman("lineage:"+item.id));
+      human.appendChild(edit);tr.appendChild(human);body.appendChild(tr);
+    }
+    const requestDriven=entries.filter(x=>x.reasons.includes("RECORDED_REQUEST_SOURCE_CHANGED")).length;
+    const holdLike=entries.filter(x=>x.reasons.some(r=>r.includes("HOLD")||r.includes("MISSING")||r.includes("NOT_RECORDED")||r.includes("NO_RECORDED"))).length;
+    text("lineageSummary",entries.length+" original grant records require human lineage attention; "+
+      requestDriven+" linked to changed original requests (even if the grant itself did not change); "+
+      holdLike+" with missing/held/inconsistent recorded links. Recorded linkage never proves current permission.");
+  }
+  function impactEngagements() {
+    if (state.snapshots.length !== 2) return;
+    const older=state.snapshots[0].maps, newer=state.snapshots[1].maps;
+    const known=new Set([...older.engagements.keys(),...newer.engagements.keys()]);
+    const byEngagement=new Map();
+    for(const change of state.changes) {
+      let ids=[];
+      if(change.category==="engagements" || change.category==="case_overview"){
+        ids=[change.id];
+      } else if(change.category==="grants" || change.category==="risk_approvals") {
+        // Link only from actual original source engagement identities.
+        // A request has no engagement identity here; never infer one.
+        ids=[change.before?.engagement_id,change.after?.engagement_id]
+          .filter(x=>typeof x==="string" && known.has(x));
+      }
+      for(const id of new Set(ids)){
+        if(!byEngagement.has(id)) byEngagement.set(id,[]);
+        byEngagement.get(id).push(change);
+      }
+    }
+    const rows=[...byEngagement].map(([id,changes])=>({
+      id,changes, urgent:changes.filter(c=>c.priority==="urgent").length,
+      before:older.case_overview.get(id), after:newer.case_overview.get(id),
+      category:[...new Set(changes.map(c=>c.category))].sort().join(", "),
+      humanOutstanding:changes.filter(c=>(state.notes.get(c.category+":"+c.id)||"unreviewed")!=="human-acknowledged").length,
+    })).sort((a,b)=>b.urgent-a.urgent || a.id.localeCompare(b.id));
+    const body=$("impactRows");
+    body.replaceChildren();
+    for(const impact of rows){
+      const tr=document.createElement("tr");
+      td(tr,impact.id);
+      td(tr,impact.before ? impact.before.attention : "not recorded");
+      td(tr,impact.after ? impact.after.attention : "not recorded");
+      td(tr,impact.category);
+      td(tr,impact.changes.length);
+      td(tr,impact.urgent);
+      td(tr,impact.humanOutstanding);
+      body.appendChild(tr);
+    }
+    const tenantRequestChanges=state.changes.filter(c=>c.category==="requests").length;
+    const uncertainLinks=state.changes.filter(c=>
+      (c.category==="grants" || c.category==="risk_approvals") &&
+      [c.before,c.after].some(x=>x && !known.has(x.engagement_id))).length;
+    text("impactSummary",rows.length+" recorded engagements affected; "+
+      tenantRequestChanges+" tenant-level request changes (not falsely linked to an engagement); "+
+      uncertainLinks+" unassigned/malformed recorded grant or risk links requiring separate source review.");
+  }
+  function render() {
+    const tbody = $("changes");
+    tbody.replaceChildren();
+    const filtered = state.changes.filter(x => $("kind").value === "all" || x.priority === $("kind").value);
+    for (const c of filtered) {
+      const tr = document.createElement("tr");
+      td(tr,c.priority.toUpperCase());
+      td(tr,c.category);
+      td(tr,c.kind);
+      td(tr,c.id);
+      td(tr,c.fieldNames.join(", ") || "membership changed");
+      td(tr,observedSignals(c.before) + "  →  " + observedSignals(c.after));
+      const container = document.createElement("td");
+      const select = document.createElement("select");
+      select.setAttribute("aria-label","Human follow-up for " + c.category + " " + c.id);
+      for (const option of STAGES) { const el = document.createElement("option"); el.value=option; el.textContent=option; select.appendChild(el); }
+      const key = c.category + ":" + c.id;
+      select.value = state.notes.get(key) || "unreviewed";
+      select.addEventListener("change",() => {state.notes.set(key,select.value); impactEngagements();});
+      container.appendChild(select); tr.appendChild(container);
+      const humanCell=document.createElement("td");
+      const open=document.createElement("button");
+      open.type="button";open.className="outline compact";
+      open.textContent=state.details.has(key)?"Edit local notes":"Add follow-up";
+      open.addEventListener("click",()=>editHuman(key));
+      humanCell.appendChild(open);tr.appendChild(humanCell);
+      tbody.appendChild(tr);
+    }
+    const urgent = state.changes.filter(x=>x.priority==="urgent").length;
+    text("summary",state.changes.length + " changed source records / " + urgent +
+      " urgent human reviews. Missing rows never imply withdrawal, repair or revocation.");
+    text("tenant",state.snapshots[0].doc.client_id);
+    text("provenance","Old " + state.snapshots[0].doc.as_of + " · SHA-256 " + state.sha[0] +
+      " | New " + state.snapshots[1].doc.as_of + " · SHA-256 " + state.sha[1]);
+    impactEngagements();
+    renderLineage();
+    $("results").hidden = false;
+  }
+  async function readSnapshot(file) {
+    if (!file || file.size < 2 || file.size > LIMIT) hold("Original source file is missing or >512 KiB");
+    const buffer = await file.arrayBuffer();
+    const bytes = new Uint8Array(buffer);
+    let source;
+    try { source = new TextDecoder("utf-8",{fatal:true}).decode(bytes); }
+    catch(_) { hold("Source is not UTF-8"); }
+    const parsed = admit(strictJSON(source));
+    if (!window.crypto || !crypto.subtle) hold("Local secure-context SHA-256 is required; no unsigned handoff");
+    const digest = await crypto.subtle.digest("SHA-256",buffer);
+    const sha = [...new Uint8Array(digest)].map(v=>v.toString(16).padStart(2,"0")).join("");
+    return {parsed,sha};
+  }
+  async function load() {
+    text("error","");
+    $("results").hidden = true;
+    state.snapshots=[];state.changes=[];state.sha=[];state.notes.clear();state.details.clear();state.editKey=null;state.lineageNotes.clear();state.lineageDetails.clear();
+    try {
+      const files = [$("older").files[0],$("newer").files[0]];
+      if (!files[0] || !files[1]) hold("Select two private original Casebook JSON exports");
+      const a = await readSnapshot(files[0]);
+      const b = await readSnapshot(files[1]);
+      if (a.parsed.doc.client_id !== b.parsed.doc.client_id) hold("Different original tenants: refuse comparison");
+      if (!(a.parsed.when < b.parsed.when)) hold("Select two strictly ordered historical source timestamps");
+      if (a.sha === b.sha) hold("Same source bytes: no historical comparison");
+      state.snapshots = [a.parsed,b.parsed];state.sha=[a.sha,b.sha];
+      state.changes = changed(a.parsed,b.parsed);
+      render();
+    } catch (e) {
+      state.snapshots=[];state.changes=[];state.sha=[];state.notes.clear();state.details.clear();state.editKey=null;state.lineageNotes.clear();state.lineageDetails.clear();
+      text("error","HOLD: " + (e && e.message ? e.message : "invalid source"));
+    }
+  }
+  function save(blob,name) {
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement("a");a.href=url;a.download=name;a.click();
+    setTimeout(()=>URL.revokeObjectURL(url),5000);
+  }
+  function exportSummary() {
+    if (state.snapshots.length !== 2) return;
+    const groups = Object.create(null);
+    for (const c of state.changes) {
+      const key=c.category+"/"+c.kind+"/"+c.priority;
+      groups[key]=(groups[key]||0)+1;
+    }
+    const data={
+      schema:"lightup.casebook_change_aggregate.v1",disposition:"HOLD_HUMAN_REVIEW",
+      original_source_verified:false,client_consent_verified:false,operator_consent_verified:false,
+      authorization_granted:false,execution_allowed:false,release_approved:false,
+      action_time_revocation_verified:false,snapshot_count:2,
+      changed_record_count:state.changes.length,
+      urgent_review_count:state.changes.filter(c=>c.priority==="urgent").length,
+      human_stage_counts:Object.fromEntries(STAGES.map(s=>[s,state.changes.filter(c=>(state.notes.get(c.category+":"+c.id)||"unreviewed")===s).length])),
+      recorded_grant_linkage_attention_count:sourceLineage().length,
+      recorded_linkage_stage_counts:Object.fromEntries(STAGES.map(stage=>[stage,sourceLineage().filter(
+        c=>(state.lineageNotes.get(c.id)||"unreviewed")===stage).length])),
+      categories:groups
+    };
+    save(new Blob([JSON.stringify(data,null,2)+"\n"],{type:"application/json"}),"lightup-casebook-change-aggregate.json");
+  }
+  function exportPrivate() {
+    if (state.snapshots.length !== 2) return;
+    if (!$("confirm").checked) {
+      text("error","HOLD: personally confirm the authorized private recipient before exporting IDs");
+      return;
+    }
+    const data={
+      schema:"lightup.casebook_change_private_review.v1",
+      disposition:"HOLD_HUMAN_REVIEW",original_source_verified:false,
+      source_authenticated:false,client_consent_verified:false,operator_consent_verified:false,
+      authorization_granted:false,execution_allowed:false,release_approved:false,
+      action_time_revocation_verified:false,
+      tenant_original_id:state.snapshots[0].doc.client_id,
+      source_sha256_unsigned:state.sha,
+      source_times:state.snapshots.map(x=>x.doc.as_of),
+      recorded_binding_review:sourceLineage().map(item=>({
+        grant_original_id:item.id,old_engagement:item.oldEngagement,new_engagement:item.newEngagement,
+        old_approved_request:item.oldLink,new_approved_request:item.newLink,
+        old_observation:item.oldObservation,new_observation:item.newObservation,
+        request_status:item.requestStatus,reasons:item.reasons,
+        human_stage:state.lineageNotes.get(item.id)||"unreviewed",
+        human_review:state.lineageDetails.get("lineage:"+item.id)||{reviewer:"",next_action:"",note:"",due_utc:""}
+      })),
+      changes:state.changes.map(c=>({
+        category:c.category,original_id:c.id,change:c.kind,priority:c.priority,
+        changed_source_fields:c.fieldNames,
+        local_human_stage:state.notes.get(c.category+":"+c.id)||"unreviewed",
+        human_review:state.details.get(c.category+":"+c.id)||{reviewer:"",next_action:"",note:"",due_utc:""}
+      }))
+    };
+    save(new Blob([JSON.stringify(data,null,2)+"\n"],{type:"application/json"}),"lightup-casebook-change-PRIVATE.json");
+    $("confirm").checked=false;
+  }
+  async function restorePrivateReview() {
+    text("error","");
+    try {
+      if (state.snapshots.length !== 2) hold("Load both original snapshots before restoring human stages");
+      const file=$("restore-file").files[0];
+      if (!file || file.size < 2 || file.size > LIMIT) hold("Private review file missing or too large");
+      const bytes=await file.arrayBuffer();
+      let doc;
+      try { doc=strictJSON(new TextDecoder("utf-8",{fatal:true}).decode(bytes)); }
+      catch (_) { hold("Invalid UTF-8 or JSON in private handoff"); }
+      if (!isObject(doc) || doc.schema !== "lightup.casebook_change_private_review.v1" ||
+          doc.disposition !== "HOLD_HUMAN_REVIEW" ||
+          doc.tenant_original_id !== state.snapshots[0].doc.client_id ||
+          doc.original_source_verified !== false ||
+          doc.action_time_revocation_verified !== false)
+        hold("Private handoff is not an original-source-bound human review");
+      for(const k of ["source_authenticated","client_consent_verified","operator_consent_verified",
+                       "authorization_granted","execution_allowed","release_approved"]) {
+        if(doc[k] !== false && !(k==="source_authenticated" && doc[k]===undefined &&
+           !isObject(doc.aggregate_without_original_ids)))
+          hold("Private handoff contains unauthorized claims");
+      }
+      if (!Array.isArray(doc.source_sha256_unsigned) || doc.source_sha256_unsigned.length !== 2 ||
+          doc.source_sha256_unsigned.some((s,i)=>s!==state.sha[i]) ||
+          !Array.isArray(doc.source_times) || doc.source_times.length !== 2 ||
+          doc.source_times.some((t,i)=>t!==state.snapshots[i].doc.as_of))
+        hold("Private handoff belongs to different original source bytes");
+      if (!Array.isArray(doc.changes) || doc.changes.length !== state.changes.length)
+        hold("Private handoff original change membership mismatch");
+      const expected=new Map(state.changes.map(c=>[c.category+":"+c.id,c]));
+      // The native authenticated CLI emits the same source-bound private schema
+      // but a different (non-stage) change-row structure. Never trust its label:
+      // convert only after exact source digests and actual original rows match.
+      const native=isObject(doc.aggregate_without_original_ids);
+      let rows=doc.changes;
+      if (native) {
+        const aggregate=doc.aggregate_without_original_ids;
+        if (aggregate.snapshot_count!==2 ||
+            aggregate.changed_record_count!==state.changes.length ||
+            aggregate.urgent_review_count!==state.changes.filter(c=>c.priority==="urgent").length ||
+            !isObject(aggregate.source_delta_counts))
+          hold("Native source-review aggregate inconsistent");
+        const counts=Object.create(null);
+        rows=doc.changes.map(row=>{
+          if(!isObject(row) || !CATEGORIES.some(a=>a[0]===row.family) ||
+             !literal(row.original_id,180) || row.human_follow_up!=="UNREVIEWED")
+            hold("Native source-review row not admitted");
+          const kinds={NEW_SOURCE_ROW:"added",MISSING_FROM_NEW_SOURCE:"missing-source",
+                       SOURCE_FIELDS_CHANGED:"changed"};
+          if(!Object.hasOwn(kinds,row.change) ||
+             !["URGENT_HUMAN_REVIEW","REVIEW_ONLY"].includes(row.priority))
+            hold("Native source-review classification not admitted");
+          const group=row.family+"/"+row.change+"/"+row.priority;
+          counts[group]=(counts[group]||0)+1;
+          return {
+            category:row.family,original_id:row.original_id,
+            change:kinds[row.change],
+            priority:row.priority==="URGENT_HUMAN_REVIEW"?"urgent":"review",
+            changed_source_fields:row.changed_fields_only,
+            local_human_stage:"unreviewed"
+          };
+        });
+        if (canonical(counts)!==canonical(aggregate.source_delta_counts))
+          hold("Native source-review classification totals differ");
+        // New native CLI packets explicitly preserve dependent UNCHANGED grants
+        // whose originally referenced assessment request changed. Older native
+        // packets remain readable only when neither extension is claimed.
+        const hasDependencies=doc.unchanged_grant_request_dependencies!==undefined;
+        const hasCount=aggregate.linked_unchanged_grant_attention_count!==undefined;
+        if(hasDependencies!==hasCount)
+          hold("Native unchanged-grant dependency envelope is incomplete");
+        if(hasDependencies){
+          const before=state.snapshots[0].maps, now=state.snapshots[1].maps;
+          const changedGrantIds=new Set(state.changes.filter(c=>c.category==="grants").map(c=>c.id));
+          const expectedDependencies=sourceLineage().filter(item=>
+            item.reasons.includes("RECORDED_REQUEST_SOURCE_CHANGED") &&
+            !changedGrantIds.has(item.id)).map(item=>{
+            const old=before.grants.get(item.id), current=now.grants.get(item.id);
+            const rid=current?.approved_request_id;
+            const reqOld=before.requests.get(rid), reqNew=now.requests.get(rid);
+            return {
+              original_grant_id:item.id,recorded_request_id:rid,
+              original_engagement_id:current.engagement_id,
+              recorded_request_status_before:reqOld?.status||"not recorded",
+              recorded_request_status_after:reqNew?.status||"not recorded",
+              human_follow_up:"UNREVIEWED",authority_claim:false
+            };
+          });
+          if(!Array.isArray(doc.unchanged_grant_request_dependencies) ||
+             aggregate.linked_unchanged_grant_attention_count!==expectedDependencies.length ||
+             canonical(doc.unchanged_grant_request_dependencies)!==canonical(expectedDependencies))
+            hold("Native unchanged grant/request impact differs from actual original source");
+        }
+      }
+      const stages=new Map();
+      const restoredDetails=new Map();
+      for(const row of rows){
+        if(!isObject(row) || !literal(row.category,100) || !literal(row.original_id,180))
+          hold("Private handoff original ID missing");
+        const key=row.category+":"+row.original_id;
+        const c=expected.get(key);
+        if(!c || stages.has(key) ||
+           row.change!==c.kind || row.priority!==c.priority ||
+           !Array.isArray(row.changed_source_fields) ||
+           canonical(row.changed_source_fields)!==canonical(c.fieldNames) ||
+           !STAGES.includes(row.local_human_stage))
+          hold("Private human return changes original source classification");
+        stages.set(key,row.local_human_stage);
+        if(!native && row.human_review !== undefined) {
+          restoredDetails.set(key,humanDetails(row.human_review));
+        }
+      }
+      if(stages.size!==expected.size) hold("Private handoff incomplete");
+      const restoredLineage=new Map();
+      const restoredLineageDetails=new Map();
+      if (!native && doc.recorded_binding_review!==undefined) {
+        if (!Array.isArray(doc.recorded_binding_review)) hold("Original binding review is not an array");
+        const current=sourceLineage();
+        if (current.length!==doc.recorded_binding_review.length)
+          hold("Original binding review membership has changed");
+        const expectedLineage=new Map(current.map(item=>[item.id,item]));
+        for(const item of doc.recorded_binding_review){
+          if(!isObject(item) || !literal(item.grant_original_id,180))
+            hold("Original grant lineage identity absent");
+          const actual=expectedLineage.get(item.grant_original_id);
+          if(!actual || restoredLineage.has(item.grant_original_id) ||
+             item.old_engagement!==actual.oldEngagement ||
+             item.new_engagement!==actual.newEngagement ||
+             item.old_approved_request!==actual.oldLink ||
+             item.new_approved_request!==actual.newLink ||
+             item.old_observation!==actual.oldObservation ||
+             item.new_observation!==actual.newObservation ||
+             canonical(item.request_status)!==canonical(actual.requestStatus) ||
+             canonical(item.reasons)!==canonical(actual.reasons) ||
+             !STAGES.includes(item.human_stage))
+            hold("Original request/grant binding review was changed or truncated");
+          restoredLineage.set(actual.id,item.human_stage);
+          if(item.human_review!==undefined) restoredLineageDetails.set("lineage:"+actual.id,humanDetails(item.human_review));
+        }
+        if(restoredLineage.size!==expectedLineage.size)
+          hold("Private binding review incomplete");
+      }
+      // Commit the entire restored review only after every source-bound record agrees.
+      state.notes=stages;
+      state.details=restoredDetails;
+      state.lineageNotes=restoredLineage;
+      state.lineageDetails=restoredLineageDetails;
+      render();
+      text("restore-status",native ? "Authenticated-CLI source review admitted; all original human stages start unreviewed. No permissions inferred." : "Private local human stages restored against exact original source bytes. No authorization changes.");
+    } catch(e){
+      text("error","HOLD: "+(e && e.message ? e.message : "private follow-up not admitted"));
+      text("restore-status","");
+    }
+  }
+  $("saveHuman").addEventListener("click",saveHumanDetail);
+  $("cancelHuman").addEventListener("click",()=>{$("humanDialog").close();});
+  $("humanDialog").addEventListener("close",()=>{state.editKey=null;text("dialogError","");});
+  $("load").addEventListener("click",load);
+  $("restore").addEventListener("click",restorePrivateReview);
+  $("kind").addEventListener("change",()=>{if(state.snapshots.length)render();});
+  $("aggregate").addEventListener("click",exportSummary);
+  $("private").addEventListener("click",exportPrivate);
+})();</script>
+</body></html>

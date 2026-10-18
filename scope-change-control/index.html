@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'none'; img-src 'none'; font-src 'none'; object-src 'none'; form-action 'none'; base-uri 'none'">
+<title>LightUp | Casebook Change Control · Private</title>
+<link rel="stylesheet" href="style.css">
+<script src="app.js" defer></script>
+</head>
+<body>
+<header><span class="eyebrow">LIGHTUP / OPERATOR WORKSPACE / PRIVATE</span>
+<h1>Casebook <em>Change Control</em></h1>
+<p>Compare two original persisted-domain snapshots before taking any human follow-up action. This is a historical source observation, never proof of permission, STOP clearance or current consent.</p>
+<div class="badges"><strong>INCUBATE M3/M7</strong><strong>PLAN / LAB ONLY</strong><strong>REVIEW ONLY · HUMAN HOLD</strong></div>
+</header>
+<main>
+<section aria-labelledby="source-heading">
+<h2 id="source-heading">1 · Select original private snapshots</h2>
+<p>Export twice, at different times, using the existing authenticated <code>python -m lightup.auth_casebook</code> command. Files are read only in this browser. The selected tenant must match exactly.</p>
+<div class="files">
+<label>Older original Casebook JSON<input id="older" type="file" accept=".json,application/json"></label>
+<label>Newer original Casebook JSON<input id="newer" type="file" accept=".json,application/json"></label>
+</div>
+<button id="load" type="button">Compare original sources</button>
+<p id="error" role="alert" aria-live="polite"></p>
+</section>
+<section id="results" hidden aria-labelledby="results-heading">
+<h2 id="results-heading">2 · Source change register</h2>
+<div class="meta"><p><b>Original tenant:</b> <span id="tenant"></span></p><p id="provenance"></p></div>
+<p class="summary" id="summary" role="status"></p>
+<label class="filter">Review priority
+<select id="kind"><option value="all">All changes</option><option value="urgent">Urgent human follow-up</option><option value="review">Other source changes</option></select>
+</label>
+<div class="table-wrap"><table>
+<thead><tr><th scope="col">Priority</th><th scope="col">Source family</th><th scope="col">Delta</th><th scope="col">Original identifier</th><th scope="col">Changed original fields</th><th scope="col">Recorded signals · before → after</th><th scope="col">Local human stage</th><th scope="col">Private human follow-up</th></tr></thead>
+<tbody id="changes"></tbody>
+</table></div>
+<div class="impact">
+<h3>Recorded engagement impact · human coordination only</h3>
+<p id="impactSummary" role="status"></p>
+<div class="table-wrap"><table><thead><tr>
+<th scope="col">Original engagement</th><th scope="col">Earlier source attention</th><th scope="col">Later source attention</th><th scope="col">Changed source families</th><th scope="col">Changes</th><th scope="col">Urgent</th><th scope="col">Human follow-up outstanding</th>
+</tr></thead><tbody id="impactRows"></tbody></table></div>
+<p>Original assessment requests lack an engagement relationship in this Casebook export. Their changes remain tenant-level work and are deliberately not linked to an engagement or authority.</p>
+</div>
+<div class="impact" aria-labelledby="lineageHeading">
+<h3 id="lineageHeading">Original request → grant dependencies · human source follow-up</h3>
+<p>This is a recorded historical reference only, not an approval, active grant or actual consent. A request change can make an unchanged grant worth reviewing. Missing, invalid or held source relationships always need an independently authenticated human investigation.</p>
+<p id="lineageSummary" role="status"></p>
+<div class="table-wrap"><table><thead><tr><th scope="col">Original grant</th><th scope="col">Recorded engagement old → new</th><th scope="col">Recorded request reference old → new</th><th scope="col">Original request status old → new</th><th scope="col">Original link observation</th><th scope="col">Human attention reasons</th><th scope="col">Local human stage</th><th scope="col">PRIVATE follow-up</th></tr></thead><tbody id="lineageRows"></tbody></table></div>
+<p>Changes to a recorded request are not silently discarded because the linked grant row itself was unchanged. This table never issues or validates a grant, never clears STOP, and all its human stages are local annotations only.</p></div>
+<p class="explain"><b>Missing original row ≠ revoked or repaired.</b> An approved request, a recorded grant window, a reassuring source delta or a locally acknowledged task never grants execution authority. All original records remain unchanged. Local stages disappear when this page is closed.</p>
+</section>
+<section aria-labelledby="handoff-heading">
+<h2 id="handoff-heading">3 · Privacy-separated handoff</h2>
+<p>Aggregates contain no original IDs, original timestamps, tenant, source digest, private notes or raw inputs. A private review file retains sensitive exact original IDs and unsigned source byte fingerprints and must stay inside authorized private channels.</p>
+<div class="files"><label>PRIVATE browser return or original CLI review JSON (optional)<input id="restore-file" type="file" accept=".json,application/json"></label></div><button id="restore" class="outline" type="button">Restore source-bound human stages</button><p id="restore-status" role="status" aria-live="polite"></p>
+<div class="actions">
+<button id="aggregate" type="button">Export anonymous aggregate JSON</button>
+<label class="confirm"><input id="confirm" type="checkbox"> I verified the recipient and private disclosure scope</label>
+<button id="private" class="outline" type="button">Export PRIVATE human follow-up JSON</button>
+</div>
+</section>
+</main>
+<dialog id="humanDialog" aria-labelledby="humanDialogTitle">
+<h2 id="humanDialogTitle">Human-only follow-up</h2>
+<p><strong id="detailIdentity"></strong> · local note, not recorded authorization</p>
+<label>Reviewer alias (self-declared, not authenticated)<input id="reviewerAlias" maxlength="80" autocomplete="off"></label>
+<label>Next human action<input id="nextHumanAction" maxlength="240" autocomplete="off"></label>
+<label>Optional local UTC due date<input id="humanDue" type="date"></label>
+<label>PRIVATE human note<textarea id="humanNote" maxlength="1200" rows="5"></textarea></label>
+<p id="dialogError" role="alert"></p>
+<div class="actions"><button id="saveHuman" type="button">Save local follow-up</button><button type="button" class="outline" id="cancelHuman">Cancel</button></div>
+<p>No original request, scope, grant, risk, STOP or client consent is changed. This alias and note will appear only in a separately confirmed PRIVATE export.</p>
+</dialog>
+<footer>Offline browser-only · No uploads, storage, network calls, grants, real STOP, scans, target access or dispatch. Source SHA-256 is correlation only, not authenticity. Original exact-head CI, original-source/security/privacy review, independent client/operator consent and action-time revocation, and explicit HUMAN GO remain mandatory before any release.</footer>
+</body></html>
