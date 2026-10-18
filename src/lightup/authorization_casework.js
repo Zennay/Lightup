@@ -314,4 +314,7 @@
     if(modified){event.preventDefault();event.returnValue='';}
   });
   render();
+  // Read-only historical comparison; never feed previous untrusted content into
+  // the immutable current operator queue or a grant decision.
+  if (window.LightUpSnapshotReview) window.LightUpSnapshotReview.init(snapshot);
 })();
