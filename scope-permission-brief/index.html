@@ -9,6 +9,7 @@
 <link rel="stylesheet" href="./style.css">
 <script src="./app.js" defer></script>
 <script src="./reconciliation.js" defer></script>
+<script src="./revision.js" defer></script>
 </head>
 <body>
 <header><div class="head"><div class="eyebrow">LIGHTUP / CLIENT + OPERATOR EDUCATION</div><h1>Understand the scope. Never mistake a draft for permission.</h1><p>A local, privacy-minimal handoff brief derived from a LightUp Scope Planning Studio v1 draft. No uploads, network requests, identity checking, consent recording, grants or scans.</p></div></header>
@@ -55,6 +56,15 @@
  <div id="reconcileBoard" aria-label="Unverified cross-role followup queue"></div>
  <div class="buttons"><button id="reconcileJSON" disabled>Export combined HOLD summary</button><button id="reconcileCSV" disabled>Download follow-up actions CSV</button><button id="reconcileHTML" disabled>Save read-only meeting pack</button><button class="subtle" id="reconcileForget">Forget both reply notes</button></div>
  <p>This read-only human follow-up board never reconciles actual consent, client identity, operator identity, revocation, authorization, tenant membership or approval. A reply marked “answered” still requires an independently verified decision in the protected system.</p>
+</section>
+<section class="panel" id="revisionBoard" aria-label="Source revision handoff">
+ <div class="eyebrow">5. REVISION HANDOFF · EVERY NEW SOURCE REQUIRES NEW HUMAN PREPARATION</div>
+ <h2>Know when earlier replies no longer apply</h2>
+ <p>Load a revised Studio draft using the original file chooser above. This local board records the old/new byte SHA-256 fingerprints, flags changed risk/mode/count/window summaries, and explicitly requires both client and operator to prepare new replies. Equal counts never prove equal scope: assets and safety notes are <strong>not</strong> semantically compared here.</p>
+ <p id="revisionStatus" class="notice subnote" role="status" aria-live="polite">Load a draft to begin.</p>
+ <div class="buttons"><button id="revisionJSON" disabled>Save reissue handoff JSON</button><button id="revisionCSV" disabled>Export revision timeline CSV</button><button id="revisionForget" class="subtle" disabled>Forget revision history</button></div>
+ <div id="revisionHistory" aria-label="Recent local draft revisions"></div>
+ <p>History is bounded to twelve changes in this browser tab; no browser storage or network is used. These are unsigned source-byte correlation hints, not a legal approval chain, permission certificate or scope-membership verdict.</p>
 </section>
 </div>
 <footer>LightUp · INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD. Never use this file or its exports as evidence of consent, scope membership, a grant or release.</footer>
