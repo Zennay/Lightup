@@ -64,6 +64,25 @@
 <button type="button" id="compare">Compare costs</button></div>
 <div class="stats" id="scenario"></div>
 </div>
+<div class="panel" aria-labelledby="releases-title">
+<p class="eyebrow">05 / PHASED CASH RELEASE</p>
+<h2 id="releases-title">What if money becomes available later?</h2>
+<p>Allocate the same total budget across weeks to see where proposed remediation might go unfunded while waiting for cash. Unfunded hours are not silently rescheduled or marked completed. An unpaid one-time setup cost must be covered before that week's labour can be funded.</p>
+<label class="input-label">Funding release pattern<select id="releases-mode">
+<option value="upfront">All available in week 1</option>
+<option value="equal">Evenly over all planning weeks</option>
+<option value="custom">Custom percentage per week</option>
+</select></label>
+<div id="release-entries" class="form-grid"></div>
+<div class="action-row">
+<button id="release-calculate" type="button" class="secondary">Calculate phased funding</button>
+<button id="release-export" type="button" class="secondary" hidden>Export phased cashflow draft</button>
+</div>
+<div id="release-summary" class="stats" aria-live="polite"></div>
+<div class="table-wrap"><table><thead><tr><th>Week</th><th>Budget released</th><th>Setup covered</th><th>Labor paid</th><th>Hours funded</th><th>Hours not funded</th><th>Cash carried</th></tr></thead>
+<tbody id="release-weeks"></tbody></table></div>
+<p class="subtle">Funding patterns are deliberately unsigned financial assumptions; no bank, calendar, contract, operator, client or target is contacted.</p>
+</div>
 <div class="panel">
 <h2>Private aggregate handoff</h2>
 <p>No finding ID, customer name, target identity, original CSV bytes, grant or operator information is available to export. Aggregated budgets can still be commercially sensitive; review the recipient before sharing.</p>
