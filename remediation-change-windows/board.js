@@ -176,25 +176,74 @@ function windowAfterHumanDue(f){
 }
 
 function caseLabel(c){return c?(c.owner||'Unassigned owner')+' · '+c.status+(c.due_date?' · '+c.due_date+' UTC':' · no due date'):'No original Casework attached';}
+
 function privateCaseBrief(){
  if(!state?.casework)fail('Import an original exact-source Casework draft first.');
- if(!confirm('PRIVATE: export original finding IDs, local human owner, next action, blocker and due date? Send only via an independently approved confidential channel.'))return;
- plan();
- const sanitize=v=>String(v).replace(/[\u0000-\u001f\u007f\u202a-\u202e\u2066-\u2069]/g,' ').replace(/[\\|]/g,' ').slice(0,700);
- const lines=['# PRIVATE LightUp original Casework human window brief','',
-  '**UNVERIFIED HUMAN DRAFT. Not a grant, verified fix, retest permit, change authorization or authenticated source.**','',
-  'Original canonical source SHA-256: '+state.hash+' (unsigned, NOT identity/consent).',
-  'Original Casework row SHA-256: '+state.caseworkDigest+' (unsigned).','',
-  '| Original finding ID | Original severity | Local owner | Casework state | Local due date | Human proposed UTC slot | Local blocker | Next human action |',
-  '| --- | --- | --- | --- | --- | --- | --- | --- |'];
- for(const f of state.source){
-  const c=state.casework.get(f.finding_id);
-  lines.push('| '+[f.finding_id,f.severity,c.owner,c.status,c.due_date||'',state.assignments.get(f.finding_id)||0,c.blocker,c.next_action].map(sanitize).join(' | ')+' |');
+ if(!confirm('PRIVATE: export original finding IDs, local owners, human evidence stages, blockers, unverified next actions and UTC discussions? Transfer only via an independently approved confidential channel.'))return;
+ const windows=plan();
+ const clean=v=>String(v??'').replace(/[\u0000-\u001f\u007f\u202a-\u202e\u2066-\u2069|\\]/g,' ').slice(0,1500);
+ const lines=['# PRIVATE LightUp original human Casework discussion and handoff pack','',
+ '**UNVERIFIED, OFFLINE HUMAN PLANNING ONLY. No finding has been patched, independently retested, authorized or given a grant by this export.**','',
+ 'Original canonical five-column source SHA-256: '+state.hash+' (unsigned, not identity, permission or client consent).',
+ 'Original Casework human row digest: '+state.caseworkDigest+' (unsigned).',
+ state.caseworkUpdate?'Previous LOCAL original Casework human snapshot SHA-256: '+state.caseworkUpdate.from_sha256:'No separately applied human Casework snapshot change recorded in this tab.',
+ 'Total original source findings: '+state.source.length,'',
+ ];
+ const high=f=>['critical','high'].includes(f.severity);
+ const attention=f=>{
+  const c=state.casework.get(f.finding_id),r=state.review.get(f.finding_id);
+  return high(f)||caseBlocked(c)||pastDue(c)||windowAfterHumanDue(f)||
+   state.caseworkChanges?.has(f.finding_id)||hasHumanHold(f,r)||!c.owner.trim();
+ };
+ const urgent=state.source.filter(attention);
+ lines.push('## Human discussion priorities ('+urgent.length+' unverified item(s))','');
+ if(!urgent.length)lines.push('No local priority flags. This is not evidence of verified remediation or authorization.','');
+ for(const [slotKey,title] of [[0,'Unscheduled — human follow-up required'],...windows.map((w,i)=>[i+1,
+   'Proposed human window '+(i+1)+(w?' · '+w.start_utc+' · '+w.minutes+' minutes':' · NO validated UTC meeting')])]){
+  const group=state.source.filter(f=>(state.assignments.get(f.finding_id)||0)===slotKey);
+  lines.push('## '+title,'','**'+group.length+' original finding(s), '+group.filter(high).length+
+    ' critical/high; '+group.filter(f=>caseBlocked(state.casework.get(f.finding_id))).length+
+    ' locally blocked; '+group.filter(windowAfterHumanDue).length+
+    ' after local human due date. All are unverified.**','');
+  if(!group.length){lines.push('No human records assigned.','');continue;}
+  const byPriority=group.slice().sort((a,b)=>
+   Number(attention(b))-Number(attention(a))+
+   (Number(attention(a))===Number(attention(b))?0:0)||
+   Number(high(b))-Number(high(a))||
+   a.finding_id.localeCompare(b.finding_id));
+  lines.push('| Original ID | Source severity / retest | Human owner and Casework state | Local due UTC | Human evidence review | Private human flags | Human next action |',
+    '| --- | --- | --- | --- | --- | --- | --- |');
+  for(const f of byPriority){
+   const c=state.casework.get(f.finding_id),r=state.review.get(f.finding_id);
+   const flags=[];
+   if(caseBlocked(c))flags.push('LOCAL BLOCKER');
+   if(pastDue(c))flags.push('LOCAL DUE PASSED');
+   if(windowAfterHumanDue(f))flags.push('SLOT AFTER LOCAL DUE');
+   if(!c.owner.trim())flags.push('NO HUMAN OWNER');
+   if(state.caseworkChanges?.has(f.finding_id))flags.push('LOCAL CASEWORK CHANGED: '+state.caseworkChanges.get(f.finding_id).join('/'));
+   if(hasHumanHold(f,r))flags.push('EVIDENCE REFERENCES/REVIEW INCOMPLETE');
+   if(high(f))flags.push('ORIGINAL CRITICAL/HIGH');
+   if(f.retest_status==='regression')flags.push('SOURCE RETEST REGRESSION');
+   lines.push('| '+[
+    f.finding_id,f.severity+' / '+f.retest_status,
+    (c.owner||'UNASSIGNED')+' / '+c.status,c.due_date||'',
+    r.stage+' / '+(r.reviewer||'no human reviewer'),
+    flags.join('; ')||'No local human flags (NOT a verified fix)',
+    c.next_action||r.next_step||'HUMAN NEXT ACTION NOT RECORDED'
+   ].map(clean).join(' | ')+' |');
+  }
+  lines.push('');
  }
- lines.push('','All statuses and windows are human proposals only. Each recipient must independently validate original account, engagement, scope, permissions and revocation.');
- output('lightup-private-original-casework-change-brief.md',lines.join('\n')+'\n','text/markdown');
+ lines.push('## Required human handoff checks','',
+ '- Confirm real client and exact original engagement, independent issuer and authorized confidential recipient.',
+ '- Reconcile any prior/current private human Casework drift and original source CSV changes.',
+ '- Assign human owners and collect genuine deployment, change, rollback and authorized retest references.',
+ '- Independently check that the proposed UTC discussion time is compatible with real approved change windows.',
+ '- All original product permission, source-owner review, actual operator/client consent and revocation checks remain external.',
+ '',
+ 'No network, privileged action, scanner, ticket update, scheduling API, release or independently verified remediation took place.');
+ output('lightup-private-original-casework-human-handoff.md',lines.join('\n')+'\n','text/markdown');
 }
-
 
 /* Original Casework v1 snapshot change control. Never writes to the original app
  * or backfills verification, client consent, a grant or any other authority. */
