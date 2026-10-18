@@ -54,6 +54,8 @@ def build_parser() -> argparse.ArgumentParser:
     assess.add_argument("--gateway-config")
     assess.add_argument("--profile")
     assess.add_argument("--no-review", action="store_true")
+    assess.add_argument("--preview-only", action="store_true",
+                        help="inspect normalized isolated lab targets without running an assessment")
 
     boot = sub.add_parser("create-operator",
                           help="bootstrap the first operator account")
@@ -122,6 +124,8 @@ def main(argv: list[str] | None = None) -> int:
             argv += ["--profile", args.profile]
         if args.no_review:
             argv.append("--no-review")
+        if args.preview_only:
+            argv.append("--preview-only")
         return main_assess(argv)
 
     if args.command in {"create-operator", "create-client-user"}:
