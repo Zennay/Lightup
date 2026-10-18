@@ -106,9 +106,9 @@ function sourceRecord(d,digest){
   source_attached:true,tasks:fresh()
  };
 }
-function cleanRecord(r){
+function cleanRecord(r,{restored=false}={}){
  // Imported casework is never allowed to smuggle a claimed authority field.
- if(!plain(r)||r.source_attached===true||Object.keys(r).some(k=>![
+ if(!plain(r)||(restored&&Object.prototype.hasOwnProperty.call(r,'source_attached'))||Object.keys(r).some(k=>![
   'source_sha256','name','client_label','requested_mode','requested_risk',
   'asset_count','excluded_count','planned_utc','source_attached','tasks'
  ].includes(k)))return null;
@@ -596,7 +596,7 @@ $('restoreInput').addEventListener('change',async event=>{
   if(Object.keys(parsed).some(k=>!['kind','schema_version','disposition','security','exported_at_utc','records','notice'].includes(k)))throw Error('Unknown or authority-like workspace fields.');
   if(parsed.kind!=='lightup.scope_readiness_workspace'||parsed.schema_version!==1||parsed.disposition!=='REVIEW_ONLY'||
      !allowedFlags(parsed.security)||!Array.isArray(parsed.records)||parsed.records.length>MAX_RECORDS)throw Error('Unsupported or unsafe workspace schema.');
-  const next=parsed.records.map(cleanRecord);
+  const next=parsed.records.map(r=>cleanRecord(r,{restored:true}));
   if(next.some(r=>!r)||new Set(next.map(r=>r.source_sha256)).size!==next.length)throw Error('Invalid, duplicated or malformed source-bound record.');
   if(entries.length&&!confirm('Replace your current in-memory board? Save it first if needed.'))return;
   entries=next;active=entries[0]?.source_sha256||null;dirty=false;editEpoch++;bulkUndo=null;$('bulkUndo').disabled=true;clearBulkPreview();clearPacketPreview();render();
