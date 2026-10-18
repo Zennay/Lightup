@@ -210,18 +210,25 @@ REVIEW_DESK_SOURCE_COMMIT = "bb5c2299d3697781db7093aaea79ed418f1cc07c"
 REVIEW_DESK_SHA256 = "3f578faae06b40dea47cfac8e8318fa8db5dd117b5f3f7e0d5a7853e426fbe29"
 
 
-def _original_review_desk_snapshot():
-    """Admit the byte-exact original #1576 browser app, not modified copies."""
-    path = Path(__file__).resolve().parent.parent / "assessment-review-pack/review-desk.html"
+LANDING_SHA256 = "d9f8aa4787615bccb9ed5b1eaf222c11ae2e67aed631fd56246db580328dabef"
+
+
+def _pinned_pack_asset(name: str, digest: str, cap: int):
+    """Admit only hash-pinned, local regular HTML assets, without symlinks."""
+    path = Path(__file__).resolve().parent.parent / "assessment-review-pack" / name
     flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_NONBLOCK", 0)
     fd = os.open(path, flags)
     with os.fdopen(fd, "rb") as stream:
         if not stat.S_ISREG(os.fstat(stream.fileno()).st_mode):
-            raise ValueError("invalid bundled desk asset")
-        source = stream.read(65_537)
-    if sha256(source).hexdigest() != REVIEW_DESK_SHA256:
-        raise ValueError("pinned Review Desk source differs")
+            raise ValueError("invalid bundled application")
+        source = stream.read(cap + 1)
+    if not source or len(source) > cap or sha256(source).hexdigest() != digest:
+        raise ValueError("pinned application changed")
     return source
+
+
+def _original_review_desk_snapshot():
+    return _pinned_pack_asset("review-desk.html", REVIEW_DESK_SHA256, 65_536)
 
 
 def _review_pack(result, first_sha: str, second_sha: str,
@@ -256,12 +263,14 @@ def _review_pack(result, first_sha: str, second_sha: str,
         "approval_granted": False,
         "review_desk_source_commit": REVIEW_DESK_SOURCE_COMMIT,
         "review_desk_sha256": REVIEW_DESK_SHA256,
+        "landing_sha256": LANDING_SHA256,
     }, sort_keys=True, separators=(",", ":")).encode("ascii")
     # Fixed original #1576 single-file browser is shipped *unchanged*.
     browser = _original_review_desk_snapshot()
+    landing = _pinned_pack_asset("index.html", LANDING_SHA256, 16_384)
     instructions = ("LIGHTUP PRIVATE OFFLINE LAB REVIEW — NOT AUTHORIZED\n"
         "1. Extract this sensitive ZIP into a private local folder.\n"
-        "2. Open review.html for an ordinal-only printable summary.\n"
+        "2. Open index.html for the local start screen and links.\n"
         "3. Open review-desk.html locally and choose review-desk.json in its file picker.\n"
         "4. Save any desired local human follow-up from the browser explicitly.\n"
         "The source-rich JSON/ZIP contains original scenario identities.\n"
@@ -269,7 +278,8 @@ def _review_pack(result, first_sha: str, second_sha: str,
     ).encode("utf-8")
     buffer = BytesIO()
     with ZipFile(buffer, "w") as archive:
-        for name, content in (("START-HERE.txt", instructions),
+        for name, content in (("index.html", landing),
+                              ("START-HERE.txt", instructions),
                               ("review.html", report),
                               ("review-desk.html", browser),
                               ("review-desk.json", desk),
