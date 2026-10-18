@@ -480,6 +480,7 @@
     table($("reports"),["Source slot","Original source status","Cases","Adverse cases","Adverse metric flags"],reportRows);
     renderSourceOrder();
     renderQueueOverview();
+    renderAnonymousPrint();
     $("cases").replaceChildren();
     const all=catalog?.length||0,visible=visibleCases();
     $("queueCount").textContent=visible.length+" visible of "+all+
@@ -598,6 +599,40 @@
       message("PRIVATE stages and local notes restored for exact source bytes. "+
         "Legacy v1 resumes with empty notes.");
     }catch(_){message("HOLD: draft or original source bytes do not match. Existing stages preserved.",true);}
+  }
+
+
+  function renderAnonymousPrint(){
+    const node=$("printAnonymous"),button=$("printAnonymousButton");
+    node.replaceChildren();let a;
+    try{a=safeExport();}
+    catch(_){
+      node.textContent="HOLD — no anonymous print without exact original source membership.";
+      button.disabled=true;return;
+    }
+    button.disabled=false;
+    const title=document.createElement("h2");
+    title.textContent="LightUp · ANONYMOUS human lab review · REVIEW_ONLY / HOLD";
+    const origin=document.createElement("p");
+    origin.textContent=a.fictional_demo_only?"FICTIONAL DEMONSTRATION ONLY":
+      "Unsigned original-source human discussion, not authenticated assessment evidence.";
+    node.append(title,origin);
+    const entries=[
+      ["Original private scenario count",a.scenario_count],
+      ["Original completed source slots",a.report_count],
+      ["Author-declared unscored/unknown",a.declared_unscored],
+      ["Author-declared scored zero (not verified)",a.declared_zero_findings],
+      ["Author-declared planted findings (not verified)",a.declared_planted_findings],
+      ["Original reported adverse metric instances",a.source_reported_adverse_metric_instances],
+      ...a.human_queue_priorities.map(q=>["Source priority "+q.category,q.cases]),
+      ...Object.entries(a.human_discussion_stages).map(([stage,count])=>
+        ["Human "+stage,count])];
+    table(node,["Anonymous human discussion summary","Source-reported count"],entries);
+    const footer=document.createElement("p");
+    footer.textContent="All authorized / consent_verified / dispatch_allowed / release_allowed "+
+      "flags false. No original case IDs, host/IP/URL, original report values, "+
+      "source hashes or private notes. No scans, grants, deployments or HUMAN GO.";
+    node.append(footer);
   }
 
   function exportJson(){
@@ -797,6 +832,9 @@
   $("restoreDraft").addEventListener("change",async e=>{
     const f=e.target.files?.[0];e.target.value="";
     if(f)await restorePrivateDraft(f);
+  });
+  $("printAnonymousButton").addEventListener("click",()=>{
+    renderAnonymousPrint();if(!$("printAnonymousButton").disabled)window.print();
   });
   $("exportJson").addEventListener("click",exportJson);
   $("exportCsv").addEventListener("click",exportCsv);
