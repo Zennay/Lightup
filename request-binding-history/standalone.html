@@ -49,8 +49,14 @@ a{color:#9bdafc}
 <section class="panel"><h2>4 · Adjacent source-change reconciliation</h2>
 <p>Rows are compared only in the selected order. Different source SHA means original stored records differed <em>somewhere</em>; it cannot identify which persisted row changed without revisiting original authenticated source. Equal SHA is unsigned and cannot establish unchanged live state.</p>
 <div class="table-wrap"><table><thead><tr><th>Human selection</th><th>Original stored revision</th><th>Administrative candidates</th><th>Unapproved rows</th><th>Grant records</th><th>Human action</th></tr></thead><tbody id="transitions"></tbody></table></div></section>
-<section class="panel"><h2>5 · Source mismatch themes</h2><p>Fixed original source-owner explanation categories, grouped without request identities. These are discussion flags only, not authenticated policy verdicts or newly discovered risks.</p><div class="table-wrap"><table><thead><tr><th>Original reason</th><th>Human discussion owner</th><th>Per selected slot</th><th>Change: first → last</th></tr></thead><tbody id="reasonrows"></tbody></table></div></section>
-<section class="panel"><h2>6 · Human handoff</h2>
+<section class="panel"><h2>5 · Request-record lineage (private, unsigned)</h2>
+<p>Compare original request-record pseudonyms inside memory to distinguish appeared, absent, unchanged and changed records. These pseudonyms are not authenticated signatures; absent entries may simply reflect the source export's 500-row cap, changed report order, or missing source evidence. No request identifier is exported.</p>
+<div class="grid"><label>Compare selected adjacent pair <select id="pair" aria-label="Adjacent source reports"></select></label>
+<label>Show records <select id="casetype"><option value="all">All original record differences</option><option value="changed">Changed only</option><option value="appeared">Appeared</option><option value="absent">Absent</option><option value="same">Unchanged</option></select></label></div>
+<div id="case-summary" class="grid"></div><div class="table-wrap"><table><thead><tr><th>Private pair-local row</th><th>Observed difference</th><th>Prior source row status</th><th>Later source row status</th><th>What changed</th><th>Action</th></tr></thead><tbody id="cases"></tbody></table></div>
+<p class="muted">A row in the first source is not proof of a person or authenticated request; a row in the second is not proof of consent, revocation, a new grant or correction. Row references are ephemeral within this selected pair only.</p></section>
+<section class="panel"><h2>6 · Source mismatch themes</h2><p>Fixed original source-owner explanation categories, grouped without request identities. These are discussion flags only, not authenticated policy verdicts or newly discovered risks.</p><div class="table-wrap"><table><thead><tr><th>Original reason</th><th>Human discussion owner</th><th>Per selected slot</th><th>Change: first → last</th></tr></thead><tbody id="reasonrows"></tbody></table></div></section>
+<section class="panel"><h2>7 · Human handoff</h2>
 <p>Mark private discussion items for yourself. These local checkmarks have no effect on source requests, grant state, revocation, scan, target or release.</p>
 <div id="review"></div>
 <div class="actions"><button id="exportjson">Download anonymous JSON brief</button><button id="exportcsv" class="secondary">Download anonymous CSV</button><button id="saveprivate" class="secondary">Save PRIVATE working draft</button><input type="file" id="restore" accept=".json" aria-label="Restore a private working draft"><button class="secondary" id="print">Print private aggregate</button></div>
@@ -129,26 +135,37 @@ function validate(obj,slot){
  if(!plain(s)||!Array.isArray(candidates)||candidates.length>500)fail("missing source rows or summary");
  let total=count(s.recorded_requests,"request count");
  if(total!==candidates.length)fail("source request count does not match rows");
- let matched=0,other=0,notApproved=0,grants=0,seen=new Set(),reasons=Object.create(null);
+ let matched=0,other=0,notApproved=0,grants=0,seen=new Set(),reasons=Object.create(null),cases=[];
  candidates.forEach((row,index)=>{
   if(!plain(row)||!STATUSES.includes(row.request_source_status))fail("malformed original candidate");
-  if(row.ordinal!==index+1||typeof row.private_reference!=="string"||row.private_reference.length>160||seen.has(row.private_reference))fail("duplicate or inconsistent original candidate");
-  seen.add(row.private_reference);count(row.previously_bound_grant_rows,"historical bound-grant count",100000);
+  if(row.ordinal!==index+1||typeof row.private_reference!=="string"||!/^[a-f0-9]{16}$/.test(row.private_reference)||seen.has(row.private_reference))fail("duplicate or inconsistent original candidate pseudonym");
+  seen.add(row.private_reference);
+  if(row.request_id!==null&&(typeof row.request_id!=="string"||row.request_id.length<1||row.request_id.length>180||/[\x00-\x1f\x7f]/.test(row.request_id)))fail("malformed optional original request identity");
+  if(typeof row.stored_status!=="string"||!["approved","submitted","rejected"].includes(row.stored_status))fail("unknown original persisted request status");
+  if(row.request_source_status==="not_administratively_approved" ? row.stored_status==="approved": row.stored_status!=="approved")fail("contradicting original decision and category");
+  if(row.requested_risk!==null&&(!Number.isSafeInteger(row.requested_risk)||row.requested_risk<1||row.requested_risk>4))fail("invalid original request risk");
+  count(row.previously_bound_grant_rows,"historical bound-grant count",100000);
   if(!Array.isArray(row.review_flags_non_authorizing)||row.review_flags_non_authorizing.length>16)fail("malformed source reasons");
   for(const reason of row.review_flags_non_authorizing){if(typeof reason!=="string"||!Object.hasOwn(ROUTES,reason))fail("unknown original source mismatch reason");reasons[reason]=(reasons[reason]||0)+1}
+  if(row.request_source_status===STATUSES[0] && row.review_flags_non_authorizing.length)fail("source matched candidate has contradicting mismatch reasons");
+  if(row.request_source_status===STATUSES[1] && (!row.review_flags_non_authorizing.length||row.review_flags_non_authorizing.includes("NOT_ADMINISTRATIVELY_APPROVED")))fail("inconsistent original approved request reasons");
+  if(row.request_source_status===STATUSES[2] && (row.review_flags_non_authorizing.length!==1||row.review_flags_non_authorizing[0]!=="NOT_ADMINISTRATIVELY_APPROVED"))fail("inconsistent original not-approved request reason");
   if(row.request_source_status===STATUSES[0])matched++;
   else if(row.request_source_status===STATUSES[1])other++;
   else notApproved++;
+  cases.push({ref:row.private_reference,storedStatus:row.stored_status,category:row.request_source_status,
+    risk:row.requested_risk,bound:row.previously_bound_grant_rows,flags:row.review_flags_non_authorizing.slice().sort()});
  });
  if(matched!==count(s.approved_candidate_matches,"matched")||other!==count(s.approved_but_not_compatible,"nonmatching")||notApproved!==count(s.not_administratively_approved,"not approved"))fail("source summary category mismatch");
  grants=count(s.prior_stored_grant_rows,"historical grants",100000);
  if(count(s.unbound_legacy_grant_rows,"unbound grants",100000)>grants)fail("inconsistent legacy grants");
+ if(cases.reduce((sum,r)=>sum+r.bound,0)+s.unbound_legacy_grant_rows>grants)fail("original bound grant row count exceeds recorded grant rows");
  if(!plain(s.mismatch_reason_counts_non_authorizing))fail("missing source reason counts");
  const rkeys=Object.keys(s.mismatch_reason_counts_non_authorizing).sort(),expected=Object.keys(reasons).sort();
  if(rkeys.join("|")!==expected.join("|")||rkeys.some(k=>s.mismatch_reason_counts_non_authorizing[k]!==reasons[k]))fail("source reason count mismatch");
  const derived=matched===1?OUTCOMES[0]:matched>1?OUTCOMES[1]:OUTCOMES[2];
  if(derived!==obj.disposition)fail("source administrative outcome contradicts original rows");
- return {selection,revision,stamp,matched,other,notApproved,grants,total,legacy:s.unbound_legacy_grant_rows,outcome:derived,reasons};
+ return {selection,revision,stamp,matched,other,notApproved,grants,total,legacy:s.unbound_legacy_grant_rows,outcome:derived,reasons,cases};
 }
 function note(message,alert){$("status").textContent=message;$("status").setAttribute("role",alert?"alert":"status")}
 function esc(v){return String(v).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
@@ -156,10 +173,34 @@ function download(filename,mime,content){
  const blob=new Blob([content],{type:mime}),url=URL.createObjectURL(blob),a=document.createElement("a");
  a.href=url;a.download=filename;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),2000);
 }
+function adjacentRecordChanges(left,right){
+ const old=new Map(left.cases.map(c=>[c.ref,c])),next=new Map(right.cases.map(c=>[c.ref,c]));
+ const all=[...new Set([...old.keys(),...next.keys()])].sort();
+ const rows=all.map((ref)=>{
+   const a=old.get(ref),b=next.get(ref);
+   const kind=!a?"appeared":!b?"absent":JSON.stringify([a.storedStatus,a.category,a.risk,a.bound,a.flags])===JSON.stringify([b.storedStatus,b.category,b.risk,b.bound,b.flags])?"same":"changed";
+   const fields=[];
+   if(a&&b){
+    if(a.storedStatus!==b.storedStatus)fields.push("original administrative status");
+    if(a.category!==b.category)fields.push("source match category");
+    if(a.risk!==b.risk)fields.push("recorded requested risk");
+    if(a.bound!==b.bound)fields.push("historical bound grant count");
+    if(a.flags.join("|")!==b.flags.join("|"))fields.push("source reported mismatch reasons");
+   }
+   return {kind,previous:a||null,current:b||null,fields};
+ });
+ const summary={appeared:0,absent:0,same:0,changed:0};
+ rows.forEach(row=>summary[row.kind]++);
+ return {rows,summary};
+}
 function payload(){
  const reports=workspace.records;
  return {format:"lightup.request_binding_history_aggregate.v1",status:"REVIEW_ONLY",authority:Object.fromEntries(FALSE_KEYS.map(k=>[k,false])),
-   selected_order_is_verified_chronology:false,snapshots:reports.map((r,i)=>({slot:i+1,candidates:r.matched,other_approved:r.other,not_approved:r.notApproved,stored_grants:r.grants,unbound_legacy_grants:r.legacy,stored_record_change_from_previous:i>0?r.revision!==reports[i-1].revision:null,source_mismatch_reason_counts:Object.fromEntries(Object.keys(ROUTES).map(k=>[k,r.reasons[k]||0]))})),
+   selected_order_is_verified_chronology:false,
+   anonymous_adjacent_original_request_rows:reports.slice(1).map((r,i)=>({from_slot:i+1,to_slot:i+2,
+     // No row pseudonyms or identities ever cross the export boundary.
+     ...adjacentRecordChanges(reports[i],r).summary})),
+   snapshots:reports.map((r,i)=>({slot:i+1,candidates:r.matched,other_approved:r.other,not_approved:r.notApproved,stored_grants:r.grants,unbound_legacy_grants:r.legacy,stored_record_change_from_previous:i>0?r.revision!==reports[i-1].revision:null,source_mismatch_reason_counts:Object.fromEntries(Object.keys(ROUTES).map(k=>[k,r.reasons[k]||0]))})),
    manual_follow_up:ACTIONS.map((task,i)=>({category:i+1,done_for_local_discussion_only:!!workspace.checks[i]})),
    caution:"Untrusted, unsigned offline snapshots; never authority, consent, revocation, permission, release or verified chronology."};
 }
@@ -180,10 +221,27 @@ function render(){
   const delta=(a,b)=>(b-a>0?"+":"")+String(b-a);
   return '<tr><td>'+(i+1)+' → '+(i+2)+'</td><td class="'+(changed?"hold":"review")+'">'+(changed?"DIFFERENT stored rows":"SAME unsigned digest")+'</td><td>'+esc(delta(before.matched,r.matched))+'</td><td>'+esc(delta(before.notApproved,r.notApproved))+'</td><td>'+esc(delta(before.grants,r.grants))+'</td><td>'+(changed?"Reopen original authenticated source; do not infer a specific revocation.":"No proven live-state continuity; re-export if deciding now.")+'</td></tr>';
  }).join("");
+ $("pair").innerHTML=records.slice(1).map((r,i)=>'<option value="'+i+'">Original report '+(i+1)+' → '+(i+2)+'</option>').join("");
+ if(!Number.isSafeInteger(workspace.pair)||workspace.pair>=records.length-1)workspace.pair=0;
+ $("pair").value=String(workspace.pair);
+ renderCases();
  $("reasonrows").innerHTML=reportedFlags.map(reason=>{const counts=records.map(r=>r.reasons[reason]||0),change=counts[counts.length-1]-counts[0];return "<tr><td><span class=\"badge\">"+esc(reason)+"</span></td><td>"+esc(ROUTES[reason])+"</td><td>"+counts.map((x,i)=>"Slot "+(i+1)+": "+x).join(" · ")+"</td><td>"+(change>0?"+":"")+change+" (not proof of a new permission or real chronology)</td></tr>"}).join("");
  $("review").innerHTML=ACTIONS.map((task,i)=>'<label style="display:flex"><input type="checkbox" data-action="'+i+'" '+(workspace.checks[i]?"checked":"")+'> '+esc(task)+'</label>').join("");
  $("review").querySelectorAll("input").forEach(el=>el.addEventListener("change",()=>workspace.checks[+el.dataset.action]=el.checked));
 }
+function renderCases(){
+ if(!workspace||workspace.records.length<2)return;
+ const selection=workspace.pair||0,previous=workspace.records[selection],current=workspace.records[selection+1];
+ const diff=adjacentRecordChanges(previous,current),display=$("casetype").value;
+ $("case-summary").innerHTML=Object.entries(diff.summary).map(([key,count])=>
+  '<div class="stat">'+esc(key.toUpperCase())+'<strong>'+count+'</strong></div>').join("");
+ $("cases").innerHTML=diff.rows.filter(row=>display==="all"||row.kind===display).map((row,index)=>{
+  const prev=row.previous,curr=row.current;
+  return '<tr><td>Row '+(index+1)+'</td><td><span class="badge">'+esc(row.kind.toUpperCase())+'</span></td><td>'+esc(prev?prev.storedStatus+" / "+prev.category:"Not in chosen earlier report")+'</td><td>'+esc(curr?curr.storedStatus+" / "+curr.category:"Not in chosen later report")+'</td><td>'+esc(row.fields.length?row.fields.join(", "):row.kind==="same"?"No changes visible in original candidate fields":"Reported membership differs")+'</td><td>Human source-owner review only; no automatic approval or revocation</td></tr>';
+ }).join("");
+}
+$("pair").addEventListener("change",()=>{if(workspace){workspace.pair=Number($("pair").value);renderCases()}});
+$("casetype").addEventListener("change",()=>{if(workspace)renderCases()});
 async function fingerprints(files){if(!crypto||!crypto.subtle)fail("private draft feature unavailable without WebCrypto");return Promise.all(files.map(async src=>{const b=new TextEncoder().encode(src);const digest=await crypto.subtle.digest("SHA-256",b);return Array.from(new Uint8Array(digest),x=>x.toString(16).padStart(2,"0")).join("")}))}
 $("import").addEventListener("click",async()=>{
  try{
@@ -197,7 +255,7 @@ $("import").addEventListener("click",async()=>{
   if(new Set(parsed.map(fingerprint)).size!==parsed.length)fail("duplicate original snapshot metadata detected");
   if(parsed.some(v=>v.revision===undefined))fail("Original stored source revision missing.");
   const localHashes=(globalThis.crypto&&crypto.subtle)?await fingerprints(raws):[];
-  workspace={records:parsed,checks:ACTIONS.map(()=>false),sourceBytes:chosen.reduce((sum,f)=>sum+f.size,0)};hashes=localHashes;
+  workspace={records:parsed,checks:ACTIONS.map(()=>false),pair:0,sourceBytes:chosen.reduce((sum,f)=>sum+f.size,0)};hashes=localHashes;
   render();note(parsed.length+" valid original source-export snapshots loaded for private REVIEW_ONLY (not permission).",false);
  }catch(e){note("HOLD · "+(e instanceof Error?e.message:"invalid source import")+". Earlier accepted workspace was preserved.",true)}
 });
@@ -215,7 +273,7 @@ $("append").addEventListener("click",async()=>{
   if(new Set(keys).size!==keys.length)fail("duplicate original snapshot metadata detected");
   const moreHashes=(hashes.length===workspace.records.length&&globalThis.crypto&&crypto.subtle)?await fingerprints(raws):[];
   const newHashes=moreHashes.length===extras.length?hashes.concat(moreHashes):[];
-  workspace={records:workspace.records.concat(extras),checks:workspace.checks.slice(),sourceBytes:workspace.sourceBytes+files.reduce((sum,f)=>sum+f.size,0)};
+  workspace={records:workspace.records.concat(extras),checks:workspace.checks.slice(),pair:workspace.pair,sourceBytes:workspace.sourceBytes+files.reduce((sum,f)=>sum+f.size,0)};
   hashes=newHashes;render();$("extra").value="";
   note(extras.length+" new source snapshots added atomically; existing private human discussion markers preserved.",false);
  }catch(e){note("HOLD · "+(e instanceof Error?e.message:"invalid append")+". Prior workspace and human stages preserved.",true)}
