@@ -574,6 +574,66 @@ $('scenarioExport').addEventListener('click',()=>{
   setTimeout(()=>URL.revokeObjectURL(url),500);
   $('status').textContent='Unsigned review-only scenario exported locally. No approved schedule or execution rights.';
 });
+
+function decodeUTCStamp(value){
+  if(typeof value!=='string'||!/^\d{8}T\d{6}Z$/.test(value)||value.slice(13,15)!=='00')return null;
+  const iso=value.slice(0,4)+'-'+value.slice(4,6)+'-'+value.slice(6,8)+'T'+
+    value.slice(9,11)+':'+value.slice(11,13)+':00.000Z';
+  return isoMillis(iso);
+}
+function readBusyCalendar(text){
+  // Strict one-shot UTC VEVENT import only. No network, no recurrence expansion,
+  // calendar names, descriptions or attendee identity are retained.
+  if(typeof text!=='string'||text.length>131072||text.includes('\0') ||
+      /(^|[^\r])\n/.test(text))throw Error('invalid line endings');
+  const lines=text.replace(/\r\n[ \t]/g,'').split('\r\n');
+  if(lines[lines.length-1]==='')lines.pop();
+  if(lines.length<3||lines.length>1200||lines[0]!=='BEGIN:VCALENDAR'||
+      lines[lines.length-1]!=='END:VCALENDAR')throw Error('invalid calendar');
+  const records=[],blocked=[],unique=new Set();
+  let event=null,fields=0;
+  for(let i=1;i<lines.length-1;i++){
+    const line=lines[i];
+    if(line.length>4096||line.includes('\r')||line.includes('\n'))throw Error('invalid record');
+    if(line==='BEGIN:VEVENT'){
+      if(event!==null)throw Error('nested events');
+      if(records.length>=30)throw Error('too many events');
+      event={start:null,end:null,transparent:false,cancelled:false};
+      fields=0;continue;
+    }
+    if(line==='END:VEVENT'){
+      if(event===null||event.start===null||event.end===null||event.start>=event.end||
+          event.end-event.start>31*DAY)throw Error('invalid event time');
+      records.push(event);
+      if(!event.transparent&&!event.cancelled){
+        const key=String(event.start)+':'+String(event.end);
+        if(!unique.has(key)){unique.add(key);blocked.push({start:event.start,end:event.end});}
+      }
+      event=null;continue;
+    }
+    if(line.startsWith('BEGIN:')||line.startsWith('END:'))throw Error('unsupported nested calendar');
+    if(event===null)continue;
+    if(/^(?:RRULE|RDATE|EXDATE|RECURRENCE-ID|DURATION)(?:[;:])/.test(line))
+      throw Error('recurring/relative events unsupported');
+    if(line.startsWith('DTSTART')){
+      if(event.start!==null||!/^DTSTART:\d{8}T\d{6}Z$/.test(line))throw Error('unsupported time');
+      event.start=decodeUTCStamp(line.slice(8));if(event.start===null)throw Error('invalid start');
+    }else if(line.startsWith('DTEND')){
+      if(event.end!==null||!/^DTEND:\d{8}T\d{6}Z$/.test(line))throw Error('unsupported time');
+      event.end=decodeUTCStamp(line.slice(6));if(event.end===null)throw Error('invalid end');
+    }else if(line.startsWith('TRANSP')){
+      if(!/^TRANSP:(?:OPAQUE|TRANSPARENT)$/.test(line)||fields&1)throw Error('invalid transparency');
+      event.transparent=line==='TRANSP:TRANSPARENT';fields|=1;
+    }else if(line.startsWith('STATUS')){
+      if(!/^STATUS:(?:CONFIRMED|TENTATIVE|CANCELLED)$/.test(line)||fields&2)
+        throw Error('invalid event status');
+      event.cancelled=line==='STATUS:CANCELLED';fields|=2;
+    }
+  }
+  if(event!==null||!records.length)throw Error('unfinished/no events');
+  return blocked;
+}
+
 $('addBlock').addEventListener('click',()=>{
   if(blackouts.length>=30){$('status').textContent='Unavailable-period limit is 30 per tab.';return;}
   const start=parseUTCWallTime($('blockStart').value);
@@ -588,6 +648,30 @@ $('addBlock').addEventListener('click',()=>{
   $('blockStart').value='';$('blockEnd').value='';
   $('status').textContent='Unavailable period added locally. Alternatives have been recomputed; no actual booking created.';
   render();
+});
+$('clearBlocks').addEventListener('click',()=>{
+  if(!blackouts.length)return;
+  if(!window.confirm('Clear all local unavailable periods? No source drafts will be changed.'))return;
+  blackouts=[];$('status').textContent='Local unavailable periods cleared. Source drafts remain unchanged.';render();
+});
+$('busyImport').addEventListener('change',async ev=>{
+  const file=ev.target.files&&ev.target.files[0];ev.target.value='';
+  if(!file)return;
+  try{
+    if(file.size<20||file.size>131072)throw Error('file limit');
+    const text=new TextDecoder('utf-8',{fatal:true}).decode(await file.arrayBuffer());
+    const imported=readBusyCalendar(text);
+    const updated=blackouts.slice();
+    for(const slot of imported){
+      if(!updated.some(b=>b.start===slot.start&&b.end===slot.end))updated.push(slot);
+    }
+    if(updated.length>30)throw Error('limit');
+    blackouts=updated;
+    $('status').textContent=imported.length+' opaque, non-cancelled UTC event interval(s) read locally. Titles, contacts and notes discarded. No actual booking imported as authority.';
+    render();
+  }catch(_){
+    $('status').textContent='HOLD: calendar import refused. Supply a bounded .ics with single, minute-exact UTC VEVENTs, no recurrence or timezone-local timestamps. Existing blocks unchanged.';
+  }
 });
 $('files').addEventListener('change',async ev=>{
   const list=Array.from(ev.target.files||[]);ev.target.value='';
