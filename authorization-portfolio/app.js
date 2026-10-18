@@ -126,7 +126,7 @@ function validateReport(r){
  for(const [k,v] of Object.entries(flagCount))severity[CRITICAL.has(k)?'critical':HIGH.has(k)?'high':MEDIUM.has(k)?'medium':'routine']+=v;
  const priority=severity.critical?'critical':severity.high?'high':severity.medium?'medium':'routine';
  // Strict data minimization: no names, source rows, scope identifiers or private notes kept.
- return {scope:r.scope_fingerprint,description:r.scope_description,counts:{clients:s.clients,engagements:s.engagements,requests:s.requests,grants:s.grants,pending:s.pending_requests,historical_decisions:r.request_history.filter(item=>['approved','rejected'].includes(item.status)).length},severity,priority,flagCount,state:'new',team:'unassigned',due:'',digest:null,recordMap,overlap:{shared:0,changed:0,unchanged:0}};
+ return {scope:r.scope_fingerprint,description:r.scope_description,counts:{clients:s.clients,engagements:s.engagements,requests:s.requests,grants:s.grants,pending:s.pending_requests,historical_decisions:r.request_history.filter(item=>['approved','rejected'].includes(item.status)).length},severity,priority,flagCount,flagActions:Object.fromEntries(Object.keys(flagCount).map(k=>[k,{state:'new',team:'unassigned'}])),state:'new',team:'unassigned',due:'',digest:null,recordMap,overlap:{shared:0,changed:0,unchanged:0}};
 }
 function validDue(v){
  if(v==='')return true;
@@ -179,7 +179,35 @@ function draw(){
   list.append(box);
  }
  if(!list.childElementCount)list.append(e('p','No matching scopes.'));
- drawCapacity();drawThemes();
+ drawCapacity();drawThemes();drawFlagActions();
+}
+function drawFlagActions(){
+ const root=$('flagActions');root.replaceChildren();
+ const ranking=name=>CRITICAL.has(name)?'critical':HIGH.has(name)?'high':MEDIUM.has(name)?'medium':'routine';
+ const entries=reports.flatMap((r,i)=>Object.entries(r.flagCount).map(([flag,count])=>({
+  source:i,flag,count,priority:ranking(flag),action:r.flagActions[flag]
+ })));
+ const selected=entries.filter(x=>($('flagPriority').value==='all'||x.priority===$('flagPriority').value)&&($('flagState').value==='all'||x.action.state===$('flagState').value));
+ selected.sort((a,b)=>['critical','high','medium','routine'].indexOf(a.priority)-['critical','high','medium','routine'].indexOf(b.priority)||b.count-a.count||a.source-b.source||a.flag.localeCompare(b.flag));
+ const summary=e('p',selected.length+' of '+entries.length+' original source flag/category pairs shown · '+entries.filter(x=>x.action.state==='escalate').length+' local escalations · '+entries.filter(x=>x.action.state==='discussed').length+' discussed but NOT verified fixed','hint');
+ root.append(summary);
+ if(!selected.length){root.append(e('p','No matching flagged categories.'));return;}
+ const table=e('table'),head=e('tr');for(const title of ['Scope','Original warning category','Reported count*','Priority','Human stage','Discussion team'])head.append(e('th',title));
+ const thead=e('thead');thead.append(head);table.append(thead);
+ const body=e('tbody');for(const item of selected){
+  const row=e('tr'),action=item.action;
+  for(const text of [label(item.source),item.flag.replaceAll('_',' '),item.count,item.priority.toUpperCase()])row.append(e('td',text));
+  const stateCell=e('td'),stateSelect=e('select');
+  for(const status of states){const opt=e('option',({new:'Unreviewed',triage:'In triage',escalate:'Escalate',discussed:'Discussed · unverified'})[status]);opt.value=status;opt.selected=action.state===status;stateSelect.append(opt);}
+  stateSelect.setAttribute('aria-label',label(item.source)+' '+item.flag+' human stage');stateSelect.addEventListener('change',()=>{action.state=stateSelect.value;drawFlagActions();});
+  stateCell.append(stateSelect);row.append(stateCell);
+  const teamCell=e('td'),teamSelect=e('select');
+  for(const team of teams){const opt=e('option',team.replaceAll('-',' '));opt.value=team;opt.selected=action.team===team;teamSelect.append(opt);}
+  teamSelect.setAttribute('aria-label',label(item.source)+' '+item.flag+' discussion team');teamSelect.addEventListener('change',()=>{action.team=teamSelect.value;});
+  teamCell.append(teamSelect);row.append(teamCell);body.append(row);
+ }
+ table.append(body);root.append(table);
+ root.append(e('p','*Different scopes or export times can repeat the same stored record. All locally selected stages and teams are self-reports; none authenticates consent, source repairs or approvals.','hint'));
 }
 function drawThemes(){
  const root=$('themes');root.replaceChildren();
@@ -233,7 +261,7 @@ function drawCapacity(){
  target.append(count);
 }
 function exportData(){
- return {format:'lightup.authorization_portfolio_aggregate_v1',disposition:'REVIEW_ONLY',authority:{...stamp.authority},overlap_unverified:true,untrusted_source:true,scope_count:reports.length,scopes:reports.map((r,i)=>({slot:i+1,priority:r.priority,discussion_status:r.state,follow_up_team:r.team,human_target_date_utc:r.due,selection:r.description,counts:{...r.counts},severity:{...r.severity},overlap:{...r.overlap},flags:{...r.flagCount}}))};
+ return {format:'lightup.authorization_portfolio_aggregate_v1',disposition:'REVIEW_ONLY',authority:{...stamp.authority},overlap_unverified:true,untrusted_source:true,scope_count:reports.length,scopes:reports.map((r,i)=>({slot:i+1,priority:r.priority,discussion_status:r.state,follow_up_team:r.team,human_target_date_utc:r.due,selection:r.description,counts:{...r.counts},severity:{...r.severity},overlap:{...r.overlap},flags:{...r.flagCount},human_flag_discussion:Object.fromEntries(Object.entries(r.flagActions).map(([k,v])=>[k,{...v}]))}))};
 }
 function download(name,content,type){const url=URL.createObjectURL(new Blob([content],{type}));const a=e('a');a.href=url;a.download=name;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);}
 function output(kind){
@@ -244,6 +272,15 @@ function output(kind){
   const rows=[['slot','selection','priority','local_discussion_stage','follow_up_team','human_target_date_utc','pending_requests','stored_grants_not_authorizations','critical_flags','high_flags','medium_flags','review_only','client_consent_verified','operator_consent_verified','authorization_granted','execution_allowed','release_approved','overlap_unverified']];
   result.scopes.forEach(x=>rows.push([x.slot,x.selection,x.priority,x.discussion_status,x.follow_up_team,x.human_target_date_utc,x.counts.pending,x.counts.grants,x.severity.critical,x.severity.high,x.severity.medium,'REVIEW_ONLY',false,false,false,false,false,true]));
   download('lightup-authorization-portfolio-aggregate.csv',rows.map(r=>r.map(quote).join(',')).join('\r\n')+'\r\n','text/csv');
+ }
+ if(kind==='flag-register'){
+  const quote=v=>'"'+String(v).replaceAll('"','""')+'"';
+  const rows=[['scope_slot','original_fixed_source_flag','reported_occurrences_overlap_unverified','follow_up_band','local_human_stage_unverified','local_team','disposition','client_consent_verified','operator_consent_verified','authorization_granted','execution_allowed','release_approved']];
+  result.scopes.forEach(scope=>Object.entries(scope.flags).forEach(([flag,count])=>{
+   const a=scope.human_flag_discussion[flag],band=CRITICAL.has(flag)?'critical':HIGH.has(flag)?'high':MEDIUM.has(flag)?'medium':'routine';
+   rows.push([scope.slot,flag,count,band,a.state,a.team,'REVIEW_ONLY',false,false,false,false,false]);
+  }));
+  download('lightup-authorization-flag-discussion-register.csv',rows.map(r=>r.map(quote).join(',')).join('\r\n')+'\r\n','text/csv');
  }
  if(kind==='capacity'){
   const value=plan();if(!value)throw Error('HOLD: capacity assumptions must be positive bounded numbers.');
@@ -294,7 +331,7 @@ async function admit(files){
 }
 async function save(){
  if(!reports.length||reports.some(r=>!r.digest))throw Error('HOLD: secure browser SHA-256 unavailable; private exact-source resume disabled.');
- const draft={...stamp,sources:reports.map(r=>({byte_sha256:r.digest,state:r.state,team:r.team,due:r.due}))};
+ const draft={...stamp,sources:reports.map(r=>({byte_sha256:r.digest,state:r.state,team:r.team,due:r.due,flag_discussion:r.flagActions}))};
  download('lightup-authorization-private-resume.json',JSON.stringify(draft,null,2)+'\n','application/json');
  setMessage('exportFeedback','Saved PRIVATE original-byte-bound unverified local stages. Keep this file private; SHA-256 is not a signature.');
 }
@@ -304,10 +341,19 @@ async function restore(file){
  const d=parseStrict(str);
  if(!keys(d,['format','disposition','authority','sources'])||d.format!==stamp.format||d.disposition!=='REVIEW_ONLY'||!literalFalse(d.authority)||!Array.isArray(d.sources)||d.sources.length!==reports.length)unknown();
  const changed=d.sources.map((r,i)=>{
-  if(!keys(r,['byte_sha256','state'],['team','due'])||!sha(r.byte_sha256)||!states.includes(r.state)||r.byte_sha256!==reports[i].digest)unknown();
+  if(!keys(r,['byte_sha256','state'],['team','due','flag_discussion'])||!sha(r.byte_sha256)||!states.includes(r.state)||r.byte_sha256!==reports[i].digest)unknown();
   const team=r.team??'unassigned',due=r.due??'';
   if(!teams.includes(team)||!validDue(due))unknown();
-  return {state:r.state,team,due};
+  const current=reports[i].flagActions,imported=r.flag_discussion;
+  if(imported!==undefined){
+   if(!object(imported)||Object.keys(imported).length!==Object.keys(current).length)unknown();
+   for(const key of Object.keys(current)){
+    const a=imported[key];
+    if(!keys(a,['state','team'])||!states.includes(a.state)||!teams.includes(a.team))unknown();
+   }
+   if(Object.keys(imported).some(k=>!Object.hasOwn(current,k)))unknown();
+  }
+  return {state:r.state,team,due,flagActions:imported===undefined?current:imported};
  });
  changed.forEach((data,i)=>Object.assign(reports[i],data));draw();
  setMessage('exportFeedback','Restored only local human discussion stages against exact reopened original bytes; no approval/consent or permission restored.');
@@ -315,8 +361,9 @@ async function restore(file){
 $('sourceFiles').addEventListener('change',async ev=>{try{await admit([...ev.target.files]);}catch(err){setMessage('feedback',err.message.startsWith('HOLD')?err.message:'HOLD: source import failed; existing reports unchanged.');}finally{ev.target.value='';}});
 $('clear').addEventListener('click',()=>{reports=[];$('overview').hidden=true;setMessage('feedback','Forgot all original source summaries and local stages.');setMessage('exportFeedback','');});
 $('priorityFilter').addEventListener('change',draw);$('stateFilter').addEventListener('change',draw);
+$('flagPriority').addEventListener('change',drawFlagActions);$('flagState').addEventListener('change',drawFlagActions);
 for(const name of ['hours','effortCritical','effortHigh','effortOther'])$(name).addEventListener('input',drawCapacity);
-$('exportJson').addEventListener('click',()=>output('json'));$('exportCsv').addEventListener('click',()=>output('csv'));$('exportBrief').addEventListener('click',()=>output('md'));$('exportCapacity').addEventListener('click',()=>{try{output('capacity');}catch(e){setMessage('exportFeedback',e.message);}});
+$('exportJson').addEventListener('click',()=>output('json'));$('exportCsv').addEventListener('click',()=>output('csv'));$('exportFlags').addEventListener('click',()=>output('flag-register'));$('exportBrief').addEventListener('click',()=>output('md'));$('exportCapacity').addEventListener('click',()=>{try{output('capacity');}catch(e){setMessage('exportFeedback',e.message);}});
 $('saveDraft').addEventListener('click',()=>save().catch(e=>setMessage('exportFeedback',e.message)));
 $('restoreDraft').addEventListener('change',async ev=>{try{await restore(ev.target.files[0]);}catch(e){setMessage('exportFeedback',e.message.startsWith('HOLD')?e.message:'HOLD: private draft rejected atomically.');}finally{ev.target.value='';}});
 })();
