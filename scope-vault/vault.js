@@ -582,12 +582,20 @@
           total += record.length;
           invariant(total <= MAX_TOTAL_BYTES);
           const bytes = unb64(record.base64, MAX_FILE_BYTES);
-          staged.push({name, bytes, hash: record.sha256, role: hasRole ? record.role : roles[0], selected: true, stage: hasDossier ? record.stage : "unsorted", note: hasDossier ? record.note : ""});
+          staged.push({name, bytes, hash: record.sha256,
+            role: hasRole ? record.role : roles[0], selected: true,
+            stage: hasDossier ? record.stage : "unsorted",
+            note: hasDossier ? record.note : "",
+            hasPrivateMetadata: hasDossier});
           invariant(bytes.length === record.length && (await digest(bytes)) === record.sha256);
           DEC.decode(bytes);
         }
         if (els.mergeMode.checked) {
           // Never accept filename collisions with different bytes or review roles.
+          // If a client handoff intentionally omitted PRIVATE metadata, preserve
+          // the already-open operator memo/stage instead of treating the absent
+          // values as a contradictory new declaration. Explicit private
+          // metadata conflicts still hold atomically.
           // An atomic failure leaves the entire previous workspace intact.
           const merged = [...entries];
           const byName = new Map(entries.map((item) => [item.name, item]));
@@ -598,7 +606,8 @@
             if (current) {
               invariant(current.hash === item.hash && current.role === item.role &&
                 current.bytes.length === item.bytes.length &&
-                current.stage === item.stage && current.note === item.note);
+                (!item.hasPrivateMetadata ||
+                  (current.stage === item.stage && current.note === item.note)));
               item.bytes.fill(0);
             } else {
               invariant(merged.length < MAX_FILES && priorTotal + item.bytes.length <= MAX_TOTAL_BYTES);
