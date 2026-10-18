@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-nyhEU1/9gXC1a0TU7XNU7UhW9afJ3EzHmifMNhTwOpU=' 'sha256-pVirB8Nw9VcjgfHGIlPWVW6r8wuJyQWZoF+DRXuSRzg='; style-src 'sha256-zVywJm1zj7vaylmQUpfb9Vr5eCe6rDxI1GytJWQt8vU='; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-2xlJz/x8wCY8TsF6qlqAE0WyufOr8+QFAYn/C/DecG4=' 'sha256-m7UIotR0YDpCNkG8dpH+CnxK5gdCl+pVy4axUhDCJGU='; style-src 'sha256-Oey3xbqAcDHV62q+mjBNxmjnKjbnCyeceIlUeuiLOkU='; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <title>LightUp | Remediation Capacity Studio — offline draft</title>
 <style>:root{color-scheme:dark;--bg:#0a1119;--panel:#111e29;--edge:#304451;--text:#edf5f7;--muted:#a4bac8;--teal:#7ee4bd;--amber:#f9d48a;--blue:#7cb8ff}
 *{box-sizing:border-box}
@@ -56,6 +56,8 @@ footer{padding:22px 0 60px}
 @media print{body{background:white;color:#111;font-size:11pt}.mast{padding:0}h1{font-size:22pt}.panel{border:1px solid #888;box-shadow:none;break-inside:avoid;margin:10px 0}.notice{background:white;color:#333}input,button,form,.upload,.actions,.feedback,.eyebrow,#source-status{display:none!important}.subtle,small{color:#444}.stat{background:white;color:#111}.stat span{color:#444}.fill{background:#444}.track{border:1px solid #555;background:white}.week{break-inside:avoid}td,th{color:#111;background:white!important;border-color:#aaa}}
 
 .scenario-controls{display:flex;gap:12px;align-items:end;flex-wrap:wrap;margin:18px 0}.scenario-controls input{width:110px}.scenario-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.scenario-card{padding:16px;border-radius:10px;background:#0b1922;border:1px solid var(--edge)}.scenario-card strong{color:var(--teal)}.scenario-card p{margin:8px 0;font-variant-numeric:tabular-nums}@media(max-width:490px){.scenario-grid{grid-template-columns:1fr}}
+
+.ack{display:flex;align-items:flex-start;gap:12px;padding:15px;margin:16px 0 20px;border:1px solid var(--edge);background:#0b1922;border-radius:10px}.ack input[type=checkbox]{width:19px;height:19px;flex:none;margin:4px 0 0}.ack strong{color:var(--text)}#history-data{margin-top:22px}#history-data .stats{margin:18px 0}@media print{.ack,#previous,#history-feedback,#review-history,#clear-history,#export-history{display:none!important}}
 </style>
 
 
@@ -115,8 +117,28 @@ footer{padding:22px 0 60px}
     <h2>Weekly workload</h2>
     <div id="weekly" class="weeks"></div>
   </div>
+  <div class="panel" aria-labelledby="history-title">
+    <p class="eyebrow">04 / HISTORICAL LOAD CHANGE</p>
+    <h2 id="history-title">Compare repair workload between two original reports</h2>
+    <p>Import one <em>earlier</em> authenticated LightUp findings CSV. Compare it with the current CSV above, using exactly the current hour assumptions. A record missing from the newer source is <strong>not proven fixed</strong>. The CSVs do not authenticate client or assessment identity.</p>
+    <div class="upload">
+      <label for="previous">Earlier original findings CSV</label>
+      <input id="previous" type="file" accept=".csv,text/csv">
+    </div>
+    <label class="ack"><input type="checkbox" id="same-engagement"> I independently checked that both exported reports refer to the <strong>same authenticated client and assessment engagement</strong>. This statement is a human assertion only; the application cannot verify it.</label>
+    <div class="actions">
+      <button type="button" id="review-history" class="secondary">Compare workloads</button>
+      <button type="button" id="clear-history" class="secondary">Forget historical comparison</button>
+    </div>
+    <p id="history-feedback" class="subtle" aria-live="polite">No earlier report compared.</p>
+    <div id="history-data" hidden>
+      <div class="stats" id="history-stats"></div>
+      <p class="subtle">A smaller estimated workload, or a source status of “fixed”, is not verified remediation. Added, changed and missing records require human reconciliation before any decisions.</p>
+      <button type="button" id="export-history" class="secondary">Export aggregate workload change</button>
+    </div>
+  </div>
   <div class="panel">
-    <p class="eyebrow">04 / CAPACITY WHAT-IF</p>
+    <p class="eyebrow">05 / CAPACITY WHAT-IF</p>
     <h2>What if the team had more capacity?</h2>
     <p>Compare the baseline with an alternative number of engineers. This does not hire, assign or book anyone; assumptions remain unchanged except staffing.</p>
     <div class="scenario-controls">
@@ -205,6 +227,59 @@ footer{padding:22px 0 60px}
       return Object.freeze({ordinal:i+1,severity:row[2],retest:row[3]});
     });
     return Object.freeze(findings);
+  }
+  // Compare two originals only inside a single synchronous call. Original IDs and
+  // descriptions never survive the comparison return boundary.
+  function compareReports(currentCSV, previousCSV, estimateHours) {
+    const current = parseCSV(currentCSV);
+    const previous = parseCSV(previousCSV);
+    if (!estimateHours || typeof estimateHours !== 'object') fail('Choose the same local effort estimates first');
+    const hours = Object.create(null);
+    for (const severity of SEVERITIES) hours[severity] =
+      exactInteger(estimateHours[severity], 1, 200, 'estimated ' + severity + ' effort');
+    const present = csvRows(currentCSV.replace(/^\uFEFF/, '')).slice(1);
+    const earlier = csvRows(previousCSV.replace(/^\uFEFF/, '')).slice(1);
+    // All rows passed canonical parser validation above. Internal maps are ephemeral.
+    const baseline = new Map(earlier.map(row => [row[0], row]));
+    const counted = {added:0, changed:0, unchanged:0, absent:0,
+      added_hours:0, changed_current_hours:0, changed_previous_hours:0,
+      absent_hours:0, current_estimated_hours:0, previous_estimated_hours:0,
+      current_critical_high:0, previous_critical_high:0,
+      current_regressions:0, previous_regressions:0};
+    for (const f of current) {
+      counted.current_estimated_hours += hours[f.severity];
+      if (f.severity === 'critical' || f.severity === 'high') counted.current_critical_high++;
+      if (f.retest === 'regression') counted.current_regressions++;
+    }
+    for (const f of previous) {
+      counted.previous_estimated_hours += hours[f.severity];
+      if (f.severity === 'critical' || f.severity === 'high') counted.previous_critical_high++;
+      if (f.retest === 'regression') counted.previous_regressions++;
+    }
+    for (const row of present) {
+      const old = baseline.get(row[0]);
+      if (!old) {
+        counted.added++;
+        counted.added_hours += hours[row[2]];
+      } else {
+        baseline.delete(row[0]);
+        if (row.every((value, i) => value === old[i])) counted.unchanged++;
+        else {
+          counted.changed++;
+          counted.changed_current_hours += hours[row[2]];
+          counted.changed_previous_hours += hours[old[2]];
+        }
+      }
+    }
+    for (const row of baseline.values()) {
+      counted.absent++;
+      counted.absent_hours += hours[row[2]];
+    }
+    counted.net_estimated_change_hours = counted.current_estimated_hours-counted.previous_estimated_hours;
+    return Object.freeze({...counted,
+      review_only:true, same_client_engagement_verified:false, retest_verified:false,
+      authorization:false, consent:false, grant:false, scan:false, dispatch:false,
+      deploy:false, release:false});
   }
   function utcStart(date) {
     if (typeof date !== 'string' || !/^\d{4}-\d\d-\d\d$/.test(date)) fail('Use an ISO calendar start date');
@@ -307,7 +382,7 @@ footer{padding:22px 0 60px}
     lines.push('','Human follow-up: confirm source client/engagement externally, review estimates and staffing, assign owners through existing authorised channels, verify repairs/retests separately.','');
     return lines.join('\n');
   }
-  root.LightUpCapacity = Object.freeze({parseCSV,plan,summary,csvReport,markdownReport,DEFAULT_HOURS,MAX_BYTES,MAX_ROWS});
+  root.LightUpCapacity = Object.freeze({parseCSV,compareReports,plan,summary,csvReport,markdownReport,DEFAULT_HOURS,MAX_BYTES,MAX_ROWS});
 })(window);
 </script>
 <script>/* LightUp Remediation Capacity Studio — no persistence, no network, no execution. */
@@ -324,15 +399,27 @@ footer{padding:22px 0 60px}
   let findings = null;
   let result = null;
   let lastOptions = null;
+  let historyReview = null;
   const source = el('source');
   const feedback = el('feedback');
   const setFeedback = (msg, error=false) => {
     feedback.textContent = msg;
     feedback.classList.toggle('error',error);
   };
+  function clearHistory() {
+    historyReview = null;
+    el('previous').value = '';
+    el('same-engagement').checked = false;
+    el('history-data').hidden = true;
+    el('history-stats').replaceChildren();
+    el('history-feedback').textContent = 'No earlier report compared.';
+  }
+  el('clear-history').addEventListener('click',clearHistory);
+  el('previous').addEventListener('change',()=>{historyReview=null;el('history-data').hidden=true;el('same-engagement').checked=false;});
   function forget() {
     findings = null; result = null; lastOptions = null;
     source.value = '';
+    clearHistory();
     el('source-status').textContent = 'No report loaded. All files stay in this browser tab.';
     el('generate').disabled = true;
     el('results').hidden = true;
@@ -344,12 +431,17 @@ footer{padding:22px 0 60px}
   el('forget').addEventListener('click',forget);
   source.addEventListener('change',async () => {
     const file = source.files && source.files[0];
+    findings = null; result = null; lastOptions = null;
+    el('generate').disabled = true;
+    el('results').hidden = true;
+    clearHistory();
     if (!file) return;
     try {
       if (file.size > engine.MAX_BYTES || file.size === 0) throw new Error('Source must be a nonempty CSV no larger than 1 MiB.');
       // Strict decoding; malformed UTF-8 must not be silently replaced.
       const content = new TextDecoder('utf-8',{fatal:true}).decode(await file.arrayBuffer());
       const prepared = engine.parseCSV(content);
+      if (source.files?.[0] !== file) return;
       findings = prepared; result = null; lastOptions = null;
       el('generate').disabled = false;
       el('results').hidden = true;
@@ -375,6 +467,7 @@ footer{padding:22px 0 60px}
         reserve:input('reserve'),hours
       };
       result = engine.plan(findings,lastOptions);
+      clearHistory();
       render();
       renderComparison();
       el('results').hidden = false;
@@ -468,6 +561,65 @@ footer{padding:22px 0 60px}
       box.append($('p','Scenario held: '+(error instanceof Error?error.message:'Invalid scenario'),'feedback error'));
     }
   }
+
+  async function decodeReport(file) {
+    if (!file || !file.size || file.size > engine.MAX_BYTES) throw new Error('Choose a nonempty original CSV up to 1 MiB.');
+    const bytes=await file.arrayBuffer();
+    // Use the exact original bytes in memory; no server, hash persistence or hidden export.
+    return new TextDecoder('utf-8',{fatal:true}).decode(bytes);
+  }
+  function showHistoricalChange(data) {
+    const container=el('history-stats');container.replaceChildren();
+    const vals=[
+      ['Added source records',data.added],
+      ['Changed source records',data.changed],
+      ['Absent / not verified fixed',data.absent],
+      ['Unchanged records',data.unchanged],
+      ['Earlier estimated hours',data.previous_estimated_hours+' h'],
+      ['Current estimated hours',data.current_estimated_hours+' h'],
+      ['Estimated workload shift',(data.net_estimated_change_hours>0?'+':'')+data.net_estimated_change_hours+' h'],
+      ['Added-case effort',data.added_hours+' h'],
+      ['Absent-case estimate',data.absent_hours+' h']
+    ];
+    for (const [label,value] of vals) {
+      const box=$('div',undefined,'stat');
+      box.append($('strong',value),$('span',label));
+      container.append(box);
+    }
+    el('history-data').hidden=false;
+  }
+  el('review-history').addEventListener('click',async()=>{
+    const currentFile=source.files?.[0];
+    const previousFile=el('previous').files?.[0];
+    const confirmation=el('same-engagement').checked;
+    historyReview=null;el('history-data').hidden=true;
+    if(!findings || !result || !lastOptions || !currentFile || !previousFile || !confirmation) {
+      el('history-feedback').textContent='HOLD: generate a current plan, select an earlier report and explicitly confirm the same client and engagement.';
+      return;
+    }
+    try {
+      const texts=await Promise.all([decodeReport(currentFile),decodeReport(previousFile)]);
+      if (source.files?.[0]!==currentFile || el('previous').files?.[0]!==previousFile ||
+          !el('same-engagement').checked) throw new Error('Input changed while comparing; review again.');
+      const report=engine.compareReports(texts[0],texts[1],lastOptions.hours);
+      if (engine.parseCSV(texts[0]).length!==findings.length) throw new Error('Current source is no longer the loaded planning source.');
+      historyReview=report;
+      showHistoricalChange(report);
+      el('history-feedback').textContent='REVIEW_ONLY — comparison based on your human same-engagement assertion. No identity, fix, revocation or retest verified.';
+    } catch(err) {
+      el('history-feedback').textContent='HOLD: '+(err instanceof Error?err.message:'Comparison input rejected');
+    }
+  });
+  el('export-history').addEventListener('click',()=>{
+    if (!historyReview || !el('same-engagement').checked) return;
+    if(!window.confirm('Export only untrusted aggregate workload differences? Not proof of repair, consent or identity.'))return;
+    download('lightup-capacity-source-change.json',JSON.stringify({
+      schema:'lightup.remediation_capacity_source_change_draft.v1',
+      ...historyReview
+    },null,2)+'\n','application/json;charset=utf-8');
+    setFeedback('Aggregate historical workload differences exported as REVIEW_ONLY.');
+  });
+
   el('compare').addEventListener('click',renderComparison);
   function download(name,content,mime) {
     // Deliberate user-initiated, local-only export. URL revoked immediately.
