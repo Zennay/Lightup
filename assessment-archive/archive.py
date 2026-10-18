@@ -182,8 +182,8 @@ def publish(path, data):
         os.unlink(temp)
 
 
-def load_manifest(path):
-    doc = decode_json(read_regular(path, MAX_MANIFEST))
+def _manifest(doc):
+    """Strict original snapshot validator, reusable without a second file open."""
     expected = {"schema", "entries", "source_count", "status",
                 "authorized", "consent_verified", "dispatch_allowed", "release_allowed"}
     if type(doc) is not dict or set(doc) != expected or doc["schema"] != SCHEMA:
@@ -212,6 +212,10 @@ def load_manifest(path):
     if doc["status"] != state:
         raise Hold("contradictory claimed status")
     return doc
+
+
+def load_manifest(path):
+    return _manifest(decode_json(read_regular(path, MAX_MANIFEST)))
 
 
 def capture(args):

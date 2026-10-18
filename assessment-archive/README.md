@@ -89,3 +89,13 @@ Choose HTML for an actual standalone source delta workspace: three added/absent/
     python3 assessment-archive/archive.py diff --previous /private/OLDER.json --current /private/NEWER.json --format html --aggregate-only --output /private/NEW-change-dashboard.html
 
 This static offline report does not infer that a missing source is a repaired vulnerability. Its CSP forbids external resources, JavaScript, network, forms and browser persistence. Output is an exclusive 0600 HTML file.
+
+### One interactive operator console
+
+For the entire private intake-to-human-follow-up workflow, there is now one local terminal entrypoint:
+
+    python3 assessment-archive/console.py
+
+The menu exposes seven complete actions: capture, source integrity recheck, printable private/anonymized inventory, aggregate sharing, before/after source-delta, editable human planning form generation and source-bound worklist publication. The operator explicitly selects each input file, each output filename, and public versus private view. There is no directory scan, network, shell, model, target interaction, browser persistence, automatic source escalation, or non-0600 output. Invalid inputs yield a generic HOLD and return to the safe menu rather than exposing source paths. The console never offers an authorization, dispatch or GO action.
+
+Use --help for noninteractive usage hints. The original individual commands remain usable independently, with the same source and security requirements.
