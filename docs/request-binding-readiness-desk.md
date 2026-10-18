@@ -81,3 +81,8 @@ De import leest uitsluitend een v1 DRAFT_ONLY JSON-export. Het originele operato
 De vertaling weigert ongeldige/extra JSON-velden, dubbele sleutels, ontbrekende of afwijkende false authority-vlaggen, elke assetuitsluiting (kan niet stilzwijgend worden genegeerd), private lab-netwerkchecks, analysis_only, dubbele voorstellen, niet-canonieke host/IP/CIDR, onjuiste risico's en inconsistente lokale/UTC-planningstijden. De oorspronkelijke optionele Studio-draft-SHA wordt op basis van de originele v1 canonicalizer nagekeken: nog steeds uitsluitend ongetekende lokale integriteitsinformatie, NOOIT een cliëntsignatuur.
 
 Bij 1 voorstel ontstaat de bestaande privé-operatorreview; bij 2–8 voorstellen volgt de al gebouwde gezamenlijke read-only vergelijking, met afzonderlijke menselijke opvolging, lokale werkstatus en brongebonden conceptoverdracht. De Studio-branch zelf, oorspronkelijke grant-issuer, werkende security gates, CI, echte toestemming en productie zijn niet aangepast.
+
+
+## Explicit private disclosure of original proposed literals
+
+Default review output contains original proposed asset COUNT only. --include-proposed-assets is a separate, non-default operator opt-in that exposes exact canonical host/IP/CIDR literals inside the PRIVATE authenticated-source JSON/HTML, including each original scenario. This is never authority or consent. Original request IDs and client labels still have independent opt-in flags. The aggregate handoff remains permanently anonymous and excludes exact asset literals, original request IDs, original client labels, file paths and private operator notes. Never send an opt-in private HTML to an unapproved destination.

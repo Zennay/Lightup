@@ -316,6 +316,18 @@ def render(report: dict) -> str:
         for i, item in enumerate(scopes, 1)
     )
     total = sum(len(item["candidates"]) for item in scopes)
+    private_assets = []
+    for slot, item in enumerate(scopes, 1):
+        exposed = item["source"].get("proposed_assets_private_opt_in", [])
+        if type(exposed) is not list or len(exposed) > 80:
+            raise ValueError("invalid private scope display")
+        if exposed:
+            private_assets.append(
+                "<details><summary>PRIVATE proposed literal assets · scenario " + str(slot) +
+                " (explicit operator opt-in, no grant)</summary><ul>" +
+                "".join("<li><code>" + escape(str(asset), quote=True) +
+                        "</code></li>" for asset in exposed) + "</ul></details>"
+            )
     if total > 4000:
         raise ValueError("offline human queue limit exceeded")
     return (
@@ -337,7 +349,8 @@ def render(report: dict) -> str:
         '</div><p class="hint">*Multiple human alternatives can refer to the same original stored requests; '
         'these counts are NOT distinct permissions or approved actions. '
         'Original source revision SHA-256 (unsigned, not verified): <code>' +
-        escape(scopes[0]["source"]["source_revision_sha256_unsigned"]) + '</code></p>'
+        escape(scopes[0]["source"]["source_revision_sha256_unsigned"]) + '</code></p>' +
+        "".join(private_assets) +
         '<section><h2>Original source problems · human follow-up queue</h2>'
         '<p>The current canonical source owner remains responsible for actual grants and request integrity. '
         'These groups show fixed human questions and the number of original source rows affected. '
