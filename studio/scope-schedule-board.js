@@ -19,7 +19,7 @@ const exactKeys = (v,allowed) => Object.keys(v).every(k => allowed.has(k));
 const validString = (s,n) => typeof s === 'string' && s.length <= n;
 const str = s => String(s == null ? '' : s);
 const minutes = v => Number.isInteger(v) && v >= -840 && v <= 840;
-let entries = [], blackouts = [], scenarioShifts = new Map(), anchorUTC = 0, anchorChangedByUser = false;
+let entries = [], blackouts = [], scenarioShifts = new Map(), laneAssignments = new Map(), anchorUTC = 0, anchorChangedByUser = false;
 
 function validLocal(value) {
   if (value === null) return true;
@@ -106,9 +106,9 @@ function formatUTC(n){return new Date(n).toISOString().replace('.000Z',' UTC').r
 function fmtDate(n){return new Date(n).toISOString().slice(0,10);}
 function shown(){
   return entries.filter(e=>e.interval.state==='resolved').map(e=>{
-    const shift=scenarioShifts.get(e.key);
-    return shift===undefined ? {...e,scenario:false,original:e.interval} :
-      {...e,interval:{state:'resolved',start:shift,end:shift+(e.interval.end-e.interval.start)},
+    const shift=scenarioShifts.get(e.key),lane=laneAssignments.get(e.key)||1;
+    return shift===undefined ? {...e,lane,scenario:false,original:e.interval} :
+      {...e,lane,interval:{state:'resolved',start:shift,end:shift+(e.interval.end-e.interval.start)},
         scenario:true,original:e.interval};
   });
 }
@@ -116,7 +116,9 @@ function timeClashes(list) {
   const pairs=[],active=new Set();
   for(let i=0;i<list.length;i++)for(let j=i+1;j<list.length;j++){
     const a=list[i].interval,b=list[j].interval;
-    if(a.start<b.end && b.start<a.end){pairs.push([i,j]);active.add(i);active.add(j);}
+    if(a.start<b.end && b.start<a.end && (list[i].lane||1)===(list[j].lane||1)){
+      pairs.push([i,j]);active.add(i);active.add(j);
+    }
   }
   return {pairs,active};
 }
@@ -207,6 +209,17 @@ function renderInventory(){
       (entry.interval.state==='resolved'?'UTC interval resolved': 'HOLD: '+entry.interval.state));
     if(entry.sourceHash)append(box,'small',' · Source SHA-256 '+entry.sourceHash.slice(0,12)+'…');
     const controls=document.createElement('div');controls.className='row';box.append(controls);
+    const laneSelect=document.createElement('select');laneSelect.setAttribute('aria-label','Local planning lane for draft #'+(index+1));
+    for(let lane=1;lane<=4;lane++){
+      const opt=append(laneSelect,'option','Planning lane '+lane);opt.value=String(lane);
+    }
+    laneSelect.value=String(laneAssignments.get(entry.key)||1);
+    laneSelect.addEventListener('change',()=>{
+      laneAssignments.set(entry.key,Number(laneSelect.value));
+      $('status').textContent='Local resource lane changed. Only draft time conflicts within a lane are compared; this does not verify team availability.';
+      render();
+    });
+    controls.append(laneSelect);
     if(entry.interval.state==='resolved'){
       const focus=append(controls,'button','Focus UTC timeline');
       focus.type='button';focus.addEventListener('click',()=>{
@@ -220,7 +233,7 @@ function renderInventory(){
     remove.addEventListener('click',()=>{
       if(!window.confirm('Remove this imported proposal from the local board? Its original file will stay unchanged. Previously exported scenario ordinals may no longer match.'))return;
       const removed=entries.splice(index,1)[0];
-      scenarioShifts.delete(removed.key);
+      scenarioShifts.delete(removed.key);laneAssignments.delete(removed.key);
       $('status').textContent='One local proposal removed. Source file untouched. Re-export the private scenario if needed.';
       render();
     });
@@ -244,7 +257,7 @@ function render(){
   renderInventory();
   $('total').textContent=entries.length;$('timed').textContent=timed.length;
   $('unscheduled').textContent=unsafe.length;$('clashes').textContent=pairs.length+blockHits.length;
-  const original=entries.filter(e=>e.interval.state==='resolved');
+  const original=entries.filter(e=>e.interval.state==='resolved').map(e=>({...e,lane:laneAssignments.get(e.key)||1}));
   const baseline=timeClashes(original).pairs.length+
     original.reduce((total,e)=>total+blackouts.filter(b=>e.interval.start<b.end&&b.start<e.interval.end).length,0)+
     original.filter(e=>!withinWorkHours(e.interval,policy)).length;
@@ -261,7 +274,7 @@ function render(){
   for(const {entry:e,i} of ordered){
     const row=document.createElement('div');row.className='lane';lanes.append(row);
     const label=document.createElement('div');label.className='label';row.append(label);
-    append(label,'strong',e.name+(e.scenario?' · WHAT-IF':' '));
+    append(label,'strong','Lane '+e.lane+' · '+e.name+(e.scenario?' · WHAT-IF':' '));
     append(label,'span','Risk '+e.risk+' · '+e.mode+(e.scenario?' · SHIFTED':''),'pill');
     const track=document.createElement('div');track.className='track';track.style.setProperty('--days',days);row.append(track);
     const start=Math.max(e.interval.start,lo),end=Math.min(e.interval.end,hi);
@@ -300,7 +313,7 @@ function render(){
   if(!pairs.length && !blockHits.length && !invalidHours.length)append(conflict,'p','No collisions detected against other drafts or locally unavailable periods. This does not prove availability or approval.','muted');
   for(const [i,j] of pairs){
     const a=timed[i],b=timed[j],box=document.createElement('div');box.className='item danger';conflict.append(box);
-    append(box,'strong',a.name+' ↔ '+b.name);
+    append(box,'strong','Lane '+a.lane+': '+a.name+' ↔ '+b.name);
     append(box,'div','Overlap: '+formatUTC(Math.max(a.interval.start,b.interval.start))+' – '+formatUTC(Math.min(a.interval.end,b.interval.end)));
   }
   for(const [i,j] of blockHits){
@@ -818,7 +831,7 @@ $('files').addEventListener('change',async ev=>{
 $('clear').addEventListener('click',()=>{
   if(!entries.length && !blackouts.length)return;
   if(!window.confirm('Clear all imported drafts and unavailable periods from this tab?'))return;
-  entries=[];blackouts=[];scenarioShifts.clear();$('scenarioStart').value='';$('status').textContent='Local drafts and scenarios cleared; no persisted history.';render();
+  entries=[];blackouts=[];scenarioShifts.clear();laneAssignments.clear();$('scenarioStart').value='';$('status').textContent='Local drafts and scenarios cleared; no persisted history.';render();
 });
 $('print').addEventListener('click',()=>{if(entries.length)window.print();});
 function icsTimestamp(n){return new Date(n).toISOString().replace(/[-:]/g,'').replace('.000Z','Z');}
