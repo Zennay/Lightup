@@ -10,7 +10,7 @@ const STAGES=['missing','submitted','needs_changes','ready_for_authorized_retest
 const MAX={change_reference:240,deployment_reference:240,rollback_reference:240,retest_request_reference:240,review_question:700};
 const bidi=/[\u202a-\u202e\u2066-\u2069]/;
 const HOURS=4;
-let state=null;
+let state=null,lastBulkSnapshot=null;
 const setStatus=(value,error=false)=>{$('status').textContent=value;$('status').dataset.error=error?'true':'false';};
 function fail(s){throw Error(s);}
 function keys(o,allowed,required=allowed){
@@ -157,17 +157,47 @@ function readiness(f,r){
  return concerns.length?concerns.join(' · '):'Human notes present; no verified remediation or approval';
 }
 function el(tag,txt){const n=document.createElement(tag);if(txt!==undefined)n.textContent=String(txt);return n;}
+
+function hasHumanHold(f,r){
+ return r.stage==='missing'||r.stage==='needs_changes'||EVIDENCE.slice(0,4).some(k=>!r.evidence[k]);
+}
+function visibleFinding(f,r){
+ const severity=$('filter').value,human=$('humanFilter').value;
+ if(severity&&severity!==f.severity)return false;
+ if(human==='gaps'&&!hasHumanHold(f,r))return false;
+ if(human==='complete'&&hasHumanHold(f,r))return false;
+ if(human==='regression'&&f.retest_status!=='regression')return false;
+ if(human==='critical'&&!['critical','high'].includes(f.severity))return false;
+ return true;
+}
+function bulkApply(){
+ if(!state)fail('Original source is not loaded.');
+ const chosen=Number($('bulkWindow').value);
+ if(!Number.isInteger(chosen)||chosen<0||chosen>HOURS)fail('Invalid human window slot.');
+ const cohort=state.source.filter(f=>visibleFinding(f,state.review.get(f.finding_id)));
+ if(!cohort.length)fail('Current human filter has no source findings.');
+ if(!confirm('Apply a HUMAN-ONLY proposed window to '+cohort.length+' visible original finding(s)? This never changes source findings, notes, grants or retest statuses.'))return;
+ lastBulkSnapshot=new Map(state.assignments);
+ for(const f of cohort)state.assignments.set(f.finding_id,chosen);
+ $('bulkUndo').disabled=false;
+ render();setStatus('Applied one private human slot to '+cohort.length+' source records. No authorization or verified change.');
+}
+function bulkUndo(){
+ if(!state||!lastBulkSnapshot)fail('No previous local bulk assignment to undo.');
+ state.assignments=lastBulkSnapshot;lastBulkSnapshot=null;$('bulkUndo').disabled=true;
+ render();setStatus('Most recent private bulk window selection undone. Original source and review notes unchanged.');
+}
+
 function render(){
  if(!state)return;
  const src=state.source,rows=$('findings');rows.replaceChildren();
  let unassigned=0,holds=0;
- const selected=$('filter').value;
  for(const f of src){
   const r=state.review.get(f.finding_id);
   if(!state.assignments.has(f.finding_id))state.assignments.set(f.finding_id,0);
   if(!state.assignments.get(f.finding_id))unassigned++;
   if(r.stage==='missing'||r.stage==='needs_changes'||EVIDENCE.slice(0,4).some(k=>!r.evidence[k]))holds++;
-  if(selected&&selected!==f.severity)continue;
+  if(!visibleFinding(f,r))continue;
   const tr=el('tr'),id=el('td',f.finding_id),severity=el('td',f.severity),source=el('td',f.retest_status),
     stage=el('td',r.stage+' (human only)'),caveat=el('td',readiness(f,r)),slot=el('td');
   if(r.stage==='needs_changes'||r.stage==='missing')caveat.className='hold';
@@ -175,7 +205,7 @@ function render(){
   sel.appendChild(new Option('Unassigned',0));
   for(let i=1;i<=HOURS;i++)sel.appendChild(new Option('Human window '+i,i));
   sel.value=String(state.assignments.get(f.finding_id)||0);
-  sel.addEventListener('change',()=>{state.assignments.set(f.finding_id,Number(sel.value));render();});
+  sel.addEventListener('change',()=>{lastBulkSnapshot=null;$('bulkUndo').disabled=true;state.assignments.set(f.finding_id,Number(sel.value));render();});
   slot.appendChild(sel);
   for(const cell of [id,severity,source,stage,caveat,slot])tr.appendChild(cell);
   rows.appendChild(tr);
@@ -196,7 +226,7 @@ function render(){
 }
 async function load(){
  /* Atomic import: always discard old state on a new attempt, never keep stale source on error. */
- state=null;$('results').hidden=true;$('digest').textContent='';
+ state=null;lastBulkSnapshot=null;$('bulkUndo').disabled=true;$('results').hidden=true;$('digest').textContent='';
  const file=$('csv').files[0],review=$('review').files[0];
  if(review&&!$('same').checked)fail('Independent exact client/engagement confirmation required for review join.');
  const src=C.parseCSV(await read(file,1048576)),hash=await digest(src);
@@ -308,7 +338,7 @@ async function resumePlan(){
    fail('Private window aggregate contradicts original source/review records.');
  }
  /* All admissions are complete; apply the whole human draft in one step. */
- state.assignments=imported;
+ state.assignments=imported;lastBulkSnapshot=null;$('bulkUndo').disabled=true;
  for(let i=0;i<HOURS;i++){
   const w=restoredWindows[i];$('date'+i).value=w?w.start_utc.slice(0,16):'';
   $('label'+i).value=w?w.label:'';$('duration'+i).value=String(w?w.minutes:60);
@@ -358,7 +388,7 @@ function aggregateExport(){
  output('lightup-aggregate-human-windows.csv',data.join('\r\n')+'\r\n','text/csv');
 }
 function forget(){
- state=null;for(const id of ['csv','review','planFile'])$(id).value='';
+ state=null;lastBulkSnapshot=null;$('bulkUndo').disabled=true;for(const id of ['csv','review','planFile'])$(id).value='';
  $('same').checked=false;$('note').value='';$('digest').textContent='';$('results').hidden=true;
  for(let i=0;i<HOURS;i++){$('date'+i).value='';$('label'+i).value='';$('duration'+i).value='60';}
  setStatus('All loaded original data and human window assignments forgotten from this tab.');
@@ -376,6 +406,9 @@ function init(){
  $('forget').addEventListener('click',forget);
  $('resume').addEventListener('click',()=>resumePlan().catch(e=>setStatus(e.message,true)));
  $('filter').addEventListener('change',render);
+ $('humanFilter').addEventListener('change',render);
+ $('bulkApply').addEventListener('click',()=>{try{bulkApply();}catch(e){setStatus(e.message,true);}});
+ $('bulkUndo').addEventListener('click',()=>{try{bulkUndo();}catch(e){setStatus(e.message,true);}});
  $('recalculate').addEventListener('click',()=>{try{plan();render();setStatus('Hypothetical windows checked for overlap; original authority remains HOLD.');}catch(e){setStatus(e.message,true);}});
  for(const [id,fn] of [['private',privateExport],['calendar',calendarExport],['aggregate',aggregateExport]])
   $(id).addEventListener('click',()=>{try{fn();setStatus('Local unsigned planning export prepared; not authorization or verified evidence.');}catch(e){setStatus(e.message,true);}});
