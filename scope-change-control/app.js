@@ -18,7 +18,7 @@
   const STAGES = ["unreviewed", "owner-follow-up", "source-recheck", "human-acknowledged"];
   const $ = id => document.getElementById(id);
   const text = (id, value) => { $(id).textContent = String(value); };
-  const state = { snapshots: [], changes: [], sha: [], notes: new Map(), details: new Map(), lineageNotes: new Map(), editKey: null };
+  const state = { snapshots: [], changes: [], sha: [], notes: new Map(), details: new Map(), lineageNotes: new Map(), lineageDetails: new Map(), editKey: null };
   function hold(message) { throw Error(message); }
   function isObject(x) { return x !== null && typeof x === "object" && !Array.isArray(x); }
   function literal(x, n) {
@@ -194,9 +194,12 @@
     return {reviewer,next_action:action,note,due_utc:due};
   }
   function editHuman(key) {
-    if (state.snapshots.length!==2 || !state.changes.some(c=>c.category+":"+c.id===key)) return;
+    const lineageKey=key.startsWith("lineage:");
+    if (state.snapshots.length!==2 || !(lineageKey ?
+      sourceLineage().some(item=>"lineage:"+item.id===key) :
+      state.changes.some(c=>c.category+":"+c.id===key))) return;
     state.editKey=key;
-    const entry=state.details.get(key)||{reviewer:"",next_action:"",note:"",due_utc:""};
+    const entry=(lineageKey?state.lineageDetails:state.details).get(key)||{reviewer:"",next_action:"",note:"",due_utc:""};
     text("detailIdentity",key);
     $("reviewerAlias").value=entry.reviewer;
     $("nextHumanAction").value=entry.next_action;
@@ -205,7 +208,9 @@
     $("humanDialog").showModal();
   }
   function saveHumanDetail() {
-    if (!state.editKey || !state.changes.some(c=>c.category+":"+c.id===state.editKey))
+    if (!state.editKey || !(state.editKey.startsWith("lineage:") ?
+      sourceLineage().some(item=>"lineage:"+item.id===state.editKey) :
+      state.changes.some(c=>c.category+":"+c.id===state.editKey)))
       return;
     try {
       const item=humanDetails({
@@ -214,7 +219,7 @@
         note:$("humanNote").value,
         due_utc:$("humanDue").value,
       });
-      state.details.set(state.editKey,item);
+      (state.editKey.startsWith("lineage:")?state.lineageDetails:state.details).set(state.editKey,item);
       state.editKey=null;
       $("humanDialog").close();
       render();
@@ -288,7 +293,12 @@
       }
       select.value=item.stage;
       select.addEventListener("change",()=>{state.lineageNotes.set(item.id,select.value);renderLineage();});
-      col.appendChild(select);tr.appendChild(col);body.appendChild(tr);
+      col.appendChild(select);tr.appendChild(col);
+      const human=document.createElement("td"),edit=document.createElement("button");
+      edit.type="button";edit.className="outline compact";
+      edit.textContent=state.lineageDetails.has("lineage:"+item.id)?"Edit local note":"Add follow-up";
+      edit.addEventListener("click",()=>editHuman("lineage:"+item.id));
+      human.appendChild(edit);tr.appendChild(human);body.appendChild(tr);
     }
     const requestDriven=entries.filter(x=>x.reasons.includes("RECORDED_REQUEST_SOURCE_CHANGED")).length;
     const holdLike=entries.filter(x=>x.reasons.some(r=>r.includes("HOLD")||r.includes("MISSING")||r.includes("NOT_RECORDED")||r.includes("NO_RECORDED"))).length;
@@ -397,7 +407,7 @@
   async function load() {
     text("error","");
     $("results").hidden = true;
-    state.snapshots=[];state.changes=[];state.sha=[];state.notes.clear();state.details.clear();state.editKey=null;state.lineageNotes.clear();
+    state.snapshots=[];state.changes=[];state.sha=[];state.notes.clear();state.details.clear();state.editKey=null;state.lineageNotes.clear();state.lineageDetails.clear();
     try {
       const files = [$("older").files[0],$("newer").files[0]];
       if (!files[0] || !files[1]) hold("Select two private original Casebook JSON exports");
@@ -410,7 +420,7 @@
       state.changes = changed(a.parsed,b.parsed);
       render();
     } catch (e) {
-      state.snapshots=[];state.changes=[];state.sha=[];state.notes.clear();state.details.clear();state.editKey=null;state.lineageNotes.clear();
+      state.snapshots=[];state.changes=[];state.sha=[];state.notes.clear();state.details.clear();state.editKey=null;state.lineageNotes.clear();state.lineageDetails.clear();
       text("error","HOLD: " + (e && e.message ? e.message : "invalid source"));
     }
   }
@@ -461,7 +471,8 @@
         old_approved_request:item.oldLink,new_approved_request:item.newLink,
         old_observation:item.oldObservation,new_observation:item.newObservation,
         request_status:item.requestStatus,reasons:item.reasons,
-        human_stage:state.lineageNotes.get(item.id)||"unreviewed"
+        human_stage:state.lineageNotes.get(item.id)||"unreviewed",
+        human_review:state.lineageDetails.get("lineage:"+item.id)||{reviewer:"",next_action:"",note:"",due_utc:""}
       })),
       changes:state.changes.map(c=>({
         category:c.category,original_id:c.id,change:c.kind,priority:c.priority,
@@ -585,6 +596,7 @@
       }
       if(stages.size!==expected.size) hold("Private handoff incomplete");
       const restoredLineage=new Map();
+      const restoredLineageDetails=new Map();
       if (!native && doc.recorded_binding_review!==undefined) {
         if (!Array.isArray(doc.recorded_binding_review)) hold("Original binding review is not an array");
         const current=sourceLineage();
@@ -607,6 +619,7 @@
              !STAGES.includes(item.human_stage))
             hold("Original request/grant binding review was changed or truncated");
           restoredLineage.set(actual.id,item.human_stage);
+          if(item.human_review!==undefined) restoredLineageDetails.set("lineage:"+actual.id,humanDetails(item.human_review));
         }
         if(restoredLineage.size!==expectedLineage.size)
           hold("Private binding review incomplete");
@@ -615,6 +628,7 @@
       state.notes=stages;
       state.details=restoredDetails;
       state.lineageNotes=restoredLineage;
+      state.lineageDetails=restoredLineageDetails;
       render();
       text("restore-status",native ? "Authenticated-CLI source review admitted; all original human stages start unreviewed. No permissions inferred." : "Private local human stages restored against exact original source bytes. No authorization changes.");
     } catch(e){
