@@ -4,6 +4,12 @@
 
 This standalone **offline, multi-owner HUMAN follow-up register** is a read-only companion to the original source-owning [Evidence Artifact Ledger, draft PR #1642](https://github.com/Zennay/Lightup/pull/1642), pinned to source HEAD `6a8cd3baf6535705a7baca77dc3dc5067f862b3d`. All files are new under `remediation-response-reconciliation/`. It does **not** change that PR, the original five-field source parser, Casework, Evidence Review, scanners, consent, grants, active targets, or production.
 
+## Portable offline product (published)
+
+- [Open the self-contained offline HTML](standalone.html) — one file, all JS/CSS included, no network dependencies, deterministic script/style SHA-256 CSP pinning.
+- [Open the three-file development version](index.html) with local `app.js` and `style.css` alongside it.
+- Rebuild after source changes with `python3 build_standalone.py`; `python3 build_standalone.py --check` confirms the exact committed bundle. These are build/integrity commands, not QA suites. Do not assert a VPS build unless actually executed by the permitted runner/zSSH.
+
 ## Workflow
 
 1. Open `index.html` with `app.js` and `style.css` alongside it, without an internet connection. No credentials, server, account, installation or internet access required.
