@@ -139,6 +139,8 @@ def _append_stop_authenticated_actor(db_path: str, *, engagement_id: str, actor_
         for statement in _SCHEMA.split(";"):
             if statement.strip():
                 con.execute(statement)
+        if not _stop_schema_current(con):
+            raise StopLedgerError("STOP schema mismatch: HOLD")
         stop_id, when = str(uuid4()), datetime.now(timezone.utc).isoformat()
         con.execute(
             "INSERT INTO authorization_stop_events"
@@ -190,6 +192,8 @@ def status_for_actor(db_path: str, *, engagement_id: str, actor_id: str) -> dict
         con.execute("BEGIN")
         tenant = _engagement_client(con, engagement_id)
         _require_current_actor(con, actor_id, tenant)
+        if not _stop_schema_current(con):
+            raise StopLedgerError("STOP schema mismatch: HOLD")
         entries = con.execute(
             "SELECT stop_id,actor_role,stopped_at FROM authorization_stop_events "
             "WHERE engagement_id=? AND client_id=? "
@@ -359,6 +363,8 @@ def engagement_inbox(db_path: str, *, actor_id: str) -> dict:
             "SELECT 1 FROM sqlite_master "
             "WHERE type='table' AND name='authorization_stop_events'"
         ).fetchone() is not None
+        if has_table and not _stop_schema_current(con):
+            raise StopLedgerError("STOP schema mismatch: HOLD")
         result = []
         for row in rows[:100]:
             engagement_id = _literal(row["engagement_id"], "persisted engagement")
