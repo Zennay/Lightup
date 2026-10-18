@@ -13,6 +13,9 @@
   const statuses = Object.freeze(['open', 'working', 'escalated', 'locally_documented']);
   const severity = Object.freeze({
     TENANT_LINEAGE_MISMATCH: 5,
+    CLOSED_ENGAGEMENT_GRANT: 5,
+    INACTIVE_CLIENT_GRANT: 5,
+    INVALID_APPROVED_REQUEST_BINDING: 5,
     UNTRUSTED_APPROVED_REQUEST_ORIGIN: 5,
     INVALID_GRANT_ASSETS: 5,
     INVALID_GRANT_WINDOW: 5,
