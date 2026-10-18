@@ -145,8 +145,8 @@ function caseworkFile(o,src,hash){
  keys(o,[...required,'instructions'],required);
  if(o.kind!=='lightup.remediation_casework_draft'||o.schema_version!==1||
     o.disposition!=='LOCAL_CLIENT_PLANNING'||o.source_contract!=='lightup.finding_export._COLUMNS_v1'||
-    o.source_sha256!==hash||FLAGS.some(k=>o[k]!==false))
-  fail('Casework is not exact-source-bound original v1 or claims authority.');
+    (o.source_sha256!==hash&&o.source_sha256!==null)||FLAGS.some(k=>o[k]!==false))
+  fail('Casework is not original v1, contradicts the loaded canonical source SHA or claims authority.');
  if(o.instructions!==undefined&&typeof o.instructions!=='string')fail('Invalid original Casework instructions.');
  if(!Array.isArray(o.findings)||o.findings.length!==src.length||
     !Array.isArray(o.cases)||o.cases.length!==src.length)fail('Incomplete original Casework source rows.');
@@ -162,7 +162,8 @@ function caseworkFile(o,src,hash){
  for(const item of o.cases)keys(item,fields);
  const parsed=C.loadPacket(o),rows=new Map(parsed.cases.map(c=>[c.finding_id,c]));
  if(rows.size!==src.length)fail('Original Casework duplicate or missing human case.');
- return {rows,sha256:localSha256(JSON.stringify(src.map(f=>rows.get(f.finding_id))))};
+ return {rows,sha256:localSha256(JSON.stringify(src.map(f=>rows.get(f.finding_id)))),
+  original_packet_hashless:o.source_sha256===null};
 }
 function pastDue(c){
  if(!c||!c.due_date||['completed','deferred'].includes(c.status))return false;
@@ -190,6 +191,7 @@ function privateCaseBrief(){
  '**UNVERIFIED, OFFLINE HUMAN PLANNING ONLY. No finding has been patched, independently retested, authorized or given a grant by this export.**','',
  'Original canonical five-column source SHA-256: '+state.hash+' (unsigned, not identity, permission or client consent).',
  'Original Casework human row digest: '+state.caseworkDigest+' (unsigned).',
+ state.caseworkHashless?'WARNING: ORIGINAL Casework packet carried NO source SHA-256; only full original finding-row equality was checked, no proof of issuer or permission.':'Original Casework packet included matching original source SHA-256, still unsigned and non-authorizing.',
  state.caseworkUpdate?'Previous LOCAL original Casework human snapshot SHA-256: '+state.caseworkUpdate.from_sha256:'No separately applied human Casework snapshot change recorded in this tab.',
  'Total original source findings: '+state.source.length,'',
  ];
@@ -292,8 +294,9 @@ async function previewCaseworkRevision(){
  if(!changes.size)fail('No original human Casework row changed.');
  const impact=caseworkImpact(changes);
  caseworkCandidate={source_sha256:state.hash,old_sha256:state.caseworkDigest,
-  plan:localPlanFingerprint(),input:$('nextCasework').files[0],next:newer.rows,digest:newer.sha256,changes,impact};
- $('caseworkSummary').textContent='Human-only original Casework preview: '+impact.total+
+  plan:localPlanFingerprint(),input:$('nextCasework').files[0],next:newer.rows,digest:newer.sha256,
+  original_packet_hashless:newer.original_packet_hashless,changes,impact};
+ $('caseworkSummary').textContent=(newer.original_packet_hashless?'WARNING: original Casework packet contained no source SHA-256; full original five-column row equality was checked but issuer, consent and identity remain UNVERIFIED. ':'')+'Human-only original Casework preview: '+impact.total+
   ' changed rows ('+impact.urgent+' critical/high); '+impact.owner+' owner, '+impact.status+
   ' status, '+impact.deadline+' deadline, '+impact.blocker+' blocker, '+
   impact.action+' action/notes changed. NO original source, notes, assignments or authorities changed yet.';
@@ -325,7 +328,7 @@ function assertCaseworkPreview(){
 function applyCaseworkRevision(){
  const p=assertCaseworkPreview();
  if(!confirm('Replace PRIVATE in-memory original Casework human rows with this complete newer ORIGINAL snapshot? Prior saved plans bound to previous Casework will not resume. No backend or permission is changed.'))return;
- state.casework=p.next;state.caseworkDigest=p.digest;
+ state.casework=p.next;state.caseworkDigest=p.digest;state.caseworkHashless=p.original_packet_hashless;
  state.caseworkChanges=new Map([...p.changes].map(([id,c])=>[id,c.fields]));
  state.caseworkUpdate={from_sha256:p.old_sha256,to_sha256:p.digest,source_sha256:state.hash,
   ...p.impact};
@@ -345,6 +348,7 @@ function privateCaseworkChanges(){
  '**NOT evidence, authenticated consent, remediation, an approval, execution or retest authority.**','',
  'Original five-column source SHA-256: '+state.hash,
  'Prior original Casework rows SHA-256: '+p.old_sha256,
+ (p.original_packet_hashless?'WARNING: newer original Casework packet had NO source fingerprint; full original source equality only.':'Newer original Casework packet contained matching canonical source SHA-256.'),
  'Newer original Casework rows SHA-256: '+p.digest,
  'Change summary: '+JSON.stringify(p.impact),'',
  '| Original finding ID | Original severity | Private field | Previous human-only value | New human-only value |',
@@ -545,10 +549,12 @@ async function load(){
  let notes=new Map(src.map(f=>[f.finding_id,emptyReview()]));
  if(review)notes=reviewFile(strictJSON(await read(review,2097152)),src,hash);
  const casework=caseFile?caseworkFile(strictJSON(await read(caseFile,2097152)),src,hash):null;
- state={source:src,hash,review:notes,casework:casework?.rows||null,caseworkDigest:casework?.sha256||null,caseworkChanges:new Map(),caseworkUpdate:null,assignments:new Map()};
+ state={source:src,hash,review:notes,casework:casework?.rows||null,caseworkDigest:casework?.sha256||null,
+  caseworkHashless:casework?.original_packet_hashless||false,
+  caseworkChanges:new Map(),caseworkUpdate:null,assignments:new Map()};
  $('digest').textContent='Original canonical source SHA-256: '+hash+' · unsigned content correlation only; NOT identity or consent.';
  $('results').hidden=false;render();
- setStatus('Source loaded for private, unverified human planning. No permissions or retest inferred.');
+ setStatus('Source loaded for private, unverified human planning. '+(state.caseworkHashless?'WARNING: original Casework packet was HASHLESS; full source rows match but independent issuer/consent not verified. ':'')+'No permissions or retest inferred.');
 }
 function output(name,text,type){
  const blob=new Blob([text],{type}),url=URL.createObjectURL(blob),a=document.createElement('a');
@@ -585,8 +591,8 @@ async function resumePlan(){
  if(!state)fail('Load original source before resuming a private plan.');
  if(!$('same').checked)fail('Independently confirm same original client and exact engagement.');
  const raw=strictJSON(await read($('planFile').files[0],2097152));
- const top=['kind','schema_version','disposition','source_contract','source_sha256','warning','windows','meeting_note','assignments','source_refresh','casework_sha256','casework_update',...FLAGS];
- keys(raw,top,top.filter(x=>!['warning','source_refresh','casework_update'].includes(x)));
+ const top=['kind','schema_version','disposition','source_contract','source_sha256','warning','windows','meeting_note','assignments','source_refresh','casework_sha256','casework_update','casework_packet_hashless',...FLAGS];
+ keys(raw,top,top.filter(x=>!['warning','source_refresh','casework_update','casework_packet_hashless'].includes(x)));
  const refresh=raw.source_refresh||null;
  if(refresh!==null){
   keys(refresh,['from_sha256','to_sha256','added','changed','absent_unverified','unchanged']);
@@ -601,6 +607,8 @@ async function resumePlan(){
     raw.source_contract!=='lightup.finding_export._COLUMNS_v1'||
     raw.source_sha256!==state.hash||FLAGS.some(k=>raw[k]!==false))
   fail('Plan is not an exact non-authorizing original-source-bound draft.');
+ if(raw.casework_packet_hashless!==undefined&&raw.casework_packet_hashless!==state.caseworkHashless)
+  fail('Casework packet source-hash provenance changed; cannot resume previous private plan.');
  if((raw.casework_sha256===undefined&&state.caseworkDigest!==null)||
     (raw.casework_sha256!==undefined&&raw.casework_sha256!==state.caseworkDigest))
   fail('Original Casework plan changed or was not loaded; refuse private resume.');
@@ -705,6 +713,7 @@ function localPlanFingerprint(){
  if(!state)fail('No current original source.');
  return localSha256(JSON.stringify({
   source_sha256:state.hash,casework_sha256:state.caseworkDigest,
+  casework_packet_hashless:state.caseworkHashless,
   casework_update:state.caseworkUpdate,
   original_ids:state.source.map(f=>f.finding_id),
   human:state.source.map(f=>state.review.get(f.finding_id)),
@@ -754,7 +763,8 @@ function applySourceRevision(){
  };
  /* Atomic swap only after the full original five-field comparator, digest,
   * review/slot mapping and preview fingerprint have been accepted. */
- state={source:next,hash,review:notes,assignments:slots,casework:null,caseworkDigest:null,caseworkChanges:new Map(),caseworkUpdate:null,refreshSummary:summary};
+ state={source:next,hash,review:notes,assignments:slots,casework:null,caseworkDigest:null,
+  caseworkHashless:false,caseworkChanges:new Map(),caseworkUpdate:null,refreshSummary:summary};
  $('nextCasework').value='';$('confirmCasework').checked=false;clearCaseworkPreview('Source revision invalidated prior Casework; import a new original snapshot.');
  $('caseFilter').value='';$('ownerFilter').value='';
  lastBulkSnapshot=null;$('bulkUndo').disabled=true;
@@ -776,6 +786,7 @@ function privateExport(){
   source_sha256:state.hash,warning:'Unsigned and non-authorizing; source absence or scheduled stage never means verified remediation.',
   windows:detail,meeting_note:meetingNote($('note').value),source_refresh:state.refreshSummary||null,
   casework_sha256:state.caseworkDigest,casework_update:state.caseworkUpdate,
+  casework_packet_hashless:state.caseworkHashless,
   assignments:state.source.map(f=>{
    const r=state.review.get(f.finding_id);
    return {finding_id:f.finding_id,original_severity:f.severity,original_retest_status:f.retest_status,
