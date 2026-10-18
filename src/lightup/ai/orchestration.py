@@ -86,6 +86,18 @@ class ToolDefinition:
     def validate_schema(self) -> None:
         # Reject ambiguous tool declarations before any handler can be stored.
         # A dict built from duplicate names would silently shadow a constraint.
+        if (
+            type(self.tool_id) is not str
+            or not self.tool_id.strip()
+            or self.tool_id != self.tool_id.strip()
+            or type(self.capability_id) is not str
+            or not self.capability_id.strip()
+            or self.capability_id != self.capability_id.strip()
+            or type(self.interaction) is not InteractionKind
+            or type(self.min_risk) is not RiskLevel
+            or type(self.description) is not str
+        ):
+            raise OrchestrationError("tool definition authority fields are not canonical")
         if type(self.parameters) is not tuple:
             raise OrchestrationError("tool parameters must be a canonical tuple")
         names: set[str] = set()
@@ -95,8 +107,10 @@ class ToolDefinition:
                 or type(parameter.name) is not str
                 or not parameter.name.strip()
                 or parameter.name != parameter.name.strip()
+                or any(ord(char) < 33 or ord(char) == 127 for char in parameter.name)
                 or type(parameter.kind) is not ParamKind
                 or type(parameter.required) is not bool
+                or type(parameter.description) is not str
             ):
                 raise OrchestrationError("tool parameter declaration is not canonical")
             if parameter.name in names:
@@ -270,6 +284,8 @@ class ToolRegistry:
         self._tools[definition.tool_id] = (definition, handler)
 
     def get(self, tool_id: str) -> tuple[ToolDefinition, ToolHandler]:
+        if type(tool_id) is not str or not tool_id.strip():
+            raise OrchestrationError("lookup tool identity is not canonical")
         try:
             return self._tools[tool_id]
         except KeyError:
