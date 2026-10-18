@@ -24,6 +24,8 @@ The Evidence Board now includes a usable **single-team private repair handoff**.
 
 The board also maintains a **bounded last-12 human-confirmed original source revision register** across refreshes. Original added/changed/absent finding IDs and the original five changed-field names are retained with unsigned source content hashes; absent original findings always remain **UNVERIFIED**, never repaired by inference. The register is saved inside the same private Evidence Review JSON and reloaded only when its SHA chain ends at the exact currently imported original source. Older packets without a register remain valid. Separate exports provide (a) a sensitive source-ID CSV for approved follow-up and (b) an aggregate-only chronology excluding finding identifiers and notes.
 
+The operator can search finding IDs, original titles/remediation text, original Casework owner and blockers, or local reviewer/reference/action. Filters can target a specific locally declared team and focus on source regressions, overdue cases, blocked plans, human retest requests or contradictions; the board sorts by original severity, local due date or human follow-up urgency. Bulk local review updates use exactly the filtered set, with a separate confirmation. These are human productivity tools, **never** authenticated approvals or automatic work orders.
+
 The local status board and routing group list are cleared from the DOM when the user chooses to forget all data. Original Casework branch content stays immutable.
 
 ## Trust boundaries
