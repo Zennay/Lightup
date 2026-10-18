@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-7uVWP+8F4rK20N4waCez9ECs4twj73TKRFULKGnKH8E=' 'sha256-k063sX7gui1MHh7KSFsfBDpeNsiUePvLBCuTQLOmh0c=' 'sha256-wpPFZOyxFDTkVCPSRLe+ulmbav4+u8hRIYgukbiqEiU=' 'sha256-exHmZQM7xI6XjeKpa6pZyxpTSfWyWEbA5c0ESnDsNnQ=' 'sha256-T0cH4YL2JwPKu0GhsQ2re+eILHjhsRSINMRYFmUouhk='; style-src 'sha256-s++naIHAVrHVxK6nHd4hhPUHIe/r2ycGlULqKB4QApY='; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-7uVWP+8F4rK20N4waCez9ECs4twj73TKRFULKGnKH8E=' 'sha256-k063sX7gui1MHh7KSFsfBDpeNsiUePvLBCuTQLOmh0c=' 'sha256-wpPFZOyxFDTkVCPSRLe+ulmbav4+u8hRIYgukbiqEiU=' 'sha256-5C5V1ezdCrMPKbgxkJHkdNTm/hD/asmdjYrZx6fxk1o=' 'sha256-H527JPP9R9mZQzJcTZtl0HTnxJqKPQLf5pHzUh6QFQ8='; style-src 'sha256-s++naIHAVrHVxK6nHd4hhPUHIe/r2ycGlULqKB4QApY='; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <title>LightUp | Remediation Capacity Studio — offline draft</title>
 <style>:root{color-scheme:dark;--bg:#0a1119;--panel:#111e29;--edge:#304451;--text:#edf5f7;--muted:#a4bac8;--teal:#7ee4bd;--amber:#f9d48a;--blue:#7cb8ff}
 *{box-sizing:border-box}
@@ -165,6 +165,7 @@ footer{padding:22px 0 60px}
     <button id="export-casework-summary" type="button" class="secondary">Export aggregate Casework discussion</button>
     <button id="export-casework-triage" type="button" class="secondary">Export aggregate discussion register CSV</button>
     <button id="export-casework-pressure" type="button" class="secondary">Export weekly blocker pressure CSV</button>
+    <button id="export-combined-brief" type="button">Export combined remediation coordination brief</button>
   </div>
 </section>
 <section id="results" hidden aria-labelledby="results-title">
@@ -1067,7 +1068,74 @@ global.LightUpCasework=Object.freeze({compareSource,reconcileSource,parseCSV,nor
       weekly_blocker_pressure:weeklyRisk
     });
   }
-  root.LightUpCapacityCasework=Object.freeze({review,MAX_BYTES});
+
+  function combinedBrief(plan,sourceReview,planner) {
+    if(!plan||!sourceReview||sourceReview.schema!=='lightup.capacity_casework_review_draft.v1'||
+      sourceReview.review_only!==true||sourceReview.authorization!==false||
+      !Array.isArray(sourceReview.weekly_blocker_pressure)||
+      sourceReview.weekly_blocker_pressure.length!==plan.schedule.length||
+      sourceReview.source_records!==plan.sourceCount)
+      throw Error('Generate and review matching original capacity + Casework sources first');
+    const summary=planner.summary(plan);
+    const lines=[
+      '# LightUp — private remediation coordination brief',
+      '',
+      '**INTERNAL HUMAN DISCUSSION · UNSIGNED · REVIEW_ONLY · DRAFT/HOLD.**',
+      '',
+      'This is not authentication, current consent, verified remediation, retest, a granted assessment scope, execution or deployment permission.',
+      '',
+      '## Current source and planning workload',
+      '',
+      '- Original source findings: '+plan.sourceCount,
+      '- Estimated total remediation effort: '+plan.totalHours+' h',
+      '- Proposed planning allocation: '+plan.assignedHours+' h',
+      '- Unallocated work: '+plan.backlogHours+' h across '+plan.backlogCount+' source records',
+      '- Proposed urgent (critical/high) backlog: '+
+        (plan.priorityBands.critical.unscheduled_hours+plan.priorityBands.high.unscheduled_hours)+' h',
+      '- Locally blocked Casework notes: '+sourceReview.source_casework_statuses.blocked,
+      '- Casework owner labels absent: '+(plan.sourceCount-sourceReview.assigned_owner_labels),
+      '- Local Casework status marked completed (UNVERIFIED): '+
+        sourceReview.source_casework_statuses.completed,
+      '',
+      '## Week-by-week coordination risk',
+      '',
+      '| Week | Week beginning UTC | Planned h | Locally blocked h | Critical/high blocked h | Regressions locally called completed h |',
+      '| --- | --- | ---: | ---: | ---: | ---: |'
+    ];
+    for(const row of sourceReview.weekly_blocker_pressure) {
+      lines.push('| '+[row.week,row.start,row.provisionally_allocated_hours,
+        row.locally_blocked_estimated_hours,row.locally_blocked_critical_high_estimated_hours,
+        row.source_regression_locally_completed_estimated_hours].join(' | ')+' |');
+    }
+    lines.push('','## Human follow-up by risk classification','','| Risk class | Original records | Locally blocked | Missing owner labels | Proposed undated |',
+      '| --- | ---: | ---: | ---: | ---: |');
+    for(const severity of SEVERITIES) {
+      const row=sourceReview.severity_statuses[severity];
+      lines.push('| '+[severity,row.total,row.blocked,row.missing_owner,row.undated].join(' | ')+' |');
+    }
+    const questions=[
+      ['critical_high_blocked','Discuss blockers delaying critical/high remediation.'],
+      ['critical_high_unowned','Find a human point of contact for critical/high cases.'],
+      ['critical_high_undated','Discuss tentative target dates for urgent source findings.'],
+      ['source_regression_locally_completed','Resolve contradictory self-reported completed work vs source regressions.'],
+      ['source_regression_deferred','Discuss a plan for deferred regressions.'],
+      ['retest_coordination_without_owner','Agree who will separately request real, authorised retest.'],
+      ['blocked_without_note','Request human clarification for missing blocker explanations.']
+    ];
+    lines.push('','## Open human discussion questions','');
+    let any=false;
+    for(const [key,description] of questions) {
+      const count=sourceReview.human_review_flags[key];
+      if(count) {lines.push('- '+count+' aggregate cases: '+description);any=true;}
+    }
+    if(!any)lines.push('- No flagged source-bound coordination contradictions in these specific categories. This is **not** proof of repair or consent.');
+    lines.push('','## Mandatory operator boundaries','',
+      'Independently authenticate the client and engagement, recheck current scope consent and revocation at use, and do not treat this review packet as a grant.',
+      'Never infer a vulnerability was fixed from a missing source finding, a local Casework completion label or a planned allocation.',
+      'Keep original authorisation, separate client/operator consent, source owner integration, security/privacy review, exact-head hosted/VPS CI and HUMAN GO intact.','');
+    return lines.join('\n');
+  }
+  root.LightUpCapacityCasework=Object.freeze({review,combinedBrief,MAX_BYTES});
 })(window);
 </script>
 <script>/* LightUp Remediation Capacity Studio — no persistence, no network, no execution. */
@@ -1641,6 +1709,19 @@ global.LightUpCasework=Object.freeze({compareSource,reconcileSource,parseCSV,nor
     download('lightup-casework-weekly-pressure.csv',rows.join('\r\n')+'\r\n',
       'text/csv;charset=utf-8');
     setFeedback('Anonymous, aggregate only weekly Casework coordination pressure exported for human review.');
+  });
+
+
+  el('export-combined-brief').addEventListener('click',()=>{
+    if(!reviewedCasework||!el('casework-ack').checked||!result)return;
+    if(!window.confirm('Create ONE internal, unsigned, aggregate-only remediation coordination brief from your current plan and source-matched original Casework? This does NOT authenticate consent, client identity, remediation, retest or staff assignments.'))return;
+    try{
+      const report=window.LightUpCapacityCasework.combinedBrief(result,reviewedCasework,engine);
+      download('lightup-private-remediation-coordination.md',report,'text/markdown;charset=utf-8');
+      setFeedback('A single private aggregate planning + Casework coordination brief was exported.');
+    }catch(err){
+      setFeedback('Combined handoff held: '+(err instanceof Error?err.message:'Invalid Casework/plan binding'),true);
+    }
   });
 
   // Source-bound, user-controlled resume: no browser persistence or implicit restore.
