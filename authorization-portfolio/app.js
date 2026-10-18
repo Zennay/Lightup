@@ -294,6 +294,31 @@ function drawCapacity(){
  const count=e('p','Local source-scope routing — '+teams.map(t=>t+': '+reports.filter(r=>r.team===t).length).join(' · ')+'. '+reports.filter(isOverdue).length+' past human target date (UTC); no verified work orders.','hint');
  target.append(count);
 }
+function exportReviewReminders(){
+ const planned=reports.map((r,index)=>({r,index})).filter(({r})=>r.due&&validDue(r.due)&&r.state!=='discussed');
+ if(!planned.length){setMessage('exportFeedback','No valid uncompleted human review target dates. No calendar file created.');return;}
+ if(!confirm('This calendar file contains only numbered source slots, fixed human teams and generic risk bands. Importing it can upload reminders to your calendar cloud. It does NOT schedule scans, approve scope, grant consent or revoke permissions. Export these human-only reminders?'))return;
+ const escape=value=>String(value).replaceAll(';',' ').replaceAll(',',' ');
+ const lines=['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//LightUp//Review-only human coordination//EN','CALSCALE:GREGORIAN','METHOD:PUBLISH','X-WR-CALNAME:LightUp human follow-ups ONLY'];
+ const dtstamp=new Date().toISOString().replace(/[-:]/g,'').replace(/\.\d{3}Z$/,'Z');
+ const nextDay=value=>new Date(Date.parse(value+'T00:00:00Z')+86400000).toISOString().slice(0,10).replaceAll('-','');
+ for(const {r,index} of planned){
+  const date=r.due.replaceAll('-',''),slot=String(index+1).padStart(2,'0');
+  lines.push('BEGIN:VEVENT','UID:lightup-review-only-slot-'+slot+'-'+date+'@local.invalid',
+    'DTSTAMP:'+dtstamp,'DTSTART;VALUE=DATE:'+date,'DTEND;VALUE=DATE:'+nextDay(r.due),
+    'STATUS:TENTATIVE','TRANSP:TRANSPARENT',
+    'SUMMARY:'+escape('Human review follow-up | LightUp source '+slot),
+    'DESCRIPTION:'+escape('REVIEW_ONLY. Self-reported local human target date. Team: '+r.team+'. Highest flag band: '+r.priority+'. This is NOT an approved scan, client consent, authorization, revocation or actual work order. Independently reconfirm original identity and permission.'),
+    'END:VEVENT');
+ }
+ lines.push('END:VCALENDAR');
+ const folded=lines.flatMap(line=>{
+  const chunks=[];for(let start=0;start<line.length;start+=70)chunks.push((start?' ':'')+line.slice(start,start+70));
+  return chunks;
+ });
+ download('lightup-human-review-reminders.ics',folded.join('\r\n')+'\r\n','text/calendar;charset=utf-8');
+ setMessage('exportFeedback','Exported '+planned.length+' tentative generic human calendar reminders. No event was created or sent to a calendar by LightUp. Calendar import may sync externally.');
+}
 function exportData(){
  return {format:'lightup.authorization_portfolio_aggregate_v1',disposition:'REVIEW_ONLY',authority:{...stamp.authority},overlap_unverified:true,untrusted_source:true,scope_count:reports.length,scopes:reports.map((r,i)=>({slot:i+1,priority:r.priority,discussion_status:r.state,follow_up_team:r.team,human_target_date_utc:r.due,selection:r.description,counts:{...r.counts},severity:{...r.severity},overlap:{...r.overlap},flags:{...r.flagCount},human_flag_discussion:Object.fromEntries(Object.entries(r.flagActions).map(([k,v])=>[k,{state:v.state,team:v.team}]))}))};
 }
@@ -472,7 +497,7 @@ $('clear').addEventListener('click',()=>{reports=[];$('overview').hidden=true;se
 $('priorityFilter').addEventListener('change',draw);$('stateFilter').addEventListener('change',draw);
 $('flagPriority').addEventListener('change',drawFlagActions);$('flagState').addEventListener('change',drawFlagActions);
 for(const name of ['hours','effortCritical','effortHigh','effortOther'])$(name).addEventListener('input',drawCapacity);
-$('exportJson').addEventListener('click',()=>output('json'));$('exportCsv').addEventListener('click',()=>output('csv'));$('exportFlags').addEventListener('click',()=>output('flag-register'));$('exportBrief').addEventListener('click',()=>output('md'));$('exportCapacity').addEventListener('click',()=>{try{output('capacity');}catch(e){setMessage('exportFeedback',e.message);}});
+$('exportJson').addEventListener('click',()=>output('json'));$('exportCsv').addEventListener('click',()=>output('csv'));$('exportFlags').addEventListener('click',()=>output('flag-register'));$('exportReminders').addEventListener('click',exportReviewReminders);$('exportBrief').addEventListener('click',()=>output('md'));$('exportCapacity').addEventListener('click',()=>{try{output('capacity');}catch(e){setMessage('exportFeedback',e.message);}});
 $('saveDraft').addEventListener('click',()=>save().catch(e=>setMessage('exportFeedback',e.message)));
 $('restoreDraft').addEventListener('change',async ev=>{try{await restore(ev.target.files[0]);}catch(e){setMessage('exportFeedback',e.message.startsWith('HOLD')?e.message:'HOLD: private draft rejected atomically.');}finally{ev.target.value='';}});
 })();
