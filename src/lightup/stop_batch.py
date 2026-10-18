@@ -15,6 +15,7 @@ from uuid import uuid4
 from .revocation_stop import (
     StopLedgerError, _SCHEMA, _engagement_client, _literal,
     _open_existing_db, _private_receipt, _require_current_actor,
+    _stop_schema_current,
     authenticate_domain_user,
 )
 
@@ -48,6 +49,8 @@ def record_authenticated_stop_batch(
         for statement in _SCHEMA.split(";"):
             if statement.strip():
                 con.execute(statement)
+        if not _stop_schema_current(con):
+            raise StopLedgerError("STOP schema mismatch: HOLD")
         when = datetime.now(timezone.utc).isoformat()
         private_events = []
         for engagement_id, client_id, actor_role in selection:
