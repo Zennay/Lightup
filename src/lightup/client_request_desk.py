@@ -131,13 +131,14 @@ def _decision(db: DomainStore, ctx, *, payload: dict, previous_id: str | None = 
         row for row in records
         if row.status.value in open_status
         and row.requested_mode is AssessmentMode.AUTHORIZED_ASSESSMENT
-        and list(row.requested_assets) == assets
+        and tuple(sorted(row.requested_assets)) == tuple(sorted(assets))
         and int(row.requested_risk) == payload["requested_risk"]
-        and row.notes == payload["notes"]
     ]
     if duplicates:
-        print("WARNING: an identical still-open request already exists.")
+        print("WARNING: a still-open request with the same scope and risk exists.")
         print("Existing request: " + duplicates[0].request_id)
+        if duplicates[0].notes != payload["notes"]:
+            print("The explanation differs, but duplicate operator review may be unnecessary.")
         if _ask("Type REPEAT REQUEST to create another anyway: ") != "REPEAT REQUEST":
             print("No request created.")
             return
