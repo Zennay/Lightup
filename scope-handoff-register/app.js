@@ -95,8 +95,17 @@
     assert(o.kind===KIND && o.schema_version===1 && o.state==="DRAFT_ONLY","Alleen ongewijzigde Studio-v1 DRAFT_ONLY concepten.");
     assert(o.requested_mode==="analysis_only"||o.requested_mode==="authorized_assessment","Ongeldige conceptmodus.");
     assert(Number.isInteger(o.requested_risk)&&o.requested_risk>=1&&o.requested_risk<=4,"Ongeldig risiconiveau.");
-    strictArray(o.requested_assets,"Assets",80);
-    strictArray(o.excluded_assets,"Exclusions",80);
+    strictArray(o.requested_assets,"Assets",80,253);
+    strictArray(o.excluded_assets,"Exclusions",80,253);
+    const canonicalAssets=o.requested_assets.map(v=>LightUpScopeNetwork.parse(v));
+    const canonicalExclusions=o.excluded_assets.map(v=>LightUpScopeNetwork.parse(v));
+    assert(canonicalAssets.every(Boolean) && canonicalExclusions.every(Boolean),
+      "Asset of uitsluiting voldoet niet aan het Studio-v1 hostname/IP/CIDR-contract.");
+    assert(new Set(canonicalAssets.map(v=>v.canonical)).size===canonicalAssets.length &&
+      new Set(canonicalExclusions.map(v=>v.canonical)).size===canonicalExclusions.length,
+      "Dubbel canoniek asset-/uitsluitingsrecord.");
+    const utcValid=LightUpPlanningWindow.validateStored(o.proposed_window_local,o.proposed_window_utc);
+    assert(utcValid,"Planning en UTC-offset komen niet overeen met de bron.");
     assert(o.requested_assets.length>0,"Een concept zonder voorgestelde assets kan niet worden geregistreerd.");
     assert(isPlain(o.proposed_activities) &&
       Object.keys(o.proposed_activities).length===3 &&
@@ -119,15 +128,12 @@
     };
     scan(o);
     return {
-      assets:o.requested_assets.map(x=>x.toLowerCase().trim()),
-      excluded:o.excluded_assets.map(x=>x.toLowerCase().trim()),
+      assets:o.requested_assets.slice(),
+      excluded:o.excluded_assets.slice(),
       risk:o.requested_risk, mode:o.requested_mode,
-      hasWindow: isPlain(o.proposed_window_utc) && o.proposed_window_utc.status==="resolved" &&
-        typeof o.proposed_window_utc.start==="string" &&
-        typeof o.proposed_window_utc.end==="string" &&
-        Number.isFinite(Date.parse(o.proposed_window_utc.start)) &&
-        Number.isFinite(Date.parse(o.proposed_window_utc.end)) &&
-        Date.parse(o.proposed_window_utc.end)>Date.parse(o.proposed_window_utc.start)
+      utcWindow:o.proposed_window_utc || null,
+      hasWindow:!!o.proposed_window_utc && o.proposed_window_utc.status==="resolved",
+      studioDigest:null
     };
   }
   function newRecord(sha,source) {
@@ -275,7 +281,15 @@
     for (const file of files) {
       const raw=await file.text();
       assert(file.size>0 && file.size<=SIZE && bytes(raw).length<=SIZE,"Studio-concept overschrijdt 64 KiB.");
-      const source=validateDraft(parseUnique(raw));
+      const parsed=parseUnique(raw);
+      const source=validateDraft(parsed);
+      const studioDigest=await LightUpScopeDigest.fingerprint(parsed);
+      assert(studioDigest && /^[a-f0-9]{64}$/.test(studioDigest),
+        "Studio-v1 scope-identiteit niet canoniek te berekenen.");
+      if (Object.hasOwn(parsed,"scope_fingerprint_sha256"))
+        assert(parsed.scope_fingerprint_sha256===studioDigest,
+          "Studio-v1 scope-fingerprint komt niet overeen met het oorspronkelijke concept.");
+      source.studioDigest=studioDigest;
       const sha=await digest(raw);
       if (seen.has(sha)) continue;
       seen.add(sha);incoming.push({sha,source});
