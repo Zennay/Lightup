@@ -80,7 +80,30 @@ class ToolDefinition:
     description: str
     parameters: tuple[ToolParameter, ...] = ()
 
+    def validate_schema(self) -> None:
+        # Reject ambiguous tool declarations before any handler can be stored.
+        # A dict built from duplicate names would silently shadow a constraint.
+        if type(self.parameters) is not tuple:
+            raise OrchestrationError("tool parameters must be a canonical tuple")
+        names: set[str] = set()
+        for parameter in self.parameters:
+            if (
+                type(parameter) is not ToolParameter
+                or type(parameter.name) is not str
+                or not parameter.name.strip()
+                or parameter.name != parameter.name.strip()
+                or type(parameter.kind) is not ParamKind
+                or type(parameter.required) is not bool
+            ):
+                raise OrchestrationError("tool parameter declaration is not canonical")
+            if parameter.name in names:
+                raise OrchestrationError(
+                    f"tool {self.tool_id!r}: duplicate parameter name {parameter.name!r}"
+                )
+            names.add(parameter.name)
+
     def validate_arguments(self, arguments: dict[str, Any]) -> None:
+        self.validate_schema()
         known = {p.name: p for p in self.parameters}
         for name in arguments:
             if name not in known:
@@ -150,6 +173,23 @@ class ToolOutput:
     evidence_payload: bytes
     metadata: tuple[tuple[str, str], ...] = ()
 
+    def __post_init__(self) -> None:
+        self.validate_contract()
+
+    def validate_contract(self) -> None:
+        # Validate at construction AND immediately before the evidence handoff.
+        # Do not coerce mutable or foreign objects into audit evidence.
+        if type(self.summary) is not str or not self.summary.strip():
+            raise OrchestrationError("tool output summary must be nonempty plain text")
+        if (
+            type(self.evidence_kind) is not str
+            or not self.evidence_kind.strip()
+            or any(ord(char) < 33 or ord(char) == 127 for char in self.evidence_kind)
+        ):
+            raise OrchestrationError("tool output evidence kind is not canonical")
+        if type(self.evidence_payload) is not bytes:
+            raise OrchestrationError("tool output evidence payload must be immutable bytes")
+
 
 @dataclass(frozen=True)
 class ToolResult:
@@ -170,6 +210,13 @@ class ToolRegistry:
     _tools: dict[str, tuple[ToolDefinition, ToolHandler]] = field(default_factory=dict)
 
     def register(self, definition: ToolDefinition, handler: ToolHandler) -> None:
+        if type(definition) is not ToolDefinition:
+            raise OrchestrationError("tool definition must be canonical")
+        definition.validate_schema()
+        if not callable(handler):
+            raise OrchestrationError(
+                f"tool {definition.tool_id!r}: handler must be callable"
+            )
         if definition.tool_id in self._tools:
             raise OrchestrationError(f"tool {definition.tool_id!r} is already registered")
         if definition.capability_id not in {c.capability_id for c in get_capabilities()}:
@@ -247,11 +294,12 @@ class ToolExecutor:
             raise ToolDenied(f"policy denied tool {call.tool_id!r}: {decision.reason}")
 
         output = handler(context, arguments)
-        if not isinstance(output, ToolOutput):
+        if type(output) is not ToolOutput:
             raise OrchestrationError(
                 f"tool {call.tool_id!r} violated the evidence contract: "
-                "handlers must return a ToolOutput"
+                "handlers must return a canonical ToolOutput"
             )
+        output.validate_contract()
 
         evidence_id = self.state.add_evidence(
             run_id=context.run_id,
