@@ -56,6 +56,21 @@ When original scenario membership matches exactly, anonymous aggregate JSON now 
 
 **One-file PRIVATE workroom:** if you need to open original files together, run \`private_workroom.py\` with the existing catalog and completed cohort reports. The produced HTML contains sensitive original source bytes as inert base64, preserved only in an owner-only \`0600\` file. Opening the file *does not admit sources* until the operator clicks the dedicated button. On successful import, template content is cleared from the active DOM, with the original raw-byte hashes still independently used for source-bound PRIVATE drafts; this does not remove the sensitive original from disk. There is no network, auto-run or permission.
 
+### Portable PRIVATE source + human-review continuity
+
+The owner-private `private_workroom.py` builder now accepts an optional `--human-draft` argument containing a *previously saved* original-byte-bound human work draft v1/v2/v3 (up to 65,536 bytes). This creates a **single owner-private HTML file** carrying exact original catalogue bytes, existing completed comparator reports and, if explicitly supplied, human stages, private notes and proposed discussion plans. All input files, including the human draft, must be owner-owned regular `0600` files. The builder refuses duplicate input file paths, original-byte mismatches, bad statuses/authority flags, invalid human fields, oversized content and a pre-existing output path. Original SHA-256 fingerprints and report *human order* are checked before packaging; any mismatch fails closed and no output is produced. It does not authenticate measurement claims or authorize a scan.
+
+```bash
+python3 assessment-lineage/private_workroom.py \
+  --catalog /private/original-lab-catalog.json \
+  --report /private/completed-cohort-01.json \
+  --report /private/completed-cohort-02.json \
+  --human-draft /private/lightup-PRIVATE-lineage-human-draft.json \
+  --output /private/lightup-PRIVATE-full-review-workroom.html
+```
+
+The local browser requires **two separate explicit actions**. First, **Load embedded PRIVATE originals** admits all source records using the unchanged canonical source checks and then wipes the inert original-source HTML template from the active DOM. Second, **Separately restore exact-source PRIVATE human work** verifies the original byte fingerprints once more and then restores human stages, notes and proposed plans; neither is automatic. If the original sources change or are reordered, the pending embedded draft is invalidated. **Forget all local data** also clears un-imported inert private source text and any pending human draft from the active browser document, although the sensitive HTML file on disk is **not** deleted. Both the public standalone and all anonymous reports contain **no original source or embedded human draft**.
+
 ### One PRIVATE self-contained workroom from genuine existing lab source files
 
 This workflow does **not** create a lab run. To avoid manually selecting the same sources every time, [private_workroom.py](private_workroom.py) makes a second, deliberately sensitive, standalone HTML file containing only **your own original existing** Lab Scenario Studio private JSON and 1–8 completed original comparator cohort reports. It embeds raw JSON bytes **only as inert base64 in an HTML template**, never as active script or a network payload. The existing standalone app checks and admits the original JSON *after an operator explicitly clicks* **Load embedded PRIVATE originals**. Incomplete, duplicated, contradictory or incompatible source packs produce HOLD and preserve any already open browser workspace.
