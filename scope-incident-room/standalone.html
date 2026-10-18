@@ -40,6 +40,9 @@ h3{font-size:15px;margin:20px 0 9px}.source-card{border:1px solid #455877;border
 <button class="secondary" id="print" disabled>Print briefing</button>
 <button class="secondary" id="saveStages" disabled>Save private follow-up</button>
 <button class="secondary" id="handoff" disabled>Export PRIVATE operator handoff</button>
+<button class="secondary" id="teamPacket" disabled>Export PRIVATE team packet</button>
+<label class="load">Import PRIVATE team return<input id="teamReturn" type="file" accept=".json,application/json"></label>
+<a href="team.html" style="color:#ccdbff" rel="noreferrer">Open offline team-only workspace</a>
 <label class="load">Restore saved follow-up<input id="restoreStages" type="file" accept=".json,application/json"></label></div>
 <div id="message" aria-live="polite" role="status">No private source imported.</div>
 <div class="note"><b>Never permission:</b> NO_STOP_RECORDED is not approval. STOP and Casebook are separate historical snapshots, not one atomic runtime check. Release still requires independent client/operator consent, action-time revocation, original CI, security/privacy reviews and explicit HUMAN GO.</div>
@@ -79,7 +82,7 @@ h3{font-size:15px;margin:20px 0 9px}.source-card{border:1px solid #455877;border
 <script>
 (function(){
 "use strict";
-var report=null,older=null,changes=new Map(),stages=new Map(),selectedCase=null,sourceDigest=null,MAX=524288;
+var report=null,older=null,changes=new Map(),stages=new Map(),teamNotes=new Map(),selectedCase=null,sourceDigest=null,MAX=524288;
 function E(x){return document.getElementById(x);}
 function O(x){return x!==null&&typeof x==="object"&&!Array.isArray(x);}
 function W(x){return typeof x==="string"&&x.length>0&&x.length<=180&&![...x].some(c=>c.charCodeAt(0)<32||c.charCodeAt(0)===127);}
@@ -100,6 +103,29 @@ async function digestFile(file){
 }
 async function privateText(file){
  return new TextDecoder("utf-8",{fatal:true}).decode(await file.arrayBuffer());
+}
+async function digestText(text){
+ if(!globalThis.crypto||!crypto.subtle)throw Error("local SHA-256 unavailable");
+ var bytes=new TextEncoder().encode(text);
+ var hash=await crypto.subtle.digest("SHA-256",bytes);
+ return [...new Uint8Array(hash)].map(x=>x.toString(16).padStart(2,"0")).join("");
+}
+function packetRows(){
+ return report.engagements.map(function(r){
+  return {engagement_id:r.engagement_id,base_stage:stages.get(r.engagement_id)||"unreviewed",
+   casebook_attention:r.casebook_attention,original_next_action:r.casebook_next_human_action,
+   stop_source:r.stop_observation};
+ });
+}
+async function issuedPacket(){
+ if(!report||!sourceDigest||report.engagements.length>32)throw Error("private source missing");
+ var records=packetRows();
+ var token=(await digestText(JSON.stringify(["lightup.scope_team_packet.v1",sourceDigest,records]))).slice(0,32);
+ return {schema:"lightup.scope_team_packet.v1",status:"HUMAN_REVIEW_ONLY",
+  source_sha256:sourceDigest,token:token,case_count:records.length,records:records,authority:false};
+}
+function exactKeys(record,keys){
+ return O(record)&&Object.keys(record).sort().join("|")===keys.slice().sort().join("|");
 }
 function downloadPlain(content,name){
  if(typeof content!=="string"||content.length>90000)return;
@@ -141,7 +167,12 @@ function originalHandoff(){
   notes.push("- STOP source: "+md(r.stop_observation));
   notes.push("- Original source attention: "+md(r.casebook_attention));
   notes.push("- Requested next HUMAN review: "+md(r.casebook_next_human_action));
-  notes.push("- Local follow-up stage (NOT persisted): "+stage);
+  notes.push("- Local follow-up stage (NOT persisted in original DB): "+stage);
+  var note=teamNotes.get(r.engagement_id);
+  if(note){
+   notes.push("- Human team note (UNVERIFIED; not authenticated evidence): "+md(note.note));
+   notes.push("- Self-declared reviewer/team (UNVERIFIED): "+md(note.reviewer)+" / "+md(note.team));
+  }
   notes.push("- Source grant count: "+(r.grant_source_count===null?"HOLD":r.grant_source_count));
   if(r.stop_observation==="STOP_ACTIVE"||r.stop_observation.startsWith("HOLD_"))
     notes.push("- **Operator + source owner:** manually check recorded STOP, actual runtime dispatch/retry/revocation wiring, and original persisted provenance. Do not interpret this review as confirmation of an already-running worker halt.");
@@ -384,6 +415,11 @@ function inspect(eid){
  line(d,"Original attention",entry.casebook_attention);
  line(d,"Next HUMAN review",entry.casebook_next_human_action);
  line(d,"Stored source grant count",entry.grant_source_count);
+ var reviewerNote=teamNotes.get(eid);
+ if(reviewerNote){
+  line(d,"UNVERIFIED human team note",reviewerNote.note);
+  line(d,"Self-declared reviewer/team (NOT authentic)",reviewerNote.reviewer+" / "+reviewerNote.team);
+ }
  var grants=c.grants.filter(g=>g.engagement_id===eid);
  var ids=new Set(grants.map(g=>g.approved_request_id).filter(x=>x!==null));
  sourceSection(d,"Persisted grant links",grants,["grant_id","approved_request_id","request_link_observation","max_risk","validity_observation"]);
@@ -457,7 +493,7 @@ var f=this.files&&this.files[0];this.value="";if(!f)return;
 if(f.size<2||f.size>MAX){E("message").textContent="HOLD: source exceeds private file bound.";return;}
 try{
  var next=importSource(await privateText(f)),digest=await digestFile(f);
- report=next;sourceDigest=digest;older=null;changes.clear();stages.clear();selectedCase=null;E("detail").hidden=true;E("binding").hidden=true;E("search").value="";E("search").disabled=false;E("focus").disabled=false;E("focus").value="all";E("export").disabled=false;E("handoff").disabled=false;E("saveStages").disabled=!sourceDigest;E("print").disabled=false;E("message").textContent="Imported locally · "+next.status+" · never authorized";render();}
+ report=next;sourceDigest=digest;older=null;changes.clear();stages.clear();teamNotes.clear();selectedCase=null;E("detail").hidden=true;E("binding").hidden=true;E("search").value="";E("search").disabled=false;E("focus").disabled=false;E("focus").value="all";E("export").disabled=false;E("handoff").disabled=false;E("teamPacket").disabled=!sourceDigest;E("saveStages").disabled=!sourceDigest;E("print").disabled=false;E("message").textContent="Imported locally · "+next.status+" · never authorized";render();}
 catch(e){E("message").textContent="HOLD: malformed, contradictory or unsupported original source. Previous caseboard retained.";}}
 );
 E("previous").addEventListener("change",async function(){
@@ -474,6 +510,56 @@ E("previous").addEventListener("change",async function(){
 });
 E("search").addEventListener("input",render);
 E("focus").addEventListener("change",render);
+E("teamPacket").addEventListener("click",async function(){
+ if(!report||!sourceDigest)return;
+ if(!window.confirm("Create a PRIVATE operator-issued team packet containing original case IDs and source observations? The packet is not an authorization or authenticated instruction."))return;
+ try{
+  var packet=await issuedPacket(),raw=JSON.stringify(packet,null,2)+"\n";
+  if(new TextEncoder().encode(raw).length>65536)throw Error("packet size");
+  download(packet,"lightup-PRIVATE-team-packet.json");
+  E("message").textContent="PRIVATE source-bound team packet exported locally. Share only under original operator confidentiality controls.";
+ }catch(e){E("message").textContent="HOLD: no source-bound private team packet was exported.";}
+});
+E("teamReturn").addEventListener("change",async function(){
+ var f=this.files&&this.files[0];this.value="";if(!f)return;
+ if(!report||!sourceDigest||f.size<2||f.size>65536){
+  E("message").textContent="HOLD: load original private source with SHA-256 first.";return;
+ }
+ try{
+  var raw=await privateText(f);checkDuplicateKeys(raw);var proposed=JSON.parse(raw);
+  if(!exactKeys(proposed,["schema","status","source_sha256","token","case_count","declared_reviewer","declared_team","records","authority","authorization_granted","execution_allowed","release_approved"])||
+   proposed.schema!=="lightup.scope_team_return.v1"||
+   proposed.status!=="HUMAN_FOLLOW_UP_UNVERIFIED"||
+   proposed.authority!==false||proposed.authorization_granted!==false||
+   proposed.execution_allowed!==false||proposed.release_approved!==false||
+   !W(proposed.declared_team)||proposed.declared_team.length>80||
+   !W(proposed.declared_reviewer)||proposed.declared_reviewer.length>80||
+   !Array.isArray(proposed.records))throw Error("original return schema");
+  var packet=await issuedPacket();
+  if(proposed.source_sha256!==packet.source_sha256||
+   proposed.token!==packet.token||
+   proposed.case_count!==packet.case_count||
+   proposed.records.length!==packet.records.length)throw Error("not issued against current source/stages");
+  var updated=new Map(stages),notes=new Map(teamNotes),changed=0;
+  for(var i=0;i<packet.records.length;i++){
+   var base=packet.records[i],row=proposed.records[i];
+   if(!exactKeys(row,["engagement_id","base_stage","casebook_attention","original_next_action","stop_source","human_stage","human_note"])||
+    !Object.entries(base).every(([k,v])=>row[k]===v)||
+    !stageLabels.includes(row.human_stage)||
+    typeof row.human_note!=="string"||row.human_note.length>500||
+    /[\x00-\x1f\x7f]/.test(row.human_note))throw Error("original case field changed");
+   if(row.human_stage!==base.base_stage||row.human_note)changed++;
+   updated.set(row.engagement_id,row.human_stage);
+   if(row.human_note)notes.set(row.engagement_id,{
+     note:row.human_note,reviewer:proposed.declared_reviewer,
+     team:proposed.declared_team
+   });
+  }
+  if(!window.confirm("Source-bound return: "+changed+" human follow-up updates from SELF-DECLARED team "+proposed.declared_team+". Have YOU independently verified the sender/tenant and reviewed the source? Apply ONLY local human notes/stages, never consent, STOP or grants?"))return;
+  stages=updated;teamNotes=notes;render();
+  E("message").textContent="Applied "+changed+" UNVERIFIED HUMAN follow-up changes locally after manual confirmation. Original source/STOP/grants unchanged.";
+ }catch(e){E("message").textContent="HOLD: return source, baseline, stage or original case fields inconsistent. Existing local work preserved.";}
+});
 E("bulkApply").addEventListener("click",function(){
  if(!report)return;
  var ids=[...E("rows").querySelectorAll("tr")].map(tr=>tr.dataset.originalEngagement);
