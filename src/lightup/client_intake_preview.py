@@ -35,6 +35,10 @@ def render_client_intake_preview(payload: dict) -> str:
     if imported and (type(digest) is not str or len(digest) != 64
                      or any(c not in "0123456789abcdef" for c in digest)):
         raise ValueError("invalid Studio proposal continuity value")
+    intake_digest = payload.get("intake_sha256")
+    if (type(intake_digest) is not str or len(intake_digest) != 64
+            or any(ch not in "0123456789abcdef" for ch in intake_digest)):
+        raise ValueError("missing exact normalized intake revision")
     time = esc(datetime.now(timezone.utc).isoformat())
     provenance = (
         '<section class="card"><h2>Studio import (unsigned)</h2>'
@@ -85,7 +89,12 @@ def render_client_intake_preview(payload: dict) -> str:
         '</section></div>'
         '<section class="card"><h2>Proposed assets</h2><ul>' + listed + '</ul></section>'
         '<section class="card"><h2>Client explanation and safety notes</h2>'
-        '<pre>' + esc(notes) + '</pre></section>' + provenance
+        '<pre>' + esc(notes) + '</pre></section>'
+        '<section class="card"><h2>Exact proposal revision</h2>'
+        '<p>To submit this proposal, provide <code>--expect-intake-sha256</code> '
+        'with the following digest. A mismatch requires another preview. '
+        'This SHA-256 is unsigned and NOT a consent signature.</p>'
+        '<p><code>' + esc(intake_digest) + '</code></p></section>' + provenance
         + '<section class="card"><h2>Next step</h2>'
         '<p>Only an existing, individually authenticated LightUp client account '
         'can explicitly submit this proposal using <code>client_request_cli submit</code>. '
