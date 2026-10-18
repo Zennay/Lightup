@@ -17,6 +17,19 @@
     ["client", "Authenticated client request path", "Plan separate, actual client sign-in and request submission."],
     ["operator", "Independent operator review path", "Plan actual operator authentication, review and revocation checks."]
   ]);
+  const TASK_ROLES = Object.freeze({
+    owner:"joint",assets:"joint",risk:"operator",schedule:"joint",
+    stops:"joint",privacy:"joint",client:"client",operator:"operator"
+  });
+  const ROLE_LABELS = Object.freeze({client:"Cliënt",operator:"Operator",joint:"Samen"});
+  const validDay = value => value===null || (
+    typeof value==="string" && /^(20\d{2}|2100)-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/.test(value) &&
+    !Number.isNaN(Date.parse(value)) && new Date(value+"T00:00:00.000Z").toISOString().slice(0,10)===value
+  );
+  const localDay = () => {
+    const d=new Date();
+    return [d.getFullYear(),String(d.getMonth()+1).padStart(2,"0"),String(d.getDate()).padStart(2,"0")].join("-");
+  };
   const STATUSES = Object.freeze(["open", "working", "prepared", "needs_revision"]);
   const STATUS_TEXT = Object.freeze({open:"Open",working:"In gesprek",prepared:"Voor overdracht voorbereid",needs_revision:"Herziening nodig"});
   const records = [];
@@ -156,7 +169,9 @@
     };
   }
   function newRecord(sha,source) {
-    return {sha,source,reference:"Dossier "+String(records.length+1),replaces:null,tasks:Object.fromEntries(TASKS.map(([id])=>[id,"open"]))};
+    return {sha,source,reference:"Dossier "+String(records.length+1),replaces:null,
+      tasks:Object.fromEntries(TASKS.map(([id])=>[id,"open"])),
+      dueDates:Object.fromEntries(TASKS.map(([id])=>[id,null]))};
   }
   function localCoverage(r) {
     return LightUpScopeNetwork.effectiveCoverage(r.source.assets,r.source.excluded);
@@ -367,6 +382,7 @@
     }
     if (!boards.children.length) boards.append(node("p","small","Geen concepten gevonden voor deze selectie."));
     renderDetail();
+    renderActionQueue();
     renderMeetingAgenda();
   }
   function renderDetail() {
@@ -414,7 +430,18 @@
       const select=node("select");select.id="task-"+id;
       for (const state of STATUSES) {const option=node("option","",STATUS_TEXT[state]);option.value=state;select.append(option);}
       select.value=r.tasks[id];select.addEventListener("change",()=>{r.tasks[id]=select.value;render();});
-      row.append(info,select);detail.append(row);
+      const controls=node("div","task-controls");
+      const dueLabel=node("label","small","Lokale doeldatum");
+      const due=node("input");due.type="date";due.min="2020-01-01";due.max="2100-12-31";
+      due.value=r.dueDates[id]||"";due.setAttribute("aria-label","Doeldatum "+title);
+      due.addEventListener("change",()=>{
+        const val=due.value||null;
+        if(!validDay(val)){show("Ongeldige lokale datum; datum niet overgenomen.",true);due.value=r.dueDates[id]||"";return;}
+        r.dueDates[id]=val;render();
+      });
+      dueLabel.append(due);controls.append(select,dueLabel);
+      info.append(node("small","","Menselijke rol: "+ROLE_LABELS[TASK_ROLES[id]]));
+      row.append(info,controls);detail.append(row);
     }
     detail.append(node("p","small","Status: "+prepared(r)+" van "+TASKS.length+" voorbereid. Zelfs bij 8/8 blijft dit REVIEW_ONLY_HOLD. Gebruik het originele geauthenticeerde proces voor toestemming en directe herroepingscontrole."));
   }
