@@ -272,6 +272,16 @@ function exportHistory(){
   note('Privacy-minimal briefing history exported; reported changes are not verified remediation.');
  }catch(e){note('Export refused: '+e.message,true);}
 }
+function renderWorkflowStatus(){
+ if(!state)return;
+ const parts=[state.fresh.rows.length+' current findings',
+  state.older?'earlier findings imported':'no earlier findings CSV',
+  state.history?.length?state.history.length+' earlier aggregate briefs':'no aggregate history',
+  state.casework?'Casework planning attached':'no Casework',
+  state.studio?'scope proposal attached':'no Studio proposal',
+  state.readiness?'private operator review attached':'no operator readiness snapshot'];
+ $('workflow-status').textContent='Offline sources: '+parts.join(' · ')+'. All identity, consent, grant and revocation checks remain external.';
+}
 function note(text, bad=false) { $('message').textContent=text; $('message').style.color=bad?'#ff9fac':'#b6e3d9'; }
 async function sha256(bytes) {
  if (!globalThis.crypto || !crypto.subtle) return null;
@@ -306,6 +316,7 @@ async function load() {
   ['urgent','medium','low'].forEach(key=>$(key+'-decision').value='discussion_pending');
   $('details').checked=false;$('internal-readiness').checked=false;
   $('workspace').hidden=false;
+  $('workflow-nav').hidden=false;
   render();
   note('Current'+(older?' and earlier':'')+' report loaded locally. No permissions inferred.');
  }catch(e){ note('Import rejected. '+String(e.message||'Invalid source'),true); }
@@ -400,6 +411,7 @@ function render() {
  renderStudioChanges();
  renderActions();
  renderHistory();
+ renderWorkflowStatus();
  followupUI();
  $('internal-readiness').disabled=$('audience').value!=='Internal operators only';
  $('source-info').textContent=sourceSummary();
@@ -470,7 +482,7 @@ function exportJSON() {
 }
 function forget() {
  state=null;$('history-files').value='';$('history-confirm').checked=false;$('history-results').replaceChildren();$('history-status').textContent='No earlier aggregate briefings imported.';followupTag=null;followupRecords={};$('followup-filter').value='all';$('followup-board').replaceChildren();$('followup-file').value='';$('followup-status').textContent='No local discussion plan saved.';$('studio-previous').value='';$('studio-previous-confirm').checked=false;$('studio-compare-status').textContent='No earlier version compared.';$('studio-change-summary').replaceChildren();$('human-actions').replaceChildren();$('studio-file').value='';$('studio-confirm').checked=false;$('studio-status').textContent='No scope proposal imported.';$('studio-summary').replaceChildren();$('session-file').value='';$('session-status').textContent='No working draft restored.';$('readiness-file').value='';$('readiness-confirm').checked=false;$('readiness-status').textContent='No operator snapshot loaded.';$('readiness-summary').replaceChildren();$('casework-file').value='';$('casework-confirm').checked=false;$('casework-status').textContent='No Casework loaded.';$('current').value='';$('previous').value='';$('same-scope').checked=false;$('details').checked=false;
- $('workspace').hidden=true;$('internal-readiness').checked=false;['urgent','medium','low'].forEach(key=>$(key+'-decision').value='discussion_pending');$('kpis').replaceChildren();$('changes').replaceChildren();$('preview').replaceChildren();
+ $('workspace').hidden=true;$('workflow-nav').hidden=true;$('workflow-status').textContent='Offline review only — no permission established.';$('internal-readiness').checked=false;['urgent','medium','low'].forEach(key=>$(key+'-decision').value='discussion_pending');$('kpis').replaceChildren();$('changes').replaceChildren();$('preview').replaceChildren();
  note('In-memory findings forgotten. Previously downloaded files must be deleted separately.');
 }
 $('load').addEventListener('click',load);

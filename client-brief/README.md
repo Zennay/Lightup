@@ -4,7 +4,7 @@
 
 ## Open the working product
 
-**Recommended:** open [standalone.html](./standalone.html) directly; it contains the complete offline app in a single 149,278-byte file, with exact SHA-256 CSP-pinned inline scripts and CSS. SHA-256 of the current bundle: `375bca0fa5d7708aa9a7e576747146c2cec78da316cfde111d374a17107ac796`. This digest is a packaging fingerprint, **not** a signature or authority receipt. Regenerate locally with `python3 client-brief/package.py`; packaging refuses a changed pinned Casework parser.
+**Recommended:** open [standalone.html](./standalone.html) directly; it contains the complete offline app in a single 151,879-byte file, with exact SHA-256 CSP-pinned inline scripts and CSS. SHA-256 of the current bundle: `2a92d61acb8a97654ead23283f61b380658d21670d7062467e0a347cf92d836e`. This digest is a packaging fingerprint, **not** a signature or authority receipt. Regenerate locally with `python3 client-brief/package.py`; packaging refuses a changed pinned Casework parser.
 
 **Developer source option:** Open [index.html](./index.html) in a modern browser directly from the `client-brief/` folder, with the sibling `app.js`, `theme.css` and `remediation-engine.js` present. It has no build step, server, external libraries, CDN, runtime network connection, localStorage, persistent database, cookies or service worker. Its top-level CSP is `default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'none'`. No target is contacted.
 
@@ -15,6 +15,10 @@ finding_id,title,severity,retest_status,remediation
 ```
 
 The original source exporter is [`src/lightup/finding_export_cli.py`](../src/lightup/finding_export_cli.py), not this browser interface. For an existing authorised LightUp operator and an authorised engagement, use the **existing** interactive export instructions in [casework PR #1568](https://github.com/Zennay/Lightup/pull/1568). The browser cannot check the exporting identity, consent, tenant or scope. Never use it to collect results from targets.
+
+### Guided offline workspace navigation
+
+After opening original findings, a compact sticky, keyboard-accessible navigator links directly to source, risk dashboard, historical aggregates, scope planning, source-driven actions, human-only discussion board, client handoff and locally resumable drafts. A visible source intake summary identifies which offline input types are actually present; it never shows an authorization readiness percentage, release progress or approval status. The navigator is hidden before a current CSV is opened and when "Forget all imported data" is selected, and it is excluded from print.
 
 ### What the product does
 
