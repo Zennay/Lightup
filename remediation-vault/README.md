@@ -38,3 +38,7 @@ After unlocking, each recovered original file is shown with a checked **include 
 ## Portable offline operator kit
 
 For a single ready-to-open package, download LightUp-Private-Handoff-Vault.zip and open START-HERE.html locally, then standalone.html. Kit includes a reproducible SHA-256 MANIFEST.json, README.md and the offline app. It includes no customer source, recovered contents, keys or credentials. Build with python3 remediation-vault/package_kit.py after updating the standalone bundler.
+
+## Five-app offline remediation composition (new)
+
+The current deterministic portable ZIP adds unchanged SHA-pinned original Evidence Review #1623, Casework Calendar plus Owner Reply Desk #1635, and Dependency Board #1638 as separate local app entrypoints. Open START-HERE.html to navigate. Exact immutable original owner SHA-256 and source commits are in the kit MANIFEST.json. WORKFLOWS.md provides a complete private operator-to-owner-to-operator workflow. This composition does not merge, modify, supersede or publish the original source-owner PRs; no client data, grant, consent, actual retest, scanner or execution are included.
