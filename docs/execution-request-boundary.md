@@ -23,3 +23,7 @@ The decision path now first accepts exact canonical original grant/scope values,
 ## Request-field stability for all four modes
 
 A third source improvement copies exact built-in ExecutionRequest fields before evaluating any branch. Every positive decision, including passive/analysis and isolated laboratory work, now checks unchanged original interaction, requested risk, asset, capability, boolean lab marker and original grant-object identity against that snapshot. A frozen dataclass whose fields have been forcibly mutated during a policy call no longer receives a positive source decision. This remains only a decision-time control; the caller must still enforce authorization again before any real execution.
+
+## Expiry at the positive policy decision boundary
+
+Original grant datetime bounds must use the built-in timezone object (not caller-defined tzinfo hooks). The target-active path rechecks the already-captured grant window at a fresh UTC instant just before a positive decision is returned, so a grant that expires during scope membership work cannot pass solely on its initial pre-check. This is not revocation-at-use or durable timestamp evidence and the final execution adapter must recheck fresh consent and grant status independently.

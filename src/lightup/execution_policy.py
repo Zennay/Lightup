@@ -128,6 +128,12 @@ class ExecutionPolicy:
             return PolicyDecision(False, "authorization identity changed during decision")
         if _grant_snapshot(original_grant) != grant:
             return PolicyDecision(False, "authorization fields changed during decision")
+        # An authorization valid at the first check may have expired while
+        # scope membership was being evaluated. The latest check is still
+        # not a substitute for revocation-at-use in the future adapter.
+        final_instant = datetime.now(timezone.utc)
+        if not (grant.valid_from <= final_instant <= grant.valid_until):
+            return PolicyDecision(False, "authorization expired during decision")
 
         return _positive_if_request_unchanged(original_request, request, "authorized active assessment")
 
@@ -155,7 +161,7 @@ def _canonical_grant(grant: object) -> bool:
     for bound in (grant.valid_from, grant.valid_until):
         if (
             type(bound) is not datetime
-            or bound.tzinfo is None
+            or type(bound.tzinfo) is not timezone
             or bound.utcoffset() is None
         ):
             return False
