@@ -10,6 +10,36 @@ Open [standalone.html](standalone.html) as a local file in a browser; no server 
 
 The product reads only the original single-selection `lightup.request_binding_preparation.v1` JSON format. Multi-scenario `lightup.request_binding_scenarios_review.v1` reports are intentionally **refused** rather than silently flattened to a misleading timeline. Select `.json` when exporting from PR #1590 (not `.html` or an anonymized `.csv`).
 
+### Original authenticated capture to private one-file review
+
+The new [capture.py](capture.py) is an operator-invoked, standard-library-only helper. Each genuine original request-binding snapshot is delegated to the existing authenticated LightUp exporter from [PR #1590](https://github.com/Zennay/Lightup/pull/1590), which inherits the original persisted authorization repairs in [PR #1570](https://github.com/Zennay/Lightup/pull/1570). This exporter is NOT present on unchanged main. Install or compose the original reviewed source-owner exporter separately; missing modules cause HOLD rather than invented authentication. Captures never start scans or grants.
+
+Initialize an entirely new owner-only private folder on an authorized machine, **not** inside a public repository:
+
+    python3 request-binding-history/capture.py init --dir /private/lightup-history
+
+Each later capture requires the real pre-existing operator account and interactive password prompt of the original owner CLI (password not passed on argv or environment):
+
+    python3 request-binding-history/capture.py capture --dir /private/lightup-history --db /private/lightup.db --email operator@example.org --engagement-id ORIGINAL_ENGAGEMENT_ID --client-id ORIGINAL_CLIENT_ID --asset example.org --risk 2
+
+Repeat deliberately, with the same engagement/client, exact canonical proposed host/IP/CIDR literals, and same risk. The original CLI reauthenticates for **each capture**, including existing account lockout and persisted-source checks. Source creation may update original sign-in bookkeeping; review data is read-only. This is a human-invoked operation, not a scheduled check or monitoring daemon.
+
+The ledger records bounded original SHA-256 raw bytes, original review instant, and original **unsigned** selection/revision digests. It never grants authority. To list private source files and abbreviated source fingerprints without dumping original client notes/assets:
+
+    python3 request-binding-history/capture.py list --dir /private/lightup-history
+
+After at least two successful captures, you may **explicitly opt into a confidential embedded-data HTML file**. This writes a NEW private 0600 HTML alongside the 0600 JSON exports in the original 0700 folder:
+
+    python3 request-binding-history/capture.py bundle --dir /private/lightup-history --output /private/lightup-history/PRIVATE-source-history.html --include-private-source-data
+
+Open that resulting HTML **locally**. The public [standalone.html](standalone.html) has no original reports embedded. Only the explicitly assembled PRIVATE HTML has original bytes stored in a nonexecuting base64 template. It loads the original source through the SAME bounded atomic importer and original-record private human follow-up logic as a manual drag/file selection. A missing or malformed source is HOLD, not a silently accepted synthetic authorization.
+
+**Protect this file:** the bundled HTML and original source JSON can contain private client, request, asset and administrative decision data. Never commit, upload, email, post, expose on a web server, or share the entire capture folder. The bundle uses exactly the original inline JavaScript/style CSP hashes, no external scripts, telemetry or network. Existing source data is copied, never modified; original sign-in and source grant/consent/resolver code are untouched by capture.py. The browser makes no authenticated calls and a copied HTML does not attest to live operator authority.
+
+The ledger is bounded to twelve private original exports (each up to 2 MB, at most 12 MB total), fails closed for symlinks, group-readable input, changed saved bytes, duplicate records or proposed selection mismatch. A script in another folder or a custom insecure HTML template cannot be substituted at bundling: the local owned operator app is verified against its exact SHA256-pinned Content Security Policy. PRIVATE restore and source fingerprint values remain unsigned and non-authorizing.
+
+Do not treat any captured administrative match as real client/operator consent, current permission, revocation or a grant. Preserve separately authenticated parties and action-time revocation, original source-owner integration, privacy/security review, full exact-head hosted + permanently named VPS CI and explicit HUMAN GO. Project remains INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD.
+
 ### Results
 
 - Source-reported administrative candidate counts, unapproved and incompatible requests, historical stored grant counts and legacy unbound grant counts for each chosen file slot.
