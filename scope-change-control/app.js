@@ -460,7 +460,7 @@
     const data={
       schema:"lightup.casebook_change_private_review.v1",
       disposition:"HOLD_HUMAN_REVIEW",original_source_verified:false,
-      client_consent_verified:false,operator_consent_verified:false,
+      source_authenticated:false,client_consent_verified:false,operator_consent_verified:false,
       authorization_granted:false,execution_allowed:false,release_approved:false,
       action_time_revocation_verified:false,
       tenant_original_id:state.snapshots[0].doc.client_id,
