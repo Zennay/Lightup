@@ -652,12 +652,13 @@ def _render_html(report: dict) -> str:
     for record in report["engagements"]:
         trs = "".join(
             "<tr><td>" + esc(g["grant_number"]) + "</td><td>" + esc(g["window"]) +
+            "</td><td>" + esc(g["binding"]) +
             "</td><td>" + " ".join('<span class="flag">' + esc(flag) + "</span>" for flag in g["flags"]) +
             "</td><td>" + esc(g["next_action"]) + "</td></tr>"
             for g in record["grant_findings"]
         )
         table = (
-            "<table><thead><tr><th>Record #</th><th>Time-window record</th><th>Review flags</th><th>Required next action</th></tr></thead>"
+            "<table><thead><tr><th>Record #</th><th>Time-window record</th><th>Request binding (review-only)</th><th>Review flags</th><th>Required next action</th></tr></thead>"
             "<tbody>" + trs + "</tbody></table>"
         ) if trs else '<p class="muted">No grant rows. No permission implied.</p>'
         blocks.append(
@@ -752,7 +753,7 @@ def _render_csv(report: dict) -> str:
     writer.writerow([
         "disposition", "record_type", "client", "engagement", "engagement_status",
         "requests", "approved_requests", "untrusted_approved_requests",
-        "grant_record_number", "recorded_window", "review_flags", "next_action",
+        "grant_record_number", "recorded_window", "binding_review_only", "review_flags", "next_action",
     ])
     for e in report["engagements"]:
         grants = e["grant_findings"] or [{
@@ -763,19 +764,19 @@ def _render_csv(report: dict) -> str:
             writer.writerow([_csv_cell(v) for v in (
                 "REVIEW_ONLY", "grant", e["client"], e["engagement"], e["engagement_status"],
                 e["requests"], e["approved_requests"], e["untrusted_approved_requests"],
-                grant["grant_number"], grant["window"], ";".join(grant["flags"]),
+                grant["grant_number"], grant["window"], grant["binding"], ";".join(grant["flags"]),
                 grant["next_action"],
             )])
     for request in report["review_queue"]:
         writer.writerow([_csv_cell(v) for v in (
             "REVIEW_ONLY", "client_request", request["client"], "No engagement binding",
             request["status"], "", "", "", request["request_number"], "not a grant",
-            ";".join(request["flags"]), request["next_action"],
+            "not a grant", ";".join(request["flags"]), request["next_action"],
         )])
     # Even empty reports remain explicitly non-authorizing; column A is always REVIEW_ONLY.
     if not report["engagements"] and not report["review_queue"]:
         writer.writerow(["REVIEW_ONLY", "none", "", "", "", "", "", "", "", "",
-                         "NO_REVIEW_RECORDS", "No authorization inferred."])
+                         "", "NO_REVIEW_RECORDS", "No authorization inferred."])
     return stream.getvalue()
 
 
