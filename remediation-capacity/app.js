@@ -571,6 +571,19 @@
     setFeedback('Anonymous, aggregate only weekly Casework coordination pressure exported for human review.');
   });
 
+
+  el('export-combined-brief').addEventListener('click',()=>{
+    if(!reviewedCasework||!el('casework-ack').checked||!result)return;
+    if(!window.confirm('Create ONE internal, unsigned, aggregate-only remediation coordination brief from your current plan and source-matched original Casework? This does NOT authenticate consent, client identity, remediation, retest or staff assignments.'))return;
+    try{
+      const report=window.LightUpCapacityCasework.combinedBrief(result,reviewedCasework,engine);
+      download('lightup-private-remediation-coordination.md',report,'text/markdown;charset=utf-8');
+      setFeedback('A single private aggregate planning + Casework coordination brief was exported.');
+    }catch(err){
+      setFeedback('Combined handoff held: '+(err instanceof Error?err.message:'Invalid Casework/plan binding'),true);
+    }
+  });
+
   // Source-bound, user-controlled resume: no browser persistence or implicit restore.
   function numericWorkingOptions(options) {
     if(!options)throw new Error('Generate a current proposal before saving');
