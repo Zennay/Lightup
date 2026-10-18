@@ -185,7 +185,7 @@
   function newRecord(sha,source) {
     return {sha,source,reference:"Dossier "+String(records.length+1),replaces:null,
       tasks:Object.fromEntries(TASKS.map(([id])=>[id,"open"])),
-      dueDates:Object.fromEntries(TASKS.map(([id])=>[id,null])),withdrawal:null};
+      dueDates:Object.fromEntries(TASKS.map(([id])=>[id,null])),withdrawal:null,permission:null};
   }
   function localCoverage(r) {
     return LightUpScopeNetwork.effectiveCoverage(r.source.assets,r.source.excluded);
@@ -229,6 +229,73 @@
     return pairs.sort((a,b)=>weight[a.priority]-weight[b.priority] ||
       Math.max(records.find(x=>x.sha===b.left).source.risk,records.find(x=>x.sha===b.right).source.risk)-
       Math.max(records.find(x=>x.sha===a.left).source.risk,records.find(x=>x.sha===a.right).source.risk));
+  }
+  const PERMISSION_QUESTIONS=Object.freeze({
+    client_identity:"Identiteit van aanvrager",asset_ownership:"Eigendom en bevoegdheid per asset",
+    purpose_limits:"Doel, verboden acties en bewaartermijnen",client_consent:"Echte cliënttoestemming langs beschermd kanaal",
+    operator_independence:"Onafhankelijke operatorreview",enforceable_scope:"Handhaafbare host-/IP-/CIDR-scope",
+    risk_approval:"Risico en beperkingen",stop_revocation:"STOP en intrekking bij gebruik",
+    mandatory_gates:"Verplichte security- en vrijgavegates",high_risk:"Afzonderlijke hoogrisico-escalatie",
+    lab_provenance:"Herkomst en eigendom privélab",no_exclusions:"Expliciete uitsluitingen",
+    open_window:"UTC-planning en tijdvenster",safety_context:"Stopinstructies en veiligheid",
+    network_activity:"Voorwaarden netwerkinteractie",revision_client:"Nieuwe cliëntscope herbeoordelen",
+    revision_operator:"Nieuwe operatorscope herbeoordelen"
+  });
+  function renderPermission(){
+    const area=$("permissionBoard");area.replaceChildren();
+    const attached=records.filter(r=>r.permission);
+    $("permissionFeedback").textContent=attached.length?
+      attached.length+" gecombineerde, brongebonden maar NIET-GEAUTHENTICEERDE vragenoverzichten gekoppeld.":
+      "Geen gecombineerd vragenoverzicht geladen. Open eerst het originele Studio-concept en importeer dan een Permission Brief-reconciliation export.";
+    for(const r of attached){
+      const p=r.permission,card=node("article","permission-card");
+      card.append(node("h3","",r.reference+" · cliënt/operatoroverdracht"),
+        node("p","small",p.needsAttention+" van "+p.total+
+          " vragen vragen nog menselijke aandacht. Cliëntnotitie: "+(p.clientNoted?"zelfgerapporteerd":"ontbreekt")+
+          "; operatornotitie: "+(p.operatorNoted?"zelfgerapporteerd":"ontbreekt")+
+          ". Een antwoord is geen geverifieerde identiteit of toestemming."));
+      const counts=node("div","chips");
+      for(const role of ["client","operator"]){
+        const items=p.questions.filter(x=>x.role===role);
+        counts.append(node("span","chip",role==="client"?"Cliënt":"Operator"),node("span","chip alert",
+          items.filter(x=>x.status!=="answered_unverified").length+"/"+items.length+" open"));
+      }
+      card.append(counts);
+      const list=node("div","permission-questions");
+      for(const q of p.questions){
+        const row=node("div","permission-question");
+        row.append(node("strong","",PERMISSION_QUESTIONS[q.code]||q.code),
+          node("small","",q.role==="client"?"Cliëntvraag":"Operatorvraag"),
+          node("span","chip"+(q.status==="answered_unverified"?"":" alert"),
+            q.status==="answered_unverified"?"Antwoord ONGEVERIFIEERD":
+            q.status==="question_sent"?"Vraag verstuurd, ontvangst niet geverifieerd":
+            q.status==="unanswered"?"Niet beantwoord":"Geen antwoord ontvangen"));
+        list.append(row);
+      }
+      card.append(list);
+      const nav=node("div","actions"),open=node("button","","Open gekoppeld dossier");
+      open.type="button";open.addEventListener("click",()=>{active=r.sha;render();$("detail").scrollIntoView({block:"start",behavior:"smooth"});});
+      const clear=node("button","","Vergeet alleen deze lokale notitie");clear.type="button";
+      clear.addEventListener("click",()=>{
+        if(!confirm("Alleen de NIET-GEAUTHENTICEERDE Permission Brief-kopie wissen? Echte toestemming wordt niet gewijzigd."))return;
+        r.permission=null;show("Lokale beantwoording vergeten. Herbeoordelingsstatussen blijven intact.");render();
+      });
+      nav.append(open,clear);card.append(nav);area.append(card);
+    }
+    if(!attached.length)area.append(node("p","small","Gebruik de gecombineerde reconciliation-JSON uit de afzonderlijke Permission Brief. Alleen overeenkomende exacte Studio-bronbytes worden geaccepteerd."));
+  }
+  async function importPermission(file){
+    const raw=await readBounded(file,65536);
+    const accepted=LightUpPermissionReplyImport.verify(raw,new Map(records.map(r=>[r.sha,r.source])));
+    const r=records.find(x=>x.sha===accepted.sourceSha);
+    if(r.permission && !confirm("Er is al een lokale Permission Brief-kopie voor deze bronversie. Overschrijven en herbeoordelen?"))return;
+    const {sourceSha,...safe}=accepted;
+    r.permission={...safe,questions:safe.questions.map(x=>({...x}))};
+    for(const id of ["client","operator","owner","risk","assets"])
+      if(r.tasks[id]==="prepared")r.tasks[id]="needs_revision";
+    for(const key of pairReviews.keys())if(key.split(":").includes(r.sha))pairReviews.delete(key);
+    show("Nieuwe brongebonden, NIET-GEAUTHENTICEERDE cliënt-/operatorvragen ontvangen. Betrokken lokaal voorbereide acties heropend. Geen consent, grant of toegang veranderd.");
+    render();
   }
   function renderWithdrawals() {
     const area=$("withdrawalBoard");area.replaceChildren();
@@ -466,6 +533,8 @@
     if (rev?.time_window_changed) w.push("revisie_planning_gewijzigd");
     if (rev && revisionTaskRechecks(rev).some(id=>r.tasks[id]==="needs_revision"))
       w.push("revisie_menselijke_herbeoordeling_nodig");
+    if(r.permission && r.permission.needsAttention>0)w.push("vragen_client_operator_onbevestigd");
+    if(r.permission && (!r.permission.clientNoted||!r.permission.operatorNoted))w.push("rolantwoord_ontbreekt");
     if(r.withdrawal){
       w.push(r.withdrawal.urgency==="urgent"?"dringend_niet_geauthenticeerd_stopverzoek":"onbevestigd_stop_of_scopewijzigingsverzoek");
     }
@@ -521,6 +590,7 @@
     }
     if (!boards.children.length) boards.append(node("p","small","Geen concepten gevonden voor deze selectie."));
     renderDetail();
+    renderPermission();
     renderWithdrawals();
     renderActionQueue();
     renderMeetingAgenda();
@@ -775,6 +845,11 @@
   }
   $("imports").addEventListener("change",async e=>{
     try{await importDrafts(Array.from(e.target.files));}catch(err){show("Import geweigerd; bestaande concepten behouden: "+err.message,true);}
+    e.target.value="";
+  });
+  $("permissionFile").addEventListener("change",async e=>{
+    try{await importPermission(e.target.files[0]);}
+    catch(err){show("Permission Brief-overdracht geweigerd zonder wijzigingen: "+err.message,true);}
     e.target.value="";
   });
   $("withdrawalFile").addEventListener("change",async e=>{
