@@ -7,7 +7,7 @@ This feature fills a human-operations gap alongside the **original authenticated
 ## Complete one-command private review workspace
 
 Generate the interactive board, machine-readable private agenda, generic .ics reminders
-and an artifact integrity manifest **from one original Casebook snapshot**.
+a complete **all-engagement attention inbox** and artifact integrity manifest **from one original Casebook snapshot**.
 Use an existing owner-only 0700 parent directory and a **new** workspace path:
 
 ```sh
@@ -27,10 +27,10 @@ file hash becomes client consent, scan permission, or proof of live STOP.
 
 The new directory contains:
 - `original-private-casebook.json`: **exact authenticated/source-imported original Casebook bytes** for later offline source refresh. Confidential original identifiers remain strictly in a 0600 source file, never embedded inside the public-safe calendar. This is NOT a newly authenticated permission, even if produced after original login.
-- `human-review-board.html`: responsive, entirely offline private human case desk.
+- `human-review-board.html`: responsive, entirely offline private human grant-window review desk.\n- `human-engagement-inbox.html`: original-source **every-engagement inbox**, including existing engagements with **zero recorded grants**, pending risk reviews and source provenance HOLD. These are human follow-up alerts, not invented grants or permissions.
 - `human-review-agenda.json`: original-ID-bearing planning data for human review only.
 - `human-review-calendar.ics`: generic, redacted and non-authorizing reminders.
-- `human-review-manifest.json`: exact SHA-256 + byte length of the other four
+- `human-review-manifest.json`: exact SHA-256 + byte length of the other five
   generated artifacts, original-source byte digest, prepared-at timestamp and
   literal false authority flags. A checksum does **not** authenticate its author.
 
@@ -42,7 +42,7 @@ python3 scope-window-review/workspace_inspect.py \
   --workspace /private/NEW-lightup-human-window-room
 ```
 
-This inspects the **entire exact five-file collection**, requires owner-controlled
+This inspects the **entire exact six-file collection**, requires owner-controlled
 0700 directory and regular 0600 non-symlink single-link files, validates bounded
 canonical manifest fields, exact original-source sidecar digest and all SHA-256/size declarations, and returns
 `2 REVIEW_ONLY` or `3 HOLD`. Only aggregate counts are printed. It
@@ -58,6 +58,33 @@ are cleaned; an incomplete private workspace must never be construed as an
 approved source or a completed handoff. The final manifest is published last.
 No network traffic, shared host, scheduler, scan, model call, consent or
 original SQLite grant/STOP mutation is performed by this workspace composer.
+
+## Standalone original engagement attention inbox
+
+An operator who only reviews recorded grant validity can accidentally overlook
+engagements with **no grant records**, outstanding original risk decisions or
+source-provenance warnings. The original Casebook `case_overview` already
+records this attention. This independent companion surfaces **every original
+tenant engagement**, including the no-grant cases, rather than fabricating
+grant-like placeholders in the window calendar:
+
+```sh
+PYTHONPATH=src python3 scope-window-review/window_review.py \
+  --database /private/domain.sqlite --email ORIGINAL_OPERATOR_EMAIL \
+  --client EXACT_ORIGINAL_TENANT_ID \
+  --inbox /private/NEW-private-engagement-inbox.html
+```
+
+Alternatively use `--casebook /private/original-private-casebook.json`
+instead of live account arguments. The private offline HTML displays original
+engagement IDs, original tenant source status, exact Casebook attention
+and follow-up labels, recorded grant/risk **counts**, with HOLD/REVIEW_ONLY
+filters. Original `NO_GRANT_RECORDED`, pending original risk reviews and
+source HOLD are all prioritized for **human** attention. No grant is fabricated
+or emitted, and no action-time consent, risk approval, revocation, target access
+or dispatch can be inferred. The self-contained page has no network,
+browser persistence or external assets, and belongs only on a trusted private
+workstation. The same inbox is automatically included in `--workspace`.
 
 ## Human follow-up after a genuine original-source refresh
 
