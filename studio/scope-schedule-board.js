@@ -171,7 +171,27 @@ function renderBlocks(){
   if(!blackouts.length){append(box,'p','No unavailable periods added.','muted');return;}
   blackouts.forEach((b,i)=>{
     const row=document.createElement('div');row.className='item';box.append(row);
-    append(row,'span','Unavailable #'+(i+1)+' ['+((b.lane??0)===0?'All lanes':'Lane '+b.lane)+']: '+formatUTC(b.start)+' → '+formatUTC(b.end)+' ');
+    append(row,'span','Unavailable #'+(i+1)+': '+formatUTC(b.start)+' → '+formatUTC(b.end)+' ');
+    const laneSelect=document.createElement('select');
+    laneSelect.setAttribute('aria-label','Scope of unavailable period #'+(i+1));
+    for(let lane=0;lane<=4;lane++){
+      const opt=append(laneSelect,'option',lane===0?'Applies to all lanes':'Lane '+lane+' only');
+      opt.value=String(lane);
+    }
+    laneSelect.value=String(b.lane??0);
+    laneSelect.addEventListener('change',()=>{
+      const lane=Number(laneSelect.value);
+      if(blackouts.some((item,index)=>index!==i&&item.start===b.start&&item.end===b.end&&
+          (item.lane??0)===lane)){
+        $('status').textContent='This exact blocked interval already exists for that lane.';
+        laneSelect.value=String(b.lane??0);return;
+      }
+      blackouts[i]={...b,lane};
+      $('status').textContent='Local unavailable period now applies to '+
+        (lane===0?'all planning lanes':'lane '+lane)+' only. No actual resource ownership or booking verified.';
+      render();
+    });
+    row.append(laneSelect);
     const remove=append(row,'button','Remove');
     remove.type='button';remove.addEventListener('click',()=>{blackouts.splice(i,1);render();});
   });
