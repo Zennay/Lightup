@@ -8,7 +8,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
 PAGE = ROOT / "index.html"
-SCRIPTS = ("studio-network-v1.js", "studio-fingerprint-v1.js", "studio-window-v1.js", "app.js")
+SCRIPTS = ("studio-network-v1.js", "studio-fingerprint-v1.js", "studio-window-v1.js", "withdrawal-import.js", "app.js")
 CSS = ROOT / "style.css"
 OUT = ROOT / "standalone.html"
 
