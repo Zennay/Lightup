@@ -167,6 +167,12 @@ function render(){
   renderBlocks();
   $('total').textContent=entries.length;$('timed').textContent=timed.length;
   $('unscheduled').textContent=unsafe.length;$('clashes').textContent=pairs.length+blockHits.length;
+  const original=entries.filter(e=>e.interval.state==='resolved');
+  const baseline=timeClashes(original).pairs.length+
+    original.reduce((total,e)=>total+blackouts.filter(b=>e.interval.start<b.end&&b.start<e.interval.end).length,0);
+  const current=pairs.length+blockHits.length;
+  $('baselineClashes').textContent=baseline;
+  $('clashReduction').textContent=String(baseline-current);
   $('ics').disabled=!timed.length;$('print').disabled=!entries.length;
   const days=Number($('horizon').value),lo=anchorUTC,hi=anchorUTC+days*DAY;
   createAxis(days);
