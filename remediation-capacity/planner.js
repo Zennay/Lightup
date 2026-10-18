@@ -191,6 +191,33 @@
       sourceCount:queue.length,priorityBands,
       reserve, start:options.start,daysPerWeek:workDays,weeklyAvailability:availability});
   }
+  // Bounded hypothetical remediation milestone, not a due-date promise or authority.
+  function riskMilestone(findings,rawOptions,targetWeek,targetBand) {
+    if(targetBand!=='critical'&&targetBand!=='critical_high')
+      fail('Select critical-only or critical-and-high milestone');
+    const base=plan(findings,rawOptions);
+    const cutoff=exactInteger(targetWeek,1,base.schedule.length,'milestone planning week');
+    const severities=targetBand==='critical'?['critical']:['critical','high'];
+    const required=severities.reduce((total,severity)=>total+base.priorityBands[severity].estimated_hours,0);
+    const fundedThroughWeek=planOutput=>planOutput.schedule.slice(0,cutoff).reduce(
+      (total,week)=>total+week.portions.filter(part=>severities.includes(part.severity))
+        .reduce((sum,part)=>sum+part.hours,0),0);
+    const planned=fundedThroughWeek(base);
+    let minimumEngineers=null;
+    for(let engineers=1;engineers<=30;engineers++){
+      const candidate=plan(findings,{...rawOptions,engineers});
+      if(fundedThroughWeek(candidate)===required){minimumEngineers=engineers;break;}
+    }
+    const unallocated=Math.max(0,required-planned);
+    return Object.freeze({
+      review_only:true,authorization:false,consent:false,grant:false,
+      execute:false,dispatch:false,scan:false,retest_verified:false,deploy:false,release:false,
+      target_band:targetBand,target_week:cutoff,
+      required_estimated_hours:required,provisionally_allocated_hours:planned,
+      remaining_estimated_hours:unallocated,fit_by_target_week:unallocated===0,
+      smallest_modelled_team:minimumEngineers,search_max_engineers:30
+    });
+  }
   function summary(plan) {
     return {
       schema:'lightup.remediation_capacity_draft.v1',
@@ -247,5 +274,5 @@
     lines.push('','Human follow-up: confirm source client/engagement externally, review estimates and staffing, assign owners through existing authorised channels, verify repairs/retests separately.','');
     return lines.join('\n');
   }
-  root.LightUpCapacity = Object.freeze({parseCSV,compareReports,plan,summary,csvReport,markdownReport,DEFAULT_HOURS,MAX_BYTES,MAX_ROWS});
+  root.LightUpCapacity = Object.freeze({parseCSV,compareReports,plan,riskMilestone,summary,csvReport,markdownReport,DEFAULT_HOURS,MAX_BYTES,MAX_ROWS});
 })(window);
