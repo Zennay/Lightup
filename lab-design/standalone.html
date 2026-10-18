@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>LightUp · Lab Scenario Studio</title><meta http-equiv="Content-Security-Policy" content="default-src 'none'; base-uri 'none'; connect-src 'none'; form-action 'none'; object-src 'none'; frame-src 'none'; img-src 'none'; style-src 'sha256-wVbxiF2eC6OeCUVYlGOdz/WnDOlAUdQFKlIWO8woQmg='; script-src 'sha256-2rh9O8nJuUg4gMUnwwsbaJ7BtLsnF6tmkyEsVI6hUk4='"><style>:root{color-scheme:dark;--bg:#081018;--panel:#101e2b;--edge:#294157;--mint:#74e5d0;--text:#e8f2f8;--muted:#a5bcca;--warning:#eebc87;--red:#ff9a9a;font:16px/1.55 ui-sans-serif,system-ui,-apple-system,Arial,sans-serif}*{box-sizing:border-box}body{background:radial-gradient(ellipse 70% 15% at 25% 1%,#19374d 0,transparent 100%),var(--bg);color:var(--text);margin:0}header,main,footer{max-width:1120px;margin:auto;width:calc(100% - 32px)}header{padding:52px 0 28px}.top,.section,.controls,.stats{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:14px}.brand,.pill,.section span{font-size:.76rem;letter-spacing:.09em;text-transform:uppercase;font-weight:800;color:var(--mint)}.pill{border:1px solid #886244;color:var(--warning);padding:5px 12px;border-radius:20px}h1{font-size:clamp(2.2rem,6vw,4.7rem);letter-spacing:-.05em;line-height:1.07;margin:28px 0 15px}h2{font-size:1.23rem;margin:0}.lead{font-size:1.18rem;max-width:750px}p{color:var(--muted)}.warning{border-left:5px solid var(--red);background:#37242b;display:flex;gap:18px;align-items:center;flex-wrap:wrap;padding:12px 18px;color:#ffdbdb;margin:26px 0 0}.warning span{font-size:.88rem}.panel{background:linear-gradient(145deg,var(--panel),#0d1825);border:1px solid var(--edge);border-radius:16px;padding:clamp(18px,3vw,30px);margin:18px 0;box-shadow:0 10px 38px #0003}.section{border-bottom:1px solid var(--edge);padding-bottom:14px}.controls{justify-content:flex-start;margin:18px 0}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:15px;margin-top:18px}.grid .wide{grid-column:1/-1}label{display:block;font-weight:660;color:var(--text)}small{display:block;font-weight:400;color:var(--muted)}input,textarea,select{display:block;width:100%;border:1px solid #3c566d;color:var(--text);background:#071521;border-radius:9px;padding:11px;font:inherit;margin-top:7px}textarea{resize:vertical}button,.pick{display:inline-block;border:1px solid var(--mint);border-radius:9px;background:var(--mint);color:#082431;padding:11px 16px;font:inherit;font-weight:720;cursor:pointer}.pick input{margin-top:4px;max-width:260px;font-size:.8rem;background:transparent;border:0;padding:0;color:#0a2934}.outline{background:#172a3a;color:var(--text);border-color:#3e6178}.danger{background:#452630;color:#ffd5d5;border-color:#a9595d}button:disabled{opacity:.35;cursor:default}.stats{justify-content:flex-start;gap:10px}.stat{background:#193041;border:1px solid #2b4e61;border-radius:9px;padding:8px 12px;font-size:.85rem}.tablewrap{overflow-x:auto}table{width:100%;border-collapse:collapse}th,td{border-bottom:1px solid var(--edge);padding:12px 10px;vertical-align:top;text-align:left;font-size:.9rem}th{color:var(--mint);background:#192f40}tr:nth-child(even){background:#192c3e66}.empty{border:1px dashed var(--edge);padding:22px;border-radius:10px}.footer-note{font-size:.9rem;border-top:1px solid var(--edge);padding-top:18px}.skip{position:absolute;top:-100px}.skip:focus{top:6px;left:6px;background:white;color:black;padding:9px}a{color:var(--mint)}footer{font-size:.84rem;padding:15px 0 50px;color:var(--muted)}:focus-visible{outline:3px solid var(--warning);outline-offset:3px}@media(max-width:680px){.grid{grid-template-columns:1fr}header{padding-top:24px}}@media print{body{background:white;color:black}header,main,footer{width:100%;max-width:none}header{padding:8px 0}.panel{box-shadow:none;background:white;color:black;border-color:#bbb;break-inside:avoid}.controls,.grid,#editor,.pick,#catalog,footer,#status,#editorStatus,#exportStatus{display:none!important}p,small{color:#333}h1{font-size:2rem}.warning{background:white;border-color:#900;color:#900}}</style></head><body>
+<title>LightUp · Lab Scenario Studio</title><meta http-equiv="Content-Security-Policy" content="default-src 'none'; base-uri 'none'; connect-src 'none'; form-action 'none'; object-src 'none'; frame-src 'none'; img-src 'none'; style-src 'sha256-VIDTRf29wI08CZ1rap1EH7EgpRs4esuBlGZcVHK09B8='; script-src 'sha256-CYGcbSsYdOlRD8uQWcwC6UOOFKcyHUbj1cnOxlu+VNc='"><style>:root{color-scheme:dark;--bg:#081018;--panel:#101e2b;--edge:#294157;--mint:#74e5d0;--text:#e8f2f8;--muted:#a5bcca;--warning:#eebc87;--red:#ff9a9a;font:16px/1.55 ui-sans-serif,system-ui,-apple-system,Arial,sans-serif}*{box-sizing:border-box}body{background:radial-gradient(ellipse 70% 15% at 25% 1%,#19374d 0,transparent 100%),var(--bg);color:var(--text);margin:0}header,main,footer{max-width:1120px;margin:auto;width:calc(100% - 32px)}header{padding:52px 0 28px}.top,.section,.controls,.stats{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:14px}.brand,.pill,.section span{font-size:.76rem;letter-spacing:.09em;text-transform:uppercase;font-weight:800;color:var(--mint)}.pill{border:1px solid #886244;color:var(--warning);padding:5px 12px;border-radius:20px}h1{font-size:clamp(2.2rem,6vw,4.7rem);letter-spacing:-.05em;line-height:1.07;margin:28px 0 15px}h2{font-size:1.23rem;margin:0}.lead{font-size:1.18rem;max-width:750px}p{color:var(--muted)}.warning{border-left:5px solid var(--red);background:#37242b;display:flex;gap:18px;align-items:center;flex-wrap:wrap;padding:12px 18px;color:#ffdbdb;margin:26px 0 0}.warning span{font-size:.88rem}.panel{background:linear-gradient(145deg,var(--panel),#0d1825);border:1px solid var(--edge);border-radius:16px;padding:clamp(18px,3vw,30px);margin:18px 0;box-shadow:0 10px 38px #0003}.section{border-bottom:1px solid var(--edge);padding-bottom:14px}.controls{justify-content:flex-start;margin:18px 0}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:15px;margin-top:18px}.grid .wide{grid-column:1/-1}label{display:block;font-weight:660;color:var(--text)}small{display:block;font-weight:400;color:var(--muted)}input,textarea,select{display:block;width:100%;border:1px solid #3c566d;color:var(--text);background:#071521;border-radius:9px;padding:11px;font:inherit;margin-top:7px}textarea{resize:vertical}button,.pick{display:inline-block;border:1px solid var(--mint);border-radius:9px;background:var(--mint);color:#082431;padding:11px 16px;font:inherit;font-weight:720;cursor:pointer}.pick input{margin-top:4px;max-width:260px;font-size:.8rem;background:transparent;border:0;padding:0;color:#0a2934}.outline{background:#172a3a;color:var(--text);border-color:#3e6178}.danger{background:#452630;color:#ffd5d5;border-color:#a9595d}button:disabled{opacity:.35;cursor:default}.stats{justify-content:flex-start;gap:10px}.stat{background:#193041;border:1px solid #2b4e61;border-radius:9px;padding:8px 12px;font-size:.85rem}.tablewrap{overflow-x:auto}table{width:100%;border-collapse:collapse}th,td{border-bottom:1px solid var(--edge);padding:12px 10px;vertical-align:top;text-align:left;font-size:.9rem}th{color:var(--mint);background:#192f40}tr:nth-child(even){background:#192c3e66}.empty{border:1px dashed var(--edge);padding:22px;border-radius:10px}.footer-note{font-size:.9rem;border-top:1px solid var(--edge);padding-top:18px}.skip{position:absolute;top:-100px}.skip:focus{top:6px;left:6px;background:white;color:black;padding:9px}a{color:var(--mint)}footer{font-size:.84rem;padding:15px 0 50px;color:var(--muted)}:focus-visible{outline:3px solid var(--warning);outline-offset:3px}@media(max-width:680px){.grid{grid-template-columns:1fr}header{padding-top:24px}}@media print{body{background:white;color:black}header,main,footer{width:100%;max-width:none}header{padding:8px 0}.panel{box-shadow:none;background:white;color:black;border-color:#bbb;break-inside:avoid}.controls,.grid,#editor,.pick,#catalog,footer,#status,#editorStatus,#exportStatus{display:none!important}p,small{color:#333}h1{font-size:2rem}.warning{background:white;border-color:#900;color:#900}}\n.staged{padding:18px;border:1px solid #906f48;border-radius:12px;background:#2a2930;margin-top:18px}.staged[hidden]{display:none}\n</style></head><body>
 <a href="#composer" class="skip">Skip to scenario editor</a>
 <header><div class="top"><span class="brand">◈ LIGHTUP / ASSESSMENT RUNTIME</span><strong class="pill">INCUBATE · LAB ONLY · DRAFT/HOLD</strong></div>
 <h1>Lab Scenario Studio</h1><p class="lead">Design <strong>isolated, offline lab exercises</strong> and their planted ground truth, before evaluation. No target connection, runner, scanner or permissions are created.</p>
@@ -10,7 +10,10 @@
 <p>Start with an entirely fictional demonstration or import a previously saved private Lab Design Catalog v1 JSON. Data stays in browser memory until Forget or closing the page; no network or background persistence.</p>
 <div class="controls"><button id="demo">Load fictional demo</button><label class="pick">Import PRIVATE catalog<input type="file" accept=".json,application/json" id="load"></label>
 <label class="pick">Append PRIVATE catalog<input type="file" accept=".json,application/json" id="appendCatalog" disabled></label><button id="forget" class="outline">Forget all</button></div><p id="status" role="status" aria-live="polite"></p>
-<div id="stats" class="stats"></div></section>
+<div id="stats" class="stats"></div><div id="staging" class="staged" hidden><h3>Replacement preview — not applied</h3>
+<p id="stageSummary"></p><div id="stageRows" class="tablewrap"></div>
+<div class="controls"><button id="acceptStage" type="button">Accept replacement (PRIVATE)</button><button id="rejectStage" type="button" class="outline">Discard imported candidate</button></div>
+<p>Source chronology, authenticity and consent are not established. A missing scenario does not prove remediation. The existing editor and catalog remain unchanged until explicit acceptance.</p></div></section>
 <section class="panel" id="composer"><div class="section"><h2>02 / Scenario composer</h2><span>OFFLINE DESIGN · NO SCAN</span></div>
 <p>Only explicit numeric IP literals from 127.0.0.0/8, RFC1918, IPv6 loopback, ULA or IPv6 link-local are accepted. Hostnames, public and reserved documentation/test networks, URL schemes, ports and scoped identifiers are rejected. Zero planted findings and unscored are different.</p>
 <form id="editor" novalidate><div class="grid">
@@ -45,7 +48,7 @@
   const LEVELS=["critical","high","medium","low","info"];
   const FLAGS=()=>({authorized:false,consent_verified:false,dispatch_allowed:false,release_allowed:false});
   const RE_TOKEN=/^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
-  let items=[],editing=-1,fictional=false;
+  let items=[],editing=-1,fictional=false,staged=null;
   const fail=condition=>{if(!condition)throw Error("Invalid or incompatible PRIVATE lab catalog");};
   const exact=(x,keys)=>x!==null&&typeof x==="object"&&!Array.isArray(x)&&
     Object.keys(x).length===keys.length&&keys.every(k=>Object.hasOwn(x,k));
@@ -271,7 +274,7 @@
       fail(editing<0?next.length<32:editing<next.length);
       fail(!next.some((old,index)=>old.scenario_id===row.scenario_id&&index!==editing));
       if(editing<0)next.push(row);else next[editing]=row;
-      validateCatalog(documentCatalog(next));items=next;
+      validateCatalog(documentCatalog(next));clearStage();items=next;
       notify("editorStatus","Saved private lab scenario (NO EXECUTION).");
       resetEditor();notify("status","Catalog edited locally; exports remain DRAFT_ONLY.");
       render();
@@ -280,8 +283,46 @@
   function deleteScenario(){
     if(editing<0||!items[editing])return;
     if(!confirm("Delete this private lab scenario from local memory?"))return;
-    items=items.filter((_,i)=>i!==editing);resetEditor();render();
+    clearStage();items=items.filter((_,i)=>i!==editing);resetEditor();render();
     notify("status","Selected scenario deleted from local memory.");
+  }
+  function clearStage(){
+    staged=null;$("staging").hidden=true;$("stageRows").replaceChildren();
+    $("stageSummary").textContent="";
+  }
+  function showStage(){
+    if(!staged){clearStage();return;}
+    const earlier=new Map(items.map(r=>[r.scenario_id,r]));
+    const after=new Map(staged.map(r=>[r.scenario_id,r]));
+    const changes=[];
+    for(const [id,row] of after){
+      changes.push([id,!earlier.has(id)?"ADDED":
+        JSON.stringify(earlier.get(id))===JSON.stringify(row)?"UNCHANGED":"CHANGED"]);
+    }
+    for(const id of earlier.keys())if(!after.has(id))changes.push([id,"ABSENT (not fixed)"]);
+    const current=items.length,proposed=staged.length;
+    $("staging").hidden=false;
+    $("stageSummary").textContent="Current "+current+" scenarios → proposed "+proposed+
+      ". "+changes.filter(([,state])=>state==="ADDED").length+" added; "+
+      changes.filter(([,state])=>state==="CHANGED").length+" changed; "+
+      changes.filter(([,state])=>state.startsWith("ABSENT")).length+
+      " absent. Original scenario IDs are visible only in this PRIVATE preview.";
+    const table=document.createElement("table");
+    table.innerHTML="<thead><tr><th>PRIVATE scenario ID</th><th>Human diff</th></tr></thead>";
+    const body=document.createElement("tbody");
+    for(const [id,status] of changes.sort(([a],[b])=>a.localeCompare(b))){
+      const row=document.createElement("tr");
+      for(const value of [id,status]){const cell=document.createElement("td");
+        cell.textContent=value;row.append(cell);}
+      body.append(row);
+    }
+    table.append(body);$("stageRows").replaceChildren(table);
+  }
+  function acceptStage(){
+    if(!staged)return;
+    if(items.length&&!confirm("Replace the current PRIVATE catalog with the reviewed source?"))return;
+    items=staged;fictional=false;clearStage();resetEditor();render();
+    notify("status","Explicitly accepted staged PRIVATE catalog. No target contacted.");
   }
   async function importCatalog(file){
     try{
@@ -289,8 +330,8 @@
       const bytes=await file.arrayBuffer();fail(bytes.byteLength<=262144);
       const raw=new TextDecoder("utf-8",{fatal:true}).decode(bytes);
       const next=validateCatalog(parseJSON(raw));
-      items=next;fictional=false;resetEditor();render();
-      notify("status","Imported "+items.length+" PRIVATE lab scenarios, source untrusted; no target contacted.");
+      staged=next;showStage();
+      notify("status","Validated candidate imported for HUMAN comparison only; existing catalog unchanged.");
     }catch(_){notify("status","HOLD: malformed, oversized, public-target or forged-authority catalog. Existing work preserved.",true);}
   }
   async function appendCatalog(file){
@@ -303,7 +344,7 @@
       const incoming=validateCatalog(parseJSON(source));
       const together=[...items,...incoming];
       const next=validateCatalog(documentCatalog(together));
-      items=next;render();
+      clearStage();items=next;render();
       notify("status","Appended "+incoming.length+
         " privately authored scenarios. Existing editor work preserved; no target accessed.");
     }catch(_){
@@ -323,11 +364,11 @@
         description:"Invented private IPv4 example; metrics unspecified.",
         targets:["10.20.0.7"],expected_findings:null}
     ];
-    items=validateCatalog(documentCatalog(next));fictional=true;resetEditor();render();
+    clearStage();items=validateCatalog(documentCatalog(next));fictional=true;resetEditor();render();
     notify("status","FICTIONAL DEMO ONLY: invented addresses and findings. No system accessed.");
   }
   function forget(){
-    items=[];fictional=false;resetEditor();$("load").value="";
+    clearStage();items=[];fictional=false;resetEditor();$("load").value="";
     render();notify("status","Catalog forgotten from this browser session.");
   }
   function download(name,source,type){
@@ -355,6 +396,10 @@
       JSON.stringify(redacted(),null,2)+"\n","application/json");
     notify("exportStatus","Redacted summary downloaded; original targets and finding identifiers omitted.");
   }
+  $("acceptStage").addEventListener("click",acceptStage);
+  $("rejectStage").addEventListener("click",()=>{
+    clearStage();notify("status","Staged replacement discarded; original catalog preserved.");
+  });
   $("editor").addEventListener("submit",saveForm);
   $("clear").addEventListener("click",resetEditor);
   $("delete").addEventListener("click",deleteScenario);

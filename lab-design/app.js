@@ -8,7 +8,7 @@
   const LEVELS=["critical","high","medium","low","info"];
   const FLAGS=()=>({authorized:false,consent_verified:false,dispatch_allowed:false,release_allowed:false});
   const RE_TOKEN=/^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
-  let items=[],editing=-1,fictional=false;
+  let items=[],editing=-1,fictional=false,staged=null;
   const fail=condition=>{if(!condition)throw Error("Invalid or incompatible PRIVATE lab catalog");};
   const exact=(x,keys)=>x!==null&&typeof x==="object"&&!Array.isArray(x)&&
     Object.keys(x).length===keys.length&&keys.every(k=>Object.hasOwn(x,k));
@@ -234,7 +234,7 @@
       fail(editing<0?next.length<32:editing<next.length);
       fail(!next.some((old,index)=>old.scenario_id===row.scenario_id&&index!==editing));
       if(editing<0)next.push(row);else next[editing]=row;
-      validateCatalog(documentCatalog(next));items=next;
+      validateCatalog(documentCatalog(next));clearStage();items=next;
       notify("editorStatus","Saved private lab scenario (NO EXECUTION).");
       resetEditor();notify("status","Catalog edited locally; exports remain DRAFT_ONLY.");
       render();
@@ -243,8 +243,46 @@
   function deleteScenario(){
     if(editing<0||!items[editing])return;
     if(!confirm("Delete this private lab scenario from local memory?"))return;
-    items=items.filter((_,i)=>i!==editing);resetEditor();render();
+    clearStage();items=items.filter((_,i)=>i!==editing);resetEditor();render();
     notify("status","Selected scenario deleted from local memory.");
+  }
+  function clearStage(){
+    staged=null;$("staging").hidden=true;$("stageRows").replaceChildren();
+    $("stageSummary").textContent="";
+  }
+  function showStage(){
+    if(!staged){clearStage();return;}
+    const earlier=new Map(items.map(r=>[r.scenario_id,r]));
+    const after=new Map(staged.map(r=>[r.scenario_id,r]));
+    const changes=[];
+    for(const [id,row] of after){
+      changes.push([id,!earlier.has(id)?"ADDED":
+        JSON.stringify(earlier.get(id))===JSON.stringify(row)?"UNCHANGED":"CHANGED"]);
+    }
+    for(const id of earlier.keys())if(!after.has(id))changes.push([id,"ABSENT (not fixed)"]);
+    const current=items.length,proposed=staged.length;
+    $("staging").hidden=false;
+    $("stageSummary").textContent="Current "+current+" scenarios → proposed "+proposed+
+      ". "+changes.filter(([,state])=>state==="ADDED").length+" added; "+
+      changes.filter(([,state])=>state==="CHANGED").length+" changed; "+
+      changes.filter(([,state])=>state.startsWith("ABSENT")).length+
+      " absent. Original scenario IDs are visible only in this PRIVATE preview.";
+    const table=document.createElement("table");
+    table.innerHTML="<thead><tr><th>PRIVATE scenario ID</th><th>Human diff</th></tr></thead>";
+    const body=document.createElement("tbody");
+    for(const [id,status] of changes.sort(([a],[b])=>a.localeCompare(b))){
+      const row=document.createElement("tr");
+      for(const value of [id,status]){const cell=document.createElement("td");
+        cell.textContent=value;row.append(cell);}
+      body.append(row);
+    }
+    table.append(body);$("stageRows").replaceChildren(table);
+  }
+  function acceptStage(){
+    if(!staged)return;
+    if(items.length&&!confirm("Replace the current PRIVATE catalog with the reviewed source?"))return;
+    items=staged;fictional=false;clearStage();resetEditor();render();
+    notify("status","Explicitly accepted staged PRIVATE catalog. No target contacted.");
   }
   async function importCatalog(file){
     try{
@@ -252,8 +290,8 @@
       const bytes=await file.arrayBuffer();fail(bytes.byteLength<=262144);
       const raw=new TextDecoder("utf-8",{fatal:true}).decode(bytes);
       const next=validateCatalog(parseJSON(raw));
-      items=next;fictional=false;resetEditor();render();
-      notify("status","Imported "+items.length+" PRIVATE lab scenarios, source untrusted; no target contacted.");
+      staged=next;showStage();
+      notify("status","Validated candidate imported for HUMAN comparison only; existing catalog unchanged.");
     }catch(_){notify("status","HOLD: malformed, oversized, public-target or forged-authority catalog. Existing work preserved.",true);}
   }
   async function appendCatalog(file){
@@ -266,7 +304,7 @@
       const incoming=validateCatalog(parseJSON(source));
       const together=[...items,...incoming];
       const next=validateCatalog(documentCatalog(together));
-      items=next;render();
+      clearStage();items=next;render();
       notify("status","Appended "+incoming.length+
         " privately authored scenarios. Existing editor work preserved; no target accessed.");
     }catch(_){
@@ -286,11 +324,11 @@
         description:"Invented private IPv4 example; metrics unspecified.",
         targets:["10.20.0.7"],expected_findings:null}
     ];
-    items=validateCatalog(documentCatalog(next));fictional=true;resetEditor();render();
+    clearStage();items=validateCatalog(documentCatalog(next));fictional=true;resetEditor();render();
     notify("status","FICTIONAL DEMO ONLY: invented addresses and findings. No system accessed.");
   }
   function forget(){
-    items=[];fictional=false;resetEditor();$("load").value="";
+    clearStage();items=[];fictional=false;resetEditor();$("load").value="";
     render();notify("status","Catalog forgotten from this browser session.");
   }
   function download(name,source,type){
@@ -318,6 +356,10 @@
       JSON.stringify(redacted(),null,2)+"\n","application/json");
     notify("exportStatus","Redacted summary downloaded; original targets and finding identifiers omitted.");
   }
+  $("acceptStage").addEventListener("click",acceptStage);
+  $("rejectStage").addEventListener("click",()=>{
+    clearStage();notify("status","Staged replacement discarded; original catalog preserved.");
+  });
   $("editor").addEventListener("submit",saveForm);
   $("clear").addEventListener("click",resetEditor);
   $("delete").addEventListener("click",deleteScenario);
