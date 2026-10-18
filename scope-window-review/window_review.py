@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+from getpass import getpass
 from collections import Counter
 from datetime import datetime, timedelta, timezone
 import json
@@ -345,7 +346,13 @@ def private_publish(path: Path, payload: bytes) -> None:
 
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--casebook", required=True, type=Path)
+    source = parser.add_mutually_exclusive_group(required=True)
+    source.add_argument("--casebook", type=Path,
+                        help="original private single-tenant Casebook JSON")
+    source.add_argument("--database", type=Path,
+                        help="original persisted LightUp SQLite; original login and role checks")
+    parser.add_argument("--email", help="original user account (required with --database)")
+    parser.add_argument("--client", help="exact existing tenant ID; required for operators")
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument("--agenda-json", type=Path, help="private IDs included; owner-only directory")
     group.add_argument("--calendar", type=Path, help="identity-free generic calendar events")
@@ -361,7 +368,29 @@ def main(argv=None) -> int:
             raise ReviewHold("invalid planning horizon")
         out = args.agenda_json or args.calendar or args.board
         ensure_private_destination(out)
-        source = source_file(args.casebook)
+        if args.database:
+            if not args.email or args.casebook or not args.email.strip():
+                raise ReviewHold("database mode requires original account --email")
+            # Original account authentication includes lockout. This may update
+            # original login counters; we never write grants/consent/scans.
+            from lightup.auth_casebook import authenticated_casebook
+            original = authenticated_casebook(
+                str(args.database), email=args.email,
+                password=getpass("Original LightUp account password: "),
+                client_id=args.client,
+            )
+            # Match the original owner-only Casebook export bytes: source binding
+            # is not a cryptographic attestation of consent or actual authority.
+            raw = (json.dumps(original, sort_keys=True, indent=2,
+                              allow_nan=False) + "\n").encode("utf-8")
+            if len(raw) > MAX_SOURCE:
+                raise ReviewHold("original authenticated Casebook is too large")
+            source = dict(original)
+            source["_private_original_sha256"] = hashlib.sha256(raw).hexdigest()
+        else:
+            if args.email or args.client:
+                raise ReviewHold("offline file import does not accept account selectors")
+            source = source_file(args.casebook)
         agenda = derive(source, now=datetime.now(timezone.utc), lead_days=args.lead_days,
                         future_days=args.future_days, daily_capacity=args.daily_capacity)
         if args.agenda_json:
