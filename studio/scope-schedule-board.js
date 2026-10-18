@@ -548,6 +548,16 @@ function decodeScenario(snapshot){
        busy.some(b=>b.start===start&&b.end===end))throw Error('invalid unavailable window');
     busy.push({start,end});
   }
+  const restored=entries.filter(e=>e.interval.state==='resolved').map(e=>{
+    const start=shifts.get(e.key)??e.interval.start;
+    return {lane:assignedLanes.get(e.key)||1,
+      interval:{start,end:start+(e.interval.end-e.interval.start)}};
+  });
+  if(timeClashes(restored).pairs.length!==snapshot.proposed_time_overlap_pairs||
+     restored.reduce((count,e)=>count+busy.filter(b=>
+       e.interval.start<b.end && b.start<e.interval.end).length,0)!==
+       snapshot.proposed_unavailability_overlap_pairs)
+    throw Error('inconsistent overlap claims');
   return {shifts,busy,policy,assignedLanes};
 }
 $('scenarioImport').addEventListener('change',async ev=>{
