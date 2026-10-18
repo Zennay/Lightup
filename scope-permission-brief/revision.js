@@ -67,8 +67,7 @@ function reissue(role){
   audience:role,
   question_states:current.question_states.map(q=>({code:q.code,role:q.role,status:'unanswered'})),
   outstanding_questions:current.question_states.length,
-  flags:Object.fromEntries(Object.keys(current.flags).map(key=>[key,false])),
-  notice:'Fresh source-bound human preparation template only. No old answers, identity, consent, operator approval, grant, execution or release is transferable.'
+  flags:Object.fromEntries(Object.keys(current.flags).map(key=>[key,false]))
  };
  download('lightup-'+role+'-fresh-preparation-HOLD.json','application/json',JSON.stringify(fresh,null,2)+'\\n');
 }
