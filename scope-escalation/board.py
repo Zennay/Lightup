@@ -319,7 +319,7 @@ def _page(data, tasks, digest, script):
     raw_json = json.dumps({"sha256": digest, "client_id": data["client_id"],
                            "as_of": data["as_of"], "tasks": [
                                {k: v for k, v in t.items() if k in
-                                ("key", "family", "tier", "attention")}
+                                ("key", "family", "tier", "attention", "action", "flags")}
                                for t in tasks]}, ensure_ascii=True, separators=(",", ":"))
     # A JSON script element is inert and HTML-safe; replace markup delimiters.
     raw_json = raw_json.replace("<", "\\u003c").replace(">", "\\u003e").replace("&", "\\u0026")
