@@ -320,7 +320,8 @@ def run_planned_assessment(
                    for tool_id, reason in execution.denied],
         "elevation_requests": list(execution.elevation_requests),
         "findings": [
-            {"finding": f.title, "severity": f.severity.value,
+            {"finding": f.title, "finding_id": f.finding_id,
+             "severity": f.severity.value,
              "impact": f.metadata["impact"], "fix": f.remediation,
              "retest": f.retest_status.value, "check_id": f.metadata["check_id"],
              "capability_id": f.metadata["capability_id"], "target": f.target,
