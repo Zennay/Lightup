@@ -119,6 +119,13 @@ def _read_source(path):
                           parse_constant=_reject_constant)
     except (UnicodeError, ValueError, TypeError) as exc:
         raise Hold("invalid canonical JSON") from exc
+    return admit_source_data(raw, data)
+
+
+def admit_source_data(raw: bytes, data: dict):
+    """Verify an entire original Casebook v1 snapshot (never authority)."""
+    if not isinstance(raw, bytes) or len(raw) > MAX_BYTES or raw.startswith(b"\xef\xbb\xbf"):
+        raise Hold("raw source bytes invalid")
     if type(data) is not dict or set(data) != ROOT:
         raise Hold("unsupported original Casebook source")
     if (data["schema"] != "lightup.auth_casebook.v1"
