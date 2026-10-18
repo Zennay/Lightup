@@ -82,12 +82,15 @@
       !exact(Object.keys(obj).sort(),keys.slice().sort()))
       throw Error('Unexpected Casework envelope fields');
   }
-  async function review(currentCSV,caseworkText) {
+  async function review(currentCSV,caseworkText,capacityPlan) {
     const original=root.LightUpCasework;
     if(!original||!root.crypto?.subtle)throw Error('Original Casework parser or SHA-256 is unavailable');
     if(typeof currentCSV!=='string'||new TextEncoder().encode(currentCSV).length>1048576)
       throw Error('The original source CSV must be reloaded, not inferred from the Casework packet');
     const current=original.parseCSV(currentCSV);
+    if(!capacityPlan||capacityPlan.sourceCount!==current.length||!Array.isArray(capacityPlan.schedule)||
+      capacityPlan.schedule.length<1||capacityPlan.schedule.length>12)
+      throw Error('Generate an exact current-source capacity plan before Casework review');
     const packet=parseStrictJSON(caseworkText);
     assertShape(packet,[
       'kind','schema_version','disposition','authenticated','tenant_verified','source_authorized',
@@ -109,6 +112,9 @@
       if(!src||FIELDS.some(k=>src[k]!==row[k]))
         throw Error('Casework source fields differ from original CSV');
     }
+    const sourceOrdinal=new Map(current.map((record,index)=>[record.finding_id,index+1]));
+    const blockedOrdinals=new Set();
+    const sourceRegressionsMarkedComplete=new Set();
     const statuses=Object.fromEntries(STAGES.map(s=>[s,0]));
     const severity=Object.fromEntries(SEVERITIES.map(s=>[s,{
       total:0,blocked:0,missing_owner:0,undated:0,ready_for_retest:0,
@@ -129,6 +135,7 @@
       if(row.due_date)withDueDate++;
       else segment.undated++;
       if(row.status==='blocked') {
+        blockedOrdinals.add(sourceOrdinal.get(row.finding_id));
         segment.blocked++;
         if(row.blocker.trim())blockedWithNotes++;
       }
@@ -139,14 +146,40 @@
       if(urgent&&row.status==='blocked')advisories.critical_high_blocked++;
       if(urgent&&!row.owner.trim())advisories.critical_high_unowned++;
       if(urgent&&!row.due_date)advisories.critical_high_undated++;
-      if(originalRow.retest_status==='regression'&&row.status==='completed')
+      if(originalRow.retest_status==='regression'&&row.status==='completed'){
         advisories.source_regression_locally_completed++;
+        sourceRegressionsMarkedComplete.add(sourceOrdinal.get(row.finding_id));
+      }
       if(originalRow.retest_status==='regression'&&row.status==='deferred')
         advisories.source_regression_deferred++;
       if(row.status==='ready_for_retest'&&!row.owner.trim())
         advisories.retest_coordination_without_owner++;
       if(row.status==='blocked'&&!row.blocker.trim())advisories.blocked_without_note++;
     }
+    const weeklyRisk=capacityPlan.schedule.map(week=>{
+      if(!Array.isArray(week.portions)||!Number.isSafeInteger(week.week)||
+        !Number.isSafeInteger(week.assigned))
+        throw Error('Capacity schedule was changed after source review');
+      let held=0,urgent=0,sourceConflict=0;
+      for(const portion of week.portions){
+        if(!Number.isSafeInteger(portion.ordinal)||portion.ordinal<1||portion.ordinal>current.length||
+           !Number.isSafeInteger(portion.hours)||portion.hours<1)
+          throw Error('Invalid anonymous capacity source position');
+        if(blockedOrdinals.has(portion.ordinal)){
+          held+=portion.hours;
+          if(portion.severity==='critical'||portion.severity==='high')urgent+=portion.hours;
+        }
+        if(sourceRegressionsMarkedComplete.has(portion.ordinal))sourceConflict+=portion.hours;
+      }
+      if(held>week.assigned||sourceConflict>week.assigned)
+        throw Error('Contradictory anonymous capacity schedule');
+      return Object.freeze({
+        week:week.week,start:week.start,provisionally_allocated_hours:week.assigned,
+        locally_blocked_estimated_hours:held,
+        locally_blocked_critical_high_estimated_hours:urgent,
+        source_regression_locally_completed_estimated_hours:sourceConflict
+      });
+    });
     // Discard all source identifiers, case notes, owners and expiry metadata;
     // the result is only aggregate, untrusted human self-report.
     return Object.freeze({
@@ -158,7 +191,8 @@
       source_records:current.length,assigned_owner_labels:assigned,
       source_casework_due_dates:withDueDate,blocked_with_local_notes:blockedWithNotes,
       source_casework_statuses:statuses,severity_statuses:severity,
-      human_review_flags:advisories
+      human_review_flags:advisories,
+      weekly_blocker_pressure:weeklyRisk
     });
   }
   root.LightUpCapacityCasework=Object.freeze({review,MAX_BYTES});
