@@ -57,7 +57,13 @@
 <input id="verify" type="file" hidden disabled aria-label="Recheck local evidence file">
 <p class="subtle">Human review stages are private notes, not verified security remediation, successful retest, an acceptance sign-off or permission to scan.</p>
 </section>
-<section class="card"><h2>5 · Original-finding evidence coverage (PRIVATE)</h2>
+<section class="card"><h2>5 · Existing ORIGINAL Casework integration (read-only)</h2>
+<p>Attach the existing native LightUp Casework v1 PRIVATE draft from the original Casework operator. The original five-column finding content and source SHA-256 must match exactly. Local owner, human plan status and tentative due date appear alongside each original finding; this page never writes to the Casework source or turns any status into verified remediation.</p>
+<div class="grid">
+<label>Native PRIVATE Casework v1 JSON<input id="caseworkImport" type="file" accept=".json,application/json" disabled></label>
+<div><p id="caseworkState">No native Casework imported.</p><button id="caseworkImportButton">Attach original Casework read-only</button><button class="secondary" id="detachCasework" disabled>Detach original Casework</button></div>
+</div></section>
+<section class="card"><h2>6 · Original-finding evidence coverage (PRIVATE)</h2>
 <p>Review which exact original findings have local fingerprints in this desk, prioritising critical/high rows without any local registration. Absence in this browser is <strong>not</strong> proof that evidence does not exist elsewhere. Original source retest labels are only source claims.</p>
 <p id="coverageSummary" role="status"></p>
 <div class="grid">
@@ -72,9 +78,9 @@
 <p id="coverageShown"></p>
 <div class="scroll"><table><thead><tr>
 <th>Original ID</th><th>Severity</th><th>Source retest claim</th>
-<th>Local files</th><th>Human review</th><th>Follow-up</th><th>Human action</th>
+<th>Local files</th><th>Human review</th><th>Follow-up</th><th>Original Casework v1 human status / owner / date</th><th>Human action</th>
 </tr></thead><tbody id="coverageRows"></tbody></table></div></section>
-<section class="card"><h2>6 · Offline handoff</h2>
+<section class="card"><h2>7 · Offline handoff</h2>
 <div class="grid">
 <div><h3>PRIVATE human draft</h3><p>Includes original source SHA, self-declared context, filenames, checksums, and human notes. Protect exported data separately.</p><button id="export" disabled>Export PRIVATE JSON</button></div>
 <div><h3>Restore PRIVATE draft</h3><p>Load only with the exact same original CSV, client and engagement. Reject incomplete, mismatched or elevated authority packets.</p>
