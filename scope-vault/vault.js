@@ -36,6 +36,13 @@
   function invariant(cond) {
     if (!cond) throw new Error("Malformed, incompatible, or unsafe packet. No files were restored.");
   }
+  function parseCanonicalJson(raw) {
+    const parsed = JSON.parse(raw);
+    // Exports are canonical JSON.stringify bytes: this also refuses duplicate keys,
+    // whitespace rewrites and alternate escape spellings before any state mutation.
+    invariant(JSON.stringify(parsed) === raw);
+    return parsed;
+  }
   function strictKeys(obj, keys) {
     invariant(obj !== null && typeof obj === "object" && !Array.isArray(obj));
     const present = Object.keys(obj);
@@ -120,8 +127,8 @@
       recovered.append(info, download);
       els.recovered.append(recovered);
     });
-    els.seal.disabled = busy || entries.length === 0;
-    els.unlock.disabled = busy;
+    els.seal.disabled = busy || entries.length === 0 || !window.isSecureContext || !window.crypto || !window.crypto.subtle;
+    els.unlock.disabled = busy || !window.isSecureContext || !window.crypto || !window.crypto.subtle;
     els.files.disabled = busy;
     els.openFile.disabled = busy;
   }
@@ -138,7 +145,7 @@
     setTimeout(() => URL.revokeObjectURL(url), 60 * 1000);
   }
   function supportsCrypto() {
-    invariant(window.isSecureContext && crypto && crypto.subtle && crypto.getRandomValues);
+    invariant(window.isSecureContext && window.crypto && window.crypto.subtle && window.crypto.getRandomValues);
   }
   async function derive(password, salt) {
     const raw = ENC.encode(password);
@@ -158,7 +165,12 @@
       console.error("Local scope vault operation rejected; details are deliberately withheld.");
       notice("Operation held: " + ((error instanceof DOMException && error.name === "OperationError") ? "incorrect passphrase or damaged encrypted packet." : "unsupported environment, invalid input or exceeded limits. No authority was created."), true);
     }
-    finally { busy = false; touch(); paint(); }
+    finally {
+      busy = false; touch();
+      if (document.hidden) {
+        scrub(); notice("Workspace locked after the operation finished in a hidden tab.");
+      } else paint();
+    }
   }
   async function addFiles() {
     const selected = Array.from(els.files.files || []);
@@ -244,7 +256,7 @@
       const passphrase = els.openPassword.value;
       els.openPassword.value = ""; els.openFile.value = "";
       invariant(file && file.size > 0 && file.size <= MAX_ENVELOPE_BYTES && passphrase.length >= 14 && passphrase.length <= 256);
-      const envelope = JSON.parse(DEC.decode(new Uint8Array(await file.arrayBuffer())));
+      const envelope = parseCanonicalJson(DEC.decode(new Uint8Array(await file.arrayBuffer())));
       strictKeys(envelope, ["format", "kdf", "iterations", "encryption", "salt", "iv", "ciphertext"]);
       invariant(envelope.format === "lightup.offline.encrypted-scope-packet.v1");
       invariant(envelope.kdf === "PBKDF2-SHA256" && envelope.iterations === ROUNDS && envelope.encryption === "AES-256-GCM");
@@ -259,7 +271,7 @@
       ));
       const staged = [];
       try {
-        const payload = JSON.parse(DEC.decode(cleartext));
+        const payload = parseCanonicalJson(DEC.decode(cleartext));
         validatePayload(payload);
         const names = new Set();
         let total = 0;
