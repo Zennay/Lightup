@@ -472,8 +472,9 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--client", help="required exact tenant ID for operator; optional matching ID for client")
     parser.add_argument("--output", help="new private 0600 JSON; never overwrite")
     parser.add_argument("--list-clients", action="store_true", help="authenticated client-ID selector only")
+    parser.add_argument("--cases", action="store_true", help="show authenticated tenant engagement review queue in terminal")
     args = parser.parse_args(argv)
-    if args.list_clients and (args.client is not None or args.output is not None):
+    if args.list_clients and (args.client is not None or args.output is not None or args.cases):
         parser.error("--list-clients cannot be combined with --client or --output")
     try:
         password = getpass("LightUp account password: ")
@@ -489,6 +490,20 @@ def main(argv: list[str] | None = None) -> int:
         )
         if args.output is not None:
             _write_private_json(args.output, result)
+        if args.cases:
+            # Access to exact engagement IDs is available only after original
+            # password authentication and same-snapshot tenant role checks.
+            # Never include original grant references, target assets, notes,
+            # people, contacts, evidence or credentials in this terminal view.
+            print(json.dumps({
+                "schema": "lightup.auth_casebook_cases.v1",
+                "status": "REVIEW_ONLY",
+                "case_overview": result["case_overview"],
+                "source_record_counts": result["declared_counts"],
+                "private_output_created": args.output is not None,
+                **AUTHORITY,
+            }, sort_keys=True, indent=2))
+            return 2
         print(json.dumps({
             "schema": result["schema"], "status": result["status"],
             "declared_counts": result["declared_counts"],
