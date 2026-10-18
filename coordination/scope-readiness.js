@@ -106,14 +106,14 @@ function sourceRecord(d,digest){
   requested_mode:d.requested_mode,requested_risk:d.requested_risk,asset_count:d.requested_assets.length,
   excluded_count:d.excluded_assets.length,planned_utc:d.proposed_window_utc.status==='resolved'?
    {start:d.proposed_window_utc.start,end:d.proposed_window_utc.end}:null,
-  source_attached:true,tasks:fresh()
+  source_attached:true,tasks:fresh(),revision_link:null
  };
 }
 function cleanRecord(r,{restored=false}={}){
  // Imported casework is never allowed to smuggle a claimed authority field.
  if(!plain(r)||(restored&&Object.prototype.hasOwnProperty.call(r,'source_attached'))||Object.keys(r).some(k=>![
   'source_sha256','name','client_label','requested_mode','requested_risk',
-  'asset_count','excluded_count','planned_utc','source_attached','tasks'
+  'asset_count','excluded_count','planned_utc','source_attached','tasks','revision_link'
  ].includes(k)))return null;
  if(!plain(r)||!(/^[0-9a-f]{64}$/).test(r.source_sha256)||!validText(r.name,120)||!validText(r.client_label,100)||
  !['analysis_only','authorized_assessment'].includes(r.requested_mode)||![1,2,3,4].includes(r.requested_risk)||
@@ -124,6 +124,7 @@ function cleanRecord(r,{restored=false}={}){
    !['start','end'].every(k=>validText(r.planned_utc[k],50)&&
    /^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:00\\.000Z$/.test(r.planned_utc[k]))||
    r.planned_utc.start>=r.planned_utc.end))return null;
+ if(!LightUpLocalLineage.validate(r.revision_link,r.source_sha256))return null;
  if(!plain(r.tasks)||Object.keys(r.tasks).length!==STAGES.length)return null;
  const tasks={};
  for(const [key] of STAGES){
@@ -136,7 +137,7 @@ function cleanRecord(r,{restored=false}={}){
  return {source_sha256:r.source_sha256,name:r.name,client_label:r.client_label,
   requested_mode:r.requested_mode,requested_risk:r.requested_risk,asset_count:r.asset_count,
   excluded_count:r.excluded_count,planned_utc:r.planned_utc,
-  source_attached:false,tasks};
+  source_attached:false,tasks,revision_link:r.revision_link??null};
 }
 const unresolved=r=>STAGES.filter(([k])=>r.tasks[k].status!=='prepared').length;
 const overdue=r=>STAGES.filter(([k])=>r.tasks[k].status!=='prepared'&&r.tasks[k].due&&r.tasks[k].due<new Date().toISOString().slice(0,10)).length;
@@ -316,7 +317,7 @@ $('intakeExport').addEventListener('click',()=>{
  }catch(e){clearIntakePreview('Export HOLD: '+e.message);}
 });
 function clearRevisionPreview(message='Source or paperwork changed; compare the exact originals again.'){
- revisionPreview=null;$('revisionReopen').disabled=true;$('revisionCarry').disabled=true;$('revisionExport').disabled=true;
+ revisionPreview=null;$('revisionReopen').disabled=true;$('revisionCarry').disabled=true;$('revisionLink').disabled=true;$('revisionExport').disabled=true;
  $('revisionStatus').textContent=message;$('revisionChanges').replaceChildren();
 }
 function renderRevisionSources(){
@@ -366,6 +367,7 @@ $('revisionCompare').addEventListener('click',()=>{
   revisionPreview={epoch:editEpoch,from,to,result};
   $('revisionReopen').disabled=!result.affectedStages.length;
   $('revisionCarry').disabled=sourceCopies.get(from).client_label!==sourceCopies.get(to).client_label;
+  $('revisionLink').disabled=false;
   $('revisionExport').disabled=false;
   $('revisionStatus').textContent='PRIVATE PREVIEW: '+result.summary.length+
    ' proposal difference category/categories; '+result.affectedStages.length+
@@ -565,7 +567,7 @@ function renderDetail(){
  entries=entries.filter(x=>x!==r);sourceCopies.delete(r.source_sha256);active=entries[0]?.source_sha256||null;setDirty();render();});
  tools.append(remove);box.append(tools);
 }
-function render(){renderStats();renderList();renderDetail();renderRevisionSources();}
+function render(){renderStats();renderList();renderDetail();renderRevisionSources();renderLineage();}
 // Batch planner only fills missing paperwork logistics. Never updates states or authority.
 const bulkInputs=['bulkStage','bulkAudience','bulkOwner','bulkDue','bulkNext'];
 for(const name of bulkInputs)$(name).addEventListener('input',()=>clearBulkPreview('Inputs changed. Preview before applying.'));
@@ -834,6 +836,7 @@ async function readPrivateWorkspace(file){
     !allowedFlags(parsed.security)||!Array.isArray(parsed.records)||parsed.records.length>MAX_RECORDS)throw Error('Unsupported or unsafe workspace schema.');
  const next=parsed.records.map(r=>cleanRecord(r,{restored:true}));
  if(next.some(r=>!r)||new Set(next.map(r=>r.source_sha256)).size!==next.length)throw Error('Invalid, duplicated or malformed source-bound record.');
+ LightUpLocalLineage.inspect(next);
  return next;
 }
 function mergeAnalysis(incoming){
