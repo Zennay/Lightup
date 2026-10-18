@@ -40,8 +40,23 @@
       <ol id="targets" class="targets" aria-label="Prepared endpoints"></ol>
       <p id="empty">Your private batch is empty.</p>
     </section>
+    <section id="studio-area">
+      <h2>3 · Optionally bind an original Lab Scenario Studio design</h2>
+      <p>Import an existing PRIVATE Studio v1 catalog locally (up to 256 KiB), then choose one original scenario. An independently entered explicit URL with port must exist for <em>each</em> exact declared lab IP. An imported design is an untrusted draft, not verified ground truth or permission.</p>
+      <label for="studio-file">Original private Studio JSON catalog</label>
+      <input id="studio-file" type="file" accept=".json,application/json">
+      <div class="buttons">
+        <button type="button" id="studio-import" class="quiet">Read catalog locally</button>
+        <button type="button" id="studio-clear" class="quiet">Discard private Studio draft</button>
+      </div>
+      <label for="studio-select">Original scenario (one at a time)</label>
+      <select id="studio-select" disabled><option value="">Choose a locally imported original Studio catalog</option></select>
+      <p id="studio-status" role="status" aria-live="polite">No original Studio draft imported. Plain lab-batch preparation remains available.</p>
+      <div class="buttons"><button id="studio-export" type="button" disabled>Download exact private studio-catalog.json</button></div>
+      <p class="fine">Browser matching is only an advisory operator preview. The native <code>build.py --catalog-file ... --scenario-id ...</code> and original <code>read_selected_lab_design</code> validators must still approve the complete byte-exact source before any handoff.</p>
+    </section>
     <section>
-      <h2>3 · Export a no-work handoff</h2>
+      <h2>4 · Export a no-work handoff</h2>
       <p>Download <code>targets.txt</code> for the already-existing held CLI. Also available: an anonymous counts-only planning summary. Export downloads include only explicitly prepared local inputs.</p>
       <div class="buttons"><button id="manifest" type="button" disabled>Download private targets.txt</button><button id="receipt" type="button" class="quiet" disabled>Download anonymous plan.json</button></div>
       <label for="command">Display-only original CLI preview command</label>
