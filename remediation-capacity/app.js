@@ -39,6 +39,7 @@
     el('stats').replaceChildren();
     el('weekly').replaceChildren();
     el('allocations').replaceChildren();
+    el('priority-bands').replaceChildren();
     setFeedback('Imported source and proposed capacity plan discarded from this workspace.');
   }
   el('forget').addEventListener('click',forget);
@@ -122,6 +123,19 @@
     ];
     for (const [label,value] of vals) {
       const card=$('div',undefined,'stat'); card.append($('strong',value),$('span',label));stats.append(card);
+    }
+    const riskRows=el('priority-bands');riskRows.replaceChildren();
+    for (const severity of ['critical','high','medium','low','info']) {
+      const band=result.priorityBands[severity];
+      const tr=$('tr');
+      const cutoff=band.last_estimated_scheduling_week===null
+        ? (band.source_count===0?'No cases':'Not fully allocated')
+        : 'Week '+band.last_estimated_scheduling_week+' (estimate)';
+      for (const v of [severity,band.source_count,band.source_regressions,
+        band.estimated_hours+' h',band.scheduled_hours+' h',
+        band.unscheduled_hours+' h',cutoff])tr.append($('td',v));
+      if(band.unscheduled_hours>0) tr.className='outstanding-row';
+      riskRows.append(tr);
     }
     const weekly=el('weekly'); weekly.replaceChildren();
     for (const week of result.schedule) {
