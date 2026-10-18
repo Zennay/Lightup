@@ -79,6 +79,42 @@ function txt(id,v){document.getElementById(id).textContent=String(v);}
 function bounded(v,max){return typeof v==="string"&&v.length>0&&v.length<=max&&![...v].some(function(ch){return ch.charCodeAt(0)<32;});}
 function exactFlags(d){return d.authorization_granted===false&&d.execution_allowed===false&&d.release_approved===false;}
 function uniq(items,field){return new Set(items.map(function(x){return x[field];})).size===items.length;}
+function rejectDuplicateKeys(raw){
+var i=0, steps=0;
+function ws(){while(i<raw.length&&(" \r\n\t".indexOf(raw[i])>=0))i++;}
+function quoted(){
+var start=i;if(raw[i]!=='"')throw Error("Expected string");
+i++;while(i<raw.length){
+if(raw[i]==='\\'){i+=2;continue;}
+if(raw[i]==='"'){i++;return JSON.parse(raw.slice(start,i));}
+i++;
+}throw Error("Unterminated source string");
+}
+function value(depth){
+if(++steps>100000||depth>35)throw Error("JSON too deep/large");
+ws();var ch=raw[i];
+if(ch==='{'){
+i++;ws();var seen=new Set();
+if(raw[i]==='}'){i++;return;}
+while(true){
+ws();var key=quoted();if(seen.has(key))throw Error("Duplicate JSON key");seen.add(key);
+ws();if(raw[i]!==':')throw Error("Expected field separator");i++;value(depth+1);
+ws();if(raw[i]==='}'){i++;break;}
+if(raw[i]!==',')throw Error("Expected field comma");i++;
+}
+return;
+}
+if(ch==='['){
+i++;ws();if(raw[i]===']'){i++;return;}
+while(true){value(depth+1);ws();if(raw[i]===']'){i++;break;}if(raw[i]!==',')throw Error("Expected array comma");i++;}
+return;
+}
+if(ch==='"'){quoted();return;}
+var start=i;while(i<raw.length&&",]} \r\n\t".indexOf(raw[i])<0)i++;
+if(i===start)throw Error("Expected JSON value");
+}
+value(0);ws();if(i!==raw.length)throw Error("Trailing source data");
+}
 function parseSource(d){
 if(!obj(d)||!exactFlags(d))throw Error("Authority flags invalid or source not admitted");
 if(d.schema==="lightup.authenticated_stop_inbox.v1"){
@@ -135,7 +171,7 @@ source.addEventListener("change",async function(){
 var f=Array.from(source.files||[]);source.value="";
 if(!f.length)return;
 if(f.length>MAX_FILES||f.some(function(x){return x.size<2||x.size>MAX_SIZE;})){msg.textContent="HOLD: source file count/size rejected (1–5; max 1 MiB each).";return;}
-try{var parsed=[];for(var file of f){var raw=await file.text();var decoded=JSON.parse(raw);parsed.push(parseSource(decoded));}
+try{var parsed=[];for(var file of f){var raw=await file.text();rejectDuplicateKeys(raw);var decoded=JSON.parse(raw);parsed.push(parseSource(decoded));}
 reconcile(parsed);docs=parsed;fictional=false;msg.textContent=docs.length+" private source(s) loaded locally. UNVERIFIED / REVIEW_ONLY.";render();
 }catch(e){msg.textContent="HOLD: invalid or unsupported input. Previous workspace preserved.";}
 });
