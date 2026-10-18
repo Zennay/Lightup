@@ -34,6 +34,25 @@ The credential-protected record_authenticated_stop public API authenticates an o
 
 A freshly authenticated operator or owning client receives at most 64 history items (time, actor role, opaque event ID) with an explicit truncation marker. Valid inspections return exit 2 because inspection is never authorization; any missing table, unknown engagement or invalid actor returns HOLD and exit 3. The command never echoes actor email, customer names, private reasons, database paths or passwords.
 
+## Distinct-operator STOP follow-up
+
+An authenticated operator can coordinate the emergency queue without revealing tenant IDs or reasons in terminal output:
+
+    PYTHONPATH=src python -m lightup.stop_acknowledgment pending \
+      --database /private/path/lightup.sqlite \
+      --email other-operator@example.invalid
+
+Up to 100 oldest still-unacknowledged STOP events are returned in source order (STOP ID, creation instant and role category). The command never uses target IPs, client labels, reason details or any pending scan.
+
+A separately authenticated REAL operator, different from the original STOP actor, can record a one-time acknowledgment:
+
+    PYTHONPATH=src python -m lightup.stop_acknowledgment ack \
+      --database /private/path/lightup.sqlite \
+      --email different-operator@example.invalid \
+      --stop-id EXISTING_STOP_EVENT_ID
+
+The additional table records acknowledgment identity, original STOP ID and timestamp in one database transaction, UNIQUE per STOP; it cannot remove, reverse, supersede or release the original STOP. Two different accounts are required for the acknowledgment event; this is human coordination, **not** two-party client/operator permission to execute. If the original STOP is corrupt/missing or the operator is not currently active in the original users table, the action fails HOLD without recording a false acknowledgment.
+
 ## Future required action-time integration
 
 The module exposes deny_only_stop_state(db_path, engagement_id=..., client_id=...) for the ORIGINAL runtime owner to install as an additional veto alongside existing canonical scope, client/operator consent, request/grant/activation, risk and tool policy. This function returns STOP_ACTIVE, NO_STOP_RECORDED or HOLD; it returns veto_execution true for STOP_ACTIVE or HOLD, and ALWAYS returns authorization_granted false, execution_allowed false, release_approved false. NO_STOP_RECORDED is not proof of authorization and is never an allow permit. The existing live runtime **does not yet call this module**. A STOP entered here does not magically stop an already running or unrelated process. No concurrency or distributed kill guarantee is claimed.
