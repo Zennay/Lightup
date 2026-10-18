@@ -137,9 +137,11 @@ async function loadSource(){
  const file=$('original').files[0];if(!file)fail('Select an original findings CSV.');
  const client=bounded($('client').value.trim(),120,'client reference',true);
  const engagement=bounded($('engagement').value.trim(),120,'engagement reference',true);
+ const sourceAtStart=state.sha,rowsAtStart=JSON.stringify(state.rows);
  const txt=await fileReader(file,LightUpCasework.MAX_BYTES);
  const findings=LightUpCasework.parseCSV(txt);
  const hash=await digest(utf8(sourceFingerprint(findings)));
+ if(state.sha!==sourceAtStart||JSON.stringify(state.rows)!==rowsAtStart||$('client').value.trim()!==client||$('engagement').value.trim()!==engagement)fail('Source or notes changed during import; retry.');
  const oldSource=state.sha,oldClient=state.client,oldEngagement=state.engagement;
  if(state.sha && (hash!==state.sha||state.client!==client||state.engagement!==engagement)){
    if(!confirm('New original source or context. Discard ALL existing private notes and attachments?'))return;
@@ -154,6 +156,7 @@ async function loadSource(){
 async function addFiles(){
  if(!state.sha)fail('Load original source first.');
  const files=Array.from($('addFiles').files),fid=$('finding').value;
+ const sourceAtStart=state.sha,clientAtStart=state.client,engagementAtStart=state.engagement;
  if(files.length<1||files.length+state.rows.length>MAX_DOCS)fail('Select files; ledger maximum is 120 records.');
  const staged=[];
  for(const f of files){
@@ -166,6 +169,7 @@ async function addFiles(){
     mime:(f.type||'').slice(0,120),added_utc:new Date().toISOString(),human_reviewer:'',
     human_stage:'unreviewed',human_note:''},new Set(state.findings.map(x=>x.finding_id))));
  }
+ if(state.sha!==sourceAtStart||state.client!==clientAtStart||state.engagement!==engagementAtStart||!state.findings.some(f=>f.finding_id===fid)||state.rows.length+staged.length>MAX_DOCS||staged.some(v=>state.rows.some(x=>x.finding_id===v.finding_id&&x.sha256===v.sha256)))fail('Original source or local inventory changed while hashing; retry.');
  state.rows.push(...staged);state.bulk=null;state.undo=[];$('addFiles').value='';render();
  message(staged.length+' local file fingerprint(s) filed. Original file content was not retained.',false);
 }
@@ -174,7 +178,9 @@ async function verifyFile(){
  const idx=state.verify;state.verify=null;
  if(idx===null||idx>=state.rows.length||!file)return;
  if(file.size>MAX_FILE)fail('File larger than permitted local size.');
- const got=await digest(await file.arrayBuffer()),x=state.rows[idx];
+ const x=state.rows[idx],sourceAtStart=state.sha;
+ const got=await digest(await file.arrayBuffer());
+ if(state.sha!==sourceAtStart||state.rows[idx]!==x)fail('Original fingerprint changed during recheck; retry.');
  message(got===x.sha256&&file.size===x.byte_length?
   'Byte digest and length MATCH locally. This does not validate content truth, chronology, authenticity or remediation.':
   'MISMATCH: the selected file differs from the recorded bytes. No record was changed.',
@@ -217,8 +223,10 @@ async function previewMigration(){
  const file=$('newSource').files[0];
  if(!file)fail('Select a separately obtained new original CSV.');
  if(!$('sameEngagement').checked)fail('Explicitly confirm separately verified same client/engagement first.');
+ const sourceAtStart=state.sha,rowsAtStart=JSON.stringify(state.rows),clientAtStart=state.client,engagementAtStart=state.engagement;
  const newFindings=LightUpCasework.parseCSV(await fileReader(file,LightUpCasework.MAX_BYTES));
  const newSha=await digest(utf8(sourceFingerprint(newFindings)));
+ if(state.sha!==sourceAtStart||JSON.stringify(state.rows)!==rowsAtStart||state.client!==clientAtStart||state.engagement!==engagementAtStart||!$('sameEngagement').checked)fail('Source or notes changed during migration preview; retry.');
  if(newSha===state.sha)fail('The new canonical source is identical; there is nothing to migrate.');
  const delta=LightUpCasework.compareSource(state.findings,newFindings);
  const keep=new Set(delta.unchanged);
