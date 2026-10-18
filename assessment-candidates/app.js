@@ -220,13 +220,42 @@
     const a=Number($("pairA").value),b=Number($("pairB").value);
     if(!Number.isSafeInteger(a)||!Number.isSafeInteger(b)||a<0||b<0||
       a>=stats.length||b>=stats.length||a===b){
-      $("pairMetrics").textContent="Select two distinct candidates for a descriptive comparison.";return;
+      $("pairMetrics").textContent="Select two distinct candidates for a descriptive comparison.";
+      $("pairChurn").textContent="";$("pairChurnSummary").textContent="";return;
     }
     const aa=stats[a].total,bb=stats[b].total;
     $("pairMetrics").innerHTML=table(["Metric","Candidate "+(a+1),
       "Candidate "+(b+1),"Numeric change (second − first)","Original adverse case counts"],
       NAMES.map(n=>[nice(n),format(aa[n].candidate),format(bb[n].candidate),
         format(bb[n].candidate-aa[n].candidate),aa[n].adverse+" → "+bb[n].adverse]));
+    const churn=pairChurn(a,b);
+    $("pairChurn").innerHTML=table(["Original metric","Only in first",
+      "Only in second","Adverse in both","Adverse in neither"],
+      churn.metrics.map(r=>[nice(r.name),r.only_first,r.only_second,r.both,r.neither]));
+    $("pairChurnSummary").textContent="Candidate "+(a+1)+" compared with "+(b+1)+
+      ": "+churn.case_count+" shared unverified lab cases · "+
+      churn.only_second_cases+" cases with a flag only in second · "+
+      churn.only_first_cases+" only in first. No chronology or verified fix.";
+  }
+  function pairChurn(a,b){
+    const first=reports[a],second=reports[b],ids=queueIds();
+    const metrics=NAMES.map(name=>{
+      let only_first=0,only_second=0,both=0,neither=0;
+      for(const id of ids){
+        const x=first.cases.get(id).metrics[name].regression;
+        const y=second.cases.get(id).metrics[name].regression;
+        if(x&&y)both++;else if(x)only_first++;else if(y)only_second++;else neither++;
+      }
+      return {name,only_first,only_second,both,neither};
+    });
+    return {first_candidate_slot:a+1,second_candidate_slot:b+1,
+      case_count:ids.length,metrics,
+      only_first_cases:ids.filter(id=>NAMES.some(n=>
+        first.cases.get(id).metrics[n].regression&&!second.cases.get(id).metrics[n].regression)).length,
+      only_second_cases:ids.filter(id=>NAMES.some(n=>
+        !first.cases.get(id).metrics[n].regression&&second.cases.get(id).metrics[n].regression)).length,
+      source_order_authenticated:false,source_identity_authenticated:false,
+      status:"REVIEW_ONLY",...fixedFlags()};
   }
   function queueIds(){return reports.length?[...reports[0].cases.keys()].sort():[];}
   function queueAdverse(id,candidate,topic){
@@ -295,7 +324,7 @@
     if(!active){
       $("cards").innerHTML='<p class="empty">Import reports to compare lab candidates.</p>';
       drawQueue();
-      for(const id of ["thresholds","frontier","caseDetail","metricBoard","pairMetrics"])$(id).innerHTML="";
+      for(const id of ["thresholds","frontier","caseDetail","metricBoard","pairMetrics","pairChurn","pairChurnSummary"])$(id).innerHTML="";
       $("caseSelect").innerHTML='<option value="">Load reports first</option>';
       return;
     }
@@ -448,15 +477,22 @@
     const a=document.createElement("a");a.href=url;a.download=name;
     document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),2000);
   }
+  function currentPairChurn(){
+    const a=Number($("pairA").value),b=Number($("pairB").value);
+    return Number.isSafeInteger(a)&&Number.isSafeInteger(b)&&a>=0&&b>=0&&
+      a<reports.length&&b<reports.length&&a!==b?pairChurn(a,b):null;
+  }
   function exportJSON(){
     if(!reports.length||!settings)return;
-    const out={schema:"lightup.lab_candidate_matrix_review.v2",
+    const out={schema:"lightup.lab_candidate_matrix_review.v3",
       posture:"INCUBATE_M3_M7_PLAN_LAB_ONLY_DRAFT_HOLD",
       status:"REVIEW_ONLY",source_identity_authenticated:false,
       temporal_order_authenticated:false,fictional_demo_only:demo,
       disclaimer:"Human review of untrusted pre-existing lab summaries only. No permission, release, scan or verified remediation.",
       dimensions:dimensions().map(x=>x[1]),review_thresholds:settings,
-      human_discussion_summary:discussionSummary(),candidates:metricRows(),...fixedFlags()};
+      human_discussion_summary:discussionSummary(),
+      selected_pair_flag_crossover:currentPairChurn(),
+      candidates:metricRows(),...fixedFlags()};
     download("lightup-candidate-aggregate-REVIEW-ONLY.json",JSON.stringify(out,null,2)+"\n","application/json");
   }
   function exportCSV(){
@@ -486,6 +522,11 @@
         "; policy violations: "+format(a.policy)+"; human discussion flags: "+
         flags.length+". "+(flags.length?flags.join("; "):"No threshold breaches: STILL REVIEW ONLY.")+"</p>";
     }).join("");
+    const crossover=currentPairChurn();
+    const crossoverTable=crossover?"<h2>Selected two-candidate original source flag crossover</h2>"+
+      "<p>Case-level original source regression-flag counts only; no proven order, review, fix or safety.</p>"+
+      table(["Original metric","Only first","Only second","Both","Neither"],
+        crossover.metrics.map(r=>[nice(r.name),r.only_first,r.only_second,r.both,r.neither])):"";
     const metricTable=table(["Metric",...data.map(r=>"Candidate "+r.candidate_slot+" · total")],
       NAMES.map(n=>[nice(n),...data.map(r=>format(r.metrics[n].candidate_total))]));
     const html="<!doctype html><html lang='en'><head><meta charset='utf-8'>"+
@@ -498,7 +539,7 @@
       "Dispatch allowed: false. Release allowed: false.</p>"+
       "<p>Original source filenames, source case identifiers, identities and raw source payload "+
       "have been omitted. Untrusted values are only reported as aggregates.</p>"+
-      advisory+"<h2>Unverified original metric totals</h2>"+metricTable+
+      advisory+crossoverTable+"<h2>Unverified original metric totals</h2>"+metricTable+
       "<p>No recommendation to deploy, grant or scan. Separate authenticated client/operator "+
       "consent with action-time revocation, original security fixes, full required hosted/permanent VPS "+
       "CI, independent security/privacy review and human GO remain mandatory.</p></body></html>";
