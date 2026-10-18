@@ -27,10 +27,10 @@ function allowedFlags(o){
   Object.keys(o).every(k=>keys.includes(k))&&keys.every(k=>o[k]===false);
 }
 function parseJSON(text){
- const obj=JSON.parse(text,(k,v)=>{
-  if(k==='__proto__'||k==='constructor'||k==='prototype')throw Error('Unsafe reserved JSON key.');
-  return v;
- });
+ // Duplicate serialized keys are ambiguous even if a JS object would keep the last.
+ // Treat untrusted draft/review imports exactly as local data, never as authority.
+ if(!globalThis.LightUpStrictJSON)throw Error('Strict local JSON parser unavailable.');
+ const obj=LightUpStrictJSON.parse(text);
  if(!plain(obj))throw Error('Expected a JSON object.');
  return obj;
 }
