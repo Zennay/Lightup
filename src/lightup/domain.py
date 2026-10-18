@@ -578,7 +578,7 @@ class DomainStore:
         client_id = ctx.resolve_client(client_id, "submit_assessment_request")
         # The portal may synthesize a client context for an operator viewing a
         # client page. Never trust that role/tenant claim for client-origin writes.
-        if ctx.role not in (Role.CLIENT_ADMIN, Role.CLIENT_MEMBER):
+        if ctx.role is not Role.CLIENT_ADMIN and ctx.role is not Role.CLIENT_MEMBER:
             raise RoleError("assessment requests require a real client account")
         assets = tuple(a.strip() for a in requested_assets if a.strip())
         if not assets:
