@@ -189,7 +189,7 @@
     const action=field(value.next_action,240,"next action");
     const note=field(value.note,1200,"human note");
     const due=field(value.due_utc,24,"human due date");
-    if (due!=="" && (!/^\d{4}-\d\d-\d\d$/.test(due) || !Number.isFinite(Date.parse(due+"T00:00:00Z"))))
+    if (due!=="" && (!/^\d{4}-\d\d-\d\d$/.test(due) || !Number.isFinite(Date.parse(due+"T00:00:00Z")) || new Date(due+"T00:00:00Z").toISOString().slice(0,10)!==due))
       hold("Invalid optional UTC human due date");
     return {reviewer,next_action:action,note,due_utc:due};
   }
@@ -486,6 +486,7 @@
     }
   }
   $("saveHuman").addEventListener("click",saveHumanDetail);
+  $("cancelHuman").addEventListener("click",()=>{$("humanDialog").close();});
   $("humanDialog").addEventListener("close",()=>{state.editKey=null;text("dialogError","");});
   $("load").addEventListener("click",load);
   $("restore").addEventListener("click",restorePrivateReview);
