@@ -139,7 +139,7 @@ function renderSummary(){
  $('evidenceImport').disabled=!state.sha;$('detachEvidence').disabled=!state.evidence;
  $('evidenceState').textContent=state.evidence?'Native original Evidence Review v2: '+state.evidence.size+' HUMAN records (READ-ONLY)':'No native Evidence Review imported.';
  $('caseworkState').textContent=state.casework ? 'Native original Casework v1: '+state.casework.size+' HUMAN records (READ-ONLY)' : 'No native Casework imported.';
- renderCoverage();$('actionExport').disabled=!state.sha;renderActions();
+ renderCoverage();renderProvenance();$('actionExport').disabled=!state.sha;renderActions();
 }
 async function loadSource(){
  const file=$('original').files[0];if(!file)fail('Select an original findings CSV.');
@@ -795,6 +795,82 @@ function exportScriptlessBrief(){
  download('LightUp-PRIVATE-source-bound-HUMAN-brief.html',privateScriptlessBrief(),'text/html;charset=utf-8');
 }
 
+
+/* Human-only exact file-identity reuse/metadata/source-link review.
+   Cross-finding reused file bytes may be legitimate; no authenticity verdict. */
+function provenanceSignals(){
+ const byHash=new Map(),byName=new Map();
+ for(const row of state.rows){
+  if(!byHash.has(row.sha256))byHash.set(row.sha256,[]);
+  byHash.get(row.sha256).push(row);
+  const name=row.finding_id+'\u0000'+row.file_name;
+  if(!byName.has(name))byName.set(name,[]);
+  byName.get(name).push(row);
+ }
+ const signals=[];
+ for(const [sha,records] of byHash){
+  const ids=[...new Set(records.map(r=>r.finding_id))];
+  const lengths=[...new Set(records.map(r=>r.byte_length))];
+  if(ids.length>1)signals.push({type:'cross_finding_reuse',
+   finding_ids:ids,sha256:sha,file_names:[...new Set(records.map(r=>r.file_name))],
+   note:'Same LOCAL bytes referenced by multiple original findings. This can be legitimate; request HUMAN provenance review.'});
+  if(lengths.length>1)signals.push({type:'inconsistent_local_size',
+   finding_ids:ids,sha256:sha,file_names:[...new Set(records.map(r=>r.file_name))],
+   note:'Identical claimed LOCAL SHA-256 has conflicting recorded file sizes. Verify the original local files separately.'});
+ }
+ for(const [key,records] of byName){
+  const variants=[...new Set(records.map(r=>r.sha256))];
+  if(variants.length>1)signals.push({type:'same_name_different_bytes',
+   finding_ids:[records[0].finding_id],sha256:variants.join(' / '),
+   file_names:[records[0].file_name],
+   note:'Same original finding and LOCAL filename label map to different bytes. Review versions; do not infer a source fix.'});
+ }
+ const requestRows=window.LightUpArtifactRequests?window.LightUpArtifactRequests.currentRows():[];
+ for(const request of requestRows){
+  if(request.linked_sha256 && !state.rows.some(r=>r.finding_id===request.finding_id&&r.sha256===request.linked_sha256))
+   signals.push({type:'human_request_unlinked',
+    finding_ids:[request.finding_id],sha256:request.linked_sha256,file_names:[],
+    note:'An unverified HUMAN request references a SHA-256 not currently registered under this ORIGINAL finding. It may exist separately.'});
+ }
+ return signals.sort((a,b)=>a.type.localeCompare(b.type)||a.finding_ids[0].localeCompare(b.finding_ids[0]));
+}
+function renderProvenance(){
+ const body=$('provenanceRows');body.replaceChildren();
+ const all=provenanceSignals(),filter=$('provenanceFilter').value;
+ const shown=all.filter(x=>filter==='all'||x.type===filter);
+ $('provenanceSummary').textContent=all.length+' LOCAL review signals across original artifact fingerprints / human references. '+
+  'Identical bytes may legitimately support several findings; these are NOT authenticity, verified remediation or fraud verdicts.';
+ for(const signal of shown){
+  const tr=document.createElement('tr');
+  for(const value of [signal.type.replaceAll('_',' '),
+   signal.finding_ids.join(' · '),signal.file_names.join(' · ')||'human request reference only',
+   signal.sha256,signal.note]){
+    const cell=document.createElement('td');cell.textContent=value;tr.append(cell);
+  }
+  const td=document.createElement('td'),go=document.createElement('button');
+  go.type='button';go.textContent='Review original finding';
+  go.addEventListener('click',()=>{
+   $('finding').value=signal.finding_ids[0];
+   $('filter').value=signal.finding_ids[0];state.filter=signal.finding_ids[0].toLowerCase();
+   render();$('addFiles').focus();
+   message('Original finding '+signal.finding_ids[0]+' selected for HUMAN provenance follow-up; no original file changed.',false);
+  });
+  td.append(go);tr.append(td);body.append(tr);
+ }
+ $('provenanceShown').textContent=shown.length+' HUMAN evidence-provenance signals shown';
+ $('provenanceExport').disabled=!state.sha||!shown.length;
+}
+function exportProvenance(){
+ if(!state.sha)fail('Load original findings before reviewing LOCAL provenance.');
+ const selected=provenanceSignals().filter(s=>$('provenanceFilter').value==='all'||s.type===$('provenanceFilter').value);
+ if(!selected.length)fail('No local provenance signals match the filter.');
+ if(!confirm('Download a PRIVATE original-finding/source-hash-bound file fingerprint and HUMAN provenance review report? Confirm recipient and storage separately.'))return;
+ const rows=[['source_sha256','review_type','original_finding_ids','file_names_private','local_file_sha256','human_review_note'],
+ ...selected.map(x=>[state.sha,x.type,x.finding_ids.join('; '),x.file_names.join('; '),x.sha256,x.note])];
+ download('LightUp-PRIVATE-original-evidence-provenance-signals.csv',ESCAPE+
+  rows.map(row=>row.map(csvCell).join(',')).join('\r\n')+'\r\n','text/csv;charset=utf-8');
+}
+
 function csvCell(raw){
  let s=String(raw);
  // Force text treatment for Unicode-obscured spreadsheet formulas.
@@ -829,6 +905,8 @@ bind('actionFilter','change',renderActions);
 bind('actionExport','click',exportHumanQueue);
 bind('caseworkImportButton','click',importCasework);
 bind('detachCasework','click',detachCasework);
+bind('provenanceFilter','change',renderProvenance);
+bind('provenanceExport','click',exportProvenance);
 bind('coverageFilter','change',renderCoverage);
 bind('coverageExport','click',exportCoverage);
 bind('selectVisible','click',selectVisible);
@@ -864,7 +942,7 @@ window.LightUpArtifactLedgerBridge=Object.freeze({
 const notifyRequestBoard=()=>window.dispatchEvent(new Event('lightup-original-human-context'));
 const originalRenderSummary=renderSummary;
 renderSummary=function(){originalRenderSummary();notifyRequestBoard();};
-window.addEventListener('lightup-human-requests-updated',()=>{renderActions();});
+window.addEventListener('lightup-human-requests-updated',()=>{renderActions();renderProvenance();});
 
 render();
 })();
