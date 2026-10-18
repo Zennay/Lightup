@@ -56,7 +56,7 @@ footer{padding:29px 0 0;color:#8da0be;font-size:12px;line-height:1.6}#message{mi
 <script>
 (function(){
 "use strict";
-var snapshot=null,fictional=false,selectedCase=null,MAX_BYTES=524288;
+var snapshot=null,fictional=false,selectedCase=null,localStages=new Map(),MAX_BYTES=524288;
 function elt(id){return document.getElementById(id);}
 function word(v){return typeof v==="string"&&v.length>0&&v.length<=180&&![...v].some(function(ch){return ch.charCodeAt(0)<32||ch.charCodeAt(0)===127;});}
 function obj(x){return x!==null&&typeof x==="object"&&!Array.isArray(x);}
@@ -112,6 +112,18 @@ var strong=document.createElement("strong");strong.textContent=title;div.appendC
 lines.forEach(function(line){var p=document.createElement("p");p.textContent=line;div.appendChild(p);});host.appendChild(div);
 }
 card("Original engagement",[one.status,"Stored grants: "+one.grant_count,"Stored risk rows: "+one.risk_record_count,"Review: "+one.attention]);
+var stageCard=document.createElement("div");stageCard.className="detail-item";
+var lbl=document.createElement("label");lbl.textContent="Local human follow-up stage (no authority)";lbl.htmlFor="local-stage";
+var stage=document.createElement("select");stage.id="local-stage";
+["unreviewed","investigating","escalated","documented"].forEach(function(v){
+var option=document.createElement("option");option.value=v;option.textContent=v;stage.appendChild(option);
+});
+stage.value=localStages.get(one.engagement_id)||"unreviewed";
+stage.addEventListener("change",function(){
+if(stage.value==="unreviewed")localStages.delete(one.engagement_id);
+else localStages.set(one.engagement_id,stage.value);
+});
+stageCard.append(lbl,stage);host.appendChild(stageCard);
 var grants=snapshot.grants.filter(function(x){return x.engagement_id===selectedCase;});
 var risk=snapshot.risk_approvals.filter(function(x){return x.engagement_id===selectedCase;});
 grants.forEach(function(g){
@@ -153,14 +165,14 @@ time.textContent=item.at;title.textContent=item.type+": "+item.state;badge.textC
 detail();
 elt("origin").textContent=snapshot?(fictional?"FICTIONAL DEMO — ":"PRIVATE UNVERIFIED ORIGINAL EXPORT — ")+"Recorded records, no authority; no original consent or runtime grant verification.": "No authenticated source. Nothing here can validate authorization.";
 }
-elt("file").addEventListener("change",async function(){var file=this.files&&this.files[0];this.value="";if(!file)return;if(file.size<2||file.size>MAX_BYTES){elt("message").textContent="HOLD: file size exceeds private bound.";return;}try{var s=parse(await file.text());snapshot=s;fictional=false;selectedCase=null;elt("message").textContent="Private casebook loaded locally (REVIEW_ONLY).";render();}catch(e){elt("message").textContent="HOLD: invalid/corrupt/unsupported original source. Previous snapshot preserved."; }});
+elt("file").addEventListener("change",async function(){var file=this.files&&this.files[0];this.value="";if(!file)return;if(file.size<2||file.size>MAX_BYTES){elt("message").textContent="HOLD: file size exceeds private bound.";return;}try{var s=parse(await file.text());snapshot=s;fictional=false;selectedCase=null;localStages.clear();elt("message").textContent="Private casebook loaded locally (REVIEW_ONLY).";render();}catch(e){elt("message").textContent="HOLD: invalid/corrupt/unsupported original source. Previous snapshot preserved."; }});
 elt("demo").addEventListener("click",function(){
-snapshot={schema:"lightup.auth_casebook.v1",status:"REVIEW_ONLY",client_id:"fictional-tenant",as_of:"2026-10-18T12:00:00+00:00",requests:[{request_id:"example-request-1",status:"approved",requested_mode:"authorized_assessment",created_at:"2026-10-15T10:00:00+00:00",decision_recorded:true}],engagements:[{engagement_id:"fictional-engagement-1",status:"draft",created_at:"2026-10-16T11:00:00+00:00"}],grants:[{grant_id:"fictional-grant-1",engagement_id:"fictional-engagement-1",approved_request_id:"example-request-1",request_link_observation:"REQUEST_LINK_DECLARED_NOT_VERIFIED",valid_from:"2026-10-18T09:00:00+00:00",valid_until:"2026-10-19T09:00:00+00:00"}],risk_approvals:[{approval_id:"fictional-risk-1",engagement_id:"fictional-engagement-1",status:"pending",source_tenant_matches:true}],case_overview:[{engagement_id:"fictional-engagement-1",status:"draft",grant_count:1,risk_record_count:1,attention:"REVIEW_ONLY_UNVERIFIED_GRANT_LINK"}],declared_counts:{requests:1,engagements:1,grants:1,risk_approvals:1,grant_link_hold:0,risk_tenant_hold:0,case_attention_hold:0,foreign_tenant_row_count:0},source_authenticated:false,client_consent_verified:false,operator_consent_verified:false,authorization_granted:false,execution_allowed:false,release_approved:false};fictional=true;selectedCase=null;elt("message").textContent="Fictional demo only — NOT REAL CLIENT DATA";render();
+snapshot={schema:"lightup.auth_casebook.v1",status:"REVIEW_ONLY",client_id:"fictional-tenant",as_of:"2026-10-18T12:00:00+00:00",requests:[{request_id:"example-request-1",status:"approved",requested_mode:"authorized_assessment",created_at:"2026-10-15T10:00:00+00:00",decision_recorded:true}],engagements:[{engagement_id:"fictional-engagement-1",status:"draft",created_at:"2026-10-16T11:00:00+00:00"}],grants:[{grant_id:"fictional-grant-1",engagement_id:"fictional-engagement-1",approved_request_id:"example-request-1",request_link_observation:"REQUEST_LINK_DECLARED_NOT_VERIFIED",valid_from:"2026-10-18T09:00:00+00:00",valid_until:"2026-10-19T09:00:00+00:00"}],risk_approvals:[{approval_id:"fictional-risk-1",engagement_id:"fictional-engagement-1",status:"pending",source_tenant_matches:true}],case_overview:[{engagement_id:"fictional-engagement-1",status:"draft",grant_count:1,risk_record_count:1,attention:"REVIEW_ONLY_UNVERIFIED_GRANT_LINK"}],declared_counts:{requests:1,engagements:1,grants:1,risk_approvals:1,grant_link_hold:0,risk_tenant_hold:0,case_attention_hold:0,foreign_tenant_row_count:0},source_authenticated:false,client_consent_verified:false,operator_consent_verified:false,authorization_granted:false,execution_allowed:false,release_approved:false};fictional=true;selectedCase=null;localStages.clear();elt("message").textContent="Fictional demo only — NOT REAL CLIENT DATA";render();
 });
-elt("reset").addEventListener("click",function(){snapshot=null;fictional=false;selectedCase=null;elt("message").textContent="Private local snapshot cleared.";render();});
+elt("reset").addEventListener("click",function(){snapshot=null;fictional=false;selectedCase=null;localStages.clear();elt("message").textContent="Private local snapshot cleared.";render();});
 elt("category").addEventListener("change",render);elt("filter").addEventListener("input",render);
 elt("print").addEventListener("click",function(){window.print();});
-elt("export").addEventListener("click",function(){var s=snapshot;if(!s)return;var o={schema:"lightup.auth_casebook_aggregate.v1",status:"REVIEW_ONLY",fictional_demo:fictional,declared_counts:s.declared_counts,source_authenticated:false,client_consent_verified:false,operator_consent_verified:false,authorization_granted:false,execution_allowed:false,release_approved:false};var url=URL.createObjectURL(new Blob([JSON.stringify(o,null,2)],{type:"application/json"})),a=document.createElement("a");a.href=url;a.download="lightup-casebook-aggregate.json";document.body.appendChild(a);a.click();a.remove();setTimeout(function(){URL.revokeObjectURL(url);},1000);});
+elt("export").addEventListener("click",function(){var s=snapshot;if(!s)return;var o={schema:"lightup.auth_casebook_aggregate.v1",status:"REVIEW_ONLY",fictional_demo:fictional,declared_counts:s.declared_counts,local_human_stage_counts:{unreviewed:0,investigating:0,escalated:0,documented:0},source_authenticated:false,client_consent_verified:false,operator_consent_verified:false,authorization_granted:false,execution_allowed:false,release_approved:false};s.case_overview.forEach(function(c){var stage=localStages.get(c.engagement_id)||"unreviewed";o.local_human_stage_counts[stage]++;});var url=URL.createObjectURL(new Blob([JSON.stringify(o,null,2)],{type:"application/json"})),a=document.createElement("a");a.href=url;a.download="lightup-casebook-aggregate.json";document.body.appendChild(a);a.click();a.remove();setTimeout(function(){URL.revokeObjectURL(url);},1000);});
 render();
 })();
 </script></body></html>
