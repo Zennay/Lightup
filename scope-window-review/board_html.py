@@ -43,20 +43,35 @@ const groups = [...document.querySelectorAll('.group')].filter(group=>group.quer
 const search = document.getElementById('query');
 const priority = document.getElementById('priority');
 const phase = document.getElementById('phase');
+const assignment = document.getElementById('assignment');
 function refresh(){
   const q=search.value.trim().toLocaleLowerCase();
   let visible=0;
   for(const row of rows){
+    const assigned=Boolean(row.querySelector('.owner').value.trim());
     const ok=(!q||row.dataset.find.includes(q)) &&
       (priority.value==='all'||row.dataset.priority===priority.value) &&
-      (phase.value==='all'||row.dataset.phase===phase.value);
+      (phase.value==='all'||row.dataset.phase===phase.value) &&
+      (assignment.value==='all' ||
+       (assignment.value==='assigned'&&assigned) ||
+       (assignment.value==='unassigned'&&!assigned));
     row.hidden=!ok;
     if(ok)visible++;
   }
   for(const group of groups)group.hidden=![...group.querySelectorAll('.entry')].some(r=>!r.hidden);
   document.getElementById('shown').textContent=String(visible);
+  const workload=new Map();
+  for(const row of rows){
+   const owner=row.querySelector('.owner').value.trim();
+   const key=owner||'UNASSIGNED';
+   workload.set(key,(workload.get(key)||0)+1);
+  }
+  const units=[...workload].sort((a,b)=>b[1]-a[1]||a[0].localeCompare(b[0]));
+  document.getElementById('workload').textContent='Private human assignments: '+
+    (units.length?units.map(([key,count])=>key+': '+count).join(' · '):'No scheduled cases')+
+    '. Names remain only inside this private browser view.';
 }
-for(const el of [search,priority,phase])el.addEventListener('input',refresh);
+for(const el of [search,priority,phase,assignment])el.addEventListener('input',refresh);
 const edits=new Map();
 const localEntry=row=>({
  human_stage:row.querySelector('.stage').value,
@@ -67,7 +82,7 @@ const safeText=(value,limit)=>typeof value==='string' && value.length<=limit &&
  !/[\\u0000-\\u001f\\u007f\\u202a-\\u202e\\u2066-\\u2069]/u.test(value);
 for(const row of rows){
  for(const field of row.querySelectorAll('.stage,.owner,.next')){
-  field.addEventListener('input',()=>edits.set(row.dataset.key,localEntry(row)));
+  field.addEventListener('input',()=>{edits.set(row.dataset.key,localEntry(row));refresh();});
  }
 }
 function emit(name,text,type){
@@ -99,12 +114,13 @@ document.getElementById('save').addEventListener('click',()=>{
 document.getElementById('aggregate').addEventListener('click',()=>{
  let map=new Map();
  for(const row of rows){
-  const k=row.dataset.day+'|'+row.dataset.priority;
+  const k=row.dataset.day+'|'+row.dataset.priority+'|'+(row.querySelector('.owner').value.trim()?'assigned':'unassigned');
   map.set(k,(map.get(k)||0)+1);
  }
- const csv=['review_day_utc,source_attention,count'];
+ const csv=['review_day_utc,source_attention,human_assignment_state,count'];
  for(const [key,count] of [...map].sort((a,b)=>a[0].localeCompare(b[0]))){
-  const [day,status]=key.split('|');csv.push(day+','+status+','+count);
+  const [day,status,assignmentState]=key.split('|');
+  csv.push(day+','+status+','+assignmentState+','+count);
  }
  emit('lightup-anonymous-human-review-counts.csv',csv.join('\\r\\n')+'\\r\\n','text/csv');
 });
@@ -215,6 +231,7 @@ applyButton.addEventListener('click',()=>{
   row.querySelector('.next').value=entry.human_next_action;
   edits.set(key,entry);
  }
+ refresh();
  clearProposal('Applied '+modified.length+' local human stages/assignees/follow-ups. No original data, grant, STOP, consent or scanner changed.');
  restoreInput.value='';
 });
@@ -322,7 +339,11 @@ Private selected tenant: <span class="private">{_text(agenda["client_id"])}</spa
 <option value="INVALID_WINDOW">Invalid window</option>
 <option value="RECORDED_WINDOW_PASSED">Window passed</option>
 <option value="RECORDED_START_UPCOMING">Start upcoming</option>
-<option value="RECORDED_END_UPCOMING">End upcoming</option></select></label></div>
+<option value="RECORDED_END_UPCOMING">End upcoming</option></select></label>
+<label>Human assignment<select id="assignment">
+<option value="all">All cases</option><option value="assigned">Assigned</option>
+<option value="unassigned">Needs human owner</option></select></label></div>
+<p id="workload" class="muted" aria-live="polite">Private assignment overview.</p>
 <p aria-live="polite" class="muted"><span id="shown">{counts["items"]}</span> visible items.
 Review dates are capacity-adjusted HUMAN suggestions only, not original authorization deadlines.</p>
 <section class="group" aria-label="Private human follow-up import">
