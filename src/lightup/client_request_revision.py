@@ -92,6 +92,13 @@ def prepare_rejected_revision(
         + "Earlier rejected request: " + original.request_id + "\n"
         + "Original review-snapshot SHA-256 (unsigned): " + version
     ).strip()
+    if len(explanation) > 4000:
+        raise ClientRequestError(
+            "the client notes are too long to retain revision lineage; "
+            "shorten the replacement notes by at least "
+            + str(len(explanation) - 4000) + " characters. "
+            "The original rejected request is unchanged."
+        )
     payload = prepare_request(list(new_assets), new_risk, explanation)
     payload.update({
         "previous_request_id": original.request_id,
