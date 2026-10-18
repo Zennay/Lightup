@@ -14,6 +14,16 @@ function build(input,pairs) {
  if(!Array.isArray(input)||input.length>LIMIT||!Array.isArray(pairs)||pairs.length>120)
    throw Error("Unsafe coordination input");
  const rows=[],known=new Map();
+ const references=new Map(input.map(r=>[r.sha,r]));
+ const ancestral=(child,parent)=>{
+   const seen=new Set();let cursor=child.replaces;
+   while(cursor&&!seen.has(cursor)){
+     if(cursor===parent.sha)return true;
+     seen.add(cursor);cursor=references.get(cursor)?.replaces??null;
+   }
+   return false;
+ };
+ const related=(a,b)=>ancestral(a,b)||ancestral(b,a);
  for(let i=0;i<input.length;i++){
    const r=input[i];
    if(!r||!isSHA(r.sha)||known.has(r.sha)||typeof r.reference!=="string")
@@ -22,6 +32,17 @@ function build(input,pairs) {
    known.set(r.sha,dossier);
    const risk=r.source.risk;
    if(!Number.isInteger(risk)||risk<1||risk>4)throw Error("Invalid proposal risk");
+   if(!r.withdrawal) {
+     const stopLineage=input.filter(other=>other!==r&&other.withdrawal&&related(r,other));
+     if(stopLineage.length) rows.push({
+       dossier,source_sha256:r.sha,kind:"historical_withdrawal_context",
+       code:"related_revision_stop_request",role:"joint",
+       priority:stopLineage.some(x=>x.withdrawal.urgency==="urgent")?0:1,
+       reason:"Unverified STOP/scope change reported for self-linked source revision",
+       state:"needs_independent_review",action:"confirm_scope_version_with_authenticated_operator",
+       due_day:null,authority:"REVIEW_ONLY_HOLD"
+     });
+   }
    if(r.withdrawal){
      const w=r.withdrawal;
      // Human step status 'requested_unverified' still needs independent confirmation.
