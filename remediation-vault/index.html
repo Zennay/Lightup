@@ -19,11 +19,20 @@
 <div class="helper">PBKDF2-SHA256 · 310,000 iterations · unique 16-byte salt; authenticated AES-256-GCM with a unique 12-byte nonce. Losing the passphrase makes this packet inaccessible.</div>
 <label class="confirm"><input type="checkbox" id="ack"><span>I have independently checked the original client, exact engagement, intended recipient and permitted private channel. This is not a grant or permission to act.</span></label>
 <button id="pack" class="primary" type="button">Encrypt &amp; download .vault.json <span>↗</span></button>
+<div class="receipt">
+<div class="tag">OPTIONAL CIPHERTEXT TRANSFER RECEIPT</div>
+<p class="helper">Download the SHA-256 and size of the already encrypted file, with no source names, labels or passwords. This UNSIGNED receipt helps compare exact transferred ciphertext bytes, not the sender's identity or consent.</p>
+<div class="helper" id="receiptDigest">No encrypted packet prepared.</div>
+<button id="receiptDownload" class="secondary" type="button" disabled>Download unsigned fingerprint receipt</button>
+</div>
 </section>
 <section class="panel" aria-labelledby="restoreTitle"><div class="panel-head"><span class="step">02</span><div><div class="tag">UNLOCK / RESTORE</div><h2 id="restoreTitle">Reopen private handoff</h2></div></div>
 <label for="vaultfile">Local encrypted vault file</label>
 <input id="vaultfile" type="file" accept=".json">
 <div class="helper">Only canonical version 1 LightUp encrypted packets can be unlocked. Missing, modified or unsupported packets are refused without partial downloads.</div>
+<label for="receiptfile">Optional separate unsigned transfer receipt (.receipt.json)</label>
+<input id="receiptfile" type="file" accept=".json">
+<p id="receiptVerify" class="helper">No receipt selected.</p>
 <label for="unlock">Passphrase received through a separate channel</label><input id="unlock" type="password" minlength="12" maxlength="256" autocomplete="off" placeholder="Enter private passphrase">
 <button id="restore" class="primary" type="button">Unlock &amp; inspect manifest <span>↘</span></button>
 <div class="receipt"><span class="tag">RECOVERED LOCALLY</span><p id="summary">Nothing unlocked.</p><p id="vaultDetails" class="helper"></p>

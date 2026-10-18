@@ -42,3 +42,7 @@ For a single ready-to-open package, download LightUp-Private-Handoff-Vault.zip a
 ## Five-app offline remediation composition (new)
 
 The current deterministic portable ZIP adds unchanged SHA-pinned original Evidence Review #1623, Casework Calendar plus Owner Reply Desk #1635, and Dependency Board #1638 as separate local app entrypoints. Open START-HERE.html to navigate. Exact immutable original owner SHA-256 and source commits are in the kit MANIFEST.json. WORKFLOWS.md provides a complete private operator-to-owner-to-operator workflow. This composition does not merge, modify, supersede or publish the original source-owner PRs; no client data, grant, consent, actual retest, scanner or execution are included.
+
+## Optional exact-ciphertext transfer receipt
+
+After encrypting or re-encrypting a vault, download a separate small unsigned .receipt.json containing ONLY the encrypted file byte length, its SHA-256 fingerprint, an explicit false authority marker and version. It contains no original filenames, client data, labels, source hashes, recipient identity or plaintext. The receiver can select this optional receipt before unlocking; any byte mismatch fails *before* decryption. A match means only that the recipient's encrypted bytes match the separately provided anonymous fingerprint. Anybody could generate a different receipt; source authenticity, independent sender identity, actual consent and scope must still be verified outside the app. Do not treat receipt matches as authorization.

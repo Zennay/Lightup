@@ -5,7 +5,7 @@
   const TYPES = new Set(["json", "csv", "md", "txt"]);
   const $ = id => document.getElementById(id);
   const encode = new TextEncoder(), decode = new TextDecoder("utf-8", {fatal: true});
-  let selected = [], restored = [], busy = false, restoredLabel = '';
+  let selected = [], restored = [], busy = false, restoredLabel = '', receiptState = null;
   const say = (message, bad = false) => { $("status").textContent = message; $("status").dataset.kind = bad ? "error" : "ok"; };
   const clearNode = el => { while (el.firstChild) el.removeChild(el.firstChild); };
   const hex = b => Array.from(new Uint8Array(b), x => x.toString(16).padStart(2, "0")).join("");
@@ -31,6 +31,18 @@
     !name.startsWith(".") && TYPES.has(name.split(".").pop().toLowerCase());
   const fail = (condition, message) => { if (!condition) throw new Error(message); };
   const humanSize = n => (n/1024).toFixed(1) + " KiB";
+  function forgetReceipt() {
+    receiptState=null;
+    $("receiptDownload").disabled=true;
+    $("receiptDigest").textContent="No encrypted packet prepared.";
+  }
+  async function prepareReceipt(bytes) {
+    receiptState={format:"lightup.remediation_vault_receipt.v1",vault_bytes:bytes.length,
+      vault_sha256:await digest(bytes),authority:false};
+    $("receiptDownload").disabled=false;
+    $("receiptDigest").textContent="Encrypted vault SHA-256: "+receiptState.vault_sha256;
+  }
+
   const table = (container, entries, action) => {
     clearNode(container);
     for (const [index, entry] of entries.entries()) {
@@ -68,6 +80,8 @@
     $("secret").value=""; $("unlock").value="";
     $("label").value=""; $("ack").checked=false;
     $("rekeysecret").value=""; $("rekeyack").checked=false;
+    $("receiptfile").value=""; $("receiptVerify").textContent="No receipt selected.";
+    forgetReceipt();
     clearNode($("filelist")); clearNode($("restored"));
     $("summary").textContent="Nothing loaded.";
     $("vaultDetails").textContent="";
@@ -90,7 +104,7 @@
       base,{name:"AES-GCM",length:256},false,usages);
   };
   $("files").addEventListener("change", () => withBusy(async () => {
-    selected=[]; clearNode($("filelist"));
+    selected=[]; $("ack").checked=false; forgetReceipt(); clearNode($("filelist"));
     const files=Array.from($("files").files || []);
     fail(files.length>0 && files.length<=MAX_COUNT, "Select 1–8 private source/export files.");
     const names = new Set(); let total=0;
@@ -138,6 +152,7 @@
       iterations:ROUNDS,cipher:"AES-256-GCM",salt:to64(salt),iv:to64(iv),data:to64(crypt)};
     const output=encode.encode(JSON.stringify(envelope,null,2)+"\n");
     fail(output.length<=MAX_VAULT,"Encrypted vault exceeds 12 MiB.");
+    await prepareReceipt(output);
     save(output, "lightup-private-handoff.vault.json", "application/json");
     $("secret").value="";
     say("Encrypted local vault downloaded. Share the passphrase separately; this file is not permission to act.");
@@ -152,6 +167,26 @@
     const password=$("unlock").value;
     fail(password.length>=12 && password.length<=256, "Enter your private passphrase.");
     const bytes = new Uint8Array(await f.arrayBuffer());
+    const receiptFile=$("receiptfile").files?.[0];
+    $("receiptVerify").textContent="No optional receipt checked.";
+    if (receiptFile) {
+      fail(($("receiptfile").files||[]).length===1 && receiptFile.size>0 &&
+        receiptFile.size<=2048 && receiptFile.name.endsWith(".receipt.json"),
+        "Expected one anonymous .receipt.json of at most 2 KiB.");
+      const receiptText=decode.decode(new Uint8Array(await receiptFile.arrayBuffer()));
+      let record;
+      try {record=JSON.parse(receiptText);} catch {throw new Error("Invalid receipt JSON.");}
+      fail(record && typeof record==="object" && !Array.isArray(record) &&
+        receiptText===JSON.stringify(record,null,2)+"\n" &&
+        Object.keys(record).sort().join(",")==="authority,format,vault_bytes,vault_sha256" &&
+        record.format==="lightup.remediation_vault_receipt.v1" && record.authority===false &&
+        Number.isSafeInteger(record.vault_bytes) && record.vault_bytes>0 &&
+        record.vault_bytes<=MAX_VAULT && typeof record.vault_sha256==="string" &&
+        /^[a-f0-9]{64}$/.test(record.vault_sha256), "Invalid or unsupported unsigned receipt.");
+      fail(record.vault_bytes===bytes.length && await digest(bytes)===record.vault_sha256,
+        "Vault does not match the supplied unsigned SHA-256 transfer receipt.");
+      $("receiptVerify").textContent="Ciphertext matched the supplied unsigned SHA-256 receipt. Sender identity and consent remain UNVERIFIED.";
+    }
     const serialized=decode.decode(bytes);
     let env;
     try {env=JSON.parse(serialized);} catch {throw new Error("Not a valid vault envelope.");}
@@ -241,10 +276,20 @@
       iterations:ROUNDS,cipher:"AES-256-GCM",salt:to64(salt),iv:to64(iv),data:to64(cipher)};
     const bytes=encode.encode(JSON.stringify(envelope,null,2)+"\n");
     fail(bytes.length<=MAX_VAULT,"Re-encrypted vault is too large.");
+    await prepareReceipt(bytes);
     save(bytes,"lightup-private-handoff-rotated.vault.json","application/json");
     $("rekeysecret").value=""; $("rekeyack").checked=false;
     say("Only " + entries.length + " selected original file(s) re-encrypted with fresh salt and IV. Prior copies and passwords are NOT revoked.");
   }));
+  $("receiptDownload").addEventListener("click",()=>{
+    if (!receiptState) { say("Prepare an encrypted vault first.",true); return; }
+    const bytes=encode.encode(JSON.stringify(receiptState,null,2)+"\n");
+    save(bytes,"lightup-private-handoff.receipt.json","application/json");
+    say("Anonymous unsigned ciphertext fingerprint downloaded. Share it independently; it does not authenticate the sender.");
+  });
+  $("receiptfile").addEventListener("change",()=>{
+    $("receiptVerify").textContent="Receipt selected; matching is checked only while unlocking.";
+  });
   $("clear").addEventListener("click",resetPrivate);
   $("clear2").addEventListener("click",resetPrivate);
   $("copy").addEventListener("click", () => withBusy(async () => {

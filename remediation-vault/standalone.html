@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; base-uri 'none'; object-src 'none'; form-action 'none'; frame-ancestors 'none'; connect-src 'none'; worker-src 'none'; img-src 'none'; font-src 'none'; style-src 'sha256-YwgWZzLTd9enawu3TCmA/X5CaX7NXHe1gW1/N5fIjo8='; script-src 'sha256-hoX1OgCM1dw7DwWpke/o97zgN1kxImbdaidD2GiQkbk='">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; base-uri 'none'; object-src 'none'; form-action 'none'; frame-ancestors 'none'; connect-src 'none'; worker-src 'none'; img-src 'none'; font-src 'none'; style-src 'sha256-YwgWZzLTd9enawu3TCmA/X5CaX7NXHe1gW1/N5fIjo8='; script-src 'sha256-fRhEHgP1XD2WAZULz+D3cNfVrihzaigMmTl9thm4+QU='">
 <title>LightUp | Private Remediation Handoff Vault</title><style>:root{color-scheme:dark;font-family:Inter,system-ui,-apple-system,"Segoe UI",Arial,sans-serif;background:#0b111a;color:#eaf1fc}*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse 85% 42% at 25% -14%,#164863 0,transparent 70%),#0b111a;line-height:1.52}.shell{max-width:1160px;margin:auto;padding-left:26px;padding-right:26px}header{padding-top:57px;padding-bottom:39px}.eyebrow,.tag{font-size:11px;font-weight:800;letter-spacing:.16em;color:#83d9eb}.eyebrow{display:flex;justify-content:space-between}.eyebrow span{color:#f8bf78}h1{font-weight:760;font-size:clamp(37px,5vw,64px);letter-spacing:-.045em;line-height:1.08;margin:30px 0 18px;max-width:930px}h1 em{font-weight:520;font-style:normal;color:#7bd6dd}.lede{font-size:17px;max-width:750px;color:#b4c4d6;margin:0 0 23px}.flags{display:flex;gap:10px;flex-wrap:wrap}.flags span{border:1px solid #315263;border-radius:100px;color:#a5d4e6;padding:7px 13px;font-size:10px;font-weight:800;letter-spacing:.09em}.flags span:last-child{border-color:#785e40;color:#edba7a}.warning{padding:15px 18px;background:#28251f;border:1px solid #715b36;border-radius:14px;color:#ebcf9f;margin-bottom:22px;font-size:13px}.warning strong{color:#f8d594}.grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:stretch}.panel{background:#151f2c;border:1px solid #293c4b;border-radius:18px;padding:27px;box-shadow:0 12px 40px #050b1088}.panel-head{display:flex;align-items:center;gap:14px;margin-bottom:26px}.step{display:grid;place-items:center;border:1px solid #52849a;color:#b1e8ef;background:#18384a;border-radius:14px;width:51px;height:51px;font-size:20px;font-weight:800}.panel h2{font-size:23px;line-height:1.2;margin:4px 0;letter-spacing:-.025em}label:not(.confirm){display:block;font-size:13px;color:#e8edf6;font-weight:700;margin:18px 0 7px}input[type=file],input[type=text],input[type=password],#label{width:100%;min-height:47px;padding:11px 12px;color:#f1f5ff;background:#0c1723;border:1px solid #3b5061;border-radius:10px;font:inherit;font-size:13px}input[type=file]{cursor:pointer}input[type=file]::file-selector-button{border:1px solid #547288;background:#203447;color:#f0f5f9;padding:7px 9px;border-radius:7px;margin-right:12px}.helper{font-size:12px;color:#9dafc1;margin:7px 0 16px;line-height:1.6}.confirm{display:flex;gap:10px;margin:22px 0;color:#c5d7e7;font-size:12px;cursor:pointer;background:#102432;border:1px solid #36596a;border-radius:11px;padding:12px}.confirm input{accent-color:#75d8e4;margin-top:3px;width:16px;height:16px;flex-shrink:0}button{cursor:pointer;font-weight:800;letter-spacing:.02em;font-size:13px;border-radius:10px;min-height:44px;padding:10px 14px;transition:background .15s}button:focus-visible,input:focus-visible{outline:2px solid #9ce8f3;outline-offset:3px}.primary{width:100%;margin-top:8px;background:#6ed5dc;color:#09252e;border:0;display:flex;justify-content:space-between;align-items:center}.primary:hover{background:#a1edf1}.primary:disabled{opacity:.5;cursor:wait}.secondary{border:1px solid #537084;color:#dce9f7;background:transparent}.secondary:hover{background:#1a3446}.small{min-height:30px;font-size:11px;padding:5px 10px}.filelist{margin:14px 0}.file-row{display:flex;align-items:center;gap:8px;border-bottom:1px solid #304355;padding:8px 0;color:#cbe0ee;font-size:12px;overflow-wrap:anywhere}.file-row span{flex:1;min-width:0}.file-row small{white-space:nowrap;color:#9bb9c9}.receipt{margin-top:26px;padding:18px;border:1px dashed #435669;border-radius:12px;background:#101a27}.receipt p{font-size:13px;color:#cbdbe9}.receipt button{margin-top:14px}.footer-actions{display:flex;gap:20px;justify-content:space-between;align-items:center;margin:24px 0;padding:18px 22px;border:1px solid #304354;border-radius:14px}.footer-actions p{font-size:12px;color:#9eb4c8;margin:5px 0 0;max-width:760px}.footer-actions button{white-space:nowrap}.status{padding:15px;border-radius:10px;background:#133427;color:#aae9c5;border:1px solid #2a6b4b;font-size:13px;font-weight:650;min-height:50px}.status[data-kind=error]{background:#372327;border-color:#9c555c;color:#ffc0ba}.footnote{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin-top:26px}.footnote div{border-top:1px solid #305065;padding-top:15px}.footnote strong{font-size:12px;color:#addde4}.footnote p{font-size:12px;color:#91aabd}.last{padding-top:30px;padding-bottom:32px;font-size:10px;letter-spacing:.1em;color:#7194a4;display:flex;justify-content:space-between;gap:10px;border-top:1px solid #253647}@media(max-width:760px){header{padding-top:30px}.shell{padding-left:17px;padding-right:17px}.grid,.footnote{grid-template-columns:1fr}.panel{padding:20px}.footer-actions{align-items:stretch;flex-direction:column}.last{flex-direction:column}}@media(prefers-reduced-motion:reduce){button{transition:none}}.rekey{margin-top:22px;padding-top:18px;border-top:1px solid #385263}.rekey label:not(.confirm){margin-top:12px}
 .handoff-select{accent-color:#73d4df;width:16px;height:16px;margin-right:7px;flex-shrink:0}
 </style></head>
@@ -21,11 +21,20 @@
 <div class="helper">PBKDF2-SHA256 · 310,000 iterations · unique 16-byte salt; authenticated AES-256-GCM with a unique 12-byte nonce. Losing the passphrase makes this packet inaccessible.</div>
 <label class="confirm"><input type="checkbox" id="ack"><span>I have independently checked the original client, exact engagement, intended recipient and permitted private channel. This is not a grant or permission to act.</span></label>
 <button id="pack" class="primary" type="button">Encrypt &amp; download .vault.json <span>↗</span></button>
+<div class="receipt">
+<div class="tag">OPTIONAL CIPHERTEXT TRANSFER RECEIPT</div>
+<p class="helper">Download the SHA-256 and size of the already encrypted file, with no source names, labels or passwords. This UNSIGNED receipt helps compare exact transferred ciphertext bytes, not the sender's identity or consent.</p>
+<div class="helper" id="receiptDigest">No encrypted packet prepared.</div>
+<button id="receiptDownload" class="secondary" type="button" disabled>Download unsigned fingerprint receipt</button>
+</div>
 </section>
 <section class="panel" aria-labelledby="restoreTitle"><div class="panel-head"><span class="step">02</span><div><div class="tag">UNLOCK / RESTORE</div><h2 id="restoreTitle">Reopen private handoff</h2></div></div>
 <label for="vaultfile">Local encrypted vault file</label>
 <input id="vaultfile" type="file" accept=".json">
 <div class="helper">Only canonical version 1 LightUp encrypted packets can be unlocked. Missing, modified or unsupported packets are refused without partial downloads.</div>
+<label for="receiptfile">Optional separate unsigned transfer receipt (.receipt.json)</label>
+<input id="receiptfile" type="file" accept=".json">
+<p id="receiptVerify" class="helper">No receipt selected.</p>
 <label for="unlock">Passphrase received through a separate channel</label><input id="unlock" type="password" minlength="12" maxlength="256" autocomplete="off" placeholder="Enter private passphrase">
 <button id="restore" class="primary" type="button">Unlock &amp; inspect manifest <span>↘</span></button>
 <div class="receipt"><span class="tag">RECOVERED LOCALLY</span><p id="summary">Nothing unlocked.</p><p id="vaultDetails" class="helper"></p>
@@ -50,7 +59,7 @@
   const TYPES = new Set(["json", "csv", "md", "txt"]);
   const $ = id => document.getElementById(id);
   const encode = new TextEncoder(), decode = new TextDecoder("utf-8", {fatal: true});
-  let selected = [], restored = [], busy = false, restoredLabel = '';
+  let selected = [], restored = [], busy = false, restoredLabel = '', receiptState = null;
   const say = (message, bad = false) => { $("status").textContent = message; $("status").dataset.kind = bad ? "error" : "ok"; };
   const clearNode = el => { while (el.firstChild) el.removeChild(el.firstChild); };
   const hex = b => Array.from(new Uint8Array(b), x => x.toString(16).padStart(2, "0")).join("");
@@ -76,6 +85,18 @@
     !name.startsWith(".") && TYPES.has(name.split(".").pop().toLowerCase());
   const fail = (condition, message) => { if (!condition) throw new Error(message); };
   const humanSize = n => (n/1024).toFixed(1) + " KiB";
+  function forgetReceipt() {
+    receiptState=null;
+    $("receiptDownload").disabled=true;
+    $("receiptDigest").textContent="No encrypted packet prepared.";
+  }
+  async function prepareReceipt(bytes) {
+    receiptState={format:"lightup.remediation_vault_receipt.v1",vault_bytes:bytes.length,
+      vault_sha256:await digest(bytes),authority:false};
+    $("receiptDownload").disabled=false;
+    $("receiptDigest").textContent="Encrypted vault SHA-256: "+receiptState.vault_sha256;
+  }
+
   const table = (container, entries, action) => {
     clearNode(container);
     for (const [index, entry] of entries.entries()) {
@@ -113,6 +134,8 @@
     $("secret").value=""; $("unlock").value="";
     $("label").value=""; $("ack").checked=false;
     $("rekeysecret").value=""; $("rekeyack").checked=false;
+    $("receiptfile").value=""; $("receiptVerify").textContent="No receipt selected.";
+    forgetReceipt();
     clearNode($("filelist")); clearNode($("restored"));
     $("summary").textContent="Nothing loaded.";
     $("vaultDetails").textContent="";
@@ -135,7 +158,7 @@
       base,{name:"AES-GCM",length:256},false,usages);
   };
   $("files").addEventListener("change", () => withBusy(async () => {
-    selected=[]; clearNode($("filelist"));
+    selected=[]; $("ack").checked=false; forgetReceipt(); clearNode($("filelist"));
     const files=Array.from($("files").files || []);
     fail(files.length>0 && files.length<=MAX_COUNT, "Select 1–8 private source/export files.");
     const names = new Set(); let total=0;
@@ -183,6 +206,7 @@
       iterations:ROUNDS,cipher:"AES-256-GCM",salt:to64(salt),iv:to64(iv),data:to64(crypt)};
     const output=encode.encode(JSON.stringify(envelope,null,2)+"\n");
     fail(output.length<=MAX_VAULT,"Encrypted vault exceeds 12 MiB.");
+    await prepareReceipt(output);
     save(output, "lightup-private-handoff.vault.json", "application/json");
     $("secret").value="";
     say("Encrypted local vault downloaded. Share the passphrase separately; this file is not permission to act.");
@@ -197,6 +221,26 @@
     const password=$("unlock").value;
     fail(password.length>=12 && password.length<=256, "Enter your private passphrase.");
     const bytes = new Uint8Array(await f.arrayBuffer());
+    const receiptFile=$("receiptfile").files?.[0];
+    $("receiptVerify").textContent="No optional receipt checked.";
+    if (receiptFile) {
+      fail(($("receiptfile").files||[]).length===1 && receiptFile.size>0 &&
+        receiptFile.size<=2048 && receiptFile.name.endsWith(".receipt.json"),
+        "Expected one anonymous .receipt.json of at most 2 KiB.");
+      const receiptText=decode.decode(new Uint8Array(await receiptFile.arrayBuffer()));
+      let record;
+      try {record=JSON.parse(receiptText);} catch {throw new Error("Invalid receipt JSON.");}
+      fail(record && typeof record==="object" && !Array.isArray(record) &&
+        receiptText===JSON.stringify(record,null,2)+"\n" &&
+        Object.keys(record).sort().join(",")==="authority,format,vault_bytes,vault_sha256" &&
+        record.format==="lightup.remediation_vault_receipt.v1" && record.authority===false &&
+        Number.isSafeInteger(record.vault_bytes) && record.vault_bytes>0 &&
+        record.vault_bytes<=MAX_VAULT && typeof record.vault_sha256==="string" &&
+        /^[a-f0-9]{64}$/.test(record.vault_sha256), "Invalid or unsupported unsigned receipt.");
+      fail(record.vault_bytes===bytes.length && await digest(bytes)===record.vault_sha256,
+        "Vault does not match the supplied unsigned SHA-256 transfer receipt.");
+      $("receiptVerify").textContent="Ciphertext matched the supplied unsigned SHA-256 receipt. Sender identity and consent remain UNVERIFIED.";
+    }
     const serialized=decode.decode(bytes);
     let env;
     try {env=JSON.parse(serialized);} catch {throw new Error("Not a valid vault envelope.");}
@@ -286,10 +330,20 @@
       iterations:ROUNDS,cipher:"AES-256-GCM",salt:to64(salt),iv:to64(iv),data:to64(cipher)};
     const bytes=encode.encode(JSON.stringify(envelope,null,2)+"\n");
     fail(bytes.length<=MAX_VAULT,"Re-encrypted vault is too large.");
+    await prepareReceipt(bytes);
     save(bytes,"lightup-private-handoff-rotated.vault.json","application/json");
     $("rekeysecret").value=""; $("rekeyack").checked=false;
     say("Only " + entries.length + " selected original file(s) re-encrypted with fresh salt and IV. Prior copies and passwords are NOT revoked.");
   }));
+  $("receiptDownload").addEventListener("click",()=>{
+    if (!receiptState) { say("Prepare an encrypted vault first.",true); return; }
+    const bytes=encode.encode(JSON.stringify(receiptState,null,2)+"\n");
+    save(bytes,"lightup-private-handoff.receipt.json","application/json");
+    say("Anonymous unsigned ciphertext fingerprint downloaded. Share it independently; it does not authenticate the sender.");
+  });
+  $("receiptfile").addEventListener("change",()=>{
+    $("receiptVerify").textContent="Receipt selected; matching is checked only while unlocking.";
+  });
   $("clear").addEventListener("click",resetPrivate);
   $("clear2").addEventListener("click",resetPrivate);
   $("copy").addEventListener("click", () => withBusy(async () => {
