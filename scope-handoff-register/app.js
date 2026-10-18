@@ -205,6 +205,9 @@
   function sameRevisionHistory(a,b) {
     return isRevisionOf(a,b)||isRevisionOf(b,a);
   }
+  function relatedWithdrawalRequests(r) {
+    return records.filter(x=>x!==r && x.withdrawal && sameRevisionHistory(r,x));
+  }
   function sharedHints(r) {
     const current=localCoverage(r), spatial=[],clock=[];
     for(const other of records) {
@@ -430,6 +433,13 @@
       for(const id of touched)if(r.tasks[id]==="prepared")r.tasks[id]="needs_revision";
       for(const key of pairReviews.keys())if(key.split(":").includes(r.sha))pairReviews.delete(key);
     }
+    // A self-declared revision never inherits revocation authority, but cannot silently
+    // retain a 'prepared' human review after a related version reports STOP.
+    for(const r of records)if(relatedWithdrawalRequests(r).length){
+      for(const id of ["client","operator","owner","stops","assets","risk","schedule"])
+        if(r.tasks[id]==="prepared")r.tasks[id]="needs_revision";
+      for(const key of pairReviews.keys())if(key.split(":").includes(r.sha))pairReviews.delete(key);
+    }
     show(items.length+" echte brongebonden, maar NIET geauthenticeerde Withdrawal Desk-melding(en) ingelezen. Relevante menselijke voorbereiding heropend. Geen operaties geraakt.");
     render();
   }
@@ -583,6 +593,10 @@
       if(!nextPairs.has(key)||prevPairs.get(key)!==nextPairs.get(key)||key.split(":").includes(r.sha))
         pairReviews.delete(key);
     const delta=revisionDelta(r),changed=[];
+    if(relatedWithdrawalRequests(r).length){
+      for(const id of ["client","operator","owner","stops","assets","risk","schedule"])
+        if(r.tasks[id]==="prepared"){r.tasks[id]="needs_revision";changed.push(id);}
+    }
     if(delta){
       for(const key of revisionTaskRechecks(delta)){
         if(r.tasks[key]==="prepared"){r.tasks[key]="needs_revision";changed.push(key);}
@@ -598,6 +612,7 @@
     if (rev?.time_window_changed) w.push("revisie_planning_gewijzigd");
     if (rev && revisionTaskRechecks(rev).some(id=>r.tasks[id]==="needs_revision"))
       w.push("revisie_menselijke_herbeoordeling_nodig");
+    if(relatedWithdrawalRequests(r).length)w.push("stopverzoek_bij_zelfgekoppelde_scopeversie_onafhankelijk_beoordelen");
     if(r.permission && r.permission.needsAttention>0)w.push("vragen_client_operator_onbevestigd");
     if(r.permission && (!r.permission.clientNoted||!r.permission.operatorNoted))w.push("rolantwoord_ontbreekt");
     if(r.withdrawal){
@@ -666,6 +681,10 @@
     const r=records.find(x=>x.sha===active);
     if (!r) {detail.append(node("p","","Selecteer een concept om voorbereidingsacties te bekijken."));return;}
     detail.append(node("h3","",r.reference+" — voorbereidingsroute"));
+    const relatedStops=relatedWithdrawalRequests(r);
+    if(relatedStops.length)detail.append(node("p","warning",
+      "Er is een ONGEVERIFIEERD STOP-/wijzigingsverzoek bij "+relatedStops.length+
+      " zelfgekoppelde historische scopeversie(s). Vraag via het echte geauthenticeerde proces of dit verzoek ook deze exacte versie betreft. Geen daadwerkelijke intrekking is vastgesteld."));
     detail.append(node("p","small","Dit betreft uitsluitend zelf bijgehouden voorbereiding. Een vinkje is geen verificatie en wordt nooit een autorisatieverklaring."));
     const controls=node("div","controls"), lab=node("label","","Interne referentie (alleen lokaal)");
     const input=node("input");input.maxLength=32;input.value=r.reference;
