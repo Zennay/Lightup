@@ -49,6 +49,9 @@ function uniqueJSON(text){
 }
 function intake(text){
  const data=uniqueJSON(text);
+ fields(data,['schema','review_only',...DENIED,'source_count','proposed_completed',
+   'total_estimated_hours','assigned_hours','backlog_hours','backlog_findings',
+   'priority_bands','sprint_weeks']);
  if(data.schema!==SCHEMA||data.review_only!==true||DENIED.some(k=>data[k]!==false))
   fail('Wrong source schema or authority claim');
  int(data.source_count,1,350,'record count');
@@ -74,9 +77,14 @@ function intake(text){
   if(b.scheduled_hours+b.unscheduled_hours!==b.estimated_hours)fail('Severity hours do not balance');
   if(typeof b.all_estimates_scheduled!=='boolean'||b.all_estimates_scheduled!==(b.unscheduled_hours===0))fail('Misleading severity completion');
   if(b.last_estimated_scheduling_week!==null)int(b.last_estimated_scheduling_week,1,data.sprint_weeks.length,'final week');
+  if((b.source_count===0 || b.unscheduled_hours>0) && b.last_estimated_scheduling_week!==null)
+    fail('Source reports a completion week for absent or unfinished work');
+  if(b.source_count>0 && b.unscheduled_hours===0 && b.last_estimated_scheduling_week===null)
+    fail('Source omits the estimated last allocation week');
   counts+=b.source_count;hours+=b.estimated_hours;unallocated+=b.unscheduled_hours;
  }
  if(counts!==data.source_count||hours!==data.total_estimated_hours||unallocated!==data.backlog_hours)fail('Priority bands disagree with totals');
+ if(data.proposed_completed > data.source_count || data.backlog_findings > data.source_count)fail('Inconsistent record totals');
  let weekHours=0,prior='';
  const weeks=data.sprint_weeks.map((w,index)=>{
   fields(w,['week','start','availability_pct','available_hours','allocated_hours','severity_hours']);
