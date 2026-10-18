@@ -38,6 +38,12 @@ The installed `lightup` entrypoint dispatches the `lab-assess` subcommand throug
 - `--profile` fixture scoring is restricted to **one** endpoint; multi-endpoint assessments must be unscored rather than being wrongly measured against a one-fixture ground truth.
 - Multi-endpoint result JSON reuses existing `targets`, `plan`, `findings`, `coverage`, `evaluation`, and optional `review` fields. Each planner-produced finding already has the concrete `target` identity. This change does not claim completeness, valid security findings or verified remediation.
 
+## Multi-endpoint evidence isolation
+
+The original planner-driven lab producer once indexed evidence summaries by `run-id-prefix + check-id`. That identifier is **not unique** when two endpoints emit the same check (e.g. two lab HTTP fixtures both omit the same security header). With a repeatable CLI this becomes a normal use case, and the old map could show endpoint B's summary next to endpoint A's finding.
+
+The producer now retains each summary by its original finding occurrence, next to the original evidence reference. Each finding has a distinct report identity; the first legacy ID remains unchanged, while a collision gets a stable-in-run `~2`, `~3` etc. suffix. Finding order and target, check, severity, remediation and source evidence references remain as before. It does not infer that a security issue is confirmed.
+
 ## Source, ownership and release
 
 Sources: `src/lightup/cli.py` and `src/lightup/labrun.py`, stacked on pre-existing review source [PR #1602](https://github.com/Zennay/Lightup/pull/1602), without changing the review pipeline, original lab target fencing, scope, grants, authentication, workers, state, existing CI or tests. Tracked issue: [#1608](https://github.com/Zennay/Lightup/issues/1608).
