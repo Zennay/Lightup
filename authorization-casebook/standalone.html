@@ -82,15 +82,16 @@ var s=JSON.parse(raw);
 if(!obj(s)||s.schema!=="lightup.auth_casebook.v1"||s.status!=="REVIEW_ONLY"||!strictlyFalse(s)||!word(s.client_id)||!word(s.as_of)||!obj(s.declared_counts))throw Error("source schema");
 var names=["requests","engagements","grants","risk_approvals"];
 for(var name of names){if(!Array.isArray(s[name])||s[name].length>200||s[name].length!==s.declared_counts[name])throw Error("source count");}
-for(var key of ["requests","engagements","grants","risk_approvals","grant_link_hold","risk_tenant_hold","case_attention_hold","foreign_tenant_row_count"]){if(!Number.isInteger(s.declared_counts[key])||s.declared_counts[key]<0||s.declared_counts[key]>500)throw Error("aggregate count");}
+for(var key of ["requests","engagements","grants","risk_approvals","grant_link_hold","risk_tenant_hold","case_attention_hold","foreign_tenant_row_count","recorded_window_review"]){if(!Number.isInteger(s.declared_counts[key])||s.declared_counts[key]<0||s.declared_counts[key]>500)throw Error("aggregate count");}
 if(!Array.isArray(s.case_overview)||s.case_overview.length!==s.engagements.length||s.case_overview.length>200||!Number.isInteger(s.declared_counts.case_attention_hold))throw Error("caseboard shape");
-for(var ca of s.case_overview){if(!obj(ca)||!word(ca.engagement_id)||!word(ca.status)||!["HOLD_SOURCE_PROVENANCE","REVIEW_ONLY_UNVERIFIED_GRANT_LINK","NO_GRANT_RECORDED"].includes(ca.attention)||!Number.isInteger(ca.grant_count)||!Number.isInteger(ca.risk_record_count)||ca.grant_count<0||ca.risk_record_count<0||ca.grant_count>200||ca.risk_record_count>200)throw Error("caseboard source mismatch");}
+for(var ca of s.case_overview){if(!obj(ca)||!word(ca.engagement_id)||!word(ca.status)||!["HOLD_SOURCE_PROVENANCE","HOLD_CLOSED_ENGAGEMENT_WITH_GRANTS","EXPIRED_GRANT_SOURCE_REVIEW","FUTURE_GRANT_SOURCE_REVIEW","REVIEW_ONLY_UNVERIFIED_GRANT_LINK","NO_GRANT_RECORDED"].includes(ca.attention)||!word(ca.next_review_action)||!Number.isInteger(ca.grant_count)||!Number.isInteger(ca.risk_record_count)||ca.grant_count<0||ca.risk_record_count<0||ca.grant_count>200||ca.risk_record_count>200)throw Error("caseboard source mismatch");}
 if(new Set(s.case_overview.map(function(x){return x.engagement_id;})).size!==s.engagements.length||s.case_overview.filter(function(x){return x.attention.startsWith("HOLD_");}).length!==s.declared_counts.case_attention_hold)throw Error("caseboard HOLD mismatch");
 var sets=[["requests","request_id"],["engagements","engagement_id"],["grants","grant_id"],["risk_approvals","approval_id"]];
 for(var item of sets){var ids=new Set();for(var row of s[item[0]]){if(!obj(row)||!word(row[item[1]])||ids.has(row[item[1]]))throw Error("invalid or duplicated record");ids.add(row[item[1]]);}}
 var hold=s.grants.filter(function(g){return word(g.request_link_observation)&&g.request_link_observation.startsWith("HOLD_");}).length;
 if(hold!==s.declared_counts.grant_link_hold)throw Error("hold mismatch");
-for(var g of s.grants){if(!(g.engagement_id===null||word(g.engagement_id))||!word(g.request_link_observation)||!(g.approved_request_id===null||word(g.approved_request_id)))throw Error("invalid grant");}
+for(var g of s.grants){if(!(g.engagement_id===null||word(g.engagement_id))||!word(g.request_link_observation)||!(g.approved_request_id===null||word(g.approved_request_id))||!["HOLD_INVALID_RECORDED_WINDOW","EXPIRED_RECORDED_WINDOW","FUTURE_RECORDED_WINDOW","WITHIN_RECORDED_WINDOW_NOT_AUTHORITY"].includes(g.validity_observation))throw Error("invalid grant");}
+if(s.grants.filter(function(g){return g.validity_observation!=="WITHIN_RECORDED_WINDOW_NOT_AUTHORITY";}).length!==s.declared_counts.recorded_window_review)throw Error("source-window review count mismatch");
 for(var r of s.requests){if(!word(r.status)||!word(r.requested_mode)||!word(r.created_at)||typeof r.decision_recorded!=="boolean")throw Error("invalid request");}
 for(var risk of s.risk_approvals){if(!(risk.engagement_id===null||word(risk.engagement_id))||!word(risk.status)||typeof risk.source_tenant_matches!=="boolean")throw Error("invalid risk");}
 return s;
@@ -98,7 +99,7 @@ return s;
 function entries(){
 if(!snapshot)return [];
 return [
-...snapshot.case_overview.map(function(x){return {type:"case",id:x.engagement_id,state:x.attention,review:x.grant_count+" grants · "+x.risk_record_count+" risk records",at:""};}),
+...snapshot.case_overview.map(function(x){return {type:"case",id:x.engagement_id,state:x.attention,review:x.next_review_action+" · "+x.grant_count+" grants · "+x.risk_record_count+" risk records",at:""};}),
 ...snapshot.requests.map(function(x){return {type:"request",id:x.request_id,state:x.status,review:x.requested_mode,at:x.created_at};}),
 ...snapshot.engagements.map(function(x){return {type:"engagement",id:x.engagement_id,state:x.status,review:"Original persisted status",at:x.created_at};}),
 ...snapshot.grants.map(function(x){return {type:"grant",id:x.grant_id,state:x.request_link_observation,review:"Stored link only — NOT APPROVAL",at:x.valid_from};}),
@@ -119,7 +120,7 @@ var div=document.createElement("div");div.className="detail-item";
 var strong=document.createElement("strong");strong.textContent=title;div.appendChild(strong);
 lines.forEach(function(line){var p=document.createElement("p");p.textContent=line;div.appendChild(p);});host.appendChild(div);
 }
-card("Original engagement",[one.status,"Stored grants: "+one.grant_count,"Stored risk rows: "+one.risk_record_count,"Review: "+one.attention]);
+card("Original engagement",[one.status,"Stored grants: "+one.grant_count,"Stored risk rows: "+one.risk_record_count,"Review: "+one.attention,"Suggested human follow-up: "+one.next_review_action]);
 var stageCard=document.createElement("div");stageCard.className="detail-item";
 var lbl=document.createElement("label");lbl.textContent="Local human follow-up stage (no authority)";lbl.htmlFor="local-stage";
 var stage=document.createElement("select");stage.id="local-stage";
@@ -141,6 +142,7 @@ card("Stored grant "+g.grant_id,[
 "Original request: "+(g.approved_request_id===null?"NONE":g.approved_request_id),
 "Recorded request status: "+(req?req.status:"NOT PRESENT IN THIS SNAPSHOT"),
 "Original risk ceiling: "+g.max_risk,
+"Recorded UTC window source: "+g.validity_observation,
 "Local source only — not verified authorization"
 ]);
 });
@@ -213,7 +215,7 @@ previous=candidate;elt("message").textContent="Private source comparison ready. 
 }catch(e){elt("message").textContent="HOLD: earlier file invalid, non-matching tenant or corrupt. Current view unchanged.";}
 });
 elt("demo").addEventListener("click",function(){
-snapshot={schema:"lightup.auth_casebook.v1",status:"REVIEW_ONLY",client_id:"fictional-tenant",as_of:"2026-10-18T12:00:00+00:00",requests:[{request_id:"example-request-1",status:"approved",requested_mode:"authorized_assessment",created_at:"2026-10-15T10:00:00+00:00",decision_recorded:true}],engagements:[{engagement_id:"fictional-engagement-1",status:"draft",created_at:"2026-10-16T11:00:00+00:00"}],grants:[{grant_id:"fictional-grant-1",engagement_id:"fictional-engagement-1",approved_request_id:"example-request-1",request_link_observation:"REQUEST_LINK_DECLARED_NOT_VERIFIED",valid_from:"2026-10-18T09:00:00+00:00",valid_until:"2026-10-19T09:00:00+00:00"}],risk_approvals:[{approval_id:"fictional-risk-1",engagement_id:"fictional-engagement-1",status:"pending",source_tenant_matches:true}],case_overview:[{engagement_id:"fictional-engagement-1",status:"draft",grant_count:1,risk_record_count:1,attention:"REVIEW_ONLY_UNVERIFIED_GRANT_LINK"}],declared_counts:{requests:1,engagements:1,grants:1,risk_approvals:1,grant_link_hold:0,risk_tenant_hold:0,case_attention_hold:0,foreign_tenant_row_count:0},source_authenticated:false,client_consent_verified:false,operator_consent_verified:false,authorization_granted:false,execution_allowed:false,release_approved:false};fictional=true;previous=null;selectedCase=null;localStages.clear();elt("message").textContent="Fictional demo only — NOT REAL CLIENT DATA";render();
+snapshot={schema:"lightup.auth_casebook.v1",status:"REVIEW_ONLY",client_id:"fictional-tenant",as_of:"2026-10-18T12:00:00+00:00",requests:[{request_id:"example-request-1",status:"approved",requested_mode:"authorized_assessment",created_at:"2026-10-15T10:00:00+00:00",decision_recorded:true}],engagements:[{engagement_id:"fictional-engagement-1",status:"draft",created_at:"2026-10-16T11:00:00+00:00"}],grants:[{grant_id:"fictional-grant-1",engagement_id:"fictional-engagement-1",approved_request_id:"example-request-1",request_link_observation:"REQUEST_SCOPE_COMPATIBLE_UNVERIFIED",validity_observation:"FUTURE_RECORDED_WINDOW",valid_from:"2026-10-18T09:00:00+00:00",valid_until:"2026-10-19T09:00:00+00:00"}],risk_approvals:[{approval_id:"fictional-risk-1",engagement_id:"fictional-engagement-1",status:"pending",source_tenant_matches:true}],case_overview:[{engagement_id:"fictional-engagement-1",status:"draft",grant_count:1,risk_record_count:1,attention:"REVIEW_ONLY_UNVERIFIED_GRANT_LINK",next_review_action:"CONFIRM_SEPARATE_CONSENT_AND_AT_USE_REVOCATION"}],declared_counts:{requests:1,engagements:1,grants:1,risk_approvals:1,grant_link_hold:0,risk_tenant_hold:0,case_attention_hold:0,foreign_tenant_row_count:0,recorded_window_review:1},source_authenticated:false,client_consent_verified:false,operator_consent_verified:false,authorization_granted:false,execution_allowed:false,release_approved:false};fictional=true;previous=null;selectedCase=null;localStages.clear();elt("message").textContent="Fictional demo only — NOT REAL CLIENT DATA";render();
 });
 elt("reset").addEventListener("click",function(){snapshot=null;previous=null;fictional=false;selectedCase=null;localStages.clear();elt("message").textContent="Private local snapshot cleared.";render();});
 elt("category").addEventListener("change",render);elt("filter").addEventListener("input",render);
