@@ -20,6 +20,7 @@
 <section class="panel"><div class="section-top"><div><p class="eyebrow">03 / SOURCE STATUS</p><h2>Reported retest states</h2></div></div><div id="retest-chart" class="chart"></div><p class="hint">A source-reported “fixed” value is not verification; only an independently authorised retest can confirm it.</p></section></div>
 <section class="panel" id="changes-panel" hidden><p class="eyebrow">04 / HISTORICAL CONTEXT</p><h2>Review what changed</h2><div id="changes"></div>
 <p class="hint">“Missing” means absent from the newer file, not resolved. “Changed” does not demonstrate improvement. Identity, tenant and freshness remain unverified by these CSV files.</p></section>
+<section class="panel"><p class="eyebrow">04B / EXISTING CASEWORK HANDOFF</p><h2>Optional existing remediation planning snapshot</h2><p>Bring a draft exported by the original LightUp Remediation Casework app. This import only summarises private local planning stages when every source finding exactly matches the current CSV; it neither proves remediation nor reads a client database.</p><label>Casework draft JSON<input id="casework-file" type="file" accept=".json,application/json"></label><label class="check"><input id="casework-confirm" type="checkbox"> I separately checked that this draft and current CSV belong to the same authorised client and exact engagement. A matching record set does not prove identity.</label><div class="toolbar"><button class="secondary" id="casework-load">Import matching casework summary</button><button class="secondary" id="casework-clear">Clear casework only</button><span id="casework-status" role="status" aria-live="polite">No casework loaded.</span></div><div id="casework-metrics" class="change-grid" aria-live="polite"></div></section>
 <section class="panel"><p class="eyebrow">05 / REMEDIATION DISCUSSION</p><h2>Suggested order of human follow-up</h2>
 <p>Adjust relative planning horizons before export. These are <strong>illustrative calendar-day targets</strong>, not contractual deadlines or permission to perform retests.</p>
 <div class="input-grid"><label>Local planning reference date<input id="anchor" type="date"></label>
@@ -37,4 +38,4 @@
 <div id="preview" class="preview" aria-live="polite"></div>
 </section></section>
 </main><footer class="shell"><p>LightUp client reporting preview · <strong>REVIEW_ONLY / DRAFT/HOLD</strong>. No grant, client/operator consent, live revocation, release, scan, retest or production authorisation is conferred by this document. Protect locally downloaded copies.</p></footer>
-<script src="remediation-engine.js"></script><script src="app.js"></script></body></html>
+<script src="remediation-engine.js"></script><script src="casework-import.js"></script><script src="app.js"></script></body></html>

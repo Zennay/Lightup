@@ -12,6 +12,32 @@ const GROUPS = [
  {label:'Backlog and hygiene discussion',key:'low',severities:['low','info'],dayId:'low-days',reason:'Record lower-risk follow-ups without inventing an assessment window or completion guarantee.'}
 ];
 let state = null;
+function caseworkSummaryHTML(){
+ if(!state?.casework)return '<p>No matching existing Casework planning packet attached.</p>';
+ const x=state.casework;
+ const cells=Object.entries(x.counts).map(([k,v])=>'<div class="mini-stat"><b>'+v+'</b>'+H(k.replaceAll('_',' '))+'</div>').join('');
+ return '<p><strong>Separate, unverified local planning only:</strong> '+x.overdue+' locally overdue and '+x.urgentBlocked+' critical/high locally blocked. No verified remediation or retest.</p><div class="change-grid">'+cells+'</div>';
+}
+function renderCasework(){
+ $('casework-metrics').innerHTML=state?.casework?Object.entries(state.casework.counts).map(([k,v])=>'<div class="mini-stat"><b>'+v+'</b>'+H(k.replaceAll('_',' '))+'</div>').join(''):'';
+}
+async function importCasework(){
+ if(!state)return note('Import a current findings CSV first.',true);
+ if(!$('casework-confirm').checked)return note('Confirm the original Casework belongs to the same client and engagement.',true);
+ const f=$('casework-file').files[0];if(!f)return note('Select the existing Casework draft JSON.',true);
+ $('casework-load').disabled=true;
+ try{
+  const summary=await LightUpBriefCasework.readAndSummarize(f,state.fresh.rows);
+  state.casework=summary;render();$('casework-status').textContent='Exact source fields match; planning stages are self-reported only.';
+  note('Matching Casework counts attached locally. No remediation, retest or consent inferred.');
+ }catch(e){$('casework-status').textContent='Import rejected; existing summary unchanged.';note('Casework rejected: '+String(e.message||'Unsupported packet'),true);}
+ finally{$('casework-load').disabled=false;}
+}
+function clearCasework(){
+ if(state)state.casework=null;
+ $('casework-file').value='';$('casework-confirm').checked=false;
+ $('casework-status').textContent='No Casework loaded.';renderCasework();if(state)render();
+}
 function note(text, bad=false) { $('message').textContent=text; $('message').style.color=bad?'#ff9fac':'#b6e3d9'; }
 async function sha256(bytes) {
  if (!globalThis.crypto || !crypto.subtle) return null;
@@ -36,7 +62,8 @@ async function load() {
   const [fresh,older]=await Promise.all([readSource(current),previous?readSource(previous):Promise.resolve(null)]);
   // Publish only after *both* original exports are fully parsed and bounded.
   const changes=older?LightUpCasework.compareSource(older.rows,fresh.rows):null;
-  state={fresh,older,changes,sameScopeAcknowledged:!!older};
+  state={fresh,older,changes,sameScopeAcknowledged:!!older,casework:null};
+  $('casework-file').value='';$('casework-confirm').checked=false;$('casework-status').textContent='No Casework loaded.';
   ['urgent','medium','low'].forEach(key=>$(key+'-decision').value='discussion_pending');
   $('details').checked=false;
   $('workspace').hidden=false;
@@ -128,10 +155,11 @@ function render() {
  $('changes-panel').hidden=!state.changes;
  $('changes').innerHTML=historicalHTML();
  $('roadmap').innerHTML=planHTML(road);
+ renderCasework();
  $('source-info').textContent=sourceSummary();
  const heading=$('report-title').value.trim().slice(0,100)||'Security findings — executive brief';
  $('preview').innerHTML='<p class="eyebrow">LOCAL PREVIEW / UNSIGNED</p><h3>'+H(heading)+'</h3>'+narrative(severity,retest,state.changes)+
- '<h3>Human follow-up plan</h3><div class="roadmap">'+planHTML(road)+'</div><h3>Original source detail</h3>'+detailsHTML()+
+ '<h3>Human follow-up plan</h3><div class="roadmap">'+planHTML(road)+'</div><h3>Matching local Casework summary (unverified)</h3>'+caseworkSummaryHTML()+'<h3>Original source detail</h3>'+detailsHTML()+
  '<p class="hint">Client/operator consent, actual execution authority, approved scope, live revocation and verified retest must be established separately through genuine authenticated systems. This document is DRAFT/HOLD only.</p>';
  }catch(e){note(String(e.message),true);$('preview').textContent='Cannot render until planning inputs are corrected.';}
 }
@@ -144,6 +172,7 @@ function reportData() {
   imported_findings:state.fresh.rows.length,source_sha256:state.fresh.sha,
   earlier_sha256:state.older?.sha??null,severity_counts:severity,source_retest_counts:retest,
   source_changes:diff?{added:diff.added.length,changed:diff.changed.length,absent_unverified:diff.missing.length,unchanged:diff.unchanged.length}:null,
+  local_casework_summary:state.casework?{counts:{...state.casework.counts},locally_overdue:state.casework.overdue,critical_high_locally_blocked:state.casework.urgentBlocked,exact_source_fields_match:true,digest_checked:state.casework.sourceDigestChecked,remediation_verified:false}:null,
   planning:road.map(g=>({group:g.key,findings:g.amount,suggested_days:g.days,suggested_follow_up:g.due,self_reported_discussion_stage:g.discussion,not_an_sla:true})),
   caveat:'Local summary of untrusted CSV bytes. Never a grant, consent, permission, scan or verified retest.'};
 }
@@ -154,12 +183,13 @@ function staticHTML(data) {
  const rows=SEVERITIES.map(k=>'<tr><td>'+H(k)+'</td><td>'+sev[k]+'</td></tr>').join('');
  const sourceRows=RETEST.map(k=>'<tr><td>'+H(k)+'</td><td>'+ret[k]+'</td></tr>').join('');
  const changes=state.changes?'<h2>Source comparison (unverified)</h2><p>'+H(state.changes.added.length)+' newly present; '+H(state.changes.changed.length)+' changed; '+H(state.changes.missing.length)+' absent (not resolved); '+H(state.changes.unchanged.length)+' unchanged. Same-scope provenance was acknowledged by the local reviewer, not verified by this file.</p>':'';
+ const casework=state.casework?'<h2>Existing self-reported Casework planning</h2>'+caseworkSummaryHTML():'<p>No matching local Casework packet attached.</p>';
  const details=$('details').checked?'<h2>Sensitive source detail — private recipients only</h2>'+detailsHTML():'<p>Individual finding identifiers, titles and remediation text are intentionally excluded from this redacted brief.</p>';
  return '<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="Content-Security-Policy" content="default-src \'none\'; style-src \'unsafe-inline\'; connect-src \'none\'; img-src \'none\'; script-src \'none\'; object-src \'none\'"><title>'+H(title)+'</title><style>'+printCSS+'</style></head><body><small>LIGHTUP / REVIEW_ONLY / DRAFT-HOLD</small><h1>'+H(title)+'</h1><p class="tag">Audience: '+H($('audience').value)+'</p><div class="notice"><strong>Not an authorisation or verification document.</strong> This static, unsigned report is derived from a locally provided file. It does not establish client identity, scope, client/operator consent, live revocation, grant validity, execution authority, a scan outcome or verified remediation.</div><h2>Executive overview</h2>'+narrative(sev,ret,state.changes)+
  '<h2>Severity distribution</h2><table><thead><tr><th>Source severity</th><th>Count</th></tr></thead><tbody>'+rows+'</tbody></table>'+
  '<h2>Source-reported retest states</h2><table><thead><tr><th>Source state</th><th>Count</th></tr></thead><tbody>'+sourceRows+'</tbody></table>'+changes+
  '<h2>Illustrative follow-up roadmap</h2>'+road.map(g=>'<article><strong>'+H(g.label)+'</strong><p>'+g.amount+' findings; discuss within '+g.days+' calendar days'+(g.due==='Not specified'?' (no reference date)':' from the reference date, by '+H(g.due))+'. Not an SLA, order or booked activity.</p><p>Local follow-up stage: '+H(g.discussion.replaceAll('_',' '))+' (self-reported)</p><p>'+H(g.reason)+'</p></article>').join('')+
- details+'<h2>Evidence and provenance caveat</h2><p class="meta">'+H(sourceSummary())+'</p><p class="muted">Original report values are untrusted unless authenticated separately. This file contains no live permissions and has not checked current grants or independently verified remediation.</p></body></html>';
+ casework+details+'<h2>Evidence and provenance caveat</h2><p class="meta">'+H(sourceSummary())+'</p><p class="muted">Original report values are untrusted unless authenticated separately. This file contains no live permissions and has not checked current grants or independently verified remediation.</p></body></html>';
 }
 function download(content,name,mime) {
  const blob=new Blob([content],{type:mime}),url=URL.createObjectURL(blob);
@@ -178,11 +208,13 @@ function exportJSON() {
  catch(e){note('JSON export refused: '+e.message,true);}
 }
 function forget() {
- state=null;$('current').value='';$('previous').value='';$('same-scope').checked=false;$('details').checked=false;
+ state=null;$('casework-file').value='';$('casework-confirm').checked=false;$('casework-status').textContent='No Casework loaded.';$('current').value='';$('previous').value='';$('same-scope').checked=false;$('details').checked=false;
  $('workspace').hidden=true;['urgent','medium','low'].forEach(key=>$(key+'-decision').value='discussion_pending');$('kpis').replaceChildren();$('changes').replaceChildren();$('preview').replaceChildren();
  note('In-memory findings forgotten. Previously downloaded files must be deleted separately.');
 }
 $('load').addEventListener('click',load);
+$('casework-load').addEventListener('click',importCasework);
+$('casework-clear').addEventListener('click',clearCasework);
 $('forget').addEventListener('click',forget);
 $('html-export').addEventListener('click',exportHTML);
 $('json-export').addEventListener('click',exportJSON);

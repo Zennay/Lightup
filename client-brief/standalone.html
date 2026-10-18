@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-wpPFZOyxFDTkVCPSRLe+ulmbav4+u8hRIYgukbiqEiU=' 'sha256-VUMhYkqkAYy64uZCNceH5ieymU0RNqC1iToLkJmYq0k='; style-src 'sha256-zg2pLnWHd43U/0cTMcigCqHbmtetnx80hw//jcocyFY='; img-src 'none'; connect-src 'none'; form-action 'none'; object-src 'none'; base-uri 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-wpPFZOyxFDTkVCPSRLe+ulmbav4+u8hRIYgukbiqEiU=' 'sha256-mwUHxOgEXtY6GigCYczYg4AznvylVzRpG3wfPD8xepQ=' 'sha256-14u/BuWVC0S46gAGKD9gOAI3RKdx3rYtdU3INVOYn4k='; style-src 'sha256-zg2pLnWHd43U/0cTMcigCqHbmtetnx80hw//jcocyFY='; img-src 'none'; connect-src 'none'; form-action 'none'; object-src 'none'; base-uri 'none'">
 <title>LightUp · Client Security Brief</title><style>:root{font-family:Inter,ui-sans-serif,system-ui,-apple-system,sans-serif;color:#dbe6f2;background:#0b1221;color-scheme:dark}*{box-sizing:border-box}body{margin:0;line-height:1.54}.shell{width:min(1110px,calc(100% - 2rem));margin:auto}.top{background:radial-gradient(ellipse at 83% -18%,#1b617c 0,transparent 53%),linear-gradient(130deg,#12243c,#0d1727);border-bottom:1px solid #31445d;padding:3.8rem 0 2.4rem}h1{font-size:clamp(2.1rem,5vw,3.3rem);line-height:1.12;max-width:850px;margin:.6rem 0 1.15rem;color:#fff;letter-spacing:-.035em}h2{font-size:1.45rem;color:#f2f7fe;margin:.1rem 0 .8rem;letter-spacing:-.02em}.lead{font-size:1.11rem;max-width:820px;color:#b4c9dc}.eyebrow{color:#78d3d5;font-size:.72rem;letter-spacing:.16em;font-weight:800;margin:0}.flags{display:flex;gap:.7rem;flex-wrap:wrap;margin-top:1.6rem}.flags span,.step{border:1px solid #466879;background:#162a3b;color:#b0e1e3;padding:.36rem .68rem;border-radius:100px;font-size:.78rem;font-weight:700}main{padding:1.7rem 0}.panel{background:#131f31;border:1px solid #2a4058;border-radius:17px;margin:0 0 1.25rem;padding:1.65rem;box-shadow:0 12px 22px #060e1a38}.panel p{color:#b5c7da}.section-top{display:flex;gap:1rem;align-items:flex-start;justify-content:space-between;flex-wrap:wrap}.input-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1rem;margin:1.25rem 0}label{font-weight:700;color:#ebf1fb;font-size:.92rem;display:block}input[type=file],input[type=date],input[type=number],input[type=text],select{display:block;margin:.38rem 0 0;width:100%;padding:.75rem;border-radius:9px;background:#0c1728;color:#eef8ff;border:1px solid #4a6075;font:inherit}input:focus-visible,select:focus-visible,button:focus-visible{outline:3px solid #74e3dd;outline-offset:2px}input[type=checkbox]{width:1.12rem;height:1.12rem;accent-color:#64cbd1;flex-shrink:0}.check{display:flex;align-items:flex-start;gap:.75rem;margin:1rem 0;color:#c9d7e4;font-weight:500}.toolbar{display:flex;align-items:center;flex-wrap:wrap;gap:.85rem;margin-top:1rem}button{font:inherit;font-weight:800;cursor:pointer;background:#86e7dc;border:1px solid #86e7dc;color:#09212d;border-radius:9px;padding:.72rem 1rem}button.secondary{background:transparent;color:#d4e7f1;border-color:#577289}button:hover{filter:brightness(1.09)}button:disabled{opacity:.5;cursor:not-allowed}#message{color:#bfcedb;font-size:.88rem}.two{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1.2rem}.kpi-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.9rem;margin:0 0 1.3rem}.kpi{padding:1.15rem;border-radius:13px;border:1px solid #36536b;background:linear-gradient(160deg,#1d334b,#132338)}.kpi strong{display:block;font-size:2.4rem;line-height:1.15;color:#fff;font-variant-numeric:tabular-nums}.kpi span{font-size:.82rem;color:#b8ccd8}.chart-row{display:grid;grid-template-columns:105px 1fr 42px;align-items:center;gap:.6rem;margin:.85rem 0;font-size:.88rem}.chart-row .track{height:12px;background:#263d54;overflow:hidden;border-radius:100px}.chart-row .bar{height:100%;border-radius:100px;background:#78d3d5}.chart-row .bar.critical{background:#ff7993}.chart-row .bar.high{background:#ffb37d}.chart-row .bar.medium{background:#f1d986}.chart-row .bar.low{background:#78d3d5}.chart-row .bar.info{background:#8ba7dc}.chart-row .count{text-align:right;font-variant-numeric:tabular-nums}.hint{font-size:.85rem}.change-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:.7rem}.mini-stat{padding:1rem;border-radius:10px;background:#1e3146;color:#bfd4e5}.mini-stat b{font-size:1.8rem;display:block;color:#fff}.roadmap{display:grid;grid-template-columns:repeat(3,1fr);gap:.85rem}.roadmap-item{border-radius:11px;border:1px solid #3a556a;background:#192a3e;padding:1rem}.roadmap-item h3{color:#e8f3fa;margin:0 0 .4rem}.roadmap-item p{margin:.2rem 0}.source-meta{overflow-wrap:anywhere;font-size:.84rem}.preview{border-top:1px solid #355066;margin-top:1.5rem;padding-top:1rem}.preview h3{color:#d9f0f5}.preview .line{padding:.55rem .6rem;border-bottom:1px solid #30465a}.preview .sensitive{background:#292b3d;padding:.7rem;border-left:3px solid #ffb37d;margin:.5rem 0;overflow-wrap:anywhere}.preview .sensitive p{white-space:pre-wrap}.preview .label{font-size:.8rem;color:#88ced0}footer{border-top:1px solid #284258;margin-bottom:2rem;padding:1rem 0;color:#aabccc;font-size:.82rem}[hidden]{display:none!important}@media(max-width:790px){.two,.input-grid{grid-template-columns:1fr}.kpi-grid{grid-template-columns:repeat(2,1fr)}.roadmap{grid-template-columns:1fr}.change-grid{grid-template-columns:repeat(2,1fr)}.step{display:none}}@media(max-width:390px){.kpi-grid{grid-template-columns:1fr}}@media print{:root{background:white;color:#172334;color-scheme:light}body{background:white}.top{background:#fff;color:#172334;padding:1rem 0}.top h1,.panel h2{color:#172334}.top .lead,.flags,main>.panel,.toolbar,.input-grid,.check{display:none!important}.panel{border:0;background:white;color:#172334;box-shadow:none;padding:.4rem 0;break-inside:avoid}.panel p,.hint{color:#343e4e}.kpi,.roadmap-item,.mini-stat{border:1px solid #ccc;background:#fff;color:#172334}.kpi strong,.mini-stat b,.roadmap-item h3{color:#172334}.chart-row .track{border:1px solid #888}.chart-row .bar{background:#777!important}.two{display:grid;grid-template-columns:1fr 1fr}.preview{color:#172334}.preview .sensitive{background:white;color:#172334;border-color:#777}footer{color:#172334}.eyebrow{color:#194a52}}
 .chart-row progress{display:block;width:100%;height:14px;accent-color:#78d3d5;border:0;border-radius:8px;overflow:hidden}.chart-row progress.severity-critical{color:#ff7993;accent-color:#ff7993}.chart-row progress.severity-high{color:#ffb37d;accent-color:#ffb37d}.chart-row progress.severity-medium{color:#f1d986;accent-color:#f1d986}.chart-row progress.severity-low{color:#78d3d5;accent-color:#78d3d5}.chart-row progress.severity-info{color:#8ba7dc;accent-color:#8ba7dc}.chart-row progress::-webkit-progress-bar{background:#263d54;border-radius:8px}.chart-row progress::-webkit-progress-value{background:currentColor;border-radius:8px}.chart-row progress::-moz-progress-bar{background:currentColor;border-radius:8px}
 </style></head>
@@ -22,6 +22,7 @@
 <section class="panel"><div class="section-top"><div><p class="eyebrow">03 / SOURCE STATUS</p><h2>Reported retest states</h2></div></div><div id="retest-chart" class="chart"></div><p class="hint">A source-reported “fixed” value is not verification; only an independently authorised retest can confirm it.</p></section></div>
 <section class="panel" id="changes-panel" hidden><p class="eyebrow">04 / HISTORICAL CONTEXT</p><h2>Review what changed</h2><div id="changes"></div>
 <p class="hint">“Missing” means absent from the newer file, not resolved. “Changed” does not demonstrate improvement. Identity, tenant and freshness remain unverified by these CSV files.</p></section>
+<section class="panel"><p class="eyebrow">04B / EXISTING CASEWORK HANDOFF</p><h2>Optional existing remediation planning snapshot</h2><p>Bring a draft exported by the original LightUp Remediation Casework app. This import only summarises private local planning stages when every source finding exactly matches the current CSV; it neither proves remediation nor reads a client database.</p><label>Casework draft JSON<input id="casework-file" type="file" accept=".json,application/json"></label><label class="check"><input id="casework-confirm" type="checkbox"> I separately checked that this draft and current CSV belong to the same authorised client and exact engagement. A matching record set does not prove identity.</label><div class="toolbar"><button class="secondary" id="casework-load">Import matching casework summary</button><button class="secondary" id="casework-clear">Clear casework only</button><span id="casework-status" role="status" aria-live="polite">No casework loaded.</span></div><div id="casework-metrics" class="change-grid" aria-live="polite"></div></section>
 <section class="panel"><p class="eyebrow">05 / REMEDIATION DISCUSSION</p><h2>Suggested order of human follow-up</h2>
 <p>Adjust relative planning horizons before export. These are <strong>illustrative calendar-day targets</strong>, not contractual deadlines or permission to perform retests.</p>
 <div class="input-grid"><label>Local planning reference date<input id="anchor" type="date"></label>
@@ -238,7 +239,88 @@ function reconcileSource(before,existingCases,after){
 
 global.LightUpCasework=Object.freeze({compareSource,reconcileSource,parseCSV,normalizeSource,newCase,cleanCase,digest,makePacket,loadPacket,metrics,exportActionsCSV,SEVERITY,RETEST,PROGRESS,MAX_BYTES});
 })(window);
-</script><script>/* LightUp Client Security Brief: offline presentation of *previously authenticated* exports.
+</script><script>/* Strict private import of existing LightUpCasework drafts. Aggregate-only; never an authority check. */
+(function(global){
+'use strict';
+const ALLOWED=new Set(['kind','schema_version','disposition','authenticated','tenant_verified',
+ 'source_authorized','assessment_authorized','grant','client_consent','operator_consent',
+ 'execution','scan','audit_verdict','retest_verified','release','source_contract',
+ 'source_sha256','findings','cases','instructions']);
+const FIELDS=['finding_id','title','severity','retest_status','remediation'];
+const MAX_BYTES=3*1024*1024;
+function rejectDuplicateJSONKeys(text){
+ // JSON.parse silently accepts duplicate keys. Scan JSON string tokens while following
+ // object boundaries, with JSON.parse doing complete grammar and Unicode validation.
+ const stack=[];
+ for(let i=0;i<text.length;i++){
+  const c=text[i];
+  if(c==='"'){
+   const start=i;let closed=false;
+   for(i++;i<text.length;i++){
+    if(text[i]==='\\'){i++;continue;}
+    if(text[i]==='"'){closed=true;break;}
+   }
+   if(!closed)throw Error('Malformed JSON string.');
+   const top=stack.at(-1);
+   if(top&&top.type==='object'&&top.expecting){
+    let next=i+1;
+    while(next<text.length&&/\s/.test(text[next]))next++;
+    if(text[next]===':'){
+     const key=JSON.parse(text.slice(start,i+1));
+     if(key==='__proto__'||key==='constructor'||key==='prototype'||top.keys.has(key))
+      throw Error('Duplicate or forbidden object member.');
+     top.keys.add(key);top.expecting=false;
+    }
+   }
+  }else if(c==='{')stack.push({type:'object',keys:new Set(),expecting:true});
+  else if(c==='[')stack.push({type:'array'});
+  else if(c==='}'||c===']'){
+   const top=stack.pop();
+   if(!top||(c==='}'&&top.type!=='object')||(c===']'&&top.type!=='array'))
+    throw Error('Malformed JSON containers.');
+  }else if(c===','&&stack.at(-1)?.type==='object'){
+   stack.at(-1).expecting=true;
+  }
+ }
+ if(stack.length)throw Error('Unclosed JSON container.');
+}
+async function readAndSummarize(file,currentRows){
+ if(!file||!file.size||file.size>MAX_BYTES)throw Error('Expected a nonempty Casework draft JSON no larger than 3 MiB.');
+ const buffer=await file.arrayBuffer();
+ if(buffer.byteLength!==file.size)throw Error('Casework file changed during import.');
+ const text=new TextDecoder('utf-8',{fatal:true}).decode(buffer);
+ if(text.charCodeAt(0)===0xfeff)throw Error('Unexpected JSON byte-order mark.');
+ rejectDuplicateJSONKeys(text);
+ const packet=JSON.parse(text);
+ if(!packet||typeof packet!=='object'||Array.isArray(packet)||Object.keys(packet).some(k=>!ALLOWED.has(k)))
+  throw Error('Unknown or unsupported Casework draft envelope.');
+ const parsed=LightUpCasework.loadPacket(packet);
+ const current=LightUpCasework.normalizeSource(currentRows);
+ if(parsed.findings.length!==current.length)throw Error('Casework source length does not match the CSV.');
+ const sort=(a,b)=>a.finding_id<b.finding_id?-1:a.finding_id>b.finding_id?1:0;
+ const reference=current.slice().sort(sort),given=parsed.findings.slice().sort(sort);
+ for(let i=0;i<reference.length;i++)
+  if(FIELDS.some(k=>reference[i][k]!==given[i][k]))
+   throw Error('Casework was made from another source revision; no state imported.');
+ const digest=await LightUpCasework.digest(current);
+ if(parsed.source_sha256!==null&&digest!==null&&digest!==parsed.source_sha256)
+  throw Error('Casework source digest conflicts with current exact fields.');
+ const counts=Object.fromEntries(LightUpCasework.PROGRESS.map(k=>[k,0]));
+ let overdue=0,urgentBlocked=0;
+ const today=new Date().toISOString().slice(0,10),index=new Map(reference.map(f=>[f.finding_id,f]));
+ for(const c of parsed.cases){
+  counts[c.status]++;
+  if(c.due_date&&c.due_date<today&&c.status!=='completed'&&c.status!=='deferred')overdue++;
+  if(c.status==='blocked'&&['critical','high'].includes(index.get(c.finding_id)?.severity))urgentBlocked++;
+ }
+ // Never return casework titles, IDs, owners, notes, tickets, exported raw JSON or timestamps.
+ return Object.freeze({counts,overdue,urgentBlocked,sourceRecordCount:current.length,
+  sourceFieldsMatch:true,sourceDigestChecked:digest!==null&&parsed.source_sha256!==null,
+  authenticated:false,client_consent:false,operator_consent:false,grant:false,
+  execution:false,scan:false,retest_verified:false,release:false});
+}
+global.LightUpBriefCasework=Object.freeze({readAndSummarize});
+})(window);</script><script>/* LightUp Client Security Brief: offline presentation of *previously authenticated* exports.
    No authority, target interaction, data persistence, API, network or backend access. */
 (() => {
 'use strict';
@@ -252,6 +334,32 @@ const GROUPS = [
  {label:'Backlog and hygiene discussion',key:'low',severities:['low','info'],dayId:'low-days',reason:'Record lower-risk follow-ups without inventing an assessment window or completion guarantee.'}
 ];
 let state = null;
+function caseworkSummaryHTML(){
+ if(!state?.casework)return '<p>No matching existing Casework planning packet attached.</p>';
+ const x=state.casework;
+ const cells=Object.entries(x.counts).map(([k,v])=>'<div class="mini-stat"><b>'+v+'</b>'+H(k.replaceAll('_',' '))+'</div>').join('');
+ return '<p><strong>Separate, unverified local planning only:</strong> '+x.overdue+' locally overdue and '+x.urgentBlocked+' critical/high locally blocked. No verified remediation or retest.</p><div class="change-grid">'+cells+'</div>';
+}
+function renderCasework(){
+ $('casework-metrics').innerHTML=state?.casework?Object.entries(state.casework.counts).map(([k,v])=>'<div class="mini-stat"><b>'+v+'</b>'+H(k.replaceAll('_',' '))+'</div>').join(''):'';
+}
+async function importCasework(){
+ if(!state)return note('Import a current findings CSV first.',true);
+ if(!$('casework-confirm').checked)return note('Confirm the original Casework belongs to the same client and engagement.',true);
+ const f=$('casework-file').files[0];if(!f)return note('Select the existing Casework draft JSON.',true);
+ $('casework-load').disabled=true;
+ try{
+  const summary=await LightUpBriefCasework.readAndSummarize(f,state.fresh.rows);
+  state.casework=summary;render();$('casework-status').textContent='Exact source fields match; planning stages are self-reported only.';
+  note('Matching Casework counts attached locally. No remediation, retest or consent inferred.');
+ }catch(e){$('casework-status').textContent='Import rejected; existing summary unchanged.';note('Casework rejected: '+String(e.message||'Unsupported packet'),true);}
+ finally{$('casework-load').disabled=false;}
+}
+function clearCasework(){
+ if(state)state.casework=null;
+ $('casework-file').value='';$('casework-confirm').checked=false;
+ $('casework-status').textContent='No Casework loaded.';renderCasework();if(state)render();
+}
 function note(text, bad=false) { $('message').textContent=text; $('message').style.color=bad?'#ff9fac':'#b6e3d9'; }
 async function sha256(bytes) {
  if (!globalThis.crypto || !crypto.subtle) return null;
@@ -276,7 +384,8 @@ async function load() {
   const [fresh,older]=await Promise.all([readSource(current),previous?readSource(previous):Promise.resolve(null)]);
   // Publish only after *both* original exports are fully parsed and bounded.
   const changes=older?LightUpCasework.compareSource(older.rows,fresh.rows):null;
-  state={fresh,older,changes,sameScopeAcknowledged:!!older};
+  state={fresh,older,changes,sameScopeAcknowledged:!!older,casework:null};
+  $('casework-file').value='';$('casework-confirm').checked=false;$('casework-status').textContent='No Casework loaded.';
   ['urgent','medium','low'].forEach(key=>$(key+'-decision').value='discussion_pending');
   $('details').checked=false;
   $('workspace').hidden=false;
@@ -368,10 +477,11 @@ function render() {
  $('changes-panel').hidden=!state.changes;
  $('changes').innerHTML=historicalHTML();
  $('roadmap').innerHTML=planHTML(road);
+ renderCasework();
  $('source-info').textContent=sourceSummary();
  const heading=$('report-title').value.trim().slice(0,100)||'Security findings — executive brief';
  $('preview').innerHTML='<p class="eyebrow">LOCAL PREVIEW / UNSIGNED</p><h3>'+H(heading)+'</h3>'+narrative(severity,retest,state.changes)+
- '<h3>Human follow-up plan</h3><div class="roadmap">'+planHTML(road)+'</div><h3>Original source detail</h3>'+detailsHTML()+
+ '<h3>Human follow-up plan</h3><div class="roadmap">'+planHTML(road)+'</div><h3>Matching local Casework summary (unverified)</h3>'+caseworkSummaryHTML()+'<h3>Original source detail</h3>'+detailsHTML()+
  '<p class="hint">Client/operator consent, actual execution authority, approved scope, live revocation and verified retest must be established separately through genuine authenticated systems. This document is DRAFT/HOLD only.</p>';
  }catch(e){note(String(e.message),true);$('preview').textContent='Cannot render until planning inputs are corrected.';}
 }
@@ -384,6 +494,7 @@ function reportData() {
   imported_findings:state.fresh.rows.length,source_sha256:state.fresh.sha,
   earlier_sha256:state.older?.sha??null,severity_counts:severity,source_retest_counts:retest,
   source_changes:diff?{added:diff.added.length,changed:diff.changed.length,absent_unverified:diff.missing.length,unchanged:diff.unchanged.length}:null,
+  local_casework_summary:state.casework?{counts:{...state.casework.counts},locally_overdue:state.casework.overdue,critical_high_locally_blocked:state.casework.urgentBlocked,exact_source_fields_match:true,digest_checked:state.casework.sourceDigestChecked,remediation_verified:false}:null,
   planning:road.map(g=>({group:g.key,findings:g.amount,suggested_days:g.days,suggested_follow_up:g.due,self_reported_discussion_stage:g.discussion,not_an_sla:true})),
   caveat:'Local summary of untrusted CSV bytes. Never a grant, consent, permission, scan or verified retest.'};
 }
@@ -394,12 +505,13 @@ function staticHTML(data) {
  const rows=SEVERITIES.map(k=>'<tr><td>'+H(k)+'</td><td>'+sev[k]+'</td></tr>').join('');
  const sourceRows=RETEST.map(k=>'<tr><td>'+H(k)+'</td><td>'+ret[k]+'</td></tr>').join('');
  const changes=state.changes?'<h2>Source comparison (unverified)</h2><p>'+H(state.changes.added.length)+' newly present; '+H(state.changes.changed.length)+' changed; '+H(state.changes.missing.length)+' absent (not resolved); '+H(state.changes.unchanged.length)+' unchanged. Same-scope provenance was acknowledged by the local reviewer, not verified by this file.</p>':'';
+ const casework=state.casework?'<h2>Existing self-reported Casework planning</h2>'+caseworkSummaryHTML():'<p>No matching local Casework packet attached.</p>';
  const details=$('details').checked?'<h2>Sensitive source detail — private recipients only</h2>'+detailsHTML():'<p>Individual finding identifiers, titles and remediation text are intentionally excluded from this redacted brief.</p>';
  return '<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="Content-Security-Policy" content="default-src \'none\'; style-src \'unsafe-inline\'; connect-src \'none\'; img-src \'none\'; script-src \'none\'; object-src \'none\'"><title>'+H(title)+'</title><style>'+printCSS+'</style></head><body><small>LIGHTUP / REVIEW_ONLY / DRAFT-HOLD</small><h1>'+H(title)+'</h1><p class="tag">Audience: '+H($('audience').value)+'</p><div class="notice"><strong>Not an authorisation or verification document.</strong> This static, unsigned report is derived from a locally provided file. It does not establish client identity, scope, client/operator consent, live revocation, grant validity, execution authority, a scan outcome or verified remediation.</div><h2>Executive overview</h2>'+narrative(sev,ret,state.changes)+
  '<h2>Severity distribution</h2><table><thead><tr><th>Source severity</th><th>Count</th></tr></thead><tbody>'+rows+'</tbody></table>'+
  '<h2>Source-reported retest states</h2><table><thead><tr><th>Source state</th><th>Count</th></tr></thead><tbody>'+sourceRows+'</tbody></table>'+changes+
  '<h2>Illustrative follow-up roadmap</h2>'+road.map(g=>'<article><strong>'+H(g.label)+'</strong><p>'+g.amount+' findings; discuss within '+g.days+' calendar days'+(g.due==='Not specified'?' (no reference date)':' from the reference date, by '+H(g.due))+'. Not an SLA, order or booked activity.</p><p>Local follow-up stage: '+H(g.discussion.replaceAll('_',' '))+' (self-reported)</p><p>'+H(g.reason)+'</p></article>').join('')+
- details+'<h2>Evidence and provenance caveat</h2><p class="meta">'+H(sourceSummary())+'</p><p class="muted">Original report values are untrusted unless authenticated separately. This file contains no live permissions and has not checked current grants or independently verified remediation.</p></body></html>';
+ casework+details+'<h2>Evidence and provenance caveat</h2><p class="meta">'+H(sourceSummary())+'</p><p class="muted">Original report values are untrusted unless authenticated separately. This file contains no live permissions and has not checked current grants or independently verified remediation.</p></body></html>';
 }
 function download(content,name,mime) {
  const blob=new Blob([content],{type:mime}),url=URL.createObjectURL(blob);
@@ -418,11 +530,13 @@ function exportJSON() {
  catch(e){note('JSON export refused: '+e.message,true);}
 }
 function forget() {
- state=null;$('current').value='';$('previous').value='';$('same-scope').checked=false;$('details').checked=false;
+ state=null;$('casework-file').value='';$('casework-confirm').checked=false;$('casework-status').textContent='No Casework loaded.';$('current').value='';$('previous').value='';$('same-scope').checked=false;$('details').checked=false;
  $('workspace').hidden=true;['urgent','medium','low'].forEach(key=>$(key+'-decision').value='discussion_pending');$('kpis').replaceChildren();$('changes').replaceChildren();$('preview').replaceChildren();
  note('In-memory findings forgotten. Previously downloaded files must be deleted separately.');
 }
 $('load').addEventListener('click',load);
+$('casework-load').addEventListener('click',importCasework);
+$('casework-clear').addEventListener('click',clearCasework);
 $('forget').addEventListener('click',forget);
 $('html-export').addEventListener('click',exportHTML);
 $('json-export').addEventListener('click',exportJSON);
