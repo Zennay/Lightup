@@ -18,7 +18,7 @@
   const STAGES = ["unreviewed", "owner-follow-up", "source-recheck", "human-acknowledged"];
   const $ = id => document.getElementById(id);
   const text = (id, value) => { $(id).textContent = String(value); };
-  const state = { snapshots: [], changes: [], sha: [], notes: new Map() };
+  const state = { snapshots: [], changes: [], sha: [], notes: new Map(), details: new Map(), editKey: null };
   function hold(message) { throw Error(message); }
   function isObject(x) { return x !== null && typeof x === "object" && !Array.isArray(x); }
   function literal(x, n) {
@@ -177,6 +177,50 @@
     return output;
   }
   const td = (tr, val) => { const cell = document.createElement("td"); cell.textContent = String(val); tr.appendChild(cell); return cell; };
+
+  function field(value,max,label) {
+    if (typeof value!=="string" || value.length>max || /[\u0000-\u001f\u007f]/.test(value))
+      hold("Invalid human-only "+label);
+    return value;
+  }
+  function humanDetails(value) {
+    if (!isObject(value)) hold("Human-only private case notes must be an object");
+    const reviewer=field(value.reviewer,80,"reviewer alias");
+    const action=field(value.next_action,240,"next action");
+    const note=field(value.note,1200,"human note");
+    const due=field(value.due_utc,24,"human due date");
+    if (due!=="" && (!/^\d{4}-\d\d-\d\d$/.test(due) || !Number.isFinite(Date.parse(due+"T00:00:00Z"))))
+      hold("Invalid optional UTC human due date");
+    return {reviewer,next_action:action,note,due_utc:due};
+  }
+  function editHuman(key) {
+    if (state.snapshots.length!==2 || !state.changes.some(c=>c.category+":"+c.id===key)) return;
+    state.editKey=key;
+    const entry=state.details.get(key)||{reviewer:"",next_action:"",note:"",due_utc:""};
+    text("detailIdentity",key);
+    $("reviewerAlias").value=entry.reviewer;
+    $("nextHumanAction").value=entry.next_action;
+    $("humanNote").value=entry.note;
+    $("humanDue").value=entry.due_utc;
+    $("humanDialog").showModal();
+  }
+  function saveHumanDetail() {
+    if (!state.editKey || !state.changes.some(c=>c.category+":"+c.id===state.editKey))
+      return;
+    try {
+      const item=humanDetails({
+        reviewer:$("reviewerAlias").value,
+        next_action:$("nextHumanAction").value,
+        note:$("humanNote").value,
+        due_utc:$("humanDue").value,
+      });
+      state.details.set(state.editKey,item);
+      state.editKey=null;
+      $("humanDialog").close();
+      render();
+    } catch(e) { text("dialogError","HOLD: "+e.message); }
+  }
+
   function observedSignals(record) {
     if (!record) return "not recorded in selected source";
     const labels = ["status", "attention", "request_link_observation", "validity_observation", "decision_provenance_observation"];
@@ -249,7 +293,14 @@
       const key = c.category + ":" + c.id;
       select.value = state.notes.get(key) || "unreviewed";
       select.addEventListener("change",() => {state.notes.set(key,select.value); impactEngagements();});
-      container.appendChild(select); tr.appendChild(container); tbody.appendChild(tr);
+      container.appendChild(select); tr.appendChild(container);
+      const humanCell=document.createElement("td");
+      const open=document.createElement("button");
+      open.type="button";open.className="outline compact";
+      open.textContent=state.details.has(key)?"Edit local notes":"Add follow-up";
+      open.addEventListener("click",()=>editHuman(key));
+      humanCell.appendChild(open);tr.appendChild(humanCell);
+      tbody.appendChild(tr);
     }
     const urgent = state.changes.filter(x=>x.priority==="urgent").length;
     text("summary",state.changes.length + " changed source records / " + urgent +
@@ -276,7 +327,7 @@
   async function load() {
     text("error","");
     $("results").hidden = true;
-    state.snapshots=[];state.changes=[];state.sha=[];state.notes.clear();
+    state.snapshots=[];state.changes=[];state.sha=[];state.notes.clear();state.details.clear();state.editKey=null;
     try {
       const files = [$("older").files[0],$("newer").files[0]];
       if (!files[0] || !files[1]) hold("Select two private original Casebook JSON exports");
@@ -335,7 +386,8 @@
       changes:state.changes.map(c=>({
         category:c.category,original_id:c.id,change:c.kind,priority:c.priority,
         changed_source_fields:c.fieldNames,
-        local_human_stage:state.notes.get(c.category+":"+c.id)||"unreviewed"
+        local_human_stage:state.notes.get(c.category+":"+c.id)||"unreviewed",
+        human_review:state.details.get(c.category+":"+c.id)||{reviewer:"",next_action:"",note:"",due_utc:""}
       }))
     };
     save(new Blob([JSON.stringify(data,null,2)+"\n"],{type:"application/json"}),"lightup-casebook-change-PRIVATE.json");
@@ -428,6 +480,8 @@
       text("restore-status","");
     }
   }
+  $("saveHuman").addEventListener("click",saveHumanDetail);
+  $("humanDialog").addEventListener("close",()=>{state.editKey=null;text("dialogError","");});
   $("load").addEventListener("click",load);
   $("restore").addEventListener("click",restorePrivateReview);
   $("kind").addEventListener("change",()=>{if(state.snapshots.length)render();});
