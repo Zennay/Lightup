@@ -16,6 +16,8 @@ This standalone **offline, multi-owner HUMAN follow-up register** is a read-only
 - Filter by local human stages, upcoming tentative dates (within seven UTC days), tentatively overdue dates, unplanned work, source original ID, request kind or alias. Sort by original packet, date, alias or local human status. These are **planning hints only**, never execution windows, SLAs or authenticated identities.
 - Select exact original request IDs individually or select **all rows in the current filter**. Selections can span filter views; the explicit preview displays original finding IDs, full request IDs, self-declared owners and old → proposed HUMAN-only stages before a separate confirmation. A changed original register, selected ID set or local HUMAN baseline invalidates application.
 - The standalone **anonymous aggregate counts CSV** contains only HUMAN request type, unverified reply stage, local review stage and count. It does not contain original finding/request IDs, aliases, source SHA, response bodies, evidence fingerprints, targets or client context. The original PRIVATE per-ID CSV is separate with its own acknowledgement.
+- The **PRIVATE owner-specific HUMAN review brief JSON** exports only one self-declared owner’s exact source-bound original request ID, finding ID, original HUMAN instructions and tentative date, any received unverified answer, local HUMAN status and private follow-up note. It excludes every other owner. The recipient and transport must be verified independently; it is NOT an original owner-reply packet, not accepted by the original owner app, and not proof of identity, remediation, retest or grant.
+- The full PRIVATE workspace restore supports up to **8 MiB** for large human registers; exact native original owner request/reply files remain at **1 MiB** each, with fatal UTF-8 decoding and duplicate-key rejection.
 
 ## Workflow
 
@@ -27,7 +29,7 @@ This standalone **offline, multi-owner HUMAN follow-up register** is a read-only
 
 ### Deliberately strict handling
 
-- 1 MiB max per JSON; 24 packets and 800 unique original human requests max. Imports use fatal UTF-8 decoding and bounded duplicate-key rejecting parsing, and no browser storage.
+- 1 MiB max per original owner JSON and 8 MiB max per own register backup; 24 packets and 800 unique original human requests max. Imports use fatal UTF-8 decoding and bounded duplicate-key rejecting parsing, and no browser storage.
 - Original source SHA, client and engagement are **declarations** from imported files, not cryptographic authentication or verified tenant identity. An SHA-256 string alone does not prove provenance.
 - A reply stage of `submitted_unverified` / `needs_changes` is **human-supplied text**, not a verified fix or approved retest.
 - Duplicate requests in different owner packets, altered owner-request baselines, and conflicting replies HOLD the whole import instead of selecting one.
