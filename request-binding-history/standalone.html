@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>LightUp · Request binding change desk</title>
+<style>
+:root{font:16px/1.5 system-ui,-apple-system,sans-serif;color:#e9eef7;background:#09111f;color-scheme:dark}
+*{box-sizing:border-box}body{max-width:1240px;margin:auto;padding:32px 22px 80px}
+h1{font-size:clamp(1.7rem,4vw,3rem);letter-spacing:-.04em;margin:.4rem 0}h2{margin:0 0 12px}
+p{margin:.6rem 0 1rem}small,.muted{color:#bac6d7}header{border-bottom:1px solid #34445c;padding-bottom:28px;margin-bottom:22px}
+.kicker{font-size:.77rem;letter-spacing:.17em;text-transform:uppercase;color:#96d5f5;font-weight:700}
+.panel{background:#111f32;border:1px solid #314561;border-radius:16px;padding:20px;margin:18px 0}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px}
+.stat{background:#182b43;border-radius:12px;padding:16px}.stat strong{display:block;font-size:1.6rem}
+input[type=file]{display:block;margin:14px 0;max-width:100%}
+button,.action{background:#237bb7;color:white;border:0;border-radius:9px;padding:10px 14px;font:inherit;font-weight:600;cursor:pointer;margin:5px 8px 5px 0}
+button.secondary{background:#344861}button:disabled{opacity:.4;cursor:default}
+button:focus-visible,input:focus-visible{outline:3px solid #ffd168;outline-offset:3px}
+table{border-collapse:collapse;width:100%;min-width:850px}th,td{text-align:left;border-bottom:1px solid #33465d;padding:12px 10px;vertical-align:top}
+th{font-size:.8rem;text-transform:uppercase;letter-spacing:.05em;color:#c8d7e9}
+.table-wrap{overflow-x:auto}.hold{color:#ffb19f;font-weight:700}.review{color:#a2e7d0;font-weight:700}
+.badge{display:inline-block;background:#263d53;border-radius:50px;padding:3px 10px;font-size:.8rem}
+.error{color:#ffd3c2;white-space:pre-wrap}label{display:inline-flex;align-items:center;gap:9px;padding:5px 0}
+#status[role=alert]{border-left:4px solid #ff986b;padding:12px 18px;background:#3c2730}
+#status[role=status]{border-left:4px solid #78ceac;padding:12px 18px;background:#1e3740}
+.chart{display:flex;align-items:flex-end;gap:5px;height:110px;padding:10px 0}
+.bar{min-width:25px;flex:1;max-width:100px;background:#509bbf;border-radius:5px 5px 0 0;position:relative}
+.bar span{position:absolute;top:-24px;font-size:.85rem}
+a{color:#9bdafc}
+@media print{body{color:#111;background:white}header,.panel,.stat{background:white;color:#111;border-color:#777}button,input,.actions{display:none!important}table{min-width:0}th,td{border-color:#aaa}.muted{color:#555}}
+</style></head>
+<body>
+<header><div class="kicker">LightUp / SCOPE-AUTHORIZATION / PRIVATE LOCAL REVIEW</div>
+<h1>Request binding · source change desk</h1>
+<p>Compare 2–12 original private <strong>single-selection</strong> operator JSON exports from request-binding readiness PR #1590. Source changes are evidence to revisit a human decision, <strong>not</strong> verified revocations, client signatures, grants or permission.</p>
+<div class="badge">INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD</div></header>
+<section class="panel" aria-labelledby="loadtitle">
+<h2 id="loadtitle">1 · Load existing original reports</h2>
+<p class="muted">All imported files must describe the same precise proposed scope selection (unsigned digest). Maximum 12 files, 2 MB each and 12 MB total. No files leave your browser; nothing is persisted.</p>
+<input id="files" type="file" accept=".json,application/json" multiple aria-label="Select 2 to 12 private original request binding JSON exports">
+<button id="import">Compare selected reports</button><button class="secondary" id="clear">Clear private workspace</button>
+<p id="status" role="status" aria-live="polite">No source documents loaded.</p>
+</section>
+<section id="workspace" hidden>
+<section class="panel"><h2>2 · Evidence summary</h2><div class="grid" id="stats"></div>
+<p class="muted">The file order is chosen by the operator. It is not authenticated chronological order. A copied JSON report is untrusted even when originally created by an authenticated operator. Reauthenticate and re-export directly from the original database before making decisions.</p></section>
+<section class="panel"><h2>3 · Human-selected snapshot order</h2><div class="table-wrap"><table><thead><tr><th>Slot</th><th>Original source review UTC</th><th>Stored source revision</th><th>Matching requests</th><th>Other requests</th><th>Historical grant rows</th><th>Human-only outcome</th></tr></thead><tbody id="rows"></tbody></table></div>
+<h3>Administrative candidate count (not permissions)</h3><div id="chart" class="chart" aria-label="Candidate count by selected file slot"></div></section>
+<section class="panel"><h2>4 · Adjacent source-change reconciliation</h2>
+<p>Rows are compared only in the selected order. Different source SHA means original stored records differed <em>somewhere</em>; it cannot identify which persisted row changed without revisiting original authenticated source. Equal SHA is unsigned and cannot establish unchanged live state.</p>
+<div class="table-wrap"><table><thead><tr><th>Human selection</th><th>Original stored revision</th><th>Administrative candidates</th><th>Unapproved rows</th><th>Grant records</th><th>Human action</th></tr></thead><tbody id="transitions"></tbody></table></div></section>
+<section class="panel"><h2>5 · Human handoff</h2>
+<p>Mark private discussion items for yourself. These local checkmarks have no effect on source requests, grant state, revocation, scan, target or release.</p>
+<div id="review"></div>
+<div class="actions"><button id="exportjson">Download anonymous JSON brief</button><button id="exportcsv" class="secondary">Download anonymous CSV</button><button id="saveprivate" class="secondary">Save PRIVATE working draft</button><input type="file" id="restore" accept=".json" aria-label="Restore a private working draft"><button class="secondary" id="print">Print private aggregate</button></div>
+<p class="muted">PRIVATE draft stores fingerprints of original file bytes and your local follow-up checkmarks. Keep it in a restricted location. Aggregate exports omit original file names, tenant/client/engagement IDs, asset literals, source hashes, candidate record identities and human private notes.</p></section>
+</section>
+<footer class="muted">Original grants and approved requests do not authenticate independent client/operator consent. Before any real access: original source owner, active-time revocation, independent security/privacy approval, exact-head hosted + permanent named VPS CI, and explicit HUMAN GO. This workspace does not issue grants, access targets, scan, dispatch, revoke or deploy.</footer>
+<script>
+"use strict";
+(function(){
+const FORMAT="lightup.request_binding_preparation.v1";
+const FALSE_KEYS=["client_consent_verified","operator_consent_verified","authorization_granted","execution_allowed","release_approved"];
+const STATUSES=["candidate_review_only","approved_but_not_compatible","not_administratively_approved"];
+const OUTCOMES=["REVIEW_ONLY_SINGLE_CANDIDATE","HOLD_AMBIGUOUS_CANDIDATES","HOLD_NO_CANDIDATE"];
+const ACTIONS=[
+  "Reauthenticate original operator and reopen source records",
+  "Confirm original client and operator identities independently",
+  "Review source revision differences with request/grant owner",
+  "Check current request scope, risk and decision provenance",
+  "Confirm separate consent and revocation-at-use with security",
+  "Keep activation, deployment, grants and real scanning on HOLD"
+];
+const $=id=>document.getElementById(id);
+let workspace=null, hashes=[];
+const fail=message=>{throw Error(message)};
+const exact=(o,keys,context)=>{
+  if(!o||typeof o!=="object"||Array.isArray(o)||Object.keys(o).some(k=>!keys.includes(k))||keys.some(k=>!Object.hasOwn(o,k))) fail(context+" schema mismatch");
+};
+const plain=(x)=>x!==null&&typeof x==="object"&&!Array.isArray(x);
+// JSON parser rejects duplicate object keys (including escape-equivalent keys), malformed input,
+// deep nesting and nonfinite values; JSON.parse alone would silently take the last duplicate key.
+function strictJSON(src){
+ let p=0,nodes=0;
+ function ws(){while(p<src.length&&/\s/.test(src[p]))p++}
+ function str(){
+   let start=p++;while(p<src.length){
+     if(src[p]==="\\"){p+=2;continue}
+     if(src[p++]==='"'){return JSON.parse(src.slice(start,p))}
+   }fail("incomplete JSON string");
+ }
+ function value(depth){
+  if(++nodes>60000||depth>36)fail("JSON complexity limit");
+  ws();let c=src[p];
+  if(c==='"')return str();
+  if(c==="{"){
+   p++;let ob=Object.create(null),seen=new Set();ws();if(src[p]==="}"){p++;return ob}
+   while(true){ws();if(src[p]!=='"')fail("invalid JSON object key");let key=str();
+    if(seen.has(key))fail("duplicate JSON key");seen.add(key);ws();
+    if(src[p++]!==":")fail("invalid JSON object");
+    ob[key]=value(depth+1);ws();let end=src[p++];
+    if(end==="}")return ob;if(end!==",")fail("invalid JSON separator");
+   }
+  }
+  if(c==="["){
+   p++;let arr=[];ws();if(src[p]==="]"){p++;return arr}
+   while(true){arr.push(value(depth+1));ws();let end=src[p++];if(end==="]")return arr;if(end!==",")fail("invalid JSON array")}
+  }
+  let tail=src.slice(p),m=/^(?:-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?|true|false|null)/.exec(tail);
+  if(!m)fail("invalid JSON value");p+=m[0].length;
+  let v=JSON.parse(m[0]);if(typeof v==="number"&&!Number.isFinite(v))fail("nonfinite JSON number");return v;
+ }
+ let data=value(0);ws();if(p!==src.length)fail("trailing JSON content");return data;
+}
+function count(v,label,limit=500){if(!Number.isSafeInteger(v)||v<0||v>limit)fail(label+" invalid");return v}
+function sha(v){if(typeof v!=="string"||!/^[a-f0-9]{64}$/.test(v))fail("invalid unsigned source fingerprint");return v}
+function validate(obj,slot){
+ if(!plain(obj)||obj.format!==FORMAT||!OUTCOMES.includes(obj.disposition))fail("slot "+slot+" is not an original single-selection JSON export");
+ exact(obj.authority,FALSE_KEYS,"authority");for(const k of FALSE_KEYS)if(obj.authority[k]!==false)fail("authority must remain literally false");
+ if(!plain(obj.source)||obj.source.source_owner_ref!=="PR-1570")fail("missing original source owner");
+ let selection=sha(obj.source.request_selection_digest_unsigned),revision=sha(obj.source.source_revision_sha256_unsigned);
+ let stamp=obj.source.review_instant_utc;
+ if(typeof stamp!=="string"||stamp.length>60||!(/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d+)?(?:Z|[+-]\d\d:\d\d)$/.test(stamp))||!Number.isFinite(Date.parse(stamp)))fail("invalid source review instant");
+ let risk=count(obj.source.requested_risk,"risk",4);if(risk<1)fail("invalid risk");
+ count(obj.source.proposed_asset_count,"asset count",80);
+ let s=obj.summary, candidates=obj.candidates;
+ if(!plain(s)||!Array.isArray(candidates)||candidates.length>500)fail("missing source rows or summary");
+ let total=count(s.recorded_requests,"request count");
+ if(total!==candidates.length)fail("source request count does not match rows");
+ let matched=0,other=0,notApproved=0,grants=0,seen=new Set(),reasons=Object.create(null);
+ candidates.forEach((row,index)=>{
+  if(!plain(row)||!STATUSES.includes(row.request_source_status))fail("malformed original candidate");
+  if(row.ordinal!==index+1||typeof row.private_reference!=="string"||row.private_reference.length>160||seen.has(row.private_reference))fail("duplicate or inconsistent original candidate");
+  seen.add(row.private_reference);count(row.previously_bound_grant_rows,"historical bound-grant count",100000);
+  if(!Array.isArray(row.review_flags_non_authorizing)||row.review_flags_non_authorizing.length>16)fail("malformed source reasons");
+  for(const reason of row.review_flags_non_authorizing){if(typeof reason!=="string"||!/^[A-Z][A-Z0-9_]{2,99}$/.test(reason))fail("invalid source reason");reasons[reason]=(reasons[reason]||0)+1}
+  if(row.request_source_status===STATUSES[0])matched++;
+  else if(row.request_source_status===STATUSES[1])other++;
+  else notApproved++;
+ });
+ if(matched!==count(s.approved_candidate_matches,"matched")||other!==count(s.approved_but_not_compatible,"nonmatching")||notApproved!==count(s.not_administratively_approved,"not approved"))fail("source summary category mismatch");
+ grants=count(s.prior_stored_grant_rows,"historical grants",100000);
+ if(count(s.unbound_legacy_grant_rows,"unbound grants",100000)>grants)fail("inconsistent legacy grants");
+ if(!plain(s.mismatch_reason_counts_non_authorizing))fail("missing source reason counts");
+ const rkeys=Object.keys(s.mismatch_reason_counts_non_authorizing).sort(),expected=Object.keys(reasons).sort();
+ if(rkeys.join("|")!==expected.join("|")||rkeys.some(k=>s.mismatch_reason_counts_non_authorizing[k]!==reasons[k]))fail("source reason count mismatch");
+ const derived=matched===1?OUTCOMES[0]:matched>1?OUTCOMES[1]:OUTCOMES[2];
+ if(derived!==obj.disposition)fail("source administrative outcome contradicts original rows");
+ return {selection,revision,stamp,matched,other,notApproved,grants,total,legacy:s.unbound_legacy_grant_rows,outcome:derived,reasons};
+}
+function note(message,alert){$("status").textContent=message;$("status").setAttribute("role",alert?"alert":"status")}
+function esc(v){return String(v).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
+function download(filename,mime,content){
+ const blob=new Blob([content],{type:mime}),url=URL.createObjectURL(blob),a=document.createElement("a");
+ a.href=url;a.download=filename;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),2000);
+}
+function payload(){
+ const reports=workspace.records;
+ return {format:"lightup.request_binding_history_aggregate.v1",status:"REVIEW_ONLY",authority:Object.fromEntries(FALSE_KEYS.map(k=>[k,false])),
+   selected_order_is_verified_chronology:false,snapshots:reports.map((r,i)=>({slot:i+1,candidates:r.matched,other_approved:r.other,not_approved:r.notApproved,stored_grants:r.grants,unbound_legacy_grants:r.legacy,stored_record_change_from_previous:i>0?r.revision!==reports[i-1].revision:null})),
+   manual_follow_up:ACTIONS.map((task,i)=>({category:i+1,done_for_local_discussion_only:!!workspace.checks[i]})),
+   caution:"Untrusted, unsigned offline snapshots; never authority, consent, revocation, permission, release or verified chronology."};
+}
+function render(){
+ const records=workspace.records;
+ $("workspace").hidden=false;
+ const revisions=new Set(records.map(x=>x.revision));
+ const transitions=records.slice(1).filter((x,i)=>x.revision!==records[i].revision).length;
+ $("stats").innerHTML=[
+  ["Selected original exports",records.length],["Distinct reported source revisions",revisions.size],
+  ["Adjacent reported revisions changed",transitions],["Administrative permission", "NONE"]
+ ].map(([title,val])=>'<div class="stat">'+esc(title)+'<strong>'+esc(val)+'</strong></div>').join("");
+ $("rows").innerHTML=records.map((r,i)=>'<tr><td>'+String(i+1)+'</td><td>'+esc(r.stamp)+'</td><td><span class="badge">unsigned · '+esc(r.revision.slice(0,10))+'…</span></td><td>'+r.matched+'</td><td>'+(r.other+r.notApproved)+'</td><td>'+r.grants+' ('+r.legacy+' unbound)</td><td><span class="'+(r.matched===1?"review":"hold")+'">'+esc(r.outcome)+'</span></td></tr>').join("");
+ $("chart").innerHTML=records.map((r,i)=>'<div class="bar" title="slot '+(i+1)+': '+r.matched+' candidates" style="height:'+Math.max(3,100*r.matched/Math.max(1,...records.map(x=>x.matched)))+'%"><span>'+r.matched+'</span></div>').join("");
+ $("transitions").innerHTML=records.slice(1).map((r,i)=>{
+  const before=records[i],changed=before.revision!==r.revision;
+  const delta=(a,b)=>(b-a>0?"+":"")+String(b-a);
+  return '<tr><td>'+(i+1)+' → '+(i+2)+'</td><td class="'+(changed?"hold":"review")+'">'+(changed?"DIFFERENT stored rows":"SAME unsigned digest")+'</td><td>'+esc(delta(before.matched,r.matched))+'</td><td>'+esc(delta(before.notApproved,r.notApproved))+'</td><td>'+esc(delta(before.grants,r.grants))+'</td><td>'+(changed?"Reopen original authenticated source; do not infer a specific revocation.":"No proven live-state continuity; re-export if deciding now.")+'</td></tr>';
+ }).join("");
+ $("review").innerHTML=ACTIONS.map((task,i)=>'<label style="display:flex"><input type="checkbox" data-action="'+i+'" '+(workspace.checks[i]?"checked":"")+'> '+esc(task)+'</label>').join("");
+ $("review").querySelectorAll("input").forEach(el=>el.addEventListener("change",()=>workspace.checks[+el.dataset.action]=el.checked));
+}
+async function fingerprints(files){if(!crypto||!crypto.subtle)fail("private draft feature unavailable without WebCrypto");return Promise.all(files.map(async src=>{const b=new TextEncoder().encode(src);const digest=await crypto.subtle.digest("SHA-256",b);return Array.from(new Uint8Array(digest),x=>x.toString(16).padStart(2,"0")).join("")}))}
+$("import").addEventListener("click",async()=>{
+ try{
+  const chosen=Array.from($("files").files);
+  if(chosen.length<2||chosen.length>12)fail("Choose between 2 and 12 original single-selection JSON exports.");
+  if(chosen.some(f=>f.size===0||f.size>2000000)||chosen.reduce((s,f)=>s+f.size,0)>12000000)fail("Source file limits exceeded.");
+  const raws=await Promise.all(chosen.map(f=>f.text()));
+  const parsed=raws.map((v,i)=>validate(strictJSON(v),i+1));
+  if(new Set(parsed.map(v=>v.selection)).size!==1)fail("Selected originals do not refer to one exact proposed scope/risk selection.");
+  if(parsed.some(v=>v.revision===undefined))fail("Original stored source revision missing.");
+  const localHashes=(globalThis.crypto&&crypto.subtle)?await fingerprints(raws):[];
+  workspace={records:parsed,checks:ACTIONS.map(()=>false)};hashes=localHashes;
+  render();note(parsed.length+" valid original source-export snapshots loaded for private REVIEW_ONLY (not permission).",false);
+ }catch(e){note("HOLD · "+(e instanceof Error?e.message:"invalid source import")+". Earlier accepted workspace was preserved.",true)}
+});
+$("clear").addEventListener("click",()=>{workspace=null;hashes=[];$("files").value="";$("restore").value="";$("workspace").hidden=true;note("Private workspace cleared.",false)});
+$("exportjson").addEventListener("click",()=>{if(workspace)download("lightup-binding-history-anonymous.json","application/json",JSON.stringify(payload(),null,2)+"\n")});
+$("exportcsv").addEventListener("click",()=>{
+ if(!workspace)return;
+ const p=payload(),head="slot,candidates,other_approved,not_approved,stored_grants,unbound_legacy_grants,source_changed_from_previous,authority_all_false\n";
+ download("lightup-binding-history-anonymous.csv","text/csv",head+p.snapshots.map(r=>[r.slot,r.candidates,r.other_approved,r.not_approved,r.stored_grants,r.unbound_legacy_grants,r.stored_record_change_from_previous===null?"UNKNOWN":r.stored_record_change_from_previous,true].join(",")).join("\r\n")+"\r\n");
+});
+$("saveprivate").addEventListener("click",()=>{
+ if(!workspace)return;if(hashes.length!==workspace.records.length){note("HOLD · WebCrypto not available: no raw-byte-bound private draft.",true);return}
+ const draft={format:"lightup.binding_history_private_draft.v1",authority:Object.fromEntries(FALSE_KEYS.map(k=>[k,false])),file_sha256:hashes,checks:workspace.checks.slice()};
+ download("PRIVATE-lightup-binding-history-draft.json","application/json",JSON.stringify(draft,null,2)+"\n");
+});
+$("restore").addEventListener("change",async e=>{
+ try{
+  if(!workspace||hashes.length!==workspace.records.length)fail("first load the exact original source files in the same order, with WebCrypto available");
+  const f=e.target.files[0];if(!f||f.size>10000)fail("invalid bounded PRIVATE draft");
+  const d=strictJSON(await f.text());exact(d,["format","authority","file_sha256","checks"],"private draft");
+  if(d.format!=="lightup.binding_history_private_draft.v1")fail("private draft version mismatch");
+  exact(d.authority,FALSE_KEYS,"draft authority");
+  if(FALSE_KEYS.some(k=>d.authority[k]!==false)||!Array.isArray(d.file_sha256)||d.file_sha256.length!==hashes.length||d.file_sha256.some((h,i)=>h!==hashes[i]))fail("original source file bytes changed; refuse stale human stages");
+  if(!Array.isArray(d.checks)||d.checks.length!==ACTIONS.length||d.checks.some(x=>typeof x!=="boolean"))fail("invalid local human states");
+  workspace.checks=d.checks.slice();render();note("PRIVATE discussion markers restored for identical original source bytes only.",false);
+ }catch(err){note("HOLD · "+err.message+". Existing human stages preserved.",true)}finally{e.target.value=""}
+});
+$("print").addEventListener("click",()=>{if(workspace)window.print()});
+})();
+</script></body></html>
