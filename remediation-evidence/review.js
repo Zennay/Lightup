@@ -450,6 +450,40 @@ $('applyBulk').addEventListener('click',()=>{
 });
 
 
+
+/* Explicit revision coordination exports: a private action register retaining original
+   changed/absent IDs, or anonymous counts. Neither document verifies a fix. */
+$('exportRevisionCSV').addEventListener('click',()=>{
+ try{
+  if(!sourceHash||!revisions.length)throw Error('No acknowledged original-source revision available.');
+  const cols=['revision','previous_source_sha256','current_source_sha256','change','finding_id','changed_original_fields','human_follow_up'];
+  const rows=[cols];
+  revisions.forEach((x,i)=>{
+   for(const id of x.added)rows.push([i+1,x.from_sha256,x.to_sha256,'added',id,'','Review original new finding']);
+   for(const row of x.changed)rows.push([i+1,x.from_sha256,x.to_sha256,'changed',row.finding_id,
+    row.changed_fields.join(';'),'Confirm original finding change and replan']);
+   for(const id of x.missing)rows.push([i+1,x.from_sha256,x.to_sha256,'absent_unverified',id,'',
+    'Investigate absence; do not mark repaired or retested']);
+  });
+  if(!confirm('Download a PRIVATE historical source-revision register containing original finding IDs? Never interpret an absent row as repaired. Verify approved recipient independently.'))return;
+  download('lightup-private-source-revisions.csv','\ufeff'+rows.map(v=>v.map(safeSpreadsheetCell).join(',')).join('\r\n')+'\r\n','text/csv');
+  status('Private historical source-difference register downloaded; absent findings remain unverified.');
+ }catch(err){status(err.message,true);}
+});
+$('exportRevisionAggregate').addEventListener('click',()=>{
+ try{
+  if(!sourceHash||!revisions.length)throw Error('No original-source revision history to summarize.');
+  const data={kind:'lightup.source_revision_aggregate',schema_version:1,
+   disposition:'UNVERIFIED_OFFLINE_SOURCE_CHANGES',source_sha256:sourceHash,
+   revision_count:revisions.length,
+   history:revisions.map(x=>({added:x.added.length,changed:x.changed.length,
+     absent_unverified:x.missing.length,unchanged:x.unchanged.length})),
+   ...Object.fromEntries(flags.map(k=>[k,false])),
+   warning:'Aggregates are private, unsigned and source self-reported. Source removal does not prove repair or retest.'};
+  download('lightup-source-revision-aggregate.json',JSON.stringify(data,null,2),'application/json');
+ }catch(err){status(err.message,true);}
+});
+
 $('packTeam').addEventListener('change',updateTeamCount);
 $('exportTeamJSON').addEventListener('click',()=>doTeamExport('json'));
 $('exportTeamCSV').addEventListener('click',()=>doTeamExport('csv'));
