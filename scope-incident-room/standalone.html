@@ -37,7 +37,9 @@ h3{font-size:15px;margin:20px 0 9px}.source-card{border:1px solid #455877;border
 <div class="actions"><label class="load">Import latest private briefing<input id="file" type="file" accept=".json,application/json"></label>
 <label class="load">Compare older private briefing<input id="previous" type="file" accept=".json,application/json"></label>
 <button class="secondary" id="export" disabled>Export anonymous totals</button>
-<button class="secondary" id="print" disabled>Print briefing</button></div>
+<button class="secondary" id="print" disabled>Print briefing</button>
+<button class="secondary" id="saveStages" disabled>Save private follow-up</button>
+<label class="load">Restore saved follow-up<input id="restoreStages" type="file" accept=".json,application/json"></label></div>
 <div id="message" aria-live="polite" role="status">No private source imported.</div>
 <div class="note"><b>Never permission:</b> NO_STOP_RECORDED is not approval. STOP and Casebook are separate historical snapshots, not one atomic runtime check. Release still requires independent client/operator consent, action-time revocation, original CI, security/privacy reviews and explicit HUMAN GO.</div>
 </section>
@@ -64,13 +66,28 @@ h3{font-size:15px;margin:20px 0 9px}.source-card{border:1px solid #455877;border
 <script>
 (function(){
 "use strict";
-var report=null,older=null,changes=new Map(),stages=new Map(),selectedCase=null,MAX=524288;
+var report=null,older=null,changes=new Map(),stages=new Map(),selectedCase=null,sourceDigest=null,MAX=524288;
 function E(x){return document.getElementById(x);}
 function O(x){return x!==null&&typeof x==="object"&&!Array.isArray(x);}
 function W(x){return typeof x==="string"&&x.length>0&&x.length<=180&&![...x].some(c=>c.charCodeAt(0)<32||c.charCodeAt(0)===127);}
 function N(x,max){return Number.isSafeInteger(x)&&x>=0&&x<=max;}
 var flags=["source_authenticated","client_consent_verified","operator_consent_verified","authorization_granted","execution_allowed","release_approved","action_time_revocation_verified"];
 function F(x){return flags.every(k=>x[k]===false);}
+var stageLabels=["unreviewed","investigating","escalated","documented"];
+function download(value,name){
+ var blob=new Blob([JSON.stringify(value,null,2)+"\n"],{type:"application/json"});
+ var url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download=name;a.click();
+ setTimeout(function(){URL.revokeObjectURL(url);},250);
+}
+async function digestFile(file){
+ if(!globalThis.crypto||!crypto.subtle) return null;
+ var bytes=await file.arrayBuffer();
+ var hash=await crypto.subtle.digest("SHA-256",bytes);
+ return [...new Uint8Array(hash)].map(x=>x.toString(16).padStart(2,"0")).join("");
+}
+async function privateText(file){
+ return new TextDecoder("utf-8",{fatal:true}).decode(await file.arrayBuffer());
+}
 function checkDuplicateKeys(raw){
 var i=0,steps=0;
 function ws(){while(i<raw.length&&" \n\t\r".includes(raw[i]))i++;}
@@ -200,7 +217,7 @@ TD(tr,r.stop_observation,r.stop_observation==="NO_STOP_RECORDED_NOT_PERMISSION"?
 TD(tr,r.grant_source_count===null?"HOLD":r.grant_source_count);
 TD(tr,r.casebook_attention+" / "+r.casebook_next_human_action,"muted");
 var cell=document.createElement("td"),s=document.createElement("select");s.setAttribute("aria-label","Human stage for "+r.engagement_id);
-["unreviewed","investigating","escalated","documented"].forEach(function(stage){var op=document.createElement("option");op.value=stage;op.textContent=stage;s.appendChild(op);});
+stageLabels.forEach(function(stage){var op=document.createElement("option");op.value=stage;op.textContent=stage;s.appendChild(op);});
 s.value=stages.get(r.engagement_id)||"unreviewed";s.addEventListener("change",function(){stages.set(r.engagement_id,s.value);});cell.appendChild(s);tr.appendChild(cell);
  TD(tr,older ? ((changes.get(r.engagement_id)||[]).join(" / ")||"NO CHANGE") : "NOT COMPARED",
  older&&(changes.get(r.engagement_id)||[]).length ? "risk":"muted");
@@ -220,7 +237,9 @@ if(selectedCase)inspect(selectedCase);}
 E("file").addEventListener("change",async function(){
 var f=this.files&&this.files[0];this.value="";if(!f)return;
 if(f.size<2||f.size>MAX){E("message").textContent="HOLD: source exceeds private file bound.";return;}
-try{var next=importSource(await f.text());report=next;older=null;changes.clear();stages.clear();selectedCase=null;E("detail").hidden=true;E("search").value="";E("search").disabled=false;E("focus").disabled=false;E("focus").value="all";E("export").disabled=false;E("print").disabled=false;E("message").textContent="Imported locally · "+next.status+" · never authorized";render();}
+try{
+ var next=importSource(await privateText(f)),digest=await digestFile(f);
+ report=next;sourceDigest=digest;older=null;changes.clear();stages.clear();selectedCase=null;E("detail").hidden=true;E("search").value="";E("search").disabled=false;E("focus").disabled=false;E("focus").value="all";E("export").disabled=false;E("saveStages").disabled=!sourceDigest;E("print").disabled=false;E("message").textContent="Imported locally · "+next.status+" · never authorized";render();}
 catch(e){E("message").textContent="HOLD: malformed, contradictory or unsupported original source. Previous caseboard retained.";}}
 );
 E("previous").addEventListener("change",async function(){
@@ -228,7 +247,7 @@ E("previous").addEventListener("change",async function(){
  if(!report){E("message").textContent="HOLD: import latest first.";return;}
  if(f.size<2||f.size>MAX){E("message").textContent="HOLD: prior file size.";return;}
  try{
-  var prior=importSource(await f.text()),delta=reconcile(report,prior);
+  var prior=importSource(await privateText(f)),delta=reconcile(report,prior);
   older=prior;changes=delta;render();
   var n=Array.from(delta.values()).filter(a=>a.length).length;
   var danger=Array.from(delta.values()).some(a=>a.some(x=>x.startsWith("HOLD:")));
@@ -237,6 +256,31 @@ E("previous").addEventListener("change",async function(){
 });
 E("search").addEventListener("input",render);
 E("focus").addEventListener("change",render);
+E("saveStages").addEventListener("click",function(){
+ if(!report||!sourceDigest)return;
+ download({
+  schema:"lightup.scope_casework_stage.v1",status:"REVIEW_ONLY",
+  source_sha256:sourceDigest,source_case_count:report.engagements.length,
+  source_order_stages:report.engagements.map(r=>stages.get(r.engagement_id)||"unreviewed"),
+  authorization_granted:false,execution_allowed:false,release_approved:false
+ },"lightup-private-follow-up.json");
+ E("message").textContent="Local follow-up downloaded; restore only against the exact same original source bytes.";
+});
+E("restoreStages").addEventListener("change",async function(){
+ var f=this.files&&this.files[0];this.value="";if(!f)return;
+ if(!report||!sourceDigest||f.size<2||f.size>16384){E("message").textContent="HOLD: load a source with SHA-256 support first.";return;}
+ try{
+  var raw=await privateText(f);checkDuplicateKeys(raw);var o=JSON.parse(raw);
+  if(!O(o)||Object.keys(o).sort().join("|")!=="authorization_granted|execution_allowed|release_approved|schema|source_case_count|source_order_stages|source_sha256|status"||
+   o.schema!=="lightup.scope_casework_stage.v1"||o.status!=="REVIEW_ONLY"||
+   o.authorization_granted!==false||o.execution_allowed!==false||o.release_approved!==false||
+   o.source_sha256!==sourceDigest||o.source_case_count!==report.engagements.length||
+   !Array.isArray(o.source_order_stages)||o.source_order_stages.length!==report.engagements.length||
+   !o.source_order_stages.every(x=>stageLabels.includes(x)))throw Error("source binding");
+  var nextStages=new Map();report.engagements.forEach((r,i)=>nextStages.set(r.engagement_id,o.source_order_stages[i]));
+  stages=nextStages;render();E("message").textContent="Private human stages restored for the exact same source; never approvals.";
+ }catch(e){E("message").textContent="HOLD: stages not bound to this original file. Existing human stages preserved.";}
+});
 E("print").addEventListener("click",function(){if(report)window.print();});
 E("export").addEventListener("click",function(){
 if(!report)return;var stageCounts={unreviewed:0,investigating:0,escalated:0,documented:0};
@@ -245,7 +289,7 @@ var safeCounts={selected:report.summary.selected,active_stop_observations:report
 var aggregate={schema:"lightup.scope_stop_anonymous.v1",status:"REVIEW_ONLY_OR_HOLD",counts:safeCounts,human_stages:stageCounts,
  comparison:older?{compared:changes.size,changed:Array.from(changes.values()).filter(a=>a.length).length,
  stop_disappearance_hold:Array.from(changes.values()).filter(a=>a.some(x=>x.startsWith("HOLD:"))).length}:null,source_snapshots_atomic_together:false,authorization_granted:false,execution_allowed:false,release_approved:false};
-var blob=new Blob([JSON.stringify(aggregate,null,2)+"\n"],{type:"application/json"}),url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download="lightup-scope-stop-anonymous.json";a.click();setTimeout(function(){URL.revokeObjectURL(url);},200);
+download(aggregate,"lightup-scope-stop-anonymous.json");
 });
 })();
 </script></body></html>
