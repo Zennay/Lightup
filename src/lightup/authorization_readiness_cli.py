@@ -419,10 +419,13 @@ def _interactive_workspace(report: dict, nonce: str) -> str:
         "format": "lightup.authorization_casework_snapshot_v1",
         "disposition": "REVIEW_ONLY",
         "fingerprint": hashlib.sha256(
-            json.dumps(report["engagements"], ensure_ascii=True,
-                       sort_keys=True, separators=(",", ":")).encode("ascii")
+            json.dumps({"engagements": report["engagements"],
+                        "review_queue": report["review_queue"]},
+                       ensure_ascii=True, sort_keys=True,
+                       separators=(",", ":")).encode("ascii")
         ).hexdigest(),
         "engagements": report["engagements"],
+        "review_queue": report["review_queue"],
     }
     source = Path(__file__).with_name("authorization_casework.js").read_text("utf-8")
     marker = "LIGHTUP_SNAPSHOT_B64_PLACEHOLDER"
@@ -530,6 +533,7 @@ def _render_html(report: dict) -> str:
             ("Clients", summary["clients"]),
             ("Engagements", summary["engagements"]),
             ("Requests", summary["requests"]),
+            ("Pending review", summary["pending_requests"]),
             ("Unverified grants", summary["grants"]),
             ("Tenant mismatches", summary["flag_counts"].get("TENANT_LINEAGE_MISMATCH", 0)),
             ("Unmatched requests", summary["flag_counts"].get("NO_COMPATIBLE_APPROVED_REQUEST", 0)),
@@ -556,6 +560,18 @@ def _render_html(report: dict) -> str:
             " · Grants: " + esc(record["grants"]) + "</p>"
             "<p>" + esc(record["attention"]) + "</p>" + table + "</section>"
         )
+    requests = "".join(
+        "<tr><td>" + esc(item["request_number"]) + "</td><td>" + esc(item["client"]) +
+        "</td><td>" + esc(item["created_at"]) + "</td><td>" + esc(item["status"]) +
+        "</td><td>" + " ".join('<span class="flag">' + esc(flag) + "</span>" for flag in item["flags"]) +
+        "</td><td>" + esc(item["next_action"]) + "</td></tr>"
+        for item in report["review_queue"]
+    )
+    request_inbox = (
+        '<table><thead><tr><th>Request #</th><th>Client</th><th>Created UTC</th>'
+        '<th>Status</th><th>Review flags</th><th>Next action</th></tr></thead>'
+        '<tbody>' + requests + '</tbody></table>'
+    ) if requests else '<p class="muted">No pending client assessment requests in this snapshot.</p>'
     limits = "".join("<li>" + esc(l) + "</li>" for l in report["limitations"])
     csp = "default-src 'none'; style-src 'nonce-" + nonce + "'; script-src 'nonce-" + nonce + "'; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'"
     return (
@@ -573,6 +589,7 @@ def _render_html(report: dict) -> str:
         '<div class="warning"><strong>HOLD:</strong> The existing domain has no durable approved request → '
         "grant link. Even a compatible record is UNBOUND; independent client/operator consent, "
         "at-use revocation and all release gates remain mandatory. Never contact a target based on this export.</div>"
+        "<h2>Pending client requests — operator review required</h2>" + request_inbox +
         "<h2>Engagement review queue</h2>" + ("".join(blocks) or "<p>No engagements with recorded requests/grants.</p>") +
         "<details><summary>Limits, mandatory owner work and data handling</summary><ol>" +
         limits + "</ol><p>Owner follow-ups: #177 request-to-grant binding, #829 grant tenant-lineage reads, "
@@ -596,6 +613,11 @@ def _pseudonymize_labels(report: dict) -> None:
             labels[real_client] = "Client " + str(len(labels) + 1).zfill(3)
         entry["client"] = labels[real_client]
         entry["engagement"] = "Engagement " + str(index).zfill(3)
+    for item in report["review_queue"]:
+        client = item["client"]
+        if client not in labels:
+            labels[client] = "Client " + str(len(labels) + 1).zfill(3)
+        item["client"] = labels[client]
     report["labels_redacted"] = True
     report["limitations"].append(
         "Display client/engagement labels are report-local pseudonyms; "
@@ -619,7 +641,7 @@ def _render_csv(report: dict) -> str:
     stream = io.StringIO(newline="")
     writer = csv.writer(stream, lineterminator="\r\n")
     writer.writerow([
-        "disposition", "client", "engagement", "engagement_status",
+        "disposition", "record_type", "client", "engagement", "engagement_status",
         "requests", "approved_requests", "untrusted_approved_requests",
         "grant_record_number", "recorded_window", "review_flags", "next_action",
     ])
@@ -630,14 +652,21 @@ def _render_csv(report: dict) -> str:
         }]
         for grant in grants:
             writer.writerow([_csv_cell(v) for v in (
-                "REVIEW_ONLY", e["client"], e["engagement"], e["engagement_status"],
+                "REVIEW_ONLY", "grant", e["client"], e["engagement"], e["engagement_status"],
                 e["requests"], e["approved_requests"], e["untrusted_approved_requests"],
                 grant["grant_number"], grant["window"], ";".join(grant["flags"]),
                 grant["next_action"],
             )])
+    for request in report["review_queue"]:
+        writer.writerow([_csv_cell(v) for v in (
+            "REVIEW_ONLY", "client_request", request["client"], "No engagement binding",
+            request["status"], "", "", "", request["request_number"], "not a grant",
+            ";".join(request["flags"]), request["next_action"],
+        )])
     # Even empty reports remain explicitly non-authorizing; column A is always REVIEW_ONLY.
-    if not report["engagements"]:
-        writer.writerow(["REVIEW_ONLY", "", "", "", "", "", "", "", "", "NO_REVIEW_RECORDS", "No authorization inferred."])
+    if not report["engagements"] and not report["review_queue"]:
+        writer.writerow(["REVIEW_ONLY", "none", "", "", "", "", "", "", "", "",
+                         "NO_REVIEW_RECORDS", "No authorization inferred."])
     return stream.getvalue()
 
 
