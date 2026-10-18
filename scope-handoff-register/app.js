@@ -269,23 +269,52 @@
         r.source.risk>old.source.risk ||
         (old.source.mode==="analysis_only" && r.source.mode==="authorized_assessment")};
   }
-  function setRevision(r,priorSha) {
-    if (!priorSha) {r.replaces=null;return;}
-    assert(priorSha!==r.sha && records.some(x=>x.sha===priorSha),"Ongeldige revisierelatie.");
-    assert(!records.some(x=>x!==r&&x.replaces===priorSha),"De voorganger is al gekoppeld aan een andere opvolger.");
-    let cursor=priorSha;
-    const visited=new Set();
-    while(cursor) {
-      assert(cursor!==r.sha && !visited.has(cursor),"Cyclische revisiehistorie geweigerd.");
-      visited.add(cursor); cursor=records.find(x=>x.sha===cursor)?.replaces??null;
+  function revisionTaskRechecks(delta) {
+    if(!delta)return [];
+    const keys=new Set(["owner","client","operator","privacy"]);
+    if(delta.effective_added_segments || delta.effective_removed_segments ||
+       delta.effective_truncated || delta.assets.added || delta.assets.removed ||
+       delta.exclusions.added || delta.exclusions.removed) {
+      keys.add("assets");keys.add("stops");
     }
-    r.replaces=priorSha;
+    if(delta.risk_changed || delta.mode_changed){keys.add("risk");keys.add("stops");}
+    if(delta.time_window_changed || delta.time_window_presence_changed){keys.add("schedule");keys.add("stops");}
+    return [...keys];
+  }
+  function setRevision(r,priorSha) {
+    if((priorSha||null)===r.replaces)return [];
+    if(priorSha) {
+      assert(priorSha!==r.sha && records.some(x=>x.sha===priorSha),"Ongeldige revisierelatie.");
+      assert(!records.some(x=>x!==r&&x.replaces===priorSha),"De voorganger is al gekoppeld aan een andere opvolger.");
+      let cursor=priorSha;
+      const visited=new Set();
+      while(cursor) {
+        assert(cursor!==r.sha && !visited.has(cursor),"Cyclische revisiehistorie geweigerd.");
+        visited.add(cursor); cursor=records.find(x=>x.sha===cursor)?.replaces??null;
+      }
+    }
+    const prevPairs=new Map(meetingPairs().map(p=>[pairKey(p.left,p.right),p.revision_related]));
+    r.replaces=priorSha||null;
+    const nextPairs=new Map(meetingPairs().map(p=>[pairKey(p.left,p.right),p.revision_related]));
+    for(const key of pairReviews.keys())
+      if(!nextPairs.has(key)||prevPairs.get(key)!==nextPairs.get(key)||key.split(":").includes(r.sha))
+        pairReviews.delete(key);
+    const delta=revisionDelta(r),changed=[];
+    if(delta){
+      for(const key of revisionTaskRechecks(delta)){
+        if(r.tasks[key]==="prepared"){r.tasks[key]="needs_revision";changed.push(key);}
+      }
+    }
+    return changed;
   }
   function warnings(r) {
     const w=[];
     const rev=revisionDelta(r);
     if (rev?.possible_expansion) w.push("revisie_mogelijke_scopeuitbreiding");
     if (rev?.mode_changed) w.push("revisie_modusgewijzigd");
+    if (rev?.time_window_changed) w.push("revisie_planning_gewijzigd");
+    if (rev && revisionTaskRechecks(rev).some(id=>r.tasks[id]==="needs_revision"))
+      w.push("revisie_menselijke_herbeoordeling_nodig");
     if (r.source.risk===4) w.push("hoog_risico");
     if (r.source.mode==="authorized_assessment") w.push("actieve_modus_voorgesteld");
     if (!r.source.excluded.length) w.push("geen_exclusies_opgegeven");
@@ -363,8 +392,8 @@
     }
     revSelect.value=r.replaces||"";
     revSelect.addEventListener("change",()=>{
-      if(revSelect.value && !confirm("Verklaar uitsluitend voor lokale review dat dit een nieuwe versie van dezelfde bron is. Bestaande voorbereiding wordt NIET geërfd. Koppelen?")) {revSelect.value=r.replaces||"";return;}
-      try{setRevision(r,revSelect.value);show("Revisielijn bijgewerkt. Acties en toestemming van andere versies zijn niet gekopieerd.");render();}
+      if(revSelect.value && !confirm("Koppelen als zelfverklaarde nieuwe scopeversie? Eerder 'voorbereide' relevante acties worden dan automatisch HERZIENING NODIG; getroffen overlegnotities worden gereset. Geen toestemming/claims worden overgenomen.")) {revSelect.value=r.replaces||"";return;}
+      try{const changed=setRevision(r,revSelect.value);show("Revisielijn bijgewerkt; "+changed.length+" voorbereide actie(s) op 'Herziening nodig' gezet. Betrokken overlegstatussen zijn heropend. Geen echte consent of autorisatie overgenomen.");render();}
       catch(err){show("Revisiekoppeling geweigerd: "+err.message,true);revSelect.value=r.replaces||"";}
     });
     revLabel.append(revSelect);relation.append(revLabel);detail.append(relation);
@@ -376,7 +405,7 @@
       (rev.effective_truncated?" (afgekapt)":"")+
       ". UTC-venster gewijzigd: "+(rev.time_window_changed?"ja":"nee")+
       ". Mogelijke uitbreiding: "+(rev.possible_expansion?"JA — onafhankelijke herbeoordeling nodig":"niet uit deze signalen gebleken")+
-      ". Voorbereidingsacties blijven apart; geen automatische overname. Geen DNS of autorisatiecontrole."));
+      ". Voorbereidingsacties blijven apart; eerder afgeronde toepasselijke acties krijgen 'Herziening nodig' na koppeling. Geen DNS of autorisatiecontrole."));
     const hint=node("p","summary","Reviewpunten: "+(warnings(r).length?warnings(r).join(", ").replaceAll("_"," "):"Geen automatisch aangemerkte signalen. Dat bewijst geen veilige scope.")+". Exacte asset-overlap betekent niet gedeeld eigendom of geldige toestemming.");
     detail.append(hint);
     for (const [id,title,description] of TASKS) {
