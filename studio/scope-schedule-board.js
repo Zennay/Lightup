@@ -307,7 +307,7 @@ function scenarioPacket(){
       const proposed=scenarioShifts.get(e.key);
       const valid=e.interval.state==='resolved';
       const duration=valid ? e.interval.end-e.interval.start:0;
-      return {local_ordinal:i+1,state:valid?'DRAFT_PLANNED':'HOLD_MISSING_UTC',
+      return {local_ordinal:i+1,requested_mode:e.mode,requested_risk:e.risk,state:valid?'DRAFT_PLANNED':'HOLD_MISSING_UTC',
         original_start_utc:valid?new Date(e.interval.start).toISOString():null,
         original_end_utc:valid?new Date(e.interval.end).toISOString():null,
         scenario_start_utc:valid?new Date(proposed===undefined?e.interval.start:proposed).toISOString():null,
@@ -355,13 +355,78 @@ function arrangeAll(){
   render();
 }
 $('scenarioArrange').addEventListener('click',arrangeAll);
+function decodeScenario(snapshot){
+  const rootKeys=new Set(['kind','schema_version','disposition','source','authenticated',
+    'authorization','client_consent','operator_consent','grant','risk_approved','scan',
+    'execution','release','note','proposals','unavailable_utc','proposed_time_overlap_pairs',
+    'proposed_unavailability_overlap_pairs']);
+  const rowKeys=new Set(['local_ordinal','requested_mode','requested_risk','state','original_start_utc',
+    'original_end_utc','scenario_start_utc','scenario_end_utc','shifted']);
+  const blockKeys=new Set(['start','end']);
+  if(!record(snapshot)||!exactKeys(snapshot,rootKeys) ||
+     snapshot.kind!=='lightup.scope_schedule_scenario'||snapshot.schema_version!==1 ||
+     snapshot.disposition!=='LOCAL_REVIEW_ONLY'||snapshot.source!=='UNTRUSTED_USER_DRAFTS' ||
+     !['authenticated','authorization','client_consent','operator_consent','grant',
+       'risk_approved','scan','execution','release'].every(k=>own(snapshot,k)&&snapshot[k]===false) ||
+     !validString(snapshot.note,500)||
+     !Array.isArray(snapshot.proposals)||snapshot.proposals.length!==entries.length ||
+     !Array.isArray(snapshot.unavailable_utc)||snapshot.unavailable_utc.length>30 ||
+     !Number.isSafeInteger(snapshot.proposed_time_overlap_pairs)||
+     snapshot.proposed_time_overlap_pairs<0||
+     !Number.isSafeInteger(snapshot.proposed_unavailability_overlap_pairs)||
+     snapshot.proposed_unavailability_overlap_pairs<0)throw Error('invalid envelope');
+  const shifts=new Map(),busy=[];
+  for(let i=0;i<entries.length;i++){
+    const source=entries[i],row=snapshot.proposals[i],resolved=source.interval.state==='resolved';
+    if(!record(row)||!exactKeys(row,rowKeys)||row.local_ordinal!==i+1||
+       row.requested_mode!==source.mode||row.requested_risk!==source.risk||
+       row.state!==(resolved?'DRAFT_PLANNED':'HOLD_MISSING_UTC')||
+       typeof row.shifted!=='boolean')throw Error('mismatched source');
+    if(!resolved){
+      if(row.original_start_utc!==null||row.original_end_utc!==null||
+         row.scenario_start_utc!==null||row.scenario_end_utc!==null||row.shifted)throw Error('invalid hold');
+      continue;
+    }
+    if(row.original_start_utc!==new Date(source.interval.start).toISOString() ||
+       row.original_end_utc!==new Date(source.interval.end).toISOString())throw Error('stale source');
+    const a=isoMillis(row.scenario_start_utc),b=isoMillis(row.scenario_end_utc);
+    if(a===null||b===null||a>=b||
+       b-a!==source.interval.end-source.interval.start ||
+       Math.abs(a-source.interval.start)>31*DAY ||
+       row.shifted!==(a!==source.interval.start))throw Error('invalid proposed window');
+    if(row.shifted)shifts.set(source.key,a);
+  }
+  for(const block of snapshot.unavailable_utc){
+    if(!record(block)||!exactKeys(block,blockKeys))throw Error('invalid block');
+    const start=isoMillis(block.start),end=isoMillis(block.end);
+    if(start===null||end===null||end<=start||end-start>31*DAY ||
+       busy.some(b=>b.start===start&&b.end===end))throw Error('invalid unavailable window');
+    busy.push({start,end});
+  }
+  return {shifts,busy};
+}
+$('scenarioImport').addEventListener('change',async ev=>{
+  const file=ev.target.files&&ev.target.files[0];ev.target.value='';
+  if(!file)return;
+  try{
+    if(!entries.length||file.size<2||file.size>65536)throw Error('size/missing source');
+    const text=new TextDecoder('utf-8',{fatal:true}).decode(await file.arrayBuffer());
+    const candidate=JSON.parse(text),next=decodeScenario(candidate);
+    // The entire replacement is committed at once: no partial restoration on invalid input.
+    scenarioShifts=next.shifts;blackouts=next.busy;
+    $('status').textContent='Restored untrusted local planning scenario against source UTC windows and risk/mode. Never a grant or booking.';
+    render();
+  }catch(_){
+    $('status').textContent='HOLD: scenario import rejected. Load matching original drafts in the same order and provide valid bounded UTC evidence.';
+  }
+});
 function applyScenario(start){
   const selected=chosenScenario();
   if(!selected){$('status').textContent='Select a resolved original proposal first.';return;}
   const duration=selected.interval.end-selected.interval.start;
   const upper=Date.UTC(2100,0,1);
-  if(start===null||start< Date.UTC(2020,0,1)||start+duration>upper){
-    $('status').textContent='Choose a valid UTC start from 2020 through 2099 that preserves the proposed duration.';return;
+  if(start===null||start< Date.UTC(2020,0,1)||start+duration>upper||Math.abs(start-selected.interval.start)>31*DAY){
+    $('status').textContent='Choose a valid UTC start within 31 days of the original proposal and preserve its duration.';return;
   }
   if(start===selected.interval.start)scenarioShifts.delete(selected.key);
   else scenarioShifts.set(selected.key,start);
