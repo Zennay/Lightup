@@ -218,7 +218,7 @@
     $("sourceKind").textContent=!active?"No data":demo?"FICTIONAL DEMO ONLY":"UNVERIFIED LAB SOURCES";
     $("sourceLine").textContent=!active?"":reports.length+" candidate reports · "+reports[0].cases.size+
       " shared anonymized cases · all authority flags false · "+(demo?"FICTIONAL DATA":"UNVERIFIED SOURCE");
-    for(const id of ["exportCSV","exportJSON","print"])$(id).disabled=!active;
+    for(const id of ["exportCSV","exportJSON","exportHTML","print"])$(id).disabled=!active;
     if(!active){
       $("cards").innerHTML='<p class="empty">Import reports to compare lab candidates.</p>';
       for(const id of ["thresholds","frontier","caseDetail","metricBoard","pairMetrics"])$(id).innerHTML="";
@@ -237,7 +237,7 @@
     renderMetricBoard(stats);
     let t;try{t=threshold();settings=t;$("thresholdMessage").textContent="Review suggestions recomputed locally; no source metrics changed.";}
     catch(_){$("thresholdMessage").textContent="HOLD: invalid threshold — enter a bounded numerical value. No decision output.";
-      settings=null;for(const id of ["exportCSV","exportJSON","print"])$(id).disabled=true;
+      settings=null;for(const id of ["exportCSV","exportJSON","exportHTML","print"])$(id).disabled=true;
       $("thresholds").textContent="HOLD — invalid local thresholds";$("frontier").textContent="HOLD — invalid local thresholds";return;}
     $("thresholds").innerHTML=table(["Candidate","Source status","Human discussion triggers","Hard safety indicators"],
       stats.map((s,i)=>["Candidate "+(i+1),reports[i].sourceStatus,
@@ -353,13 +353,45 @@
   function exportCSV(){
     if(!reports.length||!settings)return;
     const head=["candidate_slot","source_status","regressed_cases","metric_regressions",
-      "threshold_discussions","scope_flags","policy_flags",
+      "threshold_discussions","scope_flags","policy_flags","fictional_demo_only","report_status",
       ...NAMES.map(n=>n+"_total"),"authorized","consent_verified","dispatch_allowed","release_allowed"];
     const rows=metricRows().map(r=>[r.candidate_slot,r.source_status,r.regressed_cases,
       r.metric_regressions,r.threshold_discussions,r.scope_flags,r.policy_flags,
-      ...NAMES.map(n=>r.metrics[n].candidate_total),"false","false","false","false"]);
+      demo?"true":"false","REVIEW_ONLY",...NAMES.map(n=>r.metrics[n].candidate_total),"false","false","false","false"]);
     download("lightup-candidate-aggregate-REVIEW-ONLY.csv",
       head.join(",")+"\n"+rows.map(r=>r.join(",")).join("\n")+"\n","text/csv");
+  }
+  function exportHTML(){
+    if(!reports.length||!settings)return;
+    const data=metricRows(),stats=reports.map(aggregates);
+    const stylesheet="body{font:15px/1.5 system-ui,sans-serif;max-width:1100px;margin:auto;padding:25px;color:#1a2836}"+
+      "table{border-collapse:collapse;width:100%;margin:20px 0}td,th{padding:9px;border:1px solid #aab5bc;text-align:left}"+
+      "th{background:#e9f0f3}h1,h2{color:#123047}.warning{border-left:5px solid #bb3737;padding:12px;background:#fff3f3}";
+    const source=demo?"FICTIONAL DEMONSTRATION · invented data":"UNVERIFIED PRE-EXISTING LAB SOURCE";
+    const advisory=stats.map((a,i)=>{
+      const flags=breaches(a,settings);
+      return "<h2>Candidate "+(i+1)+"</h2><p>Original source status: "+reports[i].sourceStatus+
+        "; regressed lab cases: "+a.affected+"; scope violations: "+format(a.scope)+
+        "; policy violations: "+format(a.policy)+"; human discussion flags: "+
+        flags.length+". "+(flags.length?flags.join("; "):"No threshold breaches: STILL REVIEW ONLY.")+"</p>";
+    }).join("");
+    const metricTable=table(["Metric",...data.map(r=>"Candidate "+r.candidate_slot+" · total")],
+      NAMES.map(n=>[nice(n),...data.map(r=>format(r.metrics[n].candidate_total))]));
+    const html="<!doctype html><html lang='en'><head><meta charset='utf-8'>"+
+      "<meta http-equiv='Content-Security-Policy' content=\"default-src 'none'; script-src 'none'; "+
+      "connect-src 'none'; img-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'\">"+
+      "<title>LightUp Lab Candidate Discussion · REVIEW ONLY</title><style>"+stylesheet+"</style></head><body>"+
+      "<h1>LightUp / private lab candidate discussion</h1><p class='warning'><strong>"+source+
+      "</strong>. INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD. Never authenticates consent, scope, "+
+      "retest, release or security outcomes. Authorized: false. Consent verified: false. "+
+      "Dispatch allowed: false. Release allowed: false.</p>"+
+      "<p>Original source filenames, source case identifiers, identities and raw source payload "+
+      "have been omitted. Untrusted values are only reported as aggregates.</p>"+
+      advisory+"<h2>Unverified original metric totals</h2>"+metricTable+
+      "<p>No recommendation to deploy, grant or scan. Separate authenticated client/operator "+
+      "consent with action-time revocation, original security fixes, full required hosted/permanent VPS "+
+      "CI, independent security/privacy review and human GO remain mandatory.</p></body></html>";
+    download("lightup-human-candidate-brief-REVIEW-ONLY.html",html,"text/html");
   }
   function forget(){
     reports=[];demo=false;selectedCase="";settings=null;$("files").value="";
@@ -381,6 +413,7 @@
     option.textContent=nice(n);$("metricSelect").append(option);}
   $("exportCSV").addEventListener("click",exportCSV);
   $("exportJSON").addEventListener("click",exportJSON);
+  $("exportHTML").addEventListener("click",exportHTML);
   $("print").addEventListener("click",()=>{if(reports.length&&settings)window.print();});
   render();
 })();
