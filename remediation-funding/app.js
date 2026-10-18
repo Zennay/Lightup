@@ -1,0 +1,141 @@
+/* Local-only controller for LightUp's non-authorizing finance review */
+(function () {
+'use strict';
+const core=window.LightUpFunding;
+const el=id=>document.getElementById(id);
+const mk=(tag,content,cls)=>{
+ const e=document.createElement(tag);
+ if(content!==undefined)e.textContent=String(content);
+ if(cls)e.className=cls;
+ return e;
+};
+const val=name=>el('settings').elements.namedItem(name).value;
+const show=(str,isError=false)=>{
+ const target=el('notice');target.textContent=str;target.classList.toggle('error',isError);
+};
+const currency=(code,value)=>{
+ const locale=code==='EUR'?'nl-NL':code==='GBP'?'en-GB':'en-US';
+ return new Intl.NumberFormat(locale,{style:'currency',currency:code,maximumFractionDigits:2}).format(value);
+};
+let source=null,forecast=null,settings=null,comparison=null;
+function clearResults(){
+ forecast=null;settings=null;comparison=null;el('results').hidden=true;
+ el('kpis').replaceChildren();el('weeks').replaceChildren();el('scenario').replaceChildren();
+}
+function forget(){
+ source=null;clearResults();el('input').value='';el('forecast').disabled=true;
+ el('source-state').textContent='No aggregate source loaded. No browser data was saved.';
+ show('The previously imported aggregate and local financial scenarios have been forgotten.');
+}
+el('forget').addEventListener('click',forget);
+el('input').addEventListener('change',async()=>{
+ const file=el('input').files?.[0];
+ source=null;clearResults();el('forecast').disabled=true;
+ el('source-state').textContent='No valid aggregate loaded.';
+ if(!file)return;
+ try {
+  if(file.size===0||file.size>core.MAX_SIZE)throw Error('Source must be a nonempty aggregate JSON no larger than 64 KiB');
+  const raw=new TextDecoder('utf-8',{fatal:true}).decode(await file.arrayBuffer());
+  const parsed=core.intake(raw);
+  if(el('input').files?.[0]!==file)return;
+  source=parsed;
+  el('forecast').disabled=false;
+  el('source-state').textContent=
+   'Review-only aggregate: '+parsed.source_count+' records, '+parsed.weeks.length+
+   ' weeks, '+parsed.allocated_hours+' tentatively scheduled hours and '+
+   parsed.backlog_hours+' unscheduled hours. No original finding information loaded.';
+  show('Aggregate accepted locally. Adjust your own private cost assumptions.');
+ }catch(err){show('HOLD: '+(err instanceof Error?err.message:'Import rejected'),true);}
+});
+function modelInput(){
+ const numeric={};
+ for(const key of ['internal_rate','external_rate','outsourced_pct','contingency_pct','fixed_cost','funding']){
+  const t=val(key);
+  if(!/^(0|[1-9][0-9]*)$/.test(t))throw Error('Use integer amounts and percentages only');
+  numeric[key]=Number(t);
+ }
+ return {...numeric,currency:val('currency')};
+}
+function stat(label,value){
+ const card=mk('div',undefined,'stat');card.append(mk('strong',value),mk('span',label));return card;
+}
+function rows(model){
+ const tbody=el('weeks');tbody.replaceChildren();
+ for(const [i,w] of model.weeks.entries()){
+  const tr=mk('tr');
+  const funded=model.funding[i];
+  for(const value of [w.week,w.start,w.proposed_hours+' h',currency(model.currency,w.proposed_cost),
+   currency(model.currency,funded.funded_cost),funded.provisionally_funded_hours+' h']){
+   tr.append(mk('td',value));
+  }
+  tbody.append(tr);
+ }
+}
+function display(model){
+ const kpis=el('kpis');kpis.replaceChildren();
+ const stats=[
+  ['Proposed plan cost',currency(model.currency,model.estimated_plan_cost)],
+  ['Funding available',currency(model.currency,model.available_funding)],
+  ['Estimated funding shortfall',currency(model.currency,model.estimated_shortfall)],
+  ['Unplanned hours from source',model.capacity_backlog_hours+' h'],
+  ['Unplanned work — indicative extra cost',currency(model.currency,model.remaining_backlog_opportunity_cost)],
+  ['Blended labor cost / hour',currency(model.currency,model.hourly_blended_rate)]
+ ];
+ for(const [a,b] of stats)kpis.append(stat(a,b));
+ rows(model);el('results').hidden=false;renderScenario();
+}
+function renderScenario(){
+ const target=el('scenario');target.replaceChildren();comparison=null;
+ if(!forecast||!settings)return;
+ try{
+  const text=el('alternative-external').value;
+  if(!/^(0|[1-9][0-9]*)$/.test(text))throw Error('Alternative share must be an integer between 0 and 100');
+  const fraction=Number(text);
+  const alt=core.project(source,{...settings,outsourced_pct:fraction});
+  comparison=alt;
+  target.append(stat('Current '+settings.outsourced_pct+'% external',currency(forecast.currency,forecast.estimated_plan_cost)));
+  target.append(stat('Alternative '+fraction+'% external',currency(alt.currency,alt.estimated_plan_cost)));
+  target.append(stat('Proposed cost difference',currency(alt.currency,alt.estimated_plan_cost-forecast.estimated_plan_cost)));
+  show('This comparison is a cost estimate, not a contracting or workforce decision.');
+ }catch(err){target.append(mk('p','Scenario held: '+(err instanceof Error?err.message:'Invalid share'),'error'));}
+}
+el('settings').addEventListener('submit',event=>{
+ event.preventDefault();if(!source){show('Load the existing LightUp aggregate capacity export first.',true);return;}
+ try{
+  const cfg=core.settings(modelInput());
+  const model=core.project(source,cfg);
+  settings=cfg;forecast=model;display(model);
+  show('Local, unsigned financial forecast prepared; no original source or customer data exported.');
+ }catch(err){
+  clearResults();show('Funding forecast held: '+(err instanceof Error?err.message:'Invalid model'),true);
+ }
+});
+el('compare').addEventListener('click',renderScenario);
+el('alternative-external').addEventListener('input',()=>{comparison=null;el('scenario').replaceChildren();});
+function download(name,body,mime){
+ const url=URL.createObjectURL(new Blob([body],{type:mime}));
+ const a=document.createElement('a');a.href=url;a.download=name;a.rel='noopener';document.body.append(a);
+ a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1600);
+}
+el('json').addEventListener('click',()=>{
+ if(!forecast)return;
+ if(!confirm('Export only an unsigned, hypothetical AGGREGATE funding discussion? This is not authorization, a contract, customer invoice or verified remediation.'))return;
+ download('lightup-remediation-funding-draft.json',JSON.stringify(forecast,null,2)+'\n','application/json;charset=utf-8');
+ show('Private, aggregate-only budget forecast exported.');
+});
+el('csv').addEventListener('click',()=>{
+ if(!forecast)return;
+ if(!confirm('Export private weekly aggregate cost estimates? Review the recipient before sharing.'))return;
+ const cols=['week','start_utc','proposed_hours','proposed_cost','funding_applied','provisionally_funded_hours'];
+ const q=v=>'"'+String(v).replace(/"/g,'""')+'"';
+ const lines=[cols.map(q).join(',')];
+ forecast.weeks.forEach((w,index)=>{
+  const funded=forecast.funding[index];
+  lines.push([w.week,w.start,w.proposed_hours,w.proposed_cost,
+   funded.funded_cost,funded.provisionally_funded_hours].map(q).join(','));
+ });
+ download('lightup-remediation-funding-weeks.csv',lines.join('\r\n')+'\r\n','text/csv;charset=utf-8');
+ show('Private CSV of weekly aggregate financial assumptions exported.');
+});
+el('print').addEventListener('click',()=>{if(forecast)window.print();});
+})();
