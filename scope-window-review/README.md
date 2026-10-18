@@ -81,12 +81,19 @@ python3 scope-window-review/rebase_handoff.py \
   --previous-note /private/ORIGINAL-human-followup-v2.json \
   --old-review-at 2026-10-18T18:00:00+00:00 \
   --acknowledge-same-tenant \
-  --output /private/NEW-human-followup-proposal.json
+  --output /private/NEW-human-followup-proposal.json \
+  --private-diff /private/NEW-source-differences.html
 ```
 
 This creates a new 0600 **candidate-only** v2 note in a 0700 owner-only
 directory and reports anonymous counts of preserved/changed/missing/out-of-view
-entries, always with exit status **3 HOLD**. Open a **new** private board
+entries, always with exit status **3 HOLD**. With `--private-diff`, a second
+separate 0600 **scriptless/private HTML human differences desk** lists each
+original withheld grant and engagement, source-change reason and next human
+action. These original IDs must NEVER be published or treated as consent.
+Both destinations are checked before writing and newly written candidate data
+is rolled back if second publication fails; neither existing operator file
+may be overwritten. Open a **new** private board
 generated from the exact new Casebook with identical lead/horizon/capacity
 settings; use its local handoff-import preview, verify the source and sender
 again, tick the independent confirmation and apply **human stages/aliases/
