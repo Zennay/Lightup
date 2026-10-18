@@ -18,7 +18,7 @@ At a later authorized human review, export a different exact original source sna
 
     PYTHONPATH=src python3 -m lightup.auth_casebook --database /private/domain.sqlite --email EXISTING_LOGIN --client EXACT_TENANT --output /private/casebook-newer.json
 
-Open **scope-change-control/index.html**, select older then newer. Review priority, original IDs, recorded source status transitions before→after, changed source fields and missing/added original membership. Choose *local human stages only*. Export either anonymous aggregate JSON (without tenant, IDs, source timestamps or hashes) or, after separate recipient confirmation, an original-ID-bearing PRIVATE human follow-up JSON.
+Open **scope-change-control/index.html**, select older then newer. Review priority, original IDs, recorded source status transitions before→after, changed source fields and missing/added original membership. Choose *local human stages only*. Export either anonymous aggregate JSON (without tenant, IDs, source timestamps or hashes) or, after separate recipient confirmation, an original-ID-bearing PRIVATE human follow-up JSON. On return, **load the same two original Casebook files** and import that prior PRIVATE browser review via **Restore source-bound human stages**. Restore requires exact old/new SHA-256 byte equality, original times, original tenant, full original changed-ID membership, unchanged source classification/field names and literal human-only stage values. It refuses stale, swapped, incomplete, reclassified or unauthorized packets atomically. A CLI-origin review packet is a different one-way operator format and is not silently treated as a browser review.
 
 ## Route B: authenticated fresh observation vs prior original
 
