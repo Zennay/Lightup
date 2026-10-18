@@ -17,10 +17,11 @@ const currency=(code,value)=>{
  const locale=code==='EUR'?'nl-NL':code==='GBP'?'en-GB':'en-US';
  return new Intl.NumberFormat(locale,{style:'currency',currency:code,maximumFractionDigits:2}).format(value);
 };
-let source=null,forecast=null,settings=null,comparison=null,staged=null;
+let source=null,forecast=null,settings=null,comparison=null,staged=null,priorityPlan=null;
 function clearResults(){
  forecast=null;settings=null;comparison=null;staged=null;el('results').hidden=true;
  el('release-summary').replaceChildren();el('release-weeks').replaceChildren();el('release-export').hidden=true;
+ clearFundingPriority();
  el('kpis').replaceChildren();el('weeks').replaceChildren();el('scenario').replaceChildren();
  el('risk-exposure').replaceChildren();el('risk-weeks').replaceChildren();
 }
@@ -167,6 +168,7 @@ function releasePercentages() {
 }
 function clearRelease() {
  staged=null;el('release-summary').replaceChildren();el('release-weeks').replaceChildren();el('release-export').hidden=true;
+ clearFundingPriority();
 }
 function renderReleaseEntries(){
  const section=el('release-entries');section.replaceChildren();clearRelease();
@@ -212,6 +214,62 @@ el('release-export').addEventListener('click',()=>{
  if(!confirm('Export only a private unsigned CASH RELEASE scenario? This does not make or authorise a payment, grant, remediation or retest.'))return;
  download('lightup-remediation-staged-funding.json',JSON.stringify(staged,null,2)+'\n','application/json;charset=utf-8');
  show('Aggregate staged funding discussion exported.');
+});
+
+
+function clearFundingPriority(){
+ priorityPlan=null;
+ el('priority-kpis').replaceChildren();
+ el('priority-rows').replaceChildren();
+ el('priority-export-json').hidden=true;
+ el('priority-export-md').hidden=true;
+ el('priority-note').textContent='Unsigned financing models only. No tasks, consent, real work order or customer identity are imported or changed.';
+}
+function renderFundingPriorities(data){
+ const stats=el('priority-kpis');stats.replaceChildren(
+  stat('Urgent-first critical/high covered',data.urgent_first.critical_high_funded_hours+' h'),
+  stat('Balanced critical/high covered',data.proportional.critical_high_funded_hours+' h'),
+  stat('Estimated extra urgent coverage',data.modelled_urgent_funding_difference_hours+' h'),
+  stat('Unscheduled source critical/high',data.source_unscheduled_urgent_hours+' h')
+ );
+ const rows=el('priority-rows');rows.replaceChildren();
+ for(const key of ['critical','high','medium','low','info']){
+  const x=data.urgent_first.by_severity[key];
+  const y=data.proportional.by_severity[key];
+  const row=mk('tr');
+  for(const v of [key,x.proposed_hours+' h',x.tentatively_funded_hours+' h',
+      x.unfinanced_hours+' h',y.tentatively_funded_hours+' h',y.unfinanced_hours+' h'])
+   row.append(mk('td',v));
+  rows.append(row);
+ }
+ el('priority-note').textContent='Both strategies use identical hypothetical weekly cash releases. Urgent-first may leave more medium/low/info work unfunded. No original finding is selected, assigned or repaired.';
+ el('priority-export-json').hidden=false;
+ el('priority-export-md').hidden=false;
+}
+el('priority-calculate').addEventListener('click',()=>{
+ clearFundingPriority();
+ if(!forecast||!source||!settings){
+  show('Import an aggregate report and calculate its funding forecast before comparing strategies.',true);return;
+ }
+ try{
+  priorityPlan=core.fundingPriorities(source,settings,releasePercentages());
+  renderFundingPriorities(priorityPlan);
+  show('Two aggregate financing strategies prepared for human discussion.');
+ }catch(err){show('Priority funding held: '+(err instanceof Error?err.message:'Invalid model'),true);}
+});
+el('priority-export-json').addEventListener('click',()=>{
+ if(!priorityPlan)return;
+ if(!confirm('Export an unsigned AGGREGATE financing comparison? It is not approval, a contract, assigned cases or real remediation.'))return;
+ download('lightup-remediation-funding-priorities.json',
+  JSON.stringify(priorityPlan,null,2)+'\n','application/json;charset=utf-8');
+ show('Private aggregate funding priorities exported.');
+});
+el('priority-export-md').addEventListener('click',()=>{
+ if(!priorityPlan)return;
+ if(!confirm('Export a private REVIEW_ONLY funding discussion brief, not authorisation or a signed work order?'))return;
+ download('lightup-remediation-funding-discussion.md',
+  core.priorityDiscussionMarkdown(priorityPlan),'text/markdown;charset=utf-8');
+ show('Private funding discussion brief exported.');
 });
 
 el('json').addEventListener('click',()=>{
