@@ -22,8 +22,8 @@ p{line-height:1.6}.muted{color:#a2b6c7}.caution{border-left:4px solid #edbe73;pa
 .metric{border:1px solid #35495a;background:#172638;border-radius:12px;padding:18px}
 .metric strong{display:block;font-size:1.7rem;margin-top:8px}label{display:block;font-weight:600}
 .controls{display:flex;gap:12px;flex-wrap:wrap;align-items:end;padding:18px 0}
-.controls>*{flex:1;min-width:165px}input,select,button{border:1px solid #506677;border-radius:8px;padding:10px 12px;background:#182735;color:#f8fafc;font:inherit}
-button{cursor:pointer;flex:initial;background:#28445c}button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #e7bc77}
+.controls>*{flex:1;min-width:165px}input,select,textarea,button{border:1px solid #506677;border-radius:8px;padding:10px 12px;background:#182735;color:#f8fafc;font:inherit}
+textarea{display:block;width:100%;min-height:76px;margin-top:8px}button{cursor:pointer;flex:initial;background:#28445c}button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #e7bc77}
 .group{margin:24px 0;border:1px solid #3b4e62;border-radius:12px;overflow:hidden}
 .group>h2{margin:0;background:#1b3143;padding:14px 18px}
 .entry{padding:18px;border-top:1px solid #354759;display:grid;grid-template-columns:minmax(250px,1fr) minmax(170px,220px);gap:22px}
@@ -57,10 +57,18 @@ function refresh(){
   document.getElementById('shown').textContent=String(visible);
 }
 for(const el of [search,priority,phase])el.addEventListener('input',refresh);
-const stages=new Map();
+const edits=new Map();
+const localEntry=row=>({
+ human_stage:row.querySelector('.stage').value,
+ human_owner:row.querySelector('.owner').value.trim(),
+ human_next_action:row.querySelector('.next').value.trim()
+});
+const safeText=(value,limit)=>typeof value==='string' && value.length<=limit &&
+ !/[\\u0000-\\u001f\\u007f\\u202a-\\u202e\\u2066-\\u2069]/u.test(value);
 for(const row of rows){
- const selector=row.querySelector('.stage');
- selector.addEventListener('change',()=>{stages.set(row.dataset.key,selector.value);});
+ for(const field of row.querySelectorAll('.stage,.owner,.next')){
+  field.addEventListener('input',()=>edits.set(row.dataset.key,localEntry(row)));
+ }
 }
 function emit(name,text,type){
  const blob=new Blob([text],{type});
@@ -69,14 +77,20 @@ function emit(name,text,type){
  setTimeout(()=>URL.revokeObjectURL(url),1000);
 }
 document.getElementById('save').addEventListener('click',()=>{
- const changes=rows.filter(r=>stages.has(r.dataset.key)).map(r=>({
+ const changes=rows.filter(r=>edits.has(r.dataset.key)).map(r=>({
   grant_id:r.dataset.grant,engagement_id:r.dataset.engagement||null,
-  human_stage:stages.get(r.dataset.key)
+  ...localEntry(r)
  }));
+ if(changes.some(r=>!safeText(r.human_owner,60) ||
+                    !safeText(r.human_next_action,280))){
+  document.getElementById('restore-preview').textContent=
+    'HOLD — invalid or misleading Unicode in local human notes.';
+  return;
+ }
  const packet={
-   schema:'lightup.scope_window_human_handoff.v1',status:'REVIEW_ONLY',
+   schema:'lightup.scope_window_human_handoff.v2',status:'REVIEW_ONLY',
    source_digest:document.body.dataset.digest,
-   note:'Human-only local stages; neither authenticated consent nor action-time grant.',
+   note:'Unsigned human-only stage/owner/follow-up; never authenticated consent or a grant.',
    authorization_granted:false,execution_allowed:false,release_approved:false,
    entries:changes
  };
@@ -236,7 +250,12 @@ def render(agenda: dict) -> bytes:
                 '<option value="investigating">Investigating</option>'
                 '<option value="escalated">Escalate to original owner</option>'
                 '<option value="documented">Documented for human follow-up</option>'
-                '</select><p class="muted small">Selection stays in this tab only. Export is an unsigned human note.</p>'
+                '</select>'
+                f'<label for="owner-{idx}">Local human assignee (alias; 60 chars max)</label>'
+                f'<input class="owner" id="owner-{idx}" maxlength="60" autocomplete="off" placeholder="Human reviewer alias only">'
+                f'<label for="next-{idx}">Human follow-up task (280 chars max)</label>'
+                f'<textarea class="next" id="next-{idx}" maxlength="280" placeholder="Human action to review original source"></textarea>'
+                '<p class="muted small">Local planning only; no client approval or task dispatch. Private handoff is unsigned.</p>'
                 '</div></article>'
             )
         elements.append('</section>')
