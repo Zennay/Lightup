@@ -4,6 +4,23 @@
 
 This feature fills a human-operations gap alongside the **original authenticated Authorization Casebook** and the separate **emergency STOP/Incident Room**. Existing Casebook shows retrospective grant windows but does not provide a ready-to-open *private scheduled human review board* and an *identity-free calendar reminder*. This independent child branch changes **only** new files in `scope-window-review/`, based on the held integrated PR #1624 pinned at `8e14d9389699e6bf9b912042e40f17eff2fd95f4`. No original source-owner, CLI authorization, web portal, scan, CI, QA, STOP or existing test paths are modified.
 
+## One-step original authenticated operator workflow (preferred)
+
+From the held LightUp source checkout and on a trusted local machine, use the **original stored account, actual tenant, existing DomainStore authentication/lockout**, with no intermediate plaintext Casebook export:
+
+```sh
+umask 077
+PYTHONPATH=src python3 scope-window-review/window_review.py \
+  --database /private/domain.sqlite \
+  --email EXISTING_OPERATOR_EMAIL --client EXACT_EXISTING_TENANT_ID \
+  --board /private/NEW-private-window-board.html \
+  --lead-days 7 --future-days 45 --daily-capacity 8
+```
+
+The original account password is requested interactively through `getpass`, never passed as an argument or placed into the generated HTML. Existing client accounts may omit `--client`, but an operator must choose an exact original tenant ID. Original login can update ordinary stored login/lockout counters. All Casebook source queries continue in the existing read-only original SQLite snapshot and no grant, target, real execution, STOP, consent or risk decision is changed. Original Casebook business logic is called directly, not copied or rewritten.
+
+The mutually exclusive `--database` and `--casebook` modes expose the same private outputs; account selector flags are rejected in offline-file mode. The private source digest in authenticated mode is taken from the original Casebook exporter canonical bytes (unsigned, never consent authentication).
+
 ## Workflow
 
 1. On a trusted private LightUp operator machine, use the original **persisted** DomainStore account to export an original single-tenant Casebook through the owner module. No copied/synthetic consent is accepted:
