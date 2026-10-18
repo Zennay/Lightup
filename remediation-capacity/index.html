@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<title>LightUp | Remediation Capacity Studio — offline draft</title>
+<link rel="stylesheet" href="./style.css">
+<script src="./planner.js" defer></script>
+<script src="./app.js" defer></script>
+</head>
+<body>
+<header class="mast">
+  <div class="wrap">
+    <p class="eyebrow">LIGHTUP / DEFENSIVE PLANNING / OFFLINE</p>
+    <h1>Remediation Capacity Studio</h1>
+    <p>Turn an <em>already authorised</em> LightUp findings export into a practical, capacity-bounded repair proposal. No target access. No consent or grant issued.</p>
+    <div class="notice" role="status"><strong>DRAFT / HOLD</strong> · All outcomes are unverified planning assumptions. Reported “fixed” is not a verified retest. No authority to execute, scan or deploy.</div>
+  </div>
+</header>
+<main class="wrap">
+<section class="panel" aria-labelledby="upload-title">
+  <p class="eyebrow">01 / SOURCE</p>
+  <h2 id="upload-title">Load original findings report</h2>
+  <p>Import the original five-column <code>finding_id,title,severity,retest_status,remediation</code> CSV (≤1 MiB; ≤350 records). No customer name, finding title, finding ID or remediation text is displayed or exported.</p>
+  <div class="upload"><label for="source">Authorised findings CSV</label><input id="source" type="file" accept=".csv,text/csv">
+    <button type="button" id="forget" class="secondary">Forget source &amp; plan</button></div>
+  <p id="source-status" class="subtle" aria-live="polite">No report loaded. All files stay in this browser tab.</p>
+</section>
+<section class="panel" aria-labelledby="capacity-title">
+  <p class="eyebrow">02 / TEAM ASSUMPTIONS</p>
+  <h2 id="capacity-title">Available remediation capacity</h2>
+  <form id="settings" autocomplete="off">
+    <div class="grid">
+      <label>Sprint start date<input type="date" name="start" required></label>
+      <label>Sprint weeks<input type="number" name="weeks" min="1" max="12" value="4" required></label>
+      <label>Engineers<input type="number" name="engineers" min="1" max="30" value="3" required></label>
+      <label>Working days per week<input type="number" name="workDays" min="1" max="5" value="5" required></label>
+      <label>Available hours per person/day<input type="number" name="hoursPerDay" min="1" max="10" value="6" required></label>
+      <label>Capacity reserved for interruptions (%)<input type="number" name="reserve" min="0" max="80" value="25" required></label>
+    </div>
+    <fieldset>
+      <legend>Estimated repair effort per finding (hours, adjustable)</legend>
+      <div class="grid effort">
+        <label>Critical<input type="number" name="critical" min="1" max="200" value="20" required></label>
+        <label>High<input type="number" name="high" min="1" max="200" value="12" required></label>
+        <label>Medium<input type="number" name="medium" min="1" max="200" value="6" required></label>
+        <label>Low<input type="number" name="low" min="1" max="200" value="3" required></label>
+        <label>Info<input type="number" name="info" min="1" max="200" value="1" required></label>
+      </div>
+    </fieldset>
+    <button type="submit" id="generate" disabled>Prepare capacity plan</button>
+  </form>
+  <p class="subtle">Priority: source-reported regressions first, then critical → high → medium → low → info. Estimates are placeholders, not SLAs or retest authorisations. Sprint weeks are seven-day planning buckets; available capacity is per working week.</p>
+</section>
+<section id="results" hidden aria-labelledby="results-title">
+  <div class="panel">
+    <p class="eyebrow">03 / HUMAN PLANNING PREVIEW</p>
+    <h2 id="results-title">Capacity allocation</h2>
+    <div class="stats" id="stats" aria-live="polite"></div>
+    <p class="subtle">A fully allocated estimate only means it fits in this draft plan. It does not mean work has started, a vulnerability was fixed, or an authorised retest has happened.</p>
+  </div>
+  <div class="panel">
+    <h2>Weekly workload</h2>
+    <div id="weekly" class="weeks"></div>
+  </div>
+  <div class="panel">
+    <h2>Proposed work queue</h2>
+    <p class="subtle">Anonymous source positions only. A task can be split between weeks. No raw case IDs, addresses, descriptions, or assignment records appear here.</p>
+    <div class="table-scroll"><table><thead><tr><th scope="col">Week</th><th scope="col">Source position</th><th scope="col">Severity</th><th scope="col">Original source retest</th><th scope="col">Hours</th><th scope="col">Allocation</th></tr></thead><tbody id="allocations"></tbody></table></div>
+  </div>
+  <div class="panel">
+    <h2>Private aggregate handoff</h2>
+    <p>Downloads contain only counts, hour estimates and planning weeks. They contain no original findings, client identity or source filename. Share only after an independent human privacy review.</p>
+    <div class="actions"><button id="export-json" type="button" class="secondary">Export aggregate JSON</button>
+      <button id="export-csv" type="button" class="secondary">Export aggregate CSV</button>
+      <button type="button" id="print">Print review</button></div>
+  </div>
+</section>
+<p id="feedback" class="feedback" role="alert" aria-live="assertive"></p>
+</main>
+<footer class="wrap"><small>Local planning is not customer authentication, consent, revocation, a scan, a verified repair or release approval. INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD.</small></footer>
+</body>
+</html>
