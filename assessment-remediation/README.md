@@ -300,3 +300,31 @@ team room SHA, no extra/duplicate/unsafe members and human-only authority
 fields. It returns 2 for structurally admissible private material or 3 HOLD,
 never grants client access or authenticates a sender. Keep all team ZIPs
 confidential; source IDs and human notes remain sensitive.
+
+### Optional direct owner return → updated private dossier
+
+The owner can also complete the entire offline return and private human
+report generation in one explicit receive command, using the *unchanged*
+separately obtained canonical comparison and original authenticated findings
+source files:
+
+    python3 assessment-remediation/team_handoff.py receive \
+      --links /private/lightup-followup/reviewed-links.json \
+      --returned /private/returned-team-human-notes.json \
+      --comparison /private/completed-cohort-comparison.json \
+      --findings-csv /private/authenticated-client-findings.csv \
+      --output-dir /private/lightup-followup \
+      --prefix after-team-01 --bundle
+
+Before publishing anything this validates both original source byte digests,
+the original immutable lab scenario and finding IDs, the complete canonical
+metric status and the exact original human-draft baseline. It creates the
+strict reviewed-links JSON, private human change diff and anonymous changes,
+PLUS the existing full source-bound operator HTML/CSV/aggregate and optional
+private portable room ZIP. This is a human-only offline workflow, not a fresh
+assessment. Original source HOLD stays HOLD; no auth or release flag can flip.
+
+When used without the two optional original source paths, receive remains a
+private human-note import only and writes the reviewed-links + diff/count files.
+Use NEW unused output prefixes; no existing source file or output is replaced.
+A team reply is not signed: explicitly verify real recipient/sender out of band.

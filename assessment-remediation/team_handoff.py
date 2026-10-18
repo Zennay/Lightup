@@ -187,6 +187,34 @@ def receive(args):
     destination = target(args.output_dir, args.prefix, "-reviewed-links.json")
     diff_destination = target(args.output_dir, args.prefix, "-private-team-diff.html")
     aggregate_destination = target(args.output_dir, args.prefix, "-human-changes.json")
+    render_requested = args.comparison is not None or args.findings_csv is not None
+    fail_if(render_requested and not (args.comparison and args.findings_csv)
+            or args.bundle and not render_requested,
+            "both original sources are required for direct private dossier creation")
+    if render_requested:
+        from bridge import (
+            MAX_COMPARE, MAX_FINDINGS, original_comparison, original_findings,
+            links_document,
+        )
+        comparison = read_regular(args.comparison, MAX_COMPARE)
+        findings_source = read_regular(args.findings_csv, MAX_FINDINGS)
+        admitted_compare = original_comparison(comparison)
+        admitted_findings = original_findings(findings_source)
+        links_document(
+            encode(latest),
+            sha256(comparison).hexdigest(),
+            sha256(findings_source).hexdigest(),
+            {row["scenario_id"] for row in admitted_compare["comparisons"]},
+            admitted_findings,
+        )
+        directory = private_dir(args.output_dir)
+        for suffix in (
+            "-private.html", "-links.json", "-aggregate.json",
+            "-private-agenda.csv",
+            *(("-private-room.zip",) if args.bundle else ())
+        ):
+            fail_if(os.path.lexists(directory / (args.prefix + suffix)),
+                    "complete private dossier destination already exists")
     # No manual changes to real original client data or lab reports:
     # this is a new strict mapping v1, accepted later only by bridge.py
     # when both separately authorized exported sources match.
@@ -204,6 +232,25 @@ def receive(args):
           " original source links preserved.")
     print("Private scriptless before/after human dossier and ID-free change counts created.")
     print("The return was NOT sender-authenticated; operator must verify human recipient.")
+    if render_requested:
+        from types import SimpleNamespace
+        from bridge import run as render_original_sources
+        status = render_original_sources(SimpleNamespace(
+            comparison=args.comparison,
+            findings_csv=args.findings_csv,
+            links=str(destination),
+            output_dir=args.output_dir,
+            prefix=args.prefix,
+            bundle=args.bundle,
+        ))
+        if args.bundle:
+            from packet import create_room
+            create_room(SimpleNamespace(
+                output_dir=args.output_dir, prefix=args.prefix
+            ))
+        print("Latest PRIVATE source-bound human dossier rendered; source security "
+              "status remains unverified and never grants GO.")
+        return status
     print("Use the new mapping with unchanged original source exports through bridge.py.")
     return 2
 
@@ -222,6 +269,10 @@ def main(argv=None):
         if name == "receive":
             command.add_argument("--returned", required=True,
                                  help="Human team-return JSON exported from team room")
+            command.add_argument("--comparison", help="Optional exact original canonical benchmark JSON")
+            command.add_argument("--findings-csv", help="Optional exact original authenticated findings CSV")
+            command.add_argument("--bundle", action="store_true",
+                                 help="With both original sources, also produce confidential room ZIP")
     inspection = sub.add_parser("inspect", help="Read-only private team ZIP integrity")
     inspection.add_argument("private_team_kit")
     args = parser.parse_args(argv)
