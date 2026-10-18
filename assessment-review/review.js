@@ -22,7 +22,7 @@
   const CASE_KEYS = ["scenario_id", "status", "regressions", "changes"];
   const CHANGE_KEYS = ["name", "baseline", "candidate", "delta", "regression"];
   const $ = id => document.getElementById(id);
-  let report = null, selected = -1, digest = null, sourceKind = null, trend = null;
+  let report = null, selected = -1, digest = null, sourceKind = null, trend = null, metricFocus = null;
   const exactKeys = (x, keys) => !!x && Object.getPrototypeOf(x) === Object.prototype &&
     Object.keys(x).length === keys.length && keys.every(k => Object.hasOwn(x, k));
   const fail = () => { throw new Error("Source structure or values do not match canonical lab CLI output."); };
@@ -164,6 +164,7 @@
     parent.replaceChildren();
     const sorted = report.cases.map((c, i) => ({c, i}))
       .filter(({c}) => routeFilter === "all" || c.route === routeFilter)
+      .filter(({c}) => !metricFocus || c.regressions.includes(metricFocus))
       .filter(({c}) => filter === "all" ||
         (filter === "regressed" && c.regressions.length > 0) ||
         (filter === "open" && c.stage !== "reviewed") ||
@@ -311,10 +312,56 @@
     download("lightup-lab-report-change-review.csv",
       rows.join("\r\n")+"\r\n","text/csv;charset=utf-8");
   });
-  function render() { renderOverview(); renderQueue(); renderDetails(); renderPrintBrief(); }
+
+  function renderLandscape() {
+    const parent=$("metric-bars");
+    parent.replaceChildren();
+    const counts=METRICS.map(name=>({
+      name,count:report.cases.filter(c=>c.regressions.includes(name)).length
+    })).filter(x=>x.count>0).sort((a,b)=>b.count-a.count ||
+      a.name.localeCompare(b.name));
+    if (!counts.length) {
+      child(parent,"p","No source-reported metric regression in this accepted report.","muted-copy");
+    } else {
+      counts.forEach(({name,count})=>{
+        const row=child(parent,"button",undefined,
+          "metric-bar"+(metricFocus===name?" active":""));
+        row.type="button";
+        row.setAttribute("aria-pressed",String(metricFocus===name));
+        row.title="Filter to cases with "+nice(name)+" regression";
+        child(row,"span",nice(name));
+        const track=child(row,"div",undefined,"track");
+        const bar=child(track,"i");
+        bar.style.width=(100*count/report.cases.length).toFixed(1)+"%";
+        child(row,"b",count);
+        row.addEventListener("click",()=>{
+          metricFocus=metricFocus===name?null:name;
+          render();
+        });
+      });
+    }
+    function sumCost(name) {
+      return report.cases.reduce((result,c)=>{
+        const m=c.changes.find(x=>x.name===name);
+        return m ? {baseline:result.baseline+m.baseline,
+          candidate:result.candidate+m.candidate} : result;
+      },{baseline:0,candidate:0});
+    }
+    const runtime=sumCost("runtime_seconds"), cost=sumCost("compute_cost_usd");
+    $("runtime-summary").textContent=fmt(runtime.baseline)+" → "+fmt(runtime.candidate);
+    $("cost-summary").textContent=fmt(cost.baseline)+" → "+fmt(cost.candidate);
+    $("metric-focus").textContent=metricFocus ?
+      "Filtering only "+nice(metricFocus)+" regressions in the local case queue. Exports retain all cases." :
+      "Showing all regression categories. Costs and times are untrusted lab report totals.";
+  }
+  $("metric-reset").addEventListener("click",()=>{
+    metricFocus=null;
+    if(report) render();
+  });
+  function render() { renderOverview(); renderLandscape(); renderQueue(); renderDetails(); renderPrintBrief(); }
   function reset() {
     report = null; selected = -1; digest = null; sourceKind = null;
-    clearHistorical();
+    clearHistorical(); metricFocus = null;
     $("file").value = ""; $("board").hidden = true; $("filter").value = "all"; $("route-filter").value = "all";
     $("cases").replaceChildren(); $("metrics").replaceChildren();
     alert("Local workspace cleared. No browser storage was used.");
