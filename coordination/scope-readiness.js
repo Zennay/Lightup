@@ -12,7 +12,7 @@ const STAGES=[
 ];
 const STATUSES=['todo','waiting','prepared'];
 const $=id=>document.getElementById(id);
-let entries=[], active=null, dirty=false;
+let entries=[], active=null, dirty=false, editEpoch=0, bulkPlan=null;
 const flags=()=>({authenticated:false,client_consent:false,operator_consent:false,authorization:false,risk_approved:false,grant:false,revocation_checked:false,execution:false,scan:false,release:false});
 const fresh=()=>Object.fromEntries(STAGES.map(([id])=>[id,{status:'todo',owner:'',due:'',next_action:''}]));
 function notice(msg){$('message').textContent=msg;}
@@ -144,7 +144,10 @@ function attention(r){
  return (r.source_attached?0:100)+(overdue(r)?60:0)+(roleOverlap(r)?40:0)+
   (r.requested_risk===4?30:0)+unresolved(r);
 }
-function setDirty(){dirty=true;$('save').disabled=!entries.length;$('csv').disabled=!entries.length;$('print').disabled=!entries.length;}
+function clearBulkPreview(message='Preview expired after a change; recompute before applying.'){
+ bulkPlan=null;$('bulkApply').disabled=true;$('bulkResult').textContent=message;
+}
+function setDirty(){dirty=true;editEpoch++;clearBulkPreview();$('save').disabled=!entries.length;$('csv').disabled=!entries.length;$('print').disabled=!entries.length;}
 function make(tag,txt,cls){const el=document.createElement(tag);if(txt!==undefined)el.textContent=txt;if(cls)el.className=cls;return el;}
 function brief(){
  const lines=['LIGHTUP / HUMAN SCOPE COORDINATION — NON-AUTHORIZING','State: REVIEW_ONLY · DRAFT-HOLD',
@@ -174,11 +177,15 @@ function renderStats(){
  $('brief').textContent=brief();
  $('save').disabled=!entries.length;$('csv').disabled=!entries.length;$('print').disabled=!entries.length;
 }
-function renderList(){
- const list=$('drafts'), filter=$('filter').value;list.replaceChildren();
- const selected=entries.filter(r=>filter==='all'||filter==='hold'&&unresolved(r)>0||
+function visibleQueue(){
+ const filter=$('filter').value;
+ return entries.filter(r=>filter==='all'||filter==='hold'&&unresolved(r)>0||
   filter==='missing'&&!r.source_attached||filter==='risk'&&r.requested_risk===4||
   filter==='overdue'&&overdue(r)>0||filter==='collision'&&roleOverlap(r));
+}
+function renderList(){
+ const list=$('drafts');list.replaceChildren();
+ const selected=visibleQueue();
  const sort=$('sort').value;
  selected.sort((a,b)=>sort==='name'?a.name.localeCompare(b.name):
   sort==='due'?firstDue(a).localeCompare(firstDue(b)):
@@ -275,6 +282,65 @@ function renderDetail(){
  tools.append(remove);box.append(tools);
 }
 function render(){renderStats();renderList();renderDetail();}
+// Batch planner only fills missing paperwork logistics. Never updates states or authority.
+const bulkInputs=['bulkStage','bulkAudience','bulkOwner','bulkDue','bulkNext'];
+for(const name of bulkInputs)$(name).addEventListener('input',()=>clearBulkPreview('Inputs changed. Preview before applying.'));
+$('bulkDiscard').addEventListener('click',()=>clearBulkPreview('Preview discarded; no work items changed.'));
+function bulkSpec(){
+ const stage=$('bulkStage').value,audience=$('bulkAudience').value;
+ const owner=$('bulkOwner').value.trim(),due=$('bulkDue').value,next=$('bulkNext').value.trim();
+ if(!STAGES.some(([id])=>id===stage)||!['visible','attached','all'].includes(audience))throw Error('Unknown batch scope.');
+ if(!validText(owner,80)||!validText(next,350))throw Error('Invalid coordinator or next action.');
+ if(!owner&&!due&&!next)throw Error('Enter a coordinator, date or next action first.');
+ if(due){
+  if(!/^\\d{4}-\\d{2}-\\d{2}$/.test(due)||
+     !Number.isFinite(Date.parse(due+'T00:00:00Z'))||
+     new Date(due+'T00:00:00Z').toISOString().slice(0,10)!==due)throw Error('Invalid target date.');
+ }
+ return {stage,audience,owner,due,next};
+}
+function bulkCandidates(spec){
+ const selected=spec.audience==='visible'?visibleQueue():
+  spec.audience==='attached'?entries.filter(r=>r.source_attached):entries.slice();
+ const planned=[];
+ for(const r of selected){
+  const task=r.tasks[spec.stage];if(task.status==='prepared')continue;
+  const fills={};
+  if(spec.owner&&!task.owner)fills.owner=spec.owner;
+  if(spec.due&&!task.due)fills.due=spec.due;
+  if(spec.next&&!task.next_action)fills.next_action=spec.next;
+  if(Object.keys(fills).length)planned.push({r,fills});
+ }
+ return {selected,planned};
+}
+$('bulkPreview').addEventListener('click',()=>{
+ clearBulkPreview();
+ try{
+  const spec=bulkSpec(),{selected,planned}=bulkCandidates(spec);
+  if(!selected.length){$('bulkResult').textContent='No matching drafts; no assignments created.';return;}
+  if(!planned.length){$('bulkResult').textContent='No empty eligible fields. Existing assignments and prepared states are preserved.';return;}
+  bulkPlan={epoch:editEpoch,spec,planned};
+  const fields=planned.reduce((sum,x)=>sum+Object.keys(x.fills).length,0);
+  const held=planned.filter(x=>!x.r.source_attached).length;
+  $('bulkResult').textContent='PREVIEW ONLY: '+planned.length+' draft(s), '+fields+
+    ' empty field(s), '+held+' source-unbound HOLD(s). Prepared tasks and all existing values stay unchanged. Explicit confirmation required.';
+  $('bulkApply').disabled=false;
+ }catch(e){$('bulkResult').textContent='Batch HOLD: '+e.message;}
+});
+$('bulkApply').addEventListener('click',()=>{
+ if(!bulkPlan||bulkPlan.epoch!==editEpoch){clearBulkPreview();return;}
+ const {spec,planned}=bulkPlan;
+ // Full all-or-nothing revalidation before any in-memory mutation.
+ try{
+  const now=bulkSpec(),current=bulkCandidates(now);
+  if(JSON.stringify(now)!==JSON.stringify(spec)||current.planned.length!==planned.length||
+   current.planned.some((x,i)=>x.r!==planned[i].r||JSON.stringify(x.fills)!==JSON.stringify(planned[i].fills)))throw Error('Queue or field selection changed.');
+  if(!confirm('Apply '+planned.length+' coordination-only assignments? This fills EMPTY fields and does not change any paperwork status, authenticated consent, decision or grant.'))return;
+  for(const {r,fills} of planned)Object.assign(r.tasks[spec.stage],fills);
+  const count=planned.length;
+  setDirty();render();$('bulkResult').textContent='Applied to '+count+' preparation entries. No approval, consent or authorization changed.';
+ }catch(e){clearBulkPreview('Batch HOLD: '+e.message+' No changes made.');}
+});
 function download(name,data,type){
  const url=URL.createObjectURL(new Blob([data],{type}));
  const a=make('a');a.href=url;a.download=name;document.body.append(a);a.click();a.remove();
@@ -333,12 +399,12 @@ $('restoreInput').addEventListener('change',async event=>{
   const next=parsed.records.map(cleanRecord);
   if(next.some(r=>!r)||new Set(next.map(r=>r.source_sha256)).size!==next.length)throw Error('Invalid, duplicated or malformed source-bound record.');
   if(entries.length&&!confirm('Replace your current in-memory board? Save it first if needed.'))return;
-  entries=next;active=entries[0]?.source_sha256||null;dirty=false;render();
+  entries=next;active=entries[0]?.source_sha256||null;dirty=false;editEpoch++;clearBulkPreview();render();
   notice('Restored tracking only. Studio source files deliberately remain UNBOUND until exact SHA-256 re-attachment. ALL authorization flags false.');
  }catch(e){notice('Restore HOLD: '+e.message+' Existing board unchanged.');}
 });
-$('filter').addEventListener('change',renderList);
- $('sort').addEventListener('change',renderList);
+$('filter').addEventListener('change',()=>{clearBulkPreview();renderList();});
+$('sort').addEventListener('change',renderList);
 $('save').addEventListener('click',()=>{
  if(!entries.length)return;
  const records=entries.map(r=>{const clean=cleanRecord(r);if(!clean)throw Error('Invalid local task record.');delete clean.source_attached;return clean;});
@@ -364,7 +430,7 @@ $('csv').addEventListener('click',()=>{
 $('print').addEventListener('click',()=>{if(entries.length)window.print();});
 $('reset').addEventListener('click',()=>{
  if(entries.length&&!confirm('Clear all in-memory coordination work? Save it first if needed.'))return;
- entries=[];active=null;dirty=false;$('sourceUpload').value='';$('restoreInput').value='';render();notice('Memory cleared. No source records changed.');
+ entries=[];active=null;dirty=false;editEpoch++;clearBulkPreview();$('sourceUpload').value='';$('restoreInput').value='';render();notice('Memory cleared. No source records changed.');
 });
 window.addEventListener('beforeunload',event=>{if(dirty&&entries.length){event.preventDefault();event.returnValue='';}});
 render();
