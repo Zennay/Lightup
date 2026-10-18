@@ -44,7 +44,7 @@ footer{padding:29px 0 0;color:#8da0be;font-size:12px;line-height:1.6}#message{mi
 <div class="card"><div class="toolbar"><h2>Private source records</h2><select id="category" aria-label="Record type"><option value="all">All source records</option><option value="case">Engagement caseboard</option><option value="request">Requests</option><option value="engagement">Engagements</option><option value="grant">Grant links</option><option value="risk">Risk decisions</option></select><input type="search" id="filter" aria-label="Filter records" placeholder="Search exact local IDs and statuses"></div>
 <div style="overflow-x:auto"><table><thead><tr><th>Source type</th><th>Original ID</th><th>State / lineage</th><th>Review</th></tr></thead><tbody id="records"></tbody></table></div><p id="empty" class="muted">Import an actual private source file or the clearly marked fictional demo.</p></div>
 <div class="card"><h2>Observed decision timeline</h2><p class="small">Ordering is based on the unverified source timestamps. Missing approval records or inconsistent joins are HOLD, not proof that a scan is allowed.</p><ul class="timeline" id="timeline"></ul>
-<div class="actions"><button id="export" type="button">Export aggregate brief</button><button id="print" type="button" class="secondary">Print local review</button></div><div id="origin" class="note">No authenticated data imported. Nothing here can validate a customer signature or issue execution consent.</div></div>
+<div class="actions"><button id="export" type="button">Export aggregate brief</button><button id="brief-html" type="button" class="secondary">Create anonymous HTML briefing</button><button id="print" type="button" class="secondary">Print local review</button></div><div id="origin" class="note">No authenticated data imported. Nothing here can validate a customer signature or issue execution consent.</div></div>
 </section>
 <section class="card" style="margin-top:16px" aria-label="Selected engagement source details">
 <h2>03 / Engagement case detail</h2>
@@ -244,6 +244,46 @@ snapshot={schema:"lightup.auth_casebook.v1",status:"REVIEW_ONLY",client_id:"fict
 elt("reset").addEventListener("click",function(){snapshot=null;previous=null;fictional=false;selectedCase=null;localStages.clear();elt("message").textContent="Private local snapshot cleared.";render();});
 elt("category").addEventListener("change",render);elt("filter").addEventListener("input",render);
 elt("print").addEventListener("click",function(){window.print();});
+
+function saveTextFile(filename,mime,body){
+var url=URL.createObjectURL(new Blob([body],{type:mime}));
+var a=document.createElement("a");a.href=url;a.download=filename;document.body.appendChild(a);
+a.click();a.remove();setTimeout(function(){URL.revokeObjectURL(url);},1000);
+}
+elt("brief-html").addEventListener("click",function(){
+if(!snapshot){elt("message").textContent="HOLD: a private casebook is required.";return;}
+var counts=snapshot.declared_counts,stages={unreviewed:0,investigating:0,escalated:0,documented:0};
+snapshot.case_overview.forEach(function(row){stages[localStages.get(row.engagement_id)||"unreviewed"]++;});
+var changes=comparisonCounts();
+var attentionLabels=[
+"HOLD_SOURCE_PROVENANCE","HOLD_CLOSED_ENGAGEMENT_WITH_GRANTS",
+"EXPIRED_GRANT_SOURCE_REVIEW","FUTURE_GRANT_SOURCE_REVIEW",
+"NO_GRANT_RECORDED","REVIEW_ONLY_UNVERIFIED_GRANT_LINK"];
+var labels=["Requests","Engagements","Stored grants","Risk source rows","Request-link HOLDs","Risk tenant HOLDs","Foreign-tenant conflicts","Non-current original grant windows"];
+var values=[counts.requests,counts.engagements,counts.grants,counts.risk_approvals,counts.grant_link_hold,counts.risk_tenant_hold,counts.foreign_tenant_row_count,counts.recorded_window_review];
+function row(a,b){return "<tr><th>"+a+"</th><td>"+String(b)+"</td></tr>";}
+var table=labels.map(function(label,i){return row(label,values[i]);}).join("");
+var attention=attentionLabels.map(function(label){return row(label,snapshot.case_overview.filter(function(x){return x.attention===label;}).length);}).join("");
+var follow=["unreviewed","investigating","escalated","documented"].map(function(stage){return row(stage,stages[stage]);}).join("");
+var comparison=["new_records","missing_records","changed_statuses"].map(function(key){return row(key,changes[key]);}).join("");
+var html='<!doctype html><html lang="en"><head><meta charset="utf-8">'+
+'<meta name="viewport" content="width=device-width,initial-scale=1">'+
+'<meta http-equiv="Content-Security-Policy" content="default-src &#39;none&#39;; style-src &#39;unsafe-inline&#39;; base-uri &#39;none&#39;; form-action &#39;none&#39;">'+
+'<title>LightUp anonymous review briefing</title>'+
+'<style>body{font:15px system-ui;color:#161f32;background:#f7f9fe;max-width:900px;margin:24px auto;padding:20px}h1{font-size:30px}h2{font-size:19px;margin-top:30px}p{line-height:1.5}table{border-collapse:collapse;width:100%}th,td{text-align:left;border-bottom:1px solid #ccd5e3;padding:9px}td{text-align:right;font-variant-numeric:tabular-nums}.notice{border:2px solid #b77e43;padding:15px;background:#fff7eb}@media print{body{background:white}}</style></head><body>'+
+'<h1>LightUp | Human authorization review</h1>'+
+'<p class="notice"><b>REVIEW ONLY / DRAFT HOLD.</b> Source-declared aggregate counts and local human follow-up. Not verified consent, current grant authority, a scan outcome, risk acceptance, or a release gate. Every original authority flag is false.</p>'+
+'<h2>Original source aggregates</h2><table>'+table+'</table>'+
+'<h2>Human follow-up categories</h2><table>'+attention+'</table>'+
+'<h2>Local review stages</h2><table>'+follow+'</table>'+
+'<h2>Source comparison counts</h2><p>'+(
+changes.baseline_provided?"Two unverified local source snapshots were compared.":"No earlier source snapshot was supplied."
+)+'</p><table>'+comparison+'</table>'+
+'<p>All source identities, private customer fields, grant IDs, request IDs, contact details, assets and underlying casebook contents are intentionally absent. No script, network, storage or executable authority.</p></body></html>';
+saveTextFile("lightup-anonymous-human-review.html","text/html",html);
+elt("message").textContent="Scriptless identity-free review briefing saved locally (REVIEW_ONLY).";
+});
+
 elt("export").addEventListener("click",function(){var s=snapshot;if(!s)return;var o={schema:"lightup.auth_casebook_aggregate.v1",status:"REVIEW_ONLY",fictional_demo:fictional,declared_counts:s.declared_counts,comparison_counts:comparisonCounts(),local_human_stage_counts:{unreviewed:0,investigating:0,escalated:0,documented:0},source_authenticated:false,client_consent_verified:false,operator_consent_verified:false,authorization_granted:false,execution_allowed:false,release_approved:false};s.case_overview.forEach(function(c){var stage=localStages.get(c.engagement_id)||"unreviewed";o.local_human_stage_counts[stage]++;});var url=URL.createObjectURL(new Blob([JSON.stringify(o,null,2)],{type:"application/json"})),a=document.createElement("a");a.href=url;a.download="lightup-casebook-aggregate.json";document.body.appendChild(a);a.click();a.remove();setTimeout(function(){URL.revokeObjectURL(url);},1000);});
 render();
 })();
