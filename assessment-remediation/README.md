@@ -364,3 +364,50 @@ An owner receiving the old full-membership handoff may continue using receive
 without --handoff, preserving prior behavior. This is still unsigned human-only
 coordination; sender/client verification remains outside the CLI and no
 live LightUp finding, permission or retest status is changed.
+
+
+### Concurrent disjoint private team returns (one common owner baseline)
+
+Two or more reviewers may return independent edits against the **same exact
+original owner mapping**. Never accept team A, overwrite the owner mapping,
+then try to apply team B against the changed baseline. Instead reconcile all
+selected disjoint returns once using the separate [multi_team.py](multi_team.py)
+operator CLI (2–12 handoff/return pairs):
+
+    python3 assessment-remediation/multi_team.py \
+      --links /private/lightup-followup/reviewed-links.json \
+      --team-handoff /private/team-a-team-handoff.json \
+      --team-return /private/team-a-return.json \
+      --team-handoff /private/team-b-team-handoff.json \
+      --team-return /private/team-b-return.json \
+      --output-dir /private/lightup-followup \
+      --prefix parallel-human-reviews
+
+For each original source-bound team assignment, the tool checks the exact
+original full owner-link SHA-256, original exported source hashes, immutable
+per-team scenario/finding memberships and human-only fields. All teams must
+refer to **the same original baseline**; assignments may not overlap. Any
+overlap, added/removed/swapped pair, stale baseline or changed input aborts
+without publishing a merged view. Records not assigned to any team retain
+their original human notes unchanged.
+
+The operator receives four new owner-private artifacts: a single
+parallel-human-reviews-reviewed-links.json with disjoint human notes merged;
+a scriptless private original/returned before-and-after HTML dossier; an
+aggregate-only human change count document with team/assigned/unassigned
+counts; and a CONFIDENTIAL source-selection manifest of which original pairs
+were entrusted to which ordinal team packet. Neither an aggregate nor a
+SHA-256 content reference authenticates reviewers.
+
+Optionally append both original canonical comparison and separately
+authenticated client findings CSV to directly render the updated PRIVATE
+HTML/CSV/aggregate review dossier; include --bundle for the original
+private review ZIP:
+
+    --comparison /private/completed-cohort-comparison.json \
+    --findings-csv /private/authenticated-client-findings.csv --bundle
+
+No original source, real client finding, grant, retest status or scanner is
+modified. Source HOLD remains HOLD. This is offline human handoff preparation
+only: independently verify every reviewer and the underlying engagement
+before distributing the confidential outputs.
