@@ -6,6 +6,22 @@
     "coverage_unknown","scope_violations","policy_violations","human_interventions",
     "tool_calls","evidence_quality","reproducibility","remediation_quality",
     "retest_correctness","runtime_seconds","compute_cost_usd"];
+  const FAMILIES=[
+    {key:"scope-policy",title:"Scope / policy lab flags",
+      metrics:["scope_violations","policy_violations"],
+      question:"Discuss reported lab policy or scope drift with independent human scope reviewers; do not grant or expand permission."},
+    {key:"detector-coverage",title:"Findings / coverage",
+      metrics:["valid_findings","invalid_findings","missed_findings",
+        "coverage_assessed","coverage_unknown"],
+      question:"Reconcile planted lab findings and assessment coverage against the original unverified ground-truth source with its owner."},
+    {key:"evidence-quality",title:"Evidence / scoring",
+      metrics:["evidence_quality","reproducibility","remediation_quality",
+        "retest_correctness"],
+      question:"Discuss original evidence and scoring rubric with an independent reviewer; a score does not prove real remediation."},
+    {key:"lab-operations",title:"Operation / cost information",
+      metrics:["human_interventions","tool_calls","runtime_seconds","compute_cost_usd"],
+      question:"Compare source-reported intervention, tool use, runtime and cost as information only, never as a release or safety criterion."}
+  ];
   const HIGH = new Set(["valid_findings","coverage_assessed","evidence_quality",
     "reproducibility","remediation_quality","retest_correctness"]);
   const LOW = new Set(["invalid_findings","missed_findings","scope_violations","policy_violations"]);
@@ -33,7 +49,7 @@
   let selectedCase=0,caseStages=new Map();
   let demoMode=false,sourceMeta=[];
   let casePlans=new Map(),batchUndo=null;
-  let crossA=0,crossB=1,crossMetric="policy_violations";
+  let crossA=0,crossB=1,crossMetric="policy_violations",familyFocus="all";
 
   // Strict recursive JSON reader: rejects duplicate keys (also escaped aliases),
   // malformed literals, nonfinite numbers and excessively nested documents.
@@ -272,6 +288,64 @@
     $("draft-state").textContent="Private source bindings and local discussion stages were cleared.";
     showMessage("All imported source data and local notes cleared.");
   }
+  function focusedMetricNames() {
+    const family=FAMILIES.find(x=>x.key===familyFocus);
+    return family?family.metrics:NAMES;
+  }
+  function familySummary(family) {
+    const latest=revisions.at(-1);
+    let lastAdverse=0,betweenWorse=0,otherChanges=0;
+    for(const name of family.metrics) {
+      lastAdverse+=snapshot(latest,name).cases;
+      if(revisions.length>1) {
+        const diff=adjacent(revisions.length-2,revisions.length-1,name);
+        betweenWorse+=diff.worsened;otherChanges+=diff.other_changed;
+      }
+    }
+    return {key:family.key,title:family.title,
+      metric_count:family.metrics.length,
+      latest_original_baseline_adverse: lastAdverse,
+      latest_candidate_step_worsening:betweenWorse,
+      informational_changes:otherChanges};
+  }
+  function allFamilySummaries() {
+    return FAMILIES.map(familySummary);
+  }
+  function renderFamilies() {
+    if(!revisions.length)return;
+    const parent=$("family-cards");parent.replaceChildren();
+    const options=[{key:"all",title:"All 15 original lab metrics"},...FAMILIES];
+    const summaries=new Map(allFamilySummaries().map(x=>[x.key,x]));
+    for(const option of options) {
+      const button=add(parent,"button");
+      button.type="button";button.className="family-choice";
+      button.setAttribute("aria-pressed",String(familyFocus===option.key));
+      add(button,"strong",option.title);
+      const summary=summaries.get(option.key);
+      add(button,"span",summary ?
+        summary.latest_original_baseline_adverse+
+        " latest original-baseline adverse / "+
+        summary.latest_candidate_step_worsening+" last-step worsening" :
+        "Complete metric view, with all source categories");
+      button.addEventListener("click",()=>{
+        familyFocus=option.key;
+        if(!focusedMetricNames().includes(selected))
+          selected=focusedMetricNames()[0];
+        renderFamilies();renderMetricSelector();metricsRows();choose(selected);
+      });
+    }
+    const family=FAMILIES.find(x=>x.key===familyFocus);
+    $("family-guidance").textContent=family?
+      family.question+" Only source-reported original lab numbers are shown. No authenticated consent, target execution or release authority." :
+      "Explore the original fifteen lab metrics. All reports are untrusted, reviewer-ordered and non-authorizing.";
+  }
+  function renderMetricSelector() {
+    const control=$("metric");control.replaceChildren();
+    for(const name of focusedMetricNames()) {
+      const option=add(control,"option",nice(name));option.value=name;
+    }
+    control.value=selected;
+  }
   function metricsRows() {
     const head=$("matrix-head"), body=$("matrix-body");
     head.replaceChildren();body.replaceChildren();
@@ -279,7 +353,7 @@
     add(hr,"th","Metric");
     revisions.forEach((_,i)=>add(hr,"th","R"+(i+1)));
     add(hr,"th","Persistent");
-    for(const name of NAMES) {
+    for(const name of focusedMetricNames()) {
       const tr=add(body,"tr");
       tr.tabIndex=0; tr.setAttribute("role","button"); tr.setAttribute("aria-label","Review "+nice(name));
       if(name===selected) tr.className="active";
@@ -329,12 +403,13 @@
       metric_regressions:[...report.cases.values()].reduce((n,c)=>n+c.regressions.length,0),
       metrics:NAMES.map(name=>({name,...snapshot(report,name)}))
     }));
-    return {format:"lightup.assessment_trends.aggregate",version:7,
+    return {format:"lightup.assessment_trends.aggregate",version:8,
       source_kind:demoMode?"FICTIONAL_DEMO_ONLY":"UNAUTHENTICATED_OFFLINE_LAB_JSON",
       fictional_demo:demoMode,
       verdict:"REVIEW_ONLY",phase:"INCUBATE_M3_M7_DRAFT_HOLD",
       source_order:"USER_SELECTED_UNVERIFIED",source_authenticated:false,
       source_comparison_only:true,metrics:NAMES.map(name=>({name,...movement(name)})),
+      lab_metric_topics:allFamilySummaries(),
       revisions:entries,
       descriptive_lab_tradeoffs:relativeTradeoffs(),
       adjacent_pairs:adjacentExport(),
@@ -400,6 +475,15 @@
           fmt(metric.candidate),fmt(metric.delta)]));
       chunks.push("</tbody></table>");
     }
+    chunks.push("<h2>Grouped laboratory discussion topics</h2>",
+      "<p>Fixed source-metric categories. These are not authenticated findings, scope approval or a risk score.</p>",
+      "<table><thead><tr><th>Lab topic</th><th>Source metrics</th><th>Latest adverse observations</th><th>Last-step worsened cases</th><th>Informational changes</th></tr></thead><tbody>");
+    for(const family of model.lab_metric_topics)
+      chunks.push(row([family.title,family.metric_count,
+        family.latest_original_baseline_adverse,
+        family.latest_candidate_step_worsening,
+        family.informational_changes]));
+    chunks.push("</tbody></table>");
     chunks.push("<h2>Successive candidate drift</h2>");
     for(const pair of model.adjacent_pairs) {
       chunks.push("<h3>Position "+pair.before_position+" → "+pair.after_position+"</h3>",
@@ -1021,10 +1105,9 @@
     $("scenario-count").textContent=String(revisions[0].cases.size);
     $("regression-count").textContent=String(allRegressions());
     $("persistent-count").textContent=String(NAMES.reduce((n,name)=>n+movement(name).persistent,0));
-    const select=$("metric");select.replaceChildren();
-    for(const name of NAMES) {
-      const option=add(select,"option",nice(name));option.value=name;
-    }
+    if(!focusedMetricNames().includes(selected))
+      selected=focusedMetricNames()[0];
+    renderFamilies();renderMetricSelector();
     renderOrder();renderManifest();renderPair();renderCross();renderTradeoffs();metricsRows();renderCaseRows();renderCaseInspector();renderAgenda();renderActions();choose(selected);followupText();
     $("demo-banner").hidden=!demoMode;
     $("append-file").disabled=demoMode||revisions.length>=12||revisions.length<3;
