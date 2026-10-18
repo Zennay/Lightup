@@ -177,6 +177,12 @@
     return output;
   }
   const td = (tr, val) => { const cell = document.createElement("td"); cell.textContent = String(val); tr.appendChild(cell); return cell; };
+  function observedSignals(record) {
+    if (!record) return "not recorded in selected source";
+    const labels = ["status", "attention", "request_link_observation", "validity_observation", "decision_provenance_observation"];
+    const visible = labels.filter(k => typeof record[k] === "string").map(k => k + ": " + record[k]);
+    return visible.join(" · ") || "original record present (no status assertion)";
+  }
   function render() {
     const tbody = $("changes");
     tbody.replaceChildren();
@@ -188,6 +194,7 @@
       td(tr,c.kind);
       td(tr,c.id);
       td(tr,c.fieldNames.join(", ") || "membership changed");
+      td(tr,observedSignals(c.before) + "  →  " + observedSignals(c.after));
       const container = document.createElement("td");
       const select = document.createElement("select");
       select.setAttribute("aria-label","Human follow-up for " + c.category + " " + c.id);
