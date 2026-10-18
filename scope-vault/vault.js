@@ -45,6 +45,9 @@
     unlock: $("unlock"), lock: $("lock"), recovered: $("recovered"),
     mergeMode: $("merge-mode"), handoffRoute: $("handoff-route"),
     before: $("compare-before"), after: $("compare-after"),
+    redactSource: $("redact-source"), redactTerm: $("redact-term"),
+    redactCredentials: $("redact-credentials"), redactCreate: $("redact-create"),
+    redactClear: $("redact-clear"), redactSummary: $("redact-summary"),
     previewFile: $("preview-file"), compareFiles: $("compare-files"),
     hidePreview: $("hide-preview"), comparisonOutput: $("comparison-output"),
     comparisonSummary: $("comparison-summary"),
@@ -110,12 +113,15 @@
     els.password.value = "";
     els.confirm.value = "";
     els.openPassword.value = "";
+    els.redactTerm.value = "";
+    els.redactSummary.textContent = "No local edited copy in this session; all authority flags remain false.";
     paint();
   }
   function paint() {
     els.list.replaceChildren();
     els.recovered.replaceChildren();
     const beforeValue = els.before.value, afterValue = els.after.value;
+    const redactValue = els.redactSource.value;
     els.before.replaceChildren();
     els.after.replaceChildren();
     for (const dropdown of [els.before, els.after]) {
@@ -128,6 +134,16 @@
         dropdown.append(option);
       });
     }
+    els.redactSource.replaceChildren();
+    const redactPlaceholder = document.createElement("option");
+    redactPlaceholder.value = ""; redactPlaceholder.textContent = "Choose local file";
+    els.redactSource.append(redactPlaceholder);
+    entries.forEach((entry, index) => {
+      const option = document.createElement("option");
+      option.value = String(index); option.textContent = entry.name;
+      els.redactSource.append(option);
+    });
+    if (entries[Number(redactValue)] && redactValue !== "") els.redactSource.value = redactValue;
     if (entries[Number(beforeValue)] && beforeValue !== "") els.before.value = beforeValue;
     if (entries[Number(afterValue)] && afterValue !== "") els.after.value = afterValue;
     const total = entries.reduce((n, e) => n + e.bytes.length, 0);
@@ -237,6 +253,7 @@
     els.unlock.disabled = busy || !window.isSecureContext || !window.crypto || !window.crypto.subtle;
     els.files.disabled = busy;
     els.openFile.disabled = busy;
+    els.redactCreate.disabled = busy || entries.length === 0 || entries.length >= MAX_FILES || !window.isSecureContext || !window.crypto || !window.crypto.subtle;
   }
   function save(blob, filename) {
     const url = URL.createObjectURL(blob);
