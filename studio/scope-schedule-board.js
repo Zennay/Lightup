@@ -504,7 +504,7 @@ function scenarioPacket(){
         scenario_end_utc:valid?new Date((proposed===undefined?e.interval.start:proposed)+duration).toISOString():null,
         shifted:proposed!==undefined};
     }),
-    unavailable_utc:blackouts.map(b=>({start:new Date(b.start).toISOString(),end:new Date(b.end).toISOString()})),
+    unavailable_utc:blackouts.map(b=>({start:new Date(b.start).toISOString(),end:new Date(b.end).toISOString(),lane:b.lane??0})),
     workday_utc:{enabled:policy.enabled,start:policy.start_utc,end:policy.end_utc,weekdays:policy.weekdays},
     proposed_time_overlap_pairs:pairs.length,proposed_unavailability_overlap_pairs:blockHits,
     proposed_buffer_violation_count:turnaroundIssues(current,blackouts).count,
@@ -574,7 +574,7 @@ function decodeScenario(snapshot){
     'proposed_buffer_violation_count']);
   const rowKeys=new Set(['local_ordinal','review_lane','pinned_time','source_file_sha256','requested_mode','requested_risk','state','original_start_utc',
     'original_end_utc','scenario_start_utc','scenario_end_utc','shifted']);
-  const blockKeys=new Set(['start','end']);
+  const blockKeys=new Set(['start','end','lane']);
   if(!record(snapshot)||!exactKeys(snapshot,rootKeys) ||
      snapshot.kind!=='lightup.scope_schedule_scenario'||snapshot.schema_version!==1 ||
      snapshot.disposition!=='LOCAL_REVIEW_ONLY'||snapshot.source!=='UNTRUSTED_USER_DRAFTS' ||
@@ -642,9 +642,12 @@ function decodeScenario(snapshot){
   for(const block of snapshot.unavailable_utc){
     if(!record(block)||!exactKeys(block,blockKeys))throw Error('invalid block');
     const start=isoMillis(block.start),end=isoMillis(block.end);
+    const lane=own(block,'lane')?block.lane:0;
     if(start===null||end===null||end<=start||end-start>31*DAY ||
-       busy.some(b=>b.start===start&&b.end===end))throw Error('invalid unavailable window');
-    busy.push({start,end});
+       !Number.isInteger(lane)||lane<0||lane>4 ||
+       busy.some(b=>b.start===start&&b.end===end&&b.lane===lane))
+      throw Error('invalid unavailable window');
+    busy.push({start,end,lane});
   }
   const restored=entries.filter(e=>e.interval.state==='resolved').map(e=>{
     const start=shifts.get(e.key)??e.interval.start;
@@ -656,7 +659,7 @@ function decodeScenario(snapshot){
         snapshot.proposed_buffer_violation_count!==turnaroundIssues(restored,busy).count))||
      timeClashes(restored).pairs.length!==snapshot.proposed_time_overlap_pairs||
      restored.reduce((count,e)=>count+busy.filter(b=>
-       e.interval.start<b.end && b.start<e.interval.end).length,0)!==
+       blockedFor(b,e)&&e.interval.start<b.end && b.start<e.interval.end).length,0)!==
        snapshot.proposed_unavailability_overlap_pairs)
     throw Error('inconsistent overlap claims');
   return {shifts,busy,policy,assignedLanes,restoredPins};
@@ -747,8 +750,8 @@ function renderPrivateReviewBrief(packet) {
   ]);
   const table=items=>items.map(list=>'<tr>'+list.map(value=>'<td>'+esc(value)+'</td>').join('')+'</tr>').join('');
   const busy=packet.unavailable_utc.length ?
-    '<table><thead><tr><th>Unavailable from (UTC)</th><th>Until (UTC)</th></tr></thead><tbody>'+
-      table(packet.unavailable_utc.map(b=>[b.start,b.end]))+'</tbody></table>':
+    '<table><thead><tr><th>For</th><th>Unavailable from (UTC)</th><th>Until (UTC)</th></tr></thead><tbody>'+
+      table(packet.unavailable_utc.map(b=>[(b.lane??0)===0?'All lanes':'Lane '+b.lane,b.start,b.end]))+'</tbody></table>':
     '<p>No locally unavailable windows.</p>';
   const names=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
   const weekdays=p.enabled?p.weekdays.map(day=>names[day]).join(', '):'Unrestricted';
@@ -952,7 +955,11 @@ function expandBusyEvent(event){
     return [{start,end}];
   }
   const rule=parseRecurrenceRule(event.rrule,start),days=[0,1,2,3,4,5,6];
-  const wanted=rule.weekdays||[new Date(start).getUTCDay()];
+  const sourceWeekday=new Date(start).getUTCDay();
+  const wanted=rule.weekdays||[sourceWeekday];
+  // RFC recurrence whose DTSTART is not in its BYDAY list has undefined
+  // generated first-instance behavior. HOLD rather than silently dropping it.
+  if(!wanted.includes(sourceWeekday))throw Error('BYDAY excludes DTSTART');
   const startDay=Math.floor(start/DAY);
   const weekAnchor=startDay-((new Date(start).getUTCDay()+6)%7);
   const result=[];
