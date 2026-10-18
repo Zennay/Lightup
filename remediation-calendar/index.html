@@ -49,8 +49,26 @@
 <button id="refresh-apply" type="button" disabled>Apply reviewed source to local human calendar</button> <button id="refresh-receipt" type="button" disabled>Export PRIVATE source-change receipt</button></div>
 <p id="refresh-message" role="status" aria-live="polite"></p>
 </section>
+<section class="panel">
+<h2>4. Propose HUMAN-ONLY follow-up dates</h2>
+<p>Reuse the original Casework planning engine to suggest local dates for unscheduled human plans. These are <strong>not contractual SLAs</strong>, real retest windows or approvals; existing dates and completed/deferred human plans stay untouched.</p>
+<div class="grid"><label>Explicit local anchor date<input id="schedule-anchor" type="date" min="2020-01-01" max="2100-12-30"></label>
+<label>Critical: calendar days<input id="schedule-critical" type="number" min="1" max="365" step="1" placeholder="Required"></label>
+<label>High: calendar days<input id="schedule-high" type="number" min="1" max="365" step="1" placeholder="Required"></label>
+<label>Medium: calendar days<input id="schedule-medium" type="number" min="1" max="365" step="1" placeholder="Required"></label>
+<label>Low: calendar days<input id="schedule-low" type="number" min="1" max="365" step="1" placeholder="Required"></label>
+<label>Info: calendar days<input id="schedule-info" type="number" min="1" max="365" step="1" placeholder="Required"></label>
+<label>Scope<select id="schedule-scope"><option value="filtered">Currently visible missing-date cases</option><option value="all">All missing-date cases</option></select></label></div>
+<button id="schedule-preview-button" type="button">Preview human-only date suggestions</button>
+<div id="schedule-preview" class="refresh-preview" hidden>
+<p id="schedule-summary" role="status" aria-live="polite"></p>
+<div class="tablewrap"><table><thead><tr><th>Original severity</th><th>Finding ID</th><th>Proposed human date</th></tr></thead><tbody id="schedule-rows"></tbody></table></div>
+<label class="check"><input id="schedule-ack" type="checkbox"> I understand these are ONLY local human planning proposals, not authorization, verified remediation, contractual deadlines or consent.</label>
+<button id="schedule-apply" type="button" disabled>Apply selected human dates locally</button></div>
+<p id="schedule-message" role="status" aria-live="polite"></p>
+</section>
 <section id="edit-panel" class="panel" hidden>
-<h2>4. Update HUMAN-ONLY casework</h2>
+<h2>5. Update HUMAN-ONLY casework</h2>
 <p id="edit-label">Choose Edit next to a finding. Changes affect only local planning, never original source retest, the database or consent.</p>
 <form id="edit-form">
 <div class="grid"><label>Human owner/team<input id="edit-owner" maxlength="120"></label>
@@ -63,7 +81,7 @@
 </form>
 </section>
 <section class="panel">
-<h2>5. Export private Casework or calendar</h2>
+<h2>6. Export private Casework or calendar</h2>
 <p>Only locally scheduled open casework is included; <strong>completed or deferred human plans are excluded</strong>. No new deadlines are invented. Calendar clients may upload imported items to external services: use only an independently approved destination.</p>
 <div class="grid"><label>Calendar events <select id="export-scope"><option value="filtered">Currently visible eligible queue</option><option value="all">All eligible scheduled casework</option></select></label>
 <label>Output detail <select id="detail"><option value="anonymous">Redacted — no finding IDs, titles, owner or private notes</option><option value="private">PRIVATE — finding ID, title, owner and next action</option></select></label>
@@ -77,6 +95,7 @@
 </main>
 <footer>Local memory only · no network, storage, authentication, consent capture, automatic changes, scans or grant issuance. Files are unsigned human drafts.</footer>
 <script src="../casework/remediation-engine.js"></script>
+<script src="../casework/remediation-schedule.js"></script>
 <script src="source-refresh.js"></script>
 <script src="app.js"></script>
 </body>

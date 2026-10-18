@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-wpPFZOyxFDTkVCPSRLe+ulmbav4+u8hRIYgukbiqEiU=' 'sha256-2NU0ysKRFZNzkPxlEBUtRttxZzRCBx0/j+wVe5U1veQ=' 'sha256-EVJsVXa0tP2uz0bOoEFLd+G5dpzKeUD8oN0TwKZNFTs='; style-src 'sha256-eBXNpKwV7Tfx/VR+iD+lRaRbr6g4N6xCctCZfuuIIvE='; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-wpPFZOyxFDTkVCPSRLe+ulmbav4+u8hRIYgukbiqEiU=' 'sha256-Tsn3rjlsrVBKsSIHK1x43sUVih3vNgrf8whdzXjsqg0=' 'sha256-2NU0ysKRFZNzkPxlEBUtRttxZzRCBx0/j+wVe5U1veQ=' 'sha256-kTFxapYIU6g4oeTJs6M7I9j3cyvVxHwYo2LlKB1Lvag='; style-src 'sha256-eBXNpKwV7Tfx/VR+iD+lRaRbr6g4N6xCctCZfuuIIvE='; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <title>LightUp · Private Remediation Calendar</title>
 <style>:root{color-scheme:dark;font:16px/1.55 system-ui,-apple-system,Segoe UI,sans-serif;background:#0c111d;color:#eef2fb}*{box-sizing:border-box}body{margin:0}header,main,footer{max-width:1160px;margin:auto;padding:26px 24px}header{padding-top:48px}.brand{color:#a4bcff;letter-spacing:.18em;font-size:.75rem;font-weight:800}h1{font-size:clamp(2rem,5vw,3.3rem);line-height:1.08;margin:.5em 0}h2{font-size:1.32rem;margin:0 0 16px}p{color:#bbc5d6}.hold{display:inline-block;color:#ffca7a;border:1px solid #846332;background:#3a2b19;padding:8px 12px;border-radius:8px;font-size:.82rem}.panel{background:#172137;border:1px solid #34435d;border-radius:18px;padding:24px;margin:22px 0;box-shadow:0 8px 24px #050b1740}label{display:block;font-weight:650;color:#ebf0fa}input,select,button{font:inherit}select,input[type=search],input[type=file]{width:100%;background:#0e182b;color:#fff;border:1px solid #52647e;padding:10px;border-radius:8px;margin-top:6px}input:focus,select:focus,button:focus-visible{outline:2px solid #8ab2ff;outline-offset:2px}.filelabel{max-width:600px}.check{display:flex;gap:12px;align-items:flex-start;margin:18px 0;max-width:950px;font-weight:450;color:#d3dced}.check input{width:20px;height:20px;flex:none;margin-top:3px}.metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin-top:20px}.metric{background:#202e49;border-radius:12px;padding:16px}.metric strong{font-size:1.8rem;display:block}.metric span{color:#bbc5d6;font-size:.88rem}.filters,.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px}.tablewrap{overflow-x:auto}table{width:100%;border-collapse:collapse;min-width:760px;text-align:left}th,td{border-bottom:1px solid #34445e;padding:13px 10px;vertical-align:top;overflow-wrap:anywhere}th{color:#9fb7e8;font-size:.8rem;text-transform:uppercase;letter-spacing:.05em}td{font-size:.88rem}td small{color:#aebed0;display:block}.chip{display:inline-block;background:#293957;border-radius:6px;padding:2px 7px}.urgent{color:#ffcc9d}.muted{color:#aab7cf}.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:20px}button{background:#a7c1ff;border:0;border-radius:9px;color:#071226;padding:11px 17px;font-weight:750;cursor:pointer}button:hover:not(:disabled){filter:brightness(1.12)}button:disabled{opacity:.35;cursor:not-allowed}.muted-button{background:#394961;color:#fff}footer{font-size:.83rem;color:#aeb8c8;padding-bottom:50px}@media(max-width:600px){header,main,footer{padding-left:16px;padding-right:16px}.panel{padding:17px}}
 textarea{display:block;width:100%;background:#0e182b;color:#fff;border:1px solid #52647e;padding:10px;border-radius:8px;margin:6px 0 14px;resize:vertical}#edit-form .grid{margin-bottom:14px}input[type=date],#edit-owner{display:block;width:100%;background:#0e182b;color:#fff;border:1px solid #52647e;padding:10px;border-radius:8px;margin-top:6px}textarea:focus-visible{outline:2px solid #8ab2ff}#edit-panel[hidden]{display:none}
@@ -52,8 +52,26 @@ textarea{display:block;width:100%;background:#0e182b;color:#fff;border:1px solid
 <button id="refresh-apply" type="button" disabled>Apply reviewed source to local human calendar</button> <button id="refresh-receipt" type="button" disabled>Export PRIVATE source-change receipt</button></div>
 <p id="refresh-message" role="status" aria-live="polite"></p>
 </section>
+<section class="panel">
+<h2>4. Propose HUMAN-ONLY follow-up dates</h2>
+<p>Reuse the original Casework planning engine to suggest local dates for unscheduled human plans. These are <strong>not contractual SLAs</strong>, real retest windows or approvals; existing dates and completed/deferred human plans stay untouched.</p>
+<div class="grid"><label>Explicit local anchor date<input id="schedule-anchor" type="date" min="2020-01-01" max="2100-12-30"></label>
+<label>Critical: calendar days<input id="schedule-critical" type="number" min="1" max="365" step="1" placeholder="Required"></label>
+<label>High: calendar days<input id="schedule-high" type="number" min="1" max="365" step="1" placeholder="Required"></label>
+<label>Medium: calendar days<input id="schedule-medium" type="number" min="1" max="365" step="1" placeholder="Required"></label>
+<label>Low: calendar days<input id="schedule-low" type="number" min="1" max="365" step="1" placeholder="Required"></label>
+<label>Info: calendar days<input id="schedule-info" type="number" min="1" max="365" step="1" placeholder="Required"></label>
+<label>Scope<select id="schedule-scope"><option value="filtered">Currently visible missing-date cases</option><option value="all">All missing-date cases</option></select></label></div>
+<button id="schedule-preview-button" type="button">Preview human-only date suggestions</button>
+<div id="schedule-preview" class="refresh-preview" hidden>
+<p id="schedule-summary" role="status" aria-live="polite"></p>
+<div class="tablewrap"><table><thead><tr><th>Original severity</th><th>Finding ID</th><th>Proposed human date</th></tr></thead><tbody id="schedule-rows"></tbody></table></div>
+<label class="check"><input id="schedule-ack" type="checkbox"> I understand these are ONLY local human planning proposals, not authorization, verified remediation, contractual deadlines or consent.</label>
+<button id="schedule-apply" type="button" disabled>Apply selected human dates locally</button></div>
+<p id="schedule-message" role="status" aria-live="polite"></p>
+</section>
 <section id="edit-panel" class="panel" hidden>
-<h2>4. Update HUMAN-ONLY casework</h2>
+<h2>5. Update HUMAN-ONLY casework</h2>
 <p id="edit-label">Choose Edit next to a finding. Changes affect only local planning, never original source retest, the database or consent.</p>
 <form id="edit-form">
 <div class="grid"><label>Human owner/team<input id="edit-owner" maxlength="120"></label>
@@ -66,7 +84,7 @@ textarea{display:block;width:100%;background:#0e182b;color:#fff;border:1px solid
 </form>
 </section>
 <section class="panel">
-<h2>5. Export private Casework or calendar</h2>
+<h2>6. Export private Casework or calendar</h2>
 <p>Only locally scheduled open casework is included; <strong>completed or deferred human plans are excluded</strong>. No new deadlines are invented. Calendar clients may upload imported items to external services: use only an independently approved destination.</p>
 <div class="grid"><label>Calendar events <select id="export-scope"><option value="filtered">Currently visible eligible queue</option><option value="all">All eligible scheduled casework</option></select></label>
 <label>Output detail <select id="detail"><option value="anonymous">Redacted — no finding IDs, titles, owner or private notes</option><option value="private">PRIVATE — finding ID, title, owner and next action</option></select></label>
@@ -279,6 +297,45 @@ function reconcileSource(before,existingCases,after){
 global.LightUpCasework=Object.freeze({compareSource,reconcileSource,parseCSV,normalizeSource,newCase,cleanCase,digest,makePacket,loadPacket,metrics,exportActionsCSV,SEVERITY,RETEST,PROGRESS,MAX_BYTES});
 })(window);
 </script>
+<script>/* Local date suggestions for remediation planning. Not regulatory SLAs, approvals or scanner deadlines. */
+(function(global){
+'use strict';
+const SEVERITIES=['critical','high','medium','low','info'];
+const DAY=86400000;
+function day(iso){
+ if(typeof iso!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(iso))return null;
+ const d=new Date(iso+'T00:00:00.000Z');
+ if(!Number.isFinite(d.valueOf())||d.toISOString().slice(0,10)!==iso)return null;
+ if(d.getUTCFullYear()<2020||d.getUTCFullYear()>2100)return null;
+ return d.getTime();
+}
+function prepare(findings,cases,anchor,policy){
+ const start=day(anchor);
+ if(start===null)throw Error('Select a valid local planning start date (2020–2100).');
+ if(!policy||typeof policy!=='object'||Array.isArray(policy))throw Error('Specify a per-severity planning policy.');
+ for(const level of SEVERITIES)
+  if(!Number.isInteger(policy[level])||policy[level]<1||policy[level]>365)
+   throw Error('Planning days must be integers from 1 to 365 for every severity.');
+ const byId=new Map(cases.map(c=>[c.finding_id,c]));
+ const entries=[];
+ for(const f of findings){
+  const c=byId.get(f.finding_id);
+  if(!c)throw Error('Missing finding casework for '+f.finding_id.slice(0,60)+'.');
+  if(c.due_date||c.status==='completed'||c.status==='deferred')continue;
+  const horizon=start+policy[f.severity]*DAY;
+  const d=new Date(horizon);
+  if(!Number.isFinite(d.valueOf())||d.getUTCFullYear()>2100)throw Error('Proposed deadline exceeds supported calendar.');
+  entries.push({finding_id:f.finding_id,severity:f.severity,proposed_due_date:d.toISOString().slice(0,10),days:policy[f.severity]});
+ }
+ return {
+  kind:'lightup.local_deadline_suggestions',disposition:'UNAPPROVED_PLANNING_ONLY',
+  authority:false,contractual_sla:false,retention_enforced:false,grant:false,
+  anchor_date:anchor,policy:{...policy},entries
+ };
+}
+global.LightUpRemediationSchedule=Object.freeze({prepare});
+})(window);
+</script>
 <script>/* LightUp offline original-source revision handoff. Never authenticates a CSV or approves remediation. */
 (function(global){
 'use strict';
@@ -357,7 +414,7 @@ const COLS=['finding_id','title','severity','retest_status','remediation'];
 const CASE=['finding_id','owner','status','due_date','next_action','verification_plan','blocker','note','updated_utc'];
 const PACKET=['kind','schema_version','disposition','source_contract','source_sha256','findings','cases','instructions',...FLAGS];
 const PRIORITY=['critical','high','medium','low','info'];
-let state=null,activeId=null,dirty=false,selectedDay=null,pendingRefresh=null;
+let state=null,activeId=null,dirty=false,selectedDay=null,pendingRefresh=null,pendingSchedule=null;
 function fail(message){throw Error(message);}
 function bytes(s){return new TextEncoder().encode(s).length;}
 function exactKeys(o,keys,what){
@@ -505,7 +562,7 @@ function applyRefresh(){
  const packet=global.LightUpCasework.makePacket(data.after,data.cases,data.digest);
  const clean=packetStructure(packet);
  state={...clean,digest:data.digest};
- dirty=true;activeId=null;selectedDay=null;$('edit-panel').hidden=true;
+ dirty=true;activeId=null;selectedDay=null;clearSchedule();$('edit-panel').hidden=true;
  $('month').value=todayUTC().slice(0,7);
  $('refresh-file').value='';$('refresh-ack').checked=false;
  $('draft-ack').checked=false;$('calendar-ack').checked=false;
@@ -514,6 +571,73 @@ function applyRefresh(){
  ' added, '+data.diff.changed.length+' changed, '+data.diff.missing.length+
  ' absent (NOT verified fixed); '+data.diff.unchanged.length+
  ' unchanged human plans retained. Export updated PRIVATE Casework before closing.';
+}
+function clearSchedule(){
+ pendingSchedule=null;$('schedule-preview').hidden=true;$('schedule-ack').checked=false;
+ $('schedule-apply').disabled=true;$('schedule-rows').replaceChildren();
+}
+function scheduleControls(){
+ $('schedule-apply').disabled=!pendingSchedule||!state||
+  !$('source-ack').checked||!$('schedule-ack').checked;
+}
+function previewSchedule(){
+ clearSchedule();
+ if(!state||!$('source-ack').checked)fail('Confirm original Casework first.');
+ const anchor=$('schedule-anchor').value;
+ const policy={};
+ for(const sev of PRIORITY){
+  const input=$('schedule-'+sev).value;
+  if(!/^[1-9][0-9]{0,2}$/.test(input)||Number(input)>365)
+   fail('Specify explicit human planning horizons of 1–365 calendar days for every severity.');
+  policy[sev]=Number(input);
+ }
+ const snapshot=state,previous=JSON.stringify(state.cases);
+ const plan=global.LightUpRemediationSchedule.prepare(state.findings,state.cases,anchor,policy);
+ if(plan.kind!=='lightup.local_deadline_suggestions'||plan.authority!==false||
+   plan.grant!==false||plan.contractual_sla!==false||plan.retention_enforced!==false)
+  fail('Not an original non-authorizing planning proposal.');
+ const visible=new Set(filtered().map(x=>x.finding.finding_id));
+ const scope=$('schedule-scope').value;
+ const selected=plan.entries.filter(x=>scope==='all'||visible.has(x.finding_id));
+ if(!selected.length)fail('No unscheduled, open human cases match the selected scope. Clear the day filter or select All.');
+ if(selected.length>350||selected.some(x=>!safeDate(x.proposed_due_date)))
+  fail('Original human planning dates exceed the supported private calendar bounds.');
+ if(state!==snapshot||JSON.stringify(state.cases)!==previous)
+  fail('Casework changed while preparing human dates. Preview again.');
+ pendingSchedule={snapshot,previous,selected,policy,anchor};
+ const tbody=$('schedule-rows');
+ for(const x of selected){
+  const tr=document.createElement('tr');
+  tr.append(textEl('td',x.severity),textEl('td',x.finding_id),
+   textEl('td',x.proposed_due_date+' ('+x.days+' days)'));tbody.append(tr);
+ }
+ $('schedule-summary').textContent=selected.length+
+  ' human-only dates proposed. Existing due dates and completed/deferred local cases are unchanged; none is a real SLA or approved retest window.';
+ $('schedule-preview').hidden=false;$('schedule-message').textContent=
+  'Source-bound private preview. Nothing has been changed.';
+ scheduleControls();
+}
+function applySchedule(){
+ if(!state||!pendingSchedule||!$('source-ack').checked||!$('schedule-ack').checked)
+  fail('Confirm the original source and review the explicit human date proposal.');
+ const stage=pendingSchedule;
+ if(stage.snapshot!==state||JSON.stringify(state.cases)!==stage.previous){
+  clearSchedule();fail('Human cases changed since the date preview. Preview again.');
+ }
+ if(!global.confirm('Apply '+stage.selected.length+' proposed HUMAN-ONLY dates? These are NOT contractual SLAs, authorized scan/retest windows or verified fixes.'))return;
+ const additions=new Map(stage.selected.map(x=>[x.finding_id,x.proposed_due_date]));
+ const ids=new Set(state.findings.map(f=>f.finding_id)),utc=new Date().toISOString();
+ const cases=state.cases.map(c=>{
+  const due=additions.get(c.finding_id);
+  if(!due)return c;
+  if(c.due_date!==null||!isOpen(c))fail('Planning eligibility changed. Apply refused.');
+  return global.LightUpCasework.cleanCase({...c,due_date:due,updated_utc:utc},ids);
+ });
+ global.LightUpCasework.loadPacket(global.LightUpCasework.makePacket(state.findings,cases,state.digest));
+ state={...state,cases};dirty=true;activeId=null;selectedDay=null;
+ $('edit-panel').hidden=true;clearSchedule();clearRefresh();render();
+ $('schedule-message').textContent=additions.size+
+  ' HUMAN-ONLY due dates saved locally. Export the updated PRIVATE Casework draft; no original finding or retest was updated.';
 }
 function openEdit(id){
  if(!state||!$('source-ack').checked)fail('Source confirmation required.');
@@ -538,7 +662,7 @@ function saveEdit(event){
   blocker:$('edit-blocker').value,updated_utc:new Date().toISOString()
  },new Set(state.findings.map(f=>f.finding_id)));
  const cases=state.cases.slice();cases[index]=next;state={...state,cases};
- dirty=true;activeId=null;clearRefresh();$('edit-panel').hidden=true;render();
+ dirty=true;activeId=null;clearSchedule();clearRefresh();$('edit-panel').hidden=true;render();
  $('export-message').textContent='Human-only local change saved in memory. Export a PRIVATE Casework v1 draft before closing.';
 }
 function exportDraft(){
@@ -636,7 +760,7 @@ async function openFile(file){
  const digest=await global.LightUpCasework.digest(clean.findings);
  if(clean.source_sha256&&(!digest||clean.source_sha256!==digest))fail('Original source fingerprint mismatch or browser digest unavailable.');
  const newState={...clean,digest};
- state=newState;clearRefresh();$('refresh-file').value='';$('refresh-ack').checked=false;dirty=false;activeId=null;selectedDay=null;$('month').value=todayUTC().slice(0,7);$('edit-panel').hidden=true;$('draft-ack').checked=false;
+ state=newState;clearSchedule();clearRefresh();$('refresh-file').value='';$('refresh-ack').checked=false;dirty=false;activeId=null;selectedDay=null;$('month').value=todayUTC().slice(0,7);$('edit-panel').hidden=true;$('draft-ack').checked=false;
  $('workspace').hidden=false;$('calendar-ack').checked=false;$('export-message').textContent='';
  render();
  $('message').textContent=clean.findings.length+' original findings loaded locally. Source is a historical unsigned draft; no current identity or consent checked.';
@@ -691,7 +815,7 @@ function exportAggregate(){
  $('export-message').textContent='Anonymous category counts exported. This is neither a retest outcome nor proof of a safe public disclosure.';
 }
 function reset(){
- state=null;activeId=null;dirty=false;selectedDay=null;clearRefresh();$('refresh-file').value='';$('refresh-ack').checked=false;$('file').value='';$('source-ack').checked=false;$('calendar-ack').checked=false;$('draft-ack').checked=false;$('edit-panel').hidden=true;
+ state=null;activeId=null;dirty=false;selectedDay=null;clearSchedule();clearRefresh();$('refresh-file').value='';$('refresh-ack').checked=false;$('file').value='';$('source-ack').checked=false;$('calendar-ack').checked=false;$('draft-ack').checked=false;$('edit-panel').hidden=true;
  $('workspace').hidden=true;$('message').textContent='Private workspace cleared from app state. Already exported files and calendar imports remain under your control.';
 }
 $('file').addEventListener('change',async e=>{
@@ -707,6 +831,10 @@ $('refresh-ack').addEventListener('change',()=>{clearRefresh();});
 $('refresh-file').addEventListener('change',clearRefresh);
 $('refresh-apply').addEventListener('click',()=>{try{applyRefresh();}catch(e){$('refresh-message').textContent='HOLD: '+e.message;}});
 $('refresh-receipt').addEventListener('click',()=>{try{exportRefreshReceipt();}catch(e){$('refresh-message').textContent='HOLD: '+e.message;}});
+$('schedule-preview-button').addEventListener('click',()=>{try{previewSchedule();}catch(e){clearSchedule();$('schedule-message').textContent='HOLD: '+e.message;}});
+$('schedule-ack').addEventListener('change',scheduleControls);
+$('schedule-apply').addEventListener('click',()=>{try{applySchedule();}catch(e){$('schedule-message').textContent='HOLD: '+e.message;}});
+for(const id of ['schedule-anchor','schedule-scope',...PRIORITY.map(x=>'schedule-'+x)])$(id).addEventListener('change',clearSchedule);
 $('calendar-ack').addEventListener('change',render);
 $('draft-ack').addEventListener('change',render);
 $('month').addEventListener('change',()=>{selectedDay=null;render();});
@@ -716,7 +844,7 @@ $('day-clear').addEventListener('click',()=>{selectedDay=null;render();});
 $('edit-form').addEventListener('submit',e=>{try{saveEdit(e);}catch(err){e.preventDefault();$('export-message').textContent='HOLD: '+err.message;}});
 $('edit-cancel').addEventListener('click',()=>{activeId=null;$('edit-panel').hidden=true;});
 $('casework-save').addEventListener('click',()=>{try{exportDraft();}catch(err){$('export-message').textContent='HOLD: '+err.message;}});
-$('source-ack').addEventListener('change',()=>{if(!$('source-ack').checked)clearRefresh();if(state)render();});
+$('source-ack').addEventListener('change',()=>{if(!$('source-ack').checked){clearRefresh();clearSchedule();}if(state)render();});
 $('download').addEventListener('click',async()=>{try{await exportCalendar();}catch(e){$('export-message').textContent='HOLD: '+e.message;}});
 $('aggregate').addEventListener('click',()=>{try{exportAggregate();}catch(e){$('export-message').textContent='HOLD: '+e.message;}});
 $('clear').addEventListener('click',()=>{if(dirty&&!global.confirm('Discard unsaved human notes?'))return;reset();});

@@ -12,6 +12,8 @@ HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent
 SOURCE = ROOT / "casework" / "remediation-engine.js"
 EXPECTED_SOURCE_SHA256 = "c293c564ecb11434e45423d244b7beba599b6afe3ebbc85121882e91b8aa1225"
+SCHEDULE = ROOT / "casework" / "remediation-schedule.js"
+EXPECTED_SCHEDULE_SHA256 = "4ec9f7ae396cad504ab122072b5c78dec5158a1def360adff3085dcd78ecaa0d"
 OUTPUT = HERE / "standalone.html"
 
 def pin(text: bytes) -> str:
@@ -21,11 +23,14 @@ def build() -> bytes:
     source = SOURCE.read_bytes()
     if hashlib.sha256(source).hexdigest() != EXPECTED_SOURCE_SHA256:
         raise ValueError("Original Casework source changed. Independent owner review required.")
+    schedule = SCHEDULE.read_bytes()
+    if hashlib.sha256(schedule).hexdigest() != EXPECTED_SCHEDULE_SHA256:
+        raise ValueError("Original Casework schedule owner source changed.")
     refresh = (HERE / "source-refresh.js").read_bytes()
     app = (HERE / "app.js").read_bytes()
     css = (HERE / "style.css").read_bytes()
     html = (HERE / "index.html").read_text("utf-8")
-    script_policy = "script-src " + " ".join([pin(source), pin(refresh), pin(app)])
+    script_policy = "script-src " + " ".join([pin(source), pin(schedule), pin(refresh), pin(app)])
     style_policy = "style-src " + pin(css)
     old = "script-src 'self'; style-src 'self'"
     if html.count(old) != 1:
@@ -34,6 +39,7 @@ def build() -> bytes:
     replacements = [
         ('<link rel="stylesheet" href="style.css">', "<style>" + css.decode("utf-8") + "</style>"),
         ('<script src="../casework/remediation-engine.js"></script>', "<script>" + source.decode("utf-8") + "</script>"),
+        ('<script src="../casework/remediation-schedule.js"></script>', "<script>" + schedule.decode("utf-8") + "</script>"),
         ('<script src="source-refresh.js"></script>', "<script>" + refresh.decode("utf-8") + "</script>"),
         ('<script src="app.js"></script>', "<script>" + app.decode("utf-8") + "</script>"),
     ]
