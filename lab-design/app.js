@@ -212,7 +212,7 @@
       const span=document.createElement("span");span.className="stat";
       span.textContent=title+": "+count;$("stats").append(span);
     });
-    for(const id of ["savePrivate","summary","brief","print"])$(id).disabled=!items.length;
+    for(const id of ["savePrivate","summary","brief","runbook","print"])$(id).disabled=!items.length;
     $("appendCatalog").disabled=!items.length||items.length>=32||fictional;
     renderCoverage();
     if(!items.length){$("catalog").innerHTML='<p class="empty">No scenarios yet.</p>';return;}
@@ -427,6 +427,58 @@
   $("rejectStage").addEventListener("click",()=>{
     clearStage();notify("status","Staged replacement discarded; original catalog preserved.");
   });
+  function saveRunbook(){
+    if(!items.length)return;
+    if(!confirm("Download a PRIVATE runbook including lab IP addresses, scenario IDs and expected findings?"))return;
+    try{validateCatalog(documentCatalog());}catch(_){
+      notify("exportStatus","HOLD: invalid private catalog; no runbook generated.",true);return;
+    }
+    const esc=value=>String(value).replace(/[&<>"']/g,c=>
+      ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));
+    const style="body{font:15px/1.6 system-ui,sans-serif;color:#18303a;max-width:980px;margin:30px auto;padding:0 24px}"+
+      "h1,h2,h3{color:#153b4d}h1{font-size:2rem}.warn{padding:12px;border-left:5px solid #b44040;background:#fff2f2}"+
+      ".page{page-break-before:always;border-top:2px solid #346273;margin-top:32px;padding-top:24px}"+
+      "table{width:100%;border-collapse:collapse}th,td{border:1px solid #b4c2c8;padding:8px;text-align:left;vertical-align:top}"+
+      "th{background:#e9f1f5}.tick{list-style-type:square}.small{font-size:.82rem}";
+    const paper=items.map((row,index)=>{
+      const mode=row.expected_findings===null?"UNSCORED — no ground truth assumed":
+        row.expected_findings.length?"PLANTED findings — unverified source declaration":
+        "SCORED ZERO — explicit original ground truth";
+      const facts=row.expected_findings===null?"<p>No expected findings provided; this is NOT a negative result.</p>":
+        !row.expected_findings.length?"<p>Explicit zero planted findings. Not proof of a clean target.</p>":
+        "<table><thead><tr><th>Declared check</th><th>Title</th><th>Capability</th><th>Severity</th></tr></thead><tbody>"+
+        row.expected_findings.map(f=>"<tr><td>"+esc(f.identifier)+"</td><td>"+esc(f.title)+
+          "</td><td>"+esc(f.capability_id)+"</td><td>"+esc(f.severity)+"</td></tr>").join("")+
+        "</tbody></table>";
+      return "<section class='page'><h2>Scenario "+(index+1)+": "+esc(row.name)+"</h2>"+
+        "<p><b>Private original ID:</b> "+esc(row.scenario_id)+"</p>"+
+        "<p><b>Declared IP literals (not a permission grant):</b> "+row.targets.map(esc).join(", ")+"</p>"+
+        "<p><b>Design notes:</b> "+esc(row.description||"None supplied")+"</p>"+
+        "<p><b>Ground truth mode:</b> "+esc(mode)+"</p>"+facts+
+        "<h3>Human discussion worksheet</h3><ul class='tick'>"+
+        "<li>Confirm source/fixture identity independently: __________________</li>"+
+        "<li>Confirm isolated environment owner and purpose: __________________</li>"+
+        "<li>Review ground truth with lab author, or leave unscored: __________________</li>"+
+        "<li>Record revised catalog privately if assumptions change: __________________</li>"+
+        "<li>Keep real client/operator consent, at-use revocation and scan authority external.</li>"+
+        "</ul><p class='small'>PRIVATE LAB PLAN ONLY. No scan, grant, dispatch, retest, authorization or release.</p></section>";
+    }).join("");
+    const html="<!doctype html><html lang='en'><head><meta charset='utf-8'>"+
+      "<meta http-equiv=\"Content-Security-Policy\" content=\"default-src 'none'; script-src 'none'; connect-src 'none';"+
+      " img-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'\">"+
+      "<title>PRIVATE LightUp lab scenario workbook</title><style>"+style+"</style></head><body>"+
+      "<h1>PRIVATE LightUp / lab scenario workbook</h1>"+
+      "<p class='warn'><b>"+(fictional?"FICTIONAL DEMO":"UNVERIFIED HUMAN LAB PLANNING")+
+      "</b> · INCUBATE M3/M7 · DRAFT/HOLD. Authorized: false. Consent verified: false."+
+      " Dispatch allowed: false. Release allowed: false. This contains sensitive declared targets."+
+      " It cannot start a fixture or assess a real asset.</p>"+
+      "<p>Scenarios: "+items.length+". Ordered slot numbers are not authenticated chronology or priority."+
+      " All findings are declared expectations only; none were scanned or reproduced.</p>"+paper+
+      "<p>Original security, distinct client/operator consent and revocation-at-use, independent review,"+
+      " full exact-HEAD required hosted and registered VPS CI and explicit HUMAN GO remain mandatory.</p></body></html>";
+    download("lightup-PRIVATE-lab-scenario-workbook.html",html,"text/html");
+    notify("exportStatus","PRIVATE full lab workbook saved; target IPs and finding identities INCLUDED.");
+  }
   function saveBrief(){
     if(!items.length)return;
     const v=catalogSummary();
@@ -473,6 +525,7 @@
   $("savePrivate").addEventListener("click",savePrivate);
   $("summary").addEventListener("click",saveRedacted);
   $("brief").addEventListener("click",saveBrief);
+  $("runbook").addEventListener("click",saveRunbook);
   $("print").addEventListener("click",()=>{if(items.length)window.print();});
   toggleFindingMode();render();
 })();
