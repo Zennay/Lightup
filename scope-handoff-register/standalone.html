@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-agbJO3OVuciws7hX4E7Wd1Wbb+9OKp74lLmTy/0lq+Q=' 'sha256-X4nOjHqXl4cEjDVdqODJ4miIGbKHwaSBHfgk1Y4EyQ4=' 'sha256-F/FTboDDkAFr+2CnZVzOxVrUYtmAzfKdvueiY9ELeiE=' 'sha256-REkAJcLnKs3VcWmJHzYjBJQIBzorENsB+T/Uo0O+Ubg=' 'sha256-8MhMb58WJkc5Llfd0r2NRUn7+l0Xue3qzNmyNgkIuUw=' 'sha256-/GlbR0i59OAffVBlGpMdRQdol9nTFxAfliUyo25AuVE='; style-src 'sha256-0WDtmsEXHWcAANg46Rq6OjCT5GpXe0K0XnrZCrCA92s='; img-src 'none'; connect-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-agbJO3OVuciws7hX4E7Wd1Wbb+9OKp74lLmTy/0lq+Q=' 'sha256-X4nOjHqXl4cEjDVdqODJ4miIGbKHwaSBHfgk1Y4EyQ4=' 'sha256-F/FTboDDkAFr+2CnZVzOxVrUYtmAzfKdvueiY9ELeiE=' 'sha256-ML8QHYWfQvHSFHZNxCGE+cZQzL427Y+G4YEhbtFLMJk=' 'sha256-REkAJcLnKs3VcWmJHzYjBJQIBzorENsB+T/Uo0O+Ubg=' 'sha256-8MhMb58WJkc5Llfd0r2NRUn7+l0Xue3qzNmyNgkIuUw=' 'sha256-4pXITsUlnt3SD3DS4L3yQrjSAsInRI0lHc2X815wX6Y='; style-src 'sha256-0W/zIdhZy/bI47UJtCN3YToYyisE3XODLJDTF1CdfYU='; img-src 'none'; connect-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'">
   <title>LightUp · Scope Handoff Register</title>
   <style>:root{font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;color-scheme:dark;--bg:#0b111c;--panel:#172236;--line:#31445e;--text:#f2f6ff;--muted:#b8c7dc;--accent:#77bfff;--warn:#ffd89c}
 *{box-sizing:border-box}body{background:linear-gradient(145deg,#0d1626,#111826 58%,#0d1320);color:var(--text);margin:0;min-height:100vh}header,main,footer{max-width:1160px;margin:auto;padding:24px}header{padding-top:45px}.topline{display:flex;align-items:center;justify-content:space-between;gap:16px;font-size:.76rem;letter-spacing:.15em;color:var(--accent)}.flag{background:#43321e;color:var(--warn);padding:8px 12px;border-radius:30px;border:1px solid #6e5530;font-size:.7rem}h1{font-size:clamp(1.9rem,5vw,3.6rem);max-width:750px;margin:35px 0 15px;line-height:1.11;letter-spacing:-.045em}h2{font-size:1.25rem;margin:0 0 8px;letter-spacing:-.02em}h3{margin:0 0 10px;font-size:1.07rem}p{color:var(--muted);line-height:1.55}header>p{max-width:780px}main{display:grid;gap:23px}.panel{border:1px solid var(--line);border-radius:17px;padding:25px;background:var(--panel);box-shadow:0 18px 44px #0002}.section-head{display:flex;align-items:start;justify-content:space-between;gap:24px;flex-wrap:wrap}.section-head p{margin:0 0 14px}.toolbar,.actions{display:flex;align-items:end;gap:12px;flex-wrap:wrap;margin:14px 0}.toolbar>label{display:grid;gap:6px;flex:1;min-width:180px;font-size:.86rem;color:var(--muted)}input,select,textarea,button,.button{font:inherit;border-radius:10px}input,select,textarea{padding:11px 12px;color:var(--text);background:#0c1525;border:1px solid #52617b;min-width:0}button,.button{display:inline-block;color:var(--text);padding:11px 14px;background:#253d59;border:1px solid #64809c;cursor:pointer;white-space:normal;text-align:center}button:hover,.button:hover{background:#31567c}button:focus-visible,.button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid var(--accent);outline-offset:2px}.button.primary{background:#086ab3;border-color:#5eb7ff;font-weight:700}button[disabled]{opacity:.45;cursor:not-allowed}.notice{padding:11px 14px;background:#101b2a;border-left:3px solid var(--accent);white-space:pre-wrap}.notice.error{border-color:#ff8181;color:#ffcdcd}.stats{display:flex;flex-wrap:wrap;gap:9px;margin:14px 0}.metric{padding:9px 14px;border-radius:12px;border:1px solid #405577;background:#0e1a2b;font-size:.9rem}.metric strong{font-size:1.25rem;margin-right:6px}.boards{display:grid;grid-template-columns:repeat(auto-fill,minmax(255px,1fr));gap:12px}.card{display:grid;text-align:left;gap:9px;white-space:normal;background:#102136;border:1px solid #3e5877;padding:17px}.card.selected{outline:2px solid #80c9ff}.card-title{font-size:1.08rem;font-weight:700;overflow-wrap:anywhere}.meta{font-size:.82rem;color:var(--muted)}.chips{display:flex;flex-wrap:wrap;gap:5px}.chip{font-size:.72rem;padding:4px 7px;border-radius:6px;background:#34455e}.chip.alert{background:#674827;color:#fff2d9}.controls{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:15px}.controls label{display:grid;gap:5px;min-width:190px;flex:1;color:var(--muted)}.checkrow{display:grid;grid-template-columns:1fr 170px;gap:14px;align-items:center;padding:11px 0;border-bottom:1px solid #334860}.checkrow label{font-weight:600}.checkrow small{color:var(--muted);display:block;margin-top:4px}.summary{background:#102136;border:1px solid #344c67;border-radius:12px;padding:15px}.warning{border-left:3px solid #d69e53;padding:11px 14px;background:#2e261d;color:#f9e8d2}.small{font-size:.83rem}footer{font-size:.82rem;color:#94a7bf;padding-bottom:50px}@media(max-width:600px){header,main,footer{padding-left:15px;padding-right:15px}.panel{padding:17px}.checkrow{grid-template-columns:1fr}.topline{align-items:start;flex-direction:column}.controls{flex-direction:column}.controls label{width:100%}}@media print{*{color:#000!important;box-shadow:none!important;background:white!important}header,main{padding:5px}.panel{break-inside:avoid;border:1px solid #888}.toolbar,.actions,.button,#clear,footer{display:none!important}.boards{grid-template-columns:repeat(2,1fr)}.warning{border:1px solid #888}body{font-size:11pt}}
@@ -56,7 +56,15 @@
 @media(max-width:760px){.permission-question{grid-template-columns:1fr 1fr}.permission-question strong{grid-column:1/-1}}
 @media(max-width:540px){.permission-board{grid-template-columns:1fr}.permission-question{grid-template-columns:1fr}.permission-question strong{grid-column:auto}}
 @media print{.permission-card .actions{display:none!important}.permission-card{break-inside:avoid}}
+
+.urgent-row{border-color:#cd8865;background:#3a261e}
+.urgent-row .meta{color:#ffe1c8}
+#coordBoard .action-main strong{overflow-wrap:anywhere}
+@media(max-width:760px){#coordBoard .action-row{grid-template-columns:1fr 1fr}#coordBoard .action-row .action-main{grid-column:1/-1}}
+@media(max-width:530px){#coordBoard .action-row{grid-template-columns:1fr}#coordBoard .action-row .action-main{grid-column:auto}}
+@media print{#coordBoard .action-row button{display:none!important}}
 </style>
+  
   
   
   
@@ -84,33 +92,40 @@
     </div>
   </section>
   <section class="panel">
-    <div class="section-head"><div><h2>2. Cliënt- en operatorvragen</h2><p>Laad een gecombineerd, niet-autorisend antwoordoverzicht uit de bestaande Permission Brief. Antwoorden blijven onbevestigd; een teruggestuurde vraag betekent geen cliënttoestemming of operatorakkoord.</p></div>
+    <div class="section-head"><div><h2>2. Eén gezamenlijke opvolgagenda</h2><p>Alle lokale voorbereidingsacties, ongelezen cliënt-/operatorvragen, menselijke STOP-opvolging en open dossier-overlapbesprekingen in één prioriteitslijst. Hoogste urgentie eerst; elk item blijft REVIEW_ONLY_HOLD.</p></div>
+      <div class="actions"><button id="coordJson" type="button">Download volledige agenda (JSON)</button><button id="coordCsv" type="button">Download agenda (CSV)</button></div></div>
+    <div class="toolbar"><label>Soort werk <select id="coordKind"><option value="all">Alles</option><option value="withdrawal_human_followup">STOP / scopewijziging</option><option value="permission_question">Cliënt-/operatorvragen</option><option value="local_preparation">Dossiervoorbereiding</option><option value="cross_proposal_discussion">Gezamenlijk overleg</option></select></label>
+    <label>Urgentie <select id="coordPriority"><option value="all">Alle prioriteiten</option><option value="0">Dringend</option><option value="1">Hoog</option><option value="2">Normaal</option><option value="3">Voorbereidend</option></select></label></div>
+    <div id="coordStats" class="stats"></div><div id="coordBoard" class="action-queue"></div>
+  </section>
+  <section class="panel">
+    <div class="section-head"><div><h2>3. Cliënt- en operatorvragen</h2><p>Laad een gecombineerd, niet-autorisend antwoordoverzicht uit de bestaande Permission Brief. Antwoorden blijven onbevestigd; een teruggestuurde vraag betekent geen cliënttoestemming of operatorakkoord.</p></div>
       <label class="button">Permission Brief-overzicht importeren<input id="permissionFile" type="file" accept=".json,application/json" hidden></label></div>
     <p id="permissionFeedback" class="notice" role="status" aria-live="polite">Geen gecombineerd vragenoverzicht geladen.</p><div id="permissionBoard" class="permission-board"></div>
   </section>
   <section class="panel">
-    <div class="section-head"><div><h2>3. Stop-/wijzigingsverzoeken</h2><p>Importeer brongebonden Withdrawal Desk-reviewbestanden. Een verzoek is slechts een ongeverifieerde menselijke melding, nooit een daadwerkelijke stop, intrekking of bevestiging van toestemming.</p></div>
+    <div class="section-head"><div><h2>4. Stop-/wijzigingsverzoeken</h2><p>Importeer brongebonden Withdrawal Desk-reviewbestanden. Een verzoek is slechts een ongeverifieerde menselijke melding, nooit een daadwerkelijke stop, intrekking of bevestiging van toestemming.</p></div>
     <label class="button">Review-only stopverzoek importeren <input id="withdrawalFile" type="file" accept=".json,application/json" hidden></label></div>
     <p id="withdrawalFeedback" class="notice" role="status">Er is nog geen externe review-only melding gekoppeld.</p>
     <div id="withdrawalBoard" class="withdrawal-board"></div>
   </section>
   <section class="panel">
-    <div class="section-head"><div><h2>4. Actiewerkvoorraad per rol</h2><p>Bereid menselijk werk voor per dossier en verantwoordelijke rol (cliënt, operator of gezamenlijk). De optionele doeldatum is lokaal, geen gereserveerd scanmoment of toestemmingsdeadline.</p></div></div>
+    <div class="section-head"><div><h2>5. Actiewerkvoorraad per rol</h2><p>Bereid menselijk werk voor per dossier en verantwoordelijke rol (cliënt, operator of gezamenlijk). De optionele doeldatum is lokaal, geen gereserveerd scanmoment of toestemmingsdeadline.</p></div></div>
     <div class="toolbar"><label>Rolverdeling <select id="taskRoleFilter"><option value="all">Alle rollen</option><option value="client">Cliëntvoorbereiding</option><option value="operator">Operatorvoorbereiding</option><option value="joint">Gezamenlijke afstemming</option></select></label>
     <label>Aandacht <select id="taskDueFilter"><option value="all">Alle open voorbereiding</option><option value="overdue">Doeldatum verstreken</option><option value="week">Binnen 7 dagen</option><option value="undated">Zonder doeldatum</option><option value="revision">Herziening nodig</option><option value="withdrawal">Extern stop-/wijzigingsverzoek</option></select></label></div>
     <div id="actionStats" class="stats"></div><div id="actionQueue" class="action-queue"></div>
   </section>
   <section class="panel">
-    <div class="section-head"><div><h2>5. Gedeelde review-agenda</h2><p>Welke voorstellen vragen gezamenlijk overleg door mogelijke numerieke netwerk- of letterlijke hostname-overlap en/of samenvallende voorgestelde UTC-tijden? Geen identiteits- of eigendomscontrole.</p></div></div>
+    <div class="section-head"><div><h2>6. Gedeelde review-agenda</h2><p>Welke voorstellen vragen gezamenlijk overleg door mogelijke numerieke netwerk- of letterlijke hostname-overlap en/of samenvallende voorgestelde UTC-tijden? Geen identiteits- of eigendomscontrole.</p></div></div>
     <div id="conflictStats" class="stats"></div>
     <div id="conflicts" class="conflicts"></div>
   </section>
   <section class="panel">
-    <div class="section-head"><div><h2>6. Menselijke vervolgacties</h2><p>Lokale voorbereiding, geen klant-/operatorauthenticatie. Controleer identiteit en toestemming altijd afzonderlijk in het echte LightUp-domein.</p></div></div>
+    <div class="section-head"><div><h2>7. Menselijke vervolgacties</h2><p>Lokale voorbereiding, geen klant-/operatorauthenticatie. Controleer identiteit en toestemming altijd afzonderlijk in het echte LightUp-domein.</p></div></div>
     <div id="detail"><p>Selecteer een scopeconcept om acties en overdrachtsnotities vast te leggen.</p></div>
   </section>
   <section class="panel">
-    <h2>7. Overdracht en hervatten</h2>
+    <h2>8. Overdracht en hervatten</h2>
     <p>Download een privacy-minimaal register, actielijst-CSV of printbare handoff. Bevat geen ruwe assets, namen, hostnamen, klantnotities, authenticatie of handtekeningen. Hervatten vereist opnieuw openen van de oorspronkelijke conceptbestanden.</p>
     <div class="actions"><button id="save" type="button">Bewaar lokale voortgang (.json)</button><label class="button">Herstel voortgang (.json)<input id="restore" type="file" accept=".json,application/json" hidden></label><button id="export" type="button">Exporteer review-JSON</button><button id="csv" type="button">Acties als CSV</button><button id="agendaCsv" type="button">Overlegagenda als CSV</button><button id="printPack" type="button">Volledig HTML-overdrachtspakket</button><button id="print" type="button">Print overzicht</button></div>
     <p class="warning"><strong>Niet-autoriseren­de informatie.</strong> Concepten, lokale vinkjes, SHA-256, acties en exports zijn géén bewijs van asset-eigendom, scopegoedkeuring, revocationstatus, toestemming, bevoegdheid of vrijgave. Stop onmiddellijk met een echte beoordeling als bevoegdheid of context ontbreekt.</p>
@@ -456,6 +471,100 @@ function overlaps(a,b){
  return a.start<b.end&&b.start<a.end;
 }
 global.LightUpPlanningWindow=Object.freeze({localTimestamp,resolve,validateStored,overlaps,timezone});
+})(window);
+</script>\n<script>/* Non-authorizing local coordination agenda. Pure metadata transformation, no network or identities. */
+(function(global){
+"use strict";
+const TASKS=new Set(["owner","assets","risk","schedule","stops","privacy","client","operator"]);
+const PAIR_STATES=new Set(["open","discussion_started","needs_followup","discussion_recorded"]);
+const ACTION_ROLES=Object.freeze({
+ owner:"joint",assets:"joint",risk:"operator",schedule:"joint",
+ stops:"joint",privacy:"joint",client:"client",operator:"operator"
+});
+const PAIR_ROLE="joint";
+const LIMIT=16,MAX=700;
+const isSHA=x=>typeof x==="string"&&/^[a-f0-9]{64}$/.test(x);
+function build(input,pairs) {
+ if(!Array.isArray(input)||input.length>LIMIT||!Array.isArray(pairs)||pairs.length>120)
+   throw Error("Unsafe coordination input");
+ const rows=[],known=new Map();
+ for(let i=0;i<input.length;i++){
+   const r=input[i];
+   if(!r||!isSHA(r.sha)||known.has(r.sha)||typeof r.reference!=="string")
+     throw Error("Duplicate or invalid dossier input");
+   const dossier="D"+String(i+1).padStart(2,"0");
+   known.set(r.sha,dossier);
+   const risk=r.source.risk;
+   if(!Number.isInteger(risk)||risk<1||risk>4)throw Error("Invalid proposal risk");
+   if(r.withdrawal){
+     const w=r.withdrawal;
+     // Human step status 'requested_unverified' still needs independent confirmation.
+     const steps=["client_channel","operator_channel","active_work","grant_revoke",
+       "scope_schedule","evidence_privacy","human_ack","incident_log"];
+     for(const code of steps){
+       const status=w.statuses[code];
+       rows.push({dossier,source_sha256:r.sha,kind:"withdrawal_human_followup",code,
+         role:code==="client_channel"?"client":code==="grant_revoke"||code==="active_work"||code==="operator_channel"?"operator":"joint",
+         priority:w.urgency==="urgent"?0:1,reason:"Self-reported "+w.intent,
+         state:status,action:status==="requested_unverified"?"independently_verify_stop_receipt":"contact_authenticated_channel",
+         due_day:null,authority:"REVIEW_ONLY_HOLD"});
+     }
+   }
+   if(r.permission){
+     for(const q of r.permission.questions){
+       if(q.status==="answered_unverified"||q.status==="question_sent"||q.status==="unanswered"||q.status==="not_reported")
+         rows.push({dossier,source_sha256:r.sha,kind:"permission_question",code:q.code,role:q.role,
+           priority:r.withdrawal?.urgency==="urgent"?1:2,reason:"Unverified role-labelled reply",
+           state:q.status,action:q.status==="answered_unverified"?"independently_verify_identity_and_scope":
+             q.status==="question_sent"?"follow_up_authenticated_channel":
+             q.status==="unanswered"?"ask_authenticated_channel":"await_authenticated_reply",
+           due_day:null,authority:"REVIEW_ONLY_HOLD"});
+     }
+   }
+   for(const code of TASKS) {
+     const status=r.tasks[code];
+     if(status==="prepared")continue;
+     const due=r.dueDates[code]||null;
+     rows.push({dossier,source_sha256:r.sha,kind:"local_preparation",code,
+       role:ACTION_ROLES[code],
+       priority:r.withdrawal?.urgency==="urgent"?0:status==="needs_revision"?1:risk===4?2:3,
+       reason:status==="needs_revision"?"Earlier local preparation requires human reassessment":"Local human preparation",
+       state:status,action:status==="needs_revision"?"reassess_revised_proposal":"prepare_offline_handoff",
+       due_day:due,authority:"REVIEW_ONLY_HOLD"});
+   }
+ }
+ const seen=new Set();
+ for(const p of pairs) {
+   if(!known.has(p.left)||!known.has(p.right)||p.left===p.right||
+     !PAIR_STATES.has(p.human_status))throw Error("Invalid source-bound pair");
+   const key=[p.left,p.right].sort().join(":");
+   if(seen.has(key))throw Error("Duplicate review pair");seen.add(key);
+   if(p.human_status==="discussion_recorded")continue;
+   rows.push({dossier:known.get(p.left)+"-"+known.get(p.right),
+     source_sha256:p.left+";"+p.right,kind:"cross_proposal_discussion",
+     code:p.revision_related?"historical_revision":p.scope_overlap&&p.utc_overlap?"scope_and_schedule_overlap":
+       p.scope_overlap?"effective_scope_overlap":"utc_window_overlap",
+     role:PAIR_ROLE,priority:p.revision_related?3:p.scope_overlap&&p.utc_overlap?1:2,
+     reason:p.revision_related?"Self-reported revision, not a separate client":"Independent human review of potential collision",
+     state:p.human_status,action:"independent_human_coordination",due_day:null,authority:"REVIEW_ONLY_HOLD"});
+ }
+ if(rows.length>MAX)throw Error("Agenda too large");
+ const day=new Date(),today=[day.getFullYear(),String(day.getMonth()+1).padStart(2,"0"),String(day.getDate()).padStart(2,"0")].join("-");
+ rows.sort((a,b)=>a.priority-b.priority ||
+   ((a.due_day&&a.due_day<today)?0:1)-((b.due_day&&b.due_day<today)?0:1) ||
+   (a.due_day||"9999").localeCompare(b.due_day||"9999") ||
+   a.dossier.localeCompare(b.dossier) || a.code.localeCompare(b.code));
+ return {
+   kind:"lightup.scope_handoff_coordination_agenda",schema_version:1,
+   disposition:"REVIEW_ONLY_HOLD",authority:{
+     authenticated:false,consent:false,authorized:false,grant:false,execution:false,
+     scan:false,dispatch:false,deploy:false,release:false
+   },
+   warning:"Every status is a local unverified human preparation state. No execution rights or real revocation.",
+   entries:rows
+ };
+}
+global.LightUpHumanCoordination=Object.freeze({build});
 })(window);
 </script>\n<script>/* Strict, offline-only import of Permission Brief reconciliation exports. Never consent or identity proof. */
 (function(global){
@@ -877,6 +986,45 @@ global.LightUpWithdrawalImport=Object.freeze({parse,safeSaved});
     network_activity:"Voorwaarden netwerkinteractie",revision_client:"Nieuwe cliëntscope herbeoordelen",
     revision_operator:"Nieuwe operatorscope herbeoordelen"
   });
+  function coordination() {
+    return LightUpHumanCoordination.build(records,meetingPairs());
+  }
+  function renderCoordination(){
+    const board=$("coordBoard"),metrics=$("coordStats");board.replaceChildren();metrics.replaceChildren();
+    const entries=records.length?coordination().entries:[],today=localDay();
+    const kind=$("coordKind").value,p=$("coordPriority").value;
+    const filtered=entries.filter(e=>(kind==="all"||kind===e.kind)&&(p==="all"||Number(p)===e.priority));
+    const metric=(name,value)=>{const m=node("span","metric");m.append(node("strong","",value),node("span","",name));metrics.append(m);};
+    metric("Open menselijke vervolgitems",entries.length);
+    metric("Dringend",entries.filter(e=>e.priority===0).length);
+    metric("Open vragen",entries.filter(e=>e.kind==="permission_question").length);
+    metric("Open STOP-acties",entries.filter(e=>e.kind==="withdrawal_human_followup").length);
+    if(!filtered.length){board.append(node("p","small","Geen lokale items in deze selectie. Dit is geen bewijs van veiligheid, consent of goedkeuring."));return;}
+    for(const e of filtered.slice(0,75)){
+      const item=node("article","action-row"+(e.priority===0?" urgent-row":""));
+      const desc=node("div","action-main");
+      desc.append(node("strong","",e.kind.replaceAll("_"," ")+" · "+e.code.replaceAll("_"," ")),
+        node("span","small",e.dossier+" · "+e.role+" · "+e.action.replaceAll("_"," ")));
+      const badge=node("span","chip"+(e.priority<=1?" alert":""),["DRINGEND","HOOG","NORMAAL","VOORBEREIDEND"][e.priority]);
+      const meta=node("span","meta",e.state.replaceAll("_"," ")+(e.due_day?" · "+e.due_day+(e.due_day<today?" · ACHTERSTALLIG":""):""));
+      const open=node("button","","Open dossier");open.type="button";
+      open.addEventListener("click",()=>{
+        const first=e.source_sha256.split(";")[0];active=first;
+        render();$("detail").scrollIntoView({behavior:"smooth",block:"start"});
+      });
+      item.append(desc,badge,meta,open);board.append(item);
+    }
+    if(filtered.length>75)board.append(node("p","notice",(filtered.length-75)+
+      " extra acties niet getoond; download de complete agenda of beperk de filters."));
+  }
+  function coordinationCsv(){
+    const rows=[["dossier","source_sha256","kind","code","role","priority","reported_state","next_human_action","local_due_day","authority"]];
+    for(const x of coordination().entries)rows.push([
+      x.dossier,x.source_sha256,x.kind,x.code,x.role,String(x.priority),x.state,x.action,x.due_day||"","REVIEW_ONLY_HOLD"
+    ]);
+    const cell=v=>'"'+String(v).replaceAll('"','""')+'"';
+    return "\ufeff"+rows.map(r=>r.map(cell).join(",")).join("\r\n")+"\r\n";
+  }
   function renderPermission(){
     const area=$("permissionBoard");area.replaceChildren();
     const attached=records.filter(r=>r.permission);
@@ -1226,6 +1374,7 @@ global.LightUpWithdrawalImport=Object.freeze({parse,safeSaved});
     }
     if (!boards.children.length) boards.append(node("p","small","Geen concepten gevonden voor deze selectie."));
     renderDetail();
+    renderCoordination();
     renderPermission();
     renderWithdrawals();
     renderActionQueue();
@@ -1517,6 +1666,7 @@ global.LightUpWithdrawalImport=Object.freeze({parse,safeSaved});
     e.target.value="";
   });
   $("search").addEventListener("input",render);$("filter").addEventListener("change",render);$("sort").addEventListener("change",render);
+  $("coordKind").addEventListener("change",render);$("coordPriority").addEventListener("change",render);
   $("taskRoleFilter").addEventListener("change",render);$("taskDueFilter").addEventListener("change",render);
   $("bulkStart").addEventListener("click",()=>{
     const task=$("bulkTask").value;
@@ -1532,6 +1682,8 @@ global.LightUpWithdrawalImport=Object.freeze({parse,safeSaved});
     if(!records.length || !confirm("Alle in-memory concepten en taakstatussen definitief vergeten?"))return;
     records.splice(0);pairReviews.clear();active=null;show("Alle lokale concept- en overleggegevens uit deze browserpagina gewist.");render();
   });
+  $("coordJson").addEventListener("click",()=>records.length?json(coordination(),"lightup-review-only-coordination.json"):show("Laad eerst concepten.",true));
+  $("coordCsv").addEventListener("click",()=>records.length?download(coordinationCsv(),"lightup-review-only-coordination.csv","text/csv;charset=utf-8"):show("Laad eerst concepten.",true));
   $("save").addEventListener("click",()=>records.length?json(snapshot(),"lightup-local-progress.json"):show("Laad eerst concepten.",true));
   $("export").addEventListener("click",()=>records.length?json(report(),"lightup-review-only-handoff.json"):show("Laad eerst concepten.",true));
   $("csv").addEventListener("click",()=>records.length?download(csv(),"lightup-handoff-actions.csv","text/csv;charset=utf-8"):show("Laad eerst concepten.",true));
