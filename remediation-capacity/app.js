@@ -35,6 +35,9 @@
     clearHistory();
     el('source-status').textContent = 'No report loaded. All files stay in this browser tab.';
     el('generate').disabled = true;
+    el('save-working-draft').disabled = true;
+    el('reopen-working-draft').value='';
+    el('draft-status').textContent='No saved draft restored. Browsers store nothing for you.';
     el('results').hidden = true;
     el('stats').replaceChildren();
     el('weekly').replaceChildren();
@@ -47,6 +50,8 @@
     const file = source.files && source.files[0];
     findings = null; result = null; lastOptions = null;
     el('generate').disabled = true;
+    el('save-working-draft').disabled = true;
+    el('draft-status').textContent='New source: older plans must be independently reviewed again.';
     el('results').hidden = true;
     clearHistory();
     if (!file) return;
@@ -105,9 +110,12 @@
       render();
       renderComparison();
       el('results').hidden = false;
+      el('save-working-draft').disabled = false;
+      el('draft-status').textContent='Current computed plan can be saved after confirming a private local file.';
       setFeedback('Draft allocations prepared offline. Nothing has been assigned or executed.');
     } catch (err) {
       result = null; el('results').hidden=true;
+      el('save-working-draft').disabled=true;
       setFeedback('Plan held: '+(err instanceof Error?err.message:'Invalid inputs'),true);
     }
   });
@@ -297,6 +305,91 @@
     download('lightup-capacity-discussion.md',engine.markdownReport(result),'text/markdown;charset=utf-8');
     setFeedback('Unsigned aggregate discussion brief exported. No original finding details included.');
   });
+
+  // Source-bound, user-controlled resume: never localStorage or implicit restore.
+  function numericWorkingOptions(options) {
+    if(!options)throw new Error('Generate a current proposal before saving');
+    const names=['weeks','engineers','workDays','hoursPerDay','reserve'];
+    const normalized={start:options.start};
+    for(const name of names) normalized[name]=Number(options[name]);
+    normalized.hours=Object.fromEntries(['critical','high','medium','low','info']
+      .map(severity=>[severity,Number(options.hours[severity])]));
+    normalized.weekAvailability=options.weekAvailability.map(Number);
+    return normalized;
+  }
+  el('save-working-draft').addEventListener('click',async()=>{
+    const file=source.files?.[0];
+    const planSnapshot=result, optionsSnapshot=lastOptions;
+    if(!file||!planSnapshot||!optionsSnapshot){
+      el('draft-status').textContent='HOLD: load an original CSV and generate a proposal first.';
+      return;
+    }
+    if(!window.confirm('Save ONLY this proposed team/effort/availability configuration and an unsigned exact-source fingerprint? It grants no permission and remains a private file you control.'))return;
+    el('save-working-draft').disabled=true;
+    try {
+      const digest=await window.LightUpDraft.fingerprint(file);
+      if(source.files?.[0]!==file||result!==planSnapshot||lastOptions!==optionsSnapshot)
+        throw new Error('Source or plan changed during export; review again');
+      const packet=window.LightUpDraft.exportDraft(
+        digest,planSnapshot.sourceCount,numericWorkingOptions(optionsSnapshot),
+        Number(el('extra-engineers').value)
+      );
+      download('lightup-capacity-working-draft.json',packet,'application/json;charset=utf-8');
+      el('draft-status').textContent='Private working draft downloaded. Reopen only with the exact same original CSV.';
+    }catch(err){
+      el('draft-status').textContent='HOLD: '+(err instanceof Error?err.message:'Draft export refused');
+    }finally{
+      el('save-working-draft').disabled=!result;
+    }
+  });
+  el('reopen-working-draft').addEventListener('change',async()=>{
+    const imported=el('reopen-working-draft').files?.[0];
+    const original=source.files?.[0], currentFindings=findings;
+    if(!imported)return;
+    // File selection is cleared immediately after reading so re-selection works.
+    if(!original||!currentFindings){
+      el('draft-status').textContent='HOLD: first load the exact original authorised CSV.';
+      el('reopen-working-draft').value='';
+      return;
+    }
+    if(!window.confirm('Restore an unsigned private plan only after reopening the exact same CSV? This does not confirm current permission, identity, remediation, revocation or retest.')){
+      el('reopen-working-draft').value='';
+      return;
+    }
+    try{
+      if(imported.size===0||imported.size>window.LightUpDraft.MAX_DRAFT_BYTES)
+        throw new Error('Private draft size is invalid');
+      const text=new TextDecoder('utf-8',{fatal:true}).decode(await imported.arrayBuffer());
+      const digest=await window.LightUpDraft.fingerprint(original);
+      if(original!==source.files?.[0]||currentFindings!==findings)
+        throw new Error('CSV changed during restore');
+      const restored=window.LightUpDraft.importDraft(
+        text,digest,findings.length,findings,engine
+      );
+      // Only commit the new UI state after every schema/source/plan check.
+      clearHistory();
+      const opts=restored.options;
+      for(const name of ['start','weeks','engineers','workDays','hoursPerDay','reserve'])
+        el('settings').elements.namedItem(name).value=String(opts[name]);
+      for(const severity of ['critical','high','medium','low','info'])
+        el('settings').elements.namedItem(severity).value=String(opts.hours[severity]);
+      renderWeekAvailability();
+      Array.from(el('week-availability').querySelectorAll('input'))
+        .forEach((input,index)=>{input.value=String(opts.weekAvailability[index]);});
+      el('extra-engineers').value=String(restored.scenario);
+      lastOptions=opts;result=restored.plan;
+      render();renderComparison();
+      el('results').hidden=false;
+      el('save-working-draft').disabled=false;
+      el('draft-status').textContent='REVIEW_ONLY: same-source planning assumptions restored. No authorization, verified repair, or earlier source comparison carried over.';
+      setFeedback('Private capacity proposal resumed; verify all assumptions before sharing.');
+    }catch(err){
+      el('draft-status').textContent='HOLD: '+(err instanceof Error?err.message:'Unsafe draft');
+    }finally{
+      el('reopen-working-draft').value='';
+    }
+  });
+
   el('print').addEventListener('click',()=>{if(result)window.print();});
   const now = new Date();
   el('settings').elements.namedItem('start').value = [
