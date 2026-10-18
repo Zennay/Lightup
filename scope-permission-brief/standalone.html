@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="referrer" content="no-referrer">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-oqDZnvdqnIMCuulYu/O2SAXPLh0FHZyMexvYZ60ovD4=' 'sha256-LoESO18nGfY0Y3caUQghnvKW4o2WXqPfDdc1vU76PA0='; style-src 'sha256-N58KLjfpC7L3pgbnd/3h6Ztmy8klJ9Fu6NqhNE8tfS0='; img-src 'none'; connect-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-EfVDwlolMpdv26r19Ee3xDoOWAsblexGmdw+/zQpXNQ=' 'sha256-LoESO18nGfY0Y3caUQghnvKW4o2WXqPfDdc1vU76PA0='; style-src 'sha256-N58KLjfpC7L3pgbnd/3h6Ztmy8klJ9Fu6NqhNE8tfS0='; img-src 'none'; connect-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'">
 <title>LightUp · Scope Permission Brief</title>
 <style>
 :root{color-scheme:dark;font:15px/1.55 system-ui,-apple-system,Segoe UI,sans-serif;--bg:#0a1020;--surface:#121e32;--line:#35455d;--muted:#b8c5d8;--mint:#7de5cd;--warn:#eac081;color:#f2f8ff;background:var(--bg)}
@@ -51,7 +51,7 @@
  <div class="panel"><div class="eyebrow">OPERATOR VIEW · DRAFT</div><h2>What an operator must still independently decide</h2><p id="operatorSummary"></p><div class="anchor">No executable authorization</div><p>Actual assessment requests, grants, scope enforcement, risk signoff, explicit stop mechanisms and at-use revocation require the protected production workflow, not this local summary.</p></div>
 </section>
 <section class="panel">
- <div class="row"><div><div class="eyebrow">3. Human clarification queue</div><h2>Questions to resolve before approval</h2><p>Mark whether a question has merely been sent or answered. These are self-reported preparation notes, never verification or proof.</p></div><div class="counter"><strong id="openCount">—</strong><small>unanswered / unresolved</small></div></div>
+ <div class="row"><div><div class="eyebrow">3. Human clarification queue</div><h2>Questions to resolve before approval</h2><p>Mark whether a question has merely been sent or answered. These are self-reported preparation notes, never verification or proof. Export only includes updates for the selected audience; a client-labelled note cannot claim operator answers, or vice versa.</p></div><div class="counter"><strong id="openCount">—</strong><small>unanswered / unresolved</small></div></div>
  <div id="questions" aria-live="polite"></div>
 </section>
 <section class="panel">
@@ -231,8 +231,11 @@ function exportModel(){
   requested_mode:current.draft.requested_mode,requested_risk:current.draft.requested_risk,
   proposed_assets_count:current.draft.requested_assets.length,excluded_assets_count:current.draft.excluded_assets.length,
   window_status:current.window==='Resolved (still unapproved)'?'resolved_unapproved':current.window.toLowerCase(),
-  question_states:questions.map(q=>({code:q.code,role:q.role,status:q.status})),
-  outstanding_questions:questions.filter(q=>q.status!=='answered_unverified').length,
+  // A role-labelled export may report ONLY that role's own preparation questions.
+  // Other-role local annotations stay private and cannot impersonate another reply.
+  question_states:questions.map(q=>({code:q.code,role:q.role,
+   status:q.role===document.querySelector('[name="audience"]:checked').value?q.status:'unanswered'})),
+  outstanding_questions:questions.filter(q=>q.role!==document.querySelector('[name="audience"]:checked').value||q.status!=='answered_unverified').length,
   flags:flags(),
   notice:'No approval, consent, permission, grant, scan, deployment, release or authority. Answers are unverified.'
  };
@@ -326,11 +329,13 @@ async function importReview(file){
    const q=incoming.question_states[i],expected=questions[i];
    assert(exactKeys(q,['code','role','status'])&&Object.keys(q).length===3,'Unknown question fields');
    assert(q.code===expected.code&&q.role===expected.role&&statuses.includes(q.status),'Review question changed');
+   assert(q.role===incoming.audience||q.status==='unanswered','Foreign-role reply claims are forbidden');
    restored.push(q.status);
   }
   assert(incoming.outstanding_questions===restored.filter(x=>x!=='answered_unverified').length,'Review summary mismatch');
   // All imported labels remain explicitly unverified. Commit the whole restore only after preflight.
-  questions.forEach((q,i)=>{q.status=restored[i];});
+  // Preserve other-role local work; importing this role never overwrites it.
+  questions.forEach((q,i)=>{if(q.role===incoming.audience)q.status=restored[i];});
   document.querySelector('[name="audience"][value="'+incoming.audience+'"]').checked=true;
   render();$('replyState').textContent='Review note matches exact original bytes · imported as unverified preparation only · HOLD';
  }catch(_){
