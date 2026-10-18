@@ -12,7 +12,19 @@ The viewer derives an action queue with explicit human-only status: unanswered, 
 
 Operators can also **import a previously downloaded review brief back against the original exact source bytes**. Strict import rejects wrong SHA-256, conflicting count/mode/risk, any changed false security flag, altered question order/role, duplicate JSON keys and inconsistent unresolved counts **before** restoring any statuses. Restored statuses remain human self-reports, not approval. A second button creates a plain-language, role-specific `.txt` handoff with only anonymous question headings and generic counts; it cannot contain the original source labels or target values.
 
-The downloaded JSON file contains `kind: lightup.scope_permission_brief`, `schema_version: 1`, `state: REVIEW_ONLY_HOLD`, SHA-256 over **exact local input bytes**, counts, requested risk/mode, anonymous question codes/states and twelve literal false authority/release flags. SHA-256 is an unsigned correlation hint: it cannot identify the signer, client, owner or origin and cannot grant consent. The viewer never contacts endpoints, processes tokens/credentials, edits the Studio source, records identity, captures signatures or creates a grant.
+The downloaded JSON file contains `kind: lightup.scope_permission_brief`, `schema_version: 1`, `state: REVIEW_ONLY_HOLD`, SHA-256 over **exact local input bytes**, counts, requested risk/mode, anonymous question codes/states and twelve literal false authority/release flags. SHA-256 is an unsigned correlation hint: it cannot identify the signer, client, owner or origin and cannot grant consent. The viewer and return desk never contact endpoints, processes tokens/credentials, edits the Studio source, records identity, captures signatures or creates a grant.
+
+## Two-role return reconciliation and human meeting pack
+
+The same offline application now includes a **client/operator return desk**. Start with the original Studio-v1 proposal, then import up to one self-labelled client preparation note and one separately self-labelled operator preparation note. Both must be previously exported `lightup.scope_permission_brief` REVIEW_ONLY_HOLD JSON for the **same exact original source bytes**. Role labels are **not verified identities**, and the tool is incapable of accepting or granting consent.
+
+Each incoming return is capped at 64 KiB with fatal UTF-8 decoding, duplicate-key refusal and exact schema validation. A return must preserve all original counts, mode, risk, window, source SHA-256, literal false flags and question-code/order/role identities. A client-labelled packet may change *only* client-assigned question statuses; an operator-labelled packet may change *only* operator-assigned statuses. Other-role statuses must stay `unanswered`, preventing an accidentally or intentionally cross-labelled packet from being reported as an independent role response. This remains a **self-declared** role distinction, not authentication.
+
+The return desk leaves its existing accepted notes untouched if an incoming return fails. Replacing a materially different already loaded note requires an explicit local confirmation; clear/original-source changes forget both packets. Missing replies remain visible. Consolidation produces a fixed `lightup.scope_permission_reply_reconciliation` JSON with disposition `REVIEW_ONLY_HOLD`, missing/unanswered/question-sent/unverified-response states, generic next-action codes, the original SHA-256 and the same literal false authority/grant/release fields. A spreadsheet-safe CSV lists code, role, status and next action without source labels or free-text data.
+
+A **script-free, read-only HTML meeting pack** is also downloadable for an offline human review. It groups pending and unverified questions by self-labelled role, sorts missing replies first, prints cleanly and includes an explicit HOLD banner. It embeds no scripts, network resources, target identities, contact names, raw notes or credentials. Exported printable material is not client consent or an operator decision.
+
+All three return-desk exports (JSON, CSV, read-only HTML) are optional downloads from the local browser only. The existing user-selected roles and question state edits remain strictly non-authorizing. The native browser's file picker can display a filename even though app-generated previews/exports do not.
 
 ## Strict import and privacy boundaries
 
@@ -30,6 +42,7 @@ Source is isolated to four **new** paths:
 - `scope-permission-brief/index.html`
 - `scope-permission-brief/style.css`
 - `scope-permission-brief/app.js`
+- `scope-permission-brief/reconciliation.js` (separated, read-only reply coordination)
 - `scope-permission-brief/build_standalone.py`
 - `scope-permission-brief/standalone.html` (generated, one-file offline edition)
 - `docs/scope-permission-brief.md`
