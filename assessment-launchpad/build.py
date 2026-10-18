@@ -234,7 +234,9 @@ def build(endpoints: tuple[str, ...], output_dir: str,
                 "Open private-launchpad.html locally. Keep entire directory owner-private.\n"
                 "targets.txt is UTF-8, one original-policy-admitted lab URL per line.\n"
                 "Optional operator *no-work* preview, never run by the tool:\n"
-                "  lightup lab-assess --targets-file ./targets.txt --preview-only\n\n"
+                "  lightup lab-assess --targets-file ./targets.txt" +
+                (" --catalog-file ./studio-catalog.json --scenario-id " + studio["scenario_id"]
+                 if studio else "") + " --preview-only\n\n"
                 "The portable browser composer is a convenience, NOT the original scope gate.\n"
                 "Any future assessment requires all original independent permissions,\n"
                 "action-time revocation checks, CI/security/privacy and HUMAN GO.\n"
