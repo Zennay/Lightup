@@ -18,7 +18,8 @@
  <label class="filelabel" for="source">Choose local draft JSON</label><input id="source" type="file" accept=".json,application/json"><p id="sourceState" role="status" aria-live="polite">No source selected · HOLD</p></div>
  <div><h2>2. Choose the audience</h2><p>A single bounded review brief, with relevant questions for each role. Neither role can endorse or sign inside this application.</p>
  <fieldset><legend>Primary handoff audience</legend><label><input type="radio" name="audience" value="client" checked> Client preparation</label><label><input type="radio" name="audience" value="operator"> Operator preparation</label></fieldset>
- <div class="buttons"><button id="export" disabled>Export privacy-minimal brief</button><button id="print" disabled>Print brief</button><button id="clear" class="subtle">Forget draft & answers</button></div>
+ <div class="buttons"><button id="export" disabled>Export privacy-minimal brief</button><button id="textExport" disabled>Save plain-language note</button><button id="print" disabled>Print brief</button><button id="clear" class="subtle">Forget draft & answers</button></div>
+ <label for="reply">Restore a saved review note (after the original draft)</label><input id="reply" type="file" accept=".json,application/json"><p id="replyState" role="status" aria-live="polite">No review note imported.</p>
  </div>
 </section>
 <div id="workspace" hidden>
@@ -38,7 +39,7 @@
 </section>
 <section class="panel">
  <div class="eyebrow">SOURCE-BOUND · PRIVATE DATA OMITTED</div><h2>Handoff preview</h2><p>Only count, category, source SHA-256 and generic question states are exported. No client name, targets, IPs, domains, notes, filenames or source bytes.</p>
- <pre id="preview"></pre><p id="receipt" class="receipt"></p>
+ <pre id="preview"></pre><h3>Human-readable handoff (not consent)</h3><pre id="handoff"></pre><p id="receipt" class="receipt"></p>
 </section>
 </div>
 <footer>LightUp · INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD. Never use this file or its exports as evidence of consent, scope membership, a grant or release.</footer>
