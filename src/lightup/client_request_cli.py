@@ -118,11 +118,13 @@ def main(argv: list[str] | None = None) -> int:
         command.add_argument("--risk", type=int, choices=(1, 2, 3, 4), required=True)
         command.add_argument("--notes", default="", help="request explanation; never use secrets")
     submit.add_argument("--confirm-submit", action="store_true", help="explicitly submit for operator review")
-    for name in ("list", "show"):
+    for name in ("list", "show", "export"):
         command = sub.add_parser(name, help="read own stored requests")
         if name == "show":
             command.add_argument("--request-id", required=True)
-    for command in (submit, sub.choices["list"], sub.choices["show"]):
+        if name == "export":
+            command.add_argument("--output", required=True, help="new private local .html file, never overwritten")
+    for command in (submit, sub.choices["list"], sub.choices["show"], sub.choices["export"]):
         command.add_argument("--db", required=True, help="existing private LightUp SQLite database")
         command.add_argument("--email", required=True, help="persisted client account email")
     args = parser.parse_args(argv)
@@ -148,6 +150,15 @@ def main(argv: list[str] | None = None) -> int:
                 output["message"] = "SUBMITTED for independent operator review; NOT consent or a grant"
             elif args.command == "show":
                 output = _record(db.get_assessment_request(ctx, args.request_id), include_assets=True)
+            elif args.command == "export":
+                from .client_request_snapshot import render_request_snapshot, save_private_snapshot
+
+                records = db.list_assessment_requests(ctx)
+                snapshot = render_request_snapshot(records)
+                save_private_snapshot(Path(args.output), snapshot)
+                output = {"saved": str(Path(args.output)), "records": len(records),
+                          "authorized": False, "grant_issued": False, "scan_allowed": False,
+                          "warning": "Private unsigned and possibly stale client-only snapshot"}
             else:
                 records = db.list_assessment_requests(ctx)
                 output = [_record(record, include_assets=False) for record in records[:100]]
