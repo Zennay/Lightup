@@ -419,6 +419,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--asset", action="append", help="canonical proposed host/IP/CIDR literal; repeat")
     parser.add_argument("--risk", type=int, choices=range(1, 5))
     parser.add_argument("--scenarios-file", help="optional 2–8 bounded alternative risk/scope proposals JSON")
+    parser.add_argument("--studio-proposal", action="append", help="import 1–8 original separately authored Studio v1 DRAFT_ONLY JSON files without editing source proposals")
     parser.add_argument("--output", required=True, help="new, private .json, .html, .csv or .md filename")
     parser.add_argument("--static-html", action="store_true",
                         help="original no-JavaScript HTML, instead of offline interactive operator desk")
@@ -434,7 +435,19 @@ def main(argv: list[str] | None = None) -> int:
         print("HOLD: require existing regular database, interactive operator and a new private output.", file=sys.stderr)
         return 2
     try:
-        if args.scenarios_file is not None:
+        if args.studio_proposal:
+            if args.scenarios_file is not None or args.asset is not None or args.risk is not None:
+                raise ValueError("Studio import cannot mix with manually proposed assets/risk")
+            from .request_binding_studio_import import read_studio_proposals
+            proposals = read_studio_proposals([Path(x) for x in args.studio_proposal])
+            if len(proposals) == 1:
+                _, assets, risk = proposals[0]
+                args.risk = risk
+                scenarios = None
+            else:
+                scenarios = proposals
+                assets = None
+        elif args.scenarios_file is not None:
             if args.asset is not None or args.risk is not None:
                 raise ValueError("scenario file cannot be mixed with single proposal flags")
             from .request_binding_scenarios import read_scenarios
