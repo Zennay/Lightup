@@ -23,6 +23,10 @@ SCRIPT_TAGS = {
     "casework-import.js": '<script src="casework-import.js"></script>',
     "readiness-import.js": '<script src="readiness-import.js"></script>',
     "session-draft.js": '<script src="session-draft.js"></script>',
+    "studio-scope-network.js": '<script src="studio-scope-network.js"></script>',
+    "studio-planning-window.js": '<script src="studio-planning-window.js"></script>',
+    "studio-scope-fingerprint.js": '<script src="studio-scope-fingerprint.js"></script>',
+    "studio-proposal-import.js": '<script src="studio-proposal-import.js"></script>',
     "app.js": '<script src="app.js"></script>',
 }
 
@@ -41,6 +45,14 @@ def main() -> None:
     engine = (ROOT / "remediation-engine.js").read_bytes()
     if hashlib.sha256(engine).hexdigest() != UPSTREAM_DIGEST:
         raise ValueError("Pinned Casework source has changed; refuse bundling")
+    pinned_studio = {
+        "studio-scope-network.js": "6a06c93b7395b9c8b0b3b857e04ed677559b6fef4e2a9ef894b993cbfd25abe4",
+        "studio-scope-fingerprint.js": "5f89ce8c7a979787048c355da8e0c9e2688819b287c1a4811df824d58e04c90e",
+        "studio-planning-window.js": "17f1536e80c390016bfb60a7655ccec55ad462d980cdf29dbee7a263d10b7a21",
+    }
+    for filename, pinned in pinned_studio.items():
+        if hashlib.sha256((ROOT / filename).read_bytes()).hexdigest() != pinned:
+            raise ValueError("Original Studio component changed; refuse unreviewed packaging: " + filename)
     css = (ROOT / "theme.css").read_bytes()
     scripts = {name: (ROOT / name).read_bytes() for name in SCRIPT_TAGS}
     if any(b"</script" in raw.lower() for raw in scripts.values()):

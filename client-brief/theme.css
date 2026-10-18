@@ -4,3 +4,5 @@
 @media print{#readiness-panel{display:none!important}}
 
 @media print{#session-panel{display:none!important}}
+
+@media print{#studio-panel{display:none!important}}
