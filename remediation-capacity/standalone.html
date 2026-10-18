@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-2xlJz/x8wCY8TsF6qlqAE0WyufOr8+QFAYn/C/DecG4=' 'sha256-m7UIotR0YDpCNkG8dpH+CnxK5gdCl+pVy4axUhDCJGU='; style-src 'sha256-Oey3xbqAcDHV62q+mjBNxmjnKjbnCyeceIlUeuiLOkU='; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-wVmZ3atE1p3zThqCuZ3XERqgr/f+XiTtBmRtdKV+Aig=' 'sha256-1OVOis4fZaUrueu+i1D5IHZ5WhUQoeD9ClFSReIqRww='; style-src 'sha256-gEMrhzucwNNVR5rxA190ojTF6E/F5H2OJBugIQxT2kw='; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <title>LightUp | Remediation Capacity Studio — offline draft</title>
 <style>:root{color-scheme:dark;--bg:#0a1119;--panel:#111e29;--edge:#304451;--text:#edf5f7;--muted:#a4bac8;--teal:#7ee4bd;--amber:#f9d48a;--blue:#7cb8ff}
 *{box-sizing:border-box}
@@ -58,6 +58,8 @@ footer{padding:22px 0 60px}
 .scenario-controls{display:flex;gap:12px;align-items:end;flex-wrap:wrap;margin:18px 0}.scenario-controls input{width:110px}.scenario-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.scenario-card{padding:16px;border-radius:10px;background:#0b1922;border:1px solid var(--edge)}.scenario-card strong{color:var(--teal)}.scenario-card p{margin:8px 0;font-variant-numeric:tabular-nums}@media(max-width:490px){.scenario-grid{grid-template-columns:1fr}}
 
 .ack{display:flex;align-items:flex-start;gap:12px;padding:15px;margin:16px 0 20px;border:1px solid var(--edge);background:#0b1922;border-radius:10px}.ack input[type=checkbox]{width:19px;height:19px;flex:none;margin:4px 0 0}.ack strong{color:var(--text)}#history-data{margin-top:22px}#history-data .stats{margin:18px 0}@media print{.ack,#previous,#history-feedback,#review-history,#clear-history,#export-history{display:none!important}}
+
+.availability-field{font-variant-numeric:tabular-nums}.availability-field input{max-width:180px}.week:has(.fill[style="width: 0%;"]){border-left:3px solid var(--amber);padding-left:14px}@media print{#week-availability{display:none!important}}
 </style>
 
 
@@ -101,6 +103,11 @@ footer{padding:22px 0 60px}
         <label>Low<input type="number" name="low" min="1" max="200" value="3" required></label>
         <label>Info<input type="number" name="info" min="1" max="200" value="1" required></label>
       </div>
+    </fieldset>
+    <fieldset>
+      <legend>Weekly availability · holidays, leave and incident load</legend>
+      <p class="subtle">100% uses the team's ordinary available capacity; 0% means no work can be scheduled in that week. Values change only this local estimate, never an authorised assessment window.</p>
+      <div class="grid" id="week-availability" aria-live="polite"></div>
     </fieldset>
     <button type="submit" id="generate" disabled>Prepare capacity plan</button>
   </form>
@@ -299,6 +306,9 @@ footer{padding:22px 0 60px}
     const reserve = exactInteger(options.reserve,0,80,'reserved capacity percentage');
     const estimated = {};
     SEVERITIES.forEach(s => { estimated[s] = exactInteger(options.hours[s],1,200,'estimated '+s+' effort'); });
+    const weekAvailability = options.weekAvailability === undefined ? Array(weeks).fill(100) : options.weekAvailability;
+    if (!Array.isArray(weekAvailability) || weekAvailability.length !== weeks) fail('Availability must be supplied for every planning week');
+    const availability = Object.freeze(weekAvailability.map((v,i)=>exactInteger(v,0,100,'week '+(i+1)+' availability percentage')));
     const gross = engineers * workDays * hoursPerDay;
     const capacity = Math.floor((gross * (100 - reserve)) / 100);
     if (capacity < 1) fail('No available capacity after reserve');
@@ -313,7 +323,8 @@ footer{padding:22px 0 60px}
       SEVERITY_INDEX.get(a.severity)-SEVERITY_INDEX.get(b.severity) || a.ordinal-b.ordinal);
     const schedule = [];
     for (let w=0;w<weeks;w++) {
-      let remaining = capacity;
+      const weeklyCapacity = Math.floor(capacity * availability[w] / 100);
+      let remaining = weeklyCapacity;
       const portions=[];
       for (const task of queue) {
         if (!remaining) break;
@@ -325,7 +336,8 @@ footer{padding:22px 0 60px}
           sourceRetest:task.retest,hours:allocation,finished:task.remaining===0}));
       }
       schedule.push(Object.freeze({week:w+1,start:iso(start+w*7*86400000),
-        capacity,assigned:capacity-remaining,remaining,portions:Object.freeze(portions)}));
+        availability:availability[w],capacity:weeklyCapacity,
+        assigned:weeklyCapacity-remaining,remaining,portions:Object.freeze(portions)}));
     }
     const outstanding = queue.filter(x=>x.remaining>0);
     const totalHours = queue.reduce((n,x)=>n+x.effort,0);
@@ -335,7 +347,7 @@ footer{padding:22px 0 60px}
       backlogCount:outstanding.length,
       completedProposals:queue.filter(x=>x.remaining===0).length,
       sourceCount:queue.length,
-      reserve, start:options.start,daysPerWeek:workDays});
+      reserve, start:options.start,daysPerWeek:workDays,weeklyAvailability:availability});
   }
   function summary(plan) {
     return {
@@ -347,15 +359,15 @@ footer{padding:22px 0 60px}
       backlog_hours:plan.backlogHours, backlog_findings:plan.backlogCount,
       sprint_weeks:plan.schedule.map(week=>{
         const severity_hours=Object.fromEntries(SEVERITIES.map(s=>[s,week.portions.filter(p=>p.severity===s).reduce((a,p)=>a+p.hours,0)]));
-        return {week:week.week,start:week.start,available_hours:week.capacity,
+        return {week:week.week,start:week.start,availability_pct:week.availability,available_hours:week.capacity,
           allocated_hours:week.assigned,severity_hours};
       })
     };
   }
   function csvReport(plan) {
     const escape = v => '"' + String(v).replace(/"/g,'""') + '"';
-    const headers=['week','week_start','available_hours','allocated_hours',...SEVERITIES.map(s=>s+'_hours')];
-    const rows=plan.schedule.map(w=>[w.week,w.start,w.capacity,w.assigned,...SEVERITIES.map(s=>
+    const headers=['week','week_start','availability_pct','available_hours','allocated_hours',...SEVERITIES.map(s=>s+'_hours')];
+    const rows=plan.schedule.map(w=>[w.week,w.start,w.availability,w.capacity,w.assigned,...SEVERITIES.map(s=>
       w.portions.filter(p=>p.severity===s).reduce((a,p)=>a+p.hours,0))]);
     return [headers.map(escape).join(','),...rows.map(row=>row.map(escape).join(','))].join('\r\n')+'\r\n';
   }
@@ -373,11 +385,11 @@ footer{padding:22px 0 60px}
       '- Hours tentatively assigned to weekly buckets: '+data.assigned_hours+' h',
       '- Backlog beyond modelled capacity: '+data.backlog_hours+' h across '+data.backlog_findings+' records',
       '',
-      '| Week | Week beginning (UTC) | Capacity (h) | Planned (h) | Critical (h) | High (h) | Medium (h) | Low (h) | Info (h) |',
+      '| Week | Week beginning (UTC) | Availability (%) | Capacity (h) | Planned (h) | Critical (h) | High (h) | Medium (h) | Low (h) | Info (h) |',
       '| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |'
     ];
     for(const w of data.sprint_weeks) lines.push(
-      '| '+[w.week,w.start,w.available_hours,w.allocated_hours,...SEVERITIES.map(s=>w.severity_hours[s])].join(' | ')+' |'
+      '| '+[w.week,w.start,w.availability_pct,w.available_hours,w.allocated_hours,...SEVERITIES.map(s=>w.severity_hours[s])].join(' | ')+' |'
     );
     lines.push('','Human follow-up: confirm source client/engagement externally, review estimates and staffing, assign owners through existing authorised channels, verify repairs/retests separately.','');
     return lines.join('\n');
@@ -455,6 +467,25 @@ footer{padding:22px 0 60px}
     }
   });
   const input = name => el('settings').elements.namedItem(name).value;
+  function renderWeekAvailability() {
+    const count=Math.min(12,Math.max(1,Number(input('weeks'))||1));
+    const previous=Array.from(el('week-availability').querySelectorAll('input'),x=>x.value);
+    const start=input('start');
+    const startMS=/^\d{4}-\d\d-\d\d$/.test(start) ? Date.parse(start+'T00:00:00Z') : NaN;
+    const grid=el('week-availability');grid.replaceChildren();
+    for(let i=0;i<count;i++) {
+      const label=$('label',undefined,'availability-field');
+      const day=Number.isFinite(startMS)?new Date(startMS+i*7*86400000).toISOString().slice(0,10):'date not set';
+      label.append(document.createTextNode('Week '+(i+1)+' · '+day+' (%)'));
+      const v=document.createElement('input');
+      v.type='number';v.min='0';v.max='100';v.step='1';v.required=true;
+      v.value=previous[i]===undefined?'100':previous[i];
+      v.setAttribute('aria-label','Week '+(i+1)+' availability percentage');
+      label.append(v);grid.append(label);
+    }
+  }
+  el('settings').elements.namedItem('weeks').addEventListener('input',renderWeekAvailability);
+  el('settings').elements.namedItem('start').addEventListener('change',renderWeekAvailability);
   el('settings').addEventListener('submit',event=>{
     event.preventDefault();
     if (!findings) {setFeedback('Load an authorised source export first.',true);return;}
@@ -464,7 +495,8 @@ footer{padding:22px 0 60px}
       lastOptions = {
         start:input('start'),weeks:input('weeks'),engineers:input('engineers'),
         workDays:input('workDays'),hoursPerDay:input('hoursPerDay'),
-        reserve:input('reserve'),hours
+        reserve:input('reserve'),hours,
+        weekAvailability:Array.from(el('week-availability').querySelectorAll('input'),v=>v.value)
       };
       result = engine.plan(findings,lastOptions);
       clearHistory();
@@ -498,12 +530,12 @@ footer{padding:22px 0 60px}
         $('span',week.assigned+' / '+week.capacity+' h'));
       const track=$('div',undefined,'track');
       track.setAttribute('role','meter');track.setAttribute('aria-valuemin','0');
-      track.setAttribute('aria-valuemax',String(week.capacity));
+      track.setAttribute('aria-valuemax',String(Math.max(week.capacity,1)));
       track.setAttribute('aria-valuenow',String(week.assigned));
       track.setAttribute('aria-label','Week '+week.week+' allocated hours');
-      const fill=$('div',undefined,'fill');fill.style.width=String(100*week.assigned/week.capacity)+'%';
+      const fill=$('div',undefined,'fill');fill.style.width=String(week.capacity?100*week.assigned/week.capacity:0)+'%';
       track.append(fill);block.append(title,track);
-      block.append($('p',week.portions.length+' planned allocations; '+week.remaining+' h free.','subtle'));
+      block.append($('p',week.availability+'% availability · '+week.portions.length+' planned allocations; '+week.remaining+' h free.','subtle'));
       weekly.append(block);
     }
     const rows=el('allocations');rows.replaceChildren();
@@ -655,6 +687,7 @@ footer{padding:22px 0 60px}
   el('settings').elements.namedItem('start').value = [
     now.getFullYear(),String(now.getMonth()+1).padStart(2,'0'),String(now.getDate()).padStart(2,'0')
   ].join('-');
+  renderWeekAvailability();
 })();
 </script>
 </body>
