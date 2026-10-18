@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from enum import Enum
 from ipaddress import ip_address, ip_network
+import re
 from urllib.parse import urlparse
 
 from .models import Authorization, Target
@@ -84,38 +85,80 @@ class ScopePolicy:
                 or "%" in entry
             ):
                 raise ValueError("explicit network must be an exact CIDR string")
-            ip_network(entry, strict=False)  # raises on malformed CIDR
+            ip_network(entry, strict=True)  # reject host bits as noncanonical CIDR
 
         # Frozen fields alone do not protect caller-owned lists/sets.
         object.__setattr__(self, "explicit_hosts", normalized_hosts)
         object.__setattr__(self, "explicit_networks", entries)
 
     def _networks(self):
-        return tuple(ip_network(item, strict=False) for item in self.explicit_networks)
+        return tuple(ip_network(item, strict=True) for item in self.explicit_networks)
 
     @staticmethod
     def normalize_host(value: str) -> str | None:
-        if type(value) is not str:
+        """Fail closed on ambiguous original target authority without I/O."""
+        if type(value) is not str or not value or value != value.strip():
             return None
-        raw = value.strip()
-        if not raw or any(ord(char) < 32 or ord(char) == 127 for char in raw):
+        # urllib.parse silently removes embedded CR/LF/TAB.
+        if any(ord(ch) < 33 or ord(ch) == 127 for ch in value):
             return None
-        # Bare IPv6 without brackets was formerly truncated by urlparse.
-        # Reject rather than returning a shorter (possibly trusted) identity.
-        if "://" not in raw and not raw.startswith("[") and raw.count(":") > 1:
+        if any(ch in value for ch in ("\\", "%")):
             return None
+        if "://" in value:
+            if not value.startswith(("http://", "https://")):
+                return None
+            raw = value
+        else:
+            if (value.startswith("//") or any(ch in value for ch in "/?#")
+                    or (value.count(":") > 1 and not value.startswith("["))):
+                return None
+            raw = f"//{value}"
         try:
-            parsed = urlparse(raw if "://" in raw else f"//{raw}", scheme="")
-            if parsed.username is not None or parsed.password is not None:
+            parsed = urlparse(raw)
+            if not parsed.netloc or parsed.username is not None:
+                return None
+            if raw == value and parsed.scheme not in ("http", "https"):
                 return None
             host = parsed.hostname
+            _ = parsed.port  # raises ValueError for invalid/out-of-range
         except ValueError:
             return None
-        if not host or "%" in host or "\\" in host:
+        authority = parsed.netloc
+        if not host or "@" in authority or "%" in host or not host.isascii():
+            return None
+        if authority.startswith("["):
+            pos = authority.find("]")
+            if pos < 0:
+                return None
+            suffix = authority[pos + 1:]
+            if suffix and not suffix.startswith(":"):
+                return None
+            raw_port = suffix[1:] if suffix else None
+            try:
+                if ip_address(host).version != 6:
+                    return None
+            except ValueError:
+                return None
+        else:
+            if ":" in host or authority.count(":") > 1:
+                return None
+            raw_port = authority.rsplit(":", 1)[1] if ":" in authority else None
+        if raw_port is not None and (
+            re.fullmatch(r"[1-9][0-9]{0,4}", raw_port) is None
+            or int(raw_port) > 65535
+        ):
             return None
         if host.endswith("..") or ".." in host or host.startswith("."):
             return None
-        return host.removesuffix(".").lower() or None
+        if ":" not in host:
+            bare = host.removesuffix(".")
+            if len(bare) > 253 or not all(
+                len(label) <= 63 and
+                re.fullmatch(r"[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?", label)
+                for label in bare.split(".")
+            ):
+                return None
+        return host.removesuffix(".").lower()
 
     def decide(self, target: Target) -> ScopeDecision:
         if type(target) is not Target:

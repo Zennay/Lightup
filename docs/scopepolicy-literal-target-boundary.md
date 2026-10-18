@@ -30,3 +30,9 @@ link-local ranges from implicit admission; unspecified, test-net, benchmarking,
 broadcast and reserved addresses are not implicit lab targets. Explicit
 network/host authorizations still require their existing separate access rules.
 This follows the security goal from #103 and #1422 without granting authority.
+
+## CLI opt-in and exact original authority parsing (product integration)
+
+The generic CLI `scope-check` and `plan` no longer create a broad private-lab policy implicitly. `--allow-private-lab` must be explicitly provided to opt into RFC1918/IPv6 ULA, while the old `--no-private-lab` remains a compatible explicit-deny flag; contradictory flags and type-confused programmatic Namespace booleans are rejected. Existing `LabEvaluationHarness` already passes an explicit opt-in and needs no additional authority.
+
+The original target authority is now inspected before `urlparse` can strip CR/LF/TAB or silently normalize an ambiguous authority. Reject unknown schemes, userinfo, percent escapes, backslashes, malformed/empty/out-of-range TCP ports, unbracketed IPv6, DNS labels outside canonical ASCII syntax, and double-root-dot aliases before assigning any scope. Proper HTTP(S), port/path/query and bracketed IPv6 representations remain accepted only after canonical parsing; none performs network I/O. Explicit CIDRs must carry the actual network address (`strict=True`) instead of expanding address-with-host-bits to a wider set.

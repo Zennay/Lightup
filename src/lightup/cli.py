@@ -9,8 +9,16 @@ from .scope import ScopePolicy
 
 
 def _policy(args: argparse.Namespace) -> ScopePolicy:
+    # CLI opts in to private lab trust explicitly. A caller-supplied
+    # Namespace must not turn a truthy string into that opt-in.
+    allow = args.allow_private_lab
+    deny = args.no_private_lab
+    if type(allow) is not bool or type(deny) is not bool:
+        raise ValueError("private lab markers must be exact booleans")
+    if allow and deny:
+        raise ValueError("conflicting private lab opt-in flags")
     return ScopePolicy(
-        allow_private_lab=not args.no_private_lab,
+        allow_private_lab=allow,
         explicit_hosts=frozenset(args.allow_host or []),
         explicit_networks=tuple(args.allow_cidr or []),
         require_authorization_for_public=True,
@@ -22,7 +30,10 @@ def build_parser() -> argparse.ArgumentParser:
     shared = argparse.ArgumentParser(add_help=False)
     shared.add_argument("--allow-host", action="append", default=[])
     shared.add_argument("--allow-cidr", action="append", default=[])
-    shared.add_argument("--no-private-lab", action="store_true")
+    shared.add_argument("--allow-private-lab", action="store_true",
+                        help="explicitly trust RFC1918/ULA as an isolated lab")
+    shared.add_argument("--no-private-lab", action="store_true",
+                        help="legacy explicit deny; default is already deny")
 
     sub = parser.add_subparsers(dest="command", required=True)
     scope = sub.add_parser("scope-check", parents=[shared])
