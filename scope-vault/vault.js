@@ -45,7 +45,7 @@
     unlock: $("unlock"), lock: $("lock"), recovered: $("recovered"),
     mergeMode: $("merge-mode"), handoffRoute: $("handoff-route"),
     before: $("compare-before"), after: $("compare-after"),
-    studioSource: $("studio-source"), studioInspect: $("studio-inspect"), studioBulk: $("studio-bulk"),
+    studioSource: $("studio-source"), studioInspect: $("studio-inspect"), studioBulk: $("studio-bulk"), studioBulkExport: $("studio-bulk-export"),
     studioFlag: $("studio-flag"), studioReport: $("studio-report"),
     studioClear: $("studio-clear"), studioStatus: $("studio-status"),
     studioSummary: $("studio-summary"), studioAssets: $("studio-assets"),
@@ -61,6 +61,7 @@
   let busy = false;
   let lastAction = Date.now();
   let inspectedStudio = null;
+  let inspectedPortfolio = null;
 
   function touch() { lastAction = Date.now(); }
   function notice(message, error = false) {
@@ -112,6 +113,7 @@
     for (const entry of entries) entry.bytes.fill(0);
     entries = [];
     inspectedStudio = null;
+    inspectedPortfolio = null;
     els.studioStatus.textContent = "Locked. No proposal inspection retained.";
     els.studioSummary.replaceChildren(); els.studioAssets.textContent = "";
     els.stageFilter.value = "all";
@@ -791,6 +793,7 @@
 
   function clearStudioInspection(message='Private proposal view hidden.') {
     inspectedStudio=null;
+    inspectedPortfolio=null;
     els.studioSummary.replaceChildren();
     els.studioAssets.textContent='';
     els.studioStatus.textContent=message;
@@ -854,6 +857,15 @@
         } catch {rejected++; }
       }
       invariant(records.length>0);
+      inspectedPortfolio={
+        snapshot:entries.map(entry=>entry.name+'\n'+entry.hash),
+        records:records.map(({hash,risk,mode,assets,exclusions,utc,concerns})=>({
+          source_sha256:hash,requested_risk:risk,requested_mode:mode,
+          proposed_assets_count:assets,excluded_assets_count:exclusions,
+          proposed_utc_status:utc,human_followup_codes:concerns.map(x=>x.code)
+        })),
+        excluded_count:rejected
+      };
       const summary=document.createElement('div');summary.className='item';
       summary.textContent=records.length+' self-reported Studio v1 drafts inspected · '+
         rejected+' unknown/incompatible JSON document(s) excluded · '+
@@ -883,6 +895,36 @@
     } catch {
       clearStudioInspection('HOLD: import a well-formed bounded Studio v1 JSON source before making a local portfolio view.');
       notice('Portfolio review unavailable; no authority was established.',true);
+    }
+  }
+
+
+  function exportStudioPortfolio() {
+    if(busy)return;
+    try {
+      invariant(inspectedPortfolio && Array.isArray(inspectedPortfolio.records) &&
+        inspectedPortfolio.records.length>0);
+      const snapshot=entries.map(entry=>entry.name+'\n'+entry.hash);
+      invariant(JSON.stringify(snapshot)===JSON.stringify(inspectedPortfolio.snapshot));
+      if(!window.confirm(
+        'Download an anonymous UNSIGNED portfolio preparation handoff? It includes source SHA-256 fingerprints, risk, proposed counts, UTC status and generic follow-up codes. No filenames or raw assets. Hashes are correlation hints, NOT identity or consent.'))return;
+      const packet={
+        kind:'lightup.offline.studio_scope_portfolio_human_preparation.v1',
+        state:'REVIEW_ONLY_NOT_AUTHORIZED',
+        authority:{authorized:false,client_consent_verified:false,
+          operator_consent_verified:false,grant_issued:false,
+          dispatch_allowed:false,scan_allowed:false,release_allowed:false},
+        included_count:inspectedPortfolio.records.length,
+        excluded_unsupported_json_count:inspectedPortfolio.excluded_count,
+        sources:inspectedPortfolio.records
+      };
+      const output=JSON.stringify(packet,null,2)+'\n';
+      invariant(ENC.encode(output).length<=32*1024);
+      save(new Blob([output],{type:'application/json'}),
+        'lightup-anonymous-portfolio-review.json');
+      touch();notice('Anonymous multi-proposal human review handoff downloaded. No consent, grant or release rights created.');
+    }catch{
+      notice('HOLD: rebuild the local portfolio overview after import/removal changes. No review report exported.',true);
     }
   }
 
@@ -1022,6 +1064,7 @@
   });
   els.studioInspect.addEventListener("click",inspectStudio);
   els.studioBulk.addEventListener("click",inspectStudioPortfolio);
+  els.studioBulkExport.addEventListener("click",exportStudioPortfolio);
   els.studioFlag.addEventListener("click",flagStudio);
   els.studioReport.addEventListener("click",exportStudioReport);
   els.studioClear.addEventListener("click",()=>{
