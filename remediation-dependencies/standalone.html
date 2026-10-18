@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-wpPFZOyxFDTkVCPSRLe+ulmbav4+u8hRIYgukbiqEiU=' 'sha256-0R/AehWF8gs+qAEQhU9a22eP5r6+AOkgfLLrAfoQ99g=' 'sha256-MsMkcHHyCLHdzOCDSSa29OWd9UYRUuQ0d0R5anMQFgo='; style-src 'sha256-EY60WrUPL3pRa1jEEujE4zKnTsY+crrVBzxYTHrao8E='; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-wpPFZOyxFDTkVCPSRLe+ulmbav4+u8hRIYgukbiqEiU=' 'sha256-JRfZQz2Z3ItGsM+eSRKfCvBdkWQeG8/oiemv8M8bSMc=' 'sha256-KTSKb0Vtrq+/5jd1rIyS4imvHF2lqLoHDgwKBRFmHoQ='; style-src 'sha256-EY60WrUPL3pRa1jEEujE4zKnTsY+crrVBzxYTHrao8E='; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <title>LightUp · Private Human Dependency Board</title><style>:root{font:16px/1.52 system-ui,-apple-system,"Segoe UI",sans-serif;color-scheme:dark;background:#101625;color:#edf3ff}*{box-sizing:border-box}body{margin:0}header,main,footer{max-width:1200px;padding:24px;margin:auto}header{padding-top:45px}h1{font-size:clamp(2rem,4vw,3.1rem);margin:10px 0}h2{font-size:1.34rem;margin:0 0 10px}.brand{letter-spacing:.14em;color:#a2c1fc;font-size:.76rem;font-weight:800}p{color:#bdcbe0}.hold{color:#ffd49b;background:#392a1e;border:1px solid #977347;display:inline-block;padding:8px 13px;border-radius:8px}.panel{padding:22px;margin:20px 0;background:#1b2740;border:1px solid #3b4d6e;border-radius:16px}label{display:block;margin:15px 0;font-weight:600}.check{display:flex;gap:10px;font-weight:450;align-items:flex-start}.check input{width:19px;height:19px;flex:none;margin-top:4px}input:not([type=checkbox]),textarea,select{display:block;width:100%;margin-top:5px;padding:9px;background:#0d182c;color:#f2f6ff;border:1px solid #637792;border-radius:8px;font:inherit}textarea{resize:vertical}button{font:inherit;background:#adcbff;color:#0d1a35;border:0;border-radius:8px;padding:10px 17px;font-weight:780;cursor:pointer}button:disabled{opacity:.35;cursor:not-allowed}.secondary{background:#475877;color:#fff}.actions{display:flex;flex-wrap:wrap;gap:10px}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:15px}.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(155px,1fr));gap:12px}.stat{background:#293956;border:1px solid #465c81;padding:15px;border-radius:10px}.stat strong{font-size:1.8rem;display:block}.stat span{font-size:.83rem;color:#c6d3ea}.tablewrap{overflow:auto;margin:14px 0}table{width:100%;border-collapse:collapse;min-width:740px;text-align:left}td,th{padding:11px;border-bottom:1px solid #435574;vertical-align:top;overflow-wrap:anywhere}th{font-size:.8rem;color:#abc3ff;text-transform:uppercase}td{font-size:.87rem}td button{padding:5px 11px}.danger{color:#ffbaa5}.muted{color:#aabbd1}footer{font-size:.82rem;color:#a9b8ce;padding-bottom:40px}button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid #afcaff;outline-offset:2px}@media(max-width:600px){header,main,footer{padding:14px}.panel{padding:15px}}</style></head>
 <body><header><div class="brand">LIGHTUP / OFFLINE HUMAN COORDINATION</div><h1>Remediation Dependency Board</h1>
 <p>See which human repair plans are blocked by other human work. Review impact and tentative effort, without changing original findings, retests, permissions or deadlines.</p>
@@ -24,7 +24,12 @@
 <label>View <select id="filter"><option value="all">All original findings</option><option value="waiting">Waiting on other HUMAN tasks</option><option value="ready">Human work potentially ready</option><option value="critical">Critical path (human estimates)</option><option value="urgent">Original high/critical findings</option></select></label></div>
 <button id="review" type="button">Recalculate local dependency map</button>
 <p id="review-message" role="status" aria-live="polite"></p>
-<div class="tablewrap"><table><thead><tr><th>Original finding</th><th>HUMAN status</th><th>Waiting on</th><th>Proposed path duration</th><th>Optional indicative date</th></tr></thead><tbody id="results"></tbody></table></div></section>
+<div class="tablewrap"><table><thead><tr><th>Original finding</th><th>HUMAN status</th><th>Waiting on</th><th>Proposed path duration</th><th>Optional indicative date</th></tr></thead><tbody id="results"></tbody></table></div><section class="insights"><h3>Human bottlenecks and proposed next work</h3><p>Computed only from local human dependencies. A “ready” human task is NOT authorization to assess, change a target or retest.</p>
+<div class="tablewrap"><table><thead><tr><th>Potential bottleneck</th><th>Dependent human plans</th><th>Human readiness</th><th>Current owner</th></tr></thead><tbody id="bottlenecks"></tbody></table></div>
+<h3>Human due-date contradictions</h3><p>Highlights a prerequisite with a later human due date than its dependent plan. No deadline is automatically changed.</p>
+<div class="tablewrap"><table><thead><tr><th>Prerequisite</th><th>Dependent</th><th>Human prerequisite due</th><th>Dependent due</th></tr></thead><tbody id="contradictions"></tbody></table></div>
+<h3>Illustrative critical-path date warnings</h3><p>Only available when a human planning start date has been explicitly entered; rough estimates are NOT contractual deadlines or verified fix dates.</p>
+<div class="tablewrap"><table><thead><tr><th>Original finding ID</th><th>Existing human due</th><th>Indicative dependency end</th></tr></thead><tbody id="late-scenarios"></tbody></table></div></section></section>
 <section class="panel"><h2>5. Export only approved private human handoffs</h2>
 <p>Exports contain source identifiers, estimates, human planning and (for CSV) source summary metadata. Download locally; external recipients and calendars require a separately approved confidential channel. No automatic upload or authentication.</p>
 <label class="check"><input type="checkbox" id="export-ack"> I explicitly confirmed the private destination for source finding IDs and human coordination. Neither an unsigned hash nor this file proves consent, client identity or verified remediation.</label>
@@ -243,7 +248,7 @@ const DEP=['kind','schema_version','disposition','source_sha256','casework_sha25
 function stop(s){throw Error(s);}
 function shape(x,fields,name){if(!x||typeof x!=='object'||Array.isArray(x))stop('Invalid '+name);const allowed=new Set(fields),keys=Object.keys(x);if(keys.length!==allowed.size||keys.some(k=>!allowed.has(k)))stop('Missing or unknown '+name+' field.');}
 async function sha(s){if(!g.crypto||!g.crypto.subtle)stop('Secure SHA-256 unavailable. Private handoff HELD.');const a=new Uint8Array(await g.crypto.subtle.digest('SHA-256',new TextEncoder().encode(s)));return Array.from(a,x=>x.toString(16).padStart(2,'0')).join('');}
-function canonical(w){const sort=arr=>arr.slice().sort((a,b)=>a.finding_id.localeCompare(b.finding_id));return JSON.stringify([sort(w.findings),sort(w.cases)]);}
+function canonical(w){const sort=arr=>arr.slice().sort((a,b)=>a.finding_id<b.finding_id?-1:a.finding_id>b.finding_id?1:0);return JSON.stringify([sort(w.findings),sort(w.cases)]);}
 async function original(packet){
  shape(packet,IN,'original Casework');for(const k of AUTH)if(packet[k]!==false)stop('Casework claims authority.');
  if(!Array.isArray(packet.findings)||!Array.isArray(packet.cases))stop('Missing original findings and Casework.');
@@ -281,7 +286,31 @@ function graph(w,links,efforts,start){
 }
 function packet(w,links,efforts){const p=clean(w,links,efforts);return {kind:'lightup.private_human_dependency_draft',schema_version:1,disposition:'LOCAL_HUMAN_PLANNING_ONLY',source_sha256:w.source_sha256,casework_sha256:w.casework_sha256,links:p.links,efforts:p.efforts,instructions:'Unverified private human estimates only; no verified remediation, consent, grant, scanner, retest, tenant or authorization.',...Object.fromEntries(AUTH.map(k=>[k,false]))};}
 function restore(w,raw){shape(raw,DEP,'private dependencies');if(raw.kind!=='lightup.private_human_dependency_draft'||raw.schema_version!==1||raw.disposition!=='LOCAL_HUMAN_PLANNING_ONLY'||raw.source_sha256!==w.source_sha256||raw.casework_sha256!==w.casework_sha256||typeof raw.instructions!=='string'||raw.instructions.length>1500||AUTH.some(k=>raw[k]!==false))stop('Private human dependency packet conflicts with current original source or human notes.');return clean(w,raw.links,raw.efforts);}
-g.LightUpHumanDependencies=Object.freeze({original,clean,empty,graph,packet,restore});
+/* Derived human-first recommendations; original source and due dates are read-only. */
+function guidance(work,links,efforts,start){
+ const graphResult=graph(work,links,efforts,start);
+ const byId=new Map(graphResult.rows.map(row=>[row.finding_id,row]));
+ const children=new Map(graphResult.rows.map(row=>[row.finding_id,[]]));
+ for(const link of links)children.get(link.from).push(link.to);
+ const downstream=id=>{
+  const visited=new Set(),stack=children.get(id).slice();
+  while(stack.length){const n=stack.pop();if(visited.has(n))continue;visited.add(n);stack.push(...children.get(n));}
+  return visited.size;
+ };
+ const rank=['critical','high','medium','low','info'];
+ const bottlenecks=graphResult.rows
+  .filter(row=>row.human_status!=='completed'&&row.human_status!=='deferred')
+  .map(row=>({...row,downstream_count:downstream(row.finding_id)}))
+  .sort((a,b)=>b.downstream_count-a.downstream_count||rank.indexOf(a.severity)-rank.indexOf(b.severity)||a.finding_id.localeCompare(b.finding_id));
+ const dates=new Map(work.cases.map(c=>[c.finding_id,c.due_date]));
+ const contradictions=links.filter(link=>dates.get(link.from)&&dates.get(link.to)&&dates.get(link.from)>dates.get(link.to))
+  .map(link=>({...link,human_prerequisite_due:dates.get(link.from),human_dependent_due:dates.get(link.to)}));
+ const hypotheticalLate=graphResult.dates?graphResult.rows
+  .filter(row=>row.human_due&&graphResult.dates[row.finding_id]>row.human_due)
+  .map(row=>({finding_id:row.finding_id,existing_human_due:row.human_due,indicative_chain_date:graphResult.dates[row.finding_id]})):[];
+ return {bottlenecks:bottlenecks.slice(0,15),contradictions,hypotheticalLate};
+}
+g.LightUpHumanDependencies=Object.freeze({original,clean,empty,graph,packet,restore,guidance});
 })(window);
 </script><script>/* LightUp human dependency board UI: all local, source-bound, no execution authority. */
 (function(g){'use strict';
@@ -345,8 +374,27 @@ function drawEfforts(){
   });cell.append(input);tr.append(cell);body.append(tr);
  }
 }
+function renderGuidance(view){
+ const body=$('bottlenecks');body.replaceChildren();
+ for(const item of view.bottlenecks){
+  const tr=E('tr');td(tr,item.finding_id+' / '+item.severity);td(tr,item.downstream_count);
+  td(tr,item.human_ready?'Potentially ready for HUMAN planning':'Needs prerequisite / on hold');
+  td(tr,item.owner||'(unassigned)');body.append(tr);
+ }
+ if(!view.bottlenecks.length){const row=E('tr'),cell=E('td','No open human plans.');cell.colSpan=4;row.append(cell);body.append(row);}
+ const blocked=$('contradictions');blocked.replaceChildren();
+ for(const x of view.contradictions){
+  const row=E('tr');td(row,x.from);td(row,x.to);td(row,x.human_prerequisite_due);td(row,x.human_dependent_due);blocked.append(row);
+ }
+ if(!view.contradictions.length){const row=E('tr'),cell=E('td','No contradiction among existing human due dates.');cell.colSpan=4;row.append(cell);blocked.append(row);}
+ const scenarios=$('late-scenarios');scenarios.replaceChildren();
+ for(const x of view.hypotheticalLate){
+  const row=E('tr');td(row,x.finding_id);td(row,x.existing_human_due);td(row,x.indicative_chain_date);scenarios.append(row);
+ }
+ if(!view.hypotheticalLate.length){const row=E('tr'),cell=E('td','No indicative conflict, or no human planning start date selected.');cell.colSpan=3;row.append(cell);scenarios.append(row);}
+}
 function drawGraph(){
- const graph=g.LightUpHumanDependencies.graph(state,links,efforts,$('start').value||null);metrics(graph);
+ const graph=g.LightUpHumanDependencies.graph(state,links,efforts,$('start').value||null);metrics(graph);renderGuidance(g.LightUpHumanDependencies.guidance(state,links,efforts,$('start').value||null));
  const body=$('results');body.replaceChildren();const filter=$('filter').value,critical=new Set(graph.critical);
  let n=0;
  for(const item of graph.rows){
@@ -393,7 +441,12 @@ $('export-json').addEventListener('click',()=>{
  dirty=false;$('export-message').textContent='PRIVATE source-bound human dependency draft exported.';}
  catch(e){$('export-message').textContent='HOLD: '+e.message;}
 });
-function safeCsv(value){let s=String(value??'');if(/^[\s\u200b-\u200f\ufeff]*[=+@-]/u.test(s))s="'"+s;return '"'+s.replace(/"/g,'""')+'"';}
+function safeCsv(value){
+ let s=String(value??'');
+ const invisible=/^[\s\u0000-\u001f\u007f-\u009f\u00ad\u034f\u061c\u180e\u200b-\u200f\u202a-\u202e\u2060-\u206f\ufeff]*/u;
+ if(/^[=+\-@]/.test(s.replace(invisible,'')))s="'"+s;
+ return '"'+s.replace(/"/g,'""')+'"';
+}
 $('export-csv').addEventListener('click',()=>{
  if(!state||!$('source-ack').checked||!$('export-ack').checked)return;
  try{const v=g.LightUpHumanDependencies.graph(state,links,efforts,$('start').value||null);
