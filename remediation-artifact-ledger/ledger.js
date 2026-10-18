@@ -5,7 +5,7 @@ const MAX_FILE = 16 * 1024 * 1024, MAX_DOCS = 120, MAX_IMPORT = 1024 * 1024;
 const STAGES = ['unreviewed', 'human_review', 'follow_up', 'archived'];
 const AUTH_FLAGS = ['authenticated','tenant_verified','source_authorized','assessment_authorized','grant','client_consent','operator_consent','execution','scan','audit_verdict','retest_verified','release'];
 const $ = id => document.getElementById(id);
-const state = {findings:[], sha:'', rows:[], client:'', engagement:'', filter:'', verify:null, pending:null, selected:new Set(), bulk:null, undo:[], casework:null};
+const state = {findings:[], sha:'', rows:[], client:'', engagement:'', filter:'', verify:null, pending:null, selected:new Set(), bulk:null, undo:[], casework:null, evidence:null};
 const encoder = new TextEncoder();
 const ESCAPE = '\uFEFF';
 function fail(message) { throw new Error(message); }
@@ -133,6 +133,8 @@ function renderSummary(){
  for(const id of ['addFiles','export','aggregate','privateImport','forget','verify'])$(id).disabled=!state.sha;
  $('coverageExport').disabled=!state.sha;
  $('caseworkImport').disabled=!state.sha;$('detachCasework').disabled=!state.casework;
+ $('evidenceImport').disabled=!state.sha;$('detachEvidence').disabled=!state.evidence;
+ $('evidenceState').textContent=state.evidence?'Native original Evidence Review v2: '+state.evidence.size+' HUMAN records (READ-ONLY)':'No native Evidence Review imported.';
  $('caseworkState').textContent=state.casework ? 'Native original Casework v1: '+state.casework.size+' HUMAN records (READ-ONLY)' : 'No native Casework imported.';
  renderCoverage();
 }
@@ -150,7 +152,7 @@ async function loadSource(){
    if(!confirm('New original source or context. Discard ALL existing private notes and attachments?'))return;
  }
  state.findings=findings;state.sha=hash;state.client=client;state.engagement=engagement;
- state.selected.clear();state.bulk=null;state.undo=[];state.casework=null;
+ state.selected.clear();state.bulk=null;state.undo=[];state.casework=null;state.evidence=null;
  if(state.rows.length && (oldSource !== hash || oldClient !== client || oldEngagement !== engagement))state.rows=[];state.verify=null;
  $('finding').replaceChildren();
  for(const f of findings){const op=document.createElement('option');op.value=f.finding_id;op.textContent=f.finding_id+' · '+f.severity+' · '+f.title.slice(0,75);$('finding').append(op);}
@@ -375,6 +377,66 @@ function detachCasework(){
  state.casework=null;render();message('Native Casework human overlay detached. Original source and local artifact ledger remain unchanged.',false);
 }
 
+
+/* Original Evidence Review v2 is separately produced private human planning;
+   import read-only, never infer a grant, a retest, or a verified remediation. */
+const EVIDENCE_STAGES=['missing','submitted','needs_changes','ready_for_authorized_retest'];
+const EVIDENCE_FIELD_LIMITS={
+ change_reference:240,deployment_reference:240,rollback_reference:240,
+ retest_request_reference:240,review_question:700
+};
+function parseEvidenceRow(v,ids){
+ if(!v||Object.getPrototypeOf(v)!==Object.prototype||!ids.has(v.finding_id)||
+  Object.keys(v).sort().join('|')!=='evidence|finding_id|next_step|reference|reviewer|stage')
+  fail('Malformed original Evidence Review v2 finding or field names.');
+ if(!EVIDENCE_STAGES.includes(v.stage))fail('Unknown original human evidence stage.');
+ for(const [field,max] of [['reference',240],['reviewer',120],['next_step',500]]){
+  bounded(v[field],max,'native evidence '+field,false);
+ }
+ if(!v.evidence||Object.getPrototypeOf(v.evidence)!==Object.prototype||
+   Object.keys(v.evidence).sort().join('|')!==Object.keys(EVIDENCE_FIELD_LIMITS).sort().join('|'))
+  fail('Invalid original Evidence Review v2 reference fields.');
+ for(const [k,max] of Object.entries(EVIDENCE_FIELD_LIMITS))
+  bounded(v.evidence[k],max,'native evidence '+k,false);
+ const values=[v.reference,v.reviewer,v.next_step,...Object.values(v.evidence)];
+ if(values.some(x=>/[\u202a-\u202e\u2066-\u2069]/.test(x)))
+  fail('Ambiguous directional control in imported original human notes.');
+ return {finding_id:v.finding_id,stage:v.stage,reference:v.reference,
+  reviewer:v.reviewer,next_step:v.next_step,evidence:{...v.evidence}};
+}
+async function importEvidenceV2(){
+ if(!state.sha)fail('Load original independently checked findings CSV first.');
+ const sourceAtStart=state.sha,contextAtStart=state.client+'|'+state.engagement;
+ const data=strictJSON(await fileReader($('evidenceImport').files[0],MAX_IMPORT));
+ if(!data||Object.getPrototypeOf(data)!==Object.prototype||
+ data.kind!=='lightup.remediation_evidence_coordination'||data.schema_version!==2||
+ data.disposition!=='UNVERIFIED_OFFLINE_HUMAN_COORDINATION'||
+ data.source_contract!=='lightup.finding_export._COLUMNS_v1'||
+ data.source_sha256!==sourceAtStart||AUTH_FLAGS.some(k=>data[k]!==false)||
+ !Array.isArray(data.review)||data.review.length!==state.findings.length||
+ !Array.isArray(data.revision_register)||data.revision_register.length>350)
+  fail('Native original Evidence Review v2 source, non-authority flags or full original review differ.');
+ const ids=new Set(state.findings.map(f=>f.finding_id));
+ const reviews=data.review.map(x=>parseEvidenceRow(x,ids));
+ if(new Set(reviews.map(x=>x.finding_id)).size!==ids.size)
+  fail('Incomplete or repeated original Evidence Review finding ID.');
+ // Original source-owner revision fields are *untrusted historical annotations*;
+ // reject suspicious oversized structure, but never use them to authorize/fix.
+ const revisions=JSON.stringify(data.revision_register);
+ if(revisions.length>200000)fail('Original human revision register exceeds local metadata bound.');
+ if(state.sha!==sourceAtStart||state.client+'|'+state.engagement!==contextAtStart)
+  fail('Original source/context changed during Evidence Review import.');
+ if(!confirm('Attach original PRIVATE Evidence Review v2 READ-ONLY to exact original source? Human references are NOT proof of remediation or authorization.'))return;
+ state.evidence=new Map(reviews.map(x=>[x.finding_id,x]));
+ $('evidenceImport').value='';render();
+ message('Original Evidence Review v2 attached read-only for '+reviews.length+' exact original findings. No external evidence, client consent or security approval changed.',false);
+}
+function detachEvidence(){
+ if(!state.evidence)return;
+ if(!confirm('Detach original PRIVATE Evidence Review human context from local memory?'))return;
+ state.evidence=null;render();message('Native Evidence Review context detached; original source and evidence fingerprints are unchanged.',false);
+}
+
 function coverageRows(){
  const counts=new Map();
  for(const r of state.rows){
@@ -401,10 +463,12 @@ function renderCoverage(){
  for(const f of visible){
   const tr=document.createElement('tr');
   const cw=state.casework&&state.casework.get(f.finding_id);
+  const ev=state.evidence&&state.evidence.get(f.finding_id);
   for(const value of [f.finding_id,f.severity,
    f.retest_status+' (source claim only)',String(f.count),
    String(f.review),String(f.followup),
-   cw ? cw.status+' · '+(cw.owner||'unassigned')+' · '+(cw.due_date||'no human date') : 'not imported']){
+   cw ? cw.status+' · '+(cw.owner||'unassigned')+' · '+(cw.due_date||'no human date') : 'not imported',
+   ev ? ev.stage+' · '+(ev.evidence.retest_request_reference?'request noted':'no retest request reference') : 'not imported']){
    const td=document.createElement('td');td.textContent=value;tr.append(td);
   }
   const td=document.createElement('td'),open=document.createElement('button');
@@ -451,6 +515,8 @@ function bind(id,event,fn){$(id).addEventListener(event,async()=>{try{await fn()
 bind('load','click',loadSource);bind('add','click',addFiles);
 bind('export','click',exportPrivate);bind('aggregate','click',exportAggregate);
 bind('restore','click',importPrivate);bind('verify','change',verifyFile);
+bind('evidenceImportButton','click',importEvidenceV2);
+bind('detachEvidence','click',detachEvidence);
 bind('caseworkImportButton','click',importCasework);
 bind('detachCasework','click',detachCasework);
 bind('coverageFilter','change',renderCoverage);
@@ -465,7 +531,7 @@ bind('applyMigration','click',applyMigration);
 bind('filter','input',()=>{state.filter=$('filter').value.toLowerCase().trim();render();});
 bind('forget','click',()=>{if(confirm('Forget all original findings and local human notes in memory?')){
  state.findings=[];state.sha='';state.rows=[];state.client='';state.engagement='';state.verify=null;state.filter='';state.pending=null;state.selected.clear();state.bulk=null;state.undo=[];state.casework=null;$('migrationResult').hidden=true;
- for(const id of ['client','engagement','filter','original','newSource','addFiles','privateImport','caseworkImport','verify'])$(id).value='';
+ for(const id of ['client','engagement','filter','original','newSource','addFiles','privateImport','caseworkImport','evidenceImport','verify'])$(id).value='';
  $('finding').replaceChildren();render();message('Local workspace forgotten. Previously downloaded files are not deleted.',false);
 }});
 render();
