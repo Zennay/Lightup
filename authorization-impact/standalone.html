@@ -371,7 +371,7 @@ else human.set(selection,{stage:stage,reviewer:reviewer,next:next,due:due,note:n
 }
 async function loadEmbeddedOriginal(){
 var holder=el("original-casebook-b64");if(!holder)return;
-var encoded=holder.textContent.trim(),declared=holder.getAttribute("data-source-sha256");
+var encoded=holder.content.textContent.trim(),declared=holder.getAttribute("data-source-sha256");
 if(!encoded)return;
 try{
 if(!/^[A-Za-z0-9+/]+={0,2}$/.test(encoded)||encoded.length>700000)throw Error("invalid inert source envelope");
@@ -394,7 +394,7 @@ setMessage("HOLD: PRIVATE embedded Casebook could not be admitted. Use the origi
 }finally{
 // Remove the inert encoded original payload from the DOM after reading it.
 // The original in-memory source remains private to this tab.
-holder.replaceChildren();holder.removeAttribute("data-source-sha256");
+holder.content.replaceChildren();holder.removeAttribute("data-source-sha256");
 }
 }
 
