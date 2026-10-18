@@ -318,6 +318,60 @@
     // literal non-authority flags and aggregate numbers are exported.
     return rows.map(line=>line.join(",")).join("\r\n")+"\r\n";
   }
+  function htmlBrief() {
+    const model=exportModel();
+    const safe=value=>String(value).replace(/[&<>"']/g,char=>({
+      "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
+    })[char]);
+    const cell=value=>"<td>"+safe(value)+"</td>";
+    const row=values=>"<tr>"+values.map(cell).join("")+"</tr>";
+    const chunks=[
+      "<!doctype html><html lang='en'><head><meta charset='utf-8'>",
+      "<meta name='viewport' content='width=device-width,initial-scale=1'>",
+      "<meta name='referrer' content='no-referrer'>",
+      `<meta http-equiv="Content-Security-Policy" content="default-src 'none'; base-uri 'none'; img-src 'none'; object-src 'none'; frame-src 'none'; connect-src 'none'; script-src 'none'; style-src 'sha256-OVuFzgW3FVd9ZV0ETikVGcIE0SreAh6uXjircJoxqx8='">`,
+      "<title>LightUp lab trajectory · offline aggregate human brief</title>",
+      "<style>:root{color-scheme:light}body{font:15px/1.5 system-ui,Arial,sans-serif;max-width:1100px;margin:40px auto;padding:0 20px;color:#142633}h1{font-size:36px;letter-spacing:-.04em}h2{margin-top:36px;color:#194d60}.warning{border-left:5px solid #b66b28;background:#fff5ea;padding:15px 20px}.stamp{font-weight:800;letter-spacing:.12em;color:#21627a}table{border-collapse:collapse;width:100%;margin:15px 0 30px;font-size:13px}th,td{text-align:left;border-bottom:1px solid #c5d2d9;padding:8px}th{background:#e8f2f6}.metric{white-space:nowrap}p{max-width:1000px}.fine{font-size:12px;color:#4e6673}footer{margin:45px 0 0;border-top:2px solid #94b0bb;padding:15px}@media print{body{margin:0;padding:10px;font-size:12px}h2,table{break-inside:avoid}}</style></head><body>",
+      "<div class='stamp'>LIGHTUP / OFFLINE HUMAN REVIEW ONLY</div>",
+      "<h1>Lab trajectory — aggregate review brief</h1>",
+      "<div class='warning'><strong>INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD</strong><p>Original source not authenticated. No client consent, grant, execution, scan, dispatch, remediation verification, CI certification or release authority. All four security authority fields: FALSE. Source sequence is only user-selected. This report contains no source scenario identities, assets, original bytes or human free-text notes.</p></div>",
+      "<p>Original source kind: <strong>"+safe(model.source_kind)+"</strong></p>",
+      "<p>Revisions: "+model.revisions.length+" · scenario count: "+model.revisions[0].scenario_count+"</p>",
+      "<h2>Original baseline versus candidate revisions</h2>",
+    ];
+    for(const rev of model.revisions) {
+      chunks.push("<h3>Unverified revision position "+rev.position+"</h3>",
+        "<p>Source verdict: "+safe(rev.source_verdict)+" · "+rev.metric_regressions+
+        " adverse scenario-metric observations</p>",
+        "<table><thead><tr><th>Metric</th><th>Affected cases</th><th>Original baseline sum</th><th>Candidate sum</th><th>Aggregate delta</th></tr></thead><tbody>");
+      for(const metric of rev.metrics)
+        chunks.push(row([metric.name,metric.cases,fmt(metric.baseline),
+          fmt(metric.candidate),fmt(metric.delta)]));
+      chunks.push("</tbody></table>");
+    }
+    chunks.push("<h2>Successive candidate drift</h2>");
+    for(const pair of model.adjacent_pairs) {
+      chunks.push("<h3>Position "+pair.before_position+" → "+pair.after_position+"</h3>",
+        "<table><thead><tr><th>Metric</th><th>Worse cases</th><th>Better cases</th><th>Neutral changes</th><th>Candidate delta</th></tr></thead><tbody>");
+      for(const m of pair.metrics)
+        chunks.push(row([m.name,m.worsened,m.improved,m.other_changed,fmt(m.delta)]));
+      chunks.push("</tbody></table>");
+    }
+    chunks.push("<h2>Human review questions</h2>",
+      "<p>Local discussion stages are self-reported and are not assignments, proof of remediation or human approval.</p>",
+      "<table><thead><tr><th>Metric</th><th>Priority</th><th>Persisting</th><th>Newly flagged</th><th>Direct candidate deteriorations</th><th>Discussion stage</th></tr></thead><tbody>");
+    for(const item of model.human_discussion)
+      chunks.push(row([item.metric,item.priority,item.persistent_cases,
+        item.emerged_cases,item.adjacent_worsened_observations,item.local_stage]));
+    chunks.push("</tbody></table><h2>Anonymous case review coverage</h2>",
+      "<table><thead><tr><th>Human stage</th><th>Case count</th></tr></thead><tbody>");
+    for(const [stage,count] of Object.entries(model.human_case_discussion_counts))
+      chunks.push(row([stage,count]));
+    chunks.push("</tbody></table>",
+      "<footer>LightUp private offline aggregate human brief · all authorization / consent / dispatch / release flags remain FALSE. No authenticated provenance and no execution permission.</footer></body></html>");
+    return chunks.join("");
+  }
+
   function renderOrder() {
     const control=$("revision-select");
     control.replaceChildren();
@@ -768,5 +822,7 @@
     JSON.stringify(exportModel(),null,2)+"\n","application/json"));
   $("csv").addEventListener("click",()=>download("lightup-lab-trends-review-only.csv",
     csv(),"text/csv;charset=utf-8"));
+  $("html-brief").addEventListener("click",()=>download(
+    "lightup-lab-aggregate-review-only.html",htmlBrief(),"text/html;charset=utf-8"));
   $("print").addEventListener("click",()=>window.print());
 })();
