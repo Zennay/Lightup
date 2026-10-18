@@ -268,19 +268,26 @@ def main(argv=None) -> int:
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument("--agenda-json", type=Path, help="private IDs included; owner-only directory")
     group.add_argument("--calendar", type=Path, help="identity-free generic calendar events")
+    group.add_argument("--board", type=Path, help="private self-contained interactive offline HTML")
     parser.add_argument("--lead-days", type=int, default=7)
     parser.add_argument("--future-days", type=int, default=45)
     args = parser.parse_args(argv)
     try:
         if not 0 <= args.lead_days <= 30 or not 1 <= args.future_days <= 366:
             raise ReviewHold("invalid planning horizon")
-        out = args.agenda_json or args.calendar
+        out = args.agenda_json or args.calendar or args.board
         ensure_private_destination(out)
         source = source_file(args.casebook)
         agenda = derive(source, now=datetime.now(timezone.utc), lead_days=args.lead_days,
                         future_days=args.future_days)
-        payload = (json.dumps(agenda, ensure_ascii=True, indent=2,
-                              allow_nan=False) + "\n").encode("utf-8") if args.agenda_json else ics(agenda)
+        if args.agenda_json:
+            payload = (json.dumps(agenda, ensure_ascii=True, indent=2,
+                                  allow_nan=False) + "\n").encode("utf-8")
+        elif args.board:
+            from board_html import render
+            payload = render(agenda)
+        else:
+            payload = ics(agenda)
         private_publish(out, payload)
         counts = agenda["declared_counts"]
         print(f"{agenda['status']}: {counts['items']} planned human review entries; "
