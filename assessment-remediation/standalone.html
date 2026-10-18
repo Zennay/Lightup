@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; connect-src 'none'; form-action 'none'; base-uri 'none'; img-src 'none'; object-src 'none'; script-src 'sha256-s33tlDDwS7l7Nl/rFxZYVGrmSvaPy9CrNJ/AJ2dbOXo='; style-src 'sha256-4qupSNeR/FnB0JnniEZc35XMsdmnbYFG5nxvREkH7ko='">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; connect-src 'none'; form-action 'none'; base-uri 'none'; img-src 'none'; object-src 'none'; script-src 'sha256-09CbMnQsSTBTsSsHMIaIjYqH4ySJwnBF8wvLPlizadk='; style-src 'sha256-vbe3i+CHUPDM10TWrOf2ZuecHwUHD73THMMKPuwvOk0='">
 <title>LightUp · private assessment-to-finding mapping</title>
 <style>:root{color-scheme:light;--ink:#1b2b45;--muted:#566579;--line:#d6dfeb;--paper:#f2f5fa;--action:#214c88;--warning:#85450f}
 *{box-sizing:border-box}html{scroll-behavior:smooth}
@@ -36,6 +36,11 @@ th{color:#465b77;background:#f4f7fc}
 .message{border:1px solid #b6c7df;border-radius:9px;background:#e8f2ff;padding:1rem 1.2rem;margin:1rem 0}
 .message.error{background:#fff0eb;color:#8d2f20;border-color:#e7b1a5}
 code{background:#f0f3f8;border:1px solid #e4eaf3;border-radius:4px;padding:.15rem .3rem;overflow-wrap:anywhere}
+.inspector-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:1rem;margin-top:1.1rem}
+.source-preview{border:1px solid var(--line);border-radius:9px;padding:1rem;margin-top:1rem;background:#f8faff;overflow-wrap:anywhere}
+.source-preview h3{margin:.1rem 0 .4rem;font-size:1rem}.source-preview ul{padding-left:1.2rem;max-height:260px;overflow:auto}
+.source-preview li{margin:.35rem 0}.metric-mini{display:grid;grid-template-columns:1fr auto;gap:.25rem .75rem;font-size:.8rem}
+.metric-mini dt{color:var(--muted)}.metric-mini dd{margin:0;text-align:right}
 footer{padding:2rem 1.5rem;text-align:center;font-size:.82rem;color:var(--muted);border-top:1px solid var(--line)}
 @media(max-width:600px){main{padding:1rem}.panel{padding:1.1rem}.hero{padding:2rem 1.2rem}.section-title{gap:.55rem}}
 @media print{.hero{background:white;color:black;padding:1rem}.hero .lede{color:black}.panel{box-shadow:none}.warning{color:black}button,input,select,textarea,.table-wrap{break-inside:avoid}}</style>
@@ -72,11 +77,28 @@ footer{padding:2rem 1.5rem;text-align:center;font-size:.82rem;color:var(--muted)
         <label>Private human note <textarea id="note" rows="3" maxlength="500" placeholder="No credentials, targets or personal data. Never treat as proof."></textarea></label>
         <button type="submit">Save manual scenario–finding link</button>
       </form>
+      <div class="inspector-grid" aria-label="Original source preview">
+        <div class="source-preview" aria-live="polite">
+          <h3>Selected original lab source · metric summary</h3>
+          <p class="sub">Original source statements only; no finding or permission is inferred.</p>
+          <div id="scenario-inspect"></div>
+        </div>
+        <div class="source-preview" aria-live="polite">
+          <h3>Selected original finding · remediation text</h3>
+          <p class="sub">Source reported status is historical. Not evidence of a verified fix.</p>
+          <div id="finding-inspect"></div>
+        </div>
+      </div>
     </div>
     <div class="panel">
       <div class="section-title"><span class="step">03</span><div><h2>Review local linked findings</h2><p id="link-count" aria-live="polite">No links</p></div></div>
       <label>Filter local source details<input type="search" id="filter" placeholder="Search original IDs, finding titles, human stage" autocomplete="off"></label>
       <div class="table-wrap"><table><thead><tr><th>Original lab scenario</th><th>Original finding</th><th>Human stage</th><th>Local actions</th></tr></thead><tbody id="links-body"></tbody></table></div>
+      <div class="source-preview">
+        <h3>Human review gaps across original source files</h3>
+        <p class="sub">Unlinked original scenarios and findings remain visible; missing mapping never means fixed or safe.</p>
+        <div id="gaps" aria-live="polite"></div>
+      </div>
     </div>
     <div class="panel">
       <div class="section-title"><span class="step">04</span><div><h2>Export an exact-source-bound private draft</h2><p>This is only a local human mapping JSON. The Python CLI checks original comparison metrics, input hashes and finding source schema before creating the final protected operator dossier. The source bytes and raw findings are not bundled into this draft.</p></div></div>
@@ -97,6 +119,17 @@ footer{padding:2rem 1.5rem;text-align:center;font-size:.82rem;color:var(--muted)
   const COLUMNS = ["finding_id", "title", "severity", "retest_status", "remediation"];
   const STAGES = ["needs_review", "investigating", "documented"];
   const LIMITS = { comparison: 262144, findings: 1048576, links: 262144 };
+  const METRICS = [
+    "valid_findings", "invalid_findings", "missed_findings", "coverage_assessed",
+    "coverage_unknown", "scope_violations", "policy_violations",
+    "human_interventions", "tool_calls", "evidence_quality", "reproducibility",
+    "remediation_quality", "retest_correctness", "runtime_seconds", "compute_cost_usd"
+  ];
+  const COUNTERS = new Set(METRICS.slice(0, 9));
+  const SCORES = new Set(METRICS.slice(9, 13));
+  const HIGHER = new Set(["valid_findings", "coverage_assessed", ...SCORES]);
+  const LOWER = new Set(["invalid_findings", "missed_findings",
+    "scope_violations", "policy_violations"]);
   const $ = id => document.getElementById(id);
   const app = { source: null, links: [], filtered: [] };
   const bytes = new TextDecoder("utf-8", { fatal: true });
@@ -137,6 +170,7 @@ footer{padding:2rem 1.5rem;text-align:center;font-size:.82rem;color:var(--muted)
   }
 
   function parseCsv(text) {
+    text = text.replace(/^\uFEFF/u, "");
     // RFC 4180 quoted fields, including quoted commas, doubled quotes and line breaks.
     const records = [], row = []; let token = "", quote = false, endedQuote = false;
     for (let i = 0; i < text.length; i++) {
@@ -196,7 +230,35 @@ footer{padding:2rem 1.5rem;text-align:center;font-size:.82rem;color:var(--muted)
           scenarios.has(row.scenario_id) || !Array.isArray(row.regressions) ||
           !Array.isArray(row.changes) || row.changes.length !== 15 ||
           !["HOLD", "REVIEW_ONLY"].includes(row.status)) refuse("Invalid or repeated scenario in original comparison.");
-      if (row.status === "HOLD") adverse.push(row.scenario_id);
+      const seenMetrics = new Set(), observed = [];
+      for (const item of row.changes) {
+        if (!exactKeys(item, ["name", "baseline", "candidate", "delta", "regression"]) ||
+            !METRICS.includes(item.name) || seenMetrics.has(item.name))
+          refuse("Invalid or duplicate original metric.");
+        seenMetrics.add(item.name);
+        const before = item.baseline, after = item.candidate;
+        for (const value of [before, after]) {
+          if (typeof value !== "number" || !Number.isFinite(value) || value < 0 ||
+              (COUNTERS.has(item.name) && (!Number.isInteger(value) || value > 1e9)) ||
+              (SCORES.has(item.name) && value > 1) ||
+              (!COUNTERS.has(item.name) && !SCORES.has(item.name) && value > 1e12))
+            refuse("Invalid original benchmark metric value.");
+        }
+        if (typeof item.delta !== "number" || !Number.isFinite(item.delta) ||
+            Math.abs((after - before) - item.delta) >
+              Math.max(1e-9, 1e-12 * Math.abs(item.delta)))
+          refuse("Inconsistent original benchmark delta.");
+        const adverseMetric = (HIGHER.has(item.name) && after < before) ||
+          (LOWER.has(item.name) && after > before);
+        if (item.regression !== adverseMetric)
+          refuse("Contradictory original benchmark regression flag.");
+        if (adverseMetric) observed.push(item.name);
+      }
+      if (seenMetrics.size !== METRICS.length ||
+          JSON.stringify(row.regressions) !== JSON.stringify(observed) ||
+          row.status !== (observed.length ? "HOLD" : "REVIEW_ONLY"))
+        refuse("Incomplete or contradictory original lab scenario status.");
+      if (observed.length) adverse.push(row.scenario_id);
       scenarios.set(row.scenario_id, row);
     }
     if (doc.status !== (adverse.length ? "HOLD" : "REVIEW_ONLY") ||
@@ -295,6 +357,72 @@ footer{padding:2rem 1.5rem;text-align:center;font-size:.82rem;color:var(--muted)
     announce("Manual link removed; original records remain unchanged.");
   }
 
+  function renderSourcePreviews() {
+    if (!app.source) return;
+    const scenario = app.source.scenarios.get($("scenario").value);
+    const finding = app.source.findings.get($("finding").value);
+    const scenarioPanel = $("scenario-inspect");
+    const findingPanel = $("finding-inspect");
+    scenarioPanel.replaceChildren();
+    findingPanel.replaceChildren();
+    if (scenario) {
+      showNode(scenarioPanel, "p",
+        "Original scenario: " + scenario.scenario_id +
+        " · " + scenario.status +
+        " · " + scenario.regressions.length + " adverse metric(s).");
+      const measures = document.createElement("dl");
+      measures.className = "metric-mini";
+      for (const change of scenario.changes) {
+        if (!change || typeof change.name !== "string") continue;
+        showNode(measures, "dt", change.name +
+          (change.regression === true ? " · SOURCE ADVERSE" : ""));
+        showNode(measures, "dd", "baseline " + String(change.baseline) +
+          " → candidate " + String(change.candidate));
+      }
+      scenarioPanel.appendChild(measures);
+    }
+    if (finding) {
+      showNode(findingPanel, "p", "Original ID: " + finding.finding_id +
+        " · " + finding.severity +
+        " · source-reported retest " + finding.retest_status);
+      showNode(findingPanel, "p", finding.title);
+      showNode(findingPanel, "h4", "Original remediation text (unverified)");
+      showNode(findingPanel, "p", finding.remediation);
+    }
+  }
+
+  function renderGaps() {
+    const root = $("gaps");
+    root.replaceChildren();
+    if (!app.source) return;
+    const linkedScenarios = new Set(app.links.map(link => link.scenario_id));
+    const linkedFindings = new Set(app.links.map(link => link.finding_id));
+    const missingScenarios = [...app.source.scenarios.values()]
+      .filter(row => !linkedScenarios.has(row.scenario_id))
+      .sort((a, b) => Number(b.status === "HOLD") - Number(a.status === "HOLD") ||
+        a.scenario_id.localeCompare(b.scenario_id));
+    const severities = ["critical", "high", "medium", "low", "info"];
+    const missingFindings = [...app.source.findings.values()]
+      .filter(row => !linkedFindings.has(row.finding_id))
+      .sort((a, b) => severities.indexOf(a.severity) -
+        severities.indexOf(b.severity) || a.finding_id.localeCompare(b.finding_id));
+    for (const [title, entries, formatter] of [
+      ["Original lab scenarios awaiting human mapping", missingScenarios,
+       item => item.status + " · " + item.scenario_id],
+      ["Original findings awaiting human mapping", missingFindings,
+       item => item.severity.toUpperCase() + " · " + item.title + " (" + item.finding_id + ")"]
+    ]) {
+      showNode(root, "h4", title + " (" + entries.length + ")");
+      const list = document.createElement("ul");
+      for (const item of entries.slice(0, 100)) {
+        showNode(list, "li", formatter(item));
+      }
+      root.appendChild(list);
+      if (entries.length > 100)
+        showNode(root, "p", String(entries.length - 100) + " additional original records.");
+    }
+  }
+
   function render() {
     if (!app.source) return;
     const body = $("links-body");
@@ -323,6 +451,8 @@ footer{padding:2rem 1.5rem;text-align:center;font-size:.82rem;color:var(--muted)
       tr.appendChild(action);
       body.appendChild(tr);
     }
+    renderSourcePreviews();
+    renderGaps();
     $("link-count").textContent = app.links.length + " manual link(s) · " +
       visible.length + " visible · " +
       new Set(app.links.map(link => link.scenario_id)).size + " scenario(s) linked · " +
@@ -399,6 +529,8 @@ footer{padding:2rem 1.5rem;text-align:center;font-size:.82rem;color:var(--muted)
 
   $("load").addEventListener("click", importOriginals);
   $("form").addEventListener("submit", event => { event.preventDefault(); addOrUpdate(); });
+  $("scenario").addEventListener("change", renderSourcePreviews);
+  $("finding").addEventListener("change", renderSourcePreviews);
   $("filter").addEventListener("input", render);
   $("export").addEventListener("click", downloadMapping);
   $("restore").addEventListener("change", restoreMapping);

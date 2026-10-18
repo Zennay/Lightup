@@ -219,23 +219,56 @@ def html_report(comparison, findings, links, digests):
                 + escape(finding["remediation"]) + "</p></details></li>"
             )
         adverse = item["regressions"]
+        metrics = "".join(
+            "<tr><th scope='row'>" + escape(change["name"]) + "</th>"
+            "<td>" + escape(str(change["baseline"])) + "</td><td>" +
+            escape(str(change["candidate"])) + "</td><td>" +
+            escape(str(change["delta"])) + "</td><td>" +
+            ("ADVERSE" if change["regression"] else "informational") +
+            "</td></tr>"
+            for change in item["changes"]
+        )
         sections.append(
             '<section id="s' + str(index) + '"><h2>' + str(index) + ". "
             + escape(identifier) + "</h2><p><b>Original comparison:</b> "
             + escape(item["status"]) + " · "
             + str(len(adverse)) + " source-reported adverse metrics</p>"
             + "<p>Source adverse metrics: " + escape(", ".join(adverse) or "none declared")
-            + "</p><h3>Manual finding links (" + str(len(mapped)) + ")</h3>"
+            + "</p><details><summary>View all 15 original metric values"
+              " and their source-reported interpretation</summary>"
+              "<div class='scroll'><table><thead><tr><th>Metric</th><th>Baseline</th>"
+              "<th>Candidate</th><th>Delta</th><th>Source interpretation</th>"
+              "</tr></thead><tbody>" + metrics + "</tbody></table></div></details>"
+            + "<h3>Manual finding links (" + str(len(mapped)) + ")</h3>"
             + ("<ul>" + "".join(finding_lines) + "</ul>" if mapped else
                "<p>No human link recorded. This does not mean no finding exists.</p>")
             + "</section>"
         )
+    linked_findings = {link["finding_id"] for link in links}
+    unmatched = sorted(
+        ((key, f) for key, f in findings.items() if key not in linked_findings),
+        key=lambda item: (SEVERITIES.index(item[1]["severity"]), item[0])
+    )
+    unmatched_section = (
+        "<section><h2>Unlinked original findings — human mapping required</h2>"
+        "<p>These independently exported source findings currently have NO manual"
+        " lab-case link. Absence of a link is not clearance or fixed status.</p><ul>"
+        + "".join(
+            "<li><b>" + escape(f["severity"].upper()) + "</b> · "
+            + escape(f["title"]) + " · Original ID <code>" + escape(key)
+            + "</code> · source-reported retest " + escape(f["retest_status"])
+            + "</li>" for key, f in unmatched
+        ) + "</ul></section>"
+    )
     stylesheet = (
         "body{font:16px system-ui,sans-serif;max-width:1050px;margin:2rem auto;"
         "padding:0 1.25rem;color:#172136;background:#fafbfd}h1{font-size:2rem}"
         "section{background:white;padding:1.2rem 1.5rem;border:1px solid #cad2e2;"
         "border-radius:.7rem;margin:1rem 0}p,li{line-height:1.6}code{overflow-wrap:anywhere}"
         "header{border-bottom:3px solid #b35625;padding-bottom:1.2rem}"
+        ".scroll{max-width:100%;overflow-x:auto}table{width:100%;border-collapse:collapse;"
+        "min-width:550px;font-size:.82rem}td,th{padding:.4rem;text-align:left;"
+        "border-bottom:1px solid #cad2e2}details{margin:1rem 0}"
         "nav a{display:inline-block;padding:.4rem;margin:.2rem;border:1px solid #abc;"
         "border-radius:.3rem}a{color:#16468f}details{margin:.5rem 0}footer{padding:2rem 0}"
         "@media print{nav{display:none}section{break-inside:avoid}}"
@@ -253,7 +286,7 @@ def html_report(comparison, findings, links, digests):
     contents += "<nav aria-label='Scenarios'>" + "".join(
         '<a href="#s' + str(i) + '">Case ' + str(i) + '</a>'
         for i in range(1, len(sections) + 1)) + "</nav>"
-    contents += "".join(sections) + "<footer>PLAN/LAB ONLY · DRAFT/HOLD · all four authority flags false · no target work.</footer></html>"
+    contents += "".join(sections) + unmatched_section + "<footer>PLAN/LAB ONLY · DRAFT/HOLD · all four authority flags false · no target work.</footer></html>"
     return contents.encode("utf-8")
 
 def run(args):
@@ -297,6 +330,31 @@ def run(args):
                 agenda.append((link["scenario_id"], item["status"], link["finding_id"],
                                f["severity"], f["retest_status"], link["stage"],
                                link["reviewer"], link["next_action"]))
+    # The action backlog must surface *all* original findings, including
+    # those not yet manually associated with a source lab scenario.
+    # No source finding ever silently disappears from human attention.
+    for finding_id, finding in sorted(
+        findings.items(), key=lambda entry: (
+            SEVERITIES.index(entry[1]["severity"]), entry[0])
+    ):
+        if finding_id not in mapped:
+            agenda.append((
+                "", "UNLINKED_SOURCE", finding_id, finding["severity"],
+                finding["retest_status"], "needs_review", "",
+                "Operator: confirm source/client provenance and select a real scenario, if applicable",
+            ))
+    # Original lab scenarios without associated findings also require human
+    # attention, especially those with adverse original comparison metrics.
+    for item in sorted(
+        compare["comparisons"],
+        key=lambda row: (row["status"] != "HOLD", row["scenario_id"])
+    ):
+        if item["scenario_id"] not in linked_scenarios:
+            agenda.append((
+                item["scenario_id"], item["status"], "", "", "",
+                "needs_review", "",
+                "Review original lab scenario and independently establish whether any client finding is related",
+            ))
     outputs = {
         "private.html": html_report(compare, findings, links, digests),
         "links.json": encode(template),

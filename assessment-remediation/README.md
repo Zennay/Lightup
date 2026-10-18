@@ -167,3 +167,30 @@ operator before recording any human associations.
 All component outputs are private non-overwriting files; this is **not** a single
 transaction across files. The workflow stays REVIEW_ONLY/HOLD and returns 2/3;
 a newly constructed comparison is not verified security evidence, grants or GO.
+
+## Original metric transparency and real follow-up backlog
+
+The generated scriptless confidential dossier now exposes on demand the
+exact original complete **15 metrics per lab scenario** (baseline, candidate,
+delta and source-reported adverse flag) alongside original finding details.
+The operator does not invent a severity score or assume successful remediation
+from a laboratory metric.
+
+The private CSV action agenda no longer hides missing human associations:
+- Every mapped source finding appears with original scenario and status,
+  source retest status and separate local human next action.
+- Every original finding without any manual scenario link receives an explicit
+  UNLINKED_SOURCE human mapping row, highest original severity first.
+- Every original lab scenario with no linked finding receives a separate
+  human follow-up, with source adverse HOLD first.
+
+These are proposed HUMAN attention items, never real scanner tasks, retests or
+vulnerability discoveries. Unknown linkage is not a negative finding.
+Aggregate-only output remains free of original source identifiers.
+
+The offline Mapping Studio now also shows selected original 15-metric values
+and source remediation text independently from human-only editable notes, with
+visible gaps for unlinked original findings and scenarios. Its first-pass
+metric/delta/adverse check reduces misleading source displays; the native
+Python backend remains the final original reader, including rejection of
+duplicate JSON keys.

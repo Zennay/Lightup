@@ -6,6 +6,17 @@
   const COLUMNS = ["finding_id", "title", "severity", "retest_status", "remediation"];
   const STAGES = ["needs_review", "investigating", "documented"];
   const LIMITS = { comparison: 262144, findings: 1048576, links: 262144 };
+  const METRICS = [
+    "valid_findings", "invalid_findings", "missed_findings", "coverage_assessed",
+    "coverage_unknown", "scope_violations", "policy_violations",
+    "human_interventions", "tool_calls", "evidence_quality", "reproducibility",
+    "remediation_quality", "retest_correctness", "runtime_seconds", "compute_cost_usd"
+  ];
+  const COUNTERS = new Set(METRICS.slice(0, 9));
+  const SCORES = new Set(METRICS.slice(9, 13));
+  const HIGHER = new Set(["valid_findings", "coverage_assessed", ...SCORES]);
+  const LOWER = new Set(["invalid_findings", "missed_findings",
+    "scope_violations", "policy_violations"]);
   const $ = id => document.getElementById(id);
   const app = { source: null, links: [], filtered: [] };
   const bytes = new TextDecoder("utf-8", { fatal: true });
@@ -46,6 +57,7 @@
   }
 
   function parseCsv(text) {
+    text = text.replace(/^\uFEFF/u, "");
     // RFC 4180 quoted fields, including quoted commas, doubled quotes and line breaks.
     const records = [], row = []; let token = "", quote = false, endedQuote = false;
     for (let i = 0; i < text.length; i++) {
@@ -105,7 +117,35 @@
           scenarios.has(row.scenario_id) || !Array.isArray(row.regressions) ||
           !Array.isArray(row.changes) || row.changes.length !== 15 ||
           !["HOLD", "REVIEW_ONLY"].includes(row.status)) refuse("Invalid or repeated scenario in original comparison.");
-      if (row.status === "HOLD") adverse.push(row.scenario_id);
+      const seenMetrics = new Set(), observed = [];
+      for (const item of row.changes) {
+        if (!exactKeys(item, ["name", "baseline", "candidate", "delta", "regression"]) ||
+            !METRICS.includes(item.name) || seenMetrics.has(item.name))
+          refuse("Invalid or duplicate original metric.");
+        seenMetrics.add(item.name);
+        const before = item.baseline, after = item.candidate;
+        for (const value of [before, after]) {
+          if (typeof value !== "number" || !Number.isFinite(value) || value < 0 ||
+              (COUNTERS.has(item.name) && (!Number.isInteger(value) || value > 1e9)) ||
+              (SCORES.has(item.name) && value > 1) ||
+              (!COUNTERS.has(item.name) && !SCORES.has(item.name) && value > 1e12))
+            refuse("Invalid original benchmark metric value.");
+        }
+        if (typeof item.delta !== "number" || !Number.isFinite(item.delta) ||
+            Math.abs((after - before) - item.delta) >
+              Math.max(1e-9, 1e-12 * Math.abs(item.delta)))
+          refuse("Inconsistent original benchmark delta.");
+        const adverseMetric = (HIGHER.has(item.name) && after < before) ||
+          (LOWER.has(item.name) && after > before);
+        if (item.regression !== adverseMetric)
+          refuse("Contradictory original benchmark regression flag.");
+        if (adverseMetric) observed.push(item.name);
+      }
+      if (seenMetrics.size !== METRICS.length ||
+          JSON.stringify(row.regressions) !== JSON.stringify(observed) ||
+          row.status !== (observed.length ? "HOLD" : "REVIEW_ONLY"))
+        refuse("Incomplete or contradictory original lab scenario status.");
+      if (observed.length) adverse.push(row.scenario_id);
       scenarios.set(row.scenario_id, row);
     }
     if (doc.status !== (adverse.length ? "HOLD" : "REVIEW_ONLY") ||
@@ -204,6 +244,72 @@
     announce("Manual link removed; original records remain unchanged.");
   }
 
+  function renderSourcePreviews() {
+    if (!app.source) return;
+    const scenario = app.source.scenarios.get($("scenario").value);
+    const finding = app.source.findings.get($("finding").value);
+    const scenarioPanel = $("scenario-inspect");
+    const findingPanel = $("finding-inspect");
+    scenarioPanel.replaceChildren();
+    findingPanel.replaceChildren();
+    if (scenario) {
+      showNode(scenarioPanel, "p",
+        "Original scenario: " + scenario.scenario_id +
+        " · " + scenario.status +
+        " · " + scenario.regressions.length + " adverse metric(s).");
+      const measures = document.createElement("dl");
+      measures.className = "metric-mini";
+      for (const change of scenario.changes) {
+        if (!change || typeof change.name !== "string") continue;
+        showNode(measures, "dt", change.name +
+          (change.regression === true ? " · SOURCE ADVERSE" : ""));
+        showNode(measures, "dd", "baseline " + String(change.baseline) +
+          " → candidate " + String(change.candidate));
+      }
+      scenarioPanel.appendChild(measures);
+    }
+    if (finding) {
+      showNode(findingPanel, "p", "Original ID: " + finding.finding_id +
+        " · " + finding.severity +
+        " · source-reported retest " + finding.retest_status);
+      showNode(findingPanel, "p", finding.title);
+      showNode(findingPanel, "h4", "Original remediation text (unverified)");
+      showNode(findingPanel, "p", finding.remediation);
+    }
+  }
+
+  function renderGaps() {
+    const root = $("gaps");
+    root.replaceChildren();
+    if (!app.source) return;
+    const linkedScenarios = new Set(app.links.map(link => link.scenario_id));
+    const linkedFindings = new Set(app.links.map(link => link.finding_id));
+    const missingScenarios = [...app.source.scenarios.values()]
+      .filter(row => !linkedScenarios.has(row.scenario_id))
+      .sort((a, b) => Number(b.status === "HOLD") - Number(a.status === "HOLD") ||
+        a.scenario_id.localeCompare(b.scenario_id));
+    const severities = ["critical", "high", "medium", "low", "info"];
+    const missingFindings = [...app.source.findings.values()]
+      .filter(row => !linkedFindings.has(row.finding_id))
+      .sort((a, b) => severities.indexOf(a.severity) -
+        severities.indexOf(b.severity) || a.finding_id.localeCompare(b.finding_id));
+    for (const [title, entries, formatter] of [
+      ["Original lab scenarios awaiting human mapping", missingScenarios,
+       item => item.status + " · " + item.scenario_id],
+      ["Original findings awaiting human mapping", missingFindings,
+       item => item.severity.toUpperCase() + " · " + item.title + " (" + item.finding_id + ")"]
+    ]) {
+      showNode(root, "h4", title + " (" + entries.length + ")");
+      const list = document.createElement("ul");
+      for (const item of entries.slice(0, 100)) {
+        showNode(list, "li", formatter(item));
+      }
+      root.appendChild(list);
+      if (entries.length > 100)
+        showNode(root, "p", String(entries.length - 100) + " additional original records.");
+    }
+  }
+
   function render() {
     if (!app.source) return;
     const body = $("links-body");
@@ -232,6 +338,8 @@
       tr.appendChild(action);
       body.appendChild(tr);
     }
+    renderSourcePreviews();
+    renderGaps();
     $("link-count").textContent = app.links.length + " manual link(s) · " +
       visible.length + " visible · " +
       new Set(app.links.map(link => link.scenario_id)).size + " scenario(s) linked · " +
@@ -308,6 +416,8 @@
 
   $("load").addEventListener("click", importOriginals);
   $("form").addEventListener("submit", event => { event.preventDefault(); addOrUpdate(); });
+  $("scenario").addEventListener("change", renderSourcePreviews);
+  $("finding").addEventListener("change", renderSourcePreviews);
   $("filter").addEventListener("input", render);
   $("export").addEventListener("click", downloadMapping);
   $("restore").addEventListener("change", restoreMapping);

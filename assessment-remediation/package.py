@@ -41,6 +41,11 @@ th{color:#465b77;background:#f4f7fc}
 .message{border:1px solid #b6c7df;border-radius:9px;background:#e8f2ff;padding:1rem 1.2rem;margin:1rem 0}
 .message.error{background:#fff0eb;color:#8d2f20;border-color:#e7b1a5}
 code{background:#f0f3f8;border:1px solid #e4eaf3;border-radius:4px;padding:.15rem .3rem;overflow-wrap:anywhere}
+.inspector-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:1rem;margin-top:1.1rem}
+.source-preview{border:1px solid var(--line);border-radius:9px;padding:1rem;margin-top:1rem;background:#f8faff;overflow-wrap:anywhere}
+.source-preview h3{margin:.1rem 0 .4rem;font-size:1rem}.source-preview ul{padding-left:1.2rem;max-height:260px;overflow:auto}
+.source-preview li{margin:.35rem 0}.metric-mini{display:grid;grid-template-columns:1fr auto;gap:.25rem .75rem;font-size:.8rem}
+.metric-mini dt{color:var(--muted)}.metric-mini dd{margin:0;text-align:right}
 footer{padding:2rem 1.5rem;text-align:center;font-size:.82rem;color:var(--muted);border-top:1px solid var(--line)}
 @media(max-width:600px){main{padding:1rem}.panel{padding:1.1rem}.hero{padding:2rem 1.2rem}.section-title{gap:.55rem}}
 @media print{.hero{background:white;color:black;padding:1rem}.hero .lede{color:black}.panel{box-shadow:none}.warning{color:black}button,input,select,textarea,.table-wrap{break-inside:avoid}}

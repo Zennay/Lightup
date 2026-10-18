@@ -39,11 +39,28 @@
         <label>Private human note <textarea id="note" rows="3" maxlength="500" placeholder="No credentials, targets or personal data. Never treat as proof."></textarea></label>
         <button type="submit">Save manual scenario–finding link</button>
       </form>
+      <div class="inspector-grid" aria-label="Original source preview">
+        <div class="source-preview" aria-live="polite">
+          <h3>Selected original lab source · metric summary</h3>
+          <p class="sub">Original source statements only; no finding or permission is inferred.</p>
+          <div id="scenario-inspect"></div>
+        </div>
+        <div class="source-preview" aria-live="polite">
+          <h3>Selected original finding · remediation text</h3>
+          <p class="sub">Source reported status is historical. Not evidence of a verified fix.</p>
+          <div id="finding-inspect"></div>
+        </div>
+      </div>
     </div>
     <div class="panel">
       <div class="section-title"><span class="step">03</span><div><h2>Review local linked findings</h2><p id="link-count" aria-live="polite">No links</p></div></div>
       <label>Filter local source details<input type="search" id="filter" placeholder="Search original IDs, finding titles, human stage" autocomplete="off"></label>
       <div class="table-wrap"><table><thead><tr><th>Original lab scenario</th><th>Original finding</th><th>Human stage</th><th>Local actions</th></tr></thead><tbody id="links-body"></tbody></table></div>
+      <div class="source-preview">
+        <h3>Human review gaps across original source files</h3>
+        <p class="sub">Unlinked original scenarios and findings remain visible; missing mapping never means fixed or safe.</p>
+        <div id="gaps" aria-live="polite"></div>
+      </div>
     </div>
     <div class="panel">
       <div class="section-title"><span class="step">04</span><div><h2>Export an exact-source-bound private draft</h2><p>This is only a local human mapping JSON. The Python CLI checks original comparison metrics, input hashes and finding source schema before creating the final protected operator dossier. The source bytes and raw findings are not bundled into this draft.</p></div></div>
