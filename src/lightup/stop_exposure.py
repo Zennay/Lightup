@@ -79,7 +79,8 @@ def _read_exposure(db_path: str, *, actor_id: str, engagement_id: str) -> dict:
             "time_window_current_by_untrusted_columns": window_declared_current,
             "invalid_time_window_row_count": malformed,
             "human_attention": (
-                "STOP_WITH_STORED_GRANTS" if stopped and rows
+                "HOLD_MALFORMED_GRANT_SOURCE" if malformed
+                else "STOP_WITH_STORED_GRANTS" if stopped and rows
                 else "STOP_WITHOUT_STORED_GRANTS" if stopped
                 else "SOURCE_GRANTS_REQUIRE_INDEPENDENT_REVIEW"
             ),
