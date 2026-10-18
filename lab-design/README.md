@@ -19,6 +19,21 @@
 - **Standalone human handoff brief:** download a completely script-free, no-network HTML briefing with only numeric scenario, target and planted severity totals, fixed disclaimers and explicit false authority fields. The browser print layout is independently redacted: original capability IDs and staged source-diff scenario identities are excluded even when visible in the private editor. The fictional demo is labeled in all exported formats.
 - **Aggregate redacted REVIEW_ONLY JSON** carries only scenario/target/IPv6 counts and expected-finding counts by severity. No original target IP, scenario/finding ID, name, description, title or capability name; four authority flags are literal false. Print only aggregate human review information.
 
+## Import the actual installed LightUp lab fixture profiles
+
+The new opt-in `lab-design/fixture_catalog.py` reads **original** `lightup.labfixtures.PROFILES` and `expected_findings` declarations to produce a PRIVATE Studio catalog. It never constructs or starts the fixture HTTP server, invokes workers, contacts a target or assumes an external assessment is authorized.
+
+Run from the repository root:
+
+```bash
+python3 lab-design/fixture_catalog.py --output /private/path/fixture-design.json
+python3 lab-design/fixture_catalog.py --profile exposed --profile hardened --output /private/path/two-fixtures.json
+```
+
+Then open `lab-design/standalone.html`, choose **Import PRIVATE catalog**, inspect the proposal, and explicitly **Accept replacement** (or append it to an existing nonfictional draft). Original planted check IDs, titles, severity and capability IDs are sourced from the **installed original definitions**, not invented. Profiles with **zero planted checks** remain explicitly scored zero. This is fixture **design data**, not actual evaluation evidence.
+
+The fixture catalog accepts only a strict numeric **loopback address** (default `127.0.0.1`, optional `::1`) because the built-in fixture is a loopback service. It cannot pretend a non-loopback private-network host runs that fixture. The output is exclusive-create PRIVATE owner-only `0600`, never overwrites an existing file or symlink, and is admitted through the original native LabScenario constructor. The SHA-256 printed after export identifies bytes **but does not authenticate source, consent or run results**. Treat this catalog as private because target addresses and planted finding IDs are present.
+
 ## Native offline Python bridge
 
 The distinct opt-in `lab-design/native_bridge.py` uses the original `src/lightup/labeval.py` dataclasses without modifying them. It validates the same catalog shape through Python's standard-library `ipaddress`, constructs the original **LabScenario** and **ExpectedFinding** objects **in memory** and prints only redacted counts. It imports **no LabEvaluationHarness**, starts no run, performs no target IO, and cannot verify real asset ownership or consent. Use from the repository root:
