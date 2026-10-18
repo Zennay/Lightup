@@ -19,7 +19,7 @@ const exactKeys = (v,allowed) => Object.keys(v).every(k => allowed.has(k));
 const validString = (s,n) => typeof s === 'string' && s.length <= n;
 const str = s => String(s == null ? '' : s);
 const minutes = v => Number.isInteger(v) && v >= -840 && v <= 840;
-let entries = [], anchorUTC = 0, anchorChangedByUser = false;
+let entries = [], blackouts = [], anchorUTC = 0, anchorChangedByUser = false;
 
 function validLocal(value) {
   if (value === null) return true;
@@ -113,10 +113,25 @@ function timeClashes(list) {
   }
   return {pairs,active};
 }
+function parseUTCWallTime(value){
+  if(!validLocal(value) || typeof value!=='string')return null;
+  const millis=Date.parse(value+':00.000Z');
+  return Number.isFinite(millis) && new Date(millis).toISOString().slice(0,16)===value ? millis : null;
+}
+function renderBlocks(){
+  const box=$('blocks');box.replaceChildren();
+  if(!blackouts.length){append(box,'p','No unavailable periods added.','muted');return;}
+  blackouts.forEach((b,i)=>{
+    const row=document.createElement('div');row.className='item';box.append(row);
+    append(row,'span','Unavailable #'+(i+1)+': '+formatUTC(b.start)+' → '+formatUTC(b.end)+' ');
+    const remove=append(row,'button','Remove');
+    remove.type='button';remove.addEventListener('click',()=>{blackouts.splice(i,1);render();});
+  });
+}
 function suggest(entry,list){
   let candidate=entry.interval.start,cycles=0;
   const duration=entry.interval.end-entry.interval.start;
-  const others=list.filter(x=>x!==entry).sort((a,b)=>a.interval.start-b.interval.start);
+  const others=list.filter(x=>x!==entry).concat(blackouts.map(b=>({interval:b}))).sort((a,b)=>a.interval.start-b.interval.start);
   while(cycles++<MAX_FILES+2) {
     const conflict=others.find(e=>candidate<e.interval.end+BUFFER &&
       candidate+duration+BUFFER>e.interval.start);
@@ -136,8 +151,14 @@ function createAxis(days) {
 function render(){
   const timed=shown(),unsafe=entries.filter(e=>e.interval.state!=='resolved');
   const {pairs,active}=timeClashes(timed);
+  const blockHits=[];
+  timed.forEach((e,i)=>blackouts.forEach((b,j)=>{
+    if(e.interval.start<b.end && b.start<e.interval.end){blockHits.push([i,j]);active.add(i);}
+  }));
+  $('blocked').textContent=blackouts.length;
+  renderBlocks();
   $('total').textContent=entries.length;$('timed').textContent=timed.length;
-  $('unscheduled').textContent=unsafe.length;$('clashes').textContent=pairs.length;
+  $('unscheduled').textContent=unsafe.length;$('clashes').textContent=pairs.length+blockHits.length;
   $('ics').disabled=!timed.length;$('print').disabled=!entries.length;
   const days=Number($('horizon').value),lo=anchorUTC,hi=anchorUTC+days*DAY;
   createAxis(days);
@@ -161,12 +182,31 @@ function render(){
     } else append(track,'span','Outside visible horizon','muted');
     append(label,'small',formatUTC(e.interval.start)+' → '+formatUTC(e.interval.end));
   }
+  blackouts.forEach((b,j)=>{
+    const row=document.createElement('div');row.className='lane';lanes.append(row);
+    const label=document.createElement('div');label.className='label';row.append(label);
+    append(label,'strong','Unavailable #'+(j+1));append(label,'small',formatUTC(b.start)+' → '+formatUTC(b.end));
+    const track=document.createElement('div');track.className='track';track.style.setProperty('--days',days);row.append(track);
+    const start=Math.max(b.start,lo),end=Math.min(b.end,hi);
+    if(start<end){
+      const bar=document.createElement('div');bar.className='bar blocked';
+      bar.style.left=100*(start-lo)/(days*DAY)+'%';
+      bar.style.width=100*(end-start)/(days*DAY)+'%';
+      bar.title='Locally unavailable only, not a verified resource booking';
+      track.append(bar);
+    } else append(track,'span','Outside visible horizon','muted');
+  });
   const conflict=$('conflicts');conflict.replaceChildren();
-  if(!pairs.length)append(conflict,'p','No overlapping validated proposed UTC windows. This does not prove availability or approval.','muted');
+  if(!pairs.length && !blockHits.length)append(conflict,'p','No collisions detected against other drafts or locally unavailable periods. This does not prove availability or approval.','muted');
   for(const [i,j] of pairs){
     const a=timed[i],b=timed[j],box=document.createElement('div');box.className='item danger';conflict.append(box);
     append(box,'strong',a.name+' ↔ '+b.name);
     append(box,'div','Overlap: '+formatUTC(Math.max(a.interval.start,b.interval.start))+' – '+formatUTC(Math.min(a.interval.end,b.interval.end)));
+  }
+  for(const [i,j] of blockHits){
+    const e=timed[i],b=blackouts[j],box=document.createElement('div');box.className='item danger';conflict.append(box);
+    append(box,'strong',e.name+' ↔ Unavailable #'+(j+1));
+    append(box,'div','Local planning conflict: '+formatUTC(Math.max(e.interval.start,b.start))+' – '+formatUTC(Math.min(e.interval.end,b.end)));
   }
   const attention=$('attention');attention.replaceChildren();
   if(!entries.length)append(attention,'p','No imported proposals.');
@@ -207,6 +247,21 @@ $('anchor').value=new Date().toISOString().slice(0,10);
 setAnchor();
 $('anchor').addEventListener('change',()=>{anchorChangedByUser=true;setAnchor();});
 $('horizon').addEventListener('change',render);
+$('addBlock').addEventListener('click',()=>{
+  if(blackouts.length>=30){$('status').textContent='Unavailable-period limit is 30 per tab.';return;}
+  const start=parseUTCWallTime($('blockStart').value);
+  const end=parseUTCWallTime($('blockEnd').value);
+  if(start===null || end===null || end<=start || end-start>31*DAY){
+    $('status').textContent='Enter valid ascending UTC start/end values, at most 31 days apart.';return;
+  }
+  if(blackouts.some(b=>b.start===start&&b.end===end)){
+    $('status').textContent='That unavailable interval is already listed.';return;
+  }
+  blackouts.push({start,end});
+  $('blockStart').value='';$('blockEnd').value='';
+  $('status').textContent='Unavailable period added locally. Alternatives have been recomputed; no actual booking created.';
+  render();
+});
 $('files').addEventListener('change',async ev=>{
   const list=Array.from(ev.target.files||[]);ev.target.value='';
   if(!list.length)return;
@@ -242,9 +297,9 @@ $('files').addEventListener('change',async ev=>{
   render();
 });
 $('clear').addEventListener('click',()=>{
-  if(!entries.length)return;
-  if(!window.confirm('Clear all drafts from this tab?'))return;
-  entries=[];$('status').textContent='Local drafts cleared; no persisted history.';render();
+  if(!entries.length && !blackouts.length)return;
+  if(!window.confirm('Clear all imported drafts and unavailable periods from this tab?'))return;
+  entries=[];blackouts=[];$('status').textContent='Local drafts cleared; no persisted history.';render();
 });
 $('print').addEventListener('click',()=>{if(entries.length)window.print();});
 function icsTimestamp(n){return new Date(n).toISOString().replace(/[-:]/g,'').replace('.000Z','Z');}
