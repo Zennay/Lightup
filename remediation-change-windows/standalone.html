@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="referrer" content="no-referrer">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-wpPFZOyxFDTkVCPSRLe+ulmbav4+u8hRIYgukbiqEiU=' 'sha256-+YxblXS3x1BP+IaG4V7iN8k7wmxer7j5UvSp5gyAOYw='; style-src 'unsafe-inline'; connect-src 'none'; img-src 'none'; font-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-wpPFZOyxFDTkVCPSRLe+ulmbav4+u8hRIYgukbiqEiU=' 'sha256-pZjXftdADgYpC/HENjwUAEXDKYAaYu0pTyBOz0dumW8='; style-src 'unsafe-inline'; connect-src 'none'; img-src 'none'; font-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <title>LightUp · Change Window & Handoff Board</title>
 <style>
 :root{font:15px/1.5 system-ui,sans-serif;color:#eef5ff;background:#0b1522;--panel:#162638;--line:#516a7c;--mint:#96f3d3}
@@ -41,8 +41,8 @@ td select{min-width:130px}.hold{color:#ffcf96;font-weight:750}#status[data-error
 <section><h2>3 · Place findings into human review windows</h2><div class="grid">
 <div><span class="stat" id="total">0</span><p>Original findings</p></div><div><span class="stat" id="urgent">0</span><p>Critical/high</p></div><div><span class="stat" id="unassigned">0</span><p>Unscheduled</p></div><div><span class="stat" id="caseBlocked">—</span><p>Locally blocked Casework plans (if loaded)</p></div><div><span class="stat" id="caseOverdue">—</span><p>Local Casework due dates past (if loaded)</p></div><div><span class="stat" id="lateSlot">—</span><p>Human slots after local Casework due dates</p></div><div><span class="stat" id="holds">0</span><p>Missing local references or changes requested</p></div>
 </div><label>Filter severity<select id="filter"><option value="">All original severities</option><option>critical</option><option>high</option><option>medium</option><option>low</option><option>info</option></select></label>
-<div class="grid"><label>Local human coordination filter<select id="humanFilter"><option value="">All original findings</option><option value="gaps">Missing human references / changes requested</option><option value="complete">Local references filled (NOT verified)</option><option value="regression">Original source reports regression</option><option value="critical">Critical/high original severity</option></select></label><label>Original Casework follow-up<select id="caseFilter"><option value="">All local Casework states</option><option value="blocked">Local blockers / status blocked</option><option value="overdue">Locally past due date</option><option value="window-late">Proposed UTC slot after local Casework due date</option><option value="no-owner">No human owner</option><option value="open">Local plan still open</option></select></label><label>Assign filtered rows to proposal<select id="bulkWindow"><option value="0">Unassigned</option><option value="1">Human window 1</option><option value="2">Human window 2</option><option value="3">Human window 3</option><option value="4">Human window 4</option></select></label></div><div class="actions"><button id="bulkApply">Apply HUMAN slot to visible finding group</button><button id="bulkUndo" disabled>Undo most recent human bulk assignment</button></div><p class="muted">A bulk choice changes ONLY private local proposed window numbers. It never overwrites any original finding, reviewer, evidence reference or retest status. Each chosen record stays in the private browser tab until separately exported.</p>
-<div class="scroll"><table><thead><tr><th>Original finding</th><th>Severity</th><th>Source retest</th><th>Local human review</th><th>Original Casework owner / status / due (human draft)</th><th>Readiness caveat</th><th>Proposed window</th></tr></thead><tbody id="findings"></tbody></table></div></section>
+<div class="grid"><label>Local human coordination filter<select id="humanFilter"><option value="">All original findings</option><option value="gaps">Missing human references / changes requested</option><option value="complete">Local references filled (NOT verified)</option><option value="regression">Original source reports regression</option><option value="critical">Critical/high original severity</option></select></label><label>Private Casework owner<select id="ownerFilter"><option value="">All human owners</option></select></label><label>Original Casework follow-up<select id="caseFilter"><option value="">All local Casework states</option><option value="blocked">Local blockers / status blocked</option><option value="overdue">Locally past due date</option><option value="window-late">Proposed UTC slot after local Casework due date</option><option value="no-owner">No human owner</option><option value="open">Local plan still open</option></select></label><label>Assign filtered rows to proposal<select id="bulkWindow"><option value="0">Unassigned</option><option value="1">Human window 1</option><option value="2">Human window 2</option><option value="3">Human window 3</option><option value="4">Human window 4</option></select></label></div><div class="actions"><button id="bulkApply">Apply HUMAN slot to visible finding group</button><button id="bulkUndo" disabled>Undo most recent human bulk assignment</button></div><p class="muted">A bulk choice changes ONLY private local proposed window numbers. It never overwrites any original finding, reviewer, evidence reference or retest status. Each chosen record stays in the private browser tab until separately exported.</p>
+<h3>Private human owner workload</h3><p class="muted">Read-only original Casework people/team labels and human planning counts; not authentication, assignment, performance evaluation or a personnel record. This board never exports owner labels in identity-free calendar or aggregate CSV.</p><div id="ownerBoard" class="grid"></div><div class="scroll"><table><thead><tr><th>Original finding</th><th>Severity</th><th>Source retest</th><th>Local human review</th><th>Original Casework owner / status / due (human draft)</th><th>Readiness caveat</th><th>Proposed window</th></tr></thead><tbody id="findings"></tbody></table></div></section>
 <section><h2>4 · Review the proposed human-only release discussion</h2><div id="summary" class="grid"></div>
 <label>Optional private meeting note (not an approval)<textarea id="note" maxlength="600" rows="3" placeholder="Follow-up decisions to verify, not authority."></textarea></label>
 <div class="actions"><button id="private" class="primary">Export PRIVATE source-bound JSON</button><button id="calendar">Export identity-free proposed UTC calendar (.ics)</button><button id="aggregate">Export aggregate-only CSV</button><button id="caseBrief">Export PRIVATE original Casework human follow-up brief</button></div><p class="muted">Private JSON contains original finding IDs and human notes: send only through a separately approved confidential channel. Calendar and aggregate CSV omit all source IDs, titles, contacts, evidence references and client identity. Calendar attendance is not consent or change approval.</p></section>
@@ -483,13 +483,46 @@ function el(tag,txt){const n=document.createElement(tag);if(txt!==undefined)n.te
 function hasHumanHold(f,r){
  return r.stage==='missing'||r.stage==='needs_changes'||EVIDENCE.slice(0,4).some(k=>!r.evidence[k]);
 }
+
+function ownerKey(c){return c?.owner.trim()?'named:'+c.owner.trim():'unassigned-owner';}
+function ownerWorkload(){
+ const board=$('ownerBoard'),selector=$('ownerFilter'),prior=selector.value;
+ board.replaceChildren();
+ selector.replaceChildren(new Option('All human owners',''));
+ if(!state?.casework){board.appendChild(el('p','Import an original exact-source private Casework v1 to view human owner groups.'));return;}
+ const groups=new Map();
+ for(const f of state.source){
+  const c=state.casework.get(f.finding_id),key=ownerKey(c);
+  if(!groups.has(key))groups.set(key,{key,label:c.owner.trim()||'(Human owner unassigned)',total:0,urgent:0,blocked:0,overdue:0,late:0,unscheduled:0});
+  const v=groups.get(key);v.total++;
+  if(['critical','high'].includes(f.severity))v.urgent++;
+  if(caseBlocked(c))v.blocked++;
+  if(pastDue(c))v.overdue++;
+  if(windowAfterHumanDue(f))v.late++;
+  if(!state.assignments.get(f.finding_id))v.unscheduled++;
+ }
+ const sorted=[...groups.values()].sort((a,b)=>b.urgent-a.urgent||b.blocked-a.blocked||a.label.localeCompare(b.label));
+ for(const group of sorted){
+  selector.appendChild(new Option(group.label,group.key));
+  const tile=el('article');tile.className='item';
+  tile.appendChild(el('h3',group.label));
+  tile.appendChild(el('p',group.total+' original findings · '+group.urgent+' critical/high · '+group.blocked+' local blockers · '+
+   group.overdue+' local overdue · '+group.late+' planned after local due · '+group.unscheduled+' unscheduled.'));
+  const btn=el('button','Filter to this human owner');
+  btn.addEventListener('click',()=>{selector.value=group.key;render();});
+  tile.appendChild(btn);board.appendChild(tile);
+ }
+ selector.value=groups.has(prior)?prior:'';
+}
+
 function visibleFinding(f,r){
- const severity=$('filter').value,human=$('humanFilter').value,caseFilter=$('caseFilter').value;
+ const severity=$('filter').value,human=$('humanFilter').value,caseFilter=$('caseFilter').value,ownerFilter=$('ownerFilter').value;
  if(severity&&severity!==f.severity)return false;
  if(human==='gaps'&&!hasHumanHold(f,r))return false;
  if(human==='complete'&&hasHumanHold(f,r))return false;
  if(human==='regression'&&f.retest_status!=='regression')return false;
  if(human==='critical'&&!['critical','high'].includes(f.severity))return false;
+ if(ownerFilter&&(!state?.casework||ownerKey(state.casework.get(f.finding_id))!==ownerFilter))return false;
  if(caseFilter){
   if(!state?.casework)return false;
   const c=state.casework.get(f.finding_id);
@@ -522,6 +555,7 @@ function bulkUndo(){
 function render(){
  if(!state)return;
  const src=state.source,rows=$('findings');rows.replaceChildren();
+ ownerWorkload();
  let unassigned=0,holds=0;
  for(const f of src){
   const r=state.review.get(f.finding_id);
@@ -565,14 +599,15 @@ function render(){
 function purgeRenderedPrivateData(){
  state=null;revisionCandidate=null;lastBulkSnapshot=null;
  $('results').hidden=true;$('bulkUndo').disabled=true;$('applyRevision').disabled=true;
- for(const id of ['findings','summary'])$(id).replaceChildren();
+ for(const id of ['findings','summary','ownerBoard'])$(id).replaceChildren();
+ $('ownerFilter').replaceChildren(new Option('All human owners',''));
  for(const id of ['digest','revisionSummary'])$(id).textContent='';
  $('note').value='';$('planFile').value='';$('nextCsv').value='';
  $('confirmRevision').checked=false;
  for(let i=0;i<HOURS;i++){
   $('date'+i).value='';$('label'+i).value='';$('duration'+i).value='60';
  }
- for(const id of ['filter','caseFilter','humanFilter','bulkWindow'])$(id).value=$(id).options[0].value;
+ for(const id of ['filter','caseFilter','humanFilter','bulkWindow','ownerFilter'])$(id).value=$(id).options[0].value;
  for(const id of ['total','urgent','unassigned','holds'])$(id).textContent='0';
  $('caseBlocked').textContent='—';$('caseOverdue').textContent='—';$('lateSlot').textContent='—';
 }
@@ -787,7 +822,7 @@ function applySourceRevision(){
  /* Atomic swap only after the full original five-field comparator, digest,
   * review/slot mapping and preview fingerprint have been accepted. */
  state={source:next,hash,review:notes,assignments:slots,casework:null,caseworkDigest:null,refreshSummary:summary};
- $('caseFilter').value='';
+ $('caseFilter').value='';$('ownerFilter').value='';
  lastBulkSnapshot=null;$('bulkUndo').disabled=true;
  $('digest').textContent='Current original canonical source SHA-256: '+hash+
    ' · changed/new human notes and slots reset; absent source records are NOT fixed.';
@@ -863,6 +898,7 @@ function init(){
  for(const id of ['nextCsv','confirmRevision'])$(id).addEventListener('change',()=>clearRevisionPreview('Source selection changed. Create a new preview.'));
  $('filter').addEventListener('change',render);
  $('caseFilter').addEventListener('change',render);
+ $('ownerFilter').addEventListener('change',render);
  $('humanFilter').addEventListener('change',render);
  $('bulkApply').addEventListener('click',()=>{try{bulkApply();}catch(e){setStatus(e.message,true);}});
  $('bulkUndo').addEventListener('click',()=>{try{bulkUndo();}catch(e){setStatus(e.message,true);}});
