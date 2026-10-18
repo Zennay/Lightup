@@ -122,6 +122,57 @@ clearly states that request state is not execution authorization. JSON output
 is intended for a **private** local terminal and should not be published:
 request IDs, assets, notes, and other fields can still be sensitive.
 
+## Revise an independently rejected client request
+
+A rejected request remains part of the original review history. Client members
+can **create a new proposal** based on an earlier rejected request, but cannot
+rewrite that rejection, change the operator's decision, inherit authorization or
+change a grant. Authentication and tenant isolation use the existing persisted
+`DomainStore` client checks; the previously rejected record must belong to the
+current authenticated client.
+
+```sh
+# Login; compare existing rejected request with revised inputs.
+# All unchanged values (except fields explicitly replaced) are proposed again.
+python -m lightup.client_request_cli revise-preview \
+  --db /private/lightup.sqlite --email client@example.org \
+  --request-id 'original-rejected-request-uuid' \
+  --asset app.example.org --risk 2 \
+  --notes "Updated assessment rationale and client safety constraints" \
+  --output /private/request-revision-review.html
+
+# Carefully read the printed source SHA-256 and the optional private HTML report.
+# Submit a completely NEW request with independent operator review.
+python -m lightup.client_request_cli revise-submit \
+  --db /private/lightup.sqlite --email client@example.org \
+  --request-id 'original-rejected-request-uuid' \
+  --asset app.example.org --risk 2 \
+  --notes "Updated assessment rationale and client safety constraints" \
+  --expect-original-sha256 '<64 lowercase hex from revise-preview>' \
+  --confirm-new-request
+
+# If the new assets include additional CIDR/hostname coverage or risk rises,
+# add the deliberate acknowledgement --confirm-scope-expansion.
+```
+
+**No live authority:** The CLI reads only an already **REJECTED**
+`authorized_assessment` request, refuses identical/no-op submissions, computes
+the changed literal hostname/CIDR coverage and risks, and requires the original
+stored request's exact version SHA-256 to match before a fresh submission.
+An increased risk or expanded scope requires explicit
+`--confirm-scope-expansion`; that acknowledgement is **NOT operator approval**.
+The newly submitted record starts at `SUBMITTED`, under a new UUID, with a
+clearly client-supplied predecessor reference in its *notes only*.
+The existing database has no authoritative revision-lineage relation: the
+note/reference and SHA-256 are **untrusted hints**, not signatures or bindings.
+
+The optional **private visual comparison** is an escaped, no-script/no-network
+HTML snapshot saved to a *new* file with mode `0600`; it shows before/after
+assets, added/widened and removed/narrowed declarations, risks and next steps.
+It cannot submit requests, contact targets, confer approval or prove current
+status. Source history remains unchanged and a separate real operator
+assessment decision must be made for each new request.
+
 ## Release posture
 
 **INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD.** This child PR is a
