@@ -13,7 +13,7 @@ import sys
 from zipfile import ZipFile, ZipInfo, ZIP_STORED, BadZipFile
 
 from bridge import (
-    AGG_SCHEMA, FLAGS, LINK_SCHEMA, MAX_LINKS, fail_if, private_dir,
+    AGG_SCHEMA, FLAGS, LINK_SCHEMA, MAX_LINKS, STAGES, bounded_text, fail_if, private_dir,
 )
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "assessment-archive"))
 from archive import Hold, decode_json, encode, publish, read_regular
@@ -60,6 +60,21 @@ def read_sources(folder, prefix):
             type(links.get("links")) is not list or
             aggregate["human_link_count"] != len(links["links"]),
             "original linked-source dossier does not match aggregate")
+    pairs = set()
+    for link in links["links"]:
+        fail_if(type(link) is not dict or set(link) != {
+            "scenario_id", "finding_id", "stage", "reviewer", "next_action", "note"
+        }, "private manual link does not follow original schema")
+        scenario, finding = link["scenario_id"], link["finding_id"]
+        fail_if(type(scenario) is not str or type(finding) is not str or
+                not 0 < len(scenario) <= 256 or not 0 < len(finding) <= 256 or
+                link["stage"] not in STAGES or
+                not bounded_text(link["reviewer"], 100) or
+                not bounded_text(link["next_action"], 300) or
+                not bounded_text(link["note"], 500) or
+                (scenario, finding) in pairs,
+                "private original manual link is invalid or repeated")
+        pairs.add((scenario, finding))
     for digest in (links["comparison_sha256"], links["findings_sha256"]):
         fail_if(type(digest) is not str or
                 re.fullmatch("[0-9a-f]{64}", digest) is None,
@@ -109,12 +124,9 @@ def create_room(args):
             add_file(zf, name, payload)
     body = package.getvalue()
     fail_if(len(body) > MAX_TOTAL, "private room exceeds maximum bound")
-    for path, digest in originals.items():
-        fail_if(sha256(read_regular(str(path), FILE_MAP[
-            "review/" + ("index.html" if path.name.endswith("-private.html")
-                         else "private-links.json" if path.name.endswith("-links.json")
-                         else "aggregate.json" if path.name.endswith("-aggregate.json")
-                         else "agenda.csv")][1])).hexdigest() != digest,
+    for original_name, (suffix, limit) in FILE_MAP.items():
+        path = folder / (args.prefix + "-" + suffix)
+        fail_if(sha256(read_regular(str(path), limit)).hexdigest() != originals[path],
                 "private original source changed before room publication")
     publish(destination, body)
     print("PRIVATE_ASSESSMENT_ROOM_" + status)
@@ -160,9 +172,19 @@ def inspect_room(path):
                     entry["sha256"] != sha256(payload).hexdigest() or
                     len(payload) > FILE_MAP[expected_name][1],
                     "private original byte manifest mismatch")
+        # Inspector checks the original private linkage envelope without reinterpreting
+        # source identity as an authenticated authorization or remediation outcome.
+        links = decode_json(payloads["review/private-links.json"])
+        fail_if(type(links) is not dict or set(links) != {
+            "schema", "comparison_sha256", "findings_sha256", "links", *FLAGS
+        } or links["schema"] != LINK_SCHEMA or
+                any(links[flag] is not False for flag in FLAGS) or
+                type(links["links"]) is not list or len(links["links"]) > 512,
+                "private room human source links are malformed")
         data = decode_json(payloads["review/aggregate.json"])
         fail_if(data.get("status") != manifest["status"] or
                 data.get("schema") != AGG_SCHEMA or
+                data.get("human_link_count") != len(links["links"]) or
                 any(data.get(flag) is not False for flag in FLAGS),
                 "private human room/source review status mismatched")
         print("PRIVATE_ASSESSMENT_ROOM_" + manifest["status"])

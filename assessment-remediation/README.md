@@ -90,3 +90,31 @@ are never linked automatically. A changed source, withheld link or original new
 HOLD keeps review output HOLD; a complete unchanged REVIEW_ONLY source is
 still not security clearance, permission or successful retest. No original
 file is modified or action is dispatched.
+
+## Portable confidential review room (single private ZIP)
+
+To hand off the four original bridge.py outputs as one private source-bound
+room, keep all four files in the same owner-only output folder and run:
+
+    python3 assessment-remediation/packet.py bundle \
+      --output-dir /private/lightup-followup --prefix reviewed
+
+This creates **reviewed-private-room.zip**, one new exclusive fsynced 0600
+artifact with the unchanged original private scriptless HTML, private manual
+link JSON, anonymous aggregate JSON, private formula-escaped agenda CSV,
+README and a SHA-256/size manifest for every included output. No original
+benchmark case JSON, original client findings CSV, target, credential, consent
+record, API call or execution code is bundled. The ZIP still contains sensitive
+scenario and finding IDs, confidential notes and human assignments: only hand
+it to a separately verified authorized recipient via an approved private route.
+
+Read-only offline integrity inspection without unpacking is available:
+
+    python3 assessment-remediation/packet.py inspect \
+      /private/lightup-followup/reviewed-private-room.zip
+
+Inspection requires the exact expected six static ZIP members, safe regular-file
+metadata, no duplicates, no compression or extra payloads, valid SHA-256
+manifest and matching original aggregate/link schema. It exits 2 REVIEW_ONLY
+or 3 HOLD, never confirms sender authenticity, client ownership, current
+consent, safety, remediated vulnerabilities or permission to retest.
