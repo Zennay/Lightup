@@ -27,6 +27,7 @@ SCRIPT_TAGS = {
     "studio-planning-window.js": '<script src="studio-planning-window.js"></script>',
     "studio-scope-fingerprint.js": '<script src="studio-scope-fingerprint.js"></script>',
     "studio-proposal-import.js": '<script src="studio-proposal-import.js"></script>',
+    "human-actions.js": '<script src="human-actions.js"></script>',
     "app.js": '<script src="app.js"></script>',
 }
 
