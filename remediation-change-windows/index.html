@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'unsafe-inline'; connect-src 'none'; img-src 'none'; font-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<title>LightUp · Change Window & Handoff Board</title>
+<style>
+:root{font:15px/1.5 system-ui,sans-serif;color:#eef5ff;background:#0b1522;--panel:#162638;--line:#516a7c;--mint:#96f3d3}
+*{box-sizing:border-box}body{margin:0}header{padding:30px max(18px,calc((100% - 1160px)/2));border-bottom:1px solid var(--line);background:#132a3c}
+small{letter-spacing:.08em;color:var(--mint);font-weight:800}h1{margin:6px 0;font-size:clamp(26px,4vw,40px)}h2{margin-top:0}main{max-width:1180px;margin:auto;padding:22px 18px 80px}
+section{padding:20px;margin:18px 0;border:1px solid var(--line);border-radius:12px;background:var(--panel)}
+aside{padding:16px;border:1px solid #dfb775;background:#3d3026;border-radius:10px}
+p{color:#d0deeb}label{display:block;font-weight:650;margin:9px 0}input,select,textarea{width:100%;padding:10px;border-radius:8px;border:1px solid #819eb2;background:#102030;color:#fff;font:inherit}
+input[type=checkbox]{width:auto;margin-right:10px}button{border:1px solid #7eabb2;background:#26465a;color:white;border-radius:8px;padding:10px 13px;font:700 14px system-ui;cursor:pointer}
+button.primary{background:var(--mint);color:#092b27;border-color:var(--mint)}button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid var(--mint)}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,250px),1fr));gap:15px}.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}
+.stat{font-size:27px;color:var(--mint);font-weight:800}.muted{font-size:.87em;color:#bbccdc}
+table{width:100%;border-collapse:collapse}th,td{padding:10px;text-align:left;vertical-align:middle;border-bottom:1px solid var(--line)}.scroll{overflow:auto}
+td select{min-width:130px}.hold{color:#ffcf96;font-weight:750}#status[data-error=true]{color:#ffc1b9}#results[hidden]{display:none}
+@media print{header,aside,.actions,input,select,textarea,button,.files{display:none!important}body{background:white;color:black}section{background:white;color:black;border-color:#aaa}p,.muted{color:#333}}
+</style>
+</head><body>
+<header><small>LIGHTUP · HUMAN-ONLY REMEDIATION COORDINATION</small><h1>Change Window & Handoff Board</h1><p>Plan human change-review windows from original finding records and private evidence notes. No scanner, grant, deployment, retest or ticket API.</p></header>
+<main>
+<aside><strong>INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD</strong><p>This is an unsigned offline discussion board. An exported findings CSV, human stage, local date or content digest does not prove current customer identity, consent, an approved change, verified remediation, authorization or permission to execute. Only use a separately authorized original private export. This tool does not connect to the network or persist in browser storage.</p></aside>
+<section class="files"><h2>1 · Import original sources</h2>
+<div class="grid"><label>Original five-column findings CSV (private)<input id="csv" type="file" accept=".csv,text/csv"></label>
+<label>Original Evidence Review v1/v2 JSON (optional, private)<input id="review" type="file" accept=".json,application/json"></label></div>
+<label><input type="checkbox" id="same">I independently verified that this CSV and optional Evidence Review refer to the same original client and exact engagement. This statement is NOT authorization.</label>
+<div class="actions"><button id="load" class="primary">Load original source</button><button id="forget">Forget local workspace</button></div>
+<p id="status" aria-live="polite" role="status"></p><p id="digest" class="muted"></p></section>
+<div id="results" hidden>
+<section><h2>2 · Define up to four hypothetical change-review windows</h2><p>All times are UTC and merely proposed. A blocked human dossier or missing rollout/rollback reference remains HOLD even when placed on a calendar.</p>
+<div id="windows" class="grid"></div><div class="actions"><button id="recalculate">Recalculate human readiness</button></div></section>
+<section><h2>3 · Place findings into human review windows</h2><div class="grid">
+<div><span class="stat" id="total">0</span><p>Original findings</p></div><div><span class="stat" id="urgent">0</span><p>Critical/high</p></div><div><span class="stat" id="unassigned">0</span><p>Unscheduled</p></div><div><span class="stat" id="holds">0</span><p>Missing local references or changes requested</p></div>
+</div><label>Filter severity<select id="filter"><option value="">All original severities</option><option>critical</option><option>high</option><option>medium</option><option>low</option><option>info</option></select></label>
+<div class="scroll"><table><thead><tr><th>Original finding</th><th>Severity</th><th>Source retest</th><th>Local human review</th><th>Readiness caveat</th><th>Proposed window</th></tr></thead><tbody id="findings"></tbody></table></div></section>
+<section><h2>4 · Review the proposed human-only release discussion</h2><div id="summary" class="grid"></div>
+<label>Optional private meeting note (not an approval)<textarea id="note" maxlength="600" rows="3" placeholder="Follow-up decisions to verify, not authority."></textarea></label>
+<div class="actions"><button id="private" class="primary">Export PRIVATE source-bound JSON</button><button id="calendar">Export identity-free proposed UTC calendar (.ics)</button><button id="aggregate">Export aggregate-only CSV</button></div><p class="muted">Private JSON contains original finding IDs and human notes: send only through a separately approved confidential channel. Calendar and aggregate CSV omit all source IDs, titles, contacts, evidence references and client identity. Calendar attendance is not consent or change approval.</p></section>
+</div></main>
+<script src="../remediation-capacity/casework-original-v1.js"></script>
+<script src="board.js"></script>
+</body></html>
