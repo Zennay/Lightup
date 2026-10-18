@@ -319,6 +319,39 @@
     for(const id of ["familyFilter","stageFilter","truthFilter"])$(id).value="all";
   }
 
+
+  function numberLabel(n){
+    return Number.isInteger(n)?String(n):n.toPrecision(6).replace(/\.?0+($|e)/,"$1");
+  }
+  function renderInspector(){
+    const selector=$("inspectCase"),panel=$("metricInspector"),old=selector.value;
+    selector.replaceChildren();panel.replaceChildren();
+    if(!catalog||!reports.length){
+      panel.textContent="Import the original scenario catalog and a completed comparator report first.";
+      return;
+    }
+    catalog.forEach((s,i)=>{
+      const option=document.createElement("option");option.value=String(i);
+      option.textContent="Lab case "+String(i+1).padStart(2,"0");selector.append(option);
+    });
+    selector.value=old!==""&&Number.isSafeInteger(Number(old))&&Number(old)>=0&&
+      Number(old)<catalog.length?old:"0";
+    const index=Number(selector.value),scenario=catalog[index];
+    const rows=METRICS.map(metric=>[
+      metric.replaceAll("_"," "),
+      ...reports.map(report=>{
+        const row=report.cases.get(scenario.id);
+        if(!row)return "ABSENT — HOLD";
+        const v=row.metrics.get(metric);
+        return "source baseline "+numberLabel(v.baseline)+
+          " → candidate "+numberLabel(v.candidate)+
+          " (delta "+numberLabel(v.candidate-v.baseline)+")"+
+          (v.regression?" · ORIGINAL SOURCE FLAG":" · no original adverse flag");
+      })
+    ]);
+    table(panel,["Original metric",...reports.map((_,i)=>"Completed report "+(i+1))],rows);
+  }
+
   function render(){
     const ready=Boolean(catalog&&reports.length),match=consistency();
     $("catalogState").textContent=catalog?catalog.length+" private design scenario slots loaded":"No private catalog loaded";
@@ -339,10 +372,10 @@
       " private source cases. Sorted: missing originals → scope/policy → findings → "+
       "evidence → informational operations → no source flags. This is an analyst review order, not a verified risk score.";
     $("undoStage").disabled=!undoBatch;
-    if(!catalog)return;
+    if(!catalog){renderInspector();return;}
     const grid=document.createElement("table"),head=document.createElement("thead"),h=document.createElement("tr");
     for(const text of ["Private scenario","Original source priority","Declared ground truth","Planted count",
-      ...reports.map((_,i)=>"Source "+(i+1)+" flags"),"Human discussion"]){
+      ...reports.map((_,i)=>"Source "+(i+1)+" flags"),"Human discussion","Inspect originals"]){
       const th=document.createElement("th");th.textContent=text;h.append(th);
     }
     head.append(h);grid.append(head);
@@ -371,13 +404,20 @@
         reviews.set(item.id,selector.value);undoBatch=null;
         render();message("Private human stage updated in memory only.");
       });
-      cell.append(selector);row.append(cell);body.append(row);
+      cell.append(selector);row.append(cell);
+      const jump=document.createElement("td");
+      jump.append(button("Inspect",()=>{
+        $("inspectCase").value=String(i);renderInspector();
+        $("inspectorSection").scrollIntoView({block:"start",behavior:"smooth"});
+      }));
+      row.append(jump);body.append(row);
     });
     grid.append(body);$("cases").append(grid);
     const extras=document.createElement("p");
     extras.textContent=match.unexpected+" extra original report case memberships omitted from private scenario rows. "+
       "No identities appear in public exports. Filtering never changes original imports.";
     $("cases").append(extras);
+    renderInspector();
   }
   function download(name,content,type){
     const url=URL.createObjectURL(new Blob([content],{type}));
@@ -552,6 +592,7 @@
   });
   for(const id of ["familyFilter","stageFilter","truthFilter"])
     $(id).addEventListener("change",render);
+  $("inspectCase").addEventListener("change",renderInspector);
   $("applyStage").addEventListener("click",humanBulk);
   $("undoStage").addEventListener("click",undoHumanBulk);
   $("exportDraft").addEventListener("click",exportPrivateDraft);
