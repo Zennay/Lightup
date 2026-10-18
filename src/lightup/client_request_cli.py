@@ -114,9 +114,10 @@ def main(argv: list[str] | None = None) -> int:
     preview = sub.add_parser("preview", help="offline literal scope preview (no database access)")
     submit = sub.add_parser("submit", help="persist one request after client authentication")
     for command in (preview, submit):
-        command.add_argument("--asset", action="append", required=True, help="canonical hostname, IP or CIDR; repeat")
-        command.add_argument("--risk", type=int, choices=(1, 2, 3, 4), required=True)
-        command.add_argument("--notes", default="", help="request explanation; never use secrets")
+        command.add_argument("--asset", action="append", help="canonical hostname, IP or CIDR; repeat")
+        command.add_argument("--proposal", help="existing offline Scope Planning Studio v1 JSON export")
+        command.add_argument("--risk", type=int, choices=(1, 2, 3, 4))
+        command.add_argument("--notes", help="request explanation; never use secrets")
     submit.add_argument("--confirm-submit", action="store_true", help="explicitly submit for operator review")
     for name in ("list", "show", "export"):
         command = sub.add_parser(name, help="read own stored requests")
@@ -130,7 +131,18 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     try:
         if args.command in ("preview", "submit"):
-            payload = prepare_request(args.asset, args.risk, args.notes)
+            if bool(args.asset) == bool(args.proposal):
+                raise ClientRequestError("choose exactly one source: --asset or --proposal")
+            if args.proposal:
+                if args.risk is not None or args.notes is not None:
+                    raise ClientRequestError("--risk and --notes cannot override a reviewed studio proposal")
+                from .client_proposal_intake import load_studio_proposal
+
+                payload = load_studio_proposal(args.proposal)
+            else:
+                if args.risk is None:
+                    raise ClientRequestError("--risk is required with --asset")
+                payload = prepare_request(args.asset, args.risk, args.notes or "")
         if args.command == "preview":
             output = payload
         else:
