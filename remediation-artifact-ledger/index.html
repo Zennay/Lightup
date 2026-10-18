@@ -18,14 +18,14 @@
 <label>Original findings CSV<input id="original" type="file" accept=".csv,text/csv"></label>
 </div><p><button id="load">Load original findings</button></p><p id="source" class="fingerprint">No original CSV loaded.</p></section>
 <section class="card"><h2>2 · Original source revisions / private human quarantine</h2>
-<p>Planning evidence must stay tied to the exact original finding source. When an independently checked replacement CSV arrives for the <strong>same</strong> client and engagement, preview the five-column original diff before moving private HUMAN fingerprints. Only byte-for-byte unchanged original findings retain their human notes. Changed, absent or ambiguous original findings are NOT a verified fix.</p>
+<p>Planning evidence must stay tied to the exact original finding source. When an independently checked replacement CSV arrives for the <strong>same</strong> client and engagement, preview the five-column original diff before moving private HUMAN fingerprints. Only byte-for-byte unchanged original findings retain their file fingerprints; the unchanged ORIGINAL Casework engine reconciles existing HUMAN plans for unchanged records. Any imported Evidence Review v2 is detached and must be freshly obtained for the revised source. Changed, absent or ambiguous original findings are NOT a verified fix.</p>
 <label>Separately obtained revised original findings CSV<input type="file" id="newSource" accept=".csv,text/csv"></label>
 <label class="check"><input type="checkbox" id="sameEngagement"> I independently confirmed the same genuine client and engagement. This checkbox does not grant authority.</label>
 <p><button id="previewMigration">Preview revised original source</button></p>
 <div id="migrationResult" hidden>
 <h3>Proposed original finding reconciliation</h3><pre id="migrationPreview" class="migration"></pre>
-<p><strong>Important:</strong> Export and protect your complete OLD PRIVATE ledger before applying. Quarantined HUMAN entries are not copied to changed or absent source records.</p>
-<label class="check"><input type="checkbox" id="ackBackup"> I saved the old PRIVATE ledger securely and accept quarantine of changed/absent-source HUMAN fingerprints.</label>
+<p><strong>Important:</strong> Export and protect both your complete OLD PRIVATE unified HUMAN workspace and individual ledger before applying. Quarantined records are not copied to changed or absent source findings; stale original Evidence Review v2 is detached.</p>
+<label class="check"><input type="checkbox" id="ackBackup"> I saved the OLD PRIVATE unified HUMAN workspace and ledger securely, accept quarantine of changed/absent-source HUMAN fingerprints, and will re-import original Evidence Review v2 from the correct new source.</label>
 <button id="applyMigration" disabled>Apply source revision (human-only)</button>
 </div></section>
 <section class="card"><h2>3 · Fingerprint evidence without uploading it</h2>
