@@ -28,6 +28,14 @@ A **script-free, read-only HTML meeting pack** is also downloadable for an offli
 
 All three return-desk exports (JSON, CSV, read-only HTML) are optional downloads from the local browser only. The existing user-selected roles and question state edits remain strictly non-authorizing. The native browser's file picker can display a filename even though app-generated previews/exports do not.
 
+## Resume an offline human return desk without storing consent
+
+A returned `lightup.scope_permission_reply_reconciliation` JSON may now be loaded into a **new browser tab/session after re-importing the original Studio-v1 source**. The app never persists the original source, role notes or return desk into storage. Restore is strictly local, optional, and read-only with respect to production endpoints.
+
+The 64-KiB combined note undergoes duplicate-key refusal and exact source-SHA, original mode/risk/count/window and literal FALSE authority-field verification. Every question must appear in the exact original order with the same fixed role, permitted self-reported status and matching next-action code; aggregated attention and role-presence fields must agree. The whole packet is preflighted **before** any previously loaded human preparation is replaced. A materially different existing role return requires explicit confirmation. On failure the previous work remains intact and the whole import gets HOLD.
+
+Successful restore reconstructs only anonymous, **self-labelled and unverified** client/operator question statuses, restoring the useful human coordination board and its JSON/CSV/HTML exports. It never reconstructs raw target/client details, proof of identity, authenticated client/operator consent, a request approval, grant, permission or revocation decision. Exact original source file access is needed to resume; a returned combined JSON alone is intentionally insufficient.
+
 ## Revision-safe source replacement and reply reissue
 
 **A completed human preparation note never follows a changed scope automatically.** With a first Studio v1 draft loaded, select a later draft in the same file chooser. The viewer verifies the full new file **before changing any existing local data**. If it is invalid, oversized or contradictory, the earlier accepted draft and its human replies remain intact with an explicit HOLD message. Re-importing **identical exact source bytes** retains existing human answers and returns. An accepted different byte stream switches the current draft atomically, clears the previous source-bound preparation/returns, and adds a privacy-minimal record to the local revision board.
