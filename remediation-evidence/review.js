@@ -5,7 +5,7 @@ if(!engine)throw Error('Original LightUp Casework source module required.');
 const $=id=>document.getElementById(id);
 const LIMIT_CSV=1048576, LIMIT_JSON=2097152;
 const DECISIONS=Object.freeze(['missing','submitted','needs_changes','ready_for_authorized_retest']);
-let source=null,casework=null,sourceHash=null,review=new Map(),changed=false,refreshCandidate=null;
+let source=null,casework=null,sourceHash=null,review=new Map(),changed=false,refreshCandidate=null,revisions=[];
 const SEV=engine.SEVERITY;
 const flags=['authenticated','tenant_verified','source_authorized','assessment_authorized','grant','client_consent','operator_consent','execution','scan','audit_verdict','retest_verified','release'];
 function status(message,error=false){$('status').textContent=message;$('status').dataset.error=error?'true':'false';}
@@ -74,6 +74,7 @@ function snapshot(){
   assessment_authorized:false,grant:false,client_consent:false,operator_consent:false,
   execution:false,scan:false,audit_verdict:false,retest_verified:false,release:false,
   review:source.map(f=>review.get(f.finding_id)),
+  revision_register:revisions,
   warning:'References and local stages are unverified human notes, not evidence authenticity, remediation proof or retest results.'};
 }
 function download(name,data,type){
@@ -82,7 +83,71 @@ function download(name,data,type){
 }
 function updateSource(newSource,matchedCases){
  source=newSource;casework=matchedCases;review=new Map(newSource.map(f=>[f.finding_id,stageStart(f.finding_id)]));
- changed=false;refreshCandidate=null;render();
+ changed=false;refreshCandidate=null;revisions=[];render();
+}
+
+/* Original-source revision register is human archival context, never source proof.
+ * This persists missing/changed IDs from an explicitly acknowledged refresh. */
+const SOURCE_FIELDS=['finding_id','title','severity','retest_status','remediation'];
+function checkedIds(values){
+ if(!Array.isArray(values)||values.length>350)throw Error('Revision list outside bounds.');
+ const ids=new Set();
+ for(const id of values){
+  if(typeof id!=='string'||!id.trim()||id.length>160||ids.has(id))throw Error('Invalid source revision finding identity.');
+  ids.add(id);
+ }
+ return values.slice();
+}
+function validRevision(entry){
+ const sha=v=>typeof v==='string'&&/^[0-9a-f]{64}$/.test(v);
+ if(!entry||Object.getPrototypeOf(entry)!==Object.prototype||
+    !sha(entry.from_sha256)||!sha(entry.to_sha256)||entry.from_sha256===entry.to_sha256)
+  throw Error('Malformed original source revision envelope.');
+ const added=checkedIds(entry.added),missing=checkedIds(entry.missing),
+  unchanged=checkedIds(entry.unchanged);
+ if(!Array.isArray(entry.changed)||entry.changed.length>350)throw Error('Invalid source change list.');
+ const changed=entry.changed.map(x=>{
+  if(!x||typeof x!=='object'||Array.isArray(x)||
+     typeof x.finding_id!=='string'||!x.finding_id.trim()||x.finding_id.length>160||
+     !Array.isArray(x.changed_fields)||!x.changed_fields.length||x.changed_fields.length>5||
+     new Set(x.changed_fields).size!==x.changed_fields.length||
+     x.changed_fields.some(k=>!SOURCE_FIELDS.includes(k)))throw Error('Invalid changed source record.');
+  return {finding_id:x.finding_id,changed_fields:x.changed_fields.slice()};
+ });
+ const all=[...added,...missing,...unchanged,...changed.map(x=>x.finding_id)];
+ if(all.length>700)throw Error('Source revision exceeds safe bounds.');
+ if(new Set(all).size!==all.length)throw Error('Overlapping source revision categories.');
+ return {from_sha256:entry.from_sha256,to_sha256:entry.to_sha256,
+  added,missing,unchanged,changed};
+}
+function restoreRevisions(raw,currentHash){
+ if(raw===undefined)return []; /* original unmodified v1 review packets */
+ if(!Array.isArray(raw)||raw.length>12)throw Error('Invalid revision register length.');
+ const parsed=raw.map(validRevision);
+ for(let j=1;j<parsed.length;j++){
+  if(parsed[j].from_sha256!==parsed[j-1].to_sha256)throw Error('Discontinuous original source revision register.');
+ }
+ if(parsed.length&&parsed[parsed.length-1].to_sha256!==currentHash)
+  throw Error('Source revision register does not match current original CSV.');
+ return parsed;
+}
+function renderRevisions(){
+ const parent=$('revisionList');parent.replaceChildren();
+ $('revisionCount').textContent=String(revisions.length);
+ if(!revisions.length){parent.append(el('p','detail','No original source revision has been acknowledged in this local session.'));return;}
+ for(let i=revisions.length-1;i>=0;i--){
+  const x=revisions[i],card=el('details','panel'),summary=el('summary','',
+    'Revision '+(i+1)+': '+x.added.length+' added · '+x.changed.length+' changed · '+
+    x.missing.length+' absent (NOT fixed) · '+x.unchanged.length+' unchanged');
+  card.append(summary);
+  card.append(el('p','detail','Previous SHA-256 '+x.from_sha256+' → new '+x.to_sha256+' (unsigned content correlation)'));
+  const list=el('ul','cues');
+  const changes=[...x.added.map(id=>['Added',id]),...x.changed.map(y=>['Changed: '+y.changed_fields.join('/'),y.finding_id]),
+    ...x.missing.map(id=>['ABSENT, not fixed',id])];
+  for(const [state,id] of changes)list.append(el('li','',state+' · '+id));
+  if(!changes.length)list.append(el('li','','No added, changed or absent rows; original record order or representation changed.'));
+  card.append(list);parent.append(card);
+ }
 }
 function localDay(date){
  return String(date.getFullYear()).padStart(4,'0')+'-'+String(date.getMonth()+1).padStart(2,'0')+'-'+String(date.getDate()).padStart(2,'0');
@@ -229,7 +294,7 @@ function render(){
  const ready=!!source;$('dashboard').hidden=!ready;$('boardSection').hidden=!ready;$('actions').hidden=!ready;$('refreshPanel').hidden=!ready;$('teamPanel').hidden=!ready;
  if(!ready)return;
  const m=count();for(const [key,num] of Object.entries(m))$(key).textContent=String(num);
- updateTeamChoices();
+ updateTeamChoices();renderRevisions();
  $('fingerprint').textContent=sourceHash?'Local source SHA-256: '+sourceHash+' (NOT authentication)':'Source fingerprint unavailable. All exports disabled.';
  const filter=$('filter').value;
  const items=source.slice().sort((a,b)=>SEV.indexOf(a.severity)-SEV.indexOf(b.severity)||a.finding_id.localeCompare(b.finding_id));
@@ -325,8 +390,9 @@ $('restore').addEventListener('click',async()=>{
      flags.some(k=>packet[k]!==false)||packet.source_sha256!==sourceHash||
      !Array.isArray(packet.review)||packet.review.length!==source.length)throw Error('Invalid review file, unsafe authority claim or different source.');
   const ids=new Set(source.map(f=>f.finding_id)),next=new Map();
+  const incomingRevisions=restoreRevisions(packet.revision_register,sourceHash);
   for(const raw of packet.review){const row=validReview(raw,ids);if(next.has(row.finding_id))throw Error('Duplicate review finding.');next.set(row.finding_id,row);}
-  review=next;changed=false;render();status('Unverified review notes restored for exact original source; no current authorization implied.');
+  review=next;revisions=incomingRevisions;changed=false;render();status('Unverified review notes restored for exact original source; no current authorization implied.');
  }catch(err){status(err.message,true);}
 });
 
@@ -356,6 +422,9 @@ $('applyRefresh').addEventListener('click',()=>{
   const newReview=new Map(incoming.map(f=>[f.finding_id,unchanged.has(f.finding_id)?review.get(f.finding_id):stageStart(f.finding_id)]));
   const newCases=casework?new Map(incoming.map(f=>[f.finding_id,
    unchanged.has(f.finding_id)&&casework.has(f.finding_id)?casework.get(f.finding_id):engine.newCase(f)])):null;
+  const revision=validRevision({from_sha256:sourceHash,to_sha256:hash,added:diff.added,missing:diff.missing,
+   unchanged:diff.unchanged,changed:diff.changed});
+  revisions=[...revisions,revision].slice(-12);
   source=incoming;sourceHash=hash;casework=newCases;review=newReview;changed=true;
   refreshCandidate=null;$('refreshFile').value='';$('refreshConfirm').checked=false;
   $('refreshSummary').textContent='Applied: '+diff.added.length+' new, '+diff.changed.length+' changed, '+
@@ -387,7 +456,7 @@ $('exportTeamCSV').addEventListener('click',()=>doTeamExport('csv'));
 $('filter').addEventListener('change',render);
 $('clear').addEventListener('click',()=>{
  if(changed&&!confirm('Discard unsaved local review notes?'))return;
- source=null;casework=null;sourceHash=null;review=new Map();changed=false;refreshCandidate=null;
+ source=null;casework=null;sourceHash=null;review=new Map();changed=false;refreshCandidate=null;revisions=[];
  $('sourceFile').value='';$('caseFile').value='';$('reviewFile').value='';$('refreshFile').value='';$('allowHashlessCasework').checked=false;$('refreshConfirm').checked=false;$('refreshSummary').textContent='No refresh preview.';
  $('dashboard').hidden=true;$('boardSection').hidden=true;$('actions').hidden=true;$('refreshPanel').hidden=true;$('teamPanel').hidden=true;
  $('packTeam').replaceChildren();$('packCount').textContent='No original findings imported.';
