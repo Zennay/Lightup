@@ -690,7 +690,7 @@ async function previewUnified(){
   'Candidate LOCAL file fingerprints: '+attachments.length,
   'Candidate original Casework: '+(casework?casework.length+' exact human records':'absent'),
   'Candidate original Evidence Review: '+(evidence?evidence.length+' exact human records':'absent'),
-  'Candidate PRIVATE HUMAN follow-up requests: '+requests.length+' (not sent)'),
+  'Candidate PRIVATE HUMAN follow-up requests: '+requests.length+' (not sent)',
   'All records matched original finding IDs and the same original SHA-256.',
   'Applying replaces all local PRIVATE human views, never the original source, grants or retest authorization.'
  ].join('\n');
