@@ -1,0 +1,215 @@
+"use strict";
+(() => {
+  const MAX_FILE = 2 * 1024 * 1024, MAX_TOTAL = 6 * 1024 * 1024, MAX_VAULT = 12 * 1024 * 1024;
+  const MAX_COUNT = 8, ROUNDS = 310000;
+  const TYPES = new Set(["json", "csv", "md", "txt"]);
+  const $ = id => document.getElementById(id);
+  const encode = new TextEncoder(), decode = new TextDecoder("utf-8", {fatal: true});
+  let selected = [], restored = [], busy = false;
+  const say = (message, bad = false) => { $("status").textContent = message; $("status").dataset.kind = bad ? "error" : "ok"; };
+  const clearNode = el => { while (el.firstChild) el.removeChild(el.firstChild); };
+  const hex = b => Array.from(new Uint8Array(b), x => x.toString(16).padStart(2, "0")).join("");
+  const digest = async b => hex(await crypto.subtle.digest("SHA-256", b));
+  const to64 = bytes => {
+    let result = "";
+    const size = 16384;
+    for (let i=0; i<bytes.length; i+=size) result += String.fromCharCode(...bytes.subarray(i, i+size));
+    return btoa(result);
+  };
+  const from64 = s => {
+    if (typeof s !== "string" || !s || s.length > MAX_VAULT * 2 ||
+        s.length % 4 !== 0 || !/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(s)) {
+      throw new Error("Non-canonical base64 data.");
+    }
+    const bin = atob(s);
+    const bytes = Uint8Array.from(bin, x => x.charCodeAt(0));
+    if (to64(bytes) !== s) throw new Error("Non-canonical base64 encoding.");
+    return bytes;
+  };
+  const validName = name => typeof name === "string" && name.length > 0 && name.length <= 100 &&
+    !/[\/\\\u0000-\u001f\u007f]/.test(name) && name !== "." && name !== ".." &&
+    !name.startsWith(".") && TYPES.has(name.split(".").pop().toLowerCase());
+  const fail = (condition, message) => { if (!condition) throw new Error(message); };
+  const humanSize = n => (n/1024).toFixed(1) + " KiB";
+  const table = (container, entries, action) => {
+    clearNode(container);
+    for (const entry of entries) {
+      const row = document.createElement("div");
+      row.className = "file-row";
+      const name = document.createElement("span"); name.textContent = entry.name;
+      const size = document.createElement("small"); size.textContent = humanSize(entry.bytes.length);
+      row.append(name, size);
+      if (action) {
+        const btn = document.createElement("button"); btn.className="secondary small";
+        btn.type="button"; btn.textContent="Download";
+        btn.addEventListener("click", () => save(entry.bytes, entry.name, "application/octet-stream"));
+        row.append(btn);
+      }
+      container.append(row);
+    }
+  };
+  function save(bytes, filename, mime) {
+    const blob = new Blob([bytes], {type:mime});
+    const url = URL.createObjectURL(blob);
+    const anchor=document.createElement("a");
+    anchor.href=url; anchor.download=filename; document.body.append(anchor);
+    anchor.click(); anchor.remove(); setTimeout(()=>URL.revokeObjectURL(url), 30000);
+  }
+  function resetPrivate() {
+    selected=[]; restored=[];
+    $("files").value=""; $("vaultfile").value="";
+    $("secret").value=""; $("unlock").value="";
+    $("label").value=""; $("ack").checked=false;
+    clearNode($("filelist")); clearNode($("restored"));
+    $("summary").textContent="Nothing loaded.";
+    $("vaultDetails").textContent="";
+    say("Private in-memory session cleared.");
+  }
+  async function withBusy(fn) {
+    if (busy) return;
+    busy=true;
+    $("pack").disabled=true; $("restore").disabled=true;
+    try {
+      fail(!!(window.crypto && crypto.subtle && crypto.getRandomValues), "WebCrypto unavailable. Open this offline file in a browser with a secure context.");
+      await fn();
+    } catch (e) {
+      say("HOLD: " + (e instanceof Error ? e.message : "Unable to process private packet."), true);
+    } finally {busy=false; $("pack").disabled=false; $("restore").disabled=false;}
+  }
+  const deriveKey = async (pass, salt, usages) => {
+    const base = await crypto.subtle.importKey("raw", encode.encode(pass), {name:"PBKDF2"}, false, ["deriveKey"]);
+    return crypto.subtle.deriveKey({name:"PBKDF2",salt,iterations:ROUNDS,hash:"SHA-256"},
+      base,{name:"AES-GCM",length:256},false,usages);
+  };
+  $("files").addEventListener("change", () => withBusy(async () => {
+    selected=[]; clearNode($("filelist"));
+    const files=Array.from($("files").files || []);
+    fail(files.length>0 && files.length<=MAX_COUNT, "Select 1–8 private source/export files.");
+    const names = new Set(); let total=0;
+    const pending=[];
+    for (const file of files) {
+      fail(validName(file.name), "Use files with safe names and .json, .csv, .md or .txt extensions.");
+      fail(!names.has(file.name.toLowerCase()), "Duplicate file name.");
+      names.add(file.name.toLowerCase());
+      fail(file.size>0 && file.size<=MAX_FILE, "Every file must be 1 byte to 2 MiB.");
+      total+=file.size; fail(total<=MAX_TOTAL, "Combined contents exceed 6 MiB.");
+      const bytes = new Uint8Array(await file.arrayBuffer());
+      fail(bytes.length===file.size, "Source changed while opening.");
+      decode.decode(bytes);
+      pending.push({name:file.name, bytes});
+    }
+    selected=pending;
+    table($("filelist"),selected,false);
+    say(String(selected.length) + " locally selected; nothing uploaded or saved. Encryption requires explicit confirmation.");
+  }));
+  $("pack").addEventListener("click", () => withBusy(async () => {
+    fail(selected.length>0, "Select source/export files first.");
+    const pass=$("secret").value;
+    fail(pass.length>=12 && pass.length<=256, "Use a private passphrase of 12–256 characters.");
+    fail($("ack").checked, "Confirm files were separately authorized for this exact recipient and engagement.");
+    const label=$("label").value.trim();
+    fail(label.length<=100 && !/[\u0000-\u001f\u007f]/.test(label), "Use a short single-line private handoff label.");
+    let total=0;
+    const entries=[];
+    for(const item of selected) {
+      fail(validName(item.name) && item.bytes.length>0 && item.bytes.length<=MAX_FILE, "Selected file is invalid.");
+      total+=item.bytes.length; fail(total<=MAX_TOTAL,"Packet is too large.");
+      entries.push({name:item.name, bytes:item.bytes.length, sha256:await digest(item.bytes),
+        data:to64(item.bytes)});
+    }
+    const payload = {format:"lightup.remediation_vault_payload.v1",
+      notice:"PRIVATE OFFLINE HUMAN TRANSFER ONLY — NOT AUTHORIZATION OR VERIFIED REMEDIATION",
+      label, savedAt:new Date().toISOString(), entries};
+    const salt=crypto.getRandomValues(new Uint8Array(16));
+    const iv=crypto.getRandomValues(new Uint8Array(12));
+    const key=await deriveKey(pass,salt,["encrypt"]);
+    const plain=encode.encode(JSON.stringify(payload));
+    const crypt=new Uint8Array(await crypto.subtle.encrypt({name:"AES-GCM",iv,
+      additionalData:encode.encode("lightup.remediation_vault.v1")},key,plain));
+    const envelope={format:"lightup.remediation_vault.v1",kdf:"PBKDF2-SHA256",
+      iterations:ROUNDS,cipher:"AES-256-GCM",salt:to64(salt),iv:to64(iv),data:to64(crypt)};
+    const output=encode.encode(JSON.stringify(envelope,null,2)+"\n");
+    fail(output.length<=MAX_VAULT,"Encrypted vault exceeds 12 MiB.");
+    save(output, "lightup-private-handoff.vault.json", "application/json");
+    $("secret").value="";
+    say("Encrypted local vault downloaded. Share the passphrase separately; this file is not permission to act.");
+  }));
+  $("vaultfile").addEventListener("change", () => {restored=[];clearNode($("restored"));$("summary").textContent="Nothing unlocked.";});
+  $("restore").addEventListener("click", () => withBusy(async () => {
+    restored=[]; clearNode($("restored")); $("summary").textContent="Nothing unlocked.";
+    const f=$("vaultfile").files?.[0];
+    fail(!!f && ($("vaultfile").files||[]).length===1 && f.size>0 && f.size<=MAX_VAULT,
+      "Select exactly one local .vault.json of at most 12 MiB.");
+    fail(f.name.endsWith(".vault.json"),"Vault name must end in .vault.json.");
+    const password=$("unlock").value;
+    fail(password.length>=12 && password.length<=256, "Enter your private passphrase.");
+    const bytes = new Uint8Array(await f.arrayBuffer());
+    const serialized=decode.decode(bytes);
+    let env;
+    try {env=JSON.parse(serialized);} catch {throw new Error("Not a valid vault envelope.");}
+    fail(env!==null && typeof env==="object" && !Array.isArray(env), "Invalid vault envelope.");
+    fail(serialized===JSON.stringify(env,null,2)+"\n","Noncanonical or duplicate-key vault envelope.");
+    fail(Object.keys(env).sort().join(",")==="cipher,data,format,iterations,iv,kdf,salt",
+      "Unexpected or missing vault envelope fields.");
+    fail(env.format==="lightup.remediation_vault.v1" &&
+      env.cipher==="AES-256-GCM" && env.kdf==="PBKDF2-SHA256" &&
+      env.iterations===ROUNDS, "Unsupported vault format or encryption settings.");
+    const salt=from64(env.salt), iv=from64(env.iv), crypt=from64(env.data);
+    fail(salt.length===16 && iv.length===12 && crypt.length>16 && crypt.length<=MAX_VAULT,
+      "Malformed encrypted material.");
+    const key=await deriveKey(password,salt,["decrypt"]);
+    let plain;
+    try { plain=new Uint8Array(await crypto.subtle.decrypt({name:"AES-GCM",iv,
+      additionalData:encode.encode("lightup.remediation_vault.v1")},key,crypt)); }
+    catch { throw new Error("Unable to unlock: wrong passphrase or modified vault."); }
+    fail(plain.length<=MAX_VAULT,"Decrypted packet too large.");
+    let doc;
+    try {doc=JSON.parse(decode.decode(plain));} catch {throw new Error("Encrypted payload is malformed.");}
+    fail(doc && typeof doc==="object" && !Array.isArray(doc) &&
+      Object.keys(doc).sort().join(",")==="entries,format,label,notice,savedAt",
+      "Unsupported encrypted payload fields.");
+    fail(doc.format==="lightup.remediation_vault_payload.v1" &&
+      doc.notice==="PRIVATE OFFLINE HUMAN TRANSFER ONLY — NOT AUTHORIZATION OR VERIFIED REMEDIATION",
+      "Not a LightUp human-only payload.");
+    fail(typeof doc.label==="string" && doc.label.length<=100 &&
+      !/[\u0000-\u001f\u007f]/.test(doc.label) &&
+      typeof doc.savedAt==="string" && /^\d{4}-\d\d-\d\dT/.test(doc.savedAt),
+      "Invalid internal handoff metadata.");
+    fail(Array.isArray(doc.entries) && doc.entries.length>0 && doc.entries.length<=MAX_COUNT,
+      "Invalid number of private files.");
+    const names=new Set(), pending=[];let total=0;
+    for(const entry of doc.entries) {
+      fail(entry && typeof entry==="object" && !Array.isArray(entry) &&
+        Object.keys(entry).sort().join(",")==="bytes,data,name,sha256",
+        "Invalid encrypted entry structure.");
+      fail(validName(entry.name) && !names.has(entry.name.toLowerCase()),"Invalid or duplicate recovered file name.");
+      names.add(entry.name.toLowerCase());
+      const item=from64(entry.data);
+      fail(Number.isSafeInteger(entry.bytes) && entry.bytes===item.length &&
+        item.length>0 && item.length<=MAX_FILE,"Recovered file size mismatch.");
+      total+=item.length; fail(total<=MAX_TOTAL,"Recovered packet exceeds size limit.");
+      fail(typeof entry.sha256==="string" && /^[a-f0-9]{64}$/.test(entry.sha256) &&
+        await digest(item)===entry.sha256, "Recovered content fingerprint mismatch.");
+      decode.decode(item);
+      pending.push({name:entry.name,bytes:item});
+    }
+    restored=pending;table($("restored"),restored,true);
+    $("summary").textContent=String(restored.length)+" original file(s), "+humanSize(total)+
+      ". PRIVATE original contents; source authority and recipient permission NOT verified.";
+    $("vaultDetails").textContent="Private label (local only): "+doc.label+" · Saved: "+doc.savedAt;
+    $("unlock").value="";
+    say("Vault unlocked locally. Select each download only after independently verifying recipient and exact engagement.");
+  }));
+  $("clear").addEventListener("click",resetPrivate);
+  $("clear2").addEventListener("click",resetPrivate);
+  $("copy").addEventListener("click", () => withBusy(async () => {
+    fail(restored.length>0,"Unlock a vault first.");
+    const summary="LightUp private offline handoff: "+restored.length+
+      " locally recovered file(s). No authority, source or remediation outcome attested.";
+    await navigator.clipboard.writeText(summary);
+    say("Only an anonymous file count was copied.");
+  }));
+  if (!window.isSecureContext || !crypto?.subtle) {
+    say("HOLD: WebCrypto requires a secure local browser context. No fallback to plaintext.", true);
+  }
+})();
