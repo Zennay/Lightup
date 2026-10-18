@@ -18,6 +18,7 @@ from agenda import render_bytes, selected_day
 from one_command import SCHEMA as ORIGINAL_WORKSPACE_SCHEMA
 from multi_return import _page, _zip
 from workspace_return import _workspace, build as return_build
+from cycle_diff import build as human_change_board
 
 SCHEMA = "lightup.assessment_portfolio_private_revision_cycle.v1"
 MAX_WORKSPACE = 16 * 1024 * 1024
@@ -121,13 +122,20 @@ def build(workspace_path, manifests, choices, proposals, reference_date):
         "sources": provenance, "planning_not_permission": True,
         **{flag: False for flag in FLAGS}
     }
+    changed_html, changed_json, changed_csv = human_change_board(
+        previous_agendas, revised_bytes, previous_map["reference_date"], reference_date)
     outputs = {"next-human-workspace.zip": next_packet.getvalue(),
+               "private-human-change-board.html": changed_html,
+               "aggregate-human-stage-transitions.json": changed_json,
+               "aggregate-human-stage-transitions.csv": changed_csv,
                "private-revision-record.json": encode(revision),
                "index.html": _page(return_doc["sources"], status),
                "START-HERE.txt": (
                    "LIGHTUP HUMAN REVISION CYCLE · NO GO\n"
                    "This contains a NEW standalone next-human-workspace.zip and NEW\n"
                    "original-human-choices-NN.json; do not overwrite or modify originals.\n"
+                   "Use private-human-change-board.html for source-slot human change overview.\n"
+                   "Aggregate transition JSON/CSV contains only canonical stage/count data.\n"
                    "The private revision record connects unsigned source bytes; not approval.\n"
                    "Use new choices plus the matching ORIGINAL manifests on next review.\n"
                    "No evidence validation, assessment execution, grants or client consent.\n"
