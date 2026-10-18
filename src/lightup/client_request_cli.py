@@ -134,6 +134,8 @@ def main(argv: list[str] | None = None) -> int:
         if name == "revise-submit":
             command.add_argument("--expect-original-sha256", required=True,
                                  help="exact prior-review snapshot hash from revise-preview")
+            command.add_argument("--expect-revision-sha256", required=True,
+                                 help="exact SHA-256 of previewed replacement assets, risk and notes")
             command.add_argument("--confirm-new-request", action="store_true",
                                  help="create a NEW submitted request, leave original rejected")
             command.add_argument("--confirm-scope-expansion", action="store_true",
@@ -208,6 +210,14 @@ def main(argv: list[str] | None = None) -> int:
                         raise ClientRequestError(
                             "rejected source request changed or its expected hash is wrong; "
                             "use revise-preview again"
+                        )
+                    proposed = args.expect_revision_sha256
+                    if (type(proposed) is not str or len(proposed) != 64
+                            or any(ch not in "0123456789abcdef" for ch in proposed)
+                            or not hmac.compare_digest(proposed, revision["revision_sha256"])):
+                        raise ClientRequestError(
+                            "proposed assets, risk or notes changed since revise-preview; "
+                            "review the replacement again before submitting"
                         )
                     if (revision["scope_expansion_requires_confirmation"]
                             and not args.confirm_scope_expansion):
