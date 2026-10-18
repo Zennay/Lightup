@@ -136,6 +136,8 @@ var n=d.persisted_grant_count,linked=d.request_linked_grant_count,legacy=d.legac
 if(![n,linked,legacy,windowCount,invalid].every(function(v){return Number.isInteger(v)&&v>=0&&v<=256;})||linked+legacy!==n||windowCount+invalid>n)throw Error("Invalid exposure counters");
 if(!["STOP_WITH_STORED_GRANTS","STOP_WITHOUT_STORED_GRANTS","SOURCE_GRANTS_REQUIRE_INDEPENDENT_REVIEW","HOLD_MALFORMED_GRANT_SOURCE"].includes(d.human_attention))throw Error("Invalid exposure attention");
 if(d.stop_active&&n>0&&d.human_attention!=="STOP_WITH_STORED_GRANTS"&&d.human_attention!=="HOLD_MALFORMED_GRANT_SOURCE")throw Error("Contradictory STOP exposure");
+if(!d.stop_active&&d.human_attention.indexOf("STOP_")===0)throw Error("Contradictory exposure status");
+if(invalid>0&&d.human_attention!=="HOLD_MALFORMED_GRANT_SOURCE")throw Error("Malformed grant source not marked HOLD");
 return {kind:"exposure",declaredGrants:n,items:[{type:"Grant inventory",id:"local source declaration",status:d.stop_active?"STOP_ACTIVE":invalid>0?"HOLD_SOURCE":"REVIEW_ONLY",attention:d.human_attention}],truncated:false};
 }
 if(d.schema==="lightup.authenticated_stop_batch.v1"){
@@ -197,6 +199,7 @@ document.getElementById("clear").addEventListener("click",function(){docs=[];fic
 document.getElementById("filter").addEventListener("input",render);
 document.getElementById("print").addEventListener("click",function(){window.print();});
 document.getElementById("brief").addEventListener("click",function(){
+if(!docs.length){msg.textContent="HOLD: import a genuine private source before exporting a brief.";return;}
 var all=docs.flatMap(function(d){return d.items;});var out={
 schema:"lightup.stop_aggregate_handoff.v1",status:"REVIEW_ONLY",fictional_demo:fictional,
 source_count:docs.length,engagement_record_count:docs.filter(function(d){return d.kind==="engagement";}).reduce(function(n,d){return n+d.items.length;},0),
