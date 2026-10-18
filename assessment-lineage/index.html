@@ -40,6 +40,10 @@
       <p id="embeddedAvailability">Checking local HTML for a strictly inert PRIVATE source bundle…</p>
       <p>An owner-only PRIVATE workroom created using <code>private_workroom.py</code> can contain the original source bytes. These are sensitive inputs, not authenticated evidence. No data is processed until you explicitly click to load. The public standalone never contains original source data.</p>
       <button id="loadPrivateBundle" type="button" hidden>Load embedded PRIVATE originals</button>
+      <button id="restoreEmbeddedDraft" class="secondary" type="button" hidden disabled>
+        Separately restore exact-source PRIVATE human work
+      </button>
+      <p>Any accompanying human draft remains inert until a <em>second</em> explicit human confirmation. A modified or differently ordered source set cannot restore its prior stages, private notes or proposed follow-up routes.</p>
     </article>
     <div class="actions">
       <button id="demo" type="button">Explore invented demo</button>
