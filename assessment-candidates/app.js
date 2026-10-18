@@ -325,7 +325,7 @@
     $("sourceKind").textContent=!active?"No data":demo?"FICTIONAL DEMO ONLY":"UNVERIFIED LAB SOURCES";
     $("sourceLine").textContent=!active?"":reports.length+" candidate reports · "+reports[0].cases.size+
       " shared anonymized cases · all authority flags false · "+(demo?"FICTIONAL DATA":"UNVERIFIED SOURCE");
-    for(const id of ["exportCSV","exportJSON","exportHTML","print"])$(id).disabled=!active;
+    for(const id of ["exportCSV","exportJSON","exportHTML","exportCaseCSV","print"])$(id).disabled=!active;
     $("appendFile").disabled=!(active&&!demo&&reports.length<12);
     $("saveDraft").disabled=!(active&&!demo&&sourceHashes.length===reports.length);
     $("draftFile").disabled=$("saveDraft").disabled;
@@ -349,7 +349,7 @@
     drawQueue();
     let t;try{t=threshold();settings=t;$("thresholdMessage").textContent="Review suggestions recomputed locally; no source metrics changed.";}
     catch(_){$("thresholdMessage").textContent="HOLD: invalid threshold — enter a bounded numerical value. No decision output.";
-      settings=null;$("saveDraft").disabled=true;for(const id of ["exportCSV","exportJSON","exportHTML","print"])$(id).disabled=true;
+      settings=null;$("saveDraft").disabled=true;for(const id of ["exportCSV","exportJSON","exportHTML","exportCaseCSV","print"])$(id).disabled=true;
       $("thresholds").textContent="HOLD — invalid local thresholds";$("frontier").textContent="HOLD — invalid local thresholds";return;}
     $("thresholds").innerHTML=table(["Candidate","Source status","Human discussion triggers","Hard safety indicators"],
       stats.map((s,i)=>["Candidate "+(i+1),reports[i].sourceStatus,
@@ -515,6 +515,36 @@
       discussionSummary().stages.in_discussion,...NAMES.map(n=>r.metrics[n].candidate_total),"false","false","false","false"]);
     download("lightup-candidate-aggregate-REVIEW-ONLY.csv",
       head.join(",")+"\n"+rows.map(r=>r.join(",")).join("\n")+"\n","text/csv");
+  }
+  function exportPrivateCaseCSV(){
+    if(!reports.length||!settings)return;
+    const a=Number($("pairA").value),b=Number($("pairB").value);
+    if(!currentPairChurn()){
+      $("queueMessage").textContent="Choose two distinct source candidates before creating the private case register.";
+      return;
+    }
+    const head=["private_anonymous_case_ordinal","first_candidate_slot","second_candidate_slot",
+      "original_source_adverse_first","original_source_adverse_second",
+      "first_only_original_flags","second_only_original_flags","shared_original_flags",
+      "scope_policy_original_flags_any","locally_proposed_generic_group",
+      "local_human_discussion_stage","source_chronology_authenticated",
+      "source_identity_authenticated","authorized","consent_verified","dispatch_allowed",
+      "release_allowed","report_status"];
+    const rows=queueIds().map((id,i)=>{
+      const first=reports[a].cases.get(id),second=reports[b].cases.get(id);
+      const flags=name=>[first.metrics[name].regression,second.metrics[name].regression];
+      const onlyA=NAMES.filter(n=>flags(n)[0]&&!flags(n)[1]).length;
+      const onlyB=NAMES.filter(n=>!flags(n)[0]&&flags(n)[1]).length;
+      const both=NAMES.filter(n=>flags(n)[0]&&flags(n)[1]).length;
+      const safety=TOPICS.scope.filter(n=>flags(n)[0]||flags(n)[1]).length;
+      const local=queueSettings(id);
+      return [i+1,a+1,b+1,first.regressions.length,second.regressions.length,
+        onlyA,onlyB,both,safety,local.route,local.stage,"false","false","false",
+        "false","false","false","REVIEW_ONLY"];
+    });
+    download("lightup-PRIVATE-anonymous-case-review-REVIEW-ONLY.csv",
+      head.join(",")+"\n"+rows.map(r=>r.join(",")).join("\n")+"\n","text/csv");
+    $("queueMessage").textContent="PRIVATE anonymous source-flag conversation CSV exported. Local handling required; no actual authorization or assignments.";
   }
   function exportHTML(){
     if(!reports.length||!settings)return;
@@ -744,6 +774,7 @@
   $("exportCSV").addEventListener("click",exportCSV);
   $("exportJSON").addEventListener("click",exportJSON);
   $("exportHTML").addEventListener("click",exportHTML);
+  $("exportCaseCSV").addEventListener("click",exportPrivateCaseCSV);
   $("print").addEventListener("click",()=>{if(reports.length&&settings)window.print();});
   render();
 })();
