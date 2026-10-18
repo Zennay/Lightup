@@ -291,13 +291,13 @@ function teamPacket(rows){
  const selected=$('packTeam').value;
  if(!sourceHash||!selected||!rows.length)throw Error('Choose a populated local routing group.');
  const team=selected==='unassigned'?null:selected.slice(5);
- return {kind:'lightup.remediation_private_team_handoff',schema_version:1,
+ return {kind:'lightup.remediation_private_team_handoff',schema_version:2,
   disposition:'UNVERIFIED_PRIVATE_HUMAN_COORDINATION',
   source_contract:'lightup.finding_export._COLUMNS_v1',source_sha256:sourceHash,
   team_label:team,
   original_findings_total:source.length,selected_findings_total:rows.length,
   original_review_sha256:localSha256(JSON.stringify(rows.map(({finding:f,coordination:r})=>
-   [f.finding_id,r.stage,r.reference,r.reviewer,r.next_step]))),
+   [f.finding_id,r.stage,r.reference,r.reviewer,r.next_step,...EVIDENCE_FIELDS.map(([key])=>r.evidence[key])]))),
   ...Object.fromEntries(flags.map(k=>[k,false])),
   cases:rows.map(({finding:f,plan:c,coordination:r})=>({
    finding_id:f.finding_id,title:f.title,severity:f.severity,original_retest_status:f.retest_status,
@@ -305,6 +305,7 @@ function teamPacket(rows){
    local_owner:c.owner,next_action:c.next_action,verification_plan:c.verification_plan,
    blocker:c.blocker,review_stage:r.stage,evidence_reference:r.reference,
    local_reviewer:r.reviewer,human_follow_up:r.next_step,
+   ...Object.fromEntries(EVIDENCE_FIELDS.map(([key])=>[key,r.evidence[key]])),
    warnings:humanQueue(f,c,r)
   })),
   warning:'Private unsigned subset of original exported findings and local notes. Not verified, not an approved work order, not consent, not an authorized retest or grant.'
@@ -319,7 +320,8 @@ function safeSpreadsheetCell(value){
 function teamCsv(packet){
  const keys=['finding_id','title','severity','original_retest_status','original_remediation',
   'casework_status','due_date','local_owner','next_action','verification_plan','blocker',
-  'review_stage','evidence_reference','local_reviewer','human_follow_up'];
+  'review_stage','evidence_reference','local_reviewer','human_follow_up',
+  ...EVIDENCE_FIELDS.map(([key])=>key)];
  const body=packet.cases.map(c=>keys.map(k=>c[k]));
  return '\ufeff'+keys.map(v=>'"'+v+'"').join(',')+'\r\n'+body.map(row=>row.map(safeSpreadsheetCell).join(',')).join('\r\n')+'\r\n';
 }
@@ -565,7 +567,7 @@ $('importTeamReturn').addEventListener('click',async()=>{
    'cases','warning',...flags]);
   if(!packet||Object.getPrototypeOf(packet)!==Object.prototype||
    Object.keys(packet).some(k=>!topFields.has(k))||
-   packet.kind!=='lightup.remediation_private_team_handoff'||packet.schema_version!==1||
+   packet.kind!=='lightup.remediation_private_team_handoff'||![1,2].includes(packet.schema_version)||
    packet.disposition!=='UNVERIFIED_PRIVATE_HUMAN_COORDINATION'||
    packet.source_contract!=='lightup.finding_export._COLUMNS_v1'||
    packet.source_sha256!==sourceHash||packet.original_findings_total!==source.length||
@@ -582,7 +584,7 @@ $('importTeamReturn').addEventListener('click',async()=>{
   const rowFields=new Set(['finding_id','title','severity','original_retest_status',
    'original_remediation','casework_status','due_date','local_owner','next_action',
    'verification_plan','blocker','review_stage','evidence_reference',
-   'local_reviewer','human_follow_up','warnings']);
+   'local_reviewer','human_follow_up','warnings',...EVIDENCE_FIELDS.map(([key])=>key)]);
   const received=new Map();
   for(const row of packet.cases){
    if(!row||Object.getPrototypeOf(row)!==Object.prototype||
@@ -602,14 +604,17 @@ $('importTeamReturn').addEventListener('click',async()=>{
     throw Error('Malformed local human warning list.');
    const next=validReview({finding_id:src.finding_id,stage:row.review_stage,
     reference:row.evidence_reference,reviewer:row.local_reviewer,
-    next_step:row.human_follow_up},new Set([src.finding_id]));
+    next_step:row.human_follow_up,
+    evidence:packet.schema_version===2?Object.fromEntries(EVIDENCE_FIELDS.map(([key])=>[key,row[key]])):review.get(src.finding_id).evidence
+   },new Set([src.finding_id]));
    received.set(src.finding_id,next);
   }
   /* Use the exact original team-packet order, not sorting, for the baseline.
      Member count and identities have already been verified completely. */
   const baseline=localSha256(JSON.stringify(packet.cases.map(row=>{
    const r=review.get(row.finding_id);
-   return [row.finding_id,r.stage,r.reference,r.reviewer,r.next_step];
+   return [row.finding_id,r.stage,r.reference,r.reviewer,r.next_step,
+    ...(packet.schema_version===2?EVIDENCE_FIELDS.map(([key])=>r.evidence[key]):[])];
   })));
   if(baseline!==packet.original_review_sha256)throw Error('Local notes changed since private team handoff; re-export rather than overwriting newer notes.');
   if(received.size!==expected.length)throw Error('Incomplete private team response; no local edits applied.');
@@ -658,6 +663,11 @@ $('brief').addEventListener('click',()=>{
   '| Finding ID | Severity | Original retest | Local case stage | Evidence coordination | Reference (unverified) | Next action |',
   '| --- | --- | --- | --- | --- | --- | --- |'];
  for(const {f,c,r} of rows)lines.push('| '+[f.finding_id,f.severity,f.retest_status,c?.status||'not loaded',r.stage,r.reference,r.next_step].map(escape).join(' | ')+' |');
+ lines.push('','## Private human evidence-reference dossiers (all entries unverified)');
+ for(const {f,r} of rows){
+  lines.push('','### Finding '+escape(f.finding_id));
+  for(const [key,,label] of EVIDENCE_FIELDS)lines.push('- '+label+': '+escape(r.evidence[key]||'NOT PROVIDED'));
+ }
  lines.push('','Any real retest, evidence validation, closure or client/operator approval must occur in the separate authenticated original system.');
  download('lightup-evidence-coordination-private.md',lines.join('\n'),'text/markdown'); 
 });
