@@ -94,7 +94,7 @@ function cleanCase(x,existingIds){
 }
 async function digest(findings){
  const normalized=normalizeSource(findings);
- const canonical=JSON.stringify(normalized.slice().sort((a,b)=>a.finding_id.localeCompare(b.finding_id)));
+ const canonical=JSON.stringify(normalized.slice().sort((a,b)=>a.finding_id<b.finding_id?-1:a.finding_id>b.finding_id?1:0));
  if(!global.crypto||!global.crypto.subtle)return null;
  const hash=await global.crypto.subtle.digest('SHA-256',new TextEncoder().encode(canonical));
  return [...new Uint8Array(hash)].map(b=>b.toString(16).padStart(2,'0')).join('');
@@ -120,9 +120,10 @@ function makePacket(findings,cases,sourceHash){
 function loadPacket(packet){
  if(!packet||typeof packet!=='object'||Array.isArray(packet)||packet.kind!=='lightup.remediation_casework_draft'||
    packet.schema_version!==1||packet.disposition!=='LOCAL_CLIENT_PLANNING'||
-   packet.authenticated!==false||packet.source_authorized!==false||packet.grant!==false||
-   packet.client_consent!==false||packet.operator_consent!==false||packet.execution!==false||
-   packet.scan!==false||packet.retest_verified!==false||packet.release!==false)
+   packet.source_contract!=='lightup.finding_export._COLUMNS_v1'||
+   !['authenticated','tenant_verified','source_authorized','assessment_authorized','grant','client_consent',
+     'operator_consent','execution','scan','audit_verdict','retest_verified','release']
+      .every(k=>Object.prototype.hasOwnProperty.call(packet,k)&&packet[k]===false))
   throw Error('Not a supported non-authorizing LightUp casework draft.');
  const source=normalizeSource(packet.findings),ids=new Set(source.map(x=>x.finding_id));
  if(!Array.isArray(packet.cases)||packet.cases.length!==source.length)throw Error('Casework incomplete.');
