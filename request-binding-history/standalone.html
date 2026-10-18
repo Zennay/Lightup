@@ -482,13 +482,13 @@ $("import").addEventListener("click",async()=>{
 });
 async function loadPrivateBundle(){
  const node=$("lightup-private-bundle");
- if(!node||!node.textContent.trim())return;
- const encoded=node.textContent.trim();
+ if(!node||!node.content||!node.content.textContent.trim())return;
+ const encoded=node.content.textContent.trim();
  // Clear inert sensitive embedded copies before parsing: no additional DOM
  // persistence beyond in-memory parsed private reviews.
- node.textContent="";
+ node.content.textContent="";
  try{
-  if(encoded.length>16000000)fail("bounded private source bundle exceeded");
+  if(encoded.length>16100000)fail("bounded private source bundle exceeded");
   const parts=encoded.split(".");
   if(parts.length<2||parts.length>12)fail("private bundle source-count mismatch");
   const buffers=parts.map(part=>{
