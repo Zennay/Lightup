@@ -330,6 +330,7 @@ function readiness(f,r){
  if(lack.length)concerns.push(lack.length+' missing local references');
  if(state?.casework){
   const c=state.casework.get(f.finding_id);
+  if(state.caseworkChanges?.has(f.finding_id))concerns.push('Original Casework human plan changed; reconsider proposed discussion slot');
   if(caseBlocked(c))concerns.push('Original local Casework blocked');
   if(pastDue(c))concerns.push('Local Casework planning date passed');
   if(windowAfterHumanDue(f))concerns.push('Proposed human slot AFTER local Casework due date');
@@ -357,6 +358,7 @@ function ownerWorkload(){
   const c=state.casework.get(f.finding_id),key=ownerKey(c);
   if(!groups.has(key))groups.set(key,{key,label:c.owner.trim()||'(Human owner unassigned)',total:0,urgent:0,blocked:0,overdue:0,late:0,unscheduled:0});
   const v=groups.get(key);v.total++;
+  v.changed=(v.changed||0)+(state.caseworkChanges?.has(f.finding_id)?1:0);
   if(['critical','high'].includes(f.severity))v.urgent++;
   if(caseBlocked(c))v.blocked++;
   if(pastDue(c))v.overdue++;
@@ -369,7 +371,7 @@ function ownerWorkload(){
   const tile=el('article');tile.className='item';
   tile.appendChild(el('h3',group.label));
   tile.appendChild(el('p',group.total+' original findings · '+group.urgent+' critical/high · '+group.blocked+' local blockers · '+
-   group.overdue+' local overdue · '+group.late+' planned after local due · '+group.unscheduled+' unscheduled.'));
+   group.overdue+' local overdue · '+group.late+' planned after local due · '+group.unscheduled+' unscheduled · '+(group.changed||0)+' original human rows changed recently.'));
   const btn=el('button','Filter to this human owner');
   btn.addEventListener('click',()=>{selector.value=group.key;render();});
   tile.appendChild(btn);board.appendChild(tile);
@@ -532,7 +534,7 @@ async function resumePlan(){
  if(!$('same').checked)fail('Independently confirm same original client and exact engagement.');
  const raw=strictJSON(await read($('planFile').files[0],2097152));
  const top=['kind','schema_version','disposition','source_contract','source_sha256','warning','windows','meeting_note','assignments','source_refresh','casework_sha256','casework_update',...FLAGS];
- keys(raw,top,top.filter(x=>!['warning','source_refresh'].includes(x)));
+ keys(raw,top,top.filter(x=>!['warning','source_refresh','casework_update'].includes(x)));
  const refresh=raw.source_refresh||null;
  if(refresh!==null){
   keys(refresh,['from_sha256','to_sha256','added','changed','absent_unverified','unchanged']);
@@ -633,7 +635,11 @@ async function resumePlan(){
    fail('Private window aggregate contradicts original source/review records.');
  }
  /* All admissions are complete; apply the whole human draft in one step. */
- state.assignments=imported;state.refreshSummary=refresh;revisionCandidate=null;lastBulkSnapshot=null;$('bulkUndo').disabled=true;
+ state.assignments=imported;state.refreshSummary=refresh;
+ state.caseworkUpdate=raw.casework_update||null;
+ state.caseworkChanges=new Map();
+ clearCaseworkPreview('Private planning resumed; previous original Casework row-differences are not independently recreated from a saved plan. Preview both original snapshots again for a fresh delta.');
+ revisionCandidate=null;lastBulkSnapshot=null;$('bulkUndo').disabled=true;
  for(let i=0;i<HOURS;i++){
   const w=restoredWindows[i];$('date'+i).value=w?w.start_utc.slice(0,16):'';
   $('label'+i).value=w?w.label:'';$('duration'+i).value=String(w?w.minutes:60);
@@ -747,8 +753,8 @@ function calendarExport(){
 }
 function aggregateExport(){
  const windows=plan();
- const data=['window_slot,proposed_start_utc,minutes,source_findings,critical_high,local_reference_holds,locally_blocked_casework,locally_past_due,proposed_window_after_local_due'];
- for(const row of stats(windows))data.push([row.slot,row.window?.start_utc||'',row.window?.minutes||0,row.findings,row.critical_high,row.local_review_holds,row.local_casework_blocked,row.locally_past_due,row.proposed_after_local_due].join(','));
+ const data=['window_slot,proposed_start_utc,minutes,source_findings,critical_high,local_reference_holds,locally_blocked_casework,locally_past_due,proposed_window_after_local_due,original_human_casework_rows_changed_since_last_snapshot'];
+ for(const row of stats(windows))data.push([row.slot,row.window?.start_utc||'',row.window?.minutes||0,row.findings,row.critical_high,row.local_review_holds,row.local_casework_blocked,row.locally_past_due,row.proposed_after_local_due,state.source.filter(f=>state.assignments.get(f.finding_id)===row.slot&&state.caseworkChanges?.has(f.finding_id)).length].join(','));
  output('lightup-aggregate-human-windows.csv',data.join('\r\n')+'\r\n','text/csv');
 }
 function forget(){
