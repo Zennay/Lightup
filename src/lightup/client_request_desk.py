@@ -83,7 +83,7 @@ def _studio_proposal() -> dict:
 
 
 def _decision(db: DomainStore, ctx, *, payload: dict, previous_id: str | None = None,
-              expanded: bool = False) -> None:
+              expanded: bool = False, check_session=None) -> None:
     assets = payload["requested_assets"]
     print("\n=== DRAFT ONLY · NO AUTHORIZATION ===")
     print("Assessment: " + payload["requested_mode"])
@@ -125,6 +125,8 @@ def _decision(db: DomainStore, ctx, *, payload: dict, previous_id: str | None = 
         print("No request created.")
         return
 
+    if check_session is not None:
+        check_session()  # password, role and client can change while composing
     record = db.submit_assessment_request(
         ctx, tuple(assets), AssessmentMode.AUTHORIZED_ASSESSMENT,
         RiskLevel(payload["requested_risk"]), payload["notes"],
@@ -135,7 +137,7 @@ def _decision(db: DomainStore, ctx, *, payload: dict, previous_id: str | None = 
         print("Original rejected request unchanged: " + previous_id)
 
 
-def _revise(db: DomainStore, ctx) -> None:
+def _revise(db: DomainStore, ctx, check_session=None) -> None:
     from .client_request_revision import prepare_rejected_revision
 
     old_id = _ask("Your rejected request ID: ", max_chars=128)
@@ -167,6 +169,7 @@ def _revise(db: DomainStore, ctx) -> None:
     _decision(
         db, ctx, payload=revised, previous_id=original.request_id,
         expanded=revised["scope_expansion_requires_confirmation"],
+        check_session=check_session,
     )
 
 
@@ -184,12 +187,14 @@ def _history(db: DomainStore, ctx) -> None:
         print("Showing 30 of " + str(len(records)) + "; use an export for details.")
 
 
-def _export(db: DomainStore, ctx) -> None:
+def _export(db: DomainStore, ctx, check_session=None) -> None:
     from .client_request_snapshot import MAX_EXPORT_RECORDS
 
     path = _ask("New private HTML destination (.html): ", max_chars=2048)
     if not path:
         raise ClientRequestError("private export destination is required")
+    if check_session is not None:
+        check_session()
     records = db.list_assessment_requests(ctx)
     if len(records) > MAX_EXPORT_RECORDS:
         print("More than 200 stored requests. Exporting the latest 200 only.")
@@ -228,15 +233,19 @@ def main(argv: list[str] | None = None) -> int:
         print("Client login refused: " + str(exc), file=sys.stderr)
         return 2
 
+    def check_session():
+        if _client_access_epoch(db, ctx) != credential_epoch:
+            raise PermissionError("client credentials changed; sign in again")
+
     print("\nLIGHTUP / CLIENT REQUEST DESK · PLAN/LAB ONLY · DRAFT/HOLD")
     print("Authenticated client requests only. No approvals, grants or execution.")
     choices = {
         "1": ("View own request inbox", lambda: _history(db, ctx)),
-        "2": ("Prepare and submit a manual request", lambda: _decision(db, ctx, payload=_manual_proposal())),
-        "3": ("Import Studio proposal and submit", lambda: _decision(db, ctx, payload=_studio_proposal())),
-        "4": ("Revise a rejected request", lambda: _revise(db, ctx)),
+        "2": ("Prepare and submit a manual request", lambda: _decision(db, ctx, payload=_manual_proposal(), check_session=check_session)),
+        "3": ("Import Studio proposal and submit", lambda: _decision(db, ctx, payload=_studio_proposal(), check_session=check_session)),
+        "4": ("Revise a rejected request", lambda: _revise(db, ctx, check_session=check_session)),
         "5": ("Inspect one own request", lambda: _show(db, ctx)),
-        "6": ("Export private read-only HTML timeline", lambda: _export(db, ctx)),
+        "6": ("Export private read-only HTML timeline", lambda: _export(db, ctx, check_session=check_session)),
     }
     while True:
         print("\n" + " | ".join(key + ": " + label for key, (label, _) in choices.items()))
@@ -251,8 +260,7 @@ def main(argv: list[str] | None = None) -> int:
                 continue
             # A password reset, role change, tenant move or client deactivation
             # ends the current authenticated desk; no stale inbox/export access.
-            if _client_access_epoch(db, ctx) != credential_epoch:
-                raise PermissionError("client credentials changed; sign in again")
+            check_session()
             choices[selection][1]()
         except (EOFError, KeyboardInterrupt):
             print("\nClient session closed.")
