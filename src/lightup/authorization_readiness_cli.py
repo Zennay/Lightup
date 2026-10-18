@@ -146,6 +146,13 @@ def _utc_window(grant: sqlite3.Row) -> str:
         return "invalid"
 
 
+def _record_identity(kind: str, record_id: str) -> str:
+    """Stable private UUID-derived review key; never an authorization claim."""
+    if type(record_id) is not str or not record_id or len(record_id) > 180:
+        raise ValueError("stored review identity is missing or malformed")
+    return hashlib.sha256(("lightup.readiness.identity.v1:" + kind + ":" + record_id).encode("utf-8")).hexdigest()
+
+
 def _read_report(database: Path, *, client_id: str | None = None,
                  engagement_id: str | None = None) -> dict:
     """Read one operator-selected scope inside one bounded, read-only transaction.
@@ -256,6 +263,7 @@ def _read_report(database: Path, *, client_id: str | None = None,
             "untrusted_approved_requests": untrusted_approved,
             "grants": len(own_grants),
             "grant_findings": [],
+            "identity_key": _record_identity("engagement", engagement["engagement_id"]),
             "source_key": hashlib.sha256(
                 json.dumps({"engagement": dict(engagement),
                             "requests_digest": request_lineage_digest,
@@ -300,6 +308,7 @@ def _read_report(database: Path, *, client_id: str | None = None,
                            sort_keys=True, default=str).encode("ascii")
             ).hexdigest()
             entry["grant_findings"].append({
+                "identity_key": _record_identity("grant", grant["grant_id"]),
                 "source_key": grant_source_key,
                 "grant_number": len(entry["grant_findings"]) + 1,
                 "window": window,
@@ -339,6 +348,7 @@ def _read_report(database: Path, *, client_id: str | None = None,
         for flag in flags:
             counter[flag] += 1
         item = {
+            "identity_key": _record_identity("request", request["request_id"]),
             "source_key": hashlib.sha256(json.dumps(
                 dict(request), sort_keys=True, ensure_ascii=True,
                 default=str, separators=(",", ":")
@@ -376,6 +386,7 @@ def _read_report(database: Path, *, client_id: str | None = None,
             "Request inbox records are client-wide and intentionally not linked to any particular engagement; administrative review does not authorize grants.",
             "Scoped exports intentionally omit unrelated tenant data and do not claim to inventory all orphan grants.",
             "Opaque source-key hashes support local action continuity only; they are unsigned pseudonyms, not identities, digital signatures or authorization.",
+            "Stable identity-key hashes distinguish unchanged/changed/removed stored rows across two offline reports; they are not proof that a missing record was remediated.",
         ],
         "summary": {
             "clients": len(clients),
