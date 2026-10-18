@@ -174,6 +174,16 @@ function project(source,raw) {
  const urgentTotal=urgentWeekBounds.reduce((sum,v)=>sum+v.urgent_scheduled_hours,0);
  const urgentAtRiskMin=urgentWeekBounds.reduce((sum,v)=>sum+v.urgent_potentially_unfunded_minimum_hours,0);
  const urgentAtRiskMax=urgentWeekBounds.reduce((sum,v)=>sum+v.urgent_potentially_unfunded_maximum_hours,0);
+ const lastUrgentIndex=urgentWeekBounds.reduce((last,w,i)=>w.urgent_scheduled_hours>0?i:last,-1);
+ const fullCostBeforeLastUrgent=lastUrgentIndex<0?0:weekly.slice(0,lastUrgentIndex)
+   .reduce((sum,w)=>sum+w.proposed_cost,0);
+ const lastUrgentWeek=lastUrgentIndex<0?null:weekly[lastUrgentIndex];
+ const earliestPossibleBudget=lastUrgentIndex<0?0:Math.round(
+   (fullCostBeforeLastUrgent+
+    (lastUrgentIndex===0?cfg.fixed_cost:0)+
+    costOf(urgentWeekBounds[lastUrgentIndex].urgent_scheduled_hours))*100)/100;
+ const conservativeBudget=lastUrgentIndex<0?0:Math.round(
+   (fullCostBeforeLastUrgent+lastUrgentWeek.proposed_cost)*100)/100;
  const fundingGap=Math.max(0,Math.round((roundedTotal-cfg.funding)*100)/100);
  return Object.freeze({
   schema:'lightup.remediation_funding_discussion_v1',review_only:true,
@@ -191,6 +201,10 @@ function project(source,raw) {
   critical_high_potential_unfunded_hours_minimum:Math.round(urgentAtRiskMin*10)/10,
   critical_high_potential_unfunded_hours_maximum:Math.round(urgentAtRiskMax*10)/10,
   critical_high_outside_source_plan_hours:source.risk.critical.backlog+source.risk.high.backlog,
+  urgent_work_budget_best_case_minimum:earliestPossibleBudget,
+  urgent_work_budget_conservative_threshold:conservativeBudget,
+  additional_funding_for_conservative_urgent_coverage:Math.max(0,Math.round((conservativeBudget-cfg.funding)*100)/100),
+  last_week_with_proposed_urgent_work:lastUrgentIndex<0?null:lastUrgentIndex+1,
   weekly_critical_high_funding_bounds:Object.freeze(urgentWeekBounds),
   weeks:Object.freeze(weekly.map(Object.freeze)),funding:Object.freeze(fundingSchedule)
  });
