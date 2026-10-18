@@ -8,6 +8,7 @@ let findings=[],cases=[],fingerprint=null,sourceLabel='',edited=false;
 let pendingRefresh=null,pendingSchedule=null;
 const byId=()=>new Map(cases.map(c=>[c.finding_id,c]));
 const ids=()=>new Set(findings.map(f=>f.finding_id));
+function localToday(){const d=new Date();return new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,10);}
 function inform(message){$('status').textContent=message;}
 function safeText(parent,tag,text,cls){
  const el=document.createElement(tag);el.textContent=String(text??'');
@@ -50,7 +51,7 @@ function filteredFindings(){
 }
 function render(){
  const available=findings.length>0,by=byId();
- const totals=LightUpCasework.metrics(findings,cases,new Date().toISOString().slice(0,10));
+ const totals=LightUpCasework.metrics(findings,cases,localToday());
  for(const [ui,key] of [['total','findings'],['urgent','critical_or_high'],['open','open'],['blocked','blocked'],['overdue','overdue'],['retest','ready_for_retest']])
   $(ui).textContent=totals[key];
  for(const id of ['save','exportCSV','exportMD','print'])$(id).disabled=!available;
@@ -273,7 +274,7 @@ function safeMD(s){
  return String(s??'').replace(/[\x60\\*_{}\[\]<>#!|]/g,'\\$&').replace(/\r/g,'').replace(/\n/g,' ');
 }
 function brief(){
- const by=byId(),totals=LightUpCasework.metrics(findings,cases,new Date().toISOString().slice(0,10));
+ const by=byId(),totals=LightUpCasework.metrics(findings,cases,localToday());
  const out=['# LightUp client remediation coordination draft','',
  'Local planning only: not authenticated evidence, permission, grant, verified retest, or remediation closure.','',
  'Source SHA-256 (unsigned): '+(fingerprint||'unavailable'),'',
