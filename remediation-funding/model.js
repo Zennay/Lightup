@@ -209,5 +209,68 @@ function project(source,raw) {
   weeks:Object.freeze(weekly.map(Object.freeze)),funding:Object.freeze(fundingSchedule)
  });
 }
-root.LightUpFunding=Object.freeze({intake,settings,project,SCHEMA,MAX_SIZE:65536});
+function stagedFunding(source,raw,percentages) {
+ const cfg=settings(raw);
+ const baseline=project(source,cfg);
+ if(!Array.isArray(percentages)||percentages.length!==source.weeks.length)
+  fail('Specify one funding release percentage per planning week');
+ const values=percentages.map((p,i)=>int(p,0,100,'release percentage for week '+(i+1)));
+ if(values.reduce((a,b)=>a+b,0)!==100)fail('Funding releases must total exactly 100 percent');
+ const weeklyCost=baseline.weeks;
+ let cash=0;
+ let setupUnpaid=cfg.fixed_cost;
+ let assignedTotal=0;
+ let urgentGuaranteed=0,urgentPossible=0;
+ const entries=[];
+ let allocatedAmount=0;
+ for(let i=0;i<values.length;i++){
+  const deposit=i===values.length-1?cfg.funding-allocatedAmount:
+   Math.floor(cfg.funding*values[i]/100);
+  allocatedAmount+=deposit;
+  cash+=deposit;
+  const setupPaid=Math.min(cash,setupUnpaid);cash-=setupPaid;setupUnpaid-=setupPaid;
+  const laborProposed=Math.max(0,weeklyCost[i].proposed_cost-(i===0?cfg.fixed_cost:0));
+  const laborPaid=Math.min(cash,laborProposed);cash-=laborPaid;
+  const unitLabor=weeklyCost[i].proposed_hours
+   ?laborProposed/weeklyCost[i].proposed_hours:0;
+  const fundedHours=unitLabor===0?0:Math.min(weeklyCost[i].proposed_hours,laborPaid/unitLabor);
+  const roundedHours=Math.round(fundedHours*10)/10;
+  assignedTotal+=roundedHours;
+  const risk=source.weeks[i].risk_hours;
+  const urgent=risk.critical+risk.high;
+  const regular=source.weeks[i].hours-urgent;
+  const urgentMin=Math.max(0,roundedHours-regular);
+  const urgentMax=Math.min(urgent,roundedHours);
+  urgentGuaranteed+=urgentMin;urgentPossible+=urgentMax;
+  entries.push(Object.freeze({
+   week:i+1,start:weeklyCost[i].start,
+   deposit:deposit,proposed_cost:weeklyCost[i].proposed_cost,
+   paid_setup:setupPaid,paid_proposed_labor:Math.round(laborPaid*100)/100,
+   proposed_hours:weeklyCost[i].proposed_hours,
+   funded_hours:roundedHours,
+   hours_not_funded:Math.round((weeklyCost[i].proposed_hours-roundedHours)*10)/10,
+   cash_carried_forward:Math.round(cash*100)/100,
+   remaining_setup_unpaid:Math.round(setupUnpaid*100)/100,
+   critical_high_maybe_unfunded_minimum:Math.round((urgent-urgentMax)*10)/10,
+   critical_high_maybe_unfunded_maximum:Math.round((urgent-urgentMin)*10)/10
+  }));
+ }
+ const urgent=baseline.critical_high_proposed_hours;
+ return Object.freeze({
+  schema:'lightup.remediation_staged_funding_draft.v1',
+  review_only:true,authorization:false,consent:false,grant:false,scan:false,
+  execute:false,dispatch:false,retest_verified:false,deploy:false,release:false,
+  currency:cfg.currency,total_funding:cfg.funding,
+  planned_hours:source.allocated_hours,
+  provisionally_funded_hours:Math.round(assignedTotal*10)/10,
+  unpaid_planned_hours:Math.round((source.allocated_hours-assignedTotal)*10)/10,
+  urgent_potentially_unfunded_lower_hours:Math.round((urgent-urgentPossible)*10)/10,
+  urgent_potentially_unfunded_upper_hours:Math.round((urgent-urgentGuaranteed)*10)/10,
+  unused_funds_end:Math.round(cash*100)/100,
+  setup_cost_still_unpaid:Math.round(setupUnpaid*100)/100,
+  release_percentages:Object.freeze(values),
+  weeks:Object.freeze(entries)
+ });
+}
+root.LightUpFunding=Object.freeze({intake,settings,project,stagedFunding,SCHEMA,MAX_SIZE:65536});
 })(window);
