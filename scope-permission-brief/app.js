@@ -397,7 +397,7 @@ async function restorePreparationBackup(file){
   assert(token===epoch&&current?.sha256===originalSha,'Original changed during restore');
   const restored=questions.map((q,i)=>q.role==='client'?fromClient[i]:fromOperator[i]);
   const conflict=questions.some((q,i)=>q.status!=='unanswered'&&q.status!==restored[i]);
-  if(conflict&&!confirm('This source-bound local backup has different unverified question statuses. Replace BOTH roles\\' existing local answer states?')){
+  if(conflict&&!confirm("This source-bound backup conflicts with locally entered unverified statuses. Replace both roles' current answers?")){
    $('backupState').textContent='Restore cancelled; previous client/operator answers remain unchanged · HOLD';return;
   }
   assert(token===epoch&&current?.sha256===originalSha,'Original changed before restore');
