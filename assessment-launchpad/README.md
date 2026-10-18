@@ -94,3 +94,18 @@ PYTHONPATH=src python3 assessment-launchpad/reopen.py \
 `reopen.py` opens only an existing owner-private ordinary directory (0700) and its exact original owner-private ordinary files (0600), refusing symlink entrypoints, missing/extra files, changed bytes or partial manifests. It checks the pinned original manifest bytes, reuses the unchanged original lab-scope admission, verifies exact total/unique endpoints and, for a Studio packet, revalidates the original Studio v1 source using the unchanged native source owner and the exact explicit-IP membership. It reports **only anonymous endpoint count + presence/absence of a Studio draft**, never paths, IPs, scenarios or credentials. Return code 2 means unsigned source revision is internally consistent **for human REVIEW_ONLY**; 3 is HOLD. Neither is an authorization/consent result.
 
 Reopening an old private packet does **not** make previously permitted endpoints currently safe to run. Any subsequent activity must independently recheck original scope, authenticated client/operator consent, revocation-at-use and required release gates. A copied, replaced or missing source cannot be interpreted as remediated or approved.
+
+## Compare two owner-private original launch proposals (source revision desk)
+
+Two *separately prepared* `build.py` packets can now be examined as a **human proposal revision**, without contacting targets, interpreting absent endpoints as fixed, or silently mixing sources:
+
+```sh
+PYTHONPATH=src python3 assessment-launchpad/compare.py \
+  --before ./PRIVATE-LAB-PACKET-OLD \
+  --after ./PRIVATE-LAB-PACKET-NEW \
+  --output-dir ./NEW-PRIVATE-LAB-REVISION
+```
+
+The new `compare.py` first reopens each entire private packet through `reopen.py`: original source fingerprint, 0700 directory / 0600 no-follow file checks, original lab-policy admission, strict Studio validation if present and full original hash map. It then compares **exact original user-entered URL strings only**: added proposals, proposals absent in the later selected packet and unchanged proposals. The before/after labels are *user-selected*, not a trusted sequence, audit timeline or same-customer identity proof.
+
+The output is a new exclusive 0700 private directory with four owner-only 0600 files: a portable **scriptless human change brief** (full private URLs), a confidential original-source-fingerprint-bound JSON diff, an identity-free count-only JSON, and a START-HERE privacy/review note. This is useful for private handoff between lab operators, not a source verification of remediation. There is no implicit network, grant, runtime, CI, approval or deployment. A missing proposed URL is explicitly **not** verified remediation, revocation, client permission withdrawal, closure or a safety clearance. The new source/revision artifacts exit only 2 for human review or 3 HOLD, never authorization exit 0.
