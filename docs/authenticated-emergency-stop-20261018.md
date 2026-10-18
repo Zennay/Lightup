@@ -69,6 +69,32 @@ The list and pending commands deliberately exit 2 because they only inspect. The
 
 The console cannot send a STOP, acknowledge a STOP, sign in a user or resume a task. These remain native credential-protected CLI actions; the browser only displays previously obtained private source data. A correctly shaped imported JSON file is NOT authenticated evidence or permission. No source file should be trusted to override original authorization or consent policy.
 
+## Atomic multi-engagement incident STOP
+
+For a manually selected incident scope of 1–32 existing engagements, the new native module performs a single authenticated, all-or-nothing SQLite transaction. It first validates every engagement against the original persisted user/tenant relationships, then inserts one independent irreversible STOP per engagement. If any selected ID is invalid, inaccessible or duplicated, nothing is written.
+
+    PYTHONPATH=src python -m lightup.stop_batch \
+      --database /private/path/lightup.sqlite \
+      --email original-account@example.invalid \
+      --engagement FIRST_ID --engagement SECOND_ID \
+      --receipt /private/path/NEW-incident-stops.json
+
+Authentication uses existing password and lockout. A client may select only its own tenant, while a genuine operator may explicitly select multiple tenants. This is a deny-only incident intake, not a batch grant, and it never runs tools or changes the original assessment scope. The CLI prints only a bounded aggregate status; per-engagement STOP IDs appear in the optional private 0600 receipt, never public stdout. Failure to create a receipt after database commit cannot undo stops. The reason is stored privately; avoid secrets in shell arguments.
+
+## Opt-in original tool-policy STOP integration candidate
+
+The new src/lightup/stop_policy_adapter.py composes (rather than replaces) the original ExecutionPolicy and ToolExecutor in a separate NEW source file. The original registry, mode, risk and evidence gates remain installed. It requires the exact immutable RunContext instance and matches real authorization grant client/engagement lineage. It reads the original SQLite STOP ledger before and after the original policy decision; active or uncertain STOP yields a denied PolicyDecision. The only installed entrypoint is an explicit developer opt-in:
+
+    from lightup.stop_policy_adapter import create_stop_aware_executor
+    guarded = create_stop_aware_executor(
+        database=PRIVATE_DB, run_context=original_run,
+        registry=original_registry, state=original_evidence_store,
+    )
+    # Existing original per-call context identity is mandatory.
+    # Do NOT dispatch tools merely because a STOP is absent.
+
+This is a product source integration seam for the original runtime owners, **not a production default**. It does NOT intercept direct calls to unmodified ToolExecutor, existing handlers, live scanners, asynchronous workers, or already running tasks. Read-before/after-decision still has a time-of-check/time-of-use race before handler dispatch. The original owners must separately install an atomic action-time revocation boundary and preserve authentic client/operator consent before release.
+
 ## Future required action-time integration
 
 The module exposes deny_only_stop_state(db_path, engagement_id=..., client_id=...) for the ORIGINAL runtime owner to install as an additional veto alongside existing canonical scope, client/operator consent, request/grant/activation, risk and tool policy. This function returns STOP_ACTIVE, NO_STOP_RECORDED or HOLD; it returns veto_execution true for STOP_ACTIVE or HOLD, and ALWAYS returns authorization_granted false, execution_allowed false, release_approved false. NO_STOP_RECORDED is not proof of authorization and is never an allow permit. The existing live runtime **does not yet call this module**. A STOP entered here does not magically stop an already running or unrelated process. No concurrency or distributed kill guarantee is claimed.
