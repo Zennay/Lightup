@@ -25,6 +25,9 @@ th{color:#aec0dc;font-size:10px;text-transform:uppercase;letter-spacing:.06em}td
 #message{min-height:22px;margin-top:13px;color:#ffc59a}#empty{color:#98adcc;text-align:center;padding:35px}
 @media(max-width:800px){.metrics{grid-template-columns:repeat(2,1fr)}main{padding:14px}td:nth-child(4),th:nth-child(4){display:none}}
 @media print{body,:root{background:white;color:#111}.panel,.metric{background:white;color:#111}button,label.load,input,select,.actions{display:none}.muted,p{color:#444}}
+h3{font-size:15px;margin:20px 0 9px}.source-card{border:1px solid #455877;border-radius:9px;padding:13px;margin:9px 0;line-height:1.7}
+.source-line{border-bottom:1px solid #3c4d64;padding:8px 0;overflow-wrap:anywhere}.source-line strong{color:#c4d2f4}
+#detailbody{display:grid;gap:7px}button.secondary{background:#2d4163;color:#eaf1ff;border:1px solid #587199}
 </style></head><body><main>
 <header><div class="brand">LIGHT<b>UP</b> / SCOPE OPS</div><span class="tag">INCUBATE · DRAFT/HOLD</span></header>
 <h1>Authorization &amp; incident room</h1>
@@ -42,16 +45,26 @@ th{color:#aec0dc;font-size:10px;text-transform:uppercase;letter-spacing:.06em}td
 <div class="metric"><strong id="count">—</strong><small>Selected engagements</small></div>
 <div class="metric"><strong id="stops">—</strong><small>Recorded STOPs</small></div>
 <div class="metric"><strong id="holds">—</strong><small>STOP source unavailable</small></div>
-<div class="metric"><strong id="attention">—</strong><small>Human attention cases</small></div></section>
+<div class="metric"><strong id="attention">—</strong><small>Human attention cases</small></div>
+<div class="metric"><strong id="pendingRisk">—</strong><small>Original risk decisions pending</small></div>
+<div class="metric"><strong id="riskHold">—</strong><small>Risk provenance HOLD</small></div></section>
 <section class="panel"><div class="bar"><div><h2>02 / Human incident caseboard</h2><p class="muted">Private source IDs are not included in anonymous exports. Compare historical snapshots of the same tenant and case set; vanished STOP is HOLD. Stages are tab-only.</p></div>
-<input id="search" type="search" placeholder="Filter case / STOP state" disabled></div>
-<div style="overflow:auto"><table><thead><tr><th style="width:22%">Engagement</th><th style="width:20%">STOP source</th><th style="width:12%">Grants</th><th style="width:28%">Casebook attention</th><th style="width:18%">Follow-up</th><th style="width:17%">Previous source</th></tr></thead><tbody id="rows"></tbody></table></div>
+<input id="search" type="search" placeholder="Filter case / STOP state" disabled>
+<select id="focus" aria-label="Human triage filter" disabled><option value="all">All original cases</option>
+<option value="attention">STOP / HOLD / pending risk</option>
+<option value="risk">Risk-source follow-up</option>
+<option value="changes">Changed source records</option></select></div>
+<div style="overflow:auto"><table><thead><tr><th style="width:22%">Engagement</th><th style="width:20%">STOP source</th><th style="width:12%">Grants</th><th style="width:28%">Casebook attention</th><th style="width:18%">Follow-up</th><th style="width:17%">Previous source</th><th>Inspect</th></tr></thead><tbody id="rows"></tbody></table></div>
 <div id="empty">Import original private source for the caseboard.</div></section>
+<section class="panel" id="detail" hidden aria-label="Selected original engagement details">
+<h2>03 / Original engagement dossier</h2>
+<p class="muted">Read-only original persisted request/grant/risk details. Historical observations are never verified authority or current consent.</p>
+<div id="detailbody"></div></section>
 <footer class="muted">Original private retrospective evidence only. Never live execution clearance.</footer></main>
 <script>
 (function(){
 "use strict";
-var report=null,older=null,changes=new Map(),stages=new Map(),MAX=524288;
+var report=null,older=null,changes=new Map(),stages=new Map(),selectedCase=null,MAX=524288;
 function E(x){return document.getElementById(x);}
 function O(x){return x!==null&&typeof x==="object"&&!Array.isArray(x);}
 function W(x){return typeof x==="string"&&x.length>0&&x.length<=180&&![...x].some(c=>c.charCodeAt(0)<32||c.charCodeAt(0)===127);}
@@ -132,10 +145,55 @@ function reconcile(latest,prior){
  if(delta.size!==baseline.size)throw Error("case membership changed");
  return delta;
 }
+function priority(r){
+ if(r.stop_observation==="STOP_ACTIVE")return 0;
+ if(r.stop_observation.startsWith("HOLD_")||r.casebook_attention.startsWith("HOLD_"))return 1;
+ if(r.casebook_attention==="RISK_DECISION_PENDING_SOURCE_REVIEW")return 2;
+ return 3;
+}
+function line(parent,title,value){
+ var box=document.createElement("div");box.className="source-line";
+ var label=document.createElement("strong");label.textContent=title+": ";
+ var val=document.createElement("span");val.textContent=String(value??"Not recorded");
+ box.append(label,val);parent.appendChild(box);
+}
+function sourceSection(parent,title,records,fields){
+ var area=document.createElement("section"),h=document.createElement("h3");
+ h.textContent=title+" ("+records.length+")";area.appendChild(h);
+ if(!records.length){var note=document.createElement("p");note.textContent="No original linked records in this tenant snapshot.";area.appendChild(note);}
+ for(var record of records){
+  var card=document.createElement("div");card.className="source-card";
+  for(var field of fields)line(card,field.replaceAll("_"," "),record[field]);
+  area.appendChild(card);
+ }parent.appendChild(area);
+}
+function inspect(eid){
+ if(!report)return;
+ var entry=report.engagements.find(r=>r.engagement_id===eid);
+ if(!entry)return;
+ selectedCase=eid;var c=report.casebook,d=E("detailbody");d.replaceChildren();
+ line(d,"Original engagement",eid);
+ line(d,"Original status",entry.original_engagement_status);
+ line(d,"STOP observation",entry.stop_observation);
+ line(d,"Original attention",entry.casebook_attention);
+ line(d,"Next HUMAN review",entry.casebook_next_human_action);
+ line(d,"Stored source grant count",entry.grant_source_count);
+ var grants=c.grants.filter(g=>g.engagement_id===eid);
+ var ids=new Set(grants.map(g=>g.approved_request_id).filter(x=>x!==null));
+ sourceSection(d,"Persisted grant links",grants,["grant_id","approved_request_id","request_link_observation","max_risk","validity_observation"]);
+ sourceSection(d,"Linked original assessment requests",c.requests.filter(r=>ids.has(r.request_id)),["request_id","status","requested_mode","requested_risk","decision_recorded"]);
+ sourceSection(d,"Persisted risk decisions",c.risk_approvals.filter(r=>r.engagement_id===eid),["approval_id","status","requested_risk","decision_provenance_observation","decision_recorded"]);
+ line(d,"Historical change",older?(changes.get(eid)||[]).join("; ")||"No prior differences":"Not compared");
+ E("detail").hidden=false;
+}
 function render(){
-if(!report)return;var query=E("search").value.toLowerCase().trim(),tbody=E("rows");tbody.replaceChildren();var n=0;
-for(var r of report.engagements){
+if(!report)return;var query=E("search").value.toLowerCase().trim(),focus=E("focus").value,tbody=E("rows");tbody.replaceChildren();var n=0;
+for(var r of report.engagements.slice().sort(function(a,b){return priority(a)-priority(b);})){
 if(query&&!([r.engagement_id,r.stop_observation,r.casebook_attention].join(" ").toLowerCase().includes(query)))continue;
+if(focus==="attention"&&priority(r)===3)continue;
+if(focus==="risk"&&!(r.casebook_attention.includes("RISK")||
+ report.casebook.risk_approvals.some(x=>x.engagement_id===r.engagement_id)))continue;
+if(focus==="changes"&&(!older||!(changes.get(r.engagement_id)||[]).length))continue;
 n++;var tr=document.createElement("tr");
 TD(tr,r.engagement_id,"id");
 TD(tr,r.stop_observation,r.stop_observation==="NO_STOP_RECORDED_NOT_PERMISSION"?"good":"risk");
@@ -146,15 +204,23 @@ var cell=document.createElement("td"),s=document.createElement("select");s.setAt
 s.value=stages.get(r.engagement_id)||"unreviewed";s.addEventListener("change",function(){stages.set(r.engagement_id,s.value);});cell.appendChild(s);tr.appendChild(cell);
  TD(tr,older ? ((changes.get(r.engagement_id)||[]).join(" / ")||"NO CHANGE") : "NOT COMPARED",
  older&&(changes.get(r.engagement_id)||[]).length ? "risk":"muted");
+ var action=document.createElement("td"),button=document.createElement("button");
+ button.className="secondary";button.textContent="Inspect";
+ button.setAttribute("aria-label","Inspect original case "+r.engagement_id);
+ button.addEventListener("click",function(){inspect(r.engagement_id);});
+ action.appendChild(button);tr.appendChild(action);
  tbody.appendChild(tr);
 }
 E("empty").hidden=n>0;E("empty").textContent="No original cases match the current filter.";
 E("count").textContent=report.summary.selected;E("stops").textContent=report.summary.active_stop_observations;
-E("holds").textContent=report.summary.stop_source_hold;E("attention").textContent=report.summary.cases_requiring_human_attention;}
+E("holds").textContent=report.summary.stop_source_hold;E("attention").textContent=report.summary.cases_requiring_human_attention;
+E("pendingRisk").textContent=report.summary.pending_risk_review;
+E("riskHold").textContent=report.summary.risk_provenance_hold;
+if(selectedCase)inspect(selectedCase);}
 E("file").addEventListener("change",async function(){
 var f=this.files&&this.files[0];this.value="";if(!f)return;
 if(f.size<2||f.size>MAX){E("message").textContent="HOLD: source exceeds private file bound.";return;}
-try{var next=importSource(await f.text());report=next;older=null;changes.clear();stages.clear();E("search").value="";E("search").disabled=false;E("export").disabled=false;E("print").disabled=false;E("message").textContent="Imported locally · "+next.status+" · never authorized";render();}
+try{var next=importSource(await f.text());report=next;older=null;changes.clear();stages.clear();selectedCase=null;E("detail").hidden=true;E("search").value="";E("search").disabled=false;E("focus").disabled=false;E("focus").value="all";E("export").disabled=false;E("print").disabled=false;E("message").textContent="Imported locally · "+next.status+" · never authorized";render();}
 catch(e){E("message").textContent="HOLD: malformed, contradictory or unsupported original source. Previous caseboard retained.";}}
 );
 E("previous").addEventListener("change",async function(){
@@ -170,6 +236,7 @@ E("previous").addEventListener("change",async function(){
  }catch(e){E("message").textContent="HOLD: prior file inconsistent, stale or mismatched. Prior comparison preserved.";}
 });
 E("search").addEventListener("input",render);
+E("focus").addEventListener("change",render);
 E("print").addEventListener("click",function(){if(report)window.print();});
 E("export").addEventListener("click",function(){
 if(!report)return;var stageCounts={unreviewed:0,investigating:0,escalated:0,documented:0};
