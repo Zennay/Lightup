@@ -542,7 +542,7 @@ class LightUpWebApp:
                     "<label>Excluded assets (comma-separated, optional)</label>"
                     "<input name=\"excluded_assets\">"
                     "<label>Allowed capability IDs (comma-separated; explicit scope required)</label>"
-                    "<input name=\"capabilities\">"
+                    "<input name=\"capabilities\" required>"
                     "<label>Maximum risk level</label><select name=\"max_risk\">"
                     "<option value=\"1\">1 — Passive</option>"
                     "<option value=\"2\">2 — Low impact</option>"
@@ -615,10 +615,21 @@ class LightUpWebApp:
         if not 1 <= valid_days <= 365:
             raise ValueError("grant validity must be between 1 and 365 days")
         now = datetime.now(timezone.utc)
+        from ..capabilities import CapabilityState, get_capabilities
+        allowed_capabilities = _csv("capabilities")
+        known_planning = {
+            capability.capability_id for capability in get_capabilities()
+            if capability.state is CapabilityState.PLANNING
+        }
+        if (not allowed_capabilities or len(allowed_capabilities) > 32
+                or len(set(allowed_capabilities)) != len(allowed_capabilities)
+                or any(capability not in known_planning
+                       for capability in allowed_capabilities)):
+            raise ValueError("explicit known non-lab capability IDs are required")
         scope = ScopeDefinition(
             assets=_csv("assets"),
             max_risk=max_risk,
-            allowed_capabilities=_csv("capabilities"),
+            allowed_capabilities=allowed_capabilities,
             excluded_assets=_csv("excluded_assets"),
         )
         engagement = self.store.get_engagement(auth.context, engagement_id)
