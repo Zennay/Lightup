@@ -66,6 +66,7 @@ tbody button{font-size:11px;padding:5px 7px}
 <div class="lane"><header>② Stored grant links</header><div id="lane-grants"></div></div>
 <div class="lane"><header>③ Engagements</header><div id="lane-engagements"></div></div>
 <div class="lane"><header>④ Recorded risk decisions</header><div id="lane-risk_approvals"></div></div></div>
+<section class="card" style="margin-top:16px;background:#101e35" aria-label="Private recorded source relationship map"><h3>Interactive recorded source graph</h3><p class="caption">Shows up to 22 positions per source family for one selected connected group; omitted positions remain available in the exact-path table. Dashed rectangles denote a referenced source row that is absent — never revoked or cleared. Click a real record or use Enter to inspect it.</p><div style="overflow:auto;width:100%"><svg id="scope-graph" role="img" aria-label="Recorded source graph; accessible exact paths in the table below" style="display:block;max-width:none"></svg></div><p id="graph-note" class="caption">Select a real source record.</p></section>
 <p class="caption">A reference follows only recorded original request→grant→engagement→risk IDs. It never fabricates a direct request/engagement relationship, never rechecks eligibility, and never calls a target or live database.</p></section>
 <section class="grid"><div class="card"><h2 id="focus-title">03 / Select one original source record</h2><p id="focus-description">Select a source record to inspect its connected original references.</p>
 <div class="flex" id="focus-list"></div><div class="divider"></div>
@@ -212,6 +213,40 @@ if(e)text.push((e.from===key?"→ ":"← ")+e.kind);
 });
 return text.join(" · ");
 }
+
+function drawGraph(){
+var svg=el("scope-graph");svg.replaceChildren();var tip=el("graph-note");
+if(!source||!selection){tip.textContent="Select a real original source record to display its recorded relationships.";return;}
+var g=connected(selection),nodesIn=nodes().filter(function(n){return g.found.has(n.key);}),byKey=new Map(nodesIn.map(function(n){return [n.key,n];})),groups={requests:[],grants:[],engagements:[],risk_approvals:[]},keys=Object.keys(groups),located=new Map();
+nodesIn.forEach(function(n){groups[n.family].push(n);});
+g.broken.forEach(function(edge){var key=edge.missing,type=key.split(":")[0];if(groups[type]&&!byKey.has(key)&&!groups[type].some(function(n){return n.key===key;}))groups[type].push({key:key,id:key.slice(type.length+1),family:type,absent:true});});
+var cut=0,max=0;
+keys.forEach(function(f){groups[f].sort(function(a,b){return Number(b.key===selection)-Number(a.key===selection)||Number(!!b.absent)-Number(!!a.absent)||Number(!b.absent&&troubled(b))-Number(!a.absent&&troubled(a))||a.id.localeCompare(b.id);});if(groups[f].length>22){cut+=groups[f].length-22;groups[f]=groups[f].slice(0,22);}max=Math.max(max,groups[f].length);});
+var W=1120,H=Math.max(250,max*55+75),ns="http://www.w3.org/2000/svg";
+svg.setAttribute("viewBox","0 0 "+W+" "+H);svg.setAttribute("width",W);svg.setAttribute("height",H);
+function node(tag,attributes,parent){var e=document.createElementNS(ns,tag);Object.entries(attributes).forEach(function(k){e.setAttribute(k[0],String(k[1]));});(parent||svg).appendChild(e);return e;}
+function txt(x,y,t,color,size,parent){var e=node("text",{x:x,y:y,fill:color,"font-size":size,"font-family":"system-ui, sans-serif"},parent);e.textContent=t;return e;}
+var xs=[35,307,579,851];
+keys.forEach(function(f,i){txt(xs[i],25,["① Requests","② Recorded grants","③ Engagements","④ Risk decisions"][i],"#b5d2ff",14);
+groups[f].forEach(function(n,j){located.set(n.key,{x:xs[i],y:45+j*55,n:n});});});
+var shown=0,absentEdges=0;
+edges().forEach(function(e){
+var a=located.get(e.from),b=located.get(e.to);if(!a||!b)return;
+var lost=a.n.absent||b.n.absent;
+var line=node("line",{x1:a.x+207,y1:a.y+18,x2:b.x,y2:b.y+18,stroke:lost?"#eeab83":"#7da3d9","stroke-width":lost?2:1.5,"stroke-dasharray":lost?"5 4":"",opacity:0.75});
+svg.insertBefore(line,svg.firstChild);shown++;if(lost)absentEdges++;
+});
+located.forEach(function(v,key){
+var n=v.n,missing=!!n.absent,active=key===selection,attention=!missing&&troubled(n);
+var group=node("g",{"aria-label":(missing?"Missing original source record ":"Original source record ")+key});
+node("rect",{x:v.x,y:v.y,width:207,height:36,rx:7,fill:missing?"#382b30":active?"#465373":"#213b5a",stroke:missing?"#eeab83":active?"#ffd2a2":attention?"#cc9674":"#6689b4","stroke-width":active?3:1,"stroke-dasharray":missing?"4 3":""},group);
+var title=node("title",{},group);title.textContent=(missing?"MISSING recorded reference ":"Stored original record ")+key+(missing?"":" · "+status(n));
+txt(v.x+9,v.y+22,(missing?"MISSING ":"")+(n.id.length>24?n.id.slice(0,21)+"…":n.id),missing?"#ffcbac":"#e6efff",12,group);
+if(!missing){group.setAttribute("role","button");group.setAttribute("tabindex","0");group.style.cursor="pointer";group.addEventListener("click",function(){switchSelection(key);});group.addEventListener("keydown",function(e){if(e.key==="Enter"||e.key===" "){e.preventDefault();switchSelection(key);}});}
+});
+tip.textContent="Displayed "+located.size+" source positions, "+shown+" recorded links ("+absentEdges+" links to missing rows); "+cut+" dense-group positions omitted visually. The exact source path table remains the complete reference. No graph link is authorization.";
+}
+
 function renderPaths(){
 var host=el("reference-paths");host.replaceChildren();if(!source||!selection)return;
 var graph=connected(selection),all=nodes();
@@ -228,7 +263,7 @@ var view=connected(selection);
 return {members:nodes().filter(function(n){return view.found.has(n.key);}),broken:view.broken};
 }
 function render(){
-var all=nodes(),e=edges(),map=new Map(all.map(function(n){return [n.key,n];}));var chosen=focusedNodes();renderPaths();
+var all=nodes(),e=edges(),map=new Map(all.map(function(n){return [n.key,n];}));var chosen=focusedNodes();renderPaths();drawGraph();
 el("count-requests").textContent=source?source.requests.length:0;
 el("count-grants").textContent=source?source.grants.length:0;
 el("count-engagements").textContent=source?source.engagements.length:0;
