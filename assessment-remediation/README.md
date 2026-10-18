@@ -60,3 +60,33 @@ It embeds original mapping-studio.js and CSS into standalone.html with per-sourc
 This independent draft child follows [original held assessment source composition #1625](https://github.com/Zennay/Lightup/pull/1625) and exclusively creates assessment-remediation/ paths. Original active #1515 comparator, #1610 lab CLI, #1595 original Lab Scenario Studio, original evidence-remediation owner, scope/authorization, CI and tests are unchanged.
 
 **Release remains HOLD.** No main merge, production deployment, live target work, consent or grant may occur until original exact-head hosted plus permanently registered named VPS CI, original source owner acceptance, independent privacy/security review, genuine separately authenticated current client and operator consent (with action-time revocation for any actual use), and explicit HUMAN GO. Known original scope #301 acceptance dependencies are not waived or overwritten.
+
+## Revision-aware follow-up without stale links
+
+New source revisions must not silently inherit old human stages. The separate
+[private source renewal CLI](refresh.py) accepts an older exact original pair,
+its bound manual links, and a new original comparator/findings pair:
+
+    python3 assessment-remediation/refresh.py \
+      --old-comparison /private/old-comparison.json \
+      --old-findings-csv /private/old-findings.csv \
+      --old-links /private/old-manual-links.json \
+      --new-comparison /private/new-comparison.json \
+      --new-findings-csv /private/new-findings.csv \
+      --output-dir /private/lightup-followup \
+      --prefix reviewed-revision
+
+It creates three 0600 **new-only private** artifacts: source-revision HTML,
+source-bound refreshed link JSON, and anonymous refresh-count JSON. It explicitly
+classifies original case and finding IDs as added, changed, absent or unchanged.
+Absent never means fixed. The default withholds ALL old human links until reviewed.
+
+For a human operator who has independently verified that the source files
+continue to concern the same actual client and engagement, add
+--carry-unchanged: only exact semantically identical original scenario rows
+**and** original five-column finding rows may retain their manual stage/notes.
+Every changed/missing source row loses its old human link. Added findings/cases
+are never linked automatically. A changed source, withheld link or original new
+HOLD keeps review output HOLD; a complete unchanged REVIEW_ONLY source is
+still not security clearance, permission or successful retest. No original
+file is modified or action is dispatched.

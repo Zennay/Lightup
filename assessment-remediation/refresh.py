@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import argparse
-from collections import Counter
 from hashlib import sha256
 from html import escape
 import os
@@ -12,12 +11,12 @@ import re
 import sys
 
 from bridge import (
-    AGG_SCHEMA, FLAGS, LINK_SCHEMA, MAX_COMPARE, MAX_FINDINGS, MAX_LINKS,
-    fail_if, html_report, links_document, original_comparison,
+    FLAGS, LINK_SCHEMA, MAX_COMPARE, MAX_FINDINGS, MAX_LINKS,
+    fail_if, links_document, original_comparison,
     original_findings, private_dir,
 )
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "assessment-archive"))
-from archive import Hold, decode_json, encode, publish, read_regular
+from archive import Hold, encode, publish, read_regular
 
 
 def capture(compare_path, finding_path):
@@ -43,7 +42,7 @@ def changes(original, current):
     }
 
 
-def private_html(old, new, source_changes, preserved, dropped, copy_unchanged):
+def private_html(old, new, source_changes, preserved, dropped, copy_unchanged, posture):
     css = (
         "body{font:15px/1.55 system-ui,sans-serif;color:#1b2b45;background:#f6f8fb;"
         "max-width:1050px;margin:2rem auto;padding:0 1rem}main,header{background:white;"
@@ -67,7 +66,7 @@ def private_html(old, new, source_changes, preserved, dropped, copy_unchanged):
         "<!doctype html><html lang=en><meta charset=utf-8><meta name=viewport content='width=device-width,initial-scale=1'>",
         '<meta http-equiv="Content-Security-Policy" content="' + csp + '">',
         "<title>LightUp source revision human link renewal</title><style>" + css + "</style>",
-        "<header><h1>Assessment ↔ finding source revision</h1><p class=warning><strong>PRIVATE / HUMAN REVIEW / HOLD · NEVER AUTHORIZED</strong><br>",
+        "<header><h1>Assessment ↔ finding source revision</h1><p class=warning><strong>PRIVATE / HUMAN REVIEW / " + posture + " · NEVER AUTHORIZED</strong><br>",
         "One source revision is not proof of completion, remediation, permission or same engagement.</p>",
         "<p>Old comparator SHA-256 <code>" + old["comparison_sha"] + "</code><br>",
         "New comparator SHA-256 <code>" + new["comparison_sha"] + "</code><br>",
@@ -180,21 +179,13 @@ def renew(args):
     outputs = {
         "refreshed-links.json": encode(bound),
         "private-change-report.html": private_html(older, newer, delta, preserved,
-                                                    dropped, args.carry_unchanged),
+                                                    dropped, args.carry_unchanged, posture),
         "refresh-aggregate.json": encode(aggregate),
     }
     paths = [(folder / (args.prefix + "-" + name), payload)
              for name, payload in outputs.items()]
     fail_if(any(os.path.lexists(path) for path, _ in paths),
             "destination exists; never overwrite original operator output")
-    for path, digest in (
-        (args.old_comparison, older["comparison_sha"]),
-        (args.old_findings_csv, older["findings_sha"]),
-        (args.new_comparison, newer["comparison_sha"]),
-        (args.new_findings_csv, newer["findings_sha"]),
-    ):
-        bound = MAX_COMPARE if "comparison" in str(path) else MAX_FINDINGS
-        # The meaning of the supplied filename is irrelevant; use known source role below.
     for path, bound, expected in (
         (args.old_comparison, MAX_COMPARE, older["comparison_sha"]),
         (args.old_findings_csv, MAX_FINDINGS, older["findings_sha"]),
