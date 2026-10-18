@@ -86,7 +86,7 @@ function strictJSON(src){
  function str(){
    let start=p++;while(p<src.length){
      if(src[p]==="\\"){p+=2;continue}
-     if(src[p++]==='"'){return JSON.parse(src.slice(start,p))}
+     if(src[p++]==='"'){try{return JSON.parse(src.slice(start,p))}catch(_){fail("invalid JSON string or escaping")}}
    }fail("incomplete JSON string");
  }
  function value(depth){
