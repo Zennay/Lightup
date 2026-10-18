@@ -37,6 +37,7 @@ from .engagements import (
     ScopeDefinition,
 )
 from .models import RetestStatus, Severity
+from .grant_request_binding import approved_request_is_compatible
 
 
 class Role(str, Enum):
@@ -802,6 +803,20 @@ class DomainStore:
 
     # -- authorization grants --------------------------------------------------
 
+    @staticmethod
+    def _approved_request_for_grant(con: sqlite3.Connection, request_id: str):
+        return con.execute(
+            "SELECT r.*, requester.role AS requester_role, "
+            "requester.client_id AS requester_client, "
+            "reviewer.role AS reviewer_role, "
+            "reviewer.client_id AS reviewer_client "
+            "FROM assessment_requests AS r "
+            "LEFT JOIN users AS requester ON requester.user_id=r.requested_by "
+            "LEFT JOIN users AS reviewer ON reviewer.user_id=r.decided_by "
+            "WHERE r.request_id=?", (request_id,),
+        ).fetchone()
+
+
     def record_authorization_grant(
         self,
         ctx: AccessContext,
@@ -812,17 +827,38 @@ class DomainStore:
         valid_from: datetime,
         valid_until: datetime,
         recurring_retest_allowed: bool = False,
+        approved_request_id: str | None = None,
     ) -> AuthorizationGrant:
+        """Issue only against a single durable, previously approved client request.
+
+        When request_id is omitted by the existing operator form, a UNIQUE
+        compatible approved request is selected. Ambiguity fails closed.
+        """
         ctx.require_operator("record_authorization_grant")
-        if valid_from.tzinfo is None or valid_until.tzinfo is None:
-            raise ValueError("grant validity must be timezone-aware")
+        if (
+            type(valid_from) is not datetime or type(valid_until) is not datetime
+            or valid_from.tzinfo is None or valid_until.tzinfo is None
+            or valid_from.utcoffset() is None or valid_until.utcoffset() is None
+        ):
+            raise ValueError("grant validity must use exact timezone-aware datetime values")
         if valid_until <= valid_from:
             raise ValueError("grant validity window is empty")
+        if type(approved_by) is not str or type(reference) is not str:
+            raise ValueError("grant provenance must be strings")
         if not reference.strip() or not approved_by.strip():
             raise ValueError("grant requires approved_by and a reference")
-        if not scope.assets:
-            raise ValueError("grant scope requires at least one asset")
+        if type(scope) is not ScopeDefinition or type(scope.assets) is not tuple or not scope.assets:
+            raise ValueError("grant requires a canonical nonempty ScopeDefinition")
+        if type(scope.max_risk) is not RiskLevel:
+            raise ValueError("grant risk must be an exact RiskLevel")
+        if type(recurring_retest_allowed) is not bool:
+            raise ValueError("recurring retest authority must be boolean")
+        if approved_request_id is not None and (
+            type(approved_request_id) is not str or not approved_request_id.strip()
+        ):
+            raise ValueError("explicit approved request identity is invalid")
         engagement = self.get_engagement(ctx, engagement_id)
+        created_at = utcnow().isoformat()
         grant = AuthorizationGrant(
             grant_id=str(uuid4()),
             client_id=engagement.client_id,
@@ -835,19 +871,64 @@ class DomainStore:
             recurring_retest_allowed=recurring_retest_allowed,
         )
         with self._connect() as con:
+            # Atomic provenance selection and issuance: no gap for request/
+            # engagement ownership or issuer role to change before insert.
+            con.execute("BEGIN IMMEDIATE")
+            issuer = con.execute(
+                "SELECT role, client_id FROM users WHERE user_id=?", (ctx.user_id,),
+            ).fetchone()
+            owning_engagement = con.execute(
+                "SELECT client_id,status FROM engagements WHERE engagement_id=?",
+                (engagement.engagement_id,),
+            ).fetchone()
+            if (
+                issuer is None or issuer["role"] != Role.OPERATOR.value
+                or issuer["client_id"] is not None
+                or owning_engagement is None
+                or owning_engagement["client_id"] != engagement.client_id
+                or owning_engagement["status"] == EngagementStatus.CLOSED.value
+            ):
+                con.rollback()
+                raise RoleError("grant requires a current operator and an owned, open engagement")
+            if approved_request_id is None:
+                candidates = con.execute(
+                    "SELECT request_id FROM assessment_requests "
+                    "WHERE client_id=? AND status=?",
+                    (engagement.client_id, RequestStatus.APPROVED.value),
+                ).fetchall()
+            else:
+                candidates = [{"request_id": approved_request_id}]
+            matching = [
+                candidate["request_id"] for candidate in candidates
+                if approved_request_is_compatible(
+                    self._approved_request_for_grant(con, candidate["request_id"]),
+                    client_id=engagement.client_id,
+                    grant_assets=scope.assets,
+                    grant_max_risk=int(scope.max_risk),
+                    grant_created_at=created_at,
+                )
+            ]
+            if len(matching) != 1:
+                con.rollback()
+                raise ValueError(
+                    "grant requires one unambiguous previously approved, "
+                    "same-client request covering exact scope and maximum risk"
+                )
+            bound_id = matching[0]
             con.execute(
                 "INSERT INTO authorization_grants("
                 "grant_id,client_id,engagement_id,approved_by,reference,assets_json,"
                 "excluded_assets_json,allowed_capabilities_json,max_risk,valid_from,"
-                "valid_until,recurring_retest_allowed,created_at) "
-                "VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                "valid_until,recurring_retest_allowed,created_at,approved_request_id) "
+                "VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                 (grant.grant_id, grant.client_id, grant.engagement_id, grant.approved_by,
                  grant.reference, json.dumps(list(scope.assets)),
                  json.dumps(list(scope.excluded_assets)),
                  json.dumps(list(scope.allowed_capabilities)), int(scope.max_risk),
                  valid_from.isoformat(), valid_until.isoformat(),
-                 1 if recurring_retest_allowed else 0, utcnow().isoformat()),
+                 1 if recurring_retest_allowed else 0, created_at, bound_id),
             )
+            con.commit()
         return grant
 
     @staticmethod
