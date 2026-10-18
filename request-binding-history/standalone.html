@@ -62,6 +62,8 @@ a{color:#9bdafc}
 <p>Every row below represents one <strong>copied, unsigned original-source request pseudonym</strong>, not a live authenticated case. Priorities are conservative discussion hints based on source-reported changes only. No score or human stage verifies approval, revocation, release or permission.</p>
 <div class="grid"><label>Human discussion priority <select id="queue-priority"><option value="all">All discussion priorities</option><option value="urgent">Priority: original identity / sensitive change</option><option value="review">Priority: changed / missing source</option><option value="routine">Other human discussion</option></select></label>
 <label>Local follow-up stage <select id="queue-stage"><option value="all">All stages</option><option value="open">Needs human follow-up</option><option value="documented_only">Discussion noted (not verified)</option><option value="unreviewed">Not reviewed</option><option value="client_followup">Client follow-up</option><option value="operator_followup">Operator follow-up</option><option value="security_source_review">Security/source review</option></select></label></div>
+<div class="actions"><label>Prepare local follow-up for currently filtered <strong>unreviewed</strong> cases <select id="bulk-team"><option value="security_source_review">Independent security/source discussion</option><option value="client_followup">Client evidence discussion</option><option value="operator_followup">Original operator discussion</option></select></label><button id="queue-bulk" class="secondary">Confirm bulk human discussion stage</button></div>
+<p class="muted">Bulk staging is purely local, requires explicit human confirmation and never overwrites another previously selected human stage or creates a grant, work order, permission or backend update.</p>
 <div class="grid" id="queue-summary"></div>
 <div class="table-wrap"><table><thead><tr><th>Local anonymous case</th><th>Source observations</th><th>Priority (discussion only)</th><th>Last original category</th><th>First human question</th><th>Human stage</th><th>Open private case</th></tr></thead><tbody id="queue-rows"></tbody></table></div>
 <div class="actions"><button id="queue-prev" class="secondary">Previous cases</button><span id="queue-pageinfo" aria-live="polite"></span><button id="queue-next" class="secondary">Next cases</button></div>
@@ -301,11 +303,16 @@ function render(){
  $("review").innerHTML=ACTIONS.map((task,i)=>'<label style="display:flex"><input type="checkbox" data-action="'+i+'" '+(workspace.checks[i]?"checked":"")+'> '+esc(task)+'</label>').join("");
  $("review").querySelectorAll("input").forEach(el=>el.addEventListener("change",()=>workspace.checks[+el.dataset.action]=el.checked));
 }
+function visibleQueueCases(){
+ if(!workspace)return [];
+ const priority=$("queue-priority").value,stage=$("queue-stage").value;
+ return triageCases().filter(c=>(priority==="all"||c.priority===priority)&&
+   (stage==="all"||stage==="open"&&c.stage!=="documented_only"||c.stage===stage));
+}
 function renderQueue(){
  if(!workspace)return;
  const all=triageCases(),priority=$("queue-priority").value,stage=$("queue-stage").value;
- const selected=all.filter(c=>(priority==="all"||c.priority===priority)&&
-   (stage==="all"||stage==="open"&&c.stage!=="documented_only"||c.stage===stage));
+ const selected=visibleQueueCases();
  const size=40,pages=Math.max(1,Math.ceil(selected.length/size));
  workspace.queuePage=Math.min(workspace.queuePage||0,pages-1);
  const start=workspace.queuePage*size,view=selected.slice(start,start+size);
@@ -339,6 +346,19 @@ function renderQueue(){
   document.querySelector("#cases").scrollIntoView({behavior:"smooth",block:"center"});
  }));
 }
+$("queue-bulk").addEventListener("click",()=>{
+ if(!workspace)return;
+ const dest=$("bulk-team").value;
+ if(!["security_source_review","client_followup","operator_followup"].includes(dest))return;
+ const selected=visibleQueueCases().filter(row=>caseEntry(row.ref).stage==="unreviewed");
+ if(!selected.length){note("No unreviewed human discussion records in the selected filter.",false);return}
+ if(!window.confirm("Prepare "+selected.length+" original copied source cases for "+
+   CASE_STAGES[dest]+"? This is LOCAL HUMAN DISCUSSION ONLY: no work orders, database writes, grants or revocations."))
+   return;
+ selected.forEach(row=>{caseEntry(row.ref).stage=dest});
+ renderQueue();renderCases();
+ note("Prepared "+selected.length+" local HUMAN-ONLY discussion stages; original stored requests/grants unchanged.",false);
+});
 $("queue-priority").addEventListener("change",()=>{if(workspace){workspace.queuePage=0;renderQueue()}});
 $("queue-stage").addEventListener("change",()=>{if(workspace){workspace.queuePage=0;renderQueue()}});
 $("queue-prev").addEventListener("click",()=>{if(workspace&&workspace.queuePage>0){workspace.queuePage--;renderQueue()}});
