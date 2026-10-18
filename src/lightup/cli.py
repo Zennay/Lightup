@@ -45,11 +45,32 @@ def build_parser() -> argparse.ArgumentParser:
     assess = sub.add_parser("lab-assess",
                             help="planner-driven multi-lane lab assessment with "
                                  "AI review (scripted demo gateway by default)")
-    assess.add_argument("url", nargs="?", default="http://127.0.0.1:18080/")
+    assess.add_argument("url", nargs="?", default=None)
+    assess.add_argument("--target", action="append", default=[], metavar="LAB_URL",
+                        help="repeat for each additional isolated lab endpoint")
+    assess.add_argument("--targets-file", metavar="PATH",
+                        help="local bounded UTF-8 manifest of lab endpoints")
+    assess.add_argument("--catalog-file", metavar="PRIVATE_STUDIO_JSON",
+                        help="local Lab Scenario Studio v1 draft (not authorization)")
+    assess.add_argument("--scenario-id", metavar="ID",
+                        help="selected Studio scenario; explicit bound lab URLs are still required")
     assess.add_argument("--db", default="lightup-lab.db")
+    assess.add_argument("--output", metavar="NEW_PRIVATE_JSON",
+                        help="write completed lab result as a new exclusive owner-only JSON artifact")
+    assess.add_argument("--artifact-format", choices=("assessment", "benchmark-case"),
+                        default="assessment",
+                        help="complete assessment JSON or #1513 offline record/context benchmark packet")
     assess.add_argument("--gateway-config")
     assess.add_argument("--profile")
     assess.add_argument("--no-review", action="store_true")
+    assess.add_argument("--preview-only", action="store_true",
+                        help="inspect normalized isolated lab targets without running an assessment")
+
+    inspect = sub.add_parser(
+        "lab-inspect",
+        help="inspect a PRIVATE saved lab JSON file offline; aggregate-only REVIEW_ONLY/HOLD",
+    )
+    inspect.add_argument("artifact", help="existing local PRIVATE lab JSON file")
 
     boot = sub.add_parser("create-operator",
                           help="bootstrap the first operator account")
@@ -106,14 +127,33 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "lab-assess":
         from .labrun import main_assess
 
-        argv = [args.url, "--db", args.db]
+        argv = [args.url] if args.url is not None else []
+        for endpoint in args.target:
+            argv += ["--target", endpoint]
+        if args.targets_file is not None:
+            argv += ["--targets-file", args.targets_file]
+        if args.catalog_file is not None:
+            argv += ["--catalog-file", args.catalog_file]
+        if args.scenario_id is not None:
+            argv += ["--scenario-id", args.scenario_id]
+        argv += ["--db", args.db]
         if args.gateway_config:
             argv += ["--gateway-config", args.gateway_config]
         if args.profile:
             argv += ["--profile", args.profile]
         if args.no_review:
             argv.append("--no-review")
+        if args.preview_only:
+            argv.append("--preview-only")
+        if args.output:
+            argv += ["--output", args.output]
+        argv += ["--artifact-format", args.artifact_format]
         return main_assess(argv)
+
+    if args.command == "lab-inspect":
+        from .lab_inspect import main as inspect_main
+
+        return inspect_main([args.artifact])
 
     if args.command in {"create-operator", "create-client-user"}:
         return _account_command(args)
