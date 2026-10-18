@@ -40,8 +40,7 @@ def _digest(v):
     return (type(v) is str and len(v)==64 and
             all(letter in "0123456789abcdef" for letter in v))
 
-def load(path):
-    raw=read_regular(path,131072)
+def load_raw(raw):
     doc=decode_json(raw)
     reject_authority(doc)
     if (type(doc) is not dict or set(doc)!=FIELDS or doc["schema"]!=SCHEMA
@@ -81,10 +80,17 @@ def load(path):
         raise Hold("inconsistent original human source HOLD or change count")
     return doc, sha256(raw).hexdigest()
 
-def history(paths):
+def load(path):
+    return load_raw(read_regular(path,131072))
+
+def history(paths, *, complete_zip=False):
     if not 2<=len(paths)<=12:
         raise Hold("history requires two to twelve complete original review cycles")
-    read=[load(path) for path in paths]
+    if complete_zip:
+        from revision_zip import read_cycle_zip
+        read=[read_cycle_zip(path) for path in paths]
+    else:
+        read=[load(path) for path in paths]
     if len({digest for _,digest in read})!=len(read):
         raise Hold("duplicate original human revision receipt")
     original=read[0][0]
@@ -165,8 +171,8 @@ def render(aggregate, private=False):
           "<footer>Offline scriptless history · no network, target data, scanner or grant</footer></body></html>")
     return html.encode("utf-8")
 
-def build(paths):
-    aggregate,private=history(paths)
+def build(paths, *, complete_zip=False):
+    aggregate,private=history(paths,complete_zip=complete_zip)
     rows=["step,from_planning_date,to_planning_date,human_changed_slots,original_state"]
     for x in aggregate["timeline"]:
         rows.append(",".join(str(x[key]) for key in ("step","from_date","to_date",
@@ -192,12 +198,15 @@ def build(paths):
 
 def main(argv=None):
     p=argparse.ArgumentParser(description="Standalone original private human review history; no GO")
-    p.add_argument("--cycle",action="append",required=True,
-                   help="Original private revision record JSON; repeat 2–12 in sequence")
+    source=p.add_mutually_exclusive_group(required=True)
+    source.add_argument("--cycle",action="append",
+                        help="Original private revision record JSON; repeat 2–12 in sequence")
+    source.add_argument("--cycle-zip",action="append",
+                        help="Original complete private human review cycle ZIP; repeat 2–12 in sequence")
     p.add_argument("--output",required=True,help="NEW private offline history ZIP, never overwrite")
     args=p.parse_args(argv)
     try:
-        blob,status=build(args.cycle)
+        blob,status=build(args.cycle_zip or args.cycle, complete_zip=args.cycle_zip is not None)
         publish(args.output,blob)
         print("ORIGINAL_HUMAN_HISTORY_CREATED — UNSIGNED PRIVATE REVIEW ONLY; NO GO")
         return 3 if status=="HOLD" else 2

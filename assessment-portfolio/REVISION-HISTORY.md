@@ -19,3 +19,16 @@ New private ZIP contains `index.html` (scriptless original human revision timeli
 **Interpretation:** the history only tracks private human planning changes and source byte correlations. It is not a verified security benchmark timeline, a cryptographic attestation, original ownership evidence, audit of work performed, customer permission, consent, risk approval, SLA, remediation or GO. A changed original human stage/date does **not** mean a vulnerability was fixed, even if the next original source omitted it. Aggregate counts and reference dates may still be sensitive in small groups, so review sharing carefully. Real original source owner/security/privacy/CI/client+operator authorization with action-time revocation and explicit HUMAN GO remain mandatory for any real target activity or release.
 
 Only the independently owned `assessment-portfolio/` paths are touched. No QA or test suites are included.
+
+## Directly import complete previous review-cycle ZIPs
+
+For original complete `review_cycle.py` output ZIPs you **no longer have to extract** any private intermediate JSON records. Use the separate mutually exclusive `--cycle-zip` option (repeat 2–12 in chronological review order):
+
+```sh
+python3 assessment-portfolio/revision_history.py \
+  --cycle-zip /private/ORIGINAL-REVIEW-ROUND-01.zip \
+  --cycle-zip /private/ORIGINAL-REVIEW-ROUND-02.zip \
+  --output /private/NEW-private-human-history.zip
+```
+
+This route additionally admits each previous complete private ZIP against its original member whitelist, bounded stored-only/no-duplicate/no-encrypted layout, original in-ZIP strict revision record, nested full private source-bound workbench, exact next source map, each exact next original human choices SHA and agenda SHA; when optional hypothetical capacity continuation exists it is required to match the same new original agenda/date/status. Only after **all** ZIPs are consistent does it compare the human revision sequence. A ZIP fingerprint is unsigned and remains no proof of actual original identity, permission or outcome. The previous --cycle JSON route remains supported.

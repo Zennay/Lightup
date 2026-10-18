@@ -120,3 +120,5 @@ The [next private human review cycle](CAPACITY-CONTINUATION.md) can optionally r
 ### Consecutive original human review history
 
 Use [revision_history.py](REVISION-HISTORY.md) for a complete owner-private source-bound timeline of 2–12 consecutive previously exported original human review-cycle receipts. It refuses breaks in the original manifest/choices/agenda SHA sequence and unchanged original HOLD, and exports a scriptless visual local timeline plus counts-only summaries. Unsigned human changes are not proof of actual vulnerability or consent state.
+
+The human review history also accepts **complete** prior review-cycle ZIP packages using [repeated `--cycle-zip`](REVISION-HISTORY.md). It checks original nested next-workspace/choices/agenda and optional human capacity bindings, avoiding any manual intermediate JSON extraction. This is still private unsigned human planning provenance, not real permission.
