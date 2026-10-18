@@ -21,6 +21,10 @@ function human(s,max){
  if(typeof s!=='string'||s.length>max||/[\u0000-\u001f\u007f]/.test(s)||bidi.test(s))fail('Invalid human note.');
  return s;
 }
+function meetingNote(s){
+ if(typeof s!=='string'||s.length>600||/[\u0000-\u0009\u000b-\u001f\u007f]/.test(s)||bidi.test(s))fail('Invalid human meeting note.');
+ return s;
+}
 async function read(file,max){
  if(!file||file.size<1||file.size>max)fail('Private input missing or exceeds limit.');
  const buffer=await file.arrayBuffer();if(buffer.byteLength>max)fail('Private input exceeds limit.');
@@ -226,7 +230,7 @@ function render(){
 }
 async function load(){
  /* Atomic import: always discard old state on a new attempt, never keep stale source on error. */
- state=null;revisionCandidate=null;lastBulkSnapshot=null;$('bulkUndo').disabled=true;$('results').hidden=true;$('digest').textContent='';
+ state=null;revisionCandidate=null;lastBulkSnapshot=null;$('bulkUndo').disabled=true;$('results').hidden=true;$('digest').textContent='';clearRevisionPreview('');
  const file=$('csv').files[0],review=$('review').files[0];
  if(review&&!$('same').checked)fail('Independent exact client/engagement confirmation required for review join.');
  const src=C.parseCSV(await read(file,1048576)),hash=await digest(src);
@@ -251,7 +255,7 @@ function plan(){
   const end=Date.parse(active[i-1].start_utc)+active[i-1].minutes*60000;
   if(Date.parse(active[i].start_utc)<end)fail('Proposed UTC windows overlap: hold until human planning is corrected.');
  }
- human($('note').value,600);
+ meetingNote($('note').value);
  return windows;
 }
 function stats(windows){
@@ -276,7 +280,8 @@ async function resumePlan(){
   keys(refresh,['from_sha256','to_sha256','added','changed','absent_unverified','unchanged']);
   if(typeof refresh.from_sha256!=='string'||!/^[a-f0-9]{64}$/.test(refresh.from_sha256)||
      refresh.from_sha256===raw.source_sha256||refresh.to_sha256!==state.hash||
-     !['added','changed','absent_unverified','unchanged'].every(k=>Number.isInteger(refresh[k])&&refresh[k]>=0&&refresh[k]<=350))
+     !['added','changed','absent_unverified','unchanged'].every(k=>Number.isInteger(refresh[k])&&refresh[k]>=0&&refresh[k]<=350)||
+     refresh.added+refresh.changed+refresh.unchanged!==state.source.length)
    fail('Invalid non-authorizing original source revision summary.');
  }
  if(raw.kind!=='lightup.remediation_human_change_windows'||raw.schema_version!==1||
@@ -285,7 +290,7 @@ async function resumePlan(){
     raw.source_sha256!==state.hash||FLAGS.some(k=>raw[k]!==false))
   fail('Plan is not an exact non-authorizing original-source-bound draft.');
  if(raw.warning!==undefined)human(raw.warning,800);
- human(raw.meeting_note,600);
+ meetingNote(raw.meeting_note);
  if(!Array.isArray(raw.windows)||raw.windows.length!==HOURS||
     !Array.isArray(raw.assignments)||raw.assignments.length!==state.source.length)
   fail('Incomplete proposed windows or source finding membership.');
@@ -426,7 +431,7 @@ function privateExport(){
   kind:'lightup.remediation_human_change_windows',schema_version:1,
   disposition:'DRAFT_UNVERIFIED_HUMAN_COORDINATION',source_contract:'lightup.finding_export._COLUMNS_v1',
   source_sha256:state.hash,warning:'Unsigned and non-authorizing; source absence or scheduled stage never means verified remediation.',
-  windows:detail,meeting_note:human($('note').value,600),source_refresh:state.refreshSummary||null,
+  windows:detail,meeting_note:meetingNote($('note').value),source_refresh:state.refreshSummary||null,
   assignments:state.source.map(f=>{
    const r=state.review.get(f.finding_id);
    return {finding_id:f.finding_id,original_severity:f.severity,original_retest_status:f.retest_status,
