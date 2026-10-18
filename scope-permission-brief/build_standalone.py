@@ -27,11 +27,7 @@ def build() -> None:
     stylesheet = '<link rel="stylesheet" href="./style.css">'
     external_script = '<script src="./app.js" defer></script>'
     old_policy = "script-src 'self'; style-src 'self';"
-    inline_js, inline_css = "\
-" + js + "\
-", "\
-" + css + "\
-"
+    inline_js, inline_css = chr(10) + js + chr(10), chr(10) + css + chr(10)
     new_policy = f"script-src {csp_digest(inline_js)}; style-src {csp_digest(inline_css)};"
 
     if (page.count(stylesheet) != 1 or page.count(external_script) != 1
