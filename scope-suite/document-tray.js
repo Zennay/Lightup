@@ -13,15 +13,15 @@
   ]);
   const SPECS = Object.freeze({
     "lightup.scope_proposal_draft":{label:"Studio v1 bronconcept",state:"DRAFT_ONLY",field:"state",route:["briefing","permission","schedule","handoff","readiness","withdrawal","vault"],source:true},
-    "lightup.scope_briefing_handoff":{label:"Scope Briefing (onbevoegd)",state:"REVIEW_ONLY_HOLD",field:"state",route:["briefing"]},
+    "lightup.scope_briefing_handoff":{label:"Scope Briefing (onbevoegd)",state:"REVIEW_ONLY_HOLD",field:"state",route:[]},
     "lightup.scope_permission_brief":{label:"Ongeverifieerde Permission Brief",state:"REVIEW_ONLY_HOLD",field:"state",route:["permission"]},
     "lightup.scope_permission_reply_reconciliation":{label:"Ongeverifieerde gecombineerde antwoorden",state:"REVIEW_ONLY_HOLD",field:"disposition",route:["handoff"]},
     "lightup.scope_human_preparation_backup":{label:"Lokale menselijke voorbereiding",state:"REVIEW_ONLY_HOLD",field:"state",route:["permission"]},
     "lightup.scope_handoff_local_progress":{label:"Handoff-voortgang (lokaal)",state:"REVIEW_ONLY_HOLD",field:"state",route:["handoff"]},
-    "lightup.scope_handoff_review_register":{label:"Handoff-reviewverslag",state:"REVIEW_ONLY_HOLD",field:"state",route:["handoff"]},
-    "lightup.scope_withdrawal_review_only":{label:"STOP/Withdrawal-review (geen intrekking)",state:"REVIEW_ONLY",field:"disposition",route:["handoff","withdrawal"]},
-    "lightup.scope_proposal_revision_preview":{label:"Scope-revisievoorstel (onbevoegd)",state:"REVIEW_ONLY_HOLD",field:"state",route:["permission"]},
-    "lightup.scope_native_intake_route":{label:"Intake-routevoorstel (onbevoegd)",state:"REVIEW_ONLY",field:"disposition",route:["readiness"]}
+    "lightup.scope_handoff_review_register":{label:"Handoff-reviewverslag",state:"REVIEW_ONLY_HOLD",field:"state",route:[]},
+    "lightup.scope_withdrawal_review_only":{label:"STOP/Withdrawal-review (geen intrekking)",state:"REVIEW_ONLY",field:"disposition",route:["handoff"]},
+    "lightup.scope_proposal_revision_preview":{label:"Scope-revisievoorstel (onbevoegd)",state:"REVIEW_ONLY_HOLD",field:"state",route:[]},
+    "lightup.scope_native_intake_route":{label:"Intake-routevoorstel (onbevoegd)",state:"REVIEW_ONLY",field:"disposition",route:[]}
   });
   const ROUTE_URLS=Object.freeze({
     briefing:"apps/briefing/scope-briefing/standalone.html",
@@ -148,8 +148,12 @@
     return {
       kind:value.kind,label:spec.label,source:spec.source,sourceSHA,
       targets:spec.route, risk:spec.source?value.requested_risk:null,
+      mode:spec.source?value.requested_mode:null,
       included:spec.source?value.requested_assets.length:null,
-      excluded:spec.source?value.excluded_assets.length:null
+      excluded:spec.source?value.excluded_assets.length:null,
+      hints:spec.source?null:Object.fromEntries(
+        ["source_kind","requested_mode","requested_risk","proposed_assets_count","excluded_assets_count"]
+          .filter(key=>own(value,key)).map(key=>[key,value[key]]))
     };
   }
   async function digest(bytes){
@@ -187,8 +191,30 @@
     const hash=await digest(bytes);
     return {...result,hash,bytes};
   }
+  function originalFor(doc){
+    return doc.sourceSHA===null?null:documents.find(other=>other.source&&other.hash===doc.sourceSHA)||null;
+  }
   function attachedSource(doc){
-    return doc.sourceSHA!==null&&documents.some(other=>other.source&&other.hash===doc.sourceSHA);
+    return originalFor(doc)!==null;
+  }
+  function mismatch(doc){
+    const source=originalFor(doc), hints=doc.hints;
+    if(!source||!hints)return false;
+    const expected={
+      source_kind:"lightup.scope_proposal_draft",
+      requested_mode:source.mode,requested_risk:source.risk,
+      proposed_assets_count:source.included,excluded_assets_count:source.excluded
+    };
+    return Object.entries(hints).some(([key,reported])=>reported!==expected[key]);
+  }
+  function summary(){
+    const sources=documents.filter(x=>x.source).length;
+    const linked=documents.filter(x=>!x.source&&attachedSource(x)).length;
+    const unlinked=documents.filter(x=>x.sourceSHA&&!attachedSource(x)).length;
+    const conflicts=documents.filter(x=>mismatch(x)).length;
+    const high=documents.filter(x=>x.source&&x.risk===4).length;
+    $("tray-summary").textContent=[sources+" originele Studio-documenten",linked+" gekoppelde bijlagen",unlinked+" ontbrekende bronnen",conflicts+" tegenstrijdige bronclaims",high+" risico-4 concepten"].join(" · ");
+    $("tray-summary").classList.toggle("needs-attention",unlinked>0||conflicts>0||high>0);
   }
   function create(tag,cls,content){
     const el=document.createElement(tag);
@@ -211,6 +237,7 @@
     $("tray-empty").hidden=documents.length>0;
     $("tray-export").disabled=documents.length===0;
     $("tray-clear").disabled=documents.length===0;
+    summary();
     for(let n=0;n<documents.length;n++){
       const doc=documents[n];
       const article=create("article","tray-item");
@@ -227,14 +254,19 @@
           "Voorgesteld risico "+doc.risk+"/4 · "+doc.included+" opgenomen, "+
           doc.excluded+" uitgesloten. Geen toestemming of eigendomsbewijs."));
       }else if(doc.sourceSHA){
-        article.append(create("p",attachedSource(doc)?"tray-linked":"tray-missing",
-          attachedSource(doc)?"Exact oorspronkelijke Studio-bron aanwezig in deze tijdelijke lade.":
-          "Bijbehorend origineel Studio-bestand ontbreekt of heeft andere exacte bytes."));
+        if(mismatch(doc))article.append(create("p","tray-contradiction",
+          "HOLD: de opgegeven bronmetadata spreekt de exacte Studio-bron tegen. Eerst handmatig oplossen."));
+        else article.append(create("p",attachedSource(doc)?"tray-linked":"tray-missing",
+          attachedSource(doc)?"Exact Studio-bronbestand aanwezig. Alleen bytevergelijking, nooit toestemming.":
+          "Bijbehorende originele Studio-bytes ontbreken of wijken af."));
       }else article.append(create("p","tray-detail",
         "Dit document heeft geen enkelvoudig originele-bron-SHA. Koppel het handmatig in de bronapp."));
       const actions=create("div","tray-item-actions");
       const get=create("button","tray-retrieve","Download originele bytes");
-      get.type="button";get.addEventListener("click",()=>download(doc));actions.append(get);
+      get.type="button";get.addEventListener("click",()=>{
+        if(mismatch(doc)&&!confirm("De bronmetadata spreekt de originele Studio-inhoud tegen. Alleen voor lokale correctie downloaden?"))return;
+        download(doc);
+      });actions.append(get);
       const remove=create("button","tray-remove","Verwijder");
       remove.type="button";remove.addEventListener("click",()=>{
         documents.splice(documents.indexOf(doc),1);render();
@@ -244,7 +276,11 @@
       const caption=create("p","tray-route-text","Open de oorspronkelijke app en importeer het bestand daar zelf:");
       article.append(caption);
       const routes=create("div","tray-route-links");
-      for(const target of doc.targets){
+      if(mismatch(doc)){
+        routes.append(create("strong","tray-route-blocked","Doorgeven gepauzeerd wegens bron-tegenspraak."));
+      }else if(doc.targets.length===0){
+        routes.append(create("span","tray-no-import","Geen bevestigde directe import in de gebundelde apps; alleen handmatige bespreking."));
+      }else for(const target of doc.targets){
         const a=create("a",null,ROUTE_NAMES[target]);a.href=ROUTE_URLS[target];
         routes.append(a);
       }
@@ -312,7 +348,8 @@
       files:documents.map(d=>({
         kind:d.kind,sha256:d.hash,bytes:d.bytes.length,
         original_studio_sha256:d.sourceSHA,
-        original_studio_present:!!(d.source||attachedSource(d))
+        original_studio_present:!!(d.source||attachedSource(d)),
+        source_metadata_conflict:mismatch(d)
       }))
     };
     const uri=URL.createObjectURL(new Blob([JSON.stringify(packet,null,2)+"\n"],{type:"application/json"}));
