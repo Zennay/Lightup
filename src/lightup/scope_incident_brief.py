@@ -110,12 +110,13 @@ def compose_scope_incident_brief(
     critical = sum(
         r["stop_observation"].startswith("HOLD_")
         or r["stop_observation"] == "STOP_ACTIVE"
-        or r["casebook_attention"].startswith("HOLD_")
+        or r["casebook_attention"].startswith(("HOLD_", "RISK_DECISION_PENDING_"))
         for r in readings
     )
     has_hold = critical > 0 or (
         source["declared_counts"]["grant_link_hold"] > 0
         or source["declared_counts"]["foreign_tenant_row_count"] > 0
+        or source["declared_counts"]["risk_provenance_hold"] > 0
     )
     return {
         "schema": "lightup.scope_stop_casework_brief.v1",
@@ -136,6 +137,8 @@ def compose_scope_incident_brief(
             "cases_requiring_human_attention": critical,
             "original_requests": source["declared_counts"]["requests"],
             "original_grants": source["declared_counts"]["grants"],
+            "risk_provenance_hold": source["declared_counts"]["risk_provenance_hold"],
+            "pending_risk_review": source["declared_counts"]["pending_risk_review"],
         },
         **NO_AUTHORITY,
     }
