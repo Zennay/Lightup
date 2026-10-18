@@ -101,17 +101,26 @@ def _workspace(blob):
         raise Hold("invalid or incomplete workspace ZIP") from None
 
 
-def build(workspace_path, manifest_paths, choice_paths, proposal_paths):
+def build(workspace_path, manifest_paths, choice_paths, proposal_paths=None, proposal_bundle_path=None):
     blob = read_regular(workspace_path, MAX_PACKAGE)
     mapping, agendas = _workspace(blob)
-    groups = (manifest_paths, choice_paths, proposal_paths)
     count = mapping["source_count"]
-    if any(len(group) != count for group in groups):
-        raise Hold("each original source requires a matching manifest/choices/proposal")
+    if len(manifest_paths) != count or len(choice_paths) != count:
+        raise Hold("each original source requires a manifest and prior human choices")
+    if proposal_bundle_path is not None:
+        if proposal_paths is not None:
+            raise Hold("choose individual proposals OR a complete bundle")
+        from proposal_bundle import load as load_proposal_bundle
+        proposal_bytes = load_proposal_bundle(proposal_bundle_path, mapping, agendas)
+    else:
+        if proposal_paths is None or len(proposal_paths) != count:
+            raise Hold("one private human proposal per original agenda is required")
+        proposal_bytes = [read_regular(path, MAX_BYTES) for path in proposal_paths]
     documents = {}
     records = []
     changed_total = 0
-    for ix, (manifest, choices, proposal) in enumerate(zip(*groups), 1):
+    for ix, (manifest, choices, proposal_raw) in enumerate(
+            zip(manifest_paths, choice_paths, proposal_bytes), 1):
         original, manifest_hash = manifest_identity(manifest)
         original_choices = load_choices(choices, original, manifest_hash)
         record = mapping["sources"][ix - 1]
@@ -125,10 +134,9 @@ def build(workspace_path, manifest_paths, choice_paths, proposal_paths):
                                    mapping["reference_date"], False, "json")
         if regenerated != agendas[ix - 1]:
             raise Hold("workspace agenda differs from ORIGINAL renderer")
-        proposal_bytes = read_regular(proposal, MAX_BYTES)
         updated, state, changed = reconcile(manifest, choices, None, None,
                                             agenda_raw=agendas[ix - 1],
-                                            proposal_raw=proposal_bytes)
+                                            proposal_raw=proposal_raw)
         name = f"original-human-choices-{ix:02d}.json"
         documents[name] = updated
         records.append({"slot": ix, "output_member": name,
@@ -160,13 +168,16 @@ def main(argv=None):
     p.add_argument("--workspace", required=True, help="Original one_command.py private ZIP")
     p.add_argument("--original-manifest", action="append", required=True)
     p.add_argument("--original-choices", action="append", required=True)
-    p.add_argument("--proposal", action="append", required=True,
-                   help="One private human proposal for each source, same order")
+    human = p.add_mutually_exclusive_group(required=True)
+    human.add_argument("--proposal", action="append",
+                       help="One private human proposal for each source, same order")
+    human.add_argument("--proposal-bundle",
+                       help="One complete original-bound multi-agenda human proposal JSON bundle")
     p.add_argument("--output", required=True, help="NEW private return ZIP; never overwrite")
     a = p.parse_args(argv)
     try:
         output, state, changed = build(a.workspace, a.original_manifest,
-                                       a.original_choices, a.proposal)
+                                       a.original_choices, a.proposal, a.proposal_bundle)
         publish(a.output, output)
         print(f"ORIGINAL_HUMAN_WORKSPACE_RETURN_CREATED changed_human_slots={changed} — NO GO")
         return 3 if state == "HOLD" else 2

@@ -30,14 +30,20 @@ def _append(z, name, blob):
     z.writestr(member, blob)
 
 
-def build(workspace_path, manifests, choices, proposals, reference_date):
+def build(workspace_path, manifests, choices, proposals, reference_date, proposal_bundle_path=None):
     selected_day(reference_date)
     previous_map, previous_agendas = _workspace(read_regular(workspace_path, MAX_WORKSPACE))
     source_count = previous_map["source_count"]
-    if not all(len(group) == source_count for group in (manifests, choices, proposals)):
-        raise Hold("revision requires all original sources and human proposals")
+    if len(manifests) != source_count or len(choices) != source_count:
+        raise Hold("revision requires all original manifests and human choices")
+    if proposal_bundle_path is None:
+        if proposals is None or len(proposals) != source_count:
+            raise Hold("revision requires one proposal per original source")
+    elif proposals is not None:
+        raise Hold("choose individual proposals OR one complete human bundle")
     # Full original + complete ZIP + proposal checks before starting a new workspace.
-    returned, status, change_total = return_build(workspace_path, manifests, choices, proposals)
+    returned, status, change_total = return_build(
+        workspace_path, manifests, choices, proposals, proposal_bundle_path)
     with ZipFile(BytesIO(returned), "r") as z:
         updated_bytes = [z.read(f"original-human-choices-{i:02d}.json")
                          for i in range(1, source_count + 1)]
@@ -151,13 +157,16 @@ def main(argv=None):
     p.add_argument("--workspace", required=True)
     p.add_argument("--original-manifest", action="append", required=True)
     p.add_argument("--original-choices", action="append", required=True)
-    p.add_argument("--proposal", action="append", required=True)
+    human = p.add_mutually_exclusive_group(required=True)
+    human.add_argument("--proposal", action="append", help="Private human proposal per original source")
+    human.add_argument("--proposal-bundle", help="Single offline all-agenda human proposal bundle")
     p.add_argument("--next-as-of", required=True, help="Explicit date for next human-only agenda")
     p.add_argument("--output", required=True, help="NEW private revision ZIP, never overwrite")
     args = p.parse_args(argv)
     try:
         new_zip, status, changed = build(args.workspace, args.original_manifest,
-                                         args.original_choices, args.proposal, args.next_as_of)
+                                         args.original_choices, args.proposal, args.next_as_of,
+                                         args.proposal_bundle)
         publish(args.output, new_zip)
         print(f"NEXT_PRIVATE_HUMAN_WORKSPACE_CREATED changed_human_slots={changed} — NO GO")
         return 3 if status == "HOLD" else 2

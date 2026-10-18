@@ -136,7 +136,7 @@
     }
   }
   sourceSelect.addEventListener("change",()=>{
-    selected.clear();get("confirm").checked=false;
+    selected.clear();get("confirm").checked=false;get("confirmAll").checked=false;
     get("restore").value="";
     message("Switched private source. No original data changed.");
     view();
@@ -176,7 +176,7 @@
       changed++;
     }
     selected.clear();
-    get("confirm").checked=false;
+    get("confirm").checked=false;get("confirmAll").checked=false;
     message(changed+" selected human rows edited locally; original source unchanged.");
     view();
   });
@@ -259,6 +259,59 @@
     setTimeout(()=>URL.revokeObjectURL(url),0);
     get("confirm").checked=false;
     message("Private human-only proposal downloaded. Explicit original-schema receive is mandatory.");
+  });
+  // A single explicitly confirmed human-only proposal bundle for all original agendas.
+  get("downloadAll").addEventListener("click",()=>{
+    if (!get("confirmAll").checked) {
+      message("Confirm private human-only proposals for ALL original agendas first.");
+      return;
+    }
+    try {
+      const sources=input.sources.map(src=>{
+        const items=currentRows(src);
+        if (items.some(item=>dateValue(item.review_date)===false)) {
+          throw Error("invalid original human proposed date");
+        }
+        const proposal={
+          schema:"lightup.assessment_portfolio_human_proposal.v1",
+          source_agenda_sha256:src.source_sha256,
+          reference_date:input.reference_date,
+          source_count:items.length,
+          items:items.map(item=>({
+            slot:item.slot,prior_stage:item.prior_stage,
+            prior_next_role:item.prior_next_role,
+            prior_review_date:item.prior_review_date,
+            stage:item.stage,next_role:item.next_role,
+            review_date:item.review_date
+          })),
+          authorized:false,consent_verified:false,
+          dispatch_allowed:false,release_allowed:false
+        };
+        return {slot:src.slot,source_agenda_sha256:src.source_sha256,proposal};
+      });
+      const document={
+        schema:"lightup.assessment_portfolio_human_proposal_bundle.v1",
+        reference_date:input.reference_date,
+        source_count:sources.length,sources,
+        planning_not_permission:true,
+        authorized:false,consent_verified:false,
+        dispatch_allowed:false,release_allowed:false
+      };
+      const content=JSON.stringify(document,null,2)+"\n";
+      if (new TextEncoder().encode(content).length>4194304) {
+        throw Error("private proposal bundle size exceeded");
+      }
+      const blob=new Blob([content],{type:"application/json"});
+      const url=URL.createObjectURL(blob);
+      const link=node("a",document.body);
+      link.href=url;link.download="lightup-PRIVATE-all-human-proposals.json";
+      link.click();link.remove();
+      setTimeout(()=>URL.revokeObjectURL(url),0);
+      get("confirmAll").checked=false;
+      message("All private original human proposals downloaded. No source was changed.");
+    } catch(e) {
+      message("HOLD: invalid proposal in at least one agenda. Nothing exported.");
+    }
   });
   view();
 })();
