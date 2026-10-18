@@ -33,6 +33,24 @@ The new directory contains:
   generated artifacts, original-source byte digest, prepared-at timestamp and
   literal false authority flags. A checksum does **not** authenticate its author.
 
+**On the trusted receiving machine**, use the separate read-only workspace
+inspector without connecting to the original SQLite database or any target:
+
+```sh
+python3 scope-window-review/workspace_inspect.py \
+  --workspace /private/NEW-lightup-human-window-room
+```
+
+This inspects the **entire exact four-file collection**, requires owner-controlled
+0700 directory and regular 0600 non-symlink single-link files, validates bounded
+canonical manifest fields and all SHA-256/size declarations, and returns
+`2 REVIEW_ONLY` or `3 HOLD`. Only aggregate counts are printed. It
+never elevates a snapshot to a verified grant; a modified manifest could
+be re-created by an attacker because **SHA-256 is not an issuer signature**.
+Explicit client/operator authentication and the real action-time gates are
+unchanged, and a recipient must independently verify who supplied the private
+room and its tenant. Never distribute this private workspace on public hosting.
+
 Directory is newly created mode 0700, individual files 0600 and exclusive
 non-overwriting. On ordinary partial failure only newly created files/directories
 are cleaned; an incomplete private workspace must never be construed as an
