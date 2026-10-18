@@ -11,10 +11,16 @@ from collections import Counter
 from datetime import datetime, timezone
 from getpass import getpass
 import json
+import sqlite3
+from pathlib import Path
 
 from .auth_casebook import CasebookHold, _auth_actor, _source_snapshot, _write_private_json
 from .revocation_stop import StopLedgerError
 from .stop_exposure import _read_exposure
+from .request_binding_readiness_cli import (
+    _assets as original_canonical_assets,
+    _source_snapshot as original_request_selection,
+)
 
 MAX_SELECTION = 32
 NO_AUTHORITY = {
@@ -35,6 +41,8 @@ class ScopeBriefHold(ValueError):
 def compose_scope_incident_brief(
     database: str, *, email: str, password: str,
     client_id: str | None = None, engagement_ids: tuple[str, ...] = (),
+    proposal_engagement: str | None = None, proposal_assets: tuple[str, ...] = (),
+    proposal_risk: int | None = None,
 ) -> dict:
     """Read original authenticated casebook, then per-engagement STOP exposure.
 
@@ -48,6 +56,18 @@ def compose_scope_incident_brief(
         raise ScopeBriefHold("engagement identity must be literal text")
     if len(set(engagement_ids)) != len(engagement_ids):
         raise ScopeBriefHold("duplicate engagement selection")
+    if ((proposal_engagement is None) != (proposal_risk is None)
+            or (proposal_engagement is None) != (not proposal_assets)):
+        raise ScopeBriefHold("proposal requires exact engagement, literals and risk")
+    if proposal_engagement is not None:
+        if type(proposal_risk) is not int or proposal_risk not in (1, 2, 3, 4):
+            raise ScopeBriefHold("proposed risk must be original canonical range")
+        if type(proposal_assets) is not tuple or len(proposal_assets) > 80:
+            raise ScopeBriefHold("noncanonical proposed literal collection")
+        try:
+            original_canonical_assets(list(proposal_assets))
+        except (ValueError, TypeError):
+            raise ScopeBriefHold("invalid canonical proposed literals") from None
     actor_id = _auth_actor(database, email, password)
     source = _source_snapshot(database, actor_id=actor_id, client_id=client_id)
     original_cases = source["case_overview"]
@@ -57,6 +77,8 @@ def compose_scope_incident_brief(
         raise ScopeBriefHold("select one to thirty-two original engagements")
     if any(eid not in original_index for eid in selected):
         raise ScopeBriefHold("engagement absent from selected original tenant")
+    if proposal_engagement is not None and proposal_engagement not in selected:
+        raise ScopeBriefHold("proposed engagement absent from selected original cases")
 
     readings = []
     for eid in selected:
@@ -106,6 +128,78 @@ def compose_scope_incident_brief(
             "authority": False,
         })
 
+    binding_review = None
+    if proposal_engagement is not None:
+        # The original source-owner routine itself rechecks persisted operator
+        # role and single-tenant membership in a separate readonly transaction.
+        # Never reproduce its approval predicate here or infer permission.
+        try:
+            original = original_request_selection(
+                Path(database), engagement_id=proposal_engagement,
+                client_id=source["client_id"],
+                assets=original_canonical_assets(list(proposal_assets)),
+                risk=proposal_risk, include_request_ids=False,
+                include_labels=False, include_assets=False,
+                operator_user_id=actor_id,
+            )
+            flags = original.get("authority")
+            counts = original["summary"]
+            accepted_states = (
+                "REVIEW_ONLY_SINGLE_CANDIDATE",
+                "HOLD_AMBIGUOUS_CANDIDATES",
+                "HOLD_NO_CANDIDATE",
+            )
+            if (original.get("format") != "lightup.request_binding_preparation.v1"
+                    or original.get("disposition") not in accepted_states
+                    or type(flags) is not dict
+                    or not {"client_consent_verified","operator_consent_verified",
+                            "authorization_granted","execution_allowed",
+                            "release_approved"}.issubset(flags)
+                    or any(v is not False for v in flags.values())
+                    or type(counts["recorded_requests"]) is not int
+                    or type(counts["approved_candidate_matches"]) is not int
+                    or type(counts["prior_stored_grant_rows"]) is not int
+                    or type(original["candidates"]) is not list
+                    or len(original["candidates"]) != counts["recorded_requests"]
+                    or len(original["candidates"]) > 100):
+                raise ScopeBriefHold("unbounded or inconsistent original matching source")
+            exposure = next(r for r in readings if r["engagement_id"] == proposal_engagement)
+            if (exposure["grant_source_count"] is None
+                    or exposure["grant_source_count"] != counts["prior_stored_grant_rows"]):
+                raise ScopeBriefHold("original request/STOP grant lineage changed")
+            reason_counts = counts["mismatch_reason_counts_non_authorizing"]
+            if (type(reason_counts) is not dict
+                    or len(reason_counts) > 40
+                    or any(type(k) is not str or len(k) > 100 or type(v) is not int
+                           or v < 0 for k,v in reason_counts.items())):
+                raise ScopeBriefHold("invalid original human mismatch reasons")
+            # The original report does not include original request or target IDs
+            # unless explicitly requested. Export only its human-only counters.
+            binding_review = {
+                "status": original["disposition"],
+                "engagement_id": proposal_engagement,
+                "proposed_asset_count": len(proposal_assets),
+                "proposed_risk": proposal_risk,
+                "stored_request_count": counts["recorded_requests"],
+                "matching_request_count": counts["approved_candidate_matches"],
+                "stored_grant_count": counts["prior_stored_grant_rows"],
+                "historical_legacy_unbound_count": counts["unbound_legacy_grant_rows"],
+                "source_revision_sha256_unsigned": original["source"]["source_revision_sha256_unsigned"],
+                "selection_digest_unsigned": original["source"]["request_selection_digest_unsigned"],
+                "non_authorizing_mismatch_reasons": reason_counts,
+                "source_snapshots_atomic_together": False,
+                "authority": False,
+            }
+        except (ScopeBriefHold, ValueError, KeyError, TypeError, StopIteration,
+                PermissionError, sqlite3.Error, OSError, OverflowError):
+            # A failed authenticated source-owner snapshot cannot supply even
+            # a retrospective candidate match. Keep private casework in HOLD.
+            binding_review = {
+                "status": "HOLD_BINDING_SOURCE_UNAVAILABLE_OR_CHANGED",
+                "engagement_id": proposal_engagement,
+                "source_snapshots_atomic_together": False,
+                "authority": False,
+            }
     states = Counter(r["stop_observation"] for r in readings)
     critical = sum(
         r["stop_observation"].startswith("HOLD_")
@@ -113,7 +207,7 @@ def compose_scope_incident_brief(
         or r["casebook_attention"].startswith(("HOLD_", "RISK_DECISION_PENDING_"))
         for r in readings
     )
-    has_hold = critical > 0 or (
+    has_hold = (binding_review is not None and binding_review["status"].startswith("HOLD_")) or critical > 0 or (
         source["declared_counts"]["grant_link_hold"] > 0
         or source["declared_counts"]["foreign_tenant_row_count"] > 0
         or source["declared_counts"]["risk_provenance_hold"] > 0
@@ -128,6 +222,7 @@ def compose_scope_incident_brief(
         "selected_engagements_only": bool(engagement_ids),
         "selected_count": len(readings),
         "casebook": source,
+        "binding_review": binding_review,
         "engagements": readings,
         "summary": {
             "selected": len(readings),
@@ -154,11 +249,17 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--client", help="exact persisted tenant ID required for operators")
     parser.add_argument("--engagement", action="append", default=[], help="exact selected original engagement; up to 32")
     parser.add_argument("--output", help="optional NEW private owner-only JSON (0600)")
+    parser.add_argument("--proposal-engagement", help="existing exact selected engagement for non-authorizing original approved-request shortlist")
+    parser.add_argument("--proposed-asset", action="append", default=[], help="canonical proposed literal; never touched or scanned")
+    parser.add_argument("--proposed-risk", type=int, help="proposed risk 1-4; original administrative request comparison only")
     args = parser.parse_args(argv)
     try:
         result = compose_scope_incident_brief(
             args.database, email=args.email, password=getpass("Original LightUp password: "),
             client_id=args.client, engagement_ids=tuple(args.engagement),
+            proposal_engagement=args.proposal_engagement,
+            proposal_assets=tuple(args.proposed_asset),
+            proposal_risk=args.proposed_risk,
         )
         if args.output:
             _write_private_json(args.output, result)
@@ -166,6 +267,7 @@ def main(argv: list[str] | None = None) -> int:
             "schema": result["schema"],
             "status": result["status"],
             "summary": result["summary"],
+            "binding_review_status": result["binding_review"]["status"] if result["binding_review"] else "NOT_REQUESTED",
             "private_output_created": bool(args.output),
             "source_snapshots_atomic_together": False,
             **NO_AUTHORITY,
