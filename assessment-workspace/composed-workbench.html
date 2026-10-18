@@ -68,6 +68,9 @@ pre{background:#081926;border:1px solid #3c5368;padding:17px;white-space:pre-wra
 <div class="eyebrow">03 / CONTINUE THE ORIGINAL WORKFLOW</div>
 <h2>Keep original review commands</h2>
 <p>The composed workspace does not replace or modify the original comparison and handoff source-owner commands.</p>
+<p>If you have already exported a genuine human Review Desk plan for the exact original source, compose it into the ORIGINAL annotated and minimal human handoff:</p>
+<pre>python3 scripts/lightup_workbench.py human-handoff   /private/ORIGINAL-review.zip /private/SAVED-human.json   --output-dir /private/reviews --prefix human01</pre>
+<p>That independently repeats the original source-bound human admission, preserves real regression HOLD and also builds the archive Studio and private review room for the annotated handoff.</p>
 <pre>python3 scripts/lightup_review.py compare \
   BASE.json NEXT.json \
   --format review-pack \

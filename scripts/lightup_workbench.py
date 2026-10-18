@@ -25,6 +25,7 @@ import followup
 import packet
 import packet_inspect
 import lightup_composed_review
+import lightup_composed_human
 import lightup_review
 
 HANDLERS = {
@@ -37,6 +38,7 @@ HANDLERS = {
     "packet-inspect": packet_inspect.main,
     "console": console.main,
     "compose": lightup_composed_review.main,
+    "human-handoff": lightup_composed_human.main,
 }
 
 def workbench(arguments):
@@ -66,7 +68,7 @@ def main(argv=None):
                         help="workspace (local original app links), review "
                              "(existing original CLI), compose (original comparison "
                              "plus archived review outputs), archive, studio, followup, "
-                             "agenda, packet, packet-inspect or console")
+                             "agenda, packet, packet-inspect, human-handoff or console")
     if not args or args[0] in ("-h", "--help"):
         parser.print_help()
         return 0 if args else 3

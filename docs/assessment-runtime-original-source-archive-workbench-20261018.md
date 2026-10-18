@@ -68,6 +68,35 @@ The original comparator's source/metric semantics are retained unmodified. The i
 
 Private temporary staging builds all six outputs before final publication. A partial set of NEW files may remain if a later final publication fails, but no existing user path is overwritten; original case files remain read-only. Original completed source files and SHA indexes are private evidence; protect generated outputs.
 
+## Complete original source-bound Review Desk human handoff
+
+If the original browser Review Desk has already exported a human planning
+JSON for the EXACT original source-rich seven-file review ZIP, complete the
+existing source-owner follow-up workflow in a single private command:
+
+    python3 scripts/lightup_workbench.py human-handoff /private/ORIGINAL-review.zip /private/SAVED-human-v2.json --output-dir /private/reviews --prefix human01
+
+The adapter delegates first to the unchanged ORIGINAL attach implementation
+for v1/v2 source-bound Review Desk planning admission, and then to the
+unchanged ORIGINAL minimized human handoff exporter. It never creates an
+original human planning decision or accepts a mismatched source. A genuine
+original metric regression HOLD is kept as HOLD (exit 3), even when a valid
+source-rich human follow-up packet is preserved for investigation.
+
+Seven new private 0600 outputs are produced: original canonical comparison
+JSON, annotated original source-rich ZIP, minimized original human ZIP,
+four-source archive manifest, interactive private Studio, SHA-bound source
+human coordination draft, and private review-room ZIP. All original records
+and planning sources are re-observed before final publication. The original
+comparison JSON is byte-identical to the original original review member,
+so HOLD is retained through the archive. No existing source or output is
+overwritten. Minimized original exports exclude scenario identifiers and
+source hashes by the original source owner's rules.
+
+Only existing original lab source and explicitly human-provided files are
+opened. No new model, target, grant, authenticated consent, scan,
+assessment or release action runs.
+
 ## Original comparator and independent archive from one CLI
 
 Original source-owner behavior retained:
