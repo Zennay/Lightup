@@ -333,6 +333,8 @@ def render(agenda: dict) -> bytes:
         ("Review-only entries", counts["review_only"]),
         ("Source age warning", "YES" if agenda["stale_source_over_24h"] else "No"),
         ("Capacity-overflow HOLD", agenda["capacity_shifted_items"]),
+        ("Original engagement HUMAN HOLD", agenda["engagement_human_hold"]),
+        ("Original engagements without grant", agenda["engagement_without_grant"]),
     ]
     panels = ''.join(
         f'<div class="metric"><span>{_text(label)}</span><strong>{_text(value)}</strong></div>'
@@ -374,7 +376,10 @@ Private selected tenant: <span class="private">{_text(agenda["client_id"])}</spa
 <option value="unassigned">Needs human owner</option></select></label></div>
 <p id="workload" class="muted" aria-live="polite">Private assignment overview.</p>
 <p aria-live="polite" class="muted"><span id="shown">{counts["items"]}</span> visible items.
-Review dates are capacity-adjusted HUMAN suggestions only, not original authorization deadlines.</p>
+Review dates are capacity-adjusted HUMAN suggestions only, not original authorization deadlines.
+<strong>Grant-window view only:</strong> original engagements without grants or with pending
+risk decisions are visible in the separate original engagement inbox
+(`window_review.py --inbox` or `human-engagement-inbox.html` in a private workspace).</p>
 <section class="group" aria-label="Private human follow-up import">
 <h2>Import original-source-bound PRIVATE human follow-up</h2>
 <div class="controls"><label>Original private human JSON note
