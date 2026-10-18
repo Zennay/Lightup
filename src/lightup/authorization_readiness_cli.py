@@ -9,9 +9,11 @@ from __future__ import annotations
 import argparse
 from collections import Counter, defaultdict
 from contextlib import closing
+import csv
 from datetime import datetime, timezone
 from getpass import GetPassWarning, getpass
 import html
+import io
 import ipaddress
 import json
 import os
@@ -358,6 +360,43 @@ def _render_html(report: dict) -> str:
     )
 
 
+def _csv_cell(value) -> str:
+    """Neutralize sheet formulas and embedded record boundaries in local CSV export."""
+    value = str(value)
+    # Whitespace/control stripping prevents a leading newline/tab hiding = + - @.
+    value = "".join(" " if ord(ch) < 32 or ord(ch) == 127 else ch for ch in value)
+    value = value.strip()
+    if value and value[0] in "=+-@":
+        return "'" + value
+    return value
+
+
+def _render_csv(report: dict) -> str:
+    stream = io.StringIO(newline="")
+    writer = csv.writer(stream, lineterminator="\r\n")
+    writer.writerow([
+        "disposition", "client", "engagement", "engagement_status",
+        "requests", "approved_requests", "untrusted_approved_requests",
+        "grant_record_number", "recorded_window", "review_flags", "next_action",
+    ])
+    for e in report["engagements"]:
+        grants = e["grant_findings"] or [{
+            "grant_number": "", "window": "", "flags": ["NO_GRANT_RECORD"],
+            "next_action": "No grant record. No scope authorization is inferred.",
+        }]
+        for grant in grants:
+            writer.writerow([_csv_cell(v) for v in (
+                "REVIEW_ONLY", e["client"], e["engagement"], e["engagement_status"],
+                e["requests"], e["approved_requests"], e["untrusted_approved_requests"],
+                grant["grant_number"], grant["window"], ";".join(grant["flags"]),
+                grant["next_action"],
+            )])
+    # Even empty reports remain explicitly non-authorizing; column A is always REVIEW_ONLY.
+    if not report["engagements"]:
+        writer.writerow(["REVIEW_ONLY", "", "", "", "", "", "", "", "", "NO_REVIEW_RECORDS", "No authorization inferred."])
+    return stream.getvalue()
+
+
 def _save_new_private(path: Path, contents: str) -> None:
     if len(contents.encode("utf-8")) > MAX_OUTPUT:
         raise ValueError("report too large")
@@ -382,12 +421,12 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--email", required=True, help="operator account")
     parser.add_argument("--client-id", help="limit sensitive export to one exact existing client")
     parser.add_argument("--engagement-id", help="limit export to one engagement, optionally with --client-id")
-    parser.add_argument("--output", required=True, help="new private .html or .json file; never overwritten")
+    parser.add_argument("--output", required=True, help="new private .html, .json or .csv file; never overwritten")
     args = parser.parse_args(argv)
     path = Path(args.output)
     db = Path(args.db)
-    if not db.is_file() or not path.parent.is_dir() or path.suffix.lower() not in {".html", ".json"}:
-        print("Existing LightUp database and new .html/.json file in a private directory required.", file=sys.stderr)
+    if not db.is_file() or not path.parent.is_dir() or path.suffix.lower() not in {".html", ".json", ".csv"}:
+        print("Existing LightUp database and new .html/.json/.csv file in a private directory required.", file=sys.stderr)
         return 2
     if not sys.stdin.isatty():
         print("Interactive terminal required; password cannot be supplied as an argument.", file=sys.stderr)
@@ -404,9 +443,13 @@ def main(argv: list[str] | None = None) -> int:
         ctx = store.context_for_user(user.user_id)
         ctx.require_operator("authorization readiness review")
         report = _read_report(db, client_id=args.client_id, engagement_id=args.engagement_id)
-        text = _render_html(report) if path.suffix.lower() == ".html" else json.dumps(
-            report, ensure_ascii=False, indent=2
-        ) + "\n"
+        extension = path.suffix.lower()
+        if extension == ".html":
+            text = _render_html(report)
+        elif extension == ".csv":
+            text = _render_csv(report)
+        else:
+            text = json.dumps(report, ensure_ascii=False, indent=2) + "\n"
         _save_new_private(path, text)
     except (PermissionError, AccountLockedError, ValueError, sqlite3.DatabaseError,
             OSError, EOFError, KeyboardInterrupt, GetPassWarning):
