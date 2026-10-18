@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-TgOmNy6aLZ2tXONwktqb0C0uabUSgZPf4fFc2j071aE='; style-src 'sha256-J4sea5R9lLlE564Q13e2kMZjo0xkL4MPHwemmwLGigo='; connect-src 'none'; img-src 'none'; font-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-L2iVOgCIIaYPkuikKAezhH8X+udXakTsKBVMLA8j9CU='; style-src 'sha256-6tKmOipwfGEQBQ7IR7ySQh6Az2OzjbHUhgFgU/TUiXY='; connect-src 'none'; img-src 'none'; font-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="referrer" content="no-referrer"><title>LightUp | Private Lab Review Desk</title>
 <style>:root{color-scheme:dark;font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;background:#101624;color:#f3f7fd;line-height:1.55}
 *{box-sizing:border-box}body{margin:0}header{padding:3.5rem max(2rem,calc((100vw - 1100px)/2));background:linear-gradient(130deg,#172d43,#151926)}header h1{font-size:clamp(2rem,5vw,3.35rem);line-height:1.1;letter-spacing:-.04em;margin:.6rem 0}header p{max-width:800px;color:#d5e1ed}.eyebrow{font-size:.7rem;font-weight:800;letter-spacing:.19em;color:#9bdef1}
@@ -11,7 +11,11 @@ main{max-width:1140px;margin:0 auto;padding:1rem 1.5rem 4rem}section{margin:1.5r
 .controls{display:grid;grid-template-columns:1fr 1fr;gap:.65rem}.controls label{display:flex;flex-direction:column;gap:.2rem;color:#cde4f4;font-size:.78rem}.controls input,.controls select{width:100%;min-width:0;background:#111c2d;border:1px solid #61728d;border-radius:6px;color:#fff;padding:.45rem;font-size:.86rem}.controls label:nth-child(n+3){grid-column:span 2}.note{font-size:.85rem;color:#b2c1d3}
 #message{padding:.6rem .8rem;border-radius:6px;background:#172e36;color:#b9f6e7}#message[data-error="true"]{background:#4b2424;color:#ffd4d4}
 .gates{border-color:#b89c58}code{background:#0e1a29;padding:.1rem .3rem;border-radius:4px;color:#b8e7ff}footer{padding:1.4rem;text-align:center;color:#9db2c9;border-top:1px solid #3d475b}
-[hidden]{display:none!important}@media(max-width:760px){header{padding:2rem 1.2rem}main{padding:.6rem}section{padding:1rem}.controls{grid-template-columns:1fr}.controls label:nth-child(n+3){grid-column:auto}td{padding:.65rem}}</style></head><body>
+[hidden]{display:none!important}@media(max-width:760px){header{padding:2rem 1.2rem}main{padding:.6rem}section{padding:1rem}.controls{grid-template-columns:1fr}.controls label:nth-child(n+3){grid-column:auto}td{padding:.65rem}}
+.bulkbar{border:1px solid #5b8aa4;border-radius:9px;padding:1rem;background:#131f2c;margin:1rem 0}
+.bulkbar>strong{font-size:.92rem}.bulkbar .toolbar{margin:.6rem 0}.bulkbar .note{margin:.35rem 0}
+button:disabled,.upload:has(input:disabled){opacity:.45;cursor:not-allowed}
+</style></head><body>
 <header><div class="eyebrow">LIGHTUP / ISOLATED LAB / HUMAN REVIEW ONLY</div>
 <h1>Private Lab Review Desk</h1><p>Explore an <strong>already-created</strong> isolated-lab assessment JSON. Review individual source-declared findings, track human follow-up and prepare a private handoff. Nothing scans, calls a model, contacts an asset, verifies consent or grants permission.</p>
 <div class="hold">INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD · NOT VERIFIED SECURITY EVIDENCE</div></header>
@@ -23,6 +27,15 @@ main{max-width:1140px;margin:0 auto;padding:1rem 1.5rem 4rem}section{margin:1.5r
 <section id="workspace" hidden aria-labelledby="desk"><h2 id="desk">2. Triage source-declared findings</h2>
 <p id="stats" class="stats"></p><p id="progress"></p>
 <div class="toolbar"><label for="filter">Show <select id="filter"><option value="">All findings</option><optgroup label="Original severity"><option value="critical">Critical</option><option value="high">High</option><option value="medium">Medium</option><option value="low">Low</option><option value="info">Info</option></optgroup><optgroup label="Human review stage"><option value="needs_review">Needs review</option><option value="discussing">Discussing</option><option value="documented">Documented</option><option value="blocked">Blocked</option></optgroup></select></label><span id="shown"></span></div>
+<div class="bulkbar" aria-label="Optional human-only bulk update"><strong>Human-only batch update of the currently visible rows</strong>
+<div class="toolbar"><label for="bulkStage">Proposed stage <select id="bulkStage">
+<option value="">Leave unchanged</option><option value="needs_review">Needs review</option><option value="discussing">Discussing</option><option value="documented">Documented</option><option value="blocked">Blocked</option></select></label>
+<label for="bulkGroup">Proposed review group <select id="bulkGroup"><option value="">Leave unchanged</option>
+<option value="unassigned">Unassigned</option><option value="scope">Scope</option><option value="findings">Findings</option>
+<option value="evidence">Evidence</option><option value="remediation">Remediation</option></select></label>
+<button id="applyBulk" type="button">Apply to visible HUMAN notes</button>
+<button id="undoBulk" type="button" class="quiet">Undo last batch</button></div>
+<p class="note">A separate confirmation is required. Only the filtered human stage/group changes; each original finding, private evidence and existing human free-text remain unchanged.</p></div>
 <div class="table-wrap"><table><caption>Private source findings and proposed human notes</caption>
 <thead><tr><th scope="col">Source finding (not verified)</th><th scope="col">Human follow-up proposal</th></tr></thead>
 <tbody id="findings"></tbody></table></div>
@@ -46,7 +59,7 @@ const STAGES=["needs_review","discussing","documented","blocked"];
 const GROUPS=["unassigned","scope","findings","evidence","remediation"];
 const SEVERITIES=["critical","high","medium","low","info"];
 const MAX_BYTES=8*1024*1024, MAX_ROWS=2048;
-let source=null,sourceHash="",notes=[],dirty=false,filter="";
+let source=null,sourceHash="",notes=[],dirty=false,filter="",lastBulkUndo=null;
 const validText=(s,limit=1000)=>typeof s==="string"&&s.length<=limit&&!/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/.test(s);
 const require_=(ok)=>{if(!ok)throw Error("Incompatible or untrusted private lab artifact");};
 const obj=x=>x!==null&&typeof x==="object"&&!Array.isArray(x);
@@ -175,7 +188,7 @@ function render(){
    el("p","Unverified evidence summary: "+f.evidence_summary));
   meta.append(detail);const a=document.createElement("td");a.append(meta);tr.append(a);
   const review=document.createElement("td"),controls=el("div",undefined,"controls");
-  const apply=(k,v)=>{const next={...notes[i],[k]:v};require_(admitNote(next));notes[i]=next;dirty=true;updateSummary();};
+  const apply=(k,v)=>{const next={...notes[i],[k]:v};require_(admitNote(next));notes[i]=next;lastBulkUndo=null;dirty=true;updateSummary();};
   controls.append(field("Stage",n.stage,v=>apply("stage",v)),
    field("Proposed group",n.group,v=>apply("group",v)),
    field("Next human action",n.next_action,v=>apply("next_action",v)),
@@ -211,11 +224,12 @@ async function importSource(file){
  const raw=new TextDecoder("utf-8",{fatal:true}).decode(bytes);
  const parsed=admit(parseStrict(raw));
  // Exact raw bytes prevent reuse of human notes on changed or reordered evidence.
- const hash=await sha256(bytes);
+ const hash=(globalThis.crypto&&crypto.subtle)?await sha256(bytes):"";
  if(source&&dirty&&!confirm("Replace existing unsaved private human notes?"))return;
- source=parsed;sourceHash=hash;notes=parsed.findings.map(initialNote);dirty=false;
+ source=parsed;sourceHash=hash;notes=parsed.findings.map(initialNote);dirty=false;lastBulkUndo=null;
+ $("private").disabled=!hash;$("resume").disabled=!hash;
  $("workspace").hidden=false;updateSummary();render();
- status("Original private lab source admitted in memory. HUMAN REVIEW ONLY. Source hash is unsigned.");
+ status(hash?"Original private lab source admitted in memory. HUMAN REVIEW ONLY. Source hash is unsigned.":"Original private lab source admitted for local read-only review. Browser has no WebCrypto: private source-bound save/resume is disabled.");
 }
 async function resume(file){
  require_(source&&file&&file.size>0&&file.size<=1024*1024);
@@ -234,19 +248,47 @@ async function resume(file){
   require_(admitNote(n));return n;
  });
  if(dirty&&!confirm("Replace existing unsaved human notes with this matching private return?"))return;
- notes=next;dirty=false;updateSummary();render();status("Exact source-bound human notes restored. No security evidence was authenticated.");
+ notes=next;dirty=false;lastBulkUndo=null;updateSummary();render();status("Exact source-bound human notes restored. No security evidence was authenticated.");
 }
+
+function visibleOrdinals(){
+ if(!source)return [];
+ return source.findings.map((f,i)=>({f,i})).filter(({f,i})=>
+  !filter||filter===f.severity||filter===notes[i].stage).map(({i})=>i);
+}
+$("applyBulk").addEventListener("click",()=>{
+ if(!source)return;
+ const ids=visibleOrdinals(),stage=$("bulkStage").value,group=$("bulkGroup").value;
+ if(!ids.length){status("No visible source findings to update.",true);return;}
+ if(!stage&&!group){status("Choose a human stage or proposed group first.",true);return;}
+ if(!confirm("Change ONLY human planning notes for "+ids.length+
+  " currently visible original findings? This is NOT an assessment or grant."))return;
+ const old=notes.map(n=>({...n}));
+ const selected=new Set(ids);
+ const next=notes.map((n,i)=>selected.has(i)?{
+  ...n,...(stage?{stage}:{}),...(group?{group}:{})
+ }:n);
+ require_(next.every(admitNote));
+ notes=next;lastBulkUndo=old;dirty=true;updateSummary();render();
+ status(ids.length+" human planning rows changed. Source evidence is unchanged; Undo is available.");
+});
+$("undoBulk").addEventListener("click",()=>{
+ if(!source||!lastBulkUndo){status("No last bulk change available.");return;}
+ notes=lastBulkUndo;lastBulkUndo=null;dirty=true;updateSummary();render();
+ status("Last human-only bulk change undone.");
+});
+
 $("source").addEventListener("change",async e=>{try{await importSource(e.target.files[0]);}catch(_){status("HOLD: source rejected. Previous workspace unchanged.",true);}e.target.value="";});
 $("resume").addEventListener("change",async e=>{try{await resume(e.target.files[0]);}catch(_){status("HOLD: private human return rejected. Previous workspace unchanged.",true);}e.target.value="";});
 $("filter").addEventListener("change",e=>{filter=e.target.value;render();});
-$("private").addEventListener("click",()=>{if(!source)return;download("PRIVATE-lab-human-review.json",
+$("private").addEventListener("click",()=>{if(!source||!sourceHash)return;download("PRIVATE-lab-human-review.json",
  JSON.stringify(privatePayload(),null,2)+"\n","application/json");dirty=false;
  status("PRIVATE review saved locally. Share only via a separately approved confidential channel.");});
 $("aggregate").addEventListener("click",()=>{if(!source)return;
  download("lab-anonymous-human-counts.json",JSON.stringify(aggregate(),null,2)+"\n","application/json");
  status("Counts-only human report exported; even small aggregate counts may be sensitive.");});
 $("forget").addEventListener("click",()=>{if(!source||!confirm("Forget all private source data and unsaved human notes?"))return;
- source=null;sourceHash="";notes=[];dirty=false;filter="";$("filter").value="";$("findings").replaceChildren();
+ source=null;sourceHash="";notes=[];dirty=false;filter="";lastBulkUndo=null;$("filter").value="";$("findings").replaceChildren();
  $("workspace").hidden=true;status("All in-memory private workspace data discarded.");});
 window.addEventListener("beforeunload",e=>{if(dirty){e.preventDefault();e.returnValue="";}});
 status("No private lab source loaded.");

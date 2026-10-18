@@ -7,7 +7,7 @@ const STAGES=["needs_review","discussing","documented","blocked"];
 const GROUPS=["unassigned","scope","findings","evidence","remediation"];
 const SEVERITIES=["critical","high","medium","low","info"];
 const MAX_BYTES=8*1024*1024, MAX_ROWS=2048;
-let source=null,sourceHash="",notes=[],dirty=false,filter="";
+let source=null,sourceHash="",notes=[],dirty=false,filter="",lastBulkUndo=null;
 const validText=(s,limit=1000)=>typeof s==="string"&&s.length<=limit&&!/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/.test(s);
 const require_=(ok)=>{if(!ok)throw Error("Incompatible or untrusted private lab artifact");};
 const obj=x=>x!==null&&typeof x==="object"&&!Array.isArray(x);
@@ -136,7 +136,7 @@ function render(){
    el("p","Unverified evidence summary: "+f.evidence_summary));
   meta.append(detail);const a=document.createElement("td");a.append(meta);tr.append(a);
   const review=document.createElement("td"),controls=el("div",undefined,"controls");
-  const apply=(k,v)=>{const next={...notes[i],[k]:v};require_(admitNote(next));notes[i]=next;dirty=true;updateSummary();};
+  const apply=(k,v)=>{const next={...notes[i],[k]:v};require_(admitNote(next));notes[i]=next;lastBulkUndo=null;dirty=true;updateSummary();};
   controls.append(field("Stage",n.stage,v=>apply("stage",v)),
    field("Proposed group",n.group,v=>apply("group",v)),
    field("Next human action",n.next_action,v=>apply("next_action",v)),
@@ -172,11 +172,12 @@ async function importSource(file){
  const raw=new TextDecoder("utf-8",{fatal:true}).decode(bytes);
  const parsed=admit(parseStrict(raw));
  // Exact raw bytes prevent reuse of human notes on changed or reordered evidence.
- const hash=await sha256(bytes);
+ const hash=(globalThis.crypto&&crypto.subtle)?await sha256(bytes):"";
  if(source&&dirty&&!confirm("Replace existing unsaved private human notes?"))return;
- source=parsed;sourceHash=hash;notes=parsed.findings.map(initialNote);dirty=false;
+ source=parsed;sourceHash=hash;notes=parsed.findings.map(initialNote);dirty=false;lastBulkUndo=null;
+ $("private").disabled=!hash;$("resume").disabled=!hash;
  $("workspace").hidden=false;updateSummary();render();
- status("Original private lab source admitted in memory. HUMAN REVIEW ONLY. Source hash is unsigned.");
+ status(hash?"Original private lab source admitted in memory. HUMAN REVIEW ONLY. Source hash is unsigned.":"Original private lab source admitted for local read-only review. Browser has no WebCrypto: private source-bound save/resume is disabled.");
 }
 async function resume(file){
  require_(source&&file&&file.size>0&&file.size<=1024*1024);
@@ -195,19 +196,47 @@ async function resume(file){
   require_(admitNote(n));return n;
  });
  if(dirty&&!confirm("Replace existing unsaved human notes with this matching private return?"))return;
- notes=next;dirty=false;updateSummary();render();status("Exact source-bound human notes restored. No security evidence was authenticated.");
+ notes=next;dirty=false;lastBulkUndo=null;updateSummary();render();status("Exact source-bound human notes restored. No security evidence was authenticated.");
 }
+
+function visibleOrdinals(){
+ if(!source)return [];
+ return source.findings.map((f,i)=>({f,i})).filter(({f,i})=>
+  !filter||filter===f.severity||filter===notes[i].stage).map(({i})=>i);
+}
+$("applyBulk").addEventListener("click",()=>{
+ if(!source)return;
+ const ids=visibleOrdinals(),stage=$("bulkStage").value,group=$("bulkGroup").value;
+ if(!ids.length){status("No visible source findings to update.",true);return;}
+ if(!stage&&!group){status("Choose a human stage or proposed group first.",true);return;}
+ if(!confirm("Change ONLY human planning notes for "+ids.length+
+  " currently visible original findings? This is NOT an assessment or grant."))return;
+ const old=notes.map(n=>({...n}));
+ const selected=new Set(ids);
+ const next=notes.map((n,i)=>selected.has(i)?{
+  ...n,...(stage?{stage}:{}),...(group?{group}:{})
+ }:n);
+ require_(next.every(admitNote));
+ notes=next;lastBulkUndo=old;dirty=true;updateSummary();render();
+ status(ids.length+" human planning rows changed. Source evidence is unchanged; Undo is available.");
+});
+$("undoBulk").addEventListener("click",()=>{
+ if(!source||!lastBulkUndo){status("No last bulk change available.");return;}
+ notes=lastBulkUndo;lastBulkUndo=null;dirty=true;updateSummary();render();
+ status("Last human-only bulk change undone.");
+});
+
 $("source").addEventListener("change",async e=>{try{await importSource(e.target.files[0]);}catch(_){status("HOLD: source rejected. Previous workspace unchanged.",true);}e.target.value="";});
 $("resume").addEventListener("change",async e=>{try{await resume(e.target.files[0]);}catch(_){status("HOLD: private human return rejected. Previous workspace unchanged.",true);}e.target.value="";});
 $("filter").addEventListener("change",e=>{filter=e.target.value;render();});
-$("private").addEventListener("click",()=>{if(!source)return;download("PRIVATE-lab-human-review.json",
+$("private").addEventListener("click",()=>{if(!source||!sourceHash)return;download("PRIVATE-lab-human-review.json",
  JSON.stringify(privatePayload(),null,2)+"\n","application/json");dirty=false;
  status("PRIVATE review saved locally. Share only via a separately approved confidential channel.");});
 $("aggregate").addEventListener("click",()=>{if(!source)return;
  download("lab-anonymous-human-counts.json",JSON.stringify(aggregate(),null,2)+"\n","application/json");
  status("Counts-only human report exported; even small aggregate counts may be sensitive.");});
 $("forget").addEventListener("click",()=>{if(!source||!confirm("Forget all private source data and unsaved human notes?"))return;
- source=null;sourceHash="";notes=[];dirty=false;filter="";$("filter").value="";$("findings").replaceChildren();
+ source=null;sourceHash="";notes=[];dirty=false;filter="";lastBulkUndo=null;$("filter").value="";$("findings").replaceChildren();
  $("workspace").hidden=true;status("All in-memory private workspace data discarded.");});
 window.addEventListener("beforeunload",e=>{if(dirty){e.preventDefault();e.returnValue="";}});
 status("No private lab source loaded.");

@@ -8,3 +8,6 @@ main{max-width:1140px;margin:0 auto;padding:1rem 1.5rem 4rem}section{margin:1.5r
 #message{padding:.6rem .8rem;border-radius:6px;background:#172e36;color:#b9f6e7}#message[data-error="true"]{background:#4b2424;color:#ffd4d4}
 .gates{border-color:#b89c58}code{background:#0e1a29;padding:.1rem .3rem;border-radius:4px;color:#b8e7ff}footer{padding:1.4rem;text-align:center;color:#9db2c9;border-top:1px solid #3d475b}
 [hidden]{display:none!important}@media(max-width:760px){header{padding:2rem 1.2rem}main{padding:.6rem}section{padding:1rem}.controls{grid-template-columns:1fr}.controls label:nth-child(n+3){grid-column:auto}td{padding:.65rem}}
+.bulkbar{border:1px solid #5b8aa4;border-radius:9px;padding:1rem;background:#131f2c;margin:1rem 0}
+.bulkbar>strong{font-size:.92rem}.bulkbar .toolbar{margin:.6rem 0}.bulkbar .note{margin:.35rem 0}
+button:disabled,.upload:has(input:disabled){opacity:.45;cursor:not-allowed}
