@@ -49,6 +49,11 @@
         <label>Info<input type="number" name="info" min="1" max="200" value="1" required></label>
       </div>
     </fieldset>
+    <fieldset>
+      <legend>Weekly availability · holidays, leave and incident load</legend>
+      <p class="subtle">100% uses the team's ordinary available capacity; 0% means no work can be scheduled in that week. Values change only this local estimate, never an authorised assessment window.</p>
+      <div class="grid" id="week-availability" aria-live="polite"></div>
+    </fieldset>
     <button type="submit" id="generate" disabled>Prepare capacity plan</button>
   </form>
   <p class="subtle">Priority: source-reported regressions first, then critical → high → medium → low → info. Estimates are placeholders, not SLAs or retest authorisations. Sprint weeks are seven-day planning buckets; available capacity is per working week.</p>
