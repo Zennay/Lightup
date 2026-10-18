@@ -350,7 +350,7 @@ def _page(data, tasks, digest, script):
             '<span id="status" role="status" aria-live="polite">Human-only changes stay in this tab.</span>'
             '</div><section class="bulk"><strong>Bulk HUMAN coordination (never authorization)</strong>'
             '<div class="bulkRow"><label>Reviewer <input id="bulkOwner" maxlength="80" autocomplete="off"></label>'
-            '<label>Human stage <select id="bulkStage">' +
+            '<label>Human stage <select id="bulkStage"><option value="">Leave stage unchanged</option>' +
             "".join('<option value="' + esc(st) + '">' + esc(st.replace("_", " ")) + '</option>'
                     for st in sorted(REVIEW_STATUSES)) + '</select></label>'
             '<label>Tentative UTC due <input type="date" id="bulkDue"></label>'
