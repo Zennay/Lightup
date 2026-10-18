@@ -7,7 +7,7 @@ const COLS=['finding_id','title','severity','retest_status','remediation'];
 const CASE=['finding_id','owner','status','due_date','next_action','verification_plan','blocker','note','updated_utc'];
 const PACKET=['kind','schema_version','disposition','source_contract','source_sha256','findings','cases','instructions',...FLAGS];
 const PRIORITY=['critical','high','medium','low','info'];
-let state=null,activeId=null,dirty=false;
+let state=null,activeId=null,dirty=false,selectedDay=null;
 function fail(message){throw Error(message);}
 function bytes(s){return new TextEncoder().encode(s).length;}
 function exactKeys(o,keys,what){
@@ -72,6 +72,7 @@ function filtered(){
  const text=$('search').value.trim().toLowerCase(),scope=$('filter').value,sev=$('severity').value;
  return allRows().filter(x=>{
   const c=x.case,f=x.finding;
+  if(selectedDay&&(!eligible(x)||c.due_date!==selectedDay))return false;
   if(sev!=='all'&&f.severity!==sev)return false;
   if(text&&!((f.finding_id+' '+c.owner).toLowerCase().includes(text)))return false;
   if(scope==='all')return true;
@@ -117,8 +118,47 @@ function exportDraft(){
  dirty=false;$('export-message').textContent='Updated PRIVATE human Casework draft saved. Return via a separately approved secure channel, never as proof of remediation.';
 }
 function textEl(tag,text,cls){const e=document.createElement(tag);e.textContent=String(text);if(cls)e.className=cls;return e;}
+function renderMonth(){
+ const grid=$('month-grid');grid.replaceChildren();
+ const value=$('month').value,valid=/^\\d{4}-\\d{2}$/.test(value)&&value>='2020-01'&&value<='2100-12';
+ if(!valid){$('month-message').textContent='Choose a month within 2020–2100.';return;}
+ const first=Date.parse(value+'-01T00:00:00Z');if(!Number.isFinite(first))return;
+ for(const name of ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'])grid.append(textEl('span',name,'month-head'));
+ const offset=(new Date(first).getUTCDay()+6)%7;
+ const counts=new Map();
+ for(const x of allRows()){
+  if(!eligible(x))continue;
+  const day=x.case.due_date,existing=counts.get(day)||{total:0,urgent:0,blocked:0};
+  existing.total++;if(['critical','high'].includes(x.finding.severity))existing.urgent++;
+  if(x.case.status==='blocked')existing.blocked++;counts.set(day,existing);
+ }
+ for(let i=0;i<42;i++){
+  const d=new Date(first+(i-offset)*86400000),day=d.toISOString().slice(0,10);
+  const inMonth=day.slice(0,7)===value,metric=counts.get(day)||{total:0,urgent:0,blocked:0};
+  const b=document.createElement('button');b.type='button';b.className='month-day'+(metric.total&&inMonth?' has-work':'')+(selectedDay===day?' selected':'');
+  b.disabled=!inMonth;b.setAttribute('aria-pressed',selectedDay===day?'true':'false');
+  b.setAttribute('aria-label',day+': '+metric.total+' human deadlines, '+metric.urgent+' critical/high, '+metric.blocked+' blocked. Filter this date.');
+  b.append(textEl('span',d.getUTCDate(),'date-number'));
+  if(metric.total&&inMonth){
+   b.append(textEl('span',metric.total+' planned','day-count'));
+   if(metric.urgent)b.append(textEl('span',metric.urgent+' critical/high','day-critical'));
+   if(metric.blocked)b.append(textEl('span',metric.blocked+' blocked','day-critical'));
+  }
+  b.addEventListener('click',()=>{selectedDay=selectedDay===day?null:day;render();});
+  grid.append(b);
+ }
+ $('month-message').textContent=selectedDay?'Date filter: '+selectedDay+'. Select it again or choose Clear day filter.':'Select a day to filter the human work queue. No deadlines are automatically scheduled.';
+}
+function adjustMonth(delta){
+ const value=$('month').value;
+ if(!/^\\d{4}-\\d{2}$/.test(value))return;
+ const d=new Date(value+'-01T00:00:00Z');d.setUTCMonth(d.getUTCMonth()+delta);
+ const next=d.toISOString().slice(0,7);if(next<'2020-01'||next>'2100-12')return;
+ $('month').value=next;selectedDay=null;render();
+}
 function render(){
  if(!state)return;
+ renderMonth();
  const rows=filtered(),body=$('rows');body.replaceChildren();
  for(const x of rows){
   const f=x.finding,c=x.case,tr=document.createElement('tr');
@@ -165,7 +205,7 @@ async function openFile(file){
  const digest=await global.LightUpCasework.digest(clean.findings);
  if(clean.source_sha256&&(!digest||clean.source_sha256!==digest))fail('Original source fingerprint mismatch or browser digest unavailable.');
  const newState={...clean,digest};
- state=newState;dirty=false;activeId=null;$('edit-panel').hidden=true;$('draft-ack').checked=false;
+ state=newState;dirty=false;activeId=null;selectedDay=null;$('month').value=todayUTC().slice(0,7);$('edit-panel').hidden=true;$('draft-ack').checked=false;
  $('workspace').hidden=false;$('calendar-ack').checked=false;$('export-message').textContent='';
  render();
  $('message').textContent=clean.findings.length+' original findings loaded locally. Source is a historical unsigned draft; no current identity or consent checked.';
@@ -220,7 +260,7 @@ function exportAggregate(){
  $('export-message').textContent='Anonymous category counts exported. This is neither a retest outcome nor proof of a safe public disclosure.';
 }
 function reset(){
- state=null;activeId=null;dirty=false;$('file').value='';$('source-ack').checked=false;$('calendar-ack').checked=false;$('draft-ack').checked=false;$('edit-panel').hidden=true;
+ state=null;activeId=null;dirty=false;selectedDay=null;$('file').value='';$('source-ack').checked=false;$('calendar-ack').checked=false;$('draft-ack').checked=false;$('edit-panel').hidden=true;
  $('workspace').hidden=true;$('message').textContent='Private workspace cleared from app state. Already exported files and calendar imports remain under your control.';
 }
 $('file').addEventListener('change',async e=>{
@@ -232,6 +272,10 @@ $('file').addEventListener('change',async e=>{
 for(const id of ['filter','severity','search'])$(id).addEventListener('input',render);
 $('calendar-ack').addEventListener('change',render);
 $('draft-ack').addEventListener('change',render);
+$('month').addEventListener('change',()=>{selectedDay=null;render();});
+$('month-prev').addEventListener('click',()=>adjustMonth(-1));
+$('month-next').addEventListener('click',()=>adjustMonth(1));
+$('day-clear').addEventListener('click',()=>{selectedDay=null;render();});
 $('edit-form').addEventListener('submit',e=>{try{saveEdit(e);}catch(err){e.preventDefault();$('export-message').textContent='HOLD: '+err.message;}});
 $('edit-cancel').addEventListener('click',()=>{activeId=null;$('edit-panel').hidden=true;});
 $('casework-save').addEventListener('click',()=>{try{exportDraft();}catch(err){$('export-message').textContent='HOLD: '+err.message;}});

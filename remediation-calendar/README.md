@@ -27,3 +27,7 @@ The Calendar now supports an Edit action per original finding. A human can chang
 Use Save updated PRIVATE Casework v1 JSON after explicitly confirming the intended secure receiving channel. Export uses unchanged original LightUpCasework.makePacket, with complete original findings/case membership, source SHA-256 where available, and all original authority flags false. The exported packet remains an unsigned human planning draft, not verified remediation or an authorization. Return only through a separately approved protected channel to the original source-aware Casework workflow.
 
 Changing or clearing a workspace warns before discarding unsaved in-memory notes. Nothing is automatically saved to browser storage or sent externally. Clearing the workspace cannot remove previously exported files or calendar events. The CSP-pinned one-file standalone contains the full editable return workflow.
+
+## Visual month board and one-day drilldown
+
+The Calendar now renders a complete local 7-column monthly overview of already planned HUMAN-ONLY follow-up dates. Each date shows the number of tentative human deadlines, critical/high source-severity count and human-blocked count; month navigation is bounded to 2020–2100. Select a populated date to narrow the detailed original Casework queue and optionally produce an .ics containing just the currently filtered deadlines. Select it again or clear the day filter to return to the full queue. Empty days do not imply cleared findings or verified remediation, and the visual is never an authorized retest schedule.

@@ -20,6 +20,16 @@
 <section id="workspace" hidden>
 <div class="metrics" id="metrics" aria-label="Human work summary"></div>
 <section class="panel">
+<h2>Monthly human follow-up calendar</h2>
+<p>Original source severity, human planning dates and blockers only. A missing item is never evidence of a fix; no automatic calendar synchronization occurs.</p>
+<div class="actions month-controls"><button id="month-prev" type="button" class="muted-button" aria-label="Previous month">Previous month</button>
+<label>Planning month <input id="month" type="month" min="2020-01" max="2100-12"></label>
+<button id="month-next" type="button" class="muted-button" aria-label="Next month">Next month</button>
+<button id="day-clear" type="button" class="muted-button">Clear day filter</button></div>
+<p id="month-message" class="muted" aria-live="polite"></p>
+<div id="month-grid" class="month-grid" role="group" aria-label="Local human follow-up dates"></div>
+</section>
+<section class="panel">
 <h2>2. Review the human follow-up queue</h2>
 <div class="filters"><label>Filter <select id="filter"><option value="all">All pending dates</option><option value="overdue">Overdue</option><option value="blocked">Blocked</option><option value="unassigned">Missing owner</option><option value="retest">Ready for independently authorized retest</option><option value="urgent">Critical or high</option></select></label>
 <label>Severity <select id="severity"><option value="all">All</option><option value="critical">Critical</option><option value="high">High</option><option value="medium">Medium</option><option value="low">Low</option><option value="info">Info</option></select></label>

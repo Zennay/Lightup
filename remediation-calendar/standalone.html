@@ -3,10 +3,11 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-wpPFZOyxFDTkVCPSRLe+ulmbav4+u8hRIYgukbiqEiU=' 'sha256-yobXSwZBB9j+x2MWiyzAnDAaFaf1rWipjVvjz7tNX5o='; style-src 'sha256-gW1CDDAflbOE4587yiHMrywULdOGinw9i+g45U4e6l0='; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-wpPFZOyxFDTkVCPSRLe+ulmbav4+u8hRIYgukbiqEiU=' 'sha256-mKWOgHxjm507duFbpIgvPblIukLznBNFGWkm/4QQl+0='; style-src 'sha256-eBXNpKwV7Tfx/VR+iD+lRaRbr6g4N6xCctCZfuuIIvE='; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <title>LightUp · Private Remediation Calendar</title>
 <style>:root{color-scheme:dark;font:16px/1.55 system-ui,-apple-system,Segoe UI,sans-serif;background:#0c111d;color:#eef2fb}*{box-sizing:border-box}body{margin:0}header,main,footer{max-width:1160px;margin:auto;padding:26px 24px}header{padding-top:48px}.brand{color:#a4bcff;letter-spacing:.18em;font-size:.75rem;font-weight:800}h1{font-size:clamp(2rem,5vw,3.3rem);line-height:1.08;margin:.5em 0}h2{font-size:1.32rem;margin:0 0 16px}p{color:#bbc5d6}.hold{display:inline-block;color:#ffca7a;border:1px solid #846332;background:#3a2b19;padding:8px 12px;border-radius:8px;font-size:.82rem}.panel{background:#172137;border:1px solid #34435d;border-radius:18px;padding:24px;margin:22px 0;box-shadow:0 8px 24px #050b1740}label{display:block;font-weight:650;color:#ebf0fa}input,select,button{font:inherit}select,input[type=search],input[type=file]{width:100%;background:#0e182b;color:#fff;border:1px solid #52647e;padding:10px;border-radius:8px;margin-top:6px}input:focus,select:focus,button:focus-visible{outline:2px solid #8ab2ff;outline-offset:2px}.filelabel{max-width:600px}.check{display:flex;gap:12px;align-items:flex-start;margin:18px 0;max-width:950px;font-weight:450;color:#d3dced}.check input{width:20px;height:20px;flex:none;margin-top:3px}.metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin-top:20px}.metric{background:#202e49;border-radius:12px;padding:16px}.metric strong{font-size:1.8rem;display:block}.metric span{color:#bbc5d6;font-size:.88rem}.filters,.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px}.tablewrap{overflow-x:auto}table{width:100%;border-collapse:collapse;min-width:760px;text-align:left}th,td{border-bottom:1px solid #34445e;padding:13px 10px;vertical-align:top;overflow-wrap:anywhere}th{color:#9fb7e8;font-size:.8rem;text-transform:uppercase;letter-spacing:.05em}td{font-size:.88rem}td small{color:#aebed0;display:block}.chip{display:inline-block;background:#293957;border-radius:6px;padding:2px 7px}.urgent{color:#ffcc9d}.muted{color:#aab7cf}.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:20px}button{background:#a7c1ff;border:0;border-radius:9px;color:#071226;padding:11px 17px;font-weight:750;cursor:pointer}button:hover:not(:disabled){filter:brightness(1.12)}button:disabled{opacity:.35;cursor:not-allowed}.muted-button{background:#394961;color:#fff}footer{font-size:.83rem;color:#aeb8c8;padding-bottom:50px}@media(max-width:600px){header,main,footer{padding-left:16px;padding-right:16px}.panel{padding:17px}}
 textarea{display:block;width:100%;background:#0e182b;color:#fff;border:1px solid #52647e;padding:10px;border-radius:8px;margin:6px 0 14px;resize:vertical}#edit-form .grid{margin-bottom:14px}input[type=date],#edit-owner{display:block;width:100%;background:#0e182b;color:#fff;border:1px solid #52647e;padding:10px;border-radius:8px;margin-top:6px}textarea:focus-visible{outline:2px solid #8ab2ff}#edit-panel[hidden]{display:none}
+.month-controls{align-items:center;margin-bottom:14px}.month-controls label{min-width:200px;max-width:240px}.month-controls input{display:block;width:100%;background:#0e182b;color:#fff;border:1px solid #52647e;padding:8px;border-radius:8px}.month-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:5px}.month-head{text-align:center;font-size:.78rem;color:#abbddb;font-weight:800;padding:8px 2px}.month-day{display:flex;flex-direction:column;align-items:flex-start;min-height:84px;background:#16233a;border:1px solid #384964;border-radius:8px;color:#eef2fb;padding:8px;cursor:pointer;font-weight:500;overflow-wrap:anywhere;text-align:left}.month-day:hover:not(:disabled){background:#26385a}.month-day:disabled{opacity:.24;cursor:default}.month-day.selected{outline:2px solid #a7c1ff}.month-day.has-work{border-color:#7c97ca}.month-day .date-number{font-weight:850;font-size:.9rem}.month-day .day-count{font-size:.78rem;color:#b6caef}.month-day .day-critical{font-size:.7rem;color:#ffbf97}@media(max-width:620px){.month-grid{gap:3px}.month-day{min-height:72px;padding:4px}.month-day .day-count,.month-day .day-critical{font-size:.65rem}.month-head{font-size:.67rem}}
 </style>
 </head>
 <body>
@@ -21,6 +22,16 @@ textarea{display:block;width:100%;background:#0e182b;color:#fff;border:1px solid
 </section>
 <section id="workspace" hidden>
 <div class="metrics" id="metrics" aria-label="Human work summary"></div>
+<section class="panel">
+<h2>Monthly human follow-up calendar</h2>
+<p>Original source severity, human planning dates and blockers only. A missing item is never evidence of a fix; no automatic calendar synchronization occurs.</p>
+<div class="actions month-controls"><button id="month-prev" type="button" class="muted-button" aria-label="Previous month">Previous month</button>
+<label>Planning month <input id="month" type="month" min="2020-01" max="2100-12"></label>
+<button id="month-next" type="button" class="muted-button" aria-label="Next month">Next month</button>
+<button id="day-clear" type="button" class="muted-button">Clear day filter</button></div>
+<p id="month-message" class="muted" aria-live="polite"></p>
+<div id="month-grid" class="month-grid" role="group" aria-label="Local human follow-up dates"></div>
+</section>
 <section class="panel">
 <h2>2. Review the human follow-up queue</h2>
 <div class="filters"><label>Filter <select id="filter"><option value="all">All pending dates</option><option value="overdue">Overdue</option><option value="blocked">Blocked</option><option value="unassigned">Missing owner</option><option value="retest">Ready for independently authorized retest</option><option value="urgent">Critical or high</option></select></label>
@@ -265,7 +276,7 @@ const COLS=['finding_id','title','severity','retest_status','remediation'];
 const CASE=['finding_id','owner','status','due_date','next_action','verification_plan','blocker','note','updated_utc'];
 const PACKET=['kind','schema_version','disposition','source_contract','source_sha256','findings','cases','instructions',...FLAGS];
 const PRIORITY=['critical','high','medium','low','info'];
-let state=null,activeId=null,dirty=false;
+let state=null,activeId=null,dirty=false,selectedDay=null;
 function fail(message){throw Error(message);}
 function bytes(s){return new TextEncoder().encode(s).length;}
 function exactKeys(o,keys,what){
@@ -330,6 +341,7 @@ function filtered(){
  const text=$('search').value.trim().toLowerCase(),scope=$('filter').value,sev=$('severity').value;
  return allRows().filter(x=>{
   const c=x.case,f=x.finding;
+  if(selectedDay&&(!eligible(x)||c.due_date!==selectedDay))return false;
   if(sev!=='all'&&f.severity!==sev)return false;
   if(text&&!((f.finding_id+' '+c.owner).toLowerCase().includes(text)))return false;
   if(scope==='all')return true;
@@ -375,8 +387,47 @@ function exportDraft(){
  dirty=false;$('export-message').textContent='Updated PRIVATE human Casework draft saved. Return via a separately approved secure channel, never as proof of remediation.';
 }
 function textEl(tag,text,cls){const e=document.createElement(tag);e.textContent=String(text);if(cls)e.className=cls;return e;}
+function renderMonth(){
+ const grid=$('month-grid');grid.replaceChildren();
+ const value=$('month').value,valid=/^\\d{4}-\\d{2}$/.test(value)&&value>='2020-01'&&value<='2100-12';
+ if(!valid){$('month-message').textContent='Choose a month within 2020–2100.';return;}
+ const first=Date.parse(value+'-01T00:00:00Z');if(!Number.isFinite(first))return;
+ for(const name of ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'])grid.append(textEl('span',name,'month-head'));
+ const offset=(new Date(first).getUTCDay()+6)%7;
+ const counts=new Map();
+ for(const x of allRows()){
+  if(!eligible(x))continue;
+  const day=x.case.due_date,existing=counts.get(day)||{total:0,urgent:0,blocked:0};
+  existing.total++;if(['critical','high'].includes(x.finding.severity))existing.urgent++;
+  if(x.case.status==='blocked')existing.blocked++;counts.set(day,existing);
+ }
+ for(let i=0;i<42;i++){
+  const d=new Date(first+(i-offset)*86400000),day=d.toISOString().slice(0,10);
+  const inMonth=day.slice(0,7)===value,metric=counts.get(day)||{total:0,urgent:0,blocked:0};
+  const b=document.createElement('button');b.type='button';b.className='month-day'+(metric.total&&inMonth?' has-work':'')+(selectedDay===day?' selected':'');
+  b.disabled=!inMonth;b.setAttribute('aria-pressed',selectedDay===day?'true':'false');
+  b.setAttribute('aria-label',day+': '+metric.total+' human deadlines, '+metric.urgent+' critical/high, '+metric.blocked+' blocked. Filter this date.');
+  b.append(textEl('span',d.getUTCDate(),'date-number'));
+  if(metric.total&&inMonth){
+   b.append(textEl('span',metric.total+' planned','day-count'));
+   if(metric.urgent)b.append(textEl('span',metric.urgent+' critical/high','day-critical'));
+   if(metric.blocked)b.append(textEl('span',metric.blocked+' blocked','day-critical'));
+  }
+  b.addEventListener('click',()=>{selectedDay=selectedDay===day?null:day;render();});
+  grid.append(b);
+ }
+ $('month-message').textContent=selectedDay?'Date filter: '+selectedDay+'. Select it again or choose Clear day filter.':'Select a day to filter the human work queue. No deadlines are automatically scheduled.';
+}
+function adjustMonth(delta){
+ const value=$('month').value;
+ if(!/^\\d{4}-\\d{2}$/.test(value))return;
+ const d=new Date(value+'-01T00:00:00Z');d.setUTCMonth(d.getUTCMonth()+delta);
+ const next=d.toISOString().slice(0,7);if(next<'2020-01'||next>'2100-12')return;
+ $('month').value=next;selectedDay=null;render();
+}
 function render(){
  if(!state)return;
+ renderMonth();
  const rows=filtered(),body=$('rows');body.replaceChildren();
  for(const x of rows){
   const f=x.finding,c=x.case,tr=document.createElement('tr');
@@ -423,7 +474,7 @@ async function openFile(file){
  const digest=await global.LightUpCasework.digest(clean.findings);
  if(clean.source_sha256&&(!digest||clean.source_sha256!==digest))fail('Original source fingerprint mismatch or browser digest unavailable.');
  const newState={...clean,digest};
- state=newState;dirty=false;activeId=null;$('edit-panel').hidden=true;$('draft-ack').checked=false;
+ state=newState;dirty=false;activeId=null;selectedDay=null;$('month').value=todayUTC().slice(0,7);$('edit-panel').hidden=true;$('draft-ack').checked=false;
  $('workspace').hidden=false;$('calendar-ack').checked=false;$('export-message').textContent='';
  render();
  $('message').textContent=clean.findings.length+' original findings loaded locally. Source is a historical unsigned draft; no current identity or consent checked.';
@@ -478,7 +529,7 @@ function exportAggregate(){
  $('export-message').textContent='Anonymous category counts exported. This is neither a retest outcome nor proof of a safe public disclosure.';
 }
 function reset(){
- state=null;activeId=null;dirty=false;$('file').value='';$('source-ack').checked=false;$('calendar-ack').checked=false;$('draft-ack').checked=false;$('edit-panel').hidden=true;
+ state=null;activeId=null;dirty=false;selectedDay=null;$('file').value='';$('source-ack').checked=false;$('calendar-ack').checked=false;$('draft-ack').checked=false;$('edit-panel').hidden=true;
  $('workspace').hidden=true;$('message').textContent='Private workspace cleared from app state. Already exported files and calendar imports remain under your control.';
 }
 $('file').addEventListener('change',async e=>{
@@ -490,6 +541,10 @@ $('file').addEventListener('change',async e=>{
 for(const id of ['filter','severity','search'])$(id).addEventListener('input',render);
 $('calendar-ack').addEventListener('change',render);
 $('draft-ack').addEventListener('change',render);
+$('month').addEventListener('change',()=>{selectedDay=null;render();});
+$('month-prev').addEventListener('click',()=>adjustMonth(-1));
+$('month-next').addEventListener('click',()=>adjustMonth(1));
+$('day-clear').addEventListener('click',()=>{selectedDay=null;render();});
 $('edit-form').addEventListener('submit',e=>{try{saveEdit(e);}catch(err){e.preventDefault();$('export-message').textContent='HOLD: '+err.message;}});
 $('edit-cancel').addEventListener('click',()=>{activeId=null;$('edit-panel').hidden=true;});
 $('casework-save').addEventListener('click',()=>{try{exportDraft();}catch(err){$('export-message').textContent='HOLD: '+err.message;}});
