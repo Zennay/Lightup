@@ -58,6 +58,10 @@ The desk requires a **private interactive TTY** and authenticates with
    into a new exclusive permission-`0600` file, without scripts or network.
    Earlier requests remain in SQLite and are **not** claimed to be exported
    if the client has more than 200.
+7. **Complete Studio scope dossier:** retain exclusions, claimed UTC/local
+   windows, risk, notes and lab activity details in a new private HTML/JSON
+   review packet, even when direct native submission is intentionally blocked.
+   Nothing is sent to an operator automatically or submitted to the database.
 
 Every submission requires explicitly typing `SUBMIT NEW REQUEST`.
 An existing submitted/under-review request with **the same asset identities
@@ -163,6 +167,55 @@ and the original SQLite records are never changed. A saved HTML copy is
 **unsigned, potentially sensitive and stale**; it is not proof of current
 identity, consent, grant or retest status. Do not share it publicly.
 Existing destination files cannot be overwritten.
+
+## Complete Studio scope handoff when direct submission must HOLD
+
+A real Studio draft often includes **excluded assets, local/UTC time windows,
+analysis-only mode or private-lab activities**. The existing durable native
+request schema cannot bind those restrictions. They are therefore never
+silently stripped, and native `submit` / `revise-submit` still refuse them.
+
+Clients can now produce a complete **offline non-authorizing dossier** without
+losing the original constraints:
+
+```sh
+# No database, login, target I/O, grant or request creation.
+python -m lightup.client_request_cli studio-handoff \
+  --proposal ~/Downloads/lightup-scope-draft.json \
+  --output /private/lightup-complete-scope-handoff.html
+
+# Optional machine-readable private dossier with the exact original fields.
+python -m lightup.client_request_cli studio-handoff \
+  --proposal ~/Downloads/lightup-scope-draft.json \
+  --output /private/lightup-complete-scope-handoff.json
+```
+
+The same functionality is accessible through menu **7** in the authenticated
+interactive client desk. Studio handoff itself does **not** create/modify an
+assessment request, approve a schedule, bind client or operator identities,
+grant access, scan a target, dispatch a tool, contact a host or bypass an
+existing restriction.
+
+The native Studio v1 parser now has one common **bounded, strict source
+reader** for both ordinary intake and HOLD dossier creation. It validates the
+literal false-authority flags, JSON key uniqueness, scope literal identity,
+activity shape, proposed risk/mode and the consistency of supplied local/UTC
+time claims. **It does not prove a timezone or target belongs to a client.**
+An unsigned browser fingerprint is never a consent signature; the exact file
+SHA-256 is merely a content-continuity hint.
+
+The handoff includes both requested and excluded scope **unaltered**, notes/
+stop conditions, every proposed activity, local and UTC scheduling information,
+identified native-storage incompatibilities, the exact source-file hash and
+literal false authorization/consent/grant/scan fields. It always says
+`LOCAL_REVIEW_ONLY`, even for a proposal with no automatic incompatibilities.
+The original exported JSON should be retained alongside the dossier until
+source-owner integration can faithfully persist and enforce all restrictions.
+File output is a **new, non-overwriting 0600 private HTML or JSON**, bounded
+to 2 MiB. The HTML has no scripts, forms or external resources. Both can
+contain sensitive assets and notes: do not publish or treat them as current
+operator approvals. **A HOLD packet is NOT an approval, a native request,
+a security test or a release evidence gate.**
 
 ## Direct intake from the existing Scope Planning Studio (#1567)
 
