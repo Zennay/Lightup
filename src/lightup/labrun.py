@@ -333,6 +333,53 @@ def run_planned_assessment(
     }
 
 
+def _deliver_lab_result(payload: dict, output: str | None) -> None:
+    """Publish a complete lab artifact without overwriting any existing data.
+
+    Never emit a source-rich report to the terminal when a private file was
+    requested. A fingerprint of the saved JSON is intentionally not an
+    authenticated evidence receipt or consent proof.
+    """
+    serialized = (json.dumps(payload, indent=2, ensure_ascii=True, allow_nan=False) + "\n").encode("utf-8")
+    if len(serialized) > 8 * 1024 * 1024:
+        raise ValueError("private lab result exceeds the export size limit")
+    if output is None:
+        print(serialized.decode("utf-8"), end="")
+        return
+    import os
+    import stat
+    target = Path(output)
+    if target.suffix.lower() != ".json":
+        raise ValueError("private output path must end in .json")
+    # Caller-supplied filenames are never followed or silently replaced.
+    flags = os.O_CREAT | os.O_EXCL | os.O_WRONLY
+    if hasattr(os, "O_NOFOLLOW"):
+        flags |= os.O_NOFOLLOW
+    descriptor = os.open(target, flags, 0o600)
+    try:
+        with os.fdopen(descriptor, "wb") as stream:
+            stream.write(serialized)
+            stream.flush()
+            os.fsync(stream.fileno())
+        # In addition to exclusive creation, reject an unexpected non-regular
+        # destination before presenting the result as saved.
+        if not stat.S_ISREG(target.lstat().st_mode):
+            raise OSError("private output is not a regular file")
+    except BaseException:
+        try:
+            target.unlink(missing_ok=True)
+        except OSError:
+            pass
+        raise
+    print(json.dumps({
+        "mode": "PRIVATE_LAB_ARTIFACT_CREATED",
+        "output_written": True,
+        "source_authenticated": False,
+        "authorization_granted": False,
+        "release_allowed": False,
+    }, indent=2))
+
+
 def main_assess(argv: list[str] | None = None) -> int:
     """CLI: planner-driven lab assessment with optional real gateway config."""
     import argparse
@@ -358,6 +405,10 @@ def main_assess(argv: list[str] | None = None) -> int:
         help="local UTF-8 text file with one isolated lab URL per line (# comments allowed)",
     )
     parser.add_argument("--db", default="lightup-lab.db")
+    parser.add_argument(
+        "--output", metavar="NEW_PRIVATE_JSON",
+        help="write complete offline lab results into a NEW owner-only JSON file (0600)",
+    )
     parser.add_argument("--gateway-config",
                         help="JSON gateway config (see config/gateway.example.json); "
                              "omit for the deterministic scripted demo gateway")
@@ -407,7 +458,7 @@ def main_assess(argv: list[str] | None = None) -> int:
         if args.preview_only:
             # Input review is non-authorizing. Avoid echoing URLs (which can
             # contain credentials/query details) or the contents of a manifest.
-            print(json.dumps({
+            preview = {
                 "mode": "LAB_INPUT_PREVIEW_ONLY",
                 "lab_host_candidates": list(scenario.targets),
                 "endpoint_count": len(scenario.endpoints),
@@ -415,7 +466,12 @@ def main_assess(argv: list[str] | None = None) -> int:
                 "model_called": False,
                 "target_interaction_performed": False,
                 "authorization_granted": False,
-            }, indent=2))
+            }
+            try:
+                _deliver_lab_result(preview, args.output)
+            except (OSError, ValueError):
+                print(json.dumps({"error": "private lab preview could not be created; no existing file was replaced"}, indent=2))
+                return 2
             return 0
         gateway = (load_gateway(args.gateway_config) if args.gateway_config
                    else scripted_demo_gateway(tuple(endpoints)))
@@ -433,7 +489,16 @@ def main_assess(argv: list[str] | None = None) -> int:
             # A failed review never hides the gated assessment result.
             result["review_skipped"] = str(exc)
             exit_code = 2
-    print(json.dumps(result, indent=2))
+    if exit_code != 0 and args.output:
+        # Never persist a partial/failed review as a successful completed
+        # evidence source. It can still be inspected in original stdout form.
+        print(json.dumps({"error": "lab review did not complete; private output was not created"}, indent=2))
+        return exit_code
+    try:
+        _deliver_lab_result(result, args.output)
+    except (OSError, ValueError):
+        print(json.dumps({"error": "private lab report could not be created; no existing file was replaced"}, indent=2))
+        return 2
     return exit_code
 
 
