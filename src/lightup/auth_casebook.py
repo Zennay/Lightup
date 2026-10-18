@@ -166,6 +166,8 @@ def _source_snapshot(database: str, *, actor_id: str, client_id: str | None) -> 
             _identity(r["engagement_id"], "stored engagement"): r["n"]
             for r in foreign_rows
         }
+        if sum(foreign_by_engagement.values()) > LIMIT:
+            raise CasebookHold("too many foreign-tenant source conflicts")
 
         reqs = {}
         request_view = []
@@ -175,6 +177,8 @@ def _source_snapshot(database: str, *, actor_id: str, client_id: str | None) -> 
                 raise CasebookHold("conflicting request origin")
             if row["status"] not in ("submitted", "under_review", "approved", "rejected"):
                 raise CasebookHold("unknown request status")
+            if type(row["requested_risk"]) is not int or not 0 <= row["requested_risk"] <= 5:
+                raise CasebookHold("noncanonical stored request risk")
             reqs[rid] = row
             request_view.append({
                 "request_id": rid,
@@ -219,6 +223,8 @@ def _source_snapshot(database: str, *, actor_id: str, client_id: str | None) -> 
                 notice = "HOLD_REQUEST_NOT_APPROVED"
             else:
                 notice = "REQUEST_LINK_DECLARED_NOT_VERIFIED"
+            if type(row["max_risk"]) is not int or not 0 <= row["max_risk"] <= 5:
+                raise CasebookHold("noncanonical stored grant risk")
             grant_view.append({
                 "grant_id": gid, "engagement_id": eid if eid in engs else None,
                 "approved_request_id": binding, "request_link_observation": notice,
@@ -234,6 +240,8 @@ def _source_snapshot(database: str, *, actor_id: str, client_id: str | None) -> 
                 raise CasebookHold("duplicate risk approval")
             seen_risks.add(aid)
             eid = _identity(_value(row, "engagement_id"), "risk engagement")
+            if type(row["requested_risk"]) is not int or not 0 <= row["requested_risk"] <= 5:
+                raise CasebookHold("noncanonical stored risk decision")
             risk_view.append({
                 "approval_id": aid, "engagement_id": eid if eid in engs else None,
                 "status": _value(row, "status", 80),
