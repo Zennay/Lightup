@@ -253,7 +253,7 @@ def main(argv=None) -> int:
                 except OSError:
                     pass
             raise
-        print("HOLD: private human source-refresh proposal, 
+        print("HOLD: private human source-refresh proposal, "
               + ", ".join(f"{k}={v}" for k, v in stats.items())
               + "; separately review proposed entries inside the new offline board. "
                 "No original-source or consent writes.")
