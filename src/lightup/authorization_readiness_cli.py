@@ -38,8 +38,8 @@ AUTHORIZATION_FALSE = {
 }
 
 
-def _rows(con: sqlite3.Connection, sql: str):
-    rows = con.execute(sql + " LIMIT ?", (MAX_ROWS + 1,)).fetchall()
+def _rows(con: sqlite3.Connection, sql: str, params: tuple = ()):
+    rows = con.execute(sql + " LIMIT ?", (*params, MAX_ROWS + 1)).fetchall()
     if len(rows) > MAX_ROWS:
         raise ValueError("review limit exceeded; use a smaller offline snapshot")
     return rows
@@ -142,41 +142,79 @@ def _utc_window(grant: sqlite3.Row) -> str:
 
 def _read_report(database: Path, *, client_id: str | None = None,
                  engagement_id: str | None = None) -> dict:
-    """Use one read-only SQLite transaction for an internally consistent view."""
+    """Read one operator-selected scope inside one bounded, read-only transaction.
+
+    SQL-level selection avoids reading all other tenants before post-filtering,
+    while grant selection follows the owning engagement rather than the duplicated
+    (potentially corrupt) authorization_grants.client_id.
+    """
     uri = database.resolve(strict=True).as_uri() + "?mode=ro"
     with closing(sqlite3.connect(uri, uri=True, timeout=4)) as con:
         con.row_factory = sqlite3.Row
         con.execute("PRAGMA query_only=ON")
         con.execute("BEGIN")
-        clients = _rows(con, "SELECT client_id,name FROM clients ORDER BY name")
-        users = _rows(con, "SELECT user_id,role,client_id FROM users ORDER BY user_id")
-        engagements = _rows(con, "SELECT engagement_id,client_id,name,status FROM engagements ORDER BY created_at")
-        requests = _rows(con, "SELECT request_id,client_id,requested_assets_json,requested_mode,requested_risk,status,requested_by,decided_by,decided_at FROM assessment_requests ORDER BY created_at")
-        grants = _rows(con, "SELECT grant_id,client_id,engagement_id,assets_json,max_risk,valid_from,valid_until,created_at FROM authorization_grants ORDER BY created_at")
+        if engagement_id is not None:
+            selected = con.execute(
+                "SELECT client_id FROM engagements WHERE engagement_id=?",
+                (engagement_id,),
+            ).fetchone()
+            if selected is None:
+                raise ValueError("selected engagement missing")
+            if client_id is not None and selected["client_id"] != client_id:
+                raise ValueError("engagement does not belong to selected client")
+            client_id = selected["client_id"]
+        if client_id is not None:
+            clients = _rows(con, "SELECT client_id,name FROM clients WHERE client_id=? ORDER BY name", (client_id,))
+            if len(clients) != 1:
+                raise ValueError("selected client missing")
+            if engagement_id is not None:
+                engagements = _rows(
+                    con, "SELECT engagement_id,client_id,name,status FROM engagements "
+                         "WHERE client_id=? AND engagement_id=? ORDER BY created_at",
+                    (client_id, engagement_id),
+                )
+                grants = _rows(
+                    con, "SELECT grant_id,client_id,engagement_id,assets_json,max_risk,"
+                         "valid_from,valid_until,created_at FROM authorization_grants "
+                         "WHERE engagement_id=? ORDER BY created_at",
+                    (engagement_id,),
+                )
+            else:
+                engagements = _rows(
+                    con, "SELECT engagement_id,client_id,name,status FROM engagements "
+                         "WHERE client_id=? ORDER BY created_at", (client_id,),
+                )
+                grants = _rows(
+                    con, "SELECT g.grant_id,g.client_id,g.engagement_id,g.assets_json,g.max_risk,"
+                         "g.valid_from,g.valid_until,g.created_at FROM authorization_grants AS g "
+                         "JOIN engagements AS e ON e.engagement_id=g.engagement_id "
+                         "WHERE e.client_id=? ORDER BY g.created_at", (client_id,),
+                )
+            requests = _rows(
+                con, "SELECT request_id,client_id,requested_assets_json,requested_mode,"
+                     "requested_risk,status,requested_by,decided_by,decided_at "
+                     "FROM assessment_requests WHERE client_id=? ORDER BY created_at",
+                (client_id,),
+            )
+            users = _rows(
+                con, "SELECT user_id,role,client_id FROM users WHERE user_id IN "
+                     "(SELECT requested_by FROM assessment_requests WHERE client_id=? "
+                     "UNION SELECT decided_by FROM assessment_requests WHERE client_id=?) "
+                     "ORDER BY user_id", (client_id, client_id),
+            )
+        else:
+            clients = _rows(con, "SELECT client_id,name FROM clients ORDER BY name")
+            engagements = _rows(
+                con, "SELECT engagement_id,client_id,name,status FROM engagements ORDER BY created_at")
+            requests = _rows(
+                con, "SELECT request_id,client_id,requested_assets_json,requested_mode,"
+                     "requested_risk,status,requested_by,decided_by,decided_at "
+                     "FROM assessment_requests ORDER BY created_at")
+            grants = _rows(
+                con, "SELECT grant_id,client_id,engagement_id,assets_json,max_risk,"
+                     "valid_from,valid_until,created_at FROM authorization_grants ORDER BY created_at")
+            users = _rows(con, "SELECT user_id,role,client_id FROM users ORDER BY user_id")
         con.rollback()
-
-    # Limit private exports to the one explicitly selected operator tenant or job.
-    # Filter by the engagement owner, NOT the duplicated grant.client_id,
-    # otherwise corrupt cross-tenant grant rows would be invisibly excluded.
-    all_engagements = engagements
-    if engagement_id is not None:
-        selected = [e for e in all_engagements if e["engagement_id"] == engagement_id]
-        if len(selected) != 1:
-            raise ValueError("selected engagement missing")
-        if client_id is not None and selected[0]["client_id"] != client_id:
-            raise ValueError("engagement does not belong to selected client")
-        client_id = selected[0]["client_id"]
-    if client_id is not None:
-        if not any(c["client_id"] == client_id for c in clients):
-            raise ValueError("selected client missing")
-        clients = [c for c in clients if c["client_id"] == client_id]
-        engagements = [e for e in engagements if e["client_id"] == client_id]
-        requests = [r for r in requests if r["client_id"] == client_id]
-    if engagement_id is not None:
-        engagements = [e for e in engagements if e["engagement_id"] == engagement_id]
-    included_engagement_ids = {e["engagement_id"] for e in engagements}
-    if client_id is not None:
-        grants = [g for g in grants if g["engagement_id"] in included_engagement_ids]
 
     by_client = {c["client_id"]: c["name"] for c in clients}
     users_by_id = {u["user_id"]: u for u in users}
