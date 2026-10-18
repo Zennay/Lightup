@@ -12,7 +12,7 @@ const STAGES=[
 ];
 const STATUSES=['todo','waiting','prepared'];
 const $=id=>document.getElementById(id);
-let entries=[], active=null, dirty=false, editEpoch=0, bulkPlan=null, packetDraft=null, bulkUndo=null;
+let entries=[], active=null, dirty=false, editEpoch=0, bulkPlan=null, packetDraft=null, bulkUndo=null, mergePlan=null;
 const flags=()=>({authenticated:false,client_consent:false,operator_consent:false,authorization:false,risk_approved:false,grant:false,revocation_checked:false,execution:false,scan:false,release:false});
 const fresh=()=>Object.fromEntries(STAGES.map(([id])=>[id,{status:'todo',owner:'',due:'',next_action:''}]));
 function notice(msg){$('message').textContent=msg;}
@@ -155,7 +155,10 @@ function clearPacketPreview(message='Source or coordination data changed. Create
  packetDraft=null;$('packetDownload').disabled=true;$('packetStatus').textContent=message;
  $('packetText').textContent='No prepared packet.';
 }
-function setDirty(){dirty=true;editEpoch++;bulkUndo=null;$('bulkUndo').disabled=true;clearPacketPreview();clearBulkPreview();$('save').disabled=!entries.length;$('csv').disabled=!entries.length;$('print').disabled=!entries.length;$('todoExport').disabled=!entries.length;}
+function clearMergePreview(message='Merge preview is stale; select the workspace file again.'){
+ mergePlan=null;$('mergeApply').disabled=true;$('mergeStatus').textContent=message;
+}
+function setDirty(){dirty=true;editEpoch++;clearMergePreview();bulkUndo=null;$('bulkUndo').disabled=true;clearPacketPreview();clearBulkPreview();$('save').disabled=!entries.length;$('csv').disabled=!entries.length;$('print').disabled=!entries.length;$('todoExport').disabled=!entries.length;}
 function make(tag,txt,cls){const el=document.createElement(tag);if(txt!==undefined)el.textContent=txt;if(cls)el.className=cls;return el;}
 function brief(){
  const lines=['LIGHTUP / HUMAN SCOPE COORDINATION — NON-AUTHORIZING','State: REVIEW_ONLY · DRAFT-HOLD',
@@ -587,19 +590,70 @@ $('sourceUpload').addEventListener('change',async event=>{
   active=incoming[0].digest;setDirty();render();notice('Loaded '+incoming.length+' local source file(s). Every task remains non-authorizing.');
  }catch(e){notice('Import HOLD: '+e.message+' Existing board preserved.');}
 });
+async function readPrivateWorkspace(file){
+ if(!file||!file.size||file.size>MAX_WORKSPACE)throw Error('Workspace file must be 1–262144 bytes.');
+ const {text}=await readSourceBytes(file);
+ const parsed=parseJSON(text);
+ if(Object.keys(parsed).some(k=>!['kind','schema_version','disposition','security','exported_at_utc','records','notice'].includes(k)))throw Error('Unknown or authority-like workspace fields.');
+ if(parsed.kind!=='lightup.scope_readiness_workspace'||parsed.schema_version!==1||parsed.disposition!=='REVIEW_ONLY'||
+    !allowedFlags(parsed.security)||!Array.isArray(parsed.records)||parsed.records.length>MAX_RECORDS)throw Error('Unsupported or unsafe workspace schema.');
+ const next=parsed.records.map(r=>cleanRecord(r,{restored:true}));
+ if(next.some(r=>!r)||new Set(next.map(r=>r.source_sha256)).size!==next.length)throw Error('Invalid, duplicated or malformed source-bound record.');
+ return next;
+}
+function mergeAnalysis(incoming){
+ const original=new Map(entries.map(r=>[r.source_sha256,r]));
+ const newRecords=[],conflicts=[];let identical=0;
+ for(const row of incoming){
+  const existing=original.get(row.source_sha256);
+  if(!existing){newRecords.push(row);continue;}
+  const current=cleanRecord(existing);
+  if(!current||JSON.stringify(current)!==JSON.stringify(row))conflicts.push(row.source_sha256.slice(0,16));
+  else identical++;
+ }
+ if(entries.length+newRecords.length>MAX_RECORDS)throw Error('Merged register exceeds 20 distinct source revisions.');
+ return {newRecords,conflicts,identical};
+}
+$('mergeDiscard').addEventListener('click',()=>clearMergePreview('Merge preview discarded. Current workspace unchanged.'));
+$('mergeInput').addEventListener('change',async event=>{
+ const file=event.target.files[0];event.target.value='';clearMergePreview();
+ if(!file)return;
+ try{
+  const incoming=await readPrivateWorkspace(file);
+  const summary=mergeAnalysis(incoming);
+  if(summary.conflicts.length){
+   $('mergeStatus').textContent='Merge HOLD: '+summary.conflicts.length+
+    ' same-source task conflicts (SHA prefixes '+summary.conflicts.join(', ')+'). '+
+    'No records changed. Manually reconcile task values in private files; never silently override either version.';
+   return;
+  }
+  if(!summary.newRecords.length){$('mergeStatus').textContent='Nothing new to merge. '+summary.identical+' source record(s) already identical.';return;}
+  mergePlan={epoch:editEpoch,incoming};
+  $('mergeApply').disabled=false;
+  $('mergeStatus').textContent='PREVIEW ONLY: add '+summary.newRecords.length+' new source-unbound draft(s), '+
+   summary.identical+' already identical, no conflicts. Existing assignments will never be overwritten.';
+ }catch(e){$('mergeStatus').textContent='Merge HOLD: '+e.message+' Current workspace unchanged.';}
+});
+$('mergeApply').addEventListener('click',()=>{
+ if(!mergePlan||mergePlan.epoch!==editEpoch){clearMergePreview();return;}
+ try{
+  const summary=mergeAnalysis(mergePlan.incoming);
+  if(summary.conflicts.length||!summary.newRecords.length)throw Error('Merge changed; preview again.');
+  if(!confirm('Add '+summary.newRecords.length+' private draft register(s) as SOURCE-UNBOUND? '+
+   'Existing records, source attachments, coordinator notes, paperwork status and all authority flags remain unchanged.'))return;
+  entries=[...entries,...summary.newRecords];
+  if(!active)active=summary.newRecords[0].source_sha256;
+  const count=summary.newRecords.length;
+  setDirty();render();
+  $('mergeStatus').textContent='Merged '+count+' review-only records. New sources remain UNBOUND pending exact original-file reattachment.';
+ }catch(e){clearMergePreview('Merge HOLD: '+e.message);}
+});
 $('restoreInput').addEventListener('change',async event=>{
  const file=event.target.files[0];event.target.value='';if(!file)return;
  try {
-  if(!file.size||file.size>MAX_WORKSPACE)throw Error('Workspace file must be 1–262144 bytes.');
-  const {text}=await readSourceBytes(file);
-  const parsed=parseJSON(text);
-  if(Object.keys(parsed).some(k=>!['kind','schema_version','disposition','security','exported_at_utc','records','notice'].includes(k)))throw Error('Unknown or authority-like workspace fields.');
-  if(parsed.kind!=='lightup.scope_readiness_workspace'||parsed.schema_version!==1||parsed.disposition!=='REVIEW_ONLY'||
-     !allowedFlags(parsed.security)||!Array.isArray(parsed.records)||parsed.records.length>MAX_RECORDS)throw Error('Unsupported or unsafe workspace schema.');
-  const next=parsed.records.map(r=>cleanRecord(r,{restored:true}));
-  if(next.some(r=>!r)||new Set(next.map(r=>r.source_sha256)).size!==next.length)throw Error('Invalid, duplicated or malformed source-bound record.');
+  const next=await readPrivateWorkspace(file);
   if(entries.length&&!confirm('Replace your current in-memory board? Save it first if needed.'))return;
-  entries=next;active=entries[0]?.source_sha256||null;dirty=false;editEpoch++;bulkUndo=null;$('bulkUndo').disabled=true;clearBulkPreview();clearPacketPreview();render();
+  entries=next;active=entries[0]?.source_sha256||null;dirty=false;editEpoch++;clearMergePreview();bulkUndo=null;$('bulkUndo').disabled=true;clearBulkPreview();clearPacketPreview();render();
   notice('Restored tracking only. Studio source files deliberately remain UNBOUND until exact SHA-256 re-attachment. ALL authorization flags false.');
  }catch(e){notice('Restore HOLD: '+e.message+' Existing board unchanged.');}
 });
@@ -630,7 +684,7 @@ $('csv').addEventListener('click',()=>{
 $('print').addEventListener('click',()=>{if(entries.length)window.print();});
 $('reset').addEventListener('click',()=>{
  if(entries.length&&!confirm('Clear all in-memory coordination work? Save it first if needed.'))return;
- entries=[];active=null;dirty=false;editEpoch++;bulkUndo=null;$('bulkUndo').disabled=true;clearBulkPreview();clearPacketPreview();$('sourceUpload').value='';$('restoreInput').value='';render();notice('Memory cleared. No source records changed.');
+ entries=[];active=null;dirty=false;editEpoch++;clearMergePreview();bulkUndo=null;$('bulkUndo').disabled=true;clearBulkPreview();clearPacketPreview();$('sourceUpload').value='';$('restoreInput').value='';render();notice('Memory cleared. No source records changed.');
 });
 window.addEventListener('beforeunload',event=>{if(dirty&&entries.length){event.preventDefault();event.returnValue='';}});
 render();
