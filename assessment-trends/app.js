@@ -1267,12 +1267,58 @@
     "unreviewed","discussing","awaiting-independent-review",
     "followup-proposed","discussion-recorded"
   ]);
+  function privateViewState() {
+    return {
+      selected_metric:selected,
+      cross_a:crossA+1,cross_b:crossB+1,cross_metric:crossMetric,
+      adjacent_second:pairFocus+1,
+      case_ordinal:selectedCase+1,
+      revision_focus:revisionFocus+1,
+      case_filter:$("case-filter").value,
+      case_sort:$("case-sort").value,
+      agenda_filter:$("agenda-filter").value,
+      source_aliases:sourceMeta.map(x=>x.alias),
+      axis_enabled:AXIS_IDS.map(([id])=>$(""+id).checked)
+    };
+  }
+  function canonicalPrivateView(view) {
+    const keys=["selected_metric","cross_a","cross_b","cross_metric",
+      "adjacent_second","case_ordinal","revision_focus","case_filter",
+      "case_sort","agenda_filter","source_aliases","axis_enabled"];
+    REQUIRE(exact(view,keys) &&
+      NAMES.includes(view.selected_metric) &&
+      NAMES.includes(view.cross_metric) &&
+      Number.isSafeInteger(view.cross_a) &&
+      Number.isSafeInteger(view.cross_b) &&
+      view.cross_a>=1 && view.cross_a<=revisions.length &&
+      view.cross_b>=1 && view.cross_b<=revisions.length &&
+      view.cross_a!==view.cross_b &&
+      Number.isSafeInteger(view.adjacent_second) &&
+      view.adjacent_second>=2 && view.adjacent_second<=revisions.length &&
+      Number.isSafeInteger(view.case_ordinal) &&
+      view.case_ordinal>=1 && view.case_ordinal<=revisions[0].cases.size &&
+      Number.isSafeInteger(view.revision_focus) &&
+      view.revision_focus>=1 && view.revision_focus<=revisions.length &&
+      ["all","persistent","emerged","recovered","changed","critical",
+        "high","worsening","pending"].includes(view.case_filter) &&
+      ["priority","ordinal","last"].includes(view.case_sort) &&
+      ["all","dated","undated","pending","critical"].includes(view.agenda_filter) &&
+      Array.isArray(view.source_aliases) &&
+      view.source_aliases.length===revisions.length &&
+      view.source_aliases.every(x=>typeof x==="string" &&
+        x.length<=40 && /^[a-zA-Z0-9 _.-]*$/.test(x)) &&
+      Array.isArray(view.axis_enabled) &&
+      view.axis_enabled.length===AXIS_IDS.length &&
+      view.axis_enabled.every(x=>typeof x==="boolean"));
+    return view;
+  }
   function privateDraft() {
     REQUIRE(revisions.length>=3 && sourceHashes.length===revisions.length &&
       sourceHashes.every(x=>typeof x==="string" && /^[a-f0-9]{64}$/.test(x)));
-    return {format:"lightup.assessment_trends.private_draft",version:3,
+    return {format:"lightup.assessment_trends.private_draft",version:4,
       status:"DRAFT_ONLY",source_authenticated:false,
       source_sha256:sourceHashes.slice(),
+      view:privateViewState(),
       discussion:actionItems().filter(x=>x.stage!=="unreviewed").map(x=>({
         metric:x.metric,stage:x.stage
       })),
@@ -1291,12 +1337,15 @@
     REQUIRE(bytes.byteLength===file.size);
     const decoded=new TextDecoder("utf-8",{fatal:true}).decode(bytes);
     const doc=strictJSON(decoded);
-    const isV1=doc && doc.version===1,isV3=doc && doc.version===3;
+    const isV1=doc && doc.version===1,
+      hasPlan=doc && (doc.version===3||doc.version===4),
+      hasView=doc && doc.version===4;
     const keys=["format","version","status","source_authenticated",
-      "source_sha256","discussion",...(isV1?[]:["case_review"]),...AUTH];
+      "source_sha256","discussion",...(isV1?[]:["case_review"]),
+      ...(hasView?["view"]:[]),...AUTH];
     REQUIRE(exact(doc,keys) &&
       doc.format==="lightup.assessment_trends.private_draft" &&
-      (doc.version===1||doc.version===2||doc.version===3) && doc.status==="DRAFT_ONLY" &&
+      [1,2,3,4].includes(doc.version) && doc.status==="DRAFT_ONLY" &&
       doc.source_authenticated===false && AUTH.every(k=>doc[k]===false) &&
       Array.isArray(doc.source_sha256) &&
       doc.source_sha256.length===sourceHashes.length &&
@@ -1317,23 +1366,35 @@
         doc.case_review.length<=revisions[0].cases.size);
       const ids=ordinalCaseIds(),seen=new Set();
       for(const row of doc.case_review) {
-        REQUIRE(exact(row,isV3?["ordinal","stage","route","date"]:["ordinal","stage"]) &&
+        REQUIRE(exact(row,hasPlan?["ordinal","stage","route","date"]:["ordinal","stage"]) &&
           Number.isSafeInteger(row.ordinal) &&
           row.ordinal>=1 && row.ordinal<=ids.length &&
           CASE_STAGES.has(row.stage) &&
-          (!isV3||(CASE_ROUTES.has(row.route)&&validDiscussionDate(row.date))) &&
+          (!hasPlan||(CASE_ROUTES.has(row.route)&&validDiscussionDate(row.date))) &&
           !seen.has(row.ordinal));
         seen.add(row.ordinal);
         nextCases.set(ids[row.ordinal-1],row.stage);
-        if(isV3)nextPlans.set(ids[row.ordinal-1],
+        if(hasPlan)nextPlans.set(ids[row.ordinal-1],
           {route:row.route,date:row.date});
       }
     }
+    const view=hasView?canonicalPrivateView(doc.view):null;
     discussionStages=next;
     caseStages=nextCases;
     casePlans=nextPlans;batchUndo=null;
     $("batch-undo").disabled=true;
-    renderActions();renderCaseInspector();renderCaseRows();renderAgenda();
+    if(view) {
+      selected=view.selected_metric;
+      crossA=view.cross_a-1;crossB=view.cross_b-1;
+      crossMetric=view.cross_metric;pairFocus=view.adjacent_second-1;
+      selectedCase=view.case_ordinal-1;revisionFocus=view.revision_focus-1;
+      $("case-filter").value=view.case_filter;
+      $("case-sort").value=view.case_sort;
+      $("agenda-filter").value=view.agenda_filter;
+      sourceMeta.forEach((meta,i)=>{meta.alias=view.source_aliases[i];});
+      AXIS_IDS.forEach(([id],i)=>{$(id).checked=view.axis_enabled[i];});
+    }
+    render();
   }
   $("save-draft").addEventListener("click",()=>{
     try {
@@ -1347,7 +1408,7 @@
   $("draft-file").addEventListener("change",async event=>{
     try {
       await restoreDraft(event.target.files[0]);
-      $("draft-state").textContent="Private discussion stages restored against exact reopened source bytes and current displayed order (not authenticated origin).";
+      $("draft-state").textContent="Private human review and (for v4 concepts) workspace view restored against exact reopened source bytes and user-selected order; provenance is not authenticated.";
     } catch (_) {
       $("draft-state").textContent="Draft HOLD: incompatible source bytes/order, duplicate or malformed fields. Existing discussion stages were preserved.";
     } finally {
