@@ -206,3 +206,15 @@ from misleading reviewers about original authority flags, source metrics or
 previously saved human annotations. The source CLI remains the final strict
 original validator. The private single-file browser package has no extra
 dependencies and its CSP hashes are updated with the source.
+
+### Complete browser handoff from the direct cohort command
+
+The direct from_cohorts CLI now additionally copies the exact bundled
+single-file offline Mapping Studio as PREFIX-mapping-studio.html in the private
+0700 output folder (0600 exclusive publication, no symlink source). Operators
+can open it locally directly beside PREFIX-canonical-comparison.json. This
+completes the actual native comparator -> private human Studio setup without a
+second checkout or a manually constructed report. Original separately exported
+client findings are still selected locally, never embedded into the HTML or
+uploaded to a server. The optional original review-room ZIP remains separate
+and does not contain either original source file.

@@ -29,6 +29,8 @@ from packet import create_room
 from lightup_review import compare as original_compare
 
 DOC_SUFFIX = "-canonical-comparison.json"
+STUDIO_SUFFIX = "-mapping-studio.html"
+STUDIO_BOUND = 131072
 REPORT_SUFFIXES = (
     "-private.html", "-links.json", "-aggregate.json",
     "-private-agenda.csv",
@@ -57,6 +59,7 @@ def destination_set(folder, prefix, include_room):
     extras = ("-private-room.zip",) if include_room else ()
     paths = [folder / (prefix + DOC_SUFFIX)]
     paths += [folder / (prefix + suffix) for suffix in REPORT_SUFFIXES + extras]
+    paths += [folder / (prefix + STUDIO_SUFFIX)]
     fail_if(any(os.path.lexists(path) for path in paths),
             "one or more private outputs already exist; no replacements")
     return paths
@@ -70,6 +73,11 @@ def generate(args):
     optional_links = (
         read_regular(args.links, 262144) if args.links is not None else None
     )
+    # Supply the exact portable authored Studio with this one-command output,
+    # not just a CLI result that requires a separate repository checkout.
+    studio_source = Path(__file__).resolve().parent / "standalone.html"
+    studio_bytes = read_regular(str(studio_source), STUDIO_BOUND)
+    studio_digest = sha256(studio_bytes).digest()
     # The original evaluator must see only regular complete immutable private
     # snapshots; it must never contact assets, run models or claim consent.
     with TemporaryDirectory(prefix=".lightup-remediation-cohort-", dir=folder) as temp:
@@ -105,6 +113,8 @@ def generate(args):
         if optional_links is not None:
             fail_if(read_regular(args.links, 262144) != optional_links,
                     "manual human link source changed before private publication")
+        fail_if(sha256(read_regular(str(studio_source), STUDIO_BOUND)).digest() != studio_digest,
+                "portable offline Studio changed during source admission")
         # Publish the canonical comparator first so the bridge's output
         # hashes remain bound to the actual final private source path.
         # Failures do not overwrite any existing path. Individually completed
@@ -127,8 +137,11 @@ def generate(args):
                     output_dir=str(folder), prefix=args.prefix
                 )) != result:
                     raise Hold("private portable room did not match original report status")
+            fail_if(sha256(read_regular(str(studio_source), STUDIO_BOUND)).digest() != studio_digest,
+                    "portable mapping Studio changed before private publication")
+            publish(folder / (args.prefix + STUDIO_SUFFIX), studio_bytes)
             print("ORIGINAL_COMPLETE_COHORT_TO_REMEDIATION_" + parsed["status"])
-            print("Canonical comparison and exact-source-bound human-only dossier published.")
+            print("Canonical comparison, private human dossier and portable Mapping Studio published.")
             print("Original lab and client sources remain unchanged; no scan or grant.")
             return result
         except Exception:
