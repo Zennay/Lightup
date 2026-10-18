@@ -179,6 +179,7 @@ function draw(){
  $("summary").textContent=all.length+" HUMAN requests · "+answered+" UNVERIFIED replies · "+(all.length-answered)+" unanswered · "+needs+" need changes · "+db.requestPackets.length+" owner packets";
  $("binding").textContent=db.binding?"DECLARED source SHA "+db.binding[1]+" · client "+db.binding[2]+" · engagement "+db.binding[3]:"No source loaded.";
  for(const id of ["download","csv","print","summaryCsv"])$(id).disabled=!all.length;
+ refreshOwnerExportOptions();
  const visible=filteredRows();
  $("count").textContent=visible.length+" rows shown; "+selection.size+" selected. All owner labels and replies remain UNVERIFIED.";
  const shown=new Set(visible.map(x=>x.request.request_id));
@@ -216,6 +217,40 @@ function draw(){
   });
   const note=document.createElement("td");note.append(input);tr.append(note);body.append(tr);
  }
+}
+function refreshOwnerExportOptions(){
+ const select=$("ownerExport"),old=select.value;
+ const aliases=[...new Set(db.requestPackets.map(p=>p.recipient_alias))].sort((a,b)=>a.localeCompare(b));
+ select.replaceChildren(new Option("Select HUMAN owner",""));
+ for(const alias of aliases)select.append(new Option(alias,alias));
+ select.value=aliases.includes(old)?old:"";
+ $("exportOwner").disabled=!select.value;
+}
+function exportOwnerPrivate(){
+ const alias=$("ownerExport").value;
+ if(!db.binding||!alias||!db.requestPackets.some(x=>x.recipient_alias===alias))
+  fail("Choose an existing self-declared HUMAN owner");
+ const matching=allRows().filter(x=>x.packet.recipient_alias===alias);
+ if(!matching.length)fail("No ORIGINAL HUMAN records for this owner");
+ const declared=db.binding;
+ const envelope={kind:"lightup.private_human_owner_review_brief",schema_version:1,
+  disposition:"UNVERIFIED_HUMAN_COORDINATION_ONLY",
+  source_contract:declared[0],source_sha256:declared[1],
+  client_reference:declared[2],engagement_reference:declared[3],
+  recipient_alias:alias,...Object.fromEntries(FLAGS.map(k=>[k,false])),
+  requests:matching.map(x=>({request_id:x.request.request_id,
+    finding_id:x.request.finding_id,request_kind:x.request.request_kind,
+    tentative_human_due:x.request.due_date,original_instructions:x.request.instructions,
+    original_issued_utc:x.packet.issued_utc,
+    unverified_reply_stage:x.reply?x.reply.human_stage:"unanswered",
+    unverified_reply_text:x.reply?x.reply.human_response:"",
+    local_human_triage:x.review.stage,local_human_note:x.review.note}))};
+ if(!confirm("Export "+matching.length+" PRIVATE ORIGINAL HUMAN request/reply records for ONLY self-declared owner '"+alias+"'? Independently verify the actual recipient and confidential handoff channel. This DOES NOT send messages, authenticate identity, verify remediation, authorize testing or work in the original owner reply app."))return;
+ const payload=JSON.stringify(envelope,null,2)+"\n";
+ if(new TextEncoder().encode(payload).length>MAX_SNAPSHOT)
+  fail("Owner-specific PRIVATE handoff exceeds 8 MiB");
+ save("LightUp-PRIVATE-one-owner-human-review.json",payload,"application/json");
+ msg("Saved "+matching.length+" source-bound PRIVATE HUMAN records for ONE owner locally; no delivery or consent inferred.");
 }
 function previewBulk(){
  const originals=allRows().filter(x=>selection.has(x.request.request_id));
@@ -366,7 +401,9 @@ listen("load",intake);
 listen("download",()=>{if(!db.binding)fail("No PRIVATE register loaded");
  if(!confirm("Download PRIVATE owner identities, original request IDs, unverified replies and HUMAN notes? Confirm secure storage."))return;
  save("LightUp-PRIVATE-response-register.json",JSON.stringify(snapshot(),null,2)+"\n","application/json");});
-listen("csv",exportCSV);listen("summaryCsv",exportAnonymous);listen("print",report);
+listen("csv",exportCSV);listen("summaryCsv",exportAnonymous);
+listen("exportOwner",exportOwnerPrivate);
+$("ownerExport").addEventListener("change",()=>{$("exportOwner").disabled=!$("ownerExport").value;});listen("print",report);
 listen("bulkPreview",previewBulk);listen("bulkApply",applyBulk);
 $("selectShown").addEventListener("change",e=>{for(const x of filteredRows()){
  if(e.target.checked)selection.add(x.request.request_id);else selection.delete(x.request.request_id);
