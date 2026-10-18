@@ -20,6 +20,17 @@ function exact(value,fields) {
   Object.keys(value).length===fields.length && fields.every(k=>Object.hasOwn(value,k));
 }
 function check(ok,description){if(!ok)throw Error("Permission Brief HOLD: "+description);}
+function expectedQuestions(source) {
+ const codes=["client_identity","asset_ownership","purpose_limits","client_consent",
+   "operator_independence","enforceable_scope","risk_approval","stop_revocation","mandatory_gates"];
+ if(source.risk===4)codes.push("high_risk");
+ if(source.wantsNetwork===true)codes.push("lab_provenance","network_activity");
+ if(source.excluded.length===0)codes.push("no_exclusions");
+ if(source.hasWindow!==true)codes.push("open_window");
+ if(source.hasSafetyNotes!==true)codes.push("safety_context");
+ codes.push("revision_client","revision_operator");
+ return codes;
+}
 function verify(packet,sourceBySha){
  const fields=["kind","schema_version","disposition","source_kind","source_sha256",
   "client_note_present","operator_note_present","requested_mode","requested_risk",
@@ -43,13 +54,15 @@ function verify(packet,sourceBySha){
  check(typeof packet.notice==="string" && packet.notice.length<=500 &&
    /not verified identity|not verified|not verified|NOT verified/i.test(packet.notice),
    "missing unverified disclaimer");
- check(Array.isArray(packet.questions)&&packet.questions.length>=9&&packet.questions.length<=17,
-   "question count");
+ const expected=expectedQuestions(source);
+ check(Array.isArray(packet.questions)&&packet.questions.length===expected.length,
+   "conditional role question set does not match original Studio draft");
  const seen=new Set(),items=[],roleCounts={client:0,operator:0},roleReplied={client:0,operator:0};
- for(const q of packet.questions) {
+ for(const [index,q] of packet.questions.entries()) {
   check(exact(q,["code","assigned_role","reported_status","next_action"]),"question envelope");
   check(["client","operator"].includes(q.assigned_role) &&
-    QUESTIONS[q.assigned_role].includes(q.code) && !seen.has(q.code),"question role/code duplicated or unfamiliar");
+    QUESTIONS[q.assigned_role].includes(q.code) && q.code===expected[index] && !seen.has(q.code),
+    "question role/order/conditional identity does not match original draft");
   check(STATES.includes(q.reported_status) &&
     q.next_action===NEXT[q.reported_status](q.assigned_role),"question progress or action inconsistent");
   seen.add(q.code);roleCounts[q.assigned_role]++;
@@ -74,15 +87,17 @@ function verify(packet,sourceBySha){
    questions:items,sourceKind:packet.source_kind
  };
 }
-function saved(value){
- if(!exact(value,["clientNoted","operatorNoted","total","needsAttention","questions","sourceKind"]) ||
+function saved(value,source){
+ if(!source || !Array.isArray(source.excluded) ||
+    !exact(value,["clientNoted","operatorNoted","total","needsAttention","questions","sourceKind"]) ||
     value.sourceKind!=="lightup.scope_proposal_draft" ||
     typeof value.clientNoted!=="boolean"||typeof value.operatorNoted!=="boolean" ||
-    !Number.isInteger(value.total)||value.total<9||value.total>17 ||
+    !Number.isInteger(value.total)||value.total!==expectedQuestions(source).length ||
     !Array.isArray(value.questions)||value.questions.length!==value.total)return false;
  const seen=new Set(),counts={client:0,operator:0};
- for(const q of value.questions){
+ for(const [idx,q] of value.questions.entries()){
    if(!exact(q,["code","role","status"])||!QUESTIONS[q.role]?.includes(q.code)||
+      q.code!==expectedQuestions(source)[idx] ||
       !STATES.includes(q.status)||seen.has(q.code))return false;
    seen.add(q.code);if(q.status!=="not_reported")counts[q.role]++;
  }
