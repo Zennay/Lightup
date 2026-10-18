@@ -23,6 +23,8 @@ From a LightUp checkout:
       --email operator@example.com \
       --output /path/to/private-reports/readiness.html
 
+For a tenant-minimized report, add --client-id with the exact existing client ID. Add --engagement-id to further restrict to one job; a specified engagement must belong to the selected client. Tenant-incoherent grants are still checked by the owning engagement ID so bad duplicated grant.client_id fields cannot hide them. A selected client or engagement must exist or the export fails closed.
+
 Use a fresh filename ending in .json for machine-readable output. The password is requested **interactively** through the original authentication layer; passwords cannot be supplied as CLI flags. Only a persisted real operator account may export. Non-interactive and unauthenticated use fails closed.
 
 An output path must not already exist. Created report files use mode 0600 and no-follow flags where available. No browser network request, scripts, target requests or cookies: the HTML is entirely static with restrictive CSP. Each inspected table is bounded to 3,000 rows, and output to 2 MiB; oversized sources HOLD rather than produce misleading partial reviews. Retain files locally, do not serve publicly.
