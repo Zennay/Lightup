@@ -151,6 +151,51 @@
     }
     return {spatial_count:spatial.length,utc_window_count:clock.length};
   }
+  function meetingPairs() {
+    const pairs=[];
+    const effective=records.map(localCoverage);
+    for(let i=0;i<records.length;i++)for(let j=i+1;j<records.length;j++){
+      const a=records[i],b=records[j];
+      const scope_overlap=LightUpScopeNetwork.coverageOverlap(effective[i],effective[j]);
+      const utc_overlap=LightUpPlanningWindow.overlaps(a.source.utcWindow,b.source.utcWindow)===true;
+      if(!scope_overlap&&!utc_overlap) continue;
+      pairs.push({left:a.sha,right:b.sha,scope_overlap,utc_overlap,
+        priority:scope_overlap&&utc_overlap?"combined":scope_overlap?"scope":"schedule"});
+    }
+    const weight={combined:0,scope:1,schedule:2};
+    return pairs.sort((a,b)=>weight[a.priority]-weight[b.priority] ||
+      Math.max(records.find(x=>x.sha===b.left).source.risk,records.find(x=>x.sha===b.right).source.risk)-
+      Math.max(records.find(x=>x.sha===a.left).source.risk,records.find(x=>x.sha===a.right).source.risk));
+  }
+  function renderMeetingAgenda() {
+    const area=$("conflicts"),counts=$("conflictStats");area.replaceChildren();counts.replaceChildren();
+    const pairs=meetingPairs();
+    const count=(caption,n)=>{
+      const m=node("span","metric");m.append(node("strong","",n),node("span","",caption));counts.append(m);
+    };
+    count("Voorstellenparen met overlegpunt",pairs.length);
+    count("Mogelijke scope-overlap",pairs.filter(x=>x.scope_overlap).length);
+    count("UTC-vensteroverlap",pairs.filter(x=>x.utc_overlap).length);
+    if(!pairs.length){area.append(node("p","small","Geen berekende paren. Dit bewijst geen geldige toestemming, veilig netwerk of conflictvrije planning."));return;}
+    for(const p of pairs){
+      const left=records.find(x=>x.sha===p.left),right=records.find(x=>x.sha===p.right);
+      const card=node("article","conflict-card");
+      const title=node("h3","",left.reference+" ↔ "+right.reference);
+      const meta=node("p","small","Bronnen "+p.left.slice(0,12)+"… / "+p.right.slice(0,12)+"… · max. voorgesteld risico "+Math.max(left.source.risk,right.source.risk));
+      const codes=node("div","chips");
+      if(p.scope_overlap)codes.append(node("span","chip alert","Numerieke/literale scope-overlap na uitsluitingen"));
+      if(p.utc_overlap)codes.append(node("span","chip alert","Gelijktijdige voorgestelde UTC-vensters"));
+      card.append(title,meta,codes,node("p","small","Menselijke actie: controleer onafhankelijk eigendom, uitzonderingen, tenant-scheiding, daadwerkelijk gereserveerde tijden en noodstop. Geen claim dat dit dezelfde klant is."));
+      const jump=node("div","actions");
+      for(const r of [left,right]){
+        const btn=node("button","",r.reference+" openen");
+        btn.type="button";btn.addEventListener("click",()=>{
+          active=r.sha;render();$("detail").scrollIntoView({block:"start",behavior:"smooth"});
+        });jump.append(btn);
+      }
+      card.append(jump);area.append(card);
+    }
+  }
   // Explicit human-declared revision lineage. Shared file contents never prove shared client identity.
   function revisionDelta(r) {
     const old=records.find(x=>x.sha===r.replaces);
@@ -242,6 +287,7 @@
     }
     if (!boards.children.length) boards.append(node("p","small","Geen concepten gevonden voor deze selectie."));
     renderDetail();
+    renderMeetingAgenda();
   }
   function renderDetail() {
     const detail=$("detail");detail.replaceChildren();
@@ -338,6 +384,13 @@
   function report() {
     return {kind:"lightup.scope_handoff_review_register",schema_version:1,state:"REVIEW_ONLY_HOLD",authority:authority(),
       notice:"Unverified local human preparation; no authorization, consent, identity or ownership assertion.",
+      review_agenda:meetingPairs().map(p=>({
+        dossier_a:"D"+String(records.findIndex(x=>x.sha===p.left)+1).padStart(2,"0"),
+        dossier_b:"D"+String(records.findIndex(x=>x.sha===p.right)+1).padStart(2,"0"),
+        numeric_or_literal_scope_overlap:p.scope_overlap,
+        proposed_utc_overlap:p.utc_overlap,
+        review_only:true
+      })),
       entries:records.map((r,i)=>({
         dossier:"D"+String(i+1).padStart(2,"0"),source_sha256:r.sha,
         studio_revision_sha256:r.source.studioDigest,
@@ -384,6 +437,12 @@
       "<p>Persoonsgegevens, bestandsnamen, vrije tekst en originele asset-identiteiten zijn niet opgenomen. Deze handoff heeft geen handtekening, actuele geldigheid of onafhankelijk herkomstbewijs.</p>",
       "<p>Conceptdossiers: "+data.entries.length+". De SHA-256 is een byte-identificatie, géén autorisatie- of identiteitshandtekening.</p>"
     ];
+    if(data.review_agenda.length){
+      parts.push("<h2>Gedeelde menselijke review-agenda</h2><table><thead><tr><th>Voorstellen</th><th>Lokale overlapindicatoren</th></tr></thead><tbody>");
+      for(const x of data.review_agenda)parts.push("<tr><td>"+esc(x.dossier_a)+" / "+esc(x.dossier_b)+
+        "</td><td>"+esc([x.numeric_or_literal_scope_overlap?"Netwerk/hostname na exclusies":null,x.proposed_utc_overlap?"UTC-venster":null].filter(Boolean).join("; "))+"</td></tr>");
+      parts.push("</tbody></table><p>Deze paren bewijzen geen gedeeld eigendom, klant, toestemming of geboekt tijdslot; escaleer onafhankelijk.</p>");
+    }
     for(const e of data.entries) {
       parts.push("<article><h2>"+esc(e.dossier)+" · voorgesteld risico "+esc(e.proposed_risk)+"</h2>");
       parts.push("<p>Bronbytes SHA-256: <code>"+esc(e.source_sha256)+"</code><br>Studio semantische revisie SHA-256: <code>"+esc(e.studio_revision_sha256)+"</code><br>Voorgestelde modus: "+esc(e.proposed_mode)+"<br>Inclusies: "+esc(e.asset_count)+", exclusies: "+esc(e.excluded_count)+
