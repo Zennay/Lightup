@@ -130,6 +130,18 @@ el('settings').addEventListener('submit',event=>{
   clearResults();show('Funding forecast held: '+(err instanceof Error?err.message:'Invalid model'),true);
  }
 });
+el('settings').addEventListener('input',()=>{
+ if(forecast){
+  clearResults();
+  show('Cost assumptions changed. Recalculate the current proposal before sharing or exporting.');
+ }
+});
+el('settings').addEventListener('change',()=>{
+ if(forecast){
+  clearResults();
+  show('Cost assumptions changed. Recalculate the current proposal before sharing or exporting.');
+ }
+});
 el('compare').addEventListener('click',renderScenario);
 el('alternative-external').addEventListener('input',()=>{comparison=null;el('scenario').replaceChildren();});
 function download(name,body,mime){
