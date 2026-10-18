@@ -5,6 +5,7 @@ const $=id=>document.getElementById(id);
 const workflow=LightUpCasework.PROGRESS;
 for(const status of workflow){const opt=document.createElement('option');opt.value=status;opt.textContent=status.replaceAll('_',' ');$('workflow').append(opt);}
 let findings=[],cases=[],fingerprint=null,sourceLabel='',edited=false;
+let pendingRefresh=null;
 const byId=()=>new Map(cases.map(c=>[c.finding_id,c]));
 const ids=()=>new Set(findings.map(f=>f.finding_id));
 function inform(message){$('status').textContent=message;}
@@ -107,7 +108,7 @@ async function withCsv(file){
  const hash=await LightUpCasework.digest(source);
  if(findings.length && !window.confirm('Replace current unsaved casework with imported findings?'))return false;
  findings=source;cases=source.map(LightUpCasework.newCase);fingerprint=hash;sourceLabel='LightUp CSV: '+file.name.slice(0,100);
- edited=true;return true;
+ edited=true;pendingRefresh=null;resetRefreshUI();return true;
 }
 async function withPacket(file){
  if(!file||file.size>2097152)throw Error('Saved casework exceeds 2 MiB.');
@@ -116,7 +117,7 @@ async function withPacket(file){
  if(loaded.source_sha256 && (!actual||loaded.source_sha256!==actual))throw Error('Finding source revision does not match saved casework.');
  if(findings.length && !window.confirm('Replace current unsaved casework with this saved draft?'))return false;
  findings=loaded.findings;cases=loaded.cases;fingerprint=actual;sourceLabel='Saved local casework: '+file.name.slice(0,100);
- edited=false;return true;
+ edited=false;pendingRefresh=null;resetRefreshUI();return true;
 }
 for(const [id,load] of [['csvSource',withCsv],['caseworkSource',withPacket]]){
  $(id).addEventListener('change',async event=>{
@@ -128,6 +129,54 @@ for(const [id,load] of [['csvSource',withCsv],['caseworkSource',withPacket]]){
   }catch(err){inform('Import rejected: '+(err.message||'invalid or unsupported file')+'. Current plan unchanged.');}
  });
 }
+
+function resetRefreshUI(){
+ $('refreshReview').replaceChildren();
+ safeText($('refreshReview'),'p','No source refresh pending. Import newer findings CSV to preview a difference without changing current work.');
+ $('sameSource').checked=false;$('applyRefresh').disabled=true;$('refreshSource').value='';
+}
+function showRefresh(){
+ $('refreshReview').replaceChildren();
+ const pending=pendingRefresh;
+ if(!pending){resetRefreshUI();return;}
+ const d=pending.diff;
+ safeText($('refreshReview'),'h3','Proposed source refresh (not yet applied)');
+ safeText($('refreshReview'),'p','New findings: '+d.added.length+' · changed: '+d.changed.length+
+  ' · absent from new export: '+d.missing.length+' · unchanged: '+d.unchanged.length+'.');
+ safeText($('refreshReview'),'p','Only unchanged IDs keep local actions; new/changed findings are reset. Absent IDs leave the current board but remain in your separately saved old draft.');
+ const list=document.createElement('ul');$('refreshReview').append(list);
+ for(const id of d.added.slice(0,50))safeText(list,'li','NEW: '+id);
+ for(const item of d.changed.slice(0,50))safeText(list,'li','CHANGED '+item.finding_id+' · '+item.changed_fields.join(', '));
+ for(const id of d.missing.slice(0,50))safeText(list,'li','ABSENT, NOT VERIFIED FIXED: '+id);
+ if(d.added.length>50||d.changed.length>50||d.missing.length>50)
+  safeText($('refreshReview'),'p','Review preview truncated; save the old draft and compare full source exports outside this non-authorizing tool.');
+ $('applyRefresh').disabled=!$('sameSource').checked;
+}
+$('refreshSource').addEventListener('change',async e=>{
+ const file=e.target.files[0];e.target.value='';
+ if(!file)return;
+ if(!findings.length){inform('Import an existing LightUp source CSV or saved draft before refreshing.');return;}
+ try{
+  if(file.size>LightUpCasework.MAX_BYTES)throw Error('CSV exceeds 1 MiB.');
+  const incoming=LightUpCasework.parseCSV(await file.text());
+  const hash=await LightUpCasework.digest(incoming);
+  const diff=LightUpCasework.compareSource(findings,incoming);
+  pendingRefresh={incoming,hash,diff,label:file.name.slice(0,100)};
+  $('sameSource').checked=false;showRefresh();
+  inform('Review source additions and removals. Export your current casework JSON before applying a refresh.');
+ }catch(err){pendingRefresh=null;resetRefreshUI();inform('Refresh preview rejected: '+(err.message||'invalid source')+'. Current plan unchanged.');}
+});
+$('sameSource').addEventListener('change',()=>{$('applyRefresh').disabled=!(pendingRefresh&&$('sameSource').checked);});
+$('cancelRefresh').addEventListener('click',()=>{pendingRefresh=null;resetRefreshUI();inform('Refresh preview cleared. Existing casework unchanged.');});
+$('applyRefresh').addEventListener('click',()=>{
+ if(!pendingRefresh||!$('sameSource').checked||!findings.length)return;
+ if(!window.confirm('Apply revised source? Changed findings lose old casework assignments and absent findings are removed from the working board. Save your current casework JSON first.'))return;
+ const {findings:newFindings,cases:newCases,change_summary:d}=LightUpCasework.reconcileSource(findings,cases,pendingRefresh.incoming);
+ findings=newFindings;cases=newCases;fingerprint=pendingRefresh.hash;sourceLabel='Refreshed LightUp CSV: '+pendingRefresh.label;
+ edited=true;pendingRefresh=null;resetRefreshUI();render();
+ inform('Source refreshed locally: '+d.added.length+' new, '+d.changed.length+' changed/reset, '+d.missing.length+' absent/not fixed, '+d.unchanged.length+' unchanged assignments kept. Export updated JSON.');
+});
+
 for(const id of ['search','severity','workflow','sort'])$(id).addEventListener(id==='search'?'input':'change',render);
 $('save').addEventListener('click',()=>{
  if(!findings.length)return;
@@ -174,9 +223,9 @@ $('print').addEventListener('click',()=>{if(findings.length)window.print();});
 $('reset').addEventListener('click',()=>{
  if(!findings.length)return;
  if(!window.confirm('Erase all imported findings and unsaved edits from this tab?'))return;
- findings=[];cases=[];fingerprint=null;sourceLabel='';edited=false;
+ findings=[];cases=[];fingerprint=null;sourceLabel='';edited=false;pendingRefresh=null;resetRefreshUI();
  $('search').value='';$('severity').value='';$('workflow').value='';
  inform('Workspace cleared; no browser storage or server request was used.');render();
 });
-render();
+resetRefreshUI();render();
 })();
