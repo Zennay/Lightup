@@ -22,3 +22,11 @@ footer{color:var(--muted);font-size:.88rem;padding-bottom:3rem}
 button:disabled{cursor:not-allowed;opacity:.5}
 #queueCount{color:var(--link);font-weight:650}
 @media print{.queue-controls,#queueCount{display:none!important}}
+
+.embedded-import{margin-top:1.3rem;border-left:4px solid var(--hold)}
+.source-controls{margin:1rem 0;padding:1rem;background:#0f2032;border-radius:10px}
+.source-controls label{margin-top:0}.source-controls select{width:min(100%,480px);margin-top:.5rem}
+textarea{width:100%;max-width:100%;background:#0b1c2d;color:var(--ink);border:1px solid #819eba;
+  font:inherit;border-radius:8px;padding:.9rem;resize:vertical;line-height:1.5}
+textarea:focus-visible{outline:3px solid var(--hold);outline-offset:3px}
+@media print{.source-controls,.embedded-import,textarea,#saveCaseNote,#privateNoteState{display:none!important}}
