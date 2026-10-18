@@ -1,0 +1,17 @@
+# Scope admission + execution authority integrated source candidate
+
+**18 October 2026 — INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD**
+
+## Real combined product behavior
+This branch stacks the original complete scope admission and planner source from independent owner [#1607](https://github.com/Zennay/Lightup/pull/1607) exact pinned head `30d73a50d9a6bef17441a37a609c6516d376287a` onto our earlier authentic client→operator request-bound grant + execution/activation/ToolExecutor source composition [#1615](https://github.com/Zennay/Lightup/pull/1615) head `7cdf44789ea735a1c97b0533a11a8257a357f76c`.
+
+The installed scope policy and CLI default-deny generic private addresses and only admit ordinary RFC1918/ULA private-lab targets on explicitly supplied `--allow-private-lab` (no link-local/special-use privilege). Pure canonical original host/URL/CIDR admission denies ambiguous/encoded/userinfo sources before a positive scope decision. Explicit public authorization continues to require current real owner/reference and exact aware datetime identities. Ordinary public plans must not offer LAB_ONLY tools, and a model-generated LAB_ACTIVE host/url must equal the already admitted LabScenario asset exactly. Model plan JSON has bounded size, duplicate-key and nonfinite rejection.
+
+The same integrated source now contains original persisted request→approved grant transaction and operator selector (#1570/#1614), hardened request/grant ExecutionPolicy (#1601), stable target/permit issuance (#1598), canonical ToolRegistry/ToolExecutor admission (#1599), pre-auth Cookie ingress, read-only operator portal, safe 400 errors and guarded tenant CSV. These are defense-in-depth components, NOT proof of action-time durable authorization or a grant to scan.
+
+## Ownership, source verification and release
+Original [#1607](https://github.com/Zennay/Lightup/pull/1607) branch and its owner tests/docs are **unmodified**. Changed product source in this integration branch relative to parent: `src/lightup/scope.py`, `src/lightup/cli.py`, `src/lightup/orchestrator.py`, `src/lightup/ai/planner.py`, plus this documentation. This does **not** absorb the concurrently active separate assessment-batch CLI [#1610](https://github.com/Zennay/Lightup/pull/1610); its original owner must coordinate eventual source composition rather than silently replacing it.
+
+Connected original zSSH VPS `vps-bb300bba`, dedicated isolated checkout exact source head `2971e3811dc644c63b153b8dbbe9e1490f356b96`: Python compile of all nine involved sources and imports for original ScopePolicy/ExecutionPolicy/ActivationGate/ToolExecutor/planner module succeeded, git tracked tree clean. No QA or regression tests written, edited or manually started. No model execution, target, scan, grant, handler or deployment was attempted.
+
+**HOLD:** original CI on exact release SHA must pass independently in hosted Python 3.11/3.14 **and** permanent named VPS CI; dated #301 and old RED contracts require source-owner alignment, never bypass. Independent scope/domain/planner/privacy/security owner reviews; separate genuine authenticated client and operator consent, at-use revocation; and explicit HUMAN GO are all mandatory before main merge or production deployment.
