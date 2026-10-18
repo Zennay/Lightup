@@ -530,6 +530,28 @@ def _render_html(report: dict) -> str:
     )
 
 
+
+def _pseudonymize_labels(report: dict) -> None:
+    """Replace display labels without changing any source decisions or case flags.
+
+    Aliases are report-local only; do not claim cross-snapshot stable identities.
+    Manually authored operator notes can still contain personal/sensitive data.
+    """
+    labels: dict[str, str] = {}
+    for index, entry in enumerate(report["engagements"], 1):
+        real_client = entry["client"]
+        if real_client not in labels:
+            labels[real_client] = "Client " + str(len(labels) + 1).zfill(3)
+        entry["client"] = labels[real_client]
+        entry["engagement"] = "Engagement " + str(index).zfill(3)
+    report["labels_redacted"] = True
+    report["limitations"].append(
+        "Display client/engagement labels are report-local pseudonyms; "
+        "counts and findings remain from the original authenticated tenant scope. "
+        "Operator-entered notes may still contain sensitive information."
+    )
+
+
 def _csv_cell(value) -> str:
     """Neutralize sheet formulas and embedded record boundaries in local CSV export."""
     value = str(value)
@@ -591,6 +613,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--email", required=True, help="operator account")
     parser.add_argument("--client-id", help="limit sensitive export to one exact existing client")
     parser.add_argument("--engagement-id", help="limit export to one engagement, optionally with --client-id")
+    parser.add_argument("--redact-labels", action="store_true", help="replace client/engagement names with report-local aliases")
     parser.add_argument("--output", required=True, help="new private .html, .json or .csv file; never overwritten")
     args = parser.parse_args(argv)
     path = Path(args.output)
@@ -613,6 +636,8 @@ def main(argv: list[str] | None = None) -> int:
         ctx = store.context_for_user(user.user_id)
         ctx.require_operator("authorization readiness review")
         report = _read_report(db, client_id=args.client_id, engagement_id=args.engagement_id)
+        if args.redact_labels:
+            _pseudonymize_labels(report)
         extension = path.suffix.lower()
         if extension == ".html":
             text = _render_html(report)
