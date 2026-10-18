@@ -450,6 +450,7 @@ def _interactive_workspace(report: dict, nonce: str) -> str:
         "review_queue": report["review_queue"],
     }
     source = Path(__file__).with_name("authorization_casework.js").read_text("utf-8")
+    compare_source = Path(__file__).with_name("authorization_snapshot_compare.js").read_text("utf-8")
     marker = "LIGHTUP_SNAPSHOT_B64_PLACEHOLDER"
     if source.count(marker) != 1:
         raise ValueError("offline casework asset missing its bounded snapshot placeholder")
@@ -515,6 +516,29 @@ def _interactive_workspace(report: dict, nonce: str) -> str:
         This report is an unsigned, sensitive private offline copy. No network, storage,
         service, grant, client consent, execution or automatic synchronization.
       </p>
+    </section>
+    <section class="workspace" aria-label="Authorization snapshot comparison">
+      <h2>Source change review</h2>
+      <p class="sub">Compare two genuine operator-exported JSON snapshots of exactly the
+      same client/engagement selection. Detect newly recorded, changed, unchanged
+      and no-longer-present rows without treating any disappearance as remediation
+      or grant authorization. The earlier report is untrusted and unsigned.</p>
+      <div class="workspaceExports">
+        <label class="importLabel">Prior private LightUp JSON report (max 2 MiB)
+          <input id="snapshotCompareImport" type="file" accept=".json,application/json"></label>
+        <label>Show<select id="snapshotCompareFilter">
+          <option value="all">All changes</option><option value="new">New</option>
+          <option value="changed">Changed</option><option value="absent">Absent (NOT fixed)</option>
+          <option value="unchanged">Unchanged</option>
+        </select></label>
+        <button id="snapshotCompareExport" type="button">Export change handoff Markdown</button>
+      </div>
+      <p class="muted" id="snapshotCompareTotals">No previous report selected.</p>
+      <p class="muted" id="snapshotCompareFeedback" aria-live="polite">
+        Prior source copies cannot prove valid consent, grants, historical identity
+        or resolution. No network or database writes.
+      </p>
+      <div id="snapshotCompareRows" class="changeList"></div>
     </section>'''
     css = r'''
     .workspace{border-top:2px solid #375067;margin-top:32px;padding:24px 0}
@@ -537,11 +561,16 @@ def _interactive_workspace(report: dict, nonce: str) -> str:
     .workspaceExports button,.workspaceBulk button,.importLabel{background:#244254;color:#e8fafa;cursor:pointer;
       border:1px solid #70b9ac;border-radius:8px;padding:11px 15px;font-weight:750}
     .workspaceBulk label{flex:1;min-width:260px}
+    .changeList{display:grid;gap:10px;margin-top:18px;max-height:720px;overflow:auto}
+    .changeCard{border:1px solid #465d7c;background:#14253c;border-radius:9px;padding:15px;overflow-wrap:anywhere}
+    .changeCard p{margin:7px 0;color:#bfd2e3}
+    .changeCard strong{color:#f1f8ff}
     .importLabel input{max-width:310px;font-size:.82rem}
     @media(max-width:800px){.workspaceGrid{grid-template-columns:1fr}.editorGrid{grid-template-columns:1fr}}
     @media print{.workspace{display:none}}
     '''
     return (ui + '<style nonce="' + nonce + '">' + css + '</style>'
+            + '<script nonce="' + nonce + '">' + compare_source + '</script>'
             + '<script nonce="' + nonce + '">' + source + '</script>')
 
 
