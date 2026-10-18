@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import argparse
 import getpass
+import hmac
 import json
 from pathlib import Path
 import sys
@@ -119,6 +120,7 @@ def main(argv: list[str] | None = None) -> int:
         command.add_argument("--risk", type=int, choices=(1, 2, 3, 4))
         command.add_argument("--notes", help="request explanation; never use secrets")
     submit.add_argument("--confirm-submit", action="store_true", help="explicitly submit for operator review")
+    submit.add_argument("--expect-proposal-sha256", help="exact untrusted proposal file SHA-256 from preview")
     for name in ("list", "show", "export"):
         command = sub.add_parser(name, help="read own stored requests")
         if name == "show":
@@ -139,7 +141,18 @@ def main(argv: list[str] | None = None) -> int:
                 from .client_proposal_intake import load_studio_proposal
 
                 payload = load_studio_proposal(args.proposal)
+                if args.command == "submit":
+                    expected = args.expect_proposal_sha256
+                    if (type(expected) is not str or len(expected) != 64
+                            or any(ch not in "0123456789abcdef" for ch in expected)
+                            or not hmac.compare_digest(expected, payload["proposal_file_sha256"])):
+                        raise ClientRequestError(
+                            "proposal changed or exact --expect-proposal-sha256 is missing; "
+                            "review the file again with preview before submitting"
+                        )
             else:
+                if args.command == "submit" and args.expect_proposal_sha256 is not None:
+                    raise ClientRequestError("--expect-proposal-sha256 requires --proposal")
                 if args.risk is None:
                     raise ClientRequestError("--risk is required with --asset")
                 payload = prepare_request(args.asset, args.risk, args.notes or "")
