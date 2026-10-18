@@ -128,37 +128,143 @@ function allRows(store=db){
 }
 function msg(m,err=false){$("message").textContent=m;$("message").dataset.error=err?"true":"false";}
 function node(tag,value){const n=document.createElement(tag);n.textContent=String(value);return n;}
-function draw(){
- const a=allRows(),answered=a.filter(x=>x.reply).length,needs=a.filter(x=>x.reply&&x.reply.human_stage==="needs_changes").length;
- $("summary").textContent=a.length+" HUMAN requests · "+answered+" UNVERIFIED replies · "+(a.length-answered)+" unanswered · "+needs+" need changes · "+db.requestPackets.length+" owner packets";
- $("binding").textContent=db.binding?"DECLARED source SHA "+db.binding[1]+" · client "+db.binding[2]+" · engagement "+db.binding[3]:"No source loaded.";
- for(const id of ["download","csv","print"])$(id).disabled=!a.length;
- const q=$("search").value.toLowerCase().trim(),filter=$("filter").value;
- const visible=a.filter(x=>{
+const selection=new Set();
+let pendingBulk=null;
+function invalidateBulk(){
+ pendingBulk=null;$("bulkDetails").hidden=true;$("bulkApply").disabled=true;
+ $("selectShown").checked=false;
+}
+function filteredRows(){
+ const q=$("search").value.toLowerCase().trim(),filter=$("filter").value,
+  dateMode=$("dueFilter").value,today=new Date().toISOString().slice(0,10);
+ const week=new Date(Date.now()+7*86400000).toISOString().slice(0,10);
+ const entries=allRows().filter(x=>{
   if(q&&![x.packet.recipient_alias,x.request.request_id,x.request.finding_id,x.request.request_kind].join(" ").toLowerCase().includes(q))return false;
-  if(filter==="unanswered")return !x.reply;
-  if(filter==="replied")return !!x.reply;
-  if(filter==="needs_changes")return x.reply&&x.reply.human_stage==="needs_changes";
-  if(filter==="triage")return x.review.stage!=="human_triaged";
+  if(filter==="unanswered"&&x.reply)return false;
+  if(filter==="replied"&&!x.reply)return false;
+  if(filter==="needs_changes"&&(!x.reply||x.reply.human_stage!=="needs_changes"))return false;
+  if(filter==="triage"&&x.review.stage==="human_triaged")return false;
+  const d=x.request.due_date;
+  if(dateMode==="overdue"&&(!d||d>=today))return false;
+  if(dateMode==="week"&&(!d||d<today||d>week))return false;
+  if(dateMode==="undated"&&d)return false;
   return true;
  });
- $("count").textContent=visible.length+" rows shown. Owner identity and receipt timestamp are NOT independently authenticated.";
+ const sort=$("sort").value;
+ if(sort==="due")entries.sort((a,b)=>(a.request.due_date||"9999-12-31").localeCompare(b.request.due_date||"9999-12-31"));
+ if(sort==="owner")entries.sort((a,b)=>a.packet.recipient_alias.localeCompare(b.packet.recipient_alias));
+ if(sort==="triage")entries.sort((a,b)=>a.review.stage.localeCompare(b.review.stage));
+ return entries;
+}
+function contextDetails(x){
+ const cell=document.createElement("td"),details=document.createElement("details"),
+  title=node("summary",x.reply?"Review PRIVATE human response":"Review ORIGINAL human request");
+ details.append(title);
+ for(const [label,value] of [
+  ["ORIGINAL request ID",x.request.request_id],
+  ["Issued UTC (self-declared)",x.packet.issued_utc],
+  ["ORIGINAL HUMAN instructions",x.request.instructions],
+  ["HUMAN reply status",x.reply?x.reply.human_stage:"unanswered"],
+  ["Unverified owner response",x.reply?x.reply.human_response:"Not received; no fix inferred."]
+ ]){
+  const row=document.createElement("div"),strong=node("strong",label+": "),
+   content=node("span",value);
+  row.className="privateDetail";row.append(strong,content);details.append(row);
+ }
+ cell.append(details);return cell;
+}
+function draw(){
+ const all=allRows(),answered=all.filter(x=>x.reply).length,
+  needs=all.filter(x=>x.reply&&x.reply.human_stage==="needs_changes").length;
+ $("summary").textContent=all.length+" HUMAN requests · "+answered+" UNVERIFIED replies · "+(all.length-answered)+" unanswered · "+needs+" need changes · "+db.requestPackets.length+" owner packets";
+ $("binding").textContent=db.binding?"DECLARED source SHA "+db.binding[1]+" · client "+db.binding[2]+" · engagement "+db.binding[3]:"No source loaded.";
+ for(const id of ["download","csv","print","summaryCsv"])$(id).disabled=!all.length;
+ const visible=filteredRows();
+ $("count").textContent=visible.length+" rows shown; "+selection.size+" selected. All owner labels and replies remain UNVERIFIED.";
+ const shown=new Set(visible.map(x=>x.request.request_id));
+ $("selectShown").checked=visible.length>0&&visible.every(x=>selection.has(x.request.request_id));
+ $("selectShown").indeterminate=visible.some(x=>selection.has(x.request.request_id))&&!$("selectShown").checked;
+ $("bulkPreview").disabled=!selection.size;
  const body=$("rows");body.replaceChildren();
  for(const x of visible){
   const tr=node("tr","");
+  const choice=document.createElement("td"),check=document.createElement("input");
+  check.type="checkbox";check.checked=selection.has(x.request.request_id);
+  check.setAttribute("aria-label","Select ORIGINAL HUMAN request "+x.request.request_id);
+  check.addEventListener("change",()=>{
+   if(check.checked)selection.add(x.request.request_id);else selection.delete(x.request.request_id);
+   invalidateBulk();draw();
+  });
+  choice.append(check);tr.append(choice);
   for(const v of [x.slot,x.packet.recipient_alias,x.request.finding_id,x.request.request_kind,x.request.due_date||"—",x.reply?x.reply.human_stage:"unanswered"])
    tr.append(node("td",v));
+  tr.append(contextDetails(x));
   const sel=document.createElement("select");
   sel.setAttribute("aria-label","Human triage for "+x.request.finding_id);
   for(const label of STAGES)sel.append(new Option(label.replaceAll("_"," "),label));
   sel.value=x.review.stage;
-  sel.addEventListener("change",()=>{db.notes[x.request.request_id]={...db.notes[x.request.request_id]||x.review,stage:sel.value};db.revision++;msg("Local HUMAN triage changed; original source and responses untouched.");});
+  sel.addEventListener("change",()=>{
+   db.notes[x.request.request_id]={...db.notes[x.request.request_id]||x.review,stage:sel.value};
+   db.revision++;invalidateBulk();msg("Local HUMAN triage changed; original request and reply untouched.");
+  });
   const stage=document.createElement("td");stage.append(sel);tr.append(stage);
   const input=document.createElement("textarea");input.rows=2;input.maxLength=400;
   input.setAttribute("aria-label","PRIVATE human note for "+x.request.finding_id);input.value=x.review.note;
-  input.addEventListener("input",()=>{db.notes[x.request.request_id]={...db.notes[x.request.request_id]||x.review,note:input.value};db.revision++;});
+  input.addEventListener("input",()=>{
+   db.notes[x.request.request_id]={...db.notes[x.request.request_id]||x.review,note:input.value};
+   db.revision++;invalidateBulk();
+  });
   const note=document.createElement("td");note.append(input);tr.append(note);body.append(tr);
  }
+}
+function previewBulk(){
+ const originals=allRows().filter(x=>selection.has(x.request.request_id));
+ if(!originals.length||originals.length!==selection.size)fail("HOLD: selected original IDs are stale; reload");
+ const stage=$("bulkStage").value;if(!STAGES.includes(stage))fail("Invalid HUMAN bulk stage");
+ const changes=originals.map(x=>({id:x.request.request_id,finding:x.request.finding_id,
+  before:x.review.stage,after:stage,owner:x.packet.recipient_alias}));
+ pendingBulk={revision:db.revision,binding:JSON.stringify(db.binding),
+  ids:JSON.stringify([...selection].sort()),stage,changes};
+ const lines=["PRIVATE HUMAN change preview · "+changes.length+" ORIGINAL request IDs",
+  "UNVERIFIED source SHA "+db.binding[1],
+  "No original evidence, assessment, consent, grant, retest, delivery or verified fix changes.",
+  ...changes.map(x=>x.finding+" | "+x.id+" | HUMAN "+x.before+" → "+x.after+" | "+x.owner)];
+ $("bulkDetails").textContent=lines.join("\n");
+ $("bulkDetails").hidden=false;$("bulkApply").disabled=false;
+ msg("Review the original source-bound HUMAN changes before applying them in memory.");
+}
+function applyBulk(){
+ const p=pendingBulk;
+ if(!p||p.revision!==db.revision||p.binding!==JSON.stringify(db.binding)||
+ p.ids!==JSON.stringify([...selection].sort())||p.stage!==$("bulkStage").value)
+  fail("HOLD: HUMAN source, stage, selection or notes changed. Preview again.");
+ const map=new Map(allRows().map(x=>[x.request.request_id,x]));
+ if(p.changes.some(x=>!map.has(x.id)||map.get(x.id).review.stage!==x.before))
+  fail("HOLD: original HUMAN baselines changed. Preview again.");
+ if(!confirm("Apply local HUMAN triage status to "+p.changes.length+" ORIGINAL requests? This does NOT verify fixes, authorize a retest or send any notification."))return;
+ for(const change of p.changes){
+  const existing=map.get(change.id).review;
+  db.notes[change.id]={stage:p.stage,note:existing.note};
+ }
+ db.revision++;selection.clear();invalidateBulk();draw();
+ msg("Applied "+p.changes.length+" HUMAN-only local stage changes. Original source and unverified replies untouched.");
+}
+function anonymousCounts(){
+ const groups=new Map();
+ for(const x of allRows()){
+  const key=[x.request.request_kind,x.reply?x.reply.human_stage:"unanswered",x.review.stage];
+  const text=JSON.stringify(key);groups.set(text,(groups.get(text)||0)+1);
+ }
+ const table=[["human_request_kind","unverified_reply_status","local_human_triage","count"]];
+ for(const [key,count] of [...groups.entries()].sort((a,b)=>a[0].localeCompare(b[0])))
+  table.push([...JSON.parse(key),count]);
+ return table;
+}
+function exportAnonymous(){
+ if(!db.binding)fail("Load original PRIVATE packets first");
+ if(!confirm("Export aggregate HUMAN request counts only? Counts do not establish evidence coverage, remediation status or source authenticity."))return;
+ save("LightUp-anonymous-human-response-counts.csv",
+  anonymousCounts().map(row=>row.map(csv).join(",")).join("\r\n")+"\r\n","text/csv");
 }
 async function intake(){
  const files=[...$("files").files];
@@ -176,7 +282,7 @@ async function intake(){
  const next=assemble(db,packets);
  if(!confirm("Import "+packets.length+" PRIVATE human packets? All identities, replies and source labels are UNVERIFIED. No data are sent, no retest or consent is granted."))return;
  if(db.revision!==rev)fail("HOLD: register changed before confirmation");
- db=next;$("files").value="";draw();msg("Reconciled PRIVATE HUMAN owner and reply packets atomically.");
+ db=next;selection.clear();invalidateBulk();$("files").value="";draw();msg("Reconciled PRIVATE HUMAN owner and reply packets atomically.");
 }
 function snapshot(){
  return {kind:"lightup.private_human_response_reconciliation",schema_version:1,
@@ -211,7 +317,7 @@ function restore(obj,rev){
  if(db.revision!==rev)fail("HOLD: changed register");
  if(!confirm("REPLACE current PRIVATE register and HUMAN notes with this exact source-bound backup? Export current data first."))return;
  if(db.revision!==rev)fail("HOLD: changed register before replace");
- fresh.revision=rev+1;db=fresh;$("files").value="";draw();msg("Restored PRIVATE HUMAN register from original-bound local backup.");
+ fresh.revision=rev+1;db=fresh;selection.clear();invalidateBulk();$("files").value="";draw();msg("Restored PRIVATE HUMAN register from original-bound local backup.");
 }
 function save(filename,body,mime){
  const url=URL.createObjectURL(new Blob([body],{type:mime}));
@@ -257,9 +363,15 @@ listen("load",intake);
 listen("download",()=>{if(!db.binding)fail("No PRIVATE register loaded");
  if(!confirm("Download PRIVATE owner identities, original request IDs, unverified replies and HUMAN notes? Confirm secure storage."))return;
  save("LightUp-PRIVATE-response-register.json",JSON.stringify(snapshot(),null,2)+"\n","application/json");});
-listen("csv",exportCSV);listen("print",report);
+listen("csv",exportCSV);listen("summaryCsv",exportAnonymous);listen("print",report);
+listen("bulkPreview",previewBulk);listen("bulkApply",applyBulk);
+$("selectShown").addEventListener("change",e=>{for(const x of filteredRows()){
+ if(e.target.checked)selection.add(x.request.request_id);else selection.delete(x.request.request_id);
+ }invalidateBulk();draw();});
+$("bulkStage").addEventListener("change",invalidateBulk);
 listen("forget",()=>{if(!confirm("Clear ALL in-memory human responses and PRIVATE annotations? Saved downloads remain."))return;
- const rev=db.revision+1;db=blank();db.revision=rev;$("files").value="";$("search").value="";draw();msg("All locally held PRIVATE HUMAN data forgotten.");});
+ const rev=db.revision+1;db=blank();db.revision=rev;selection.clear();invalidateBulk();$("files").value="";$("search").value="";draw();msg("All locally held PRIVATE HUMAN data forgotten.");});
 $("search").addEventListener("input",draw);$("filter").addEventListener("change",draw);
+$("dueFilter").addEventListener("change",draw);$("sort").addEventListener("change",draw);
 draw();msg("Load original PRIVATE owner-request and partial-reply files. Everything stays in memory.");
 })();
