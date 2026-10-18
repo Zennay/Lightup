@@ -19,3 +19,7 @@ Project posture remains **INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD**. Integ
 ## Policy and capability identity guard (follow-up)
 
 The same source issue also leaves `ActivationPolicy` externally mutable despite its frozen dataclass, so the gate now snapshots its exact mode and activation reference and rejects policy changes before returning a permit. An untrusted capability argument must be a nonempty, bounded, control-free builtin string before a permit can be produced. The returned permit always contains the policy mode from the checked snapshot, not a newly read mode. These are issuance-only constraints, not proof that any capability was approved by a human or a durable source grant.
+
+## Grant object substitution fence
+
+A freshly constructed `Authorization` instance with the same visible owner/reference/window is **not** the same object as the original caller authority. The gate now also pins both the original and independent scope-snapshot authorization **object references**. A substitution to a same-valued new instance on either side results in HOLD before permit issuance. This is local object-provenance consistency only, not durable grant-ID or issuer verification and not a proof against all concurrent swaps.

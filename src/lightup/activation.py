@@ -109,7 +109,13 @@ class ActivationGate:
         ):
             raise PermissionError("capability identity is not canonical")
         activation = _activation_policy_snapshot(self.activation_policy)
+        # Preserve object provenance as well as field values: swapping an
+        # otherwise identical Authorization instance is still identity drift.
+        caller_authorization = target.authorization
         snapshot = _target_authority_snapshot(target)
+        if target.authorization is not caller_authorization:
+            raise PermissionError("target authorization identity changed before scope decision")
+        snapshot_authorization = snapshot.authorization
         decision = self.scope_policy.decide(snapshot)
         if not decision.allowed:
             raise PermissionError(f"target denied by scope gate: {decision.reason.value}")
@@ -135,9 +141,15 @@ class ActivationGate:
 
         # Explicitly reject in-process mutation of the original fields while
         # the scope decision or permit construction was being prepared.
-        if _target_authority_snapshot(snapshot) != snapshot:
+        if (
+            snapshot.authorization is not snapshot_authorization
+            or _target_authority_snapshot(snapshot) != snapshot
+        ):
             raise PermissionError("scope decision mutated the authority snapshot")
-        if _target_authority_snapshot(target) != snapshot:
+        if (
+            target.authorization is not caller_authorization
+            or _target_authority_snapshot(target) != snapshot
+        ):
             raise PermissionError("target authorization changed during permit issuance")
 
         if _activation_policy_snapshot(self.activation_policy) != activation:
