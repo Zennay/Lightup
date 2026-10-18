@@ -28,6 +28,9 @@ function meetingNote(s){
 async function read(file,max,allowOriginalCsvBom=false){
  if(!file||file.size<1||file.size>max)fail('Private input missing or exceeds limit.');
  const buffer=await file.arrayBuffer();if(buffer.byteLength>max)fail('Private input exceeds limit.');
+ const bytes=new Uint8Array(buffer);
+ const inputBom=bytes.length>=3&&bytes[0]===0xef&&bytes[1]===0xbb&&bytes[2]===0xbf;
+ if(inputBom&&!allowOriginalCsvBom)fail('UTF-8 BOM not permitted in private JSON.');
  const text=new TextDecoder('utf-8',{fatal:true}).decode(buffer);
  if(!text)fail('Empty private input.');
  if(text.charCodeAt(0)===0xfeff){
