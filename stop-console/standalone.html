@@ -93,6 +93,12 @@ d.pending.forEach(function(x){if(!obj(x)||!bounded(x.stop_id,180)||!bounded(x.st
 if(!uniq(d.pending,"stop_id"))throw Error("Duplicate STOP ID");
 return {kind:"pending",items:d.pending.map(function(x){return {type:"Pending STOP",id:x.stop_id,status:"STOP_ACTIVE",attention:"Operator acknowledgment needed"};}),truncated:d.truncated};
 }
+if(d.schema==="lightup.authenticated_stop_batch.v1"){
+if(d.status!=="STOP_RECORDED_BATCH"||!Number.isInteger(d.recorded_count)||d.recorded_count<1||d.recorded_count>32||!bounded(d.stopped_at,80)||!Array.isArray(d.records)||d.records.length!==d.recorded_count)throw Error("Batch stop shape invalid");
+d.records.forEach(function(x){if(!obj(x)||!bounded(x.engagement_id,180)||!bounded(x.stop_id,180))throw Error("Invalid batch STOP record");});
+if(!uniq(d.records,"stop_id")||!uniq(d.records,"engagement_id"))throw Error("Duplicate batch STOP identity");
+return {kind:"batch",items:d.records.map(function(x){return {type:"Incident STOP",id:x.engagement_id,status:"STOP_ACTIVE",attention:"Incident stop recorded locally"};}),truncated:false};
+}
 if(d.schema==="lightup.authenticated_stop.v1"){
 if(!["STOP_ACTIVE","NO_STOP_RECORDED"].includes(d.status)||typeof d.stop_active!=="boolean"||d.stop_active!==(d.status==="STOP_ACTIVE")||typeof d.history_truncated!=="boolean"||!Array.isArray(d.recent_events)||d.recent_events.length>64)throw Error("Status shape invalid");
 d.recent_events.forEach(function(x){if(!obj(x)||!bounded(x.stop_id,180)||!bounded(x.stopped_at,80)||!["operator","client_admin","client_member"].includes(x.actor_role))throw Error("Invalid STOP history");});
@@ -103,10 +109,10 @@ throw Error("Unsupported original CLI schema");
 }
 function reconcile(batch){
 var states=new Map();
-batch.forEach(function(d){if(d.kind!=="engagement")return;d.items.forEach(function(x){
+batch.forEach(function(d){if(d.kind!=="engagement"&&d.kind!=="batch")return;d.items.forEach(function(x){
 if(!states.has(x.id))states.set(x.id,new Set());states.get(x.id).add(x.status);
 });});
-batch.forEach(function(d){if(d.kind!=="engagement")return;d.items.forEach(function(x){
+batch.forEach(function(d){if(d.kind!=="engagement"&&d.kind!=="batch")return;d.items.forEach(function(x){
 if(states.get(x.id).size>1){x.status="HOLD_SOURCE_CONFLICT";x.attention="Contradictory imported snapshots";}
 });});
 }
@@ -120,7 +126,7 @@ var tr=document.createElement("tr");
 });
 empty.hidden=rows.children.length>0;
 txt("count-eng",docs.filter(function(d){return d.kind==="engagement";}).reduce(function(n,d){return n+d.items.length;},0));
-txt("count-stop",docs.filter(function(d){return d.kind==="engagement";}).reduce(function(n,d){return n+d.items.filter(function(x){return x.status==="STOP_ACTIVE";}).length;},0));
+txt("count-stop",docs.filter(function(d){return (d.kind==="engagement"||d.kind==="batch");}).reduce(function(n,d){return n+d.items.filter(function(x){return x.status==="STOP_ACTIVE";}).length;},0));
 txt("count-pend",docs.filter(function(d){return d.kind==="pending";}).reduce(function(n,d){return n+d.items.length;},0));
 txt("count-hold",items.filter(function(x){return x.status.indexOf("HOLD")>=0;}).length);
 txt("source-note",(fictional?"FICTIONAL DEMO · ":"UNVERIFIED LOCAL INPUT · ")+docs.length+" source(s). "+(docs.some(function(d){return d.truncated;})?"One or more original sources are truncated. ":"")+"No source can authorize execution.");
