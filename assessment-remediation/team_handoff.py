@@ -1,0 +1,213 @@
+#!/usr/bin/env python3
+"""Private non-authorizing human-review handoff/return.
+
+The recipient may edit human stage, reviewer, next action and notes only.
+The original owner must accept the return against the EXACT base document;
+no original lab/comparison/findings sources, grants or retest statuses change.
+"""
+from __future__ import annotations
+
+import argparse
+from hashlib import sha256
+import os
+from pathlib import Path
+import re
+import sys
+
+from bridge import (
+    FLAGS, LINK_SCHEMA, MAX_LINKS, STAGES, bounded_text, fail_if,
+    private_dir,
+)
+
+HERE = Path(__file__).resolve().parent
+sys.path.insert(1, str(HERE.parent / "assessment-archive"))
+from archive import Hold, decode_json, encode, publish, read_regular
+
+TEAM_SCHEMA = "lightup.assessment_remediation_team_handoff.v1"
+RETURN_SCHEMA = "lightup.assessment_remediation_team_return.v1"
+FIELDS = ("stage", "reviewer", "next_action", "note")
+IDENTITIES = ("scenario_id", "finding_id")
+DOC_KEYS = {"schema", "comparison_sha256", "findings_sha256", "links", *FLAGS}
+HEADER_KEYS = {"schema", "original_links_sha256", "comparison_sha256",
+               "findings_sha256", "entries", *FLAGS}
+ENTRY_KEYS = {*IDENTITIES, *FIELDS}
+
+
+def hash_string(value):
+    return type(value) is str and re.fullmatch("[0-9a-f]{64}", value) is not None
+
+
+def admit_original(raw):
+    document = decode_json(raw)
+    fail_if(type(document) is not dict or set(document) != DOC_KEYS
+            or document["schema"] != LINK_SCHEMA
+            or any(document[k] is not False for k in FLAGS)
+            or not hash_string(document["comparison_sha256"])
+            or not hash_string(document["findings_sha256"]),
+            "original operator mapping schema/authority invalid")
+    entries = document["links"]
+    fail_if(type(entries) is not list or len(entries) > 512,
+            "too many original human links")
+    seen = set()
+    for item in entries:
+        validate_entry(item)
+        identity = tuple(item[key] for key in IDENTITIES)
+        fail_if(identity in seen, "duplicate original scenario/finding pair")
+        seen.add(identity)
+    return document
+
+
+def validate_entry(row):
+    fail_if(type(row) is not dict or set(row) != ENTRY_KEYS,
+            "team entry has changed original source/link schema")
+    for name in IDENTITIES:
+        value = row[name]
+        fail_if(type(value) is not str or not value or len(value) > 256 or
+                value != value.strip() or
+                any(ord(char) < 32 or ord(char) > 126 for char in value),
+                "team entry identity not canonical")
+    fail_if(type(row["stage"]) is not str or row["stage"] not in STAGES or
+            not bounded_text(row["reviewer"], 100) or
+            not bounded_text(row["next_action"], 300) or
+            not bounded_text(row["note"], 500),
+            "human-only update fields malformed")
+
+
+def envelope(schema, original_raw, source):
+    return {
+        "schema": schema,
+        "original_links_sha256": sha256(original_raw).hexdigest(),
+        "comparison_sha256": source["comparison_sha256"],
+        "findings_sha256": source["findings_sha256"],
+        "entries": source["links"],
+        **{name: False for name in FLAGS},
+    }
+
+
+def read_team(raw, schema):
+    doc = decode_json(raw)
+    fail_if(type(doc) is not dict or set(doc) != HEADER_KEYS or
+            doc["schema"] != schema or
+            not hash_string(doc["original_links_sha256"]) or
+            not hash_string(doc["comparison_sha256"]) or
+            not hash_string(doc["findings_sha256"]) or
+            any(doc[k] is not False for k in FLAGS),
+            "unsupported team handoff or authority claim")
+    fail_if(type(doc["entries"]) is not list or len(doc["entries"]) > 512,
+            "invalid private team entry count")
+    found = set()
+    for item in doc["entries"]:
+        validate_entry(item)
+        ident = tuple(item[k] for k in IDENTITIES)
+        fail_if(ident in found, "ambiguous human team pair")
+        found.add(ident)
+    return doc
+
+
+def target(output_dir, prefix, suffix):
+    fail_if(type(prefix) is not str or
+            re.fullmatch("[A-Za-z][A-Za-z0-9_-]{0,39}", prefix) is None,
+            "invalid private output prefix")
+    path = private_dir(output_dir) / (prefix + suffix)
+    fail_if(os.path.lexists(path), "private destination already exists")
+    return path
+
+
+def prepare(args):
+    original = read_regular(args.links, MAX_LINKS)
+    mapping = admit_original(original)
+    handoff = envelope(TEAM_SCHEMA, original, mapping)
+    # Team draft is an untrusted human annotation workflow, not a verified
+    # source or signed authority; original finding data is not embedded.
+    portable = read_regular(str(HERE / "team-room.html"), 131072)
+    source_hash = sha256(portable).hexdigest()
+    handoff["team_room_source_sha256"] = source_hash
+    destination = target(args.output_dir, args.prefix, "-team-handoff.json")
+    published = encode(handoff)
+    fail_if(len(published) > MAX_LINKS, "team handoff exceeds private document bound")
+    if sha256(read_regular(args.links, MAX_LINKS)).digest() != sha256(original).digest():
+        raise Hold("original private owner draft changed during handoff")
+    publish(destination, published)
+    print("PRIVATE_TEAM_HANDOFF_CREATED — UNAUTHENTICATED HUMAN NOTES ONLY")
+    print("Use the portable team-room.html locally with the private handoff JSON.")
+    print("This artifact conveys NO permission, consent, scan, retest or verified fix.")
+    return 2
+
+
+def receive(args):
+    original_raw = read_regular(args.links, MAX_LINKS)
+    source = admit_original(original_raw)
+    returned_raw = read_regular(args.returned, MAX_LINKS)
+    team = read_team(returned_raw, RETURN_SCHEMA)
+    fail_if(team["original_links_sha256"] != sha256(original_raw).hexdigest()
+            or team["comparison_sha256"] != source["comparison_sha256"]
+            or team["findings_sha256"] != source["findings_sha256"],
+            "team return no longer matches exact original baseline")
+    original_by_identity = {
+        (row["scenario_id"], row["finding_id"]): row
+        for row in source["links"]
+    }
+    received_by_identity = {
+        (row["scenario_id"], row["finding_id"]): row
+        for row in team["entries"]
+    }
+    fail_if(set(received_by_identity) != set(original_by_identity),
+            "team return attempted original source identity/link membership edits")
+    updated = []
+    updated_count = 0
+    for current in source["links"]:
+        ident = (current["scenario_id"], current["finding_id"])
+        proposed = received_by_identity[ident]
+        if any(proposed[key] != current[key] for key in FIELDS):
+            updated_count += 1
+        updated.append({
+            "scenario_id": current["scenario_id"],
+            "finding_id": current["finding_id"],
+            **{key: proposed[key] for key in FIELDS},
+        })
+    latest = {**source, "links": updated}
+    destination = target(args.output_dir, args.prefix, "-reviewed-links.json")
+    # No manual changes to real original client data or lab reports:
+    # this is a new strict mapping v1, accepted later only by bridge.py
+    # when both separately authorized exported sources match.
+    admitted = admit_original(encode(latest))
+    fail_if(len(admitted["links"]) != len(source["links"]),
+            "team update changed membership")
+    fail_if(read_regular(args.links, MAX_LINKS) != original_raw or
+            read_regular(args.returned, MAX_LINKS) != returned_raw,
+            "human team baseline/return changed during private receipt")
+    publish(destination, encode(latest))
+    print("PRIVATE_TEAM_RETURN_ACCEPTED — " + str(updated_count) +
+          " human-only notes changed; " + str(len(updated)) +
+          " original source links preserved.")
+    print("The return was NOT sender-authenticated; operator must verify human recipient.")
+    print("Use the new mapping with unchanged original source exports through bridge.py.")
+    return 2
+
+
+def main(argv=None):
+    parser = argparse.ArgumentParser(description=(
+        "Prepare/readmitted human-only private team notes without access, scan,"
+        " client permission, source finding or retest-status mutation."
+    ))
+    sub = parser.add_subparsers(dest="action", required=True)
+    for name in ("prepare", "receive"):
+        command = sub.add_parser(name)
+        command.add_argument("--links", required=True, help="Original private source-bound links JSON")
+        command.add_argument("--output-dir", required=True, help="Existing owner-only 0700 folder")
+        command.add_argument("--prefix", required=True, help="New unused output name prefix")
+        if name == "receive":
+            command.add_argument("--returned", required=True,
+                                 help="Human team-return JSON exported from team room")
+    args = parser.parse_args(argv)
+    try:
+        return prepare(args) if args.action == "prepare" else receive(args)
+    except (Hold, OSError, ValueError, TypeError, KeyError, UnicodeError,
+            OverflowError, RecursionError):
+        print("PRIVATE_TEAM_HANDOFF_HOLD — private source/return changed or invalid",
+              file=sys.stderr)
+        return 3
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
