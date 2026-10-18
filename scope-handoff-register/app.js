@@ -177,6 +177,8 @@
       assets:o.requested_assets.slice(),
       excluded:o.excluded_assets.slice(),
       risk:o.requested_risk, mode:o.requested_mode,
+      wantsNetwork:o.proposed_activities.private_lab_network_checks,
+      hasSafetyNotes:typeof o.notes==="string" && o.notes.trim().length>0,
       utcWindow:o.proposed_window_utc || null,
       hasWindow:!!o.proposed_window_utc && o.proposed_window_utc.status==="resolved",
       studioDigest:null
@@ -822,7 +824,7 @@
         assert(LightUpWithdrawalImport.safeSaved(entry.withdrawal,shaMap.get(entry.sha256)?.source),
           "Ongeldige, bronloze of verhoogde externe stopnotitie.");
       if(o.schema_version===5 && entry.permission!==null)
-        assert(LightUpPermissionReplyImport.saved(entry.permission),
+        assert(LightUpPermissionReplyImport.saved(entry.permission,shaMap.get(entry.sha256)?.source),
           "Ongeldige of verhoogde Permission Brief-notitie; alles blijft ongewijzigd.");
       assert(Object.keys(entry.tasks).length===TASKS.length && TASKS.every(([id])=>STATUSES.includes(entry.tasks[id])),"Taakset of status is vervormd.");
       assert(entry.replaces===null || (typeof entry.replaces==="string" && shaMap.has(entry.replaces)),"Vreemde revisievoorganger.");
