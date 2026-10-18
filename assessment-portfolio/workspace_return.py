@@ -115,17 +115,18 @@ def _workspace(blob):
         raise Hold("invalid or incomplete workspace ZIP") from None
 
 
-def build(workspace_path, manifest_paths, choice_paths, proposal_paths=None, proposal_bundle_path=None):
+def build(workspace_path, manifest_paths, choice_paths, proposal_paths=None, proposal_bundle_path=None, *, proposal_bundle_raw=None):
     blob = read_regular(workspace_path, MAX_PACKAGE)
     mapping, agendas = _workspace(blob)
     count = mapping["source_count"]
     if len(manifest_paths) != count or len(choice_paths) != count:
         raise Hold("each original source requires a manifest and prior human choices")
-    if proposal_bundle_path is not None:
-        if proposal_paths is not None:
-            raise Hold("choose individual proposals OR a complete bundle")
+    if proposal_bundle_path is not None or proposal_bundle_raw is not None:
+        if proposal_paths is not None or (proposal_bundle_path is not None and proposal_bundle_raw is not None):
+            raise Hold("choose exactly one original human proposal input mode")
         from proposal_bundle import load as load_proposal_bundle
-        proposal_bytes = load_proposal_bundle(proposal_bundle_path, mapping, agendas)
+        proposal_bytes = load_proposal_bundle(proposal_bundle_path, mapping, agendas,
+                                              raw=proposal_bundle_raw)
     else:
         if proposal_paths is None or len(proposal_paths) != count:
             raise Hold("one private human proposal per original agenda is required")

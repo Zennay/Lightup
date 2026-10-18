@@ -16,8 +16,12 @@ PROPOSAL_FIELDS = {"schema", "source_agenda_sha256", "reference_date",
                    "source_count", "items", *FLAGS}
 
 
-def load(path, mapping, agendas):
-    document = decode_json(read_regular(path, MAX_BUNDLE))
+def load(path, mapping, agendas, *, raw=None):
+    if raw is None:
+        raw = read_regular(path, MAX_BUNDLE)
+    elif type(raw) is not bytes or not 0 < len(raw) <= MAX_BUNDLE:
+        raise Hold("invalid complete in-memory private human bundle")
+    document = decode_json(raw)
     reject_authority(document)
     count = mapping["source_count"]
     if (type(document) is not dict or set(document) != FIELDS

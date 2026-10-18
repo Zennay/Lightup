@@ -30,7 +30,7 @@ def _append(z, name, blob):
     z.writestr(member, blob)
 
 
-def build(workspace_path, manifests, choices, proposals, reference_date, proposal_bundle_path=None, previous_capacity_path=None, capacity_reconfirmed=False):
+def build(workspace_path, manifests, choices, proposals, reference_date, proposal_bundle_path=None, previous_capacity_path=None, capacity_reconfirmed=False, *, proposal_bundle_raw=None):
     selected_day(reference_date)
     if (previous_capacity_path is None) != (capacity_reconfirmed is False):
         raise Hold("old capacity assumptions require explicit human reconfirmation")
@@ -38,14 +38,15 @@ def build(workspace_path, manifests, choices, proposals, reference_date, proposa
     source_count = previous_map["source_count"]
     if len(manifests) != source_count or len(choices) != source_count:
         raise Hold("revision requires all original manifests and human choices")
-    if proposal_bundle_path is None:
+    if proposal_bundle_path is None and proposal_bundle_raw is None:
         if proposals is None or len(proposals) != source_count:
             raise Hold("revision requires one proposal per original source")
-    elif proposals is not None:
-        raise Hold("choose individual proposals OR one complete human bundle")
+    elif proposals is not None or (proposal_bundle_path is not None and proposal_bundle_raw is not None):
+        raise Hold("choose exactly one original human proposal input mode")
     # Full original + complete ZIP + proposal checks before starting a new workspace.
     returned, status, change_total = return_build(
-        workspace_path, manifests, choices, proposals, proposal_bundle_path)
+        workspace_path, manifests, choices, proposals, proposal_bundle_path,
+        proposal_bundle_raw=proposal_bundle_raw)
     with ZipFile(BytesIO(returned), "r") as z:
         updated_bytes = [z.read(f"original-human-choices-{i:02d}.json")
                          for i in range(1, source_count + 1)]
