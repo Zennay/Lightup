@@ -232,6 +232,91 @@ function stats(windows){
   return {slot:i+1,window:w,findings:findings.length,critical_high:findings.filter(f=>['critical','high'].includes(f.severity)).length,local_review_holds:holds};
  });
 }
+
+/* Private plan resume: full source, review and complete original membership,
+ * count/authority integrity checked BEFORE any in-memory state/UI mutations. */
+async function resumePlan(){
+ if(!state)fail('Load original source before resuming a private plan.');
+ if(!$('same').checked)fail('Independently confirm same original client and exact engagement.');
+ const raw=strictJSON(await read($('planFile').files[0],2097152));
+ const top=['kind','schema_version','disposition','source_contract','source_sha256','warning','windows','meeting_note','assignments',...FLAGS];
+ keys(raw,top,top.filter(x=>x!=='warning'));
+ if(raw.kind!=='lightup.remediation_human_change_windows'||raw.schema_version!==1||
+    raw.disposition!=='DRAFT_UNVERIFIED_HUMAN_COORDINATION'||
+    raw.source_contract!=='lightup.finding_export._COLUMNS_v1'||
+    raw.source_sha256!==state.hash||FLAGS.some(k=>raw[k]!==false))
+  fail('Plan is not an exact non-authorizing original-source-bound draft.');
+ if(raw.warning!==undefined)human(raw.warning,800);
+ human(raw.meeting_note,600);
+ if(!Array.isArray(raw.windows)||raw.windows.length!==HOURS||
+    !Array.isArray(raw.assignments)||raw.assignments.length!==state.source.length)
+  fail('Incomplete proposed windows or source finding membership.');
+ const restoredWindows=[],scheduled=[];
+ for(let i=0;i<HOURS;i++){
+  const entry=raw.windows[i];
+  keys(entry,['slot','window','findings','critical_high','local_review_holds']);
+  if(entry.slot!==i+1||!['findings','critical_high','local_review_holds'].every(k=>Number.isSafeInteger(entry[k])&&entry[k]>=0&&entry[k]<=350))
+   fail('Invalid private window summary.');
+  const w=entry.window;
+  if(w===null){restoredWindows.push(null);continue;}
+  keys(w,['slot','label','start_utc','minutes']);
+  if(w.slot!==i+1)fail('Window slot identity mismatch.');
+  human(w.label,70);
+  if(!w.label||typeof w.start_utc!=='string'||!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:00\.000Z$/.test(w.start_utc))
+   fail('Non-canonical proposed UTC start.');
+  const d=new Date(w.start_utc);
+  if(Number.isNaN(d.getTime())||d.toISOString()!==w.start_utc||
+     !Number.isInteger(w.minutes)||w.minutes<30||w.minutes>480)
+   fail('Invalid proposed UTC window.');
+  scheduled.push(w);restoredWindows.push(w);
+ }
+ scheduled.sort((a,b)=>a.start_utc.localeCompare(b.start_utc));
+ for(let i=1;i<scheduled.length;i++)
+  if(Date.parse(scheduled[i].start_utc)<Date.parse(scheduled[i-1].start_utc)+scheduled[i-1].minutes*60000)
+   fail('Proposed private windows overlap; do not apply stale plan.');
+ const idMap=new Map(state.source.map(f=>[f.finding_id,f]));
+ const imported=new Map();
+ for(const row of raw.assignments){
+  keys(row,['finding_id','original_severity','original_retest_status','human_stage','human_reviewer',
+   'human_next_step','human_review_sha256','human_reference_gaps','proposed_window']);
+  const f=idMap.get(row.finding_id);
+  if(typeof row.finding_id!=='string'||!f||imported.has(row.finding_id)||
+     row.original_severity!==f.severity||row.original_retest_status!==f.retest_status)
+   fail('Private plan source finding identity drift or duplicate.');
+  const r=state.review.get(f.finding_id);
+  if(row.human_stage!==r.stage||row.human_reviewer!==r.reviewer||
+     row.human_next_step!==r.next_step||
+     row.human_review_sha256!==localSha256(JSON.stringify(r)))
+   fail('Private plan references stale or altered human review notes.');
+  const gaps=EVIDENCE.slice(0,4).filter(k=>!r.evidence[k]);
+  if(!Array.isArray(row.human_reference_gaps)||JSON.stringify(gaps)!==JSON.stringify(row.human_reference_gaps))
+   fail('Human evidence-gap baseline changed.');
+  if(!Number.isInteger(row.proposed_window)||row.proposed_window<0||row.proposed_window>HOURS||
+     (row.proposed_window>0&&!restoredWindows[row.proposed_window-1]))
+   fail('Invalid or unscheduled human window assignment.');
+  imported.set(f.finding_id,row.proposed_window);
+ }
+ if(imported.size!==idMap.size)fail('Private plan lacks complete original source membership.');
+ for(let i=0;i<HOURS;i++){
+  const findings=state.source.filter(f=>imported.get(f.finding_id)===i+1);
+  const holds=findings.filter(f=>{const r=state.review.get(f.finding_id);
+   return r.stage==='missing'||r.stage==='needs_changes'||EVIDENCE.slice(0,4).some(k=>!r.evidence[k]);}).length;
+  const entry=raw.windows[i];
+  if(entry.findings!==findings.length||
+     entry.critical_high!==findings.filter(f=>['critical','high'].includes(f.severity)).length||
+     entry.local_review_holds!==holds)
+   fail('Private window aggregate contradicts original source/review records.');
+ }
+ /* All admissions are complete; apply the whole human draft in one step. */
+ state.assignments=imported;
+ for(let i=0;i<HOURS;i++){
+  const w=restoredWindows[i];$('date'+i).value=w?w.start_utc.slice(0,16):'';
+  $('label'+i).value=w?w.label:'';$('duration'+i).value=String(w?w.minutes:60);
+ }
+ $('note').value=raw.meeting_note;render();
+ setStatus('Private planning draft restored against exact original source and unchanged human review. No authority inferred.');
+}
+
 function privateExport(){
  if(!confirm('PRIVATE: export original finding IDs and unverified human notes for an independently approved confidential recipient?'))return;
  const windows=plan(),detail=stats(windows);
@@ -244,6 +329,7 @@ function privateExport(){
    const r=state.review.get(f.finding_id);
    return {finding_id:f.finding_id,original_severity:f.severity,original_retest_status:f.retest_status,
     human_stage:r.stage,human_reviewer:r.reviewer,human_next_step:r.next_step,
+    human_review_sha256:localSha256(JSON.stringify(r)),
     human_reference_gaps:EVIDENCE.slice(0,4).filter(k=>!r.evidence[k]),
     proposed_window:state.assignments.get(f.finding_id)||0};
   })
@@ -272,7 +358,7 @@ function aggregateExport(){
  output('lightup-aggregate-human-windows.csv',data.join('\r\n')+'\r\n','text/csv');
 }
 function forget(){
- state=null;for(const id of ['csv','review'])$(id).value='';
+ state=null;for(const id of ['csv','review','planFile'])$(id).value='';
  $('same').checked=false;$('note').value='';$('digest').textContent='';$('results').hidden=true;
  for(let i=0;i<HOURS;i++){$('date'+i).value='';$('label'+i).value='';$('duration'+i).value='60';}
  setStatus('All loaded original data and human window assignments forgotten from this tab.');
@@ -288,6 +374,7 @@ function init(){
  }
  $('load').addEventListener('click',()=>load().catch(e=>{state=null;$('results').hidden=true;setStatus(e.message,true);}));
  $('forget').addEventListener('click',forget);
+ $('resume').addEventListener('click',()=>resumePlan().catch(e=>setStatus(e.message,true)));
  $('filter').addEventListener('change',render);
  $('recalculate').addEventListener('click',()=>{try{plan();render();setStatus('Hypothetical windows checked for overlap; original authority remains HOLD.');}catch(e){setStatus(e.message,true);}});
  for(const [id,fn] of [['private',privateExport],['calendar',calendarExport],['aggregate',aggregateExport]])
