@@ -135,6 +135,21 @@
     <div id="milestone-result" aria-live="polite"></div>
     <button id="milestone-export" type="button" class="secondary" hidden>Export aggregate milestone draft</button>
   </div>
+  <div class="panel" aria-labelledby="contingency-title">
+    <p class="eyebrow">08 / CAPACITY INTERRUPTION PLANNING</p>
+    <h2 id="contingency-title">What if the team temporarily loses capacity?</h2>
+    <p>Compare your current estimated recovery plan to one disrupted week and an ongoing hypothetical reduction. Neither scenario changes real staff allocation, scope permission, working calendars or any previously authorised assessment.</p>
+    <div class="grid">
+      <label>Impacted week<input id="outage-week" type="number" min="1" max="12" value="1"></label>
+      <label>Remaining capacity that week (%)<input id="outage-availability" type="number" min="0" max="100" value="0"></label>
+      <label>Ongoing team capacity reduction (%)<input id="ongoing-reduction" type="number" min="0" max="100" value="25"></label>
+    </div>
+    <div class="actions">
+      <button id="run-contingency" class="secondary" type="button">Compare interruption scenarios</button>
+      <button id="export-contingency" class="secondary" type="button" hidden>Export aggregate interruption brief</button>
+    </div>
+    <div id="contingency-results" aria-live="polite"></div>
+  </div>
   <div class="panel">
     <h2>Proposed work queue</h2>
     <p class="subtle">Anonymous source positions only. A task can be split between weeks. No raw case IDs, addresses, descriptions, or assignment records appear here.</p>
