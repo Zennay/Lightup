@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-7uVWP+8F4rK20N4waCez9ECs4twj73TKRFULKGnKH8E=' 'sha256-k063sX7gui1MHh7KSFsfBDpeNsiUePvLBCuTQLOmh0c=' 'sha256-wpPFZOyxFDTkVCPSRLe+ulmbav4+u8hRIYgukbiqEiU=' 'sha256-0gJsPkgQ+hyGI3c+7pxUCr+zU+w9HIFUW12Kgef7hps=' 'sha256-dtUGpkwwlFHzWzWQYFLNH/ceYEPkYYwb7g1gJk5pxU8='; style-src 'sha256-D+ag+T3avNvZ/neCawZ63+JXdkVwq1BKmCqYv7qQlu8='; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-7uVWP+8F4rK20N4waCez9ECs4twj73TKRFULKGnKH8E=' 'sha256-k063sX7gui1MHh7KSFsfBDpeNsiUePvLBCuTQLOmh0c=' 'sha256-wpPFZOyxFDTkVCPSRLe+ulmbav4+u8hRIYgukbiqEiU=' 'sha256-exHmZQM7xI6XjeKpa6pZyxpTSfWyWEbA5c0ESnDsNnQ=' 'sha256-T0cH4YL2JwPKu0GhsQ2re+eILHjhsRSINMRYFmUouhk='; style-src 'sha256-s++naIHAVrHVxK6nHd4hhPUHIe/r2ycGlULqKB4QApY='; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <title>LightUp | Remediation Capacity Studio — offline draft</title>
 <style>:root{color-scheme:dark;--bg:#0a1119;--panel:#111e29;--edge:#304451;--text:#edf5f7;--muted:#a4bac8;--teal:#7ee4bd;--amber:#f9d48a;--blue:#7cb8ff}
 *{box-sizing:border-box}
@@ -70,6 +70,8 @@ footer{padding:22px 0 60px}
 #casework-risk-table td{font-variant-numeric:tabular-nums}#casework-risk-table td:first-child{text-transform:capitalize;font-weight:700}#casework-risk-table .outstanding-row td{border-color:#7b7651}.panel:has(#casework-review-title){border-color:#52696d}#casework-status-cards{margin:18px 0}#casework-summary p{max-width:85ch}@media print{#casework-packet,#review-casework,#clear-casework,#casework-ack,#export-casework-summary{display:none!important}.panel:has(#casework-review-title){break-inside:auto}}
 
 .triage-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:15px 0}.triage-card{border:1px solid #766f48;border-radius:10px;padding:14px;background:#1f251f}.triage-card strong{color:var(--amber);font-size:.93rem}.triage-card p{margin:.5em 0;font-size:.87rem;color:var(--muted)}@media(max-width:600px){.triage-grid{grid-template-columns:1fr}}@media print{.triage-grid{display:block}.triage-card{break-inside:avoid;background:white;color:#111;border:1px solid #999}.triage-card strong,.triage-card p{color:#111}}
+
+#casework-week-pressure td{font-variant-numeric:tabular-nums}#casework-week-pressure .outstanding-row td:nth-child(n+3){color:var(--amber)}@media print{#casework-week-pressure .outstanding-row td{color:#111!important}#export-casework-pressure,#export-casework-triage{display:none!important}}
 </style>
 
 
@@ -153,12 +155,16 @@ footer{padding:22px 0 60px}
   <div id="casework-summary" hidden>
     <div id="casework-status-cards" class="stats"></div>
     <div class="table-scroll"><table><thead><tr><th scope="col">Severity</th><th scope="col">Source cases</th><th scope="col">Blocked</th><th scope="col">Unlabelled owners</th><th scope="col">Undated</th><th scope="col">Human retest coordination</th><th scope="col">Self-reported complete (unverified)</th></tr></thead><tbody id="casework-risk-table"></tbody></table></div>
+    <h3>Estimated scheduled hours affected by local blockers</h3>
+    <p class="subtle">Only anonymous, source-matched plan positions are used while reading. A blocked planning stage means these scheduled hours need human clarification, not necessarily that staff are unavailable or a fix is proven.</p>
+    <div class="table-scroll"><table><thead><tr><th scope="col">Plan week</th><th scope="col">Estimated allocated</th><th scope="col">Affected by locally blocked case notes</th><th scope="col">Critical/high affected</th><th scope="col">Source regression locally marked complete</th></tr></thead><tbody id="casework-week-pressure"></tbody></table></div>
     <h3>Source-linked human coordination questions</h3>
     <p class="subtle">Only aggregate, source-derived counts are displayed. Suggested conversations are not actions, grants, assignments or a verified retest.</p>
     <div id="casework-triage" class="triage-grid"></div>
     <p class="subtle">Casework “completed” is a self-reported human work stage, <strong>never proof of a fix or authorised retest</strong>. Casework imports never change the current capacity plan or grant execution rights.</p>
     <button id="export-casework-summary" type="button" class="secondary">Export aggregate Casework discussion</button>
     <button id="export-casework-triage" type="button" class="secondary">Export aggregate discussion register CSV</button>
+    <button id="export-casework-pressure" type="button" class="secondary">Export weekly blocker pressure CSV</button>
   </div>
 </section>
 <section id="results" hidden aria-labelledby="results-title">
@@ -948,12 +954,15 @@ global.LightUpCasework=Object.freeze({compareSource,reconcileSource,parseCSV,nor
       !exact(Object.keys(obj).sort(),keys.slice().sort()))
       throw Error('Unexpected Casework envelope fields');
   }
-  async function review(currentCSV,caseworkText) {
+  async function review(currentCSV,caseworkText,capacityPlan) {
     const original=root.LightUpCasework;
     if(!original||!root.crypto?.subtle)throw Error('Original Casework parser or SHA-256 is unavailable');
     if(typeof currentCSV!=='string'||new TextEncoder().encode(currentCSV).length>1048576)
       throw Error('The original source CSV must be reloaded, not inferred from the Casework packet');
     const current=original.parseCSV(currentCSV);
+    if(!capacityPlan||capacityPlan.sourceCount!==current.length||!Array.isArray(capacityPlan.schedule)||
+      capacityPlan.schedule.length<1||capacityPlan.schedule.length>12)
+      throw Error('Generate an exact current-source capacity plan before Casework review');
     const packet=parseStrictJSON(caseworkText);
     assertShape(packet,[
       'kind','schema_version','disposition','authenticated','tenant_verified','source_authorized',
@@ -975,6 +984,9 @@ global.LightUpCasework=Object.freeze({compareSource,reconcileSource,parseCSV,nor
       if(!src||FIELDS.some(k=>src[k]!==row[k]))
         throw Error('Casework source fields differ from original CSV');
     }
+    const sourceOrdinal=new Map(current.map((record,index)=>[record.finding_id,index+1]));
+    const blockedOrdinals=new Set();
+    const sourceRegressionsMarkedComplete=new Set();
     const statuses=Object.fromEntries(STAGES.map(s=>[s,0]));
     const severity=Object.fromEntries(SEVERITIES.map(s=>[s,{
       total:0,blocked:0,missing_owner:0,undated:0,ready_for_retest:0,
@@ -995,6 +1007,7 @@ global.LightUpCasework=Object.freeze({compareSource,reconcileSource,parseCSV,nor
       if(row.due_date)withDueDate++;
       else segment.undated++;
       if(row.status==='blocked') {
+        blockedOrdinals.add(sourceOrdinal.get(row.finding_id));
         segment.blocked++;
         if(row.blocker.trim())blockedWithNotes++;
       }
@@ -1005,14 +1018,40 @@ global.LightUpCasework=Object.freeze({compareSource,reconcileSource,parseCSV,nor
       if(urgent&&row.status==='blocked')advisories.critical_high_blocked++;
       if(urgent&&!row.owner.trim())advisories.critical_high_unowned++;
       if(urgent&&!row.due_date)advisories.critical_high_undated++;
-      if(originalRow.retest_status==='regression'&&row.status==='completed')
+      if(originalRow.retest_status==='regression'&&row.status==='completed'){
         advisories.source_regression_locally_completed++;
+        sourceRegressionsMarkedComplete.add(sourceOrdinal.get(row.finding_id));
+      }
       if(originalRow.retest_status==='regression'&&row.status==='deferred')
         advisories.source_regression_deferred++;
       if(row.status==='ready_for_retest'&&!row.owner.trim())
         advisories.retest_coordination_without_owner++;
       if(row.status==='blocked'&&!row.blocker.trim())advisories.blocked_without_note++;
     }
+    const weeklyRisk=capacityPlan.schedule.map(week=>{
+      if(!Array.isArray(week.portions)||!Number.isSafeInteger(week.week)||
+        !Number.isSafeInteger(week.assigned))
+        throw Error('Capacity schedule was changed after source review');
+      let held=0,urgent=0,sourceConflict=0;
+      for(const portion of week.portions){
+        if(!Number.isSafeInteger(portion.ordinal)||portion.ordinal<1||portion.ordinal>current.length||
+           !Number.isSafeInteger(portion.hours)||portion.hours<1)
+          throw Error('Invalid anonymous capacity source position');
+        if(blockedOrdinals.has(portion.ordinal)){
+          held+=portion.hours;
+          if(portion.severity==='critical'||portion.severity==='high')urgent+=portion.hours;
+        }
+        if(sourceRegressionsMarkedComplete.has(portion.ordinal))sourceConflict+=portion.hours;
+      }
+      if(held>week.assigned||sourceConflict>week.assigned)
+        throw Error('Contradictory anonymous capacity schedule');
+      return Object.freeze({
+        week:week.week,start:week.start,provisionally_allocated_hours:week.assigned,
+        locally_blocked_estimated_hours:held,
+        locally_blocked_critical_high_estimated_hours:urgent,
+        source_regression_locally_completed_estimated_hours:sourceConflict
+      });
+    });
     // Discard all source identifiers, case notes, owners and expiry metadata;
     // the result is only aggregate, untrusted human self-report.
     return Object.freeze({
@@ -1024,7 +1063,8 @@ global.LightUpCasework=Object.freeze({compareSource,reconcileSource,parseCSV,nor
       source_records:current.length,assigned_owner_labels:assigned,
       source_casework_due_dates:withDueDate,blocked_with_local_notes:blockedWithNotes,
       source_casework_statuses:statuses,severity_statuses:severity,
-      human_review_flags:advisories
+      human_review_flags:advisories,
+      weekly_blocker_pressure:weeklyRisk
     });
   }
   root.LightUpCapacityCasework=Object.freeze({review,MAX_BYTES});
@@ -1077,6 +1117,7 @@ global.LightUpCasework=Object.freeze({compareSource,reconcileSource,parseCSV,nor
     el('casework-summary').hidden=true;
     el('casework-status-cards').replaceChildren();
     el('casework-risk-table').replaceChildren();
+    el('casework-week-pressure').replaceChildren();
     el('casework-triage').replaceChildren();
     el('casework-feedback').textContent='No Casework record reviewed.';
   }
@@ -1172,6 +1213,7 @@ global.LightUpCasework=Object.freeze({compareSource,reconcileSource,parseCSV,nor
         weekAvailability:Array.from(el('week-availability').querySelectorAll('input'),v=>v.value)
       };
       result = engine.plan(findings,lastOptions);
+      clearCasework();
       clearHistory();
       clearMilestone();
     clearContingency();
@@ -1509,13 +1551,26 @@ global.LightUpCasework=Object.freeze({compareSource,reconcileSource,parseCSV,nor
       card.append($('strong',item.count+' · '+item.label),$('p',item.nextStep));
       triage.append(card);
     }
+    const pressureRows=el('casework-week-pressure');pressureRows.replaceChildren();
+    for(const week of summary.weekly_blocker_pressure){
+      const row=$('tr');
+      if(week.locally_blocked_critical_high_estimated_hours)row.className='outstanding-row';
+      for(const value of [
+        'Week '+week.week,
+        week.provisionally_allocated_hours+' h',
+        week.locally_blocked_estimated_hours+' h',
+        week.locally_blocked_critical_high_estimated_hours+' h',
+        week.source_regression_locally_completed_estimated_hours+' h'
+      ])row.append($('td',value));
+      pressureRows.append(row);
+    }
     el('casework-summary').hidden=false;
   }
   el('review-casework').addEventListener('click',async()=>{
     reviewedCasework=null;
     el('casework-summary').hidden=true;
     const csv=source.files?.[0],packet=el('casework-packet').files?.[0];
-    if(!csv||!findings||!packet||!el('casework-ack').checked){
+    if(!csv||!findings||!result||!packet||!el('casework-ack').checked){
       el('casework-feedback').textContent='HOLD: load an original CSV, choose an original Casework JSON and manually confirm the same client and engagement.';
       return;
     }
@@ -1530,9 +1585,10 @@ global.LightUpCasework=Object.freeze({compareSource,reconcileSource,parseCSV,nor
       const packetText=new TextDecoder('utf-8',{fatal:true}).decode(packetBytes);
       if(source.files?.[0]!==csv||!el('casework-ack').checked||!findings)
         throw Error('Original CSV or acknowledgment changed during read');
-      const summary=await window.LightUpCapacityCasework.review(originalText,packetText);
-      if(source.files?.[0]!==csv||!el('casework-ack').checked||!findings)
-        throw Error('Source changed during source-digest validation');
+      const planAtUse=result;
+      const summary=await window.LightUpCapacityCasework.review(originalText,packetText,planAtUse);
+      if(source.files?.[0]!==csv||!el('casework-ack').checked||!findings||result!==planAtUse)
+        throw Error('Source or active capacity plan changed during source-digest validation');
       reviewedCasework=summary;
       showCaseworkSummary(summary);
       el('casework-feedback').textContent='Matched the Casework source digest and source fields locally. Client identity, active consent and retest are NOT authenticated here.';
@@ -1564,6 +1620,27 @@ global.LightUpCasework=Object.freeze({compareSource,reconcileSource,parseCSV,nor
     download('lightup-casework-human-discussion.csv',lines.join('\r\n')+'\r\n',
       'text/csv;charset=utf-8');
     setFeedback('Private, static-label aggregate discussion register exported. No cases or identities included.');
+  });
+
+
+  el('export-casework-pressure').addEventListener('click',()=>{
+    if(!reviewedCasework||!el('casework-ack').checked||!result)return;
+    if(!window.confirm('Export private aggregate planned-hours-at-risk by week? These values are HUMAN NOTES only and do not create assignments, scan access, verified fixes or booked work.'))return;
+    const quote=value=>'"'+String(value).replace(/"/g,'""')+'"';
+    const keys=['week','week_start_utc','allocated_estimated_hours','locally_blocked_estimated_hours',
+      'critical_high_locally_blocked_estimated_hours','source_regression_locally_completed_estimated_hours'];
+    const rows=[keys.map(quote).join(',')];
+    for(const week of reviewedCasework.weekly_blocker_pressure) {
+      rows.push([
+        week.week,week.start,week.provisionally_allocated_hours,
+        week.locally_blocked_estimated_hours,
+        week.locally_blocked_critical_high_estimated_hours,
+        week.source_regression_locally_completed_estimated_hours
+      ].map(quote).join(','));
+    }
+    download('lightup-casework-weekly-pressure.csv',rows.join('\r\n')+'\r\n',
+      'text/csv;charset=utf-8');
+    setFeedback('Anonymous, aggregate only weekly Casework coordination pressure exported for human review.');
   });
 
   // Source-bound, user-controlled resume: no browser persistence or implicit restore.
@@ -1638,6 +1715,7 @@ global.LightUpCasework=Object.freeze({compareSource,reconcileSource,parseCSV,nor
         .forEach((input,index)=>{input.value=String(opts.weekAvailability[index]);});
       el('extra-engineers').value=String(restored.scenario);
       lastOptions=opts;result=restored.plan;
+      clearCasework();
       clearMilestone();
       render();renderComparison();
       el('results').hidden=false;
