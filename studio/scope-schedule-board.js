@@ -19,7 +19,7 @@ const exactKeys = (v,allowed) => Object.keys(v).every(k => allowed.has(k));
 const validString = (s,n) => typeof s === 'string' && s.length <= n;
 const str = s => String(s == null ? '' : s);
 const minutes = v => Number.isInteger(v) && v >= -840 && v <= 840;
-let entries = [], anchorUTC = 0;
+let entries = [], anchorUTC = 0, anchorChangedByUser = false;
 
 function validLocal(value) {
   if (value === null) return true;
@@ -205,7 +205,7 @@ function setAnchor(){
 }
 $('anchor').value=new Date().toISOString().slice(0,10);
 setAnchor();
-$('anchor').addEventListener('change',setAnchor);
+$('anchor').addEventListener('change',()=>{anchorChangedByUser=true;setAnchor();});
 $('horizon').addEventListener('change',render);
 $('files').addEventListener('change',async ev=>{
   const list=Array.from(ev.target.files||[]);ev.target.value='';
@@ -229,6 +229,14 @@ $('files').addEventListener('change',async ev=>{
       entries.push({...draft,key});accepted++;
     }catch(_){rejected++;}
   }
+  if(accepted && !anchorChangedByUser){
+    const times=shown().map(e=>e.interval.start);
+    if(times.length){
+      const first=fmtDate(Math.min(...times));
+      $('anchor').value=first;
+      setAnchor();
+    }
+  }
   $('status').textContent=accepted+' draft(s) loaded, '+duplicate+' repeated draft(s) skipped, '+
       rejected+' held (invalid format/provenance/size). No network or database access.';
   render();
@@ -240,10 +248,18 @@ $('clear').addEventListener('click',()=>{
 });
 $('print').addEventListener('click',()=>{if(entries.length)window.print();});
 function icsTimestamp(n){return new Date(n).toISOString().replace(/[-:]/g,'').replace('.000Z','Z');}
+function foldIcsLine(line){
+  const chunks=[];
+  for(let i=0;i<line.length;i+=73)chunks.push(line.slice(i,i+73));
+  return chunks.join('\r\n ');
+}
 $('ics').addEventListener('click',()=>{
   const active=shown();if(!active.length)return;
   // No client names, notes, assets, URLs, contacts, identifiers or original file text are exported.
-  const stamp=icsTimestamp(Date.now()),nonce=String(Date.now());
+  const stamp=icsTimestamp(Date.now());
+  const entropy=new Uint32Array(2);
+  if(globalThis.crypto && crypto.getRandomValues)crypto.getRandomValues(entropy);
+  const nonce=String(Date.now())+'-'+entropy[0].toString(16)+'-'+entropy[1].toString(16);
   const lines=['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//LightUp//Non-Authorizing Offline Planning//EN','CALSCALE:GREGORIAN'];
   for(let i=0;i<active.length;i++){
     const e=active[i];
@@ -254,7 +270,7 @@ $('ics').addEventListener('click',()=>{
       'STATUS:TENTATIVE','TRANSP:TRANSPARENT','END:VEVENT');
   }
   lines.push('END:VCALENDAR');
-  const blob=new Blob([lines.join('\r\n')+'\r\n'],{type:'text/calendar;charset=utf-8'});
+  const blob=new Blob([lines.map(foldIcsLine).join('\r\n')+'\r\n'],{type:'text/calendar;charset=utf-8'});
   const url=URL.createObjectURL(blob),link=document.createElement('a');
   link.href=url;link.download='lightup-unapproved-scope-plans.ics';
   document.body.append(link);link.click();link.remove();
