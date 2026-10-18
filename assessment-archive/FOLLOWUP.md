@@ -1,0 +1,38 @@
+# LightUp Archive · Human Follow-up Desk
+
+This is the **second integrated product workflow** in the isolated Assessment Archive source branch, designed to follow up on source claims from multiple private lab sessions. Original comparator/review/authorization paths are unchanged.
+
+## Use with the existing private archive
+
+First create the owner-private manifest with the archive tool. Then generate a source-bound human planning form:
+
+    python3 assessment-archive/followup.py draft --manifest /private/ARCHIVE.json --output /private/NEW-followup-draft.json
+
+Open the new JSON **locally in an editor** (do not share its original SHA-256 metadata). For each slot, edit only the stage, next_role and review_date fields, keeping original slot/source fingerprint unchanged.
+
+Allowed stage selections:
+
+- PENDING_ORIGINAL: original source-owner review still outstanding.
+- NEEDS_ORIGINAL_EVIDENCE: original evidence/metrics require independent inspection.
+- NEEDS_SOURCE_OWNER: ask the original source author.
+- NEEDS_PRIVACY_REVIEW: privacy review required before transmission.
+- AWAITING_INPUT: external original source/client reply is necessary.
+- HUMAN_DISCUSSION: schedule a human review conversation.
+
+Allowed non-identifying role selectors: unassigned, source_owner, reviewer, privacy, operator. Leave review_date null or use ISO YYYY-MM-DD (a planning date, never an authorization window).
+
+## Render the human worklist
+
+    python3 assessment-archive/followup.py render --manifest /private/ARCHIVE.json --choices /private/NEW-followup-draft.json --output /private/NEW-human-worklist.html
+
+This **offline accessible, printable, responsive dashboard** shows 2–64 per-slot stage/role/date choices and a source-class-specific human question. It never imports raw target names, original source notes or records. It validates the exact original private manifest-byte SHA-256, each source file's original fingerprint and every slot/stage/date **before** publishing. Changed source selection or file content requires a new separate planning form; no stale planning is silently carried forward.
+
+To export only aggregate stage counts, use:
+
+    python3 assessment-archive/followup.py render --manifest /private/ARCHIVE.json --choices /private/NEW-followup-draft.json --aggregate-only --format json --output /private/NEW-aggregates.json
+
+Or use --format html for an anonymous human-facing document. Aggregate exports contain no source hashes, slots, role assignments, schedule dates, original identifiers or source text. Original private manifests and draft forms stay private.
+
+Files are always NEW, atomically fsynced and mode 0600 (no overwrite). Browser HTML has no scripts/network/storage and a static restrictive CSP. Operator input is never treated as trusted target or consent evidence. The CLI exits 2 on source-available REVIEW_ONLY, 3 on HOLD, never 0 as successful authorization.
+
+**DRAFT/HOLD, INCUBATE M3/M7 PLAN/LAB ONLY:** This is a human coordination form, not a grant, approval, scope resolver, scan, benchmark, automated remediation or completed security finding. The original hosted and permanently registered VPS CI, source-owner reviews, independent privacy/security, actual separate client/operator permissions, revocation and HUMAN GO remain mandatory. No active code, original webapp or other workers' source was modified. No QA suites were added or executed.
