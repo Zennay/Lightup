@@ -297,9 +297,31 @@ function render(){
   }
  }catch(e){const warn=el('p',e.message);warn.className='hold';board.appendChild(warn);}
 }
+
+/* Never leave private original source IDs or earlier human notes in hidden DOM
+ * after a reset, failed import or replacement of any original input. */
+function purgeRenderedPrivateData(){
+ state=null;revisionCandidate=null;lastBulkSnapshot=null;
+ $('results').hidden=true;$('bulkUndo').disabled=true;$('applyRevision').disabled=true;
+ for(const id of ['findings','summary'])$(id).replaceChildren();
+ for(const id of ['digest','revisionSummary'])$(id).textContent='';
+ $('note').value='';$('planFile').value='';$('nextCsv').value='';
+ $('confirmRevision').checked=false;
+ for(let i=0;i<HOURS;i++){
+  $('date'+i).value='';$('label'+i).value='';$('duration'+i).value='60';
+ }
+ for(const id of ['filter','caseFilter','humanFilter','bulkWindow'])$(id).value=$(id).options[0].value;
+ for(const id of ['total','urgent','unassigned','holds'])$(id).textContent='0';
+ $('caseBlocked').textContent='—';$('caseOverdue').textContent='—';
+}
+function originalInputChanged(){
+ purgeRenderedPrivateData();$('same').checked=false;
+ setStatus('Original source or private review input changed: prior private workspace cleared. Re-confirm same exact client and engagement, then reload.');
+}
+
 async function load(){
  /* Atomic import: always discard old state on a new attempt, never keep stale source on error. */
- state=null;revisionCandidate=null;lastBulkSnapshot=null;$('bulkUndo').disabled=true;$('results').hidden=true;$('digest').textContent='';clearRevisionPreview('');
+ purgeRenderedPrivateData();
  const file=$('csv').files[0],review=$('review').files[0],caseFile=$('casework').files[0];
  if((review||caseFile)&&!$('same').checked)fail('Independent exact client/engagement confirmation required for review/Casework join.');
  const src=C.parseCSV(await read(file,1048576)),hash=await digest(src);
@@ -359,7 +381,9 @@ async function resumePlan(){
     raw.source_contract!=='lightup.finding_export._COLUMNS_v1'||
     raw.source_sha256!==state.hash||FLAGS.some(k=>raw[k]!==false))
   fail('Plan is not an exact non-authorizing original-source-bound draft.');
- if(raw.casework_sha256!==undefined&&raw.casework_sha256!==state.caseworkDigest)fail('Original Casework plan changed or was not loaded; refuse private resume.');
+ if((raw.casework_sha256===undefined&&state.caseworkDigest!==null)||
+    (raw.casework_sha256!==undefined&&raw.casework_sha256!==state.caseworkDigest))
+  fail('Original Casework plan changed or was not loaded; refuse private resume.');
  if(raw.warning!==undefined)human(raw.warning,800);
  meetingNote(raw.meeting_note);
  if(!Array.isArray(raw.windows)||raw.windows.length!==HOURS||
@@ -394,7 +418,9 @@ async function resumePlan(){
   keys(row,['finding_id','original_severity','original_retest_status','human_stage','human_reviewer',
    'human_next_step','human_review_sha256','human_reference_gaps','proposed_window','casework_row_sha256'],
    ['finding_id','original_severity','original_retest_status','human_stage','human_reviewer','human_next_step','human_review_sha256','human_reference_gaps','proposed_window']);
-  if(row.casework_row_sha256!==undefined&&row.casework_row_sha256!==(state.casework?localSha256(JSON.stringify(state.casework.get(row.finding_id))):null))fail('Original Casework row changed during private plan resume.');
+  if((row.casework_row_sha256===undefined&&state.casework!==null)||
+     (row.casework_row_sha256!==undefined&&row.casework_row_sha256!==(state.casework?localSha256(JSON.stringify(state.casework.get(row.finding_id))):null)))
+   fail('Original Casework row changed during private plan resume.');
   const f=idMap.get(row.finding_id);
   if(typeof row.finding_id!=='string'||!f||imported.has(row.finding_id)||
      row.original_severity!==f.severity||row.original_retest_status!==f.retest_status)
@@ -540,11 +566,10 @@ function aggregateExport(){
  output('lightup-aggregate-human-windows.csv',data.join('\r\n')+'\r\n','text/csv');
 }
 function forget(){
- state=null;revisionCandidate=null;lastBulkSnapshot=null;$('bulkUndo').disabled=true;for(const id of ['csv','review','casework','planFile','nextCsv'])$(id).value='';
- $('confirmRevision').checked=false;clearRevisionPreview('');
- $('same').checked=false;$('note').value='';$('digest').textContent='';$('results').hidden=true;
- for(let i=0;i<HOURS;i++){$('date'+i).value='';$('label'+i).value='';$('duration'+i).value='60';}
- setStatus('All loaded original data and human window assignments forgotten from this tab.');
+ purgeRenderedPrivateData();
+ for(const id of ['csv','review','casework'])$(id).value='';
+ $('same').checked=false;
+ setStatus('Loaded original data, hidden private tables and human planning inputs cleared from this tab.');
 }
 function init(){
  for(let i=0;i<HOURS;i++){
@@ -555,8 +580,9 @@ function init(){
   wrapper.append(h,name,dateLabel,minLabel);$('windows').appendChild(wrapper);
   for(const input of [text,date,min])input.addEventListener('change',()=>{if(state)render();});
  }
- $('load').addEventListener('click',()=>load().catch(e=>{state=null;$('results').hidden=true;setStatus(e.message,true);}));
+ $('load').addEventListener('click',()=>load().catch(e=>{purgeRenderedPrivateData();setStatus(e.message,true);}));
  $('forget').addEventListener('click',forget);
+ for(const id of ['csv','review','casework'])$(id).addEventListener('change',originalInputChanged);
  $('resume').addEventListener('click',()=>resumePlan().catch(e=>setStatus(e.message,true)));
  $('previewRevision').addEventListener('click',()=>previewSourceRevision().catch(e=>{clearRevisionPreview(e.message);setStatus(e.message,true);}));
  $('applyRevision').addEventListener('click',()=>{try{applySourceRevision();}catch(e){setStatus(e.message,true);}});
