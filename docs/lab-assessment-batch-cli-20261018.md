@@ -17,6 +17,7 @@ New multi-endpoint forms (only isolated labs you own/control):
 lightup lab-assess --target http://127.0.0.1:18080/ --target http://127.0.0.1:18081/
 lightup lab-assess http://127.0.0.1:18080/ --target http://127.0.0.1:18081/
 lightup lab-assess --targets-file ./private-lab-targets.txt --no-review
+lightup lab-assess --targets-file ./private-lab-targets.txt --preview-only
 ```
 
 Example contents of `private-lab-targets.txt`:
@@ -28,6 +29,12 @@ http://127.0.0.1:18081/
 ```
 
 The installed `lightup` entrypoint dispatches the `lab-assess` subcommand through `src/lightup/cli.py` to `labrun.main_assess`. This integration accepts both repeated flags and local manifests. `python -m lightup.labrun` invokes the **different** original single-baseline command and is not this workflow.
+
+## No-execution input preview
+
+Use `--preview-only` with either `--target` or `--targets-file` to check the same complete batch of lab inputs without starting the model gateway, planner or any network worker. The JSON preview contains `mode: "LAB_INPUT_PREVIEW_ONLY"`, the normalized lab-host candidates, endpoint count, and explicit `false` execution/authorization fields. The preview **does not echo the original URLs**: query strings and embedded userinfo may be sensitive. It does not authenticate an owner, issue an approval, prove engagement rights, assert vulnerability findings, create a plan, grant consent or interact with any target.
+
+`--preview-only` is a user-facing offline preparation step, **not** a replacement for any mandatory release/CI/security gate. Passing this preview never authorizes a later assessment.
 
 ## Exactly what is admitted
 
