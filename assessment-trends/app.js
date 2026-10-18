@@ -169,6 +169,44 @@
       return null;
     }
   }
+  function sameCandidateReport(a,b) {
+    if(!a||!b||a.cases.size!==b.cases.size||a.verdict!==b.verdict)
+      return false;
+    for(const [id,sourceCase] of a.cases) {
+      const candidateCase=b.cases.get(id);
+      if(!candidateCase)return false;
+      for(const metric of NAMES) {
+        const old=sourceCase.metrics[metric],next=candidateCase.metrics[metric];
+        if(old.baseline!==next.baseline||old.candidate!==next.candidate||
+          old.regression!==next.regression)return false;
+      }
+    }
+    return true;
+  }
+  async function appendOneFile(file) {
+    REQUIRE(!demoMode && revisions.length>=3 && revisions.length<12 &&
+      file && file.size>0 && file.size<=262144);
+    const bytes=await file.arrayBuffer();
+    REQUIRE(bytes.byteLength===file.size);
+    const source=new TextDecoder("utf-8",{fatal:true}).decode(bytes);
+    const candidate=decodeReport(strictJSON(source));
+    enforceSameBaseline([...revisions,candidate]);
+    REQUIRE(!revisions.some(r=>sameCandidateReport(r,candidate)));
+    const digest=await byteDigest(bytes);
+    REQUIRE(!digest||!sourceHashes.includes(digest));
+    // Commit the full append only after all source parsing and consistency
+    // checks succeeded. Existing human notes, roles and dates remain local.
+    revisions.push(candidate);
+    sourceHashes.push(digest);
+    sourceMeta.push({bytes:bytes.byteLength,
+      alias:"Source "+String(revisions.length).padStart(2,"0")});
+    pairFocus=revisions.length-1;crossB=revisions.length-1;
+    batchUndo=null;
+    $("batch-undo").disabled=true;
+    $("batch-message").textContent="Prior bulk undo cleared after source set changed.";
+    render();
+    showMessage("One distinct offline cohort report appended atomically. Existing human discussion stages, local source aliases and plans preserved. Source order and origin are still unauthenticated. Older private drafts no longer match this extended source set.");
+  }
   async function loadFiles(list) {
     REQUIRE(list.length>=3 && list.length<=12);
     const decoder=new TextDecoder("utf-8",{fatal:true});
@@ -180,7 +218,9 @@
       const source=decoder.decode(bytes);
       REQUIRE(!originalTexts.has(source));
       originalTexts.add(source);
-      parsed.push(decodeReport(strictJSON(source)));
+      const candidate=decodeReport(strictJSON(source));
+      REQUIRE(!parsed.some(r=>sameCandidateReport(r,candidate)));
+      parsed.push(candidate);
       hashes.push(await byteDigest(bytes));
       sizes.push(bytes.byteLength);
     }
@@ -225,6 +265,9 @@
     revisions=[];sourceHashes=[];sourceMeta=[];discussionStages=Object.create(null);caseStages=new Map();casePlans=new Map();batchUndo=null;selectedCase=0;revisionFocus=0;pairFocus=1;crossA=0;crossB=1;demoMode=false; $("workspace").hidden=true; $("files").value="";
     $("notes").value="";$("draft-file").value="";
     $("batch-undo").disabled=true;
+    $("append-file").value="";
+    $("append-file").disabled=true;
+    $("append-label").classList.add("disabled");
     $("batch-message").textContent="No bulk proposal recorded.";
     $("draft-state").textContent="Private source bindings and local discussion stages were cleared.";
     showMessage("All imported source data and local notes cleared.");
@@ -984,6 +1027,8 @@
     }
     renderOrder();renderManifest();renderPair();renderCross();renderTradeoffs();metricsRows();renderCaseRows();renderCaseInspector();renderAgenda();renderActions();choose(selected);followupText();
     $("demo-banner").hidden=!demoMode;
+    $("append-file").disabled=demoMode||revisions.length>=12||revisions.length<3;
+    $("append-label").classList.toggle("disabled",$("append-file").disabled);
     $("save-draft").disabled=demoMode || !sourceHashes.length || sourceHashes.some(x=>!x);
     if(sourceHashes.some(x=>!x))
       $("draft-state").textContent="Browser WebCrypto unavailable: private draft save/restore is disabled, but lab trend analysis remains available.";
@@ -1043,7 +1088,7 @@
   $("demo").addEventListener("click",()=>{
     revisions=[];sourceHashes=[];sourceMeta=[];demoMode=false;
     crossA=0;crossB=1;
-    $("workspace").hidden=true;$("files").value="";
+    $("workspace").hidden=true;$("files").value="";$("append-file").value="";
     caseStages=new Map();casePlans=new Map();batchUndo=null;discussionStages=Object.create(null);
     $("batch-undo").disabled=true;
     $("batch-message").textContent="No bulk proposal recorded.";
@@ -1062,6 +1107,15 @@
     }
   });
 
+  $("append-file").addEventListener("change",async event=>{
+    try {
+      await appendOneFile(event.target.files[0]);
+    } catch (_) {
+      showMessage("APPEND HOLD — duplicate, invalid or baseline-mismatched source. Existing imports, human discussion stages and review work remain unchanged.",true);
+    } finally {
+      event.target.value="";
+    }
+  });
   $("files").addEventListener("change",async ev=>{
     // No mixing old and new reports. A failed import removes previous content.
     revisions=[];sourceHashes=[];sourceMeta=[];revisionFocus=0;pairFocus=1;crossA=0;crossB=1;discussionStages=Object.create(null);caseStages=new Map();casePlans=new Map();batchUndo=null;selectedCase=0;demoMode=false;$("workspace").hidden=true;$("notes").value="";
