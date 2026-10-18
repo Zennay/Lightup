@@ -260,6 +260,12 @@ $('revisionCompare').addEventListener('click',()=>{
    if(changed.stages.length)box.append(make('small','Re-review: '+changed.stages.join(', ')));
    root.append(box);
   }
+  for(const suggestion of result.followups){
+   const row=make('div',undefined,'hint');
+   row.append(make('strong','Suggested human follow-up · '+suggestion.stage));
+   row.append(make('p',suggestion.action,'small'));
+   root.append(row);
+  }
   root.append(make('p',result.affectedStages.length+' preparation stage(s) require review. Source SHA-256 only proves local byte continuity; nothing authenticates scope rights.','small'));
   revisionPreview={epoch:editEpoch,from,to,result};
   $('revisionReopen').disabled=!result.affectedStages.length;
@@ -317,11 +323,19 @@ $('revisionReopen').addEventListener('click',()=>{
   const {current,target}=checkedRevisionPreview(),ids=current.affectedStages;
   if(!ids.length)throw Error('No material re-review stages identified.');
   const affected=ids.filter(id=>target.tasks[id].status!=='todo');
-  if(!affected.length){$('revisionStatus').textContent='All impacted paperwork is already NOT STARTED. No state changes needed.';return;}
-  if(!confirm('Reopen '+affected.length+' preparation workstream(s) on the UPDATED draft? Prepared/blocked paperwork states become NOT STARTED. Owner, due date and notes remain, but NO authenticated consent/approval/grants are implied. Original draft unchanged.'))return;
+  const proposed=current.followups.filter(item=>!target.tasks[item.stage].next_action);
+  if(!affected.length&&!proposed.length){
+   $('revisionStatus').textContent='All impacted paperwork is already NOT STARTED with human follow-up notes. No change needed.';
+   return;
+  }
+  if(!confirm('Reopen '+affected.length+' preparation status(es) and fill '+proposed.length+
+   ' EMPTY next-action field(s) on the UPDATED draft with explicit human follow-up suggestions? '+
+   'Existing owner, due date and notes remain unchanged. Prepared evidence, authenticated consent, operator decisions and grants are NOT created or carried over. Original draft unchanged.'))return;
   for(const id of affected)target.tasks[id].status='todo';
+  for(const suggestion of proposed)target.tasks[suggestion.stage].next_action=suggestion.action;
   setDirty();render();
-  $('revisionStatus').textContent='Reopened '+affected.length+' changed-scope preparation workstream(s) on the updated local record. All actual authorizations remain external and unverified.';
+  $('revisionStatus').textContent='Reopened '+affected.length+' changed-scope preparation status(es); suggested '+
+   proposed.length+' new human next actions. Existing notes retained; review them for staleness. No grant or permission changed.';
  }catch(e){clearRevisionPreview('Reopen HOLD: '+e.message);}
 });
 $('revisionExport').addEventListener('click',()=>{
@@ -333,6 +347,7 @@ $('revisionExport').addEventListener('click',()=>{
    original_source_sha256:from,updated_source_sha256:to,security:flags(),
    changed_categories:current.summary.map(c=>({key:c.key,review_stages:c.stages,scope_membership_unverified:c.scopeConcern})),
    affected_workstreams:current.affectedStages,
+   suggested_human_followups:current.followups,
    warning:'Human review only. Not effective CIDR analysis, identity, ownership, consent, authority, grant or a valid release gate.'
   };
   download('lightup-revision-impact-review-private.json',JSON.stringify(packet,null,2)+'\\n','application/json');
