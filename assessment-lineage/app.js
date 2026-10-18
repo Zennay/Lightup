@@ -17,6 +17,7 @@
   const TOKEN = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
   const MAX_CATALOG = 1048576, MAX_REPORT = 262144;
   let catalog=null, reports=[], reviews=new Map(), humanNotes=new Map(), fictional=false;
+  let mismatchRevealed=false;
   let catalogHash=null, reportHashes=[];
   function admit(ok){if(!ok)throw Error("Incompatible or unsafe private source");}
   function exact(v,keys){return v!==null && typeof v==="object" && !Array.isArray(v) &&
@@ -292,6 +293,56 @@
   const QUEUE_KEYS=["missing_source","scope_policy","findings_coverage",
     "evidence_scoring","operations_info","no_source_flags"];
   const QUEUE_FILTERS=["missing","scope","findings","evidence","operations","no_flags"];
+
+  function renderMismatchDetails(){
+    const node=$("mismatchDetails"),button=$("revealMismatch");
+    node.replaceChildren();
+    const match=consistency();
+    const hasMismatches=Boolean(catalog&&reports.length&&!match.exact);
+    button.hidden=!hasMismatches;
+    button.textContent=mismatchRevealed?"Hide PRIVATE mismatch identifiers":
+      "Reveal exact PRIVATE mismatch identifiers";
+    if(!hasMismatches){
+      mismatchRevealed=false;
+      node.textContent=catalog&&reports.length?
+        "Original scenario memberships match. No mismatch identifiers needed.":
+        "Load original completed sources first.";
+      return;
+    }
+    if(!mismatchRevealed){
+      node.textContent="HOLD: exact original case IDs are intentionally hidden. "+
+        "Reveal privately only if needed for original-source reconciliation.";
+      return;
+    }
+    const catalogIds=new Set(catalog.map(s=>s.id)),rows=[];
+    for(let i=0;i<reports.length;i++){
+      const report=reports[i];
+      for(const item of catalog){
+        if(!report.cases.has(item.id))rows.push([
+          "Source "+(i+1),"Catalog source missing from report",item.id
+        ]);
+      }
+      for(const id of report.cases.keys()){
+        if(!catalogIds.has(id))rows.push([
+          "Source "+(i+1),"Unexpected in completed report",id
+        ]);
+      }
+    }
+    table(node,["Private original source slot","Exact source mismatch","PRIVATE source case ID"],rows);
+    const caution=document.createElement("p");
+    caution.textContent="PRIVATE original identifiers shown locally for human source correction. "+
+      "Never copy into anonymous reports. ABSENT does not mean remediated. "+
+      "Changing input sources automatically hides this sensitive view.";
+    node.append(caution);
+  }
+  function toggleMismatch(){
+    if(!catalog||!reports.length||consistency().exact)return;
+    if(mismatchRevealed){mismatchRevealed=false;renderMismatchDetails();return;}
+    if(!confirm("Reveal exact ORIGINAL PRIVATE scenario identifiers on this local "+
+      "screen? Keep this information away from screen sharing or printed reports."))return;
+    mismatchRevealed=true;renderMismatchDetails();
+  }
+
   function queueRollup(){
     const rows=QUEUE_KEYS.map((key,i)=>({
       category:key,label:QUEUE_LABELS[i],cases:0,
@@ -388,6 +439,7 @@
     if(!Number.isSafeInteger(i)||i<0||j<0||j>=reports.length)return;
     [reports[i],reports[j]]=[reports[j],reports[i]];
     [reportHashes[i],reportHashes[j]]=[reportHashes[j],reportHashes[i]];
+    mismatchRevealed=false;
     undoBatch=null;
     render();$("sourceOrder").value=String(j);renderSourceOrder();
     message("Changed private source DISPLAY order only. Not proven chronology. "+
@@ -398,7 +450,7 @@
     if(!Number.isSafeInteger(i)||i<0||i>=reports.length)return;
     if(!confirm("Remove original source slot "+(i+1)+" from this in-memory review? "+
       "The original private file is NOT deleted. No measurement or scan is repeated."))return;
-    reports.splice(i,1);reportHashes.splice(i,1);reopenHumanStages();
+    reports.splice(i,1);reportHashes.splice(i,1);mismatchRevealed=false;reopenHumanStages();
     render();message("One original completed report removed from private memory; "+
       "catalog and private notes preserved. Human stages reopened for source review.");
   }
@@ -479,6 +531,7 @@
       [...r.cases.values()].reduce((n,c)=>n+c.adverse.length,0)]);
     table($("reports"),["Source slot","Original source status","Cases","Adverse cases","Adverse metric flags"],reportRows);
     renderSourceOrder();
+    renderMismatchDetails();
     renderQueueOverview();
     renderAnonymousPrint();
     $("cases").replaceChildren();
@@ -696,7 +749,7 @@
       message("Script-free, target-free human brief downloaded.");
     }catch(_){message("HOLD: brief not available until sources match exactly.",true);}
   }
-  function forget(){catalog=null;reports=[];reviews=new Map();humanNotes=new Map();catalogHash=null;
+  function forget(){catalog=null;reports=[];reviews=new Map();humanNotes=new Map();mismatchRevealed=false;catalogHash=null;
     reportHashes=[];undoBatch=null;resetFilters();fictional=false;render();message("All source and review data cleared from memory.");}
   function makeDemo(){
     const names=["scenario-FAKE-01","scenario-FAKE-02","scenario-FAKE-03"];
@@ -714,7 +767,7 @@
         return [id,{metrics,adverse:variant&&i===2?["scope_violations"]:[]}];
       }))
     });
-    reports=[candidate(0),candidate(1)];reviews=new Map();humanNotes=new Map();catalogHash=null;
+    reports=[candidate(0),candidate(1)];reviews=new Map();humanNotes=new Map();mismatchRevealed=false;catalogHash=null;
     reportHashes=[];undoBatch=null;resetFilters();fictional=true;
     render();message("FICTIONAL offline demonstration loaded; no source evidence or permission.");
   }
@@ -766,7 +819,7 @@
       harmonize(nextReports);
       // All source files are fully canonical and mutually consistent before ANY mutation.
       catalog=nextCatalog;reports=nextReports;catalogHash=sourceCatalog.digest;
-      reportHashes=nextHashes;reviews=new Map();humanNotes=new Map();undoBatch=null;fictional=false;
+      reportHashes=nextHashes;reviews=new Map();humanNotes=new Map();mismatchRevealed=false;undoBatch=null;fictional=false;
       resetFilters();render();
       // The template is no longer needed after import and should not linger in DOM.
       privateTemplate.content.replaceChildren();
@@ -789,7 +842,7 @@
       const imported=await read(file,MAX_CATALOG);
       const candidate=parseCatalog(imported.result);
       if((catalog||reports.length)&&!confirm("Replace private catalog and clear previously imported lab comparisons and human stage work?"))return;
-      catalog=candidate;reports=[];reviews=new Map();humanNotes=new Map();catalogHash=imported.digest;
+      catalog=candidate;reports=[];reviews=new Map();humanNotes=new Map();mismatchRevealed=false;catalogHash=imported.digest;
       reportHashes=[];undoBatch=null;resetFilters();fictional=false;render();
       message("PRIVATE lab design admitted. Targets and finding IDs were discarded after validation.");
     }catch(_){message("HOLD: incompatible PRIVATE Lab Scenario Studio source. Existing data preserved.",true);}
@@ -805,7 +858,7 @@
         add.push(parseReport(imported.result));digests.push(imported.digest);
       }
       harmonize([...reports,...add]);
-      reports=[...reports,...add];reportHashes=[...reportHashes,...digests];
+      reports=[...reports,...add];reportHashes=[...reportHashes,...digests];mismatchRevealed=false;
       reopenHumanStages();render();
       message("Canonical summaries admitted; all human stages reopened for source review. "+
         "Private notes kept locally. Original benchmark data is not authenticated.");
@@ -823,6 +876,7 @@
     $(id).addEventListener("change",render);
   $("inspectCase").addEventListener("change",renderInspector);
   $("saveCaseNote").addEventListener("click",saveCaseNote);
+  $("revealMismatch").addEventListener("click",toggleMismatch);
   $("sourceOrder").addEventListener("change",renderSourceOrder);
   $("sourceEarlier").addEventListener("click",()=>chooseSource(-1));
   $("sourceLater").addEventListener("click",()=>chooseSource(1));
