@@ -138,7 +138,7 @@ def compose_scope_incident_brief(
                 Path(database), engagement_id=proposal_engagement,
                 client_id=source["client_id"],
                 assets=original_canonical_assets(list(proposal_assets)),
-                risk=proposal_risk, include_request_ids=False,
+                risk=proposal_risk, include_request_ids=True,
                 include_labels=False, include_assets=False,
                 operator_user_id=actor_id,
             )
@@ -163,6 +163,23 @@ def compose_scope_incident_brief(
                     or len(original["candidates"]) != counts["recorded_requests"]
                     or len(original["candidates"]) > 100):
                 raise ScopeBriefHold("unbounded or inconsistent original matching source")
+            # Original request rows are only visible in temporary memory.
+            # Compare their stored identities/status/risk against the earlier
+            # authenticated Casebook snapshot. Even a same-count status swap
+            # cannot be presented as a stable candidate match.
+            earlier_requests = {
+                r["request_id"]: (r["status"], r["requested_risk"])
+                for r in source["requests"]
+            }
+            later_requests = {
+                r["request_id"]: (r["stored_status"], r["requested_risk"])
+                for r in original["candidates"]
+                if type(r) is dict and type(r.get("request_id")) is str
+            }
+            if (len(earlier_requests) != len(source["requests"])
+                    or len(later_requests) != len(original["candidates"])
+                    or earlier_requests != later_requests):
+                raise ScopeBriefHold("original assessment decision changed between sources")
             exposure = next(r for r in readings if r["engagement_id"] == proposal_engagement)
             if (exposure["grant_source_count"] is None
                     or exposure["grant_source_count"] != counts["prior_stored_grant_rows"]):
