@@ -21,7 +21,13 @@
     AMBIGUOUS_APPROVED_REQUEST_MATCH: 4,
     UNBOUND_APPROVAL_REQUEST: 4,
     EXPIRED_GRANT_WINDOW: 3,
-    NO_GRANT_RECORD: 2
+    NO_GRANT_RECORD: 2,
+    INVALID_CLIENT_REQUEST_ORIGIN: 5,
+    INVALID_REQUEST_ASSETS: 5,
+    INVALID_REQUEST_RISK: 5,
+    INVALID_REQUEST_CREATION_TIME: 4,
+    NON_AUTHORIZED_ASSESSMENT_MODE: 3,
+    PENDING_OPERATOR_REVIEW: 3
   });
   const $ = id => document.getElementById(id);
   const cases = [];
@@ -41,6 +47,17 @@
         action:grant.next_action, score
       }));
     });
+  });
+
+  snapshot.review_queue.forEach((request, i) => {
+    const score=Math.max(0,...request.flags.map(f=>severity[f]||2));
+    cases.push(Object.freeze({
+      id:'request-'+String(i), key:request.source_key, client:request.client,
+      engagement:'Client request inbox', engagement_status:request.status,
+      requests:1, approved:0, untrusted:request.flags.includes('INVALID_CLIENT_REQUEST_ORIGIN')?1:0,
+      grant:'request #'+request.request_number, window:'not a grant',
+      flags:Object.freeze([...request.flags]), action:request.next_action, score
+    }));
   });
   Object.freeze(cases);
   const casesById = new Map(cases.map(c => [c.id, c]));
