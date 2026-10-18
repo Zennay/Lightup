@@ -78,19 +78,22 @@ function validateReport(r){
  if(!Array.isArray(r.engagements)||!Array.isArray(r.review_queue)||!Array.isArray(r.request_history)||r.engagements.length>3000||r.review_queue.length>3000||r.request_history.length>3000||r.request_history.length!==s.requests||r.review_queue.length!==s.pending_requests||r.engagements.length>s.engagements)unknown();
  if(s.clients===0&&s.engagements>0||s.clients===0&&s.requests>0||s.engagements===0&&r.engagements.length>0)unknown();
  const count=Object.create(null), add=f=>{count[f]=(count[f]||0)+1;};
- const identities=new Set(), queue=new Set(), history=new Set();let grantRecords=0;
+ const identities=new Set(), queue=new Set(), history=new Set(), recordMap=new Map();let grantRecords=0;
  for(const e of r.engagements){
   if(!keys(e,['client','engagement','engagement_status','requests','approved_requests','untrusted_approved_requests','grants','grant_findings','identity_key','source_key','attention'])||!limited(e.client,500)||!limited(e.engagement,500)||!limited(e.engagement_status,100)||!limited(e.attention,500)||!int(e.requests)||!int(e.approved_requests)||!int(e.untrusted_approved_requests)||e.approved_requests>e.requests||e.untrusted_approved_requests>e.approved_requests||!int(e.grants)||!sha(e.identity_key)||!sha(e.source_key)||!Array.isArray(e.grant_findings)||e.grant_findings.length!==e.grants)unknown();
-  if(identities.has(e.identity_key))unknown();identities.add(e.identity_key);
+  if(identities.has(e.identity_key))unknown();identities.add(e.identity_key);recordMap.set(e.identity_key,{kind:'engagement',revision:e.source_key});
   for(const g of e.grant_findings){
    if(!keys(g,['identity_key','source_key','grant_number','window','binding','flags','next_action'])||!sha(g.identity_key)||!sha(g.source_key)||!int(g.grant_number,1,3000)||!['invalid','missing','recorded_coherent_review_only'].includes(g.binding)||!['invalid','expired','future','within_window','not_yet_valid'].includes(g.window)&&!limited(g.window,40)||!flags(g.flags)||!limited(g.next_action,700)||identities.has(g.identity_key))unknown();
-   identities.add(g.identity_key);g.flags.forEach(add);grantRecords++;
+   if(g.binding==='missing'&&!g.flags.includes('UNBOUND_APPROVAL_REQUEST')||g.binding==='invalid'&&!g.flags.includes('INVALID_APPROVED_REQUEST_BINDING')||g.binding==='recorded_coherent_review_only'&&(g.flags.includes('UNBOUND_APPROVAL_REQUEST')||g.flags.includes('INVALID_APPROVED_REQUEST_BINDING'))||g.window==='expired'&&!g.flags.includes('EXPIRED_GRANT_WINDOW')||g.window==='invalid'&&!g.flags.includes('INVALID_GRANT_WINDOW')||g.window==='within_window'&&(g.flags.includes('EXPIRED_GRANT_WINDOW')||g.flags.includes('INVALID_GRANT_WINDOW')))unknown();
+   identities.add(g.identity_key);recordMap.set(g.identity_key,{kind:'grant',revision:g.source_key});g.flags.forEach(add);grantRecords++;
   }
  }
  if(grantRecords>s.grants)unknown();
  for(const r0 of r.request_history){
   if(!keys(r0,['identity_key','source_key','request_number','client','status','created_at','flags','next_action'])||!sha(r0.identity_key)||!sha(r0.source_key)||!int(r0.request_number,1,3000)||!limited(r0.client,500)||!limited(r0.status,50)||!limited(r0.created_at,60)||!flags(r0.flags)||!limited(r0.next_action,700)||identities.has(r0.identity_key))unknown();
-  identities.add(r0.identity_key);history.add(r0.identity_key);
+  const expected=['submitted','under_review'].includes(r0.status)?'PENDING_OPERATOR_REVIEW':r0.status==='approved'?'RECORDED_ADMINISTRATIVE_APPROVAL':r0.status==='rejected'?'RECORDED_ADMINISTRATIVE_REJECTION':'UNKNOWN_REQUEST_STATUS';
+  if(r0.flags[0]!==expected)unknown();
+  identities.add(r0.identity_key);recordMap.set(r0.identity_key,{kind:'request',revision:r0.source_key});history.add(r0.identity_key);
   if(['submitted','under_review'].includes(r0.status)){r0.flags.forEach(add);queue.add(r0.identity_key);}
  }
  if(queue.size!==s.pending_requests)unknown();
@@ -108,14 +111,14 @@ function validateReport(r){
   if((count[k]||0)!==v)unknown();
  }
  for(const k of expected)if((s.flag_counts[k]||0)!==count[k])unknown();
- if(otherOrphans>s.grants-grantRecords||r.scope_description!=='all_clients'&&otherOrphans>0)unknown();
+ if(otherOrphans!==s.grants-grantRecords||r.scope_description!=='all_clients'&&otherOrphans>0)unknown();
  const flagCount=Object.create(null);
  for(const [k,v] of Object.entries(s.flag_counts))if(v)flagCount[k]=v;
  const severity={critical:0,high:0,medium:0,routine:0};
  for(const [k,v] of Object.entries(flagCount))severity[CRITICAL.has(k)?'critical':HIGH.has(k)?'high':MEDIUM.has(k)?'medium':'routine']+=v;
  const priority=severity.critical?'critical':severity.high?'high':severity.medium?'medium':'routine';
  // Strict data minimization: no names, source rows, scope identifiers or private notes kept.
- return {scope:r.scope_fingerprint,description:r.scope_description,counts:{clients:s.clients,engagements:s.engagements,requests:s.requests,grants:s.grants,pending:s.pending_requests},severity,priority,flagCount,state:'new',digest:null};
+ return {scope:r.scope_fingerprint,description:r.scope_description,counts:{clients:s.clients,engagements:s.engagements,requests:s.requests,grants:s.grants,pending:s.pending_requests},severity,priority,flagCount,state:'new',digest:null,recordMap,overlap:{shared:0,changed:0,unchanged:0}};
 }
 function pri(r){return ['critical','high','medium','routine'].indexOf(r.priority);}
 function label(n){return 'Source '+String(n+1).padStart(2,'0');}
@@ -123,6 +126,7 @@ function e(tag,txt,cl){const el=document.createElement(tag);if(txt!==undefined)e
 function draw(){
  const have=reports.length>0;$('overview').hidden=!have;if(!have)return;
  $('scopeCount').textContent=reports.length;
+ $('overlapCount').textContent=reports.reduce((n,r)=>n+r.overlap.changed,0)/2;
  $('pendingCount').textContent=reports.reduce((n,r)=>n+r.counts.pending,0);
  $('grantCount').textContent=reports.reduce((n,r)=>n+r.counts.grants,0);
  $('priorityCount').textContent=reports.reduce((n,r)=>n+r.severity.critical+r.severity.high,0);
@@ -135,6 +139,7 @@ function draw(){
   box.append(e('h3',label(index)));
   box.append(e('p',r.counts.pending+' pending requests · '+r.counts.grants+' stored grant rows (not approval)'));
   box.append(e('p',r.severity.critical+' critical · '+r.severity.high+' high · '+r.severity.medium+' medium review flags'));
+  if(r.overlap.shared)box.append(e('p','Cross-report pseudonymous overlap: '+r.overlap.shared+' shared records; '+r.overlap.changed+' changed revisions (unverified). Reconcile with source owners.','callout'));
   const ul=e('ul');const order=Object.entries(r.flagCount).sort((a,b)=>{const rank=k=>CRITICAL.has(k)?0:HIGH.has(k)?1:MEDIUM.has(k)?2:3;return rank(a[0])-rank(b[0])||b[1]-a[1]||a[0].localeCompare(b[0]);});
   for(const [k,n] of order.slice(0,7))ul.append(e('li',k.replaceAll('_',' ')+' × '+n));
   if(order.length>7)ul.append(e('li','+'+(order.length-7)+' other categories'));
@@ -146,7 +151,28 @@ function draw(){
   lbl.append(select);box.append(lbl);list.append(box);
  }
  if(!list.childElementCount)list.append(e('p','No matching scopes.'));
- drawCapacity();
+ drawCapacity();drawThemes();
+}
+function drawThemes(){
+ const root=$('themes');root.replaceChildren();
+ const totals=new Map();
+ for(const r of reports)for(const [name,count] of Object.entries(r.flagCount)){
+  const item=totals.get(name)||{sum:0,scopes:0};
+  item.sum+=count;item.scopes++;totals.set(name,item);
+ }
+ if(!totals.size){root.append(e('p','No reported source flags. That is not an authorization or safety conclusion.'));return;}
+ const priority=k=>CRITICAL.has(k)?0:HIGH.has(k)?1:MEDIUM.has(k)?2:3;
+ const sorted=[...totals].sort((a,b)=>priority(a[0])-priority(b[0])||b[1].scopes-a[1].scopes||b[1].sum-a[1].sum||a[0].localeCompare(b[0]));
+ const table=e('table'),thead=e('thead'),headers=e('tr');
+ for(const label of ['Exporter review flag','Source scopes affected*','Reported occurrences*','Follow-up tier'])headers.append(e('th',label));
+ thead.append(headers);table.append(thead);const body=e('tbody');
+ for(const [name,value] of sorted){
+  const row=e('tr');
+  for(const label of [name.replaceAll('_',' '),value.scopes,value.sum,['Critical','High','Medium','Informational'][priority(name)]])row.append(e('td',label));
+  body.append(row);
+ }
+ table.append(body);root.append(table);
+ root.append(e('p','*Source scope overlap and source history can double-count original records. Reconcile with original operator-authenticated export and source owners.','hint'));
 }
 function input(id){const v=Number($(id).value);return Number.isFinite(v)&&v>=.25&&v<=160?v:null;}
 function plan(){
@@ -177,7 +203,7 @@ function drawCapacity(){
  const tbody=e('tbody');value.weekly.forEach((w,i)=>{const row=e('tr');for(const x of [String(i+1),fmt(w.critical),fmt(w.high),fmt(w.medium+w.routine),fmt(w.total)])row.append(e('td',x));tbody.append(row);});table.append(tbody);target.append(table);
 }
 function exportData(){
- return {format:'lightup.authorization_portfolio_aggregate_v1',disposition:'REVIEW_ONLY',authority:{...stamp.authority},overlap_unverified:true,untrusted_source:true,scope_count:reports.length,scopes:reports.map((r,i)=>({slot:i+1,priority:r.priority,discussion_status:r.state,selection:r.description,counts:{...r.counts},severity:{...r.severity},flags:{...r.flagCount}}))};
+ return {format:'lightup.authorization_portfolio_aggregate_v1',disposition:'REVIEW_ONLY',authority:{...stamp.authority},overlap_unverified:true,untrusted_source:true,scope_count:reports.length,scopes:reports.map((r,i)=>({slot:i+1,priority:r.priority,discussion_status:r.state,selection:r.description,counts:{...r.counts},severity:{...r.severity},overlap:{...r.overlap},flags:{...r.flagCount}}))};
 }
 function download(name,content,type){const url=URL.createObjectURL(new Blob([content],{type}));const a=e('a');a.href=url;a.download=name;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);}
 function output(kind){
@@ -192,7 +218,7 @@ function output(kind){
  if(kind==='md'){
   const lines=['# LightUp · Authorization risk review portfolio','','REVIEW_ONLY · all client/operator consent, grant, execution and release authority: FALSE','','These source snapshots are unsigned, stale-prone and possibly overlapping. No conclusion about distinct cases, resolution, readiness or scan authority.',''];
   for(const x of result.scopes){
-   lines.push('## '+label(x.slot-1)+' · '+x.priority.toUpperCase(),'Local human stage: '+x.discussion_status+' (unverified)','Pending original requests: '+x.counts.pending+' · stored grant records: '+x.counts.grants+' (NOT verified)','Critical flags: '+x.severity.critical+' · high: '+x.severity.high,'');
+   lines.push('## '+label(x.slot-1)+' · '+x.priority.toUpperCase(),'Local human stage: '+x.discussion_status+' (unverified)','Pending original requests: '+x.counts.pending+' · stored grant records: '+x.counts.grants+' (NOT verified)','Critical flags: '+x.severity.critical+' · high: '+x.severity.high,'Repeated source pseudonyms: '+x.overlap.shared+'; different revisions: '+x.overlap.changed+' (unverified)','');
    for(const [k,v] of Object.entries(x.flags).sort())lines.push('- '+k+': '+v);
    lines.push('Follow up through separately authenticated client and operator channels. Reconfirm at-use revocation before any authorized action.','');
   }
@@ -216,6 +242,16 @@ async function admit(files){
   next.push(source);
  }
  if(next.length>1&&next.some(x=>x.description==='all_clients'))throw Error('HOLD: an all-clients report cannot be combined with narrower possibly overlapping selections.');
+ // Compare opaque stable original pseudonyms only while source admission is atomic.
+ for(let i=0;i<next.length;i++)for(let j=i+1;j<next.length;j++){
+  const a=next[i].recordMap,b=next[j].recordMap;
+  for(const [key,left] of a){
+   const right=b.get(key);if(!right)continue;
+   if(left.kind!==right.kind)unknown();
+   for(const r of [next[i],next[j]]){r.overlap.shared++;r.overlap[left.revision===right.revision?'unchanged':'changed']++;}
+  }
+ }
+ for(const r of next)delete r.recordMap;
  reports=next;setMessage('feedback','Imported '+next.length+' original, untrusted report scopes. No source identity or authorization was verified.');$('priorityFilter').value='all';$('stateFilter').value='all';draw();
 }
 async function save(){
