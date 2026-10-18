@@ -129,8 +129,9 @@ def inspect(path: Path) -> dict:
                          for v in original_cases.values())
                 or original_cases["human_hold"] > original_cases["cases"]
                 or original_cases["without_recorded_grant"] > original_cases["cases"]
-                or original_cases["risk_source_pending"] > original_cases["cases"]):
-            raise WorkspaceHold("original engagement inbox counts contradict manifest")
+                or original_cases["risk_source_pending"] > original_cases["cases"]
+                or (original_cases["human_hold"] > 0 and info["status"] != "HOLD")):
+            raise WorkspaceHold("original engagement inbox counts contradict manifest or status")
         return {
             "status": info["status"], "files": len(ARTIFACTS),
             "human_review_items": totals["items"], "human_hold": totals["hold"],
