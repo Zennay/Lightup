@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="en"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-pSiN29KXRe0sZdsIl4CbFInEgMqMo1LJ25PHpXr2MUk=' 'sha256-zwh8b1S2eD17AAifHI9Ddrym3y1it8SMWwb+zOcukr8='; style-src 'sha256-gRO/0vjvhCiDlyKYAoFlD62JBk64H/vcy3MaEo2jP6g='; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-fwKQA5/1i2Xz1mBF+ES6DHpk8CjjGtc8g5rLCcQ1SXw=' 'sha256-O2vFLgjWZIRNhmdBZ30PaCNcSsc0AiNjs18gRIRxAos='; style-src 'sha256-gRO/0vjvhCiDlyKYAoFlD62JBk64H/vcy3MaEo2jP6g='; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <title>LightUp — Remediation Funding Studio (offline)</title>
 <style>:root{color-scheme:dark;--bg:#0a1019;--surface:#122130;--border:#385063;--text:#edf3f7;--muted:#b5c5d2;--mint:#91e5c5;--gold:#f6d69b;--blue:#9bc2fd}
 *{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:radial-gradient(ellipse 80% 400px at 50% 0,#254052 0%,transparent 100%),var(--bg);font:16px/1.55 system-ui,-apple-system,Segoe UI,sans-serif;color:var(--text)}
@@ -119,6 +119,21 @@ footer{padding:20px 0 60px}
 <thead><tr><th>Risk band</th><th>Hours proposed</th><th>Urgent-first funded</th><th>Urgent-first unfunded</th><th>Proportional funded</th><th>Proportional unfunded</th></tr></thead>
 <tbody id="priority-rows"></tbody></table></div>
 <p class="subtle" id="priority-note" aria-live="polite">A funding strategy is only an unsigned discussion proposal. Capacity limits, prior backlogs and the original authorisation remain unchanged.</p>
+</div>
+<div class="panel" aria-labelledby="timing-title">
+<p class="eyebrow">07 / FUNDING TIMING COMPARISON</p>
+<h2 id="timing-title">Same budget, different release dates</h2>
+<p>Compare full upfront release, evenly staged release and the release schedule selected above. All scenarios use the same modelled total and planning hours. Hours not covered in an earlier week are <strong>not</strong> silently moved, assigned or marked completed.</p>
+<div class="action-row">
+<button id="timing-calculate" class="secondary" type="button">Compare release schedules</button>
+<button id="timing-export-json" class="secondary" type="button" hidden>Export private comparison JSON</button>
+<button id="timing-export-md" class="secondary" type="button" hidden>Export discussion Markdown</button>
+</div>
+<div class="stats" id="timing-stats" aria-live="polite"></div>
+<div class="table-wrap"><table>
+<thead><tr><th>Funding schedule</th><th>Source hours</th><th>Hours funded</th><th>Hours unfunded</th><th>Urgent-first critical/high unfunded</th><th>Balanced critical/high unfunded</th><th>Cash unused</th></tr></thead>
+<tbody id="timing-rows"></tbody></table></div>
+<p class="subtle" id="timing-note">A later cash release is a financial hypothesis, not a new authorisation window or an actual payment instruction.</p>
 </div>
 <div class="panel">
 <h2>Private aggregate handoff</h2>
@@ -531,7 +546,79 @@ function priorityDiscussionMarkdown(model) {
  text.push('','**Human decisions needed:** independently confirm source client/engagement, original authorization and revocation, real budgets, repair owners, procurement and separately verified retests. This file cannot authorize any work.','');
  return text.join('\n');
 }
-root.LightUpFunding=Object.freeze({intake,settings,project,stagedFunding,fundingPriorities,priorityDiscussionMarkdown,SCHEMA,MAX_SIZE:65536});
+function fundingTimingComparison(source,raw,selectedReleases) {
+ const cfg=settings(raw);
+ if(!source||!Array.isArray(source.weeks)||!source.weeks.length)
+  fail('Choose a previously loaded aggregate source');
+ const n=source.weeks.length;
+ const upfront=[100,...Array(n-1).fill(0)];
+ const even=Array(n).fill(Math.floor(100/n));
+ even[n-1]+=100-even.reduce((sum,x)=>sum+x,0);
+ const configs=[['all_upfront',upfront],['evenly_released',even],['selected_schedule',selectedReleases]];
+ const records=configs.map(([name,releases])=>{
+  const stages=stagedFunding(source,cfg,releases);
+  const risks=fundingPriorities(source,cfg,releases);
+  return Object.freeze({
+   name,
+   release_percentages:Object.freeze([...stages.release_percentages]),
+   modeled_total_funding:stages.total_funding,
+   planned_hours:stages.planned_hours,
+   tentatively_funded_hours:stages.provisionally_funded_hours,
+   hours_unfunded_at_original_weeks:stages.unpaid_planned_hours,
+   critical_high_coverage_best_case_hours:
+    Math.round((risks.urgent_first.critical_high_funded_hours)*10)/10,
+   critical_high_coverage_proportional_hours:
+    Math.round((risks.proportional.critical_high_funded_hours)*10)/10,
+   critical_high_unfunded_best_case_hours:
+    Math.round((risks.urgent_first.critical_high_unfinanced_hours)*10)/10,
+   critical_high_unfunded_proportional_hours:
+    Math.round((risks.proportional.critical_high_unfinanced_hours)*10)/10,
+   unpaid_setup:stages.setup_cost_still_unpaid,
+   unused_budget:stages.unused_funds_end,
+   critical_high_outside_source_plan:risks.source_unscheduled_urgent_hours
+  });
+ });
+ const earliest=records[0];
+ return Object.freeze({
+  schema:'lightup.remediation_release_timing_review.v1',
+  review_only:true,authorization:false,consent:false,grant:false,
+  scan:false,execute:false,dispatch:false,retest_verified:false,deploy:false,release:false,
+  currency:cfg.currency,source_count:source.source_count,
+  scenarios:Object.freeze(records),
+  selected_versus_upfront_unfunded_extra_hours:Math.round(
+   (records[2].hours_unfunded_at_original_weeks-earliest.hours_unfunded_at_original_weeks)*10)/10,
+  selected_versus_upfront_critical_high_unfunded_extra_hours:Math.round(
+   (records[2].critical_high_unfunded_best_case_hours-earliest.critical_high_unfunded_best_case_hours)*10)/10
+ });
+}
+function timingDiscussionMarkdown(comparison){
+ if(!comparison||comparison.schema!=='lightup.remediation_release_timing_review.v1')
+  fail('Generate a local timing comparison first');
+ const lines=[
+  '# LightUp — timing-of-funds discussion (UNSIGNED DRAFT)',
+  '',
+  '**REVIEW_ONLY · INCUBATE M3/M7 · DRAFT/HOLD.** No client authentication, real consent, grant, remediation, retest, money transfer or release.',
+  '',
+  'These scenarios use exactly the same total hypothetical money and originally exported aggregate hours. Funding paid too late does not retroactively finance earlier planned work.',
+  '',
+  '| Cash release | Total model budget | Proposed hours | Funded hours | Unfunded hours at source weeks | Urgent-first critical/high unfunded | Proportional critical/high unfunded | Setup still unpaid | Cash left unused |',
+  '| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |'
+ ];
+ for(const scenario of comparison.scenarios)lines.push(
+  '| '+[scenario.name,scenario.modeled_total_funding,scenario.planned_hours,
+   scenario.tentatively_funded_hours,scenario.hours_unfunded_at_original_weeks,
+   scenario.critical_high_unfunded_best_case_hours,
+   scenario.critical_high_unfunded_proportional_hours,
+   scenario.unpaid_setup,scenario.unused_budget].join(' | ')+' |'
+ );
+ lines.push('','- Currency: '+comparison.currency+' (no currency conversions).',
+  '- Selected release versus all upfront — additional modeled original-week unfunded hours: '+comparison.selected_versus_upfront_unfunded_extra_hours,
+  '- Selected release versus all upfront — additional modeled critical/high unfunded hours under urgent-first: '+comparison.selected_versus_upfront_critical_high_unfunded_extra_hours,
+  '',
+  'Human follow-up: confirm actual authorised source, engagement, contracts, procurement and payment calendar independently. All estimates are unverified proposals; never start a scan, grant, or retest from this brief.','');
+ return lines.join('\n');
+}
+root.LightUpFunding=Object.freeze({intake,settings,project,stagedFunding,fundingPriorities,priorityDiscussionMarkdown,fundingTimingComparison,timingDiscussionMarkdown,SCHEMA,MAX_SIZE:65536});
 })(window);</script>
 <script>/* Local-only controller for LightUp's non-authorizing finance review */
 (function () {
@@ -552,11 +639,12 @@ const currency=(code,value)=>{
  const locale=code==='EUR'?'nl-NL':code==='GBP'?'en-GB':'en-US';
  return new Intl.NumberFormat(locale,{style:'currency',currency:code,maximumFractionDigits:2}).format(value);
 };
-let source=null,forecast=null,settings=null,comparison=null,staged=null,priorityPlan=null;
+let source=null,forecast=null,settings=null,comparison=null,staged=null,priorityPlan=null,timingPlan=null;
 function clearResults(){
  forecast=null;settings=null;comparison=null;staged=null;el('results').hidden=true;
  el('release-summary').replaceChildren();el('release-weeks').replaceChildren();el('release-export').hidden=true;
  clearFundingPriority();
+ clearTimingPlan();
  el('kpis').replaceChildren();el('weeks').replaceChildren();el('scenario').replaceChildren();
  el('risk-exposure').replaceChildren();el('risk-weeks').replaceChildren();
 }
@@ -704,6 +792,7 @@ function releasePercentages() {
 function clearRelease() {
  staged=null;el('release-summary').replaceChildren();el('release-weeks').replaceChildren();el('release-export').hidden=true;
  clearFundingPriority();
+ clearTimingPlan();
 }
 function renderReleaseEntries(){
  const section=el('release-entries');section.replaceChildren();clearRelease();
@@ -805,6 +894,58 @@ el('priority-export-md').addEventListener('click',()=>{
  download('lightup-remediation-funding-discussion.md',
   core.priorityDiscussionMarkdown(priorityPlan),'text/markdown;charset=utf-8');
  show('Private funding discussion brief exported.');
+});
+
+
+function clearTimingPlan(){
+ timingPlan=null;
+ el('timing-stats').replaceChildren();
+ el('timing-rows').replaceChildren();
+ el('timing-export-json').hidden=true;
+ el('timing-export-md').hidden=true;
+ el('timing-note').textContent='Funding times are private financial hypotheses only, not a work, consent or security execution calendar.';
+}
+el('timing-calculate').addEventListener('click',()=>{
+ clearTimingPlan();
+ if(!forecast||!source||!settings){show('Load original aggregate funding data and prepare a forecast first.',true);return;}
+ try{
+  timingPlan=core.fundingTimingComparison(source,settings,releasePercentages());
+  const cards=el('timing-stats');cards.replaceChildren(
+   stat('Selected versus upfront: additional unfunded hours',
+     timingPlan.selected_versus_upfront_unfunded_extra_hours+' h'),
+   stat('Selected versus upfront: additional critical/high unfunded',
+     timingPlan.selected_versus_upfront_critical_high_unfunded_extra_hours+' h')
+  );
+  const rows=el('timing-rows');rows.replaceChildren();
+  const descriptions={all_upfront:'Full upfront',evenly_released:'Evenly released',selected_schedule:'Selected schedule'};
+  for(const x of timingPlan.scenarios){
+   const row=mk('tr');
+   for(const v of [descriptions[x.name],x.planned_hours+' h',
+    x.tentatively_funded_hours+' h',x.hours_unfunded_at_original_weeks+' h',
+    x.critical_high_unfunded_best_case_hours+' h',
+    x.critical_high_unfunded_proportional_hours+' h',currency(timingPlan.currency,x.unused_budget)])
+     row.append(mk('td',v));
+   rows.append(row);
+  }
+  el('timing-export-json').hidden=false;
+  el('timing-export-md').hidden=false;
+  el('timing-note').textContent='All three cases assume identical funding totals. Late money is not applied retroactively. Values are estimated and not a real procurement or security approval.';
+  show('Private timing-of-funds comparison prepared without contacting any provider or target.');
+ }catch(err){show('Release-timing review held: '+(err instanceof Error?err.message:'Invalid financing scenario'),true);}
+});
+el('timing-export-json').addEventListener('click',()=>{
+ if(!timingPlan)return;
+ if(!confirm('Export unsigned aggregate funding timing assumptions? Not a payment, consent, scan, remediation order or retest.'))return;
+ download('lightup-remediation-funding-timing.json',
+  JSON.stringify(timingPlan,null,2)+'\n','application/json;charset=utf-8');
+ show('Private timing-of-funds JSON discussion exported.');
+});
+el('timing-export-md').addEventListener('click',()=>{
+ if(!timingPlan)return;
+ if(!confirm('Export a non-authorising private funding discussion brief with no target, finding ID or real permission?'))return;
+ download('lightup-remediation-funding-timing.md',
+  core.timingDiscussionMarkdown(timingPlan),'text/markdown;charset=utf-8');
+ show('Private human funding timing discussion exported.');
 });
 
 el('json').addEventListener('click',()=>{
