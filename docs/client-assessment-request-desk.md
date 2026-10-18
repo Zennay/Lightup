@@ -44,6 +44,31 @@ python -m lightup.client_request_cli show \
   --request-id 'request-uuid-from-submission'
 ```
 
+## Review the exact client proposal visually before submission
+
+Both the manual input path and the existing Studio JSON intake support a
+private, browser-readable **no-script local preview**. No authentication or
+database access occurs in this preview step; a signed-in client must submit
+separately.
+
+```sh
+python -m lightup.client_request_cli preview \
+  --asset app.example.org --risk 2 \
+  --notes "Proposed scope and safety limits for operator discussion" \
+  --output /private/assessment-proposal-preview.html
+
+python -m lightup.client_request_cli preview \
+  --proposal ~/Downloads/lightup-scope-draft.json \
+  --output /private/studio-intake-preview.html
+```
+
+The output is an exclusive mode-`0600` HTML file containing the **exact
+normalized assets and risk**, a readable safety notice and (when present) the
+source Studio proposal's SHA-256 file-continuity hint. The document contains
+no JavaScript, network requests, forms or remote resources. It is *not* a
+verified ownership claim, operator decision, consent signature, executable
+grant or completed submission. It is sensitive and should stay private.
+
 ## Private browser timeline
 
 After authenticating on a local terminal, a client may save a read-only browser snapshot:
@@ -122,6 +147,43 @@ clearly states that request state is not execution authorization. JSON output
 is intended for a **private** local terminal and should not be published:
 request IDs, assets, notes, and other fields can still be sensitive.
 
+## Exact review-before-resubmission continuity
+
+A rejected client's `revise-preview` now produces **two unsigned digests**:
+`previous_record_sha256` for the original stored request and
+`revision_sha256` for the complete proposed replacement (assets, risk, notes,
+scope expansion facts and source version). Both must be passed to
+`revise-submit`: `--expect-original-sha256` and
+`--expect-revision-sha256`. Changing either the original or ANY part of the
+replacement requires a new preview. The private before/after browser report
+shows both digests.
+
+A replacement may alternatively be imported from the **existing** offline
+Studio v1 export:
+
+```sh
+python -m lightup.client_request_cli revise-preview \
+  --db /private/lightup.sqlite --email client@example.org \
+  --request-id 'rejected-request-uuid' \
+  --proposal ~/Downloads/updated-studio-scope.json \
+  --output /private/request-revision-review.html
+
+python -m lightup.client_request_cli revise-submit \
+  --db /private/lightup.sqlite --email client@example.org \
+  --request-id 'rejected-request-uuid' \
+  --proposal ~/Downloads/updated-studio-scope.json \
+  --expect-original-sha256 '<previous_record_sha256 from preview>' \
+  --expect-revision-sha256 '<revision_sha256 from preview>' \
+  --expect-proposal-sha256 '<proposal_file_sha256 from preview>' \
+  --confirm-new-request
+```
+
+An expanded proposed asset range or risk still requires
+`--confirm-scope-expansion`. The Studio import **refuses** exclusions,
+scheduled windows and lab-active activities that the current durable request
+schema cannot enforce, even for revisions. The SHA values are local
+version-continuity hints, **never** verified client consent or grants.
+
 ## Revise an independently rejected client request
 
 A rejected request remains part of the original review history. Client members
@@ -148,7 +210,8 @@ python -m lightup.client_request_cli revise-submit \
   --request-id 'original-rejected-request-uuid' \
   --asset app.example.org --risk 2 \
   --notes "Updated assessment rationale and client safety constraints" \
-  --expect-original-sha256 '<64 lowercase hex from revise-preview>' \
+  --expect-original-sha256 '<original 64-character digest from revise-preview>' \
+  --expect-revision-sha256 '<complete replacement digest from revise-preview>' \
   --confirm-new-request
 
 # If the new assets include additional CIDR/hostname coverage or risk rises,
