@@ -53,7 +53,8 @@ a{color:#9bdafc}
 <p>Compare original request-record pseudonyms inside memory to distinguish appeared, absent, unchanged and changed records. These pseudonyms are not authenticated signatures; absent entries may simply reflect the source export's 500-row cap, changed report order, or missing source evidence. No request identifier is exported.</p>
 <div class="grid"><label>Compare selected adjacent pair <select id="pair" aria-label="Adjacent source reports"></select></label>
 <label>Show records <select id="casetype"><option value="all">All original record differences</option><option value="changed">Changed only</option><option value="appeared">Appeared</option><option value="absent">Absent</option><option value="same">Unchanged</option></select></label></div>
-<div id="case-summary" class="grid"></div><div class="table-wrap"><table><thead><tr><th>Private pair-local row</th><th>Observed difference</th><th>Prior source row status</th><th>Later source row status</th><th>What changed</th><th>Action</th></tr></thead><tbody id="cases"></tbody></table></div>
+<div id="case-summary" class="grid"></div><div class="table-wrap"><table><thead><tr><th>Private pair-local row</th><th>Observed difference</th><th>Prior source row status</th><th>Later source row status</th><th>What changed</th><th>Human discussion stage</th><th>Private follow-up note</th></tr></thead><tbody id="cases"></tbody></table></div>
+<p class="muted">Case notes and stages are private local human discussions, never modifications of source records. PRIVATE draft backup can save them; anonymous exports show only stage totals, never free-text notes.</p><div class="actions"><button id="caseprev" class="secondary">Previous records</button><span id="pageinfo" aria-live="polite"></span><button id="casenext" class="secondary">Next records</button></div>
 <p class="muted">A row in the first source is not proof of a person or authenticated request; a row in the second is not proof of consent, revocation, a new grant or correction. Row references are ephemeral within this selected pair only.</p></section>
 <section class="panel"><h2>6 · Source mismatch themes</h2><p>Fixed original source-owner explanation categories, grouped without request identities. These are discussion flags only, not authenticated policy verdicts or newly discovered risks.</p><div class="table-wrap"><table><thead><tr><th>Original reason</th><th>Human discussion owner</th><th>Per selected slot</th><th>Change: first → last</th></tr></thead><tbody id="reasonrows"></tbody></table></div></section>
 <section class="panel"><h2>7 · Human handoff</h2>
@@ -71,6 +72,7 @@ const FALSE_KEYS=["client_consent_verified","operator_consent_verified","authori
 const STATUSES=["candidate_review_only","approved_but_not_compatible","not_administratively_approved"];
 const OUTCOMES=["REVIEW_ONLY_SINGLE_CANDIDATE","HOLD_AMBIGUOUS_CANDIDATES","HOLD_NO_CANDIDATE"];
 const ROUTES={NOT_ADMINISTRATIVELY_APPROVED:"Original client / operator",REQUEST_MODE_NOT_AUTHORIZED_ASSESSMENT:"Original request owner",SOURCE_ROLE_OR_TENANT_PROVENANCE_MISMATCH:"Security / identity owner",PROPOSED_RISK_NOT_COVERED:"Client / scope reviewer",PROPOSED_LITERAL_SCOPE_NOT_COVERED:"Client / scope reviewer",DECISION_CHRONOLOGY_INVALID:"Original operator / privacy",SOURCE_OWNER_OTHER_INTEGRITY_CHECK_REQUIRED:"Original source owner"};
+const CASE_STAGES={unreviewed:"Not reviewed",client_followup:"Client evidence discussion",operator_followup:"Operator source discussion",security_source_review:"Independent security/source review",documented_only:"Discussion noted (not verified)"};
 const ACTIONS=[
   "Reauthenticate original operator and reopen source records",
   "Confirm original client and operator identities independently",
@@ -187,11 +189,19 @@ function adjacentRecordChanges(left,right){
     if(a.bound!==b.bound)fields.push("historical bound grant count");
     if(a.flags.join("|")!==b.flags.join("|"))fields.push("source reported mismatch reasons");
    }
-   return {kind,previous:a||null,current:b||null,fields};
+   return {ref,kind,previous:a||null,current:b||null,fields};
  });
  const summary={appeared:0,absent:0,same:0,changed:0};
  rows.forEach(row=>summary[row.kind]++);
  return {rows,summary};
+}
+function allPrivateRefs(){
+ return [...new Set(workspace.records.flatMap(r=>r.cases.map(c=>c.ref)))].sort();
+}
+function humanCaseworkTotals(){
+ const out=Object.fromEntries(Object.keys(CASE_STAGES).map(k=>[k,0]));
+ for(const ref of allPrivateRefs()){const entry=workspace.casework[ref];out[entry?.stage||"unreviewed"]++}
+ return out;
 }
 function payload(){
  const reports=workspace.records;
@@ -202,6 +212,7 @@ function payload(){
      ...adjacentRecordChanges(reports[i],r).summary})),
    snapshots:reports.map((r,i)=>({slot:i+1,candidates:r.matched,other_approved:r.other,not_approved:r.notApproved,stored_grants:r.grants,unbound_legacy_grants:r.legacy,stored_record_change_from_previous:i>0?r.revision!==reports[i-1].revision:null,source_mismatch_reason_counts:Object.fromEntries(Object.keys(ROUTES).map(k=>[k,r.reasons[k]||0]))})),
    manual_follow_up:ACTIONS.map((task,i)=>({category:i+1,done_for_local_discussion_only:!!workspace.checks[i]})),
+   anonymous_human_casework_stage_totals:humanCaseworkTotals(),
    caution:"Untrusted, unsigned offline snapshots; never authority, consent, revocation, permission, release or verified chronology."};
 }
 function render(){
@@ -229,19 +240,40 @@ function render(){
  $("review").innerHTML=ACTIONS.map((task,i)=>'<label style="display:flex"><input type="checkbox" data-action="'+i+'" '+(workspace.checks[i]?"checked":"")+'> '+esc(task)+'</label>').join("");
  $("review").querySelectorAll("input").forEach(el=>el.addEventListener("change",()=>workspace.checks[+el.dataset.action]=el.checked));
 }
+function caseEntry(ref){
+ if(!Object.hasOwn(workspace.casework,ref))workspace.casework[ref]={stage:"unreviewed",note:""};
+ return workspace.casework[ref];
+}
 function renderCases(){
  if(!workspace||workspace.records.length<2)return;
  const selection=workspace.pair||0,previous=workspace.records[selection],current=workspace.records[selection+1];
  const diff=adjacentRecordChanges(previous,current),display=$("casetype").value;
  $("case-summary").innerHTML=Object.entries(diff.summary).map(([key,count])=>
   '<div class="stat">'+esc(key.toUpperCase())+'<strong>'+count+'</strong></div>').join("");
- $("cases").innerHTML=diff.rows.filter(row=>display==="all"||row.kind===display).map((row,index)=>{
-  const prev=row.previous,curr=row.current;
-  return '<tr><td>Row '+(index+1)+'</td><td><span class="badge">'+esc(row.kind.toUpperCase())+'</span></td><td>'+esc(prev?prev.storedStatus+" / "+prev.category:"Not in chosen earlier report")+'</td><td>'+esc(curr?curr.storedStatus+" / "+curr.category:"Not in chosen later report")+'</td><td>'+esc(row.fields.length?row.fields.join(", "):row.kind==="same"?"No changes visible in original candidate fields":"Reported membership differs")+'</td><td>Human source-owner review only; no automatic approval or revocation</td></tr>';
+ const filtered=diff.rows.filter(row=>display==="all"||row.kind===display);
+ const size=60,pages=Math.max(1,Math.ceil(filtered.length/size));
+ workspace.page=Math.min(workspace.page||0,pages-1);
+ const start=workspace.page*size,visible=filtered.slice(start,start+size);
+ $("pageinfo").textContent="Showing "+(filtered.length?start+1:0)+"–"+Math.min(start+size,filtered.length)+" of "+filtered.length+" private source records";
+ $("caseprev").disabled=workspace.page===0;$("casenext").disabled=workspace.page>=pages-1;
+ $("cases").innerHTML=visible.map((row,index)=>{
+  const prev=row.previous,curr=row.current,local=caseEntry(row.ref);
+  const options=Object.entries(CASE_STAGES).map(([code,label])=>'<option value="'+code+'" '+(local.stage===code?'selected':'')+'>'+esc(label)+'</option>').join("");
+  return '<tr><td>Pair-local row '+(start+index+1)+'</td><td><span class="badge">'+esc(row.kind.toUpperCase())+'</span></td><td>'+esc(prev?prev.storedStatus+" / "+prev.category:"Not in chosen earlier report")+'</td><td>'+esc(curr?curr.storedStatus+" / "+curr.category:"Not in chosen later report")+'</td><td>'+esc(row.fields.length?row.fields.join(", "):row.kind==="same"?"No changes visible in original candidate fields":"Reported membership differs")+'</td><td><select aria-label="Private human review stage row '+(start+index+1)+'" data-record="'+index+'" data-field="stage">'+options+'</select></td><td><input type="text" maxlength="180" autocomplete="off" aria-label="Private human discussion note row '+(start+index+1)+'" data-record="'+index+'" data-field="note" value="'+esc(local.note)+'" placeholder="Optional private note; no credentials"></td></tr>';
  }).join("");
+ $("cases").querySelectorAll("select, input").forEach(el=>el.addEventListener("change",()=>{
+  const record=visible[Number(el.dataset.record)];if(!record)return;
+  const value=el.value;if(el.dataset.field==="stage"){if(!Object.hasOwn(CASE_STAGES,value))return;caseEntry(record.ref).stage=value}
+  else caseEntry(record.ref).note=value.slice(0,180);
+ }));
+ $("cases").querySelectorAll('input[data-field="note"]').forEach(el=>el.addEventListener("input",()=>{
+  const record=visible[Number(el.dataset.record)];if(record)caseEntry(record.ref).note=el.value.slice(0,180)
+ }));
 }
-$("pair").addEventListener("change",()=>{if(workspace){workspace.pair=Number($("pair").value);renderCases()}});
-$("casetype").addEventListener("change",()=>{if(workspace)renderCases()});
+$("pair").addEventListener("change",()=>{if(workspace){workspace.pair=Number($("pair").value);workspace.page=0;renderCases()}});
+$("casetype").addEventListener("change",()=>{if(workspace){workspace.page=0;renderCases()}});
+$("caseprev").addEventListener("click",()=>{if(workspace&&workspace.page>0){workspace.page--;renderCases()}});
+$("casenext").addEventListener("click",()=>{if(workspace){workspace.page++;renderCases()}});
 async function fingerprints(files){if(!crypto||!crypto.subtle)fail("private draft feature unavailable without WebCrypto");return Promise.all(files.map(async src=>{const b=new TextEncoder().encode(src);const digest=await crypto.subtle.digest("SHA-256",b);return Array.from(new Uint8Array(digest),x=>x.toString(16).padStart(2,"0")).join("")}))}
 $("import").addEventListener("click",async()=>{
  try{
@@ -255,7 +287,7 @@ $("import").addEventListener("click",async()=>{
   if(new Set(parsed.map(fingerprint)).size!==parsed.length)fail("duplicate original snapshot metadata detected");
   if(parsed.some(v=>v.revision===undefined))fail("Original stored source revision missing.");
   const localHashes=(globalThis.crypto&&crypto.subtle)?await fingerprints(raws):[];
-  workspace={records:parsed,checks:ACTIONS.map(()=>false),pair:0,sourceBytes:chosen.reduce((sum,f)=>sum+f.size,0)};hashes=localHashes;
+  workspace={records:parsed,checks:ACTIONS.map(()=>false),casework:Object.create(null),pair:0,page:0,sourceBytes:chosen.reduce((sum,f)=>sum+f.size,0)};hashes=localHashes;
   render();note(parsed.length+" valid original source-export snapshots loaded for private REVIEW_ONLY (not permission).",false);
  }catch(e){note("HOLD · "+(e instanceof Error?e.message:"invalid source import")+". Earlier accepted workspace was preserved.",true)}
 });
@@ -273,7 +305,7 @@ $("append").addEventListener("click",async()=>{
   if(new Set(keys).size!==keys.length)fail("duplicate original snapshot metadata detected");
   const moreHashes=(hashes.length===workspace.records.length&&globalThis.crypto&&crypto.subtle)?await fingerprints(raws):[];
   const newHashes=moreHashes.length===extras.length?hashes.concat(moreHashes):[];
-  workspace={records:workspace.records.concat(extras),checks:workspace.checks.slice(),pair:workspace.pair,sourceBytes:workspace.sourceBytes+files.reduce((sum,f)=>sum+f.size,0)};
+  workspace={records:workspace.records.concat(extras),checks:workspace.checks.slice(),casework:workspace.casework,pair:workspace.pair,page:workspace.page,sourceBytes:workspace.sourceBytes+files.reduce((sum,f)=>sum+f.size,0)};
   hashes=newHashes;render();$("extra").value="";
   note(extras.length+" new source snapshots added atomically; existing private human discussion markers preserved.",false);
  }catch(e){note("HOLD · "+(e instanceof Error?e.message:"invalid append")+". Prior workspace and human stages preserved.",true)}
@@ -290,19 +322,33 @@ $("exportcsv").addEventListener("click",()=>{
 });
 $("saveprivate").addEventListener("click",()=>{
  if(!workspace)return;if(hashes.length!==workspace.records.length){note("HOLD · WebCrypto not available: no raw-byte-bound private draft.",true);return}
- const draft={format:"lightup.binding_history_private_draft.v1",authority:Object.fromEntries(FALSE_KEYS.map(k=>[k,false])),file_sha256:hashes,checks:workspace.checks.slice()};
+ const records=allPrivateRefs(),casework=records.map(ref=>({stage:caseEntry(ref).stage,note:caseEntry(ref).note}));
+ const draft={format:"lightup.binding_history_private_draft.v2",authority:Object.fromEntries(FALSE_KEYS.map(k=>[k,false])),file_sha256:hashes,checks:workspace.checks.slice(),casework};
  download("PRIVATE-lightup-binding-history-draft.json","application/json",JSON.stringify(draft,null,2)+"\n");
 });
 $("restore").addEventListener("change",async e=>{
  try{
   if(!workspace||hashes.length!==workspace.records.length)fail("first load the exact original source files in the same order, with WebCrypto available");
   const f=e.target.files[0];if(!f||f.size>10000)fail("invalid bounded PRIVATE draft");
-  const d=strictJSON(await f.text());exact(d,["format","authority","file_sha256","checks"],"private draft");
-  if(d.format!=="lightup.binding_history_private_draft.v1")fail("private draft version mismatch");
+  const d=strictJSON(await f.text());
+  const legacy=d?.format==="lightup.binding_history_private_draft.v1";
+  if(!legacy&&d?.format!=="lightup.binding_history_private_draft.v2")fail("private draft version mismatch");
+  exact(d,legacy?["format","authority","file_sha256","checks"]:["format","authority","file_sha256","checks","casework"],"private draft");
   exact(d.authority,FALSE_KEYS,"draft authority");
   if(FALSE_KEYS.some(k=>d.authority[k]!==false)||!Array.isArray(d.file_sha256)||d.file_sha256.length!==hashes.length||d.file_sha256.some((h,i)=>h!==hashes[i]))fail("original source file bytes changed; refuse stale human stages");
   if(!Array.isArray(d.checks)||d.checks.length!==ACTIONS.length||d.checks.some(x=>typeof x!=="boolean"))fail("invalid local human states");
-  workspace.checks=d.checks.slice();render();note("PRIVATE discussion markers restored for identical original source bytes only.",false);
+  let reconstructed=Object.create(null);
+  if(!legacy){
+    const refs=allPrivateRefs();
+    if(!Array.isArray(d.casework)||d.casework.length!==refs.length)fail("private casework source-record coverage mismatch");
+    d.casework.forEach((entry,i)=>{
+      exact(entry,["stage","note"],"private casework");
+      if(!Object.hasOwn(CASE_STAGES,entry.stage)||typeof entry.note!=="string"||entry.note.length>180||/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/.test(entry.note))fail("invalid bounded private discussion");
+      reconstructed[refs[i]]={stage:entry.stage,note:entry.note};
+    });
+  }
+  workspace.casework=reconstructed;workspace.checks=d.checks.slice();render();
+  note("PRIVATE discussion markers restored only against identical original source bytes (never authorization).",false);
  }catch(err){note("HOLD · "+err.message+". Existing human stages preserved.",true)}finally{e.target.value=""}
 });
 $("print").addEventListener("click",()=>{if(workspace)window.print()});
