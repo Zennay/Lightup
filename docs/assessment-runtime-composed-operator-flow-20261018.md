@@ -53,3 +53,13 @@ The saved original browser review can only be attached when it matches the **exa
 ## Mandatory release dependencies
 
 This product is **DRAFT/HOLD**. Do not merge to `main`, deploy or initiate new scans/target work until the original full exact-head hosted CI and permanent named VPS CI pass, source owners accept composition, independent privacy/security review signs off, separately authenticated client and operator approvals include actual action-time revocation where needed, and explicit HUMAN GO is recorded. The [current original scope integration #1619](https://github.com/Zennay/Lightup/pull/1619) has an unrelated existing hosted CI blocker; this composition does not omit, rerun or bypass CI. No QA, regression or testsuite code was written/executed while preparing this branch; only bytecode compilation and CLI help/source inspection.
+
+## Original offline Lab Scenario Studio actually included
+
+The composition now includes the **exact unmodified original** [Lab Scenario Studio PR #1595](https://github.com/Zennay/Lightup/pull/1595) pinned `52d54318075b1c8e93c559a9b2d365987c669ca3`, under its entire original `lab-design/` directory: source HTML/CSS/JS, CSP-pinned `standalone.html`, original fixture profile pack, native bridge, fixture catalog exporter, and original author guide. The existing composed `lightup lab-assess --catalog-file --scenario-id --target ... --preview-only` is the *separate* original #1618 CLI, not called by this browser.
+
+The new **`assessment-workspace/standalone.html`** is a responsive static launch screen with local links to the original Studio and the original pinned human Review Desk, instructions for reviewing already-completed source records and privacy/authority reminders. It has a strict no-network/no-script CSP. You can open it directly from the checkout, or request its `file://` location without a web server:
+
+    python3 scripts/lightup_review.py workspace
+
+The dispatcher adds this **read-only `workspace`** action alongside `compare`, `bundle`, `inspect`, `attach` and `handoff`. It does not start a service or enumerate assets. Original native Studio catalog exports and fixture source declaration reading remain deliberately **design-only**. They do not create trusted benchmark results, run a fixture, grant consent or prove private-address ownership. The original source owner branches remain unchanged; the extra static entry page is a new integration-only file.

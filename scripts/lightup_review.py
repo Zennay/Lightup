@@ -29,7 +29,23 @@ from assessment_runtime_verify_pack_cli_20261018 import main as inspect
 from assessment_runtime_attach_triage_cli_20261018 import main as attach
 from assessment_runtime_human_handoff_cli_20261018 import main as handoff
 
+def workspace(argv):
+    """Print a local-only operator start-screen location; never starts a server."""
+    page = ROOT / "assessment-workspace" / "standalone.html"
+    if argv in (["--help"], ["-h"]):
+        print("Open the offline workspace locally; it has no network or scan controls.")
+        print("Usage: python3 scripts/lightup_review.py workspace")
+        return 0
+    if argv or not page.is_file():
+        print("LAB_REVIEW_HOLD")
+        return 3
+    print("OFFLINE_WORKSPACE_READY — NOT AUTHORIZED")
+    print(page.as_uri())
+    return 2
+
+
 OPERATIONS = {
+    "workspace": workspace,
     "compare": compare,
     "bundle": bundle,
     "inspect": inspect,
@@ -44,7 +60,7 @@ def main(argv=None):
                     "Always REVIEW_ONLY or HOLD; never an execution permit.",
     )
     parser.add_argument("operation", choices=tuple(OPERATIONS),
-                        help="Compare cases, bundle a cohort, inspect a review, "
+                        help="Open local workspace, compare cases, bundle a cohort, inspect a review, "
                              "attach human stages, or share a minimized handoff")
     if argv is None:
         argv = sys.argv[1:]
