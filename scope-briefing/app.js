@@ -12,6 +12,7 @@
     private_lab_network_checks: "Private-lab netwerkvoorstel"
   };
   let current = null;
+  let staged = null;
   let detailsVisible = false;
 
   // Unlike JSON.parse(), this limited parser refuses duplicate object keys at every level.
@@ -207,6 +208,47 @@
     questionList(p,facts);
     setStatus("Lokaal DRAFT-concept gelezen. Alle autorisatie-, consent- en uitvoeringsvelden zijn letterlijk false. Geen rechten verleend.",true);
   }
+  function revisionDelta(oldDraft, newDraft) {
+    const literals = values => new Set(values.map(x => x.trim().toLowerCase()));
+    const before = literals(oldDraft.requested_assets);
+    const after = literals(newDraft.requested_assets);
+    const previousExclusions = literals(oldDraft.excluded_assets);
+    const nextExclusions = literals(newDraft.excluded_assets);
+    const countMissing = (left, right) => [...left].filter(x => !right.has(x)).length;
+    return [
+      ["Opgenomen erbij (letterlijk)", countMissing(after,before), countMissing(after,before)>0],
+      ["Opgenomen verwijderd (letterlijk)", countMissing(before,after), false],
+      ["Uitsluitingen toegevoegd", countMissing(nextExclusions,previousExclusions), false],
+      ["Uitsluitingen verwijderd", countMissing(previousExclusions,nextExclusions), countMissing(previousExclusions,nextExclusions)>0],
+      ["Risico", String(oldDraft.requested_risk) + " → " + String(newDraft.requested_risk), newDraft.requested_risk>oldDraft.requested_risk],
+      ["Modus veranderd", oldDraft.requested_mode === newDraft.requested_mode ? "nee" : "ja", oldDraft.requested_mode !== newDraft.requested_mode],
+      ["Activiteiten veranderd", Object.keys(ACTIVITIES).some(k => oldDraft.proposed_activities[k]!==newDraft.proposed_activities[k])?"ja":"nee",
+       Object.keys(ACTIVITIES).some(k => !oldDraft.proposed_activities[k] && newDraft.proposed_activities[k])],
+      ["Tijdvoorstel veranderd (letterlijk)", JSON.stringify(oldDraft.proposed_window_local)!==JSON.stringify(newDraft.proposed_window_local)?"ja":"nee",
+       JSON.stringify(oldDraft.proposed_window_local)!==JSON.stringify(newDraft.proposed_window_local)]
+    ];
+  }
+  function renderRevision() {
+    $("revision-summary").replaceChildren();
+    if (!current || !staged) { $("revision-panel").hidden=true; return; }
+    $("revision-panel").hidden=false;
+    const from=document.createElement("div");
+    from.className="revision-delta";
+    const old=document.createElement("strong");old.textContent="Huidige bron-SHA";
+    const oldDigest=document.createElement("span");oldDigest.textContent=current.hash.slice(0,16)+"…";
+    from.append(old,oldDigest);$("revision-summary").append(from);
+    const to=document.createElement("div");to.className="revision-delta";
+    const next=document.createElement("strong");next.textContent="Voorgestelde bron-SHA";
+    const nextDigest=document.createElement("span");nextDigest.textContent=staged.hash.slice(0,16)+"…";
+    to.append(next,nextDigest);$("revision-summary").append(to);
+    for (const [title,value,attention] of revisionDelta(current.data,staged.data)) {
+      const item=document.createElement("div");
+      item.className="revision-delta"+(attention?" attention":"");
+      const label=document.createElement("strong");label.textContent=title;
+      const info=document.createElement("span");info.textContent=String(value);
+      item.append(label,info);$("revision-summary").append(item);
+    }
+  }
   async function load(file) {
     if (!file || file.size > MAX_BYTES || file.size === 0) throw Error("Ongeldig bestand of groter dan 64 KiB.");
     const bytes=await file.arrayBuffer();
@@ -214,8 +256,20 @@
     const candidate=proposal(strictJson(raw));
     const hash=await sha256(bytes);
     const facts=comparisons(candidate);
-    // One atomic local replacement after complete parsing, schema and digest admission.
-    current={data:candidate,hash,facts};
+    const incoming={data:candidate,hash,facts};
+    if (current && current.hash === hash) {
+      staged=null;
+      renderRevision();
+      setStatus("Identieke bronbytes: bestaand gesprek blijft ongewijzigd. Geen toestemming verleend.",true);
+      return;
+    }
+    if (current) {
+      staged=incoming;
+      renderRevision();
+      setStatus("Nieuwe bron ter menselijke beoordeling klaargezet; huidige briefing is nog steeds actief.",true);
+      return;
+    }
+    current=incoming;
     refresh();
   }
   function report() {
@@ -243,8 +297,18 @@
   }
   $("file").addEventListener("change",async e=>{
     try { const file=e.target.files?.[0]; if(file) await load(file); }
-    catch(err){setStatus("HOLD — bestand afgewezen: "+String(err?.message||"onbekende fout"));}
+    catch(err){ staged=null;renderRevision();setStatus("HOLD — bestand afgewezen: "+String(err?.message||"onbekende fout"));}
     finally {e.target.value="";}
+  });
+  $("revision-discard").addEventListener("click",()=>{
+    staged=null;renderRevision();
+    setStatus("Voorgestelde wijziging verworpen. Het huidige gesprek is behouden.",true);
+  });
+  $("revision-apply").addEventListener("click",()=>{
+    if(!staged || !current)return;
+    if(!window.confirm("Vervang het huidige bespreekdocument en wis alle huidige vraagvinkjes? Dit verleent nooit toestemming."))return;
+    current=staged;staged=null;renderRevision();refresh();
+    setStatus("Nieuwe conceptversie lokaal geopend. Eerdere bespreekstatus is gewist. Geen rechten verleend.",true);
   });
   $("reveal").addEventListener("click",()=>{
     if (!current) return;
@@ -262,7 +326,7 @@
     hideDetails();window.print();
   });
   $("clear").addEventListener("click",()=>{
-    current=null;$("workspace").hidden=true;hideDetails();
+    current=null;staged=null;renderRevision();$("workspace").hidden=true;hideDetails();
     $("assets").replaceChildren();$("excluded").replaceChildren();$("questions").replaceChildren();
     $("fingerprint").textContent="—";
     setStatus("Concept verwijderd uit deze tijdelijke pagina. Geen rechten verleend.");
