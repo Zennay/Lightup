@@ -131,6 +131,7 @@ function renderSummary(){
  $('summary').textContent=state.findings.length+' original findings · '+state.rows.length+' local file fingerprints · '+STAGES.map(s=>s+': '+counts[s]).join(' · ');
  $('source').textContent=state.sha?'Original canonical source SHA-256: '+state.sha:'No original CSV loaded.';
  for(const id of ['addFiles','export','aggregate','privateImport','forget','verify'])$(id).disabled=!state.sha;
+ $('coverageExport').disabled=!state.sha;renderCoverage();
 }
 async function loadSource(){
  const file=$('original').files[0];if(!file)fail('Select an original findings CSV.');
@@ -332,6 +333,57 @@ function undoBulk(){
  message('Restored previous private human-review fields in memory only.',false);
 }
 
+
+function coverageRows(){
+ const counts=new Map();
+ for(const r of state.rows){
+  let c=counts.get(r.finding_id);
+  if(!c){c={count:0,review:0,followup:0};counts.set(r.finding_id,c);}
+  c.count++;if(r.human_stage==='human_review')c.review++;
+  if(r.human_stage==='follow_up')c.followup++;
+ }
+ return state.findings.map(f=>({...f,...(counts.get(f.finding_id)||{count:0,review:0,followup:0})}));
+}
+function renderCoverage(){
+ const body=$('coverageRows');body.replaceChildren();
+ const data=coverageRows(),filter=$('coverageFilter').value;
+ const unlinked=data.filter(x=>!x.count);
+ const urgent=unlinked.filter(x=>x.severity==='critical'||x.severity==='high');
+ $('coverageSummary').textContent=data.length+' original findings · '+unlinked.length+
+ ' without a LOCAL file fingerprint · '+urgent.length+' critical/high without a LOCAL fingerprint. '+
+ 'Unregistered here does NOT mean no evidence exists elsewhere.';
+ const severityRank=s=>LightUpCasework.SEVERITY.indexOf(s);
+ const visible=data.filter(x=>filter==='all'||filter==='unlinked'&&!x.count||
+   filter==='critical_unlinked'&&!x.count&&severityRank(x.severity)<=1||
+   filter==='follow_up'&&x.followup>0).sort((a,b)=>severityRank(a.severity)-severityRank(b.severity)||
+   a.finding_id.localeCompare(b.finding_id));
+ for(const f of visible){
+  const tr=document.createElement('tr');
+  for(const value of [f.finding_id,f.severity,
+   f.retest_status+' (source claim only)',String(f.count),
+   String(f.review),String(f.followup)]){
+   const td=document.createElement('td');td.textContent=value;tr.append(td);
+  }
+  const td=document.createElement('td'),open=document.createElement('button');
+  open.type='button';open.textContent='Open original finding';
+  open.addEventListener('click',()=>{
+   $('finding').value=f.finding_id;$('filter').value=f.finding_id;
+   state.filter=f.finding_id.toLowerCase();render();
+   $('addFiles').focus();message('Selected original finding '+f.finding_id+' for human evidence filing.',false);
+  });
+  td.append(open);tr.append(td);body.append(tr);
+ }
+ $('coverageShown').textContent=visible.length+' original findings shown (private local view)';
+}
+function exportCoverage(){
+ if(!state.sha)fail('Load the original findings source first.');
+ if(!confirm('Export PRIVATE original IDs and LOCAL fingerprint coverage to this device? Verify your recipient separately.'))return;
+ const rows=[['finding_id','severity','source_retest_claim','local_fingerprint_count','human_review_count','follow_up_count'],
+ ...coverageRows().map(f=>[f.finding_id,f.severity,f.retest_status,String(f.count),String(f.review),String(f.followup)])];
+ download('LightUp-PRIVATE-original-evidence-coverage.csv',ESCAPE+
+   rows.map(r=>r.map(csvCell).join(',')).join('\r\n')+'\r\n','text/csv;charset=utf-8');
+}
+
 function csvCell(raw){
  let s=String(raw);
  // Force text treatment for Unicode-obscured spreadsheet formulas.
@@ -356,6 +408,8 @@ function bind(id,event,fn){$(id).addEventListener(event,async()=>{try{await fn()
 bind('load','click',loadSource);bind('add','click',addFiles);
 bind('export','click',exportPrivate);bind('aggregate','click',exportAggregate);
 bind('restore','click',importPrivate);bind('verify','change',verifyFile);
+bind('coverageFilter','change',renderCoverage);
+bind('coverageExport','click',exportCoverage);
 bind('selectVisible','click',selectVisible);
 bind('clearSelection','click',()=>{state.selected.clear();state.bulk=null;render();});
 bind('previewBulk','click',previewBulk);
