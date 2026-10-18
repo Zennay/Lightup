@@ -57,7 +57,7 @@ function currentMatch(packet,snap){
 async function prepare(){
  pending=null;$("collab-apply").disabled=true;$("collab-preview").replaceChildren();
  const snap=bridge.snapshot();require_(!!snap);
- const ordinals=snap.visible;
+ const ordinals=snap.selected.length?snap.selected:snap.visible;
  require_(ordinals.length>0&&ordinals.length<=512);
  const selected=new Set(ordinals);
  const rows=snap.rows.filter(x=>selected.has(x.ordinal)).map(x=>({

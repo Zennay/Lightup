@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-PRX8aFuWQfQiFsbOR6+TyY5lKZLiEW3HrwX2ZspoGUE=' 'sha256-SU4/IO+yKT4ui6dzKCZSGn/nwB32SUGrvil7qk6ER40='; style-src 'sha256-zlBnPlofWy0y3v8vUHypiVVxqymrLVP2tenOooZtS5E='; connect-src 'none'; img-src 'none'; font-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-hRkJWemoEUFPXHPk2oHhtc3pVnk2gKONR4m8tIhmFGw=' 'sha256-vhAP84xwYXWkxr4OJeLVBONQKf5GtZt6gVUvAzZV1jI='; style-src 'sha256-q6Z1uuA8LXMubriwNuCn/+XxU6Bxmi10yhDvIpYeyVY='; connect-src 'none'; img-src 'none'; font-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="referrer" content="no-referrer"><title>LightUp | Private Lab Review Desk</title>
 <style>:root{color-scheme:dark;font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;background:#101624;color:#f3f7fd;line-height:1.55}
 *{box-sizing:border-box}body{margin:0}header{padding:3.5rem max(2rem,calc((100vw - 1100px)/2));background:linear-gradient(130deg,#172d43,#151926)}header h1{font-size:clamp(2rem,5vw,3.35rem);line-height:1.1;letter-spacing:-.04em;margin:.6rem 0}header p{max-width:800px;color:#d5e1ed}.eyebrow{font-size:.7rem;font-weight:800;letter-spacing:.19em;color:#9bdef1}
@@ -19,6 +19,8 @@ button:disabled,.upload:has(input:disabled){opacity:.45;cursor:not-allowed}
 #collab-preview{max-height:450px;overflow:auto}#collab-preview table{min-width:670px}#collab-status{color:#b9f6e7;margin:.6rem 0}.change-new{color:#b9f6e7;font-weight:650}.change-old{color:#b3c1d5}#collab-apply:disabled{opacity:.4;cursor:not-allowed}
 
 .cards{display:grid;gap:1rem}.finding{border:1px solid #42546b;background:#152338;padding:1rem;border-radius:12px}.finding h3{font-size:1rem;margin:.2rem 0}.finding p{overflow-wrap:anywhere;color:#e1eaf5}.grid{display:grid;grid-template-columns:1fr 1fr;gap:.6rem}.grid label{display:grid;gap:.3rem;color:#c1d7eb;font-size:.88rem}.grid input,.grid select,.grid textarea{background:#101b2d;border:1px solid #7187a4;border-radius:6px;padding:.55rem;color:#f5fcff;font:inherit;min-width:0}.grid textarea{resize:vertical;grid-column:1/-1}.grid label:nth-child(n+3){grid-column:1/-1}#preview table{min-width:700px}#status[data-error=true]{background:#4c2222;color:#ffe3d5}@media(max-width:720px){.grid{grid-template-columns:1fr}.grid label:nth-child(n+3){grid-column:auto}}
+
+.handoff-check{display:flex;align-items:center;gap:.4rem;font-size:.75rem;color:#a9ebfc;margin-bottom:.5rem;cursor:pointer}.handoff-check input{height:1rem;width:1rem;accent-color:#69cee8}
 </style></head><body>
 <header><div class="eyebrow">LIGHTUP / ISOLATED LAB / HUMAN REVIEW ONLY</div>
 <h1>Private Lab Review Desk</h1><p>Explore an <strong>already-created</strong> isolated-lab assessment JSON. Review individual source-declared findings, track human follow-up and prepare a private handoff. Nothing scans, calls a model, contacts an asset, verifies consent or grants permission.</p>
@@ -56,9 +58,13 @@ button:disabled,.upload:has(input:disabled){opacity:.45;cursor:not-allowed}
 <section id="collaboration" aria-labelledby="collab-heading">
 <h2 id="collab-heading">4. Send a PRIVATE human-only reviewer packet</h2>
 <p>Select existing source findings to share by the current severity/stage/endpoint filter. The packet contains <strong>only original ordinal, severity, a private source-declared title and the current four human follow-up fields</strong>; no target URL, raw evidence, finding ID or customer data. The recipient is not authenticated by this software; use a separately approved private channel.</p>
-<div class="toolbar"><button id="collab-send" type="button">Download PRIVATE packet for visible findings</button>
+<div class="toolbar">
+<button id="collab-select-visible" type="button">Select visible PRIVATE titles</button>
+<button id="collab-clear-selection" type="button" class="quiet">Clear selected titles</button>
+<button id="collab-send" type="button">Download PRIVATE packet for selection</button>
 <label class="upload" for="collab-receive">Import PRIVATE reviewer reply<input type="file" id="collab-receive" accept=".json,application/json"></label>
 <button id="collab-apply" type="button" disabled>Accept previewed HUMAN changes</button></div>
+<p id="collab-selection-status"></p>
 <div id="collab-status" role="status" aria-live="polite"></div>
 <div id="collab-preview"></div>
 <p class="note">Reviewer replies are only proposed human notes. Both the original source-byte fingerprint and unchanged operator human baseline must match at import time. Any stale, mismatched or incomplete private packet is HOLD. Reviewer identity, consent, findings and completion are never inferred.</p>
@@ -76,6 +82,7 @@ const GROUPS=["unassigned","scope","findings","evidence","remediation"];
 const SEVERITIES=["critical","high","medium","low","info"];
 const MAX_BYTES=8*1024*1024, MAX_ROWS=2048;
 let source=null,sourceHash="",notes=[],dirty=false,filter="",lastBulkUndo=null;
+const selectedForHandoff=new Set();
 const validText=(s,limit=1000)=>typeof s==="string"&&s.length<=limit&&!/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/.test(s);
 const require_=(ok)=>{if(!ok)throw Error("Incompatible or untrusted private lab artifact");};
 const obj=x=>x!==null&&typeof x==="object"&&!Array.isArray(x);
@@ -266,7 +273,17 @@ function render(){
   const n=notes[i];if(filter&&filter!==f.severity&&filter!==n.stage&&filter!=="endpoint:"+endpointOrdinal(f))return;
   shown++;
   const tr=document.createElement("tr");
-  const meta=el("div");meta.append(el("strong","#"+(i+1)+" · "+f.severity.toUpperCase()+" · "+sourcePosition(f)));
+  const meta=el("div");
+  const selection=el("label",undefined,"handoff-check"),box=document.createElement("input");
+  box.type="checkbox";box.checked=selectedForHandoff.has(i+1);
+  box.addEventListener("change",()=>{
+   if(box.checked){if(selectedForHandoff.size>=512){box.checked=false;status("PRIVATE handoff selection capped at 512 original rows.",true);return;}
+    selectedForHandoff.add(i+1);}
+   else selectedForHandoff.delete(i+1);
+   updateSelectionStatus();
+  });
+  selection.append(box,document.createTextNode(" Include this private finding title in handoff"));
+  meta.append(selection,el("strong","#"+(i+1)+" · "+f.severity.toUpperCase()+" · "+sourcePosition(f)));
   meta.append(el("p",f.finding));meta.append(el("small","Source-declared check: "+f.check_id+
    " · "+f.evidence_ids.length+" evidence refs · retest: "+f.retest));
   const detail=document.createElement("details");detail.append(el("summary","Private original impact / mitigation / evidence summary"));
@@ -282,6 +299,13 @@ function render(){
   review.append(controls);tr.append(review);tbody.append(tr);
  });
  $("shown").textContent=shown+" of "+source.findings.length+" source findings shown";
+ updateSelectionStatus();
+}
+function updateSelectionStatus(){
+ const e=$("collab-selection-status");if(!e)return;
+ e.textContent=selectedForHandoff.size?
+  selectedForHandoff.size+" specifically selected PRIVATE title(s); only these will be sent.":
+  "Nothing specifically selected: export uses the current visible filtered rows (maximum 512).";
 }
 function admitNote(n){
  return exact(n,["stage","group","next_action","blocker"])&&STAGES.includes(n.stage)&&GROUPS.includes(n.group)
@@ -312,7 +336,7 @@ async function importSource(file){
  // Exact raw bytes prevent reuse of human notes on changed or reordered evidence.
  const hash=(globalThis.crypto&&crypto.subtle)?await sha256(bytes):"";
  if(source&&dirty&&!confirm("Replace existing unsaved private human notes?"))return;
- source=parsed;sourceHash=hash;notes=parsed.findings.map(initialNote);dirty=false;lastBulkUndo=null;
+ source=parsed;sourceHash=hash;notes=parsed.findings.map(initialNote);dirty=false;lastBulkUndo=null;selectedForHandoff.clear();
  filter="";$("filter").value="";buildEndpointFilter();
  $("private").disabled=!hash;$("resume").disabled=!hash;$("brief").disabled=!hash;
  $("workspace").hidden=false;updateSummary();render();
@@ -414,15 +438,25 @@ $("aggregate").addEventListener("click",()=>{if(!source)return;
  download("lab-anonymous-human-counts.json",JSON.stringify(aggregate(),null,2)+"\n","application/json");
  status("Counts-only human report exported; even small aggregate counts may be sensitive.");});
 $("forget").addEventListener("click",()=>{if(!source||!confirm("Forget all private source data and unsaved human notes?"))return;
- source=null;sourceHash="";notes=[];dirty=false;filter="";lastBulkUndo=null;$("filter").value="";$("findings").replaceChildren();
+ source=null;sourceHash="";notes=[];dirty=false;filter="";lastBulkUndo=null;selectedForHandoff.clear();$("filter").value="";$("findings").replaceChildren();
  $("workspace").hidden=true;status("All in-memory private workspace data discarded.");});
+$("collab-select-visible").addEventListener("click",()=>{
+ if(!source)return;
+ const ids=visibleOrdinals().map(i=>i+1);
+ if(new Set([...selectedForHandoff,...ids]).size>512){status("Filtered selection exceeds 512. Narrow severity, stage or endpoint first.",true);return;}
+ ids.forEach(n=>selectedForHandoff.add(n));render();
+});
+$("collab-clear-selection").addEventListener("click",()=>{
+ selectedForHandoff.clear();render();
+});
 window.addEventListener("beforeunload",e=>{if(dirty){e.preventDefault();e.returnValue="";}});
 
 // Strict collaboration bridge: no direct original source, targets or evidence leave here.
 window.LightUpReviewBridge=Object.freeze({
  snapshot(){
   if(!source||!sourceHash)return null;
-  return {source_sha256:sourceHash,visible:visibleOrdinals().map(i=>i+1),rows:source.findings.map((f,i)=>({
+  return {source_sha256:sourceHash,visible:visibleOrdinals().map(i=>i+1),
+   selected:[...selectedForHandoff].sort((a,b)=>a-b),rows:source.findings.map((f,i)=>({
     ordinal:i+1, severity:f.severity,title:f.finding,
     endpoint_ordinal:endpointOrdinal(f),human:{...notes[i]}
   }))};
@@ -511,7 +545,7 @@ function currentMatch(packet,snap){
 async function prepare(){
  pending=null;$("collab-apply").disabled=true;$("collab-preview").replaceChildren();
  const snap=bridge.snapshot();require_(!!snap);
- const ordinals=snap.visible;
+ const ordinals=snap.selected.length?snap.selected:snap.visible;
  require_(ordinals.length>0&&ordinals.length<=512);
  const selected=new Set(ordinals);
  const rows=snap.rows.filter(x=>selected.has(x.ordinal)).map(x=>({

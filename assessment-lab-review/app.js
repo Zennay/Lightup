@@ -8,6 +8,7 @@ const GROUPS=["unassigned","scope","findings","evidence","remediation"];
 const SEVERITIES=["critical","high","medium","low","info"];
 const MAX_BYTES=8*1024*1024, MAX_ROWS=2048;
 let source=null,sourceHash="",notes=[],dirty=false,filter="",lastBulkUndo=null;
+const selectedForHandoff=new Set();
 const validText=(s,limit=1000)=>typeof s==="string"&&s.length<=limit&&!/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/.test(s);
 const require_=(ok)=>{if(!ok)throw Error("Incompatible or untrusted private lab artifact");};
 const obj=x=>x!==null&&typeof x==="object"&&!Array.isArray(x);
@@ -198,7 +199,17 @@ function render(){
   const n=notes[i];if(filter&&filter!==f.severity&&filter!==n.stage&&filter!=="endpoint:"+endpointOrdinal(f))return;
   shown++;
   const tr=document.createElement("tr");
-  const meta=el("div");meta.append(el("strong","#"+(i+1)+" · "+f.severity.toUpperCase()+" · "+sourcePosition(f)));
+  const meta=el("div");
+  const selection=el("label",undefined,"handoff-check"),box=document.createElement("input");
+  box.type="checkbox";box.checked=selectedForHandoff.has(i+1);
+  box.addEventListener("change",()=>{
+   if(box.checked){if(selectedForHandoff.size>=512){box.checked=false;status("PRIVATE handoff selection capped at 512 original rows.",true);return;}
+    selectedForHandoff.add(i+1);}
+   else selectedForHandoff.delete(i+1);
+   updateSelectionStatus();
+  });
+  selection.append(box,document.createTextNode(" Include this private finding title in handoff"));
+  meta.append(selection,el("strong","#"+(i+1)+" · "+f.severity.toUpperCase()+" · "+sourcePosition(f)));
   meta.append(el("p",f.finding));meta.append(el("small","Source-declared check: "+f.check_id+
    " · "+f.evidence_ids.length+" evidence refs · retest: "+f.retest));
   const detail=document.createElement("details");detail.append(el("summary","Private original impact / mitigation / evidence summary"));
@@ -214,6 +225,13 @@ function render(){
   review.append(controls);tr.append(review);tbody.append(tr);
  });
  $("shown").textContent=shown+" of "+source.findings.length+" source findings shown";
+ updateSelectionStatus();
+}
+function updateSelectionStatus(){
+ const e=$("collab-selection-status");if(!e)return;
+ e.textContent=selectedForHandoff.size?
+  selectedForHandoff.size+" specifically selected PRIVATE title(s); only these will be sent.":
+  "Nothing specifically selected: export uses the current visible filtered rows (maximum 512).";
 }
 function admitNote(n){
  return exact(n,["stage","group","next_action","blocker"])&&STAGES.includes(n.stage)&&GROUPS.includes(n.group)
@@ -244,7 +262,7 @@ async function importSource(file){
  // Exact raw bytes prevent reuse of human notes on changed or reordered evidence.
  const hash=(globalThis.crypto&&crypto.subtle)?await sha256(bytes):"";
  if(source&&dirty&&!confirm("Replace existing unsaved private human notes?"))return;
- source=parsed;sourceHash=hash;notes=parsed.findings.map(initialNote);dirty=false;lastBulkUndo=null;
+ source=parsed;sourceHash=hash;notes=parsed.findings.map(initialNote);dirty=false;lastBulkUndo=null;selectedForHandoff.clear();
  filter="";$("filter").value="";buildEndpointFilter();
  $("private").disabled=!hash;$("resume").disabled=!hash;$("brief").disabled=!hash;
  $("workspace").hidden=false;updateSummary();render();
@@ -346,15 +364,25 @@ $("aggregate").addEventListener("click",()=>{if(!source)return;
  download("lab-anonymous-human-counts.json",JSON.stringify(aggregate(),null,2)+"\n","application/json");
  status("Counts-only human report exported; even small aggregate counts may be sensitive.");});
 $("forget").addEventListener("click",()=>{if(!source||!confirm("Forget all private source data and unsaved human notes?"))return;
- source=null;sourceHash="";notes=[];dirty=false;filter="";lastBulkUndo=null;$("filter").value="";$("findings").replaceChildren();
+ source=null;sourceHash="";notes=[];dirty=false;filter="";lastBulkUndo=null;selectedForHandoff.clear();$("filter").value="";$("findings").replaceChildren();
  $("workspace").hidden=true;status("All in-memory private workspace data discarded.");});
+$("collab-select-visible").addEventListener("click",()=>{
+ if(!source)return;
+ const ids=visibleOrdinals().map(i=>i+1);
+ if(new Set([...selectedForHandoff,...ids]).size>512){status("Filtered selection exceeds 512. Narrow severity, stage or endpoint first.",true);return;}
+ ids.forEach(n=>selectedForHandoff.add(n));render();
+});
+$("collab-clear-selection").addEventListener("click",()=>{
+ selectedForHandoff.clear();render();
+});
 window.addEventListener("beforeunload",e=>{if(dirty){e.preventDefault();e.returnValue="";}});
 
 // Strict collaboration bridge: no direct original source, targets or evidence leave here.
 window.LightUpReviewBridge=Object.freeze({
  snapshot(){
   if(!source||!sourceHash)return null;
-  return {source_sha256:sourceHash,visible:visibleOrdinals().map(i=>i+1),rows:source.findings.map((f,i)=>({
+  return {source_sha256:sourceHash,visible:visibleOrdinals().map(i=>i+1),
+   selected:[...selectedForHandoff].sort((a,b)=>a-b),rows:source.findings.map((f,i)=>({
     ordinal:i+1, severity:f.severity,title:f.finding,
     endpoint_ordinal:endpointOrdinal(f),human:{...notes[i]}
   }))};

@@ -39,9 +39,13 @@
 <section id="collaboration" aria-labelledby="collab-heading">
 <h2 id="collab-heading">4. Send a PRIVATE human-only reviewer packet</h2>
 <p>Select existing source findings to share by the current severity/stage/endpoint filter. The packet contains <strong>only original ordinal, severity, a private source-declared title and the current four human follow-up fields</strong>; no target URL, raw evidence, finding ID or customer data. The recipient is not authenticated by this software; use a separately approved private channel.</p>
-<div class="toolbar"><button id="collab-send" type="button">Download PRIVATE packet for visible findings</button>
+<div class="toolbar">
+<button id="collab-select-visible" type="button">Select visible PRIVATE titles</button>
+<button id="collab-clear-selection" type="button" class="quiet">Clear selected titles</button>
+<button id="collab-send" type="button">Download PRIVATE packet for selection</button>
 <label class="upload" for="collab-receive">Import PRIVATE reviewer reply<input type="file" id="collab-receive" accept=".json,application/json"></label>
 <button id="collab-apply" type="button" disabled>Accept previewed HUMAN changes</button></div>
+<p id="collab-selection-status"></p>
 <div id="collab-status" role="status" aria-live="polite"></div>
 <div id="collab-preview"></div>
 <p class="note">Reviewer replies are only proposed human notes. Both the original source-byte fingerprint and unchanged operator human baseline must match at import time. Any stale, mismatched or incomplete private packet is HOLD. Reviewer identity, consent, findings and completion are never inferred.</p>
