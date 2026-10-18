@@ -8,10 +8,9 @@ from __future__ import annotations
 
 import argparse
 from collections import Counter, defaultdict
+from contextlib import closing
 from datetime import datetime, timezone
 from getpass import GetPassWarning, getpass
-import hashlib
-import hmac
 import html
 import ipaddress
 import json
@@ -115,7 +114,7 @@ def _utc_window(grant: sqlite3.Row) -> str:
 def _read_report(database: Path) -> dict:
     """Use one read-only SQLite transaction for an internally consistent view."""
     uri = database.resolve(strict=True).as_uri() + "?mode=ro"
-    with sqlite3.connect(uri, uri=True, timeout=4) as con:
+    with closing(sqlite3.connect(uri, uri=True, timeout=4)) as con:
         con.row_factory = sqlite3.Row
         con.execute("PRAGMA query_only=ON")
         con.execute("BEGIN")
