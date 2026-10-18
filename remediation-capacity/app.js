@@ -179,6 +179,13 @@
     download('lightup-capacity-weeks.csv',engine.csvReport(result),'text/csv;charset=utf-8');
     setFeedback('Weekly aggregate CSV exported. No individual findings included.');
   });
+  el('export-md').addEventListener('click',()=>{
+    if (!result) return;
+    const ok=window.confirm('Export a private, aggregate-only Markdown planning brief for human discussion? It is NOT authorization or proof of completed work.');
+    if (!ok) return;
+    download('lightup-capacity-discussion.md',engine.markdownReport(result),'text/markdown;charset=utf-8');
+    setFeedback('Unsigned aggregate discussion brief exported. No original finding details included.');
+  });
   el('print').addEventListener('click',()=>{if(result)window.print();});
   const now = new Date();
   el('settings').elements.namedItem('start').value = [
