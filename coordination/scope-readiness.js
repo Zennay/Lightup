@@ -27,6 +27,35 @@ function parseJSON(text){
  if(!plain(obj))throw Error('Expected a JSON object.');
  return obj;
 }
+function validUtcWindow(d){
+ const w=d.proposed_window_utc,l=d.proposed_window_local;
+ if(!plain(w)||!plain(l))return false;
+ if(Object.keys(w).some(k=>!['status','timezone','start','end','start_offset_minutes','end_offset_minutes'].includes(k)))return false;
+ if(!validText(w.timezone,100))return false;
+ if(w.status==='unscheduled'||w.status==='incomplete'){
+  const emptyStart=l.start===null,emptyEnd=l.end===null;
+  return (w.status==='unscheduled'?(emptyStart&&emptyEnd):(emptyStart!==emptyEnd))&&w.start===null&&w.end===null;
+ }
+ if(w.status!=='resolved')return false;
+ const iso=/^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:00\\.000Z$/;
+ const local=/^(\\d{4})-(\\d{2})-(\\d{2})T(\\d{2}):(\\d{2})$/;
+ if(typeof w.start!=='string'||typeof w.end!=='string'||!iso.test(w.start)||!iso.test(w.end)||w.start>=w.end)return false;
+ if(!Number.isInteger(w.start_offset_minutes)||!Number.isInteger(w.end_offset_minutes)||
+  Math.abs(w.start_offset_minutes)>840||Math.abs(w.end_offset_minutes)>840)return false;
+ const make=(wall,offset)=>{
+  if(typeof wall!=='string')return null;
+  const match=local.exec(wall);if(!match)return null;
+  const [y,m,day,h,min]=match.slice(1).map(Number);
+  if(y<2020||y>2100||m<1||m>12||day<1||day>31||h>23||min>59)return null;
+  const utc=new Date(Date.UTC(y,m-1,day,h,min)+offset*60000);
+  // Refuse impossible day/month normalization rather than guessing a timezone.
+  const calendar=new Date(Date.UTC(y,m-1,day));
+  if(calendar.getUTCFullYear()!==y||calendar.getUTCMonth()!==m-1||calendar.getUTCDate()!==day)return null;
+  return utc.toISOString();
+ };
+ try{return make(l.start,w.start_offset_minutes)===w.start && make(l.end,w.end_offset_minutes)===w.end;}
+ catch(_){return false;}
+}
 function validDraft(d){
  if(!plain(d)||d.kind!=='lightup.scope_proposal_draft'||d.schema_version!==1||d.state!=='DRAFT_ONLY')return false;
  if(!['authorization','client_consent','operator_consent','grant','execution','revocation_checked'].every(k=>d[k]===false))return false;
@@ -35,7 +64,7 @@ function validDraft(d){
  if(!Array.isArray(d.requested_assets)||!Array.isArray(d.excluded_assets)||d.requested_assets.length>80||d.excluded_assets.length>80)return false;
  if(![...d.requested_assets,...d.excluded_assets].every(x=>validText(x,253)&&x.length>0&&x.trim()===x))return false;
  if(!plain(d.proposed_activities)||!['passive_analysis','configuration_review','private_lab_network_checks'].every(k=>typeof d.proposed_activities[k]==='boolean'))return false;
- if(!plain(d.proposed_window_local)||!plain(d.proposed_window_utc))return false;
+ if(!plain(d.proposed_window_local)||!validUtcWindow(d))return false;
  if(!['start','end'].every(k=>d.proposed_window_local[k]===null||validText(d.proposed_window_local[k],80)))return false;
  // Any stored source digest is only a continuity hint. Never treat it as trusted identity.
  if(d.scope_fingerprint_sha256!==undefined && !/^[0-9a-f]{64}$/.test(d.scope_fingerprint_sha256))return false;
@@ -58,16 +87,25 @@ function sourceRecord(d,digest){
  };
 }
 function cleanRecord(r){
+ // Imported casework is never allowed to smuggle a claimed authority field.
+ if(!plain(r)||Object.keys(r).some(k=>![
+  'source_sha256','name','client_label','requested_mode','requested_risk',
+  'asset_count','excluded_count','planned_utc','source_attached','tasks'
+ ].includes(k)))return null;
  if(!plain(r)||!(/^[0-9a-f]{64}$/).test(r.source_sha256)||!validText(r.name,120)||!validText(r.client_label,100)||
  !['analysis_only','authorized_assessment'].includes(r.requested_mode)||![1,2,3,4].includes(r.requested_risk)||
  !Number.isInteger(r.asset_count)||r.asset_count<0||r.asset_count>80||
  !Number.isInteger(r.excluded_count)||r.excluded_count<0||r.excluded_count>80)return null;
- if(r.planned_utc!==null && (!plain(r.planned_utc)||!['start','end'].every(k=>validText(r.planned_utc[k],50))))return null;
+ if(r.planned_utc!==null && (!plain(r.planned_utc)||
+   Object.keys(r.planned_utc).some(k=>!['start','end'].includes(k))||
+   !['start','end'].every(k=>validText(r.planned_utc[k],50)&&
+   /^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:00\\.000Z$/.test(r.planned_utc[k]))||
+   r.planned_utc.start>=r.planned_utc.end))return null;
  if(!plain(r.tasks)||Object.keys(r.tasks).length!==STAGES.length)return null;
  const tasks={};
  for(const [key] of STAGES){
   const t=r.tasks[key];
-  if(!plain(t)||!STATUSES.includes(t.status)||!validText(t.owner,80)||!validText(t.next_action,350)||
+  if(!plain(t)||Object.keys(t).some(k=>!['status','owner','due','next_action'].includes(k))||!STATUSES.includes(t.status)||!validText(t.owner,80)||!validText(t.next_action,350)||
   !validText(t.due,10)||(t.due!==''&&!/^\d{4}-\d{2}-\d{2}$/.test(t.due)))return null;
   if(t.due!==''&&new Date(t.due+'T00:00:00Z').toISOString().slice(0,10)!==t.due)return null;
   tasks[key]={status:t.status,owner:t.owner,due:t.due,next_action:t.next_action};
