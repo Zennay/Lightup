@@ -23,6 +23,12 @@ A complete **combined next-action workboard** now composes four genuinely availa
 
 The UI supports type and priority filters, direct navigation to a related dossier, and complete downloadable, privacy-minimal **JSON and CSV**. The full script-free HTML review handoff includes a top-40 prioritized human action summary, with a visible total count and a clear link to the complete machine-readable exports. In addition, locally entered task follow-up **dates** can be exported into an **all-day, tentative, transparent `.ics` calendar** with only task code and original SHA, never client label, assets, risk grant, operator identity or a real scan appointment. The app warns that importing ICS into a calendar service may sync source fingerprints to cloud storage and asks for explicit confirmation. Both exports contain only anonymous dossier indexes, source SHA-256, role, action code, urgency and optional local date. All authority flags are literal `false` and every action remains `REVIEW_ONLY_HOLD`. The workboard never talks to an endpoint, cannot authenticate people or tenants, and does not mark independent consent, STOP confirmation, grant revocation or release as performed. A returned `answered_unverified` reply still creates a real **human follow-up** item requesting independent verification — it is not a completed consent step.
 
+
+
+### STOP alerts across self-declared scope revision history
+
+If an imported, unverified Withdrawal Desk STOP/change review refers to one version of a manually linked revision chain, the other versions now show **an explicit historical STOP context warning**. They must be independently confirmed through the genuinely authenticated client/operator workflow; this does not migrate a grant, establish identical ownership, or assert that any real operation was stopped. Potentially stale locally prepared stop/client/operator/scope/risk/planning steps are re-opened as `needs_revision`; related pairwise discussion copies are re-opened. The unified queue surfaces each affected, self-linked version as a separate urgent or high-priority human task without exporting raw asset identities.
+
 ## Integrated client/operator Permission Brief replies
 
 The standalone app now imports the **combined human reply reconciliation JSON** from the separately owned [Scope Permission Brief PR #1578](https://github.com/Zennay/Lightup/pull/1578). This is a typed, read-only transfer of **unverified** role-labelled questions: it does not grant identity, legal consent, authenticated operator approval, authorization or execution.
