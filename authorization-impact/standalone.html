@@ -88,11 +88,21 @@ tbody button{font-size:11px;padding:5px 7px}
 <section class="card" style="margin-top:17px"><h2>05 / Source-declared attention inbox</h2><p>Prioritizes recorded HOLD, pending and out-of-window source observations, plus missing referenced rows, without implying live state or permissions.</p>
 <div class="table-wrap"><table><thead><tr><th>Original row / missing link</th><th>Source attention</th><th>Inspect</th></tr></thead><tbody id="inbox"></tbody></table></div><p class="muted" id="inbox-empty">No source-declared attention rows.</p></section>
 <section class="card" style="margin-top:17px"><div class="flex"><h2>06 / Human-only follow-up schedule</h2><label class="field" style="min-width:180px">Stage filter<select id="follow-stage"><option value="all">All recorded notes</option><option value="unreviewed">Unreviewed</option><option value="investigating">Investigating</option><option value="waiting-client">Waiting for genuine client contact</option><option value="waiting-operator">Waiting for original operator</option><option value="escalated">Escalated</option><option value="documented">Documented only</option></select></label></div><p><span id="follow-count">0</span> human-only follow-up records; dates before this device's UTC day are shown as overdue reminders. Device time, reviewer names, assignments and stages are unverified human planning data, not current consent.</p><div class="table-wrap"><table><thead><tr><th>Original private source ID</th><th>Human stage</th><th>Proposed date</th><th>Self-reported reviewer</th><th>Next human action</th><th>Open</th></tr></thead><tbody id="followups"></tbody></table></div><p class="muted" id="follow-empty">No human follow-up notes for this filter.</p></section>
+<section class="card" style="margin-top:17px" aria-label="Non-authorizing hypothetical scope source impact">
+<div class="flex"><h2>07 / Hypothetical source-unavailability impact planner</h2><span class="pill">WHAT-IF ONLY · NO REVOCATION</span></div>
+<p>This local sandbox asks what **human follow-up** would be needed if one or more currently recorded source rows were hypothetically unavailable. It neither checks actual current consent nor revokes a grant, changes STOP, narrows target scope or activates an assessment. Only original recorded relationships are used, not guessed authorization links.</p>
+<div class="actions"><button id="scenario-add" type="button" disabled>Mark selected original row hypothetical</button><button id="scenario-clear" class="secondary" type="button" disabled>Clear hypothetical scenario</button></div>
+<p class="caption"><strong id="scenario-count">0</strong> of 20 original rows selected. Click a real original source node or recorded source table row first; adding rows does not alter the imported source or human review notes.</p>
+<div id="scenario-source" class="flex"></div><p id="scenario-summary" class="warning">No hypothetical source-change selections.</p>
+<h3>Human follow-up by directly affected original engagement</h3><div class="table-wrap"><table><thead><tr><th>Original engagement ID (PRIVATE)</th><th>Exact hypothetical missing reference</th><th>Open source</th></tr></thead><tbody id="scenario-engagements"></tbody></table></div>
+<p id="scenario-empty" class="muted">No directly affected original engagement records identified. This is not clearance.</p>
+<div class="actions"><button id="scenario-export-anon" type="button" class="secondary" disabled>Anonymous hypothetical counts</button><button id="scenario-export-private" type="button" disabled>PRIVATE what-if human briefing JSON</button></div>
+<p class="caption">The private briefing requires an exact original source SHA-256 and explicit recipient confirmation; the anonymous one exports only record/engagement counts. A hypothetical missing record never proves an actual revocation or an approved scope decision.</p></section>
 <footer><p class="caption">LightUp · isolated original-source companion · fully offline · private exports stay with the operator · PLAN/LAB ONLY / DRAFT/HOLD. Human notes are never original domain evidence.</p></footer>
 </main><script>
 (function(){
 "use strict";
-var source=null,sourceSHA=null,fictional=false,selection=null,human=new Map(),MAX=524288,REV_LIMIT=262144;
+var source=null,sourceSHA=null,fictional=false,selection=null,human=new Map(),hypothetical=new Set(),MAX=524288,REV_LIMIT=262144;
 var FAMILIES=[["requests","request_id","Request"],["grants","grant_id","Grant"],["engagements","engagement_id","Engagement"],["risk_approvals","approval_id","Risk decision"]];
 var FALSE_FLAGS=["source_authenticated","client_consent_verified","operator_consent_verified","authorization_granted","execution_allowed","release_approved"];
 var STAGES=["unreviewed","investigating","waiting-client","waiting-operator","escalated","documented"];
@@ -305,7 +315,7 @@ el("selected-private-json").disabled=!node||!sourceSHA||fictional;
 el("selected-private-html").disabled=!node||!sourceSHA||fictional;
 el("batch-followup").disabled=!node||!batchAttentionCandidates().length;
 el("batch-count").textContent=node?batchAttentionCandidates().length:0;
-renderInbox();renderSchedule();
+renderInbox();renderSchedule();renderHypothetical();
 }
 function renderSchedule(){
 var body=el("followups");body.replaceChildren();var filter=el("follow-stage").value;
@@ -380,7 +390,7 @@ if(source){
 if(!capturePendingHuman())return;
 if(!confirm("Replacing the original source will CLEAR the existing local human review notes. Export the private source-bound handoff before switching. Continue?"))return;
 }
-source=candidate;sourceSHA=hash;fictional=!!asDemo;selection=null;human.clear();render();
+source=candidate;sourceSHA=hash;fictional=!!asDemo;selection=null;human.clear();hypothetical.clear();render();
 setMessage((fictional?"FICTIONAL DEMO":"Source bytes loaded locally")+". REVIEW_ONLY, never permission."+(hash?"":" Browser SHA unavailable; private resume/export disabled."));
 }catch(e){setMessage("HOLD: corrupt, duplicate-key, malformed or unsupported casebook. Earlier source and notes preserved.");}
 }
@@ -409,6 +419,69 @@ human=draft;render();
 setMessage("Prepared "+candidates.length+" human-only source-attention follow-up drafts. No original source or permission changed.");
 }catch(e){setMessage("HOLD: provide a valid human follow-up action and stage. No records changed.");}
 }
+
+function hypotheticalImpact(){
+var affected=new Map(),all=new Map(nodes().map(function(n){return [n.key,n];}));
+function record(id,kind,reference){
+if(!id)return;
+if(!affected.has(id))affected.set(id,new Set());
+affected.get(id).add(kind+" "+reference);
+}
+hypothetical.forEach(function(key){
+var n=all.get(key);if(!n)return;
+if(n.family==="requests"){
+source.grants.filter(function(g){return g.approved_request_id===n.id;}).forEach(function(g){record(g.engagement_id,"hypothetical source request unavailable through stored grant",g.grant_id);});
+}else if(n.family==="grants"){record(n.row.engagement_id,"hypothetical stored grant unavailable",n.id);}
+else if(n.family==="engagements"){record(n.id,"hypothetical engagement row unavailable",n.id);}
+else if(n.family==="risk_approvals"){record(n.row.engagement_id,"hypothetical risk decision row unavailable",n.id);}
+});
+return Array.from(affected, function(pair){return {engagement_id:pair[0],human_followup_reasons:Array.from(pair[1]).sort()};}).sort(function(a,b){return a.engagement_id.localeCompare(b.engagement_id);});
+}
+function renderHypothetical(){
+var list=el("scenario-source"),out=el("scenario-engagements");list.replaceChildren();out.replaceChildren();
+el("scenario-count").textContent=hypothetical.size;
+el("scenario-add").disabled=!source||!selection||hypothetical.has(selection)||hypothetical.size>=20;
+el("scenario-clear").disabled=!hypothetical.size;
+el("scenario-export-anon").disabled=!hypothetical.size;
+el("scenario-export-private").disabled=!hypothetical.size||!sourceSHA||fictional;
+var available=new Map(nodes().map(function(n){return [n.key,n];}));
+Array.from(hypothetical).sort().forEach(function(key){
+var itemnode=available.get(key),btn=item(list,"button",(itemnode?itemnode.label+" ":"")+key+" ×","token alert");
+btn.type="button";btn.setAttribute("aria-label","Remove hypothetical source change "+key);
+btn.addEventListener("click",function(){hypothetical.delete(key);render();});
+});
+if(!hypothetical.size)item(list,"small","No hypothetical source changes selected.");
+var impacts=hypotheticalImpact();
+impacts.forEach(function(row){
+var tr=document.createElement("tr");item(tr,"td",row.engagement_id);
+item(tr,"td",row.human_followup_reasons.join(" · "));
+var td=document.createElement("td"),btn=item(td,"button","Inspect source","secondary");btn.type="button";
+btn.addEventListener("click",function(){switchSelection("engagements:"+row.engagement_id);});
+tr.appendChild(td);out.appendChild(tr);
+});
+el("scenario-empty").hidden=!!impacts.length;
+el("scenario-summary").textContent=hypothetical.size?
+"HYPOTHETICAL ONLY: "+hypothetical.size+" selected original records; "+impacts.length+" distinct stored engagement IDs have direct recorded references requiring human follow-up. This is not revocation, consent denial, scope determination or real risk status.":
+"Mark recorded source rows as hypothetically unavailable to plan human follow-up. Original source and grants remain unchanged.";
+}
+function exportHypothetical(privateReport){
+if(!source||!hypothetical.size)return;
+var impacts=hypotheticalImpact();
+var packet={schema:privateReport?"lightup.scope_impact_hypothetical_private.v1":"lightup.scope_impact_hypothetical_anonymous.v1",status:"REVIEW_ONLY",scenario_mode:"HYPOTHETICAL_SOURCE_UNAVAILABLE_NOT_REVOCATION",
+selected_record_count:hypothetical.size,affected_engagement_count:impacts.length,
+source_authenticated:false,client_consent_verified:false,operator_consent_verified:false,authorization_granted:false,execution_allowed:false,release_approved:false};
+if(privateReport){
+if(!sourceSHA||fictional)return;
+if(!confirm("PRIVATE HYPOTHETICAL HUMAN PLANNING FILE: includes original tenant, source IDs and recorded engagement IDs. Confirm authorized recipient and secure destination. It does NOT revoke or authorize anything."))return;
+packet.original_client_id=source.client_id;
+packet.original_source_sha256=sourceSHA;
+packet.original_source_as_of=source.as_of;
+packet.hypothetical_original_source_keys=Array.from(hypothetical).sort();
+packet.human_followup_engagements=impacts;
+}
+download(privateReport?"PRIVATE-lightup-hypothetical-source-impact.json":"lightup-hypothetical-impact-anonymous.json","application/json",JSON.stringify(packet,null,2)+"\n");
+}
+
 function safeDossierText(s){return String(s).replace(/[&<>"']/g,function(x){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[x];});}
 function selectedDossier(){
 if(!source||!sourceSHA||fictional||!selection)throw Error("source required");
@@ -453,10 +526,14 @@ return {schema:"lightup.scope_impact_aggregate.v1",status:"REVIEW_ONLY",source_r
 }
 el("source-file").addEventListener("change",async function(){var file=this.files&&this.files[0];this.value="";await importSource(file,false);});
  el("search").addEventListener("input",function(){if(capturePendingHuman())render();});el("related").addEventListener("change",function(){if(capturePendingHuman())render();});el("follow-stage").addEventListener("change",renderSchedule);
-el("clear").addEventListener("click",function(){if(!capturePendingHuman())return;if(source&&!confirm("Clear original PRIVATE source and all human notes from this browser tab? Export your human handoff first if required."))return;source=null;sourceSHA=null;fictional=false;selection=null;human.clear();el("search").value="";render();setMessage("Private source and human notes cleared from this tab.");});
+el("clear").addEventListener("click",function(){if(!capturePendingHuman())return;if(source&&!confirm("Clear original PRIVATE source and all human notes from this browser tab? Export your human handoff first if required."))return;source=null;sourceSHA=null;fictional=false;selection=null;human.clear();hypothetical.clear();el("search").value="";render();setMessage("Private source and human notes cleared from this tab.");});
 el("save-review").addEventListener("click",function(){try{readFields();render();setMessage("Human-only note stored in tab memory. No original source has been edited.");}catch(e){setMessage("HOLD: review fields invalid. Nothing saved.");}});
 el("anonymous").addEventListener("click",function(){if(source&&capturePendingHuman())download("lightup-scope-impact-anonymous.json","application/json",JSON.stringify(anonymous(),null,2)+"\n");});
 el("selected-anonymous").addEventListener("click",function(){if(capturePendingHuman())exportSelectedAnonymous();});
+el("scenario-add").addEventListener("click",function(){if(!source||!selection||hypothetical.size>=20||hypothetical.has(selection))return;hypothetical.add(selection);render();});
+el("scenario-clear").addEventListener("click",function(){if(!hypothetical.size)return;if(confirm("Clear only these local hypothetical source-change selections? Original source and human notes remain intact.")){hypothetical.clear();render();}});
+el("scenario-export-anon").addEventListener("click",function(){if(capturePendingHuman())exportHypothetical(false);});
+el("scenario-export-private").addEventListener("click",function(){if(capturePendingHuman())exportHypothetical(true);});
 el("selected-private-json").addEventListener("click",function(){exportSelectedDossier("json");});
 el("selected-private-html").addEventListener("click",function(){exportSelectedDossier("html");});
 el("batch-followup").addEventListener("click",batchHumanFollowup);
