@@ -479,6 +479,8 @@
   function reopenHumanStages(){
     if(!catalog)return;
     for(const s of catalog)reviews.set(s.id,"needs_review");
+    // Different completed source sets invalidate unverified proposed human routes/actions.
+    humanRoutes.clear();humanActions.clear();
     undoBatch=null;
   }
   function saveCaseNote(){
@@ -667,16 +669,18 @@
     try{
       privateSourceBound();
       const draft={
-        schema:"lightup.assessment_lineage_private_draft.v2",
+        schema:"lightup.assessment_lineage_private_draft.v3",
         status:"PRIVATE_HUMAN_DRAFT_ONLY",
         authorized:false,consent_verified:false,dispatch_allowed:false,release_allowed:false,
         source_catalog_sha256:catalogHash,
         source_report_sha256:[...reportHashes],
         discussion_stages:catalog.map(s=>reviews.get(s.id)||"needs_review"),
-        private_case_notes:catalog.map(s=>humanNotes.get(s.id)||"")
+        private_case_notes:catalog.map(s=>humanNotes.get(s.id)||""),
+        proposed_review_routes:catalog.map(humanRouteFor),
+        next_human_actions:catalog.map(humanActionFor)
       };
       if(!confirm("Download a PRIVATE draft with the SHA-256 fingerprints of original "+
-        "private file bytes and human stages? Protect this file; it is not a consent or grant."))return;
+        "private file bytes, human stages, PRIVATE notes and proposed human plans? Protect this file; it is not a consent or grant."))return;
       download("lightup-PRIVATE-lineage-human-draft.json",
         JSON.stringify(draft,null,2)+"\n","application/json");
       message("PRIVATE SHA-256 source-bound human draft downloaded. Never share as anonymous handoff.");
@@ -686,10 +690,14 @@
     try{
       privateSourceBound();
       const input=await read(file,65536),draft=input.result;
-      const version=draft?.schema,withNotes=version==="lightup.assessment_lineage_private_draft.v2";
+      const version=draft?.schema;
+      const withPlan=version==="lightup.assessment_lineage_private_draft.v3";
+      const withNotes=withPlan||version==="lightup.assessment_lineage_private_draft.v2";
       admit((version==="lightup.assessment_lineage_private_draft.v1"||withNotes)&&
         exact(draft,["schema","status",...FLAGS,"source_catalog_sha256",
-          "source_report_sha256","discussion_stages",...(withNotes?["private_case_notes"]:[])])&&
+          "source_report_sha256","discussion_stages",
+          ...(withNotes?["private_case_notes"]:[]),
+          ...(withPlan?["proposed_review_routes","next_human_actions"]:[])])&&
         draft.status==="PRIVATE_HUMAN_DRAFT_ONLY"&&flags(draft)&&
         draft.source_catalog_sha256===catalogHash&&
         Array.isArray(draft.source_report_sha256)&&
@@ -701,13 +709,27 @@
       if(withNotes)admit(Array.isArray(draft.private_case_notes)&&
         draft.private_case_notes.length===catalog.length&&
         draft.private_case_notes.every(humanNote));
-      // Atomically replace only PRIVATE human review data, never original source.
+      if(withPlan)admit(Array.isArray(draft.proposed_review_routes)&&
+        draft.proposed_review_routes.length===catalog.length&&
+        draft.proposed_review_routes.every(v=>ROUTES.includes(v))&&
+        Array.isArray(draft.next_human_actions)&&
+        draft.next_human_actions.length===catalog.length&&
+        draft.next_human_actions.every(v=>ACTIONS.includes(v)));
+      // Entire local human workspace changes only after exact original byte provenance
+      // and every private field have been checked; older drafts remain readable.
       const nextReviews=new Map(catalog.map((s,i)=>[s.id,draft.discussion_stages[i]]));
       const nextNotes=withNotes?new Map(catalog.flatMap((s,i)=>
         draft.private_case_notes[i]?[[s.id,draft.private_case_notes[i]]]:[])):new Map();
-      reviews=nextReviews;humanNotes=nextNotes;undoBatch=null;render();
-      message("PRIVATE stages and local notes restored for exact source bytes. "+
-        "Legacy v1 resumes with empty notes.");
+      const nextRoutes=withPlan?new Map(catalog.flatMap((s,i)=>
+        draft.proposed_review_routes[i]!=="unrouted"?
+          [[s.id,draft.proposed_review_routes[i]]]:[])):new Map();
+      const nextActions=withPlan?new Map(catalog.flatMap((s,i)=>
+        draft.next_human_actions[i]!=="none_recorded"?
+          [[s.id,draft.next_human_actions[i]]]:[])):new Map();
+      reviews=nextReviews;humanNotes=nextNotes;
+      humanRoutes=nextRoutes;humanActions=nextActions;undoBatch=null;render();
+      message("PRIVATE stages, notes and proposed human plans restored for original "+
+        "exact source bytes. Legacy v1/v2 drafts have no proposed plans.");
     }catch(_){message("HOLD: draft or original source bytes do not match. Existing stages preserved.",true);}
   }
 
@@ -806,7 +828,7 @@
       message("Script-free, target-free human brief downloaded.");
     }catch(_){message("HOLD: brief not available until sources match exactly.",true);}
   }
-  function forget(){catalog=null;reports=[];reviews=new Map();humanNotes=new Map();mismatchRevealed=false;catalogHash=null;
+  function forget(){catalog=null;reports=[];reviews=new Map();humanNotes=new Map();humanRoutes=new Map();humanActions=new Map();mismatchRevealed=false;catalogHash=null;
     reportHashes=[];undoBatch=null;resetFilters();fictional=false;render();message("All source and review data cleared from memory.");}
   function makeDemo(){
     const names=["scenario-FAKE-01","scenario-FAKE-02","scenario-FAKE-03"];
@@ -824,7 +846,7 @@
         return [id,{metrics,adverse:variant&&i===2?["scope_violations"]:[]}];
       }))
     });
-    reports=[candidate(0),candidate(1)];reviews=new Map();humanNotes=new Map();mismatchRevealed=false;catalogHash=null;
+    reports=[candidate(0),candidate(1)];reviews=new Map();humanNotes=new Map();humanRoutes=new Map();humanActions=new Map();mismatchRevealed=false;catalogHash=null;
     reportHashes=[];undoBatch=null;resetFilters();fictional=true;
     render();message("FICTIONAL offline demonstration loaded; no source evidence or permission.");
   }
@@ -876,7 +898,7 @@
       harmonize(nextReports);
       // All source files are fully canonical and mutually consistent before ANY mutation.
       catalog=nextCatalog;reports=nextReports;catalogHash=sourceCatalog.digest;
-      reportHashes=nextHashes;reviews=new Map();humanNotes=new Map();mismatchRevealed=false;undoBatch=null;fictional=false;
+      reportHashes=nextHashes;reviews=new Map();humanNotes=new Map();humanRoutes=new Map();humanActions=new Map();mismatchRevealed=false;undoBatch=null;fictional=false;
       resetFilters();render();
       // The template is no longer needed after import and should not linger in DOM.
       privateTemplate.content.replaceChildren();
@@ -899,7 +921,7 @@
       const imported=await read(file,MAX_CATALOG);
       const candidate=parseCatalog(imported.result);
       if((catalog||reports.length)&&!confirm("Replace private catalog and clear previously imported lab comparisons and human stage work?"))return;
-      catalog=candidate;reports=[];reviews=new Map();humanNotes=new Map();mismatchRevealed=false;catalogHash=imported.digest;
+      catalog=candidate;reports=[];reviews=new Map();humanNotes=new Map();humanRoutes=new Map();humanActions=new Map();mismatchRevealed=false;catalogHash=imported.digest;
       reportHashes=[];undoBatch=null;resetFilters();fictional=false;render();
       message("PRIVATE lab design admitted. Targets and finding IDs were discarded after validation.");
     }catch(_){message("HOLD: incompatible PRIVATE Lab Scenario Studio source. Existing data preserved.",true);}
