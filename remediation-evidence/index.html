@@ -16,6 +16,11 @@
 <div class="buttons"><button id="load" class="primary">Import original sources</button><button id="clear">Forget all local data</button></div>
 <p id="status" role="status" aria-live="polite"></p><p id="fingerprint"></p>
 </section>
+<section id="refreshPanel" class="card" hidden><h2>Source revision: review without claiming repair</h2><p>Load a newer independently authorized original findings CSV for the exact same client and engagement. Preview all source changes first; only byte-identical original finding fields retain unverified local notes and Casework assignments. Missing rows never mean fixed.</p>
+<label>New independently authorized original LightUp CSV <input type="file" id="refreshFile" accept=".csv,text/csv"></label>
+<label><input type="checkbox" id="refreshConfirm">I independently confirmed both exports are from the same original client and assessment engagement. This is not authentication.</label>
+<div class="buttons"><button id="previewRefresh">Preview source changes</button><button id="applyRefresh" disabled>Apply human-reviewed refresh</button></div>
+<p id="refreshSummary" role="status">No refresh preview.</p></section>
 <section id="dashboard" class="card" hidden><h2>2. Human review summary</h2><p>All counts reflect original summary records and local, editable coordination notes only.</p>
 <div class="stats"><div class="stat"><strong id="total">0</strong>Original findings</div><div class="stat"><strong id="urgent">0</strong>Critical/high</div><div class="stat"><strong id="no_reference">0</strong>No evidence reference</div><div class="stat"><strong id="needs_changes">0</strong>Needs human changes</div><div class="stat"><strong id="retest">0</strong>Local retest requests</div><div class="stat"><strong id="contradictions">0</strong>Warning conditions</div></div>
 </section>
