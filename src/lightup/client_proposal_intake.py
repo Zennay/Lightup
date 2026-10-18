@@ -32,15 +32,13 @@ def _reject_duplicate_keys(pairs: list[tuple[str, object]]) -> dict:
     return result
 
 
-def load_studio_proposal(filename: str) -> dict:
-    """Convert the *exact* studio draft to one safe native request proposal.
+def read_studio_draft(filename: str) -> tuple[dict, str]:
+    """Read and validate an untrusted exported Studio v1 draft for local review.
 
-    Exclusions or time windows cannot be mapped to the durable request schema.
-    Failing them closed prevents operators mistaking narrowed draft scope for
-    the wider request stored by DomainStore. Unknown authority fields also HOLD.
+    This does NOT assert owner identity, timezone authenticity, consent,
+    an enforceable exclusion, or operator-reviewed schedule. Real submissions
+    must additionally pass load_studio_proposal's strict lossless admission.
     """
-    from .client_request_cli import prepare_request
-
     path = Path(filename).expanduser()
     if path.is_symlink() or not path.is_file():
         raise ValueError("proposal must be an existing, non-symlink regular file")
@@ -79,6 +77,108 @@ def load_studio_proposal(filename: str) -> dict:
             or type(notes) is not str or not notes.strip() or len(notes) > 3000):
         raise ValueError("studio name, client label or safety notes are invalid")
 
+    from .grant_request_binding import _asset
+
+    for field in ("requested_assets", "excluded_assets"):
+        values = proposal[field]
+        if type(values) is not list or len(values) > 80 or (
+            field == "requested_assets" and not values
+        ):
+            raise ValueError("invalid Studio " + field + " count")
+        aliases: set[str] = set()
+        for value in values:
+            kind, parsed = _asset(value)
+            identity = kind + ":" + str(parsed)
+            if identity in aliases:
+                raise ValueError("duplicate Studio " + field + " identity")
+            aliases.add(identity)
+    if (proposal["requested_mode"] not in ("analysis_only", "authorized_assessment")
+            or type(proposal["requested_risk"]) is not int
+            or not 1 <= proposal["requested_risk"] <= 4):
+        raise ValueError("invalid Studio mode or risk")
+    activity = proposal["proposed_activities"]
+    if (type(activity) is not dict or set(activity) != set(_ACTIVITY_NAMES)
+            or any(type(activity[name]) is not bool for name in _ACTIVITY_NAMES)):
+        raise ValueError("invalid Studio activities")
+    local = proposal["proposed_window_local"]
+    if type(local) is not dict or set(local) != {"start", "end"}:
+        raise ValueError("invalid Studio local time envelope")
+    import re
+    clock_pattern = re.compile(r"^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}$")
+    for field in ("start", "end"):
+        val = local[field]
+        if val is not None and (
+            type(val) is not str or not clock_pattern.fullmatch(val)
+        ):
+            raise ValueError("invalid Studio local-time syntax")
+    # This is a read-only review envelope, not authoritative scheduling.
+    # Accept only the declared Studio v1 scheduled/unscheduled/incomplete states.
+    window = proposal.get("proposed_window_utc")
+    if window is not None:
+        if type(window) is not dict or type(window.get("timezone")) is not str:
+            raise ValueError("invalid Studio UTC metadata")
+        if len(window["timezone"]) > 100:
+            raise ValueError("Studio timezone label is too long")
+        state = window.get("status")
+        if state in ("unscheduled", "incomplete"):
+            if set(window) != {"status", "timezone", "start", "end"}:
+                raise ValueError("invalid Studio unscheduled UTC fields")
+            if window["start"] is not None or window["end"] is not None:
+                raise ValueError("unscheduled Studio clock cannot contain UTC instants")
+            has_start = local["start"] is not None
+            has_end = local["end"] is not None
+            if (state == "unscheduled" and (has_start or has_end)) or (
+                state == "incomplete" and has_start == has_end
+            ):
+                raise ValueError("Studio UTC state contradicts its local clock")
+        elif state == "resolved":
+            if set(window) != {
+                "status", "timezone", "start", "end",
+                "start_offset_minutes", "end_offset_minutes"
+            }:
+                raise ValueError("invalid resolved Studio UTC fields")
+            from datetime import datetime, timedelta, timezone
+            for field, offset_field in (
+                ("start", "start_offset_minutes"), ("end", "end_offset_minutes")
+            ):
+                val, offset = window[field], window[offset_field]
+                if type(val) is not str or type(offset) is not int or not -840 <= offset <= 840:
+                    raise ValueError("invalid Studio UTC bound or offset")
+                wall = local[field]
+                if wall is None:
+                    raise ValueError("resolved UTC requires both local bounds")
+                try:
+                    naive = datetime.strptime(wall, "%Y-%m-%dT%H:%M")
+                    instant = datetime.strptime(val, "%Y-%m-%dT%H:%M:%S.000Z").replace(
+                        tzinfo=timezone.utc
+                    )
+                except ValueError as exc:
+                    raise ValueError("invalid Studio UTC datetime") from exc
+                derived = (naive + timedelta(minutes=offset)).replace(tzinfo=timezone.utc)
+                if derived != instant:
+                    raise ValueError("Studio local/UTC provenance inconsistent")
+            if window["start"] >= window["end"]:
+                raise ValueError("Studio UTC interval is reversed")
+        else:
+            raise ValueError("unsupported Studio UTC status")
+    if "exported_at_utc" in proposal and (
+        type(proposal["exported_at_utc"]) is not str
+        or len(proposal["exported_at_utc"]) > 50
+    ):
+        raise ValueError("invalid Studio export timestamp")
+    return proposal, hashlib.sha256(raw).hexdigest()
+
+
+def load_studio_proposal(filename: str) -> dict:
+    """Convert the *exact* studio draft to one safe native request proposal.
+
+    Exclusions or time windows cannot be mapped to the durable request schema.
+    Failing them closed prevents operators mistaking narrowed draft scope for
+    the wider request stored by DomainStore. Unknown authority fields also HOLD.
+    """
+    from .client_request_cli import prepare_request
+
+    proposal, raw_sha256 = read_studio_draft(filename)
     if (type(proposal["requested_assets"]) is not list
             or type(proposal["excluded_assets"]) is not list
             or len(proposal["excluded_assets"]) > 80
@@ -124,7 +224,6 @@ def load_studio_proposal(filename: str) -> dict:
         explanation.append("Requested planning activities (NOT permissions): " + ", ".join(listed))
     explanation.append(notes.strip())
     # Exact bytes are a review continuity hint, never an authenticated signature.
-    raw_sha256 = hashlib.sha256(raw).hexdigest()
     explanation.append("Untrusted proposal-file SHA-256 (not consent): " + raw_sha256)
     native = prepare_request(
         proposal["requested_assets"], proposal["requested_risk"],
