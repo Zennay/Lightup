@@ -1363,5 +1363,15 @@
     csv(),"text/csv;charset=utf-8"));
   $("html-brief").addEventListener("click",()=>download(
     "lightup-lab-aggregate-review-only.html",htmlBrief(),"text/html;charset=utf-8"));
+  function updateNavigation() {
+    const fragment=window.location.hash;
+    for(const link of document.querySelectorAll("#workspace-nav a")) {
+      if(fragment && link.getAttribute("href")===fragment)
+        link.setAttribute("aria-current","location");
+      else link.removeAttribute("aria-current");
+    }
+  }
+  window.addEventListener("hashchange",updateNavigation);
+  updateNavigation();
   $("print").addEventListener("click",()=>window.print());
 })();

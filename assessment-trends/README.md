@@ -4,7 +4,7 @@
 
 ## Open and operate
 
-Open standalone.html locally in a browser (no server required), or load index.html with the adjacent local style.css and app.js. The standalone file is built reproducibly with python3 assessment-trends/build_standalone.py using stdlib and a restrictive content-security policy with SHA-256-pinned inline CSS and JS. No HTTP clients, external scripts/fonts/images, browser storage, remote endpoints, filesystem scans or background worker.
+Open standalone.html locally in a browser (no server required), or load index.html with the adjacent local style.css and app.js. After importing or opening the fictional demo, use the sticky, keyboard-accessible horizontal section navigation (sources, version comparisons, human case queue, discussion agenda and handoffs). It is automatically omitted from printed and exported briefs. The standalone file is built reproducibly with python3 assessment-trends/build_standalone.py using stdlib and a restrictive content-security policy with SHA-256-pinned inline CSS and JS. No HTTP clients, external scripts/fonts/images, browser storage, remote endpoints, filesystem scans or background worker.
 
 1. To explore without original data, select **Explore fictional demo**. It creates five deterministic made-up report revisions and eight invented lab cases entirely in local memory; nothing is fetched or scanned. The visible DEMO banner stays present in print and exports contain the `FICTIONAL_DEMO_ONLY` source marker. Private source-bound draft save/restore is unavailable in demonstration mode.
 2. From existing, separately obtained original [assessment-runtime #1513](https://github.com/Zennay/Lightup/pull/1515) exports, choose **3–12 original cohort comparator CLI JSON reports**, each at most **262,144 bytes**, in the display order you want. The selection order is not proven run chronology.
@@ -29,6 +29,7 @@ Open standalone.html locally in a browser (no server required), or load index.ht
 
 - **Fictional demo:** immediate no-file hands-on preview, unmistakable on-screen and output provenance labels, no authorization implication.
 - **Atomic incremental import:** add one distinct canonical matching cohort to an existing 3–11-report review without discarding private human discussion work; duplicates and source-set drift fail without replacing state. Source chronology and authenticity remain unverified.
+- **Workspace navigation:** responsive sticky section links, keyboard focus cues and location feedback across the full offline product. Navigation is removed from all print/export handoffs.
 - **Source order and provenance:** local-only bounded aliases, input-byte counts and short hash prefixes distinguish source positions; they never assert authenticated chronology, never enter exports and are forgotten on reset.
 - **Heatmap:** count of affected source scenarios for each metric and user-ordered report position; persistent count across every report.
 - **Batch human proposals:** one explicitly confirmed, source-visible-filter-only in-memory update of reviewer route, date and stage for up to 64 anonymous cases, with one-step local undo. Draft v3 preserves planned human discussion fields only; no client/operator approval, scan, retest or real assignments.
