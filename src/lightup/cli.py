@@ -50,6 +50,10 @@ def build_parser() -> argparse.ArgumentParser:
                         help="repeat for each additional isolated lab endpoint")
     assess.add_argument("--targets-file", metavar="PATH",
                         help="local bounded UTF-8 manifest of lab endpoints")
+    assess.add_argument("--catalog-file", metavar="PRIVATE_STUDIO_JSON",
+                        help="local Lab Scenario Studio v1 draft (not authorization)")
+    assess.add_argument("--scenario-id", metavar="ID",
+                        help="selected Studio scenario; explicit bound lab URLs are still required")
     assess.add_argument("--db", default="lightup-lab.db")
     assess.add_argument("--output", metavar="NEW_PRIVATE_JSON",
                         help="write completed lab result as a new exclusive owner-only JSON artifact")
@@ -119,6 +123,10 @@ def main(argv: list[str] | None = None) -> int:
             argv += ["--target", endpoint]
         if args.targets_file is not None:
             argv += ["--targets-file", args.targets_file]
+        if args.catalog_file is not None:
+            argv += ["--catalog-file", args.catalog_file]
+        if args.scenario_id is not None:
+            argv += ["--scenario-id", args.scenario_id]
         argv += ["--db", args.db]
         if args.gateway_config:
             argv += ["--gateway-config", args.gateway_config]
