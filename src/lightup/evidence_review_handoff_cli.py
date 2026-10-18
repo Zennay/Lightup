@@ -15,12 +15,12 @@ import os
 from pathlib import Path
 import runpy
 import sqlite3
+import tempfile
 import sys
 import warnings
 
 from .domain import AccountLockedError, DomainStore
 from .finding_export_service import render_client_findings_csv
-from .remediation_handoff_cli import _write_private_new_file
 
 EXPECTED = ("finding_id", "title", "severity", "retest_status", "remediation")
 SEVERITIES = frozenset(("critical", "high", "medium", "low", "info"))
@@ -88,6 +88,32 @@ def _bundle_original_source(csv_text: str, *, root: Path) -> str:
     return html.replace("</main>", "</main>" + inert, 1)
 
 
+def _publish_exclusive_private(path: Path, html: str) -> None:
+    """Publish a complete 0600 report atomically, refusing any existing destination."""
+    if path.suffix.lower() != ".html":
+        raise ValueError("private output must be a new .html file")
+    fd, temporary = tempfile.mkstemp(prefix=".lightup-evidence-", dir=str(path.parent))
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8", newline="") as out:
+            out.write(html)
+            out.flush()
+            os.fsync(out.fileno())
+        # Atomic no-replace publication: even symlink destinations already exist.
+        os.link(temporary, path, follow_symlinks=False)
+        try:
+            directory_flags = os.O_RDONLY | getattr(os, "O_DIRECTORY", 0)
+            directory = os.open(str(path.parent), directory_flags)
+            try:
+                os.fsync(directory)
+            finally:
+                os.close(directory)
+        finally:
+            os.unlink(temporary)
+    finally:
+        if os.path.exists(temporary):
+            os.unlink(temporary)
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description="Create one offline Evidence Review HTML using current original "
@@ -105,7 +131,7 @@ def main(argv: list[str] | None = None) -> int:
     if not database.is_file():
         print("Export requires an existing original LightUp database.", file=sys.stderr)
         return 2
-    if output.suffix.lower() != ".html" or not output.parent.is_dir() or output.exists():
+    if output.suffix.lower() != ".html" or not output.parent.is_dir() or output.exists() or output.is_symlink():
         print("Choose a new .html file in an existing private folder.", file=sys.stderr)
         return 2
     if not sys.stdin.isatty():
@@ -128,7 +154,7 @@ def main(argv: list[str] | None = None) -> int:
         private_html = _bundle_original_source(
             original_csv, root=Path(__file__).resolve().parents[2]
         )
-        _write_private_new_file(output, private_html)
+        _publish_exclusive_private(output, private_html)
     except GetPassWarning:
         print("Secure password entry unavailable.", file=sys.stderr)
         return 2
