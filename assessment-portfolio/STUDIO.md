@@ -29,3 +29,7 @@ The program parses the full private original agendas with the same **no-follow o
 Exit 2 = original-source human review only; 3 = retained original HOLD or rejected input. No exit 0 implies clearance.
 
 No QA/regression/test suites, original scanner, model, login, grant, assessment run or web request is added or executed. All existing exact-head CI, privacy/security/source-owner approval, real separately authenticated client/operator consent with at-use revocation and explicit HUMAN GO remain mandatory before source integration into main or deployment.
+
+## Saved original-source-bound human capacity presets
+
+The self-contained capacity Studio now supports **Download PRIVATE source-bound plan** and **Restore PRIVATE source-bound plan**. All original selected agenda slot/hash/status tuples, shared date, and 1–12-week neutral role capacities must match exactly; restore is atomic in browser memory and cannot imply review assignment or authorization. A separate [saved-capacity CLI](SAVED-CAPACITY.md) reads the unchanged original PRIVATE agendas and the saved private plan to regenerate the original hypothetical HTML or anonymous aggregate reports. No browser storage or active target work is added.

@@ -8,6 +8,7 @@
                      "NEEDS_SOURCE_OWNER": 2, "NEEDS_PRIVACY_REVIEW": 3,
                      "AWAITING_INPUT": 4, "HUMAN_DISCUSSION": 5};
   const cap = Object.fromEntries(roles.map(r => [r, 0]));
+  const capInputs = {};
   const $ = id => document.getElementById(id);
   const make = (tag, value, parent) => {
     const el = document.createElement(tag);
@@ -39,6 +40,7 @@
     input.type = "number";
     input.min = "0"; input.max = "100"; input.step = "1";
     input.value = "0";
+    capInputs[role] = input;
     input.setAttribute("aria-label", role + " weekly human touchpoints");
     input.addEventListener("input", () => {
       const val = Number(input.value);
@@ -131,5 +133,12 @@
     a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 0);
   });
+  globalThis.LightUpHumanPlanAPI = {
+    view: () => ({weeks:Number($("weeks").value),capacities:{...cap}}),
+    restore: (weeks,capacities) => {
+      for (const role of roles) {cap[role]=capacities[role];capInputs[role].value=String(cap[role]);capInputs[role].setCustomValidity("");}
+      $("weeks").value=String(weeks);paint();
+    }
+  };
   paint();
 })();

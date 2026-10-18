@@ -17,7 +17,10 @@ All options below are local hypothetical planning controls, not worker assignmen
 <label>Planning weeks <input id="weeks" type="number" min="1" max="12" step="1" value="8"></label>
 <label>View role <select id="roleFilter"><option value="all">All original neutral roles</option></select></label>
 <button id="export" type="button">Export aggregate-only JSON</button>
+<button id="savePlan" type="button">Download PRIVATE source-bound plan</button>
+<label>Restore PRIVATE source-bound plan <input id="restorePlan" type="file" accept=".json,application/json"></label>
 </section>
+<p id="planMessage" role="status" aria-live="polite">Role budgets are hypothetical, unsigned planning decisions; original sources remain unchanged.</p>
 <section class="controls capacities" id="capacityControls" aria-label="Hypothetical weekly review touchpoints"></section>
 <section class="stats" aria-label="Human workload summary">
 <div class="card"><small>Source agendas</small><strong id="sourceCount">—</strong></div>

@@ -74,3 +74,7 @@ The bundled original human review Studio now supports selected-row bulk human-on
 ## Independent reviewer contributions on one original archive
 
 Multiple operators can return 2–12 separately exported PRIVATE human proposals on one **unchanged original archive** using the new [disjoint human proposal merge](MERGE-REVIEW.md). All original source digests and old human slots must still match. If two proposals touch the same original slot, the entire batch HOLDs before any output is written: there is no silently chosen winner. A single owner-private atomic ZIP contains a newly merged ORIGINAL-schema human choices JSON, scriptless review and private source manifest, not a grant or assessment result.
+
+## Save and restore private capacity assumptions
+
+In the standalone private capacity Studio, human planners can download a PRIVATE source-hash-bound capacity plan and later restore the original neutral role/week settings only against exactly unchanged original agenda byte sources. The new [private capacity replay CLI](SAVED-CAPACITY.md) re-renders the hypothetical human work queue from those exact original agendas and the saved source-bound plan; no actual work is scheduled, assigned, executed or approved.
