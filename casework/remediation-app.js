@@ -323,7 +323,7 @@ async function openEmbeddedExport(){
   const hash=await LightUpCasework.digest(source);
   findings=source;cases=source.map(LightUpCasework.newCase);fingerprint=hash;
   sourceLabel='Previously authenticated CLI export (copied offline; NOT live authentication)';
-  edited=true;
+  edited=false;
   render();inform('Opened '+source.length+' findings from an authorized export generated earlier. Local HTML contents can be changed, so current identity/permission and actual retest must be independently rechecked. Save your casework JSON before closing.');
  }catch(err){inform('Embedded source cannot be opened: '+(err.message||'invalid bundled source')+'. Existing local UI remains available.');}
 }
