@@ -26,6 +26,7 @@
   const authority = () => ({authorized:false,consent_verified:false,
     dispatch_allowed:false,release_allowed:false});
   let revisions = [], selected = "valid_findings";
+  let revisionFocus = 0;
 
   // Strict recursive JSON reader: rejects duplicate keys (also escaped aliases),
   // malformed literals, nonfinite numbers and excessively nested documents.
@@ -281,6 +282,56 @@
     return "REVIEW_ONLY,NO_AUTHORITY,NO_CONSENT,NO_DISPATCH,NO_RELEASE\r\n"+
       rows.map(line=>line.join(",")).join("\r\n")+"\r\n";
   }
+  function renderOrder() {
+    const control=$("revision-select");
+    control.replaceChildren();
+    revisions.forEach((_,i)=>{
+      const option=add(control,"option","Report "+String(i+1));option.value=String(i);
+    });
+    control.value=String(revisionFocus);
+    $("earlier").disabled=revisionFocus===0;
+    $("later").disabled=revisionFocus===revisions.length-1;
+  }
+  function moveReport(delta) {
+    const target=revisionFocus+delta;
+    if(target<0 || target>=revisions.length) return;
+    const previous=revisions[revisionFocus];
+    revisions[revisionFocus]=revisions[target];
+    revisions[target]=previous;
+    revisionFocus=target;
+    render();
+    showMessage("Local source order changed; all aggregate trajectories were recalculated. Chronology remains unverified.");
+  }
+  function renderCaseRows() {
+    const head=$("case-head"),body=$("case-rows");
+    head.replaceChildren();body.replaceChildren();
+    const tr=add(head,"tr");add(tr,"th","Source case");
+    revisions.forEach((_,i)=>add(tr,"th","R"+(i+1)));
+    add(tr,"th","Pattern");
+    const filter=$("case-filter").value;
+    const ids=[...revisions[0].cases.keys()].sort();
+    ids.forEach((id,i)=>{
+      const counts=revisions.map(r=>r.cases.get(id).regressions.length);
+      const bools=counts.map(n=>n>0);
+      const persistent=bools.every(Boolean);
+      const emerged=!bools[0] && bools.at(-1);
+      const recovered=bools[0] && !bools.at(-1);
+      const changed=bools.slice(1).some((value,j)=>value!==bools[j]);
+      if(filter==="persistent"&&!persistent ||
+         filter==="emerged"&&!emerged ||
+         filter==="recovered"&&!recovered ||
+         filter==="changed"&&!changed) return;
+      const pattern=persistent?"Persistent":emerged?"Newly flagged":
+        recovered?"No longer flagged":changed?"Variable":
+        bools.some(Boolean)?"Intermittent":"No reported regression";
+      const row=add(body,"tr");
+      add(row,"th","Case "+String(i+1).padStart(2,"0"));
+      counts.forEach(n=>add(row,"td",String(n),
+        n===0?"heat-0":n<3?"heat-1":n<8?"heat-2":"heat-3"));
+      add(row,"td",pattern);
+    });
+  }
+
   function render() {
     $("workspace").hidden=false;
     $("revision-count").textContent=String(revisions.length);
@@ -291,13 +342,13 @@
     for(const name of NAMES) {
       const option=add(select,"option",nice(name));option.value=name;
     }
-    metricsRows();choose(selected);followupText();
+    renderOrder();metricsRows();renderCaseRows();choose(selected);followupText();
     showMessage(revisions.length+" locally supplied cohort reports accepted. All comparisons remain untrusted and non-authorizing.");
   }
 
   $("files").addEventListener("change",async ev=>{
     // No mixing old and new reports. A failed import removes previous content.
-    revisions=[];$("workspace").hidden=true;$("notes").value="";
+    revisions=[];revisionFocus=0;$("workspace").hidden=true;$("notes").value="";
     const files=[...ev.target.files];
     try {
       const accepted=await loadFiles(files);
@@ -307,6 +358,12 @@
       showMessage("HOLD — invalid, duplicated, incomplete or baseline-mismatched source set. No partial data imported.",true);
     }
   });
+  $("revision-select").addEventListener("change",event=>{
+    revisionFocus=Number(event.target.value);renderOrder();
+  });
+  $("earlier").addEventListener("click",()=>moveReport(-1));
+  $("later").addEventListener("click",()=>moveReport(1));
+  $("case-filter").addEventListener("change",renderCaseRows);
   $("forget").addEventListener("click",reset);
   $("metric").addEventListener("change",ev=>choose(ev.target.value));
   $("focus").addEventListener("change",followupText);

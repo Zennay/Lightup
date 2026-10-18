@@ -8,9 +8,10 @@ Open standalone.html locally in a browser (no server required), or load index.ht
 
 1. From existing, separately obtained original [assessment-runtime #1513](https://github.com/Zennay/Lightup/pull/1515) exports, choose **3–12 original cohort comparator CLI JSON reports**, each at most **262,144 bytes**, in the display order you want. The selection order is not proven run chronology.
 2. Each original report must have status, regressed_scenarios, comparisons and the four literal-false flags authorized, consent_verified, dispatch_allowed, release_allowed. Comparison records must have the original scenario_id, status, regressions, and all fifteen complete canonical metric changes. This tool rejects partial HOLD packets, single-case output, foreign schemas and changed baseline sets.
-3. All revisions must carry **exactly the same scenario IDs** and the same original baseline value for each metric of each scenario. Different baselines are not silently reconciled. A mismatched or malformed batch replaces nothing and shows a generic HOLD message.
-4. Explore regressed-scenario counts for every metric and revision, persistent/newly emerged/recovered flags, and original baseline/candidate/delta aggregates. Performance/cost are informational rather than adverse. Enter optional discussion notes locally; these are deliberately never included in exports.
-5. Export explicit aggregate-only CSV/JSON or print. Reports contain numeric aggregates, fixed metric names and relative positions only. They contain **no scenario names/IDs, raw original files, source filenames, network target metadata, customer identifiers, credentials, notes, SHA fingerprints or inferred authorization**. A report with no counted regressions still remains REVIEW_ONLY, never PASS/GO.
+3. **Reorder reports after importing.** File-picker order cannot be trusted to reflect chronology. The workspace has explicit earlier/later controls which recalculate all trends and exports without new network calls. This is an unverified user-selected order.
+4. All revisions must carry **exactly the same scenario IDs** and the same original baseline value for each metric of each scenario. Different baselines are not silently reconciled. A mismatched or malformed batch replaces nothing and shows a generic HOLD message.
+5. Explore regressed-scenario counts for every metric and revision, persistent/newly emerged/recovered flags, and original baseline/candidate/delta aggregates. Performance/cost are informational rather than adverse. Enter optional discussion notes locally; these are deliberately never included in exports.
+6. Inspect the anonymized per-case churn grid (source IDs remain internal, never exported), then export explicit aggregate-only CSV/JSON or print. Reports contain numeric aggregates, fixed metric names and relative positions only. They contain **no scenario names/IDs, raw original files, source filenames, network target metadata, customer identifiers, credentials, notes, SHA fingerprints or inferred authorization**. A report with no counted regressions still remains REVIEW_ONLY, never PASS/GO.
 
 ## Threat and provenance boundaries
 
@@ -23,6 +24,7 @@ Open standalone.html locally in a browser (no server required), or load index.ht
 ## Outputs
 
 - **Heatmap:** count of affected source scenarios for each metric and user-ordered report position; persistent count across every report.
+- **Case churn:** local ordinal labels (Case 01 etc.), per-revision count of regressed metric categories, persistent/emerged/recovered/changed filters. No original scenario labels are exported.
 - **Trajectory:** selected metric's original baseline aggregate, candidate aggregate, delta, ever-regressed, emerged, recovered and persistent counts. This is source-reported pattern analysis only.
 - **Review handoff:** aggregate per-metric JSON/CSV with four false authority flags in JSON, and non-authorizing headers in CSV. No sensitive source identities or locally entered reviewer notes are exported.
 - **Print:** a self-contained local brief without the file input or local notes. Export and print are deliberate user actions.
