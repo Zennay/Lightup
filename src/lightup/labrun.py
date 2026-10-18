@@ -457,12 +457,14 @@ def main_assess(argv: list[str] | None = None) -> int:
             raise ValueError("duplicate lab endpoint is not allowed")
         if args.profile and len(endpoints) != 1:
             raise ValueError("--profile ground truth applies only to one lab endpoint")
-        if bool(args.catalog_file) != bool(args.scenario_id):
+        if (args.catalog_file is None) != (args.scenario_id is None):
             raise ValueError("--catalog-file and --scenario-id must be supplied together")
-        if args.catalog_file and args.profile:
+        if args.catalog_file is not None and not args.catalog_file.strip():
+            raise ValueError("--catalog-file requires a non-empty path")
+        if args.catalog_file is not None and args.profile:
             raise ValueError("a private Studio catalog cannot authenticate a fixture profile")
         catalog = None
-        if args.catalog_file:
+        if args.catalog_file is not None:
             from .lab_catalog import read_selected_lab_design
             from ipaddress import ip_address
             from urllib.parse import urlsplit
