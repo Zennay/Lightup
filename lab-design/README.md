@@ -15,6 +15,7 @@
 - **Import existing PRIVATE JSON** with strict duplicate-key rejection (including Unicode-escaped aliases), UTF-8 validation, bounded sizes and atomic fail-closed schema/target/identity/authority checks. Invalid import does **not** replace already entered scenarios.
 - Built-in **FICTIONAL no-network demo** supplies three invented scenarios and contrasts unknown, zero and planted findings. No live target or real proof is implied.
 - **PRIVATE catalog export** preserves explicitly entered targets and finding identities for internal lab design. It is never a safe public handoff: handle it like sensitive material.
+- **Standalone human handoff brief:** download a completely script-free, no-network HTML briefing with only numeric scenario, target and planted severity totals, fixed disclaimers and explicit false authority fields. The browser print layout is independently redacted: original capability IDs and staged source-diff scenario identities are excluded even when visible in the private editor. The fictional demo is labeled in all exported formats.
 - **Aggregate redacted REVIEW_ONLY JSON** carries only scenario/target/IPv6 counts and expected-finding counts by severity. No original target IP, scenario/finding ID, name, description, title or capability name; four authority flags are literal false. Print only aggregate human review information.
 
 ## Native offline Python bridge

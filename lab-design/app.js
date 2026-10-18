@@ -201,13 +201,18 @@
   function render(){
     const v=catalogSummary();
     $("stats").innerHTML="";
+    $("printSummary").textContent="REVIEW ONLY / DRAFT_ONLY / no permissions. Scored scenarios: "+
+      v.scored_scenarios+"; unscored: "+v.unscored_scenarios+
+      "; planted: "+v.planted_findings+
+      "; severity totals: "+LEVELS.map(n=>n+" "+v.findings_by_severity[n]).join(", ")+
+      ". No finding or target identity is shown. ABSENT is not remediation.";
     [["Scenarios",v.scenarios],["Numeric lab targets",v.targets],
       ["Explicitly scored",v.scored_scenarios],
       ["Ground-truth planted",v.planted_findings]].forEach(([title,count])=>{
       const span=document.createElement("span");span.className="stat";
       span.textContent=title+": "+count;$("stats").append(span);
     });
-    for(const id of ["savePrivate","summary","print"])$(id).disabled=!items.length;
+    for(const id of ["savePrivate","summary","brief","print"])$(id).disabled=!items.length;
     $("appendCatalog").disabled=!items.length||items.length>=32||fictional;
     renderCoverage();
     if(!items.length){$("catalog").innerHTML='<p class="empty">No scenarios yet.</p>';return;}
@@ -360,6 +365,34 @@
   $("rejectStage").addEventListener("click",()=>{
     clearStage();notify("status","Staged replacement discarded; original catalog preserved.");
   });
+  function saveBrief(){
+    if(!items.length)return;
+    const v=catalogSummary();
+    const style="body{font:16px/1.5 system-ui,sans-serif;margin:35px auto;max-width:900px;"+
+      "padding:0 16px;color:#223}h1{color:#153850}table{border-collapse:collapse;width:100%}"+
+      "td,th{border:1px solid #bbcbd0;padding:9px;text-align:left}"+
+      ".warning{border-left:5px solid #a44;padding:12px;background:#fff1f1}";
+    const rows=[["Scenarios",v.scenarios],["Private target count (no addresses)",v.targets],
+      ["IPv6 target count",v.ipv6_targets],["Scored with explicit ground truth",v.scored_scenarios],
+      ["Unscored (not zero)",v.unscored_scenarios],["Planted lab findings",v.planted_findings],
+      ...LEVELS.map(n=>[n+" planted finding count",v.findings_by_severity[n]])];
+    const table=rows.map(([label,count])=>"<tr><td>"+label+"</td><td>"+count+"</td></tr>").join("");
+    const kind=fictional?"FICTIONAL DEMO ONLY":"UNVERIFIED MANUALLY AUTHORED LAB DRAFT";
+    const html="<!doctype html><html lang='en'><head><meta charset='utf-8'>"+
+      "<meta http-equiv=\"Content-Security-Policy\" content=\"default-src 'none'; script-src 'none';"+
+      " connect-src 'none'; img-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'\">"+
+      "<title>LightUp lab design · REVIEW ONLY</title><style>"+style+"</style></head><body>"+
+      "<h1>LightUp / human lab design summary</h1><p class='warning'><strong>"+kind+
+      "</strong>. INCUBATE M3/M7 · DRAFT/HOLD. Authorized false; consent verified false;"+
+      " dispatch allowed false; release allowed false. NO SCAN OR RELEASE.</p>"+
+      "<p>Private scenario identifiers, target IPs, descriptions, titles, planted finding identities"+
+      " and capability IDs are intentionally excluded.</p><table><thead><tr><th>Human topic</th>"+
+      "<th>Unverified count</th></tr></thead><tbody>"+table+"</tbody></table>"+
+      "<p>Source data is manually authored, unsigned and not proof of original lab"+
+      " provenance, coverage, safety, remediation, authority or approval.</p></body></html>";
+    download("lightup-lab-design-REVIEW-ONLY-brief.html",html,"text/html");
+    notify("exportStatus","Redacted no-script, no-network HTML brief downloaded.");
+  }
   $("editor").addEventListener("submit",saveForm);
   $("clear").addEventListener("click",resetEditor);
   $("delete").addEventListener("click",deleteScenario);
@@ -376,6 +409,7 @@
   });
   $("savePrivate").addEventListener("click",savePrivate);
   $("summary").addEventListener("click",saveRedacted);
+  $("brief").addEventListener("click",saveBrief);
   $("print").addEventListener("click",()=>{if(items.length)window.print();});
   toggleFindingMode();render();
 })();
