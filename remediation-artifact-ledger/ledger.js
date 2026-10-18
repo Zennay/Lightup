@@ -6,7 +6,7 @@ const MAX_NATIVE_CASEWORK = 4 * MAX_IMPORT, MAX_NATIVE_EVIDENCE = 2 * MAX_IMPORT
 const STAGES = ['unreviewed', 'human_review', 'follow_up', 'archived'];
 const AUTH_FLAGS = ['authenticated','tenant_verified','source_authorized','assessment_authorized','grant','client_consent','operator_consent','execution','scan','audit_verdict','retest_verified','release'];
 const $ = id => document.getElementById(id);
-const state = {findings:[], sha:'', rows:[], client:'', engagement:'', filter:'', verify:null, pending:null, selected:new Set(), bulk:null, undo:[], casework:null, evidence:null};
+const state = {findings:[], sha:'', rows:[], client:'', engagement:'', filter:'', verify:null, pending:null, selected:new Set(), bulk:null, undo:[], casework:null, evidence:null, pendingHandoff:null};
 const encoder = new TextEncoder();
 const ESCAPE = '\uFEFF';
 function fail(message) { throw new Error(message); }
@@ -134,6 +134,7 @@ function renderSummary(){
  for(const id of ['addFiles','export','aggregate','privateImport','forget','verify'])$(id).disabled=!state.sha;
  $('coverageExport').disabled=!state.sha;
  $('caseworkImport').disabled=!state.sha;$('detachCasework').disabled=!state.casework;
+ $('unifiedExport').disabled=!state.sha;$('unifiedImport').disabled=!state.sha;
  $('evidenceImport').disabled=!state.sha;$('detachEvidence').disabled=!state.evidence;
  $('evidenceState').textContent=state.evidence?'Native original Evidence Review v2: '+state.evidence.size+' HUMAN records (READ-ONLY)':'No native Evidence Review imported.';
  $('caseworkState').textContent=state.casework ? 'Native original Casework v1: '+state.casework.size+' HUMAN records (READ-ONLY)' : 'No native Casework imported.';
@@ -153,7 +154,7 @@ async function loadSource(){
    if(!confirm('New original source or context. Discard ALL existing private notes and attachments?'))return;
  }
  state.findings=findings;state.sha=hash;state.client=client;state.engagement=engagement;
- state.selected.clear();state.bulk=null;state.undo=[];state.casework=null;state.evidence=null;
+ state.selected.clear();state.bulk=null;state.undo=[];state.casework=null;state.evidence=null;state.pendingHandoff=null;
  if(state.rows.length && (oldSource !== hash || oldClient !== client || oldEngagement !== engagement))state.rows=[];state.verify=null;
  $('finding').replaceChildren();
  for(const f of findings){const op=document.createElement('option');op.value=f.finding_id;op.textContent=f.finding_id+' · '+f.severity+' · '+f.title.slice(0,75);$('finding').append(op);}
@@ -214,7 +215,7 @@ async function importPrivate(){
    if(seen.has(key))fail('Duplicate PRIVATE attachment fingerprint.');seen.add(key);return v;
  });
  if(!confirm('Restore '+staged.length+' PRIVATE local notes and REPLACE the current '+state.rows.length+' notes? Review client/engagement separately.'))return;
- state.rows=staged;state.selected.clear();state.bulk=null;state.undo=[];state.pending=null;$('migrationResult').hidden=true;$('privateImport').value='';render();message('Complete source-bound PRIVATE human draft restored; no authority inferred.',false);
+ state.rows=staged;state.selected.clear();state.bulk=null;state.undo=[];state.pending=null;state.pendingHandoff=null;$('migrationResult').hidden=true;$('privateImport').value='';render();message('Complete source-bound PRIVATE human draft restored; no authority inferred.',false);
 }
 
 /* Original-source migration is HUMAN data reconciliation, NEVER a remediation verdict.
@@ -577,6 +578,112 @@ function exportHumanQueue(){
  [heads,...rows].map(x=>x.map(csvCell).join(',')).join('\r\n')+'\r\n','text/csv;charset=utf-8');
 }
 
+
+/* One private original-source-bound HUMAN handoff, not a client assessment.
+   Atomic restore changes local human views ONLY; the original owner modules stay unchanged. */
+const UNIFIED_FIELDS=['kind','schema_version','disposition','source_contract','source_sha256',
+ 'source_count','client_reference','engagement_reference','casework','evidence_review',
+ 'attachments','warning',...AUTH_FLAGS];
+function nativeSnapshot(map){
+ if(!map)return null;
+ return state.findings.map(f=>({...map.get(f.finding_id)}));
+}
+function unifiedPrivatePacket(){
+ if(!state.sha)fail('Load the original source before PRIVATE handoff.');
+ return {
+  kind:'lightup.private_unified_human_evidence_workspace',schema_version:1,
+  disposition:'PRIVATE_HUMAN_REVIEW_ONLY',source_contract:'lightup.finding_export._COLUMNS_v1',
+  source_sha256:state.sha,source_count:state.findings.length,
+  client_reference:state.client,engagement_reference:state.engagement,
+  ...Object.fromEntries(AUTH_FLAGS.map(k=>[k,false])),
+  casework:nativeSnapshot(state.casework),evidence_review:nativeSnapshot(state.evidence),
+  attachments:state.rows.map(x=>({...x})),
+  warning:'This is an untrusted private human workflow snapshot. No file bytes, grants, assessment authority, verification of fixes, or source authenticity are included.'
+ };
+}
+function exportUnified(){
+ if(!state.sha)fail('No source loaded.');
+ if(!confirm('Download PRIVATE unified packet with source digest, self-declared client/engagement, all local file fingerprints, human notes and imported native human plans? Verify recipient and secure channel separately.'))return;
+ download('LightUp-PRIVATE-unified-human-evidence-workspace.json',
+   JSON.stringify(unifiedPrivatePacket(),null,2)+'\n','application/json');
+}
+function serializeNative(map){
+ return map?JSON.stringify(state.findings.map(f=>map.get(f.finding_id))):'null';
+}
+async function previewUnified(){
+ if(!state.sha)fail('Import an independently verified original findings CSV first.');
+ const sha=state.sha,client=state.client,engagement=state.engagement;
+ const raw=strictJSON(await fileReader($('unifiedImport').files[0],MAX_NATIVE_CASEWORK),MAX_NATIVE_CASEWORK);
+ if(!raw||Object.getPrototypeOf(raw)!==Object.prototype||
+  Object.keys(raw).length!==UNIFIED_FIELDS.length||
+  Object.keys(raw).some(k=>!UNIFIED_FIELDS.includes(k))||
+  raw.kind!=='lightup.private_unified_human_evidence_workspace'||raw.schema_version!==1||
+  raw.disposition!=='PRIVATE_HUMAN_REVIEW_ONLY'||
+  raw.source_contract!=='lightup.finding_export._COLUMNS_v1'||
+  raw.source_sha256!==sha||raw.source_count!==state.findings.length||
+  raw.client_reference!==client||raw.engagement_reference!==engagement||
+  AUTH_FLAGS.some(k=>raw[k]!==false))
+  fail('Unified PRIVATE handoff does not match exact original source, human context or false authority claims.');
+ const ids=new Set(state.findings.map(f=>f.finding_id));
+ if(!Array.isArray(raw.attachments)||raw.attachments.length>MAX_DOCS)
+  fail('Unified handoff local artifact count invalid.');
+ const fingerprints=new Set(),attachments=raw.attachments.map(v=>{
+  const row=validateRow(v,ids),key=rowKey(row);
+  if(fingerprints.has(key))fail('Repeated unified local file fingerprint.');fingerprints.add(key);return row;
+ });
+ let casework=null,evidence=null;
+ if(raw.casework!==null){
+  if(!Array.isArray(raw.casework)||raw.casework.length!==state.findings.length)
+   fail('Unified original Casework is incomplete.');
+  const nativePacket=LightUpCasework.makePacket(state.findings,raw.casework,sha);
+  casework=LightUpCasework.loadPacket(nativePacket).cases;
+  if(new Set(casework.map(v=>v.finding_id)).size!==ids.size)
+   fail('Repeated or absent original Casework finding.');
+ }
+ if(raw.evidence_review!==null){
+  if(!Array.isArray(raw.evidence_review)||raw.evidence_review.length!==state.findings.length)
+   fail('Unified original Evidence Review is incomplete.');
+  evidence=raw.evidence_review.map(v=>parseEvidenceRow(v,ids));
+  if(new Set(evidence.map(v=>v.finding_id)).size!==ids.size)
+   fail('Repeated or absent original Evidence Review finding.');
+ }
+ if(state.sha!==sha||state.client!==client||state.engagement!==engagement)
+  fail('Original source/context changed while importing PRIVATE unified handoff; retry.');
+ state.pendingHandoff={
+  sha,client,engagement,oldRows:JSON.stringify(state.rows),
+  oldCasework:serializeNative(state.casework),oldEvidence:serializeNative(state.evidence),
+  attachments,casework,evidence
+ };
+ $('unifiedPreview').textContent=[
+  'ORIGINAL private source digest: '+sha,
+  'Explicit client label: '+client+'; engagement label: '+engagement+' (NOT authenticated)',
+  'Existing LOCAL file fingerprints: '+state.rows.length,
+  'Candidate LOCAL file fingerprints: '+attachments.length,
+  'Candidate original Casework: '+(casework?casework.length+' exact human records':'absent'),
+  'Candidate original Evidence Review: '+(evidence?evidence.length+' exact human records':'absent'),
+  'All records matched original finding IDs and the same original SHA-256.',
+  'Applying replaces all local PRIVATE human views, never the original source, grants or retest authorization.'
+ ].join('\n');
+ $('unifiedPreview').hidden=false;$('applyUnified').disabled=false;
+ $('unifiedImport').value='';message('PRIVATE unified human packet admitted for explicit preview. No changes applied.',false);
+}
+function applyUnified(){
+ const p=state.pendingHandoff;
+ if(!p)fail('Preview a valid original-bound PRIVATE unified packet first.');
+ if(state.sha!==p.sha||state.client!==p.client||state.engagement!==p.engagement||
+  JSON.stringify(state.rows)!==p.oldRows||
+  serializeNative(state.casework)!==p.oldCasework||
+  serializeNative(state.evidence)!==p.oldEvidence)
+  fail('Original source or HUMAN records changed since preview. Refusing stale unified restore.');
+ if(!confirm('Replace ALL current LOCAL human views with this original source-bound PRIVATE handoff? This cannot grant security authority or prove remediation.'))return;
+ state.rows=p.attachments.map(x=>({...x}));
+ state.casework=p.casework?new Map(p.casework.map(x=>[x.finding_id,{...x}])):null;
+ state.evidence=p.evidence?new Map(p.evidence.map(x=>[x.finding_id,{...x,evidence:{...x.evidence}}])):null;
+ state.selected.clear();state.bulk=null;state.undo=[];state.pendingHandoff=null;
+ $('unifiedPreview').hidden=true;$('applyUnified').disabled=true;
+ render();message('Unified PRIVATE HUMAN workspace restored atomically for exact original source. No original authority or evidence bytes were transferred.',false);
+}
+
 function csvCell(raw){
  let s=String(raw);
  // Force text treatment for Unicode-obscured spreadsheet formulas.
@@ -603,6 +710,9 @@ bind('export','click',exportPrivate);bind('aggregate','click',exportAggregate);
 bind('restore','click',importPrivate);bind('verify','change',verifyFile);
 bind('evidenceImportButton','click',importEvidenceV2);
 bind('detachEvidence','click',detachEvidence);
+bind('unifiedExport','click',exportUnified);
+bind('unifiedPreviewButton','click',previewUnified);
+bind('applyUnified','click',applyUnified);
 bind('actionFilter','change',renderActions);
 bind('actionExport','click',exportHumanQueue);
 bind('caseworkImportButton','click',importCasework);
@@ -619,7 +729,7 @@ bind('applyMigration','click',applyMigration);
 bind('filter','input',()=>{state.filter=$('filter').value.toLowerCase().trim();render();});
 bind('forget','click',()=>{if(confirm('Forget all original findings and local human notes in memory?')){
  state.findings=[];state.sha='';state.rows=[];state.client='';state.engagement='';state.verify=null;state.filter='';state.pending=null;state.selected.clear();state.bulk=null;state.undo=[];state.casework=null;$('migrationResult').hidden=true;
- for(const id of ['client','engagement','filter','original','newSource','addFiles','privateImport','caseworkImport','evidenceImport','verify'])$(id).value='';
+ for(const id of ['client','engagement','filter','original','newSource','addFiles','privateImport','caseworkImport','evidenceImport','unifiedImport','verify'])$(id).value='';
  $('finding').replaceChildren();render();message('Local workspace forgotten. Previously downloaded files are not deleted.',false);
 }});
 render();
