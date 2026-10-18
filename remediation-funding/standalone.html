@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="en"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-H235ICLYzQmjxb1ax8Ae/RV7R9NQZO81B1mVRoC6FhQ=' 'sha256-+XNiuLGkkoF3C9ECN1Y4yG8QjAUdA7X5hbSmzuklHA4='; style-src 'sha256-gRO/0vjvhCiDlyKYAoFlD62JBk64H/vcy3MaEo2jP6g='; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-/wdak4hbLXntB8WGDJpZ7vAy0ZVobgAFx+H/BOysq4I=' 'sha256-d7dJejwx7CsM+eTqV53CgqSbdDLqQNnoMPe/rsLBw5M='; style-src 'sha256-gRO/0vjvhCiDlyKYAoFlD62JBk64H/vcy3MaEo2jP6g='; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <title>LightUp — Remediation Funding Studio (offline)</title>
 <style>:root{color-scheme:dark;--bg:#0a1019;--surface:#122130;--border:#385063;--text:#edf3f7;--muted:#b5c5d2;--mint:#91e5c5;--gold:#f6d69b;--blue:#9bc2fd}
 *{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:radial-gradient(ellipse 80% 400px at 50% 0,#254052 0%,transparent 100%),var(--bg);font:16px/1.55 system-ui,-apple-system,Segoe UI,sans-serif;color:var(--text)}
@@ -196,6 +196,16 @@ function intake(text){
    risk_hours:Object.freeze(Object.fromEntries(BANDS.map(b=>[b,w.severity_hours[b]])))});
  });
  if(weekHours!==data.assigned_hours)fail('Aggregate weeks do not match source total');
+ if(data.proposed_completed + data.backlog_findings !== data.source_count)
+   fail('Reported finished estimates contradict source backlog');
+ if(BANDS.reduce((sum,b)=>sum+risk[b].fully_scheduled_estimates,0)!==data.proposed_completed)
+   fail('Risk-band completed estimates contradict source totals');
+ for(const severity of BANDS) {
+   const allocatedInWeeks=data.sprint_weeks.reduce((sum,week)=>sum+week.severity_hours[severity],0);
+   if(allocatedInWeeks!==risk[severity].scheduled_hours)
+     fail('Week and priority-band allocations contradict each other');
+ }
+
  return Object.freeze({
   source_count:data.source_count,total_hours:hours,allocated_hours:weekHours,
   backlog_hours:data.backlog_hours,backlog_findings:data.backlog_findings,
@@ -431,13 +441,16 @@ el('json').addEventListener('click',()=>{
 el('csv').addEventListener('click',()=>{
  if(!forecast)return;
  if(!confirm('Export private weekly aggregate cost estimates? Review the recipient before sharing.'))return;
- const cols=['week','start_utc','proposed_hours','proposed_cost','funding_applied','provisionally_funded_hours'];
+ const cols=['week','start_utc','proposed_hours','proposed_cost','funding_applied','provisionally_funded_hours','critical_high_proposed_hours','urgent_potentially_unfunded_min_hours','urgent_potentially_unfunded_max_hours'];
  const q=v=>'"'+String(v).replace(/"/g,'""')+'"';
  const lines=[cols.map(q).join(',')];
  forecast.weeks.forEach((w,index)=>{
   const funded=forecast.funding[index];
   lines.push([w.week,w.start,w.proposed_hours,w.proposed_cost,
-   funded.funded_cost,funded.provisionally_funded_hours].map(q).join(','));
+   funded.funded_cost,funded.provisionally_funded_hours,
+   forecast.weekly_critical_high_funding_bounds[index].urgent_scheduled_hours,
+   forecast.weekly_critical_high_funding_bounds[index].urgent_potentially_unfunded_minimum_hours,
+   forecast.weekly_critical_high_funding_bounds[index].urgent_potentially_unfunded_maximum_hours].map(q).join(','));
  });
  download('lightup-remediation-funding-weeks.csv',lines.join('\r\n')+'\r\n','text/csv;charset=utf-8');
  show('Private CSV of weekly aggregate financial assumptions exported.');
