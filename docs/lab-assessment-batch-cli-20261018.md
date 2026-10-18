@@ -38,6 +38,30 @@ Use `--preview-only` with either `--target` or `--targets-file` to check the sam
 
 `--preview-only` is a user-facing offline preparation step, **not** a replacement for any mandatory release/CI/security gate. Passing this preview never authorizes a later assessment.
 
+## Connect the original offline Lab Scenario Studio
+
+The existing offline Studio ([draft PR #1595](https://github.com/Zennay/Lightup/pull/1595)) exports a PRIVATE `lightup.lab_design_catalog.v1` JSON catalog of human-authored numeric lab IPs. It contains **design**, not executable URL/port mappings, authenticated authorization or trusted benchmark truth. The installed CLI can now deliberately select one of those drafts and bind every declared numeric target to one **separately entered explicit HTTP(S) URL and port**:
+
+```sh
+lightup lab-assess \
+  --catalog-file ./PRIVATE-scenario-studio.json \
+  --scenario-id fixture-exposed \
+  --target http://127.0.0.1:18080/ \
+  --preview-only
+
+lightup lab-assess \
+  --catalog-file ./PRIVATE-scenario-studio.json \
+  --scenario-id fixture-exposed \
+  --target http://127.0.0.1:18080/ \
+  --no-review --output ./private-lab-source.json
+```
+
+All original Studio v1 catalog records must pass exact source schema, duplicate-key, UTF-8, size (256 KiB), private numeric target, unique scenario/check identity and literal-false authority checks before the selected record is exposed. The selected scenario's ID/name/description are passed to the existing `LabScenario` dataclass. **Every declared address must have exactly one independently entered matching numeric HTTP(S) URL with an explicit port.** Hostnames, credentials, extra/missing assets, ambiguous source aliases and mismatched addresses are rejected before creating a plan or invoking a model or worker. The original lab scope fence is applied again.
+
+A Studio-authored catalog's `expected_findings` values are **never** automatically treated as trusted benchmark ground truth. The runtime uses `expected_findings=None` (unscored) and does not allow mixing with installed `--profile` ground truth. Its result carries only an **unsigned** SHA-256 source fingerprint, selected scenario ID, declared finding count and literal-false authenticated/scored/authority flags. A hash is not a signature or proof of ownership, consent, a real test result, or a vulnerability. Catalog paths and private descriptions are not echoed in public output.
+
+This interface is a source-isolated integration on top of Studio's published schema; it does **not** edit Studio's original `lab-design/` files or active branch. The run path is still subject to the exact original ScopePolicy, ToolExecutor and release constraints.
+
 ## Owner-private completion artifact
 
 Use `--output /private/path/NEW-NAME.json` to keep the original completed assessment JSON, or the optional no-execution input preview, in one **NEW** local private file. The file is created only once with owner-only mode `0600`, never follows the final-component symlink and never silently overwrites an existing file. It may contain targets, findings, evidence references and model-generated text; store it in a trusted private directory, do not commit it to Git and never publicly share it. The command prints only a non-sensitive completion status, not the full report, when writing to a private file. With no `--output`, existing stdout JSON remains unchanged.
@@ -63,6 +87,6 @@ The producer now retains each summary by its original finding occurrence, next t
 
 ## Source, ownership and release
 
-Sources: `src/lightup/cli.py` and `src/lightup/labrun.py`, stacked on pre-existing review source [PR #1602](https://github.com/Zennay/Lightup/pull/1602), without changing the review pipeline, original lab target fencing, scope, grants, authentication, workers, state, existing CI or tests. Tracked issue: [#1608](https://github.com/Zennay/Lightup/issues/1608).
+Sources: `src/lightup/cli.py`, `src/lightup/labrun.py` and the newly added strict `src/lightup/lab_catalog.py`, stacked on pre-existing review source [PR #1602](https://github.com/Zennay/Lightup/pull/1602), without changing the review pipeline, original lab target fencing, scope, grants, authentication, workers, state, existing CI or tests. Tracked issue: [#1608](https://github.com/Zennay/Lightup/issues/1608).
 
 This is a **draft implementation**. Original source-owner integration, mandatory exact-head hosted + permanent named VPS CI, independent security/privacy review, appropriate authenticated and separately consented client/operator controls with at-use revocation if any real execution is later contemplated, and explicit HUMAN GO all remain required. Do not merge/deploy/activate while in HOLD.
