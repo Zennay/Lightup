@@ -16,6 +16,7 @@ import sys
 
 SCHEMA = "lightup.scope_window_workspace.v1"
 ARTIFACTS = {
+    "original-private-casebook.json": 512 * 1024,
     "human-review-board.html": 1024 * 1024,
     "human-review-agenda.json": 3 * 1024 * 1024,
     "human-review-calendar.ics": 1024 * 1024,
@@ -107,8 +108,11 @@ def inspect(path: Path) -> dict:
                     or not re.fullmatch(r"[0-9a-f]{64}", declared["sha256"])):
                 raise WorkspaceHold("invalid private artifact declaration")
             raw = _private_file(directory_fd, name, limit)
-            if len(raw) != declared["bytes"] or hashlib.sha256(raw).hexdigest() != declared["sha256"]:
+            digest = hashlib.sha256(raw).hexdigest()
+            if len(raw) != declared["bytes"] or digest != declared["sha256"]:
                 raise WorkspaceHold("private workspace artifact changed")
+            if name == "original-private-casebook.json" and digest != source_sha:
+                raise WorkspaceHold("original source sidecar not bound to manifest")
         totals = info.get("declared_counts")
         if (type(totals) is not dict or
                 any(type(totals.get(key)) is not int or totals[key] < 0
