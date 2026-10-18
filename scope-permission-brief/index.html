@@ -51,6 +51,7 @@
   <div><label for="reconcileClient">Client preparation note (JSON)</label><input type="file" id="reconcileClient" accept=".json,application/json"><p role="status" id="reconcileClientState">No client preparation note</p></div>
   <div><label for="reconcileOperator">Operator preparation note (JSON)</label><input type="file" id="reconcileOperator" accept=".json,application/json"><p role="status" id="reconcileOperatorState">No operator preparation note</p></div>
  </div>
+ <div class="restore-row"><label for="reconcileCombined">Restore saved combined HOLD handoff (JSON)</label><input id="reconcileCombined" type="file" accept=".json,application/json"><p role="status" id="reconcileCombinedState">No combined human preparation imported</p><small>Open the original exact Studio draft first. This restores only unverified human progress; actual consent is never imported.</small></div>
  <p class="notice subnote" id="reconcileStatus" role="status" aria-live="polite">No source loaded · HOLD</p>
  <p class="receipt" id="reconcileSummary"></p>
  <div id="reconcileBoard" aria-label="Unverified cross-role followup queue"></div>
