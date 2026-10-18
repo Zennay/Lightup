@@ -375,6 +375,7 @@ def main(argv=None) -> int:
     group.add_argument("--agenda-json", type=Path, help="private IDs included; owner-only directory")
     group.add_argument("--calendar", type=Path, help="identity-free generic calendar events")
     group.add_argument("--board", type=Path, help="private self-contained interactive offline HTML")
+    group.add_argument("--workspace", type=Path, help="new private 0700 directory containing board, agenda, calendar and manifest")
     parser.add_argument("--lead-days", type=int, default=7)
     parser.add_argument("--future-days", type=int, default=45)
     parser.add_argument("--daily-capacity", type=int, default=8,
@@ -384,7 +385,7 @@ def main(argv=None) -> int:
         if (not 0 <= args.lead_days <= 30 or not 1 <= args.future_days <= 366
                 or not 1 <= args.daily_capacity <= 64):
             raise ReviewHold("invalid planning horizon")
-        out = args.agenda_json or args.calendar or args.board
+        out = args.agenda_json or args.calendar or args.board or args.workspace
         ensure_private_destination(out)
         if args.database:
             if not args.email or args.casebook or not args.email.strip():
@@ -417,9 +418,15 @@ def main(argv=None) -> int:
         elif args.board:
             from board_html import render
             payload = render(agenda)
-        else:
+        elif args.calendar:
             payload = ics(agenda)
-        private_publish(out, payload)
+        else:
+            payload = b""
+        if args.workspace:
+            from workspace_bundle import create_workspace
+            create_workspace(out, agenda)
+        else:
+            private_publish(out, payload)
         counts = agenda["declared_counts"]
         print(f"{agenda['status']}: {counts['items']} planned human review entries; "
               f"{counts['hold']} HOLD; no authorization/consent/execution.")
