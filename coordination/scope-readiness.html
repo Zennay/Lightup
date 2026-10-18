@@ -34,7 +34,7 @@ table{width:100%;border-collapse:collapse}th,td{border-bottom:1px solid var(--bo
 <label for="mergeInput">Choose a second private workspace JSON (maximum 256 KiB)</label>
 <input id="mergeInput" type="file" accept=".json,application/json">
 <div class="toolbar"><button id="mergeApply" type="button" disabled>Apply conflict-free merge</button><button id="mergeDiscard" type="button">Discard merge preview</button></div>
-<p id="mergeStatus" role="status" aria-live="polite" class="small">No merge staged. Conflicting records must be manually reconciled; no silent replacement.</p>
+<p id="mergeStatus" role="status" aria-live="polite" class="small">No merge staged. Conflicting records must be manually reconciled; no silent replacement.</p><ul id="mergeConflicts" class="list" aria-label="Safe conflict summary"></ul>
 </div>
 <div class="toolbar"><button id="save" type="button" class="primary" disabled>Save private JSON</button><button id="csv" type="button" disabled>Export action CSV</button><button id="print" type="button" disabled>Print review brief</button><button id="reset" type="button">Clear workspace</button></div>
 <p id="message" role="status" aria-live="polite">Open a Studio draft or restore a saved workspace. Local browser memory only.</p>
