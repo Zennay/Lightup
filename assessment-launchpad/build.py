@@ -7,6 +7,7 @@ admission; never dispatches tools, models, scans or network requests.
 from __future__ import annotations
 
 import argparse
+from base64 import b64encode
 from hashlib import sha256
 from html import escape
 import ipaddress
@@ -101,7 +102,7 @@ def _html(endpoints: tuple[str, ...], digest: str) -> bytes:
         for i, url in enumerate(endpoints, 1)
     )
     # Entirely scriptless: safe to open directly from disk, no external assets.
-    return ("""<!doctype html><html lang="en"><head><meta charset="utf-8">
+    document = ("""<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="referrer" content="no-referrer">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; img-src 'none'; script-src 'none'; connect-src 'none'; form-action 'none'; base-uri 'none'">
@@ -137,8 +138,13 @@ lab fixture, guarantee isolation at later execution, give a customer consent,
 prove a finding, bypass an original CI gate or authorize a scan. Missing source
 does not mean remediated. Never share this packet as a client security report.</aside>
 </section></body></html>""".replace("__COUNT__", str(len(endpoints)))
-        .replace("__ROWS__", rows).replace("__DIGEST__", digest)
-        .encode("utf-8"))
+        .replace("__ROWS__", rows).replace("__DIGEST__", digest))
+    start = document.index("<style>") + len("<style>")
+    end = document.index("</style>", start)
+    style_hash = b64encode(sha256(document[start:end].encode("utf-8")).digest()).decode("ascii")
+    document = document.replace("style-src 'unsafe-inline'",
+                                "style-src 'sha256-" + style_hash + "'")
+    return document.encode("utf-8")
 
 
 def build(endpoints: tuple[str, ...], output_dir: str) -> Path:
