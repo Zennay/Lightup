@@ -523,6 +523,14 @@
     const escape=x=>'"'+String(x).replaceAll('"','""')+'"';
     return "\ufeff"+rows.map(row=>row.map(escape).join(",")).join("\r\n")+"\r\n";
   }
+  function agendaCsv() {
+    const rows=[["dossier_a","dossier_b","effective_scope_overlap","proposed_utc_overlap","human_discussion_status","authority"]];
+    for(const p of report().review_agenda)
+      rows.push([p.dossier_a,p.dossier_b,String(p.numeric_or_literal_scope_overlap),
+        String(p.proposed_utc_overlap),p.self_reported_discussion_status,"REVIEW_ONLY_HOLD"]);
+    const cell=x=>'"'+String(x).replaceAll('"','""')+'"';
+    return "\ufeff"+rows.map(row=>row.map(cell).join(",")).join("\r\n")+"\r\n";
+  }
   $("imports").addEventListener("change",async e=>{
     try{await importDrafts(Array.from(e.target.files));}catch(err){show("Import geweigerd; bestaande concepten behouden: "+err.message,true);}
     e.target.value="";
@@ -549,6 +557,7 @@
   $("save").addEventListener("click",()=>records.length?json(snapshot(),"lightup-local-progress.json"):show("Laad eerst concepten.",true));
   $("export").addEventListener("click",()=>records.length?json(report(),"lightup-review-only-handoff.json"):show("Laad eerst concepten.",true));
   $("csv").addEventListener("click",()=>records.length?download(csv(),"lightup-handoff-actions.csv","text/csv;charset=utf-8"):show("Laad eerst concepten.",true));
+  $("agendaCsv").addEventListener("click",()=>records.length?download(agendaCsv(),"lightup-review-meeting-agenda.csv","text/csv;charset=utf-8"):show("Laad eerst concepten.",true));
   $("printPack").addEventListener("click",()=>records.length?download(fullHtmlPacket(),"lightup-review-only-handoff.html","text/html;charset=utf-8"):show("Laad eerst concepten.",true));
   $("print").addEventListener("click",()=>records.length?window.print():show("Laad eerst concepten.",true));
   render();
