@@ -129,6 +129,9 @@ def main(argv: list[str] | None = None) -> int:
     sub = parser.add_subparsers(dest="command", required=True)
     preview = sub.add_parser("preview", help="offline literal scope preview (no database access)")
     submit = sub.add_parser("submit", help="persist one request after client authentication")
+    desk = sub.add_parser("desk", help="interactive authenticated client request workspace")
+    desk.add_argument("--db", required=True, help="existing private LightUp SQLite database")
+    desk.add_argument("--email", required=True, help="real persisted client account email")
     for command in (preview, submit):
         command.add_argument("--asset", action="append", help="canonical hostname, IP or CIDR; repeat")
         command.add_argument("--proposal", help="existing offline Scope Planning Studio v1 JSON export")
@@ -172,6 +175,10 @@ def main(argv: list[str] | None = None) -> int:
         command.add_argument("--db", required=True, help="existing private LightUp SQLite database")
         command.add_argument("--email", required=True, help="persisted client account email")
     args = parser.parse_args(argv)
+    if args.command == "desk":
+        from .client_request_desk import main as open_client_desk
+
+        return open_client_desk(["--db", args.db, "--email", args.email])
     try:
         if args.command in ("preview", "submit"):
             if bool(args.asset) == bool(args.proposal):
