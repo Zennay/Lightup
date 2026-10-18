@@ -14,3 +14,11 @@ button.secondary{background:transparent;border-color:#91a8bb}.actions{display:fl
 select{max-width:100%;background:#0c1d30;border:1px solid #7699b4;border-radius:5px;color:white;font:inherit;padding:.4rem}
 footer{color:var(--muted);font-size:.88rem;padding-bottom:3rem}
 @media print{body{background:white;color:black}header,main,footer{padding:.6rem}section,article{break-inside:avoid;background:white;color:black;border:1px solid black}button,input,.actions,#cases{display:none!important}}
+
+.queue-controls{display:grid;grid-template-columns:repeat(auto-fit,minmax(195px,1fr));gap:1rem;margin:1.4rem 0}
+.queue-controls>div{display:flex;flex-direction:column;gap:.5rem}
+.queue-controls label{margin:0;font-size:.92rem;color:#d5eaff}
+.queue-controls select{width:100%;min-height:2.65rem}
+button:disabled{cursor:not-allowed;opacity:.5}
+#queueCount{color:var(--link);font-weight:650}
+@media print{.queue-controls,#queueCount{display:none!important}}
