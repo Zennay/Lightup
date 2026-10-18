@@ -335,6 +335,8 @@ def run_planned_assessment(
     if include_benchmark_case:
         # Original #1513 read-only comparator's exact record/context envelope.
         # The wrapper is unsigned source material, not provenance/consent.
+        if context.is_lab is not True or context.authorization is not None:
+            raise ValueError("only ungranted original lab records can be exported")
         assessment_output["benchmark_case"] = {
             "record": record.to_dict(),
             "context": {
@@ -343,8 +345,8 @@ def run_planned_assessment(
                 "engagement_id": context.engagement_id,
                 "mode": context.mode.value,
                 "approved_risk": context.approved_risk.value,
-                "authorization": None,
-                "is_lab": True,
+                "authorization": context.authorization,
+                "is_lab": context.is_lab,
                 "created_at": context.created_at.isoformat(),
             },
         }
