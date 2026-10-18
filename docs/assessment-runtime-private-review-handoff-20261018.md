@@ -70,3 +70,17 @@ PYTHONPATH=src:scripts python scripts/assessment_runtime_review_handoff_cli_2026
 ```
 
 Omit `--format desk-json` to get the print-ready private HTML instead. Explicit per-case inputs cannot be combined with positional cohort inputs or `--cohort`; unsupported combinations fail with the generic HOLD. For direct case lists, the report's SHA-256 identifiers cover the assembled **canonical cohort JSON bytes**, not the original individual on-disk file bytes and are never described as signed provenance. To retain a standalone cohort file for another original consumer, use the separate atomic case bundle command documented above.
+
+## Single private review packet for real human handoff
+
+To avoid generating and transferring two different review files, the same CLI now accepts **`--format review-pack`** and atomically writes **one** new owner-only `0600` ZIP, using the existing private fsync + exclusive hard-link publication. Example with two already-existing canonical cohort files:
+
+```bash
+PYTHONPATH=src:scripts python scripts/assessment_runtime_review_handoff_cli_20261018.py \
+  /private/baseline-cohort.json /private/candidate-cohort.json \
+  --cohort --format review-pack --output /private/NEW-review-pack.zip
+```
+
+The fixed archive contains exactly `review.html` (printable local summary with **ordinal case labels, never original scenario IDs**), `review-desk.json` (the original #1515 comparison result for import into the existing #1576 browser desk) and `manifest.json` (comparison type, source-byte/canonical-cohort fingerprints, status and permanently false authorization/consent/dispatch/release fields). The archive is created wholly in memory and published as one complete new file. It does not include input case files, target URLs, raw evidence bytes, provider logs, scripts, executable HTML JavaScript, network assets or new ground-truth assertions.
+
+**Privacy:** `review-desk.json` necessarily retains the *original* scenario IDs because the original Review Desk uses them for identity matching. The entire ZIP is therefore confidential and should be kept inside a trusted private directory; share only `review.html` when a recipient must see ordinal-only case labels. Source hashes are unsigned byte fingerprints, not trust attestation. Input cases still must be independently authenticated before any real authorization, security outcome or deployment decision. A canonical regression produces a private packet marked HOLD and exit 3; invalid/replayed source inputs produce only generic HOLD and no packet.

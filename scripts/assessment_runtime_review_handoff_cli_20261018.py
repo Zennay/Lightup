@@ -9,11 +9,13 @@ from __future__ import annotations
 import argparse
 from hashlib import sha256
 from html import escape
+from io import BytesIO
 import json
 import os
 from pathlib import Path
 import stat
 import tempfile
+from zipfile import ZipFile, ZipInfo, ZIP_DEFLATED
 
 from assessment_runtime_compare_cli_1513 import (
     _output as _original_single_result,
@@ -114,10 +116,13 @@ def _build_report(result, baseline_sha: str, candidate_sha: str, cohort: bool,
     sections = []
     regressions = []
     if cohort:
-        for scenario, comparison in result.comparisons:
-            regressions.extend((str(scenario), str(name)) for name in comparison.regressions)
+        for number, (_scenario, comparison) in enumerate(result.comparisons, 1):
+            # Printable reports use ordinal labels only; original source scenario
+            # identities belong exclusively in the private desk JSON.
+            scenario_label = f"Case {number}"
+            regressions.extend((scenario_label, str(name)) for name in comparison.regressions)
             sections.append(
-                "<section><h2>Lab scenario: " + _e(scenario) + "</h2>" +
+                "<section><h2>Lab scenario: " + _e(scenario_label) + "</h2>" +
                 "<p>Local comparison: " + _e(comparison.status) + "</p>" +
                 _metrics(comparison.changes) + "</section>"
             )
@@ -183,6 +188,52 @@ def _build_report(result, baseline_sha: str, candidate_sha: str, cohort: bool,
     return encoded
 
 
+def _review_pack(result, first_sha: str, second_sha: str,
+                 cohort: bool, selected_cases: bool):
+    """One atomic private archive: printable brief + original Review Desk JSON.
+
+    Fixed archive member names; no executable assets or unsafe source paths.
+    The private JSON *does* contain original scenario identities and must not
+    be confused with the ordinal-only printable human brief.
+    """
+    report = _build_report(result, first_sha, second_sha, cohort,
+                           selected_cases=selected_cases)
+    source = (_original_cohort_result(result) if cohort
+              else _original_single_result(result))
+    desk = json.dumps(source, sort_keys=True, separators=(",", ":"),
+                      ensure_ascii=True, allow_nan=False).encode("ascii")
+    if len(desk) > COHORT_LIMIT:
+        raise ValueError("comparison output exceeds bound")
+    manifest = json.dumps({
+        "format": "lightup.private_lab_review_pack.v1",
+        "comparison_type": "cohort" if cohort else "single_case",
+        "source_fingerprint_kind": ("canonical_case_set" if selected_cases
+                                    else "original_input_file_bytes"),
+        "baseline_sha256": first_sha,
+        "candidate_sha256": second_sha,
+        "status": result.status,
+        "authorized": False,
+        "consent_verified": False,
+        "dispatch_allowed": False,
+        "release_allowed": False,
+        "source_authenticated": False,
+        "approval_granted": False,
+    }, sort_keys=True, separators=(",", ":")).encode("ascii")
+    buffer = BytesIO()
+    with ZipFile(buffer, "w") as archive:
+        for name, content in (("review.html", report),
+                              ("review-desk.json", desk),
+                              ("manifest.json", manifest)):
+            info = ZipInfo(name, date_time=(2026, 10, 18, 0, 0, 0))
+            info.compress_type = ZIP_DEFLATED
+            info.external_attr = 0o600 << 16
+            archive.writestr(info, content)
+    payload = buffer.getvalue()
+    if len(payload) > REPORT_LIMIT + COHORT_LIMIT + 32_768:
+        raise ValueError("review package exceeds bound")
+    return payload
+
+
 def _write_exclusive(path: str, payload: bytes):
     """Publish complete 0600 bytes only; never expose a partial final filename.
 
@@ -217,8 +268,8 @@ def main(argv=None):
                         help="Input files contain arrays of 1–64 case exports")
     parser.add_argument("--output", required=True,
                         help="New private output file (existing files are refused)")
-    parser.add_argument("--format", choices=("html", "desk-json"), default="html",
-                        help="Printable HTML or exact original JSON result for offline Review Desk #1576")
+    parser.add_argument("--format", choices=("html", "desk-json", "review-pack"), default="html",
+                        help="Printable HTML, original Review Desk #1576 JSON, or private combined ZIP")
     args = parser.parse_args(argv)
     try:
         selected_cases = bool(args.baseline_case or args.candidate_case)
@@ -246,7 +297,10 @@ def main(argv=None):
         if result.status not in ("REVIEW_ONLY", "HOLD") or not metrics_ready:
             print("LAB_REVIEW_HOLD")
             return 3
-        if args.format == "desk-json":
+        if args.format == "review-pack":
+            document = _review_pack(result, first_sha, second_sha, cohort,
+                                    selected_cases)
+        elif args.format == "desk-json":
             # Delegate output shape to *unchanged* original #1515 CLI serializers.
             # The separate #1576 browser reads this exact comparison-result format.
             summary = (_original_cohort_result(result) if cohort
