@@ -87,7 +87,7 @@ async function readAndSummarize(file){
   for(const item of entry.grant_findings){
    if(!record(item)||!SHA.test(item.source_key||'')||!SHA.test(item.identity_key||'')
      ||!['missing','invalid','recorded_coherent_review_only'].includes(item.binding)
-     ||!['invalid','expired','within_window','not_started'].includes(item.window))
+     ||!['invalid','expired','within_window','future'].includes(item.window))
     throw Error('Malformed grant review record.');
    flags(item.flags,'grant').forEach(k=>counts[k]++);
   }

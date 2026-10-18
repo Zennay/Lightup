@@ -21,6 +21,7 @@ STYLE_TAG = '<link rel="stylesheet" href="theme.css">'
 SCRIPT_TAGS = {
     "remediation-engine.js": '<script src="remediation-engine.js"></script>',
     "casework-import.js": '<script src="casework-import.js"></script>',
+    "readiness-import.js": '<script src="readiness-import.js"></script>',
     "app.js": '<script src="app.js"></script>',
 }
 

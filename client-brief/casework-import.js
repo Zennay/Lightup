@@ -43,14 +43,14 @@ function rejectDuplicateJSONKeys(text){
  }
  if(stack.length)throw Error('Unclosed JSON container.');
 }
+function strictJSON(text){rejectDuplicateJSONKeys(text);return JSON.parse(text);}
 async function readAndSummarize(file,currentRows){
  if(!file||!file.size||file.size>MAX_BYTES)throw Error('Expected a nonempty Casework draft JSON no larger than 3 MiB.');
  const buffer=await file.arrayBuffer();
  if(buffer.byteLength!==file.size)throw Error('Casework file changed during import.');
  const text=new TextDecoder('utf-8',{fatal:true}).decode(buffer);
  if(text.charCodeAt(0)===0xfeff)throw Error('Unexpected JSON byte-order mark.');
- rejectDuplicateJSONKeys(text);
- const packet=JSON.parse(text);
+ const packet=strictJSON(text);
  if(!packet||typeof packet!=='object'||Array.isArray(packet)||Object.keys(packet).some(k=>!ALLOWED.has(k)))
   throw Error('Unknown or unsupported Casework draft envelope.');
  const parsed=LightUpCasework.loadPacket(packet);
@@ -78,5 +78,5 @@ async function readAndSummarize(file,currentRows){
   authenticated:false,client_consent:false,operator_consent:false,grant:false,
   execution:false,scan:false,retest_verified:false,release:false});
 }
-global.LightUpBriefCasework=Object.freeze({readAndSummarize});
+global.LightUpBriefCasework=Object.freeze({readAndSummarize,strictJSON});
 })(window);
