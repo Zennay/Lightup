@@ -4,7 +4,7 @@ LightUp remains INCUBATE M3/M7 / PLAN-LAB ONLY. This is a **production-source se
 
 ## Implemented product behavior
 
-Original ScopePolicy treated Python `ipaddress.is_private` as implicitly lab-authorized, including certain reserved/special-use address space not actually designated as a private lab. The revised policy permits implicit lab decisions only for loopback or the **explicit standard private/link-local** IPv4/IPv6 networks: 10/8, 172.16/12, 192.168/16, 169.254/16, fc00::/7 and fe80::/10. Explicit network authorization remains separately available subject to the existing public authorization requirement; this patch does NOT authorize new public target identities.
+Original ScopePolicy treated Python `ipaddress.is_private` as implicitly lab-authorized, including certain reserved/special-use address space not actually designated as a private lab. The revised policy permits implicit lab decisions only for loopback by default; optional private-lab admission requires `allow_private_lab=True` and stays inside **RFC1918 + IPv6 ULA**: 10/8, 172.16/12, 192.168/16 and fc00::/7. Link-local (169.254/16, fe80::/10) is never automatically lab-trusted, even when the opt-in is set. Explicit network authorization remains separately available subject to the existing public authorization requirement; this patch does NOT authorize new public target identities.
 
 Policy configuration now validates exact boolean switches and all network text before any target branch can be evaluated. Caller-owned built-in sets/lists are copied into immutable host/network collections at construction. Non-string network entries, malformed CIDR values, decorated explicit host identities, multiple DNS root dots and configuration polymorphism cannot silently alter scope membership.
 
@@ -17,3 +17,16 @@ Own new branch changes only `src/lightup/scope.py` and this document. Original s
 ## Direct legacy authorization admission (second source change)
 
 For an explicitly allowed public host/network, the policy now evaluates only a **canonical built-in** `Authorization` with actual nonempty owner/reference strings and either absent or exact built-in timezone-aware datetime bounds. Boolean, numeric, string or caller-defined datetime objects cannot impersonate an absent bound. Start-after-end fails closed. The policy computes a single UTC instant without calling any untrusted subclass `is_current()` method. This is a direct decision boundary only and NOT durable request/grant or revocation-at-use authentication.
+
+
+## Critical correction — explicit ownership of a private lab
+
+Previous default `allow_private_lab=True` still trusted every ordinary RFC1918/ULA
+address in a generic ScopePolicy, which is inappropriate on cloud/VPC hosts:
+private address class does not establish resource ownership. The source now
+defaults the opt-in to **False**, excluding arbitrary private targets unless a
+trusted caller explicitly constructs a private-lab policy. Also remove all
+link-local ranges from implicit admission; unspecified, test-net, benchmarking,
+broadcast and reserved addresses are not implicit lab targets. Explicit
+network/host authorizations still require their existing separate access rules.
+This follows the security goal from #103 and #1422 without granting authority.

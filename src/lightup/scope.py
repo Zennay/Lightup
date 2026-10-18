@@ -32,7 +32,7 @@ class ScopeDecision:
 _LAB_NETWORKS = tuple(
     ip_network(value) for value in (
         "10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16",
-        "169.254.0.0/16", "fc00::/7", "fe80::/10",
+        "fc00::/7",
     )
 )
 
@@ -55,7 +55,7 @@ def _canonical_policy_host(value: str) -> str:
 
 @dataclass(frozen=True)
 class ScopePolicy:
-    allow_private_lab: bool = True
+    allow_private_lab: bool = False
     explicit_hosts: frozenset[str] = frozenset()
     explicit_networks: tuple[str, ...] = ()
     require_authorization_for_public: bool = True
