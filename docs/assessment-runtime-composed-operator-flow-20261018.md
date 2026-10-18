@@ -63,3 +63,16 @@ The new **`assessment-workspace/standalone.html`** is a responsive static launch
     python3 scripts/lightup_review.py workspace
 
 The dispatcher adds this **read-only `workspace`** action alongside `compare`, `bundle`, `inspect`, `attach` and `handoff`. It does not start a service or enumerate assets. Original native Studio catalog exports and fixture source declaration reading remain deliberately **design-only**. They do not create trusted benchmark results, run a fixture, grant consent or prove private-address ownership. The original source owner branches remain unchanged; the extra static entry page is a new integration-only file.
+
+## Original Studio-to-benchmark Lineage Desk now in this checkout
+
+Included **unchanged** original [scenario-to-comparison Lineage Desk PR #1597](https://github.com/Zennay/Lightup/pull/1597), pinned exact source `8dff91cb1f830eb6473b8755bbd187051ea9b072`, under its seven owned `assessment-lineage/` source files. It is a separate offline human app that reconciles 1–32 original PRIVATE Studio scenario memberships and 1–8 **already-completed** source-bound cohort comparisons. A case missing from either catalog or report remains HOLD and is not treated as repaired; unsigned original ground truth is a draft, not detection proof.
+
+Open **`assessment-workspace/standalone.html`** and select **Original Scenario Lineage Desk**; manually import the original `lab-design/standalone.html` exported catalog and 1–8 comparator results. To produce one original private cohort result in this very same checkout:
+
+```sh
+python3 scripts/lightup_review.py compare /private/BASE-cohort.json /private/NEXT-cohort.json \
+  --cohort --format desk-json --output /private/NEW-private-comparison.json
+```
+
+The Lineage Desk uses the original comparator `scenario_id` values **privately for in-memory reconciliation** and never exports them in anonymous aggregate handoff. Its optional owner-private `assessment-lineage/private_workroom.py` can combine explicit existing private catalog + comparison JSON files into one private local HTML; it never calls the lab runner. This is an **existing original app directly combined into the same source checkout**, not an invented evaluation or new trust/release gate. The separate original [#1597](https://github.com/Zennay/Lightup/pull/1597) and [#1595](https://github.com/Zennay/Lightup/pull/1595) owners remain unmodified.
