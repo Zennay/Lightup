@@ -185,6 +185,55 @@ function windowAfterHumanDue(f){
 
 function caseLabel(c){return c?(c.owner||'Unassigned owner')+' · '+c.status+(c.due_date?' · '+c.due_date+' UTC':' · no due date'):'No original Casework attached';}
 
+
+function privateHumanActionSheet(){
+ if(!state?.followup)fail('Load an original private five-column findings CSV first.');
+ ensureHumanEditorSaved();
+ if(!confirm('PRIVATE: export original finding IDs and confidential HUMAN action notes/reminders? Share only with an independently approved confidential recipient. This is NOT a grant, verified remediation, retest or change approval.'))return;
+ /* No original Casework or valid proposed UTC change window is needed for
+  * human follow-up; an optional slot number is never a booked appointment. */
+ const clean=v=>String(v??'').replace(/[\u0000-\u001f\u007f\u202a-\u202e\u2066-\u2069]/g,' ').
+  replace(/[\\|*_<>{}[\]()!#]/g,' ').replace(new RegExp(String.fromCharCode(96),'g'),' ').slice(0,640);
+ const lines=['# PRIVATE LightUp human follow-up action sheet','',
+ '**UNVERIFIED PRIVATE HUMAN COORDINATION ONLY. Nothing in this file is authenticated issuer evidence, a security grant, an approved change, a verified fix or retest permission.**','',
+ 'Canonical original five-column source SHA-256: '+state.hash+' (unsigned content correlation only).',
+ state.casework?'Optional original Casework human rows SHA-256: '+state.caseworkDigest+' (unsigned; not independently authenticated).':'No original Casework required or joined.',
+ state.caseworkHashless?'WARNING: optional original Casework contained no source fingerprint; original source rows only matched.':'Original source fingerprint or independent identity must still be checked externally.',
+ 'Original source finding count: '+state.source.length,'',
+ ];
+ const severe=f=>['critical','high'].includes(f.severity);
+ const priority=(a,b)=>Number(followupPastDue(b))-Number(followupPastDue(a))||
+  Number(severe(b))-Number(severe(a))||
+  (followupFor(a.finding_id).due_date||'9999').localeCompare(followupFor(b.finding_id).due_date||'9999')||
+  a.finding_id.localeCompare(b.finding_id);
+ lines.push('## Private human follow-up overview','',
+  'Open human follow-ups: '+state.source.filter(humanFollowupOpen).length,
+  'Human reminder dates past due: '+state.source.filter(followupPastDue).length,
+  'Human discussions logged (NOT approved): '+state.source.filter(f=>followupFor(f.finding_id).status==='discussion_logged').length,
+  'Critical/high original source findings: '+state.source.filter(severe).length,'');
+ for(const stage of FOLLOW_STATES){
+  const cohort=state.source.filter(f=>followupFor(f.finding_id).status===stage).sort(priority);
+  lines.push('## '+FOLLOW_LABELS[stage]+' ('+cohort.length+' original findings)','');
+  if(!cohort.length){lines.push('No private human actions in this category.','');continue;}
+  lines.push('| Original finding ID | Original severity / retest status | Human reminder UTC | Proposed human window slot | Human evidence review stage | Human owner (optional original Casework) | PRIVATE next human action |',
+  '| --- | --- | --- | --- | --- | --- | --- |');
+  for(const f of cohort){
+   const v=followupFor(f.finding_id),r=state.review.get(f.finding_id),c=state.casework?.get(f.finding_id);
+   const label=v.due_date?(v.due_date+(followupPastDue(f)?' HUMAN REMINDER OVERDUE':'')):'no human reminder';
+   lines.push('| '+[f.finding_id,f.severity+' / '+f.retest_status,label,
+    String(state.assignments.get(f.finding_id)||0)+' (tentative, not booked)',
+    r.stage+(hasHumanHold(f,r)?' - HUMAN EVIDENCE GAPS':''),
+    c?.owner||'not recorded',v.note||'(No private next action written)'].map(clean).join(' | ')+' |');
+  }
+  lines.push('');
+ }
+ lines.push('## Recipient boundary','',
+ 'Verify real client, exact engagement, source provenance, authorized confidential recipient and current revocation state independently.',
+ 'A human discussion-logged state is only a local human note; never convert it into completed remediation or permission.',
+ 'No original LightUp target, original source status, Casework owner/action, scanner, grant, backend, mail, ticket or calendar was changed.','');
+ output('lightup-private-human-followup-actions.md',lines.join('\n')+'\n','text/markdown');
+}
+
 function privateCaseBrief(){
  if(!state?.casework)fail('Import an original exact-source Casework draft first.');
  if(!confirm('PRIVATE: export original finding IDs, local owners, human evidence stages, blockers, unverified next actions and UTC discussions? Transfer only via an independently approved confidential channel.'))return;
@@ -1034,6 +1083,7 @@ function init(){
  $('bulkApply').addEventListener('click',()=>{try{bulkApply();}catch(e){setStatus(e.message,true);}});
  $('bulkUndo').addEventListener('click',()=>{try{bulkUndo();}catch(e){setStatus(e.message,true);}});
  $('caseBrief').addEventListener('click',()=>{try{privateCaseBrief();setStatus('Private original Casework human brief downloaded locally; still UNVERIFIED.');}catch(e){setStatus(e.message,true);}});
+ $('humanActionBrief').addEventListener('click',()=>{try{privateHumanActionSheet();setStatus('PRIVATE human-only action sheet prepared locally; independently confirm confidential recipient.');}catch(e){setStatus(e.message,true);}});
  $('recalculate').addEventListener('click',()=>{try{plan();render();setStatus('Hypothetical windows checked for overlap; original authority remains HOLD.');}catch(e){setStatus(e.message,true);}});
  for(const [id,fn] of [['private',privateExport],['calendar',calendarExport],['aggregate',aggregateExport]])
   $(id).addEventListener('click',()=>{try{fn();setStatus('Local unsigned planning export prepared; not authorization or verified evidence.');}catch(e){setStatus(e.message,true);}});
