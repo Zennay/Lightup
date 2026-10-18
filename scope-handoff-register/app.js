@@ -698,13 +698,14 @@
   const json=(data,name)=>download(JSON.stringify(data,null,2)+"\n",name,"application/json;charset=utf-8");
   const authority=()=>({...DENIAL});
   function snapshot() {
-    return {kind:"lightup.scope_handoff_local_progress",schema_version:4,state:"REVIEW_ONLY_HOLD",authority:authority(),
+    return {kind:"lightup.scope_handoff_local_progress",schema_version:5,state:"REVIEW_ONLY_HOLD",authority:authority(),
       entries:records.map(r=>({sha256:r.sha,reference:r.reference,replaces:r.replaces,tasks:{...r.tasks},
-        due_dates:{...r.dueDates},withdrawal:r.withdrawal?{...r.withdrawal,statuses:{...r.withdrawal.statuses}}:null})),
+        due_dates:{...r.dueDates},withdrawal:r.withdrawal?{...r.withdrawal,statuses:{...r.withdrawal.statuses}}:null,
+        permission:r.permission?{...r.permission,questions:r.permission.questions.map(q=>({...q}))}:null})),
       pair_reviews:meetingPairs().map(p=>({sources:[p.left,p.right].sort(),status:p.human_status}))};
   }
   function report() {
-    return {kind:"lightup.scope_handoff_review_register",schema_version:2,state:"REVIEW_ONLY_HOLD",authority:authority(),
+    return {kind:"lightup.scope_handoff_review_register",schema_version:3,state:"REVIEW_ONLY_HOLD",authority:authority(),
       notice:"Unverified local human preparation; no authorization, consent, identity or ownership assertion.",
       review_agenda:meetingPairs().map(p=>({
         dossier_a:"D"+String(records.findIndex(x=>x.sha===p.left)+1).padStart(2,"0"),
@@ -723,6 +724,13 @@
         asset_count:r.source.assets.length,excluded_count:r.source.excluded.length,
         review_codes:warnings(r),tasks:Object.fromEntries(TASKS.map(([id])=>[id,r.tasks[id]])),
         task_roles:{...TASK_ROLES},task_due_dates:{...r.dueDates},
+        permission_questions_review_only:r.permission?{
+          client_response_reported:r.permission.clientNoted,
+          operator_response_reported:r.permission.operatorNoted,
+          outstanding_unverified_questions:r.permission.needsAttention,
+          question_count:r.permission.total,
+          question_statuses:r.permission.questions.map(q=>({code:q.code,role:q.role,status:q.status}))
+        }:null,
         external_withdrawal_review_only:r.withdrawal?{
           intent:r.withdrawal.intent,urgency:r.withdrawal.urgency,
           suggested_utc:r.withdrawal.effective,paperwork_prepared:r.withdrawal.paperwork,
@@ -732,23 +740,26 @@
       }))};
   }
   function restore(o) {
-    assert(isPlain(o)&&o.kind==="lightup.scope_handoff_local_progress"&&[1,2,3,4].includes(o.schema_version)&&o.state==="REVIEW_ONLY_HOLD","Geen compatibele lokale voortgang.");
+    assert(isPlain(o)&&o.kind==="lightup.scope_handoff_local_progress"&&[1,2,3,4,5].includes(o.schema_version)&&o.state==="REVIEW_ONLY_HOLD","Geen compatibele lokale voortgang.");
     assert(isPlain(o.authority)&&Object.keys(DENIAL).length===Object.keys(o.authority).length && Object.entries(DENIAL).every(([k,v])=>o.authority[k]===v),"Autorisatievlaggen mogen nooit waar zijn.");
     assert(Array.isArray(o.entries) && o.entries.length===records.length && records.length>0 && o.entries.length<=MAX,"Open eerst precies de oorspronkelijke conceptversies.");
     const shaMap=new Map(records.map(x=>[x.sha,x])),found=new Set(),updates=[];
     for (const entry of o.entries) {
       assert(isPlain(entry)&&typeof entry.sha256==="string" && /^[a-f0-9]{64}$/.test(entry.sha256) && shaMap.has(entry.sha256) && !found.has(entry.sha256),"Bron-SHA mist, is dubbel of niet gelijk.");
       assert(typeof entry.reference==="string"&&entry.reference.length>0&&entry.reference.length<=32 && isPlain(entry.tasks),"Ongeldige lokale label-/takenstructuur.");
-      const expectedKeys=["sha256","reference","replaces","tasks",...(o.schema_version>=3?["due_dates"]:[]),...(o.schema_version===4?["withdrawal"]:[])];
+      const expectedKeys=["sha256","reference","replaces","tasks",...(o.schema_version>=3?["due_dates"]:[]),...(o.schema_version>=4?["withdrawal"]:[]),...(o.schema_version===5?["permission"]:[])];
       assert(Object.keys(entry).length===expectedKeys.length && expectedKeys.every(k=>Object.hasOwn(entry,k)),"Onbekende of ontbrekende status-/doeldatumvelden.");
       if(o.schema_version>=3){
         assert(isPlain(entry.due_dates)&&Object.keys(entry.due_dates).length===TASKS.length &&
           TASKS.every(([id])=>Object.hasOwn(entry.due_dates,id)&&validDay(entry.due_dates[id])),
           "Onjuiste doeldatumset; import wordt geheel geweigerd.");
       }
-      if(o.schema_version===4 && entry.withdrawal!==null)
+      if(o.schema_version>=4 && entry.withdrawal!==null)
         assert(LightUpWithdrawalImport.safeSaved(entry.withdrawal,shaMap.get(entry.sha256)?.source),
           "Ongeldige, bronloze of verhoogde externe stopnotitie.");
+      if(o.schema_version===5 && entry.permission!==null)
+        assert(LightUpPermissionReplyImport.saved(entry.permission),
+          "Ongeldige of verhoogde Permission Brief-notitie; alles blijft ongewijzigd.");
       assert(Object.keys(entry.tasks).length===TASKS.length && TASKS.every(([id])=>STATUSES.includes(entry.tasks[id])),"Taakset of status is vervormd.");
       assert(entry.replaces===null || (typeof entry.replaces==="string" && shaMap.has(entry.replaces)),"Vreemde revisievoorganger.");
       found.add(entry.sha256);updates.push([shaMap.get(entry.sha256),entry]);
@@ -775,7 +786,8 @@
     if (!confirm("De huidige lokale voorbereidings- en overlegstatussen vervangen voor exact deze bronbestanden?"))return;
     updates.forEach(([r,e])=>{r.reference=e.reference;r.replaces=e.replaces;r.tasks={...e.tasks};
       r.dueDates=o.schema_version>=3?{...e.due_dates}:Object.fromEntries(TASKS.map(([id])=>[id,null]));
-      r.withdrawal=o.schema_version===4&&e.withdrawal?{...e.withdrawal,statuses:{...e.withdrawal.statuses}}:null;
+      r.withdrawal=o.schema_version>=4&&e.withdrawal?{...e.withdrawal,statuses:{...e.withdrawal.statuses}}:null;
+      r.permission=o.schema_version===5&&e.permission?{...e.permission,questions:e.permission.questions.map(q=>({...q}))}:null;
     });
     pairReviews.clear();
     for(const [key,status] of nextPairs)if(status!=="open")pairReviews.set(key,status);
@@ -815,6 +827,13 @@
           ". Mogelijke uitbreiding: <strong>"+(e.revision.possible_expansion?"JA":"niet uit deze ruwe vergelijking vastgesteld")+"</strong>. Geen CIDR/DNS-verificatie.</p>");
       }
       parts.push("<p class=\"alert\">Lokale signalen: "+esc(e.review_codes.length?e.review_codes.join(", "):"geen automatisch signaal; geen veiligheidsbewijs")+"</p>");
+      if(e.permission_questions_review_only){
+        const p=e.permission_questions_review_only;
+        parts.push("<p class=\"hold\">ONGEVERIFIEERDE CLIËNT-/OPERATORVRAGEN: "+esc(p.outstanding_unverified_questions)+
+          "/"+esc(p.question_count)+" vragen vragen nog aandacht. Cliëntnotitie "+(p.client_response_reported?"zelfgerapporteerd":"ontbreekt")+
+          "; operatornotitie "+(p.operator_response_reported?"zelfgerapporteerd":"ontbreekt")+
+          ". Geen identiteit, toestemming of operator-goedkeuring vastgesteld.</p>");
+      }
       if(e.external_withdrawal_review_only)parts.push("<p class=\"hold\">EXTERNE, ONGEVERIFIEERDE STOP-/WIJZIGINGSMELDING: "+
         esc(e.external_withdrawal_review_only.intent)+", urgentie "+esc(e.external_withdrawal_review_only.urgency)+
         ", open externe menselijke stappen "+esc(e.external_withdrawal_review_only.outstanding_unverified_human_actions)+
@@ -829,9 +848,9 @@
     return parts.join("");
   }
   function csv() {
-    const rows=[["dossier","scope_sha256","task","role","status","local_target_day","unverified_withdrawal_urgency","authority"]];
+    const rows=[["dossier","scope_sha256","task","role","status","local_target_day","unverified_withdrawal_urgency","unverified_permission_questions_open","authority"]];
     report().entries.forEach(e=>TASKS.forEach(([id])=>rows.push([e.dossier,e.source_sha256,id,
-      e.task_roles[id],e.tasks[id],e.task_due_dates[id]||"",e.external_withdrawal_review_only?.urgency||"","REVIEW_ONLY_HOLD"])));
+      e.task_roles[id],e.tasks[id],e.task_due_dates[id]||"",e.external_withdrawal_review_only?.urgency||"",e.permission_questions_review_only?.outstanding_unverified_questions??"","REVIEW_ONLY_HOLD"])));
     const escape=x=>'"'+String(x).replaceAll('"','""')+'"';
     return "\ufeff"+rows.map(row=>row.map(escape).join(",")).join("\r\n")+"\r\n";
   }
