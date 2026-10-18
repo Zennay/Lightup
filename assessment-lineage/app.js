@@ -16,7 +16,7 @@
   const STAGES = ["needs_review","in_discussion","documented"];
   const TOKEN = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
   const MAX_CATALOG = 1048576, MAX_REPORT = 262144;
-  let catalog=null, reports=[], reviews=new Map(), fictional=false;
+  let catalog=null, reports=[], reviews=new Map(), humanNotes=new Map(), fictional=false;
   let catalogHash=null, reportHashes=[];
   function admit(ok){if(!ok)throw Error("Incompatible or unsafe private source");}
   function exact(v,keys){return v!==null && typeof v==="object" && !Array.isArray(v) &&
@@ -354,9 +354,34 @@
     if(!Number.isSafeInteger(i)||i<0||i>=reports.length)return;
     if(!confirm("Remove original source slot "+(i+1)+" from this in-memory review? "+
       "The original private file is NOT deleted. No measurement or scan is repeated."))return;
-    reports.splice(i,1);reportHashes.splice(i,1);undoBatch=null;
+    reports.splice(i,1);reportHashes.splice(i,1);reopenHumanStages();
     render();message("One original completed report removed from private memory; "+
-      "catalog and human work preserved.");
+      "catalog and private notes preserved. Human stages reopened for source review.");
+  }
+
+
+  function humanNote(value){
+    return typeof value==="string"&&value.length<=400&&
+      !/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/.test(value);
+  }
+  function reopenHumanStages(){
+    if(!catalog)return;
+    for(const s of catalog)reviews.set(s.id,"needs_review");
+    undoBatch=null;
+  }
+  function saveCaseNote(){
+    if(!catalog||!catalog.length)return;
+    const index=Number($("inspectCase").value);
+    if(!Number.isSafeInteger(index)||index<0||index>=catalog.length)return;
+    const note=$("privateCaseNote").value;
+    if(!humanNote(note)){
+      message("HOLD: PRIVATE human note is too long or contains forbidden controls.",true);return;
+    }
+    if(note.trim())humanNotes.set(catalog[index].id,note);
+    else humanNotes.delete(catalog[index].id);
+    $("privateNoteState").textContent=note.trim()?
+      "PRIVATE note saved only in memory. Include it only in PRIVATE source-bound draft.":
+      "Private note removed from memory.";
   }
 
   function numberLabel(n){
@@ -367,6 +392,8 @@
     selector.replaceChildren();panel.replaceChildren();
     if(!catalog||!reports.length){
       panel.textContent="Import the original scenario catalog and a completed comparator report first.";
+      $("privateCaseNote").value="";
+      $("privateNoteState").textContent="Load original sources first.";
       return;
     }
     catalog.forEach((s,i)=>{
@@ -376,6 +403,8 @@
     selector.value=old!==""&&Number.isSafeInteger(Number(old))&&Number(old)>=0&&
       Number(old)<catalog.length?old:"0";
     const index=Number(selector.value),scenario=catalog[index];
+    $("privateCaseNote").value=humanNotes.get(scenario.id)||"";
+    $("privateNoteState").textContent="PRIVATE human notes are local and never appear in anonymous exports.";
     const rows=METRICS.map(metric=>[
       metric.replaceAll("_"," "),
       ...reports.map(report=>{
@@ -482,12 +511,13 @@
     try{
       privateSourceBound();
       const draft={
-        schema:"lightup.assessment_lineage_private_draft.v1",
+        schema:"lightup.assessment_lineage_private_draft.v2",
         status:"PRIVATE_HUMAN_DRAFT_ONLY",
         authorized:false,consent_verified:false,dispatch_allowed:false,release_allowed:false,
         source_catalog_sha256:catalogHash,
         source_report_sha256:[...reportHashes],
-        discussion_stages:catalog.map(s=>reviews.get(s.id)||"needs_review")
+        discussion_stages:catalog.map(s=>reviews.get(s.id)||"needs_review"),
+        private_case_notes:catalog.map(s=>humanNotes.get(s.id)||"")
       };
       if(!confirm("Download a PRIVATE draft with the SHA-256 fingerprints of original "+
         "private file bytes and human stages? Protect this file; it is not a consent or grant."))return;
@@ -500,9 +530,10 @@
     try{
       privateSourceBound();
       const input=await read(file,65536),draft=input.result;
-      admit(exact(draft,["schema","status",...FLAGS,"source_catalog_sha256",
-        "source_report_sha256","discussion_stages"])&&
-        draft.schema==="lightup.assessment_lineage_private_draft.v1"&&
+      const version=draft?.schema,withNotes=version==="lightup.assessment_lineage_private_draft.v2";
+      admit((version==="lightup.assessment_lineage_private_draft.v1"||withNotes)&&
+        exact(draft,["schema","status",...FLAGS,"source_catalog_sha256",
+          "source_report_sha256","discussion_stages",...(withNotes?["private_case_notes"]:[])])&&
         draft.status==="PRIVATE_HUMAN_DRAFT_ONLY"&&flags(draft)&&
         draft.source_catalog_sha256===catalogHash&&
         Array.isArray(draft.source_report_sha256)&&
@@ -511,10 +542,16 @@
         Array.isArray(draft.discussion_stages)&&
         draft.discussion_stages.length===catalog.length&&
         draft.discussion_stages.every(v=>STAGES.includes(v)));
-      // Only replace human review stages after all file/source digest invariants hold.
-      reviews=new Map(catalog.map((s,i)=>[s.id,draft.discussion_stages[i]]));
-      undoBatch=null;render();
-      message("PRIVATE discussion stages restored for the exact original file bytes in source order.");
+      if(withNotes)admit(Array.isArray(draft.private_case_notes)&&
+        draft.private_case_notes.length===catalog.length&&
+        draft.private_case_notes.every(humanNote));
+      // Atomically replace only PRIVATE human review data, never original source.
+      const nextReviews=new Map(catalog.map((s,i)=>[s.id,draft.discussion_stages[i]]));
+      const nextNotes=withNotes?new Map(catalog.flatMap((s,i)=>
+        draft.private_case_notes[i]?[[s.id,draft.private_case_notes[i]]]:[])):new Map();
+      reviews=nextReviews;humanNotes=nextNotes;undoBatch=null;render();
+      message("PRIVATE stages and local notes restored for exact source bytes. "+
+        "Legacy v1 resumes with empty notes.");
     }catch(_){message("HOLD: draft or original source bytes do not match. Existing stages preserved.",true);}
   }
 
@@ -572,7 +609,7 @@
       message("Script-free, target-free human brief downloaded.");
     }catch(_){message("HOLD: brief not available until sources match exactly.",true);}
   }
-  function forget(){catalog=null;reports=[];reviews=new Map();catalogHash=null;
+  function forget(){catalog=null;reports=[];reviews=new Map();humanNotes=new Map();catalogHash=null;
     reportHashes=[];undoBatch=null;resetFilters();fictional=false;render();message("All source and review data cleared from memory.");}
   function makeDemo(){
     const names=["scenario-FAKE-01","scenario-FAKE-02","scenario-FAKE-03"];
@@ -590,7 +627,7 @@
         return [id,{metrics,adverse:variant&&i===2?["scope_violations"]:[]}];
       }))
     });
-    reports=[candidate(0),candidate(1)];reviews=new Map();catalogHash=null;
+    reports=[candidate(0),candidate(1)];reviews=new Map();humanNotes=new Map();catalogHash=null;
     reportHashes=[];undoBatch=null;resetFilters();fictional=true;
     render();message("FICTIONAL offline demonstration loaded; no source evidence or permission.");
   }
@@ -642,7 +679,7 @@
       harmonize(nextReports);
       // All source files are fully canonical and mutually consistent before ANY mutation.
       catalog=nextCatalog;reports=nextReports;catalogHash=sourceCatalog.digest;
-      reportHashes=nextHashes;reviews=new Map();undoBatch=null;fictional=false;
+      reportHashes=nextHashes;reviews=new Map();humanNotes=new Map();undoBatch=null;fictional=false;
       resetFilters();render();
       // The template is no longer needed after import and should not linger in DOM.
       privateTemplate.content.replaceChildren();
@@ -665,7 +702,7 @@
       const imported=await read(file,MAX_CATALOG);
       const candidate=parseCatalog(imported.result);
       if((catalog||reports.length)&&!confirm("Replace private catalog and clear previously imported lab comparisons and human stage work?"))return;
-      catalog=candidate;reports=[];reviews=new Map();catalogHash=imported.digest;
+      catalog=candidate;reports=[];reviews=new Map();humanNotes=new Map();catalogHash=imported.digest;
       reportHashes=[];undoBatch=null;resetFilters();fictional=false;render();
       message("PRIVATE lab design admitted. Targets and finding IDs were discarded after validation.");
     }catch(_){message("HOLD: incompatible PRIVATE Lab Scenario Studio source. Existing data preserved.",true);}
@@ -682,9 +719,9 @@
       }
       harmonize([...reports,...add]);
       reports=[...reports,...add];reportHashes=[...reportHashes,...digests];
-      undoBatch=null;render();
-      message("Canonical offline summaries admitted; source identities remain private. "+
-        "Original benchmark data is not authenticated.");
+      reopenHumanStages();render();
+      message("Canonical summaries admitted; all human stages reopened for source review. "+
+        "Private notes kept locally. Original benchmark data is not authenticated.");
     }catch(_){message("HOLD: contradictory, duplicate, oversized or incompatible comparison source. Workspace preserved.",true);}
   });
   $("demo").addEventListener("click",()=>{
@@ -698,6 +735,7 @@
   for(const id of ["familyFilter","stageFilter","truthFilter"])
     $(id).addEventListener("change",render);
   $("inspectCase").addEventListener("change",renderInspector);
+  $("saveCaseNote").addEventListener("click",saveCaseNote);
   $("sourceOrder").addEventListener("change",renderSourceOrder);
   $("sourceEarlier").addEventListener("click",()=>chooseSource(-1));
   $("sourceLater").addEventListener("click",()=>chooseSource(1));
