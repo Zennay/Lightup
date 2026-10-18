@@ -132,6 +132,9 @@
     const reserve = exactInteger(options.reserve,0,80,'reserved capacity percentage');
     const estimated = {};
     SEVERITIES.forEach(s => { estimated[s] = exactInteger(options.hours[s],1,200,'estimated '+s+' effort'); });
+    const weekAvailability = options.weekAvailability === undefined ? Array(weeks).fill(100) : options.weekAvailability;
+    if (!Array.isArray(weekAvailability) || weekAvailability.length !== weeks) fail('Availability must be supplied for every planning week');
+    const availability = Object.freeze(weekAvailability.map((v,i)=>exactInteger(v,0,100,'week '+(i+1)+' availability percentage')));
     const gross = engineers * workDays * hoursPerDay;
     const capacity = Math.floor((gross * (100 - reserve)) / 100);
     if (capacity < 1) fail('No available capacity after reserve');
@@ -146,7 +149,8 @@
       SEVERITY_INDEX.get(a.severity)-SEVERITY_INDEX.get(b.severity) || a.ordinal-b.ordinal);
     const schedule = [];
     for (let w=0;w<weeks;w++) {
-      let remaining = capacity;
+      const weeklyCapacity = Math.floor(capacity * availability[w] / 100);
+      let remaining = weeklyCapacity;
       const portions=[];
       for (const task of queue) {
         if (!remaining) break;
@@ -158,7 +162,8 @@
           sourceRetest:task.retest,hours:allocation,finished:task.remaining===0}));
       }
       schedule.push(Object.freeze({week:w+1,start:iso(start+w*7*86400000),
-        capacity,assigned:capacity-remaining,remaining,portions:Object.freeze(portions)}));
+        availability:availability[w],capacity:weeklyCapacity,
+        assigned:weeklyCapacity-remaining,remaining,portions:Object.freeze(portions)}));
     }
     const outstanding = queue.filter(x=>x.remaining>0);
     const totalHours = queue.reduce((n,x)=>n+x.effort,0);
@@ -168,7 +173,7 @@
       backlogCount:outstanding.length,
       completedProposals:queue.filter(x=>x.remaining===0).length,
       sourceCount:queue.length,
-      reserve, start:options.start,daysPerWeek:workDays});
+      reserve, start:options.start,daysPerWeek:workDays,weeklyAvailability:availability});
   }
   function summary(plan) {
     return {
@@ -180,15 +185,15 @@
       backlog_hours:plan.backlogHours, backlog_findings:plan.backlogCount,
       sprint_weeks:plan.schedule.map(week=>{
         const severity_hours=Object.fromEntries(SEVERITIES.map(s=>[s,week.portions.filter(p=>p.severity===s).reduce((a,p)=>a+p.hours,0)]));
-        return {week:week.week,start:week.start,available_hours:week.capacity,
+        return {week:week.week,start:week.start,availability_pct:week.availability,available_hours:week.capacity,
           allocated_hours:week.assigned,severity_hours};
       })
     };
   }
   function csvReport(plan) {
     const escape = v => '"' + String(v).replace(/"/g,'""') + '"';
-    const headers=['week','week_start','available_hours','allocated_hours',...SEVERITIES.map(s=>s+'_hours')];
-    const rows=plan.schedule.map(w=>[w.week,w.start,w.capacity,w.assigned,...SEVERITIES.map(s=>
+    const headers=['week','week_start','availability_pct','available_hours','allocated_hours',...SEVERITIES.map(s=>s+'_hours')];
+    const rows=plan.schedule.map(w=>[w.week,w.start,w.availability,w.capacity,w.assigned,...SEVERITIES.map(s=>
       w.portions.filter(p=>p.severity===s).reduce((a,p)=>a+p.hours,0))]);
     return [headers.map(escape).join(','),...rows.map(row=>row.map(escape).join(','))].join('\r\n')+'\r\n';
   }
@@ -206,11 +211,11 @@
       '- Hours tentatively assigned to weekly buckets: '+data.assigned_hours+' h',
       '- Backlog beyond modelled capacity: '+data.backlog_hours+' h across '+data.backlog_findings+' records',
       '',
-      '| Week | Week beginning (UTC) | Capacity (h) | Planned (h) | Critical (h) | High (h) | Medium (h) | Low (h) | Info (h) |',
+      '| Week | Week beginning (UTC) | Availability (%) | Capacity (h) | Planned (h) | Critical (h) | High (h) | Medium (h) | Low (h) | Info (h) |',
       '| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |'
     ];
     for(const w of data.sprint_weeks) lines.push(
-      '| '+[w.week,w.start,w.available_hours,w.allocated_hours,...SEVERITIES.map(s=>w.severity_hours[s])].join(' | ')+' |'
+      '| '+[w.week,w.start,w.availability_pct,w.available_hours,w.allocated_hours,...SEVERITIES.map(s=>w.severity_hours[s])].join(' | ')+' |'
     );
     lines.push('','Human follow-up: confirm source client/engagement externally, review estimates and staffing, assign owners through existing authorised channels, verify repairs/retests separately.','');
     return lines.join('\n');
