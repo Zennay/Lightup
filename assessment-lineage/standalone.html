@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="referrer" content="no-referrer">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-0J521/chFI2aaPaFBp6oSfSh2FSKIi8qYS5kaTLpS0Q='; style-src 'sha256-2vmjPsT8ouhWHJnY9GNxOzhy//TjnuQQ9qPkekUSqC0='; connect-src 'none'; img-src 'none'; font-src 'none'; object-src 'none'; frame-src 'none'; form-action 'none'; base-uri 'none'; worker-src 'none'; manifest-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-QRpU4k7UN69JBwyMLAQBQFr3cFFEuLOOXDb6sbEyHUo='; style-src 'sha256-2vmjPsT8ouhWHJnY9GNxOzhy//TjnuQQ9qPkekUSqC0='; connect-src 'none'; img-src 'none'; font-src 'none'; object-src 'none'; frame-src 'none'; form-action 'none'; base-uri 'none'; worker-src 'none'; manifest-src 'none'">
 <title>LightUp · Offline Lab Lineage Desk</title>
 <style>:root{color-scheme:dark;--bg:#081523;--panel:#14263b;--ink:#edf6ff;--muted:#b3c5d5;--line:#3b526b;--link:#8fd8ff;--hold:#ffce8a}
 *{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 system-ui,Segoe UI,sans-serif}
@@ -352,6 +352,39 @@ button:disabled{cursor:not-allowed;opacity:.5}
     for(const id of ["familyFilter","stageFilter","truthFilter"])$(id).value="all";
   }
 
+
+  function numberLabel(n){
+    return Number.isInteger(n)?String(n):n.toPrecision(6).replace(/\.?0+($|e)/,"$1");
+  }
+  function renderInspector(){
+    const selector=$("inspectCase"),panel=$("metricInspector"),old=selector.value;
+    selector.replaceChildren();panel.replaceChildren();
+    if(!catalog||!reports.length){
+      panel.textContent="Import the original scenario catalog and a completed comparator report first.";
+      return;
+    }
+    catalog.forEach((s,i)=>{
+      const option=document.createElement("option");option.value=String(i);
+      option.textContent="Lab case "+String(i+1).padStart(2,"0");selector.append(option);
+    });
+    selector.value=old!==""&&Number.isSafeInteger(Number(old))&&Number(old)>=0&&
+      Number(old)<catalog.length?old:"0";
+    const index=Number(selector.value),scenario=catalog[index];
+    const rows=METRICS.map(metric=>[
+      metric.replaceAll("_"," "),
+      ...reports.map(report=>{
+        const row=report.cases.get(scenario.id);
+        if(!row)return "ABSENT — HOLD";
+        const v=row.metrics.get(metric);
+        return "source baseline "+numberLabel(v.baseline)+
+          " → candidate "+numberLabel(v.candidate)+
+          " (delta "+numberLabel(v.candidate-v.baseline)+")"+
+          (v.regression?" · ORIGINAL SOURCE FLAG":" · no original adverse flag");
+      })
+    ]);
+    table(panel,["Original metric",...reports.map((_,i)=>"Completed report "+(i+1))],rows);
+  }
+
   function render(){
     const ready=Boolean(catalog&&reports.length),match=consistency();
     $("catalogState").textContent=catalog?catalog.length+" private design scenario slots loaded":"No private catalog loaded";
@@ -372,10 +405,10 @@ button:disabled{cursor:not-allowed;opacity:.5}
       " private source cases. Sorted: missing originals → scope/policy → findings → "+
       "evidence → informational operations → no source flags. This is an analyst review order, not a verified risk score.";
     $("undoStage").disabled=!undoBatch;
-    if(!catalog)return;
+    if(!catalog){renderInspector();return;}
     const grid=document.createElement("table"),head=document.createElement("thead"),h=document.createElement("tr");
     for(const text of ["Private scenario","Original source priority","Declared ground truth","Planted count",
-      ...reports.map((_,i)=>"Source "+(i+1)+" flags"),"Human discussion"]){
+      ...reports.map((_,i)=>"Source "+(i+1)+" flags"),"Human discussion","Inspect originals"]){
       const th=document.createElement("th");th.textContent=text;h.append(th);
     }
     head.append(h);grid.append(head);
@@ -404,13 +437,20 @@ button:disabled{cursor:not-allowed;opacity:.5}
         reviews.set(item.id,selector.value);undoBatch=null;
         render();message("Private human stage updated in memory only.");
       });
-      cell.append(selector);row.append(cell);body.append(row);
+      cell.append(selector);row.append(cell);
+      const jump=document.createElement("td");
+      jump.append(button("Inspect",()=>{
+        $("inspectCase").value=String(i);renderInspector();
+        $("inspectorSection").scrollIntoView({block:"start",behavior:"smooth"});
+      }));
+      row.append(jump);body.append(row);
     });
     grid.append(body);$("cases").append(grid);
     const extras=document.createElement("p");
     extras.textContent=match.unexpected+" extra original report case memberships omitted from private scenario rows. "+
       "No identities appear in public exports. Filtering never changes original imports.";
     $("cases").append(extras);
+    renderInspector();
   }
   function download(name,content,type){
     const url=URL.createObjectURL(new Blob([content],{type}));
@@ -585,6 +625,7 @@ button:disabled{cursor:not-allowed;opacity:.5}
   });
   for(const id of ["familyFilter","stageFilter","truthFilter"])
     $(id).addEventListener("change",render);
+  $("inspectCase").addEventListener("change",renderInspector);
   $("applyStage").addEventListener("click",humanBulk);
   $("undoStage").addEventListener("click",undoHumanBulk);
   $("exportDraft").addEventListener("click",exportPrivateDraft);
@@ -665,8 +706,15 @@ button:disabled{cursor:not-allowed;opacity:.5}
     <p>Filtering or moving a human discussion stage never changes a source report, invokes an evaluator or grants permission.</p>
     <div id="cases" class="scroll" aria-label="Private human scenario review"></div>
   </section>
+  <section id="inspectorSection" aria-labelledby="inspectorTitle">
+    <h2 id="inspectorTitle">4. Original source metric inspector</h2>
+    <p>Inspect all fifteen canonical metrics per original private case ordinal and completed source slot: original baseline, reported candidate value, numerical difference and literal original-source regression flag. This is a read-only human interpretation aid; no new evaluation, metric certification, target contact or automatic GO status occurs.</p>
+    <label for="inspectCase">Private case ordinal</label>
+    <select id="inspectCase" aria-label="Private case to inspect"></select>
+    <div id="metricInspector" class="scroll" aria-live="polite"></div>
+  </section>
   <section aria-labelledby="privateDraftTitle">
-    <h2 id="privateDraftTitle">4. PRIVATE human work continuity (optional)</h2>
+    <h2 id="privateDraftTitle">5. PRIVATE human work continuity (optional)</h2>
     <p>The browser does not store data. After importing the <strong>original exact source bytes</strong>, you may save the human discussion stages to a deliberately PRIVATE local JSON draft and later restore them when the <strong>same original catalog and report files, in the same order</strong> are reimported. It includes SHA-256 fingerprints of private source bytes — never upload or circulate it as an anonymous report. Original files and targets are NOT embedded in the draft.</p>
     <p>When secure browser SHA-256 is unavailable, private save/restore is refused safely; the anonymous handoff remains separate. Any changed source file or added source changes the private restore binding.</p>
     <div class="actions"><button id="exportDraft" type="button">Save PRIVATE source-bound human draft</button>
@@ -675,7 +723,7 @@ button:disabled{cursor:not-allowed;opacity:.5}
     <p class="warning">PRIVATE drafts are unsigned self-reports. Stage “documented” is never remediation proof, consent, authorization, or release.</p>
   </section>
   <section aria-labelledby="handoffTitle">
-    <h2 id="handoffTitle">5. Anonymous human handoff</h2>
+    <h2 id="handoffTitle">6. Anonymous human handoff</h2>
     <p>Exports require exact case membership across the current original catalog and every selected comparison. A missing or extra case produces HOLD and no export. Original scenario IDs, IPs, finding identifiers, user names, uploaded files, and private notes are <strong>never</strong> included in these aggregate-only handoffs.</p>
     <div class="actions">
       <button id="exportJson" type="button">Anonymous aggregate JSON</button>
