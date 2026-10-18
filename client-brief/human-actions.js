@@ -34,6 +34,9 @@ function fromState(state,{includeOperator=false}={}){
    'Human reviewer must compare the underlying original authorized sources; reported count changes are not a verified new scan or proof of worsened security.');
   if(regressions>prior.retest.regression)add('urgent','historical_aggregate','Reported regression count increased',regressions-prior.retest.regression,
    'Escalate original evidence review and obtain independent authorization before any retest.');
+  if(prior.proposed_scope&&!state.studio)
+   add('attention','historical_aggregate','Previously proposed scope is absent from current review',1,
+    'Reconcile the original proposal with its real client/operator owners. A missing proposal is not revocation, a narrowed grant or permission to scan.');
   if(state.studio&&prior.proposed_scope){
    if(state.studio.requested_risk>prior.proposed_scope.risk)
     add('urgent','historical_aggregate','Proposed risk increased since earlier briefing',1,
