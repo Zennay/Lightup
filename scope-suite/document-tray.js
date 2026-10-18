@@ -108,6 +108,7 @@
 
   function falseAuthorityOnly(node,depth=0){
     if(depth>18)throw Error("TREE_DEPTH");
+    if(typeof node==="number"&&!Number.isFinite(node))throw Error("INVALID_NUMBER");
     if(Array.isArray(node)){
       for(const entry of node)falseAuthorityOnly(entry,depth+1);
     } else if(isObject(node)){
@@ -140,6 +141,14 @@
         throw Error("INVALID_STUDIO_DRAFT");
       for(const key of ["authorization","client_consent","operator_consent","grant","execution","revocation_checked"])
         if(!own(value,key)||value[key]!==false)throw Error("STUDIO_NOT_DRAFT");
+      const flags=["passive_analysis","configuration_review","private_lab_network_checks"];
+      if(!isObject(value.proposed_activities)||
+         Object.keys(value.proposed_activities).length!==3||
+         flags.some(key=>!own(value.proposed_activities,key)||typeof value.proposed_activities[key]!=="boolean"))
+        throw Error("INVALID_STUDIO_DRAFT");
+      if(!own(value,"proposed_window_local")||
+         !(value.proposed_window_local===null||isObject(value.proposed_window_local)))
+        throw Error("INVALID_STUDIO_DRAFT");
     } else if(own(value,"source_sha256")) {
       if(typeof value.source_sha256!=="string"||!shaPattern.test(value.source_sha256))
         throw Error("INVALID_SOURCE_HASH");
@@ -184,6 +193,7 @@
     if(cap<=0 || cap>MAX_DOCUMENT_BYTES || !file.name.toLowerCase().endsWith(".json"))
       throw Error("FILE_TOO_LARGE");
     const bytes=new Uint8Array(await file.arrayBuffer());
+    if(bytes[0]===0xef&&bytes[1]===0xbb&&bytes[2]===0xbf)throw Error("INVALID_BOM");
     const str=new TextDecoder("utf-8",{fatal:true}).decode(bytes);
     const content=decodeStrict(str);
     const result=inspect(content);
