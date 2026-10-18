@@ -58,12 +58,22 @@ function validUtcWindow(d){
 }
 function validDraft(d){
  if(!plain(d)||d.kind!=='lightup.scope_proposal_draft'||d.schema_version!==1||d.state!=='DRAFT_ONLY')return false;
+ const allowedSourceFields=[
+  'schema_version','kind','state','authorization','client_consent','operator_consent','grant',
+  'execution','revocation_checked','proposal_name','client_label','requested_assets',
+  'excluded_assets','requested_mode','requested_risk','notes','proposed_activities',
+  'proposed_window_local','proposed_window_utc','exported_at_utc','scope_fingerprint_sha256'
+ ];
+ if(Object.keys(d).some(k=>!allowedSourceFields.includes(k)))return false;
  if(!['authorization','client_consent','operator_consent','grant','execution','revocation_checked'].every(k=>d[k]===false))return false;
  if(!validText(d.proposal_name,120)||!validText(d.client_label,100)||!validText(d.notes,3000))return false;
  if(!['analysis_only','authorized_assessment'].includes(d.requested_mode)||![1,2,3,4].includes(d.requested_risk))return false;
  if(!Array.isArray(d.requested_assets)||!Array.isArray(d.excluded_assets)||d.requested_assets.length>80||d.excluded_assets.length>80)return false;
- if(![...d.requested_assets,...d.excluded_assets].every(x=>validText(x,253)&&x.length>0&&x.trim()===x))return false;
- if(!plain(d.proposed_activities)||!['passive_analysis','configuration_review','private_lab_network_checks'].every(k=>typeof d.proposed_activities[k]==='boolean'))return false;
+ if(!d.requested_assets.length||![...d.requested_assets,...d.excluded_assets].every(x=>validText(x,253)&&x.length>0&&x.trim()===x))return false;
+ const noDuplicates=list=>new Set(list.map(x=>x.toLowerCase())).size===list.length;
+ if(!noDuplicates(d.requested_assets)||!noDuplicates(d.excluded_assets))return false;
+ if(!plain(d.proposed_activities)||Object.keys(d.proposed_activities).some(k=>!['passive_analysis','configuration_review','private_lab_network_checks'].includes(k))||
+  !['passive_analysis','configuration_review','private_lab_network_checks'].every(k=>typeof d.proposed_activities[k]==='boolean'))return false;
  if(!plain(d.proposed_window_local)||!validUtcWindow(d))return false;
  if(!['start','end'].every(k=>d.proposed_window_local[k]===null||validText(d.proposed_window_local[k],80)))return false;
  // Any stored source digest is only a continuity hint. Never treat it as trusted identity.
