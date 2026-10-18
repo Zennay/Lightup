@@ -576,6 +576,10 @@ class DomainStore:
         client_id: str | None = None,
     ) -> AssessmentRequestRecord:
         client_id = ctx.resolve_client(client_id, "submit_assessment_request")
+        # The portal may synthesize a client context for an operator viewing a
+        # client page. Never trust that role/tenant claim for client-origin writes.
+        if ctx.role not in (Role.CLIENT_ADMIN, Role.CLIENT_MEMBER):
+            raise RoleError("assessment requests require a real client account")
         assets = tuple(a.strip() for a in requested_assets if a.strip())
         if not assets:
             raise ValueError("at least one requested asset is required")
@@ -593,6 +597,24 @@ class DomainStore:
             decided_at=None,
         )
         with self._connect() as con:
+            # Recheck the durable identity inside the *same* database transaction
+            # as the write: a caller cannot promote an operator's user_id by
+            # constructing a CLIENT_ADMIN AccessContext for a tenant.
+            con.execute("BEGIN IMMEDIATE")
+            principal = con.execute(
+                "SELECT u.role, u.client_id, c.status FROM users AS u "
+                "JOIN clients AS c ON c.client_id=u.client_id "
+                "WHERE u.user_id=?", (ctx.user_id,),
+            ).fetchone()
+            if (
+                principal is None
+                or principal["role"] not in (Role.CLIENT_ADMIN.value, Role.CLIENT_MEMBER.value)
+                or principal["role"] != ctx.role.value
+                or principal["client_id"] != client_id
+                or principal["status"] != "active"
+            ):
+                con.rollback()
+                raise RoleError("assessment request requires a current, matching client identity")
             con.execute(
                 "INSERT INTO assessment_requests("
                 "request_id,client_id,requested_assets_json,requested_mode,requested_risk,"
@@ -601,6 +623,7 @@ class DomainStore:
                  record.requested_mode.value, int(record.requested_risk), record.notes,
                  record.status.value, record.requested_by, record.created_at),
             )
+            con.commit()
         return record
 
     @staticmethod
