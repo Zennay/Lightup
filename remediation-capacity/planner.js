@@ -218,6 +218,38 @@
       smallest_modelled_team:minimumEngineers,search_max_engineers:30
     });
   }
+  // Quantify resilience to an explicitly hypothetical staffing interruption.
+  // Never mutates the baseline or reclassifies findings or permission.
+  function interruptionScenario(findings,rawOptions,week,weekAvailability,globalReduction) {
+    const base=plan(findings,rawOptions);
+    const index=exactInteger(week,1,base.schedule.length,'interrupted week')-1;
+    const capped=exactInteger(weekAvailability,0,100,'interrupted week availability');
+    const reduction=exactInteger(globalReduction,0,100,'ongoing capacity reduction');
+    const original=base.weeklyAvailability;
+    const temporary=Array.from(original);
+    temporary[index]=Math.min(temporary[index],capped);
+    const reduced=original.map(value=>Math.floor(value*(100-reduction)/100));
+    const isolated=plan(findings,{...rawOptions,weekAvailability:temporary});
+    const ongoing=plan(findings,{...rawOptions,weekAvailability:reduced});
+    const aggregate=(p)=>Object.freeze({
+      estimated_hours:p.totalHours,provisionally_allocated_hours:p.assignedHours,
+      unallocated_hours:p.backlogHours,unallocated_findings:p.backlogCount,
+      critical_high_unallocated_hours:p.priorityBands.critical.unscheduled_hours+
+        p.priorityBands.high.unscheduled_hours,
+      weekly_capacity_hours:Object.freeze(p.schedule.map(w=>w.capacity)),
+      weekly_allocated_hours:Object.freeze(p.schedule.map(w=>w.assigned))
+    });
+    return Object.freeze({
+      schema:'lightup.remediation_capacity_interruption_draft.v1',
+      review_only:true,authorization:false,consent:false,grant:false,scan:false,
+      execute:false,dispatch:false,retest_verified:false,deploy:false,release:false,
+      hypothetical_event_week:index+1,
+      hypothetical_event_availability_pct:temporary[index],
+      hypothetical_ongoing_reduction_pct:reduction,
+      baseline:aggregate(base),single_week_interruption:aggregate(isolated),
+      sustained_reduction:aggregate(ongoing)
+    });
+  }
   function summary(plan) {
     return {
       schema:'lightup.remediation_capacity_draft.v1',
@@ -274,5 +306,5 @@
     lines.push('','Human follow-up: confirm source client/engagement externally, review estimates and staffing, assign owners through existing authorised channels, verify repairs/retests separately.','');
     return lines.join('\n');
   }
-  root.LightUpCapacity = Object.freeze({parseCSV,compareReports,plan,riskMilestone,summary,csvReport,markdownReport,DEFAULT_HOURS,MAX_BYTES,MAX_ROWS});
+  root.LightUpCapacity = Object.freeze({parseCSV,compareReports,plan,riskMilestone,interruptionScenario,summary,csvReport,markdownReport,DEFAULT_HOURS,MAX_BYTES,MAX_ROWS});
 })(window);
