@@ -19,3 +19,7 @@ Only `src/lightup/execution_policy.py` and this independent documentation are mo
 ## Original grant/scope source stability
 
 The decision path now first accepts exact canonical original grant/scope values, then constructs a detached in-memory builtin snapshot of the original grant and scope. Asset, capability, risk and validity checks read the snapshot rather than repeatedly reading caller-owned objects. Before a positive decision, both original object identities and their canonical fields are compared again; changed sources produce a negative decision. This reduces in-process read drift but cannot prove a live durable grant, stop all simultaneous mutation or replace revocation-at-dispatch.
+
+## Request-field stability for all four modes
+
+A third source improvement copies exact built-in ExecutionRequest fields before evaluating any branch. Every positive decision, including passive/analysis and isolated laboratory work, now checks unchanged original interaction, requested risk, asset, capability, boolean lab marker and original grant-object identity against that snapshot. A frozen dataclass whose fields have been forcibly mutated during a policy call no longer receives a positive source decision. This remains only a decision-time control; the caller must still enforce authorization again before any real execution.

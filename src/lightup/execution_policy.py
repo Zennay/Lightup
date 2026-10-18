@@ -63,21 +63,32 @@ class ExecutionPolicy:
         # an unknown interaction may never fall through as TARGET_ACTIVE.
         if not _canonical_request(request):
             return PolicyDecision(False, "noncanonical execution request")
+        original_request = request
+        request = ExecutionRequest(
+            interaction=request.interaction,
+            asset=request.asset,
+            capability_id=request.capability_id,
+            requested_risk=request.requested_risk,
+            authorization=request.authorization,
+            is_lab=request.is_lab,
+        )
+        if not _canonical_request(request):
+            return PolicyDecision(False, "execution request changed while reading")
 
         if request.interaction is InteractionKind.ANALYSIS:
             if request.requested_risk is not RiskLevel.ANALYSIS_ONLY:
                 return PolicyDecision(False, "analysis mode cannot request active risk")
-            return PolicyDecision(True, "analysis-only")
+            return _positive_if_request_unchanged(original_request, request, "analysis-only")
 
         if request.interaction is InteractionKind.PASSIVE_PUBLIC:
             if request.requested_risk > RiskLevel.PASSIVE:
                 return PolicyDecision(False, "passive discovery cannot request active risk")
-            return PolicyDecision(True, "public passive discovery")
+            return _positive_if_request_unchanged(original_request, request, "public passive discovery")
 
         if request.interaction is InteractionKind.LAB_ACTIVE:
             if request.is_lab is not True:
                 return PolicyDecision(False, "lab execution requires a lab target")
-            return PolicyDecision(True, "isolated lab execution")
+            return _positive_if_request_unchanged(original_request, request, "isolated lab execution")
 
         # Only an exact TARGET_ACTIVE enum reaches the real-target boundary.
         if request.interaction is not InteractionKind.TARGET_ACTIVE:
@@ -118,7 +129,7 @@ class ExecutionPolicy:
         if _grant_snapshot(original_grant) != grant:
             return PolicyDecision(False, "authorization fields changed during decision")
 
-        return PolicyDecision(True, "authorized active assessment")
+        return _positive_if_request_unchanged(original_request, request, "authorized active assessment")
 
 
 def _canonical_scope(scope: object) -> bool:
@@ -169,3 +180,20 @@ def _grant_snapshot(grant: AuthorizationGrant) -> AuthorizationGrant:
         valid_until=grant.valid_until,
         recurring_retest_allowed=grant.recurring_retest_allowed,
     )
+
+
+def _positive_if_request_unchanged(
+    original: ExecutionRequest, snapshot: ExecutionRequest, reason: str
+) -> PolicyDecision:
+    if not _canonical_request(original):
+        return PolicyDecision(False, "execution request changed during decision")
+    if not (
+        original.interaction is snapshot.interaction
+        and original.asset == snapshot.asset
+        and original.capability_id == snapshot.capability_id
+        and original.requested_risk is snapshot.requested_risk
+        and original.authorization is snapshot.authorization
+        and original.is_lab is snapshot.is_lab
+    ):
+        return PolicyDecision(False, "execution request changed during decision")
+    return PolicyDecision(True, reason)
