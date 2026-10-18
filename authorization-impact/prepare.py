@@ -269,7 +269,10 @@ def _write_private(dirfd: int, name: str, data: bytes) -> dict[str, object]:
     }
 
 
-def publish_bytes(original: bytes, destination: Path, *, fresh_original_auth: bool = False) -> None:
+def publish_bytes(
+    original: bytes, destination: Path, *,
+    fresh_original_auth: bool = False, review_raw: bytes | None = None,
+) -> None:
     """Package original source bytes; does not authenticate or change the source.
 
     The optional provenance label records which trusted caller performed the
@@ -278,6 +281,10 @@ def publish_bytes(original: bytes, destination: Path, *, fresh_original_auth: bo
     if type(original) is not bytes or not 2 <= len(original) <= SOURCE_LIMIT:
         raise Refused("source length")
     _validate_source(original)
+    if review_raw is not None:
+        # Delayed import deliberately preserves standalone use of prepare.py.
+        from review_binding import admit_private_review
+        admit_private_review(original, review_raw)
     app = _read_private(Path(__file__).resolve().with_name("standalone.html"), APP_LIMIT, require_private=False)
     if b"<title>LightUp | Scope Impact Map</title>" not in app:
         raise Refused("unexpected bundled app")
@@ -295,7 +302,9 @@ def publish_bytes(original: bytes, destination: Path, *, fresh_original_auth: bo
         "1. Open standalone.html in an offline browser.\\n"
         "2. Import casebook.json through 'Load PRIVATE Casebook JSON'.\\n"
         "3. Inspect source links and add human-only notes.\\n"
-        "4. Export counts or confirm a PRIVATE recipient for human notes.\\n\\n"
+        "4. Export counts or confirm a PRIVATE recipient for human notes.\\n"
+        + ("5. If present, restore PRIVATE-review.json through Restore PRIVATE notes.\\n" if review_raw is not None else "")
+        + "\\n"
         + provenance_note
         + "Recorded source state is retrospective; no current live authorization.\\n"
         "A SHA-256 is a byte fingerprint, not an issuer signature.\\n"
@@ -322,6 +331,9 @@ def publish_bytes(original: bytes, destination: Path, *, fresh_original_auth: bo
         ):
             created.append(name)
             files[name] = _write_private(dirfd, name, raw)
+        if review_raw is not None:
+            created.append("PRIVATE-review.json")
+            files["PRIVATE-review.json"] = _write_private(dirfd, "PRIVATE-review.json", review_raw)
         manifest = {
             "schema": "lightup.scope_impact_workspace.v1",
             "status": "REVIEW_ONLY",
@@ -356,10 +368,11 @@ def publish_bytes(original: bytes, destination: Path, *, fresh_original_auth: bo
                 pass
 
 
-def publish(source: Path, destination: Path) -> None:
-    """Preserve the original strict private-file-only operator workflow."""
+def publish(source: Path, destination: Path, *, review: Path | None = None) -> None:
+    """Strict original private-source and optional matching human-note handoff."""
     original = _read_private(source, SOURCE_LIMIT)
-    publish_bytes(original, destination)
+    review_raw = _read_private(review, 262144) if review is not None else None
+    publish_bytes(original, destination, review_raw=review_raw)
 
 
 def main() -> int:
@@ -368,9 +381,10 @@ def main() -> int:
     )
     parser.add_argument("casebook", type=Path, help="Existing original 0600 Casebook JSON")
     parser.add_argument("workspace", type=Path, help="New exclusively created private directory")
+    parser.add_argument("--review", type=Path, help="Optional owner-private human note JSON for this EXACT source revision")
     args = parser.parse_args()
     try:
-        publish(args.casebook, args.workspace)
+        publish(args.casebook, args.workspace, review=args.review)
     except (Refused, OSError, ValueError, TypeError):
         print("HOLD: private original-source handoff was refused; check source and permissions.", file=sys.stderr)
         return 3
