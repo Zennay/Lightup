@@ -26,6 +26,13 @@
       <label for="entry">Lab URLs</label>
       <textarea id="entry" spellcheck="false" rows="6" placeholder="http://127.0.0.1:18080/&#10;http://10.0.0.5:8080/"></textarea>
       <div class="buttons"><button type="button" id="add">Add to batch</button><button type="button" id="clear" class="quiet">Clear all local entries</button></div>
+      <details class="import">
+        <summary>Import a previous original-format targets.txt</summary>
+        <p>Choose a local UTF-8 manifest (maximum 16 KiB). Import replaces this entire in-memory batch only after every line is admitted. Blank and # comment lines follow the original CLI file format. Your local file is not uploaded anywhere.</p>
+        <label for="source-file">Existing private manifest file</label>
+        <input id="source-file" type="file" accept=".txt,text/plain">
+        <button type="button" id="import">Replace batch from chosen file</button>
+      </details>
       <p id="feedback" role="status" aria-live="polite">No endpoints prepared.</p>
     </section>
     <section>
