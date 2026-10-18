@@ -170,12 +170,14 @@ function clearMergePreview(message='Merge preview is stale; select the workspace
 function setDirty(){dirty=true;editEpoch++;clearIntakePreview();clearRevisionPreview();clearMergePreview();bulkUndo=null;$('bulkUndo').disabled=true;clearPacketPreview();clearBulkPreview();$('save').disabled=!entries.length;$('csv').disabled=!entries.length;$('print').disabled=!entries.length;$('todoExport').disabled=!entries.length;}
 function make(tag,txt,cls){const el=document.createElement(tag);if(txt!==undefined)el.textContent=txt;if(cls)el.className=cls;return el;}
 function brief(){
+ const old=new Set(LightUpLocalLineage.inspect(entries).superseded);
  const lines=['LIGHTUP / HUMAN SCOPE COORDINATION — NON-AUTHORIZING','State: REVIEW_ONLY · DRAFT-HOLD',
  'No authenticated consent, operator approval, grant, verified ownership or execution.',
  'Entries: '+entries.length,''];
  for(let i=0;i<entries.length;i++){
   const r=entries[i];lines.push((i+1)+'. '+r.name+' · '+r.requested_mode+' · risk '+r.requested_risk);
   lines.push('Source SHA-256 (unsigned): '+r.source_sha256);
+  lines.push('Local revision position: '+(old.has(r.source_sha256)?'EARLIER / SUPERSEDED · DO NOT REUSE WITHOUT REVIEW':'LOCAL TIP · NEVER AUTHORITY'));
   lines.push('Original file: '+(r.source_attached?'locally loaded':'NOT RE-ATTACHED · HOLD'));
   lines.push('Assets declared (not proved): '+r.asset_count+' · exclusions: '+r.excluded_count);
   if(roleOverlap(r))lines.push('HUMAN REVIEW: client and operator coordination use the SAME SELF-REPORTED LABEL. Check independent roles in authenticated systems.');
@@ -771,6 +773,7 @@ function makePacket(audience,selected){
  const labels=audience==='client'?['Ownership evidence','Client coordination — not consent']:
   ['Exact scope and exclusions','Independent operator preparation — not approval','Risk/window/STOP','Privacy and incident handoff'];
  const keys=PACKET_STAGES[audience];
+ const superseded=new Set(LightUpLocalLineage.inspect(entries).superseded);
  const lines=[
   '# LightUp · Private '+(audience==='client'?'client':'operator')+' preparation request',
   '',
@@ -787,6 +790,7 @@ function makePacket(audience,selected){
   const r=selected[i];if(!r.source_attached)unbound++;
   lines.push('## '+(i+1)+'. '+mdText(r.name||'Untitled source draft'));
   lines.push('Original source SHA-256 (unsigned): '+r.source_sha256);
+  lines.push('Local ancestry: '+(superseded.has(r.source_sha256)?'SUPERSEDED · HOLD ON NEW FOLLOW-UPS':'UNVERIFIED LOCAL TIP · NOT AUTHORIZED'));
   lines.push('Local source custody: '+(r.source_attached?'ATTACHED IN CURRENT SESSION':'UNBOUND · RE-ATTACH SOURCE · HOLD'));
   lines.push('Risk requested (unapproved): '+r.requested_risk);
   if(audience==='operator')lines.push('Proposed UTC window (not booked): '+(r.planned_utc?
@@ -1032,9 +1036,10 @@ function csvCell(s){
  return '"'+safe.replaceAll('"','""')+'"';
 }
 $('csv').addEventListener('click',()=>{
- const rows=[['Source SHA-256 (unsigned)','Draft','Requested risk','Stage','Paperwork status','Owner label','Target date','Next action','Source attached at export','Authorization']];
+ const historic=new Set(LightUpLocalLineage.inspect(entries).superseded);
+ const rows=[['Source SHA-256 (unsigned)','Draft','Local revision position','Requested risk','Stage','Paperwork status','Owner label','Target date','Next action','Source attached at export','Authorization']];
  for(const r of entries)for(const [id,title] of STAGES){
-  const t=r.tasks[id];rows.push([r.source_sha256,r.name,r.requested_risk,title,t.status,t.owner,t.due,t.next_action,r.source_attached?'yes':'no','NO']);
+  const t=r.tasks[id];rows.push([r.source_sha256,r.name,historic.has(r.source_sha256)?'SUPERSEDED LOCAL VERSION':'LOCAL TIP NOT AUTHORIZED',r.requested_risk,title,t.status,t.owner,t.due,t.next_action,r.source_attached?'yes':'no','NO']);
  }
  download('lightup-scope-readiness-actions.csv',rows.map(row=>row.map(csvCell).join(',')).join('\r\n')+'\r\n','text/csv;charset=utf-8');
  notice('Private action register exported. It is not evidence of permission.');
