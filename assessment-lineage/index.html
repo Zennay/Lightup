@@ -76,8 +76,17 @@
     <p>Filtering or moving a human discussion stage never changes a source report, invokes an evaluator or grants permission.</p>
     <div id="cases" class="scroll" aria-label="Private human scenario review"></div>
   </section>
+  <section aria-labelledby="privateDraftTitle">
+    <h2 id="privateDraftTitle">4. PRIVATE human work continuity (optional)</h2>
+    <p>The browser does not store data. After importing the <strong>original exact source bytes</strong>, you may save the human discussion stages to a deliberately PRIVATE local JSON draft and later restore them when the <strong>same original catalog and report files, in the same order</strong> are reimported. It includes SHA-256 fingerprints of private source bytes — never upload or circulate it as an anonymous report. Original files and targets are NOT embedded in the draft.</p>
+    <p>When secure browser SHA-256 is unavailable, private save/restore is refused safely; the anonymous handoff remains separate. Any changed source file or added source changes the private restore binding.</p>
+    <div class="actions"><button id="exportDraft" type="button">Save PRIVATE source-bound human draft</button>
+      <div><label for="restoreDraft">Restore an exact-source PRIVATE draft</label>
+        <input id="restoreDraft" type="file" accept=".json,application/json"></div></div>
+    <p class="warning">PRIVATE drafts are unsigned self-reports. Stage “documented” is never remediation proof, consent, authorization, or release.</p>
+  </section>
   <section aria-labelledby="handoffTitle">
-    <h2 id="handoffTitle">4. Anonymous human handoff</h2>
+    <h2 id="handoffTitle">5. Anonymous human handoff</h2>
     <p>Exports require exact case membership across the current original catalog and every selected comparison. A missing or extra case produces HOLD and no export. Original scenario IDs, IPs, finding identifiers, user names, uploaded files, and private notes are <strong>never</strong> included in these aggregate-only handoffs.</p>
     <div class="actions">
       <button id="exportJson" type="button">Anonymous aggregate JSON</button>
