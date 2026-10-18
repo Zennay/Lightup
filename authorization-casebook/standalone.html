@@ -136,7 +136,7 @@ function render(){
 var rows=elt("records");rows.replaceChildren();var list=entries();
 var typ=elt("category").value,filter=elt("filter").value.toLowerCase();
 var chosen=list.filter(function(x){return (typ==="all"||x.type===typ)&&(x.id+" "+x.state+" "+x.review).toLowerCase().includes(filter);});
-for(var x of chosen.slice(0,500)){
+for(let x of chosen.slice(0,500)){
 var tr=document.createElement("tr");
 var cols=[x.type,x.id,x.state,x.review];
 cols.forEach(function(t,i){var td=document.createElement("td");if(i===1)td.className="id";if(i===2){var b=document.createElement("span");b.className="badge"+(String(t).startsWith("HOLD")?"":" info");b.textContent=t;td.appendChild(b);}else td.textContent=t;tr.appendChild(td);});
