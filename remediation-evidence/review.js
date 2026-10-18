@@ -227,7 +227,8 @@ $('load').addEventListener('click',async()=>{
   if(draft){
    if(!$('sameEngagement').checked)throw Error('Confirm independently verified same-client and same-engagement source before loading a casework draft.');
    const packet=engine.loadPacket(strictJSON(await read(draft,LIMIT_JSON)));
-   if(!packet.source_sha256||packet.source_sha256!==hash)throw Error('Casework source fingerprint mismatch or missing.');
+   if(packet.source_sha256!==null&&packet.source_sha256!==hash)throw Error('Casework source fingerprint mismatch.');
+   if(packet.source_sha256===null&&!$('allowHashlessCasework').checked)throw Error('Original Casework has no source fingerprint. Confirm the separate hashless-original import choice; all five source fields are still checked.');
    if(packet.findings.length!==parsed.length)throw Error('Casework source row count mismatch.');
    const fromPacket=new Map(packet.findings.map(row=>[row.finding_id,row]));
    if(parsed.some(row=>!fromPacket.has(row.finding_id)||!exactFields(row,fromPacket.get(row.finding_id))))throw Error('Casework source fields mismatch.');
@@ -307,7 +308,7 @@ $('filter').addEventListener('change',render);
 $('clear').addEventListener('click',()=>{
  if(changed&&!confirm('Discard unsaved local review notes?'))return;
  source=null;casework=null;sourceHash=null;review=new Map();changed=false;refreshCandidate=null;
- $('sourceFile').value='';$('caseFile').value='';$('reviewFile').value='';$('refreshFile').value='';$('refreshConfirm').checked=false;$('refreshSummary').textContent='No refresh preview.';
+ $('sourceFile').value='';$('caseFile').value='';$('reviewFile').value='';$('refreshFile').value='';$('allowHashlessCasework').checked=false;$('refreshConfirm').checked=false;$('refreshSummary').textContent='No refresh preview.';
  $('dashboard').hidden=true;$('boardSection').hidden=true;$('actions').hidden=true;$('refreshPanel').hidden=true;
  $('board').replaceChildren();status('All source and local notes forgotten from this tab.');
 });
