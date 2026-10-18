@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from enum import Enum
 from ipaddress import ip_address, ip_network
 from urllib.parse import urlparse
 
-from .models import Target
+from .models import Authorization, Target
 
 
 class ScopeReason(str, Enum):
@@ -146,7 +147,7 @@ class ScopePolicy:
                 if self.require_authorization_for_public:
                     if target.authorization is None:
                         return ScopeDecision(False, host, ScopeReason.AUTHORIZATION_MISSING)
-                    if not target.authorization.is_current():
+                    if not _current_literal_authorization(target.authorization):
                         return ScopeDecision(False, host, ScopeReason.AUTHORIZATION_EXPIRED)
                 return ScopeDecision(True, host, ScopeReason.EXPLICIT_NETWORK)
             return ScopeDecision(False, host, ScopeReason.OUT_OF_SCOPE)
@@ -155,8 +156,35 @@ class ScopePolicy:
             if self.require_authorization_for_public:
                 if target.authorization is None:
                     return ScopeDecision(False, host, ScopeReason.AUTHORIZATION_MISSING)
-                if not target.authorization.is_current():
+                if not _current_literal_authorization(target.authorization):
                     return ScopeDecision(False, host, ScopeReason.AUTHORIZATION_EXPIRED)
             return ScopeDecision(True, host, ScopeReason.EXPLICIT_HOST)
 
         return ScopeDecision(False, host, ScopeReason.OUT_OF_SCOPE)
+
+
+def _current_literal_authorization(authorization: object) -> bool:
+    # A legacy dataclass annotation is NOT a grant type/runtime check.
+    # Never invoke a caller-supplied is_current() method.
+    if type(authorization) is not Authorization:
+        return False
+    if any(
+        type(value) is not str or not value.strip()
+        for value in (authorization.owner, authorization.reference)
+    ):
+        return False
+    start, end = authorization.valid_from, authorization.valid_until
+    for bound in (start, end):
+        if bound is not None and (
+            type(bound) is not datetime
+            or type(bound.tzinfo) is not timezone
+            or bound.utcoffset() is None
+        ):
+            return False
+    if start is not None and end is not None and start > end:
+        return False
+    instant = datetime.now(timezone.utc)
+    return (
+        (start is None or start <= instant)
+        and (end is None or instant <= end)
+    )

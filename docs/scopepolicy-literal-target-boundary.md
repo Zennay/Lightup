@@ -13,3 +13,7 @@ Target host parsing now rejects percentage-encoded host aliases and IPv6 zone/in
 ## Integration constraints
 
 Own new branch changes only `src/lightup/scope.py` and this document. Original source-owning draft PRs #165/#1290 and independent acceptance branches remain untouched. No QA, regressions or testsuites written or run. AST source syntax inspection is not security signoff. Evaluable source guards are **not** durable client approval, authenticated client/operator consent, action-time revocation, tenant-safe binding, scan authority or release. Existing original exact-head hosted and permanently registered named VPS CI, original #177/#673/#829 source owners, independent security/privacy and explicit HUMAN GO are mandatory before owner-reviewed integration. The PR must remain DRAFT/HOLD.
+
+## Direct legacy authorization admission (second source change)
+
+For an explicitly allowed public host/network, the policy now evaluates only a **canonical built-in** `Authorization` with actual nonempty owner/reference strings and either absent or exact built-in timezone-aware datetime bounds. Boolean, numeric, string or caller-defined datetime objects cannot impersonate an absent bound. Start-after-end fails closed. The policy computes a single UTC instant without calling any untrusted subclass `is_current()` method. This is a direct decision boundary only and NOT durable request/grant or revocation-at-use authentication.
