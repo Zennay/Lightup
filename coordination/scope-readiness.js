@@ -13,6 +13,9 @@ const STAGES=[
 const STATUSES=['todo','waiting','prepared'];
 const $=id=>document.getElementById(id);
 let entries=[], active=null, dirty=false, editEpoch=0, bulkPlan=null, packetDraft=null, bulkUndo=null, mergePlan=null;
+// Full original Studio drafts exist only in volatile browser memory; never serialized into casework exports.
+const sourceCopies=new Map();
+let revisionPreview=null;
 const flags=()=>({authenticated:false,client_consent:false,operator_consent:false,authorization:false,risk_approved:false,grant:false,revocation_checked:false,execution:false,scan:false,release:false});
 const fresh=()=>Object.fromEntries(STAGES.map(([id])=>[id,{status:'todo',owner:'',due:'',next_action:''}]));
 function notice(msg){$('message').textContent=msg;}
@@ -158,7 +161,7 @@ function clearPacketPreview(message='Source or coordination data changed. Create
 function clearMergePreview(message='Merge preview is stale; select the workspace file again.'){
  mergePlan=null;$('mergeApply').disabled=true;$('mergeStatus').textContent=message;$('mergeConflicts').replaceChildren();
 }
-function setDirty(){dirty=true;editEpoch++;clearMergePreview();bulkUndo=null;$('bulkUndo').disabled=true;clearPacketPreview();clearBulkPreview();$('save').disabled=!entries.length;$('csv').disabled=!entries.length;$('print').disabled=!entries.length;$('todoExport').disabled=!entries.length;}
+function setDirty(){dirty=true;editEpoch++;clearRevisionPreview();clearMergePreview();bulkUndo=null;$('bulkUndo').disabled=true;clearPacketPreview();clearBulkPreview();$('save').disabled=!entries.length;$('csv').disabled=!entries.length;$('print').disabled=!entries.length;$('todoExport').disabled=!entries.length;}
 function make(tag,txt,cls){const el=document.createElement(tag);if(txt!==undefined)el.textContent=txt;if(cls)el.className=cls;return el;}
 function brief(){
  const lines=['LIGHTUP / HUMAN SCOPE COORDINATION — NON-AUTHORIZING','State: REVIEW_ONLY · DRAFT-HOLD',
@@ -216,6 +219,91 @@ function renderActionBoard(){
  }
 }
 $('boardView').addEventListener('change',renderActionBoard);
+function clearRevisionPreview(message='Source or paperwork changed; compare the exact originals again.'){
+ revisionPreview=null;$('revisionReopen').disabled=true;$('revisionExport').disabled=true;
+ $('revisionStatus').textContent=message;$('revisionChanges').replaceChildren();
+}
+function renderRevisionSources(){
+ for(const id of ['revisionFrom','revisionTo']){
+  const select=$(id),before=select.value;
+  select.replaceChildren();const blank=make('option','Select original Studio draft');blank.value='';select.append(blank);
+  for(const r of entries){
+   if(!sourceCopies.has(r.source_sha256)||!r.source_attached)continue;
+   const option=make('option',(r.name||'Untitled')+' · '+r.source_sha256.slice(0,12));
+   option.value=r.source_sha256;select.append(option);
+  }
+  select.value=[...select.options].some(o=>o.value===before)?before:'';
+ }
+}
+function currentRevisionSelection(){
+ const from=$('revisionFrom').value,to=$('revisionTo').value;
+ if(!from||!to||from===to)throw Error('Select two DISTINCT source-bound Studio revisions.');
+ const first=entries.find(r=>r.source_sha256===from),second=entries.find(r=>r.source_sha256===to);
+ if(!first||!second||!first.source_attached||!second.source_attached||
+    !sourceCopies.has(from)||!sourceCopies.has(to))throw Error('Both exact originals must be reattached locally.');
+ return {from,to,first,second};
+}
+for(const id of ['revisionFrom','revisionTo'])$(id).addEventListener('change',()=>clearRevisionPreview('Revision selection changed. Compare before taking action.'));
+$('revisionDiscard').addEventListener('click',()=>clearRevisionPreview('Comparison cleared. Sources and paperwork unchanged.'));
+$('revisionCompare').addEventListener('click',()=>{
+ clearRevisionPreview();
+ try{
+  const {from,to}=currentRevisionSelection();
+  const result=LightUpRevisionReview.compare(sourceCopies.get(from),sourceCopies.get(to));
+  const root=$('revisionChanges');
+  root.append(make('p',result.message,'hint'));
+  if(!result.summary.length)root.append(make('p','No listed proposal changes; no action applied.','small'));
+  for(const changed of result.summary){
+   const box=make('div',undefined,'item');
+   box.append(make('strong',changed.label));
+   box.append(make('small',changed.detail));
+   if(changed.stages.length)box.append(make('small','Re-review: '+changed.stages.join(', ')));
+   root.append(box);
+  }
+  root.append(make('p',result.affectedStages.length+' preparation stage(s) require review. Source SHA-256 only proves local byte continuity; nothing authenticates scope rights.','small'));
+  revisionPreview={epoch:editEpoch,from,to,result};
+  $('revisionReopen').disabled=!result.affectedStages.length;
+  $('revisionExport').disabled=false;
+  $('revisionStatus').textContent='PRIVATE PREVIEW: '+result.summary.length+
+   ' proposal difference category/categories; '+result.affectedStages.length+
+   ' paperwork stage(s) flagged. No status changed. Literal CIDR/hostname labels are not effective coverage.';
+ }catch(e){$('revisionStatus').textContent='Comparison HOLD: '+e.message;}
+});
+function checkedRevisionPreview(){
+ if(!revisionPreview||revisionPreview.epoch!==editEpoch)throw Error('Comparison is stale.');
+ const {from,to}=currentRevisionSelection();
+ if(from!==revisionPreview.from||to!==revisionPreview.to)throw Error('Revision selection changed.');
+ const current=LightUpRevisionReview.compare(sourceCopies.get(from),sourceCopies.get(to));
+ if(JSON.stringify(current)!==JSON.stringify(revisionPreview.result))throw Error('Original proposal evidence changed.');
+ return {current,target:entries.find(r=>r.source_sha256===to),from,to};
+}
+$('revisionReopen').addEventListener('click',()=>{
+ try{
+  const {current,target}=checkedRevisionPreview(),ids=current.affectedStages;
+  if(!ids.length)throw Error('No material re-review stages identified.');
+  const affected=ids.filter(id=>target.tasks[id].status!=='todo');
+  if(!affected.length){$('revisionStatus').textContent='All impacted paperwork is already NOT STARTED. No state changes needed.';return;}
+  if(!confirm('Reopen '+affected.length+' preparation workstream(s) on the UPDATED draft? Prepared/blocked paperwork states become NOT STARTED. Owner, due date and notes remain, but NO authenticated consent/approval/grants are implied. Original draft unchanged.'))return;
+  for(const id of affected)target.tasks[id].status='todo';
+  setDirty();render();
+  $('revisionStatus').textContent='Reopened '+affected.length+' changed-scope preparation workstream(s) on the updated local record. All actual authorizations remain external and unverified.';
+ }catch(e){clearRevisionPreview('Reopen HOLD: '+e.message);}
+});
+$('revisionExport').addEventListener('click',()=>{
+ try{
+  const {current,from,to}=checkedRevisionPreview();
+  if(!confirm('Export an UNSIGNED, non-authorizing JSON of human review categories and source hashes? It contains no asset names or approval.'))return;
+  const packet={
+   kind:'lightup.scope_revision_impact_review',schema_version:1,disposition:'REVIEW_ONLY',
+   original_source_sha256:from,updated_source_sha256:to,security:flags(),
+   changed_categories:current.summary.map(c=>({key:c.key,review_stages:c.stages,scope_membership_unverified:c.scopeConcern})),
+   affected_workstreams:current.affectedStages,
+   warning:'Human review only. Not effective CIDR analysis, identity, ownership, consent, authority, grant or a valid release gate.'
+  };
+  download('lightup-revision-impact-review-private.json',JSON.stringify(packet,null,2)+'\\n','application/json');
+  $('revisionStatus').textContent='Private review note downloaded. This is not an authenticated approval record.';
+ }catch(e){clearRevisionPreview('Export HOLD: '+e.message);}
+});
 function renderStats(){
  $('count').textContent=String(entries.length);
  $('unbound').textContent=String(entries.filter(r=>!r.source_attached).length);
@@ -328,10 +416,10 @@ function renderDetail(){
  }
  const remove=make('button','Remove draft from local board');remove.type='button';
  remove.addEventListener('click',()=>{if(!confirm('Remove this local coordination draft? Source files are never changed.'))return;
- entries=entries.filter(x=>x!==r);active=entries[0]?.source_sha256||null;setDirty();render();});
+ entries=entries.filter(x=>x!==r);sourceCopies.delete(r.source_sha256);active=entries[0]?.source_sha256||null;setDirty();render();});
  tools.append(remove);box.append(tools);
 }
-function render(){renderStats();renderList();renderDetail();}
+function render(){renderStats();renderList();renderDetail();renderRevisionSources();}
 // Batch planner only fills missing paperwork logistics. Never updates states or authority.
 const bulkInputs=['bulkStage','bulkAudience','bulkOwner','bulkDue','bulkNext'];
 for(const name of bulkInputs)$(name).addEventListener('input',()=>clearBulkPreview('Inputs changed. Preview before applying.'));
@@ -586,6 +674,7 @@ $('sourceUpload').addEventListener('change',async event=>{
   for(const x of incoming){
    const r=entries.find(e=>e.source_sha256===x.digest);
    if(r)r.source_attached=true;else entries.push(sourceRecord(x.d,x.digest));
+   sourceCopies.set(x.digest,x.d);
   }
   active=incoming[0].digest;setDirty();render();notice('Loaded '+incoming.length+' local source file(s). Every task remains non-authorizing.');
  }catch(e){notice('Import HOLD: '+e.message+' Existing board preserved.');}
@@ -665,7 +754,7 @@ $('restoreInput').addEventListener('change',async event=>{
  try {
   const next=await readPrivateWorkspace(file);
   if(entries.length&&!confirm('Replace your current in-memory board? Save it first if needed.'))return;
-  entries=next;active=entries[0]?.source_sha256||null;dirty=false;editEpoch++;clearMergePreview();bulkUndo=null;$('bulkUndo').disabled=true;clearBulkPreview();clearPacketPreview();render();
+  entries=next;sourceCopies.clear();active=entries[0]?.source_sha256||null;dirty=false;editEpoch++;clearMergePreview();bulkUndo=null;$('bulkUndo').disabled=true;clearBulkPreview();clearPacketPreview();render();
   notice('Restored tracking only. Studio source files deliberately remain UNBOUND until exact SHA-256 re-attachment. ALL authorization flags false.');
  }catch(e){notice('Restore HOLD: '+e.message+' Existing board unchanged.');}
 });
@@ -696,7 +785,7 @@ $('csv').addEventListener('click',()=>{
 $('print').addEventListener('click',()=>{if(entries.length)window.print();});
 $('reset').addEventListener('click',()=>{
  if(entries.length&&!confirm('Clear all in-memory coordination work? Save it first if needed.'))return;
- entries=[];active=null;dirty=false;editEpoch++;clearMergePreview();bulkUndo=null;$('bulkUndo').disabled=true;clearBulkPreview();clearPacketPreview();$('sourceUpload').value='';$('restoreInput').value='';render();notice('Memory cleared. No source records changed.');
+ entries=[];sourceCopies.clear();active=null;dirty=false;editEpoch++;clearMergePreview();bulkUndo=null;$('bulkUndo').disabled=true;clearBulkPreview();clearPacketPreview();$('sourceUpload').value='';$('restoreInput').value='';render();notice('Memory cleared. No source records changed.');
 });
 window.addEventListener('beforeunload',event=>{if(dirty&&entries.length){event.preventDefault();event.returnValue='';}});
 render();
