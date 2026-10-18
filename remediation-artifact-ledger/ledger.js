@@ -5,7 +5,7 @@ const MAX_FILE = 16 * 1024 * 1024, MAX_DOCS = 120, MAX_IMPORT = 1024 * 1024;
 const STAGES = ['unreviewed', 'human_review', 'follow_up', 'archived'];
 const AUTH_FLAGS = ['authenticated','tenant_verified','source_authorized','assessment_authorized','grant','client_consent','operator_consent','execution','scan','audit_verdict','retest_verified','release'];
 const $ = id => document.getElementById(id);
-const state = {findings:[], sha:'', rows:[], client:'', engagement:'', filter:'', verify:null, pending:null};
+const state = {findings:[], sha:'', rows:[], client:'', engagement:'', filter:'', verify:null, pending:null, selected:new Set(), bulk:null, undo:[]};
 const encoder = new TextEncoder();
 const ESCAPE = '\uFEFF';
 function fail(message) { throw new Error(message); }
@@ -97,6 +97,10 @@ function render(){
   shown++;
   const tr=document.createElement('tr');
   function cell(str){let td=document.createElement('td');td.textContent=str;tr.append(td);return td;}
+  const pick=document.createElement('input');pick.type='checkbox';pick.checked=state.selected.has(rowKey(row));
+  pick.setAttribute('aria-label','Select private record '+row.finding_id+' / '+row.sha256.slice(0,12));
+  pick.addEventListener('change',()=>{if(pick.checked)state.selected.add(rowKey(row));else state.selected.delete(rowKey(row));state.bulk=null;renderSelection();});
+  const pickCell=document.createElement('td');pickCell.append(pick);tr.append(pickCell);
   cell(source.finding_id+' · '+source.severity);
   cell(row.file_name+' · '+row.byte_length+' bytes');
   let checksum=cell(row.sha256.slice(0,16)+'…');checksum.title=row.sha256;
@@ -113,13 +117,13 @@ function render(){
   const actions=document.createElement('td'),verify=document.createElement('button');verify.textContent='Recheck local file';
   verify.type='button';verify.addEventListener('click',()=>{$('verify').click();state.verify=i;message('Choose the SAME local file. The content stays in your browser.',false);});
   const remove=document.createElement('button');remove.type='button';remove.textContent='Remove';
-  remove.addEventListener('click',()=>{if(confirm('Remove this local human record? This cannot remove external source evidence.')){state.rows.splice(i,1);render();}});
+  remove.addEventListener('click',()=>{if(confirm('Remove this local human record? This cannot remove external source evidence.')){state.selected.delete(rowKey(row));state.rows.splice(i,1);state.bulk=null;state.undo=[];render();}});
   actions.append(verify,remove);tr.append(actions);
   root.append(tr);
  });
  $('tableSection').hidden=!state.findings.length;
  $('shown').textContent=shown+' shown / '+state.rows.length+' private artifact records';
- renderSummary();
+ renderSummary();renderSelection();
 }
 function renderSummary(){
  const counts=Object.fromEntries(STAGES.map(x=>[x,0]));
@@ -140,6 +144,7 @@ async function loadSource(){
    if(!confirm('New original source or context. Discard ALL existing private notes and attachments?'))return;
  }
  state.findings=findings;state.sha=hash;state.client=client;state.engagement=engagement;
+ state.selected.clear();state.bulk=null;state.undo=[];
  if(state.rows.length && (oldSource !== hash || oldClient !== client || oldEngagement !== engagement))state.rows=[];state.verify=null;
  $('finding').replaceChildren();
  for(const f of findings){const op=document.createElement('option');op.value=f.finding_id;op.textContent=f.finding_id+' · '+f.severity+' · '+f.title.slice(0,75);$('finding').append(op);}
@@ -160,7 +165,7 @@ async function addFiles(){
     mime:(f.type||'').slice(0,120),added_utc:new Date().toISOString(),human_reviewer:'',
     human_stage:'unreviewed',human_note:''},new Set(state.findings.map(x=>x.finding_id))));
  }
- state.rows.push(...staged);$('addFiles').value='';render();
+ state.rows.push(...staged);state.bulk=null;state.undo=[];$('addFiles').value='';render();
  message(staged.length+' local file fingerprint(s) filed. Original file content was not retained.',false);
 }
 async function verifyFile(){
@@ -193,7 +198,7 @@ async function importPrivate(){
    if(seen.has(key))fail('Duplicate PRIVATE attachment fingerprint.');seen.add(key);return v;
  });
  if(!confirm('Restore '+staged.length+' PRIVATE local notes and REPLACE the current '+state.rows.length+' notes? Review client/engagement separately.'))return;
- state.rows=staged;state.pending=null;$('migrationResult').hidden=true;$('privateImport').value='';render();message('Complete source-bound PRIVATE human draft restored; no authority inferred.',false);
+ state.rows=staged;state.selected.clear();state.bulk=null;state.undo=[];state.pending=null;$('migrationResult').hidden=true;$('privateImport').value='';render();message('Complete source-bound PRIVATE human draft restored; no authority inferred.',false);
 }
 
 /* Original-source migration is HUMAN data reconciliation, NEVER a remediation verdict.
@@ -252,12 +257,76 @@ function applyMigration(){
  if(!confirm('Replace this HUMAN workspace with the new unverified original source? '+
    staged.dropped+' non-identical/absent-source records are removed from current memory; keep your separate OLD private backup. Missing is NEVER proven fixed.'))return;
  state.findings=staged.newFindings;state.sha=staged.newSha;state.rows=staged.retained;
+ state.selected.clear();state.bulk=null;state.undo=[];
  state.pending=null;state.verify=null;state.filter='';$('filter').value='';
  $('migrationResult').hidden=true;$('migrationPreview').textContent='';
  $('sameEngagement').checked=false;$('ackBackup').checked=false;
  populateOriginalIds();render();
  message('New original source loaded; exact unchanged finding records retain HUMAN fingerprints only. '+
  staged.dropped+' nonmatching local fingerprints remain only in the separately saved OLD PRIVATE backup; NOT fixed.',false);
+}
+
+
+function rowKey(r){return r.finding_id+'|'+r.sha256;}
+function renderSelection(){
+ const matched=state.rows.filter(r=>{
+  const f=state.findings.find(f=>f.finding_id===r.finding_id);
+  return f&&(!state.filter||(r.file_name+' '+r.human_note+' '+f.finding_id+' '+f.title).toLowerCase().includes(state.filter));
+ });
+ const selected=state.rows.filter(r=>state.selected.has(rowKey(r)));
+ $('selectedCount').textContent=selected.length+' selected / '+matched.length+' matching';
+ $('applyBulk').disabled=!state.bulk;$('undoBulk').disabled=!state.undo.length;
+ $('bulkPreview').hidden=!state.bulk;
+}
+function selectVisible(){
+ for(const r of state.rows){
+  const f=state.findings.find(f=>f.finding_id===r.finding_id);
+  if(f&&(!state.filter||(r.file_name+' '+r.human_note+' '+f.finding_id+' '+f.title).toLowerCase().includes(state.filter)))
+   state.selected.add(rowKey(r));
+ }
+ state.bulk=null;render();
+}
+function previewBulk(){
+ const chosen=state.rows.filter(r=>state.selected.has(rowKey(r)));
+ if(!chosen.length)fail('Select at least one original evidence fingerprint.');
+ const stage=$('bulkStage').value,changeReviewer=$('bulkReviewerEnabled').checked;
+ if(stage!=='keep'&&!STAGES.includes(stage))fail('Invalid HUMAN stage proposal.');
+ const reviewer=bounded($('bulkReviewer').value,120,'bulk reviewer',false);
+ if(stage==='keep'&&!changeReviewer)fail('Choose a stage or explicitly enable a reviewer change.');
+ const entries=chosen.map(r=>({
+  key:rowKey(r),beforeStage:r.human_stage,afterStage:stage==='keep'?r.human_stage:stage,
+  beforeReviewer:r.human_reviewer,afterReviewer:changeReviewer?reviewer:r.human_reviewer
+ }));
+ state.bulk={source:state.sha,snapshot:JSON.stringify(state.rows),
+  selected:JSON.stringify([...state.selected].sort()),entries};
+ $('bulkPreview').textContent=[
+  'Human-only PRIVATE bulk preview · '+entries.length+' exact artifact records',
+  'Original source SHA: '+state.sha,
+  ...entries.map(v=>v.key.slice(0,185)+' · stage: '+v.beforeStage+' → '+v.afterStage+
+   ' · reviewer: '+v.beforeReviewer.slice(0,30)+' → '+v.afterReviewer.slice(0,30)),
+  'No source finding, fingerprint bytes, scan, grant or security verification changes.'
+ ].join('\n');
+ renderSelection();message('Preview ready. Review exact original records before applying HUMAN-only changes.',false);
+}
+function applyBulk(){
+ const p=state.bulk;
+ if(!p)fail('No HUMAN-only batch preview.');
+ if(state.sha!==p.source||JSON.stringify(state.rows)!==p.snapshot||
+  JSON.stringify([...state.selected].sort())!==p.selected)
+  fail('Source, selected records or human baselines changed since preview; preview again.');
+ if(!confirm('Apply HUMAN-only stage/reviewer changes to '+p.entries.length+' exact records? This is NOT verified remediation.'))return;
+ state.undo.push({sha:state.sha,rows:JSON.stringify(state.rows)});
+ if(state.undo.length>20)state.undo.shift();
+ const changes=new Map(p.entries.map(x=>[x.key,x]));
+ for(const r of state.rows){const x=changes.get(rowKey(r));if(x){r.human_stage=x.afterStage;r.human_reviewer=x.afterReviewer;}}
+ state.bulk=null;render();message('Applied '+p.entries.length+' PRIVATE human status changes. Undo is available.',false);
+}
+function undoBulk(){
+ const previous=state.undo.pop();
+ if(!previous)return;
+ if(previous.sha!==state.sha)fail('Original source changed: undo refused.');
+ state.rows=JSON.parse(previous.rows);state.bulk=null;render();
+ message('Restored previous private human-review fields in memory only.',false);
 }
 
 function csvCell(raw){
@@ -284,6 +353,11 @@ function bind(id,event,fn){$(id).addEventListener(event,async()=>{try{await fn()
 bind('load','click',loadSource);bind('add','click',addFiles);
 bind('export','click',exportPrivate);bind('aggregate','click',exportAggregate);
 bind('restore','click',importPrivate);bind('verify','change',verifyFile);
+bind('selectVisible','click',selectVisible);
+bind('clearSelection','click',()=>{state.selected.clear();state.bulk=null;render();});
+bind('previewBulk','click',previewBulk);
+bind('applyBulk','click',applyBulk);
+bind('undoBulk','click',undoBulk);
 bind('previewMigration','click',previewMigration);
 bind('applyMigration','click',applyMigration);
 bind('filter','input',()=>{state.filter=$('filter').value.toLowerCase().trim();render();});
