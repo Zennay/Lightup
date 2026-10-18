@@ -22,7 +22,7 @@ th{font-size:.8rem;text-transform:uppercase;letter-spacing:.05em;color:#c8d7e9}
 .error{color:#ffd3c2;white-space:pre-wrap}label{display:inline-flex;align-items:center;gap:9px;padding:5px 0}
 #status[role=alert]{border-left:4px solid #ff986b;padding:12px 18px;background:#3c2730}
 #status[role=status]{border-left:4px solid #78ceac;padding:12px 18px;background:#1e3740}
-.chart{display:flex;align-items:flex-end;gap:5px;height:110px;padding:10px 0}
+.chart{display:grid;gap:10px;height:auto;padding:10px 0}.chart-item{display:grid;grid-template-columns:minmax(130px,1fr) minmax(100px,3fr);gap:16px;align-items:center}.chart-item progress{width:100%;height:20px;accent-color:#509bbf}.review-checkbox{display:flex;align-items:center;gap:9px;padding:5px 0}
 .bar{min-width:25px;flex:1;max-width:100px;background:#509bbf;border-radius:5px 5px 0 0;position:relative}
 .bar span{position:absolute;top:-24px;font-size:.85rem}
 a{color:#9bdafc}
@@ -289,7 +289,7 @@ function render(){
  ].map(([title,val])=>'<div class="stat">'+esc(title)+'<strong>'+esc(val)+'</strong></div>').join("");
  $("rows").innerHTML=records.map((r,i)=>'<tr><td>'+String(i+1)+'</td><td>'+esc(r.stamp)+'</td><td><span class="badge">unsigned · '+esc(r.revision.slice(0,10))+'…</span></td><td>'+r.matched+'</td><td>'+(r.other+r.notApproved)+'</td><td>'+r.grants+' ('+r.legacy+' unbound)</td><td><span class="'+(r.matched===1?"review":"hold")+'">'+esc(r.outcome)+'</span></td><td><button class="secondary" data-move="'+i+'" data-direction="-1" '+(i===0?'disabled':'')+' aria-label="Move source slot '+(i+1)+' earlier">↑</button><button class="secondary" data-move="'+i+'" data-direction="1" '+(i===records.length-1?'disabled':'')+' aria-label="Move source slot '+(i+1)+' later">↓</button></td></tr>').join("");
  $("rows").querySelectorAll("button[data-move]").forEach(btn=>btn.addEventListener("click",()=>moveOriginal(Number(btn.dataset.move),Number(btn.dataset.direction))));
- $("chart").innerHTML=records.map((r,i)=>'<div class="bar" title="slot '+(i+1)+': '+r.matched+' candidates" style="height:'+Math.max(3,100*r.matched/Math.max(1,...records.map(x=>x.matched)))+'%"><span>'+r.matched+'</span></div>').join("");
+ $("chart").innerHTML=records.map((r,i)=>'<div class="chart-item"><span>Slot '+(i+1)+' · '+r.matched+' administrative candidate(s)</span><progress aria-label="Administrative source candidates for selected slot '+(i+1)+'" value="'+r.matched+'" max="'+Math.max(1,...records.map(x=>x.matched))+'">'+r.matched+'</progress></div>').join("");
  $("transitions").innerHTML=records.slice(1).map((r,i)=>{
   const before=records[i],changed=before.revision!==r.revision;
   const delta=(a,b)=>(b-a>0?"+":"")+String(b-a);
@@ -301,7 +301,7 @@ function render(){
  renderCases();
  renderQueue();
  $("reasonrows").innerHTML=reportedFlags.map(reason=>{const counts=records.map(r=>r.reasons[reason]||0),change=counts[counts.length-1]-counts[0];return "<tr><td><span class=\"badge\">"+esc(reason)+"</span></td><td>"+esc(ROUTES[reason])+"</td><td>"+counts.map((x,i)=>"Slot "+(i+1)+": "+x).join(" · ")+"</td><td>"+(change>0?"+":"")+change+" (not proof of a new permission or real chronology)</td></tr>"}).join("");
- $("review").innerHTML=ACTIONS.map((task,i)=>'<label style="display:flex"><input type="checkbox" data-action="'+i+'" '+(workspace.checks[i]?"checked":"")+'> '+esc(task)+'</label>').join("");
+ $("review").innerHTML=ACTIONS.map((task,i)=>'<label class="review-checkbox"><input type="checkbox" data-action="'+i+'" '+(workspace.checks[i]?"checked":"")+'> '+esc(task)+'</label>').join("");
  $("review").querySelectorAll("input").forEach(el=>el.addEventListener("change",()=>workspace.checks[+el.dataset.action]=el.checked));
 }
 function visibleQueueCases(){
