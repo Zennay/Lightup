@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<title>LightUp · Private Human Dependency Board</title><link rel="stylesheet" href="style.css"></head>
+<body><header><div class="brand">LIGHTUP / OFFLINE HUMAN COORDINATION</div><h1>Remediation Dependency Board</h1>
+<p>See which human repair plans are blocked by other human work. Review impact and tentative effort, without changing original findings, retests, permissions or deadlines.</p>
+<strong class="hold">INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD</strong></header>
+<main><section class="panel"><h2>1. Load original Casework privately</h2>
+<p>First obtain the original Casework v1 JSON for one exact client and engagement through existing separately authenticated and authorized LightUp export. This browser does not prove its origin or current consent.</p>
+<label>Original PRIVATE Casework v1 JSON<input id="source" type="file" accept=".json,application/json"></label>
+<label class="check"><input type="checkbox" id="source-ack"> I independently confirmed the actual client, engagement and approved PRIVATE handling channel. This file is not an authorization or a verified repair.</label>
+<p id="source-message" role="status" aria-live="polite">No private source loaded.</p></section>
+<section id="workspace" hidden><div id="stats" class="stats"></div>
+<section class="panel"><h2>2. Define human prerequisites</h2><p>Select original findings by exact ID. “A must finish before B” is only a HUMAN planning note, not an active scan dependency or evidence of an approved change window.</p>
+<div class="grid"><label>Prerequisite human finding A<select id="from"></select></label><label>Dependent human finding B<select id="to"></select></label></div>
+<label>Why does B depend on A? (private human explanation)<textarea id="reason" rows="2" maxlength="600"></textarea></label>
+<button id="link-add" type="button">Add reviewed human link</button><p id="link-message" role="status" aria-live="polite"></p>
+<div class="tablewrap"><table><thead><tr><th>Human prerequisite</th><th>Dependent finding</th><th>Human reason</th><th>Remove</th></tr></thead><tbody id="links"></tbody></table></div></section>
+<section class="panel"><h2>3. Assign non-contractual effort estimates</h2>
+<p>Enter explicit human estimates of 1–90 calendar days. The initial 1-day values are editable placeholders, never automatically accepted SLAs or approved retest windows.</p>
+<div class="tablewrap"><table><thead><tr><th>Original finding</th><th>Severity</th><th>Human owner / stage</th><th>Human effort estimate</th></tr></thead><tbody id="efforts"></tbody></table></div></section>
+<section class="panel"><h2>4. Review dependencies and estimated critical path</h2>
+<div class="grid"><label>Optional human start date<input id="start" type="date" min="2020-01-01" max="2099-01-01"></label>
+<label>Exact human owner/team<select id="owner-filter"><option value="all">All original human owners</option></select></label>
+<label>View <select id="filter"><option value="all">All original findings</option><option value="waiting">Waiting on other HUMAN tasks</option><option value="ready">Human work potentially ready</option><option value="critical">Critical path (human estimates)</option><option value="urgent">Original high/critical findings</option></select></label></div>
+<button id="review" type="button">Recalculate local dependency map</button>
+<p id="review-message" role="status" aria-live="polite"></p>
+<div class="tablewrap"><table><thead><tr><th>Original finding</th><th>HUMAN status</th><th>Waiting on</th><th>Proposed path duration</th><th>Optional indicative date</th></tr></thead><tbody id="results"></tbody></table></div><section class="insights"><h3>Human bottlenecks and proposed next work</h3><p>Computed only from local human dependencies. A “ready” human task is NOT authorization to assess, change a target or retest.</p>
+<div class="tablewrap"><table><thead><tr><th>Potential bottleneck</th><th>Dependent human plans</th><th>Human readiness</th><th>Current owner</th></tr></thead><tbody id="bottlenecks"></tbody></table></div>
+<h3>Human due-date contradictions</h3><p>Highlights a prerequisite with a later human due date than its dependent plan. No deadline is automatically changed.</p>
+<div class="tablewrap"><table><thead><tr><th>Prerequisite</th><th>Dependent</th><th>Human prerequisite due</th><th>Dependent due</th></tr></thead><tbody id="contradictions"></tbody></table></div>
+<h3>Illustrative critical-path date warnings</h3><p>Only available when a human planning start date has been explicitly entered; rough estimates are NOT contractual deadlines or verified fix dates.</p>
+<div class="tablewrap"><table><thead><tr><th>Original finding ID</th><th>Existing human due</th><th>Indicative dependency end</th></tr></thead><tbody id="late-scenarios"></tbody></table></div></section></section>
+<section class="panel"><h2>5. Export only approved private human handoffs</h2>
+<p>Exports contain source identifiers, estimates, human planning and (for CSV) source summary metadata. Download locally; external recipients and calendars require a separately approved confidential channel. No automatic upload or authentication.</p>
+<label class="check"><input type="checkbox" id="export-ack"> I explicitly confirmed the private destination for source finding IDs and human coordination. Neither an unsigned hash nor this file proves consent, client identity or verified remediation.</label>
+<label>PRIVATE CSV action scope<select id="csv-scope"><option value="all">All original human work</option><option value="filtered">Current owner and work filters</option></select></label>
+<div class="actions"><button id="export-json" disabled type="button">Save PRIVATE source-bound dependency draft</button>
+<button id="export-csv" disabled type="button">Save PRIVATE human action CSV</button>
+<button id="clear" class="secondary" type="button">Clear private memory</button></div>
+<label>Reopen source-bound PRIVATE dependency JSON<input id="reopen" type="file" accept=".json,application/json"></label>
+<p id="export-message" role="status" aria-live="polite"></p></section></section>
+</main><footer>Browser-only · no network, browser storage, scanner, grant, consent, original source modification, verified retest or authorized production deployment.</footer>
+<script src="../casework/remediation-engine.js"></script><script src="engine.js"></script><script src="app.js"></script></body></html>
