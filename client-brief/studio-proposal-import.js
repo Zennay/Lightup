@@ -12,6 +12,7 @@ const ALLOWED=['kind','schema_version','state','authorization','client_consent',
 const AUTH=['authorization','client_consent','operator_consent','grant','execution','revocation_checked'];
 const ACTIVITIES=['passive_analysis','configuration_review','private_lab_network_checks'];
 const SHA=/^[a-f0-9]{64}$/;
+const sources=new WeakMap();
 function object(x){return !!x&&typeof x==='object'&&!Array.isArray(x);}
 function keys(o,allowed){return Object.keys(o).every(k=>allowed.includes(k));}
 function own(o,k){return Object.prototype.hasOwnProperty.call(o,k);}
@@ -70,7 +71,7 @@ async function importOriginal(file){
  if(d.requested_risk===4)notes.push('Proposed risk 4 requires separate authentic approval.');
  if(window.status!=='resolved')notes.push('UTC planning window is unresolved or unscheduled.');
  if(warnings.some(x=>x.level==='warning'))notes.push('Original Studio identified further manual scope warnings.');
- return Object.freeze({
+ const summary=Object.freeze({
   kind:'lightup.client_brief_scope_draft_review',source_revision_sha256:fingerprint,
   requested_mode:d.requested_mode,requested_risk:d.requested_risk,
   requested_assets_count:d.requested_assets.length,excluded_assets_count:d.excluded_assets.length,
@@ -86,6 +87,31 @@ async function importOriginal(file){
   notes,authenticated:false,tenant_verified:false,authorization:false,client_consent:false,
   operator_consent:false,grant:false,execution:false,scan:false,release:false
  });
+ sources.set(summary,{assets:[...d.requested_assets],exclusions:[...d.excluded_assets]});
+ return summary;
 }
-global.LightUpBriefStudio=Object.freeze({importOriginal});
+function compareOriginals(earlier,current){
+ const a=sources.get(earlier),b=sources.get(current);
+ if(!a||!b)throw Error('Both proposal revisions must be original validated Studio imports.');
+ const net=global.LightUpScopeNetwork;
+ const before=net.effectiveCoverage(a.assets,a.exclusions),after=net.effectiveCoverage(b.assets,b.exclusions);
+ if(!before||!after)throw Error('Invalid original effective proposal coverage.');
+ const diff=net.coverageDifference(before,after);
+ if(!diff)throw Error('No valid canonical scope difference.');
+ const elevatedRisk=current.requested_risk>earlier.requested_risk;
+ const modeEscalated=earlier.requested_mode==='analysis_only'&&current.requested_mode==='authorized_assessment';
+ const addedActivities=current.proposed_activities.filter(v=>!earlier.proposed_activities.includes(v));
+ const windowChanged=JSON.stringify(earlier.proposed_window_utc)!==JSON.stringify(current.proposed_window_utc);
+ const scopeExpanded=diff.added.length>0;
+ return Object.freeze({kind:'lightup.client_brief_scope_revision_review',earlier_revision:earlier.source_revision_sha256,
+  current_revision:current.source_revision_sha256,scope_expanded:scopeExpanded,
+  scope_narrowed:diff.removed.length>0,
+  added_coverage_fragments:diff.added.length,removed_coverage_fragments:diff.removed.length,
+  coverage_truncated:diff.truncated,elevated_risk:elevatedRisk,mode_escalated:modeEscalated,
+  new_activities:addedActivities,window_changed:windowChanged,
+  changes_require_human_review:scopeExpanded||elevatedRisk||modeEscalated||addedActivities.length>0||windowChanged||diff.truncated,
+  warning:'Proposal changes are unsigned local comparisons, not approvals. Any widened scope or risk must undergo fresh real client/operator authorization. Absent assets are not revoked target permissions.',
+  authenticated:false,authorization:false,client_consent:false,operator_consent:false,grant:false,execution:false,scan:false,release:false});
+}
+global.LightUpBriefStudio=Object.freeze({importOriginal,compareOriginals});
 })(window);
