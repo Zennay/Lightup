@@ -5,7 +5,7 @@ const MAX_FILE = 16 * 1024 * 1024, MAX_DOCS = 120, MAX_IMPORT = 1024 * 1024;
 const STAGES = ['unreviewed', 'human_review', 'follow_up', 'archived'];
 const AUTH_FLAGS = ['authenticated','tenant_verified','source_authorized','assessment_authorized','grant','client_consent','operator_consent','execution','scan','audit_verdict','retest_verified','release'];
 const $ = id => document.getElementById(id);
-const state = {findings:[], sha:'', rows:[], client:'', engagement:'', filter:'', verify:null};
+const state = {findings:[], sha:'', rows:[], client:'', engagement:'', filter:'', verify:null, pending:null};
 const encoder = new TextEncoder();
 const ESCAPE = '\uFEFF';
 function fail(message) { throw new Error(message); }
@@ -143,7 +143,7 @@ async function loadSource(){
  if(state.rows.length && (oldSource !== hash || oldClient !== client || oldEngagement !== engagement))state.rows=[];state.verify=null;
  $('finding').replaceChildren();
  for(const f of findings){const op=document.createElement('option');op.value=f.finding_id;op.textContent=f.finding_id+' · '+f.severity+' · '+f.title.slice(0,75);$('finding').append(op);}
- $('original').value='';render();message('Original five-column source loaded as unverified. File bytes are not stored.',false);
+ $('original').value='';state.pending=null;$('migrationResult').hidden=true;render();message('Original five-column source loaded as unverified. File bytes are not stored.',false);
 }
 async function addFiles(){
  if(!state.sha)fail('Load original source first.');
@@ -193,8 +193,73 @@ async function importPrivate(){
    if(seen.has(key))fail('Duplicate PRIVATE attachment fingerprint.');seen.add(key);return v;
  });
  if(!confirm('Restore '+staged.length+' PRIVATE local notes and REPLACE the current '+state.rows.length+' notes? Review client/engagement separately.'))return;
- state.rows=staged;$('privateImport').value='';render();message('Complete source-bound PRIVATE human draft restored; no authority inferred.',false);
+ state.rows=staged;state.pending=null;$('migrationResult').hidden=true;$('privateImport').value='';render();message('Complete source-bound PRIVATE human draft restored; no authority inferred.',false);
 }
+
+/* Original-source migration is HUMAN data reconciliation, NEVER a remediation verdict.
+   Original Casework.compareSource is immutable source-owner code. */
+function populateOriginalIds(){
+ $('finding').replaceChildren();
+ for(const f of state.findings){
+  const op=document.createElement('option');op.value=f.finding_id;
+  op.textContent=f.finding_id+' · '+f.severity+' · '+f.title.slice(0,75);
+  $('finding').append(op);
+ }
+}
+async function previewMigration(){
+ if(!state.sha)fail('Load an original CSV first.');
+ const file=$('newSource').files[0];
+ if(!file)fail('Select a separately obtained new original CSV.');
+ if(!$('sameEngagement').checked)fail('Explicitly confirm separately verified same client/engagement first.');
+ const newFindings=LightUpCasework.parseCSV(await fileReader(file,LightUpCasework.MAX_BYTES));
+ const newSha=await digest(utf8(sourceFingerprint(newFindings)));
+ if(newSha===state.sha)fail('The new canonical source is identical; there is nothing to migrate.');
+ const delta=LightUpCasework.compareSource(state.findings,newFindings);
+ const keep=new Set(delta.unchanged);
+ const retained=state.rows.filter(r=>keep.has(r.finding_id)).map(r=>({...r}));
+ const quarantined=state.rows.filter(r=>!keep.has(r.finding_id));
+ state.pending={oldSha:state.sha,oldRows:JSON.stringify(state.rows),
+  client:state.client,engagement:state.engagement,newSha,newFindings,delta,retained,
+  dropped:quarantined.length};
+ const lines=[
+  'HUMAN SOURCE-MIGRATION PREVIEW — not a fix/retest determination',
+  'Old original SHA-256: '+state.sha,
+  'New original SHA-256: '+newSha,
+  'Unchanged original rows: '+delta.unchanged.length,
+  'New original rows: '+delta.added.length,
+  'Changed original rows: '+delta.changed.length,
+  'Absent original rows: '+delta.missing.length+' (NOT proof of fixed)',
+  'Retained human local fingerprints: '+retained.length,
+  'Quarantined fingerprints: '+quarantined.length+' (ONLY in old PRIVATE backup)',
+  'Changed original IDs: '+delta.changed.map(x=>x.finding_id).join(', ').slice(0,1400),
+  'Absent original IDs: '+delta.missing.join(', ').slice(0,1400),
+  'No original remediation status or security authority is copied into this tool.'
+ ];
+ $('migrationPreview').textContent=lines.join('\n');
+ $('migrationResult').hidden=false;$('ackBackup').checked=false;
+ $('applyMigration').disabled=false;
+ $('newSource').value='';
+ message('Migration preview staged in browser memory. Export the OLD private ledger first.',false);
+}
+function applyMigration(){
+ const staged=state.pending;
+ if(!staged)fail('Stage a new original source preview first.');
+ if(!$('sameEngagement').checked||!$('ackBackup').checked)
+  fail('Separately confirm the same original engagement and the OLD private backup.');
+ if(state.sha!==staged.oldSha||state.client!==staged.client||
+ state.engagement!==staged.engagement||JSON.stringify(state.rows)!==staged.oldRows)
+  fail('Original human source or notes changed after preview; re-preview required.');
+ if(!confirm('Replace this HUMAN workspace with the new unverified original source? '+
+   staged.dropped+' non-identical/absent-source records are removed from current memory; keep your separate OLD private backup. Missing is NEVER proven fixed.'))return;
+ state.findings=staged.newFindings;state.sha=staged.newSha;state.rows=staged.retained;
+ state.pending=null;state.verify=null;state.filter='';$('filter').value='';
+ $('migrationResult').hidden=true;$('migrationPreview').textContent='';
+ $('sameEngagement').checked=false;$('ackBackup').checked=false;
+ populateOriginalIds();render();
+ message('New original source loaded; exact unchanged finding records retain HUMAN fingerprints only. '+
+ staged.dropped+' nonmatching local fingerprints remain only in the separately saved OLD PRIVATE backup; NOT fixed.',false);
+}
+
 function csvCell(raw){
  let s=String(raw);
  // Force text treatment for Unicode-obscured spreadsheet formulas.
@@ -219,10 +284,12 @@ function bind(id,event,fn){$(id).addEventListener(event,async()=>{try{await fn()
 bind('load','click',loadSource);bind('add','click',addFiles);
 bind('export','click',exportPrivate);bind('aggregate','click',exportAggregate);
 bind('restore','click',importPrivate);bind('verify','change',verifyFile);
+bind('previewMigration','click',previewMigration);
+bind('applyMigration','click',applyMigration);
 bind('filter','input',()=>{state.filter=$('filter').value.toLowerCase().trim();render();});
 bind('forget','click',()=>{if(confirm('Forget all original findings and local human notes in memory?')){
- state.findings=[];state.sha='';state.rows=[];state.client='';state.engagement='';state.verify=null;state.filter='';
- for(const id of ['client','engagement','filter','original','addFiles','privateImport','verify'])$(id).value='';
+ state.findings=[];state.sha='';state.rows=[];state.client='';state.engagement='';state.verify=null;state.filter='';state.pending=null;$('migrationResult').hidden=true;
+ for(const id of ['client','engagement','filter','original','newSource','addFiles','privateImport','verify'])$(id).value='';
  $('finding').replaceChildren();render();message('Local workspace forgotten. Previously downloaded files are not deleted.',false);
 }});
 render();
