@@ -307,8 +307,15 @@ async function importReview(file){
    restored.push(q.status);
   }
   assert(incoming.outstanding_questions===restored.filter(x=>x!=='answered_unverified').length,'Review summary mismatch');
-  // All imported labels remain explicitly unverified. Commit the whole restore only after preflight.
-  // Preserve other-role local work; importing this role never overwrites it.
+  // The imported note cannot silently replace progress already entered by this role.
+  // Other-role statuses are never rewritten.
+  const conflict=questions.some((q,i)=>q.role===incoming.audience&&
+   q.status!=='unanswered'&&q.status!==restored[i]);
+  if(conflict&&!confirm('A different '+incoming.audience+' preparation status is already entered locally. Replace only that role\'s unverified answers?')){
+   $('replyState').textContent='Import cancelled; existing human preparation retained · HOLD';return;
+  }
+  assert(oldEpoch===epoch&&current?.sha256===originalSha,'Original source changed before applying review');
+  // Commit the restored role's statuses together only after full preflight and confirmation.
   questions.forEach((q,i)=>{if(q.role===incoming.audience)q.status=restored[i];});
   document.querySelector('[name="audience"][value="'+incoming.audience+'"]').checked=true;
   render();$('replyState').textContent='Review note matches exact original bytes · imported as unverified preparation only · HOLD';
