@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="referrer" content="no-referrer">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-onUCtffD8nA+XCD/bAu2YWB1HJVlEoOrfFCjmLNtDr4='; style-src 'sha256-nXJrkIZWu/oQfPD6QivqaMIiPJX7V1O6gtTrVBZoGro='; connect-src 'none'; img-src 'none'; font-src 'none'; object-src 'none'; frame-src 'none'; form-action 'none'; base-uri 'none'; worker-src 'none'; manifest-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-WBMc0kiL275YzMTkHZwHGGqC6QsNH6cEZPyhDubxVZI='; style-src 'sha256-GdLEigU6fEfKD+wX/IxytPwLBP/KQSwgEfrkQIJ9CcY='; connect-src 'none'; img-src 'none'; font-src 'none'; object-src 'none'; frame-src 'none'; form-action 'none'; base-uri 'none'; worker-src 'none'; manifest-src 'none'">
 <title>LightUp · Offline Lab Lineage Desk</title>
 <style>:root{color-scheme:dark;--bg:#081523;--panel:#14263b;--ink:#edf6ff;--muted:#b3c5d5;--line:#3b526b;--link:#8fd8ff;--hold:#ffce8a}
 *{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 system-ui,Segoe UI,sans-serif}
@@ -63,6 +63,12 @@ textarea:focus-visible{outline:3px solid var(--hold);outline-offset:3px}
 .private-mismatch #mismatchDetails{margin-top:.8rem}
 .private-mismatch td{overflow-wrap:anywhere;max-width:380px}
 @media print{.private-mismatch{display:none!important}}
+
+#actionBoardSection{border-left:4px solid var(--link)}
+#humanActionBoardStatus{font-weight:700;color:var(--link)}
+#humanPlan .queue-controls{grid-template-columns:repeat(auto-fit,minmax(240px,1fr))}
+#humanPlanState{color:var(--muted)}
+@media print{#actionBoardSection,#humanPlan{display:none!important}}
 </style>
 <script>"use strict";
 /* LightUp Assessment Lineage Desk: offline, untrusted, non-authorizing, read-only. */
@@ -80,10 +86,26 @@ textarea:focus-visible{outline:3px solid var(--hold);outline-offset:3px}
   const FLAGS = ["authorized","consent_verified","dispatch_allowed","release_allowed"];
   const LEVELS = ["critical","high","medium","low","info"];
   const STAGES = ["needs_review","in_discussion","documented"];
+  const ROUTES = ["unrouted","source_owner","scope_policy","finding_quality",
+    "evidence_scoring","operations"];
+  const ACTIONS = ["verify_original_source","request_original_evidence",
+    "discuss_lab_method","document_human_followup","none_recorded"];
+  const ROUTE_LABELS = {
+    unrouted:"Not routed",source_owner:"Original source owner",
+    scope_policy:"Scope / policy reviewer",finding_quality:"Findings / coverage reviewer",
+    evidence_scoring:"Evidence / scoring reviewer",operations:"Operations reviewer"
+  };
+  const ACTION_LABELS = {
+    verify_original_source:"Verify original source files",
+    request_original_evidence:"Request original supporting evidence",
+    discuss_lab_method:"Discuss lab method with source owner",
+    document_human_followup:"Document human follow-up",
+    none_recorded:"No next human action recorded"
+  };
   const TOKEN = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
   const MAX_CATALOG = 1048576, MAX_REPORT = 262144;
-  let catalog=null, reports=[], reviews=new Map(), humanNotes=new Map(), fictional=false;
-  let mismatchRevealed=false;
+  let catalog=null, reports=[], reviews=new Map(), humanNotes=new Map(), humanRoutes=new Map(), humanActions=new Map(), fictional=false;
+  let mismatchRevealed=false,undoRouteBatch=null;
   let catalogHash=null, reportHashes=[];
   function admit(ok){if(!ok)throw Error("Incompatible or unsafe private source");}
   function exact(v,keys){return v!==null && typeof v==="object" && !Array.isArray(v) &&
@@ -297,7 +319,11 @@ textarea:focus-visible{outline:3px solid var(--hold);outline-offset:3px}
     const match=consistency(),stage=Object.fromEntries(STAGES.map(s=>[s,0]));
     let unknown=0,zero=0,planted=0,findings=0,adverse=0,affected=0;
     const severity=Object.fromEntries(LEVELS.map(n=>[n,0]));
+    const routeCounts=Object.fromEntries(ROUTES.map(n=>[n,0]));
+    const actionCounts=Object.fromEntries(ACTIONS.map(n=>[n,0]));
     for(const s of catalog){
+      routeCounts[humanRouteFor(s)]++;
+      actionCounts[humanActionFor(s)]++;
       stage[reviews.get(s.id)||"needs_review"]++;
       if(s.mode==="unscored")unknown++;
       else if(s.mode==="declared_zero")zero++;
@@ -324,7 +350,10 @@ textarea:focus-visible{outline:3px solid var(--hold);outline-offset:3px}
       human_discussion_stages:stage,source_reported_adverse_cases:affected,
       source_reported_adverse_metric_instances:adverse,
       human_queue_priorities:queueRollup().map(({category,cases,human_stages})=>
-        ({category,cases,human_stages})),reports:byReport};
+        ({category,cases,human_stages})),
+      proposed_human_route_totals:routeCounts,
+      next_human_action_totals:actionCounts,
+      reports:byReport};
   }
 
   const FAMILIES={
@@ -422,6 +451,52 @@ textarea:focus-visible{outline:3px solid var(--hold);outline-offset:3px}
     }
     return rows;
   }
+  function renderHumanActionBoard(){
+    const node=$("humanActionBoard"),summary=$("humanActionBoardStatus");
+    node.replaceChildren();
+    if(!catalog||!reports.length){
+      summary.textContent="Load existing completed original reports to review local human actions.";
+      return;
+    }
+    const filter=$("boardStatus").value,scope=$("boardRoute").value;
+    const cases=catalog.map((item,i)=>({item,i}))
+      .filter(({item})=>humanActionFor(item)!=="none_recorded")
+      .filter(({item})=>filter==="all"||(reviews.get(item.id)||"needs_review")===filter)
+      .filter(({item})=>scope==="all"||humanRouteFor(item)===scope)
+      .sort((a,b)=>priority(a.item)-priority(b.item)||a.i-b.i);
+    summary.textContent=cases.length+" private proposed HUMAN actions shown · "+
+      "not authenticated staff assignments or automatic work orders.";
+    const heading=["Private ordinal","Original source discussion priority","Human review group",
+      "Proposed next action","Local discussion stage","Open private inspector"];
+    const tableNode=document.createElement("table"),head=document.createElement("thead"),
+      tr=document.createElement("tr");
+    for(const label of heading){
+      const th=document.createElement("th");th.textContent=label;tr.append(th);
+    }
+    head.append(tr);tableNode.append(head);
+    const tbody=document.createElement("tbody");
+    for(const {item,i} of cases){
+      const row=document.createElement("tr");
+      td(row,"Lab case "+String(i+1).padStart(2,"0"));
+      td(row,QUEUE_LABELS[priority(item)]);
+      td(row,ROUTE_LABELS[humanRouteFor(item)]);
+      td(row,ACTION_LABELS[humanActionFor(item)]);
+      td(row,(reviews.get(item.id)||"needs_review").replaceAll("_"," "));
+      const next=document.createElement("td");
+      next.append(button("Open private case",()=>{
+        $("inspectCase").value=String(i);renderInspector();
+        $("inspectorSection").scrollIntoView({block:"start",behavior:"smooth"});
+      }));
+      row.append(next);tbody.append(row);
+    }
+    tableNode.append(tbody);
+    node.append(tableNode);
+    const explanation=document.createElement("p");
+    explanation.textContent="No human owner identity, contact channel, authorization, scanner "+
+      "or target instruction is inferred or sent. Original source data stays untouched.";
+    node.append(explanation);
+  }
+
   function renderQueueOverview(){
     const node=$("queueOverview");node.replaceChildren();
     if(!catalog||!reports.length){
@@ -447,9 +522,12 @@ textarea:focus-visible{outline:3px solid var(--hold);outline-offset:3px}
     if(!catalog)return [];
     const family=$("familyFilter").value;
     const stage=$("stageFilter").value,truth=$("truthFilter").value;
+    const route=$("routeFilter").value,action=$("actionFilter").value;
     return catalog.map((item,i)=>({item,i})).filter(({item})=>{
       if(stage!=="all"&&(reviews.get(item.id)||"needs_review")!==stage)return false;
       if(truth!=="all"&&item.mode!==truth)return false;
+      if(route!=="all"&&humanRouteFor(item)!==route)return false;
+      if(action!=="all"&&humanActionFor(item)!==action)return false;
       if(family!=="all"){
         const current=caseFlags(item);
         if(family==="no_flags")return !current.flags.size&&!current.missing;
@@ -476,8 +554,34 @@ textarea:focus-visible{outline:3px solid var(--hold);outline-offset:3px}
     reviews=undoBatch;undoBatch=null;render();
     message("Previous human discussion stages restored in memory only.");
   }
+  function bulkSuggestHumanRoutes(){
+    if(!catalog||!reports.length){
+      message("Load original completed comparison sources first.",true);return;
+    }
+    const selected=visibleCases().filter(({item})=>humanRouteFor(item)==="unrouted");
+    if(!selected.length){
+      message("No currently visible unrouted human cases need a proposal.",true);return;
+    }
+    if(!confirm("Suggest source-derived HUMAN discussion groups for "+selected.length+
+      " currently visible UNROUTED private cases only? No employees are assigned; "+
+      "no scan or permission is initiated. Existing human choices remain unchanged."))return;
+    undoRouteBatch=new Map(humanRoutes);
+    for(const {item} of selected){
+      const hint=sourceRouteHint(item);
+      if(hint!=="unrouted")humanRoutes.set(item.id,hint);
+    }
+    render();
+    message("Local human discussion proposals added; existing routes unchanged. "+
+      "One-step route Undo available.");
+  }
+  function undoHumanRoutes(){
+    if(!undoRouteBatch){message("No proposed route batch to undo.");return;}
+    humanRoutes=undoRouteBatch;undoRouteBatch=null;render();
+    message("Previous PRIVATE human route proposals restored without modifying sources.");
+  }
+
   function resetFilters(){
-    for(const id of ["familyFilter","stageFilter","truthFilter"])$(id).value="all";
+    for(const id of ["familyFilter","stageFilter","truthFilter","routeFilter","actionFilter"])$(id).value="all";
   }
 
 
@@ -506,7 +610,7 @@ textarea:focus-visible{outline:3px solid var(--hold);outline-offset:3px}
     [reports[i],reports[j]]=[reports[j],reports[i]];
     [reportHashes[i],reportHashes[j]]=[reportHashes[j],reportHashes[i]];
     mismatchRevealed=false;
-    undoBatch=null;
+    undoBatch=null;undoRouteBatch=null;
     render();$("sourceOrder").value=String(j);renderSourceOrder();
     message("Changed private source DISPLAY order only. Not proven chronology. "+
       "Private source-bound resume must be saved again.");
@@ -529,7 +633,9 @@ textarea:focus-visible{outline:3px solid var(--hold);outline-offset:3px}
   function reopenHumanStages(){
     if(!catalog)return;
     for(const s of catalog)reviews.set(s.id,"needs_review");
-    undoBatch=null;
+    // Different completed source sets invalidate unverified proposed human routes/actions.
+    humanRoutes.clear();humanActions.clear();
+    undoBatch=null;undoRouteBatch=null;
   }
   function saveCaseNote(){
     if(!catalog||!catalog.length)return;
@@ -546,6 +652,39 @@ textarea:focus-visible{outline:3px solid var(--hold);outline-offset:3px}
       "Private note removed from memory.";
   }
 
+  function humanRouteFor(s){return humanRoutes.get(s.id)||"unrouted";}
+  function humanActionFor(s){return humanActions.get(s.id)||"none_recorded";}
+  function sourceRouteHint(s){
+    const p=priority(s);
+    return ["source_owner","scope_policy","finding_quality","evidence_scoring",
+      "operations","unrouted"][p];
+  }
+  function setHumanPlan(){
+    if(!catalog||!reports.length){message("Load genuine completed source reports first.",true);return;}
+    const index=Number($("inspectCase").value);
+    if(!Number.isSafeInteger(index)||index<0||index>=catalog.length)return;
+    const route=$("humanRoute").value,action=$("humanAction").value;
+    if(!ROUTES.includes(route)||!ACTIONS.includes(action)){
+      message("HOLD: unknown human planning option.",true);return;
+    }
+    const id=catalog[index].id;
+    if(route==="unrouted")humanRoutes.delete(id);else humanRoutes.set(id,route);
+    if(action==="none_recorded")humanActions.delete(id);else humanActions.set(id,action);
+    undoBatch=null;undoRouteBatch=null;
+    render();
+    $("inspectCase").value=String(index);renderInspector();
+    message("Private proposed human reviewer route and next human action saved in memory. "+
+      "This is not an assignment, verified finding, grant or execution request.");
+  }
+  function adoptSourceHint(){
+    if(!catalog||!reports.length)return;
+    const index=Number($("inspectCase").value);
+    if(!Number.isSafeInteger(index)||index<0||index>=catalog.length)return;
+    $("humanRoute").value=sourceRouteHint(catalog[index]);
+    $("humanPlanState").textContent="Suggested human discussion group only. "+
+      "Click Save human plan to adopt locally; no staff are contacted.";
+  }
+
   function numberLabel(n){
     return Number.isInteger(n)?String(n):n.toPrecision(6).replace(/\.?0+($|e)/,"$1");
   }
@@ -555,6 +694,9 @@ textarea:focus-visible{outline:3px solid var(--hold);outline-offset:3px}
     if(!catalog||!reports.length){
       panel.textContent="Import the original scenario catalog and a completed comparator report first.";
       $("privateCaseNote").value="";
+      $("humanRoute").value="unrouted";$("humanAction").value="none_recorded";
+      $("sourceRouteHint").textContent="";
+      $("humanPlanState").textContent="Load original sources first.";
       $("privateNoteState").textContent="Load original sources first.";
       return;
     }
@@ -566,6 +708,11 @@ textarea:focus-visible{outline:3px solid var(--hold);outline-offset:3px}
       Number(old)<catalog.length?old:"0";
     const index=Number(selector.value),scenario=catalog[index];
     $("privateCaseNote").value=humanNotes.get(scenario.id)||"";
+    $("humanRoute").value=humanRouteFor(scenario);
+    $("humanAction").value=humanActionFor(scenario);
+    $("sourceRouteHint").textContent="Proposed source-flag discussion group: "+
+      ROUTE_LABELS[sourceRouteHint(scenario)]+". Never an authenticated assignment.";
+    $("humanPlanState").textContent="Human planning fields are PRIVATE and unsigned.";
     $("privateNoteState").textContent="PRIVATE human notes are local and never appear in anonymous exports.";
     const rows=METRICS.map(metric=>[
       metric.replaceAll("_"," "),
@@ -599,6 +746,7 @@ textarea:focus-visible{outline:3px solid var(--hold);outline-offset:3px}
     renderSourceOrder();
     renderMismatchDetails();
     renderQueueOverview();
+    renderHumanActionBoard();
     renderAnonymousPrint();
     $("cases").replaceChildren();
     const all=catalog?.length||0,visible=visibleCases();
@@ -606,10 +754,12 @@ textarea:focus-visible{outline:3px solid var(--hold);outline-offset:3px}
       " private source cases. Sorted: missing originals → scope/policy → findings → "+
       "evidence → informational operations → no source flags. This is an analyst review order, not a verified risk score.";
     $("undoStage").disabled=!undoBatch;
+    $("undoRoute").disabled=!undoRouteBatch;
     if(!catalog){renderInspector();return;}
     const grid=document.createElement("table"),head=document.createElement("thead"),h=document.createElement("tr");
     for(const text of ["Private scenario","Original source priority","Declared ground truth","Planted count",
-      ...reports.map((_,i)=>"Source "+(i+1)+" flags"),"Human discussion","Inspect originals"]){
+      ...reports.map((_,i)=>"Source "+(i+1)+" flags"),"Human discussion",
+      "Human proposal","Inspect originals"]){
       const th=document.createElement("th");th.textContent=text;h.append(th);
     }
     head.append(h);grid.append(head);
@@ -639,6 +789,7 @@ textarea:focus-visible{outline:3px solid var(--hold);outline-offset:3px}
         render();message("Private human stage updated in memory only.");
       });
       cell.append(selector);row.append(cell);
+      td(row,ROUTE_LABELS[humanRouteFor(item)]+" · "+ACTION_LABELS[humanActionFor(item)]);
       const jump=document.createElement("td");
       jump.append(button("Inspect",()=>{
         $("inspectCase").value=String(i);renderInspector();
@@ -676,16 +827,18 @@ textarea:focus-visible{outline:3px solid var(--hold);outline-offset:3px}
     try{
       privateSourceBound();
       const draft={
-        schema:"lightup.assessment_lineage_private_draft.v2",
+        schema:"lightup.assessment_lineage_private_draft.v3",
         status:"PRIVATE_HUMAN_DRAFT_ONLY",
         authorized:false,consent_verified:false,dispatch_allowed:false,release_allowed:false,
         source_catalog_sha256:catalogHash,
         source_report_sha256:[...reportHashes],
         discussion_stages:catalog.map(s=>reviews.get(s.id)||"needs_review"),
-        private_case_notes:catalog.map(s=>humanNotes.get(s.id)||"")
+        private_case_notes:catalog.map(s=>humanNotes.get(s.id)||""),
+        proposed_review_routes:catalog.map(humanRouteFor),
+        next_human_actions:catalog.map(humanActionFor)
       };
       if(!confirm("Download a PRIVATE draft with the SHA-256 fingerprints of original "+
-        "private file bytes and human stages? Protect this file; it is not a consent or grant."))return;
+        "private file bytes, human stages, PRIVATE notes and proposed human plans? Protect this file; it is not a consent or grant."))return;
       download("lightup-PRIVATE-lineage-human-draft.json",
         JSON.stringify(draft,null,2)+"\n","application/json");
       message("PRIVATE SHA-256 source-bound human draft downloaded. Never share as anonymous handoff.");
@@ -695,10 +848,14 @@ textarea:focus-visible{outline:3px solid var(--hold);outline-offset:3px}
     try{
       privateSourceBound();
       const input=await read(file,65536),draft=input.result;
-      const version=draft?.schema,withNotes=version==="lightup.assessment_lineage_private_draft.v2";
+      const version=draft?.schema;
+      const withPlan=version==="lightup.assessment_lineage_private_draft.v3";
+      const withNotes=withPlan||version==="lightup.assessment_lineage_private_draft.v2";
       admit((version==="lightup.assessment_lineage_private_draft.v1"||withNotes)&&
         exact(draft,["schema","status",...FLAGS,"source_catalog_sha256",
-          "source_report_sha256","discussion_stages",...(withNotes?["private_case_notes"]:[])])&&
+          "source_report_sha256","discussion_stages",
+          ...(withNotes?["private_case_notes"]:[]),
+          ...(withPlan?["proposed_review_routes","next_human_actions"]:[])])&&
         draft.status==="PRIVATE_HUMAN_DRAFT_ONLY"&&flags(draft)&&
         draft.source_catalog_sha256===catalogHash&&
         Array.isArray(draft.source_report_sha256)&&
@@ -710,13 +867,27 @@ textarea:focus-visible{outline:3px solid var(--hold);outline-offset:3px}
       if(withNotes)admit(Array.isArray(draft.private_case_notes)&&
         draft.private_case_notes.length===catalog.length&&
         draft.private_case_notes.every(humanNote));
-      // Atomically replace only PRIVATE human review data, never original source.
+      if(withPlan)admit(Array.isArray(draft.proposed_review_routes)&&
+        draft.proposed_review_routes.length===catalog.length&&
+        draft.proposed_review_routes.every(v=>ROUTES.includes(v))&&
+        Array.isArray(draft.next_human_actions)&&
+        draft.next_human_actions.length===catalog.length&&
+        draft.next_human_actions.every(v=>ACTIONS.includes(v)));
+      // Entire local human workspace changes only after exact original byte provenance
+      // and every private field have been checked; older drafts remain readable.
       const nextReviews=new Map(catalog.map((s,i)=>[s.id,draft.discussion_stages[i]]));
       const nextNotes=withNotes?new Map(catalog.flatMap((s,i)=>
         draft.private_case_notes[i]?[[s.id,draft.private_case_notes[i]]]:[])):new Map();
-      reviews=nextReviews;humanNotes=nextNotes;undoBatch=null;render();
-      message("PRIVATE stages and local notes restored for exact source bytes. "+
-        "Legacy v1 resumes with empty notes.");
+      const nextRoutes=withPlan?new Map(catalog.flatMap((s,i)=>
+        draft.proposed_review_routes[i]!=="unrouted"?
+          [[s.id,draft.proposed_review_routes[i]]]:[])):new Map();
+      const nextActions=withPlan?new Map(catalog.flatMap((s,i)=>
+        draft.next_human_actions[i]!=="none_recorded"?
+          [[s.id,draft.next_human_actions[i]]]:[])):new Map();
+      reviews=nextReviews;humanNotes=nextNotes;
+      humanRoutes=nextRoutes;humanActions=nextActions;undoBatch=null;undoRouteBatch=null;render();
+      message("PRIVATE stages, notes and proposed human plans restored for original "+
+        "exact source bytes. Legacy v1/v2 drafts have no proposed plans.");
     }catch(_){message("HOLD: draft or original source bytes do not match. Existing stages preserved.",true);}
   }
 
@@ -744,6 +915,10 @@ textarea:focus-visible{outline:3px solid var(--hold);outline-offset:3px}
       ["Author-declared planted findings (not verified)",a.declared_planted_findings],
       ["Original reported adverse metric instances",a.source_reported_adverse_metric_instances],
       ...a.human_queue_priorities.map(q=>["Source priority "+q.category,q.cases]),
+      ...Object.entries(a.proposed_human_route_totals).map(([k,v])=>
+        ["Proposed human discussion route "+k,v]),
+      ...Object.entries(a.next_human_action_totals).map(([k,v])=>
+        ["Proposed next human action "+k,v]),
       ...Object.entries(a.human_discussion_stages).map(([stage,count])=>
         ["Human "+stage,count])];
     const tableArea=document.createElement("div");node.append(tableArea);
@@ -753,6 +928,69 @@ textarea:focus-visible{outline:3px solid var(--hold);outline-offset:3px}
       "flags false. No original case IDs, host/IP/URL, original report values, "+
       "source hashes or private notes. No scans, grants, deployments or HUMAN GO.";
     node.append(footer);
+  }
+
+
+  function exportPrivateActionBrief(){
+    try{
+      privateSourceBound();
+      admit(catalog.length>=1&&catalog.length<=32&&reports.length<=8);
+      // Sensitive export: original case IDs, raw source-byte fingerprints, private
+      // text, and proposed human follow-up. Never part of anonymous exports/print.
+      if(!confirm("Download a SENSITIVE PRIVATE human action dossier containing "+
+        "original scenario IDs, source SHA-256 hashes, private case notes and "+
+        "proposed human follow-up? Keep it on protected storage; not an approval."))return;
+      const escape=x=>String(x).replaceAll("&","&amp;").replaceAll("<","&lt;")
+        .replaceAll(">","&gt;").replaceAll('"',"&quot;").replaceAll("'","&#39;");
+      const snapshot=consistency();
+      const rows=catalog.map((item,i)=>{
+        const flags=caseFlags(item),stage=reviews.get(item.id)||"needs_review";
+        const labels=[
+          "Lab case "+String(i+1).padStart(2,"0"),item.id,
+          QUEUE_LABELS[priority(item)],
+          flags.missing?"Missing original completed source":"Present in every original source",
+          item.mode,
+          stage,ROUTE_LABELS[humanRouteFor(item)],ACTION_LABELS[humanActionFor(item)],
+          humanNotes.get(item.id)||""
+        ];
+        return "<tr>"+labels.map(value=>"<td>"+escape(value)+"</td>").join("")+"</tr>";
+      }).join("");
+      const heads=["Ordinal","PRIVATE original case ID","Source-reported priority",
+        "Membership","Author-declared ground truth","Local human stage",
+        "Proposed discussion group","Proposed next human action","PRIVATE human note"];
+      const hashes=reportHashes.map((digest,i)=>
+        "<li>Completed source "+(i+1)+": "+escape(digest)+"</li>").join("");
+      const html="<!doctype html><html lang='en'><meta charset='utf-8'>"+
+        "<meta http-equiv='Content-Security-Policy' content=\"default-src 'none'; "+
+        "style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'\">"+
+        "<meta name='referrer' content='no-referrer'>"+
+        "<title>PRIVATE LightUp human action dossier</title>"+
+        "<style>body{font:15px/1.5 system-ui;max-width:1300px;margin:2rem auto;padding:1rem}"+
+        "table{border-collapse:collapse;width:100%}th,td{border:1px solid #777;"+
+        "padding:.45rem;vertical-align:top;overflow-wrap:anywhere}"+
+        "th{background:#eee}p{max-width:85ch}code{overflow-wrap:anywhere}"+
+        "@media print{tr{break-inside:avoid}}</style>"+
+        "<h1>PRIVATE LightUp original-source human review dossier</h1>"+
+        "<p><strong>SENSITIVE · HUMAN REVIEW ONLY · INCUBATE M3/M7 · DRAFT/HOLD"+
+        (fictional?" · FICTIONAL":"")+"</strong></p>"+
+        "<p>Source membership: "+(snapshot.exact?"Aligned format — unverified authenticity":
+          "HOLD — "+snapshot.missing+" missing and "+snapshot.unexpected+" extra memberships")+
+        ". Original findings and flags are untrusted retrospective lab declarations, "+
+        "not evidence of remediation, staff assignment, consent or execution permission.</p>"+
+        "<p>All authorized, consent_verified, dispatch_allowed and release_allowed "+
+        "remain false. No scanner, active target or tool is operated by this file.</p>"+
+        "<p>PRIVATE raw original catalog SHA-256: <code>"+escape(catalogHash)+"</code></p>"+
+        "<p>PRIVATE completed source byte-hashes (human display order):</p><ol>"+
+        hashes+"</ol><table><thead><tr>"+
+        heads.map(value=>"<th>"+escape(value)+"</th>").join("")+
+        "</tr></thead><tbody>"+rows+"</tbody></table>"+
+        "<p><strong>HOLD:</strong> Internal human discussion notes are unsigned, "+
+        "may include sensitive original references, and must be independently "+
+        "checked with the genuine source owners. Do not share or use as a grant.</p>"+
+        "</html>";
+      download("lightup-PRIVATE-human-action-dossier.html",html,"text/html");
+      message("Sensitive PRIVATE human action dossier downloaded. Protect it separately.");
+    }catch(_){message("HOLD: no PRIVATE action dossier without real source-byte fingerprints.",true);}
   }
 
   function exportJson(){
@@ -772,6 +1010,10 @@ textarea:focus-visible{outline:3px solid var(--hold);outline-offset:3px}
         rows.push(["declared severity",0,key,value]);
       for(const [key,value] of Object.entries(a.human_discussion_stages))
         rows.push(["human discussion",0,key,value]);
+      for(const [route,count] of Object.entries(a.proposed_human_route_totals))
+        rows.push(["proposed human discussion route",0,route,count]);
+      for(const [action,count] of Object.entries(a.next_human_action_totals))
+        rows.push(["next human discussion action",0,action,count]);
       for(const q of a.human_queue_priorities){
         rows.push(["review priority",0,q.category,q.cases]);
         for(const [stage,count] of Object.entries(q.human_stages))
@@ -800,7 +1042,11 @@ textarea:focus-visible{outline:3px solid var(--hold);outline-offset:3px}
         ["Declared planted expected findings",a.declared_planted_findings],
         ["Original source adverse metric instances",a.source_reported_adverse_metric_instances],
         ...Object.entries(a.human_discussion_stages).map(([k,v])=>["Human "+k,v]),
-        ...a.human_queue_priorities.map(q=>["Human priority "+q.category,q.cases])];
+        ...a.human_queue_priorities.map(q=>["Human priority "+q.category,q.cases]),
+        ...Object.entries(a.proposed_human_route_totals).map(([k,v])=>
+          ["Proposed human route "+k,v]),
+        ...Object.entries(a.next_human_action_totals).map(([k,v])=>
+          ["Human next action "+k,v])];
       const html="<!doctype html><html lang='en'><meta charset='utf-8'>"+
         "<meta http-equiv='Content-Security-Policy' content=\"default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'\">"+
         "<title>LightUp anonymous lineage brief</title><style>body{font:16px system-ui;max-width:900px;margin:3rem auto;padding:1rem}"+
@@ -815,8 +1061,8 @@ textarea:focus-visible{outline:3px solid var(--hold);outline-offset:3px}
       message("Script-free, target-free human brief downloaded.");
     }catch(_){message("HOLD: brief not available until sources match exactly.",true);}
   }
-  function forget(){catalog=null;reports=[];reviews=new Map();humanNotes=new Map();mismatchRevealed=false;catalogHash=null;
-    reportHashes=[];undoBatch=null;resetFilters();fictional=false;render();message("All source and review data cleared from memory.");}
+  function forget(){catalog=null;reports=[];reviews=new Map();humanNotes=new Map();humanRoutes=new Map();humanActions=new Map();mismatchRevealed=false;catalogHash=null;
+    reportHashes=[];undoBatch=null;undoRouteBatch=null;resetFilters();fictional=false;render();message("All source and review data cleared from memory.");}
   function makeDemo(){
     const names=["scenario-FAKE-01","scenario-FAKE-02","scenario-FAKE-03"];
     catalog=names.map((id,i)=>({id,mode:i===0?"unscored":i===1?
@@ -833,8 +1079,8 @@ textarea:focus-visible{outline:3px solid var(--hold);outline-offset:3px}
         return [id,{metrics,adverse:variant&&i===2?["scope_violations"]:[]}];
       }))
     });
-    reports=[candidate(0),candidate(1)];reviews=new Map();humanNotes=new Map();mismatchRevealed=false;catalogHash=null;
-    reportHashes=[];undoBatch=null;resetFilters();fictional=true;
+    reports=[candidate(0),candidate(1)];reviews=new Map();humanNotes=new Map();humanRoutes=new Map();humanActions=new Map();mismatchRevealed=false;catalogHash=null;
+    reportHashes=[];undoBatch=null;undoRouteBatch=null;resetFilters();fictional=true;
     render();message("FICTIONAL offline demonstration loaded; no source evidence or permission.");
   }
 
@@ -885,7 +1131,7 @@ textarea:focus-visible{outline:3px solid var(--hold);outline-offset:3px}
       harmonize(nextReports);
       // All source files are fully canonical and mutually consistent before ANY mutation.
       catalog=nextCatalog;reports=nextReports;catalogHash=sourceCatalog.digest;
-      reportHashes=nextHashes;reviews=new Map();humanNotes=new Map();mismatchRevealed=false;undoBatch=null;fictional=false;
+      reportHashes=nextHashes;reviews=new Map();humanNotes=new Map();humanRoutes=new Map();humanActions=new Map();mismatchRevealed=false;undoBatch=null;undoRouteBatch=null;fictional=false;
       resetFilters();render();
       // The template is no longer needed after import and should not linger in DOM.
       privateTemplate.content.replaceChildren();
@@ -908,8 +1154,8 @@ textarea:focus-visible{outline:3px solid var(--hold);outline-offset:3px}
       const imported=await read(file,MAX_CATALOG);
       const candidate=parseCatalog(imported.result);
       if((catalog||reports.length)&&!confirm("Replace private catalog and clear previously imported lab comparisons and human stage work?"))return;
-      catalog=candidate;reports=[];reviews=new Map();humanNotes=new Map();mismatchRevealed=false;catalogHash=imported.digest;
-      reportHashes=[];undoBatch=null;resetFilters();fictional=false;render();
+      catalog=candidate;reports=[];reviews=new Map();humanNotes=new Map();humanRoutes=new Map();humanActions=new Map();mismatchRevealed=false;catalogHash=imported.digest;
+      reportHashes=[];undoBatch=null;undoRouteBatch=null;resetFilters();fictional=false;render();
       message("PRIVATE lab design admitted. Targets and finding IDs were discarded after validation.");
     }catch(_){message("HOLD: incompatible PRIVATE Lab Scenario Studio source. Existing data preserved.",true);}
   });
@@ -938,10 +1184,13 @@ textarea:focus-visible{outline:3px solid var(--hold);outline-offset:3px}
     if((catalog||reports.length)&&!confirm("Permanently forget in-memory private inputs and local discussion stages?"))return;
     forget();
   });
-  for(const id of ["familyFilter","stageFilter","truthFilter"])
+  for(const id of ["familyFilter","stageFilter","truthFilter","routeFilter","actionFilter"])
     $(id).addEventListener("change",render);
+  for(const id of ["boardStatus","boardRoute"])$(id).addEventListener("change",renderHumanActionBoard);
   $("inspectCase").addEventListener("change",renderInspector);
   $("saveCaseNote").addEventListener("click",saveCaseNote);
+  $("saveHumanPlan").addEventListener("click",setHumanPlan);
+  $("adoptSourceHint").addEventListener("click",adoptSourceHint);
   $("revealMismatch").addEventListener("click",toggleMismatch);
   $("sourceOrder").addEventListener("change",renderSourceOrder);
   $("sourceEarlier").addEventListener("click",()=>chooseSource(-1));
@@ -949,7 +1198,10 @@ textarea:focus-visible{outline:3px solid var(--hold);outline-offset:3px}
   $("removeSource").addEventListener("click",removeSource);
   $("applyStage").addEventListener("click",humanBulk);
   $("undoStage").addEventListener("click",undoHumanBulk);
+  $("suggestRoutes").addEventListener("click",bulkSuggestHumanRoutes);
+  $("undoRoute").addEventListener("click",undoHumanRoutes);
   $("exportDraft").addEventListener("click",exportPrivateDraft);
+  $("exportPrivateActionBrief").addEventListener("click",exportPrivateActionBrief);
   $("restoreDraft").addEventListener("change",async e=>{
     const f=e.target.files?.[0];e.target.value="";
     if(f)await restorePrivateDraft(f);
@@ -1040,6 +1292,21 @@ textarea:focus-visible{outline:3px solid var(--hold);outline-offset:3px}
         <select id="stageFilter"><option value="all">All stages</option>
           <option value="needs_review">Needs review</option><option value="in_discussion">In discussion</option>
           <option value="documented">Documented</option></select></div>
+      <div><label for="routeFilter">Proposed human discussion route</label>
+        <select id="routeFilter"><option value="all">All routes</option>
+          <option value="unrouted">Not routed</option>
+          <option value="source_owner">Original source owner</option>
+          <option value="scope_policy">Scope / policy reviewer</option>
+          <option value="finding_quality">Findings / coverage reviewer</option>
+          <option value="evidence_scoring">Evidence / scoring reviewer</option>
+          <option value="operations">Operations reviewer</option></select></div>
+      <div><label for="actionFilter">Next human discussion action</label>
+        <select id="actionFilter"><option value="all">All proposed actions</option>
+          <option value="none_recorded">No action recorded</option>
+          <option value="verify_original_source">Verify original source files</option>
+          <option value="request_original_evidence">Request original supporting evidence</option>
+          <option value="discuss_lab_method">Discuss lab method</option>
+          <option value="document_human_followup">Document human follow-up</option></select></div>
       <div><label for="bulkStage">Set selected visible cases to</label>
         <select id="bulkStage"><option value="needs_review">Needs review</option>
           <option value="in_discussion">In discussion</option>
@@ -1050,9 +1317,32 @@ textarea:focus-visible{outline:3px solid var(--hold);outline-offset:3px}
     <div id="queueOverview" class="queue-overview" aria-label="Private source-based human review priorities"></div>
     <p id="queueCount"></p>
     <div class="actions"><button id="applyStage" type="button">Confirm bulk stage for visible cases</button>
-      <button id="undoStage" class="secondary" type="button" disabled>Undo previous bulk change</button></div>
+      <button id="undoStage" class="secondary" type="button" disabled>Undo previous bulk change</button>
+      <button id="suggestRoutes" type="button">Suggest routes for visible unrouted cases</button>
+      <button id="undoRoute" class="secondary" type="button" disabled>Undo proposed routes</button></div>
     <p>Filtering or moving a human discussion stage never changes a source report, invokes an evaluator or grants permission.</p>
     <div id="cases" class="scroll" aria-label="Private human scenario review"></div>
+  </section>
+  <section id="actionBoardSection" aria-labelledby="actionBoardTitle">
+    <h2 id="actionBoardTitle">Private human follow-up board</h2>
+    <p>Review <strong>proposed human actions</strong> across original finished lab cases in source-priority order. These are planning entries only — no actual reviewer identity, notification, assignment or authority is created.</p>
+    <div class="queue-controls">
+      <div><label for="boardStatus">Human discussion stage</label>
+        <select id="boardStatus"><option value="all">All local stages</option>
+          <option value="needs_review">Needs review</option>
+          <option value="in_discussion">In discussion</option>
+          <option value="documented">Documented</option></select></div>
+      <div><label for="boardRoute">Proposed human route</label>
+        <select id="boardRoute"><option value="all">All human routes</option>
+          <option value="unrouted">Not routed</option>
+          <option value="source_owner">Original source owner</option>
+          <option value="scope_policy">Scope / policy reviewer</option>
+          <option value="finding_quality">Findings / coverage reviewer</option>
+          <option value="evidence_scoring">Evidence / scoring reviewer</option>
+          <option value="operations">Operations reviewer</option></select></div>
+    </div>
+    <p id="humanActionBoardStatus"></p>
+    <div id="humanActionBoard" class="scroll" aria-label="Private human action proposals"></div>
   </section>
   <section id="inspectorSection" aria-labelledby="inspectorTitle">
     <h2 id="inspectorTitle">4. Original source metric inspector</h2>
@@ -1068,15 +1358,45 @@ textarea:focus-visible{outline:3px solid var(--hold);outline-offset:3px}
       <div class="actions"><button id="saveCaseNote" type="button">Save note in private memory</button></div>
       <p id="privateNoteState" role="status"></p>
     </article>
+    <article id="humanPlan">
+      <h3>PRIVATE human follow-up plan</h3>
+      <p>Choose a proposed human discussion group and next action for the selected original lab case. These are unsigned local coordination notes, never assigned employees, a work order, scanner activity, access consent, or a release verdict.</p>
+      <p id="sourceRouteHint"></p>
+      <div class="queue-controls">
+        <div><label for="humanRoute">Proposed human discussion group</label>
+          <select id="humanRoute">
+            <option value="unrouted">Not routed</option>
+            <option value="source_owner">Original source owner</option>
+            <option value="scope_policy">Scope / policy reviewer</option>
+            <option value="finding_quality">Findings / coverage reviewer</option>
+            <option value="evidence_scoring">Evidence / scoring reviewer</option>
+            <option value="operations">Operations reviewer</option>
+          </select></div>
+        <div><label for="humanAction">Next human discussion action</label>
+          <select id="humanAction">
+            <option value="none_recorded">No next human action recorded</option>
+            <option value="verify_original_source">Verify original source files</option>
+            <option value="request_original_evidence">Request original supporting evidence</option>
+            <option value="discuss_lab_method">Discuss lab method with source owner</option>
+            <option value="document_human_followup">Document human follow-up</option>
+          </select></div>
+      </div>
+      <div class="actions">
+        <button id="adoptSourceHint" class="secondary" type="button">Suggest route from original source flags</button>
+        <button id="saveHumanPlan" type="button">Save PRIVATE human plan</button>
+      </div>
+      <p id="humanPlanState" role="status"></p>
+    </article>
   </section>
   <section aria-labelledby="privateDraftTitle">
     <h2 id="privateDraftTitle">5. PRIVATE human work continuity (optional)</h2>
     <p>The browser does not store data. After importing the <strong>original exact source bytes</strong>, you may save the human discussion stages and locally entered private human case notes to a deliberately PRIVATE local JSON draft and later restore them when the <strong>same original catalog and report files, in the same order</strong> are reimported. It includes SHA-256 fingerprints of private source bytes and any PRIVATE notes — never upload or circulate it as an anonymous report. Original files and targets are NOT embedded in the draft.</p>
     <p>When secure browser SHA-256 is unavailable, private save/restore is refused safely; the anonymous handoff remains separate. Any changed source file or added source changes the private restore binding.</p>
     <div class="actions"><button id="exportDraft" type="button">Save PRIVATE source-bound human draft</button>
+      <button id="exportPrivateActionBrief" type="button">Download PRIVATE human action dossier</button>
       <div><label for="restoreDraft">Restore an exact-source PRIVATE draft</label>
         <input id="restoreDraft" type="file" accept=".json,application/json"></div></div>
-    <p class="warning">PRIVATE drafts are unsigned self-reports. Stage “documented” is never remediation proof, consent, authorization, or release.</p>
+    <p class="warning">PRIVATE drafts are unsigned self-reports. Stage “documented” is never remediation proof, consent, authorization, or release. The PRIVATE action dossier contains original scenario IDs, source hashes and human notes. Never share it as an anonymous report.</p>
   </section>
   <section aria-labelledby="handoffTitle">
     <h2 id="handoffTitle">6. Anonymous human handoff</h2>
