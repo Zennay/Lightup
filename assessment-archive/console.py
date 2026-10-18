@@ -117,6 +117,8 @@ def operation(choice: str) -> int:
         manifest = ask("Existing owner-private archive manifest JSON path")
         with_choices = yes_no("Include source-bound human follow-up stages")
         followup_file = ask("Original edited human follow-up form JSON path") if with_choices else None
+        agenda_date = (ask("Human agenda planning reference date YYYY-MM-DD")
+                       if with_choices and yes_no("Include source-bound human agenda in ZIP") else None)
         anonymous = yes_no("Create aggregate-only packet without source fingerprints/roles/dates")
         include_studio = False if anonymous else yes_no("Include private interactive browser studio in ZIP")
         previous = (ask("Previous original private archive manifest path")
@@ -124,7 +126,8 @@ def operation(choice: str) -> int:
         output = ask("New private coordination ZIP path (must not exist)")
         return packet.package(SimpleNamespace(manifest=manifest, choices=followup_file,
                                               output=output, aggregate_only=anonymous,
-                                              include_studio=include_studio, previous=previous))
+                                              include_studio=include_studio, previous=previous,
+                                              agenda_date=agenda_date))
     if choice == "9":
         manifest = ask("Existing owner-private archive manifest JSON path")
         previous = (ask("Previously saved original private archive manifest JSON")

@@ -53,3 +53,12 @@ role assignments and review dates (only group counts remain). The source
 checksum and original human stage validation are still mandatory.
 
 Console option 10 exposes the same locally bounded workflow.
+
+### One offline review ZIP
+
+    python3 assessment-archive/packet.py --manifest /private/ARCHIVE.json --choices /private/FOLLOWUP.json --agenda-date 2026-10-18 --output /private/NEW-human-review.zip
+
+The packet's local index.html links to the static printable human agenda
+together with the original archive and source-bound worklist. This adds
+no customer consent, verification or target interactions. With
+--aggregate-only, the agenda includes ONLY anonymous human counts.

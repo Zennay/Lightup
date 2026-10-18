@@ -178,3 +178,20 @@ vulnerabilities, authentic consent or a pass/fail security verdict.
 with anonymous counts by human stage, neutral role and planned-date category.
 All output is exclusively new, 0600 and fsynced. Original QA/CI and
 authorization owners are untouched.
+
+### Source-bound human agenda in portable coordination ZIP
+
+The private or aggregate-only coordination ZIP can now contain a printable
+human agenda generated directly from its **same original source-bound human
+form**. The operator explicitly chooses a planning reference date, never
+an automatic client grant or deadline:
+
+    python3 assessment-archive/packet.py --manifest /private/ARCHIVE.json --choices /private/FOLLOWUP.json --agenda-date 2026-10-18 --include-studio --output /private/NEW-coordination-room.zip
+
+The local index.html launches human-agenda.html alongside the original
+archive dashboard, optional human worklist and private Studio. If
+--aggregate-only is specified, the agenda exposes only anonymous group
+counts for human stage, role and date relation (not individual slots,
+dates or source fingerprints). Source and planning date inputs are
+validated before the ZIP is published as one new 0600 artifact.
+--agenda-date without the matching --choices source is refused as HOLD.
