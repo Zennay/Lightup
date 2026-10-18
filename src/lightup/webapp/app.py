@@ -499,6 +499,18 @@ class LightUpWebApp:
             f' · {len(request.requested_assets)} requested asset(s)</option>'
             for request in approved_requests
         )
+        from ..capabilities import CapabilityState, get_capabilities
+        planning_capability_list = "".join(
+            f'<li><code>{_e(capability.capability_id)}</code> — {_e(capability.name)}</li>'
+            for capability in get_capabilities()
+            if capability.state is CapabilityState.PLANNING
+        )
+        approved_request_details = "".join(
+            f'<li><strong>{_e(request.request_id)}</strong> · '
+            f'maximum risk {_e(int(request.requested_risk))} · '
+            f'original assets: {_e(", ".join(request.requested_assets))}</li>'
+            for request in approved_requests
+        )
         engagement_cards = []
         for eng in engagements:
             grant = self.store.get_current_grant(ctx, eng.engagement_id)
@@ -530,6 +542,8 @@ class LightUpWebApp:
                     '<select name="approved_request_id" required>'
                     '<option value="">Select approved request…</option>'
                     f'{approved_request_options}</select>'
+                    '<details><summary>Compare the approved original requests</summary>'
+                    f'<ul>{approved_request_details}</ul></details>'
                     '<p class="meta">Selection is not permission. The original '
                     'stored request, client and operator identities, approved '
                     'scope and risk are rechecked within grant issuance.</p>'
@@ -542,7 +556,9 @@ class LightUpWebApp:
                     "<label>Excluded assets (comma-separated, optional)</label>"
                     "<input name=\"excluded_assets\">"
                     "<label>Allowed capability IDs (comma-separated; explicit scope required)</label>"
-                    "<input name=\"capabilities\">"
+                    "<input name=\"capabilities\" required>"
+                    '<details><summary>Permitted planning capability IDs</summary>'
+                    f'<ul>{planning_capability_list}</ul></details>'
                     "<label>Maximum risk level</label><select name=\"max_risk\">"
                     "<option value=\"1\">1 — Passive</option>"
                     "<option value=\"2\">2 — Low impact</option>"
@@ -615,10 +631,21 @@ class LightUpWebApp:
         if not 1 <= valid_days <= 365:
             raise ValueError("grant validity must be between 1 and 365 days")
         now = datetime.now(timezone.utc)
+        from ..capabilities import CapabilityState, get_capabilities
+        allowed_capabilities = _csv("capabilities")
+        known_planning = {
+            capability.capability_id for capability in get_capabilities()
+            if capability.state is CapabilityState.PLANNING
+        }
+        if (not allowed_capabilities or len(allowed_capabilities) > 32
+                or len(set(allowed_capabilities)) != len(allowed_capabilities)
+                or any(capability not in known_planning
+                       for capability in allowed_capabilities)):
+            raise ValueError("explicit known non-lab capability IDs are required")
         scope = ScopeDefinition(
             assets=_csv("assets"),
             max_risk=max_risk,
-            allowed_capabilities=_csv("capabilities"),
+            allowed_capabilities=allowed_capabilities,
             excluded_assets=_csv("excluded_assets"),
         )
         engagement = self.store.get_engagement(auth.context, engagement_id)
