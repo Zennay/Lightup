@@ -22,7 +22,6 @@ SOURCE_LIMIT = 8
 BUNDLE_MARKER = '<template id="originalPrivateBundle">'
 APP_MARKERS = ('function parseCatalog(', 'function parseReport(', 'function read(',
                'id="catalogFile"', 'id="reportFiles"')
-TEMPLATE_PATTERN = re.compile(r"<(script|style)>(.*?)</\1>", re.DOTALL)
 
 
 def fail() -> None:
