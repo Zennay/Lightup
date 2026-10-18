@@ -16,6 +16,8 @@
   const COUNTERS = new Set(["valid_findings", "invalid_findings", "missed_findings", "coverage_assessed", "coverage_unknown", "scope_violations", "policy_violations", "human_interventions", "tool_calls"]);
   const SCORES = new Set(["evidence_quality", "reproducibility", "remediation_quality", "retest_correctness"]);
   const STAGES = new Set(["todo", "investigating", "waiting", "planned", "reviewed"]);
+  const ROUTES = new Set(["unassigned","lab-runtime","scope-review",
+    "evidence-review","independent-review"]);
   const AUTH = ["authorized", "consent_verified", "dispatch_allowed", "release_allowed"];
   const CASE_KEYS = ["scenario_id", "status", "regressions", "changes"];
   const CHANGE_KEYS = ["name", "baseline", "candidate", "delta", "regression"];
@@ -62,7 +64,7 @@
       !duplicates(input.regressions));
     if (input.changes.length === 0) {
       ensure(input.status === "HOLD" && input.regressions.length === 0);
-      return {sourceId: cohort ? input.scenario_id : null, status: "HOLD", changes: [], regressions: [], stage: "todo", due: ""};
+      return {sourceId: cohort ? input.scenario_id : null, status: "HOLD", changes: [], regressions: [], stage: "todo", due: "", route: "unassigned"};
     }
     ensure(input.changes.length === METRICS.length);
     const changes = input.changes.map(parseChange);
@@ -72,7 +74,7 @@
       derived.every(name => input.regressions.includes(name)));
     ensure(input.status === (derived.length ? "HOLD" : "REVIEW_ONLY"));
     return {sourceId: cohort ? input.scenario_id : null, status: input.status,
-      changes, regressions: derived, stage: "todo", due: ""};
+      changes, regressions: derived, stage: "todo", due: "", route: "unassigned"};
   }
   function readReport(doc) {
     ensure(doc && Object.getPrototypeOf(doc) === Object.prototype && boolFalseAuthority(doc));
@@ -157,9 +159,11 @@
   }
   function renderQueue() {
     const filter = $("filter").value;
+    const routeFilter = $("route-filter").value;
     const parent = $("cases");
     parent.replaceChildren();
     const sorted = report.cases.map((c, i) => ({c, i}))
+      .filter(({c}) => routeFilter === "all" || c.route === routeFilter)
       .filter(({c}) => filter === "all" ||
         (filter === "regressed" && c.regressions.length > 0) ||
         (filter === "open" && c.stage !== "reviewed") ||
@@ -173,7 +177,7 @@
       row.setAttribute("aria-pressed", String(i === selected));
       const left = child(row, "span");
       child(left, "strong", label(i));
-      child(left, "small", c.regressions.length + " regression(s) · " + stageText(c.stage));
+      child(left, "small", c.regressions.length + " regression(s) · " + stageText(c.stage) + " · " + c.route);
       badge(row, priority(c), c.regressions.length ? "bad" : "ok");
       row.addEventListener("click", () => {selected = i; render();});
     }
@@ -190,6 +194,7 @@
     badge(chips, c.status, c.status === "HOLD" ? "bad" : "ok");
     badge(chips, c.regressions.length + " regressed metrics", c.regressions.length ? "bad" : "ok");
     $("guidance").textContent = nextHumanAction(c);
+    $("route").value = c.route;
     $("stage").value = c.stage;
     $("due").value = c.due;
     for (const m of [...c.changes].sort((a,b) => Number(b.regression)-Number(a.regression))) {
@@ -210,12 +215,12 @@
     const table = child(box, "table");
     const head = child(table, "thead");
     const headings = child(head, "tr");
-    ["Case", "Priority", "Source", "Follow-up stage", "Due", "Regressed metrics"].forEach(x => child(headings,"th",x));
+    ["Case", "Priority", "Source", "Workstream", "Follow-up stage", "Due", "Regressed metrics"].forEach(x => child(headings,"th",x));
     const body = child(table, "tbody");
     report.cases.map((c,i) => ({c,i})).sort((a,b) =>
       urgency(a.c)-urgency(b.c) || a.i-b.i).forEach(({c,i}) => {
       const tr=child(body,"tr");
-      [label(i), priority(c), c.status, stageText(c.stage),
+      [label(i), priority(c), c.status, c.route, stageText(c.stage),
         c.due || "-", c.regressions.join(", ") || "None"].forEach(x => child(tr,"td",x));
     });
     child(box, "p", "Unsigned, unverified lab review data. No targets, case identities, actual permission or grant asserted.", "print-note");
@@ -310,7 +315,7 @@
   function reset() {
     report = null; selected = -1; digest = null; sourceKind = null;
     clearHistorical();
-    $("file").value = ""; $("board").hidden = true; $("filter").value = "all";
+    $("file").value = ""; $("board").hidden = true; $("filter").value = "all"; $("route-filter").value = "all";
     $("cases").replaceChildren(); $("metrics").replaceChildren();
     alert("Local workspace cleared. No browser storage was used.");
   }
@@ -342,9 +347,9 @@
     const rows = report.cases.map((c,i) => ({
       case: label(i), priority: priority(c), source_status: c.status,
       metric_regressions: c.regressions.slice().sort(), human_stage: c.stage,
-      follow_up_date: c.due || null
+      follow_up_date: c.due || null, routing_group: c.route
     }));
-    return {schema:"lightup-offline-human-triage-v1", source_sha256: digest,
+    return {schema:"lightup-offline-human-triage-v2", source_sha256: digest,
       source_kind: sourceKind, source_status: report.verdict,
       authorized:false,consent_verified:false,dispatch_allowed:false,release_allowed:false,
       release_approved:false,scan_allowed:false, review_only:true,
@@ -376,7 +381,8 @@
       const saved = JSON.parse(await file.text());
       ensure(exactKeys(saved, ["schema","source_sha256","source_kind","source_status",
         ...AUTH,"release_approved","scan_allowed","review_only","cases","warning"]));
-      ensure(saved.schema === "lightup-offline-human-triage-v1" &&
+      const v2 = saved.schema === "lightup-offline-human-triage-v2";
+      ensure((v2 || saved.schema === "lightup-offline-human-triage-v1") &&
         saved.source_sha256 === digest && saved.source_kind === sourceKind &&
         saved.source_status === report.verdict && saved.release_approved === false &&
         saved.scan_allowed === false && saved.review_only === true &&
@@ -387,7 +393,9 @@
       for (let i = 0; i < expected.length; i++) {
         const row = saved.cases[i], current = expected[i];
         ensure(exactKeys(row, ["case","priority","source_status",
-          "metric_regressions","human_stage","follow_up_date"]));
+          "metric_regressions","human_stage","follow_up_date",
+          ...(v2 ? ["routing_group"] : [])]));
+        ensure(!v2 || ROUTES.has(row.routing_group));
         ensure(row.case === current.case && row.priority === current.priority &&
           row.source_status === current.source_status &&
           Array.isArray(row.metric_regressions) &&
@@ -399,7 +407,7 @@
           /^\d{4}-\d{2}-\d{2}$/.test(due) &&
           !Number.isNaN(Date.parse(due + "T00:00:00Z")) &&
           new Date(due + "T00:00:00Z").toISOString().startsWith(due)));
-        updates.push({stage: row.human_stage, due: due || ""});
+        updates.push({stage: row.human_stage, due: due || "", route: v2 ? row.routing_group : "unassigned"});
       }
       updates.forEach((step,i) => Object.assign(report.cases[i], step));
       alert("Saved human follow-up restored for the exact same local report. No approval imported.", "good");
@@ -428,13 +436,27 @@
     }
     if (!window.confirm("Move " + pending.length +
        " new regressed lab cases to human investigation? This is NOT assessment authorization.")) return;
-    pending.forEach(c => { c.stage = "investigating"; });
+    pending.forEach(c => {
+      c.stage = "investigating";
+      if (c.route === "unassigned") {
+        c.route = c.regressions.some(x => ["scope_violations","policy_violations"].includes(x))
+          ? "scope-review" : c.regressions.some(x =>
+            ["invalid_findings","missed_findings","evidence_quality"].includes(x))
+          ? "evidence-review" : "lab-runtime";
+      }
+    });
     alert("Queued " + pending.length +
       " human investigations. Original report HOLD and security flags are unchanged.", "good");
     render();
   });
   $("clear").addEventListener("click", reset);
   $("filter").addEventListener("change", renderQueue);
+  $("route-filter").addEventListener("change", renderQueue);
+  $("route").addEventListener("change", e => {
+    if (!report || selected < 0 || !ROUTES.has(e.target.value)) return;
+    report.cases[selected].route = e.target.value;
+    render();
+  });
   $("stage").addEventListener("change", e => {
     if (!report || selected < 0 || !STAGES.has(e.target.value)) return;
     report.cases[selected].stage = e.target.value; render();
@@ -452,7 +474,7 @@
   $("export-csv").addEventListener("click", () => {
     if (!report) return;
     const out = reviewExport();
-    const cols = ["case","priority","source_status","metric_regressions","human_stage","follow_up_date"];
+    const cols = ["case","priority","source_status","metric_regressions","human_stage","follow_up_date","routing_group"];
     cols.push("suggested_human_action");
     const rows = [cols.map(csvCell).join(",")];
     for (let i = 0; i < out.cases.length; i++) {
@@ -482,7 +504,7 @@
         "UID:lightup-local-" + String(i+1) + "-" + Date.now() + "@local.invalid",
         "DTSTAMP:" + stamp,
         "DUE;VALUE=DATE:" + due,
-        "SUMMARY:LightUp lab follow-up " + label(i),
+        "SUMMARY:LightUp lab follow-up " + label(i) + " / " + c.route,
         "DESCRIPTION:Unverified offline human planning only. Source " + c.status +
           ". No authorization consent grant or scan rights.",
         "STATUS:NEEDS-ACTION",
