@@ -132,7 +132,34 @@ def _studio_proposal() -> dict:
     location = _ask("Existing local Studio v1 JSON file: ", max_chars=2048)
     if not location:
         raise ClientRequestError("a Studio export path is required")
-    return load_studio_proposal(location)
+    try:
+        return load_studio_proposal(location)
+    except ValueError as exc:
+        # A valid but unrepresentable proposal must not lose exclusions,
+        # planning windows or private-lab restrictions during real submission.
+        # Offer a private local non-authorizing dossier instead.
+        if (str(exc).startswith("HOLD:")
+                or str(exc).startswith("native client intake accepts only")):
+            from .client_studio_handoff import (
+                prepare_studio_handoff, save_studio_handoff,
+            )
+            packet = prepare_studio_handoff(location)
+            print("Native request intake HOLD: " + str(exc))
+            for item in packet["held_constraints"]:
+                print("  " + item["code"] + ": " + item["reason"])
+            output = _ask(
+                "Save complete private HOLD dossier (.html/.json)? "
+                "Enter a new path or press Enter to cancel: ",
+                max_chars=2048,
+            )
+            if output:
+                save_studio_handoff(Path(output).expanduser(), packet)
+                print("Full source restrictions preserved in: " + output)
+            raise ClientRequestError(
+                "This Studio proposal cannot be submitted to the current "
+                "request database. No request, consent or grant was created."
+            ) from exc
+        raise
 
 
 def _decision(db: DomainStore, ctx, *, payload: dict, previous_id: str | None = None,
