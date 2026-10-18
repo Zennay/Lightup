@@ -15,6 +15,7 @@
   let historyReview = null;
   let milestoneDraft = null;
   let contingencyDraft = null;
+  let reviewedCasework = null;
   function clearContingency(){contingencyDraft=null;el('contingency-results').replaceChildren();el('export-contingency').hidden=true;}
   function clearMilestone() {
     milestoneDraft=null;
@@ -37,12 +38,31 @@
   }
   el('clear-history').addEventListener('click',clearHistory);
   el('previous').addEventListener('change',()=>{historyReview=null;el('history-data').hidden=true;el('same-engagement').checked=false;});
+  function clearCasework() {
+    reviewedCasework=null;
+    el('casework-packet').value='';
+    el('casework-ack').checked=false;
+    el('casework-summary').hidden=true;
+    el('casework-status-cards').replaceChildren();
+    el('casework-risk-table').replaceChildren();
+    el('casework-feedback').textContent='No Casework record reviewed.';
+  }
+  el('clear-casework').addEventListener('click',clearCasework);
+  el('casework-ack').addEventListener('change',()=>{
+    reviewedCasework=null;
+    el('casework-summary').hidden=true;
+  });
+  el('casework-packet').addEventListener('change',()=>{
+    reviewedCasework=null;
+    el('casework-summary').hidden=true;
+  });
   function forget() {
     findings = null; result = null; lastOptions = null;
     clearMilestone();
     clearContingency();
     source.value = '';
     clearHistory();
+    clearCasework();
     el('source-status').textContent = 'No report loaded. All files stay in this browser tab.';
     el('generate').disabled = true;
     el('save-working-draft').disabled = true;
@@ -66,6 +86,7 @@
     el('draft-status').textContent='New source: older plans must be independently reviewed again.';
     el('results').hidden = true;
     clearHistory();
+    clearCasework();
     if (!file) return;
     try {
       if (file.size > engine.MAX_BYTES || file.size === 0) throw new Error('Source must be a nonempty CSV no larger than 1 MiB.');
@@ -406,6 +427,73 @@
     download('lightup-capacity-interruption-draft.json',
       JSON.stringify(contingencyDraft,null,2)+'\n','application/json;charset=utf-8');
     setFeedback('Unsigned, aggregate-only contingency discussion exported.');
+  });
+
+
+  function showCaseworkSummary(summary) {
+    const cards=el('casework-status-cards');
+    cards.replaceChildren();
+    const stats=summary.source_casework_statuses;
+    for(const [label,value] of [
+      ['Original cases',summary.source_records],
+      ['Self-reported blocked',stats.blocked],
+      ['Owner labels present',summary.assigned_owner_labels],
+      ['Locally dated plans',summary.source_casework_due_dates],
+      ['Human retest coordination',stats.ready_for_retest],
+      ['Self-reported completed (unverified)',stats.completed]
+    ]) {
+      const card=$('div',undefined,'stat');card.append($('strong',value),$('span',label));cards.append(card);
+    }
+    const rows=el('casework-risk-table');
+    rows.replaceChildren();
+    for(const severity of ['critical','high','medium','low','info']){
+      const v=summary.severity_statuses[severity];
+      const row=$('tr');
+      if(v.blocked||v.missing_owner)row.className='outstanding-row';
+      for(const value of [severity,v.total,v.blocked,v.missing_owner,
+        v.undated,v.ready_for_retest,v.locally_completed_unverified])row.append($('td',value));
+      rows.append(row);
+    }
+    el('casework-summary').hidden=false;
+  }
+  el('review-casework').addEventListener('click',async()=>{
+    reviewedCasework=null;
+    el('casework-summary').hidden=true;
+    const csv=source.files?.[0],packet=el('casework-packet').files?.[0];
+    if(!csv||!findings||!packet||!el('casework-ack').checked){
+      el('casework-feedback').textContent='HOLD: load an original CSV, choose an original Casework JSON and manually confirm the same client and engagement.';
+      return;
+    }
+    if(!window.confirm('Read the original Casework v1 as LOCAL UNSIGNED HUMAN NOTES only? This can reveal the report privately in this browser tab. No result is an actual consent, verified fix, assessment or retest.'))return;
+    try{
+      if(!packet.size||packet.size>window.LightUpCapacityCasework.MAX_BYTES)
+        throw Error('Original Casework packet must be bounded to 2 MiB');
+      if(!csv.size||csv.size>engine.MAX_BYTES)
+        throw Error('Reopen the original bounded CSV');
+      const [sourceBytes,packetBytes]=await Promise.all([csv.arrayBuffer(),packet.arrayBuffer()]);
+      const originalText=new TextDecoder('utf-8',{fatal:true}).decode(sourceBytes);
+      const packetText=new TextDecoder('utf-8',{fatal:true}).decode(packetBytes);
+      if(source.files?.[0]!==csv||!el('casework-ack').checked||!findings)
+        throw Error('Original CSV or acknowledgment changed during read');
+      const summary=await window.LightUpCapacityCasework.review(originalText,packetText);
+      if(source.files?.[0]!==csv||!el('casework-ack').checked||!findings)
+        throw Error('Source changed during source-digest validation');
+      reviewedCasework=summary;
+      showCaseworkSummary(summary);
+      el('casework-feedback').textContent='Matched the Casework source digest and source fields locally. Client identity, active consent and retest are NOT authenticated here.';
+      setFeedback('Local Casework planning overview read successfully. Source case notes were not retained.');
+    }catch(err){
+      el('casework-feedback').textContent='HOLD: '+(err instanceof Error?err.message:'Casework source could not be trusted');
+    }finally{
+      el('casework-packet').value='';
+    }
+  });
+  el('export-casework-summary').addEventListener('click',()=>{
+    if(!reviewedCasework||!el('casework-ack').checked)return;
+    if(!window.confirm('Export aggregate, self-reported CASEWORK stages only? Not verified fixes, client identity, assignments, retest or consent.'))return;
+    download('lightup-capacity-casework-review.json',
+      JSON.stringify(reviewedCasework,null,2)+'\n','application/json;charset=utf-8');
+    setFeedback('Only group-level unsigned Casework notes exported.');
   });
 
   // Source-bound, user-controlled resume: no browser persistence or implicit restore.
