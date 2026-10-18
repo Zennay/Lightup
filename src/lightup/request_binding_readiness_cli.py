@@ -125,6 +125,7 @@ def _private_output(path: Path, body: str) -> None:
 def _source_snapshot(db: Path, *, engagement_id: str, client_id: str | None,
                      assets: tuple[str, ...], risk: int,
                      include_request_ids: bool, include_labels: bool, operator_user_id: str,
+                     include_assets: bool = False,
                      connection: sqlite3.Connection | None = None) -> dict:
     with (closing(_read_only(db)) if connection is None else nullcontext(connection)) as con:
         operator = con.execute(
@@ -289,6 +290,7 @@ def _source_snapshot(db: Path, *, engagement_id: str, client_id: str | None,
                 "client": engagement["client_name"] if include_labels else "Client 001",
                 "requested_risk": risk,
                 "proposed_asset_count": len(assets),
+                "proposed_assets_private_opt_in": list(assets) if include_assets else [],
             },
             "summary": summary,
             "candidates": items,
@@ -353,6 +355,8 @@ def _html(report: dict) -> str:
         + esc(source["client"]) + " · Engagement: " + esc(source["engagement"]) +
         " · proposed assets (count only): " + str(source["proposed_asset_count"]) +
         " · proposed risk: " + str(source["requested_risk"]) + "</p>"
+        "<p>Private original proposed literal assets (opt-in only; never grant): " +
+        esc(", ".join(source["proposed_assets_private_opt_in"]) or "redacted") + "</p>"
         "<p>Disposition: <strong>" + esc(report["disposition"]) + "</strong></p>"
         "<p>Original stored-row fingerprint (unsigned; private, NOT "
         "authentication): <code>" +
@@ -425,6 +429,7 @@ def main(argv: list[str] | None = None) -> int:
                         help="original no-JavaScript HTML, instead of offline interactive operator desk")
     parser.add_argument("--include-request-ids", action="store_true", help="private original IDs for human reconciliation")
     parser.add_argument("--include-labels", action="store_true", help="private original client/engagement labels")
+    parser.add_argument("--include-proposed-assets", action="store_true", help="opt in to private original literal assets; excluded from anonymous handoffs")
     args = parser.parse_args(argv)
 
     db, out = Path(args.db), Path(args.output)
@@ -479,6 +484,7 @@ def main(argv: list[str] | None = None) -> int:
                 scenarios=scenarios, operator_user_id=user.user_id,
                 include_request_ids=args.include_request_ids,
                 include_labels=args.include_labels,
+                include_assets=args.include_proposed_assets,
             )
             body = (format_html(report) if kind == ".html" else
                     format_csv(report) if kind == ".csv" else format_json(report))
@@ -488,6 +494,7 @@ def main(argv: list[str] | None = None) -> int:
                 assets=assets, risk=args.risk,
                 include_request_ids=args.include_request_ids,
                 include_labels=args.include_labels,
+                include_assets=args.include_proposed_assets,
                 operator_user_id=user.user_id,
             )
             body = (_html(report) if kind == ".html" else

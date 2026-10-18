@@ -67,7 +67,7 @@ def read_scenarios(path: Path) -> list[tuple[str, tuple[str, ...], int]]:
 
 def compare_scenarios(db: Path, *, engagement_id: str, client_id: str | None,
                       operator_user_id: str, include_request_ids: bool,
-                      include_labels: bool,
+                      include_labels: bool, include_assets: bool = False,
                       scenarios: list[tuple[str, tuple[str, ...], int]]) -> dict:
     """One *read-only SQLite transaction*, not independent mutable snapshots."""
     if not 2 <= len(scenarios) <= MAX_SCENARIOS:
@@ -79,7 +79,7 @@ def compare_scenarios(db: Path, *, engagement_id: str, client_id: str | None,
                 db, engagement_id=engagement_id, client_id=client_id,
                 assets=assets, risk=risk,
                 include_request_ids=include_request_ids,
-                include_labels=include_labels,
+                include_labels=include_labels, include_assets=include_assets,
                 operator_user_id=operator_user_id, connection=con,
             )
             records.append({"label": label, "original_source": source})
@@ -182,6 +182,8 @@ def format_html(report: dict) -> str:
             "</h2><p>Proposed risk " + str(settings["requested_risk"]) +
             " · " + str(settings["proposed_asset_count"]) +
             " exact assets · original requests " + str(summary["recorded_requests"]) +
+            " · private literal assets (opt-in): " +
+            escape(", ".join(settings["proposed_assets_private_opt_in"]) or "redacted") +
             " · matching administrative candidates <strong>" +
             str(summary["approved_candidate_matches"]) + "</strong></p>"
             '<p class="status">' + escape(r["disposition"]) +
