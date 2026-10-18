@@ -20,4 +20,4 @@ lightup = "lightup.cli:main"
 where = ["src"]
 
 [tool.setuptools.package-data]
-lightup = ["authorization_casework.js"]
+lightup = ["authorization_casework.js", "authorization_snapshot_compare.js"]
