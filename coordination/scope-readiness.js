@@ -540,6 +540,7 @@ function renderStats(){
  $('blockers').textContent=String(entries.reduce((s,r)=>s+unresolved(r),0));
  $('overdue').textContent=String(entries.reduce((s,r)=>s+overdue(r),0));
  $('roleOverlap').textContent=String(entries.filter(roleOverlap).length);
+ renderLineage();
  renderActionBoard();
  $('brief').textContent=brief();
  $('save').disabled=!entries.length;$('csv').disabled=!entries.length;$('print').disabled=!entries.length;
@@ -649,7 +650,7 @@ function renderDetail(){
  entries=entries.filter(x=>x!==r);sourceCopies.delete(r.source_sha256);active=entries[0]?.source_sha256||null;setDirty();render();});
  tools.append(remove);box.append(tools);
 }
-function render(){renderStats();renderList();renderDetail();renderRevisionSources();renderLineage();}
+function render(){renderStats();renderList();renderDetail();renderRevisionSources();}
 // Batch planner only fills missing paperwork logistics. Never updates states or authority.
 const bulkInputs=['bulkStage','bulkAudience','bulkOwner','bulkDue','bulkNext'];
 for(const name of bulkInputs)$(name).addEventListener('input',()=>clearBulkPreview('Inputs changed. Preview before applying.'));
@@ -931,6 +932,7 @@ function mergeAnalysis(incoming){
   if(!current||JSON.stringify(current)!==JSON.stringify(row)){
    const metadata=['name','client_label','requested_mode','requested_risk','asset_count','excluded_count','planned_utc']
     .filter(k=>!current||JSON.stringify(current[k])!==JSON.stringify(row[k]));
+   if(!current||JSON.stringify(current.revision_link)!==JSON.stringify(row.revision_link))metadata.push('revision_link');
    const workstreams=STAGES.filter(([id])=>!current||JSON.stringify(current.tasks[id])!==JSON.stringify(row.tasks[id]))
     .map(([,title])=>title);
    conflicts.push({digest:row.source_sha256.slice(0,16),metadata,workstreams});
@@ -938,6 +940,9 @@ function mergeAnalysis(incoming){
   else identical++;
  }
  if(entries.length+newRecords.length>MAX_RECORDS)throw Error('Merged register exceeds 20 distinct source revisions.');
+ // The entire future local family graph must remain acyclic and must not link
+ // records across even self-reported different client labels.
+ LightUpLocalLineage.inspect([...entries,...newRecords]);
  return {newRecords,conflicts,identical};
 }
 $('mergeDiscard').addEventListener('click',()=>clearMergePreview('Merge preview discarded. Current workspace unchanged.'));
