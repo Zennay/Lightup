@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-wpPFZOyxFDTkVCPSRLe+ulmbav4+u8hRIYgukbiqEiU=' 'sha256-JRfZQz2Z3ItGsM+eSRKfCvBdkWQeG8/oiemv8M8bSMc=' 'sha256-KTSKb0Vtrq+/5jd1rIyS4imvHF2lqLoHDgwKBRFmHoQ='; style-src 'sha256-EY60WrUPL3pRa1jEEujE4zKnTsY+crrVBzxYTHrao8E='; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-wpPFZOyxFDTkVCPSRLe+ulmbav4+u8hRIYgukbiqEiU=' 'sha256-H7AQpIFxUjtWdJlt240kEwGNXIZx6Q84RCdJXBotDRg=' 'sha256-fm8TaJaQLe0tvKN5yOGEL9FYf3FXnwG6BF9ERPLaBMU='; style-src 'sha256-EY60WrUPL3pRa1jEEujE4zKnTsY+crrVBzxYTHrao8E='; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <title>LightUp · Private Human Dependency Board</title><style>:root{font:16px/1.52 system-ui,-apple-system,"Segoe UI",sans-serif;color-scheme:dark;background:#101625;color:#edf3ff}*{box-sizing:border-box}body{margin:0}header,main,footer{max-width:1200px;padding:24px;margin:auto}header{padding-top:45px}h1{font-size:clamp(2rem,4vw,3.1rem);margin:10px 0}h2{font-size:1.34rem;margin:0 0 10px}.brand{letter-spacing:.14em;color:#a2c1fc;font-size:.76rem;font-weight:800}p{color:#bdcbe0}.hold{color:#ffd49b;background:#392a1e;border:1px solid #977347;display:inline-block;padding:8px 13px;border-radius:8px}.panel{padding:22px;margin:20px 0;background:#1b2740;border:1px solid #3b4d6e;border-radius:16px}label{display:block;margin:15px 0;font-weight:600}.check{display:flex;gap:10px;font-weight:450;align-items:flex-start}.check input{width:19px;height:19px;flex:none;margin-top:4px}input:not([type=checkbox]),textarea,select{display:block;width:100%;margin-top:5px;padding:9px;background:#0d182c;color:#f2f6ff;border:1px solid #637792;border-radius:8px;font:inherit}textarea{resize:vertical}button{font:inherit;background:#adcbff;color:#0d1a35;border:0;border-radius:8px;padding:10px 17px;font-weight:780;cursor:pointer}button:disabled{opacity:.35;cursor:not-allowed}.secondary{background:#475877;color:#fff}.actions{display:flex;flex-wrap:wrap;gap:10px}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:15px}.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(155px,1fr));gap:12px}.stat{background:#293956;border:1px solid #465c81;padding:15px;border-radius:10px}.stat strong{font-size:1.8rem;display:block}.stat span{font-size:.83rem;color:#c6d3ea}.tablewrap{overflow:auto;margin:14px 0}table{width:100%;border-collapse:collapse;min-width:740px;text-align:left}td,th{padding:11px;border-bottom:1px solid #435574;vertical-align:top;overflow-wrap:anywhere}th{font-size:.8rem;color:#abc3ff;text-transform:uppercase}td{font-size:.87rem}td button{padding:5px 11px}.danger{color:#ffbaa5}.muted{color:#aabbd1}footer{font-size:.82rem;color:#a9b8ce;padding-bottom:40px}button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid #afcaff;outline-offset:2px}@media(max-width:600px){header,main,footer{padding:14px}.panel{padding:15px}}</style></head>
 <body><header><div class="brand">LIGHTUP / OFFLINE HUMAN COORDINATION</div><h1>Remediation Dependency Board</h1>
 <p>See which human repair plans are blocked by other human work. Review impact and tentative effort, without changing original findings, retests, permissions or deadlines.</p>
@@ -21,6 +21,7 @@
 <div class="tablewrap"><table><thead><tr><th>Original finding</th><th>Severity</th><th>Human owner / stage</th><th>Human effort estimate</th></tr></thead><tbody id="efforts"></tbody></table></div></section>
 <section class="panel"><h2>4. Review dependencies and estimated critical path</h2>
 <div class="grid"><label>Optional human start date<input id="start" type="date" min="2020-01-01" max="2099-01-01"></label>
+<label>Exact human owner/team<select id="owner-filter"><option value="all">All original human owners</option></select></label>
 <label>View <select id="filter"><option value="all">All original findings</option><option value="waiting">Waiting on other HUMAN tasks</option><option value="ready">Human work potentially ready</option><option value="critical">Critical path (human estimates)</option><option value="urgent">Original high/critical findings</option></select></label></div>
 <button id="review" type="button">Recalculate local dependency map</button>
 <p id="review-message" role="status" aria-live="polite"></p>
@@ -33,6 +34,7 @@
 <section class="panel"><h2>5. Export only approved private human handoffs</h2>
 <p>Exports contain source identifiers, estimates, human planning and (for CSV) source summary metadata. Download locally; external recipients and calendars require a separately approved confidential channel. No automatic upload or authentication.</p>
 <label class="check"><input type="checkbox" id="export-ack"> I explicitly confirmed the private destination for source finding IDs and human coordination. Neither an unsigned hash nor this file proves consent, client identity or verified remediation.</label>
+<label>PRIVATE CSV action scope<select id="csv-scope"><option value="all">All original human work</option><option value="filtered">Current owner and work filters</option></select></label>
 <div class="actions"><button id="export-json" disabled type="button">Save PRIVATE source-bound dependency draft</button>
 <button id="export-csv" disabled type="button">Save PRIVATE human action CSV</button>
 <button id="clear" class="secondary" type="button">Clear private memory</button></div>
@@ -308,7 +310,7 @@ function guidance(work,links,efforts,start){
  const hypotheticalLate=graphResult.dates?graphResult.rows
   .filter(row=>row.human_due&&graphResult.dates[row.finding_id]>row.human_due)
   .map(row=>({finding_id:row.finding_id,existing_human_due:row.human_due,indicative_chain_date:graphResult.dates[row.finding_id]})):[];
- return {bottlenecks:bottlenecks.slice(0,15),contradictions,hypotheticalLate};
+ return {bottlenecks,contradictions,hypotheticalLate};
 }
 g.LightUpHumanDependencies=Object.freeze({original,clean,empty,graph,packet,restore,guidance});
 })(window);
@@ -316,7 +318,7 @@ g.LightUpHumanDependencies=Object.freeze({original,clean,empty,graph,packet,rest
 (function(g){'use strict';
 const $=id=>document.getElementById(id),E=(tag,text)=>{const n=document.createElement(tag);if(text!==undefined)n.textContent=String(text);return n;};
 const SEV=['critical','high','medium','low','info'],LIMIT=2097152;
-let state=null,links=[],efforts=[],dirty=false,revision=0;
+let state=null,links=[],efforts=[],dirty=false,revision=0,ownerLabels=[];
 function stop(s){throw Error(s);}
 function parseStrict(raw){
  if(typeof raw!=='string'||new TextEncoder().encode(raw).length>LIMIT)stop('PRIVATE JSON exceeds 2 MiB.');
@@ -347,6 +349,26 @@ function saveFile(name,data,type){const blob=new Blob([data],{type}),url=URL.cre
 function findById(id){return state.findings.find(f=>f.finding_id===id);}
 function humanById(id){return state.cases.find(c=>c.finding_id===id);}
 function putSelect(select){select.replaceChildren();for(const f of state.findings){let option=E('option',f.finding_id+' — '+f.title.slice(0,56));option.value=f.finding_id;select.append(option);}}
+function renderOwnerFilter(){
+ const select=$('owner-filter'),old=select.value;
+ ownerLabels=[...new Set(state.cases.map(c=>c.owner).filter(x=>typeof x==='string'&&x.trim().length))].sort();
+ select.replaceChildren();
+ const add=(value,title)=>{const option=E('option',title);option.value=value;select.append(option);};
+ add('all','All original human owners');add('unassigned','(Unassigned human work)');
+ ownerLabels.forEach((owner,i)=>add('id:'+i,owner));
+ if([...select.options].some(x=>x.value===old))select.value=old;
+}
+function visibleRow(row,critical){
+ const owner=$('owner-filter').value;
+ if(owner==='unassigned'&&row.owner.trim())return false;
+ if(owner.startsWith('id:')&&ownerLabels[Number(owner.slice(3))]!==row.owner)return false;
+ const filter=$('filter').value;
+ if(filter==='waiting'&&!row.waiting.length)return false;
+ if(filter==='ready'&&!row.human_ready)return false;
+ if(filter==='critical'&&!critical.has(row.finding_id))return false;
+ if(filter==='urgent'&&!['critical','high'].includes(row.severity))return false;
+ return true;
+}
 function metrics(graph){
  const data=[['Original findings',graph.summary.total],['Human dependency links',graph.summary.links],['Waiting on human work',graph.summary.waiting],['Human work potentially ready',graph.summary.ready],['Critical/high waiting',graph.summary.critical_high_waiting],['Longest estimated chain (days)',graph.estimated_days]];
  const host=$('stats');host.replaceChildren();for(const [label,n] of data){const card=E('div');card.className='stat';card.append(E('strong',n),E('span',label));host.append(card);}
@@ -374,14 +396,15 @@ function drawEfforts(){
   });cell.append(input);tr.append(cell);body.append(tr);
  }
 }
-function renderGuidance(view){
+function renderGuidance(view,critical){
  const body=$('bottlenecks');body.replaceChildren();
- for(const item of view.bottlenecks){
+ const shown=view.bottlenecks.filter(x=>visibleRow(x,critical)).slice(0,20);
+ for(const item of shown){
   const tr=E('tr');td(tr,item.finding_id+' / '+item.severity);td(tr,item.downstream_count);
   td(tr,item.human_ready?'Potentially ready for HUMAN planning':'Needs prerequisite / on hold');
   td(tr,item.owner||'(unassigned)');body.append(tr);
  }
- if(!view.bottlenecks.length){const row=E('tr'),cell=E('td','No open human plans.');cell.colSpan=4;row.append(cell);body.append(row);}
+ if(!shown.length){const row=E('tr'),cell=E('td','No open human plans.');cell.colSpan=4;row.append(cell);body.append(row);}
  const blocked=$('contradictions');blocked.replaceChildren();
  for(const x of view.contradictions){
   const row=E('tr');td(row,x.from);td(row,x.to);td(row,x.human_prerequisite_due);td(row,x.human_dependent_due);blocked.append(row);
@@ -394,11 +417,11 @@ function renderGuidance(view){
  if(!view.hypotheticalLate.length){const row=E('tr'),cell=E('td','No indicative conflict, or no human planning start date selected.');cell.colSpan=3;row.append(cell);scenarios.append(row);}
 }
 function drawGraph(){
- const graph=g.LightUpHumanDependencies.graph(state,links,efforts,$('start').value||null);metrics(graph);renderGuidance(g.LightUpHumanDependencies.guidance(state,links,efforts,$('start').value||null));
+ const graph=g.LightUpHumanDependencies.graph(state,links,efforts,$('start').value||null);metrics(graph);renderGuidance(g.LightUpHumanDependencies.guidance(state,links,efforts,$('start').value||null),new Set(graph.critical));
  const body=$('results');body.replaceChildren();const filter=$('filter').value,critical=new Set(graph.critical);
  let n=0;
  for(const item of graph.rows){
-  if(filter==='waiting'&&!item.waiting.length||filter==='ready'&&!item.human_ready||filter==='critical'&&!critical.has(item.finding_id)||filter==='urgent'&&!['critical','high'].includes(item.severity))continue;
+  if(!visibleRow(item,critical))continue;
   const tr=E('tr');td(tr,item.finding_id+' / '+item.severity);td(tr,item.human_status+(critical.has(item.finding_id)?' · longest path':''));
   td(tr,item.waiting.length?item.waiting.join(', '):'None');td(tr,item.path_days+' calendar days');
   td(tr,graph.dates?graph.dates[item.finding_id]:'Not proposed');body.append(tr);n++;
@@ -415,7 +438,7 @@ async function importOriginal(file){
  if(token!==revision)stop('Private workspace changed during import.');
  state=work;const blank=g.LightUpHumanDependencies.empty(state);links=blank.links;efforts=blank.efforts;dirty=false;revision++;
  $('workspace').hidden=false;$('export-ack').checked=false;$('start').value='';$('filter').value='all';
- putSelect($('from'));putSelect($('to'));render();
+ putSelect($('from'));putSelect($('to'));renderOwnerFilter();render();
  $('source-message').textContent=state.findings.length+' original findings loaded from PRIVATE historical Casework. Current consent and identity are unverified.';
 }
 function clear(){state=null;links=[];efforts=[];dirty=false;revision++;$('workspace').hidden=true;for(const name of ['source','reopen'])$(name).value='';$('source-ack').checked=false;$('export-ack').checked=false;$('source-message').textContent='Private workspace cleared from memory. Previously downloaded files remain outside this browser.';}
@@ -429,7 +452,7 @@ $('link-add').addEventListener('click',()=>{
  try{g.LightUpHumanDependencies.clean(state,next,efforts);links=next;dirty=true;revision++;$('reason').value='';render();$('link-message').textContent='Original-ID human prerequisite recorded in memory.';}
  catch(err){$('link-message').textContent='HOLD: '+err.message;}
 });
-for(const name of ['filter','start'])$(name).addEventListener('change',()=>{if(state){try{drawGraph();}catch(err){$('review-message').textContent='HOLD: '+err.message;}}});
+for(const name of ['filter','start','owner-filter'])$(name).addEventListener('change',()=>{if(state){try{drawGraph();}catch(err){$('review-message').textContent='HOLD: '+err.message;}}});
 $('review').addEventListener('click',()=>{if(state){try{drawGraph();}catch(err){$('review-message').textContent='HOLD: '+err.message;}}});
 $('export-ack').addEventListener('change',()=>{const ok=!!state&&$('source-ack').checked&&$('export-ack').checked;$('export-json').disabled=!ok;$('export-csv').disabled=!ok;});
 $('source-ack').addEventListener('change',()=>{if(!$('source-ack').checked)$('export-ack').checked=false;$('export-json').disabled=!$('source-ack').checked||!$('export-ack').checked;$('export-csv').disabled=$('export-json').disabled;});
@@ -452,7 +475,7 @@ $('export-csv').addEventListener('click',()=>{
  try{const v=g.LightUpHumanDependencies.graph(state,links,efforts,$('start').value||null);
  if(!g.confirm('Export PRIVATE original finding IDs and HUMAN status/effort/waiting dependencies to the approved destination?'))return;
  const table=[['finding_id','source_severity','source_retest','human_stage','human_owner','human_due','waiting_for_human_ids','estimated_chain_days','indicative_local_date']];
- for(const x of v.rows)table.push([x.finding_id,x.severity,x.original_retest,x.human_status,x.owner,x.human_due||'',x.waiting.join('; '),x.path_days,v.dates?.[x.finding_id]||'']);
+ for(const x of v.rows){if($('csv-scope').value==='filtered'&&!visibleRow(x,new Set(v.critical)))continue;table.push([x.finding_id,x.severity,x.original_retest,x.human_status,x.owner,x.human_due||'',x.waiting.join('; '),x.path_days,v.dates?.[x.finding_id]||'']);}if(table.length<2)stop('No original human tasks match the selected PRIVATE CSV handoff scope.');
  saveFile('lightup-PRIVATE-human-dependency-board.csv',table.map(r=>r.map(safeCsv).join(',')).join('\r\n')+'\r\n','text/csv;charset=utf-8');
  $('export-message').textContent='PRIVATE tentative human action CSV exported. No verified fix, SLA or authorized retest.';}
  catch(e){$('export-message').textContent='HOLD: '+e.message;}
