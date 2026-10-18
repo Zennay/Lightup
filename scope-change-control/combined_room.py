@@ -34,6 +34,7 @@ WINDOW_FILES = ("original-private-casebook.json", "human-review-board.html",
                 "human-engagement-inbox.html", "human-review-agenda.json",
                 "human-review-calendar.ics", "human-review-manifest.json")
 FALSE_AUTHORITY = {
+    "original_source_verified": False,
     "source_authenticated": False,
     "client_consent_verified": False,
     "operator_consent_verified": False,
