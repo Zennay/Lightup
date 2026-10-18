@@ -99,10 +99,16 @@ The recipient opens the included `standalone.html`, imports `casebook.json`, the
 - **Private human review:** save per-record notes, explicitly confirm a trusted recipient, export `PRIVATE-lightup-scope-impact-review.json`, and transfer over an authorized private channel. On return, re-import the **exact original Casebook source** then restore PRIVATE notes. The restored annotations are human claims, not source truth, authenticated identities or consent.
 - **Refresh:** any new Casebook snapshot must be treated as a new source revision; old notes do **not** silently carry over to altered source bytes. For source-to-source historical change review, use the separately owned Casebook Change Control product [PR #1632](https://github.com/Zennay/Lightup/pull/1632), not this single-snapshot map.
 
+## Portable app code integrity
+
+The actual self-contained `standalone.html` now declares a restrictive Content Security Policy with **exact SHA-256 pins for its one executable JavaScript block and its primary CSS stylesheet**. Inline HTML style attributes have a narrowly separate style-attribute directive, while external scripts, external styling/images, network connections, form submissions and objects are forbidden. The original app's JavaScript is now **not** admitted by broad `script-src 'unsafe-inline'`.
+
+The new production-source [`app_integrity.py`](app_integrity.py) validator is used by both `prepare.py` and the recipient `workspace_inspect.py`. It reads the actual local offline app bytes, recomputes the script/style hashes, requires the restrictive nonduplicated CSP directive set and rejects unpinned or rewritten executable content **before** issuing a private handoff. The digest is an integrity check relative to the supplied local artifact, not an authentication signature or security approval. This does **not** replace the repository's real release CI/security/privacy approvals. The original, separately owned Casebook app/source are never altered.
+
 ## Trust, limits, privacy and work ownership
 
 - Up to 512 KiB per original JSON, up to 200 original records per family. Import rejects duplicate object keys and inconsistent declarations atomically. PRIVATE review import has a 256 KiB ceiling and source-SHA bind.
-- The browser is script- and style-self-contained with no external assets, network API, persistence, or DOM insertion of untrusted HTML; all source fields enter using text nodes. Only confirmed PRIVATE exports contain tenant/row IDs or free-text human fields.
+- The browser is script- and style-self-contained with SHA-256-pinned inline executable code, no external assets, network API, persistence, or DOM insertion of untrusted HTML; all source fields enter using text nodes. Only confirmed PRIVATE exports contain tenant/row IDs or free-text human fields.
 - A SHA-256 of raw imported file bytes **does not** authenticate the issuer, guarantee data freshness, verify a signature, or prove a currently valid client/operator grant.
 - The Python helper requires local OS no-follow file support; it never reads source from stdin, logs raw private data, overwrites an output or runs a command. Its source path parent should reside in a trusted operator-controlled directory.
 - Original Casebook remains owned by #1620. Original STOP #1619, request/grant source #177/#1570, risk #182, tenant lineage #829, execution gates, original CI and other workers' files are unchanged.
