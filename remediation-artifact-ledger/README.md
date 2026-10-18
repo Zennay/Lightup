@@ -46,3 +46,17 @@ The full offline application now physically connects **three existing workflows*
 ### Release and integrity
 
 All new code stays under the independently owned `remediation-artifact-ledger/` directory and the PR remains **DRAFT/HOLD**. No original owner file, scanner, real customer target, activation/grant, native Casework/Evidence record, CI, QA suite or production route has been modified. The unified JSON and CSV are private notes, **not** source-authenticity proof, cryptographic signing, owner acknowledgment, fresh client/operator consent, verified remediation, or HUMAN GO. Existing hosted and permanently named registered self-hosted CI, source-owner and independent security/privacy approval, canonical #177/#182/#829 and live action-time consent/revocation gates remain mandatory before any authorized production merge/deploy.
+
+
+## PRIVATE human briefing (latest delivered UX)
+
+A further fully self-contained output is available directly in the browser: **Download PRIVATE human HTML brief**. It is generated only after the operator explicitly acknowledges that the destination is private. The human-readable, printable, **scriptless** HTML has a strict `default-src 'none'` CSP, with no JavaScript, stylesheets, media, images, service worker, or remote dependency. Every original source title, native Casework human owner/stage/due-date/blocker, native Evidence Review human stage/question, and local artifact filename/SHA-256/human note is HTML-escaped. File bytes are never embedded. This is a convenient independent *human follow-up packet*, not a review approval, credential-backed evidence source, signature, execution authority or demonstrated retest.
+
+### Where to find files
+
+- [Portable SINGLE-FILE offline Evidence Artifact Ledger](standalone.html)
+- [Original-context multi-app HUMAN action desk source](ledger.js)
+- [Native-source/CSP SHA-256-pinned deterministic builder](package.py)
+- [Private operator screen](index.html)
+
+The latest built standalone artifact is **80,857 bytes** with SHA-256 `4094854f8129a22e74ef05f3ccf79118a1533b8f1111dcf96fff7639ba2bad50`. Only native JavaScript syntax and direct original offline build have been inspected using permitted zSSH. No QA, regressions, separate suites, active scans, target requests, CI reruns, main merges or production deployments have been performed. Mandatory original exact-head hosted and permanently named self-hosted CI and true human/privacy/security/auth gates remain unchanged.
