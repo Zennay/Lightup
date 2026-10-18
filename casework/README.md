@@ -10,9 +10,18 @@ Open `casework/index.html` from a local checkout in a modern browser. No server,
 
 1. A real authorized client/operator uses the existing `lightup.finding_export_cli` with its existing interactive authentication, tenant checks and real database. Do **not** use this local page as a replacement for that export.
 2. Export the documented five-field summary (in this order): `finding_id,title,severity,retest_status,remediation`. Target identifiers, raw evidence and arbitrary finding metadata are not present in the original export. The shared LightUp redactor is applied by the existing exporter before CSV rendering.
+
+   Typical command from the repository in an authenticated, interactive terminal (substitute your **own** authorized database and client ID; never put a password in command arguments):
+
+   ```bash
+   python -m lightup.finding_export_cli --db /path/to/your/lightup.sqlite --email your-operator@example.org --client-id approved-client > findings.csv
+   ```
+
+   The CLI requires a terminal for its password prompt and refuses unauthenticated or unauthorized exports. Never use the command against another customer's data.
 3. Import the CSV locally. The board groups findings by severity, keeps the original `retest_status` read-only and lets operators coordinate a **separate local planning status**, assigned team, due date, next repair action, retest coordination, dependencies and notes.
 4. Filter by severity, work stage or search, and sort by risk, due date or title. Dashboard highlights critical/high findings, blocked items, overdue deadlines and items awaiting independently authorized retest.
-5. Export an unsigned `lightup.remediation_casework_draft` v1 JSON for resuming the planning session, a spreadsheet-safe CSV **action register** or a Markdown coordination brief. Print the plan if appropriate.
+5. Apply a shared owner and/or due date to the **currently filtered subset** using a separate explicit confirmation; other cases are not modified. The browser warns before navigating away while local changes are unsaved.
+6. Export an unsigned `lightup.remediation_casework_draft` v1 JSON for resuming the planning session, a spreadsheet-safe CSV **action register** or a Markdown coordination brief. Print the plan if appropriate.
 
 ### Refreshing findings without silently copying obsolete status
 
