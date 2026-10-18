@@ -236,6 +236,22 @@ held++;if(r.grant_source_count!==null||r.request_linked_grant_count!==null||r.le
 }else if(!N(r.grant_source_count,256)||r.grant_source_count!==original.get(r.engagement_id).grant_count||
 !N(r.request_linked_grant_count,256)||!N(r.legacy_unbound_grant_count,256)||
 r.request_linked_grant_count+r.legacy_unbound_grant_count!==r.grant_source_count)throw Error("grant mismatch");
+if(r.stop_recent_events!==undefined||r.stop_history_truncated!==undefined){
+ if(r.stop_observation==="HOLD_STOP_SOURCE_UNAVAILABLE_OR_CHANGED"){
+  if(r.stop_recent_events!==null||r.stop_history_truncated!==null)throw Error("HOLD cannot claim persisted STOP event history");
+ }else{
+  if(!Array.isArray(r.stop_recent_events)||r.stop_recent_events.length>12||typeof r.stop_history_truncated!=="boolean")throw Error("invalid STOP history");
+  if(r.stop_observation==="STOP_ACTIVE"&&r.stop_recent_events.length===0)throw Error("active STOP requires original persisted event");
+  if(r.stop_observation==="NO_STOP_RECORDED_NOT_PERMISSION"&&(r.stop_recent_events.length!==0||r.stop_history_truncated))throw Error("unrecorded STOP cannot claim history");
+  var eventIds=new Set();
+  for(var e of r.stop_recent_events){
+   if(!O(e)||!W(e.stop_id)||!W(e.stopped_at)||
+    !["operator","client_admin","client_member"].includes(e.actor_role)||eventIds.has(e.stop_id))
+    throw Error("STOP history identity");
+   eventIds.add(e.stop_id);
+  }
+ }
+}
 if(r.stop_observation==="STOP_ACTIVE")stopped++;
 if(r.stop_observation!=="NO_STOP_RECORDED_NOT_PERMISSION"||r.casebook_attention.startsWith("HOLD_")||r.casebook_attention==="RISK_DECISION_PENDING_SOURCE_REVIEW")needs++;
 }
@@ -273,6 +289,14 @@ function reconcile(latest,prior){
     details.push(old.stop_observation==="STOP_ACTIVE"&&row.stop_observation!=="STOP_ACTIVE"?
       "HOLD: STOP DISAPPEARED":"STOP SOURCE CHANGED");
   if(old.grant_source_count!==row.grant_source_count)details.push("GRANT COUNT CHANGED");
+  if(Array.isArray(old.stop_recent_events)&&Array.isArray(row.stop_recent_events)){
+   var currentIds=new Set(row.stop_recent_events.map(x=>x.stop_id));
+   if(old.stop_recent_events.some(x=>!currentIds.has(x.stop_id))){
+     details.push(!old.stop_history_truncated&&!row.stop_history_truncated?
+       "HOLD: STORED STOP EVENT DISAPPEARED":"REVIEW: BOUNDED STOP EVENT WINDOW CHANGED");
+   }else if(row.stop_recent_events.length!==old.stop_recent_events.length)
+     details.push("PERSISTED STOP EVENT HISTORY CHANGED");
+  }
   if(old.casebook_attention!==row.casebook_attention)details.push("CASE ATTENTION CHANGED");
   if(latest.binding_review&&latest.binding_review.engagement_id===row.engagement_id&&
      prior.binding_review&&(
@@ -314,6 +338,15 @@ function inspect(eid){
  line(d,"Original engagement",eid);
  line(d,"Original status",entry.original_engagement_status);
  line(d,"STOP observation",entry.stop_observation);
+ if(entry.stop_recent_events===undefined)
+  line(d,"Original persisted STOP events","Not included in older source export; no absence asserted");
+ else if(entry.stop_recent_events===null)
+  line(d,"Original persisted STOP events","HOLD - source unavailable or changed");
+ else{
+  sourceSection(d,"Original persisted STOP event history",
+    entry.stop_recent_events,["stop_id","actor_role","stopped_at"]);
+  line(d,"STOP history truncated by original source bound",entry.stop_history_truncated);
+ }
  line(d,"Original attention",entry.casebook_attention);
  line(d,"Next HUMAN review",entry.casebook_next_human_action);
  line(d,"Stored source grant count",entry.grant_source_count);
