@@ -143,6 +143,19 @@ function turnaroundIssues(items, unavailable){
   }
   return {between,blocks,count:between.length+blocks.length};
 }
+function selectedCalendarEvents(){
+  const lane=$('icsLane').value;
+  const events=shown();
+  return lane==='all'?events:events.filter(e=>e.lane===Number(lane));
+}
+function readyForTentativeCalendar(active){
+  const policy=workPolicy();
+  return policy.valid && active.length>0 &&
+    !active.some(e=>!withinWorkHours(e.interval,policy)) &&
+    timeClashes(active).pairs.length===0 &&
+    turnaroundIssues(active,blackouts).count===0 &&
+    !active.some(e=>blackouts.some(b=>e.interval.start<b.end&&b.start<e.interval.end));
+}
 function parseUTCWallTime(value){
   if(!validLocal(value) || typeof value!=='string')return null;
   const millis=Date.parse(value+':00.000Z');
@@ -302,8 +315,7 @@ function render(){
   const current=pairs.length+blockHits.length+invalidHours.length;
   $('baselineClashes').textContent=baseline;
   $('clashReduction').textContent=String(baseline-current);
-  $('ics').disabled=!timed.length||invalidHours.length>0||!policy.valid||
-    pairs.length>0||blockHits.length>0||spacing.count>0;
+  $('ics').disabled=!readyForTentativeCalendar(selectedCalendarEvents());
   $('print').disabled=!entries.length;
   const days=Number($('horizon').value),lo=anchorUTC,hi=anchorUTC+days*DAY;
   createAxis(days);
@@ -424,6 +436,7 @@ $('anchor').value=new Date().toISOString().slice(0,10);
 setAnchor();
 $('anchor').addEventListener('change',()=>{anchorChangedByUser=true;setAnchor();});
 $('horizon').addEventListener('change',render);
+$('icsLane').addEventListener('change',render);
 for(const id of ['hoursEnabled','hoursStart','hoursEnd'])$(id).addEventListener('change',render);
 $('hoursDays').addEventListener('change',render);
 function chosenScenario(){
@@ -1036,11 +1049,8 @@ function foldIcsLine(line){
   return chunks.join('\r\n ');
 }
 $('ics').addEventListener('click',()=>{
-  const active=shown(),policy=workPolicy();
-  const blocked=active.some(e=>!withinWorkHours(e.interval,policy))||
-    timeClashes(active).pairs.length>0||turnaroundIssues(active,blackouts).count>0||
-    active.some(e=>blackouts.some(b=>e.interval.start<b.end&&b.start<e.interval.end));
-  if(!active.length||!policy.valid||blocked){
+  const active=selectedCalendarEvents();
+  if(!readyForTentativeCalendar(active)){
     $('status').textContent='HOLD: resolve time overlaps, 30-minute turnaround gaps, unavailable periods and UTC workdays before exporting a tentative calendar.';return;
   }
   // No client names, notes, assets, URLs, contacts, identifiers or original file text are exported.
@@ -1060,10 +1070,15 @@ $('ics').addEventListener('click',()=>{
   lines.push('END:VCALENDAR');
   const blob=new Blob([lines.map(foldIcsLine).join('\r\n')+'\r\n'],{type:'text/calendar;charset=utf-8'});
   const url=URL.createObjectURL(blob),link=document.createElement('a');
-  link.href=url;link.download='lightup-unapproved-scope-plans.ics';
+  link.href=url;
+  const lane=$('icsLane').value;
+  link.download=lane==='all'?'lightup-unapproved-scope-plans.ics':
+    'lightup-unapproved-lane-'+lane+'-plans.ics';
   document.body.append(link);link.click();link.remove();
   setTimeout(()=>URL.revokeObjectURL(url),500);
-  $('status').textContent='Anonymous transparent TENTATIVE calendar exported locally. This does not approve any request or reserve time.';
+  $('status').textContent='Anonymous transparent TENTATIVE calendar exported for '+
+    ($('icsLane').value==='all'?'all planning lanes':'lane '+$('icsLane').value)+
+    '. No other lane was included; no permission or booking created.';
 });
 render();
 })();
