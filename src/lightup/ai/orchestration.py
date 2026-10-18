@@ -164,6 +164,11 @@ class ToolCall:
         return dict(self.arguments)
 
 
+_RESERVED_EVIDENCE_METADATA_KEYS = frozenset(
+    {"asset", "client_id", "engagement_id", "mode", "is_lab"}
+)
+
+
 @dataclass(frozen=True)
 class ToolOutput:
     """What a capability worker must hand back: a summary plus raw evidence."""
@@ -189,6 +194,23 @@ class ToolOutput:
             raise OrchestrationError("tool output evidence kind is not canonical")
         if type(self.evidence_payload) is not bytes:
             raise OrchestrationError("tool output evidence payload must be immutable bytes")
+        if type(self.metadata) is not tuple:
+            raise OrchestrationError("tool output metadata must be a canonical tuple")
+        seen: set[str] = set()
+        for pair in self.metadata:
+            if (
+                type(pair) is not tuple or len(pair) != 2
+                or type(pair[0]) is not str or type(pair[1]) is not str
+            ):
+                raise OrchestrationError("tool output metadata pair is not canonical")
+            key = pair[0]
+            if (
+                not key.strip() or key != key.strip()
+                or any(ord(char) < 33 or ord(char) == 127 for char in key)
+                or key in seen or key in _RESERVED_EVIDENCE_METADATA_KEYS
+            ):
+                raise OrchestrationError("duplicate or reserved evidence metadata key")
+            seen.add(key)
 
 
 @dataclass(frozen=True)
