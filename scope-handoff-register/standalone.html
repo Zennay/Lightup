@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-ndI0d25yyuy3sy3/yLhMBeGNsYrc+QY4oj9c+hHokBY='; style-src 'sha256-7uWoPZnp0Qd9U+s/pVdYPmNxnlzY5rsp3l2FXAmL1OY='; img-src 'none'; connect-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-uKXPRFXppxU63CeCwnP9QvZAvdr3n4IY2+7d3enELm0='; style-src 'sha256-7uWoPZnp0Qd9U+s/pVdYPmNxnlzY5rsp3l2FXAmL1OY='; img-src 'none'; connect-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'">
   <title>LightUp · Scope Handoff Register</title>
   <style>:root{font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;color-scheme:dark;--bg:#0b111c;--panel:#172236;--line:#31445e;--text:#f2f6ff;--muted:#b8c7dc;--accent:#77bfff;--warn:#ffd89c}
 *{box-sizing:border-box}body{background:linear-gradient(145deg,#0d1626,#111826 58%,#0d1320);color:var(--text);margin:0;min-height:100vh}header,main,footer{max-width:1160px;margin:auto;padding:24px}header{padding-top:45px}.topline{display:flex;align-items:center;justify-content:space-between;gap:16px;font-size:.76rem;letter-spacing:.15em;color:var(--accent)}.flag{background:#43321e;color:var(--warn);padding:8px 12px;border-radius:30px;border:1px solid #6e5530;font-size:.7rem}h1{font-size:clamp(1.9rem,5vw,3.6rem);max-width:750px;margin:35px 0 15px;line-height:1.11;letter-spacing:-.045em}h2{font-size:1.25rem;margin:0 0 8px;letter-spacing:-.02em}h3{margin:0 0 10px;font-size:1.07rem}p{color:var(--muted);line-height:1.55}header>p{max-width:780px}main{display:grid;gap:23px}.panel{border:1px solid var(--line);border-radius:17px;padding:25px;background:var(--panel);box-shadow:0 18px 44px #0002}.section-head{display:flex;align-items:start;justify-content:space-between;gap:24px;flex-wrap:wrap}.section-head p{margin:0 0 14px}.toolbar,.actions{display:flex;align-items:end;gap:12px;flex-wrap:wrap;margin:14px 0}.toolbar>label{display:grid;gap:6px;flex:1;min-width:180px;font-size:.86rem;color:var(--muted)}input,select,textarea,button,.button{font:inherit;border-radius:10px}input,select,textarea{padding:11px 12px;color:var(--text);background:#0c1525;border:1px solid #52617b;min-width:0}button,.button{display:inline-block;color:var(--text);padding:11px 14px;background:#253d59;border:1px solid #64809c;cursor:pointer;white-space:normal;text-align:center}button:hover,.button:hover{background:#31567c}button:focus-visible,.button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid var(--accent);outline-offset:2px}.button.primary{background:#086ab3;border-color:#5eb7ff;font-weight:700}button[disabled]{opacity:.45;cursor:not-allowed}.notice{padding:11px 14px;background:#101b2a;border-left:3px solid var(--accent);white-space:pre-wrap}.notice.error{border-color:#ff8181;color:#ffcdcd}.stats{display:flex;flex-wrap:wrap;gap:9px;margin:14px 0}.metric{padding:9px 14px;border-radius:12px;border:1px solid #405577;background:#0e1a2b;font-size:.9rem}.metric strong{font-size:1.25rem;margin-right:6px}.boards{display:grid;grid-template-columns:repeat(auto-fill,minmax(255px,1fr));gap:12px}.card{display:grid;text-align:left;gap:9px;white-space:normal;background:#102136;border:1px solid #3e5877;padding:17px}.card.selected{outline:2px solid #80c9ff}.card-title{font-size:1.08rem;font-weight:700;overflow-wrap:anywhere}.meta{font-size:.82rem;color:var(--muted)}.chips{display:flex;flex-wrap:wrap;gap:5px}.chip{font-size:.72rem;padding:4px 7px;border-radius:6px;background:#34455e}.chip.alert{background:#674827;color:#fff2d9}.controls{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:15px}.controls label{display:grid;gap:5px;min-width:190px;flex:1;color:var(--muted)}.checkrow{display:grid;grid-template-columns:1fr 170px;gap:14px;align-items:center;padding:11px 0;border-bottom:1px solid #334860}.checkrow label{font-weight:600}.checkrow small{color:var(--muted);display:block;margin-top:4px}.summary{background:#102136;border:1px solid #344c67;border-radius:12px;padding:15px}.warning{border-left:3px solid #d69e53;padding:11px 14px;background:#2e261d;color:#f9e8d2}.small{font-size:.83rem}footer{font-size:.82rem;color:#94a7bf;padding-bottom:50px}@media(max-width:600px){header,main,footer{padding-left:15px;padding-right:15px}.panel{padding:17px}.checkrow{grid-template-columns:1fr}.topline{align-items:start;flex-direction:column}.controls{flex-direction:column}.controls label{width:100%}}@media print{*{color:#000!important;box-shadow:none!important;background:white!important}header,main{padding:5px}.panel{break-inside:avoid;border:1px solid #888}.toolbar,.actions,.button,#clear,footer{display:none!important}.boards{grid-template-columns:repeat(2,1fr)}.warning{border:1px solid #888}body{font-size:11pt}}
@@ -38,7 +38,7 @@
   <section class="panel">
     <h2>3. Overdracht en hervatten</h2>
     <p>Download een privacy-minimaal register, actielijst-CSV of printbare handoff. Bevat geen ruwe assets, namen, hostnamen, klantnotities, authenticatie of handtekeningen. Hervatten vereist opnieuw openen van de oorspronkelijke conceptbestanden.</p>
-    <div class="actions"><button id="save" type="button">Bewaar lokale voortgang (.json)</button><label class="button">Herstel voortgang (.json)<input id="restore" type="file" accept=".json,application/json" hidden></label><button id="export" type="button">Exporteer review-JSON</button><button id="csv" type="button">Acties als CSV</button><button id="print" type="button">Print overzicht</button></div>
+    <div class="actions"><button id="save" type="button">Bewaar lokale voortgang (.json)</button><label class="button">Herstel voortgang (.json)<input id="restore" type="file" accept=".json,application/json" hidden></label><button id="export" type="button">Exporteer review-JSON</button><button id="csv" type="button">Acties als CSV</button><button id="printPack" type="button">Volledig HTML-overdrachtspakket</button><button id="print" type="button">Print overzicht</button></div>
     <p class="warning"><strong>Niet-autoriseren­de informatie.</strong> Concepten, lokale vinkjes, SHA-256, acties en exports zijn géén bewijs van asset-eigendom, scopegoedkeuring, revocationstatus, toestemming, bevoegdheid of vrijgave. Stop onmiddellijk met een echte beoordeling als bevoegdheid of context ontbreekt.</p>
   </section>
 </main>
@@ -376,6 +376,36 @@
     show("Lokale voorbereidingsstatussen atomisch hersteld voor identieke originele bestandsbytes.");
     render();
   }
+  function fullHtmlPacket() {
+    const data=report();
+    const esc = value => String(value).replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;").replaceAll("'","&#39;");
+    const parts=[
+      "<!doctype html><html lang=\"nl\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">",
+      "<meta http-equiv=\"Content-Security-Policy\" content=\"default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; connect-src 'none'; form-action 'none'\">",
+      "<title>LightUp · lokale reviewoverdracht</title><style>",
+      "body{font-family:system-ui,sans-serif;color:#142238;max-width:940px;margin:25px auto;padding:16px}article{border:1px solid #bcc7d7;border-radius:8px;margin:15px 0;padding:17px;break-inside:avoid}p{line-height:1.45}th,td{text-align:left;border-bottom:1px solid #bfc8d7;padding:8px}table{border-collapse:collapse;width:100%}.alert{color:#8e450e}.hold{padding:12px;border:2px solid #8e450e}@media print{body{max-width:100%;margin:0}article{break-inside:avoid}}",
+      "</style></head><body><h1>LightUp · voorbereidingsregister</h1>",
+      "<p class=\"hold\"><strong>REVIEW_ONLY_HOLD — GEEN toestemming, identiteit, asset-eigendom, grant, scan, handler, deploy of vrijgave.</strong> Dit is uitsluitend een lokale menselijke planning. Controleer cliënt en operator onafhankelijk via het echte geauthenticeerde proces en controleer herroeping op het moment van gebruik.</p>",
+      "<p>Persoonsgegevens, bestandsnamen, vrije tekst en originele asset-identiteiten zijn niet opgenomen. Deze handoff heeft geen handtekening, actuele geldigheid of onafhankelijk herkomstbewijs.</p>",
+      "<p>Conceptdossiers: "+data.entries.length+". De SHA-256 is een byte-identificatie, géén autorisatie- of identiteitshandtekening.</p>"
+    ];
+    for(const e of data.entries) {
+      parts.push("<article><h2>"+esc(e.dossier)+" · voorgesteld risico "+esc(e.proposed_risk)+"</h2>");
+      parts.push("<p>Studio-source SHA-256: <code>"+esc(e.source_sha256)+"</code><br>Voorgestelde modus: "+esc(e.proposed_mode)+"<br>Inclusies: "+esc(e.asset_count)+", exclusies: "+esc(e.excluded_count)+"</p>");
+      if(e.replaces_source_sha256) {
+        parts.push("<p>Zelfverklaarde revisie van <code>"+esc(e.replaces_source_sha256)+"</code>. Statussen van oudere concepten zijn niet overgenomen.</p>");
+        if(e.revision) parts.push("<p>Letterlijke revisietellingen: assets toegevoegd "+esc(e.revision.assets.added)+", verwijderd "+esc(e.revision.assets.removed)+
+          "; exclusies toegevoegd "+esc(e.revision.exclusions.added)+", verwijderd "+esc(e.revision.exclusions.removed)+
+          ". Mogelijke uitbreiding: <strong>"+(e.revision.possible_expansion?"JA":"niet uit deze ruwe vergelijking vastgesteld")+"</strong>. Geen CIDR/DNS-verificatie.</p>");
+      }
+      parts.push("<p class=\"alert\">Lokale signalen: "+esc(e.review_codes.length?e.review_codes.join(", "):"geen automatisch signaal; geen veiligheidsbewijs")+"</p>");
+      parts.push("<table><thead><tr><th>Menselijke voorbereidingsactie</th><th>Zelfgerapporteerde status</th></tr></thead><tbody>");
+      for(const [id,title] of TASKS) parts.push("<tr><td>"+esc(title)+"</td><td>"+esc(STATUS_TEXT[e.tasks[id]])+"</td></tr>");
+      parts.push("</tbody></table></article>");
+    }
+    parts.push("<p class=\"hold\">Elk veld authenticated, consent, authorized, grant, execution, scan, dispatch, deploy en release staat letterlijk FALSE. Ook 8/8 voorbereide acties hebben geen juridische of technische autoriteit.</p></body></html>");
+    return parts.join("");
+  }
   function csv() {
     const rows=[["dossier","scope_sha256","task","status","authority"]];
     report().entries.forEach(e=>TASKS.forEach(([id])=>rows.push([e.dossier,e.source_sha256,id,e.tasks[id],"REVIEW_ONLY_HOLD"])));
@@ -408,6 +438,7 @@
   $("save").addEventListener("click",()=>records.length?json(snapshot(),"lightup-local-progress.json"):show("Laad eerst concepten.",true));
   $("export").addEventListener("click",()=>records.length?json(report(),"lightup-review-only-handoff.json"):show("Laad eerst concepten.",true));
   $("csv").addEventListener("click",()=>records.length?download(csv(),"lightup-handoff-actions.csv","text/csv;charset=utf-8"):show("Laad eerst concepten.",true));
+  $("printPack").addEventListener("click",()=>records.length?download(fullHtmlPacket(),"lightup-review-only-handoff.html","text/html;charset=utf-8"):show("Laad eerst concepten.",true));
   $("print").addEventListener("click",()=>records.length?window.print():show("Laad eerst concepten.",true));
   render();
 })();
