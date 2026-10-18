@@ -393,7 +393,7 @@ function renderScenarios(){
     const shifted=scenarioShifts.get(e.key);
     if(shifted===undefined)return;
     const box=document.createElement('div');box.className='item';changes.append(box);
-    append(box,'strong',e.name+' · #'+(i+1));
+    append(box,'strong','Lane '+(laneAssignments.get(e.key)||1)+' · '+e.name+' · #'+(i+1));
     const duration=e.interval.end-e.interval.start;
     append(box,'div','Original: '+formatUTC(e.interval.start)+' → '+formatUTC(e.interval.end));
     append(box,'div','What-if: '+formatUTC(shifted)+' → '+formatUTC(shifted+duration));
@@ -416,7 +416,7 @@ function scenarioPacket(){
       const proposed=scenarioShifts.get(e.key);
       const valid=e.interval.state==='resolved';
       const duration=valid ? e.interval.end-e.interval.start:0;
-      return {local_ordinal:i+1,source_file_sha256:e.sourceHash,requested_mode:e.mode,requested_risk:e.risk,state:valid?'DRAFT_PLANNED':'HOLD_MISSING_UTC',
+      return {local_ordinal:i+1,review_lane:laneAssignments.get(e.key)||1,source_file_sha256:e.sourceHash,requested_mode:e.mode,requested_risk:e.risk,state:valid?'DRAFT_PLANNED':'HOLD_MISSING_UTC',
         original_start_utc:valid?new Date(e.interval.start).toISOString():null,
         original_end_utc:valid?new Date(e.interval.end).toISOString():null,
         scenario_start_utc:valid?new Date(proposed===undefined?e.interval.start:proposed).toISOString():null,
@@ -450,8 +450,10 @@ function arrangeAll(){
   if(!current.length)return;
   const policy=workPolicy();
   if(!policy.valid){$('status').textContent='HOLD: correct UTC workday boundaries first.';return;}
-  const busy=blackouts.map(b=>({start:b.start,end:b.end})),proposals=new Map();
+  const perLane=new Map([1,2,3,4].map(lane=>[lane,blackouts.map(b=>({start:b.start,end:b.end}))]));
+  const proposals=new Map();
   for(const e of current){
+    const busy=perLane.get(e.lane);
     const slot=firstFit(e.interval,busy,policy);
     if(!slot || Math.abs(slot.start-e.original.start)>31*DAY){
       $('status').textContent='HOLD: could not schedule all proposals within 31 days of their ORIGINAL UTC windows. No changes applied.';
@@ -475,7 +477,7 @@ function decodeScenario(snapshot){
     'authorization','client_consent','operator_consent','grant','risk_approved','scan',
     'execution','release','note','proposals','unavailable_utc','workday_utc',
     'proposed_time_overlap_pairs','proposed_unavailability_overlap_pairs','proposed_outside_workday_count']);
-  const rowKeys=new Set(['local_ordinal','source_file_sha256','requested_mode','requested_risk','state','original_start_utc',
+  const rowKeys=new Set(['local_ordinal','review_lane','source_file_sha256','requested_mode','requested_risk','state','original_start_utc',
     'original_end_utc','scenario_start_utc','scenario_end_utc','shifted']);
   const blockKeys=new Set(['start','end']);
   if(!record(snapshot)||!exactKeys(snapshot,rootKeys) ||
@@ -508,10 +510,11 @@ function decodeScenario(snapshot){
       snapshot.proposed_outside_workday_count>entries.length))throw Error('invalid workday count');
   const effectivePolicy={enabled:policy.enabled,valid:true,start_utc:policy.start,
     end_utc:policy.end,weekdays:policy.weekdays};
-  const shifts=new Map(),busy=[],resolvedIntervals=[];
+  const shifts=new Map(),assignedLanes=new Map(),busy=[],resolvedIntervals=[];
   for(let i=0;i<entries.length;i++){
     const source=entries[i],row=snapshot.proposals[i],resolved=source.interval.state==='resolved';
     if(!record(row)||!exactKeys(row,rowKeys)||row.local_ordinal!==i+1||
+       (own(row,'review_lane')&&(!Number.isInteger(row.review_lane)||row.review_lane<1||row.review_lane>4))||
        row.requested_mode!==source.mode||row.requested_risk!==source.risk||
        typeof row.source_file_sha256!=='string' ||
        !/^[a-f0-9]{64}$/.test(row.source_file_sha256) ||
@@ -521,6 +524,7 @@ function decodeScenario(snapshot){
     if(!resolved){
       if(row.original_start_utc!==null||row.original_end_utc!==null||
          row.scenario_start_utc!==null||row.scenario_end_utc!==null||row.shifted)throw Error('invalid hold');
+      assignedLanes.set(source.key,own(row,'review_lane')?row.review_lane:1);
       continue;
     }
     if(row.original_start_utc!==new Date(source.interval.start).toISOString() ||
@@ -531,6 +535,7 @@ function decodeScenario(snapshot){
        Math.abs(a-source.interval.start)>31*DAY ||
        row.shifted!==(a!==source.interval.start))throw Error('invalid proposed window');
     if(row.shifted)shifts.set(source.key,a);
+    assignedLanes.set(source.key,own(row,'review_lane')?row.review_lane:1);
     resolvedIntervals.push({start:a,end:b});
   }
   if(own(snapshot,'proposed_outside_workday_count') &&
@@ -543,7 +548,7 @@ function decodeScenario(snapshot){
        busy.some(b=>b.start===start&&b.end===end))throw Error('invalid unavailable window');
     busy.push({start,end});
   }
-  return {shifts,busy,policy};
+  return {shifts,busy,policy,assignedLanes};
 }
 $('scenarioImport').addEventListener('change',async ev=>{
   const file=ev.target.files&&ev.target.files[0];ev.target.value='';
@@ -553,7 +558,7 @@ $('scenarioImport').addEventListener('change',async ev=>{
     const text=new TextDecoder('utf-8',{fatal:true}).decode(await file.arrayBuffer());
     const candidate=JSON.parse(text),next=decodeScenario(candidate);
     // The entire replacement is committed at once: no partial restoration on invalid input.
-    scenarioShifts=next.shifts;blackouts=next.busy;
+    scenarioShifts=next.shifts;laneAssignments=next.assignedLanes;blackouts=next.busy;
     $('hoursEnabled').checked=next.policy.enabled;
     $('hoursStart').value=next.policy.start;
     $('hoursEnd').value=next.policy.end;
@@ -619,9 +624,9 @@ function escapeReviewHtml(value) {
 function renderPrivateReviewBrief(packet) {
   const p=packet.workday_utc;
   const esc=escapeReviewHtml;
-  const header=['#','Source file SHA-256 (unsigned)','Risk / mode','Original UTC','Proposed UTC','Shifted'];
+  const header=['#','Review lane','Source file SHA-256 (unsigned)','Risk / mode','Original UTC','Proposed UTC','Shifted'];
   const rows=packet.proposals.map(row=>[
-    row.local_ordinal,row.source_file_sha256,
+    row.local_ordinal,row.review_lane,row.source_file_sha256,
     'Risk '+row.requested_risk+' / '+row.requested_mode,
     row.original_start_utc===null?'No resolved UTC window':
       row.original_start_utc+' to '+row.original_end_utc,
@@ -855,7 +860,7 @@ $('ics').addEventListener('click',()=>{
     const e=active[i];
     lines.push('BEGIN:VEVENT','UID:offline-scope-'+nonce+'-'+(i+1)+'@lightup.invalid',
       'DTSTAMP:'+stamp,'DTSTART:'+icsTimestamp(e.interval.start),'DTEND:'+icsTimestamp(e.interval.end),
-      'SUMMARY:LightUp draft planning '+(i+1)+' (unapproved)',
+      'SUMMARY:LightUp draft planning '+(i+1)+' lane '+e.lane+' (unapproved)',
       'DESCRIPTION:Non-authorizing local draft. No booking consent risk approval grant or assessment permission.',
       'STATUS:TENTATIVE','TRANSP:TRANSPARENT','END:VEVENT');
   }
