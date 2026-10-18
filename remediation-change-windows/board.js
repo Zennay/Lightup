@@ -10,7 +10,7 @@ const STAGES=['missing','submitted','needs_changes','ready_for_authorized_retest
 const MAX={change_reference:240,deployment_reference:240,rollback_reference:240,retest_request_reference:240,review_question:700};
 const bidi=/[\u202a-\u202e\u2066-\u2069]/;
 const HOURS=4;
-let state=null,lastBulkSnapshot=null,revisionCandidate=null,caseworkCandidate=null;
+let state=null,lastBulkSnapshot=null,revisionCandidate=null,caseworkCandidate=null,followupSelected=null,lastFollowBulkSnapshot=null;
 const setStatus=(value,error=false)=>{$('status').textContent=value;$('status').dataset.error=error?'true':'false';};
 function fail(s){throw Error(s);}
 function keys(o,allowed,required=allowed){
@@ -395,6 +395,7 @@ function readiness(f,r){
   if(windowAfterHumanDue(f))concerns.push('Proposed human slot AFTER local Casework due date');
   if(c&&!c.owner.trim())concerns.push('Original Casework owner missing');
  }
+ if(followupPastDue(f))concerns.push('Private HUMAN follow-up reminder past due');
  if(f.retest_status==='regression')concerns.push('Source reports regression');
  if(f.retest_status==='fixed')concerns.push('Source says fixed; not independently verified');
  if(r.stage==='ready_for_authorized_retest')concerns.push('Retest still requires separate authority');
@@ -404,6 +405,92 @@ function el(tag,txt){const n=document.createElement(tag);if(txt!==undefined)n.te
 
 function hasHumanHold(f,r){
  return r.stage==='missing'||r.stage==='needs_changes'||EVIDENCE.slice(0,4).some(k=>!r.evidence[k]);
+}
+
+
+/* A private human follow-up is not an original Casework record, verified fix,
+ * evidence verdict, approval, consent or authority to operate or retest. */
+const FOLLOW_STATES=['untriaged','awaiting_owner','awaiting_evidence','needs_discussion','discussion_logged'];
+const FOLLOW_LABELS={
+ untriaged:'Needs human triage',awaiting_owner:'Awaiting human owner',
+ awaiting_evidence:'Awaiting human evidence',needs_discussion:'Needs human discussion',
+ discussion_logged:'Human discussion logged — NOT approved'
+};
+function newFollowup(){return {status:'untriaged',due_date:'',note:''};}
+function followupValue(v){
+ keys(v,['status','due_date','note']);
+ if(!FOLLOW_STATES.includes(v.status)||typeof v.due_date!=='string')
+  fail('Unsupported private human follow-up status or reminder.');
+ if(v.due_date){
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(v.due_date))fail('Invalid human reminder date.');
+  const dt=new Date(v.due_date+'T00:00:00Z');
+  if(!Number.isFinite(dt.getTime())||dt.toISOString().slice(0,10)!==v.due_date)
+   fail('Impossible private human reminder date.');
+ }
+ meetingNote(v.note);
+ return {status:v.status,due_date:v.due_date,note:v.note};
+}
+function followupFor(id){return state?.followup?.get(id)||newFollowup();}
+function followupPastDue(f){
+ const v=followupFor(f.finding_id);
+ return v.status!=='discussion_logged'&&Boolean(v.due_date&&v.due_date<new Date().toISOString().slice(0,10));
+}
+function humanFollowupOpen(f){return followupFor(f.finding_id).status!=='discussion_logged';}
+function unsavedHumanEditor(){
+ if(!state||!followupSelected||$('followupEditor').hidden)return false;
+ const prior=followupFor(followupSelected);
+ return $('followupStatus').value!==prior.status||$('followupDue').value!==prior.due_date||
+  $('followupNote').value!==prior.note;
+}
+function ensureHumanEditorSaved(){
+ if(unsavedHumanEditor())fail('Private human follow-up has unsaved changes. Save or close/discard before continuing.');
+}
+function openHumanEditor(id){
+ if(!state?.followup?.has(id))fail('Original finding not loaded.');
+ if(unsavedHumanEditor()){setStatus('Save or discard the current private human follow-up first.',true);return;}
+ followupSelected=id;
+ const f=state.source.find(f=>f.finding_id===id),v=followupFor(id);
+ $('followupTitle').textContent='PRIVATE human follow-up · '+id+' · original '+f.severity;
+ $('followupStatus').value=v.status;$('followupDue').value=v.due_date;$('followupNote').value=v.note;
+ $('followupEditor').hidden=false;
+ $('followupEditor').scrollIntoView({block:'nearest'});
+}
+function closeHumanEditor(force=false){
+ if(!force&&unsavedHumanEditor()&&!confirm('Discard unsaved PRIVATE human follow-up edits in this editor?'))return;
+ $('followupEditor').hidden=true;followupSelected=null;
+ $('followupNote').value='';$('followupDue').value='';$('followupStatus').value='untriaged';
+}
+function saveHumanFollowup(){
+ if(!state?.followup||!followupSelected||$('followupEditor').hidden)
+  fail('Select an original source finding before saving a private human follow-up.');
+ const value=followupValue({status:$('followupStatus').value,due_date:$('followupDue').value,note:$('followupNote').value});
+ state.followup.set(followupSelected,value);
+ lastFollowBulkSnapshot=null;$('bulkFollowUndo').disabled=true;
+ render();
+ setStatus('Saved human-only source-bound follow-up on original finding '+followupSelected+'. No verified remediation or grant.');
+}
+function bulkHumanFollowup(){
+ if(!state?.followup)fail('Original source required.');
+ ensureHumanEditorSaved();
+ const chosen=$('bulkFollowup').value;
+ if(!FOLLOW_STATES.includes(chosen))fail('Unknown human follow-up stage.');
+ const group=state.source.filter(f=>visibleFinding(f,state.review.get(f.finding_id)));
+ if(!group.length)fail('No original finding in the currently visible human group.');
+ if(!confirm('Set UNVERIFIED HUMAN follow-up stage to "'+FOLLOW_LABELS[chosen]+'" for '+group.length+' visible original finding(s)? Existing private follow-up notes and dates are preserved. This does NOT approve a change.'))return;
+ lastFollowBulkSnapshot=new Map([...state.followup].map(([id,v])=>[id,{...v}]));
+ for(const f of group){
+  const v=followupFor(f.finding_id);
+  state.followup.set(f.finding_id,{...v,status:chosen});
+ }
+ $('bulkFollowUndo').disabled=false;
+ render();setStatus('Bulk-routed '+group.length+' original finding(s) to a private human follow-up stage. No source changes.');
+}
+function undoBulkHumanFollowup(){
+ if(!state||!lastFollowBulkSnapshot)fail('No private bulk human follow-up routing to undo.');
+ ensureHumanEditorSaved();
+ state.followup=lastFollowBulkSnapshot;lastFollowBulkSnapshot=null;
+ $('bulkFollowUndo').disabled=true;
+ render();setStatus('Undid last private human follow-up routing; original findings and Casework untouched.');
 }
 
 function ownerKey(c){return c?.owner.trim()?'named:'+c.owner.trim():'unassigned-owner';}
@@ -417,6 +504,8 @@ function ownerWorkload(){
   const c=state.casework.get(f.finding_id),key=ownerKey(c);
   if(!groups.has(key))groups.set(key,{key,label:c.owner.trim()||'(Human owner unassigned)',total:0,urgent:0,blocked:0,overdue:0,late:0,unscheduled:0});
   const v=groups.get(key);v.total++;
+  v.followOpen=(v.followOpen||0)+Number(humanFollowupOpen(f));
+  v.followLate=(v.followLate||0)+Number(followupPastDue(f));
   v.changed=(v.changed||0)+(state.caseworkChanges?.has(f.finding_id)?1:0);
   if(['critical','high'].includes(f.severity))v.urgent++;
   if(caseBlocked(c))v.blocked++;
@@ -430,7 +519,7 @@ function ownerWorkload(){
   const tile=el('article');tile.className='item';
   tile.appendChild(el('h3',group.label));
   tile.appendChild(el('p',group.total+' original findings · '+group.urgent+' critical/high · '+group.blocked+' local blockers · '+
-   group.overdue+' local overdue · '+group.late+' planned after local due · '+group.unscheduled+' unscheduled · '+(group.changed||0)+' original human rows changed recently.'));
+   group.overdue+' local overdue · '+group.late+' planned after local due · '+group.unscheduled+' unscheduled · '+(group.changed||0)+' original human rows changed recently · '+(group.followOpen||0)+' human follow-ups open · '+(group.followLate||0)+' reminders past due.'));
   const btn=el('button','Filter to this human owner');
   btn.addEventListener('click',()=>{selector.value=group.key;render();});
   tile.appendChild(btn);board.appendChild(tile);
@@ -445,6 +534,9 @@ function visibleFinding(f,r){
  if(human==='complete'&&hasHumanHold(f,r))return false;
  if(human==='regression'&&f.retest_status!=='regression')return false;
  if(human==='critical'&&!['critical','high'].includes(f.severity))return false;
+ if(human==='follow-open'&&!humanFollowupOpen(f))return false;
+ if(human==='follow-overdue'&&!followupPastDue(f))return false;
+ if(human==='follow-discussed'&&followupFor(f.finding_id).status!=='discussion_logged')return false;
  if(ownerFilter&&(!state?.casework||ownerKey(state.casework.get(f.finding_id))!==ownerFilter))return false;
  if(caseFilter){
   if(!state?.casework)return false;
@@ -460,6 +552,7 @@ function visibleFinding(f,r){
 }
 function bulkApply(){
  if(!state)fail('Original source is not loaded.');
+ ensureHumanEditorSaved();
  const chosen=Number($('bulkWindow').value);
  if(!Number.isInteger(chosen)||chosen<0||chosen>HOURS)fail('Invalid human window slot.');
  const cohort=state.source.filter(f=>visibleFinding(f,state.review.get(f.finding_id)));
@@ -488,7 +581,10 @@ function render(){
   if(r.stage==='missing'||r.stage==='needs_changes'||EVIDENCE.slice(0,4).some(k=>!r.evidence[k]))holds++;
   if(!visibleFinding(f,r))continue;
   const tr=el('tr'),id=el('td',f.finding_id),severity=el('td',f.severity),source=el('td',f.retest_status),
-    stage=el('td',r.stage+' (human only)'),caseCell=el('td',caseLabel(state.casework?.get(f.finding_id))),changed=el('td',(state.caseworkChanges?.get(f.finding_id)||[]).join(', ')||'—'),caveat=el('td',readiness(f,r)),slot=el('td');
+    stage=el('td',r.stage+' (human only)'),caseCell=el('td',caseLabel(state.casework?.get(f.finding_id))),changed=el('td',(state.caseworkChanges?.get(f.finding_id)||[]).join(', ')||'—'),followCell=el('td'),caveat=el('td',readiness(f,r)),slot=el('td');
+  const fv=followupFor(f.finding_id),edit=el('button','Edit human follow-up');
+  followCell.appendChild(el('div',FOLLOW_LABELS[fv.status]+(fv.due_date?' · '+fv.due_date+' UTC':'')));
+  edit.addEventListener('click',()=>openHumanEditor(f.finding_id));followCell.appendChild(edit);
   if(r.stage==='needs_changes'||r.stage==='missing')caveat.className='hold';
   const sel=el('select');sel.setAttribute('aria-label','Proposed human window for finding '+f.finding_id);
   sel.appendChild(new Option('Unassigned',0));
@@ -496,7 +592,7 @@ function render(){
   sel.value=String(state.assignments.get(f.finding_id)||0);
   sel.addEventListener('change',()=>{lastBulkSnapshot=null;$('bulkUndo').disabled=true;state.assignments.set(f.finding_id,Number(sel.value));render();});
   slot.appendChild(sel);
-  for(const cell of [id,severity,source,stage,caseCell,changed,caveat,slot])tr.appendChild(cell);
+  for(const cell of [id,severity,source,stage,caseCell,changed,followCell,caveat,slot])tr.appendChild(cell);
   rows.appendChild(tr);
  }
  $('total').textContent=src.length;
@@ -506,6 +602,8 @@ function render(){
  $('caseOverdue').textContent=state.casework?[...state.casework.values()].filter(pastDue).length:'—';
  $('lateSlot').textContent=state.casework?src.filter(windowAfterHumanDue).length:'—';
  $('caseChanged').textContent=state.caseworkChanges?.size||0;
+ $('followOpen').textContent=src.filter(humanFollowupOpen).length;
+ $('followOverdue').textContent=src.filter(followupPastDue).length;
  const board=$('summary');board.replaceChildren();
  try{
   const windows=currentWindows();for(let i=0;i<HOURS;i++){
@@ -523,6 +621,7 @@ function render(){
  * after a reset, failed import or replacement of any original input. */
 function purgeRenderedPrivateData(){
  state=null;revisionCandidate=null;caseworkCandidate=null;lastBulkSnapshot=null;
+ lastFollowBulkSnapshot=null;closeHumanEditor(true);$('bulkFollowUndo').disabled=true;
  $('results').hidden=true;$('bulkUndo').disabled=true;$('applyRevision').disabled=true;
  $('applyCasework').disabled=true;$('caseworkDiff').disabled=true;$('caseworkChanges').replaceChildren();
  $('caseworkSummary').textContent='';$('nextCasework').value='';$('confirmCasework').checked=false;
@@ -535,7 +634,7 @@ function purgeRenderedPrivateData(){
   $('date'+i).value='';$('label'+i).value='';$('duration'+i).value='60';
  }
  for(const id of ['filter','caseFilter','humanFilter','bulkWindow','ownerFilter'])$(id).value=$(id).options[0].value;
- for(const id of ['total','urgent','unassigned','holds'])$(id).textContent='0';
+ for(const id of ['total','urgent','unassigned','holds','followOpen','followOverdue'])$(id).textContent='0';
  $('caseBlocked').textContent='—';$('caseOverdue').textContent='—';$('lateSlot').textContent='—';$('caseChanged').textContent='—';
 }
 function originalInputChanged(){
@@ -554,7 +653,8 @@ async function load(){
  const casework=caseFile?caseworkFile(strictJSON(await read(caseFile,2097152)),src,hash):null;
  state={source:src,hash,review:notes,casework:casework?.rows||null,caseworkDigest:casework?.sha256||null,
   caseworkHashless:casework?.original_packet_hashless||false,
-  caseworkChanges:new Map(),caseworkUpdate:null,assignments:new Map()};
+  caseworkChanges:new Map(),caseworkUpdate:null,assignments:new Map(),
+  followup:new Map(src.map(f=>[f.finding_id,newFollowup()]))};
  $('digest').textContent='Original canonical source SHA-256: '+hash+' · unsigned content correlation only; NOT identity or consent.';
  $('results').hidden=false;render();
  setStatus('Source loaded for private, unverified human planning. '+(state.caseworkHashless?'WARNING: original Casework packet was HASHLESS; full source rows match but independent issuer/consent not verified. ':'')+'No permissions or retest inferred.');
@@ -839,6 +939,10 @@ function init(){
   for(const input of [text,date,min])input.addEventListener('change',()=>{if(state)render();});
  }
  $('load').addEventListener('click',()=>load().catch(e=>{purgeRenderedPrivateData();setStatus(e.message,true);}));
+ $('followupSave').addEventListener('click',()=>{try{saveHumanFollowup();}catch(e){setStatus(e.message,true);}});
+ $('followupClose').addEventListener('click',()=>closeHumanEditor());
+ $('bulkFollowApply').addEventListener('click',()=>{try{bulkHumanFollowup();}catch(e){setStatus(e.message,true);}});
+ $('bulkFollowUndo').addEventListener('click',()=>{try{undoBulkHumanFollowup();}catch(e){setStatus(e.message,true);}});
  $('forget').addEventListener('click',forget);
  $('previewCasework').addEventListener('click',()=>previewCaseworkRevision().catch(e=>{clearCaseworkPreview(e.message);setStatus(e.message,true);}));
  $('applyCasework').addEventListener('click',()=>{try{applyCaseworkRevision();}catch(e){setStatus(e.message,true);}});
