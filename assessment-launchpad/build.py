@@ -132,7 +132,7 @@ def _html(endpoints: tuple[str, ...], digest: str, studio: dict | None = None) -
     )
     studio_html = ""
     if studio is not None:
-        studio_html = ("<section><h2>Private source-bound Studio draft</h2>"
+        studio_html = ("<aside><h2>Private source-bound Studio draft</h2>"
                        "<p>Selected original scenario: <code>" +
                        escape(studio["scenario_id"], quote=True) +
                        "</code>. Declared expected findings: <code>" +
@@ -140,7 +140,7 @@ def _html(endpoints: tuple[str, ...], digest: str, studio: dict | None = None) -
                         studio["declared_expected_count"] is not None else "UNKNOWN") +
                        "</code> — self-declared and never scored ground truth.</p>"
                        "<p>Original catalog SHA-256 (unsigned): <code>" +
-                       studio["catalog_sha256"] + "</code>.</p></section>")
+                       studio["catalog_sha256"] + "</code>.</p></aside>")
     preview_command = (
         "lightup lab-assess --targets-file ./targets.txt" +
         (" --catalog-file ./studio-catalog.json --scenario-id " +
@@ -228,7 +228,6 @@ def build(endpoints: tuple[str, ...], output_dir: str,
         artifacts = (
             ("targets.txt", manifest),
             ("private-launchpad.html", _html(endpoints, digest, studio)),
-            ("private-plan.json", (json.dumps(packet, sort_keys=True, separators=(",", ":")) + "\n").encode("ascii")),
             ("START-HERE.txt", (
                 "LIGHTUP / OFFLINE HUMAN LAB LAUNCHPAD / DRAFT-HOLD\n\n"
                 "Open private-launchpad.html locally. Keep entire directory owner-private.\n"
@@ -247,6 +246,13 @@ def build(endpoints: tuple[str, ...], output_dir: str,
             if studio_raw is None or sha256(studio_raw).hexdigest() != studio["catalog_sha256"]:
                 raise Hold("missing or changed original Studio source")
             artifacts += (("studio-catalog.json", studio_raw),)
+        # Pin every exact private handoff file before publishing the final plan.
+        # The unsigned hashes are corruption detection, never producer identity.
+        packet["artifact_sha256"] = {
+            name: sha256(content).hexdigest() for name, content in artifacts
+        }
+        artifacts += (("private-plan.json",
+                       (json.dumps(packet, sort_keys=True, separators=(",", ":")) + "\n").encode("ascii")),)
         for name, content in artifacts:
             _safe_write(dir_fd, name, content)
             created.append(name)
