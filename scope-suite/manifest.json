@@ -65,6 +65,12 @@
       "pr": 1580,
       "commit": "22afcb7669ce078be504e288b03b8adf2b4412d8",
       "state": "DRAFT_HOLD"
+    },
+    {
+      "name": "casework",
+      "pr": 1568,
+      "commit": "9c73e8468ce271bf8c6bef4cac071e5ad9c1806b",
+      "state": "DRAFT_HOLD"
     }
   ],
   "files": [
@@ -175,6 +181,51 @@
       "bundled_path": "apps/briefing/scope-briefing/style.css",
       "sha256": "05ded0ce7cd97e315b9c284f71ec76451e12c9ae9d00fc11e4bd9d0d27098038",
       "bytes": 5076
+    },
+    {
+      "component": "casework",
+      "pr": 1568,
+      "commit": "9c73e8468ce271bf8c6bef4cac071e5ad9c1806b",
+      "source_path": "casework/README.md",
+      "bundled_path": "apps/casework/casework/README.md",
+      "sha256": "e6b99ae010b16867a40220fd6939a4d808dad875d013d9b4fb738bbc12d1f1c8",
+      "bytes": 9934
+    },
+    {
+      "component": "casework",
+      "pr": 1568,
+      "commit": "9c73e8468ce271bf8c6bef4cac071e5ad9c1806b",
+      "source_path": "casework/index.html",
+      "bundled_path": "apps/casework/casework/index.html",
+      "sha256": "e063038701a9c7bab94434b697de387b8cf6cf68078c9d1d9588fa1b838f23fd",
+      "bytes": 11895
+    },
+    {
+      "component": "casework",
+      "pr": 1568,
+      "commit": "9c73e8468ce271bf8c6bef4cac071e5ad9c1806b",
+      "source_path": "casework/remediation-app.js",
+      "bundled_path": "apps/casework/casework/remediation-app.js",
+      "sha256": "51ed77103946bc3582b0cb9bc0a321fae2135e2c58f5365793a15f8afc2ec3ee",
+      "bytes": 21312
+    },
+    {
+      "component": "casework",
+      "pr": 1568,
+      "commit": "9c73e8468ce271bf8c6bef4cac071e5ad9c1806b",
+      "source_path": "casework/remediation-engine.js",
+      "bundled_path": "apps/casework/casework/remediation-engine.js",
+      "sha256": "c293c564ecb11434e45423d244b7beba599b6afe3ebbc85121882e91b8aa1225",
+      "bytes": 10856
+    },
+    {
+      "component": "casework",
+      "pr": 1568,
+      "commit": "9c73e8468ce271bf8c6bef4cac071e5ad9c1806b",
+      "source_path": "casework/remediation-schedule.js",
+      "bundled_path": "apps/casework/casework/remediation-schedule.js",
+      "sha256": "4ec9f7ae396cad504ab122072b5c78dec5158a1def360adff3085dcd78ecaa0d",
+      "bytes": 1916
     },
     {
       "component": "handoff",
