@@ -334,6 +334,14 @@ function applyCaseworkRevision(){
  const p=assertCaseworkPreview();
  if(!confirm('Replace PRIVATE in-memory original Casework human rows with this complete newer ORIGINAL snapshot? Prior saved plans bound to previous Casework will not resume. No backend or permission is changed.'))return;
  ensureHumanEditorSaved();
+ const revisedFollowups=new Map([...state.followup].map(([id,v])=>[id,{...v}]));
+ for(const id of p.changes.keys()){
+  const prior=revisedFollowups.get(id);
+  if(prior.status==='discussion_logged')
+   revisedFollowups.set(id,{...prior,status:'needs_discussion'});
+ }
+ state.followup=revisedFollowups;
+ lastFollowBulkSnapshot=null;$('bulkFollowUndo').disabled=true;
  state.casework=p.next;state.caseworkDigest=p.digest;state.caseworkHashless=p.original_packet_hashless;
  state.caseworkChanges=new Map([...p.changes].map(([id,c])=>[id,c.fields]));
  state.caseworkUpdate={from_sha256:p.old_sha256,to_sha256:p.digest,source_sha256:state.hash,
@@ -342,7 +350,7 @@ function applyCaseworkRevision(){
  $('caseFilter').value='';$('ownerFilter').value='';
  $('nextCasework').value='';$('confirmCasework').checked=false;
  clearCaseworkPreview('Accepted newer ORIGINAL Casework snapshot into PRIVATE human planning only: '+
-   p.impact.total+' human row(s) changed. Evidence review and human window assignments are unmodified; saved old Casework plans will refuse to resume.');
+   p.impact.total+' human row(s) changed. Previous discussion-logged stages on changed original human rows were returned to NEEDS DISCUSSION (notes kept, not approval). Evidence review and human window assignments are unmodified; saved old Casework plans will refuse to resume.');
  render();
 }
 function privateCaseworkChanges(){
@@ -431,6 +439,8 @@ function followupValue(v){
    fail('Impossible private human reminder date.');
  }
  meetingNote(v.note);
+ if(v.status==='discussion_logged'&&!v.note.trim())
+  fail('A human discussion note is required before marking discussion as LOGGED; this is not approval.');
  return {status:v.status,due_date:v.due_date,note:v.note};
 }
 function followupFor(id){return state?.followup?.get(id)||newFollowup();}
@@ -479,6 +489,8 @@ function bulkHumanFollowup(){
  if(!FOLLOW_STATES.includes(chosen))fail('Unknown human follow-up stage.');
  const group=state.source.filter(f=>visibleFinding(f,state.review.get(f.finding_id)));
  if(!group.length)fail('No original finding in the currently visible human group.');
+ if(chosen==='discussion_logged'&&group.some(f=>!followupFor(f.finding_id).note.trim()))
+  fail('Human discussion cannot be marked as logged in bulk without an existing private human note on EVERY selected finding.');
  if(!confirm('Set UNVERIFIED HUMAN follow-up stage to "'+FOLLOW_LABELS[chosen]+'" for '+group.length+' visible original finding(s)? Existing private follow-up notes and dates are preserved. This does NOT approve a change.'))return;
  lastFollowBulkSnapshot=new Map([...state.followup].map(([id,v])=>[id,{...v}]));
  for(const f of group){
@@ -738,6 +750,7 @@ function stats(windows){
  * count/authority integrity checked BEFORE any in-memory state/UI mutations. */
 async function resumePlan(){
  if(!state)fail('Load original source before resuming a private plan.');
+ ensureHumanEditorSaved();
  if(!$('same').checked)fail('Independently confirm same original client and exact engagement.');
  const raw=strictJSON(await read($('planFile').files[0],2097152));
  const top=['kind','schema_version','disposition','source_contract','source_sha256','warning','windows','meeting_note','assignments','source_refresh','casework_sha256','casework_update','casework_packet_hashless',...FLAGS];
