@@ -34,12 +34,24 @@
   };
   const isPlain = value => value !== null && typeof value === "object" && !Array.isArray(value) && Object.getPrototypeOf(value) === Object.prototype;
   const assert = (ok, message) => { if (!ok) throw new Error(message); };
-  const bytes = s => new TextEncoder().encode(s);
-  const digest = async s => {
-    assert(globalThis.crypto && crypto.subtle && crypto.subtle.digest, "SHA-256 niet beschikbaar in deze browsercontext. Open lokaal in een moderne browser.");
-    const array = new Uint8Array(await crypto.subtle.digest("SHA-256",bytes(s)));
+  const digestBytes = async original => {
+    assert(original instanceof Uint8Array && globalThis.crypto && crypto.subtle && crypto.subtle.digest,
+      "Originele SHA-256 bronbytes niet beschikbaar in deze browsercontext.");
+    const array = new Uint8Array(await crypto.subtle.digest("SHA-256",original));
     return Array.from(array,b=>b.toString(16).padStart(2,"0")).join("");
   };
+  // Do not use file.text(): lossy UTF-8 replacement corrupts source-byte identity.
+  async function readOriginalBytes(file,max) {
+    assert(file instanceof File && file.size>0 && file.size<=max,"Bestand leeg of boven de toegestane bytegrens.");
+    const sourceBytes=new Uint8Array(await file.arrayBuffer());
+    assert(sourceBytes.byteLength===file.size && sourceBytes.byteLength<=max,"Originele bronbytegrootte komt niet overeen.");
+    assert(!(sourceBytes[0]===0xef && sourceBytes[1]===0xbb && sourceBytes[2]===0xbf),
+      "UTF-8 BOM niet ondersteund: gebruik het originele Studio JSON.");
+    let raw;
+    try {raw=new TextDecoder("utf-8",{fatal:true}).decode(sourceBytes);}
+    catch(_) {throw new Error("Ongeldige UTF-8-bronbytes; geen verliesgevende vervangingsdecodering.");}
+    return {raw,sha:await digestBytes(sourceBytes)};
+  }
   // JSON.parse alone silently accepts duplicate object keys. Enforce unique decoded names first.
   function parseUnique(s) {
     const value = JSON.parse(s);
@@ -339,19 +351,16 @@
     detail.append(node("p","small","Status: "+prepared(r)+" van "+TASKS.length+" voorbereid. Zelfs bij 8/8 blijft dit REVIEW_ONLY_HOLD. Gebruik het originele geauthenticeerde proces voor toestemming en directe herroepingscontrole."));
   }
   async function readBounded(file,max) {
-    assert(file instanceof File && file.size<=max && file.size>0,"Bestand leeg of groter dan limiet.");
-    const data=await file.text();
-    assert(bytes(data).length<=max,"UTF-8 bestandslimiet overschreden.");
-    return parseUnique(data);
+    const source=await readOriginalBytes(file,max);
+    return parseUnique(source.raw);
   }
   async function importDrafts(files) {
     assert(files.length>0&&files.length<=MAX,"Selecteer maximaal 16 bestanden.");
     const incoming=[];const seen=new Set(records.map(x=>x.sha));
     // Validate every document before changing the live view.
     for (const file of files) {
-      const raw=await file.text();
-      assert(file.size>0 && file.size<=SIZE && bytes(raw).length<=SIZE,"Studio-concept overschrijdt 64 KiB.");
-      const parsed=parseUnique(raw);
+      const fileSource=await readOriginalBytes(file,SIZE);
+      const parsed=parseUnique(fileSource.raw);
       const source=validateDraft(parsed);
       const studioDigest=await LightUpScopeDigest.fingerprint(parsed);
       assert(studioDigest && /^[a-f0-9]{64}$/.test(studioDigest),
@@ -360,7 +369,7 @@
         assert(parsed.scope_fingerprint_sha256===studioDigest,
           "Studio-v1 scope-fingerprint komt niet overeen met het oorspronkelijke concept.");
       source.studioDigest=studioDigest;
-      const sha=await digest(raw);
+      const sha=fileSource.sha;
       if (seen.has(sha)) continue;
       seen.add(sha);incoming.push({sha,source});
     }
