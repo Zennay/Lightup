@@ -33,7 +33,7 @@
   const TOKEN = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
   const MAX_CATALOG = 1048576, MAX_REPORT = 262144;
   let catalog=null, reports=[], reviews=new Map(), humanNotes=new Map(), humanRoutes=new Map(), humanActions=new Map(), fictional=false;
-  let mismatchRevealed=false;
+  let mismatchRevealed=false,undoRouteBatch=null;
   let catalogHash=null, reportHashes=[];
   function admit(ok){if(!ok)throw Error("Incompatible or unsafe private source");}
   function exact(v,keys){return v!==null && typeof v==="object" && !Array.isArray(v) &&
@@ -404,9 +404,12 @@
     if(!catalog)return [];
     const family=$("familyFilter").value;
     const stage=$("stageFilter").value,truth=$("truthFilter").value;
+    const route=$("routeFilter").value,action=$("actionFilter").value;
     return catalog.map((item,i)=>({item,i})).filter(({item})=>{
       if(stage!=="all"&&(reviews.get(item.id)||"needs_review")!==stage)return false;
       if(truth!=="all"&&item.mode!==truth)return false;
+      if(route!=="all"&&humanRouteFor(item)!==route)return false;
+      if(action!=="all"&&humanActionFor(item)!==action)return false;
       if(family!=="all"){
         const current=caseFlags(item);
         if(family==="no_flags")return !current.flags.size&&!current.missing;
@@ -433,8 +436,34 @@
     reviews=undoBatch;undoBatch=null;render();
     message("Previous human discussion stages restored in memory only.");
   }
+  function bulkSuggestHumanRoutes(){
+    if(!catalog||!reports.length){
+      message("Load original completed comparison sources first.",true);return;
+    }
+    const selected=visibleCases().filter(({item})=>humanRouteFor(item)==="unrouted");
+    if(!selected.length){
+      message("No currently visible unrouted human cases need a proposal.",true);return;
+    }
+    if(!confirm("Suggest source-derived HUMAN discussion groups for "+selected.length+
+      " currently visible UNROUTED private cases only? No employees are assigned; "+
+      "no scan or permission is initiated. Existing human choices remain unchanged."))return;
+    undoRouteBatch=new Map(humanRoutes);
+    for(const {item} of selected){
+      const hint=sourceRouteHint(item);
+      if(hint!=="unrouted")humanRoutes.set(item.id,hint);
+    }
+    render();
+    message("Local human discussion proposals added; existing routes unchanged. "+
+      "One-step route Undo available.");
+  }
+  function undoHumanRoutes(){
+    if(!undoRouteBatch){message("No proposed route batch to undo.");return;}
+    humanRoutes=undoRouteBatch;undoRouteBatch=null;render();
+    message("Previous PRIVATE human route proposals restored without modifying sources.");
+  }
+
   function resetFilters(){
-    for(const id of ["familyFilter","stageFilter","truthFilter"])$(id).value="all";
+    for(const id of ["familyFilter","stageFilter","truthFilter","routeFilter","actionFilter"])$(id).value="all";
   }
 
 
@@ -488,7 +517,7 @@
     for(const s of catalog)reviews.set(s.id,"needs_review");
     // Different completed source sets invalidate unverified proposed human routes/actions.
     humanRoutes.clear();humanActions.clear();
-    undoBatch=null;
+    undoBatch=null;undoRouteBatch=null;
   }
   function saveCaseNote(){
     if(!catalog||!catalog.length)return;
@@ -606,6 +635,7 @@
       " private source cases. Sorted: missing originals → scope/policy → findings → "+
       "evidence → informational operations → no source flags. This is an analyst review order, not a verified risk score.";
     $("undoStage").disabled=!undoBatch;
+    $("undoRoute").disabled=!undoRouteBatch;
     if(!catalog){renderInspector();return;}
     const grid=document.createElement("table"),head=document.createElement("thead"),h=document.createElement("tr");
     for(const text of ["Private scenario","Original source priority","Declared ground truth","Planted count",
@@ -972,7 +1002,7 @@
     if((catalog||reports.length)&&!confirm("Permanently forget in-memory private inputs and local discussion stages?"))return;
     forget();
   });
-  for(const id of ["familyFilter","stageFilter","truthFilter"])
+  for(const id of ["familyFilter","stageFilter","truthFilter","routeFilter","actionFilter"])
     $(id).addEventListener("change",render);
   $("inspectCase").addEventListener("change",renderInspector);
   $("saveCaseNote").addEventListener("click",saveCaseNote);
@@ -985,6 +1015,8 @@
   $("removeSource").addEventListener("click",removeSource);
   $("applyStage").addEventListener("click",humanBulk);
   $("undoStage").addEventListener("click",undoHumanBulk);
+  $("suggestRoutes").addEventListener("click",bulkSuggestHumanRoutes);
+  $("undoRoute").addEventListener("click",undoHumanRoutes);
   $("exportDraft").addEventListener("click",exportPrivateDraft);
   $("restoreDraft").addEventListener("change",async e=>{
     const f=e.target.files?.[0];e.target.value="";
