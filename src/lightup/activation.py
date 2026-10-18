@@ -23,8 +23,19 @@ class ActivationPolicy:
     activation_reference: str | None = None
 
     def validate(self) -> None:
-        if self.mode is ActivationMode.AUTHORIZED and not self.activation_reference:
-            raise ValueError("authorized mode requires an explicit activation_reference")
+        if type(self.mode) is not ActivationMode:
+            raise ValueError("activation mode must be a canonical ActivationMode")
+        if self.mode in (ActivationMode.AUTHORIZED, ActivationMode.LAB_ONLY):
+            reference = self.activation_reference
+            if (
+                type(reference) is not str or not reference.strip()
+                or reference != reference.strip()
+                or len(reference) > 256
+                or any(ord(char) < 33 or ord(char) == 127 for char in reference)
+            ):
+                raise ValueError(
+                    "active modes require an explicit canonical activation_reference"
+                )
 
 
 @dataclass(frozen=True)
@@ -200,7 +211,10 @@ class ActivationGate:
         if activation.mode is ActivationMode.LAB_ONLY:
             if decision.reason.value not in {"loopback", "private_lab"}:
                 raise PermissionError("lab-only mode cannot issue permits for public targets")
-            reference = activation.activation_reference or "LAB"
+            # Never synthesize a generic, untraceable LAB provenance.
+            reference = activation.activation_reference
+            if reference is None:
+                raise PermissionError("lab execution needs explicit provenance")
         else:
             authorization = snapshot.authorization
             if (
