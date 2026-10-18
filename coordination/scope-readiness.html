@@ -61,11 +61,22 @@ table{width:100%;border-collapse:collapse}th,td{border-bottom:1px solid var(--bo
 <div class="toolbar"><button id="bulkPreview" type="button">Preview eligible changes</button><button id="bulkApply" class="primary" type="button" disabled>Apply previewed assignments</button><button id="bulkDiscard" type="button">Discard preview</button></div>
 <p id="bulkResult" role="status" aria-live="polite" class="small">No batch changes are pending. Import real Studio drafts first.</p>
 </section>
+<section class="card controls" aria-label="Private follow-up packet preparation">
+<h2>4 · Separated client/operator preparation briefs</h2>
+<p>Produce a locally downloaded request-for-information brief tailored to either client-side or operator-side paperwork. It cannot send messages, authenticate recipients or represent a granted authorization.</p>
+<div class="two">
+<div><label for="packetAudience">Preparation recipient</label><select id="packetAudience"><option value="client">Client-side: ownership and client coordination only</option><option value="operator">Operator-side: scope, independent review, STOP and privacy only</option></select></div>
+<div><label for="packetScope">Drafts in the brief</label><select id="packetScope"><option value="current">Selected draft only</option><option value="visible">Current filtered draft queue</option><option value="all">All drafts</option></select></div>
+</div>
+<div class="toolbar"><button id="packetPreview" type="button">Generate private preview</button><button id="packetDownload" class="primary" type="button" disabled>Download reviewed Markdown</button><button id="packetDiscard" type="button">Discard packet</button></div>
+<p id="packetStatus" class="small" aria-live="polite">Local preview only; original source values stay private. No client/operator permission claims.</p>
+<pre class="preview" id="packetText">No prepared packet.</pre>
+</section>
 <div class="grid">
-<section class="card"><h2>4 · Draft register</h2><label for="filter">Show drafts</label><select id="filter"><option value="all">All</option><option value="hold">Preparation incomplete</option><option value="missing">Source file not re-attached</option><option value="risk">Risk 4 proposed</option><option value="overdue">Overdue follow-up actions</option><option value="collision">Same client/operator coordinator label</option></select>
+<section class="card"><h2>5 · Draft register</h2><label for="filter">Show drafts</label><select id="filter"><option value="all">All</option><option value="hold">Preparation incomplete</option><option value="missing">Source file not re-attached</option><option value="risk">Risk 4 proposed</option><option value="overdue">Overdue follow-up actions</option><option value="collision">Same client/operator coordinator label</option></select>
 <label for="sort">Sort review queue</label><select id="sort"><option value="priority">Attention first (missing source, overdue, risk)</option><option value="name">Draft name</option><option value="due">Earliest pending action date</option></select><div class="list" id="drafts"><p>No drafts imported.</p></div></section>
-<section class="card"><h2>5 · Human coordination tasks</h2><div id="detail"><p>Select a Studio draft. You can plan review tasks and assign follow-ups; none can mark real client consent or operator approval complete.</p></div></section>
-<section class="card wide"><h2>6 · Local review handoff</h2><p>This brief is a snapshot of unresolved preparation work. All authentication, consent, scope approval, grant, risk clearance and revocation statuses are explicitly false.</p><pre class="preview" id="brief">No review yet.</pre></section>
+<section class="card"><h2>6 · Human coordination tasks</h2><div id="detail"><p>Select a Studio draft. You can plan review tasks and assign follow-ups; none can mark real client consent or operator approval complete.</p></div></section>
+<section class="card wide"><h2>7 · Local review handoff</h2><p>This brief is a snapshot of unresolved preparation work. All authentication, consent, scope approval, grant, risk clearance and revocation statuses are explicitly false.</p><pre class="preview" id="brief">No review yet.</pre></section>
 </div>
 <footer>Private draft · REVIEW_ONLY / DRAFT-HOLD · no remote assets, scripts, network services, cookies, browser persistence, account sessions, grant mutations or scanning. Source hashes detect stale local references, not signatures.</footer>
 </main>
