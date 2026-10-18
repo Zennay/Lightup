@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; connect-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'">
+<title>LightUp | Private Team Incident Follow-up</title>
+<style>
+:root{color-scheme:dark;font:15px/1.55 system-ui,sans-serif;background:#0f1728;color:#f0f4ff}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 90% 0,#2c406b88,transparent 48%),#0f1728}
+main{max-width:1020px;margin:auto;padding:26px}h1{font-size:clamp(28px,5vw,45px);margin:10px 0;line-height:1.07}
+header{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}.brand{letter-spacing:.1em;font-size:20px;font-weight:800;color:#b9caff}
+.badge{color:#ffce9e;border:1px solid #9a784f;border-radius:8px;padding:8px;font-size:12px}p{color:#aebfdb}
+.panel{border:1px solid #485c7c;background:#1b2941;border-radius:16px;padding:20px;margin:18px 0}
+button,label.load{display:inline-block;border:0;border-radius:8px;background:#c0ceff;color:#162345;font:700 13px system-ui;padding:10px 14px;cursor:pointer}
+button:disabled{opacity:.5;cursor:not-allowed}input[type=file]{position:absolute;opacity:0;width:1px;height:1px}
+button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible,label:focus-within{outline:3px solid #e5edff;outline-offset:3px}
+textarea,input[type=text],select{font:inherit;color:#fff;background:#132039;border:1px solid #5d779e;border-radius:7px;padding:10px;max-width:100%}
+textarea{width:100%;min-height:78px;resize:vertical}.rows{display:grid;gap:12px}.card{border:1px solid #455b7d;background:#16243a;border-radius:10px;padding:16px}
+small{color:#bed0e9}.id{font:12px ui-monospace,Consolas,monospace;overflow-wrap:anywhere}
+.fields{display:grid;grid-template-columns:200px 1fr;gap:12px;align-items:start}label{display:block;font-size:12px;font-weight:700;color:#b5c7e6}
+.notice{border-left:4px solid #e3a878;background:#362b32;padding:12px;color:#ffd7b2}
+#message{min-height:22px;color:#f7c9a1;margin:13px 0}
+@media(max-width:650px){main{padding:13px}.fields{grid-template-columns:1fr}}
+</style></head><body><main>
+<header><div class="brand">LIGHTUP / TEAM FOLLOW-UP</div><span class="badge">PRIVATE · INCUBATE · DRAFT/HOLD</span></header>
+<h1>Incident casework return</h1>
+<p>Offline human-only follow-up for a previously prepared private operator packet. This file cannot approve scope, give client or operator consent, issue grants, clear STOP or contact targets.</p>
+<div class="panel"><h2>01 / Original operator packet</h2>
+<p>Open only a private JSON packet explicitly supplied by your authorized operator. Source identities and notes stay on this device. Do not forward externally.</p>
+<label class="load">Load PRIVATE team packet<input id="input" type="file" accept=".json,application/json"></label>
+<div class="notice">A declared reviewer name or returned file is NOT authenticated proof of identity. The original operator must personally reconcile the return; no source record is changed by this tool.</div>
+<p id="message" role="status" aria-live="polite">No operator packet loaded.</p></div>
+<div class="panel"><h2>02 / Human-only response</h2>
+<div class="fields"><div><label for="reviewer">Self-declared reviewer (not authentication)</label><input id="reviewer" type="text" maxlength="80" autocomplete="off" placeholder="Team reviewer" disabled></div>
+<div><label for="team">Team label (not authority)</label><input id="team" type="text" maxlength="80" autocomplete="off" placeholder="Private team" disabled></div></div>
+<div id="rows" class="rows" style="margin-top:16px"><p>Import the original private packet first.</p></div>
+<button id="download" disabled>Return PRIVATE human-only JSON</button>
+</div><p>Manual coordination only. Historical STOP and risk observations remain DRAFT/HOLD, even if follow-up is marked documented.</p></main>
+<script>
+(function(){
+"use strict";
+var packet=null,MAX=65536,STAGES=["unreviewed","investigating","escalated","documented"];
+function E(id){return document.getElementById(id);}
+function O(v){return v!==null&&typeof v==="object"&&!Array.isArray(v);}
+function word(s,max){return typeof s==="string"&&s.length>0&&s.length<=max&&!/[\x00-\x1f\x7f]/.test(s);}
+function fail(){throw Error("private packet malformed or outside original workflow");}
+function duplicates(raw){
+ var i=0,n=0;
+ function ws(){while(i<raw.length&&" \n\t\r".includes(raw[i]))i++;}
+ function str(){var start=i;if(raw[i]!=='"')fail();i++;while(i<raw.length){if(raw[i]==="\\"){i+=2;continue;}if(raw[i]==='"'){i++;return JSON.parse(raw.slice(start,i));}i++;}fail();}
+ function val(depth){if(depth>32||++n>20000)fail();ws();
+ if(raw[i]==="{"){i++;ws();var seen=new Set();if(raw[i]==="}"){i++;return;}while(true){ws();var key=str();if(seen.has(key))fail();seen.add(key);ws();if(raw[i]!==":")fail();i++;val(depth+1);ws();if(raw[i]==="}"){i++;return;}if(raw[i]!==",")fail();i++;}}
+ else if(raw[i]==="["){i++;ws();if(raw[i]==="]"){i++;return;}while(true){val(depth+1);ws();if(raw[i]==="]"){i++;return;}if(raw[i]!==",")fail();i++;}}
+ else if(raw[i]==='"'){str();}else{var start=i;while(i<raw.length&&!(",]} \n\t\r".includes(raw[i])))i++;if(i===start)fail();}}
+ val(0);ws();if(i!==raw.length)fail();
+}
+function source(raw){
+ duplicates(raw);var x=JSON.parse(raw);
+ if(!O(x)||Object.keys(x).sort().join("|")!=="authority|case_count|records|schema|source_sha256|status|token"||
+ x.schema!=="lightup.scope_team_packet.v1"||x.status!=="HUMAN_REVIEW_ONLY"||
+ x.authority!==false||!(/^[a-f0-9]{64}$/.test(x.source_sha256))||
+ !(/^[a-f0-9]{32}$/.test(x.token))||
+ !Number.isInteger(x.case_count)||x.case_count<1||x.case_count>32||
+ !Array.isArray(x.records)||x.records.length!==x.case_count)fail();
+ var ids=new Set();
+ for(var row of x.records){
+  if(!O(row)||Object.keys(row).sort().join("|")!=="base_stage|casebook_attention|engagement_id|original_next_action|stop_source"||
+  !word(row.engagement_id,180)||ids.has(row.engagement_id)||
+  !word(row.casebook_attention,180)||!word(row.original_next_action,180)||
+  !word(row.stop_source,180)||!STAGES.includes(row.base_stage))fail();
+  ids.add(row.engagement_id);
+ }
+ return x;
+}
+function text(parent,label,value){var row=document.createElement("p"),b=document.createElement("strong");b.textContent=label+": ";row.append(b,document.createTextNode(value));parent.appendChild(row);}
+function render(){
+ E("rows").replaceChildren();
+ packet.records.forEach(function(r,index){
+  var card=document.createElement("section");card.className="card";
+  var h=document.createElement("h3");h.textContent="Private original case "+(index+1);card.appendChild(h);
+  text(card,"Original engagement",r.engagement_id);
+  text(card,"Historical STOP",r.stop_source);
+  text(card,"Original attention",r.casebook_attention);
+  text(card,"Original next HUMAN action",r.original_next_action);
+  var field=document.createElement("div");field.className="fields";
+  var a=document.createElement("div"),b=document.createElement("div");
+  var la=document.createElement("label");la.textContent="Human-only stage";
+  var select=document.createElement("select");select.className="case-stage";
+  STAGES.forEach(function(s){var op=document.createElement("option");op.value=s;op.textContent=s;select.appendChild(op);});
+  select.value=r.base_stage;a.append(la,select);
+  var lb=document.createElement("label");lb.textContent="Private human note, max 500 characters";
+  var note=document.createElement("textarea");note.className="case-note";note.maxLength=500;note.placeholder="What still requires human follow-up?";b.append(lb,note);
+  field.append(a,b);card.appendChild(field);E("rows").appendChild(card);
+ });
+}
+E("input").addEventListener("change",async function(){
+ var f=this.files&&this.files[0];this.value="";if(!f)return;
+ if(f.size<2||f.size>MAX){E("message").textContent="HOLD: invalid private packet size";return;}
+ try{
+  var raw=new TextDecoder("utf-8",{fatal:true}).decode(await f.arrayBuffer());
+  var next=source(raw);packet=next;
+  E("reviewer").value="";E("team").value="";E("reviewer").disabled=false;
+  E("team").disabled=false;E("download").disabled=false;render();
+  E("message").textContent="Original PRIVATE operator worklist imported locally. This is not an authorization.";
+ }catch(e){E("message").textContent="HOLD: private packet format/integrity rejected; existing work retained.";}
+});
+E("download").addEventListener("click",function(){
+ if(!packet)return;
+ var reviewer=E("reviewer").value.trim(),team=E("team").value.trim();
+ if(!word(reviewer,80)||!word(team,80)){E("message").textContent="HOLD: human reviewer and team labels required (self-declared, not authenticated).";return;}
+ var cards=[...E("rows").querySelectorAll("section.card")];
+ if(cards.length!==packet.records.length)return;
+ var records=cards.map(function(card,i){
+  return {engagement_id:packet.records[i].engagement_id,
+   base_stage:packet.records[i].base_stage,
+   casebook_attention:packet.records[i].casebook_attention,
+   original_next_action:packet.records[i].original_next_action,
+   stop_source:packet.records[i].stop_source,
+   human_stage:card.querySelector(".case-stage").value,
+   human_note:card.querySelector(".case-note").value.trim()};
+ });
+ if(records.some(r=>!STAGES.includes(r.human_stage)||r.human_note.length>500||
+ /[\x00-\x1f\x7f]/.test(r.human_note))){E("message").textContent="HOLD: invalid human note or stage";return;}
+ if(!window.confirm("Return a PRIVATE original-ID human review only? This is NOT authenticated consent, a grant, a STOP clearance or runtime authorization."))return;
+ var result={schema:"lightup.scope_team_return.v1",status:"HUMAN_FOLLOW_UP_UNVERIFIED",
+  source_sha256:packet.source_sha256,token:packet.token,case_count:packet.case_count,
+  declared_reviewer:reviewer,declared_team:team,records:records,
+  authority:false,authorization_granted:false,execution_allowed:false,release_approved:false};
+ var blob=new Blob([JSON.stringify(result,null,2)+"\n"],{type:"application/json"});
+ var url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download="lightup-PRIVATE-team-return.json";a.click();
+ setTimeout(function(){URL.revokeObjectURL(url);},300);
+ E("message").textContent="Local PRIVATE response created. No original database or operator stages changed.";
+});
+})();
+</script></body></html>
