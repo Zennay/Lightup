@@ -186,6 +186,17 @@ class ModelGateway:
             metadata=metadata,
         )
         response = provider.complete(request)
+        # Provider responses are untrusted objects. Reject subclasses and
+        # non-text content before consumers can invoke overridden string
+        # operations (strip, containment, encode or JSON serialization).
+        if type(response) is not ModelResponse:
+            raise GatewayConfigurationError(
+                "provider returned a non-canonical model response"
+            )
+        if type(response.content) is not str:
+            raise GatewayConfigurationError(
+                "provider returned non-canonical response content"
+            )
         if (
             type(response.provider_id) is not str
             or response.provider_id != binding.provider_id
