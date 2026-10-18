@@ -21,7 +21,8 @@ Open `casework/index.html` from a local checkout in a modern browser. No server,
 3. Import the CSV locally. The board groups findings by severity, keeps the original `retest_status` read-only and lets operators coordinate a **separate local planning status**, assigned team, due date, next repair action, retest coordination, dependencies and notes.
 4. Filter by severity, work stage or search, and sort by risk, due date or title. Dashboard highlights critical/high findings, blocked items, overdue deadlines and items awaiting independently authorized retest.
 5. Apply a shared owner and/or due date to the **currently filtered subset** using a separate explicit confirmation; other cases are not modified. The browser warns before navigating away while local changes are unsaved.
-6. Export an unsigned `lightup.remediation_casework_draft` v1 JSON for resuming the planning session, a spreadsheet-safe CSV **action register** or a Markdown coordination brief. Print the plan if appropriate.
+6. Optionally propose a severity-driven **planning schedule**. Enter a locally agreed planning start date and a separate number of calendar days for critical/high/medium/low/info findings. Preview the list first. Only open cases that lack a due date are eligible; existing dates, deferred cases and completed cases remain untouched. The sample values in the UI are **examples, not contractual SLAs or regulatory commitments**. An explicit confirmation is required before applying.
+7. Export an unsigned `lightup.remediation_casework_draft` v1 JSON for resuming the planning session, a spreadsheet-safe CSV **action register** or a Markdown coordination brief. Print the plan if appropriate.
 
 ### Refreshing findings without silently copying obsolete status
 
@@ -37,6 +38,7 @@ After explicit confirmation:
 
 - Bounded CSV intake: 1 MiB and at most 350 findings; parser validates RFC4180-style quoting and the exact source columns. Source severities: `info/low/medium/high/critical`; source retest state: `not_tested/fix_pending/fixed/regression`.
 - `casework/remediation-engine.js`: CSV parser, source/type normalization, editable case schema, duplicate ID rejection, refresh comparison/reconciliation, summary calculations, local draft contract and spreadsheet-safe action CSV serialization.
+- `casework/remediation-schedule.js`: bounded, deterministic UTC calendar-day suggestions, rejecting invalid dates or severity policy and leaving previously scheduled/completed/deferred casework untouched.
 - `casework/remediation-app.js`: document-only local UI, import/export handlers, filters, priority, edit controls, update notices, refresh review and Markdown rendering.
 - `casework/index.html`: responsive browser UI with all untrusted text inserted with `textContent`; no remote scripts, network calls, active handlers or credentials.
 - Exported JSON includes an optional unsigned source SHA-256 (Web Crypto when available) over source finding fields; it is not an authenticated signature and does not confer scope/tenant authority. Import rejects a saved packet if its stored digest conflicts with its own source findings (when hashing is supported).
