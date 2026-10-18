@@ -4,7 +4,7 @@
 
 ## Open immediately
 
-Open **[standalone.html](standalone.html)** as a local file. It is one complete HTML file with inline JavaScript/CSS and SHA-256 Content Security Policy (connect-src 'none'). The editable source is index.html + app.js + style.css. Rebuild the portable file with the standard-library command: **python3 assessment-lab-review/build_standalone.py**.
+Open **[standalone.html](standalone.html)** as a local file. The [complete two-app offline ZIP](LightUp-Private-Lab-Review-Kit.zip) includes Operator Review, a separate Recipient Reply Desk, START-HERE and an unsigned file-integrity manifest. It is one complete HTML file with inline JavaScript/CSS and SHA-256 Content Security Policy (connect-src 'none'). The operator source is index.html + app.js + collaboration.js + style.css; the separate recipient source is team-reply.html + team-reply.js + style.css. Rebuild the portable file with the standard-library command: **python3 assessment-lab-review/build_standalone.py**.
 
 1. Select an existing PRIVATE result JSON produced by the original, separately held lab-assess --output command. This app **never** runs it. Do not create a new lab result on someone else's assets.
 2. The browser admits the bounded original source structure **all-or-nothing** (1–16 declared target strings, ≤2048 unique original findings, exact finding fields, full original 16-metric evaluation record and run/scenario consistency, matched original false-positive arithmetic, strict original plan/denial structures, no duplicate JSON properties, mandatory ungranted lab context and exact matching benchmark record when present). The private queue shows original finding severity, local endpoint ordinal and human-readable source text; evidence summaries are only in expandable private panels.
@@ -13,6 +13,18 @@ Open **[standalone.html](standalone.html)** as a local file. It is one complete 
 5. Create a separate **PRIVATE scriptless HTML human action brief**, after explicit confirmation, containing source-reported finding **titles**, anonymous source endpoint ordinals and proposed human stages/groups/actions/blockers but never target URL literals, raw evidence IDs/summaries or client identifiers. It has an inline hashed stylesheet, `script-src 'none'` and no external resource/network. It is sensitive and requires a separate human-approved confidential exchange.
 6. Alternatively export counts-only JSON: declared endpoint/finding/severity totals and human stage/group totals. It contains **no targets, file paths, finding IDs, raw evidence, names or original hashes**. Small aggregates can still be sensitive and should only be shared after separate human review.
 7. Use **Forget all local data** to discard the in-memory source. There are no accounts, trackers, cookies, localStorage, service workers, external fonts, fetches, DNS, models, scanners, workers or grants.
+
+
+## Separate operator → recipient → operator private collaboration
+
+The complete ZIP contains **two intentionally separated apps**:
+
+- **Operator Review Desk** (standalone.html): reopen an original independently obtained PRIVATE lab source, select a view of 1–512 original findings (filter by severity, stage or endpoint ordinal), click **Download PRIVATE packet for visible findings**, and confirm deliberate private disclosure. The source-bound packet includes original finding ordinal, original unverified severity/title, local endpoint ordinal, four original HUMAN-only note values and a copy of those same HUMAN values for proposed edits. It excludes target URLs, raw evidence, check IDs, client details and the original JSON. Titles/notes **may still be highly sensitive**.
+- **Recipient Reply Desk** (team-reply-standalone.html): independently open a private operator handoff, make human-only stage/group/action/blocker proposals, preview every changed human field, and export a PRIVATE complete reply. Original supplied severity/title/ordinal/baseline/hash/false authority fields are read-only. Recipient identity is **not** authenticated.
+- **Return to Operator**: reopen the unchanged original PRIVATE lab result, import the PRIVATE reply and review every old/new HUMAN field in the operator desk. Acceptance requires the exact original source SHA-256, original ordinal/title/severity/endpoint identity, unchanged original current HUMAN baseline, complete return schema, and the original private proposal baseline SHA. A concurrent operator edit or any incomplete/contradictory return HOLDS before applying anything. A separate explicit confirmation is necessary; only human note fields change. Save a NEW PRIVATE operator review after acceptance.
+- No bulk collision auto-resolution or cross-source merging is attempted. Source fingerprints/baselines and review notes are UNSIGNED, cannot identify recipients or authenticate findings, and do not constitute consent, release, permission, a security finding, or successful remediation.
+
+**Portable packaging:** running the same standard-library build command produces BOTH SHA-CSP-pinned self-contained HTML applications and `LightUp-Private-Lab-Review-Kit.zip`. The ZIP contains only code, offline interfaces, instructions and their UNSIGNED digests, not actual original lab/source/client/evidence/reviewer data. Nothing loads external assets or sends data through the network. Share the ZIP separately from each confidential individual PRIVATE JSON handoff.
 
 ## Source/privacy boundaries
 

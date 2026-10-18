@@ -349,5 +349,38 @@ $("forget").addEventListener("click",()=>{if(!source||!confirm("Forget all priva
  source=null;sourceHash="";notes=[];dirty=false;filter="";lastBulkUndo=null;$("filter").value="";$("findings").replaceChildren();
  $("workspace").hidden=true;status("All in-memory private workspace data discarded.");});
 window.addEventListener("beforeunload",e=>{if(dirty){e.preventDefault();e.returnValue="";}});
+
+// Strict collaboration bridge: no direct original source, targets or evidence leave here.
+window.LightUpReviewBridge=Object.freeze({
+ snapshot(){
+  if(!source||!sourceHash)return null;
+  return {source_sha256:sourceHash,visible:visibleOrdinals().map(i=>i+1),rows:source.findings.map((f,i)=>({
+    ordinal:i+1, severity:f.severity,title:f.finding,
+    endpoint_ordinal:endpointOrdinal(f),human:{...notes[i]}
+  }))};
+ },
+ strictJSON:parseStrict,
+ noteValid:admitNote,
+ applyRows(digest,rows){
+  require_(!!source&&!!sourceHash&&digest===sourceHash&&Array.isArray(rows)
+   &&rows.length>0&&rows.length<=512);
+  const seen=new Set(),updates=[];
+  for(const row of rows){
+   require_(exact(row,["ordinal","original","proposed"])&&
+    Number.isSafeInteger(row.ordinal)&&row.ordinal>=1&&row.ordinal<=notes.length&&
+    !seen.has(row.ordinal)&&admitNote(row.original)&&admitNote(row.proposed));
+   seen.add(row.ordinal);
+   require_(JSON.stringify(notes[row.ordinal-1])===JSON.stringify(row.original));
+   updates.push(row);
+  }
+  if(!confirm("Accept "+updates.length+" source-bound HUMAN follow-up row changes? Original lab findings, source evidence, targets and permissions remain unchanged."))return false;
+  const changed=notes.map(n=>({...n}));
+  for(const row of updates)changed[row.ordinal-1]={...row.proposed};
+  notes=changed;dirty=true;lastBulkUndo=null;updateSummary();render();
+  status("PRIVATE reviewer return applied to human fields only. No assessment was verified.");
+  return true;
+ }
+});
+
 status("No private lab source loaded.");
 })();

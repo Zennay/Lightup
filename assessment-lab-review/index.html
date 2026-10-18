@@ -36,6 +36,18 @@
 <label class="upload" for="resume">Restore PRIVATE notes<input id="resume" type="file" accept=".json,application/json"></label>
 <button id="forget" type="button" class="quiet">Forget all local data</button></div>
 <p class="note">All exports are downloads initiated by you; there is no upload, localStorage, cookie, service worker or backend. Keep PRIVATE returns off public channels. Even counts-only exports may be sensitive. Nothing in this interface creates a new original LightUp assessment or authorized retest.</p></section>
+<section id="collaboration" aria-labelledby="collab-heading">
+<h2 id="collab-heading">4. Send a PRIVATE human-only reviewer packet</h2>
+<p>Select existing source findings to share by the current severity/stage/endpoint filter. The packet contains <strong>only original ordinal, severity, a private source-declared title and the current four human follow-up fields</strong>; no target URL, raw evidence, finding ID or customer data. The recipient is not authenticated by this software; use a separately approved private channel.</p>
+<div class="toolbar"><button id="collab-send" type="button">Download PRIVATE packet for visible findings</button>
+<label class="upload" for="collab-receive">Import PRIVATE reviewer reply<input type="file" id="collab-receive" accept=".json,application/json"></label>
+<button id="collab-apply" type="button" disabled>Accept previewed HUMAN changes</button></div>
+<div id="collab-status" role="status" aria-live="polite"></div>
+<div id="collab-preview"></div>
+<p class="note">Reviewer replies are only proposed human notes. Both the original source-byte fingerprint and unchanged operator human baseline must match at import time. Any stale, mismatched or incomplete private packet is HOLD. Reviewer identity, consent, findings and completion are never inferred.</p>
+<p>For the recipient: open <strong>team-reply-standalone.html</strong> separately from this operator tool. Return only PRIVATE JSON through a separately approved confidential channel.</p>
+</section>
 <section class="gates"><h2>Release remains on hold</h2><p>Original source-owner acceptance, independently authenticated separate client/operator consent with revocation at action time, #177/#182/#829, independent privacy/security, exact-head hosted and permanently named VPS CI, and explicit HUMAN GO remain mandatory before any main merge, deploy, grant or active assessment.</p></section>
 </main><footer>Source is explicitly held and unsigned · Offline human planning only · No execution</footer>
-<script src="app.js" defer></script></body></html>
+<script src="app.js" defer></script>
+<script src="collaboration.js" defer></script></body></html>
