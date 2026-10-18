@@ -37,3 +37,16 @@ textarea:focus-visible{outline:3px solid var(--hold);outline-offset:3px}
 .queue-card p{font-size:.92rem;color:var(--muted);margin:.45rem 0 1rem}
 .queue-card button{font-size:.85rem;padding:.45rem .65rem}
 @media print{.queue-overview{display:none!important}}
+
+.print-only{display:none}
+@media print{
+  header,footer,main>section:not(#printAnonymous){display:none!important}
+  main{max-width:none;margin:0;padding:0}
+  #printAnonymous{display:block!important;background:white!important;color:black!important;
+    border:none!important;padding:0!important;margin:0!important}
+  #printAnonymous h2,#printAnonymous p,#printAnonymous th,#printAnonymous td{
+    color:black!important;background:white!important}
+  #printAnonymous table{min-width:0;font-size:11pt;break-inside:auto}
+  #printAnonymous tr{break-inside:avoid}
+  #printAnonymous th,#printAnonymous td{border:1px solid #555!important}
+}
