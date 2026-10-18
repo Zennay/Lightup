@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import argparse
 import getpass
+import hashlib
 import hmac
 import json
 from pathlib import Path
@@ -57,7 +58,7 @@ def prepare_request(assets: list[str], risk: int, notes: str) -> dict:
         raise ClientRequestError("real-client requests need a risk integer from 1 to 4")
     if type(notes) is not str or len(notes) > _MAX_NOTES or "\x00" in notes:
         raise ClientRequestError("notes must contain at most 4000 characters and no NUL")
-    return {
+    payload = {
         "requested_assets": list(canonical_assets(assets)),
         "requested_mode": AssessmentMode.AUTHORIZED_ASSESSMENT.value,
         "requested_risk": risk,
@@ -69,6 +70,20 @@ def prepare_request(assets: list[str], risk: int, notes: str) -> dict:
         "dispatch_allowed": False,
         "release_allowed": False,
     }
+    # Exact normalized client proposal before any submission. A digest is
+    # unsigned continuity evidence, never a consent signature or authorization.
+    proposed = {
+        "format": "LIGHTUP_CLIENT_INTAKE_V1",
+        "assets": payload["requested_assets"],
+        "mode": payload["requested_mode"],
+        "risk": payload["requested_risk"],
+        "notes": payload["notes"],
+    }
+    raw = json.dumps(
+        proposed, sort_keys=True, separators=(",", ":"), ensure_ascii=True,
+    ).encode("ascii")
+    payload["intake_sha256"] = hashlib.sha256(raw).hexdigest()
+    return payload
 
 
 def _existing_database(raw: str) -> Path:
@@ -121,6 +136,8 @@ def main(argv: list[str] | None = None) -> int:
         command.add_argument("--notes", help="request explanation; never use secrets")
     preview.add_argument("--output", help="new private offline HTML preview file; no user authentication")
     submit.add_argument("--confirm-submit", action="store_true", help="explicitly submit for operator review")
+    submit.add_argument("--expect-intake-sha256", required=True,
+                        help="exact normalized proposal SHA-256 from preview")
     submit.add_argument("--expect-proposal-sha256", help="exact untrusted proposal file SHA-256 from preview")
     # A rejected request stays immutable: any edit creates an independently
     # reviewable new request, never changes an operator decision or a grant.
@@ -180,6 +197,15 @@ def main(argv: list[str] | None = None) -> int:
                 if args.risk is None:
                     raise ClientRequestError("--risk is required with --asset")
                 payload = prepare_request(args.asset, args.risk, args.notes or "")
+        if args.command == "submit":
+            proposed = args.expect_intake_sha256
+            if (type(proposed) is not str or len(proposed) != 64
+                    or any(ch not in "0123456789abcdef" for ch in proposed)
+                    or not hmac.compare_digest(proposed, payload["intake_sha256"])):
+                raise ClientRequestError(
+                    "proposed assets, risk or notes changed since preview; "
+                    "review the full intake again before submitting"
+                )
         if args.command == "preview":
             output = payload
             if args.output:
