@@ -171,7 +171,7 @@
   function newRecord(sha,source) {
     return {sha,source,reference:"Dossier "+String(records.length+1),replaces:null,
       tasks:Object.fromEntries(TASKS.map(([id])=>[id,"open"])),
-      dueDates:Object.fromEntries(TASKS.map(([id])=>[id,null]))};
+      dueDates:Object.fromEntries(TASKS.map(([id])=>[id,null])),withdrawal:null};
   }
   function localCoverage(r) {
     return LightUpScopeNetwork.effectiveCoverage(r.source.assets,r.source.excluded);
@@ -215,6 +215,51 @@
     return pairs.sort((a,b)=>weight[a.priority]-weight[b.priority] ||
       Math.max(records.find(x=>x.sha===b.left).source.risk,records.find(x=>x.sha===b.right).source.risk)-
       Math.max(records.find(x=>x.sha===a.left).source.risk,records.find(x=>x.sha===a.right).source.risk));
+  }
+  function renderWithdrawals() {
+    const area=$("withdrawalBoard");area.replaceChildren();
+    const cases=records.filter(r=>r.withdrawal);
+    $("withdrawalFeedback").textContent=cases.length?
+      cases.length+" brongebonden ONGEVERIFIEERDE reviewverzoeken lokaal ingelezen. Er is geen daadwerkelijk stop- of herroepingscommando verstuurd.":
+      "Er is nog geen externe review-only melding gekoppeld.";
+    for(const r of cases){
+      const x=r.withdrawal,card=node("article","withdrawal-card");
+      card.append(node("h3","",r.reference+" · "+(x.urgency==="urgent"?"DRINGEND":"normaal")+
+        " · "+x.intent.replaceAll("_"," ")),
+        node("p","small","Bronbytes "+r.sha.slice(0,16)+"… · "+x.outstanding+
+          " van 8 externe menselijke stop-/wijzigingsacties nog zonder zelfs een ongeverifieerd verzoek. "+
+          (x.effective?"Voorgesteld UTC-moment: "+x.effective+". ":"")+
+          "Geen geauthenticeerde cliënt, echte grant-intrekking, dispatchstop of toestemming vastgesteld."));
+      const actions=node("div","actions");
+      const open=node("button","","Dossier / stopacties bekijken");open.type="button";
+      open.addEventListener("click",()=>{active=r.sha;render();$("detail").scrollIntoView({block:"start",behavior:"smooth"});});
+      const remove=node("button","","Alleen lokale kopie wissen");remove.type="button";
+      remove.addEventListener("click",()=>{
+        if(!confirm("Alleen deze ongeverifieerde offline reviewkopie wissen? Dit heft GEEN echt stopverzoek of revocation op."))return;
+        r.withdrawal=null;show("Alleen lokale reviewkopie gewist; status 'Herziening nodig' blijft waar van toepassing.");render();
+      });
+      actions.append(open,remove);card.append(actions);area.append(card);
+    }
+    if(!cases.length)area.append(node("p","small","Importeer een REVIEW_ONLY-export vanuit de zelfstandige Withdrawal Desk, na openen van dezelfde exacte Studio-bronbytes. Dit register kan geen echte operatie stoppen."));
+  }
+  async function importWithdrawal(file) {
+    const obj=await readBounded(file,131072);
+    const items=LightUpWithdrawalImport.parse(obj,new Map(records.map(r=>[r.sha,r.source])));
+    if(items.some(x=>records.find(r=>r.sha===x.sha).withdrawal) &&
+      !confirm("Een bron heeft al een lokaal stop-/wijzigingsverzoek. Alleen de ongeverifieerde reviewnotities vervangen?"))return;
+    for(const item of items){
+      const r=records.find(x=>x.sha===item.sha);
+      const {sha,...safe}=item;
+      r.withdrawal={...safe,statuses:{...safe.statuses}};
+      const touched=new Set(["client","operator","stops","owner"]);
+      if(safe.intent==="narrow_scope")touched.add("assets");
+      if(safe.intent==="postpone")touched.add("schedule");
+      if(safe.intent==="withdraw_share")touched.add("privacy");
+      for(const id of touched)if(r.tasks[id]==="prepared")r.tasks[id]="needs_revision";
+      for(const key of pairReviews.keys())if(key.split(":").includes(r.sha))pairReviews.delete(key);
+    }
+    show(items.length+" echte brongebonden, maar NIET geauthenticeerde Withdrawal Desk-melding(en) ingelezen. Relevante menselijke voorbereiding heropend. Geen operaties geraakt.");
+    render();
   }
   function actionRows() {
     const all=[];
@@ -378,6 +423,9 @@
     if (rev?.time_window_changed) w.push("revisie_planning_gewijzigd");
     if (rev && revisionTaskRechecks(rev).some(id=>r.tasks[id]==="needs_revision"))
       w.push("revisie_menselijke_herbeoordeling_nodig");
+    if(r.withdrawal){
+      w.push(r.withdrawal.urgency==="urgent"?"dringend_niet_geauthenticeerd_stopverzoek":"onbevestigd_stop_of_scopewijzigingsverzoek");
+    }
     if (r.source.risk===4) w.push("hoog_risico");
     if (r.source.mode==="authorized_assessment") w.push("actieve_modus_voorgesteld");
     if (!r.source.excluded.length) w.push("geen_exclusies_opgegeven");
@@ -430,6 +478,7 @@
     }
     if (!boards.children.length) boards.append(node("p","small","Geen concepten gevonden voor deze selectie."));
     renderDetail();
+    renderWithdrawals();
     renderActionQueue();
     renderMeetingAgenda();
   }
@@ -669,6 +718,11 @@
   }
   $("imports").addEventListener("change",async e=>{
     try{await importDrafts(Array.from(e.target.files));}catch(err){show("Import geweigerd; bestaande concepten behouden: "+err.message,true);}
+    e.target.value="";
+  });
+  $("withdrawalFile").addEventListener("change",async e=>{
+    try{await importWithdrawal(e.target.files[0]);}
+    catch(err){show("Stopverzoekimport VOLLEDIG geweigerd zonder dossierwijziging: "+err.message,true);}
     e.target.value="";
   });
   $("restore").addEventListener("change",async e=>{
