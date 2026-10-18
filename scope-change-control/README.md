@@ -108,3 +108,17 @@ Receiving-person read-only technical check:
 The combined inspector reuses both actual original product inspectors, verifies both child manifests, byte-equal current Casebook records, and the static launchpad/room manifest. It outputs privacy-minimal figures only. Exit 2 means technically coherent HISTORIC HUMAN HOLD, exit 3 means invalid/incomplete HOLD. Neither means authentication, authorization, current consent, revocation, successful scan or release. It never contacts a target or mutates the original domain.
 
 All original release requirements remain: exact-head original hosted plus permanently registered named VPS CI, independent source-owner/security/privacy review, genuine separate authenticated client/operator consent with action-time revocation, original #177/#182/#829 and explicit HUMAN GO. This is DRAFT/HOLD, NOT deployed and NOT merged to main.
+### Entirely offline room from two previously exported original private sources
+
+For authorized human review when the original DomainStore is not available, the *same* three-app room can be built from **two separately collected genuine original PRIVATE Casebook source JSON exports**. This does **not** perform a current login or confirm that the original grants, risks or STOP state are still current:
+
+    umask 077
+    PYTHONPATH=src python3 scope-change-control/combined_room.py \
+      --previous /private/OLDER-ORIGINAL.json \
+      --current-casebook /private/NEWER-ORIGINAL.json \
+      --room /private/NEW-OFFLINE-SCOPE-OPERATIONS-ROOM \
+      --lead-days 7 --future-days 45 --daily-capacity 8
+
+This mutually exclusive source mode deliberately rejects --database, --email and --client selectors. Both user-provided original files must already be non-symlink, owner-0600, bounded original Casebook snapshots; both are admitted and compared before publication, with exact original source bytes preserved. All authority/source-verification flags stay FALSE. The original window owner CLI consumes only the exact same newer source via its local, offline --casebook mode. The generated human board and calendar are based on a historical snapshot, not a current permit.
+
+Authenticated original-account mode remains the default route for a fresh observation; offline-file mode is a read-only fallback for physically separated review. Never label an offline source comparison as an authenticated new consent or live STOP check. Both produce HUMAN HOLD-only private files and neither enables targets, grants, scanners or deployment.
