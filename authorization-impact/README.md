@@ -99,6 +99,19 @@ The recipient opens the included `standalone.html`, imports `casebook.json`, the
 - **Private human review:** save per-record notes, explicitly confirm a trusted recipient, export `PRIVATE-lightup-scope-impact-review.json`, and transfer over an authorized private channel. On return, re-import the **exact original Casebook source** then restore PRIVATE notes. The restored annotations are human claims, not source truth, authenticated identities or consent.
 - **Refresh:** any new Casebook snapshot must be treated as a new source revision; old notes do **not** silently carry over to altered source bytes. For source-to-source historical change review, use the separately owned Casebook Change Control product [PR #1632](https://github.com/Zennay/Lightup/pull/1632), not this single-snapshot map.
 
+## New operator capability — hypothetical recorded-source unavailability planner
+
+Within the offline app, select up to **20 actual original Casebook source records** (requests, stored grants, engagements or risk decisions) and choose **Mark selected original row hypothetical**. This new read-only sandbox answers a human *planning* question: "Which stored engagement references would deserve follow-up if these source rows became unavailable?" It **does not** revoke anything, approve any grant, invalidate a request or simulate the real execution gate.
+
+Only the original source links are traversed, with deliberately narrow semantics:
+- A hypothetically unavailable request considers only **original stored grants explicitly referencing that request**, then only their original recorded engagement references. Sibling requests are never assumed to authorize those grants.
+- A hypothetically unavailable grant points only to its original engagement reference.
+- A hypothetically unavailable engagement points only to that original engagement identity.
+- A hypothetically unavailable risk decision points only to its original engagement reference.
+- A referenced engagement that is absent from the original source is explicitly **MISSING ORIGINAL SOURCE**, not a valid/revoked engagement. It cannot be opened as a real engagement row.
+
+The planner groups overlapping references by engagement, lets reviewers navigate existing original rows, keeps human notes and the original Casebook snapshot unchanged, and supports two separate outputs: **anonymous what-if aggregate JSON** containing counts only, or a **recipient-confirmed PRIVATE scenario JSON** containing the original tenant, exact source-file SHA-256, recorded source keys and follow-up reasons. Both carry six literal-false authority flags and `REVIEW_ONLY` status. The what-if plan is local ephemeral browser memory and is cleared on source replacement. It is explicitly not an assessment of current permission, revocation, actual customer consent, or anything permitting active work.
+
 ## Portable app code integrity
 
 The actual self-contained `standalone.html` now declares a restrictive Content Security Policy with **exact SHA-256 pins for its one executable JavaScript block and its primary CSS stylesheet**. Inline HTML style attributes have a narrowly separate style-attribute directive, while external scripts, external styling/images, network connections, form submissions and objects are forbidden. The original app's JavaScript is now **not** admitted by broad `script-src 'unsafe-inline'`.
