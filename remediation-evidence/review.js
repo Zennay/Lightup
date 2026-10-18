@@ -5,7 +5,7 @@ if(!engine)throw Error('Original LightUp Casework source module required.');
 const $=id=>document.getElementById(id);
 const LIMIT_CSV=1048576, LIMIT_JSON=2097152;
 const DECISIONS=Object.freeze(['missing','submitted','needs_changes','ready_for_authorized_retest']);
-let source=null,casework=null,sourceHash=null,review=new Map(),changed=false;
+let source=null,casework=null,sourceHash=null,review=new Map(),changed=false,refreshCandidate=null;
 const SEV=engine.SEVERITY;
 const flags=['authenticated','tenant_verified','source_authorized','assessment_authorized','grant','client_consent','operator_consent','execution','scan','audit_verdict','retest_verified','release'];
 function status(message,error=false){$('status').textContent=message;$('status').dataset.error=error?'true':'false';}
@@ -82,7 +82,7 @@ function download(name,data,type){
 }
 function updateSource(newSource,matchedCases){
  source=newSource;casework=matchedCases;review=new Map(newSource.map(f=>[f.finding_id,stageStart(f.finding_id)]));
- changed=false;render();
+ changed=false;refreshCandidate=null;render();
 }
 function count(){
  const metrics={total:source.length,urgent:0,no_reference:0,needs_changes:0,retest:0,contradictions:0};
@@ -118,7 +118,7 @@ function formField(label,value,max,handler,multiline=false){
  wrap.append(ctrl);return wrap;
 }
 function render(){
- const ready=!!source;$('dashboard').hidden=!ready;$('boardSection').hidden=!ready;$('actions').hidden=!ready;
+ const ready=!!source;$('dashboard').hidden=!ready;$('boardSection').hidden=!ready;$('actions').hidden=!ready;$('refreshPanel').hidden=!ready;
  if(!ready)return;
  const m=count();for(const [key,num] of Object.entries(m))$(key).textContent=String(num);
  $('fingerprint').textContent=sourceHash?'Local source SHA-256: '+sourceHash+' (NOT authentication)':'Source fingerprint unavailable. All exports disabled.';
@@ -220,12 +220,47 @@ $('restore').addEventListener('click',async()=>{
   review=next;changed=false;render();status('Unverified review notes restored for exact original source; no current authorization implied.');
  }catch(err){status(err.message,true);}
 });
+
+/* Human-confirmed refresh is all-or-none, and only identical original source rows
+ * may retain unverified local coordination or original Casework planning notes. */
+$('previewRefresh').addEventListener('click',async()=>{
+ try{
+  if(!source)throw Error('Load original findings first.');
+  refreshCandidate=null;$('applyRefresh').disabled=true;
+  const incoming=await readCSV($('refreshFile').files[0]);
+  const hash=await sourceDigest(incoming);
+  if(hash===sourceHash)throw Error('New CSV has identical original source content; nothing to refresh.');
+  const diff=engine.compareSource(source,incoming);
+  refreshCandidate={incoming,hash,diff};
+  $('refreshSummary').textContent='Preview only: '+diff.added.length+' added, '+
+   diff.changed.length+' changed, '+diff.missing.length+' absent, '+diff.unchanged.length+
+   ' unchanged. Absent findings are NEVER proof of repair. Only unchanged rows can retain your local notes.';
+  $('applyRefresh').disabled=false;status('Source refresh preview ready. No current board data changed.');
+ }catch(err){$('refreshSummary').textContent='No valid refresh preview.';status(err.message,true);}
+});
+$('applyRefresh').addEventListener('click',()=>{
+ try{
+  if(!refreshCandidate)throw Error('Preview a newer original CSV first.');
+  if(!$('refreshConfirm').checked)throw Error('Independently confirm exact same client and engagement for both original exports.');
+  if(!confirm('Save your previous private notes first. Apply this source refresh? Added/changed records reset; missing records leave the local board WITHOUT any finding of repair.'))return;
+  const {incoming,hash,diff}=refreshCandidate,unchanged=new Set(diff.unchanged);
+  const newReview=new Map(incoming.map(f=>[f.finding_id,unchanged.has(f.finding_id)?review.get(f.finding_id):stageStart(f.finding_id)]));
+  const newCases=casework?new Map(incoming.map(f=>[f.finding_id,
+   unchanged.has(f.finding_id)&&casework.has(f.finding_id)?casework.get(f.finding_id):engine.newCase(f)])):null;
+  source=incoming;sourceHash=hash;casework=newCases;review=newReview;changed=true;
+  refreshCandidate=null;$('refreshFile').value='';$('refreshConfirm').checked=false;
+  $('refreshSummary').textContent='Applied: '+diff.added.length+' new, '+diff.changed.length+' changed, '+
+   diff.missing.length+' absent (not proven fixed); only '+diff.unchanged.length+' unchanged kept local notes.';
+  render();status('Human-confirmed local source refresh applied. Historical source was NOT changed, retested or closed.');
+ }catch(err){status(err.message,true);}
+});
+
 $('filter').addEventListener('change',render);
 $('clear').addEventListener('click',()=>{
  if(changed&&!confirm('Discard unsaved local review notes?'))return;
- source=null;casework=null;sourceHash=null;review=new Map();changed=false;
- $('sourceFile').value='';$('caseFile').value='';$('reviewFile').value='';
- $('dashboard').hidden=true;$('boardSection').hidden=true;$('actions').hidden=true;
+ source=null;casework=null;sourceHash=null;review=new Map();changed=false;refreshCandidate=null;
+ $('sourceFile').value='';$('caseFile').value='';$('reviewFile').value='';$('refreshFile').value='';$('refreshConfirm').checked=false;$('refreshSummary').textContent='No refresh preview.';
+ $('dashboard').hidden=true;$('boardSection').hidden=true;$('actions').hidden=true;$('refreshPanel').hidden=true;
  $('board').replaceChildren();status('All source and local notes forgotten from this tab.');
 });
 $('save').addEventListener('click',()=>{if(!sourceHash)return;download('lightup-evidence-coordination-private.json',JSON.stringify(snapshot(),null,2),'application/json');changed=false;status('Private unsigned coordination notes downloaded; protect as sensitive data.');});
