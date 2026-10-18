@@ -307,9 +307,26 @@ $("append").addEventListener("click",async()=>{
   if(new Set(keys).size!==keys.length)fail("duplicate original snapshot metadata detected");
   const moreHashes=(hashes.length===workspace.records.length&&globalThis.crypto&&crypto.subtle)?await fingerprints(raws):[];
   const newHashes=moreHashes.length===extras.length?hashes.concat(moreHashes):[];
-  workspace={records:workspace.records.concat(extras),checks:workspace.checks.slice(),casework:workspace.casework,pair:workspace.pair,page:workspace.page,sourceBytes:workspace.sourceBytes+files.reduce((sum,f)=>sum+f.size,0)};
+  // Human-only casework from an earlier copied source must not silently remain
+  // 'discussed' when an original pseudonymous row has since changed.
+  const currentCases=new Map(workspace.records.flatMap(r=>r.cases.map(c=>[c.ref,c])));
+  const changedLocal=[];
+  const newCases=Object.assign(Object.create(null),workspace.casework);
+  for(const snapshot of extras)for(const item of snapshot.cases){
+    const old=currentCases.get(item.ref);
+    if(old&&JSON.stringify([old.storedStatus,old.category,old.risk,old.bound,old.flags])!==
+      JSON.stringify([item.storedStatus,item.category,item.risk,item.bound,item.flags])){
+      const saved=newCases[item.ref];
+      if(saved&&saved.stage!=="unreviewed"&&saved.stage!=="security_source_review"){
+        newCases[item.ref]={stage:"security_source_review",note:saved.note};
+        changedLocal.push(item.ref);
+      }
+    }
+    currentCases.set(item.ref,item);
+  }
+  workspace={records:workspace.records.concat(extras),checks:workspace.checks.slice(),casework:newCases,pair:workspace.pair,page:workspace.page,sourceBytes:workspace.sourceBytes+files.reduce((sum,f)=>sum+f.size,0)};
   hashes=newHashes;render();$("extra").value="";
-  note(extras.length+" new source snapshots added atomically; existing private human discussion markers preserved.",false);
+  note(extras.length+" source snapshots appended atomically; "+changedLocal.length+" private human casework entries returned to SOURCE REVIEW because original fields differed. Original database remains untouched.",false);
  }catch(e){note("HOLD · "+(e instanceof Error?e.message:"invalid append")+". Prior workspace and human stages preserved.",true)}
 });
 $("clear").addEventListener("click",()=>{workspace=null;hashes=[];$("files").value="";$("restore").value="";$("workspace").hidden=true;note("Private workspace cleared.",false)});
