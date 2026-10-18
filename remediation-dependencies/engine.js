@@ -8,7 +8,7 @@ const DEP=['kind','schema_version','disposition','source_sha256','casework_sha25
 function stop(s){throw Error(s);}
 function shape(x,fields,name){if(!x||typeof x!=='object'||Array.isArray(x))stop('Invalid '+name);const allowed=new Set(fields),keys=Object.keys(x);if(keys.length!==allowed.size||keys.some(k=>!allowed.has(k)))stop('Missing or unknown '+name+' field.');}
 async function sha(s){if(!g.crypto||!g.crypto.subtle)stop('Secure SHA-256 unavailable. Private handoff HELD.');const a=new Uint8Array(await g.crypto.subtle.digest('SHA-256',new TextEncoder().encode(s)));return Array.from(a,x=>x.toString(16).padStart(2,'0')).join('');}
-function canonical(w){const sort=arr=>arr.slice().sort((a,b)=>a.finding_id.localeCompare(b.finding_id));return JSON.stringify([sort(w.findings),sort(w.cases)]);}
+function canonical(w){const sort=arr=>arr.slice().sort((a,b)=>a.finding_id<b.finding_id?-1:a.finding_id>b.finding_id?1:0);return JSON.stringify([sort(w.findings),sort(w.cases)]);}
 async function original(packet){
  shape(packet,IN,'original Casework');for(const k of AUTH)if(packet[k]!==false)stop('Casework claims authority.');
  if(!Array.isArray(packet.findings)||!Array.isArray(packet.cases))stop('Missing original findings and Casework.');
