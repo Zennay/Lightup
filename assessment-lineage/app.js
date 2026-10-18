@@ -538,7 +538,7 @@
     [reports[i],reports[j]]=[reports[j],reports[i]];
     [reportHashes[i],reportHashes[j]]=[reportHashes[j],reportHashes[i]];
     mismatchRevealed=false;
-    undoBatch=null;
+    undoBatch=null;undoRouteBatch=null;
     render();$("sourceOrder").value=String(j);renderSourceOrder();
     message("Changed private source DISPLAY order only. Not proven chronology. "+
       "Private source-bound resume must be saved again.");
@@ -813,7 +813,7 @@
         draft.next_human_actions[i]!=="none_recorded"?
           [[s.id,draft.next_human_actions[i]]]:[])):new Map();
       reviews=nextReviews;humanNotes=nextNotes;
-      humanRoutes=nextRoutes;humanActions=nextActions;undoBatch=null;render();
+      humanRoutes=nextRoutes;humanActions=nextActions;undoBatch=null;undoRouteBatch=null;render();
       message("PRIVATE stages, notes and proposed human plans restored for original "+
         "exact source bytes. Legacy v1/v2 drafts have no proposed plans.");
     }catch(_){message("HOLD: draft or original source bytes do not match. Existing stages preserved.",true);}
@@ -927,7 +927,7 @@
     }catch(_){message("HOLD: brief not available until sources match exactly.",true);}
   }
   function forget(){catalog=null;reports=[];reviews=new Map();humanNotes=new Map();humanRoutes=new Map();humanActions=new Map();mismatchRevealed=false;catalogHash=null;
-    reportHashes=[];undoBatch=null;resetFilters();fictional=false;render();message("All source and review data cleared from memory.");}
+    reportHashes=[];undoBatch=null;undoRouteBatch=null;resetFilters();fictional=false;render();message("All source and review data cleared from memory.");}
   function makeDemo(){
     const names=["scenario-FAKE-01","scenario-FAKE-02","scenario-FAKE-03"];
     catalog=names.map((id,i)=>({id,mode:i===0?"unscored":i===1?
@@ -945,7 +945,7 @@
       }))
     });
     reports=[candidate(0),candidate(1)];reviews=new Map();humanNotes=new Map();humanRoutes=new Map();humanActions=new Map();mismatchRevealed=false;catalogHash=null;
-    reportHashes=[];undoBatch=null;resetFilters();fictional=true;
+    reportHashes=[];undoBatch=null;undoRouteBatch=null;resetFilters();fictional=true;
     render();message("FICTIONAL offline demonstration loaded; no source evidence or permission.");
   }
 
@@ -996,7 +996,7 @@
       harmonize(nextReports);
       // All source files are fully canonical and mutually consistent before ANY mutation.
       catalog=nextCatalog;reports=nextReports;catalogHash=sourceCatalog.digest;
-      reportHashes=nextHashes;reviews=new Map();humanNotes=new Map();humanRoutes=new Map();humanActions=new Map();mismatchRevealed=false;undoBatch=null;fictional=false;
+      reportHashes=nextHashes;reviews=new Map();humanNotes=new Map();humanRoutes=new Map();humanActions=new Map();mismatchRevealed=false;undoBatch=null;undoRouteBatch=null;fictional=false;
       resetFilters();render();
       // The template is no longer needed after import and should not linger in DOM.
       privateTemplate.content.replaceChildren();
@@ -1020,7 +1020,7 @@
       const candidate=parseCatalog(imported.result);
       if((catalog||reports.length)&&!confirm("Replace private catalog and clear previously imported lab comparisons and human stage work?"))return;
       catalog=candidate;reports=[];reviews=new Map();humanNotes=new Map();humanRoutes=new Map();humanActions=new Map();mismatchRevealed=false;catalogHash=imported.digest;
-      reportHashes=[];undoBatch=null;resetFilters();fictional=false;render();
+      reportHashes=[];undoBatch=null;undoRouteBatch=null;resetFilters();fictional=false;render();
       message("PRIVATE lab design admitted. Targets and finding IDs were discarded after validation.");
     }catch(_){message("HOLD: incompatible PRIVATE Lab Scenario Studio source. Existing data preserved.",true);}
   });
