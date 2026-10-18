@@ -227,7 +227,7 @@ function renderEvidenceMatrix(){
  const parent=$('readinessTable');if(!parent)return;
  parent.replaceChildren();
  const headings=['Severity','Findings','No patch ref','No deploy ref','No rollback ref',
-  'No retest request ref','4 refs present¹','Follow-up candidates'];
+  'No retest request ref','4 refs present¹','Follow-up candidates','Review gaps'];
  const table=el('table','matrix'),thead=el('thead'),tr=el('tr');
  for(const col of headings){const th=el('th','',col);th.scope='col';tr.append(th);}
  thead.append(tr);table.append(thead);
@@ -237,7 +237,15 @@ function renderEvidenceMatrix(){
   for(const v of [item.severity,item.total,item.missing_change,item.missing_deployment,
     item.missing_rollback,item.missing_retest_request,item.all_four_entered_unverified,
     item.high_priority_followup])row.append(el('td','',String(v)));
-  body.append(row);
+  const cell=el('td'),button=el('button','', 'Review missing '+item.severity);
+  button.type='button';button.disabled=!item.total||
+   item.all_four_entered_unverified===item.total;
+  button.addEventListener('click',()=>{
+   $('boardSeverity').value=item.severity;$('filter').value='evidence_missing';
+   $('boardSearch').value='';$('boardTeam').value='';render();
+   $('boardSection').scrollIntoView({block:'start',behavior:'smooth'});
+  });
+  cell.append(button);row.append(cell);body.append(row);
  }
  table.append(body);parent.append(table);
 }
@@ -289,7 +297,7 @@ function renderWorkQueue(){
   const button=el('button','', 'Open local evidence dossier');
   button.type='button';
   button.addEventListener('click',()=>{
-   $('filter').value='all';$('boardSearch').value='';$('boardTeam').value='';
+   $('filter').value='all';$('boardSearch').value='';$('boardTeam').value='';$('boardSeverity').value='';
    $('boardSort').value='followup';render();
    const card=[...$('board').children].find(el=>el.dataset.findingId===row.finding.finding_id);
    if(card){card.scrollIntoView({block:'start',behavior:'smooth'});
@@ -330,9 +338,12 @@ function included(f,c,r,filter){
  const query=$('boardSearch').value.trim().toLocaleLowerCase();
  if(query){
   const fields=[f.finding_id,f.title,f.remediation,f.severity,f.retest_status,
-   c?.owner,c?.next_action,c?.blocker,r.reference,r.reviewer,r.next_step,r.stage];
+   c?.owner,c?.next_action,c?.blocker,r.reference,r.reviewer,r.next_step,r.stage,
+   ...EVIDENCE_FIELDS.map(([key])=>r.evidence?.[key])];
   if(!fields.some(v=>String(v||'').toLocaleLowerCase().includes(query)))return false;
  }
+ const severity=$('boardSeverity').value;
+ if(severity&&f.severity!==severity)return false;
  const selectedTeam=$('boardTeam').value;
  if(selectedTeam&&(teamFor(f)===null?'unassigned':'team:'+teamFor(f))!==selectedTeam)return false;
  const cues=humanQueue(f,c,r);
@@ -477,10 +488,13 @@ function render(){
   section.append(formField('Next evidence or retest coordination step',r.next_step,500,v=>{r.next_step=v;changed=true;},true));
   const evidenceBox=el('details','evidence-dossier');
   const entered=EVIDENCE_FIELDS.slice(0,4).filter(([key])=>r.evidence[key].trim()).length;
-  evidenceBox.append(el('summary','', 'Evidence dossier · '+entered+'/4 references entered (UNVERIFIED)'));
+  const dossierSummary=el('summary','', 'Evidence dossier · '+entered+'/4 references entered (UNVERIFIED)');
+  evidenceBox.append(dossierSummary);
   evidenceBox.append(el('p','detail','Only references to approved private evidence storage; do not paste artifacts, credentials or raw findings.'));
   for(const [key,max,label] of EVIDENCE_FIELDS){
-   evidenceBox.append(formField(label,r.evidence[key],max,v=>{r.evidence[key]=v;changed=true;renderMetrics();},key==='review_question'));
+   evidenceBox.append(formField(label,r.evidence[key],max,v=>{r.evidence[key]=v;changed=true;
+    dossierSummary.textContent='Evidence dossier · '+EVIDENCE_FIELDS.slice(0,4).filter(([k])=>r.evidence[k].trim()).length+'/4 references entered (UNVERIFIED)';
+    renderMetrics();},key==='review_question'));
   }
   section.append(evidenceBox);
   board.append(section);
@@ -767,12 +781,13 @@ $('exportTeamCSV').addEventListener('click',()=>doTeamExport('csv'));
 $('filter').addEventListener('change',render);
 $('boardSearch').addEventListener('input',render);
 $('boardTeam').addEventListener('change',render);
+$('boardSeverity').addEventListener('change',render);
 $('boardSort').addEventListener('change',render);
 $('clear').addEventListener('click',()=>{
  if(changed&&!confirm('Discard unsaved local review notes?'))return;
  source=null;casework=null;sourceHash=null;review=new Map();changed=false;refreshCandidate=null;revisions=[];
  $('teamReturnFile').value='';$('sameTeamReturn').checked=false;
- $('boardSearch').value='';$('boardTeam').value='';$('boardSort').value='severity';$('filter').value='all';
+ $('boardSearch').value='';$('boardTeam').value='';$('boardSeverity').value='';$('boardSort').value='severity';$('filter').value='all';
  $('sourceFile').value='';$('caseFile').value='';$('reviewFile').value='';$('refreshFile').value='';$('allowHashlessCasework').checked=false;$('refreshConfirm').checked=false;$('refreshSummary').textContent='No refresh preview.';
  $('dashboard').hidden=true;$('boardSection').hidden=true;$('actions').hidden=true;$('refreshPanel').hidden=true;$('teamPanel').hidden=true;
  $('packTeam').replaceChildren();$('packCount').textContent='No original findings imported.';
