@@ -71,6 +71,13 @@ table{width:100%;border-collapse:collapse}th,td{border-bottom:1px solid var(--bo
 <div class="toolbar"><button id="packetPreview" type="button">Generate private preview</button><button id="packetDownload" class="primary" type="button" disabled>Download reviewed Markdown</button><button id="packetDiscard" type="button">Discard packet</button></div>
 <p id="packetStatus" class="small" aria-live="polite">Local preview only; original source values stay private. No client/operator permission claims.</p>
 <pre class="preview" id="packetText">No prepared packet.</pre>
+<hr style="border:0;border-top:1px solid var(--border);margin:20px 0">
+<h3>Private paperwork due-date handoff (.ics VTODO)</h3>
+<p>Generate an anonymous list of <strong>paperwork tasks only</strong> for an offline calendar/task app. No client names, asset identities, real assessment events, bookings or actual permission. Importing the downloaded file into a connected calendar may upload it to that calendar provider.</p>
+<label for="todoScope">Task selection</label>
+<select id="todoScope"><option value="visible">Filtered draft queue</option><option value="current">Selected draft</option><option value="all">All drafts</option></select>
+<div class="toolbar"><button id="todoExport" type="button" disabled>Export private VTODO deadlines (.ics)</button></div>
+<p id="todoStatus" role="status" aria-live="polite" class="small">Only incomplete paperwork tasks with an assigned target date are exported. No automatic synchronization.</p>
 </section>
 <div class="grid">
 <section class="card"><h2>5 · Draft register</h2><label for="filter">Show drafts</label><select id="filter"><option value="all">All</option><option value="hold">Preparation incomplete</option><option value="missing">Source file not re-attached</option><option value="risk">Risk 4 proposed</option><option value="overdue">Overdue follow-up actions</option><option value="collision">Same client/operator coordinator label</option></select>
