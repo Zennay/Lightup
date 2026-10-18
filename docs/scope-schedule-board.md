@@ -12,15 +12,16 @@ The board provides:
 
 - A seven-, fourteen- or thirty-day UTC Gantt-style timeline with proposed interval bars, risk level and view-window clipping.
 - A count and readable list of overlaps between supplied **resolved, self-consistent UTC windows**. This is **time-only** comparison, not proof that assets, resources, tenants or people coincide.
+- A local-only unavailable-time editor: enter up to 30 unavailable UTC periods (31 days maximum each), remove individual periods, and see them as striped calendar bars; conflicting proposals receive warnings. These blocks are never exported to .ics and cannot imply authenticated staffing capacity.
 - Explicit **HOLD** notices for missing, incomplete, ambiguous or non-resolved schedule evidence. Such drafts never produce an event, clash-free assurance, or alternative-time suggestion.
-- For every valid proposed interval, a **first possible equal-duration UTC time gap with a 30-minute buffer** relative to the other imported proposals. No live calendars, owner approval or resource availability is consulted; proposed alternatives are not written back into source files.
+- For every valid proposed interval, a **first possible equal-duration UTC time gap with a 30-minute buffer** relative to the other imported proposals **and the unavailable UTC periods**. No live calendars, owner approval or resource availability is consulted; proposed alternatives are not written back into source files.
 - Print-friendly review view and an **anonymized .ics** export. Every exported event is STATUS:TENTATIVE, TRANSP:TRANSPARENT, with synthetic per-export UID and no invitation recipient, attendee or organizer. No assets, tenant labels, personal notes, client name, contacts or source IDs enter the calendar file. It *does* contain the proposed UTC times, which should still be treated as sensitive when shared.
 
 ## Usage
 
 1. Obtain v1 JSON exports from Scope Planning Studio. Save them locally on a trusted device.
 2. Open studio/scope-schedule-board.html locally, choose up to 20 files.
-3. Select a UTC start day and 7/14/30-day horizon. Read both the overlapping-window warnings and the missing/unsafe-window HOLD notices.
+3. Select a UTC start day and 7/14/30-day horizon (initial load jumps to the earliest imported proposal). Optionally add UTC-local unavailable intervals to model team unavailability. Read the overlapping-window, unavailability and missing/unsafe-window HOLD notices.
 4. Use the slot suggestions only as conversation starters during independent client/operator review. Export the anonymous **tentative** calendar if needed.
 5. For any proposed change, edit and re-export the **original Studio draft** and repeat authenticated intake/consent. The schedule board deliberately never changes or approves an existing proposal.
 
