@@ -49,7 +49,9 @@ h3{font-size:15px;margin:20px 0 9px}.source-card{border:1px solid #455877;border
 <div class="metric"><strong id="holds">—</strong><small>STOP source unavailable</small></div>
 <div class="metric"><strong id="attention">—</strong><small>Human attention cases</small></div>
 <div class="metric"><strong id="pendingRisk">—</strong><small>Original risk decisions pending</small></div>
-<div class="metric"><strong id="riskHold">—</strong><small>Risk provenance HOLD</small></div></section>
+<div class="metric"><strong id="riskHold">—</strong><small>Risk provenance HOLD</small></div>
+<div class="metric"><strong id="candidate">—</strong><small>Original admin request matches</small></div>
+<div class="metric"><strong id="bindingStatus">—</strong><small>Candidate source status (not permission)</small></div></section>
 <section class="panel"><div class="bar"><div><h2>02 / Human incident caseboard</h2><p class="muted">Private source IDs are not included in anonymous exports. Compare historical snapshots of the same tenant and case set; vanished STOP is HOLD. Stages are tab-only.</p></div>
 <input id="search" type="search" placeholder="Filter case / STOP state" disabled>
 <select id="bulkStage" aria-label="Human follow-up for visible original cases">
@@ -68,6 +70,10 @@ h3{font-size:15px;margin:20px 0 9px}.source-card{border:1px solid #455877;border
 <h2>03 / Original engagement dossier</h2>
 <p class="muted">Read-only original persisted request/grant/risk details. Historical observations are never verified authority or current consent.</p>
 <div id="detailbody"></div></section>
+<section class="panel" id="binding" hidden aria-label="Selected original request candidates">
+<h2>04 / Original approved-request shortlist</h2>
+<p class="muted">Optional single proposed scope/risk, evaluated only against the original persisted administrative request source. Matching request means neither consent nor grant. No proposed assets, request IDs or target literals are exported in anonymous handoffs.</p>
+<div id="bindingDetails"></div></section>
 <footer class="muted">Original private retrospective evidence only. Never live execution clearance.</footer></main>
 <script>
 (function(){
@@ -119,10 +125,36 @@ for(var risk of c.risk_approvals){
  if(risk.decision_provenance_observation==="RISK_DECISION_PENDING_REVIEW")riskPending++;
 }
 if(riskHold!==c.declared_counts.risk_provenance_hold||riskPending!==c.declared_counts.pending_risk_review)throw Error("risk provenance counts");
+var binding=x.binding_review;
+if(binding!==null&&binding!==undefined){
+ if(!O(binding)||!W(binding.engagement_id)||binding.authority!==false||
+ binding.source_snapshots_atomic_together!==false||
+ !["REVIEW_ONLY_SINGLE_CANDIDATE","HOLD_AMBIGUOUS_CANDIDATES","HOLD_NO_CANDIDATE","HOLD_BINDING_SOURCE_UNAVAILABLE_OR_CHANGED"].includes(binding.status))
+ throw Error("binding source");
+ if(binding.status!=="HOLD_BINDING_SOURCE_UNAVAILABLE_OR_CHANGED"){
+  if(!N(binding.proposed_asset_count,80)||binding.proposed_asset_count===0||
+  !N(binding.proposed_risk,4)||binding.proposed_risk===0||
+  !N(binding.stored_request_count,100)||!N(binding.matching_request_count,100)||
+  binding.matching_request_count>binding.stored_request_count||
+  !N(binding.stored_grant_count,200)||!N(binding.historical_legacy_unbound_count,200)||
+  !O(binding.non_authorizing_mismatch_reasons)||
+  Object.entries(binding.non_authorizing_mismatch_reasons).length>40||
+  Object.entries(binding.non_authorizing_mismatch_reasons).some(([k,v])=>!W(k)||!N(v,100))||
+  typeof binding.selection_digest_unsigned!=="string"||
+  !/^[a-f0-9]{64}$/.test(binding.selection_digest_unsigned)||
+  typeof binding.source_revision_sha256_unsigned!=="string"||
+  !/^[a-f0-9]{64}$/.test(binding.source_revision_sha256_unsigned)||
+  (binding.status==="REVIEW_ONLY_SINGLE_CANDIDATE")!==(binding.matching_request_count===1)||
+  (binding.status==="HOLD_AMBIGUOUS_CANDIDATES")!==(binding.matching_request_count>1)||
+  (binding.status==="HOLD_NO_CANDIDATE")!==(binding.matching_request_count===0))
+    throw Error("request-binding source integrity");
+ }
+}
 var original=new Map();for(var row of c.case_overview){
 if(!O(row)||!W(row.engagement_id)||original.has(row.engagement_id)||!W(row.attention)||
 !W(row.next_review_action)||!N(row.grant_count,200))throw Error("original row");
 original.set(row.engagement_id,row);}
+if(binding&&!original.has(binding.engagement_id))throw Error("binding case membership");
 var seen=new Set(),stopped=0,held=0,needs=0;
 for(var r of x.engagements){
 if(!O(r)||!W(r.engagement_id)||seen.has(r.engagement_id)||!original.has(r.engagement_id)||
@@ -138,16 +170,26 @@ r.request_linked_grant_count+r.legacy_unbound_grant_count!==r.grant_source_count
 if(r.stop_observation==="STOP_ACTIVE")stopped++;
 if(r.stop_observation!=="NO_STOP_RECORDED_NOT_PERMISSION"||r.casebook_attention.startsWith("HOLD_")||r.casebook_attention==="RISK_DECISION_PENDING_SOURCE_REVIEW")needs++;
 }
+if(binding&&!x.engagements.some(r=>r.engagement_id===binding.engagement_id))throw Error("binding source outside selected engagements");
+if(binding&&binding.status!=="HOLD_BINDING_SOURCE_UNAVAILABLE_OR_CHANGED"){
+ var candidateCase=original.get(binding.engagement_id);
+ if(candidateCase.grant_count!==binding.stored_grant_count)throw Error("binding source grants inconsistent");
+}
 if(!O(c.declared_counts)||x.summary.active_stop_observations!==stopped||x.summary.stop_source_hold!==held||
 x.summary.cases_requiring_human_attention!==needs||
 x.summary.no_stop_recorded_not_authority!==seen.size-stopped-held||
 x.summary.original_requests!==c.declared_counts.requests||x.summary.original_grants!==c.declared_counts.grants||
 x.summary.risk_provenance_hold!==c.declared_counts.risk_provenance_hold||x.summary.pending_risk_review!==c.declared_counts.pending_risk_review||
-x.status!==(needs||c.declared_counts.grant_link_hold||c.declared_counts.foreign_tenant_row_count||c.declared_counts.risk_provenance_hold?"HOLD":"REVIEW_ONLY"))throw Error("counts");
+x.status!==(needs||c.declared_counts.grant_link_hold||c.declared_counts.foreign_tenant_row_count||c.declared_counts.risk_provenance_hold||(binding&&binding.status.startsWith("HOLD_"))?"HOLD":"REVIEW_ONLY"))throw Error("counts");
 return x;}
 function TD(tr,value,cls){var e=document.createElement("td");e.textContent=String(value);if(cls)e.className=cls;tr.appendChild(e);}
 function reconcile(latest,prior){
- if(latest.client_id!==prior.client_id || latest.selected_count!==prior.selected_count ||
+ if((latest.binding_review===null)!==(prior.binding_review===null)||
+    (latest.binding_review&&prior.binding_review&&
+     latest.binding_review.status!=="HOLD_BINDING_SOURCE_UNAVAILABLE_OR_CHANGED"&&
+     prior.binding_review.status!=="HOLD_BINDING_SOURCE_UNAVAILABLE_OR_CHANGED"&&
+     latest.binding_review.selection_digest_unsigned!==prior.binding_review.selection_digest_unsigned)||
+    latest.client_id!==prior.client_id || latest.selected_count!==prior.selected_count ||
     latest.selected_engagements_only!==prior.selected_engagements_only ||
     !Number.isFinite(Date.parse(latest.snapshot_at)) ||
     !Number.isFinite(Date.parse(prior.snapshot_at)) ||
@@ -163,6 +205,11 @@ function reconcile(latest,prior){
       "HOLD: STOP DISAPPEARED":"STOP SOURCE CHANGED");
   if(old.grant_source_count!==row.grant_source_count)details.push("GRANT COUNT CHANGED");
   if(old.casebook_attention!==row.casebook_attention)details.push("CASE ATTENTION CHANGED");
+  if(latest.binding_review&&latest.binding_review.engagement_id===row.engagement_id&&
+     prior.binding_review&&(
+      latest.binding_review.status!==prior.binding_review.status||
+      latest.binding_review.source_revision_sha256_unsigned!==prior.binding_review.source_revision_sha256_unsigned))
+    details.push("REQUEST BINDING SOURCE CHANGED (REVIEW ONLY)");
   delta.set(row.engagement_id,details);
  }
  if(delta.size!==baseline.size)throw Error("case membership changed");
@@ -208,6 +255,25 @@ function inspect(eid){
  sourceSection(d,"Persisted risk decisions",c.risk_approvals.filter(r=>r.engagement_id===eid),["approval_id","status","requested_risk","decision_provenance_observation","decision_recorded"]);
  line(d,"Historical change",older?(changes.get(eid)||[]).join("; ")||"No prior differences":"Not compared");
  E("detail").hidden=false;
+ var b=report.binding_review;
+ E("binding").hidden=!b||b.engagement_id!==eid;
+ if(b&&b.engagement_id===eid){
+  var wrap=E("bindingDetails");wrap.replaceChildren();
+  line(wrap,"Engagement",eid);
+  line(wrap,"Source disposition (not authority)",b.status);
+  if(b.status!=="HOLD_BINDING_SOURCE_UNAVAILABLE_OR_CHANGED"){
+   line(wrap,"Proposed canonical literal count",b.proposed_asset_count);
+   line(wrap,"Proposed risk",b.proposed_risk);
+   line(wrap,"Original administrative requests",b.stored_request_count);
+   line(wrap,"Matching historical requests (NOT permission)",b.matching_request_count);
+   line(wrap,"Stored original grants",b.stored_grant_count);
+   line(wrap,"Legacy unbound grants",b.historical_legacy_unbound_count);
+   line(wrap,"Original request source revision (unsigned)",b.source_revision_sha256_unsigned);
+   var reasons=Object.entries(b.non_authorizing_mismatch_reasons);
+   sourceSection(wrap,"Human-only request mismatch reasons",reasons.map(([reason,count])=>({reason,count})),["reason","count"]);
+  }else line(wrap,"Review action","Re-authenticate operator and reconcile persisted source; NEVER infer permission");
+ }
+
 }
 function render(){
 if(!report)return;var query=E("search").value.toLowerCase().trim(),focus=E("focus").value,tbody=E("rows");tbody.replaceChildren();var n=0;
@@ -239,13 +305,15 @@ E("count").textContent=report.summary.selected;E("stops").textContent=report.sum
 E("holds").textContent=report.summary.stop_source_hold;E("attention").textContent=report.summary.cases_requiring_human_attention;
 E("pendingRisk").textContent=report.summary.pending_risk_review;
 E("riskHold").textContent=report.summary.risk_provenance_hold;
+E("candidate").textContent=report.binding_review&&report.binding_review.matching_request_count!==undefined?report.binding_review.matching_request_count:"—";
+E("bindingStatus").textContent=report.binding_review?report.binding_review.status:"NOT REQUESTED";
 if(selectedCase)inspect(selectedCase);}
 E("file").addEventListener("change",async function(){
 var f=this.files&&this.files[0];this.value="";if(!f)return;
 if(f.size<2||f.size>MAX){E("message").textContent="HOLD: source exceeds private file bound.";return;}
 try{
  var next=importSource(await privateText(f)),digest=await digestFile(f);
- report=next;sourceDigest=digest;older=null;changes.clear();stages.clear();selectedCase=null;E("detail").hidden=true;E("search").value="";E("search").disabled=false;E("focus").disabled=false;E("focus").value="all";E("export").disabled=false;E("saveStages").disabled=!sourceDigest;E("print").disabled=false;E("message").textContent="Imported locally · "+next.status+" · never authorized";render();}
+ report=next;sourceDigest=digest;older=null;changes.clear();stages.clear();selectedCase=null;E("detail").hidden=true;E("binding").hidden=true;E("search").value="";E("search").disabled=false;E("focus").disabled=false;E("focus").value="all";E("export").disabled=false;E("saveStages").disabled=!sourceDigest;E("print").disabled=false;E("message").textContent="Imported locally · "+next.status+" · never authorized";render();}
 catch(e){E("message").textContent="HOLD: malformed, contradictory or unsupported original source. Previous caseboard retained.";}}
 );
 E("previous").addEventListener("change",async function(){
@@ -304,6 +372,8 @@ if(!report)return;var stageCounts={unreviewed:0,investigating:0,escalated:0,docu
 for(var r of report.engagements)stageCounts[stages.get(r.engagement_id)||"unreviewed"]++;
 var safeCounts={selected:report.summary.selected,active_stop_observations:report.summary.active_stop_observations,no_stop_recorded_not_authority:report.summary.no_stop_recorded_not_authority,stop_source_hold:report.summary.stop_source_hold,cases_requiring_human_attention:report.summary.cases_requiring_human_attention,original_requests:report.summary.original_requests,original_grants:report.summary.original_grants,risk_provenance_hold:report.summary.risk_provenance_hold,pending_risk_review:report.summary.pending_risk_review};
 var aggregate={schema:"lightup.scope_stop_anonymous.v1",status:"REVIEW_ONLY_OR_HOLD",counts:safeCounts,human_stages:stageCounts,
+ binding:report.binding_review?{status:report.binding_review.status,
+ candidate_count:Number.isSafeInteger(report.binding_review.matching_request_count)?report.binding_review.matching_request_count:null}:null,
  comparison:older?{compared:changes.size,changed:Array.from(changes.values()).filter(a=>a.length).length,
  stop_disappearance_hold:Array.from(changes.values()).filter(a=>a.some(x=>x.startsWith("HOLD:"))).length}:null,source_snapshots_atomic_together:false,authorization_granted:false,execution_allowed:false,release_approved:false};
 download(aggregate,"lightup-scope-stop-anonymous.json");
