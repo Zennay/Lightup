@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-b4SC64A7FC19DHftd17J1DfBhKNevmXLKsjEVlahkOk='; style-src 'sha256-EEO9EYZtOU7H1AsXxCdej9VbEafJspOe6QC1HWpYvVU='; connect-src 'none'; img-src 'none'; font-src 'none'; object-src 'none'; form-action 'none'; base-uri 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-FciORhjszktu0NyO0U4LuSaHw59TCEWbGbQ74rCj9IE='; style-src 'sha256-EEO9EYZtOU7H1AsXxCdej9VbEafJspOe6QC1HWpYvVU='; connect-src 'none'; img-src 'none'; font-src 'none'; object-src 'none'; form-action 'none'; base-uri 'none'">
 <title>LightUp | Casebook Change Control · Private</title>
 <style>:root{font-family:Inter,ui-sans-serif,system-ui,-apple-system,Segoe UI,sans-serif;color:#eaf0f8;background:#090f1b;line-height:1.5}*{box-sizing:border-box}body{margin:0}header,main,footer{max-width:1200px;padding:24px;margin:auto}header{padding-top:65px;padding-bottom:44px}.eyebrow{font-size:12px;letter-spacing:.15em;color:#7ee1ce;font-weight:750}h1{font-size:clamp(2.4rem,5vw,4.2rem);line-height:1.04;margin:17px 0}em{font-style:normal;color:#75d9bc}h2{font-size:1.45rem;margin:0 0 14px}p{color:#b5c2d5;max-width:92ch}code{color:#9af2d9}.badges{display:flex;gap:12px;flex-wrap:wrap;margin-top:30px}.badges strong{font-size:11px;letter-spacing:.06em;color:#aee8e0;padding:8px 12px;border:1px solid #30504f;border-radius:20px}section{background:#111b2a;border:1px solid #24354a;border-radius:20px;padding:28px;margin:0 0 22px}.files{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:20px;margin:24px 0}.files label{display:flex;flex-direction:column;gap:10px;color:#e2e9f4;font-weight:600}input[type=file]{width:100%;border:1px solid #334b63;border-radius:8px;padding:12px;background:#091524;color:#b9cde2}button{cursor:pointer;border:0;border-radius:9px;background:#6fe4c4;color:#07231f;padding:11px 17px;font:inherit;font-weight:700}button:hover{filter:brightness(1.12)}button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid #fff;outline-offset:3px}.outline{color:#90e4d2;background:transparent;border:1px solid #5a8b82}#error{color:#ffbaaa;min-height:1.2em}.meta{border-top:1px solid #314158;border-bottom:1px solid #314158;margin:20px 0;overflow-wrap:anywhere}.meta p{font-size:.85rem;max-width:none}.summary{font-size:1.25rem;font-weight:700;color:#f3ddaa}.filter{display:flex;gap:12px;align-items:center;margin:24px 0;font-weight:600}select{padding:8px 12px;background:#1a2a3c;color:#eef4ff;border:1px solid #506782;border-radius:6px;font:inherit;max-width:250px}.table-wrap{overflow-x:auto}table{width:100%;border-collapse:collapse;min-width:930px}th{text-align:left;color:#86d5c6;text-transform:uppercase;letter-spacing:.06em;font-size:11px;background:#162638}td,th{border-bottom:1px solid #2a3c50;padding:14px 12px}td{font-size:.87rem;overflow-wrap:anywhere;max-width:230px}tr:hover{background:#182538}.explain{border-left:3px solid #ecb975;padding:12px 18px;background:#211f23;max-width:none}.actions{display:flex;flex-wrap:wrap;gap:18px;align-items:center}.confirm{display:flex;align-items:center;gap:8px;color:#dae4ee;font-size:.9rem}footer{font-size:.8rem;color:#98a5b9;padding-top:20px;padding-bottom:60px}@media(max-width:700px){header{padding-top:35px}section{padding:19px}.actions{display:grid}}</style>
 
@@ -33,7 +33,7 @@
 <select id="kind"><option value="all">All changes</option><option value="urgent">Urgent human follow-up</option><option value="review">Other source changes</option></select>
 </label>
 <div class="table-wrap"><table>
-<thead><tr><th scope="col">Priority</th><th scope="col">Source family</th><th scope="col">Delta</th><th scope="col">Original identifier</th><th scope="col">Changed original fields</th><th scope="col">Local human stage</th></tr></thead>
+<thead><tr><th scope="col">Priority</th><th scope="col">Source family</th><th scope="col">Delta</th><th scope="col">Original identifier</th><th scope="col">Changed original fields</th><th scope="col">Recorded signals · before → after</th><th scope="col">Local human stage</th></tr></thead>
 <tbody id="changes"></tbody>
 </table></div>
 <p class="explain"><b>Missing original row ≠ revoked or repaired.</b> An approved request, a recorded grant window, a reassuring source delta or a locally acknowledged task never grants execution authority. All original records remain unchanged. Local stages disappear when this page is closed.</p>
@@ -228,6 +228,12 @@
     return output;
   }
   const td = (tr, val) => { const cell = document.createElement("td"); cell.textContent = String(val); tr.appendChild(cell); return cell; };
+  function observedSignals(record) {
+    if (!record) return "not recorded in selected source";
+    const labels = ["status", "attention", "request_link_observation", "validity_observation", "decision_provenance_observation"];
+    const visible = labels.filter(k => typeof record[k] === "string").map(k => k + ": " + record[k]);
+    return visible.join(" · ") || "original record present (no status assertion)";
+  }
   function render() {
     const tbody = $("changes");
     tbody.replaceChildren();
@@ -239,6 +245,7 @@
       td(tr,c.kind);
       td(tr,c.id);
       td(tr,c.fieldNames.join(", ") || "membership changed");
+      td(tr,observedSignals(c.before) + "  →  " + observedSignals(c.after));
       const container = document.createElement("td");
       const select = document.createElement("select");
       select.setAttribute("aria-label","Human follow-up for " + c.category + " " + c.id);
