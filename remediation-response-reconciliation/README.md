@@ -19,6 +19,18 @@ This standalone **offline, multi-owner HUMAN follow-up register** is a read-only
 - The **PRIVATE owner-specific HUMAN review brief JSON** exports only one self-declared owner’s exact source-bound original request ID, finding ID, original HUMAN instructions and tentative date, any received unverified answer, local HUMAN status and private follow-up note. It excludes every other owner. The recipient and transport must be verified independently; it is NOT an original owner-reply packet, not accepted by the original owner app, and not proof of identity, remediation, retest or grant.
 - The full PRIVATE workspace restore supports up to **8 MiB** for large human registers; exact native original owner request/reply files remain at **1 MiB** each, with fatal UTF-8 decoding and duplicate-key rejection.
 
+## Separate human owner-facing reader
+
+The self-declared owner who receives a PRIVATE one-owner review brief no longer needs to inspect raw JSON. Open the [portable, source-pinned offline OWNER BRIEF READER](owner-brief-standalone.html) as a **separate read-only one-file HTML** and choose `LightUp-PRIVATE-one-owner-human-review.json` received through an **independently authenticated and approved** confidential human channel. The reader:
+
+- Admits only the exact exported `lightup.private_human_owner_review_brief` v1 format, up to 8 MiB / 800 original unique HUMAN request IDs, with duplicate-key rejection, fatal UTF-8 decoding, exact schema, original SHA, self-declared client/engagement/recipient, and all security authority flags explicitly false.
+- Displays original instructions, tentative HUMAN dates, the actual unverified owner response and the operator's human-only follow-up annotations. Filters unanswered, `needs_changes`, or `needs_human_followup` tasks. Safely treats all source text as text, never HTML.
+- Can print the **entire visible PRIVATE brief** with original instructions and response details expanded. A confirmation warns the recipient to use a confidential printer or output location.
+- Does not authorize execution or retests, authenticate source/recipient, edit requests, send replies, upload files, make network requests, store anything in browser storage or affect the original owner-reply app.
+- Erases all in-memory source and user response data with **Forget**. Previously downloaded or printed files remain the human operator's responsibility.
+
+Three-file development version: [`owner-brief.html`](owner-brief.html) with `owner-brief.js` and local `style.css`. Deterministic standalone source bundle: `python3 build_owner_brief.py` (or `--check`). The reader uses independently SHA-256 CSP-pinned embedded assets, `connect-src 'none'`.
+
 ## Workflow
 
 1. Open `index.html` with `app.js` and `style.css` alongside it, without an internet connection. No credentials, server, account, installation or internet access required.
