@@ -47,7 +47,8 @@ a{color:#9bdafc}
 <section class="panel"><h2>4 · Adjacent source-change reconciliation</h2>
 <p>Rows are compared only in the selected order. Different source SHA means original stored records differed <em>somewhere</em>; it cannot identify which persisted row changed without revisiting original authenticated source. Equal SHA is unsigned and cannot establish unchanged live state.</p>
 <div class="table-wrap"><table><thead><tr><th>Human selection</th><th>Original stored revision</th><th>Administrative candidates</th><th>Unapproved rows</th><th>Grant records</th><th>Human action</th></tr></thead><tbody id="transitions"></tbody></table></div></section>
-<section class="panel"><h2>5 · Human handoff</h2>
+<section class="panel"><h2>5 · Source mismatch themes</h2><p>Fixed original source-owner explanation categories, grouped without request identities. These are discussion flags only, not authenticated policy verdicts or newly discovered risks.</p><div class="table-wrap"><table><thead><tr><th>Original reason</th><th>Human discussion owner</th><th>Per selected slot</th><th>Change: first → last</th></tr></thead><tbody id="reasonrows"></tbody></table></div></section>
+<section class="panel"><h2>6 · Human handoff</h2>
 <p>Mark private discussion items for yourself. These local checkmarks have no effect on source requests, grant state, revocation, scan, target or release.</p>
 <div id="review"></div>
 <div class="actions"><button id="exportjson">Download anonymous JSON brief</button><button id="exportcsv" class="secondary">Download anonymous CSV</button><button id="saveprivate" class="secondary">Save PRIVATE working draft</button><input type="file" id="restore" accept=".json" aria-label="Restore a private working draft"><button class="secondary" id="print">Print private aggregate</button></div>
@@ -61,6 +62,7 @@ const FORMAT="lightup.request_binding_preparation.v1";
 const FALSE_KEYS=["client_consent_verified","operator_consent_verified","authorization_granted","execution_allowed","release_approved"];
 const STATUSES=["candidate_review_only","approved_but_not_compatible","not_administratively_approved"];
 const OUTCOMES=["REVIEW_ONLY_SINGLE_CANDIDATE","HOLD_AMBIGUOUS_CANDIDATES","HOLD_NO_CANDIDATE"];
+const ROUTES={NOT_ADMINISTRATIVELY_APPROVED:"Original client / operator",REQUEST_MODE_NOT_AUTHORIZED_ASSESSMENT:"Original request owner",SOURCE_ROLE_OR_TENANT_PROVENANCE_MISMATCH:"Security / identity owner",PROPOSED_RISK_NOT_COVERED:"Client / scope reviewer",PROPOSED_LITERAL_SCOPE_NOT_COVERED:"Client / scope reviewer",DECISION_CHRONOLOGY_INVALID:"Original operator / privacy",SOURCE_OWNER_OTHER_INTEGRITY_CHECK_REQUIRED:"Original source owner"};
 const ACTIONS=[
   "Reauthenticate original operator and reopen source records",
   "Confirm original client and operator identities independently",
@@ -131,7 +133,7 @@ function validate(obj,slot){
   if(row.ordinal!==index+1||typeof row.private_reference!=="string"||row.private_reference.length>160||seen.has(row.private_reference))fail("duplicate or inconsistent original candidate");
   seen.add(row.private_reference);count(row.previously_bound_grant_rows,"historical bound-grant count",100000);
   if(!Array.isArray(row.review_flags_non_authorizing)||row.review_flags_non_authorizing.length>16)fail("malformed source reasons");
-  for(const reason of row.review_flags_non_authorizing){if(typeof reason!=="string"||!/^[A-Z][A-Z0-9_]{2,99}$/.test(reason))fail("invalid source reason");reasons[reason]=(reasons[reason]||0)+1}
+  for(const reason of row.review_flags_non_authorizing){if(typeof reason!=="string"||!Object.hasOwn(ROUTES,reason))fail("unknown original source mismatch reason");reasons[reason]=(reasons[reason]||0)+1}
   if(row.request_source_status===STATUSES[0])matched++;
   else if(row.request_source_status===STATUSES[1])other++;
   else notApproved++;
@@ -155,7 +157,7 @@ function download(filename,mime,content){
 function payload(){
  const reports=workspace.records;
  return {format:"lightup.request_binding_history_aggregate.v1",status:"REVIEW_ONLY",authority:Object.fromEntries(FALSE_KEYS.map(k=>[k,false])),
-   selected_order_is_verified_chronology:false,snapshots:reports.map((r,i)=>({slot:i+1,candidates:r.matched,other_approved:r.other,not_approved:r.notApproved,stored_grants:r.grants,unbound_legacy_grants:r.legacy,stored_record_change_from_previous:i>0?r.revision!==reports[i-1].revision:null})),
+   selected_order_is_verified_chronology:false,snapshots:reports.map((r,i)=>({slot:i+1,candidates:r.matched,other_approved:r.other,not_approved:r.notApproved,stored_grants:r.grants,unbound_legacy_grants:r.legacy,stored_record_change_from_previous:i>0?r.revision!==reports[i-1].revision:null,source_mismatch_reason_counts:Object.fromEntries(Object.keys(ROUTES).map(k=>[k,r.reasons[k]||0]))})),
    manual_follow_up:ACTIONS.map((task,i)=>({category:i+1,done_for_local_discussion_only:!!workspace.checks[i]})),
    caution:"Untrusted, unsigned offline snapshots; never authority, consent, revocation, permission, release or verified chronology."};
 }
@@ -164,9 +166,10 @@ function render(){
  $("workspace").hidden=false;
  const revisions=new Set(records.map(x=>x.revision));
  const transitions=records.slice(1).filter((x,i)=>x.revision!==records[i].revision).length;
+ const reportedFlags=Object.keys(ROUTES).filter(k=>records.some(r=>r.reasons[k]));
  $("stats").innerHTML=[
   ["Selected original exports",records.length],["Distinct reported source revisions",revisions.size],
-  ["Adjacent reported revisions changed",transitions],["Administrative permission", "NONE"]
+  ["Adjacent reported revisions changed",transitions],["Original mismatch themes",reportedFlags.length],["Administrative permission", "NONE"]
  ].map(([title,val])=>'<div class="stat">'+esc(title)+'<strong>'+esc(val)+'</strong></div>').join("");
  $("rows").innerHTML=records.map((r,i)=>'<tr><td>'+String(i+1)+'</td><td>'+esc(r.stamp)+'</td><td><span class="badge">unsigned · '+esc(r.revision.slice(0,10))+'…</span></td><td>'+r.matched+'</td><td>'+(r.other+r.notApproved)+'</td><td>'+r.grants+' ('+r.legacy+' unbound)</td><td><span class="'+(r.matched===1?"review":"hold")+'">'+esc(r.outcome)+'</span></td></tr>').join("");
  $("chart").innerHTML=records.map((r,i)=>'<div class="bar" title="slot '+(i+1)+': '+r.matched+' candidates" style="height:'+Math.max(3,100*r.matched/Math.max(1,...records.map(x=>x.matched)))+'%"><span>'+r.matched+'</span></div>').join("");
@@ -175,6 +178,7 @@ function render(){
   const delta=(a,b)=>(b-a>0?"+":"")+String(b-a);
   return '<tr><td>'+(i+1)+' → '+(i+2)+'</td><td class="'+(changed?"hold":"review")+'">'+(changed?"DIFFERENT stored rows":"SAME unsigned digest")+'</td><td>'+esc(delta(before.matched,r.matched))+'</td><td>'+esc(delta(before.notApproved,r.notApproved))+'</td><td>'+esc(delta(before.grants,r.grants))+'</td><td>'+(changed?"Reopen original authenticated source; do not infer a specific revocation.":"No proven live-state continuity; re-export if deciding now.")+'</td></tr>';
  }).join("");
+ $("reasonrows").innerHTML=reportedFlags.map(reason=>{const counts=records.map(r=>r.reasons[reason]||0),change=counts[counts.length-1]-counts[0];return "<tr><td><span class=\"badge\">"+esc(reason)+"</span></td><td>"+esc(ROUTES[reason])+"</td><td>"+counts.map((x,i)=>"Slot "+(i+1)+": "+x).join(" · ")+"</td><td>"+(change>0?"+":"")+change+" (not proof of a new permission or real chronology)</td></tr>"}).join("");
  $("review").innerHTML=ACTIONS.map((task,i)=>'<label style="display:flex"><input type="checkbox" data-action="'+i+'" '+(workspace.checks[i]?"checked":"")+'> '+esc(task)+'</label>').join("");
  $("review").querySelectorAll("input").forEach(el=>el.addEventListener("change",()=>workspace.checks[+el.dataset.action]=el.checked));
 }
@@ -198,7 +202,10 @@ $("exportjson").addEventListener("click",()=>{if(workspace)download("lightup-bin
 $("exportcsv").addEventListener("click",()=>{
  if(!workspace)return;
  const p=payload(),head="slot,candidates,other_approved,not_approved,stored_grants,unbound_legacy_grants,source_changed_from_previous,authority_all_false\n";
- download("lightup-binding-history-anonymous.csv","text/csv",head+p.snapshots.map(r=>[r.slot,r.candidates,r.other_approved,r.not_approved,r.stored_grants,r.unbound_legacy_grants,r.stored_record_change_from_previous===null?"UNKNOWN":r.stored_record_change_from_previous,true].join(",")).join("\r\n")+"\r\n");
+ const rows=p.snapshots.map(r=>[r.slot,r.candidates,r.other_approved,r.not_approved,r.stored_grants,r.unbound_legacy_grants,r.stored_record_change_from_previous===null?"UNKNOWN":r.stored_record_change_from_previous,true].join(","));
+ const themeHeader="\r\nslot,original_mismatch_reason,reported_count,human_discussion_only,authority_all_false\r\n";
+ const themeRows=p.snapshots.flatMap(r=>Object.entries(r.source_mismatch_reason_counts).filter(([,count])=>count>0).map(([reason,count])=>[r.slot,reason,count,true,true].join(",")));
+ download("lightup-binding-history-anonymous.csv","text/csv",head+rows.join("\r\n")+"\r\n"+themeHeader+themeRows.join("\r\n")+"\r\n");
 });
 $("saveprivate").addEventListener("click",()=>{
  if(!workspace)return;if(hashes.length!==workspace.records.length){note("HOLD · WebCrypto not available: no raw-byte-bound private draft.",true);return}
