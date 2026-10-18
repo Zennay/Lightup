@@ -34,7 +34,7 @@
   "candidates": [
     {
       "ordinal": 1,
-      "private_reference": "DEMO-001",
+      "private_reference": "ed8d5bbcc6204282",
       "request_id": null,
       "stored_status": "approved",
       "requested_risk": 2,
@@ -47,7 +47,7 @@
     },
     {
       "ordinal": 2,
-      "private_reference": "DEMO-002",
+      "private_reference": "a7a8af00db83c622",
       "request_id": null,
       "stored_status": "submitted",
       "requested_risk": 2,
@@ -60,7 +60,7 @@
     },
     {
       "ordinal": 3,
-      "private_reference": "DEMO-003",
+      "private_reference": "b5951b6103c2632b",
       "request_id": null,
       "stored_status": "submitted",
       "requested_risk": 2,
