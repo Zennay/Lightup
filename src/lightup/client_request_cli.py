@@ -121,13 +121,29 @@ def main(argv: list[str] | None = None) -> int:
         command.add_argument("--notes", help="request explanation; never use secrets")
     submit.add_argument("--confirm-submit", action="store_true", help="explicitly submit for operator review")
     submit.add_argument("--expect-proposal-sha256", help="exact untrusted proposal file SHA-256 from preview")
+    # A rejected request stays immutable: any edit creates an independently
+    # reviewable new request, never changes an operator decision or a grant.
+    for name in ("revise-preview", "revise-submit"):
+        command = sub.add_parser(name, help="propose a new request from a rejected original")
+        command.add_argument("--request-id", required=True, help="existing own rejected request")
+        command.add_argument("--asset", action="append", help="replacement canonical in-scope asset; repeat")
+        command.add_argument("--risk", type=int, choices=(1, 2, 3, 4), help="replacement risk")
+        command.add_argument("--notes", help="replacement client notes")
+        if name == "revise-submit":
+            command.add_argument("--expect-original-sha256", required=True,
+                                 help="exact prior-review snapshot hash from revise-preview")
+            command.add_argument("--confirm-new-request", action="store_true",
+                                 help="create a NEW submitted request, leave original rejected")
+            command.add_argument("--confirm-scope-expansion", action="store_true",
+                                 help="explicitly acknowledge widened assets or higher risk")
     for name in ("list", "show", "export"):
         command = sub.add_parser(name, help="read own stored requests")
         if name == "show":
             command.add_argument("--request-id", required=True)
         if name == "export":
             command.add_argument("--output", required=True, help="new private local .html file, never overwritten")
-    for command in (submit, sub.choices["list"], sub.choices["show"], sub.choices["export"]):
+    for command in (submit, sub.choices["list"], sub.choices["show"], sub.choices["export"],
+                    sub.choices["revise-preview"], sub.choices["revise-submit"]):
         command.add_argument("--db", required=True, help="existing private LightUp SQLite database")
         command.add_argument("--email", required=True, help="persisted client account email")
     args = parser.parse_args(argv)
@@ -161,9 +177,52 @@ def main(argv: list[str] | None = None) -> int:
         else:
             if args.command == "submit" and not args.confirm_submit:
                 raise ClientRequestError("no request created; pass --confirm-submit to persist")
+            if args.command == "revise-submit" and not args.confirm_new_request:
+                raise ClientRequestError("no request created; pass --confirm-new-request")
             db = DomainStore(_existing_database(args.db))
             ctx = _client_account(db, args.email)
-            if args.command == "submit":
+            if args.command in ("revise-preview", "revise-submit"):
+                from .client_request_revision import prepare_rejected_revision
+
+                original = db.get_assessment_request(ctx, args.request_id)
+                revision = prepare_rejected_revision(
+                    original, assets=args.asset, risk=args.risk, notes=args.notes
+                )
+                if args.command == "revise-preview":
+                    output = revision
+                else:
+                    expected = args.expect_original_sha256
+                    if (type(expected) is not str or len(expected) != 64
+                            or any(c not in "0123456789abcdef" for c in expected)
+                            or not hmac.compare_digest(expected, revision["previous_record_sha256"])):
+                        raise ClientRequestError(
+                            "rejected source request changed or its expected hash is wrong; "
+                            "use revise-preview again"
+                        )
+                    if (revision["scope_expansion_requires_confirmation"]
+                            and not args.confirm_scope_expansion):
+                        raise ClientRequestError(
+                            "wider asset range or risk; pass --confirm-scope-expansion after review"
+                        )
+                    record = db.submit_assessment_request(
+                        ctx,
+                        tuple(revision["requested_assets"]),
+                        AssessmentMode.AUTHORIZED_ASSESSMENT,
+                        RiskLevel(revision["requested_risk"]),
+                        revision["notes"],
+                    )
+                    output = _record(record, include_assets=True)
+                    output.update({
+                        "previous_rejected_request_id": original.request_id,
+                        "previous_request_modified": False,
+                        "new_operator_decision_required": True,
+                        "scope_expansion_confirmed": bool(
+                            revision["scope_expansion_requires_confirmation"]
+                            and args.confirm_scope_expansion
+                        ),
+                        "message": "NEW request submitted for independent review; old rejection intact",
+                    })
+            elif args.command == "submit":
                 record = db.submit_assessment_request(
                     ctx,
                     tuple(payload["requested_assets"]),
