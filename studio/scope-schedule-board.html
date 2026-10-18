@@ -14,6 +14,8 @@
 <section class="card controls"><h2>Local unavailable periods <span class="badge">PLANNING ONLY</span></h2>
 <p class="muted">Optionally enter your team's unavailable intervals using UTC wall-clock values. These local-only blocks are not imported permissions, bookings or authenticated resource calendars. Slot suggestions will avoid them with a 30-minute buffer; the downloaded .ics never contains the blocks.</p>
 <div class="row"><label>Unavailable from (UTC)<input id="blockStart" type="datetime-local" step="60"></label><label>Unavailable until (UTC)<input id="blockEnd" type="datetime-local" step="60"></label><button id="addBlock">Add unavailable period</button></div>
+<div class="row"><label>Import an existing local busy calendar (UTC .ics)<input id="busyImport" type="file" accept=".ics,text/calendar"></label><button id="clearBlocks">Clear unavailable periods</button></div>
+<p class="muted">ICS importer accepts up to 30 single UTC VEVENT intervals, ignores event titles/attendees/notes and does not contact any calendar provider. Recurrence, timezone-local times and malformed events are HOLD. Existing blocks remain unchanged if import fails.</p>
 <div id="blocks" role="status" aria-live="polite">No unavailable periods added.</div>
 </section>
 <section class="card controls"><h2>UTC workday boundaries <span class="badge">OPTIONAL · PLANNING ONLY</span></h2>
