@@ -11,8 +11,8 @@ from html import escape
 import json
 import sys
 
-from archive import (FLAGS, Hold, STYLE, MAX_MANIFEST, SCHEMA, decode_json,
-                     encode, load_manifest, publish, read_regular)
+from archive import (FLAGS, Hold, STYLE, MAX_MANIFEST, _manifest, decode_json,
+                     encode, publish, read_regular)
 
 CHOICES_SCHEMA = "lightup.archive_human_followup.v1"
 SUMMARY_SCHEMA = "lightup.archive_human_followup_aggregate.v1"
@@ -34,7 +34,7 @@ GUIDANCE = {
 
 def manifest_identity(path):
     raw = read_regular(path, MAX_MANIFEST)
-    original = load_manifest(path)
+    original = _manifest(decode_json(raw))
     return original, sha256(raw).hexdigest()
 
 

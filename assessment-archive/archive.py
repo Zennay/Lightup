@@ -52,7 +52,10 @@ def read_regular(path, bound):
             raise Hold("invalid input size/type")
         data = stream.read(bound + 1)
         after = os.fstat(stream.fileno())
-        if len(data) != before.st_size or before.st_size != after.st_size:
+        if (len(data) != before.st_size or before.st_size != after.st_size
+                or (before.st_dev, before.st_ino) != (after.st_dev, after.st_ino)
+                or before.st_mtime_ns != after.st_mtime_ns
+                or before.st_ctime_ns != after.st_ctime_ns):
             raise Hold("input changed during read")
         return data
 
