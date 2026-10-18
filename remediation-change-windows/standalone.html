@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="referrer" content="no-referrer">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-wpPFZOyxFDTkVCPSRLe+ulmbav4+u8hRIYgukbiqEiU=' 'sha256-ALZ043SBNq/rScdruZ+KtBZN6c0N607Pgwn4J6gElbU='; style-src 'unsafe-inline'; connect-src 'none'; img-src 'none'; font-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-wpPFZOyxFDTkVCPSRLe+ulmbav4+u8hRIYgukbiqEiU=' 'sha256-+Fum+mIIBbQAz+VsIIwXopK7q8GNW5Sj2XbXksqPeFA='; style-src 'unsafe-inline'; connect-src 'none'; img-src 'none'; font-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <title>LightUp · Change Window & Handoff Board</title>
 <style>
 :root{font:15px/1.5 system-ui,sans-serif;color:#eef5ff;background:#0b1522;--panel:#162638;--line:#516a7c;--mint:#96f3d3}
@@ -34,6 +34,7 @@ td select{min-width:130px}.hold{color:#ffcf96;font-weight:750}#status[data-error
 <section><h2>3 · Place findings into human review windows</h2><div class="grid">
 <div><span class="stat" id="total">0</span><p>Original findings</p></div><div><span class="stat" id="urgent">0</span><p>Critical/high</p></div><div><span class="stat" id="unassigned">0</span><p>Unscheduled</p></div><div><span class="stat" id="holds">0</span><p>Missing local references or changes requested</p></div>
 </div><label>Filter severity<select id="filter"><option value="">All original severities</option><option>critical</option><option>high</option><option>medium</option><option>low</option><option>info</option></select></label>
+<div class="grid"><label>Local human coordination filter<select id="humanFilter"><option value="">All original findings</option><option value="gaps">Missing human references / changes requested</option><option value="complete">Local references filled (NOT verified)</option><option value="regression">Original source reports regression</option><option value="critical">Critical/high original severity</option></select></label><label>Assign filtered rows to proposal<select id="bulkWindow"><option value="0">Unassigned</option><option value="1">Human window 1</option><option value="2">Human window 2</option><option value="3">Human window 3</option><option value="4">Human window 4</option></select></label></div><div class="actions"><button id="bulkApply">Apply HUMAN slot to visible finding group</button><button id="bulkUndo" disabled>Undo most recent human bulk assignment</button></div><p class="muted">A bulk choice changes ONLY private local proposed window numbers. It never overwrites any original finding, reviewer, evidence reference or retest status. Each chosen record stays in the private browser tab until separately exported.</p>
 <div class="scroll"><table><thead><tr><th>Original finding</th><th>Severity</th><th>Source retest</th><th>Local human review</th><th>Readiness caveat</th><th>Proposed window</th></tr></thead><tbody id="findings"></tbody></table></div></section>
 <section><h2>4 · Review the proposed human-only release discussion</h2><div id="summary" class="grid"></div>
 <label>Optional private meeting note (not an approval)<textarea id="note" maxlength="600" rows="3" placeholder="Follow-up decisions to verify, not authority."></textarea></label>
@@ -251,7 +252,7 @@ const STAGES=['missing','submitted','needs_changes','ready_for_authorized_retest
 const MAX={change_reference:240,deployment_reference:240,rollback_reference:240,retest_request_reference:240,review_question:700};
 const bidi=/[\u202a-\u202e\u2066-\u2069]/;
 const HOURS=4;
-let state=null;
+let state=null,lastBulkSnapshot=null;
 const setStatus=(value,error=false)=>{$('status').textContent=value;$('status').dataset.error=error?'true':'false';};
 function fail(s){throw Error(s);}
 function keys(o,allowed,required=allowed){
@@ -398,17 +399,47 @@ function readiness(f,r){
  return concerns.length?concerns.join(' · '):'Human notes present; no verified remediation or approval';
 }
 function el(tag,txt){const n=document.createElement(tag);if(txt!==undefined)n.textContent=String(txt);return n;}
+
+function hasHumanHold(f,r){
+ return r.stage==='missing'||r.stage==='needs_changes'||EVIDENCE.slice(0,4).some(k=>!r.evidence[k]);
+}
+function visibleFinding(f,r){
+ const severity=$('filter').value,human=$('humanFilter').value;
+ if(severity&&severity!==f.severity)return false;
+ if(human==='gaps'&&!hasHumanHold(f,r))return false;
+ if(human==='complete'&&hasHumanHold(f,r))return false;
+ if(human==='regression'&&f.retest_status!=='regression')return false;
+ if(human==='critical'&&!['critical','high'].includes(f.severity))return false;
+ return true;
+}
+function bulkApply(){
+ if(!state)fail('Original source is not loaded.');
+ const chosen=Number($('bulkWindow').value);
+ if(!Number.isInteger(chosen)||chosen<0||chosen>HOURS)fail('Invalid human window slot.');
+ const cohort=state.source.filter(f=>visibleFinding(f,state.review.get(f.finding_id)));
+ if(!cohort.length)fail('Current human filter has no source findings.');
+ if(!confirm('Apply a HUMAN-ONLY proposed window to '+cohort.length+' visible original finding(s)? This never changes source findings, notes, grants or retest statuses.'))return;
+ lastBulkSnapshot=new Map(state.assignments);
+ for(const f of cohort)state.assignments.set(f.finding_id,chosen);
+ $('bulkUndo').disabled=false;
+ render();setStatus('Applied one private human slot to '+cohort.length+' source records. No authorization or verified change.');
+}
+function bulkUndo(){
+ if(!state||!lastBulkSnapshot)fail('No previous local bulk assignment to undo.');
+ state.assignments=lastBulkSnapshot;lastBulkSnapshot=null;$('bulkUndo').disabled=true;
+ render();setStatus('Most recent private bulk window selection undone. Original source and review notes unchanged.');
+}
+
 function render(){
  if(!state)return;
  const src=state.source,rows=$('findings');rows.replaceChildren();
  let unassigned=0,holds=0;
- const selected=$('filter').value;
  for(const f of src){
   const r=state.review.get(f.finding_id);
   if(!state.assignments.has(f.finding_id))state.assignments.set(f.finding_id,0);
   if(!state.assignments.get(f.finding_id))unassigned++;
   if(r.stage==='missing'||r.stage==='needs_changes'||EVIDENCE.slice(0,4).some(k=>!r.evidence[k]))holds++;
-  if(selected&&selected!==f.severity)continue;
+  if(!visibleFinding(f,r))continue;
   const tr=el('tr'),id=el('td',f.finding_id),severity=el('td',f.severity),source=el('td',f.retest_status),
     stage=el('td',r.stage+' (human only)'),caveat=el('td',readiness(f,r)),slot=el('td');
   if(r.stage==='needs_changes'||r.stage==='missing')caveat.className='hold';
@@ -416,7 +447,7 @@ function render(){
   sel.appendChild(new Option('Unassigned',0));
   for(let i=1;i<=HOURS;i++)sel.appendChild(new Option('Human window '+i,i));
   sel.value=String(state.assignments.get(f.finding_id)||0);
-  sel.addEventListener('change',()=>{state.assignments.set(f.finding_id,Number(sel.value));render();});
+  sel.addEventListener('change',()=>{lastBulkSnapshot=null;$('bulkUndo').disabled=true;state.assignments.set(f.finding_id,Number(sel.value));render();});
   slot.appendChild(sel);
   for(const cell of [id,severity,source,stage,caveat,slot])tr.appendChild(cell);
   rows.appendChild(tr);
@@ -437,7 +468,7 @@ function render(){
 }
 async function load(){
  /* Atomic import: always discard old state on a new attempt, never keep stale source on error. */
- state=null;$('results').hidden=true;$('digest').textContent='';
+ state=null;lastBulkSnapshot=null;$('bulkUndo').disabled=true;$('results').hidden=true;$('digest').textContent='';
  const file=$('csv').files[0],review=$('review').files[0];
  if(review&&!$('same').checked)fail('Independent exact client/engagement confirmation required for review join.');
  const src=C.parseCSV(await read(file,1048576)),hash=await digest(src);
@@ -549,7 +580,7 @@ async function resumePlan(){
    fail('Private window aggregate contradicts original source/review records.');
  }
  /* All admissions are complete; apply the whole human draft in one step. */
- state.assignments=imported;
+ state.assignments=imported;lastBulkSnapshot=null;$('bulkUndo').disabled=true;
  for(let i=0;i<HOURS;i++){
   const w=restoredWindows[i];$('date'+i).value=w?w.start_utc.slice(0,16):'';
   $('label'+i).value=w?w.label:'';$('duration'+i).value=String(w?w.minutes:60);
@@ -599,7 +630,7 @@ function aggregateExport(){
  output('lightup-aggregate-human-windows.csv',data.join('\r\n')+'\r\n','text/csv');
 }
 function forget(){
- state=null;for(const id of ['csv','review','planFile'])$(id).value='';
+ state=null;lastBulkSnapshot=null;$('bulkUndo').disabled=true;for(const id of ['csv','review','planFile'])$(id).value='';
  $('same').checked=false;$('note').value='';$('digest').textContent='';$('results').hidden=true;
  for(let i=0;i<HOURS;i++){$('date'+i).value='';$('label'+i).value='';$('duration'+i).value='60';}
  setStatus('All loaded original data and human window assignments forgotten from this tab.');
@@ -617,6 +648,9 @@ function init(){
  $('forget').addEventListener('click',forget);
  $('resume').addEventListener('click',()=>resumePlan().catch(e=>setStatus(e.message,true)));
  $('filter').addEventListener('change',render);
+ $('humanFilter').addEventListener('change',render);
+ $('bulkApply').addEventListener('click',()=>{try{bulkApply();}catch(e){setStatus(e.message,true);}});
+ $('bulkUndo').addEventListener('click',()=>{try{bulkUndo();}catch(e){setStatus(e.message,true);}});
  $('recalculate').addEventListener('click',()=>{try{plan();render();setStatus('Hypothetical windows checked for overlap; original authority remains HOLD.');}catch(e){setStatus(e.message,true);}});
  for(const [id,fn] of [['private',privateExport],['calendar',calendarExport],['aggregate',aggregateExport]])
   $(id).addEventListener('click',()=>{try{fn();setStatus('Local unsigned planning export prepared; not authorization or verified evidence.');}catch(e){setStatus(e.message,true);}});
