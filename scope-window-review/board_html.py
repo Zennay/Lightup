@@ -247,6 +247,38 @@ def _text(value: object) -> str:
     return escape(str(value), quote=False)
 
 
+def handoff_digest(agenda: dict) -> str:
+    """Stable exact-source/policy human handoff binding, never authorization."""
+    # Human notes bind to exactly the original private Casebook source bytes,
+    # source-admitted grant membership, and selected review policy, NOT the
+    # volatile 'prepared_at' timestamp or later capacity scheduling date.
+    # This allows a private note to reopen when the same unchanged original
+    # Casebook is rendered again. A fresh source export remains a new source.
+    source_sha = agenda.get("original_source_sha256")
+    if (type(source_sha) is not str or len(source_sha) != 64
+            or any(ch not in "0123456789abcdef" for ch in source_sha)):
+        raise ValueError("private original source fingerprint missing")
+    handoff_binding = {
+        "schema": "lightup.scope_window_handoff_binding.v2",
+        "source_sha256": source_sha,
+        "client_id": agenda["client_id"],
+        "limits": agenda["limits"],
+        "source_membership": [
+            {key: item[key] for key in (
+                "grant_id", "engagement_id", "original_valid_from",
+                "original_valid_until", "original_link_observation",
+                "original_recorded_observation"
+            )}
+            for item in sorted(agenda["items"],
+                               key=lambda item: (item["grant_id"],
+                                                 item["engagement_id"] or ""))
+        ],
+    }
+    return hashlib.sha256(
+        json.dumps(handoff_binding, ensure_ascii=True, sort_keys=True,
+                   separators=(",", ":"), allow_nan=False).encode("utf-8")
+    ).hexdigest()
+
 def render(agenda: dict) -> bytes:
     """Render only data pre-admitted by window_review. Browser does not re-read files."""
     rows = []
@@ -306,35 +338,7 @@ def render(agenda: dict) -> bytes:
         f'<div class="metric"><span>{_text(label)}</span><strong>{_text(value)}</strong></div>'
         for label, value in metrics
     )
-    # Human notes bind to exactly the original private Casebook source bytes,
-    # source-admitted grant membership, and selected review policy, NOT the
-    # volatile 'prepared_at' timestamp or later capacity scheduling date.
-    # This allows a private note to reopen when the same unchanged original
-    # Casebook is rendered again. A fresh source export remains a new source.
-    source_sha = agenda.get("original_source_sha256")
-    if (type(source_sha) is not str or len(source_sha) != 64
-            or any(ch not in "0123456789abcdef" for ch in source_sha)):
-        raise ValueError("private original source fingerprint missing")
-    handoff_binding = {
-        "schema": "lightup.scope_window_handoff_binding.v2",
-        "source_sha256": source_sha,
-        "client_id": agenda["client_id"],
-        "limits": agenda["limits"],
-        "source_membership": [
-            {key: item[key] for key in (
-                "grant_id", "engagement_id", "original_valid_from",
-                "original_valid_until", "original_link_observation",
-                "original_recorded_observation"
-            )}
-            for item in sorted(agenda["items"],
-                               key=lambda item: (item["grant_id"],
-                                                 item["engagement_id"] or ""))
-        ],
-    }
-    digest = hashlib.sha256(
-        json.dumps(handoff_binding, ensure_ascii=True, sort_keys=True,
-                   separators=(",", ":"), allow_nan=False).encode("utf-8")
-    ).hexdigest()
+    digest = handoff_digest(agenda)
     css_hash = base64.b64encode(hashlib.sha256(CSS.encode()).digest()).decode()
     script_hash = base64.b64encode(hashlib.sha256(JS.encode()).digest()).decode()
     policy = (f"default-src 'none'; style-src 'sha256-{css_hash}'; "
