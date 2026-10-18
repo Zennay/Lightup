@@ -10,7 +10,7 @@ const STAGES=['missing','submitted','needs_changes','ready_for_authorized_retest
 const MAX={change_reference:240,deployment_reference:240,rollback_reference:240,retest_request_reference:240,review_question:700};
 const bidi=/[\u202a-\u202e\u2066-\u2069]/;
 const HOURS=4;
-let state=null,lastBulkSnapshot=null,revisionCandidate=null;
+let state=null,lastBulkSnapshot=null,revisionCandidate=null,caseworkCandidate=null;
 const setStatus=(value,error=false)=>{$('status').textContent=value;$('status').dataset.error=error?'true':'false';};
 function fail(s){throw Error(s);}
 function keys(o,allowed,required=allowed){
@@ -195,6 +195,117 @@ function privateCaseBrief(){
  output('lightup-private-original-casework-change-brief.md',lines.join('\n')+'\n','text/markdown');
 }
 
+
+/* Original Casework v1 snapshot change control. Never writes to the original app
+ * or backfills verification, client consent, a grant or any other authority. */
+const CASE_FIELDS=['owner','status','due_date','next_action','verification_plan','blocker','note','updated_utc'];
+function clearCaseworkPreview(message=''){
+ caseworkCandidate=null;
+ $('applyCasework').disabled=true;$('caseworkDiff').disabled=true;
+ $('caseworkChanges').replaceChildren();
+ $('caseworkSummary').textContent=message;
+}
+function compareCasework(oldRows,newRows){
+ const changed=new Map();
+ for(const f of state.source){
+  const id=f.finding_id,from=oldRows.get(id),to=newRows.get(id);
+  if(!from||!to)fail('Incomplete original Casework before/after membership.');
+  const fields=CASE_FIELDS.filter(k=>from[k]!==to[k]);
+  if(fields.length)changed.set(id,{from,to,fields});
+ }
+ return changed;
+}
+function caseworkImpact(changes){
+ let owner=0,status=0,deadline=0,blocker=0,action=0,urgent=0;
+ const source=new Map(state.source.map(f=>[f.finding_id,f]));
+ for(const [id,c] of changes){
+  if(c.fields.includes('owner'))owner++;
+  if(c.fields.includes('status'))status++;
+  if(c.fields.includes('due_date'))deadline++;
+  if(c.fields.includes('blocker'))blocker++;
+  if(c.fields.some(k=>['next_action','verification_plan','note'].includes(k)))action++;
+  if(['critical','high'].includes(source.get(id).severity))urgent++;
+ }
+ return {total:changes.size,owner,status,deadline,blocker,action,urgent};
+}
+async function previewCaseworkRevision(){
+ if(!state?.casework)fail('Import exact-source original Casework first.');
+ clearCaseworkPreview();
+ if(!$('confirmCasework').checked||!$('same').checked)
+  fail('Independently confirm the exact actual client and engagement before Casework snapshot comparison.');
+ const raw=strictJSON(await read($('nextCasework').files[0],2097152));
+ const newer=caseworkFile(raw,state.source,state.hash);
+ if(newer.sha256===state.caseworkDigest)fail('Original Casework is unchanged.');
+ const changes=compareCasework(state.casework,newer.rows);
+ if(!changes.size)fail('No original human Casework row changed.');
+ const impact=caseworkImpact(changes);
+ caseworkCandidate={source_sha256:state.hash,old_sha256:state.caseworkDigest,
+  plan:localPlanFingerprint(),input:$('nextCasework').files[0],next:newer.rows,digest:newer.sha256,changes,impact};
+ $('caseworkSummary').textContent='Human-only original Casework preview: '+impact.total+
+  ' changed rows ('+impact.urgent+' critical/high); '+impact.owner+' owner, '+impact.status+
+  ' status, '+impact.deadline+' deadline, '+impact.blocker+' blocker, '+
+  impact.action+' action/notes changed. NO original source, notes, assignments or authorities changed yet.';
+ const table=el('table'),head=el('thead'),tr=el('tr');
+ for(const col of ['Original ID','Severity','Changed private human fields','Prior local owner/status/due','New local owner/status/due']){
+  tr.appendChild(el('th',col));
+ }
+ head.appendChild(tr);table.appendChild(head);
+ const body=el('tbody'),lookup=new Map(state.source.map(f=>[f.finding_id,f]));
+ for(const [id,c] of changes){
+  const row=el('tr');
+  for(const val of [id,lookup.get(id).severity,c.fields.join(', '),
+     caseLabel(c.from),caseLabel(c.to)])row.appendChild(el('td',val));
+  body.appendChild(row);
+ }
+ table.appendChild(body);$('caseworkChanges').appendChild(table);
+ $('applyCasework').disabled=false;$('caseworkDiff').disabled=false;
+}
+function assertCaseworkPreview(){
+ const p=caseworkCandidate;
+ if(!p||!state?.casework)fail('Preview a current original Casework snapshot first.');
+ if(!$('confirmCasework').checked||!$('same').checked)
+  fail('Independent exact-client and engagement confirmation withdrawn.');
+ if(p.source_sha256!==state.hash||p.old_sha256!==state.caseworkDigest||
+    p.plan!==localPlanFingerprint()||p.input!==$('nextCasework').files[0])
+  fail('Original Casework preview is stale; no partial update performed.');
+ return p;
+}
+function applyCaseworkRevision(){
+ const p=assertCaseworkPreview();
+ if(!confirm('Replace PRIVATE in-memory original Casework human rows with this complete newer ORIGINAL snapshot? Prior saved plans bound to previous Casework will not resume. No backend or permission is changed.'))return;
+ state.casework=p.next;state.caseworkDigest=p.digest;
+ state.caseworkChanges=new Map([...p.changes].map(([id,c])=>[id,c.fields]));
+ state.caseworkUpdate={from_sha256:p.old_sha256,to_sha256:p.digest,source_sha256:state.hash,
+  ...p.impact};
+ lastBulkSnapshot=null;$('bulkUndo').disabled=true;
+ $('caseFilter').value='';$('ownerFilter').value='';
+ $('nextCasework').value='';$('confirmCasework').checked=false;
+ clearCaseworkPreview('Accepted newer ORIGINAL Casework snapshot into PRIVATE human planning only: '+
+   p.impact.total+' human row(s) changed. Evidence review and human window assignments are unmodified; saved old Casework plans will refuse to resume.');
+ render();
+}
+function privateCaseworkChanges(){
+ const p=assertCaseworkPreview();
+ if(!confirm('PRIVATE: export original finding IDs and old/new human owner, status, dates, blockers and actions for an independently approved confidential recipient?'))return;
+ const clean=v=>String(v??'').replace(/[\u0000-\u001f\u007f\u202a-\u202e\u2066-\u2069|\\]/g,' ').slice(0,1800);
+ const fields=['owner','status','due_date','next_action','verification_plan','blocker','note','updated_utc'];
+ const lines=['# PRIVATE original Casework v1 human snapshot differences','',
+ '**NOT evidence, authenticated consent, remediation, an approval, execution or retest authority.**','',
+ 'Original five-column source SHA-256: '+state.hash,
+ 'Prior original Casework rows SHA-256: '+p.old_sha256,
+ 'Newer original Casework rows SHA-256: '+p.digest,
+ 'Change summary: '+JSON.stringify(p.impact),'',
+ '| Original finding ID | Original severity | Private field | Previous human-only value | New human-only value |',
+ '| --- | --- | --- | --- | --- |'];
+ const severity=new Map(state.source.map(f=>[f.finding_id,f.severity]));
+ for(const [id,c] of p.changes){
+  for(const field of fields.filter(k=>c.fields.includes(k)))
+   lines.push('| '+[id,severity.get(id),field,c.from[field],c.to[field]].map(clean).join(' | ')+' |');
+ }
+ lines.push('','Compare human updates against the original independently approved source; do not infer remediation, consent or authority.');
+ output('lightup-private-original-casework-snapshot-delta.md',lines.join('\n')+'\n','text/markdown');
+}
+
 function emptyReview(){
  return {stage:'missing',reviewer:'',next_step:'',evidence:Object.fromEntries(EVIDENCE.map(k=>[k,'']))};
 }
@@ -280,6 +391,7 @@ function visibleFinding(f,r){
   if(caseFilter==='blocked'&&!caseBlocked(c))return false;
   if(caseFilter==='overdue'&&!pastDue(c))return false;
   if(caseFilter==='window-late'&&!windowAfterHumanDue(f))return false;
+  if(caseFilter==='casework-changed'&&!state.caseworkChanges?.has(f.finding_id))return false;
   if(caseFilter==='no-owner'&&c?.owner.trim())return false;
   if(caseFilter==='open'&&['completed','deferred'].includes(c?.status))return false;
  }
@@ -315,7 +427,7 @@ function render(){
   if(r.stage==='missing'||r.stage==='needs_changes'||EVIDENCE.slice(0,4).some(k=>!r.evidence[k]))holds++;
   if(!visibleFinding(f,r))continue;
   const tr=el('tr'),id=el('td',f.finding_id),severity=el('td',f.severity),source=el('td',f.retest_status),
-    stage=el('td',r.stage+' (human only)'),caseCell=el('td',caseLabel(state.casework?.get(f.finding_id))),caveat=el('td',readiness(f,r)),slot=el('td');
+    stage=el('td',r.stage+' (human only)'),caseCell=el('td',caseLabel(state.casework?.get(f.finding_id))),changed=el('td',(state.caseworkChanges?.get(f.finding_id)||[]).join(', ')||'—'),caveat=el('td',readiness(f,r)),slot=el('td');
   if(r.stage==='needs_changes'||r.stage==='missing')caveat.className='hold';
   const sel=el('select');sel.setAttribute('aria-label','Proposed human window for finding '+f.finding_id);
   sel.appendChild(new Option('Unassigned',0));
@@ -323,7 +435,7 @@ function render(){
   sel.value=String(state.assignments.get(f.finding_id)||0);
   sel.addEventListener('change',()=>{lastBulkSnapshot=null;$('bulkUndo').disabled=true;state.assignments.set(f.finding_id,Number(sel.value));render();});
   slot.appendChild(sel);
-  for(const cell of [id,severity,source,stage,caseCell,caveat,slot])tr.appendChild(cell);
+  for(const cell of [id,severity,source,stage,caseCell,changed,caveat,slot])tr.appendChild(cell);
   rows.appendChild(tr);
  }
  $('total').textContent=src.length;
@@ -332,6 +444,7 @@ function render(){
  $('caseBlocked').textContent=state.casework?[...state.casework.values()].filter(caseBlocked).length:'—';
  $('caseOverdue').textContent=state.casework?[...state.casework.values()].filter(pastDue).length:'—';
  $('lateSlot').textContent=state.casework?src.filter(windowAfterHumanDue).length:'—';
+ $('caseChanged').textContent=state.caseworkChanges?.size||0;
  const board=$('summary');board.replaceChildren();
  try{
   const windows=currentWindows();for(let i=0;i<HOURS;i++){
@@ -348,8 +461,10 @@ function render(){
 /* Never leave private original source IDs or earlier human notes in hidden DOM
  * after a reset, failed import or replacement of any original input. */
 function purgeRenderedPrivateData(){
- state=null;revisionCandidate=null;lastBulkSnapshot=null;
+ state=null;revisionCandidate=null;caseworkCandidate=null;lastBulkSnapshot=null;
  $('results').hidden=true;$('bulkUndo').disabled=true;$('applyRevision').disabled=true;
+ $('applyCasework').disabled=true;$('caseworkDiff').disabled=true;$('caseworkChanges').replaceChildren();
+ $('caseworkSummary').textContent='';$('nextCasework').value='';$('confirmCasework').checked=false;
  for(const id of ['findings','summary','ownerBoard'])$(id).replaceChildren();
  $('ownerFilter').replaceChildren(new Option('All human owners',''));
  for(const id of ['digest','revisionSummary'])$(id).textContent='';
@@ -360,7 +475,7 @@ function purgeRenderedPrivateData(){
  }
  for(const id of ['filter','caseFilter','humanFilter','bulkWindow','ownerFilter'])$(id).value=$(id).options[0].value;
  for(const id of ['total','urgent','unassigned','holds'])$(id).textContent='0';
- $('caseBlocked').textContent='—';$('caseOverdue').textContent='—';$('lateSlot').textContent='—';
+ $('caseBlocked').textContent='—';$('caseOverdue').textContent='—';$('lateSlot').textContent='—';$('caseChanged').textContent='—';
 }
 function originalInputChanged(){
  purgeRenderedPrivateData();$('same').checked=false;
@@ -376,7 +491,7 @@ async function load(){
  let notes=new Map(src.map(f=>[f.finding_id,emptyReview()]));
  if(review)notes=reviewFile(strictJSON(await read(review,2097152)),src,hash);
  const casework=caseFile?caseworkFile(strictJSON(await read(caseFile,2097152)),src,hash):null;
- state={source:src,hash,review:notes,casework:casework?.rows||null,caseworkDigest:casework?.sha256||null,assignments:new Map()};
+ state={source:src,hash,review:notes,casework:casework?.rows||null,caseworkDigest:casework?.sha256||null,caseworkChanges:new Map(),caseworkUpdate:null,assignments:new Map()};
  $('digest').textContent='Original canonical source SHA-256: '+hash+' · unsigned content correlation only; NOT identity or consent.';
  $('results').hidden=false;render();
  setStatus('Source loaded for private, unverified human planning. No permissions or retest inferred.');
@@ -416,7 +531,7 @@ async function resumePlan(){
  if(!state)fail('Load original source before resuming a private plan.');
  if(!$('same').checked)fail('Independently confirm same original client and exact engagement.');
  const raw=strictJSON(await read($('planFile').files[0],2097152));
- const top=['kind','schema_version','disposition','source_contract','source_sha256','warning','windows','meeting_note','assignments','source_refresh','casework_sha256',...FLAGS];
+ const top=['kind','schema_version','disposition','source_contract','source_sha256','warning','windows','meeting_note','assignments','source_refresh','casework_sha256','casework_update',...FLAGS];
  keys(raw,top,top.filter(x=>!['warning','source_refresh'].includes(x)));
  const refresh=raw.source_refresh||null;
  if(refresh!==null){
@@ -435,6 +550,14 @@ async function resumePlan(){
  if((raw.casework_sha256===undefined&&state.caseworkDigest!==null)||
     (raw.casework_sha256!==undefined&&raw.casework_sha256!==state.caseworkDigest))
   fail('Original Casework plan changed or was not loaded; refuse private resume.');
+ if(raw.casework_update!==undefined&&raw.casework_update!==null){
+  const cu=raw.casework_update,fields=['from_sha256','to_sha256','source_sha256','total','owner','status','deadline','blocker','action','urgent'];
+  keys(cu,fields);
+  if(cu.source_sha256!==state.hash||cu.to_sha256!==state.caseworkDigest||
+     typeof cu.from_sha256!=='string'||!/^[a-f0-9]{64}$/.test(cu.from_sha256)||cu.from_sha256===cu.to_sha256||
+     !fields.slice(3).every(k=>Number.isSafeInteger(cu[k])&&cu[k]>=0&&cu[k]<=350))
+   fail('Invalid human Casework snapshot-change summary.');
+ }
  if(raw.warning!==undefined)human(raw.warning,800);
  meetingNote(raw.meeting_note);
  if(!Array.isArray(raw.windows)||raw.windows.length!==HOURS||
@@ -524,6 +647,7 @@ function localPlanFingerprint(){
  if(!state)fail('No current original source.');
  return localSha256(JSON.stringify({
   source_sha256:state.hash,casework_sha256:state.caseworkDigest,
+  casework_update:state.caseworkUpdate,
   original_ids:state.source.map(f=>f.finding_id),
   human:state.source.map(f=>state.review.get(f.finding_id)),
   proposal:state.source.map(f=>state.assignments.get(f.finding_id)||0),
@@ -572,7 +696,8 @@ function applySourceRevision(){
  };
  /* Atomic swap only after the full original five-field comparator, digest,
   * review/slot mapping and preview fingerprint have been accepted. */
- state={source:next,hash,review:notes,assignments:slots,casework:null,caseworkDigest:null,refreshSummary:summary};
+ state={source:next,hash,review:notes,assignments:slots,casework:null,caseworkDigest:null,caseworkChanges:new Map(),caseworkUpdate:null,refreshSummary:summary};
+ $('nextCasework').value='';$('confirmCasework').checked=false;clearCaseworkPreview('Source revision invalidated prior Casework; import a new original snapshot.');
  $('caseFilter').value='';$('ownerFilter').value='';
  lastBulkSnapshot=null;$('bulkUndo').disabled=true;
  $('digest').textContent='Current original canonical source SHA-256: '+hash+
@@ -591,7 +716,8 @@ function privateExport(){
   kind:'lightup.remediation_human_change_windows',schema_version:1,
   disposition:'DRAFT_UNVERIFIED_HUMAN_COORDINATION',source_contract:'lightup.finding_export._COLUMNS_v1',
   source_sha256:state.hash,warning:'Unsigned and non-authorizing; source absence or scheduled stage never means verified remediation.',
-  windows:detail,meeting_note:meetingNote($('note').value),source_refresh:state.refreshSummary||null,casework_sha256:state.caseworkDigest,
+  windows:detail,meeting_note:meetingNote($('note').value),source_refresh:state.refreshSummary||null,
+  casework_sha256:state.caseworkDigest,casework_update:state.caseworkUpdate,
   assignments:state.source.map(f=>{
    const r=state.review.get(f.finding_id);
    return {finding_id:f.finding_id,original_severity:f.severity,original_retest_status:f.retest_status,
@@ -642,6 +768,10 @@ function init(){
  }
  $('load').addEventListener('click',()=>load().catch(e=>{purgeRenderedPrivateData();setStatus(e.message,true);}));
  $('forget').addEventListener('click',forget);
+ $('previewCasework').addEventListener('click',()=>previewCaseworkRevision().catch(e=>{clearCaseworkPreview(e.message);setStatus(e.message,true);}));
+ $('applyCasework').addEventListener('click',()=>{try{applyCaseworkRevision();}catch(e){setStatus(e.message,true);}});
+ $('caseworkDiff').addEventListener('click',()=>{try{privateCaseworkChanges();setStatus('PRIVATE original Casework human snapshot delta prepared for confidential handoff.');}catch(e){setStatus(e.message,true);}});
+ for(const id of ['nextCasework','confirmCasework'])$(id).addEventListener('change',()=>clearCaseworkPreview('Private original Casework selection changed; preview again.'));
  for(const id of ['csv','review','casework'])$(id).addEventListener('change',originalInputChanged);
  $('resume').addEventListener('click',()=>resumePlan().catch(e=>setStatus(e.message,true)));
  $('previewRevision').addEventListener('click',()=>previewSourceRevision().catch(e=>{clearRevisionPreview(e.message);setStatus(e.message,true);}));
