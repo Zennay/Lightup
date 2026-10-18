@@ -117,6 +117,17 @@ function cleanRecord(r){
 }
 const unresolved=r=>STAGES.filter(([k])=>r.tasks[k].status!=='prepared').length;
 const overdue=r=>STAGES.filter(([k])=>r.tasks[k].status!=='prepared'&&r.tasks[k].due&&r.tasks[k].due<new Date().toISOString().slice(0,10)).length;
+const roleOverlap=r=>{
+ const client=r.tasks.client_consent.owner.trim().toLocaleLowerCase();
+ const operator=r.tasks.operator_review.owner.trim().toLocaleLowerCase();
+ return Boolean(client&&operator&&client===operator);
+};
+const firstDue=r=>STAGES.map(([k])=>r.tasks[k]).filter(t=>t.status!=='prepared'&&t.due).map(t=>t.due).sort()[0]||'9999-12-31';
+function attention(r){
+ // Local operational sorting only. Does not judge scope authority or operator identity.
+ return (r.source_attached?0:100)+(overdue(r)?60:0)+(roleOverlap(r)?40:0)+
+  (r.requested_risk===4?30:0)+unresolved(r);
+}
 function setDirty(){dirty=true;$('save').disabled=!entries.length;$('csv').disabled=!entries.length;$('print').disabled=!entries.length;}
 function make(tag,txt,cls){const el=document.createElement(tag);if(txt!==undefined)el.textContent=txt;if(cls)el.className=cls;return el;}
 function brief(){
@@ -128,6 +139,7 @@ function brief(){
   lines.push('Source SHA-256 (unsigned): '+r.source_sha256);
   lines.push('Original file: '+(r.source_attached?'locally loaded':'NOT RE-ATTACHED · HOLD'));
   lines.push('Assets declared (not proved): '+r.asset_count+' · exclusions: '+r.excluded_count);
+  if(roleOverlap(r))lines.push('HUMAN REVIEW: client and operator coordination use the SAME SELF-REPORTED LABEL. Check independent roles in authenticated systems.');
   lines.push('UTC request (not booked): '+(r.planned_utc?r.planned_utc.start+' → '+r.planned_utc.end:'unresolved · HOLD'));
   for(const [id,title] of STAGES){
    const t=r.tasks[id];lines.push('  - '+title+': '+t.status.toUpperCase()+'; follow-up: '+(t.next_action||'not assigned')+
@@ -142,20 +154,27 @@ function renderStats(){
  $('unbound').textContent=String(entries.filter(r=>!r.source_attached).length);
  $('blockers').textContent=String(entries.reduce((s,r)=>s+unresolved(r),0));
  $('overdue').textContent=String(entries.reduce((s,r)=>s+overdue(r),0));
+ $('roleOverlap').textContent=String(entries.filter(roleOverlap).length);
  $('brief').textContent=brief();
  $('save').disabled=!entries.length;$('csv').disabled=!entries.length;$('print').disabled=!entries.length;
 }
 function renderList(){
  const list=$('drafts'), filter=$('filter').value;list.replaceChildren();
  const selected=entries.filter(r=>filter==='all'||filter==='hold'&&unresolved(r)>0||
-  filter==='missing'&&!r.source_attached||filter==='risk'&&r.requested_risk===4);
+  filter==='missing'&&!r.source_attached||filter==='risk'&&r.requested_risk===4||
+  filter==='overdue'&&overdue(r)>0||filter==='collision'&&roleOverlap(r));
+ const sort=$('sort').value;
+ selected.sort((a,b)=>sort==='name'?a.name.localeCompare(b.name):
+  sort==='due'?firstDue(a).localeCompare(firstDue(b)):
+  attention(b)-attention(a)||a.name.localeCompare(b.name));
  if(!selected.length){list.append(make('p','No matching drafts.'));return;}
  for(const r of selected){
   const b=make('button',undefined,'item'+(active===r.source_sha256?' active':''));
   b.type='button';b.append(make('strong',r.name||'Untitled proposal'));
   b.append(make('small',(r.client_label||'No client label')+' · risk '+r.requested_risk+' · '+r.requested_mode));
   b.append(make('small',(r.source_attached?'Source loaded':'SOURCE MISSING · HOLD')+
-    ' · '+unresolved(r)+' unresolved prep tasks'+(overdue(r)?' · '+overdue(r)+' overdue':'')));
+    ' · '+unresolved(r)+' unresolved prep tasks'+(overdue(r)?' · '+overdue(r)+' overdue':'')+
+    (roleOverlap(r)?' · SAME ROLE LABEL REVIEW':'')));
   b.addEventListener('click',()=>{active=r.source_sha256;renderList();renderDetail();});
   list.append(b);
  }
@@ -168,6 +187,7 @@ function renderDetail(){
  const summary=make('p',(r.source_attached?'Source file bound to this exact local session.':'Original source file must be re-attached before relying on continuity.')+
   ' · '+r.asset_count+' proposed assets / '+r.excluded_count+' exclusions · risk '+r.requested_risk,'hint');
  box.append(summary);
+ if(roleOverlap(r))box.append(make('p','Review independence: client and operator preparation currently use the same UNVERIFIED coordinator label. This is a planning conflict signal, not proof of identity.','hint'));
  const message=make('p','Each “prepared” state means paperwork prepared only. No authenticated client/operator consent can be set here.','small');box.append(message);
  const scroll=make('div',undefined,'scroll'),table=make('table'),thead=make('thead'),tr=make('tr');
  for(const name of ['Preparation workstream','Paperwork state','Follow-up owner label','Target date','Next action / blocker'])tr.append(make('th',name));
@@ -302,6 +322,7 @@ $('restoreInput').addEventListener('change',async event=>{
  }catch(e){notice('Restore HOLD: '+e.message+' Existing board unchanged.');}
 });
 $('filter').addEventListener('change',renderList);
+ $('sort').addEventListener('change',renderList);
 $('save').addEventListener('click',()=>{
  if(!entries.length)return;
  const records=entries.map(r=>{const clean=cleanRecord(r);if(!clean)throw Error('Invalid local task record.');delete clean.source_attached;return clean;});
