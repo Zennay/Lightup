@@ -117,6 +117,27 @@
     <p>Filtering or moving a human discussion stage never changes a source report, invokes an evaluator or grants permission.</p>
     <div id="cases" class="scroll" aria-label="Private human scenario review"></div>
   </section>
+  <section id="actionBoardSection" aria-labelledby="actionBoardTitle">
+    <h2 id="actionBoardTitle">Private human follow-up board</h2>
+    <p>Review <strong>proposed human actions</strong> across original finished lab cases in source-priority order. These are planning entries only — no actual reviewer identity, notification, assignment or authority is created.</p>
+    <div class="queue-controls">
+      <div><label for="boardStatus">Human discussion stage</label>
+        <select id="boardStatus"><option value="all">All local stages</option>
+          <option value="needs_review">Needs review</option>
+          <option value="in_discussion">In discussion</option>
+          <option value="documented">Documented</option></select></div>
+      <div><label for="boardRoute">Proposed human route</label>
+        <select id="boardRoute"><option value="all">All human routes</option>
+          <option value="unrouted">Not routed</option>
+          <option value="source_owner">Original source owner</option>
+          <option value="scope_policy">Scope / policy reviewer</option>
+          <option value="finding_quality">Findings / coverage reviewer</option>
+          <option value="evidence_scoring">Evidence / scoring reviewer</option>
+          <option value="operations">Operations reviewer</option></select></div>
+    </div>
+    <p id="humanActionBoardStatus"></p>
+    <div id="humanActionBoard" class="scroll" aria-label="Private human action proposals"></div>
+  </section>
   <section id="inspectorSection" aria-labelledby="inspectorTitle">
     <h2 id="inspectorTitle">4. Original source metric inspector</h2>
     <p>Inspect all fifteen canonical metrics per original private case ordinal and completed source slot: original baseline, reported candidate value, numerical difference and literal original-source regression flag. This is a read-only human interpretation aid; no new evaluation, metric certification, target contact or automatic GO status occurs.</p>
