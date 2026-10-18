@@ -68,7 +68,14 @@ def read_selected_lab_design(file: str, scenario_id: str) -> dict:
     if type(scenario_id) is not str or _ID.fullmatch(scenario_id) is None:
         _deny()
     try:
-        with Path(file).open("rb") as stream:
+        source = Path(file)
+        # Private catalogs are ordinary local files, never devices, pipes,
+        # directories or symlink aliases that can unexpectedly block reads.
+        if source.is_symlink() or not source.is_file():
+            _deny()
+        if not 0 < source.stat().st_size <= 262_144:
+            _deny()
+        with source.open("rb") as stream:
             raw = stream.read(262_145)
         if not 0 < len(raw) <= 262_144:
             _deny()
