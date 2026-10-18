@@ -9,7 +9,7 @@
 <section class="panel" id="sources"><div class="section"><h2>01 / Catalog</h2><span>PRIVATE · LOCAL ONLY</span></div>
 <p>Start with an entirely fictional demonstration or import a previously saved private Lab Design Catalog v1 JSON. Data stays in browser memory until Forget or closing the page; no network or background persistence.</p>
 <div class="controls"><button id="demo">Load fictional demo</button><label class="pick">Import PRIVATE catalog<input type="file" accept=".json,application/json" id="load"></label>
-<button id="forget" class="outline">Forget all</button></div><p id="status" role="status" aria-live="polite"></p>
+<label class="pick">Append PRIVATE catalog<input type="file" accept=".json,application/json" id="appendCatalog" disabled></label><button id="forget" class="outline">Forget all</button></div><p id="status" role="status" aria-live="polite"></p>
 <div id="stats" class="stats"></div></section>
 <section class="panel" id="composer"><div class="section"><h2>02 / Scenario composer</h2><span>OFFLINE DESIGN · NO SCAN</span></div>
 <p>Only explicit numeric IP literals from 127.0.0.0/8, RFC1918, IPv6 loopback, ULA or IPv6 link-local are accepted. Hostnames, public and reserved documentation/test networks, URL schemes, ports and scoped identifiers are rejected. Zero planted findings and unscored are different.</p>
@@ -25,7 +25,10 @@
 <section class="panel"><div class="section"><h2>03 / Lab scenario catalog</h2><span>1–32 MANUAL SCENARIOS</span></div>
 <p>Select a numbered scenario to edit; each edit replaces only that scenario. The original target addresses and finding IDs are visible <strong>only inside this private workspace</strong> and its original private catalog export.</p>
 <div id="catalog" class="tablewrap"><p class="empty">No lab scenarios. Add one or explore the fictional demo.</p></div></section>
-<section class="panel"><div class="section"><h2>04 / Private native handoff</h2><span>PREPARATION, NOT EXECUTION</span></div>
+<section class="panel"><div class="section"><h2>04 / Ground-truth capability map</h2><span>PRIVATE SOURCE COUNTS</span></div>
+<p>Review which manually declared capability IDs and severity classes have planted findings. An absent capability has <strong>no inferred coverage</strong>. An explicitly unscored scenario is not a clean test result. Capability text stays in this private browser view and is never sent to redacted exports.</p>
+<div id="coverage" class="tablewrap"><p class="empty">No explicit findings yet.</p></div></section>
+<section class="panel"><div class="section"><h2>05 / Private native handoff</h2><span>PREPARATION, NOT EXECUTION</span></div>
 <p>Download the exact original private catalog JSON, then optionally run the separate opt-in Python bridge for <code>LabScenario</code> and <code>ExpectedFinding</code> constructors. The bridge does not start or record any evaluation or scan. Do not share the original catalog publicly: it contains target IPs, labels, and findings.</p>
 <div class="controls"><button id="savePrivate" disabled>Download PRIVATE catalog JSON</button>
 <button id="summary" class="outline" disabled>Download redacted review summary</button><button id="print" class="outline" disabled>Print redacted summary</button></div>

@@ -165,6 +165,39 @@
       scored_scenarios:scored,unscored_scenarios:unscored,
       planted_findings:planted,findings_by_severity:counts};
   }
+  function renderCoverage(){
+    const view=$("coverage");view.innerHTML="";
+    const entries=new Map();let unscored=0,zero=0;
+    items.forEach((row,index)=>{
+      if(row.expected_findings===null){unscored++;return;}
+      if(row.expected_findings.length===0)zero++;
+      for(const f of row.expected_findings){
+        if(!entries.has(f.capability_id))entries.set(f.capability_id,
+          {count:0,scenarios:new Set(),severity:Object.fromEntries(LEVELS.map(n=>[n,0]))});
+        const state=entries.get(f.capability_id);
+        state.count++;state.scenarios.add(index+1);state.severity[f.severity]++;
+      }
+    });
+    const p=document.createElement("p");
+    p.textContent=entries.size+" declared capability IDs · "+unscored+
+      " unscored scenarios · "+zero+" explicitly zero-ground-truth scenarios. "+
+      "No inference about missing or real-world coverage.";
+    view.append(p);
+    if(!entries.size)return;
+    const table=document.createElement("table");
+    table.innerHTML="<thead><tr><th>Private capability ID</th><th>Planted findings</th>"+
+      "<th>Human scenario slots</th><th>Declared severity mix</th></tr></thead>";
+    const body=document.createElement("tbody");
+    for(const [key,value] of [...entries].sort(([a],[b])=>a.localeCompare(b))){
+      const row=document.createElement("tr");
+      const vals=[key,String(value.count),[...value.scenarios].sort((a,b)=>a-b).join(", "),
+        LEVELS.filter(n=>value.severity[n]).map(n=>n+" "+value.severity[n]).join(" · ")];
+      for(const val of vals){const td=document.createElement("td");
+        td.textContent=val;row.append(td);}
+      body.append(row);
+    }
+    table.append(body);view.append(table);
+  }
   function render(){
     const v=catalogSummary();
     $("stats").innerHTML="";
@@ -175,6 +208,8 @@
       span.textContent=title+": "+count;$("stats").append(span);
     });
     for(const id of ["savePrivate","summary","print"])$(id).disabled=!items.length;
+    $("appendCatalog").disabled=!items.length||items.length>=32||fictional;
+    renderCoverage();
     if(!items.length){$("catalog").innerHTML='<p class="empty">No scenarios yet.</p>';return;}
     $("catalog").innerHTML="";
     const table=document.createElement("table");table.innerHTML=
@@ -220,6 +255,23 @@
       items=next;fictional=false;resetEditor();render();
       notify("status","Imported "+items.length+" PRIVATE lab scenarios, source untrusted; no target contacted.");
     }catch(_){notify("status","HOLD: malformed, oversized, public-target or forged-authority catalog. Existing work preserved.",true);}
+  }
+  async function appendCatalog(file){
+    try{
+      fail(!fictional&&items.length>=1&&items.length<32&&
+        file&&file.size>0&&file.size<=262144);
+      const bytes=await file.arrayBuffer();
+      fail(bytes.byteLength>0&&bytes.byteLength<=262144);
+      const source=new TextDecoder("utf-8",{fatal:true}).decode(bytes);
+      const incoming=validateCatalog(parseJSON(source));
+      const together=[...items,...incoming];
+      const next=validateCatalog(documentCatalog(together));
+      items=next;render();
+      notify("status","Appended "+incoming.length+
+        " privately authored scenarios. Existing editor work preserved; no target accessed.");
+    }catch(_){
+      notify("status","HOLD: duplicated ID, invalid source or over-capacity append. Prior catalog preserved.",true);
+    }
   }
   function demo(){
     const next=[
@@ -272,6 +324,10 @@
   $("groundMode").addEventListener("change",toggleFindingMode);
   $("demo").addEventListener("click",demo);
   $("forget").addEventListener("click",forget);
+  $("appendCatalog").addEventListener("change",e=>{
+    if(e.target.files.length)void appendCatalog(e.target.files[0]);
+    e.target.value="";
+  });
   $("load").addEventListener("change",e=>{
     if(e.target.files.length)void importCatalog(e.target.files[0]);
     e.target.value="";
