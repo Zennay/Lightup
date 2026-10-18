@@ -241,6 +241,45 @@
     network_activity:"Voorwaarden netwerkinteractie",revision_client:"Nieuwe cliëntscope herbeoordelen",
     revision_operator:"Nieuwe operatorscope herbeoordelen"
   });
+  function coordination() {
+    return LightUpHumanCoordination.build(records,meetingPairs());
+  }
+  function renderCoordination(){
+    const board=$("coordBoard"),metrics=$("coordStats");board.replaceChildren();metrics.replaceChildren();
+    const entries=records.length?coordination().entries:[],today=localDay();
+    const kind=$("coordKind").value,p=$("coordPriority").value;
+    const filtered=entries.filter(e=>(kind==="all"||kind===e.kind)&&(p==="all"||Number(p)===e.priority));
+    const metric=(name,value)=>{const m=node("span","metric");m.append(node("strong","",value),node("span","",name));metrics.append(m);};
+    metric("Open menselijke vervolgitems",entries.length);
+    metric("Dringend",entries.filter(e=>e.priority===0).length);
+    metric("Open vragen",entries.filter(e=>e.kind==="permission_question").length);
+    metric("Open STOP-acties",entries.filter(e=>e.kind==="withdrawal_human_followup").length);
+    if(!filtered.length){board.append(node("p","small","Geen lokale items in deze selectie. Dit is geen bewijs van veiligheid, consent of goedkeuring."));return;}
+    for(const e of filtered.slice(0,75)){
+      const item=node("article","action-row"+(e.priority===0?" urgent-row":""));
+      const desc=node("div","action-main");
+      desc.append(node("strong","",e.kind.replaceAll("_"," ")+" · "+e.code.replaceAll("_"," ")),
+        node("span","small",e.dossier+" · "+e.role+" · "+e.action.replaceAll("_"," ")));
+      const badge=node("span","chip"+(e.priority<=1?" alert":""),["DRINGEND","HOOG","NORMAAL","VOORBEREIDEND"][e.priority]);
+      const meta=node("span","meta",e.state.replaceAll("_"," ")+(e.due_day?" · "+e.due_day+(e.due_day<today?" · ACHTERSTALLIG":""):""));
+      const open=node("button","","Open dossier");open.type="button";
+      open.addEventListener("click",()=>{
+        const first=e.source_sha256.split(";")[0];active=first;
+        render();$("detail").scrollIntoView({behavior:"smooth",block:"start"});
+      });
+      item.append(desc,badge,meta,open);board.append(item);
+    }
+    if(filtered.length>75)board.append(node("p","notice",(filtered.length-75)+
+      " extra acties niet getoond; download de complete agenda of beperk de filters."));
+  }
+  function coordinationCsv(){
+    const rows=[["dossier","source_sha256","kind","code","role","priority","reported_state","next_human_action","local_due_day","authority"]];
+    for(const x of coordination().entries)rows.push([
+      x.dossier,x.source_sha256,x.kind,x.code,x.role,String(x.priority),x.state,x.action,x.due_day||"","REVIEW_ONLY_HOLD"
+    ]);
+    const cell=v=>'"'+String(v).replaceAll('"','""')+'"';
+    return "\ufeff"+rows.map(r=>r.map(cell).join(",")).join("\r\n")+"\r\n";
+  }
   function renderPermission(){
     const area=$("permissionBoard");area.replaceChildren();
     const attached=records.filter(r=>r.permission);
@@ -590,6 +629,7 @@
     }
     if (!boards.children.length) boards.append(node("p","small","Geen concepten gevonden voor deze selectie."));
     renderDetail();
+    renderCoordination();
     renderPermission();
     renderWithdrawals();
     renderActionQueue();
@@ -881,6 +921,7 @@
     e.target.value="";
   });
   $("search").addEventListener("input",render);$("filter").addEventListener("change",render);$("sort").addEventListener("change",render);
+  $("coordKind").addEventListener("change",render);$("coordPriority").addEventListener("change",render);
   $("taskRoleFilter").addEventListener("change",render);$("taskDueFilter").addEventListener("change",render);
   $("bulkStart").addEventListener("click",()=>{
     const task=$("bulkTask").value;
@@ -896,6 +937,8 @@
     if(!records.length || !confirm("Alle in-memory concepten en taakstatussen definitief vergeten?"))return;
     records.splice(0);pairReviews.clear();active=null;show("Alle lokale concept- en overleggegevens uit deze browserpagina gewist.");render();
   });
+  $("coordJson").addEventListener("click",()=>records.length?json(coordination(),"lightup-review-only-coordination.json"):show("Laad eerst concepten.",true));
+  $("coordCsv").addEventListener("click",()=>records.length?download(coordinationCsv(),"lightup-review-only-coordination.csv","text/csv;charset=utf-8"):show("Laad eerst concepten.",true));
   $("save").addEventListener("click",()=>records.length?json(snapshot(),"lightup-local-progress.json"):show("Laad eerst concepten.",true));
   $("export").addEventListener("click",()=>records.length?json(report(),"lightup-review-only-handoff.json"):show("Laad eerst concepten.",true));
   $("csv").addEventListener("click",()=>records.length?download(csv(),"lightup-handoff-actions.csv","text/csv;charset=utf-8"):show("Laad eerst concepten.",true));
