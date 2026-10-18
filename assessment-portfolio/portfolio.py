@@ -195,12 +195,15 @@ def csv_report(summary):
     return ("\r\n".join(rows)+"\r\n").encode("ascii")
 
 def package(agendas, summary):
+    from browser_studio import build as build_interactive_studio
     public=encode(summary)
     files={"START-HERE.txt":("LIGHTUP PRIVATE HUMAN PORTFOLIO. Open index.html offline.\n"
           "private-source-bindings.json includes source SHA hashes and human item slots; keep private.\n"
           "aggregate.html/json/csv contain counts only; review before sharing.\n"
+          "interactive-capacity-studio.html changes only local hypothetical role budgets.\n"
           "Human plans are not an original verified finding, consent, a release or GO.\n").encode(),
           "index.html":render(agendas,summary),
+          "interactive-capacity-studio.html":build_interactive_studio(agendas,summary),
           "private-source-bindings.json":encode(private(agendas,summary)),
           "aggregate.html":render(agendas,summary,True),
           "aggregate.json":public,"aggregate.csv":csv_report(summary)}

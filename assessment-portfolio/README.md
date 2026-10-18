@@ -30,6 +30,7 @@ python3 assessment-portfolio/portfolio.py \
 Extract privately. Open `index.html` in your browser. The package includes:
 
 - `index.html` — sortable-by-human-priority static full private queue.
+- `interactive-capacity-studio.html` — complete private in-browser week/role-capacity editor, instant hypothetical slot recomputation and aggregate-only download. See [STUDIO.md](STUDIO.md).
 - `private-source-bindings.json` — source digests and human work rows, **owner-private, never anonymized**.
 - `aggregate.html`, `aggregate.json`, `aggregate.csv` — human counts only (roles, planning dates, stages) with literally false authority flags.
 - `START-HERE.txt` — handoff rules.
@@ -52,3 +53,7 @@ Output uses the original trusted private publisher: atomic completed 0600 file w
 Even the anonymized counts may be sensitive in a very small portfolio; humans must confirm recipients separately. The ZIP contains original private source digests and human work IDs; do not distribute it as a public report. Empty/missing work from a new agenda never means a vulnerability was repaired. A proposed date is not a legal deadline, consent or SLA breach.
 
 The original [lab comparator #1515](https://github.com/Zennay/Lightup/pull/1515), [integrated held workbench #1625](https://github.com/Zennay/Lightup/pull/1625), original lab/authorization services, original CI and concurrent active branch owners were **not modified**. Original exact-head hosted and permanently registered VPS CI, independent source owner/privacy/security approval, genuine separately authenticated client/operator consent with action-time revocation and explicit HUMAN GO are still mandatory before any main merge, production deployment or live target work. No QA/regression/testsuites are added or run.
+
+## Independent human-capacity workflows
+
+Use [CAPACITY.md](CAPACITY.md) for role-specific command-line hypothetical capacity planning, or [STUDIO.md](STUDIO.md) for interactive browser-first capacity management. Both use the exact original private agenda admission path and never execute a target or claim real approval. The main workspace ZIP now contains the complete ready-to-open interactive capacity Studio automatically.
