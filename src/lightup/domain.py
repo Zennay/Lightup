@@ -799,8 +799,12 @@ class DomainStore:
         engagement = self.get_engagement(ctx, engagement_id)
         with self._connect() as con:
             rows = con.execute(
-                "SELECT * FROM authorization_grants WHERE engagement_id=? ORDER BY created_at DESC",
-                (engagement.engagement_id,),
+                "SELECT g.* FROM authorization_grants AS g "
+                "JOIN engagements AS e ON e.engagement_id=g.engagement_id "
+                "WHERE g.engagement_id=? AND e.client_id=? "
+                "AND g.client_id=e.client_id "
+                "ORDER BY g.created_at DESC",
+                (engagement.engagement_id, engagement.client_id),
             ).fetchall()
         return [self._grant_from_row(r) for r in rows]
 
