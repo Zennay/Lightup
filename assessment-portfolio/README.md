@@ -30,7 +30,8 @@ python3 assessment-portfolio/portfolio.py \
 Extract privately. Open `index.html` in your browser. The package includes:
 
 - `index.html` — sortable-by-human-priority static full private queue.
-- `interactive-capacity-studio.html` — complete private in-browser week/role-capacity editor, instant hypothetical slot recomputation and aggregate-only download. See [STUDIO.md](STUDIO.md).
+- `interactive-capacity-studio.html` — complete private in-browser week/role-capacity editor, instant hypothetical slot recomputation and aggregate-only download.
+- `original-human-review-studio.html` — standalone private browser editor of human-only review fields, with exact original source digest proposal handoff. Importing a proposal back into the unchanged original schema requires the explicit, strict CLI described in [REVIEW-RETURN.md](REVIEW-RETURN.md). See [STUDIO.md](STUDIO.md).
 - `private-source-bindings.json` — source digests and human work rows, **owner-private, never anonymized**.
 - `aggregate.html`, `aggregate.json`, `aggregate.csv` — human counts only (roles, planning dates, stages) with literally false authority flags.
 - `START-HERE.txt` — handoff rules.
@@ -57,3 +58,7 @@ The original [lab comparator #1515](https://github.com/Zennay/Lightup/pull/1515)
 ## Independent human-capacity workflows
 
 Use [CAPACITY.md](CAPACITY.md) for role-specific command-line hypothetical capacity planning, or [STUDIO.md](STUDIO.md) for interactive browser-first capacity management. Both use the exact original private agenda admission path and never execute a target or claim real approval. The main workspace ZIP now contains the complete ready-to-open interactive capacity Studio automatically.
+
+## Original-schema roundtrip for human follow-up
+
+The new [private human return workflow](REVIEW-RETURN.md) lets the operator edit only human stage, neutral next role, and proposed follow-up date in a local browser. The original immutable manifest, original human choices and original agenda must all still match before the new — never overwritten — original-schema choices document is published. This is a separate human planning return only; original assessment/source owners, lab/execution authority and release gates remain untouched.

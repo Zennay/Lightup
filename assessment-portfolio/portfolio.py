@@ -50,8 +50,9 @@ def exact_counts(value, keys, actual):
             or any(type(value[k]) is not int or value[k] != actual[k] for k in keys)):
         raise Hold("original count disagreement")
 
-def load_one(path, selected):
-    raw = read_regular(path, MAX_BYTES)
+def load_one(path, selected, *, raw=None):
+    if raw is None:
+        raw = read_regular(path, MAX_BYTES)
     doc = decode_json(raw)
     reject_authority(doc)
     if (type(doc) is not dict or set(doc) != SOURCE_FIELDS
@@ -196,14 +197,17 @@ def csv_report(summary):
 
 def package(agendas, summary):
     from browser_studio import build as build_interactive_studio
+    from review_studio import build as build_private_review_studio
     public=encode(summary)
     files={"START-HERE.txt":("LIGHTUP PRIVATE HUMAN PORTFOLIO. Open index.html offline.\n"
           "private-source-bindings.json includes source SHA hashes and human item slots; keep private.\n"
           "aggregate.html/json/csv contain counts only; review before sharing.\n"
           "interactive-capacity-studio.html changes only local hypothetical role budgets.\n"
+          "original-human-review-studio.html edits human-only fields and exports a PRIVATE proposal.\n"
           "Human plans are not an original verified finding, consent, a release or GO.\n").encode(),
           "index.html":render(agendas,summary),
           "interactive-capacity-studio.html":build_interactive_studio(agendas,summary),
+          "original-human-review-studio.html":build_private_review_studio(agendas,summary),
           "private-source-bindings.json":encode(private(agendas,summary)),
           "aggregate.html":render(agendas,summary,True),
           "aggregate.json":public,"aggregate.csv":csv_report(summary)}
