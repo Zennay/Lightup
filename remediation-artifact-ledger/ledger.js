@@ -82,7 +82,7 @@ function privatePacket(){
  attachments:state.rows.map(x=>({...x})),
  warning:'Locally selected file bytes and human notes are NOT proof of security remediation, authenticated source, client consent, valid retest, or release.'};
 }
-function fileReader(file,max){
+async function fileReader(file,max){
  if(!file||file.size>max)fail('File exceeds permitted size: '+max+' bytes.');
  return new TextDecoder('utf-8',{fatal:true}).decode(await file.arrayBuffer());
 }
