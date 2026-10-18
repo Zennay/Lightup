@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<title>LightUp · Private Owner Reply Desk</title><link rel="stylesheet" href="owner-reply.css"></head>
+<body><header><div class="brand">LIGHTUP / PRIVATE HUMAN COLLABORATION</div><h1>Owner Reply Desk</h1><p>Review only the original finding summaries selectively shared with your intended team. Update local human planning; no source, retest or permission changes.</p><div class="hold">INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD</div></header>
+<main>
+<section class="panel"><h2>1. Confirm an independently authorized private handoff</h2>
+<p>A file or hash does not verify your identity, the sender, client/engagement, consent, revocation, scope, or grant. Do not import data from an unknown source or an unapproved channel.</p>
+<label class="ack"><input id="ack" type="checkbox"> I independently verified that I am the intended recipient of this PRIVATE handoff for the exact actual client and engagement, through a separately approved confidential channel. My edits are human planning only.</label>
+<label>PRIVATE single-owner JSON<input id="file" type="file" accept=".json,application/json"></label>
+<label>Resume previously saved PRIVATE owner reply JSON (for this exact original handoff)<input id="resume" type="file" accept=".json,application/json"></label>
+<p id="resume-message" role="status" aria-live="polite"></p>
+<p id="message" role="status" aria-live="polite">No private packet loaded.</p></section>
+<section id="workspace" hidden>
+<section class="panel"><h2>2. Coordinate human work for the selected owner</h2>
+<p id="owner" class="owner"></p><p id="count"></p><p>Original five finding fields and human owner label are read-only. All updates remain in browser memory until you explicitly export a PRIVATE reply.</p>
+<div id="recipient-metrics" class="metrics" aria-label="Local human-only workload summary"></div>
+<div class="filter-grid">
+<label>View original finding or human status<select id="recipient-filter">
+<option value="all">All original findings</option><option value="urgent">Critical/high source severity</option>
+<option value="overdue">Past-due human actions</option><option value="blocked">Human blocked</option>
+<option value="missing_date">Open human work without due date</option>
+<option value="retest">Ready for separately authorized retest</option></select></label>
+<label>Search original finding ID or title<input id="recipient-search" type="search" maxlength="120" placeholder="Find original finding"></label>
+<label>Sort human work<select id="recipient-sort"><option value="priority">Source severity</option><option value="due">Human due date</option><option value="title">Original title</option></select></label></div>
+<section class="bulk-panel"><h3>Bulk HUMAN-ONLY work stage</h3><p>Changes only the visible original findings after explicit confirmation. Original LightUp retest status never changes.</p>
+<div class="filter-grid"><label>Human stage<select id="recipient-bulk-stage"><option value="">Select a human stage</option><option value="unassigned">Unassigned</option><option value="planned">Planned</option><option value="in_progress">In progress</option><option value="blocked">Blocked</option><option value="ready_for_retest">Ready for separately authorized retest</option><option value="deferred">Deferred HUMAN work</option><option value="completed">Locally completed — NOT verified fixed</option></select></label>
+<button id="recipient-bulk-apply" type="button">Confirm and apply to visible human work</button></div>
+<p id="recipient-bulk-message" role="status" aria-live="polite"></p></section>
+<div id="cards" class="cards"></div></section>
+<section class="panel"><h2>3. Return only the privately reviewed human notes</h2>
+<p>The return includes the same original subset and human-baseline fingerprint so the sender can reject changed or stale work. It does not approve a real retest, verify a fix, or contact LightUp.</p>
+<div class="actions"><button id="return-preview-button" type="button" class="quiet">Review HUMAN-only edits before sending</button></div>
+<section id="return-review" class="bulk-panel" hidden><h3>PRIVATE human change summary</h3>
+<p id="return-review-summary" role="status" aria-live="polite"></p>
+<div id="return-review-rows" class="cards"></div>
+<label class="ack"><input id="return-review-ack" type="checkbox"> I reviewed the HUMAN-ONLY edits listed above. No original source, consent, grant, remediation verdict or retest is changed.</label></section>
+<label class="ack"><input id="return-ack" type="checkbox"> I explicitly confirm the independently approved PRIVATE return channel and understand this output is unsigned human coordination only.</label>
+<div class="actions"><button id="export" type="button" disabled>Save / export PRIVATE owner reply JSON</button><button id="clear" type="button" class="quiet">Clear private memory</button></div>
+<p id="reply-message" role="status" aria-live="polite"></p></section>
+</section></main><footer>Offline-only · no account, network, storage, scan, grant, verified retest or automated ticket. Handle downloaded PRIVATE files securely.</footer>
+<script src="../casework/remediation-engine.js"></script><script src="owner-private-json.js"></script><script src="owner-protocol.js"></script><script src="owner-reply.js"></script></body></html>

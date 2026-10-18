@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<title>LightUp · Private Remediation Calendar</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header><div class="brand">LIGHTUP / HUMAN WORKSPACE</div><h1>Remediation Calendar</h1><p>Coordinate human follow-ups from the original <code>lightup.remediation_casework_draft</code> v1. No scanning, approval, verified fix, live grant, or calendar sync.</p><strong class="hold">INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD</strong></header>
+<main>
+<section class="panel">
+<h2>1. Open a private Casework draft</h2>
+<p>Get a private JSON draft from the original Casework workspace after independently authorized findings export. This page cannot authenticate its source or establish current consent.</p>
+<label class="filelabel">Choose Casework v1 JSON <input id="file" type="file" accept=".json,application/json"></label>
+<label class="check"><input id="source-ack" type="checkbox"> I independently confirm I am handling the intended client and exact engagement. I understand these are unverified historical notes, not current authorization or remediation evidence.</label>
+<p id="message" role="status" aria-live="polite">No source loaded.</p>
+</section>
+<section id="workspace" hidden>
+<div class="metrics" id="metrics" aria-label="Human work summary"></div>
+<section class="panel">
+<h2>Monthly human follow-up calendar</h2>
+<p>Original source severity, human planning dates and blockers only. A missing item is never evidence of a fix; no automatic calendar synchronization occurs.</p>
+<div class="actions month-controls"><button id="month-prev" type="button" class="muted-button" aria-label="Previous month">Previous month</button>
+<label>Planning month <input id="month" type="month" min="2020-01" max="2100-12"></label>
+<button id="month-next" type="button" class="muted-button" aria-label="Next month">Next month</button>
+<button id="day-clear" type="button" class="muted-button">Clear day filter</button></div>
+<p id="month-message" class="muted" aria-live="polite"></p>
+<div id="month-grid" class="month-grid" role="group" aria-label="Local human follow-up dates"></div>
+</section>
+<section class="panel">
+<h2>2. Review the human follow-up queue</h2>
+<div class="filters"><label>Filter <select id="filter"><option value="all">All pending dates</option><option value="overdue">Overdue</option><option value="blocked">Blocked</option><option value="unassigned">Missing owner</option><option value="retest">Ready for independently authorized retest</option><option value="urgent">Critical or high</option></select></label>
+<label>Severity <select id="severity"><option value="all">All</option><option value="critical">Critical</option><option value="high">High</option><option value="medium">Medium</option><option value="low">Low</option><option value="info">Info</option></select></label>
+<label>Search <input id="search" type="search" maxlength="120" placeholder="Human owner or finding ID"></label></div>
+<p id="scope-info" class="muted"></p>
+<div class="tablewrap"><table><thead><tr><th>Finding</th><th>Original retest</th><th>Human stage</th><th>Owner</th><th>Human due</th><th>Follow-up</th><th>Edit human notes</th></tr></thead><tbody id="rows"></tbody></table></div>
+</section>
+<section class="panel">
+<h2>3. Human owner workload and safe bulk assignment</h2>
+<p>Understand open HUMAN-ONLY work across self-declared owners, including urgent source severity, blockers, late human dates and separately authorized retest follow-ups. Owner labels are not authenticated identities.</p>
+<p id="owner-filter-message" class="muted"></p><button id="owner-filter-clear" type="button" class="muted-button">Clear exact owner filter</button>
+<div class="tablewrap"><table><thead><tr><th>Human owner</th><th>Open</th><th>Critical/high</th><th>Blocked</th><th>Overdue</th><th>Scheduled</th><th>Retest coordination</th><th>Show</th></tr></thead><tbody id="owners"></tbody></table></div>
+<div class="grid"><label>New human owner/team<input id="assign-owner" maxlength="120" placeholder="Required — local human label"></label>
+<label class="check"><input id="assign-empty-only" type="checkbox" checked> Only currently unassigned and open human cases</label></div>
+<button id="assign-preview-button" type="button">Preview assignment to currently filtered findings</button>
+<div id="assign-preview" class="refresh-preview" hidden>
+<p id="assign-summary" role="status" aria-live="polite"></p>
+<div class="tablewrap"><table><thead><tr><th>Original finding ID</th><th>Previous human owner</th><th>Proposed human owner</th></tr></thead><tbody id="assign-rows"></tbody></table></div>
+<label class="check"><input id="assign-ack" type="checkbox"> I confirm this is a local HUMAN-ONLY planning assignment, not an authenticated owner, authorization, SLA, retest or verified repair.</label>
+<button id="assign-apply" type="button" disabled>Apply selected human owners locally</button></div>
+<p id="assign-message" role="status" aria-live="polite"></p>
+</section>
+<section class="panel">
+<h2>4. Refresh the original authorized finding summary</h2>
+<p>Import a separately authorized, original five-column LightUp findings CSV for the <strong>same actual client and exact engagement</strong>. This preview is historical and never validates a new retest, permission or real remediation. New/changed original records reset their human casework; records absent from this CSV are NOT confirmed fixed.</p>
+<label class="filelabel">New original findings CSV (maximum 1 MiB / 350 findings)<input id="refresh-file" type="file" accept=".csv,text/csv"></label>
+<label class="check"><input id="refresh-ack" type="checkbox"> I independently confirmed the SAME real client and exact engagement for both original authenticated exports, and know this browser cannot prove that claim or current consent.</label>
+<button id="refresh-preview-button" type="button">Preview source differences</button>
+<div id="refresh-preview" class="refresh-preview" hidden><h3>Private source difference preview</h3><p id="refresh-summary" role="status" aria-live="polite"></p><div class="tablewrap"><table><thead><tr><th>Source difference</th><th>Original finding ID</th><th>Original fields changed</th></tr></thead><tbody id="refresh-rows"></tbody></table></div>
+<p class="hold">Changed or newly added source rows lose previous human notes. Missing rows are never proof of remediation or verified retest. Export the old private Casework draft before replacing it.</p>
+<label class="check"><input id="refresh-apply-ack" type="checkbox"> I reviewed all changes and accept that the previous private human notes must be preserved separately before this source replacement.</label>
+<button id="refresh-apply" type="button" disabled>Apply reviewed source to local human calendar</button> <button id="refresh-receipt" type="button" disabled>Export PRIVATE source-change receipt</button></div>
+<p id="refresh-message" role="status" aria-live="polite"></p>
+</section>
+<section class="panel">
+<h2>5. Propose HUMAN-ONLY follow-up dates</h2>
+<p>Reuse the original Casework planning engine to suggest local dates for unscheduled human plans. These are <strong>not contractual SLAs</strong>, real retest windows or approvals; existing dates and completed/deferred human plans stay untouched.</p>
+<div class="grid"><label>Explicit local anchor date<input id="schedule-anchor" type="date" min="2020-01-01" max="2100-12-30"></label>
+<label>Critical: calendar days<input id="schedule-critical" type="number" min="1" max="365" step="1" placeholder="Required"></label>
+<label>High: calendar days<input id="schedule-high" type="number" min="1" max="365" step="1" placeholder="Required"></label>
+<label>Medium: calendar days<input id="schedule-medium" type="number" min="1" max="365" step="1" placeholder="Required"></label>
+<label>Low: calendar days<input id="schedule-low" type="number" min="1" max="365" step="1" placeholder="Required"></label>
+<label>Info: calendar days<input id="schedule-info" type="number" min="1" max="365" step="1" placeholder="Required"></label>
+<label>Scope<select id="schedule-scope"><option value="filtered">Currently visible missing-date cases</option><option value="all">All missing-date cases</option></select></label></div>
+<button id="schedule-preview-button" type="button">Preview human-only date suggestions</button>
+<div id="schedule-preview" class="refresh-preview" hidden>
+<p id="schedule-summary" role="status" aria-live="polite"></p>
+<div class="tablewrap"><table><thead><tr><th>Original severity</th><th>Finding ID</th><th>Proposed human date</th></tr></thead><tbody id="schedule-rows"></tbody></table></div>
+<label class="check"><input id="schedule-ack" type="checkbox"> I understand these are ONLY local human planning proposals, not authorization, verified remediation, contractual deadlines or consent.</label>
+<button id="schedule-apply" type="button" disabled>Apply selected human dates locally</button></div>
+<p id="schedule-message" role="status" aria-live="polite"></p>
+</section>
+<section id="edit-panel" class="panel" hidden>
+<h2>6. Update HUMAN-ONLY casework</h2>
+<p id="edit-label">Choose Edit next to a finding. Changes affect only local planning, never original source retest, the database or consent.</p>
+<form id="edit-form">
+<div class="grid"><label>Human owner/team<input id="edit-owner" maxlength="120"></label>
+<label>Human stage<select id="edit-status">
+<option value="unassigned">Unassigned</option><option value="planned">Planned</option><option value="in_progress">In progress</option><option value="blocked">Blocked</option><option value="ready_for_retest">Ready for independently authorized retest</option><option value="deferred">Deferred</option><option value="completed">Locally completed — NOT a verified fix</option></select></label>
+<label>Human follow-up date (not an authorized test window)<input id="edit-date" type="date" min="2020-01-01" max="2100-12-30"></label></div>
+<label>Human next action<textarea id="edit-action" maxlength="1800" rows="3"></textarea></label>
+<label>Human blocker<textarea id="edit-blocker" maxlength="1200" rows="2"></textarea></label>
+<div class="actions"><button type="submit">Apply to local draft</button><button id="edit-cancel" type="button" class="muted-button">Cancel</button></div>
+</form>
+</section>
+<section class="panel">
+<h2>7. Private single-owner human handoff + safe reply import</h2>
+<p>Create a PRIVATE packet containing ONLY original findings currently assigned to one self-declared human owner, rather than sharing the full Casework portfolio. A label is not authenticated identity, client consent or authorization. Send through an independently verified confidential channel only.</p>
+<div class="grid"><label>Specific local human owner/team<select id="owner-handoff-label"><option value="">Select exact human owner</option></select></label>
+<label>Received PRIVATE human reply JSON<input id="owner-reply-file" type="file" accept=".json,application/json"></label></div>
+<label class="check"><input id="owner-handoff-ack" type="checkbox"> I independently verified the intended HUMAN recipient and exact client/engagement, and have approval for this PRIVATE data sharing. No file proves identity or consent.</label>
+<div class="actions"><button id="owner-handoff-export" type="button" disabled>Export PRIVATE single-owner handoff</button><button id="owner-reply-import" type="button" disabled>Preview PRIVATE owner reply</button></div>
+<div id="owner-reply-review" class="refresh-preview" hidden><h3>PRIVATE human reply changes — review before acceptance</h3>
+<p id="owner-reply-summary" role="status" aria-live="polite"></p>
+<div class="tablewrap"><table><thead><tr><th>Original finding ID</th><th>Human fields changed</th><th>Existing HUMAN values</th><th>Proposed HUMAN values</th></tr></thead><tbody id="owner-reply-changes"></tbody></table></div>
+<label class="check"><input id="owner-reply-ack" type="checkbox"> I reviewed the proposed HUMAN-ONLY notes, independently confirmed the correct sender, real client and exact engagement, and accept this PRIVATE local return. No verified repair or retest is implied.</label>
+<button id="owner-reply-apply" type="button" disabled>Apply reviewed HUMAN-ONLY reply</button></div>
+<p id="owner-handoff-message" role="status" aria-live="polite"></p>
+</section>
+<section class="panel">
+<h2>8. Export private Casework or calendar</h2>
+<p>Only locally scheduled open casework is included; <strong>completed or deferred human plans are excluded</strong>. No new deadlines are invented. Calendar clients may upload imported items to external services: use only an independently approved destination.</p>
+<div class="grid"><label>Calendar events <select id="export-scope"><option value="filtered">Currently visible eligible queue</option><option value="all">All eligible scheduled casework</option></select></label>
+<label>Output detail <select id="detail"><option value="anonymous">Redacted — no finding IDs, titles, owner or private notes</option><option value="private">PRIVATE — finding ID, title, owner and next action</option></select></label>
+</div>
+<label class="check"><input id="calendar-ack" type="checkbox"> I have explicitly checked the receiving calendar or handoff channel and understand that even redacted dates, risk levels and event counts can be confidential.</label>
+<label class="check"><input id="draft-ack" type="checkbox"> I approve saving a PRIVATE source-bound human planning draft for an independently authorized receiving channel. This is not verified remediation or a grant.</label>
+<div class="actions"><button id="casework-save" type="button" disabled>Save updated PRIVATE Casework v1 JSON</button><button id="download" type="button" disabled>Export private local .ics</button><button id="aggregate" type="button">Export anonymous workload CSV</button><button id="clear" type="button" class="muted-button">Clear private workspace</button></div>
+<p id="export-message" role="status" aria-live="polite"></p>
+</section>
+</section>
+</main>
+<footer>Local memory only · no network, storage, authentication, consent capture, automatic changes, scans or grant issuance. Files are unsigned human drafts.</footer>
+<script src="../casework/remediation-engine.js"></script>
+<script src="../casework/remediation-schedule.js"></script>
+<script src="source-refresh.js"></script>
+<script src="workload.js"></script>
+<script src="owner-protocol.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
