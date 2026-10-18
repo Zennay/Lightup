@@ -94,7 +94,7 @@ function validReview(row,ids){
 function stageStart(id){return {finding_id:id,stage:'missing',reference:'',reviewer:'',next_step:'',evidence:emptyEvidence()};}
 function snapshot(){
  if(!source)return null;
- return {kind:'lightup.remediation_evidence_coordination',schema_version:1,
+ return {kind:'lightup.remediation_evidence_coordination',schema_version:2,
   disposition:'UNVERIFIED_OFFLINE_HUMAN_COORDINATION',source_contract:'lightup.finding_export._COLUMNS_v1',
   source_sha256:sourceHash,authenticated:false,tenant_verified:false,source_authorized:false,
   assessment_authorized:false,grant:false,client_consent:false,operator_consent:false,
@@ -569,7 +569,7 @@ $('restore').addEventListener('click',async()=>{
   if(!source)throw Error('First load original LightUp CSV.');
   if(changed&&!confirm('Replace current local coordination notes?'))return;
   const file=$('reviewFile').files[0],packet=strictJSON(await read(file,LIMIT_JSON));
-  if(!packet||packet.kind!=='lightup.remediation_evidence_coordination'||packet.schema_version!==1||
+  if(!packet||packet.kind!=='lightup.remediation_evidence_coordination'||![1,2].includes(packet.schema_version)||
      packet.disposition!=='UNVERIFIED_OFFLINE_HUMAN_COORDINATION'||
      packet.source_contract!=='lightup.finding_export._COLUMNS_v1'||
      Object.keys(packet).some(k=>!['kind','schema_version','disposition','source_contract','source_sha256',
@@ -578,7 +578,11 @@ $('restore').addEventListener('click',async()=>{
      !Array.isArray(packet.review)||packet.review.length!==source.length)throw Error('Invalid review file, unsafe authority claim or different source.');
   const ids=new Set(source.map(f=>f.finding_id)),next=new Map();
   const incomingRevisions=restoreRevisions(packet.revision_register,sourceHash);
-  for(const raw of packet.review){const row=validReview(raw,ids);if(next.has(row.finding_id))throw Error('Duplicate review finding.');next.set(row.finding_id,row);}
+  for(const raw of packet.review){
+   if(packet.schema_version===2&&!Object.prototype.hasOwnProperty.call(raw||{},'evidence'))
+    throw Error('Version 2 local review dossier incomplete. No notes changed.');
+   const row=validReview(raw,ids);if(next.has(row.finding_id))throw Error('Duplicate review finding.');next.set(row.finding_id,row);
+  }
   review=next;revisions=incomingRevisions;changed=false;render();status('Unverified review notes restored for exact original source; no current authorization implied.');
  }catch(err){status(err.message,true);}
 });
