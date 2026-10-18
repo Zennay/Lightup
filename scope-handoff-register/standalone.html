@@ -3,13 +3,16 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-uKXPRFXppxU63CeCwnP9QvZAvdr3n4IY2+7d3enELm0='; style-src 'sha256-7uWoPZnp0Qd9U+s/pVdYPmNxnlzY5rsp3l2FXAmL1OY='; img-src 'none'; connect-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-agbJO3OVuciws7hX4E7Wd1Wbb+9OKp74lLmTy/0lq+Q=' 'sha256-X4nOjHqXl4cEjDVdqODJ4miIGbKHwaSBHfgk1Y4EyQ4=' 'sha256-F/FTboDDkAFr+2CnZVzOxVrUYtmAzfKdvueiY9ELeiE=' 'sha256-TtP620uFYakadXEQjorkKPNG5UGxL3puechRDjkjSak='; style-src 'sha256-7uWoPZnp0Qd9U+s/pVdYPmNxnlzY5rsp3l2FXAmL1OY='; img-src 'none'; connect-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'">
   <title>LightUp · Scope Handoff Register</title>
   <style>:root{font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;color-scheme:dark;--bg:#0b111c;--panel:#172236;--line:#31445e;--text:#f2f6ff;--muted:#b8c7dc;--accent:#77bfff;--warn:#ffd89c}
 *{box-sizing:border-box}body{background:linear-gradient(145deg,#0d1626,#111826 58%,#0d1320);color:var(--text);margin:0;min-height:100vh}header,main,footer{max-width:1160px;margin:auto;padding:24px}header{padding-top:45px}.topline{display:flex;align-items:center;justify-content:space-between;gap:16px;font-size:.76rem;letter-spacing:.15em;color:var(--accent)}.flag{background:#43321e;color:var(--warn);padding:8px 12px;border-radius:30px;border:1px solid #6e5530;font-size:.7rem}h1{font-size:clamp(1.9rem,5vw,3.6rem);max-width:750px;margin:35px 0 15px;line-height:1.11;letter-spacing:-.045em}h2{font-size:1.25rem;margin:0 0 8px;letter-spacing:-.02em}h3{margin:0 0 10px;font-size:1.07rem}p{color:var(--muted);line-height:1.55}header>p{max-width:780px}main{display:grid;gap:23px}.panel{border:1px solid var(--line);border-radius:17px;padding:25px;background:var(--panel);box-shadow:0 18px 44px #0002}.section-head{display:flex;align-items:start;justify-content:space-between;gap:24px;flex-wrap:wrap}.section-head p{margin:0 0 14px}.toolbar,.actions{display:flex;align-items:end;gap:12px;flex-wrap:wrap;margin:14px 0}.toolbar>label{display:grid;gap:6px;flex:1;min-width:180px;font-size:.86rem;color:var(--muted)}input,select,textarea,button,.button{font:inherit;border-radius:10px}input,select,textarea{padding:11px 12px;color:var(--text);background:#0c1525;border:1px solid #52617b;min-width:0}button,.button{display:inline-block;color:var(--text);padding:11px 14px;background:#253d59;border:1px solid #64809c;cursor:pointer;white-space:normal;text-align:center}button:hover,.button:hover{background:#31567c}button:focus-visible,.button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid var(--accent);outline-offset:2px}.button.primary{background:#086ab3;border-color:#5eb7ff;font-weight:700}button[disabled]{opacity:.45;cursor:not-allowed}.notice{padding:11px 14px;background:#101b2a;border-left:3px solid var(--accent);white-space:pre-wrap}.notice.error{border-color:#ff8181;color:#ffcdcd}.stats{display:flex;flex-wrap:wrap;gap:9px;margin:14px 0}.metric{padding:9px 14px;border-radius:12px;border:1px solid #405577;background:#0e1a2b;font-size:.9rem}.metric strong{font-size:1.25rem;margin-right:6px}.boards{display:grid;grid-template-columns:repeat(auto-fill,minmax(255px,1fr));gap:12px}.card{display:grid;text-align:left;gap:9px;white-space:normal;background:#102136;border:1px solid #3e5877;padding:17px}.card.selected{outline:2px solid #80c9ff}.card-title{font-size:1.08rem;font-weight:700;overflow-wrap:anywhere}.meta{font-size:.82rem;color:var(--muted)}.chips{display:flex;flex-wrap:wrap;gap:5px}.chip{font-size:.72rem;padding:4px 7px;border-radius:6px;background:#34455e}.chip.alert{background:#674827;color:#fff2d9}.controls{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:15px}.controls label{display:grid;gap:5px;min-width:190px;flex:1;color:var(--muted)}.checkrow{display:grid;grid-template-columns:1fr 170px;gap:14px;align-items:center;padding:11px 0;border-bottom:1px solid #334860}.checkrow label{font-weight:600}.checkrow small{color:var(--muted);display:block;margin-top:4px}.summary{background:#102136;border:1px solid #344c67;border-radius:12px;padding:15px}.warning{border-left:3px solid #d69e53;padding:11px 14px;background:#2e261d;color:#f9e8d2}.small{font-size:.83rem}footer{font-size:.82rem;color:#94a7bf;padding-bottom:50px}@media(max-width:600px){header,main,footer{padding-left:15px;padding-right:15px}.panel{padding:17px}.checkrow{grid-template-columns:1fr}.topline{align-items:start;flex-direction:column}.controls{flex-direction:column}.controls label{width:100%}}@media print{*{color:#000!important;box-shadow:none!important;background:white!important}header,main{padding:5px}.panel{break-inside:avoid;border:1px solid #888}.toolbar,.actions,.button,#clear,footer{display:none!important}.boards{grid-template-columns:repeat(2,1fr)}.warning{border:1px solid #888}body{font-size:11pt}}
 
 .bulkbar{display:flex;align-items:center;flex-wrap:wrap;gap:16px;border-top:1px solid var(--line);margin-top:22px;padding-top:19px}.bulkbar>div{flex:2;min-width:230px}.bulkbar p{margin:3px 0}.bulkbar>label{display:grid;gap:6px;flex:1;min-width:210px;color:var(--muted);font-size:.86rem}.bulkbar button{max-width:260px;white-space:normal}@media print{.bulkbar{display:none!important}}
 </style>
+  
+  
+  
   
 </head>
 <body>
@@ -43,7 +46,347 @@
   </section>
 </main>
 <footer>LightUp · uitsluitend offline menselijke voorbereiding · geen netwerkverzoeken of lokale opslag · geen scans, grants of dispatch</footer>
-<script>"use strict";
+<script>/* LightUp local proposal planning only. Never grants permission or calls a network API. */
+(function(global) {
+'use strict';
+const IPV4_BITS=32n, IPV6_BITS=128n;
+const dec=/^(?:0|[1-9]\d*)$/;
+function parse4(host) {
+ const words=host.split('.');
+ if(words.length!==4 || !words.every(w=>dec.test(w)&&w.length<=3&&Number(w)<=255))return null;
+ return words.reduce((n,w)=>(n<<8n)|BigInt(w),0n);
+}
+function parse6(host){
+ if(!host.includes(':')||!/^[0-9a-f:]+$/i.test(host))return null;
+ const chunks=host.split('::');
+ if(chunks.length>2)return null;
+ const group=(s)=>s ? s.split(':') : [];
+ const left=group(chunks[0]),right=chunks.length===2?group(chunks[1]):[];
+ const good=words=>words.every(w=>/^[0-9a-f]{1,4}$/i.test(w));
+ if(!good(left)||!good(right))return null;
+ const missing=8-left.length-right.length;
+ if(chunks.length===2 ? missing<1 : missing!==0)return null;
+ const words=[...left,...Array(missing).fill('0'),...right];
+ if(words.length!==8)return null;
+ return words.reduce((n,w)=>(n<<16n)|BigInt(parseInt(w,16)),0n);
+}
+function parse(value) {
+ if(typeof value!=='string'||!value.trim()||value.length>253||value.trim()!==value)return null;
+ const bits=value.split('/');
+ if(bits.length>2)return null;
+ let address=null,family=null,max=IPV4_BITS;
+ const four=parse4(bits[0]);
+ if(four!==null){address=four;family='ipv4';}
+ else {
+   const six=parse6(bits[0]);
+   if(six!==null){address=six;family='ipv6';max=IPV6_BITS;}
+ }
+ if(family!==null) {
+   if(bits.length===2 && (!dec.test(bits[1])||bits[1].length>3))return null;
+   const prefix=bits.length===2?BigInt(bits[1]):max;
+   if(prefix>max)return null;
+   const hostBits=max-prefix, hostMask=(1n<<hostBits)-1n;
+   const start=address&(((1n<<max)-1n)^hostMask);
+   // Do not silently widen e.g. 192.0.2.17/24 to 192.0.2.0/24.
+   if(bits.length===2 && start!==address)return null;
+   const end=start+hostMask;
+   return {raw:value,family,start,end,prefix:Number(prefix),canonical:family+':'+start.toString()+':'+prefix.toString(),isRange:prefix<max};
+ }
+ if(bits.length!==1)return null;
+ if(value.length>253||!value.includes('.')||value.endsWith('.')||value.includes('..'))return null;
+ if(!value.split('.').every(part=>/^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/i.test(part)))return null;
+ if(/^\d+(?:\.\d+){3}$/.test(value))return null;
+ return {raw:value,family:'hostname',canonical:'hostname:'+value.toLowerCase(),isRange:false};
+}
+function overlaps(a,b){
+ if(!a||!b||a.family!==b.family)return false;
+ if(a.family==='hostname')return a.canonical===b.canonical;
+ return a.start<=b.end && b.start<=a.end;
+}
+function contains(a,b){
+ if(!a||!b||a.family!==b.family)return false;
+ if(a.family==='hostname')return a.canonical===b.canonical;
+ return a.start<=b.start && a.end>=b.end;
+}
+function mergeIntervals(items,family){
+ const sorted=items.filter(a=>a&&a.family===family).map(a=>({start:a.start,end:a.end})).sort((a,b)=>a.start<b.start?-1:a.start>b.start?1:0);
+ const merged=[];
+ for(const a of sorted){
+   const prev=merged[merged.length-1];
+   if(prev && a.start<=prev.end+1n){if(a.end>prev.end)prev.end=a.end;}
+   else merged.push({...a});
+ }
+ return merged;
+}
+function coveredBy(ranges,entry){
+ if(!entry)return false;
+ if(entry.family==='hostname')return ranges.some(a=>a&&a.canonical===entry.canonical);
+ return mergeIntervals(ranges,entry.family).some(a=>a.start<=entry.start&&a.end>=entry.end);
+}
+function inspect(included,excluded){
+ const out=[],inScope=included.map(parse),outScope=excluded.map(parse);
+ const warn=(level,code,message)=>out.push({level,code,message});
+ for(const [kind,items,parsed] of [['Included',included,inScope],['Excluded',excluded,outScope]]){
+   if(items.length>80)warn('error','too_many',kind+' assets exceed 80 items.');
+   const seen=new Set();
+   items.forEach((item,i)=>{
+     const id=parsed[i];
+     if(!id){warn('error','invalid',kind+': invalid host/IP/CIDR '+item.slice(0,80));return;}
+     if(seen.has(id.canonical))warn('error','duplicate',kind+': duplicate/canonical alias '+item.slice(0,80));
+     seen.add(id.canonical);
+     if((id.family==='ipv4'||id.family==='ipv6')&&id.prefix===0)warn('warning','global_range',kind+': whole-address-space CIDR '+item+' requires explicit narrowing.');
+     if(id.family==='ipv6')warn('warning','ipv6',kind+': IPv6 zone/alias and ownership handling require independent authority verification.');
+   });
+ }
+ for(let i=0;i<inScope.length;i++){
+   for(let j=i+1;j<inScope.length;j++){
+     if(overlaps(inScope[i],inScope[j])&&inScope[i].canonical!==inScope[j].canonical)
+       warn('warning','included_overlap','Proposed entries may overlap: '+included[i]+' / '+included[j]);
+   }
+   for(let j=0;j<outScope.length;j++){
+     if(overlaps(inScope[i],outScope[j]))warn('warning','exclusion_overlap','Proposed and excluded entries overlap: '+included[i]+' / '+excluded[j]+' (requires precise operator enforcement).');
+   }
+ }
+ return out.slice(0,100);
+}
+function expansion(before,after){
+ const parsedBefore=before.map(parse),parsedAfter=after.map(parse);
+ const added=parsedAfter.filter(a=>a&&!coveredBy(parsedBefore,a)).map(a=>a.raw);
+ const removed=parsedBefore.filter(a=>a&&!coveredBy(parsedAfter,a)).map(a=>a.raw);
+ return {added,removed,unparsed:parsedAfter.some(a=>a===null)||parsedBefore.some(a=>a===null),
+   caveat:'Addresses and CIDR ranges only; DNS, exclusions, asset ownership and independent authorization are not evaluated.'};
+}
+
+/* Interval arithmetic for UI planning only; no policy or execution decisions.
+ * Subtract excluded IP/CIDR intervals before identifying effective shared address space.
+ * Hostnames remain opaque literals, not DNS-resolved addresses. */
+function subtractIntervals(base, holes){
+ let current=base.map(a=>({start:a.start,end:a.end}));
+ for(const h of holes){
+  const next=[];
+  for(const x of current){
+   if(h.end<x.start||h.start>x.end){next.push(x);continue;}
+   if(h.start>x.start)next.push({start:x.start,end:h.start-1n});
+   if(h.end<x.end)next.push({start:h.end+1n,end:x.end});
+  }
+  current=next;
+  if(!current.length)break;
+ }
+ return current;
+}
+function effectiveCoverage(included,excluded){
+ if(!Array.isArray(included)||!Array.isArray(excluded)||included.length>80||excluded.length>80)return null;
+ const allow=included.map(parse),deny=excluded.map(parse);
+ if(allow.some(x=>!x)||deny.some(x=>!x))return null;
+ const result={hostname:new Set(),ipv4:[],ipv6:[]};
+ const deniedHost=new Set(deny.filter(a=>a.family==='hostname').map(a=>a.canonical));
+ for(const a of allow){
+  if(a.family==='hostname'&&!deniedHost.has(a.canonical))result.hostname.add(a.canonical);
+ }
+ for(const family of ['ipv4','ipv6']){
+  const allowed=mergeIntervals(allow,family);
+  const holes=mergeIntervals(deny,family);
+  result[family]=allowed.flatMap(a=>subtractIntervals([a],holes));
+ }
+ return result;
+}
+function coverageOverlap(a,b){
+ if(!a||!b)return false;
+ for(const h of a.hostname)if(b.hostname.has(h))return true;
+ for(const family of ['ipv4','ipv6']){
+  for(const x of a[family])for(const y of b[family])
+   if(x.start<=y.end&&y.start<=x.end)return true;
+ }
+ return false;
+}
+function coverageDifference(base,updated){
+ if(!base||!updated)return null;
+ const added=[],removed=[];
+ for(const family of ['ipv4','ipv6']){
+  for(const x of updated[family])added.push(...subtractIntervals([x],base[family]).map(y=>({family,start:y.start.toString(),end:y.end.toString()})));
+  for(const x of base[family])removed.push(...subtractIntervals([x],updated[family]).map(y=>({family,start:y.start.toString(),end:y.end.toString()})));
+ }
+ for(const host of updated.hostname)if(!base.hostname.has(host))added.push({family:'hostname',asset:host.slice(9)});
+ for(const host of base.hostname)if(!updated.hostname.has(host))removed.push({family:'hostname',asset:host.slice(9)});
+ return {added:added.slice(0,160),removed:removed.slice(0,160),
+  truncated:added.length>160||removed.length>160,
+  caveat:'Non-authorizing, local exact hostname and numeric IP interval hints. DNS and ownership are never inspected.'};
+}
+
+
+function addressText(family,integer){
+ if(family==='ipv4'){
+  const items=[];
+  for(let shift=24n;shift>=0n;shift-=8n)items.push(Number((integer>>shift)&255n));
+  return items.join('.');
+ }
+ if(family!=='ipv6')return null;
+ const words=[];
+ for(let shift=112n;shift>=0n;shift-=16n)words.push(Number((integer>>shift)&65535n).toString(16));
+ // RFC 5952 longest leftmost zero compression; presentation only, not authority.
+ let bestStart=-1,bestLength=1;
+ for(let i=0;i<8;){
+  if(words[i]!=='0'){i++;continue;}
+  let j=i;while(j<8&&words[j]==='0')j++;
+  if(j-i>bestLength){bestStart=i;bestLength=j-i;}
+  i=j;
+ }
+ if(bestStart<0)return words.join(':');
+ const left=words.slice(0,bestStart).join(':'),right=words.slice(bestStart+bestLength).join(':');
+ return left+'::'+right;
+}
+function describeEffective(included,excluded,maxRows=180){
+ if(!Number.isSafeInteger(maxRows)||maxRows<1||maxRows>300)return null;
+ const coverage=effectiveCoverage(included,excluded);
+ if(!coverage)return null;
+ const groups=[],total={ipv4:'0',ipv6:'0',hostnames:String(coverage.hostname.size)};
+ let truncated=false;
+ for(const family of ['ipv4','ipv6']){
+  const bits=family==='ipv4'?32:128;
+  let count=0n;
+  for(const span of coverage[family]){
+   count+=span.end-span.start+1n;
+   let current=span.start;
+   while(current<=span.end){
+    if(groups.length>=maxRows){truncated=true;break;}
+    let size=1n,aligned=0;
+    while(aligned<bits && (current&((size<<1n)-1n))===0n){size<<=1n;aligned++;}
+    while(size>span.end-current+1n){size>>=1n;aligned--;}
+    groups.push({family,asset:addressText(family,current)+'/'+(bits-aligned),
+      start:addressText(family,current),end:addressText(family,current+size-1n),
+      address_count:size.toString()});
+    current+=size;
+   }
+  }
+  total[family]=count.toString();
+ }
+ const hostnames=[...coverage.hostname].map(h=>h.slice('hostname:'.length)).sort();
+ return {status:'REVIEW_ONLY',total,groups,hostnames,truncated,
+  warning:'Offline numerical preview after text-declared exclusions; does not resolve DNS, authenticate ownership, prove grant scope, evaluate authorization or permit execution.'};
+}
+
+global.LightUpScopeNetwork=Object.freeze({parse,overlaps,contains,inspect,expansion,effectiveCoverage,coverageOverlap,coverageDifference,addressText,describeEffective});
+})(window);
+</script>\n<script>/* Revision identity for local proposal drafts only. A checksum is never consent, a signature or authorization. */
+(function(global){
+'use strict';
+function canonicalObject(d){
+ if(!d||d.kind!=='lightup.scope_proposal_draft'||d.schema_version!==1||d.state!=='DRAFT_ONLY')return null;
+ const normalizeAssets=list=>{
+  if(!Array.isArray(list)||list.length>80)return null;
+  const items=list.map(s=>global.LightUpScopeNetwork.parse(s));
+  if(items.some(item=>!item))return null;
+  return items.map(item=>item.canonical).sort();
+ };
+ const assets=normalizeAssets(d.requested_assets),excluded=normalizeAssets(d.excluded_assets);
+ if(!assets||!excluded)return null;
+ if(!d.proposed_activities||!d.proposed_window_local)return null;
+ if(typeof d.proposal_name!=='string'||typeof d.client_label!=='string'||typeof d.notes!=='string')return null;
+ const a=d.proposed_activities,w=d.proposed_window_local;
+ if(!['passive_analysis','configuration_review','private_lab_network_checks'].every(k=>typeof a[k]==='boolean'))return null;
+ return {
+  format:'LIGHTUP_NON_AUTHORIZING_SCOPE_DRAFT_REVISION_V1',
+  proposal_name:d.proposal_name,client_label:d.client_label,notes:d.notes,
+  requested_assets:assets,excluded_assets:excluded,
+  requested_mode:d.requested_mode,requested_risk:d.requested_risk,
+  proposed_activities:{passive_analysis:a.passive_analysis,configuration_review:a.configuration_review,private_lab_network_checks:a.private_lab_network_checks},
+  proposed_window_local:{start:w.start??null,end:w.end??null},
+  ...(d.proposed_window_utc ? {proposed_window_utc:{
+    status:d.proposed_window_utc.status,timezone:d.proposed_window_utc.timezone,
+    start:d.proposed_window_utc.start,end:d.proposed_window_utc.end,
+    ...(d.proposed_window_utc.status==='resolved' ? {start_offset_minutes:d.proposed_window_utc.start_offset_minutes,end_offset_minutes:d.proposed_window_utc.end_offset_minutes} : {})
+  }} : {})
+ };
+}
+async function fingerprint(d){
+ const obj=canonicalObject(d);
+ if(!obj || !global.crypto || !global.crypto.subtle || !global.TextEncoder)return null;
+ const bytes=new TextEncoder().encode(JSON.stringify(obj));
+ const buffer=await global.crypto.subtle.digest('SHA-256',bytes);
+ return [...new Uint8Array(buffer)].map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+global.LightUpScopeDigest=Object.freeze({canonicalObject,fingerprint});
+})(window);
+</script>\n<script>/* Local browser planning-time normalization only. No scheduling or authorization. */
+(function(global){
+'use strict';
+const DATE=/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/;
+function localTimestamp(value){
+ if(typeof value!=='string'||!DATE.test(value))return {valid:false,reason:'invalid'};
+ const [,y,m,d,h,min]=DATE.exec(value).map(Number);
+ if(y<2020||y>2100||m<1||m>12||d<1||d>31||h>23||min>59)return {valid:false,reason:'invalid'};
+ const dt=new Date(y,m-1,d,h,min,0,0);
+ if(!Number.isFinite(dt.valueOf())||dt.getFullYear()!==y||dt.getMonth()!==m-1||dt.getDate()!==d||
+    dt.getHours()!==h||dt.getMinutes()!==min)return {valid:false,reason:'nonexistent_local_time'};
+ // A falling DST clock can name two different UTC instants using the same wall time.
+ const target=Date.UTC(y,m-1,d,h,min),offset=dt.getTimezoneOffset();
+ for(const alt of [new Date(dt.getTime()-86400000).getTimezoneOffset(),new Date(dt.getTime()+86400000).getTimezoneOffset()]){
+  if(alt===offset)continue;
+  const candidate=new Date(target+alt*60000);
+  if(candidate.getTime()!==dt.getTime() && candidate.getFullYear()===y &&
+   candidate.getMonth()===m-1&&candidate.getDate()===d&&candidate.getHours()===h&&candidate.getMinutes()===min){
+    return {valid:false,reason:'ambiguous_dst_hour'};
+  }
+ }
+ return {valid:true,utc:dt.toISOString(),offset_minutes:offset};
+}
+function timezone(){
+ try {return Intl.DateTimeFormat().resolvedOptions().timeZone||'Browser local (unknown IANA ID)';}
+ catch(_){return 'Browser local (unknown IANA ID)';}
+}
+function resolve(start,end){
+ const zone=timezone();
+ if(!start&&!end)return {status:'unscheduled',timezone:zone,start:null,end:null};
+ if(!start||!end)return {status:'incomplete',timezone:zone,start:null,end:null};
+ const a=localTimestamp(start),b=localTimestamp(end);
+ if(!a.valid||!b.valid)return {status:!a.valid?a.reason:b.reason,timezone:zone,start:null,end:null};
+ if(a.utc>=b.utc)return {status:'reverse_window',timezone:zone,start:null,end:null};
+ return {status:'resolved',timezone:zone,start:a.utc,end:b.utc,
+  start_offset_minutes:a.offset_minutes,end_offset_minutes:b.offset_minutes};
+}
+function validateStored(local,window){
+ if(window===undefined)return true; // legacy proposal: no absolute window evidence
+ if(!window||typeof window!=='object'||Array.isArray(window))return false;
+ const allowed=['status','timezone','start','end','start_offset_minutes','end_offset_minutes'];
+ if(Object.keys(window).some(k=>!allowed.includes(k)))return false;
+ const hasNull=window.status==='unscheduled'||window.status==='incomplete';
+ if(hasNull){
+   const emptyStart=local&&local.start===null,emptyEnd=local&&local.end===null;
+   const correctState=window.status==='unscheduled'?(emptyStart&&emptyEnd):(emptyStart!==emptyEnd);
+   return !!correctState&&window.start===null&&window.end===null&&typeof window.timezone==='string'&&window.timezone.length<=100;
+ }
+ if(window.status!=='resolved'||typeof window.timezone!=='string'||window.timezone.length>100||
+    typeof window.start!=='string'||typeof window.end!=='string'||!Number.isInteger(window.start_offset_minutes)||
+    !Number.isInteger(window.end_offset_minutes))return false;
+ if(window.start_offset_minutes < -840||window.start_offset_minutes>840||
+    window.end_offset_minutes < -840||window.end_offset_minutes>840)return false;
+ const ISO=/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:00\.000Z$/;
+ if(!ISO.test(window.start)||!ISO.test(window.end)||window.start>=window.end)return false;
+ if(Number.isNaN(Date.parse(window.start))||Number.isNaN(Date.parse(window.end)))return false;
+ // Bind imported UTC instants to source-local wall times and recorded offsets.
+ // This is a consistency check, not proof of the named timezone's authenticity.
+ if(!local||typeof local!=='object'||typeof local.start!=='string'||typeof local.end!=='string')return false;
+ const a=DATE.exec(local.start),b=DATE.exec(local.end);
+ if(!a||!b)return false;
+ const toUTC=(match,minutes)=>{
+  const [,year,month,day,hour,minute]=match.map(Number);
+  return new Date(Date.UTC(year,month-1,day,hour,minute)+minutes*60000).toISOString();
+ };
+ try {
+  return toUTC(a,window.start_offset_minutes)===window.start &&
+         toUTC(b,window.end_offset_minutes)===window.end;
+ }catch(_){return false;}
+}
+function overlaps(a,b){
+ if(!a||!b||a.status!=='resolved'||b.status!=='resolved')return null;
+ // The import boundary validated wall time/UTC consistency. Compare only bounded ISO instants here.
+ const ISO=/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:00\.000Z$/;
+ if(!ISO.test(a.start)||!ISO.test(a.end)||!ISO.test(b.start)||!ISO.test(b.end))return null;
+ return a.start<b.end&&b.start<a.end;
+}
+global.LightUpPlanningWindow=Object.freeze({localTimestamp,resolve,validateStored,overlaps,timezone});
+})(window);
+</script>\n<script>"use strict";
 (() => {
   // Offline preparation only: no fetch, storage, authentication or authorization surface.
   const KIND = "lightup.scope_proposal_draft";
@@ -140,8 +483,17 @@
     assert(o.kind===KIND && o.schema_version===1 && o.state==="DRAFT_ONLY","Alleen ongewijzigde Studio-v1 DRAFT_ONLY concepten.");
     assert(o.requested_mode==="analysis_only"||o.requested_mode==="authorized_assessment","Ongeldige conceptmodus.");
     assert(Number.isInteger(o.requested_risk)&&o.requested_risk>=1&&o.requested_risk<=4,"Ongeldig risiconiveau.");
-    strictArray(o.requested_assets,"Assets",80);
-    strictArray(o.excluded_assets,"Exclusions",80);
+    strictArray(o.requested_assets,"Assets",80,253);
+    strictArray(o.excluded_assets,"Exclusions",80,253);
+    const canonicalAssets=o.requested_assets.map(v=>LightUpScopeNetwork.parse(v));
+    const canonicalExclusions=o.excluded_assets.map(v=>LightUpScopeNetwork.parse(v));
+    assert(canonicalAssets.every(Boolean) && canonicalExclusions.every(Boolean),
+      "Asset of uitsluiting voldoet niet aan het Studio-v1 hostname/IP/CIDR-contract.");
+    assert(new Set(canonicalAssets.map(v=>v.canonical)).size===canonicalAssets.length &&
+      new Set(canonicalExclusions.map(v=>v.canonical)).size===canonicalExclusions.length,
+      "Dubbel canoniek asset-/uitsluitingsrecord.");
+    const utcValid=LightUpPlanningWindow.validateStored(o.proposed_window_local,o.proposed_window_utc);
+    assert(utcValid,"Planning en UTC-offset komen niet overeen met de bron.");
     assert(o.requested_assets.length>0,"Een concept zonder voorgestelde assets kan niet worden geregistreerd.");
     assert(isPlain(o.proposed_activities) &&
       Object.keys(o.proposed_activities).length===3 &&
@@ -164,19 +516,28 @@
     };
     scan(o);
     return {
-      assets:o.requested_assets.map(x=>x.toLowerCase().trim()),
-      excluded:o.excluded_assets.map(x=>x.toLowerCase().trim()),
+      assets:o.requested_assets.slice(),
+      excluded:o.excluded_assets.slice(),
       risk:o.requested_risk, mode:o.requested_mode,
-      hasWindow: isPlain(o.proposed_window_utc) && o.proposed_window_utc.status==="resolved" &&
-        typeof o.proposed_window_utc.start==="string" &&
-        typeof o.proposed_window_utc.end==="string" &&
-        Number.isFinite(Date.parse(o.proposed_window_utc.start)) &&
-        Number.isFinite(Date.parse(o.proposed_window_utc.end)) &&
-        Date.parse(o.proposed_window_utc.end)>Date.parse(o.proposed_window_utc.start)
+      utcWindow:o.proposed_window_utc || null,
+      hasWindow:!!o.proposed_window_utc && o.proposed_window_utc.status==="resolved",
+      studioDigest:null
     };
   }
   function newRecord(sha,source) {
     return {sha,source,reference:"Dossier "+String(records.length+1),replaces:null,tasks:Object.fromEntries(TASKS.map(([id])=>[id,"open"]))};
+  }
+  function localCoverage(r) {
+    return LightUpScopeNetwork.effectiveCoverage(r.source.assets,r.source.excluded);
+  }
+  function sharedHints(r) {
+    const current=localCoverage(r), spatial=[],clock=[];
+    for(const other of records) {
+      if(other===r) continue;
+      if(LightUpScopeNetwork.coverageOverlap(current,localCoverage(other))) spatial.push(other.sha);
+      if(LightUpPlanningWindow.overlaps(r.source.utcWindow,other.source.utcWindow)===true) clock.push(other.sha);
+    }
+    return {spatial_count:spatial.length,utc_window_count:clock.length};
   }
   // Explicit human-declared revision lineage. Shared file contents never prove shared client identity.
   function revisionDelta(r) {
@@ -184,14 +545,20 @@
     if(!old)return null;
     const count=(from,to)=>({added:[...new Set(to)].filter(x=>!new Set(from).has(x)).length,
       removed:[...new Set(from)].filter(x=>!new Set(to).has(x)).length});
+    const coverageDiff=LightUpScopeNetwork.coverageDifference(localCoverage(old),localCoverage(r));
+    const changedTime=JSON.stringify(old.source.utcWindow)!==JSON.stringify(r.source.utcWindow);
     return {assets:count(old.source.assets,r.source.assets),
       exclusions:count(old.source.excluded,r.source.excluded),
+      effective_added_segments:coverageDiff?.added.length ?? null,
+      effective_removed_segments:coverageDiff?.removed.length ?? null,
+      effective_truncated:coverageDiff?.truncated ?? true,
       risk_changed:old.source.risk!==r.source.risk,
       risk_increased:r.source.risk>old.source.risk,
       mode_changed:old.source.mode!==r.source.mode,
       time_window_presence_changed:old.source.hasWindow!==r.source.hasWindow,
-      possible_expansion:count(old.source.assets,r.source.assets).added>0 ||
-        count(old.source.excluded,r.source.excluded).removed>0 || r.source.risk>old.source.risk ||
+      time_window_changed:changedTime,
+      possible_expansion:(coverageDiff?.added.length ?? 0)>0 || (coverageDiff?.truncated ?? true) ||
+        r.source.risk>old.source.risk ||
         (old.source.mode==="analysis_only" && r.source.mode==="authorized_assessment")};
   }
   function setRevision(r,priorSha) {
@@ -215,9 +582,12 @@
     if (r.source.mode==="authorized_assessment") w.push("actieve_modus_voorgesteld");
     if (!r.source.excluded.length) w.push("geen_exclusies_opgegeven");
     if (!r.source.hasWindow) w.push("tijdvenster_te_bespreken");
-    if (new Set(r.source.assets).size!==r.source.assets.length) w.push("dubbele_assetvermelding");
-    const siblings=records.filter(x=>x.sha!==r.sha);
-    if (siblings.some(x=>r.source.assets.some(a=>x.source.assets.includes(a)))) w.push("gedeelde_letterlijke_assetidentiteit");
+    for(const issue of LightUpScopeNetwork.inspect(r.source.assets,r.source.excluded))
+      if(["included_overlap","exclusion_overlap","global_range","ipv6"].includes(issue.code))
+        if(!w.includes("scope_"+issue.code))w.push("scope_"+issue.code);
+    const related=sharedHints(r);
+    if(related.spatial_count>0)w.push("effectieve_numerieke_of_host_scope_overlap");
+    if(related.utc_window_count>0)w.push("utc_planningsoverlap");
     return w;
   }
   const prepared = r => TASKS.filter(([id])=>r.tasks[id]==="prepared").length;
@@ -293,8 +663,11 @@
     if(rev) detail.append(node("p","summary","Letterlijke revisieverschillen (geen eigendom of CIDR-dekking): assets +"+rev.assets.added+"/−"+rev.assets.removed+
       ", exclusies +"+rev.exclusions.added+"/−"+rev.exclusions.removed+
       ", risicotoename: "+(rev.risk_increased?"ja":"nee")+", modus gewijzigd: "+(rev.mode_changed?"ja":"nee")+
+      ". Effectieve netwerk-/hostnameverschillen na exclusies (max 160 segmenten): +"+rev.effective_added_segments+"/−"+rev.effective_removed_segments+
+      (rev.effective_truncated?" (afgekapt)":"")+
+      ". UTC-venster gewijzigd: "+(rev.time_window_changed?"ja":"nee")+
       ". Mogelijke uitbreiding: "+(rev.possible_expansion?"JA — onafhankelijke herbeoordeling nodig":"niet uit deze signalen gebleken")+
-      ". Voorbereidingsacties blijven apart; geen automatische overname."));
+      ". Voorbereidingsacties blijven apart; geen automatische overname. Geen DNS of autorisatiecontrole."));
     const hint=node("p","summary","Reviewpunten: "+(warnings(r).length?warnings(r).join(", ").replaceAll("_"," "):"Geen automatisch aangemerkte signalen. Dat bewijst geen veilige scope.")+". Exacte asset-overlap betekent niet gedeeld eigendom of geldige toestemming.");
     detail.append(hint);
     for (const [id,title,description] of TASKS) {
@@ -320,7 +693,15 @@
     for (const file of files) {
       const raw=await file.text();
       assert(file.size>0 && file.size<=SIZE && bytes(raw).length<=SIZE,"Studio-concept overschrijdt 64 KiB.");
-      const source=validateDraft(parseUnique(raw));
+      const parsed=parseUnique(raw);
+      const source=validateDraft(parsed);
+      const studioDigest=await LightUpScopeDigest.fingerprint(parsed);
+      assert(studioDigest && /^[a-f0-9]{64}$/.test(studioDigest),
+        "Studio-v1 scope-identiteit niet canoniek te berekenen.");
+      if (Object.hasOwn(parsed,"scope_fingerprint_sha256"))
+        assert(parsed.scope_fingerprint_sha256===studioDigest,
+          "Studio-v1 scope-fingerprint komt niet overeen met het oorspronkelijke concept.");
+      source.studioDigest=studioDigest;
       const sha=await digest(raw);
       if (seen.has(sha)) continue;
       seen.add(sha);incoming.push({sha,source});
@@ -346,7 +727,9 @@
     return {kind:"lightup.scope_handoff_review_register",schema_version:1,state:"REVIEW_ONLY_HOLD",authority:authority(),
       notice:"Unverified local human preparation; no authorization, consent, identity or ownership assertion.",
       entries:records.map((r,i)=>({
-        dossier:"D"+String(i+1).padStart(2,"0"),source_sha256:r.sha,replaces_source_sha256:r.replaces,revision:revisionDelta(r),
+        dossier:"D"+String(i+1).padStart(2,"0"),source_sha256:r.sha,
+        studio_revision_sha256:r.source.studioDigest,
+        replaces_source_sha256:r.replaces,revision:revisionDelta(r),offline_shared_review_hints:sharedHints(r),
         proposed_risk:r.source.risk,proposed_mode:r.source.mode,
         asset_count:r.source.assets.length,excluded_count:r.source.excluded.length,
         review_codes:warnings(r),tasks:Object.fromEntries(TASKS.map(([id])=>[id,r.tasks[id]])),
@@ -391,7 +774,9 @@
     ];
     for(const e of data.entries) {
       parts.push("<article><h2>"+esc(e.dossier)+" · voorgesteld risico "+esc(e.proposed_risk)+"</h2>");
-      parts.push("<p>Studio-source SHA-256: <code>"+esc(e.source_sha256)+"</code><br>Voorgestelde modus: "+esc(e.proposed_mode)+"<br>Inclusies: "+esc(e.asset_count)+", exclusies: "+esc(e.excluded_count)+"</p>");
+      parts.push("<p>Bronbytes SHA-256: <code>"+esc(e.source_sha256)+"</code><br>Studio semantische revisie SHA-256: <code>"+esc(e.studio_revision_sha256)+"</code><br>Voorgestelde modus: "+esc(e.proposed_mode)+"<br>Inclusies: "+esc(e.asset_count)+", exclusies: "+esc(e.excluded_count)+
+        "<br>Andere voorstellen met mogelijke effectieve scope-overlap: "+esc(e.offline_shared_review_hints.spatial_count)+
+        "<br>Andere voorstellen met voorgestelde UTC-tijdoverlap: "+esc(e.offline_shared_review_hints.utc_window_count)+"</p>");
       if(e.replaces_source_sha256) {
         parts.push("<p>Zelfverklaarde revisie van <code>"+esc(e.replaces_source_sha256)+"</code>. Statussen van oudere concepten zijn niet overgenomen.</p>");
         if(e.revision) parts.push("<p>Letterlijke revisietellingen: assets toegevoegd "+esc(e.revision.assets.added)+", verwijderd "+esc(e.revision.assets.removed)+
@@ -442,6 +827,5 @@
   $("print").addEventListener("click",()=>records.length?window.print():show("Laad eerst concepten.",true));
   render();
 })();
-</script>
-</body>
+</script>\n</body>
 </html>
