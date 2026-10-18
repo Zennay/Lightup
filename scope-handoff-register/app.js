@@ -216,6 +216,54 @@
       Math.max(records.find(x=>x.sha===b.left).source.risk,records.find(x=>x.sha===b.right).source.risk)-
       Math.max(records.find(x=>x.sha===a.left).source.risk,records.find(x=>x.sha===a.right).source.risk));
   }
+  function actionRows() {
+    const all=[];
+    for(const r of records)for(const [id,title] of TASKS){
+      if(r.tasks[id]==="prepared")continue;
+      all.push({r,id,title,status:r.tasks[id],role:TASK_ROLES[id],due:r.dueDates[id]});
+    }
+    const priority={needs_revision:0,working:1,open:2};
+    return all.sort((a,b)=>{
+      if(a.due!==b.due)return a.due===null?1:b.due===null?-1:a.due.localeCompare(b.due);
+      if(a.status!==b.status)return priority[a.status]-priority[b.status];
+      return b.r.source.risk-a.r.source.risk;
+    });
+  }
+  function renderActionQueue(){
+    const area=$("actionQueue"),counts=$("actionStats");area.replaceChildren();counts.replaceChildren();
+    const role=$("taskRoleFilter").value,dueFilter=$("taskDueFilter").value,today=localDay();
+    const week=new Date(today+"T12:00:00Z");
+    week.setUTCDate(week.getUTCDate()+7);
+    const weekEnd=week.toISOString().slice(0,10);
+    const all=actionRows();
+    const filtered=all.filter(t=>{
+      if(role!=="all"&&t.role!==role)return false;
+      if(dueFilter==="overdue")return t.due!==null&&t.due<today;
+      if(dueFilter==="week")return t.due!==null&&t.due>=today&&t.due<=weekEnd;
+      if(dueFilter==="undated")return t.due===null;
+      if(dueFilter==="revision")return t.status==="needs_revision";
+      return true;
+    });
+    const metric=(label,value)=>{
+      const m=node("span","metric");m.append(node("strong","",value),node("span","",label));counts.append(m);
+    };
+    metric("Nog te bespreken",all.length);
+    metric("Doeldatum verstreken",all.filter(x=>x.due&&x.due<today).length);
+    metric("Herziening nodig",all.filter(x=>x.status==="needs_revision").length);
+    metric("Zichtbaar na filters",filtered.length);
+    if(!filtered.length){area.append(node("p","small","Geen open actiepunten voor deze selectie; dit bewijst geen machtiging of afgeronde securityreview."));return;}
+    for(const t of filtered.slice(0,64)){
+      const card=node("article","action-row");
+      const meta=node("div","action-main");
+      meta.append(node("strong","",t.title),node("span","small",t.r.reference+" · "+ROLE_LABELS[t.role]+" · risico "+t.r.source.risk));
+      const status=node("span","chip"+(t.status==="needs_revision"?" alert":""),STATUS_TEXT[t.status]);
+      const day=node("span","meta",t.due?("Doeldatum "+t.due+(t.due<today?" · VERSTREKEN":"")):"Geen doeldatum");
+      const open=node("button","","Open dossier");
+      open.type="button";open.addEventListener("click",()=>{active=t.r.sha;render();$("detail").scrollIntoView({behavior:"smooth",block:"start"});});
+      card.append(meta,status,day,open);area.append(card);
+    }
+    if(filtered.length>64) area.append(node("p","notice",(filtered.length-64)+" overige acties niet in deze lijst getoond. Gebruik rol-/datumfilters om ze te tonen of exporteer de volledige actielijst."));
+  }
   function renderMeetingAgenda() {
     const area=$("conflicts"),counts=$("conflictStats");area.replaceChildren();counts.replaceChildren();
     const pairs=meetingPairs();
@@ -616,6 +664,7 @@
     e.target.value="";
   });
   $("search").addEventListener("input",render);$("filter").addEventListener("change",render);$("sort").addEventListener("change",render);
+  $("taskRoleFilter").addEventListener("change",render);$("taskDueFilter").addEventListener("change",render);
   $("bulkStart").addEventListener("click",()=>{
     const task=$("bulkTask").value;
     assert(TASKS.some(([id])=>id===task),"Geen erkende actie.");
