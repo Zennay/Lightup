@@ -183,6 +183,53 @@
     const visible = labels.filter(k => typeof record[k] === "string").map(k => k + ": " + record[k]);
     return visible.join(" · ") || "original record present (no status assertion)";
   }
+  function impactEngagements() {
+    if (state.snapshots.length !== 2) return;
+    const older=state.snapshots[0].maps, newer=state.snapshots[1].maps;
+    const known=new Set([...older.engagements.keys(),...newer.engagements.keys()]);
+    const byEngagement=new Map();
+    for(const change of state.changes) {
+      let ids=[];
+      if(change.category==="engagements" || change.category==="case_overview"){
+        ids=[change.id];
+      } else if(change.category==="grants" || change.category==="risk_approvals") {
+        // Link only from actual original source engagement identities.
+        // A request has no engagement identity here; never infer one.
+        ids=[change.before?.engagement_id,change.after?.engagement_id]
+          .filter(x=>typeof x==="string" && known.has(x));
+      }
+      for(const id of new Set(ids)){
+        if(!byEngagement.has(id)) byEngagement.set(id,[]);
+        byEngagement.get(id).push(change);
+      }
+    }
+    const rows=[...byEngagement].map(([id,changes])=>({
+      id,changes, urgent:changes.filter(c=>c.priority==="urgent").length,
+      before:older.case_overview.get(id), after:newer.case_overview.get(id),
+      category:[...new Set(changes.map(c=>c.category))].sort().join(", "),
+      humanOutstanding:changes.filter(c=>(state.notes.get(c.category+":"+c.id)||"unreviewed")!=="human-acknowledged").length,
+    })).sort((a,b)=>b.urgent-a.urgent || a.id.localeCompare(b.id));
+    const body=$("impactRows");
+    body.replaceChildren();
+    for(const impact of rows){
+      const tr=document.createElement("tr");
+      td(tr,impact.id);
+      td(tr,impact.before ? impact.before.attention : "not recorded");
+      td(tr,impact.after ? impact.after.attention : "not recorded");
+      td(tr,impact.category);
+      td(tr,impact.changes.length);
+      td(tr,impact.urgent);
+      td(tr,impact.humanOutstanding);
+      body.appendChild(tr);
+    }
+    const tenantRequestChanges=state.changes.filter(c=>c.category==="requests").length;
+    const uncertainLinks=state.changes.filter(c=>
+      (c.category==="grants" || c.category==="risk_approvals") &&
+      [c.before,c.after].some(x=>x && !known.has(x.engagement_id))).length;
+    text("impactSummary",rows.length+" recorded engagements affected; "+
+      tenantRequestChanges+" tenant-level request changes (not falsely linked to an engagement); "+
+      uncertainLinks+" unassigned/malformed recorded grant or risk links requiring separate source review.");
+  }
   function render() {
     const tbody = $("changes");
     tbody.replaceChildren();
@@ -201,7 +248,7 @@
       for (const option of STAGES) { const el = document.createElement("option"); el.value=option; el.textContent=option; select.appendChild(el); }
       const key = c.category + ":" + c.id;
       select.value = state.notes.get(key) || "unreviewed";
-      select.addEventListener("change",() => state.notes.set(key,select.value));
+      select.addEventListener("change",() => {state.notes.set(key,select.value); impactEngagements();});
       container.appendChild(select); tr.appendChild(container); tbody.appendChild(tr);
     }
     const urgent = state.changes.filter(x=>x.priority==="urgent").length;
@@ -210,6 +257,7 @@
     text("tenant",state.snapshots[0].doc.client_id);
     text("provenance","Old " + state.snapshots[0].doc.as_of + " · SHA-256 " + state.sha[0] +
       " | New " + state.snapshots[1].doc.as_of + " · SHA-256 " + state.sha[1]);
+    impactEngagements();
     $("results").hidden = false;
   }
   async function readSnapshot(file) {
