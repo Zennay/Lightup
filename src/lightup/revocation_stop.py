@@ -397,23 +397,44 @@ def engagement_inbox(db_path: str, *, actor_id: str) -> dict:
 
 
 def _private_receipt(path: str, result: dict) -> None:
-    flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0)
+    """Publish one private receipt atomically and without overwriting a file.
+
+    STOP commits before publication; a receipt failure cannot undo a STOP.
+    """
     body = (json.dumps(result, sort_keys=True, indent=2) + "\n").encode("utf-8")
     if len(body) > 16_384:
         raise StopLedgerError("receipt size rejected")
+    destination = Path(path)
+    if not destination.name or destination.name in (".", ".."):
+        raise StopLedgerError("private receipt path refused")
+    staging = destination.parent / (
+        "." + destination.name + "." + uuid4().hex + ".pending"
+    )
+    flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0)
+    published = False
     try:
-        fd = os.open(path, flags, 0o600)
-    except OSError:
-        raise StopLedgerError("private receipt destination unavailable") from None
-    try:
+        fd = os.open(staging, flags, 0o600)
         with os.fdopen(fd, "wb") as writer:
             writer.write(body)
-    except OSError:
+            writer.flush()
+            os.fsync(writer.fileno())
+        # Same-directory hard-link publication is atomic, and refuses an
+        # already-existing destination (including a symlink). No partial final.
+        os.link(staging, destination, follow_symlinks=False)
+        published = True
+    except (OSError, ValueError, TypeError):
+        raise StopLedgerError("receipt publication failed; STOP may still be recorded") from None
+    finally:
         try:
-            os.unlink(path)
-        except OSError:
+            os.unlink(staging)
+        except FileNotFoundError:
             pass
-        raise StopLedgerError("receipt write failed; STOP may still be recorded") from None
+        except OSError:
+            if not published:
+                # The next authorized operator may safely quarantine the
+                # unreferenced owner-only staging receipt.
+                pass
+
 
 
 def main(argv: list[str] | None = None) -> int:
