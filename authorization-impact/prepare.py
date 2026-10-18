@@ -93,6 +93,11 @@ def _read_private(path: Path, limit: int, require_private: bool = True) -> bytes
 
 
 def _validate_source(raw: bytes) -> None:
+    """Admit the same bounded original Casebook contract used by the browser.
+
+    A successfully packaged source must be displayable by standalone.html;
+    no partial or contradictory provenance can be repackaged as a handoff.
+    """
     try:
         document = json.loads(
             raw.decode("utf-8"),
@@ -119,6 +124,7 @@ def _validate_source(raw: bytes) -> None:
         ("grants", "grant_id"),
         ("risk_approvals", "approval_id"),
     )
+    identities: dict[str, set[str]] = {}
     for kind, identifier in kinds:
         rows = document.get(kind)
         if type(rows) is not list or len(rows) > 200:
@@ -132,10 +138,8 @@ def _validate_source(raw: bytes) -> None:
             if row[identifier] in found:
                 raise Refused("duplicate source ID")
             found.add(row[identifier])
-    overview = document.get("case_overview")
-    if type(overview) is not list or len(overview) != len(document["engagements"]):
-        raise Refused("invalid original case overview")
-    for key in (
+        identities[kind] = found
+    count_fields = (
         "grant_link_hold",
         "risk_tenant_hold",
         "case_attention_hold",
@@ -143,10 +147,109 @@ def _validate_source(raw: bytes) -> None:
         "recorded_window_review",
         "risk_provenance_hold",
         "pending_risk_review",
+    )
+    if any(not _count(counts.get(name), 500) for name in count_fields):
+        raise Refused("invalid source summary")
+    overview = document.get("case_overview")
+    if type(overview) is not list or len(overview) != len(document["engagements"]):
+        raise Refused("invalid original case overview")
+    case_ids: set[str] = set()
+    case_attentions = {
+        "HOLD_SOURCE_PROVENANCE",
+        "HOLD_CLOSED_ENGAGEMENT_WITH_GRANTS",
+        "RISK_DECISION_PENDING_SOURCE_REVIEW",
+        "EXPIRED_GRANT_SOURCE_REVIEW",
+        "FUTURE_GRANT_SOURCE_REVIEW",
+        "REVIEW_ONLY_UNVERIFIED_GRANT_LINK",
+        "NO_GRANT_RECORDED",
+    }
+    for row in overview:
+        if (
+            type(row) is not dict
+            or not _literal(row.get("engagement_id"))
+            or row["engagement_id"] not in identities["engagements"]
+            or row["engagement_id"] in case_ids
+            or not _literal(row.get("status"))
+            or row.get("attention") not in case_attentions
+            or not _literal(row.get("next_review_action"))
+            or not _count(row.get("grant_count"), 200)
+            or not _count(row.get("risk_record_count"), 200)
+        ):
+            raise Refused("invalid case overview")
+        case_ids.add(row["engagement_id"])
+        eid = row["engagement_id"]
+        if (
+            row["grant_count"] != sum(g.get("engagement_id") == eid for g in document["grants"])
+            or row["risk_record_count"] != sum(
+                r.get("engagement_id") == eid for r in document["risk_approvals"]
+            )
+        ):
+            raise Refused("case/source relationship mismatch")
+    if len(case_ids) != len(document["engagements"]):
+        raise Refused("incomplete case coverage")
+    if counts["case_attention_hold"] != sum(
+        row["attention"].startswith("HOLD_") for row in overview
     ):
-        if not _count(counts.get(key), 500):
-            raise Refused("invalid source summary")
-
+        raise Refused("case attention summary mismatch")
+    for row in document["requests"]:
+        if (
+            not _literal(row.get("status"))
+            or not _literal(row.get("requested_mode"))
+            or not _literal(row.get("created_at"))
+            or type(row.get("decision_recorded")) is not bool
+        ):
+            raise Refused("invalid recorded request")
+    for row in document["engagements"]:
+        if not _literal(row.get("status")) or not _literal(row.get("created_at")):
+            raise Refused("invalid recorded engagement")
+    window_types = {
+        "HOLD_INVALID_RECORDED_WINDOW",
+        "EXPIRED_RECORDED_WINDOW",
+        "FUTURE_RECORDED_WINDOW",
+        "WITHIN_RECORDED_WINDOW_NOT_AUTHORITY",
+    }
+    for row in document["grants"]:
+        if (
+            (row.get("engagement_id") is not None and not _literal(row.get("engagement_id")))
+            or (row.get("approved_request_id") is not None and not _literal(row.get("approved_request_id")))
+            or not _literal(row.get("request_link_observation"))
+            or row.get("validity_observation") not in window_types
+        ):
+            raise Refused("invalid grant record")
+    if counts["grant_link_hold"] != sum(
+        row["request_link_observation"].startswith("HOLD_") for row in document["grants"]
+    ):
+        raise Refused("grant link summary mismatch")
+    if counts["recorded_window_review"] != sum(
+        row["validity_observation"] != "WITHIN_RECORDED_WINDOW_NOT_AUTHORITY"
+        for row in document["grants"]
+    ):
+        raise Refused("grant window summary mismatch")
+    risk_types = {
+        "HOLD_RISK_SOURCE_IDENTITY_OR_STATUS",
+        "HOLD_RISK_PENDING_WITH_DECISION",
+        "HOLD_RISK_DECIDER_PROVENANCE",
+        "RISK_DECISION_PENDING_REVIEW",
+        "RISK_DECISION_RECORDED_UNVERIFIED",
+    }
+    for row in document["risk_approvals"]:
+        if (
+            (row.get("engagement_id") is not None and not _literal(row.get("engagement_id")))
+            or not _literal(row.get("status"))
+            or type(row.get("source_tenant_matches")) is not bool
+            or row.get("decision_provenance_observation") not in risk_types
+        ):
+            raise Refused("invalid recorded risk")
+    if counts["risk_provenance_hold"] != sum(
+        row["decision_provenance_observation"].startswith("HOLD_")
+        for row in document["risk_approvals"]
+    ):
+        raise Refused("risk provenance summary mismatch")
+    if counts["pending_risk_review"] != sum(
+        row["decision_provenance_observation"] == "RISK_DECISION_PENDING_REVIEW"
+        for row in document["risk_approvals"]
+    ):
+        raise Refused("pending risk summary mismatch")
 
 def _write_private(dirfd: int, name: str, data: bytes) -> dict[str, object]:
     flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_CLOEXEC", 0)
