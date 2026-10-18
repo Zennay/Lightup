@@ -84,7 +84,11 @@ function inspect(records){
   children.set(key,(children.get(key)||0)+1);
  }
  for(const [sha,count] of children)if(count>1)forks.push({sha,count});
- return {chains,orphans:missing.length,forks,linked:chains.filter(c=>c.parent).length};
+ const superseded=[...children.keys()].filter(sha=>bySha.has(sha));
+ const tips=chains.filter(c=>!children.has(c.sha)).map(c=>c.sha);
+ // A local tip is not necessarily newest in a real system and is NEVER authority.
+ return {chains,orphans:new Set(missing).size,forks,
+  linked:chains.filter(c=>c.parent).length,superseded,tips};
 }
 global.LightUpLocalLineage=Object.freeze({validate,create,inspect});
 })(window);
