@@ -955,16 +955,39 @@ class DomainStore:
         self, ctx: AccessContext, engagement_id: str
     ) -> list[AuthorizationGrant]:
         engagement = self.get_engagement(ctx, engagement_id)
+        result: list[AuthorizationGrant] = []
         with self._connect() as con:
+            con.execute("BEGIN")
             rows = con.execute(
                 "SELECT g.* FROM authorization_grants AS g "
                 "JOIN engagements AS e ON e.engagement_id=g.engagement_id "
                 "WHERE g.engagement_id=? AND e.client_id=? "
                 "AND g.client_id=e.client_id "
+                "AND g.approved_request_id IS NOT NULL "
                 "ORDER BY g.created_at DESC",
                 (engagement.engagement_id, engagement.client_id),
             ).fetchall()
-        return [self._grant_from_row(r) for r in rows]
+            for row in rows:
+                try:
+                    granted_assets = json.loads(row["assets_json"])
+                    if type(granted_assets) is not list:
+                        continue
+                    eligible = approved_request_is_compatible(
+                        self._approved_request_for_grant(con, row["approved_request_id"]),
+                        client_id=engagement.client_id,
+                        grant_assets=tuple(granted_assets),
+                        grant_max_risk=row["max_risk"],
+                        grant_created_at=row["created_at"],
+                    )
+                    if not eligible:
+                        continue
+                    result.append(self._grant_from_row(row))
+                except (ValueError, TypeError, KeyError, OverflowError):
+                    # Corrupt stored grant/request metadata cannot escape as an
+                    # apparently current authorizing grant. Never repair here.
+                    continue
+            con.rollback()
+        return result
 
     def get_current_grant(
         self, ctx: AccessContext, engagement_id: str, now: datetime | None = None
