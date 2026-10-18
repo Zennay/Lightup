@@ -104,3 +104,16 @@ The private ZIP now also contains `index.html`, a responsive, accessible **fully
 Each complete private ZIP now includes `human-worklist.csv`, a bounded **ordinal-only** human planning handoff generated from already-admitted original #1515 metric regression flags. Scope/policy regressions are tagged P1 for human scope-policy review; lab finding/coverage count regressions P2 for the lab-runtime workstream; evidence/rubric regressions P3 for evidence review. These are purely *static suggested human review categories*: they never schedule work, contact targets, assign real people, assert vulnerability severity, grant permissions or override source HOLD. The CSV contains only `Case N`, built-in metric names, static action text and literal `false` authorization/consent/release flags; there are no raw scenario IDs, source paths, assets or original evidence payloads. A non-regressed comparison has the header without invented follow-up items. A HOLD caused by malformed/replayed input creates no package or CSV.
 
 The manifest also includes SHA-256 digests for each newly generated report, Review Desk input JSON and CSV. Together with the pinned browser/app digests, reviewers can detect accidental modifications **after** the package is created; these unsigned digests do not prove source authenticity or release clearance. The private ZIP contains a source-rich JSON file despite privacy-minimal HTML/CSV, so continue protecting the whole ZIP.
+
+## Offline review-package integrity inspector
+
+Recipients can inspect an **already-created** private ZIP with an optional separate, **read-only** command, without opening a browser or trusting input ZIP paths:
+
+```bash
+PYTHONPATH=src:scripts python scripts/assessment_runtime_verify_pack_cli_20261018.py \
+  /private/EXISTING-review-pack.zip
+```
+
+The inspector admits only an explicitly selected bounded **regular, non-symlink local ZIP**, exactly the seven fixed safe member names, strictly bounded decompressed member lengths, no encrypted entries, no unsupported compression, canonical duplicate-free manifest JSON, every required literal-false authority/consent/release flag, the immutable original #1576 browser hash and pinned local start-screen hash, the source fingerprints' canonical shape, original comparator report status consistency and source-member SHA-256 consistency. Bad archives fail with generic `PRIVATE_LAB_PACK_HOLD` and exit **3**, without echoing private contents. Structurally intact packages print only `PRIVATE_LAB_PACK_INTACT — REVIEW_ONLY/HOLD; UNSIGNED; NOT AUTHORIZED` and exit **2**, never 0.
+
+**Important distinction:** this checks packaging/transfer integrity *relative to its own unsigned manifest*, not source authenticity or resistance to a malicious party who replaces both the contents and the manifest. No key, digital signature, original client consent, independent security verdict or release gate is implied or introduced. This is a read-only product tool, not a QA, scanner or CI workaround.
