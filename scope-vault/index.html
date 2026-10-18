@@ -15,11 +15,18 @@
 <p>Each export uses a new random 256-bit AES-GCM key derived from your passphrase with PBKDF2-SHA256 (600,000 iterations). LightUp never stores, recovers, or transmits your passphrase.</p>
 <div class="grid"><label>Passphrase (14+ characters)<input id="seal-password" type="password" autocomplete="new-password" minlength="14" maxlength="256"></label>
 <label>Confirm passphrase<input id="seal-confirm" type="password" autocomplete="new-password" minlength="14" maxlength="256"></label></div>
+<label>Intended offline handoff route (self-reported; recipient identity is NOT verified)
+<select id="handoff-route">
+<option value="private-archive">Private archive / internal preparation</option>
+<option value="client-review">Client review — only client proposals, revisions, schedules</option>
+<option value="operator-review">Operator review — selected assessment paperwork</option>
+</select></label>
+<p class="subtle">Client-review exports refuse operator-labelled or unclassified files; every encrypted export shows the exact selected filenames for a final local confirmation. This routing choice never authenticates the recipient or grants rights.</p>
 <p class="subtle">To prepare a smaller recipient handoff, select only the intended files in the inventory. All files remain selected by default. Never treat an encrypted handoff as recipient identity or consent.</p>
 <div class="actions"><button id="seal" type="button">Download selected encrypted packet</button><button id="select-all" type="button" class="secondary">Select all</button><button id="select-none" type="button" class="secondary">Select none</button><button id="clear" type="button" class="secondary">Forget all plaintext</button></div>
 </section>
 <section aria-labelledby="unlock-title"><h2 id="unlock-title">3. Restore a saved packet</h2>
-<p>Load one locally saved encrypted vault. Its authenticity depends on knowing the passphrase and trusting where you got the file. Encryption alone does <strong>not</strong> prove client identity, consent, scope approval or authorization.</p>
+<p>Load one locally saved encrypted vault. Its encrypted inner payload also preserves the self-reported intended handoff route when present. Its authenticity depends on knowing the passphrase and trusting where you got the file. Encryption alone does <strong>not</strong> prove client identity, consent, scope approval or authorization.</p>
 <div class="grid"><label>Encrypted vault file<input id="open-file" type="file" accept=".json"></label><label>Passphrase<input id="open-password" type="password" autocomplete="off" maxlength="256"></label></div>
 <label class="checkline"><input id="merge-mode" type="checkbox"> Merge files into the current offline workspace instead of replacing it. Identical names + content are kept once; any disagreement aborts the entire import.</label>
 <div class="actions"><button id="unlock" type="button">Unlock / merge locally</button><button id="lock" type="button" class="secondary">Lock immediately</button></div></section>
