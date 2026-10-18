@@ -627,7 +627,8 @@
       ...a.human_queue_priorities.map(q=>["Source priority "+q.category,q.cases]),
       ...Object.entries(a.human_discussion_stages).map(([stage,count])=>
         ["Human "+stage,count])];
-    table(node,["Anonymous human discussion summary","Source-reported count"],entries);
+    const tableArea=document.createElement("div");node.append(tableArea);
+    table(tableArea,["Anonymous human discussion summary","Source-reported count"],entries);
     const footer=document.createElement("p");
     footer.textContent="All authorized / consent_verified / dispatch_allowed / release_allowed "+
       "flags false. No original case IDs, host/IP/URL, original report values, "+
