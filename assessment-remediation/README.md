@@ -118,3 +118,19 @@ metadata, no duplicates, no compression or extra payloads, valid SHA-256
 manifest and matching original aggregate/link schema. It exits 2 REVIEW_ONLY
 or 3 HOLD, never confirms sender authenticity, client ownership, current
 consent, safety, remediated vulnerabilities or permission to retest.
+
+### One-command operator delivery
+
+The native bridge CLI also supports --bundle to generate its four original
+private artifacts **and** the portable 0600 private room ZIP in one invocation.
+It rejects all five output names up front and delegates to the same exact
+source-bound packet builder; no original source is modified. A sudden process
+crash between per-file publications can still leave completed private
+intermediate files; do not treat the five artifacts as a transactional DB commit.
+
+    python3 assessment-remediation/bridge.py \
+      --comparison /private/completed-cohort-comparison.json \
+      --findings-csv /private/authenticated-client-findings.csv \
+      --links /private/lightup-private-manual-links.json \
+      --output-dir /private/lightup-followup \
+      --prefix final-handoff --bundle

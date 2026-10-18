@@ -301,8 +301,10 @@ def run(args):
     }
     destinations = [(folder / (args.prefix + "-" + name), payload)
                     for name, payload in outputs.items()]
-    fail_if(any(os.path.lexists(path) for path, _ in destinations),
-            "private destination already exists; do not overwrite")
+    fail_if(any(os.path.lexists(path) for path, _ in destinations) or
+            (args.bundle and
+             os.path.lexists(folder / (args.prefix + "-private-room.zip"))),
+            "private destination or room already exists; do not overwrite")
     # Recheck exact original source bytes before publishing anything.
     fail_if(sha256(read_regular(args.comparison, MAX_COMPARE)).hexdigest() != digests[0]
             or sha256(read_regular(args.findings_csv, MAX_FINDINGS)).hexdigest() != digests[1]
@@ -313,11 +315,11 @@ def run(args):
     try:
         for path, payload in destinations:
             publish(path, payload)
-            published.append((path, sha256(payload).digest()))
+            published.append((path, sha256(payload).digest(), len(payload)))
     except Exception:
-        for path, expected in published:
+        for path, expected, size in published:
             try:
-                if sha256(read_regular(str(path), MAX_FINDINGS)).digest() == expected:
+                if sha256(read_regular(str(path), size)).digest() == expected:
                     path.unlink()
             except (OSError, Hold):
                 pass
@@ -337,9 +339,17 @@ def main(argv=None):
     parser.add_argument("--links", help="Optional existing exact-source-bound human links JSON")
     parser.add_argument("--output-dir", required=True, help="Existing owned private 0700 directory")
     parser.add_argument("--prefix", default="lightup-followup")
+    parser.add_argument("--bundle", action="store_true",
+                        help="Also create a private portable 0600 room ZIP from completed outputs")
     args = parser.parse_args(argv)
     try:
-        return run(args)
+        status = run(args)
+        if args.bundle:
+            # Only after native source admission/publication: package the exact
+            # private outputs. Both states remain non-authorizing 2/3.
+            from packet import create_room
+            create_room(args)
+        return status
     except (Hold, OSError, ValueError, TypeError, KeyError,
             OverflowError, UnicodeError, RecursionError) as exc:
         print("PRIVATE_ASSESSMENT_REMEDIATION_HOLD — invalid, unsafe, or changed local source/output", file=sys.stderr)
