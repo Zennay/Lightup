@@ -10,7 +10,7 @@ const STAGES=['missing','submitted','needs_changes','ready_for_authorized_retest
 const MAX={change_reference:240,deployment_reference:240,rollback_reference:240,retest_request_reference:240,review_question:700};
 const bidi=/[\u202a-\u202e\u2066-\u2069]/;
 const HOURS=4;
-let state=null,lastBulkSnapshot=null;
+let state=null,lastBulkSnapshot=null,revisionCandidate=null;
 const setStatus=(value,error=false)=>{$('status').textContent=value;$('status').dataset.error=error?'true':'false';};
 function fail(s){throw Error(s);}
 function keys(o,allowed,required=allowed){
@@ -226,7 +226,7 @@ function render(){
 }
 async function load(){
  /* Atomic import: always discard old state on a new attempt, never keep stale source on error. */
- state=null;lastBulkSnapshot=null;$('bulkUndo').disabled=true;$('results').hidden=true;$('digest').textContent='';
+ state=null;revisionCandidate=null;lastBulkSnapshot=null;$('bulkUndo').disabled=true;$('results').hidden=true;$('digest').textContent='';
  const file=$('csv').files[0],review=$('review').files[0];
  if(review&&!$('same').checked)fail('Independent exact client/engagement confirmation required for review join.');
  const src=C.parseCSV(await read(file,1048576)),hash=await digest(src);
@@ -269,8 +269,16 @@ async function resumePlan(){
  if(!state)fail('Load original source before resuming a private plan.');
  if(!$('same').checked)fail('Independently confirm same original client and exact engagement.');
  const raw=strictJSON(await read($('planFile').files[0],2097152));
- const top=['kind','schema_version','disposition','source_contract','source_sha256','warning','windows','meeting_note','assignments',...FLAGS];
- keys(raw,top,top.filter(x=>x!=='warning'));
+ const top=['kind','schema_version','disposition','source_contract','source_sha256','warning','windows','meeting_note','assignments','source_refresh',...FLAGS];
+ keys(raw,top,top.filter(x=>!['warning','source_refresh'].includes(x)));
+ const refresh=raw.source_refresh||null;
+ if(refresh!==null){
+  keys(refresh,['from_sha256','to_sha256','added','changed','absent_unverified','unchanged']);
+  if(typeof refresh.from_sha256!=='string'||!/^[a-f0-9]{64}$/.test(refresh.from_sha256)||
+     refresh.from_sha256===raw.source_sha256||refresh.to_sha256!==state.hash||
+     !['added','changed','absent_unverified','unchanged'].every(k=>Number.isInteger(refresh[k])&&refresh[k]>=0&&refresh[k]<=350))
+   fail('Invalid non-authorizing original source revision summary.');
+ }
  if(raw.kind!=='lightup.remediation_human_change_windows'||raw.schema_version!==1||
     raw.disposition!=='DRAFT_UNVERIFIED_HUMAN_COORDINATION'||
     raw.source_contract!=='lightup.finding_export._COLUMNS_v1'||
@@ -338,13 +346,77 @@ async function resumePlan(){
    fail('Private window aggregate contradicts original source/review records.');
  }
  /* All admissions are complete; apply the whole human draft in one step. */
- state.assignments=imported;lastBulkSnapshot=null;$('bulkUndo').disabled=true;
+ state.assignments=imported;state.refreshSummary=refresh;revisionCandidate=null;lastBulkSnapshot=null;$('bulkUndo').disabled=true;
  for(let i=0;i<HOURS;i++){
   const w=restoredWindows[i];$('date'+i).value=w?w.start_utc.slice(0,16):'';
   $('label'+i).value=w?w.label:'';$('duration'+i).value=String(w?w.minutes:60);
  }
  $('note').value=raw.meeting_note;render();
  setStatus('Private planning draft restored against exact original source and unchanged human review. No authority inferred.');
+}
+
+
+function localPlanFingerprint(){
+ if(!state)fail('No current original source.');
+ return localSha256(JSON.stringify({
+  source_sha256:state.hash,
+  original_ids:state.source.map(f=>f.finding_id),
+  human:state.source.map(f=>state.review.get(f.finding_id)),
+  proposal:state.source.map(f=>state.assignments.get(f.finding_id)||0),
+  windows:Array.from({length:HOURS},(_,i)=>[$('label'+i).value,$('date'+i).value,$('duration'+i).value]),
+  meeting_note:$('note').value
+ }));
+}
+function clearRevisionPreview(message=''){
+ revisionCandidate=null;$('applyRevision').disabled=true;
+ if(message)$('revisionSummary').textContent=message;
+}
+async function previewSourceRevision(){
+ if(!state)fail('Load original authorized finding summary first.');
+ clearRevisionPreview();
+ if(!$('confirmRevision').checked)fail('Independent same original client and exact engagement confirmation required.');
+ const next=C.parseCSV(await read($('nextCsv').files[0],1048576));
+ const hash=await digest(next);
+ if(hash===state.hash)fail('Original source is unchanged; no revision needed.');
+ const diff=C.compareSource(state.source,next);
+ revisionCandidate={
+  base:state.hash,plan:localPlanFingerprint(),next,hash,diff
+ };
+ $('revisionSummary').textContent=
+   'Original source preview — '+diff.added.length+' new; '+diff.changed.length+' changed; '+
+   diff.unchanged.length+' exact unchanged; '+diff.missing.length+
+   ' absent (UNVERIFIED, NOT FIXED). No local source or assignments changed.';
+ $('applyRevision').disabled=false;
+}
+function applySourceRevision(){
+ const candidate=revisionCandidate;
+ if(!state||!candidate)fail('Preview a current original source revision first.');
+ if(!$('confirmRevision').checked)fail('Same actual client and engagement confirmation is required at application.');
+ if(candidate.base!==state.hash||candidate.plan!==localPlanFingerprint())
+  fail('Source or local human plan changed after preview; preview again. No partial carry performed.');
+ const {diff,next,hash}=candidate;
+ const keep=new Set(diff.unchanged),oldReview=state.review,oldSlots=state.assignments;
+ const notes=new Map(),slots=new Map();
+ for(const f of next){
+  notes.set(f.finding_id,keep.has(f.finding_id)?oldReview.get(f.finding_id):emptyReview());
+  slots.set(f.finding_id,keep.has(f.finding_id)?(oldSlots.get(f.finding_id)||0):0);
+ }
+ const summary={
+  from_sha256:state.hash,to_sha256:hash,
+  added:diff.added.length,changed:diff.changed.length,
+  absent_unverified:diff.missing.length,unchanged:diff.unchanged.length
+ };
+ /* Atomic swap only after the full original five-field comparator, digest,
+  * review/slot mapping and preview fingerprint have been accepted. */
+ state={source:next,hash,review:notes,assignments:slots,refreshSummary:summary};
+ lastBulkSnapshot=null;$('bulkUndo').disabled=true;
+ $('digest').textContent='Current original canonical source SHA-256: '+hash+
+   ' · changed/new human notes and slots reset; absent source records are NOT fixed.';
+ $('nextCsv').value='';clearRevisionPreview('Applied original source revision to LOCAL human planning only. '+summary.unchanged+
+   ' unchanged original records retained prior private human notes and proposed slots; '+
+   (summary.added+summary.changed)+' new/changed records reset. '+summary.absent_unverified+
+   ' absent = UNVERIFIED (NOT a repaired finding).');
+ render();setStatus('Private planning carried only exact unchanged original source records. No grant, repair, retest or approval.');
 }
 
 function privateExport(){
@@ -354,7 +426,7 @@ function privateExport(){
   kind:'lightup.remediation_human_change_windows',schema_version:1,
   disposition:'DRAFT_UNVERIFIED_HUMAN_COORDINATION',source_contract:'lightup.finding_export._COLUMNS_v1',
   source_sha256:state.hash,warning:'Unsigned and non-authorizing; source absence or scheduled stage never means verified remediation.',
-  windows:detail,meeting_note:human($('note').value,600),
+  windows:detail,meeting_note:human($('note').value,600),source_refresh:state.refreshSummary||null,
   assignments:state.source.map(f=>{
    const r=state.review.get(f.finding_id);
    return {finding_id:f.finding_id,original_severity:f.severity,original_retest_status:f.retest_status,
@@ -388,7 +460,8 @@ function aggregateExport(){
  output('lightup-aggregate-human-windows.csv',data.join('\r\n')+'\r\n','text/csv');
 }
 function forget(){
- state=null;lastBulkSnapshot=null;$('bulkUndo').disabled=true;for(const id of ['csv','review','planFile'])$(id).value='';
+ state=null;revisionCandidate=null;lastBulkSnapshot=null;$('bulkUndo').disabled=true;for(const id of ['csv','review','planFile','nextCsv'])$(id).value='';
+ $('confirmRevision').checked=false;clearRevisionPreview('');
  $('same').checked=false;$('note').value='';$('digest').textContent='';$('results').hidden=true;
  for(let i=0;i<HOURS;i++){$('date'+i).value='';$('label'+i).value='';$('duration'+i).value='60';}
  setStatus('All loaded original data and human window assignments forgotten from this tab.');
@@ -405,6 +478,9 @@ function init(){
  $('load').addEventListener('click',()=>load().catch(e=>{state=null;$('results').hidden=true;setStatus(e.message,true);}));
  $('forget').addEventListener('click',forget);
  $('resume').addEventListener('click',()=>resumePlan().catch(e=>setStatus(e.message,true)));
+ $('previewRevision').addEventListener('click',()=>previewSourceRevision().catch(e=>{clearRevisionPreview(e.message);setStatus(e.message,true);}));
+ $('applyRevision').addEventListener('click',()=>{try{applySourceRevision();}catch(e){setStatus(e.message,true);}});
+ for(const id of ['nextCsv','confirmRevision'])$(id).addEventListener('change',()=>clearRevisionPreview('Source selection changed. Create a new preview.'));
  $('filter').addEventListener('change',render);
  $('humanFilter').addEventListener('change',render);
  $('bulkApply').addEventListener('click',()=>{try{bulkApply();}catch(e){setStatus(e.message,true);}});
