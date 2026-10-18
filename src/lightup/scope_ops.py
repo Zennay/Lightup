@@ -63,7 +63,9 @@ def _list_cases(source: dict) -> None:
     print("No original risk/request/grant state is treated as consent.\n")
 
 
-def _detail(database: str, user_id: str, source: dict, eid: str) -> None:
+def _detail(database: str, user_id: str, client_id: str | None, eid: str) -> None:
+    # Re-read original tenant membership immediately before showing private detail.
+    source = _load(database, user_id, client_id)
     case = _case(source, eid)
     matches = [g for g in source["grants"] if g["engagement_id"] == eid]
     request_ids = {g["approved_request_id"] for g in matches if g["approved_request_id"] is not None}
@@ -132,7 +134,7 @@ def main(argv: list[str] | None = None) -> int:
             eid = input("Exact existing engagement ID: ").strip()
             row = _case(source, eid)
             if choice in ("i", "inspect"):
-                _detail(args.database, actor, source, eid)
+                _detail(args.database, actor, args.client, eid)
                 continue
 
             # Existing original DomainStore/STOP source still revalidates the
