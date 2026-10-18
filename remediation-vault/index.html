@@ -46,6 +46,17 @@
 <button id="rekey" class="primary" type="button">Re-encrypt unlocked files ↗</button>
 </div></div>
 </section></div>
+<section class="panel compare-panel" aria-labelledby="compareTitle">
+<div class="panel-head"><span class="step">03</span><div><div class="tag">LOCAL SOURCE REVISION VIEW</div><h2 id="compareTitle">Compare two private handoffs</h2></div></div>
+<p class="helper">First unlock the baseline vault in step 02. Then choose a second separately received encrypted vault (possibly a different passphrase). Classify original file bytes as unchanged, changed, added or absent. No contents are sent anywhere; an absent file never proves a finding was fixed.</p>
+<div class="compare-controls">
+<div><label for="comparefile">Second encrypted PRIVATE .vault.json</label><input type="file" id="comparefile" accept=".json"></div>
+<div><label for="comparepass">Second private passphrase</label><input type="password" id="comparepass" minlength="12" maxlength="256" autocomplete="off"></div></div>
+<label class="confirm"><input type="checkbox" id="compareack"><span>I separately verified both packets concern the identical real client and exact engagement. Their contents are untrusted human artifacts, not authoritative security status.</span></label>
+<button class="primary" id="compare" type="button">Compare original file versions locally ↗</button>
+<div class="receipt"><span class="tag">PRIVATE COMPARISON</span><p id="compareStats">No private comparison loaded.</p><div id="compareRows" class="filelist" aria-live="polite"></div>
+<button id="compareExport" type="button" class="secondary" disabled>Download anonymous counts only</button></div>
+</section>
 <div class="footer-actions"><div><span class="tag">SESSION CONTROL</span><p>All selected and recovered bytes remain only in current browser memory until you deliberately save them. This application uses no localStorage, cookies, IndexedDB or network access.</p></div><button id="clear" class="secondary" type="button">Clear private session</button></div>
 <p role="status" id="status" aria-live="polite" class="status">Ready. No private material selected.</p>
 <section class="footnote"><div><strong>What's protected</strong><p>Content, original filenames and optional human label are inside encrypted ciphertext. Tampering and wrong passphrases fail authenticated decryption; exact SHA-256 per file and bound lengths are also checked on restore.</p></div><div><strong>What isn't protected</strong><p>File size, presence of a vault, plaintext after manual restore/download, a weak passphrase, compromised devices, browser extensions or recipients. Cryptographic integrity is not an independent source or authorization check.</p></div><div><strong>Release policy</strong><p>LightUp remains INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD. This offline workspace never scans, approves, grants, executes, sends, retests, deploys or contacts clients.</p></div></section>

@@ -5,7 +5,7 @@
   const TYPES = new Set(["json", "csv", "md", "txt"]);
   const $ = id => document.getElementById(id);
   const encode = new TextEncoder(), decode = new TextDecoder("utf-8", {fatal: true});
-  let selected = [], restored = [], busy = false, restoredLabel = '', receiptState = null;
+  let selected = [], restored = [], busy = false, restoredLabel = '', receiptState = null, comparison = null;
   const say = (message, bad = false) => { $("status").textContent = message; $("status").dataset.kind = bad ? "error" : "ok"; };
   const clearNode = el => { while (el.firstChild) el.removeChild(el.firstChild); };
   const hex = b => Array.from(new Uint8Array(b), x => x.toString(16).padStart(2, "0")).join("");
@@ -35,6 +35,14 @@
     receiptState=null;
     $("receiptDownload").disabled=true;
     $("receiptDigest").textContent="No encrypted packet prepared.";
+  }
+  function clearComparison() {
+    comparison=null;
+    clearNode($("compareRows"));
+    $("compareStats").textContent="No private comparison loaded.";
+    $("compareExport").disabled=true;
+    $("comparepass").value="";
+    $("compareack").checked=false;
   }
   async function prepareReceipt(bytes) {
     receiptState={format:"lightup.remediation_vault_receipt.v1",vault_bytes:bytes.length,
@@ -82,6 +90,8 @@
     $("rekeysecret").value=""; $("rekeyack").checked=false;
     $("receiptfile").value=""; $("receiptVerify").textContent="No receipt selected.";
     forgetReceipt();
+    $("comparefile").value="";
+    clearComparison();
     clearNode($("filelist")); clearNode($("restored"));
     $("summary").textContent="Nothing loaded.";
     $("vaultDetails").textContent="";
@@ -157,36 +167,8 @@
     $("secret").value="";
     say("Encrypted local vault downloaded. Share the passphrase separately; this file is not permission to act.");
   }));
-  $("vaultfile").addEventListener("change", () => {restored=[];restoredLabel="";clearNode($("restored"));$("summary").textContent="Nothing unlocked.";});
-  $("restore").addEventListener("click", () => withBusy(async () => {
-    restored=[]; clearNode($("restored")); $("summary").textContent="Nothing unlocked.";
-    const f=$("vaultfile").files?.[0];
-    fail(!!f && ($("vaultfile").files||[]).length===1 && f.size>0 && f.size<=MAX_VAULT,
-      "Select exactly one local .vault.json of at most 12 MiB.");
-    fail(f.name.endsWith(".vault.json"),"Vault name must end in .vault.json.");
-    const password=$("unlock").value;
-    fail(password.length>=12 && password.length<=256, "Enter your private passphrase.");
-    const bytes = new Uint8Array(await f.arrayBuffer());
-    const receiptFile=$("receiptfile").files?.[0];
-    $("receiptVerify").textContent="No optional receipt checked.";
-    if (receiptFile) {
-      fail(($("receiptfile").files||[]).length===1 && receiptFile.size>0 &&
-        receiptFile.size<=2048 && receiptFile.name.endsWith(".receipt.json"),
-        "Expected one anonymous .receipt.json of at most 2 KiB.");
-      const receiptText=decode.decode(new Uint8Array(await receiptFile.arrayBuffer()));
-      let record;
-      try {record=JSON.parse(receiptText);} catch {throw new Error("Invalid receipt JSON.");}
-      fail(record && typeof record==="object" && !Array.isArray(record) &&
-        receiptText===JSON.stringify(record,null,2)+"\n" &&
-        Object.keys(record).sort().join(",")==="authority,format,vault_bytes,vault_sha256" &&
-        record.format==="lightup.remediation_vault_receipt.v1" && record.authority===false &&
-        Number.isSafeInteger(record.vault_bytes) && record.vault_bytes>0 &&
-        record.vault_bytes<=MAX_VAULT && typeof record.vault_sha256==="string" &&
-        /^[a-f0-9]{64}$/.test(record.vault_sha256), "Invalid or unsupported unsigned receipt.");
-      fail(record.vault_bytes===bytes.length && await digest(bytes)===record.vault_sha256,
-        "Vault does not match the supplied unsigned SHA-256 transfer receipt.");
-      $("receiptVerify").textContent="Ciphertext matched the supplied unsigned SHA-256 receipt. Sender identity and consent remain UNVERIFIED.";
-    }
+  async function decryptPacket(bytes,password) {
+    fail(bytes.length>0 && bytes.length<=MAX_VAULT, "Encrypted vault size limit exceeded.");
     const serialized=decode.decode(bytes);
     let env;
     try {env=JSON.parse(serialized);} catch {throw new Error("Not a valid vault envelope.");}
@@ -236,6 +218,39 @@
       decode.decode(item);
       pending.push({name:entry.name,bytes:item});
     }
+    return {pending,doc,total};
+  }
+  $("vaultfile").addEventListener("change", () => {restored=[];restoredLabel="";clearNode($("restored"));$("summary").textContent="Nothing unlocked.";});
+  $("restore").addEventListener("click", () => withBusy(async () => {
+    restored=[]; clearComparison(); clearNode($("restored")); $("summary").textContent="Nothing unlocked.";
+    const f=$("vaultfile").files?.[0];
+    fail(!!f && ($("vaultfile").files||[]).length===1 && f.size>0 && f.size<=MAX_VAULT,
+      "Select exactly one local .vault.json of at most 12 MiB.");
+    fail(f.name.endsWith(".vault.json"),"Vault name must end in .vault.json.");
+    const password=$("unlock").value;
+    fail(password.length>=12 && password.length<=256, "Enter your private passphrase.");
+    const bytes = new Uint8Array(await f.arrayBuffer());
+    const receiptFile=$("receiptfile").files?.[0];
+    $("receiptVerify").textContent="No optional receipt checked.";
+    if (receiptFile) {
+      fail(($("receiptfile").files||[]).length===1 && receiptFile.size>0 &&
+        receiptFile.size<=2048 && receiptFile.name.endsWith(".receipt.json"),
+        "Expected one anonymous .receipt.json of at most 2 KiB.");
+      const receiptText=decode.decode(new Uint8Array(await receiptFile.arrayBuffer()));
+      let record;
+      try {record=JSON.parse(receiptText);} catch {throw new Error("Invalid receipt JSON.");}
+      fail(record && typeof record==="object" && !Array.isArray(record) &&
+        receiptText===JSON.stringify(record,null,2)+"\n" &&
+        Object.keys(record).sort().join(",")==="authority,format,vault_bytes,vault_sha256" &&
+        record.format==="lightup.remediation_vault_receipt.v1" && record.authority===false &&
+        Number.isSafeInteger(record.vault_bytes) && record.vault_bytes>0 &&
+        record.vault_bytes<=MAX_VAULT && typeof record.vault_sha256==="string" &&
+        /^[a-f0-9]{64}$/.test(record.vault_sha256), "Invalid or unsupported unsigned receipt.");
+      fail(record.vault_bytes===bytes.length && await digest(bytes)===record.vault_sha256,
+        "Vault does not match the supplied unsigned SHA-256 transfer receipt.");
+      $("receiptVerify").textContent="Ciphertext matched the supplied unsigned SHA-256 receipt. Sender identity and consent remain UNVERIFIED.";
+    }
+    const {pending,doc,total}=await decryptPacket(bytes,password);
     restored=pending; restoredLabel=doc.label; table($("restored"),restored,true);
     $("summary").textContent=String(restored.length)+" original file(s), "+humanSize(total)+
       ". PRIVATE original contents; source authority and recipient permission NOT verified.";
@@ -243,6 +258,56 @@
     $("unlock").value="";
     say("Vault unlocked locally. Select each download only after independently verifying recipient and exact engagement.");
   }));
+  $("comparefile").addEventListener("change",clearComparison);
+  $("compare").addEventListener("click",()=>withBusy(async()=>{
+    comparison=null; clearNode($("compareRows")); $("compareStats").textContent="Comparing private original bytes..."; $("compareExport").disabled=true;
+    fail(restored.length>0, "Unlock the original baseline vault first.");
+    fail($("compareack").checked, "Confirm the two privately received vaults concern the exact same real client and engagement.");
+    const f=$("comparefile").files?.[0];
+    fail(!!f && ($("comparefile").files||[]).length===1 &&
+      f.name.endsWith(".vault.json") && f.size>0 && f.size<=MAX_VAULT,
+      "Select one bounded encrypted comparison vault.");
+    const password=$("comparepass").value;
+    fail(password.length>=12 && password.length<=256, "Enter the comparison vault's private passphrase.");
+    const {pending}=await decryptPacket(new Uint8Array(await f.arrayBuffer()),password);
+    const original=new Map(restored.map(r=>[r.name.toLowerCase(),r]));
+    const received=new Map(pending.map(r=>[r.name.toLowerCase(),r]));
+    const rows=[]; const counts={unchanged:0,changed:0,added:0,absent:0};
+    for(const [key,left] of original.entries()) {
+      const right=received.get(key);
+      const category=!right?"absent":await digest(left.bytes)===await digest(right.bytes)?"unchanged":"changed";
+      counts[category]++;
+      rows.push({name:left.name,category});
+    }
+    for(const [key,right] of received.entries()) if (!original.has(key)) {
+      counts.added++;rows.push({name:right.name,category:"added"});
+    }
+    rows.sort((a,b)=>a.category.localeCompare(b.category)||a.name.localeCompare(b.name));
+    comparison={counts,rows,baseline_files:restored.length,candidate_files:pending.length};
+    const dest=$("compareRows");clearNode(dest);
+    for(const entry of rows) {
+      const line=document.createElement("div");line.className="file-row";
+      const name=document.createElement("span");name.textContent=entry.name;
+      const state=document.createElement("small");state.textContent=entry.category.toUpperCase();
+      line.append(name,state);dest.append(line);
+    }
+    $("compareStats").textContent="UNCHANGED "+counts.unchanged+" · CHANGED "+counts.changed+
+      " · ADDED "+counts.added+" · ABSENT "+counts.absent+". Comparison uses private original filenames and SHA-256 bytes ONLY.";
+    $("compareExport").disabled=false;
+    $("comparepass").value="";
+    say("Private file-level comparison completed. Absent does NOT mean fixed. No actual finding or grant was changed.");
+  }));
+  $("compareExport").addEventListener("click",()=>{
+    if (!comparison) {say("First compare two private vaults.",true);return;}
+    const summary={format:"lightup.remediation_vault_diff_summary.v1",
+      baseline_files:comparison.baseline_files,candidate_files:comparison.candidate_files,
+      counts:{...comparison.counts},
+      verified_source:false,verified_client:false,verified_consent:false,
+      verified_remediation:false,authorized_retest:false};
+    save(encode.encode(JSON.stringify(summary,null,2)+"\n"),
+      "lightup-anonymous-vault-diff.json","application/json");
+    say("Anonymous counts-only comparison exported. No filenames, labels, hashes or client data exported.");
+  });
   $("rekey").addEventListener("click", () => withBusy(async () => {
     fail(restored.length>0, "Unlock the original local vault before re-encrypting.");
     fail($("rekeyack").checked, "Confirm that this private handoff is approved for its recipient.");
