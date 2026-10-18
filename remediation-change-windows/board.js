@@ -234,13 +234,46 @@ function el(tag,txt){const n=document.createElement(tag);if(txt!==undefined)n.te
 function hasHumanHold(f,r){
  return r.stage==='missing'||r.stage==='needs_changes'||EVIDENCE.slice(0,4).some(k=>!r.evidence[k]);
 }
+
+function ownerKey(c){return c?.owner.trim()?'named:'+c.owner.trim():'unassigned-owner';}
+function ownerWorkload(){
+ const board=$('ownerBoard'),selector=$('ownerFilter'),prior=selector.value;
+ board.replaceChildren();
+ selector.replaceChildren(new Option('All human owners',''));
+ if(!state?.casework){board.appendChild(el('p','Import an original exact-source private Casework v1 to view human owner groups.'));return;}
+ const groups=new Map();
+ for(const f of state.source){
+  const c=state.casework.get(f.finding_id),key=ownerKey(c);
+  if(!groups.has(key))groups.set(key,{key,label:c.owner.trim()||'(Human owner unassigned)',total:0,urgent:0,blocked:0,overdue:0,late:0,unscheduled:0});
+  const v=groups.get(key);v.total++;
+  if(['critical','high'].includes(f.severity))v.urgent++;
+  if(caseBlocked(c))v.blocked++;
+  if(pastDue(c))v.overdue++;
+  if(windowAfterHumanDue(f))v.late++;
+  if(!state.assignments.get(f.finding_id))v.unscheduled++;
+ }
+ const sorted=[...groups.values()].sort((a,b)=>b.urgent-a.urgent||b.blocked-a.blocked||a.label.localeCompare(b.label));
+ for(const group of sorted){
+  selector.appendChild(new Option(group.label,group.key));
+  const tile=el('article');tile.className='item';
+  tile.appendChild(el('h3',group.label));
+  tile.appendChild(el('p',group.total+' original findings · '+group.urgent+' critical/high · '+group.blocked+' local blockers · '+
+   group.overdue+' local overdue · '+group.late+' planned after local due · '+group.unscheduled+' unscheduled.'));
+  const btn=el('button','Filter to this human owner');
+  btn.addEventListener('click',()=>{selector.value=group.key;render();});
+  tile.appendChild(btn);board.appendChild(tile);
+ }
+ selector.value=groups.has(prior)?prior:'';
+}
+
 function visibleFinding(f,r){
- const severity=$('filter').value,human=$('humanFilter').value,caseFilter=$('caseFilter').value;
+ const severity=$('filter').value,human=$('humanFilter').value,caseFilter=$('caseFilter').value,ownerFilter=$('ownerFilter').value;
  if(severity&&severity!==f.severity)return false;
  if(human==='gaps'&&!hasHumanHold(f,r))return false;
  if(human==='complete'&&hasHumanHold(f,r))return false;
  if(human==='regression'&&f.retest_status!=='regression')return false;
  if(human==='critical'&&!['critical','high'].includes(f.severity))return false;
+ if(ownerFilter&&(!state?.casework||ownerKey(state.casework.get(f.finding_id))!==ownerFilter))return false;
  if(caseFilter){
   if(!state?.casework)return false;
   const c=state.casework.get(f.finding_id);
@@ -273,6 +306,7 @@ function bulkUndo(){
 function render(){
  if(!state)return;
  const src=state.source,rows=$('findings');rows.replaceChildren();
+ ownerWorkload();
  let unassigned=0,holds=0;
  for(const f of src){
   const r=state.review.get(f.finding_id);
@@ -316,14 +350,15 @@ function render(){
 function purgeRenderedPrivateData(){
  state=null;revisionCandidate=null;lastBulkSnapshot=null;
  $('results').hidden=true;$('bulkUndo').disabled=true;$('applyRevision').disabled=true;
- for(const id of ['findings','summary'])$(id).replaceChildren();
+ for(const id of ['findings','summary','ownerBoard'])$(id).replaceChildren();
+ $('ownerFilter').replaceChildren(new Option('All human owners',''));
  for(const id of ['digest','revisionSummary'])$(id).textContent='';
  $('note').value='';$('planFile').value='';$('nextCsv').value='';
  $('confirmRevision').checked=false;
  for(let i=0;i<HOURS;i++){
   $('date'+i).value='';$('label'+i).value='';$('duration'+i).value='60';
  }
- for(const id of ['filter','caseFilter','humanFilter','bulkWindow'])$(id).value=$(id).options[0].value;
+ for(const id of ['filter','caseFilter','humanFilter','bulkWindow','ownerFilter'])$(id).value=$(id).options[0].value;
  for(const id of ['total','urgent','unassigned','holds'])$(id).textContent='0';
  $('caseBlocked').textContent='—';$('caseOverdue').textContent='—';$('lateSlot').textContent='—';
 }
@@ -538,7 +573,7 @@ function applySourceRevision(){
  /* Atomic swap only after the full original five-field comparator, digest,
   * review/slot mapping and preview fingerprint have been accepted. */
  state={source:next,hash,review:notes,assignments:slots,casework:null,caseworkDigest:null,refreshSummary:summary};
- $('caseFilter').value='';
+ $('caseFilter').value='';$('ownerFilter').value='';
  lastBulkSnapshot=null;$('bulkUndo').disabled=true;
  $('digest').textContent='Current original canonical source SHA-256: '+hash+
    ' · changed/new human notes and slots reset; absent source records are NOT fixed.';
@@ -614,6 +649,7 @@ function init(){
  for(const id of ['nextCsv','confirmRevision'])$(id).addEventListener('change',()=>clearRevisionPreview('Source selection changed. Create a new preview.'));
  $('filter').addEventListener('change',render);
  $('caseFilter').addEventListener('change',render);
+ $('ownerFilter').addEventListener('change',render);
  $('humanFilter').addEventListener('change',render);
  $('bulkApply').addEventListener('click',()=>{try{bulkApply();}catch(e){setStatus(e.message,true);}});
  $('bulkUndo').addEventListener('click',()=>{try{bulkUndo();}catch(e){setStatus(e.message,true);}});
