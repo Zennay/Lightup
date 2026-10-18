@@ -24,7 +24,9 @@ const questionCatalog={
  network_activity:['client','Network interaction expectations','Clarify that proposed lab checks cannot be performed against public or unapproved targets.']
 };
 function hold(message){
- epoch++;current=null;questions=[];$('workspace').hidden=true;$('export').disabled=true;$('textExport').disabled=true;$('print').disabled=true;
+ epoch++;current=null;questions=[];
+ document.dispatchEvent(new CustomEvent('lightup:brief-source-change'));
+ $('workspace').hidden=true;$('export').disabled=true;$('textExport').disabled=true;$('print').disabled=true;
  $('handoff').textContent='';$('replyState').textContent='No review note imported.';
  $('sourceState').textContent=message+' · HOLD';
 }
@@ -282,11 +284,18 @@ async function loadFile(file){
   if(token!==epoch)return;
   current={draft,window,sha256};
   questions=questionIds(draft,window).map(code=>({code,role:questionCatalog[code][0],status:'unanswered'}));
+  document.dispatchEvent(new CustomEvent('lightup:brief-source-change'));
+
   $('workspace').hidden=false;$('export').disabled=false;$('textExport').disabled=false;$('print').disabled=false;
   $('sourceState').textContent='Source loaded · '+draft.requested_assets.length+' proposed assets · REVIEW_ONLY/HOLD';
   render();
  }catch(_){if(token===epoch)hold('Invalid, ambiguous or unsafe Studio draft');}
 }
+/* Only privacy-minimal snapshot/strict parser are exposed to the adjacent offline reconciliation view. */
+window.LightUpBriefRuntime=Object.freeze({
+ snapshot:()=>{const m=exportModel();return m?JSON.parse(JSON.stringify(m)):null;},
+ assertUnambiguousJSON
+});
 $('source').addEventListener('change',event=>loadFile(event.target.files?.[0]));
 $('clear').addEventListener('click',()=>{hold('Source forgotten');$('source').value='';$('reply').value='';$('preview').textContent='';$('receipt').textContent='';});
 $('export').addEventListener('click',download);
