@@ -12,6 +12,8 @@ The private output shows original request review statuses, strict mismatch versu
 
 **New integrated batch scenario workflow:** In addition to one set of --asset and --risk arguments, supply a strict --scenarios-file containing 2–8 human-proposed risk/scope alternatives for one existing engagement. The CLI runs the original canonical predicate against one shared **read-only SQLite transaction**, not multiple moving source snapshots. Original request matches are grouped by alternative and compared adjacent by record identity as matching/no-longer-matching/newly-matching. Alternative order is manually selected, **never original chronology or revocation**. The original single-proposal CLI remains supported.
 
+The **default private HTML is now a complete source-bound offline operator workbench** (original separate actor authentication still happens before export). It shows immutable original stored decision, role, proposed risk and binding information alongside human-only searchable/filterable cases; per original request it supports locally chosen follow-up team, stage, tentative UTC date and optional private note. The operator can save a bounded **PRIVATE source-bound draft**, later restore it only against the exact same stored source revision and original proposal selection, and export anonymous aggregate JSON/CSV with no source tokens, request IDs, client/asset labels or notes. The script runs under pinned inline CSP, without network calls, cookies, browser storage or backend mutation. Human stage labels never mean granted, approved, revoked or resolved. Use `--static-html` to preserve the original script-free HTML for strictly script-disabled viewers.
+
 Three formats: accessible script-free private HTML, private JSON, formula-escaped CSV. Output is bounded and new-only (mode 0600). Original request IDs and client/engagement labels require separate opt-in options; the default uses private pseudonyms and counters. SHA-256 selection digest is unsigned and no permission certificate.
 
 ## How to use
@@ -52,3 +54,14 @@ Separate original owners: [source PR #1570](https://github.com/Zennay/Lightup/pu
 ## Private review output integrity
 
 Source importer refuses malformed historical request/grant lineage identities and cross-tenant grant rows before producing an apparently valid shortlist. CSV additionally neutralizes Unicode-normalized and combining-mark-obscured spreadsheet formula prefixes when original IDs are explicitly included. This is a **safe review export** only, not a claim that the original underlying SQL tables are fully repaired or permitted for actual activation.
+
+
+## Source-bound human review workflow
+
+1. Authenticate with an existing, persisted LightUp operator. Export a new private `.html` for one original scope or a `--scenarios-file` set. The original authorization and stored request fields remain read-only.
+2. Open that 0600 file locally, filter by original administrator status or source mismatch and choose a **human-only** follow-up owner and stage. Local notes are not transmitted to any party.
+3. Explicitly save a PRIVATE local working draft (includes original request pseudonyms, notes and an unsigned source+proposal fingerprint). Keep it in a restricted directory. This file is **not** consent, a grant, a release certificate or an incident event.
+4. For coordination beyond the authorized operator, choose anonymous aggregate JSON or CSV. Aggregates omit original record keys, request IDs, tenant/engagement labels, exact original-source fingerprints, asset literals and private notes.
+5. For resumption, reopen the same original HTML source copy, import the matching PRIVATE draft; the entire import is refused on schema, source revision, proposal, row identity, authority, or value inconsistency. **No human stage is automatically carried over to changed source records.**
+
+Data stays in browser memory until explicit file downloads. Clearing local state or closing the document does not change stored LightUp request, grant or session records. The original source must be reauthenticated and re-exported before treating it as fresh evidence.

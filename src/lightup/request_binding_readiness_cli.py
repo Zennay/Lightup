@@ -419,7 +419,9 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--asset", action="append", help="canonical proposed host/IP/CIDR literal; repeat")
     parser.add_argument("--risk", type=int, choices=range(1, 5))
     parser.add_argument("--scenarios-file", help="optional 2–8 bounded alternative risk/scope proposals JSON")
-    parser.add_argument("--output", required=True, help="new, private .json, .html or .csv filename")
+    parser.add_argument("--output", required=True, help="new, private .json, .html, .csv or .md filename")
+    parser.add_argument("--static-html", action="store_true",
+                        help="original no-JavaScript HTML, instead of offline interactive operator desk")
     parser.add_argument("--include-request-ids", action="store_true", help="private original IDs for human reconciliation")
     parser.add_argument("--include-labels", action="store_true", help="private original client/engagement labels")
     args = parser.parse_args(argv)
@@ -478,6 +480,9 @@ def main(argv: list[str] | None = None) -> int:
             body = (_html(report) if kind == ".html" else
                     _csv(report) if kind == ".csv" else
                     json.dumps(report, indent=2, ensure_ascii=True) + "\n")
+        if kind == ".html" and not args.static_html:
+            from .request_binding_workspace import render
+            body = render(report)
         if kind == ".md":
             from .request_binding_handoff import format_markdown
             body = format_markdown(report)
