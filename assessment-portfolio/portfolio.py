@@ -213,6 +213,8 @@ def package(agendas, summary):
           "private-source-bindings.json":encode(private(agendas,summary)),
           "aggregate.html":render(agendas,summary,True),
           "aggregate.json":public,"aggregate.csv":csv_report(summary)}
+    from content_map import build as build_private_content_map
+    files["private-workspace-content-map.json"]=build_private_content_map(files,summary)
     buffer=BytesIO()
     with ZipFile(buffer,"w",compression=ZIP_STORED) as zip_file:
         for name,blob in files.items():

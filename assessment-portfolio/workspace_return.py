@@ -20,7 +20,7 @@ from followup import manifest_identity, load_choices
 from agenda import render_bytes, selected_day
 
 MAX_PACKAGE = 16 * 1024 * 1024
-MAX_MEMBERS = 24
+MAX_MEMBERS = 26
 MAP_SCHEMA = WORKSPACE_SCHEMA
 MAP_FIELDS = {"schema", "reference_date", "source_count", "sources",
               "claimed_status", "planning_not_permission", *FLAGS}
@@ -62,8 +62,17 @@ def _workspace(blob):
                 for i in range(1, mapping["source_count"] + 1)}
             # Accept original owner-produced older ZIPs with no navigator.
             # Current newly generated workspaces include a scriptless home.
-            if set(names) not in (expected, expected | {"workspace-home.html"}):
+            nameset = set(names)
+            new_map = "private-workspace-content-map.json" in nameset
+            if nameset not in (expected, expected | {"workspace-home.html"},
+                               expected | {"workspace-home.html", "private-workspace-content-map.json"}):
                 raise Hold("incomplete or unexpected workspace ZIP members")
+            if new_map:
+                from content_map import verify as verify_private_content_map
+                expected_content = (expected - {"private-original-source-map.json",
+                                                 "ORIGINAL-HUMAN-START-HERE.txt"}) | {"workspace-home.html"}
+                verify_private_content_map(z, expected_content,
+                                           mapping["source_count"], mapping["reference_date"])
             if any(i.file_size > MAX_BYTES for i in infos
                    if i.filename.startswith("original-private-agenda-")):
                 raise Hold("oversized original agenda")

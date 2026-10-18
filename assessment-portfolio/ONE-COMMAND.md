@@ -37,3 +37,5 @@ For preparing the **next full private offline review workspace** directly from t
 For returning the human proposals from the complete ZIP **without manually extracting the original agendas**, use [workspace_return.py](WORKSPACE-RETURN.md). It independently reconstructs each original agenda and emits a new private original-schema human choices bundle.
 
 The new CLI only composes existing offline source-owner modules; it never initiates lab evaluation, original scan, dispatch, consent, grant, retest or release. Exit 2 for REVIEW_ONLY, 3 for original HOLD/rejected input, never permission. Original exact-head hosted/permanent named VPS CI, source-owner + independent privacy/security reviews, genuine separately authenticated current client/operator consent with at-use revocation and explicit HUMAN GO remain mandatory before release.
+
+The newly generated private ZIP also includes `workspace-home.html` for local navigation and `private-workspace-content-map.json` for locally recorded SHA-256 byte consistency checks of included interface/report members. Both are owner-private and non-authorizing; the map is unsigned. See [CONTENT-INTEGRITY.md](CONTENT-INTEGRITY.md).

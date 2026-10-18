@@ -104,3 +104,7 @@ Each newly generated portfolio (and every subsequent private review cycle) inclu
 ### Cross-agenda human review
 
 The original private browser Review Studio now has a [single portfolio-wide human attention desk](CROSS-AGENDA.md), letting an operator filter all original agenda rows by stage, neutral role and planned-date status, bulk-edit human notes across different sources with explicit acknowledgement, and export the complete original-bound PRIVATE human proposal bundle. Original evidence and authority remain unchanged.
+
+### Original offline package continuity
+
+Every newly built original human workspace and revised next-cycle workspace includes a [private per-file byte correlation document](CONTENT-INTEGRITY.md). Original-source return checks all recorded HTML, report and bindings member bytes before accepting human proposals. This unsigned in-ZIP SHA map catches changed or missing bundle components; it does **not** prove genuine provenance or prevent an attacker from replacing both ZIP and map. Older private original ZIPs remain readable under their legacy original-source gates.
