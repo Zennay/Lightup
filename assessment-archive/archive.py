@@ -334,7 +334,12 @@ def diff(args):
     if not args.aggregate_only:
         result["new_private_sha256"] = sorted(new_hashes - old_hashes)
         result["absent_private_sha256"] = sorted(old_hashes - new_hashes)
-    publish(args.output, encode(result))
+    if args.format == "html":
+        from diff_render import render
+        payload = render(result, args.aggregate_only)
+    else:
+        payload = encode(result)
+    publish(args.output, payload)
     print("OFFLINE_ARCHIVE_DIFF_CREATED — ABSENT DOES NOT MEAN FIXED; NO AUTHORITY")
     return 2 if result["status"] == "REVIEW_ONLY" else 3
 
@@ -356,6 +361,7 @@ def main(argv=None):
     p.add_argument("--output", required=True)
     p.add_argument("--aggregate-only", action="store_true")
     p = subs.add_parser("diff", help="Compare two original private archive snapshots, no source reads")
+    p.add_argument("--format", choices=("json", "html"), default="json")
     p.add_argument("--previous", required=True)
     p.add_argument("--current", required=True)
     p.add_argument("--output", required=True)

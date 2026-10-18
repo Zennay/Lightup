@@ -81,3 +81,11 @@ Two already-created private manifests can be compared without reloading any orig
     python3 assessment-archive/archive.py diff --previous /private/OLDER-archive-index.json --current /private/NEWER-archive-index.json --output /private/NEW-archive-change.json
 
 This contains private SHA-256 fingerprints of newly added and no-longer-present source bytes, plus source-class deltas and unchanged counts. A missing source is NOT a repaired vulnerability, and a changed file is not a verified assessment. Use --aggregate-only for anonymous counts and category changes without fingerprints. No dates, labels, source paths or customer-identifying details are transferred. A HOLD in either source remains HOLD in the change report, and all permission/release flags remain false.
+
+### Visual source-delta dashboard
+
+Choose HTML for an actual standalone source delta workspace: three added/absent/unchanged cards, source-class change table and (owner-private mode only) original SHA-256 byte fingerprints. The aggregate version contains no hashes.
+
+    python3 assessment-archive/archive.py diff --previous /private/OLDER.json --current /private/NEWER.json --format html --aggregate-only --output /private/NEW-change-dashboard.html
+
+This static offline report does not infer that a missing source is a repaired vulnerability. Its CSP forbids external resources, JavaScript, network, forms and browser persistence. Output is an exclusive 0600 HTML file.
