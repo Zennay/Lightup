@@ -116,6 +116,13 @@
     $("casework-comparison").replaceChildren();
     $("casework-same-source").checked=false;
     if(snapshots.length>1)$("casework-candidate").value=String(snapshots.length-1);
+    window.dispatchEvent(new CustomEvent("lightup:findings-sources",{
+      detail:snapshots.map(d=>({
+        hash:d.hash,count:d.findings.length,
+        critical:d.severities.critical,high:d.severities.high,
+        regression:d.states.regression,not_tested:d.states.not_tested
+      }))
+    }));
   }
   $("casework-files").addEventListener("change",async e=>{
     const files=e.target.files;

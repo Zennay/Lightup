@@ -48,6 +48,20 @@ The new **fifth journey**, "Herstelplanning", opens the pinned Casework browser 
 
 The standard `casework/index.html` and its three sibling scripts are included as original read-only copies. The optional authenticated one-file export module documented by its original owner is **not** part of this static preview.
 
+## Combined scope and remediation human work queue
+
+The launcher now displays a **single priority-ranked, temporary human follow-up list** derived only from the non-sensitive fields of files already loaded into the scope JSON and remediation CSV trays. It does **not** attempt to connect the two data sources into one client: no identity, grant, tenant, ownership, real STOP or retest state can be inferred.
+
+Concrete actionable prompts:
+- An unverified local Withdrawal Desk report: instruct humans to use the **real** authenticated emergency STOP and revocation process, never mark the real operation stopped here.
+- Contradictory review-vs-Studio source fields, missing original Studio source bytes, requested risk level four, and independent source/owner verification.
+- Role-based permission replies that need independently authenticated follow-up.
+- Reported findings regression, critical/high repair work, ordinary repair planning and independently verified same-client/engagement checks before comparisons.
+
+Filter by urgency, workstream and preparation status; open the relevant **original** offline component. Users may optionally record their own temporary `open`, `discussing`, or `prepared` statuses. Those annotations are not tickets or verified milestones, and disappear if the original file is removed or the tab is closed. The queue re-evaluates when documents are imported or removed and retains only exact matching source-SHA/action-code human annotations.
+
+Download privacy-minimal JSON or fixed-field spreadsheet-safe CSV of the complete local queue after acknowledging source-fingerprint sensitivity. Export does not contain finding IDs/titles, original asset names, addresses, passwords, customer names or raw user text. Its literal-false authority/scan/grant/release fields intentionally cannot confer permission. **There are no added release/QA/process gates**: this board is a user-facing coordination aid only.
+
 ## Strict separation
 
 - Every original component stays under its own `apps/<component>/` directory with the original file tree and scripts; the launcher only links to the browser entry paths and offers navigational advice.

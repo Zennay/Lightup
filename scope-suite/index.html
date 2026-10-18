@@ -11,6 +11,7 @@
 <script defer src="document-tray.js"></script>
 <script defer src="apps/casework/casework/remediation-engine.js"></script>
 <script defer src="casework-tray.js"></script>
+<script defer src="work-queue.js"></script>
 </head>
 <body>
 <header class="bar"><a href="#home" class="logo">◈ <strong>LightUp</strong><span> Offline Workbench</span></a><span class="hold">DRAFT / HOLD · NIET GEAUTORISEERD</span></header>
@@ -51,6 +52,15 @@
 <button type="button" id="casework-compare" disabled>Toon alleen bronverschillen</button><div id="casework-comparison" aria-live="polite"></div>
 </section>
 <p class="tray-footnote">De vijfveldige CSV wordt uitsluitend met de ongewijzigde parser van Remediation Casework uit PR #1568 gelezen. Deze lokale lade toont alleen tellingen; originele inhoud blijft in tabgeheugen voor handmatig downloaden. Open daarna Casework in een apart tabblad. Geen bron- of tenantvalidatie, databasewijziging, retest of release. <a target="_blank" rel="noopener" href="apps/casework/casework/index.html">Open de originele Casework-werkruimte →</a></p>
+</div></section>
+<section class="section" id="human-workqueue" aria-labelledby="work-title">
+<div class="section-head"><div><p class="eyebrow">SAMENGEBRACHT · MENSELIJKE OPVOLGING</p><h2 id="work-title">Actiewerkvoorraad uit scope en bevindingen</h2></div><p>Op basis van de tijdelijk geladen bronmetadata. Statussen zijn uitsluitend lokale bespreeknotities — geen echte tickets, toestemming of controles.</p></div>
+<div class="tray-shell work-shell">
+<div class="tray-top"><div><h3 id="work-count">0 opdrachten voor menselijke voorbereiding</h3><p id="work-summary">Geen documenten geladen.</p></div></div>
+<div class="work-toolbar"><label for="work-filter">Bekijk<select id="work-filter"><option value="all">Alle vervolgstappen</option><option value="urgent">Dringend</option><option value="high">Hoge aandacht</option><option value="scope">Scope</option><option value="remediation">Herstel</option><option value="pending">Nog niet voorbereid</option><option value="prepared">Gemeld als voorbereid</option></select></label>
+<div class="tray-controls"><button id="work-export" disabled type="button">Download anonieme werkvoorraad JSON</button><button id="work-csv" disabled type="button">Download werkvoorraad CSV</button><button id="work-reset" class="tray-clear" type="button">Zet lokale gesprekstatussen terug</button></div></div>
+<div id="work-queue-list" class="work-items" aria-live="polite"></div>
+<p class="tray-footnote"><strong>Geen autoriserende workflow.</strong> Het markeren van ‘voorbereid’ verandert geen aanvraag, eigenaarschap, client-/operatorbesluit, STOP, grant, scanner, ticket of retest. Ga voor echte actie altijd naar het bestaande geauthenticeerde LightUp-proces of het echte noodkanaal. De informatie hier kan onjuist zijn en blijft in deze tab.</p>
 </div></section>
 <section class="overview" aria-label="Overzicht"><article><span class="number">10</span><span>lokale componenten</span></article><article><span class="number">00</span><span>live API-koppelingen in deze launcher</span></article><article><span class="number">01</span><span>downloadbare offline bundel</span></article><article><span class="number">HOLD</span><span>vastgezette release-status</span></article></section>
 <section id="workflow" class="section">

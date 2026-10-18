@@ -298,6 +298,12 @@
       article.append(routes);
       area.append(article);
     }
+    window.dispatchEvent(new CustomEvent("lightup:scope-documents", {
+      detail:documents.map(d=>({
+        hash:d.hash,kind:d.kind,source:d.source,source_sha:d.sourceSHA,
+        risk:d.risk,missing:!!d.sourceSHA&&!attachedSource(d),conflict:mismatch(d)
+      }))
+    }));
   }
   async function ingest(files){
     const batch=Array.from(files||[]);
