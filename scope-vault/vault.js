@@ -26,6 +26,10 @@
     clear: $("clear"), openFile: $("open-file"), openPassword: $("open-password"),
     unlock: $("unlock"), lock: $("lock"), recovered: $("recovered"),
     mergeMode: $("merge-mode"),
+    before: $("compare-before"), after: $("compare-after"),
+    previewFile: $("preview-file"), compareFiles: $("compare-files"),
+    hidePreview: $("hide-preview"), comparisonOutput: $("comparison-output"),
+    comparisonSummary: $("comparison-summary"),
     message: $("message")
   };
   let entries = [];
@@ -81,6 +85,7 @@
   function scrub() {
     for (const entry of entries) entry.bytes.fill(0);
     entries = [];
+    clearPreview();
     els.files.value = "";
     els.openFile.value = "";
     els.password.value = "";
@@ -91,6 +96,21 @@
   function paint() {
     els.list.replaceChildren();
     els.recovered.replaceChildren();
+    const beforeValue = els.before.value, afterValue = els.after.value;
+    els.before.replaceChildren();
+    els.after.replaceChildren();
+    for (const dropdown of [els.before, els.after]) {
+      const placeholder = document.createElement("option");
+      placeholder.value = ""; placeholder.textContent = "Choose a local draft";
+      dropdown.append(placeholder);
+      entries.forEach((entry, index) => {
+        const option = document.createElement("option");
+        option.value = String(index); option.textContent = entry.name;
+        dropdown.append(option);
+      });
+    }
+    if (entries[Number(beforeValue)] && beforeValue !== "") els.before.value = beforeValue;
+    if (entries[Number(afterValue)] && afterValue !== "") els.after.value = afterValue;
     const total = entries.reduce((n, e) => n + e.bytes.length, 0);
     const selectedCount = entries.filter((item) => item.selected).length;
     els.summary.textContent = entries.length + " local file(s), " + total.toLocaleString() + " bytes in tab memory; " + selectedCount + " selected for encrypted export. All contents remain unapproved.";
@@ -107,6 +127,7 @@
       remove.type = "button"; remove.className = "secondary"; remove.textContent = "Remove";
       remove.addEventListener("click", () => {
         if (busy) return;
+        clearPreview();
         entry.bytes.fill(0);
         entries.splice(index, 1);
         touch(); paint();
@@ -227,6 +248,7 @@
           staged.push({name, bytes, hash: await digest(bytes), role: roles[0], selected: true});
         }
         entries.push(...staged);
+        clearPreview();
         notice("New local draft files loaded. They are not persisted until you explicitly export an encrypted vault.");
       } catch (err) {
         for (const item of staged) item.bytes.fill(0);
@@ -344,11 +366,13 @@
             }
           }
           entries = merged;
+          clearPreview();
           notice(newCount + " new local file(s) merged atomically. Existing matching files kept; source identities/roles remain unverified.");
         } else {
           // Atomic replacement: previous plaintext is forgotten only after authenticated validation.
           for (const item of entries) item.bytes.fill(0);
           entries = staged;
+          clearPreview();
           notice("Encrypted packet restored locally. Verify drafts with real client/operator; the vault grants no authorization.");
         }
       } catch (err) {
@@ -358,7 +382,91 @@
     });
   }
 
+
+  // Review-only viewer: DOM text nodes, never HTML execution or browser navigation.
+  // Bounded line-level diff avoids quadratic work beyond 400 lines per file.
+  const MAX_REVIEW_LINES = 400;
+  const MAX_REVIEW_COLUMNS = 2048;
+  function clearPreview() {
+    els.comparisonOutput.replaceChildren();
+    els.comparisonOutput.hidden = true;
+    els.comparisonSummary.textContent =
+      "No private text visible. Viewing or comparing drafts cannot verify scope or grant permission.";
+  }
+  function reviewEntry(selector) {
+    const value = selector.value;
+    invariant(/^(?:0|[1-9][0-9]?)$/.test(value) && Number(value) < entries.length);
+    const entry = entries[Number(value)];
+    invariant(entry && entry.bytes.length <= MAX_FILE_BYTES);
+    const raw = DEC.decode(entry.bytes).replace(/\r\n?/g, "\n");
+    const lines = raw.split("\n");
+    invariant(lines.length <= MAX_REVIEW_LINES && lines.every((line) => line.length <= MAX_REVIEW_COLUMNS));
+    return {entry, lines};
+  }
+  function displayRows(rows) {
+    els.comparisonOutput.replaceChildren();
+    const fragment = document.createDocumentFragment();
+    for (const row of rows) {
+      const line = document.createElement("span");
+      line.className = row.kind;
+      // textContent, not innerHTML: imported script/markup can never execute.
+      line.textContent = row.prefix + row.text + "\n";
+      fragment.append(line);
+    }
+    els.comparisonOutput.append(fragment);
+    els.comparisonOutput.hidden = false;
+  }
+  function preview() {
+    if (busy) return;
+    touch(); clearPreview();
+    try {
+      const {entry, lines} = reviewEntry(els.before);
+      displayRows(lines.map((text) => ({kind: "same", prefix: "  ", text})));
+      els.comparisonSummary.textContent = "Local read-only preview: " + entry.name + ". "
+        + lines.length + " lines. No scope/identity/consent status has been established.";
+    } catch {
+      notice("Local preview held: select a valid bounded UTF-8 draft (400 lines max, 2048 characters per line).", true);
+    }
+  }
+  function compare() {
+    if (busy) return;
+    touch(); clearPreview();
+    try {
+      invariant(els.before.value !== els.after.value);
+      const old = reviewEntry(els.before), current = reviewEntry(els.after);
+      const a = old.lines, b = current.lines;
+      // Dynamic-programming LCS, 401 x 401 finite grid, avoids misleading positional diff.
+      const dp = Array.from({length: a.length + 1}, () => new Uint16Array(b.length + 1));
+      for (let i = a.length - 1; i >= 0; i--) {
+        for (let j = b.length - 1; j >= 0; j--) {
+          dp[i][j] = a[i] === b[j] ? dp[i + 1][j + 1] + 1
+            : Math.max(dp[i + 1][j], dp[i][j + 1]);
+        }
+      }
+      const rows = [];
+      let i = 0, j = 0, removed = 0, added = 0;
+      while (i < a.length || j < b.length) {
+        if (i < a.length && j < b.length && a[i] === b[j]) {
+          rows.push({kind: "same", prefix: "  ", text: a[i++]}); j++;
+        } else if (i < a.length && (j >= b.length || dp[i + 1][j] >= dp[i][j + 1])) {
+          rows.push({kind: "removed", prefix: "- ", text: a[i++]}); removed++;
+        } else {
+          rows.push({kind: "added", prefix: "+ ", text: b[j++]}); added++;
+        }
+      }
+      displayRows(rows);
+      els.comparisonSummary.textContent =
+        "Read-only comparison: " + old.entry.name + " → " + current.entry.name
+        + ". " + added + " added, " + removed + " removed lines. Source documents may still lack authenticated identity, consent or authorization.";
+    } catch {
+      notice("Comparison held: choose two distinct bounded local UTF-8 drafts (400 lines max, 2048 characters per line).", true);
+    }
+  }
+
   els.files.addEventListener("change", addFiles);
+  els.previewFile.addEventListener("click", preview);
+  els.compareFiles.addEventListener("click", compare);
+  els.hidePreview.addEventListener("click", () => { touch(); clearPreview(); });
   els.selectAll.addEventListener("click", () => {
     if (busy) return; entries.forEach((entry) => {entry.selected = true;}); touch(); paint();
   });
