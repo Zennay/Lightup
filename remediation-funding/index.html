@@ -83,6 +83,21 @@
 <tbody id="release-weeks"></tbody></table></div>
 <p class="subtle">Funding patterns are deliberately unsigned financial assumptions; no bank, calendar, contract, operator, client or target is contacted.</p>
 </div>
+<div class="panel" aria-labelledby="funding-priority-title">
+<p class="eyebrow">06 / FUNDING PRIORITIES</p>
+<h2 id="funding-priority-title">Protect urgent work or spread financial coverage?</h2>
+<p>Compare <strong>critical/high-first</strong> and <strong>proportional</strong> hypothetical funding within the exact same week-by-week cash release schedule. One option directs modeled money toward urgent severity bands first; the other distributes it across all severity bands. Both use aggregate hours only. No original cases, ownership, or real repair order is reconstructed.</p>
+<div class="action-row">
+<button type="button" id="priority-calculate" class="secondary">Compare funding priorities</button>
+<button type="button" id="priority-export-json" class="secondary" hidden>Export comparison JSON</button>
+<button type="button" id="priority-export-md" class="secondary" hidden>Export discussion brief</button>
+</div>
+<div class="stats" id="priority-kpis" aria-live="polite"></div>
+<div class="table-wrap"><table>
+<thead><tr><th>Risk band</th><th>Hours proposed</th><th>Urgent-first funded</th><th>Urgent-first unfunded</th><th>Proportional funded</th><th>Proportional unfunded</th></tr></thead>
+<tbody id="priority-rows"></tbody></table></div>
+<p class="subtle" id="priority-note" aria-live="polite">A funding strategy is only an unsigned discussion proposal. Capacity limits, prior backlogs and the original authorisation remain unchanged.</p>
+</div>
 <div class="panel">
 <h2>Private aggregate handoff</h2>
 <p>No finding ID, customer name, target identity, original CSV bytes, grant or operator information is available to export. Aggregated budgets can still be commercially sensitive; review the recipient before sharing.</p>
