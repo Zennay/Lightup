@@ -115,6 +115,7 @@ def build(workspace_path, manifests, choices, proposals, reference_date, proposa
         _append(zipout, "private-original-source-map.json", encode(fresh_map))
         _append(zipout, "ORIGINAL-HUMAN-START-HERE.txt", (
             "REVISED ORIGINAL HUMAN WORKSPACE / PRIVATE / NO GO\n"
+            "Open workspace-home.html to navigate the next complete human review.\n"
             "The original lab sources were NOT changed or approved.\n"
             "To return the next human-only proposal, separately present original manifests\n"
             "and newly generated original-human-choices-NN.json from the outer ZIP.\n"

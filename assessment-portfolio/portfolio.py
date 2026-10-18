@@ -198,8 +198,10 @@ def csv_report(summary):
 def package(agendas, summary):
     from browser_studio import build as build_interactive_studio
     from review_studio import build as build_private_review_studio
+    from navigation import build as build_workspace_home
     public=encode(summary)
-    files={"START-HERE.txt":("LIGHTUP PRIVATE HUMAN PORTFOLIO. Open index.html offline.\n"
+    files={"workspace-home.html":build_workspace_home(summary),
+           "START-HERE.txt":("LIGHTUP PRIVATE HUMAN PORTFOLIO. Open workspace-home.html offline.\n"
           "private-source-bindings.json includes source SHA hashes and human item slots; keep private.\n"
           "aggregate.html/json/csv contain counts only; review before sharing.\n"
           "interactive-capacity-studio.html changes only local hypothetical role budgets.\n"

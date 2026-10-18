@@ -96,3 +96,7 @@ The review-cycle ZIP also includes a [private human revision difference board](R
 ### One-click all-agenda human return
 
 The private Review Studio can now [export all original agenda human proposals as ONE source-bound JSON bundle](ALL-PROPOSALS.md); both `workspace_return.py` and `review_cycle.py` accept `--proposal-bundle` for a complete all-or-none private return. Individual proposal exports remain supported.
+
+### One-page offline workspace navigation
+
+Each newly generated portfolio (and every subsequent private review cycle) includes **[workspace-home.html](NAVIGATION.md)**, a scriptless local start page linking to the current human queue, cross-agenda Review Studio, hypothetical capacity studio and aggregate handoff, with the exact command-line next-cycle flow. Older original-source workspaces without this optional page remain readable by the original source-bound return command.

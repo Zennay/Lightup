@@ -73,7 +73,7 @@ def build(manifest_paths,choice_paths,reference):
         member.external_attr=0o600<<16
         output.writestr(member,(
             "LIGHTUP SINGLE-COMMAND ORIGINAL HUMAN ASSESSMENT WORKSPACE\n"
-            "Open index.html or interactive-capacity-studio.html offline.\n"
+            "Open workspace-home.html for the full offline human workflow.\n"
             "Use original-human-review-studio.html for HUMAN planning proposals only.\n"
             "Original PRIVATE human agendas are included as original-private-agenda-NN.json, "
             "fully source-bound to the separately held original manifest/choices.\n"

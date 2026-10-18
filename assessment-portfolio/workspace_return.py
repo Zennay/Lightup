@@ -60,7 +60,9 @@ def _workspace(blob):
             expected = PACKAGE_FILES | {
                 f"original-private-agenda-{i:02d}.json"
                 for i in range(1, mapping["source_count"] + 1)}
-            if set(names) != expected:
+            # Accept original owner-produced older ZIPs with no navigator.
+            # Current newly generated workspaces include a scriptless home.
+            if set(names) not in (expected, expected | {"workspace-home.html"}):
                 raise Hold("incomplete or unexpected workspace ZIP members")
             if any(i.file_size > MAX_BYTES for i in infos
                    if i.filename.startswith("original-private-agenda-")):
