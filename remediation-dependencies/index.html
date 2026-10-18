@@ -21,6 +21,7 @@
 <div class="tablewrap"><table><thead><tr><th>Original finding</th><th>Severity</th><th>Human owner / stage</th><th>Human effort estimate</th></tr></thead><tbody id="efforts"></tbody></table></div></section>
 <section class="panel"><h2>4. Review dependencies and estimated critical path</h2>
 <div class="grid"><label>Optional human start date<input id="start" type="date" min="2020-01-01" max="2099-01-01"></label>
+<label>Exact human owner/team<select id="owner-filter"><option value="all">All original human owners</option></select></label>
 <label>View <select id="filter"><option value="all">All original findings</option><option value="waiting">Waiting on other HUMAN tasks</option><option value="ready">Human work potentially ready</option><option value="critical">Critical path (human estimates)</option><option value="urgent">Original high/critical findings</option></select></label></div>
 <button id="review" type="button">Recalculate local dependency map</button>
 <p id="review-message" role="status" aria-live="polite"></p>
@@ -33,6 +34,7 @@
 <section class="panel"><h2>5. Export only approved private human handoffs</h2>
 <p>Exports contain source identifiers, estimates, human planning and (for CSV) source summary metadata. Download locally; external recipients and calendars require a separately approved confidential channel. No automatic upload or authentication.</p>
 <label class="check"><input type="checkbox" id="export-ack"> I explicitly confirmed the private destination for source finding IDs and human coordination. Neither an unsigned hash nor this file proves consent, client identity or verified remediation.</label>
+<label>PRIVATE CSV action scope<select id="csv-scope"><option value="all">All original human work</option><option value="filtered">Current owner and work filters</option></select></label>
 <div class="actions"><button id="export-json" disabled type="button">Save PRIVATE source-bound dependency draft</button>
 <button id="export-csv" disabled type="button">Save PRIVATE human action CSV</button>
 <button id="clear" class="secondary" type="button">Clear private memory</button></div>
