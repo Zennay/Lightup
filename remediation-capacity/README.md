@@ -8,7 +8,7 @@ This is an independent offline planning interface, not an assessment, authorizat
 
 **Recommended:** download and locally open [standalone.html](./standalone.html). It is a self-contained HTML with SHA-256 CSP-pinned inline JavaScript and stylesheet. To reproduce it, run Python 3: python3 remediation-capacity/package.py. The digest is a build fingerprint, NOT a signature or authority receipt.
 
-Alternatively open remediation-capacity/index.html from a local checkout with its sibling planner.js, draft.js, app.js and style.css files. No server, build, installation, database, network, cookie, service worker or browser storage is required.
+Alternatively open remediation-capacity/index.html from a local checkout with its sibling planner.js, draft.js, casework-original-v1.js, casework-review.js, app.js and style.css files. No server, build, installation, database, network, cookie, service worker or browser storage is required.
 
 1. Separately authenticate and authorise export in the existing original LightUp workflow. The canonical CSV header is precisely: finding_id,title,severity,retest_status,remediation. The planner never obtains that report itself.
 2. Choose the existing five-column CSV (max 1 MiB, 350 records). Invalid UTF-8, CSV quoting, extra fields, duplicated source IDs and unknown enum values are refused. Supported severities: critical, high, medium, low, info. Original retest states: not_tested, fix_pending, fixed, regression.
@@ -43,6 +43,16 @@ All results are **planning-only**: not promised dates, validated security fixes,
 A separate, bounded **hypothetical outage** workbench compares the currently generated plan against (a) a user-chosen disrupted week with 0–100% remaining capacity, never increasing the original availability, and (b) a separately selected ongoing 0–100% staffing capacity reduction. It reuses exactly the original findings, risk priorities, weekly planning weeks, estimated effort and incident reserve. Each scenario reports aggregate allocated hours, outstanding hours, finding-count backlog, remaining critical/high estimated hours and per-week hours. A deliberate private JSON export includes explicit false permission, grant, dispatch, retest and release fields.
 
 The comparison is not a real incident forecast, authorised scan, continuity-plan certificate, contractual SLA, staffing order, fixed-case conclusion or change to production scheduling. The scenario is local to this browser session and is not smuggled into the resumable saved draft.
+
+## Original Casework v1 source-bound read-only integration
+
+A new **Casework handoff panel** accepts the *actual original* `lightup.remediation_casework_draft` v1 exported from the separate [Remediation Casework PR #1568](https://github.com/Zennay/Lightup/pull/1568), **after** the user independently reloads the original authenticated LightUp findings CSV into this app. This module embeds an **unchanged byte-identical** copy of the original Casework v1 source parser pinned to upstream source-owner exact commit `9c73e8468ce271bf8c6bef4cac071e5ad9c1806b`, SHA-256 `c293c564ecb11434e45423d244b7beba599b6afe3ebbc85121882e91b8aa1225`. The reproducible offline HTML packager refuses to produce output if that source changes.
+
+Casework import is strictly capped at 2 MiB, with fatal UTF-8, literal original nonauthorizing authority flags, complete findings/case counts, strict original metadata, **duplicate/ambiguous JSON key rejection**, original source digest and *all five original source field values* exact-matched against the independently reloaded CSV, plus an explicit manual same-client/same-engagement acknowledgement. Unknown source revisions fail closed without replacing the previous report. The import is not a real identity or grant check.
+
+Only **aggregate self-reported human Casework progress** survives local processing: blocker totals, original severity-by-severity unresolved coordination, missing owner labels, dated/undated local plan counts, locally marked completed and human retest coordination. No source IDs, owner names, report titles, remediation text, local notes, timestamps, request/grant IDs or database fields are included in the UI/export. A separate user-confirmed private JSON download shares these aggregate counts only. The interface does not write to the original Casework, mutate the capacity plan or turn Casework's `completed` into a verified repair.
+
+The panel, confirmed imported summaries and handoff declarations are discarded when the original CSV changes or is forgotten. The Casework JSON is cleared from its file input after reading. A private source-matched Casework digest is **not a digital signature**, current client consent, at-use revocation or proof of remediation.
 
 ## Security and release boundaries
 
