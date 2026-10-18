@@ -16,3 +16,9 @@ Escaping untrusted exception bytes is not confidentiality: an unknown client ID 
 
 ## Integration/release
 The implementation changes the original production-source dispatcher; source-owner, privacy/security review and unchanged hosted + registered permanent named VPS exact-head CI, genuine distinct client/operator consent with at-action revocation, and explicit HUMAN GO remain mandatory. No new QA/regression/test suite is authored or run under the 17 October 2026 execution policy.
+
+## Additional default portal read-only source narrowing · #673
+- A signed-in operator retains authorized GET access to a client's portal but sees an explicit read-only request notice, **not** the client's submit-request form.
+- The original POST `/portal/<client_id>/requests` handler now refuses the operator role and mismatched/nonexistent client session with a 403 **before** creating a synthetic portal `CLIENT_ADMIN` context, parsing submission risk/assets, or calling the database write.
+- Real signed-in client sessions for their own tenant keep the existing form and submit flow. Existing dispatcher authentication/tenant/CSRF and operator review routes are unchanged; original independent [domain request-origin and grant lineage source #1570](https://github.com/Zennay/Lightup/pull/1570) is not modified and must be integrated separately.
+- The portal UX and domain enforcement are defense in depth, not proof of independently authenticated owner consent or permission to issue assessment grants. Original web input owner [#182](https://github.com/Zennay/Lightup/pull/182) requires a deliberate source-composition review, not a silent takeover.
