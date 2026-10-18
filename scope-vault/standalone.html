@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-ifbMtKz9EBp1uo108tDUV3w8s7acNvJPMxjUAOUz+uc='; style-src 'sha256-AFCoxRW5B8pbURKhhqkO3hW0dq8s8vSlJQNE2RkmPRU='; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-ZLDRSWTrs+qMw/DWLHzE8pHIXtDuCXGxaJA4aeNcELQ='; style-src 'sha256-TiOd9PyKZRDLiF8oPZCj9XLIGyiDzv8lQfbkTPjAf8c='; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'">
 <title>LightUp · Private Scope Packet Vault (Offline)</title><style>
 :root{font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#090f1c;color:#e9f1ff;color-scheme:dark}*{box-sizing:border-box}body{margin:0}main{max-width:940px;padding:24px;margin:auto}header{padding:30px 0 22px}.eyebrow{color:#7ed3fd;font-size:12px;letter-spacing:.16em;font-weight:800}h1{font-size:clamp(34px,6vw,58px);line-height:1.02;letter-spacing:-.04em;margin:16px 0}h2{font-size:20px;margin:0 0 12px}h3{font-size:15px;margin:24px 0 10px}.lead{color:#afc3de;font-size:18px;line-height:1.6;max-width:750px}.hold{border:1px solid #eec06c;background:#2f2419;border-radius:10px;color:#ffe5ac;font-weight:700;font-size:12px;letter-spacing:.06em;padding:12px 16px;line-height:1.6}section{background:#111c30;border:1px solid #324158;border-radius:16px;padding:24px;margin-bottom:18px;box-shadow:0 6px 36px #0002}section p,li{color:#bfcbdf;line-height:1.65}section strong{color:#fff}label{display:block;font-size:14px;font-weight:650;color:#dfeafa}input,select{display:block;width:100%;margin-top:9px;padding:12px 13px;border:1px solid #60718d;border-radius:10px;background:#0b1425;color:#fff;font:inherit}input:focus,button:focus-visible{outline:3px solid #75bcff;outline-offset:2px}.picker{cursor:pointer;border:1px dashed #659de1;padding:17px;border-radius:12px;background:#102942}.picker input{border:0;padding:0;background:none}.grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:20px}button{font:inherit;border:0;border-radius:10px;padding:12px 18px;cursor:pointer;font-weight:700;background:#80cdfb;color:#071727}button.secondary{background:#23324c;color:#ecf6ff;border:1px solid #50617b}button:disabled{opacity:.5;cursor:not-allowed}.status{font-size:14px}.items{display:grid;gap:10px;margin-top:12px}.item{display:flex;align-items:center;justify-content:space-between;gap:18px;padding:13px;border:1px solid #40536f;border-radius:10px;background:#14223a;overflow-wrap:anywhere}.item small{color:#b1c1d6;display:block;margin-top:4px}.item button{flex-shrink:0;padding:9px 13px}.message{padding:16px;border-left:4px solid #7bcdff;background:#122b46;min-height:56px;border-radius:5px;line-height:1.5}.message.error{border-color:#eab3a0;background:#391e25}footer{padding:0 0 40px}footer small{color:#90a4be}ol{padding-left:24px}@media(max-width:650px){.grid{grid-template-columns:1fr}.item{align-items:flex-start;flex-direction:column}section{padding:17px}main{padding:12px}.item button{width:100%}}
 /* Source inspection is private text, never rendered as imported HTML. */
@@ -25,6 +25,14 @@ border:1px solid #60718d;border-radius:10px;resize:vertical;max-height:190px}
 .item > div > label:not(.checkline){display:block;margin-top:13px;font-size:12px;
 font-weight:650;line-height:1.45;color:#bdcee8}
 .item > div > label:not(.checkline) select{font-weight:500}
+
+/* Local privacy editor: bounded text-only derivative production, no previews of secrets. */
+#redact-title + p{max-width:790px}
+#redact-summary{background:#142a35;border-left:3px solid #86c7df;
+  padding:10px 12px;border-radius:4px;line-height:1.55}
+#redact-term{font-family:ui-monospace,Consolas,monospace}
+#redact-source{font-size:13px}
+#redact-create{background:#aee6fb}
 
 </style><script>
 "use strict";
@@ -74,6 +82,9 @@ font-weight:650;line-height:1.45;color:#bdcee8}
     unlock: $("unlock"), lock: $("lock"), recovered: $("recovered"),
     mergeMode: $("merge-mode"), handoffRoute: $("handoff-route"),
     before: $("compare-before"), after: $("compare-after"),
+    redactSource: $("redact-source"), redactTerm: $("redact-term"),
+    redactCredentials: $("redact-credentials"), redactCreate: $("redact-create"),
+    redactClear: $("redact-clear"), redactSummary: $("redact-summary"),
     previewFile: $("preview-file"), compareFiles: $("compare-files"),
     hidePreview: $("hide-preview"), comparisonOutput: $("comparison-output"),
     comparisonSummary: $("comparison-summary"),
@@ -139,12 +150,15 @@ font-weight:650;line-height:1.45;color:#bdcee8}
     els.password.value = "";
     els.confirm.value = "";
     els.openPassword.value = "";
+    els.redactTerm.value = "";
+    els.redactSummary.textContent = "No local edited copy in this session; all authority flags remain false.";
     paint();
   }
   function paint() {
     els.list.replaceChildren();
     els.recovered.replaceChildren();
     const beforeValue = els.before.value, afterValue = els.after.value;
+    const redactValue = els.redactSource.value;
     els.before.replaceChildren();
     els.after.replaceChildren();
     for (const dropdown of [els.before, els.after]) {
@@ -157,6 +171,16 @@ font-weight:650;line-height:1.45;color:#bdcee8}
         dropdown.append(option);
       });
     }
+    els.redactSource.replaceChildren();
+    const redactPlaceholder = document.createElement("option");
+    redactPlaceholder.value = ""; redactPlaceholder.textContent = "Choose local file";
+    els.redactSource.append(redactPlaceholder);
+    entries.forEach((entry, index) => {
+      const option = document.createElement("option");
+      option.value = String(index); option.textContent = entry.name;
+      els.redactSource.append(option);
+    });
+    if (entries[Number(redactValue)] && redactValue !== "") els.redactSource.value = redactValue;
     if (entries[Number(beforeValue)] && beforeValue !== "") els.before.value = beforeValue;
     if (entries[Number(afterValue)] && afterValue !== "") els.after.value = afterValue;
     const total = entries.reduce((n, e) => n + e.bytes.length, 0);
@@ -266,6 +290,7 @@ font-weight:650;line-height:1.45;color:#bdcee8}
     els.unlock.disabled = busy || !window.isSecureContext || !window.crypto || !window.crypto.subtle;
     els.files.disabled = busy;
     els.openFile.disabled = busy;
+    els.redactCreate.disabled = busy || entries.length === 0 || entries.length >= MAX_FILES || !window.isSecureContext || !window.crypto || !window.crypto.subtle;
   }
   function save(blob, filename) {
     const url = URL.createObjectURL(blob);
@@ -339,6 +364,102 @@ font-weight:650;line-height:1.45;color:#bdcee8}
       }
     });
   }
+
+  // Local review-copy preparation only. Never edit the source byte array,
+  // generate authorizing metadata or make claims that redaction is complete.
+  async function createPrivacyCopy() {
+    await inProgress(async () => {
+      supportsCrypto();
+      const rawIndex = els.redactSource.value;
+      const manualTerm = els.redactTerm.value;
+      const auto = els.redactCredentials.checked;
+      els.redactTerm.value = "";
+      invariant(/^(0|[1-9]\d?)$/.test(rawIndex));
+      const index = Number(rawIndex);
+      invariant(index < entries.length && entries.length < MAX_FILES);
+      invariant(manualTerm.length === 0 ||
+        (manualTerm.length >= 6 && manualTerm.length <= 128 &&
+        !/[\u0000-\u001f\u007f]/.test(manualTerm)));
+      invariant(auto || manualTerm.length >= 6);
+      const source = entries[index];
+      const original = DEC.decode(source.bytes);
+      let changed = original;
+      let replacements = 0;
+      const mask = (label) => () => { replacements++; return "[LIGHTUP-REDACTED-" + label + "]"; };
+      if (auto) {
+        // A complete bounded PEM block is required. Truncated/unpaired headers
+        // still trigger the original client safety hold after substitution.
+        changed = changed.replace(
+          /-----BEGIN (?:RSA |EC |DSA |OPENSSH )?PRIVATE KEY-----[\s\S]{0,131072}?-----END (?:RSA |EC |DSA |OPENSSH )?PRIVATE KEY-----/gi,
+          mask("PRIVATE-KEY")
+        );
+        changed = changed.replace(
+          /\bAuthorization\s*:\s*Bearer\s+[^\s"'<>]{10,}/gi,
+          mask("BEARER")
+        );
+        changed = changed.replace(
+          /\b(?:api[_ -]?key|secret[_ -]?(?:key|token)|access[_ -]?token|password)\s*[:=]\s*["']?[^\s"'<>]{12,}/gi,
+          mask("CREDENTIAL")
+        );
+        changed = changed.replace(/\bAKIA[0-9A-Z]{16}\b/g, mask("ACCESS-KEY"));
+        changed = changed.replace(
+          /\b(?:session[_ -]?cookie|set-cookie)\s*[:=]\s*[^\r\n]{24,}/gi,
+          mask("COOKIE")
+        );
+      }
+      if (manualTerm.length) {
+        const occurrences = changed.split(manualTerm).length - 1;
+        if (occurrences) {
+          replacements += occurrences;
+          changed = changed.split(manualTerm).join("[LIGHTUP-REDACTED-PRIVATE-TERM]");
+        }
+      }
+      invariant(replacements > 0);
+      const edited = ENC.encode(changed);
+      try {
+        invariant(edited.length > 0 && edited.length <= MAX_FILE_BYTES);
+        // Refuse residual recognized credentials; heuristic inability to find
+        // others is never treated as evidence of safety.
+        invariant(!likelyCredentialContent(edited));
+        invariant(entries.reduce((sum, item) => sum + item.bytes.length, 0) +
+          edited.length <= MAX_TOTAL_BYTES);
+        const hash = await digest(edited);
+        const stem = source.name.replace(/\.[^.]+$/, "").slice(0, 62);
+        const proposed = stem + "-privacy-" + hash.slice(0, 12) + ".txt";
+        const name = nameOf(proposed);
+        invariant(!entries.some((item) => item.name === name));
+        const approved = window.confirm("Create a distinct edited TEXT copy of " +
+          source.name + " with " + replacements + " redaction(s)?\n\n" +
+          "The source remains untouched; the new copy is NOT selected for export " +
+          "and remains NEEDS HUMAN CLARIFICATION until you inspect its full contents. " +
+          "Masking can alter document structure and is never a certificate that no secrets remain.");
+        if (!approved) {
+          edited.fill(0);
+          els.redactSummary.textContent = "Local privacy edit cancelled; original unchanged.";
+          return;
+        }
+        entries.push({
+          name, bytes: edited, hash, role: source.role,
+          selected: false, stage: "clarify",
+          note: "Local privacy derivative from source SHA-256 " + source.hash +
+            ". Masked " + replacements + " recognized/literal occurrence(s). " +
+            "Review full text before any independent human handoff."
+        });
+        els.stageFilter.value = "all";
+        touch(); paint();
+        els.before.value = String(index);
+        els.after.value = String(entries.length - 1);
+        els.redactSummary.textContent = "Created local copy: " + name +
+          ". " + replacements + " replacement(s), new SHA-256 " + hash.slice(0, 16) +
+          "…; original unchanged. New copy is NOT selected and is not approved for sharing.";
+        notice("Privacy edit added to offline inventory. Compare both versions and manually check for remaining confidential details.");
+      } catch (error) {
+        edited.fill(0);
+        throw error;
+      }
+    });
+  }
+
   async function seal(archive = false) {
     await inProgress(async () => {
       supportsCrypto();
@@ -621,6 +742,11 @@ font-weight:650;line-height:1.45;color:#bdcee8}
     }
   }
 
+  els.redactCreate.addEventListener("click", createPrivacyCopy);
+  els.redactClear.addEventListener("click", () => {
+    els.redactTerm.value = ""; touch();
+    els.redactSummary.textContent = "Sensitive term input cleared from the form.";
+  });
   els.files.addEventListener("change", addFiles);
   els.previewFile.addEventListener("click", preview);
   els.compareFiles.addEventListener("click", compare);
@@ -724,6 +850,16 @@ font-weight:650;line-height:1.45;color:#bdcee8}
 <p id="comparison-summary" class="status" aria-live="polite">Nothing is displayed until you request a preview or comparison. Maximum 400 lines per file, 2,048 characters per line, for bounded inspection.</p>
 <pre id="comparison-output" class="comparison" hidden aria-label="Private text comparison output"></pre>
 </section>
-<section aria-labelledby="review-title"><h2 id="review-title">5. Handle review material</h2><p>Files stay in tab memory only. Download a recovered original only after an explicit click. The workspace forgets plaintext when hidden or idle for five minutes.</p><div id="recovered" class="items"></div>
+<section aria-labelledby="redact-title">
+<h2 id="redact-title">5. Create a privacy-edited review copy</h2>
+<p>Prepare a distinct, <strong>unverified</strong> text derivative from one local draft. Replace common credentials and, optionally, one exact private term without altering the original. Each derivative receives a new SHA-256 fingerprint and stays unselected for sharing until you inspect it. This is <strong>not</strong> an assurance that no secrets remain.</p>
+<div class="grid">
+<label>Local source file<select id="redact-source" aria-label="Original file for privacy editing"><option value="">Choose a local draft</option></select></label>
+<label>Optional exact additional private term (6–128 characters)<input id="redact-term" type="password" autocomplete="off" maxlength="128" placeholder="Never saved or transmitted"></label></div>
+<label class="checkline"><input id="redact-credentials" type="checkbox" checked> Replace recognized credential patterns (best effort; unknown variants will remain)</label>
+<div class="actions"><button id="redact-create" type="button">Create local edited copy</button><button id="redact-clear" type="button" class="secondary">Clear private term</button></div>
+<p class="subtle" id="redact-summary" aria-live="polite">No copy prepared. Sensitive values are never shown in redaction summaries. Compare the new derivative with the original and inspect all contents before any human-approved handoff.</p>
+</section>
+<section aria-labelledby="review-title"><h2 id="review-title">6. Handle review material</h2><p>Files stay in tab memory only. Download a recovered original only after an explicit click. The workspace forgets plaintext when hidden or idle for five minutes.</p><div id="recovered" class="items"></div>
 <h3>Required real-world next steps</h3><ol><li>Have the actual client identify and approve their exact targets through the separately authenticated system.</li><li>Obtain independent operator approval, exact scope/risks and the active grant window.</li><li>Re-check revocation at action time and pass original security/privacy and CI release gates.</li></ol><p>Opening or sealing this packet performs none of those steps.</p></section>
 <footer><p id="message" class="message" role="status" aria-live="polite">Offline draft handling only. Never use this vault as execution permission.</p><small>No trackers · No network calls · No persistent browser storage · No target contact</small></footer></main></body></html>
