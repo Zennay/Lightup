@@ -156,6 +156,8 @@ function originalHandoff(){
    notes.push("- Request-binding shortlist: "+md(b.status)+" (NOT client/operator consent).");
    if(Number.isSafeInteger(b.matching_request_count))
     notes.push("- Original matching administrative requests: "+b.matching_request_count+" (NOT grants).");
+   if(Array.isArray(b.alternatives))
+    notes.push("- Historical proposed alternatives: "+b.alternatives.length+" (same original source transaction; none is permission).");
    if(b.status.startsWith("HOLD_"))
     notes.push("- **Client + operator/source owner:** identify an unambiguous original administratively approved request and reconfirm client/operator consent; do not grant from this handoff.");
    else notes.push("- **Client + operator/source owner:** separately authenticate the scope/risk/time and revalidate all source records at actual issuance/use; do not mint a grant from retrospective data.");
@@ -198,9 +200,39 @@ var binding=x.binding_review;
 if(binding!==null&&binding!==undefined){
  if(!O(binding)||!W(binding.engagement_id)||binding.authority!==false||
  binding.source_snapshots_atomic_together!==false||
- !["REVIEW_ONLY_SINGLE_CANDIDATE","HOLD_AMBIGUOUS_CANDIDATES","HOLD_NO_CANDIDATE","HOLD_BINDING_SOURCE_UNAVAILABLE_OR_CHANGED"].includes(binding.status))
+ !["REVIEW_ONLY_SINGLE_CANDIDATE","HOLD_AMBIGUOUS_CANDIDATES", "HOLD_NO_CANDIDATE","HOLD_BINDING_SOURCE_UNAVAILABLE_OR_CHANGED",
+ "HOLD_SCENARIOS_REQUIRE_HUMAN_SELECTION"].includes(binding.status))
  throw Error("binding source");
- if(binding.status!=="HOLD_BINDING_SOURCE_UNAVAILABLE_OR_CHANGED"){
+ if(binding.status==="HOLD_SCENARIOS_REQUIRE_HUMAN_SELECTION"){
+  if(!N(binding.scenario_count,8)||binding.scenario_count<2||
+    !Array.isArray(binding.alternatives)||binding.alternatives.length!==binding.scenario_count||
+    !Array.isArray(binding.adjacent_changes)||binding.adjacent_changes.length!==binding.scenario_count-1||
+    !/^[a-f0-9]{64}$/.test(binding.source_revision_sha256_unsigned)||
+    !/^[a-f0-9]{64}$/.test(binding.scenario_selection_sha256_unsigned))throw Error("original scenario source");
+  var labels=new Set();
+  for(var alt of binding.alternatives){
+   if(!O(alt)||!W(alt.label)||labels.has(alt.label)||
+    !N(alt.proposed_risk,4)||alt.proposed_risk===0||
+    !N(alt.proposed_asset_count,80)||alt.proposed_asset_count===0||
+    !N(alt.original_stored_request_count,100)||
+    !N(alt.matching_request_count,100)||
+    alt.matching_request_count>alt.original_stored_request_count||
+    alt.authority!==false||
+    !["REVIEW_ONLY_SINGLE_CANDIDATE","HOLD_AMBIGUOUS_CANDIDATES","HOLD_NO_CANDIDATE"].includes(alt.status)||
+    (alt.status==="REVIEW_ONLY_SINGLE_CANDIDATE")!==(alt.matching_request_count===1)||
+    (alt.status==="HOLD_AMBIGUOUS_CANDIDATES")!==(alt.matching_request_count>1)||
+    (alt.status==="HOLD_NO_CANDIDATE")!==(alt.matching_request_count===0))throw Error("invalid source scenario");
+   labels.add(alt.label);
+  }
+  for(var i=0;i<binding.adjacent_changes.length;i++){
+   var delta=binding.adjacent_changes[i];
+   if(!O(delta)||delta.from_scenario!==binding.alternatives[i].label||
+      delta.to_scenario!==binding.alternatives[i+1].label||
+      !N(delta.still_potential,100)||!N(delta.no_longer_matched_not_revoked,100)||
+      !N(delta.newly_matched_not_authorized,100))
+    throw Error("invalid original adjacent alternatives");
+  }
+ }else if(binding.status!=="HOLD_BINDING_SOURCE_UNAVAILABLE_OR_CHANGED"){
   if(!N(binding.proposed_asset_count,80)||binding.proposed_asset_count===0||
   !N(binding.proposed_risk,4)||binding.proposed_risk===0||
   !N(binding.stored_request_count,100)||!N(binding.matching_request_count,100)||
@@ -256,7 +288,7 @@ if(r.stop_observation==="STOP_ACTIVE")stopped++;
 if(r.stop_observation!=="NO_STOP_RECORDED_NOT_PERMISSION"||r.casebook_attention.startsWith("HOLD_")||r.casebook_attention==="RISK_DECISION_PENDING_SOURCE_REVIEW")needs++;
 }
 if(binding&&!x.engagements.some(r=>r.engagement_id===binding.engagement_id))throw Error("binding source outside selected engagements");
-if(binding&&binding.status!=="HOLD_BINDING_SOURCE_UNAVAILABLE_OR_CHANGED"){
+if(binding&&binding.status!=="HOLD_BINDING_SOURCE_UNAVAILABLE_OR_CHANGED"&&binding.status!=="HOLD_SCENARIOS_REQUIRE_HUMAN_SELECTION"){
  var candidateCase=original.get(binding.engagement_id);
  if(candidateCase.grant_count!==binding.stored_grant_count)throw Error("binding source grants inconsistent");
 }
@@ -273,7 +305,9 @@ function reconcile(latest,prior){
     (latest.binding_review&&prior.binding_review&&
      latest.binding_review.status!=="HOLD_BINDING_SOURCE_UNAVAILABLE_OR_CHANGED"&&
      prior.binding_review.status!=="HOLD_BINDING_SOURCE_UNAVAILABLE_OR_CHANGED"&&
-     latest.binding_review.selection_digest_unsigned!==prior.binding_review.selection_digest_unsigned)||
+     (latest.binding_review.status==="HOLD_SCENARIOS_REQUIRE_HUMAN_SELECTION"?
+      latest.binding_review.scenario_selection_sha256_unsigned!==prior.binding_review.scenario_selection_sha256_unsigned:
+      latest.binding_review.selection_digest_unsigned!==prior.binding_review.selection_digest_unsigned))||
     latest.client_id!==prior.client_id || latest.selected_count!==prior.selected_count ||
     latest.selected_engagements_only!==prior.selected_engagements_only ||
     !Number.isFinite(Date.parse(latest.snapshot_at)) ||
@@ -363,7 +397,15 @@ function inspect(eid){
   var wrap=E("bindingDetails");wrap.replaceChildren();
   line(wrap,"Engagement",eid);
   line(wrap,"Source disposition (not authority)",b.status);
-  if(b.status!=="HOLD_BINDING_SOURCE_UNAVAILABLE_OR_CHANGED"){
+  if(b.status==="HOLD_SCENARIOS_REQUIRE_HUMAN_SELECTION"){
+   line(wrap,"Scenarios compared against one original source transaction",b.scenario_count);
+   line(wrap,"Original source revision (unsigned)",b.source_revision_sha256_unsigned);
+   sourceSection(wrap,"Original proposal candidate alternatives",b.alternatives,
+    ["label","proposed_risk","proposed_asset_count","original_stored_request_count","matching_request_count","status"]);
+   sourceSection(wrap,"Adjacent alternative matching changes (NOT chronological or revocation)",b.adjacent_changes,
+    ["from_scenario","to_scenario","still_potential","no_longer_matched_not_revoked","newly_matched_not_authorized"]);
+   line(wrap,"Review required","Every scenario is an administrative comparison, never a scope authorization.");
+  }else if(b.status!=="HOLD_BINDING_SOURCE_UNAVAILABLE_OR_CHANGED"){
    line(wrap,"Proposed canonical literal count",b.proposed_asset_count);
    line(wrap,"Proposed risk",b.proposed_risk);
    line(wrap,"Original administrative requests",b.stored_request_count);
@@ -407,7 +449,7 @@ E("count").textContent=report.summary.selected;E("stops").textContent=report.sum
 E("holds").textContent=report.summary.stop_source_hold;E("attention").textContent=report.summary.cases_requiring_human_attention;
 E("pendingRisk").textContent=report.summary.pending_risk_review;
 E("riskHold").textContent=report.summary.risk_provenance_hold;
-E("candidate").textContent=report.binding_review&&report.binding_review.matching_request_count!==undefined?report.binding_review.matching_request_count:"—";
+E("candidate").textContent=report.binding_review&&report.binding_review.scenario_count!==undefined?report.binding_review.scenario_count+" alternatives":report.binding_review&&report.binding_review.matching_request_count!==undefined?report.binding_review.matching_request_count:"—";
 E("bindingStatus").textContent=report.binding_review?report.binding_review.status:"NOT REQUESTED";
 if(selectedCase)inspect(selectedCase);}
 E("file").addEventListener("change",async function(){
@@ -481,7 +523,8 @@ for(var r of report.engagements)stageCounts[stages.get(r.engagement_id)||"unrevi
 var safeCounts={selected:report.summary.selected,active_stop_observations:report.summary.active_stop_observations,no_stop_recorded_not_authority:report.summary.no_stop_recorded_not_authority,stop_source_hold:report.summary.stop_source_hold,cases_requiring_human_attention:report.summary.cases_requiring_human_attention,original_requests:report.summary.original_requests,original_grants:report.summary.original_grants,risk_provenance_hold:report.summary.risk_provenance_hold,pending_risk_review:report.summary.pending_risk_review};
 var aggregate={schema:"lightup.scope_stop_anonymous.v1",status:"REVIEW_ONLY_OR_HOLD",counts:safeCounts,human_stages:stageCounts,
  binding:report.binding_review?{status:report.binding_review.status,
- candidate_count:Number.isSafeInteger(report.binding_review.matching_request_count)?report.binding_review.matching_request_count:null}:null,
+ candidate_count:Number.isSafeInteger(report.binding_review.matching_request_count)?report.binding_review.matching_request_count:null,
+ scenario_count:Number.isSafeInteger(report.binding_review.scenario_count)?report.binding_review.scenario_count:null}:null,
  comparison:older?{compared:changes.size,changed:Array.from(changes.values()).filter(a=>a.length).length,
  stop_disappearance_hold:Array.from(changes.values()).filter(a=>a.some(x=>x.startsWith("HOLD:"))).length}:null,source_snapshots_atomic_together:false,authorization_granted:false,execution_allowed:false,release_approved:false};
 download(aggregate,"lightup-scope-stop-anonymous.json");
