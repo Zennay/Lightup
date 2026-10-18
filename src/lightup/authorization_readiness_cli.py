@@ -166,6 +166,21 @@ def _read_report(database: Path, *, client_id: str | None = None,
         con.row_factory = sqlite3.Row
         con.execute("PRAGMA query_only=ON")
         con.execute("BEGIN")
+        columns = {
+            info["name"] for info in con.execute(
+                "PRAGMA table_info(authorization_grants)"
+            ).fetchall()
+        }
+        # Compatible with both the old unbound SQLite schema and the future
+        # owner-composed durable request→grant binding from #177.
+        binding_projection = (
+            "g.approved_request_id" if "approved_request_id" in columns
+            else "NULL AS approved_request_id"
+        )
+        grant_projection = (
+            "g.grant_id,g.client_id,g.engagement_id,g.assets_json,g.max_risk,"
+            "g.valid_from,g.valid_until,g.created_at," + binding_projection
+        )
         if engagement_id is not None:
             selected = con.execute(
                 "SELECT client_id FROM engagements WHERE engagement_id=?",
@@ -187,9 +202,8 @@ def _read_report(database: Path, *, client_id: str | None = None,
                     (client_id, engagement_id),
                 )
                 grants = _rows(
-                    con, "SELECT grant_id,client_id,engagement_id,assets_json,max_risk,"
-                         "valid_from,valid_until,created_at FROM authorization_grants "
-                         "WHERE engagement_id=? ORDER BY created_at",
+                    con, "SELECT " + grant_projection + " FROM authorization_grants AS g "
+                         "WHERE g.engagement_id=? ORDER BY g.created_at",
                     (engagement_id,),
                 )
             else:
@@ -198,8 +212,7 @@ def _read_report(database: Path, *, client_id: str | None = None,
                          "WHERE client_id=? ORDER BY created_at", (client_id,),
                 )
                 grants = _rows(
-                    con, "SELECT g.grant_id,g.client_id,g.engagement_id,g.assets_json,g.max_risk,"
-                         "g.valid_from,g.valid_until,g.created_at FROM authorization_grants AS g "
+                    con, "SELECT " + grant_projection + " FROM authorization_grants AS g "
                          "JOIN engagements AS e ON e.engagement_id=g.engagement_id "
                          "WHERE e.client_id=? ORDER BY g.created_at", (client_id,),
                 )
@@ -224,8 +237,8 @@ def _read_report(database: Path, *, client_id: str | None = None,
                      "requested_risk,status,requested_by,decided_by,decided_at,created_at "
                      "FROM assessment_requests ORDER BY created_at")
             grants = _rows(
-                con, "SELECT grant_id,client_id,engagement_id,assets_json,max_risk,"
-                     "valid_from,valid_until,created_at FROM authorization_grants ORDER BY created_at")
+                con, "SELECT " + grant_projection +
+                     " FROM authorization_grants AS g ORDER BY g.created_at")
             users = _rows(con, "SELECT user_id,role,client_id FROM users ORDER BY user_id")
         con.rollback()
 
