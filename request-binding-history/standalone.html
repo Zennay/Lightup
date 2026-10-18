@@ -58,7 +58,15 @@ a{color:#9bdafc}
 <p class="muted">Case notes and stages are private local human discussions, never modifications of source records. PRIVATE draft backup can save them; anonymous exports show only stage totals, never free-text notes.</p><div class="actions"><button id="caseprev" class="secondary">Previous records</button><span id="pageinfo" aria-live="polite"></span><button id="casenext" class="secondary">Next records</button></div>
 <p class="muted">A row in the first source is not proof of a person or authenticated request; a row in the second is not proof of consent, revocation, a new grant or correction. Row references are ephemeral within this selected pair only.</p></section>
 <section class="panel"><h2>6 · Source mismatch themes</h2><p>Fixed original source-owner explanation categories, grouped without request identities. These are discussion flags only, not authenticated policy verdicts or newly discovered risks.</p><div class="table-wrap"><table><thead><tr><th>Original reason</th><th>Human discussion owner</th><th>Per selected slot</th><th>Change: first → last</th></tr></thead><tbody id="reasonrows"></tbody></table></div></section>
-<section class="panel"><h2>7 · Human handoff</h2>
+<section class="panel" id="triage"><h2>7 · Private cross-snapshot human triage queue</h2>
+<p>Every row below represents one <strong>copied, unsigned original-source request pseudonym</strong>, not a live authenticated case. Priorities are conservative discussion hints based on source-reported changes only. No score or human stage verifies approval, revocation, release or permission.</p>
+<div class="grid"><label>Human discussion priority <select id="queue-priority"><option value="all">All discussion priorities</option><option value="urgent">Priority: original identity / sensitive change</option><option value="review">Priority: changed / missing source</option><option value="routine">Other human discussion</option></select></label>
+<label>Local follow-up stage <select id="queue-stage"><option value="all">All stages</option><option value="open">Needs human follow-up</option><option value="documented_only">Discussion noted (not verified)</option><option value="unreviewed">Not reviewed</option><option value="client_followup">Client follow-up</option><option value="operator_followup">Operator follow-up</option><option value="security_source_review">Security/source review</option></select></label></div>
+<div class="grid" id="queue-summary"></div>
+<div class="table-wrap"><table><thead><tr><th>Local anonymous case</th><th>Source observations</th><th>Priority (discussion only)</th><th>Last original category</th><th>First human question</th><th>Human stage</th><th>Open private case</th></tr></thead><tbody id="queue-rows"></tbody></table></div>
+<div class="actions"><button id="queue-prev" class="secondary">Previous cases</button><span id="queue-pageinfo" aria-live="polite"></span><button id="queue-next" class="secondary">Next cases</button></div>
+<p class="muted">A missing original row can mean an incomplete selection or source limit; a newly seen one does not prove a new client request. This queue never issues work orders or updates persisted LightUp records.</p></section>
+<section class="panel"><h2>8 · Human handoff</h2>
 <p>Mark private discussion items for yourself. These local checkmarks have no effect on source requests, grant state, revocation, scan, target or release.</p>
 <div id="review"></div>
 <div class="actions"><button id="exportjson">Download anonymous JSON brief</button><button id="exportcsv" class="secondary">Download anonymous CSV</button><button id="saveprivate" class="secondary">Save PRIVATE working draft</button><input type="file" id="restore" accept=".json" aria-label="Restore a private working draft"><button class="secondary" id="print">Print private aggregate</button></div>
@@ -200,6 +208,31 @@ function adjacentRecordChanges(left,right){
 function allPrivateRefs(){
  return [...new Set(workspace.records.flatMap(r=>r.cases.map(c=>c.ref)))].sort();
 }
+function triageCases(){
+ const source=workspace.records,byRef=new Map();
+ for(const [slot,snapshot] of source.entries())for(const row of snapshot.cases){
+  if(!byRef.has(row.ref))byRef.set(row.ref,[]);
+  byRef.get(row.ref).push({slot,row});
+ }
+ return [...byRef.entries()].map(([ref,observations])=>{
+  const current=observations[observations.length-1],previous=observations[0];
+  const everMatched=observations.some(o=>o.row.category==="candidate_review_only");
+  const sensitive=observations.some(o=>o.row.flags.includes("SOURCE_ROLE_OR_TENANT_PROVENANCE_MISMATCH") ||
+    o.row.flags.includes("DECISION_CHRONOLOGY_INVALID"));
+  const changed=observations.slice(1).some((o,i)=>JSON.stringify([o.row.storedStatus,o.row.category,o.row.risk,o.row.bound,o.row.flags]) !==
+    JSON.stringify([observations[i].row.storedStatus,observations[i].row.category,observations[i].row.risk,observations[i].row.bound,observations[i].row.flags]));
+  const gaps=observations.length<source.length,hasGrant=observations.some(o=>o.row.bound>0),flags=current.row.flags;
+  // These are human discussion labels, NOT a risk calculation or security verdict.
+  const priority=(sensitive||(changed&&(everMatched||hasGrant)))?"urgent":(changed||gaps||flags.length>0)?"review":"routine";
+  const question=sensitive?"Ask original security/identity owner to recheck record lineage":
+    changed?"Reopen original source decisions and recorded grant lineage":
+    gaps?"Ask original operator whether missing row reflects source limits":
+    flags.length?("Discuss original source reason: "+flags[0]):"Reauthenticate original source before any action";
+  return {ref,seen:observations.length,first:previous.slot,last:current.slot,priority,changed,gaps,category:current.row.category,question,
+          stage:caseEntry(ref).stage};
+ }).sort((a,b)=>({urgent:0,review:1,routine:2}[a.priority]-{urgent:0,review:1,routine:2}[b.priority])
+  ||a.last-b.last||a.ref.localeCompare(b.ref));
+}
 function humanCaseworkTotals(){
  const out=Object.fromEntries(Object.keys(CASE_STAGES).map(k=>[k,0]));
  for(const ref of allPrivateRefs()){const entry=workspace.casework[ref];out[entry?.stage||"unreviewed"]++}
@@ -215,6 +248,8 @@ function payload(){
    snapshots:reports.map((r,i)=>({slot:i+1,candidates:r.matched,other_approved:r.other,not_approved:r.notApproved,stored_grants:r.grants,unbound_legacy_grants:r.legacy,stored_record_change_from_previous:i>0?r.revision!==reports[i-1].revision:null,source_mismatch_reason_counts:Object.fromEntries(Object.keys(ROUTES).map(k=>[k,r.reasons[k]||0]))})),
    manual_follow_up:ACTIONS.map((task,i)=>({category:i+1,done_for_local_discussion_only:!!workspace.checks[i]})),
    anonymous_human_casework_stage_totals:humanCaseworkTotals(),
+   anonymous_cross_snapshot_human_discussion_priorities:Object.fromEntries(["urgent","review","routine"].map(label=>
+     [label,triageCases().filter(c=>c.priority===label).length])),
    caution:"Untrusted, unsigned offline snapshots; never authority, consent, revocation, permission, release or verified chronology."};
 }
 function moveOriginal(index,offset){
@@ -247,10 +282,53 @@ function render(){
  if(!Number.isSafeInteger(workspace.pair)||workspace.pair>=records.length-1)workspace.pair=0;
  $("pair").value=String(workspace.pair);
  renderCases();
+ renderQueue();
  $("reasonrows").innerHTML=reportedFlags.map(reason=>{const counts=records.map(r=>r.reasons[reason]||0),change=counts[counts.length-1]-counts[0];return "<tr><td><span class=\"badge\">"+esc(reason)+"</span></td><td>"+esc(ROUTES[reason])+"</td><td>"+counts.map((x,i)=>"Slot "+(i+1)+": "+x).join(" · ")+"</td><td>"+(change>0?"+":"")+change+" (not proof of a new permission or real chronology)</td></tr>"}).join("");
  $("review").innerHTML=ACTIONS.map((task,i)=>'<label style="display:flex"><input type="checkbox" data-action="'+i+'" '+(workspace.checks[i]?"checked":"")+'> '+esc(task)+'</label>').join("");
  $("review").querySelectorAll("input").forEach(el=>el.addEventListener("change",()=>workspace.checks[+el.dataset.action]=el.checked));
 }
+function renderQueue(){
+ if(!workspace)return;
+ const all=triageCases(),priority=$("queue-priority").value,stage=$("queue-stage").value;
+ const selected=all.filter(c=>(priority==="all"||c.priority===priority)&&
+   (stage==="all"||stage==="open"&&c.stage!=="documented_only"||c.stage===stage));
+ const size=40,pages=Math.max(1,Math.ceil(selected.length/size));
+ workspace.queuePage=Math.min(workspace.queuePage||0,pages-1);
+ const start=workspace.queuePage*size,view=selected.slice(start,start+size);
+ $("queue-summary").innerHTML=[["Urgent human discussion",all.filter(c=>c.priority==="urgent").length],
+ ["Other source review",all.filter(c=>c.priority==="review").length],
+ ["Human discussions noted",all.filter(c=>c.stage==="documented_only").length]]
+ .map(([label,value])=>'<div class="stat">'+esc(label)+'<strong>'+value+'</strong></div>').join("");
+ $("queue-prev").disabled=workspace.queuePage===0;$("queue-next").disabled=workspace.queuePage>=pages-1;
+ $("queue-pageinfo").textContent="Showing "+(selected.length?start+1:0)+"–"+Math.min(start+size,selected.length)+" of "+selected.length+" private source cases";
+ $("queue-rows").innerHTML=view.map((row,index)=>{
+  const options=Object.entries(CASE_STAGES).map(([key,title])=>
+    '<option value="'+key+'" '+(row.stage===key?"selected":"")+'>'+esc(title)+'</option>').join("");
+  return '<tr><td>Case '+(start+index+1)+'</td><td>'+row.seen+' of '+workspace.records.length+
+   ' selected reports'+(row.gaps?'<br>Source membership incomplete':'')+
+   '</td><td><span class="badge">'+esc(row.priority.toUpperCase())+'</span></td><td>'+esc(row.category)+
+   '</td><td>'+esc(row.question)+'</td><td><select data-qstage="'+index+'" aria-label="Human-only stage for private case '+(start+index+1)+'">'+options+
+   '</select></td><td><button class="secondary" data-qopen="'+index+'">Open case details</button></td></tr>';
+ }).join("");
+ $("queue-rows").querySelectorAll("select[data-qstage]").forEach(control=>control.addEventListener("change",()=>{
+  const row=view[Number(control.dataset.qstage)];if(!row||!Object.hasOwn(CASE_STAGES,control.value))return;
+  caseEntry(row.ref).stage=control.value;renderQueue();
+ }));
+ $("queue-rows").querySelectorAll("button[data-qopen]").forEach(control=>control.addEventListener("click",()=>{
+  const row=view[Number(control.dataset.qopen)];if(!row)return;
+  const pair=Math.max(0,Math.min(workspace.records.length-2,row.last===0?0:row.last-1));
+  workspace.pair=pair;$("casetype").value="all";
+  const lines=adjacentRecordChanges(workspace.records[pair],workspace.records[pair+1]).rows;
+  const index=lines.findIndex(line=>line.ref===row.ref);
+  workspace.page=index<0?0:Math.floor(index/60);
+  $("pair").value=String(pair);renderCases();
+  document.querySelector("#cases").scrollIntoView({behavior:"smooth",block:"center"});
+ }));
+}
+$("queue-priority").addEventListener("change",()=>{if(workspace){workspace.queuePage=0;renderQueue()}});
+$("queue-stage").addEventListener("change",()=>{if(workspace){workspace.queuePage=0;renderQueue()}});
+$("queue-prev").addEventListener("click",()=>{if(workspace&&workspace.queuePage>0){workspace.queuePage--;renderQueue()}});
+$("queue-next").addEventListener("click",()=>{if(workspace){workspace.queuePage++;renderQueue()}});
 function caseEntry(ref){
  if(!Object.hasOwn(workspace.casework,ref))workspace.casework[ref]={stage:"unreviewed",note:""};
  return workspace.casework[ref];
@@ -274,7 +352,7 @@ function renderCases(){
  }).join("");
  $("cases").querySelectorAll("select, input").forEach(el=>el.addEventListener("change",()=>{
   const record=visible[Number(el.dataset.record)];if(!record)return;
-  const value=el.value;if(el.dataset.field==="stage"){if(!Object.hasOwn(CASE_STAGES,value))return;caseEntry(record.ref).stage=value}
+  const value=el.value;if(el.dataset.field==="stage"){if(!Object.hasOwn(CASE_STAGES,value))return;caseEntry(record.ref).stage=value;renderQueue()}
   else caseEntry(record.ref).note=value.slice(0,180);
  }));
  $("cases").querySelectorAll('input[data-field="note"]').forEach(el=>el.addEventListener("input",()=>{
