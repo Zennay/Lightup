@@ -396,5 +396,77 @@ function priorityDiscussionMarkdown(model) {
  text.push('','**Human decisions needed:** independently confirm source client/engagement, original authorization and revocation, real budgets, repair owners, procurement and separately verified retests. This file cannot authorize any work.','');
  return text.join('\n');
 }
-root.LightUpFunding=Object.freeze({intake,settings,project,stagedFunding,fundingPriorities,priorityDiscussionMarkdown,SCHEMA,MAX_SIZE:65536});
+function fundingTimingComparison(source,raw,selectedReleases) {
+ const cfg=settings(raw);
+ if(!source||!Array.isArray(source.weeks)||!source.weeks.length)
+  fail('Choose a previously loaded aggregate source');
+ const n=source.weeks.length;
+ const upfront=[100,...Array(n-1).fill(0)];
+ const even=Array(n).fill(Math.floor(100/n));
+ even[n-1]+=100-even.reduce((sum,x)=>sum+x,0);
+ const configs=[['all_upfront',upfront],['evenly_released',even],['selected_schedule',selectedReleases]];
+ const records=configs.map(([name,releases])=>{
+  const stages=stagedFunding(source,cfg,releases);
+  const risks=fundingPriorities(source,cfg,releases);
+  return Object.freeze({
+   name,
+   release_percentages:Object.freeze([...stages.release_percentages]),
+   modeled_total_funding:stages.total_funding,
+   planned_hours:stages.planned_hours,
+   tentatively_funded_hours:stages.provisionally_funded_hours,
+   hours_unfunded_at_original_weeks:stages.unpaid_planned_hours,
+   critical_high_coverage_best_case_hours:
+    Math.round((risks.urgent_first.critical_high_funded_hours)*10)/10,
+   critical_high_coverage_proportional_hours:
+    Math.round((risks.proportional.critical_high_funded_hours)*10)/10,
+   critical_high_unfunded_best_case_hours:
+    Math.round((risks.urgent_first.critical_high_unfinanced_hours)*10)/10,
+   critical_high_unfunded_proportional_hours:
+    Math.round((risks.proportional.critical_high_unfinanced_hours)*10)/10,
+   unpaid_setup:stages.setup_cost_still_unpaid,
+   unused_budget:stages.unused_funds_end,
+   critical_high_outside_source_plan:risks.source_unscheduled_urgent_hours
+  });
+ });
+ const earliest=records[0];
+ return Object.freeze({
+  schema:'lightup.remediation_release_timing_review.v1',
+  review_only:true,authorization:false,consent:false,grant:false,
+  scan:false,execute:false,dispatch:false,retest_verified:false,deploy:false,release:false,
+  currency:cfg.currency,source_count:source.source_count,
+  scenarios:Object.freeze(records),
+  selected_versus_upfront_unfunded_extra_hours:Math.round(
+   (records[2].hours_unfunded_at_original_weeks-earliest.hours_unfunded_at_original_weeks)*10)/10,
+  selected_versus_upfront_critical_high_unfunded_extra_hours:Math.round(
+   (records[2].critical_high_unfunded_best_case_hours-earliest.critical_high_unfunded_best_case_hours)*10)/10
+ });
+}
+function timingDiscussionMarkdown(comparison){
+ if(!comparison||comparison.schema!=='lightup.remediation_release_timing_review.v1')
+  fail('Generate a local timing comparison first');
+ const lines=[
+  '# LightUp — timing-of-funds discussion (UNSIGNED DRAFT)',
+  '',
+  '**REVIEW_ONLY · INCUBATE M3/M7 · DRAFT/HOLD.** No client authentication, real consent, grant, remediation, retest, money transfer or release.',
+  '',
+  'These scenarios use exactly the same total hypothetical money and originally exported aggregate hours. Funding paid too late does not retroactively finance earlier planned work.',
+  '',
+  '| Cash release | Total model budget | Proposed hours | Funded hours | Unfunded hours at source weeks | Urgent-first critical/high unfunded | Proportional critical/high unfunded | Setup still unpaid | Cash left unused |',
+  '| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |'
+ ];
+ for(const scenario of comparison.scenarios)lines.push(
+  '| '+[scenario.name,scenario.modeled_total_funding,scenario.planned_hours,
+   scenario.tentatively_funded_hours,scenario.hours_unfunded_at_original_weeks,
+   scenario.critical_high_unfunded_best_case_hours,
+   scenario.critical_high_unfunded_proportional_hours,
+   scenario.unpaid_setup,scenario.unused_budget].join(' | ')+' |'
+ );
+ lines.push('','- Currency: '+comparison.currency+' (no currency conversions).',
+  '- Selected release versus all upfront — additional modeled original-week unfunded hours: '+comparison.selected_versus_upfront_unfunded_extra_hours,
+  '- Selected release versus all upfront — additional modeled critical/high unfunded hours under urgent-first: '+comparison.selected_versus_upfront_critical_high_unfunded_extra_hours,
+  '',
+  'Human follow-up: confirm actual authorised source, engagement, contracts, procurement and payment calendar independently. All estimates are unverified proposals; never start a scan, grant, or retest from this brief.','');
+ return lines.join('\n');
+}
+root.LightUpFunding=Object.freeze({intake,settings,project,stagedFunding,fundingPriorities,priorityDiscussionMarkdown,fundingTimingComparison,timingDiscussionMarkdown,SCHEMA,MAX_SIZE:65536});
 })(window);
