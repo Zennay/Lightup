@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-7uVWP+8F4rK20N4waCez9ECs4twj73TKRFULKGnKH8E=' 'sha256-k063sX7gui1MHh7KSFsfBDpeNsiUePvLBCuTQLOmh0c=' 'sha256-nY8HgqUikSHSJECvSpT6+zFvQpGTtmxUm6NawJROHqc='; style-src 'sha256-5TGF4Na4qyoxlPebbQCDpVNCy8PwBWxvOqXXb2rFTU0='; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-7uVWP+8F4rK20N4waCez9ECs4twj73TKRFULKGnKH8E=' 'sha256-k063sX7gui1MHh7KSFsfBDpeNsiUePvLBCuTQLOmh0c=' 'sha256-wpPFZOyxFDTkVCPSRLe+ulmbav4+u8hRIYgukbiqEiU=' 'sha256-9Sgthab0koAje99ePkZAIFYEsTwR6GkdrKmO0uc06dM=' 'sha256-EZP2PxcLhbPw+boqUtGguuh3w74QN6cTv78sskvqSes='; style-src 'sha256-x11eSo+JLC9F9DQar7xmvHakUfjRSCwlFZtkHAZnECI='; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <title>LightUp | Remediation Capacity Studio — offline draft</title>
 <style>:root{color-scheme:dark;--bg:#0a1119;--panel:#111e29;--edge:#304451;--text:#edf5f7;--muted:#a4bac8;--teal:#7ee4bd;--amber:#f9d48a;--blue:#7cb8ff}
 *{box-sizing:border-box}
@@ -66,7 +66,11 @@ footer{padding:22px 0 60px}
 .file-label{display:inline-flex;align-items:center;justify-content:center;cursor:pointer;padding:11px 16px;border:1px solid var(--teal);color:var(--text);background:#203341;border-radius:8px;font-weight:700}.file-label:focus-within{outline:3px solid var(--teal)}#reopen-working-draft{max-width:250px}.panel:has(#resume-title){border-color:#51746e}#draft-status{padding:8px 0} @media print{.panel:has(#resume-title){display:none!important}}
 
 .milestone-action{display:flex;align-items:end;padding-bottom:2px}.milestone-overview{border-left:3px solid var(--teal);padding:12px 18px;margin:18px 0;background:#0b1922;border-radius:5px}.milestone-overview strong{color:var(--teal)}.milestone-overview p{margin:.6em 0}#milestone-export{margin:5px 0 12px}@media print{#milestone-calculate,#milestone-export,.milestone-action{display:none!important}}
+
+#casework-risk-table td{font-variant-numeric:tabular-nums}#casework-risk-table td:first-child{text-transform:capitalize;font-weight:700}#casework-risk-table .outstanding-row td{border-color:#7b7651}.panel:has(#casework-review-title){border-color:#52696d}#casework-status-cards{margin:18px 0}#casework-summary p{max-width:85ch}@media print{#casework-packet,#review-casework,#clear-casework,#casework-ack,#export-casework-summary{display:none!important}.panel:has(#casework-review-title){break-inside:auto}}
 </style>
+
+
 
 
 
@@ -132,9 +136,28 @@ footer{padding:22px 0 60px}
   </div>
   <p id="draft-status" class="subtle" aria-live="polite">No saved draft restored. Browsers store nothing for you.</p>
 </section>
+<section class="panel" aria-labelledby="casework-review-title">
+  <p class="eyebrow">04 / ORIGINAL CASEWORK HANDOFF</p>
+  <h2 id="casework-review-title">Review existing Casework planning blockers</h2>
+  <p>Import an original <code>lightup.remediation_casework_draft</code> v1 file created by the separate authorised-export-based Casework product. The original source CSV above must be reloaded first. We use the pinned original Casework v1 parser, require an identical source revision and show only grouped human planning stages, blockers and missing owner labels.</p>
+  <div class="upload">
+    <label for="casework-packet">Original private Casework JSON</label>
+    <input id="casework-packet" type="file" accept=".json,application/json">
+    <button id="clear-casework" type="button" class="secondary">Forget Casework summary</button>
+  </div>
+  <label class="ack"><input id="casework-ack" type="checkbox"> I independently confirmed the selected exported Casework draft and original findings CSV came from the same intended <strong>client and engagement</strong>. This is not identity or scope authentication.</label>
+  <button id="review-casework" type="button">Review read-only casework summary</button>
+  <p id="casework-feedback" class="subtle" aria-live="polite">No Casework record reviewed.</p>
+  <div id="casework-summary" hidden>
+    <div id="casework-status-cards" class="stats"></div>
+    <div class="table-scroll"><table><thead><tr><th scope="col">Severity</th><th scope="col">Source cases</th><th scope="col">Blocked</th><th scope="col">Unlabelled owners</th><th scope="col">Undated</th><th scope="col">Human retest coordination</th><th scope="col">Self-reported complete (unverified)</th></tr></thead><tbody id="casework-risk-table"></tbody></table></div>
+    <p class="subtle">Casework “completed” is a self-reported human work stage, <strong>never proof of a fix or authorised retest</strong>. Casework imports never change the current capacity plan or grant execution rights.</p>
+    <button id="export-casework-summary" type="button" class="secondary">Export aggregate Casework discussion</button>
+  </div>
+</section>
 <section id="results" hidden aria-labelledby="results-title">
   <div class="panel">
-    <p class="eyebrow">04 / HUMAN PLANNING PREVIEW</p>
+    <p class="eyebrow">05 / HUMAN PLANNING PREVIEW</p>
     <h2 id="results-title">Capacity allocation</h2>
     <div class="stats" id="stats" aria-live="polite"></div>
     <p class="subtle">A fully allocated estimate only means it fits in this draft plan. It does not mean work has started, a vulnerability was fixed, or an authorised retest has happened.</p>
@@ -154,7 +177,7 @@ footer{padding:22px 0 60px}
     <div id="weekly" class="weeks"></div>
   </div>
   <div class="panel" aria-labelledby="history-title">
-    <p class="eyebrow">05 / HISTORICAL LOAD CHANGE</p>
+    <p class="eyebrow">06 / HISTORICAL LOAD CHANGE</p>
     <h2 id="history-title">Compare repair workload between two original reports</h2>
     <p>Import one <em>earlier</em> authenticated LightUp findings CSV. Compare it with the current CSV above, using exactly the current hour assumptions. A record missing from the newer source is <strong>not proven fixed</strong>. The CSVs do not authenticate client or assessment identity.</p>
     <div class="upload">
@@ -174,7 +197,7 @@ footer{padding:22px 0 60px}
     </div>
   </div>
   <div class="panel">
-    <p class="eyebrow">06 / CAPACITY WHAT-IF</p>
+    <p class="eyebrow">07 / CAPACITY WHAT-IF</p>
     <h2>What if the team had more capacity?</h2>
     <p>Compare the baseline with an alternative number of engineers. This does not hire, assign or book anyone; assumptions remain unchanged except staffing.</p>
     <div class="scenario-controls">
@@ -185,7 +208,7 @@ footer{padding:22px 0 60px}
     <div id="comparison" aria-live="polite"></div>
   </div>
   <div class="panel" aria-labelledby="milestone-title">
-    <p class="eyebrow">07 / RISK MILESTONES</p>
+    <p class="eyebrow">08 / RISK MILESTONES</p>
     <h2 id="milestone-title">Can urgent risks fit into the target sprint?</h2>
     <p>Try a hypothetical milestone for critical findings, or critical and high findings together. Calculate the remaining estimated hours at the selected week and smallest modelled staffing level (up to 30 engineers) needed to fit the proposal. This is not an agreed SLA or permission to retest.</p>
     <div class="grid">
@@ -197,7 +220,7 @@ footer{padding:22px 0 60px}
     <button id="milestone-export" type="button" class="secondary" hidden>Export aggregate milestone draft</button>
   </div>
   <div class="panel" aria-labelledby="contingency-title">
-    <p class="eyebrow">08 / CAPACITY INTERRUPTION PLANNING</p>
+    <p class="eyebrow">09 / CAPACITY INTERRUPTION PLANNING</p>
     <h2 id="contingency-title">What if the team temporarily loses capacity?</h2>
     <p>Compare your current estimated recovery plan to one disrupted week and an ongoing hypothetical reduction. Neither scenario changes real staff allocation, scope permission, working calendars or any previously authorised assessment.</p>
     <div class="grid">
@@ -635,6 +658,356 @@ footer{padding:22px 0 60px}
   root.LightUpDraft=Object.freeze({fingerprint,exportDraft,importDraft,MAX_DRAFT_BYTES});
 })(window);
 </script>
+<script>/* LightUp local casework. Parsing/presentation only; never authenticates source or authorizes assessments. */
+(function(global){
+'use strict';
+const EXPECTED=['finding_id','title','severity','retest_status','remediation'];
+const SEVERITY=['critical','high','medium','low','info'];
+const RETEST=['not_tested','fix_pending','fixed','regression'];
+const PROGRESS=['unassigned','planned','in_progress','blocked','ready_for_retest','deferred','completed'];
+const MAX_BYTES=1048576,MAX_ROWS=350,MAX_CELL=6000;
+function sizeOf(text){return new TextEncoder().encode(text).length;}
+function parseCSV(text){
+ if(typeof text!=='string'||sizeOf(text)>MAX_BYTES)throw Error('CSV exceeds 1 MiB.');
+ if(text.charCodeAt(0)===0xfeff)text=text.slice(1);
+ const rows=[];let row=[],field='',quoted=false,closed=false;
+ for(let i=0;i<text.length;i++){
+  const c=text[i];
+  if(quoted){
+   if(c==='"' && text[i+1]==='"'){field+='"';i++;}
+   else if(c==='"') {quoted=false;closed=true;}
+   else field+=c;
+  }else if(c==='"'){
+   if(field!==''||closed)throw Error('Malformed quoted CSV field.');
+   quoted=true;
+  }else if(c===','){
+   row.push(field);field='';closed=false;
+  }else if(c==='\r'||c==='\n'){
+   if(c==='\r'&&text[i+1]==='\n')i++;
+   row.push(field);field='';closed=false;
+   if(row.length>1||row[0]!=='')rows.push(row);
+   row=[];
+   if(rows.length>MAX_ROWS+1)throw Error('Too many findings.');
+  }else{
+   if(closed)throw Error('Malformed CSV after closing quote.');
+   field+=c;
+  }
+  if(field.length>MAX_CELL)throw Error('An imported CSV cell is too long.');
+ }
+ if(quoted)throw Error('Unclosed CSV quote.');
+ if(row.length||field!==''||closed){row.push(field);if(row.length>1||row[0]!=='')rows.push(row);}
+ if(!rows.length)throw Error('No CSV header found.');
+ if(rows[0].length!==EXPECTED.length || rows[0].some((v,i)=>v!==EXPECTED[i]))
+  throw Error('Expected the five-column LightUp findings summary CSV export.');
+ if(rows.length===1)throw Error('CSV export contains no findings.');
+ if(rows.length-1>MAX_ROWS)throw Error('Too many findings.');
+ const seen=new Set();
+ return rows.slice(1).map((values,index)=>{
+  if(values.length!==EXPECTED.length)throw Error('Malformed CSV row '+(index+2)+'.');
+  const [finding_id,title,severity,retest_status,remediation]=values;
+  if(!finding_id.trim()||finding_id.length>160||seen.has(finding_id))
+   throw Error('Invalid or duplicate finding ID at row '+(index+2)+'.');
+  if(!title.trim()||!remediation.trim()||!SEVERITY.includes(severity)||!RETEST.includes(retest_status))
+   throw Error('Malformed finding data at row '+(index+2)+'.');
+  seen.add(finding_id);
+  return {finding_id,title,severity,retest_status,remediation};
+ });
+}
+function normalizeSource(findings){
+ if(!Array.isArray(findings)||!findings.length||findings.length>MAX_ROWS)throw Error('Unsupported findings list.');
+ const seen=new Set();
+ return findings.map(x=>{
+  if(!x||typeof x!=='object'||Array.isArray(x))throw Error('Malformed finding.');
+  const y={};
+  for(const col of EXPECTED){
+   if(typeof x[col]!=='string'||x[col].length>MAX_CELL)throw Error('Invalid finding '+col+'.');
+   y[col]=x[col];
+  }
+  if(!y.finding_id.trim()||y.finding_id.length>160||seen.has(y.finding_id)||
+   !y.title.trim()||!y.remediation.trim()||!SEVERITY.includes(y.severity)||!RETEST.includes(y.retest_status))
+   throw Error('Invalid source finding.');
+  seen.add(y.finding_id);return y;
+ });
+}
+function newCase(f){
+ return {finding_id:f.finding_id,owner:'',status:f.retest_status==='fixed'?'completed':'unassigned',
+   due_date:null,next_action:'',verification_plan:'',blocker:'',note:'',updated_utc:null};
+}
+function cleanCase(x,existingIds){
+ if(!x||typeof x!=='object'||Array.isArray(x)||typeof x.finding_id!=='string'||
+    !existingIds.has(x.finding_id))throw Error('Case refers to unknown finding.');
+ const c={finding_id:x.finding_id};
+ for(const [key,max] of [['owner',120],['next_action',1800],['verification_plan',1600],['blocker',1200],['note',1600]]){
+  if(typeof x[key]!=='string'||x[key].length>max)throw Error('Invalid case field '+key+'.');
+  c[key]=x[key];
+ }
+ if(!PROGRESS.includes(x.status))throw Error('Unknown remediation status.');
+ c.status=x.status;
+ if(x.due_date!==null && (typeof x.due_date!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(x.due_date)||
+  Number.isNaN(Date.parse(x.due_date+'T00:00:00Z'))||
+  new Date(x.due_date+'T00:00:00Z').toISOString().slice(0,10)!==x.due_date))
+   throw Error('Invalid case due date.');
+ c.due_date=x.due_date;
+ if(x.updated_utc!==null && (typeof x.updated_utc!=='string'||!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(x.updated_utc)||
+ Number.isNaN(Date.parse(x.updated_utc))))throw Error('Invalid case update timestamp.');
+ c.updated_utc=x.updated_utc;return c;
+}
+async function digest(findings){
+ const normalized=normalizeSource(findings);
+ const canonical=JSON.stringify(normalized.slice().sort((a,b)=>a.finding_id<b.finding_id?-1:a.finding_id>b.finding_id?1:0));
+ if(!global.crypto||!global.crypto.subtle)return null;
+ const hash=await global.crypto.subtle.digest('SHA-256',new TextEncoder().encode(canonical));
+ return [...new Uint8Array(hash)].map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+function makePacket(findings,cases,sourceHash){
+ const source=normalizeSource(findings),ids=new Set(source.map(x=>x.finding_id));
+ if(!Array.isArray(cases)||cases.length!==source.length)throw Error('Casework count mismatch.');
+ const seen=new Set(),clean=cases.map(x=>{
+  const y=cleanCase(x,ids);
+  if(seen.has(y.finding_id))throw Error('Duplicate casework entry.');
+  seen.add(y.finding_id);return y;
+ });
+ return {
+  kind:'lightup.remediation_casework_draft',schema_version:1,disposition:'LOCAL_CLIENT_PLANNING',
+  authenticated:false,tenant_verified:false,source_authorized:false,assessment_authorized:false,
+  grant:false,client_consent:false,operator_consent:false,execution:false,scan:false,
+  audit_verdict:false,retest_verified:false,release:false,
+  source_contract:'lightup.finding_export._COLUMNS_v1',source_sha256:sourceHash||null,
+  findings:source,cases:clean,
+  instructions:'This file contains unverified local notes and exported summaries. Do not treat any row or status as proof of remediation, verified retest, authentication or grant.'
+ };
+}
+function loadPacket(packet){
+ if(!packet||typeof packet!=='object'||Array.isArray(packet)||packet.kind!=='lightup.remediation_casework_draft'||
+   packet.schema_version!==1||packet.disposition!=='LOCAL_CLIENT_PLANNING'||
+   packet.source_contract!=='lightup.finding_export._COLUMNS_v1'||
+   !['authenticated','tenant_verified','source_authorized','assessment_authorized','grant','client_consent',
+     'operator_consent','execution','scan','audit_verdict','retest_verified','release']
+      .every(k=>Object.prototype.hasOwnProperty.call(packet,k)&&packet[k]===false))
+  throw Error('Not a supported non-authorizing LightUp casework draft.');
+ const source=normalizeSource(packet.findings),ids=new Set(source.map(x=>x.finding_id));
+ if(!Array.isArray(packet.cases)||packet.cases.length!==source.length)throw Error('Casework incomplete.');
+ const seen=new Set(),cases=packet.cases.map(x=>{
+  const y=cleanCase(x,ids);if(seen.has(y.finding_id))throw Error('Duplicate case.');seen.add(y.finding_id);return y;
+ });
+ if(packet.source_sha256!==null && (typeof packet.source_sha256!=='string'||!/^[0-9a-f]{64}$/.test(packet.source_sha256)))
+  throw Error('Invalid source fingerprint.');
+ return {findings:source,cases,source_sha256:packet.source_sha256||null};
+}
+function rank(x){return SEVERITY.indexOf(x.severity);}
+function metrics(findings,cases,today){
+ const byId=new Map(cases.map(x=>[x.finding_id,x]));
+ const totals={findings:findings.length,critical_or_high:0,open:0,blocked:0,overdue:0,ready_for_retest:0,source_fixed:0};
+ for(const finding of findings){
+  const c=byId.get(finding.finding_id);
+  if(rank(finding)<=1)totals.critical_or_high++;
+  if(finding.retest_status==='fixed')totals.source_fixed++;
+  if(c&&c.status!=='completed'&&c.status!=='deferred')totals.open++;
+  if(c&&c.status==='blocked')totals.blocked++;
+  if(c&&c.status==='ready_for_retest')totals.ready_for_retest++;
+  if(c&&c.due_date&&c.due_date<today&&c.status!=='completed'&&c.status!=='deferred')totals.overdue++;
+ }
+ return totals;
+}
+function csvCell(raw){
+ let s=String(raw??'');
+ const probe=s.replace(/^[\s\x00-\x1f]+/,'');
+ if(/^[=+\-@]/.test(probe))s="'"+s;
+ return '"'+s.replace(/"/g,'""')+'"';
+}
+function exportActionsCSV(findings,cases){
+ const byId=new Map(cases.map(c=>[c.finding_id,c]));
+ const columns=['finding_id','severity','title','source_retest_status','casework_status','assigned_owner','due_date','next_action','verification_plan','blocker'];
+ const rows=findings.map(f=>{
+  const c=byId.get(f.finding_id);
+  return [f.finding_id,f.severity,f.title,f.retest_status,c.status,c.owner,c.due_date||'',c.next_action,c.verification_plan,c.blocker];
+ });
+ return String.fromCharCode(0xFEFF)+[columns,...rows].map(row=>row.map(csvCell).join(',')).join('\r\n')+'\r\n';
+}
+
+/* Re-import review: changing finding payload is not automatically a confirmed retest.
+ * The caller must explicitly confirm the same independently verified account/engagement.
+ * Only byte-for-byte unchanged source findings retain unverified local casework notes. */
+function compareSource(before,after){
+ const old=normalizeSource(before),incoming=normalizeSource(after);
+ const a=new Map(old.map(item=>[item.finding_id,item]));
+ const b=new Map(incoming.map(item=>[item.finding_id,item]));
+ const compare=(x,y)=>EXPECTED.every(k=>x[k]===y[k]);
+ const added=[],missing=[],changed=[],unchanged=[];
+ for(const item of incoming){
+  const prev=a.get(item.finding_id);
+  if(!prev)added.push(item.finding_id);
+  else if(compare(prev,item))unchanged.push(item.finding_id);
+  else changed.push({finding_id:item.finding_id,
+    changed_fields:EXPECTED.filter(k=>prev[k]!==item[k])});
+ }
+ for(const item of old)if(!b.has(item.finding_id))missing.push(item.finding_id);
+ return {added,missing,changed,unchanged,
+  warning:'Missing findings are NOT proof of remediation; changed source findings reset their local plans. Independently verify same client and engagement first.'};
+}
+function reconcileSource(before,existingCases,after){
+ const diff=compareSource(before,after);
+ const oldCases=new Map(existingCases.map(c=>[c.finding_id,c]));
+ const allowed=new Set(diff.unchanged);
+ const source=normalizeSource(after);
+ const merged=source.map(f=>allowed.has(f.finding_id)&&oldCases.has(f.finding_id) ?
+  cleanCase(oldCases.get(f.finding_id),new Set(source.map(item=>item.finding_id))) : newCase(f));
+ return {findings:source,cases:merged,change_summary:diff};
+}
+
+global.LightUpCasework=Object.freeze({compareSource,reconcileSource,parseCSV,normalizeSource,newCase,cleanCase,digest,makePacket,loadPacket,metrics,exportActionsCSV,SEVERITY,RETEST,PROGRESS,MAX_BYTES});
+})(window);
+</script>
+<script>/* Private, non-authorizing read of an original Casework v1 export.
+ * Requires independently reloaded exact original LightUp findings CSV.
+ * Never saves original finding IDs, owners, descriptions or case notes.
+ */
+(function (root) {
+  'use strict';
+  const MAX_BYTES=2097152, FIELDS=['finding_id','title','severity','retest_status','remediation'];
+  const STAGES=['unassigned','planned','in_progress','blocked','ready_for_retest','deferred','completed'];
+  const SEVERITIES=['critical','high','medium','low','info'];
+
+  // Strict UTF-8 string JSON parser rejects duplicate object keys before
+  // conversion; JSON.parse with a reviver cannot reliably do that.
+  function parseStrictJSON(input) {
+    if(typeof input!=='string'||new TextEncoder().encode(input).length>MAX_BYTES)
+      throw Error('Casework input exceeds the permitted 2 MiB');
+    let i=0,nodes=0;
+    const white=()=>{while(i<input.length&&/[ \r\n\t]/.test(input[i]))i++;};
+    const fail=()=>{throw Error('Invalid or ambiguous Casework JSON');};
+    function str(){
+      if(input[i]!=='"')fail();
+      const begin=i++;
+      while(i<input.length){
+        const c=input[i++];
+        if(c==='"'){
+          try{return JSON.parse(input.slice(begin,i));}catch{fail();}
+        }
+        if(c==='\\') {
+          if(i>=input.length)fail();
+          i++;
+        } else if(c.charCodeAt(0)<32)fail();
+      }
+      fail();
+    }
+    function value(depth) {
+      white();
+      if(++nodes>16000||depth>12||i>=input.length)fail();
+      const c=input[i];
+      if(c==='"')return str();
+      if(c==='{'){
+        i++;white();
+        const obj=Object.create(null),seen=new Set();
+        if(input[i]==='}'){i++;return obj;}
+        for(;;){
+          white();const k=str();
+          if(seen.has(k)||['__proto__','constructor','prototype'].includes(k))fail();
+          seen.add(k);white();
+          if(input[i++]!==':')fail();
+          obj[k]=value(depth+1);white();
+          const delim=input[i++];
+          if(delim==='}')return obj;
+          if(delim!==',')fail();
+        }
+      }
+      if(c==='['){
+        i++;white();const out=[];
+        if(input[i]===']'){i++;return out;}
+        for(;;){
+          if(out.length>3500)fail();
+          out.push(value(depth+1));white();
+          const delim=input[i++];
+          if(delim===']')return out;
+          if(delim!==',')fail();
+        }
+      }
+      for(const [literal,val] of [['true',true],['false',false],['null',null]])
+        if(input.startsWith(literal,i)){i+=literal.length;return val;}
+      const match=input.slice(i).match(/^-?(?:0|[1-9][0-9]*)(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?/);
+      if(!match)fail();
+      i+=match[0].length;
+      const number=Number(match[0]);
+      if(!Number.isFinite(number)||!Number.isSafeInteger(number))fail();
+      return number;
+    }
+    const v=value(0);
+    white();
+    if(i!==input.length)fail();
+    return v;
+  }
+  const exact=(a,b)=>a.length===b.length&&a.every((v,i)=>v===b[i]);
+  function assertShape(obj,keys){
+    if(!obj||typeof obj!=='object'||Array.isArray(obj)||
+      !exact(Object.keys(obj).sort(),keys.slice().sort()))
+      throw Error('Unexpected Casework envelope fields');
+  }
+  async function review(currentCSV,caseworkText) {
+    const original=root.LightUpCasework;
+    if(!original||!root.crypto?.subtle)throw Error('Original Casework parser or SHA-256 is unavailable');
+    if(typeof currentCSV!=='string'||new TextEncoder().encode(currentCSV).length>1048576)
+      throw Error('The original source CSV must be reloaded, not inferred from the Casework packet');
+    const current=original.parseCSV(currentCSV);
+    const packet=parseStrictJSON(caseworkText);
+    assertShape(packet,[
+      'kind','schema_version','disposition','authenticated','tenant_verified','source_authorized',
+      'assessment_authorized','grant','client_consent','operator_consent','execution','scan',
+      'audit_verdict','retest_verified','release','source_contract','source_sha256',
+      'findings','cases','instructions'
+    ]);
+    const loaded=original.loadPacket(packet);
+    // The Casework digest is over its normalized, ID-sorted original source,
+    // not over this capacity app's byte digest or an editable filename.
+    const expected=await original.digest(current);
+    if(!expected||!loaded.source_sha256||loaded.source_sha256!==expected)
+      throw Error('Casework is not bound to the exact canonical current LightUp findings');
+    const reference=new Map(current.map(f=>[f.finding_id,f]));
+    if(loaded.findings.length!==current.length||loaded.cases.length!==current.length)
+      throw Error('Incomplete original Casework handoff');
+    for(const row of loaded.findings){
+      const src=reference.get(row.finding_id);
+      if(!src||FIELDS.some(k=>src[k]!==row[k]))
+        throw Error('Casework source fields differ from original CSV');
+    }
+    const statuses=Object.fromEntries(STAGES.map(s=>[s,0]));
+    const severity=Object.fromEntries(SEVERITIES.map(s=>[s,{
+      total:0,blocked:0,missing_owner:0,undated:0,ready_for_retest:0,
+      deferred:0,locally_completed_unverified:0
+    }]));
+    let assigned=0,withDueDate=0,blockedWithNotes=0;
+    for(const row of loaded.cases) {
+      const originalRow=reference.get(row.finding_id);
+      if(!originalRow)throw Error('Unknown Casework source ID');
+      const segment=severity[originalRow.severity];
+      statuses[row.status]++;segment.total++;
+      if(row.owner.trim())assigned++;
+      else segment.missing_owner++;
+      if(row.due_date)withDueDate++;
+      else segment.undated++;
+      if(row.status==='blocked') {
+        segment.blocked++;
+        if(row.blocker.trim())blockedWithNotes++;
+      }
+      if(row.status==='ready_for_retest')segment.ready_for_retest++;
+      if(row.status==='deferred')segment.deferred++;
+      if(row.status==='completed')segment.locally_completed_unverified++;
+    }
+    // Discard all source identifiers, case notes, owners and expiry metadata;
+    // the result is only aggregate, untrusted human self-report.
+    return Object.freeze({
+      schema:'lightup.capacity_casework_review_draft.v1',
+      review_only:true,authenticated:false,source_authorized:false,
+      authorization:false,consent:false,grant:false,scan:false,
+      execute:false,dispatch:false,retest_verified:false,deploy:false,release:false,
+      matched_original_source_locally:true,client_engagement_authenticated:false,
+      source_records:current.length,assigned_owner_labels:assigned,
+      source_casework_due_dates:withDueDate,blocked_with_local_notes:blockedWithNotes,
+      source_casework_statuses:statuses,severity_statuses:severity
+    });
+  }
+  root.LightUpCapacityCasework=Object.freeze({review,MAX_BYTES});
+})(window);
+</script>
 <script>/* LightUp Remediation Capacity Studio — no persistence, no network, no execution. */
 (function () {
   'use strict';
@@ -652,6 +1025,7 @@ footer{padding:22px 0 60px}
   let historyReview = null;
   let milestoneDraft = null;
   let contingencyDraft = null;
+  let reviewedCasework = null;
   function clearContingency(){contingencyDraft=null;el('contingency-results').replaceChildren();el('export-contingency').hidden=true;}
   function clearMilestone() {
     milestoneDraft=null;
@@ -674,12 +1048,31 @@ footer{padding:22px 0 60px}
   }
   el('clear-history').addEventListener('click',clearHistory);
   el('previous').addEventListener('change',()=>{historyReview=null;el('history-data').hidden=true;el('same-engagement').checked=false;});
+  function clearCasework() {
+    reviewedCasework=null;
+    el('casework-packet').value='';
+    el('casework-ack').checked=false;
+    el('casework-summary').hidden=true;
+    el('casework-status-cards').replaceChildren();
+    el('casework-risk-table').replaceChildren();
+    el('casework-feedback').textContent='No Casework record reviewed.';
+  }
+  el('clear-casework').addEventListener('click',clearCasework);
+  el('casework-ack').addEventListener('change',()=>{
+    reviewedCasework=null;
+    el('casework-summary').hidden=true;
+  });
+  el('casework-packet').addEventListener('change',()=>{
+    reviewedCasework=null;
+    el('casework-summary').hidden=true;
+  });
   function forget() {
     findings = null; result = null; lastOptions = null;
     clearMilestone();
     clearContingency();
     source.value = '';
     clearHistory();
+    clearCasework();
     el('source-status').textContent = 'No report loaded. All files stay in this browser tab.';
     el('generate').disabled = true;
     el('save-working-draft').disabled = true;
@@ -703,6 +1096,7 @@ footer{padding:22px 0 60px}
     el('draft-status').textContent='New source: older plans must be independently reviewed again.';
     el('results').hidden = true;
     clearHistory();
+    clearCasework();
     if (!file) return;
     try {
       if (file.size > engine.MAX_BYTES || file.size === 0) throw new Error('Source must be a nonempty CSV no larger than 1 MiB.');
@@ -1043,6 +1437,73 @@ footer{padding:22px 0 60px}
     download('lightup-capacity-interruption-draft.json',
       JSON.stringify(contingencyDraft,null,2)+'\n','application/json;charset=utf-8');
     setFeedback('Unsigned, aggregate-only contingency discussion exported.');
+  });
+
+
+  function showCaseworkSummary(summary) {
+    const cards=el('casework-status-cards');
+    cards.replaceChildren();
+    const stats=summary.source_casework_statuses;
+    for(const [label,value] of [
+      ['Original cases',summary.source_records],
+      ['Self-reported blocked',stats.blocked],
+      ['Owner labels present',summary.assigned_owner_labels],
+      ['Locally dated plans',summary.source_casework_due_dates],
+      ['Human retest coordination',stats.ready_for_retest],
+      ['Self-reported completed (unverified)',stats.completed]
+    ]) {
+      const card=$('div',undefined,'stat');card.append($('strong',value),$('span',label));cards.append(card);
+    }
+    const rows=el('casework-risk-table');
+    rows.replaceChildren();
+    for(const severity of ['critical','high','medium','low','info']){
+      const v=summary.severity_statuses[severity];
+      const row=$('tr');
+      if(v.blocked||v.missing_owner)row.className='outstanding-row';
+      for(const value of [severity,v.total,v.blocked,v.missing_owner,
+        v.undated,v.ready_for_retest,v.locally_completed_unverified])row.append($('td',value));
+      rows.append(row);
+    }
+    el('casework-summary').hidden=false;
+  }
+  el('review-casework').addEventListener('click',async()=>{
+    reviewedCasework=null;
+    el('casework-summary').hidden=true;
+    const csv=source.files?.[0],packet=el('casework-packet').files?.[0];
+    if(!csv||!findings||!packet||!el('casework-ack').checked){
+      el('casework-feedback').textContent='HOLD: load an original CSV, choose an original Casework JSON and manually confirm the same client and engagement.';
+      return;
+    }
+    if(!window.confirm('Read the original Casework v1 as LOCAL UNSIGNED HUMAN NOTES only? This can reveal the report privately in this browser tab. No result is an actual consent, verified fix, assessment or retest.'))return;
+    try{
+      if(!packet.size||packet.size>window.LightUpCapacityCasework.MAX_BYTES)
+        throw Error('Original Casework packet must be bounded to 2 MiB');
+      if(!csv.size||csv.size>engine.MAX_BYTES)
+        throw Error('Reopen the original bounded CSV');
+      const [sourceBytes,packetBytes]=await Promise.all([csv.arrayBuffer(),packet.arrayBuffer()]);
+      const originalText=new TextDecoder('utf-8',{fatal:true}).decode(sourceBytes);
+      const packetText=new TextDecoder('utf-8',{fatal:true}).decode(packetBytes);
+      if(source.files?.[0]!==csv||!el('casework-ack').checked||!findings)
+        throw Error('Original CSV or acknowledgment changed during read');
+      const summary=await window.LightUpCapacityCasework.review(originalText,packetText);
+      if(source.files?.[0]!==csv||!el('casework-ack').checked||!findings)
+        throw Error('Source changed during source-digest validation');
+      reviewedCasework=summary;
+      showCaseworkSummary(summary);
+      el('casework-feedback').textContent='Matched the Casework source digest and source fields locally. Client identity, active consent and retest are NOT authenticated here.';
+      setFeedback('Local Casework planning overview read successfully. Source case notes were not retained.');
+    }catch(err){
+      el('casework-feedback').textContent='HOLD: '+(err instanceof Error?err.message:'Casework source could not be trusted');
+    }finally{
+      el('casework-packet').value='';
+    }
+  });
+  el('export-casework-summary').addEventListener('click',()=>{
+    if(!reviewedCasework||!el('casework-ack').checked)return;
+    if(!window.confirm('Export aggregate, self-reported CASEWORK stages only? Not verified fixes, client identity, assignments, retest or consent.'))return;
+    download('lightup-capacity-casework-review.json',
+      JSON.stringify(reviewedCasework,null,2)+'\n','application/json;charset=utf-8');
+    setFeedback('Only group-level unsigned Casework notes exported.');
   });
 
   // Source-bound, user-controlled resume: no browser persistence or implicit restore.
