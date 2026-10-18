@@ -123,6 +123,18 @@
     </div>
     <div id="comparison" aria-live="polite"></div>
   </div>
+  <div class="panel" aria-labelledby="milestone-title">
+    <p class="eyebrow">07 / RISK MILESTONES</p>
+    <h2 id="milestone-title">Can urgent risks fit into the target sprint?</h2>
+    <p>Try a hypothetical milestone for critical findings, or critical and high findings together. Calculate the remaining estimated hours at the selected week and smallest modelled staffing level (up to 30 engineers) needed to fit the proposal. This is not an agreed SLA or permission to retest.</p>
+    <div class="grid">
+      <label>Priority milestone<select id="milestone-band"><option value="critical_high">Critical and high</option><option value="critical">Critical only</option></select></label>
+      <label>Target week<input id="milestone-week" type="number" min="1" max="12" value="2"></label>
+      <div class="milestone-action"><button type="button" id="milestone-calculate" class="secondary">Estimate feasibility</button></div>
+    </div>
+    <div id="milestone-result" aria-live="polite"></div>
+    <button id="milestone-export" type="button" class="secondary" hidden>Export aggregate milestone draft</button>
+  </div>
   <div class="panel">
     <h2>Proposed work queue</h2>
     <p class="subtle">Anonymous source positions only. A task can be split between weeks. No raw case IDs, addresses, descriptions, or assignment records appear here.</p>
