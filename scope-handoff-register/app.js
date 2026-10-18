@@ -294,11 +294,11 @@
       const day=t.due_day.replaceAll("-","");
       const next=new Date(Date.parse(t.due_day+"T00:00:00.000Z")+86400000).toISOString().slice(0,10).replaceAll("-","");
       ics.push("BEGIN:VEVENT",
-        fold("UID:lightup-human-"+t.source_sha256+"-"+t.code+"@offline.invalid"),
+        "UID:lightup-human-"+t.source_sha256+"-"+t.code+"@offline.invalid",
         "DTSTAMP:"+now,"DTSTART;VALUE=DATE:"+day,"DTEND;VALUE=DATE:"+next,
         "STATUS:TENTATIVE","TRANSP:TRANSPARENT","CLASS:PRIVATE",
         "SUMMARY:LightUp human scope review (REVIEW ONLY)",
-        fold("DESCRIPTION:Human follow-up "+t.code+". No asset scan, authorization, client consent, grant or actual appointment."),
+        "DESCRIPTION:Human follow-up "+t.code+". No asset scan, authorization, client consent, grant or actual appointment.",
         "END:VEVENT");
     }
     ics.push("END:VCALENDAR");
