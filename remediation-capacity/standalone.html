@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-Nk0AbSpPxC28rIUks6VzoJ5RsCTzDPJh/rnEa4zEkYs=' 'sha256-k063sX7gui1MHh7KSFsfBDpeNsiUePvLBCuTQLOmh0c=' 'sha256-I/gbRgywuVMkok5BRDVcIdUZd6ghEnF/ifk2axYL5Cs='; style-src 'sha256-8+rvRgvLttnHFOnqKH7yoO8ncKiscqyCae/UQEJ0kcw='; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-qgIFKjyC+BItKVzPmFfCkq3iVfJmBpRgfLS769HH7/4=' 'sha256-k063sX7gui1MHh7KSFsfBDpeNsiUePvLBCuTQLOmh0c=' 'sha256-OmdFML6nxWkMLdeOVZFD4cVZSwqcn0IW3LJypDCSKtU='; style-src 'sha256-5TGF4Na4qyoxlPebbQCDpVNCy8PwBWxvOqXXb2rFTU0='; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <title>LightUp | Remediation Capacity Studio — offline draft</title>
 <style>:root{color-scheme:dark;--bg:#0a1119;--panel:#111e29;--edge:#304451;--text:#edf5f7;--muted:#a4bac8;--teal:#7ee4bd;--amber:#f9d48a;--blue:#7cb8ff}
 *{box-sizing:border-box}
@@ -24,7 +24,7 @@ p{max-width:80ch}
 .upload label{font-weight:700}
 .grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
 .grid label{display:block;font-size:.88rem;font-weight:650;color:var(--muted)}
-input{display:block;width:100%;margin-top:6px;color:var(--text);background:#08141d;border:1px solid #557080;border-radius:8px;padding:10px 12px;font:inherit}
+input,select{display:block;width:100%;margin-top:6px;color:var(--text);background:#08141d;border:1px solid #557080;border-radius:8px;padding:10px 12px;font:inherit}
 input[type=file]{width:auto;max-width:100%;flex:1 1 260px}
 input:focus-visible,button:focus-visible{outline:3px solid var(--teal);outline-offset:3px}
 button{cursor:pointer;border-radius:8px;padding:12px 18px;border:1px solid var(--teal);font:inherit;font-weight:700;color:#071b22;background:var(--teal)}
@@ -64,6 +64,8 @@ footer{padding:22px 0 60px}
 #priority-bands td{font-variant-numeric:tabular-nums}#priority-bands td:first-child{text-transform:capitalize;font-weight:750}#priority-bands tr.outstanding-row td{border-bottom:1px solid #806f40}#priority-bands tr.outstanding-row td:nth-last-child(-n+2){color:var(--amber)}@media print{#priority-bands tr.outstanding-row td{color:#111!important}}
 
 .file-label{display:inline-flex;align-items:center;justify-content:center;cursor:pointer;padding:11px 16px;border:1px solid var(--teal);color:var(--text);background:#203341;border-radius:8px;font-weight:700}.file-label:focus-within{outline:3px solid var(--teal)}#reopen-working-draft{max-width:250px}.panel:has(#resume-title){border-color:#51746e}#draft-status{padding:8px 0} @media print{.panel:has(#resume-title){display:none!important}}
+
+.milestone-action{display:flex;align-items:end;padding-bottom:2px}.milestone-overview{border-left:3px solid var(--teal);padding:12px 18px;margin:18px 0;background:#0b1922;border-radius:5px}.milestone-overview strong{color:var(--teal)}.milestone-overview p{margin:.6em 0}#milestone-export{margin:5px 0 12px}@media print{#milestone-calculate,#milestone-export,.milestone-action{display:none!important}}
 </style>
 
 
@@ -181,6 +183,18 @@ footer{padding:22px 0 60px}
       <button type="button" id="compare">Compare staffing</button>
     </div>
     <div id="comparison" aria-live="polite"></div>
+  </div>
+  <div class="panel" aria-labelledby="milestone-title">
+    <p class="eyebrow">07 / RISK MILESTONES</p>
+    <h2 id="milestone-title">Can urgent risks fit into the target sprint?</h2>
+    <p>Try a hypothetical milestone for critical findings, or critical and high findings together. Calculate the remaining estimated hours at the selected week and smallest modelled staffing level (up to 30 engineers) needed to fit the proposal. This is not an agreed SLA or permission to retest.</p>
+    <div class="grid">
+      <label>Priority milestone<select id="milestone-band"><option value="critical_high">Critical and high</option><option value="critical">Critical only</option></select></label>
+      <label>Target week<input id="milestone-week" type="number" min="1" max="12" value="2"></label>
+      <div class="milestone-action"><button type="button" id="milestone-calculate" class="secondary">Estimate feasibility</button></div>
+    </div>
+    <div id="milestone-result" aria-live="polite"></div>
+    <button id="milestone-export" type="button" class="secondary" hidden>Export aggregate milestone draft</button>
   </div>
   <div class="panel">
     <h2>Proposed work queue</h2>
@@ -392,6 +406,33 @@ footer{padding:22px 0 60px}
       sourceCount:queue.length,priorityBands,
       reserve, start:options.start,daysPerWeek:workDays,weeklyAvailability:availability});
   }
+  // Bounded hypothetical remediation milestone, not a due-date promise or authority.
+  function riskMilestone(findings,rawOptions,targetWeek,targetBand) {
+    if(targetBand!=='critical'&&targetBand!=='critical_high')
+      fail('Select critical-only or critical-and-high milestone');
+    const base=plan(findings,rawOptions);
+    const cutoff=exactInteger(targetWeek,1,base.schedule.length,'milestone planning week');
+    const severities=targetBand==='critical'?['critical']:['critical','high'];
+    const required=severities.reduce((total,severity)=>total+base.priorityBands[severity].estimated_hours,0);
+    const fundedThroughWeek=planOutput=>planOutput.schedule.slice(0,cutoff).reduce(
+      (total,week)=>total+week.portions.filter(part=>severities.includes(part.severity))
+        .reduce((sum,part)=>sum+part.hours,0),0);
+    const planned=fundedThroughWeek(base);
+    let minimumEngineers=null;
+    for(let engineers=1;engineers<=30;engineers++){
+      const candidate=plan(findings,{...rawOptions,engineers});
+      if(fundedThroughWeek(candidate)===required){minimumEngineers=engineers;break;}
+    }
+    const unallocated=Math.max(0,required-planned);
+    return Object.freeze({
+      review_only:true,authorization:false,consent:false,grant:false,
+      execute:false,dispatch:false,scan:false,retest_verified:false,deploy:false,release:false,
+      target_band:targetBand,target_week:cutoff,
+      required_estimated_hours:required,provisionally_allocated_hours:planned,
+      remaining_estimated_hours:unallocated,fit_by_target_week:unallocated===0,
+      smallest_modelled_team:minimumEngineers,search_max_engineers:30
+    });
+  }
   function summary(plan) {
     return {
       schema:'lightup.remediation_capacity_draft.v1',
@@ -448,7 +489,7 @@ footer{padding:22px 0 60px}
     lines.push('','Human follow-up: confirm source client/engagement externally, review estimates and staffing, assign owners through existing authorised channels, verify repairs/retests separately.','');
     return lines.join('\n');
   }
-  root.LightUpCapacity = Object.freeze({parseCSV,compareReports,plan,summary,csvReport,markdownReport,DEFAULT_HOURS,MAX_BYTES,MAX_ROWS});
+  root.LightUpCapacity = Object.freeze({parseCSV,compareReports,plan,riskMilestone,summary,csvReport,markdownReport,DEFAULT_HOURS,MAX_BYTES,MAX_ROWS});
 })(window);
 </script>
 <script>/* LightUp offline, user-controlled source-bound capacity working draft.
@@ -562,6 +603,12 @@ footer{padding:22px 0 60px}
   let result = null;
   let lastOptions = null;
   let historyReview = null;
+  let milestoneDraft = null;
+  function clearMilestone() {
+    milestoneDraft=null;
+    el('milestone-result').replaceChildren();
+    el('milestone-export').hidden=true;
+  }
   const source = el('source');
   const feedback = el('feedback');
   const setFeedback = (msg, error=false) => {
@@ -580,6 +627,7 @@ footer{padding:22px 0 60px}
   el('previous').addEventListener('change',()=>{historyReview=null;el('history-data').hidden=true;el('same-engagement').checked=false;});
   function forget() {
     findings = null; result = null; lastOptions = null;
+    clearMilestone();
     source.value = '';
     clearHistory();
     el('source-status').textContent = 'No report loaded. All files stay in this browser tab.';
@@ -598,6 +646,7 @@ footer{padding:22px 0 60px}
   source.addEventListener('change',async () => {
     const file = source.files && source.files[0];
     findings = null; result = null; lastOptions = null;
+    clearMilestone();
     el('generate').disabled = true;
     el('save-working-draft').disabled = true;
     el('draft-status').textContent='New source: older plans must be independently reviewed again.';
@@ -656,6 +705,7 @@ footer{padding:22px 0 60px}
       };
       result = engine.plan(findings,lastOptions);
       clearHistory();
+      clearMilestone();
       render();
       renderComparison();
       el('results').hidden = false;
@@ -855,6 +905,45 @@ footer{padding:22px 0 60px}
     setFeedback('Unsigned aggregate discussion brief exported. No original finding details included.');
   });
 
+
+  function showRiskMilestone(value) {
+    const view=el('milestone-result');view.replaceChildren();
+    const summary=$('div',undefined,'milestone-overview');
+    const status=value.fit_by_target_week
+      ? 'Fits the estimated risk workload by week '+value.target_week
+      : 'Estimated '+value.remaining_estimated_hours+' hours still outside week '+value.target_week;
+    summary.append($('strong',status),
+      $('p','Original risk-band estimate: '+value.required_estimated_hours+' h · provisionally allocated by target week: '+value.provisionally_allocated_hours+' h.'),
+      $('p',value.smallest_modelled_team===null
+        ? 'No staffing level up to 30 engineers fits this risk milestone under these week-by-week capacity limits.'
+        : 'Smallest modelled team for this milestone: '+value.smallest_modelled_team+' engineers.'),
+      $('p','REVIEW_ONLY — estimates do not mean actual fixes, booked work, authorisation, verified retest or contractual dates.','subtle'));
+    view.append(summary);
+    el('milestone-export').hidden=false;
+  }
+  el('milestone-calculate').addEventListener('click',()=>{
+    clearMilestone();
+    if(!result||!findings||!lastOptions){
+      el('milestone-result').append($('p','HOLD: generate a current plan first.','feedback error'));return;
+    }
+    try{
+      milestoneDraft=engine.riskMilestone(
+        findings,lastOptions,el('milestone-week').value,el('milestone-band').value
+      );
+      showRiskMilestone(milestoneDraft);
+    }catch(err){
+      el('milestone-result').append($('p','HOLD: '+(err instanceof Error?err.message:'Invalid risk milestone'),'feedback error'));
+    }
+  });
+  for(const id of ['milestone-band','milestone-week']) el(id).addEventListener('change',clearMilestone);
+  el('milestone-export').addEventListener('click',()=>{
+    if(!milestoneDraft)return;
+    if(!window.confirm('Export a private, unsigned AGGREGATE risk planning estimate, NOT a grant, SLA, completion claim or retest?'))return;
+    const data={schema:'lightup.remediation_milestone_draft.v1',...milestoneDraft};
+    download('lightup-risk-milestone-draft.json',JSON.stringify(data,null,2)+'\n','application/json;charset=utf-8');
+    setFeedback('Non-authorising, privacy-minimal risk milestone exported for human review.');
+  });
+
   // Source-bound, user-controlled resume: no browser persistence or implicit restore.
   function numericWorkingOptions(options) {
     if(!options)throw new Error('Generate a current proposal before saving');
@@ -927,6 +1016,7 @@ footer{padding:22px 0 60px}
         .forEach((input,index)=>{input.value=String(opts.weekAvailability[index]);});
       el('extra-engineers').value=String(restored.scenario);
       lastOptions=opts;result=restored.plan;
+      clearMilestone();
       render();renderComparison();
       el('results').hidden=false;
       el('save-working-draft').disabled=false;
