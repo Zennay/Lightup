@@ -567,7 +567,6 @@ $('importTeamReturn').addEventListener('click',async()=>{
     next_step:row.human_follow_up},new Set([src.finding_id]));
    received.set(src.finding_id,next);
   }
-  const existing=expected.slice().sort((a,b)=>a.finding_id<b.finding_id?-1:a.finding_id>b.finding_id?1:0);
   /* Use the exact original team-packet order, not sorting, for the baseline.
      Member count and identities have already been verified completely. */
   const baseline=localSha256(JSON.stringify(packet.cases.map(row=>{
