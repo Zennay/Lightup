@@ -96,10 +96,18 @@
     <label for="inspectCase">Private case ordinal</label>
     <select id="inspectCase" aria-label="Private case to inspect"></select>
     <div id="metricInspector" class="scroll" aria-live="polite"></div>
+    <article>
+      <h3>PRIVATE human case note</h3>
+      <p>Write one bounded note for the selected private scenario (max 400 characters). This is <strong>not</strong> verified evidence and is never included in anonymous JSON/CSV/HTML. Only an explicitly saved PRIVATE draft may retain it.</p>
+      <label for="privateCaseNote">Private source-review discussion (not a finding)</label>
+      <textarea id="privateCaseNote" maxlength="400" rows="4" placeholder="Human follow-up only; never enter credentials or access tokens."></textarea>
+      <div class="actions"><button id="saveCaseNote" type="button">Save note in private memory</button></div>
+      <p id="privateNoteState" role="status"></p>
+    </article>
   </section>
   <section aria-labelledby="privateDraftTitle">
     <h2 id="privateDraftTitle">5. PRIVATE human work continuity (optional)</h2>
-    <p>The browser does not store data. After importing the <strong>original exact source bytes</strong>, you may save the human discussion stages to a deliberately PRIVATE local JSON draft and later restore them when the <strong>same original catalog and report files, in the same order</strong> are reimported. It includes SHA-256 fingerprints of private source bytes — never upload or circulate it as an anonymous report. Original files and targets are NOT embedded in the draft.</p>
+    <p>The browser does not store data. After importing the <strong>original exact source bytes</strong>, you may save the human discussion stages and locally entered private human case notes to a deliberately PRIVATE local JSON draft and later restore them when the <strong>same original catalog and report files, in the same order</strong> are reimported. It includes SHA-256 fingerprints of private source bytes and any PRIVATE notes — never upload or circulate it as an anonymous report. Original files and targets are NOT embedded in the draft.</p>
     <p>When secure browser SHA-256 is unavailable, private save/restore is refused safely; the anonymous handoff remains separate. Any changed source file or added source changes the private restore binding.</p>
     <div class="actions"><button id="exportDraft" type="button">Save PRIVATE source-bound human draft</button>
       <div><label for="restoreDraft">Restore an exact-source PRIVATE draft</label>
