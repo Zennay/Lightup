@@ -31,6 +31,8 @@ function hold(message){
  document.dispatchEvent(new CustomEvent('lightup:brief-source-change'));
  $('workspace').hidden=true;$('export').disabled=true;$('textExport').disabled=true;$('print').disabled=true;
  $('handoff').textContent='';$('replyState').textContent='No review note imported.';
+ $('reply').value='';$('backupImport').value='';
+ $('backupState').textContent='No local preparation backup restored.';
  $('sourceState').textContent=message+' · HOLD';
 }
 function assert(condition,message){if(!condition)throw Error(message);}
@@ -503,6 +505,8 @@ function applyPending(){
  const proposed=pending;pending=null;
  $('revisionPreview').hidden=true;
  document.dispatchEvent(new CustomEvent('lightup:brief-source-change'));
+ $('reply').value='';$('replyState').textContent='Previous review note no longer applies to revised source · HOLD';
+ $('backupImport').value='';$('backupState').textContent='Prior local preparation backup is tied to the old source · HOLD';
  current={draft:proposed.draft,window:proposed.window,sha256:proposed.sha256};
  questions=questionIds(proposed.draft,proposed.window).map(code=>({code,role:questionCatalog[code][0],status:'unanswered'}));
  $('workspace').hidden=false;
