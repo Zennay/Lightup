@@ -59,7 +59,10 @@ pre{background:#081926;border:1px solid #3c5368;padding:17px;white-space:pre-wra
   --output-dir /private/reviews \
   --prefix review01</pre>
 <p>This produces an original comparator review ZIP, unchanged canonical comparison JSON with source-owner metrics and REVIEW_ONLY/HOLD, an archive manifest, interactive source-bound Studio, editable human draft and private review-room ZIP. Genuine metric-regression HOLD remains visible for human investigation and never becomes clearance.</p>
-<p class="muted">Destination must be an already-existing privately owned 0700 directory. Files are new, 0600 and never overwritten; failures are HOLD. For previously completed original cohort-array inputs add --cohort.</p>
+<p class="muted">Destination must be an existing privately owned 0700 directory. Files are new, 0600 and never overwritten; measured original regression results remain HOLD, not an implied clearance. For existing cohort-array inputs add --cohort.</p>
+<p>Original case files can also be selected individually (1–64 on each side), without manually preparing cohort arrays:</p>
+<pre>python3 scripts/lightup_workbench.py compose   --baseline-case /private/BASE1.json   --baseline-case /private/BASE2.json   --candidate-case /private/NEXT1.json   --candidate-case /private/NEXT2.json   --output-dir /private/reviews --prefix batch01</pre>
+<p class="muted">Uses original source-owner cohort bundling and comparison. Adds two private original cohort array exports beside the six normal outputs; no target work or consent.</p>
 </section>
 <section class="panel">
 <div class="eyebrow">03 / CONTINUE THE ORIGINAL WORKFLOW</div>

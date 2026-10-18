@@ -37,6 +37,33 @@ On a valid original comparison with real metrics — REVIEW_ONLY (2), or HOLD (3
 
 With already-completed original 1–64 case cohort JSON-array files add --cohort; this merely delegates to the original comparator's cohort format.
 
+### Directly select multiple original completed cases, without manually bundling
+
+One or more explicit original individual completed case JSONs can now be supplied
+on *each* side, with up to 64 per side, using the original source-owner
+cohort bundler and comparator, not a new homemade metric or scanner:
+
+    python3 scripts/lightup_workbench.py compose       --baseline-case /private/BASE-1.json       --baseline-case /private/BASE-2.json       --candidate-case /private/NEXT-1.json       --candidate-case /private/NEXT-2.json       --output-dir /private/reviews --prefix batch01
+
+The original existing bundler creates two canonical private cohort JSON arrays
+inside the private staging area. Source inputs are byte-checked before/after
+original bundling and once again before publication. The comparator uses these
+**same canonical original arrays** as sources, so original ZIP source SHA,
+canonical comparison JSON, archive, Studio and human review are linked without
+changing the original source IDs, metrics or result semantics.
+
+This form produces eight owner-private new outputs: the six listed above plus
+batch01-source-baseline-cohort.json and batch01-source-candidate-cohort.json.
+These two extra canonical arrays are published with their original private
+scenario details and must not be treated as anonymous. The original HOLD
+comparison and its reviewable source are preserved; no run, replay, scan,
+model call, grant or assessment execution occurs.
+
+Mixing positional/canonical input forms, --cohort and repeated --baseline-case
+or --candidate-case is rejected. Repeated input paths, missing original cases
+or the original bundler's source-validation HOLD also block the handoff.
+
+
 The original comparator's source/metric semantics are retained unmodified. The integrated reader verifies original ZIP member names, its original manifest's precise source SHA-256 fingerprints, exact original review-desk JSON hash and all false permission flags. A **genuine HOLD caused by original measured regression is archived** for a human to inspect, and remains HOLD in both private manifest and review-room output; there is no silent conversion to REVIEW_ONLY. Malformed inputs, a comparator HOLD with no valid reviewable report, changed source bytes, occupied destinations or invalid original evidence are rejected without producing a misleading archive. HOLD is never clearance.
 
 Private temporary staging builds all six outputs before final publication. A partial set of NEW files may remain if a later final publication fails, but no existing user path is overwritten; original case files remain read-only. Original completed source files and SHA indexes are private evidence; protect generated outputs.

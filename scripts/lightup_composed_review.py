@@ -27,6 +27,7 @@ from followup import draft as build_followup
 from packet import package as build_packet
 from lightup_review import compare as original_compare
 from lightup_composed_admission import admit_original_review
+from lightup_composed_case_bundles import bundle_case_sides, confirm_case_sources
 
 from types import SimpleNamespace
 
@@ -50,10 +51,13 @@ def _private_output_folder(path: str) -> Path:
     return parent
 
 
-def _target_set(parent: Path, prefix: str):
+def _target_set(parent: Path, prefix: str, cases: bool = False):
     if type(prefix) is not str or not re.fullmatch(r"[a-zA-Z][a-zA-Z0-9_-]{0,39}", prefix):
         raise Hold("invalid output prefix")
-    targets = [parent / (prefix + suffix) for suffix in ARTIFACT_SUFFIXES]
+    suffixes = ARTIFACT_SUFFIXES + (
+        ("-source-baseline-cohort.json", "-source-candidate-cohort.json") if cases else ()
+    )
+    targets = [parent / (prefix + suffix) for suffix in suffixes]
     # Never overwrite files, links, FIFOs or directories (including dangling symlinks).
     if any(os.path.lexists(path) for path in targets):
         raise Hold("output already exists")
@@ -62,20 +66,34 @@ def _target_set(parent: Path, prefix: str):
 
 def run(args):
     output_dir = _private_output_folder(args.output_dir)
-    targets = _target_set(output_dir, args.prefix)
-    first, second = (Path(x).resolve(strict=True) for x in (args.baseline, args.candidate))
-    if first == second:
-        raise Hold("input sources must differ")
-    # Compare unaltered previously-completed lab sources only. Do not run labs.
-    source_sizes = (262144 if args.cohort else 65536)
-    before = [sha256(read_regular(str(p), source_sizes)).digest() for p in (first, second)]
-    # The original source owner is the only authority on comparator metrics.
+    requested_case_sets = bool(args.baseline_case or args.candidate_case)
+    if requested_case_sets:
+        if (args.baseline or args.candidate or args.cohort or
+                not args.baseline_case or not args.candidate_case):
+            raise Hold("cannot mix original completed case set forms")
+    elif not args.baseline or not args.candidate:
+        raise Hold("two original completed source files required")
+    targets = _target_set(output_dir, args.prefix, requested_case_sets)
+    # The original source owner remains the only comparator/metric authority.
     with TemporaryDirectory(prefix=".lightup-offline-workflow-", dir=output_dir) as temp:
         stage = Path(temp)
+        original_case_paths, original_case_hashes = [], []
+        if requested_case_sets:
+            first, second, original_case_paths, original_case_hashes = bundle_case_sides(
+                baseline=args.baseline_case, candidate=args.candidate_case, stage=stage)
+        else:
+            first, second = (Path(x).resolve(strict=True)
+                             for x in (args.baseline, args.candidate))
+            if first == second:
+                raise Hold("input sources must differ")
+        cohort_mode = args.cohort or requested_case_sets
+        source_sizes = 262144 if cohort_mode else 65536
+        before = [sha256(read_regular(str(p), source_sizes)).digest()
+                  for p in (first, second)]
         review_path = stage / "review.zip"
         compared = original_compare([
             str(first), str(second),
-            *(["--cohort"] if args.cohort else []),
+            *(["--cohort"] if cohort_mode else []),
             "--format", "review-pack", "--output", str(review_path)
         ])
         if compared not in (2, 3) or not review_path.is_file():
@@ -83,7 +101,7 @@ def run(args):
         desk_bytes, original_state = admit_original_review(
             read_regular(str(review_path), MAX_SOURCE),
             baseline_sha=before[0].hex(), candidate_sha=before[1].hex(),
-            comparator_exit=compared, cohort=args.cohort,
+            comparator_exit=compared, cohort=cohort_mode,
         )
         after = [sha256(read_regular(str(p), source_sizes)).digest() for p in (first, second)]
         if before != after:
@@ -116,18 +134,23 @@ def run(args):
         last = [sha256(read_regular(str(p), source_sizes)).digest() for p in (first, second)]
         if last != before:
             raise Hold("source bytes changed before private publication")
+        if requested_case_sets:
+            confirm_case_sources(original_case_paths, original_case_hashes)
         # Materialize only after the whole private source-bound package is composed.
         # Every final file is new, no-replace and fsynced; failure never
         # overwrites a pre-existing user file. We do not delete partial outputs
         # because other operators may already have opened a newly published path.
         for part, dest in zip(
-            (review_path, comparison_path, archive_path, studio_path, human_path, packet_path),
+            (review_path, comparison_path, archive_path, studio_path, human_path,
+             packet_path, *([first, second] if requested_case_sets else [])),
             targets
         ):
             publish(dest, read_regular(str(part), MAX_SOURCE))
     print("ORIGINAL_LAB_HUMAN_REVIEW_PACKAGE_CREATED — " + original_state + "; NO AUTHORITY")
     print("Original comparator report, canonical source-bound comparison, archive,")
     print("private browser Studio, human draft and review room were preserved.")
+    if requested_case_sets:
+        print("Original canonical baseline/candidate case cohorts were also privately published.")
     print("HOLD indicates original measured regressions requiring human investigation.")
     print("No original record authenticates a client, verifies consent or grants GO.")
     return compared
@@ -138,8 +161,12 @@ def main(argv=None):
         "Original already-completed lab comparison → private archived human workbench; "
         "no target, model, authorization or release authority."
     ))
-    p.add_argument("baseline", help="Existing original completed baseline lab case/cohort file")
-    p.add_argument("candidate", help="Existing original completed candidate lab case/cohort file")
+    p.add_argument("baseline", nargs="?", help="Existing original completed baseline lab case/cohort file")
+    p.add_argument("candidate", nargs="?", help="Existing original completed candidate lab case/cohort file")
+    p.add_argument("--baseline-case", action="append", default=[], metavar="FILE",
+                   help="One original already-completed case, repeat 1–64 times")
+    p.add_argument("--candidate-case", action="append", default=[], metavar="FILE",
+                   help="One original already-completed case, repeat 1–64 times")
     p.add_argument("--cohort", action="store_true", help="Use original pre-existing 1–64 case cohort comparison")
     p.add_argument("--output-dir", required=True, help="Existing privately owned directory (mode 0700)")
     p.add_argument("--prefix", default="lightup-review", help="Distinct new artifact prefix (ASCII only)")
