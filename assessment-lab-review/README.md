@@ -26,6 +26,15 @@ The complete ZIP contains **two intentionally separated apps**:
 
 **Portable packaging:** running the same standard-library build command produces BOTH SHA-CSP-pinned self-contained HTML applications and `LightUp-Private-Lab-Review-Kit.zip`. The ZIP contains only code, offline interfaces, instructions and their UNSIGNED digests, not actual original lab/source/client/evidence/reviewer data. Nothing loads external assets or sends data through the network. Share the ZIP separately from each confidential individual PRIVATE JSON handoff.
 
+
+## Optional offline two-source lab declaration comparison
+
+The operator app can now open a second **already-produced** original PRIVATE lab-result JSON for a human-only side-by-side source declaration review. It requires exact same original scenario literal and exact same set of 1–16 declared target strings but a distinct run ID. Both source schemas are independently admitted before the comparison board changes; failures leave the existing board and original human notes intact.
+
+The comparison uses the literal original target + capability ID + check ID as a **source-declaration grouping heuristic**, not verified vulnerability or client identity. When multiple source findings have the same grouping tuple in either document, that group is **AMBIGUOUS**, never silently paired. Every non-ambiguous group is classified only as (1) reported solely in A, (2) reported solely in B, (3) source description/severity/retest/fix changed, (4) source evidence **summary text** changed, or (5) source descriptive fields equal. Evidence ID changes are not proof of source equivalence or provenance. Missing B entries are **not fixed or closed findings**; B-only entries are **not verified new vulnerabilities**; unchanged source descriptions are **not a trusted match**.
+
+The separate interface provides private original report ordinals and titles, filtering and 100-row pages. Only anonymous source check-group totals and four literal-false authority flags are exported. Target URLs, original scenario IDs, source hashes, raw evidence, finding IDs, client/engagement details and report notes are never exported. The comparator does **not** carry over human notes or alter either original source.
+
 ## Source/privacy boundaries
 
 * File input is explicit local browser selection, capped at 8 MiB, with fatal UTF-8 decoding and strict duplicate-key JSON parsing. Source errors and invalid returns never partially apply.

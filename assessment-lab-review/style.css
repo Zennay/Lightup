@@ -17,3 +17,5 @@ button:disabled,.upload:has(input:disabled){opacity:.45;cursor:not-allowed}
 .cards{display:grid;gap:1rem}.finding{border:1px solid #42546b;background:#152338;padding:1rem;border-radius:12px}.finding h3{font-size:1rem;margin:.2rem 0}.finding p{overflow-wrap:anywhere;color:#e1eaf5}.grid{display:grid;grid-template-columns:1fr 1fr;gap:.6rem}.grid label{display:grid;gap:.3rem;color:#c1d7eb;font-size:.88rem}.grid input,.grid select,.grid textarea{background:#101b2d;border:1px solid #7187a4;border-radius:6px;padding:.55rem;color:#f5fcff;font:inherit;min-width:0}.grid textarea{resize:vertical;grid-column:1/-1}.grid label:nth-child(n+3){grid-column:1/-1}#preview table{min-width:700px}#status[data-error=true]{background:#4c2222;color:#ffe3d5}@media(max-width:720px){.grid{grid-template-columns:1fr}.grid label:nth-child(n+3){grid-column:auto}}
 
 .handoff-check{display:flex;align-items:center;gap:.4rem;font-size:.75rem;color:#a9ebfc;margin-bottom:.5rem;cursor:pointer}.handoff-check input{height:1rem;width:1rem;accent-color:#69cee8}
+
+#peer-results td{min-width:7rem}#peer-results td:last-child{min-width:15rem;overflow-wrap:anywhere}#peer-overview{overflow-wrap:anywhere}

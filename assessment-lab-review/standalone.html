@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-hRkJWemoEUFPXHPk2oHhtc3pVnk2gKONR4m8tIhmFGw=' 'sha256-vhAP84xwYXWkxr4OJeLVBONQKf5GtZt6gVUvAzZV1jI='; style-src 'sha256-q6Z1uuA8LXMubriwNuCn/+XxU6Bxmi10yhDvIpYeyVY='; connect-src 'none'; img-src 'none'; font-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-MMUheaEKQFUex+/Yo7GOvcTVcVT1dA23a91fhOITTzg=' 'sha256-vhAP84xwYXWkxr4OJeLVBONQKf5GtZt6gVUvAzZV1jI='; style-src 'sha256-vN8dr+91JHv6dfYf0K61MgE9PBifNOwA7Lq9MmjaIPQ='; connect-src 'none'; img-src 'none'; font-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="referrer" content="no-referrer"><title>LightUp | Private Lab Review Desk</title>
 <style>:root{color-scheme:dark;font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;background:#101624;color:#f3f7fd;line-height:1.55}
 *{box-sizing:border-box}body{margin:0}header{padding:3.5rem max(2rem,calc((100vw - 1100px)/2));background:linear-gradient(130deg,#172d43,#151926)}header h1{font-size:clamp(2rem,5vw,3.35rem);line-height:1.1;letter-spacing:-.04em;margin:.6rem 0}header p{max-width:800px;color:#d5e1ed}.eyebrow{font-size:.7rem;font-weight:800;letter-spacing:.19em;color:#9bdef1}
@@ -21,6 +21,8 @@ button:disabled,.upload:has(input:disabled){opacity:.45;cursor:not-allowed}
 .cards{display:grid;gap:1rem}.finding{border:1px solid #42546b;background:#152338;padding:1rem;border-radius:12px}.finding h3{font-size:1rem;margin:.2rem 0}.finding p{overflow-wrap:anywhere;color:#e1eaf5}.grid{display:grid;grid-template-columns:1fr 1fr;gap:.6rem}.grid label{display:grid;gap:.3rem;color:#c1d7eb;font-size:.88rem}.grid input,.grid select,.grid textarea{background:#101b2d;border:1px solid #7187a4;border-radius:6px;padding:.55rem;color:#f5fcff;font:inherit;min-width:0}.grid textarea{resize:vertical;grid-column:1/-1}.grid label:nth-child(n+3){grid-column:1/-1}#preview table{min-width:700px}#status[data-error=true]{background:#4c2222;color:#ffe3d5}@media(max-width:720px){.grid{grid-template-columns:1fr}.grid label:nth-child(n+3){grid-column:auto}}
 
 .handoff-check{display:flex;align-items:center;gap:.4rem;font-size:.75rem;color:#a9ebfc;margin-bottom:.5rem;cursor:pointer}.handoff-check input{height:1rem;width:1rem;accent-color:#69cee8}
+
+#peer-results td{min-width:7rem}#peer-results td:last-child{min-width:15rem;overflow-wrap:anywhere}#peer-overview{overflow-wrap:anywhere}
 </style></head><body>
 <header><div class="eyebrow">LIGHTUP / ISOLATED LAB / HUMAN REVIEW ONLY</div>
 <h1>Private Lab Review Desk</h1><p>Explore an <strong>already-created</strong> isolated-lab assessment JSON. Review individual source-declared findings, track human follow-up and prepare a private handoff. Nothing scans, calls a model, contacts an asset, verifies consent or grants permission.</p>
@@ -69,6 +71,22 @@ button:disabled,.upload:has(input:disabled){opacity:.45;cursor:not-allowed}
 <div id="collab-preview"></div>
 <p class="note">Reviewer replies are only proposed human notes. Both the original source-byte fingerprint and unchanged operator human baseline must match at import time. Any stale, mismatched or incomplete private packet is HOLD. Reviewer identity, consent, findings and completion are never inferred.</p>
 <p>For the recipient: open <strong>team-reply-standalone.html</strong> separately from this operator tool. Return only PRIVATE JSON through a separately approved confidential channel.</p>
+</section>
+<section id="peer" aria-labelledby="peer-heading">
+<h2 id="peer-heading">5. Compare two PRIVATE pre-existing lab declarations</h2>
+<p>Import a <strong>separately created</strong> original private lab JSON result B against the current original A. Both must declare the exact same isolated endpoint set and scenario, with distinct original run IDs. This is an <strong>offline source-declaration comparison</strong>, not verified scan chronology, provenance, consent or remediation. No lab or target execution occurs.</p>
+<div class="toolbar"><label class="upload" for="peer-input">Compare with PRIVATE source B<input id="peer-input" type="file" accept=".json,application/json"></label>
+<label for="peer-kind">Show group <select id="peer-kind"><option value="">All source-declared groups</option>
+<option value="ambiguous">Ambiguous repeated source key</option><option value="a_only">Present only A (not fixed)</option>
+<option value="b_only">Present only B (not verified new)</option><option value="description">Description changed</option>
+<option value="evidence_text">Evidence-text changed</option><option value="same_description">Same descriptive source claim</option></select></label>
+<button id="peer-export" type="button" disabled>Export counts-only comparison</button></div>
+<p id="peer-overview" class="stats">No second source admitted.</p>
+<div class="table-wrap"><table><caption>PRIVATE informational check-declaration differences</caption>
+<thead><tr><th>Source declaration</th><th>Original A ordinal</th><th>Original B ordinal</th><th>PRIVATE original title</th></tr></thead><tbody id="peer-results"></tbody></table></div>
+<div class="toolbar"><button id="peer-prev" type="button" disabled>Previous page</button>
+<button id="peer-next" type="button" disabled>Next page</button><span id="peer-counter"></span></div>
+<p class="note">The comparison key is the literal original target + capability + check ID, **not authenticated vulnerability identity**. Duplicate identities remain ambiguous. Changed or absent claims never prove anything was newly discovered or repaired. This feature never transfers HUMAN notes into another source.</p>
 </section>
 <section class="gates"><h2>Release remains on hold</h2><p>Original source-owner acceptance, independently authenticated separate client/operator consent with revocation at action time, #177/#182/#829, independent privacy/security, exact-head hosted and permanently named VPS CI, and explicit HUMAN GO remain mandatory before any main merge, deploy, grant or active assessment.</p></section>
 </main><footer>Source is explicitly held and unsigned · Offline human planning only · No execution</footer>
@@ -336,7 +354,7 @@ async function importSource(file){
  // Exact raw bytes prevent reuse of human notes on changed or reordered evidence.
  const hash=(globalThis.crypto&&crypto.subtle)?await sha256(bytes):"";
  if(source&&dirty&&!confirm("Replace existing unsaved private human notes?"))return;
- source=parsed;sourceHash=hash;notes=parsed.findings.map(initialNote);dirty=false;lastBulkUndo=null;selectedForHandoff.clear();
+ source=parsed;sourceHash=hash;notes=parsed.findings.map(initialNote);dirty=false;lastBulkUndo=null;selectedForHandoff.clear();resetPeer();
  filter="";$("filter").value="";buildEndpointFilter();
  $("private").disabled=!hash;$("resume").disabled=!hash;$("brief").disabled=!hash;
  $("workspace").hidden=false;updateSummary();render();
@@ -438,7 +456,7 @@ $("aggregate").addEventListener("click",()=>{if(!source)return;
  download("lab-anonymous-human-counts.json",JSON.stringify(aggregate(),null,2)+"\n","application/json");
  status("Counts-only human report exported; even small aggregate counts may be sensitive.");});
 $("forget").addEventListener("click",()=>{if(!source||!confirm("Forget all private source data and unsaved human notes?"))return;
- source=null;sourceHash="";notes=[];dirty=false;filter="";lastBulkUndo=null;selectedForHandoff.clear();$("filter").value="";$("findings").replaceChildren();
+ source=null;sourceHash="";notes=[];dirty=false;filter="";lastBulkUndo=null;selectedForHandoff.clear();resetPeer();$("filter").value="";$("findings").replaceChildren();
  $("workspace").hidden=true;status("All in-memory private workspace data discarded.");});
 $("collab-select-visible").addEventListener("click",()=>{
  if(!source)return;
@@ -450,6 +468,112 @@ $("collab-clear-selection").addEventListener("click",()=>{
  selectedForHandoff.clear();render();
 });
 window.addEventListener("beforeunload",e=>{if(dirty){e.preventDefault();e.returnValue="";}});
+
+
+// Optional second already-created lab source; purely informational offline reconciliation.
+let peerComparison=null,peerFilter="",peerPage=0;
+const PEER_KINDS=[
+ ["ambiguous","Duplicate source check identity — HUMAN HOLD"],
+ ["a_only","Reported only in original A — NOT a verified fix in B"],
+ ["b_only","Reported only in imported B — NOT independently verified new"],
+ ["description","Source severity/title/fix/status changed — needs human review"],
+ ["evidence_text","Source evidence summary differs — not verified"],
+ ["same_description","Same source declaration — NOT a verified matching finding"]
+];
+const peerKindLabel=Object.fromEntries(PEER_KINDS);
+function resetPeer(){
+ peerComparison=null;peerPage=0;peerFilter="";
+ $("peer-kind").value="";$("peer-results").replaceChildren();
+ $("peer-overview").textContent="No second source admitted.";
+ $("peer-counter").textContent="";$("peer-prev").disabled=true;
+ $("peer-next").disabled=true;$("peer-export").disabled=true;
+}
+function sourceKey(f){return JSON.stringify([f.target,f.capability_id,f.check_id]);}
+function sourceGroups(rows){
+ const groups=new Map();
+ rows.forEach((f,i)=>{const k=sourceKey(f);if(!groups.has(k))groups.set(k,[]);
+  groups.get(k).push({f,slot:i+1});});
+ return groups;
+}
+function describeEqual(a,b){return ["finding","severity","impact","fix","retest"].every(k=>a[k]===b[k]);}
+function classifyPeer(second){
+ require_(source&&source.scenario_id===second.scenario_id&&source.run_id!==second.run_id);
+ // Comparing different endpoint sets can imply false resolution; HOLD the whole comparison.
+ require_(source.targets.length===second.targets.length&&
+  source.targets.every(t=>second.targets.includes(t)));
+ const A=sourceGroups(source.findings),B=sourceGroups(second.findings);
+ const keys=new Set([...A.keys(),...B.keys()]);
+ const rows=[],counts=Object.fromEntries(PEER_KINDS.map(([k])=>[k,0]));
+ for(const k of keys){
+  const a=A.get(k)||[],b=B.get(k)||[];
+  let kind;
+  if(a.length>1||b.length>1)kind="ambiguous";
+  else if(!b.length)kind="a_only";
+  else if(!a.length)kind="b_only";
+  else if(!describeEqual(a[0].f,b[0].f))kind="description";
+  else if(a[0].f.evidence_summary!==b[0].f.evidence_summary)kind="evidence_text";
+  else kind="same_description";
+  counts[kind]++;
+  const head=a[0]||b[0];
+  rows.push({kind,a:a.map(x=>x.slot),b:b.map(x=>x.slot),
+   title:head.f.finding,severity:head.f.severity});
+ }
+ const ranks=Object.fromEntries(PEER_KINDS.map(([k],i)=>[k,i]));
+ rows.sort((x,y)=>ranks[x.kind]-ranks[y.kind]||x.a[0]-y.a[0]);
+ return {counts,rows,totalA:source.findings.length,totalB:second.findings.length,
+  endpoints:source.targets.length};
+}
+function renderPeer(){
+ const result=$("peer-results");result.replaceChildren();
+ if(!peerComparison)return;
+ const matches=peerComparison.rows.filter(row=>!peerFilter||row.kind===peerFilter);
+ const pageSize=100,max=Math.max(0,Math.ceil(matches.length/pageSize)-1);
+ peerPage=Math.min(peerPage,max);
+ for(const row of matches.slice(peerPage*pageSize,(peerPage+1)*pageSize)){
+  const tr=document.createElement("tr");
+  [peerKindLabel[row.kind],row.a.join(", ")||"—",row.b.join(", ")||"—",
+   row.severity+" · "+row.title].forEach(value=>tr.append(el("td",value)));
+  result.append(tr);
+ }
+ $("peer-counter").textContent=matches.length+" original source-check groups; "+
+  "viewing "+(matches.length?peerPage*pageSize+1:0)+"–"+
+  Math.min(matches.length,(peerPage+1)*pageSize)+". Neither original finding IDs nor target URLs are exported.";
+ $("peer-prev").disabled=peerPage===0;
+ $("peer-next").disabled=peerPage>=max;
+}
+$("peer-input").addEventListener("change",async e=>{
+ try{
+  require_(source&&e.target.files[0]&&e.target.files[0].size>0&&
+   e.target.files[0].size<=MAX_BYTES);
+  const raw=new TextDecoder("utf-8",{fatal:true}).decode(await e.target.files[0].arrayBuffer());
+  const second=admit(parseStrict(raw));
+  const draft=classifyPeer(second);
+  peerComparison=draft;peerPage=0;peerFilter="";
+  $("peer-kind").value="";$("peer-export").disabled=false;
+  $("peer-overview").textContent="PRIVATE SOURCE DECLARATION COMPARISON ONLY · "+
+   draft.endpoints+" identical declared endpoint literals · A "+
+   draft.totalA+" original findings · B "+draft.totalB+
+   " original findings. "+PEER_KINDS.map(([k])=>k+" "+draft.counts[k]).join(" · ");
+  renderPeer();
+  status("Separate original lab report B admitted locally. No original finding, consent or remediation was verified.");
+ }catch(_){status("HOLD: second lab source incompatible, same-run or different declared endpoints. Previous comparison unchanged.",true);}
+ finally{e.target.value="";}
+});
+$("peer-kind").addEventListener("change",e=>{peerFilter=e.target.value;peerPage=0;renderPeer();});
+$("peer-prev").addEventListener("click",()=>{peerPage=Math.max(0,peerPage-1);renderPeer();});
+$("peer-next").addEventListener("click",()=>{peerPage++;renderPeer();});
+$("peer-export").addEventListener("click",()=>{
+ if(!peerComparison)return;
+ const v={schema:"lightup.lab_peer_declaration_counts.v1",status:"REVIEW_ONLY",
+  original_a_reported_count:peerComparison.totalA,
+  original_b_reported_count:peerComparison.totalB,
+  declared_endpoint_count:peerComparison.endpoints,
+  source_check_group_counts:peerComparison.counts,
+  source_authenticated:false,ground_truth_verified:false,
+  client_consent_verified:false,operator_consent_verified:false,...noAuthority()};
+ download("lab-peer-anonymous-human-counts.json",JSON.stringify(v,null,2)+"\n","application/json");
+ status("Counts-only peer comparison exported. Missing original source reports are NOT verified fixes.");
+});
 
 // Strict collaboration bridge: no direct original source, targets or evidence leave here.
 window.LightUpReviewBridge=Object.freeze({

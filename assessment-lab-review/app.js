@@ -262,7 +262,7 @@ async function importSource(file){
  // Exact raw bytes prevent reuse of human notes on changed or reordered evidence.
  const hash=(globalThis.crypto&&crypto.subtle)?await sha256(bytes):"";
  if(source&&dirty&&!confirm("Replace existing unsaved private human notes?"))return;
- source=parsed;sourceHash=hash;notes=parsed.findings.map(initialNote);dirty=false;lastBulkUndo=null;selectedForHandoff.clear();
+ source=parsed;sourceHash=hash;notes=parsed.findings.map(initialNote);dirty=false;lastBulkUndo=null;selectedForHandoff.clear();resetPeer();
  filter="";$("filter").value="";buildEndpointFilter();
  $("private").disabled=!hash;$("resume").disabled=!hash;$("brief").disabled=!hash;
  $("workspace").hidden=false;updateSummary();render();
@@ -364,7 +364,7 @@ $("aggregate").addEventListener("click",()=>{if(!source)return;
  download("lab-anonymous-human-counts.json",JSON.stringify(aggregate(),null,2)+"\n","application/json");
  status("Counts-only human report exported; even small aggregate counts may be sensitive.");});
 $("forget").addEventListener("click",()=>{if(!source||!confirm("Forget all private source data and unsaved human notes?"))return;
- source=null;sourceHash="";notes=[];dirty=false;filter="";lastBulkUndo=null;selectedForHandoff.clear();$("filter").value="";$("findings").replaceChildren();
+ source=null;sourceHash="";notes=[];dirty=false;filter="";lastBulkUndo=null;selectedForHandoff.clear();resetPeer();$("filter").value="";$("findings").replaceChildren();
  $("workspace").hidden=true;status("All in-memory private workspace data discarded.");});
 $("collab-select-visible").addEventListener("click",()=>{
  if(!source)return;
@@ -376,6 +376,112 @@ $("collab-clear-selection").addEventListener("click",()=>{
  selectedForHandoff.clear();render();
 });
 window.addEventListener("beforeunload",e=>{if(dirty){e.preventDefault();e.returnValue="";}});
+
+
+// Optional second already-created lab source; purely informational offline reconciliation.
+let peerComparison=null,peerFilter="",peerPage=0;
+const PEER_KINDS=[
+ ["ambiguous","Duplicate source check identity — HUMAN HOLD"],
+ ["a_only","Reported only in original A — NOT a verified fix in B"],
+ ["b_only","Reported only in imported B — NOT independently verified new"],
+ ["description","Source severity/title/fix/status changed — needs human review"],
+ ["evidence_text","Source evidence summary differs — not verified"],
+ ["same_description","Same source declaration — NOT a verified matching finding"]
+];
+const peerKindLabel=Object.fromEntries(PEER_KINDS);
+function resetPeer(){
+ peerComparison=null;peerPage=0;peerFilter="";
+ $("peer-kind").value="";$("peer-results").replaceChildren();
+ $("peer-overview").textContent="No second source admitted.";
+ $("peer-counter").textContent="";$("peer-prev").disabled=true;
+ $("peer-next").disabled=true;$("peer-export").disabled=true;
+}
+function sourceKey(f){return JSON.stringify([f.target,f.capability_id,f.check_id]);}
+function sourceGroups(rows){
+ const groups=new Map();
+ rows.forEach((f,i)=>{const k=sourceKey(f);if(!groups.has(k))groups.set(k,[]);
+  groups.get(k).push({f,slot:i+1});});
+ return groups;
+}
+function describeEqual(a,b){return ["finding","severity","impact","fix","retest"].every(k=>a[k]===b[k]);}
+function classifyPeer(second){
+ require_(source&&source.scenario_id===second.scenario_id&&source.run_id!==second.run_id);
+ // Comparing different endpoint sets can imply false resolution; HOLD the whole comparison.
+ require_(source.targets.length===second.targets.length&&
+  source.targets.every(t=>second.targets.includes(t)));
+ const A=sourceGroups(source.findings),B=sourceGroups(second.findings);
+ const keys=new Set([...A.keys(),...B.keys()]);
+ const rows=[],counts=Object.fromEntries(PEER_KINDS.map(([k])=>[k,0]));
+ for(const k of keys){
+  const a=A.get(k)||[],b=B.get(k)||[];
+  let kind;
+  if(a.length>1||b.length>1)kind="ambiguous";
+  else if(!b.length)kind="a_only";
+  else if(!a.length)kind="b_only";
+  else if(!describeEqual(a[0].f,b[0].f))kind="description";
+  else if(a[0].f.evidence_summary!==b[0].f.evidence_summary)kind="evidence_text";
+  else kind="same_description";
+  counts[kind]++;
+  const head=a[0]||b[0];
+  rows.push({kind,a:a.map(x=>x.slot),b:b.map(x=>x.slot),
+   title:head.f.finding,severity:head.f.severity});
+ }
+ const ranks=Object.fromEntries(PEER_KINDS.map(([k],i)=>[k,i]));
+ rows.sort((x,y)=>ranks[x.kind]-ranks[y.kind]||x.a[0]-y.a[0]);
+ return {counts,rows,totalA:source.findings.length,totalB:second.findings.length,
+  endpoints:source.targets.length};
+}
+function renderPeer(){
+ const result=$("peer-results");result.replaceChildren();
+ if(!peerComparison)return;
+ const matches=peerComparison.rows.filter(row=>!peerFilter||row.kind===peerFilter);
+ const pageSize=100,max=Math.max(0,Math.ceil(matches.length/pageSize)-1);
+ peerPage=Math.min(peerPage,max);
+ for(const row of matches.slice(peerPage*pageSize,(peerPage+1)*pageSize)){
+  const tr=document.createElement("tr");
+  [peerKindLabel[row.kind],row.a.join(", ")||"—",row.b.join(", ")||"—",
+   row.severity+" · "+row.title].forEach(value=>tr.append(el("td",value)));
+  result.append(tr);
+ }
+ $("peer-counter").textContent=matches.length+" original source-check groups; "+
+  "viewing "+(matches.length?peerPage*pageSize+1:0)+"–"+
+  Math.min(matches.length,(peerPage+1)*pageSize)+". Neither original finding IDs nor target URLs are exported.";
+ $("peer-prev").disabled=peerPage===0;
+ $("peer-next").disabled=peerPage>=max;
+}
+$("peer-input").addEventListener("change",async e=>{
+ try{
+  require_(source&&e.target.files[0]&&e.target.files[0].size>0&&
+   e.target.files[0].size<=MAX_BYTES);
+  const raw=new TextDecoder("utf-8",{fatal:true}).decode(await e.target.files[0].arrayBuffer());
+  const second=admit(parseStrict(raw));
+  const draft=classifyPeer(second);
+  peerComparison=draft;peerPage=0;peerFilter="";
+  $("peer-kind").value="";$("peer-export").disabled=false;
+  $("peer-overview").textContent="PRIVATE SOURCE DECLARATION COMPARISON ONLY · "+
+   draft.endpoints+" identical declared endpoint literals · A "+
+   draft.totalA+" original findings · B "+draft.totalB+
+   " original findings. "+PEER_KINDS.map(([k])=>k+" "+draft.counts[k]).join(" · ");
+  renderPeer();
+  status("Separate original lab report B admitted locally. No original finding, consent or remediation was verified.");
+ }catch(_){status("HOLD: second lab source incompatible, same-run or different declared endpoints. Previous comparison unchanged.",true);}
+ finally{e.target.value="";}
+});
+$("peer-kind").addEventListener("change",e=>{peerFilter=e.target.value;peerPage=0;renderPeer();});
+$("peer-prev").addEventListener("click",()=>{peerPage=Math.max(0,peerPage-1);renderPeer();});
+$("peer-next").addEventListener("click",()=>{peerPage++;renderPeer();});
+$("peer-export").addEventListener("click",()=>{
+ if(!peerComparison)return;
+ const v={schema:"lightup.lab_peer_declaration_counts.v1",status:"REVIEW_ONLY",
+  original_a_reported_count:peerComparison.totalA,
+  original_b_reported_count:peerComparison.totalB,
+  declared_endpoint_count:peerComparison.endpoints,
+  source_check_group_counts:peerComparison.counts,
+  source_authenticated:false,ground_truth_verified:false,
+  client_consent_verified:false,operator_consent_verified:false,...noAuthority()};
+ download("lab-peer-anonymous-human-counts.json",JSON.stringify(v,null,2)+"\n","application/json");
+ status("Counts-only peer comparison exported. Missing original source reports are NOT verified fixes.");
+});
 
 // Strict collaboration bridge: no direct original source, targets or evidence leave here.
 window.LightUpReviewBridge=Object.freeze({
