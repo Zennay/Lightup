@@ -293,7 +293,60 @@
     save(new Blob([JSON.stringify(data,null,2)+"\n"],{type:"application/json"}),"lightup-casebook-change-PRIVATE.json");
     $("confirm").checked=false;
   }
+  async function restorePrivateReview() {
+    text("error","");
+    try {
+      if (state.snapshots.length !== 2) hold("Load both original snapshots before restoring human stages");
+      const file=$("restore-file").files[0];
+      if (!file || file.size < 2 || file.size > LIMIT) hold("Private review file missing or too large");
+      const bytes=await file.arrayBuffer();
+      let doc;
+      try { doc=strictJSON(new TextDecoder("utf-8",{fatal:true}).decode(bytes)); }
+      catch (_) { hold("Invalid UTF-8 or JSON in private handoff"); }
+      if (!isObject(doc) || doc.schema !== "lightup.casebook_change_private_review.v1" ||
+          doc.disposition !== "HOLD_HUMAN_REVIEW" ||
+          doc.tenant_original_id !== state.snapshots[0].doc.client_id ||
+          doc.original_source_verified !== false ||
+          doc.action_time_revocation_verified !== false)
+        hold("Private handoff is not an original-source-bound human review");
+      for(const k of ["client_consent_verified","operator_consent_verified",
+                       "authorization_granted","execution_allowed","release_approved"]) {
+        if(doc[k] !== false) hold("Private handoff contains unauthorized claims");
+      }
+      if (!Array.isArray(doc.source_sha256_unsigned) || doc.source_sha256_unsigned.length !== 2 ||
+          doc.source_sha256_unsigned.some((s,i)=>s!==state.sha[i]) ||
+          !Array.isArray(doc.source_times) || doc.source_times.length !== 2 ||
+          doc.source_times.some((t,i)=>t!==state.snapshots[i].doc.as_of))
+        hold("Private handoff belongs to different original source bytes");
+      if (!Array.isArray(doc.changes) || doc.changes.length !== state.changes.length)
+        hold("Private handoff original change membership mismatch");
+      const expected=new Map(state.changes.map(c=>[c.category+":"+c.id,c]));
+      const stages=new Map();
+      for(const row of doc.changes){
+        if(!isObject(row) || !literal(row.category,100) || !literal(row.original_id,180))
+          hold("Private handoff original ID missing");
+        const key=row.category+":"+row.original_id;
+        const c=expected.get(key);
+        if(!c || stages.has(key) ||
+           row.change!==c.kind || row.priority!==c.priority ||
+           !Array.isArray(row.changed_source_fields) ||
+           canonical(row.changed_source_fields)!==canonical(c.fieldNames) ||
+           !STAGES.includes(row.local_human_stage))
+          hold("Private human return changes original source classification");
+        stages.set(key,row.local_human_stage);
+      }
+      if(stages.size!==expected.size) hold("Private handoff incomplete");
+      // Commit the entire restored review only after every source-bound record agrees.
+      state.notes=stages;
+      render();
+      text("restore-status","Private local human stages restored against exact original source bytes. No authorization changes.");
+    } catch(e){
+      text("error","HOLD: "+(e && e.message ? e.message : "private follow-up not admitted"));
+      text("restore-status","");
+    }
+  }
   $("load").addEventListener("click",load);
+  $("restore").addEventListener("click",restorePrivateReview);
   $("kind").addEventListener("change",()=>{if(state.snapshots.length)render();});
   $("aggregate").addEventListener("click",exportSummary);
   $("private").addEventListener("click",exportPrivate);
