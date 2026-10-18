@@ -362,6 +362,40 @@ def _page(data, tasks, digest, script):
             '<script>' + script + '</script></main></body></html>').encode("utf-8")
 
 
+def _recipient_page() -> bytes:
+    """Private source-free portable recipient app, pinned self-contained JS/CSS."""
+    script_file = Path(__file__).with_name("recipient.js")
+    st = script_file.lstat()
+    if (not stat.S_ISREG(st.st_mode) or st.st_size > 48 * 1024
+            or st.st_size < 1 or script_file.is_symlink()):
+        raise Hold("recipient JS source unavailable")
+    script = script_file.read_bytes().decode("utf-8", "strict")
+    style = """*{box-sizing:border-box}body{margin:0;background:#0c1622;color:#e7f0fb;font:15px system-ui,sans-serif}main{max-width:940px;margin:auto;padding:24px}h1{font-size:2.1rem}.muted{color:#b7ccde}header{display:flex;gap:12px;flex-wrap:wrap;align-items:center;background:#1d3148;padding:17px;border-radius:12px}input,select,textarea,button{font:inherit;background:#132438;color:#f2f6ff;padding:9px;border:1px solid #68839b;border-radius:8px}input[type=file]{max-width:100%}button{cursor:pointer;background:#21567c}button:disabled{opacity:.45;cursor:not-allowed}textarea{resize:vertical;min-height:90px}.notice{background:#382332;border:1px solid #e48192;border-radius:12px;padding:14px;margin:20px 0;line-height:1.6}.row{border:1px solid #465f78;border-radius:12px;background:#182c42;margin:14px 0;padding:17px}.row h2{font-size:1.2rem;overflow-wrap:anywhere}.form{display:grid;grid-template-columns:1fr 1fr;gap:16px}.form label{display:flex;flex-direction:column;gap:8px}.form label:last-child{grid-column:1/-1}#status{padding:10px;background:#18334b;border-radius:9px}#status[data-hold=true]{background:#4e2635}@media(max-width:650px){.form{grid-template-columns:1fr}.form label:last-child{grid-column:auto}}@media print{header,button,input,select,textarea{display:none!important}body,.row{background:white;color:black}}"""
+    css_hash = base64.b64encode(sha256(style.encode()).digest()).decode()
+    js_hash = base64.b64encode(sha256(script.encode()).digest()).decode()
+    csp = ("default-src 'none'; script-src 'sha256-" + js_hash +
+           "'; style-src 'sha256-" + css_hash +
+           "'; connect-src 'none'; img-src 'none'; form-action 'none'; base-uri 'none'")
+    return ("""<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="%s">
+<title>LightUp PRIVATE Recipient Desk</title><style>%s</style></head>
+<body><main><p class="muted">LIGHTUP / PRIVATE OFFLINE HUMAN RECEIVER / DRAFT-HOLD</p>
+<h1>Recipient Follow-up Desk</h1>
+<div class="notice"><strong>HUMAN REVIEW ONLY.</strong> The incoming packet's reviewer label,
+source digest, original stored grant/window and any selected risk/status are NOT
+authenticated client consent, operator authority, revocation, clearance or permission
+to interact with a target. Check the recipient channel separately. Never upload data.</div>
+<header><label>Open separately verified PRIVATE reviewer handoff
+<input type="file" id="import" accept=".json,application/json"></label>
+<button id="export" disabled>Export PRIVATE human reply</button></header>
+<p id="identity" class="muted">No source-bound handoff imported.</p>
+<p id="status" role="status" aria-live="polite">Only human review fields are editable; no network or persistence.</p>
+<section id="cards"></section>
+<script>%s</script></main></body></html>""" %
+            (html.escape(csp, quote=True), style, script)).encode("utf-8")
+
+
 def _publish(root, outputs):
     parent = root.parent
     if root.exists() or root.is_symlink() or not parent.is_dir() or parent.is_symlink():
@@ -424,12 +458,15 @@ def compose_private_outputs(original: bytes, data: dict) -> dict[str, bytes]:
             "The board is a retrospective human work queue, not consent, at-use STOP,\n"
             "source signature, risk approval, grant, scan instruction or release.\n"
             "PRIVATE-queue.csv includes original record IDs: keep private.\n"
+            "Select human tasks and use PRIVATE reviewer handoff for a separate recipient.\n"
+            "Open PRIVATE-recipient-desk.html to edit and return selected human tasks.\n"
             "Browser notes are in memory only; separately export PRIVATE handoff.\n"
             "Reopen identical original source to restore; changed bytes HOLD.\n"
             "Absent/missing records are NEVER verified revoked, fixed or cleared.\n"
             "No source files or original domain records are modified.\n")
     outputs = {
         "PRIVATE-board.html": _page(data, queue, digest, script),
+        "PRIVATE-recipient-desk.html": _recipient_page(),
         "PRIVATE-queue.csv": _csv(queue),
         "aggregate.json": json.dumps(anonymous, indent=2, sort_keys=True).encode(),
         "START-HERE.txt": info.encode(),
