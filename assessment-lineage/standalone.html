@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="referrer" content="no-referrer">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-8yLbnSKIkXjuDjRPJ3LywiFwazt+jQWig+Ksi2O2TPw='; style-src 'sha256-GdLEigU6fEfKD+wX/IxytPwLBP/KQSwgEfrkQIJ9CcY='; connect-src 'none'; img-src 'none'; font-src 'none'; object-src 'none'; frame-src 'none'; form-action 'none'; base-uri 'none'; worker-src 'none'; manifest-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-zRBCAVO0445X2Xnf7EywczvbRwiRs2wahlFKwe9qrAg='; style-src 'sha256-GdLEigU6fEfKD+wX/IxytPwLBP/KQSwgEfrkQIJ9CcY='; connect-src 'none'; img-src 'none'; font-src 'none'; object-src 'none'; frame-src 'none'; form-action 'none'; base-uri 'none'; worker-src 'none'; manifest-src 'none'">
 <title>LightUp · Offline Lab Lineage Desk</title>
 <style>:root{color-scheme:dark;--bg:#081523;--panel:#14263b;--ink:#edf6ff;--muted:#b3c5d5;--line:#3b526b;--link:#8fd8ff;--hold:#ffce8a}
 *{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 system-ui,Segoe UI,sans-serif}
@@ -104,7 +104,7 @@ textarea:focus-visible{outline:3px solid var(--hold);outline-offset:3px}
   };
   const TOKEN = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
   const MAX_CATALOG = 1048576, MAX_REPORT = 262144;
-  let catalog=null, reports=[], reviews=new Map(), humanNotes=new Map(), humanRoutes=new Map(), humanActions=new Map(), fictional=false;
+  let catalog=null, reports=[], reviews=new Map(), humanNotes=new Map(), noteScratch=new Map(), humanRoutes=new Map(), humanActions=new Map(), fictional=false;
   let mismatchRevealed=false,undoRouteBatch=null;
   let catalogHash=null, reportHashes=[];
   function admit(ok){if(!ok)throw Error("Incompatible or unsafe private source");}
@@ -647,6 +647,7 @@ textarea:focus-visible{outline:3px solid var(--hold);outline-offset:3px}
     }
     if(note.trim())humanNotes.set(catalog[index].id,note);
     else humanNotes.delete(catalog[index].id);
+    noteScratch.delete(catalog[index].id);
     $("privateNoteState").textContent=note.trim()?
       "PRIVATE note saved only in memory. Include it only in PRIVATE source-bound draft.":
       "Private note removed from memory.";
@@ -707,13 +708,17 @@ textarea:focus-visible{outline:3px solid var(--hold);outline-offset:3px}
     selector.value=old!==""&&Number.isSafeInteger(Number(old))&&Number(old)>=0&&
       Number(old)<catalog.length?old:"0";
     const index=Number(selector.value),scenario=catalog[index];
-    $("privateCaseNote").value=humanNotes.get(scenario.id)||"";
+    $("privateCaseNote").value=noteScratch.has(scenario.id)?
+      noteScratch.get(scenario.id):humanNotes.get(scenario.id)||"";
     $("humanRoute").value=humanRouteFor(scenario);
     $("humanAction").value=humanActionFor(scenario);
     $("sourceRouteHint").textContent="Proposed source-flag discussion group: "+
       ROUTE_LABELS[sourceRouteHint(scenario)]+". Never an authenticated assignment.";
     $("humanPlanState").textContent="Human planning fields are PRIVATE and unsigned.";
-    $("privateNoteState").textContent="PRIVATE human notes are local and never appear in anonymous exports.";
+    $("privateNoteState").textContent=noteScratch.has(scenario.id)?
+      "UNSAVED private note draft retained in tab memory for this case. "+
+        "Click Save note before private draft/dossier export.":
+      "PRIVATE human notes are local and never appear in anonymous exports.";
     const rows=METRICS.map(metric=>[
       metric.replaceAll("_"," "),
       ...reports.map(report=>{
@@ -884,7 +889,7 @@ textarea:focus-visible{outline:3px solid var(--hold);outline-offset:3px}
       const nextActions=withPlan?new Map(catalog.flatMap((s,i)=>
         draft.next_human_actions[i]!=="none_recorded"?
           [[s.id,draft.next_human_actions[i]]]:[])):new Map();
-      reviews=nextReviews;humanNotes=nextNotes;
+      reviews=nextReviews;humanNotes=nextNotes;noteScratch=new Map();
       humanRoutes=nextRoutes;humanActions=nextActions;undoBatch=null;undoRouteBatch=null;render();
       message("PRIVATE stages, notes and proposed human plans restored for original "+
         "exact source bytes. Legacy v1/v2 drafts have no proposed plans.");
@@ -1061,7 +1066,7 @@ textarea:focus-visible{outline:3px solid var(--hold);outline-offset:3px}
       message("Script-free, target-free human brief downloaded.");
     }catch(_){message("HOLD: brief not available until sources match exactly.",true);}
   }
-  function forget(){catalog=null;reports=[];reviews=new Map();humanNotes=new Map();humanRoutes=new Map();humanActions=new Map();mismatchRevealed=false;catalogHash=null;
+  function forget(){catalog=null;reports=[];reviews=new Map();humanNotes=new Map();noteScratch=new Map();humanRoutes=new Map();humanActions=new Map();mismatchRevealed=false;catalogHash=null;
     reportHashes=[];undoBatch=null;undoRouteBatch=null;clearPendingDraft();
     if(privateTemplate instanceof HTMLTemplateElement){
       privateTemplate.content.replaceChildren();
@@ -1089,7 +1094,7 @@ textarea:focus-visible{outline:3px solid var(--hold);outline-offset:3px}
         return [id,{metrics,adverse:variant&&i===2?["scope_violations"]:[]}];
       }))
     });
-    reports=[candidate(0),candidate(1)];reviews=new Map();humanNotes=new Map();humanRoutes=new Map();humanActions=new Map();mismatchRevealed=false;catalogHash=null;
+    reports=[candidate(0),candidate(1)];reviews=new Map();humanNotes=new Map();noteScratch=new Map();humanRoutes=new Map();humanActions=new Map();mismatchRevealed=false;catalogHash=null;
     reportHashes=[];undoBatch=null;undoRouteBatch=null;clearPendingDraft();resetFilters();fictional=true;
     render();message("FICTIONAL offline demonstration loaded; no source evidence or permission.");
   }
@@ -1152,7 +1157,7 @@ textarea:focus-visible{outline:3px solid var(--hold);outline-offset:3px}
       harmonize(nextReports);
       // All source files are fully canonical and mutually consistent before ANY mutation.
       catalog=nextCatalog;reports=nextReports;catalogHash=sourceCatalog.digest;
-      reportHashes=nextHashes;reviews=new Map();humanNotes=new Map();humanRoutes=new Map();humanActions=new Map();mismatchRevealed=false;undoBatch=null;undoRouteBatch=null;fictional=false;
+      reportHashes=nextHashes;reviews=new Map();humanNotes=new Map();noteScratch=new Map();humanRoutes=new Map();humanActions=new Map();mismatchRevealed=false;undoBatch=null;undoRouteBatch=null;fictional=false;
       clearPendingDraft();
       pendingPrivateDraft=hasDraft?bundle.human_draft_b64:null;
       $("restoreEmbeddedDraft").hidden=!pendingPrivateDraft;
@@ -1191,7 +1196,7 @@ textarea:focus-visible{outline:3px solid var(--hold);outline-offset:3px}
       const imported=await read(file,MAX_CATALOG);
       const candidate=parseCatalog(imported.result);
       if((catalog||reports.length)&&!confirm("Replace private catalog and clear previously imported lab comparisons and human stage work?"))return;
-      catalog=candidate;reports=[];reviews=new Map();humanNotes=new Map();humanRoutes=new Map();humanActions=new Map();mismatchRevealed=false;catalogHash=imported.digest;
+      catalog=candidate;reports=[];reviews=new Map();humanNotes=new Map();noteScratch=new Map();humanRoutes=new Map();humanActions=new Map();mismatchRevealed=false;catalogHash=imported.digest;
       reportHashes=[];undoBatch=null;undoRouteBatch=null;clearPendingDraft();resetFilters();fictional=false;render();
       message("PRIVATE lab design admitted. Targets and finding IDs were discarded after validation.");
     }catch(_){message("HOLD: incompatible PRIVATE Lab Scenario Studio source. Existing data preserved.",true);}
@@ -1225,6 +1230,17 @@ textarea:focus-visible{outline:3px solid var(--hold);outline-offset:3px}
     $(id).addEventListener("change",render);
   for(const id of ["boardStatus","boardRoute"])$(id).addEventListener("change",renderHumanActionBoard);
   $("inspectCase").addEventListener("change",renderInspector);
+  $("privateCaseNote").addEventListener("input",()=>{
+    const index=Number($("inspectCase").value);
+    if(!catalog||!Number.isSafeInteger(index)||index<0||index>=catalog.length)return;
+    const id=catalog[index].id,raw=$("privateCaseNote").value;
+    if(raw===(humanNotes.get(id)||""))noteScratch.delete(id);
+    else noteScratch.set(id,raw);
+    $("privateNoteState").textContent=noteScratch.has(id)?
+      "UNSAVED PRIVATE note draft retained in memory across case navigation. "+
+      "Not included in any output until Save note is clicked.":
+      "PRIVATE note matches saved local version.";
+  });
   $("saveCaseNote").addEventListener("click",saveCaseNote);
   $("saveHumanPlan").addEventListener("click",setHumanPlan);
   $("adoptSourceHint").addEventListener("click",adoptSourceHint);
