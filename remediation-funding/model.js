@@ -272,5 +272,129 @@ function stagedFunding(source,raw,percentages) {
   weeks:Object.freeze(entries)
  });
 }
-root.LightUpFunding=Object.freeze({intake,settings,project,stagedFunding,SCHEMA,MAX_SIZE:65536});
+// REVIEW_ONLY funding envelopes: two explicitly hypothetical ways to divide
+// the same funded weekly hours; neither mode identifies or assigns a real case.
+function fundingPriorities(source,raw,percentages) {
+ const cash=stagedFunding(source,raw,percentages);
+ const order=BANDS;
+ function distribute(week, fundedHours, mode) {
+  const planned=week.risk_hours;
+  const total=week.hours;
+  const tenths=Math.min(total*10,Math.floor((fundedHours+1e-9)*10));
+  const limits=Object.fromEntries(order.map(k=>[k,planned[k]*10]));
+  const assigned=Object.fromEntries(order.map(k=>[k,0]));
+  if(mode==='urgent_first') {
+   let remaining=tenths;
+   for(const key of order) {
+    assigned[key]=Math.min(limits[key],remaining);
+    remaining-=assigned[key];
+   }
+   if(remaining!==0)fail('Could not allocate the modelled funded hours');
+  }else if(mode==='proportional') {
+   if(total>0) {
+    let remaining=tenths;
+    const fractions=[];
+    for(const key of order) {
+      const numerator=tenths*limits[key];
+      const portion=Math.floor(numerator/(total*10));
+      assigned[key]=Math.min(portion,limits[key]);
+      remaining-=assigned[key];
+      fractions.push({key,frac:numerator%(total*10)});
+    }
+    fractions.sort((a,b)=>b.frac-a.frac || order.indexOf(a.key)-order.indexOf(b.key));
+    while(remaining>0) {
+      let granted=false;
+      for(const candidate of fractions) {
+        if(remaining===0)break;
+        if(assigned[candidate.key]<limits[candidate.key]) {
+          assigned[candidate.key]++; remaining--; granted=true;
+        }
+      }
+      if(!granted)fail('Funding capacity is inconsistent with weekly severity');
+    }
+   }
+  }else fail('Unknown modeled funding strategy');
+  const perBand=Object.freeze(Object.fromEntries(order.map(key=>[key,Object.freeze({
+    proposed_hours:limits[key]/10,
+    tentatively_funded_hours:assigned[key]/10,
+    unfinanced_hours:(limits[key]-assigned[key])/10
+  })])));
+  return Object.freeze({perBand,
+    proposed_hours:total,
+    tentatively_funded_hours:tenths/10,
+    unfinanced_hours:(total*10-tenths)/10,
+    critical_high_tentatively_funded_hours:(assigned.critical+assigned.high)/10});
+ }
+ function allocate(mode) {
+  const totals=Object.fromEntries(order.map(k=>[k,{
+    proposed_hours:0,tentatively_funded_hours:0,unfinanced_hours:0
+  }]));
+  const weeks=source.weeks.map((week,index)=>{
+    const allocated=distribute(week,cash.weeks[index].funded_hours,mode);
+    for(const key of order) {
+      totals[key].proposed_hours+=allocated.perBand[key].proposed_hours;
+      totals[key].tentatively_funded_hours+=allocated.perBand[key].tentatively_funded_hours;
+      totals[key].unfinanced_hours+=allocated.perBand[key].unfinanced_hours;
+    }
+    return Object.freeze({week:week.week,start:week.start,
+      deposited_amount:cash.weeks[index].deposit,
+      modeled_labor_paid:cash.weeks[index].paid_proposed_labor,
+      ...allocated});
+  });
+  const bySeverity=Object.freeze(Object.fromEntries(order.map(key=>[key,Object.freeze({
+    proposed_hours:Math.round(totals[key].proposed_hours*10)/10,
+    tentatively_funded_hours:Math.round(totals[key].tentatively_funded_hours*10)/10,
+    unfinanced_hours:Math.round(totals[key].unfinanced_hours*10)/10
+  })])));
+  return Object.freeze({mode,by_severity:bySeverity,weeks:Object.freeze(weeks),
+    critical_high_funded_hours:Math.round((
+      totals.critical.tentatively_funded_hours+totals.high.tentatively_funded_hours)*10)/10,
+    critical_high_unfinanced_hours:Math.round((
+      totals.critical.unfinanced_hours+totals.high.unfinanced_hours)*10)/10});
+ }
+ const priority=allocate('urgent_first');
+ const balanced=allocate('proportional');
+ return Object.freeze({
+  schema:'lightup.remediation_funding_priority_draft.v1',
+  review_only:true,authorization:false,consent:false,grant:false,
+  scan:false,execute:false,dispatch:false,retest_verified:false,deploy:false,release:false,
+  currency:cash.currency,
+  source_count:source.source_count,
+  planned_weeks:source.weeks.length,
+  total_modelled_budget:cash.total_funding,
+  source_unscheduled_urgent_hours:source.risk.critical.backlog+source.risk.high.backlog,
+  staged_weekly_releases:Object.freeze([...cash.release_percentages]),
+  urgent_first:priority,proportional:balanced,
+  modelled_urgent_funding_difference_hours:Math.round(
+    (priority.critical_high_funded_hours-balanced.critical_high_funded_hours)*10)/10
+ });
+}
+function priorityDiscussionMarkdown(model) {
+ if(!model || model.schema!=='lightup.remediation_funding_priority_draft.v1')
+  fail('Generate a private risk funding plan first');
+ const text=[
+  '# LightUp — funding priorities discussion (UNSIGNED DRAFT)',
+  '',
+  '**REVIEW_ONLY · DRAFT/HOLD · No real approval, consent, grant, dispatch, scan, retest, completed fix or release.**',
+  '',
+  'This unsigned financial illustration uses only earlier aggregate planning data. Severity-first is a hypothetical financing policy, not an actual source finding allocation.',
+  '',
+  '- Reporting currency: '+model.currency+' (no FX)',
+  '- Total modelled funding: '+model.total_modelled_budget,
+  '- Additional urgent funded hours under hypothetical urgent-first versus proportional: '+model.modelled_urgent_funding_difference_hours,
+  '- Unplanned critical/high workload outside this source schedule: '+model.source_unscheduled_urgent_hours+' hours',
+  '',
+  '| Severity | Proposed hours | Urgent-first funded hours | Urgent-first unfunded hours | Proportional funded hours | Proportional unfunded hours |',
+  '| --- | ---: | ---: | ---: | ---: | ---: |'
+ ];
+ for(const key of BANDS) {
+  const a=model.urgent_first.by_severity[key];
+  const b=model.proportional.by_severity[key];
+  text.push('| '+[key,a.proposed_hours,a.tentatively_funded_hours,a.unfinanced_hours,
+    b.tentatively_funded_hours,b.unfinanced_hours].join(' | ')+' |');
+ }
+ text.push('','**Human decisions needed:** independently confirm source client/engagement, original authorization and revocation, real budgets, repair owners, procurement and separately verified retests. This file cannot authorize any work.','');
+ return text.join('\n');
+}
+root.LightUpFunding=Object.freeze({intake,settings,project,stagedFunding,fundingPriorities,priorityDiscussionMarkdown,SCHEMA,MAX_SIZE:65536});
 })(window);
