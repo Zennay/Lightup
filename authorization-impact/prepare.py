@@ -286,8 +286,11 @@ def publish_bytes(
         from review_binding import admit_private_review
         admit_private_review(original, review_raw)
     app = _read_private(Path(__file__).resolve().with_name("standalone.html"), APP_LIMIT, require_private=False)
-    if b"<title>LightUp | Scope Impact Map</title>" not in app:
-        raise Refused("unexpected bundled app")
+    from app_integrity import InvalidApp, admit_standalone
+    try:
+        admit_standalone(app)
+    except InvalidApp as exc:
+        raise Refused("offline app CSP integrity") from exc
 
     provenance_note = (
         "Fresh original Casebook password authentication and tenant isolation "
