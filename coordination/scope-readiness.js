@@ -72,10 +72,16 @@ function validDraft(d){
  for(const k of Object.keys(d))if(/(?:approved|authorized|permission|consent|grant|execution|scan|release|verified)/i.test(k)&&d[k]===true)return false;
  return true;
 }
-function sha(text){
+function sha(bytes){
  if(!globalThis.crypto||!crypto.subtle)throw Error('Browser WebCrypto SHA-256 is unavailable; source binding must not be weakened.');
- const bytes=new TextEncoder().encode(text);
+ // Hash the actual imported bytes, never a lossy decoded-and-reencoded approximation.
  return crypto.subtle.digest('SHA-256',bytes).then(buffer=>Array.from(new Uint8Array(buffer),x=>x.toString(16).padStart(2,'0')).join(''));
+}
+async function readSourceBytes(file){
+ const bytes=await file.arrayBuffer();
+ // Malformed UTF-8 is a HOLD. File.text() would silently replace invalid bytes.
+ const text=new TextDecoder('utf-8',{fatal:true}).decode(bytes);
+ return {bytes,text};
 }
 function sourceRecord(d,digest){
  return {
@@ -266,9 +272,9 @@ function download(name,data,type){
 }
 async function addSource(file){
  if(!file||file.size>MAX_FILE||!file.size)throw Error('Source file must be 1–65536 bytes.');
- const text=await file.text(), obj=parseJSON(text);
+ const {bytes,text}=await readSourceBytes(file), obj=parseJSON(text);
  if(!validDraft(obj))throw Error('Not a safe Studio v1 DRAFT_ONLY source.');
- const digest=await sha(text);
+ const digest=await sha(bytes);
  let existing=entries.find(r=>r.source_sha256===digest);
  if(existing){
   if(existing.name!==obj.proposal_name||existing.requested_risk!==obj.requested_risk||
@@ -287,9 +293,9 @@ $('sourceUpload').addEventListener('change',async event=>{
   const incoming=[];
   for(const file of files){
    if(!file.size||file.size>MAX_FILE)throw Error('One source file is too large.');
-   const text=await file.text(),d=parseJSON(text);
+   const {bytes,text}=await readSourceBytes(file),d=parseJSON(text);
    if(!validDraft(d))throw Error('One source is not a safe Studio v1 DRAFT_ONLY.');
-   incoming.push({d,digest:await sha(text)});
+   incoming.push({d,digest:await sha(bytes)});
   }
   const newShas=new Set(incoming.filter(x=>!entries.some(r=>r.source_sha256===x.digest)).map(x=>x.digest));
   if(entries.length+newShas.size>MAX_RECORDS)throw Error('Board is limited to 20 different revisions.');
