@@ -9,3 +9,6 @@
 .conflict-card .actions button{font-size:.83rem;padding:8px 11px}
 .conflict-card .chips{margin:9px 0}
 @media print{.conflict-card .actions{display:none!important}.conflict-card{break-inside:avoid}.conflicts{grid-template-columns:repeat(2,1fr)}}
+
+.pair-status{display:grid;gap:6px;color:var(--muted);font-size:.83rem;margin-top:14px}
+.pair-status select{width:100%;max-width:380px}
