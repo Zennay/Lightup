@@ -31,7 +31,7 @@
   let sourceHashes=[];
   let pairFocus=1;
   let selectedCase=0,caseStages=new Map();
-  let demoMode=false;
+  let demoMode=false,sourceMeta=[];
 
   // Strict recursive JSON reader: rejects duplicate keys (also escaped aliases),
   // malformed literals, nonfinite numbers and excessively nested documents.
@@ -170,7 +170,7 @@
   async function loadFiles(list) {
     REQUIRE(list.length>=3 && list.length<=12);
     const decoder=new TextDecoder("utf-8",{fatal:true});
-    const parsed=[], hashes=[], originalTexts=new Set();
+    const parsed=[], hashes=[], sizes=[], originalTexts=new Set();
     for(const file of list) {
       REQUIRE(file.size>0 && file.size<=262144);
       const bytes=await file.arrayBuffer();
@@ -180,9 +180,10 @@
       originalTexts.add(source);
       parsed.push(decodeReport(strictJSON(source)));
       hashes.push(await byteDigest(bytes));
+      sizes.push(bytes.byteLength);
     }
     enforceSameBaseline(parsed);
-    return {parsed,hashes};
+    return {parsed,hashes,sizes};
   }
   function snapshot(rev,name) {
     const values=[...rev.cases.values()].map(x=>x.metrics[name]);
@@ -219,7 +220,7 @@
     $("message").textContent=message; $("message").className="message"+(bad?" bad":"");
   }
   function reset() {
-    revisions=[];sourceHashes=[];discussionStages=Object.create(null);caseStages=new Map();selectedCase=0;revisionFocus=0;pairFocus=1;demoMode=false; $("workspace").hidden=true; $("files").value="";
+    revisions=[];sourceHashes=[];sourceMeta=[];discussionStages=Object.create(null);caseStages=new Map();selectedCase=0;revisionFocus=0;pairFocus=1;demoMode=false; $("workspace").hidden=true; $("files").value="";
     $("notes").value="";$("draft-file").value="";
     $("draft-state").textContent="Private source bindings and local discussion stages were cleared.";
     showMessage("All imported source data and local notes cleared.");
@@ -376,11 +377,34 @@
     const control=$("revision-select");
     control.replaceChildren();
     revisions.forEach((_,i)=>{
-      const option=add(control,"option","Report "+String(i+1));option.value=String(i);
+      const tag=sourceHashes[i]?sourceHashes[i].slice(0,12):"no hash";
+      const alias=sourceMeta[i]?.alias||"Unlabelled";
+      const option=add(control,"option","R"+String(i+1)+" · "+alias+" · "+tag);
+      option.value=String(i);
     });
     control.value=String(revisionFocus);
     $("earlier").disabled=revisionFocus===0;
     $("later").disabled=revisionFocus===revisions.length-1;
+  }
+  function renderManifest() {
+    const tbody=$("source-rows");tbody.replaceChildren();
+    revisions.forEach((_,i)=>{
+      const tr=add(tbody,"tr");
+      add(tr,"th","R"+String(i+1));
+      const td=add(tr,"td");
+      const input=add(td,"input");
+      input.type="text";input.maxLength=40;
+      input.autocomplete="off";input.spellcheck=false;
+      input.setAttribute("aria-label","Private alias for source position "+String(i+1));
+      input.value=sourceMeta[i]?.alias||"";
+      input.addEventListener("input",()=>{
+        const value=input.value.replace(/[^a-zA-Z0-9 _.-]/g,"").slice(0,40);
+        sourceMeta[i].alias=value;
+        renderOrder();
+      });
+      add(tr,"td",sourceHashes[i]?sourceHashes[i].slice(0,12):"Unavailable");
+      add(tr,"td",sourceMeta[i]?.bytes>0?String(sourceMeta[i].bytes):"Fictional");
+    });
   }
   function moveReport(delta) {
     const target=revisionFocus+delta;
@@ -391,6 +415,9 @@
     const previousHash=sourceHashes[revisionFocus];
     sourceHashes[revisionFocus]=sourceHashes[target];
     sourceHashes[target]=previousHash;
+    const previousMeta=sourceMeta[revisionFocus];
+    sourceMeta[revisionFocus]=sourceMeta[target];
+    sourceMeta[target]=previousMeta;
     revisionFocus=target;
     render();
     showMessage("Local source order changed; all aggregate trajectories were recalculated. Chronology remains unverified.");
@@ -622,7 +649,7 @@
     for(const name of NAMES) {
       const option=add(select,"option",nice(name));option.value=name;
     }
-    renderOrder();renderPair();metricsRows();renderCaseRows();renderCaseInspector();renderActions();choose(selected);followupText();
+    renderOrder();renderManifest();renderPair();metricsRows();renderCaseRows();renderCaseInspector();renderActions();choose(selected);followupText();
     $("demo-banner").hidden=!demoMode;
     $("save-draft").disabled=demoMode || !sourceHashes.length || sourceHashes.some(x=>!x);
     if(sourceHashes.some(x=>!x))
@@ -681,12 +708,15 @@
     return output;
   }
   $("demo").addEventListener("click",()=>{
-    revisions=[];sourceHashes=[];demoMode=false;
+    revisions=[];sourceHashes=[];sourceMeta=[];demoMode=false;
     $("workspace").hidden=true;$("files").value="";
     caseStages=new Map();discussionStages=Object.create(null);
     selectedCase=0;revisionFocus=0;pairFocus=1;$("notes").value="";
     try {
       revisions=fictionalReports();sourceHashes=revisions.map(()=>null);
+      sourceMeta=revisions.map((_,i)=>({
+        bytes:0,alias:"Fictional "+String(i+1).padStart(2,"0")
+      }));
       demoMode=true;pairFocus=revisions.length-1;render();
       showMessage("FICTIONAL DEMO ONLY — five invented lab revisions and eight invented scenarios. No authenticated data, client, original lab run or permission.");
       $("draft-state").textContent="Private draft save/restore is unavailable for invented demonstration data.";
@@ -698,13 +728,16 @@
 
   $("files").addEventListener("change",async ev=>{
     // No mixing old and new reports. A failed import removes previous content.
-    revisions=[];sourceHashes=[];revisionFocus=0;pairFocus=1;discussionStages=Object.create(null);caseStages=new Map();selectedCase=0;demoMode=false;$("workspace").hidden=true;$("notes").value="";
+    revisions=[];sourceHashes=[];sourceMeta=[];revisionFocus=0;pairFocus=1;discussionStages=Object.create(null);caseStages=new Map();selectedCase=0;demoMode=false;$("workspace").hidden=true;$("notes").value="";
     const files=[...ev.target.files];
     try {
       demoMode=false;
       const accepted=await loadFiles(files);
       revisions=accepted.parsed;
       sourceHashes=accepted.hashes;
+      sourceMeta=accepted.sizes.map((bytes,i)=>({
+        bytes,alias:"Source "+String(i+1).padStart(2,"0")
+      }));
       pairFocus=revisions.length-1;
       render();
     } catch (_) {
