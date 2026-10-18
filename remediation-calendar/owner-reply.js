@@ -23,13 +23,67 @@ function controls(){
 function field(labelText,control){
  const label=el('label',labelText);label.append(control);return label;
 }
+function visibleRows(){
+ if(!draft)return [];
+ const mode=$('recipient-filter').value,search=$('recipient-search').value.trim().toLowerCase();
+ const severity=['critical','high','medium','low','info'];
+ const today=new Date().toISOString().slice(0,10);
+ return draft.map((r,i)=>({r,i})).filter(({r})=>{
+  if(search&&!((r.finding_id+' '+r.title).toLowerCase().includes(search)))return false;
+  if(mode==='urgent'&&!['critical','high'].includes(r.severity))return false;
+  if(mode==='overdue'&&!(r.due_date&&r.due_date<today&&!['completed','deferred'].includes(r.status)))return false;
+  if(mode==='blocked'&&r.status!=='blocked')return false;
+  if(mode==='missing_date'&&(r.due_date||['completed','deferred'].includes(r.status)))return false;
+  if(mode==='retest'&&r.status!=='ready_for_retest')return false;
+  return true;
+ }).sort((a,b)=>{
+  const sort=$('recipient-sort').value;
+  if(sort==='due')return (a.r.due_date||'9999').localeCompare(b.r.due_date||'9999')||
+    severity.indexOf(a.r.severity)-severity.indexOf(b.r.severity);
+  if(sort==='title')return a.r.title.localeCompare(b.r.title);
+  return severity.indexOf(a.r.severity)-severity.indexOf(b.r.severity)||
+    (a.r.due_date||'9999').localeCompare(b.r.due_date||'9999');
+ });
+}
+function renderRecipientMetrics(){
+ const target=$('recipient-metrics');target.replaceChildren();if(!draft)return;
+ const today=new Date().toISOString().slice(0,10);
+ const counts=[
+  ['Original assigned',draft.length],
+  ['Critical/high',draft.filter(r=>['critical','high'].includes(r.severity)).length],
+  ['Human blocked',draft.filter(r=>r.status==='blocked').length],
+  ['Past-due local',draft.filter(r=>r.due_date&&r.due_date<today&&!['completed','deferred'].includes(r.status)).length],
+  ['Missing human date',draft.filter(r=>!r.due_date&&!['completed','deferred'].includes(r.status)).length],
+  ['Awaiting separate retest',draft.filter(r=>r.status==='ready_for_retest').length]
+ ];
+ for(const [label,count] of counts){
+  const box=el('div');box.className='metric';
+  box.append(el('strong',count),el('span',label));target.append(box);
+ }
+}
+function applyRecipientBulk(){
+ if(!request||!draft||!$('ack').checked)throw Error('Private source and recipient acknowledgment required.');
+ const stage=$('recipient-bulk-stage').value;
+ if(!STATUS.some(x=>x[0]===stage))throw Error('Select a valid HUMAN-ONLY planning stage.');
+ const visible=visibleRows();
+ if(!visible.length)throw Error('There are no visible original findings to update.');
+ if(!global.confirm('Apply HUMAN stage '+stage+' to '+visible.length+
+  ' currently visible original findings? This NEVER updates original retest, authorization, consent or real remediation.'))return;
+ for(const item of visible)item.r.status=stage;
+ dirty=true;render();
+ $('recipient-bulk-message').textContent=visible.length+
+  ' original findings updated in PRIVATE memory only. Export a return JSON through the approved channel.';
+}
 function render(){
  const cards=$('cards');cards.replaceChildren();
  if(!request)return;
  $('owner').textContent='Human owner/team label: '+request.owner_label+' (not authenticated identity)';
  $('count').textContent=request.rows.length+' original findings, shared exclusively for this single owner label. Original retest remains read-only.';
- for(let i=0;i<draft.length;i++){
-  const r=draft[i],card=el('section');card.className='card';
+ renderRecipientMetrics();
+ const visible=visibleRows();
+ $('count').textContent=visible.length+' visible of '+request.rows.length+' assigned original findings. Original retest is read-only.';
+ for(const {r,i} of visible){
+  const card=el('section');card.className='card';
   const h=el('h3',r.title),sev=el('span',r.severity.toUpperCase()+' · Original retest: '+r.retest_status);sev.className='tag';
   const fid=el('p','Original finding ID: '+r.finding_id);
   const rem=el('div',r.remediation);rem.className='source';
@@ -51,6 +105,7 @@ function render(){
   card.append(row,field('Human next action',action),field('Human blocker / dependency',blocker));
   cards.append(card);
  }
+ if(!visible.length){const p=el('p','No original findings match these local filters.');cards.append(p);}
  $('workspace').hidden=false;controls();
 }
 async function load(file){
@@ -59,6 +114,7 @@ async function load(file){
  const raw=global.LightUpOwnerPrivateJson.read(await file.text());
  const accepted=await global.LightUpOwnerProtocol.validateRequest(raw);
  request=accepted;draft=accepted.rows.map(x=>({...x}));dirty=false;
+ $('recipient-filter').value='all';$('recipient-search').value='';$('recipient-sort').value='priority';
  $('return-ack').checked=false;$('reply-message').textContent='';
  $('message').textContent='PRIVATE owner-specific handoff loaded. Source hash is not proof of identity, consent, or current authorization.';
  render();
@@ -85,6 +141,8 @@ $('file').addEventListener('change',async e=>{
  request=null;draft=null;$('workspace').hidden=true;
  try{await load(e.target.files[0]);}catch(err){$('message').textContent='HOLD: '+err.message;}
 });
+for(const id of ['recipient-filter','recipient-search','recipient-sort'])$(id).addEventListener('input',()=>{if(request)render();});
+$('recipient-bulk-apply').addEventListener('click',()=>{try{applyRecipientBulk();}catch(err){$('recipient-bulk-message').textContent='HOLD: '+err.message;}});
 $('ack').addEventListener('change',controls);
 $('return-ack').addEventListener('change',controls);
 $('export').addEventListener('click',async()=>{try{await exportReply();}catch(err){$('reply-message').textContent='HOLD: '+err.message;}});

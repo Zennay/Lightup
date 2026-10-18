@@ -12,6 +12,19 @@
 <section id="workspace" hidden>
 <section class="panel"><h2>2. Coordinate human work for the selected owner</h2>
 <p id="owner" class="owner"></p><p id="count"></p><p>Original five finding fields and human owner label are read-only. All updates remain in browser memory until you explicitly export a PRIVATE reply.</p>
+<div id="recipient-metrics" class="metrics" aria-label="Local human-only workload summary"></div>
+<div class="filter-grid">
+<label>View original finding or human status<select id="recipient-filter">
+<option value="all">All original findings</option><option value="urgent">Critical/high source severity</option>
+<option value="overdue">Past-due human actions</option><option value="blocked">Human blocked</option>
+<option value="missing_date">Open human work without due date</option>
+<option value="retest">Ready for separately authorized retest</option></select></label>
+<label>Search original finding ID or title<input id="recipient-search" type="search" maxlength="120" placeholder="Find original finding"></label>
+<label>Sort human work<select id="recipient-sort"><option value="priority">Source severity</option><option value="due">Human due date</option><option value="title">Original title</option></select></label></div>
+<section class="bulk-panel"><h3>Bulk HUMAN-ONLY work stage</h3><p>Changes only the visible original findings after explicit confirmation. Original LightUp retest status never changes.</p>
+<div class="filter-grid"><label>Human stage<select id="recipient-bulk-stage"><option value="">Select a human stage</option><option value="unassigned">Unassigned</option><option value="planned">Planned</option><option value="in_progress">In progress</option><option value="blocked">Blocked</option><option value="ready_for_retest">Ready for separately authorized retest</option><option value="deferred">Deferred HUMAN work</option><option value="completed">Locally completed — NOT verified fixed</option></select></label>
+<button id="recipient-bulk-apply" type="button">Confirm and apply to visible human work</button></div>
+<p id="recipient-bulk-message" role="status" aria-live="polite"></p></section>
 <div id="cards" class="cards"></div></section>
 <section class="panel"><h2>3. Return only the privately reviewed human notes</h2>
 <p>The return includes the same original subset and human-baseline fingerprint so the sender can reject changed or stale work. It does not approve a real retest, verify a fix, or contact LightUp.</p>
