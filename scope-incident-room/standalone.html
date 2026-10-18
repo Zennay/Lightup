@@ -45,6 +45,14 @@ h3{font-size:15px;margin:20px 0 9px}.source-card{border:1px solid #455877;border
 <a href="team.html" style="color:#ccdbff" rel="noreferrer">Open offline team-only workspace</a>
 <label class="load">Restore saved follow-up<input id="restoreStages" type="file" accept=".json,application/json"></label></div>
 <div id="message" aria-live="polite" role="status">No private source imported.</div>
+<section class="panel" id="teamReview" hidden aria-label="Manual private team return preview">
+<h2>Review PRIVATE team return before applying</h2>
+<p>Team identity is self-declared and UNVERIFIED. Inspect every proposed local stage and note below, then independently check the sender and the tenant. Nothing here can grant permission, clear STOP or update the original database.</p>
+<div id="teamReviewRows"></div>
+<label><input type="checkbox" id="teamVerified"> I separately verified the human sender and this exact private tenant/source for local follow-up only.</label>
+<button class="secondary" id="teamReject">Discard pending review</button>
+<button id="teamApply">Apply reviewed HUMAN changes only</button>
+</section>
 <div class="note"><b>Never permission:</b> NO_STOP_RECORDED is not approval. STOP and Casebook are separate historical snapshots, not one atomic runtime check. Release still requires independent client/operator consent, action-time revocation, original CI, security/privacy reviews and explicit HUMAN GO.</div>
 </section>
 <section class="metrics" aria-label="Source counts">
@@ -82,7 +90,7 @@ h3{font-size:15px;margin:20px 0 9px}.source-card{border:1px solid #455877;border
 <script>
 (function(){
 "use strict";
-var report=null,older=null,changes=new Map(),stages=new Map(),teamNotes=new Map(),selectedCase=null,sourceDigest=null,MAX=524288;
+var report=null,older=null,changes=new Map(),stages=new Map(),teamNotes=new Map(),pendingTeam=null,selectedCase=null,sourceDigest=null,MAX=524288;
 function E(x){return document.getElementById(x);}
 function O(x){return x!==null&&typeof x==="object"&&!Array.isArray(x);}
 function W(x){return typeof x==="string"&&x.length>0&&x.length<=180&&![...x].some(c=>c.charCodeAt(0)<32||c.charCodeAt(0)===127);}
@@ -109,6 +117,35 @@ async function digestText(text){
  var bytes=new TextEncoder().encode(text);
  var hash=await crypto.subtle.digest("SHA-256",bytes);
  return [...new Uint8Array(hash)].map(x=>x.toString(16).padStart(2,"0")).join("");
+}
+function discardTeamReview(){
+ pendingTeam=null;E("teamReview").hidden=true;E("teamVerified").checked=false;
+ E("teamReviewRows").replaceChildren();
+}
+function previewTeamReview(proposed,changed){
+ discardTeamReview();pendingTeam={proposed:proposed,changed:changed};
+ var area=E("teamReviewRows");
+ var intro=document.createElement("p");
+ intro.textContent="Self-declared reviewer: "+proposed.declared_reviewer+
+  " | Team: "+proposed.declared_team+" | Original cases: "+proposed.case_count+
+  " | Proposed follow-ups: "+changed;
+ area.appendChild(intro);
+ proposed.records.forEach(function(r){
+  var card=document.createElement("div");card.className="source-card";
+  var lines=[
+   ["Original engagement (PRIVATE)",r.engagement_id],
+   ["Original historical STOP",r.stop_source],
+   ["Original source attention",r.casebook_attention],
+   ["Original human next action",r.original_next_action],
+   ["Before",r.base_stage],
+   ["Proposed local HUMAN stage",r.human_stage],
+   ["UNVERIFIED human note",r.human_note||"No new note"],
+  ];
+  lines.forEach(function(row){line(card,row[0],row[1]);});
+  area.appendChild(card);
+ });
+ E("teamReview").hidden=false;
+ E("teamReview").scrollIntoView({block:"start",behavior:"smooth"});
 }
 function packetRows(ids){
  if(!report||!Array.isArray(ids)||!ids.length||ids.length>32||
@@ -499,7 +536,7 @@ var f=this.files&&this.files[0];this.value="";if(!f)return;
 if(f.size<2||f.size>MAX){E("message").textContent="HOLD: source exceeds private file bound.";return;}
 try{
  var next=importSource(await privateText(f)),digest=await digestFile(f);
- report=next;sourceDigest=digest;older=null;changes.clear();stages.clear();teamNotes.clear();selectedCase=null;E("detail").hidden=true;E("binding").hidden=true;E("search").value="";E("search").disabled=false;E("focus").disabled=false;E("focus").value="all";E("export").disabled=false;E("handoff").disabled=false;E("teamPacket").disabled=!sourceDigest;E("saveStages").disabled=!sourceDigest;E("print").disabled=false;E("message").textContent="Imported locally · "+next.status+" · never authorized";render();}
+ report=next;sourceDigest=digest;older=null;changes.clear();stages.clear();teamNotes.clear();discardTeamReview();selectedCase=null;E("detail").hidden=true;E("binding").hidden=true;E("search").value="";E("search").disabled=false;E("focus").disabled=false;E("focus").value="all";E("export").disabled=false;E("handoff").disabled=false;E("teamPacket").disabled=!sourceDigest;E("saveStages").disabled=!sourceDigest;E("print").disabled=false;E("message").textContent="Imported locally · "+next.status+" · never authorized";render();}
 catch(e){E("message").textContent="HOLD: malformed, contradictory or unsupported original source. Previous caseboard retained.";}}
 );
 E("previous").addEventListener("change",async function(){
@@ -563,10 +600,43 @@ E("teamReturn").addEventListener("change",async function(){
      team:proposed.declared_team
    });
   }
-  if(!window.confirm("Source-bound return: "+changed+" human follow-up updates from SELF-DECLARED team "+proposed.declared_team+". Have YOU independently verified the sender/tenant and reviewed the source? Apply ONLY local human notes/stages, never consent, STOP or grants?"))return;
-  stages=updated;teamNotes=notes;render();
-  E("message").textContent="Applied "+changed+" UNVERIFIED HUMAN follow-up changes locally after manual confirmation. Original source/STOP/grants unchanged.";
+  previewTeamReview(proposed,changed);
+  E("message").textContent="Source-bound PRIVATE return held for visible human review. No changes applied.";
  }catch(e){E("message").textContent="HOLD: return source, baseline, stage or original case fields inconsistent. Existing local work preserved.";}
+});
+E("teamReject").addEventListener("click",function(){
+ discardTeamReview();
+ E("message").textContent="Pending private team return discarded; original source and local human stages unchanged.";
+});
+E("teamApply").addEventListener("click",async function(){
+ if(!pendingTeam||!report||!sourceDigest||!E("teamVerified").checked){
+  E("message").textContent="HOLD: confirm independent human sender and exact private tenant before local follow-up.";
+  return;
+ }
+ try{
+  var proposed=pendingTeam.proposed;
+  var packet=await issuedPacket(proposed.records.map(r=>r.engagement_id));
+  if(packet.token!==proposed.token||packet.source_sha256!==proposed.source_sha256||
+    packet.case_count!==proposed.case_count)throw Error("private source/stage revised");
+  var nextStages=new Map(stages),nextNotes=new Map(teamNotes);
+  for(var i=0;i<packet.records.length;i++){
+   var base=packet.records[i],row=proposed.records[i];
+   if(!Object.entries(base).every(([k,v])=>row[k]===v)||
+     !stageLabels.includes(row.human_stage))throw Error("original stage revised");
+   nextStages.set(base.engagement_id,row.human_stage);
+   if(row.human_note)
+     nextNotes.set(base.engagement_id,{
+      note:row.human_note,reviewer:proposed.declared_reviewer,team:proposed.declared_team
+     });
+  }
+  if(!window.confirm("Apply "+pendingTeam.changed+" manually reviewed UNVERIFIED HUMAN-only updates? Nothing grants permission, clears STOP, or changes the original domain."))return;
+  var count=pendingTeam.changed;
+  stages=nextStages;teamNotes=nextNotes;discardTeamReview();render();
+  E("message").textContent="Applied "+count+" HUMAN-only reviewed updates in local browser memory. Never authenticated evidence or a grant.";
+ }catch(e){
+  discardTeamReview();
+  E("message").textContent="HOLD: source or local stage changed during manual review; pending return discarded without modifications.";
+ }
 });
 E("bulkApply").addEventListener("click",function(){
  if(!report)return;
