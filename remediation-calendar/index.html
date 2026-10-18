@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<title>LightUp · Private Remediation Calendar</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header><div class="brand">LIGHTUP / HUMAN WORKSPACE</div><h1>Remediation Calendar</h1><p>Coordinate human follow-ups from the original <code>lightup.remediation_casework_draft</code> v1. No scanning, approval, verified fix, live grant, or calendar sync.</p><strong class="hold">INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD</strong></header>
+<main>
+<section class="panel">
+<h2>1. Open a private Casework draft</h2>
+<p>Get a private JSON draft from the original Casework workspace after independently authorized findings export. This page cannot authenticate its source or establish current consent.</p>
+<label class="filelabel">Choose Casework v1 JSON <input id="file" type="file" accept=".json,application/json"></label>
+<label class="check"><input id="source-ack" type="checkbox"> I independently confirm I am handling the intended client and exact engagement. I understand these are unverified historical notes, not current authorization or remediation evidence.</label>
+<p id="message" role="status" aria-live="polite">No source loaded.</p>
+</section>
+<section id="workspace" hidden>
+<div class="metrics" id="metrics" aria-label="Human work summary"></div>
+<section class="panel">
+<h2>2. Review the human follow-up queue</h2>
+<div class="filters"><label>Filter <select id="filter"><option value="all">All pending dates</option><option value="overdue">Overdue</option><option value="blocked">Blocked</option><option value="unassigned">Missing owner</option><option value="retest">Ready for independently authorized retest</option><option value="urgent">Critical or high</option></select></label>
+<label>Severity <select id="severity"><option value="all">All</option><option value="critical">Critical</option><option value="high">High</option><option value="medium">Medium</option><option value="low">Low</option><option value="info">Info</option></select></label>
+<label>Search <input id="search" type="search" maxlength="120" placeholder="Human owner or finding ID"></label></div>
+<p id="scope-info" class="muted"></p>
+<div class="tablewrap"><table><thead><tr><th>Finding</th><th>Original retest</th><th>Human stage</th><th>Owner</th><th>Human due</th><th>Follow-up</th></tr></thead><tbody id="rows"></tbody></table></div>
+</section>
+<section class="panel">
+<h2>3. Build a local calendar file</h2>
+<p>Only locally scheduled open casework is included; <strong>completed or deferred human plans are excluded</strong>. No new deadlines are invented. Calendar clients may upload imported items to external services: use only an independently approved destination.</p>
+<div class="grid"><label>Calendar events <select id="export-scope"><option value="filtered">Currently visible eligible queue</option><option value="all">All eligible scheduled casework</option></select></label>
+<label>Output detail <select id="detail"><option value="anonymous">Redacted — no finding IDs, titles, owner or private notes</option><option value="private">PRIVATE — finding ID, title, owner and next action</option></select></label>
+</div>
+<label class="check"><input id="calendar-ack" type="checkbox"> I have explicitly checked the receiving calendar or handoff channel and understand that even redacted dates, risk levels and event counts can be confidential.</label>
+<div class="actions"><button id="download" type="button" disabled>Export private local .ics</button><button id="aggregate" type="button">Export anonymous workload CSV</button><button id="clear" type="button" class="muted-button">Clear private workspace</button></div>
+<p id="export-message" role="status" aria-live="polite"></p>
+</section>
+</section>
+</main>
+<footer>Local memory only · no network, storage, authentication, consent capture, automatic changes, scans or grant issuance. Files are unsigned human drafts.</footer>
+<script src="../casework/remediation-engine.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
