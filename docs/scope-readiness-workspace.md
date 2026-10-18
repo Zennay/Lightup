@@ -9,7 +9,8 @@ Open `coordination/scope-readiness.html` locally from this PR checkout. This is 
 3. Track aggregate outstanding preparation work, overdue target dates and the number of sources that must be re-attached. Filter for incomplete, source-missing or risk-4 cases. Operator-friendly details and a printable review brief identify specific blockers.
 4. Download a **private local, review-only workspace JSON** containing source SHA hints, limited proposal metadata and user-entered coordination actions, without target identities, raw asset names, full Studio payloads or notes. Restoration is atomic, revalidates strict version/security/state structure, and **marks every source as unbound** until the same original file is reselected and SHA-256 matched. Older notes cannot silently acquire new source meaning.
 5. Export a private, formula-safe CSV action register suitable for coordination spreadsheets. Every row expressly says authorization **NO**. Only user clicks download files; no auto-save to browser storage, telemetry or remote upload.
-6. Unsaved-change confirmation, full local reset, source file batch atomicity, bounded tracking input and accessible mobile-friendly layout.
+6. **Revision-safe follow-up reuse:** select a second draft and deliberately copy only human coordinator labels, suggested deadlines and next-action text to an otherwise untouched draft. Reject nonempty destinations, ask explicit confirmation, surface differing client labels/risk/mode/asset counts, and reset every imported task state to **not started**. Prepared paperwork and anything resembling client/operator approval never transfer across revisions. Matching counts are not proof of identical effective scope.
+7. Unsaved-change confirmation, full local reset, source file batch atomicity, bounded tracking input and accessible mobile-friendly layout.
 
 ## Readiness is not authorization
 
@@ -30,7 +31,7 @@ For privacy, exported snapshots still contain human-entered owner labels, action
 
 Create `lightup-scope-draft.json` in the Studio. Open the local `coordination/scope-readiness.html`; select one or more Studio drafts. Assign a coordinator label and action date to each missing workstream. Mark a task **prepared but unverified** when the preparatory artifact is gathered; keep real sign-offs in the authenticated systems. Export the private register before closing the tab. When resuming, import that register and re-attach the exact Studio JSON files; unbound sources remain prominently HOLD. Export a CSV and send it only through separately approved internal channels.
 
-The v1 snapshot schema is `kind: lightup.scope_readiness_workspace`, `schema_version: 1`, `disposition: REVIEW_ONLY`, mandatory false `security` flags, and an array of strict per-source action registers. Snapshot maximum 256 KiB; source maximum 64 KiB; no silent partial batch import.
+The import also verifies source-local planning-wall-time versus UTC offset fields when a Studio source claims a resolved UTC window; contradictory dates or ambiguous/unsupported time-status metadata are refused. This remains a consistency check, not an approved booking.\n\nThe v1 snapshot schema is `kind: lightup.scope_readiness_workspace`, `schema_version: 1`, `disposition: REVIEW_ONLY`, mandatory false `security` flags, and an array of strict per-source action registers. Snapshot maximum 256 KiB; source maximum 64 KiB; no silent partial batch import.
 
 ## Release posture
 
