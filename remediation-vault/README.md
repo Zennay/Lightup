@@ -34,3 +34,7 @@ After unlocking a vault, the recipient can select **Re-encrypt unlocked files**,
 ## Privacy-minimal selective onward transfer
 
 After unlocking, each recovered original file is shown with a checked **include in next private encrypted handoff** control and a separate manual plaintext-download button. Uncheck files the next authorised recipient must not receive, independently reconfirm that exact recipient/client/engagement and private channel, and re-encrypt only the selected in-memory files with a new passphrase. At least one file must remain selected. This is not consent or authority to share; do not assume every original record is permitted for a new recipient.
+
+## Portable offline operator kit
+
+For a single ready-to-open package, download LightUp-Private-Handoff-Vault.zip and open START-HERE.html locally, then standalone.html. Kit includes a reproducible SHA-256 MANIFEST.json, README.md and the offline app. It includes no customer source, recovered contents, keys or credentials. Build with python3 remediation-vault/package_kit.py after updating the standalone bundler.
