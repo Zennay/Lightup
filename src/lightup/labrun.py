@@ -224,6 +224,7 @@ def run_planned_assessment(
     state_path: str | Path,
     registry: ToolRegistry | None = None,
     engine_version: str = "m1-dev",
+    include_benchmark_case: bool = False,
 ) -> dict:
     """Planner-driven multi-lane lab assessment.
 
@@ -309,7 +310,7 @@ def run_planned_assessment(
     )
     record = harness.record(scenario, context, metrics, notes=notes)
 
-    return {
+    assessment_output = {
         "run_id": context.run_id,
         "scenario_id": scenario.scenario_id,
         "targets": list(scenario.targets),
@@ -331,6 +332,23 @@ def run_planned_assessment(
         "evaluation": record.to_dict(),
         "report_markdown": render_markdown(findings),
     }
+    if include_benchmark_case:
+        # Original #1513 read-only comparator's exact record/context envelope.
+        # The wrapper is unsigned source material, not provenance/consent.
+        assessment_output["benchmark_case"] = {
+            "record": record.to_dict(),
+            "context": {
+                "run_id": context.run_id,
+                "client_id": context.client_id,
+                "engagement_id": context.engagement_id,
+                "mode": context.mode.value,
+                "approved_risk": context.approved_risk.value,
+                "authorization": None,
+                "is_lab": True,
+                "created_at": context.created_at.isoformat(),
+            },
+        }
+    return assessment_output
 
 
 def _deliver_lab_result(payload: dict, output: str | None) -> None:
@@ -417,6 +435,11 @@ def main_assess(argv: list[str] | None = None) -> int:
         "--output", metavar="NEW_PRIVATE_JSON",
         help="write complete offline lab results into a NEW owner-only JSON file (0600)",
     )
+    parser.add_argument(
+        "--artifact-format", choices=("assessment", "benchmark-case"),
+        default="assessment",
+        help="private export format: complete assessment or exact #1513 offline record/context envelope",
+    )
     parser.add_argument("--gateway-config",
                         help="JSON gateway config (see config/gateway.example.json); "
                              "omit for the deterministic scripted demo gateway")
@@ -457,6 +480,8 @@ def main_assess(argv: list[str] | None = None) -> int:
             raise ValueError("duplicate lab endpoint is not allowed")
         if args.profile and len(endpoints) != 1:
             raise ValueError("--profile ground truth applies only to one lab endpoint")
+        if args.artifact_format == "benchmark-case" and (args.output is None or args.preview_only):
+            raise ValueError("benchmark-case export requires --output and a completed lab run")
         if (args.catalog_file is None) != (args.scenario_id is None):
             raise ValueError("--catalog-file and --scenario-id must be supplied together")
         if args.catalog_file is not None and not args.catalog_file.strip():
@@ -523,7 +548,10 @@ def main_assess(argv: list[str] | None = None) -> int:
             return 0
         gateway = (load_gateway(args.gateway_config) if args.gateway_config
                    else scripted_demo_gateway(tuple(endpoints)))
-        result = run_planned_assessment(gateway, scenario, args.db)
+        result = run_planned_assessment(
+            gateway, scenario, args.db,
+            include_benchmark_case=args.artifact_format == "benchmark-case",
+        )
         if catalog is not None:
             result["lab_design_source"] = {
                 key: catalog[key] for key in ("schema", "scenario_id",
@@ -550,7 +578,9 @@ def main_assess(argv: list[str] | None = None) -> int:
         print(json.dumps({"error": "lab review did not complete; private output was not created"}, indent=2))
         return exit_code
     try:
-        _deliver_lab_result(result, args.output)
+        export_payload = (result.pop("benchmark_case")
+                          if args.artifact_format == "benchmark-case" else result)
+        _deliver_lab_result(export_payload, args.output)
     except (OSError, ValueError):
         print(json.dumps({"error": "private lab report could not be created; no existing file was replaced"}, indent=2))
         return 2
