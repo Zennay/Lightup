@@ -114,6 +114,35 @@
       <div class="actions"><button id="saveCaseNote" type="button">Save note in private memory</button></div>
       <p id="privateNoteState" role="status"></p>
     </article>
+    <article id="humanPlan">
+      <h3>PRIVATE human follow-up plan</h3>
+      <p>Choose a proposed human discussion group and next action for the selected original lab case. These are unsigned local coordination notes, never assigned employees, a work order, scanner activity, access consent, or a release verdict.</p>
+      <p id="sourceRouteHint"></p>
+      <div class="queue-controls">
+        <div><label for="humanRoute">Proposed human discussion group</label>
+          <select id="humanRoute">
+            <option value="unrouted">Not routed</option>
+            <option value="source_owner">Original source owner</option>
+            <option value="scope_policy">Scope / policy reviewer</option>
+            <option value="finding_quality">Findings / coverage reviewer</option>
+            <option value="evidence_scoring">Evidence / scoring reviewer</option>
+            <option value="operations">Operations reviewer</option>
+          </select></div>
+        <div><label for="humanAction">Next human discussion action</label>
+          <select id="humanAction">
+            <option value="none_recorded">No next human action recorded</option>
+            <option value="verify_original_source">Verify original source files</option>
+            <option value="request_original_evidence">Request original supporting evidence</option>
+            <option value="discuss_lab_method">Discuss lab method with source owner</option>
+            <option value="document_human_followup">Document human follow-up</option>
+          </select></div>
+      </div>
+      <div class="actions">
+        <button id="adoptSourceHint" class="secondary" type="button">Suggest route from original source flags</button>
+        <button id="saveHumanPlan" type="button">Save PRIVATE human plan</button>
+      </div>
+      <p id="humanPlanState" role="status"></p>
+    </article>
   </section>
   <section aria-labelledby="privateDraftTitle">
     <h2 id="privateDraftTitle">5. PRIVATE human work continuity (optional)</h2>
