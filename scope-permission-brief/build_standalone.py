@@ -27,18 +27,23 @@ def build() -> None:
     stylesheet = '<link rel="stylesheet" href="./style.css">'
     external_script = '<script src="./app.js" defer></script>'
     old_policy = "script-src 'self'; style-src 'self';"
-    new_policy = f"script-src {csp_digest(js)}; style-src {csp_digest(css)};"
+    inline_js, inline_css = "\
+" + js + "\
+", "\
+" + css + "\
+"
+    new_policy = f"script-src {csp_digest(inline_js)}; style-src {csp_digest(inline_css)};"
 
     if (page.count(stylesheet) != 1 or page.count(external_script) != 1
             or page.count(old_policy) != 1 or page.count("</body>") != 1):
         raise RuntimeError("Unexpected source HTML; refuse to package ambiguous dependencies")
     if "</style" in css.lower() or "</script" in js.lower():
         raise RuntimeError("Embedded HTML terminator found; refuse to package")
-    page = page.replace(stylesheet, f"<style>\n{css}\n</style>", 1)
+    page = page.replace(stylesheet, f"<style>{inline_css}</style>", 1)
     page = page.replace(external_script, "", 1)
     page = page.replace(old_policy, new_policy, 1)
     # Inline script must follow the DOM, unlike the deferred external source version.
-    page = page.replace("</body>", f"<script>\n{js}\n</script>\n</body>", 1)
+    page = page.replace("</body>", f"<script>{inline_js}</script>\n</body>", 1)
     OUTPUT.write_text(page, encoding="utf-8", newline="\n")
     sha256 = hashlib.sha256(OUTPUT.read_bytes()).hexdigest()
     print(f"Built {OUTPUT.name}: sha256:{sha256}")
