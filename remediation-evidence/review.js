@@ -202,6 +202,46 @@ function count(){
  }
  return metrics;
 }
+
+/* Aggregate-only human evidence readiness, grouped strictly by original severity.
+   No IDs, owner labels, raw findings, notes or declared customer identity. */
+function evidenceMatrix(){
+ const groups=SEV.map(severity=>({severity,total:0,missing_change:0,missing_deployment:0,
+  missing_rollback:0,missing_retest_request:0,all_four_entered_unverified:0,high_priority_followup:0}));
+ const bySeverity=new Map(groups.map(x=>[x.severity,x]));
+ for(const f of source||[]){
+  const g=bySeverity.get(f.severity),r=review.get(f.finding_id);
+  if(!g||!r)continue;
+  g.total++;
+  for(const [key,metric] of [['change_reference','missing_change'],['deployment_reference','missing_deployment'],
+    ['rollback_reference','missing_rollback'],['retest_request_reference','missing_retest_request']]){
+   if(!r.evidence?.[key]?.trim())g[metric]++;
+  }
+  if(EVIDENCE_FIELDS.slice(0,4).every(([key])=>r.evidence?.[key]?.trim()))g.all_four_entered_unverified++;
+  if(f.retest_status==='regression'||(SEV.indexOf(f.severity)<=1&&
+   EVIDENCE_FIELDS.slice(0,4).some(([key])=>!r.evidence?.[key]?.trim())))g.high_priority_followup++;
+ }
+ return groups;
+}
+function renderEvidenceMatrix(){
+ const parent=$('readinessTable');if(!parent)return;
+ parent.replaceChildren();
+ const headings=['Severity','Findings','No patch ref','No deploy ref','No rollback ref',
+  'No retest request ref','4 refs present¹','Follow-up candidates'];
+ const table=el('table','matrix'),thead=el('thead'),tr=el('tr');
+ for(const col of headings){const th=el('th','',col);th.scope='col';tr.append(th);}
+ thead.append(tr);table.append(thead);
+ const body=el('tbody');
+ for(const item of evidenceMatrix()){
+  const row=el('tr');
+  for(const v of [item.severity,item.total,item.missing_change,item.missing_deployment,
+    item.missing_rollback,item.missing_retest_request,item.all_four_entered_unverified,
+    item.high_priority_followup])row.append(el('td','',String(v)));
+  body.append(row);
+ }
+ table.append(body);parent.append(table);
+}
+
 function humanQueue(f,c,r){
  const cues=[];
  if(f.retest_status==='regression')cues.push('Source reports regression: escalate to source owner.');
@@ -341,7 +381,7 @@ function render(){
  const ready=!!source;$('dashboard').hidden=!ready;$('boardSection').hidden=!ready;$('actions').hidden=!ready;$('refreshPanel').hidden=!ready;$('teamPanel').hidden=!ready;
  if(!ready)return;
  const m=count();for(const [key,num] of Object.entries(m))$(key).textContent=String(num);
- updateTeamChoices();renderRevisions();
+ updateTeamChoices();renderRevisions();renderEvidenceMatrix();
  $('fingerprint').textContent=sourceHash?'Local source SHA-256: '+sourceHash+' (NOT authentication)':'Source fingerprint unavailable. All exports disabled.';
  const filter=$('filter').value;
  const selectedSort=$('boardSort').value;
@@ -394,6 +434,7 @@ function render(){
 function renderMetrics(){
  if(!source)return;
  const m=count();for(const [key,num] of Object.entries(m))$(key).textContent=String(num);
+ renderEvidenceMatrix();
 }
 async function readCSV(file){return engine.parseCSV(await read(file,LIMIT_CSV));}
 
@@ -522,6 +563,21 @@ $('applyBulk').addEventListener('click',()=>{
 
 /* Explicit revision coordination exports: a private action register retaining original
    changed/absent IDs, or anonymous counts. Neither document verifies a fix. */
+
+$('exportEvidenceMatrix').addEventListener('click',()=>{
+ try{
+  if(!sourceHash)throw Error('Load an original source first.');
+  const cols=['original_severity','source_findings','missing_patch_reference','missing_deploy_reference',
+   'missing_rollback_reference','missing_retest_request_reference','all_four_present_unverified',
+   'human_followup_candidates'];
+  const rows=evidenceMatrix().map(x=>[x.severity,x.total,x.missing_change,x.missing_deployment,
+   x.missing_rollback,x.missing_retest_request,x.all_four_entered_unverified,x.high_priority_followup]);
+  const content=[cols,...rows].map(row=>row.map(x=>'"'+String(x).replace(/"/g,'""')+'"').join(',')).join('\r\n')+'\r\n';
+  download('lightup-human-evidence-readiness-aggregate.csv',content,'text/csv');
+  status('Aggregate human evidence-readiness matrix downloaded. All reference counts remain unverified, never consent or retest.');
+ }catch(err){status(err.message,true);}
+});
+
 $('exportRevisionCSV').addEventListener('click',()=>{
  try{
   if(!sourceHash||!revisions.length)throw Error('No acknowledged original-source revision available.');
