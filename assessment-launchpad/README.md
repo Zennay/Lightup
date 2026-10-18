@@ -8,9 +8,9 @@ This new, independently owned module prepares **existing** LightUp lab-only CLI 
 
 ### Browser authoring (convenience; no trusted admission)
 
-Open `assessment-launchpad/index.html` locally with its adjacent `style.css` and `app.js`. Alternatively run the local **build-only** command `python3 assessment-launchpad/bundle.py --output NEW-private-composer.html` to publish a standalone, script-pinned local editor. It refuses to overwrite an existing file. No server, browser storage, analytics, external assets or network activity is used.
+Open the [ready-to-open portable standalone Launchpad](./standalone.html) locally without supporting files. Alternatively open `assessment-launchpad/index.html` with adjacent `style.css` and `app.js`, or run the local **build-only** command `python3 assessment-launchpad/bundle.py --output NEW-private-composer.html` to publish a standalone, script-pinned local editor. It refuses to overwrite an existing file. No server, browser storage, analytics, external assets or network activity is used.
 
-Enter distinct literal isolated lab HTTP(S) URLs, reorder or remove them, and download a **private** UTF-8 `targets.txt` containing one URL per line. The separate optional `anonymous-plan.json` carries only counts and literal-false authority fields, with no original endpoints, hashes or scenarios. Browser checks are **advisory only**: they cover canonical IPv4 private/loopback and a conservative subset of IPv6 private/loopback literals. The actual original Python CLI decides whether to admit a target at use time.
+Enter distinct literal isolated lab HTTP(S) URLs, reorder or remove them, or **atomically import an existing bounded original-format private text manifest**. Import replaces all local entries only if every proposed line is valid; otherwise it keeps the previous in-memory batch. Then download a **private** UTF-8 `targets.txt` containing one URL per line. The separate optional `anonymous-plan.json` carries only counts and literal-false authority fields, with no original endpoints, hashes or scenarios. Browser checks are **advisory only**: they cover canonical IPv4 private/loopback and a conservative subset of IPv6 private/loopback literals. The actual original Python CLI decides whether to admit a target at use time.
 
 ### Native exact-source admission + four private artifacts
 
@@ -55,3 +55,7 @@ This is command **text**, not a scheduled action and not an instruction that byp
 All added files live under **new** `assessment-launchpad/`. No edits to original source owner, other worker branches, scanner, auth, grant, policy, CI, workflows or tests. New PR stays **draft** and is not a release. No QA/test suite was written or run.
 
 Before any main merge, deployment, real target assessment or approval: original exact-head hosted **and permanent named VPS CI** must pass; original source-owner acceptance and independent privacy/security review must finish; original #177/#182/#829 and real independent authenticated client/operator permission with action-time revocation and explicit **HUMAN GO** remain necessary. A lab preview, SHA-256, anonymous aggregate, source URL or this planner never proves those conditions.
+
+## Standalone portable editor (repository artifact)
+
+The committed `standalone.html` is already bundled from the exact new browser source and includes both CSS and JavaScript inline, constrained by exact SHA-256 CSP pins. It works as a local single-file editor and supports source-private file import/export without a web server. If changing `index.html`, `style.css` or `app.js`, rebuild the portable file with `bundle.py` before sending it to an operator: a stale source/CSP bundle is not equivalent to the current editor. The browser does not emit an original-authority approval.
