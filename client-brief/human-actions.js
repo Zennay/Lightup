@@ -26,6 +26,23 @@ function fromState(state,{includeOperator=false}={}){
    state.changes.changed.length,
    'Re-read changed source data and reassess the human plan; changed does not mean fixed.');
  }
+ if(Array.isArray(state.history)&&state.history.length){
+  const prior=state.history[state.history.length-1];
+  const urgent=rows.filter(x=>['critical','high'].includes(x.severity)).length;
+  const regressions=rows.filter(x=>x.retest_status==='regression').length;
+  if(urgent>prior.critical_high)add('urgent','historical_aggregate','Source-reported critical/high count increased',urgent-prior.critical_high,
+   'Human reviewer must compare the underlying original authorized sources; reported count changes are not a verified new scan or proof of worsened security.');
+  if(regressions>prior.retest.regression)add('urgent','historical_aggregate','Reported regression count increased',regressions-prior.retest.regression,
+   'Escalate original evidence review and obtain independent authorization before any retest.');
+  if(state.studio&&prior.proposed_scope){
+   if(state.studio.requested_risk>prior.proposed_scope.risk)
+    add('urgent','historical_aggregate','Proposed risk increased since earlier briefing',1,
+     'Review proposed risk in the original authenticated request path; a draft cannot expand actual authorization.');
+   if(state.studio.source_revision_sha256!==prior.proposed_scope.revision)
+    add('attention','historical_aggregate','Original proposal revision differs from earlier briefing',1,
+     'Reconcile original Studio revisions with real client/operator owners; no scope approval inferred.');
+  }
+ }
  if(state.casework){
   add('urgent','private_casework_draft','Local critical/high work marked blocked',
    state.casework.urgentBlocked,'Follow up on self-reported blocking dependencies; this is not confirmed vulnerability remediation.');

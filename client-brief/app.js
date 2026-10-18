@@ -234,6 +234,44 @@ async function loadFollowup(){
  }catch(e){$('followup-status').textContent='Source-bound draft rejected; previous choices retained.';note('Discussion restore refused: '+e.message,true);}
  finally{$('followup-load').disabled=false;}
 }
+function historySummary(){
+ if(!state?.history?.length)return null;
+ const base={kind:'lightup.client_security_brief_review',schema_version:1,
+ disposition:'REVIEW_ONLY_DRAFT_HOLD',source_contract:'lightup.finding_export._COLUMNS_v1',
+ ...FLAGS,scope_identity_authenticated:false,source_fingerprint_signed:false,
+ imported_findings:state.fresh.rows.length,source_sha256:state.fresh.sha,
+ severity_counts:counts('severity',SEVERITIES),source_retest_counts:counts('retest_status',RETEST),
+ proposed_scope_review:state.studio};
+ return LightUpBriefHistoryView.redact(LightUpBriefHistory.timeline(state.history,base));
+}
+function renderHistory(){
+ $('history-results').innerHTML=LightUpBriefHistoryView.display(historySummary());
+}
+async function loadHistory(){
+ if(!state)return note('Open current findings CSV first.',true);
+ if(!$('history-confirm').checked)return note('Confirm every prior briefing concerns the exact same client and engagement.',true);
+ const files=[...$('history-files').files];if(!files.length)return note('Select earlier original aggregate JSON briefings.',true);
+ $('history-load').disabled=true;
+ try{const previous=await LightUpBriefHistory.importAll(files,reportData());
+  state.history=previous;render();
+  $('history-status').textContent=previous.length+' unsigned prior briefings compared in reviewer-declared order.';
+  note('Source-reported count history imported; no repaired findings or consent inferred.');
+ }catch(e){$('history-status').textContent='Import refused; previous comparison retained.';note('Historical briefing refused: '+e.message,true);}
+ finally{$('history-load').disabled=false;}
+}
+function clearHistory(){
+ if(state)state.history=[];
+ $('history-files').value='';$('history-confirm').checked=false;
+ $('history-status').textContent='No earlier aggregate briefings imported.';
+ if(state)render();else $('history-results').replaceChildren();
+}
+function exportHistory(){
+ if(!state?.history?.length)return note('Import redacted briefing history first.',true);
+ try{const base=LightUpBriefHistory.timeline(state.history,reportData());
+  download(LightUpBriefHistory.csv(base),'lightup-redacted-report-history-REVIEW-ONLY.csv','text/csv;charset=utf-8');
+  note('Privacy-minimal briefing history exported; reported changes are not verified remediation.');
+ }catch(e){note('Export refused: '+e.message,true);}
+}
 function note(text, bad=false) { $('message').textContent=text; $('message').style.color=bad?'#ff9fac':'#b6e3d9'; }
 async function sha256(bytes) {
  if (!globalThis.crypto || !crypto.subtle) return null;
@@ -258,7 +296,7 @@ async function load() {
   const [fresh,older]=await Promise.all([readSource(current),previous?readSource(previous):Promise.resolve(null)]);
   // Publish only after *both* original exports are fully parsed and bounded.
   const changes=older?LightUpCasework.compareSource(older.rows,fresh.rows):null;
-  state={fresh,older,changes,sameScopeAcknowledged:!!older,casework:null,readiness:null,studio:null,studioChange:null};
+  state={fresh,older,changes,sameScopeAcknowledged:!!older,casework:null,readiness:null,studio:null,studioChange:null,history:[]};
   followupTag=null;followupRecords={};
   $('casework-file').value='';$('casework-confirm').checked=false;$('casework-status').textContent='No Casework loaded.';
   $('readiness-file').value='';$('readiness-confirm').checked=false;$('readiness-status').textContent='No operator snapshot loaded.';
@@ -361,6 +399,7 @@ function render() {
  renderStudio();
  renderStudioChanges();
  renderActions();
+ renderHistory();
  followupUI();
  $('internal-readiness').disabled=$('audience').value!=='Internal operators only';
  $('source-info').textContent=sourceSummary();
@@ -383,6 +422,7 @@ function reportData() {
   source_changes:diff?{added:diff.added.length,changed:diff.changed.length,absent_unverified:diff.missing.length,unchanged:diff.unchanged.length}:null,
   human_action_register:humanPlan(),
   human_discussion_aggregate:followupSummary(),
+  redacted_report_history:historySummary(),
   proposed_scope_change_review:state.studioChange?{...state.studioChange,changes_are_authorized:false}:null,
   proposed_scope_review:state.studio?{...state.studio,notes:[...state.studio.notes],ownership_verified:false,permission_inferred:false}:null,
   operator_readiness_review:canExportReadiness()?{grant_rows:state.readiness.records,pending_client_wide_requests:state.readiness.pending_client_wide,groups:state.readiness.risk_groups.map(x=>({name:x.name,count:x.count})),issue_counts:state.readiness.issue_codes.map(x=>({label:x.label,count:x.count})),authenticated_now:false,permission_inferred:false}:null,
@@ -401,6 +441,7 @@ function staticHTML(data) {
  const studioChanges=state.studioChange?'<h2>Original proposed scope revision change</h2>'+studioChangesHTML():'<p>No older Studio proposal compared.</p>';
  const humanActions='<h2>Proposed human follow-up actions (not assignments)</h2>'+humanActionsHTML();
  const humanDiscussion='<h2>Human-only discussion progress (unverified)</h2>'+followupOverviewHTML();
+ const history=data.redacted_report_history?'<h2>Reviewer-declared aggregate report history</h2>'+LightUpBriefHistoryView.display(data.redacted_report_history):'';
  const casework=state.casework?'<h2>Existing self-reported Casework planning</h2>'+caseworkSummaryHTML():'<p>No matching local Casework packet attached.</p>';
  const readiness=canExportReadiness()?'<h2>INTERNAL ONLY: unsigned operator scope-readiness blockers</h2>'+readinessSummaryHTML():'<p>Internal operator readiness details withheld from this exported report.</p>';
  const details=$('details').checked?'<h2>Sensitive source detail — private recipients only</h2>'+detailsHTML():'<p>Individual finding identifiers, titles and remediation text are intentionally excluded from this redacted brief.</p>';
@@ -408,7 +449,7 @@ function staticHTML(data) {
  '<h2>Severity distribution</h2><table><thead><tr><th>Source severity</th><th>Count</th></tr></thead><tbody>'+rows+'</tbody></table>'+
  '<h2>Source-reported retest states</h2><table><thead><tr><th>Source state</th><th>Count</th></tr></thead><tbody>'+sourceRows+'</tbody></table>'+changes+
  '<h2>Illustrative follow-up roadmap</h2>'+road.map(g=>'<article><strong>'+H(g.label)+'</strong><p>'+g.amount+' findings; discuss within '+g.days+' calendar days'+(g.due==='Not specified'?' (no reference date)':' from the reference date, by '+H(g.due))+'. Not an SLA, order or booked activity.</p><p>Local follow-up stage: '+H(g.discussion.replaceAll('_',' '))+' (self-reported)</p><p>'+H(g.reason)+'</p></article>').join('')+
- studio+studioChanges+casework+readiness+humanActions+humanDiscussion+details+'<h2>Evidence and provenance caveat</h2><p class="meta">'+H(sourceSummary())+'</p><p class="muted">Original report values are untrusted unless authenticated separately. This file contains no live permissions and has not checked current grants or independently verified remediation.</p></body></html>';
+ studio+studioChanges+history+casework+readiness+humanActions+humanDiscussion+details+'<h2>Evidence and provenance caveat</h2><p class="meta">'+H(sourceSummary())+'</p><p class="muted">Original report values are untrusted unless authenticated separately. This file contains no live permissions and has not checked current grants or independently verified remediation.</p></body></html>';
 }
 function download(content,name,mime) {
  const blob=new Blob([content],{type:mime}),url=URL.createObjectURL(blob);
@@ -428,11 +469,14 @@ function exportJSON() {
  catch(e){note('JSON export refused: '+e.message,true);}
 }
 function forget() {
- state=null;followupTag=null;followupRecords={};$('followup-filter').value='all';$('followup-board').replaceChildren();$('followup-file').value='';$('followup-status').textContent='No local discussion plan saved.';$('studio-previous').value='';$('studio-previous-confirm').checked=false;$('studio-compare-status').textContent='No earlier version compared.';$('studio-change-summary').replaceChildren();$('human-actions').replaceChildren();$('studio-file').value='';$('studio-confirm').checked=false;$('studio-status').textContent='No scope proposal imported.';$('studio-summary').replaceChildren();$('session-file').value='';$('session-status').textContent='No working draft restored.';$('readiness-file').value='';$('readiness-confirm').checked=false;$('readiness-status').textContent='No operator snapshot loaded.';$('readiness-summary').replaceChildren();$('casework-file').value='';$('casework-confirm').checked=false;$('casework-status').textContent='No Casework loaded.';$('current').value='';$('previous').value='';$('same-scope').checked=false;$('details').checked=false;
+ state=null;$('history-files').value='';$('history-confirm').checked=false;$('history-results').replaceChildren();$('history-status').textContent='No earlier aggregate briefings imported.';followupTag=null;followupRecords={};$('followup-filter').value='all';$('followup-board').replaceChildren();$('followup-file').value='';$('followup-status').textContent='No local discussion plan saved.';$('studio-previous').value='';$('studio-previous-confirm').checked=false;$('studio-compare-status').textContent='No earlier version compared.';$('studio-change-summary').replaceChildren();$('human-actions').replaceChildren();$('studio-file').value='';$('studio-confirm').checked=false;$('studio-status').textContent='No scope proposal imported.';$('studio-summary').replaceChildren();$('session-file').value='';$('session-status').textContent='No working draft restored.';$('readiness-file').value='';$('readiness-confirm').checked=false;$('readiness-status').textContent='No operator snapshot loaded.';$('readiness-summary').replaceChildren();$('casework-file').value='';$('casework-confirm').checked=false;$('casework-status').textContent='No Casework loaded.';$('current').value='';$('previous').value='';$('same-scope').checked=false;$('details').checked=false;
  $('workspace').hidden=true;$('internal-readiness').checked=false;['urgent','medium','low'].forEach(key=>$(key+'-decision').value='discussion_pending');$('kpis').replaceChildren();$('changes').replaceChildren();$('preview').replaceChildren();
  note('In-memory findings forgotten. Previously downloaded files must be deleted separately.');
 }
 $('load').addEventListener('click',load);
+$('history-load').addEventListener('click',loadHistory);
+$('history-clear').addEventListener('click',clearHistory);
+$('history-export').addEventListener('click',exportHistory);
 $('casework-load').addEventListener('click',importCasework);
 $('casework-clear').addEventListener('click',clearCasework);
 $('readiness-load').addEventListener('click',importReadiness);
