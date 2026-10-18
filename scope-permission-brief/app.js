@@ -22,8 +22,8 @@ const questionCatalog={
  open_window:['operator','Unresolved time window','Unscheduled or incomplete/ambiguous windows require separately approved UTC bounds.'],
  safety_context:['client','Safety and stop instructions','No safety-purpose notes are present in the proposal; request clear, privately handled instructions.'],
  network_activity:['client','Network interaction expectations','Clarify that proposed lab checks cannot be performed against public or unapproved targets.'],
- revision_client:['client','Re-confirm revised scope and ownership','The source bytes changed. Independently review the new specific asset inventory, exclusions, limitations and consent route; previous answers do not follow this version.'],
- revision_operator:['operator','Reassess revised authorization boundaries','Review the new request independently, including exact enforceable scope, exclusions, intended activities, risk and current revocation. No prior grant carries over.']
+ revision_client:['client','Confirm exact proposal version and owned assets','Independently review the current specific asset inventory, exclusions, limits and authenticated consent route. If the source was amended, previous answers are never transferable.'],
+ revision_operator:['operator','Confirm exact policy scope for this proposal version','Independently review effective scope, exclusions, activities, risk, revocation and request/grant lineage for the actual current version. No previous grant follows an amendment.']
 };
 function hold(message){
  epoch++;current=null;questions=[];
@@ -183,14 +183,16 @@ function literalRevisionImpact(before,after){
  };
 }
 
-function questionIds(d,window,revised=false){
+function questionIds(d,window){
  const codes=['client_identity','asset_ownership','purpose_limits','client_consent','operator_independence','enforceable_scope','risk_approval','stop_revocation','mandatory_gates'];
  if(d.requested_risk===4)codes.push('high_risk');
  if(d.proposed_activities.private_lab_network_checks)codes.push('lab_provenance','network_activity');
  if(!d.excluded_assets.length)codes.push('no_exclusions');
  if(window!=='Resolved (still unapproved)')codes.push('open_window');
  if(!d.notes.trim())codes.push('safety_context');
- if(revised)codes.push('revision_client','revision_operator');
+ // Stable per-source question contract across a fresh session and in-session revision.
+ // Required so a saved combined human reply can be resumed with exact same source bytes.
+ codes.push('revision_client','revision_operator');
  return codes;
 }
 function exportModel(){
@@ -355,7 +357,7 @@ async function loadFile(file){
   // Only NOW invalidate any old self-labelled returns, statuses and current source.
   document.dispatchEvent(new CustomEvent('lightup:brief-source-change'));
   current={draft,window,sha256};
-  questions=questionIds(draft,window,Boolean(impact)).map(code=>({code,role:questionCatalog[code][0],status:'unanswered'}));
+  questions=questionIds(draft,window).map(code=>({code,role:questionCatalog[code][0],status:'unanswered'}));
   $('workspace').hidden=false;$('export').disabled=false;$('textExport').disabled=false;$('print').disabled=false;
   $('sourceState').textContent='Source loaded · '+draft.requested_assets.length+' proposed assets · REVIEW_ONLY/HOLD';
   render();
