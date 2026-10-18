@@ -243,9 +243,14 @@ async function previewMigration(){
  const keep=new Set(delta.unchanged);
  const retained=state.rows.filter(r=>keep.has(r.finding_id)).map(r=>({...r}));
  const quarantined=state.rows.filter(r=>!keep.has(r.finding_id));
+ // ORIGINAL Casework source owner already defines a safe five-column human-only
+ // reconciliation contract. Never invent a replacement source-owner policy.
+ const migratedCasework=state.casework?LightUpCasework.reconcileSource(
+  state.findings,state.findings.map(f=>state.casework.get(f.finding_id)),newFindings).cases:null;
  state.pending={oldSha:state.sha,oldRows:JSON.stringify(state.rows),
+  oldCasework:serializeNative(state.casework),oldEvidence:serializeNative(state.evidence),
   client:state.client,engagement:state.engagement,newSha,newFindings,delta,retained,
-  dropped:quarantined.length};
+  migratedCasework,dropped:quarantined.length};
  const lines=[
   'HUMAN SOURCE-MIGRATION PREVIEW — not a fix/retest determination',
   'Old original SHA-256: '+state.sha,
@@ -256,6 +261,8 @@ async function previewMigration(){
   'Absent original rows: '+delta.missing.length+' (NOT proof of fixed)',
   'Retained human local fingerprints: '+retained.length,
   'Quarantined fingerprints: '+quarantined.length+' (ONLY in old PRIVATE backup)',
+  'Native HUMAN Casework: '+(migratedCasework?'original Casework.reconcileSource retains '+delta.unchanged.length+' exact unchanged local case records and resets changed/new':'none attached'),
+  'Native Evidence Review: '+(state.evidence?'current original HUMAN Evidence Review will be DETACHED; import the new ORIGINAL packet separately':'not attached'),
   'Changed original IDs: '+delta.changed.map(x=>x.finding_id).join(', ').slice(0,1400),
   'Absent original IDs: '+delta.missing.join(', ').slice(0,1400),
   'No original remediation status or security authority is copied into this tool.'
@@ -264,7 +271,7 @@ async function previewMigration(){
  $('migrationResult').hidden=false;$('ackBackup').checked=false;
  $('applyMigration').disabled=false;
  $('newSource').value='';
- message('Migration preview staged in browser memory. Export the OLD private ledger first.',false);
+ message('Migration preview staged. Download and secure the OLD unified PRIVATE human packet and ledger before applying.',false);
 }
 function applyMigration(){
  const staged=state.pending;
@@ -272,18 +279,22 @@ function applyMigration(){
  if(!$('sameEngagement').checked||!$('ackBackup').checked)
   fail('Separately confirm the same original engagement and the OLD private backup.');
  if(state.sha!==staged.oldSha||state.client!==staged.client||
- state.engagement!==staged.engagement||JSON.stringify(state.rows)!==staged.oldRows)
+ state.engagement!==staged.engagement||JSON.stringify(state.rows)!==staged.oldRows||
+ serializeNative(state.casework)!==staged.oldCasework||
+ serializeNative(state.evidence)!==staged.oldEvidence)
   fail('Original human source or notes changed after preview; re-preview required.');
  if(!confirm('Replace this HUMAN workspace with the new unverified original source? '+
    staged.dropped+' non-identical/absent-source records are removed from current memory; keep your separate OLD private backup. Missing is NEVER proven fixed.'))return;
  state.findings=staged.newFindings;state.sha=staged.newSha;state.rows=staged.retained;
- state.selected.clear();state.bulk=null;state.undo=[];state.casework=null;
+ state.selected.clear();state.bulk=null;state.undo=[];
+ state.casework=staged.migratedCasework?new Map(staged.migratedCasework.map(c=>[c.finding_id,c])):null;
+ state.evidence=null;state.pendingHandoff=null;
  state.pending=null;state.verify=null;state.filter='';$('filter').value='';
  $('migrationResult').hidden=true;$('migrationPreview').textContent='';
  $('sameEngagement').checked=false;$('ackBackup').checked=false;
  populateOriginalIds();render();
- message('New original source loaded; exact unchanged finding records retain HUMAN fingerprints only. '+
- staged.dropped+' nonmatching local fingerprints remain only in the separately saved OLD PRIVATE backup; NOT fixed.',false);
+ message('New original source loaded; unchanged original findings retain only their local fingerprints and native original HUMAN Casework plan. Old Evidence Review was detached. '+
+ staged.dropped+' changed/absent-source fingerprints remain ONLY in the separately saved OLD PRIVATE packet. No verified fix inferred.',false);
 }
 
 
@@ -799,7 +810,7 @@ bind('previewMigration','click',previewMigration);
 bind('applyMigration','click',applyMigration);
 bind('filter','input',()=>{state.filter=$('filter').value.toLowerCase().trim();render();});
 bind('forget','click',()=>{if(confirm('Forget all original findings and local human notes in memory?')){
- state.findings=[];state.sha='';state.rows=[];state.client='';state.engagement='';state.verify=null;state.filter='';state.pending=null;state.selected.clear();state.bulk=null;state.undo=[];state.casework=null;$('migrationResult').hidden=true;
+ state.findings=[];state.sha='';state.rows=[];state.client='';state.engagement='';state.verify=null;state.filter='';state.pending=null;state.selected.clear();state.bulk=null;state.undo=[];state.casework=null;state.evidence=null;state.pendingHandoff=null;state.pending=null;$('unifiedPreview').hidden=true;$('applyUnified').disabled=true;$('migrationResult').hidden=true;
  for(const id of ['client','engagement','filter','original','newSource','addFiles','privateImport','caseworkImport','evidenceImport','unifiedImport','verify'])$(id).value='';
  $('finding').replaceChildren();render();message('Local workspace forgotten. Previously downloaded files are not deleted.',false);
 }});
