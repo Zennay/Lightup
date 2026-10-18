@@ -3,7 +3,9 @@
 **Stage: INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD.** Never use this as permission to scan.
 
 ## Working product
-Open remediation-evidence/index.html from a full checkout containing the original sibling casework/remediation-engine.js. Everything runs offline without cookies, network, storage, a server, credentials or runtime targets.
+**Quickest way:** download and open remediation-evidence/standalone.html locally. It is a complete single-file application with the exact original Casework parser and this review UI embedded under per-script SHA-256 CSP hashes. No checkout or local server is necessary. For source development, remediation-evidence/index.html also works from a full checkout containing the original sibling casework/remediation-engine.js. Everything runs offline without cookies, network, storage, a server, credentials or runtime targets.
+
+The deterministic stdlib bundler remediation-evidence/package.py refuses a changed original Casework JS (pinned SHA-256 c293c564ecb11434e45423d244b7beba599b6afe3ebbc85121882e91b8aa1225) and writes standalone.html atomically. The produced one-file artifact was built with authorized zSSH on vps-bb300bba: 42,448 UTF-8 bytes, SHA-256 51af62fd0fe9a95f0007977c8af5d35ca518462b8581874f307578ed02e8bbf1.
 
 This new isolated implementation is **stacked on original Casework PR #1568**, pinned to immutable original commit 9c73e8468ce271bf8c6bef4cac071e5ad9c1806b. No original Casework source or active owner branch is changed.
 
@@ -12,8 +14,9 @@ This new isolated implementation is **stacked on original Casework PR #1568**, p
 3. See high-severity source findings, reported regressions, human blockers, reference gaps and contradictions with original locally completed Casework records. Source retest status stays read-only.
 4. Optionally preview a newer separately authorized original CSV, explicitly confirm the same client/engagement and apply a source refresh atomically. Source-added or changed findings reset local review and Casework notes; only records with all five original fields unchanged retain local notes. Missing rows are NOT treated as fixed. Export the previous private draft before replacing the local view.
 5. Coordinate a local human status (missing / submitted / needs_changes / ready_for_authorized_retest), descriptive private reference, reviewer and next step per finding. This never invokes a scan or completes an actual retest.
-6. Save an unsigned private review JSON; resume it only with the exact original source SHA. Strict duplicate-key JSON parsing, hard file and nesting limits, exact non-authority flags, expected IDs and atomic rejection of incomplete or mismatched packets are applied.
-7. Export only aggregate counts without original findings/people/notes, or consciously export a **private Markdown** human coordination brief containing original finding IDs and local notes.
+6. Optionally set one local human coordination stage or reviewer across the currently filtered findings. Confirm the affected count before bulk update; original source and retest state remain unchanged.
+7. Save an unsigned private review JSON; resume it only with the exact original source SHA. Strict duplicate-key JSON parsing, hard file and nesting limits, exact non-authority flags, expected IDs and atomic rejection of incomplete or mismatched packets are applied.
+8. Export only aggregate counts without original findings/people/notes, or consciously export a **private Markdown** human coordination brief containing original finding IDs and local notes.
 
 ## Trust boundaries
 - The original Casework parser, source normalization, canonical content SHA-256 and draft v1 loader are **reused** from original owner source. A source-digest-compatible local SHA-256 fallback works when WebCrypto is unavailable on file:// offline pages. SHA is an unsigned correlation fingerprint, **never authentication or a signature**.
