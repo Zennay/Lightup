@@ -29,7 +29,7 @@ td select{min-width:130px}.hold{color:#ffcf96;font-weight:750}#status[data-error
 <div class="actions"><button id="load" class="primary">Load original source</button><button id="forget">Forget local workspace</button></div>
 <p id="status" aria-live="polite" role="status"></p><p id="digest" class="muted"></p></section>
 <div id="results" hidden>
-<section><h2>2 · Define up to four hypothetical change-review windows</h2><p>All times are UTC and merely proposed. A blocked human dossier or missing rollout/rollback reference remains HOLD even when placed on a calendar.</p>
+<section><h2>2 · Define up to four hypothetical change-review windows</h2><p class="muted">Resume an earlier private planning draft only when the exact original source and current human evidence notes are unchanged. Nothing is restored on mismatch.</p><div class="grid files"><label>PRIVATE saved human change-window JSON<input id="planFile" type="file" accept=".json,application/json"></label></div><div class="actions"><button id="resume">Resume PRIVATE source-bound plan</button></div><p>All times are UTC and merely proposed. A blocked human dossier or missing rollout/rollback reference remains HOLD even when placed on a calendar.</p>
 <div id="windows" class="grid"></div><div class="actions"><button id="recalculate">Recalculate human readiness</button></div></section>
 <section><h2>3 · Place findings into human review windows</h2><div class="grid">
 <div><span class="stat" id="total">0</span><p>Original findings</p></div><div><span class="stat" id="urgent">0</span><p>Critical/high</p></div><div><span class="stat" id="unassigned">0</span><p>Unscheduled</p></div><div><span class="stat" id="holds">0</span><p>Missing local references or changes requested</p></div>
