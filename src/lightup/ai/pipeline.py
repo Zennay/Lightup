@@ -65,7 +65,7 @@ def _validated_remediation_advice(content: str) -> str:
 
 
 
-def _admit_review_findings(labrun_result: dict) -> tuple[tuple[dict, str, tuple[str, ...], str], ...]:
+def _admit_review_findings(labrun_result: dict, target_label: str) -> tuple[tuple[dict, str, tuple[str, ...], str, str], ...]:
     """Validate EVERY original finding before the first model dispatch.
 
     A later broken case must not allow earlier cases to issue model requests.
@@ -76,7 +76,7 @@ def _admit_review_findings(labrun_result: dict) -> tuple[tuple[dict, str, tuple[
     originals = labrun_result.get("findings", [])
     if type(originals) is not list or len(originals) > _MAX_REVIEW_FINDINGS:
         raise ValueError("review findings must be a bounded JSON list")
-    batch: list[tuple[dict, str, tuple[str, ...], str]] = []
+    batch: list[tuple[dict, str, tuple[str, ...], str, str]] = []
     for finding in originals:
         if type(finding) is not dict:
             raise ValueError("review finding must be an ordinary dictionary")
@@ -109,8 +109,13 @@ def _admit_review_findings(labrun_result: dict) -> tuple[tuple[dict, str, tuple[
         if (type(fix) is not str or not fix.strip()
                 or len(fix) > _MAX_CURRENT_FIX_CHARS):
             raise ValueError("review findings require canonical non-empty current remediation text")
-        # Snapshot original read-only source fields before the first model call.
-        batch.append((dict(finding), summary, refs, fix))
+        finding_target = finding.get("target", target_label)
+        if (type(finding_target) is not str or not finding_target.strip()
+                or len(finding_target) > _MAX_FINDING_TEXT_CHARS):
+            raise ValueError("review finding target must be bounded plain text")
+        # Freeze the same finding-local target used by verification, advice,
+        # serialized review and reporting before ANY model call.
+        batch.append((dict(finding), summary, refs, fix, finding_target))
     return tuple(batch)
 
 
@@ -136,6 +141,7 @@ class ReviewedFinding:
     severity: str
     verdict: str
     remediation_advice: str
+    target: str = ""
 
 
 @dataclass(frozen=True)
@@ -148,7 +154,7 @@ class ReviewResult:
         return {
             "findings": [
                 {"finding": f.title, "severity": f.severity, "verdict": f.verdict,
-                 "remediation_advice": f.remediation_advice}
+                 "remediation_advice": f.remediation_advice, "target": f.target}
                 for f in self.findings
             ],
             "report": self.report,
@@ -170,13 +176,28 @@ class AssessmentReviewPipeline:
 
     def review(self, labrun_result: dict) -> ReviewResult:
         # Complete original source preflight before *any* gateway dispatch.
-        admitted = _admit_review_findings(labrun_result)
+        if type(labrun_result) is not dict:
+            raise ValueError("review input must be an ordinary dictionary")
         # Single-lane runs carry "target"; planner-driven runs carry "targets".
-        target_label = (labrun_result.get("target")
-                        or ", ".join(labrun_result.get("targets", [])))
+        # Preserve the original single-target or planner-list fallback without
+        # accepting malformed iterable or caller-defined string subclasses.
+        run_target = labrun_result.get("target")
+        run_targets = labrun_result.get("targets", [])
+        if run_target:
+            if type(run_target) is not str or len(run_target) > _MAX_FINDING_TEXT_CHARS:
+                raise ValueError("review run target must be bounded plain text")
+            target_label = run_target
+        else:
+            if (type(run_targets) is not list or len(run_targets) > _MAX_REVIEW_FINDINGS
+                    or any(type(value) is not str
+                           or len(value) > _MAX_FINDING_TEXT_CHARS for value in run_targets)):
+                raise ValueError("review run targets must be bounded plain-text strings")
+            target_label = ", ".join(run_targets)
+            if len(target_label) > _MAX_FINDING_TEXT_CHARS:
+                raise ValueError("review run target label is too long")
+        admitted = _admit_review_findings(labrun_result, target_label)
         reviewed: list[ReviewedFinding] = []
-        for finding, evidence_summary, evidence_ids, current_fix in admitted:
-            finding_target = finding.get("target", target_label)
+        for finding, evidence_summary, evidence_ids, current_fix, finding_target in admitted:
             payload = json.dumps(
                 {"finding": finding["finding"], "severity": finding["severity"],
                  "impact": finding["impact"],
@@ -210,7 +231,7 @@ class AssessmentReviewPipeline:
             advice = _validated_remediation_advice(advice)
             reviewed.append(ReviewedFinding(
                 title=finding["finding"], severity=finding["severity"],
-                verdict=verdict, remediation_advice=advice,
+                verdict=verdict, remediation_advice=advice, target=finding_target,
             ))
 
         coverage_counts = labrun_result.get("coverage", {}).get("counts", {})
@@ -220,6 +241,7 @@ class AssessmentReviewPipeline:
                 "severity": finding.severity,
                 "verdict": finding.verdict,
                 "remediation_advice": finding.remediation_advice,
+                "target": finding.target,
             }
             for finding in reviewed
         ]
