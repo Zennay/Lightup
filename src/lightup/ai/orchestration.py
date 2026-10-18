@@ -56,14 +56,14 @@ class ParamKind(str, Enum):
 
     def accepts(self, value: Any) -> bool:
         if self is ParamKind.STRING:
-            return isinstance(value, str)
+            return type(value) is str
         if self is ParamKind.INTEGER:
-            return isinstance(value, int) and not isinstance(value, bool)
+            return type(value) is int
         if self is ParamKind.NUMBER:
             # NaN/Infinity can evade range comparisons and cannot be safely
             # serialized as ordinary JSON numbers; no handler may receive them.
             return type(value) is int or (type(value) is float and isfinite(value))
-        return isinstance(value, bool)
+        return type(value) is bool
 
 
 @dataclass(frozen=True)
@@ -164,7 +164,25 @@ class ToolCall:
     arguments: tuple[tuple[str, Any], ...] = ()
 
     def arguments_dict(self) -> dict[str, Any]:
-        return dict(self.arguments)
+        # Conversion to dict must never quietly discard a duplicate or invoke
+        # foreign comparison/hash hooks on a polymorphic argument key.
+        if type(self.arguments) is not tuple:
+            raise OrchestrationError("tool arguments must be an immutable tuple")
+        result: dict[str, Any] = {}
+        for pair in self.arguments:
+            if type(pair) is not tuple or len(pair) != 2:
+                raise OrchestrationError("tool argument entry must be a pair")
+            name, value = pair
+            if (
+                type(name) is not str or not name.strip()
+                or name != name.strip()
+                or any(ord(char) < 33 or ord(char) == 127 for char in name)
+            ):
+                raise OrchestrationError("tool argument name is not canonical")
+            if name in result:
+                raise OrchestrationError(f"duplicate tool argument {name!r}")
+            result[name] = value
+        return result
 
 
 _RESERVED_EVIDENCE_METADATA_KEYS = frozenset(
@@ -281,6 +299,17 @@ class ToolExecutor:
         self.state = state
 
     def execute(self, context: RunContext, call: ToolCall) -> ToolResult:
+        # Inspect exact immutable call identity BEFORE any registry, policy,
+        # handler or evidence interaction. Do not invoke str-subclass hooks.
+        if (
+            type(call) is not ToolCall
+            or type(call.tool_id) is not str
+            or not call.tool_id.strip()
+            or call.tool_id != call.tool_id.strip()
+            or type(call.asset) is not str
+            or not call.asset.strip()
+        ):
+            raise OrchestrationError("tool call identity is not canonical")
         definition, handler = self.registry.get(call.tool_id)
         arguments = call.arguments_dict()
         definition.validate_arguments(arguments)
