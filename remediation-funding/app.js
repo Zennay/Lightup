@@ -17,9 +17,10 @@ const currency=(code,value)=>{
  const locale=code==='EUR'?'nl-NL':code==='GBP'?'en-GB':'en-US';
  return new Intl.NumberFormat(locale,{style:'currency',currency:code,maximumFractionDigits:2}).format(value);
 };
-let source=null,forecast=null,settings=null,comparison=null;
+let source=null,forecast=null,settings=null,comparison=null,staged=null;
 function clearResults(){
- forecast=null;settings=null;comparison=null;el('results').hidden=true;
+ forecast=null;settings=null;comparison=null;staged=null;el('results').hidden=true;
+ el('release-summary').replaceChildren();el('release-weeks').replaceChildren();el('release-export').hidden=true;
  el('kpis').replaceChildren();el('weeks').replaceChildren();el('scenario').replaceChildren();
  el('risk-exposure').replaceChildren();el('risk-weeks').replaceChildren();
 }
@@ -101,6 +102,7 @@ function display(model){
   riskTable.append(tr);
  }
  rows(model);el('results').hidden=false;renderScenario();
+ renderReleaseEntries();
 }
 function renderScenario(){
  const target=el('scenario');target.replaceChildren();comparison=null;
@@ -135,6 +137,71 @@ function download(name,body,mime){
  const a=document.createElement('a');a.href=url;a.download=name;a.rel='noopener';document.body.append(a);
  a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1600);
 }
+
+function releasePercentages() {
+ const n=source.weeks.length,mode=el('releases-mode').value;
+ if(mode==='upfront')return [100,...Array(n-1).fill(0)];
+ if(mode==='equal'){
+  const floor=Math.floor(100/n);
+  const chunks=Array(n).fill(floor);chunks[n-1]+=100-floor*n;return chunks;
+ }
+ if(mode!=='custom')throw Error('Invalid funding release pattern');
+ const controls=el('release-entries').querySelectorAll('input');
+ if(controls.length!==n)throw Error('Custom releases incomplete');
+ return Array.from(controls,control=>{
+  if(!/^(0|[1-9][0-9]*)$/.test(control.value))throw Error('Enter whole-number percentages');
+  return Number(control.value);
+ });
+}
+function clearRelease() {
+ staged=null;el('release-summary').replaceChildren();el('release-weeks').replaceChildren();el('release-export').hidden=true;
+}
+function renderReleaseEntries(){
+ const section=el('release-entries');section.replaceChildren();clearRelease();
+ if(!source||!forecast||el('releases-mode').value!=='custom')return;
+ const values=Array(source.weeks.length).fill(0);values[0]=100;
+ source.weeks.forEach((week,index)=>{
+  const label=mk('label','Week '+week.week+' starting '+week.start+' (%)','input-label');
+  const input=document.createElement('input');input.type='number';input.min='0';input.max='100';input.step='1';
+  input.value=String(values[index]);input.setAttribute('aria-label','Week '+week.week+' released budget percentage');
+  input.addEventListener('change',clearRelease);label.append(input);section.append(label);
+ });
+}
+el('releases-mode').addEventListener('change',renderReleaseEntries);
+el('release-calculate').addEventListener('click',()=>{
+ clearRelease();
+ if(!source||!forecast||!settings){show('Load a source and prepare a forecast first.',true);return;}
+ try{
+  const next=core.stagedFunding(source,settings,releasePercentages());
+  staged=next;
+  const info=el('release-summary');info.replaceChildren();
+  for(const [title,value] of [
+   ['Hours provisionally funded',next.provisionally_funded_hours+' h'],
+   ['Hours without funding',next.unpaid_planned_hours+' h'],
+   ['Urgent potentially unfunded (min)',next.urgent_potentially_unfunded_lower_hours+' h'],
+   ['Urgent potentially unfunded (max)',next.urgent_potentially_unfunded_upper_hours+' h'],
+   ['Cash left unused',currency(next.currency,next.unused_funds_end)],
+   ['Setup still unfunded',currency(next.currency,next.setup_cost_still_unpaid)]])info.append(stat(title,value));
+  const tbody=el('release-weeks');tbody.replaceChildren();
+  for(const row of next.weeks){
+   const tr=mk('tr');
+   for(const v of [row.week,currency(next.currency,row.deposit),
+     currency(next.currency,row.paid_setup),currency(next.currency,row.paid_proposed_labor),
+     row.funded_hours+' h',row.hours_not_funded+' h',
+     currency(next.currency,row.cash_carried_forward)])tr.append(mk('td',v));
+   tbody.append(tr);
+  }
+  el('release-export').hidden=false;
+  show('Private staged financial scenario calculated; nothing has been booked or executed.');
+ }catch(err){show('Phased funding held: '+(err instanceof Error?err.message:'Invalid schedule'),true);}
+});
+el('release-export').addEventListener('click',()=>{
+ if(!staged)return;
+ if(!confirm('Export only a private unsigned CASH RELEASE scenario? This does not make or authorise a payment, grant, remediation or retest.'))return;
+ download('lightup-remediation-staged-funding.json',JSON.stringify(staged,null,2)+'\n','application/json;charset=utf-8');
+ show('Aggregate staged funding discussion exported.');
+});
+
 el('json').addEventListener('click',()=>{
  if(!forecast)return;
  if(!confirm('Export only an unsigned, hypothetical AGGREGATE funding discussion? This is not authorization, a contract, customer invoice or verified remediation.'))return;
