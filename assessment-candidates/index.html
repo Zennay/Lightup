@@ -8,7 +8,7 @@
 <main>
 <section class="panel"><div class="section-head"><h2 id="sources">01 / Local sources</h2><span class="eyebrow">No network · no persistence</span></div>
 <p>Choose 2–12 canonical existing <code>assessment-runtime #1515</code> cohort JSON exports (max 256 KiB each). Sources are validated together before replacing the current view. Filenames, lab IDs, targets and raw content remain in memory.</p>
-<div class="controls"><label class="filelabel">Load existing lab reports<input id="files" type="file" accept=".json,application/json" multiple></label><button id="demo" class="secondary" type="button">Explore fictional demo</button><button id="forget" class="ghost" type="button">Forget all</button></div>
+<div class="controls"><label class="filelabel">Load existing lab reports<input id="files" type="file" accept=".json,application/json" multiple></label><label class="filelabel">Append one matching candidate<input id="appendFile" type="file" accept=".json,application/json" disabled></label><button id="demo" class="secondary" type="button">Explore fictional demo</button><button id="forget" class="ghost" type="button">Forget all</button></div>
 <p id="message" role="status" aria-live="polite">No source loaded. Fictional demo contains invented figures only.</p><div id="sourceLine" class="statline"></div></section>
 <section class="panel" id="summary"><div class="section-head"><h2>02 / Human review scorecards</h2><span class="eyebrow" id="sourceKind">No data</span></div>
 <p>File order is <strong>not proven chronology</strong>. Scope and policy flags stay visible separately from informational cost/performance.</p><div id="cards" class="cards"><p class="empty">Import existing reports or explore the demo.</p></div></section>

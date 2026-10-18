@@ -205,7 +205,9 @@
         selector.innerHTML="";
         stats.forEach((_,i)=>{const option=document.createElement("option");
           option.value=String(i);option.textContent="Candidate "+(i+1);selector.append(option);});
-        selector.value=id==="pairA"?"0":String(Math.min(1,stats.length-1));
+        selector.value=old!==""&&Number.isSafeInteger(Number(old))&&
+          Number(old)>=0&&Number(old)<stats.length?old:
+          id==="pairA"?"0":String(Math.min(1,stats.length-1));
       } else selector.value=old;
     }
     const a=Number($("pairA").value),b=Number($("pairB").value);
@@ -225,6 +227,7 @@
     $("sourceLine").textContent=!active?"":reports.length+" candidate reports · "+reports[0].cases.size+
       " shared anonymized cases · all authority flags false · "+(demo?"FICTIONAL DATA":"UNVERIFIED SOURCE");
     for(const id of ["exportCSV","exportJSON","exportHTML","print"])$(id).disabled=!active;
+    $("appendFile").disabled=!(active&&!demo&&reports.length<12);
     $("saveDraft").disabled=!(active&&!demo&&sourceHashes.length===reports.length);
     $("draftFile").disabled=$("saveDraft").disabled;
     if(!active){
@@ -298,6 +301,27 @@
       setStatus("Accepted "+next.length+" compatible, unverified lab comparison files. All remain non-authorizing.");
       render();
     }catch(_){setStatus("HOLD: at least one source is malformed, mismatched, repeated or oversized. Existing workspace preserved.",true);}
+  }
+  async function appendCandidate(file){
+    try{
+      assert(reports.length>=2&&reports.length<12&&!demo&&file&&
+        file.size>0&&file.size<=262144);
+      const bytes=await file.arrayBuffer();
+      assert(bytes.byteLength>0&&bytes.byteLength<=262144);
+      const source=new TextDecoder("utf-8",{fatal:true}).decode(bytes);
+      const candidate=decodeReport(strictJSON(source));
+      const newReports=[...reports,candidate];
+      compatible(newReports);
+      const hash=await hashBytes(bytes);
+      const newHashes=sourceHashes.length===reports.length&&hash?
+        [...sourceHashes,hash]:[];
+      reports=newReports;sourceHashes=newHashes;
+      $("draftMessage").textContent=sourceHashes.length?
+        "Source set changed: earlier private drafts no longer bind; save new preferences.":
+        "Private draft save disabled: original hashes unavailable.";
+      setStatus("One compatible, previously finished unverified lab candidate appended. All source safety flags preserved.");
+      render();
+    }catch(_){setStatus("HOLD: incompatible, duplicate, malformed or oversized append. Existing workspace preserved.",true);}
   }
   function fictional(){
     const ids=["fictional-case-A","fictional-case-B","fictional-case-C","fictional-case-D"];
@@ -464,7 +488,12 @@
   }
   function forget(){
     reports=[];sourceHashes=[];demo=false;selectedCase="";settings=null;
-    $("draftFile").value="";$("draftMessage").textContent="";$("files").value="";
+    $("draftFile").value="";$("draftMessage").textContent="";
+    const defaults={maxScope:0,maxPolicy:0,minQuality:0.75,minCoverage:0,
+      maxRuntime:0,maxCost:0};
+    Object.entries(defaults).forEach(([k,v])=>$(k).value=String(v));
+    for(const k of ["dimQuality","dimCoverage","dimRuntime","dimCost"])$(k).checked=true;
+    $("thresholdMessage").textContent="";$("files").value="";
     setStatus("All imported records forgotten from this workspace.");render();
   }
   // No fetch, storage, workers, scanner or execution API.
@@ -473,7 +502,14 @@
     if(e.target.files.length)void restoreDraft(e.target.files[0]);
     e.target.value="";
   });
-  $("files").addEventListener("change",e=>{if(e.target.files.length)void importFiles([...e.target.files]);});
+  $("files").addEventListener("change",e=>{
+    if(e.target.files.length)void importFiles([...e.target.files]);
+    e.target.value="";
+  });
+  $("appendFile").addEventListener("change",e=>{
+    if(e.target.files.length)void appendCandidate(e.target.files[0]);
+    e.target.value="";
+  });
   $("demo").addEventListener("click",demoLoad);
   $("forget").addEventListener("click",forget);
   for(const id of ["maxScope","maxPolicy","minQuality","minCoverage","maxRuntime","maxCost",
