@@ -62,3 +62,7 @@ Use [CAPACITY.md](CAPACITY.md) for role-specific command-line hypothetical capac
 ## Original-schema roundtrip for human follow-up
 
 The new [private human return workflow](REVIEW-RETURN.md) lets the operator edit only human stage, neutral next role, and proposed follow-up date in a local browser. The original immutable manifest, original human choices and original agenda must all still match before the new — never overwritten — original-schema choices document is published. This is a separate human planning return only; original assessment/source owners, lab/execution authority and release gates remain untouched.
+
+## Confidential multi-source original choices handoff
+
+For **2–12 independent original source archives** with their original manifests, original choices, original agendas and private browser proposals, the new [multi-source human return](MULTI-RETURN.md) builds a single atomically published private ZIP containing separate original-schema human choices for every source, private original-manifest fingerprints and a static human-only inventory. The entire batch HOLDs before publication on even one stale or conflicting source. No source files are overwritten and no human action is executed.
