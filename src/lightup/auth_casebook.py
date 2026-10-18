@@ -249,6 +249,59 @@ def _source_snapshot(database: str, *, actor_id: str, client_id: str | None) -> 
         con.close()
 
 
+
+def authenticated_client_inbox(database: str, *, email: str,
+                               password: str) -> dict:
+    """Read only real tenant IDs for a freshly authenticated selector.
+
+    Operators can list at most 100 explicit IDs. Clients see only own ID.
+    No names, emails, contacts, grants, assets or authorization claims.
+    """
+    actor_id = _auth_actor(database, email, password)
+    con = _read_connection(database)
+    try:
+        row = con.execute(
+            "SELECT role,client_id FROM users WHERE user_id=?",
+            (actor_id,),
+        ).fetchone()
+        if row is None:
+            raise CasebookHold("original account no longer present")
+        try:
+            role = Role(row["role"])
+        except (ValueError, TypeError):
+            raise CasebookHold("stored role invalid") from None
+        if role is Role.OPERATOR and row["client_id"] is None:
+            tenants = con.execute(
+                "SELECT client_id,status FROM clients "
+                "ORDER BY created_at DESC,client_id LIMIT 101"
+            ).fetchall()
+            if len(tenants) > 100:
+                raise CasebookHold("operator tenant list exceeds bounded view")
+        elif role in (Role.CLIENT_ADMIN, Role.CLIENT_MEMBER):
+            owned = _identity(row["client_id"], "persisted tenant")
+            tenants = con.execute(
+                "SELECT client_id,status FROM clients WHERE client_id=?",
+                (owned,),
+            ).fetchall()
+        else:
+            raise CasebookHold("account cannot list tenants")
+        items = [{
+            "client_id": _identity(t["client_id"], "stored tenant identity"),
+            "original_status": _value(t, "status", 80),
+        } for t in tenants]
+        return {
+            "schema": "lightup.auth_casebook_client_inbox.v1",
+            "status": "REVIEW_ONLY",
+            "clients": items,
+            "declared_count": len(items),
+            **AUTHORITY,
+        }
+    except (sqlite3.Error, ValueError, TypeError):
+        raise CasebookHold("original client inbox not admitted") from None
+    finally:
+        con.close()
+
+
 def authenticated_casebook(database: str, *, email: str,
                            password: str, client_id: str | None = None) -> dict:
     """Single-tenant authenticated source snapshot; no grant issuance."""
@@ -290,11 +343,21 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--email", required=True, help="existing operator/client login")
     parser.add_argument("--client", help="required exact tenant ID for operator; optional matching ID for client")
     parser.add_argument("--output", help="new private 0600 JSON; never overwrite")
+    parser.add_argument("--list-clients", action="store_true", help="authenticated client-ID selector only")
     args = parser.parse_args(argv)
+    if args.list_clients and (args.client is not None or args.output is not None):
+        parser.error("--list-clients cannot be combined with --client or --output")
     try:
+        password = getpass("LightUp account password: ")
+        if args.list_clients:
+            result = authenticated_client_inbox(
+                args.database, email=args.email, password=password,
+            )
+            print(json.dumps(result, sort_keys=True, indent=2))
+            return 2
         result = authenticated_casebook(
             args.database, email=args.email,
-            password=getpass("LightUp account password: "), client_id=args.client,
+            password=password, client_id=args.client,
         )
         if args.output is not None:
             _write_private_json(args.output, result)
