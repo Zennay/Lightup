@@ -14,6 +14,8 @@
   let lastOptions = null;
   let historyReview = null;
   let milestoneDraft = null;
+  let contingencyDraft = null;
+  function clearContingency(){contingencyDraft=null;el('contingency-results').replaceChildren();el('export-contingency').hidden=true;}
   function clearMilestone() {
     milestoneDraft=null;
     el('milestone-result').replaceChildren();
@@ -38,6 +40,7 @@
   function forget() {
     findings = null; result = null; lastOptions = null;
     clearMilestone();
+    clearContingency();
     source.value = '';
     clearHistory();
     el('source-status').textContent = 'No report loaded. All files stay in this browser tab.';
@@ -57,6 +60,7 @@
     const file = source.files && source.files[0];
     findings = null; result = null; lastOptions = null;
     clearMilestone();
+    clearContingency();
     el('generate').disabled = true;
     el('save-working-draft').disabled = true;
     el('draft-status').textContent='New source: older plans must be independently reviewed again.';
@@ -116,6 +120,7 @@
       result = engine.plan(findings,lastOptions);
       clearHistory();
       clearMilestone();
+    clearContingency();
       render();
       renderComparison();
       el('results').hidden = false;
@@ -352,6 +357,55 @@
     const data={schema:'lightup.remediation_milestone_draft.v1',...milestoneDraft};
     download('lightup-risk-milestone-draft.json',JSON.stringify(data,null,2)+'\n','application/json;charset=utf-8');
     setFeedback('Non-authorising, privacy-minimal risk milestone exported for human review.');
+  });
+
+
+  function renderInterruptionSummary(draft) {
+    const container=el('contingency-results');container.replaceChildren();
+    const cards=$('div',undefined,'scenario-grid');
+    for(const [title,value] of [
+      ['Original planning baseline',draft.baseline],
+      ['One-week interruption',draft.single_week_interruption],
+      ['Sustained capacity reduction',draft.sustained_reduction]
+    ]){
+      const card=$('div',undefined,'scenario-card');
+      card.append(
+        $('strong',title),
+        $('p',value.provisionally_allocated_hours+' h provisionally allocated'),
+        $('p',value.unallocated_hours+' h unallocated across '+value.unallocated_findings+' finding estimates'),
+        $('p',value.critical_high_unallocated_hours+' h critical/high backlog')
+      );
+      cards.append(card);
+    }
+    container.append(cards,$('p','This is not an actual outage forecast, authorisation to retest, staffing assignment or contractual promise. No original findings are included in these aggregate results.','subtle'));
+    el('export-contingency').hidden=false;
+  }
+  el('run-contingency').addEventListener('click',()=>{
+    clearContingency();
+    if(!findings||!result||!lastOptions){
+      el('contingency-results').append($('p','HOLD: generate a current capacity plan first.','feedback error'));
+      return;
+    }
+    try{
+      const data=engine.interruptionScenario(findings,lastOptions,
+        el('outage-week').value,
+        el('outage-availability').value,
+        el('ongoing-reduction').value);
+      contingencyDraft=data;
+      renderInterruptionSummary(data);
+    }catch(err){
+      el('contingency-results').append($('p','HOLD: '+(err instanceof Error?err.message:'Invalid scenario'),'feedback error'));
+    }
+  });
+  for(const id of ['outage-week','outage-availability','ongoing-reduction']){
+    el(id).addEventListener('change',clearContingency);
+  }
+  el('export-contingency').addEventListener('click',()=>{
+    if(!contingencyDraft)return;
+    if(!window.confirm('Export only hypothetical aggregate hour and backlog changes? These are NOT real security work, consent, actual outage or proven fixes.'))return;
+    download('lightup-capacity-interruption-draft.json',
+      JSON.stringify(contingencyDraft,null,2)+'\n','application/json;charset=utf-8');
+    setFeedback('Unsigned, aggregate-only contingency discussion exported.');
   });
 
   // Source-bound, user-controlled resume: no browser persistence or implicit restore.
