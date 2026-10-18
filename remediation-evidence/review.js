@@ -242,6 +242,63 @@ function renderEvidenceMatrix(){
  table.append(body);parent.append(table);
 }
 
+
+/* Original source severity is reported, not reclassified. This ordering is
+ * ONLY a local human planning suggestion, never a policy risk verdict. */
+function humanFollowupItems(){
+ if(!source)return [];
+ const today=localWindow().today;
+ const rows=[];
+ for(const f of source){
+  const c=casework?.get(f.finding_id)||engine.newCase(f),r=review.get(f.finding_id);
+  if(!r)continue;
+  const missing=EVIDENCE_FIELDS.slice(0,4).filter(([key])=>!r.evidence[key].trim());
+  const blocked=c.status==='blocked',overdue=!!c.due_date&&c.due_date<today&&
+   !['completed','deferred'].includes(c.status);
+  const regression=f.retest_status==='regression',criticalHigh=SEV.indexOf(f.severity)<=1;
+  const contradiction=c.status==='completed'&&f.retest_status!=='fixed';
+  const queue=(regression?80:0)+(criticalHigh?45:0)+(blocked?35:0)+(overdue?25:0)+
+   (contradiction?45:0)+missing.length*5+
+   (r.stage==='needs_changes'?10:0);
+  if(!queue)continue;
+  const next=regression?'Escalate source-reported regression to authorized human reviewer':
+   contradiction?'Resolve local completion versus unchanged source retest mismatch':
+   blocked?'Coordinate original Casework blocker':
+   overdue?'Review overdue LOCAL planning date with owner':
+   missing.length?'Request '+missing.length+' missing original evidence references':
+   'Review local human coordination stage';
+  rows.push({finding:f,casework:c,review:r,missing:missing.map(([key])=>key),
+    score:queue,followup:next});
+ }
+ return rows.sort((a,b)=>b.score-a.score||
+  SEV.indexOf(a.finding.severity)-SEV.indexOf(b.finding.severity)||
+  a.finding.finding_id.localeCompare(b.finding.finding_id));
+}
+function renderWorkQueue(){
+ const host=$('humanAgenda');if(!host)return;
+ host.replaceChildren();
+ const rows=humanFollowupItems();
+ $('agendaCount').textContent=String(rows.length);
+ if(!rows.length){host.append(el('p','detail','No selected original findings have actionable local follow-up cues. No security approval is implied.'));return;}
+ for(const row of rows.slice(0,12)){
+  const card=el('article','agenda-item');
+  card.append(el('strong','',row.finding.severity.toUpperCase()+' · '+row.finding.title));
+  card.append(el('p','detail',row.followup+' · locally assigned: '+(teamFor(row.finding)||'unassigned')+
+   ' · proposed due: '+(row.casework.due_date||'none')+
+   ' · evidence fields missing: '+row.missing.length));
+  const button=el('button','', 'Open local evidence dossier');
+  button.type='button';
+  button.addEventListener('click',()=>{
+   $('filter').value='all';$('boardSearch').value='';$('boardTeam').value='';
+   $('boardSort').value='followup';render();
+   const card=[...$('board').children].find(el=>el.dataset.findingId===row.finding.finding_id);
+   if(card){card.scrollIntoView({block:'start',behavior:'smooth'});
+    const details=card.querySelector('.evidence-dossier');if(details)details.open=true;}
+  });
+  card.append(button);host.append(card);
+ }
+}
+
 function humanQueue(f,c,r){
  const cues=[];
  if(f.retest_status==='regression')cues.push('Source reports regression: escalate to source owner.');
@@ -381,7 +438,7 @@ function render(){
  const ready=!!source;$('dashboard').hidden=!ready;$('boardSection').hidden=!ready;$('actions').hidden=!ready;$('refreshPanel').hidden=!ready;$('teamPanel').hidden=!ready;
  if(!ready)return;
  const m=count();for(const [key,num] of Object.entries(m))$(key).textContent=String(num);
- updateTeamChoices();renderRevisions();renderEvidenceMatrix();
+ updateTeamChoices();renderRevisions();renderEvidenceMatrix();renderWorkQueue();
  $('fingerprint').textContent=sourceHash?'Local source SHA-256: '+sourceHash+' (NOT authentication)':'Source fingerprint unavailable. All exports disabled.';
  const filter=$('filter').value;
  const selectedSort=$('boardSort').value;
@@ -404,7 +461,7 @@ function render(){
   const c=casework?.get(f.finding_id),r=review.get(f.finding_id);
   const cues=humanQueue(f,c,r);
   if(!included(f,c,r,filter))continue;
-  const section=el('article','finding');
+  const section=el('article','finding');section.dataset.findingId=f.finding_id;
   const heading=el('h3','',f.title);section.append(heading);
   section.append(el('p','detail',f.severity.toUpperCase()+' · Source retest: '+f.retest_status+' · Local casework: '+(c?.status||'not loaded')));
   section.append(el('p','detail','Finding '+f.finding_id));
@@ -434,7 +491,7 @@ function render(){
 function renderMetrics(){
  if(!source)return;
  const m=count();for(const [key,num] of Object.entries(m))$(key).textContent=String(num);
- renderEvidenceMatrix();
+ renderEvidenceMatrix();renderWorkQueue();
 }
 async function readCSV(file){return engine.parseCSV(await read(file,LIMIT_CSV));}
 
@@ -563,6 +620,27 @@ $('applyBulk').addEventListener('click',()=>{
 
 /* Explicit revision coordination exports: a private action register retaining original
    changed/absent IDs, or anonymous counts. Neither document verifies a fix. */
+
+
+$('exportHumanAgenda').addEventListener('click',()=>{
+ try{
+  if(!sourceHash)throw Error('Original source required for private human agenda.');
+  const rows=humanFollowupItems().slice(0,100);
+  if(!rows.length)throw Error('No local follow-up candidates.');
+  if(!confirm('Download PRIVATE original IDs, local teams and human follow-up proposals for '+rows.length+
+    ' original findings? This is not an SLA, verified security finding, job order or retest authorization. Confirm approved recipient.'))return;
+  const cols=['original_finding_id','severity','original_retest_state','local_team_unverified',
+   'local_due_date','local_casework_stage','review_stage','missing_evidence_references',
+   'human_followup_proposal'];
+  const records=rows.map(x=>[x.finding.finding_id,x.finding.severity,x.finding.retest_status,
+   teamFor(x.finding)||'unassigned',x.casework.due_date||'',x.casework.status,
+   x.review.stage,x.missing.join(';'),x.followup]);
+  const content='\ufeff'+cols.map(x=>'"'+x+'"').join(',')+'\r\n'+records.map(row=>
+   row.map(safeSpreadsheetCell).join(',')).join('\r\n')+'\r\n';
+  download('lightup-private-human-evidence-agenda.csv',content,'text/csv');
+  status('Private human evidence-follow-up agenda downloaded. All priorities are planning suggestions only.');
+ }catch(err){status(err.message,true);}
+});
 
 $('exportEvidenceMatrix').addEventListener('click',()=>{
  try{
