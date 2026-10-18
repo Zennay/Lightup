@@ -27,6 +27,7 @@
     dispatch_allowed:false,release_allowed:false});
   let revisions = [], selected = "valid_findings";
   let revisionFocus = 0;
+  let discussionStages=Object.create(null);
 
   // Strict recursive JSON reader: rejects duplicate keys (also escaped aliases),
   // malformed literals, nonfinite numbers and excessively nested documents.
@@ -199,7 +200,7 @@
     $("message").textContent=message; $("message").className="message"+(bad?" bad":"");
   }
   function reset() {
-    revisions=[]; $("workspace").hidden=true; $("files").value="";
+    revisions=[];discussionStages=Object.create(null);revisionFocus=0; $("workspace").hidden=true; $("files").value="";
     $("notes").value=""; showMessage("All imported source data and local notes cleared.");
   }
   function metricsRows() {
@@ -259,11 +260,17 @@
       metric_regressions:[...report.cases.values()].reduce((n,c)=>n+c.regressions.length,0),
       metrics:NAMES.map(name=>({name,...snapshot(report,name)}))
     }));
-    return {format:"lightup.assessment_trends.aggregate",version:1,
+    return {format:"lightup.assessment_trends.aggregate",version:2,
       verdict:"REVIEW_ONLY",phase:"INCUBATE_M3_M7_DRAFT_HOLD",
       source_order:"USER_SELECTED_UNVERIFIED",source_authenticated:false,
       source_comparison_only:true,metrics:NAMES.map(name=>({name,...movement(name)})),
-      revisions:entries,...authority()};
+      revisions:entries,
+      human_discussion:actionItems().map(x=>({
+        metric:x.metric,priority:x.priority,persistent_cases:x.persistent,
+        emerged_cases:x.emerged,recovered_cases:x.recovered,
+        local_stage:x.stage,source_authenticated:false,remediation_verified:false
+      })),
+      ...authority()};
   }
   function download(name,content,type) {
     const url=URL.createObjectURL(new Blob([content],{type}));
@@ -332,6 +339,58 @@
     });
   }
 
+  function priorityClass(name) {
+    if(name==="scope_violations"||name==="policy_violations") return "Critical review";
+    if(["missed_findings","invalid_findings","valid_findings"].includes(name))
+      return "High review";
+    return "Human review";
+  }
+  function suggestedQuestion(name) {
+    if(["scope_violations","policy_violations"].includes(name))
+      return "Does this offline drift require independent scope/policy escalation?";
+    if(["missed_findings","valid_findings","invalid_findings"].includes(name))
+      return "What lab ground truth and detection evidence explains the finding change?";
+    if(["coverage_assessed","coverage_unknown"].includes(name))
+      return "Which original lab coverage assumption needs human reconciliation?";
+    if(["evidence_quality","reproducibility","remediation_quality","retest_correctness"].includes(name))
+      return "Which source evidence or scoring rubric needs independent review?";
+    return "What source-owner follow-up is needed before interpreting this lab metric?";
+  }
+  function actionItems() {
+    return NAMES.filter(name=>movement(name).ever>0).map(name=>({
+      metric:name,priority:priorityClass(name),...movement(name),
+      stage:discussionStages[name]||"unreviewed"
+    })).sort((a,b)=>{
+      const order={"Critical review":0,"High review":1,"Human review":2};
+      return order[a.priority]-order[b.priority] ||
+        b.persistent-a.persistent || b.emerged-a.emerged ||
+        NAMES.indexOf(a.metric)-NAMES.indexOf(b.metric);
+    });
+  }
+  function renderActions() {
+    const body=$("action-rows");body.replaceChildren();
+    const items=actionItems();$("action-empty").hidden=items.length!==0;
+    for(const item of items) {
+      const row=add(body,"tr");
+      add(row,"th",nice(item.metric));
+      add(row,"td",item.priority);
+      add(row,"td",String(item.persistent)+" persistent / "+
+        String(item.emerged)+" newly flagged / "+String(item.recovered)+" no longer flagged");
+      add(row,"td",suggestedQuestion(item.metric));
+      const cell=add(row,"td");
+      const control=add(cell,"select");
+      control.setAttribute("aria-label","Local discussion stage for "+nice(item.metric));
+      for(const stage of ["unreviewed","discussing","awaiting-independent-review","followup-proposed","discussion-recorded"]) {
+        const opt=add(control,"option",stage.replaceAll("-"," "));
+        opt.value=stage;
+      }
+      control.value=item.stage;
+      control.addEventListener("change",event=>{
+        discussionStages[item.metric]=event.target.value;
+      });
+    }
+  }
+
   function render() {
     $("workspace").hidden=false;
     $("revision-count").textContent=String(revisions.length);
@@ -342,13 +401,13 @@
     for(const name of NAMES) {
       const option=add(select,"option",nice(name));option.value=name;
     }
-    renderOrder();metricsRows();renderCaseRows();choose(selected);followupText();
+    renderOrder();metricsRows();renderCaseRows();renderActions();choose(selected);followupText();
     showMessage(revisions.length+" locally supplied cohort reports accepted. All comparisons remain untrusted and non-authorizing.");
   }
 
   $("files").addEventListener("change",async ev=>{
     // No mixing old and new reports. A failed import removes previous content.
-    revisions=[];revisionFocus=0;$("workspace").hidden=true;$("notes").value="";
+    revisions=[];revisionFocus=0;discussionStages=Object.create(null);$("workspace").hidden=true;$("notes").value="";
     const files=[...ev.target.files];
     try {
       const accepted=await loadFiles(files);
