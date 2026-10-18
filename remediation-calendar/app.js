@@ -7,7 +7,7 @@ const COLS=['finding_id','title','severity','retest_status','remediation'];
 const CASE=['finding_id','owner','status','due_date','next_action','verification_plan','blocker','note','updated_utc'];
 const PACKET=['kind','schema_version','disposition','source_contract','source_sha256','findings','cases','instructions',...FLAGS];
 const PRIORITY=['critical','high','medium','low','info'];
-let state=null,activeId=null,dirty=false,selectedDay=null,pendingRefresh=null,pendingSchedule=null;
+let state=null,activeId=null,dirty=false,selectedDay=null,pendingRefresh=null,pendingSchedule=null,pendingAssignment=null,ownerFilter=null;
 function fail(message){throw Error(message);}
 function bytes(s){return new TextEncoder().encode(s).length;}
 function exactKeys(o,keys,what){
@@ -72,6 +72,7 @@ function filtered(){
  const text=$('search').value.trim().toLowerCase(),scope=$('filter').value,sev=$('severity').value;
  return allRows().filter(x=>{
   const c=x.case,f=x.finding;
+  if(ownerFilter!==null&&(c.owner.trim()||'(unassigned)')!==ownerFilter)return false;
   if(selectedDay&&(!eligible(x)||c.due_date!==selectedDay))return false;
   if(sev!=='all'&&f.severity!==sev)return false;
   if(text&&!((f.finding_id+' '+c.owner).toLowerCase().includes(text)))return false;
@@ -154,7 +155,7 @@ function applyRefresh(){
  const data=x.prepared;
  const packet=global.LightUpCasework.makePacket(data.after,data.cases,data.digest);
  const clean=packetStructure(packet);
- state={...clean,digest:data.digest};
+ state={...clean,digest:data.digest};ownerFilter=null;
  dirty=true;activeId=null;selectedDay=null;clearSchedule();$('edit-panel').hidden=true;
  $('month').value=todayUTC().slice(0,7);
  $('refresh-file').value='';$('refresh-ack').checked=false;
@@ -232,6 +233,65 @@ function applySchedule(){
  $('schedule-message').textContent=additions.size+
   ' HUMAN-ONLY due dates saved locally. Export the updated PRIVATE Casework draft; no original finding or retest was updated.';
 }
+function clearAssignments(){
+ pendingAssignment=null;$('assign-preview').hidden=true;$('assign-ack').checked=false;
+ $('assign-apply').disabled=true;$('assign-rows').replaceChildren();
+}
+function assignmentControls(){
+ $('assign-apply').disabled=!pendingAssignment||!state||!$('source-ack').checked||!$('assign-ack').checked;
+}
+function renderOwners(){
+ const tbody=$('owners');tbody.replaceChildren();
+ $('owner-filter-message').textContent=ownerFilter===null?'No exact human owner filter is active.':
+  'Exact HUMAN owner filter: '+ownerFilter+' (not an authenticated identity).';
+ $('owner-filter-clear').hidden=ownerFilter===null;
+ const entries=global.LightUpCalendarWorkload.report(state.findings,state.cases,todayUTC());
+ for(const g of entries){
+  const tr=document.createElement('tr');
+  for(const v of [g.owner,g.total,g.criticalHigh,g.blocked,g.overdue,g.scheduled,g.readyForRetest])
+   tr.append(textEl('td',v));
+  const action=document.createElement('td'),button=textEl('button','Filter','muted-button');
+  button.type='button';button.addEventListener('click',()=>{
+   ownerFilter=g.owner;selectedDay=null;$('filter').value='all';
+   $('search').value='';render();
+  });
+  action.append(button);tr.append(action);tbody.append(tr);
+ }
+ if(!entries.length){const tr=document.createElement('tr'),cell=textEl('td','No open human cases in this source.');cell.colSpan=8;tr.append(cell);tbody.append(tr);}
+}
+function previewAssignment(){
+ clearAssignments();
+ if(!state||!$('source-ack').checked)fail('Load and independently confirm the original private Casework source.');
+ const current=state,before=JSON.stringify(state.cases),ids=filtered().map(x=>x.finding.finding_id);
+ const proposal=global.LightUpCalendarWorkload.propose(state.findings,state.cases,ids,
+  $('assign-owner').value,$('assign-empty-only').checked);
+ if(state!==current||JSON.stringify(state.cases)!==before)fail('Human casework changed while preparing ownership. Preview again.');
+ pendingAssignment={current,before,proposal};
+ const tbody=$('assign-rows');
+ for(const x of proposal.rows){
+  const tr=document.createElement('tr');
+  tr.append(textEl('td',x.finding_id),textEl('td',x.previous_owner||'(unassigned)'),
+    textEl('td',x.next_owner));tbody.append(tr);
+ }
+ $('assign-summary').textContent=proposal.rows.length+' currently visible OPEN human cases would receive owner '+proposal.newOwner+'. Existing original source and retest do not change.';
+ $('assign-preview').hidden=false;$('assign-message').textContent='Preview only. No human assignment changed.';
+ assignmentControls();
+}
+function applyAssignment(){
+ if(!state||!pendingAssignment||!$('source-ack').checked||!$('assign-ack').checked)
+  fail('Explicit review and HUMAN-ONLY assignment confirmation required.');
+ const p=pendingAssignment;
+ if(state!==p.current||JSON.stringify(state.cases)!==p.before){
+  clearAssignments();fail('Previous human work changed; source-bound assignment preview must be recreated.');
+ }
+ if(!global.confirm('Assign '+p.proposal.rows.length+' currently selected OPEN human cases to local HUMAN label '+p.proposal.newOwner+'? This is NOT authenticated identity, consent or permission.'))return;
+ const cases=global.LightUpCalendarWorkload.apply(state.findings,state.cases,p.proposal);
+ state={...state,cases};dirty=true;activeId=null;ownerFilter=null;
+ $('edit-panel').hidden=true;clearRefresh();clearSchedule();
+ render();
+ $('assign-message').textContent=p.proposal.rows.length+
+  ' human ownership notes updated locally. Export the PRIVATE Casework v1 draft for separate authorized handoff.';
+}
 function openEdit(id){
  if(!state||!$('source-ack').checked)fail('Source confirmation required.');
  const c=state.cases.find(x=>x.finding_id===id);
@@ -306,7 +366,7 @@ function adjustMonth(delta){
 }
 function render(){
  if(!state)return;
- renderMonth();
+ clearAssignments();renderOwners();renderMonth();
  const rows=filtered(),body=$('rows');body.replaceChildren();
  for(const x of rows){
   const f=x.finding,c=x.case,tr=document.createElement('tr');
@@ -327,7 +387,7 @@ function render(){
   ['Missing a human due date',all.filter(x=>isOpen(x.case)&&!x.case.due_date).length]
  ];
  const m=$('metrics');m.replaceChildren();for(const [label,count] of counts){const d=textEl('div','', 'metric');d.append(textEl('strong',count),textEl('span',label));m.append(d);}
- $('scope-info').textContent=rows.length+' matching original findings; '+rows.filter(eligible).length+' with eligible human follow-up dates. Missing dates are NOT assumed resolved.';
+ $('scope-info').textContent=rows.length+' matching original findings'+(ownerFilter!==null?' for exact human owner '+ownerFilter:'')+'; '+rows.filter(eligible).length+' with eligible human follow-up dates. Missing dates are NOT assumed resolved.';
  $('download').disabled=!$('calendar-ack').checked||!$('source-ack').checked;
  $('casework-save').disabled=!$('draft-ack').checked||!$('source-ack').checked;
 }
@@ -353,7 +413,7 @@ async function openFile(file){
  const digest=await global.LightUpCasework.digest(clean.findings);
  if(clean.source_sha256&&(!digest||clean.source_sha256!==digest))fail('Original source fingerprint mismatch or browser digest unavailable.');
  const newState={...clean,digest};
- state=newState;clearSchedule();clearRefresh();$('refresh-file').value='';$('refresh-ack').checked=false;dirty=false;activeId=null;selectedDay=null;$('month').value=todayUTC().slice(0,7);$('edit-panel').hidden=true;$('draft-ack').checked=false;
+ state=newState;ownerFilter=null;clearSchedule();clearRefresh();$('refresh-file').value='';$('refresh-ack').checked=false;dirty=false;activeId=null;selectedDay=null;$('month').value=todayUTC().slice(0,7);$('edit-panel').hidden=true;$('draft-ack').checked=false;
  $('workspace').hidden=false;$('calendar-ack').checked=false;$('export-message').textContent='';
  render();
  $('message').textContent=clean.findings.length+' original findings loaded locally. Source is a historical unsigned draft; no current identity or consent checked.';
@@ -408,7 +468,7 @@ function exportAggregate(){
  $('export-message').textContent='Anonymous category counts exported. This is neither a retest outcome nor proof of a safe public disclosure.';
 }
 function reset(){
- state=null;activeId=null;dirty=false;selectedDay=null;clearSchedule();clearRefresh();$('refresh-file').value='';$('refresh-ack').checked=false;$('file').value='';$('source-ack').checked=false;$('calendar-ack').checked=false;$('draft-ack').checked=false;$('edit-panel').hidden=true;
+ state=null;activeId=null;dirty=false;selectedDay=null;ownerFilter=null;clearAssignments();clearSchedule();clearRefresh();$('refresh-file').value='';$('refresh-ack').checked=false;$('file').value='';$('source-ack').checked=false;$('calendar-ack').checked=false;$('draft-ack').checked=false;$('edit-panel').hidden=true;
  $('workspace').hidden=true;$('message').textContent='Private workspace cleared from app state. Already exported files and calendar imports remain under your control.';
 }
 $('file').addEventListener('change',async e=>{
@@ -424,6 +484,11 @@ $('refresh-ack').addEventListener('change',()=>{clearRefresh();});
 $('refresh-file').addEventListener('change',clearRefresh);
 $('refresh-apply').addEventListener('click',()=>{try{applyRefresh();}catch(e){$('refresh-message').textContent='HOLD: '+e.message;}});
 $('refresh-receipt').addEventListener('click',()=>{try{exportRefreshReceipt();}catch(e){$('refresh-message').textContent='HOLD: '+e.message;}});
+$('owner-filter-clear').addEventListener('click',()=>{ownerFilter=null;render();});
+$('assign-preview-button').addEventListener('click',()=>{try{previewAssignment();}catch(e){clearAssignments();$('assign-message').textContent='HOLD: '+e.message;}});
+$('assign-ack').addEventListener('change',assignmentControls);
+$('assign-apply').addEventListener('click',()=>{try{applyAssignment();}catch(e){$('assign-message').textContent='HOLD: '+e.message;}});
+for(const id of ['assign-owner','assign-empty-only'])$(id).addEventListener('change',clearAssignments);
 $('schedule-preview-button').addEventListener('click',()=>{try{previewSchedule();}catch(e){clearSchedule();$('schedule-message').textContent='HOLD: '+e.message;}});
 $('schedule-ack').addEventListener('change',scheduleControls);
 $('schedule-apply').addEventListener('click',()=>{try{applySchedule();}catch(e){$('schedule-message').textContent='HOLD: '+e.message;}});
