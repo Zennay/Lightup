@@ -290,7 +290,12 @@ $('revisionCarry').addEventListener('click',()=>{
    // Never transfer an old preparedness verdict or replace user-written assignments.
    if(destination.status==='prepared')continue;
    const fill={};
-   for(const key of ['owner','due','next_action'])if(original[key]&&!destination[key])fill[key]=original[key];
+   for(const key of ['owner','due','next_action']){
+    // A changed request can invalidate the meaning of an earlier instruction.
+    // Carry owner/date logistics, but NEVER copy an older action note into an impacted stage.
+    if(key==='next_action'&&current.affectedStages.includes(stage))continue;
+    if(original[key]&&!destination[key])fill[key]=original[key];
+   }
    if(Object.keys(fill).length)changes.push({stage,fill});
   }
   if(!changes.length){
@@ -299,7 +304,7 @@ $('revisionCarry').addEventListener('click',()=>{
   }
   if(!confirm('Copy '+changes.reduce((n,c)=>n+Object.keys(c.fill).length,0)+
    ' missing coordinator, due-date or action fields across '+changes.length+
-   ' preparation streams to the UPDATED draft? Matching self-reported client labels DO NOT verify tenancy. Prepared/blocked status, consent, operator decisions, grants and source files never transfer.'))return;
+   ' preparation streams to the UPDATED draft? Matching self-reported client labels DO NOT verify tenancy. Earlier action notes for changed preparation streams, prepared/blocked statuses, consent, operator decisions, grants and source files never transfer.'))return;
   for(const change of changes)Object.assign(target.tasks[change.stage],change.fill);
   const count=changes.length;
   setDirty();render();
