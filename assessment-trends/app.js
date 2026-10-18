@@ -278,7 +278,7 @@
     $("message").textContent=message; $("message").className="message"+(bad?" bad":"");
   }
   function reset() {
-    revisions=[];sourceHashes=[];sourceMeta=[];discussionStages=Object.create(null);caseStages=new Map();casePlans=new Map();batchUndo=null;selectedCase=0;revisionFocus=0;pairFocus=1;crossA=0;crossB=1;demoMode=false; $("workspace").hidden=true; $("files").value="";
+    revisions=[];sourceHashes=[];sourceMeta=[];discussionStages=Object.create(null);caseStages=new Map();casePlans=new Map();batchUndo=null;selectedCase=0;revisionFocus=0;pairFocus=1;crossA=0;crossB=1;familyFocus="all";selected="valid_findings";demoMode=false; $("workspace").hidden=true; $("files").value="";
     $("notes").value="";$("draft-file").value="";
     $("batch-undo").disabled=true;
     $("append-file").value="";
@@ -1170,7 +1170,7 @@
   }
   $("demo").addEventListener("click",()=>{
     revisions=[];sourceHashes=[];sourceMeta=[];demoMode=false;
-    crossA=0;crossB=1;
+    crossA=0;crossB=1;familyFocus="all";selected="valid_findings";
     $("workspace").hidden=true;$("files").value="";$("append-file").value="";
     caseStages=new Map();casePlans=new Map();batchUndo=null;discussionStages=Object.create(null);
     $("batch-undo").disabled=true;
@@ -1201,7 +1201,7 @@
   });
   $("files").addEventListener("change",async ev=>{
     // No mixing old and new reports. A failed import removes previous content.
-    revisions=[];sourceHashes=[];sourceMeta=[];revisionFocus=0;pairFocus=1;crossA=0;crossB=1;discussionStages=Object.create(null);caseStages=new Map();casePlans=new Map();batchUndo=null;selectedCase=0;demoMode=false;$("workspace").hidden=true;$("notes").value="";
+    revisions=[];sourceHashes=[];sourceMeta=[];revisionFocus=0;pairFocus=1;crossA=0;crossB=1;familyFocus="all";selected="valid_findings";discussionStages=Object.create(null);caseStages=new Map();casePlans=new Map();batchUndo=null;selectedCase=0;demoMode=false;$("workspace").hidden=true;$("notes").value="";
     $("batch-undo").disabled=true;
     $("batch-message").textContent="No bulk proposal recorded.";
     const files=[...ev.target.files];
@@ -1352,7 +1352,7 @@
   ]);
   function privateViewState() {
     return {
-      selected_metric:selected,
+      selected_metric:selected,family_focus:familyFocus,
       cross_a:crossA+1,cross_b:crossB+1,cross_metric:crossMetric,
       adjacent_second:pairFocus+1,
       case_ordinal:selectedCase+1,
@@ -1364,12 +1364,18 @@
       axis_enabled:AXIS_IDS.map(([id])=>$(""+id).checked)
     };
   }
-  function canonicalPrivateView(view) {
-    const keys=["selected_metric","cross_a","cross_b","cross_metric",
+  function canonicalPrivateView(view,withFamily) {
+    const keys=["selected_metric",...(withFamily?["family_focus"]:[]),
+      "cross_a","cross_b","cross_metric",
       "adjacent_second","case_ordinal","revision_focus","case_filter",
       "case_sort","agenda_filter","source_aliases","axis_enabled"];
     REQUIRE(exact(view,keys) &&
       NAMES.includes(view.selected_metric) &&
+      (!withFamily||(
+        ["all",...FAMILIES.map(x=>x.key)].includes(view.family_focus) &&
+        (view.family_focus==="all"||
+          FAMILIES.find(x=>x.key===view.family_focus).metrics.includes(view.selected_metric))
+      )) &&
       NAMES.includes(view.cross_metric) &&
       Number.isSafeInteger(view.cross_a) &&
       Number.isSafeInteger(view.cross_b) &&
@@ -1398,7 +1404,7 @@
   function privateDraft() {
     REQUIRE(revisions.length>=3 && sourceHashes.length===revisions.length &&
       sourceHashes.every(x=>typeof x==="string" && /^[a-f0-9]{64}$/.test(x)));
-    return {format:"lightup.assessment_trends.private_draft",version:4,
+    return {format:"lightup.assessment_trends.private_draft",version:5,
       status:"DRAFT_ONLY",source_authenticated:false,
       source_sha256:sourceHashes.slice(),
       view:privateViewState(),
@@ -1421,14 +1427,15 @@
     const decoded=new TextDecoder("utf-8",{fatal:true}).decode(bytes);
     const doc=strictJSON(decoded);
     const isV1=doc && doc.version===1,
-      hasPlan=doc && (doc.version===3||doc.version===4),
-      hasView=doc && doc.version===4;
+      hasPlan=doc && [3,4,5].includes(doc.version),
+      hasView=doc && [4,5].includes(doc.version),
+      hasFamily=doc && doc.version===5;
     const keys=["format","version","status","source_authenticated",
       "source_sha256","discussion",...(isV1?[]:["case_review"]),
       ...(hasView?["view"]:[]),...AUTH];
     REQUIRE(exact(doc,keys) &&
       doc.format==="lightup.assessment_trends.private_draft" &&
-      [1,2,3,4].includes(doc.version) && doc.status==="DRAFT_ONLY" &&
+      [1,2,3,4,5].includes(doc.version) && doc.status==="DRAFT_ONLY" &&
       doc.source_authenticated===false && AUTH.every(k=>doc[k]===false) &&
       Array.isArray(doc.source_sha256) &&
       doc.source_sha256.length===sourceHashes.length &&
@@ -1461,12 +1468,13 @@
           {route:row.route,date:row.date});
       }
     }
-    const view=hasView?canonicalPrivateView(doc.view):null;
+    const view=hasView?canonicalPrivateView(doc.view,hasFamily):null;
     discussionStages=next;
     caseStages=nextCases;
     casePlans=nextPlans;batchUndo=null;
     $("batch-undo").disabled=true;
     if(view) {
+      familyFocus=hasFamily?view.family_focus:"all";
       selected=view.selected_metric;
       crossA=view.cross_a-1;crossB=view.cross_b-1;
       crossMetric=view.cross_metric;pairFocus=view.adjacent_second-1;
@@ -1491,7 +1499,7 @@
   $("draft-file").addEventListener("change",async event=>{
     try {
       await restoreDraft(event.target.files[0]);
-      $("draft-state").textContent="Private human review and (for v4 concepts) workspace view restored against exact reopened source bytes and user-selected order; provenance is not authenticated.";
+      $("draft-state").textContent="Private human review and (for v4/v5 concepts) workspace view restored against exact reopened source bytes and user-selected order; provenance is not authenticated.";
     } catch (_) {
       $("draft-state").textContent="Draft HOLD: incompatible source bytes/order, duplicate or malformed fields. Existing discussion stages were preserved.";
     } finally {
