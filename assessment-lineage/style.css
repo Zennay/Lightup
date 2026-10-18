@@ -55,3 +55,9 @@ textarea:focus-visible{outline:3px solid var(--hold);outline-offset:3px}
 .private-mismatch #mismatchDetails{margin-top:.8rem}
 .private-mismatch td{overflow-wrap:anywhere;max-width:380px}
 @media print{.private-mismatch{display:none!important}}
+
+#actionBoardSection{border-left:4px solid var(--link)}
+#humanActionBoardStatus{font-weight:700;color:var(--link)}
+#humanPlan .queue-controls{grid-template-columns:repeat(auto-fit,minmax(240px,1fr))}
+#humanPlanState{color:var(--muted)}
+@media print{#actionBoardSection,#humanPlan{display:none!important}}
