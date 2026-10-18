@@ -121,7 +121,7 @@ def _build_report(result, baseline_sha: str, candidate_sha: str, cohort: bool):
         "<meta http-equiv='Content-Security-Policy' content=\"default-src 'none'; "
         "style-src 'unsafe-inline'; img-src 'none'; connect-src 'none'; "
         "form-action 'none'; base-uri 'none'\">"
-        "<title>LightUp offline lab review — REVIEW_ONLY</title>"
+        "<title>LightUp offline lab review — human triage only</title>"
         "<style>body{font:16px/1.5 system-ui,sans-serif;max-width:1100px;"
         "margin:2rem auto;padding:0 1rem;color:#17202c}h1,h2{line-height:1.2}"
         ".notice{border:2px solid #343f53;padding:1rem;margin:1rem 0}"
@@ -132,7 +132,7 @@ def _build_report(result, baseline_sha: str, candidate_sha: str, cohort: bool):
         "@media print{body{max-width:none;font-size:11pt}section{break-inside:auto}"
         "tr{break-inside:avoid}}</style></head><body>"
         "<h1>LightUp · private offline lab comparison</h1>"
-        "<div class='notice'><strong>REVIEW_ONLY — HOLD for activation/release.</strong>"
+        "<div class='notice'><strong>Offline metric review only — HOLD for activation/release.</strong>"
         "<p>This is a comparison of caller-supplied local lab records, not verified"
         " provenance, independent ground truth, security assurance, client consent,"
         " operator authorization or permission to contact any target.</p>"
@@ -193,7 +193,12 @@ def main(argv=None):
         else:
             result = compare_lab_evaluations(
                 before[0], after[0], before[1], after[1])
-        if result.status != "REVIEW_ONLY":
+        metrics_ready = (bool(result.comparisons) and all(
+            bool(comparison.changes) for _, comparison in result.comparisons
+        )) if args.cohort else bool(result.changes)
+        # A *real metric regression* is HOLD, but must still be reviewable.
+        # Invalid/replayed records produce an empty comparison and no document.
+        if result.status not in ("REVIEW_ONLY", "HOLD") or not metrics_ready:
             print("LAB_REVIEW_HOLD")
             return 3
         document = _build_report(result, first_sha, second_sha, args.cohort)
@@ -202,8 +207,8 @@ def main(argv=None):
             UnicodeError, RecursionError, AttributeError):
         print("LAB_REVIEW_HOLD")
         return 3
-    print("PRIVATE_LAB_REVIEW_WRITTEN — REVIEW_ONLY; NOT AUTHORIZED")
-    return 2
+    print("PRIVATE_LAB_REVIEW_WRITTEN — " + result.status + "; NOT AUTHORIZED")
+    return 2 if result.status == "REVIEW_ONLY" else 3
 
 
 if __name__ == "__main__":
