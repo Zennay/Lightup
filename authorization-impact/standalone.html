@@ -374,7 +374,7 @@ var holder=el("private-review-b64");if(!holder)return;
 var encoded=holder.content.textContent.trim(),declared=holder.getAttribute("data-review-sha256");
 if(!encoded)return;
 try{
-if(!source||!sourceSHA||fictional||human.size)throw Error("original source not admitted");
+if(!source||!sourceSHA||fictional||human.size||pendingHumanEdit())throw Error("original source not admitted or operator has existing edits");
 if(!/^[A-Za-z0-9+/]+={0,2}$/.test(encoded)||encoded.length>350000||!/^[0-9a-f]{64}$/.test(declared))throw Error("private review envelope invalid");
 var binary=atob(encoded),bytes=new Uint8Array(binary.length);
 for(var k=0;k<binary.length;k++)bytes[k]=binary.charCodeAt(k);
