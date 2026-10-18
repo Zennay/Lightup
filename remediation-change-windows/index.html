@@ -29,6 +29,13 @@ td select{min-width:130px}.hold{color:#ffcf96;font-weight:750}#status[data-error
 <div class="actions"><button id="load" class="primary">Load original source</button><button id="forget">Forget local workspace</button></div>
 <p id="status" aria-live="polite" role="status"></p><p id="digest" class="muted"></p></section>
 <div id="results" hidden>
+<section class="files"><h2>Optional · Original source revision continuation</h2>
+<p>When you obtain a <strong>newer original separately authorized</strong> five-column CSV for the <strong>same exact client and engagement</strong>, preview original added, changed, unchanged and absent IDs. Only exact unchanged source rows can retain unverified human review notes and proposed slots. Changed/new rows reset; absent never means fixed.</p>
+<div class="grid"><label>Newer original findings CSV (private)<input id="nextCsv" type="file" accept=".csv,text/csv"></label>
+<label><input id="confirmRevision" type="checkbox">I independently confirmed this is the same actual client and exact engagement. No real permission is implied.</label></div>
+<div class="actions"><button id="previewRevision">Preview original source revision</button><button id="applyRevision" disabled>Apply safe HUMAN planning carry</button></div>
+<p id="revisionSummary" role="status" aria-live="polite"></p>
+<p class="muted">A preview records only the current in-memory draft. If notes, slot selections or either source changes between preview and apply, the preview becomes stale and is refused. Missing original records are not proof of remediation, closure or retest.</p></section>
 <section><h2>2 · Define up to four hypothetical change-review windows</h2><p class="muted">Resume an earlier private planning draft only when the exact original source and current human evidence notes are unchanged. Nothing is restored on mismatch.</p><div class="grid files"><label>PRIVATE saved human change-window JSON<input id="planFile" type="file" accept=".json,application/json"></label></div><div class="actions"><button id="resume">Resume PRIVATE source-bound plan</button></div><p>All times are UTC and merely proposed. A blocked human dossier or missing rollout/rollback reference remains HOLD even when placed on a calendar.</p>
 <div id="windows" class="grid"></div><div class="actions"><button id="recalculate">Recalculate human readiness</button></div></section>
 <section><h2>3 · Place findings into human review windows</h2><div class="grid">
