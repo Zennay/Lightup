@@ -17,6 +17,12 @@ The published standalone build is generated from these exact owned source files;
 
 No free-text asset identities, domain names, requested notes, uploaded filenames, client labels, browser contacts or credentials appear in generated handoff JSON/CSV. The **local progress backup** intentionally includes manually entered short *reference labels* so the user can resume work; choose generic labels without private data and handle that local file privately.
 
+## Unified, read-only human coordination agenda
+
+A complete **combined next-action workboard** now composes four genuinely available offline product flows, without acquiring any of their real permissions: scope dossier preparation, paired overlap discussions, unverified client/operator Permission Brief replies and source-bound human Withdrawal Desk notifications. The new `human-coordination.js` engine ranks all bounded source-linked items (urgent STOP requests first, then independent follow-up, then normal preparation) and yields actionable role-labelled next steps, not another synthetic QA score.
+
+The UI supports type and priority filters, direct navigation to a related dossier, and complete downloadable, privacy-minimal **JSON and CSV**. Both exports contain only anonymous dossier indexes, source SHA-256, role, action code, urgency and optional local date. All authority flags are literal `false` and every action remains `REVIEW_ONLY_HOLD`. The workboard never talks to an endpoint, cannot authenticate people or tenants, and does not mark independent consent, STOP confirmation, grant revocation or release as performed. A returned `answered_unverified` reply still creates a real **human follow-up** item requesting independent verification — it is not a completed consent step.
+
 ## Integrated client/operator Permission Brief replies
 
 The standalone app now imports the **combined human reply reconciliation JSON** from the separately owned [Scope Permission Brief PR #1578](https://github.com/Zennay/Lightup/pull/1578). This is a typed, read-only transfer of **unverified** role-labelled questions: it does not grant identity, legal consent, authenticated operator approval, authorization or execution.
