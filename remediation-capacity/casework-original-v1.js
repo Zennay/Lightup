@@ -1,4 +1,3 @@
-/* Byte-identical source snapshot from immutable PR #1568 HEAD 9c73e8468ce271bf8c6bef4cac071e5ad9c1806b; do not modify. */
 /* LightUp local casework. Parsing/presentation only; never authenticates source or authorizes assessments. */
 (function(global){
 'use strict';
