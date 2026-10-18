@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-agbJO3OVuciws7hX4E7Wd1Wbb+9OKp74lLmTy/0lq+Q=' 'sha256-X4nOjHqXl4cEjDVdqODJ4miIGbKHwaSBHfgk1Y4EyQ4=' 'sha256-F/FTboDDkAFr+2CnZVzOxVrUYtmAzfKdvueiY9ELeiE=' 'sha256-8MhMb58WJkc5Llfd0r2NRUn7+l0Xue3qzNmyNgkIuUw=' 'sha256-mItETud1dziIcS3n7S9FPP1RE4zpMTnINDPMW6YKEuI='; style-src 'sha256-1gZfNVRORihN1vpFpE4fKdG2JY5pvhgWdk9UnRqp5Oc='; img-src 'none'; connect-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-agbJO3OVuciws7hX4E7Wd1Wbb+9OKp74lLmTy/0lq+Q=' 'sha256-X4nOjHqXl4cEjDVdqODJ4miIGbKHwaSBHfgk1Y4EyQ4=' 'sha256-F/FTboDDkAFr+2CnZVzOxVrUYtmAzfKdvueiY9ELeiE=' 'sha256-8MhMb58WJkc5Llfd0r2NRUn7+l0Xue3qzNmyNgkIuUw=' 'sha256-zeBuPUXCyHEUkNlmt8A4/bPNF/CZQhm0f0gtF/xLF8o='; style-src 'sha256-+vYcqWkXzrOI7pJpHAzJv726in+bklood6lLTi5OoWY='; img-src 'none'; connect-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'">
   <title>LightUp · Scope Handoff Register</title>
   <style>:root{font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;color-scheme:dark;--bg:#0b111c;--panel:#172236;--line:#31445e;--text:#f2f6ff;--muted:#b8c7dc;--accent:#77bfff;--warn:#ffd89c}
 *{box-sizing:border-box}body{background:linear-gradient(145deg,#0d1626,#111826 58%,#0d1320);color:var(--text);margin:0;min-height:100vh}header,main,footer{max-width:1160px;margin:auto;padding:24px}header{padding-top:45px}.topline{display:flex;align-items:center;justify-content:space-between;gap:16px;font-size:.76rem;letter-spacing:.15em;color:var(--accent)}.flag{background:#43321e;color:var(--warn);padding:8px 12px;border-radius:30px;border:1px solid #6e5530;font-size:.7rem}h1{font-size:clamp(1.9rem,5vw,3.6rem);max-width:750px;margin:35px 0 15px;line-height:1.11;letter-spacing:-.045em}h2{font-size:1.25rem;margin:0 0 8px;letter-spacing:-.02em}h3{margin:0 0 10px;font-size:1.07rem}p{color:var(--muted);line-height:1.55}header>p{max-width:780px}main{display:grid;gap:23px}.panel{border:1px solid var(--line);border-radius:17px;padding:25px;background:var(--panel);box-shadow:0 18px 44px #0002}.section-head{display:flex;align-items:start;justify-content:space-between;gap:24px;flex-wrap:wrap}.section-head p{margin:0 0 14px}.toolbar,.actions{display:flex;align-items:end;gap:12px;flex-wrap:wrap;margin:14px 0}.toolbar>label{display:grid;gap:6px;flex:1;min-width:180px;font-size:.86rem;color:var(--muted)}input,select,textarea,button,.button{font:inherit;border-radius:10px}input,select,textarea{padding:11px 12px;color:var(--text);background:#0c1525;border:1px solid #52617b;min-width:0}button,.button{display:inline-block;color:var(--text);padding:11px 14px;background:#253d59;border:1px solid #64809c;cursor:pointer;white-space:normal;text-align:center}button:hover,.button:hover{background:#31567c}button:focus-visible,.button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid var(--accent);outline-offset:2px}.button.primary{background:#086ab3;border-color:#5eb7ff;font-weight:700}button[disabled]{opacity:.45;cursor:not-allowed}.notice{padding:11px 14px;background:#101b2a;border-left:3px solid var(--accent);white-space:pre-wrap}.notice.error{border-color:#ff8181;color:#ffcdcd}.stats{display:flex;flex-wrap:wrap;gap:9px;margin:14px 0}.metric{padding:9px 14px;border-radius:12px;border:1px solid #405577;background:#0e1a2b;font-size:.9rem}.metric strong{font-size:1.25rem;margin-right:6px}.boards{display:grid;grid-template-columns:repeat(auto-fill,minmax(255px,1fr));gap:12px}.card{display:grid;text-align:left;gap:9px;white-space:normal;background:#102136;border:1px solid #3e5877;padding:17px}.card.selected{outline:2px solid #80c9ff}.card-title{font-size:1.08rem;font-weight:700;overflow-wrap:anywhere}.meta{font-size:.82rem;color:var(--muted)}.chips{display:flex;flex-wrap:wrap;gap:5px}.chip{font-size:.72rem;padding:4px 7px;border-radius:6px;background:#34455e}.chip.alert{background:#674827;color:#fff2d9}.controls{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:15px}.controls label{display:grid;gap:5px;min-width:190px;flex:1;color:var(--muted)}.checkrow{display:grid;grid-template-columns:1fr 170px;gap:14px;align-items:center;padding:11px 0;border-bottom:1px solid #334860}.checkrow label{font-weight:600}.checkrow small{color:var(--muted);display:block;margin-top:4px}.summary{background:#102136;border:1px solid #344c67;border-radius:12px;padding:15px}.warning{border-left:3px solid #d69e53;padding:11px 14px;background:#2e261d;color:#f9e8d2}.small{font-size:.83rem}footer{font-size:.82rem;color:#94a7bf;padding-bottom:50px}@media(max-width:600px){header,main,footer{padding-left:15px;padding-right:15px}.panel{padding:17px}.checkrow{grid-template-columns:1fr}.topline{align-items:start;flex-direction:column}.controls{flex-direction:column}.controls label{width:100%}}@media print{*{color:#000!important;box-shadow:none!important;background:white!important}header,main{padding:5px}.panel{break-inside:avoid;border:1px solid #888}.toolbar,.actions,.button,#clear,footer{display:none!important}.boards{grid-template-columns:repeat(2,1fr)}.warning{border:1px solid #888}body{font-size:11pt}}
@@ -39,6 +39,13 @@
 .withdrawal-card .actions button{font-size:.85rem;padding:9px 13px}
 @media(max-width:540px){.withdrawal-board{grid-template-columns:1fr}}
 @media print{.withdrawal-card .actions{display:none!important}.withdrawal-card{border-color:#888}}
+
+.withdrawal-checklist{display:grid;gap:8px;padding:10px 0;border-top:1px solid #8e5744;border-bottom:1px solid #8e5744}
+.withdrawal-step{display:grid;grid-template-columns:minmax(110px,1fr) minmax(155px,2.3fr);gap:5px 14px;padding:7px 0}
+.withdrawal-step .meta{grid-column:2}
+.withdrawal-step strong{font-size:.8rem;overflow-wrap:anywhere}
+.withdrawal-step span{color:#f6dccd}
+@media(max-width:600px){.withdrawal-step{grid-template-columns:1fr}.withdrawal-step .meta{grid-column:1}}
 </style>
   
   
@@ -74,7 +81,7 @@
   <section class="panel">
     <div class="section-head"><div><h2>3. Actiewerkvoorraad per rol</h2><p>Bereid menselijk werk voor per dossier en verantwoordelijke rol (cliënt, operator of gezamenlijk). De optionele doeldatum is lokaal, geen gereserveerd scanmoment of toestemmingsdeadline.</p></div></div>
     <div class="toolbar"><label>Rolverdeling <select id="taskRoleFilter"><option value="all">Alle rollen</option><option value="client">Cliëntvoorbereiding</option><option value="operator">Operatorvoorbereiding</option><option value="joint">Gezamenlijke afstemming</option></select></label>
-    <label>Aandacht <select id="taskDueFilter"><option value="all">Alle open voorbereiding</option><option value="overdue">Doeldatum verstreken</option><option value="week">Binnen 7 dagen</option><option value="undated">Zonder doeldatum</option><option value="revision">Herziening nodig</option></select></label></div>
+    <label>Aandacht <select id="taskDueFilter"><option value="all">Alle open voorbereiding</option><option value="overdue">Doeldatum verstreken</option><option value="week">Binnen 7 dagen</option><option value="undated">Zonder doeldatum</option><option value="revision">Herziening nodig</option><option value="withdrawal">Extern stop-/wijzigingsverzoek</option></select></label></div>
     <div id="actionStats" class="stats"></div><div id="actionQueue" class="action-queue"></div>
   </section>
   <section class="panel">
@@ -551,6 +558,20 @@ global.LightUpWithdrawalImport=Object.freeze({parse,safeSaved});
   const STATUS_TEXT = Object.freeze({open:"Open",working:"In gesprek",prepared:"Voor overdracht voorbereid",needs_revision:"Herziening nodig"});
   const records = [];
   const pairReviews = new Map();
+  const WITHDRAWAL_ACTION_TEXT = Object.freeze({
+    client_channel:"Contact cliënt via onafhankelijk geauthenticeerd kanaal; verifieer verzoek en scope.",
+    operator_channel:"Waarschuw bevoegde operator via afgesproken onafhankelijke urgente route.",
+    active_work:"Vraag operator om lopend werk te pauzeren of te stoppen en status onafhankelijk te controleren.",
+    grant_revoke:"Vraag echte grant-eigenaar om betrokken rechten werkelijk in te trekken en controleer bij gebruik.",
+    scope_schedule:"Laat verantwoordelijken werkelijke goedgekeurde scope en planning opnieuw afstemmen.",
+    evidence_privacy:"Laat data-eigenaar toegang, bewaartermijn en delen van bewijsmateriaal opnieuw beoordelen.",
+    human_ack:"Vraag onafhankelijke geauthenticeerde ontvangstbevestiging; app biedt die zelf niet.",
+    incident_log:"Leg het besluit vast in het echte operationele audit-/incidentregister."
+  });
+  const WITHDRAWAL_STATUS_TEXT=Object.freeze({
+    todo:"Nog niet lokaal voorbereid",drafted_local:"Alleen lokaal concept opgesteld",
+    requested_unverified:"Zelfgerapporteerd verzoek, ontvangst NIET geverifieerd"
+  });
   const PAIR_STATES = Object.freeze(["open","discussion_started","needs_followup","discussion_recorded"]);
   const PAIR_LABELS = Object.freeze({
     open:"Open voor overleg",discussion_started:"Bespreking gestart",
@@ -747,6 +768,15 @@ global.LightUpWithdrawalImport=Object.freeze({parse,safeSaved});
           " van 8 externe menselijke stop-/wijzigingsacties nog zonder zelfs een ongeverifieerd verzoek. "+
           (x.effective?"Voorgesteld UTC-moment: "+x.effective+". ":"")+
           "Geen geauthenticeerde cliënt, echte grant-intrekking, dispatchstop of toestemming vastgesteld."));
+      const checklist=node("div","withdrawal-checklist");
+      for(const [id,description] of Object.entries(WITHDRAWAL_ACTION_TEXT)){
+        const row=node("div","withdrawal-step");
+        row.append(node("strong","",id.replaceAll("_"," ")),
+          node("span","small",description),
+          node("span","meta",WITHDRAWAL_STATUS_TEXT[x.statuses[id]]));
+        checklist.append(row);
+      }
+      card.append(checklist);
       const actions=node("div","actions");
       const open=node("button","","Dossier / stopacties bekijken");open.type="button";
       open.addEventListener("click",()=>{active=r.sha;render();$("detail").scrollIntoView({block:"start",behavior:"smooth"});});
@@ -755,7 +785,23 @@ global.LightUpWithdrawalImport=Object.freeze({parse,safeSaved});
         if(!confirm("Alleen deze ongeverifieerde offline reviewkopie wissen? Dit heft GEEN echt stopverzoek of revocation op."))return;
         r.withdrawal=null;show("Alleen lokale reviewkopie gewist; status 'Herziening nodig' blijft waar van toepassing.");render();
       });
-      actions.append(open,remove);card.append(actions);area.append(card);
+      const handoff=node("button","","Download anonieme STOP-overdracht");handoff.type="button";
+      handoff.addEventListener("click",()=>{
+        const lines=[
+          "LIGHTUP — SELF-REPORTED HUMAN STOP/SCOPE-CHANGE REQUEST — REVIEW_ONLY_HOLD",
+          "NO VERIFIED CLIENT/OPERATOR IDENTITY, ACTUAL REVOCATION, HANDLER STOP OR PERMISSION.",
+          "Source bytes SHA-256: "+r.sha,
+          "Self-reported urgency: "+x.urgency,
+          "Self-reported intent: "+x.intent,
+          "Proposed UTC effective moment: "+(x.effective||"not supplied"),
+          "Next actions (must use real authenticated channels):",
+          ...Object.entries(WITHDRAWAL_ACTION_TEXT).map(([id,description])=>
+            "- "+id+" ["+x.statuses[id]+"] "+description),
+          "This note does not stop a service or revoke any grant. Confirm status independently."
+        ];
+        download(lines.join("\n")+"\n","lightup-offline-stop-handoff.txt","text/plain;charset=utf-8");
+      });
+      actions.append(open,handoff,remove);card.append(actions);area.append(card);
     }
     if(!cases.length)area.append(node("p","small","Importeer een REVIEW_ONLY-export vanuit de zelfstandige Withdrawal Desk, na openen van dezelfde exacte Studio-bronbytes. Dit register kan geen echte operatie stoppen."));
   }
@@ -768,8 +814,9 @@ global.LightUpWithdrawalImport=Object.freeze({parse,safeSaved});
       const r=records.find(x=>x.sha===item.sha);
       const {sha,...safe}=item;
       r.withdrawal={...safe,statuses:{...safe.statuses}};
-      const touched=new Set(["client","operator","stops","owner"]);
-      if(safe.intent==="narrow_scope")touched.add("assets");
+      const touched=safe.intent==="stop_all" ?
+        new Set(TASKS.map(([id])=>id)) : new Set(["client","operator","stops","owner"]);
+      if(safe.intent==="narrow_scope"){touched.add("assets");touched.add("risk");}
       if(safe.intent==="postpone")touched.add("schedule");
       if(safe.intent==="withdraw_share")touched.add("privacy");
       for(const id of touched)if(r.tasks[id]==="prepared")r.tasks[id]="needs_revision";
@@ -786,6 +833,8 @@ global.LightUpWithdrawalImport=Object.freeze({parse,safeSaved});
     }
     const priority={needs_revision:0,working:1,open:2};
     return all.sort((a,b)=>{
+      const urgentA=a.r.withdrawal?.urgency==="urgent"?1:0,urgentB=b.r.withdrawal?.urgency==="urgent"?1:0;
+      if(urgentA!==urgentB)return urgentB-urgentA;
       if(a.due!==b.due)return a.due===null?1:b.due===null?-1:a.due.localeCompare(b.due);
       if(a.status!==b.status)return priority[a.status]-priority[b.status];
       return b.r.source.risk-a.r.source.risk;
@@ -804,6 +853,7 @@ global.LightUpWithdrawalImport=Object.freeze({parse,safeSaved});
       if(dueFilter==="week")return t.due!==null&&t.due>=today&&t.due<=weekEnd;
       if(dueFilter==="undated")return t.due===null;
       if(dueFilter==="revision")return t.status==="needs_revision";
+      if(dueFilter==="withdrawal")return t.r.withdrawal!==null;
       return true;
     });
     const metric=(label,value)=>{
