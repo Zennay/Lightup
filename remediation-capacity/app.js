@@ -306,7 +306,7 @@
     setFeedback('Unsigned aggregate discussion brief exported. No original finding details included.');
   });
 
-  // Source-bound, user-controlled resume: never localStorage or implicit restore.
+  // Source-bound, user-controlled resume: no browser persistence or implicit restore.
   function numericWorkingOptions(options) {
     if(!options)throw new Error('Generate a current proposal before saving');
     const names=['weeks','engineers','workDays','hoursPerDay','reserve'];
