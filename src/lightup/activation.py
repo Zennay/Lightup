@@ -113,16 +113,32 @@ class ActivationGate:
     approval, authenticated consent, revocation-at-use, or a future adapter gate.
     """
 
+    __slots__ = (
+        "scope_policy", "activation_policy", "_bound_scope_policy",
+        "_bound_activation_policy", "_bound_scope_values",
+        "_bound_activation_values", "_sealed",
+    )
+
+    def __setattr__(self, name: str, value: object) -> None:
+        # Read-only once fully constructed: ordinary Python attribute assignment
+        # must not widen an already approved/created activation gate.
+        if getattr(self, "_sealed", False):
+            raise AttributeError("activation gate policies are immutable after construction")
+        object.__setattr__(self, name, value)
+
     def __init__(self, scope_policy: ScopePolicy, activation_policy: ActivationPolicy):
-        activation_policy.validate()
+        # Validate exact source types BEFORE calling caller-controlled methods.
+        bound_scope = _scope_policy_snapshot(scope_policy)
+        bound_activation = _activation_policy_snapshot(activation_policy)
+        bound_activation.validate()
         self.scope_policy = scope_policy
         self.activation_policy = activation_policy
-        # Bind original object identity and immutable contents at construction.
-        # A later public attribute rebinding cannot elevate a pre-existing gate.
+        # Retain original object identity and immutable contents.
         self._bound_scope_policy = scope_policy
         self._bound_activation_policy = activation_policy
-        self._bound_scope_values = _scope_policy_snapshot(scope_policy)
-        self._bound_activation_values = _activation_policy_snapshot(activation_policy)
+        self._bound_scope_values = bound_scope
+        self._bound_activation_values = bound_activation
+        self._sealed = True
 
     def issue(self, target: Target, capability_id: str) -> ExecutionPermit:
         # Evaluate an independent canonical snapshot so a ScopePolicy callback
