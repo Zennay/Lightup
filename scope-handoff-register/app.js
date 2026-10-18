@@ -20,6 +20,13 @@
   const STATUSES = Object.freeze(["open", "working", "prepared", "needs_revision"]);
   const STATUS_TEXT = Object.freeze({open:"Open",working:"In gesprek",prepared:"Voor overdracht voorbereid",needs_revision:"Herziening nodig"});
   const records = [];
+  const pairReviews = new Map();
+  const PAIR_STATES = Object.freeze(["open","discussion_started","needs_followup","discussion_recorded"]);
+  const PAIR_LABELS = Object.freeze({
+    open:"Open voor overleg",discussion_started:"Bespreking gestart",
+    needs_followup:"Vervolgactie nodig",discussion_recorded:"Bespreking vastgelegd (geen goedkeuring)"
+  });
+  const pairKey=(a,b)=>[a,b].sort().join(":");
   let active = null;
   const $ = id => document.getElementById(id);
   const show = (message, error=false) => {
@@ -172,6 +179,7 @@
       const utc_overlap=LightUpPlanningWindow.overlaps(a.source.utcWindow,b.source.utcWindow)===true;
       if(!scope_overlap&&!utc_overlap) continue;
       pairs.push({left:a.sha,right:b.sha,scope_overlap,utc_overlap,
+        human_status:pairReviews.get(pairKey(a.sha,b.sha))||"open",
         priority:scope_overlap&&utc_overlap?"combined":scope_overlap?"scope":"schedule"});
     }
     const weight={combined:0,scope:1,schedule:2};
@@ -188,6 +196,7 @@
     count("Voorstellenparen met overlegpunt",pairs.length);
     count("Mogelijke scope-overlap",pairs.filter(x=>x.scope_overlap).length);
     count("UTC-vensteroverlap",pairs.filter(x=>x.utc_overlap).length);
+    count("Overleg nog niet vastgelegd",pairs.filter(x=>x.human_status!=="discussion_recorded").length);
     if(!pairs.length){area.append(node("p","small","Geen berekende paren. Dit bewijst geen geldige toestemming, veilig netwerk of conflictvrije planning."));return;}
     for(const p of pairs){
       const left=records.find(x=>x.sha===p.left),right=records.find(x=>x.sha===p.right);
@@ -198,6 +207,18 @@
       if(p.scope_overlap)codes.append(node("span","chip alert","Numerieke/literale scope-overlap na uitsluitingen"));
       if(p.utc_overlap)codes.append(node("span","chip alert","Gelijktijdige voorgestelde UTC-vensters"));
       card.append(title,meta,codes,node("p","small","Menselijke actie: controleer onafhankelijk eigendom, uitzonderingen, tenant-scheiding, daadwerkelijk gereserveerde tijden en noodstop. Geen claim dat dit dezelfde klant is."));
+      const statusLabel=node("label","pair-status","Lokale overlegstatus (geen goedkeuring)");
+      const selector=node("select");
+      for(const status of PAIR_STATES){const option=node("option","",PAIR_LABELS[status]);option.value=status;selector.append(option);}
+      selector.value=p.human_status;
+      selector.addEventListener("change",()=>{
+        const key=pairKey(p.left,p.right);
+        if(selector.value==="open")pairReviews.delete(key);
+        else pairReviews.set(key,selector.value);
+        show("Zelfgerapporteerde overlegstatus bijgewerkt; geen scopebesluit, consent, grant of autorisatie.");
+        render();
+      });
+      statusLabel.append(selector);card.append(statusLabel);
       const jump=node("div","actions");
       for(const r of [left,right]){
         const btn=node("button","",r.reference+" openen");
@@ -312,7 +333,7 @@
     input.addEventListener("change",()=>{r.reference=input.value.trim().slice(0,32)||"Naamloos dossier";render();});
     lab.append(input);controls.append(lab);
     const del=node("button","","Verwijder alleen dit concept");del.type="button";
-    del.addEventListener("click",()=>{if(!confirm("Dit concept en de lokale voorbereidingsantwoorden verwijderen?"))return;records.splice(records.indexOf(r),1);for(const x of records)if(x.replaces===r.sha)x.replaces=null;active=records[0]?.sha??null;show("Concept en afhankelijke revisiekoppeling(en) uit deze browsersessie verwijderd; andere taakstatussen behouden.");render();});
+    del.addEventListener("click",()=>{if(!confirm("Dit concept en de lokale voorbereidingsantwoorden verwijderen?"))return;records.splice(records.indexOf(r),1);for(const x of records)if(x.replaces===r.sha)x.replaces=null;for(const key of pairReviews.keys())if(key.split(":").includes(r.sha))pairReviews.delete(key);active=records[0]?.sha??null;show("Concept en afhankelijke revisiekoppeling(en) uit deze browsersessie verwijderd; andere taakstatussen behouden.");render();});
     controls.append(del);detail.append(controls);
     const relation=node("div","controls");
     const revLabel=node("label","","Voorganger koppelen (handmatig, geen eigendomsbewijs)");
@@ -393,8 +414,9 @@
   const json=(data,name)=>download(JSON.stringify(data,null,2)+"\n",name,"application/json;charset=utf-8");
   const authority=()=>({...DENIAL});
   function snapshot() {
-    return {kind:"lightup.scope_handoff_local_progress",schema_version:1,state:"REVIEW_ONLY_HOLD",authority:authority(),
-      entries:records.map(r=>({sha256:r.sha,reference:r.reference,replaces:r.replaces,tasks:{...r.tasks}}))};
+    return {kind:"lightup.scope_handoff_local_progress",schema_version:2,state:"REVIEW_ONLY_HOLD",authority:authority(),
+      entries:records.map(r=>({sha256:r.sha,reference:r.reference,replaces:r.replaces,tasks:{...r.tasks}})),
+      pair_reviews:meetingPairs().map(p=>({sources:[p.left,p.right].sort(),status:p.human_status}))};
   }
   function report() {
     return {kind:"lightup.scope_handoff_review_register",schema_version:1,state:"REVIEW_ONLY_HOLD",authority:authority(),
@@ -404,6 +426,7 @@
         dossier_b:"D"+String(records.findIndex(x=>x.sha===p.right)+1).padStart(2,"0"),
         numeric_or_literal_scope_overlap:p.scope_overlap,
         proposed_utc_overlap:p.utc_overlap,
+        self_reported_discussion_status:p.human_status,
         review_only:true
       })),
       entries:records.map((r,i)=>({
@@ -417,7 +440,7 @@
       }))};
   }
   function restore(o) {
-    assert(isPlain(o)&&o.kind==="lightup.scope_handoff_local_progress"&&o.schema_version===1&&o.state==="REVIEW_ONLY_HOLD","Geen compatibele lokale voortgang.");
+    assert(isPlain(o)&&o.kind==="lightup.scope_handoff_local_progress"&&[1,2].includes(o.schema_version)&&o.state==="REVIEW_ONLY_HOLD","Geen compatibele lokale voortgang.");
     assert(isPlain(o.authority)&&Object.keys(DENIAL).length===Object.keys(o.authority).length && Object.entries(DENIAL).every(([k,v])=>o.authority[k]===v),"Autorisatievlaggen mogen nooit waar zijn.");
     assert(Array.isArray(o.entries) && o.entries.length===records.length && records.length>0 && o.entries.length<=MAX,"Open eerst precies de oorspronkelijke conceptversies.");
     const shaMap=new Map(records.map(x=>[x.sha,x])),found=new Set(),updates=[];
@@ -434,9 +457,25 @@
     for(const [sha] of simulated){const visited=new Set([sha]);let cursor=simulated.get(sha);while(cursor){assert(!visited.has(cursor),"Cyclische revisielijn.");visited.add(cursor);cursor=simulated.get(cursor)||null;}}
     const targets=updates.map(([,e])=>e.replaces).filter(Boolean);
     assert(new Set(targets).size===targets.length,"Dubbele voorganger kan niet twee opvolgers hebben.");
-    if (!confirm("De huidige lokale voorbereidingsstatussen vervangen voor exact deze bronbestanden?"))return;
+    const nextPairs=new Map();
+    if(o.schema_version===2) {
+      const expected=new Set(meetingPairs().map(p=>pairKey(p.left,p.right)));
+      assert(Array.isArray(o.pair_reviews)&&o.pair_reviews.length===expected.size,
+        "Overlegpaarset komt niet overeen met de geopende bronbestanden.");
+      for(const pair of o.pair_reviews) {
+        assert(isPlain(pair) && Object.keys(pair).length===2 &&
+          Array.isArray(pair.sources)&&pair.sources.length===2&&pair.sources.every(x=>typeof x==="string") &&
+          PAIR_STATES.includes(pair.status),"Ongeldige brongebonden overlegstatus.");
+        const key=pairKey(pair.sources[0],pair.sources[1]);
+        assert(expected.has(key)&&!nextPairs.has(key),"Onbekend of dubbel overlegpaar.");
+        nextPairs.set(key,pair.status);
+      }
+    }
+    if (!confirm("De huidige lokale voorbereidings- en overlegstatussen vervangen voor exact deze bronbestanden?"))return;
     updates.forEach(([r,e])=>{r.reference=e.reference;r.replaces=e.replaces;r.tasks={...e.tasks};});
-    show("Lokale voorbereidingsstatussen atomisch hersteld voor identieke originele bestandsbytes.");
+    pairReviews.clear();
+    for(const [key,status] of nextPairs)if(status!=="open")pairReviews.set(key,status);
+    show("Dossier- en overlegstatussen atomisch hersteld voor identieke oorspronkelijke bronbytes.");
     render();
   }
   function fullHtmlPacket() {
@@ -455,7 +494,8 @@
     if(data.review_agenda.length){
       parts.push("<h2>Gedeelde menselijke review-agenda</h2><table><thead><tr><th>Voorstellen</th><th>Lokale overlapindicatoren</th></tr></thead><tbody>");
       for(const x of data.review_agenda)parts.push("<tr><td>"+esc(x.dossier_a)+" / "+esc(x.dossier_b)+
-        "</td><td>"+esc([x.numeric_or_literal_scope_overlap?"Netwerk/hostname na exclusies":null,x.proposed_utc_overlap?"UTC-venster":null].filter(Boolean).join("; "))+"</td></tr>");
+        "</td><td>"+esc([x.numeric_or_literal_scope_overlap?"Netwerk/hostname na exclusies":null,x.proposed_utc_overlap?"UTC-venster":null].filter(Boolean).join("; "))+
+        "<br>Menselijk overleg: "+esc(PAIR_LABELS[x.self_reported_discussion_status])+"</td></tr>");
       parts.push("</tbody></table><p>Deze paren bewijzen geen gedeeld eigendom, klant, toestemming of geboekt tijdslot; escaleer onafhankelijk.</p>");
     }
     for(const e of data.entries) {
@@ -504,7 +544,7 @@
   });
   $("clear").addEventListener("click",()=>{
     if(!records.length || !confirm("Alle in-memory concepten en taakstatussen definitief vergeten?"))return;
-    records.splice(0);active=null;show("Alle lokale conceptgegevens uit deze browserpagina gewist.");render();
+    records.splice(0);pairReviews.clear();active=null;show("Alle lokale concept- en overleggegevens uit deze browserpagina gewist.");render();
   });
   $("save").addEventListener("click",()=>records.length?json(snapshot(),"lightup-local-progress.json"):show("Laad eerst concepten.",true));
   $("export").addEventListener("click",()=>records.length?json(report(),"lightup-review-only-handoff.json"):show("Laad eerst concepten.",true));
