@@ -346,6 +346,19 @@ function render(){
       (same?'Original time has a 30-minute buffer from other proposed windows: ':'First candidate with 30-minute gap to other drafts: ')+
       formatUTC(proposed.start)+' → '+formatUTC(proposed.end));
     append(box,'small','Suggestion only; never modifies source request or authenticates resource ownership.');
+    if(proposed && proposed.start!==e.interval.start &&
+      Math.abs(proposed.start-e.original.start)<=31*DAY &&
+      withinWorkHours(proposed,workPolicy())){
+      const button=append(box,'button','Apply local what-if time for this proposal');
+      button.type='button';
+      button.addEventListener('click',()=>{
+        const index=entries.findIndex(original=>original.key===e.key);
+        if(index<0)return;
+        $('scenarioSelect').value=String(index);
+        $('scenarioStart').value=new Date(proposed.start).toISOString().slice(0,16);
+        applyScenario(proposed.start);
+      });
+    }
   }
   renderScenarios();
 }
