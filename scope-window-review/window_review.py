@@ -96,7 +96,7 @@ def when(value: object) -> datetime:
 
 
 def derive(casebook: dict, *, now: datetime, lead_days: int,
-           future_days: int) -> dict:
+           future_days: int, daily_capacity: int) -> dict:
     identity(casebook.get("client_id"))
     as_of = when(casebook.get("as_of"))
     if as_of > now + timedelta(minutes=5):
@@ -192,12 +192,34 @@ def derive(casebook: dict, *, now: datetime, lead_days: int,
             summary["HOLD" if hold else "REVIEW_ONLY"] += 1
     events.sort(key=lambda x: (x["review_date_utc"], x["human_priority"] != "HOLD",
                                x["engagement_id"] or "", x["grant_id"]))
+    # Human-only resource plan: do not silently pile unlimited same-day tasks.
+    # A delayed human reminder is marked HOLD, never treated as a source extension.
+    daily_usage = Counter()
+    shifted = 0
+    for item in events:
+        original = item["review_date_utc"]
+        assigned = datetime.fromisoformat(original).date()
+        while daily_usage[assigned.isoformat()] >= daily_capacity:
+            assigned += timedelta(days=1)
+        item["human_target_date_utc"] = original
+        item["review_date_utc"] = assigned.isoformat()
+        item["capacity_shift_days"] = (assigned - datetime.fromisoformat(original).date()).days
+        daily_usage[item["review_date_utc"]] += 1
+        if item["capacity_shift_days"]:
+            shifted += 1
+            item["human_priority"] = "HOLD"
+            item["next_action"] = "HUMAN_REVIEW_CAPACITY_OVERFLOW_RECHECK_ORIGINAL_SOURCE"
+    events.sort(key=lambda x: (x["review_date_utc"], x["human_priority"] != "HOLD",
+                               x["engagement_id"] or "", x["grant_id"]))
+    summary = Counter(item["human_priority"] for item in events)
     return {
         "schema": SCHEMA, "status": "HOLD" if stale or summary["HOLD"] else "REVIEW_ONLY",
         "source": "unsigned_original_casebook_retrospective",
         "as_of": as_of.isoformat(), "prepared_at": now.isoformat(),
         "stale_source_over_24h": stale,
-        "limits": {"lead_days": lead_days, "future_days": future_days},
+        "limits": {"lead_days": lead_days, "future_days": future_days,
+                   "daily_capacity": daily_capacity},
+        "capacity_shifted_items": shifted,
         "client_id": casebook["client_id"], "items": events,
         "declared_counts": {"items": len(events),
                             "hold": summary["HOLD"],
@@ -277,15 +299,18 @@ def main(argv=None) -> int:
     group.add_argument("--board", type=Path, help="private self-contained interactive offline HTML")
     parser.add_argument("--lead-days", type=int, default=7)
     parser.add_argument("--future-days", type=int, default=45)
+    parser.add_argument("--daily-capacity", type=int, default=8,
+                        help="suggested max human review slots per UTC day, 1..64")
     args = parser.parse_args(argv)
     try:
-        if not 0 <= args.lead_days <= 30 or not 1 <= args.future_days <= 366:
+        if (not 0 <= args.lead_days <= 30 or not 1 <= args.future_days <= 366
+                or not 1 <= args.daily_capacity <= 64):
             raise ReviewHold("invalid planning horizon")
         out = args.agenda_json or args.calendar or args.board
         ensure_private_destination(out)
         source = source_file(args.casebook)
         agenda = derive(source, now=datetime.now(timezone.utc), lead_days=args.lead_days,
-                        future_days=args.future_days)
+                        future_days=args.future_days, daily_capacity=args.daily_capacity)
         if args.agenda_json:
             payload = (json.dumps(agenda, ensure_ascii=True, indent=2,
                                   allow_nan=False) + "\n").encode("utf-8")
