@@ -73,6 +73,18 @@ def _target_authority_snapshot(target: Target) -> Target:
     )
 
 
+def _activation_policy_snapshot(policy: ActivationPolicy) -> ActivationPolicy:
+    # A frozen dataclass may still be changed through object.__setattr__.
+    if type(policy) is not ActivationPolicy or type(policy.mode) is not ActivationMode:
+        raise PermissionError("activation policy mode is not canonical")
+    reference = policy.activation_reference
+    if reference is not None and (
+        type(reference) is not str or not reference.strip()
+    ):
+        raise PermissionError("activation policy reference is not canonical")
+    return ActivationPolicy(mode=policy.mode, activation_reference=reference)
+
+
 class ActivationGate:
     """
     Policy gate for future active adapters.
@@ -89,19 +101,27 @@ class ActivationGate:
     def issue(self, target: Target, capability_id: str) -> ExecutionPermit:
         # Evaluate an independent canonical snapshot so a ScopePolicy callback
         # cannot change the original target/authorization during its own decision.
+        if (
+            type(capability_id) is not str
+            or not 1 <= len(capability_id) <= 256
+            or capability_id != capability_id.strip()
+            or any(ord(char) < 33 or ord(char) == 127 for char in capability_id)
+        ):
+            raise PermissionError("capability identity is not canonical")
+        activation = _activation_policy_snapshot(self.activation_policy)
         snapshot = _target_authority_snapshot(target)
         decision = self.scope_policy.decide(snapshot)
         if not decision.allowed:
             raise PermissionError(f"target denied by scope gate: {decision.reason.value}")
 
-        if self.activation_policy.mode is ActivationMode.PLAN_ONLY:
+        if activation.mode is ActivationMode.PLAN_ONLY:
             raise PermissionError("active execution is disabled: project is plan-only")
 
         issued_at = datetime.now(timezone.utc)
-        if self.activation_policy.mode is ActivationMode.LAB_ONLY:
+        if activation.mode is ActivationMode.LAB_ONLY:
             if decision.reason.value not in {"loopback", "private_lab"}:
                 raise PermissionError("lab-only mode cannot issue permits for public targets")
-            reference = self.activation_policy.activation_reference or "LAB"
+            reference = activation.activation_reference or "LAB"
         else:
             authorization = snapshot.authorization
             if (
@@ -111,7 +131,7 @@ class ActivationGate:
                 or not authorization.is_current(issued_at)
             ):
                 raise PermissionError("authorized execution requires current target authorization")
-            reference = self.activation_policy.activation_reference or authorization.reference
+            reference = activation.activation_reference or authorization.reference
 
         # Explicitly reject in-process mutation of the original fields while
         # the scope decision or permit construction was being prepared.
@@ -120,11 +140,14 @@ class ActivationGate:
         if _target_authority_snapshot(target) != snapshot:
             raise PermissionError("target authorization changed during permit issuance")
 
+        if _activation_policy_snapshot(self.activation_policy) != activation:
+            raise PermissionError("activation policy changed during permit issuance")
+
         return ExecutionPermit(
             permit_id=token_urlsafe(24),
             target=decision.normalized_host or snapshot.value,
             capability_id=capability_id,
-            mode=self.activation_policy.mode,
+            mode=activation.mode,
             activation_reference=reference,
             issued_at=issued_at,
         )
