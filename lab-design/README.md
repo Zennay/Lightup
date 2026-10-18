@@ -26,6 +26,17 @@ python3 lab-design/native_bridge.py lab-design/fictional-example.json
 python3 lab-design/native_bridge.py /private/path/catalog.json --emit-python /private/path/my_lab_scenarios.py
 ```
 
+### Compare two private catalog revisions without execution
+
+The native offline bridge can compare two separately admitted catalogs and report only aggregate membership, changed target sets and changed ground-truth sets. Neither source IPs nor scenario IDs are printed. ABSENT is never a remediation claim.
+
+Run from the repository root:
+
+    python3 lab-design/native_bridge.py /private/baseline.json --compare /private/candidate.json
+    python3 lab-design/native_bridge.py /private/baseline.json --compare /private/candidate.json --comparison-out /private/aggregate-review.json
+
+The optional new report uses 0600 permissions and carries REVIEW_ONLY plus four literal-false authority fields. Existing files and symlinks are not overwritten.
+
 The second command is explicitly optional. It creates an **owner-only 0600 PRIVATE constructor module**, refusing to overwrite an existing file or symlink. The generated module defines `load_lab_scenarios()` that returns original `LabScenario` dataclasses when a human explicitly calls it. Importing that module alone does not start an evaluation; it provides no targets, scans, approvals, grants or execution authority. Rejected input exits with code 3 and generic HOLD without echoing original source identifiers.
 
 **Native handoff is only a constructor adapter**, not a supported `LabEvaluationHarness` session launcher, authorization pipeline, evidence verifier or CI gate. Original constructor admission is an additional narrowing gate. Public-network adapters and scans are intentionally outside this scope.

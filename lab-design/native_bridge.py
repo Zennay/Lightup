@@ -183,26 +183,73 @@ def render_private_python(rows: list[dict]) -> str:
     return "\n".join(lines)
 
 
+def compare_private_catalogs(before: list[dict], after: list[dict]) -> dict:
+    """Unsigned human source-delta summary, never a remediation verdict."""
+    old = {r["scenario_id"]: r for r in before}
+    new = {r["scenario_id"]: r for r in after}
+    common = set(old) & set(new)
+    changed = {k for k in common if old[k] != new[k]}
+    return {
+        "schema": "lightup.lab_design_revision_review.v1",
+        "status": "REVIEW_ONLY",
+        "authorized": False, "consent_verified": False,
+        "dispatch_allowed": False, "release_allowed": False,
+        "source_authenticated": False,
+        "disclaimer": "Unsigned lab design comparison. ABSENT never means remediated.",
+        "baseline_scenarios": len(old), "candidate_scenarios": len(new),
+        "added": len(set(new) - set(old)),
+        "absent_not_remediated": len(set(old) - set(new)),
+        "changed": len(changed), "unchanged": len(common) - len(changed),
+        "changed_target_sets": sum(old[k]["targets"] != new[k]["targets"] for k in changed),
+        "changed_ground_truth_sets": sum(
+            old[k]["expected_findings"] != new[k]["expected_findings"] for k in changed),
+    }
+
+
+def private_create(path: Path, data: bytes) -> None:
+    ensure(not path.is_symlink())
+    fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    with os.fdopen(fd, "wb") as output:
+        output.write(data)
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="PRIVATE offline LabScenario catalog review only; never executes a lab")
     parser.add_argument("catalog", type=Path, help="original PRIVATE LightUp Lab Design Catalog JSON")
     parser.add_argument("--emit-python", type=Path,
         help="create NEW private Python dataclass-constructor module (no execution)")
+    parser.add_argument("--compare", type=Path,
+        help="second independently accepted private catalog for aggregate review")
+    parser.add_argument("--comparison-out", type=Path,
+        help="new owner-only aggregate-only JSON report (requires --compare)")
     args = parser.parse_args()
     try:
         rows = read_catalog(args.catalog)
         native = build_native_catalog(rows)
         preview(rows, native)
+        ensure(not args.comparison_out or args.compare)
+        comparison = None
+        if args.compare:
+            other = read_catalog(args.compare)
+            build_native_catalog(other)
+            comparison = compare_private_catalogs(rows, other)
+            print("Offline lab source revision only; ABSENT never implies fixed:")
+            for key in ("baseline_scenarios", "candidate_scenarios", "added",
+                        "absent_not_remediated", "changed", "unchanged",
+                        "changed_target_sets", "changed_ground_truth_sets"):
+                print(f"  {key}: {comparison[key]}")
         if args.emit_python:
             dest = args.emit_python
             ensure(dest.suffix == ".py" and not dest.is_symlink())
             data = render_private_python(rows).encode("utf-8")
-            # exclusive-create with owner-only permissions; no overwrites or
-            # output to sensitive existing files/symlinks.
-            fd = os.open(dest, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
-            with os.fdopen(fd, "wb") as out:
-                out.write(data)
+            # exclusive-create with owner-only permissions; no overwrites.
+            private_create(dest, data)
             print("PRIVATE constructor-only Python module created; no run/scan performed.")
+        if args.comparison_out and comparison is not None:
+            ensure(args.comparison_out.suffix == ".json")
+            private_create(args.comparison_out, (
+                json.dumps(comparison, indent=2, sort_keys=True) + "\n").encode("utf-8"))
+            print("Owner-only aggregate source-revision JSON created; no source IDs.")
         return 0
     except Hold:
         print("HOLD: unsupported, malformed, ambiguous or non-private original lab catalog. No execution.", file=sys.stderr)
