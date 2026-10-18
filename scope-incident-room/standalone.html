@@ -1,0 +1,134 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; connect-src 'none'; img-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; form-action 'none'; base-uri 'none'">
+<title>LightUp / Scope &amp; STOP room</title>
+<style>
+:root{color-scheme:dark;font:15px system-ui,sans-serif;color:#eaf1ff;background:#111826}*{box-sizing:border-box}
+body{margin:0;background:radial-gradient(circle at 90% 0%,#28395777,transparent 46%),#111826}
+main{max-width:1190px;padding:28px;margin:auto}header,.bar,.actions{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+header{margin-bottom:30px}.brand{font-size:22px;font-weight:850;letter-spacing:.04em}.brand b{color:#b5c4ff}
+.tag{color:#f3c8a7;border:1px solid #a9815d;padding:8px 12px;border-radius:10px;font-size:12px}
+h1{font-size:clamp(29px,5vw,48px);line-height:1.05;letter-spacing:-.04em;margin:10px 0}
+h2{font-size:18px;margin:0 0 10px}p{color:#aebfdd;line-height:1.6}
+.panel,.metric{background:#1c2940;border:1px solid #3c4c68;border-radius:16px;padding:20px;margin-bottom:15px}
+.metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.metric strong{font-size:30px;display:block}.metric small{color:#c0cce1}
+button,label.load{display:inline-block;background:#bbc8ff;color:#12203b;border:0;border-radius:9px;padding:11px 15px;font:750 13px system-ui;cursor:pointer}
+button.secondary{background:#304363;color:#fff;border:1px solid #546e94}
+button:disabled{opacity:.5;cursor:not-allowed}
+button:focus-visible,label.load:focus-within,input:focus-visible,select:focus-visible{outline:3px solid #d4ddff;outline-offset:2px}
+input[type=file]{position:absolute;width:1px;height:1px;opacity:0}input[type=search],select{background:#131f33;color:#f4f6ff;border:1px solid #557096;border-radius:9px;padding:10px;font:inherit}
+.note{border-left:3px solid #e0a877;background:#362d31;padding:13px;color:#ffd6ad;line-height:1.6;margin-top:14px}
+table{width:100%;border-collapse:collapse;table-layout:fixed}td,th{border-bottom:1px solid #455877;padding:12px 8px;text-align:left;overflow-wrap:anywhere}
+th{color:#aec0dc;font-size:10px;text-transform:uppercase;letter-spacing:.06em}td{font-size:12px}
+.id{font:11px ui-monospace,monospace}.risk{font-weight:800;color:#ffc197}.good{color:#bed4ff}.muted{font-size:12px;color:#c2cee1}
+#message{min-height:22px;margin-top:13px;color:#ffc59a}#empty{color:#98adcc;text-align:center;padding:35px}
+@media(max-width:800px){.metrics{grid-template-columns:repeat(2,1fr)}main{padding:14px}td:nth-child(4),th:nth-child(4){display:none}}
+@media print{body,:root{background:white;color:#111}.panel,.metric{background:white;color:#111}button,label.load,input,select,.actions{display:none}.muted,p{color:#444}}
+</style></head><body><main>
+<header><div class="brand">LIGHT<b>UP</b> / SCOPE OPS</div><span class="tag">INCUBATE · DRAFT/HOLD</span></header>
+<h1>Authorization &amp; incident room</h1>
+<p>Review original single-tenant requests, grant links and risk decisions next to independently sampled emergency STOP evidence. This room has <b>no approval, grant, target, dispatch or resume buttons.</b></p>
+<section class="panel"><h2>01 / Private original-domain source</h2>
+<p>Generate with <code>python -m lightup.scope_incident_brief --database PRIVATE.sqlite --email ACCOUNT --client EXACT_TENANT --output NEW_PRIVATE.json</code>. Use a trusted workstation. File contents stay in this tab.</p>
+<div class="actions"><label class="load">Import private briefing<input id="file" type="file" accept=".json,application/json"></label>
+<button class="secondary" id="export" disabled>Export anonymous totals</button>
+<button class="secondary" id="print" disabled>Print briefing</button></div>
+<div id="message" aria-live="polite" role="status">No private source imported.</div>
+<div class="note"><b>Never permission:</b> NO_STOP_RECORDED is not approval. STOP and Casebook are separate historical snapshots, not one atomic runtime check. Release still requires independent client/operator consent, action-time revocation, original CI, security/privacy reviews and explicit HUMAN GO.</div>
+</section>
+<section class="metrics" aria-label="Source counts">
+<div class="metric"><strong id="count">—</strong><small>Selected engagements</small></div>
+<div class="metric"><strong id="stops">—</strong><small>Recorded STOPs</small></div>
+<div class="metric"><strong id="holds">—</strong><small>STOP source unavailable</small></div>
+<div class="metric"><strong id="attention">—</strong><small>Human attention cases</small></div></section>
+<section class="panel"><div class="bar"><div><h2>02 / Human incident caseboard</h2><p class="muted">Private source IDs are not included in anonymous exports. Local follow-up stages are not saved to browser storage.</p></div>
+<input id="search" type="search" placeholder="Filter case / STOP state" disabled></div>
+<div style="overflow:auto"><table><thead><tr><th style="width:22%">Engagement</th><th style="width:20%">STOP source</th><th style="width:12%">Grants</th><th style="width:28%">Casebook attention</th><th style="width:18%">Follow-up</th></tr></thead><tbody id="rows"></tbody></table></div>
+<div id="empty">Import original private source for the caseboard.</div></section>
+<footer class="muted">Original private retrospective evidence only. Never live execution clearance.</footer></main>
+<script>
+(function(){
+"use strict";
+var report=null,stages=new Map(),MAX=524288;
+function E(x){return document.getElementById(x);}
+function O(x){return x!==null&&typeof x==="object"&&!Array.isArray(x);}
+function W(x){return typeof x==="string"&&x.length>0&&x.length<=180&&![...x].some(c=>c.charCodeAt(0)<32||c.charCodeAt(0)===127);}
+function N(x,max){return Number.isSafeInteger(x)&&x>=0&&x<=max;}
+var flags=["source_authenticated","client_consent_verified","operator_consent_verified","authorization_granted","execution_allowed","release_approved","action_time_revocation_verified"];
+function F(x){return flags.every(k=>x[k]===false);}
+function checkDuplicateKeys(raw){
+var i=0,steps=0;
+function ws(){while(i<raw.length&&" \n\t\r".includes(raw[i]))i++;}
+function str(){var st=i;if(raw[i]!=='"')throw Error("not string");i++;while(i<raw.length){if(raw[i]==="\\"){i+=2;continue;}if(raw[i]==='"'){i++;return JSON.parse(raw.slice(st,i));}i++;}throw Error("unfinished string");}
+function v(depth){if(++steps>100000||depth>40)throw Error("too deep");ws();if(raw[i]==="{"){i++;ws();var keys=new Set();if(raw[i]==="}"){i++;return;}while(true){ws();var k=str();if(keys.has(k))throw Error("duplicate key");keys.add(k);ws();if(raw[i]!==":")throw Error("colon");i++;v(depth+1);ws();if(raw[i]==="}"){i++;return;}if(raw[i]!==",")throw Error("comma");i++;}}
+else if(raw[i]==="["){i++;ws();if(raw[i]==="]"){i++;return;}while(true){v(depth+1);ws();if(raw[i]==="]"){i++;return;}if(raw[i]!==",")throw Error("comma");i++;}}
+else if(raw[i]==='"'){str();}else{var st=i;while(i<raw.length&&!",]} \n\t\r".includes(raw[i]))i++;if(st===i)throw Error("primitive");}}
+v(0);ws();if(i!==raw.length)throw Error("trailing");}
+function importSource(raw){
+checkDuplicateKeys(raw);var x=JSON.parse(raw),c=x&&x.casebook;
+if(!O(x)||x.schema!=="lightup.scope_stop_casework_brief.v1"||
+!["HOLD","REVIEW_ONLY"].includes(x.status)||x.source_snapshots_atomic_together!==false||
+!F(x)||!W(x.client_id)||!O(c)||c.schema!=="lightup.auth_casebook.v1"||
+c.client_id!==x.client_id||c.status!=="REVIEW_ONLY"||
+!Array.isArray(c.case_overview)||c.case_overview.length>200||
+!Array.isArray(x.engagements)||!O(x.summary)||!N(x.selected_count,32)||x.selected_count===0||
+x.selected_count!==x.engagements.length||x.selected_count!==x.summary.selected)throw Error("schema");
+var original=new Map();for(var row of c.case_overview){
+if(!O(row)||!W(row.engagement_id)||original.has(row.engagement_id)||!W(row.attention)||
+!W(row.next_review_action)||!N(row.grant_count,200))throw Error("original row");
+original.set(row.engagement_id,row);}
+var seen=new Set(),stopped=0,held=0,needs=0;
+for(var r of x.engagements){
+if(!O(r)||!W(r.engagement_id)||seen.has(r.engagement_id)||!original.has(r.engagement_id)||
+r.authority!==false||r.casebook_attention!==original.get(r.engagement_id).attention||
+r.casebook_next_human_action!==original.get(r.engagement_id).next_review_action)throw Error("identity");
+seen.add(r.engagement_id);
+if(!["STOP_ACTIVE","NO_STOP_RECORDED_NOT_PERMISSION","HOLD_STOP_SOURCE_UNAVAILABLE_OR_CHANGED"].includes(r.stop_observation))throw Error("STOP");
+if(r.stop_observation==="HOLD_STOP_SOURCE_UNAVAILABLE_OR_CHANGED"){
+held++;if(r.grant_source_count!==null||r.request_linked_grant_count!==null||r.legacy_unbound_grant_count!==null)throw Error("fake count");
+}else if(!N(r.grant_source_count,256)||r.grant_source_count!==original.get(r.engagement_id).grant_count||
+!N(r.request_linked_grant_count,256)||!N(r.legacy_unbound_grant_count,256)||
+r.request_linked_grant_count+r.legacy_unbound_grant_count!==r.grant_source_count)throw Error("grant mismatch");
+if(r.stop_observation==="STOP_ACTIVE")stopped++;
+if(r.stop_observation!=="NO_STOP_RECORDED_NOT_PERMISSION"||r.casebook_attention.startsWith("HOLD_"))needs++;
+}
+if(!O(c.declared_counts)||x.summary.active_stop_observations!==stopped||x.summary.stop_source_hold!==held||
+x.summary.cases_requiring_human_attention!==needs||
+x.summary.no_stop_recorded_not_authority!==seen.size-stopped-held||
+x.summary.original_requests!==c.declared_counts.requests||x.summary.original_grants!==c.declared_counts.grants||
+x.status!==(needs||c.declared_counts.grant_link_hold||c.declared_counts.foreign_tenant_row_count?"HOLD":"REVIEW_ONLY"))throw Error("counts");
+return x;}
+function TD(tr,value,cls){var e=document.createElement("td");e.textContent=String(value);if(cls)e.className=cls;tr.appendChild(e);}
+function render(){
+if(!report)return;var query=E("search").value.toLowerCase().trim(),tbody=E("rows");tbody.replaceChildren();var n=0;
+for(var r of report.engagements){
+if(query&&!([r.engagement_id,r.stop_observation,r.casebook_attention].join(" ").toLowerCase().includes(query)))continue;
+n++;var tr=document.createElement("tr");
+TD(tr,r.engagement_id,"id");
+TD(tr,r.stop_observation,r.stop_observation==="NO_STOP_RECORDED_NOT_PERMISSION"?"good":"risk");
+TD(tr,r.grant_source_count===null?"HOLD":r.grant_source_count);
+TD(tr,r.casebook_attention+" / "+r.casebook_next_human_action,"muted");
+var cell=document.createElement("td"),s=document.createElement("select");s.setAttribute("aria-label","Human stage for "+r.engagement_id);
+["unreviewed","investigating","escalated","documented"].forEach(function(stage){var op=document.createElement("option");op.value=stage;op.textContent=stage;s.appendChild(op);});
+s.value=stages.get(r.engagement_id)||"unreviewed";s.addEventListener("change",function(){stages.set(r.engagement_id,s.value);});cell.appendChild(s);tr.appendChild(cell);tbody.appendChild(tr);
+}
+E("empty").hidden=n>0;E("empty").textContent="No original cases match the current filter.";
+E("count").textContent=report.summary.selected;E("stops").textContent=report.summary.active_stop_observations;
+E("holds").textContent=report.summary.stop_source_hold;E("attention").textContent=report.summary.cases_requiring_human_attention;}
+E("file").addEventListener("change",async function(){
+var f=this.files&&this.files[0];this.value="";if(!f)return;
+if(f.size<2||f.size>MAX){E("message").textContent="HOLD: source exceeds private file bound.";return;}
+try{var next=importSource(await f.text());report=next;stages.clear();E("search").value="";E("search").disabled=false;E("export").disabled=false;E("print").disabled=false;E("message").textContent="Imported locally · "+next.status+" · never authorized";render();}
+catch(e){E("message").textContent="HOLD: malformed, contradictory or unsupported original source. Previous caseboard retained.";}}
+);
+E("search").addEventListener("input",render);
+E("print").addEventListener("click",function(){if(report)window.print();});
+E("export").addEventListener("click",function(){
+if(!report)return;var stageCounts={unreviewed:0,investigating:0,escalated:0,documented:0};
+for(var r of report.engagements)stageCounts[stages.get(r.engagement_id)||"unreviewed"]++;
+var aggregate={schema:"lightup.scope_stop_anonymous.v1",status:"REVIEW_ONLY_OR_HOLD",counts:report.summary,human_stages:stageCounts,source_snapshots_atomic_together:false,authorization_granted:false,execution_allowed:false,release_approved:false};
+var blob=new Blob([JSON.stringify(aggregate,null,2)+"\n"],{type:"application/json"}),url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download="lightup-scope-stop-anonymous.json";a.click();setTimeout(function(){URL.revokeObjectURL(url);},200);
+});
+})();
+</script></body></html>
