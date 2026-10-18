@@ -368,7 +368,24 @@ function renderLineage(){
    active=r.source_sha256;$('filter').value='all';clearBulkPreview();clearPacketPreview();renderList();renderDetail();
    $('detail').scrollIntoView({behavior:'smooth',block:'start'});
   });
-  container.append(button);list.append(container);
+  container.append(button);
+  if(r.revision_link){
+   const unlink=make('button','Correct/remove this unsigned parent link');
+   unlink.type='button';
+   unlink.addEventListener('click',()=>{
+    if(!confirm('Remove ONLY the UNSIGNED LOCAL revision relationship for '+r.source_sha256.slice(0,16)+
+     '…? All original Studio files, draft records and human paperwork stay intact. This does not revoke or change any real authorization, consent or grant.'))return;
+    const draft=entries.find(x=>x.source_sha256===r.source_sha256);
+    if(!draft||!draft.revision_link)return;
+    const without=entries.map(x=>x===draft?{...x,revision_link:null}:x);
+    try{LightUpLocalLineage.inspect(without);}
+    catch(error){$('lineageStatus').textContent='Local correction HOLD: '+error.message;return;}
+    draft.revision_link=null;setDirty();render();
+    $('lineageStatus').textContent='Removed one UNSIGNED parent relationship. Human task data unchanged; re-compare originals before linking again.';
+   });
+   container.append(unlink);
+  }
+  list.append(container);
  }
  if(graph.forks.length)list.append(make('p','Multiple local revisions share a parent. Branches are alternatives, not an approval chain; review each source independently.','hint'));
 }
