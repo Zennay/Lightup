@@ -189,7 +189,7 @@ function activeWorkNote(policy){
 }
 
 function suggest(entry,list){
-  const forbidden=list.filter(item=>item!==entry).map(item=>item.interval).concat(blackouts);
+  const forbidden=list.filter(item=>item!==entry&&item.lane===entry.lane).map(item=>item.interval).concat(blackouts);
   return firstFit(entry.interval,forbidden,workPolicy());
 }
 function createAxis(days) {
