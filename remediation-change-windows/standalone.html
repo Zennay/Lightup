@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="referrer" content="no-referrer">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-wpPFZOyxFDTkVCPSRLe+ulmbav4+u8hRIYgukbiqEiU=' 'sha256-0+l/W/AecvdVhWqW2/g6RsjFSFchntGZf4tX3B54n/0='; style-src 'unsafe-inline'; connect-src 'none'; img-src 'none'; font-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-wpPFZOyxFDTkVCPSRLe+ulmbav4+u8hRIYgukbiqEiU=' 'sha256-+SkKLgFcDtP9am7OyN7Q/lGkZ4NetGNg+zCG3iuWJUM='; style-src 'unsafe-inline'; connect-src 'none'; img-src 'none'; font-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <title>LightUp · Change Window & Handoff Board</title>
 <style>
 :root{font:15px/1.5 system-ui,sans-serif;color:#eef5ff;background:#0b1522;--panel:#162638;--line:#516a7c;--mint:#96f3d3}
@@ -19,12 +19,12 @@ td select{min-width:130px}.hold{color:#ffcf96;font-weight:750}#status[data-error
 @media print{header,aside,.actions,input,select,textarea,button,.files{display:none!important}body{background:white;color:black}section{background:white;color:black;border-color:#aaa}p,.muted{color:#333}}
 </style>
 </head><body>
-<header><small>LIGHTUP · HUMAN-ONLY REMEDIATION COORDINATION</small><h1>Change Window & Handoff Board</h1><p>Plan human change-review windows from original finding records and private evidence notes. No scanner, grant, deployment, retest or ticket API.</p></header>
+<header><small>LIGHTUP · HUMAN-ONLY REMEDIATION COORDINATION</small><h1>Change Window & Handoff Board</h1><p>Plan human change-review windows, compare newer original Casework snapshots, review owner/blocker drift and prepare private grouped handoffs. No scanner, grant, deployment, retest or ticket API.</p></header>
 <main>
 <aside><strong>INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD</strong><p>This is an unsigned offline discussion board. An exported findings CSV, human stage, local date or content digest does not prove current customer identity, consent, an approved change, verified remediation, authorization or permission to execute. Only use a separately authorized original private export. This tool does not connect to the network or persist in browser storage.</p></aside>
 <section class="files"><h2>1 · Import original sources</h2>
 <div class="grid"><label>Original five-column findings CSV (private)<input id="csv" type="file" accept=".csv,text/csv"></label>
-<label>Original Evidence Review v1/v2 JSON (optional, private)<input id="review" type="file" accept=".json,application/json"></label><label>Original Casework v1 planning JSON (optional, private)<input id="casework" type="file" accept=".json,application/json"></label></div>
+<label>Original Evidence Review v1/v2 JSON (optional, private)<input id="review" type="file" accept=".json,application/json"></label><label>Original Casework v1 planning JSON (optional, private; may be hashless in offline Casework Studio, strictly full-row matched and NEVER authenticated)<input id="casework" type="file" accept=".json,application/json"></label></div>
 <label><input type="checkbox" id="same">I independently verified that this CSV, optional Evidence Review and optional Casework refer to the same original client and exact engagement. This statement is NOT authorization.</label>
 <div class="actions"><button id="load" class="primary">Load original source</button><button id="forget">Forget local workspace</button></div>
 <p id="status" aria-live="polite" role="status"></p><p id="digest" class="muted"></p></section>
@@ -42,7 +42,7 @@ td select{min-width:130px}.hold{color:#ffcf96;font-weight:750}#status[data-error
 <label><input id="confirmCasework" type="checkbox">I independently confirmed that the new original Casework comes from the same exact client and engagement. This is NOT consent or authorization.</label></div>
 <div class="actions"><button id="previewCasework">Preview human Casework changes</button><button id="applyCasework" disabled>Use newer ORIGINAL human Casework snapshot</button><button id="caseworkDiff" disabled>Export PRIVATE Casework change brief</button></div>
 <p id="caseworkSummary" role="status" aria-live="polite"></p><div id="caseworkChanges" class="scroll"></div>
-<p class="muted">Old/new human fields are private and unverified. A preview is stale if any local window, original note, evidence or source changes. Existing saved plans tied to the old original Casework digest will refuse to resume against the newly accepted original Casework.</p>
+<p class="muted">Export the confidential private change report <strong>before</strong> accepting the newer snapshot; accepting clears the old values from this tab. Original Casework exports without a source SHA-256 are permitted only after exact complete original CSV row equality and manual same-client/engagement confirmation; this never proves issuer or consent. Old/new human fields are private and unverified. A preview is stale if any local window, original note, evidence or source changes. Existing saved plans tied to the old original Casework digest will refuse to resume against the newly accepted original Casework.</p>
 </section>
 <section><h2>2 · Define up to four hypothetical change-review windows</h2><p class="muted">Resume an earlier private planning draft only when the exact original source and current human evidence notes are unchanged. Nothing is restored on mismatch.</p><div class="grid files"><label>PRIVATE saved human change-window JSON<input id="planFile" type="file" accept=".json,application/json"></label></div><div class="actions"><button id="resume">Resume PRIVATE source-bound plan</button></div><p>All times are UTC and merely proposed. A blocked human dossier or missing rollout/rollback reference remains HOLD even when placed on a calendar.</p>
 <div id="windows" class="grid"></div><div class="actions"><button id="recalculate">Recalculate human readiness</button></div></section>
@@ -282,11 +282,15 @@ function meetingNote(s){
  if(typeof s!=='string'||s.length>600||/[\u0000-\u0009\u000b-\u001f\u007f]/.test(s)||bidi.test(s))fail('Invalid human meeting note.');
  return s;
 }
-async function read(file,max){
+async function read(file,max,allowOriginalCsvBom=false){
  if(!file||file.size<1||file.size>max)fail('Private input missing or exceeds limit.');
  const buffer=await file.arrayBuffer();if(buffer.byteLength>max)fail('Private input exceeds limit.');
  const text=new TextDecoder('utf-8',{fatal:true}).decode(buffer);
- if(!text||text.charCodeAt(0)===0xfeff)fail('UTF-8 BOM or empty private input.');
+ if(!text)fail('Empty private input.');
+ if(text.charCodeAt(0)===0xfeff){
+  if(!allowOriginalCsvBom)fail('UTF-8 BOM is not accepted in private JSON.');
+  return text.slice(1);
+ }
  return text;
 }
 /* Reject repeated keys BEFORE native JSON.parse; JSON.parse alone silently accepts them. */
@@ -398,8 +402,8 @@ function caseworkFile(o,src,hash){
  keys(o,[...required,'instructions'],required);
  if(o.kind!=='lightup.remediation_casework_draft'||o.schema_version!==1||
     o.disposition!=='LOCAL_CLIENT_PLANNING'||o.source_contract!=='lightup.finding_export._COLUMNS_v1'||
-    o.source_sha256!==hash||FLAGS.some(k=>o[k]!==false))
-  fail('Casework is not exact-source-bound original v1 or claims authority.');
+    (o.source_sha256!==hash&&o.source_sha256!==null)||FLAGS.some(k=>o[k]!==false))
+  fail('Casework is not original v1, contradicts the loaded canonical source SHA or claims authority.');
  if(o.instructions!==undefined&&typeof o.instructions!=='string')fail('Invalid original Casework instructions.');
  if(!Array.isArray(o.findings)||o.findings.length!==src.length||
     !Array.isArray(o.cases)||o.cases.length!==src.length)fail('Incomplete original Casework source rows.');
@@ -415,7 +419,8 @@ function caseworkFile(o,src,hash){
  for(const item of o.cases)keys(item,fields);
  const parsed=C.loadPacket(o),rows=new Map(parsed.cases.map(c=>[c.finding_id,c]));
  if(rows.size!==src.length)fail('Original Casework duplicate or missing human case.');
- return {rows,sha256:localSha256(JSON.stringify(src.map(f=>rows.get(f.finding_id))))};
+ return {rows,sha256:localSha256(JSON.stringify(src.map(f=>rows.get(f.finding_id)))),
+  original_packet_hashless:o.source_sha256===null};
 }
 function pastDue(c){
  if(!c||!c.due_date||['completed','deferred'].includes(c.status))return false;
@@ -433,25 +438,74 @@ function windowAfterHumanDue(f){
 }
 
 function caseLabel(c){return c?(c.owner||'Unassigned owner')+' · '+c.status+(c.due_date?' · '+c.due_date+' UTC':' · no due date'):'No original Casework attached';}
+
 function privateCaseBrief(){
  if(!state?.casework)fail('Import an original exact-source Casework draft first.');
- if(!confirm('PRIVATE: export original finding IDs, local human owner, next action, blocker and due date? Send only via an independently approved confidential channel.'))return;
- plan();
- const sanitize=v=>String(v).replace(/[\u0000-\u001f\u007f\u202a-\u202e\u2066-\u2069]/g,' ').replace(/[\\|]/g,' ').slice(0,700);
- const lines=['# PRIVATE LightUp original Casework human window brief','',
-  '**UNVERIFIED HUMAN DRAFT. Not a grant, verified fix, retest permit, change authorization or authenticated source.**','',
-  'Original canonical source SHA-256: '+state.hash+' (unsigned, NOT identity/consent).',
-  'Original Casework row SHA-256: '+state.caseworkDigest+' (unsigned).','',
-  '| Original finding ID | Original severity | Local owner | Casework state | Local due date | Human proposed UTC slot | Local blocker | Next human action |',
-  '| --- | --- | --- | --- | --- | --- | --- | --- |'];
- for(const f of state.source){
-  const c=state.casework.get(f.finding_id);
-  lines.push('| '+[f.finding_id,f.severity,c.owner,c.status,c.due_date||'',state.assignments.get(f.finding_id)||0,c.blocker,c.next_action].map(sanitize).join(' | ')+' |');
+ if(!confirm('PRIVATE: export original finding IDs, local owners, human evidence stages, blockers, unverified next actions and UTC discussions? Transfer only via an independently approved confidential channel.'))return;
+ const windows=plan();
+ const clean=v=>String(v??'').replace(/[\u0000-\u001f\u007f\u202a-\u202e\u2066-\u2069|\\]/g,' ').slice(0,1500);
+ const lines=['# PRIVATE LightUp original human Casework discussion and handoff pack','',
+ '**UNVERIFIED, OFFLINE HUMAN PLANNING ONLY. No finding has been patched, independently retested, authorized or given a grant by this export.**','',
+ 'Original canonical five-column source SHA-256: '+state.hash+' (unsigned, not identity, permission or client consent).',
+ 'Original Casework human row digest: '+state.caseworkDigest+' (unsigned).',
+ state.caseworkHashless?'WARNING: ORIGINAL Casework packet carried NO source SHA-256; only full original finding-row equality was checked, no proof of issuer or permission.':'Original Casework packet included matching original source SHA-256, still unsigned and non-authorizing.',
+ state.caseworkUpdate?'Previous LOCAL original Casework human snapshot SHA-256: '+state.caseworkUpdate.from_sha256:'No separately applied human Casework snapshot change recorded in this tab.',
+ 'Total original source findings: '+state.source.length,'',
+ ];
+ const high=f=>['critical','high'].includes(f.severity);
+ const attention=f=>{
+  const c=state.casework.get(f.finding_id),r=state.review.get(f.finding_id);
+  return high(f)||caseBlocked(c)||pastDue(c)||windowAfterHumanDue(f)||
+   state.caseworkChanges?.has(f.finding_id)||hasHumanHold(f,r)||!c.owner.trim();
+ };
+ const urgent=state.source.filter(attention);
+ lines.push('## Human discussion priorities ('+urgent.length+' unverified item(s))','');
+ if(!urgent.length)lines.push('No local priority flags. This is not evidence of verified remediation or authorization.','');
+ for(const [slotKey,title] of [[0,'Unscheduled — human follow-up required'],...windows.map((w,i)=>[i+1,
+   'Proposed human window '+(i+1)+(w?' · '+w.start_utc+' · '+w.minutes+' minutes':' · NO validated UTC meeting')])]){
+  const group=state.source.filter(f=>(state.assignments.get(f.finding_id)||0)===slotKey);
+  lines.push('## '+title,'','**'+group.length+' original finding(s), '+group.filter(high).length+
+    ' critical/high; '+group.filter(f=>caseBlocked(state.casework.get(f.finding_id))).length+
+    ' locally blocked; '+group.filter(windowAfterHumanDue).length+
+    ' after local human due date. All are unverified.**','');
+  if(!group.length){lines.push('No human records assigned.','');continue;}
+  const byPriority=group.slice().sort((a,b)=>
+   Number(attention(b))-Number(attention(a))||
+   Number(high(b))-Number(high(a))||
+   a.finding_id.localeCompare(b.finding_id));
+  lines.push('| Original ID | Source severity / retest | Human owner and Casework state | Local due UTC | Human evidence review | Private human flags | Human next action |',
+    '| --- | --- | --- | --- | --- | --- | --- |');
+  for(const f of byPriority){
+   const c=state.casework.get(f.finding_id),r=state.review.get(f.finding_id);
+   const flags=[];
+   if(caseBlocked(c))flags.push('LOCAL BLOCKER');
+   if(pastDue(c))flags.push('LOCAL DUE PASSED');
+   if(windowAfterHumanDue(f))flags.push('SLOT AFTER LOCAL DUE');
+   if(!c.owner.trim())flags.push('NO HUMAN OWNER');
+   if(state.caseworkChanges?.has(f.finding_id))flags.push('LOCAL CASEWORK CHANGED: '+state.caseworkChanges.get(f.finding_id).join('/'));
+   if(hasHumanHold(f,r))flags.push('EVIDENCE REFERENCES/REVIEW INCOMPLETE');
+   if(high(f))flags.push('ORIGINAL CRITICAL/HIGH');
+   if(f.retest_status==='regression')flags.push('SOURCE RETEST REGRESSION');
+   lines.push('| '+[
+    f.finding_id,f.severity+' / '+f.retest_status,
+    (c.owner||'UNASSIGNED')+' / '+c.status,c.due_date||'',
+    r.stage+' / '+(r.reviewer||'no human reviewer'),
+    flags.join('; ')||'No local human flags (NOT a verified fix)',
+    c.next_action||r.next_step||'HUMAN NEXT ACTION NOT RECORDED'
+   ].map(clean).join(' | ')+' |');
+  }
+  lines.push('');
  }
- lines.push('','All statuses and windows are human proposals only. Each recipient must independently validate original account, engagement, scope, permissions and revocation.');
- output('lightup-private-original-casework-change-brief.md',lines.join('\n')+'\n','text/markdown');
+ lines.push('## Required human handoff checks','',
+ '- Confirm real client and exact original engagement, independent issuer and authorized confidential recipient.',
+ '- Reconcile any prior/current private human Casework drift and original source CSV changes.',
+ '- Assign human owners and collect genuine deployment, change, rollback and authorized retest references.',
+ '- Independently check that the proposed UTC discussion time is compatible with real approved change windows.',
+ '- All original product permission, source-owner review, actual operator/client consent and revocation checks remain external.',
+ '',
+ 'No network, privileged action, scanner, ticket update, scheduling API, release or independently verified remediation took place.');
+ output('lightup-private-original-casework-human-handoff.md',lines.join('\n')+'\n','text/markdown');
 }
-
 
 /* Original Casework v1 snapshot change control. Never writes to the original app
  * or backfills verification, client consent, a grant or any other authority. */
@@ -497,8 +551,9 @@ async function previewCaseworkRevision(){
  if(!changes.size)fail('No original human Casework row changed.');
  const impact=caseworkImpact(changes);
  caseworkCandidate={source_sha256:state.hash,old_sha256:state.caseworkDigest,
-  plan:localPlanFingerprint(),input:$('nextCasework').files[0],next:newer.rows,digest:newer.sha256,changes,impact};
- $('caseworkSummary').textContent='Human-only original Casework preview: '+impact.total+
+  plan:localPlanFingerprint(),input:$('nextCasework').files[0],next:newer.rows,digest:newer.sha256,
+  original_packet_hashless:newer.original_packet_hashless,changes,impact};
+ $('caseworkSummary').textContent=(newer.original_packet_hashless?'WARNING: original Casework packet contained no source SHA-256; full original five-column row equality was checked but issuer, consent and identity remain UNVERIFIED. ':'')+'Human-only original Casework preview: '+impact.total+
   ' changed rows ('+impact.urgent+' critical/high); '+impact.owner+' owner, '+impact.status+
   ' status, '+impact.deadline+' deadline, '+impact.blocker+' blocker, '+
   impact.action+' action/notes changed. NO original source, notes, assignments or authorities changed yet.';
@@ -530,7 +585,7 @@ function assertCaseworkPreview(){
 function applyCaseworkRevision(){
  const p=assertCaseworkPreview();
  if(!confirm('Replace PRIVATE in-memory original Casework human rows with this complete newer ORIGINAL snapshot? Prior saved plans bound to previous Casework will not resume. No backend or permission is changed.'))return;
- state.casework=p.next;state.caseworkDigest=p.digest;
+ state.casework=p.next;state.caseworkDigest=p.digest;state.caseworkHashless=p.original_packet_hashless;
  state.caseworkChanges=new Map([...p.changes].map(([id,c])=>[id,c.fields]));
  state.caseworkUpdate={from_sha256:p.old_sha256,to_sha256:p.digest,source_sha256:state.hash,
   ...p.impact};
@@ -550,6 +605,7 @@ function privateCaseworkChanges(){
  '**NOT evidence, authenticated consent, remediation, an approval, execution or retest authority.**','',
  'Original five-column source SHA-256: '+state.hash,
  'Prior original Casework rows SHA-256: '+p.old_sha256,
+ (p.original_packet_hashless?'WARNING: newer original Casework packet had NO source fingerprint; full original source equality only.':'Newer original Casework packet contained matching canonical source SHA-256.'),
  'Newer original Casework rows SHA-256: '+p.digest,
  'Change summary: '+JSON.stringify(p.impact),'',
  '| Original finding ID | Original severity | Private field | Previous human-only value | New human-only value |',
@@ -746,14 +802,16 @@ async function load(){
  purgeRenderedPrivateData();
  const file=$('csv').files[0],review=$('review').files[0],caseFile=$('casework').files[0];
  if((review||caseFile)&&!$('same').checked)fail('Independent exact client/engagement confirmation required for review/Casework join.');
- const src=C.parseCSV(await read(file,1048576)),hash=await digest(src);
+ const src=C.parseCSV(await read(file,1048576,true)),hash=await digest(src);
  let notes=new Map(src.map(f=>[f.finding_id,emptyReview()]));
  if(review)notes=reviewFile(strictJSON(await read(review,2097152)),src,hash);
  const casework=caseFile?caseworkFile(strictJSON(await read(caseFile,2097152)),src,hash):null;
- state={source:src,hash,review:notes,casework:casework?.rows||null,caseworkDigest:casework?.sha256||null,caseworkChanges:new Map(),caseworkUpdate:null,assignments:new Map()};
+ state={source:src,hash,review:notes,casework:casework?.rows||null,caseworkDigest:casework?.sha256||null,
+  caseworkHashless:casework?.original_packet_hashless||false,
+  caseworkChanges:new Map(),caseworkUpdate:null,assignments:new Map()};
  $('digest').textContent='Original canonical source SHA-256: '+hash+' · unsigned content correlation only; NOT identity or consent.';
  $('results').hidden=false;render();
- setStatus('Source loaded for private, unverified human planning. No permissions or retest inferred.');
+ setStatus('Source loaded for private, unverified human planning. '+(state.caseworkHashless?'WARNING: original Casework packet was HASHLESS; full source rows match but independent issuer/consent not verified. ':'')+'No permissions or retest inferred.');
 }
 function output(name,text,type){
  const blob=new Blob([text],{type}),url=URL.createObjectURL(blob),a=document.createElement('a');
@@ -790,8 +848,8 @@ async function resumePlan(){
  if(!state)fail('Load original source before resuming a private plan.');
  if(!$('same').checked)fail('Independently confirm same original client and exact engagement.');
  const raw=strictJSON(await read($('planFile').files[0],2097152));
- const top=['kind','schema_version','disposition','source_contract','source_sha256','warning','windows','meeting_note','assignments','source_refresh','casework_sha256','casework_update',...FLAGS];
- keys(raw,top,top.filter(x=>!['warning','source_refresh','casework_update'].includes(x)));
+ const top=['kind','schema_version','disposition','source_contract','source_sha256','warning','windows','meeting_note','assignments','source_refresh','casework_sha256','casework_update','casework_packet_hashless',...FLAGS];
+ keys(raw,top,top.filter(x=>!['warning','source_refresh','casework_update','casework_packet_hashless'].includes(x)));
  const refresh=raw.source_refresh||null;
  if(refresh!==null){
   keys(refresh,['from_sha256','to_sha256','added','changed','absent_unverified','unchanged']);
@@ -806,6 +864,8 @@ async function resumePlan(){
     raw.source_contract!=='lightup.finding_export._COLUMNS_v1'||
     raw.source_sha256!==state.hash||FLAGS.some(k=>raw[k]!==false))
   fail('Plan is not an exact non-authorizing original-source-bound draft.');
+ if(raw.casework_packet_hashless!==undefined&&raw.casework_packet_hashless!==state.caseworkHashless)
+  fail('Casework packet source-hash provenance changed; cannot resume previous private plan.');
  if((raw.casework_sha256===undefined&&state.caseworkDigest!==null)||
     (raw.casework_sha256!==undefined&&raw.casework_sha256!==state.caseworkDigest))
   fail('Original Casework plan changed or was not loaded; refuse private resume.');
@@ -910,6 +970,7 @@ function localPlanFingerprint(){
  if(!state)fail('No current original source.');
  return localSha256(JSON.stringify({
   source_sha256:state.hash,casework_sha256:state.caseworkDigest,
+  casework_packet_hashless:state.caseworkHashless,
   casework_update:state.caseworkUpdate,
   original_ids:state.source.map(f=>f.finding_id),
   human:state.source.map(f=>state.review.get(f.finding_id)),
@@ -926,7 +987,7 @@ async function previewSourceRevision(){
  if(!state)fail('Load original authorized finding summary first.');
  clearRevisionPreview();
  if(!$('confirmRevision').checked)fail('Independent same original client and exact engagement confirmation required.');
- const next=C.parseCSV(await read($('nextCsv').files[0],1048576));
+ const next=C.parseCSV(await read($('nextCsv').files[0],1048576,true));
  const hash=await digest(next);
  if(hash===state.hash)fail('Original source is unchanged; no revision needed.');
  const diff=C.compareSource(state.source,next);
@@ -959,7 +1020,8 @@ function applySourceRevision(){
  };
  /* Atomic swap only after the full original five-field comparator, digest,
   * review/slot mapping and preview fingerprint have been accepted. */
- state={source:next,hash,review:notes,assignments:slots,casework:null,caseworkDigest:null,caseworkChanges:new Map(),caseworkUpdate:null,refreshSummary:summary};
+ state={source:next,hash,review:notes,assignments:slots,casework:null,caseworkDigest:null,
+  caseworkHashless:false,caseworkChanges:new Map(),caseworkUpdate:null,refreshSummary:summary};
  $('nextCasework').value='';$('confirmCasework').checked=false;clearCaseworkPreview('Source revision invalidated prior Casework; import a new original snapshot.');
  $('caseFilter').value='';$('ownerFilter').value='';
  lastBulkSnapshot=null;$('bulkUndo').disabled=true;
@@ -981,6 +1043,7 @@ function privateExport(){
   source_sha256:state.hash,warning:'Unsigned and non-authorizing; source absence or scheduled stage never means verified remediation.',
   windows:detail,meeting_note:meetingNote($('note').value),source_refresh:state.refreshSummary||null,
   casework_sha256:state.caseworkDigest,casework_update:state.caseworkUpdate,
+  casework_packet_hashless:state.caseworkHashless,
   assignments:state.source.map(f=>{
    const r=state.review.get(f.finding_id);
    return {finding_id:f.finding_id,original_severity:f.severity,original_retest_status:f.retest_status,
