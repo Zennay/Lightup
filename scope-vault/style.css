@@ -21,3 +21,11 @@ border:1px solid #60718d;border-radius:10px;resize:vertical;max-height:190px}
 .item > div > label:not(.checkline){display:block;margin-top:13px;font-size:12px;
 font-weight:650;line-height:1.45;color:#bdcee8}
 .item > div > label:not(.checkline) select{font-weight:500}
+
+/* Local privacy editor: bounded text-only derivative production, no previews of secrets. */
+#redact-title + p{max-width:790px}
+#redact-summary{background:#142a35;border-left:3px solid #86c7df;
+  padding:10px 12px;border-radius:4px;line-height:1.55}
+#redact-term{font-family:ui-monospace,Consolas,monospace}
+#redact-source{font-size:13px}
+#redact-create{background:#aee6fb}
