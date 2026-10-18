@@ -36,7 +36,7 @@ a{color:#9bdafc}
 <div class="badge">INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD</div></header>
 <section class="panel" aria-labelledby="loadtitle">
 <h2 id="loadtitle">1 · Load existing original reports</h2>
-<p class="muted">All imported files must describe the same precise proposed scope selection (unsigned digest). Maximum 12 files, 2 MB each and 12 MB total. No files leave your browser; nothing is persisted.</p>
+<p class="muted">All imported files must describe the same precise proposed scope selection (unsigned digest). Maximum 12 files, 2 MB each and 12 MB total. No files leave your browser; nothing is persisted. Private one-file operator bundles contain original sensitive data and must never be shared or uploaded.</p>
 <input id="files" type="file" accept=".json,application/json" multiple aria-label="Select 2 to 12 private original request binding JSON exports">
 <button id="import">Compare selected reports</button><button class="secondary" id="clear">Clear private workspace</button>
 <p id="status" role="status" aria-live="polite">No source documents loaded.</p>
@@ -77,6 +77,9 @@ a{color:#9bdafc}
 <p class="muted">PRIVATE draft stores fingerprints of original file bytes and your local follow-up checkmarks. Keep it in a restricted location. Aggregate exports omit original file names, tenant/client/engagement IDs, asset literals, source hashes, candidate record identities and human private notes.</p></section>
 </section>
 <section id="printbrief" aria-label="Privacy-minimal aggregate print brief"></section>
+<!-- Inert slot used ONLY by the operator's explicit local private capture bundle. The
+     public standalone never includes source rows here and can be shared. -->
+<template id="lightup-private-bundle"></template>
 <footer class="muted">Original grants and approved requests do not authenticate independent client/operator consent. Before any real access: original source owner, active-time revocation, independent security/privacy approval, exact-head hosted + permanent named VPS CI, and explicit HUMAN GO. This workspace does not issue grants, access targets, scan, dispatch, revoke or deploy.</footer>
 <script>
 "use strict";
@@ -449,24 +452,56 @@ function decodeOriginal(bytes){
  try{return new TextDecoder("utf-8",{fatal:true}).decode(bytes)}
  catch(_){fail("original JSON is not valid UTF-8 bytes")}
 }
+async function acceptOriginalBytes(bytes){
+ if(!Array.isArray(bytes)||bytes.length<2||bytes.length>12)fail("bounded original private input requires 2–12 sources");
+ if(bytes.some(b=>!(b instanceof ArrayBuffer)||b.byteLength<1||b.byteLength>2000000)||
+    bytes.reduce((sum,b)=>sum+b.byteLength,0)>12000000)fail("source byte budget exceeded");
+ const raws=bytes.map(decodeOriginal);
+ const parsed=raws.map((v,i)=>validate(strictJSON(v),i+1));
+ if(new Set(parsed.map(v=>v.selection)).size!==1)fail("selected originals disagree on proposed source selection");
+ const fingerprint=r=>[r.revision,r.stamp,r.matched,r.other,r.notApproved,r.grants,r.legacy].join("|");
+ if(new Set(parsed.map(fingerprint)).size!==parsed.length)fail("duplicated original snapshot metadata detected");
+ requireRevisionCoherence(parsed);
+ const localHashes=(globalThis.crypto&&crypto.subtle)?await fingerprints(bytes):[];
+ // Atomic replacement: old workspace stays untouched until EVERY original has
+ // been validated and all optional byte fingerprints have been computed.
+ workspace={records:parsed,checks:ACTIONS.map(()=>false),casework:Object.create(null),
+   pair:0,page:0,queuePage:0,sourceBytes:bytes.reduce((sum,b)=>sum+b.byteLength,0)};
+ hashes=localHashes;render();
+ return parsed.length;
+}
 $("import").addEventListener("click",async()=>{
  try{
   const chosen=Array.from($("files").files);
-  if(chosen.length<2||chosen.length>12)fail("Choose between 2 and 12 original single-selection JSON exports.");
-  if(chosen.some(f=>f.size===0||f.size>2000000)||chosen.reduce((s,f)=>s+f.size,0)>12000000)fail("Source file limits exceeded.");
-  const bytes=await Promise.all(chosen.map(f=>f.arrayBuffer()));
-  const raws=bytes.map(decodeOriginal);
-  const parsed=raws.map((v,i)=>validate(strictJSON(v),i+1));
-  if(new Set(parsed.map(v=>v.selection)).size!==1)fail("Selected originals do not refer to one exact proposed scope/risk selection.");
-  const fingerprint=r=>[r.revision,r.stamp,r.matched,r.other,r.notApproved,r.grants,r.legacy].join("|");
-  if(new Set(parsed.map(fingerprint)).size!==parsed.length)fail("duplicate original snapshot metadata detected");
-  if(parsed.some(v=>v.revision===undefined))fail("Original stored source revision missing.");
-  requireRevisionCoherence(parsed);
-  const localHashes=(globalThis.crypto&&crypto.subtle)?await fingerprints(bytes):[];
-  workspace={records:parsed,checks:ACTIONS.map(()=>false),casework:Object.create(null),pair:0,page:0,sourceBytes:chosen.reduce((sum,f)=>sum+f.size,0)};hashes=localHashes;
-  render();note(parsed.length+" valid original source-export snapshots loaded for private REVIEW_ONLY (not permission).",false);
- }catch(e){note("HOLD · "+(e instanceof Error?e.message:"invalid source import")+". Earlier accepted workspace was preserved.",true)}
+  if(chosen.length<2||chosen.length>12)fail("Choose 2–12 original source JSON exports");
+  if(chosen.some(f=>f.size<1||f.size>2000000)||chosen.reduce((sum,f)=>sum+f.size,0)>12000000)
+    fail("bounded original source size exceeded");
+  const count=await acceptOriginalBytes(await Promise.all(chosen.map(f=>f.arrayBuffer())));
+  note(count+" originals loaded into PRIVATE review-only history desk; no authorization was granted.",false);
+ }catch(_){note("HOLD: original input could not be accepted. Previous private human review preserved.",true)}
 });
+async function loadPrivateBundle(){
+ const node=$("lightup-private-bundle");
+ if(!node||!node.textContent.trim())return;
+ const encoded=node.textContent.trim();
+ // Clear inert sensitive embedded copies before parsing: no additional DOM
+ // persistence beyond in-memory parsed private reviews.
+ node.textContent="";
+ try{
+  if(encoded.length>16000000)fail("bounded private source bundle exceeded");
+  const parts=encoded.split(".");
+  if(parts.length<2||parts.length>12)fail("private bundle source-count mismatch");
+  const buffers=parts.map(part=>{
+   if(!/^[A-Za-z0-9+/]+={0,2}$/.test(part)||part.length>2800000)
+     fail("private embedded source encoding malformed");
+   const ascii=atob(part),out=new Uint8Array(ascii.length);
+   for(let i=0;i<ascii.length;i++)out[i]=ascii.charCodeAt(i);
+   return out.buffer;
+  });
+  const n=await acceptOriginalBytes(buffers);
+  note("PRIVATE BUNDLE: "+n+" originally captured, UNSIGNED, saved request-binding copies loaded locally. Never upload/share this confidential HTML. No authenticated current permission.",false);
+ }catch(_){note("HOLD: private embedded source copy was invalid. Browser workspace remains private; reauthenticate at origin.",true)}
+}
 $("append").addEventListener("click",async()=>{
  try{
   if(!workspace)fail("load an original comparison first");
@@ -565,6 +600,7 @@ function renderBrief(){
 }
 window.addEventListener("beforeprint",renderBrief);
 $("print").addEventListener("click",()=>{if(workspace){renderBrief();window.print()}});
+void loadPrivateBundle();
 
 })();
 </script></body></html>
