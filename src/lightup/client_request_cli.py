@@ -127,6 +127,7 @@ def main(argv: list[str] | None = None) -> int:
         command = sub.add_parser(name, help="propose a new request from a rejected original")
         command.add_argument("--request-id", required=True, help="existing own rejected request")
         command.add_argument("--asset", action="append", help="replacement canonical in-scope asset; repeat")
+        command.add_argument("--proposal", help="replacement proposal from the existing offline Studio JSON export")
         command.add_argument("--risk", type=int, choices=(1, 2, 3, 4), help="replacement risk")
         command.add_argument("--notes", help="replacement client notes")
         if name == "revise-preview":
@@ -136,6 +137,8 @@ def main(argv: list[str] | None = None) -> int:
                                  help="exact prior-review snapshot hash from revise-preview")
             command.add_argument("--expect-revision-sha256", required=True,
                                  help="exact SHA-256 of previewed replacement assets, risk and notes")
+            command.add_argument("--expect-proposal-sha256",
+                                 help="the imported Studio file SHA-256 displayed in revise-preview")
             command.add_argument("--confirm-new-request", action="store_true",
                                  help="create a NEW submitted request, leave original rejected")
             command.add_argument("--confirm-scope-expansion", action="store_true",
@@ -189,9 +192,44 @@ def main(argv: list[str] | None = None) -> int:
                 from .client_request_revision import prepare_rejected_revision
 
                 original = db.get_assessment_request(ctx, args.request_id)
-                revision = prepare_rejected_revision(
-                    original, assets=args.asset, risk=args.risk, notes=args.notes
+                replacement_assets, replacement_risk, replacement_notes = (
+                    args.asset, args.risk, args.notes
                 )
+                if args.proposal:
+                    if any(value is not None for value in (
+                        args.asset, args.risk, args.notes
+                    )):
+                        raise ClientRequestError(
+                            "Studio replacement cannot be combined with --asset/--risk/--notes"
+                        )
+                    from .client_proposal_intake import load_studio_proposal
+
+                    studio = load_studio_proposal(args.proposal)
+                    if args.command == "revise-submit":
+                        expected_proposal = args.expect_proposal_sha256
+                        if (type(expected_proposal) is not str or len(expected_proposal) != 64
+                                or any(ch not in "0123456789abcdef"
+                                       for ch in expected_proposal)
+                                or not hmac.compare_digest(
+                                    expected_proposal, studio["proposal_file_sha256"]
+                                )):
+                            raise ClientRequestError(
+                                "replacement Studio proposal changed since revise-preview"
+                            )
+                    replacement_assets = studio["requested_assets"]
+                    replacement_risk = studio["requested_risk"]
+                    replacement_notes = studio["notes"]
+                elif (args.command == "revise-submit"
+                      and args.expect_proposal_sha256 is not None):
+                    raise ClientRequestError("--expect-proposal-sha256 requires --proposal")
+
+                revision = prepare_rejected_revision(
+                    original, assets=replacement_assets,
+                    risk=replacement_risk, notes=replacement_notes,
+                )
+                if args.proposal:
+                    revision["proposal_file_sha256"] = studio["proposal_file_sha256"]
+                    revision["studio_authorized"] = False
                 if args.command == "revise-preview":
                     output = revision
                     if args.output:
