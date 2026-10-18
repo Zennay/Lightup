@@ -167,10 +167,16 @@ def _source_snapshot(database: str, *, actor_id: str, client_id: str | None) -> 
         )
         risks = _bounded_rows(
             con,
-            "SELECT approval_id,client_id,engagement_id,requested_risk,status,"
-            "created_at,decided_at FROM risk_approvals "
-            "WHERE client_id=? "
-            "ORDER BY created_at DESC,approval_id", (chosen,),
+            "SELECT r.approval_id,r.client_id,r.engagement_id,"
+            "r.requested_risk,r.status,r.created_at,r.decided_at,"
+            "r.requested_by,r.decided_by,"
+            "requester.role AS requester_role, requester.client_id AS requester_client,"
+            "reviewer.role AS reviewer_role, reviewer.client_id AS reviewer_client "
+            "FROM risk_approvals AS r "
+            "LEFT JOIN users AS requester ON requester.user_id=r.requested_by "
+            "LEFT JOIN users AS reviewer ON reviewer.user_id=r.decided_by "
+            "WHERE r.client_id=? "
+            "ORDER BY r.created_at DESC,r.approval_id", (chosen,),
         )
 
         # Never disclose records from a FOREIGN client merely because a
@@ -294,12 +300,38 @@ def _source_snapshot(database: str, *, actor_id: str, client_id: str | None) -> 
             eid = _identity(_value(row, "engagement_id"), "risk engagement")
             if type(row["requested_risk"]) is not int or not 0 <= row["requested_risk"] <= 5:
                 raise CasebookHold("noncanonical stored risk decision")
+            stored_status = _value(row, "status", 80)
+            requester_ok = (
+                row["requested_by"] is not None
+                and (
+                    (row["requester_role"] == "operator"
+                     and row["requester_client"] is None)
+                    or (row["requester_role"] in ("client_admin", "client_member")
+                        and row["requester_client"] == chosen)
+                )
+            )
+            if not requester_ok or stored_status not in ("pending", "approved", "denied"):
+                decision_observation = "HOLD_RISK_SOURCE_IDENTITY_OR_STATUS"
+            elif stored_status == "pending":
+                decision_observation = (
+                    "RISK_DECISION_PENDING_REVIEW"
+                    if row["decided_by"] is None and row["decided_at"] is None
+                    else "HOLD_RISK_PENDING_WITH_DECISION"
+                )
+            elif (not row["decided_by"] or not row["decided_at"]
+                  or row["decided_by"] == row["requested_by"]
+                  or row["reviewer_role"] != "operator"
+                  or row["reviewer_client"] is not None):
+                decision_observation = "HOLD_RISK_DECIDER_PROVENANCE"
+            else:
+                decision_observation = "RISK_DECISION_RECORDED_UNVERIFIED"
             risk_view.append({
                 "approval_id": aid, "engagement_id": eid if eid in engs else None,
-                "status": _value(row, "status", 80),
+                "status": stored_status,
                 "requested_risk": row["requested_risk"],
                 "source_tenant_matches": row["client_id"] == chosen and eid in engs,
                 "decision_recorded": row["decided_at"] is not None,
+                "decision_provenance_observation": decision_observation,
             })
         # Report no releases or consent. Do not validate grants by tally.
         case_overview = []
@@ -313,9 +345,13 @@ def _source_snapshot(database: str, *, actor_id: str, client_id: str | None) -> 
                 item["request_link_observation"].startswith("HOLD_") or
                 item["validity_observation"].startswith("HOLD_")
                 for item in linked
-            ) or any(not item["source_tenant_matches"] for item in associated_risk):
+            ) or any(not item["source_tenant_matches"] or item["decision_provenance_observation"].startswith("HOLD_") for item in associated_risk):
                 attention = "HOLD_SOURCE_PROVENANCE"
                 next_action = "RECONCILE_PERSISTED_PROVENANCE"
+            elif any(item["decision_provenance_observation"] == "RISK_DECISION_PENDING_REVIEW"
+                     for item in associated_risk):
+                attention = "RISK_DECISION_PENDING_SOURCE_REVIEW"
+                next_action = "REVIEW_OUTSTANDING_ORIGINAL_RISK_REQUEST"
             elif engagement["status"] == "closed" and linked:
                 attention = "HOLD_CLOSED_ENGAGEMENT_WITH_GRANTS"
                 next_action = "REVIEW_CLOSED_ENGAGEMENT"
@@ -361,6 +397,8 @@ def _source_snapshot(database: str, *, actor_id: str, client_id: str | None) -> 
                 "case_attention_hold": sum(v["attention"].startswith("HOLD_") for v in case_overview),
                 "foreign_tenant_row_count": sum(foreign_by_engagement.values()),
                 "recorded_window_review": sum(v["validity_observation"] != "WITHIN_RECORDED_WINDOW_NOT_AUTHORITY" for v in grant_view),
+                "risk_provenance_hold": sum(v["decision_provenance_observation"].startswith("HOLD_") for v in risk_view),
+                "pending_risk_review": sum(v["decision_provenance_observation"] == "RISK_DECISION_PENDING_REVIEW" for v in risk_view),
             },
             **AUTHORITY,
         }
