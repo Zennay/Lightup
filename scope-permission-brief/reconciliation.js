@@ -95,6 +95,37 @@ function writeFile(filename,mime,body){
  const a=document.createElement('a');a.href=objectURL;a.download=filename;document.body.append(a);a.click();a.remove();
  setTimeout(()=>URL.revokeObjectURL(objectURL),1000);
 }
+
+/* Script-free offline meeting file: never emit raw draft strings or arbitrary HTML. */
+function escapeHTML(value){
+ return String(value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function meetingPack(m){
+ const e=escapeHTML;
+ const priority=q=>q.reported_status==='not_reported'?0:q.reported_status==='unanswered'?1:q.reported_status==='question_sent'?2:3;
+ const sections=roles.map(role=>{
+  const relevant=m.questions.filter(q=>q.assigned_role===role).sort((a,b)=>priority(a)-priority(b));
+  const lineItems=relevant.map(q=>'<li><strong>'+e(q.code.replaceAll('_',' '))+
+   '</strong><span>'+e(q.reported_status.replaceAll('_',' '))+' — '+e(q.next_action.replaceAll('_',' '))+'</span></li>').join('');
+  return '<section><h2>'+e(cap(role))+' preparation — '+(uploads[role]?'self-labelled reply loaded':'no reply loaded')+
+   '</h2><ol>'+lineItems+'</ol></section>';
+ }).join('');
+ const sourceBits='Source SHA-256: '+m.source_sha256+' | Risk '+m.requested_risk+
+   '/4 | '+m.requested_mode+' | '+m.proposed_assets_count+' asset declarations | '+
+   m.excluded_assets_count+' exclusions | Window: '+m.window_status;
+ return '<!doctype html><html lang="en"><head><meta charset="utf-8">'+
+ '<meta name="viewport" content="width=device-width,initial-scale=1">'+
+ '<meta name="referrer" content="no-referrer">'+
+ '<meta http-equiv="Content-Security-Policy" content="default-src &#39;none&#39;; style-src &#39;unsafe-inline&#39;; base-uri &#39;none&#39;; form-action &#39;none&#39;; object-src &#39;none&#39;">'+
+ '<title>LightUp human preparation meeting pack · HOLD</title>'+
+ '<style>body{font:15px/1.5 system-ui,sans-serif;max-width:930px;margin:auto;padding:26px;color:#162435;background:#fff}h1{font-size:30px}h2{border-bottom:2px solid #203a51;padding-bottom:7px}p{overflow-wrap:anywhere}section{break-inside:avoid;margin-top:32px}li{padding:10px;border-bottom:1px solid #ddd}li strong{display:block;text-transform:capitalize}li span{display:block;color:#45586a}.banner{border:2px solid #9b3329;padding:18px;background:#fff4ee}.meta{padding:10px;background:#eef4f7;border-radius:8px;font-size:13px}@media print{body{padding:5px}section{break-inside:auto}}</style></head><body>'+
+ '<header><p>LIGHTUP / OFFLINE HUMAN PREPARATION</p><h1>Review-only follow-up pack · HOLD</h1>'+
+ '<div class="banner"><strong>No authority:</strong> This is NOT client identity, consent, operator approval, risk signoff, scope membership, grant, revocation check, scan, deployment or release. Everything is self-labelled and must be independently verified in the authenticated workflow.</div></header>'+
+ '<p class="meta">'+e(sourceBits)+'</p>'+
+ '<p>'+e(String(m.attention_count))+' of '+e(String(m.questions.length))+' questions still require independently verified follow-up. Responses do not eliminate HOLD.</p>'+
+ sections+'<footer><p>Only counts, fixed question codes and source fingerprint appear in this document. No raw asset, client, credential, note, filename or contact data.</p><p>Never accept this document as proof of authorization or consent.</p></footer></body></html>';
+}
+
 function csvCell(value){
  // Currently all fields are internal fixed enums and SHA256; retain spreadsheet-injection fence.
  let s=String(value);
@@ -112,6 +143,7 @@ function refresh(){
  const active=Boolean(modelNow);
  $('reconcileJSON').disabled=!active;
  $('reconcileCSV').disabled=!active;
+ $('reconcileHTML').disabled=!active;
  if(!active){
   $('reconcileStatus').textContent='Load an original Studio proposal to start · HOLD';
   $('reconcileSummary').textContent='';return;
@@ -140,6 +172,9 @@ $('reconcileJSON').addEventListener('click',()=>{
 });
 $('reconcileCSV').addEventListener('click',()=>{
  const m=model();if(m)writeFile('lightup-human-followups-HOLD.csv','text/csv;charset=utf-8',csv(m));
+});
+$('reconcileHTML').addEventListener('click',()=>{
+ const m=model();if(m)writeFile('lightup-human-preparation-meeting-pack-HOLD.html','text/html;charset=utf-8',meetingPack(m));
 });
 $('reconcileForget').addEventListener('click',reset);
 document.addEventListener('lightup:brief-source-change',reset);
