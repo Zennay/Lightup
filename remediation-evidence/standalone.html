@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="referrer" content="no-referrer">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-wpPFZOyxFDTkVCPSRLe+ulmbav4+u8hRIYgukbiqEiU=' 'sha256-B6htJimtYZGSFyfEHkQeW7hKAzfoigyrUmdCOkI5Cuw='; style-src 'unsafe-inline'; connect-src 'none'; img-src 'none'; font-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-wpPFZOyxFDTkVCPSRLe+ulmbav4+u8hRIYgukbiqEiU=' 'sha256-IHpCSK09WHH4Xls315MeRdpUTFwbmaJbdhpceB7eL6k='; style-src 'unsafe-inline'; connect-src 'none'; img-src 'none'; font-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <title>LightUp · Remediation Evidence Review</title>
 <style>
 :root{font:15px/1.5 system-ui,sans-serif;color:#eef5fc;background:#0b1420;--panel:#152538;--stroke:#456178;--muted:#bdd1e0;--accent:#79e9cc}*{box-sizing:border-box}body{margin:0}header{padding:28px max(20px,calc((100% - 1180px)/2));background:#102237;border-bottom:1px solid var(--stroke)}.eyebrow{font-weight:800;letter-spacing:.14em;color:var(--accent);font-size:.75rem}h1{font-size:clamp(27px,4vw,42px);line-height:1.1;letter-spacing:-.045em;margin:5px 0}p{color:var(--muted)}main{max-width:1220px;margin:auto;padding:20px 20px 80px}.warning{padding:17px 21px;border-radius:12px;background:#382c25;border:1px solid #ad9376;color:#fff0d7}.warning strong{color:#ffe0a7}.card{border:1px solid var(--stroke);background:var(--panel);padding:19px;border-radius:14px;margin:18px 0}h2{margin:0 0 6px;font-size:1.35rem}h3{font-size:1.05rem;margin:0}label{display:block;font-weight:650;min-width:0;margin:8px 0}input,select,textarea{width:100%;font:inherit;color:#fff;background:#0b1a2b;border:1px solid #65839d;border-radius:8px;padding:10px 12px;display:block;margin:5px 0 0}input[type=checkbox]{width:auto;display:inline-block;vertical-align:middle;margin:0 8px 0 0}button{font:inherit;cursor:pointer;background:#26465b;color:#fff;border:1px solid #6a8ca5;border-radius:8px;padding:11px 15px;font-weight:700}button:hover{border-color:var(--accent)}button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid var(--accent);outline-offset:2px}.primary{background:var(--accent);color:#0a2925;border-color:var(--accent)}.row,.files{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px}.buttons{display:flex;flex-wrap:wrap;gap:10px;margin:14px 0}.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin:20px 0}.stat{background:#20384d;border-radius:10px;border:1px solid var(--stroke);padding:12px;color:var(--muted)}.stat strong{font-size:2rem;line-height:1.25;display:block;color:var(--accent)}.board{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,370px),1fr));gap:13px}.finding{padding:17px;border:1px solid #52758f;background:#13283b;border-radius:13px;min-width:0;overflow-wrap:anywhere}.finding h3{font-size:1.12rem;line-height:1.3}.detail{font-size:.8rem;margin:6px 0;color:#c1d3e2}.cues{padding:11px 11px 11px 27px;border:1px solid #856d51;background:#332a24;border-radius:8px;font-size:.85rem;color:#ffead0}.cues li+li{margin-top:5px}.field span{font-size:.85rem}.field textarea{min-height:76px;resize:vertical}#status[data-error=true]{color:#ffb9ad}#status{min-height:28px;font-weight:700}#fingerprint{overflow-wrap:anywhere;font:12px/1.6 ui-monospace,monospace;color:var(--muted)}.foot{font-size:.83rem}a{color:var(--accent)}[hidden]{display:none!important}@media print{body{background:white;color:#111}header,.warning,.files,.buttons,.field,#actions,#status{display:none!important}main{padding:0}.card,.finding{color:#000;background:#fff;border-color:#aaa;break-inside:avoid}p,.detail,.stat{color:#333}.cues{background:white;color:#000}.board{display:block}.finding{margin:10px 0}}
@@ -46,7 +46,12 @@
 <label for="packTeam">Local routing group <select id="packTeam"><option value="">Import original sources first</option></select></label>
 <p id="packCount" class="foot">No original findings imported.</p>
 <div class="buttons"><button id="exportTeamJSON">Download private JSON handoff</button><button id="exportTeamCSV">Download spreadsheet-safe CSV handoff</button></div>
-<p class="foot">These are unsigned human work-preparation documents, not tickets in an external system, verified remediation results, approved grants, retest invitations, client permissions or evidence attestation. CSV strings are escaped to prevent spreadsheet formulas. All source details remain in the file; never send to an unverified recipient.</p></section>
+<p class="foot">These are unsigned human work-preparation documents, not tickets in an external system, verified remediation results, approved grants, retest invitations, client permissions or evidence attestation. CSV strings are escaped to prevent spreadsheet formulas. All source details remain in the file; never send to an unverified recipient.</p>
+<h3>Reconcile a returned private single-team JSON</h3>
+<p>The original selected team may edit only its <strong>human review stage, reference, reviewer and next-step text</strong> in the exported JSON. Import requires the exact original source SHA-256, five source fields, original Casework state, team membership and unchanged local baseline. A rejected packet makes no changes. This cannot authenticate the sender or approve a retest.</p>
+<label>Returned PRIVATE original team JSON <input type="file" id="teamReturnFile" accept=".json,application/json"></label>
+<label><input type="checkbox" id="sameTeamReturn">I independently verified the recipient, client, engagement and local team correspondence. I understand this checkbox is not authentication or authorization.</label>
+<div class="buttons"><button id="importTeamReturn">Review and apply returned HUMAN notes</button></div></section>
 <section id="actions" class="card" hidden><h2>5. Save review state and private all-findings brief</h2><p>Save your private coordination packet, including the local source revision register, and resume it only after reloading the exact original CSV. Aggregate export contains no original finding IDs, titles, people or free-text notes. The private Markdown brief intentionally contains sensitive original identifiers and your notes; handle it as a client report.</p>
 <label>Previously saved review packet (optional)<input type="file" id="reviewFile" accept=".json,application/json"></label>
 <div class="buttons"><button id="restore">Restore review notes for exact source</button><button id="save" class="primary">Save private review JSON</button><button id="aggregate">Export aggregate gaps</button><button id="brief">Export private handoff brief</button></div>
@@ -519,6 +524,8 @@ function teamPacket(rows){
   source_contract:'lightup.finding_export._COLUMNS_v1',source_sha256:sourceHash,
   team_label:team,
   original_findings_total:source.length,selected_findings_total:rows.length,
+  original_review_sha256:localSha256(JSON.stringify(rows.map(({finding:f,coordination:r})=>
+   [f.finding_id,r.stage,r.reference,r.reviewer,r.next_step]))),
   ...Object.fromEntries(flags.map(k=>[k,false])),
   cases:rows.map(({finding:f,plan:c,coordination:r})=>({
    finding_id:f.finding_id,title:f.title,severity:f.severity,original_retest_status:f.retest_status,
@@ -764,6 +771,77 @@ $('exportRevisionAggregate').addEventListener('click',()=>{
  }catch(err){status(err.message,true);}
 });
 
+
+/* Reintegrate only unverified returned human notes from a single original team
+ * packet. All current original findings, original Casework, source and rights
+ * are checked before one atomic replacement of local review notes. */
+$('importTeamReturn').addEventListener('click',async()=>{
+ try{
+  if(!sourceHash||!source)throw Error('Import original authenticated findings summary first.');
+  if(!$('sameTeamReturn').checked)throw Error('Independently verify the returned private packet belongs to the same client, engagement and intended original team.');
+  const packet=strictJSON(await read($('teamReturnFile').files[0],LIMIT_JSON));
+  const topFields=new Set(['kind','schema_version','disposition','source_contract','source_sha256',
+   'team_label','original_findings_total','selected_findings_total','original_review_sha256',
+   'cases','warning',...flags]);
+  if(!packet||Object.getPrototypeOf(packet)!==Object.prototype||
+   Object.keys(packet).some(k=>!topFields.has(k))||
+   packet.kind!=='lightup.remediation_private_team_handoff'||packet.schema_version!==1||
+   packet.disposition!=='UNVERIFIED_PRIVATE_HUMAN_COORDINATION'||
+   packet.source_contract!=='lightup.finding_export._COLUMNS_v1'||
+   packet.source_sha256!==sourceHash||packet.original_findings_total!==source.length||
+   flags.some(k=>packet[k]!==false)||!Array.isArray(packet.cases)||
+   packet.cases.length<1||packet.cases.length>350||
+   packet.selected_findings_total!==packet.cases.length||
+   (packet.team_label!==null&&(typeof packet.team_label!=='string'||!packet.team_label.trim()||
+    packet.team_label.length>120))||
+   typeof packet.original_review_sha256!=='string'||!/^[a-f0-9]{64}$/.test(packet.original_review_sha256))
+   throw Error('Invalid private team packet, forged authority, incomplete source or wrong engagement.');
+  const known=new Map(source.map(f=>[f.finding_id,f]));
+  const expected=source.filter(f=>teamFor(f)===packet.team_label);
+  if(expected.length!==packet.cases.length)throw Error('Local team membership changed since packet export; inspect changes before re-export.');
+  const rowFields=new Set(['finding_id','title','severity','original_retest_status',
+   'original_remediation','casework_status','due_date','local_owner','next_action',
+   'verification_plan','blocker','review_stage','evidence_reference',
+   'local_reviewer','human_follow_up','warnings']);
+  const received=new Map();
+  for(const row of packet.cases){
+   if(!row||Object.getPrototypeOf(row)!==Object.prototype||
+      Object.keys(row).some(k=>!rowFields.has(k))||
+      typeof row.finding_id!=='string'||!known.has(row.finding_id)||
+      received.has(row.finding_id))throw Error('Invalid, duplicate or foreign original finding in returned packet.');
+   const src=known.get(row.finding_id),c=casework?.get(src.finding_id)||engine.newCase(src);
+   if(teamFor(src)!==packet.team_label||
+      row.title!==src.title||row.severity!==src.severity||
+      row.original_retest_status!==src.retest_status||row.original_remediation!==src.remediation||
+      row.casework_status!==c.status||row.due_date!==c.due_date||
+      row.local_owner!==c.owner||row.next_action!==c.next_action||
+      row.verification_plan!==c.verification_plan||row.blocker!==c.blocker)
+    throw Error('Original source, local team route or original Casework changed; no returned edits applied.');
+   if(!Array.isArray(row.warnings)||row.warnings.length>16||
+      row.warnings.some(x=>typeof x!=='string'||x.length>240))
+    throw Error('Malformed local human warning list.');
+   const next=validReview({finding_id:src.finding_id,stage:row.review_stage,
+    reference:row.evidence_reference,reviewer:row.local_reviewer,
+    next_step:row.human_follow_up},new Set([src.finding_id]));
+   received.set(src.finding_id,next);
+  }
+  /* Use the exact original team-packet order, not sorting, for the baseline.
+     Member count and identities have already been verified completely. */
+  const baseline=localSha256(JSON.stringify(packet.cases.map(row=>{
+   const r=review.get(row.finding_id);
+   return [row.finding_id,r.stage,r.reference,r.reviewer,r.next_step];
+  })));
+  if(baseline!==packet.original_review_sha256)throw Error('Local notes changed since private team handoff; re-export rather than overwriting newer notes.');
+  if(received.size!==expected.length)throw Error('Incomplete private team response; no local edits applied.');
+  if(!confirm('Replace only '+received.size+' LOCAL HUMAN review notes using this unverified team return? Original Casework, findings, permissions, scan and actual retest remain unchanged. Confirm the team and recipient independently.'))return;
+  const updated=new Map(review);
+  for(const [id,row] of received)updated.set(id,row);
+  review=updated;changed=true;render();
+  $('teamReturnFile').value='';$('sameTeamReturn').checked=false;
+  status('Returned private team review incorporated into '+received.size+' local records. No original source, casework, grant or verified retest changed.');
+ }catch(err){status(err.message,true);}
+});
+
 $('packTeam').addEventListener('change',updateTeamCount);
 $('exportTeamJSON').addEventListener('click',()=>doTeamExport('json'));
 $('exportTeamCSV').addEventListener('click',()=>doTeamExport('csv'));
@@ -774,6 +852,7 @@ $('boardSort').addEventListener('change',render);
 $('clear').addEventListener('click',()=>{
  if(changed&&!confirm('Discard unsaved local review notes?'))return;
  source=null;casework=null;sourceHash=null;review=new Map();changed=false;refreshCandidate=null;revisions=[];
+ $('teamReturnFile').value='';$('sameTeamReturn').checked=false;
  $('boardSearch').value='';$('boardTeam').value='';$('boardSort').value='severity';$('filter').value='all';
  $('sourceFile').value='';$('caseFile').value='';$('reviewFile').value='';$('refreshFile').value='';$('allowHashlessCasework').checked=false;$('refreshConfirm').checked=false;$('refreshSummary').textContent='No refresh preview.';
  $('dashboard').hidden=true;$('boardSection').hidden=true;$('actions').hidden=true;$('refreshPanel').hidden=true;$('teamPanel').hidden=true;
