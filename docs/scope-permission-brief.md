@@ -6,7 +6,7 @@ Open the fully self-contained [`scope-permission-brief/standalone.html`](https:/
 
 This is a **privacy-minimal audience-specific comprehension explainer** for original `lightup.scope_proposal_draft` v1 exports produced by the existing Scope Planning Studio. It is intentionally separate from the Studio's technical scope diff, the source-bound coordination tracker, encrypted Vault, authenticated request desk, and withdrawal tool.
 
-A client sees the **meaning and limits of a proposed assessment**, with tailored plain-language clarification questions; an operator sees independent-review responsibilities and STOP/revocation, tenant/scope and risk reminders. Import displays only aggregate declared asset and exclusion counts, requested mode and risk, and tentative window status. Proposed target names/IP addresses, client label, free-text notes, filenames and source bytes **never appear in the UI or exported brief**. Case-specific safety notes stay solely in volatile, original local source data.
+A client sees the **meaning and limits of a proposed assessment**, with tailored plain-language clarification questions; an operator sees independent-review responsibilities and STOP/revocation, tenant/scope and risk reminders. Import displays only aggregate declared asset and exclusion counts, requested mode and risk, and tentative window status. Proposed target names/IP addresses, client label, free-text notes and source bytes **never appear in app-generated previews or exported briefs**. The browser's native local file chooser may show the selected filename, so use an appropriate private device. Case-specific safety notes stay solely in volatile, original local source data.
 
 The viewer derives an action queue with explicit human-only status: unanswered, question sent, answered/unverified. Dynamic questions cover elevated risk 4, lab-network interaction, missing exclusions, unresolved UTC windows, and missing purpose/stop notes. None of those states means approved. Client/operator audience can be changed without rewriting the source; printed and JSON views are bounded, generic and privacy-minimal.
 
@@ -16,7 +16,7 @@ The downloaded JSON file contains `kind: lightup.scope_permission_brief`, `schem
 
 ## Strict import and privacy boundaries
 
-- Maximum one 64-KiB original UTF-8 file; invalid bytes, unsupported schema, empty asset list, malformed activities, duplicate JSON keys **at any depth**, unsafe prototype-style keys, unknown authority fields, ambiguous source boolean flags and unsafe control text are refused.
+- Maximum one 64-KiB original UTF-8 file; invalid bytes, unsupported schema, empty asset list, malformed activities, duplicate JSON keys **at any depth**, unsafe prototype-style keys, unknown authority fields, ambiguous source boolean flags and unsafe control text are refused. Multi-line safety notes are accepted (line breaks and tabs only) but never rendered or re-exported.
 - Only `kind=lightup.scope_proposal_draft`, `schema_version=1`, `state=DRAFT_ONLY`, **literal false** authorization/client_consent/operator_consent/grant/execution and revocation_checked (if supplied) are accepted. This is source acceptance, not trust.
 - Resolved UTC planning windows must match the original signed offsets and valid local dates; unknown/malformed statuses fail closed. A resolved planning window remains **unapproved**.
 - Imported `scope_fingerprint_sha256` is syntax checked but **not independently authenticated or recomputed by this explainer**. The viewer's output references only a fresh digest of the exact imported bytes.
