@@ -49,7 +49,7 @@ table{width:100%;border-collapse:collapse}th,td{border-bottom:1px solid var(--bo
 <div><label for="revisionFrom">Original / baseline Studio revision</label><select id="revisionFrom"><option value="">Choose attached baseline</option></select></div>
 <div><label for="revisionTo">Updated Studio revision</label><select id="revisionTo"><option value="">Choose attached update</option></select></div>
 </div>
-<div class="toolbar"><button id="revisionCompare" type="button">Compare local originals</button><button id="revisionReopen" class="primary" disabled type="button">Reopen impacted paperwork on updated draft</button><button id="revisionExport" disabled type="button">Export anonymous revision handoff</button><button id="revisionDiscard" type="button">Clear comparison</button></div>
+<div class="toolbar"><button id="revisionCompare" type="button">Compare local originals</button><button id="revisionCarry" type="button" disabled>Copy missing follow-up logistics to updated draft</button><button id="revisionReopen" class="primary" disabled type="button">Reopen impacted paperwork on updated draft</button><button id="revisionExport" disabled type="button">Export anonymous revision handoff</button><button id="revisionDiscard" type="button">Clear comparison</button></div>
 <p id="revisionStatus" class="small" role="status" aria-live="polite">Requires both exact original Studio source files to be loaded in this tab. Previously restored records stay unbound until reattached.</p>
 <div class="list" id="revisionChanges" aria-live="polite"></div>
 </section>
