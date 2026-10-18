@@ -15,7 +15,7 @@ import sqlite3
 from pathlib import Path
 
 from .auth_casebook import CasebookHold, _auth_actor, _source_snapshot, _write_private_json
-from .revocation_stop import StopLedgerError
+from .revocation_stop import StopLedgerError, status_for_actor as original_stop_history
 from .stop_exposure import _read_exposure
 from .request_binding_readiness_cli import (
     _assets as original_canonical_assets,
@@ -95,6 +95,33 @@ def compose_scope_incident_brief(
                 or exposure["persisted_grant_count"] != case["grant_count"]
             ):
                 raise StopLedgerError("cross-source grant revision disagreement")
+            history_source = original_stop_history(
+                database, engagement_id=eid, actor_id=actor_id
+            )
+            events = history_source.get("recent_events")
+            if (history_source.get("authorization_granted") is not False
+                    or history_source.get("execution_allowed") is not False
+                    or history_source.get("release_approved") is not False
+                    or type(history_source.get("stop_active")) is not bool
+                    or history_source["stop_active"] != exposure["stop_active"]
+                    or type(events) is not list or len(events) > 64
+                    or len(events) == 0 and exposure["stop_active"]
+                    or len(events) > 0 and not exposure["stop_active"]
+                    or type(history_source.get("history_truncated")) is not bool):
+                raise StopLedgerError("STOP observations from separate source moments conflict")
+            for event in events:
+                if (type(event) is not dict or type(event.get("stop_id")) is not str
+                        or not 1 <= len(event["stop_id"]) <= 180
+                        or event.get("actor_role") not in (
+                            "operator", "client_admin", "client_member"
+                        )
+                        or type(event.get("stopped_at")) is not str
+                        or not 1 <= len(event["stopped_at"]) <= 80):
+                    raise StopLedgerError("malformed original STOP history")
+            history = events[:12]
+            history_truncated = (
+                history_source["history_truncated"] or len(events) > len(history)
+            )
             state = "STOP_ACTIVE" if exposure["stop_active"] else "NO_STOP_RECORDED_NOT_PERMISSION"
             count = exposure["persisted_grant_count"]
             linked = exposure["request_linked_grant_count"]
@@ -114,6 +141,8 @@ def compose_scope_incident_brief(
         except (StopLedgerError, KeyError, TypeError, ValueError):
             state = "HOLD_STOP_SOURCE_UNAVAILABLE_OR_CHANGED"
             count = linked = unbound = None
+            history = None
+            history_truncated = None
             warning = "RECHECK_ORIGINAL_SOURCE_PRIVATELY"
         readings.append({
             "engagement_id": eid,
@@ -125,6 +154,8 @@ def compose_scope_incident_brief(
             "request_linked_grant_count": linked,
             "legacy_unbound_grant_count": unbound,
             "stop_source_notice": warning,
+            "stop_recent_events": history,
+            "stop_history_truncated": history_truncated,
             "authority": False,
         })
 
