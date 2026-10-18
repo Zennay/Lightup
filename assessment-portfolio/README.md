@@ -116,3 +116,7 @@ The original private Review Studio now [restores a previously exported complete 
 ### Explicitly continue original hypothetical review capacity
 
 The [next private human review cycle](CAPACITY-CONTINUATION.md) can optionally rebind a previous strict original-source human Capacity Studio plan to the **NEW** original agenda hashes/date, only when the human independently supplies `--previous-private-capacity-plan` **and** `--reconfirm-human-capacity`. Its new private original-schema plan, role schedule and aggregates are included in the same new review-cycle ZIP, never applied to any real worker or task.
+
+### Consecutive original human review history
+
+Use [revision_history.py](REVISION-HISTORY.md) for a complete owner-private source-bound timeline of 2–12 consecutive previously exported original human review-cycle receipts. It refuses breaks in the original manifest/choices/agenda SHA sequence and unchanged original HOLD, and exports a scriptless visual local timeline plus counts-only summaries. Unsigned human changes are not proof of actual vulnerability or consent state.
