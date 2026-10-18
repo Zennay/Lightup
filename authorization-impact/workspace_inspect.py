@@ -79,10 +79,6 @@ def _private_file(fd: int, name: str, limit: int) -> bytes:
 def inspect(directory: Path) -> None:
     dirfd = _private_dir(directory)
     try:
-        expected_all = set(EXPECTED) | {"manifest.json"}
-        names = os.listdir(dirfd)
-        if set(names) != expected_all or len(names) != len(expected_all):
-            raise Refused("incomplete or unexpected workspace entry")
         raw_manifest = _private_file(dirfd, "manifest.json", MANIFEST_LIMIT)
         try:
             manifest = json.loads(
@@ -107,9 +103,22 @@ def inspect(directory: Path) -> None:
         ):
             raise Refused("authority flags cannot be inferred")
         references = manifest.get("files")
-        if type(references) is not dict or set(references) != set(EXPECTED):
+        if type(references) is not dict:
             raise Refused("incomplete recipient manifest")
-        for filename, max_size in EXPECTED.items():
+        requested = set(references)
+        base = set(EXPECTED)
+        if requested not in (base, base | {"PRIVATE-review.json"}):
+            raise Refused("unexpected recipient files")
+        expected_all = requested | {"manifest.json"}
+        names = os.listdir(dirfd)
+        if len(names) != len(expected_all) or set(names) != expected_all:
+            raise Refused("incomplete or unexpected workspace entry")
+        limits = dict(EXPECTED)
+        if "PRIVATE-review.json" in requested:
+            limits["PRIVATE-review.json"] = 262144
+        original_source = None
+        review_source = None
+        for filename, max_size in limits.items():
             reference = references[filename]
             if type(reference) is not dict or set(reference) != {"sha256", "bytes"}:
                 raise Refused("invalid file metadata")
@@ -127,9 +136,15 @@ def inspect(directory: Path) -> None:
                 raise Refused("manifest / private file mismatch")
             if filename == "casebook.json":
                 _validate_source(raw)
+                original_source = raw
+            elif filename == "PRIVATE-review.json":
+                review_source = raw
             elif filename == "standalone.html":
                 if b"<title>LightUp | Scope Impact Map</title>" not in raw:
                     raise Refused("unknown offline application")
+        if review_source is not None:
+            from review_binding import admit_private_review
+            admit_private_review(original_source, review_source)
     finally:
         os.close(dirfd)
 
