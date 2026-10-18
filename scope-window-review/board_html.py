@@ -131,6 +131,8 @@ def render(agenda: dict) -> bytes:
                 f'<p><strong>Original engagement:</strong> <span class="private">{_text(item["engagement_id"] or "SOURCE HOLD: detached")}</span></p>'
                 f'<p><strong>Original grant:</strong> <span class="private">{_text(item["grant_id"])}</span></p>'
                 f'<p><strong>Observed:</strong> {_text(item["phase"])}</p>'
+                f'<p><strong>Human target:</strong> {_text(item["human_target_date_utc"])} UTC</p>'
+                f'<p><strong>Capacity delay:</strong> {_text(item["capacity_shift_days"])} day(s) — delay is never permission to extend a grant</p>'
                 f'<p><strong>Source link:</strong> {_text(item["original_link_observation"])}</p>'
                 f'<p><strong>Original recorded window:</strong> {_text(item["original_valid_from"])} → {_text(item["original_valid_until"])}</p>'
                 f'<p class="muted small">{_text(item["next_action"])}</p>'
@@ -152,6 +154,7 @@ def render(agenda: dict) -> bytes:
         ("HOLD follow-ups", counts["hold"]),
         ("Review-only entries", counts["review_only"]),
         ("Source age warning", "YES" if agenda["stale_source_over_24h"] else "No"),
+        ("Capacity-overflow HOLD", agenda["capacity_shifted_items"]),
     ]
     panels = ''.join(
         f'<div class="metric"><span>{_text(label)}</span><strong>{_text(value)}</strong></div>'
@@ -192,7 +195,7 @@ Private selected tenant: <span class="private">{_text(agenda["client_id"])}</spa
 <option value="RECORDED_START_UPCOMING">Start upcoming</option>
 <option value="RECORDED_END_UPCOMING">End upcoming</option></select></label></div>
 <p aria-live="polite" class="muted"><span id="shown">{counts["items"]}</span> visible items.
-Review dates are suggestions only, not original authorization deadlines.</p>
+Review dates are capacity-adjusted HUMAN suggestions only, not original authorization deadlines.</p>
 <div class="controls"><button id="save" type="button">Export PRIVATE human stage note</button>
 <button id="aggregate" type="button">Export anonymous daily counts CSV</button></div>
 <main>{''.join(rows) or '<p>No upcoming original grant-window records for this selected horizon.</p>'}</main>
