@@ -191,6 +191,18 @@
 <div><h3>Change original source or forget old requests</h3><p>Changing the original source locks old PRIVATE HUMAN notes. Export them separately before explicitly starting a fresh source-bound request desk.</p>
 <button id="requestClear" class="secondary">Discard PRIVATE requests / start current source</button></div>
 </div>
+<div class="bulk"><h3>PRIVATE owner-specific human request and reply handoff</h3>
+<p>Share only the selected HUMAN assignee's open original-finding request instructions: no complete Casework, other owners' PRIVATE records, original evidence files, filenames or local file fingerprints. The separately delivered <strong>Human Evidence Reply</strong> offline app lets that HUMAN owner answer without accessing this desk. These files never authenticate the sender or authorize retest.</p>
+<div class="grid">
+<div><label>Recipient alias from local HUMAN requests<select id="requestOwner"><option value="">Choose HUMAN recipient alias</option></select></label>
+<button id="ownerPacketExport" disabled>Download owner-only PRIVATE request JSON</button></div>
+<div><label>Privately returned owner-specific HUMAN response JSON<input id="ownerReplyImport" type="file" accept=".json,application/json" disabled></label>
+<button id="ownerReplyPreviewButton" disabled>Preview exact source-bound HUMAN responses</button></div>
+</div>
+<pre id="ownerReplyPreview" class="migration" hidden></pre>
+<button id="ownerReplyApply" disabled>Confirm source-bound PRIVATE owner reply import</button>
+<p class="subtle">The responder uses a separate local owner-reply standalone application. Verify the recipient before sending, verify the alleged sender through an independent channel before accepting, and never treat their notes as validated findings or permission to scan.</p>
+</div>
 <p id="requestMessage" class="notice" role="status" aria-live="polite">No original-source-bound HUMAN request was sent or authorized.</p>
 </section>
 <section class="card"><h2>12 · Individual local handoff</h2>
