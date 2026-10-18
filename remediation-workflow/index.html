@@ -18,7 +18,7 @@ table{border-collapse:collapse;width:100%;text-align:left}th,td{padding:12px 10p
 .item small{color:var(--accent);font-weight:bold}.item p{margin:5px 0}#status{font-weight:750;min-height:25px}#status[data-error=true]{color:#ffc0b8}
 a{color:var(--accent)}.muted{font-size:.88rem}.links{display:flex;gap:16px;flex-wrap:wrap}.links a{font-weight:700}#digest{word-break:break-all;font:12px/1.5 monospace}
 [hidden]{display:none!important}@media print{header,.warning,.controls,.links,.files,#status{display:none!important}body{background:#fff;color:#111}.card,.item{color:#111;background:#fff;border-color:#aaa}p,.muted{color:#333}}
-</style></head><body>
+textarea{font:inherit;display:block;width:100%;min-height:75px;padding:11px;border:1px solid #7998b1;border-radius:8px;background:#0d1d2b;color:#fff}#editorStatus[data-error=true]{color:#ffc0b8}</style></head><body>
 <header><small>LIGHTUP · SOURCE-BOUND HUMAN REMEDIATION</small><h1>Coordination Cockpit</h1><p>Combine the existing Evidence Review Board and Capacity Studio into one local, decision-ready human follow-up view.</p></header>
 <main><div class="warning"><strong>INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD</strong><br>This is an offline coordination draft, NOT authentication, a client/operator approval, a verified patch, a retest permit, or authority to execute anything. Load only privately and independently authorized original exports. Hashes link contents, never identity or consent. No customer data is sent anywhere.</div>
 <section class="card"><h2>1 · Join original source and private working drafts</h2><p>Use the <em>exact same original CSV</em> exported through existing authorized LightUp access in all apps, or start from a separate originally authenticated private HTML export. A saved private HTML is not proof of current identity or permission. Evidence JSON comes from Evidence Review Board; optional original Casework private JSON adds blockers and overdue planning, and capacity drafts come from Capacity Studio. Imports never change the source files.</p>
@@ -43,6 +43,31 @@ a{color:var(--accent)}.muted{font-size:.88rem}.links{display:flex;gap:16px;flex-
 <p><strong id="queueCount">0</strong> current human follow-up entries. Only finding IDs and local unverified stage labels are displayed, never raw proof artifacts.</p><div id="agenda" class="agenda"></div>
 <div class="controls"><button id="aggregate">Export source-bound aggregate CSV</button><button id="fundingExport">Export PRIVATE aggregate to Funding Studio</button><button id="originalCsvExport">Export PRIVATE original CSV for Evidence / Client Brief / Capacity</button><button id="private">Export PRIVATE human handoff Markdown</button></div>
 <p class="muted">Aggregate CSV has no source IDs, names, titles, reference text or private notes. Private handoff includes finding IDs and must only be transferred via an independently approved confidential channel. Funding Studio receives only the existing original aggregate capacity summary, with NO original finding IDs, source rows, people, grants or authorization. None of these exports is a security verdict.</p></section></section>
+<section class="card" id="editorPanel" hidden><h2>5 · Edit original-source-bound HUMAN evidence dossiers</h2>
+<p>Editable human notes are never verified patches, authenticated evidence, approved retests, source status, or execution authorization. Nothing uploads or persists in browser storage. Export an unsigned private draft explicitly to keep work. Original Evidence Review source-history notes are not transferred; retain that original private file separately.</p>
+<p id="editorCount" class="muted">No source loaded.</p>
+<label>Original finding to coordinate<select id="editorFinding"></select></label>
+<div class="grid"><label>Human review stage<select id="editor_stage">
+<option value="missing">Missing / not submitted</option><option value="submitted">Submitted for HUMAN review</option>
+<option value="needs_changes">Needs human changes</option>
+<option value="ready_for_authorized_retest">Request separately authorized retest</option></select></label>
+<label>Human reviewer/team<input id="editor_reviewer" maxlength="120" autocomplete="off"></label></div>
+<div class="grid"><label>Human review reference<input id="editor_reference" maxlength="240" autocomplete="off"></label>
+<label>Next human action<textarea id="editor_next_step" maxlength="500"></textarea></label></div>
+<div class="grid"><label>Patch/change reference<input id="editor_change_reference" maxlength="240"></label>
+<label>Rollout/deployment reference<input id="editor_deployment_reference" maxlength="240"></label>
+<label>Rollback/recovery reference<input id="editor_rollback_reference" maxlength="240"></label>
+<label>Separately approved retest REQUEST reference<input id="editor_retest_request_reference" maxlength="240"></label></div>
+<label>Open question to human reviewer<textarea id="editor_review_question" maxlength="700"></textarea></label>
+<div class="controls"><button id="editorSave" class="primary">Save HUMAN notes in this tab</button>
+<button id="editorExport">Export PRIVATE original Evidence Review v2 draft</button></div>
+<h3>Bulk human coordination · original source remains read-only</h3>
+<div class="grid"><label>Source severity<select id="editorBulkSeverity"><option value="">All severities</option><option value="critical">Critical</option><option value="high">High</option><option value="medium">Medium</option><option value="low">Low</option><option value="info">Info</option></select></label>
+<label>Human stage<select id="editorBulkStage"><option value="">Preserve stage</option><option value="missing">Missing</option><option value="submitted">Submitted</option><option value="needs_changes">Needs human changes</option><option value="ready_for_authorized_retest">Coordinate separate retest REQUEST</option></select></label>
+<label>Human reviewer/team<input id="editorBulkReviewer" maxlength="120" autocomplete="off"></label></div>
+<div class="controls"><button id="editorBulkApply">Confirm and apply HUMAN stage/reviewer to severity band</button></div>
+<p id="editorStatus" role="status" aria-live="polite" data-error="false"></p>
+</section>
 </main>
-<script src="../casework/remediation-engine.js"></script><script src="../remediation-capacity/planner.js"></script><script src="../remediation-capacity/draft.js"></script><script src="cockpit.js"></script>
+<script src="../casework/remediation-engine.js"></script><script src="../remediation-capacity/planner.js"></script><script src="../remediation-capacity/draft.js"></script><script src="desk.js"></script><script src="cockpit.js"></script>
 </body></html>

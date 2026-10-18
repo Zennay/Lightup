@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="referrer" content="no-referrer">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-wpPFZOyxFDTkVCPSRLe+ulmbav4+u8hRIYgukbiqEiU=' 'sha256-7uVWP+8F4rK20N4waCez9ECs4twj73TKRFULKGnKH8E=' 'sha256-k063sX7gui1MHh7KSFsfBDpeNsiUePvLBCuTQLOmh0c=' 'sha256-D3UB4TAPaiSsM0Jr4pmSNCAPMOOxm0ESDPU/UIuTKxc='; style-src 'unsafe-inline'; connect-src 'none'; img-src 'none'; font-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-wpPFZOyxFDTkVCPSRLe+ulmbav4+u8hRIYgukbiqEiU=' 'sha256-7uVWP+8F4rK20N4waCez9ECs4twj73TKRFULKGnKH8E=' 'sha256-k063sX7gui1MHh7KSFsfBDpeNsiUePvLBCuTQLOmh0c=' 'sha256-hH2MWDH9xzMnTFl7VUYNyCHkI9xRx+XT+TtCx7HVKZ8=' 'sha256-Yl3FgsVV3qOEQvWmFJL44fYR8namUmpjK+yfO/33EDg='; style-src 'unsafe-inline'; connect-src 'none'; img-src 'none'; font-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <title>LightUp · Remediation Coordination Cockpit</title>
 <style>
 :root{font:15px/1.5 system-ui,sans-serif;background:#0c1423;color:#f0f6ff;--panel:#16273a;--line:#445f75;--muted:#bed0e1;--accent:#81f3c6}
@@ -18,7 +18,7 @@ table{border-collapse:collapse;width:100%;text-align:left}th,td{padding:12px 10p
 .item small{color:var(--accent);font-weight:bold}.item p{margin:5px 0}#status{font-weight:750;min-height:25px}#status[data-error=true]{color:#ffc0b8}
 a{color:var(--accent)}.muted{font-size:.88rem}.links{display:flex;gap:16px;flex-wrap:wrap}.links a{font-weight:700}#digest{word-break:break-all;font:12px/1.5 monospace}
 [hidden]{display:none!important}@media print{header,.warning,.controls,.links,.files,#status{display:none!important}body{background:#fff;color:#111}.card,.item{color:#111;background:#fff;border-color:#aaa}p,.muted{color:#333}}
-</style></head><body>
+textarea{font:inherit;display:block;width:100%;min-height:75px;padding:11px;border:1px solid #7998b1;border-radius:8px;background:#0d1d2b;color:#fff}#editorStatus[data-error=true]{color:#ffc0b8}</style></head><body>
 <header><small>LIGHTUP · SOURCE-BOUND HUMAN REMEDIATION</small><h1>Coordination Cockpit</h1><p>Combine the existing Evidence Review Board and Capacity Studio into one local, decision-ready human follow-up view.</p></header>
 <main><div class="warning"><strong>INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD</strong><br>This is an offline coordination draft, NOT authentication, a client/operator approval, a verified patch, a retest permit, or authority to execute anything. Load only privately and independently authorized original exports. Hashes link contents, never identity or consent. No customer data is sent anywhere.</div>
 <section class="card"><h2>1 · Join original source and private working drafts</h2><p>Use the <em>exact same original CSV</em> exported through existing authorized LightUp access in all apps, or start from a separate originally authenticated private HTML export. A saved private HTML is not proof of current identity or permission. Evidence JSON comes from Evidence Review Board; optional original Casework private JSON adds blockers and overdue planning, and capacity drafts come from Capacity Studio. Imports never change the source files.</p>
@@ -43,6 +43,31 @@ a{color:var(--accent)}.muted{font-size:.88rem}.links{display:flex;gap:16px;flex-
 <p><strong id="queueCount">0</strong> current human follow-up entries. Only finding IDs and local unverified stage labels are displayed, never raw proof artifacts.</p><div id="agenda" class="agenda"></div>
 <div class="controls"><button id="aggregate">Export source-bound aggregate CSV</button><button id="fundingExport">Export PRIVATE aggregate to Funding Studio</button><button id="originalCsvExport">Export PRIVATE original CSV for Evidence / Client Brief / Capacity</button><button id="private">Export PRIVATE human handoff Markdown</button></div>
 <p class="muted">Aggregate CSV has no source IDs, names, titles, reference text or private notes. Private handoff includes finding IDs and must only be transferred via an independently approved confidential channel. Funding Studio receives only the existing original aggregate capacity summary, with NO original finding IDs, source rows, people, grants or authorization. None of these exports is a security verdict.</p></section></section>
+<section class="card" id="editorPanel" hidden><h2>5 · Edit original-source-bound HUMAN evidence dossiers</h2>
+<p>Editable human notes are never verified patches, authenticated evidence, approved retests, source status, or execution authorization. Nothing uploads or persists in browser storage. Export an unsigned private draft explicitly to keep work. Original Evidence Review source-history notes are not transferred; retain that original private file separately.</p>
+<p id="editorCount" class="muted">No source loaded.</p>
+<label>Original finding to coordinate<select id="editorFinding"></select></label>
+<div class="grid"><label>Human review stage<select id="editor_stage">
+<option value="missing">Missing / not submitted</option><option value="submitted">Submitted for HUMAN review</option>
+<option value="needs_changes">Needs human changes</option>
+<option value="ready_for_authorized_retest">Request separately authorized retest</option></select></label>
+<label>Human reviewer/team<input id="editor_reviewer" maxlength="120" autocomplete="off"></label></div>
+<div class="grid"><label>Human review reference<input id="editor_reference" maxlength="240" autocomplete="off"></label>
+<label>Next human action<textarea id="editor_next_step" maxlength="500"></textarea></label></div>
+<div class="grid"><label>Patch/change reference<input id="editor_change_reference" maxlength="240"></label>
+<label>Rollout/deployment reference<input id="editor_deployment_reference" maxlength="240"></label>
+<label>Rollback/recovery reference<input id="editor_rollback_reference" maxlength="240"></label>
+<label>Separately approved retest REQUEST reference<input id="editor_retest_request_reference" maxlength="240"></label></div>
+<label>Open question to human reviewer<textarea id="editor_review_question" maxlength="700"></textarea></label>
+<div class="controls"><button id="editorSave" class="primary">Save HUMAN notes in this tab</button>
+<button id="editorExport">Export PRIVATE original Evidence Review v2 draft</button></div>
+<h3>Bulk human coordination · original source remains read-only</h3>
+<div class="grid"><label>Source severity<select id="editorBulkSeverity"><option value="">All severities</option><option value="critical">Critical</option><option value="high">High</option><option value="medium">Medium</option><option value="low">Low</option><option value="info">Info</option></select></label>
+<label>Human stage<select id="editorBulkStage"><option value="">Preserve stage</option><option value="missing">Missing</option><option value="submitted">Submitted</option><option value="needs_changes">Needs human changes</option><option value="ready_for_authorized_retest">Coordinate separate retest REQUEST</option></select></label>
+<label>Human reviewer/team<input id="editorBulkReviewer" maxlength="120" autocomplete="off"></label></div>
+<div class="controls"><button id="editorBulkApply">Confirm and apply HUMAN stage/reviewer to severity band</button></div>
+<p id="editorStatus" role="status" aria-live="polite" data-error="false"></p>
+</section>
 </main>
 <script>/* LightUp local casework. Parsing/presentation only; never authenticates source or authorizes assessments. */
 (function(global){
@@ -648,7 +673,161 @@ global.LightUpCasework=Object.freeze({compareSource,reconcileSource,parseCSV,nor
   }
   root.LightUpDraft=Object.freeze({fingerprint,exportDraft,importDraft,MAX_DRAFT_BYTES});
 })(window);
-</script><script>/* LightUp offline source-bound coordination: no authorization, scanning, verification or remote I/O. */
+</script><script>/* Source-bound local human editor; NO authentication, evidence verification, retest, scan or dispatch. */
+(()=>{'use strict';
+const $=id=>document.getElementById(id);
+const FIELDS=['change_reference','deployment_reference','rollback_reference','retest_request_reference','review_question'];
+const MAX={reference:240,reviewer:120,next_step:500,change_reference:240,deployment_reference:240,rollback_reference:240,retest_request_reference:240,review_question:700};
+const LABELS={change_reference:'Patch/change reference',deployment_reference:'Rollout/deployment reference',rollback_reference:'Rollback/recovery reference',retest_request_reference:'Separately authorized retest REQUEST reference',review_question:'Open question to the human reviewer'};
+const STAGES=['missing','submitted','needs_changes','ready_for_authorized_retest'];
+const BAD=/[\u202a-\u202e\u2066-\u2069]/;
+let source=[],digest='',drafts=new Map(),onChange=null,current='',unsaved=false;
+function msg(message,error=false){$('editorStatus').textContent=message;$('editorStatus').dataset.error=error?'true':'false';}
+function validate(str,max,label){
+ if(typeof str!=='string'||str.length>max||str.includes('\u0000')||BAD.test(str))
+  throw Error('Invalid '+label+': too long or contains unsafe direction/control characters.');
+ return str;
+}
+function sanitize(row){
+ if(!row||!STAGES.includes(row.stage))throw Error('Invalid local review stage.');
+ const result={finding_id:validate(row.finding_id,160,'finding ID'),stage:row.stage,
+  reference:validate(row.reference,240,'review reference'),
+  reviewer:validate(row.reviewer,120,'reviewer'),
+  next_step:validate(row.next_step,500,'human next step'),evidence:{}};
+ if(!row.evidence||typeof row.evidence!=='object'||Array.isArray(row.evidence))
+  throw Error('Incomplete human evidence dossier.');
+ for(const name of FIELDS)result.evidence[name]=validate(row.evidence[name],MAX[name],name);
+ return result;
+}
+function pristine(id){return sanitize({finding_id:id,stage:'missing',reference:'',reviewer:'',next_step:'',
+ evidence:Object.fromEntries(FIELDS.map(name=>[name,'']))});}
+function clearForm(){
+ for(const name of ['reference','reviewer','next_step',...FIELDS])$('editor_'+name).value='';
+ $('editor_stage').value='missing';
+}
+function show(id){
+ if(!drafts.has(id))return;
+ current=id;
+ const row=drafts.get(id);$('editorFinding').value=id;
+ $('editor_stage').value=row.stage;
+ for(const name of ['reference','reviewer','next_step',...FIELDS])
+  $('editor_'+name).value=name in row?row[name]:row.evidence[name];
+ $('editorCount').textContent=source.length+' original source findings · '+[...drafts.values()].filter(r=>FIELDS.slice(0,4).some(k=>!r.evidence[k].trim())).length+' human reference gaps.';
+ msg('Editing only unsigned human notes for original finding '+id+'. No source or retest status will change.');
+}
+function collect(){
+ if(!current||!drafts.has(current))throw Error('Load original findings before editing.');
+ const row={finding_id:current,stage:$('editor_stage').value};
+ for(const name of ['reference','reviewer','next_step'])row[name]=$('editor_'+name).value;
+ row.evidence=Object.fromEntries(FIELDS.map(name=>[name,$('editor_'+name).value]));
+ return sanitize(row);
+}
+function apply(id,row){
+ drafts.set(id,row);unsaved=true;onChange?.(id,row);$('editorCount').textContent=
+ source.length+' original findings · '+[...drafts.values()].filter(r=>FIELDS.slice(0,4).some(k=>!r.evidence[k].trim())).length+' incomplete human evidence dossiers.';
+}
+function save(){
+ const row=collect();apply(current,row);
+ msg('Local HUMAN notes saved for '+current+'. Export PRIVATE Evidence Review draft before closing; nothing is persisted in the browser.');
+}
+function isLoaded(){if(!digest||!source.length||drafts.size!==source.length)throw Error('Import original findings before creating private drafts.');}
+function snapshot(){
+ isLoaded();
+ return {kind:'lightup.remediation_evidence_coordination',schema_version:2,
+  disposition:'UNVERIFIED_OFFLINE_HUMAN_COORDINATION',
+  source_contract:'lightup.finding_export._COLUMNS_v1',source_sha256:digest,
+  authenticated:false,tenant_verified:false,source_authorized:false,assessment_authorized:false,
+  grant:false,client_consent:false,operator_consent:false,execution:false,scan:false,
+  audit_verdict:false,retest_verified:false,release:false,
+  review:source.map(f=>sanitize(drafts.get(f.finding_id))),
+  revision_register:[],
+  warning:'References and local stages are unverified human notes, not evidence authenticity, remediation proof or retest results. Source revision history from prior Evidence Review imports is NOT re-exported by the Cockpit; preserve the original private draft separately.'};
+}
+function download(data){
+ const file=new Blob([data],{type:'application/json;charset=utf-8'});
+ const url=URL.createObjectURL(file),link=document.createElement('a');
+ link.href=url;link.download='lightup-evidence-coordination-PRIVATE.json';link.click();
+ setTimeout(()=>URL.revokeObjectURL(url),1500);
+}
+function exportDraft(){
+ try{
+  isLoaded();
+  // Read the visible form first, but do not silently drop unsaved user edits.
+  const candidate=collect(),old=drafts.get(current);
+  const modified=JSON.stringify(candidate)!==JSON.stringify(old);
+  if(modified)throw Error('Your visible finding has unsaved form changes. Save its notes first.');
+  const packet=snapshot(),data=JSON.stringify(packet,null,2)+'\n';
+  if(new TextEncoder().encode(data).length>2097152)throw Error('Private evidence export exceeds upstream 2 MiB size limit.');
+  if(!confirm('Export PRIVATE unsigned original-source-bound review JSON with source finding IDs and human notes? Verify a separately authorized confidential recipient. This grants NO authority.'))return;
+  download(data);unsaved=false;
+  msg('Private evidence draft exported for ORIGINAL Evidence Review Board. Keep it confidential. Local edits are not uploaded or verified.');
+ }catch(err){msg(err.message,true);}
+}
+function bulk(){
+ try{
+  isLoaded();
+  if(current&&JSON.stringify(collect())!==JSON.stringify(drafts.get(current)))
+   throw Error('Save your current finding form first, before bulk changes.');
+  const stage=$('editorBulkStage').value,reviewer=$('editorBulkReviewer').value.trim();
+  if(!stage&&!reviewer)throw Error('Select a local human stage or reviewer.');
+  if(stage&&!STAGES.includes(stage))throw Error('Unknown local bulk human stage.');
+  validate(reviewer,120,'bulk reviewer');
+  const severity=$('editorBulkSeverity').value;
+  const chosen=source.filter(f=>!severity||f.severity===severity);
+  if(!chosen.length)throw Error('No original findings in the requested severity.');
+  if(!confirm('Update '+chosen.length+' HUMAN-ONLY review rows? Existing individual evidence and original finding/retest status will NOT be changed.'))return;
+  // Prepare all modifications before mutating any local review state.
+  const candidate=chosen.map(f=>{
+   const old=drafts.get(f.finding_id);
+   return [f.finding_id,sanitize({...old,stage:stage||old.stage,reviewer:reviewer||old.reviewer})];
+  });
+  for(const [id,row] of candidate)apply(id,row);
+  if(current)show(current);
+  msg('Updated '+candidate.length+' local human review entries; original source and evidence references unchanged. Export a private draft to preserve notes.');
+ }catch(err){msg(err.message,true);}
+}
+function forget(){
+ source=[];digest='';drafts=new Map();onChange=null;current='';unsaved=false;
+ $('editorPanel').hidden=true;$('editorFinding').replaceChildren();clearForm();$('editorCount').textContent='No source loaded.';
+ msg('No human coordination notes are retained after clearing this page.');
+}
+function mount({original,hash,review,onReviewChange}){
+ forget();
+ if(!Array.isArray(original)||!original.length||original.length>350||typeof hash!=='string'||!/^[0-9a-f]{64}$/.test(hash)||!(review instanceof Map))
+  throw Error('Expected original bounded source and exact source digest.');
+ const staged=new Map();
+ for(const finding of original){
+  const id=validate(finding.finding_id,160,'finding ID');
+  if(staged.has(id))throw Error('Duplicate original finding identifier.');
+  const existing=review.get(id);
+  if(!existing)throw Error('Missing original review row.');
+  staged.set(id,sanitize({...existing,finding_id:id,reference:existing.reference??'',
+    reviewer:existing.reviewer??'',next_step:existing.next_step??''}));
+ }
+ source=original.slice();drafts=staged;digest=hash;onChange=onReviewChange;
+ const select=$('editorFinding');
+ for(const finding of source){
+  const opt=document.createElement('option');opt.value=finding.finding_id;
+  opt.textContent=finding.finding_id+' · '+finding.severity;select.append(opt);
+ }
+ $('editorPanel').hidden=false;show(source[0].finding_id);unsaved=false;
+}
+$('editorFinding').addEventListener('change',()=>{
+ try{
+  if(current&&JSON.stringify(collect())!==JSON.stringify(drafts.get(current))){
+   if(!confirm('Discard unsaved human notes for the current finding?')){$('editorFinding').value=current;return;}
+  }
+  show($('editorFinding').value);
+ }catch(err){msg(err.message,true);}
+});
+$('editorSave').addEventListener('click',()=>{try{save();}catch(err){msg(err.message,true);}});
+$('editorExport').addEventListener('click',exportDraft);
+$('editorBulkApply').addEventListener('click',bulk);
+window.addEventListener('beforeunload',event=>{
+ if(unsaved){event.preventDefault();event.returnValue='';}
+});
+window.LightUpEvidenceEditor=Object.freeze({mount,forget,select:show,snapshot,hasUnsaved:()=>unsaved});
+})();</script><script>/* LightUp offline source-bound coordination: no authorization, scanning, verification or remote I/O. */
 (()=>{'use strict';
 const C=window.LightUpCasework,P=window.LightUpCapacity,D=window.LightUpDraft;
 if(!C||!P||!D)throw Error('Pinned original Casework and Capacity modules are required.');
@@ -670,7 +849,7 @@ function keysExact(obj,allowed,required=allowed){
  if(ks.some(k=>!allowed.includes(k))||required.some(k=>!Object.prototype.hasOwnProperty.call(obj,k)))fail('Unexpected or missing private fields.');
 }
 function human(value,max){
- if(typeof value!=='string'||value.length>max||/[\u0000-\u001f\u007f]/.test(value)||BIDI.test(value))fail('Invalid local review text.');
+ if(typeof value!=='string'||value.length>max||value.includes('\u0000')||BIDI.test(value))fail('Invalid local review text.');
  return value;
 }
 async function readFile(file,max){
@@ -746,7 +925,7 @@ function reviewDocument(packet,source,hash){
    if(packet.schema_version===2)fail('Missing v2 human evidence dossier.');
    for(const name of EVIDENCE)evidence[name]='';
   }
-  found.set(raw.finding_id,{stage:raw.stage,evidence});
+  found.set(raw.finding_id,{stage:raw.stage,reference:raw.reference,reviewer:raw.reviewer,next_step:raw.next_step,evidence});
  }
  if(found.size!==source.length)fail('Evidence has incomplete exact original source coverage.');
  return found;
@@ -782,6 +961,7 @@ function caseworkDocument(packet,source,sha){
  return cases;
 }
 function wipe(){
+ window.LightUpEvidenceEditor?.forget();
  joined=null;$('results').hidden=true;$('digest').textContent='';
  preloadedSource=null;$('csv').value='';$('previous').value='';$('evidence').value='';$('casework').value='';$('capacity').value='';$('same').checked=false;
  $('severity').value='';$('kind').value='';$('agenda').replaceChildren();$('matrix').replaceChildren();
@@ -847,7 +1027,8 @@ async function importPreloadedSource(){
 }
 const checkSame=()=>{if(!$('same').checked)fail('Independently confirm the SAME original client and exact engagement before joining sources.');};
 async function load(){
- joined=null;$('results').hidden=true;$('digest').textContent='';status('Checking original source and private draft links …');
+ if(window.LightUpEvidenceEditor?.hasUnsaved()&&!confirm('Discard unsaved HUMAN review changes and load a different source? Export private notes first if needed.'))return;
+ status('Checking original source and private draft links …');
  const file=$('csv').files[0];
  const extra=$('previous').files.length||$('evidence').files.length||$('casework').files.length||$('capacity').files.length;
  if(extra)checkSame();
@@ -857,7 +1038,7 @@ async function load(){
  if(!sha||!/^[a-f0-9]{64}$/.test(sha))fail('Canonical original source SHA-256 is unavailable; no unsafe fallback.');
  const evidence=$('evidence').files.length?
   reviewDocument(strictJSON(await readFile($('evidence').files[0],2097152)),source,sha):
-  new Map(source.map(f=>[f.finding_id,{stage:'missing',evidence:Object.fromEntries(EVIDENCE.map(name=>[name,'']))}]));
+  new Map(source.map(f=>[f.finding_id,{stage:'missing',reference:'',reviewer:'',next_step:'',evidence:Object.fromEntries(EVIDENCE.map(name=>[name,'']))}]));
  let capacity=null, summary=null, casework=null, revision=null;
  if($('previous').files.length){
   const previous=C.parseCSV(await readFile($('previous').files[0],1048576));
@@ -891,7 +1072,17 @@ async function load(){
  joined={records,sha,summary,revision,privateCsv:csv};
  $('results').hidden=false;$('digest').textContent='Unsigned canonical findings fingerprint: '+sha+
    (summary?' · capacity assumptions bound to the original raw CSV SHA-256':' · no optional staffing draft loaded');
- render();status('Loaded '+source.length+' original findings with '+($('evidence').files.length?'private review notes':'empty local review notes')+(summary?' and exact-CSV capacity estimates':'')+'. No permissions, retests or repairs inferred.');
+ render();
+ window.LightUpEvidenceEditor?.mount({original:source,hash:sha,review:evidence,onReviewChange:(id,row)=>{
+  const rec=joined?.records.find(r=>r.id===id);if(!rec)return;
+  const before=rec.missing.length*7+(rec.stage==='needs_changes'?25:0);
+  rec.stage=row.stage;rec.missing=EVIDENCE.slice(0,4).filter(k=>!row.evidence[k].trim());
+  const after=rec.missing.length*7+(row.stage==='needs_changes'?25:0);
+  rec.priority+=after-before;
+  joined.records.sort((a,b)=>b.priority-a.priority||a.id.localeCompare(b.id));
+  render();
+ }});
+ status('Loaded '+source.length+' original findings with '+($('evidence').files.length?'private review notes':'empty local review notes')+(summary?' and exact-CSV capacity estimates':'')+'. No permissions, retests or repairs inferred.');
 }
 function render(){
  if(!joined)return;
@@ -931,7 +1122,9 @@ function render(){
   const detail=document.createElement('p');detail.textContent='Local review: '+r.stage+' · Local Casework: '+r.caseStage+
    (r.blocked?' (blocked)':'')+(r.overdue?' (overdue plan)':'')+' · Missing references: '+r.missing.length+'/4';
   const note=document.createElement('p');note.textContent=r.missing.length?'Follow up on '+r.missing.join(', ')+'.':'All four references present (unverified).';
-  card.append(short,heading,detail,note);holder.append(card);
+  const edit=document.createElement('button');edit.type='button';edit.textContent='Edit HUMAN dossier';
+  edit.addEventListener('click',()=>{window.LightUpEvidenceEditor?.select(r.id);$('editorPanel').scrollIntoView({behavior:'smooth',block:'start'});});
+  card.append(short,heading,detail,note,edit);holder.append(card);
  }
  if(filtered.length>36){const p=document.createElement('p');p.textContent='Showing the first 36 local human follow-up records. Filter by severity or export a private agenda.';holder.append(p);}
 }
@@ -998,7 +1191,7 @@ function privateMarkdown(){
  lines.push('Human recipient must independently confirm original engagement, current permissions, referenced records, remediation, consent, revocation, and any separately permitted retest. No automatic action was taken.','');
  return lines.join('\n');
 }
-$('load').addEventListener('click',()=>{load().catch(e=>{joined=null;$('results').hidden=true;status(e.message,true);});});
+$('load').addEventListener('click',()=>{load().catch(e=>{status('Import rejected; prior source kept: '+e.message,true);});});
 $('clear').addEventListener('click',()=>{wipe();status('Original and private drafts cleared from this page memory.');});
 $('severity').addEventListener('change',render);$('kind').addEventListener('change',render);
 $('originalCsvExport').addEventListener('click',()=>{

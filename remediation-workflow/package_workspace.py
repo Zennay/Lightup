@@ -12,7 +12,7 @@ DEST = ROOT / "remediation-workflow" / "LightUp-Remediation-Workspace.zip"
 
 # Immutable owner artifacts, no original branches or owner source modifications.
 CONTENT = {
-    "remediation-workflow/standalone.html": "c8b45396609664aefc7040fdc08baba7924cecf21730b3ffe64e530498cca875",
+    "remediation-workflow/standalone.html": "2aa09a2723c4b1ac082cd97edd9ccb068ebb440c76f442e4f6e4c07d81e13dfb",
     "remediation-evidence/standalone.html": "a818110f7078aa8a9981ea9857cc898221cd01b9b7490493a8945357d0ee967f",
     "remediation-evidence/team-reply-standalone.html": "9bcc56688e3f56336f0ac2e49032d34f04f392e36fff4c1ee620d667ad86c08e",
     "remediation-capacity/standalone.html": "88a8e13ff62915f96a6ef74fccc2fe513e2fc92582a4d48e7fd2cc4fd7ab1659",
@@ -29,7 +29,7 @@ INDEX = """<!doctype html><html lang="en"><meta charset="utf-8">
 <h2>Local tools</h2><ol>
 <li><a href="remediation-evidence/standalone.html">Evidence Review Board</a> — original findings, private human reference dossiers and unsigned evidence JSON.</li>
 <li><a href="remediation-capacity/standalone.html">Capacity Studio</a> — hypothetical week-by-week staffing plans and exact-CSV working draft JSON.</li>
-<li><a href="remediation-workflow/standalone.html">Coordination Cockpit</a> — joins original snapshots, optional private Evidence/Casework/Capacity drafts, and human revision follow-up without inferring repairs.</li>
+<li><a href="remediation-workflow/standalone.html">Coordination Cockpit</a> — joins original snapshots and private planning drafts, human source revisions, and editable source-bound evidence dossiers without inferring repairs.</li>
 <li><a href="remediation-funding/standalone.html">Funding Studio</a> — original aggregate-only staffing budget, cash release and urgent backlog exposure planning.</li>
 <li><a href="client-brief/standalone.html">Client Security Brief</a> — source-bound original finding summary, human remediation narrative and private/redacted client handoff.</li>
 <li><a href="remediation-evidence/team-reply-standalone.html">Private Team Reply Desk</a> — edit a single-team human reply packet; independently confirm recipients before sharing.</li>

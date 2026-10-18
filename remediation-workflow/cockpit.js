@@ -20,7 +20,7 @@ function keysExact(obj,allowed,required=allowed){
  if(ks.some(k=>!allowed.includes(k))||required.some(k=>!Object.prototype.hasOwnProperty.call(obj,k)))fail('Unexpected or missing private fields.');
 }
 function human(value,max){
- if(typeof value!=='string'||value.length>max||/[\u0000-\u001f\u007f]/.test(value)||BIDI.test(value))fail('Invalid local review text.');
+ if(typeof value!=='string'||value.length>max||value.includes('\u0000')||BIDI.test(value))fail('Invalid local review text.');
  return value;
 }
 async function readFile(file,max){
@@ -96,7 +96,7 @@ function reviewDocument(packet,source,hash){
    if(packet.schema_version===2)fail('Missing v2 human evidence dossier.');
    for(const name of EVIDENCE)evidence[name]='';
   }
-  found.set(raw.finding_id,{stage:raw.stage,evidence});
+  found.set(raw.finding_id,{stage:raw.stage,reference:raw.reference,reviewer:raw.reviewer,next_step:raw.next_step,evidence});
  }
  if(found.size!==source.length)fail('Evidence has incomplete exact original source coverage.');
  return found;
@@ -132,6 +132,7 @@ function caseworkDocument(packet,source,sha){
  return cases;
 }
 function wipe(){
+ window.LightUpEvidenceEditor?.forget();
  joined=null;$('results').hidden=true;$('digest').textContent='';
  preloadedSource=null;$('csv').value='';$('previous').value='';$('evidence').value='';$('casework').value='';$('capacity').value='';$('same').checked=false;
  $('severity').value='';$('kind').value='';$('agenda').replaceChildren();$('matrix').replaceChildren();
@@ -197,7 +198,8 @@ async function importPreloadedSource(){
 }
 const checkSame=()=>{if(!$('same').checked)fail('Independently confirm the SAME original client and exact engagement before joining sources.');};
 async function load(){
- joined=null;$('results').hidden=true;$('digest').textContent='';status('Checking original source and private draft links …');
+ if(window.LightUpEvidenceEditor?.hasUnsaved()&&!confirm('Discard unsaved HUMAN review changes and load a different source? Export private notes first if needed.'))return;
+ status('Checking original source and private draft links …');
  const file=$('csv').files[0];
  const extra=$('previous').files.length||$('evidence').files.length||$('casework').files.length||$('capacity').files.length;
  if(extra)checkSame();
@@ -207,7 +209,7 @@ async function load(){
  if(!sha||!/^[a-f0-9]{64}$/.test(sha))fail('Canonical original source SHA-256 is unavailable; no unsafe fallback.');
  const evidence=$('evidence').files.length?
   reviewDocument(strictJSON(await readFile($('evidence').files[0],2097152)),source,sha):
-  new Map(source.map(f=>[f.finding_id,{stage:'missing',evidence:Object.fromEntries(EVIDENCE.map(name=>[name,'']))}]));
+  new Map(source.map(f=>[f.finding_id,{stage:'missing',reference:'',reviewer:'',next_step:'',evidence:Object.fromEntries(EVIDENCE.map(name=>[name,'']))}]));
  let capacity=null, summary=null, casework=null, revision=null;
  if($('previous').files.length){
   const previous=C.parseCSV(await readFile($('previous').files[0],1048576));
@@ -241,7 +243,17 @@ async function load(){
  joined={records,sha,summary,revision,privateCsv:csv};
  $('results').hidden=false;$('digest').textContent='Unsigned canonical findings fingerprint: '+sha+
    (summary?' · capacity assumptions bound to the original raw CSV SHA-256':' · no optional staffing draft loaded');
- render();status('Loaded '+source.length+' original findings with '+($('evidence').files.length?'private review notes':'empty local review notes')+(summary?' and exact-CSV capacity estimates':'')+'. No permissions, retests or repairs inferred.');
+ render();
+ window.LightUpEvidenceEditor?.mount({original:source,hash:sha,review:evidence,onReviewChange:(id,row)=>{
+  const rec=joined?.records.find(r=>r.id===id);if(!rec)return;
+  const before=rec.missing.length*7+(rec.stage==='needs_changes'?25:0);
+  rec.stage=row.stage;rec.missing=EVIDENCE.slice(0,4).filter(k=>!row.evidence[k].trim());
+  const after=rec.missing.length*7+(row.stage==='needs_changes'?25:0);
+  rec.priority+=after-before;
+  joined.records.sort((a,b)=>b.priority-a.priority||a.id.localeCompare(b.id));
+  render();
+ }});
+ status('Loaded '+source.length+' original findings with '+($('evidence').files.length?'private review notes':'empty local review notes')+(summary?' and exact-CSV capacity estimates':'')+'. No permissions, retests or repairs inferred.');
 }
 function render(){
  if(!joined)return;
@@ -281,7 +293,9 @@ function render(){
   const detail=document.createElement('p');detail.textContent='Local review: '+r.stage+' · Local Casework: '+r.caseStage+
    (r.blocked?' (blocked)':'')+(r.overdue?' (overdue plan)':'')+' · Missing references: '+r.missing.length+'/4';
   const note=document.createElement('p');note.textContent=r.missing.length?'Follow up on '+r.missing.join(', ')+'.':'All four references present (unverified).';
-  card.append(short,heading,detail,note);holder.append(card);
+  const edit=document.createElement('button');edit.type='button';edit.textContent='Edit HUMAN dossier';
+  edit.addEventListener('click',()=>{window.LightUpEvidenceEditor?.select(r.id);$('editorPanel').scrollIntoView({behavior:'smooth',block:'start'});});
+  card.append(short,heading,detail,note,edit);holder.append(card);
  }
  if(filtered.length>36){const p=document.createElement('p');p.textContent='Showing the first 36 local human follow-up records. Filter by severity or export a private agenda.';holder.append(p);}
 }
@@ -348,7 +362,7 @@ function privateMarkdown(){
  lines.push('Human recipient must independently confirm original engagement, current permissions, referenced records, remediation, consent, revocation, and any separately permitted retest. No automatic action was taken.','');
  return lines.join('\n');
 }
-$('load').addEventListener('click',()=>{load().catch(e=>{joined=null;$('results').hidden=true;status(e.message,true);});});
+$('load').addEventListener('click',()=>{load().catch(e=>{status('Import rejected; prior source kept: '+e.message,true);});});
 $('clear').addEventListener('click',()=>{wipe();status('Original and private drafts cleared from this page memory.');});
 $('severity').addEventListener('change',render);$('kind').addEventListener('change',render);
 $('originalCsvExport').addEventListener('click',()=>{

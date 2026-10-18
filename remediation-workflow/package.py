@@ -19,6 +19,7 @@ SCRIPTS = (
     ("../casework/remediation-engine.js", "c293c564ecb11434e45423d244b7beba599b6afe3ebbc85121882e91b8aa1225"),
     ("../remediation-capacity/planner.js", "eee5563fef05e2b2b6d0de306827b3f440ace2dc23ef74ca44550b2869ca1fc1"),
     ("../remediation-capacity/draft.js", "934eb7b17ee0ba2d4c1e1eca485b1f043a5e36c89478fbcb042b9340b3a68747"),
+    ("desk.js", None),
     ("cockpit.js", None),
 )
 

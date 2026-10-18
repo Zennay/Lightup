@@ -151,5 +151,5 @@ $('editorBulkApply').addEventListener('click',bulk);
 window.addEventListener('beforeunload',event=>{
  if(unsaved){event.preventDefault();event.returnValue='';}
 });
-window.LightUpEvidenceEditor=Object.freeze({mount,forget,select:show,snapshot});
+window.LightUpEvidenceEditor=Object.freeze({mount,forget,select:show,snapshot,hasUnsaved:()=>unsaved});
 })();

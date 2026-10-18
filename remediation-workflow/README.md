@@ -13,6 +13,14 @@
 
 This is a **new composition branch** based on an immutable original Evidence Review snapshot, not a modification of the original branches. Source lineage: [original Casework #1568](https://github.com/Zennay/Lightup/pull/1568), [Evidence Review #1623](https://github.com/Zennay/Lightup/pull/1623), [Capacity Studio #1583](https://github.com/Zennay/Lightup/pull/1583). The original Casework, Capacity Planner and Capacity Draft source scripts have exact bytes SHA-256 pinned by `package.py`. None of those modules has been edited in this integration.
 
+## Human evidence dossiers in the central Cockpit
+
+After importing an original authorized source, select **Edit HUMAN dossier** from the queue. Update its local human stage, reviewer, next human action, patch/deployment/rollback references, and independently-authorized retest request reference; all are **unverified private human notes**, never source fixes, actual retest permissions, grants, or scanner actions. The source finding and original retest status remain read-only. Changes update the local human-priority queue and evidence-gap counts, without making network requests, reading proof artifacts, or writing a backend.
+
+For batch coordination, choose an original severity band and human-only stage/reviewer; confirm the affected cohort before applying. The editor does not overwrite individual evidence references. Save local notes before switching records, then **Export PRIVATE original Evidence Review v2 draft** to save the complete source-hash-bound local review state with all literal false authority controls, for import into the original Evidence Review Board. The browser has no persistent storage and warns when an unsaved private draft could be lost.
+
+To avoid falsely attesting to old history, a Cockpit-exported review draft has an **empty historical source-revision register**: the original Evidence Review's separately authenticated source-refresh history is not claimed or transferred. Preserve its original private file separately if the history matters. Multiline human next steps accepted by the original source are preserved.
+
 ## Native authenticated source-to-Cockpit export (private)
 
 From a trusted checkout with an ORIGINAL existing LightUp account and existing authorized engagement, the newly integrated real-domain CLI can prepare a private HTML that opens already showing the original summary:
