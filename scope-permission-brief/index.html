@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'none'; connect-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'">
+<title>LightUp · Scope Permission Brief</title>
+<link rel="stylesheet" href="./style.css">
+<script src="./app.js" defer></script>
+</head>
+<body>
+<header><div class="head"><div class="eyebrow">LIGHTUP / CLIENT + OPERATOR EDUCATION</div><h1>Understand the scope. Never mistake a draft for permission.</h1><p>A local, privacy-minimal handoff brief derived from a LightUp Scope Planning Studio v1 draft. No uploads, network requests, identity checking, consent recording, grants or scans.</p></div></header>
+<main>
+<section class="notice" aria-label="Safety notice"><strong>Always HOLD:</strong> This explainer does not create or accept authorization. Even an answered checklist cannot approve a request. Genuine separately authenticated client consent, independent operator approval, approved scope, risk and revocation checks must happen inside the authorized system.</section>
+<section class="controls" aria-label="Source import">
+ <div><h2>1. Load a proposed assessment</h2><p>Choose an original <code>lightup.scope_proposal_draft</code> JSON export (64 KiB maximum). Exact source bytes are SHA-256 fingerprinted locally. Labels, domains, IP addresses and notes will not appear in this interface or exports.</p>
+ <label class="filelabel" for="source">Choose local draft JSON</label><input id="source" type="file" accept=".json,application/json"><p id="sourceState" role="status" aria-live="polite">No source selected · HOLD</p></div>
+ <div><h2>2. Choose the audience</h2><p>A single bounded review brief, with relevant questions for each role. Neither role can endorse or sign inside this application.</p>
+ <fieldset><legend>Primary handoff audience</legend><label><input type="radio" name="audience" value="client" checked> Client preparation</label><label><input type="radio" name="audience" value="operator"> Operator preparation</label></fieldset>
+ <div class="buttons"><button id="export" disabled>Export privacy-minimal brief</button><button id="print" disabled>Print brief</button><button id="clear" class="subtle">Forget draft & answers</button></div>
+ </div>
+</section>
+<div id="workspace" hidden>
+<section class="metrics" aria-label="Draft summary">
+ <div class="metric"><div>Proposed assets</div><strong id="assets">—</strong><small>Unverified declarations</small></div>
+ <div class="metric"><div>Exclusions</div><strong id="excluded">—</strong><small>Not enforcement</small></div>
+ <div class="metric"><div>Requested risk</div><strong id="risk">—</strong><small>Not an approval</small></div>
+ <div class="metric"><div>Planning window</div><strong id="window">—</strong><small>Not a booking</small></div>
+</section>
+<section class="details">
+ <div class="panel"><div class="eyebrow">CLIENT VIEW · DRAFT</div><h2>What you would be asking for</h2><p id="clientSummary"></p><div class="anchor">What you are <em>not</em> granting here</div><p>This tool cannot verify your identity or asset ownership. Uploading a draft, selecting a checkbox, or sharing a downloaded brief is not client consent and does not authorize any work.</p></div>
+ <div class="panel"><div class="eyebrow">OPERATOR VIEW · DRAFT</div><h2>What an operator must still independently decide</h2><p id="operatorSummary"></p><div class="anchor">No executable authorization</div><p>Actual assessment requests, grants, scope enforcement, risk signoff, explicit stop mechanisms and at-use revocation require the protected production workflow, not this local summary.</p></div>
+</section>
+<section class="panel">
+ <div class="row"><div><div class="eyebrow">3. Human clarification queue</div><h2>Questions to resolve before approval</h2><p>Mark whether a question has merely been sent or answered. These are self-reported preparation notes, never verification or proof.</p></div><div class="counter"><strong id="openCount">—</strong><small>unanswered / unresolved</small></div></div>
+ <div id="questions" aria-live="polite"></div>
+</section>
+<section class="panel">
+ <div class="eyebrow">SOURCE-BOUND · PRIVATE DATA OMITTED</div><h2>Handoff preview</h2><p>Only count, category, source SHA-256 and generic question states are exported. No client name, targets, IPs, domains, notes, filenames or source bytes.</p>
+ <pre id="preview"></pre><p id="receipt" class="receipt"></p>
+</section>
+</div>
+<footer>LightUp · INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD. Never use this file or its exports as evidence of consent, scope membership, a grant or release.</footer>
+</main>
+</body></html>
