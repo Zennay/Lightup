@@ -344,8 +344,8 @@ function arrangeAll(){
   const busy=blackouts.map(b=>({start:b.start,end:b.end})),proposals=new Map();
   for(const e of current){
     const slot=firstFit(e.interval,busy);
-    if(!slot){
-      $('status').textContent='HOLD: could not schedule all proposals within 31 days without time conflicts. No changes applied.';
+    if(!slot || Math.abs(slot.start-e.original.start)>31*DAY){
+      $('status').textContent='HOLD: could not schedule all proposals within 31 days of their ORIGINAL UTC windows. No changes applied.';
       return;
     }
     busy.push(slot);
