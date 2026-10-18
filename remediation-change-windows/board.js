@@ -497,6 +497,47 @@ function undoBulkHumanFollowup(){
 }
 
 function ownerKey(c){return c?.owner.trim()?'named:'+c.owner.trim():'unassigned-owner';}
+
+function renderHumanFollowupQueue(){
+ const board=$('followupQueue');board.replaceChildren();
+ if(!state)return;
+ const today=new Date().toISOString().slice(0,10),
+  next7=new Date(Date.parse(today+'T00:00:00Z')+7*86400000).toISOString().slice(0,10);
+ const urgent=f=>['critical','high'].includes(f.severity);
+ const queue=state.source.filter(f=>{
+  const v=followupFor(f.finding_id);
+  return v.status!=='discussion_logged'&&
+   (v.status==='untriaged'||v.status==='needs_discussion'||(v.due_date&&v.due_date<=next7));
+ }).sort((a,b)=>{
+  const x=followupFor(a.finding_id),y=followupFor(b.finding_id);
+  const ux=x.due_date&&x.due_date<today?0:x.due_date&&x.due_date<=next7?1:x.status==='untriaged'?2:3,
+        uy=y.due_date&&y.due_date<today?0:y.due_date&&y.due_date<=next7?1:y.status==='untriaged'?2:3;
+  return ux-uy||Number(urgent(b))-Number(urgent(a))||
+   (x.due_date||'9999').localeCompare(y.due_date||'9999')||
+   a.finding_id.localeCompare(b.finding_id);
+ });
+ const totals=el('p','Human-only queue: '+queue.length+' next action(s), '+
+  queue.filter(f=>followupPastDue(f)).length+' UTC reminders past due · '+
+  queue.filter(urgent).length+' original critical/high. Showing first 18, sorted by human reminders then original severity.');
+ board.appendChild(totals);
+ if(!queue.length){board.appendChild(el('p','No local reminders or untriaged human actions. This does not verify remediation or authorize change.'));return;}
+ for(const f of queue.slice(0,18)){
+  const v=followupFor(f.finding_id),card=el('article');
+  card.className='item';
+  card.appendChild(el('h3',f.finding_id+' · original '+f.severity));
+  card.appendChild(el('p',FOLLOW_LABELS[v.status]+' · '+(v.due_date?v.due_date+' UTC':'no local reminder')+
+   (followupPastDue(f)?' · HUMAN REMINDER OVERDUE':'')));
+  const action=el('button','Open HUMAN follow-up');
+  action.addEventListener('click',()=>openHumanEditor(f.finding_id));card.appendChild(action);
+  board.appendChild(card);
+ }
+ if(queue.length>18){
+  const more=el('button','Filter complete open human follow-up list');
+  more.addEventListener('click',()=>{$('humanFilter').value='follow-open';render();});
+  board.appendChild(more);
+ }
+}
+
 function ownerWorkload(){
  const board=$('ownerBoard'),selector=$('ownerFilter'),prior=selector.value;
  board.replaceChildren();
@@ -576,7 +617,7 @@ function bulkUndo(){
 function render(){
  if(!state)return;
  const src=state.source,rows=$('findings');rows.replaceChildren();
- ownerWorkload();
+ renderHumanFollowupQueue();ownerWorkload();
  let unassigned=0,holds=0;
  for(const f of src){
   const r=state.review.get(f.finding_id);
@@ -629,7 +670,7 @@ function purgeRenderedPrivateData(){
  $('results').hidden=true;$('bulkUndo').disabled=true;$('applyRevision').disabled=true;
  $('applyCasework').disabled=true;$('caseworkDiff').disabled=true;$('caseworkChanges').replaceChildren();
  $('caseworkSummary').textContent='';$('nextCasework').value='';$('confirmCasework').checked=false;
- for(const id of ['findings','summary','ownerBoard'])$(id).replaceChildren();
+ for(const id of ['findings','summary','ownerBoard','followupQueue'])$(id).replaceChildren();
  $('ownerFilter').replaceChildren(new Option('All human owners',''));
  for(const id of ['digest','revisionSummary'])$(id).textContent='';
  $('note').value='';$('planFile').value='';$('nextCsv').value='';
