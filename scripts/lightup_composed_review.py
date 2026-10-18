@@ -82,7 +82,7 @@ def run(args):
             first, second, original_case_paths, original_case_hashes = bundle_case_sides(
                 baseline=args.baseline_case, candidate=args.candidate_case, stage=stage)
         else:
-            first, second = (Path(x).resolve(strict=True)
+            first, second = (Path(x).absolute()
                              for x in (args.baseline, args.candidate))
             if first == second:
                 raise Hold("input sources must differ")

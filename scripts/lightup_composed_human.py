@@ -49,8 +49,8 @@ def run(args):
     import os
     if any(os.path.lexists(path) for path in targets):
         raise Hold("requested original human worklist already exists")
-    original_path = Path(args.original_review).resolve(strict=True)
-    plan_path = Path(args.saved_human_review).resolve(strict=True)
+    original_path = Path(args.original_review).absolute()
+    plan_path = Path(args.saved_human_review).absolute()
     if original_path == plan_path:
         raise Hold("original report and saved human plan must differ")
     original_raw = read_regular(str(original_path), MAX_SOURCE)

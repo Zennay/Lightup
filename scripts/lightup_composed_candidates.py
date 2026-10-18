@@ -39,7 +39,7 @@ NO_AUTH = ("authorized", "consent_verified", "dispatch_allowed", "release_allowe
 
 
 def _source(path: str):
-    resolved = Path(path).resolve(strict=True)
+    resolved = Path(path).absolute()
     data = read_regular(str(resolved), COHORT_BYTES)
     return resolved, sha256(data).digest()
 

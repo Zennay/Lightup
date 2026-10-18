@@ -176,6 +176,16 @@ Source-bound archive and human coordination from the same entrypoint:
 
 A human cannot issue GO by editing a private planning draft. No command discovers a target, calls a model or target, grants consent, scans assets, changes source metrics or bypasses CI.
 
+## Explicit source-path no-follow boundary
+
+The composed wrappers pass the user-selected absolute lexical source path
+directly to the existing bounded regular-file O_NOFOLLOW reader, **before**
+any original comparator/bundler or human handoff. They do not resolve a
+user-selected final-component symlink and then mistakenly read its target.
+Canonical Python source snapshot and original source-owner review controls
+remain unchanged. This is read-only source intake, not a provenance,
+ownership or consent attestation.
+
 ## Mandatory release gates
 
 **DRAFT/HOLD, do not merge into main or deploy.** Existing exact-head hosted plus permanently named VPS CI, original source-owner acceptance, independent security/privacy, genuinely authenticated separate client and operator permissions with action-time revocation as applicable, and explicit HUMAN GO remain mandatory. The known original scope #301 acceptance failure is not modified or circumvented. No QA suites were created or run.

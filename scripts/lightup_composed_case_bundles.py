@@ -17,7 +17,7 @@ MAX_CASES = 64
 def _snapshots(paths: list[str]):
     if not 1 <= len(paths) <= MAX_CASES:
         raise Hold("original cohort requires 1–64 explicit source cases")
-    resolved = [Path(value).resolve(strict=True) for value in paths]
+    resolved = [Path(value).absolute() for value in paths]
     if len(set(resolved)) != len(resolved):
         raise Hold("repeated original case file")
     return resolved, [
