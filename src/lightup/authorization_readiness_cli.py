@@ -111,7 +111,8 @@ def _utc_window(grant: sqlite3.Row) -> str:
         return "invalid"
 
 
-def _read_report(database: Path) -> dict:
+def _read_report(database: Path, *, client_id: str | None = None,
+                 engagement_id: str | None = None) -> dict:
     """Use one read-only SQLite transaction for an internally consistent view."""
     uri = database.resolve(strict=True).as_uri() + "?mode=ro"
     with closing(sqlite3.connect(uri, uri=True, timeout=4)) as con:
@@ -123,6 +124,29 @@ def _read_report(database: Path) -> dict:
         requests = _rows(con, "SELECT request_id,client_id,requested_assets_json,requested_mode,requested_risk,status,requested_by,decided_by,decided_at FROM assessment_requests ORDER BY created_at")
         grants = _rows(con, "SELECT grant_id,client_id,engagement_id,assets_json,max_risk,valid_from,valid_until FROM authorization_grants ORDER BY created_at")
         con.rollback()
+
+    # Limit private exports to the one explicitly selected operator tenant or job.
+    # Filter by the engagement owner, NOT the duplicated grant.client_id,
+    # otherwise corrupt cross-tenant grant rows would be invisibly excluded.
+    all_engagements = engagements
+    if engagement_id is not None:
+        selected = [e for e in all_engagements if e["engagement_id"] == engagement_id]
+        if len(selected) != 1:
+            raise ValueError("selected engagement missing")
+        if client_id is not None and selected[0]["client_id"] != client_id:
+            raise ValueError("engagement does not belong to selected client")
+        client_id = selected[0]["client_id"]
+    if client_id is not None:
+        if not any(c["client_id"] == client_id for c in clients):
+            raise ValueError("selected client missing")
+        clients = [c for c in clients if c["client_id"] == client_id]
+        engagements = [e for e in engagements if e["client_id"] == client_id]
+        requests = [r for r in requests if r["client_id"] == client_id]
+    if engagement_id is not None:
+        engagements = [e for e in engagements if e["engagement_id"] == engagement_id]
+    included_engagement_ids = {e["engagement_id"] for e in engagements}
+    if client_id is not None:
+        grants = [g for g in grants if g["engagement_id"] in included_engagement_ids]
 
     by_client = {c["client_id"]: c["name"] for c in clients}
     by_engagement = {e["engagement_id"]: e for e in engagements}
@@ -189,7 +213,7 @@ def _read_report(database: Path) -> dict:
             findings.append(entry)
 
     # Orphans cannot be safely attributed to any engagement or client.
-    orphan_count = sum(g["engagement_id"] not in by_engagement for g in grants)
+    orphan_count = sum(g["engagement_id"] not in by_engagement for g in grants) if client_id is None else 0
     counter["ORPHAN_GRANT"] = orphan_count
     report = {
         "format": "lightup.authorization_readiness_operator_v1",
@@ -318,6 +342,8 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Private operator review; NEVER grants execution authority.")
     parser.add_argument("--db", required=True, help="existing LightUp database, not a new database")
     parser.add_argument("--email", required=True, help="operator account")
+    parser.add_argument("--client-id", help="limit sensitive export to one exact existing client")
+    parser.add_argument("--engagement-id", help="limit export to one engagement, optionally with --client-id")
     parser.add_argument("--output", required=True, help="new private .html or .json file; never overwritten")
     args = parser.parse_args(argv)
     path = Path(args.output)
@@ -339,7 +365,7 @@ def main(argv: list[str] | None = None) -> int:
             raise PermissionError("authentication failed")
         ctx = store.context_for_user(user.user_id)
         ctx.require_operator("authorization readiness review")
-        report = _read_report(db)
+        report = _read_report(db, client_id=args.client_id, engagement_id=args.engagement_id)
         text = _render_html(report) if path.suffix.lower() == ".html" else json.dumps(
             report, ensure_ascii=False, indent=2
         ) + "\n"
