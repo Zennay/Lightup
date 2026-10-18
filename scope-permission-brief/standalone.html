@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="referrer" content="no-referrer">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-ilmcG45K7h0DYg1dAC4tu2QQW7yTxA2o3WFpolAGLkk=' 'sha256-3YElSulPng6IagNKFaaAnYHz28eIa5AFzgrUS5+0FcY=' 'sha256-cIhW7AQbuUx/nySMeyEGaGfCkdthJsg3XZKw7T81SCk='; style-src 'sha256-YZK/7FpT/isnjzZAvtIIuYmVCpSjvQhZyODKkfTP6TE='; img-src 'none'; connect-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-OLK/ZHlEVxWQDvzO/BeCP72JLC/bCc3VNGcOLe9O/P8=' 'sha256-3YElSulPng6IagNKFaaAnYHz28eIa5AFzgrUS5+0FcY=' 'sha256-cIhW7AQbuUx/nySMeyEGaGfCkdthJsg3XZKw7T81SCk='; style-src 'sha256-YZK/7FpT/isnjzZAvtIIuYmVCpSjvQhZyODKkfTP6TE='; img-src 'none'; connect-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'">
 <title>LightUp · Scope Permission Brief</title>
 <style>
 :root{color-scheme:dark;font:15px/1.55 system-ui,-apple-system,Segoe UI,sans-serif;--bg:#0a1020;--surface:#121e32;--line:#35455d;--muted:#b8c5d8;--mint:#7de5cd;--warn:#eac081;color:#f2f8ff;background:var(--bg)}
@@ -175,6 +175,8 @@ function hold(message){
  document.dispatchEvent(new CustomEvent('lightup:brief-source-change'));
  $('workspace').hidden=true;$('export').disabled=true;$('textExport').disabled=true;$('print').disabled=true;
  $('handoff').textContent='';$('replyState').textContent='No review note imported.';
+ $('reply').value='';$('backupImport').value='';
+ $('backupState').textContent='No local preparation backup restored.';
  $('sourceState').textContent=message+' · HOLD';
 }
 function assert(condition,message){if(!condition)throw Error(message);}
@@ -647,6 +649,8 @@ function applyPending(){
  const proposed=pending;pending=null;
  $('revisionPreview').hidden=true;
  document.dispatchEvent(new CustomEvent('lightup:brief-source-change'));
+ $('reply').value='';$('replyState').textContent='Previous review note no longer applies to revised source · HOLD';
+ $('backupImport').value='';$('backupState').textContent='Prior local preparation backup is tied to the old source · HOLD';
  current={draft:proposed.draft,window:proposed.window,sha256:proposed.sha256};
  questions=questionIds(proposed.draft,proposed.window).map(code=>({code,role:questionCatalog[code][0],status:'unanswered'}));
  $('workspace').hidden=false;
