@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-oBZ3xBS9lZSry3bgtN6+ipkUJPG6lCo4++S/E1zBddA='; style-src 'sha256-6tKmOipwfGEQBQ7IR7ySQh6Az2OzjbHUhgFgU/TUiXY='; connect-src 'none'; img-src 'none'; font-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-lV479WdESjdHIgiHbe5UZE2a1bD47Ivrnh8rwGH8QyY='; style-src 'sha256-6tKmOipwfGEQBQ7IR7ySQh6Az2OzjbHUhgFgU/TUiXY='; connect-src 'none'; img-src 'none'; font-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="referrer" content="no-referrer"><title>LightUp | Private Lab Review Desk</title>
 <style>:root{color-scheme:dark;font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;background:#101624;color:#f3f7fd;line-height:1.55}
 *{box-sizing:border-box}body{margin:0}header{padding:3.5rem max(2rem,calc((100vw - 1100px)/2));background:linear-gradient(130deg,#172d43,#151926)}header h1{font-size:clamp(2rem,5vw,3.35rem);line-height:1.1;letter-spacing:-.04em;margin:.6rem 0}header p{max-width:800px;color:#d5e1ed}.eyebrow{font-size:.7rem;font-weight:800;letter-spacing:.19em;color:#9bdef1}
@@ -44,7 +44,8 @@ button:disabled,.upload:has(input:disabled){opacity:.45;cursor:not-allowed}
 <section id="handoff" aria-labelledby="export"><h2 id="export">3. Private handoff</h2>
 <p>The PRIVATE return contains only ordinal human follow-up fields and an <strong>unsigned SHA-256 hash of the exact original source bytes</strong>. Restoring requires the same unchanged file, in the same original order. A matching hash does not authenticate its author, prove a finding, confirm a fix or verify client/operator consent.</p>
 <div class="toolbar">
-<button id="private" type="button">Save PRIVATE human review</button><button id="aggregate" type="button">Export anonymous counts only</button>
+<button id="private" type="button">Save PRIVATE human review</button>
+<button id="brief" type="button">Export PRIVATE scriptless human brief</button><button id="aggregate" type="button">Export anonymous counts only</button>
 <label class="upload" for="resume">Restore PRIVATE notes<input id="resume" type="file" accept=".json,application/json"></label>
 <button id="forget" type="button" class="quiet">Forget all local data</button></div>
 <p class="note">All exports are downloads initiated by you; there is no upload, localStorage, cookie, service worker or backend. Keep PRIVATE returns off public channels. Even counts-only exports may be sensitive. Nothing in this interface creates a new original LightUp assessment or authorized retest.</p></section>
@@ -298,7 +299,7 @@ async function importSource(file){
  if(source&&dirty&&!confirm("Replace existing unsaved private human notes?"))return;
  source=parsed;sourceHash=hash;notes=parsed.findings.map(initialNote);dirty=false;lastBulkUndo=null;
  filter="";$("filter").value="";buildEndpointFilter();
- $("private").disabled=!hash;$("resume").disabled=!hash;
+ $("private").disabled=!hash;$("resume").disabled=!hash;$("brief").disabled=!hash;
  $("workspace").hidden=false;updateSummary();render();
  status(hash?"Original private lab source admitted in memory. HUMAN REVIEW ONLY. Source hash is unsigned.":"Original private lab source admitted for local read-only review. Browser has no WebCrypto: private source-bound save/resume is disabled.");
 }
@@ -349,6 +350,44 @@ $("undoBulk").addEventListener("click",()=>{
  notes=lastBulkUndo;lastBulkUndo=null;dirty=true;updateSummary();render();
  status("Last human-only bulk change undone.");
 });
+
+
+function htmlEscape(x){
+ return String(x).replace(/[&<>"']/g,ch=>({
+  "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]));
+}
+async function privateHumanBrief(){
+ if(!source||!sourceHash)return;
+ if(!confirm("Export a PRIVATE human report containing original finding titles and proposed human notes? No target URLs, original evidence or client identities are included, but titles and notes may be sensitive."))return;
+ const css="body{font-family:system-ui,sans-serif;max-width:1050px;margin:2rem auto;padding:1rem;color:#243044;background:#fff;line-height:1.5}h1{margin:0}p{max-width:85ch}table{width:100%;border-collapse:collapse;margin-top:1.4rem}th,td{padding:.7rem;text-align:left;border:1px solid #b8c2cd;vertical-align:top;overflow-wrap:anywhere}th{background:#edf3f9}aside{padding:1rem;border:2px solid #99772f;background:#fff9df}small{color:#384960}footer{margin-top:2rem;font-size:.83rem}@media print{body{margin:0;max-width:none}tr{break-inside:avoid}}";
+ const digest=new Uint8Array(await crypto.subtle.digest("SHA-256",new TextEncoder().encode(css)));
+ const hash=btoa(String.fromCharCode(...digest));
+ const rows=source.findings.map((f,i)=>{
+  const n=notes[i];
+  return "<tr><td>"+(i+1)+"</td><td>"+htmlEscape(f.severity)+"</td><td>"+
+   htmlEscape(sourcePosition(f))+"</td><td>"+htmlEscape(f.finding)+"</td><td>"+
+   htmlEscape(n.stage)+"</td><td>"+htmlEscape(n.group)+"</td><td>"+
+   htmlEscape(n.next_action)+"</td><td>"+htmlEscape(n.blocker)+"</td></tr>";
+ }).join("");
+ const policy="default-src 'none'; style-src 'sha256-"+hash+
+  "'; script-src 'none'; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'";
+ const out=['<!doctype html><html lang="en"><head><meta charset="utf-8">',
+  '<meta name="viewport" content="width=device-width,initial-scale=1">',
+  '<meta http-equiv="Content-Security-Policy" content="'+policy+'">',
+  '<meta name="referrer" content="no-referrer"><title>PRIVATE LightUp Human Follow-up</title>',
+  '<style>'+css+'</style></head><body>',
+  '<aside><strong>PRIVATE · HUMAN PLANNING ONLY · NOT VERIFIED · DRAFT/HOLD</strong>',
+  '<p>Original already-produced isolated-lab source and all findings are untrusted declarations. No target, client consent, authorization, retest, grant or release has been validated by this document.</p></aside>',
+  '<h1>Original lab finding human follow-up</h1>',
+  '<p>Source-declared endpoints: '+source.targets.length+
+  ' · Original finding rows: '+source.findings.length+
+  '. Labels and endpoint matches are local display aids, not asset authorization. Blank human fields are not evidence of completion.</p>',
+  '<table><thead><tr><th>Original ordinal</th><th>Source severity</th><th>Endpoint ordinal</th><th>Private source title</th><th>Human stage</th><th>Proposed group</th><th>Next action</th><th>Human blocker</th></tr></thead><tbody>',
+  rows,'</tbody></table><footer>Keep PRIVATE. A missing finding in a later source does not prove remediation. Original evidence and target URLs are not carried in this document. No scripts, external assets, network or live target interaction.</footer></body></html>'].join("");
+ download("PRIVATE-lab-human-brief.html",out,"text/html");
+ status("Scriptless PRIVATE human brief saved locally. Review its sensitive titles/notes before separate confidential sharing.");
+}
+$("brief").addEventListener("click",()=>{privateHumanBrief().catch(()=>status("HOLD: private brief not published.",true));});
 
 $("source").addEventListener("change",async e=>{try{await importSource(e.target.files[0]);}catch(_){status("HOLD: source rejected. Previous workspace unchanged.",true);}e.target.value="";});
 $("resume").addEventListener("change",async e=>{try{await resume(e.target.files[0]);}catch(_){status("HOLD: private human return rejected. Previous workspace unchanged.",true);}e.target.value="";});

@@ -31,7 +31,8 @@
 <section id="handoff" aria-labelledby="export"><h2 id="export">3. Private handoff</h2>
 <p>The PRIVATE return contains only ordinal human follow-up fields and an <strong>unsigned SHA-256 hash of the exact original source bytes</strong>. Restoring requires the same unchanged file, in the same original order. A matching hash does not authenticate its author, prove a finding, confirm a fix or verify client/operator consent.</p>
 <div class="toolbar">
-<button id="private" type="button">Save PRIVATE human review</button><button id="aggregate" type="button">Export anonymous counts only</button>
+<button id="private" type="button">Save PRIVATE human review</button>
+<button id="brief" type="button">Export PRIVATE scriptless human brief</button><button id="aggregate" type="button">Export anonymous counts only</button>
 <label class="upload" for="resume">Restore PRIVATE notes<input id="resume" type="file" accept=".json,application/json"></label>
 <button id="forget" type="button" class="quiet">Forget all local data</button></div>
 <p class="note">All exports are downloads initiated by you; there is no upload, localStorage, cookie, service worker or backend. Keep PRIVATE returns off public channels. Even counts-only exports may be sensitive. Nothing in this interface creates a new original LightUp assessment or authorized retest.</p></section>

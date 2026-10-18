@@ -246,7 +246,7 @@ async function importSource(file){
  if(source&&dirty&&!confirm("Replace existing unsaved private human notes?"))return;
  source=parsed;sourceHash=hash;notes=parsed.findings.map(initialNote);dirty=false;lastBulkUndo=null;
  filter="";$("filter").value="";buildEndpointFilter();
- $("private").disabled=!hash;$("resume").disabled=!hash;
+ $("private").disabled=!hash;$("resume").disabled=!hash;$("brief").disabled=!hash;
  $("workspace").hidden=false;updateSummary();render();
  status(hash?"Original private lab source admitted in memory. HUMAN REVIEW ONLY. Source hash is unsigned.":"Original private lab source admitted for local read-only review. Browser has no WebCrypto: private source-bound save/resume is disabled.");
 }
@@ -297,6 +297,44 @@ $("undoBulk").addEventListener("click",()=>{
  notes=lastBulkUndo;lastBulkUndo=null;dirty=true;updateSummary();render();
  status("Last human-only bulk change undone.");
 });
+
+
+function htmlEscape(x){
+ return String(x).replace(/[&<>"']/g,ch=>({
+  "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]));
+}
+async function privateHumanBrief(){
+ if(!source||!sourceHash)return;
+ if(!confirm("Export a PRIVATE human report containing original finding titles and proposed human notes? No target URLs, original evidence or client identities are included, but titles and notes may be sensitive."))return;
+ const css="body{font-family:system-ui,sans-serif;max-width:1050px;margin:2rem auto;padding:1rem;color:#243044;background:#fff;line-height:1.5}h1{margin:0}p{max-width:85ch}table{width:100%;border-collapse:collapse;margin-top:1.4rem}th,td{padding:.7rem;text-align:left;border:1px solid #b8c2cd;vertical-align:top;overflow-wrap:anywhere}th{background:#edf3f9}aside{padding:1rem;border:2px solid #99772f;background:#fff9df}small{color:#384960}footer{margin-top:2rem;font-size:.83rem}@media print{body{margin:0;max-width:none}tr{break-inside:avoid}}";
+ const digest=new Uint8Array(await crypto.subtle.digest("SHA-256",new TextEncoder().encode(css)));
+ const hash=btoa(String.fromCharCode(...digest));
+ const rows=source.findings.map((f,i)=>{
+  const n=notes[i];
+  return "<tr><td>"+(i+1)+"</td><td>"+htmlEscape(f.severity)+"</td><td>"+
+   htmlEscape(sourcePosition(f))+"</td><td>"+htmlEscape(f.finding)+"</td><td>"+
+   htmlEscape(n.stage)+"</td><td>"+htmlEscape(n.group)+"</td><td>"+
+   htmlEscape(n.next_action)+"</td><td>"+htmlEscape(n.blocker)+"</td></tr>";
+ }).join("");
+ const policy="default-src 'none'; style-src 'sha256-"+hash+
+  "'; script-src 'none'; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'";
+ const out=['<!doctype html><html lang="en"><head><meta charset="utf-8">',
+  '<meta name="viewport" content="width=device-width,initial-scale=1">',
+  '<meta http-equiv="Content-Security-Policy" content="'+policy+'">',
+  '<meta name="referrer" content="no-referrer"><title>PRIVATE LightUp Human Follow-up</title>',
+  '<style>'+css+'</style></head><body>',
+  '<aside><strong>PRIVATE · HUMAN PLANNING ONLY · NOT VERIFIED · DRAFT/HOLD</strong>',
+  '<p>Original already-produced isolated-lab source and all findings are untrusted declarations. No target, client consent, authorization, retest, grant or release has been validated by this document.</p></aside>',
+  '<h1>Original lab finding human follow-up</h1>',
+  '<p>Source-declared endpoints: '+source.targets.length+
+  ' · Original finding rows: '+source.findings.length+
+  '. Labels and endpoint matches are local display aids, not asset authorization. Blank human fields are not evidence of completion.</p>',
+  '<table><thead><tr><th>Original ordinal</th><th>Source severity</th><th>Endpoint ordinal</th><th>Private source title</th><th>Human stage</th><th>Proposed group</th><th>Next action</th><th>Human blocker</th></tr></thead><tbody>',
+  rows,'</tbody></table><footer>Keep PRIVATE. A missing finding in a later source does not prove remediation. Original evidence and target URLs are not carried in this document. No scripts, external assets, network or live target interaction.</footer></body></html>'].join("");
+ download("PRIVATE-lab-human-brief.html",out,"text/html");
+ status("Scriptless PRIVATE human brief saved locally. Review its sensitive titles/notes before separate confidential sharing.");
+}
+$("brief").addEventListener("click",()=>{privateHumanBrief().catch(()=>status("HOLD: private brief not published.",true));});
 
 $("source").addEventListener("change",async e=>{try{await importSource(e.target.files[0]);}catch(_){status("HOLD: source rejected. Previous workspace unchanged.",true);}e.target.value="";});
 $("resume").addEventListener("change",async e=>{try{await resume(e.target.files[0]);}catch(_){status("HOLD: private human return rejected. Previous workspace unchanged.",true);}e.target.value="";});
