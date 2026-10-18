@@ -17,7 +17,7 @@ p{max-width:80ch}
 .upload label{font-weight:700}
 .grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
 .grid label{display:block;font-size:.88rem;font-weight:650;color:var(--muted)}
-input{display:block;width:100%;margin-top:6px;color:var(--text);background:#08141d;border:1px solid #557080;border-radius:8px;padding:10px 12px;font:inherit}
+input,select{display:block;width:100%;margin-top:6px;color:var(--text);background:#08141d;border:1px solid #557080;border-radius:8px;padding:10px 12px;font:inherit}
 input[type=file]{width:auto;max-width:100%;flex:1 1 260px}
 input:focus-visible,button:focus-visible{outline:3px solid var(--teal);outline-offset:3px}
 button{cursor:pointer;border-radius:8px;padding:12px 18px;border:1px solid var(--teal);font:inherit;font-weight:700;color:#071b22;background:var(--teal)}
@@ -57,3 +57,5 @@ footer{padding:22px 0 60px}
 #priority-bands td{font-variant-numeric:tabular-nums}#priority-bands td:first-child{text-transform:capitalize;font-weight:750}#priority-bands tr.outstanding-row td{border-bottom:1px solid #806f40}#priority-bands tr.outstanding-row td:nth-last-child(-n+2){color:var(--amber)}@media print{#priority-bands tr.outstanding-row td{color:#111!important}}
 
 .file-label{display:inline-flex;align-items:center;justify-content:center;cursor:pointer;padding:11px 16px;border:1px solid var(--teal);color:var(--text);background:#203341;border-radius:8px;font-weight:700}.file-label:focus-within{outline:3px solid var(--teal)}#reopen-working-draft{max-width:250px}.panel:has(#resume-title){border-color:#51746e}#draft-status{padding:8px 0} @media print{.panel:has(#resume-title){display:none!important}}
+
+.milestone-action{display:flex;align-items:end;padding-bottom:2px}.milestone-overview{border-left:3px solid var(--teal);padding:12px 18px;margin:18px 0;background:#0b1922;border-radius:5px}.milestone-overview strong{color:var(--teal)}.milestone-overview p{margin:.6em 0}#milestone-export{margin:5px 0 12px}@media print{#milestone-calculate,#milestone-export,.milestone-action{display:none!important}}
