@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-Uv1v/euGNQQaIr1j87nhLfVYxlrlOq67/RsBL7t41gY='; style-src 'sha256-AFCoxRW5B8pbURKhhqkO3hW0dq8s8vSlJQNE2RkmPRU='; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-oGqPlWRN9jAl3RjBsRBmi2SWgkPA55M5xFvH86IBTp0='; style-src 'sha256-AFCoxRW5B8pbURKhhqkO3hW0dq8s8vSlJQNE2RkmPRU='; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'">
 <title>LightUp · Private Scope Packet Vault (Offline)</title><style>
 :root{font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#090f1c;color:#e9f1ff;color-scheme:dark}*{box-sizing:border-box}body{margin:0}main{max-width:940px;padding:24px;margin:auto}header{padding:30px 0 22px}.eyebrow{color:#7ed3fd;font-size:12px;letter-spacing:.16em;font-weight:800}h1{font-size:clamp(34px,6vw,58px);line-height:1.02;letter-spacing:-.04em;margin:16px 0}h2{font-size:20px;margin:0 0 12px}h3{font-size:15px;margin:24px 0 10px}.lead{color:#afc3de;font-size:18px;line-height:1.6;max-width:750px}.hold{border:1px solid #eec06c;background:#2f2419;border-radius:10px;color:#ffe5ac;font-weight:700;font-size:12px;letter-spacing:.06em;padding:12px 16px;line-height:1.6}section{background:#111c30;border:1px solid #324158;border-radius:16px;padding:24px;margin-bottom:18px;box-shadow:0 6px 36px #0002}section p,li{color:#bfcbdf;line-height:1.65}section strong{color:#fff}label{display:block;font-size:14px;font-weight:650;color:#dfeafa}input,select{display:block;width:100%;margin-top:9px;padding:12px 13px;border:1px solid #60718d;border-radius:10px;background:#0b1425;color:#fff;font:inherit}input:focus,button:focus-visible{outline:3px solid #75bcff;outline-offset:2px}.picker{cursor:pointer;border:1px dashed #659de1;padding:17px;border-radius:12px;background:#102942}.picker input{border:0;padding:0;background:none}.grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:20px}button{font:inherit;border:0;border-radius:10px;padding:12px 18px;cursor:pointer;font-weight:700;background:#80cdfb;color:#071727}button.secondary{background:#23324c;color:#ecf6ff;border:1px solid #50617b}button:disabled{opacity:.5;cursor:not-allowed}.status{font-size:14px}.items{display:grid;gap:10px;margin-top:12px}.item{display:flex;align-items:center;justify-content:space-between;gap:18px;padding:13px;border:1px solid #40536f;border-radius:10px;background:#14223a;overflow-wrap:anywhere}.item small{color:#b1c1d6;display:block;margin-top:4px}.item button{flex-shrink:0;padding:9px 13px}.message{padding:16px;border-left:4px solid #7bcdff;background:#122b46;min-height:56px;border-radius:5px;line-height:1.5}.message.error{border-color:#eab3a0;background:#391e25}footer{padding:0 0 40px}footer small{color:#90a4be}ol{padding-left:24px}@media(max-width:650px){.grid{grid-template-columns:1fr}.item{align-items:flex-start;flex-direction:column}section{padding:17px}main{padding:12px}.item button{width:100%}}
 /* Source inspection is private text, never rendered as imported HTML. */
@@ -68,7 +68,7 @@ font-weight:650;line-height:1.45;color:#bdcee8}
   const $ = (id) => document.getElementById(id);
   const els = {
     files: $("files"), list: $("file-list"), summary: $("file-summary"),
-    seal: $("seal"), rekey: $("rekey"), selectAll: $("select-all"), selectNone: $("select-none"), selectRoute: $("select-route"), stageFilter: $("stage-filter"),
+    seal: $("seal"), lockAfterExport: $("lock-after-export"), rekey: $("rekey"), selectAll: $("select-all"), selectNone: $("select-none"), selectRoute: $("select-route"), stageFilter: $("stage-filter"),
     password: $("seal-password"), confirm: $("seal-confirm"),
     clear: $("clear"), openFile: $("open-file"), openPassword: $("open-password"),
     unlock: $("unlock"), lock: $("lock"), recovered: $("recovered"),
@@ -412,10 +412,15 @@ font-weight:650;line-height:1.45;color:#bdcee8}
         save(blob, archive ?
           "lightup-private-scope-packet-reencrypted.lightup-vault.json" :
           "lightup-private-scope-packet.lightup-vault.json");
+        const shouldLock = els.lockAfterExport.checked;
         notice((archive ? "Entire in-memory private dossier re-encrypted with fresh salt/IV. Previous downloaded files and passphrases remain usable until you delete those copies. " :
           "Selected " + outgoing.length + " file(s) encrypted; unselected local files excluded. ") +
           (route === "client-review" ? "Internal notes and preparation stages excluded. " : "Internal notes and stages encrypted. ") +
           "No identities verified or permissions created.");
+        if (shouldLock) {
+          scrub();
+          notice("Encrypted download created; readable workspace locked and in-memory file buffers cleared. Save your passphrase separately. Already downloaded copies remain on disk.");
+        }
       } finally { cleartext.fill(0); }
     });
   }
@@ -694,6 +699,7 @@ font-weight:650;line-height:1.45;color:#bdcee8}
 <p class="subtle">Client-review exports always strip internal notes and preparation stages, even from client-labelled files. Historical drafts are refused. A bounded local check also refuses some common credential patterns, but CANNOT certify that a document contains no secrets. They also refuse operator-labelled or unclassified files; every encrypted export shows the exact selected filenames for a final local confirmation. This routing choice never authenticates the recipient or grants rights.</p>
 <p class="subtle">To prepare a smaller recipient handoff, select only the intended files in the inventory. All files remain selected by default. Never treat an encrypted handoff as recipient identity or consent.</p>
 <p class="subtle">To rotate a forgotten, exposed or old passphrase after unlocking your existing packet, enter a new password above and choose <strong>Re-encrypt entire private archive</strong>. Downloading a new copy cannot revoke any previously shared encrypted file.</p>
+<label class="checkline"><input id="lock-after-export" type="checkbox" checked> Immediately lock and clear plaintext after a successful encrypted export (recommended)</label>
 <div class="actions"><button id="seal" type="button">Download selected encrypted packet</button><button id="select-all" type="button" class="secondary">Select all</button><button id="select-none" type="button" class="secondary">Select none</button><button id="select-route" type="button" class="secondary">Suggest recipient-safe selection</button><button id="rekey" type="button" class="secondary">Re-encrypt entire private archive</button><button id="clear" type="button" class="secondary">Forget all plaintext</button></div>
 </section>
 <section aria-labelledby="unlock-title"><h2 id="unlock-title">3. Restore a saved packet</h2>
