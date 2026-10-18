@@ -271,11 +271,19 @@ def build(database: str | None, email: str | None, password: str | None, client:
                               ("window-review", WINDOW_FILES)):
             for name in names:
                 _read_private(output / family / name)
+        from priority_board import compose as compose_source_priority
+        priority_html, priority_counts = compose_source_priority(
+            _strict_json(files["PRIVATE-review.json"]),
+            _strict_json(_read_private(window / "human-review-agenda.json")),
+            _strict_json(files["NEWER-ORIGINAL.json"]),
+        )
+        _private_file(output / "HUMAN-PRIORITIES.html", priority_html)
         room = _launchpad()
         _private_file(output / "OPEN-ROOM.html", room)
         help_text = (
             "LightUp PRIVATE Scope Operations Room — DRAFT/HOLD, NOT A PERMIT\n"
             "Offline only. Open OPEN-ROOM.html on a trusted workstation.\n"
+            "Open HUMAN-PRIORITIES.html for one joint source follow-up list.\n"
             "Change Control: import change-control/OLDER-ORIGINAL.json and\n"
             "change-control/NEWER-ORIGINAL.json in its local standalone page.\n"
             "The original Window Review board and the every-engagement inbox\n"
@@ -295,12 +303,14 @@ def build(database: str | None, email: str | None, password: str | None, client:
             "room_files": {
                 "OPEN-ROOM.html": sha256(room).hexdigest(),
                 "READ-FIRST.txt": sha256(help_text).hexdigest(),
+                "HUMAN-PRIORITIES.html": sha256(priority_html).hexdigest(),
             },
             "original_child_manifests": {
                 "change-control/manifest.json": sha256(files["manifest.json"]).hexdigest(),
                 "window-review/human-review-manifest.json": sha256(
                     _read_private(window / "human-review-manifest.json")).hexdigest(),
             },
+            "original_source_human_priorities": priority_counts,
             "human_schedule": {
                 "lead_days": lead_days, "future_days": future_days,
                 "daily_capacity": daily_capacity,
@@ -317,9 +327,10 @@ def build(database: str | None, email: str | None, password: str | None, client:
         return {
             "status": "HOLD_HUMAN_REVIEW",
             "private_room_written": True,
-            "applications": 3,
+            "applications": 4,
             "private_subworkspaces": 2,
             "anonymous_change_count": anonymous["changed_record_count"],
+            "original_source_human_priority_count": priority_counts["queued_original_items"],
             "authorization_granted": False,
             "execution_allowed": False,
             "release_approved": False,
