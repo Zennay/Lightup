@@ -78,13 +78,23 @@ def inspect_private_room(room: str) -> dict:
             or type(complete.get("room_files")) is not dict
             or type(complete.get("original_child_manifests")) is not dict):
         raise ReviewHold("private room metadata falsely asserts authority or is incomplete")
+    from priority_board import compose as compose_source_priorities
+    expected_priorities, priority_counts = compose_source_priorities(
+        _strict_json(_read_private(change / "PRIVATE-review.json")),
+        _strict_json(_read_private(window / "human-review-agenda.json")),
+        _strict_json(_read_private(change / "NEWER-ORIGINAL.json")),
+    )
     room_files = {
         "OPEN-ROOM.html": _read_private(root / "OPEN-ROOM.html"),
         "READ-FIRST.txt": _read_private(root / "READ-FIRST.txt"),
+        "HUMAN-PRIORITIES.html": _read_private(root / "HUMAN-PRIORITIES.html"),
     }
     expected = {"OPEN-ROOM.html": _launchpad(), "READ-FIRST.txt": room_files["READ-FIRST.txt"]}
     if room_files["OPEN-ROOM.html"] != expected["OPEN-ROOM.html"]:
         raise ReviewHold("private launchpad no longer matches original-source-free offline app")
+    if (room_files["HUMAN-PRIORITIES.html"] != expected_priorities or
+            complete.get("original_source_human_priorities") != priority_counts):
+        raise ReviewHold("combined original-source human priority desk inconsistent")
     if (complete["room_files"] != {
             name: sha256(body).hexdigest() for name, body in room_files.items()}):
         raise ReviewHold("private launchpad or operator instructions changed")
@@ -115,7 +125,9 @@ def inspect_private_room(room: str) -> dict:
     return {
         "status": "HOLD_HUMAN_REVIEW",
         "private_room_complete": True,
-        "offline_apps": 3,
+        "offline_apps": 4,
+        "original_human_priority_items": priority_counts["queued_original_items"],
+        "original_human_priority_hold": priority_counts["human_hold"],
         "original_source_bytes_same_across_products": True,
         "unsigned_file_coherence_only": True,
         "historical_changes": change_result["changed_original_record_count"],
