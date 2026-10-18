@@ -40,6 +40,14 @@ function makeInput(container,label,key,selected,options){
  });
  return el;
 }
+function filteredFindings(){
+ const by=byId(),needle=$('search').value.trim().toLowerCase(),severity=$('severity').value,work=$('workflow').value;
+ return findings.filter(f=>{
+  const c=by.get(f.finding_id);
+  return (!severity||f.severity===severity)&&(!work||c.status===work)&&
+   (!needle||[f.finding_id,f.title,f.remediation,c.owner,c.next_action,c.blocker].some(s=>s.toLowerCase().includes(needle)));
+ });
+}
 function render(){
  const available=findings.length>0,by=byId();
  const totals=LightUpCasework.metrics(findings,cases,new Date().toISOString().slice(0,10));
@@ -49,12 +57,9 @@ function render(){
  $('reference').textContent=available?'Source: '+sourceLabel+' · unverified content SHA-256: '+(fingerprint||'unavailable in this browser')+
    ' · '+findings.length+' findings · '+(edited?'unsaved local changes':'no unsaved changes')+'.':'No source imported.';
  $('empty').style.display=available?'none':'block';
- const needle=$('search').value.trim().toLowerCase(),severity=$('severity').value,work=$('workflow').value;
- const listed=findings.filter(f=>{
-  const c=by.get(f.finding_id);
-  return (!severity||f.severity===severity)&&(!work||c.status===work)&&
-   (!needle||[f.finding_id,f.title,f.remediation,c.owner,c.next_action,c.blocker].some(s=>s.toLowerCase().includes(needle)));
- });
+ const listed=filteredFindings();
+ $('bulkApply').disabled=!available||!listed.length;
+ $('bulkCount').textContent=listed.length+' matching findings';
  const kind=$('sort').value;
  listed.sort((a,b)=>{
   const ca=by.get(a.finding_id),cb=by.get(b.finding_id);
@@ -178,6 +183,30 @@ $('applyRefresh').addEventListener('click',()=>{
 });
 
 for(const id of ['search','severity','workflow','sort'])$(id).addEventListener(id==='search'?'input':'change',render);
+
+$('bulkApply').addEventListener('click',()=>{
+ const matching=filteredFindings();if(!matching.length)return;
+ const owner=$('bulkOwner').value.trim(),due=$('bulkDue').value||null;
+ if(!owner&&!due){inform('Specify an owner/team and/or a target date before bulk assignment.');return;}
+ if(owner.length>120){inform('Team name is too long.');return;}
+ if(!window.confirm('Apply '+(owner?'owner/team ':'')+(due?'due date ':'')+'to '+matching.length+' currently filtered findings? This changes local planning only.'))return;
+ const matched=new Set(matching.map(f=>f.finding_id)),all=ids(),now=new Date().toISOString();
+ let revised;
+ try{
+  revised=cases.map(c=>{
+   if(!matched.has(c.finding_id))return c;
+   return LightUpCasework.cleanCase({...c,...(owner?{owner}:{}),...(due?{due_date:due}:{}),updated_utc:now},all);
+  });
+ }catch(err){inform('Bulk change rejected: '+(err.message||'invalid field')+'. No changes made.');return;}
+ cases=revised;edited=true;
+ inform('Updated '+matched.size+' filtered local remediation assignments. Export JSON to save.');
+ render();
+});
+window.addEventListener('beforeunload',event=>{
+ if(!edited||!findings.length)return;
+ event.preventDefault();event.returnValue='';
+});
+
 $('save').addEventListener('click',()=>{
  if(!findings.length)return;
  const packet=LightUpCasework.makePacket(findings,cases,fingerprint);
