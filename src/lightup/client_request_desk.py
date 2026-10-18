@@ -15,10 +15,32 @@ from .client_request_cli import (
     canonical_assets, prepare_request,
 )
 from .client_request_snapshot import render_request_snapshot, save_private_snapshot
-from .domain import DomainStore
+from .domain import DomainStore, Role
 from .engagements import AssessmentMode, RiskLevel
 
 _MAX_INPUT = 4096
+
+
+def _client_access_epoch(db: DomainStore, ctx) -> str:
+    """Reject stale desk access after credential, role or tenant changes.
+
+    This protects the multi-action CLI's long-lived client context. DomainStore
+    independently checks actual permissions inside each request write.
+    """
+    with db._connect() as con:
+        row = con.execute(
+            "SELECT u.role, u.client_id, c.status, cr.updated_at "
+            "FROM users AS u JOIN clients AS c ON c.client_id=u.client_id "
+            "JOIN credentials AS cr ON cr.user_id=u.user_id "
+            "WHERE u.user_id=?", (ctx.user_id,),
+        ).fetchone()
+    if (row is None or row["role"] not in (Role.CLIENT_ADMIN.value, Role.CLIENT_MEMBER.value)
+            or row["role"] != ctx.role.value
+            or row["client_id"] != ctx.client_id
+            or row["status"] != "active"
+            or type(row["updated_at"]) is not str):
+        raise PermissionError("client account or tenant identity is no longer active")
+    return row["updated_at"]
 
 
 def _ask(label: str, *, max_chars: int = _MAX_INPUT) -> str:
@@ -201,6 +223,7 @@ def main(argv: list[str] | None = None) -> int:
     try:
         db = DomainStore(_existing_database(options.db))
         ctx = _client_account(db, options.email)
+        credential_epoch = _client_access_epoch(db, ctx)
     except (ValueError, PermissionError, OSError) as exc:
         print("Client login refused: " + str(exc), file=sys.stderr)
         return 2
@@ -226,11 +249,18 @@ def main(argv: list[str] | None = None) -> int:
             if selection not in choices:
                 print("Unknown selection.")
                 continue
+            # A password reset, role change, tenant move or client deactivation
+            # ends the current authenticated desk; no stale inbox/export access.
+            if _client_access_epoch(db, ctx) != credential_epoch:
+                raise PermissionError("client credentials changed; sign in again")
             choices[selection][1]()
         except (EOFError, KeyboardInterrupt):
             print("\nClient session closed.")
             return 0
-        except (ValueError, PermissionError, KeyError, OSError) as exc:
+        except PermissionError as exc:
+            print("Client session expired: " + str(exc), file=sys.stderr)
+            return 2
+        except (ValueError, KeyError, OSError) as exc:
             print("Action refused: " + str(exc), file=sys.stderr)
             print("No authorization was conferred. Return to the menu.")
 
