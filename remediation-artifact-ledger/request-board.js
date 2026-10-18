@@ -282,6 +282,34 @@ bind('requestBatchPreviewButton','click',makeBatchPreview);
 bind('requestBatchApply','click',applyBatch);
 bind('requestClear','click',forget);
 bind('requestFilter','change',render);
+/* Narrow interface for the already source-bound private Unified HUMAN handoff.
+ * No mutable source references or execution capabilities escape this desk. */
+window.LightUpArtifactRequests=Object.freeze({
+ snapshot(){
+  const c=current();
+  return state.requests.map(r=>validate(r,c));
+ },
+ snapshotJSON(){return JSON.stringify(state.requests);},
+ validateSnapshot(raw,c){
+  if(!Array.isArray(raw)||raw.length>MAX_ROWS)
+   problem('Invalid PRIVATE unified HUMAN request count.');
+  const ids=new Set();
+  return raw.map(item=>{
+   const v=validate(item,c);
+   if(ids.has(v.request_id))problem('Duplicate PRIVATE unified HUMAN request ID.');
+   ids.add(v.request_id);return v;
+  });
+ },
+ restore(rows){
+  const c=current();
+  const next=this.validateSnapshot(rows,c);
+  state.requests=next;state.preview=null;render();
+ },
+ forgetUnconditionally(){
+  state.requests=[];state.preview=null;state.binding=null;
+  render();
+ }
+});
 window.addEventListener('lightup-original-human-context',render);
 render();
 })();
