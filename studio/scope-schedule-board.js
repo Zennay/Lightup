@@ -339,6 +339,7 @@ function renderScenarios(){
   $('scenarioClear').disabled=!scenarioShifts.size;
   $('scenarioArrange').disabled=!shown().length||!policy.valid;
   $('scenarioExport').disabled=!entries.length || !policy.valid || entries.some(e=>!e.sourceHash);
+  $('briefExport').disabled=$('scenarioExport').disabled;
   const changes=$('scenarioChanges');changes.replaceChildren();
   if(!scenarioShifts.size)append(changes,'p','No time adjustments proposed.','muted');
   entries.forEach((e,i)=>{
@@ -563,6 +564,73 @@ $('scenarioClear').addEventListener('click',()=>{
   $('status').textContent='All what-if shifts reverted. Original Studio drafts were always unchanged.';
   render();
 });
+
+function escapeReviewHtml(value) {
+  return String(value===null?'—':value).replace(/[&<>"']/g,character=>
+    ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[character]));
+}
+function renderPrivateReviewBrief(packet) {
+  const p=packet.workday_utc;
+  const esc=escapeReviewHtml;
+  const header=['#','Source file SHA-256 (unsigned)','Risk / mode','Original UTC','Proposed UTC','Shifted'];
+  const rows=packet.proposals.map(row=>[
+    row.local_ordinal,row.source_file_sha256,
+    'Risk '+row.requested_risk+' / '+row.requested_mode,
+    row.original_start_utc===null?'No resolved UTC window':
+      row.original_start_utc+' to '+row.original_end_utc,
+    row.scenario_start_utc===null?'HOLD: no resolved UTC window':
+      row.scenario_start_utc+' to '+row.scenario_end_utc,
+    row.shifted?'Yes — new proposed time':'No'
+  ]);
+  const table=items=>items.map(list=>'<tr>'+list.map(value=>'<td>'+esc(value)+'</td>').join('')+'</tr>').join('');
+  const busy=packet.unavailable_utc.length ?
+    '<table><thead><tr><th>Unavailable from (UTC)</th><th>Until (UTC)</th></tr></thead><tbody>'+
+      table(packet.unavailable_utc.map(b=>[b.start,b.end]))+'</tbody></table>':
+    '<p>No locally unavailable windows.</p>';
+  const names=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  const weekdays=p.enabled?p.weekdays.map(day=>names[day]).join(', '):'Unrestricted';
+  const total=packet.proposed_time_overlap_pairs+
+    packet.proposed_unavailability_overlap_pairs+packet.proposed_outside_workday_count;
+  return '<!doctype html><html lang="en"><head><meta charset="utf-8">'+
+    '<meta name="viewport" content="width=device-width,initial-scale=1">'+
+    '<meta name="referrer" content="no-referrer">'+
+    '<meta http-equiv="Content-Security-Policy" content="default-src &#39;none&#39;; style-src &#39;unsafe-inline&#39;; base-uri &#39;none&#39;; form-action &#39;none&#39;">'+
+    '<title>LightUp · Private schedule review</title><style>'+
+    'body{font:15px/1.55 system-ui,sans-serif;max-width:1080px;margin:30px auto;padding:0 22px;background:#f5f7fa;color:#152138}'+
+    'h1{margin-bottom:0}.banner{padding:18px;background:#fff0d7;border:2px solid #9d7246;margin:20px 0;border-radius:8px}'+
+    'table{width:100%;border-collapse:collapse;background:white;table-layout:fixed}td,th{padding:10px;border:1px solid #b9c5cf;word-wrap:break-word;text-align:left;vertical-align:top}'+
+    'th{background:#dbe6ee}code{overflow-wrap:anywhere}section{margin:24px 0}small{color:#44546a}'+
+    '@media print{body{background:white;margin:0}.banner{border:2px solid black}th{background:#eee}}'+
+    '</style></head><body><h1>LightUp · Private schedule review</h1>'+
+    '<p>Anonymous operator planning handoff · LOCAL_REVIEW_ONLY · Untrusted user-supplied proposal data.</p>'+
+    '<div class="banner"><strong>NOT AUTHORIZATION / NOT A BOOKING.</strong> No verified target ownership, consent, scope approval, grant, scan, execution, or release. This offline document is unsigned and can be stale. Work must not begin from these proposals alone.</div>'+
+    '<section><h2>Proposed UTC windows</h2><table><thead><tr>'+
+      header.map(s=>'<th>'+esc(s)+'</th>').join('')+
+      '</tr></thead><tbody>'+table(rows)+'</tbody></table></section>'+
+    '<section><h2>Local planning constraints (not authenticated)</h2>'+
+    '<p>UTC working hours: '+esc(p.enabled?p.start+'–'+p.end:'Unrestricted')+
+      ' · UTC weekdays: '+esc(weekdays)+'</p>'+busy+'</section>'+
+    '<section><h2>Review attention</h2><p>Time-only draft overlap pairs: '+
+      esc(packet.proposed_time_overlap_pairs)+
+      '. Proposed/unavailable overlaps: '+esc(packet.proposed_unavailability_overlap_pairs)+
+      '. Drafts outside selected work hours: '+esc(packet.proposed_outside_workday_count)+
+      '. Total local scheduling concerns: '+esc(total)+'.</p>'+
+    '<p>No claim is made about resource availability, actual clients, risk clearance, revocation or authorizing rights. All draft identities are anonymized; the original-file digests are only unsigned content continuity hints and can still correlate documents.</p></section>'+
+    '<footer><small>Source drafts were never changed. Review must use real authenticated client/operator systems and all existing security gates. No network, scripts, resources, embedded files or external fonts.</small></footer></body></html>';
+}
+$('briefExport').addEventListener('click',()=>{
+  if(!entries.length||entries.some(e=>!e.sourceHash)||!workPolicy().valid){
+    $('status').textContent='HOLD: unavailable source digests or invalid work-hour policy.';
+    return;
+  }
+  const html=renderPrivateReviewBrief(scenarioPacket());
+  const blob=new Blob([html],{type:'text/html;charset=utf-8'}),url=URL.createObjectURL(blob);
+  const link=document.createElement('a');link.href=url;link.download='lightup-private-schedule-review.html';
+  document.body.append(link);link.click();link.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),500);
+  $('status').textContent='Private, script-free operator schedule brief downloaded. Nothing approved, booked or sent.';
+});
+
 $('scenarioExport').addEventListener('click',()=>{
   if(!entries.length||entries.some(e=>!e.sourceHash)){
     $('status').textContent='HOLD: source SHA-256 is unavailable. This browser cannot export a source-bound scenario.';return;
