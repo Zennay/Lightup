@@ -75,6 +75,8 @@
   function formRow(row,idx) {
     const article=document.createElement("article");
     article.className="row";
+    article.dataset.key=row.key;
+    article.dataset.tier=row.tier;
     const heading=document.createElement("h2");
     heading.textContent=(idx+1)+". "+row.key;
     const hint=document.createElement("p");
@@ -112,7 +114,7 @@
       labeled("Private human next action / question",next));
     article.append(heading,hint,recommendation,detail,previous,form);
     article.addEventListener("change",()=>{
-      edited=true;notify("Local human-only draft changed; use PRIVATE reply export.");
+      edited=true;refreshSummary();notify("Local human-only draft changed; use PRIVATE reply export.");
     });
     article.addEventListener("input",()=>{
       edited=true;notify("Local human-only draft changed; use PRIVATE reply export.");
@@ -129,6 +131,35 @@
     if (JSON.stringify(object)!==source) throw Error("noncanonical JSON or repeated keys");
     return object;
   }
+  function refreshSummary() {
+    if (!packet) {
+      $("summary").textContent="No private reviewer handoff has been admitted.";
+      return;
+    }
+    const search=$("search").value.toLocaleLowerCase();
+    const filter=$("focus").value;
+    let visible=0,changed=0,unfinished=0;
+    [...cards.children].forEach((card,index)=>{
+      const sourceRow=packet.rows[index];
+      const proposed=getHuman(card,sourceRow.baseline);
+      const changedRow=["due","stage","next"].some(k=>
+        proposed[k]!==sourceRow.baseline[k]);
+      if (changedRow)changed++;
+      if (proposed.stage!=="human_followup_complete")unfinished++;
+      const show=card.dataset.key.toLocaleLowerCase().includes(search) &&
+        (filter==="ALL" || filter===card.dataset.tier ||
+          (filter==="CHANGED" && changedRow) ||
+          (filter==="UNFINISHED" && proposed.stage!=="human_followup_complete"));
+      card.hidden=!show;
+      if (show)visible++;
+    });
+    $("summary").textContent=visible+" visible · "+changed+
+      " human notes changed · "+unfinished+
+      " human follow-ups not marked complete. "+
+      "Completeness is a self-declared human stage, NEVER remediation/consent.";
+  }
+  $("focus").addEventListener("change",refreshSummary);
+  $("search").addEventListener("input",refreshSummary);
   $("import").addEventListener("change",async event=>{
     const file=event.target.files[0];event.target.value="";
     if (!file) return;
@@ -143,6 +174,7 @@
       $("identity").textContent="Recipient reviewer label: "+original.reviewer+
         " · "+original.rows.length+" source-bound human follow-ups.";
       $("export").disabled=false;
+      refreshSummary();
       notify("Original-bound PRIVATE handoff loaded locally. Reviewer label is unverified.");
     } catch (_) {notify("Private handoff refused; current human notes preserved.",true);}
   });
@@ -177,6 +209,7 @@
     document.body.append(a);a.click();a.remove();
     setTimeout(()=>URL.revokeObjectURL(url),5000);
     edited=false;
+    refreshSummary();
     notify("PRIVATE human reply exported. It requires exact-source coordinator acceptance.");
   });
   addEventListener("beforeunload",event=>{
