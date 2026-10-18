@@ -221,7 +221,7 @@ function renderActionBoard(){
 $('boardView').addEventListener('change',renderActionBoard);
 function clearIntakePreview(message='Source/record changed. Repeat routing preview.'){
  intakeRoutePreview=null;
- $('intakeExport').disabled=true;$('intakeResult').replaceChildren();
+ $('intakeAssign').disabled=true;$('intakeExport').disabled=true;$('intakeResult').replaceChildren();
  $('intakeStatus').textContent=message;
 }
 $('intakeSource').addEventListener('change',()=>clearIntakePreview('Selected original changed. Recheck structural intake limitations.'));
@@ -244,11 +244,57 @@ $('intakePreview').addEventListener('click',()=>{
   }
   panel.append(make('p','Unmerged client CLI owner supports private studio-handoff for lossless human review. Only that owned tool may interpret its real authenticated submission envelope. This offline screen never alters proposals or writes a request.','small'));
   intakeRoutePreview={sha,result,epoch:editEpoch};
-  $('intakeExport').disabled=false;
+  $('intakeExport').disabled=false;$('intakeAssign').disabled=!result.blockers.length;
   $('intakeStatus').textContent=result.nativeRequestShapeCandidate?
    'SHAPE CANDIDATE ONLY. Native client re-validation, independent operator review and current revocation remain mandatory.':
    'HOLD FOR NATIVE SUBMISSION. Preserve exclusions/plan/lab mode in private review handoff; never remove constraints merely to force submission.';
  }catch(e){$('intakeStatus').textContent='Native route HOLD: '+e.message;}
+});
+function checkedIntakeRoute(){
+ const draft=intakeRoutePreview;
+ if(!draft||draft.epoch!==editEpoch||draft.sha!==$('intakeSource').value||
+    !sourceCopies.has(draft.sha))throw Error('Native routing preview has expired.');
+ const latest=LightUpRevisionReview.nativeIntakePreview(sourceCopies.get(draft.sha));
+ if(JSON.stringify(latest)!==JSON.stringify(draft.result))throw Error('Source route classification changed.');
+ const record=entries.find(r=>r.source_sha256===draft.sha&&r.source_attached);
+ if(!record)throw Error('Exact original source is no longer attached.');
+ return {latest,record};
+}
+$('intakeAssign').addEventListener('click',()=>{
+ try{
+  const {latest,record}=checkedIntakeRoute();
+  const map={
+   exclusions:['scope_boundary','Resolve explicit exclusions with separately enforceable authoritative scope; preserve full Studio source for private review.'],
+   analysis_mode:['operator_review','Keep analysis-only intent separate from any authorized-assessment request; arrange human workflow review.'],
+   private_lab:['scope_boundary','Route proposed private-lab network activity to the dedicated explicitly authorized private-lab workflow.'],
+   requested_window:['window_stop','Reconcile locally proposed schedule with an independently approved UTC window and STOP/revocation route.'],
+   utc_provenance:['window_stop','Preserve original scheduling and timezone provenance in the full private handoff; never drop limits.'],
+   risk_escalation:['operator_review','Arrange independent elevated-risk escalation before any separate authenticated decision.']
+  };
+  const grouped=new Map();
+  for(const issue of latest.blockers){
+   const item=map[issue.key];if(!item)continue;
+   const [stage,message]=item;
+   grouped.set(stage,[...(grouped.get(stage)||[]),message]);
+  }
+  const assignments=[];
+  for(const [stage,messages] of grouped){
+   const task=record.tasks[stage];
+   if(task.status==='prepared'||task.next_action)continue;
+   assignments.push({stage,next_action:messages.join(' ').slice(0,350)});
+  }
+  if(!assignments.length){
+   $('intakeStatus').textContent='Existing/finished casework already has instructions; no fields overwritten. Native request remains separately controlled.';
+   return;
+  }
+  if(!confirm('Fill '+assignments.length+
+   ' EMPTY next-action field(s) with manual steps for the native intake HOLD categories? '+
+   'Do not change preparedness status, real client/operator consent, risk approval, grants, source assets or native requests.'))return;
+  for(const item of assignments)record.tasks[item.stage].next_action=item.next_action;
+  const count=assignments.length;
+  setDirty();render();
+  $('intakeStatus').textContent='Created '+count+' missing human follow-up action(s); reassess actual native-client constraints separately. No request or authorization created.';
+ }catch(e){clearIntakePreview('Intake follow-up HOLD: '+e.message);}
 });
 $('intakeExport').addEventListener('click',()=>{
  try{
