@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<title>LightUp — Remediation Funding Studio (offline)</title>
+<link rel="stylesheet" href="./style.css">
+<script src="./model.js" defer></script><script src="./app.js" defer></script>
+</head><body>
+<header><div class="wrap">
+  <p class="eyebrow">LIGHTUP / PRIVATE CAPACITY FINANCE / OFFLINE</p>
+  <h1>Remediation Funding Studio</h1>
+  <p class="lead">Understand what a previously proposed defensive repair plan might cost, where funding falls short, and how staffing assumptions change the financial picture.</p>
+  <p class="warning"><strong>DRAFT/HOLD · REVIEW ONLY.</strong> These are hypothetical estimates, not invoices, verified remediations, approvals, contract terms or authorisation to access a target.</p>
+</div></header>
+<main class="wrap">
+<section class="panel" aria-labelledby="import-heading">
+<p class="eyebrow">01 / SOURCE</p><h2 id="import-heading">Import existing private aggregate plan</h2>
+<p>Use the separate LightUp Remediation Capacity Studio's <strong>Export aggregate JSON</strong> action. This app accepts only that review-only export. Do not import original findings, hosts or raw evidence here.</p>
+<label class="input-label">Aggregate capacity draft (.json, ≤64 KiB)<input type="file" id="input" accept=".json,application/json"></label>
+<div class="action-row"><button type="button" class="secondary" id="forget">Forget everything</button></div>
+<p id="source-state" aria-live="polite" class="subtle">No aggregate source loaded. Nothing is stored in this browser.</p>
+</section>
+<section class="panel"><p class="eyebrow">02 / FINANCIAL ASSUMPTIONS</p><h2>Adjust your cost model</h2>
+<p>Enter planning rates in your chosen currency. The model does not convert currencies or estimate taxes and never infers a client's contracted price.</p>
+<form id="settings" autocomplete="off">
+<div class="form-grid">
+<label>Reporting currency<select name="currency"><option value="EUR">EUR — €</option><option value="GBP">GBP — £</option><option value="USD">USD — $</option></select></label>
+<label>Internal hourly cost<input name="internal_rate" type="number" min="1" max="2000" value="80" step="1" required></label>
+<label>External hourly cost<input name="external_rate" type="number" min="1" max="3000" value="145" step="1" required></label>
+<label>External work share (%)<input name="outsourced_pct" type="number" min="0" max="100" value="20" step="1" required></label>
+<label>Cost contingency (%)<input name="contingency_pct" type="number" min="0" max="100" value="20" step="1" required></label>
+<label>One-time tooling/setup budget<input name="fixed_cost" type="number" min="0" max="1000000" value="500" step="1" required></label>
+<label>Total available funding<input name="funding" type="number" min="0" max="100000000" value="12000" step="1" required></label>
+</div>
+<button id="forecast" type="submit" disabled>Calculate proposed funding</button>
+</form>
+</section>
+<section id="results" hidden>
+<div class="panel">
+<p class="eyebrow">03 / REVIEW-ONLY ESTIMATE</p><h2>Funding picture</h2>
+<div id="kpis" class="stats" aria-live="polite"></div>
+<p class="subtle">Source-export hours are already capacity-limited. The funding gap is only a money comparison for the proposed hours; it does not imply that all remaining findings were remediated.</p>
+</div>
+<div class="panel" aria-labelledby="critical-risk-title">
+<p class="eyebrow">04 / URGENT REMEDIATION EXPOSURE</p>
+<h2 id="critical-risk-title">Critical/high work potentially left without funding</h2>
+<p>The weekly aggregate contains no trustworthy order of individual cases. This app therefore shows a <strong>lower and upper bound</strong> on urgent hours that a limited budget may not cover. It never claims any urgent case was actually fixed or assigned.</p>
+<div class="stats" id="risk-exposure" aria-live="polite"></div>
+<div class="table-wrap"><table>
+<thead><tr><th>Week</th><th>Urgent hours proposed</th><th>Potential unfunded (minimum)</th><th>Potential unfunded (maximum)</th></tr></thead>
+<tbody id="risk-weeks"></tbody></table></div>
+<p class="subtle">Separately unscheduled source backlog remains outside these funding bounds. A funded hour is not a verified repair or granted retest.</p>
+</div>
+<div class="panel">
+<h2>Weekly cost and funding sequence</h2>
+<div class="table-wrap"><table>
+<thead><tr><th>Week</th><th>Starting (UTC)</th><th>Hours planned</th><th>Forecast cost</th><th>Available funding applied</th><th>Funded hours (estimate)</th></tr></thead>
+<tbody id="weeks"></tbody></table></div>
+</div>
+<div class="panel">
+<h2>Human staffing alternative</h2>
+<p>Keep the same staffing hours and compare a different share of external work. This does not create a hiring instruction, resource booking or agreement.</p>
+<div class="scenario-input"><label>Alternative external work share (%)<input id="alternative-external" type="number" min="0" max="100" value="50"></label>
+<button type="button" id="compare">Compare costs</button></div>
+<div class="stats" id="scenario"></div>
+</div>
+<div class="panel" aria-labelledby="releases-title">
+<p class="eyebrow">05 / PHASED CASH RELEASE</p>
+<h2 id="releases-title">What if money becomes available later?</h2>
+<p>Allocate the same total budget across weeks to see where proposed remediation might go unfunded while waiting for cash. Unfunded hours are not silently rescheduled or marked completed. An unpaid one-time setup cost must be covered before that week's labour can be funded.</p>
+<label class="input-label">Funding release pattern<select id="releases-mode">
+<option value="upfront">All available in week 1</option>
+<option value="equal">Evenly over all planning weeks</option>
+<option value="custom">Custom percentage per week</option>
+</select></label>
+<div id="release-entries" class="form-grid"></div>
+<div class="action-row">
+<button id="release-calculate" type="button" class="secondary">Calculate phased funding</button>
+<button id="release-export" type="button" class="secondary" hidden>Export phased cashflow draft</button>
+</div>
+<div id="release-summary" class="stats" aria-live="polite"></div>
+<div class="table-wrap"><table><thead><tr><th>Week</th><th>Budget released</th><th>Setup covered</th><th>Labor paid</th><th>Hours funded</th><th>Hours not funded</th><th>Cash carried</th></tr></thead>
+<tbody id="release-weeks"></tbody></table></div>
+<p class="subtle">Funding patterns are deliberately unsigned financial assumptions; no bank, calendar, contract, operator, client or target is contacted.</p>
+</div>
+<div class="panel" aria-labelledby="funding-priority-title">
+<p class="eyebrow">06 / FUNDING PRIORITIES</p>
+<h2 id="funding-priority-title">Protect urgent work or spread financial coverage?</h2>
+<p>Compare <strong>critical/high-first</strong> and <strong>proportional</strong> hypothetical funding within the exact same week-by-week cash release schedule. One option directs modeled money toward urgent severity bands first; the other distributes it across all severity bands. Both use aggregate hours only. No original cases, ownership, or real repair order is reconstructed.</p>
+<div class="action-row">
+<button type="button" id="priority-calculate" class="secondary">Compare funding priorities</button>
+<button type="button" id="priority-export-json" class="secondary" hidden>Export comparison JSON</button>
+<button type="button" id="priority-export-md" class="secondary" hidden>Export discussion brief</button>
+</div>
+<div class="stats" id="priority-kpis" aria-live="polite"></div>
+<div class="table-wrap"><table>
+<thead><tr><th>Risk band</th><th>Hours proposed</th><th>Urgent-first funded</th><th>Urgent-first unfunded</th><th>Proportional funded</th><th>Proportional unfunded</th></tr></thead>
+<tbody id="priority-rows"></tbody></table></div>
+<p class="subtle" id="priority-note" aria-live="polite">A funding strategy is only an unsigned discussion proposal. Capacity limits, prior backlogs and the original authorisation remain unchanged.</p>
+</div>
+<div class="panel" aria-labelledby="timing-title">
+<p class="eyebrow">07 / FUNDING TIMING COMPARISON</p>
+<h2 id="timing-title">Same budget, different release dates</h2>
+<p>Compare full upfront release, evenly staged release and the release schedule selected above. All scenarios use the same modelled total and planning hours. Hours not covered in an earlier week are <strong>not</strong> silently moved, assigned or marked completed.</p>
+<div class="action-row">
+<button id="timing-calculate" class="secondary" type="button">Compare release schedules</button>
+<button id="timing-export-json" class="secondary" type="button" hidden>Export private comparison JSON</button>
+<button id="timing-export-md" class="secondary" type="button" hidden>Export discussion Markdown</button>
+</div>
+<div class="stats" id="timing-stats" aria-live="polite"></div>
+<div class="table-wrap"><table>
+<thead><tr><th>Funding schedule</th><th>Source hours</th><th>Hours funded</th><th>Hours unfunded</th><th>Urgent-first critical/high unfunded</th><th>Balanced critical/high unfunded</th><th>Cash unused</th></tr></thead>
+<tbody id="timing-rows"></tbody></table></div>
+<p class="subtle" id="timing-note">A later cash release is a financial hypothesis, not a new authorisation window or an actual payment instruction.</p>
+</div>
+<div class="panel">
+<h2>Private aggregate handoff</h2>
+<p>No finding ID, customer name, target identity, original CSV bytes, grant or operator information is available to export. Aggregated budgets can still be commercially sensitive; review the recipient before sharing.</p>
+<div class="action-row">
+<button id="json" type="button" class="secondary">Export forecast JSON</button>
+<button id="csv" type="button" class="secondary">Export weekly budget CSV</button>
+<button id="print" type="button">Print private discussion</button>
+</div>
+</div>
+</section>
+<p id="notice" role="alert" aria-live="assertive"></p>
+</main>
+<footer class="wrap"><small>LightUp · INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD · No source mutation, authentication, approval, grant, scan, retest, booking, dispatch or production release.</small></footer>
+</body></html>
