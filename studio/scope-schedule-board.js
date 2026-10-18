@@ -276,7 +276,7 @@ function renderScenarios(){
   $('scenarioApply').disabled=!chosen;
   $('scenarioSuggest').disabled=!chosen;
   $('scenarioRevert').disabled=!chosen||!scenarioShifts.has(chosen.key);
-  $('scenarioClear').disabled=!shown().length;
+  $('scenarioClear').disabled=!scenarioShifts.size;
   $('scenarioArrange').disabled=!shown().length;
   $('scenarioExport').disabled=!entries.length || entries.some(e=>!e.sourceHash);
   const changes=$('scenarioChanges');changes.replaceChildren();
