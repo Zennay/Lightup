@@ -220,7 +220,7 @@ def _source_snapshot(database: str, *, actor_id: str, client_id: str | None) -> 
             else:
                 notice = "REQUEST_LINK_DECLARED_NOT_VERIFIED"
             grant_view.append({
-                "grant_id": gid, "engagement_id": eid,
+                "grant_id": gid, "engagement_id": eid if eid in engs else None,
                 "approved_request_id": binding, "request_link_observation": notice,
                 "max_risk": row["max_risk"],
                 "valid_from": _value(row, "valid_from", 80),
@@ -235,7 +235,7 @@ def _source_snapshot(database: str, *, actor_id: str, client_id: str | None) -> 
             seen_risks.add(aid)
             eid = _identity(_value(row, "engagement_id"), "risk engagement")
             risk_view.append({
-                "approval_id": aid, "engagement_id": eid,
+                "approval_id": aid, "engagement_id": eid if eid in engs else None,
                 "status": _value(row, "status", 80),
                 "requested_risk": row["requested_risk"],
                 "source_tenant_matches": row["client_id"] == chosen and eid in engs,
