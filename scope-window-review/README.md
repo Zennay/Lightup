@@ -26,10 +26,11 @@ at the time it is called; neither a subsequently opened HTML report nor a
 file hash becomes client consent, scan permission, or proof of live STOP.
 
 The new directory contains:
+- `original-private-casebook.json`: **exact authenticated/source-imported original Casebook bytes** for later offline source refresh. Confidential original identifiers remain strictly in a 0600 source file, never embedded inside the public-safe calendar. This is NOT a newly authenticated permission, even if produced after original login.
 - `human-review-board.html`: responsive, entirely offline private human case desk.
 - `human-review-agenda.json`: original-ID-bearing planning data for human review only.
 - `human-review-calendar.ics`: generic, redacted and non-authorizing reminders.
-- `human-review-manifest.json`: exact SHA-256 + byte length of the other three
+- `human-review-manifest.json`: exact SHA-256 + byte length of the other four
   generated artifacts, original-source byte digest, prepared-at timestamp and
   literal false authority flags. A checksum does **not** authenticate its author.
 
@@ -41,9 +42,9 @@ python3 scope-window-review/workspace_inspect.py \
   --workspace /private/NEW-lightup-human-window-room
 ```
 
-This inspects the **entire exact four-file collection**, requires owner-controlled
+This inspects the **entire exact five-file collection**, requires owner-controlled
 0700 directory and regular 0600 non-symlink single-link files, validates bounded
-canonical manifest fields and all SHA-256/size declarations, and returns
+canonical manifest fields, exact original-source sidecar digest and all SHA-256/size declarations, and returns
 `2 REVIEW_ONLY` or `3 HOLD`. Only aggregate counts are printed. It
 never elevates a snapshot to a verified grant; a modified manifest could
 be re-created by an attacker because **SHA-256 is not an issuer signature**.
@@ -69,7 +70,7 @@ Disappeared, edited or newly out-of-horizon rows are explicitly withheld.
 No account authentication, approval, grant, STOP or original SQLite write
 occurs in this separate retrospective handoff utility.
 
-Before running, an operator must independently verify both original Casebook
+For workspaces produced with `--workspace`, the **exact original old and new Casebook snapshots are already retained** as `OLD-WORKSPACE/original-private-casebook.json` and `NEW-WORKSPACE/original-private-casebook.json`; no additional original-domain login or reconstructing source exports is necessary for this offline human proposal. Their presence does not establish current consent.\n\nBefore running, an operator must independently verify both original Casebook
 sources, tenant, note issuer and exact review policy. Use the earlier
 `human-review-agenda.json` file's `prepared_at` as `--old-review-at`
 if the original review was not made immediately after source export:
