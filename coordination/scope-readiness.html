@@ -42,6 +42,15 @@ table{width:100%;border-collapse:collapse}th,td{border-bottom:1px solid var(--bo
 <section class="card"><h2>2 · Review workload (never authorization)</h2>
 <div class="stats"><div class="stat"><span class="num" id="count">0</span>Drafts</div><div class="stat"><span class="num" id="unbound">0</span>Unbound source files</div><div class="stat"><span class="num" id="blockers">0</span>Open preparation tasks</div><div class="stat"><span class="num" id="overdue">0</span>Overdue action targets</div><div class="stat"><span class="num" id="roleOverlap">0</span>Client/operator label overlaps</div></div>
 </section>
+<section class="card controls" aria-label="Lossless client intake routing">
+<h2>Studio → authenticated client request · lossless routing preview</h2>
+<p>See whether the current draft contains exclusions, schedules or private-lab intentions that a native persistent assessment request could silently lose. This is a structural preview of the separately owned draft client CLI, not client authentication or permission.</p>
+<label for="intakeSource">Original locally attached Studio draft</label>
+<select id="intakeSource"><option value="">Select original source</option></select>
+<div class="toolbar"><button id="intakePreview" type="button">Review native intake limitations</button><button id="intakeExport" type="button" disabled>Save unsigned routing note</button></div>
+<p id="intakeStatus" role="status" class="small">No draft selected. Never submit widened or narrowed scope automatically.</p>
+<div id="intakeResult" class="list"></div>
+</section>
 <section class="card controls" aria-label="Source-bound revision impact review">
 <h2>Scope revision impact · human re-review</h2>
 <p>Compare two original locally attached Studio v1 files before reusing paperwork. Changed target declarations, exclusions, timing and risk remain unverified. No scope widening, authenticated approval or execution is permitted by this screen.</p>
