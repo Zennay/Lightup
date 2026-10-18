@@ -233,6 +233,10 @@ def _read_report(database: Path, *, client_id: str | None = None,
         own_requests = requests_by_client[own]
         own_grants = by_engagement_grants[engagement["engagement_id"]]
         approved = sum(r["status"] == "approved" for r in own_requests)
+        request_lineage_digest = hashlib.sha256(
+            json.dumps([dict(r) for r in own_requests], ensure_ascii=True,
+                       sort_keys=True, default=str, separators=(",", ":")).encode("ascii")
+        ).hexdigest()
         untrusted_approved = sum(
             r["status"] == "approved" and not _trusted_request_origin(r, users_by_id)
             for r in own_requests
@@ -246,6 +250,12 @@ def _read_report(database: Path, *, client_id: str | None = None,
             "untrusted_approved_requests": untrusted_approved,
             "grants": len(own_grants),
             "grant_findings": [],
+            "source_key": hashlib.sha256(
+                json.dumps({"engagement": dict(engagement),
+                            "requests_digest": request_lineage_digest,
+                            "has_grants": bool(own_grants)}, ensure_ascii=True,
+                           sort_keys=True, default=str).encode("ascii")
+            ).hexdigest(),
         }
         if not own_grants:
             entry["attention"] = "No recorded grants; no authorization inferred."
@@ -275,7 +285,16 @@ def _read_report(database: Path, *, client_id: str | None = None,
                 problems.append("EXPIRED_GRANT_WINDOW")
             for flag in problems:
                 counter[flag] += 1
+            # Stable *pseudonymous* exact-source fingerprint: never expose real IDs.
+            # Any grant row, linked client request, time-window or flag change
+            # changes this key, forcing fresh operator treatment on a new snapshot.
+            grant_source_key = hashlib.sha256(
+                json.dumps({"grant": dict(grant), "requests_digest": request_lineage_digest,
+                            "window": window, "flags": problems}, ensure_ascii=True,
+                           sort_keys=True, default=str).encode("ascii")
+            ).hexdigest()
             entry["grant_findings"].append({
+                "source_key": grant_source_key,
                 "grant_number": len(entry["grant_findings"]) + 1,
                 "window": window,
                 "flags": problems,
@@ -306,6 +325,7 @@ def _read_report(database: Path, *, client_id: str | None = None,
             "A within_window grant is NOT currently authorized. Review does not issue, edit or revoke grants.",
             "All grant records remain unverified. Do not merge, deploy or scan on this report.",
             "Scoped exports intentionally omit unrelated tenant data and do not claim to inventory all orphan grants.",
+            "Opaque source-key hashes support local action continuity only; they are unsigned pseudonyms, not identities, digital signatures or authorization.",
         ],
         "summary": {
             "clients": len(clients),
