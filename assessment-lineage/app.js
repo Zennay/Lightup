@@ -990,7 +990,17 @@
     }catch(_){message("HOLD: brief not available until sources match exactly.",true);}
   }
   function forget(){catalog=null;reports=[];reviews=new Map();humanNotes=new Map();humanRoutes=new Map();humanActions=new Map();mismatchRevealed=false;catalogHash=null;
-    reportHashes=[];undoBatch=null;undoRouteBatch=null;clearPendingDraft();resetFilters();fictional=false;render();message("All source and review data cleared from memory.");}
+    reportHashes=[];undoBatch=null;undoRouteBatch=null;clearPendingDraft();
+    if(privateTemplate instanceof HTMLTemplateElement){
+      privateTemplate.content.replaceChildren();
+      $("loadPrivateBundle").disabled=true;
+      $("embeddedAvailability").textContent="Any embedded PRIVATE original source has been cleared "+
+        "from this browser document. The sensitive original HTML file on disk "+
+        "must be deleted separately by its owner.";
+    }
+    resetFilters();fictional=false;render();
+    message("Private source, notes, human plans and embedded draft cleared from the active browser document.");
+  }
   function makeDemo(){
     const names=["scenario-FAKE-01","scenario-FAKE-02","scenario-FAKE-03"];
     catalog=names.map((id,i)=>({id,mode:i===0?"unscored":i===1?
