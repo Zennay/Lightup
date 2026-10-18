@@ -15,7 +15,7 @@ const $=id=>document.getElementById(id);
 let entries=[], active=null, dirty=false, editEpoch=0, bulkPlan=null, packetDraft=null, bulkUndo=null, mergePlan=null;
 // Full original Studio drafts exist only in volatile browser memory; never serialized into casework exports.
 const sourceCopies=new Map();
-let revisionPreview=null;
+let revisionPreview=null, intakeRoutePreview=null;
 const flags=()=>({authenticated:false,client_consent:false,operator_consent:false,authorization:false,risk_approved:false,grant:false,revocation_checked:false,execution:false,scan:false,release:false});
 const fresh=()=>Object.fromEntries(STAGES.map(([id])=>[id,{status:'todo',owner:'',due:'',next_action:''}]));
 function notice(msg){$('message').textContent=msg;}
@@ -161,7 +161,7 @@ function clearPacketPreview(message='Source or coordination data changed. Create
 function clearMergePreview(message='Merge preview is stale; select the workspace file again.'){
  mergePlan=null;$('mergeApply').disabled=true;$('mergeStatus').textContent=message;$('mergeConflicts').replaceChildren();
 }
-function setDirty(){dirty=true;editEpoch++;clearRevisionPreview();clearMergePreview();bulkUndo=null;$('bulkUndo').disabled=true;clearPacketPreview();clearBulkPreview();$('save').disabled=!entries.length;$('csv').disabled=!entries.length;$('print').disabled=!entries.length;$('todoExport').disabled=!entries.length;}
+function setDirty(){dirty=true;editEpoch++;clearIntakePreview();clearRevisionPreview();clearMergePreview();bulkUndo=null;$('bulkUndo').disabled=true;clearPacketPreview();clearBulkPreview();$('save').disabled=!entries.length;$('csv').disabled=!entries.length;$('print').disabled=!entries.length;$('todoExport').disabled=!entries.length;}
 function make(tag,txt,cls){const el=document.createElement(tag);if(txt!==undefined)el.textContent=txt;if(cls)el.className=cls;return el;}
 function brief(){
  const lines=['LIGHTUP / HUMAN SCOPE COORDINATION — NON-AUTHORIZING','State: REVIEW_ONLY · DRAFT-HOLD',
@@ -219,12 +219,62 @@ function renderActionBoard(){
  }
 }
 $('boardView').addEventListener('change',renderActionBoard);
+function clearIntakePreview(message='Source/record changed. Repeat routing preview.'){
+ intakeRoutePreview=null;
+ $('intakeExport').disabled=true;$('intakeResult').replaceChildren();
+ $('intakeStatus').textContent=message;
+}
+$('intakeSource').addEventListener('change',()=>clearIntakePreview('Selected original changed. Recheck structural intake limitations.'));
+$('intakePreview').addEventListener('click',()=>{
+ clearIntakePreview();
+ try{
+  const sha=$('intakeSource').value,draft=sourceCopies.get(sha);
+  const attached=entries.find(r=>r.source_sha256===sha&&r.source_attached);
+  if(!sha||!draft||!attached)throw Error('A real original Studio draft must be locally re-attached.');
+  const result=LightUpRevisionReview.nativeIntakePreview(draft);
+  const panel=$('intakeResult');
+  const label=result.nativeRequestShapeCandidate?'NATIVE STRUCTURAL PREVIEW POSSIBLE — NOT AUTHORIZED':
+   'NATIVE SUBMISSION HOLD — PRIVATE FULL-FIDELITY HANDOFF';
+  panel.append(make('strong',label,result.nativeRequestShapeCandidate?'small':'hint'));
+  if(!result.blockers.length)panel.append(make('p','No representability blockers from the documented offline rules. Native client CLI and every real security/consent gate must still revalidate.','small'));
+  for(const blocked of result.blockers){
+   const row=make('div',undefined,'item');
+   row.append(make('strong',(blocked.advisory?'MANUAL RISK REVIEW · ':'HOLD · ')+blocked.key.replaceAll('_',' ')));
+   row.append(make('small',blocked.message));panel.append(row);
+  }
+  panel.append(make('p','Unmerged client CLI owner supports private studio-handoff for lossless human review. Only that owned tool may interpret its real authenticated submission envelope. This offline screen never alters proposals or writes a request.','small'));
+  intakeRoutePreview={sha,result,epoch:editEpoch};
+  $('intakeExport').disabled=false;
+  $('intakeStatus').textContent=result.nativeRequestShapeCandidate?
+   'SHAPE CANDIDATE ONLY. Native client re-validation, independent operator review and current revocation remain mandatory.':
+   'HOLD FOR NATIVE SUBMISSION. Preserve exclusions/plan/lab mode in private review handoff; never remove constraints merely to force submission.';
+ }catch(e){$('intakeStatus').textContent='Native route HOLD: '+e.message;}
+});
+$('intakeExport').addEventListener('click',()=>{
+ try{
+  const snapshot=intakeRoutePreview;
+  if(!snapshot||snapshot.epoch!==editEpoch||snapshot.sha!==$('intakeSource').value||
+   !sourceCopies.has(snapshot.sha))throw Error('Routing preview stale; select and review the original again.');
+  const latest=LightUpRevisionReview.nativeIntakePreview(sourceCopies.get(snapshot.sha));
+  if(JSON.stringify(latest)!==JSON.stringify(snapshot.result))throw Error('Source route classification has changed.');
+  if(!confirm('Download an unsigned REVIEW_ONLY native-intake routing note with no target, client or credentials? This grants no permission.'))return;
+  const packet={
+   kind:'lightup.scope_native_intake_route',schema_version:1,disposition:'REVIEW_ONLY',
+   source_sha256:snapshot.sha,security:flags(),
+   native_shape_candidate:latest.nativeRequestShapeCandidate,stage:latest.stage,
+   blockers:latest.blockers.map(x=>({category:x.key,advisory:!!x.advisory})),
+   warning:latest.warning
+  };
+  download('lightup-native-intake-routing-review.json',JSON.stringify(packet,null,2)+'\\n','application/json');
+  $('intakeStatus').textContent='Private structural routing note saved. No client request, grant or scan issued.';
+ }catch(e){clearIntakePreview('Export HOLD: '+e.message);}
+});
 function clearRevisionPreview(message='Source or paperwork changed; compare the exact originals again.'){
  revisionPreview=null;$('revisionReopen').disabled=true;$('revisionCarry').disabled=true;$('revisionExport').disabled=true;
  $('revisionStatus').textContent=message;$('revisionChanges').replaceChildren();
 }
 function renderRevisionSources(){
- for(const id of ['revisionFrom','revisionTo']){
+ for(const id of ['revisionFrom','revisionTo','intakeSource']){
   const select=$(id),before=select.value;
   select.replaceChildren();const blank=make('option','Select original Studio draft');blank.value='';select.append(blank);
   for(const r of entries){
@@ -804,7 +854,7 @@ $('restoreInput').addEventListener('change',async event=>{
  try {
   const next=await readPrivateWorkspace(file);
   if(entries.length&&!confirm('Replace your current in-memory board? Save it first if needed.'))return;
-  entries=next;sourceCopies.clear();active=entries[0]?.source_sha256||null;dirty=false;editEpoch++;clearMergePreview();bulkUndo=null;$('bulkUndo').disabled=true;clearBulkPreview();clearPacketPreview();render();
+  entries=next;sourceCopies.clear();active=entries[0]?.source_sha256||null;dirty=false;editEpoch++;clearIntakePreview();clearMergePreview();bulkUndo=null;$('bulkUndo').disabled=true;clearBulkPreview();clearPacketPreview();render();
   notice('Restored tracking only. Studio source files deliberately remain UNBOUND until exact SHA-256 re-attachment. ALL authorization flags false.');
  }catch(e){notice('Restore HOLD: '+e.message+' Existing board unchanged.');}
 });
@@ -835,7 +885,7 @@ $('csv').addEventListener('click',()=>{
 $('print').addEventListener('click',()=>{if(entries.length)window.print();});
 $('reset').addEventListener('click',()=>{
  if(entries.length&&!confirm('Clear all in-memory coordination work? Save it first if needed.'))return;
- entries=[];sourceCopies.clear();active=null;dirty=false;editEpoch++;clearMergePreview();bulkUndo=null;$('bulkUndo').disabled=true;clearBulkPreview();clearPacketPreview();$('sourceUpload').value='';$('restoreInput').value='';render();notice('Memory cleared. No source records changed.');
+ entries=[];sourceCopies.clear();active=null;dirty=false;editEpoch++;clearIntakePreview();clearMergePreview();bulkUndo=null;$('bulkUndo').disabled=true;clearBulkPreview();clearPacketPreview();$('sourceUpload').value='';$('restoreInput').value='';render();notice('Memory cleared. No source records changed.');
 });
 window.addEventListener('beforeunload',event=>{if(dirty&&entries.length){event.preventDefault();event.returnValue='';}});
 render();
