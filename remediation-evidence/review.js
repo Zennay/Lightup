@@ -201,6 +201,14 @@ function formField(label,value,max,handler,multiline=false){
  wrap.append(ctrl);return wrap;
 }
 function included(f,c,r,filter){
+ const query=$('boardSearch').value.trim().toLocaleLowerCase();
+ if(query){
+  const fields=[f.finding_id,f.title,f.remediation,f.severity,f.retest_status,
+   c?.owner,c?.next_action,c?.blocker,r.reference,r.reviewer,r.next_step,r.stage];
+  if(!fields.some(v=>String(v||'').toLocaleLowerCase().includes(query)))return false;
+ }
+ const selectedTeam=$('boardTeam').value;
+ if(selectedTeam&&(teamFor(f)===null?'unassigned':'team:'+teamFor(f))!==selectedTeam)return false;
  const cues=humanQueue(f,c,r);
  if(filter==='urgent'&&SEV.indexOf(f.severity)>1)return false;
  if(filter==='gaps'&&r.reference.trim()&&cues.length===0)return false;
@@ -222,7 +230,7 @@ function teamFor(f){
  return (localCase?.owner?.trim()||localReview?.reviewer?.trim()||'') || null;
 }
 function updateTeamChoices(){
- const box=$('packTeam'),previous=box.value,available=new Set();
+ const box=$('packTeam'),previous=box.value,boardTeam=$('boardTeam'),priorBoardTeam=boardTeam.value,available=new Set();
  for(const f of source||[])available.add(teamFor(f));
  const sorted=[...available].sort((a,b)=>(a===null?-1:b===null?1:a.localeCompare(b)));
  box.replaceChildren();
@@ -232,6 +240,9 @@ function updateTeamChoices(){
   opt.value=t===null?'unassigned':'team:'+t;box.append(opt);
  }
  box.value=sorted.some(t=>(t===null?'unassigned':'team:'+t)===previous)?previous:'';
+ boardTeam.replaceChildren();const all=el('option','','All locally declared teams');all.value='';boardTeam.append(all);
+ for(const t of sorted){const option=el('option','',t===null?'Unassigned':t);option.value=t===null?'unassigned':'team:'+t;boardTeam.append(option);}
+ boardTeam.value=sorted.some(t=>(t===null?'unassigned':'team:'+t)===priorBoardTeam)?priorBoardTeam:'';
  updateTeamCount();
 }
 function selectedTeamRows(){
@@ -298,7 +309,21 @@ function render(){
  updateTeamChoices();renderRevisions();
  $('fingerprint').textContent=sourceHash?'Local source SHA-256: '+sourceHash+' (NOT authentication)':'Source fingerprint unavailable. All exports disabled.';
  const filter=$('filter').value;
- const items=source.slice().sort((a,b)=>SEV.indexOf(a.severity)-SEV.indexOf(b.severity)||a.finding_id.localeCompare(b.finding_id));
+ const selectedSort=$('boardSort').value;
+ const items=source.slice().sort((a,b)=>{
+  const c1=casework?.get(a.finding_id),c2=casework?.get(b.finding_id),
+   r1=review.get(a.finding_id),r2=review.get(b.finding_id);
+  if(selectedSort==='due'){
+   const date1=c1?.due_date||'9999-12-31',date2=c2?.due_date||'9999-12-31';
+   if(date1!==date2)return date1<date2?-1:1;
+  }
+  if(selectedSort==='followup'){
+   const score=(f,c,r)=>(f.retest_status==='regression'?20:0)+(c?.status==='blocked'?12:0)+
+    (r.stage==='needs_changes'?8:0)+(!r.reference.trim()?4:0)+(SEV.indexOf(f.severity)<=1?5:0);
+   const delta=score(b,c2,r2)-score(a,c1,r1);if(delta)return delta;
+  }
+  return SEV.indexOf(a.severity)-SEV.indexOf(b.severity)||a.finding_id.localeCompare(b.finding_id);
+ });
  const board=$('board');board.replaceChildren();
  for(const f of items){
   const c=casework?.get(f.finding_id),r=review.get(f.finding_id);
@@ -489,9 +514,13 @@ $('packTeam').addEventListener('change',updateTeamCount);
 $('exportTeamJSON').addEventListener('click',()=>doTeamExport('json'));
 $('exportTeamCSV').addEventListener('click',()=>doTeamExport('csv'));
 $('filter').addEventListener('change',render);
+$('boardSearch').addEventListener('input',render);
+$('boardTeam').addEventListener('change',render);
+$('boardSort').addEventListener('change',render);
 $('clear').addEventListener('click',()=>{
  if(changed&&!confirm('Discard unsaved local review notes?'))return;
  source=null;casework=null;sourceHash=null;review=new Map();changed=false;refreshCandidate=null;revisions=[];
+ $('boardSearch').value='';$('boardTeam').value='';$('boardSort').value='severity';$('filter').value='all';
  $('sourceFile').value='';$('caseFile').value='';$('reviewFile').value='';$('refreshFile').value='';$('allowHashlessCasework').checked=false;$('refreshConfirm').checked=false;$('refreshSummary').textContent='No refresh preview.';
  $('dashboard').hidden=true;$('boardSection').hidden=true;$('actions').hidden=true;$('refreshPanel').hidden=true;$('teamPanel').hidden=true;
  $('packTeam').replaceChildren();$('packCount').textContent='No original findings imported.';
