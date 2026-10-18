@@ -160,7 +160,8 @@ def derive(casebook: dict, *, now: datetime, lead_days: int,
         elif observation != "HOLD_INVALID_RECORDED_WINDOW":
             raise ReviewHold("invalid source window lacks HOLD")
         # The window classification is about a *historic* source record, not consent.
-        hold = bool(detached or invalid or link.startswith("HOLD_") or stale)
+        hold = bool(detached or invalid or link.startswith("HOLD_") or stale
+                    or (end is not None and now > end))
         phase = ("INVALID_WINDOW" if invalid else
                  "RECORDED_WINDOW_PASSED" if now > end else
                  "RECORDED_START_UPCOMING" if now < start else
@@ -211,16 +212,21 @@ def ics(agenda: dict) -> bytes:
     lines = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//LightUp//Human Review Calendar//EN",
              "CALSCALE:GREGORIAN", "METHOD:PUBLISH",
              "X-WR-CALNAME:LightUp human reviews - NOT AUTHORIZATION"]
-    for item in agenda["items"]:
-        day = item["review_date_utc"].replace("-", "")
+    # One generic group per human review day and priority: no private source
+    # identities and no duplicated same-day calendar appointments.
+    groups = sorted({(item["review_date_utc"], item["human_priority"])
+                     for item in agenda["items"]})
+    for review_day, priority in groups:
+        day = review_day.replace("-", "")
         start = f"{day}T090000Z"
         end = f"{day}T091500Z"
         lines.extend([
             "BEGIN:VEVENT", f"UID:{uuid.uuid4()}@lightup-review.invalid",
             f"DTSTAMP:{now}", f"DTSTART:{start}", f"DTEND:{end}",
-            "SUMMARY:LightUp human grant-window follow-up (NOT AUTHORIZATION)",
-            "DESCRIPTION:Unsigned retrospective planning only. Reopen original authenticated"
-            " source and independently verify consent and at-use revocation.",
+            "SUMMARY:LightUp human follow-up (NOT AUTHORIZATION)",
+            "DESCRIPTION:Unsigned retrospective " + priority +
+            " human review. Recheck original authenticated source and independently"
+            " verify current consent and at-use revocation.",
             "TRANSP:TRANSPARENT", "STATUS:TENTATIVE", "END:VEVENT",
         ])
     lines.append("END:VCALENDAR")
