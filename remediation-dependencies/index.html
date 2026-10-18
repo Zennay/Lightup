@@ -24,7 +24,12 @@
 <label>View <select id="filter"><option value="all">All original findings</option><option value="waiting">Waiting on other HUMAN tasks</option><option value="ready">Human work potentially ready</option><option value="critical">Critical path (human estimates)</option><option value="urgent">Original high/critical findings</option></select></label></div>
 <button id="review" type="button">Recalculate local dependency map</button>
 <p id="review-message" role="status" aria-live="polite"></p>
-<div class="tablewrap"><table><thead><tr><th>Original finding</th><th>HUMAN status</th><th>Waiting on</th><th>Proposed path duration</th><th>Optional indicative date</th></tr></thead><tbody id="results"></tbody></table></div></section>
+<div class="tablewrap"><table><thead><tr><th>Original finding</th><th>HUMAN status</th><th>Waiting on</th><th>Proposed path duration</th><th>Optional indicative date</th></tr></thead><tbody id="results"></tbody></table></div><section class="insights"><h3>Human bottlenecks and proposed next work</h3><p>Computed only from local human dependencies. A “ready” human task is NOT authorization to assess, change a target or retest.</p>
+<div class="tablewrap"><table><thead><tr><th>Potential bottleneck</th><th>Dependent human plans</th><th>Human readiness</th><th>Current owner</th></tr></thead><tbody id="bottlenecks"></tbody></table></div>
+<h3>Human due-date contradictions</h3><p>Highlights a prerequisite with a later human due date than its dependent plan. No deadline is automatically changed.</p>
+<div class="tablewrap"><table><thead><tr><th>Prerequisite</th><th>Dependent</th><th>Human prerequisite due</th><th>Dependent due</th></tr></thead><tbody id="contradictions"></tbody></table></div>
+<h3>Illustrative critical-path date warnings</h3><p>Only available when a human planning start date has been explicitly entered; rough estimates are NOT contractual deadlines or verified fix dates.</p>
+<div class="tablewrap"><table><thead><tr><th>Original finding ID</th><th>Existing human due</th><th>Indicative dependency end</th></tr></thead><tbody id="late-scenarios"></tbody></table></div></section></section>
 <section class="panel"><h2>5. Export only approved private human handoffs</h2>
 <p>Exports contain source identifiers, estimates, human planning and (for CSV) source summary metadata. Download locally; external recipients and calendars require a separately approved confidential channel. No automatic upload or authentication.</p>
 <label class="check"><input type="checkbox" id="export-ack"> I explicitly confirmed the private destination for source finding IDs and human coordination. Neither an unsigned hash nor this file proves consent, client identity or verified remediation.</label>
