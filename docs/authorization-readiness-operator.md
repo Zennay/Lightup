@@ -7,6 +7,7 @@ An authenticated LightUp operator can now produce a real, local **assessment/gra
 ## Delivered workflow
 
 - HTML dashboard: per-client/engagement queue, assessment request and approval counts, stored grant counts, time-window labels and concrete operator follow-up steps.
+- **Real client request inbox**: genuine stored submitted/under_review assessment requests appear as their own actionable operator cases, **even if no engagement or grant exists yet**. Flags invalid requester origin (must be an existing same-tenant client member/admin, never a synthetic operator request), malformed assets/risk/mode and missing or invalid creation time. These are client-wide request records with no fabricated engagement-to-request identity link; request review never grants authorization.
 - JSON report for incident/project tracking, explicitly marked REVIEW_ONLY with every consent/grant/scan/release boolean false.
 - CSV operator action register with a row per stored grant (or a no-grant row), concrete follow-up, review flags, tenant and engagement. Spreadsheet formula-prefix values and embedded control characters are neutralized; raw scope hosts, approval references and grant IDs are never included.
 - One read-only SQLite transaction using mode=ro and query_only=ON; normal DomainStore login bookkeeping may occur during authentication but assessment data is never mutated.
