@@ -17,6 +17,18 @@ The published standalone build is generated from these exact owned source files;
 
 No free-text asset identities, domain names, requested notes, uploaded filenames, client labels, browser contacts or credentials appear in generated handoff JSON/CSV. The **local progress backup** intentionally includes manually entered short *reference labels* so the user can resume work; choose generic labels without private data and handle that local file privately.
 
+## Complete role-based preparation action desk (offline only)
+
+The register now has an **action work queue** over every imported proposal, with separate filters for `client`, `operator`, and `joint` human coordination roles. Each of the existing eight preparation activities has its own optional locally entered ISO `YYYY-MM-DD` **target follow-up date**. Dates do not reserve a UTC assessment window, grant time-limited permission, or represent a regulatory deadline; they simply let a human organise their next conversation.
+
+The queue highlights overdue local dates, tasks due in the next seven days, missing follow-up dates, and scope revision items that need re-discussion. Open each action's actual dossier directly from the queue. The queue displays up to 64 actions at a time for mobile readability; use filters to view the rest. The complete, anonymised action list remains available via CSV, JSON and script-free HTML.
+
+Local backup schema version **3** retains these task follow-up dates and all earlier v2 pairwise meeting statuses, after source SHA matching and complete per-action date/type and authority checks. Existing v1/v2 backups remain readable (older backups have no saved due dates, which restore as unset). Exports include **roles, ISO dates, source byte identifiers and human preparation states only**; no names of people, client identities, raw IPs, hostnames, security notes, credentials or signatures.
+
+### Revision-to-reassessment flow
+
+When a human explicitly links a new Studio revision to an older source, the app now distinguishes that revision chain from unrelated proposals in the overlap agenda. It reopens locally prepared actions affected by a changing scope/risk/mode/time window, marks the affected rows `needs_revision`, and clears discussion statuses for affected pair relationships. A recorded meeting is never retained as an approval of a different scope. A local revision link does not assert common authenticated ownership or grant re-use.
+
 ## Integrated Studio v1 provenance and cross-proposal coordination
 
 This standalone product includes **unchanged source snapshots** of the already existing Studio v1 parser and fingerprint and UTC conversion modules (source on [Scope Planning Studio PR #1567](https://github.com/Zennay/Lightup/pull/1567)):
