@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'none'; img-src 'none'; object-src 'none'; form-action 'none'; base-uri 'none'">
+  <title>LightUp · Lab Launchpad</title>
+  <link rel="stylesheet" href="./style.css">
+  <script src="./app.js" defer></script>
+</head>
+<body>
+  <header>
+    <div class="eyebrow">LIGHTUP / ASSESSMENT / OFFLINE LAUNCHPAD</div>
+    <h1>Prepare an isolated lab batch</h1>
+    <p>Compose a source-friendly manifest for the <code>lightup lab-assess</code> CLI.
+    This interface never sends a request, runs a command, persists browser state or authenticates a target.</p>
+    <div class="hold">INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD · NOT AUTHORIZED</div>
+  </header>
+  <main>
+    <section class="entry">
+      <div>
+        <h2>1 · Choose isolated lab endpoints</h2>
+        <p>Enter up to 16 explicit numeric HTTP(S) endpoints, one per line. The browser checks basic isolation syntax; only the original Python LabScenario admission is authoritative.</p>
+      </div>
+      <label for="entry">Lab URLs</label>
+      <textarea id="entry" spellcheck="false" rows="6" placeholder="http://127.0.0.1:18080/&#10;http://10.0.0.5:8080/"></textarea>
+      <div class="buttons"><button type="button" id="add">Add to batch</button><button type="button" id="clear" class="quiet">Clear all local entries</button></div>
+      <p id="feedback" role="status" aria-live="polite">No endpoints prepared.</p>
+    </section>
+    <section>
+      <div class="section-head"><div><h2>2 · Review the batch</h2><p>Reorder or remove an endpoint before exporting. Every distinct endpoint receives one ordered local slot.</p></div><span class="count" id="count">0 / 16</span></div>
+      <ol id="targets" class="targets" aria-label="Prepared endpoints"></ol>
+      <p id="empty">Your private batch is empty.</p>
+    </section>
+    <section>
+      <h2>3 · Export a no-work handoff</h2>
+      <p>Download <code>targets.txt</code> for the already-existing held CLI. Also available: an anonymous counts-only planning summary. Export downloads include only explicitly prepared local inputs.</p>
+      <div class="buttons"><button id="manifest" type="button" disabled>Download private targets.txt</button><button id="receipt" type="button" class="quiet" disabled>Download anonymous plan.json</button></div>
+      <label for="command">Display-only original CLI preview command</label>
+      <pre id="command">lightup lab-assess --targets-file ./targets.txt --preview-only</pre>
+      <p class="fine">This text is not executed. The original CLI still performs its own URL, scope, full-batch and private-output admission. The download is not a scenario, customer consent, authorization, scan, result or security finding.</p>
+    </section>
+    <section class="warning">
+      <h2>Human release boundary</h2>
+      <p>Only independently authorized isolated labs may ever be assessed. The separate source-owner, exact-head hosted and permanent named VPS CI, privacy and security acceptance, genuine authenticated client/operator consent with action-time revocation, original #177/#182/#829 and explicit HUMAN GO remain mandatory for release or any active target work.</p>
+      <p>Importing or removing an endpoint here never changes actual grants, approvals, historical evidence, vulnerability status or STOP decisions.</p>
+    </section>
+  </main>
+  <footer>Locally hosted HTML/CSS/JS only · no trackers, services, storage, worker dispatch, network or scanner APIs.</footer>
+</body>
+</html>
