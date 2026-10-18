@@ -24,3 +24,11 @@
 @media(max-width:780px){.action-row{grid-template-columns:1fr 1fr}.action-row .action-main{grid-column:1 / -1}}
 @media(max-width:580px){.task-controls{grid-template-columns:1fr}.action-row{grid-template-columns:1fr}.action-row .action-main{grid-column:auto}}
 @media print{.action-row button,.task-controls{display:none!important}.action-row{break-inside:avoid}}
+
+.withdrawal-board{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px;margin:16px 0}
+.withdrawal-card{padding:17px;background:#352526;border:1px solid #c58a73;border-radius:13px;break-inside:avoid}
+.withdrawal-card h3{color:#ffe0c9}
+.withdrawal-card p{color:#f5cfbe}
+.withdrawal-card .actions button{font-size:.85rem;padding:9px 13px}
+@media(max-width:540px){.withdrawal-board{grid-template-columns:1fr}}
+@media print{.withdrawal-card .actions{display:none!important}.withdrawal-card{border-color:#888}}
