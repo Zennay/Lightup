@@ -1,0 +1,319 @@
+"use strict";
+
+/*
+ * LightUp Private Scope Packet Vault — offline HUMAN REVIEW MATERIAL ONLY.
+ * Cryptography protects confidentiality in transit. It grants no scope,
+ * consent, actor identity, permission, scan, merge or release authority.
+ * No fetch/XHR, persistent storage, service workers, or outbound links.
+ */
+(() => {
+  const MAX_FILES = 12;
+  const MAX_FILE_BYTES = 512 * 1024;
+  const MAX_TOTAL_BYTES = 2 * 1024 * 1024;
+  const MAX_ENVELOPE_BYTES = 3 * 1024 * 1024;
+  const ROUNDS = 600000;
+  const IDLE_MS = 5 * 60 * 1000;
+  const ENC = new TextEncoder();
+  const DEC = new TextDecoder("utf-8", {fatal: true});
+  const allowed = /\.(json|md|txt|ics|csv)$/i;
+  const $ = (id) => document.getElementById(id);
+  const els = {
+    files: $("files"), list: $("file-list"), summary: $("file-summary"),
+    seal: $("seal"), password: $("seal-password"), confirm: $("seal-confirm"),
+    clear: $("clear"), openFile: $("open-file"), openPassword: $("open-password"),
+    unlock: $("unlock"), lock: $("lock"), recovered: $("recovered"),
+    message: $("message")
+  };
+  let entries = [];
+  let busy = false;
+  let lastAction = Date.now();
+
+  function touch() { lastAction = Date.now(); }
+  function notice(message, error = false) {
+    els.message.textContent = message;
+    els.message.classList.toggle("error", error);
+  }
+  function invariant(cond) {
+    if (!cond) throw new Error("Malformed, incompatible, or unsafe packet. No files were restored.");
+  }
+  function strictKeys(obj, keys) {
+    invariant(obj !== null && typeof obj === "object" && !Array.isArray(obj));
+    const present = Object.keys(obj);
+    invariant(present.length === keys.length && keys.every((key) => Object.prototype.hasOwnProperty.call(obj, key)));
+  }
+  function nameOf(value) {
+    invariant(typeof value === "string" && value.length > 0 && value.length <= 120);
+    invariant(value === value.normalize("NFC") && !/[\\/\u0000-\u001f\u007f]/.test(value));
+    invariant(value !== "." && value !== ".." && allowed.test(value));
+    return value;
+  }
+  function validHex(value) { return typeof value === "string" && /^[a-f0-9]{64}$/.test(value); }
+  function hex(bytes) { return Array.from(bytes, (v) => v.toString(16).padStart(2, "0")).join(""); }
+  function digest(bytes) { return crypto.subtle.digest("SHA-256", bytes).then((buffer) => hex(new Uint8Array(buffer))); }
+  function b64(bytes) {
+    let output = "";
+    for (let i = 0; i < bytes.length; i += 8192) {
+      output += String.fromCharCode(...bytes.subarray(i, i + 8192));
+    }
+    return btoa(output);
+  }
+  function unb64(str, maxBytes) {
+    invariant(typeof str === "string" && str.length > 0 && str.length <= Math.ceil(maxBytes / 3) * 4 + 4);
+    invariant(str.length % 4 === 0 && /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(str));
+    const decoded = atob(str);
+    invariant(decoded.length <= maxBytes);
+    const arr = new Uint8Array(decoded.length);
+    for (let i = 0; i < decoded.length; i++) arr[i] = decoded.charCodeAt(i);
+    invariant(b64(arr) === str);
+    return arr;
+  }
+  function scrub() {
+    for (const entry of entries) entry.bytes.fill(0);
+    entries = [];
+    els.files.value = "";
+    els.openFile.value = "";
+    els.password.value = "";
+    els.confirm.value = "";
+    els.openPassword.value = "";
+    paint();
+  }
+  function paint() {
+    els.list.replaceChildren();
+    els.recovered.replaceChildren();
+    const total = entries.reduce((n, e) => n + e.bytes.length, 0);
+    els.summary.textContent = entries.length + " local file(s), " + total.toLocaleString() + " bytes in tab memory. All packet contents remain unapproved.";
+    entries.forEach((entry, index) => {
+      const box = document.createElement("div");
+      box.className = "item";
+      const text = document.createElement("div");
+      const bold = document.createElement("strong");
+      bold.textContent = entry.name;
+      const details = document.createElement("small");
+      details.textContent = entry.bytes.length.toLocaleString() + " bytes · SHA-256 " + entry.hash.slice(0, 12) + "… (local integrity hint only)";
+      text.append(bold, details);
+      const remove = document.createElement("button");
+      remove.type = "button"; remove.className = "secondary"; remove.textContent = "Remove";
+      remove.addEventListener("click", () => {
+        if (busy) return;
+        entry.bytes.fill(0);
+        entries.splice(index, 1);
+        touch(); paint();
+        notice("File forgotten from tab memory. Existing downloaded vault files were not changed.");
+      });
+      box.append(text, remove);
+      els.list.append(box);
+      const recovered = document.createElement("div");
+      recovered.className = "item";
+      const info = document.createElement("span");
+      info.textContent = entry.name + " · local draft, never an authorization record";
+      const download = document.createElement("button");
+      download.type = "button"; download.className = "secondary";
+      download.textContent = "Download original";
+      download.addEventListener("click", () => {
+        if (busy) return;
+        touch();
+        if (!window.confirm("Download unencrypted local copy of " + entry.name + "? It is review material only, not permission.")) return;
+        // Blob takes a copy so zeroizing in-memory bytes cannot revoke a past download.
+        save(new Blob([entry.bytes.slice()], {type: "application/octet-stream"}), entry.name);
+        notice("Unencrypted file downloaded locally. Protect or delete it yourself; this app cannot revoke saved files.");
+      });
+      recovered.append(info, download);
+      els.recovered.append(recovered);
+    });
+    els.seal.disabled = busy || entries.length === 0;
+    els.unlock.disabled = busy;
+    els.files.disabled = busy;
+    els.openFile.disabled = busy;
+  }
+  function save(blob, filename) {
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = filename;
+    anchor.rel = "noopener";
+    anchor.hidden = true;
+    document.body.append(anchor);
+    anchor.click();
+    anchor.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 60 * 1000);
+  }
+  function supportsCrypto() {
+    invariant(window.isSecureContext && crypto && crypto.subtle && crypto.getRandomValues);
+  }
+  async function derive(password, salt) {
+    const raw = ENC.encode(password);
+    try {
+      const material = await crypto.subtle.importKey("raw", raw, {name: "PBKDF2"}, false, ["deriveKey"]);
+      return await crypto.subtle.deriveKey(
+        {name: "PBKDF2", hash: "SHA-256", salt, iterations: ROUNDS},
+        material, {name: "AES-GCM", length: 256}, false, ["encrypt", "decrypt"]
+      );
+    } finally { raw.fill(0); }
+  }
+  async function inProgress(work) {
+    if (busy) return;
+    busy = true; touch(); paint();
+    try { await work(); }
+    catch (error) {
+      console.error("Local scope vault operation rejected; details are deliberately withheld.");
+      notice("Operation held: " + ((error instanceof DOMException && error.name === "OperationError") ? "incorrect passphrase or damaged encrypted packet." : "unsupported environment, invalid input or exceeded limits. No authority was created."), true);
+    }
+    finally { busy = false; touch(); paint(); }
+  }
+  async function addFiles() {
+    const selected = Array.from(els.files.files || []);
+    els.files.value = "";
+    if (!selected.length) return;
+    await inProgress(async () => {
+      supportsCrypto();
+      invariant(entries.length + selected.length <= MAX_FILES);
+      const existing = new Set(entries.map((e) => e.name));
+      const staged = [];
+      let total = entries.reduce((n, e) => n + e.bytes.length, 0);
+      try {
+        for (const file of selected) {
+          const name = nameOf(file.name);
+          invariant(!existing.has(name));
+          existing.add(name);
+          invariant(file.size > 0 && file.size <= MAX_FILE_BYTES);
+          total += file.size;
+          invariant(total <= MAX_TOTAL_BYTES);
+          const bytes = new Uint8Array(await file.arrayBuffer());
+          invariant(bytes.length === file.size);
+          DEC.decode(bytes); // Only canonical UTF-8 text drafts, not arbitrary binary payloads.
+          staged.push({name, bytes, hash: await digest(bytes)});
+        }
+        entries.push(...staged);
+        notice("New local draft files loaded. They are not persisted until you explicitly export an encrypted vault.");
+      } catch (err) {
+        for (const item of staged) item.bytes.fill(0);
+        throw err;
+      }
+    });
+  }
+  async function seal() {
+    await inProgress(async () => {
+      supportsCrypto();
+      invariant(entries.length > 0 && entries.length <= MAX_FILES);
+      const passphrase = els.password.value;
+      const confirm = els.confirm.value;
+      els.password.value = ""; els.confirm.value = "";
+      if (passphrase.length < 14 || passphrase.length > 256 || passphrase !== confirm) {
+        notice("Use a matching 14–256 character passphrase. There is no account reset or recovery.", true);
+        return;
+      }
+      const salt = crypto.getRandomValues(new Uint8Array(16));
+      const iv = crypto.getRandomValues(new Uint8Array(12));
+      const payload = {
+        schema: "lightup.offline.scope-packet.payload.v1",
+        createdUtc: new Date().toISOString(),
+        authority: {may_authorize: false, may_consent: false, may_grant: false, may_scan: false, may_dispatch: false, may_deploy: false, may_release: false},
+        files: entries.map((entry) => ({name: entry.name, length: entry.bytes.length, sha256: entry.hash, base64: b64(entry.bytes)}))
+      };
+      const cleartext = ENC.encode(JSON.stringify(payload));
+      try {
+        const key = await derive(passphrase, salt);
+        const ciphertext = new Uint8Array(await crypto.subtle.encrypt(
+          {name: "AES-GCM", iv, additionalData: ENC.encode("LIGHTUP-SCOPE-PACKET-V1"), tagLength: 128},
+          key, cleartext
+        ));
+        const envelope = {
+          format: "lightup.offline.encrypted-scope-packet.v1",
+          kdf: "PBKDF2-SHA256", iterations: ROUNDS, encryption: "AES-256-GCM",
+          salt: b64(salt), iv: b64(iv), ciphertext: b64(ciphertext)
+        };
+        const blob = new Blob([JSON.stringify(envelope)], {type: "application/json"});
+        invariant(blob.size <= MAX_ENVELOPE_BYTES);
+        save(blob, "lightup-private-scope-packet.lightup-vault.json");
+        notice("Encrypted packet downloaded. File names and content are encrypted. Save the passphrase separately; this file is NOT an approval or permit.");
+      } finally { cleartext.fill(0); }
+    });
+  }
+  function validatePayload(body) {
+    strictKeys(body, ["schema", "createdUtc", "authority", "files"]);
+    invariant(body.schema === "lightup.offline.scope-packet.payload.v1");
+    invariant(typeof body.createdUtc === "string" && /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\.\d{3}Z$/.test(body.createdUtc));
+    strictKeys(body.authority, ["may_authorize", "may_consent", "may_grant", "may_scan", "may_dispatch", "may_deploy", "may_release"]);
+    invariant(Object.values(body.authority).every((x) => x === false));
+    invariant(Array.isArray(body.files) && body.files.length > 0 && body.files.length <= MAX_FILES);
+  }
+  async function unlock() {
+    await inProgress(async () => {
+      supportsCrypto();
+      const file = els.openFile.files && els.openFile.files[0];
+      const passphrase = els.openPassword.value;
+      els.openPassword.value = ""; els.openFile.value = "";
+      invariant(file && file.size > 0 && file.size <= MAX_ENVELOPE_BYTES && passphrase.length >= 14 && passphrase.length <= 256);
+      const envelope = JSON.parse(DEC.decode(new Uint8Array(await file.arrayBuffer())));
+      strictKeys(envelope, ["format", "kdf", "iterations", "encryption", "salt", "iv", "ciphertext"]);
+      invariant(envelope.format === "lightup.offline.encrypted-scope-packet.v1");
+      invariant(envelope.kdf === "PBKDF2-SHA256" && envelope.iterations === ROUNDS && envelope.encryption === "AES-256-GCM");
+      const salt = unb64(envelope.salt, 16), iv = unb64(envelope.iv, 12);
+      invariant(salt.length === 16 && iv.length === 12);
+      const ciphertext = unb64(envelope.ciphertext, MAX_ENVELOPE_BYTES);
+      invariant(ciphertext.length >= 16);
+      const key = await derive(passphrase, salt);
+      const cleartext = new Uint8Array(await crypto.subtle.decrypt(
+        {name: "AES-GCM", iv, additionalData: ENC.encode("LIGHTUP-SCOPE-PACKET-V1"), tagLength: 128},
+        key, ciphertext
+      ));
+      const staged = [];
+      try {
+        const payload = JSON.parse(DEC.decode(cleartext));
+        validatePayload(payload);
+        const names = new Set();
+        let total = 0;
+        for (const record of payload.files) {
+          strictKeys(record, ["name", "length", "sha256", "base64"]);
+          const name = nameOf(record.name);
+          invariant(!names.has(name));
+          names.add(name);
+          invariant(Number.isSafeInteger(record.length) && record.length > 0 && record.length <= MAX_FILE_BYTES);
+          invariant(validHex(record.sha256));
+          total += record.length;
+          invariant(total <= MAX_TOTAL_BYTES);
+          const bytes = unb64(record.base64, MAX_FILE_BYTES);
+          staged.push({name, bytes, hash: record.sha256});
+          invariant(bytes.length === record.length && (await digest(bytes)) === record.sha256);
+          DEC.decode(bytes);
+        }
+        // Atomic replacement: previous plaintext is forgotten only after entire authenticated packet validates.
+        for (const item of entries) item.bytes.fill(0);
+        entries = staged;
+        notice("Encrypted packet restored locally. Verify each scope draft with the real client and operator. This vault grants no authorization.");
+      } catch (err) {
+        for (const item of staged) item.bytes.fill(0);
+        throw err;
+      } finally { cleartext.fill(0); }
+    });
+  }
+
+  els.files.addEventListener("change", addFiles);
+  els.seal.addEventListener("click", seal);
+  els.unlock.addEventListener("click", unlock);
+  els.clear.addEventListener("click", () => {
+    if (busy) return;
+    scrub(); touch(); notice("All accessible plaintext forgotten from tab memory. Previously downloaded files remain on disk.");
+  });
+  els.lock.addEventListener("click", () => {
+    if (busy) return;
+    scrub(); touch(); notice("Locked. Load the encrypted file again to restore it.");
+  });
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden && !busy) {
+      scrub(); notice("Workspace automatically locked when the tab became hidden.");
+    }
+  });
+  window.addEventListener("pagehide", () => { if (!busy) scrub(); });
+  ["pointerdown", "keydown"].forEach((eventName) => window.addEventListener(eventName, touch, {passive: true}));
+  setInterval(() => {
+    if (!busy && entries.length && Date.now() - lastAction >= IDLE_MS) {
+      scrub(); notice("Workspace automatically locked after five minutes of inactivity.");
+    }
+  }, 15000);
+  if (!window.isSecureContext || !window.crypto || !window.crypto.subtle) {
+    notice("Crypto unavailable in this browser/context. The vault is disabled; open this local file in a modern secure-context browser.", true);
+    els.seal.disabled = true; els.unlock.disabled = true;
+  }
+  paint();
+})();
