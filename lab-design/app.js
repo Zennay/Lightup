@@ -199,6 +199,33 @@
     }
     table.append(body);view.append(table);
   }
+  function visibleCatalog(){
+    const query=$("catalogSearch").value.trim().toLowerCase();
+    const mode=$("catalogMode").value,severity=$("catalogSeverity").value;
+    return items.map((item,index)=>({item,index})).filter(({item})=>{
+      const truth=item.expected_findings;
+      if(mode==="unscored"&&truth!==null)return false;
+      if(mode==="zero"&&(truth===null||truth.length!==0))return false;
+      if(mode==="planted"&&(!truth||!truth.length))return false;
+      if(severity!=="all"&&(!truth||!truth.some(f=>f.severity===severity)))return false;
+      if(query&&!([item.scenario_id,item.name,...(truth||[]).map(f=>f.capability_id)]
+        .some(value=>value.toLowerCase().includes(query))))return false;
+      return true;
+    });
+  }
+  function saveFiltered(){
+    const result=visibleCatalog().map(x=>x.item);
+    if(!result.length){notify("status","No matching PRIVATE scenario to export.",true);return;}
+    try{
+      validateCatalog(documentCatalog(result));
+      if(!confirm("Download "+result.length+
+        " PRIVATE source scenarios including target addresses and expected findings?"))return;
+      download(fictional?"lightup-FICTIONAL-private-subset.json":
+        "lightup-PRIVATE-lab-scenario-subset.json",
+        JSON.stringify(documentCatalog(result),null,2)+"\n","application/json");
+      notify("exportStatus","Selected PRIVATE lab subset downloaded. Protect original target addresses.");
+    }catch(_){notify("status","HOLD: filtered source subset failed canonical admission.",true);}
+  }
   function render(){
     const v=catalogSummary();
     $("stats").innerHTML="";
@@ -216,12 +243,17 @@
     for(const id of ["savePrivate","summary","brief","runbook","print"])$(id).disabled=!items.length;
     $("appendCatalog").disabled=!items.length||items.length>=32||fictional;
     renderCoverage();
+    const visible=visibleCatalog();
+    $("exportFiltered").disabled=!visible.length;
+    $("filterSummary").textContent=visible.length+" matching PRIVATE scenario(s) of "+
+      items.length+". Filters never change the underlying catalog or ground truth.";
     if(!items.length){$("catalog").innerHTML='<p class="empty">No scenarios yet.</p>';return;}
+    if(!visible.length){$("catalog").innerHTML='<p class="empty">No PRIVATE scenarios match the current filters.</p>';return;}
     $("catalog").innerHTML="";
     const table=document.createElement("table");table.innerHTML=
       "<thead><tr><th>Slot</th><th>Private scenario</th><th>Lab IPs</th><th>Ground truth</th><th>Action</th></tr></thead>";
     const body=document.createElement("tbody");
-    items.forEach((item,index)=>{
+    visible.forEach(({item,index})=>{
       const row=document.createElement("tr");
       const content=[String(index+1).padStart(2,"0"),item.name,
         String(item.targets.length),item.expected_findings===null?"Unscored":
@@ -555,6 +587,15 @@
     download("lightup-lab-design-REVIEW-ONLY-brief.html",html,"text/html");
     notify("exportStatus","Redacted no-script, no-network HTML brief downloaded.");
   }
+  for(const id of ["catalogSearch","catalogMode","catalogSeverity"]){
+    $(id).addEventListener("input",render);
+    $(id).addEventListener("change",render);
+  }
+  $("clearFilters").addEventListener("click",()=>{
+    $("catalogSearch").value="";$("catalogMode").value="all";
+    $("catalogSeverity").value="all";render();
+  });
+  $("exportFiltered").addEventListener("click",saveFiltered);
   $("editor").addEventListener("submit",saveForm);
   $("clear").addEventListener("click",resetEditor);
   $("delete").addEventListener("click",deleteScenario);
