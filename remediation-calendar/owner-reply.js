@@ -114,13 +114,44 @@ async function load(file){
  const raw=global.LightUpOwnerPrivateJson.read(await file.text());
  const accepted=await global.LightUpOwnerProtocol.validateRequest(raw);
  request=accepted;draft=accepted.rows.map(x=>({...x}));dirty=false;
+ $('resume').value='';$('resume-message').textContent='';
  $('recipient-filter').value='all';$('recipient-search').value='';$('recipient-sort').value='priority';
  $('return-ack').checked=false;$('reply-message').textContent='';
  $('message').textContent='PRIVATE owner-specific handoff loaded. Source hash is not proof of identity, consent, or current authorization.';
  render();
 }
+async function resumeReply(file){
+ if(!request||!draft||!$('ack').checked)
+  fail('First load the independently verified original PRIVATE single-owner handoff.');
+ if(!file||file.size>MAX)fail('Select saved PRIVATE owner reply JSON of 2 MiB or less.');
+ const baseline=request,current=draft,original=JSON.stringify(draft);
+ const loaded=global.LightUpOwnerPrivateJson.read(await file.text());
+ const accepted=await global.LightUpOwnerProtocol.validateReply(loaded);
+ if(request!==baseline||draft!==current||JSON.stringify(draft)!==original)
+  fail('The current original or human notes changed during resume. No draft replaced.');
+ if(accepted.source_sha256!==request.source_sha256||
+    accepted.owner_label!==request.owner_label||
+    accepted.baseline_sha256!==request.baseline_sha256||
+    accepted.rows.length!==request.rows.length)
+  fail('Saved PRIVATE reply is for a DIFFERENT original handoff/owner/source. No import.');
+ const expected=new Map(request.rows.map(r=>[r.finding_id,r]));
+ const originalFields=['finding_id','title','severity','retest_status','remediation',
+  'owner','status','due_date','next_action','blocker'];
+ for(const row of accepted.rows){
+  const previous=expected.get(row.finding_id);
+  if(!previous||originalFields.some(k=>row[k]!==previous[k]))
+   fail('Saved PRIVATE reply does not match the EXACT original handoff baseline.');
+ }
+ if(!global.confirm('Resume '+accepted.reply_rows.length+
+   ' HUMAN-ONLY entries from this source-bound PRIVATE draft? The current unsaved local human edits will be replaced. This is not authority or retest.'))return;
+ draft=accepted.reply_rows.map(x=>({...x}));dirty=true;
+ $('resume').value='';$('return-ack').checked=false;
+ $('resume-message').textContent=accepted.reply_rows.length+
+  ' original source-bound HUMAN entries safely resumed from PRIVATE reply. Export again before closing.';
+ render();
+}
 function clear(){
- request=null;draft=null;dirty=false;$('file').value='';
+ request=null;draft=null;dirty=false;$('file').value='';$('resume').value='';
  $('ack').checked=false;$('return-ack').checked=false;$('workspace').hidden=true;
  $('cards').replaceChildren();$('message').textContent=
   'In-memory private handoff cleared. Already downloaded files remain under your control.';
@@ -143,6 +174,7 @@ $('file').addEventListener('change',async e=>{
 });
 for(const id of ['recipient-filter','recipient-search','recipient-sort'])$(id).addEventListener('input',()=>{if(request)render();});
 $('recipient-bulk-apply').addEventListener('click',()=>{try{applyRecipientBulk();}catch(err){$('recipient-bulk-message').textContent='HOLD: '+err.message;}});
+$('resume').addEventListener('change',async e=>{try{await resumeReply(e.target.files[0]);}catch(err){$('resume-message').textContent='HOLD: '+err.message;e.target.value='';}});
 $('ack').addEventListener('change',controls);
 $('return-ack').addEventListener('change',controls);
 $('export').addEventListener('click',async()=>{try{await exportReply();}catch(err){$('reply-message').textContent='HOLD: '+err.message;}});

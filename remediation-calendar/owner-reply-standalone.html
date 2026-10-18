@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-wpPFZOyxFDTkVCPSRLe+ulmbav4+u8hRIYgukbiqEiU=' 'sha256-7xhHonu9Q7KGf/tyWurJBHX2oP8swcWSw6/5KQq5xe8=' 'sha256-0TSOdLvoAxLnJIORPyN6xDgusCrhagoQ1NfsGl1kKZw=' 'sha256-urKf2SGGN+atmBJfCvcqBzUHKQ06K1PbEVBrvjf6GTA='; style-src 'sha256-W9nmTSlmvxdBnXfU+AEm+wgkyfRdPZHzKO785fl31as='; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-wpPFZOyxFDTkVCPSRLe+ulmbav4+u8hRIYgukbiqEiU=' 'sha256-7xhHonu9Q7KGf/tyWurJBHX2oP8swcWSw6/5KQq5xe8=' 'sha256-0TSOdLvoAxLnJIORPyN6xDgusCrhagoQ1NfsGl1kKZw=' 'sha256-iV0DQKd22YsEJ3hFmPUuCHqMkjmW+Cc4W0/QVuITiRs='; style-src 'sha256-W9nmTSlmvxdBnXfU+AEm+wgkyfRdPZHzKO785fl31as='; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <title>LightUp · Private Owner Reply Desk</title><style>:root{font:16px/1.5 system-ui,-apple-system,Segoe UI,sans-serif;color:#edf3fe;background:#101726;color-scheme:dark}*{box-sizing:border-box}body{margin:0}header,main,footer{max-width:1150px;padding:32px 24px;margin:auto}header{padding-top:55px}.brand{color:#a1c4ff;letter-spacing:.14em;font-size:.77rem;font-weight:800}h1{font-size:clamp(2rem,5vw,3.5rem);margin:.25em 0}h2{font-size:1.35rem;margin:0 0 12px}h3{font-size:1.05rem;margin:0}p{color:#b9c9df}.hold{display:inline-block;border:1px solid #8b6738;color:#ffcc8e;padding:8px 12px;border-radius:9px;background:#342719;font-weight:650;font-size:.85rem}.panel{border:1px solid #364866;border-radius:16px;background:#19253b;padding:22px;margin-bottom:22px}label{display:block;margin:15px 0;font-weight:650}input,textarea,select,button{font:inherit}input:not([type=checkbox]),textarea,select{display:block;width:100%;background:#0d1626;color:#f4f8ff;border:1px solid #667994;border-radius:8px;padding:9px;margin-top:6px}input:focus-visible,textarea:focus-visible,button:focus-visible,select:focus-visible{outline:2px solid #a2c3ff;outline-offset:2px}textarea{resize:vertical;min-height:90px}.ack{display:flex;gap:10px;align-items:flex-start;font-weight:450}.ack input{flex:none;width:19px;height:19px}.owner{font-size:1.25rem;font-weight:800;color:#b6ceff}.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,430px),1fr));gap:15px}.card{padding:18px;border-radius:13px;border:1px solid #425673;background:#111e32;overflow-wrap:anywhere}.card .source{background:#233550;border-radius:9px;padding:10px;color:#dfebff;white-space:pre-wrap;font-size:.87rem}.tag{display:inline-block;border:1px solid #70819b;border-radius:7px;padding:2px 6px;font-size:.75rem;margin-bottom:8px}.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}.actions{display:flex;gap:12px;flex-wrap:wrap}button{background:#bad0ff;color:#132036;border:0;padding:11px 17px;font-weight:800;border-radius:8px;cursor:pointer}button:disabled{opacity:.35;cursor:not-allowed}.quiet{background:#3a4c67;color:#fff}footer{font-size:.83rem;color:#aabbd2}@media(max-width:600px){header,main,footer{padding-left:14px;padding-right:14px}.panel{padding:16px}.row{grid-template-columns:1fr}}
 .metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(135px,1fr));gap:9px;margin:15px 0}.metric{padding:13px;background:#263b59;border:1px solid #486080;border-radius:10px}.metric strong{display:block;font-size:1.5rem}.metric span{color:#c1cfe4;font-size:.8rem}.filter-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:11px;align-items:end}.bulk-panel{padding:16px;margin:15px 0 22px;border:1px solid #4e6480;border-radius:12px;background:#192b45}.bulk-panel button{margin:15px 0}
 </style></head>
@@ -10,6 +10,8 @@
 <p>A file or hash does not verify your identity, the sender, client/engagement, consent, revocation, scope, or grant. Do not import data from an unknown source or an unapproved channel.</p>
 <label class="ack"><input id="ack" type="checkbox"> I independently verified that I am the intended recipient of this PRIVATE handoff for the exact actual client and engagement, through a separately approved confidential channel. My edits are human planning only.</label>
 <label>PRIVATE single-owner JSON<input id="file" type="file" accept=".json,application/json"></label>
+<label>Resume previously saved PRIVATE owner reply JSON (for this exact original handoff)<input id="resume" type="file" accept=".json,application/json"></label>
+<p id="resume-message" role="status" aria-live="polite"></p>
 <p id="message" role="status" aria-live="polite">No private packet loaded.</p></section>
 <section id="workspace" hidden>
 <section class="panel"><h2>2. Coordinate human work for the selected owner</h2>
@@ -31,7 +33,7 @@
 <section class="panel"><h2>3. Return only the privately reviewed human notes</h2>
 <p>The return includes the same original subset and human-baseline fingerprint so the sender can reject changed or stale work. It does not approve a real retest, verify a fix, or contact LightUp.</p>
 <label class="ack"><input id="return-ack" type="checkbox"> I explicitly confirm the independently approved PRIVATE return channel and understand this output is unsigned human coordination only.</label>
-<div class="actions"><button id="export" type="button" disabled>Export PRIVATE owner reply JSON</button><button id="clear" type="button" class="quiet">Clear private memory</button></div>
+<div class="actions"><button id="export" type="button" disabled>Save / export PRIVATE owner reply JSON</button><button id="clear" type="button" class="quiet">Clear private memory</button></div>
 <p id="reply-message" role="status" aria-live="polite"></p></section>
 </section></main><footer>Offline-only · no account, network, storage, scan, grant, verified retest or automated ticket. Handle downloaded PRIVATE files securely.</footer>
 <script>/* LightUp local casework. Parsing/presentation only; never authenticates source or authorizes assessments. */
@@ -553,13 +555,44 @@ async function load(file){
  const raw=global.LightUpOwnerPrivateJson.read(await file.text());
  const accepted=await global.LightUpOwnerProtocol.validateRequest(raw);
  request=accepted;draft=accepted.rows.map(x=>({...x}));dirty=false;
+ $('resume').value='';$('resume-message').textContent='';
  $('recipient-filter').value='all';$('recipient-search').value='';$('recipient-sort').value='priority';
  $('return-ack').checked=false;$('reply-message').textContent='';
  $('message').textContent='PRIVATE owner-specific handoff loaded. Source hash is not proof of identity, consent, or current authorization.';
  render();
 }
+async function resumeReply(file){
+ if(!request||!draft||!$('ack').checked)
+  fail('First load the independently verified original PRIVATE single-owner handoff.');
+ if(!file||file.size>MAX)fail('Select saved PRIVATE owner reply JSON of 2 MiB or less.');
+ const baseline=request,current=draft,original=JSON.stringify(draft);
+ const loaded=global.LightUpOwnerPrivateJson.read(await file.text());
+ const accepted=await global.LightUpOwnerProtocol.validateReply(loaded);
+ if(request!==baseline||draft!==current||JSON.stringify(draft)!==original)
+  fail('The current original or human notes changed during resume. No draft replaced.');
+ if(accepted.source_sha256!==request.source_sha256||
+    accepted.owner_label!==request.owner_label||
+    accepted.baseline_sha256!==request.baseline_sha256||
+    accepted.rows.length!==request.rows.length)
+  fail('Saved PRIVATE reply is for a DIFFERENT original handoff/owner/source. No import.');
+ const expected=new Map(request.rows.map(r=>[r.finding_id,r]));
+ const originalFields=['finding_id','title','severity','retest_status','remediation',
+  'owner','status','due_date','next_action','blocker'];
+ for(const row of accepted.rows){
+  const previous=expected.get(row.finding_id);
+  if(!previous||originalFields.some(k=>row[k]!==previous[k]))
+   fail('Saved PRIVATE reply does not match the EXACT original handoff baseline.');
+ }
+ if(!global.confirm('Resume '+accepted.reply_rows.length+
+   ' HUMAN-ONLY entries from this source-bound PRIVATE draft? The current unsaved local human edits will be replaced. This is not authority or retest.'))return;
+ draft=accepted.reply_rows.map(x=>({...x}));dirty=true;
+ $('resume').value='';$('return-ack').checked=false;
+ $('resume-message').textContent=accepted.reply_rows.length+
+  ' original source-bound HUMAN entries safely resumed from PRIVATE reply. Export again before closing.';
+ render();
+}
 function clear(){
- request=null;draft=null;dirty=false;$('file').value='';
+ request=null;draft=null;dirty=false;$('file').value='';$('resume').value='';
  $('ack').checked=false;$('return-ack').checked=false;$('workspace').hidden=true;
  $('cards').replaceChildren();$('message').textContent=
   'In-memory private handoff cleared. Already downloaded files remain under your control.';
@@ -582,6 +615,7 @@ $('file').addEventListener('change',async e=>{
 });
 for(const id of ['recipient-filter','recipient-search','recipient-sort'])$(id).addEventListener('input',()=>{if(request)render();});
 $('recipient-bulk-apply').addEventListener('click',()=>{try{applyRecipientBulk();}catch(err){$('recipient-bulk-message').textContent='HOLD: '+err.message;}});
+$('resume').addEventListener('change',async e=>{try{await resumeReply(e.target.files[0]);}catch(err){$('resume-message').textContent='HOLD: '+err.message;e.target.value='';}});
 $('ack').addEventListener('change',controls);
 $('return-ack').addEventListener('change',controls);
 $('export').addEventListener('click',async()=>{try{await exportReply();}catch(err){$('reply-message').textContent='HOLD: '+err.message;}});
