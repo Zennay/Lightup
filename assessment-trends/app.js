@@ -29,6 +29,7 @@
   let revisionFocus = 0;
   let discussionStages=Object.create(null);
   let sourceHashes=[];
+  let pairFocus=1;
 
   // Strict recursive JSON reader: rejects duplicate keys (also escaped aliases),
   // malformed literals, nonfinite numbers and excessively nested documents.
@@ -216,7 +217,7 @@
     $("message").textContent=message; $("message").className="message"+(bad?" bad":"");
   }
   function reset() {
-    revisions=[];sourceHashes=[];discussionStages=Object.create(null);revisionFocus=0; $("workspace").hidden=true; $("files").value="";
+    revisions=[];sourceHashes=[];discussionStages=Object.create(null);revisionFocus=0;pairFocus=1; $("workspace").hidden=true; $("files").value="";
     $("notes").value="";$("draft-file").value="";
     $("draft-state").textContent="Private source bindings and local discussion stages were cleared.";
     showMessage("All imported source data and local notes cleared.");
@@ -278,14 +279,16 @@
       metric_regressions:[...report.cases.values()].reduce((n,c)=>n+c.regressions.length,0),
       metrics:NAMES.map(name=>({name,...snapshot(report,name)}))
     }));
-    return {format:"lightup.assessment_trends.aggregate",version:2,
+    return {format:"lightup.assessment_trends.aggregate",version:3,
       verdict:"REVIEW_ONLY",phase:"INCUBATE_M3_M7_DRAFT_HOLD",
       source_order:"USER_SELECTED_UNVERIFIED",source_authenticated:false,
       source_comparison_only:true,metrics:NAMES.map(name=>({name,...movement(name)})),
       revisions:entries,
+      adjacent_pairs:adjacentExport(),
       human_discussion:actionItems().map(x=>({
         metric:x.metric,priority:x.priority,persistent_cases:x.persistent,
         emerged_cases:x.emerged,recovered_cases:x.recovered,
+        adjacent_worsened_observations:x.adjacent_worsened,
         local_stage:x.stage,source_authenticated:false,remediation_verified:false
       })),
       ...authority()};
@@ -332,6 +335,62 @@
     render();
     showMessage("Local source order changed; all aggregate trajectories were recalculated. Chronology remains unverified.");
   }
+  function adjacent(before,after,name) {
+    const old=revisions[before], next=revisions[after];
+    REQUIRE(old && next && after===before+1);
+    let worsened=0,improved=0,other_changed=0,delta=0;
+    for(const id of old.cases.keys()) {
+      const x=old.cases.get(id).metrics[name].candidate;
+      const y=next.cases.get(id).metrics[name].candidate;
+      const change=y-x; delta+=change;
+      if(change===0) continue;
+      if(HIGH.has(name)) {
+        if(change<0) worsened++; else improved++;
+      } else if(LOW.has(name)) {
+        if(change>0) worsened++; else improved++;
+      } else other_changed++;
+    }
+    return {name,worsened,improved,other_changed,delta};
+  }
+  function adjacentExport() {
+    const pairs=[];
+    for(let i=1;i<revisions.length;i++) {
+      pairs.push({before_position:i,after_position:i+1,
+        source_order_authenticated:false,
+        metrics:NAMES.map(name=>adjacent(i-1,i,name))});
+    }
+    return pairs;
+  }
+  function pairCSV() {
+    const rows=[["status","authorized","consent_verified","dispatch_allowed",
+      "release_allowed","before_position","after_position","metric",
+      "worsened_cases","improved_cases","informational_changes","candidate_delta"]];
+    for(const item of adjacentExport()) for(const m of item.metrics)
+      rows.push(["REVIEW_ONLY",false,false,false,false,item.before_position,
+        item.after_position,m.name,m.worsened,m.improved,m.other_changed,m.delta]);
+    return rows.map(row=>row.join(",")).join("\r\n")+"\r\n";
+  }
+  function renderPair() {
+    const control=$("pair-select");
+    control.replaceChildren();
+    for(let i=1;i<revisions.length;i++) {
+      const opt=add(control,"option","R"+i+" → R"+(i+1));
+      opt.value=String(i);
+    }
+    if(pairFocus<1 || pairFocus>=revisions.length) pairFocus=revisions.length-1;
+    control.value=String(pairFocus);
+    const body=$("pair-rows");body.replaceChildren();
+    for(const name of NAMES) {
+      const m=adjacent(pairFocus-1,pairFocus,name);
+      const tr=add(body,"tr");
+      add(tr,"th",nice(name));
+      add(tr,"td",String(m.worsened),m.worsened>0?"heat-2":"heat-0");
+      add(tr,"td",String(m.improved));
+      add(tr,"td",String(m.other_changed));
+      add(tr,"td",(m.delta>0?"+":"")+fmt(m.delta));
+    }
+  }
+
   function renderCaseRows() {
     const head=$("case-head"),body=$("case-rows");
     head.replaceChildren();body.replaceChildren();
@@ -379,9 +438,17 @@
       return "Which source evidence or scoring rubric needs independent review?";
     return "What source-owner follow-up is needed before interpreting this lab metric?";
   }
+  function adjacentWorseningCount(name) {
+    let observations=0;
+    for(let i=1;i<revisions.length;i++)
+      observations+=adjacent(i-1,i,name).worsened;
+    return observations;
+  }
   function actionItems() {
-    return NAMES.filter(name=>movement(name).ever>0).map(name=>({
+    return NAMES.filter(name=>movement(name).ever>0 ||
+      adjacentWorseningCount(name)>0).map(name=>({
       metric:name,priority:priorityClass(name),...movement(name),
+      adjacent_worsened:adjacentWorseningCount(name),
       stage:discussionStages[name]||"unreviewed"
     })).sort((a,b)=>{
       const order={"Critical review":0,"High review":1,"Human review":2};
@@ -398,7 +465,9 @@
       add(row,"th",nice(item.metric));
       add(row,"td",item.priority);
       add(row,"td",String(item.persistent)+" persistent / "+
-        String(item.emerged)+" newly flagged / "+String(item.recovered)+" no longer flagged");
+        String(item.emerged)+" newly flagged / "+
+        String(item.recovered)+" no longer flagged / "+
+        String(item.adjacent_worsened)+" worsening observations between revisions");
       add(row,"td",suggestedQuestion(item.metric));
       const cell=add(row,"td");
       const control=add(cell,"select");
@@ -424,7 +493,7 @@
     for(const name of NAMES) {
       const option=add(select,"option",nice(name));option.value=name;
     }
-    renderOrder();metricsRows();renderCaseRows();renderActions();choose(selected);followupText();
+    renderOrder();renderPair();metricsRows();renderCaseRows();renderActions();choose(selected);followupText();
     $("save-draft").disabled=!sourceHashes.length || sourceHashes.some(x=>!x);
     if(sourceHashes.some(x=>!x))
       $("draft-state").textContent="Browser WebCrypto unavailable: private draft save/restore is disabled, but lab trend analysis remains available.";
@@ -433,18 +502,24 @@
 
   $("files").addEventListener("change",async ev=>{
     // No mixing old and new reports. A failed import removes previous content.
-    revisions=[];sourceHashes=[];revisionFocus=0;discussionStages=Object.create(null);$("workspace").hidden=true;$("notes").value="";
+    revisions=[];sourceHashes=[];revisionFocus=0;pairFocus=1;discussionStages=Object.create(null);$("workspace").hidden=true;$("notes").value="";
     const files=[...ev.target.files];
     try {
       const accepted=await loadFiles(files);
       revisions=accepted.parsed;
       sourceHashes=accepted.hashes;
+      pairFocus=revisions.length-1;
       render();
     } catch (_) {
       revisions=[];$("workspace").hidden=true;
       showMessage("HOLD — invalid, duplicated, incomplete or baseline-mismatched source set. No partial data imported.",true);
     }
   });
+  $("pair-select").addEventListener("change",event=>{
+    pairFocus=Number(event.target.value);renderPair();
+  });
+  $("pair-export").addEventListener("click",()=>download(
+    "lightup-lab-adjacent-review-only.csv",pairCSV(),"text/csv;charset=utf-8"));
   $("revision-select").addEventListener("change",event=>{
     revisionFocus=Number(event.target.value);renderOrder();
   });
