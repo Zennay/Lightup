@@ -55,3 +55,24 @@ For each selected engagement the reviewer may set a TEMPORARY local human follow
 An optional separate earlier original PRIVATE Casebook JSON can be loaded into the same local browser after the current snapshot, and must declare the exact same tenant. The comparison counts newly recorded rows, absent rows and status changes across the four original source record types: requests, engagements, grants and risk approvals. Derived caseboard rows are not double-counted. Snapshot order and timestamps remain UNSIGNED, source-declared and untrusted: this is human follow-up, never audit-trusted chronology, revocation or runtime permission. The earlier source is kept only in memory and is excluded from aggregate handoff except for anonymous counts.
 
 The browser intentionally cannot upload, persist, share or remotely authenticate a source: private input must be handled only on a trusted workstation, and exported aggregates are REVIEW_ONLY.
+## Original request-to-grant evidence, recorded windows, terminal work queue
+
+The source reader reuses ORIGINAL `grant_request_binding.approved_request_is_compatible` against a persisted joined request row and the stored grant's private `assets_json` (not exported), created_at and max_risk. The source check covers the requester's persisted client role, the independent reviewer operator role, matching tenant, prior UTC decision, approved assessment mode, bounded risk, and exact conservative approved asset coverage. A mismatch is `HOLD_REQUEST_SCOPE_OR_PROVENANCE_MISMATCH`, while a matching source becomes `REQUEST_SCOPE_COMPATIBLE_UNVERIFIED` — never a grant confirmation, actual consent or target permission.
+
+Every stored grant additionally carries `validity_observation`: `EXPIRED_RECORDED_WINDOW`, `FUTURE_RECORDED_WINDOW`, `HOLD_INVALID_RECORDED_WINDOW`, or `WITHIN_RECORDED_WINDOW_NOT_AUTHORITY`. These are retrospective source observations at the ONE local snapshot timestamp; the original execution authority still requires at-use current time, live grant resolution, true client/operator consent and all original gates.
+
+The caseboard adds a concrete next_review_action for every engagement, prioritizing source tenant/provenance failures, closed engagements carrying grants, expired/future original windows, then missing grants versus source links that still need genuine independent consent. Its labels are human workflow suggestions only, never preconfigured scanner/runtime actions.
+
+To view a single tenant's actual review queue directly in your terminal (without private JSON output):
+
+    PYTHONPATH=src python -m lightup.auth_casebook \
+      --database /private/lightup.sqlite \
+      --email operator@example.invalid --client ORIGINAL_TENANT_ID --cases
+
+`--cases` is separate from `--list-clients`. Both require original password authentication. The terminal caseboard includes only owned engagement IDs, original source status, bounded count and next-action labels, not personal contact details, raw assets, grant references, passwords, scans or evidence. CLI exit remains 2 REVIEW_ONLY, 3 HOLD.
+
+## Source follow-up queue and portable privacy-safe handoff
+
+The offline browser now shows a distinct prioritized operator follow-up queue with one-click Inspect original case and the local in-tab human review stage. A human can export an additional SELF-CONTAINED, SCRIPTLESS anonymous HTML briefing, with original source count totals, HOLD categories, locally assigned review stages and two-source comparison counts. It contains zero original request/engagement/grant IDs, client metadata, hostnames, evidence, contacts or notes. Local file export, no network.
+
+No new test, regression or quality-validation suite was written or run. Existing hosted and named VPS CI remain original release dependencies; the code was inspected only by Python compilation, native command help and HTML JavaScript syntax.
