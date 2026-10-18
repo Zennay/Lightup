@@ -2,7 +2,7 @@
 (function(g){'use strict';
 const $=id=>document.getElementById(id),E=(tag,text)=>{const n=document.createElement(tag);if(text!==undefined)n.textContent=String(text);return n;};
 const SEV=['critical','high','medium','low','info'],LIMIT=2097152;
-let state=null,links=[],efforts=[],dirty=false,revision=0;
+let state=null,links=[],efforts=[],dirty=false,revision=0,ownerLabels=[];
 function stop(s){throw Error(s);}
 function parseStrict(raw){
  if(typeof raw!=='string'||new TextEncoder().encode(raw).length>LIMIT)stop('PRIVATE JSON exceeds 2 MiB.');
@@ -33,6 +33,26 @@ function saveFile(name,data,type){const blob=new Blob([data],{type}),url=URL.cre
 function findById(id){return state.findings.find(f=>f.finding_id===id);}
 function humanById(id){return state.cases.find(c=>c.finding_id===id);}
 function putSelect(select){select.replaceChildren();for(const f of state.findings){let option=E('option',f.finding_id+' — '+f.title.slice(0,56));option.value=f.finding_id;select.append(option);}}
+function renderOwnerFilter(){
+ const select=$('owner-filter'),old=select.value;
+ ownerLabels=[...new Set(state.cases.map(c=>c.owner).filter(x=>typeof x==='string'&&x.length))].sort();
+ select.replaceChildren();
+ const add=(value,title)=>{const option=E('option',title);option.value=value;select.append(option);};
+ add('all','All original human owners');add('unassigned','(Unassigned human work)');
+ ownerLabels.forEach((owner,i)=>add('id:'+i,owner));
+ if([...select.options].some(x=>x.value===old))select.value=old;
+}
+function visibleRow(row,critical){
+ const owner=$('owner-filter').value;
+ if(owner==='unassigned'&&row.owner)return false;
+ if(owner.startsWith('id:')&&ownerLabels[Number(owner.slice(3))]!==row.owner)return false;
+ const filter=$('filter').value;
+ if(filter==='waiting'&&!row.waiting.length)return false;
+ if(filter==='ready'&&!row.human_ready)return false;
+ if(filter==='critical'&&!critical.has(row.finding_id))return false;
+ if(filter==='urgent'&&!['critical','high'].includes(row.severity))return false;
+ return true;
+}
 function metrics(graph){
  const data=[['Original findings',graph.summary.total],['Human dependency links',graph.summary.links],['Waiting on human work',graph.summary.waiting],['Human work potentially ready',graph.summary.ready],['Critical/high waiting',graph.summary.critical_high_waiting],['Longest estimated chain (days)',graph.estimated_days]];
  const host=$('stats');host.replaceChildren();for(const [label,n] of data){const card=E('div');card.className='stat';card.append(E('strong',n),E('span',label));host.append(card);}
@@ -62,12 +82,12 @@ function drawEfforts(){
 }
 function renderGuidance(view){
  const body=$('bottlenecks');body.replaceChildren();
- for(const item of view.bottlenecks){
+ for(const item of view.bottlenecks.filter(x=>visibleRow(x,new Set()))){
   const tr=E('tr');td(tr,item.finding_id+' / '+item.severity);td(tr,item.downstream_count);
   td(tr,item.human_ready?'Potentially ready for HUMAN planning':'Needs prerequisite / on hold');
   td(tr,item.owner||'(unassigned)');body.append(tr);
  }
- if(!view.bottlenecks.length){const row=E('tr'),cell=E('td','No open human plans.');cell.colSpan=4;row.append(cell);body.append(row);}
+ if(!view.bottlenecks.some(x=>visibleRow(x,new Set()))){const row=E('tr'),cell=E('td','No open human plans.');cell.colSpan=4;row.append(cell);body.append(row);}
  const blocked=$('contradictions');blocked.replaceChildren();
  for(const x of view.contradictions){
   const row=E('tr');td(row,x.from);td(row,x.to);td(row,x.human_prerequisite_due);td(row,x.human_dependent_due);blocked.append(row);
@@ -84,7 +104,7 @@ function drawGraph(){
  const body=$('results');body.replaceChildren();const filter=$('filter').value,critical=new Set(graph.critical);
  let n=0;
  for(const item of graph.rows){
-  if(filter==='waiting'&&!item.waiting.length||filter==='ready'&&!item.human_ready||filter==='critical'&&!critical.has(item.finding_id)||filter==='urgent'&&!['critical','high'].includes(item.severity))continue;
+  if(!visibleRow(item,critical))continue;
   const tr=E('tr');td(tr,item.finding_id+' / '+item.severity);td(tr,item.human_status+(critical.has(item.finding_id)?' · longest path':''));
   td(tr,item.waiting.length?item.waiting.join(', '):'None');td(tr,item.path_days+' calendar days');
   td(tr,graph.dates?graph.dates[item.finding_id]:'Not proposed');body.append(tr);n++;
@@ -101,7 +121,7 @@ async function importOriginal(file){
  if(token!==revision)stop('Private workspace changed during import.');
  state=work;const blank=g.LightUpHumanDependencies.empty(state);links=blank.links;efforts=blank.efforts;dirty=false;revision++;
  $('workspace').hidden=false;$('export-ack').checked=false;$('start').value='';$('filter').value='all';
- putSelect($('from'));putSelect($('to'));render();
+ putSelect($('from'));putSelect($('to'));renderOwnerFilter();render();
  $('source-message').textContent=state.findings.length+' original findings loaded from PRIVATE historical Casework. Current consent and identity are unverified.';
 }
 function clear(){state=null;links=[];efforts=[];dirty=false;revision++;$('workspace').hidden=true;for(const name of ['source','reopen'])$(name).value='';$('source-ack').checked=false;$('export-ack').checked=false;$('source-message').textContent='Private workspace cleared from memory. Previously downloaded files remain outside this browser.';}
@@ -115,7 +135,7 @@ $('link-add').addEventListener('click',()=>{
  try{g.LightUpHumanDependencies.clean(state,next,efforts);links=next;dirty=true;revision++;$('reason').value='';render();$('link-message').textContent='Original-ID human prerequisite recorded in memory.';}
  catch(err){$('link-message').textContent='HOLD: '+err.message;}
 });
-for(const name of ['filter','start'])$(name).addEventListener('change',()=>{if(state){try{drawGraph();}catch(err){$('review-message').textContent='HOLD: '+err.message;}}});
+for(const name of ['filter','start','owner-filter'])$(name).addEventListener('change',()=>{if(state){try{drawGraph();}catch(err){$('review-message').textContent='HOLD: '+err.message;}}});
 $('review').addEventListener('click',()=>{if(state){try{drawGraph();}catch(err){$('review-message').textContent='HOLD: '+err.message;}}});
 $('export-ack').addEventListener('change',()=>{const ok=!!state&&$('source-ack').checked&&$('export-ack').checked;$('export-json').disabled=!ok;$('export-csv').disabled=!ok;});
 $('source-ack').addEventListener('change',()=>{if(!$('source-ack').checked)$('export-ack').checked=false;$('export-json').disabled=!$('source-ack').checked||!$('export-ack').checked;$('export-csv').disabled=$('export-json').disabled;});
@@ -138,7 +158,7 @@ $('export-csv').addEventListener('click',()=>{
  try{const v=g.LightUpHumanDependencies.graph(state,links,efforts,$('start').value||null);
  if(!g.confirm('Export PRIVATE original finding IDs and HUMAN status/effort/waiting dependencies to the approved destination?'))return;
  const table=[['finding_id','source_severity','source_retest','human_stage','human_owner','human_due','waiting_for_human_ids','estimated_chain_days','indicative_local_date']];
- for(const x of v.rows)table.push([x.finding_id,x.severity,x.original_retest,x.human_status,x.owner,x.human_due||'',x.waiting.join('; '),x.path_days,v.dates?.[x.finding_id]||'']);
+ for(const x of v.rows){if($('csv-scope').value==='filtered'&&!visibleRow(x,new Set(v.critical)))continue;table.push([x.finding_id,x.severity,x.original_retest,x.human_status,x.owner,x.human_due||'',x.waiting.join('; '),x.path_days,v.dates?.[x.finding_id]||'']);}if(table.length<2)stop('No original human tasks match the selected PRIVATE CSV handoff scope.');
  saveFile('lightup-PRIVATE-human-dependency-board.csv',table.map(r=>r.map(safeCsv).join(',')).join('\r\n')+'\r\n','text/csv;charset=utf-8');
  $('export-message').textContent='PRIVATE tentative human action CSV exported. No verified fix, SLA or authorized retest.';}
  catch(e){$('export-message').textContent='HOLD: '+e.message;}
