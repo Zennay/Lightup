@@ -6,8 +6,10 @@ from hashlib import sha256
 from io import BytesIO
 from zipfile import BadZipFile, ZipFile, ZIP_STORED
 
-from portfolio import FLAGS, Hold, read_regular, decode_json
+from portfolio import FLAGS, Hold, read_regular, decode_json, reject_authority
 from workspace_return import _workspace
+from capacity_plan import FIELDS as CAP_FIELDS, SOURCE_FIELDS as CAP_SOURCE_FIELDS, SCHEMA as CAP_SCHEMA
+from capacity import ROLES
 
 MAX_ZIP = 32*1024*1024
 MAX_MEMBERS = 28
@@ -66,17 +68,30 @@ def read_cycle_zip(path):
                         or source["claimed_status"]!=meta["claimed_status"]):
                     raise Hold("original human ZIP source/choices/agenda history diverges")
             if CAPACITY <= set(names):
-                plan=decode_json(z.read("new-private-human-capacity-plan.json"))
-                if (type(plan) is not dict
-                        or plan.get("schema")!="lightup.assessment_portfolio_capacity_plan.v1"
-                        or plan.get("reference_date")!=record["new_reference_date"]
-                        or plan.get("source_count")!=n
-                        or type(plan.get("sources")) is not list
+                plan_raw=z.read("new-private-human-capacity-plan.json")
+                if not 0<len(plan_raw)<=65536:
+                    raise Hold("optional human capacity plan exceeds original bounds")
+                plan=decode_json(plan_raw)
+                reject_authority(plan)
+                if (type(plan) is not dict or set(plan)!=CAP_FIELDS
+                        or plan["schema"]!=CAP_SCHEMA
+                        or plan["reference_date"]!=record["new_reference_date"]
+                        or type(plan["source_count"]) is not int
+                        or plan["source_count"]!=n
+                        or type(plan["sources"]) is not list
                         or len(plan["sources"])!=n
-                        or any(plan.get(f) is not False for f in FLAGS)):
-                    raise Hold("new human capacity is not bound to original source")
+                        or type(plan["hypothetical_weeks"]) is not int
+                        or not 1<=plan["hypothetical_weeks"]<=12
+                        or type(plan["role_capacities"]) is not dict
+                        or set(plan["role_capacities"])!=set(ROLES)
+                        or any(type(v) is not int or not 0<=v<=100
+                               for v in plan["role_capacities"].values())
+                        or any(plan[f] is not False for f in FLAGS)):
+                    raise Hold("new human capacity is not original-source canonical")
                 for src,meta in zip(plan["sources"],map_doc["sources"]):
-                    if (type(src) is not dict or src.get("slot")!=meta["slot"]
+                    if (type(src) is not dict or set(src)!=CAP_SOURCE_FIELDS
+                            or type(src["slot"]) is not int
+                            or src["slot"]!=meta["slot"]
                             or src.get("source_sha256")!=meta["derived_original_agenda_sha256"]
                             or src.get("claimed_status")!=meta["claimed_status"]):
                         raise Hold("optional human capacity source changed")
