@@ -10,6 +10,7 @@ Import up to 20 actual lightup.scope_proposal_draft **v1 JSON files** produced b
 
 The board provides:
 
+- **Editable import inventory**: individual imported Studio proposals now appear in a local source list, with their ordinal, risk/mode, UTC-readiness and abbreviated exact-file digest. One click focuses the UTC timeline on the selected proposal. Removing a single proposal requires human confirmation and immediately removes only its local what-if shift; the original JSON is untouched. Any previously exported ordinal-bound scenario must be regenerated or re-imported with matching order before restore.
 - A seven-, fourteen- or thirty-day UTC Gantt-style timeline with proposed interval bars, risk level and view-window clipping.
 - A count and readable list of overlaps between supplied **resolved, self-consistent UTC windows**. This is **time-only** comparison, not proof that assets, resources, tenants or people coincide.
 - **Optional UTC workdays/hours**: select permitted weekdays and a same-day UTC start/end clock range. With the option disabled (default), schedule placement is unrestricted by a workday. With the option enabled, suggested and batch-rescheduled proposals fit entirely inside the daily UTC window. Current proposals outside it produce clear warnings; tentative calendar export is HOLD until fixed. Workday policy is included in local anonymous scenario exports and restored atomically, never used as a security grant.
@@ -29,7 +30,7 @@ The board provides:
 ## Usage
 
 1. Obtain v1 JSON exports from Scope Planning Studio. Save them locally on a trusted device.
-2. Open studio/scope-schedule-board.html locally, choose up to 20 files.
+2. Open studio/scope-schedule-board.html locally, choose up to 20 files. Inspect the imported-proposal inventory to focus an individual proposal or remove an obsolete local import without clearing the others.
 3. Select a UTC start day and 7/14/30-day horizon (initial load jumps to the earliest imported proposal). Optionally enter UTC workday boundaries, add unavailable time intervals manually or import non-recurring UTC .ics busy windows from a private local calendar. Only the dates/times are retained. Read the overlapping-window, unavailability and missing/unsafe-window HOLD notices.
 4. Optionally apply a local what-if time shift or generate a bounded first-fit scenario for all resolved drafts. Export a private printable operator brief (HTML) or original-preserving scenario JSON. Do not distribute these sensitive times outside an authenticated channel. For a previous scenario, first import its original Studio drafts in the same order and then restore the local review-only scenario JSON. View the resulting proposed overlaps and export an anonymous scenario JSON for private review. Use the slot suggestions only as conversation starters during independent client/operator review. Export the anonymous **tentative** calendar if needed.
 5. For any real proposed scheduling change, edit and re-export the **original Studio draft** and repeat authenticated intake/consent. The schedule board deliberately never changes or approves an existing proposal.
