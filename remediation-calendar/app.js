@@ -292,6 +292,57 @@ function applyAssignment(){
  $('assign-message').textContent=p.proposal.rows.length+
   ' human ownership notes updated locally. Export the PRIVATE Casework v1 draft for separate authorized handoff.';
 }
+function renderHandoffOwners(){
+ const select=$('owner-handoff-label'),current=select.value;
+ const owners=[...new Set(state.cases.map(c=>c.owner))]
+  .filter(s=>typeof s==='string'&&s.trim()===s&&s&&s.length<=120&&
+    !/[\u0000-\u001f\u007f-\u009f]/.test(s)).sort();
+ select.replaceChildren(new Option('Select exact human owner',''));
+ for(const name of owners)select.add(new Option(name,name));
+ select.value=owners.includes(current)?current:'';
+ if(select.value!==current)$('owner-handoff-ack').checked=false;
+ updateHandoffControls();
+}
+function updateHandoffControls(){
+ const ack=!!state&&$('source-ack').checked&&$('owner-handoff-ack').checked;
+ $('owner-handoff-export').disabled=!ack||!$('owner-handoff-label').value;
+ $('owner-reply-import').disabled=!ack||!$('owner-reply-file').files.length;
+}
+async function exportOwnerHandoff(){
+ if(!state||!$('source-ack').checked||!$('owner-handoff-ack').checked)
+  fail('Confirm the source and independent private sharing before owner handoff.');
+ const before=state,baseline=JSON.stringify(state.cases),source=JSON.stringify(state.findings);
+ const owner=$('owner-handoff-label').value;
+ if(!owner)fail('Select one exact human owner.');
+ if(!global.confirm('This packet includes ORIGINAL sensitive findings for human owner '+owner+'. Confirm approved independent recipient and exact engagement. It is not an authorization.'))return;
+ const packet=await global.LightUpOwnerProtocol.createRequest(state.findings,state.cases,owner,state.digest);
+ if(state!==before||JSON.stringify(state.cases)!==baseline||
+    JSON.stringify(state.findings)!==source)fail('Casework changed during owner handoff. Export held.');
+ const name='lightup-PRIVATE-owner-handoff.json';
+ saveFile(name,JSON.stringify(packet,null,2)+'\n','application/json;charset=utf-8');
+ $('owner-handoff-message').textContent=packet.rows.length+
+  ' original findings included only for owner '+owner+'. Transfer privately; no identity or authorization established.';
+}
+async function importOwnerReply(){
+ if(!state||!$('source-ack').checked||!$('owner-handoff-ack').checked)
+  fail('Confirm original source and independent return sender/channel first.');
+ const file=$('owner-reply-file').files[0];
+ if(!file||file.size>2097152)fail('Select a PRIVATE owner reply JSON no larger than 2 MiB.');
+ const previous=state,baseline=JSON.stringify(state.cases),source=JSON.stringify(state.findings);
+ const packet=strictJSON(await file.text());
+ const accepted=await global.LightUpOwnerProtocol.applyReply(
+  state.findings,state.cases,state.digest,packet);
+ if(state!==previous||JSON.stringify(state.cases)!==baseline||
+    JSON.stringify(state.findings)!==source)
+  fail('Source or human plans changed while importing owner response. No update applied.');
+ if(!global.confirm('Import '+accepted.changed+' HUMAN-ONLY replies from '+accepted.owner_label+
+   ' as unverified local planning, after independently confirming the sender and exact client/engagement? No real remediation/retest is verified.'))return;
+ state={...state,cases:accepted.cases};dirty=true;activeId=null;
+ $('edit-panel').hidden=true;clearRefresh();clearSchedule();clearAssignments();
+ $('owner-handoff-ack').checked=false;$('owner-reply-file').value='';
+ render();$('owner-handoff-message').textContent=accepted.changed+
+  ' HUMAN-ONLY notes accepted atomically from the exact source-bound owner baseline. Save updated PRIVATE Casework v1 JSON.';
+}
 function openEdit(id){
  if(!state||!$('source-ack').checked)fail('Source confirmation required.');
  const c=state.cases.find(x=>x.finding_id===id);
@@ -366,7 +417,7 @@ function adjustMonth(delta){
 }
 function render(){
  if(!state)return;
- clearAssignments();renderOwners();renderMonth();
+ clearAssignments();renderOwners();renderHandoffOwners();renderMonth();
  const rows=filtered(),body=$('rows');body.replaceChildren();
  for(const x of rows){
   const f=x.finding,c=x.case,tr=document.createElement('tr');
@@ -493,6 +544,11 @@ $('schedule-preview-button').addEventListener('click',()=>{try{previewSchedule()
 $('schedule-ack').addEventListener('change',scheduleControls);
 $('schedule-apply').addEventListener('click',()=>{try{applySchedule();}catch(e){$('schedule-message').textContent='HOLD: '+e.message;}});
 for(const id of ['schedule-anchor','schedule-scope',...PRIORITY.map(x=>'schedule-'+x)])$(id).addEventListener('change',clearSchedule);
+$('owner-handoff-label').addEventListener('change',()=>{$('owner-handoff-ack').checked=false;updateHandoffControls();});
+$('owner-reply-file').addEventListener('change',updateHandoffControls);
+$('owner-handoff-ack').addEventListener('change',updateHandoffControls);
+$('owner-handoff-export').addEventListener('click',async()=>{try{await exportOwnerHandoff();}catch(e){$('owner-handoff-message').textContent='HOLD: '+e.message;}});
+$('owner-reply-import').addEventListener('click',async()=>{try{await importOwnerReply();}catch(e){$('owner-handoff-message').textContent='HOLD: '+e.message;}});
 $('calendar-ack').addEventListener('change',render);
 $('draft-ack').addEventListener('change',render);
 $('month').addEventListener('change',()=>{selectedDay=null;render();});
@@ -502,7 +558,7 @@ $('day-clear').addEventListener('click',()=>{selectedDay=null;render();});
 $('edit-form').addEventListener('submit',e=>{try{saveEdit(e);}catch(err){e.preventDefault();$('export-message').textContent='HOLD: '+err.message;}});
 $('edit-cancel').addEventListener('click',()=>{activeId=null;$('edit-panel').hidden=true;});
 $('casework-save').addEventListener('click',()=>{try{exportDraft();}catch(err){$('export-message').textContent='HOLD: '+err.message;}});
-$('source-ack').addEventListener('change',()=>{if(!$('source-ack').checked){clearRefresh();clearSchedule();}if(state)render();});
+$('source-ack').addEventListener('change',()=>{if(!$('source-ack').checked){clearRefresh();clearSchedule();$('owner-handoff-ack').checked=false;}if(state)render();});
 $('download').addEventListener('click',async()=>{try{await exportCalendar();}catch(e){$('export-message').textContent='HOLD: '+e.message;}});
 $('aggregate').addEventListener('click',()=>{try{exportAggregate();}catch(e){$('export-message').textContent='HOLD: '+e.message;}});
 $('clear').addEventListener('click',()=>{if(dirty&&!global.confirm('Discard unsaved human notes?'))return;reset();});

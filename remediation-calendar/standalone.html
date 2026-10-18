@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-wpPFZOyxFDTkVCPSRLe+ulmbav4+u8hRIYgukbiqEiU=' 'sha256-Tsn3rjlsrVBKsSIHK1x43sUVih3vNgrf8whdzXjsqg0=' 'sha256-2NU0ysKRFZNzkPxlEBUtRttxZzRCBx0/j+wVe5U1veQ=' 'sha256-I4MyZsp/MgmczFhs/8OcszyRQyRmMV874+EqN8qrcqo=' 'sha256-FXDmkAMCiqmFhVysQ2CJ+aQdtaWiWyD4N3ceOiIuEkQ='; style-src 'sha256-eBXNpKwV7Tfx/VR+iD+lRaRbr6g4N6xCctCZfuuIIvE='; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-wpPFZOyxFDTkVCPSRLe+ulmbav4+u8hRIYgukbiqEiU=' 'sha256-Tsn3rjlsrVBKsSIHK1x43sUVih3vNgrf8whdzXjsqg0=' 'sha256-2NU0ysKRFZNzkPxlEBUtRttxZzRCBx0/j+wVe5U1veQ=' 'sha256-I4MyZsp/MgmczFhs/8OcszyRQyRmMV874+EqN8qrcqo=' 'sha256-0TSOdLvoAxLnJIORPyN6xDgusCrhagoQ1NfsGl1kKZw=' 'sha256-ZapS1hX8POQ9UokdCuY2nn0c6aTkI/gldahqfm6OkqQ='; style-src 'sha256-eBXNpKwV7Tfx/VR+iD+lRaRbr6g4N6xCctCZfuuIIvE='; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <title>LightUp · Private Remediation Calendar</title>
 <style>:root{color-scheme:dark;font:16px/1.55 system-ui,-apple-system,Segoe UI,sans-serif;background:#0c111d;color:#eef2fb}*{box-sizing:border-box}body{margin:0}header,main,footer{max-width:1160px;margin:auto;padding:26px 24px}header{padding-top:48px}.brand{color:#a4bcff;letter-spacing:.18em;font-size:.75rem;font-weight:800}h1{font-size:clamp(2rem,5vw,3.3rem);line-height:1.08;margin:.5em 0}h2{font-size:1.32rem;margin:0 0 16px}p{color:#bbc5d6}.hold{display:inline-block;color:#ffca7a;border:1px solid #846332;background:#3a2b19;padding:8px 12px;border-radius:8px;font-size:.82rem}.panel{background:#172137;border:1px solid #34435d;border-radius:18px;padding:24px;margin:22px 0;box-shadow:0 8px 24px #050b1740}label{display:block;font-weight:650;color:#ebf0fa}input,select,button{font:inherit}select,input[type=search],input[type=file]{width:100%;background:#0e182b;color:#fff;border:1px solid #52647e;padding:10px;border-radius:8px;margin-top:6px}input:focus,select:focus,button:focus-visible{outline:2px solid #8ab2ff;outline-offset:2px}.filelabel{max-width:600px}.check{display:flex;gap:12px;align-items:flex-start;margin:18px 0;max-width:950px;font-weight:450;color:#d3dced}.check input{width:20px;height:20px;flex:none;margin-top:3px}.metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin-top:20px}.metric{background:#202e49;border-radius:12px;padding:16px}.metric strong{font-size:1.8rem;display:block}.metric span{color:#bbc5d6;font-size:.88rem}.filters,.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px}.tablewrap{overflow-x:auto}table{width:100%;border-collapse:collapse;min-width:760px;text-align:left}th,td{border-bottom:1px solid #34445e;padding:13px 10px;vertical-align:top;overflow-wrap:anywhere}th{color:#9fb7e8;font-size:.8rem;text-transform:uppercase;letter-spacing:.05em}td{font-size:.88rem}td small{color:#aebed0;display:block}.chip{display:inline-block;background:#293957;border-radius:6px;padding:2px 7px}.urgent{color:#ffcc9d}.muted{color:#aab7cf}.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:20px}button{background:#a7c1ff;border:0;border-radius:9px;color:#071226;padding:11px 17px;font-weight:750;cursor:pointer}button:hover:not(:disabled){filter:brightness(1.12)}button:disabled{opacity:.35;cursor:not-allowed}.muted-button{background:#394961;color:#fff}footer{font-size:.83rem;color:#aeb8c8;padding-bottom:50px}@media(max-width:600px){header,main,footer{padding-left:16px;padding-right:16px}.panel{padding:17px}}
 textarea{display:block;width:100%;background:#0e182b;color:#fff;border:1px solid #52647e;padding:10px;border-radius:8px;margin:6px 0 14px;resize:vertical}#edit-form .grid{margin-bottom:14px}input[type=date],#edit-owner{display:block;width:100%;background:#0e182b;color:#fff;border:1px solid #52647e;padding:10px;border-radius:8px;margin-top:6px}textarea:focus-visible{outline:2px solid #8ab2ff}#edit-panel[hidden]{display:none}
@@ -99,7 +99,16 @@ textarea{display:block;width:100%;background:#0e182b;color:#fff;border:1px solid
 </form>
 </section>
 <section class="panel">
-<h2>7. Export private Casework or calendar</h2>
+<h2>7. Private single-owner human handoff + safe reply import</h2>
+<p>Create a PRIVATE packet containing ONLY original findings currently assigned to one self-declared human owner, rather than sharing the full Casework portfolio. A label is not authenticated identity, client consent or authorization. Send through an independently verified confidential channel only.</p>
+<div class="grid"><label>Specific local human owner/team<select id="owner-handoff-label"><option value="">Select exact human owner</option></select></label>
+<label>Received PRIVATE human reply JSON<input id="owner-reply-file" type="file" accept=".json,application/json"></label></div>
+<label class="check"><input id="owner-handoff-ack" type="checkbox"> I independently verified the intended HUMAN recipient and exact client/engagement, and have approval for this PRIVATE data sharing. No file proves identity or consent.</label>
+<div class="actions"><button id="owner-handoff-export" type="button" disabled>Export PRIVATE single-owner handoff</button><button id="owner-reply-import" type="button" disabled>Review and import PRIVATE owner reply</button></div>
+<p id="owner-handoff-message" role="status" aria-live="polite"></p>
+</section>
+<section class="panel">
+<h2>8. Export private Casework or calendar</h2>
 <p>Only locally scheduled open casework is included; <strong>completed or deferred human plans are excluded</strong>. No new deadlines are invented. Calendar clients may upload imported items to external services: use only an independently approved destination.</p>
 <div class="grid"><label>Calendar events <select id="export-scope"><option value="filtered">Currently visible eligible queue</option><option value="all">All eligible scheduled casework</option></select></label>
 <label>Output detail <select id="detail"><option value="anonymous">Redacted — no finding IDs, titles, owner or private notes</option><option value="private">PRIVATE — finding ID, title, owner and next action</option></select></label>
@@ -482,6 +491,175 @@ function apply(findings,cases,proposal){
 global.LightUpCalendarWorkload=Object.freeze({report,propose,apply});
 })(window);
 </script>
+<script>/* LightUp: PRIVATE owner-specific HUMAN planning packet. No identity or authority.
+ * The original Casework five-column source and current human baseline are immutable.
+ */
+(function(global){
+'use strict';
+const engine=()=>global.LightUpCasework;
+const COLS=['finding_id','title','severity','retest_status','remediation'];
+const HUMAN=['owner','status','due_date','next_action','blocker'];
+const ROW=[...COLS,...HUMAN];
+const FLAGS=['authenticated','tenant_verified','source_authorized','assessment_authorized','grant','client_consent','operator_consent','execution','scan','audit_verdict','retest_verified','release'];
+const FIELDS=['kind','schema_version','disposition','source_contract','source_sha256','owner_label','baseline_sha256','rows','instructions',...FLAGS];
+const REPLY_FIELDS=[...FIELDS,'reply_rows'];
+const MAX=350,MAX_JSON=2097152;
+const KIND='lightup.private_calendar_owner_handoff';
+const ANSWER='lightup.private_calendar_owner_reply';
+const DISPOSITION='UNVERIFIED_HUMAN_PLANNING_ONLY';
+const CONTRACT='lightup.finding_export._COLUMNS_v1';
+function fail(msg){throw Error(msg);}
+function exact(o,keys,what){
+ if(!o||Object.getPrototypeOf(o)===null&&typeof o!=='object'||typeof o!=='object'||Array.isArray(o))fail('Invalid '+what+'.');
+ const set=new Set(keys),present=Object.keys(o);
+ if(present.length!==set.size||present.some(k=>!set.has(k)))fail('Unknown or missing '+what+' field.');
+}
+function str(s,max=1800){
+ if(typeof s!=='string'||s.length>max||/[\u0000-\u0008\u000b-\u001f\u007f-\u009f]/.test(s))fail('Invalid human text field.');
+ return s;
+}
+function sourceDate(value){
+ if(value===null)return null;
+ if(typeof value!=='string'||!/^(?:20\d{2}|2100)-\d\d-\d\d$/.test(value))
+  fail('Invalid human due date.');
+ const ms=Date.parse(value+'T00:00:00Z');
+ if(!Number.isFinite(ms)||new Date(ms).toISOString().slice(0,10)!==value||value>'2100-12-30')
+  fail('Invalid human due date.');
+ return value;
+}
+function rowFrom(f,c){
+ return {finding_id:f.finding_id,title:f.title,severity:f.severity,
+  retest_status:f.retest_status,remediation:f.remediation,
+  owner:c.owner,status:c.status,due_date:c.due_date,next_action:c.next_action,blocker:c.blocker};
+}
+function checkRows(rows,label){
+ if(!Array.isArray(rows)||!rows.length||rows.length>MAX)fail('Owner handoff must have 1–350 rows.');
+ const seen=new Set();
+ return rows.map(row=>{
+  exact(row,ROW,'owner row');
+  const original={};
+  for(const k of COLS)original[k]=row[k];
+  const validated=engine().normalizeSource([original])[0];
+  if(seen.has(validated.finding_id))fail('Duplicate original finding ID.');
+  seen.add(validated.finding_id);
+  if(str(row.owner,120)!==label)fail('Owner team label changed.');
+  const progress=engine().PROGRESS;
+  if(!progress.includes(row.status))fail('Invalid human work stage.');
+  sourceDate(row.due_date);str(row.next_action,1800);str(row.blocker,1200);
+  return {...validated,...Object.fromEntries(HUMAN.map(k=>[k,row[k]]))};
+ });
+}
+function canonical(rows){
+ return JSON.stringify(rows.slice().sort((a,b)=>
+  a.finding_id<b.finding_id?-1:a.finding_id>b.finding_id?1:0));
+}
+async function sha(value){
+ if(!global.crypto||!global.crypto.subtle)fail('Secure SHA-256 is unavailable: private owner handoff HELD.');
+ const digest=await global.crypto.subtle.digest('SHA-256',new TextEncoder().encode(value));
+ return Array.from(new Uint8Array(digest),n=>n.toString(16).padStart(2,'0')).join('');
+}
+function flags(){return Object.fromEntries(FLAGS.map(f=>[f,false]));}
+function validateHeader(packet,kind,fields){
+ exact(packet,fields,'handoff envelope');
+ if(packet.kind!==kind||packet.schema_version!==1||packet.disposition!==DISPOSITION||
+    packet.source_contract!==CONTRACT)fail('Unknown owner handoff schema or disposition.');
+ if(typeof packet.owner_label!=='string'||packet.owner_label.length>120||
+    !packet.owner_label.trim()||packet.owner_label!==packet.owner_label.trim()||
+    /[\u0000-\u001f\u007f-\u009f]/.test(packet.owner_label))fail('Invalid owner identity label.');
+ if(typeof packet.instructions!=='string'||packet.instructions.length>1500)fail('Invalid safety instructions.');
+ if(packet.source_sha256!==null&&
+    (typeof packet.source_sha256!=='string'||!/^[0-9a-f]{64}$/.test(packet.source_sha256)))
+  fail('Invalid original source fingerprint.');
+ if(typeof packet.baseline_sha256!=='string'||!/^[0-9a-f]{64}$/.test(packet.baseline_sha256))
+  fail('Invalid owner human baseline fingerprint.');
+ for(const k of FLAGS)if(packet[k]!==false)fail('Owner handoff claims '+k+' authority.');
+}
+async function validateRequest(request){
+ validateHeader(request,KIND,FIELDS);
+ const rows=checkRows(request.rows,request.owner_label);
+ const digest=await sha(canonical(rows));
+ if(digest!==request.baseline_sha256)fail('Original handoff baseline mismatch.');
+ return {...request,rows};
+}
+function fromSource(findings,cases,label){
+ const fs=engine().normalizeSource(findings);
+ const ids=new Set(fs.map(f=>f.finding_id));
+ if(!Array.isArray(cases)||cases.length!==fs.length)fail('Incomplete original casework.');
+ const original=engine().loadPacket(engine().makePacket(fs,cases,null));
+ const byId=new Map(original.cases.map(c=>[c.finding_id,c]));
+ const rows=fs.filter(f=>byId.get(f.finding_id).owner===label)
+  .map(f=>rowFrom(f,byId.get(f.finding_id)));
+ return checkRows(rows,label);
+}
+async function createRequest(findings,cases,label,sourceSha){
+ if(typeof label!=='string'||!label.trim()||label!==label.trim())fail('Choose a specific original human owner label.');
+ if(sourceSha!==null&&sourceSha!==undefined&&
+   (typeof sourceSha!=='string'||!/^[a-f0-9]{64}$/.test(sourceSha)))fail('Invalid original source fingerprint.');
+ const rows=fromSource(findings,cases,label);
+ const packet={
+  kind:KIND,schema_version:1,disposition:DISPOSITION,source_contract:CONTRACT,
+  source_sha256:sourceSha||null,owner_label:label,baseline_sha256:await sha(canonical(rows)),
+  rows,instructions:'PRIVATE original findings and human-only planning. This unsigned handoff is not an identity, tenant/consent, authorization, verified repair or retest claim.',
+  ...flags()
+ };
+ return await validateRequest(packet);
+}
+async function createReply(request,replyRows){
+ const validated=await validateRequest(request);
+ const latest=checkRows(replyRows,validated.owner_label);
+ if(latest.length!==validated.rows.length)fail('Owner response omitted original findings.');
+ const before=new Map(validated.rows.map(x=>[x.finding_id,x])),seen=new Set();
+ for(const row of latest){
+  const old=before.get(row.finding_id);
+  if(!old||seen.has(row.finding_id)||COLS.some(k=>row[k]!==old[k]))
+   fail('Owner response attempted to alter original finding identity or source.');
+  seen.add(row.finding_id);
+ }
+ const packet={...validated,kind:ANSWER,reply_rows:latest};
+ await validateReply(packet);
+ return packet;
+}
+async function validateReply(reply){
+ validateHeader(reply,ANSWER,REPLY_FIELDS);
+ const request={...reply,kind:KIND};
+ delete request.reply_rows;
+ const admitted=await validateRequest(request);
+ const after=checkRows(reply.reply_rows,reply.owner_label);
+ if(after.length!==admitted.rows.length)fail('Incomplete owner response.');
+ const byId=new Map(admitted.rows.map(x=>[x.finding_id,x])),seen=new Set();
+ for(const row of after){
+  const baseline=byId.get(row.finding_id);
+  if(!baseline||seen.has(row.finding_id)||COLS.some(k=>row[k]!==baseline[k]))
+   fail('Owner reply changed immutable original source.');
+  seen.add(row.finding_id);
+ }
+ return {...reply,rows:admitted.rows,reply_rows:after};
+}
+async function applyReply(findings,cases,sourceSha,reply){
+ const accepted=await validateReply(reply);
+ const original=engine().normalizeSource(findings);
+ const before=engine().loadPacket(engine().makePacket(original,cases,null));
+ const computed=await engine().digest(original);
+ if(reply.source_sha256!==null&&reply.source_sha256!==computed)
+  fail('Original source has changed since owner handoff.');
+ if(sourceSha!==null&&sourceSha!==undefined&&computed!==sourceSha)
+  fail('Current private source digest has changed.');
+ const existing=fromSource(original,before.cases,accepted.owner_label);
+ if(existing.length!==accepted.rows.length||await sha(canonical(existing))!==accepted.baseline_sha256)
+  fail('Current owner assignment, original source, or human notes have changed. No auto-merge.');
+ const changed=new Map(accepted.reply_rows.map(x=>[x.finding_id,x])),idSet=new Set(original.map(f=>f.finding_id));
+ const casesNext=before.cases.map(c=>{
+  const r=changed.get(c.finding_id);
+  if(!r)return c;
+  return engine().cleanCase({...c,owner:r.owner,status:r.status,due_date:r.due_date,
+    next_action:r.next_action,blocker:r.blocker,updated_utc:new Date().toISOString()},idSet);
+ });
+ engine().loadPacket(engine().makePacket(original,casesNext,computed));
+ return {cases:casesNext,changed:accepted.reply_rows.length,owner_label:accepted.owner_label};
+}
+global.LightUpOwnerProtocol=Object.freeze({createRequest,validateRequest,createReply,validateReply,applyReply,MAX_JSON});
+})(window);
+</script>
 <script>/* LightUp private human Remediation Calendar. Browser-only; no authority or network. */
 (function(global){
 'use strict';
@@ -776,6 +954,57 @@ function applyAssignment(){
  $('assign-message').textContent=p.proposal.rows.length+
   ' human ownership notes updated locally. Export the PRIVATE Casework v1 draft for separate authorized handoff.';
 }
+function renderHandoffOwners(){
+ const select=$('owner-handoff-label'),current=select.value;
+ const owners=[...new Set(state.cases.map(c=>c.owner))]
+  .filter(s=>typeof s==='string'&&s.trim()===s&&s&&s.length<=120&&
+    !/[\u0000-\u001f\u007f-\u009f]/.test(s)).sort();
+ select.replaceChildren(new Option('Select exact human owner',''));
+ for(const name of owners)select.add(new Option(name,name));
+ select.value=owners.includes(current)?current:'';
+ if(select.value!==current)$('owner-handoff-ack').checked=false;
+ updateHandoffControls();
+}
+function updateHandoffControls(){
+ const ack=!!state&&$('source-ack').checked&&$('owner-handoff-ack').checked;
+ $('owner-handoff-export').disabled=!ack||!$('owner-handoff-label').value;
+ $('owner-reply-import').disabled=!ack||!$('owner-reply-file').files.length;
+}
+async function exportOwnerHandoff(){
+ if(!state||!$('source-ack').checked||!$('owner-handoff-ack').checked)
+  fail('Confirm the source and independent private sharing before owner handoff.');
+ const before=state,baseline=JSON.stringify(state.cases),source=JSON.stringify(state.findings);
+ const owner=$('owner-handoff-label').value;
+ if(!owner)fail('Select one exact human owner.');
+ if(!global.confirm('This packet includes ORIGINAL sensitive findings for human owner '+owner+'. Confirm approved independent recipient and exact engagement. It is not an authorization.'))return;
+ const packet=await global.LightUpOwnerProtocol.createRequest(state.findings,state.cases,owner,state.digest);
+ if(state!==before||JSON.stringify(state.cases)!==baseline||
+    JSON.stringify(state.findings)!==source)fail('Casework changed during owner handoff. Export held.');
+ const name='lightup-PRIVATE-owner-handoff.json';
+ saveFile(name,JSON.stringify(packet,null,2)+'\n','application/json;charset=utf-8');
+ $('owner-handoff-message').textContent=packet.rows.length+
+  ' original findings included only for owner '+owner+'. Transfer privately; no identity or authorization established.';
+}
+async function importOwnerReply(){
+ if(!state||!$('source-ack').checked||!$('owner-handoff-ack').checked)
+  fail('Confirm original source and independent return sender/channel first.');
+ const file=$('owner-reply-file').files[0];
+ if(!file||file.size>2097152)fail('Select a PRIVATE owner reply JSON no larger than 2 MiB.');
+ const previous=state,baseline=JSON.stringify(state.cases),source=JSON.stringify(state.findings);
+ const packet=strictJSON(await file.text());
+ const accepted=await global.LightUpOwnerProtocol.applyReply(
+  state.findings,state.cases,state.digest,packet);
+ if(state!==previous||JSON.stringify(state.cases)!==baseline||
+    JSON.stringify(state.findings)!==source)
+  fail('Source or human plans changed while importing owner response. No update applied.');
+ if(!global.confirm('Import '+accepted.changed+' HUMAN-ONLY replies from '+accepted.owner_label+
+   ' as unverified local planning, after independently confirming the sender and exact client/engagement? No real remediation/retest is verified.'))return;
+ state={...state,cases:accepted.cases};dirty=true;activeId=null;
+ $('edit-panel').hidden=true;clearRefresh();clearSchedule();clearAssignments();
+ $('owner-handoff-ack').checked=false;$('owner-reply-file').value='';
+ render();$('owner-handoff-message').textContent=accepted.changed+
+  ' HUMAN-ONLY notes accepted atomically from the exact source-bound owner baseline. Save updated PRIVATE Casework v1 JSON.';
+}
 function openEdit(id){
  if(!state||!$('source-ack').checked)fail('Source confirmation required.');
  const c=state.cases.find(x=>x.finding_id===id);
@@ -850,7 +1079,7 @@ function adjustMonth(delta){
 }
 function render(){
  if(!state)return;
- clearAssignments();renderOwners();renderMonth();
+ clearAssignments();renderOwners();renderHandoffOwners();renderMonth();
  const rows=filtered(),body=$('rows');body.replaceChildren();
  for(const x of rows){
   const f=x.finding,c=x.case,tr=document.createElement('tr');
@@ -977,6 +1206,11 @@ $('schedule-preview-button').addEventListener('click',()=>{try{previewSchedule()
 $('schedule-ack').addEventListener('change',scheduleControls);
 $('schedule-apply').addEventListener('click',()=>{try{applySchedule();}catch(e){$('schedule-message').textContent='HOLD: '+e.message;}});
 for(const id of ['schedule-anchor','schedule-scope',...PRIORITY.map(x=>'schedule-'+x)])$(id).addEventListener('change',clearSchedule);
+$('owner-handoff-label').addEventListener('change',()=>{$('owner-handoff-ack').checked=false;updateHandoffControls();});
+$('owner-reply-file').addEventListener('change',updateHandoffControls);
+$('owner-handoff-ack').addEventListener('change',updateHandoffControls);
+$('owner-handoff-export').addEventListener('click',async()=>{try{await exportOwnerHandoff();}catch(e){$('owner-handoff-message').textContent='HOLD: '+e.message;}});
+$('owner-reply-import').addEventListener('click',async()=>{try{await importOwnerReply();}catch(e){$('owner-handoff-message').textContent='HOLD: '+e.message;}});
 $('calendar-ack').addEventListener('change',render);
 $('draft-ack').addEventListener('change',render);
 $('month').addEventListener('change',()=>{selectedDay=null;render();});
@@ -986,7 +1220,7 @@ $('day-clear').addEventListener('click',()=>{selectedDay=null;render();});
 $('edit-form').addEventListener('submit',e=>{try{saveEdit(e);}catch(err){e.preventDefault();$('export-message').textContent='HOLD: '+err.message;}});
 $('edit-cancel').addEventListener('click',()=>{activeId=null;$('edit-panel').hidden=true;});
 $('casework-save').addEventListener('click',()=>{try{exportDraft();}catch(err){$('export-message').textContent='HOLD: '+err.message;}});
-$('source-ack').addEventListener('change',()=>{if(!$('source-ack').checked){clearRefresh();clearSchedule();}if(state)render();});
+$('source-ack').addEventListener('change',()=>{if(!$('source-ack').checked){clearRefresh();clearSchedule();$('owner-handoff-ack').checked=false;}if(state)render();});
 $('download').addEventListener('click',async()=>{try{await exportCalendar();}catch(e){$('export-message').textContent='HOLD: '+e.message;}});
 $('aggregate').addEventListener('click',()=>{try{exportAggregate();}catch(e){$('export-message').textContent='HOLD: '+e.message;}});
 $('clear').addEventListener('click',()=>{if(dirty&&!global.confirm('Discard unsaved human notes?'))return;reset();});

@@ -28,10 +28,11 @@ def build() -> bytes:
         raise ValueError("Original Casework schedule owner source changed.")
     refresh = (HERE / "source-refresh.js").read_bytes()
     workload = (HERE / "workload.js").read_bytes()
+    owner = (HERE / "owner-protocol.js").read_bytes()
     app = (HERE / "app.js").read_bytes()
     css = (HERE / "style.css").read_bytes()
     html = (HERE / "index.html").read_text("utf-8")
-    script_policy = "script-src " + " ".join([pin(source), pin(schedule), pin(refresh), pin(workload), pin(app)])
+    script_policy = "script-src " + " ".join([pin(source), pin(schedule), pin(refresh), pin(workload), pin(owner), pin(app)])
     style_policy = "style-src " + pin(css)
     old = "script-src 'self'; style-src 'self'"
     if html.count(old) != 1:
@@ -43,6 +44,7 @@ def build() -> bytes:
         ('<script src="../casework/remediation-schedule.js"></script>', "<script>" + schedule.decode("utf-8") + "</script>"),
         ('<script src="source-refresh.js"></script>', "<script>" + refresh.decode("utf-8") + "</script>"),
         ('<script src="workload.js"></script>', "<script>" + workload.decode("utf-8") + "</script>"),
+        ('<script src="owner-protocol.js"></script>', "<script>" + owner.decode("utf-8") + "</script>"),
         ('<script src="app.js"></script>', "<script>" + app.decode("utf-8") + "</script>"),
     ]
     for needle, replace in replacements:
