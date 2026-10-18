@@ -282,23 +282,27 @@ def publish_bytes(original: bytes, destination: Path, *, fresh_original_auth: bo
     if b"<title>LightUp | Scope Impact Map</title>" not in app:
         raise Refused("unexpected bundled app")
 
+    provenance_note = (
+        "Fresh original Casebook password authentication and tenant isolation "
+        "preceded this packet. This does not verify action-time consent, STOP "
+        "state, grant authority, source authenticity, or future permissions.\\n"
+        if fresh_original_auth else
+        "An existing separately exported Casebook file was locally packaged. "
+        "Its origin and freshness are not authenticated by this operation.\\n"
+    )
     instructions = (
-        "LIGHTUP PRIVATE SCOPE IMPACT MAP — REVIEW_ONLY / HOLD\n\n"
-        "1. Open standalone.html in an offline browser.\n"
-        "2. Import casebook.json through 'Load PRIVATE Casebook JSON'.\n"
-        "3. Inspect stored source relationships and add human-only notes.\n"
-        "4. Export anonymous counts, or confirm a private recipient for PRIVATE notes.\n\n"
-        ("The original Casebook authentication was performed freshly before\n"
-         "creating this packet; it still grants no current execution consent.\n"
-         if fresh_original_auth else
-         "The source was exported separately by original Casebook login; this\n"
-         "packaging step does not authenticate the file origin or freshness.\n")
-        + "Neither workflow can assert current consent, revoke a grant,\n"
-        "check action-time STOP state, or authorize target scans.\n"
-        "A SHA-256 is only a byte revision identifier, not proof of issuer.\n"
-        "The entire folder contains private information: keep access owner-only.\n"
-        "No network, model, grant, STOP, scan, deployment or authorization work.\n"
-        "Mandatory original approvals, current revocation and HUMAN GO remain.\n"
+        "LIGHTUP PRIVATE SCOPE IMPACT MAP — REVIEW_ONLY / HOLD\\n\\n"
+        "1. Open standalone.html in an offline browser.\\n"
+        "2. Import casebook.json through 'Load PRIVATE Casebook JSON'.\\n"
+        "3. Inspect source links and add human-only notes.\\n"
+        "4. Export counts or confirm a PRIVATE recipient for human notes.\\n\\n"
+        + provenance_note
+        + "Recorded source state is retrospective; no current live authorization.\\n"
+        "A SHA-256 is a byte fingerprint, not an issuer signature.\\n"
+        "Keep the entire folder owner-only and never upload PRIVATE data.\\n"
+        "No network/model/scan/consent/grant/STOP/release change occurs here.\\n"
+        "Original CI, owner/security/privacy, actual separate consent and "
+        "action-time revocation plus HUMAN GO remain required.\\n"
     ).encode("utf-8")
 
     # Creating the final name exclusively means no previous workspace can be
