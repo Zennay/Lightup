@@ -8,7 +8,7 @@ The [portable offline Scope Impact Map](standalone.html) consumes **one original
 
 What an operator can actually do:
 
-1. Navigate recorded **request → stored grant → engagement → recorded risk decision** edges and inspect any selected record's transitive related source records.
+1. Navigate recorded **request → stored grant → engagement → recorded risk decision** edges and inspect any selected record's transitive related source records. The interface now displays each exact shortest reference path and its hop count, including backwards links, so sibling requests connected only by a shared engagement are not mistaken for a direct approval.
 2. Prioritize source-observed HOLD, PENDING and out-of-window rows. Explicitly surface **referenced IDs missing from the imported snapshot**, while never describing missing rows as revoked, cleared, fixed or authorized.
 3. Record local self-declared reviewer label, human follow-up stage, action, date and private note per exact original source ID. Review the **human follow-up schedule** across all recorded notes, filter by self-declared stage and see dates before the device UTC day as reminders. Notes live only in browser memory; device time is untrusted.
 4. Export a **counts-only anonymous aggregate JSON** with no original IDs, hosts, targets, paths, contacts, notes or per-item outcomes.
