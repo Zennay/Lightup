@@ -19,3 +19,7 @@ There are no active-target calls or tool dispatches in this change. A Python syn
 ## Additional source repair: handler-controlled evidence metadata (#1152)
 
 The original projection `{"asset": call.asset, **dict(output.metadata)}` previously hid duplicate handler keys and allowed collisions with source-provenance fields. Canonical ToolOutput now requires an exact tuple of exact two-str pairs with unique, nonempty/control-free names; it rejects `asset`, `client_id`, `engagement_id`, `mode`, and `is_lab` as reserved identities. Handler-provided values cannot impersonate this trusted provenance through the pre-existing dict conversion. This extra source patch does not change the separate evidence ledger schema or the original test-owner PR #1152.
+
+## Additional source repair: finite NUMBER admission (#1143)
+
+The original ParamKind.NUMBER accepted NaN and positive/negative infinity; those values defeat ordinary range comparison and JSON interoperability. Direct numeric argument admission now requires an exact built-in int or a finite exact built-in float. Existing finite positive, negative and zero values remain valid. Boolean and polymorphic numeric subclasses do not become accepted through this narrowing. This is *before* registry-dispatched handler execution and evidence handoff, not a per-parameter business-range grant or destination permission. Original #1143 test-owner contracts remain untouched.

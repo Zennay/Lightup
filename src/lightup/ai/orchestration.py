@@ -18,6 +18,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
+from math import isfinite
 from typing import Any, Callable
 
 from ..capabilities import get_capabilities
@@ -59,7 +60,9 @@ class ParamKind(str, Enum):
         if self is ParamKind.INTEGER:
             return isinstance(value, int) and not isinstance(value, bool)
         if self is ParamKind.NUMBER:
-            return isinstance(value, (int, float)) and not isinstance(value, bool)
+            # NaN/Infinity can evade range comparisons and cannot be safely
+            # serialized as ordinary JSON numbers; no handler may receive them.
+            return type(value) is int or (type(value) is float and isfinite(value))
         return isinstance(value, bool)
 
 
