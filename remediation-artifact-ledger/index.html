@@ -119,6 +119,9 @@
 <div><h3>Restore PRIVATE draft</h3><p>Load only with the exact same original CSV, client and engagement. Reject incomplete, mismatched or elevated authority packets.</p>
 <input id="privateImport" type="file" accept=".json,application/json" disabled><button id="restore">Restore complete draft</button></div>
 <div><h3>Anonymous counts</h3><p>Severity × human stage only. No target URLs, filenames, source hashes, IDs, client references or notes.</p><button id="aggregate" disabled>Export counts CSV</button></div>
+<div><h3>PRIVATE scriptless HUMAN brief</h3>
+<p>Download a scriptless, offline readable human case-by-case document with source claims, Casework planning, Evidence Review stages and local evidence fingerprints. Original file bytes are never included.</p>
+<button id="scriptlessExport" disabled>Download PRIVATE human HTML brief</button></div>
 </div>
 <p><button class="secondary" id="forget">Forget in-memory workspace</button></p></section>
 <p id="notice" role="status" aria-live="polite" class="notice">Private local application. No network requests, browser persistence, scanner, active target or granting of authority.</p>
