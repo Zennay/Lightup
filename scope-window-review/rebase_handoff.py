@@ -8,6 +8,7 @@ from __future__ import annotations
 import argparse
 from datetime import datetime, timezone
 import json
+from html import escape
 from pathlib import Path
 import re
 import sys
@@ -15,6 +16,7 @@ import sys
 from board_html import handoff_digest
 from window_review import (
     ReviewHold, derive, identity, private_publish, source_file, when,
+    ensure_private_destination,
 )
 
 STAGES = {"unreviewed", "investigating", "escalated", "documented"}
@@ -101,7 +103,7 @@ def _read_note(path: Path) -> dict:
 
 def rebase(old: dict, fresh: dict, note: dict, *, previous_now: datetime,
            current_now: datetime, lead_days: int, future_days: int,
-           daily_capacity: int) -> tuple[dict, dict]:
+           daily_capacity: int) -> tuple[dict, dict, list[dict]]:
     if old["client_id"] != fresh["client_id"]:
         raise ReviewHold("original tenant changed: no human carry-forward")
     if old["_private_original_sha256"] == fresh["_private_original_sha256"]:
@@ -117,6 +119,7 @@ def rebase(old: dict, fresh: dict, note: dict, *, previous_now: datetime,
     old_grants = _record_map(old["grants"], "grant_id")
     new_grants = _record_map(fresh["grants"], "grant_id")
     saved = []
+    withheld: list[dict] = []
     stats = {"preserved": 0, "changed": 0, "absent": 0,
              "outside_current_planning": 0}
     for item in note["entries"]:
@@ -126,15 +129,23 @@ def rebase(old: dict, fresh: dict, note: dict, *, previous_now: datetime,
         prior_grant = old_grants.get(key[0])
         now_grant = new_grants.get(key[0])
         if now_grant is None:
+            reason = "SOURCE_GRANT_ABSENT_NOT_REVOKED"
             stats["absent"] += 1
         elif key not in fresh_items:
+            reason = "OUTSIDE_CURRENT_HUMAN_PLANNING"
             stats["outside_current_planning"] += 1
         elif (prior_grant != now_grant
               or _source_family(old, key[1]) != _source_family(fresh, key[1])):
+            reason = "ORIGINAL_LINKED_SOURCE_CHANGED"
             stats["changed"] += 1
         else:
+            reason = None
             saved.append(item)
             stats["preserved"] += 1
+        if reason:
+            withheld.append({"grant_id": key[0], "engagement_id": key[1],
+                             "reason": reason,
+                             "next_human_action": "REOPEN_ORIGINAL_PERSISTED_CASEBOOK"})
     result = {
         "schema": "lightup.scope_window_human_handoff.v2",
         "status": "REVIEW_ONLY",
@@ -145,7 +156,46 @@ def rebase(old: dict, fresh: dict, note: dict, *, previous_now: datetime,
         **dict.fromkeys(AUTH, False),
         "entries": saved,
     }
-    return result, stats
+    return result, stats, withheld
+
+
+def private_diff_html(*, old: dict, fresh: dict,
+                      stats: dict, withheld: list[dict]) -> bytes:
+    """No scripts, targets or raw findings. One private human source review."""
+    rows = []
+    for item in withheld:
+        grant_id = escape(item["grant_id"], quote=True)
+        engagement = escape(item["engagement_id"] or "(source missing)", quote=True)
+        reason = escape(item["reason"], quote=True)
+        rows.append("<tr><td>" + grant_id + "</td><td>" + engagement +
+                    "</td><td>" + reason + "</td><td>Reopen original "
+                    "persisted source with separately authenticated operator; "
+                    "no source revocation is proven.</td></tr>")
+    metric = " · ".join(f"{escape(key)}: {number}" for key, number in stats.items())
+    html = """<!doctype html><html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy"
+content="default-src 'none'; script-src 'none'; img-src 'none'; connect-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; object-src 'none'">
+<title>PRIVATE LightUp original source refresh — HUMAN HOLD</title>
+<style>body{font-family:system-ui;max-width:980px;margin:24px auto;padding:0 18px;background:#0f1722;color:#eef4fa}
+h1{font-size:1.8rem}p{line-height:1.6}.notice{border-left:5px solid #e9b15a;padding:14px;background:#25313e}
+table{border-collapse:collapse;width:100%;overflow-wrap:anywhere}td,th{border-bottom:1px solid #61717f;padding:12px;text-align:left}
+@media(max-width:620px){body{margin:10px}td,th{font-size:.8rem;padding:6px}}</style></head><body>
+<header><p>LIGHTUP / PRIVATE HUMAN DIFFERENCE DESK</p>
+<h1>Original-source change review</h1>
+<p class="notice">HOLD — unsigned historical source only. This is NOT current client consent, grant validation,
+verified revocation, execution permission, security verdict, or completed STOP. Verify actual
+source ownership, client and operator separately before further action.</p></header>
+<p>Original source: """ + escape(old["as_of"]) + """ — new source: """ + escape(fresh["as_of"]) + """</p>
+<p>Human follow-up counts: """ + metric + """</p>
+<h2>Not carried forward: separate human review required</h2>
+<table><thead><tr><th>Original grant ID</th><th>Original engagement ID</th><th>Reason</th>
+<th>Human-only next action</th></tr></thead><tbody>""" + "".join(rows) + """</tbody></table>
+<p>Only unchanged related original source rows appear in the separately exported
+unsigned candidate handoff. A disappeared grant is NOT proof of valid revocation,
+a missing review is NOT an approval, and no dates or permissions have been modified.</p>
+</body></html>"""
+    return html.encode("utf-8")
 
 
 def main(argv=None) -> int:
