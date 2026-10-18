@@ -16,6 +16,8 @@
   const ENC = new TextEncoder();
   const DEC = new TextDecoder("utf-8", {fatal: true});
   const allowed = /\.(json|md|txt|ics|csv)$/i;
+  const handoffRoutes = ["private-archive", "client-review", "operator-review"];
+  const clientReviewRoles = ["Client proposal — unverified", "Scope revision — unverified", "Schedule handoff — unverified"];
   const roles = ["Unclassified", "Client proposal — unverified", "Operator review — unverified", "Scope revision — unverified", "Schedule handoff — unverified"];
   function validRole(role) { return typeof role === "string" && roles.includes(role); }
   const $ = (id) => document.getElementById(id);
@@ -25,7 +27,7 @@
     password: $("seal-password"), confirm: $("seal-confirm"),
     clear: $("clear"), openFile: $("open-file"), openPassword: $("open-password"),
     unlock: $("unlock"), lock: $("lock"), recovered: $("recovered"),
-    mergeMode: $("merge-mode"),
+    mergeMode: $("merge-mode"), handoffRoute: $("handoff-route"),
     before: $("compare-before"), after: $("compare-after"),
     previewFile: $("preview-file"), compareFiles: $("compare-files"),
     hidePreview: $("hide-preview"), comparisonOutput: $("comparison-output"),
@@ -263,9 +265,19 @@
       invariant(outgoing.length > 0 && outgoing.length <= MAX_FILES);
       const passphrase = els.password.value;
       const confirm = els.confirm.value;
+      const route = els.handoffRoute.value;
       els.password.value = ""; els.confirm.value = "";
       if (passphrase.length < 14 || passphrase.length > 256 || passphrase !== confirm) {
         notice("Use a matching 14–256 character passphrase. There is no account reset or recovery.", true);
+        return;
+      }
+      invariant(handoffRoutes.includes(route));
+      if (route === "client-review") invariant(outgoing.every((entry) => clientReviewRoles.includes(entry.role)));
+      const manifest = outgoing.map((entry) => entry.name + " [" + entry.role + "]").join("\n");
+      if (!window.confirm("Intended route: " + route
+        + "\n\nInclude exactly these local files?\n" + manifest
+        + "\n\nThis does not verify recipient identity or confer consent. Continue encrypting?")) {
+        notice("Encryption cancelled before creating a packet; no files were sent or downloaded.");
         return;
       }
       const salt = crypto.getRandomValues(new Uint8Array(16));
@@ -273,6 +285,7 @@
       const payload = {
         schema: "lightup.offline.scope-packet.payload.v1",
         createdUtc: new Date().toISOString(),
+        handoffRoute: route,
         authority: {may_authorize: false, may_consent: false, may_grant: false, may_scan: false, may_dispatch: false, may_deploy: false, may_release: false},
         files: outgoing.map((entry) => ({name: entry.name, length: entry.bytes.length, sha256: entry.hash, role: entry.role, base64: b64(entry.bytes)}))
       };
@@ -296,12 +309,17 @@
     });
   }
   function validatePayload(body) {
-    strictKeys(body, ["schema", "createdUtc", "authority", "files"]);
+    const hasRoute = Object.prototype.hasOwnProperty.call(body, "handoffRoute");
+    strictKeys(body, hasRoute ?
+      ["schema", "createdUtc", "handoffRoute", "authority", "files"] :
+      ["schema", "createdUtc", "authority", "files"]);
+    if (hasRoute) invariant(handoffRoutes.includes(body.handoffRoute));
     invariant(body.schema === "lightup.offline.scope-packet.payload.v1");
     invariant(typeof body.createdUtc === "string" && /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\.\d{3}Z$/.test(body.createdUtc));
     strictKeys(body.authority, ["may_authorize", "may_consent", "may_grant", "may_scan", "may_dispatch", "may_deploy", "may_release"]);
     invariant(Object.values(body.authority).every((x) => x === false));
     invariant(Array.isArray(body.files) && body.files.length > 0 && body.files.length <= MAX_FILES);
+    return hasRoute ? body.handoffRoute : "private-archive";
   }
   async function unlock() {
     await inProgress(async () => {
@@ -326,13 +344,14 @@
       const staged = [];
       try {
         const payload = parseCanonicalJson(DEC.decode(cleartext));
-        validatePayload(payload);
+        const importedRoute = validatePayload(payload);
         const names = new Set();
         let total = 0;
         for (const record of payload.files) {
           const hasRole = Object.prototype.hasOwnProperty.call(record, "role");
           strictKeys(record, hasRole ? ["name", "length", "sha256", "role", "base64"] : ["name", "length", "sha256", "base64"]);
           if (hasRole) invariant(validRole(record.role));
+          if (importedRoute === "client-review") invariant(clientReviewRoles.includes(record.role));
           const name = nameOf(record.name);
           invariant(!names.has(name));
           names.add(name);
@@ -367,13 +386,13 @@
           }
           entries = merged;
           clearPreview();
-          notice(newCount + " new local file(s) merged atomically. Existing matching files kept; source identities/roles remain unverified.");
+          notice(newCount + " new local file(s) merged atomically from " + importedRoute + " handoff. Roles/recipient identities remain unverified.");
         } else {
           // Atomic replacement: previous plaintext is forgotten only after authenticated validation.
           for (const item of entries) item.bytes.fill(0);
           entries = staged;
           clearPreview();
-          notice("Encrypted packet restored locally. Verify drafts with real client/operator; the vault grants no authorization.");
+          notice("Encrypted " + importedRoute + " packet restored locally. Verify drafts with real client/operator; the vault grants no authorization.");
         }
       } catch (err) {
         for (const item of staged) item.bytes.fill(0);
