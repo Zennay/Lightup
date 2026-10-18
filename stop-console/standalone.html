@@ -16,7 +16,7 @@ h1{font-size:clamp(29px,4.5vw,47px);letter-spacing:-.05em;line-height:1.1;margin
 label.import,button{font:inherit;font-size:13px;border-radius:9px;padding:11px 16px;cursor:pointer;font-weight:700;background:#9cacff;color:#14192b;border:0}
 button.secondary{color:#e3e7ff;background:#2b344f;border:1px solid #536387}button:focus-visible,label:focus-within,input:focus-visible{outline:3px solid #abbaff;outline-offset:3px}
 input[type=file]{position:absolute;width:1px;height:1px;opacity:0}input[type=search]{background:#11182c;color:white;border:1px solid #44506e;border-radius:10px;padding:11px 14px;width:100%;max-width:310px}
-.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:18px 0}
+.kpis{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin:18px 0}
 .kpi{background:#191e30;border:1px solid #30374e;border-radius:15px;padding:19px}.kpi strong{display:block;font-size:30px;font-variant-numeric:tabular-nums;margin:7px 0}.kpi small{font-size:12px;color:#aeb7ce}
 .layout{display:grid;grid-template-columns:1fr 340px;gap:16px}
 .toolbar{display:flex;gap:12px;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap}
@@ -52,6 +52,7 @@ footer{color:#8e9bb8;font-size:12px;line-height:1.65;padding:28px 0 10px}
 <div class="kpi"><small>Stopped engagements</small><strong id="count-stop">0</strong><small>Original declarations</small></div>
 <div class="kpi"><small>Unacknowledged STOPs</small><strong id="count-pend">0</strong><small>Source-reported queue</small></div>
 <div class="kpi"><small>Uncertain / HOLD</small><strong id="count-hold">0</strong><small>Never infer an allow</small></div>
+<div class="kpi"><small>Stored grant rows</small><strong id="count-grants">0</strong><small>Inventory, not valid authority</small></div>
 </section>
 <section class="layout">
 <div class="card"><div class="toolbar"><h2>Source-bound coordination</h2><input id="filter" type="search" placeholder="Filter local IDs / statuses" aria-label="Filter source IDs"></div>
@@ -129,6 +130,14 @@ d.pending.forEach(function(x){if(!obj(x)||!bounded(x.stop_id,180)||!bounded(x.st
 if(!uniq(d.pending,"stop_id"))throw Error("Duplicate STOP ID");
 return {kind:"pending",items:d.pending.map(function(x){return {type:"Pending STOP",id:x.stop_id,status:"STOP_ACTIVE",attention:"Operator acknowledgment needed"};}),truncated:d.truncated};
 }
+if(d.schema==="lightup.stop_grant_exposure.v1"){
+if(d.status!=="REVIEW_ONLY"||d.stop_active!==true&&d.stop_active!==false||d.grant_validity_verified!==false||d.source_authenticated!==false||d.consent_verified!==false)throw Error("Invalid exposure provenance");
+var n=d.persisted_grant_count,linked=d.request_linked_grant_count,legacy=d.legacy_unbound_grant_count,windowCount=d.time_window_current_by_untrusted_columns,invalid=d.invalid_time_window_row_count;
+if(![n,linked,legacy,windowCount,invalid].every(function(v){return Number.isInteger(v)&&v>=0&&v<=256;})||linked+legacy!==n||windowCount+invalid>n)throw Error("Invalid exposure counters");
+if(!["STOP_WITH_STORED_GRANTS","STOP_WITHOUT_STORED_GRANTS","SOURCE_GRANTS_REQUIRE_INDEPENDENT_REVIEW","HOLD_MALFORMED_GRANT_SOURCE"].includes(d.human_attention))throw Error("Invalid exposure attention");
+if(d.stop_active&&n>0&&d.human_attention!=="STOP_WITH_STORED_GRANTS"&&d.human_attention!=="HOLD_MALFORMED_GRANT_SOURCE")throw Error("Contradictory STOP exposure");
+return {kind:"exposure",declaredGrants:n,items:[{type:"Grant inventory",id:"local source declaration",status:d.stop_active?"STOP_ACTIVE":invalid>0?"HOLD_SOURCE":"REVIEW_ONLY",attention:d.human_attention}],truncated:false};
+}
 if(d.schema==="lightup.authenticated_stop_batch.v1"){
 if(d.status!=="STOP_RECORDED_BATCH"||!Number.isInteger(d.recorded_count)||d.recorded_count<1||d.recorded_count>32||!bounded(d.stopped_at,80)||!Array.isArray(d.records)||d.records.length!==d.recorded_count)throw Error("Batch stop shape invalid");
 d.records.forEach(function(x){if(!obj(x)||!bounded(x.engagement_id,180)||!bounded(x.stop_id,180))throw Error("Invalid batch STOP record");});
@@ -165,6 +174,7 @@ txt("count-eng",docs.filter(function(d){return d.kind==="engagement";}).reduce(f
 txt("count-stop",docs.filter(function(d){return (d.kind==="engagement"||d.kind==="batch");}).reduce(function(n,d){return n+d.items.filter(function(x){return x.status==="STOP_ACTIVE";}).length;},0));
 txt("count-pend",docs.filter(function(d){return d.kind==="pending";}).reduce(function(n,d){return n+d.items.length;},0));
 txt("count-hold",items.filter(function(x){return x.status.indexOf("HOLD")>=0;}).length);
+txt("count-grants",docs.filter(function(d){return d.kind==="exposure";}).reduce(function(n,d){return n+d.declaredGrants;},0));
 txt("source-note",(fictional?"FICTIONAL DEMO · ":"UNVERIFIED LOCAL INPUT · ")+docs.length+" source(s). "+(docs.some(function(d){return d.truncated;})?"One or more original sources are truncated. ":"")+"No source can authorize execution.");
 }
 source.addEventListener("change",async function(){
@@ -193,7 +203,7 @@ source_count:docs.length,engagement_record_count:docs.filter(function(d){return 
 stopped_engagement_count:all.filter(function(x){return x.type==="Engagement"&&x.status==="STOP_ACTIVE";}).length,
 pending_stop_count:all.filter(function(x){return x.type==="Pending STOP";}).length,
 hold_record_count:all.filter(function(x){return x.status.indexOf("HOLD")>=0;}).length,
-source_truncated:docs.some(function(d){return d.truncated;}),source_authenticated:false,
+source_truncated:docs.some(function(d){return d.truncated;}),stored_grant_rows_declared:docs.filter(function(d){return d.kind==="exposure";}).reduce(function(n,d){return n+d.declaredGrants;},0),source_authenticated:false,
 client_consent_verified:false,operator_consent_verified:false,authorization_granted:false,execution_allowed:false,release_approved:false};
 var a=document.createElement("a"),url=URL.createObjectURL(new Blob([JSON.stringify(out,null,2)],{type:"application/json"}));
 a.href=url;a.download="lightup-stop-aggregate-review-only.json";document.body.appendChild(a);a.click();a.remove();setTimeout(function(){URL.revokeObjectURL(url);},1000);
