@@ -574,26 +574,55 @@ E("bulkApply").addEventListener("click",function(){
 E("saveStages").addEventListener("click",function(){
  if(!report||!sourceDigest)return;
  download({
-  schema:"lightup.scope_casework_stage.v1",status:"REVIEW_ONLY",
+  schema:"lightup.scope_casework_stage.v2",status:"REVIEW_ONLY",
   source_sha256:sourceDigest,source_case_count:report.engagements.length,
   source_order_stages:report.engagements.map(r=>stages.get(r.engagement_id)||"unreviewed"),
+  source_order_human_notes:report.engagements.map(function(r){
+    var note=teamNotes.get(r.engagement_id);
+    return note?{note:note.note,reviewer:note.reviewer,team:note.team}:null;
+  }),
   authorization_granted:false,execution_allowed:false,release_approved:false
  },"lightup-private-follow-up.json");
  E("message").textContent="Local follow-up downloaded; restore only against the exact same original source bytes.";
 });
 E("restoreStages").addEventListener("change",async function(){
  var f=this.files&&this.files[0];this.value="";if(!f)return;
- if(!report||!sourceDigest||f.size<2||f.size>16384){E("message").textContent="HOLD: load a source with SHA-256 support first.";return;}
+ if(!report||!sourceDigest||f.size<2||f.size>65536){E("message").textContent="HOLD: load a source with SHA-256 support first.";return;}
  try{
   var raw=await privateText(f);checkDuplicateKeys(raw);var o=JSON.parse(raw);
-  if(!O(o)||Object.keys(o).sort().join("|")!=="authorization_granted|execution_allowed|release_approved|schema|source_case_count|source_order_stages|source_sha256|status"||
-   o.schema!=="lightup.scope_casework_stage.v1"||o.status!=="REVIEW_ONLY"||
+  var v1=exactKeys(o,["authorization_granted","execution_allowed","release_approved",
+   "schema","source_case_count","source_order_stages","source_sha256","status"])&&
+   o.schema==="lightup.scope_casework_stage.v1";
+  var v2=exactKeys(o,["authorization_granted","execution_allowed","release_approved",
+   "schema","source_case_count","source_order_stages","source_order_human_notes",
+   "source_sha256","status"])&&o.schema==="lightup.scope_casework_stage.v2";
+  if((!v1&&!v2)||o.status!=="REVIEW_ONLY"||
    o.authorization_granted!==false||o.execution_allowed!==false||o.release_approved!==false||
    o.source_sha256!==sourceDigest||o.source_case_count!==report.engagements.length||
    !Array.isArray(o.source_order_stages)||o.source_order_stages.length!==report.engagements.length||
    !o.source_order_stages.every(x=>stageLabels.includes(x)))throw Error("source binding");
-  var nextStages=new Map();report.engagements.forEach((r,i)=>nextStages.set(r.engagement_id,o.source_order_stages[i]));
-  stages=nextStages;render();E("message").textContent="Private human stages restored for the exact same source; never approvals.";
+  var nextStages=new Map(),nextNotes=new Map();
+  report.engagements.forEach((r,i)=>nextStages.set(r.engagement_id,o.source_order_stages[i]));
+  if(v2){
+    if(!Array.isArray(o.source_order_human_notes)||
+       o.source_order_human_notes.length!==report.engagements.length)
+      throw Error("private source note count");
+    for(var i=0;i<report.engagements.length;i++){
+      var note=o.source_order_human_notes[i];
+      if(note===null)continue;
+      if(!exactKeys(note,["note","reviewer","team"])||
+         typeof note.note!=="string"||note.note.length>500||
+         /[\x00-\x1f\x7f]/.test(note.note)||
+         !W(note.reviewer)||note.reviewer.length>80||
+         !W(note.team)||note.team.length>80)
+        throw Error("private note schema");
+      nextNotes.set(report.engagements[i].engagement_id,{
+        note:note.note,reviewer:note.reviewer,team:note.team
+      });
+    }
+  }
+  stages=nextStages;teamNotes=nextNotes;render();
+  E("message").textContent="Private human stages and self-declared notes restored against the exact original source; NOT authenticated evidence.";
  }catch(e){E("message").textContent="HOLD: stages not bound to this original file. Existing human stages preserved.";}
 });
 E("print").addEventListener("click",function(){if(report)window.print();});
