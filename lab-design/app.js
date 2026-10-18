@@ -226,11 +226,50 @@
         String(item.targets.length),item.expected_findings===null?"Unscored":
           item.expected_findings.length?item.expected_findings.length+" planted":"Scored: zero expected"];
       for(const t of content){const td=document.createElement("td");td.textContent=t;row.append(td);}
-      const td=document.createElement("td"),button=document.createElement("button");
-      button.type="button";button.className="outline";button.textContent="Edit";
-      button.addEventListener("click",()=>edit(index));td.append(button);row.append(td);body.append(row);
+      const td=document.createElement("td");
+      for(const [label,click,disabled] of [
+        ["Edit",()=>edit(index),false],
+        ["Up",()=>moveScenario(index,-1),index===0],
+        ["Down",()=>moveScenario(index,1),index===items.length-1],
+        ["Copy unscored",()=>cloneScenario(index),items.length>=32]]){
+        const button=document.createElement("button");
+        button.type="button";button.className="outline";
+        button.textContent=label;button.disabled=disabled;
+        button.addEventListener("click",click);td.append(button);
+      }
+      row.append(td);body.append(row);
     });
     table.append(body);$("catalog").append(table);
+  }
+  function moveScenario(index,direction){
+    const target=index+direction;
+    if(index<0||index>=items.length||target<0||target>=items.length)return;
+    const next=[...items];[next[index],next[target]]=[next[target],next[index]];
+    validateCatalog(documentCatalog(next));
+    clearStage();items=next;
+    if(editing===index)editing=target;
+    else if(editing===target)editing=index;
+    render();notify("status","PRIVATE lab scenario order changed; no runtime execution.");
+  }
+  function cloneScenario(index){
+    if(index<0||index>=items.length||items.length>=32)return;
+    const original=items[index];
+    let newId=null;
+    for(let n=1;n<=99;n++){
+      const suffix="-copy-"+n;
+      const candidate=original.scenario_id.slice(0,64-suffix.length)+suffix;
+      if(!items.some(r=>r.scenario_id===candidate)){newId=candidate;break;}
+    }
+    if(!newId){notify("status","HOLD: no available duplicate scenario ID.",true);return;}
+    const replica=validateScenario({...original,
+      scenario_id:newId,name:("COPY: "+original.name).slice(0,160),
+      targets:[...original.targets],
+      // Never automatically claim planted or zero ground truth on a copy.
+      expected_findings:null});
+    const next=[...items,replica];
+    validateCatalog(documentCatalog(next));
+    clearStage();items=next;render();
+    notify("status","PRIVATE copy created as UNSCORED. Review and enter fresh ground truth before using.");
   }
   function saveForm(event){
     event.preventDefault();
@@ -317,6 +356,7 @@
     }
   }
   function demo(){
+    if(items.length&&!confirm("Replace existing PRIVATE catalog with fictional demo? Save your original first."))return;
     const next=[
       {scenario_id:"fictional-login",name:"FICTIONAL isolated login fixture",
         description:"Invented lab only. No reachable service assumed.",
@@ -333,6 +373,7 @@
     notify("status","FICTIONAL DEMO ONLY: invented addresses and findings. No system accessed.");
   }
   function forget(){
+    if(items.length&&!confirm("Forget all PRIVATE lab scenarios from this browser session? Download a private backup first."))return;
     clearStage();items=[];fictional=false;resetEditor();$("load").value="";
     render();notify("status","Catalog forgotten from this browser session.");
   }
