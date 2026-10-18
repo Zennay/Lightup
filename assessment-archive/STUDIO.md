@@ -88,3 +88,14 @@ and by private packet.py --include-studio --previous /private/OLDER.json.
 The option is refused for aggregate-only packages, protecting the original
 private history fingerprints. Any previous HOLD propagates to the generated
 output's operator-level HOLD result, without changing original source status.
+
+### Check a delivered review room without opening it first
+
+After receiving a ZIP, use the standalone local inspector to check original
+declared member-byte integrity without extracting files:
+
+    python3 assessment-archive/packet_inspect.py /private/RECEIVED.zip
+
+This cannot authenticate the sender or establish trustworthy provenance.
+Use only independently verified trusted source to open browser content.
+Its result can never authorize scanning, approval or deployment.

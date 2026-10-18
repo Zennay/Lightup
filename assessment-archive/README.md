@@ -195,3 +195,31 @@ counts for human stage, role and date relation (not individual slots,
 dates or source fingerprints). Source and planning date inputs are
 validated before the ZIP is published as one new 0600 artifact.
 --agenda-date without the matching --choices source is refused as HOLD.
+
+### Locally inspect a transferred coordination ZIP · console option 11
+
+Every newly generated private/aggregate coordination ZIP now includes
+packet-integrity.json: a deterministic fixed-name ledger of member byte
+lengths and SHA-256 fingerprints, excluding the ledger itself. A recipient
+can inspect the already-created local ZIP **without extracting, executing,
+opening a browser, contacting a sender, or touching any lab source**:
+
+    python3 assessment-archive/packet_inspect.py /private/RECEIVED-coordination.zip --output /private/NEW-inspection.json
+
+The inspector bounds the overall ZIP size, expanded member sizes, accepted
+member names, archive Unix regular-file permissions and compression, rejects
+duplicate/unknown/traversing members, checks declared SHA-256 for every
+member and validates the private/aggregate receipt and false-authority flags.
+For aggregate-only packets it also rejects an embedded private Studio or
+private manifest fingerprint in structured metadata. The recipient's
+inspection output contains only mode, counts, advertised human components
+and byte-match status. Inspection runs entirely locally, does not extract
+or execute any member, writes an optional NEW private 0600 receipt, and
+always returns REVIEW_ONLY (2) or HOLD (3), never successful permission.
+
+**This is byte consistency, not sender authentication or independently
+verified source provenance.** A sender could deliberately supply malicious
+files with matching self-declared hashes. Do not open untrusted HTML or
+rely on a ZIP for target access before independent source-owner,
+security/privacy and real human authorization gates. Original lab results,
+targets, approval and raw evidence are absent from the handoff.

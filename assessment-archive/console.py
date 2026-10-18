@@ -15,6 +15,7 @@ import archive_studio
 import agenda
 import followup
 import packet
+import packet_inspect
 
 
 ACTIONS = (
@@ -28,6 +29,7 @@ ACTIONS = (
     ("8", "Package existing archive and human worklist for private local coordination"),
     ("9", "Build a private interactive Archive Studio browser workspace"),
     ("10", "Create source-bound human follow-up agenda and planned-date overview"),
+    ("11", "Inspect a local coordination ZIP without extracting or trusting it"),
     ("q", "Exit without changing files"),
 )
 
@@ -146,6 +148,11 @@ def operation(choice: str) -> int:
         return agenda.action(SimpleNamespace(manifest=manifest, choices=choices,
                             as_of=as_of, format=output_format,
                             aggregate_only=anonymous, output=output))
+    if choice == "11":
+        name = ask("Existing local LightUp coordination ZIP path")
+        private_summary = yes_no("Publish a new private source-neutral inspection receipt")
+        output = ask("New private inspection JSON filename") if private_summary else None
+        return packet_inspect.inspect(SimpleNamespace(packet=name, output=output))
     raise archive.Hold("invalid operation")
 
 

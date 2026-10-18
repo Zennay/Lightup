@@ -75,7 +75,14 @@ def package(args):
         receipt["local_manifest_sha256"] = fingerprint
     memory = BytesIO()
     with ZipFile(memory, mode="w") as zf:
-        _entry(zf, "README.txt", (
+        member_receipts = []
+        def put(name, payload):
+            _entry(zf, name, payload)
+            member_receipts.append({
+                "name": name, "size_bytes": len(payload),
+                "sha256": sha256(payload).hexdigest(),
+            })
+        put("README.txt", (
             "LIGHTUP OFFLINE ASSESSMENT COORDINATION · PLAN/LAB ONLY · DRAFT/HOLD\n"
             "This ZIP contains a local metadata inventory and optional human planning.\n"
             "Original target sources, findings, lab evidence, credentials and approvals are NOT included.\n"
@@ -83,24 +90,32 @@ def package(args):
             "Do not deploy, grant, scan, target or execute anything based on this packet.\n"
             "Existing source-owner, privacy/security, CI and authenticated human gates remain mandatory.\n"
         ).encode("utf-8"))
-        _entry(zf, "receipt.json", encode(receipt))
-        _entry(zf, "archive-index.json", encode(inventory))
-        _entry(zf, "archive-dashboard.html", html_doc(inventory, public))
+        put("receipt.json", encode(receipt))
+        put("archive-index.json", encode(inventory))
+        put("archive-dashboard.html", html_doc(inventory, public))
         from portal import render as render_portal
-        _entry(zf, "index.html", render_portal(
+        put("index.html", render_portal(
             is_private=not public, with_followup=stages is not None,
             with_studio=with_studio, with_agenda=agenda_date is not None,
             hold=original["status"] == "HOLD" or historical_hold))
         if with_studio:
             from archive_studio import render_bytes
-            _entry(zf, "archive-studio.html", render_bytes(source, original, previous))
+            put("archive-studio.html", render_bytes(source, original, previous))
         if agenda_date is not None:
             from agenda import render_bytes as render_agenda
-            _entry(zf, "human-agenda.html",
+            put("human-agenda.html",
                    render_agenda(original, stages, agenda_date, public, "html"))
         if stages is not None:
-            _entry(zf, "human-worklist.json", encode(human))
-            _entry(zf, "human-worklist.html", html_board(original, stages, public))
+            put("human-worklist.json", encode(human))
+            put("human-worklist.html", html_board(original, stages, public))
+        _entry(zf, "packet-integrity.json", encode({
+            "schema": "lightup.assessment_archive_packet_integrity.v1",
+            "packet_mode": "AGGREGATE_ONLY" if public else "OWNER_PRIVATE",
+            "members": member_receipts,
+            "member_count": len(member_receipts),
+            "authenticated": False,
+            **{key: False for key in FLAGS},
+        }))
     payload = memory.getvalue()
     if len(payload) > 2 * 1024 * 1024:
         raise Hold("coordination packet exceeds limit")
