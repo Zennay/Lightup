@@ -45,7 +45,7 @@ a{color:#9bdafc}
 <section class="panel" aria-labelledby="appendtitle"><h2 id="appendtitle">Append new original snapshots</h2><p>Keep your existing human discussion markers while adding 1–10 additional source reports. New files must have the exact same original proposed selection, and duplicates are held. Nothing is appended when even one file is invalid.</p><input id="extra" type="file" multiple accept=".json,application/json" aria-label="Append original source snapshots"><button id="append">Append original reports atomically</button></section>
 <section class="panel"><h2>2 · Evidence summary</h2><div class="grid" id="stats"></div>
 <p class="muted">The file order is chosen by the operator. It is not authenticated chronological order. A copied JSON report is untrusted even when originally created by an authenticated operator. Reauthenticate and re-export directly from the original database before making decisions.</p></section>
-<section class="panel"><h2>3 · Human-selected snapshot order</h2><div class="table-wrap"><table><thead><tr><th>Slot</th><th>Original source review UTC</th><th>Stored source revision</th><th>Matching requests</th><th>Other requests</th><th>Historical grant rows</th><th>Human-only outcome</th></tr></thead><tbody id="rows"></tbody></table></div>
+<section class="panel"><h2>3 · Human-selected snapshot order</h2><p>Reorder source slots yourself for hypothetical comparisons; this never changes original records or establishes authenticated chronology. PRIVATE draft file bindings follow the chosen order.</p><button id="reverse" class="secondary">Reverse local source order</button><div class="table-wrap"><table><thead><tr><th>Slot</th><th>Original source review UTC</th><th>Stored source revision</th><th>Matching requests</th><th>Other requests</th><th>Historical grant rows</th><th>Human-only outcome</th><th>Manual order</th></tr></thead><tbody id="rows"></tbody></table></div>
 <h3>Administrative candidate count (not permissions)</h3><div id="chart" class="chart" aria-label="Candidate count by selected file slot"></div></section>
 <section class="panel"><h2>4 · Adjacent source-change reconciliation</h2>
 <p>Rows are compared only in the selected order. Different source SHA means original stored records differed <em>somewhere</em>; it cannot identify which persisted row changed without revisiting original authenticated source. Equal SHA is unsigned and cannot establish unchanged live state.</p>
@@ -217,6 +217,14 @@ function payload(){
    anonymous_human_casework_stage_totals:humanCaseworkTotals(),
    caution:"Untrusted, unsigned offline snapshots; never authority, consent, revocation, permission, release or verified chronology."};
 }
+function moveOriginal(index,offset){
+ if(!workspace||!Number.isInteger(index)||![-1,1].includes(offset)||index+offset<0||index+offset>=workspace.records.length)return;
+ const other=index+offset;
+ [workspace.records[index],workspace.records[other]]=[workspace.records[other],workspace.records[index]];
+ if(hashes.length===workspace.records.length)[hashes[index],hashes[other]]=[hashes[other],hashes[index]];
+ workspace.pair=0;workspace.page=0;render();
+ note("Original file order changed only in private browser memory; selected order is not authenticated chronology.",false);
+}
 function render(){
  const records=workspace.records;
  $("workspace").hidden=false;
@@ -227,7 +235,8 @@ function render(){
   ["Selected original exports",records.length],["Distinct reported source revisions",revisions.size],
   ["Adjacent reported revisions changed",transitions],["Original mismatch themes",reportedFlags.length],["Administrative permission", "NONE"]
  ].map(([title,val])=>'<div class="stat">'+esc(title)+'<strong>'+esc(val)+'</strong></div>').join("");
- $("rows").innerHTML=records.map((r,i)=>'<tr><td>'+String(i+1)+'</td><td>'+esc(r.stamp)+'</td><td><span class="badge">unsigned · '+esc(r.revision.slice(0,10))+'…</span></td><td>'+r.matched+'</td><td>'+(r.other+r.notApproved)+'</td><td>'+r.grants+' ('+r.legacy+' unbound)</td><td><span class="'+(r.matched===1?"review":"hold")+'">'+esc(r.outcome)+'</span></td></tr>').join("");
+ $("rows").innerHTML=records.map((r,i)=>'<tr><td>'+String(i+1)+'</td><td>'+esc(r.stamp)+'</td><td><span class="badge">unsigned · '+esc(r.revision.slice(0,10))+'…</span></td><td>'+r.matched+'</td><td>'+(r.other+r.notApproved)+'</td><td>'+r.grants+' ('+r.legacy+' unbound)</td><td><span class="'+(r.matched===1?"review":"hold")+'">'+esc(r.outcome)+'</span></td><td><button class="secondary" data-move="'+i+'" data-direction="-1" '+(i===0?'disabled':'')+' aria-label="Move source slot '+(i+1)+' earlier">↑</button><button class="secondary" data-move="'+i+'" data-direction="1" '+(i===records.length-1?'disabled':'')+' aria-label="Move source slot '+(i+1)+' later">↓</button></td></tr>').join("");
+ $("rows").querySelectorAll("button[data-move]").forEach(btn=>btn.addEventListener("click",()=>moveOriginal(Number(btn.dataset.move),Number(btn.dataset.direction))));
  $("chart").innerHTML=records.map((r,i)=>'<div class="bar" title="slot '+(i+1)+': '+r.matched+' candidates" style="height:'+Math.max(3,100*r.matched/Math.max(1,...records.map(x=>x.matched)))+'%"><span>'+r.matched+'</span></div>').join("");
  $("transitions").innerHTML=records.slice(1).map((r,i)=>{
   const before=records[i],changed=before.revision!==r.revision;
@@ -272,6 +281,12 @@ function renderCases(){
   const record=visible[Number(el.dataset.record)];if(record)caseEntry(record.ref).note=el.value.slice(0,180)
  }));
 }
+$("reverse").addEventListener("click",()=>{if(!workspace)return;
+ workspace.records.reverse();
+ if(hashes.length===workspace.records.length)hashes.reverse();
+ workspace.pair=0;workspace.page=0;render();
+ note("All original source slots reversed locally. No permission or chronology claim.",false);
+});
 $("pair").addEventListener("change",()=>{if(workspace){workspace.pair=Number($("pair").value);workspace.page=0;renderCases()}});
 $("casetype").addEventListener("change",()=>{if(workspace){workspace.page=0;renderCases()}});
 $("caseprev").addEventListener("click",()=>{if(workspace&&workspace.page>0){workspace.page--;renderCases()}});
