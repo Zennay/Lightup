@@ -78,3 +78,7 @@ Multiple operators can return 2–12 separately exported PRIVATE human proposals
 ## Save and restore private capacity assumptions
 
 In the standalone private capacity Studio, human planners can download a PRIVATE source-hash-bound capacity plan and later restore the original neutral role/week settings only against exactly unchanged original agenda byte sources. The new [private capacity replay CLI](SAVED-CAPACITY.md) re-renders the hypothetical human work queue from those exact original agendas and the saved source-bound plan; no actual work is scheduled, assigned, executed or approved.
+
+## Recommended one-command original-source entry
+
+Operators who already possess original archive manifests and original source-bound human choices can now skip all manually exported intermediate agendas. The new [one-command original-source builder](ONE-COMMAND.md) accepts 1–12 ORIGINAL manifest+choices pairs and publishes a complete private, portable offline ZIP with original private agenda JSONs, all existing portfolio/Capacity/Review Studios, aggregate-only exports and source-bound human return instructions. No original scanner, authority, CI, existing source branch or tests are touched.
