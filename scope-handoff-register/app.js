@@ -176,9 +176,24 @@
     return w;
   }
   const prepared = r => TASKS.filter(([id])=>r.tasks[id]==="prepared").length;
-  function render() {
+  function visibleRecords() {
     const query=$("search").value.trim().toLowerCase();
     const filter=$("filter").value;
+    return records.filter(r=>{
+      if(filter==="attention" && prepared(r)===TASKS.length)return false;
+      if(filter==="ready" && prepared(r)!==TASKS.length)return false;
+      if(filter==="high-risk" && r.source.risk!==4)return false;
+      if(filter==="revision" && !r.replaces)return false;
+      const searchable=(r.reference+" risk "+r.source.risk+" "+TASKS.filter(([id])=>r.tasks[id]!=="prepared").map(x=>x[1]).join(" ")).toLowerCase();
+      return searchable.includes(query);
+    }).sort((a,b)=>{
+      const mode=$("sort").value;
+      if(mode==="risk")return b.source.risk-a.source.risk || warnings(b).length-warnings(a).length;
+      if(mode==="progress")return prepared(a)-prepared(b);
+      return records.indexOf(a)-records.indexOf(b);
+    });
+  }
+  function render() {
     $("stats").replaceChildren();
     const stats=[["Concepten",records.length],["Acties voorbereid",records.reduce((n,r)=>n+prepared(r),0)],["Open/vervolg",records.reduce((n,r)=>n+TASKS.length-prepared(r),0)],["Discussiepunten",records.reduce((n,r)=>n+warnings(r).length,0)]];
     for (const [label,val] of stats) {
@@ -186,11 +201,7 @@
       m.append(node("strong","",val),node("span","",label));$("stats").append(m);
     }
     const boards=$("boards");boards.replaceChildren();
-    for (const r of records) {
-      if (filter==="attention" && prepared(r)===TASKS.length) continue;
-      if (filter==="ready" && prepared(r)!==TASKS.length) continue;
-      const searchable=(r.reference+" risk "+r.source.risk+" "+TASKS.filter(([id])=>r.tasks[id]!=="prepared").map(x=>x[1]).join(" ")).toLowerCase();
-      if (!searchable.includes(query)) continue;
+    for (const r of visibleRecords()) {
       const card=node("button","card"+(active===r.sha?" selected":""));
       card.type="button";card.setAttribute("aria-pressed",String(active===r.sha));
       card.append(node("span","card-title",r.reference),node("span","meta","SHA-256 "+r.sha.slice(0,16)+"…"),node("span","meta","Risico "+r.source.risk+" · "+(r.source.mode==="analysis_only"?"Analysevoorstel":"Actieve modus voorgesteld")+" · "+r.source.assets.length+" assetregels"));
@@ -334,7 +345,17 @@
     try{restore(await readBounded(e.target.files[0],RESTORE_SIZE));}catch(err){show("Herstel geweigerd zonder wijzigingen: "+err.message,true);}
     e.target.value="";
   });
-  $("search").addEventListener("input",render);$("filter").addEventListener("change",render);
+  $("search").addEventListener("input",render);$("filter").addEventListener("change",render);$("sort").addEventListener("change",render);
+  $("bulkStart").addEventListener("click",()=>{
+    const task=$("bulkTask").value;
+    assert(TASKS.some(([id])=>id===task),"Geen erkende actie.");
+    const targets=visibleRecords().filter(r=>r.tasks[task]==="open");
+    if(!targets.length){show("Geen zichtbare dossiers met een open status voor dit actiepunt.");return;}
+    if(!confirm("Alleen actie '"+TASKS.find(([id])=>id===task)[1]+"' voor "+targets.length+" zichtbare dossiers op ‘In gesprek’ zetten? Dit verleent geen toestemming."))return;
+    targets.forEach(r=>{r.tasks[task]="working";});
+    show("Voorbereidingsoverleg gestart voor "+targets.length+" lokale dossiers; geen enkele actie op ‘voorbereid’ gezet.");
+    render();
+  });
   $("clear").addEventListener("click",()=>{
     if(!records.length || !confirm("Alle in-memory concepten en taakstatussen definitief vergeten?"))return;
     records.splice(0);active=null;show("Alle lokale conceptgegevens uit deze browserpagina gewist.");render();
