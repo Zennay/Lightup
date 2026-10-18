@@ -98,6 +98,21 @@
 <tbody id="priority-rows"></tbody></table></div>
 <p class="subtle" id="priority-note" aria-live="polite">A funding strategy is only an unsigned discussion proposal. Capacity limits, prior backlogs and the original authorisation remain unchanged.</p>
 </div>
+<div class="panel" aria-labelledby="timing-title">
+<p class="eyebrow">07 / FUNDING TIMING COMPARISON</p>
+<h2 id="timing-title">Same budget, different release dates</h2>
+<p>Compare full upfront release, evenly staged release and the release schedule selected above. All scenarios use the same modelled total and planning hours. Hours not covered in an earlier week are <strong>not</strong> silently moved, assigned or marked completed.</p>
+<div class="action-row">
+<button id="timing-calculate" class="secondary" type="button">Compare release schedules</button>
+<button id="timing-export-json" class="secondary" type="button" hidden>Export private comparison JSON</button>
+<button id="timing-export-md" class="secondary" type="button" hidden>Export discussion Markdown</button>
+</div>
+<div class="stats" id="timing-stats" aria-live="polite"></div>
+<div class="table-wrap"><table>
+<thead><tr><th>Funding schedule</th><th>Source hours</th><th>Hours funded</th><th>Hours unfunded</th><th>Urgent-first critical/high unfunded</th><th>Balanced critical/high unfunded</th><th>Cash unused</th></tr></thead>
+<tbody id="timing-rows"></tbody></table></div>
+<p class="subtle" id="timing-note">A later cash release is a financial hypothesis, not a new authorisation window or an actual payment instruction.</p>
+</div>
 <div class="panel">
 <h2>Private aggregate handoff</h2>
 <p>No finding ID, customer name, target identity, original CSV bytes, grant or operator information is available to export. Aggregated budgets can still be commercially sensitive; review the recipient before sharing.</p>
