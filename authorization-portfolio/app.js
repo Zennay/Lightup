@@ -30,7 +30,7 @@ const stamp={format:'lightup.authorization_portfolio_draft_v1',disposition:'REVI
 function parseStrict(input){
  let i=0, nodes=0;
  const fail=()=>{throw Error('HOLD: invalid, duplicate-key or overdeep JSON.');};
- const ws=()=>{while(i<input.length&&/\s/.test(input[i]))i++;};
+ const ws=()=>{while(i<input.length&&/[ \t\r\n]/.test(input[i]))i++;};
  const str=()=>{
   if(input[i]!=='"')fail();
   const start=i++;let escaped=false;
@@ -115,11 +115,18 @@ function validateReport(r){
  if(otherOrphans!==s.grants-grantRecords||r.scope_description!=='all_clients'&&otherOrphans>0)unknown();
  const flagCount=Object.create(null);
  for(const [k,v] of Object.entries(s.flag_counts))if(v)flagCount[k]=v;
+ // The original exporter counts pending requests in summary.flag_counts, while
+ // closed/approved/rejected request history lives only in request_history.
+ // Include these SOURCE-reported historical flags without re-counting pending.
+ for(const previous of r.request_history){
+  if(['submitted','under_review'].includes(previous.status))continue;
+  for(const flag of previous.flags)flagCount[flag]=(flagCount[flag]||0)+1;
+ }
  const severity={critical:0,high:0,medium:0,routine:0};
  for(const [k,v] of Object.entries(flagCount))severity[CRITICAL.has(k)?'critical':HIGH.has(k)?'high':MEDIUM.has(k)?'medium':'routine']+=v;
  const priority=severity.critical?'critical':severity.high?'high':severity.medium?'medium':'routine';
  // Strict data minimization: no names, source rows, scope identifiers or private notes kept.
- return {scope:r.scope_fingerprint,description:r.scope_description,counts:{clients:s.clients,engagements:s.engagements,requests:s.requests,grants:s.grants,pending:s.pending_requests},severity,priority,flagCount,state:'new',team:'unassigned',due:'',digest:null,recordMap,overlap:{shared:0,changed:0,unchanged:0}};
+ return {scope:r.scope_fingerprint,description:r.scope_description,counts:{clients:s.clients,engagements:s.engagements,requests:s.requests,grants:s.grants,pending:s.pending_requests,historical_decisions:r.request_history.filter(item=>['approved','rejected'].includes(item.status)).length},severity,priority,flagCount,state:'new',team:'unassigned',due:'',digest:null,recordMap,overlap:{shared:0,changed:0,unchanged:0}};
 }
 function validDue(v){
  if(v==='')return true;
@@ -148,7 +155,7 @@ function draw(){
   const index=reports.indexOf(r),box=e('article',undefined,'scope');
   box.append(e('div',r.priority.toUpperCase()+' · '+r.description.replace('_',' '),'tag '+r.priority));
   box.append(e('h3',label(index)));
-  box.append(e('p',r.counts.pending+' pending requests · '+r.counts.grants+' stored grant rows (not approval)'));
+  box.append(e('p',r.counts.pending+' pending requests · '+r.counts.historical_decisions+' historical decisions (not consent) · '+r.counts.grants+' stored grant rows (not approval)'));
   box.append(e('p',r.severity.critical+' critical · '+r.severity.high+' high · '+r.severity.medium+' medium review flags'));
   if(r.overlap.shared)box.append(e('p','Cross-report pseudonymous overlap: '+r.overlap.shared+' shared records; '+r.overlap.changed+' changed revisions (unverified). Reconcile with source owners.','callout'));
   const ul=e('ul');const order=Object.entries(r.flagCount).sort((a,b)=>{const rank=k=>CRITICAL.has(k)?0:HIGH.has(k)?1:MEDIUM.has(k)?2:3;return rank(a[0])-rank(b[0])||b[1]-a[1]||a[0].localeCompare(b[0]);});
@@ -238,10 +245,18 @@ function output(kind){
   result.scopes.forEach(x=>rows.push([x.slot,x.selection,x.priority,x.discussion_status,x.follow_up_team,x.human_target_date_utc,x.counts.pending,x.counts.grants,x.severity.critical,x.severity.high,x.severity.medium,'REVIEW_ONLY',false,false,false,false,false,true]));
   download('lightup-authorization-portfolio-aggregate.csv',rows.map(r=>r.map(quote).join(',')).join('\r\n')+'\r\n','text/csv');
  }
+ if(kind==='capacity'){
+  const value=plan();if(!value)throw Error('HOLD: capacity assumptions must be positive bounded numbers.');
+  const quote=v=>'"'+String(v).replaceAll('"','""')+'"';
+  const rows=[['scenario_week','human_critical_review_hours','human_high_review_hours','human_other_review_hours','hypothetical_total_hours','review_only','source_overlap_unverified','authorization_granted','execution_allowed','release_approved']];
+  value.weekly.forEach((w,i)=>rows.push([i+1,w.critical.toFixed(2),w.high.toFixed(2),(w.medium+w.routine).toFixed(2),w.total.toFixed(2),'REVIEW_ONLY',true,false,false,false]));
+  rows.push(['UNALLOCATED','','','',''+value.remaining.toFixed(2),'REVIEW_ONLY',true,false,false,false]);
+  download('lightup-authorization-weekly-human-review-capacity.csv',rows.map(r=>r.map(quote).join(',')).join('\r\n')+'\r\n','text/csv');
+ }
  if(kind==='md'){
   const lines=['# LightUp · Authorization risk review portfolio','','REVIEW_ONLY · all client/operator consent, grant, execution and release authority: FALSE','','These source snapshots are unsigned, stale-prone and possibly overlapping. No conclusion about distinct cases, resolution, readiness or scan authority.',''];
   for(const x of result.scopes){
-   lines.push('## '+label(x.slot-1)+' · '+x.priority.toUpperCase(),'Local human stage: '+x.discussion_status+' (unverified)','Follow-up team: '+x.follow_up_team+'; human target date (UTC): '+(x.human_target_date_utc||'not set'),'Pending original requests: '+x.counts.pending+' · stored grant records: '+x.counts.grants+' (NOT verified)','Critical flags: '+x.severity.critical+' · high: '+x.severity.high,'Repeated source pseudonyms: '+x.overlap.shared+'; different revisions: '+x.overlap.changed+' (unverified)','');
+   lines.push('## '+label(x.slot-1)+' · '+x.priority.toUpperCase(),'Local human stage: '+x.discussion_status+' (unverified)','Follow-up team: '+x.follow_up_team+'; human target date (UTC): '+(x.human_target_date_utc||'not set'),'Pending original requests: '+x.counts.pending+'; historical administrative decisions (not consent): '+x.counts.historical_decisions+' · stored grant records: '+x.counts.grants+' (NOT verified)','Critical flags: '+x.severity.critical+' · high: '+x.severity.high,'Repeated source pseudonyms: '+x.overlap.shared+'; different revisions: '+x.overlap.changed+' (unverified)','');
    for(const [k,v] of Object.entries(x.flags).sort())lines.push('- '+k+': '+v);
    lines.push('Follow up through separately authenticated client and operator channels. Reconfirm at-use revocation before any authorized action.','');
   }
@@ -301,7 +316,7 @@ $('sourceFiles').addEventListener('change',async ev=>{try{await admit([...ev.tar
 $('clear').addEventListener('click',()=>{reports=[];$('overview').hidden=true;setMessage('feedback','Forgot all original source summaries and local stages.');setMessage('exportFeedback','');});
 $('priorityFilter').addEventListener('change',draw);$('stateFilter').addEventListener('change',draw);
 for(const name of ['hours','effortCritical','effortHigh','effortOther'])$(name).addEventListener('input',drawCapacity);
-$('exportJson').addEventListener('click',()=>output('json'));$('exportCsv').addEventListener('click',()=>output('csv'));$('exportBrief').addEventListener('click',()=>output('md'));
+$('exportJson').addEventListener('click',()=>output('json'));$('exportCsv').addEventListener('click',()=>output('csv'));$('exportBrief').addEventListener('click',()=>output('md'));$('exportCapacity').addEventListener('click',()=>{try{output('capacity');}catch(e){setMessage('exportFeedback',e.message);}});
 $('saveDraft').addEventListener('click',()=>save().catch(e=>setMessage('exportFeedback',e.message)));
 $('restoreDraft').addEventListener('change',async ev=>{try{await restore(ev.target.files[0]);}catch(e){setMessage('exportFeedback',e.message.startsWith('HOLD')?e.message:'HOLD: private draft rejected atomically.');}finally{ev.target.value='';}});
 })();
