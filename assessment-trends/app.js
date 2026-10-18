@@ -32,7 +32,7 @@
   let pairFocus=1;
   let selectedCase=0,caseStages=new Map();
   let demoMode=false,sourceMeta=[];
-  let casePlans=new Map();
+  let casePlans=new Map(),batchUndo=null;
   let crossA=0,crossB=1,crossMetric="policy_violations";
 
   // Strict recursive JSON reader: rejects duplicate keys (also escaped aliases),
@@ -222,8 +222,10 @@
     $("message").textContent=message; $("message").className="message"+(bad?" bad":"");
   }
   function reset() {
-    revisions=[];sourceHashes=[];sourceMeta=[];discussionStages=Object.create(null);caseStages=new Map();casePlans=new Map();selectedCase=0;revisionFocus=0;pairFocus=1;crossA=0;crossB=1;demoMode=false; $("workspace").hidden=true; $("files").value="";
+    revisions=[];sourceHashes=[];sourceMeta=[];discussionStages=Object.create(null);caseStages=new Map();casePlans=new Map();batchUndo=null;selectedCase=0;revisionFocus=0;pairFocus=1;crossA=0;crossB=1;demoMode=false; $("workspace").hidden=true; $("files").value="";
     $("notes").value="";$("draft-file").value="";
+    $("batch-undo").disabled=true;
+    $("batch-message").textContent="No bulk proposal recorded.";
     $("draft-state").textContent="Private source bindings and local discussion stages were cleared.";
     showMessage("All imported source data and local notes cleared.");
   }
@@ -1042,7 +1044,9 @@
     revisions=[];sourceHashes=[];sourceMeta=[];demoMode=false;
     crossA=0;crossB=1;
     $("workspace").hidden=true;$("files").value="";
-    caseStages=new Map();casePlans=new Map();discussionStages=Object.create(null);
+    caseStages=new Map();casePlans=new Map();batchUndo=null;discussionStages=Object.create(null);
+    $("batch-undo").disabled=true;
+    $("batch-message").textContent="No bulk proposal recorded.";
     selectedCase=0;revisionFocus=0;pairFocus=1;$("notes").value="";
     try {
       revisions=fictionalReports();sourceHashes=revisions.map(()=>null);
@@ -1060,7 +1064,9 @@
 
   $("files").addEventListener("change",async ev=>{
     // No mixing old and new reports. A failed import removes previous content.
-    revisions=[];sourceHashes=[];sourceMeta=[];revisionFocus=0;pairFocus=1;crossA=0;crossB=1;discussionStages=Object.create(null);caseStages=new Map();casePlans=new Map();selectedCase=0;demoMode=false;$("workspace").hidden=true;$("notes").value="";
+    revisions=[];sourceHashes=[];sourceMeta=[];revisionFocus=0;pairFocus=1;crossA=0;crossB=1;discussionStages=Object.create(null);caseStages=new Map();casePlans=new Map();batchUndo=null;selectedCase=0;demoMode=false;$("workspace").hidden=true;$("notes").value="";
+    $("batch-undo").disabled=true;
+    $("batch-message").textContent="No bulk proposal recorded.";
     const files=[...ev.target.files];
     try {
       demoMode=false;
@@ -1138,6 +1144,69 @@
   $("agenda-csv").addEventListener("click",()=>download(
     "lightup-PRIVATE-human-discussion-agenda.csv",agendaCSV(),
     "text/csv;charset=utf-8"));
+  function refreshCaseReviewViews() {
+    renderCaseInspector();renderCaseRows();renderAgenda();
+  }
+  $("batch-date-mode").addEventListener("change",event=>{
+    $("batch-date").disabled=event.target.value!=="set";
+  });
+  $("batch-apply").addEventListener("click",()=>{
+    const cases=caseQueue(),route=$("batch-route").value,
+      mode=$("batch-date-mode").value,stage=$("batch-stage").value,
+      date=$("batch-date").value;
+    if(!cases.length) {
+      $("batch-message").textContent="No visible source cases selected by this filter; no local changes made.";
+      return;
+    }
+    if((route==="leave"&&mode==="leave"&&stage==="leave")||
+      (route!=="leave"&&!CASE_ROUTES.has(route))||
+      (stage!=="leave"&&!CASE_STAGES.has(stage))||
+      !["leave","set","clear"].includes(mode)||
+      (mode==="set"&&(!date||!validDiscussionDate(date)))) {
+      $("batch-message").textContent="No valid proposal change selected; no local case status modified.";
+      return;
+    }
+    const confirmed=window.confirm(
+      "Apply ONLY a local human discussion proposal to "+cases.length+
+      " visible anonymous lab cases? This never assigns real work, books a scan, verifies remediation or authorizes an assessment. Confirm to continue.");
+    if(!confirmed) {
+      $("batch-message").textContent="Proposal cancelled. No case discussion state changed.";
+      return;
+    }
+    const saved=cases.map(({id})=>({
+      id,
+      hadStage:caseStages.has(id),stage:caseStages.get(id),
+      hadPlan:casePlans.has(id),plan:casePlans.get(id)?{...casePlans.get(id)}:null
+    }));
+    for(const {id} of cases) {
+      const old=casePlans.get(id)||{route:"unassigned",date:""};
+      const next={
+        route:route==="leave"?old.route:route,
+        date:mode==="leave"?old.date:mode==="clear"?"":date
+      };
+      casePlans.set(id,next);
+      if(stage!=="leave")caseStages.set(id,stage);
+    }
+    batchUndo=saved;
+    $("batch-undo").disabled=false;
+    $("batch-message").textContent="Local human discussion proposal recorded for "+
+      cases.length+" anonymous cases; changes remain editable and source-bound only when you explicitly export a private draft.";
+    refreshCaseReviewViews();
+  });
+  $("batch-undo").addEventListener("click",()=>{
+    if(!batchUndo)return;
+    const saved=batchUndo;
+    for(const entry of saved) {
+      if(entry.hadStage)caseStages.set(entry.id,entry.stage);
+      else caseStages.delete(entry.id);
+      if(entry.hadPlan)casePlans.set(entry.id,{...entry.plan});
+      else casePlans.delete(entry.id);
+    }
+    batchUndo=null;
+    $("batch-undo").disabled=true;
+    $("batch-message").textContent="Last local bulk discussion edit reversed; no source file was altered.";
+    refreshCaseReviewViews();
+  });
   const CASE_STAGES=new Set(["unreviewed","investigating",
     "awaiting-independent-review","followup-proposed","discussion-recorded"]);
   const DISCUSSION_STAGES=new Set([
@@ -1208,7 +1277,8 @@
     }
     discussionStages=next;
     caseStages=nextCases;
-    casePlans=nextPlans;
+    casePlans=nextPlans;batchUndo=null;
+    $("batch-undo").disabled=true;
     renderActions();renderCaseInspector();renderCaseRows();renderAgenda();
   }
   $("save-draft").addEventListener("click",()=>{
