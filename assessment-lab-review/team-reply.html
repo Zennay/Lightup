@@ -16,10 +16,21 @@
 <optgroup label="Source-reported severity"><option value="critical">Critical</option><option value="high">High</option><option value="medium">Medium</option><option value="low">Low</option><option value="info">Info</option></optgroup>
 <optgroup label="Human review stage"><option value="needs_review">Needs review</option><option value="discussing">Discussing</option><option value="documented">Documented</option><option value="blocked">Blocked</option></optgroup></select></label>
 <span id="count"></span></div>
+<div class="bulkbar"><strong>Bulk HUMAN proposals for currently visible original findings</strong>
+<div class="toolbar"><label>Stage <select id="bulkStage"><option value="">Keep original</option>
+<option value="needs_review">Needs review</option><option value="discussing">Discussing</option>
+<option value="documented">Documented</option><option value="blocked">Blocked</option></select></label>
+<label>Group <select id="bulkGroup"><option value="">Keep original</option><option value="unassigned">Unassigned</option>
+<option value="scope">Scope</option><option value="findings">Findings</option><option value="evidence">Evidence</option>
+<option value="remediation">Remediation</option></select></label>
+<button id="bulkApply" type="button">Propose for visible rows</button>
+<button id="bulkUndo" type="button" class="quiet">Undo recipient batch</button></div>
+<p class="note">Only stage/group proposals change. Original titles, source data, original human baseline and individual action/blocker remain untouched.</p></div>
 <div id="rows" class="cards"></div>
 <h2>3. Preview differences before returning</h2>
 <div class="toolbar"><button id="previewBtn" type="button">Preview HUMAN changes</button>
 <button id="export" type="button" disabled>Export PRIVATE reviewer reply</button>
+<label class="upload" for="resume">Resume exact PRIVATE reply<input type="file" id="resume" accept=".json,application/json"></label>
 <button id="forget" type="button" class="quiet">Forget local handoff</button></div>
 <div id="preview" class="table-wrap" role="region" aria-label="PRIVATE human changes"></div>
 <p class="note">Any edit after preview requires another review before export. Operator must reopen original unchanged PRIVATE lab source, verify its existing local human baseline and explicitly accept returned changes. Neither recipient nor operator can grant work, claim verified remediation or produce actual client consent with these files.</p>

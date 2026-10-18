@@ -9,7 +9,7 @@ const FLAGS=["source_authenticated","ground_truth_verified","client_consent_veri
  "operator_consent_verified","authorized","consent_verified","dispatch_allowed","release_allowed"];
 const KEYS=["schema","kind","source_sha256","baseline_sha256","rows","status",...FLAGS];
 const ROW=["ordinal","severity","title","endpoint_ordinal","original","proposed"];
-let packet=null,changedAfterPreview=true;
+let packet=null,changedAfterPreview=true,lastBulkUndo=null;
 const fail=msg=>{throw Error(msg||"Private review packet HOLD");};
 const require_=x=>{if(!x)fail();};
 const obj=x=>x!==null&&typeof x==="object"&&!Array.isArray(x);
@@ -60,9 +60,9 @@ async function hashRecord(p){
  const buffer=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(value));
  return [...new Uint8Array(buffer)].map(x=>x.toString(16).padStart(2,"0")).join("");
 }
-async function admit(x){
+async function admit(x,kind="handoff"){
  require_(exact(x,KEYS)&&x.schema==="lightup.private_lab_reviewer_exchange.v1"&&
-  x.kind==="handoff"&&x.status==="REVIEW_ONLY"&&FLAGS.every(k=>x[k]===false)&&
+  x.kind===kind&&x.status==="REVIEW_ONLY"&&FLAGS.every(k=>x[k]===false)&&
   /^[a-f0-9]{64}$/.test(x.source_sha256)&&/^[a-f0-9]{64}$/.test(x.baseline_sha256));
  require_(Array.isArray(x.rows)&&x.rows.length>=1&&x.rows.length<=512);
  let prev=0;for(const row of x.rows){
@@ -71,7 +71,8 @@ async function admit(x){
    typeof row.title==="string"&&row.title.length>0&&row.title.length<=8192&&
    !/[\u0000-\u001f\u007f]/.test(row.title)&&
    Number.isSafeInteger(row.endpoint_ordinal)&&row.endpoint_ordinal>=0&&row.endpoint_ordinal<=16&&
-   validNote(row.original)&&validNote(row.proposed)&&humanEqual(row.original,row.proposed));
+   validNote(row.original)&&validNote(row.proposed)&&
+   (kind==="reply"||humanEqual(row.original,row.proposed)));
   prev=row.ordinal;
  }
  require_(await hashRecord(x)===x.baseline_sha256);
@@ -94,7 +95,7 @@ function field(row,key){
  input.value=row.proposed[key];input.addEventListener("input",()=>{
   const value=input.value;if(!valid(value))return;
   const n={...row.proposed,[key]:value};if(validNote(n)){
-   row.proposed=n;markDirty();
+   row.proposed=n;lastBulkUndo=null;markDirty();
   }
  });label.append(input);return label;
 }
@@ -144,12 +145,60 @@ $("upload").addEventListener("change",async e=>{
   const src=new TextDecoder("utf-8",{fatal:true}).decode(await file.arrayBuffer());
   const next=await admit(strictJSON(src));
   if(packet&&!confirm("Replace current unsaved private recipient notes?"))return;
-  packet=next;changedAfterPreview=true;$("workspace").hidden=false;$("export").disabled=true;
+  packet=next;changedAfterPreview=true;lastBulkUndo=null;$("workspace").hidden=false;$("export").disabled=true;
   $("preview").replaceChildren();$("filter").value="";render();markDirty();
   status("Original unsigned PRIVATE human handoff admitted. No authentication or consent proven.");
  }catch(_){status("Private handoff rejected. Previous private notes kept.",true);}
  finally{e.target.value="";}
 });
+
+function visibleRows(){
+ if(!packet)return [];
+ const filter=$("filter").value;
+ return packet.rows.filter(row=>!filter||filter===row.severity||filter===row.proposed.stage);
+}
+$("bulkApply").addEventListener("click",()=>{
+ if(!packet)return;
+ const stage=$("bulkStage").value,group=$("bulkGroup").value;
+ const chosen=visibleRows();
+ if(!stage&&!group){status("Choose a human stage or review group for the filtered rows.",true);return;}
+ if(!chosen.length){status("No PRIVATE human rows selected by the current filter.",true);return;}
+ if(!confirm("Propose HUMAN-only stage/group changes for "+chosen.length+
+  " visible original finding rows? This cannot authorize any assessment."))return;
+ const selected=new Set(chosen.map(r=>r.ordinal));
+ lastBulkUndo=packet.rows.map(r=>({...r.proposed}));
+ packet.rows.forEach(row=>{if(!selected.has(row.ordinal))return;
+  row.proposed={...row.proposed,...(stage?{stage}:{}),...(group?{group}:{})};
+ });
+ markDirty();render();status(chosen.length+" filtered human notes updated. Original source and baseline unchanged.");
+});
+$("bulkUndo").addEventListener("click",()=>{
+ if(!packet||!lastBulkUndo){status("No last recipient bulk change to undo.");return;}
+ packet.rows.forEach((r,i)=>{r.proposed={...lastBulkUndo[i]};});
+ lastBulkUndo=null;markDirty();render();status("Last recipient batch undone. Original source unchanged.");
+});
+$("resume").addEventListener("change",async e=>{
+ try{
+  require_(packet&&e.target.files[0]&&e.target.files[0].size>0&&
+   e.target.files[0].size<=2*1024*1024);
+  const raw=new TextDecoder("utf-8",{fatal:true}).decode(await e.target.files[0].arrayBuffer());
+  const draft=await admit(strictJSON(raw),"reply");
+  require_(draft.source_sha256===packet.source_sha256&&
+   draft.baseline_sha256===packet.baseline_sha256&&draft.rows.length===packet.rows.length);
+  for(let i=0;i<draft.rows.length;i++){
+   const d=draft.rows[i],p=packet.rows[i];
+   require_(d.ordinal===p.ordinal&&d.severity===p.severity&&d.title===p.title&&
+    d.endpoint_ordinal===p.endpoint_ordinal&&humanEqual(d.original,p.original));
+  }
+  if(packet.rows.some(r=>!humanEqual(r.original,r.proposed))&&
+    !confirm("Replace unsaved PRIVATE reviewer draft with this exact-handoff reply?"))return;
+  packet.rows.forEach((r,i)=>{r.proposed={...draft.rows[i].proposed};});
+  lastBulkUndo=null;markDirty();render();
+  status("Previously saved PRIVATE reply reopened against the exact unchanged human baseline.");
+ }catch(_){status("Saved PRIVATE reviewer reply rejected. Current human notes unchanged.",true);}
+ finally{e.target.value="";}
+});
+
 $("filter").addEventListener("change",render);
 $("previewBtn").addEventListener("click",()=>{try{preview();}catch(_){status("Nothing changed or human input invalid.",true);}});
 $("export").addEventListener("click",async()=>{
@@ -168,10 +217,10 @@ $("export").addEventListener("click",async()=>{
 });
 $("forget").addEventListener("click",()=>{
  if(!packet||!confirm("Forget all local private reviewer content and unsaved human edits?"))return;
- packet=null;changedAfterPreview=true;$("workspace").hidden=true;$("rows").replaceChildren();
+ packet=null;changedAfterPreview=true;lastBulkUndo=null;$("workspace").hidden=true;$("rows").replaceChildren();
  $("preview").replaceChildren();status("Recipient workspace cleared from memory.");
 });
-window.addEventListener("beforeunload",e=>{if(packet&&changedAfterPreview&&
+window.addEventListener("beforeunload",e=>{if(packet&&
  packet.rows.some(r=>!humanEqual(r.original,r.proposed))){e.preventDefault();e.returnValue="";}});
 status("Open an original PRIVATE operator handoff.");
 })();
