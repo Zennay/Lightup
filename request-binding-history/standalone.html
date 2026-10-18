@@ -316,11 +316,20 @@ $("clear").addEventListener("click",()=>{workspace=null;hashes=[];$("files").val
 $("exportjson").addEventListener("click",()=>{if(workspace)download("lightup-binding-history-anonymous.json","application/json",JSON.stringify(payload(),null,2)+"\n")});
 $("exportcsv").addEventListener("click",()=>{
  if(!workspace)return;
- const p=payload(),head="slot,candidates,other_approved,not_approved,stored_grants,unbound_legacy_grants,source_changed_from_previous,authority_all_false\n";
- const rows=p.snapshots.map(r=>[r.slot,r.candidates,r.other_approved,r.not_approved,r.stored_grants,r.unbound_legacy_grants,r.stored_record_change_from_previous===null?"UNKNOWN":r.stored_record_change_from_previous,true].join(","));
- const themeHeader="\r\nslot,original_mismatch_reason,reported_count,human_discussion_only,authority_all_false\r\n";
- const themeRows=p.snapshots.flatMap(r=>Object.entries(r.source_mismatch_reason_counts).filter(([,count])=>count>0).map(([reason,count])=>[r.slot,reason,count,true,true].join(",")));
- download("lightup-binding-history-anonymous.csv","text/csv",head+rows.join("\r\n")+"\r\n"+themeHeader+themeRows.join("\r\n")+"\r\n");
+ const p=payload();
+ const rows=[["kind","source_slot","fixed_metric","count_or_status","next_slot","authority_all_false"]];
+ const add=(...fields)=>rows.push([...fields,"true"]);
+ for(const r of p.snapshots){
+   for(const [name,count]of Object.entries({administrative_candidates:r.candidates,other_approved:r.other_approved,
+     not_approved:r.not_approved,historical_grants:r.stored_grants,legacy_unbound_grants:r.unbound_legacy_grants}))
+     add("source",r.slot,name,count,"");
+   for(const [reason,count]of Object.entries(r.source_mismatch_reason_counts))if(count>0)add("original_reason",r.slot,reason,count,"");
+ }
+ for(const r of p.anonymous_adjacent_original_request_rows){
+   for(const name of ["appeared","absent","changed","same"])add("source_pair",r.from_slot,name,r[name],r.to_slot);
+ }
+ for(const [stage,count]of Object.entries(p.anonymous_human_casework_stage_totals))add("human_discussion","","stage_"+stage,count,"");
+ download("lightup-binding-history-anonymous.csv","text/csv",rows.map(r=>r.join(",")).join("\r\n")+"\r\n");
 });
 $("saveprivate").addEventListener("click",()=>{
  if(!workspace)return;if(hashes.length!==workspace.records.length){note("HOLD · WebCrypto not available: no raw-byte-bound private draft.",true);return}
