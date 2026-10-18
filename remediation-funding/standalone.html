@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="en"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-0TXIn7weme0dgzQRAvmevMq2wBeF1eoNduaGS7hE/A8=' 'sha256-WVf4MWjgprkUVNAliSE3dDUaOrVxQVpZZ+HSKO+QpKY='; style-src 'sha256-gRO/0vjvhCiDlyKYAoFlD62JBk64H/vcy3MaEo2jP6g='; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-Rv4TxHAyjW8G8SrEAcl4KBa15BYldRCcwd+ABbgwHGM=' 'sha256-/3qQc41Yd6uLOY2YQjlIFd0IBvng6A1x6Sr+7m8RavM='; style-src 'sha256-gRO/0vjvhCiDlyKYAoFlD62JBk64H/vcy3MaEo2jP6g='; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <title>LightUp — Remediation Funding Studio (offline)</title>
 <style>:root{color-scheme:dark;--bg:#0a1019;--surface:#122130;--border:#385063;--text:#edf3f7;--muted:#b5c5d2;--mint:#91e5c5;--gold:#f6d69b;--blue:#9bc2fd}
 *{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:radial-gradient(ellipse 80% 400px at 50% 0,#254052 0%,transparent 100%),var(--bg);font:16px/1.55 system-ui,-apple-system,Segoe UI,sans-serif;color:var(--text)}
@@ -85,6 +85,25 @@ footer{padding:20px 0 60px}
 <div class="scenario-input"><label>Alternative external work share (%)<input id="alternative-external" type="number" min="0" max="100" value="50"></label>
 <button type="button" id="compare">Compare costs</button></div>
 <div class="stats" id="scenario"></div>
+</div>
+<div class="panel" aria-labelledby="releases-title">
+<p class="eyebrow">05 / PHASED CASH RELEASE</p>
+<h2 id="releases-title">What if money becomes available later?</h2>
+<p>Allocate the same total budget across weeks to see where proposed remediation might go unfunded while waiting for cash. Unfunded hours are not silently rescheduled or marked completed. An unpaid one-time setup cost must be covered before that week's labour can be funded.</p>
+<label class="input-label">Funding release pattern<select id="releases-mode">
+<option value="upfront">All available in week 1</option>
+<option value="equal">Evenly over all planning weeks</option>
+<option value="custom">Custom percentage per week</option>
+</select></label>
+<div id="release-entries" class="form-grid"></div>
+<div class="action-row">
+<button id="release-calculate" type="button" class="secondary">Calculate phased funding</button>
+<button id="release-export" type="button" class="secondary" hidden>Export phased cashflow draft</button>
+</div>
+<div id="release-summary" class="stats" aria-live="polite"></div>
+<div class="table-wrap"><table><thead><tr><th>Week</th><th>Budget released</th><th>Setup covered</th><th>Labor paid</th><th>Hours funded</th><th>Hours not funded</th><th>Cash carried</th></tr></thead>
+<tbody id="release-weeks"></tbody></table></div>
+<p class="subtle">Funding patterns are deliberately unsigned financial assumptions; no bank, calendar, contract, operator, client or target is contacted.</p>
 </div>
 <div class="panel">
 <h2>Private aggregate handoff</h2>
@@ -251,7 +270,7 @@ function project(source,raw) {
   return Object.freeze({
     week:w.week,start:w.start,planned_cost:w.proposed_cost,
     funded_cost:Math.round((fundedSetup+spend)*100)/100,
-    provisionally_funded_hours:Math.round(hours*10)/10,
+    provisionally_funded_hours:Math.floor((hours+1e-10)*10)/10,
     proposed_hours:w.proposed_hours
   });
  });
@@ -310,7 +329,70 @@ function project(source,raw) {
   weeks:Object.freeze(weekly.map(Object.freeze)),funding:Object.freeze(fundingSchedule)
  });
 }
-root.LightUpFunding=Object.freeze({intake,settings,project,SCHEMA,MAX_SIZE:65536});
+function stagedFunding(source,raw,percentages) {
+ const cfg=settings(raw);
+ const baseline=project(source,cfg);
+ if(!Array.isArray(percentages)||percentages.length!==source.weeks.length)
+  fail('Specify one funding release percentage per planning week');
+ const values=percentages.map((p,i)=>int(p,0,100,'release percentage for week '+(i+1)));
+ if(values.reduce((a,b)=>a+b,0)!==100)fail('Funding releases must total exactly 100 percent');
+ const weeklyCost=baseline.weeks;
+ let cash=0;
+ let setupUnpaid=cfg.fixed_cost;
+ let assignedTotal=0;
+ let urgentGuaranteed=0,urgentPossible=0;
+ const entries=[];
+ let allocatedAmount=0;
+ for(let i=0;i<values.length;i++){
+  const deposit=i===values.length-1?cfg.funding-allocatedAmount:
+   Math.floor(cfg.funding*values[i]/100);
+  allocatedAmount+=deposit;
+  cash+=deposit;
+  const setupPaid=Math.min(cash,setupUnpaid);cash-=setupPaid;setupUnpaid-=setupPaid;
+  const laborProposed=Math.max(0,weeklyCost[i].proposed_cost-(i===0?cfg.fixed_cost:0));
+  const laborPaid=Math.min(cash,laborProposed);cash-=laborPaid;
+  const unitLabor=weeklyCost[i].proposed_hours
+   ?laborProposed/weeklyCost[i].proposed_hours:0;
+  const fundedHours=unitLabor===0?0:Math.min(weeklyCost[i].proposed_hours,laborPaid/unitLabor);
+  const roundedHours=Math.floor((fundedHours+1e-10)*10)/10;
+  assignedTotal+=roundedHours;
+  const risk=source.weeks[i].risk_hours;
+  const urgent=risk.critical+risk.high;
+  const regular=source.weeks[i].hours-urgent;
+  const urgentMin=Math.max(0,roundedHours-regular);
+  const urgentMax=Math.min(urgent,roundedHours);
+  urgentGuaranteed+=urgentMin;urgentPossible+=urgentMax;
+  entries.push(Object.freeze({
+   week:i+1,start:weeklyCost[i].start,
+   deposit:deposit,proposed_cost:weeklyCost[i].proposed_cost,
+   paid_setup:setupPaid,paid_proposed_labor:Math.round(laborPaid*100)/100,
+   proposed_hours:weeklyCost[i].proposed_hours,
+   funded_hours:roundedHours,
+   hours_not_funded:Math.round((weeklyCost[i].proposed_hours-roundedHours)*10)/10,
+   cash_carried_forward:Math.round(cash*100)/100,
+   remaining_setup_unpaid:Math.round(setupUnpaid*100)/100,
+   critical_high_maybe_unfunded_minimum:Math.round((urgent-urgentMax)*10)/10,
+   critical_high_maybe_unfunded_maximum:Math.round((urgent-urgentMin)*10)/10
+  }));
+ }
+ const urgent=baseline.critical_high_proposed_hours;
+ return Object.freeze({
+  schema:'lightup.remediation_staged_funding_draft.v1',
+  review_only:true,authorization:false,consent:false,grant:false,scan:false,
+  execute:false,dispatch:false,retest_verified:false,deploy:false,release:false,
+  currency:cfg.currency,total_funding:cfg.funding,
+  planned_hours:source.allocated_hours,
+  provisionally_funded_hours:Math.round(assignedTotal*10)/10,
+  unpaid_planned_hours:Math.round((source.allocated_hours-assignedTotal)*10)/10,
+  urgent_potentially_unfunded_lower_hours:Math.round((urgent-urgentPossible)*10)/10,
+  urgent_potentially_unfunded_upper_hours:Math.round((urgent-urgentGuaranteed)*10)/10,
+  unused_funds_end:Math.round(cash*100)/100,
+  setup_cost_still_unpaid:Math.round(setupUnpaid*100)/100,
+  release_percentages:Object.freeze(values),
+  weeks:Object.freeze(entries)
+ });
+}
+root.LightUpFunding=Object.freeze({intake,settings,project,stagedFunding,SCHEMA,MAX_SIZE:65536});
 })(window);</script>
 <script>/* Local-only controller for LightUp's non-authorizing finance review */
 (function () {
@@ -331,9 +413,10 @@ const currency=(code,value)=>{
  const locale=code==='EUR'?'nl-NL':code==='GBP'?'en-GB':'en-US';
  return new Intl.NumberFormat(locale,{style:'currency',currency:code,maximumFractionDigits:2}).format(value);
 };
-let source=null,forecast=null,settings=null,comparison=null;
+let source=null,forecast=null,settings=null,comparison=null,staged=null;
 function clearResults(){
- forecast=null;settings=null;comparison=null;el('results').hidden=true;
+ forecast=null;settings=null;comparison=null;staged=null;el('results').hidden=true;
+ el('release-summary').replaceChildren();el('release-weeks').replaceChildren();el('release-export').hidden=true;
  el('kpis').replaceChildren();el('weeks').replaceChildren();el('scenario').replaceChildren();
  el('risk-exposure').replaceChildren();el('risk-weeks').replaceChildren();
 }
@@ -415,6 +498,7 @@ function display(model){
   riskTable.append(tr);
  }
  rows(model);el('results').hidden=false;renderScenario();
+ renderReleaseEntries();
 }
 function renderScenario(){
  const target=el('scenario');target.replaceChildren();comparison=null;
@@ -442,6 +526,18 @@ el('settings').addEventListener('submit',event=>{
   clearResults();show('Funding forecast held: '+(err instanceof Error?err.message:'Invalid model'),true);
  }
 });
+el('settings').addEventListener('input',()=>{
+ if(forecast){
+  clearResults();
+  show('Cost assumptions changed. Recalculate the current proposal before sharing or exporting.');
+ }
+});
+el('settings').addEventListener('change',()=>{
+ if(forecast){
+  clearResults();
+  show('Cost assumptions changed. Recalculate the current proposal before sharing or exporting.');
+ }
+});
 el('compare').addEventListener('click',renderScenario);
 el('alternative-external').addEventListener('input',()=>{comparison=null;el('scenario').replaceChildren();});
 function download(name,body,mime){
@@ -449,6 +545,71 @@ function download(name,body,mime){
  const a=document.createElement('a');a.href=url;a.download=name;a.rel='noopener';document.body.append(a);
  a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1600);
 }
+
+function releasePercentages() {
+ const n=source.weeks.length,mode=el('releases-mode').value;
+ if(mode==='upfront')return [100,...Array(n-1).fill(0)];
+ if(mode==='equal'){
+  const floor=Math.floor(100/n);
+  const chunks=Array(n).fill(floor);chunks[n-1]+=100-floor*n;return chunks;
+ }
+ if(mode!=='custom')throw Error('Invalid funding release pattern');
+ const controls=el('release-entries').querySelectorAll('input');
+ if(controls.length!==n)throw Error('Custom releases incomplete');
+ return Array.from(controls,control=>{
+  if(!/^(0|[1-9][0-9]*)$/.test(control.value))throw Error('Enter whole-number percentages');
+  return Number(control.value);
+ });
+}
+function clearRelease() {
+ staged=null;el('release-summary').replaceChildren();el('release-weeks').replaceChildren();el('release-export').hidden=true;
+}
+function renderReleaseEntries(){
+ const section=el('release-entries');section.replaceChildren();clearRelease();
+ if(!source||!forecast||el('releases-mode').value!=='custom')return;
+ const values=Array(source.weeks.length).fill(0);values[0]=100;
+ source.weeks.forEach((week,index)=>{
+  const label=mk('label','Week '+week.week+' starting '+week.start+' (%)','input-label');
+  const input=document.createElement('input');input.type='number';input.min='0';input.max='100';input.step='1';
+  input.value=String(values[index]);input.setAttribute('aria-label','Week '+week.week+' released budget percentage');
+  input.addEventListener('change',clearRelease);label.append(input);section.append(label);
+ });
+}
+el('releases-mode').addEventListener('change',renderReleaseEntries);
+el('release-calculate').addEventListener('click',()=>{
+ clearRelease();
+ if(!source||!forecast||!settings){show('Load a source and prepare a forecast first.',true);return;}
+ try{
+  const next=core.stagedFunding(source,settings,releasePercentages());
+  staged=next;
+  const info=el('release-summary');info.replaceChildren();
+  for(const [title,value] of [
+   ['Hours provisionally funded',next.provisionally_funded_hours+' h'],
+   ['Hours without funding',next.unpaid_planned_hours+' h'],
+   ['Urgent potentially unfunded (min)',next.urgent_potentially_unfunded_lower_hours+' h'],
+   ['Urgent potentially unfunded (max)',next.urgent_potentially_unfunded_upper_hours+' h'],
+   ['Cash left unused',currency(next.currency,next.unused_funds_end)],
+   ['Setup still unfunded',currency(next.currency,next.setup_cost_still_unpaid)]])info.append(stat(title,value));
+  const tbody=el('release-weeks');tbody.replaceChildren();
+  for(const row of next.weeks){
+   const tr=mk('tr');
+   for(const v of [row.week,currency(next.currency,row.deposit),
+     currency(next.currency,row.paid_setup),currency(next.currency,row.paid_proposed_labor),
+     row.funded_hours+' h',row.hours_not_funded+' h',
+     currency(next.currency,row.cash_carried_forward)])tr.append(mk('td',v));
+   tbody.append(tr);
+  }
+  el('release-export').hidden=false;
+  show('Private staged financial scenario calculated; nothing has been booked or executed.');
+ }catch(err){show('Phased funding held: '+(err instanceof Error?err.message:'Invalid schedule'),true);}
+});
+el('release-export').addEventListener('click',()=>{
+ if(!staged)return;
+ if(!confirm('Export only a private unsigned CASH RELEASE scenario? This does not make or authorise a payment, grant, remediation or retest.'))return;
+ download('lightup-remediation-staged-funding.json',JSON.stringify(staged,null,2)+'\n','application/json;charset=utf-8');
+ show('Aggregate staged funding discussion exported.');
+});
+
 el('json').addEventListener('click',()=>{
  if(!forecast)return;
  if(!confirm('Export only an unsigned, hypothetical AGGREGATE funding discussion? This is not authorization, a contract, customer invoice or verified remediation.'))return;
