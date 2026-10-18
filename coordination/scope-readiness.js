@@ -176,12 +176,50 @@ function brief(){
  }
  return lines.join('\n');
 }
+function renderActionBoard(){
+ const root=$('actionBoard');root.replaceChildren();
+ const view=$('boardView').value,today=new Date().toISOString().slice(0,10);
+ for(const [id,title] of STAGES){
+  const items=entries.filter(r=>{
+   const t=r.tasks[id];
+   if(t.status==='prepared')return false;
+   if(view==='overdue')return Boolean(t.due&&t.due<today);
+   if(view==='unassigned')return !t.owner.trim();
+   if(view==='waiting')return t.status==='waiting';
+   return true;
+  }).sort((a,b)=>{
+   const da=a.tasks[id].due||'9999-12-31',db=b.tasks[id].due||'9999-12-31';
+   return da.localeCompare(db)||attention(b)-attention(a)||a.name.localeCompare(b.name);
+  });
+  const lane=make('section',undefined,'actionLane');
+  lane.append(make('h3',title+' ('+items.length+')'));
+  if(!items.length){lane.append(make('p','No matching actions.','small'));root.append(lane);continue;}
+  for(const r of items.slice(0,8)){
+   const t=r.tasks[id],button=make('button');button.type='button';
+   button.append(make('strong',r.name||'Untitled proposal'));
+   button.append(make('span',(t.due?'Target '+t.due:'No target date')+
+    ' · '+(t.owner||'No coordinator')+
+    ' · '+(r.source_attached?'source attached':'source HOLD')));
+   button.addEventListener('click',()=>{
+    active=r.source_sha256;$('filter').value='all';clearBulkPreview();clearPacketPreview();
+    renderList();renderDetail();
+    const row=Array.from($('detail').querySelectorAll('[data-stage-id]')).find(el=>el.dataset.stageId===id);
+    if(row)row.scrollIntoView({behavior:'smooth',block:'center'});
+   });
+   lane.append(button);
+  }
+  if(items.length>8)lane.append(make('p','+'+(items.length-8)+' more in this workstream. Use the draft register to see the rest.','small'));
+  root.append(lane);
+ }
+}
+$('boardView').addEventListener('change',renderActionBoard);
 function renderStats(){
  $('count').textContent=String(entries.length);
  $('unbound').textContent=String(entries.filter(r=>!r.source_attached).length);
  $('blockers').textContent=String(entries.reduce((s,r)=>s+unresolved(r),0));
  $('overdue').textContent=String(entries.reduce((s,r)=>s+overdue(r),0));
  $('roleOverlap').textContent=String(entries.filter(roleOverlap).length);
+ renderActionBoard();
  $('brief').textContent=brief();
  $('save').disabled=!entries.length;$('csv').disabled=!entries.length;$('print').disabled=!entries.length;
  $('todoExport').disabled=!entries.length;
@@ -219,14 +257,14 @@ function renderDetail(){
  const summary=make('p',(r.source_attached?'Source file bound to this exact local session.':'Original source file must be re-attached before relying on continuity.')+
   ' · '+r.asset_count+' proposed assets / '+r.excluded_count+' exclusions · risk '+r.requested_risk,'hint');
  box.append(summary);
- if(roleOverlap(r))box.append(make('p','Review independence: client and operator preparation currently use the same UNVERIFIED coordinator label. This is a planning conflict signal, not proof of identity.','hint'));
+ const roleMsg=make('p',roleOverlap(r)?'Client and operator use the same UNVERIFIED coordinator label. Verify independent roles in authenticated systems.':'','hint');roleMsg.id='roleWarning';box.append(roleMsg);
  const message=make('p','Each “prepared” state means paperwork prepared only. No authenticated client/operator consent can be set here.','small');box.append(message);
  const scroll=make('div',undefined,'scroll'),table=make('table'),thead=make('thead'),tr=make('tr');
  for(const name of ['Preparation workstream','Paperwork state','Follow-up owner label','Target date','Next action / blocker'])tr.append(make('th',name));
  thead.append(tr);table.append(thead);
  const tbody=make('tbody');
  for(const [id,title,help] of STAGES){
-  const task=r.tasks[id], row=make('tr'), titleCell=make('td');
+  const task=r.tasks[id], row=make('tr'), titleCell=make('td');row.dataset.stageId=id;
   titleCell.append(make('strong',title),make('span',help,'small'));row.append(titleCell);
   const status=make('select');status.setAttribute('aria-label',title+' paperwork state');
   for(const [val,label] of [['todo','Not started'],['waiting','Waiting / blocked'],['prepared','Prepared — unverified']]){
@@ -236,7 +274,7 @@ function renderDetail(){
   const stateCell=make('td');stateCell.append(status);row.append(stateCell);
   const owner=make('input');owner.type='text';owner.maxLength=80;owner.value=task.owner;owner.placeholder='Unverified coordinator';
   owner.setAttribute('aria-label',title+' owner label');
-  owner.addEventListener('input',()=>{task.owner=owner.value;setDirty();renderStats();});
+  owner.addEventListener('input',()=>{task.owner=owner.value;setDirty();renderStats();renderList();const msg=$('roleWarning');if(msg)msg.textContent=roleOverlap(r)?'Client and operator use the same UNVERIFIED coordinator label. Verify independent roles in authenticated systems.':'';});
   const ownerCell=make('td');ownerCell.append(owner);row.append(ownerCell);
   const due=make('input');due.type='date';due.value=task.due;due.setAttribute('aria-label',title+' target date');
   due.addEventListener('change',()=>{task.due=due.value;setDirty();renderStats();renderList();});
