@@ -155,8 +155,14 @@
 
   async function byteDigest(bytes) {
     if(!globalThis.crypto || !globalThis.crypto.subtle) return null;
-    const digest=await globalThis.crypto.subtle.digest("SHA-256",bytes);
-    return [...new Uint8Array(digest)].map(x=>x.toString(16).padStart(2,"0")).join("");
+    try {
+      const digest=await globalThis.crypto.subtle.digest("SHA-256",bytes);
+      return [...new Uint8Array(digest)].map(x=>x.toString(16).padStart(2,"0")).join("");
+    } catch (_) {
+      // A failed optional crypto provider may disable private draft resume,
+      // but must not turn otherwise valid offline lab source files into HOLD.
+      return null;
+    }
   }
   async function loadFiles(list) {
     REQUIRE(list.length>=3 && list.length<=12);
@@ -291,15 +297,17 @@
     setTimeout(()=>URL.revokeObjectURL(url),1000);
   }
   function csv() {
-    const rows=[["position","metric","regressed_cases","baseline_aggregate",
+    const rows=[["status","authorized","consent_verified","dispatch_allowed",
+      "release_allowed","position","metric","regressed_cases","baseline_aggregate",
       "candidate_aggregate","delta_aggregate","persistent_cases"]];
     for(let i=0;i<revisions.length;i++) for(const name of NAMES) {
-      const s=snapshot(revisions[i],name);
-      rows.push([i+1,name,s.cases,s.baseline,s.candidate,s.delta,movement(name).persistent]);
+      const v=snapshot(revisions[i],name);
+      rows.push(["REVIEW_ONLY",false,false,false,false,i+1,name,v.cases,
+        v.baseline,v.candidate,v.delta,movement(name).persistent]);
     }
-    // Headers and metric labels are fixed code-owned enum strings; only numbers are exported.
-    return "REVIEW_ONLY,NO_AUTHORITY,NO_CONSENT,NO_DISPATCH,NO_RELEASE\r\n"+
-      rows.map(line=>line.join(",")).join("\r\n")+"\r\n";
+    // Every exported row has identical columns; only code-owned labels,
+    // literal non-authority flags and aggregate numbers are exported.
+    return rows.map(line=>line.join(",")).join("\r\n")+"\r\n";
   }
   function renderOrder() {
     const control=$("revision-select");
