@@ -324,15 +324,23 @@ if(!STAGES.includes(stage)||reviewer.length>80||next.length>180||note.length>100
 if(stage==="unreviewed"&&!reviewer&&!next&&!due&&!note)human.delete(selection);
 else human.set(selection,{stage:stage,reviewer:reviewer,next:next,due:due,note:note});
 }
-async function sha256(raw){
+async function strictFileBytes(file){
+var buffer=await file.arrayBuffer(),bytes=new Uint8Array(buffer);
+if(bytes.length<2||bytes[0]===0xef&&bytes[1]===0xbb&&bytes[2]===0xbf)throw Error("unsupported UTF8 BOM/length");
+var decoder=new TextDecoder("utf-8",{fatal:true,ignoreBOM:true});
+var raw=decoder.decode(bytes);
+if(raw.charCodeAt(0)===0xfeff)throw Error("ambiguous BOM");
+return {raw:raw,bytes:buffer};
+}
+async function sha256(bytes){
 if(!globalThis.crypto||!crypto.subtle)return null;
-try{var digest=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(raw));return Array.from(new Uint8Array(digest)).map(function(x){return x.toString(16).padStart(2,"0");}).join("");}catch(e){return null;}
+try{var digest=await crypto.subtle.digest("SHA-256",bytes);return Array.from(new Uint8Array(digest)).map(function(x){return x.toString(16).padStart(2,"0");}).join("");}catch(e){return null;}
 }
 async function importSource(file,asDemo){
 if(!file||file.size<2||file.size>MAX){setMessage("HOLD: file is missing or outside source size limit.");return;}
 try{
-var raw=await file.text(),candidate=validate(strictJSON(raw));
-var hash=await sha256(raw);
+var input=await strictFileBytes(file),candidate=validate(strictJSON(input.raw));
+var hash=await sha256(input.bytes);
 if(source){
 if(!capturePendingHuman())return;
 if(!confirm("Replacing the original source will CLEAR the existing local human review notes. Export the private source-bound handoff before switching. Continue?"))return;
@@ -426,7 +434,7 @@ el("private-import").addEventListener("change",async function(){
 var file=this.files&&this.files[0];this.value="";
 if(!source||!sourceSHA||fictional||!file||file.size>REV_LIMIT||file.size<2){setMessage("HOLD: private review and exact source SHA required.");return;}
 try{
-var p=strictJSON(await file.text());
+var privateBytes=await strictFileBytes(file),p=strictJSON(privateBytes.raw);
 if(!capturePendingHuman())return;
 if(human.size&&!confirm("Replace current local human notes with the exact-source PRIVATE return packet?"))return;
 if(!object(p)||p.schema!=="lightup.scope_impact_private_review.v1"||p.status!=="REVIEW_ONLY"||p.source_schema!==source.schema||p.client_id!==source.client_id||p.as_of!==source.as_of||p.source_sha256!==sourceSHA||!FALSE_FLAGS.every(function(k){return p[k]===false;})||!Array.isArray(p.rows)||p.rows.length>800)fail();
