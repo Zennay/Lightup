@@ -59,13 +59,13 @@ def _notes() -> str:
         line = input("Notes > ")
         if line == ".":
             break
-        if "\\x00" in line or total + len(line) + 1 > 4000:
+        if "\x00" in line or total + len(line) + 1 > 4000:
             raise ClientRequestError("notes must not exceed 4000 chars or contain NUL")
         collected.append(line)
         total += len(line) + 1
     else:
         raise ClientRequestError("maximum 80 note lines, terminate with a single dot")
-    return "\\n".join(collected).strip()
+    return "\n".join(collected).strip()
 
 
 def _manual_proposal() -> dict:
