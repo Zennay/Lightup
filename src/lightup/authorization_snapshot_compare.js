@@ -7,8 +7,8 @@ const FALSE=['authorization_granted','client_consent_verified','execution_allowe
 const $=id=>document.getElementById(id);
 const create=(tag,content)=>{const e=document.createElement(tag);e.textContent=String(content);return e;};
 function records(data){
-  if(!data || !Array.isArray(data.engagements)||!Array.isArray(data.review_queue)||
-     data.engagements.length>3000||data.review_queue.length>3000)throw Error('Malformed or oversized snapshot');
+  if(!data || !Array.isArray(data.engagements)||!Array.isArray(data.request_history)||
+     data.engagements.length>3000||data.request_history.length>3000)throw Error('Malformed or oversized snapshot');
   const out=new Map();
   function put(row,kind,client,engagement,flags,action){
     if(!row || typeof row!=='object'||!SHA.test(row.identity_key)||!SHA.test(row.source_key)||
@@ -32,8 +32,8 @@ function records(data){
     } else put(engagement,'no_grant',engagement.client,engagement.engagement,
       ['NO_GRANT_RECORD'],'Check source independently. No grant implied.');
   }
-  for(const request of data.review_queue)
-    put(request,'pending_request',request.client,'Client request inbox',request.flags,request.next_action);
+  for(const request of data.request_history)
+    put(request,'assessment_request',request.client,'Assessment request lifecycle',request.flags,request.next_action);
   return out;
 }
 function compare(oldRecords,currentRecords){
@@ -62,7 +62,7 @@ function delta(e){
       ' (NOT verified resolved).':'');
 }
 function init(snapshot){
-  if(!snapshot||snapshot.disposition!=='REVIEW_ONLY'||!SHA.test(snapshot.scope_fingerprint))return;
+  if(!snapshot||snapshot.disposition!=='REVIEW_ONLY'||!SHA.test(snapshot.scope_fingerprint)||!Array.isArray(snapshot.request_history))return;
   const current=records(snapshot);
   let result=null;
   const notice=value=>{$('snapshotCompareFeedback').textContent=value;};
@@ -93,7 +93,7 @@ function init(snapshot){
     try{
       if(!file||file.size>2000000)throw Error('Select a local previous JSON report no larger than 2 MiB');
       const previous=JSON.parse(await file.text());
-      if(!previous||previous.format!=='lightup.authorization_readiness_operator_v1'||
+      if(!previous||previous.format!=='lightup.authorization_readiness_operator_v1'||!Array.isArray(previous.request_history)||
          previous.disposition!=='REVIEW_ONLY'||previous.scope_fingerprint!==snapshot.scope_fingerprint||
          !previous.authority||Object.keys(previous.authority).sort().join(',')!==FALSE.slice().sort().join(',')||
          FALSE.some(k=>previous.authority[k]!==false))
