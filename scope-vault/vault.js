@@ -440,7 +440,8 @@
       if (route === "client-review") {
         // No internal notes/stages are exported. Historical drafts are not
         // silently promoted to a current client handoff.
-        invariant(outgoing.every((entry) => clientReviewRoles.includes(entry.role) && entry.stage !== "historical"));
+        invariant(outgoing.every((entry) =>
+          clientReviewRoles.includes(entry.role) && entry.stage === "ready"));
         // Local bounded best-effort detection; reject on suspicious data,
         // disclose no matching raw content or credential fragments.
         const riskyCount = outgoing.filter((entry) => likelyCredentialContent(entry.bytes)).length;
@@ -728,7 +729,7 @@
     const route = els.handoffRoute.value;
     invariant(handoffRoutes.includes(route));
     const choose = (entry) => route === "private-archive" ||
-      (route === "client-review" && clientReviewRoles.includes(entry.role) && entry.stage !== "historical") ||
+      (route === "client-review" && clientReviewRoles.includes(entry.role) && entry.stage === "ready") ||
       (route === "operator-review" && entry.role === "Operator review — unverified" && entry.stage !== "historical");
     const proposed = entries.filter(choose);
     if (!proposed.length) {notice("No current files fit that self-reported route. Select eligible files manually.", true);return;}
