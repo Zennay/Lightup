@@ -20,14 +20,25 @@
 <div><small>Locally edited</small><strong id="modified">—</strong></div>
 <div><small>Original state</small><strong id="sourceState">—</strong></div>
 </section>
+<section class="panel"><h2>Batch human follow-up editor</h2>
+<p>Select particular visible original source slots. Bulk operations change only local human planning fields; source IDs and old values cannot change.</p>
+<div class="toolbar"><button id="selectVisible" type="button">Select visible source slots</button><button id="clearSelected" type="button">Clear selection</button>
+<label>Bulk stage<select id="bulkStage"><option value="">Leave stage unchanged</option></select></label>
+<label>Bulk role<select id="bulkRole"><option value="">Leave role unchanged</option></select></label>
+<label>Bulk human proposed date<input id="bulkDate" type="date" min="2020-01-01" max="2100-12-31"></label>
+<label><input id="bulkClearDate" type="checkbox"> Remove proposed date</label>
+<button id="applySelected" type="button">Apply only to selected human rows</button></div></section>
+<section class="panel"><h2>Private original-bound proposal continuation</h2><p>Resume a previously exported private human proposal in this local browser. Only an exact matching source digest, original prior fields and full source slot membership are accepted; this never updates original files.</p>
+<label>Restore PRIVATE proposal JSON <input id="restore" type="file" accept=".json,application/json"></label></section>
 <section class="panel">
 <h2>Original-source-bound human review fields</h2>
 <p>Original fields are shown read-only. A change here creates an untrusted private proposal, not a saved original finding, scheduled job or approved assessment.</p>
 <div class="scroll"><table><thead><tr>
-<th>Source slot</th><th>Original source type</th><th>Original stage</th>
+<th>Select</th><th>Source slot</th><th>Original source type</th><th>Original stage</th>
 <th>New human stage</th><th>New neutral role</th><th>New proposed date</th><th>Change</th>
 </tr></thead><tbody id="rows"></tbody></table></div>
 </section>
+<section class="panel"><h2>Local human change preview</h2><p>Only original human planning fields; original source state and hashes cannot be edited. No work is automatically assigned.</p><div class="scroll"><table><thead><tr><th>Original slot</th><th>Changed fields</th><th>Old human value</th><th>Proposed human value</th></tr></thead><tbody id="diffRows"></tbody></table></div></section>
 <section class="panel handoff">
 <h2>Download a private original-bound proposal</h2>
 <p>Select and explicitly download changes for the current agenda. To accept a proposal, the original operator must separately present the original manifest, original human choices, exact original agenda JSON and the downloaded proposal to <code>assessment-portfolio/proposal_return.py</code>; the CLI verifies the complete old human state and generates a new original-schema choices document or HOLD.</p>

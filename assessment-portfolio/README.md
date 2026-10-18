@@ -66,3 +66,7 @@ The new [private human return workflow](REVIEW-RETURN.md) lets the operator edit
 ## Confidential multi-source original choices handoff
 
 For **2–12 independent original source archives** with their original manifests, original choices, original agendas and private browser proposals, the new [multi-source human return](MULTI-RETURN.md) builds a single atomically published private ZIP containing separate original-schema human choices for every source, private original-manifest fingerprints and a static human-only inventory. The entire batch HOLDs before publication on even one stale or conflicting source. No source files are overwritten and no human action is executed.
+
+### Bulk editing, private review diff and resume
+
+The bundled original human review Studio now supports selected-row bulk human-only changes, a live old/new private follow-up diff, and private proposal re-import after closing the browser. Every imported original field is matched against the immutable exact original source digest and prior human values before replacing the local in-memory draft. The original ‘receive’ CLI still requires the original manifest, choices and agenda to accept the human proposal and publish a **new** original-schema file; the browser alone grants nothing.

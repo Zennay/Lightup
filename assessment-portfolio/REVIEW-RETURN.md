@@ -14,7 +14,7 @@ python3 assessment-portfolio/review_studio.py \
   --output /private/NEW-private-review-studio.html
 ```
 
-3. In the offline Studio choose the original agenda; edit only the human stage, neutral role and proposed date. No original source content is editable. Export a **PRIVATE** human proposal JSON via explicit manual download.
+3. In the offline Studio choose the original agenda; edit only the human stage, neutral role and proposed date. Select individual source slots, or select visible rows and bulk-apply only human fields. Inspect the live before/after private change preview. No original source content is editable. Export a **PRIVATE** human proposal JSON via explicit manual download.
 4. Return that human-only change proposal to the **original format**, without changing an existing file:
 
 ```sh
@@ -54,3 +54,7 @@ Exit 2 is human-only REVIEW_ONLY, exit 3 retains original HOLD or rejects incomp
 The private Studio contains original source-byte fingerprints and source slots, which **must not** be publicly distributed. All browser edits live in volatile browser memory; no network, localStorage, cookie, data uploads, model, scanner, target requests or external scripts exist. A private exported JSON is not an authenticated client/operator instruction.
 
 Original exact-head hosted and permanently registered named VPS CI, original source owner, independent privacy/security review, current independently authenticated client/operator consent with action-time revocation and explicit HUMAN GO remain mandatory before active work or a main/deploy merge. No QA or regression suite is created or run.
+
+### Browser-side private draft continuation and multi-row review
+
+Within the self-contained HTML, the operator may select specific visible original slots, apply one human stage/neutral role/proposed date to those selected slots, clear the date or reset an agenda. The live local private change preview shows old vs proposed fields for every modified slot. The local browser can also **restore a previously exported PRIVATE proposal** of at most 256 KiB. Restore atomically requires exactly the original agenda SHA, reference date, all original source slot membership and all prior original human values, with only canonical human stage, role and date changes, and all authorization flags literally false. On mismatch, current in-memory work is left unchanged and the import is marked HOLD. Original sources are never modified by the browser. The strict server-side ORIGINAL-schema CLI remains required for any real human planning return. Browser persistence and network calls remain disabled.

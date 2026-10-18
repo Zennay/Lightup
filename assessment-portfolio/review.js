@@ -1,156 +1,264 @@
 "use strict";
 (() => {
   const input = JSON.parse(document.getElementById("lightupSource").textContent);
-  const sourceSelect = document.getElementById("source");
-  const filter = document.getElementById("filter");
-  const rowsNode = document.getElementById("rows");
-  const get = name => document.getElementById(name);
+  const get = id => document.getElementById(id);
+  const sourceSelect = get("source");
+  const filter = get("filter");
   const stageChoices = ["PENDING_ORIGINAL","NEEDS_ORIGINAL_EVIDENCE","NEEDS_SOURCE_OWNER",
                         "NEEDS_PRIVACY_REVIEW","AWAITING_INPUT","HUMAN_DISCUSSION"];
   const roles = ["unassigned","source_owner","reviewer","privacy","operator"];
-  const buffer = new Map(); // Human draft edits in memory only; no persistence.
-  const text = (el, value) => { el.textContent = String(value); return el; };
-  const el = (tag, parent, value) => {
-    const e = document.createElement(tag);
-    if (value !== undefined) text(e,value);
-    if (parent) parent.appendChild(e);
-    return e;
+  const keys = obj => Object.keys(obj).sort().join("|");
+  const packetKeys = ["schema","source_agenda_sha256","reference_date","source_count",
+                      "items","authorized","consent_verified","dispatch_allowed","release_allowed"].sort().join("|");
+  const itemKeys = ["slot","prior_stage","prior_next_role","prior_review_date",
+                    "stage","next_role","review_date"].sort().join("|");
+  const state = new Map(), selected = new Set();
+  const node = (tag,parent,value) => {
+    const x=document.createElement(tag);
+    if (value !== undefined) x.textContent=String(value);
+    if (parent) parent.appendChild(x);
+    return x;
   };
-  function buildSelect(parent, choices, selected, changed) {
-    const node = el("select",parent);
-    for (const choice of choices) {
-      const opt = el("option",node,choice);
-      opt.value = choice;
+  function choices(parent,values,current,onChange,blank=false) {
+    const s=node("select",parent);
+    if (blank) {
+      const o=node("option",s,"Leave unchanged");
+      o.value="";
     }
-    node.value = selected;
-    node.addEventListener("change", () => changed(node.value));
-    return node;
-  }
-  for (const st of stageChoices) {
-    const opt = el("option",filter,st); opt.value = st;
-  }
-  input.sources.forEach(src => {
-    const opt = el("option",sourceSelect,"Agenda "+src.slot+" · "+src.claimed_status);
-    opt.value = String(src.slot);
-  });
-  const oldFields = row => ({slot:row.source_slot,
-    prior_stage:row.stage,prior_next_role:row.next_role,prior_review_date:row.review_date});
-  const editedFields = row => ({stage:row.stage,
-    next_role:row.next_role,review_date:row.review_date});
-  function draftFor(source) {
-    if (!buffer.has(source.slot)) {
-      buffer.set(source.slot,source.rows.map(row => ({
-        ...oldFields(row),...editedFields(row)
-      })));
+    for (const value of values) {
+      const opt=node("option",s,value);
+      opt.value=value;
     }
-    return buffer.get(source.slot);
+    s.value=current;
+    if (onChange) s.addEventListener("change",()=>onChange(s.value));
+    return s;
   }
-  function currentSource() {
-    return input.sources.find(src => src.slot === Number(sourceSelect.value));
+  function message(text) { get("status").textContent=text; }
+  for (const step of stageChoices) {
+    const opt=node("option",filter,step);
+    opt.value=step;
   }
-  function changed(item) {
-    return item.stage !== item.prior_stage ||
-      item.next_role !== item.prior_next_role ||
-      item.review_date !== item.prior_review_date;
+  choices(get("bulkStage"),stageChoices,"",null,true);
+  choices(get("bulkRole"),roles,"",null,true);
+  for (const src of input.sources) {
+    const opt=node("option",sourceSelect,"Agenda "+src.slot+" · "+src.claimed_status);
+    opt.value=String(src.slot);
   }
-  function humanDate(value) {
-    if (value === "") return null;
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
-    const parsed = new Date(value+"T00:00:00Z");
-    const year = Number(value.slice(0,4));
-    return Number.isFinite(parsed.getTime()) && parsed.toISOString().slice(0,10)===value &&
-      year>=2020 && year<=2100 ? value : false;
+  function originalItem(row) {
+    return {slot:row.source_slot,prior_stage:row.stage,
+      prior_next_role:row.next_role,prior_review_date:row.review_date,
+      stage:row.stage,next_role:row.next_role,review_date:row.review_date};
   }
-  function paint() {
-    const source = currentSource();
-    if (!source) return;
-    const draft = draftFor(source);
-    get("total").textContent = draft.length;
-    get("sourceState").textContent = source.claimed_status;
-    get("modified").textContent = draft.filter(changed).length;
-    rowsNode.replaceChildren();
-    for (const item of draft) {
+  function source() {
+    return input.sources.find(item=>item.slot===Number(sourceSelect.value));
+  }
+  function currentRows(src) {
+    if (!state.has(src.slot)) state.set(src.slot,src.rows.map(originalItem));
+    return state.get(src.slot);
+  }
+  function modified(item) {
+    return ["stage","next_role","review_date"].some(field =>
+      item[field]!==item["prior_"+field]);
+  }
+  function dateValue(value) {
+    if (value === "" || value === null) return null;
+    if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+    const d = new Date(value+"T00:00:00Z");
+    const year=Number(value.slice(0,4));
+    if (!Number.isFinite(d.getTime()) || year<2020 || year>2100
+        || d.toISOString().slice(0,10)!==value) return false;
+    return value;
+  }
+  function changes(item) {
+    const output=[];
+    for (const key of ["stage","next_role","review_date"]) {
+      const older=item["prior_"+key], later=item[key];
+      if (older!==later) output.push([key,older || "—",later || "—"]);
+    }
+    return output;
+  }
+  function view() {
+    const src=source();
+    if (!src) return;
+    const drafts=currentRows(src);
+    get("total").textContent=drafts.length;
+    get("modified").textContent=drafts.filter(modified).length;
+    get("sourceState").textContent=src.claimed_status;
+    const tbody=get("rows"), diff=get("diffRows");
+    tbody.replaceChildren(); diff.replaceChildren();
+    for (const item of drafts) {
+      for (const entry of changes(item)) {
+        const tr=node("tr",diff);
+        [item.slot,...entry].forEach(value=>node("td",tr,value));
+      }
       if (filter.value!=="all" && item.stage!==filter.value) continue;
-      const original = source.rows.find(x => x.source_slot===item.slot);
-      const tr = el("tr",rowsNode);
-      if (changed(item)) tr.classList.add("changed");
-      for (const value of [item.slot,original.source_kind,item.prior_stage]) el("td",tr,value);
-      buildSelect(el("td",tr),stageChoices,item.stage,value => {
-        item.stage=value;paint();
+      const original=src.rows.find(row=>row.source_slot===item.slot);
+      const tr=node("tr",tbody);
+      if (modified(item)) tr.classList.add("changed");
+      const selector=node("input",node("td",tr));
+      selector.type="checkbox";
+      selector.checked=selected.has(item.slot);
+      selector.setAttribute("aria-label","Select human source slot "+item.slot);
+      selector.addEventListener("change",()=>{
+        if (selector.checked) selected.add(item.slot);
+        else selected.delete(item.slot);
       });
-      buildSelect(el("td",tr),roles,item.next_role,value => {
-        item.next_role=value;paint();
+      [item.slot,original.source_kind,item.prior_stage].forEach(value=>node("td",tr,value));
+      choices(node("td",tr),stageChoices,item.stage,value=>{
+        item.stage=value;
+        view();
       });
-      const td=el("td",tr);
-      const dateInput=el("input",td);
-      dateInput.type="date";
-      dateInput.min="2020-01-01";dateInput.max="2100-12-31";
-      dateInput.value=item.review_date || "";
-      dateInput.setAttribute("aria-label","Human proposed date for original source slot "+item.slot);
-      dateInput.addEventListener("change", () => {
-        const parsed=humanDate(dateInput.value);
-        if (parsed===false) {
-          dateInput.setCustomValidity("Select a valid date in 2020–2100");
-          get("status").textContent="Invalid proposed date. No source updated.";
+      choices(node("td",tr),roles,item.next_role,value=>{
+        item.next_role=value;
+        view();
+      });
+      const date=node("input",node("td",tr));
+      date.type="date";date.min="2020-01-01";date.max="2100-12-31";
+      date.value=item.review_date || "";
+      date.setAttribute("aria-label","Proposed human date for slot "+item.slot);
+      date.addEventListener("change",()=>{
+        const value=dateValue(date.value);
+        if (value===false) {
+          date.setCustomValidity("Invalid date, enter 2020–2100");
+          message("Invalid date. No original human source modified.");
           return;
         }
-        dateInput.setCustomValidity("");
-        item.review_date=parsed;
-        get("status").textContent="Human proposal only. No original state changed.";
-        paint();
+        item.review_date=value;
+        date.setCustomValidity("");
+        view();
       });
-      el("td",tr,changed(item)?"LOCAL CHANGE":"Original");
+      node("td",tr,modified(item)?"LOCALLY EDITED":"Original");
+    }
+    if (!diff.children.length) {
+      const tr=node("tr",diff);
+      node("td",tr,"No local human changes");
+      for(let i=0;i<3;i++) node("td",tr,"—");
     }
   }
-  sourceSelect.addEventListener("change", () => {
-    get("confirm").checked=false;
-    paint();
+  sourceSelect.addEventListener("change",()=>{
+    selected.clear();get("confirm").checked=false;
+    get("restore").value="";
+    message("Switched private source. No original data changed.");
+    view();
   });
-  filter.addEventListener("change",paint);
-  get("reset").addEventListener("click", () => {
-    const source=currentSource();
-    buffer.delete(source.slot);
-    get("confirm").checked=false;
-    get("status").textContent="In-memory edits for this agenda reset; original files untouched.";
-    paint();
+  filter.addEventListener("change",()=>{
+    selected.clear();
+    view();
   });
-  get("download").addEventListener("click", () => {
-    const src=currentSource(), edits=draftFor(src);
+  get("selectVisible").addEventListener("click",()=>{
+    selected.clear();
+    currentRows(source()).filter(item=>filter.value==="all" || item.stage===filter.value)
+      .forEach(item=>selected.add(item.slot));
+    message(selected.size+" human rows selected for possible local bulk edit.");
+    view();
+  });
+  get("clearSelected").addEventListener("click",()=>{
+    selected.clear();
+    message("No human rows selected.");
+    view();
+  });
+  get("applySelected").addEventListener("click",()=>{
+    const stage=get("bulkStage").value,role=get("bulkRole").value;
+    const date=get("bulkDate").value,clear=get("bulkClearDate").checked;
+    if (!selected.size) {message("Select specific source slots first.");return;}
+    if (clear && date) {message("Choose either a new proposed date OR clear it.");return;}
+    const parsed=dateValue(date);
+    if (parsed===false) {message("Invalid proposed date, no changes applied.");return;}
+    if (!stage && !role && !date && !clear) {
+      message("Choose at least one human-only field to modify.");return;
+    }
+    let changed=0;
+    for (const item of currentRows(source())) {
+      if (!selected.has(item.slot)) continue;
+      if (stage) item.stage=stage;
+      if (role) item.next_role=role;
+      if (date || clear) item.review_date=clear?null:parsed;
+      changed++;
+    }
+    selected.clear();
+    get("confirm").checked=false;
+    message(changed+" selected human rows edited locally; original source unchanged.");
+    view();
+  });
+  get("reset").addEventListener("click",()=>{
+    state.delete(source().slot);
+    selected.clear();
+    get("confirm").checked=false;
+    message("All local edits for the selected original agenda reset; source unchanged.");
+    view();
+  });
+  async function restore(file) {
+    if (!file || file.size<1 || file.size>262144) throw Error("private proposal size");
+    const doc=JSON.parse(await file.text());
+    const src=source();
+    if (!doc || Array.isArray(doc) || keys(doc)!==packetKeys ||
+        doc.schema!=="lightup.assessment_portfolio_human_proposal.v1" ||
+        doc.source_agenda_sha256!==src.source_sha256 ||
+        doc.reference_date!==input.reference_date ||
+        !Number.isInteger(doc.source_count) || doc.source_count!==src.rows.length ||
+        !Array.isArray(doc.items) || doc.items.length!==src.rows.length ||
+        doc.authorized!==false || doc.consent_verified!==false ||
+        doc.dispatch_allowed!==false || doc.release_allowed!==false) {
+      throw Error("incompatible private human proposal");
+    }
+    const replacement=[];
+    for (let n=0;n<src.rows.length;n++) {
+      const old=originalItem(src.rows[n]);
+      const row=doc.items[n];
+      if (!row || Array.isArray(row) || keys(row)!==itemKeys ||
+          !Number.isInteger(row.slot) || row.slot!==old.slot ||
+          row.prior_stage!==old.prior_stage ||
+          row.prior_next_role!==old.prior_next_role ||
+          row.prior_review_date!==old.prior_review_date ||
+          !stageChoices.includes(row.stage) || !roles.includes(row.next_role) ||
+          dateValue(row.review_date)===false) {
+        throw Error("proposal changes original identity or prior human record");
+      }
+      replacement.push({...old,
+        stage:row.stage,next_role:row.next_role,review_date:dateValue(row.review_date)});
+    }
+    // Atomic local import. Never modify the previous workspace on error.
+    state.set(src.slot,replacement);
+    selected.clear();
+    get("confirm").checked=false;
+    message("Original-bound human proposal resumed locally; original choices remain unchanged.");
+    view();
+  }
+  get("restore").addEventListener("change",async()=>{
+    const file=get("restore").files[0];
+    try { await restore(file); }
+    catch(e) { message("HOLD: private proposal does not match original source/prior human values."); }
+    finally { get("restore").value=""; }
+  });
+  get("download").addEventListener("click",()=>{
+    const src=source(),items=currentRows(src);
     if (!get("confirm").checked) {
-      get("status").textContent="Confirm private human-only proposal scope before exporting.";
+      message("Confirm PRIVATE human-only scope before creating proposal.");
       return;
     }
-    const normalized=edits.map(x => ({
-      slot:x.slot,
-      prior_stage:x.prior_stage,
-      prior_next_role:x.prior_next_role,
-      prior_review_date:x.prior_review_date,
-      stage:x.stage,
-      next_role:x.next_role,
-      review_date:x.review_date
-    }));
-    if (normalized.some(x => humanDate(x.review_date||"")===false)) {
-      get("status").textContent="Invalid date: private proposal not exported.";
-      return;
+    if (items.some(row=>dateValue(row.review_date)===false)) {
+      message("HOLD: invalid date. No proposal exported.");return;
     }
-    const packet={
+    const payload={
       schema:"lightup.assessment_portfolio_human_proposal.v1",
       source_agenda_sha256:src.source_sha256,
       reference_date:input.reference_date,
-      source_count:normalized.length,
-      items:normalized,
+      source_count:items.length,
+      items:items.map(row=>({
+        slot:row.slot,prior_stage:row.prior_stage,
+        prior_next_role:row.prior_next_role,prior_review_date:row.prior_review_date,
+        stage:row.stage,next_role:row.next_role,review_date:row.review_date
+      })),
       authorized:false,consent_verified:false,dispatch_allowed:false,release_allowed:false
     };
-    const object=new Blob([JSON.stringify(packet,null,2)+"\n"],{type:"application/json"});
-    const uri=URL.createObjectURL(object);
-    const link=el("a",document.body);
-    link.href=uri;
-    link.download="lightup-PRIVATE-human-proposal-agenda-"+src.slot+".json";
-    link.click();
-    link.remove();
-    setTimeout(() => URL.revokeObjectURL(uri),0);
-    get("status").textContent="Private human proposal exported. Revalidate with original manifest, choices and agenda in original-schema return CLI.";
+    const blob=new Blob([JSON.stringify(payload,null,2)+"\n"],{type:"application/json"});
+    const url=URL.createObjectURL(blob);
+    const a=node("a",document.body);
+    a.href=url;a.download="lightup-PRIVATE-human-proposal-agenda-"+src.slot+".json";
+    a.click();a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),0);
     get("confirm").checked=false;
+    message("Private human-only proposal downloaded. Explicit original-schema receive is mandatory.");
   });
-  paint();
+  view();
 })();
