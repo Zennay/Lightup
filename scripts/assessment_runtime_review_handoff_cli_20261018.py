@@ -7,9 +7,10 @@ admissible comparison; exit 3 is a generic HOLD.
 from __future__ import annotations
 
 import argparse
+import csv
 from hashlib import sha256
 from html import escape
-from io import BytesIO
+from io import BytesIO, StringIO
 import json
 import os
 from pathlib import Path
@@ -231,6 +232,33 @@ def _original_review_desk_snapshot():
     return _pinned_pack_asset("review-desk.html", REVIEW_DESK_SHA256, 65_536)
 
 
+def _human_worklist(result, cohort: bool):
+    """Privacy-minimal, ordinal-only human triage CSV with zero authority."""
+    stream = StringIO(newline="")
+    rows = csv.writer(stream, lineterminator="\r\n")
+    rows.writerow(("case", "priority", "workstream", "metric", "suggested_follow_up",
+                   "review_stage", "authorized", "consent_verified", "release_allowed"))
+    cases = (result.comparisons if cohort else (("single", result),))
+    for ordinal, (_, comparison) in enumerate(cases, 1):
+        for name in comparison.regressions:
+            if name in ("scope_violations", "policy_violations"):
+                priority, team, instruction = ("P1", "scope/policy",
+                    "Human review of lab scope/policy evidence; do not execute")
+            elif name in ("valid_findings", "invalid_findings", "missed_findings",
+                          "coverage_assessed"):
+                priority, team, instruction = ("P2", "lab runtime",
+                    "Human review of measured lab finding/coverage changes")
+            else:
+                priority, team, instruction = ("P3", "evidence review",
+                    "Human review of evidence or lab quality score changes")
+            rows.writerow((f"Case {ordinal}", priority, team, name,
+                           instruction, "PENDING_HUMAN_REVIEW", "false", "false", "false"))
+    output = stream.getvalue().encode("utf-8")
+    if len(output) > 131_072:
+        raise ValueError("review worklist exceeds bound")
+    return output
+
+
 def _review_pack(result, first_sha: str, second_sha: str,
                  cohort: bool, selected_cases: bool):
     """One atomic private archive: printable brief + original Review Desk JSON.
@@ -247,6 +275,7 @@ def _review_pack(result, first_sha: str, second_sha: str,
                       ensure_ascii=True, allow_nan=False).encode("ascii")
     if len(desk) > COHORT_LIMIT:
         raise ValueError("comparison output exceeds bound")
+    triage = _human_worklist(result, cohort)
     manifest = json.dumps({
         "format": "lightup.private_lab_review_pack.v1",
         "comparison_type": "cohort" if cohort else "single_case",
@@ -264,6 +293,9 @@ def _review_pack(result, first_sha: str, second_sha: str,
         "review_desk_source_commit": REVIEW_DESK_SOURCE_COMMIT,
         "review_desk_sha256": REVIEW_DESK_SHA256,
         "landing_sha256": LANDING_SHA256,
+        "printable_review_sha256": sha256(report).hexdigest(),
+        "review_desk_json_sha256": sha256(desk).hexdigest(),
+        "human_worklist_sha256": sha256(triage).hexdigest(),
     }, sort_keys=True, separators=(",", ":")).encode("ascii")
     # Fixed original #1576 single-file browser is shipped *unchanged*.
     browser = _original_review_desk_snapshot()
@@ -272,7 +304,8 @@ def _review_pack(result, first_sha: str, second_sha: str,
         "1. Extract this sensitive ZIP into a private local folder.\n"
         "2. Open index.html for the local start screen and links.\n"
         "3. Open review-desk.html locally and choose review-desk.json in its file picker.\n"
-        "4. Save any desired local human follow-up from the browser explicitly.\n"
+        "4. Review human-worklist.csv for pending metric follow-ups (not tasks or grants).\n"
+        "5. Save any desired local human follow-up from the browser explicitly.\n"
         "The source-rich JSON/ZIP contains original scenario identities.\n"
         "Neither REVIEW_ONLY nor HOLD permits scans, grants or release.\n"
     ).encode("utf-8")
@@ -283,6 +316,7 @@ def _review_pack(result, first_sha: str, second_sha: str,
                               ("review.html", report),
                               ("review-desk.html", browser),
                               ("review-desk.json", desk),
+                              ("human-worklist.csv", triage),
                               ("manifest.json", manifest)):
             info = ZipInfo(name, date_time=(2026, 10, 18, 0, 0, 0))
             info.compress_type = ZIP_DEFLATED
