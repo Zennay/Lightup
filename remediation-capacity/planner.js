@@ -157,6 +157,7 @@
         if (!task.remaining) continue;
         const allocation = Math.min(remaining,task.remaining);
         task.remaining -= allocation;
+        if(task.remaining===0) task.allocatedByWeek=w+1;
         remaining -= allocation;
         portions.push(Object.freeze({ordinal:task.ordinal,severity:task.severity,
           sourceRetest:task.retest,hours:allocation,finished:task.remaining===0}));
@@ -167,12 +168,27 @@
     }
     const outstanding = queue.filter(x=>x.remaining>0);
     const totalHours = queue.reduce((n,x)=>n+x.effort,0);
+    const priorityBands = Object.freeze(Object.fromEntries(SEVERITIES.map(severity=>{
+      const items=queue.filter(x=>x.severity===severity);
+      const estimated=items.reduce((n,x)=>n+x.effort,0);
+      const remaining=items.reduce((n,x)=>n+x.remaining,0);
+      const fullyScheduled=items.filter(x=>x.remaining===0).length;
+      return [severity,Object.freeze({
+        source_count:items.length,
+        source_regressions:items.filter(x=>x.retest==='regression').length,
+        estimated_hours:estimated,scheduled_hours:estimated-remaining,
+        unscheduled_hours:remaining,fully_scheduled_estimates:fullyScheduled,
+        all_estimates_scheduled:remaining===0,
+        last_estimated_scheduling_week:remaining===0&&items.length
+          ? Math.max(...items.map(x=>x.allocatedByWeek)) : null
+      })];
+    })));
     return Object.freeze({schedule:Object.freeze(schedule),
       capacity, totalHours, assignedHours:totalHours-outstanding.reduce((n,x)=>n+x.remaining,0),
       backlogHours:outstanding.reduce((n,x)=>n+x.remaining,0),
       backlogCount:outstanding.length,
       completedProposals:queue.filter(x=>x.remaining===0).length,
-      sourceCount:queue.length,
+      sourceCount:queue.length,priorityBands,
       reserve, start:options.start,daysPerWeek:workDays,weeklyAvailability:availability});
   }
   function summary(plan) {
@@ -183,6 +199,7 @@
       source_count:plan.sourceCount, proposed_completed:plan.completedProposals,
       total_estimated_hours:plan.totalHours, assigned_hours:plan.assignedHours,
       backlog_hours:plan.backlogHours, backlog_findings:plan.backlogCount,
+      priority_bands:plan.priorityBands,
       sprint_weeks:plan.schedule.map(week=>{
         const severity_hours=Object.fromEntries(SEVERITIES.map(s=>[s,week.portions.filter(p=>p.severity===s).reduce((a,p)=>a+p.hours,0)]));
         return {week:week.week,start:week.start,availability_pct:week.availability,available_hours:week.capacity,
@@ -217,6 +234,16 @@
     for(const w of data.sprint_weeks) lines.push(
       '| '+[w.week,w.start,w.availability_pct,w.available_hours,w.allocated_hours,...SEVERITIES.map(s=>w.severity_hours[s])].join(' | ')+' |'
     );
+    lines.push('','## Priority bands (planning estimates only)','',
+      '| Severity | Records | Source regressions | Estimated h | Tentatively planned h | Remaining h | Fully allocated within horizon | Latest allocation week |',
+      '| --- | ---: | ---: | ---: | ---: | ---: | --- | ---: |');
+    for(const severity of SEVERITIES) {
+      const band=data.priority_bands[severity];
+      lines.push('| '+[severity,band.source_count,band.source_regressions,band.estimated_hours,
+        band.scheduled_hours,band.unscheduled_hours,
+        band.all_estimates_scheduled?'YES (estimate only)':'NO',
+        band.last_estimated_scheduling_week===null?'—':band.last_estimated_scheduling_week].join(' | ')+' |');
+    }
     lines.push('','Human follow-up: confirm source client/engagement externally, review estimates and staffing, assign owners through existing authorised channels, verify repairs/retests separately.','');
     return lines.join('\n');
   }
