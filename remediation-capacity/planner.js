@@ -61,6 +61,59 @@
     });
     return Object.freeze(findings);
   }
+  // Compare two originals only inside a single synchronous call. Original IDs and
+  // descriptions never survive the comparison return boundary.
+  function compareReports(currentCSV, previousCSV, estimateHours) {
+    const current = parseCSV(currentCSV);
+    const previous = parseCSV(previousCSV);
+    if (!estimateHours || typeof estimateHours !== 'object') fail('Choose the same local effort estimates first');
+    const hours = Object.create(null);
+    for (const severity of SEVERITIES) hours[severity] =
+      exactInteger(estimateHours[severity], 1, 200, 'estimated ' + severity + ' effort');
+    const present = csvRows(currentCSV.replace(/^\uFEFF/, '')).slice(1);
+    const earlier = csvRows(previousCSV.replace(/^\uFEFF/, '')).slice(1);
+    // All rows passed canonical parser validation above. Internal maps are ephemeral.
+    const baseline = new Map(earlier.map(row => [row[0], row]));
+    const counted = {added:0, changed:0, unchanged:0, absent:0,
+      added_hours:0, changed_current_hours:0, changed_previous_hours:0,
+      absent_hours:0, current_estimated_hours:0, previous_estimated_hours:0,
+      current_critical_high:0, previous_critical_high:0,
+      current_regressions:0, previous_regressions:0};
+    for (const f of current) {
+      counted.current_estimated_hours += hours[f.severity];
+      if (f.severity === 'critical' || f.severity === 'high') counted.current_critical_high++;
+      if (f.retest === 'regression') counted.current_regressions++;
+    }
+    for (const f of previous) {
+      counted.previous_estimated_hours += hours[f.severity];
+      if (f.severity === 'critical' || f.severity === 'high') counted.previous_critical_high++;
+      if (f.retest === 'regression') counted.previous_regressions++;
+    }
+    for (const row of present) {
+      const old = baseline.get(row[0]);
+      if (!old) {
+        counted.added++;
+        counted.added_hours += hours[row[2]];
+      } else {
+        baseline.delete(row[0]);
+        if (row.every((value, i) => value === old[i])) counted.unchanged++;
+        else {
+          counted.changed++;
+          counted.changed_current_hours += hours[row[2]];
+          counted.changed_previous_hours += hours[old[2]];
+        }
+      }
+    }
+    for (const row of baseline.values()) {
+      counted.absent++;
+      counted.absent_hours += hours[row[2]];
+    }
+    counted.net_estimated_change_hours = counted.current_estimated_hours-counted.previous_estimated_hours;
+    return Object.freeze({...counted,
+      review_only:true, same_client_engagement_verified:false, retest_verified:false,
+      authorization:false, consent:false, grant:false, scan:false, dispatch:false,
+      deploy:false, release:false});
+  }
   function utcStart(date) {
     if (typeof date !== 'string' || !/^\d{4}-\d\d-\d\d$/.test(date)) fail('Use an ISO calendar start date');
     const [y,m,d] = date.split('-').map(Number);
@@ -162,5 +215,5 @@
     lines.push('','Human follow-up: confirm source client/engagement externally, review estimates and staffing, assign owners through existing authorised channels, verify repairs/retests separately.','');
     return lines.join('\n');
   }
-  root.LightUpCapacity = Object.freeze({parseCSV,plan,summary,csvReport,markdownReport,DEFAULT_HOURS,MAX_BYTES,MAX_ROWS});
+  root.LightUpCapacity = Object.freeze({parseCSV,compareReports,plan,summary,csvReport,markdownReport,DEFAULT_HOURS,MAX_BYTES,MAX_ROWS});
 })(window);
