@@ -113,6 +113,15 @@ def _admit_review_findings(labrun_result: dict, target_label: str) -> tuple[tupl
         if (type(finding_target) is not str or not finding_target.strip()
                 or len(finding_target) > _MAX_FINDING_TEXT_CHARS):
             raise ValueError("review finding target must be bounded plain text")
+        # The source producer's ID is kept exact for report/triage correlation.
+        # Existing independent consumers may omit it; no ID is fabricated.
+        finding_id = finding.get("finding_id")
+        if finding_id is not None and (
+                type(finding_id) is not str or not finding_id.strip()
+                or len(finding_id) > 256
+                or any(ord(ch) < 33 or ord(ch) > 126 for ch in finding_id)
+        ):
+            raise ValueError("review finding requires a canonical finding identity")
         # Freeze the same finding-local target used by verification, advice,
         # serialized review and reporting before ANY model call.
         batch.append((dict(finding), summary, refs, fix, finding_target))
@@ -142,6 +151,7 @@ class ReviewedFinding:
     verdict: str
     remediation_advice: str
     target: str = ""
+    finding_id: str | None = None
 
 
 @dataclass(frozen=True)
@@ -153,8 +163,9 @@ class ReviewResult:
     def to_dict(self) -> dict:
         return {
             "findings": [
-                {"finding": f.title, "severity": f.severity, "verdict": f.verdict,
-                 "remediation_advice": f.remediation_advice, "target": f.target}
+                {**{"finding": f.title, "severity": f.severity, "verdict": f.verdict,
+                    "remediation_advice": f.remediation_advice, "target": f.target},
+                 **({"finding_id": f.finding_id} if f.finding_id is not None else {})}
                 for f in self.findings
             ],
             "report": self.report,
@@ -232,16 +243,21 @@ class AssessmentReviewPipeline:
             reviewed.append(ReviewedFinding(
                 title=finding["finding"], severity=finding["severity"],
                 verdict=verdict, remediation_advice=advice, target=finding_target,
+                finding_id=finding.get("finding_id"),
             ))
 
         coverage_counts = labrun_result.get("coverage", {}).get("counts", {})
         report_findings = [
             {
-                "finding": finding.title,
-                "severity": finding.severity,
-                "verdict": finding.verdict,
-                "remediation_advice": finding.remediation_advice,
-                "target": finding.target,
+                **{
+                    "finding": finding.title,
+                    "severity": finding.severity,
+                    "verdict": finding.verdict,
+                    "remediation_advice": finding.remediation_advice,
+                    "target": finding.target,
+                },
+                **({"finding_id": finding.finding_id}
+                   if finding.finding_id is not None else {}),
             }
             for finding in reviewed
         ]
