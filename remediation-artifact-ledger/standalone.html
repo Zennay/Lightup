@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-wpPFZOyxFDTkVCPSRLe+ulmbav4+u8hRIYgukbiqEiU=' 'sha256-La0bSnthxCrFHUbQqWE8aky6adnkaQjhhfVBwFyvCNY=' 'sha256-5dnr4EMdqsLkEBdjUEmxivWs/z6T6c8N+WwVufZIWn0='; style-src 'sha256-hA+qS4JgEeiSo2ydJqQCfAY03HQj9umy5aU0okqAMWg='; connect-src 'none'; img-src 'none'; font-src 'none'; form-action 'none'; frame-src 'none'; base-uri 'none'; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-wpPFZOyxFDTkVCPSRLe+ulmbav4+u8hRIYgukbiqEiU=' 'sha256-La0bSnthxCrFHUbQqWE8aky6adnkaQjhhfVBwFyvCNY=' 'sha256-I6Q3Km/tWbp3a6jc1uJCgttT4LlGHSm4UMhGZ9iDDNo='; style-src 'sha256-hA+qS4JgEeiSo2ydJqQCfAY03HQj9umy5aU0okqAMWg='; connect-src 'none'; img-src 'none'; font-src 'none'; form-action 'none'; frame-src 'none'; base-uri 'none'; object-src 'none'">
 <title>LightUp · Private Evidence Artifact Ledger</title>
 <style>:root{color-scheme:dark;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-size:15px;background:#0b1220;color:#f2f5fd}*{box-sizing:border-box}body{margin:0;line-height:1.55}header{background:linear-gradient(122deg,#131f32,#162f3e);border-bottom:1px solid #36556a;padding:3.4rem 0 2.4rem}.shell{max-width:1240px;margin:0 auto;padding:0 1.5rem}.eyebrow{font-size:.75rem;font-weight:750;letter-spacing:.18em;color:#8cdbca;text-transform:uppercase}h1{font-size:clamp(2rem,4vw,3.3rem);line-height:1.12;margin:.4rem 0}h2{font-size:1.25rem;margin:.1rem 0 .7rem}h3{font-size:1rem;margin:.2rem 0}p{max-width:88ch;color:#c9d9e7}header p{max-width:88ch}.pill{display:inline-block;font-size:.75rem;letter-spacing:.04em;color:#c9dffa;border:1px solid #55718a;border-radius:20px;padding:.3rem .85rem;margin-top:1rem}main{padding-top:1.8rem!important;padding-bottom:2rem!important}.card{border:1px solid #33495e;border-radius:15px;background:#162337;padding:1.6rem;margin-bottom:1.2rem;box-shadow:0 12px 42px #0002}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:1.2rem}.grid>div{border:1px solid #33495e;border-radius:10px;padding:1rem}label{font-weight:600;display:flex;flex-direction:column;gap:.4rem}input,select,textarea{background:#0b1525;color:#f0f5fb;border:1px solid #53677f;border-radius:8px;padding:.7rem;font:inherit;width:100%;min-width:0}input:focus,textarea:focus,select:focus,button:focus-visible{outline:2px solid #6adac3;outline-offset:2px}button{cursor:pointer;border:1px solid #69dfc6;color:#0b1e25;background:#78e0ca;padding:.68rem .9rem;border-radius:8px;font-weight:700;font:inherit;min-height:40px;margin:.2rem .3rem .2rem 0}button:hover:not(:disabled){background:#a0f4e5}button:disabled,input:disabled{opacity:.45;cursor:not-allowed}.secondary{background:transparent;color:#c5ddeb;border-color:#668699}.subtle{font-size:.85rem;color:#aabfce}.fingerprint{word-break:break-all;font-family:ui-monospace,monospace;font-size:.75rem}.scroll{overflow:auto;max-width:100%}table{width:100%;min-width:1050px;border-collapse:collapse;text-align:left;font-size:.86rem}th,td{padding:.65rem;vertical-align:top;border-top:1px solid #324860}td:nth-child(3){font-family:ui-monospace,monospace;white-space:nowrap;color:#a7e6e2}td button{font-size:.77rem;padding:.3rem .45rem;display:block}.search{margin:1rem 0 1.2rem}.alert{border:1px solid #f5acaa;background:#53242c;padding:1rem;border-radius:10px;color:#ffe4de}.notice{border:1px solid #3b806f;background:#133b3a;padding:1rem;border-radius:10px;color:#d0f6ee}footer{border-top:1px solid #2a4254;color:#b2c4d2;padding:1.5rem 0;font-size:.8rem}@media(max-width:580px){.card{padding:1rem}.shell{padding:0 1rem}header{padding-top:2rem}}
 .check{display:flex;flex-direction:row;align-items:flex-start;gap:.85rem;margin:1rem 0;font-weight:450}.check input{width:1.25rem;flex:0 0 1.25rem;margin-top:.25rem}.migration{white-space:pre-wrap;overflow-wrap:anywhere;background:#0a1725;border:1px solid #52758a;border-radius:9px;padding:1rem;max-height:32rem;overflow:auto;font-family:ui-monospace,monospace;font-size:.82rem;color:#d7f5ed}
@@ -194,6 +194,18 @@
 <button id="requestImportButton">Confirm original-source human request import</button></div>
 <div><h3>Change original source or forget old requests</h3><p>Changing the original source locks old PRIVATE HUMAN notes. Export them separately before explicitly starting a fresh source-bound request desk.</p>
 <button id="requestClear" class="secondary">Discard PRIVATE requests / start current source</button></div>
+</div>
+<div class="bulk"><h3>PRIVATE owner-specific human request and reply handoff</h3>
+<p>Share only the selected HUMAN assignee's open original-finding request instructions: no complete Casework, other owners' PRIVATE records, original evidence files, filenames or local file fingerprints. The separately delivered <strong>Human Evidence Reply</strong> offline app lets that HUMAN owner answer without accessing this desk. These files never authenticate the sender or authorize retest.</p>
+<div class="grid">
+<div><label>Recipient alias from local HUMAN requests<select id="requestOwner"><option value="">Choose HUMAN recipient alias</option></select></label>
+<button id="ownerPacketExport" disabled>Download owner-only PRIVATE request JSON</button></div>
+<div><label>Privately returned owner-specific HUMAN response JSON<input id="ownerReplyImport" type="file" accept=".json,application/json" disabled></label>
+<button id="ownerReplyPreviewButton" disabled>Preview exact source-bound HUMAN responses</button></div>
+</div>
+<pre id="ownerReplyPreview" class="migration" hidden></pre>
+<button id="ownerReplyApply" disabled>Confirm source-bound PRIVATE owner reply import</button>
+<p class="subtle">The responder uses a separate local owner-reply standalone application. Verify the recipient before sending, verify the alleged sender through an independent channel before accepting, and never treat their notes as validated findings or permission to scan.</p>
 </div>
 <p id="requestMessage" class="notice" role="status" aria-live="polite">No original-source-bound HUMAN request was sent or authorized.</p>
 </section>
@@ -1369,7 +1381,7 @@ const KINDS=['missing_evidence','patch_change','deployment_record','rollback_pla
 const STAGES=['draft','requested_human','submitted_unverified','needs_changes','closed_human'];
 const MAX_ROWS=200,MAX_BATCH=40,MAX_FILE=1048576;
 const FIELDS=['request_id','finding_id','request_kind','assignee','due_date','instructions','linked_sha256','human_stage','human_response','created_utc','updated_utc'];
-const state={binding:null,requests:[],preview:null,filter:'open'};
+const state={binding:null,requests:[],preview:null,ownerReplyPending:null,filter:'open'};
 function problem(t){throw Error(t);}
 function alert(t,error=false){$('requestMessage').textContent=t;$('requestMessage').dataset.error=String(error);}
 function exactKeys(o,keys){
@@ -1459,7 +1471,7 @@ async function importPrivate(){
  if(!same(B.context())||JSON.stringify(bindingFor(B.context()))!==source||
     JSON.stringify(state.requests)!==before)problem('Source or local HUMAN requests changed during private import.');
  if(!confirm('Replace ALL '+state.requests.length+' current PRIVATE human requests with '+rows.length+' original source-bound request records? Keep your old PRIVATE export separately.'))return;
- state.requests=rows;state.preview=null;$('requestImport').value='';render();
+ state.requests=rows;state.preview=null;state.ownerReplyPending=null;$('requestImport').value='';render();
  alert('Imported '+rows.length+' PRIVATE HUMAN requests for identical original source. No retest or authorization inferred.');
 }
 function make(id,kind,assignee,due,instructions,linked=''){
@@ -1536,7 +1548,7 @@ function forget(){
  if(!state.binding)return;
  if(!confirm('Discard '+state.requests.length+' LOCAL HUMAN request records and bind the desk to the currently loaded original source? Protect any prior PRIVATE exported handoff first.'))return;
  const c=B.context();state.binding=c.sha?bindingFor(c):null;
- state.requests=[];state.preview=null;render();alert('Private request desk started fresh for current original source.');
+ state.requests=[];state.preview=null;state.ownerReplyPending=null;render();alert('Private request desk started fresh for current original source.');
 }
 function tag(name,text){
  const t=document.createElement(name);t.textContent=text;return t;
@@ -1545,6 +1557,106 @@ function field(parent,name,initial,max){
  const label=tag('label',name),input=document.createElement('textarea');
  input.value=initial;input.maxLength=max;input.rows=2;label.append(input);parent.append(label);return input;
 }
+
+/* Privacy-minimal, owner-specific HUMAN response handoff. A reply is untrusted
+   human text; no identity proof, assessment execution, retest or grant. */
+const OWNER_KEYS=['kind','schema_version','disposition','source_contract','source_sha256',
+ 'client_reference','engagement_reference','recipient_alias','reply_kind','issued_utc',
+ 'reply_utc','requests',...FLAGS];
+const OWNER_ROW=['request_id','finding_id','request_kind','instructions','due_date','human_stage','human_response'];
+function ownerPacketFor(alias){
+ const c=current();
+ const originals=state.requests.filter(r=>r.assignee===alias&&r.human_stage!=='closed_human').slice(0,60);
+ if(!alias||!originals.length)problem('Select a HUMAN owner with outstanding PRIVATE requests.');
+ return {kind:'lightup.private_human_evidence_owner_handoff',schema_version:1,
+  disposition:'UNVERIFIED_HUMAN_REQUEST_ONLY',source_contract:'lightup.finding_export._COLUMNS_v1',
+  source_sha256:c.sha,client_reference:c.client,engagement_reference:c.engagement,
+  recipient_alias:alias,reply_kind:'owner_request',issued_utc:new Date().toISOString(),
+  reply_utc:null,...Object.fromEntries(FLAGS.map(x=>[x,false])),
+  requests:originals.map(r=>({request_id:r.request_id,finding_id:r.finding_id,
+   request_kind:r.request_kind,instructions:r.instructions,due_date:r.due_date,
+   human_stage:'requested_human',human_response:''}))
+ };
+}
+function exportOwnerPacket(){
+ const c=current(),alias=$('requestOwner').value;
+ const packet=ownerPacketFor(alias);
+ if(!confirm('Export '+packet.requests.length+' PRIVATE owner-specific HUMAN evidence requests for "'+
+  alias+'"? This shares no full Casework, file contents, filenames, SHA fingerprints or other owners. The recipient and secure channel are NOT authenticated by this application.'))return;
+ B.download('LightUp-PRIVATE-human-owner-request.json',JSON.stringify(packet,null,2)+'\n','application/json');
+ alert('Exported owner-specific PRIVATE HUMAN request packet for '+alias+'. No request has been delivered or marked authorized.');
+}
+function admitOwnerReply(data,c){
+ if(!exactKeys(data,OWNER_KEYS)||data.kind!=='lightup.private_human_evidence_owner_handoff'||
+ data.schema_version!==1||data.disposition!=='UNVERIFIED_HUMAN_REQUEST_ONLY'||
+ data.source_contract!=='lightup.finding_export._COLUMNS_v1'||
+ data.source_sha256!==c.sha||data.client_reference!==c.client||
+ data.engagement_reference!==c.engagement||FLAGS.some(k=>data[k]!==false)||
+ data.reply_kind!=='unverified_human_reply'||typeof data.recipient_alias!=='string'||
+ !data.recipient_alias.trim()||data.recipient_alias.length>120||
+ !Array.isArray(data.requests)||data.requests.length<1||data.requests.length>60||
+ typeof data.reply_utc!=='string')
+  problem('PRIVATE reply sheet format/source or all-false authority envelope invalid.');
+ stamp(data.issued_utc);stamp(data.reply_utc);
+ const alias=data.recipient_alias;
+ const seen=new Set(),updates=[];
+ for(const row of data.requests){
+  if(!exactKeys(row,OWNER_ROW))problem('Unknown HUMAN reply fields.');
+  if(typeof row.request_id!=='string'||seen.has(row.request_id))problem('Repeated HUMAN response request ID.');
+  seen.add(row.request_id);
+  const original=state.requests.find(x=>x.request_id===row.request_id);
+  if(!original||original.assignee!==alias||
+    original.finding_id!==row.finding_id||original.request_kind!==row.request_kind||
+    original.instructions!==row.instructions||original.due_date!==row.due_date)
+   problem('Human reply has stale, changed, cross-owner or unknown ORIGINAL request context.');
+  if(!['submitted_unverified','needs_changes'].includes(row.human_stage))
+   problem('Owner reply must be submitted_unverified or needs_changes, never authorizing or closed.');
+  str(row.human_response,1800,'HUMAN reply',true);
+  updates.push({request_id:row.request_id,finding_id:row.finding_id,
+   previous_stage:original.human_stage,next_stage:row.human_stage,
+   previous_text:original.human_response,next_text:row.human_response});
+ }
+ return {alias,updates};
+}
+async function previewOwnerReply(){
+ const c=current(),start=JSON.stringify(bindingFor(c)),
+   baseline=JSON.stringify(state.requests);
+ const data=B.strictJSON(await fileText($('ownerReplyImport').files[0]),MAX_FILE);
+ const admitted=admitOwnerReply(data,c);
+ if(start!==JSON.stringify(bindingFor(B.context()))||
+  baseline!==JSON.stringify(state.requests)||!same(B.context()))
+  problem('ORIGINAL source or HUMAN request baseline changed while reading owner reply.');
+ state.ownerReplyPending={source:start,baseline,rows:admitted.updates,alias:admitted.alias};
+ $('ownerReplyPreview').textContent=[
+  'PRIVATE HUMAN owner response preview — NOT identity-authenticated',
+  'Owner alias (unverified): '+admitted.alias,'Original source SHA-256: '+c.sha,
+  'Request replies: '+admitted.updates.length,
+  ...admitted.updates.map(x=>x.finding_id+' / '+x.request_id.slice(0,12)+
+   ' · '+x.previous_stage+' → '+x.next_stage+
+   ' · previous human response '+x.previous_text.length+' chars, new '+x.next_text.length+' chars'),
+  'Import NEVER proves identity, permission, remediation or retest; confirm sender out of band.'
+ ].join('\n');
+ $('ownerReplyPreview').hidden=false;$('ownerReplyApply').disabled=false;
+ $('ownerReplyImport').value='';
+ alert('Owner-specific HUMAN reply staged, nothing applied. Independently verify its actual sender.');
+}
+function applyOwnerReply(){
+ const p=state.ownerReplyPending,c=current();
+ if(!p)problem('Preview an independently obtained HUMAN owner reply first.');
+ if(p.source!==JSON.stringify(bindingFor(c))||p.baseline!==JSON.stringify(state.requests))
+  problem('ORIGINAL source or HUMAN request records changed after reply preview.');
+ if(!confirm('Apply '+p.rows.length+' UNVERIFIED HUMAN responses allegedly from "'+
+   p.alias+'"? This does not authenticate the respondent, grant execution or verify remediation.'))return;
+ const now=new Date().toISOString(),changes=new Map(p.rows.map(r=>[r.request_id,r]));
+ for(const row of state.requests){
+  const newData=changes.get(row.request_id);
+  if(newData){row.human_stage=newData.next_stage;row.human_response=newData.next_text;row.updated_utc=now;}
+ }
+ state.ownerReplyPending=null;state.preview=null;
+ $('ownerReplyPreview').hidden=true;$('ownerReplyApply').disabled=true;render();
+ alert('Applied '+p.rows.length+' UNVERIFIED HUMAN replies to original-source PRIVATE drafts. No authentic identity or retest claim.');
+}
+
 function render(){
  const c=B.context();
  if(c.sha&&!state.binding)state.binding=bindingFor(c);
@@ -1560,6 +1672,16 @@ function render(){
    'requestImportButton','requestBatchMode','requestBatchKind',
    'requestBatchInstructions','requestBatchDue','requestBatchPreviewButton'])
   $(id).disabled=!enabled;
+ const currentOwner=$('requestOwner').value;
+ $('requestOwner').replaceChildren();
+ $('requestOwner').append(new Option('Choose HUMAN recipient alias',''));
+ const assignees=[...new Set(state.requests.filter(r=>r.assignee.trim()&&r.human_stage!=='closed_human').map(r=>r.assignee))].sort();
+ for(const alias of assignees)$('requestOwner').append(new Option(alias,alias));
+ if(assignees.includes(currentOwner))$('requestOwner').value=currentOwner;
+ $('requestOwner').disabled=!enabled||!assignees.length;
+ $('ownerPacketExport').disabled=!enabled||!$('requestOwner').value;
+ $('ownerReplyImport').disabled=!enabled;$('ownerReplyPreviewButton').disabled=!enabled;
+ $('ownerReplyApply').disabled=!enabled||!state.ownerReplyPending;
  $('requestExport').disabled=!state.binding;
  $('requestClear').disabled=!state.binding;
  $('requestBatchApply').disabled=!enabled||!state.preview;
@@ -1633,6 +1755,10 @@ function bind(id,event,fn){
   try{await fn();}catch(e){alert(e.message||'Invalid PRIVATE human request',true);}
  });
 }
+bind('requestOwner','change',render);
+bind('ownerPacketExport','click',exportOwnerPacket);
+bind('ownerReplyPreviewButton','click',previewOwnerReply);
+bind('ownerReplyApply','click',applyOwnerReply);
 bind('requestFinding','change',render);
 bind('requestCreate','click',createOne);
 bind('requestExport','click',exportPrivate);
@@ -1665,10 +1791,10 @@ window.LightUpArtifactRequests=Object.freeze({
  restore(rows){
   const c=current();
   const next=this.validateSnapshot(rows,c);
-  state.requests=next;state.preview=null;render();
+  state.requests=next;state.preview=null;state.ownerReplyPending=null;render();
  },
  forgetUnconditionally(){
-  state.requests=[];state.preview=null;state.binding=null;
+  state.requests=[];state.preview=null;state.ownerReplyPending=null;state.binding=null;
   render();
  }
 });
