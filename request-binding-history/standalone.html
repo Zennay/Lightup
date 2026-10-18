@@ -41,6 +41,7 @@ a{color:#9bdafc}
 <p id="status" role="status" aria-live="polite">No source documents loaded.</p>
 </section>
 <section id="workspace" hidden>
+<section class="panel" aria-labelledby="appendtitle"><h2 id="appendtitle">Append new original snapshots</h2><p>Keep your existing human discussion markers while adding 1–10 additional source reports. New files must have the exact same original proposed selection, and duplicates are held. Nothing is appended when even one file is invalid.</p><input id="extra" type="file" multiple accept=".json,application/json" aria-label="Append original source snapshots"><button id="append">Append original reports atomically</button></section>
 <section class="panel"><h2>2 · Evidence summary</h2><div class="grid" id="stats"></div>
 <p class="muted">The file order is chosen by the operator. It is not authenticated chronological order. A copied JSON report is untrusted even when originally created by an authenticated operator. Reauthenticate and re-export directly from the original database before making decisions.</p></section>
 <section class="panel"><h2>3 · Human-selected snapshot order</h2><div class="table-wrap"><table><thead><tr><th>Slot</th><th>Original source review UTC</th><th>Stored source revision</th><th>Matching requests</th><th>Other requests</th><th>Historical grant rows</th><th>Human-only outcome</th></tr></thead><tbody id="rows"></tbody></table></div>
@@ -197,6 +198,25 @@ $("import").addEventListener("click",async()=>{
   workspace={records:parsed,checks:ACTIONS.map(()=>false)};hashes=localHashes;
   render();note(parsed.length+" valid original source-export snapshots loaded for private REVIEW_ONLY (not permission).",false);
  }catch(e){note("HOLD · "+(e instanceof Error?e.message:"invalid source import")+". Earlier accepted workspace was preserved.",true)}
+});
+$("append").addEventListener("click",async()=>{
+ try{
+  if(!workspace)fail("load an original comparison first");
+  const files=Array.from($("extra").files);
+  if(!files.length||files.length>10||workspace.records.length+files.length>12)fail("append would exceed the bounded 12-source workspace");
+  if(files.some(f=>f.size===0||f.size>2000000)||files.reduce((sum,f)=>sum+f.size,0)>12000000)fail("append source file limits exceeded");
+  const raws=await Promise.all(files.map(f=>f.text()));
+  const extras=raws.map((raw,i)=>validate(strictJSON(raw),workspace.records.length+i+1));
+  if(extras.some(x=>x.selection!==workspace.records[0].selection))fail("appended originals must share exact original proposed selection");
+  const key=r=>[r.revision,r.stamp,r.matched,r.other,r.notApproved,r.grants,r.legacy].join("|");
+  const keys=workspace.records.map(key).concat(extras.map(key));
+  if(new Set(keys).size!==keys.length)fail("duplicate original snapshot metadata detected");
+  const moreHashes=(hashes.length===workspace.records.length&&globalThis.crypto&&crypto.subtle)?await fingerprints(raws):[];
+  const newHashes=moreHashes.length===extras.length?hashes.concat(moreHashes):[];
+  workspace={records:workspace.records.concat(extras),checks:workspace.checks.slice()};
+  hashes=newHashes;render();$("extra").value="";
+  note(extras.length+" new source snapshots added atomically; existing private human discussion markers preserved.",false);
+ }catch(e){note("HOLD · "+(e instanceof Error?e.message:"invalid append")+". Prior workspace and human stages preserved.",true)}
 });
 $("clear").addEventListener("click",()=>{workspace=null;hashes=[];$("files").value="";$("restore").value="";$("workspace").hidden=true;note("Private workspace cleared.",false)});
 $("exportjson").addEventListener("click",()=>{if(workspace)download("lightup-binding-history-anonymous.json","application/json",JSON.stringify(payload(),null,2)+"\n")});
