@@ -550,5 +550,31 @@ $('brief').addEventListener('click',()=>{
  download('lightup-evidence-coordination-private.md',lines.join('\n'),'text/markdown'); 
 });
 window.addEventListener('beforeunload',e=>{if(changed){e.preventDefault();e.returnValue='';}});
-status('Load an originally authorized five-column LightUp findings CSV to start.'); 
+status('Load an originally authorized five-column LightUp findings CSV to start.');
+/* A private, authenticated-at-export-time handoff contains a passive JSON data
+ * block. It is never a credential, consent token, grant or live status check. */
+async function preloadAuthorizedExport(){
+ const embedded=$('preloadedCsv');
+ if(!embedded)return;
+ try{
+  const payload=strictJSON(embedded.textContent);
+  if(!payload||payload.format!=='lightup.authenticated_findings_handoff_v1'||
+     typeof payload.csv_base64!=='string'||payload.csv_base64.length>1400000||
+     !/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(payload.csv_base64))
+   throw Error('Malformed private export envelope.');
+  const binary=atob(payload.csv_base64);
+  if(binary.length>LIMIT_CSV)throw Error('Preloaded export exceeds original CSV size.');
+  const raw=Uint8Array.from(binary,ch=>ch.charCodeAt(0));
+  const text=new TextDecoder('utf-8',{fatal:true}).decode(raw);
+  const parsed=engine.parseCSV(text),hash=await sourceDigest(parsed);
+  sourceHash=hash;updateSource(parsed,null);
+  status('Private original LightUp summary loaded from the interactive authenticated export. Authentication only occurred at export time; this HTML cannot verify current consent, source ownership, scope or retest.');
+ }catch(err){
+  status('Private handoff rejected: '+err.message,true);
+ }finally{
+  /* Avoid keeping a second DOM copy of selected client summaries after intake. */
+  embedded.remove();
+ }
+}
+void preloadAuthorizedExport();
 })();
