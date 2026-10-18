@@ -33,7 +33,7 @@
 <select id="kind"><option value="all">All changes</option><option value="urgent">Urgent human follow-up</option><option value="review">Other source changes</option></select>
 </label>
 <div class="table-wrap"><table>
-<thead><tr><th scope="col">Priority</th><th scope="col">Source family</th><th scope="col">Delta</th><th scope="col">Original identifier</th><th scope="col">Changed original fields</th><th scope="col">Recorded signals · before → after</th><th scope="col">Local human stage</th></tr></thead>
+<thead><tr><th scope="col">Priority</th><th scope="col">Source family</th><th scope="col">Delta</th><th scope="col">Original identifier</th><th scope="col">Changed original fields</th><th scope="col">Recorded signals · before → after</th><th scope="col">Local human stage</th><th scope="col">Private human follow-up</th></tr></thead>
 <tbody id="changes"></tbody>
 </table></div>
 <div class="impact">
@@ -57,5 +57,16 @@
 </div>
 </section>
 </main>
+<dialog id="humanDialog" aria-labelledby="humanDialogTitle">
+<h2 id="humanDialogTitle">Human-only follow-up</h2>
+<p><strong id="detailIdentity"></strong> · local note, not recorded authorization</p>
+<label>Reviewer alias (self-declared, not authenticated)<input id="reviewerAlias" maxlength="80" autocomplete="off"></label>
+<label>Next human action<input id="nextHumanAction" maxlength="240" autocomplete="off"></label>
+<label>Optional local UTC due date<input id="humanDue" type="date"></label>
+<label>PRIVATE human note<textarea id="humanNote" maxlength="1200" rows="5"></textarea></label>
+<p id="dialogError" role="alert"></p>
+<div class="actions"><button id="saveHuman" type="button">Save local follow-up</button><button type="button" class="outline" id="cancelHuman">Cancel</button></div>
+<p>No original request, scope, grant, risk, STOP or client consent is changed. This alias and note will appear only in a separately confirmed PRIVATE export.</p>
+</dialog>
 <footer>Offline browser-only · No uploads, storage, network calls, grants, real STOP, scans, target access or dispatch. Source SHA-256 is correlation only, not authenticity. Original exact-head CI, original-source/security/privacy review, independent client/operator consent and action-time revocation, and explicit HUMAN GO remain mandatory before any release.</footer>
 </body></html>
