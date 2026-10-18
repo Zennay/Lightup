@@ -6,6 +6,27 @@ An offline client/operator handoff board consuming the **existing authorized Lig
 
 Open `casework/index.html` from a local checkout in a modern browser. No server, build step, dependencies, external scripts, network, cookies, localStorage or other persistent browser state.
 
+### Recommended: one authenticated export → directly usable offline HTML
+
+In the LightUp repository checkout, on an interactive terminal with an **existing authorized** LightUp database and a real client/engagement, run:
+
+```bash
+PYTHONPATH=src python -m lightup.remediation_handoff_cli \
+  --db /private/path/lightup.sqlite \
+  --email operator@example.org \
+  --client-id authorized-client-id \
+  --engagement-id approved-engagement-id \
+  --output /private/path/lightup-remediation.html
+```
+
+The command prompts for the password without putting it in shell arguments. It resolves the current persisted user/tenant role and uses the **same `render_client_findings_csv` service** as LightUp's existing authenticated summary exporter, including engagement ownership checks and source text redaction. It rejects empty, malformed or oversized exports, refuses pre-existing output paths, and writes a brand-new **0600-permission** local HTML file only after the authorized selection succeeds. Use a trusted private local directory; no real target is contacted.
+
+Open `/private/path/lightup-remediation.html` locally. The selected authorized summary is already embedded, all three frontend JavaScript modules are bundled into the file, and a per-file CSP script nonce plus `connect-src 'none'` prevents the generated page from making network requests. No external files or server are required. The generated HTML **contains sensitive finding descriptions in cleartext** and should be protected like a report; transfer only through an approved secure mechanism, not a public URL.
+
+**Authority boundary:** authentication happened at export time only. The resulting portable HTML is **not a signed attestation** and can be modified, forwarded or become stale. It does not prove current client identity, ongoing consent, scope, grant validity, revocation status, retest or remediation. Local assignments never write to the original domain store. Do not host/merge/activate without release approval.
+
+You can still import an existing `findings.csv` manually into `casework/index.html` as described below.
+
 **Workflow:**
 
 1. A real authorized client/operator uses the existing `lightup.finding_export_cli` with its existing interactive authentication, tenant checks and real database. Do **not** use this local page as a replacement for that export.
@@ -14,7 +35,7 @@ Open `casework/index.html` from a local checkout in a modern browser. No server,
    Typical command from the repository in an authenticated, interactive terminal (substitute your **own** authorized database and client ID; never put a password in command arguments):
 
    ```bash
-   python -m lightup.finding_export_cli --db /path/to/your/lightup.sqlite --email your-operator@example.org --client-id approved-client > findings.csv
+   PYTHONPATH=src python -m lightup.finding_export_cli --db /path/to/your/lightup.sqlite --email your-operator@example.org --client-id approved-client > findings.csv
    ```
 
    The CLI requires a terminal for its password prompt and refuses unauthenticated or unauthorized exports. Never use the command against another customer's data.
@@ -40,6 +61,7 @@ After explicit confirmation:
 - `casework/remediation-engine.js`: CSV parser, source/type normalization, editable case schema, duplicate ID rejection, refresh comparison/reconciliation, summary calculations, local draft contract and spreadsheet-safe action CSV serialization.
 - `casework/remediation-schedule.js`: bounded, deterministic UTC calendar-day suggestions, rejecting invalid dates or severity policy and leaving previously scheduled/completed/deferred casework untouched.
 - `casework/remediation-app.js`: document-only local UI, import/export handlers, filters, priority, edit controls, update notices, refresh review and Markdown rendering.
+- `src/lightup/remediation_handoff_cli.py`: authenticated, tenant/engagement-restricted private one-file browser export using the existing findings summary service and bundled local scripts; no new domain or consent route.
 - `casework/index.html`: responsive browser UI with all untrusted text inserted with `textContent`; no remote scripts, network calls, active handlers or credentials.
 - Exported JSON includes an optional unsigned source SHA-256 (Web Crypto when available) over byte-stably ordered source finding fields, independent of browser sorting locale; it is not an authenticated signature and does not confer scope/tenant authority. Import rejects any saved packet that claims authority through a required false security flag, or that conflicts with its own stored source digest (when hashing is supported). Overdue counters use the local browser calendar date, while optional severity scheduling uses explicit UTC calendar-day arithmetic to avoid midnight/daylight-saving drift.
 - The exported JSON explicitly sets `authenticated:false`, `source_authorized:false`, `assessment_authorized:false`, `grant:false`, `client_consent:false`, `operator_consent:false`, `execution:false`, `scan:false`, `retest_verified:false`, `release:false`. No user-entered local `completed` work stage overwrites the original finding's server-side `retest_status` or constitutes verified remediation.
