@@ -729,6 +729,29 @@
     $("thresholdMessage").textContent="";$("files").value="";
     setStatus("All imported records forgotten from this workspace.");render();
   }
+  // Accessible local workspace navigation; no route changes, external links or telemetry.
+  const sectionLinks=[...document.querySelectorAll(".quicknav a")];
+  function markNav(hash){
+    for(const link of sectionLinks){
+      if(link.getAttribute("href")===hash)link.setAttribute("aria-current","location");
+      else link.removeAttribute("aria-current");
+    }
+  }
+  if("IntersectionObserver" in window){
+    const navigator=new IntersectionObserver(entries=>{
+      const visible=entries.filter(e=>e.isIntersecting)
+        .sort((a,b)=>b.intersectionRatio-a.intersectionRatio);
+      if(visible.length)markNav("#"+visible[0].target.id);
+    },{rootMargin:"-70px 0px -60% 0px",threshold:[0,0.15,0.4]});
+    for(const link of sectionLinks){
+      const target=document.querySelector(link.getAttribute("href"));
+      if(target)navigator.observe(target);
+      link.addEventListener("click",()=>markNav(link.getAttribute("href")));
+    }
+  }else{
+    for(const link of sectionLinks)
+      link.addEventListener("click",()=>markNav(link.getAttribute("href")));
+  }
   // No fetch, storage, workers, scanner or execution API.
   $("queueIncludeNeutral").addEventListener("change",drawQueue);
   $("queueRows").addEventListener("click",e=>{

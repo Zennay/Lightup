@@ -8,6 +8,8 @@ Download [standalone.html](standalone.html) and open it in a modern local browse
 
 Click **Explore fictional demo** to view four made-up candidate outputs for four invented lab cases. They are unmistakably labeled fictional in the screen and exported JSON, and no assessment is performed.
 
+**Workspace navigation:** The standalone UI now has a responsive sticky, keyboard-focusable section navigation bar for sources, candidate scorecards, full metric comparisons, human threshold proposals, Pareto tradeoffs, case inspection, human discussion queue and private handoffs. The current observed section is indicated accessibly using `aria-current` where IntersectionObserver is available. The navigation disappears in print. This does not affect the original source data or produce a permission/decision.
+
 ## Compare real *pre-existing* offline lab summaries
 
 1. In the existing separate assessment-runtime comparator [draft PR #1515](https://github.com/Zennay/Lightup/pull/1515), use its own opt-in cohort CLI to create already-finished offline output. This matrix **never invokes the CLI**, imports source data only, and does not validate original source authenticity.
