@@ -130,6 +130,8 @@ function msg(m,err=false){$("message").textContent=m;$("message").dataset.error=
 function node(tag,value){const n=document.createElement(tag);n.textContent=String(value);return n;}
 const selection=new Set();
 let pendingBulk=null;
+let lastBulkUndo=null;
+function invalidateUndo(){lastBulkUndo=null;$("bulkUndo").disabled=true;}
 function invalidateBulk(){
  pendingBulk=null;$("bulkDetails").hidden=true;$("bulkApply").disabled=true;
  $("selectShown").checked=false;
@@ -186,6 +188,7 @@ function draw(){
  $("selectShown").checked=visible.length>0&&visible.every(x=>selection.has(x.request.request_id));
  $("selectShown").indeterminate=visible.some(x=>selection.has(x.request.request_id))&&!$("selectShown").checked;
  $("bulkPreview").disabled=!selection.size;
+ $("exportSelected").disabled=!selection.size;
  const body=$("rows");body.replaceChildren();
  for(const x of visible){
   const tr=node("tr","");
@@ -206,14 +209,14 @@ function draw(){
   sel.value=x.review.stage;
   sel.addEventListener("change",()=>{
    db.notes[x.request.request_id]={...db.notes[x.request.request_id]||x.review,stage:sel.value};
-   db.revision++;invalidateBulk();msg("Local HUMAN triage changed; original request and reply untouched.");
+   db.revision++;invalidateBulk();invalidateUndo();msg("Local HUMAN triage changed; original request and reply untouched.");
   });
   const stage=document.createElement("td");stage.append(sel);tr.append(stage);
   const input=document.createElement("textarea");input.rows=2;input.maxLength=400;
   input.setAttribute("aria-label","PRIVATE human note for "+x.request.finding_id);input.value=x.review.note;
   input.addEventListener("input",()=>{
    db.notes[x.request.request_id]={...db.notes[x.request.request_id]||x.review,note:input.value};
-   db.revision++;invalidateBulk();
+   db.revision++;invalidateBulk();invalidateUndo();
   });
   const note=document.createElement("td");note.append(input);tr.append(note);body.append(tr);
  }
@@ -277,12 +280,52 @@ function applyBulk(){
  if(p.changes.some(x=>!map.has(x.id)||map.get(x.id).review.stage!==x.before))
   fail("HOLD: original HUMAN baselines changed. Preview again.");
  if(!confirm("Apply local HUMAN triage status to "+p.changes.length+" ORIGINAL requests? This does NOT verify fixes, authorize a retest or send any notification."))return;
+ const before=p.changes.map(change=>({
+  id:change.id,stage:map.get(change.id).review.stage,note:map.get(change.id).review.note
+ }));
  for(const change of p.changes){
   const existing=map.get(change.id).review;
   db.notes[change.id]={stage:p.stage,note:existing.note};
  }
- db.revision++;selection.clear();invalidateBulk();draw();
+ db.revision++;
+ lastBulkUndo={revision:db.revision,binding:JSON.stringify(db.binding),stage:p.stage,before};
+ $("bulkUndo").disabled=false;
+ selection.clear();invalidateBulk();draw();
  msg("Applied "+p.changes.length+" HUMAN-only local stage changes. Original source and unverified replies untouched.");
+}
+function undoLastBulk(){
+ const snapshot=lastBulkUndo;
+ if(!snapshot||snapshot.revision!==db.revision||snapshot.binding!==JSON.stringify(db.binding))
+  fail("HOLD: no current HUMAN bulk undo; local source/notes changed");
+ const now=new Map(allRows().map(x=>[x.request.request_id,x]));
+ if(snapshot.before.some(x=>!now.has(x.id)||now.get(x.id).review.stage!==snapshot.stage||now.get(x.id).review.note!==x.note))
+  fail("HOLD: previous HUMAN bulk baseline changed");
+ if(!confirm("Undo the last "+snapshot.before.length+" HUMAN-only bulk stage changes? Does NOT edit original findings, replies, security grants or consent."))return;
+ for(const x of snapshot.before)db.notes[x.id]={stage:x.stage,note:x.note};
+ db.revision++;invalidateUndo();invalidateBulk();draw();
+ msg("Restored previous local HUMAN review stages; original source and unverified replies untouched.");
+}
+function exportSelectedPrivate(){
+ if(!db.binding||!selection.size)fail("Select exact ORIGINAL HUMAN request IDs first");
+ const chosen=allRows().filter(x=>selection.has(x.request.request_id));
+ if(chosen.length!==selection.size)fail("HOLD: selected PRIVATE requests changed; reselect.");
+ const envelope={kind:"lightup.private_human_selected_action_brief",schema_version:1,
+  disposition:"UNVERIFIED_HUMAN_COORDINATION_ONLY",
+  source_contract:db.binding[0],source_sha256:db.binding[1],
+  client_reference:db.binding[2],engagement_reference:db.binding[3],
+  ...Object.fromEntries(FLAGS.map(k=>[k,false])),
+  requests:chosen.map(x=>({request_id:x.request.request_id,
+   original_finding_id:x.request.finding_id,recipient_alias:x.packet.recipient_alias,
+   request_kind:x.request.request_kind,issued_utc:x.packet.issued_utc,
+   tentative_human_due:x.request.due_date,original_instructions:x.request.instructions,
+   unverified_reply_stage:x.reply?x.reply.human_stage:"unanswered",
+   unverified_reply_text:x.reply?x.reply.human_response:"",
+   local_human_stage:x.review.stage,local_human_note:x.review.note}))};
+ if(!confirm("Export only "+chosen.length+" SELECTED original HUMAN requests, private response text and local notes? Verify authorized recipient/channel. Nothing is authenticated, sent, repaired or consented to."))return;
+ const json=JSON.stringify(envelope,null,2)+"\n";
+ if(new TextEncoder().encode(json).length>MAX_SNAPSHOT)fail("Selected PRIVATE action brief exceeds 8 MiB");
+ save("LightUp-PRIVATE-selected-human-action-brief.json",json,"application/json");
+ msg("Saved "+chosen.length+" selected source-bound HUMAN action items locally, not sent to any recipient.");
 }
 function anonymousCounts(){
  const groups=new Map();
@@ -320,7 +363,7 @@ async function intake(){
  const next=assemble(db,packets);
  if(!confirm("Import "+packets.length+" PRIVATE human packets? All identities, replies and source labels are UNVERIFIED. No data are sent, no retest or consent is granted."))return;
  if(db.revision!==rev)fail("HOLD: register changed before confirmation");
- db=next;selection.clear();invalidateBulk();$("files").value="";draw();msg("Reconciled PRIVATE HUMAN owner and reply packets atomically.");
+ db=next;selection.clear();invalidateBulk();invalidateUndo();$("files").value="";draw();msg("Reconciled PRIVATE HUMAN owner and reply packets atomically.");
 }
 function snapshot(){
  return {kind:"lightup.private_human_response_reconciliation",schema_version:1,
@@ -355,7 +398,7 @@ function restore(obj,rev){
  if(db.revision!==rev)fail("HOLD: changed register");
  if(!confirm("REPLACE current PRIVATE register and HUMAN notes with this exact source-bound backup? Export current data first."))return;
  if(db.revision!==rev)fail("HOLD: changed register before replace");
- fresh.revision=rev+1;db=fresh;selection.clear();invalidateBulk();$("files").value="";draw();msg("Restored PRIVATE HUMAN register from original-bound local backup.");
+ fresh.revision=rev+1;db=fresh;selection.clear();invalidateBulk();invalidateUndo();$("files").value="";draw();msg("Restored PRIVATE HUMAN register from original-bound local backup.");
 }
 function save(filename,body,mime){
  const url=URL.createObjectURL(new Blob([body],{type:mime}));
@@ -405,12 +448,13 @@ listen("csv",exportCSV);listen("summaryCsv",exportAnonymous);
 listen("exportOwner",exportOwnerPrivate);
 $("ownerExport").addEventListener("change",()=>{$("exportOwner").disabled=!$("ownerExport").value;});listen("print",report);
 listen("bulkPreview",previewBulk);listen("bulkApply",applyBulk);
+listen("bulkUndo",undoLastBulk);listen("exportSelected",exportSelectedPrivate);
 $("selectShown").addEventListener("change",e=>{for(const x of filteredRows()){
  if(e.target.checked)selection.add(x.request.request_id);else selection.delete(x.request.request_id);
  }invalidateBulk();draw();});
 $("bulkStage").addEventListener("change",invalidateBulk);
 listen("forget",()=>{if(!confirm("Clear ALL in-memory human responses and PRIVATE annotations? Saved downloads remain."))return;
- const rev=db.revision+1;db=blank();db.revision=rev;selection.clear();invalidateBulk();$("files").value="";$("search").value="";draw();msg("All locally held PRIVATE HUMAN data forgotten.");});
+ const rev=db.revision+1;db=blank();db.revision=rev;selection.clear();invalidateBulk();invalidateUndo();$("files").value="";$("search").value="";draw();msg("All locally held PRIVATE HUMAN data forgotten.");});
 $("search").addEventListener("input",draw);$("filter").addEventListener("change",draw);
 $("dueFilter").addEventListener("change",draw);$("sort").addEventListener("change",draw);
 draw();msg("Load original PRIVATE owner-request and partial-reply files. Everything stays in memory.");
