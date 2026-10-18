@@ -181,7 +181,27 @@
       child(tr, "td", (m.delta >= 0 ? "+" : "") + fmt(m.delta) + (m.regression ? " ↓" : ""));
     }
   }
-  function render() { renderOverview(); renderQueue(); renderDetails(); }
+
+  function renderPrintBrief() {
+    const box = $("print-brief"); box.replaceChildren();
+    child(box, "h2", "All-case human follow-up brief");
+    child(box, "p", "Source " + report.verdict + " | " +
+      report.cases.length + " cases | " + countRegressions() +
+      " metric regressions | AUTHORIZATION / CONSENT / RELEASE = FALSE", "print-note");
+    const table = child(box, "table");
+    const head = child(table, "thead");
+    const headings = child(head, "tr");
+    ["Case", "Priority", "Source", "Follow-up stage", "Due", "Regressed metrics"].forEach(x => child(headings,"th",x));
+    const body = child(table, "tbody");
+    report.cases.map((c,i) => ({c,i})).sort((a,b) =>
+      urgency(a.c)-urgency(b.c) || a.i-b.i).forEach(({c,i}) => {
+      const tr=child(body,"tr");
+      [label(i), priority(c), c.status, stageText(c.stage),
+        c.due || "-", c.regressions.join(", ") || "None"].forEach(x => child(tr,"td",x));
+    });
+    child(box, "p", "Unsigned, unverified lab review data. No targets, case identities, actual permission or grant asserted.", "print-note");
+  }
+  function render() { renderOverview(); renderQueue(); renderDetails(); renderPrintBrief(); }
   function reset() {
     report = null; selected = -1; digest = null; sourceKind = null;
     $("file").value = ""; $("board").hidden = true; $("filter").value = "all";
@@ -317,5 +337,37 @@
       csvCell(Array.isArray(item[key]) ? item[key].join(";") : item[key])).join(","));
     download("lightup-human-follow-up.csv", rows.join("\r\n")+"\r\n", "text/csv;charset=utf-8");
   });
+
+  function calendarDownload() {
+    if (!report) return;
+    const todo = report.cases.map((c,i) => ({c,i})).filter(({c}) =>
+      !!c.due && c.stage !== "reviewed");
+    if (!todo.length) {
+      alert("No dated open human follow-ups. Add a target date to an unreviewed case first.");
+      return;
+    }
+    const lines = ["BEGIN:VCALENDAR","VERSION:2.0",
+      "PRODID:-//LightUp//Offline Lab Human Planning//EN","CALSCALE:GREGORIAN",
+      "X-WR-CALNAME:LightUp Offline Lab Follow-ups"];
+    const stamp = new Date().toISOString().replaceAll("-","").replaceAll(":","")
+      .replace(/\.\d{3}Z$/,"Z");
+    todo.forEach(({c,i}) => {
+      const due = c.due.replaceAll("-","");
+      lines.push("BEGIN:VTODO",
+        "UID:lightup-local-" + String(i+1) + "-" + Date.now() + "@local.invalid",
+        "DTSTAMP:" + stamp,
+        "DUE;VALUE=DATE:" + due,
+        "SUMMARY:LightUp lab follow-up " + label(i),
+        "DESCRIPTION:Unverified offline human planning only. Source " + c.status +
+          ". No authorization consent grant or scan rights.",
+        "STATUS:NEEDS-ACTION",
+        "PRIORITY:" + (urgency(c)===0 ? "1" : urgency(c)===1 ? "4" : "7"),
+        "END:VTODO");
+    });
+    lines.push("END:VCALENDAR");
+    // No actual asset names, raw scenario IDs, personnel or source hashes in iCalendar.
+    download("lightup-human-follow-ups.ics",lines.join("\r\n")+"\r\n","text/calendar;charset=utf-8");
+  }
+  $("calendar").addEventListener("click", calendarDownload);
   $("print").addEventListener("click", () => {if(report) window.print();});
 })();
