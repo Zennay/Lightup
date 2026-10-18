@@ -6,7 +6,8 @@ module does not issue authority and does not contact a target by itself.
 """
 from __future__ import annotations
 
-from .ai.orchestration import (RunContext, ToolCall, ToolExecutor, ToolRegistry,\n                               ToolResult, ToolDenied)
+from .ai.orchestration import (RunContext, ToolCall, ToolExecutor, ToolRegistry,
+                               ToolResult, ToolDenied)
 from .engagements import AuthorizationGrant
 from .execution_policy import (
     ExecutionPolicy,
