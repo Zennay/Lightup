@@ -51,3 +51,19 @@ confidentiality, use a trusted ZIP extractor and keep the contents private.
 Studio cannot be included in an aggregate-only packet, because the original
 private byte fingerprints and manifest SHA-256 are embedded in its HTML.
 The original source review and authorization gates remain independent.
+
+### Multi-source human triage
+
+The browser now has a **batch human-coordination panel** above its source list.
+Filter by original source class, review stage, neutral role or generic search
+first. Choose a new follow-up stage, next neutral role and optional future
+planning date. Clicking Apply shows a confirmation that explicitly states the
+number of affected visible original source slots; cancelling writes nothing.
+Only selected visible source slots' temporary human fields change.
+No source records, evidence, metrics, consent or execution flags can be edited.
+
+Undo last batch update restores its exact previous in-memory human stages,
+roles and dates. Subsequent per-slot edits, imports or Reset intentionally
+invalidate that undo snapshot, preventing rollback of unrelated new edits.
+Human review selections are still not persisted unless explicitly exported,
+and the strict original Python parser remains the binding gate.

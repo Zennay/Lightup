@@ -27,7 +27,13 @@
     slot: row.slot, source_sha256: row.sha256, stage: "PENDING_ORIGINAL",
     next_role: "unassigned", review_date: null
   }));
+  let batchBackup = null;
   const byId = id => document.getElementById(id);
+  const invalidateUndo = () => {
+    batchBackup = null;
+    const undoButton = byId("bulk-undo");
+    if (undoButton) undoButton.disabled = true;
+  };
   const list = byId("cards");
   const status = byId("status");
   const query = byId("search");
@@ -94,10 +100,12 @@
     const form = make("div", "fields");
     form.append(
       optionSelect(STAGES, selection.stage, value => {
-        selection.stage = value; updateStats(); notify("Human follow-up draft updated in browser memory only.");
+        invalidateUndo(); selection.stage = value; updateStats(); if (stageFilter.value) render();
+        notify("Human follow-up draft updated in browser memory only.");
       }, "Human follow-up"),
       optionSelect(ROLES, selection.next_role, value => {
-        selection.next_role = value; updateStats(); notify("Human planning role updated; not approval.");
+        invalidateUndo(); selection.next_role = value; updateStats(); if (roleFilter.value) render();
+        notify("Human planning role updated; not approval.");
       }, "Next role"),
     );
     const dateLabel = make("label", "", "Proposed review date");
@@ -110,7 +118,7 @@
         dateInput.value = selection.review_date || ""; notify("Invalid planning date; previous draft retained.");
         return;
       }
-      selection.review_date = next;
+      invalidateUndo(); selection.review_date = next;
       notify("Human calendar note updated; not an authorization window.");
     });
     dateLabel.append(dateInput); form.append(dateLabel);
@@ -199,7 +207,7 @@
         return {slot:value.slot,source_sha256:value.source_sha256,
           stage:value.stage,next_role:value.next_role,review_date:value.review_date};
       });
-      choices = next; render();
+      invalidateUndo(); choices = next; render();
       notify("Matching draft imported into memory. Python final source admission remains mandatory.");
     } catch {
       notify("Import HOLD: incompatible, ambiguous or stale private draft. Existing choices preserved.");
@@ -217,6 +225,48 @@
     const item = el("option", {value:role});item.textContent = role.replaceAll("_", " ");
     roleFilter.append(item);
   }
+  for (const stage of STAGES) {
+    const node = el("option", {value:stage});
+    node.textContent = stage.replaceAll("_", " ");
+    byId("bulk-stage").append(node);
+  }
+  for (const role of ROLES) {
+    const node = el("option", {value:role});
+    node.textContent = role.replaceAll("_", " ");
+    byId("bulk-role").append(node);
+  }
+  byId("bulk-apply").addEventListener("click", () => {
+    const stage = byId("bulk-stage").value;
+    const role = byId("bulk-role").value;
+    const date = byId("bulk-date").value || null;
+    const visible = visibleEntries();
+    if ((!stage && !role && !date) || !visible.length || (date && !isValidDate(date))) {
+      notify("Batch HOLD: choose a human planning change and a nonempty filtered source list.");
+      return;
+    }
+    if (!window.confirm("Update human planning fields for " + visible.length +
+      " visible source slots? This will NOT approve or change source evidence.")) {
+      notify("Batch coordination cancelled. No source selections modified.");return;
+    }
+    batchBackup = fresh();
+    for (const row of visible) {
+      const selected = choices[row.slot - 1];
+      if (stage) selected.stage = stage;
+      if (role) selected.next_role = role;
+      if (date) selected.review_date = date;
+    }
+    byId("bulk-undo").disabled = false;
+    render();
+    notify("Local human planning updated for " + visible.length +
+      " visible source slots. No original data or consent affected.");
+  });
+  byId("bulk-undo").addEventListener("click", () => {
+    if (!batchBackup) return;
+    choices = batchBackup;
+    invalidateUndo();
+    render();
+    notify("Last confirmed batch human-plan edit reverted. Original source untouched.");
+  });
   for (const filter of [query,typeFilter,stageFilter,roleFilter]) {
     filter.addEventListener(filter === query ? "input" : "change", render);
   }
@@ -230,6 +280,7 @@
   });
   byId("reset-plan").addEventListener("click",() => {
     if (!window.confirm("Discard all local human planning selections? This cannot be undone.")) return;
+    invalidateUndo();
     choices = seed.entries.map(r => ({
       slot:r.slot,source_sha256:r.sha256,stage:"PENDING_ORIGINAL",
       next_role:"unassigned",review_date:null

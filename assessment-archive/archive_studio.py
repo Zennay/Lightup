@@ -50,6 +50,18 @@ Nothing here scans, re-evaluates findings, authenticates a client, grants consen
 <button id="clear-filter" class="action ghost" type="button">Clear filters</button>
 </div>
 <p class="small" id="shown-count" aria-live="polite"></p>
+<section class="surface no-print" aria-label="Bulk human review coordination">
+<div class="eyebrow">Batch follow-up · explicit confirmation required</div>
+<h3>Coordinate all currently visible source slots</h3>
+<p class="intro">Updates local human planning only, not original metrics, approval or permission. Filter the source list first.</p>
+<div class="fields">
+<label>Set human stage<select id="bulk-stage"><option value="">Keep current stage</option></select></label>
+<label>Set next role<select id="bulk-role"><option value="">Keep current role</option></select></label>
+<label>Proposed review date<input id="bulk-date" type="date" min="2020-01-01" max="2100-12-31"></label>
+</div>
+<div class="button-row"><button id="bulk-apply" class="action" type="button">Apply to visible sources</button>
+<button id="bulk-undo" class="action ghost" type="button" disabled>Undo last batch update</button></div>
+</section>
 <div id="cards" class="list" aria-label="Original source review slots"></div>
 </main>
 <aside class="overview"><section class="surface">
