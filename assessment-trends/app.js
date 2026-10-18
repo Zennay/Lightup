@@ -282,13 +282,14 @@
       metric_regressions:[...report.cases.values()].reduce((n,c)=>n+c.regressions.length,0),
       metrics:NAMES.map(name=>({name,...snapshot(report,name)}))
     }));
-    return {format:"lightup.assessment_trends.aggregate",version:4,
+    return {format:"lightup.assessment_trends.aggregate",version:5,
       source_kind:demoMode?"FICTIONAL_DEMO_ONLY":"UNAUTHENTICATED_OFFLINE_LAB_JSON",
       fictional_demo:demoMode,
       verdict:"REVIEW_ONLY",phase:"INCUBATE_M3_M7_DRAFT_HOLD",
       source_order:"USER_SELECTED_UNVERIFIED",source_authenticated:false,
       source_comparison_only:true,metrics:NAMES.map(name=>({name,...movement(name)})),
       revisions:entries,
+      descriptive_lab_tradeoffs:relativeTradeoffs(),
       adjacent_pairs:adjacentExport(),
       human_case_discussion_counts:caseStageCounts(),
       human_discussion:actionItems().map(x=>({
@@ -358,6 +359,17 @@
         chunks.push(row([m.name,m.worsened,m.improved,m.other_changed,fmt(m.delta)]));
       chunks.push("</tbody></table>");
     }
+    chunks.push("<h2>Descriptive lab tradeoffs</h2>",
+      "<p>Compared dimensions: "+safe(model.descriptive_lab_tradeoffs.axes.join(", ")||
+      "none selected")+". Relative non-dominance is NOT a safety, authorization, release or approval score.</p>",
+      "<table><thead><tr><th>Position</th><th>Adverse cases-metrics</th><th>Lab coverage</th><th>Runtime</th><th>Cost</th><th>Selected-dimension result</th></tr></thead><tbody>");
+    for(const version of model.descriptive_lab_tradeoffs.rows)
+      chunks.push(row(["R"+version.position,version.risk,fmt(version.coverage),
+        fmt(version.runtime),fmt(version.cost),
+        version.non_dominated===null?"Not compared":
+        version.non_dominated?"Non-dominated numerically":
+        "Dominated by "+version.dominated_by.map(x=>"R"+x).join(", ")]));
+    chunks.push("</tbody></table>");
     chunks.push("<h2>Human review questions</h2>",
       "<p>Local discussion stages are self-reported and are not assignments, proof of remediation or human approval.</p>",
       "<table><thead><tr><th>Metric</th><th>Priority</th><th>Persisting</th><th>Newly flagged</th><th>Direct candidate deteriorations</th><th>Discussion stage</th></tr></thead><tbody>");
@@ -476,6 +488,71 @@
       add(tr,"td",String(m.improved));
       add(tr,"td",String(m.other_changed));
       add(tr,"td",(m.delta>0?"+":"")+fmt(m.delta));
+    }
+  }
+
+  const AXIS_IDS=[
+    ["axis-risk","risk",-1],["axis-coverage","coverage",1],
+    ["axis-runtime","runtime",-1],["axis-cost","cost",-1]
+  ];
+  function selectedAxes() {
+    return AXIS_IDS.filter(([control])=>$(control).checked).map(
+      ([,key,direction])=>({key,direction}));
+  }
+  function descriptiveRevisions() {
+    return revisions.map((r,i)=>({
+      position:i+1,
+      risk:[...r.cases.values()].reduce((n,c)=>n+c.regressions.length,0),
+      coverage:snapshot(r,"coverage_assessed").candidate,
+      runtime:snapshot(r,"runtime_seconds").candidate,
+      cost:snapshot(r,"compute_cost_usd").candidate
+    }));
+  }
+  function compareDominance(first,second,axes) {
+    let strictlyBetter=false;
+    for(const axis of axes) {
+      const left=axis.direction*first[axis.key];
+      const right=axis.direction*second[axis.key];
+      const tolerance=Math.max(1,Math.abs(left),Math.abs(right))*1e-9;
+      if(left<right-tolerance) return false;
+      if(left>right+tolerance) strictlyBetter=true;
+    }
+    return strictlyBetter;
+  }
+  function relativeTradeoffs() {
+    const axes=selectedAxes();
+    const values=descriptiveRevisions();
+    return {axes:axes.map(({key})=>key),rows:values.map(row=>{
+      if(!axes.length) return {...row,non_dominated:null,dominated_by:[]};
+      const dominated_by=values.filter(other=>
+        other.position!==row.position &&
+        compareDominance(other,row,axes)).map(x=>x.position);
+      return {...row,non_dominated:dominated_by.length===0,dominated_by};
+    })};
+  }
+  function renderTradeoffs() {
+    if(!revisions.length) return;
+    const values=relativeTradeoffs();
+    const summary=$("tradeoff-summary"),body=$("tradeoff-rows");
+    body.replaceChildren();
+    if(!values.axes.length) {
+      summary.textContent="Choose at least one descriptive laboratory dimension; no comparisons are displayed.";
+      return;
+    }
+    const fronts=values.rows.filter(r=>r.non_dominated).length;
+    summary.textContent=fronts+" of "+values.rows.length+
+      " user-ordered candidates are non-dominated under the chosen "+values.axes.join(", ")+
+      " lab dimensions. This describes relative numeric tradeoffs ONLY; all remain DRAFT/HOLD with zero release authority.";
+    for(const row of values.rows) {
+      const tr=add(body,"tr");
+      add(tr,"th","R"+String(row.position));
+      add(tr,"td",String(row.risk));
+      add(tr,"td",fmt(row.coverage));
+      add(tr,"td",fmt(row.runtime));
+      add(tr,"td",fmt(row.cost));
+      add(tr,"td",row.non_dominated ?
+        "No selected numeric dominator" :
+        "Numerically dominated by "+row.dominated_by.map(x=>"R"+x).join(", "));
     }
   }
 
@@ -649,7 +726,7 @@
     for(const name of NAMES) {
       const option=add(select,"option",nice(name));option.value=name;
     }
-    renderOrder();renderManifest();renderPair();metricsRows();renderCaseRows();renderCaseInspector();renderActions();choose(selected);followupText();
+    renderOrder();renderManifest();renderPair();renderTradeoffs();metricsRows();renderCaseRows();renderCaseInspector();renderActions();choose(selected);followupText();
     $("demo-banner").hidden=!demoMode;
     $("save-draft").disabled=demoMode || !sourceHashes.length || sourceHashes.some(x=>!x);
     if(sourceHashes.some(x=>!x))
@@ -745,6 +822,8 @@
       showMessage("HOLD — invalid, duplicated, incomplete or baseline-mismatched source set. No partial data imported.",true);
     }
   });
+  for(const [id] of AXIS_IDS)
+    $(id).addEventListener("change",renderTradeoffs);
   $("pair-select").addEventListener("change",event=>{
     pairFocus=Number(event.target.value);renderPair();
   });

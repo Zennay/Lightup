@@ -10,3 +10,5 @@ button:disabled{opacity:.45;cursor:not-allowed}.matrix tbody#case-rows tr{cursor
 .demo-banner{margin:0 0 24px;border:2px solid #ffc27a;border-radius:9px;padding:18px;color:#ffe1b6;background:#513722;font-size:15px;font-weight:800;letter-spacing:.02em}.demo-banner[hidden]{display:none!important}@media print{.demo-banner{display:block!important;background:white;color:#000;border:3px solid black;margin:0 0 15px}}
 
 .source-manifest{margin-top:22px}.source-manifest h3{font-size:17px;margin:10px 0}.source-manifest input{background:#0d2634;color:var(--ink);border:1px solid #53758c;border-radius:6px;padding:8px;font:inherit;width:min(100%,280px)}@media print{.screen-only{display:none!important}}
+
+.axis-controls{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin:20px 0}.axis-controls label{padding:12px 14px;background:#173243;border:1px solid #3f5a6b;border-radius:8px;cursor:pointer;font-weight:650}.axis-controls input{margin-right:9px;accent-color:var(--accent)}@media(max-width:650px){.axis-controls{grid-template-columns:1fr}}
