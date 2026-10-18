@@ -247,7 +247,11 @@
     const match=consistency(),stage=Object.fromEntries(STAGES.map(s=>[s,0]));
     let unknown=0,zero=0,planted=0,findings=0,adverse=0,affected=0;
     const severity=Object.fromEntries(LEVELS.map(n=>[n,0]));
+    const routeCounts=Object.fromEntries(ROUTES.map(n=>[n,0]));
+    const actionCounts=Object.fromEntries(ACTIONS.map(n=>[n,0]));
     for(const s of catalog){
+      routeCounts[humanRouteFor(s)]++;
+      actionCounts[humanActionFor(s)]++;
       stage[reviews.get(s.id)||"needs_review"]++;
       if(s.mode==="unscored")unknown++;
       else if(s.mode==="declared_zero")zero++;
@@ -274,7 +278,10 @@
       human_discussion_stages:stage,source_reported_adverse_cases:affected,
       source_reported_adverse_metric_instances:adverse,
       human_queue_priorities:queueRollup().map(({category,cases,human_stages})=>
-        ({category,cases,human_stages})),reports:byReport};
+        ({category,cases,human_stages})),
+      proposed_human_route_totals:routeCounts,
+      next_human_action_totals:actionCounts,
+      reports:byReport};
   }
 
   const FAMILIES={
@@ -602,7 +609,8 @@
     if(!catalog){renderInspector();return;}
     const grid=document.createElement("table"),head=document.createElement("thead"),h=document.createElement("tr");
     for(const text of ["Private scenario","Original source priority","Declared ground truth","Planted count",
-      ...reports.map((_,i)=>"Source "+(i+1)+" flags"),"Human discussion","Inspect originals"]){
+      ...reports.map((_,i)=>"Source "+(i+1)+" flags"),"Human discussion",
+      "Human proposal","Inspect originals"]){
       const th=document.createElement("th");th.textContent=text;h.append(th);
     }
     head.append(h);grid.append(head);
@@ -632,6 +640,7 @@
         render();message("Private human stage updated in memory only.");
       });
       cell.append(selector);row.append(cell);
+      td(row,ROUTE_LABELS[humanRouteFor(item)]+" · "+ACTION_LABELS[humanActionFor(item)]);
       const jump=document.createElement("td");
       jump.append(button("Inspect",()=>{
         $("inspectCase").value=String(i);renderInspector();
@@ -757,6 +766,10 @@
       ["Author-declared planted findings (not verified)",a.declared_planted_findings],
       ["Original reported adverse metric instances",a.source_reported_adverse_metric_instances],
       ...a.human_queue_priorities.map(q=>["Source priority "+q.category,q.cases]),
+      ...Object.entries(a.proposed_human_route_totals).map(([k,v])=>
+        ["Proposed human discussion route "+k,v]),
+      ...Object.entries(a.next_human_action_totals).map(([k,v])=>
+        ["Proposed next human action "+k,v]),
       ...Object.entries(a.human_discussion_stages).map(([stage,count])=>
         ["Human "+stage,count])];
     const tableArea=document.createElement("div");node.append(tableArea);
@@ -785,6 +798,10 @@
         rows.push(["declared severity",0,key,value]);
       for(const [key,value] of Object.entries(a.human_discussion_stages))
         rows.push(["human discussion",0,key,value]);
+      for(const [route,count] of Object.entries(a.proposed_human_route_totals))
+        rows.push(["proposed human discussion route",0,route,count]);
+      for(const [action,count] of Object.entries(a.next_human_action_totals))
+        rows.push(["next human discussion action",0,action,count]);
       for(const q of a.human_queue_priorities){
         rows.push(["review priority",0,q.category,q.cases]);
         for(const [stage,count] of Object.entries(q.human_stages))
@@ -813,7 +830,11 @@
         ["Declared planted expected findings",a.declared_planted_findings],
         ["Original source adverse metric instances",a.source_reported_adverse_metric_instances],
         ...Object.entries(a.human_discussion_stages).map(([k,v])=>["Human "+k,v]),
-        ...a.human_queue_priorities.map(q=>["Human priority "+q.category,q.cases])];
+        ...a.human_queue_priorities.map(q=>["Human priority "+q.category,q.cases]),
+        ...Object.entries(a.proposed_human_route_totals).map(([k,v])=>
+          ["Proposed human route "+k,v]),
+        ...Object.entries(a.next_human_action_totals).map(([k,v])=>
+          ["Human next action "+k,v])];
       const html="<!doctype html><html lang='en'><meta charset='utf-8'>"+
         "<meta http-equiv='Content-Security-Policy' content=\"default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'\">"+
         "<title>LightUp anonymous lineage brief</title><style>body{font:16px system-ui;max-width:900px;margin:3rem auto;padding:1rem}"+
