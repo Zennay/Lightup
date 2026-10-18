@@ -56,14 +56,14 @@ def _count(value: object, upper: int) -> bool:
     return type(value) is int and 0 <= value <= upper
 
 
-def _read_private(path: Path, limit: int) -> bytes:
+def _read_private(path: Path, limit: int, require_private: bool = True) -> bytes:
     flags = os.O_RDONLY | getattr(os, "O_CLOEXEC", 0)
     if not hasattr(os, "O_NOFOLLOW"):
         raise Refused("no safe no-follow support")
     descriptor = os.open(path, flags | os.O_NOFOLLOW)
     try:
         before = os.fstat(descriptor)
-        if not stat.S_ISREG(before.st_mode) or before.st_mode & 0o077:
+        if not stat.S_ISREG(before.st_mode) or (require_private and before.st_mode & 0o077):
             raise Refused("source must be an owner-private regular file")
         if before.st_size < 2 or before.st_size > limit:
             raise Refused("source length")
@@ -169,7 +169,7 @@ def _write_private(dirfd: int, name: str, data: bytes) -> dict[str, object]:
 def publish(source: Path, destination: Path) -> None:
     original = _read_private(source, SOURCE_LIMIT)
     _validate_source(original)
-    app = _read_private(Path(__file__).resolve().with_name("standalone.html"), APP_LIMIT)
+    app = _read_private(Path(__file__).resolve().with_name("standalone.html"), APP_LIMIT, require_private=False)
     if b"<title>LightUp | Scope Impact Map</title>" not in app:
         raise Refused("unexpected bundled app")
 
@@ -193,6 +193,7 @@ def publish(source: Path, destination: Path) -> None:
     os.mkdir(destination, 0o700)
     dirfd: int | None = None
     created: list[str] = []
+    complete = False
     try:
         dirfd = os.open(destination, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
         os.fchmod(dirfd, 0o700)
@@ -202,8 +203,8 @@ def publish(source: Path, destination: Path) -> None:
             ("standalone.html", app),
             ("START-HERE.txt", instructions),
         ):
-            files[name] = _write_private(dirfd, name, raw)
             created.append(name)
+            files[name] = _write_private(dirfd, name, raw)
         manifest = {
             "schema": "lightup.scope_impact_workspace.v1",
             "status": "REVIEW_ONLY",
@@ -212,12 +213,13 @@ def publish(source: Path, destination: Path) -> None:
             "source_authenticated": False,
             "notes": "Checksums are untrusted byte fingerprints, not issuer/consent proof.",
         }
+        created.append("manifest.json")
         _write_private(
             dirfd, "manifest.json",
             (json.dumps(manifest, indent=2, sort_keys=True) + "\n").encode("utf-8"),
         )
-        created.append("manifest.json")
         os.fsync(dirfd)
+        complete = True
     except BaseException:
         if dirfd is not None:
             for name in reversed(created):
@@ -230,7 +232,7 @@ def publish(source: Path, destination: Path) -> None:
         if dirfd is not None:
             os.close(dirfd)
         # Leave no incomplete workspace. Never remove a pre-existing directory.
-        if len(created) < 4:
+        if not complete:
             try:
                 os.rmdir(destination)
             except OSError:
