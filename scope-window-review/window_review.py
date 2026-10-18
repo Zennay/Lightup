@@ -16,6 +16,7 @@ from pathlib import Path
 import stat
 import sys
 import tempfile
+import unicodedata
 
 SCHEMA = "lightup.scope_window_review.v1"
 SOURCE_SCHEMA = "lightup.auth_casebook.v1"
@@ -85,7 +86,8 @@ def source_file(path: Path) -> dict:
 def identity(value: object) -> str:
     if (type(value) is not str or not 1 <= len(value) <= 180
             or value.strip() != value
-            or any(ord(c) < 33 or ord(c) == 127 for c in value)):
+            or any(ord(c) < 33 or unicodedata.category(c) in
+                   ("Cc", "Cf", "Cs", "Zl", "Zp") for c in value)):
         raise ReviewHold("invalid source record identifier")
     return value
 
