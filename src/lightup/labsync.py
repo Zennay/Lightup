@@ -150,6 +150,12 @@ def retest_finding(
     store: DomainStore, ctx: AccessContext, finding: FindingRecord
 ) -> FindingRecord:
     """Re-observe only the exact current persisted internal-lab finding."""
+    # Reject producer-impossible subclasses BEFORE any caller-controlled
+    # attribute, title, lookup identity or equality is consulted. A forged
+    # subclass could otherwise select one check_id and compare equal to a
+    # different canonical persisted finding.
+    if type(finding) is not FindingRecord:
+        raise LabIsolationError("retest requires an exact persisted FindingRecord")
     engagement = _require_internal_lab_engagement(store, ctx, finding.engagement_id)
     if finding.client_id != engagement.client_id:
         raise LabIsolationError("lab finding client does not match its engagement")
