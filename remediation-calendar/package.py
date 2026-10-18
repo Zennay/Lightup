@@ -31,9 +31,9 @@ def build() -> bytes:
         raise ValueError("Missing source CSP anchor.")
     html = html.replace(old, script_policy + "; " + style_policy)
     replacements = [
-        ('<link rel="stylesheet" href="style.css">', "<style>\n" + css.decode("utf-8") + "\n</style>"),
-        ('<script src="../casework/remediation-engine.js"></script>', "<script>\n" + source.decode("utf-8") + "\n</script>"),
-        ('<script src="app.js"></script>', "<script>\n" + app.decode("utf-8") + "\n</script>"),
+        ('<link rel="stylesheet" href="style.css">', "<style>" + css.decode("utf-8") + "</style>"),
+        ('<script src="../casework/remediation-engine.js"></script>', "<script>" + source.decode("utf-8") + "</script>"),
+        ('<script src="app.js"></script>', "<script>" + app.decode("utf-8") + "</script>"),
     ]
     for needle, replace in replacements:
         if html.count(needle) != 1:
