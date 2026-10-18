@@ -389,30 +389,29 @@ def _deliver_lab_result(payload: dict, output: str | None) -> None:
         print(serialized.decode("utf-8"), end="")
         return
     import os
-    import stat
+    import tempfile
     target = Path(output)
-    if target.suffix.lower() != ".json":
+    if target.suffix != ".json":
         raise ValueError("private output path must end in .json")
-    # Caller-supplied filenames are never followed or silently replaced.
-    flags = os.O_CREAT | os.O_EXCL | os.O_WRONLY
-    if hasattr(os, "O_NOFOLLOW"):
-        flags |= os.O_NOFOLLOW
-    descriptor = os.open(target, flags, 0o600)
+    # Write a fully flushed 0600 staging file in the SAME directory, then
+    # make it visible under the requested destination with an exclusive
+    # hard-link. Unlike rename(), link() cannot overwrite an existing name.
+    # Incomplete/failed writes never appear as completed destination files.
+    staging_fd, staging_name = tempfile.mkstemp(
+        prefix=".lightup-private-pending-", dir=target.parent,
+    )
     try:
-        with os.fdopen(descriptor, "wb") as stream:
+        with os.fdopen(staging_fd, "wb") as stream:
             stream.write(serialized)
             stream.flush()
             os.fsync(stream.fileno())
-        # In addition to exclusive creation, reject an unexpected non-regular
-        # destination before presenting the result as saved.
-        if not stat.S_ISREG(target.lstat().st_mode):
-            raise OSError("private output is not a regular file")
-    except BaseException:
+        # A concurrent file or symlink at target always produces FileExistsError.
+        os.link(staging_name, target, follow_symlinks=False)
+    finally:
         try:
-            target.unlink(missing_ok=True)
-        except OSError:
+            os.unlink(staging_name)
+        except FileNotFoundError:
             pass
-        raise
     print(json.dumps({
         "mode": "PRIVATE_LAB_ARTIFACT_CREATED",
         "output_written": True,
