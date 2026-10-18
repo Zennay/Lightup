@@ -276,7 +276,8 @@ function renderScenarios(){
   $('scenarioApply').disabled=!chosen;
   $('scenarioSuggest').disabled=!chosen;
   $('scenarioRevert').disabled=!chosen||!scenarioShifts.has(chosen.key);
-  $('scenarioClear').disabled=!scenarioShifts.size;
+  $('scenarioClear').disabled=!shown().length;
+  $('scenarioArrange').disabled=!shown().length;
   $('scenarioExport').disabled=!entries.length;
   const changes=$('scenarioChanges');changes.replaceChildren();
   if(!scenarioShifts.size)append(changes,'p','No time adjustments proposed.','muted');
@@ -317,6 +318,43 @@ function scenarioPacket(){
     proposed_time_overlap_pairs:pairs.length,proposed_unavailability_overlap_pairs:blockHits
   };
 }
+function firstFit(base,forbidden) {
+  const duration=base.end-base.start;
+  let candidate=base.start;
+  const busy=forbidden.slice().sort((a,b)=>a.start-b.start);
+  for(const item of busy){
+    if(candidate+duration+BUFFER<=item.start) break;
+    if(candidate<item.end+BUFFER && candidate+duration+BUFFER>item.start)
+      candidate=Math.max(candidate,item.end+BUFFER);
+  }
+  if(!Number.isFinite(candidate+duration)||candidate+duration>Date.UTC(2100,0,1) ||
+    candidate-base.start>31*DAY) return null;
+  return {start:candidate,end:candidate+duration};
+}
+function arrangeAll(){
+  const current=shown().sort((a,b)=>a.interval.start-b.interval.start||b.risk-a.risk||
+    a.name.localeCompare(b.name));
+  if(!current.length)return;
+  const busy=blackouts.map(b=>({start:b.start,end:b.end})),proposals=new Map();
+  for(const e of current){
+    const slot=firstFit(e.interval,busy);
+    if(!slot){
+      $('status').textContent='HOLD: could not schedule all proposals within 31 days without time conflicts. No changes applied.';
+      return;
+    }
+    busy.push(slot);
+    proposals.set(e.key,slot.start);
+  }
+  const next=new Map(scenarioShifts);
+  for(const e of current){
+    if(proposals.get(e.key)===e.original.start)next.delete(e.key);
+    else next.set(e.key,proposals.get(e.key));
+  }
+  scenarioShifts=next;
+  $('status').textContent='A bounded first-fit what-if arrangement was built locally. Recheck all source identities and approvals.';
+  render();
+}
+$('scenarioArrange').addEventListener('click',arrangeAll);
 function applyScenario(start){
   const selected=chosenScenario();
   if(!selected){$('status').textContent='Select a resolved original proposal first.';return;}
