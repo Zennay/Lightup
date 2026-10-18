@@ -12,15 +12,27 @@
   let findings = null;
   let result = null;
   let lastOptions = null;
+  let historyReview = null;
   const source = el('source');
   const feedback = el('feedback');
   const setFeedback = (msg, error=false) => {
     feedback.textContent = msg;
     feedback.classList.toggle('error',error);
   };
+  function clearHistory() {
+    historyReview = null;
+    el('previous').value = '';
+    el('same-engagement').checked = false;
+    el('history-data').hidden = true;
+    el('history-stats').replaceChildren();
+    el('history-feedback').textContent = 'No earlier report compared.';
+  }
+  el('clear-history').addEventListener('click',clearHistory);
+  el('previous').addEventListener('change',()=>{historyReview=null;el('history-data').hidden=true;el('same-engagement').checked=false;});
   function forget() {
     findings = null; result = null; lastOptions = null;
     source.value = '';
+    clearHistory();
     el('source-status').textContent = 'No report loaded. All files stay in this browser tab.';
     el('generate').disabled = true;
     el('results').hidden = true;
@@ -32,12 +44,17 @@
   el('forget').addEventListener('click',forget);
   source.addEventListener('change',async () => {
     const file = source.files && source.files[0];
+    findings = null; result = null; lastOptions = null;
+    el('generate').disabled = true;
+    el('results').hidden = true;
+    clearHistory();
     if (!file) return;
     try {
       if (file.size > engine.MAX_BYTES || file.size === 0) throw new Error('Source must be a nonempty CSV no larger than 1 MiB.');
       // Strict decoding; malformed UTF-8 must not be silently replaced.
       const content = new TextDecoder('utf-8',{fatal:true}).decode(await file.arrayBuffer());
       const prepared = engine.parseCSV(content);
+      if (source.files?.[0] !== file) return;
       findings = prepared; result = null; lastOptions = null;
       el('generate').disabled = false;
       el('results').hidden = true;
@@ -63,6 +80,7 @@
         reserve:input('reserve'),hours
       };
       result = engine.plan(findings,lastOptions);
+      clearHistory();
       render();
       renderComparison();
       el('results').hidden = false;
@@ -156,6 +174,65 @@
       box.append($('p','Scenario held: '+(error instanceof Error?error.message:'Invalid scenario'),'feedback error'));
     }
   }
+
+  async function decodeReport(file) {
+    if (!file || !file.size || file.size > engine.MAX_BYTES) throw new Error('Choose a nonempty original CSV up to 1 MiB.');
+    const bytes=await file.arrayBuffer();
+    // Use the exact original bytes in memory; no server, hash persistence or hidden export.
+    return new TextDecoder('utf-8',{fatal:true}).decode(bytes);
+  }
+  function showHistoricalChange(data) {
+    const container=el('history-stats');container.replaceChildren();
+    const vals=[
+      ['Added source records',data.added],
+      ['Changed source records',data.changed],
+      ['Absent / not verified fixed',data.absent],
+      ['Unchanged records',data.unchanged],
+      ['Earlier estimated hours',data.previous_estimated_hours+' h'],
+      ['Current estimated hours',data.current_estimated_hours+' h'],
+      ['Estimated workload shift',(data.net_estimated_change_hours>0?'+':'')+data.net_estimated_change_hours+' h'],
+      ['Added-case effort',data.added_hours+' h'],
+      ['Absent-case estimate',data.absent_hours+' h']
+    ];
+    for (const [label,value] of vals) {
+      const box=$('div',undefined,'stat');
+      box.append($('strong',value),$('span',label));
+      container.append(box);
+    }
+    el('history-data').hidden=false;
+  }
+  el('review-history').addEventListener('click',async()=>{
+    const currentFile=source.files?.[0];
+    const previousFile=el('previous').files?.[0];
+    const confirmation=el('same-engagement').checked;
+    historyReview=null;el('history-data').hidden=true;
+    if(!findings || !result || !lastOptions || !currentFile || !previousFile || !confirmation) {
+      el('history-feedback').textContent='HOLD: generate a current plan, select an earlier report and explicitly confirm the same client and engagement.';
+      return;
+    }
+    try {
+      const texts=await Promise.all([decodeReport(currentFile),decodeReport(previousFile)]);
+      if (source.files?.[0]!==currentFile || el('previous').files?.[0]!==previousFile ||
+          !el('same-engagement').checked) throw new Error('Input changed while comparing; review again.');
+      const report=engine.compareReports(texts[0],texts[1],lastOptions.hours);
+      if (engine.parseCSV(texts[0]).length!==findings.length) throw new Error('Current source is no longer the loaded planning source.');
+      historyReview=report;
+      showHistoricalChange(report);
+      el('history-feedback').textContent='REVIEW_ONLY — comparison based on your human same-engagement assertion. No identity, fix, revocation or retest verified.';
+    } catch(err) {
+      el('history-feedback').textContent='HOLD: '+(err instanceof Error?err.message:'Comparison input rejected');
+    }
+  });
+  el('export-history').addEventListener('click',()=>{
+    if (!historyReview || !el('same-engagement').checked) return;
+    if(!window.confirm('Export only untrusted aggregate workload differences? Not proof of repair, consent or identity.'))return;
+    download('lightup-capacity-source-change.json',JSON.stringify({
+      schema:'lightup.remediation_capacity_source_change_draft.v1',
+      ...historyReview
+    },null,2)+'\n','application/json;charset=utf-8');
+    setFeedback('Aggregate historical workload differences exported as REVIEW_ONLY.');
+  });
+
   el('compare').addEventListener('click',renderComparison);
   function download(name,content,mime) {
     // Deliberate user-initiated, local-only export. URL revoked immediately.
