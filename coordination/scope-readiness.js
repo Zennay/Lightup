@@ -156,7 +156,7 @@ function clearPacketPreview(message='Source or coordination data changed. Create
  $('packetText').textContent='No prepared packet.';
 }
 function clearMergePreview(message='Merge preview is stale; select the workspace file again.'){
- mergePlan=null;$('mergeApply').disabled=true;$('mergeStatus').textContent=message;
+ mergePlan=null;$('mergeApply').disabled=true;$('mergeStatus').textContent=message;$('mergeConflicts').replaceChildren();
 }
 function setDirty(){dirty=true;editEpoch++;clearMergePreview();bulkUndo=null;$('bulkUndo').disabled=true;clearPacketPreview();clearBulkPreview();$('save').disabled=!entries.length;$('csv').disabled=!entries.length;$('print').disabled=!entries.length;$('todoExport').disabled=!entries.length;}
 function make(tag,txt,cls){const el=document.createElement(tag);if(txt!==undefined)el.textContent=txt;if(cls)el.className=cls;return el;}
@@ -608,7 +608,13 @@ function mergeAnalysis(incoming){
   const existing=original.get(row.source_sha256);
   if(!existing){newRecords.push(row);continue;}
   const current=cleanRecord(existing);
-  if(!current||JSON.stringify(current)!==JSON.stringify(row))conflicts.push(row.source_sha256.slice(0,16));
+  if(!current||JSON.stringify(current)!==JSON.stringify(row)){
+   const metadata=['name','client_label','requested_mode','requested_risk','asset_count','excluded_count','planned_utc']
+    .filter(k=>!current||JSON.stringify(current[k])!==JSON.stringify(row[k]));
+   const workstreams=STAGES.filter(([id])=>!current||JSON.stringify(current.tasks[id])!==JSON.stringify(row.tasks[id]))
+    .map(([,title])=>title);
+   conflicts.push({digest:row.source_sha256.slice(0,16),metadata,workstreams});
+  }
   else identical++;
  }
  if(entries.length+newRecords.length>MAX_RECORDS)throw Error('Merged register exceeds 20 distinct source revisions.');
@@ -623,8 +629,14 @@ $('mergeInput').addEventListener('change',async event=>{
   const summary=mergeAnalysis(incoming);
   if(summary.conflicts.length){
    $('mergeStatus').textContent='Merge HOLD: '+summary.conflicts.length+
-    ' same-source task conflicts (SHA prefixes '+summary.conflicts.join(', ')+'). '+
-    'No records changed. Manually reconcile task values in private files; never silently override either version.';
+    ' same-source records differ. Differences are categorized below without showing private field values. No records changed.';
+   const list=$('mergeConflicts');
+   for(const issue of summary.conflicts){
+    const parts=['Source '+issue.digest+'…'];
+    if(issue.metadata.length)parts.push('Changed proposal metadata fields: '+issue.metadata.join(', '));
+    if(issue.workstreams.length)parts.push('Changed paperwork stages: '+issue.workstreams.join('; '));
+    list.append(make('li',parts.join(' — ')));
+   }
    return;
   }
   if(!summary.newRecords.length){$('mergeStatus').textContent='Nothing new to merge. '+summary.identical+' source record(s) already identical.';return;}
