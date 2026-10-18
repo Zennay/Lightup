@@ -374,7 +374,7 @@ var holder=el("original-casebook-b64");if(!holder)return;
 var encoded=holder.textContent.trim(),declared=holder.getAttribute("data-source-sha256");
 if(!encoded)return;
 try{
-if(!/^[A-Za-z0-9+/]+={0,2}$/.test(encoded)||encoded.length>700000||!decodeURIComponent)throw Error("invalid inert source envelope");
+if(!/^[A-Za-z0-9+/]+={0,2}$/.test(encoded)||encoded.length>700000)throw Error("invalid inert source envelope");
 if(!/^[0-9a-f]{64}$/.test(declared))throw Error("missing source fingerprint");
 var binary=atob(encoded),buffer=new Uint8Array(binary.length);
 for(var i=0;i<binary.length;i++)buffer[i]=binary.charCodeAt(i);
@@ -596,5 +596,6 @@ var body=JSON.stringify(s),file=new File([body],"fictional-demo.json",{type:"app
 await importSource(file,true);
 });
 render();
+loadEmbeddedOriginal();
 })();
 </script></body></html>
