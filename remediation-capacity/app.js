@@ -45,6 +45,7 @@
     el('casework-summary').hidden=true;
     el('casework-status-cards').replaceChildren();
     el('casework-risk-table').replaceChildren();
+    el('casework-week-pressure').replaceChildren();
     el('casework-triage').replaceChildren();
     el('casework-feedback').textContent='No Casework record reviewed.';
   }
@@ -140,6 +141,7 @@
         weekAvailability:Array.from(el('week-availability').querySelectorAll('input'),v=>v.value)
       };
       result = engine.plan(findings,lastOptions);
+      clearCasework();
       clearHistory();
       clearMilestone();
     clearContingency();
@@ -477,13 +479,26 @@
       card.append($('strong',item.count+' · '+item.label),$('p',item.nextStep));
       triage.append(card);
     }
+    const pressureRows=el('casework-week-pressure');pressureRows.replaceChildren();
+    for(const week of summary.weekly_blocker_pressure){
+      const row=$('tr');
+      if(week.locally_blocked_critical_high_estimated_hours)row.className='outstanding-row';
+      for(const value of [
+        'Week '+week.week,
+        week.provisionally_allocated_hours+' h',
+        week.locally_blocked_estimated_hours+' h',
+        week.locally_blocked_critical_high_estimated_hours+' h',
+        week.source_regression_locally_completed_estimated_hours+' h'
+      ])row.append($('td',value));
+      pressureRows.append(row);
+    }
     el('casework-summary').hidden=false;
   }
   el('review-casework').addEventListener('click',async()=>{
     reviewedCasework=null;
     el('casework-summary').hidden=true;
     const csv=source.files?.[0],packet=el('casework-packet').files?.[0];
-    if(!csv||!findings||!packet||!el('casework-ack').checked){
+    if(!csv||!findings||!result||!packet||!el('casework-ack').checked){
       el('casework-feedback').textContent='HOLD: load an original CSV, choose an original Casework JSON and manually confirm the same client and engagement.';
       return;
     }
@@ -498,9 +513,10 @@
       const packetText=new TextDecoder('utf-8',{fatal:true}).decode(packetBytes);
       if(source.files?.[0]!==csv||!el('casework-ack').checked||!findings)
         throw Error('Original CSV or acknowledgment changed during read');
-      const summary=await window.LightUpCapacityCasework.review(originalText,packetText);
-      if(source.files?.[0]!==csv||!el('casework-ack').checked||!findings)
-        throw Error('Source changed during source-digest validation');
+      const planAtUse=result;
+      const summary=await window.LightUpCapacityCasework.review(originalText,packetText,planAtUse);
+      if(source.files?.[0]!==csv||!el('casework-ack').checked||!findings||result!==planAtUse)
+        throw Error('Source or active capacity plan changed during source-digest validation');
       reviewedCasework=summary;
       showCaseworkSummary(summary);
       el('casework-feedback').textContent='Matched the Casework source digest and source fields locally. Client identity, active consent and retest are NOT authenticated here.';
@@ -606,6 +622,7 @@
         .forEach((input,index)=>{input.value=String(opts.weekAvailability[index]);});
       el('extra-engineers').value=String(restored.scenario);
       lastOptions=opts;result=restored.plan;
+      clearCasework();
       clearMilestone();
       render();renderComparison();
       el('results').hidden=false;
