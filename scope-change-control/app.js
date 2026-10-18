@@ -502,7 +502,9 @@
         hold("Private handoff is not an original-source-bound human review");
       for(const k of ["source_authenticated","client_consent_verified","operator_consent_verified",
                        "authorization_granted","execution_allowed","release_approved"]) {
-        if(doc[k] !== false) hold("Private handoff contains unauthorized claims");
+        if(doc[k] !== false && !(k==="source_authenticated" && doc[k]===undefined &&
+           !isObject(doc.aggregate_without_original_ids)))
+          hold("Private handoff contains unauthorized claims");
       }
       if (!Array.isArray(doc.source_sha256_unsigned) || doc.source_sha256_unsigned.length !== 2 ||
           doc.source_sha256_unsigned.some((s,i)=>s!==state.sha[i]) ||
