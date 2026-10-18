@@ -6,7 +6,7 @@
 
 The held original authenticated Casebook emits read-only single-tenant historical records for persisted assessment requests, engagements, authorization grants, risk approvals and per-engagement attention. A recorded grant is never a fresh permit. This workspace supplies change-control across all five original families: select two chronological original snapshots; refuse unknown or mismatched tenants, duplicate JSON keys, conflicting source counts, unverified authority flags or malformed records; compare exact original IDs and fields; highlight material changes and missing rows; assign ephemeral human follow-up stages; export privacy-separated aggregate and private review handoffs. Original records never change.
 
-The browser app has three files: **index.html**, **app.js**, **style.css**. Open index.html from this folder in a modern offline secure-context browser supporting Web Crypto. Its CSP forbids remote scripts, networks, images and fonts. There is no browser persistence; imported data resides in memory only. The two input files are bounded to 512 KiB each, UTF-8/JSON strict and 200 original rows per source family.
+The fully portable, self-contained browser build is **standalone.html** (one file, embedded script/style with exact SHA-256 CSP). It can be opened as a local offline file without fetching other resources. Its script is placed after the page DOM so initialization can access every screen control. The editable source form has three files: **index.html**, **app.js**, **style.css**. Open index.html from this folder in a modern offline secure-context browser supporting Web Crypto. Its CSP forbids remote scripts, networks, images and fonts. There is no browser persistence; imported data resides in memory only. The two input files are bounded to 512 KiB each, UTF-8/JSON strict and 200 original rows per source family.
 
 ## Route A: compare two original PRIVATE Casebook files
 
@@ -18,7 +18,7 @@ At a later authorized human review, export a different exact original source sna
 
     PYTHONPATH=src python3 -m lightup.auth_casebook --database /private/domain.sqlite --email EXISTING_LOGIN --client EXACT_TENANT --output /private/casebook-newer.json
 
-Open **scope-change-control/index.html**, select older then newer. Review priority, original IDs, changed source fields and missing/added original membership. Choose *local human stages only*. Export either anonymous aggregate JSON (without tenant, IDs, source timestamps or hashes) or, after separate recipient confirmation, an original-ID-bearing PRIVATE human follow-up JSON.
+Open **scope-change-control/index.html**, select older then newer. Review priority, original IDs, recorded source status transitions before→after, changed source fields and missing/added original membership. Choose *local human stages only*. Export either anonymous aggregate JSON (without tenant, IDs, source timestamps or hashes) or, after separate recipient confirmation, an original-ID-bearing PRIVATE human follow-up JSON.
 
 ## Route B: authenticated fresh observation vs prior original
 
