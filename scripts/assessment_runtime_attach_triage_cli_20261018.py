@@ -16,7 +16,7 @@ from zipfile import ZipFile, ZIP_DEFLATED, ZipInfo
 from assessment_runtime_review_handoff_cli_20261018 import (
     _snapshot, _write_exclusive, _e,
 )
-from assessment_runtime_verify_pack_cli_20261018 import inspect as inspect_pack
+from assessment_runtime_verify_pack_cli_20261018 import inspect_bytes as inspect_pack_bytes
 from assessment_runtime_verify_pack_cli_20261018 import _json, CAPS
 
 MAX_REVIEW = 131_072
@@ -150,11 +150,12 @@ def _human_report(rows, source_status):
 
 def _read_members(input_path):
     # This original source inspector checks fixed private packaging and hashes.
-    source_status = inspect_pack(input_path)
+    # Verify and subsequently parse the SAME original source-byte snapshot.
+    # Never re-open a user-controlled pathname after source admission.
+    raw, _ = _read_raw_archive(input_path)
+    source_status = inspect_pack_bytes(raw)
     if source_status not in ("REVIEW_ONLY", "HOLD"):
         raise ValueError("unsupported original review")
-    # Read the original archive only after its structural admission succeeds.
-    raw, _ = _read_raw_archive(input_path)
     with ZipFile(BytesIO(raw), "r") as source:
         content = {name: source.read(name) for name in CAPS}
     return content, source_status

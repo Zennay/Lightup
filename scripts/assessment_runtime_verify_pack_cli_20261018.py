@@ -113,6 +113,13 @@ def inspect(path):
         raw = source.read(ARCHIVE_LIMIT + 1)
     if not raw or len(raw) > ARCHIVE_LIMIT:
         raise ValueError("archive over limit")
+    return inspect_bytes(raw)
+
+
+def inspect_bytes(raw: bytes):
+    """Admit exactly the bytes already privately snapshotted by a caller."""
+    if type(raw) is not bytes or not raw or len(raw) > ARCHIVE_LIMIT:
+        raise ValueError("archive over limit")
     with ZipFile(BytesIO(raw)) as archive:
         entries = archive.infolist()
         names = set(member.filename for member in entries)
@@ -163,9 +170,8 @@ def inspect(path):
     if any(comparison.get(key) is not False for key in DENY_KEYS[:4]):
         raise ValueError("source result claims permission")
     if annotated:
-        import hashlib
         from assessment_runtime_attach_triage_cli_20261018 import _validate_plan
-        base_hash = hashlib.sha256(content["review-desk.json"]).hexdigest()
+        base_hash = sha256(content["review-desk.json"]).hexdigest()
         attached = _json(content["saved-human-review.json"])
         _validate_plan(attached, comparison, base_hash)
         for key, filename in (("saved_human_review_sha256", "saved-human-review.json"),
