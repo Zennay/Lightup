@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-agbJO3OVuciws7hX4E7Wd1Wbb+9OKp74lLmTy/0lq+Q=' 'sha256-X4nOjHqXl4cEjDVdqODJ4miIGbKHwaSBHfgk1Y4EyQ4=' 'sha256-F/FTboDDkAFr+2CnZVzOxVrUYtmAzfKdvueiY9ELeiE=' 'sha256-zTNS99f/JeWHRu6yzbYMmBnHR0eSfwBSESBaVkYWN3U='; style-src 'sha256-jkjpC2yf8tepPjTq1+UmpC9TNVl4ILehtgnNba9VU8s='; img-src 'none'; connect-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-agbJO3OVuciws7hX4E7Wd1Wbb+9OKp74lLmTy/0lq+Q=' 'sha256-X4nOjHqXl4cEjDVdqODJ4miIGbKHwaSBHfgk1Y4EyQ4=' 'sha256-F/FTboDDkAFr+2CnZVzOxVrUYtmAzfKdvueiY9ELeiE=' 'sha256-jdgJTpmZNF2ulMPeA57//OXEXGiqdLwzT2g/YjfUXW8='; style-src 'sha256-jkjpC2yf8tepPjTq1+UmpC9TNVl4ILehtgnNba9VU8s='; img-src 'none'; connect-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'">
   <title>LightUp · Scope Handoff Register</title>
   <style>:root{font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;color-scheme:dark;--bg:#0b111c;--panel:#172236;--line:#31445e;--text:#f2f6ff;--muted:#b8c7dc;--accent:#77bfff;--warn:#ffd89c}
 *{box-sizing:border-box}body{background:linear-gradient(145deg,#0d1626,#111826 58%,#0d1320);color:var(--text);margin:0;min-height:100vh}header,main,footer{max-width:1160px;margin:auto;padding:24px}header{padding-top:45px}.topline{display:flex;align-items:center;justify-content:space-between;gap:16px;font-size:.76rem;letter-spacing:.15em;color:var(--accent)}.flag{background:#43321e;color:var(--warn);padding:8px 12px;border-radius:30px;border:1px solid #6e5530;font-size:.7rem}h1{font-size:clamp(1.9rem,5vw,3.6rem);max-width:750px;margin:35px 0 15px;line-height:1.11;letter-spacing:-.045em}h2{font-size:1.25rem;margin:0 0 8px;letter-spacing:-.02em}h3{margin:0 0 10px;font-size:1.07rem}p{color:var(--muted);line-height:1.55}header>p{max-width:780px}main{display:grid;gap:23px}.panel{border:1px solid var(--line);border-radius:17px;padding:25px;background:var(--panel);box-shadow:0 18px 44px #0002}.section-head{display:flex;align-items:start;justify-content:space-between;gap:24px;flex-wrap:wrap}.section-head p{margin:0 0 14px}.toolbar,.actions{display:flex;align-items:end;gap:12px;flex-wrap:wrap;margin:14px 0}.toolbar>label{display:grid;gap:6px;flex:1;min-width:180px;font-size:.86rem;color:var(--muted)}input,select,textarea,button,.button{font:inherit;border-radius:10px}input,select,textarea{padding:11px 12px;color:var(--text);background:#0c1525;border:1px solid #52617b;min-width:0}button,.button{display:inline-block;color:var(--text);padding:11px 14px;background:#253d59;border:1px solid #64809c;cursor:pointer;white-space:normal;text-align:center}button:hover,.button:hover{background:#31567c}button:focus-visible,.button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid var(--accent);outline-offset:2px}.button.primary{background:#086ab3;border-color:#5eb7ff;font-weight:700}button[disabled]{opacity:.45;cursor:not-allowed}.notice{padding:11px 14px;background:#101b2a;border-left:3px solid var(--accent);white-space:pre-wrap}.notice.error{border-color:#ff8181;color:#ffcdcd}.stats{display:flex;flex-wrap:wrap;gap:9px;margin:14px 0}.metric{padding:9px 14px;border-radius:12px;border:1px solid #405577;background:#0e1a2b;font-size:.9rem}.metric strong{font-size:1.25rem;margin-right:6px}.boards{display:grid;grid-template-columns:repeat(auto-fill,minmax(255px,1fr));gap:12px}.card{display:grid;text-align:left;gap:9px;white-space:normal;background:#102136;border:1px solid #3e5877;padding:17px}.card.selected{outline:2px solid #80c9ff}.card-title{font-size:1.08rem;font-weight:700;overflow-wrap:anywhere}.meta{font-size:.82rem;color:var(--muted)}.chips{display:flex;flex-wrap:wrap;gap:5px}.chip{font-size:.72rem;padding:4px 7px;border-radius:6px;background:#34455e}.chip.alert{background:#674827;color:#fff2d9}.controls{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:15px}.controls label{display:grid;gap:5px;min-width:190px;flex:1;color:var(--muted)}.checkrow{display:grid;grid-template-columns:1fr 170px;gap:14px;align-items:center;padding:11px 0;border-bottom:1px solid #334860}.checkrow label{font-weight:600}.checkrow small{color:var(--muted);display:block;margin-top:4px}.summary{background:#102136;border:1px solid #344c67;border-radius:12px;padding:15px}.warning{border-left:3px solid #d69e53;padding:11px 14px;background:#2e261d;color:#f9e8d2}.small{font-size:.83rem}footer{font-size:.82rem;color:#94a7bf;padding-bottom:50px}@media(max-width:600px){header,main,footer{padding-left:15px;padding-right:15px}.panel{padding:17px}.checkrow{grid-template-columns:1fr}.topline{align-items:start;flex-direction:column}.controls{flex-direction:column}.controls label{width:100%}}@media print{*{color:#000!important;box-shadow:none!important;background:white!important}header,main{padding:5px}.panel{break-inside:avoid;border:1px solid #888}.toolbar,.actions,.button,#clear,footer{display:none!important}.boards{grid-template-columns:repeat(2,1fr)}.warning{border:1px solid #888}body{font-size:11pt}}
@@ -564,10 +564,23 @@ global.LightUpPlanningWindow=Object.freeze({localTimestamp,resolve,validateStore
   function localCoverage(r) {
     return LightUpScopeNetwork.effectiveCoverage(r.source.assets,r.source.excluded);
   }
+  function isRevisionOf(a,b) {
+    const seen=new Set();
+    let cursor=a.replaces;
+    while(cursor && !seen.has(cursor)) {
+      if(cursor===b.sha)return true;
+      seen.add(cursor);
+      cursor=records.find(x=>x.sha===cursor)?.replaces??null;
+    }
+    return false;
+  }
+  function sameRevisionHistory(a,b) {
+    return isRevisionOf(a,b)||isRevisionOf(b,a);
+  }
   function sharedHints(r) {
     const current=localCoverage(r), spatial=[],clock=[];
     for(const other of records) {
-      if(other===r) continue;
+      if(other===r || sameRevisionHistory(r,other)) continue;
       if(LightUpScopeNetwork.coverageOverlap(current,localCoverage(other))) spatial.push(other.sha);
       if(LightUpPlanningWindow.overlaps(r.source.utcWindow,other.source.utcWindow)===true) clock.push(other.sha);
     }
@@ -581,11 +594,12 @@ global.LightUpPlanningWindow=Object.freeze({localTimestamp,resolve,validateStore
       const scope_overlap=LightUpScopeNetwork.coverageOverlap(effective[i],effective[j]);
       const utc_overlap=LightUpPlanningWindow.overlaps(a.source.utcWindow,b.source.utcWindow)===true;
       if(!scope_overlap&&!utc_overlap) continue;
-      pairs.push({left:a.sha,right:b.sha,scope_overlap,utc_overlap,
+      const revision_related=sameRevisionHistory(a,b);
+      pairs.push({left:a.sha,right:b.sha,scope_overlap,utc_overlap,revision_related,
         human_status:pairReviews.get(pairKey(a.sha,b.sha))||"open",
-        priority:scope_overlap&&utc_overlap?"combined":scope_overlap?"scope":"schedule"});
+        priority:revision_related?"revision":scope_overlap&&utc_overlap?"combined":scope_overlap?"scope":"schedule"});
     }
-    const weight={combined:0,scope:1,schedule:2};
+    const weight={combined:0,scope:1,schedule:2,revision:3};
     return pairs.sort((a,b)=>weight[a.priority]-weight[b.priority] ||
       Math.max(records.find(x=>x.sha===b.left).source.risk,records.find(x=>x.sha===b.right).source.risk)-
       Math.max(records.find(x=>x.sha===a.left).source.risk,records.find(x=>x.sha===a.right).source.risk));
@@ -597,8 +611,9 @@ global.LightUpPlanningWindow=Object.freeze({localTimestamp,resolve,validateStore
       const m=node("span","metric");m.append(node("strong","",n),node("span","",caption));counts.append(m);
     };
     count("Voorstellenparen met overlegpunt",pairs.length);
-    count("Mogelijke scope-overlap",pairs.filter(x=>x.scope_overlap).length);
-    count("UTC-vensteroverlap",pairs.filter(x=>x.utc_overlap).length);
+    count("Onafhankelijke scope-overlap",pairs.filter(x=>x.scope_overlap&&!x.revision_related).length);
+    count("Onafhankelijke UTC-overlap",pairs.filter(x=>x.utc_overlap&&!x.revision_related).length);
+    count("Revisieparen (niet gelijktijdig veronderstellen)",pairs.filter(x=>x.revision_related).length);
     count("Overleg nog niet vastgelegd",pairs.filter(x=>x.human_status!=="discussion_recorded").length);
     if(!pairs.length){area.append(node("p","small","Geen berekende paren. Dit bewijst geen geldige toestemming, veilig netwerk of conflictvrije planning."));return;}
     for(const p of pairs){
@@ -607,9 +622,12 @@ global.LightUpPlanningWindow=Object.freeze({localTimestamp,resolve,validateStore
       const title=node("h3","",left.reference+" ↔ "+right.reference);
       const meta=node("p","small","Bronnen "+p.left.slice(0,12)+"… / "+p.right.slice(0,12)+"… · max. voorgesteld risico "+Math.max(left.source.risk,right.source.risk));
       const codes=node("div","chips");
-      if(p.scope_overlap)codes.append(node("span","chip alert","Numerieke/literale scope-overlap na uitsluitingen"));
-      if(p.utc_overlap)codes.append(node("span","chip alert","Gelijktijdige voorgestelde UTC-vensters"));
-      card.append(title,meta,codes,node("p","small","Menselijke actie: controleer onafhankelijk eigendom, uitzonderingen, tenant-scheiding, daadwerkelijk gereserveerde tijden en noodstop. Geen claim dat dit dezelfde klant is."));
+      if(p.revision_related) codes.append(node("span","chip","Historische revisierelatie (zelfverklaard)"));
+      if(p.scope_overlap)codes.append(node("span","chip"+(p.revision_related?"":" alert"),"Numerieke/literale scope-overlap na uitsluitingen"));
+      if(p.utc_overlap)codes.append(node("span","chip"+(p.revision_related?"":" alert"),"Overlappende voorgestelde UTC-vensters"));
+      card.append(title,meta,codes,node("p","small",p.revision_related ?
+        "Dit paar behoort volgens de lokaal opgegeven revisielijn tot hetzelfde voorstel. Vergelijk wijzigingen en heropen relevante voorbereidingsacties; leid er geen gemeenschappelijk eigendom of actuele toestemming uit af." :
+        "Menselijke actie: controleer onafhankelijk eigendom, uitzonderingen, tenant-scheiding, werkelijk gereserveerde tijden en noodstop. Geen claim dat dit dezelfde klant is."));
       const statusLabel=node("label","pair-status","Lokale overlegstatus (geen goedkeuring)");
       const selector=node("select");
       for(const status of PAIR_STATES){const option=node("option","",PAIR_LABELS[status]);option.value=status;selector.append(option);}
@@ -654,23 +672,52 @@ global.LightUpPlanningWindow=Object.freeze({localTimestamp,resolve,validateStore
         r.source.risk>old.source.risk ||
         (old.source.mode==="analysis_only" && r.source.mode==="authorized_assessment")};
   }
-  function setRevision(r,priorSha) {
-    if (!priorSha) {r.replaces=null;return;}
-    assert(priorSha!==r.sha && records.some(x=>x.sha===priorSha),"Ongeldige revisierelatie.");
-    assert(!records.some(x=>x!==r&&x.replaces===priorSha),"De voorganger is al gekoppeld aan een andere opvolger.");
-    let cursor=priorSha;
-    const visited=new Set();
-    while(cursor) {
-      assert(cursor!==r.sha && !visited.has(cursor),"Cyclische revisiehistorie geweigerd.");
-      visited.add(cursor); cursor=records.find(x=>x.sha===cursor)?.replaces??null;
+  function revisionTaskRechecks(delta) {
+    if(!delta)return [];
+    const keys=new Set(["owner","client","operator","privacy"]);
+    if(delta.effective_added_segments || delta.effective_removed_segments ||
+       delta.effective_truncated || delta.assets.added || delta.assets.removed ||
+       delta.exclusions.added || delta.exclusions.removed) {
+      keys.add("assets");keys.add("stops");
     }
-    r.replaces=priorSha;
+    if(delta.risk_changed || delta.mode_changed){keys.add("risk");keys.add("stops");}
+    if(delta.time_window_changed || delta.time_window_presence_changed){keys.add("schedule");keys.add("stops");}
+    return [...keys];
+  }
+  function setRevision(r,priorSha) {
+    if((priorSha||null)===r.replaces)return [];
+    if(priorSha) {
+      assert(priorSha!==r.sha && records.some(x=>x.sha===priorSha),"Ongeldige revisierelatie.");
+      assert(!records.some(x=>x!==r&&x.replaces===priorSha),"De voorganger is al gekoppeld aan een andere opvolger.");
+      let cursor=priorSha;
+      const visited=new Set();
+      while(cursor) {
+        assert(cursor!==r.sha && !visited.has(cursor),"Cyclische revisiehistorie geweigerd.");
+        visited.add(cursor); cursor=records.find(x=>x.sha===cursor)?.replaces??null;
+      }
+    }
+    const prevPairs=new Map(meetingPairs().map(p=>[pairKey(p.left,p.right),p.revision_related]));
+    r.replaces=priorSha||null;
+    const nextPairs=new Map(meetingPairs().map(p=>[pairKey(p.left,p.right),p.revision_related]));
+    for(const key of pairReviews.keys())
+      if(!nextPairs.has(key)||prevPairs.get(key)!==nextPairs.get(key)||key.split(":").includes(r.sha))
+        pairReviews.delete(key);
+    const delta=revisionDelta(r),changed=[];
+    if(delta){
+      for(const key of revisionTaskRechecks(delta)){
+        if(r.tasks[key]==="prepared"){r.tasks[key]="needs_revision";changed.push(key);}
+      }
+    }
+    return changed;
   }
   function warnings(r) {
     const w=[];
     const rev=revisionDelta(r);
     if (rev?.possible_expansion) w.push("revisie_mogelijke_scopeuitbreiding");
     if (rev?.mode_changed) w.push("revisie_modusgewijzigd");
+    if (rev?.time_window_changed) w.push("revisie_planning_gewijzigd");
+    if (rev && revisionTaskRechecks(rev).some(id=>r.tasks[id]==="needs_revision"))
+      w.push("revisie_menselijke_herbeoordeling_nodig");
     if (r.source.risk===4) w.push("hoog_risico");
     if (r.source.mode==="authorized_assessment") w.push("actieve_modus_voorgesteld");
     if (!r.source.excluded.length) w.push("geen_exclusies_opgegeven");
@@ -748,8 +795,8 @@ global.LightUpPlanningWindow=Object.freeze({localTimestamp,resolve,validateStore
     }
     revSelect.value=r.replaces||"";
     revSelect.addEventListener("change",()=>{
-      if(revSelect.value && !confirm("Verklaar uitsluitend voor lokale review dat dit een nieuwe versie van dezelfde bron is. Bestaande voorbereiding wordt NIET geërfd. Koppelen?")) {revSelect.value=r.replaces||"";return;}
-      try{setRevision(r,revSelect.value);show("Revisielijn bijgewerkt. Acties en toestemming van andere versies zijn niet gekopieerd.");render();}
+      if(revSelect.value && !confirm("Koppelen als zelfverklaarde nieuwe scopeversie? Eerder 'voorbereide' relevante acties worden dan automatisch HERZIENING NODIG; getroffen overlegnotities worden gereset. Geen toestemming/claims worden overgenomen.")) {revSelect.value=r.replaces||"";return;}
+      try{const changed=setRevision(r,revSelect.value);show("Revisielijn bijgewerkt; "+changed.length+" voorbereide actie(s) op 'Herziening nodig' gezet. Betrokken overlegstatussen zijn heropend. Geen echte consent of autorisatie overgenomen.");render();}
       catch(err){show("Revisiekoppeling geweigerd: "+err.message,true);revSelect.value=r.replaces||"";}
     });
     revLabel.append(revSelect);relation.append(revLabel);detail.append(relation);
@@ -761,7 +808,7 @@ global.LightUpPlanningWindow=Object.freeze({localTimestamp,resolve,validateStore
       (rev.effective_truncated?" (afgekapt)":"")+
       ". UTC-venster gewijzigd: "+(rev.time_window_changed?"ja":"nee")+
       ". Mogelijke uitbreiding: "+(rev.possible_expansion?"JA — onafhankelijke herbeoordeling nodig":"niet uit deze signalen gebleken")+
-      ". Voorbereidingsacties blijven apart; geen automatische overname. Geen DNS of autorisatiecontrole."));
+      ". Voorbereidingsacties blijven apart; eerder afgeronde toepasselijke acties krijgen 'Herziening nodig' na koppeling. Geen DNS of autorisatiecontrole."));
     const hint=node("p","summary","Reviewpunten: "+(warnings(r).length?warnings(r).join(", ").replaceAll("_"," "):"Geen automatisch aangemerkte signalen. Dat bewijst geen veilige scope.")+". Exacte asset-overlap betekent niet gedeeld eigendom of geldige toestemming.");
     detail.append(hint);
     for (const [id,title,description] of TASKS) {
@@ -829,6 +876,7 @@ global.LightUpPlanningWindow=Object.freeze({localTimestamp,resolve,validateStore
         dossier_b:"D"+String(records.findIndex(x=>x.sha===p.right)+1).padStart(2,"0"),
         numeric_or_literal_scope_overlap:p.scope_overlap,
         proposed_utc_overlap:p.utc_overlap,
+        relation:p.revision_related?"self_reported_revision":"independent_review",
         self_reported_discussion_status:p.human_status,
         review_only:true
       })),
@@ -898,6 +946,7 @@ global.LightUpPlanningWindow=Object.freeze({localTimestamp,resolve,validateStore
       parts.push("<h2>Gedeelde menselijke review-agenda</h2><table><thead><tr><th>Voorstellen</th><th>Lokale overlapindicatoren</th></tr></thead><tbody>");
       for(const x of data.review_agenda)parts.push("<tr><td>"+esc(x.dossier_a)+" / "+esc(x.dossier_b)+
         "</td><td>"+esc([x.numeric_or_literal_scope_overlap?"Netwerk/hostname na exclusies":null,x.proposed_utc_overlap?"UTC-venster":null].filter(Boolean).join("; "))+
+        "<br>Relatie: "+esc(x.relation==="self_reported_revision"?"Zelfverklaarde revisie":"Apart te beoordelen voorstellen")+
         "<br>Menselijk overleg: "+esc(PAIR_LABELS[x.self_reported_discussion_status])+"</td></tr>");
       parts.push("</tbody></table><p>Deze paren bewijzen geen gedeeld eigendom, klant, toestemming of geboekt tijdslot; escaleer onafhankelijk.</p>");
     }
