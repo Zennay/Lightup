@@ -26,7 +26,8 @@ th{font-size:.8rem;text-transform:uppercase;letter-spacing:.05em;color:#c8d7e9}
 .bar{min-width:25px;flex:1;max-width:100px;background:#509bbf;border-radius:5px 5px 0 0;position:relative}
 .bar span{position:absolute;top:-24px;font-size:.85rem}
 a{color:#9bdafc}
-@media print{body{color:#111;background:white}header,.panel,.stat{background:white;color:#111;border-color:#777}button,input,.actions{display:none!important}table{min-width:0}th,td{border-color:#aaa}.muted{color:#555}}
+#printbrief{display:none}
+@media print{body{color:#111;background:white;padding:10px;max-width:none}body > :not(#printbrief){display:none!important}#printbrief{display:block!important;color:#111;font:13px/1.5 system-ui,sans-serif}#printbrief table{min-width:0;width:100%;border-collapse:collapse}#printbrief th,#printbrief td{color:#111;border:1px solid #999;padding:6px;text-align:left}}
 </style></head>
 <body>
 <header><div class="kicker">LightUp / SCOPE-AUTHORIZATION / PRIVATE LOCAL REVIEW</div>
@@ -63,6 +64,7 @@ a{color:#9bdafc}
 <div class="actions"><button id="exportjson">Download anonymous JSON brief</button><button id="exportcsv" class="secondary">Download anonymous CSV</button><button id="saveprivate" class="secondary">Save PRIVATE working draft</button><input type="file" id="restore" accept=".json" aria-label="Restore a private working draft"><button class="secondary" id="print">Print private aggregate</button></div>
 <p class="muted">PRIVATE draft stores fingerprints of original file bytes and your local follow-up checkmarks. Keep it in a restricted location. Aggregate exports omit original file names, tenant/client/engagement IDs, asset literals, source hashes, candidate record identities and human private notes.</p></section>
 </section>
+<section id="printbrief" aria-label="Privacy-minimal aggregate print brief"></section>
 <footer class="muted">Original grants and approved requests do not authenticate independent client/operator consent. Before any real access: original source owner, active-time revocation, independent security/privacy approval, exact-head hosted + permanent named VPS CI, and explicit HUMAN GO. This workspace does not issue grants, access targets, scan, dispatch, revoke or deploy.</footer>
 <script>
 "use strict";
@@ -329,7 +331,7 @@ $("saveprivate").addEventListener("click",()=>{
 $("restore").addEventListener("change",async e=>{
  try{
   if(!workspace||hashes.length!==workspace.records.length)fail("first load the exact original source files in the same order, with WebCrypto available");
-  const f=e.target.files[0];if(!f||f.size>10000)fail("invalid bounded PRIVATE draft");
+  const f=e.target.files[0];if(!f||f.size>2000000)fail("invalid bounded PRIVATE draft");
   const d=strictJSON(await f.text());
   const legacy=d?.format==="lightup.binding_history_private_draft.v1";
   if(!legacy&&d?.format!=="lightup.binding_history_private_draft.v2")fail("private draft version mismatch");
@@ -351,6 +353,16 @@ $("restore").addEventListener("change",async e=>{
   note("PRIVATE discussion markers restored only against identical original source bytes (never authorization).",false);
  }catch(err){note("HOLD · "+err.message+". Existing human stages preserved.",true)}finally{e.target.value=""}
 });
-$("print").addEventListener("click",()=>{if(workspace)window.print()});
+function renderBrief(){
+ if(!workspace){$("printbrief").textContent="No source documents imported. No permission or release is implied.";return}
+ const p=payload();
+ const source=p.snapshots.map(r=>'<tr><td>'+r.slot+'</td><td>'+r.candidates+'</td><td>'+r.other_approved+'</td><td>'+r.not_approved+'</td><td>'+r.stored_grants+'</td><td>'+r.unbound_legacy_grants+'</td></tr>').join("");
+ const adjacent=p.anonymous_adjacent_original_request_rows.map(r=>'<tr><td>'+r.from_slot+' → '+r.to_slot+'</td><td>'+r.appeared+'</td><td>'+r.absent+'</td><td>'+r.changed+'</td><td>'+r.same+'</td></tr>').join("");
+ const stages=Object.entries(p.anonymous_human_casework_stage_totals).map(([code,n])=>'<tr><td>'+esc(CASE_STAGES[code])+'</td><td>'+n+'</td></tr>').join("");
+ $("printbrief").innerHTML='<h1>LightUp · Anonymous original-source review brief</h1><p>INCUBATE M3/M7 · DRAFT/HOLD · OFFLINE HUMAN DISCUSSION ONLY</p><p>No authentication, client consent, grant, revocation, verified chronology, scan, dispatch or release is proven by this print.</p><h2>Administrative source aggregates</h2><table><thead><tr><th>Local source slot</th><th>Candidate requests</th><th>Other approved</th><th>Not approved</th><th>Historical grants</th><th>Legacy unbound</th></tr></thead><tbody>'+source+'</tbody></table><h2>Adjacent private original-row changes (aggregate only)</h2><table><thead><tr><th>Local source slots</th><th>Appeared</th><th>Absent</th><th>Changed</th><th>Unchanged</th></tr></thead><tbody>'+adjacent+'</tbody></table><h2>Local human discussion only</h2><table><thead><tr><th>Self-reported stage</th><th>Count</th></tr></thead><tbody>'+stages+'</tbody></table><p>Source records are unsigned and may be stale. Export copies, original identifiers, pseudonyms, exact assets, source hashes and private notes intentionally absent from this print. All five authority flags false. Reauthenticate at source before real decisions.</p>';
+}
+window.addEventListener("beforeprint",renderBrief);
+$("print").addEventListener("click",()=>{if(workspace){renderBrief();window.print()}});
+
 })();
 </script></body></html>
