@@ -49,6 +49,12 @@ Original private Evidence Review drafts now preserve the bounded evidence dossie
 
 Private team handoffs use **schema v2** including these dossier fields in both the JSON body and the source+local-baseline checksum, so returned evidence notes can be merged only when the original local review state has not changed. A returned v1 team packet still loads as before without discarding an existing local dossier. All returned documents are unsigned, independently recipient-verified human drafts only, never authentication or verified remediation.
 
+## Human-review integrity and source-bound navigation
+
+The evidence-readiness matrix is interactive: a reviewer can open the missing-reference findings for any original severity in the local board. The board then displays only the requested original-severity and incomplete-dossier combination, while keeping the original finding source read-only. Searching also includes human evidence reference fields; each dossier's progress counter updates as local reference fields change.
+
+Private review-draft imports now reject unexpected per-finding and top-level packet fields, including additional authority-shaped fields, rather than silently ignoring them. Local user-entered reference and reviewer fields refuse Unicode bidirectional-override controls and NUL characters during private packet admission/export, reducing deceptive visible IDs. Unsafe private save or Markdown export yields a user-visible fail-closed error instead of silently creating a misleading handoff. This does not authenticate any file or make user-entered text trusted.
+
 ## Actionable human follow-up agenda (non-authorizing)
 
 The private operator workbench now has an **evidence follow-up agenda** derived exclusively from the original imported finding summary plus locally declared human Casework/review fields. It prioritizes source-reported regressions, critical/high original severity, self-reported blocked work, overdue LOCAL planning dates, inconsistent local-complete/source-retest state and missing original evidence references. These rankings are only triage hints; they cannot change the original issue severity, approve access, schedule an automated action, or verify a fix.
