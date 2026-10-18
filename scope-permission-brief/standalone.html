@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="referrer" content="no-referrer">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-EfVDwlolMpdv26r19Ee3xDoOWAsblexGmdw+/zQpXNQ=' 'sha256-LoESO18nGfY0Y3caUQghnvKW4o2WXqPfDdc1vU76PA0='; style-src 'sha256-N58KLjfpC7L3pgbnd/3h6Ztmy8klJ9Fu6NqhNE8tfS0='; img-src 'none'; connect-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-E6kWO21VqHLviGM2R1Dbh1hWrCzP0jNyC4OfsThN68c=' 'sha256-LoESO18nGfY0Y3caUQghnvKW4o2WXqPfDdc1vU76PA0=' 'sha256-RE9zOf3oxEmKNkLvmbR9qsJtezERYNmhOxOpeV98DiU='; style-src 'sha256-XIvCU8f4BKPPhO93eu6TiQPdHeDA+Crul6s1kkA8xKY='; img-src 'none'; connect-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'">
 <title>LightUp · Scope Permission Brief</title>
 <style>
 :root{color-scheme:dark;font:15px/1.55 system-ui,-apple-system,Segoe UI,sans-serif;--bg:#0a1020;--surface:#121e32;--line:#35455d;--muted:#b8c5d8;--mint:#7de5cd;--warn:#eac081;color:#f2f8ff;background:var(--bg)}
@@ -22,7 +22,13 @@
 @media(max-width:750px){.inputs-row{grid-template-columns:1fr}}
 @media print{#reconciliation .inputs-row,#reconciliation .buttons{display:none!important}#reconcileBoard{max-height:none}}
 
+/* Source-byte revision timeline: local review only, no authorization. */
+.revision-entry{padding:16px;margin:12px 0;background:#101d2c;border:1px solid var(--line);border-left:4px solid #eac081;border-radius:8px;overflow-wrap:anywhere}
+.revision-entry h3{margin:0 0 8px;font-size:15px}.revision-entry p{font-size:13px}.revision-entry strong{display:block;color:var(--warn);font-size:13px}
+@media print{#revisionBoard .buttons{display:none!important}}
+
 </style>
+
 
 
 </head>
@@ -71,6 +77,15 @@
  <div id="reconcileBoard" aria-label="Unverified cross-role followup queue"></div>
  <div class="buttons"><button id="reconcileJSON" disabled>Export combined HOLD summary</button><button id="reconcileCSV" disabled>Download follow-up actions CSV</button><button id="reconcileHTML" disabled>Save read-only meeting pack</button><button class="subtle" id="reconcileForget">Forget both reply notes</button></div>
  <p>This read-only human follow-up board never reconciles actual consent, client identity, operator identity, revocation, authorization, tenant membership or approval. A reply marked “answered” still requires an independently verified decision in the protected system.</p>
+</section>
+<section class="panel" id="revisionBoard" aria-label="Source revision handoff">
+ <div class="eyebrow">5. REVISION HANDOFF · EVERY NEW SOURCE REQUIRES NEW HUMAN PREPARATION</div>
+ <h2>Know when earlier replies no longer apply</h2>
+ <p>Load a revised Studio draft using the original file chooser above. This local board records the old/new byte SHA-256 fingerprints, flags changed risk/mode/count/window summaries, and explicitly requires both client and operator to prepare new replies. Equal counts never prove equal scope: assets and safety notes are <strong>not</strong> semantically compared here.</p>
+ <p id="revisionStatus" class="notice subnote" role="status" aria-live="polite">Load a draft to begin.</p>
+ <div class="buttons"><button id="revisionJSON" disabled>Save reissue handoff JSON</button><button id="revisionCSV" disabled>Export revision timeline CSV</button><button id="revisionForget" class="subtle" disabled>Forget revision history</button></div>
+ <div id="revisionHistory" aria-label="Recent local draft revisions"></div>
+ <p>History is bounded to twelve changes in this browser tab; no browser storage or network is used. These are unsigned source-byte correlation hints, not a legal approval chain, permission certificate or scope-membership verdict.</p>
 </section>
 </div>
 <footer>LightUp · INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD. Never use this file or its exports as evidence of consent, scope membership, a grant or release.</footer>
@@ -350,6 +365,8 @@ function download(){
  document.body.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
 }
 async function loadFile(file){
+ // Capture only privacy-minimal, unverified previous review context before clearing it.
+ const priorRevision=exportModel();
  hold('Reading draft');
  if(!file||file.size===0||file.size>MAX_BYTES){hold('Missing or oversized file');return;}
  const token=epoch;
@@ -372,6 +389,9 @@ async function loadFile(file){
   $('workspace').hidden=false;$('export').disabled=false;$('textExport').disabled=false;$('print').disabled=false;
   $('sourceState').textContent='Source loaded · '+draft.requested_assets.length+' proposed assets · REVIEW_ONLY/HOLD';
   render();
+  document.dispatchEvent(new CustomEvent('lightup:brief-revision',{
+   detail:{before:priorRevision,after:exportModel()}
+  }));
  }catch(_){if(token===epoch)hold('Invalid, ambiguous or unsafe Studio draft');}
 }
 /* Only privacy-minimal snapshot/strict parser are exposed to the adjacent offline reconciliation view. */
@@ -380,7 +400,7 @@ window.LightUpBriefRuntime=Object.freeze({
  assertUnambiguousJSON
 });
 $('source').addEventListener('change',event=>loadFile(event.target.files?.[0]));
-$('clear').addEventListener('click',()=>{hold('Source forgotten');$('source').value='';$('reply').value='';$('preview').textContent='';$('receipt').textContent='';});
+$('clear').addEventListener('click',()=>{hold('Source forgotten');document.dispatchEvent(new CustomEvent('lightup:brief-forget'));$('source').value='';$('reply').value='';$('preview').textContent='';$('receipt').textContent='';});
 $('export').addEventListener('click',download);
 $('textExport').addEventListener('click',downloadText);
 $('reply').addEventListener('change',event=>importReview(event.target.files?.[0]));
@@ -570,6 +590,129 @@ $('reconcileHTML').addEventListener('click',()=>{
 $('reconcileForget').addEventListener('click',reset);
 document.addEventListener('lightup:brief-source-change',reset);
 refresh();
+})();
+</script>
+<script>
+/* LightUp: privacy-minimal source revision reissue board.
+   This board compares ONLY safe metadata and byte fingerprints. NOT scope equality. */
+(() => {
+'use strict';
+const $=id=>document.getElementById(id);
+const LIMIT=12, FIELDS=[
+ ['requested_mode','Mode'],
+ ['requested_risk','Risk'],
+ ['proposed_assets_count','Proposed asset count'],
+ ['excluded_assets_count','Exclusion count'],
+ ['window_status','Window status']
+];
+let history=[], counter=0, active=null;
+function digest(v){return typeof v==='string'&&/^[a-f0-9]{64}$/.test(v);}
+function record(from,to){
+ if(!from||!to||!digest(from.source_sha256)||!digest(to.source_sha256))return null;
+ if(from.source_sha256===to.source_sha256)return null;
+ if(!Object.values(from.flags||{}).every(v=>v===false)||!Object.values(to.flags||{}).every(v=>v===false))return null;
+ const changed=FIELDS.filter(([key])=>from[key]!==to[key]).map(([key,title])=>({
+  field:key,description:title,
+  previous:String(from[key]),current:String(to[key])
+ }));
+ return {
+  sequence:++counter,
+  previous_source_sha256:from.source_sha256,
+  current_source_sha256:to.source_sha256,
+  source_bytes_changed:true,
+  semantic_asset_comparison_performed:false,
+  asset_identity_equivalence_unknown:true,
+  previous_human_notes_invalidated:true,
+  previously_returned_review_notes_invalidated:true,
+  client_reply_required_again:true,operator_reply_required_again:true,
+  summaries_changed:changed,
+  all_current_permissions_false:true,
+  disposition:'REVIEW_ONLY_HOLD'
+ };
+}
+function buildModel(){
+ return {
+  kind:'lightup.scope_review_revision_reissue',
+  schema_version:1,
+  disposition:'REVIEW_ONLY_HOLD',
+  history:history.map(x=>structuredClone(x)),
+  current_source_sha256:active?.source_sha256||null,
+  flags:{authorization:false,client_consent:false,operator_consent:false,
+   grant:false,revocation_checked:false,execution:false,scan:false,deploy:false,release:false},
+  notice:'Raw scope identities are not compared; even equal counts cannot establish unchanged membership. Reissue all preparation replies for new source bytes. No permission follows a revision.'
+ };
+}
+function download(name,mime,body){
+ const url=URL.createObjectURL(new Blob([body],{type:mime})),a=document.createElement('a');
+ a.href=url;a.download=name;document.body.append(a);a.click();a.remove();
+ setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+function csvCell(v){
+ let s=String(v);if(/^[=+\-@\t\r\n]/.test(s))s="'"+s;
+ return '"'+s.replaceAll('"','""')+'"';
+}
+function toCSV(){
+ const rows=[['sequence','previous_source_sha256','current_source_sha256','summary_changed_categories','review_disposition','reissue_client','reissue_operator']];
+ for(const h of history)rows.push([h.sequence,h.previous_source_sha256,h.current_source_sha256,
+  h.summaries_changed.map(x=>x.field).join(';'),h.disposition,'yes','yes']);
+ return rows.map(row=>row.map(csvCell).join(',')).join('\r\n')+'\r\n';
+}
+function render(){
+ const root=$('revisionHistory');root.replaceChildren();
+ $('revisionJSON').disabled=history.length===0;
+ $('revisionCSV').disabled=history.length===0;
+ $('revisionForget').disabled=history.length===0;
+ if(!active){
+  $('revisionStatus').textContent=history.length?
+   'Earlier source fingerprints remain only in this local tab; no current draft loaded · HOLD':
+   'Load a Studio-v1 source to begin. Import another revision to see changes.';
+ }else{
+  $('revisionStatus').textContent=history.length?
+   history.length+' source-byte revision(s) in volatile local history · ALL PREVIOUS REPLIES REQUIRE REISSUE · HOLD':
+   'Current source SHA-256: '+active.source_sha256+' · No prior revision compared · HOLD';
+ }
+ for(const item of [...history].reverse()){
+  const section=document.createElement('section');section.className='revision-entry';
+  const title=document.createElement('h3');title.textContent='Revision '+item.sequence+' · SOURCE BYTES CHANGED';
+  const p=document.createElement('p');p.textContent='Before SHA-256 '+item.previous_source_sha256+' → After SHA-256 '+item.current_source_sha256;
+  section.append(title,p);
+  const m=document.createElement('p');
+  m.textContent=item.summaries_changed.length?
+   'Changed summary categories: '+item.summaries_changed.map(c=>c.description).join(', '):
+   'All shown counts/mode/risk/window match, BUT exact scope or notes may still differ. No semantic equality is asserted.';
+  section.append(m);
+  const warn=document.createElement('strong');warn.textContent='Both roles must review the new source and issue fresh UNVERIFIED preparation replies. No prior answers, consent, approval or grant can be transferred.';
+  section.append(warn);
+  root.append(section);
+ }
+}
+document.addEventListener('lightup:brief-revision',event=>{
+ const detail=event.detail;
+ if(!detail||!detail.after)return;
+ active={source_sha256:detail.after.source_sha256};
+ const item=record(detail.before,detail.after);
+ if(item){
+  history.push(item);
+  if(history.length>LIMIT)history.shift();
+ }
+ render();
+});
+document.addEventListener('lightup:brief-source-change',()=>{
+ active=null;
+ // A new import may follow. Keep only non-sensitive historical fingerprints in this tab.
+ render();
+});
+document.addEventListener('lightup:brief-forget',()=>{
+ history=[];active=null;counter=0;render();
+});
+$('revisionJSON').addEventListener('click',()=>{
+ if(history.length)download('lightup-source-revision-reissue-HOLD.json','application/json',JSON.stringify(buildModel(),null,2)+'\n');
+});
+$('revisionCSV').addEventListener('click',()=>{
+ if(history.length)download('lightup-source-revision-timeline-HOLD.csv','text/csv;charset=utf-8',toCSV());
+});
+$('revisionForget').addEventListener('click',()=>{history=[];counter=0;render();});
+render();
 })();
 </script>
 </body></html>
