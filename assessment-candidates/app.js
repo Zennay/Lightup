@@ -23,6 +23,13 @@
   const nice=x=>x.replaceAll("_"," ");
   const format=x=>Number.isInteger(x)?String(x):Number(x).toPrecision(5).replace(/\.?0+($|e)/,"$1");
   let reports=[],demo=false,selectedCase="",settings=null,sourceHashes=[];
+  const DISCUSSION_STAGES=["needs_review","in_discussion","documented"];
+  const DISCUSSION_ROUTES=["unrouted","scope","findings","evidence","operations"];
+  const TOPICS={scope:["scope_violations","policy_violations"],
+    findings:["valid_findings","invalid_findings","missed_findings","coverage_assessed","coverage_unknown"],
+    evidence:["evidence_quality","reproducibility","remediation_quality","retest_correctness"],
+    operations:["human_interventions","tool_calls","runtime_seconds","compute_cost_usd"]};
+  let discussions=new Map(),queueFocus=0;
 
   // Unlike JSON.parse, reject repeated JSON keys (including escaped aliases) at every depth.
   function strictJSON(raw) {
@@ -221,6 +228,53 @@
       NAMES.map(n=>[nice(n),format(aa[n].candidate),format(bb[n].candidate),
         format(bb[n].candidate-aa[n].candidate),aa[n].adverse+" → "+bb[n].adverse]));
   }
+  function queueIds(){return reports.length?[...reports[0].cases.keys()].sort():[];}
+  function queueAdverse(id,candidate,topic){
+    const names=topic==="all"?NAMES:TOPICS[topic];
+    return reports.reduce((sum,r,index)=>sum+(candidate==="all"||Number(candidate)===index?
+      names.filter(n=>r.cases.get(id).metrics[n].regression).length:0),0);
+  }
+  function queueSettings(id){
+    return discussions.get(id)||{route:"unrouted",stage:"needs_review"};
+  }
+  function drawQueue(){
+    const ids=queueIds(),active=ids.length>0;
+    for(const name of ["queueCase","saveQueue","focusQueue","resetQueue"])
+      $(name).disabled=!active;
+    if(!active){discussions.clear();$("queueRows").innerHTML="";
+      $("queueSummary").textContent="No lab records imported.";return;}
+    if(queueFocus<0||queueFocus>=ids.length)queueFocus=0;
+    for(const [node,labels] of [
+      ["queueCandidate",["all",...reports.map((_,i)=>String(i))]],
+      ["queueCase",ids.map((_,i)=>String(i))]]){
+      const select=$(node),before=select.value;
+      if(select.options.length!==labels.length){
+        select.innerHTML="";
+        labels.forEach(label=>{const o=document.createElement("option");o.value=label;
+          o.textContent=node==="queueCandidate"?
+            label==="all"?"All candidates":"Candidate "+(Number(label)+1):
+            "Lab case "+String(Number(label)+1).padStart(2,"0");
+          select.append(o);});
+        if(labels.includes(before))select.value=before;
+      }
+    }
+    $("queueCase").value=String(queueFocus);
+    const focus=queueSettings(ids[queueFocus]);
+    $("queueRoute").value=focus.route;$("queueStage").value=focus.stage;
+    const cand=$("queueCandidate").value||"all";
+    const topic=$("queueFamily").value||"all",filter=$("queueFilter").value||"all";
+    const rows=ids.map((id,i)=>({i,id,count:queueAdverse(id,cand,topic),
+      review:queueSettings(id)})).filter(r=>(filter==="all"||r.review.stage===filter));
+    rows.sort((a,b)=>b.count-a.count||a.i-b.i);
+    $("queueSummary").textContent=rows.length+" anonymized cases shown / "+ids.length+
+      " total · "+rows.filter(r=>r.count>0).length+" with original source-adverse metrics"+
+      " · "+[...discussions.values()].filter(r=>r.stage==="documented").length+
+      " locally marked discussion documented (not fixed).";
+    $("queueRows").innerHTML=table(["Case ordinal","Original adverse metric instances",
+      "Local discussion stage","Generic proposed reviewer group"],
+      rows.map(r=>["Lab case "+String(r.i+1).padStart(2,"0"),
+        r.count,r.review.stage.replaceAll("_"," "),r.review.route.replaceAll("_"," ")]));
+  }
   function render(){
     const active=reports.length>0,stats=reports.map(aggregates);
     $("sourceKind").textContent=!active?"No data":demo?"FICTIONAL DEMO ONLY":"UNVERIFIED LAB SOURCES";
@@ -232,6 +286,7 @@
     $("draftFile").disabled=$("saveDraft").disabled;
     if(!active){
       $("cards").innerHTML='<p class="empty">Import reports to compare lab candidates.</p>';
+      drawQueue();
       for(const id of ["thresholds","frontier","caseDetail","metricBoard","pairMetrics"])$(id).innerHTML="";
       $("caseSelect").innerHTML='<option value="">Load reports first</option>';
       return;
@@ -246,6 +301,7 @@
       "<p>Runtime: "+format(s.runtime)+" sec · Cost: $"+format(s.cost)+"</p>"+
       "<p class='footnote'>No safety approval; separate human review required.</p></article>").join("");
     renderMetricBoard(stats);
+    drawQueue();
     let t;try{t=threshold();settings=t;$("thresholdMessage").textContent="Review suggestions recomputed locally; no source metrics changed.";}
     catch(_){$("thresholdMessage").textContent="HOLD: invalid threshold — enter a bounded numerical value. No decision output.";
       settings=null;$("saveDraft").disabled=true;for(const id of ["exportCSV","exportJSON","exportHTML","print"])$(id).disabled=true;
@@ -296,7 +352,8 @@
         hashes.push(await hashBytes(bytes));
         next.push(decodeReport(strictJSON(source)));
       }
-      compatible(next);reports=next;sourceHashes=hashes.every(h=>typeof h==="string")?hashes:[];demo=false;selectedCase="";
+      compatible(next);discussions.clear();queueFocus=0;$("queueMessage").textContent="";
+      reports=next;sourceHashes=hashes.every(h=>typeof h==="string")?hashes:[];demo=false;selectedCase="";
       $("draftMessage").textContent=sourceHashes.length?"Private restore available only for identical source bytes.":"WebCrypto unavailable: private draft save/restore disabled.";
       setStatus("Accepted "+next.length+" compatible, unverified lab comparison files. All remain non-authorizing.");
       render();
@@ -352,7 +409,8 @@
     });
   }
   function demoLoad(){
-    try{const next=fictional().map(decodeReport);compatible(next);reports=next;sourceHashes=[];demo=true;
+    try{const next=fictional().map(decodeReport);compatible(next);discussions.clear();queueFocus=0;$("queueMessage").textContent="";
+      reports=next;sourceHashes=[];demo=true;
       $("draftMessage").textContent="Private source-bound drafts are unavailable for fictional demo.";
       selectedCase="";setStatus("FICTIONAL DEMO ONLY: four invented candidates; no real assessments or permissions.");render();
     }catch(_){setStatus("HOLD: demonstration source could not be prepared.",true);}
@@ -488,6 +546,7 @@
   }
   function forget(){
     reports=[];sourceHashes=[];demo=false;selectedCase="";settings=null;
+    discussions.clear();queueFocus=0;$("queueMessage").textContent="";
     $("draftFile").value="";$("draftMessage").textContent="";
     const defaults={maxScope:0,maxPolicy:0,minQuality:0.75,minCoverage:0,
       maxRuntime:0,maxCost:0};
@@ -497,6 +556,32 @@
     setStatus("All imported records forgotten from this workspace.");render();
   }
   // No fetch, storage, workers, scanner or execution API.
+  $("queueCase").addEventListener("change",e=>{
+    const i=Number(e.target.value);
+    if(Number.isSafeInteger(i)&&i>=0&&i<queueIds().length){queueFocus=i;drawQueue();}
+  });
+  for(const id of ["queueCandidate","queueFamily","queueFilter"])
+    $(id).addEventListener("change",drawQueue);
+  $("saveQueue").addEventListener("click",()=>{
+    const id=queueIds()[queueFocus];if(!id)return;
+    const route=$("queueRoute").value,stage=$("queueStage").value;
+    if(!DISCUSSION_ROUTES.includes(route)||!DISCUSSION_STAGES.includes(stage))return;
+    if(route==="unrouted"&&stage==="needs_review")discussions.delete(id);
+    else discussions.set(id,{route,stage});
+    $("queueMessage").textContent="Local anonymous human discussion updated. Nothing assigned, scanned or authorized.";
+    drawQueue();
+  });
+  $("focusQueue").addEventListener("click",()=>{
+    const id=queueIds()[queueFocus];if(!id)return;
+    selectedCase=id;const select=$("caseSelect");
+    select.value=String(queueFocus);renderCase(id);select.scrollIntoView({behavior:"smooth",block:"center"});
+  });
+  $("resetQueue").addEventListener("click",()=>{
+    if(!discussions.size)return;
+    if(!window.confirm("Discard all local human discussion stages and proposed groups?"))return;
+    discussions.clear();$("queueMessage").textContent="Local human discussion suggestions forgotten.";
+    drawQueue();
+  });
   $("saveDraft").addEventListener("click",saveDraft);
   $("draftFile").addEventListener("change",e=>{
     if(e.target.files.length)void restoreDraft(e.target.files[0]);
