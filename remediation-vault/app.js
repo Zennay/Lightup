@@ -5,7 +5,7 @@
   const TYPES = new Set(["json", "csv", "md", "txt"]);
   const $ = id => document.getElementById(id);
   const encode = new TextEncoder(), decode = new TextDecoder("utf-8", {fatal: true});
-  let selected = [], restored = [], busy = false;
+  let selected = [], restored = [], busy = false, restoredLabel = '';
   const say = (message, bad = false) => { $("status").textContent = message; $("status").dataset.kind = bad ? "error" : "ok"; };
   const clearNode = el => { while (el.firstChild) el.removeChild(el.firstChild); };
   const hex = b => Array.from(new Uint8Array(b), x => x.toString(16).padStart(2, "0")).join("");
@@ -56,10 +56,11 @@
     anchor.click(); anchor.remove(); setTimeout(()=>URL.revokeObjectURL(url), 30000);
   }
   function resetPrivate() {
-    selected=[]; restored=[];
+    selected=[]; restored=[]; restoredLabel='';
     $("files").value=""; $("vaultfile").value="";
     $("secret").value=""; $("unlock").value="";
     $("label").value=""; $("ack").checked=false;
+    $("rekeysecret").value=""; $("rekeyack").checked=false;
     clearNode($("filelist")); clearNode($("restored"));
     $("summary").textContent="Nothing loaded.";
     $("vaultDetails").textContent="";
@@ -134,7 +135,7 @@
     $("secret").value="";
     say("Encrypted local vault downloaded. Share the passphrase separately; this file is not permission to act.");
   }));
-  $("vaultfile").addEventListener("change", () => {restored=[];clearNode($("restored"));$("summary").textContent="Nothing unlocked.";});
+  $("vaultfile").addEventListener("change", () => {restored=[];restoredLabel="";clearNode($("restored"));$("summary").textContent="Nothing unlocked.";});
   $("restore").addEventListener("click", () => withBusy(async () => {
     restored=[]; clearNode($("restored")); $("summary").textContent="Nothing unlocked.";
     const f=$("vaultfile").files?.[0];
@@ -193,12 +194,42 @@
       decode.decode(item);
       pending.push({name:entry.name,bytes:item});
     }
-    restored=pending;table($("restored"),restored,true);
+    restored=pending; restoredLabel=doc.label; table($("restored"),restored,true);
     $("summary").textContent=String(restored.length)+" original file(s), "+humanSize(total)+
       ". PRIVATE original contents; source authority and recipient permission NOT verified.";
     $("vaultDetails").textContent="Private label (local only): "+doc.label+" · Saved: "+doc.savedAt;
     $("unlock").value="";
     say("Vault unlocked locally. Select each download only after independently verifying recipient and exact engagement.");
+  }));
+  $("rekey").addEventListener("click", () => withBusy(async () => {
+    fail(restored.length>0, "Unlock the original local vault before re-encrypting.");
+    fail($("rekeyack").checked, "Confirm that this private handoff is approved for its recipient.");
+    const pass=$("rekeysecret").value;
+    fail(pass.length>=12 && pass.length<=256, "New passphrase must have 12-256 characters.");
+    const entries=[]; let total=0;
+    for (const item of restored) {
+      fail(validName(item.name) && item.bytes.length>0 && item.bytes.length<=MAX_FILE,
+        "Recovered source files are not admissible.");
+      total+=item.bytes.length; fail(total<=MAX_TOTAL,"Re-encrypted payload too large.");
+      entries.push({name:item.name,bytes:item.bytes.length,
+        sha256:await digest(item.bytes),data:to64(item.bytes)});
+    }
+    const payload={format:"lightup.remediation_vault_payload.v1",
+      notice:"PRIVATE OFFLINE HUMAN TRANSFER ONLY — NOT AUTHORIZATION OR VERIFIED REMEDIATION",
+      label:restoredLabel,savedAt:new Date().toISOString(),entries};
+    const salt=crypto.getRandomValues(new Uint8Array(16));
+    const iv=crypto.getRandomValues(new Uint8Array(12));
+    const key=await deriveKey(pass,salt,["encrypt"]);
+    const cipher=new Uint8Array(await crypto.subtle.encrypt({name:"AES-GCM",iv,
+      additionalData:encode.encode("lightup.remediation_vault.v1")},key,
+      encode.encode(JSON.stringify(payload))));
+    const envelope={format:"lightup.remediation_vault.v1",kdf:"PBKDF2-SHA256",
+      iterations:ROUNDS,cipher:"AES-256-GCM",salt:to64(salt),iv:to64(iv),data:to64(cipher)};
+    const bytes=encode.encode(JSON.stringify(envelope,null,2)+"\n");
+    fail(bytes.length<=MAX_VAULT,"Re-encrypted vault is too large.");
+    save(bytes,"lightup-private-handoff-rotated.vault.json","application/json");
+    $("rekeysecret").value=""; $("rekeyack").checked=false;
+    say("New separate encrypted vault downloaded with fresh salt and IV. Prior copies and passwords are NOT revoked.");
   }));
   $("clear").addEventListener("click",resetPrivate);
   $("clear2").addEventListener("click",resetPrivate);

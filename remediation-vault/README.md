@@ -26,3 +26,7 @@ Run python3 remediation-vault/package.py to create the portable, CSP-hash-pinned
 ## Isolation
 
 All changes are exclusively new paths under remediation-vault/. Original Casework #1568, Evidence Review #1623, unified Cockpit #1627, Calendar #1635 and Dependency Board #1638 remain unmodified. This standalone companion is suitable for independently approved, existing, human-only offline exports from those products. Never ship actual client files, passphrases or decrypted copies in source control.
+
+## Re-encrypt an existing private packet
+
+After unlocking a vault, the recipient can select **Re-encrypt unlocked files**, reconfirm the real recipient and exact engagement, and enter a new 12+ character passphrase. The application immediately creates a second ciphertext envelope using fresh random salt/nonce and its own SHA-256-checked original file bytes, without first saving decrypted files. The previous encrypted packet and its passphrase are **not revoked**; remove old copies separately according to the private retention policy. No original authority or finding status is changed.
