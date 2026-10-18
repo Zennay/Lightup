@@ -17,3 +17,6 @@
 .revision-entry{padding:16px;margin:12px 0;background:#101d2c;border:1px solid var(--line);border-left:4px solid #eac081;border-radius:8px;overflow-wrap:anywhere}
 .revision-entry h3{margin:0 0 8px;font-size:15px}.revision-entry p{font-size:13px}.revision-entry strong{display:block;color:var(--warn);font-size:13px}
 @media print{#revisionBoard .buttons{display:none!important}}
+
+/* Explicit prominence for source-change impact and reissue actions */
+#revisionHistory ul{margin:12px 0;padding-left:21px}#revisionHistory li{line-height:1.45;margin:7px 0;color:var(--warn)}#revisionHistory .revision-entry p{margin:8px 0}
