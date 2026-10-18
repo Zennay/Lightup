@@ -7,16 +7,16 @@
 Existing single-endpoint and zero-argument forms remain available:
 
 ```sh
-lightup-labassess
-lightup-labassess http://127.0.0.1:18080/
+lightup lab-assess
+lightup lab-assess http://127.0.0.1:18080/
 ```
 
 New multi-endpoint forms (only isolated labs you own/control):
 
 ```sh
-lightup-labassess --target http://127.0.0.1:18080/ --target http://127.0.0.1:18081/
-lightup-labassess http://127.0.0.1:18080/ --target http://127.0.0.1:18081/
-lightup-labassess --targets-file ./private-lab-targets.txt --no-review
+lightup lab-assess --target http://127.0.0.1:18080/ --target http://127.0.0.1:18081/
+lightup lab-assess http://127.0.0.1:18080/ --target http://127.0.0.1:18081/
+lightup lab-assess --targets-file ./private-lab-targets.txt --no-review
 ```
 
 Example contents of `private-lab-targets.txt`:
@@ -27,7 +27,7 @@ http://127.0.0.1:18080/
 http://127.0.0.1:18081/
 ```
 
-For the Python-module entrypoint invoke `python -m lightup.labrun` for the original standalone baseline command; the multi-endpoint parser is specifically `main_assess`, exposed by the existing installed `lightup-labassess` command.
+The installed `lightup` entrypoint dispatches the `lab-assess` subcommand through `src/lightup/cli.py` to `labrun.main_assess`. This integration accepts both repeated flags and local manifests. `python -m lightup.labrun` invokes the **different** original single-baseline command and is not this workflow.
 
 ## Exactly what is admitted
 
@@ -40,6 +40,6 @@ For the Python-module entrypoint invoke `python -m lightup.labrun` for the origi
 
 ## Source, ownership and release
 
-Source: `src/lightup/labrun.py`, stacked on pre-existing review source [PR #1602](https://github.com/Zennay/Lightup/pull/1602), without changing the review pipeline, original lab target fencing, scope, grants, authentication, workers, state, existing CI or tests. Tracked issue: [#1608](https://github.com/Zennay/Lightup/issues/1608).
+Sources: `src/lightup/cli.py` and `src/lightup/labrun.py`, stacked on pre-existing review source [PR #1602](https://github.com/Zennay/Lightup/pull/1602), without changing the review pipeline, original lab target fencing, scope, grants, authentication, workers, state, existing CI or tests. Tracked issue: [#1608](https://github.com/Zennay/Lightup/issues/1608).
 
 This is a **draft implementation**. Original source-owner integration, mandatory exact-head hosted + permanent named VPS CI, independent security/privacy review, appropriate authenticated and separately consented client/operator controls with at-use revocation if any real execution is later contemplated, and explicit HUMAN GO all remain required. Do not merge/deploy/activate while in HOLD.
