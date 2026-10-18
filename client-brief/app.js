@@ -175,7 +175,7 @@ function exportHumanActions(){
 let followupRecords={},followupTag=null;
 function followupInfo(){
  const x=LightUpFollowup.source(state,LightUpBriefActions.fromState(state,{includeOperator:false}));
- const tag=JSON.stringify([x.fingerprint,x.previous,x.actions.map(a=>[a.origin,a.title,a.level,a.source_count,a.next_human_step])]);
+ const tag=JSON.stringify([x.fingerprint,x.previous,x.studioRevision,x.studioPrevious,x.actions.map(a=>[a.origin,a.title,a.level,a.source_count,a.next_human_step])]);
  if(followupTag!==tag){followupTag=tag;followupRecords={};}
  return x;
 }
@@ -193,6 +193,10 @@ function followupUI(){
  const select=(values,current)=>values.map(k=>'<option value="'+H(k)+'"'+(k===current?' selected':'')+'>'+H(k.replaceAll('_',' '))+'</option>').join('');
  host.innerHTML=followupOverviewHTML()+'<div class="action-grid">'+info.actions.map((a,i)=>{
   const row=followupRecords[info.keys[i]]||LightUpFollowup.blank();
+  const filter=$('followup-filter').value;
+  if(filter==='urgent'&&a.level!=='urgent')return '';
+  if(filter==='unanswered'&&!['awaiting_client_question','awaiting_operator_question'].includes(row.phase))return '';
+  if(filter==='dated'&&!row.date)return '';
   return '<article class="action-row" data-index="'+i+'"><strong>'+H(a.level.toUpperCase())+' · '+H(a.title)+'</strong><p>'+a.source_count+' source records · '+H(a.next_human_step)+'</p><div class="followup-controls"><label>Discussion role<select data-field="role" data-index="'+i+'">'+select(LightUpFollowup.roles,row.role)+'</select></label><label>Self-reported discussion phase<select data-field="phase" data-index="'+i+'">'+select(LightUpFollowup.phases,row.phase)+'</select></label><label>Tentative follow-up date<input data-field="date" data-index="'+i+'" type="date" value="'+H(row.date)+'"></label></div></article>';
  }).join('')+'</div>';
 }
@@ -204,13 +208,29 @@ async function saveFollowup(){
   $('followup-status').textContent='Private human discussion plan saved to your device.';
  }catch(e){$('followup-status').textContent='Not saved: '+e.message;}
 }
+function exportFollowupCSV(){
+ if(!state)return note('Open original source findings first.',true);
+ try{const info=followupInfo();
+  if(!confirm('Download a PRIVATE agenda with category titles, self-reported discussion status, roles and dates? No permissions or scans are authorized. Verify the intended recipient.'))return;
+  download(LightUpFollowup.toCSV(info,followupRecords),'lightup-human-discussion-PRIVATE-REVIEW-ONLY.csv','text/csv;charset=utf-8');
+  $('followup-status').textContent='Private human meeting agenda exported. No actions performed.';
+ }catch(e){$('followup-status').textContent='Agenda export refused: '+e.message;}
+}
+async function exportFollowupCalendar(){
+ if(!state)return note('Open original source findings first.',true);
+ try{const info=followupInfo(),calendar=await LightUpFollowup.toCalendar(info,followupRecords);
+  if(!confirm('Export '+calendar.events+' TENTATIVE ALL-DAY human discussion reminders? Importing .ics into a synchronized calendar may share category labels with its provider. These are NOT authorized scan windows or real bookings.'))return;
+  download(calendar.content,'lightup-human-discussions-TENTATIVE-PRIVATE.ics','text/calendar;charset=utf-8');
+  $('followup-status').textContent=calendar.events+' tentative human-only calendar dates exported; do not treat them as approval.';
+ }catch(e){$('followup-status').textContent='Calendar export refused: '+e.message;}
+}
 async function loadFollowup(){
  if(!state)return note('Open original source findings before restoring.',true);
  const f=$('followup-file').files[0];if(!f)return note('Choose a saved human discussion draft.',true);
  $('followup-load').disabled=true;
  try{const info=followupInfo(),incoming=await LightUpFollowup.read(f,info);
   if(!confirm('Restore human discussion choices for the exact same source action categories? This does not restore permission or approvals.'))return;
-  followupRecords=incoming;followupUI();$('followup-status').textContent='Private human-only discussion stages restored.';
+  followupRecords=incoming;render();$('followup-status').textContent='Private human-only discussion stages restored.';
  }catch(e){$('followup-status').textContent='Source-bound draft rejected; previous choices retained.';note('Discussion restore refused: '+e.message,true);}
  finally{$('followup-load').disabled=false;}
 }
@@ -239,6 +259,7 @@ async function load() {
   // Publish only after *both* original exports are fully parsed and bounded.
   const changes=older?LightUpCasework.compareSource(older.rows,fresh.rows):null;
   state={fresh,older,changes,sameScopeAcknowledged:!!older,casework:null,readiness:null,studio:null,studioChange:null};
+  followupTag=null;followupRecords={};
   $('casework-file').value='';$('casework-confirm').checked=false;$('casework-status').textContent='No Casework loaded.';
   $('readiness-file').value='';$('readiness-confirm').checked=false;$('readiness-status').textContent='No operator snapshot loaded.';
   $('studio-file').value='';$('studio-confirm').checked=false;$('studio-status').textContent='No scope proposal imported.';
@@ -407,7 +428,7 @@ function exportJSON() {
  catch(e){note('JSON export refused: '+e.message,true);}
 }
 function forget() {
- state=null;followupTag=null;followupRecords={};$('followup-board').replaceChildren();$('followup-file').value='';$('followup-status').textContent='No local discussion plan saved.';$('studio-previous').value='';$('studio-previous-confirm').checked=false;$('studio-compare-status').textContent='No earlier version compared.';$('studio-change-summary').replaceChildren();$('human-actions').replaceChildren();$('studio-file').value='';$('studio-confirm').checked=false;$('studio-status').textContent='No scope proposal imported.';$('studio-summary').replaceChildren();$('session-file').value='';$('session-status').textContent='No working draft restored.';$('readiness-file').value='';$('readiness-confirm').checked=false;$('readiness-status').textContent='No operator snapshot loaded.';$('readiness-summary').replaceChildren();$('casework-file').value='';$('casework-confirm').checked=false;$('casework-status').textContent='No Casework loaded.';$('current').value='';$('previous').value='';$('same-scope').checked=false;$('details').checked=false;
+ state=null;followupTag=null;followupRecords={};$('followup-filter').value='all';$('followup-board').replaceChildren();$('followup-file').value='';$('followup-status').textContent='No local discussion plan saved.';$('studio-previous').value='';$('studio-previous-confirm').checked=false;$('studio-compare-status').textContent='No earlier version compared.';$('studio-change-summary').replaceChildren();$('human-actions').replaceChildren();$('studio-file').value='';$('studio-confirm').checked=false;$('studio-status').textContent='No scope proposal imported.';$('studio-summary').replaceChildren();$('session-file').value='';$('session-status').textContent='No working draft restored.';$('readiness-file').value='';$('readiness-confirm').checked=false;$('readiness-status').textContent='No operator snapshot loaded.';$('readiness-summary').replaceChildren();$('casework-file').value='';$('casework-confirm').checked=false;$('casework-status').textContent='No Casework loaded.';$('current').value='';$('previous').value='';$('same-scope').checked=false;$('details').checked=false;
  $('workspace').hidden=true;$('internal-readiness').checked=false;['urgent','medium','low'].forEach(key=>$(key+'-decision').value='discussion_pending');$('kpis').replaceChildren();$('changes').replaceChildren();$('preview').replaceChildren();
  note('In-memory findings forgotten. Previously downloaded files must be deleted separately.');
 }
@@ -424,7 +445,10 @@ $('studio-compare').addEventListener('click',compareStudio);
 $('studio-compare-clear').addEventListener('click',clearStudioChanges);
 $('human-actions-export').addEventListener('click',exportHumanActions);
 $('followup-save').addEventListener('click',saveFollowup);
+$('followup-csv').addEventListener('click',exportFollowupCSV);
+$('followup-calendar').addEventListener('click',exportFollowupCalendar);
 $('followup-load').addEventListener('click',loadFollowup);
+$('followup-filter').addEventListener('change',followupUI);
 $('followup-board').addEventListener('change',event=>{
  const input=event.target,field=input.dataset?.field,index=Number(input.dataset?.index);
  if(!['role','phase','date'].includes(field)||!Number.isInteger(index))return;
@@ -434,7 +458,7 @@ $('followup-board').addEventListener('change',event=>{
   const candidate={...before,[field]:input.value};
   // All edits use the same strict source-bound record validator as private export.
   followupRecords[key]=LightUpFollowup.collect(info,{...followupRecords,[key]:candidate})[key];
-  followupUI();
+  render();
   $('followup-status').textContent='Local conversation updated only. Save privately if needed; nothing is automatically approved.';
  }catch(e){note('Discussion edit refused: '+e.message,true);followupUI();}
 });
