@@ -4,7 +4,7 @@ Posture: INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD. Never a permission, gran
 
 ## Integrated original sources
 
-- Authorization Casebook, pinned PR #1620 at 2fa54d6d80419f34a55ff8721860cd40008965f1.
+- Authorization Casebook, pinned original PR #1620 at fa3a260234daa1178b5f6e4fc95cbd36e12d61fd.
 - Emergency STOP, unchanged eight original product/docs paths pinned PR #1619 at 80a74c5d6f6b25e8f7784619fca5c58903ecd0b3.
 - The original two owner branches, scope policy, domain, production handlers, CI workflows and existing tests were not modified.
 - An independent composed source adds scope_incident_brief.py and an offline source-bound scope-incident-room/standalone.html.
@@ -28,7 +28,7 @@ Individual original products remain available: python -m lightup.auth_casebook, 
 - The native CLI returns exit 2 for REVIEW_ONLY or exit 3 for HOLD, never exit 0. All authority, consent, execution and release flags are literally false.
 - Only the explicit private file includes original identities; stdout includes aggregate counts only. The original casebook exclusive non-overwriting 0600 file writer is reused.
 - The viewer rejects oversized inputs, duplicate JSON object keys, shape/identity/count conflicts and all asserted authority. Invalid input leaves the previous workspace untouched. Anonymous exports omit original identities and grant rows.
-- Temporary human stages exist only in browser memory. Neither the room nor the CLI invokes STOP writes, model tools, scanners, grants, handlers or targets.
+- Temporary human stages exist only in browser memory. Neither the offline room nor the read-only scope_incident_brief CLI writes STOPs or accesses tools/targets. The separate scope_ops CLI below can write original authenticated deny-only STOP after full confirmation; it cannot start or resume execution.
 
 ## Existing gates still required
 
@@ -40,3 +40,21 @@ Sources: https://github.com/Zennay/Lightup/pull/1619 ; https://github.com/Zennay
 ## Historical private comparison
 
 After importing the latest source, load a second older original private briefing for exactly the same tenant and selected engagement set. The offline caseboard highlights recorded STOP changes, stored-grant count changes and original case attention changes. A STOP that appears to disappear is an explicit HOLD warning, never authority or a restoration of service. Comparisons use only local in-memory files, enforce earlier timestamps and equal case membership, preserve the previous comparison on invalid import, and export only anonymous change counts; neither original source IDs nor private snapshots are exported. Snapshot timestamps are untrusted historical claims and never a live guarantee.
+
+## Integrated original risk decision provenance and source case details
+
+The three original Casebook source/UI/docs paths were integrated byte-for-byte at original exact SHA fa3a260. Original #1620 branch remains unchanged; original emergency STOP sources stay pinned at #1619 80a74c5. This includes authenticated original case lists, request/grant/risk provenance, pending risk decisions, reviewer queue, source change comparison and privacy-minimal human briefing. HELD candidate, not release.
+
+The combined briefing and offline Incident Room surface original risk_provenance_hold and pending_risk_review counters, reject contradictory source declarations, and prioritize STOP, source HOLD and pending risk. A new private Inspect case view shows each selected original engagement's original source request status, grant/request binding and risk decision provenance. Private identifiers stay only in browser memory.
+
+Browser-only human follow-up stages can be exported and restored bound to SHA-256 of the exact original private JSON bytes. Stage order is tied to the source record order; a different source is refused. No browser persistence/network; Web Crypto support is required only for this optional stage save/restore. Historical comparison still treats apparent disappeared STOP as HOLD, not an action-time guarantee.
+
+## Interactive original authenticated deny-only STOP
+
+From a trusted private foreground terminal use:
+
+    PYTHONPATH=src python3 -m lightup.scope_ops --database /private/domain.sqlite --email EXISTING_LOGIN --client EXISTING_TENANT_ID
+
+An original client sees its own tenant only; operators select one exact existing tenant. The real DomainStore authentication and lockout apply. The menu lists and inspects original cases and STOP/grant exposure, refreshing original role/tenant membership before every private detail. Choosing STOP requires the literal full confirmation STOP ENGAGEMENT_ID. The **unchanged original** record_authenticated_stop then independently reauthenticates at write time and checks actual tenant/role/engagement in its database transaction. This records only a deny-only STOP event, not a grant, approval, scan, worker kill, target work or resume. Cancelling the confirmation makes no write.
+
+The new native console itself is not wired to dispatch/retry/resume. A recorded STOP does not prove running work was killed. Original exact-head hosted and permanently registered named VPS CI, original source-owner/security/privacy review, distinct authenticated client/operator consent, at-use revocation and explicit HUMAN GO remain mandatory. No main merge, deployment or live activation during HOLD.
