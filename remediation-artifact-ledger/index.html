@@ -97,14 +97,14 @@
 <option value="human_followup">Human follow-up notes or original Evidence Review requests</option>
 <option value="all">All original findings</option>
 </select></label>
-<div><p>Export current HUMAN selection only as a separately confirmed PRIVATE CSV. Source SHA, original IDs and human planning fields are confidential.</p><button id="actionExport" disabled>Export PRIVATE HUMAN action queue</button></div>
+<div><p>Export current HUMAN selection only as a separately confirmed PRIVATE CSV. Source SHA, original IDs, pending human requests and human planning fields are confidential.</p><button id="actionExport" disabled>Export PRIVATE HUMAN action queue</button></div>
 </div>
 <p id="actionShown"></p>
 <div class="scroll"><table><thead><tr>
-<th>Original ID</th><th>Source severity</th><th>Human owner</th><th>Casework HUMAN stage/date</th><th>Evidence Review HUMAN stage</th><th>Local file fingerprints</th><th>Human follow-up reasons</th><th>Local filing</th>
+<th>Original ID</th><th>Source severity</th><th>Human owner</th><th>Casework HUMAN stage/date</th><th>Evidence Review HUMAN stage</th><th>Local file fingerprints</th><th>Outstanding PRIVATE HUMAN requests</th><th>Human follow-up reasons</th><th>Local filing</th>
 </tr></thead><tbody id="actionRows"></tbody></table></div></section>
 <section class="card"><h2>9 · Unified PRIVATE HUMAN workspace handoff</h2>
-<p>Transfer the current LOCAL file fingerprints together with read-only imported Casework v1 and Evidence Review v2 HUMAN records as one source-bound PRIVATE file. The recipient must load the same independently obtained original five-column findings CSV and type the same independently verified client/engagement labels before restoring. The bundled records contain no evidence file bytes and cannot establish authorization.</p>
+<p>Transfer the current LOCAL file fingerprints together with read-only imported Casework v1, Evidence Review v2 and PRIVATE HUMAN evidence requests/responses as one source-bound PRIVATE file. The recipient must load the same independently obtained original five-column findings CSV and type the same independently verified client/engagement labels before restoring. The bundled records contain no evidence file bytes and cannot establish authorization.</p>
 <div class="grid">
 <div><h3>Export current combined HUMAN workspace</h3><p>Private original source SHA, human status/date/reviewer, original finding IDs, local filenames and fingerprints. Independently approve the storage and recipient.</p><button id="unifiedExport" disabled>Download PRIVATE unified JSON</button></div>
 <div><h3>Restore original-bound HUMAN workspace</h3><label>PRIVATE combined JSON<input type="file" id="unifiedImport" accept=".json,application/json" disabled></label>
