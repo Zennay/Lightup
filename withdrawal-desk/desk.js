@@ -77,8 +77,8 @@
   function safeUTC(s){if(s==='')return true;return /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(s)&&
     !Number.isNaN(Date.parse(s+'Z'))&&new Date(s+'Z').toISOString().slice(0,16)===s;}
   async function fingerprint(buffer){
-    if(!crypto?.subtle)throw Error('Browser cannot calculate local SHA-256. Use a secure, modern local browser.');
-    const bytes=new Uint8Array(await crypto.subtle.digest('SHA-256',buffer));
+    if(!globalThis.crypto?.subtle)throw Error('Browser cannot calculate local SHA-256. Use a secure, modern local browser.');
+    const bytes=new Uint8Array(await globalThis.crypto.subtle.digest('SHA-256',buffer));
     return Array.from(bytes,x=>x.toString(16).padStart(2,'0')).join('');
   }
   async function readFile(f){
@@ -196,14 +196,14 @@
   }
   async function ingest(files){
     if(!files.length)return;
-    if(files.length+cases.length>MAX_FILES)throw Error('HOLD: at most 16 source drafts in one workspace.');
+    if(files.length>MAX_FILES)throw Error('HOLD: at most 16 source drafts in one selection.');
     const pending=[];
     for(const file of files){
       const {hash,meta}=await readFile(file);
       if(pending.some(x=>x.hash===hash))throw Error('HOLD: duplicate source files in selection.');
       pending.push({hash,meta});
     }
-    // Atomic import: apply only after all files have passed size, UTF-8, schema and digest preflight.
+    if(cases.length+pending.filter(p=>!cases.some(c=>c.sha===p.hash)).length>MAX_FILES)\n      throw Error('HOLD: at most 16 distinct source drafts in one workspace.');\n    // Atomic import: apply only after all files have passed size, UTF-8, schema and digest preflight.
     for(const p of pending){
       const old=cases.find(x=>x.sha===p.hash);
       if(old){
