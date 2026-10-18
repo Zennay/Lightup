@@ -11,11 +11,21 @@ For the easiest use, download and open the [single-file standalone vault](../sco
 3. To restore, choose the saved encrypted JSON and enter the passphrase. The entire payload must pass authenticated decryption, exact schema checks, digest verification, UTF-8 validation, filename and byte limits **before** any prior in-memory workspace is replaced.
 4. Original decrypted files are downloaded only by an explicit secondary click and confirmation. Anyone with access to that plaintext download can see the contents. Click **Lock immediately** to clear retained in-tab buffers. Hiding the tab automatically locks unless an operation is in progress; inactivity also locks after five minutes. The browser and OS may retain transient copies outside JavaScript's control.
 
+## New multi-document review and recipient handoff workflow
+
+- **Selective encryption:** Each file in the local inventory has an Include-in-handoff checkbox. Use Select all/Select none and deliberately choose the subset to encrypt. The rest remain in memory but do not appear in the ciphertext being saved. You must explicitly confirm a visible local list of filenames and self-reported roles before downloading.
+- **Recipient-specific route:** Before sealing choose `private-archive`, `operator-review` or `client-review`. A client-review packet **refuses** unclassified or operator-note-labelled items; only client-proposal, revision and schedule roles are accepted. This is an **accidental disclosure guard**, not destination authentication, client permission or a safe replacement for a human checking the address and intended recipient. The route lives inside the encrypted payload, not the public envelope; legacy vaults without a route load as private archive.
+- **Atomic multi-vault merge:** When unlocking a second vault, opt in to Merge. Matching filename + digest + byte count + role is deduplicated, while conflicting names/roles, file caps and oversize collections cause an atomic refusal without changing the previously loaded collection. The sender's role labels and filenames remain **unverified assertions**.
+- **Local revision reading:** Select an original and a changed UTF-8 file, then preview source text or inspect additions and deletions using a bounded line-diff. Input is rendered exclusively via `textContent` and never interpreted as markup or executed. Each file is limited to 400 lines of at most 2,048 UTF-16 characters for visual comparison. Diff counts are a convenience **text** signal, not semantic scope-membership evaluation, consent, verified principal identity, grant validity or safe execution authority.
+- **Confidentiality:** Text view and diff are visible on your own screen while open; Hide, Lock, tab hiding or workspace change removes this UI output. Browser-managed strings may remain in inaccessible memory. Downloading a plaintext file is explicitly manual and cannot be undone.
+
+All actions remain offline. To get the newest self-contained UI, download the freshly built `scope-vault/standalone.html`; source files `index.html`, `style.css` and `vault.js` are the inputs to its reproducible build.
+
 ## File format
 
 Outer JSON exposes only the cryptographic parameters and encrypted bytes: exact version, PBKDF2-SHA256, 600,000 iterations, 16-byte random salt, AES-256-GCM, 12-byte random IV, and ciphertext including an authenticated 128-bit tag. Each export uses fresh cryptographic randomness. The AES-GCM additional authenticated data is the constant `LIGHTUP-SCOPE-PACKET-V1`. **Filenames, file count, timestamps, content, self-labelled review roles and per-file SHA-256 digests are encrypted.**
 
-The authenticated inner payload has a version, UTC time, an explicit set of literally false action/consent/release flags, and a bounded collection of UTF-8 files with original name, byte size, SHA-256 and encoded bytes. The SHA-256 values are integrity fingerprints, **not signatures, client identity or evidence that consent was granted**. Restoration is atomic with respect to application-level state.
+The authenticated inner payload has a version, UTC time, an optional encrypted, self-reported recipient route, an explicit set of literally false action/consent/release flags, and a bounded collection of UTF-8 files with original name, byte size, SHA-256 and encoded bytes. The SHA-256 values are integrity fingerprints, **not signatures, client identity or evidence that consent was granted**. Restoration is atomic with respect to application-level state.
 
 The format is intentionally **not interoperable with actual LightUp execution grants, live tokens, authorization DB records, web request endpoints or scope evaluator claims**.
 
@@ -29,4 +39,4 @@ The format is intentionally **not interoperable with actual LightUp execution gr
 
 ## Isolation
 
-This branch adds only `scope-vault/index.html`, `scope-vault/style.css`, `scope-vault/vault.js` and this documentation. It does not modify the active owners' PRs #1566, #1567, #1569, #1570, #1571, #1572 or #1573; production `src/lightup` code, policies, consent/grant stores, CI/workflows, VPS runners, network adapters and deployment are untouched.
+This work remains restricted to `scope-vault/index.html`, `scope-vault/style.css`, `scope-vault/vault.js` and this documentation. It does not modify the active owners' PRs #1566, #1567, #1569, #1570, #1571, #1572 or #1573; production `src/lightup` code, policies, consent/grant stores, CI/workflows, VPS runners, network adapters and deployment are untouched.
