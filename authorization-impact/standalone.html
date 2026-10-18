@@ -435,7 +435,7 @@ source.grants.filter(function(g){return g.approved_request_id===n.id;}).forEach(
 else if(n.family==="engagements"){record(n.id,"hypothetical engagement row unavailable",n.id);}
 else if(n.family==="risk_approvals"){record(n.row.engagement_id,"hypothetical risk decision row unavailable",n.id);}
 });
-return Array.from(affected, function(pair){return {engagement_id:pair[0],human_followup_reasons:Array.from(pair[1]).sort()};}).sort(function(a,b){return a.engagement_id.localeCompare(b.engagement_id);});
+return Array.from(affected, function(pair){return {engagement_id:pair[0],original_row_present:source.engagements.some(function(e){return e.engagement_id===pair[0];}),human_followup_reasons:Array.from(pair[1]).sort()};}).sort(function(a,b){return a.engagement_id.localeCompare(b.engagement_id);});
 }
 function renderHypothetical(){
 var list=el("scenario-source"),out=el("scenario-engagements");list.replaceChildren();out.replaceChildren();
@@ -453,15 +453,18 @@ btn.addEventListener("click",function(){hypothetical.delete(key);render();});
 if(!hypothetical.size)item(list,"small","No hypothetical source changes selected.");
 var impacts=hypotheticalImpact();
 impacts.forEach(function(row){
-var tr=document.createElement("tr");item(tr,"td",row.engagement_id);
+var tr=document.createElement("tr");item(tr,"td",(row.original_row_present?"ORIGINAL · ":"MISSING REFERENCED SOURCE · ")+row.engagement_id);
 item(tr,"td",row.human_followup_reasons.join(" · "));
-var td=document.createElement("td"),btn=item(td,"button","Inspect source","secondary");btn.type="button";
+var td=document.createElement("td");
+if(row.original_row_present){
+var btn=item(td,"button","Inspect source","secondary");btn.type="button";
 btn.addEventListener("click",function(){switchSelection("engagements:"+row.engagement_id);});
+}else item(td,"small","Not in original snapshot; human HOLD.");
 tr.appendChild(td);out.appendChild(tr);
 });
 el("scenario-empty").hidden=!!impacts.length;
 el("scenario-summary").textContent=hypothetical.size?
-"HYPOTHETICAL ONLY: "+hypothetical.size+" selected original records; "+impacts.length+" distinct stored engagement IDs have direct recorded references requiring human follow-up. This is not revocation, consent denial, scope determination or real risk status.":
+"HYPOTHETICAL ONLY: "+hypothetical.size+" selected original records; "+impacts.length+" distinct referenced engagement IDs (including any MISSING original rows) need human follow-up. Only recorded links were considered. This is not revocation, consent denial, scope determination or real risk status.":
 "Mark recorded source rows as hypothetically unavailable to plan human follow-up. Original source and grants remain unchanged.";
 }
 function exportHypothetical(privateReport){
