@@ -165,7 +165,28 @@ def _decision(db: DomainStore, ctx, *, payload: dict, previous_id: str | None = 
 def _revise(db: DomainStore, ctx, check_session=None) -> None:
     from .client_request_revision import prepare_rejected_revision
 
-    old_id = _ask("Your rejected request ID: ", max_chars=128)
+    rejected = [
+        rec for rec in db.list_assessment_requests(ctx)
+        if rec.status.value == "rejected"
+    ]
+    if not rejected:
+        print("No rejected requests for this client.")
+        return
+    print("Recent rejected client requests (not grants):")
+    for index, rec in enumerate(rejected[:15], start=1):
+        print(str(index) + ". " + rec.request_id + " · risk "
+              + str(int(rec.requested_risk)) + " · " + rec.created_at)
+    selected = _ask(
+        "Select a displayed number or provide your own rejected request ID: ",
+        max_chars=128,
+    )
+    if selected.isascii() and selected.isdecimal():
+        ordinal = int(selected)
+        if not 1 <= ordinal <= min(len(rejected), 15):
+            raise ClientRequestError("choose a displayed rejected request")
+        old_id = rejected[ordinal - 1].request_id
+    else:
+        old_id = selected
     original = db.get_assessment_request(ctx, old_id)
     print("Revision input: choose m for manually edited scope or s for Studio JSON.")
     origin = _ask("Choice [m/s]: ", max_chars=1).lower()
@@ -211,17 +232,48 @@ def _revise(db: DomainStore, ctx, check_session=None) -> None:
 
 
 def _history(db: DomainStore, ctx) -> None:
-    records = db.list_assessment_requests(ctx)
-    if not records:
+    all_records = db.list_assessment_requests(ctx)
+    if not all_records:
         print("No stored client requests.")
         return
-    print("\nMost recent 30 stored requests (not grants):")
-    for row in records[:30]:
-        print(row.request_id + " · " + row.status.value
-              + " · risk " + str(int(row.requested_risk))
-              + " · " + row.created_at)
-    if len(records) > 30:
-        print("Showing 30 of " + str(len(records)) + "; use an export for details.")
+    print("Filter: a=all, s=submitted, u=under review, p=approved, r=rejected")
+    choice = _ask("Status filter [a]: ", max_chars=1).lower() or "a"
+    statuses = {
+        "a": None, "s": "submitted", "u": "under_review",
+        "p": "approved", "r": "rejected",
+    }
+    if choice not in statuses:
+        raise ClientRequestError("choose a, s, u, p or r")
+    expected = statuses[choice]
+    records = [
+        rec for rec in all_records
+        if expected is None or rec.status.value == expected
+    ]
+    if not records:
+        print("No stored requests match that status.")
+        return
+    start = 0
+    page_size = 20
+    while True:
+        page = records[start:start + page_size]
+        print("\nOWN CLIENT REQUEST INBOX (not grants)")
+        print("Records " + str(start + 1) + "–" + str(start + len(page))
+              + " / " + str(len(records)))
+        for rec in page:
+            print(rec.request_id + " · " + rec.status.value
+                  + " · risk " + str(int(rec.requested_risk))
+                  + " · " + rec.created_at)
+        if len(records) <= page_size:
+            return
+        direction = _ask("n: next, p: previous, Enter: menu: ", max_chars=1).lower()
+        if direction == "n" and start + page_size < len(records):
+            start += page_size
+        elif direction == "p" and start > 0:
+            start = max(0, start - page_size)
+        elif not direction:
+            return
+        else:
+            print("No page in that direction.")
 
 
 def _export(db: DomainStore, ctx, check_session=None) -> None:
