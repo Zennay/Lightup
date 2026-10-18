@@ -17,6 +17,7 @@ SOURCES={
 "permission":(1578,"f88df4b9732fb180cf77e92ed9af90b752316200",("scope-permission-brief/","docs/scope-permission-brief.md")),
 "handoff":(1579,"78ad5e20dd8ea03a3f548b5f83648b923a6598d7",("scope-handoff-register/",)),
 "briefing":(1580,"22afcb7669ce078be504e288b03b8adf2b4412d8",("scope-briefing/",)),
+"casework":(1568,"9c73e8468ce271bf8c6bef4cac071e5ad9c1806b",("casework/",)),
 }
 def git(*args):
     return subprocess.run(("git",*args),cwd=REPO,check=True,capture_output=True).stdout
@@ -61,7 +62,7 @@ def main():
             "Read the copied original documentation under docs/ in this folder.\n"
             "Open studio/index.html for original Studio navigation; for the schedule "
             "board open studio/scope-schedule-board.html.\n"
-            "Return to ../../index.html for the full nine-app launcher.\n",
+            "Return to ../../index.html for the full offline workbench.\n",
             encoding="utf-8")
     manifest={
         "kind":"lightup.offline_scope_workbench","schema_version":1,"state":"DRAFT_HOLD_REVIEW_ONLY",

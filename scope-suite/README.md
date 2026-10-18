@@ -2,7 +2,7 @@
 
 **Status:** INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD · REVIEW_ONLY.
 
-This independent preview brings nine already authored draft LightUp browser products into **one downloadable offline folder/ZIP**. It does not merge their original pull requests or promote any security-sensitive logic to `main`. It cannot authenticate anyone, record legal consent, issue/revoke a grant, dispatch tools, scan hosts, schedule real assessments, persist web sessions or deploy.
+This independent preview brings ten already authored draft LightUp browser products into **one downloadable offline folder/ZIP**. It does not merge their original pull requests or promote any security-sensitive logic to `main`. It cannot authenticate anyone, record legal consent, issue/revoke a grant, dispatch tools, scan hosts, schedule real assessments, persist web sessions or deploy.
 
 ## Use
 
@@ -18,6 +18,7 @@ This independent preview brings nine already authored draft LightUp browser prod
 
 | Product | Upstream PR | Local browser entry |
 | --- | --- | --- |
+| Remediation Casework | [#1568](https://github.com/Zennay/Lightup/pull/1568) | `apps/casework/casework/index.html` |
 | Scope Planning Studio | [#1567](https://github.com/Zennay/Lightup/pull/1567) | `apps/studio/studio/index.html` |
 | Scope Briefing | [#1580](https://github.com/Zennay/Lightup/pull/1580) | `apps/briefing/scope-briefing/standalone.html` |
 | Permission Brief | [#1578](https://github.com/Zennay/Lightup/pull/1578) | `apps/permission/scope-permission-brief/standalone.html` |
@@ -27,6 +28,8 @@ This independent preview brings nine already authored draft LightUp browser prod
 | Withdrawal Desk | [#1577](https://github.com/Zennay/Lightup/pull/1577) | `apps/withdrawal/withdrawal-desk/standalone.html` |
 | Private Packet Vault | [#1574](https://github.com/Zennay/Lightup/pull/1574) | `apps/vault/scope-vault/standalone.html` |
 | Assessment Review Desk | [#1576](https://github.com/Zennay/Lightup/pull/1576) | `apps/assessment/assessment-review/standalone.html` |
+
+**Casework adds a separately sourced, previously authenticated findings-CSV-to-local-repair-plan browser flow.** Its standalone HTML and JS were copied exactly from PR #1568; the backend authenticated `src/lightup/remediation_handoff_cli.py` is **not** copied into this static ZIP and cannot be invoked by the launcher. Use the existing real LightUp authenticated CLI outside the preview to obtain an authorized CSV. The ZIP itself cannot prove any CSV authorization or export provenance.
 
 The Studio source snapshots are also copied to the Schedule Board folder so its relative siblings resolve. The Readiness Workspace's static page refers to sibling Studio-v1 network, fingerprint and planning modules: those **exact upstream bytes** are copied under its own component directory. Original source branches and file paths remain unchanged; the current preview pins each source to a **specific Git commit**, not a moving branch.
 

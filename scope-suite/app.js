@@ -11,7 +11,8 @@
     readiness:"apps/readiness/coordination/scope-readiness-standalone.html",
     withdrawal:"apps/withdrawal/withdrawal-desk/standalone.html",
     vault:"apps/vault/scope-vault/standalone.html",
-    assessment:"apps/assessment/assessment-review/standalone.html"
+    assessment:"apps/assessment/assessment-review/standalone.html",
+    casework:"apps/casework/casework/index.html"
   });
   const NAMES = Object.freeze({
     studio:"Stel een voorstel op",
@@ -22,7 +23,8 @@
     readiness:"Inventariseer ontbrekende informatie",
     withdrawal:"Bespreek urgent STOP-verzoek",
     vault:"Bewaar een lokale kopie",
-    assessment:"Beoordeel synthetische labresultaten"
+    assessment:"Beoordeel synthetische labresultaten",
+    casework:"Werk een lokaal herstelplan uit"
   });
   const ROUTES = Object.freeze({
     proposal:{
@@ -44,6 +46,11 @@
       title:"Bestaande labvergelijkingen beoordelen",
       help:"Deze werkstroom leest alleen bestaande aangeleverde offline synthetic/labresultaten. Ze voert geen assessment uit en is niet gekoppeld aan een geldig client-grantbesluit.",
       steps:["assessment","handoff"]
+    },
+    repair:{
+      title:"Bestaande bevindingen naar herstelacties",
+      help:"Begin uitsluitend met een eerder via de echte LightUp-identiteits- en tenantcontroles geëxporteerd findings.csv. De lokale browser kan de herkomst niet verifiëren. Het actieplan is een kopie en stelt geen echte herstelstatus of retest vast.",
+      steps:["casework"]
     }
   });
   function selectRoute(name){
