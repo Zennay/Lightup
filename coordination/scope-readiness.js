@@ -409,9 +409,18 @@ $('lineageDownload').addEventListener('click',()=>{
   if(!confirm('Export UNSIGNED review-only history of source hashes and changed category identifiers? It does not establish tenant identity, authentic approvals or grants.'))return;
   const packet={kind:'lightup.local_scope_revision_history',schema_version:1,
    disposition:'REVIEW_ONLY',security:flags(),
-   sources:graph.chains.map(c=>({source_sha256:c.sha,parent_source_sha256:c.parent,
-    parent_missing:c.missingParent,change_categories:c.changes,
-    affected_workstreams:c.affected})),
+   sources:graph.chains.map(c=>{
+    const r=entries.find(record=>record.source_sha256===c.sha);
+    const pending=STAGES.filter(([id])=>r.tasks[id].status!=='prepared').map(([id])=>id);
+    const overdueStages=STAGES.filter(([id])=>r.tasks[id].status!=='prepared'&&r.tasks[id].due&&
+      r.tasks[id].due<new Date().toISOString().slice(0,10)).map(([id])=>id);
+    return {source_sha256:c.sha,parent_source_sha256:c.parent,
+     parent_missing:c.missingParent,local_tip:graph.tips.includes(c.sha),
+     superseded_local_version:graph.superseded.includes(c.sha),
+     source_bound_in_this_session:r.source_attached,
+     change_categories:c.changes,affected_workstreams:c.affected,
+     unfinished_human_preparation:pending,overdue_human_preparation:overdueStages};
+   }),
    notice:'Unsigned local preparation history only. No original asset contents, client identity, consent, approvals, grants or executable permissions.'
   };
   download('lightup-private-source-revision-history.json',
