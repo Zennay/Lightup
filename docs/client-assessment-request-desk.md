@@ -44,7 +44,61 @@ python -m lightup.client_request_cli show \
   --request-id 'request-uuid-from-submission'
 ```
 
-## Private browser timeline\n\nAfter authenticating on a local terminal, a client may save a read-only browser snapshot:\n\n    python -m lightup.client_request_cli export --db /private/lightup.sqlite \\\n      --email client@example.org --output /private/client-requests.html\n\nThis creates a **new exclusive 0600 HTML file** with the client's stored request status history (up to 200 entries). Original text is HTML-escaped. It requires no scripts, external styles, network connections or browser login, and the original SQLite records are never changed. A saved HTML copy is **unsigned, potentially sensitive and stale**; it is not a current identity, consent, grant or retest proof, and must not be made public or sent across tenants. Existing destination files cannot be overwritten.\n\nThe assets use the **same strict literal parser** as the draft domain request
+## Private browser timeline
+
+After authenticating on a local terminal, a client may save a read-only browser snapshot:
+
+```sh
+python -m lightup.client_request_cli export \
+  --db /private/lightup.sqlite --email client@example.org \
+  --output /private/client-requests.html
+```
+
+This creates a **new exclusive 0600 HTML file** with the client's stored
+request status history (up to 200 entries). Original text is HTML-escaped.
+It requires no scripts, external styles, network connections or browser login,
+and the original SQLite records are never changed. A saved HTML copy is
+**unsigned, potentially sensitive and stale**; it is not proof of current
+identity, consent, grant or retest status. Do not share it publicly.
+Existing destination files cannot be overwritten.
+
+## Direct intake from the existing Scope Planning Studio (#1567)
+
+Create a proposal in the existing [Scope Planning Studio](../studio/scope-proposal.html)
+and export its `lightup.scope_proposal_draft` v1 JSON. That offline studio is
+a separate owner-held draft PR and does not submit or authenticate anything.
+
+```sh
+# No login or database; read the untrusted browser export and revalidate.
+python -m lightup.client_request_cli preview \
+  --proposal ~/Downloads/lightup-scope-draft.json
+
+# Explicit client-authenticated submission of the *same* validated proposal.
+python -m lightup.client_request_cli submit \
+  --db /private/lightup.sqlite --email client@example.org \
+  --proposal ~/Downloads/lightup-scope-draft.json --confirm-submit
+```
+
+The importer never trusts a draft's unsigned SHA-256, self-declared client
+label or `authorization` flags. It requires an exact bounded v1 format,
+literal `false` authority/consent/grant/execution flags and unique JSON keys,
+then runs the same canonical domain-bound asset parser as raw CLI input.
+Unrecognized fields and malformed UTF-8 fail closed.
+
+**No silent scope widening:** native `DomainStore.submit_assessment_request`
+currently stores requested assets, mode, risk and notes, but does *not* store
+the Studio's exclusions, local/UTC schedule or private-lab activity settings.
+Consequently proposals containing **any exclusions, time windows or lab
+activities are held**, not submitted. Resolve these constraints through
+actual source-owner work and independent operator review; never erase them
+solely to force acceptance. `analysis_only` Studio proposals also cannot be
+submitted as `authorized_assessment` by implicit conversion. Ordinary
+passive/configuration activity labels remain clearly marked as
+*requested planning activities (NOT permissions)* in notes.
+A browser fingerprint is at most an unsigned version hint, never consent or
+identity verification. Clients authenticate separately at submission time.
+
+The assets use the **same strict literal parser** as the draft domain request
 binding: canonical lower-case DNS names, canonical IP literals, or strict CIDRs.
 No wildcards, URLs, port suffixes, whitespace, Unicode aliases, DNS lookups or
 host-bit CIDRs. Repeats are rejected, rather than silently expanding a scope.
