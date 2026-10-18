@@ -4,7 +4,9 @@
 
 ## Open the working product
 
-Open [index.html](./index.html) in a modern browser directly from the `client-brief/` folder, with the sibling `app.js`, `theme.css` and `remediation-engine.js` present. It has no build step, server, external libraries, CDN, runtime network connection, localStorage, persistent database, cookies or service worker. Its top-level CSP is `default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'none'`. No target is contacted.
+**Recommended:** open [standalone.html](./standalone.html) directly; it contains the complete offline app in a single 40,706-byte file, with exact SHA-256 CSP-pinned inline scripts and CSS. SHA-256 of the current bundle: `2f5bdb3e561cf8d68a6a854cd9d0b588e40bcc037e16382c4b535ef2f9db8cc6`. This digest is a packaging fingerprint, **not** a signature or authority receipt. Regenerate locally with `python3 client-brief/package.py`; packaging refuses a changed pinned Casework parser.
+
+**Developer source option:** Open [index.html](./index.html) in a modern browser directly from the `client-brief/` folder, with the sibling `app.js`, `theme.css` and `remediation-engine.js` present. It has no build step, server, external libraries, CDN, runtime network connection, localStorage, persistent database, cookies or service worker. Its top-level CSP is `default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'none'`. No target is contacted.
 
 The page consumes only the **original previously authenticated** LightUp findings summary CSV:
 
