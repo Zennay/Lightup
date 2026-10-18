@@ -8,7 +8,7 @@ const ACTION_ROLES=Object.freeze({
  stops:"joint",privacy:"joint",client:"client",operator:"operator"
 });
 const PAIR_ROLE="joint";
-const LIMIT=16,MAX=512;
+const LIMIT=16,MAX=700;
 const isSHA=x=>typeof x==="string"&&/^[a-f0-9]{64}$/.test(x);
 function build(input,pairs) {
  if(!Array.isArray(input)||input.length>LIMIT||!Array.isArray(pairs)||pairs.length>120)
