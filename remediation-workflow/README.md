@@ -7,6 +7,7 @@
 - [Download one-file offline Coordination Cockpit](./standalone.html). Double-click the file to use it locally. No backend, keys, installation, network, browser storage, or raw evidence transfer.
 - [Original Evidence Review Board](../remediation-evidence/standalone.html) — edit private local evidence-reference dossiers and create an unsigned `lightup.remediation_evidence_coordination` JSON.
 - [Original Capacity Studio](../remediation-capacity/standalone.html) — prepare local hypothetical staffing and export a canonical `lightup.remediation_capacity_working_draft.v1` JSON.
+- [Original Client Security Brief](../client-brief/standalone.html) — original finding summary, source comparison, private human remediation narrative and redacted client-facing handoff.
 - [Original Remediation Funding Studio](../remediation-funding/standalone.html) — model hypothetical financing, release scenarios and urgent financial exposure using ONLY existing Capacity Studio aggregate JSON, no original finding rows or people.
 - [Original private team reply desk](../remediation-evidence/team-reply-standalone.html) — reply to a single-team offline source-bound handoff.
 
@@ -48,6 +49,12 @@ The current browser tab stores all imported private content **in memory only**. 
 The original [Remediation Funding Studio #1586](https://github.com/Zennay/Lightup/pull/1586), at source snapshot `b23b87e4797412053b006180239b8206f8708d09`, is copied without modification into the isolated composition branch and included in the offline workspace ZIP. This separately sourced original owner app is **not** merged into its active original branch or into main.
 
 After optionally loading a canonical source-bound Capacity Studio **working draft** in the Cockpit, use **Export PRIVATE aggregate to Funding Studio**. The button exports only `LightUpCapacity.summary(plan)`, the existing original `lightup.remediation_capacity_draft.v1` schema. It is validated against the currently loaded original CSV and original working draft before export, and then rechecked by the original Funding Studio strict 64-KiB intake. No finding ID, title, owner, notes, original source bytes, asset or privileged identity is exported. The Funding Studio independently models internal/external rates, weekly cash releases, estimated funding gaps and conservative critical/high exposure. It is a hypothetical human discussion tool; no funds are moved, scans started, approvals issued or findings fixed.
+
+## Original private findings to client brief
+
+The complete original [Client Security Brief #1582](https://github.com/Zennay/Lightup/pull/1582) source at immutable head `f1a22e36d17711f6d2d6fff413cff277ddf4b94a` is integrated as an **unchanged frozen add-only source snapshot** and its SHA-pinned portable HTML is part of the workspace ZIP.
+
+After opening the Cockpit (including through its authenticated-at-export private HTML), a human may intentionally select **Export PRIVATE original CSV**. This exact original five-field CSV contains finding identifiers, titles and remediation and is sensitive; the user must acknowledge the separately authorized private destination before any download. That exact CSV can then be imported into the original Evidence Review, Capacity Studio or Client Security Brief. The Cockpit does **not** automatically send a source to another tool, authenticate recipients or imply a still-valid original grant. The Client Brief has its own original privacy defaults and explicit operator review before exporting any narrative. If the private original CSV cannot be transferred securely, do not export it; continue with aggregate-only funding and local human coordination instead.
 
 ## Original source revision comparison (no inferred repair)
 

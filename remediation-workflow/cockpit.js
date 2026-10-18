@@ -238,7 +238,7 @@ async function load(){
    priority:(5-urgent)*30+(f.retest_status==='regression'?45:0)+missing.length*7+
     (rev.stage==='needs_changes'?25:0)+(c.blocked?35:0)+(c.overdue?25:0)+(changed?20:0)+(isNew?25:0)};
  }).sort((a,b)=>b.priority-a.priority||a.id.localeCompare(b.id));
- joined={records,sha,summary,revision};
+ joined={records,sha,summary,revision,privateCsv:csv};
  $('results').hidden=false;$('digest').textContent='Unsigned canonical findings fingerprint: '+sha+
    (summary?' · capacity assumptions bound to the original raw CSV SHA-256':' · no optional staffing draft loaded');
  render();status('Loaded '+source.length+' original findings with '+($('evidence').files.length?'private review notes':'empty local review notes')+(summary?' and exact-CSV capacity estimates':'')+'. No permissions, retests or repairs inferred.');
@@ -351,6 +351,14 @@ function privateMarkdown(){
 $('load').addEventListener('click',()=>{load().catch(e=>{joined=null;$('results').hidden=true;status(e.message,true);});});
 $('clear').addEventListener('click',()=>{wipe();status('Original and private drafts cleared from this page memory.');});
 $('severity').addEventListener('change',render);$('kind').addEventListener('change',render);
+$('originalCsvExport').addEventListener('click',()=>{
+ try{
+  if(!joined?.privateCsv)fail('First import an authorized original findings CSV or private authenticated source.');
+  if(!confirm('Export the ORIGINAL PRIVATE findings CSV containing source IDs, titles and remediation. Are you using a separately authorized local destination and recipient?'))return;
+  download('lightup-original-findings-PRIVATE.csv',joined.privateCsv,'text/csv;charset=utf-8');
+  status('Original private findings source exported unchanged. Protect it and re-confirm permission in every receiving system.');
+ }catch(e){status(e.message,true);}
+});
 $('fundingExport').addEventListener('click',()=>{
  try{
   if(!joined?.summary)fail('Import an exact-source Capacity Studio working draft before exporting its original aggregate summary.');
