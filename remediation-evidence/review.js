@@ -579,7 +579,7 @@ $('restore').addEventListener('click',async()=>{
   const ids=new Set(source.map(f=>f.finding_id)),next=new Map();
   const incomingRevisions=restoreRevisions(packet.revision_register,sourceHash);
   for(const raw of packet.review){
-   if(packet.schema_version===2&&!Object.prototype.hasOwnProperty.call(raw||{},'evidence'))
+   if(packet.schema_version===2&&(!raw||!Object.prototype.hasOwnProperty.call(raw,'evidence')||raw.evidence===null))
     throw Error('Version 2 local review dossier incomplete. No notes changed.');
    const row=validReview(raw,ids);if(next.has(row.finding_id))throw Error('Duplicate review finding.');next.set(row.finding_id,row);
   }
