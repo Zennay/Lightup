@@ -9,6 +9,7 @@
   const FLAGS=()=>({authorized:false,consent_verified:false,dispatch_allowed:false,release_allowed:false});
   const RE_TOKEN=/^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
   let items=[],editing=-1,fictional=false,staged=null;
+  const selectedStage=new Set();
   const fail=condition=>{if(!condition)throw Error("Invalid or incompatible PRIVATE lab catalog");};
   const exact=(x,keys)=>x!==null&&typeof x==="object"&&!Array.isArray(x)&&
     Object.keys(x).length===keys.length&&keys.every(k=>Object.hasOwn(x,k));
@@ -291,36 +292,82 @@
     notify("status","Selected scenario deleted from local memory.");
   }
   function clearStage(){
-    staged=null;$("staging").hidden=true;$("stageRows").replaceChildren();
+    selectedStage.clear();staged=null;$("staging").hidden=true;$("stageRows").replaceChildren();
     $("stageSummary").textContent="";
   }
   function showStage(){
     if(!staged){clearStage();return;}
+    selectedStage.clear();
     const earlier=new Map(items.map(r=>[r.scenario_id,r]));
     const after=new Map(staged.map(r=>[r.scenario_id,r]));
     const changes=[];
     for(const [id,row] of after){
-      changes.push([id,!earlier.has(id)?"ADDED":
-        JSON.stringify(earlier.get(id))===JSON.stringify(row)?"UNCHANGED":"CHANGED"]);
+      const old=earlier.get(id);
+      const status=!old?"ADDED":JSON.stringify(old)===JSON.stringify(row)?"UNCHANGED":"CHANGED";
+      const detail=!old?"New private design":
+        status==="UNCHANGED"?"Same declared source fields":
+        ["name","description","targets","expected_findings"].filter(key=>
+          JSON.stringify(old[key])!==JSON.stringify(row[key])).join(", ")+" changed";
+      changes.push([id,status,detail]);
     }
-    for(const id of earlier.keys())if(!after.has(id))changes.push([id,"ABSENT (not fixed)"]);
-    const current=items.length,proposed=staged.length;
+    for(const id of earlier.keys())if(!after.has(id))
+      changes.push([id,"ABSENT (not fixed)","Absent from imported source; retained by selective merge"]);
     $("staging").hidden=false;
-    $("stageSummary").textContent="Current "+current+" scenarios → proposed "+proposed+
-      ". "+changes.filter(([,state])=>state==="ADDED").length+" added; "+
-      changes.filter(([,state])=>state==="CHANGED").length+" changed; "+
-      changes.filter(([,state])=>state.startsWith("ABSENT")).length+
-      " absent. Original scenario IDs are visible only in this PRIVATE preview.";
+    $("mergeStage").disabled=fictional;
+    $("stageSummary").textContent="Current "+items.length+" scenarios → proposed "+
+      staged.length+". "+changes.filter(([,s])=>s==="ADDED").length+" added; "+
+      changes.filter(([,s])=>s==="CHANGED").length+" changed; "+
+      changes.filter(([,s])=>s.startsWith("ABSENT")).length+" absent. "+
+      (fictional?"Selective merge disabled for fictional demo. ":"")+
+      "No imported row is applied automatically.";
     const table=document.createElement("table");
-    table.innerHTML="<thead><tr><th>PRIVATE scenario ID</th><th>Human diff</th></tr></thead>";
+    table.innerHTML="<thead><tr><th>Select</th><th>PRIVATE ID</th><th>Change</th><th>Source fields</th></tr></thead>";
     const body=document.createElement("tbody");
-    for(const [id,status] of changes.sort(([a],[b])=>a.localeCompare(b))){
-      const row=document.createElement("tr");
-      for(const value of [id,status]){const cell=document.createElement("td");
-        cell.textContent=value;row.append(cell);}
+    for(const [id,status,detail] of changes.sort(([a],[b])=>a.localeCompare(b))){
+      const row=document.createElement("tr"),td=document.createElement("td");
+      if((status==="ADDED"||status==="CHANGED")&&!fictional){
+        const input=document.createElement("input");
+        input.type="checkbox";input.title="Select PRIVATE scenario for local merge";
+        input.addEventListener("change",()=>{
+          if(input.checked)selectedStage.add(id);else selectedStage.delete(id);
+        });
+        td.append(input);
+      }else td.textContent="—";
+      row.append(td);
+      for(const value of [id,status,detail]){
+        const cell=document.createElement("td");cell.textContent=value;row.append(cell);
+      }
       body.append(row);
     }
     table.append(body);$("stageRows").replaceChildren(table);
+  }
+  function mergeStage(){
+    if(!staged||fictional||!selectedStage.size){
+      notify("status","Select one or more ADDED/CHANGED non-fictional source entries.",true);return;
+    }
+    try{
+      const old=new Map(items.map(r=>[r.scenario_id,r]));
+      const imported=new Map(staged.map(r=>[r.scenario_id,r]));
+      fail([...selectedStage].every(id=>{
+        const row=imported.get(id);return row&&
+          (!old.has(id)||JSON.stringify(old.get(id))!==JSON.stringify(row));
+      }));
+      const merged=items.map(row=>selectedStage.has(row.scenario_id)?
+        imported.get(row.scenario_id):row);
+      for(const candidate of staged){
+        if(selectedStage.has(candidate.scenario_id)&&!old.has(candidate.scenario_id))
+          merged.push(candidate);
+      }
+      const result=validateCatalog(documentCatalog(merged));
+      if(!confirm("Apply "+selectedStage.size+
+        " selected private scenario additions/updates, without deleting existing rows?"))return;
+      const count=selectedStage.size;
+      clearStage();items=result;resetEditor();render();
+      notify("status","Applied "+count+
+        " selected source entries. All other private scenarios retained; no execution.");
+    }catch(_){
+      notify("status","HOLD: selection conflict or scenario limit exceeded. Existing catalog preserved.",true);
+    }
   }
   function acceptStage(){
     if(!staged)return;
@@ -424,6 +471,7 @@
     notify("exportStatus","Redacted summary downloaded; original targets and finding identifiers omitted.");
   }
   $("acceptStage").addEventListener("click",acceptStage);
+  $("mergeStage").addEventListener("click",mergeStage);
   $("rejectStage").addEventListener("click",()=>{
     clearStage();notify("status","Staged replacement discarded; original catalog preserved.");
   });
