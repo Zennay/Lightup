@@ -70,3 +70,7 @@ For **2–12 independent original source archives** with their original manifest
 ### Bulk editing, private review diff and resume
 
 The bundled original human review Studio now supports selected-row bulk human-only changes, a live old/new private follow-up diff, and private proposal re-import after closing the browser. Every imported original field is matched against the immutable exact original source digest and prior human values before replacing the local in-memory draft. The original ‘receive’ CLI still requires the original manifest, choices and agenda to accept the human proposal and publish a **new** original-schema file; the browser alone grants nothing.
+
+## Independent reviewer contributions on one original archive
+
+Multiple operators can return 2–12 separately exported PRIVATE human proposals on one **unchanged original archive** using the new [disjoint human proposal merge](MERGE-REVIEW.md). All original source digests and old human slots must still match. If two proposals touch the same original slot, the entire batch HOLDs before any output is written: there is no silently chosen winner. A single owner-private atomic ZIP contains a newly merged ORIGINAL-schema human choices JSON, scriptless review and private source manifest, not a grant or assessment result.
