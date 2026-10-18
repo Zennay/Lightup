@@ -7,7 +7,6 @@ admission; never dispatches tools, models, scans or network requests.
 from __future__ import annotations
 
 import argparse
-from datetime import datetime, timezone
 from hashlib import sha256
 from html import escape
 import ipaddress
@@ -79,11 +78,20 @@ def admit(endpoints: list[str]) -> tuple[str, ...]:
 def _safe_write(dir_fd: int, name: str, data: bytes) -> None:
     flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0)
     fd = os.open(name, flags, 0o600, dir_fd=dir_fd)
-    with os.fdopen(fd, "wb") as stream:
-        os.fchmod(stream.fileno(), 0o600)
-        stream.write(data)
-        stream.flush()
-        os.fsync(stream.fileno())
+    try:
+        with os.fdopen(fd, "wb") as stream:
+            os.fchmod(stream.fileno(), 0o600)
+            stream.write(data)
+            stream.flush()
+            os.fsync(stream.fileno())
+    except BaseException:
+        # This newly created file is not yet in build()'s complete-file list.
+        # Remove its partial bytes first so the outer directory cleanup works.
+        try:
+            os.unlink(name, dir_fd=dir_fd)
+        except OSError:
+            pass
+        raise
 
 
 def _html(endpoints: tuple[str, ...], digest: str) -> bytes:
