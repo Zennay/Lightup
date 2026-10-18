@@ -76,6 +76,23 @@ python3 authorization-impact/workspace_inspect.py /private/path/NEW-impact-works
 
 The inspector prints a source-redacted `REVIEW_ONLY` and exits **2** for a locally coherent packet, otherwise a generic `HOLD`/exit **3**. The manifest and hashes do not authenticate any sender, signature, customer or grant. Only then open the output `standalone.html` in a local browser (no HTTP server), import `casebook.json` with the browser's file picker, select an original source record and review its relationships. Keep the entire workspace owner-private. No browser upload, remote URL, persistent browser storage, DNS, scan, provider, grant, STOP, policy mutation or database update occurs.
 
+### Carry an exact-source PRIVATE human review with the workspace
+
+The operator who already has the separately exported **original 0600 Casebook JSON** and the recipient-confirmed human review return file can package both into one private workspace **without any live database or new authentication**:
+
+```bash
+python3 authorization-impact/prepare.py \
+  /private/path/ORIGINAL-casebook.json \
+  /private/path/NEW-impact-room \
+  --review /private/path/PRIVATE-lightup-scope-impact-review.json
+
+python3 authorization-impact/workspace_inspect.py /private/path/NEW-impact-room
+```
+
+The packager validates the original Casebook as before, then checks the PRIVATE return has exact `lightup.scope_impact_private_review.v1` schema, six literal-false authority flags, matching tenant, timestamp, original byte SHA-256, known bounded original record keys, unique human rows, allowed stage/date/reviewer/notes. It rejects malformed or stale review files **before** creating any output directory. The private return is installed as **`PRIVATE-review.json`**, mode 0600, with its SHA-256 recorded in the final workspace manifest. The read-only recipient inspector recognizes both the original four-file format and this five-file option, rechecking the exact source binding. Both modes stay `REVIEW_ONLY` (exit 2) or `HOLD` (exit 3), never actual authorization.
+
+The recipient opens the included `standalone.html`, imports `casebook.json`, then chooses **Restore PRIVATE notes** and selects `PRIVATE-review.json`. Browser file access restrictions intentionally require this manual explicit choice; the application cannot silently read another file from disk. PRIVATE notes are self-reported human activity and must never be treated as customer consent, role verification, grant evidence or an approved finding. A **freshly authenticated new Casebook export** will normally have a different `as_of` and SHA, so old human notes are **not** automatically rolled forward. [Original Change Control PR #1632](https://github.com/Zennay/Lightup/pull/1632) independently owns old/new source-change review; do not infer unchanged authority from a timestamp or checksum.
+
 ### Offline transfer workflow
 
 - **Anonymous coordination:** export counts-only JSON and share only through the intended review channel.
