@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="referrer" content="no-referrer">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-wpPFZOyxFDTkVCPSRLe+ulmbav4+u8hRIYgukbiqEiU=' 'sha256-xgqGy9wifb/2e5zKiwzwQmT2sxv99X0B8fjye+7oHMs='; style-src 'unsafe-inline'; connect-src 'none'; img-src 'none'; font-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-wpPFZOyxFDTkVCPSRLe+ulmbav4+u8hRIYgukbiqEiU=' 'sha256-B6htJimtYZGSFyfEHkQeW7hKAzfoigyrUmdCOkI5Cuw='; style-src 'unsafe-inline'; connect-src 'none'; img-src 'none'; font-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <title>LightUp · Remediation Evidence Review</title>
 <style>
 :root{font:15px/1.5 system-ui,sans-serif;color:#eef5fc;background:#0b1420;--panel:#152538;--stroke:#456178;--muted:#bdd1e0;--accent:#79e9cc}*{box-sizing:border-box}body{margin:0}header{padding:28px max(20px,calc((100% - 1180px)/2));background:#102237;border-bottom:1px solid var(--stroke)}.eyebrow{font-weight:800;letter-spacing:.14em;color:var(--accent);font-size:.75rem}h1{font-size:clamp(27px,4vw,42px);line-height:1.1;letter-spacing:-.045em;margin:5px 0}p{color:var(--muted)}main{max-width:1220px;margin:auto;padding:20px 20px 80px}.warning{padding:17px 21px;border-radius:12px;background:#382c25;border:1px solid #ad9376;color:#fff0d7}.warning strong{color:#ffe0a7}.card{border:1px solid var(--stroke);background:var(--panel);padding:19px;border-radius:14px;margin:18px 0}h2{margin:0 0 6px;font-size:1.35rem}h3{font-size:1.05rem;margin:0}label{display:block;font-weight:650;min-width:0;margin:8px 0}input,select,textarea{width:100%;font:inherit;color:#fff;background:#0b1a2b;border:1px solid #65839d;border-radius:8px;padding:10px 12px;display:block;margin:5px 0 0}input[type=checkbox]{width:auto;display:inline-block;vertical-align:middle;margin:0 8px 0 0}button{font:inherit;cursor:pointer;background:#26465b;color:#fff;border:1px solid #6a8ca5;border-radius:8px;padding:11px 15px;font-weight:700}button:hover{border-color:var(--accent)}button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid var(--accent);outline-offset:2px}.primary{background:var(--accent);color:#0a2925;border-color:var(--accent)}.row,.files{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px}.buttons{display:flex;flex-wrap:wrap;gap:10px;margin:14px 0}.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin:20px 0}.stat{background:#20384d;border-radius:10px;border:1px solid var(--stroke);padding:12px;color:var(--muted)}.stat strong{font-size:2rem;line-height:1.25;display:block;color:var(--accent)}.board{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,370px),1fr));gap:13px}.finding{padding:17px;border:1px solid #52758f;background:#13283b;border-radius:13px;min-width:0;overflow-wrap:anywhere}.finding h3{font-size:1.12rem;line-height:1.3}.detail{font-size:.8rem;margin:6px 0;color:#c1d3e2}.cues{padding:11px 11px 11px 27px;border:1px solid #856d51;background:#332a24;border-radius:8px;font-size:.85rem;color:#ffead0}.cues li+li{margin-top:5px}.field span{font-size:.85rem}.field textarea{min-height:76px;resize:vertical}#status[data-error=true]{color:#ffb9ad}#status{min-height:28px;font-weight:700}#fingerprint{overflow-wrap:anywhere;font:12px/1.6 ui-monospace,monospace;color:var(--muted)}.foot{font-size:.83rem}a{color:var(--accent)}[hidden]{display:none!important}@media print{body{background:white;color:#111}header,.warning,.files,.buttons,.field,#actions,#status{display:none!important}main{padding:0}.card,.finding{color:#000;background:#fff;border-color:#aaa;break-inside:avoid}p,.detail,.stat{color:#333}.cues{background:white;color:#000}.board{display:block}.finding{margin:10px 0}}
@@ -803,6 +803,32 @@ $('brief').addEventListener('click',()=>{
  download('lightup-evidence-coordination-private.md',lines.join('\n'),'text/markdown'); 
 });
 window.addEventListener('beforeunload',e=>{if(changed){e.preventDefault();e.returnValue='';}});
-status('Load an originally authorized five-column LightUp findings CSV to start.'); 
+status('Load an originally authorized five-column LightUp findings CSV to start.');
+/* A private, authenticated-at-export-time handoff contains a passive JSON data
+ * block. It is never a credential, consent token, grant or live status check. */
+async function preloadAuthorizedExport(){
+ const embedded=$('preloadedCsv');
+ if(!embedded)return;
+ try{
+  const payload=strictJSON(embedded.textContent);
+  if(!payload||payload.format!=='lightup.authenticated_findings_handoff_v1'||
+     typeof payload.csv_base64!=='string'||payload.csv_base64.length>1400000||
+     !/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(payload.csv_base64))
+   throw Error('Malformed private export envelope.');
+  const binary=atob(payload.csv_base64);
+  if(binary.length>LIMIT_CSV)throw Error('Preloaded export exceeds original CSV size.');
+  const raw=Uint8Array.from(binary,ch=>ch.charCodeAt(0));
+  const text=new TextDecoder('utf-8',{fatal:true}).decode(raw);
+  const parsed=engine.parseCSV(text),hash=await sourceDigest(parsed);
+  sourceHash=hash;updateSource(parsed,null);
+  status('Private original LightUp summary loaded from the interactive authenticated export. Authentication only occurred at export time; this HTML cannot verify current consent, source ownership, scope or retest.');
+ }catch(err){
+  status('Private handoff rejected: '+err.message,true);
+ }finally{
+  /* Avoid keeping a second DOM copy of selected client summaries after intake. */
+  embedded.remove();
+ }
+}
+void preloadAuthorizedExport();
 })();</script>
 </body></html>
