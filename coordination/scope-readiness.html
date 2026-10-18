@@ -34,11 +34,38 @@ table{width:100%;border-collapse:collapse}th,td{border-bottom:1px solid var(--bo
 <section class="card"><h2>2 · Review workload (never authorization)</h2>
 <div class="stats"><div class="stat"><span class="num" id="count">0</span>Drafts</div><div class="stat"><span class="num" id="unbound">0</span>Unbound source files</div><div class="stat"><span class="num" id="blockers">0</span>Open preparation tasks</div><div class="stat"><span class="num" id="overdue">0</span>Overdue action targets</div><div class="stat"><span class="num" id="roleOverlap">0</span>Client/operator label overlaps</div></div>
 </section>
+<section class="card controls" aria-label="Bulk human coordination">
+<h2>3 · Batch follow-up planner</h2>
+<p>Prepare recurring action assignments across multiple proposals. Only empty fields on incomplete paperwork tasks may be filled. Never copies prepared evidence, consent, operator decisions or grants.</p>
+<div class="two">
+<div><label for="bulkStage">Workstream</label><select id="bulkStage">
+<option value="client_evidence">Client identity and ownership preparation</option>
+<option value="scope_boundary">Scope and exclusions preparation</option>
+<option value="client_consent">Client review coordination — NOT consent</option>
+<option value="operator_review">Operator review coordination — NOT approval</option>
+<option value="window_stop">Window, risk and STOP preparation</option>
+<option value="privacy_handoff">Privacy and incident handoff preparation</option>
+</select></div>
+<div><label for="bulkAudience">Drafts to consider</label><select id="bulkAudience">
+<option value="visible">Current filtered draft queue</option>
+<option value="attached">Only drafts with source files attached</option>
+<option value="all">All drafts (including unbound HOLD)</option>
+</select></div>
+</div>
+<div class="two">
+<div><label for="bulkOwner">Unverified follow-up coordinator label (optional)</label><input id="bulkOwner" maxlength="80" autocomplete="off" placeholder="Team or coordinator"></div>
+<div><label for="bulkDue">Target date (optional)</label><input id="bulkDue" type="date"></div>
+</div>
+<label for="bulkNext">Next action template (optional, 350 characters)</label>
+<textarea id="bulkNext" maxlength="350" rows="2" placeholder="Request written asset-ownership statement through authenticated channel; never paste credentials."></textarea>
+<div class="toolbar"><button id="bulkPreview" type="button">Preview eligible changes</button><button id="bulkApply" class="primary" type="button" disabled>Apply previewed assignments</button><button id="bulkDiscard" type="button">Discard preview</button></div>
+<p id="bulkResult" role="status" aria-live="polite" class="small">No batch changes are pending. Import real Studio drafts first.</p>
+</section>
 <div class="grid">
-<section class="card"><h2>3 · Draft register</h2><label for="filter">Show drafts</label><select id="filter"><option value="all">All</option><option value="hold">Preparation incomplete</option><option value="missing">Source file not re-attached</option><option value="risk">Risk 4 proposed</option><option value="overdue">Overdue follow-up actions</option><option value="collision">Same client/operator coordinator label</option></select>
+<section class="card"><h2>4 · Draft register</h2><label for="filter">Show drafts</label><select id="filter"><option value="all">All</option><option value="hold">Preparation incomplete</option><option value="missing">Source file not re-attached</option><option value="risk">Risk 4 proposed</option><option value="overdue">Overdue follow-up actions</option><option value="collision">Same client/operator coordinator label</option></select>
 <label for="sort">Sort review queue</label><select id="sort"><option value="priority">Attention first (missing source, overdue, risk)</option><option value="name">Draft name</option><option value="due">Earliest pending action date</option></select><div class="list" id="drafts"><p>No drafts imported.</p></div></section>
-<section class="card"><h2>4 · Human coordination tasks</h2><div id="detail"><p>Select a Studio draft. You can plan review tasks and assign follow-ups; none can mark real client consent or operator approval complete.</p></div></section>
-<section class="card wide"><h2>5 · Local review handoff</h2><p>This brief is a snapshot of unresolved preparation work. All authentication, consent, scope approval, grant, risk clearance and revocation statuses are explicitly false.</p><pre class="preview" id="brief">No review yet.</pre></section>
+<section class="card"><h2>5 · Human coordination tasks</h2><div id="detail"><p>Select a Studio draft. You can plan review tasks and assign follow-ups; none can mark real client consent or operator approval complete.</p></div></section>
+<section class="card wide"><h2>6 · Local review handoff</h2><p>This brief is a snapshot of unresolved preparation work. All authentication, consent, scope approval, grant, risk clearance and revocation statuses are explicitly false.</p><pre class="preview" id="brief">No review yet.</pre></section>
 </div>
 <footer>Private draft · REVIEW_ONLY / DRAFT-HOLD · no remote assets, scripts, network services, cookies, browser persistence, account sessions, grant mutations or scanning. Source hashes detect stale local references, not signatures.</footer>
 </main>
