@@ -2,3 +2,5 @@
 .print-only{display:none}@media print{.print-only{display:block!important;break-before:page}.print-only h2{color:#000}.print-only table th,.print-only table td{color:#111;background:#fff}.print-only .print-note{color:#444}}
 
 .batch{margin:0 0 14px;width:100%;background:#253f41;border-color:#537769;color:#c6f1d3}.guidance{padding:15px;background:#1d3441;border-left:3px solid #a5d7b1;color:#d2e6ed;border-radius:5px;font-size:12px;line-height:1.7}
+
+.trend-panel{margin-bottom:18px}.trend-panel .flex{align-items:center}.trend-label{display:block;margin-bottom:5px;font-size:11px;font-weight:700;color:#ceeadd}.trend-panel input{display:block;max-width:250px;font-size:11px}.trend-stats{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:15px}.trend-stats span{padding:10px 12px;border-radius:9px;background:#263d4c;color:#cae2e2;font-size:12px}.trend-actions{margin-top:15px}@media(max-width:650px){.trend-panel .flex{display:block}.trend-panel input{max-width:100%}}@media print{.trend-panel{break-before:page}.trend-label,.trend-panel input,.trend-actions{display:none!important}}

@@ -20,7 +20,7 @@
   const CASE_KEYS = ["scenario_id", "status", "regressions", "changes"];
   const CHANGE_KEYS = ["name", "baseline", "candidate", "delta", "regression"];
   const $ = id => document.getElementById(id);
-  let report = null, selected = -1, digest = null, sourceKind = null;
+  let report = null, selected = -1, digest = null, sourceKind = null, trend = null;
   const exactKeys = (x, keys) => !!x && Object.getPrototypeOf(x) === Object.prototype &&
     Object.keys(x).length === keys.length && keys.every(k => Object.hasOwn(x, k));
   const fail = () => { throw new Error("Source structure or values do not match canonical lab CLI output."); };
@@ -220,9 +220,96 @@
     });
     child(box, "p", "Unsigned, unverified lab review data. No targets, case identities, actual permission or grant asserted.", "print-note");
   }
+
+  // Match source scenario identities internally; never export them.
+  function compareHistorical(candidate) {
+    ensure(report && report.kind === "cohort" && candidate.kind === "cohort" &&
+      report.cases.length > 0 && candidate.cases.length === report.cases.length);
+    const next = new Map(candidate.cases.map(c => [c.sourceId,c]));
+    ensure(next.size === report.cases.length);
+    const rows = report.cases.map((before,index) => {
+      const after = next.get(before.sourceId);
+      ensure(after && before.changes.length === METRICS.length &&
+        after.changes.length === METRICS.length);
+      const prev = new Map(before.changes.map(m => [m.name,m]));
+      for (const m of after.changes) ensure(prev.has(m.name) &&
+        prev.get(m.name).baseline === m.baseline);
+      const prior = new Set(before.regressions);
+      const recent = new Set(after.regressions);
+      const introduced = after.regressions.filter(x => !prior.has(x));
+      const cleared = before.regressions.filter(x => !recent.has(x));
+      const intensified = after.changes.filter(m =>
+        prior.has(m.name) && m.regression &&
+        ((HIGHER.has(m.name) && m.candidate < prev.get(m.name).candidate) ||
+         (LOWER.has(m.name) && m.candidate > prev.get(m.name).candidate))
+      ).map(m=>m.name);
+      return {index,introduced,cleared,intensified,
+        oldStatus:before.status,newStatus:after.status};
+    });
+    return {rows,status:candidate.verdict};
+  }
+  function renderHistorical() {
+    const parent = $("trend-rows"); parent.replaceChildren();
+    $("trend-results").hidden = !trend;
+    if (!trend) return;
+    const sum = key => trend.rows.reduce((n,x) => n+x[key].length,0);
+    $("trend-new").textContent = sum("introduced")+" newly reported regressions";
+    $("trend-cleared").textContent = sum("cleared")+" no longer flagged (unverified)";
+    $("trend-intensified").textContent = sum("intensified")+" further worsened metrics";
+    for (const row of trend.rows) {
+      const tr=child(parent,"tr");
+      [label(row.index),row.introduced.join(", ") || "None",
+       row.cleared.join(", ") || "None",
+       row.intensified.join(", ") || "None"].forEach(value=>child(tr,"td",value));
+    }
+  }
+  function clearHistorical() {
+    trend = null; $("trend-file").value = "";
+    $("trend-results").hidden = true; $("trend-rows").replaceChildren();
+    $("trend-status").textContent = "No follow-up report compared.";
+  }
+
+  async function loadHistorical(file) {
+    clearHistorical();
+    try {
+      ensure(report && report.kind === "cohort" && file &&
+        file.size > 0 && file.size <= 524288 &&
+        file.name.toLowerCase().endsWith(".json"));
+      const raw = await file.text();
+      ensure(new TextEncoder().encode(raw).length <= 524288);
+      const next = readReport(JSON.parse(raw));
+      trend = compareHistorical(next);
+      $("trend-status").textContent = "Informational comparison only. Original source " +
+        report.verdict + ", follow-up source " + next.verdict +
+        ". Neither verdict permits assessment activity.";
+      renderHistorical();
+    } catch (_) {
+      clearHistorical();
+      $("trend-status").textContent = "HOLD: source scenario set or metric baseline mismatch, or unsupported local report. No partial comparison retained.";
+    }
+  }
+  $("trend-file").addEventListener("change", e => {
+    if(e.target.files[0]) loadHistorical(e.target.files[0]);
+  });
+  $("trend-clear").addEventListener("click", clearHistorical);
+  $("trend-csv").addEventListener("click", () => {
+    if (!trend) return;
+    const cols=["case","newly_reported_regressions","no_longer_flagged_unverified",
+      "further_worsened_metrics","prior_status","follow_up_status",
+      "authorized","consent_verified","dispatch_allowed","release_allowed"];
+    const rows=[cols.map(csvCell).join(",")];
+    trend.rows.forEach(r => {
+      const cells=[label(r.index),r.introduced.join(";"),r.cleared.join(";"),
+        r.intensified.join(";"),r.oldStatus,r.newStatus,"false","false","false","false"];
+      rows.push(cells.map(csvCell).join(","));
+    });
+    download("lightup-lab-report-change-review.csv",
+      rows.join("\r\n")+"\r\n","text/csv;charset=utf-8");
+  });
   function render() { renderOverview(); renderQueue(); renderDetails(); renderPrintBrief(); }
   function reset() {
     report = null; selected = -1; digest = null; sourceKind = null;
+    clearHistorical();
     $("file").value = ""; $("board").hidden = true; $("filter").value = "all";
     $("cases").replaceChildren(); $("metrics").replaceChildren();
     alert("Local workspace cleared. No browser storage was used.");
