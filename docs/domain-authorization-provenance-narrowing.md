@@ -52,6 +52,13 @@ intentional fail-closed behavior and is not production-ready without UI
 composition and review. The review-only Readiness Desk remains available
 separately for operational inspection of legacy unbound rows.
 
+In addition, issuing and reading grants now fail closed for a **closed
+engagement** or **inactive client**. Reading the current grant requires an
+exact timezone-aware datetime rather than accepting falsy or naive arguments
+as an implicit current instant. Neither operation edits a stored grant,
+reactivates an engagement, or substitutes for the separate revocation
+kill-switch owned by #100.
+
 The binding is **administrative provenance**, not a separate signed proof of
 client consent, authorization to scan real assets, live revocation verification
 or release permission. Existing target-capable execution adapters and separate
