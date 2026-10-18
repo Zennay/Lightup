@@ -39,7 +39,7 @@
   const $ = (id) => document.getElementById(id);
   const els = {
     files: $("files"), list: $("file-list"), summary: $("file-summary"),
-    seal: $("seal"), rekey: $("rekey"), selectAll: $("select-all"), selectNone: $("select-none"), selectRoute: $("select-route"), stageFilter: $("stage-filter"),
+    seal: $("seal"), lockAfterExport: $("lock-after-export"), rekey: $("rekey"), selectAll: $("select-all"), selectNone: $("select-none"), selectRoute: $("select-route"), stageFilter: $("stage-filter"),
     password: $("seal-password"), confirm: $("seal-confirm"),
     clear: $("clear"), openFile: $("open-file"), openPassword: $("open-password"),
     unlock: $("unlock"), lock: $("lock"), recovered: $("recovered"),
@@ -383,10 +383,15 @@
         save(blob, archive ?
           "lightup-private-scope-packet-reencrypted.lightup-vault.json" :
           "lightup-private-scope-packet.lightup-vault.json");
+        const shouldLock = els.lockAfterExport.checked;
         notice((archive ? "Entire in-memory private dossier re-encrypted with fresh salt/IV. Previous downloaded files and passphrases remain usable until you delete those copies. " :
           "Selected " + outgoing.length + " file(s) encrypted; unselected local files excluded. ") +
           (route === "client-review" ? "Internal notes and preparation stages excluded. " : "Internal notes and stages encrypted. ") +
           "No identities verified or permissions created.");
+        if (shouldLock) {
+          scrub();
+          notice("Encrypted download created; readable workspace locked and in-memory file buffers cleared. Save your passphrase separately. Already downloaded copies remain on disk.");
+        }
       } finally { cleartext.fill(0); }
     });
   }
