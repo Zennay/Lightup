@@ -61,7 +61,7 @@
     for(const key of route.steps){
       const li=document.createElement("li");
       const a=document.createElement("a");
-      a.href=LINKS[key];
+      a.href=LINKS[key];a.target="_blank";a.rel="noopener";
       a.textContent=NAMES[key];
       li.append(a);list.append(li);
     }

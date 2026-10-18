@@ -282,6 +282,7 @@
         routes.append(create("span","tray-no-import","Geen bevestigde directe import in de gebundelde apps; alleen handmatige bespreking."));
       }else for(const target of doc.targets){
         const a=create("a",null,ROUTE_NAMES[target]);a.href=ROUTE_URLS[target];
+        a.target="_blank";a.rel="noopener";
         routes.append(a);
       }
       article.append(routes);
