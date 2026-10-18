@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>LightUp · Lab Candidate Matrix</title><link rel="stylesheet" href="style.css"></head>
+<body><a class="skip" href="#summary">Skip to matrix</a>
+<header><div class="topline"><span class="brand">◈ LightUp / assessment-runtime</span><span class="posture">INCUBATE · LAB ONLY · DRAFT/HOLD</span></div>
+<h1>Candidate Decision Matrix</h1><p class="lede">Compare <strong>existing, untrusted laboratory outputs</strong> without scanning, deploying or authorizing anything. Every result is a human discussion prompt, never a safety or release verdict.</p>
+<div class="hardline"><strong>NO AUTHORITY</strong><span>client consent: false · operator consent: unverified · dispatch: false · release: false</span></div></header>
+<main>
+<section class="panel"><div class="section-head"><h2 id="sources">01 / Local sources</h2><span class="eyebrow">No network · no persistence</span></div>
+<p>Choose 2–12 canonical existing <code>assessment-runtime #1515</code> cohort JSON exports (max 256 KiB each). Sources are validated together before replacing the current view. Filenames, lab IDs, targets and raw content remain in memory.</p>
+<div class="controls"><label class="filelabel">Load existing lab reports<input id="files" type="file" accept=".json,application/json" multiple></label><button id="demo" class="secondary" type="button">Explore fictional demo</button><button id="forget" class="ghost" type="button">Forget all</button></div>
+<p id="message" role="status" aria-live="polite">No source loaded. Fictional demo contains invented figures only.</p><div id="sourceLine" class="statline"></div></section>
+<section class="panel" id="summary"><div class="section-head"><h2>02 / Human review scorecards</h2><span class="eyebrow" id="sourceKind">No data</span></div>
+<p>File order is <strong>not proven chronology</strong>. Scope and policy flags stay visible separately from informational cost/performance.</p><div id="cards" class="cards"><p class="empty">Import existing reports or explore the demo.</p></div></section>
+<section class="panel"><div class="section-head"><h2>03 / Discussion thresholds</h2><span class="eyebrow">Hypothetical only</span></div>
+<p>A threshold breach asks for human discussion. A non-breach never authorizes execution or confirms safety. Controls do not alter original reports.</p>
+<div class="settings">
+<label>Maximum scope violations<input id="maxScope" type="number" min="0" max="1000000" step="1" value="0"></label>
+<label>Maximum policy violations<input id="maxPolicy" type="number" min="0" max="1000000" step="1" value="0"></label>
+<label>Minimum mean evidence quality <small>0.0–1.0</small><input id="minQuality" type="number" min="0" max="1" step=".05" value=".75"></label>
+<label>Minimum total assessed coverage<input id="minCoverage" type="number" min="0" max="1000000000" step="1" value="0"></label>
+<label>Maximum total runtime (seconds) <small>0 disables</small><input id="maxRuntime" type="number" min="0" max="1000000000000" step="1" value="0"></label>
+<label>Maximum total compute cost (USD) <small>0 disables</small><input id="maxCost" type="number" min="0" max="1000000000000" step=".01" value="0"></label>
+</div><p id="thresholdMessage" aria-live="polite" class="eyebrow"></p><div id="thresholds" class="tablewrap"></div></section>
+<section class="panel"><div class="section-head"><h2>04 / Illustrative tradeoff frontier</h2><span class="eyebrow">No ranking grants permission</span></div>
+<p>Only the selected dimensions determine Pareto comparison. <strong>Scope/policy breaches and adverse findings cannot be canceled by efficiency gains.</strong> “Not dominated” describes these untrusted numbers only.</p><fieldset><legend>Dimensions for descriptive Pareto calculation</legend>
+<label><input type="checkbox" id="dimQuality" checked> Higher mean evidence quality</label>
+<label><input type="checkbox" id="dimCoverage" checked> Higher assessed coverage</label>
+<label><input type="checkbox" id="dimRuntime" checked> Lower total runtime</label>
+<label><input type="checkbox" id="dimCost" checked> Lower total cost</label></fieldset>
+<div id="frontier" class="tablewrap"></div></section>
+<section class="panel"><div class="section-head"><h2>05 / Anonymized case inspection</h2><span class="eyebrow">Case identity stays private</span></div>
+<p>Inspect the same lab case across candidates without revealing the original case ID or target. Imported source-reported data is not independently validated evidence.</p><div class="controls"><label>Case<select id="caseSelect"><option value="">Load reports first</option></select></label><label>Metric<select id="metricSelect"></select></label></div><div id="caseDetail" class="tablewrap"></div></section>
+<section class="panel"><div class="section-head"><h2>06 / Aggregate handoffs</h2><span class="eyebrow">Privacy-minimal · review only</span></div>
+<p>Exports contain fixed metric names, aggregate figures and numbered candidate slots only. No filenames, case IDs, targets, source bytes or permission claims.</p><div class="controls"><button id="exportCSV" type="button" disabled>Export aggregate CSV</button><button id="exportJSON" type="button" class="secondary" disabled>Export review-only JSON</button><button id="print" type="button" class="ghost" disabled>Print private review</button></div>
+<p class="footnote">Matching original snapshots is not cryptographic provenance. Separate client and operator consent, action-time revocation, source-owner security repairs, independent security/privacy review, exact-HEAD hosted and permanent registered VPS CI and explicit HUMAN GO are mandatory before any real release.</p></section>
+</main><footer>LightUp · local human discussion only · no production authorization · <a href="https://github.com/Zennay/Lightup/issues/1591">Work item #1591</a></footer>
+<script src="app.js" defer></script></body></html>
