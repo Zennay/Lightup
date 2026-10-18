@@ -9,8 +9,9 @@ from __future__ import annotations
 import hashlib
 import ipaddress
 import json
+import os
 import re
-from pathlib import Path
+import stat
 
 _SCHEMA = "lightup.lab_design_catalog.v1"
 _FLAGS = ("authorized", "consent_verified", "dispatch_allowed", "release_allowed")
@@ -67,15 +68,18 @@ def read_selected_lab_design(file: str, scenario_id: str) -> dict:
     """Read bounded exact Studio v1 JSON and select one fully admitted design."""
     if type(scenario_id) is not str or _ID.fullmatch(scenario_id) is None:
         _deny()
+    fd = -1
     try:
-        source = Path(file)
-        # Private catalogs are ordinary local files, never devices, pipes,
-        # directories or symlink aliases that can unexpectedly block reads.
-        if source.is_symlink() or not source.is_file():
+        # Follow neither the final symlink nor a special-device or FIFO alias.
+        # Validate the OPEN descriptor rather than racy pathname stat().
+        flags = os.O_RDONLY | getattr(os, "O_NONBLOCK", 0)
+        flags |= getattr(os, "O_NOFOLLOW", 0)
+        fd = os.open(file, flags)
+        info = os.fstat(fd)
+        if not stat.S_ISREG(info.st_mode) or not 0 < info.st_size <= 262_144:
             _deny()
-        if not 0 < source.stat().st_size <= 262_144:
-            _deny()
-        with source.open("rb") as stream:
+        with os.fdopen(fd, "rb") as stream:
+            fd = -1
             raw = stream.read(262_145)
         if not 0 < len(raw) <= 262_144:
             _deny()
@@ -141,5 +145,8 @@ def read_selected_lab_design(file: str, scenario_id: str) -> dict:
             _deny()
         return selected
     except (OSError, UnicodeError, json.JSONDecodeError, TypeError,
-            OverflowError, RecursionError, MemoryError) as exc:
-        raise ValueError("private lab design catalog was not admitted") from exc
+            OverflowError, RecursionError, MemoryError):
+        raise ValueError("private lab design catalog was not admitted") from None
+    finally:
+        if fd >= 0:
+            os.close(fd)
