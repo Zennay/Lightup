@@ -31,9 +31,11 @@ def build() -> None:
         "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'none'; "
         "connect-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'"
     )
+    inline_style = "\n" + style + "\n"
+    inline_script = "\n" + script + "\n"
     new_csp = (
-        "default-src 'none'; script-src " + pin(script.encode("utf-8")) +
-        "; style-src " + pin(style.encode("utf-8")) +
+        "default-src 'none'; script-src " + pin(inline_script.encode("utf-8")) +
+        "; style-src " + pin(inline_style.encode("utf-8")) +
         "; img-src 'none'; connect-src 'none'; form-action 'none'; "
         "base-uri 'none'; object-src 'none'"
     )
@@ -44,8 +46,8 @@ def build() -> None:
     js = '<script defer src="./app.js"></script>'
     if markup.count(link) != 1 or markup.count(js) != 1:
         raise ValueError("expected one owned style and script reference")
-    markup = markup.replace(link, "<style>\n" + style + "\n</style>")
-    markup = markup.replace(js, "<script>\n" + script + "\n</script>")
+    markup = markup.replace(link, "<style>" + inline_style + "</style>")
+    markup = markup.replace(js, "").replace("</body>", "<script>" + inline_script + "</script>\n</body>")
     DEST.write_text(markup, encoding="utf-8")
     print(f"built {DEST.name} bytes={DEST.stat().st_size} sha256={hashlib.sha256(DEST.read_bytes()).hexdigest()}")
 
