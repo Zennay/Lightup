@@ -333,7 +333,18 @@ def main_assess(argv: list[str] | None = None) -> int:
     from .labfixtures import PROFILES, expected_findings
 
     parser = argparse.ArgumentParser(prog="lightup-labassess")
-    parser.add_argument("url", nargs="?", default="http://127.0.0.1:18080/")
+    parser.add_argument(
+        "url", nargs="?", default=None,
+        help="one isolated lab HTTP(S) URL; uses the loopback default only with no other target options",
+    )
+    parser.add_argument(
+        "--target", action="append", default=[], metavar="LAB_URL",
+        help="another isolated lab HTTP(S) URL; repeat for multiple lab endpoints",
+    )
+    parser.add_argument(
+        "--targets-file", metavar="PATH",
+        help="local UTF-8 text file with one isolated lab URL per line (# comments allowed)",
+    )
     parser.add_argument("--db", default="lightup-lab.db")
     parser.add_argument("--gateway-config",
                         help="JSON gateway config (see config/gateway.example.json); "
@@ -347,17 +358,41 @@ def main_assess(argv: list[str] | None = None) -> int:
 
     expected = expected_findings(PROFILES[args.profile]) if args.profile else None
     try:
+        endpoints = ([args.url] if args.url is not None else []) + list(args.target)
+        if args.targets_file is not None:
+            # Local, bounded manifest only; no network discovery or implicit
+            # permission. LabScenario validates ALL endpoints before planning.
+            with Path(args.targets_file).open("rb") as source:
+                raw = source.read(16_385)
+            if len(raw) > 16_384:
+                raise ValueError("lab targets file exceeds 16 KiB")
+            lines = raw.decode("utf-8")
+            if "\x00" in lines:
+                raise ValueError("lab targets file contains NUL bytes")
+            endpoints.extend(
+                line.strip() for line in lines.splitlines()
+                if line.strip() and not line.lstrip().startswith("#")
+            )
+        if not endpoints and args.targets_file is None:
+            endpoints = ["http://127.0.0.1:18080/"]
+        if (not endpoints or len(endpoints) > 16
+                or any(not endpoint or len(endpoint) > 2048 for endpoint in endpoints)):
+            raise ValueError("lab assessment requires 1–16 bounded explicit lab URLs")
+        if len(set(endpoints)) != len(endpoints):
+            raise ValueError("duplicate lab endpoint is not allowed")
+        if args.profile and len(endpoints) != 1:
+            raise ValueError("--profile ground truth applies only to one lab endpoint")
         scenario = LabScenario(
             scenario_id="lab-assess",
             name="Planner-driven lab assessment",
-            targets=(args.url,),
+            targets=tuple(endpoints),
             expected_findings=expected,
         )
         gateway = (load_gateway(args.gateway_config) if args.gateway_config
-                   else scripted_demo_gateway((args.url,)))
+                   else scripted_demo_gateway(tuple(endpoints)))
         result = run_planned_assessment(gateway, scenario, args.db)
-    except (GatewayConfigurationError, ModelProviderError, PlanRejected,
-            PermissionError, ValueError) as exc:
+    except (OSError, UnicodeError, GatewayConfigurationError, ModelProviderError,
+            PlanRejected, PermissionError, ValueError) as exc:
         print(json.dumps({"error": str(exc)}, indent=2))
         return 2
 
