@@ -153,7 +153,10 @@ async function load(){
 function listen(id,fn){$(id).addEventListener("click",async()=>{try{await fn();}catch(e){notice(e.message||"Invalid PRIVATE source",true);}});}
 listen("briefLoad",load);listen("briefForget",()=>{if(confirm("Forget all locally held PRIVATE HUMAN briefing data?"))clear();});
 listen("briefPrint",()=>{if(!packet)fail("Load original source-bound brief first");
- if(confirm("Print this PRIVATE unverified HUMAN brief? Ensure printer/output are confidential."))window.print();});
+ if(confirm("Print this PRIVATE unverified HUMAN brief? Ensure printer/output are confidential.")){
+  for(const details of document.querySelectorAll(".briefCard details"))details.open=true;
+  window.print();
+ }});
 $("briefSearch").addEventListener("input",render);
 $("briefFilter").addEventListener("change",render);
 clear();
