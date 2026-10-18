@@ -13,6 +13,7 @@ from pathlib import Path
 import stat
 
 from board_html import render
+from engagement_inbox import build as build_engagement_inbox, render as render_engagement_inbox
 from window_review import (
     AUTHORITY_FLAGS, ReviewHold, ensure_private_destination, ics,
     private_publish,
@@ -29,7 +30,8 @@ def _bytes(source: dict) -> bytes:
     return payload
 
 
-def create_workspace(destination: Path, agenda: dict, *, original_bytes: bytes) -> dict:
+def create_workspace(destination: Path, agenda: dict, *, original_bytes: bytes,
+                     source_casebook: dict) -> dict:
     """Publish an all-from-one-source operator workspace, no final overwrite.
 
     The new, private 0700 directory is only considered complete when its
@@ -43,8 +45,10 @@ def create_workspace(destination: Path, agenda: dict, *, original_bytes: bytes) 
     if (type(original_bytes) is not bytes or not 0 < len(original_bytes) <= 512 * 1024
             or sha256(original_bytes).hexdigest() != agenda["original_source_sha256"]):
         raise ReviewHold("exact original private Casebook bytes do not match source")
+    inbox = build_engagement_inbox(source_casebook, agenda)
     files = {
         "original-private-casebook.json": original_bytes,
+        "human-engagement-inbox.html": render_engagement_inbox(inbox),
         "human-review-board.html": render(agenda),
         "human-review-agenda.json": _bytes(agenda),
         "human-review-calendar.ics": ics(agenda),
@@ -66,6 +70,7 @@ def create_workspace(destination: Path, agenda: dict, *, original_bytes: bytes) 
             for name in filenames
         },
         "declared_counts": agenda["declared_counts"],
+        "engagement_inbox_counts": inbox["declared_counts"],
         **dict.fromkeys(AUTHORITY_FLAGS, False),
     }
     files["human-review-manifest.json"] = _bytes(manifest)
