@@ -28,6 +28,14 @@ table{width:100%;border-collapse:collapse}th,td{border-bottom:1px solid var(--bo
 <div><label for="sourceUpload">LightUp Studio v1 JSON (maximum 64 KiB per file)</label><input type="file" id="sourceUpload" accept=".json,application/json" multiple><p class="small">Up to 20 bounded draft revisions. Source SHA-256 fingerprints are recalculated from exact imported file bytes. No network/DNS/storage.</p></div>
 <div><label for="restoreInput">Or restore a private readiness workspace JSON</label><input type="file" id="restoreInput" accept=".json,application/json"><p class="small">Restores local tracking only. Original Studio source files must be re-attached to match their SHA-256. No imported review is trusted as an authorization record.</p></div>
 </div>
+<div class="card" style="background:#0a192b;border-radius:10px;margin:12px 0">
+<h3>Merge separately saved private workspaces (review-only)</h3>
+<p>Combine separate offline action registers without overwriting any existing task. Exact same-source conflicts HOLD; new records arrive source-unbound.</p>
+<label for="mergeInput">Choose a second private workspace JSON (maximum 256 KiB)</label>
+<input id="mergeInput" type="file" accept=".json,application/json">
+<div class="toolbar"><button id="mergeApply" type="button" disabled>Apply conflict-free merge</button><button id="mergeDiscard" type="button">Discard merge preview</button></div>
+<p id="mergeStatus" role="status" aria-live="polite" class="small">No merge staged. Conflicting records must be manually reconciled; no silent replacement.</p>
+</div>
 <div class="toolbar"><button id="save" type="button" class="primary" disabled>Save private JSON</button><button id="csv" type="button" disabled>Export action CSV</button><button id="print" type="button" disabled>Print review brief</button><button id="reset" type="button">Clear workspace</button></div>
 <p id="message" role="status" aria-live="polite">Open a Studio draft or restore a saved workspace. Local browser memory only.</p>
 </section>
