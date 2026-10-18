@@ -24,9 +24,11 @@ from archive import Hold, read_regular, decode_json, encode, publish
 from packet import _entry
 from lightup_review import compare as original_compare
 from lightup_composed_review import _private_output_folder
+from lightup_composed_candidate_portal import render as _landing
 
 
 MATRIX_SHA256 = "5e14ac1bffffa46007dfcbff7a31905abeda93f2d4547021daf0565ecc4fc4df"
+TRENDS_SHA256 = "b8d30f90d3548e8de8f97cfa58631314a8856e9e2e5f8f904125aa235fa0585f"
 COHORT_BYTES = 262144
 MAX_CANDIDATES = 12
 REPORT_KEYS = frozenset({
@@ -59,6 +61,8 @@ def _read_candidate_report(path: Path, comparator_return: int):
 def prepare(args):
     if not 2 <= len(args.candidate) <= MAX_CANDIDATES:
         raise Hold("candidate batch must select 2–12 original completed cohorts")
+    if args.include_trends and len(args.candidate) < 3:
+        raise Hold("original longitudinal view requires 3–12 cohorts")
     if not re.fullmatch(r"[A-Za-z][A-Za-z0-9_-]{0,39}", args.prefix):
         raise Hold("invalid private output prefix")
     output = _private_output_folder(args.output_dir)
@@ -81,6 +85,12 @@ def prepare(args):
         str(ROOT / "assessment-candidates" / "standalone.html"), 131072)
     if sha256(original_matrix).hexdigest() != MATRIX_SHA256:
         raise Hold("original Candidate Matrix source owner asset has changed")
+    original_trends = None
+    if args.include_trends:
+        original_trends = read_regular(
+            str(ROOT / "assessment-trends" / "standalone.html"), 131072)
+        if sha256(original_trends).hexdigest() != TRENDS_SHA256:
+            raise Hold("original Longitudinal Trends source owner asset has changed")
     with TemporaryDirectory(prefix=".lightup-candidate-batch-", dir=output) as temp:
         stage = Path(temp)
         report_bytes = []
@@ -119,6 +129,7 @@ def prepare(args):
             "candidate_count": len(records),
             "candidates": records,
             "matrix_source_sha256": MATRIX_SHA256,
+            "trends_source_sha256": TRENDS_SHA256 if original_trends else None,
             **{key: False for key in NO_AUTH},
         }
         canonical_index = encode(index)
@@ -137,6 +148,9 @@ def prepare(args):
             _entry(zf, "README.txt", instructions)
             _entry(zf, "index.json", canonical_index)
             _entry(zf, "standalone.html", original_matrix)
+            if original_trends is not None:
+                _entry(zf, "trends.html", original_trends)
+            _entry(zf, "index.html", _landing(original_trends is not None))
             for slot, payload in enumerate(report_bytes, 1):
                 _entry(zf, f"reports/candidate-{slot:02d}.json", payload)
         result_zip = package.getvalue()
@@ -146,7 +160,9 @@ def prepare(args):
                                         (*report_bytes, canonical_index, result_zip)):
             publish(destination, payload)
     print(f"ORIGINAL_CANDIDATE_MATRIX_READY — {'HOLD' if any_hold else 'REVIEW_ONLY'}")
-    print(f"Prepared {len(records)} original finished candidate reports and original Matrix.")
+    print(f"Prepared {len(records)} original completed candidate reports and exact source Matrix.")
+    if original_trends is not None:
+        print("Original unchanged longitudinal Trends browser is included for historical human review.")
     print("Original private reports are unsigned; none grants execution, GO or consent.")
     return 3 if any_hold else 2
 
@@ -159,6 +175,8 @@ def main(argv=None):
     parser.add_argument("baseline", help="Existing original completed baseline cohort JSON array")
     parser.add_argument("--candidate", action="append", default=[], required=True,
                         help="Existing completed candidate cohort file, repeat 2–12 times")
+    parser.add_argument("--include-trends", action="store_true",
+                        help="Bundle unchanged original 3–12-report longitudinal Trends app")
     parser.add_argument("--output-dir", required=True, help="Existing privately owned directory (0700)")
     parser.add_argument("--prefix", default="lightup-candidates", help="Unused ASCII output prefix")
     args = parser.parse_args(argv)

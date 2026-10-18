@@ -124,6 +124,27 @@ browser's existing file picker. The source Matrix remains responsible for
 its own canonical cross-candidate schema, scenario and baseline consistency
 checks and cannot issue a release GO.
 
+### Original historical Trends in the SAME candidate package
+
+The unchanged original [Longitudinal Trends PR #1585](https://github.com/Zennay/Lightup/pull/1585)
+at exact head c8e44767c7a24bd0575988fed98c836872f98cb0 is now physically
+available under its six original assessment-trends/ files in the same source
+checkout, with no source-owner modifications. Original standalone HTML SHA-256
+b8d30f90d3548e8de8f97cfa58631314a8856e9e2e5f8f904125aa235fa0585f.
+
+For 3–12 original finished candidate cohort revisions, add --include-trends:
+
+    python3 scripts/lightup_workbench.py candidate-matrix /private/BASE-cohort.json --candidate /private/R1.json --candidate /private/R2.json --candidate /private/R3.json --include-trends --output-dir /private/reviews --prefix historical-cohorts
+
+The owner-private ZIP contains the EXACT original Candidate Matrix and
+Longitudinal Trends standalone apps, a script-free local index.html, the
+original numbered canonical comparison JSON files and a source-byte
+fingerprint index. Open index.html only after trusted private extraction;
+each app requires an explicit original browser file import of the numbered
+reports in intended chronological order. Nothing starts a target, performs
+a new model invocation, invents metrics, changes the original source or
+issues a security/release GO. Measured original HOLD remains HOLD.
+
 All input cohorts are explicitly selected owner-private regular files,
 byte-checked before and after each original comparison and again before
 publication. Any missing/duplicate source, invalid report, source content
