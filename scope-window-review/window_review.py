@@ -222,6 +222,11 @@ def derive(casebook: dict, *, now: datetime, lead_days: int,
             planned = (boundary - timedelta(days=lead_days)).date()
             if planned <= now.date():
                 planned = now.date() + timedelta(days=1)
+        # A source HOLD is a present human attention item, even when the
+        # originally recorded grant window lies years in the future.
+        # Scheduling the HOLD does NOT move, renew, or validate that grant.
+        if hold:
+            planned = min(planned, now.date() + timedelta(days=1))
         delay = (planned - now.date()).days
         # Include immediate human HOLD/expired follow-up, and near-term upcoming windows.
         if delay <= future_days or hold or phase == "RECORDED_WINDOW_PASSED":
