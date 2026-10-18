@@ -10,7 +10,7 @@ A client sees the **meaning and limits of a proposed assessment**, with tailored
 
 The viewer derives an action queue with explicit human-only status: unanswered, question sent, answered/unverified. Dynamic questions cover elevated risk 4, lab-network interaction, missing exclusions, unresolved UTC windows, and missing purpose/stop notes. None of those states means approved. Client/operator audience can be changed without rewriting the source; printed and JSON views are bounded, generic and privacy-minimal.
 
-Operators can also **import a previously downloaded review brief back against the original exact source bytes**. Strict import rejects wrong SHA-256, conflicting count/mode/risk, any changed false security flag, altered question order/role, duplicate JSON keys and inconsistent unresolved counts **before** restoring any statuses. Restored statuses remain human self-reports, not approval. A second button creates a plain-language, role-specific `.txt` handoff with only anonymous question headings and generic counts; it cannot contain the original source labels or target values.
+Operators can also **import a previously downloaded review brief back against the original exact source bytes**. If imported role answers conflict with locally entered, non-default statuses of the **same role**, the user must explicitly confirm replacement before any role answer is modified. Rejecting confirmation leaves all human preparation unchanged; entries owned by the opposite role are never overwritten. Strict import rejects wrong SHA-256, conflicting count/mode/risk, any changed false security flag, altered question order/role, duplicate JSON keys and inconsistent unresolved counts **before** restoring any statuses. Restored statuses remain human self-reports, not approval. A second button creates a plain-language, role-specific `.txt` handoff with only anonymous question headings and generic counts; it cannot contain the original source labels or target values.
 
 The downloaded JSON file contains `kind: lightup.scope_permission_brief`, `schema_version: 1`, `state: REVIEW_ONLY_HOLD`, SHA-256 over **exact local input bytes**, counts, requested risk/mode, anonymous question codes/states and twelve literal false authority/release flags. SHA-256 is an unsigned correlation hint: it cannot identify the signer, client, owner or origin and cannot grant consent. The viewer and return desk never contact endpoints, processes tokens/credentials, edits the Studio source, records identity, captures signatures or creates a grant.
 
@@ -75,7 +75,7 @@ The revision tab displays literal aggregate changes and fixed review advice, ext
 
 ## Integration
 
-Source is isolated to four **new** paths:
+Source is isolated to eight owned documentation and app paths:
 
 - `scope-permission-brief/index.html`
 - `scope-permission-brief/style.css`
