@@ -113,7 +113,71 @@
 <pre id="unifiedPreview" class="migration" hidden></pre>
 <button id="applyUnified" disabled>Confirm atomic PRIVATE human restore</button>
 <p class="subtle">Import never writes to original Casework/Evidence modules. No target, scanner, credentials, grant, verified retest, session or actual source authentication is included.</p></section>
-<section class="card"><h2>10 · Individual local handoff</h2>
+<section class="card"><h2>10 · PRIVATE human evidence requests and owner responses</h2>
+<p>Turn original source-bound LOCAL evidence gaps into HUMAN follow-up requests. Draft an original finding-specific request, choose the evidence required and tentative human owner/date, and record an unverified HUMAN response. This desk is offline: it does not send requests, start assessments, confirm fixes, authorize testing or modify original Casework/Evidence Review source records. Keep recipient verification separate.</p>
+<p id="requestBound" class="fingerprint"></p>
+<div class="grid">
+<label>Original finding<select id="requestFinding" aria-label="Original finding to request evidence for"></select></label>
+<label>Evidence type requested<select id="requestKind">
+<option value="missing_evidence">Missing local evidence follow-up</option>
+<option value="patch_change">Patch or change record</option>
+<option value="deployment_record">Deployment record</option>
+<option value="rollback_plan">Rollback or recovery plan</option>
+<option value="retest_request">Human retest REQUEST (not authorization)</option>
+<option value="followup_question">Clarifying human question</option>
+<option value="other">Other human documentation</option>
+</select></label>
+<label>Human assignee alias<input id="requestAssignee" maxlength="120" autocomplete="off" placeholder="Unverified human owner"></label>
+<label>Optional tentative HUMAN date<input id="requestDue" type="date"></label>
+<label>Optional LOCAL file fingerprint to discuss<select id="requestLinkFile"><option value="">No current local file link</option></select></label>
+</div>
+<label>Human-only request text (do not paste credentials, raw sensitive evidence or live exploit instructions)
+<textarea id="requestInstructions" maxlength="1400" rows="3" placeholder="Describe the review document or evidence the human reviewer should provide; never infer permission."></textarea></label>
+<p><button id="requestCreate">Create PRIVATE human request draft</button></p>
+<div class="bulk"><h3>Batch original-source follow-up composer</h3>
+<p>Generate up to 40 HUMAN request drafts for original findings with the same documented local follow-up gap. Only original Casework HUMAN owner aliases are suggested. Preview exact IDs and confirm: nothing is sent.</p>
+<div class="grid">
+<label>Local follow-up gap<select id="requestBatchMode">
+<option value="critical_unlinked">Source critical/high with no LOCAL artifact fingerprint</option>
+<option value="all_unlinked">Any original finding with no LOCAL fingerprint</option>
+<option value="review_followup">Original HUMAN Evidence Review missing / needs changes</option>
+<option value="casework_blocked">Original HUMAN Casework blocked</option>
+</select></label>
+<label>Requested HUMAN evidence type<select id="requestBatchKind">
+<option value="missing_evidence">Missing local evidence</option>
+<option value="patch_change">Patch/change record</option>
+<option value="deployment_record">Deployment record</option>
+<option value="rollback_plan">Rollback plan</option>
+<option value="retest_request">Human retest request (not a permit)</option>
+<option value="followup_question">Human clarification</option>
+<option value="other">Other</option>
+</select></label>
+<label>Optional tentative human date<input type="date" id="requestBatchDue"></label>
+</div>
+<label>Human request instructions for selected ORIGINAL finding IDs<textarea id="requestBatchInstructions" maxlength="1400" rows="2" placeholder="Describe evidence needed, not executable assessment instructions."></textarea></label>
+<button id="requestBatchPreviewButton">Preview exact original HUMAN request batch</button>
+<pre id="requestBatchPreview" class="migration" hidden></pre>
+<button id="requestBatchApply" disabled>Create confirmed PRIVATE human requests</button>
+</div>
+<div class="grid">
+<label>PRIVATE requests to display<select id="requestFilter"><option value="open">Active HUMAN requests</option>
+<option value="awaiting">Requested from HUMAN owner (not automatically sent)</option>
+<option value="needs_changes">Needs HUMAN changes</option>
+<option value="unassigned">Missing HUMAN assignee</option><option value="all">All PRIVATE drafts</option></select></label>
+<div><p id="requestCount" role="status"></p></div>
+</div>
+<div class="scroll"><table><thead><tr><th>Original finding</th><th>HUMAN request type</th><th>Unverified assignee</th><th>Tentative date</th><th>HUMAN stage</th><th>Unverified human reply</th><th>Request details</th><th>Local SHA reference</th><th>Local actions</th></tr></thead><tbody id="requestRows"></tbody></table></div>
+<div class="grid">
+<div><h3>PRIVATE source-bound operator handoff</h3><p>Export request drafts and HUMAN responses as a source/declared-client-bound JSON packet; no file contents and no claimed consent.</p>
+<button id="requestExport">Download PRIVATE HUMAN requests</button></div>
+<div><h3>Restore PRIVATE HUMAN requests</h3><label>Exact original-source HUMAN request JSON<input type="file" id="requestImport" accept=".json,application/json"></label>
+<button id="requestImportButton">Confirm original-source human request import</button></div>
+<div><h3>Change original source or forget old requests</h3><p>Changing the original source locks old PRIVATE HUMAN notes. Export them separately before explicitly starting a fresh source-bound request desk.</p>
+<button id="requestClear" class="secondary">Discard PRIVATE requests / start current source</button></div>
+</div>
+<p id="requestMessage" class="notice" role="status" aria-live="polite">No original-source-bound HUMAN request was sent or authorized.</p>
+</section>
+<section class="card"><h2>11 · Individual local handoff</h2>
 <div class="grid">
 <div><h3>PRIVATE human draft</h3><p>Includes original source SHA, self-declared context, filenames, checksums, and human notes. Protect exported data separately.</p><button id="export" disabled>Export PRIVATE JSON</button></div>
 <div><h3>Restore PRIVATE draft</h3><p>Load only with the exact same original CSV, client and engagement. Reject incomplete, mismatched or elevated authority packets.</p>
@@ -126,5 +190,5 @@
 <p><button class="secondary" id="forget">Forget in-memory workspace</button></p></section>
 <p id="notice" role="status" aria-live="polite" class="notice">Private local application. No network requests, browser persistence, scanner, active target or granting of authority.</p>
 </main><footer><div class="shell">LightUp · untrusted original data and unverified human draft · no client consent or release granted</div></footer>
-<script src="../casework/remediation-engine.js"></script><script src="ledger.js"></script>
+<script src="../casework/remediation-engine.js"></script><script src="ledger.js"></script><script src="request-board.js"></script>
 </body></html>
