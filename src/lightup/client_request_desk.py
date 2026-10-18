@@ -333,6 +333,35 @@ def _export(db: DomainStore, ctx, check_session=None) -> None:
     print("Never share outside the owning client or treat as authorization.")
 
 
+def _studio_handoff() -> None:
+    """Review a constrained Studio proposal privately; never submit it."""
+    from .client_studio_handoff import prepare_studio_handoff, save_studio_handoff
+
+    source = _ask("Existing local Studio JSON file: ", max_chars=2048)
+    if not source:
+        raise ClientRequestError("a Studio proposal file is required")
+    packet = prepare_studio_handoff(source)
+    print("\nCOMPLETE STUDIO HANDOFF (OFFLINE, NO CLIENT GRANT)")
+    print("Proposal: " + _terminal_text(packet["proposal"]["proposal_name"]))
+    print("Exact source-file SHA-256 (unsigned): " + packet["source_file_sha256"])
+    print("Native submission: " +
+          ("HOLD: restrictions not persistable" if packet["held_for_native_submission"]
+           else "No automatic HOLD; independent authenticated review still needed"))
+    for item in packet["held_constraints"]:
+        print("  " + item["code"] + ": " + item["reason"])
+    print("This packet preserves the full scope/exclusions/times/lab activities.")
+    destination = _ask(
+        "New private .html or .json handoff location (Enter cancels): ",
+        max_chars=2048,
+    )
+    if not destination:
+        print("No report saved and no request submitted.")
+        return
+    save_studio_handoff(Path(destination).expanduser(), packet)
+    print("Private local review dossier saved: " + destination)
+    print("No LightUp request, operator decision, grant or scan was created.")
+
+
 def _show(db: DomainStore, ctx) -> None:
     import json
 
@@ -375,6 +404,7 @@ def main(argv: list[str] | None = None) -> int:
         "4": ("Revise a rejected request", lambda: _revise(db, ctx, check_session=check_session)),
         "5": ("Inspect one own request", lambda: _show(db, ctx)),
         "6": ("Export private read-only HTML timeline", lambda: _export(db, ctx, check_session=check_session)),
+        "7": ("Full Studio proposal HOLD handoff (HTML/JSON)", _studio_handoff),
     }
     while True:
         print("\n" + " | ".join(key + ": " + label for key, (label, _) in choices.items()))
