@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-wpPFZOyxFDTkVCPSRLe+ulmbav4+u8hRIYgukbiqEiU=' 'sha256-kbhQLFmosFPMuAGK+7lRobHlqWBvazc0c0/kiN8npGU='; style-src 'sha256-hA+qS4JgEeiSo2ydJqQCfAY03HQj9umy5aU0okqAMWg='; connect-src 'none'; img-src 'none'; font-src 'none'; form-action 'none'; frame-src 'none'; base-uri 'none'; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-wpPFZOyxFDTkVCPSRLe+ulmbav4+u8hRIYgukbiqEiU=' 'sha256-Vl3TSZWsRcw96DU2/FS8FCB7eP7VEOW4N8AiDDZEQZ4=' 'sha256-Kr1kWrdifwloWV5C8fOx/thJiM6F8Js/JuAQlMouboo='; style-src 'sha256-hA+qS4JgEeiSo2ydJqQCfAY03HQj9umy5aU0okqAMWg='; connect-src 'none'; img-src 'none'; font-src 'none'; form-action 'none'; frame-src 'none'; base-uri 'none'; object-src 'none'">
 <title>LightUp · Private Evidence Artifact Ledger</title>
 <style>:root{color-scheme:dark;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-size:15px;background:#0b1220;color:#f2f5fd}*{box-sizing:border-box}body{margin:0;line-height:1.55}header{background:linear-gradient(122deg,#131f32,#162f3e);border-bottom:1px solid #36556a;padding:3.4rem 0 2.4rem}.shell{max-width:1240px;margin:0 auto;padding:0 1.5rem}.eyebrow{font-size:.75rem;font-weight:750;letter-spacing:.18em;color:#8cdbca;text-transform:uppercase}h1{font-size:clamp(2rem,4vw,3.3rem);line-height:1.12;margin:.4rem 0}h2{font-size:1.25rem;margin:.1rem 0 .7rem}h3{font-size:1rem;margin:.2rem 0}p{max-width:88ch;color:#c9d9e7}header p{max-width:88ch}.pill{display:inline-block;font-size:.75rem;letter-spacing:.04em;color:#c9dffa;border:1px solid #55718a;border-radius:20px;padding:.3rem .85rem;margin-top:1rem}main{padding-top:1.8rem!important;padding-bottom:2rem!important}.card{border:1px solid #33495e;border-radius:15px;background:#162337;padding:1.6rem;margin-bottom:1.2rem;box-shadow:0 12px 42px #0002}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:1.2rem}.grid>div{border:1px solid #33495e;border-radius:10px;padding:1rem}label{font-weight:600;display:flex;flex-direction:column;gap:.4rem}input,select,textarea{background:#0b1525;color:#f0f5fb;border:1px solid #53677f;border-radius:8px;padding:.7rem;font:inherit;width:100%;min-width:0}input:focus,textarea:focus,select:focus,button:focus-visible{outline:2px solid #6adac3;outline-offset:2px}button{cursor:pointer;border:1px solid #69dfc6;color:#0b1e25;background:#78e0ca;padding:.68rem .9rem;border-radius:8px;font-weight:700;font:inherit;min-height:40px;margin:.2rem .3rem .2rem 0}button:hover:not(:disabled){background:#a0f4e5}button:disabled,input:disabled{opacity:.45;cursor:not-allowed}.secondary{background:transparent;color:#c5ddeb;border-color:#668699}.subtle{font-size:.85rem;color:#aabfce}.fingerprint{word-break:break-all;font-family:ui-monospace,monospace;font-size:.75rem}.scroll{overflow:auto;max-width:100%}table{width:100%;min-width:1050px;border-collapse:collapse;text-align:left;font-size:.86rem}th,td{padding:.65rem;vertical-align:top;border-top:1px solid #324860}td:nth-child(3){font-family:ui-monospace,monospace;white-space:nowrap;color:#a7e6e2}td button{font-size:.77rem;padding:.3rem .45rem;display:block}.search{margin:1rem 0 1.2rem}.alert{border:1px solid #f5acaa;background:#53242c;padding:1rem;border-radius:10px;color:#ffe4de}.notice{border:1px solid #3b806f;background:#133b3a;padding:1rem;border-radius:10px;color:#d0f6ee}footer{border-top:1px solid #2a4254;color:#b2c4d2;padding:1.5rem 0;font-size:.8rem}@media(max-width:580px){.card{padding:1rem}.shell{padding:0 1rem}header{padding-top:2rem}}
 .check{display:flex;flex-direction:row;align-items:flex-start;gap:.85rem;margin:1rem 0;font-weight:450}.check input{width:1.25rem;flex:0 0 1.25rem;margin-top:.25rem}.migration{white-space:pre-wrap;overflow-wrap:anywhere;background:#0a1725;border:1px solid #52758a;border-radius:9px;padding:1rem;max-height:32rem;overflow:auto;font-family:ui-monospace,monospace;font-size:.82rem;color:#d7f5ed}
@@ -117,7 +117,71 @@
 <pre id="unifiedPreview" class="migration" hidden></pre>
 <button id="applyUnified" disabled>Confirm atomic PRIVATE human restore</button>
 <p class="subtle">Import never writes to original Casework/Evidence modules. No target, scanner, credentials, grant, verified retest, session or actual source authentication is included.</p></section>
-<section class="card"><h2>10 · Individual local handoff</h2>
+<section class="card"><h2>10 · PRIVATE human evidence requests and owner responses</h2>
+<p>Turn original source-bound LOCAL evidence gaps into HUMAN follow-up requests. Draft an original finding-specific request, choose the evidence required and tentative human owner/date, and record an unverified HUMAN response. This desk is offline: it does not send requests, start assessments, confirm fixes, authorize testing or modify original Casework/Evidence Review source records. Keep recipient verification separate.</p>
+<p id="requestBound" class="fingerprint"></p>
+<div class="grid">
+<label>Original finding<select id="requestFinding" aria-label="Original finding to request evidence for"></select></label>
+<label>Evidence type requested<select id="requestKind">
+<option value="missing_evidence">Missing local evidence follow-up</option>
+<option value="patch_change">Patch or change record</option>
+<option value="deployment_record">Deployment record</option>
+<option value="rollback_plan">Rollback or recovery plan</option>
+<option value="retest_request">Human retest REQUEST (not authorization)</option>
+<option value="followup_question">Clarifying human question</option>
+<option value="other">Other human documentation</option>
+</select></label>
+<label>Human assignee alias<input id="requestAssignee" maxlength="120" autocomplete="off" placeholder="Unverified human owner"></label>
+<label>Optional tentative HUMAN date<input id="requestDue" type="date"></label>
+<label>Optional LOCAL file fingerprint to discuss<select id="requestLinkFile"><option value="">No current local file link</option></select></label>
+</div>
+<label>Human-only request text (do not paste credentials, raw sensitive evidence or live exploit instructions)
+<textarea id="requestInstructions" maxlength="1400" rows="3" placeholder="Describe the review document or evidence the human reviewer should provide; never infer permission."></textarea></label>
+<p><button id="requestCreate">Create PRIVATE human request draft</button></p>
+<div class="bulk"><h3>Batch original-source follow-up composer</h3>
+<p>Generate up to 40 HUMAN request drafts for original findings with the same documented local follow-up gap. Only original Casework HUMAN owner aliases are suggested. Preview exact IDs and confirm: nothing is sent.</p>
+<div class="grid">
+<label>Local follow-up gap<select id="requestBatchMode">
+<option value="critical_unlinked">Source critical/high with no LOCAL artifact fingerprint</option>
+<option value="all_unlinked">Any original finding with no LOCAL fingerprint</option>
+<option value="review_followup">Original HUMAN Evidence Review missing / needs changes</option>
+<option value="casework_blocked">Original HUMAN Casework blocked</option>
+</select></label>
+<label>Requested HUMAN evidence type<select id="requestBatchKind">
+<option value="missing_evidence">Missing local evidence</option>
+<option value="patch_change">Patch/change record</option>
+<option value="deployment_record">Deployment record</option>
+<option value="rollback_plan">Rollback plan</option>
+<option value="retest_request">Human retest request (not a permit)</option>
+<option value="followup_question">Human clarification</option>
+<option value="other">Other</option>
+</select></label>
+<label>Optional tentative human date<input type="date" id="requestBatchDue"></label>
+</div>
+<label>Human request instructions for selected ORIGINAL finding IDs<textarea id="requestBatchInstructions" maxlength="1400" rows="2" placeholder="Describe evidence needed, not executable assessment instructions."></textarea></label>
+<button id="requestBatchPreviewButton">Preview exact original HUMAN request batch</button>
+<pre id="requestBatchPreview" class="migration" hidden></pre>
+<button id="requestBatchApply" disabled>Create confirmed PRIVATE human requests</button>
+</div>
+<div class="grid">
+<label>PRIVATE requests to display<select id="requestFilter"><option value="open">Active HUMAN requests</option>
+<option value="awaiting">Requested from HUMAN owner (not automatically sent)</option>
+<option value="needs_changes">Needs HUMAN changes</option>
+<option value="unassigned">Missing HUMAN assignee</option><option value="all">All PRIVATE drafts</option></select></label>
+<div><p id="requestCount" role="status"></p></div>
+</div>
+<div class="scroll"><table><thead><tr><th>Original finding</th><th>HUMAN request type</th><th>Unverified assignee</th><th>Tentative date</th><th>HUMAN stage</th><th>Unverified human reply</th><th>Request details</th><th>Local SHA reference</th><th>Local actions</th></tr></thead><tbody id="requestRows"></tbody></table></div>
+<div class="grid">
+<div><h3>PRIVATE source-bound operator handoff</h3><p>Export request drafts and HUMAN responses as a source/declared-client-bound JSON packet; no file contents and no claimed consent.</p>
+<button id="requestExport">Download PRIVATE HUMAN requests</button></div>
+<div><h3>Restore PRIVATE HUMAN requests</h3><label>Exact original-source HUMAN request JSON<input type="file" id="requestImport" accept=".json,application/json"></label>
+<button id="requestImportButton">Confirm original-source human request import</button></div>
+<div><h3>Change original source or forget old requests</h3><p>Changing the original source locks old PRIVATE HUMAN notes. Export them separately before explicitly starting a fresh source-bound request desk.</p>
+<button id="requestClear" class="secondary">Discard PRIVATE requests / start current source</button></div>
+</div>
+<p id="requestMessage" class="notice" role="status" aria-live="polite">No original-source-bound HUMAN request was sent or authorized.</p>
+</section>
+<section class="card"><h2>11 · Individual local handoff</h2>
 <div class="grid">
 <div><h3>PRIVATE human draft</h3><p>Includes original source SHA, self-declared context, filenames, checksums, and human notes. Protect exported data separately.</p><button id="export" disabled>Export PRIVATE JSON</button></div>
 <div><h3>Restore PRIVATE draft</h3><p>Load only with the exact same original CSV, client and engagement. Reject incomplete, mismatched or elevated authority packets.</p>
@@ -1145,6 +1209,311 @@ bind('forget','click',()=>{if(confirm('Forget all original findings and local hu
  for(const id of ['client','engagement','filter','original','newSource','addFiles','privateImport','caseworkImport','evidenceImport','unifiedImport','verify'])$(id).value='';
  $('finding').replaceChildren();render();message('Local workspace forgotten. Previously downloaded files are not deleted.',false);
 }});
+/* Stable read-only bridge to independent PRIVATE HUMAN request board.
+   It cannot mutate original sources or authority decisions. */
+window.LightUpArtifactLedgerBridge=Object.freeze({
+ context(){
+  return Object.freeze({
+   sha:state.sha,client:state.client,engagement:state.engagement,
+   findings:state.findings.map(f=>({...f})),
+   artifacts:state.rows.map(r=>({finding_id:r.finding_id,sha256:r.sha256,
+    file_name:r.file_name,human_stage:r.human_stage})),
+   casework:state.casework?state.findings.map(f=>({...state.casework.get(f.finding_id)})):null,
+   evidence:state.evidence?state.findings.map(f=>({...state.evidence.get(f.finding_id)})):null
+  });
+ },
+ strictJSON,download,csvCell,
+});
+const notifyRequestBoard=()=>window.dispatchEvent(new Event('lightup-original-human-context'));
+const originalRenderSummary=renderSummary;
+renderSummary=function(){originalRenderSummary();notifyRequestBoard();};
+
+render();
+})();</script><script>/* LightUp PRIVATE Evidence Follow-up Desk.
+ * HUMAN planning only. This module can read but never write source-owner Casework,
+ * Evidence Review, target/network APIs, scans, retests or authorization. */
+(function(){
+'use strict';
+const B=window.LightUpArtifactLedgerBridge;
+if(!B)throw Error('Original source-bound Artifact Ledger bridge required.');
+const $=id=>document.getElementById(id);
+const FLAGS=['authenticated','tenant_verified','source_authorized','assessment_authorized','grant','client_consent','operator_consent','execution','scan','audit_verdict','retest_verified','release'];
+const KINDS=['missing_evidence','patch_change','deployment_record','rollback_plan','retest_request','followup_question','other'];
+const STAGES=['draft','requested_human','submitted_unverified','needs_changes','closed_human'];
+const MAX_ROWS=200,MAX_BATCH=40,MAX_FILE=1048576;
+const FIELDS=['request_id','finding_id','request_kind','assignee','due_date','instructions','linked_sha256','human_stage','human_response','created_utc','updated_utc'];
+const state={binding:null,requests:[],preview:null,filter:'open'};
+function problem(t){throw Error(t);}
+function alert(t,error=false){$('requestMessage').textContent=t;$('requestMessage').dataset.error=String(error);}
+function exactKeys(o,keys){
+ return o&&Object.getPrototypeOf(o)===Object.prototype&&
+ Object.keys(o).length===keys.length&&Object.keys(o).every(x=>keys.includes(x));
+}
+function str(s,max,name,required=false){
+ if(typeof s!=='string'||s.length>max||s.includes('\0')||
+   /[\u202a-\u202e\u2066-\u2069]/.test(s)||(required&&!s.trim()))problem('Invalid PRIVATE '+name+'.');
+ return s;
+}
+function date(d){
+ if(d==='')return '';
+ if(typeof d!=='string'||!/^\d{4}-\d\d-\d\d$/.test(d)||!Number.isFinite(Date.parse(d+'T00:00:00Z'))||
+   new Date(d+'T00:00:00Z').toISOString().slice(0,10)!==d)problem('Invalid HUMAN follow-up date.');
+ return d;
+}
+function stamp(d){
+ if(typeof d!=='string'||!/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\.\d{3}Z$/.test(d)||Number.isNaN(Date.parse(d)))
+  problem('Invalid local HUMAN timestamp.');
+ return d;
+}
+function bindingFor(c){return {source_sha256:c.sha,client_reference:c.client,engagement_reference:c.engagement};}
+function same(c){
+ return Boolean(c.sha&&state.binding&&c.sha===state.binding.source_sha256&&
+   c.client===state.binding.client_reference&&c.engagement===state.binding.engagement_reference);
+}
+function current(require=true){
+ const c=B.context();
+ if(require&&!same(c))problem('PRIVATE human requests are bound to a different original source or context. Export OLD notes and start a new workspace.');
+ return c;
+}
+function fingerprintsFor(c,id){return new Set(c.artifacts.filter(a=>a.finding_id===id).map(a=>a.sha256));}
+function validate(row,c){
+ if(!exactKeys(row,FIELDS))problem('Invalid HUMAN evidence request fields.');
+ const ids=new Set(c.findings.map(x=>x.finding_id));
+ if(!ids.has(row.finding_id))problem('HUMAN request references an absent original finding.');
+ if(!/^[0-9a-f]{32}$/.test(row.request_id))problem('Invalid local request ID.');
+ if(!KINDS.includes(row.request_kind)||!STAGES.includes(row.human_stage))problem('Invalid HUMAN request type/stage.');
+ str(row.assignee,120,'assignee');
+ str(row.instructions,1400,'instructions',true);str(row.human_response,1800,'response');
+ date(row.due_date);stamp(row.created_utc);stamp(row.updated_utc);
+ if(row.linked_sha256!==''&&!/^[0-9a-f]{64}$/.test(row.linked_sha256))
+   problem('Invalid local file fingerprint reference.');
+ return {...row};
+}
+function nonce(){
+ if(!crypto||!crypto.getRandomValues)problem('Secure local ID generator is unavailable.');
+ const b=crypto.getRandomValues(new Uint8Array(16));
+ return [...b].map(x=>x.toString(16).padStart(2,'0')).join('');
+}
+function packet(){
+ if(!state.binding)problem('No private request source loaded.');
+ return {kind:'lightup.private_human_evidence_requests',schema_version:1,
+  disposition:'UNVERIFIED_HUMAN_FOLLOW_UP_ONLY',
+  source_contract:'lightup.finding_export._COLUMNS_v1',...state.binding,
+  ...Object.fromEntries(FLAGS.map(k=>[k,false])),
+  requests:state.requests.map(r=>({...r})),
+  warning:'Unverified local human follow-up planning. This does NOT grant testing consent, execution authority, verified retest or evidence authenticity.'};
+}
+function exportPrivate(){
+ if(!state.binding)problem('Load original source before creating a private request draft.');
+ if(!confirm('Download PRIVATE source-bound HUMAN request IDs, assignee aliases, context references, notes and file SHA hashes? Confirm private recipient and storage independently.'))return;
+ B.download('LightUp-PRIVATE-human-evidence-requests.json',JSON.stringify(packet(),null,2)+'\n','application/json');
+}
+function fileText(file){
+ if(!file||file.size>MAX_FILE)problem('Private human request packet exceeds 1 MiB.');
+ return file.text();
+}
+async function importPrivate(){
+ const c=current();
+ const source=JSON.stringify(bindingFor(c)),before=JSON.stringify(state.requests);
+ const raw=B.strictJSON(await fileText($('requestImport').files[0]),MAX_FILE);
+ const expected=['kind','schema_version','disposition','source_contract','source_sha256',
+  'client_reference','engagement_reference',...FLAGS,'requests','warning'];
+ if(!exactKeys(raw,expected)||raw.kind!=='lightup.private_human_evidence_requests'||
+ raw.schema_version!==1||raw.disposition!=='UNVERIFIED_HUMAN_FOLLOW_UP_ONLY'||
+ raw.source_contract!=='lightup.finding_export._COLUMNS_v1'||FLAGS.some(k=>raw[k]!==false)||
+ raw.source_sha256!==c.sha||raw.client_reference!==c.client||
+ raw.engagement_reference!==c.engagement||!Array.isArray(raw.requests)||
+ raw.requests.length>MAX_ROWS||typeof raw.warning!=='string'||raw.warning.length>600)
+  problem('Original PRIVATE request source, context, format or non-authority flags disagree.');
+ const ids=new Set(),rows=raw.requests.map(x=>{const y=validate(x,c);
+  if(ids.has(y.request_id))problem('Repeated original HUMAN request identity.');
+  ids.add(y.request_id);return y;
+ });
+ if(!same(B.context())||JSON.stringify(bindingFor(B.context()))!==source||
+    JSON.stringify(state.requests)!==before)problem('Source or local HUMAN requests changed during private import.');
+ if(!confirm('Replace ALL '+state.requests.length+' current PRIVATE human requests with '+rows.length+' original source-bound request records? Keep your old PRIVATE export separately.'))return;
+ state.requests=rows;state.preview=null;$('requestImport').value='';render();
+ alert('Imported '+rows.length+' PRIVATE HUMAN requests for identical original source. No retest or authorization inferred.');
+}
+function make(id,kind,assignee,due,instructions,linked=''){
+ const c=current();
+ const now=new Date().toISOString();
+ return validate({request_id:nonce(),finding_id:id,request_kind:kind,assignee,
+  due_date:due,instructions,linked_sha256:linked,human_stage:'draft',
+  human_response:'',created_utc:now,updated_utc:now},c);
+}
+function createOne(){
+ const c=current();
+ if(state.requests.length>=MAX_ROWS)problem('PRIVATE human request desk limit is 200.');
+ const id=$('requestFinding').value,kind=$('requestKind').value;
+ const assignee=str($('requestAssignee').value.trim(),120,'assignee');
+ const due=date($('requestDue').value);
+ const instructions=str($('requestInstructions').value.trim(),1400,'instructions',true);
+ const linked=$('requestLinkFile').value;
+ if(linked&&!fingerprintsFor(c,id).has(linked))problem('Selected file fingerprint is not registered under this original finding.');
+ state.requests.push(make(id,kind,assignee,due,instructions,linked));
+ state.preview=null;render();alert('Drafted PRIVATE HUMAN evidence request for original finding '+id+'. No network or retest.');
+}
+function selectableBatch(c,mode){
+ const artifactIds=new Set(c.artifacts.map(a=>a.finding_id));
+ const cases=new Map((c.casework||[]).map(x=>[x.finding_id,x]));
+ const reviews=new Map((c.evidence||[]).map(x=>[x.finding_id,x]));
+ const active=new Set(state.requests.filter(x=>x.human_stage!=='closed_human').map(x=>x.finding_id));
+ return c.findings.filter(f=>{
+  if(active.has(f.finding_id))return false;
+  if(mode==='critical_unlinked')return (f.severity==='critical'||f.severity==='high')&&!artifactIds.has(f.finding_id);
+  if(mode==='all_unlinked')return !artifactIds.has(f.finding_id);
+  if(mode==='review_followup')return reviews.has(f.finding_id)&&
+    ['missing','needs_changes'].includes(reviews.get(f.finding_id).stage);
+  if(mode==='casework_blocked')return cases.has(f.finding_id)&&
+    (cases.get(f.finding_id).status==='blocked'||Boolean(cases.get(f.finding_id).blocker));
+  return false;
+ }).slice(0,MAX_BATCH);
+}
+function makeBatchPreview(){
+ const c=current(),mode=$('requestBatchMode').value;
+ const cases=new Map((c.casework||[]).map(x=>[x.finding_id,x]));
+ const found=selectableBatch(c,mode);
+ if(!found.length)problem('No eligible original findings for that local HUMAN follow-up batch.');
+ if(state.requests.length+found.length>MAX_ROWS)problem('Adding this human batch would exceed 200 records.');
+ const kind=$('requestBatchKind').value;
+ if(!KINDS.includes(kind))problem('Invalid human follow-up request type.');
+ const text=str($('requestBatchInstructions').value.trim(),1400,'batch instructions',true);
+ const due=date($('requestBatchDue').value);
+ state.preview={source:JSON.stringify(bindingFor(c)),baseline:JSON.stringify(state.requests),
+  keys:found.map(f=>f.finding_id),kind,text,due,
+  rows:found.map(f=>({id:f.finding_id,severity:f.severity,assignee:cases.get(f.finding_id)?.owner||''}))};
+ $('requestBatchPreview').textContent=['PRIVATE HUMAN batch review · '+found.length+' original source-bound requests',
+  'Original SHA-256: '+c.sha,'Type: '+kind,'HUMAN suggested date: '+(due||'none'),
+  'Assignees are unverified original Casework human owners.',
+  ...state.preview.rows.map(x=>x.id+' / '+x.severity+' / '+(x.assignee||'unassigned')),
+  'All external follow-up still requires a separately verified and approved human channel. No requests were sent.'].join('\n');
+ $('requestBatchPreview').hidden=false;$('requestBatchApply').disabled=false;
+ alert('Review '+found.length+' original finding IDs before creating PRIVATE HUMAN follow-up drafts.');
+}
+function applyBatch(){
+ const c=current(),p=state.preview;
+ if(!p)problem('No current HUMAN request batch proposal.');
+ if(p.source!==JSON.stringify(bindingFor(c))||p.baseline!==JSON.stringify(state.requests)||
+  p.keys.join('\n')!==selectableBatch(c,$('requestBatchMode').value).map(f=>f.finding_id).join('\n')||
+  p.kind!==$('requestBatchKind').value||
+  p.text!==$('requestBatchInstructions').value.trim()||p.due!==$('requestBatchDue').value)
+  problem('Original findings, HUMAN request inventory or proposal changed. Preview again.');
+ if(!confirm('Create '+p.rows.length+' PRIVATE human-only evidence follow-up drafts? No client contact, retest, scans or execution will occur.'))return;
+ const staged=p.rows.map(x=>make(x.id,p.kind,str(x.assignee,120,'assignee'),p.due,p.text));
+ state.requests.push(...staged);state.preview=null;
+ $('requestBatchPreview').hidden=true;$('requestBatchApply').disabled=true;
+ render();alert('Created '+staged.length+' PRIVATE HUMAN follow-up drafts; nothing sent or authorized.');
+}
+function forget(){
+ if(!state.binding)return;
+ if(!confirm('Discard '+state.requests.length+' LOCAL HUMAN request records and bind the desk to the currently loaded original source? Protect any prior PRIVATE exported handoff first.'))return;
+ const c=B.context();state.binding=c.sha?bindingFor(c):null;
+ state.requests=[];state.preview=null;render();alert('Private request desk started fresh for current original source.');
+}
+function tag(name,text){
+ const t=document.createElement(name);t.textContent=text;return t;
+}
+function field(parent,name,initial,max){
+ const label=tag('label',name),input=document.createElement('textarea');
+ input.value=initial;input.maxLength=max;input.rows=2;label.append(input);parent.append(label);return input;
+}
+function render(){
+ const c=B.context();
+ if(c.sha&&!state.binding)state.binding=bindingFor(c);
+ const lock=!same(c);
+ $('requestBound').textContent=state.binding?
+  'Human request source SHA: '+state.binding.source_sha256+
+  (lock?' · DIFFERENT ORIGINAL SOURCE — old private requests are locked until explicit reset':' · matches current original source'):
+  'Import an independently checked original findings CSV first.';
+ $('requestBound').dataset.error=String(lock&&!!state.binding);
+ const enabled=Boolean(c.sha&&!lock);
+ for(const id of ['requestFinding','requestKind','requestAssignee','requestDue',
+   'requestInstructions','requestLinkFile','requestCreate','requestImport',
+   'requestImportButton','requestBatchMode','requestBatchKind',
+   'requestBatchInstructions','requestBatchDue','requestBatchPreviewButton'])
+  $(id).disabled=!enabled;
+ $('requestExport').disabled=!state.binding;
+ $('requestClear').disabled=!state.binding;
+ $('requestBatchApply').disabled=!enabled||!state.preview;
+ const orig=$('requestFinding').value;
+ $('requestFinding').replaceChildren();
+ if(enabled)for(const f of c.findings){
+  const option=document.createElement('option');option.value=f.finding_id;
+  option.textContent=f.finding_id+' · '+f.severity+' · '+f.title.slice(0,65);
+  $('requestFinding').append(option);
+ }
+ if(c.findings.some(f=>f.finding_id===orig))$('requestFinding').value=orig;
+ const links=$('requestLinkFile'),prev=links.value;links.replaceChildren();
+ links.append(new Option('No current local file link',''));
+ if(enabled)for(const a of c.artifacts.filter(x=>x.finding_id===$('requestFinding').value))
+  links.append(new Option(a.file_name.slice(0,80)+' · '+a.sha256.slice(0,14),a.sha256));
+ if([...links.options].some(o=>o.value===prev))links.value=prev;
+ const body=$('requestRows');body.replaceChildren();
+ const query=$('requestFilter').value;
+ const shown=state.requests.filter(x=>query==='all'||query==='open'&&x.human_stage!=='closed_human'||
+ query==='awaiting'&&x.human_stage==='requested_human'||
+ query==='needs_changes'&&x.human_stage==='needs_changes'||
+ query==='unassigned'&&!x.assignee.trim());
+ for(const r of shown){
+  const f=c.findings.find(x=>x.finding_id===r.finding_id);
+  const tr=document.createElement('tr');
+  tr.append(tag('td',r.finding_id+(f?' · '+f.severity:' · PREVIOUS ORIGINAL SOURCE')));
+  tr.append(tag('td',r.request_kind));
+  const cell=document.createElement('td');
+  const owner=document.createElement('input');owner.value=r.assignee;owner.maxLength=120;
+  owner.setAttribute('aria-label','HUMAN assignee '+r.finding_id);owner.disabled=lock;cell.append(owner);tr.append(cell);
+  tr.append(tag('td',r.due_date||'none'));
+  const edit=document.createElement('td'),select=document.createElement('select');select.disabled=lock;
+  for(const stage of STAGES){const op=new Option(stage.replaceAll('_',' '),stage);
+   select.append(op);}select.value=r.human_stage;edit.append(select);tr.append(edit);
+  const responseCell=document.createElement('td'),response=field(responseCell,'Human response (unverified)',r.human_response,1800);
+  response.disabled=lock;tr.append(responseCell);
+  tr.append(tag('td',r.instructions));
+  const link=document.createElement('td');
+  link.textContent=r.linked_sha256?
+   r.linked_sha256.slice(0,20)+'…'+(f&&!fingerprintsFor(c,r.finding_id).has(r.linked_sha256)?' · not in CURRENT local file index':''):
+   'no local file reference';
+  tr.append(link);
+  const action=document.createElement('td'),save=tag('button','Save HUMAN update');
+  save.type='button';save.disabled=lock;
+  save.addEventListener('click',()=>{
+   try{
+    current();const row=state.requests.find(x=>x.request_id===r.request_id);
+    if(row!==r)problem('This PRIVATE human request was replaced; reload the current record.');
+    const draft={...r,assignee:str(owner.value.trim(),120,'assignee'),
+     human_stage:select.value,human_response:str(response.value.trim(),1800,'human response'),
+     updated_utc:new Date().toISOString()};
+    validate(draft,B.context());Object.assign(r,draft);state.preview=null;render();
+    alert('Saved PRIVATE HUMAN response for '+r.finding_id+'. No follow-up was sent or approved.');
+   }catch(e){alert(e.message||'Invalid HUMAN response',true);}
+  });
+  const remove=tag('button','Delete local draft');remove.type='button';remove.disabled=lock;
+  remove.addEventListener('click',()=>{
+   if(!confirm('Delete this PRIVATE HUMAN request draft? External source evidence remains unchanged.'))return;
+   state.requests=state.requests.filter(x=>x.request_id!==r.request_id);
+   state.preview=null;render();
+  });
+  action.append(save,remove);tr.append(action);body.append(tr);
+ }
+ $('requestCount').textContent=state.requests.length+' PRIVATE HUMAN requests · '+
+  shown.length+' displayed · '+state.requests.filter(x=>x.human_stage==='needs_changes').length+
+  ' awaiting human changes; requests are NOT sent by this offline tool.';
+}
+function bind(id,event,fn){
+ $(id).addEventListener(event,async()=>{
+  try{await fn();}catch(e){alert(e.message||'Invalid PRIVATE human request',true);}
+ });
+}
+bind('requestFinding','change',render);
+bind('requestCreate','click',createOne);
+bind('requestExport','click',exportPrivate);
+bind('requestImportButton','click',importPrivate);
+bind('requestBatchPreviewButton','click',makeBatchPreview);
+bind('requestBatchApply','click',applyBatch);
+bind('requestClear','click',forget);
+bind('requestFilter','change',render);
+window.addEventListener('lightup-original-human-context',render);
 render();
 })();</script>
 </body></html>
