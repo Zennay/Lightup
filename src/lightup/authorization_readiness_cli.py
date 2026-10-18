@@ -86,14 +86,20 @@ def _time(value: str) -> datetime | None:
         return None
 
 
+def _valid_requester(request: sqlite3.Row, users: dict) -> bool:
+    user = users.get(request["requested_by"])
+    return bool(
+        user is not None and user["role"] in {"client_admin", "client_member"}
+        and user["client_id"] == request["client_id"]
+    )
+
+
 def _trusted_request_origin(request: sqlite3.Row, users: dict) -> bool:
     """Current stored user roles are corroboration, never immutable consent proof."""
     requester = users.get(request["requested_by"])
     reviewer = users.get(request["decided_by"])
     return bool(
-        requester is not None and reviewer is not None
-        and requester["role"] in {"client_admin", "client_member"}
-        and requester["client_id"] == request["client_id"]
+        _valid_requester(request, users) and reviewer is not None
         and reviewer["role"] == "operator" and reviewer["client_id"] is None
         and request["requested_by"] != request["decided_by"]
     )
@@ -192,7 +198,7 @@ def _read_report(database: Path, *, client_id: str | None = None,
                 )
             requests = _rows(
                 con, "SELECT request_id,client_id,requested_assets_json,requested_mode,"
-                     "requested_risk,status,requested_by,decided_by,decided_at "
+                     "requested_risk,status,requested_by,decided_by,decided_at,created_at "
                      "FROM assessment_requests WHERE client_id=? ORDER BY created_at",
                 (client_id,),
             )
@@ -208,7 +214,7 @@ def _read_report(database: Path, *, client_id: str | None = None,
                 con, "SELECT engagement_id,client_id,name,status FROM engagements ORDER BY created_at")
             requests = _rows(
                 con, "SELECT request_id,client_id,requested_assets_json,requested_mode,"
-                     "requested_risk,status,requested_by,decided_by,decided_at "
+                     "requested_risk,status,requested_by,decided_by,decided_at,created_at "
                      "FROM assessment_requests ORDER BY created_at")
             grants = _rows(
                 con, "SELECT grant_id,client_id,engagement_id,assets_json,max_risk,"
@@ -309,6 +315,49 @@ def _read_report(database: Path, *, client_id: str | None = None,
         if own_grants or own_requests:
             findings.append(entry)
 
+    # Real client-submitted requests need a queue even BEFORE an engagement exists.
+    # An operator-origin spoofed portal submission must never be promoted to grant
+    # evidence; this is human triage only and changes no DomainStore record.
+    request_queue = []
+    for request in requests:
+        if request["status"] not in {"submitted", "under_review"}:
+            continue
+        flags = ["PENDING_OPERATOR_REVIEW"]
+        origin_valid = _valid_requester(request, users_by_id)
+        if not origin_valid:
+            flags.append("INVALID_CLIENT_REQUEST_ORIGIN")
+        if _assets(request["requested_assets_json"]) is None:
+            flags.append("INVALID_REQUEST_ASSETS")
+        risk = request["requested_risk"]
+        if type(risk) is not int or not (1 <= risk <= 4):
+            flags.append("INVALID_REQUEST_RISK")
+        if request["requested_mode"] != "authorized_assessment":
+            flags.append("NON_AUTHORIZED_ASSESSMENT_MODE")
+        created_at = _time(request["created_at"])
+        if created_at is None:
+            flags.append("INVALID_REQUEST_CREATION_TIME")
+        for flag in flags:
+            counter[flag] += 1
+        item = {
+            "source_key": hashlib.sha256(json.dumps(
+                dict(request), sort_keys=True, ensure_ascii=True,
+                default=str, separators=(",", ":")
+            ).encode("ascii")).hexdigest(),
+            "request_number": len(request_queue) + 1,
+            "client": by_client.get(request["client_id"], "(missing client)"),
+            "status": request["status"],
+            "created_at": created_at.isoformat() if created_at is not None else "invalid",
+            "flags": flags,
+            "next_action": (
+                "Escalate apparent operator-origin, missing or cross-tenant client request; "
+                "do not approve, issue a grant, or infer consent."
+                if not origin_valid else
+                "Authenticate the genuine client request and review scope/risk independently; "
+                "do not create a grant before domain request-to-grant binding is implemented."
+            ),
+        }
+        request_queue.append(item)
+
     # Orphans cannot be safely attributed to any engagement or client.
     orphan_count = sum(g["engagement_id"] not in by_engagement for g in grants) if client_id is None else 0
     if client_id is None:
@@ -324,6 +373,7 @@ def _read_report(database: Path, *, client_id: str | None = None,
             "A compatible requested asset/risk is only a conservative comparison; canonical scope, identity, ownership, approval provenance, and runtime revocation are not verified.",
             "A within_window grant is NOT currently authorized. Review does not issue, edit or revoke grants.",
             "All grant records remain unverified. Do not merge, deploy or scan on this report.",
+            "Request inbox records are client-wide and intentionally not linked to any particular engagement; administrative review does not authorize grants.",
             "Scoped exports intentionally omit unrelated tenant data and do not claim to inventory all orphan grants.",
             "Opaque source-key hashes support local action continuity only; they are unsigned pseudonyms, not identities, digital signatures or authorization.",
         ],
@@ -332,9 +382,11 @@ def _read_report(database: Path, *, client_id: str | None = None,
             "engagements": len(engagements),
             "requests": len(requests),
             "grants": len(grants),
+            "pending_requests": len(request_queue),
             "flag_counts": dict(sorted(counter.items())),
         },
         "engagements": findings,
+        "review_queue": request_queue,
     }
     return report
 
