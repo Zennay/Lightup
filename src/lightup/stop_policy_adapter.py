@@ -6,7 +6,7 @@ module does not issue authority and does not contact a target by itself.
 """
 from __future__ import annotations
 
-from .ai.orchestration import RunContext, ToolExecutor, ToolRegistry
+from .ai.orchestration import (RunContext, ToolCall, ToolExecutor, ToolRegistry,\n                               ToolResult, ToolDenied)
 from .engagements import AuthorizationGrant
 from .execution_policy import (
     ExecutionPolicy,
@@ -81,17 +81,36 @@ class StopAwareExecutionPolicy:
         return original_decision
 
 
+class StopAwareToolExecutor:
+    """Source-bound adapter that rejects a substituted RunContext before tools."""
+
+    def __init__(self, *, database: str, run_context: RunContext,
+                 registry: ToolRegistry, state: StateStore):
+        if type(run_context) is not RunContext or type(registry) is not ToolRegistry:
+            raise ValueError("canonical original context and registry required")
+        if state is None:
+            raise ValueError("original StateStore required")
+        self._run_context = run_context
+        self._executor = ToolExecutor(
+            registry, state,
+            policy=StopAwareExecutionPolicy(
+                database=database, run_context=run_context,
+            ),
+        )
+
+    def execute(self, context: RunContext, call: ToolCall) -> ToolResult:
+        if context is not self._run_context:
+            raise ToolDenied("STOP guard cannot accept substituted run context")
+        # Original ToolExecutor retains all existing mode, risk, registry,
+        # evidence and policy admission. We only add source-bound denial.
+        return self._executor.execute(context, call)
+
+
 def create_stop_aware_executor(*, database: str, run_context: RunContext,
                                registry: ToolRegistry,
-                               state: StateStore) -> ToolExecutor:
-    """Opt-in ordinary ToolExecutor with its ORIGINAL handler/evidence gates.
-
-    Callers must pass the SAME immutable context object to executor.execute.
-    The factory performs no scan, model, grant, migration or target I/O.
-    """
-    if type(run_context) is not RunContext or type(registry) is not ToolRegistry:
-        raise ValueError("canonical run and registry required")
-    if state is None:
-        raise ValueError("original StateStore required")
-    policy = StopAwareExecutionPolicy(database=database, run_context=run_context)
-    return ToolExecutor(registry, state, policy=policy)
+                               state: StateStore) -> StopAwareToolExecutor:
+    """Explicit opt-in composition; no standard entrypoint is modified."""
+    return StopAwareToolExecutor(
+        database=database, run_context=run_context,
+        registry=registry, state=state,
+    )
