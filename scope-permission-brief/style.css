@@ -37,3 +37,6 @@
 #pendingApply{background:#f7c987;border-color:#f7c987;color:#20170c}
 @media(max-width:720px){.revision-preview .pending-compare{grid-template-columns:1fr}}
 @media print{#revisionPreview{display:none!important}}
+
+/* Local two-role question resume: bounded file, no persistence and no authority. */
+.backup-panel{border:1px solid #506b81}.backup-label{display:block;font-weight:750;margin:17px 0 6px}.backup-panel input[type=file]{display:block;max-width:100%;font:inherit;color:var(--muted)}.backup-panel .receipt{margin-top:14px}@media print{.backup-panel{display:none!important}}
