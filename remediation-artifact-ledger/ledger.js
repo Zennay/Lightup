@@ -814,5 +814,24 @@ bind('forget','click',()=>{if(confirm('Forget all original findings and local hu
  for(const id of ['client','engagement','filter','original','newSource','addFiles','privateImport','caseworkImport','evidenceImport','unifiedImport','verify'])$(id).value='';
  $('finding').replaceChildren();render();message('Local workspace forgotten. Previously downloaded files are not deleted.',false);
 }});
+/* Stable read-only bridge to independent PRIVATE HUMAN request board.
+   It cannot mutate original sources or authority decisions. */
+window.LightUpArtifactLedgerBridge=Object.freeze({
+ context(){
+  return Object.freeze({
+   sha:state.sha,client:state.client,engagement:state.engagement,
+   findings:state.findings.map(f=>({...f})),
+   artifacts:state.rows.map(r=>({finding_id:r.finding_id,sha256:r.sha256,
+    file_name:r.file_name,human_stage:r.human_stage})),
+   casework:state.casework?state.findings.map(f=>({...state.casework.get(f.finding_id)})):null,
+   evidence:state.evidence?state.findings.map(f=>({...state.evidence.get(f.finding_id)})):null
+  });
+ },
+ strictJSON,download,csvCell,
+});
+const notifyRequestBoard=()=>window.dispatchEvent(new Event('lightup-original-human-context'));
+const originalRenderSummary=renderSummary;
+renderSummary=function(){originalRenderSummary();notifyRequestBoard();};
+
 render();
 })();
