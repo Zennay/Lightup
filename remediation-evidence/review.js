@@ -266,6 +266,8 @@ function teamPacket(rows){
   source_contract:'lightup.finding_export._COLUMNS_v1',source_sha256:sourceHash,
   team_label:team,
   original_findings_total:source.length,selected_findings_total:rows.length,
+  original_review_sha256:localSha256(JSON.stringify(rows.map(({finding:f,coordination:r})=>
+   [f.finding_id,r.stage,r.reference,r.reviewer,r.next_step]))),
   ...Object.fromEntries(flags.map(k=>[k,false])),
   cases:rows.map(({finding:f,plan:c,coordination:r})=>({
    finding_id:f.finding_id,title:f.title,severity:f.severity,original_retest_status:f.retest_status,
@@ -511,6 +513,78 @@ $('exportRevisionAggregate').addEventListener('click',()=>{
  }catch(err){status(err.message,true);}
 });
 
+
+/* Reintegrate only unverified returned human notes from a single original team
+ * packet. All current original findings, original Casework, source and rights
+ * are checked before one atomic replacement of local review notes. */
+$('importTeamReturn').addEventListener('click',async()=>{
+ try{
+  if(!sourceHash||!source)throw Error('Import original authenticated findings summary first.');
+  if(!$('sameTeamReturn').checked)throw Error('Independently verify the returned private packet belongs to the same client, engagement and intended original team.');
+  const packet=strictJSON(await read($('teamReturnFile').files[0],LIMIT_JSON));
+  const topFields=new Set(['kind','schema_version','disposition','source_contract','source_sha256',
+   'team_label','original_findings_total','selected_findings_total','original_review_sha256',
+   'cases','warning',...flags]);
+  if(!packet||Object.getPrototypeOf(packet)!==Object.prototype||
+   Object.keys(packet).some(k=>!topFields.has(k))||
+   packet.kind!=='lightup.remediation_private_team_handoff'||packet.schema_version!==1||
+   packet.disposition!=='UNVERIFIED_PRIVATE_HUMAN_COORDINATION'||
+   packet.source_contract!=='lightup.finding_export._COLUMNS_v1'||
+   packet.source_sha256!==sourceHash||packet.original_findings_total!==source.length||
+   flags.some(k=>packet[k]!==false)||!Array.isArray(packet.cases)||
+   packet.cases.length<1||packet.cases.length>350||
+   packet.selected_findings_total!==packet.cases.length||
+   (packet.team_label!==null&&(typeof packet.team_label!=='string'||!packet.team_label.trim()||
+    packet.team_label.length>120))||
+   typeof packet.original_review_sha256!=='string'||!/^[a-f0-9]{64}$/.test(packet.original_review_sha256))
+   throw Error('Invalid private team packet, forged authority, incomplete source or wrong engagement.');
+  const known=new Map(source.map(f=>[f.finding_id,f]));
+  const expected=source.filter(f=>teamFor(f)===packet.team_label);
+  if(expected.length!==packet.cases.length)throw Error('Local team membership changed since packet export; inspect changes before re-export.');
+  const rowFields=new Set(['finding_id','title','severity','original_retest_status',
+   'original_remediation','casework_status','due_date','local_owner','next_action',
+   'verification_plan','blocker','review_stage','evidence_reference',
+   'local_reviewer','human_follow_up','warnings']);
+  const received=new Map();
+  for(const row of packet.cases){
+   if(!row||Object.getPrototypeOf(row)!==Object.prototype||
+      Object.keys(row).some(k=>!rowFields.has(k))||
+      typeof row.finding_id!=='string'||!known.has(row.finding_id)||
+      received.has(row.finding_id))throw Error('Invalid, duplicate or foreign original finding in returned packet.');
+   const src=known.get(row.finding_id),c=casework?.get(src.finding_id)||engine.newCase(src);
+   if(teamFor(src)!==packet.team_label||
+      row.title!==src.title||row.severity!==src.severity||
+      row.original_retest_status!==src.retest_status||row.original_remediation!==src.remediation||
+      row.casework_status!==c.status||row.due_date!==c.due_date||
+      row.local_owner!==c.owner||row.next_action!==c.next_action||
+      row.verification_plan!==c.verification_plan||row.blocker!==c.blocker)
+    throw Error('Original source, local team route or original Casework changed; no returned edits applied.');
+   if(!Array.isArray(row.warnings)||row.warnings.length>16||
+      row.warnings.some(x=>typeof x!=='string'||x.length>240))
+    throw Error('Malformed local human warning list.');
+   const next=validReview({finding_id:src.finding_id,stage:row.review_stage,
+    reference:row.evidence_reference,reviewer:row.local_reviewer,
+    next_step:row.human_follow_up},new Set([src.finding_id]));
+   received.set(src.finding_id,next);
+  }
+  const existing=expected.slice().sort((a,b)=>a.finding_id<b.finding_id?-1:a.finding_id>b.finding_id?1:0);
+  /* Use the exact original team-packet order, not sorting, for the baseline.
+     Member count and identities have already been verified completely. */
+  const baseline=localSha256(JSON.stringify(packet.cases.map(row=>{
+   const r=review.get(row.finding_id);
+   return [row.finding_id,r.stage,r.reference,r.reviewer,r.next_step];
+  })));
+  if(baseline!==packet.original_review_sha256)throw Error('Local notes changed since private team handoff; re-export rather than overwriting newer notes.');
+  if(received.size!==expected.length)throw Error('Incomplete private team response; no local edits applied.');
+  if(!confirm('Replace only '+received.size+' LOCAL HUMAN review notes using this unverified team return? Original Casework, findings, permissions, scan and actual retest remain unchanged. Confirm the team and recipient independently.'))return;
+  const updated=new Map(review);
+  for(const [id,row] of received)updated.set(id,row);
+  review=updated;changed=true;render();
+  $('teamReturnFile').value='';$('sameTeamReturn').checked=false;
+  status('Returned private team review incorporated into '+received.size+' local records. No original source, casework, grant or verified retest changed.');
+ }catch(err){status(err.message,true);}
+});
+
 $('packTeam').addEventListener('change',updateTeamCount);
 $('exportTeamJSON').addEventListener('click',()=>doTeamExport('json'));
 $('exportTeamCSV').addEventListener('click',()=>doTeamExport('csv'));
@@ -521,6 +595,7 @@ $('boardSort').addEventListener('change',render);
 $('clear').addEventListener('click',()=>{
  if(changed&&!confirm('Discard unsaved local review notes?'))return;
  source=null;casework=null;sourceHash=null;review=new Map();changed=false;refreshCandidate=null;revisions=[];
+ $('teamReturnFile').value='';$('sameTeamReturn').checked=false;
  $('boardSearch').value='';$('boardTeam').value='';$('boardSort').value='severity';$('filter').value='all';
  $('sourceFile').value='';$('caseFile').value='';$('reviewFile').value='';$('refreshFile').value='';$('allowHashlessCasework').checked=false;$('refreshConfirm').checked=false;$('refreshSummary').textContent='No refresh preview.';
  $('dashboard').hidden=true;$('boardSection').hidden=true;$('actions').hidden=true;$('refreshPanel').hidden=true;$('teamPanel').hidden=true;
