@@ -120,7 +120,7 @@ function exportDraft(){
 function textEl(tag,text,cls){const e=document.createElement(tag);e.textContent=String(text);if(cls)e.className=cls;return e;}
 function renderMonth(){
  const grid=$('month-grid');grid.replaceChildren();
- const value=$('month').value,valid=/^\\d{4}-\\d{2}$/.test(value)&&value>='2020-01'&&value<='2100-12';
+ const value=$('month').value,valid=/^\d{4}-\d{2}$/.test(value)&&value>='2020-01'&&value<='2100-12';
  if(!valid){$('month-message').textContent='Choose a month within 2020–2100.';return;}
  const first=Date.parse(value+'-01T00:00:00Z');if(!Number.isFinite(first))return;
  for(const name of ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'])grid.append(textEl('span',name,'month-head'));
@@ -151,7 +151,7 @@ function renderMonth(){
 }
 function adjustMonth(delta){
  const value=$('month').value;
- if(!/^\\d{4}-\\d{2}$/.test(value))return;
+ if(!/^\d{4}-\d{2}$/.test(value))return;
  const d=new Date(value+'-01T00:00:00Z');d.setUTCMonth(d.getUTCMonth()+delta);
  const next=d.toISOString().slice(0,7);if(next<'2020-01'||next>'2100-12')return;
  $('month').value=next;selectedDay=null;render();
