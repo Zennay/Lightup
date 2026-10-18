@@ -2,6 +2,20 @@
 
 Open `coordination/scope-readiness.html` locally from this PR checkout. This is a **user-facing, static coordination product**: no installation, network, account, database, service, targets, DNS, API calls or browser persistence. It is deliberately separate from the actively owned authorization domain/source and the separate Studio, client CLI and operator desk branches.
 
+## Open the complete offline workspace as one file
+
+**Ready-to-open bundle:** [`coordination/scope-readiness-standalone.html`](../coordination/scope-readiness-standalone.html). Download the raw HTML file, store it in approved private storage, and open it locally in a browser; it does not require cloning the repository, installing dependencies, loading network resources, or running a server. The GitHub source-view webpage is not the local HTML application; open the saved HTML file itself. Keep uploaded source drafts and exported private workspaces in approved local storage.
+
+The matching **standalone packager** is [`coordination/build-standalone.py`](../coordination/build-standalone.py). From the repository root, run:
+
+```bash
+python3 coordination/build-standalone.py --output coordination/scope-readiness-standalone.html
+```
+
+It uses only the Python standard library and exactly four repository-owned static JavaScript modules in a fixed order. It refuses a changed script list, unexpected CSP directive, unsafe inline closing tag or overwrite of original source files. Each embedded script receives an exact SHA-256 CSP hash; there is no `unsafe-inline` allowance for scripts, no `eval`, no external `src` and `connect-src 'none'` remains mandatory. The committed standalone artifact was rebuilt from the branch sources using the connected authorized zSSH environment, and the content SHA-256 matches the independently generated bundle byte-for-byte (`51d6fbdf055cfd2ae11e8c761e5078b97cebd15722a34d7a87b92de52e6cb8fe`).
+
+**Important:** the bundle is a *copy of the current draft implementation*. Regenerate/review/recommit it whenever its underlying HTML or JavaScript sources change; do not assume a stale standalone copy contains a later source fix. It is a static private human review workbench and cannot connect to real client/domain systems, issue grants, authenticate approvals or dispatch assessment commands. No hosted deployment is implied.
+
 ## What it delivers
 
 1. Import one or several **real LightUp Scope Planning Studio v1** `lightup.scope_proposal_draft` JSON files produced by [Scope Proposal Studio PR #1567](https://github.com/Zennay/Lightup/pull/1567). Each source is bounded to 64 KiB; up to 20 different versions per board. Reject non-`DRAFT_ONLY` or explicitly positive authority/consent/grant fields. The imported asset values, client free-text notes and source files never enter exports. Each record receives SHA-256 of **its exact original UTF-8 source bytes** (not the Studio's stable fingerprint).
