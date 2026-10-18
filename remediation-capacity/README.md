@@ -38,6 +38,12 @@ The same offline imported original CSV and currently generated staffing plan can
 
 All results are **planning-only**: not promised dates, validated security fixes, signed receipts, staffing directives, scan/dispatch approval, actual authorised retests or contractual SLAs. Source-reported regressions in other severity bands may consume time ahead of critical and high under the original queue ordering. Impossible goals remain explicitly unmet and require human decision; the feature never weakens authorization policy or runs a tool.
 
+## Offline interruption-response planning
+
+A separate, bounded **hypothetical outage** workbench compares the currently generated plan against (a) a user-chosen disrupted week with 0–100% remaining capacity, never increasing the original availability, and (b) a separately selected ongoing 0–100% staffing capacity reduction. It reuses exactly the original findings, risk priorities, weekly planning weeks, estimated effort and incident reserve. Each scenario reports aggregate allocated hours, outstanding hours, finding-count backlog, remaining critical/high estimated hours and per-week hours. A deliberate private JSON export includes explicit false permission, grant, dispatch, retest and release fields.
+
+The comparison is not a real incident forecast, authorised scan, continuity-plan certificate, contractual SLA, staffing order, fixed-case conclusion or change to production scheduling. The scenario is local to this browser session and is not smuggled into the resumable saved draft.
+
 ## Security and release boundaries
 
 - Fatal UTF-8 intake; bounded records/field lengths; strict schema and enums; duplicate IDs fail closed.
