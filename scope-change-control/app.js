@@ -555,9 +555,37 @@
         }
       }
       if(stages.size!==expected.size) hold("Private handoff incomplete");
+      const restoredLineage=new Map();
+      if (!native && doc.recorded_binding_review!==undefined) {
+        if (!Array.isArray(doc.recorded_binding_review)) hold("Original binding review is not an array");
+        const current=sourceLineage();
+        if (current.length!==doc.recorded_binding_review.length)
+          hold("Original binding review membership has changed");
+        const expectedLineage=new Map(current.map(item=>[item.id,item]));
+        for(const item of doc.recorded_binding_review){
+          if(!isObject(item) || !literal(item.grant_original_id,180))
+            hold("Original grant lineage identity absent");
+          const actual=expectedLineage.get(item.grant_original_id);
+          if(!actual || restoredLineage.has(item.grant_original_id) ||
+             item.old_engagement!==actual.oldEngagement ||
+             item.new_engagement!==actual.newEngagement ||
+             item.old_approved_request!==actual.oldLink ||
+             item.new_approved_request!==actual.newLink ||
+             item.old_observation!==actual.oldObservation ||
+             item.new_observation!==actual.newObservation ||
+             canonical(item.request_status)!==canonical(actual.requestStatus) ||
+             canonical(item.reasons)!==canonical(actual.reasons) ||
+             !STAGES.includes(item.human_stage))
+            hold("Original request/grant binding review was changed or truncated");
+          restoredLineage.set(actual.id,item.human_stage);
+        }
+        if(restoredLineage.size!==expectedLineage.size)
+          hold("Private binding review incomplete");
+      }
       // Commit the entire restored review only after every source-bound record agrees.
       state.notes=stages;
       state.details=restoredDetails;
+      state.lineageNotes=restoredLineage;
       render();
       text("restore-status",native ? "Authenticated-CLI source review admitted; all original human stages start unreviewed. No permissions inferred." : "Private local human stages restored against exact original source bytes. No authorization changes.");
     } catch(e){
