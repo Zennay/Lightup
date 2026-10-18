@@ -110,6 +110,7 @@ def publish_private_workspace(destination: str, payloads: dict[str, bytes]) -> N
     path = Path(destination)
     parent_fd = work_fd = None
     created = False
+    completed = False
     written: list[str] = []
     try:
         parent_fd = os.open(path.parent, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW | os.O_CLOEXEC)
@@ -128,6 +129,7 @@ def publish_private_workspace(destination: str, payloads: dict[str, bytes]) -> N
                 raise ReviewHold("private workspace artifact size not admitted")
             fd = os.open(name, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW | os.O_CLOEXEC,
                          0o600, dir_fd=work_fd)
+            written.append(name)
             try:
                 os.fchmod(fd, 0o600)
                 with os.fdopen(fd, "wb", closefd=False) as stream:
@@ -136,14 +138,14 @@ def publish_private_workspace(destination: str, payloads: dict[str, bytes]) -> N
                     os.fsync(stream.fileno())
             finally:
                 os.close(fd)
-            written.append(name)
         os.fsync(work_fd)
         os.fsync(parent_fd)
+        completed = True
     except OSError:
         raise ReviewHold("private workspace could not be completed") from None
     finally:
         if work_fd is not None:
-            if created and len(written) != len(FILES):
+            if created and not completed:
                 for name in reversed(written):
                     try:
                         os.unlink(name, dir_fd=work_fd)
@@ -151,7 +153,7 @@ def publish_private_workspace(destination: str, payloads: dict[str, bytes]) -> N
                         pass
             os.close(work_fd)
         if parent_fd is not None:
-            if created and len(written) != len(FILES):
+            if created and not completed:
                 try:
                     os.rmdir(path.name, dir_fd=parent_fd)
                 except OSError:
