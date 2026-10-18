@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'none'; img-src 'none'; font-src 'none'; form-action 'none'; frame-src 'none'; base-uri 'none'; object-src 'none'">
+<title>LightUp · Private Evidence Artifact Ledger</title>
+<link rel="stylesheet" href="style.css"></head><body>
+<header><div class="shell">
+<p class="eyebrow">LIGHTUP / EVIDENCE–REMEDIATION / OFFLINE</p>
+<h1>Evidence Artifact Ledger</h1>
+<p>Organise private human evidence references against exact original findings. Hash files locally; their contents never leave the selected browser file operation. Nothing here authenticates the source, approves security work or verifies a fix.</p>
+<span class="pill">INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD</span>
+</div></header>
+<main class="shell">
+<section class="card"><h2>1 · Confirm context and import the original source</h2>
+<p>Obtain the original exported five-column findings CSV through separately authenticated procedures. These self-declared labels are <strong>not</strong> an authentication or client consent step.</p>
+<div class="grid">
+<label>Independently checked client reference<input id="client" maxlength="120" autocomplete="off" placeholder="Private context label" required></label>
+<label>Independently checked engagement reference<input id="engagement" maxlength="120" autocomplete="off" placeholder="Private engagement label" required></label>
+<label>Original findings CSV<input id="original" type="file" accept=".csv,text/csv"></label>
+</div><p><button id="load">Load original findings</button></p><p id="source" class="fingerprint">No original CSV loaded.</p></section>
+<section class="card"><h2>2 · Fingerprint evidence without uploading it</h2>
+<div class="grid">
+<label>Original finding<select id="finding" aria-label="Original finding ID"></select></label>
+<label>Local evidence files (≤16 MiB each, ≤120 records)<input id="addFiles" type="file" multiple disabled></label>
+</div>
+<p><button id="add">Hash &amp; link local files</button></p><p>Stored in memory: original finding ID, local filename, size, SHA-256, MIME label, local timestamp and human notes. Never stored: the contents of attached files. SHA-256 equality only compares bytes; it does not prove chronology or authenticity.</p></section>
+<section class="card"><h2>3 · Human review desk</h2>
+<p id="summary" aria-live="polite"></p>
+<label class="search">Filter by original finding, title, filename or human notes<input id="filter" placeholder="Local filter; never transmitted" autocomplete="off"></label>
+<section id="tableSection" hidden><p id="shown"></p>
+<div class="scroll"><table><thead><tr><th>Original finding</th><th>Local file</th><th>SHA-256</th><th>Human stage</th><th>Reviewer alias</th><th>Human note</th><th>Local controls</th></tr></thead>
+<tbody id="rows"></tbody></table></div></section>
+<input id="verify" type="file" hidden disabled aria-label="Recheck local evidence file">
+<p class="subtle">Human review stages are private notes, not verified security remediation, successful retest, an acceptance sign-off or permission to scan.</p>
+</section>
+<section class="card"><h2>4 · Offline handoff</h2>
+<div class="grid">
+<div><h3>PRIVATE human draft</h3><p>Includes original source SHA, self-declared context, filenames, checksums, and human notes. Protect exported data separately.</p><button id="export" disabled>Export PRIVATE JSON</button></div>
+<div><h3>Restore PRIVATE draft</h3><p>Load only with the exact same original CSV, client and engagement. Reject incomplete, mismatched or elevated authority packets.</p>
+<input id="privateImport" type="file" accept=".json,application/json" disabled><button id="restore">Restore complete draft</button></div>
+<div><h3>Anonymous counts</h3><p>Severity × human stage only. No target URLs, filenames, source hashes, IDs, client references or notes.</p><button id="aggregate" disabled>Export counts CSV</button></div>
+</div>
+<p><button class="secondary" id="forget">Forget in-memory workspace</button></p></section>
+<p id="notice" role="status" aria-live="polite" class="notice">Private local application. No network requests, browser persistence, scanner, active target or granting of authority.</p>
+</main><footer><div class="shell">LightUp · untrusted original data and unverified human draft · no client consent or release granted</div></footer>
+<script src="../casework/remediation-engine.js"></script><script src="ledger.js"></script>
+</body></html>
