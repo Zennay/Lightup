@@ -135,6 +135,7 @@ function renderSummary(){
  $('coverageExport').disabled=!state.sha;
  $('caseworkImport').disabled=!state.sha;$('detachCasework').disabled=!state.casework;
  $('unifiedExport').disabled=!state.sha;$('unifiedImport').disabled=!state.sha;
+ $('scriptlessExport').disabled=!state.sha;
  $('evidenceImport').disabled=!state.sha;$('detachEvidence').disabled=!state.evidence;
  $('evidenceState').textContent=state.evidence?'Native original Evidence Review v2: '+state.evidence.size+' HUMAN records (READ-ONLY)':'No native Evidence Review imported.';
  $('caseworkState').textContent=state.casework ? 'Native original Casework v1: '+state.casework.size+' HUMAN records (READ-ONLY)' : 'No native Casework imported.';
@@ -684,6 +685,75 @@ function applyUnified(){
  render();message('Unified PRIVATE HUMAN workspace restored atomically for exact original source. No original authority or evidence bytes were transferred.',false);
 }
 
+
+/* Fully scriptless PRIVATE human brief, HTML-escaped original source+human fields.
+   No original files, executable targets, grants, claims of verification, or URLs. */
+function htmlEscape(x){
+ return String(x??'').replace(/[&<>"']/g,ch=>({
+  '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+ })[ch]);
+}
+function privateScriptlessBrief(){
+ if(!state.sha)fail('Original source required before private human briefing.');
+ const findings=new Map(state.findings.map(x=>[x.finding_id,x]));
+ const local=new Map();
+ for(const file of state.rows){
+  if(!local.has(file.finding_id))local.set(file.finding_id,[]);
+  local.get(file.finding_id).push(file);
+ }
+ const briefRows=actionItems();
+ let body='';
+ for(let i=0;i<briefRows.length;i++){
+  const row=briefRows[i],source=findings.get(row.finding_id);
+  const cw=state.casework&&state.casework.get(row.finding_id);
+  const ev=state.evidence&&state.evidence.get(row.finding_id);
+  const files=local.get(row.finding_id)||[];
+  const item=(label,val)=>'<dt>'+htmlEscape(label)+'</dt><dd>'+htmlEscape(val||'—')+'</dd>';
+  body+='<section><h2>'+htmlEscape((i+1)+'. '+source.finding_id+' · '+source.severity.toUpperCase())+'</h2>'+
+   '<p><strong>Original SOURCE title (unverified):</strong> '+htmlEscape(source.title)+'</p>'+
+   '<dl>'+item('Source retest claim (UNVERIFIED)',source.retest_status)+
+   item('Casework HUMAN owner',cw&&cw.owner)+item('Casework HUMAN stage',cw&&cw.status)+
+   item('Tentative HUMAN follow-up date',cw&&cw.due_date)+
+   item('Casework next HUMAN action',cw&&cw.next_action)+
+   item('Casework HUMAN blocker',cw&&cw.blocker)+
+   item('Evidence Review HUMAN stage',ev&&ev.stage)+
+   item('Evidence Review HUMAN reviewer',ev&&ev.reviewer)+
+   item('Evidence Review HUMAN question',ev&&ev.evidence.review_question)+
+   item('Local review signals',row.reasons.join('; '))+'</dl>';
+  if(files.length){
+   body+='<h3>Local PRIVATE file fingerprints ('+files.length+')</h3><table><thead><tr>'+
+    '<th>Filename</th><th>SHA-256 (bytes only)</th><th>Human stage</th><th>Reviewer</th><th>Human note</th>'+
+    '</tr></thead><tbody>';
+   for(const file of files)body+='<tr><td>'+htmlEscape(file.file_name)+'</td><td>'+
+    htmlEscape(file.sha256)+'</td><td>'+htmlEscape(file.human_stage)+'</td><td>'+
+    htmlEscape(file.human_reviewer)+'</td><td>'+htmlEscape(file.human_note)+'</td></tr>';
+   body+='</tbody></table>';
+  }else body+='<p><em>No file fingerprint registered in this LOCAL browser only. This does not prove absence of evidence elsewhere.</em></p>';
+  body+='</section>';
+ }
+ const html='<!doctype html><html lang="en"><head><meta charset="utf-8">'+
+  '<meta name="viewport" content="width=device-width,initial-scale=1">'+
+  '<meta http-equiv="Content-Security-Policy" content="default-src &#39;none&#39;; script-src &#39;none&#39;; style-src &#39;none&#39;; connect-src &#39;none&#39;; img-src &#39;none&#39;; form-action &#39;none&#39;; base-uri &#39;none&#39;; object-src &#39;none&#39;">'+
+  '<title>LightUp PRIVATE HUMAN evidence handoff</title></head><body>'+
+  '<h1>PRIVATE original-source HUMAN evidence follow-up</h1>'+
+  '<p><strong>DRAFT/HOLD — Local human notes only. This document is not an authorization, validated scanner result, verified remediation, retest, consent, source-authentication certificate or release approval.</strong></p>'+
+  '<dl><dt>Self-declared client</dt><dd>'+htmlEscape(state.client)+'</dd>'+
+  '<dt>Self-declared engagement</dt><dd>'+htmlEscape(state.engagement)+'</dd>'+
+  '<dt>Original source SHA-256 (NOT authenticity)</dt><dd>'+htmlEscape(state.sha)+'</dd>'+
+  '<dt>Original source findings</dt><dd>'+state.findings.length+'</dd>'+
+  '<dt>Local HUMAN fingerprint records</dt><dd>'+state.rows.length+'</dd>'+
+  '<dt>Native Casework (read-only)</dt><dd>'+(state.casework?'present':'not attached')+'</dd>'+
+  '<dt>Native Evidence Review (read-only)</dt><dd>'+(state.evidence?'present':'not attached')+'</dd></dl>'+
+  '<p>Source claims and local human dates are unverified. Absence of a finding, reference or file here never establishes a fixed vulnerability, absent customer evidence, or current permission. All original evidence FILE CONTENT was intentionally excluded.</p>'+
+  body+'<footer><p>PRIVATE · human-only, origin not attested · inspect destination/recipient before distribution.</p></footer></body></html>';
+ return html;
+}
+function exportScriptlessBrief(){
+ if(!state.sha)fail('Load independently checked original source first.');
+ if(!confirm('Generate a PRIVATE scriptless offline human report with original titles, human owners/dates, file names, SHA-256 fingerprints and HUMAN notes? Verify a safe recipient and storage independently.'))return;
+ download('LightUp-PRIVATE-source-bound-HUMAN-brief.html',privateScriptlessBrief(),'text/html;charset=utf-8');
+}
+
 function csvCell(raw){
  let s=String(raw);
  // Force text treatment for Unicode-obscured spreadsheet formulas.
@@ -710,6 +780,7 @@ bind('export','click',exportPrivate);bind('aggregate','click',exportAggregate);
 bind('restore','click',importPrivate);bind('verify','change',verifyFile);
 bind('evidenceImportButton','click',importEvidenceV2);
 bind('detachEvidence','click',detachEvidence);
+bind('scriptlessExport','click',exportScriptlessBrief);
 bind('unifiedExport','click',exportUnified);
 bind('unifiedPreviewButton','click',previewUnified);
 bind('applyUnified','click',applyUnified);
