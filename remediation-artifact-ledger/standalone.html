@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-wpPFZOyxFDTkVCPSRLe+ulmbav4+u8hRIYgukbiqEiU=' 'sha256-Ck0NfSwySbc07zharTqtiHHRggrzkU+w4Y8lUPGH+hc='; style-src 'sha256-hA+qS4JgEeiSo2ydJqQCfAY03HQj9umy5aU0okqAMWg='; connect-src 'none'; img-src 'none'; font-src 'none'; form-action 'none'; frame-src 'none'; base-uri 'none'; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-wpPFZOyxFDTkVCPSRLe+ulmbav4+u8hRIYgukbiqEiU=' 'sha256-nVizPv6WfOpZh4+V/VRQhD46kBi/U4QAovR4kFxvktg='; style-src 'sha256-hA+qS4JgEeiSo2ydJqQCfAY03HQj9umy5aU0okqAMWg='; connect-src 'none'; img-src 'none'; font-src 'none'; form-action 'none'; frame-src 'none'; base-uri 'none'; object-src 'none'">
 <title>LightUp · Private Evidence Artifact Ledger</title>
 <style>:root{color-scheme:dark;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-size:15px;background:#0b1220;color:#f2f5fd}*{box-sizing:border-box}body{margin:0;line-height:1.55}header{background:linear-gradient(122deg,#131f32,#162f3e);border-bottom:1px solid #36556a;padding:3.4rem 0 2.4rem}.shell{max-width:1240px;margin:0 auto;padding:0 1.5rem}.eyebrow{font-size:.75rem;font-weight:750;letter-spacing:.18em;color:#8cdbca;text-transform:uppercase}h1{font-size:clamp(2rem,4vw,3.3rem);line-height:1.12;margin:.4rem 0}h2{font-size:1.25rem;margin:.1rem 0 .7rem}h3{font-size:1rem;margin:.2rem 0}p{max-width:88ch;color:#c9d9e7}header p{max-width:88ch}.pill{display:inline-block;font-size:.75rem;letter-spacing:.04em;color:#c9dffa;border:1px solid #55718a;border-radius:20px;padding:.3rem .85rem;margin-top:1rem}main{padding-top:1.8rem!important;padding-bottom:2rem!important}.card{border:1px solid #33495e;border-radius:15px;background:#162337;padding:1.6rem;margin-bottom:1.2rem;box-shadow:0 12px 42px #0002}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:1.2rem}.grid>div{border:1px solid #33495e;border-radius:10px;padding:1rem}label{font-weight:600;display:flex;flex-direction:column;gap:.4rem}input,select,textarea{background:#0b1525;color:#f0f5fb;border:1px solid #53677f;border-radius:8px;padding:.7rem;font:inherit;width:100%;min-width:0}input:focus,textarea:focus,select:focus,button:focus-visible{outline:2px solid #6adac3;outline-offset:2px}button{cursor:pointer;border:1px solid #69dfc6;color:#0b1e25;background:#78e0ca;padding:.68rem .9rem;border-radius:8px;font-weight:700;font:inherit;min-height:40px;margin:.2rem .3rem .2rem 0}button:hover:not(:disabled){background:#a0f4e5}button:disabled,input:disabled{opacity:.45;cursor:not-allowed}.secondary{background:transparent;color:#c5ddeb;border-color:#668699}.subtle{font-size:.85rem;color:#aabfce}.fingerprint{word-break:break-all;font-family:ui-monospace,monospace;font-size:.75rem}.scroll{overflow:auto;max-width:100%}table{width:100%;min-width:1050px;border-collapse:collapse;text-align:left;font-size:.86rem}th,td{padding:.65rem;vertical-align:top;border-top:1px solid #324860}td:nth-child(3){font-family:ui-monospace,monospace;white-space:nowrap;color:#a7e6e2}td button{font-size:.77rem;padding:.3rem .45rem;display:block}.search{margin:1rem 0 1.2rem}.alert{border:1px solid #f5acaa;background:#53242c;padding:1rem;border-radius:10px;color:#ffe4de}.notice{border:1px solid #3b806f;background:#133b3a;padding:1rem;border-radius:10px;color:#d0f6ee}footer{border-top:1px solid #2a4254;color:#b2c4d2;padding:1.5rem 0;font-size:.8rem}@media(max-width:580px){.card{padding:1rem}.shell{padding:0 1rem}header{padding-top:2rem}}
 .check{display:flex;flex-direction:row;align-items:flex-start;gap:.85rem;margin:1rem 0;font-weight:450}.check input{width:1.25rem;flex:0 0 1.25rem;margin-top:.25rem}.migration{white-space:pre-wrap;overflow-wrap:anywhere;background:#0a1725;border:1px solid #52758a;border-radius:9px;padding:1rem;max-height:32rem;overflow:auto;font-family:ui-monospace,monospace;font-size:.82rem;color:#d7f5ed}
@@ -90,7 +90,24 @@
 <th>Original ID</th><th>Severity</th><th>Source retest claim</th>
 <th>Local files</th><th>Human review</th><th>Follow-up</th><th>Original Casework v1 human status / owner / date</th><th>Original Evidence Review v2 human stage / retest reference</th><th>Human action</th>
 </tr></thead><tbody id="coverageRows"></tbody></table></div></section>
-<section class="card"><h2>8 · Offline handoff</h2>
+<section class="card"><h2>8 · Unified original-source HUMAN follow-up queue</h2>
+<p>One human-only action desk joins the <strong>original source finding</strong>, read-only native Casework v1, read-only native Evidence Review v2 and local artifact fingerprints. Local missing fields are prompts for a human reviewer, never proven missing external evidence, a verified vulnerability or permission to scan.</p>
+<p id="actionSummary" role="status"></p>
+<div class="grid">
+<label>LOCAL human attention filter<select id="actionFilter">
+<option value="critical_high">Critical/high original source claims with LOCAL human gaps</option>
+<option value="missing_file">No LOCAL artifact fingerprint</option>
+<option value="blocked">Tentative Casework blocker or overdue human date</option>
+<option value="human_followup">Human follow-up notes or original Evidence Review requests</option>
+<option value="all">All original findings</option>
+</select></label>
+<div><p>Export current HUMAN selection only as a separately confirmed PRIVATE CSV. Source SHA, original IDs and human planning fields are confidential.</p><button id="actionExport" disabled>Export PRIVATE HUMAN action queue</button></div>
+</div>
+<p id="actionShown"></p>
+<div class="scroll"><table><thead><tr>
+<th>Original ID</th><th>Source severity</th><th>Human owner</th><th>Casework HUMAN stage/date</th><th>Evidence Review HUMAN stage</th><th>Local file fingerprints</th><th>Human follow-up reasons</th><th>Local filing</th>
+</tr></thead><tbody id="actionRows"></tbody></table></div></section>
+<section class="card"><h2>9 · Offline handoff</h2>
 <div class="grid">
 <div><h3>PRIVATE human draft</h3><p>Includes original source SHA, self-declared context, filenames, checksums, and human notes. Protect exported data separately.</p><button id="export" disabled>Export PRIVATE JSON</button></div>
 <div><h3>Restore PRIVATE draft</h3><p>Load only with the exact same original CSV, client and engagement. Reject incomplete, mismatched or elevated authority packets.</p>
@@ -303,6 +320,7 @@ global.LightUpCasework=Object.freeze({compareSource,reconcileSource,parseCSV,nor
 (function () {
 'use strict';
 const MAX_FILE = 16 * 1024 * 1024, MAX_DOCS = 120, MAX_IMPORT = 1024 * 1024;
+const MAX_NATIVE_CASEWORK = 4 * MAX_IMPORT, MAX_NATIVE_EVIDENCE = 2 * MAX_IMPORT;
 const STAGES = ['unreviewed', 'human_review', 'follow_up', 'archived'];
 const AUTH_FLAGS = ['authenticated','tenant_verified','source_authorized','assessment_authorized','grant','client_consent','operator_consent','execution','scan','audit_verdict','retest_verified','release'];
 const $ = id => document.getElementById(id);
@@ -326,8 +344,8 @@ function download(name, content, mime) {
  setTimeout(()=>URL.revokeObjectURL(url),1500);
 }
 function sourceFingerprint(findings){return JSON.stringify(findings.slice().sort((a,b)=>a.finding_id<b.finding_id?-1:a.finding_id>b.finding_id?1:0));}
-function strictJSON(text){
- if(typeof text!=='string'||utf8(text).length>MAX_IMPORT)fail('PRIVATE import exceeds 1 MiB.');
+function strictJSON(text,cap=MAX_IMPORT){
+ if(typeof text!=='string'||utf8(text).length>cap)fail('PRIVATE import exceeds 1 MiB.');
  const data=JSON.parse(text);
  // Duplicate JSON property keys must not silently replace previously declared values.
  const stack=[];let quoted=false,start=0,escaped=false;
@@ -416,7 +434,7 @@ function render(){
   note.addEventListener('change',()=>{row.human_note=bounded(note.value,1200,'note',false);});
   const nc=document.createElement('td');nc.append(note);tr.append(nc);
   const actions=document.createElement('td'),verify=document.createElement('button');verify.textContent='Recheck local file';
-  verify.type='button';verify.addEventListener('click',()=>{$('verify').click();state.verify=i;message('Choose the SAME local file. The content stays in your browser.',false);});
+  verify.type='button';verify.addEventListener('click',()=>{state.verify={key:rowKey(row),row,source:state.sha};$('verify').click();message('Choose the SAME local file. The content stays in your browser.',false);});
   const remove=document.createElement('button');remove.type='button';remove.textContent='Remove';
   remove.addEventListener('click',()=>{if(confirm('Remove this local human record? This cannot remove external source evidence.')){state.selected.delete(rowKey(row));state.rows.splice(i,1);state.bulk=null;state.undo=[];render();}});
   actions.append(verify,remove);tr.append(actions);
@@ -437,7 +455,7 @@ function renderSummary(){
  $('evidenceImport').disabled=!state.sha;$('detachEvidence').disabled=!state.evidence;
  $('evidenceState').textContent=state.evidence?'Native original Evidence Review v2: '+state.evidence.size+' HUMAN records (READ-ONLY)':'No native Evidence Review imported.';
  $('caseworkState').textContent=state.casework ? 'Native original Casework v1: '+state.casework.size+' HUMAN records (READ-ONLY)' : 'No native Casework imported.';
- renderCoverage();
+ renderCoverage();$('actionExport').disabled=!state.sha;renderActions();
 }
 async function loadSource(){
  const file=$('original').files[0];if(!file)fail('Select an original findings CSV.');
@@ -481,12 +499,15 @@ async function addFiles(){
 }
 async function verifyFile(){
  const file=$('verify').files[0];$('verify').value='';
- const idx=state.verify;state.verify=null;
- if(idx===null||idx>=state.rows.length||!file)return;
+ const ref=state.verify;state.verify=null;
+ if(!ref||!file)return;
+ const x=state.rows.find(r=>rowKey(r)===ref.key);
+ if(!x||x!==ref.row||state.sha!==ref.source)
+  fail('Original source or selected fingerprint changed before local recheck; retry.');
  if(file.size>MAX_FILE)fail('File larger than permitted local size.');
- const x=state.rows[idx],sourceAtStart=state.sha;
  const got=await digest(await file.arrayBuffer());
- if(state.sha!==sourceAtStart||state.rows[idx]!==x)fail('Original fingerprint changed during recheck; retry.');
+ if(state.sha!==ref.source||!state.rows.includes(x)||rowKey(x)!==ref.key)
+  fail('Original fingerprint changed during local recheck; retry.');
  message(got===x.sha256&&file.size===x.byte_length?
   'Byte digest and length MATCH locally. This does not validate content truth, chronology, authenticity or remediation.':
   'MISMATCH: the selected file differs from the recorded bytes. No record was changed.',
@@ -655,7 +676,7 @@ async function importCasework(){
  if(!state.sha)fail('Load original independently checked findings CSV first.');
  const file=$('caseworkImport').files[0];
  const sourceAtStart=state.sha,context=state.client+'|'+state.engagement;
- const raw=strictJSON(await fileReader(file,MAX_IMPORT));
+ const raw=strictJSON(await fileReader(file,MAX_NATIVE_CASEWORK),MAX_NATIVE_CASEWORK);
  const packet=LightUpCasework.loadPacket(raw);
  if(packet.source_sha256!==sourceAtStart)
   fail('Native Casework source digest absent or different from this ORIGINAL findings source.');
@@ -708,12 +729,13 @@ function parseEvidenceRow(v,ids){
 async function importEvidenceV2(){
  if(!state.sha)fail('Load original independently checked findings CSV first.');
  const sourceAtStart=state.sha,contextAtStart=state.client+'|'+state.engagement;
- const data=strictJSON(await fileReader($('evidenceImport').files[0],MAX_IMPORT));
+ const data=strictJSON(await fileReader($('evidenceImport').files[0],MAX_NATIVE_EVIDENCE),MAX_NATIVE_EVIDENCE);
  if(!data||Object.getPrototypeOf(data)!==Object.prototype||
  data.kind!=='lightup.remediation_evidence_coordination'||data.schema_version!==2||
  data.disposition!=='UNVERIFIED_OFFLINE_HUMAN_COORDINATION'||
  data.source_contract!=='lightup.finding_export._COLUMNS_v1'||
  data.source_sha256!==sourceAtStart||AUTH_FLAGS.some(k=>data[k]!==false)||
+ Object.keys(data).some(k=>!['kind','schema_version','disposition','source_contract','source_sha256','review','revision_register','warning',...AUTH_FLAGS].includes(k))||
  !Array.isArray(data.review)||data.review.length!==state.findings.length||
  !Array.isArray(data.revision_register)||data.revision_register.length>350)
   fail('Native original Evidence Review v2 source, non-authority flags or full original review differ.');
@@ -792,6 +814,87 @@ function exportCoverage(){
    rows.map(r=>r.map(csvCell).join(',')).join('\r\n')+'\r\n','text/csv;charset=utf-8');
 }
 
+
+/* Derived PRIVATE human work queue. Never a target/execution queue or remediation verdict. */
+function actionItems(){
+ const counts=new Map();
+ for(const r of state.rows){
+  const n=counts.get(r.finding_id)||{files:0,followUp:0};
+  n.files++;if(r.human_stage==='follow_up')n.followUp++;
+  counts.set(r.finding_id,n);
+ }
+ const today=new Date().toISOString().slice(0,10);
+ return state.findings.map(f=>{
+  const cw=state.casework&&state.casework.get(f.finding_id);
+  const ev=state.evidence&&state.evidence.get(f.finding_id);
+  const n=counts.get(f.finding_id)||{files:0,followUp:0};
+  const reasons=[];
+  if(!n.files)reasons.push('No LOCAL fingerprint recorded');
+  if(n.followUp)reasons.push('Local HUMAN follow-up recorded');
+  if(cw){
+   if(!cw.owner.trim())reasons.push('Casework HUMAN owner not assigned');
+   if(cw.status==='blocked'||cw.blocker.trim())reasons.push('Casework HUMAN blocker');
+   if(cw.due_date&&cw.due_date<today&&cw.status!=='completed'&&cw.status!=='deferred')
+    reasons.push('Tentative Casework HUMAN date passed');
+   if(!cw.next_action.trim()&&cw.status!=='completed')reasons.push('Casework HUMAN next action missing');
+  }
+  if(ev){
+   if(ev.stage==='missing'||ev.stage==='needs_changes')reasons.push('Evidence Review HUMAN follow-up');
+   if(!ev.evidence.retest_request_reference.trim())reasons.push('No local HUMAN retest request reference');
+  }
+  const base={critical:5,high:4,medium:3,low:2,info:1}[f.severity]||1;
+  const score=base*10+(reasons.includes('Casework HUMAN blocker')?5:0)+
+    (reasons.includes('Tentative Casework HUMAN date passed')?4:0)+
+    (n.files?0:2)+(n.followUp?3:0);
+  return {finding_id:f.finding_id,severity:f.severity,
+    casework_status:cw?cw.status:'not imported',owner:cw?cw.owner:'',due_date:cw?cw.due_date||'':'',
+    evidence_stage:ev?ev.stage:'not imported',local_files:n.files,local_followup:n.followUp,
+    reasons,score};
+ }).sort((a,b)=>b.score-a.score||a.finding_id.localeCompare(b.finding_id));
+}
+function filteredActionItems(){
+ const mode=$('actionFilter').value;
+ return actionItems().filter(x=>mode==='all'||
+  mode==='critical_high'&&['critical','high'].includes(x.severity)&&x.reasons.length||
+  mode==='missing_file'&&!x.local_files||
+  mode==='blocked'&&x.reasons.some(r=>r.includes('blocker')||r.includes('date passed'))||
+  mode==='human_followup'&&(x.local_followup||x.reasons.includes('Evidence Review HUMAN follow-up')));
+}
+function renderActions(){
+ const body=$('actionRows');body.replaceChildren();
+ const original=actionItems(),visible=filteredActionItems();
+ $('actionSummary').textContent=original.length+' original findings · '+
+ original.filter(x=>x.reasons.length).length+' with LOCAL HUMAN follow-up signals. '+
+ 'Priorities are illustrative and based only on unverified source/HUMAN notes; no security severity has been validated.';
+ for(const item of visible){
+  const tr=document.createElement('tr');
+  const values=[item.finding_id,item.severity,item.owner||'unassigned',
+   item.casework_status+(item.due_date?' · '+item.due_date:''),
+   item.evidence_stage,String(item.local_files),
+   item.reasons.join(' · ')||'No LOCAL action gap identified'];
+  for(const value of values){const td=document.createElement('td');td.textContent=value;tr.append(td);}
+  const td=document.createElement('td'),go=document.createElement('button');go.type='button';go.textContent='File local evidence';
+  go.addEventListener('click',()=>{
+   $('finding').value=item.finding_id;$('filter').value=item.finding_id;state.filter=item.finding_id.toLowerCase();
+   render();$('addFiles').focus();message('Prepared LOCAL evidence filing for original ID '+item.finding_id+'. No scan or remediation action issued.',false);
+  });
+  td.append(go);tr.append(td);body.append(tr);
+ }
+ $('actionShown').textContent=visible.length+' LOCAL HUMAN source-bound action rows';
+}
+function exportHumanQueue(){
+ if(!state.sha)fail('Load the independently checked original CSV first.');
+ const work=filteredActionItems();
+ if(!work.length)fail('No original HUMAN action rows match current filter.');
+ if(!confirm('Download PRIVATE original finding IDs, source digest, local human owners and HUMAN follow-up gaps? Verify recipient and storage separately. No authorization is created.'))return;
+ const heads=['source_sha256','original_finding_id','source_severity_claim','human_casework_owner','human_casework_stage',
+ 'human_tentative_due_date','human_evidence_review_stage','local_fingerprint_count','local_human_followup_count','local_human_followup_reasons'];
+ const rows=work.map(x=>[state.sha,x.finding_id,x.severity,x.owner,x.casework_status,x.due_date,
+  x.evidence_stage,String(x.local_files),String(x.local_followup),x.reasons.join('; ')]);
+ download('LightUp-PRIVATE-original-human-evidence-action-queue.csv',ESCAPE+
+ [heads,...rows].map(x=>x.map(csvCell).join(',')).join('\r\n')+'\r\n','text/csv;charset=utf-8');
+}
+
 function csvCell(raw){
  let s=String(raw);
  // Force text treatment for Unicode-obscured spreadsheet formulas.
@@ -818,6 +921,8 @@ bind('export','click',exportPrivate);bind('aggregate','click',exportAggregate);
 bind('restore','click',importPrivate);bind('verify','change',verifyFile);
 bind('evidenceImportButton','click',importEvidenceV2);
 bind('detachEvidence','click',detachEvidence);
+bind('actionFilter','change',renderActions);
+bind('actionExport','click',exportHumanQueue);
 bind('caseworkImportButton','click',importCasework);
 bind('detachCasework','click',detachCasework);
 bind('coverageFilter','change',renderCoverage);
