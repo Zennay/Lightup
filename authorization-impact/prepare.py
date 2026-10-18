@@ -286,6 +286,8 @@ def publish_bytes(
         from review_binding import admit_private_review
         admit_private_review(original, review_raw)
     app = _read_private(Path(__file__).resolve().with_name("standalone.html"), APP_LIMIT, require_private=False)
+    from ready_room import render_ready
+    ready = render_ready(app, original)
     from app_integrity import InvalidApp, admit_standalone
     try:
         admit_standalone(app)
@@ -330,6 +332,7 @@ def publish_bytes(
         for name, raw in (
             ("casebook.json", original),
             ("standalone.html", app),
+            ("PRIVATE-ready.html", ready),
             ("START-HERE.txt", instructions),
         ):
             created.append(name)
