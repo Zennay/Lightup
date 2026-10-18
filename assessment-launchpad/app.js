@@ -106,6 +106,7 @@
         " original lab IPs, " + count +
         ". Only the original native schema, scope and byte-source checks may accept this draft.";
     }
+    document.getElementById("studio-scaffold").disabled = !selected;
     studioExport.disabled = !bound;
     previewCommand.textContent = "lightup lab-assess --targets-file ./targets.txt" +
       (bound ? " --catalog-file ./studio-catalog.json --scenario-id " + bound.scenario_id : "") +
@@ -305,6 +306,40 @@
   });
 
   studioSelect.addEventListener("change", renderStudio);
+  document.getElementById("studio-scaffold").addEventListener("click", () => {
+    const selected = selectedStudio();
+    if (!selected) { status("Choose an original draft Studio scenario first.", true); return; }
+    const scheme = document.getElementById("studio-scheme").value;
+    const portText = document.getElementById("studio-port").value;
+    if (!["http", "https"].includes(scheme) || !/^[1-9][0-9]{0,4}$/.test(portText) ||
+        Number(portText) > 65535) {
+      status("Choose an explicit HTTP(S) scheme and a valid numeric port (1–65535).", true);
+      return;
+    }
+    let prepared;
+    try {
+      prepared = selected.targets.map(rawIp => {
+        const bracketed = rawIp.includes(":") ? "[" + rawIp + "]" : rawIp;
+        return admit(scheme + "://" + bracketed + ":" + portText + "/");
+      });
+      if (prepared.length !== selected.targets.length ||
+          new Set(prepared).size !== prepared.length) {
+        throw new Error("Original scenario has duplicate or unusable lab addresses.");
+      }
+    } catch (e) {
+      status("No batch replaced: " + e.message + " Original native validation remains required.", true);
+      return;
+    }
+    if (list.length && !window.confirm(
+      "Replace all current local lab URL entries with URLs prepared from the selected Studio draft? No network or assessment will be run."
+    )) return;
+    list.splice(0, list.length, ...prepared);
+    input.value = "";
+    render();
+    status(prepared.length + " human-proposed lab URLs prepared from the original draft. No command executed, no consent inferred.");
+  });
+
+
 
   document.getElementById("studio-clear").addEventListener("click", () => {
     studio = null;
