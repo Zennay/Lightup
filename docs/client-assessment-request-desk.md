@@ -44,7 +44,7 @@ python -m lightup.client_request_cli show \
   --request-id 'request-uuid-from-submission'
 ```
 
-The assets use the **same strict literal parser** as the draft domain request
+## Private browser timeline\n\nAfter authenticating on a local terminal, a client may save a read-only browser snapshot:\n\n    python -m lightup.client_request_cli export --db /private/lightup.sqlite \\\n      --email client@example.org --output /private/client-requests.html\n\nThis creates a **new exclusive 0600 HTML file** with the client's stored request status history (up to 200 entries). Original text is HTML-escaped. It requires no scripts, external styles, network connections or browser login, and the original SQLite records are never changed. A saved HTML copy is **unsigned, potentially sensitive and stale**; it is not a current identity, consent, grant or retest proof, and must not be made public or sent across tenants. Existing destination files cannot be overwritten.\n\nThe assets use the **same strict literal parser** as the draft domain request
 binding: canonical lower-case DNS names, canonical IP literals, or strict CIDRs.
 No wildcards, URLs, port suffixes, whitespace, Unicode aliases, DNS lookups or
 host-bit CIDRs. Repeats are rejected, rather than silently expanding a scope.
