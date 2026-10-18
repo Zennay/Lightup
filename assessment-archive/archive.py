@@ -373,8 +373,14 @@ def main(argv=None):
     p.add_argument("--current", required=True)
     p.add_argument("--output", required=True)
     p.add_argument("--aggregate-only", action="store_true")
+    p = subs.add_parser("studio", help="Create source-bound interactive private browser workbench")
+    p.add_argument("--manifest", required=True)
+    p.add_argument("--output", required=True)
     args = parser.parse_args(argv)
     try:
+        if args.command == "studio":
+            from archive_studio import build
+            return build(args.manifest, args.output)
         return {"capture": capture, "verify": verify, "share": share, "view": view, "diff": diff}[args.command](args)
     except (Hold, OSError, ValueError, TypeError, UnicodeError, OverflowError,
             RecursionError, BadZipFile):

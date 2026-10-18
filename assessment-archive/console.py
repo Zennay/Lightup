@@ -11,6 +11,7 @@ import sys
 from zipfile import BadZipFile
 
 import archive
+import archive_studio
 import followup
 import packet
 
@@ -24,6 +25,7 @@ ACTIONS = (
     ("6", "Create source-bound human follow-up form"),
     ("7", "Publish follow-up desk from locally edited form"),
     ("8", "Package existing archive and human worklist for private local coordination"),
+    ("9", "Build a private interactive Archive Studio browser workspace"),
     ("q", "Exit without changing files"),
 )
 
@@ -117,6 +119,10 @@ def operation(choice: str) -> int:
         output = ask("New private coordination ZIP path (must not exist)")
         return packet.package(SimpleNamespace(manifest=manifest, choices=followup_file,
                                               output=output, aggregate_only=anonymous))
+    if choice == "9":
+        manifest = ask("Existing owner-private archive manifest JSON path")
+        output = ask("New interactive private Archive Studio HTML path (must not exist)")
+        return archive_studio.build(manifest, output)
     raise archive.Hold("invalid operation")
 
 

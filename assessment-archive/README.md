@@ -109,3 +109,11 @@ For an all-in-one owner-private, existing-source-only handoff, package the archi
 Or select --aggregate-only for a packet that does NOT contain source hashes, per-slot stages, human roles, dates, paths, finding text or target/client identifiers. Both packages contain a static HTML archive view, metadata JSON, an explicit no-authority receipt, and optionally an HTML human worklist. Original evidence/record files are NOT included and cannot be reconstructed from the packet.
 
 Packet creation reuses one original private manifest byte snapshot and the exact original follow-up binding; a changed or mixed original source is a HOLD. ZIP members have deterministic local names and timestamps, source-neutral content and restrictive Unix metadata. The new ZIP is published atomically as a new 0600 private local file. Neither format certifies authenticity, data integrity beyond bytes, human consent, permitted active work, remediation or release. The console also offers this as option 8.
+
+### Interactive browser-first Archive Studio
+
+The console now offers choice 9: generate a fully self-contained, source-bound private HTML workbench for your original archive. The same workflow is available directly:
+
+    python3 assessment-archive/archive.py studio --manifest /private/ARCHIVE.json --output /private/NEW-private-studio.html
+
+Open NEW-private-studio.html locally to explore source slots, filter and search, select human follow-up stages/neutral roles/dates, import a previously source-matched draft, export a private JSON draft, export anonymous counts and print. No external resources or browser persistence. This is a **private** HTML containing the original archive source-byte hashes; do not publicly share it. The original strict followup.py render must validate the browser-downloaded draft before any archive handoff. See STUDIO.md.
