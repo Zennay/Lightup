@@ -26,6 +26,8 @@ This is intentionally a *relationship impact/work coordination viewer*, not anot
 
 **Original source admission alignment:** the private CLI packager now validates whole Casebook source families, duplicates, counts, caseboard engagement membership and per-engagement recorded grants/risk rows, request/engagement/grant/risk shapes and source-declared HOLD/expiry/pending totals before publishing. A packet that cannot satisfy this original-source contract is refused **before** creating a workspace. Recipient inspection uses the same admission function to detect malformed or contradictory source files. Neither tool performs account authentication, changes the source database nor claims private file integrity proves issuer authenticity.
 
+**Source-byte integrity and loss prevention:** the browser now reads an imported source file as original bytes, rejects a UTF-8 BOM or malformed UTF-8 instead of silently replacing or stripping bytes, and computes SHA-256 over the **original ArrayBuffer**, not decoded/re-encoded text. Rejected sources leave the current snapshot unchanged. The human-only return handoff uses the same strict UTF-8 admission. Any unsaved reviewer fields are offered for a local save before navigating away, replacing/importing sources, creating exports or drafting bulk follow-ups; invalid fields HOLD without silent data loss. Switching source requires a separate explicit confirmation because previous private notes are revision-bound and cleared.
+
 ## Start with genuine original data
 
 Use the unchanged original authenticated Casebook exporter, which applies the existing DomainStore identity/lockout and tenant selection; do **not** fabricate a client grant, source approval, role, or proof. Inspect its supported CLI usage:
