@@ -323,25 +323,74 @@ async function exportOwnerHandoff(){
  $('owner-handoff-message').textContent=packet.rows.length+
   ' original findings included only for owner '+owner+'. Transfer privately; no identity or authorization established.';
 }
+let ownerReplyPreview=null;
+function clearOwnerReplyPreview(){
+ ownerReplyPreview=null;
+ $('owner-reply-review').hidden=true;$('owner-reply-ack').checked=false;
+ $('owner-reply-apply').disabled=true;$('owner-reply-changes').replaceChildren();
+}
+function updateOwnerReplyApplyControl(){
+ $('owner-reply-apply').disabled=!ownerReplyPreview||
+  !$('source-ack').checked||!$('owner-handoff-ack').checked||!$('owner-reply-ack').checked;
+}
 async function importOwnerReply(){
+ clearOwnerReplyPreview();
  if(!state||!$('source-ack').checked||!$('owner-handoff-ack').checked)
-  fail('Confirm original source and independent return sender/channel first.');
+  fail('Confirm original source, exact client/engagement and independent return sender.');
  const file=$('owner-reply-file').files[0];
- if(!file||file.size>2097152)fail('Select a PRIVATE owner reply JSON no larger than 2 MiB.');
- const previous=state,baseline=JSON.stringify(state.cases),source=JSON.stringify(state.findings);
+ if(!file||file.size>2097152)fail('Select PRIVATE owner reply JSON of at most 2 MiB.');
+ const snapshot=state,baseline=JSON.stringify(state.cases),original=JSON.stringify(state.findings);
  const packet=strictJSON(await file.text());
+ if(packet.owner_label!==$('owner-handoff-label').value)
+  fail('Select the exact human owner named in this PRIVATE reply before reviewing it.');
  const accepted=await global.LightUpOwnerProtocol.applyReply(
   state.findings,state.cases,state.digest,packet);
- if(state!==previous||JSON.stringify(state.cases)!==baseline||
-    JSON.stringify(state.findings)!==source)
-  fail('Source or human plans changed while importing owner response. No update applied.');
- if(!global.confirm('Import '+accepted.changed+' HUMAN-ONLY replies from '+accepted.owner_label+
-   ' as unverified local planning, after independently confirming the sender and exact client/engagement? No real remediation/retest is verified.'))return;
- state={...state,cases:accepted.cases};dirty=true;activeId=null;
+ if(state!==snapshot||JSON.stringify(state.cases)!==baseline||
+    JSON.stringify(state.findings)!==original)
+  fail('Source or human notes changed during owner reply preview. No update applied.');
+ const previous=new Map(state.cases.map(x=>[x.finding_id,x]));
+ const changes=[];
+ for(const c of accepted.cases){
+  const old=previous.get(c.finding_id);
+  if(!old)fail('Owner reply contains an unrecognized original finding.');
+  const keys=['status','due_date','next_action','blocker','owner'].filter(k=>old[k]!==c[k]);
+  if(keys.length)changes.push({finding_id:c.finding_id,keys,before:old,after:c});
+ }
+ ownerReplyPreview={snapshot,baseline,original,accepted,changes};
+ const tbody=$('owner-reply-changes');
+ for(const change of changes){
+  const tr=document.createElement('tr');
+  tr.append(textEl('td',change.finding_id),textEl('td',change.keys.join(', ')));
+  const details=(v)=>change.keys.map(k=>k+': '+String(v[k]??'(no date)')).join('\n');
+  tr.append(textEl('td',details(change.before),'reply-value'),
+    textEl('td',details(change.after),'reply-value'));tbody.append(tr);
+ }
+ $('owner-reply-summary').textContent=changes.length+' of '+accepted.changed+
+  ' original finding(s) have changed HUMAN planning fields. Original source, authorizations, and retest are not modified.';
+ $('owner-reply-review').hidden=false;
+ $('owner-handoff-message').textContent=
+  'PRIVATE reply previewed without local changes. Review all human field differences and explicitly confirm before applying.';
+ updateOwnerReplyApplyControl();
+}
+function applyOwnerReply(){
+ if(!state||!ownerReplyPreview||!$('source-ack').checked||
+    !$('owner-handoff-ack').checked||!$('owner-reply-ack').checked)
+  fail('Review and explicitly approve the PRIVATE human reply before applying.');
+ const pending=ownerReplyPreview;
+ if(state!==pending.snapshot||JSON.stringify(state.cases)!==pending.baseline||
+    JSON.stringify(state.findings)!==pending.original){
+  clearOwnerReplyPreview();fail('Private casework changed since the preview. Reimport the reply before any update.');
+ }
+ if(!pending.changes.length)fail('The owner reply contains no new HUMAN planning changes.');
+ if(!global.confirm('Accept '+pending.changes.length+
+    ' inspected HUMAN planning changes for '+pending.accepted.owner_label+
+    '? Current actual consent, remediation and authorized retest remain UNVERIFIED.'))return;
+ state={...state,cases:pending.accepted.cases};dirty=true;activeId=null;
  $('edit-panel').hidden=true;clearRefresh();clearSchedule();clearAssignments();
  $('owner-handoff-ack').checked=false;$('owner-reply-file').value='';
- render();$('owner-handoff-message').textContent=accepted.changed+
-  ' HUMAN-ONLY notes accepted atomically from the exact source-bound owner baseline. Save updated PRIVATE Casework v1 JSON.';
+ clearOwnerReplyPreview();render();
+ $('owner-handoff-message').textContent=pending.changes.length+
+  ' approved HUMAN planning changes imported atomically. Export updated PRIVATE Casework v1 JSON before closing.';
 }
 function openEdit(id){
  if(!state||!$('source-ack').checked)fail('Source confirmation required.');
@@ -366,7 +415,7 @@ function saveEdit(event){
   blocker:$('edit-blocker').value,updated_utc:new Date().toISOString()
  },new Set(state.findings.map(f=>f.finding_id)));
  const cases=state.cases.slice();cases[index]=next;state={...state,cases};
- dirty=true;activeId=null;clearSchedule();clearRefresh();$('edit-panel').hidden=true;render();
+ dirty=true;activeId=null;clearOwnerReplyPreview();clearSchedule();clearRefresh();$('edit-panel').hidden=true;render();
  $('export-message').textContent='Human-only local change saved in memory. Export a PRIVATE Casework v1 draft before closing.';
 }
 function exportDraft(){
@@ -464,7 +513,7 @@ async function openFile(file){
  const digest=await global.LightUpCasework.digest(clean.findings);
  if(clean.source_sha256&&(!digest||clean.source_sha256!==digest))fail('Original source fingerprint mismatch or browser digest unavailable.');
  const newState={...clean,digest};
- state=newState;ownerFilter=null;clearSchedule();clearRefresh();$('refresh-file').value='';$('refresh-ack').checked=false;dirty=false;activeId=null;selectedDay=null;$('month').value=todayUTC().slice(0,7);$('edit-panel').hidden=true;$('draft-ack').checked=false;
+ state=newState;ownerFilter=null;clearOwnerReplyPreview();clearSchedule();clearRefresh();$('refresh-file').value='';$('refresh-ack').checked=false;dirty=false;activeId=null;selectedDay=null;$('month').value=todayUTC().slice(0,7);$('edit-panel').hidden=true;$('draft-ack').checked=false;
  $('workspace').hidden=false;$('calendar-ack').checked=false;$('export-message').textContent='';
  render();
  $('message').textContent=clean.findings.length+' original findings loaded locally. Source is a historical unsigned draft; no current identity or consent checked.';
@@ -519,7 +568,7 @@ function exportAggregate(){
  $('export-message').textContent='Anonymous category counts exported. This is neither a retest outcome nor proof of a safe public disclosure.';
 }
 function reset(){
- state=null;activeId=null;dirty=false;selectedDay=null;ownerFilter=null;clearAssignments();clearSchedule();clearRefresh();$('refresh-file').value='';$('refresh-ack').checked=false;$('file').value='';$('source-ack').checked=false;$('calendar-ack').checked=false;$('draft-ack').checked=false;$('edit-panel').hidden=true;
+ state=null;activeId=null;dirty=false;selectedDay=null;ownerFilter=null;clearOwnerReplyPreview();clearAssignments();clearSchedule();clearRefresh();$('refresh-file').value='';$('refresh-ack').checked=false;$('file').value='';$('source-ack').checked=false;$('calendar-ack').checked=false;$('draft-ack').checked=false;$('edit-panel').hidden=true;
  $('workspace').hidden=true;$('message').textContent='Private workspace cleared from app state. Already exported files and calendar imports remain under your control.';
 }
 $('file').addEventListener('change',async e=>{
@@ -544,9 +593,11 @@ $('schedule-preview-button').addEventListener('click',()=>{try{previewSchedule()
 $('schedule-ack').addEventListener('change',scheduleControls);
 $('schedule-apply').addEventListener('click',()=>{try{applySchedule();}catch(e){$('schedule-message').textContent='HOLD: '+e.message;}});
 for(const id of ['schedule-anchor','schedule-scope',...PRIORITY.map(x=>'schedule-'+x)])$(id).addEventListener('change',clearSchedule);
-$('owner-handoff-label').addEventListener('change',()=>{$('owner-handoff-ack').checked=false;updateHandoffControls();});
-$('owner-reply-file').addEventListener('change',updateHandoffControls);
-$('owner-handoff-ack').addEventListener('change',updateHandoffControls);
+$('owner-handoff-label').addEventListener('change',()=>{$('owner-handoff-ack').checked=false;clearOwnerReplyPreview();updateHandoffControls();});
+$('owner-reply-file').addEventListener('change',()=>{clearOwnerReplyPreview();updateHandoffControls();});
+$('owner-handoff-ack').addEventListener('change',()=>{if(!$('owner-handoff-ack').checked)clearOwnerReplyPreview();updateHandoffControls();});
+$('owner-reply-ack').addEventListener('change',updateOwnerReplyApplyControl);
+$('owner-reply-apply').addEventListener('click',()=>{try{applyOwnerReply();}catch(e){$('owner-handoff-message').textContent='HOLD: '+e.message;}});
 $('owner-handoff-export').addEventListener('click',async()=>{try{await exportOwnerHandoff();}catch(e){$('owner-handoff-message').textContent='HOLD: '+e.message;}});
 $('owner-reply-import').addEventListener('click',async()=>{try{await importOwnerReply();}catch(e){$('owner-handoff-message').textContent='HOLD: '+e.message;}});
 $('calendar-ack').addEventListener('change',render);
@@ -558,7 +609,7 @@ $('day-clear').addEventListener('click',()=>{selectedDay=null;render();});
 $('edit-form').addEventListener('submit',e=>{try{saveEdit(e);}catch(err){e.preventDefault();$('export-message').textContent='HOLD: '+err.message;}});
 $('edit-cancel').addEventListener('click',()=>{activeId=null;$('edit-panel').hidden=true;});
 $('casework-save').addEventListener('click',()=>{try{exportDraft();}catch(err){$('export-message').textContent='HOLD: '+err.message;}});
-$('source-ack').addEventListener('change',()=>{if(!$('source-ack').checked){clearRefresh();clearSchedule();$('owner-handoff-ack').checked=false;}if(state)render();});
+$('source-ack').addEventListener('change',()=>{if(!$('source-ack').checked){clearRefresh();clearSchedule();clearOwnerReplyPreview();$('owner-handoff-ack').checked=false;}if(state)render();});
 $('download').addEventListener('click',async()=>{try{await exportCalendar();}catch(e){$('export-message').textContent='HOLD: '+e.message;}});
 $('aggregate').addEventListener('click',()=>{try{exportAggregate();}catch(e){$('export-message').textContent='HOLD: '+e.message;}});
 $('clear').addEventListener('click',()=>{if(dirty&&!global.confirm('Discard unsaved human notes?'))return;reset();});

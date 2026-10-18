@@ -101,7 +101,12 @@
 <div class="grid"><label>Specific local human owner/team<select id="owner-handoff-label"><option value="">Select exact human owner</option></select></label>
 <label>Received PRIVATE human reply JSON<input id="owner-reply-file" type="file" accept=".json,application/json"></label></div>
 <label class="check"><input id="owner-handoff-ack" type="checkbox"> I independently verified the intended HUMAN recipient and exact client/engagement, and have approval for this PRIVATE data sharing. No file proves identity or consent.</label>
-<div class="actions"><button id="owner-handoff-export" type="button" disabled>Export PRIVATE single-owner handoff</button><button id="owner-reply-import" type="button" disabled>Review and import PRIVATE owner reply</button></div>
+<div class="actions"><button id="owner-handoff-export" type="button" disabled>Export PRIVATE single-owner handoff</button><button id="owner-reply-import" type="button" disabled>Preview PRIVATE owner reply</button></div>
+<div id="owner-reply-review" class="refresh-preview" hidden><h3>PRIVATE human reply changes — review before acceptance</h3>
+<p id="owner-reply-summary" role="status" aria-live="polite"></p>
+<div class="tablewrap"><table><thead><tr><th>Original finding ID</th><th>Human fields changed</th><th>Existing HUMAN values</th><th>Proposed HUMAN values</th></tr></thead><tbody id="owner-reply-changes"></tbody></table></div>
+<label class="check"><input id="owner-reply-ack" type="checkbox"> I reviewed the proposed HUMAN-ONLY notes, independently confirmed the correct sender, real client and exact engagement, and accept this PRIVATE local return. No verified repair or retest is implied.</label>
+<button id="owner-reply-apply" type="button" disabled>Apply reviewed HUMAN-ONLY reply</button></div>
 <p id="owner-handoff-message" role="status" aria-live="polite"></p>
 </section>
 <section class="panel">
