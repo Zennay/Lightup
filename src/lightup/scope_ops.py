@@ -14,7 +14,8 @@ import sqlite3
 import sys
 from pathlib import Path
 
-from .auth_casebook import CasebookHold, _auth_actor, _source_snapshot
+from .auth_casebook import CasebookHold, _auth_actor, _source_snapshot, _write_private_json
+from .scope_incident_brief import ScopeBriefHold, compose_scope_incident_brief
 from .revocation_stop import StopLedgerError, record_authenticated_stop
 from .stop_exposure import _read_exposure
 from .request_binding_readiness_cli import (
@@ -162,6 +163,53 @@ def _shortlist(db: str, actor: str, source: dict, engagement: str) -> None:
         print("HOLD: original persisted operator, proposal or request-source integrity refused.")
 
 
+def _export_private_case(
+    db: str, *, email: str, password: str,
+    client_id: str | None, engagement: str,
+) -> None:
+    """Authentic one-case PRIVATE export for the offline operator room."""
+    print("Create a NEW, exclusive, owner-only private source JSON, never shared automatically.")
+    print("Optional original request binding: exact comma-separated canonical literals, no target calls.")
+    raw = input("Proposed asset literals (ENTER for no binding preview): ").strip()
+    risk: int | None = None
+    assets: tuple[str, ...] = ()
+    if raw:
+        if len(raw) > 8192:
+            raise ScopeBriefHold("bounded proposed literal source required")
+        assets = canonical_request_assets(raw.split(","))
+        value = input("Proposed risk 1-4: ").strip()
+        if value not in ("1","2","3","4"):
+            raise ScopeBriefHold("noncanonical proposed risk")
+        risk = int(value)
+    destination = input("New private JSON destination (must not exist): ").strip()
+    if not destination or len(destination) > 1200:
+        raise ScopeBriefHold("bounded private destination required")
+    result = compose_scope_incident_brief(
+        db, email=email, password=password, client_id=client_id,
+        engagement_ids=(engagement,),
+        proposal_engagement=engagement if assets else None,
+        proposal_assets=assets, proposal_risk=risk,
+    )
+    if (result.get("schema") != "lightup.scope_stop_casework_brief.v1"
+            or result.get("authorization_granted") is not False
+            or result.get("execution_allowed") is not False
+            or result.get("release_approved") is not False):
+        raise ScopeBriefHold("original case source must remain non-authorizing")
+    _write_private_json(destination, result)
+    # Never print original grant IDs or target literals in standard output.
+    print(json.dumps({
+        "status": result["status"],
+        "schema": result["schema"],
+        "private_new_file_created": True,
+        "selected_original_case_count": result["selected_count"],
+        "source_snapshots_atomic_together": False,
+        "authorization_granted": False,
+        "execution_allowed": False,
+        "release_approved": False,
+    }, sort_keys=True))
+    print("Import the PRIVATE file into scope-incident-room/standalone.html for local human review.")
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         prog="python -m lightup.scope_ops",
@@ -181,14 +229,14 @@ def main(argv: list[str] | None = None) -> int:
         while True:
             source = _load(args.database, actor, args.client)
             _list_cases(source)
-            print("Choose: [I]nspect, [B]inding candidate shortlist, [S]TOP, [R]efresh, [Q]uit")
+            print("Choose: [I]nspect, [B]inding shortlist, [E]xport private incident, [S]TOP, [R]efresh, [Q]uit")
             choice = input("Action: ").strip().lower()
             if choice in ("q", "quit"):
                 print("Review closed; authorization_granted=false")
                 return 2
             if choice in ("r", "refresh"):
                 continue
-            if choice not in ("i", "inspect", "s", "stop", "b", "binding"):
+            if choice not in ("i", "inspect", "s", "stop", "b", "binding", "e", "export"):
                 print("Unknown action; no mutation")
                 continue
             eid = input("Exact existing engagement ID: ").strip()
@@ -198,6 +246,16 @@ def main(argv: list[str] | None = None) -> int:
                 continue
             if choice in ("b", "binding"):
                 _shortlist(args.database, actor, source, eid)
+                continue
+            if choice in ("e", "export"):
+                try:
+                    _export_private_case(
+                        args.database, email=args.email, password=password,
+                        client_id=args.client, engagement=eid,
+                    )
+                except (CasebookHold, ScopeBriefHold, StopLedgerError, OSError,
+                        sqlite3.Error, ValueError, TypeError):
+                    print("HOLD: private export refused by original account, source or destination. Nothing authorized.")
                 continue
 
             # Existing original DomainStore/STOP source still revalidates the
