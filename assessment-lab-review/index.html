@@ -13,7 +13,12 @@
 <p id="message" role="status" aria-live="polite"></p></section>
 <section id="workspace" hidden aria-labelledby="desk"><h2 id="desk">2. Triage source-declared findings</h2>
 <p id="stats" class="stats"></p><p id="progress"></p>
-<div class="toolbar"><label for="filter">Show <select id="filter"><option value="">All findings</option><optgroup label="Original severity"><option value="critical">Critical</option><option value="high">High</option><option value="medium">Medium</option><option value="low">Low</option><option value="info">Info</option></optgroup><optgroup label="Human review stage"><option value="needs_review">Needs review</option><option value="discussing">Discussing</option><option value="documented">Documented</option><option value="blocked">Blocked</option></optgroup></select></label><span id="shown"></span></div>
+<div class="toolbar"><label for="filter">Show <select id="filter"><option value="">All findings</option><optgroup label="Original severity"><option value="critical">Critical</option><option value="high">High</option><option value="medium">Medium</option><option value="low">Low</option><option value="info">Info</option></optgroup><optgroup label="Human review stage"><option value="needs_review">Needs review</option><option value="discussing">Discussing</option><option value="documented">Documented</option><option value="blocked">Blocked</option></optgroup></select></label><label for="search">Find source title/check or HUMAN note
+<input id="search" type="search" maxlength="180" autocomplete="off" placeholder="Local private text search"></label>
+<label for="sort">Priority view <select id="sort"><option value="source">Original source order</option>
+<option value="severity">Original severity first</option><option value="human_pending">Human needs-review first</option>
+<option value="human_blocked">Human blockers first</option></select></label>
+<span id="shown"></span></div>
 <div class="bulkbar" aria-label="Optional human-only bulk update"><strong>Human-only batch update of the currently visible rows</strong>
 <div class="toolbar"><label for="bulkStage">Proposed stage <select id="bulkStage">
 <option value="">Leave unchanged</option><option value="needs_review">Needs review</option><option value="discussing">Discussing</option><option value="documented">Documented</option><option value="blocked">Blocked</option></select></label>

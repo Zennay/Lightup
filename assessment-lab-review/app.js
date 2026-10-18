@@ -7,7 +7,7 @@ const STAGES=["needs_review","discussing","documented","blocked"];
 const GROUPS=["unassigned","scope","findings","evidence","remediation"];
 const SEVERITIES=["critical","high","medium","low","info"];
 const MAX_BYTES=8*1024*1024, MAX_ROWS=2048;
-let source=null,sourceHash="",notes=[],dirty=false,filter="",lastBulkUndo=null;
+let source=null,sourceHash="",notes=[],dirty=false,filter="",searchTerm="",sortMode="source",lastBulkUndo=null;
 const selectedForHandoff=new Set();
 const validText=(s,limit=1000)=>typeof s==="string"&&s.length<=limit&&!/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/.test(s);
 const require_=(ok)=>{if(!ok)throw Error("Incompatible or untrusted private lab artifact");};
@@ -195,9 +195,17 @@ function render(){
  if(!source)return;
  const tbody=$("findings");tbody.replaceChildren();
  let shown=0;
- source.findings.forEach((f,i)=>{
-  const n=notes[i];if(filter&&filter!==f.severity&&filter!==n.stage&&filter!=="endpoint:"+endpointOrdinal(f))return;
-  shown++;
+ const visible=visibleOrdinals();
+ const severityRank=Object.fromEntries(SEVERITIES.map((s,i)=>[s,i]));
+ if(sortMode==="severity")visible.sort((a,b)=>severityRank[source.findings[a].severity]-
+  severityRank[source.findings[b].severity]||a-b);
+ if(sortMode==="human_pending")visible.sort((a,b)=>
+  Number(notes[a].stage!=="needs_review")-Number(notes[b].stage!=="needs_review")||a-b);
+ if(sortMode==="human_blocked")visible.sort((a,b)=>
+  Number(notes[b].stage==="blocked"||notes[b].blocker.length>0)-
+  Number(notes[a].stage==="blocked"||notes[a].blocker.length>0)||a-b);
+ visible.forEach(i=>{
+  const f=source.findings[i],n=notes[i];shown++;
   const tr=document.createElement("tr");tr.dataset.originalOrdinal=String(i+1);tr.tabIndex=-1;
   const meta=el("div");
   const selection=el("label",undefined,"handoff-check"),box=document.createElement("input");
@@ -263,7 +271,8 @@ async function importSource(file){
  const hash=(globalThis.crypto&&crypto.subtle)?await sha256(bytes):"";
  if(source&&dirty&&!confirm("Replace existing unsaved private human notes?"))return;
  source=parsed;sourceHash=hash;notes=parsed.findings.map(initialNote);dirty=false;lastBulkUndo=null;selectedForHandoff.clear();resetPeer();
- filter="";$("filter").value="";buildEndpointFilter();
+ filter="";searchTerm="";sortMode="source";$("filter").value="";
+ $("search").value="";$("sort").value="source";buildEndpointFilter();
  $("private").disabled=!hash;$("resume").disabled=!hash;$("brief").disabled=!hash;
  $("workspace").hidden=false;updateSummary();render();
  status(hash?"Original private lab source admitted in memory. HUMAN REVIEW ONLY. Source hash is unsigned.":"Original private lab source admitted for local read-only review. Browser has no WebCrypto: private source-bound save/resume is disabled.");
@@ -291,8 +300,10 @@ async function resume(file){
 function visibleOrdinals(){
  if(!source)return [];
  return source.findings.map((f,i)=>({f,i})).filter(({f,i})=>
-  !filter||filter===f.severity||filter===notes[i].stage||
-  filter==="endpoint:"+endpointOrdinal(f)).map(({i})=>i);
+  (!filter||filter===f.severity||filter===notes[i].stage||
+   filter==="endpoint:"+endpointOrdinal(f))&&
+  (!searchTerm||[f.finding,f.check_id,notes[i].next_action,notes[i].blocker]
+   .some(value=>value.toLowerCase().includes(searchTerm)))).map(({i})=>i);
 }
 $("applyBulk").addEventListener("click",()=>{
  if(!source)return;
@@ -357,6 +368,12 @@ $("brief").addEventListener("click",()=>{privateHumanBrief().catch(()=>status("H
 $("source").addEventListener("change",async e=>{try{await importSource(e.target.files[0]);}catch(_){status("HOLD: source rejected. Previous workspace unchanged.",true);}e.target.value="";});
 $("resume").addEventListener("change",async e=>{try{await resume(e.target.files[0]);}catch(_){status("HOLD: private human return rejected. Previous workspace unchanged.",true);}e.target.value="";});
 $("filter").addEventListener("change",e=>{filter=e.target.value;render();});
+let searchTimer=null;
+$("search").addEventListener("input",e=>{
+ searchTerm=e.target.value.trim().toLowerCase();clearTimeout(searchTimer);
+ searchTimer=setTimeout(()=>{if(source)render();},140);
+});
+$("sort").addEventListener("change",e=>{sortMode=e.target.value;render();});
 $("private").addEventListener("click",()=>{if(!source||!sourceHash)return;download("PRIVATE-lab-human-review.json",
  JSON.stringify(privatePayload(),null,2)+"\n","application/json");dirty=false;
  status("PRIVATE review saved locally. Share only via a separately approved confidential channel.");});
@@ -364,7 +381,7 @@ $("aggregate").addEventListener("click",()=>{if(!source)return;
  download("lab-anonymous-human-counts.json",JSON.stringify(aggregate(),null,2)+"\n","application/json");
  status("Counts-only human report exported; even small aggregate counts may be sensitive.");});
 $("forget").addEventListener("click",()=>{if(!source||!confirm("Forget all private source data and unsaved human notes?"))return;
- source=null;sourceHash="";notes=[];dirty=false;filter="";lastBulkUndo=null;selectedForHandoff.clear();resetPeer();$("filter").value="";$("findings").replaceChildren();
+ source=null;sourceHash="";notes=[];dirty=false;filter="";searchTerm="";sortMode="source";lastBulkUndo=null;selectedForHandoff.clear();resetPeer();$("filter").value="";$("search").value="";$("sort").value="source";$("findings").replaceChildren();
  $("workspace").hidden=true;status("All in-memory private workspace data discarded.");});
 $("collab-select-visible").addEventListener("click",()=>{
  if(!source)return;
@@ -466,7 +483,7 @@ function renderPeer(){
    const button=el("button","Open original A HUMAN follow-up","peer-jump");
    button.type="button";
    button.addEventListener("click",()=>{
-    filter="";$("filter").value="";render();
+    filter="";searchTerm="";sortMode="source";$("filter").value="";$("search").value="";$("sort").value="source";render();
     const original=$("findings").querySelector('tr[data-original-ordinal="'+row.a[0]+'"]');
     if(!original)return;
     original.classList.add("peer-focus");
