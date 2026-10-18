@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-wpPFZOyxFDTkVCPSRLe+ulmbav4+u8hRIYgukbiqEiU=' 'sha256-7xhHonu9Q7KGf/tyWurJBHX2oP8swcWSw6/5KQq5xe8=' 'sha256-0TSOdLvoAxLnJIORPyN6xDgusCrhagoQ1NfsGl1kKZw=' 'sha256-iV0DQKd22YsEJ3hFmPUuCHqMkjmW+Cc4W0/QVuITiRs='; style-src 'sha256-W9nmTSlmvxdBnXfU+AEm+wgkyfRdPZHzKO785fl31as='; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-wpPFZOyxFDTkVCPSRLe+ulmbav4+u8hRIYgukbiqEiU=' 'sha256-7xhHonu9Q7KGf/tyWurJBHX2oP8swcWSw6/5KQq5xe8=' 'sha256-0TSOdLvoAxLnJIORPyN6xDgusCrhagoQ1NfsGl1kKZw=' 'sha256-FkOgl38htVjlAq+iDHquAE7eJd4V8h4bbbvNWTXe1Ik='; style-src 'sha256-W9nmTSlmvxdBnXfU+AEm+wgkyfRdPZHzKO785fl31as='; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <title>LightUp · Private Owner Reply Desk</title><style>:root{font:16px/1.5 system-ui,-apple-system,Segoe UI,sans-serif;color:#edf3fe;background:#101726;color-scheme:dark}*{box-sizing:border-box}body{margin:0}header,main,footer{max-width:1150px;padding:32px 24px;margin:auto}header{padding-top:55px}.brand{color:#a1c4ff;letter-spacing:.14em;font-size:.77rem;font-weight:800}h1{font-size:clamp(2rem,5vw,3.5rem);margin:.25em 0}h2{font-size:1.35rem;margin:0 0 12px}h3{font-size:1.05rem;margin:0}p{color:#b9c9df}.hold{display:inline-block;border:1px solid #8b6738;color:#ffcc8e;padding:8px 12px;border-radius:9px;background:#342719;font-weight:650;font-size:.85rem}.panel{border:1px solid #364866;border-radius:16px;background:#19253b;padding:22px;margin-bottom:22px}label{display:block;margin:15px 0;font-weight:650}input,textarea,select,button{font:inherit}input:not([type=checkbox]),textarea,select{display:block;width:100%;background:#0d1626;color:#f4f8ff;border:1px solid #667994;border-radius:8px;padding:9px;margin-top:6px}input:focus-visible,textarea:focus-visible,button:focus-visible,select:focus-visible{outline:2px solid #a2c3ff;outline-offset:2px}textarea{resize:vertical;min-height:90px}.ack{display:flex;gap:10px;align-items:flex-start;font-weight:450}.ack input{flex:none;width:19px;height:19px}.owner{font-size:1.25rem;font-weight:800;color:#b6ceff}.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,430px),1fr));gap:15px}.card{padding:18px;border-radius:13px;border:1px solid #425673;background:#111e32;overflow-wrap:anywhere}.card .source{background:#233550;border-radius:9px;padding:10px;color:#dfebff;white-space:pre-wrap;font-size:.87rem}.tag{display:inline-block;border:1px solid #70819b;border-radius:7px;padding:2px 6px;font-size:.75rem;margin-bottom:8px}.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}.actions{display:flex;gap:12px;flex-wrap:wrap}button{background:#bad0ff;color:#132036;border:0;padding:11px 17px;font-weight:800;border-radius:8px;cursor:pointer}button:disabled{opacity:.35;cursor:not-allowed}.quiet{background:#3a4c67;color:#fff}footer{font-size:.83rem;color:#aabbd2}@media(max-width:600px){header,main,footer{padding-left:14px;padding-right:14px}.panel{padding:16px}.row{grid-template-columns:1fr}}
 .metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(135px,1fr));gap:9px;margin:15px 0}.metric{padding:13px;background:#263b59;border:1px solid #486080;border-radius:10px}.metric strong{display:block;font-size:1.5rem}.metric span{color:#c1cfe4;font-size:.8rem}.filter-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:11px;align-items:end}.bulk-panel{padding:16px;margin:15px 0 22px;border:1px solid #4e6480;border-radius:12px;background:#192b45}.bulk-panel button{margin:15px 0}
 </style></head>
@@ -32,6 +32,11 @@
 <div id="cards" class="cards"></div></section>
 <section class="panel"><h2>3. Return only the privately reviewed human notes</h2>
 <p>The return includes the same original subset and human-baseline fingerprint so the sender can reject changed or stale work. It does not approve a real retest, verify a fix, or contact LightUp.</p>
+<div class="actions"><button id="return-preview-button" type="button" class="quiet">Review HUMAN-only edits before sending</button></div>
+<section id="return-review" class="bulk-panel" hidden><h3>PRIVATE human change summary</h3>
+<p id="return-review-summary" role="status" aria-live="polite"></p>
+<div id="return-review-rows" class="cards"></div>
+<label class="ack"><input id="return-review-ack" type="checkbox"> I reviewed the HUMAN-ONLY edits listed above. No original source, consent, grant, remediation verdict or retest is changed.</label></section>
 <label class="ack"><input id="return-ack" type="checkbox"> I explicitly confirm the independently approved PRIVATE return channel and understand this output is unsigned human coordination only.</label>
 <div class="actions"><button id="export" type="button" disabled>Save / export PRIVATE owner reply JSON</button><button id="clear" type="button" class="quiet">Clear private memory</button></div>
 <p id="reply-message" role="status" aria-live="polite"></p></section>
@@ -459,7 +464,8 @@ function save(name,content){
  setTimeout(()=>URL.revokeObjectURL(url),1000);
 }
 function controls(){
- $('export').disabled=!request||!$('ack').checked||!$('return-ack').checked;
+ $('export').disabled=!request||!$('ack').checked||!$('return-ack').checked||
+  !$('return-review-ack').checked||returnReviewFingerprint!==JSON.stringify(draft);
 }
 function field(labelText,control){
  const label=el('label',labelText);label.append(control);return label;
@@ -511,9 +517,47 @@ function applyRecipientBulk(){
  if(!global.confirm('Apply HUMAN stage '+stage+' to '+visible.length+
   ' currently visible original findings? This NEVER updates original retest, authorization, consent or real remediation.'))return;
  for(const item of visible)item.r.status=stage;
- dirty=true;render();
+ dirty=true;clearReturnReview();render();
  $('recipient-bulk-message').textContent=visible.length+
   ' original findings updated in PRIVATE memory only. Export a return JSON through the approved channel.';
+}
+let returnReviewFingerprint=null;
+function clearReturnReview(){
+ returnReviewFingerprint=null;$('return-review').hidden=true;
+ $('return-review-ack').checked=false;$('return-review-rows').replaceChildren();
+ controls();
+}
+function reviewReturn(){
+ if(!request||!draft||!$('ack').checked)
+  throw Error('Private handoff and intended recipient acknowledgment required.');
+ const previous=new Map(request.rows.map(x=>[x.finding_id,x]));
+ const fields=['status','due_date','next_action','blocker'];
+ const changes=[];
+ for(const current of draft){
+  const prior=previous.get(current.finding_id);
+  if(!prior)throw Error('Original handoff finding ID changed.');
+  const changed=fields.filter(k=>current[k]!==prior[k]);
+  if(changed.length)changes.push({current,prior,changed});
+ }
+ const target=$('return-review-rows');
+ target.replaceChildren();
+ for(const item of changes){
+  const card=el('div');card.className='card';
+  card.append(el('h3','Original finding ID: '+item.current.finding_id));
+  for(const key of item.changed){
+   const row=el('p',key+': '+String(item.prior[key]??'(no date)')+
+    '  →  '+String(item.current[key]??'(no date)'));
+   row.className='review-delta';card.append(row);
+  }
+  target.append(card);
+ }
+ if(!changes.length)target.append(el('p','No HUMAN-only planning edits versus this original owner handoff. An unchanged private response may still be explicitly returned.'));
+ $('return-review-summary').textContent=changes.length+' of '+draft.length+
+  ' original findings contain changed HUMAN-only planning fields. This is not a verified fix, original retest or grant.';
+ returnReviewFingerprint=JSON.stringify(draft);
+ $('return-review').hidden=false;$('return-review-ack').checked=false;
+ $('reply-message').textContent='PRIVATE human changes prepared for review; confirm review and separately authorized return channel before export.';
+ controls();
 }
 function render(){
  const cards=$('cards');cards.replaceChildren();
@@ -535,14 +579,14 @@ function render(){
    const option=el('option',title);option.value=value;select.append(option);
   }
   select.value=r.status;
-  select.addEventListener('change',()=>{r.status=select.value;dirty=true;});
+  select.addEventListener('change',()=>{r.status=select.value;dirty=true;clearReturnReview();});
   const date=el('input');date.type='date';date.min='2020-01-01';date.max='2100-12-30';date.value=r.due_date||'';
-  date.addEventListener('change',()=>{r.due_date=date.value||null;dirty=true;});
+  date.addEventListener('change',()=>{r.due_date=date.value||null;dirty=true;clearReturnReview();});
   row.append(field('Local human status',select),field('Human follow-up date, NOT scan window',date));
   const action=el('textarea');action.maxLength=1800;action.value=r.next_action;action.rows=3;
-  action.addEventListener('input',()=>{r.next_action=action.value;dirty=true;});
+  action.addEventListener('input',()=>{r.next_action=action.value;dirty=true;clearReturnReview();});
   const blocker=el('textarea');blocker.maxLength=1200;blocker.value=r.blocker;blocker.rows=2;
-  blocker.addEventListener('input',()=>{r.blocker=blocker.value;dirty=true;});
+  blocker.addEventListener('input',()=>{r.blocker=blocker.value;dirty=true;clearReturnReview();});
   card.append(row,field('Human next action',action),field('Human blocker / dependency',blocker));
   cards.append(card);
  }
@@ -554,7 +598,7 @@ async function load(file){
  if(!$('ack').checked)fail('Confirm independent actual client/engagement and intended recipient first.');
  const raw=global.LightUpOwnerPrivateJson.read(await file.text());
  const accepted=await global.LightUpOwnerProtocol.validateRequest(raw);
- request=accepted;draft=accepted.rows.map(x=>({...x}));dirty=false;
+ request=accepted;draft=accepted.rows.map(x=>({...x}));dirty=false;clearReturnReview();
  $('resume').value='';$('resume-message').textContent='';
  $('recipient-filter').value='all';$('recipient-search').value='';$('recipient-sort').value='priority';
  $('return-ack').checked=false;$('reply-message').textContent='';
@@ -585,20 +629,21 @@ async function resumeReply(file){
  }
  if(!global.confirm('Resume '+accepted.reply_rows.length+
    ' HUMAN-ONLY entries from this source-bound PRIVATE draft? The current unsaved local human edits will be replaced. This is not authority or retest.'))return;
- draft=accepted.reply_rows.map(x=>({...x}));dirty=true;
+ draft=accepted.reply_rows.map(x=>({...x}));dirty=true;clearReturnReview();
  $('resume').value='';$('return-ack').checked=false;
  $('resume-message').textContent=accepted.reply_rows.length+
   ' original source-bound HUMAN entries safely resumed from PRIVATE reply. Export again before closing.';
  render();
 }
 function clear(){
- request=null;draft=null;dirty=false;$('file').value='';$('resume').value='';
+ request=null;draft=null;dirty=false;clearReturnReview();$('file').value='';$('resume').value='';
  $('ack').checked=false;$('return-ack').checked=false;$('workspace').hidden=true;
  $('cards').replaceChildren();$('message').textContent=
   'In-memory private handoff cleared. Already downloaded files remain under your control.';
 }
 async function exportReply(){
- if(!request||!draft||!$('ack').checked||!$('return-ack').checked)
+ if(!request||!draft||!$('ack').checked||!$('return-ack').checked||
+    !$('return-review-ack').checked||returnReviewFingerprint!==JSON.stringify(draft))
   fail('Explicit independently approved return channel acknowledgment required.');
  const base=request;const before=JSON.stringify(draft);
  const reply=await global.LightUpOwnerProtocol.createReply(base,draft);
@@ -616,6 +661,8 @@ $('file').addEventListener('change',async e=>{
 for(const id of ['recipient-filter','recipient-search','recipient-sort'])$(id).addEventListener('input',()=>{if(request)render();});
 $('recipient-bulk-apply').addEventListener('click',()=>{try{applyRecipientBulk();}catch(err){$('recipient-bulk-message').textContent='HOLD: '+err.message;}});
 $('resume').addEventListener('change',async e=>{try{await resumeReply(e.target.files[0]);}catch(err){$('resume-message').textContent='HOLD: '+err.message;e.target.value='';}});
+$('return-preview-button').addEventListener('click',()=>{try{reviewReturn();}catch(err){clearReturnReview();$('reply-message').textContent='HOLD: '+err.message;}});
+$('return-review-ack').addEventListener('change',controls);
 $('ack').addEventListener('change',controls);
 $('return-ack').addEventListener('change',controls);
 $('export').addEventListener('click',async()=>{try{await exportReply();}catch(err){$('reply-message').textContent='HOLD: '+err.message;}});

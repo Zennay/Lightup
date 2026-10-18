@@ -30,6 +30,11 @@
 <div id="cards" class="cards"></div></section>
 <section class="panel"><h2>3. Return only the privately reviewed human notes</h2>
 <p>The return includes the same original subset and human-baseline fingerprint so the sender can reject changed or stale work. It does not approve a real retest, verify a fix, or contact LightUp.</p>
+<div class="actions"><button id="return-preview-button" type="button" class="quiet">Review HUMAN-only edits before sending</button></div>
+<section id="return-review" class="bulk-panel" hidden><h3>PRIVATE human change summary</h3>
+<p id="return-review-summary" role="status" aria-live="polite"></p>
+<div id="return-review-rows" class="cards"></div>
+<label class="ack"><input id="return-review-ack" type="checkbox"> I reviewed the HUMAN-ONLY edits listed above. No original source, consent, grant, remediation verdict or retest is changed.</label></section>
 <label class="ack"><input id="return-ack" type="checkbox"> I explicitly confirm the independently approved PRIVATE return channel and understand this output is unsigned human coordination only.</label>
 <div class="actions"><button id="export" type="button" disabled>Save / export PRIVATE owner reply JSON</button><button id="clear" type="button" class="quiet">Clear private memory</button></div>
 <p id="reply-message" role="status" aria-live="polite"></p></section>

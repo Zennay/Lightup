@@ -18,7 +18,8 @@ function save(name,content){
  setTimeout(()=>URL.revokeObjectURL(url),1000);
 }
 function controls(){
- $('export').disabled=!request||!$('ack').checked||!$('return-ack').checked;
+ $('export').disabled=!request||!$('ack').checked||!$('return-ack').checked||
+  !$('return-review-ack').checked||returnReviewFingerprint!==JSON.stringify(draft);
 }
 function field(labelText,control){
  const label=el('label',labelText);label.append(control);return label;
@@ -70,9 +71,47 @@ function applyRecipientBulk(){
  if(!global.confirm('Apply HUMAN stage '+stage+' to '+visible.length+
   ' currently visible original findings? This NEVER updates original retest, authorization, consent or real remediation.'))return;
  for(const item of visible)item.r.status=stage;
- dirty=true;render();
+ dirty=true;clearReturnReview();render();
  $('recipient-bulk-message').textContent=visible.length+
   ' original findings updated in PRIVATE memory only. Export a return JSON through the approved channel.';
+}
+let returnReviewFingerprint=null;
+function clearReturnReview(){
+ returnReviewFingerprint=null;$('return-review').hidden=true;
+ $('return-review-ack').checked=false;$('return-review-rows').replaceChildren();
+ controls();
+}
+function reviewReturn(){
+ if(!request||!draft||!$('ack').checked)
+  throw Error('Private handoff and intended recipient acknowledgment required.');
+ const previous=new Map(request.rows.map(x=>[x.finding_id,x]));
+ const fields=['status','due_date','next_action','blocker'];
+ const changes=[];
+ for(const current of draft){
+  const prior=previous.get(current.finding_id);
+  if(!prior)throw Error('Original handoff finding ID changed.');
+  const changed=fields.filter(k=>current[k]!==prior[k]);
+  if(changed.length)changes.push({current,prior,changed});
+ }
+ const target=$('return-review-rows');
+ target.replaceChildren();
+ for(const item of changes){
+  const card=el('div');card.className='card';
+  card.append(el('h3','Original finding ID: '+item.current.finding_id));
+  for(const key of item.changed){
+   const row=el('p',key+': '+String(item.prior[key]??'(no date)')+
+    '  →  '+String(item.current[key]??'(no date)'));
+   row.className='review-delta';card.append(row);
+  }
+  target.append(card);
+ }
+ if(!changes.length)target.append(el('p','No HUMAN-only planning edits versus this original owner handoff. An unchanged private response may still be explicitly returned.'));
+ $('return-review-summary').textContent=changes.length+' of '+draft.length+
+  ' original findings contain changed HUMAN-only planning fields. This is not a verified fix, original retest or grant.';
+ returnReviewFingerprint=JSON.stringify(draft);
+ $('return-review').hidden=false;$('return-review-ack').checked=false;
+ $('reply-message').textContent='PRIVATE human changes prepared for review; confirm review and separately authorized return channel before export.';
+ controls();
 }
 function render(){
  const cards=$('cards');cards.replaceChildren();
@@ -94,14 +133,14 @@ function render(){
    const option=el('option',title);option.value=value;select.append(option);
   }
   select.value=r.status;
-  select.addEventListener('change',()=>{r.status=select.value;dirty=true;});
+  select.addEventListener('change',()=>{r.status=select.value;dirty=true;clearReturnReview();});
   const date=el('input');date.type='date';date.min='2020-01-01';date.max='2100-12-30';date.value=r.due_date||'';
-  date.addEventListener('change',()=>{r.due_date=date.value||null;dirty=true;});
+  date.addEventListener('change',()=>{r.due_date=date.value||null;dirty=true;clearReturnReview();});
   row.append(field('Local human status',select),field('Human follow-up date, NOT scan window',date));
   const action=el('textarea');action.maxLength=1800;action.value=r.next_action;action.rows=3;
-  action.addEventListener('input',()=>{r.next_action=action.value;dirty=true;});
+  action.addEventListener('input',()=>{r.next_action=action.value;dirty=true;clearReturnReview();});
   const blocker=el('textarea');blocker.maxLength=1200;blocker.value=r.blocker;blocker.rows=2;
-  blocker.addEventListener('input',()=>{r.blocker=blocker.value;dirty=true;});
+  blocker.addEventListener('input',()=>{r.blocker=blocker.value;dirty=true;clearReturnReview();});
   card.append(row,field('Human next action',action),field('Human blocker / dependency',blocker));
   cards.append(card);
  }
@@ -113,7 +152,7 @@ async function load(file){
  if(!$('ack').checked)fail('Confirm independent actual client/engagement and intended recipient first.');
  const raw=global.LightUpOwnerPrivateJson.read(await file.text());
  const accepted=await global.LightUpOwnerProtocol.validateRequest(raw);
- request=accepted;draft=accepted.rows.map(x=>({...x}));dirty=false;
+ request=accepted;draft=accepted.rows.map(x=>({...x}));dirty=false;clearReturnReview();
  $('resume').value='';$('resume-message').textContent='';
  $('recipient-filter').value='all';$('recipient-search').value='';$('recipient-sort').value='priority';
  $('return-ack').checked=false;$('reply-message').textContent='';
@@ -144,20 +183,21 @@ async function resumeReply(file){
  }
  if(!global.confirm('Resume '+accepted.reply_rows.length+
    ' HUMAN-ONLY entries from this source-bound PRIVATE draft? The current unsaved local human edits will be replaced. This is not authority or retest.'))return;
- draft=accepted.reply_rows.map(x=>({...x}));dirty=true;
+ draft=accepted.reply_rows.map(x=>({...x}));dirty=true;clearReturnReview();
  $('resume').value='';$('return-ack').checked=false;
  $('resume-message').textContent=accepted.reply_rows.length+
   ' original source-bound HUMAN entries safely resumed from PRIVATE reply. Export again before closing.';
  render();
 }
 function clear(){
- request=null;draft=null;dirty=false;$('file').value='';$('resume').value='';
+ request=null;draft=null;dirty=false;clearReturnReview();$('file').value='';$('resume').value='';
  $('ack').checked=false;$('return-ack').checked=false;$('workspace').hidden=true;
  $('cards').replaceChildren();$('message').textContent=
   'In-memory private handoff cleared. Already downloaded files remain under your control.';
 }
 async function exportReply(){
- if(!request||!draft||!$('ack').checked||!$('return-ack').checked)
+ if(!request||!draft||!$('ack').checked||!$('return-ack').checked||
+    !$('return-review-ack').checked||returnReviewFingerprint!==JSON.stringify(draft))
   fail('Explicit independently approved return channel acknowledgment required.');
  const base=request;const before=JSON.stringify(draft);
  const reply=await global.LightUpOwnerProtocol.createReply(base,draft);
@@ -175,6 +215,8 @@ $('file').addEventListener('change',async e=>{
 for(const id of ['recipient-filter','recipient-search','recipient-sort'])$(id).addEventListener('input',()=>{if(request)render();});
 $('recipient-bulk-apply').addEventListener('click',()=>{try{applyRecipientBulk();}catch(err){$('recipient-bulk-message').textContent='HOLD: '+err.message;}});
 $('resume').addEventListener('change',async e=>{try{await resumeReply(e.target.files[0]);}catch(err){$('resume-message').textContent='HOLD: '+err.message;e.target.value='';}});
+$('return-preview-button').addEventListener('click',()=>{try{reviewReturn();}catch(err){clearReturnReview();$('reply-message').textContent='HOLD: '+err.message;}});
+$('return-review-ack').addEventListener('change',controls);
 $('ack').addEventListener('change',controls);
 $('return-ack').addEventListener('change',controls);
 $('export').addEventListener('click',async()=>{try{await exportReply();}catch(err){$('reply-message').textContent='HOLD: '+err.message;}});
