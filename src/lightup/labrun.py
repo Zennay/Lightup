@@ -245,7 +245,10 @@ def run_planned_assessment(
     runtime = time.monotonic() - started
 
     findings = []
-    evidence_summaries: dict[str, str] = {}
+    # Preserve evidence alongside each *occurrence* rather than indexing by
+    # a check ID: different lab endpoints can legitimately yield the same check.
+    finding_evidence_summaries: list[str] = []
+    used_finding_ids: set[str] = set()
     for call, result in execution.results:
         meta = dict(result.metadata)
         arguments = dict(call.arguments)
@@ -254,8 +257,17 @@ def run_planned_assessment(
         target = str(arguments.get("url") or call.asset)
         for check_id in (c for c in meta.get("issues", "").split(",") if c):
             title, severity, impact, remediation = CHECK_CATALOG[check_id]
+            # Keep the historical first ID; disambiguate later occurrences
+            # without conflating different endpoints in the rendered report.
+            base_id = f"{context.run_id[:8]}-{check_id}"
+            finding_id = base_id
+            ordinal = 2
+            while finding_id in used_finding_ids:
+                finding_id = f"{base_id}~{ordinal}"
+                ordinal += 1
+            used_finding_ids.add(finding_id)
             finding = Finding(
-                finding_id=f"{context.run_id[:8]}-{check_id}",
+                finding_id=finding_id,
                 title=title,
                 severity=severity,
                 target=target,
@@ -266,7 +278,7 @@ def run_planned_assessment(
                           "capability_id": result.capability_id},
             )
             findings.append(finding)
-            evidence_summaries[finding.finding_id] = result.summary
+            finding_evidence_summaries.append(result.summary)
 
     assessed = {capability: CoverageStatus.ASSESSED
                 for capability in execution.assessed_capabilities()}
@@ -312,8 +324,8 @@ def run_planned_assessment(
              "retest": f.retest_status.value, "check_id": f.metadata["check_id"],
              "capability_id": f.metadata["capability_id"], "target": f.target,
              "evidence_ids": list(f.evidence),
-             "evidence_summary": evidence_summaries[f.finding_id]}
-            for f in findings
+             "evidence_summary": evidence_summary}
+            for f, evidence_summary in zip(findings, finding_evidence_summaries, strict=True)
         ],
         "coverage": coverage.to_dict(),
         "evaluation": record.to_dict(),
