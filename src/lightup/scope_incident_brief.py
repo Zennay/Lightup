@@ -17,6 +17,7 @@ from pathlib import Path
 from .auth_casebook import CasebookHold, _auth_actor, _source_snapshot, _write_private_json
 from .revocation_stop import StopLedgerError, status_for_actor as original_stop_history
 from .stop_exposure import _read_exposure
+from .scope_scenario_incident import ScenarioHold, source_bound_scenarios
 from .request_binding_readiness_cli import (
     _assets as original_canonical_assets,
     _source_snapshot as original_request_selection,
@@ -43,6 +44,7 @@ def compose_scope_incident_brief(
     client_id: str | None = None, engagement_ids: tuple[str, ...] = (),
     proposal_engagement: str | None = None, proposal_assets: tuple[str, ...] = (),
     proposal_risk: int | None = None,
+    scenario_file: str | None = None,
 ) -> dict:
     """Read original authenticated casebook, then per-engagement STOP exposure.
 
@@ -56,10 +58,15 @@ def compose_scope_incident_brief(
         raise ScopeBriefHold("engagement identity must be literal text")
     if len(set(engagement_ids)) != len(engagement_ids):
         raise ScopeBriefHold("duplicate engagement selection")
-    if ((proposal_engagement is None) != (proposal_risk is None)
+    if scenario_file is not None:
+        if (type(scenario_file) is not str or not 1 <= len(scenario_file) <= 1200
+                or proposal_engagement is None or proposal_assets
+                or proposal_risk is not None):
+            raise ScopeBriefHold("scenario file requires only one exact selected engagement")
+    elif ((proposal_engagement is None) != (proposal_risk is None)
             or (proposal_engagement is None) != (not proposal_assets)):
         raise ScopeBriefHold("proposal requires exact engagement, literals and risk")
-    if proposal_engagement is not None:
+    if proposal_engagement is not None and scenario_file is None:
         if type(proposal_risk) is not int or proposal_risk not in (1, 2, 3, 4):
             raise ScopeBriefHold("proposed risk must be original canonical range")
         if type(proposal_assets) is not tuple or len(proposal_assets) > 80:
@@ -160,7 +167,27 @@ def compose_scope_incident_brief(
         })
 
     binding_review = None
-    if proposal_engagement is not None:
+    if scenario_file is not None:
+        try:
+            exposure = next(r for r in readings if r["engagement_id"] == proposal_engagement)
+            if exposure["grant_source_count"] is None:
+                raise ScenarioHold("original STOP exposure unavailable")
+            binding_review = source_bound_scenarios(
+                database, actor_id=actor_id, client_id=source["client_id"],
+                engagement_id=proposal_engagement,
+                original_requests=source["requests"],
+                original_grant_count=exposure["grant_source_count"],
+                scenario_file=scenario_file,
+            )
+        except (ScenarioHold, ValueError, TypeError, KeyError, StopIteration,
+                PermissionError, sqlite3.Error, OSError, OverflowError):
+            binding_review = {
+                "status": "HOLD_BINDING_SOURCE_UNAVAILABLE_OR_CHANGED",
+                "engagement_id": proposal_engagement,
+                "source_snapshots_atomic_together": False,
+                "authority": False,
+            }
+    elif proposal_engagement is not None:
         # The original source-owner routine itself rechecks persisted operator
         # role and single-tenant membership in a separate readonly transaction.
         # Never reproduce its approval predicate here or infer permission.
@@ -300,6 +327,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--proposal-engagement", help="existing exact selected engagement for non-authorizing original approved-request shortlist")
     parser.add_argument("--proposed-asset", action="append", default=[], help="canonical proposed literal; never touched or scanned")
     parser.add_argument("--proposed-risk", type=int, help="proposed risk 1-4; original administrative request comparison only")
+    parser.add_argument("--scenario-file", help="existing PRIVATE 2-8 original scenario alternatives; requires --proposal-engagement, not single proposed literals")
     args = parser.parse_args(argv)
     try:
         result = compose_scope_incident_brief(
@@ -307,7 +335,7 @@ def main(argv: list[str] | None = None) -> int:
             client_id=args.client, engagement_ids=tuple(args.engagement),
             proposal_engagement=args.proposal_engagement,
             proposal_assets=tuple(args.proposed_asset),
-            proposal_risk=args.proposed_risk,
+            proposal_risk=args.proposed_risk, scenario_file=args.scenario_file,
         )
         if args.output:
             _write_private_json(args.output, result)
