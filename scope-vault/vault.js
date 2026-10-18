@@ -294,14 +294,14 @@
       }
     });
   }
-  async function seal() {
+  async function seal(archive = false) {
     await inProgress(async () => {
       supportsCrypto();
-      const outgoing = entries.filter((entry) => entry.selected);
+      const outgoing = archive ? entries.slice() : entries.filter((entry) => entry.selected);
       invariant(outgoing.length > 0 && outgoing.length <= MAX_FILES);
       const passphrase = els.password.value;
       const confirm = els.confirm.value;
-      const route = els.handoffRoute.value;
+      const route = archive ? "private-archive" : els.handoffRoute.value;
       els.password.value = ""; els.confirm.value = "";
       if (passphrase.length < 14 || passphrase.length > 256 || passphrase !== confirm) {
         notice("Use a matching 14–256 character passphrase. There is no account reset or recovery.", true);
@@ -309,8 +309,10 @@
       }
       invariant(handoffRoutes.includes(route));
       if (route === "client-review") invariant(outgoing.every((entry) => clientReviewRoles.includes(entry.role)));
+      // An archive rotation always includes the complete in-memory dossier regardless
+      // of export selection, and never downgrades it into a recipient packet.
       const manifest = outgoing.map((entry) => entry.name + " [" + entry.role + "]").join("\n");
-      if (!window.confirm("Intended route: " + route
+      if (!window.confirm((archive ? "Full private archive re-encryption (old files remain valid).\n" : "") + "Intended route: " + route
         + "\n\nInclude exactly these local files?\n" + manifest
         + "\n\nThis does not verify recipient identity or confer consent. Continue encrypting?")) {
         notice("Encryption cancelled before creating a packet; no files were sent or downloaded.");
@@ -323,7 +325,16 @@
         createdUtc: new Date().toISOString(),
         handoffRoute: route,
         authority: {may_authorize: false, may_consent: false, may_grant: false, may_scan: false, may_dispatch: false, may_deploy: false, may_release: false},
-        files: outgoing.map((entry) => ({name: entry.name, length: entry.bytes.length, sha256: entry.hash, role: entry.role, base64: b64(entry.bytes)}))
+        files: outgoing.map((entry) => {
+          const record = {name: entry.name, length: entry.bytes.length, sha256: entry.hash,
+            role: entry.role, base64: b64(entry.bytes)};
+          if (route !== "client-review") {
+            invariant(prepStages.includes(entry.stage) && typeof entry.note === "string" && entry.note.length <= MAX_NOTE_CHARS);
+            record.stage = entry.stage;
+            record.note = entry.note;
+          }
+          return record;
+        })
       };
       const cleartext = ENC.encode(JSON.stringify(payload));
       try {
@@ -339,8 +350,13 @@
         };
         const blob = new Blob([JSON.stringify(envelope)], {type: "application/json"});
         invariant(blob.size <= MAX_ENVELOPE_BYTES);
-        save(blob, "lightup-private-scope-packet.lightup-vault.json");
-        notice("Selected " + outgoing.length + " file(s) encrypted into a new packet. Unselected local files stay in memory, but were excluded from this download. No permissions created.");
+        save(blob, archive ?
+          "lightup-private-scope-packet-reencrypted.lightup-vault.json" :
+          "lightup-private-scope-packet.lightup-vault.json");
+        notice((archive ? "Entire in-memory private dossier re-encrypted with fresh salt/IV. Previous downloaded files and passphrases remain usable until you delete those copies. " :
+          "Selected " + outgoing.length + " file(s) encrypted; unselected local files excluded. ") +
+          (route === "client-review" ? "Internal notes and preparation stages excluded. " : "Internal notes and stages encrypted. ") +
+          "No identities verified or permissions created.");
       } finally { cleartext.fill(0); }
     });
   }
@@ -385,9 +401,20 @@
         let total = 0;
         for (const record of payload.files) {
           const hasRole = Object.prototype.hasOwnProperty.call(record, "role");
-          strictKeys(record, hasRole ? ["name", "length", "sha256", "role", "base64"] : ["name", "length", "sha256", "base64"]);
+          const hasDossier = Object.prototype.hasOwnProperty.call(record, "stage") ||
+            Object.prototype.hasOwnProperty.call(record, "note");
+          const expected = ["name", "length", "sha256", "base64"];
+          if (hasRole) expected.push("role");
+          if (hasDossier) expected.push("stage", "note");
+          strictKeys(record, expected);
           if (hasRole) invariant(validRole(record.role));
-          if (importedRoute === "client-review") invariant(clientReviewRoles.includes(record.role));
+          if (hasDossier) invariant(prepStages.includes(record.stage) &&
+            typeof record.note === "string" && record.note.length <= MAX_NOTE_CHARS &&
+            !/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/.test(record.note));
+          if (importedRoute === "client-review") {
+            invariant(clientReviewRoles.includes(record.role));
+            invariant(!hasDossier); // The client handoff must never carry internal annotations.
+          }
           const name = nameOf(record.name);
           invariant(!names.has(name));
           names.add(name);
@@ -410,7 +437,9 @@
           for (const item of staged) {
             const current = byName.get(item.name);
             if (current) {
-              invariant(current.hash === item.hash && current.role === item.role && current.bytes.length === item.bytes.length);
+              invariant(current.hash === item.hash && current.role === item.role &&
+                current.bytes.length === item.bytes.length &&
+                current.stage === item.stage && current.note === item.note);
               item.bytes.fill(0);
             } else {
               invariant(merged.length < MAX_FILES && priorTotal + item.bytes.length <= MAX_TOTAL_BYTES);
@@ -528,7 +557,23 @@
   els.selectNone.addEventListener("click", () => {
     if (busy) return; entries.forEach((entry) => {entry.selected = false;}); touch(); paint();
   });
-  els.seal.addEventListener("click", seal);
+  els.seal.addEventListener("click", () => seal(false));
+  els.rekey.addEventListener("click", () => seal(true));
+  els.stageFilter.addEventListener("change", () => {touch(); paint();});
+  els.selectRoute.addEventListener("click", () => {
+    if (busy) return;
+    const route = els.handoffRoute.value;
+    invariant(handoffRoutes.includes(route));
+    const choose = (entry) => route === "private-archive" ||
+      (route === "client-review" && clientReviewRoles.includes(entry.role) && entry.stage !== "historical") ||
+      (route === "operator-review" && entry.role === "Operator review — unverified" && entry.stage !== "historical");
+    const proposed = entries.filter(choose);
+    if (!proposed.length) {notice("No current files fit that self-reported route. Select eligible files manually.", true);return;}
+    if (!window.confirm("Select " + proposed.length + " self-labelled file(s) for " + route +
+      "? This is a convenience suggestion, NOT verification of the recipient or the contents.")) return;
+    entries.forEach((entry) => {entry.selected = choose(entry);});
+    touch(); paint(); notice("Suggested selection applied. Manually inspect every file before export.");
+  });
   els.unlock.addEventListener("click", unlock);
   els.clear.addEventListener("click", () => {
     if (busy) return;
