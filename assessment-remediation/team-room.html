@@ -1,0 +1,333 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; connect-src 'none'; base-uri 'none'; form-action 'none'; object-src 'none'; img-src 'none'; script-src 'sha256-RaHM0Ql1rrSELnQ+M6//uhWZIKv1T1sC4GBlbCuRKDk='; style-src 'sha256-XoLCja8io0nk1J/npMUpt6ILp3VyvezHeM5dqSGxczU='">
+<title>LightUp — private human review room</title>
+<style>:root{--ink:#1c2a3e;--muted:#56677d;--line:#d4dfea;--bg:#f1f5fa;--deep:#17365d;--alert:#7e381d}
+*{box-sizing:border-box}html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.65 system-ui,-apple-system,sans-serif}
+header{background:linear-gradient(115deg,#12283f,#1f4b76);color:#fff;padding:3rem max(1.4rem,calc((100vw - 1080px)/2))}
+header h1{font-size:clamp(2rem,5vw,3.25rem);letter-spacing:-.045em;line-height:1.05;margin:.7rem 0}
+header p{max-width:840px;color:#d8e9f7}aside{background:#fff5e5;color:#6e381b;border-left:4px solid #f0b55f;border-radius:4px;padding:1rem;margin-top:1.5rem;max-width:980px}
+.overline{font-size:.8rem!important;color:#b5dafb!important;font-weight:800;letter-spacing:.15em}
+main{max-width:1120px;margin:auto;padding:1rem 1.5rem 3rem}
+section{border:1px solid var(--line);border-radius:12px;padding:1.5rem 1.7rem;background:white;margin:1.4rem 0;box-shadow:0 9px 24px #1630550a}
+.heading{display:flex;align-items:flex-start;gap:1rem}.step{display:inline-flex;align-items:center;justify-content:center;border-radius:10px;background:#e3efff;color:var(--deep);font-weight:900;width:2.5rem;height:2.5rem;flex-shrink:0}
+h2{font-size:1.35rem;letter-spacing:-.025em;margin:0}h3{font-size:1rem;margin:1.6rem 0 .3rem}
+section p{color:var(--muted);margin:.3rem 0 1.2rem}
+label{font-weight:700;display:block;font-size:.91rem;margin:1rem 0}
+input:not([type=checkbox]),select,textarea{width:100%;margin:.35rem 0;background:#f9fbfe;border:1px solid #b9c9dd;border-radius:6px;padding:.7rem;font:inherit;color:var(--ink)}
+input:focus-visible,select:focus-visible,textarea:focus-visible,button:focus-visible{outline:3px solid #e5ab43;outline-offset:3px}
+button{padding:.7rem 1rem;border:0;border-radius:6px;background:#1e5089;color:white;font:inherit;font-weight:750;cursor:pointer;margin:.2rem .25rem .2rem 0}
+button.secondary{background:#e6edf7;color:#1e5089;border:1px solid #a7bcd7}
+button:hover{filter:brightness(1.12)}
+.items{display:grid;gap:.5rem;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));max-height:350px;overflow:auto;padding:.5rem}
+button.choice{text-align:left;background:#f0f5fc;color:#1b3c62;border:1px solid #c4d7f0;font-size:.84rem;overflow-wrap:anywhere}
+button.choice[aria-pressed=true]{background:#d6e6fc;border-color:#22508a}
+.pair{font-weight:700;color:#20436b!important;background:#edf5ff;padding:.85rem;overflow-wrap:anywhere}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:1.25rem}
+.confirm{display:flex;align-items:center;gap:.5rem;font-weight:550}.confirm input{flex-shrink:0}
+.notice{border:1px solid #c4d4e7;padding:.85rem;background:#e9f4ff;border-radius:6px}
+.notice.error{color:#8a2f21;background:#fff0eb;border-color:#e4b4aa}
+.sub{font-size:.85rem;color:var(--muted)}
+code{overflow-wrap:anywhere;border-radius:3px;background:#eaf0f7;color:#21446c;padding:.1rem .3rem}
+footer{text-align:center;font-size:.78rem;color:var(--muted);border-top:1px solid var(--line);padding:1.8rem}
+@media(max-width:650px){main{padding:.8rem}section{padding:1rem}header{padding:2rem 1.4rem}}
+@media print{.items,input,textarea,button{display:none}section{box-shadow:none}}</style>
+</head>
+<body>
+<header>
+  <p class="overline">LIGHTUP / ASSESSMENT RUNTIME / LOCAL HUMAN HANDOFF</p>
+  <h1>Team follow-up room</h1>
+  <p>Review the original operator's <strong>human-only</strong> links and hand back updated private follow-up notes. This workspace contains references to existing scenario/finding IDs, not complete source evidence. It cannot change original lab results, security findings, permissions, access grants or retest outcomes.</p>
+  <aside><strong>DRAFT/HOLD · PRIVATE HUMAN MATERIAL</strong><br>
+  Verify the handoff sender and matching client/engagement independently. A SHA-256 byte reference is not a signature, proof of identity, consent or source authenticity. Keep the exported return confidential; it is not automatically accepted by the original operator.</aside>
+</header>
+<main>
+  <section>
+    <div class="heading"><span class="step">01</span><div><h2>Open a private team handoff</h2><p>Select the operator-created <code>-team-handoff.json</code> file. No browser history, local storage, cookies, HTTP requests or server uploads.</p></div></div>
+    <label>Private original handoff<input id="handoff" type="file" accept=".json,application/json"></label>
+    <button type="button" id="read">Load private handoff</button>
+    <p id="status" class="notice" role="status" aria-live="polite">No handoff imported; all source/permission states remain unavailable.</p>
+  </section>
+  <div id="workspace" hidden>
+    <section>
+      <div class="heading"><span class="step">02</span><div><h2>Human source-link discussions</h2><p id="counter" aria-live="polite"></p></div></div>
+      <label>Filter existing exact original source IDs or local stages<input id="filter" type="search" autocomplete="off" placeholder="Scenario, finding, human reviewer or stage"></label>
+      <div id="items" class="items" role="group" aria-label="Source-bound human links"></div>
+      <p class="sub">Every link in this list was supplied by the operator; it does not prove that a lab scenario and a client finding are related.</p>
+    </section>
+    <section>
+      <div class="heading"><span class="step">03</span><div><h2>Edit local follow-up notes</h2><p>Only the four fields below may change; original IDs and source memberships are fixed.</p></div></div>
+      <form id="editor" hidden>
+        <p id="selected" class="pair"></p>
+        <div class="grid">
+          <label>Human discussion stage<select id="stage"><option value="needs_review">Needs human review</option><option value="investigating">Being discussed</option><option value="documented">Human notes documented</option></select></label>
+          <label>Reviewer / team label<input id="reviewer" maxlength="100" autocomplete="off"></label>
+        </div>
+        <label>Next suggested human action<input id="next_action" maxlength="300" autocomplete="off" placeholder="Discuss evidence with the original source owner"></label>
+        <label>Private non-authoritative human note<textarea id="note" maxlength="500" rows="3" placeholder="Do not include secrets, target details, client personal data or permission assertions"></textarea></label>
+        <button type="submit">Save this pair locally</button>
+      </form>
+      <h3>Optional filtered-stage action</h3>
+      <p class="sub">Apply a human discussion stage only to the currently filtered original links. This does not schedule anything or modify source findings.</p>
+      <div class="grid">
+        <label>Stage for visible filtered links<select id="bulkStage"><option value="needs_review">Needs review</option><option value="investigating">Being discussed</option><option value="documented">Human notes documented</option></select></label>
+        <label class="confirm"><input type="checkbox" id="batchConfirm"> I am only changing local human follow-up notes, not source/permission status.</label>
+      </div>
+      <button id="batch" type="button" class="secondary">Apply human stage to filtered links</button>
+    </section>
+    <section>
+      <div class="heading"><span class="step">04</span><div><h2>Return private notes to the original operator</h2><p>Save an unsigned private JSON for the owner to inspect. The owner must use the original unchanged baseline plus the return with <code>team_handoff.py receive</code>; a changed baseline or link membership is rejected.</p></div></div>
+      <button id="export" type="button">Download source-bound PRIVATE human return</button>
+      <p class="sub">No external recipient is contacted. Transfer this output only through an independently approved confidential route.</p>
+    </section>
+  </div>
+</main>
+<footer>LIGHTUP · INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD · HUMAN REVIEW IS NOT SECURITY AUTHORITY</footer>
+<script>"use strict";
+/* LightUp human-only private team review.
+   No network, account, storage, permission, scan, finding status or target calls. */
+(() => {
+  const $ = id => document.getElementById(id);
+  const LIMIT = 262144;
+  const FLAGS = ["authorized", "consent_verified", "dispatch_allowed", "release_allowed"];
+  const FIELDS = ["stage", "reviewer", "next_action", "note"];
+  const KEYS = ["scenario_id", "finding_id", ...FIELDS];
+  const STAGES = ["needs_review", "investigating", "documented"];
+  const SOURCE_KEYS = ["schema", "original_links_sha256", "comparison_sha256",
+    "findings_sha256", "entries", "team_room_source_sha256", ...FLAGS];
+  let source = null;
+  let entries = [];
+  let selected = 0;
+  const encoder = new TextEncoder();
+  const decoder = new TextDecoder("utf-8", { fatal: true });
+  const invalid = msg => { throw new Error(msg); };
+  const exact = (obj, keys) => obj && typeof obj === "object" &&
+    !Array.isArray(obj) && Object.keys(obj).length === keys.length &&
+    keys.every(key => Object.hasOwn(obj, key));
+  const hex = s => typeof s === "string" && /^[a-f0-9]{64}$/u.test(s);
+  const good = (str, len) => typeof str === "string" && str.length <= len &&
+    !/[\u0000-\u0008\u000b-\u001f\u007f\u202a-\u202e\u2066-\u2069]/u.test(str);
+  function status(msg, error = false) {
+    $("status").textContent = msg;
+    $("status").className = error ? "notice error" : "notice";
+  }
+  function element(parent, tag, value, klass) {
+    const node = document.createElement(tag);
+    node.textContent = value;
+    if (klass) node.className = klass;
+    parent.appendChild(node);
+    return node;
+  }
+  function strictJSON(raw) {
+    let pos = 0, count = 0;
+    function whitespace() {
+      while (pos < raw.length && /\s/u.test(raw[pos])) pos++;
+    }
+    function string() {
+      if (raw[pos] !== '"') invalid("Malformed JSON string.");
+      let start = pos++, escaped = false;
+      while (pos < raw.length) {
+        const ch = raw[pos++];
+        if (ch === '"' && !escaped) return JSON.parse(raw.slice(start, pos));
+        if (ch === "\\" && !escaped) escaped = true;
+        else escaped = false;
+      }
+      invalid("Unterminated JSON string.");
+    }
+    function value(depth) {
+      if (depth > 25 || ++count > 40000) invalid("Oversized or too-deep JSON.");
+      whitespace();
+      if (raw[pos] === '"') return string();
+      if (raw[pos] === "{") {
+        pos++; whitespace();
+        const object = Object.create(null), keys = new Set();
+        if (raw[pos] === "}") { pos++; return object; }
+        while (true) {
+          whitespace(); const key = string();
+          if (keys.has(key)) invalid("Ambiguous duplicate JSON object key.");
+          keys.add(key); whitespace();
+          if (raw[pos++] !== ":") invalid("Malformed JSON field.");
+          object[key] = value(depth + 1); whitespace();
+          if (raw[pos] === "}") { pos++; return object; }
+          if (raw[pos++] !== ",") invalid("Malformed JSON member.");
+        }
+      }
+      if (raw[pos] === "[") {
+        pos++; whitespace();
+        const list = [];
+        if (raw[pos] === "]") { pos++; return list; }
+        for (;;) {
+          list.push(value(depth + 1));
+          if (list.length > 512) invalid("Too many private team entries.");
+          whitespace();
+          if (raw[pos] === "]") { pos++; return list; }
+          if (raw[pos++] !== ",") invalid("Malformed JSON array.");
+        }
+      }
+      for (const [literal, result] of [["true", true], ["false", false], ["null", null]]) {
+        if (raw.startsWith(literal, pos)) { pos += literal.length; return result; }
+      }
+      const match = raw.slice(pos).match(/^-?(?:0|[1-9][0-9]*)(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?/u);
+      if (!match) invalid("Malformed JSON primitive.");
+      pos += match[0].length;
+      const n = Number(match[0]);
+      if (!Number.isFinite(n)) invalid("Nonfinite JSON number.");
+      return n;
+    }
+    const object = value(0);
+    whitespace();
+    if (pos !== raw.length) invalid("Trailing JSON payload.");
+    return object;
+  }
+  function entryIsValid(item) {
+    if (!exact(item, KEYS)) return false;
+    for (const name of ["scenario_id", "finding_id"]) {
+      const val = item[name];
+      if (typeof val !== "string" || val.length < 1 || val.length > 256 ||
+          val !== val.trim() || !/^[\x20-\x7e]+$/u.test(val)) return false;
+    }
+    return STAGES.includes(item.stage) &&
+      good(item.reviewer, 100) && good(item.next_action, 300) &&
+      good(item.note, 500);
+  }
+  function validate(input) {
+    if (!exact(input, SOURCE_KEYS) ||
+        input.schema !== "lightup.assessment_remediation_team_handoff.v1" ||
+        FLAGS.some(key => input[key] !== false) ||
+        ![input.original_links_sha256, input.comparison_sha256,
+          input.findings_sha256, input.team_room_source_sha256].every(hex) ||
+        !Array.isArray(input.entries) || input.entries.length > 512)
+      invalid("Not a private unchanged original team handoff, or authority fields altered.");
+    const seen = new Set();
+    for (const item of input.entries) {
+      if (!entryIsValid(item)) invalid("Malformed original human link.");
+      const pair = JSON.stringify([item.scenario_id, item.finding_id]);
+      if (seen.has(pair)) invalid("Repeated original link identity.");
+      seen.add(pair);
+    }
+    return input;
+  }
+  function clear() {
+    source = null; entries = []; selected = 0;
+    $("workspace").hidden = true;
+    $("items").replaceChildren();
+  }
+  async function load() {
+    const file = $("handoff").files?.[0];
+    if (!file || !file.size || file.size > LIMIT) {
+      status("HOLD · Select an original owner-private team handoff under 256 KiB.", true);
+      return;
+    }
+    try {
+      const raw = new Uint8Array(await file.arrayBuffer());
+      if (raw.length !== file.size) invalid("Private source changed during local import.");
+      const candidate = validate(strictJSON(decoder.decode(raw)));
+      source = candidate;
+      entries = candidate.entries.map(item => ({...item}));
+      selected = 0;
+      $("workspace").hidden = false;
+      render();
+      status("Human-only original handoff loaded locally. Sender and engagement are NOT authenticated.");
+    } catch (error) {
+      clear();
+      status("HOLD · " + error.message, true);
+    }
+  }
+  function writeEditor() {
+    const item = entries[selected];
+    if (!item) { $("editor").hidden = true; return; }
+    $("editor").hidden = false;
+    $("selected").textContent = "Original pair " + (selected + 1) +
+      " / " + entries.length + ": " + item.scenario_id + " ↔ " + item.finding_id;
+    for (const name of FIELDS) $(name).value = item[name];
+  }
+  function render() {
+    if (!source) return;
+    const search = $("filter").value.toLowerCase();
+    const list = $("items"); list.replaceChildren();
+    const visible = entries.map((entry, position) => ({entry, position}))
+      .filter(({entry}) => (entry.scenario_id + " " + entry.finding_id + " " +
+        entry.stage + " " + entry.reviewer).toLowerCase().includes(search));
+    for (const {entry, position} of visible) {
+      const button = element(list, "button",
+        (position + 1) + " · " + entry.scenario_id + " ↔ " +
+        entry.finding_id + " · " + entry.stage, "choice");
+      button.type = "button";
+      button.setAttribute("aria-pressed", position === selected ? "true" : "false");
+      button.addEventListener("click", () => { selected = position; render(); });
+    }
+    $("counter").textContent = entries.length + " source-bound human link(s), " +
+      visible.length + " visible. Missing entries are not proof of a clean engagement.";
+    writeEditor();
+  }
+  function save() {
+    if (!source || !entries[selected]) return;
+    const candidate = {...entries[selected]};
+    for (const name of FIELDS) candidate[name] = $(name).value.trim();
+    if (!entryIsValid(candidate)) {
+      status("HOLD · Enter valid human-only fields within length limits.", true);
+      return;
+    }
+    entries[selected] = candidate;
+    render();
+    status("Private human notes updated in memory only. Original IDs, finding statuses and scope unchanged.");
+  }
+  function stageBatch() {
+    if (!source) return;
+    const stage = $("bulkStage").value;
+    if (!STAGES.includes(stage) || !$("batchConfirm").checked) {
+      status("HOLD · Choose a human stage and explicitly confirm filtered notes only.", true);
+      return;
+    }
+    const query = $("filter").value.toLowerCase();
+    let changed = 0;
+    entries = entries.map(row => {
+      if ((row.scenario_id + " " + row.finding_id + " " + row.stage +
+            " " + row.reviewer).toLowerCase().includes(query)) {
+        if (row.stage !== stage) changed++;
+        return {...row, stage};
+      }
+      return row;
+    });
+    $("batchConfirm").checked = false;
+    render();
+    status(changed + " local human stages edited; original source links and permission not modified.");
+  }
+  function exportReturn() {
+    try {
+      if (!source) invalid("No accepted private team handoff.");
+      if (!entries.every(entryIsValid)) invalid("Invalid human entry in draft.");
+      const output = {
+        schema: "lightup.assessment_remediation_team_return.v1",
+        original_links_sha256: source.original_links_sha256,
+        comparison_sha256: source.comparison_sha256,
+        findings_sha256: source.findings_sha256,
+        entries: entries.map(row => ({...row})),
+        authorized: false, consent_verified: false,
+        dispatch_allowed: false, release_allowed: false
+      };
+      const payload = encoder.encode(JSON.stringify(output, null, 2) + "\n");
+      if (payload.length > LIMIT) invalid("Private return exceeds allowed document size.");
+      const url = URL.createObjectURL(new Blob([payload], {type:"application/json"}));
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "lightup-private-team-return.json";
+      link.click();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      status("Unsigned human-only return exported. Original owner must verify sender and run team_handoff.py receive with exact original private baseline.");
+    } catch (error) {
+      status("HOLD · " + error.message, true);
+    }
+  }
+  $("read").addEventListener("click", load);
+  $("filter").addEventListener("input", render);
+  $("editor").addEventListener("submit", event => { event.preventDefault(); save(); });
+  $("batch").addEventListener("click", stageBatch);
+  $("export").addEventListener("click", exportReturn);
+})();</script>
+</body>
+</html>

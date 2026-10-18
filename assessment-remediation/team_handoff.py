@@ -123,13 +123,18 @@ def prepare(args):
     source_hash = sha256(portable).hexdigest()
     handoff["team_room_source_sha256"] = source_hash
     destination = target(args.output_dir, args.prefix, "-team-handoff.json")
+    page_destination = target(args.output_dir, args.prefix, "-team-room.html")
     published = encode(handoff)
     fail_if(len(published) > MAX_LINKS, "team handoff exceeds private document bound")
-    if sha256(read_regular(args.links, MAX_LINKS)).digest() != sha256(original).digest():
-        raise Hold("original private owner draft changed during handoff")
+    if (sha256(read_regular(args.links, MAX_LINKS)).digest() != sha256(original).digest()
+            or sha256(read_regular(str(HERE / "team-room.html"), 131072)).hexdigest() != source_hash):
+        raise Hold("private source or offline team room changed during handoff")
+    # Each independent file is fsynced, exclusive and 0600. No source
+    # mutation and no silent replacement of an existing team return.
     publish(destination, published)
+    publish(page_destination, portable)
     print("PRIVATE_TEAM_HANDOFF_CREATED — UNAUTHENTICATED HUMAN NOTES ONLY")
-    print("Use the portable team-room.html locally with the private handoff JSON.")
+    print("Private source-bound handoff JSON and standalone no-network HTML room created.")
     print("This artifact conveys NO permission, consent, scan, retest or verified fix.")
     return 2
 
