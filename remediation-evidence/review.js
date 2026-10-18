@@ -84,11 +84,24 @@ function updateSource(newSource,matchedCases){
  source=newSource;casework=matchedCases;review=new Map(newSource.map(f=>[f.finding_id,stageStart(f.finding_id)]));
  changed=false;refreshCandidate=null;render();
 }
+function localDay(date){
+ return String(date.getFullYear()).padStart(4,'0')+'-'+String(date.getMonth()+1).padStart(2,'0')+'-'+String(date.getDate()).padStart(2,'0');
+}
+function localWindow(){
+ const now=new Date(),end=new Date(now.getFullYear(),now.getMonth(),now.getDate()+7);
+ return {today:localDay(now),next7:localDay(end)};
+}
 function count(){
- const metrics={total:source.length,urgent:0,no_reference:0,needs_changes:0,retest:0,contradictions:0};
+ const metrics={total:source.length,urgent:0,no_reference:0,needs_changes:0,retest:0,contradictions:0,blocked:0,overdue:0,next7:0};
+ const window=localWindow();
  for(const f of source){
   const r=review.get(f.finding_id),c=casework?.get(f.finding_id);
   if(SEV.indexOf(f.severity)<=1)metrics.urgent++;
+  if(c?.status==='blocked')metrics.blocked++;
+  if(c?.due_date&&c.status!=='completed'&&c.status!=='deferred'){
+   if(c.due_date<window.today)metrics.overdue++;
+   else if(c.due_date<=window.next7)metrics.next7++;
+  }
   if(!r.reference.trim())metrics.no_reference++;
   if(r.stage==='needs_changes')metrics.needs_changes++;
   if(r.stage==='ready_for_authorized_retest')metrics.retest++;
@@ -103,6 +116,11 @@ function humanQueue(f,c,r){
  const cues=[];
  if(f.retest_status==='regression')cues.push('Source reports regression: escalate to source owner.');
  if(c?.status==='blocked')cues.push('Casework is blocked: coordinate blocker with human owner.');
+ const window=localWindow();
+ if(c?.due_date&&c.status!=='completed'&&c.status!=='deferred'){
+  if(c.due_date<window.today)cues.push('Local Casework planning date overdue; not an approved SLA.');
+  else if(c.due_date<=window.next7)cues.push('Local planning date within seven days; coordinate with human owner.');
+ }
  if(c?.status==='completed'&&f.retest_status!=='fixed')cues.push('Local completed is NOT a verified source fix.');
  if(f.retest_status==='fixed')cues.push('Source reports fixed; independently confirm current approved retest.');
  if(r.stage==='ready_for_authorized_retest'&&!r.reference.trim())cues.push('Retest requested locally without a reference.');
@@ -122,6 +140,8 @@ function included(f,c,r,filter){
  if(filter==='urgent'&&SEV.indexOf(f.severity)>1)return false;
  if(filter==='gaps'&&r.reference.trim()&&cues.length===0)return false;
  if(filter==='retest'&&r.stage!=='ready_for_authorized_retest')return false;
+ if(filter==='blocked'&&c?.status!=='blocked')return false;
+ if(filter==='overdue'&&(!c?.due_date||c.status==='completed'||c.status==='deferred'||c.due_date>=localWindow().today))return false;
  if(filter==='contradictions'&&!cues.some(x=>/NOT|conflict|without/.test(x)))return false;
  return true;
 }
@@ -146,6 +166,7 @@ function render(){
   const heading=el('h3','',f.title);section.append(heading);
   section.append(el('p','detail',f.severity.toUpperCase()+' · Source retest: '+f.retest_status+' · Local casework: '+(c?.status||'not loaded')));
   section.append(el('p','detail','Finding '+f.finding_id));
+  if(c) section.append(el('p','detail','Original local plan · owner: '+(c.owner||'unassigned')+' · due: '+(c.due_date||'not planned')));
   if(cues.length){const ul=el('ul','cues');for(const cue of cues)ul.append(el('li','',cue));section.append(ul);}
   const selectLabel=el('label','field'),select=document.createElement('select');
   selectLabel.append(el('span','','Human coordination stage'));
