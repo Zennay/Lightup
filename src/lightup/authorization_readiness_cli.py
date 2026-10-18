@@ -375,6 +375,14 @@ def _read_report(database: Path, *, client_id: str | None = None,
     report = {
         "format": "lightup.authorization_readiness_operator_v1",
         "disposition": "REVIEW_ONLY",
+        "scope_fingerprint": hashlib.sha256(json.dumps(
+            ["lightup.readiness.scope.v1", client_id or "all",
+             engagement_id or "all"], separators=(",", ":")
+        ).encode("utf-8")).hexdigest(),
+        "scope_description": (
+            "single_engagement" if engagement_id is not None else
+            "single_client" if client_id is not None else "all_clients"
+        ),
         "authority": AUTHORIZATION_FALSE.copy(),
         "limitations": [
             "Authenticated operator's local offline snapshot, not fresh consent evidence.",
@@ -387,6 +395,7 @@ def _read_report(database: Path, *, client_id: str | None = None,
             "Scoped exports intentionally omit unrelated tenant data and do not claim to inventory all orphan grants.",
             "Opaque source-key hashes support local action continuity only; they are unsigned pseudonyms, not identities, digital signatures or authorization.",
             "Stable identity-key hashes distinguish unchanged/changed/removed stored rows across two offline reports; they are not proof that a missing record was remediated.",
+            "Reports must have matching exact selection scope fingerprints for offline comparison; report contents are unsigned/untrusted and never authorize real work.",
         ],
         "summary": {
             "clients": len(clients),
@@ -429,6 +438,8 @@ def _interactive_workspace(report: dict, nonce: str) -> str:
     snapshot = {
         "format": "lightup.authorization_casework_snapshot_v1",
         "disposition": "REVIEW_ONLY",
+        "scope_fingerprint": report["scope_fingerprint"],
+        "scope_description": report["scope_description"],
         "fingerprint": hashlib.sha256(
             json.dumps({"engagements": report["engagements"],
                         "review_queue": report["review_queue"]},
