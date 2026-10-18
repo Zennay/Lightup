@@ -272,6 +272,8 @@ function download(){
  document.body.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
 }
 async function loadFile(file){
+ // Capture only privacy-minimal, unverified previous review context before clearing it.
+ const priorRevision=exportModel();
  hold('Reading draft');
  if(!file||file.size===0||file.size>MAX_BYTES){hold('Missing or oversized file');return;}
  const token=epoch;
@@ -294,6 +296,9 @@ async function loadFile(file){
   $('workspace').hidden=false;$('export').disabled=false;$('textExport').disabled=false;$('print').disabled=false;
   $('sourceState').textContent='Source loaded · '+draft.requested_assets.length+' proposed assets · REVIEW_ONLY/HOLD';
   render();
+  document.dispatchEvent(new CustomEvent('lightup:brief-revision',{
+   detail:{before:priorRevision,after:exportModel()}
+  }));
  }catch(_){if(token===epoch)hold('Invalid, ambiguous or unsafe Studio draft');}
 }
 /* Only privacy-minimal snapshot/strict parser are exposed to the adjacent offline reconciliation view. */
