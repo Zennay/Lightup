@@ -86,6 +86,21 @@
         <select id="stageFilter"><option value="all">All stages</option>
           <option value="needs_review">Needs review</option><option value="in_discussion">In discussion</option>
           <option value="documented">Documented</option></select></div>
+      <div><label for="routeFilter">Proposed human discussion route</label>
+        <select id="routeFilter"><option value="all">All routes</option>
+          <option value="unrouted">Not routed</option>
+          <option value="source_owner">Original source owner</option>
+          <option value="scope_policy">Scope / policy reviewer</option>
+          <option value="finding_quality">Findings / coverage reviewer</option>
+          <option value="evidence_scoring">Evidence / scoring reviewer</option>
+          <option value="operations">Operations reviewer</option></select></div>
+      <div><label for="actionFilter">Next human discussion action</label>
+        <select id="actionFilter"><option value="all">All proposed actions</option>
+          <option value="none_recorded">No action recorded</option>
+          <option value="verify_original_source">Verify original source files</option>
+          <option value="request_original_evidence">Request original supporting evidence</option>
+          <option value="discuss_lab_method">Discuss lab method</option>
+          <option value="document_human_followup">Document human follow-up</option></select></div>
       <div><label for="bulkStage">Set selected visible cases to</label>
         <select id="bulkStage"><option value="needs_review">Needs review</option>
           <option value="in_discussion">In discussion</option>
@@ -96,7 +111,9 @@
     <div id="queueOverview" class="queue-overview" aria-label="Private source-based human review priorities"></div>
     <p id="queueCount"></p>
     <div class="actions"><button id="applyStage" type="button">Confirm bulk stage for visible cases</button>
-      <button id="undoStage" class="secondary" type="button" disabled>Undo previous bulk change</button></div>
+      <button id="undoStage" class="secondary" type="button" disabled>Undo previous bulk change</button>
+      <button id="suggestRoutes" type="button">Suggest routes for visible unrouted cases</button>
+      <button id="undoRoute" class="secondary" type="button" disabled>Undo proposed routes</button></div>
     <p>Filtering or moving a human discussion stage never changes a source report, invokes an evaluator or grants permission.</p>
     <div id="cases" class="scroll" aria-label="Private human scenario review"></div>
   </section>
