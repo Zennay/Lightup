@@ -363,6 +363,55 @@
       if(label)label.textContent=entry.alias?" · "+entry.alias:"";
     });
   }
+  const AGENDA={
+    scope:{title:"Scope and policy",question:"Ask a human scope owner to reconcile lab fixture membership, policy constraints and original scope declarations. No consent is inferred."},
+    findings:{title:"Findings and coverage",question:"Ask a lab-detection reviewer for original planted findings and coverage ground truth. Source counts alone cannot verify detection correctness."},
+    evidence:{title:"Evidence and scoring",question:"Ask an independent evidence reviewer to reconcile reported rubric, reproducibility and retest interpretation against original lab evidence."},
+    operations:{title:"Runtime and operations",question:"Ask a lab operations reviewer to explain source-reported timing, cost and tool-use changes. These are informational, not safety regressions."}
+  };
+  function agendaCounts(){
+    if(!reports.length)return [];
+    const ids=queueIds();
+    return Object.entries(AGENDA).map(([topic,definition])=>{
+      const slots=[],caseIds=new Set();let instances=0;
+      for(let i=0;i<reports.length;i++){
+        let slotHasSignal=false;
+        for(const id of ids){
+          const count=queueAdverse(id,String(i),topic);
+          if(count){instances+=count;slotHasSignal=true;caseIds.add(id);}
+        }
+        if(slotHasSignal)slots.push(i+1);
+      }
+      return {topic,title:definition.title,question:definition.question,
+        kind:topic==="operations"?"INFORMATIONAL_CHANGES":"SOURCE_ADVERSE_FLAGS",
+        instances,anonymous_case_count:caseIds.size,candidate_slots_with_signal:slots,
+        status:"REVIEW_ONLY",...fixedFlags()};
+    });
+  }
+  function renderAgenda(){
+    const root=$("agendaCards");root.replaceChildren();
+    if(!reports.length){root.textContent="Import previous lab reports to prepare an original-source human discussion agenda.";return;}
+    for(const topic of agendaCounts()){
+      const card=document.createElement("article");card.className="card";
+      const heading=document.createElement("h3");heading.textContent=topic.title;card.append(heading);
+      const count=document.createElement("p");count.className="big";
+      count.textContent=topic.instances+" "+(topic.kind==="INFORMATIONAL_CHANGES"?
+        "informational changes":"adverse flag instances");card.append(count);
+      const details=document.createElement("p");
+      details.textContent=topic.anonymous_case_count+" anonymous source cases · "+
+        topic.candidate_slots_with_signal.length+" candidate slots with any signal. "+
+        "No signal does not mean safe or approved.";card.append(details);
+      const question=document.createElement("p");question.textContent=topic.question;card.append(question);
+      const button=document.createElement("button");button.type="button";button.className="secondary";
+      button.textContent="Discuss anonymized "+topic.title.toLowerCase()+" cases";
+      button.addEventListener("click",()=>{
+        $("queueFamily").value=topic.topic;$("queueFilter").value="all";
+        $("queueCandidate").value="all";drawQueue();
+        $("casework").scrollIntoView({behavior:"smooth",block:"start"});
+      });
+      card.append(button);root.append(card);
+    }
+  }
   function render(){
     const active=reports.length>0,stats=reports.map(aggregates);
     $("sourceKind").textContent=!active?"No data":demo?"FICTIONAL DEMO ONLY":"UNVERIFIED LAB SOURCES";
@@ -375,7 +424,7 @@
     if(!active){
       renderSourceManifest();
       $("cards").innerHTML='<p class="empty">Import reports to compare lab candidates.</p>';
-      drawQueue();
+      drawQueue();renderAgenda();
       for(const id of ["thresholds","frontier","caseDetail","metricBoard","pairMetrics","pairChurn","pairChurnSummary"])$(id).innerHTML="";
       $("caseSelect").innerHTML='<option value="">Load reports first</option>';
       return;
@@ -392,7 +441,7 @@
       "<p class='footnote'>No safety approval; separate human review required.</p></article>").join("");
     renderSourceManifest();
     renderMetricBoard(stats);
-    drawQueue();
+    drawQueue();renderAgenda();
     let t;try{t=threshold();settings=t;$("thresholdMessage").textContent="Review suggestions recomputed locally; no source metrics changed.";}
     catch(_){$("thresholdMessage").textContent="HOLD: invalid threshold — enter a bounded numerical value. No decision output.";
       settings=null;$("saveDraft").disabled=true;for(const id of ["exportCSV","exportJSON","exportHTML","exportCaseCSV","print"])$(id).disabled=true;
@@ -540,13 +589,14 @@
   }
   function exportJSON(){
     if(!reports.length||!settings)return;
-    const out={schema:"lightup.lab_candidate_matrix_review.v3",
+    const out={schema:"lightup.lab_candidate_matrix_review.v4",
       posture:"INCUBATE_M3_M7_PLAN_LAB_ONLY_DRAFT_HOLD",
       status:"REVIEW_ONLY",source_identity_authenticated:false,
       temporal_order_authenticated:false,fictional_demo_only:demo,
       disclaimer:"Human review of untrusted pre-existing lab summaries only. No permission, release, scan or verified remediation.",
       dimensions:dimensions().map(x=>x[1]),review_thresholds:settings,
       human_discussion_summary:discussionSummary(),
+      source_based_discussion_agenda:agendaCounts(),
       selected_pair_flag_crossover:currentPairChurn(),
       candidates:metricRows(),...fixedFlags()};
     download("lightup-candidate-aggregate-REVIEW-ONLY.json",JSON.stringify(out,null,2)+"\n","application/json");
@@ -608,6 +658,10 @@
         "; policy violations: "+format(a.policy)+"; human discussion flags: "+
         flags.length+". "+(flags.length?flags.join("; "):"No threshold breaches: STILL REVIEW ONLY.")+"</p>";
     }).join("");
+    const agendaTable=table(["Human lab discussion topic","Source instances",
+      "Anonymous cases","Candidate slots with signal","Evidence to request"],
+      agendaCounts().map(x=>[x.title,x.instances,x.anonymous_case_count,
+        x.candidate_slots_with_signal.length,x.question]));
     const crossover=currentPairChurn();
     const crossoverTable=crossover?"<h2>Selected two-candidate original source flag crossover</h2>"+
       "<p>Case-level original source regression-flag counts only; no proven order, review, fix or safety.</p>"+
@@ -625,7 +679,8 @@
       "Dispatch allowed: false. Release allowed: false.</p>"+
       "<p>Original source filenames, source case identifiers, identities and raw source payload "+
       "have been omitted. Untrusted values are only reported as aggregates.</p>"+
-      advisory+crossoverTable+"<h2>Unverified original metric totals</h2>"+metricTable+
+      advisory+"<h2>Fixed human discussion questions based on unverified source summaries</h2>"+
+      agendaTable+crossoverTable+"<h2>Unverified original metric totals</h2>"+metricTable+
       "<p>No recommendation to deploy, grant or scan. Separate authenticated client/operator "+
       "consent with action-time revocation, original security fixes, full required hosted/permanent VPS "+
       "CI, independent security/privacy review and human GO remain mandatory.</p></body></html>";
