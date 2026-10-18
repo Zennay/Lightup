@@ -21,7 +21,9 @@ const questionCatalog={
  no_exclusions:['operator','Explicit exclusions','No exclusions were listed. Ask whether exclusions or forbidden hosts are needed.'],
  open_window:['operator','Unresolved time window','Unscheduled or incomplete/ambiguous windows require separately approved UTC bounds.'],
  safety_context:['client','Safety and stop instructions','No safety-purpose notes are present in the proposal; request clear, privately handled instructions.'],
- network_activity:['client','Network interaction expectations','Clarify that proposed lab checks cannot be performed against public or unapproved targets.']
+ network_activity:['client','Network interaction expectations','Clarify that proposed lab checks cannot be performed against public or unapproved targets.'],
+ revision_client:['client','Re-confirm revised scope and ownership','The source bytes changed. Independently review the new specific asset inventory, exclusions, limitations and consent route; previous answers do not follow this version.'],
+ revision_operator:['operator','Reassess revised authorization boundaries','Review the new request independently, including exact enforceable scope, exclusions, intended activities, risk and current revocation. No prior grant carries over.']
 };
 function hold(message){
  epoch++;current=null;questions=[];
@@ -135,13 +137,60 @@ function validateDraft(d){
  if(d.exported_at_utc!==undefined)assert(text(d.exported_at_utc,80),'Invalid export metadata');
  return validateWindow(d);
 }
-function questionIds(d,window){
+/* Compare only exact, case-folded textual identity. Never include raw targets,
+   asset-level hashes, comments or literal values in events, UI or exports. */
+function literalRevisionImpact(before,after){
+ if(!before)return null;
+ function counts(a,b){
+  const old=new Set(a.map(x=>x.toLowerCase())),next=new Set(b.map(x=>x.toLowerCase()));
+  let added=0,removed=0;
+  for(const x of next)if(!old.has(x))added++;
+  for(const x of old)if(!next.has(x))removed++;
+  return {added,removed,retained:old.size-removed};
+ }
+ const assets=counts(before.requested_assets,after.requested_assets);
+ const exclusions=counts(before.excluded_assets,after.excluded_assets);
+ const activities=['passive_analysis','configuration_review','private_lab_network_checks']
+  .filter(key=>before.proposed_activities[key]!==after.proposed_activities[key]);
+ const notesChanged=before.notes!==after.notes;
+ const windowChanged=JSON.stringify(before.proposed_window_local)!==JSON.stringify(after.proposed_window_local)||
+  JSON.stringify(before.proposed_window_utc??null)!==JSON.stringify(after.proposed_window_utc??null);
+ const riskRaised=after.requested_risk>before.requested_risk;
+ const modeEscalated=before.requested_mode==='analysis_only'&&after.requested_mode==='authorized_assessment';
+ const attention=[];
+ if(assets.added)attention.push('literal_scope_entries_added');
+ if(exclusions.removed)attention.push('literal_exclusions_removed');
+ if(riskRaised)attention.push('requested_risk_raised');
+ if(modeEscalated)attention.push('requested_active_assessment_mode');
+ if(!before.proposed_activities.private_lab_network_checks&&after.proposed_activities.private_lab_network_checks)
+  attention.push('private_lab_activity_proposed');
+ if(windowChanged)attention.push('planning_window_changed');
+ if(assets.removed||exclusions.added)attention.push('scope_restriction_review');
+ if(notesChanged)attention.push('safety_notes_changed');
+ return {
+  literal_identity_comparison_only:true,semantic_network_scope_comparison:false,
+  ownership_or_authorization_verified:false,
+  proposed_assets:assets,exclusions,
+  changed_activity_categories:activities,
+  private_safety_notes_changed:notesChanged,
+  client_label_changed:before.client_label!==after.client_label,
+  proposed_title_changed:before.proposal_name!==after.proposal_name,
+  proposed_window_values_changed:windowChanged,
+  risk_raised:riskRaised,mode_escalated:modeEscalated,
+  attention_codes:attention,
+  human_review_level:attention.length?'ELEVATED_HUMAN_ATTENTION':'REVIEW_REQUIRED',
+  notice:'Exact textual identity comparison only: DNS aliases, CIDR coverage, effective scope and ownership are NOT determined. Source-byte changes always require fresh role preparation.'
+ };
+}
+
+function questionIds(d,window,revised=false){
  const codes=['client_identity','asset_ownership','purpose_limits','client_consent','operator_independence','enforceable_scope','risk_approval','stop_revocation','mandatory_gates'];
  if(d.requested_risk===4)codes.push('high_risk');
  if(d.proposed_activities.private_lab_network_checks)codes.push('lab_provenance','network_activity');
  if(!d.excluded_assets.length)codes.push('no_exclusions');
  if(window!=='Resolved (still unapproved)')codes.push('open_window');
  if(!d.notes.trim())codes.push('safety_context');
+ if(revised)codes.push('revision_client','revision_operator');
  return codes;
 }
 function exportModel(){
@@ -275,6 +324,7 @@ async function loadFile(file){
  // Transactional replace: a malformed NEW file must not silently erase the current
  // source or its human-only notes. No source-change event fires until admission succeeds.
  const priorRevision=exportModel();
+ const priorDraft=current?.draft||null;
  const token=++epoch;
  const sourceLabel=priorRevision?'Previous source and human replies still retained':'No accepted source';
  $('sourceState').textContent='Reading proposed source · '+sourceLabel+' · HOLD';
@@ -300,15 +350,17 @@ async function loadFile(file){
    $('source').value='';
    return;
   }
+  // No asset identifiers leave this function: only aggregate literal-delta counts.
+  const impact=literalRevisionImpact(priorDraft,draft);
   // Only NOW invalidate any old self-labelled returns, statuses and current source.
   document.dispatchEvent(new CustomEvent('lightup:brief-source-change'));
   current={draft,window,sha256};
-  questions=questionIds(draft,window).map(code=>({code,role:questionCatalog[code][0],status:'unanswered'}));
+  questions=questionIds(draft,window,Boolean(impact)).map(code=>({code,role:questionCatalog[code][0],status:'unanswered'}));
   $('workspace').hidden=false;$('export').disabled=false;$('textExport').disabled=false;$('print').disabled=false;
   $('sourceState').textContent='Source loaded · '+draft.requested_assets.length+' proposed assets · REVIEW_ONLY/HOLD';
   render();
   document.dispatchEvent(new CustomEvent('lightup:brief-revision',{
-   detail:{before:priorRevision,after:exportModel()}
+   detail:{before:priorRevision,after:exportModel(),impact}
   }));
  }catch(_){
   if(token!==epoch)return;
