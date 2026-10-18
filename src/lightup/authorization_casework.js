@@ -124,7 +124,10 @@
       button.append(text('strong',c.client+' / '+c.engagement));
       button.append(text('span',' · Severity '+c.score+' · '+read(c.id).status,'muted'));
       button.append(text('small',c.flags.join(' · '),'muted'));
-      button.addEventListener('click', () => {saveEditor(); selected=c.id; render();});
+      button.addEventListener('click', () => {
+        if (saveEditor() === false) return;
+        selected=c.id; render();
+      });
       list.append(button);
     }
     if (!list.children.length) list.append(text('p','No cases match this filter.','muted'));
@@ -150,7 +153,7 @@
   const render = () => {renderList(); renderEditor();};
   const saveEditor = () => {
     const c = casesById.get(selected);
-    if (!c) return;
+    if (!c) return true;
     const p = {
       owner:control('workspaceOwner').value,
       ticket:control('workspaceTicket').value,
@@ -159,9 +162,13 @@
       resolution:control('workspaceResolution').value,
       status:control('workspaceStatus').value
     };
-    if (!valid(p)) {inform('Case data exceeds limits or contains invalid fields; changes not saved.');return;}
+    if (!valid(p)) {
+      inform('HOLD: invalid or oversized case fields. Edit them before switching, bulk actions, or export.');
+      return false;
+    }
     if (JSON.stringify(p)!==JSON.stringify(read(c.id))) {plans[c.id]=p;mark();}
     renderList();
+    return true;
   };
   const safeCsv = value => {
     let v=String(value==null?'':value).replace(/[\u0000-\u001f\u007f]/g,' ').trim();
@@ -180,7 +187,7 @@
     inform('Saved locally. Export is REVIEW_ONLY, unsigned, sensitive and never grants authority.');
   };
   const bulkUpdate = mode => {
-    saveEditor();
+    if (saveEditor() === false) return;
     const filtered = sorted().filter(c => read(c.id).status !== 'locally_documented');
     const eligible = filtered.filter(c =>
       mode === 'assign' ? !read(c.id).owner : read(c.id).status !== 'escalated');
@@ -205,7 +212,7 @@
     inform(eligible.length+' local follow-up cases updated. Export a private action plan to retain changes; authorization remains unverified.');
   };
   const exportPlan = () => {
-    saveEditor();
+    if (saveEditor() === false) return;
     const payload = {
       format:'lightup.authorization_casework_actions_v1',
       disposition:'REVIEW_ONLY', authority:{...FALSE},
@@ -216,7 +223,7 @@
       JSON.stringify(payload,null,2)+'\n');
   };
   const exportCsv = () => {
-    saveEditor();
+    if (saveEditor() === false) return;
     const rows=[['disposition','client','engagement','grant_number','severity',
                  'review_flags','operator_status','assigned_owner','reference_ticket',
                  'due_date','action_summary','operator_notes','local_resolution']];
