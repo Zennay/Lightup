@@ -377,8 +377,8 @@ def _publish(root, outputs):
         raise
 
 
-def build_private_workspace(original: bytes, data: dict, root: Path) -> None:
-    """Build from exact original authenticated snapshot bytes; never alter source."""
+def compose_private_outputs(original: bytes, data: dict) -> dict[str, bytes]:
+    """Deterministic private room artifacts from exact original snapshot bytes."""
     digest = sha256(original).hexdigest()
     queue = _queue(data)
     app = Path(__file__).with_name("board.js").read_bytes()
@@ -410,7 +410,12 @@ def build_private_workspace(original: bytes, data: dict, root: Path) -> None:
         "aggregate.json": json.dumps(anonymous, indent=2, sort_keys=True).encode(),
         "START-HERE.txt": info.encode(),
     }
-    _publish(root, outputs)
+    return outputs
+
+
+def build_private_workspace(original: bytes, data: dict, root: Path) -> None:
+    """Build complete owner-private room, no overwrite or source mutation."""
+    _publish(root, compose_private_outputs(original, data))
 
 
 def main(argv=None):
