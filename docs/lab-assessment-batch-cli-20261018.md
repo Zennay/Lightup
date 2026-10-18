@@ -20,6 +20,7 @@ lightup lab-assess --targets-file ./private-lab-targets.txt --no-review
 lightup lab-assess --targets-file ./private-lab-targets.txt --preview-only
 lightup lab-assess --targets-file ./private-lab-targets.txt --preview-only --output ./private-lab-preview.json
 lightup lab-assess --targets-file ./private-lab-targets.txt --no-review --output ./private-lab-assessment.json
+lightup lab-assess --target http://127.0.0.1:18080/ --no-review --artifact-format benchmark-case --output ./private-lab-benchmark-case.json
 ```
 
 Example contents of `private-lab-targets.txt`:
@@ -69,6 +70,14 @@ Use `--output /private/path/NEW-NAME.json` to keep the original completed assess
 Original failed/incomplete model review is **not** written as a completed JSON artifact. The original assessment result remains inspectable using the existing stdout path, with an explicit incomplete-review indication. Neither saved JSON nor its source metadata is an authentication, consent, completed security assessment, audit-trust signature or proof of a fixed vulnerability. Only source-created private file permissions are asserted: already-present destination files and symlinks are refused.
 
 Do not use the output to bypass the mandatory canonical comparator and human review import checks. It is simply the native source for existing offline workflows where the original schema fits.
+
+## Original offline benchmark-comparator handoff
+
+The separate existing assessment-runtime comparator [PR #1515](https://github.com/Zennay/Lightup/pull/1515) expects one `{"record": {...}, "context": {...}}` JSON object per finished lab run. For a lab fixture that is independently owned/controlled and available through the **unchanged** lab-only execution policy, request `--artifact-format benchmark-case --output ./NEW-private-benchmark.json`. This format is **not** available with `--preview-only` because a preview has no actual evaluation record. A private output filename is mandatory, so source-rich run context is never accidentally printed as standard output in this mode.
+
+When the original evaluation successfully completes, the existing `LabEvaluationHarness`'s actual `EvaluationRecord.to_dict()` and **the exact original `RunContext`** (run ID, lab client+engagement, mode, risk, NULL grant, is_lab and UTC creation timestamp) are serialized without changes to the comparator source or schema. The saved JSON has exactly the comparator's two top-level `record` and `context` fields, and inherits the same new exclusive owner-only `0600` private write fence. The optional AI review is still independent; a failed selected review does not export an apparent completed artifact. The original comparator **must still independently reject replayed or inconsistent run IDs, invalid signatures/shape and adverse metrics**, and its REVIEW_ONLY/HOLD statuses confer no execution or release permission.
+
+**Do not infer provenance:** even a correctly-shaped `record/context` file is only an unsigned, caller-controlled local export. It does not prove lab fixture authenticity, authorize any target, certify ground truth or replace authentic client/operator approval, at-use revocation, security review, permanently registered CI, or HUMAN GO. The public default assessment output shape is unchanged; the new field is built only for this explicit private export.
 
 ## Exactly what is admitted
 
