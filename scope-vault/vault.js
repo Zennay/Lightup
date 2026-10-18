@@ -45,7 +45,7 @@
     unlock: $("unlock"), lock: $("lock"), recovered: $("recovered"),
     mergeMode: $("merge-mode"), handoffRoute: $("handoff-route"),
     before: $("compare-before"), after: $("compare-after"),
-    studioSource: $("studio-source"), studioInspect: $("studio-inspect"), studioBulk: $("studio-bulk"), studioBulkExport: $("studio-bulk-export"),
+    studioSource: $("studio-source"), studioInspect: $("studio-inspect"), studioBulk: $("studio-bulk"), studioBulkExport: $("studio-bulk-export"), studioBulkFlag: $("studio-bulk-flag"),
     studioFlag: $("studio-flag"), studioReport: $("studio-report"),
     studioClear: $("studio-clear"), studioStatus: $("studio-status"),
     studioSummary: $("studio-summary"), studioAssets: $("studio-assets"),
@@ -928,6 +928,51 @@
     }
   }
 
+
+  function filePortfolioFollowUps() {
+    if(busy)return;
+    touch();
+    try {
+      invariant(inspectedPortfolio && inspectedPortfolio.records.length);
+      const snapshot=entries.map(entry=>entry.name+'\n'+entry.hash);
+      invariant(JSON.stringify(snapshot)===JSON.stringify(inspectedPortfolio.snapshot));
+      const byHash=new Map(inspectedPortfolio.records.map(
+        row=>[row.source_sha256,row.human_followup_codes]
+      ));
+      const candidates=[];
+      let skipped=0;
+      for(const entry of entries) {
+        if(!entry.name.toLowerCase().endsWith('.json')||!byHash.has(entry.hash)) continue;
+        // An explicitly historic or human-reviewed draft must never be
+        // silently moved backward by a portfolio action.
+        if(entry.stage==='ready'||entry.stage==='historical'){skipped++;continue;}
+        const marker='Studio portfolio human follow-up ['+entry.hash.slice(0,12)+']';
+        if(entry.note.includes(marker)){skipped++;continue;}
+        const line=marker+': '+byHash.get(entry.hash).join(', ');
+        const updated=entry.note ? entry.note+'\n'+line : line;
+        invariant(updated.length <= MAX_NOTE_CHARS);
+        candidates.push({entry,updated});
+      }
+      invariant(candidates.length>0);
+      if(!window.confirm('File private human-follow-up codes for '+candidates.length+
+        ' unapproved imported Studio drafts? '+skipped+
+        ' previously prepared/historical/already-filed draft(s) remain unchanged. '+
+        'Original files are untouched. All edits remain only in tab memory until you export a FULL encrypted private archive. No consent, grant or release rights are created.')) return;
+      // Atomic casework update only AFTER every note is fully bounded.
+      for(const {entry,updated} of candidates) {
+        entry.note=updated;
+        entry.stage='clarify';
+      }
+      paint();
+      // Source checks remain available; no changes to source bytes.
+      els.studioStatus.textContent=candidates.length+
+        ' private follow-up note(s) filed. Save FULL encrypted private archive; changing review stages is NOT operator authorization.';
+      notice('Human clarification follow-ups filed in temporary private dossier memory. No original Studio sources or permissions modified.');
+    } catch {
+      notice('HOLD: refresh the Studio portfolio view or resolve oversized/private notes; nothing was filed.',true);
+    }
+  }
+
   function currentStudio() {
     invariant(inspectedStudio && entries[inspectedStudio.index] &&
       entries[inspectedStudio.index].hash===inspectedStudio.hash &&
@@ -1065,6 +1110,7 @@
   els.studioInspect.addEventListener("click",inspectStudio);
   els.studioBulk.addEventListener("click",inspectStudioPortfolio);
   els.studioBulkExport.addEventListener("click",exportStudioPortfolio);
+  els.studioBulkFlag.addEventListener("click",filePortfolioFollowUps);
   els.studioFlag.addEventListener("click",flagStudio);
   els.studioReport.addEventListener("click",exportStudioReport);
   els.studioClear.addEventListener("click",()=>{
