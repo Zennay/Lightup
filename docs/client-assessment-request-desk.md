@@ -76,8 +76,17 @@ python -m lightup.client_request_cli preview \
 # Explicit client-authenticated submission of the *same* validated proposal.
 python -m lightup.client_request_cli submit \
   --db /private/lightup.sqlite --email client@example.org \
-  --proposal ~/Downloads/lightup-scope-draft.json --confirm-submit
+  --proposal ~/Downloads/lightup-scope-draft.json \
+  --expect-proposal-sha256 "<64 lowercase hexadecimal characters from preview>" \
+  --confirm-submit
 ```
+
+The `preview` response includes a locally computed `proposal_file_sha256` over
+**the exact input bytes**. Copy this digest to `submit --expect-proposal-sha256`.
+Submission refuses a missing or changed digest before prompting for account
+credentials. This unsigned checksum is a version-continuity guard, **not**
+a signature, authenticated identity, client consent or permission. The digest
+is copied to request notes as a clearly untrusted operator handoff hint.
 
 The importer never trusts a draft's unsigned SHA-256, self-declared client
 label or `authorization` flags. It requires an exact bounded v1 format,
