@@ -16,3 +16,5 @@ button:disabled{opacity:.45;cursor:not-allowed}.matrix tbody#case-rows tr{cursor
 #case-queue-summary{padding:6px 0 12px}#case-rows td:nth-last-child(-n+3){white-space:normal;min-width:145px}@media(max-width:800px){#case-next{margin-top:8px}}
 
 #compare-metrics tr[role="button"],#compare-cases tr[role="button"]{cursor:pointer}#compare-metrics tr[role="button"]:focus-visible,#compare-cases tr[role="button"]:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}#compare-summary{margin:14px 0}#compare-cases td{min-width:95px}
+
+#case-route,#case-date{min-width:180px}#case-date{background:#071725;color:var(--ink);border:1px solid #507185;border-radius:7px;padding:10px 12px;font:inherit}#agenda-rows tr[role="button"]{cursor:pointer}#agenda-rows tr[role="button"]:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}#agenda-rows td{white-space:normal;min-width:135px}@media(max-width:850px){.case-inspect-bar{flex-wrap:wrap}}

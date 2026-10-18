@@ -32,6 +32,7 @@
   let pairFocus=1;
   let selectedCase=0,caseStages=new Map();
   let demoMode=false,sourceMeta=[];
+  let casePlans=new Map();
   let crossA=0,crossB=1,crossMetric="policy_violations";
 
   // Strict recursive JSON reader: rejects duplicate keys (also escaped aliases),
@@ -221,7 +222,7 @@
     $("message").textContent=message; $("message").className="message"+(bad?" bad":"");
   }
   function reset() {
-    revisions=[];sourceHashes=[];sourceMeta=[];discussionStages=Object.create(null);caseStages=new Map();selectedCase=0;revisionFocus=0;pairFocus=1;crossA=0;crossB=1;demoMode=false; $("workspace").hidden=true; $("files").value="";
+    revisions=[];sourceHashes=[];sourceMeta=[];discussionStages=Object.create(null);caseStages=new Map();casePlans=new Map();selectedCase=0;revisionFocus=0;pairFocus=1;crossA=0;crossB=1;demoMode=false; $("workspace").hidden=true; $("files").value="";
     $("notes").value="";$("draft-file").value="";
     $("draft-state").textContent="Private source bindings and local discussion stages were cleared.";
     showMessage("All imported source data and local notes cleared.");
@@ -283,7 +284,7 @@
       metric_regressions:[...report.cases.values()].reduce((n,c)=>n+c.regressions.length,0),
       metrics:NAMES.map(name=>({name,...snapshot(report,name)}))
     }));
-    return {format:"lightup.assessment_trends.aggregate",version:6,
+    return {format:"lightup.assessment_trends.aggregate",version:7,
       source_kind:demoMode?"FICTIONAL_DEMO_ONLY":"UNAUTHENTICATED_OFFLINE_LAB_JSON",
       fictional_demo:demoMode,
       verdict:"REVIEW_ONLY",phase:"INCUBATE_M3_M7_DRAFT_HOLD",
@@ -294,6 +295,7 @@
       adjacent_pairs:adjacentExport(),
       selected_candidate_pair:crossAggregate(),
       human_case_discussion_counts:caseStageCounts(),
+      human_agenda_aggregate:agendaSummary(),
       human_discussion:actionItems().map(x=>({
         metric:x.metric,priority:x.priority,persistent_cases:x.persistent,
         emerged_cases:x.emerged,recovered_cases:x.recovered,
@@ -379,6 +381,15 @@
         version.non_dominated===null?"Not compared":
         version.non_dominated?"Non-dominated numerically":
         "Dominated by "+version.dominated_by.map(x=>"R"+x).join(", ")]));
+    chunks.push("</tbody></table>");
+    const agenda=model.human_agenda_aggregate;
+    chunks.push("<h2>Proposed human discussion capacity (aggregate)</h2>",
+      "<p>"+agenda.total_cases+" anonymous cases with local discussion context; "+
+      agenda.proposed_dated+" optionally dated discussions; "+
+      agenda.discussion_recorded+" self-reported discussion records. Not a booking, assignment or evidence of completed security work.</p>",
+      "<table><thead><tr><th>Generic human function</th><th>Cases</th></tr></thead><tbody>");
+    for(const [route,count] of Object.entries(agenda.routes))
+      chunks.push(row([route,count]));
     chunks.push("</tbody></table>");
     chunks.push("<h2>Human review questions</h2>",
       "<p>Local discussion stages are self-reported and are not assignments, proof of remediation or human approval.</p>",
@@ -800,6 +811,9 @@
       " · "+revisions.length+" original user-ordered lab comparisons. "+
       "Reviewer discussion only; no provenance or permission.";
     $("case-stage").value=caseStages.get(id)||"unreviewed";
+    const plan=casePlans.get(id)||{route:"unassigned",date:""};
+    $("case-route").value=plan.route;
+    $("case-date").value=plan.date;
     const head=$("case-detail-head"),body=$("case-detail-rows");
     head.replaceChildren();body.replaceChildren();
     const hr=add(head,"tr");
@@ -815,6 +829,85 @@
     }
   }
 
+  const CASE_ROUTES=new Set(["unassigned","lab-runtime","scope-policy",
+    "evidence-review","independent-review"]);
+  function validDiscussionDate(value) {
+    if(value==="")return true;
+    if(typeof value!=="string"||
+      !/^(?:20[0-9]{2}|2100)-[0-9]{2}-[0-9]{2}$/.test(value))return false;
+    const date=new Date(value+"T00:00:00.000Z");
+    return Number.isFinite(date.valueOf())&&
+      date.toISOString().slice(0,10)===value;
+  }
+  function agendaEntries() {
+    if(!revisions.length)return [];
+    return ordinalCaseIds().flatMap((id,index)=>{
+      const plan=casePlans.get(id)||{route:"unassigned",date:""};
+      const stage=caseStages.get(id)||"unreviewed";
+      if(plan.route==="unassigned"&&plan.date===""&&stage==="unreviewed")return [];
+      return [{id,ordinal:index+1,route:plan.route,date:plan.date,stage,
+        priority:caseSeverity(id)}];
+    }).sort((a,b)=>{
+      const rank=x=>x.priority==="Critical lab drift"?0:
+        x.priority==="High lab drift"?1:x.priority==="Human follow-up"?2:3;
+      return rank(a)-rank(b)||
+        (a.date||"9999-12-31").localeCompare(b.date||"9999-12-31")||
+        a.ordinal-b.ordinal;
+    });
+  }
+  function agendaSummary() {
+    const entries=agendaEntries(),routes=Object.create(null);
+    for(const route of CASE_ROUTES)routes[route]=0;
+    for(const entry of entries)routes[entry.route]++;
+    return {total_cases:entries.length,proposed_dated:entries.filter(x=>x.date).length,
+      discussion_recorded:entries.filter(x=>x.stage==="discussion-recorded").length,
+      routes:{unassigned:routes.unassigned,"lab-runtime":routes["lab-runtime"],
+        "scope-policy":routes["scope-policy"],"evidence-review":routes["evidence-review"],
+        "independent-review":routes["independent-review"]}};
+  }
+  function agendaCSV() {
+    REQUIRE(revisions.length>=3);
+    const rows=[["status","source_kind","authorized","consent_verified","dispatch_allowed",
+      "release_allowed","local_case_ordinal","lab_priority","human_review_function",
+      "discussion_date_not_scan","self_reported_discussion_stage"]];
+    for(const entry of agendaEntries())rows.push([
+      "REVIEW_ONLY",demoMode?"FICTIONAL_DEMO_ONLY":"UNAUTHENTICATED_OFFLINE_LAB_JSON",
+      false,false,false,false,entry.ordinal,
+      entry.priority.replaceAll(" ","_"),entry.route,entry.date,entry.stage]);
+    return rows.map(r=>r.join(",")).join("\r\n")+"\r\n";
+  }
+  function renderAgenda() {
+    if(!revisions.length)return;
+    const filter=$("agenda-filter").value,body=$("agenda-rows");
+    body.replaceChildren();
+    const visible=agendaEntries().filter(x=>filter==="all"||
+      filter==="dated"&&x.date!==""||filter==="undated"&&x.date===""||
+      filter==="pending"&&x.stage!=="discussion-recorded"||
+      filter==="critical"&&x.priority==="Critical lab drift");
+    const summary=agendaSummary();
+    $("agenda-summary").textContent=visible.length+" anonymous discussions displayed; "+
+      summary.proposed_dated+" proposed local discussion dates among "+
+      summary.total_cases+" tracked cases. These are self-reported human intentions, not scheduled work or permission.";
+    for(const entry of visible) {
+      const row=add(body,"tr");
+      add(row,"th","Case "+String(entry.ordinal).padStart(2,"0"));
+      add(row,"td",entry.priority);
+      add(row,"td",entry.route.replaceAll("-"," "));
+      add(row,"td",entry.date||"No date suggested");
+      add(row,"td",entry.stage.replaceAll("-"," "));
+      row.tabIndex=0;row.setAttribute("role","button");
+      row.setAttribute("aria-label","Open local human review for case "+entry.ordinal);
+      const open=()=>{
+        selectedCase=entry.ordinal-1;renderCaseInspector();renderCaseRows();
+        $("case-select").focus();
+        $("case-detail-title").scrollIntoView({block:"start"});
+      };
+      row.addEventListener("click",open);
+      row.addEventListener("keydown",event=>{
+        if(event.key==="Enter"||event.key===" "){event.preventDefault();open();}
+      });
+    }
+  }
   function priorityClass(name) {
     if(name==="scope_violations"||name==="policy_violations") return "Critical review";
     if(["missed_findings","invalid_findings","valid_findings"].includes(name))
@@ -887,7 +980,7 @@
     for(const name of NAMES) {
       const option=add(select,"option",nice(name));option.value=name;
     }
-    renderOrder();renderManifest();renderPair();renderCross();renderTradeoffs();metricsRows();renderCaseRows();renderCaseInspector();renderActions();choose(selected);followupText();
+    renderOrder();renderManifest();renderPair();renderCross();renderTradeoffs();metricsRows();renderCaseRows();renderCaseInspector();renderAgenda();renderActions();choose(selected);followupText();
     $("demo-banner").hidden=!demoMode;
     $("save-draft").disabled=demoMode || !sourceHashes.length || sourceHashes.some(x=>!x);
     if(sourceHashes.some(x=>!x))
@@ -949,7 +1042,7 @@
     revisions=[];sourceHashes=[];sourceMeta=[];demoMode=false;
     crossA=0;crossB=1;
     $("workspace").hidden=true;$("files").value="";
-    caseStages=new Map();discussionStages=Object.create(null);
+    caseStages=new Map();casePlans=new Map();discussionStages=Object.create(null);
     selectedCase=0;revisionFocus=0;pairFocus=1;$("notes").value="";
     try {
       revisions=fictionalReports();sourceHashes=revisions.map(()=>null);
@@ -967,7 +1060,7 @@
 
   $("files").addEventListener("change",async ev=>{
     // No mixing old and new reports. A failed import removes previous content.
-    revisions=[];sourceHashes=[];sourceMeta=[];revisionFocus=0;pairFocus=1;crossA=0;crossB=1;discussionStages=Object.create(null);caseStages=new Map();selectedCase=0;demoMode=false;$("workspace").hidden=true;$("notes").value="";
+    revisions=[];sourceHashes=[];sourceMeta=[];revisionFocus=0;pairFocus=1;crossA=0;crossB=1;discussionStages=Object.create(null);caseStages=new Map();casePlans=new Map();selectedCase=0;demoMode=false;$("workspace").hidden=true;$("notes").value="";
     const files=[...ev.target.files];
     try {
       demoMode=false;
@@ -1026,8 +1119,25 @@
   });
   $("case-stage").addEventListener("change",event=>{
     caseStages.set(ordinalCaseIds()[selectedCase],event.target.value);
-    renderCaseRows();
+    renderCaseRows();renderAgenda();
   });
+  $("case-route").addEventListener("change",event=>{
+    const id=ordinalCaseIds()[selectedCase];
+    const prior=casePlans.get(id)||{route:"unassigned",date:""};
+    casePlans.set(id,{...prior,route:event.target.value});
+    renderAgenda();
+  });
+  $("case-date").addEventListener("change",event=>{
+    const date=event.target.value;
+    if(!validDiscussionDate(date)){event.target.value="";return;}
+    const id=ordinalCaseIds()[selectedCase];
+    const prior=casePlans.get(id)||{route:"unassigned",date:""};
+    casePlans.set(id,{...prior,date});renderAgenda();
+  });
+  $("agenda-filter").addEventListener("change",renderAgenda);
+  $("agenda-csv").addEventListener("click",()=>download(
+    "lightup-PRIVATE-human-discussion-agenda.csv",agendaCSV(),
+    "text/csv;charset=utf-8"));
   const CASE_STAGES=new Set(["unreviewed","investigating",
     "awaiting-independent-review","followup-proposed","discussion-recorded"]);
   const DISCUSSION_STAGES=new Set([
@@ -1037,7 +1147,7 @@
   function privateDraft() {
     REQUIRE(revisions.length>=3 && sourceHashes.length===revisions.length &&
       sourceHashes.every(x=>typeof x==="string" && /^[a-f0-9]{64}$/.test(x)));
-    return {format:"lightup.assessment_trends.private_draft",version:2,
+    return {format:"lightup.assessment_trends.private_draft",version:3,
       status:"DRAFT_ONLY",source_authenticated:false,
       source_sha256:sourceHashes.slice(),
       discussion:actionItems().filter(x=>x.stage!=="unreviewed").map(x=>({
@@ -1045,7 +1155,9 @@
       })),
       case_review:ordinalCaseIds().flatMap((id,i)=>{
         const stage=caseStages.get(id)||"unreviewed";
-        return stage==="unreviewed"?[]:[{ordinal:i+1,stage}];
+        const plan=casePlans.get(id)||{route:"unassigned",date:""};
+        return stage==="unreviewed"&&plan.route==="unassigned"&&plan.date===""
+          ?[]:[{ordinal:i+1,stage,route:plan.route,date:plan.date}];
       }),...authority()};
   }
   async function restoreDraft(file) {
@@ -1056,12 +1168,12 @@
     REQUIRE(bytes.byteLength===file.size);
     const decoded=new TextDecoder("utf-8",{fatal:true}).decode(bytes);
     const doc=strictJSON(decoded);
-    const isV1=doc && doc.version===1;
+    const isV1=doc && doc.version===1,isV3=doc && doc.version===3;
     const keys=["format","version","status","source_authenticated",
       "source_sha256","discussion",...(isV1?[]:["case_review"]),...AUTH];
     REQUIRE(exact(doc,keys) &&
       doc.format==="lightup.assessment_trends.private_draft" &&
-      (doc.version===1||doc.version===2) && doc.status==="DRAFT_ONLY" &&
+      (doc.version===1||doc.version===2||doc.version===3) && doc.status==="DRAFT_ONLY" &&
       doc.source_authenticated===false && AUTH.every(k=>doc[k]===false) &&
       Array.isArray(doc.source_sha256) &&
       doc.source_sha256.length===sourceHashes.length &&
@@ -1076,24 +1188,28 @@
         DISCUSSION_STAGES.has(row.stage) && !Object.hasOwn(next,row.metric));
       next[row.metric]=row.stage;
     }
-    const nextCases=new Map();
+    const nextCases=new Map(),nextPlans=new Map();
     if(!isV1) {
       REQUIRE(Array.isArray(doc.case_review) &&
         doc.case_review.length<=revisions[0].cases.size);
       const ids=ordinalCaseIds(),seen=new Set();
       for(const row of doc.case_review) {
-        REQUIRE(exact(row,["ordinal","stage"]) &&
+        REQUIRE(exact(row,isV3?["ordinal","stage","route","date"]:["ordinal","stage"]) &&
           Number.isSafeInteger(row.ordinal) &&
           row.ordinal>=1 && row.ordinal<=ids.length &&
           CASE_STAGES.has(row.stage) &&
+          (!isV3||(CASE_ROUTES.has(row.route)&&validDiscussionDate(row.date))) &&
           !seen.has(row.ordinal));
         seen.add(row.ordinal);
         nextCases.set(ids[row.ordinal-1],row.stage);
+        if(isV3)nextPlans.set(ids[row.ordinal-1],
+          {route:row.route,date:row.date});
       }
     }
     discussionStages=next;
     caseStages=nextCases;
-    renderActions();renderCaseInspector();
+    casePlans=nextPlans;
+    renderActions();renderCaseInspector();renderCaseRows();renderAgenda();
   }
   $("save-draft").addEventListener("click",()=>{
     try {
