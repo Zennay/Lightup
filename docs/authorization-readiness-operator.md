@@ -38,6 +38,30 @@ Use a fresh filename ending in .json for structured machine-readable output or .
 
 An output path must not already exist. Created report files use mode 0600 and no-follow flags where available. No browser network request, external scripts, target requests or cookies: the HTML contains two nonced local-only operator scripts (casework + source comparison) with a restrictive CSP. Each inspected table is bounded to 3,000 rows, and output to 2 MiB; oversized sources HOLD rather than produce misleading partial reviews. Retain files locally, do not serve publicly.
 
+## Integration with actual domain request→grant binding (#1570)
+
+This operator report now **automatically detects** whether the local `authorization_grants`
+table has the additive `approved_request_id` field introduced by
+[source PR #1570](https://github.com/Zennay/Lightup/pull/1570).
+Old databases without that column remain readable; an unbound old grant is
+reported as `UNBOUND_APPROVAL_REQUEST`, never retroactively matched as an
+approved grant. A new database with the column shows one of these explicit
+**read-only** statuses per grant:
+
+- `recorded_coherent_review_only`: the persisted request ID selects an
+  administratively approved request, the same tenant, an apparently compatible
+  asset/risk set, current role provenance and a prior review timestamp.
+- `missing`: no persisted binding. Compatible candidate requests are suggestions
+  for *investigation*, not actual request→grant provenance.
+- `invalid`: binding points to a missing, different-tenant, rejected,
+  incompatible or otherwise inconsistent request; escalate to domain owner.
+
+The status is visible in private HTML, JSON and CSV review exports and changes
+the offline action queue. It is **not** a consent signature, source authority,
+grant issuance, revocation witness or scan permission. This report uses
+conservative scope comparisons and does not substitute for the actual domain
+canonical checker; refer to PR #1570 before any future execution integration.
+
 ## Historical decision changes and offline handoff
 
 An operator may export **two actual authenticated local JSON reports**, using exactly the same `--client-id` / `--engagement-id` selection, then open the newer private HTML workspace and import the older JSON in **Source change review**. The source selection is compared using an opaque SHA-256 scope fingerprint; mismatched scopes are **HOLD**, never treated as disappeared records.
