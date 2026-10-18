@@ -9,6 +9,8 @@
 <link rel="stylesheet" href="style.css">
 <script defer src="app.js"></script>
 <script defer src="document-tray.js"></script>
+<script defer src="apps/casework/casework/remediation-engine.js"></script>
+<script defer src="casework-tray.js"></script>
 </head>
 <body>
 <header class="bar"><a href="#home" class="logo">◈ <strong>LightUp</strong><span> Offline Workbench</span></a><span class="hold">DRAFT / HOLD · NIET GEAUTORISEERD</span></header>
@@ -33,6 +35,23 @@
 <p class="tray-footnote"><strong>Geen automatische bronoverdracht.</strong> Gebruik “Download originele bytes”, open de genoemde zelfstandige app en kies het bestand daar opnieuw. De ontvangende app moet haar eigen originele importcontroles uitvoeren. Een leesbaar document, gelijk SHA-256, getoond risiconiveau of lokale status is nooit een grant of toestemmingsbewijs. De inventaris bevat SHA’s die bestanden kunnen koppelen; deel deze niet onnodig. Sluiten van dit tabblad wist de in-memory lade.</p>
 </div>
 </section>
+<section id="casework-desk" class="section" aria-labelledby="casework-title">
+<div class="section-head"><div><p class="eyebrow">NIEUW · BEVINDINGEN NAAR HERSTELPLANNING</p><h2 id="casework-title">Offline bevindingenwerkbank</h2></div><p>Gebruik bestaande via de echte LightUp-CLI geautoriseerd geëxporteerde samenvattingen als lokale bron. Hier vindt geen nieuwe authenticatie plaats.</p></div>
+<div class="tray-shell casework-shell">
+<div class="tray-top"><div><h3>Een CSV uit het originele LightUp findings-exportproces</h3>
+<p>Selecteer één of meer bestaande samenvattings-CSV's met de vijf originele velden: finding_id, title, severity, retest_status, remediation. Niet een scan uitvoeren, credentials verzamelen of een tenant kiezen. Geen ruwe titels of identifiers op deze pagina.</p></div><strong id="casework-count">0 / 4</strong></div>
+<label class="tray-drop" for="casework-files"><strong>Open oorspronkelijke findings-CSV's (max. 1 MiB per stuk)</strong><span>Maximaal vier bestanden tegelijk, 3 MiB totaal. Beperk toegang: CSV's kunnen gevoelige bevindingen bevatten.</span><input type="file" id="casework-files" accept=".csv,text/csv" multiple></label>
+<p id="casework-status" class="tray-feedback" role="status" aria-live="polite">Geen findings-CSV geladen. Originele toestemming en herkomst zijn niet vastgesteld.</p>
+<div id="casework-empty" class="tray-empty">Geen lokale CSV's. Gebruik eerst het bestaande geauthenticeerde LightUp-exportproces. Deze bundel kan dat niet uitvoeren.</div>
+<div id="casework-sources" class="tray-list"></div>
+<div class="tray-controls"><button type="button" id="casework-inventory" disabled>Download geanonimiseerde bevindingen-samenvatting</button><button type="button" class="tray-clear" id="casework-forget" disabled>Vergeet alle CSV-bronnen</button></div>
+<section class="casework-compare-panel" aria-label="Vergelijk twee bestaande exports"><h3>Bronverversing vooraf bekijken</h3><p>Vergelijk de inhoud van twee aangeleverde exports zonder oude herstelacties of echte LightUp-reteststatus aan te passen. Dit is alleen zinvol wanneer een mens extern vaststelt dat beide bij dezelfde cliënt én hetzelfde assessment horen.</p>
+<div class="casework-selects"><label>Vorige bron<select id="casework-baseline" aria-label="Eerdere bron"></select></label><label>Nieuwe bron<select id="casework-candidate" aria-label="Nieuwe bron"></select></label></div>
+<label class="casework-confirm"><input type="checkbox" id="casework-same-source"> Ik heb onafhankelijk de echte identiteit van cliënt en engagement voor beide exports vergeleken. Dit vinkje is geen toestemming, accountverificatie of retest.</label>
+<button type="button" id="casework-compare" disabled>Toon alleen bronverschillen</button><div id="casework-comparison" aria-live="polite"></div>
+</section>
+<p class="tray-footnote">De vijfveldige CSV wordt uitsluitend met de ongewijzigde parser van Remediation Casework uit PR #1568 gelezen. Deze lokale lade toont alleen tellingen; originele inhoud blijft in tabgeheugen voor handmatig downloaden. Open daarna Casework in een apart tabblad. Geen bron- of tenantvalidatie, databasewijziging, retest of release. <a target="_blank" rel="noopener" href="apps/casework/casework/index.html">Open de originele Casework-werkruimte →</a></p>
+</div></section>
 <section class="overview" aria-label="Overzicht"><article><span class="number">10</span><span>lokale componenten</span></article><article><span class="number">00</span><span>live API-koppelingen in deze launcher</span></article><article><span class="number">01</span><span>downloadbare offline bundel</span></article><article><span class="number">HOLD</span><span>vastgezette release-status</span></article></section>
 <section id="workflow" class="section">
 <div class="section-head"><div><p class="eyebrow">KIES JE WERKSTROOM</p><h2>Wat wil je vandaag voorbereiden?</h2></div><p>De route is advies voor documentvoorbereiding, nooit automatische toestemming.</p></div>
