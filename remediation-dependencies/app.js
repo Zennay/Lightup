@@ -60,8 +60,27 @@ function drawEfforts(){
   });cell.append(input);tr.append(cell);body.append(tr);
  }
 }
+function renderGuidance(view){
+ const body=$('bottlenecks');body.replaceChildren();
+ for(const item of view.bottlenecks){
+  const tr=E('tr');td(tr,item.finding_id+' / '+item.severity);td(tr,item.downstream_count);
+  td(tr,item.human_ready?'Potentially ready for HUMAN planning':'Needs prerequisite / on hold');
+  td(tr,item.owner||'(unassigned)');body.append(tr);
+ }
+ if(!view.bottlenecks.length){const row=E('tr'),cell=E('td','No open human plans.');cell.colSpan=4;row.append(cell);body.append(row);}
+ const blocked=$('contradictions');blocked.replaceChildren();
+ for(const x of view.contradictions){
+  const row=E('tr');td(row,x.from);td(row,x.to);td(row,x.human_prerequisite_due);td(row,x.human_dependent_due);blocked.append(row);
+ }
+ if(!view.contradictions.length){const row=E('tr'),cell=E('td','No contradiction among existing human due dates.');cell.colSpan=4;row.append(cell);blocked.append(row);}
+ const scenarios=$('late-scenarios');scenarios.replaceChildren();
+ for(const x of view.hypotheticalLate){
+  const row=E('tr');td(row,x.finding_id);td(row,x.existing_human_due);td(row,x.indicative_chain_date);scenarios.append(row);
+ }
+ if(!view.hypotheticalLate.length){const row=E('tr'),cell=E('td','No indicative conflict, or no human planning start date selected.');cell.colSpan=3;row.append(cell);scenarios.append(row);}
+}
 function drawGraph(){
- const graph=g.LightUpHumanDependencies.graph(state,links,efforts,$('start').value||null);metrics(graph);
+ const graph=g.LightUpHumanDependencies.graph(state,links,efforts,$('start').value||null);metrics(graph);renderGuidance(g.LightUpHumanDependencies.guidance(state,links,efforts,$('start').value||null));
  const body=$('results');body.replaceChildren();const filter=$('filter').value,critical=new Set(graph.critical);
  let n=0;
  for(const item of graph.rows){
