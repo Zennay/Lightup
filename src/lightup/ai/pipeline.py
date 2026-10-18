@@ -41,6 +41,8 @@ _MAX_EVIDENCE_SUMMARY_CHARS = 4096
 _MAX_EVIDENCE_REFS = 64
 _MAX_EVIDENCE_REF_CHARS = 256
 _MAX_REVIEW_FINDINGS = 64
+_MAX_FINDING_TEXT_CHARS = 4096
+_MAX_SEVERITY_TEXT_CHARS = 64
 _MAX_CURRENT_FIX_CHARS = 8192
 _MAX_ADVICE_CHARS = 8192
 _MAX_ADVICE_UTF8_BYTES = 16384
@@ -78,6 +80,14 @@ def _admit_review_findings(labrun_result: dict) -> tuple[tuple[dict, str, tuple[
     for finding in originals:
         if type(finding) is not dict:
             raise ValueError("review finding must be an ordinary dictionary")
+        for label, maximum in (
+            ("finding", _MAX_FINDING_TEXT_CHARS),
+            ("severity", _MAX_SEVERITY_TEXT_CHARS),
+            ("impact", _MAX_FINDING_TEXT_CHARS),
+        ):
+            value = finding.get(label)
+            if type(value) is not str or not value.strip() or len(value) > maximum:
+                raise ValueError(f"review finding requires bounded {label} text")
         summary = finding.get("evidence_summary")
         declared = finding.get("evidence_ids")
         if declared is None:
