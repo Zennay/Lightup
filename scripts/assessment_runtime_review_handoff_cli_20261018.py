@@ -73,13 +73,31 @@ def _load_case_set(paths):
         document, _ = _snapshot(path, SINGLE_LIMIT)
         pairs.append(_parse_case_document(document))
         documents.append(document)
-    if _index(tuple(pairs)) is None:
+    if _index(tuple(pairs)) is None or not _source_ids_unique(tuple(pairs)):
         raise ValueError("invalid lab cohort")
     payload = json.dumps(documents, sort_keys=True, separators=(",", ":"),
                          ensure_ascii=True, allow_nan=False).encode("ascii")
     if len(payload) > COHORT_LIMIT:
         raise ValueError("cohort over limit")
     return tuple(pairs), sha256(payload).hexdigest()
+
+
+def _source_ids_unique(baselines, candidates=()):
+    """One original run and one original record can belong to only one case.
+
+    Require disjoint original identities across the baseline/candidate sets,
+    even when each scenario by itself would compare cleanly. This rejects a
+    run copied to another scenario under a new claimed scenario identity.
+    """
+    runs, records = set(), set()
+    for pair in (*baselines, *candidates):
+        record, context = pair
+        if (record.run_id in runs or record.record_id in records
+                or record.run_id != context.run_id):
+            return False
+        runs.add(record.run_id)
+        records.add(record.record_id)
+    return True
 
 
 def _str(value):
@@ -284,6 +302,8 @@ def main(argv=None):
             before, first_sha = _load(args.baseline, args.cohort)
             after, second_sha = _load(args.candidate, args.cohort)
         cohort = args.cohort or selected_cases
+        if cohort and not _source_ids_unique(before, after):
+            raise ValueError("replayed source case identity")
         if cohort:
             result = compare_lab_cohorts(before, after)
         else:
