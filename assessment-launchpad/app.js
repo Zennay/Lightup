@@ -146,6 +146,45 @@
     status(String(next.length) + " isolated lab URL(s) prepared locally. No connections made.");
   });
 
+  document.getElementById("import").addEventListener("click", async () => {
+    const picker = document.getElementById("source-file");
+    const file = picker.files && picker.files[0];
+    if (!file) { status("Choose a local private .txt file before importing.", true); return; }
+    if (!Number.isSafeInteger(file.size) || file.size < 1 || file.size > 16384) {
+      status("Nothing changed: input must be an ordinary local file of at most 16 KiB.", true);
+      picker.value = "";
+      return;
+    }
+    let proposed;
+    try {
+      const bytes = new Uint8Array(await file.arrayBuffer());
+      if (bytes.length !== file.size ||
+          (bytes.length >= 3 && bytes[0] === 0xef && bytes[1] === 0xbb && bytes[2] === 0xbf)) {
+        throw new Error("Unstable or non-original UTF-8 source encoding.");
+      }
+      const raw = new TextDecoder("utf-8", {fatal: true}).decode(bytes);
+      if (raw.includes("\u0000")) throw new Error("NUL bytes are unsupported.");
+      const rows = raw.split(/\r?\n/).map(row => row.trim())
+        .filter(row => row && !row.startsWith("#"));
+      if (rows.length < 1 || rows.length > max) {
+        throw new Error("Source must have 1–16 non-comment isolated lab URLs.");
+      }
+      proposed = rows.map(admit);
+      if (new Set(proposed).size !== proposed.length) {
+        throw new Error("Source repeats an endpoint.");
+      }
+    } catch (e) {
+      status("Nothing changed: entire input held. " + e.message, true);
+      picker.value = "";
+      return;
+    }
+    list.splice(0, list.length, ...proposed);
+    picker.value = "";
+    input.value = "";
+    render();
+    status(String(list.length) + " private URLs restored as a local proposed batch. No contact or authorization.");
+  });
+
   document.getElementById("clear").addEventListener("click", () => {
     list.length = 0;
     input.value = "";
