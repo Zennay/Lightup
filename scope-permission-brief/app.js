@@ -27,7 +27,7 @@ const questionCatalog={
 };
 function hold(message){
  epoch++;current=null;questions=[];pending=null;
- $('revisionPreview').hidden=true;
+ renderPending();
  document.dispatchEvent(new CustomEvent('lightup:brief-source-change'));
  $('workspace').hidden=true;$('export').disabled=true;$('textExport').disabled=true;$('print').disabled=true;
  $('handoff').textContent='';$('replyState').textContent='No review note imported.';
