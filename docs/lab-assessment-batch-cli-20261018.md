@@ -18,6 +18,8 @@ lightup lab-assess --target http://127.0.0.1:18080/ --target http://127.0.0.1:18
 lightup lab-assess http://127.0.0.1:18080/ --target http://127.0.0.1:18081/
 lightup lab-assess --targets-file ./private-lab-targets.txt --no-review
 lightup lab-assess --targets-file ./private-lab-targets.txt --preview-only
+lightup lab-assess --targets-file ./private-lab-targets.txt --preview-only --output ./private-lab-preview.json
+lightup lab-assess --targets-file ./private-lab-targets.txt --no-review --output ./private-lab-assessment.json
 ```
 
 Example contents of `private-lab-targets.txt`:
@@ -35,6 +37,14 @@ The installed `lightup` entrypoint dispatches the `lab-assess` subcommand throug
 Use `--preview-only` with either `--target` or `--targets-file` to check the same complete batch of lab inputs without starting the model gateway, planner or any network worker. The JSON preview contains `mode: "LAB_INPUT_PREVIEW_ONLY"`, the normalized lab-host candidates, endpoint count, and explicit `false` execution/authorization fields. The preview **does not echo the original URLs**: query strings and embedded userinfo may be sensitive. It does not authenticate an owner, issue an approval, prove engagement rights, assert vulnerability findings, create a plan, grant consent or interact with any target.
 
 `--preview-only` is a user-facing offline preparation step, **not** a replacement for any mandatory release/CI/security gate. Passing this preview never authorizes a later assessment.
+
+## Owner-private completion artifact
+
+Use `--output /private/path/NEW-NAME.json` to keep the original completed assessment JSON, or the optional no-execution input preview, in one **NEW** local private file. The file is created only once with owner-only mode `0600`, never follows the final-component symlink and never silently overwrites an existing file. It may contain targets, findings, evidence references and model-generated text; store it in a trusted private directory, do not commit it to Git and never publicly share it. The command prints only a non-sensitive completion status, not the full report, when writing to a private file. With no `--output`, existing stdout JSON remains unchanged.
+
+Original failed/incomplete model review is **not** written as a completed JSON artifact. The original assessment result remains inspectable using the existing stdout path, with an explicit incomplete-review indication. Neither saved JSON nor its source metadata is an authentication, consent, completed security assessment, audit-trust signature or proof of a fixed vulnerability. Only source-created private file permissions are asserted: already-present destination files and symlinks are refused.
+
+Do not use the output to bypass the mandatory canonical comparator and human review import checks. It is simply the native source for existing offline workflows where the original schema fits.
 
 ## Exactly what is admitted
 
