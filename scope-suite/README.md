@@ -8,9 +8,11 @@ This independent preview brings nine already authored draft LightUp browser prod
 
 1. Download [LightUp-offline-workbench.zip](LightUp-offline-workbench.zip).
 2. Unzip it in a private directory and open `LightUp-offline-workbench/index.html` in a modern desktop browser. **Do not open directly inside the ZIP**; browser file references need the extracted folder.
-3. Choose a journey and follow its suggested order. Alternatively search the component cards. Browser tabs and the nine apps remain independent: hand off original Studio JSON exports manually, using each app's built-in file picker and documented format.
-4. Store sensitive downloaded proposals/replies/exports locally; avoid cloud-sync folders and shared public computers. Some locally generated JSON can contain source fingerprints and entered private data. The launcher itself never requests data, stores it, or opens network links.
-5. For STOP/revocation: **use the genuine externally authenticated incident/authorization channel first**. The local Withdrawal Desk cannot stop a running job or revoke consent.
+3. Choose a journey and follow its suggested order. Alternatively search the component cards. Browser tabs and the nine apps remain independent.
+4. **New local document tray:** add up to 24 supported DRAFT/HOLD JSON files (source Studio exports max 64 KiB, other supported review files max 256 KiB, total max 2 MiB). The tray uses fatal UTF-8 decode, bounded duplicate-key-rejecting JSON parsing, raw-byte SHA-256, a literal-false authority-field fence and atomic multi-file selection. It shows source/review type, generic proposed risk/counts, matching original source presence and compatible target app links; it never silently supplies documents to another component. Use **Download original bytes**, open the relevant application and select the file again through that app's own input. A source match or inventory entry does **not** validate the receiving app's actual import contract or grant rights.
+5. The tray exists only in the current page memory, with no cookie, localStorage or indexedDB and no network I/O. Remove individual files or **Forget all**, or close the tab. Filename/asset strings, original JSON data and contact notes do **not** appear in the optional SHA inventory; the inventory does contain correlatable document fingerprints. Explicitly confirm before exporting and restrict circulation.
+6. Store sensitive downloaded proposals/replies/exports locally; avoid cloud-sync folders and shared public computers. Some locally generated JSON can contain source fingerprints and entered private data. The launcher temporarily holds manually selected JSON bytes only in tab memory, and never sends them to a network destination.
+7. For STOP/revocation: **use the genuine externally authenticated incident/authorization channel first**. The local Withdrawal Desk cannot stop a running job or revoke consent.
 
 ## Included pinned source snapshots
 
@@ -34,7 +36,7 @@ The Studio source snapshots are also copied to the Schedule Board folder so its 
 - **No cross-origin/multi-app localStorage, service worker, shared authentication, shared grants or shared runtime capabilities.** This is a combined download rather than a merged permission service.
 - A Studio "authorized_assessment" *request mode* is merely untrusted draft text, not authenticated authority.
 - `manifest.json` lists the original PR number, exact upstream commit hash, every copied original path, byte length and SHA-256. Those hashes are integrity/correlation fingerprints only — not signatures, ownership, consent or approval.
-- The launcher has a restrictive CSP with `connect-src 'none'`, doesn't ask for uploads, and saves no user data. Each included original app retains its own source CSP and behavior. Users should review the source-specific README/docs before importing confidential material.
+- The launcher has a restrictive CSP with `connect-src 'none'`. Its opt-in document tray temporarily accepts local files only in the current tab memory, never persists them, and never transfers files to a component automatically. Each included original app retains its own source CSP and import controls. Users should review the source-specific README/docs before importing confidential material.
 - These original apps are not guaranteed compatible with each other's local handoff formats beyond the documented import paths. Never infer an export is accepted without its target app successfully validating it.
 
 ## Repeatable packaging
