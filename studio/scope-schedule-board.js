@@ -122,6 +122,27 @@ function timeClashes(list) {
   }
   return {pairs,active};
 }
+// Turnaround is only a local team-planning preference, not a safety clearance.
+function turnaroundIssues(items, unavailable){
+  const between=[],blocks=[];
+  for(let i=0;i<items.length;i++){
+    for(let j=i+1;j<items.length;j++){
+      const a=items[i],b=items[j];
+      if((a.lane||1)!==(b.lane||1))continue;
+      const overlap=a.interval.start<b.interval.end && b.interval.start<a.interval.end;
+      const tooClose=a.interval.start<b.interval.end+BUFFER &&
+        b.interval.start<a.interval.end+BUFFER;
+      if(tooClose&&!overlap)between.push([i,j]);
+    }
+    for(let j=0;j<unavailable.length;j++){
+      const a=items[i].interval,b=unavailable[j];
+      const overlap=a.start<b.end&&b.start<a.end;
+      const tooClose=a.start<b.end+BUFFER&&b.start<a.end+BUFFER;
+      if(tooClose&&!overlap)blocks.push([i,j]);
+    }
+  }
+  return {between,blocks,count:between.length+blocks.length};
+}
 function parseUTCWallTime(value){
   if(!validLocal(value) || typeof value!=='string')return null;
   const millis=Date.parse(value+':00.000Z');
@@ -245,12 +266,16 @@ function render(){
   const policy=workPolicy();
   activeWorkNote(policy);
   const invalidHours=timed.filter(e=>!withinWorkHours(e.interval,policy));
+  const spacing=turnaroundIssues(timed,blackouts);
   const blockHits=[];
   timed.forEach((e,i)=>blackouts.forEach((b,j)=>{
     if(e.interval.start<b.end && b.start<e.interval.end){blockHits.push([i,j]);active.add(i);}
   }));
   for(const e of invalidHours){const i=timed.findIndex(item=>item.key===e.key);if(i>=0)active.add(i);}
   $('hoursClashes').textContent=invalidHours.length;
+  $('bufferIssues').textContent=spacing.count;
+  for(const [i,j] of spacing.between){active.add(i);active.add(j);}
+  for(const [i] of spacing.blocks)active.add(i);
   $('blocked').textContent=blackouts.length;
   $('changed').textContent=scenarioShifts.size;
   renderBlocks();
@@ -264,7 +289,8 @@ function render(){
   const current=pairs.length+blockHits.length+invalidHours.length;
   $('baselineClashes').textContent=baseline;
   $('clashReduction').textContent=String(baseline-current);
-  $('ics').disabled=!timed.length||invalidHours.length>0||!policy.valid;
+  $('ics').disabled=!timed.length||invalidHours.length>0||!policy.valid||
+    pairs.length>0||blockHits.length>0||spacing.count>0;
   $('print').disabled=!entries.length;
   const days=Number($('horizon').value),lo=anchorUTC,hi=anchorUTC+days*DAY;
   createAxis(days);
@@ -310,7 +336,8 @@ function render(){
     append(box,'p','HOLD for calendar export until every current scenario window fits fully within allowed weekdays and hours. Adjust scenario or disable this optional local policy.');
     for(const e of invalidHours.slice(0,20))append(box,'div',e.name+' · '+formatUTC(e.interval.start)+' → '+formatUTC(e.interval.end));
   }
-  if(!pairs.length && !blockHits.length && !invalidHours.length)append(conflict,'p','No collisions detected against other drafts or locally unavailable periods. This does not prove availability or approval.','muted');
+  if(!pairs.length && !blockHits.length && !invalidHours.length && !spacing.count)
+    append(conflict,'p','No local time collisions or turnaround issues detected. Actual availability and approval remain unverified.','muted');
   for(const [i,j] of pairs){
     const a=timed[i],b=timed[j],box=document.createElement('div');box.className='item danger';conflict.append(box);
     append(box,'strong','Lane '+a.lane+': '+a.name+' ↔ '+b.name);
@@ -320,6 +347,16 @@ function render(){
     const e=timed[i],b=blackouts[j],box=document.createElement('div');box.className='item danger';conflict.append(box);
     append(box,'strong',e.name+' ↔ Unavailable #'+(j+1));
     append(box,'div','Local planning conflict: '+formatUTC(Math.max(e.interval.start,b.start))+' – '+formatUTC(Math.min(e.interval.end,b.end)));
+  }
+  for(const [i,j] of spacing.between){
+    const a=timed[i],b=timed[j],box=document.createElement('div');box.className='item danger';conflict.append(box);
+    append(box,'strong','Insufficient 30-minute turnaround · lane '+a.lane);
+    append(box,'div',a.name+' ↔ '+b.name+' · reschedule to add a 30-minute gap.');
+  }
+  for(const [i,j] of spacing.blocks){
+    const e=timed[i],box=document.createElement('div');box.className='item danger';conflict.append(box);
+    append(box,'strong','Insufficient 30-minute gap to unavailable period #'+(j+1));
+    append(box,'div',e.name+' · reschedule around local unavailability.');
   }
   const attention=$('attention');attention.replaceChildren();
   if(!entries.length)append(attention,'p','No imported proposals.');
@@ -439,6 +476,7 @@ function scenarioPacket(){
     unavailable_utc:blackouts.map(b=>({start:new Date(b.start).toISOString(),end:new Date(b.end).toISOString()})),
     workday_utc:{enabled:policy.enabled,start:policy.start_utc,end:policy.end_utc,weekdays:policy.weekdays},
     proposed_time_overlap_pairs:pairs.length,proposed_unavailability_overlap_pairs:blockHits,
+    proposed_buffer_violation_count:turnaroundIssues(current,blackouts).count,
     proposed_outside_workday_count:current.filter(e=>!withinWorkHours(e.interval,policy)).length
   };
 }
@@ -489,7 +527,8 @@ function decodeScenario(snapshot){
   const rootKeys=new Set(['kind','schema_version','disposition','source','authenticated',
     'authorization','client_consent','operator_consent','grant','risk_approved','scan',
     'execution','release','note','proposals','unavailable_utc','workday_utc',
-    'proposed_time_overlap_pairs','proposed_unavailability_overlap_pairs','proposed_outside_workday_count']);
+    'proposed_time_overlap_pairs','proposed_unavailability_overlap_pairs','proposed_outside_workday_count',
+    'proposed_buffer_violation_count']);
   const rowKeys=new Set(['local_ordinal','review_lane','source_file_sha256','requested_mode','requested_risk','state','original_start_utc',
     'original_end_utc','scenario_start_utc','scenario_end_utc','shifted']);
   const blockKeys=new Set(['start','end']);
@@ -566,7 +605,10 @@ function decodeScenario(snapshot){
     return {lane:assignedLanes.get(e.key)||1,
       interval:{start,end:start+(e.interval.end-e.interval.start)}};
   });
-  if(timeClashes(restored).pairs.length!==snapshot.proposed_time_overlap_pairs||
+  if((own(snapshot,'proposed_buffer_violation_count')&&
+       (!Number.isInteger(snapshot.proposed_buffer_violation_count) ||
+        snapshot.proposed_buffer_violation_count!==turnaroundIssues(restored,busy).count))||
+     timeClashes(restored).pairs.length!==snapshot.proposed_time_overlap_pairs||
      restored.reduce((count,e)=>count+busy.filter(b=>
        e.interval.start<b.end && b.start<e.interval.end).length,0)!==
        snapshot.proposed_unavailability_overlap_pairs)
@@ -665,7 +707,8 @@ function renderPrivateReviewBrief(packet) {
   const names=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
   const weekdays=p.enabled?p.weekdays.map(day=>names[day]).join(', '):'Unrestricted';
   const total=packet.proposed_time_overlap_pairs+
-    packet.proposed_unavailability_overlap_pairs+packet.proposed_outside_workday_count;
+    packet.proposed_unavailability_overlap_pairs+packet.proposed_outside_workday_count+
+    packet.proposed_buffer_violation_count;
   return '<!doctype html><html lang="en"><head><meta charset="utf-8">'+
     '<meta name="viewport" content="width=device-width,initial-scale=1">'+
     '<meta name="referrer" content="no-referrer">'+
@@ -689,6 +732,7 @@ function renderPrivateReviewBrief(packet) {
       esc(packet.proposed_time_overlap_pairs)+
       '. Proposed/unavailable overlaps: '+esc(packet.proposed_unavailability_overlap_pairs)+
       '. Drafts outside selected work hours: '+esc(packet.proposed_outside_workday_count)+
+      '. 30-minute turnaround violations: '+esc(packet.proposed_buffer_violation_count)+
       '. Total local scheduling concerns: '+esc(total)+'.</p>'+
     '<p>No claim is made about resource availability, actual clients, risk clearance, revocation or authorizing rights. All draft identities are anonymized; the original-file digests are only unsigned content continuity hints and can still correlate documents.</p></section>'+
     '<footer><small>Source drafts were never changed. Review must use real authenticated client/operator systems and all existing security gates. No network, scripts, resources, embedded files or external fonts.</small></footer></body></html>';
@@ -965,8 +1009,11 @@ function foldIcsLine(line){
 }
 $('ics').addEventListener('click',()=>{
   const active=shown(),policy=workPolicy();
-  if(!active.length||!policy.valid||active.some(e=>!withinWorkHours(e.interval,policy))){
-    $('status').textContent='HOLD: fix time windows outside allowed UTC workdays before exporting tentative calendar events.';return;
+  const blocked=active.some(e=>!withinWorkHours(e.interval,policy))||
+    timeClashes(active).pairs.length>0||turnaroundIssues(active,blackouts).count>0||
+    active.some(e=>blackouts.some(b=>e.interval.start<b.end&&b.start<e.interval.end));
+  if(!active.length||!policy.valid||blocked){
+    $('status').textContent='HOLD: resolve time overlaps, 30-minute turnaround gaps, unavailable periods and UTC workdays before exporting a tentative calendar.';return;
   }
   // No client names, notes, assets, URLs, contacts, identifiers or original file text are exported.
   const stamp=icsTimestamp(Date.now());
