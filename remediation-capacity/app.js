@@ -11,6 +11,7 @@
   };
   let findings = null;
   let result = null;
+  let lastOptions = null;
   const source = el('source');
   const feedback = el('feedback');
   const setFeedback = (msg, error=false) => {
@@ -18,7 +19,7 @@
     feedback.classList.toggle('error',error);
   };
   function forget() {
-    findings = null; result = null;
+    findings = null; result = null; lastOptions = null;
     source.value = '';
     el('source-status').textContent = 'No report loaded. All files stay in this browser tab.';
     el('generate').disabled = true;
@@ -37,7 +38,7 @@
       // Strict decoding; malformed UTF-8 must not be silently replaced.
       const content = new TextDecoder('utf-8',{fatal:true}).decode(await file.arrayBuffer());
       const prepared = engine.parseCSV(content);
-      findings = prepared; result = null;
+      findings = prepared; result = null; lastOptions = null;
       el('generate').disabled = false;
       el('results').hidden = true;
       const counts = {};
@@ -56,12 +57,14 @@
     try {
       const hours = {};
       for (const severity of ['critical','high','medium','low','info']) hours[severity] = input(severity);
-      result = engine.plan(findings,{
+      lastOptions = {
         start:input('start'),weeks:input('weeks'),engineers:input('engineers'),
         workDays:input('workDays'),hoursPerDay:input('hoursPerDay'),
         reserve:input('reserve'),hours
-      });
+      };
+      result = engine.plan(findings,lastOptions);
       render();
+      renderComparison();
       el('results').hidden = false;
       setFeedback('Draft allocations prepared offline. Nothing has been assigned or executed.');
     } catch (err) {
@@ -113,6 +116,47 @@
       const tr=$('tr'),cell=$('td','No allocations within the available capacity.');cell.colSpan=6;tr.append(cell);rows.append(tr);
     }
   }
+
+  function renderComparison() {
+    const box=el('comparison');box.replaceChildren();
+    if (!findings || !result || !lastOptions) return;
+    try {
+      const extra=Number(el('extra-engineers').value);
+      if (!Number.isSafeInteger(extra) || extra < 0 || extra > 10) throw new Error('Use 0–10 additional engineers.');
+      const n=Number(lastOptions.engineers)+extra;
+      if (n > 30) throw new Error('The scenario supports at most 30 engineers.');
+      const alternative=engine.plan(findings,{...lastOptions,engineers:n});
+      const candidates=[];
+      for (let count=1;count<=30;count++) {
+        const candidate=engine.plan(findings,{...lastOptions,engineers:count});
+        if (candidate.backlogHours===0) {candidates.push(count);break;}
+      }
+      const minTeam=candidates.length?candidates[0]:null;
+      const cards=$('div',undefined,'scenario-grid');
+      for (const [title,planned,team] of [
+        ['Baseline',result,Number(lastOptions.engineers)],
+        ['What-if +'+extra,alternative,n]
+      ]) {
+        const card=$('div',undefined,'scenario-card');
+        card.append($('strong',title),$('p',team+' engineers · '+planned.assignedHours+' assigned h'),
+          $('p',planned.backlogHours+' backlog h · '+planned.backlogCount+' unfinished estimates'));
+        cards.append(card);
+      }
+      box.append(cards);
+      const difference=result.backlogHours-alternative.backlogHours;
+      const msg= difference>0
+        ? 'Proposed additional capacity covers '+difference+' more estimated hours within the same time horizon.'
+        : 'The extra staffing does not reduce backlog within these planning assumptions.';
+      box.append($('p',msg,'subtle'));
+      box.append($('p',minTeam===null
+        ? 'Even a 30-person team would not fit all estimated work into these weeks.'
+        : 'The smallest modeled team fitting all estimated hours in these weeks is '+minTeam+
+        ' engineers. This is not a staffing recommendation, SLA or completion guarantee.','subtle'));
+    } catch (error) {
+      box.append($('p','Scenario held: '+(error instanceof Error?error.message:'Invalid scenario'),'feedback error'));
+    }
+  }
+  el('compare').addEventListener('click',renderComparison);
   function download(name,content,mime) {
     // Deliberate user-initiated, local-only export. URL revoked immediately.
     const blob=new Blob([content],{type:mime});
