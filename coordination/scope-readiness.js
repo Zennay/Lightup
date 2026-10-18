@@ -220,7 +220,7 @@ function renderActionBoard(){
 }
 $('boardView').addEventListener('change',renderActionBoard);
 function clearRevisionPreview(message='Source or paperwork changed; compare the exact originals again.'){
- revisionPreview=null;$('revisionReopen').disabled=true;$('revisionExport').disabled=true;
+ revisionPreview=null;$('revisionReopen').disabled=true;$('revisionCarry').disabled=true;$('revisionExport').disabled=true;
  $('revisionStatus').textContent=message;$('revisionChanges').replaceChildren();
 }
 function renderRevisionSources(){
@@ -263,6 +263,7 @@ $('revisionCompare').addEventListener('click',()=>{
   root.append(make('p',result.affectedStages.length+' preparation stage(s) require review. Source SHA-256 only proves local byte continuity; nothing authenticates scope rights.','small'));
   revisionPreview={epoch:editEpoch,from,to,result};
   $('revisionReopen').disabled=!result.affectedStages.length;
+  $('revisionCarry').disabled=sourceCopies.get(from).client_label!==sourceCopies.get(to).client_label;
   $('revisionExport').disabled=false;
   $('revisionStatus').textContent='PRIVATE PREVIEW: '+result.summary.length+
    ' proposal difference category/categories; '+result.affectedStages.length+
@@ -277,6 +278,35 @@ function checkedRevisionPreview(){
  if(JSON.stringify(current)!==JSON.stringify(revisionPreview.result))throw Error('Original proposal evidence changed.');
  return {current,target:entries.find(r=>r.source_sha256===to),from,to};
 }
+$('revisionCarry').addEventListener('click',()=>{
+ try{
+  const {current,target,from}=checkedRevisionPreview();
+  const source=entries.find(r=>r.source_sha256===from);
+  if(!source||source===target||source.client_label!==target.client_label)
+   throw Error('Unverified client labels differ. Cross-label logistics carryover is HOLD.');
+  const changes=[];
+  for(const [stage] of STAGES){
+   const original=source.tasks[stage],destination=target.tasks[stage];
+   // Never transfer an old preparedness verdict or replace user-written assignments.
+   if(destination.status==='prepared')continue;
+   const fill={};
+   for(const key of ['owner','due','next_action'])if(original[key]&&!destination[key])fill[key]=original[key];
+   if(Object.keys(fill).length)changes.push({stage,fill});
+  }
+  if(!changes.length){
+   $('revisionStatus').textContent='No safe missing assignments to carry over. Prepared/newer paperwork is untouched.';
+   return;
+  }
+  if(!confirm('Copy '+changes.reduce((n,c)=>n+Object.keys(c.fill).length,0)+
+   ' missing coordinator, due-date or action fields across '+changes.length+
+   ' preparation streams to the UPDATED draft? Matching self-reported client labels DO NOT verify tenancy. Prepared/blocked status, consent, operator decisions, grants and source files never transfer.'))return;
+  for(const change of changes)Object.assign(target.tasks[change.stage],change.fill);
+  const count=changes.length;
+  setDirty();render();
+  $('revisionStatus').textContent='Filled missing follow-up logistics on '+count+
+   ' newer draft streams. All approval/consent/authorization remain unverified; re-compare originals before re-opening stages.';
+ }catch(e){clearRevisionPreview('Successor carryover HOLD: '+e.message);}
+});
 $('revisionReopen').addEventListener('click',()=>{
  try{
   const {current,target}=checkedRevisionPreview(),ids=current.affectedStages;
