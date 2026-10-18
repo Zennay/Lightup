@@ -51,6 +51,12 @@
     <h2 id="alignmentTitle">2. Membership and original status</h2>
     <p id="summary">Load both source types to review.</p>
     <div id="reports" class="scroll" aria-label="Original comparison source summaries"></div>
+    <article class="private-mismatch">
+      <h3>Original source membership reconciliation — PRIVATE</h3>
+      <p>When any original scenario is absent from or extra in a completed report, outputs remain HOLD. Private source IDs are masked by default; reveal them only on a trusted local screen to resolve the upstream original source mismatch. This never modifies a report or starts a scan.</p>
+      <button id="revealMismatch" class="secondary" type="button" hidden>Reveal exact PRIVATE mismatch identifiers</button>
+      <div id="mismatchDetails" class="scroll" aria-live="polite"></div>
+    </article>
     <div class="source-controls">
       <label for="sourceOrder">Original source display slot (not authenticated chronology)</label>
       <select id="sourceOrder" aria-label="Original report to reorder or remove"></select>
