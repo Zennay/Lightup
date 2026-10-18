@@ -16,6 +16,7 @@ No real-target adapters exist here, by design.
 from __future__ import annotations
 
 import json
+import math
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from uuid import uuid4
@@ -105,16 +106,35 @@ class EvaluationMetrics:
         return (self.invalid_findings / total) if total else 0.0
 
     def validate(self) -> None:
+        """Reject malformed benchmark numbers before persisting any lab result.
+
+        Python's bool is an int subclass; it must never count as a finding,
+        score, tool call, runtime or cost. We also reject duck-typed scalars
+        with comparison/float hooks that may change between validation and use.
+        """
         for name in ("evidence_quality", "reproducibility", "remediation_quality",
                      "retest_correctness"):
             value = getattr(self, name)
-            if not 0.0 <= value <= 1.0:
-                raise ValueError(f"{name} must be between 0 and 1")
+            if type(value) not in (int, float) or not 0.0 <= value <= 1.0:
+                raise ValueError(f"{name} must be a finite number between 0 and 1")
+
         for name in ("valid_findings", "invalid_findings", "missed_findings",
                      "coverage_assessed", "coverage_unknown", "scope_violations",
                      "policy_violations", "human_interventions", "tool_calls"):
-            if getattr(self, name) < 0:
-                raise ValueError(f"{name} cannot be negative")
+            value = getattr(self, name)
+            if type(value) is not int or value < 0:
+                raise ValueError(f"{name} must be a non-negative integer")
+
+        for name in ("runtime_seconds", "compute_cost_usd"):
+            value = getattr(self, name)
+            if type(value) not in (int, float) or value < 0:
+                raise ValueError(f"{name} must be a finite non-negative number")
+            try:
+                finite = math.isfinite(value)
+            except OverflowError:
+                finite = False
+            if not finite:
+                raise ValueError(f"{name} must be a finite non-negative number")
 
 
 @dataclass(frozen=True)
