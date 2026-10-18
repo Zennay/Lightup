@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-wVmZ3atE1p3zThqCuZ3XERqgr/f+XiTtBmRtdKV+Aig=' 'sha256-1OVOis4fZaUrueu+i1D5IHZ5WhUQoeD9ClFSReIqRww='; style-src 'sha256-gEMrhzucwNNVR5rxA190ojTF6E/F5H2OJBugIQxT2kw='; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-Nk0AbSpPxC28rIUks6VzoJ5RsCTzDPJh/rnEa4zEkYs=' 'sha256-XMtQDosv10ZmjMB0iY2VdpRHgdBl4Jmbon7aUAJi0R8='; style-src 'sha256-HRPGGJYObS8TfeWJidLquBzN/a2cquH4jfGj5JxMfXo='; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <title>LightUp | Remediation Capacity Studio — offline draft</title>
 <style>:root{color-scheme:dark;--bg:#0a1119;--panel:#111e29;--edge:#304451;--text:#edf5f7;--muted:#a4bac8;--teal:#7ee4bd;--amber:#f9d48a;--blue:#7cb8ff}
 *{box-sizing:border-box}
@@ -60,6 +60,8 @@ footer{padding:22px 0 60px}
 .ack{display:flex;align-items:flex-start;gap:12px;padding:15px;margin:16px 0 20px;border:1px solid var(--edge);background:#0b1922;border-radius:10px}.ack input[type=checkbox]{width:19px;height:19px;flex:none;margin:4px 0 0}.ack strong{color:var(--text)}#history-data{margin-top:22px}#history-data .stats{margin:18px 0}@media print{.ack,#previous,#history-feedback,#review-history,#clear-history,#export-history{display:none!important}}
 
 .availability-field{font-variant-numeric:tabular-nums}.availability-field input{max-width:180px}.week:has(.fill[style="width: 0%;"]){border-left:3px solid var(--amber);padding-left:14px}@media print{#week-availability{display:none!important}}
+
+#priority-bands td{font-variant-numeric:tabular-nums}#priority-bands td:first-child{text-transform:capitalize;font-weight:750}#priority-bands tr.outstanding-row td{border-bottom:1px solid #806f40}#priority-bands tr.outstanding-row td:nth-last-child(-n+2){color:var(--amber)}@media print{#priority-bands tr.outstanding-row td{color:#111!important}}
 </style>
 
 
@@ -119,6 +121,16 @@ footer{padding:22px 0 60px}
     <h2 id="results-title">Capacity allocation</h2>
     <div class="stats" id="stats" aria-live="polite"></div>
     <p class="subtle">A fully allocated estimate only means it fits in this draft plan. It does not mean work has started, a vulnerability was fixed, or an authorised retest has happened.</p>
+  </div>
+  <div class="panel" aria-labelledby="risk-title">
+    <h2 id="risk-title">Priority-band backlog and estimated scheduling horizon</h2>
+    <p>Track outstanding planned hours by original source severity. “Scheduled” only means a local estimate fits; it never represents completed remediation or a confirmed retest.</p>
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th scope="col">Severity</th><th scope="col">Records</th><th scope="col">Source regressions</th><th scope="col">Estimated effort</th><th scope="col">Tentatively allocated</th><th scope="col">Unallocated</th><th scope="col">Latest full-allocation week</th></tr></thead>
+        <tbody id="priority-bands"></tbody>
+      </table>
+    </div>
   </div>
   <div class="panel">
     <h2>Weekly workload</h2>
@@ -331,6 +343,7 @@ footer{padding:22px 0 60px}
         if (!task.remaining) continue;
         const allocation = Math.min(remaining,task.remaining);
         task.remaining -= allocation;
+        if(task.remaining===0) task.allocatedByWeek=w+1;
         remaining -= allocation;
         portions.push(Object.freeze({ordinal:task.ordinal,severity:task.severity,
           sourceRetest:task.retest,hours:allocation,finished:task.remaining===0}));
@@ -341,12 +354,27 @@ footer{padding:22px 0 60px}
     }
     const outstanding = queue.filter(x=>x.remaining>0);
     const totalHours = queue.reduce((n,x)=>n+x.effort,0);
+    const priorityBands = Object.freeze(Object.fromEntries(SEVERITIES.map(severity=>{
+      const items=queue.filter(x=>x.severity===severity);
+      const estimated=items.reduce((n,x)=>n+x.effort,0);
+      const remaining=items.reduce((n,x)=>n+x.remaining,0);
+      const fullyScheduled=items.filter(x=>x.remaining===0).length;
+      return [severity,Object.freeze({
+        source_count:items.length,
+        source_regressions:items.filter(x=>x.retest==='regression').length,
+        estimated_hours:estimated,scheduled_hours:estimated-remaining,
+        unscheduled_hours:remaining,fully_scheduled_estimates:fullyScheduled,
+        all_estimates_scheduled:remaining===0,
+        last_estimated_scheduling_week:remaining===0&&items.length
+          ? Math.max(...items.map(x=>x.allocatedByWeek)) : null
+      })];
+    })));
     return Object.freeze({schedule:Object.freeze(schedule),
       capacity, totalHours, assignedHours:totalHours-outstanding.reduce((n,x)=>n+x.remaining,0),
       backlogHours:outstanding.reduce((n,x)=>n+x.remaining,0),
       backlogCount:outstanding.length,
       completedProposals:queue.filter(x=>x.remaining===0).length,
-      sourceCount:queue.length,
+      sourceCount:queue.length,priorityBands,
       reserve, start:options.start,daysPerWeek:workDays,weeklyAvailability:availability});
   }
   function summary(plan) {
@@ -357,6 +385,7 @@ footer{padding:22px 0 60px}
       source_count:plan.sourceCount, proposed_completed:plan.completedProposals,
       total_estimated_hours:plan.totalHours, assigned_hours:plan.assignedHours,
       backlog_hours:plan.backlogHours, backlog_findings:plan.backlogCount,
+      priority_bands:plan.priorityBands,
       sprint_weeks:plan.schedule.map(week=>{
         const severity_hours=Object.fromEntries(SEVERITIES.map(s=>[s,week.portions.filter(p=>p.severity===s).reduce((a,p)=>a+p.hours,0)]));
         return {week:week.week,start:week.start,availability_pct:week.availability,available_hours:week.capacity,
@@ -391,6 +420,16 @@ footer{padding:22px 0 60px}
     for(const w of data.sprint_weeks) lines.push(
       '| '+[w.week,w.start,w.availability_pct,w.available_hours,w.allocated_hours,...SEVERITIES.map(s=>w.severity_hours[s])].join(' | ')+' |'
     );
+    lines.push('','## Priority bands (planning estimates only)','',
+      '| Severity | Records | Source regressions | Estimated h | Tentatively planned h | Remaining h | Fully allocated within horizon | Latest allocation week |',
+      '| --- | ---: | ---: | ---: | ---: | ---: | --- | ---: |');
+    for(const severity of SEVERITIES) {
+      const band=data.priority_bands[severity];
+      lines.push('| '+[severity,band.source_count,band.source_regressions,band.estimated_hours,
+        band.scheduled_hours,band.unscheduled_hours,
+        band.all_estimates_scheduled?'YES (estimate only)':'NO',
+        band.last_estimated_scheduling_week===null?'—':band.last_estimated_scheduling_week].join(' | ')+' |');
+    }
     lines.push('','Human follow-up: confirm source client/engagement externally, review estimates and staffing, assign owners through existing authorised channels, verify repairs/retests separately.','');
     return lines.join('\n');
   }
@@ -438,6 +477,7 @@ footer{padding:22px 0 60px}
     el('stats').replaceChildren();
     el('weekly').replaceChildren();
     el('allocations').replaceChildren();
+    el('priority-bands').replaceChildren();
     setFeedback('Imported source and proposed capacity plan discarded from this workspace.');
   }
   el('forget').addEventListener('click',forget);
@@ -521,6 +561,19 @@ footer{padding:22px 0 60px}
     ];
     for (const [label,value] of vals) {
       const card=$('div',undefined,'stat'); card.append($('strong',value),$('span',label));stats.append(card);
+    }
+    const riskRows=el('priority-bands');riskRows.replaceChildren();
+    for (const severity of ['critical','high','medium','low','info']) {
+      const band=result.priorityBands[severity];
+      const tr=$('tr');
+      const cutoff=band.last_estimated_scheduling_week===null
+        ? (band.source_count===0?'No cases':'Not fully allocated')
+        : 'Week '+band.last_estimated_scheduling_week+' (estimate)';
+      for (const v of [severity,band.source_count,band.source_regressions,
+        band.estimated_hours+' h',band.scheduled_hours+' h',
+        band.unscheduled_hours+' h',cutoff])tr.append($('td',v));
+      if(band.unscheduled_hours>0) tr.className='outstanding-row';
+      riskRows.append(tr);
     }
     const weekly=el('weekly'); weekly.replaceChildren();
     for (const week of result.schedule) {
