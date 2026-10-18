@@ -904,59 +904,148 @@ function decodeUTCStamp(value){
     value.slice(9,11)+':'+value.slice(11,13)+':00.000Z';
   return isoMillis(iso);
 }
+function parseRecurrenceRule(value,start){
+  if(typeof value!=='string'||value.length>200)throw Error('oversized RRULE');
+  const fields=new Map();
+  for(const field of value.split(';')){
+    const pos=field.indexOf('='),name=field.slice(0,pos),data=field.slice(pos+1);
+    if(pos<1||fields.has(name)||!['FREQ','INTERVAL','COUNT','UNTIL','BYDAY'].includes(name)||
+      !data)throw Error('unsupported recurrence term');
+    fields.set(name,data);
+  }
+  const freq=fields.get('FREQ');
+  if(freq!=='DAILY'&&freq!=='WEEKLY')throw Error('unsupported recurrence frequency');
+  if(fields.has('COUNT')===fields.has('UNTIL'))throw Error('finite recurrence bound required');
+  const interval=fields.has('INTERVAL')?Number(fields.get('INTERVAL')):1;
+  if(!Number.isSafeInteger(interval)||interval<1||interval>12)throw Error('recurrence interval limit');
+  let count=null,until=null;
+  if(fields.has('COUNT')){
+    const raw=fields.get('COUNT');
+    if(!/^[1-9]\d?$/.test(raw))throw Error('unsupported event count');
+    count=Number(raw);
+    if(count>30)throw Error('recurrence count limit');
+  }else{
+    until=decodeUTCStamp(fields.get('UNTIL'));
+    if(until===null||until<start||until-start>366*DAY)
+      throw Error('recurrence outside one-year limit');
+  }
+  let weekdays=null;
+  if(fields.has('BYDAY')){
+    if(freq!=='WEEKLY')throw Error('BYDAY only for weekly events');
+    const tokens=fields.get('BYDAY').split(',');
+    const names=['SU','MO','TU','WE','TH','FR','SA'];
+    if(!tokens.length||tokens.length>7||tokens.some(x=>!names.includes(x))||
+        new Set(tokens).size!==tokens.length)throw Error('unsupported weekday list');
+    weekdays=tokens.map(x=>names.indexOf(x));
+  }
+  return {freq,interval,count,until,weekdays};
+}
+function expandBusyEvent(event){
+  const {start,end}=event,duration=end-start;
+  if(!event.rrule){
+    if(event.exdates.length)throw Error('exception without recurrence');
+    return [{start,end}];
+  }
+  const rule=parseRecurrenceRule(event.rrule,start),days=[0,1,2,3,4,5,6];
+  const wanted=rule.weekdays||[new Date(start).getUTCDay()];
+  const startDay=Math.floor(start/DAY);
+  const weekAnchor=startDay-((new Date(start).getUTCDay()+6)%7);
+  const result=[];
+  for(let index=0;index<=366;index++){
+    const day=startDay+index,at=start+index*DAY;
+    if(rule.until!==null&&at>rule.until)break;
+    const week=Math.floor((day-weekAnchor)/7);
+    const isScheduled=rule.freq==='DAILY'?index%rule.interval===0:
+      week%rule.interval===0&&wanted.includes(days[new Date(at).getUTCDay()]);
+    if(!isScheduled)continue;
+    if(rule.count!==null&&result.length===rule.count)break;
+    if(result.length>=30||!Number.isFinite(at+duration)||
+      isoMillis(new Date(at).toISOString())===null||
+      isoMillis(new Date(at+duration).toISOString())===null)
+      throw Error('recurrence bounds exceeded');
+    result.push({start:at,end:at+duration});
+  }
+  if(rule.count!==null&&result.length!==rule.count)throw Error('recurrence too long');
+  if(!result.length)throw Error('no finite recurrence occurrences');
+  const excluded=new Set(event.exdates);
+  if(event.exdates.some(x=>!result.some(item=>item.start===x)))
+    throw Error('exception outside recurrence');
+  return result.filter(item=>!excluded.has(item.start));
+}
 function readBusyCalendar(text){
-  // Strict one-shot UTC VEVENT import only. No network, no recurrence expansion,
-  // calendar names, descriptions or attendee identity are retained.
+  // Bounded *UTC-only* single and finite daily/weekly VEVENTs; never use event
+  // text, identities, calendar links, timezone definitions, or remote services.
   if(typeof text!=='string'||text.length>131072||text.includes('\0') ||
       /(^|[^\r])\n/.test(text))throw Error('invalid line endings');
   const lines=text.replace(/\r\n[ \t]/g,'').split('\r\n');
   if(lines[lines.length-1]==='')lines.pop();
   if(lines.length<3||lines.length>1200||lines[0]!=='BEGIN:VCALENDAR'||
       lines[lines.length-1]!=='END:VCALENDAR')throw Error('invalid calendar');
-  const records=[],blocked=[],unique=new Set();
-  let event=null,fields=0;
+  let event=null,events=0,fields=0;
+  const blocked=[],unique=new Set();
   for(let i=1;i<lines.length-1;i++){
     const line=lines[i];
     if(line.length>4096||line.includes('\r')||line.includes('\n'))throw Error('invalid record');
     if(line==='BEGIN:VEVENT'){
-      if(event!==null)throw Error('nested events');
-      if(records.length>=30)throw Error('too many events');
-      event={start:null,end:null,transparent:false,cancelled:false};
+      if(event!==null||events>=30)throw Error('nested/too many events');
+      event={start:null,end:null,transparent:false,cancelled:false,rrule:null,exdates:[]};
       fields=0;continue;
     }
     if(line==='END:VEVENT'){
       if(event===null||event.start===null||event.end===null||event.start>=event.end||
           event.end-event.start>31*DAY)throw Error('invalid event time');
-      records.push(event);
+      events++;
+      const occurrences=expandBusyEvent(event);
       if(!event.transparent&&!event.cancelled){
-        const key=String(event.start)+':'+String(event.end);
-        if(!unique.has(key)){unique.add(key);blocked.push({start:event.start,end:event.end});}
+        for(const slot of occurrences){
+          const key=String(slot.start)+':'+String(slot.end);
+          if(!unique.has(key)){
+            if(blocked.length>=30)throw Error('too many busy intervals');
+            unique.add(key);blocked.push(slot);
+          }
+        }
       }
       event=null;continue;
     }
     if(line.startsWith('BEGIN:')||line.startsWith('END:'))throw Error('unsupported nested calendar');
     if(event===null)continue;
-    if(/^(?:RRULE|RDATE|EXDATE|RECURRENCE-ID|DURATION)(?:[;:])/.test(line))
-      throw Error('recurring/relative events unsupported');
+    if(/^(?:RDATE|RECURRENCE-ID|DURATION)(?:[;:])/.test(line))
+      throw Error('unsupported recurrence override');
     if(line.startsWith('DTSTART')){
-      if(event.start!==null||!/^DTSTART:\d{8}T\d{6}Z$/.test(line))throw Error('unsupported time');
-      event.start=decodeUTCStamp(line.slice(8));if(event.start===null)throw Error('invalid start');
+      if(event.start!==null||!/^DTSTART:\d{8}T\d{6}Z$/.test(line))
+        throw Error('unsupported start timezone/precision');
+      event.start=decodeUTCStamp(line.slice(8));
+      if(event.start===null)throw Error('invalid start');
     }else if(line.startsWith('DTEND')){
-      if(event.end!==null||!/^DTEND:\d{8}T\d{6}Z$/.test(line))throw Error('unsupported time');
-      event.end=decodeUTCStamp(line.slice(6));if(event.end===null)throw Error('invalid end');
+      if(event.end!==null||!/^DTEND:\d{8}T\d{6}Z$/.test(line))
+        throw Error('unsupported end timezone/precision');
+      event.end=decodeUTCStamp(line.slice(6));
+      if(event.end===null)throw Error('invalid end');
+    }else if(line.startsWith('RRULE')){
+      if(event.rrule!==null||!line.startsWith('RRULE:'))throw Error('invalid recurrence');
+      event.rrule=line.slice(6);
+    }else if(line.startsWith('EXDATE')){
+      if(!line.startsWith('EXDATE:')||event.exdates.length>=30)throw Error('invalid exceptions');
+      const values=line.slice(7).split(',');
+      if(!values.length||values.length+event.exdates.length>30)throw Error('exception count limit');
+      for(const value of values){
+        const x=decodeUTCStamp(value);
+        if(x===null||event.exdates.includes(x))throw Error('invalid exception');
+        event.exdates.push(x);
+      }
     }else if(line.startsWith('TRANSP')){
-      if(!/^TRANSP:(?:OPAQUE|TRANSPARENT)$/.test(line)||fields&1)throw Error('invalid transparency');
+      if(!/^TRANSP:(?:OPAQUE|TRANSPARENT)$/.test(line)||(fields&1))
+        throw Error('invalid transparency');
       event.transparent=line==='TRANSP:TRANSPARENT';fields|=1;
     }else if(line.startsWith('STATUS')){
-      if(!/^STATUS:(?:CONFIRMED|TENTATIVE|CANCELLED)$/.test(line)||fields&2)
+      if(!/^STATUS:(?:CONFIRMED|TENTATIVE|CANCELLED)$/.test(line)||(fields&2))
         throw Error('invalid event status');
       event.cancelled=line==='STATUS:CANCELLED';fields|=2;
     }
   }
-  if(event!==null||!records.length)throw Error('unfinished/no events');
+  if(event!==null||!events)throw Error('unfinished/no events');
   return blocked;
 }
-
 $('addBlock').addEventListener('click',()=>{
   if(blackouts.length>=30){$('status').textContent='Unavailable-period limit is 30 per tab.';return;}
   const start=parseUTCWallTime($('blockStart').value);
