@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<title>LightUp — Remediation Funding Studio (offline)</title>
+<link rel="stylesheet" href="./style.css">
+<script src="./model.js" defer></script><script src="./app.js" defer></script>
+</head><body>
+<header><div class="wrap">
+  <p class="eyebrow">LIGHTUP / PRIVATE CAPACITY FINANCE / OFFLINE</p>
+  <h1>Remediation Funding Studio</h1>
+  <p class="lead">Understand what a previously proposed defensive repair plan might cost, where funding falls short, and how staffing assumptions change the financial picture.</p>
+  <p class="warning"><strong>DRAFT/HOLD · REVIEW ONLY.</strong> These are hypothetical estimates, not invoices, verified remediations, approvals, contract terms or authorisation to access a target.</p>
+</div></header>
+<main class="wrap">
+<section class="panel" aria-labelledby="import-heading">
+<p class="eyebrow">01 / SOURCE</p><h2 id="import-heading">Import existing private aggregate plan</h2>
+<p>Use the separate LightUp Remediation Capacity Studio's <strong>Export aggregate JSON</strong> action. This app accepts only that review-only export. Do not import original findings, hosts or raw evidence here.</p>
+<label class="input-label">Aggregate capacity draft (.json, ≤64 KiB)<input type="file" id="input" accept=".json,application/json"></label>
+<div class="action-row"><button type="button" class="secondary" id="forget">Forget everything</button></div>
+<p id="source-state" aria-live="polite" class="subtle">No aggregate source loaded. Nothing is stored in this browser.</p>
+</section>
+<section class="panel"><p class="eyebrow">02 / FINANCIAL ASSUMPTIONS</p><h2>Adjust your cost model</h2>
+<p>Enter planning rates in your chosen currency. The model does not convert currencies or estimate taxes and never infers a client's contracted price.</p>
+<form id="settings" autocomplete="off">
+<div class="form-grid">
+<label>Reporting currency<select name="currency"><option value="EUR">EUR — €</option><option value="GBP">GBP — £</option><option value="USD">USD — $</option></select></label>
+<label>Internal hourly cost<input name="internal_rate" type="number" min="1" max="2000" value="80" step="1" required></label>
+<label>External hourly cost<input name="external_rate" type="number" min="1" max="3000" value="145" step="1" required></label>
+<label>External work share (%)<input name="outsourced_pct" type="number" min="0" max="100" value="20" step="1" required></label>
+<label>Cost contingency (%)<input name="contingency_pct" type="number" min="0" max="100" value="20" step="1" required></label>
+<label>One-time tooling/setup budget<input name="fixed_cost" type="number" min="0" max="1000000" value="500" step="1" required></label>
+<label>Total available funding<input name="funding" type="number" min="0" max="100000000" value="12000" step="1" required></label>
+</div>
+<button id="forecast" type="submit" disabled>Calculate proposed funding</button>
+</form>
+</section>
+<section id="results" hidden>
+<div class="panel">
+<p class="eyebrow">03 / REVIEW-ONLY ESTIMATE</p><h2>Funding picture</h2>
+<div id="kpis" class="stats" aria-live="polite"></div>
+<p class="subtle">Source-export hours are already capacity-limited. The funding gap is only a money comparison for the proposed hours; it does not imply that all remaining findings were remediated.</p>
+</div>
+<div class="panel">
+<h2>Weekly cost and funding sequence</h2>
+<div class="table-wrap"><table>
+<thead><tr><th>Week</th><th>Starting (UTC)</th><th>Hours planned</th><th>Forecast cost</th><th>Available funding applied</th><th>Funded hours (estimate)</th></tr></thead>
+<tbody id="weeks"></tbody></table></div>
+</div>
+<div class="panel">
+<h2>Human staffing alternative</h2>
+<p>Keep the same staffing hours and compare a different share of external work. This does not create a hiring instruction, resource booking or agreement.</p>
+<div class="scenario-input"><label>Alternative external work share (%)<input id="alternative-external" type="number" min="0" max="100" value="50"></label>
+<button type="button" id="compare">Compare costs</button></div>
+<div class="stats" id="scenario"></div>
+</div>
+<div class="panel">
+<h2>Private aggregate handoff</h2>
+<p>No finding ID, customer name, target identity, original CSV bytes, grant or operator information is available to export. Aggregated budgets can still be commercially sensitive; review the recipient before sharing.</p>
+<div class="action-row">
+<button id="json" type="button" class="secondary">Export forecast JSON</button>
+<button id="csv" type="button" class="secondary">Export weekly budget CSV</button>
+<button id="print" type="button">Print private discussion</button>
+</div>
+</div>
+</section>
+<p id="notice" role="alert" aria-live="assertive"></p>
+</main>
+<footer class="wrap"><small>LightUp · INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD · No source mutation, authentication, approval, grant, scan, retest, booking, dispatch or production release.</small></footer>
+</body></html>
