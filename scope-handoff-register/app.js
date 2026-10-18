@@ -161,10 +161,23 @@
   function localCoverage(r) {
     return LightUpScopeNetwork.effectiveCoverage(r.source.assets,r.source.excluded);
   }
+  function isRevisionOf(a,b) {
+    const seen=new Set();
+    let cursor=a.replaces;
+    while(cursor && !seen.has(cursor)) {
+      if(cursor===b.sha)return true;
+      seen.add(cursor);
+      cursor=records.find(x=>x.sha===cursor)?.replaces??null;
+    }
+    return false;
+  }
+  function sameRevisionHistory(a,b) {
+    return isRevisionOf(a,b)||isRevisionOf(b,a);
+  }
   function sharedHints(r) {
     const current=localCoverage(r), spatial=[],clock=[];
     for(const other of records) {
-      if(other===r) continue;
+      if(other===r || sameRevisionHistory(r,other)) continue;
       if(LightUpScopeNetwork.coverageOverlap(current,localCoverage(other))) spatial.push(other.sha);
       if(LightUpPlanningWindow.overlaps(r.source.utcWindow,other.source.utcWindow)===true) clock.push(other.sha);
     }
@@ -178,11 +191,12 @@
       const scope_overlap=LightUpScopeNetwork.coverageOverlap(effective[i],effective[j]);
       const utc_overlap=LightUpPlanningWindow.overlaps(a.source.utcWindow,b.source.utcWindow)===true;
       if(!scope_overlap&&!utc_overlap) continue;
-      pairs.push({left:a.sha,right:b.sha,scope_overlap,utc_overlap,
+      const revision_related=sameRevisionHistory(a,b);
+      pairs.push({left:a.sha,right:b.sha,scope_overlap,utc_overlap,revision_related,
         human_status:pairReviews.get(pairKey(a.sha,b.sha))||"open",
-        priority:scope_overlap&&utc_overlap?"combined":scope_overlap?"scope":"schedule"});
+        priority:revision_related?"revision":scope_overlap&&utc_overlap?"combined":scope_overlap?"scope":"schedule"});
     }
-    const weight={combined:0,scope:1,schedule:2};
+    const weight={combined:0,scope:1,schedule:2,revision:3};
     return pairs.sort((a,b)=>weight[a.priority]-weight[b.priority] ||
       Math.max(records.find(x=>x.sha===b.left).source.risk,records.find(x=>x.sha===b.right).source.risk)-
       Math.max(records.find(x=>x.sha===a.left).source.risk,records.find(x=>x.sha===a.right).source.risk));
@@ -194,8 +208,9 @@
       const m=node("span","metric");m.append(node("strong","",n),node("span","",caption));counts.append(m);
     };
     count("Voorstellenparen met overlegpunt",pairs.length);
-    count("Mogelijke scope-overlap",pairs.filter(x=>x.scope_overlap).length);
-    count("UTC-vensteroverlap",pairs.filter(x=>x.utc_overlap).length);
+    count("Onafhankelijke scope-overlap",pairs.filter(x=>x.scope_overlap&&!x.revision_related).length);
+    count("Onafhankelijke UTC-overlap",pairs.filter(x=>x.utc_overlap&&!x.revision_related).length);
+    count("Revisieparen (niet gelijktijdig veronderstellen)",pairs.filter(x=>x.revision_related).length);
     count("Overleg nog niet vastgelegd",pairs.filter(x=>x.human_status!=="discussion_recorded").length);
     if(!pairs.length){area.append(node("p","small","Geen berekende paren. Dit bewijst geen geldige toestemming, veilig netwerk of conflictvrije planning."));return;}
     for(const p of pairs){
@@ -204,9 +219,12 @@
       const title=node("h3","",left.reference+" ↔ "+right.reference);
       const meta=node("p","small","Bronnen "+p.left.slice(0,12)+"… / "+p.right.slice(0,12)+"… · max. voorgesteld risico "+Math.max(left.source.risk,right.source.risk));
       const codes=node("div","chips");
-      if(p.scope_overlap)codes.append(node("span","chip alert","Numerieke/literale scope-overlap na uitsluitingen"));
-      if(p.utc_overlap)codes.append(node("span","chip alert","Gelijktijdige voorgestelde UTC-vensters"));
-      card.append(title,meta,codes,node("p","small","Menselijke actie: controleer onafhankelijk eigendom, uitzonderingen, tenant-scheiding, daadwerkelijk gereserveerde tijden en noodstop. Geen claim dat dit dezelfde klant is."));
+      if(p.revision_related) codes.append(node("span","chip","Historische revisierelatie (zelfverklaard)"));
+      if(p.scope_overlap)codes.append(node("span","chip"+(p.revision_related?"":" alert"),"Numerieke/literale scope-overlap na uitsluitingen"));
+      if(p.utc_overlap)codes.append(node("span","chip"+(p.revision_related?"":" alert"),"Overlappende voorgestelde UTC-vensters"));
+      card.append(title,meta,codes,node("p","small",p.revision_related ?
+        "Dit paar behoort volgens de lokaal opgegeven revisielijn tot hetzelfde voorstel. Vergelijk wijzigingen en heropen relevante voorbereidingsacties; leid er geen gemeenschappelijk eigendom of actuele toestemming uit af." :
+        "Menselijke actie: controleer onafhankelijk eigendom, uitzonderingen, tenant-scheiding, werkelijk gereserveerde tijden en noodstop. Geen claim dat dit dezelfde klant is."));
       const statusLabel=node("label","pair-status","Lokale overlegstatus (geen goedkeuring)");
       const selector=node("select");
       for(const status of PAIR_STATES){const option=node("option","",PAIR_LABELS[status]);option.value=status;selector.append(option);}
@@ -426,6 +444,7 @@
         dossier_b:"D"+String(records.findIndex(x=>x.sha===p.right)+1).padStart(2,"0"),
         numeric_or_literal_scope_overlap:p.scope_overlap,
         proposed_utc_overlap:p.utc_overlap,
+        relation:p.revision_related?"self_reported_revision":"independent_review",
         self_reported_discussion_status:p.human_status,
         review_only:true
       })),
@@ -495,6 +514,7 @@
       parts.push("<h2>Gedeelde menselijke review-agenda</h2><table><thead><tr><th>Voorstellen</th><th>Lokale overlapindicatoren</th></tr></thead><tbody>");
       for(const x of data.review_agenda)parts.push("<tr><td>"+esc(x.dossier_a)+" / "+esc(x.dossier_b)+
         "</td><td>"+esc([x.numeric_or_literal_scope_overlap?"Netwerk/hostname na exclusies":null,x.proposed_utc_overlap?"UTC-venster":null].filter(Boolean).join("; "))+
+        "<br>Relatie: "+esc(x.relation==="self_reported_revision"?"Zelfverklaarde revisie":"Apart te beoordelen voorstellen")+
         "<br>Menselijk overleg: "+esc(PAIR_LABELS[x.self_reported_discussion_status])+"</td></tr>");
       parts.push("</tbody></table><p>Deze paren bewijzen geen gedeeld eigendom, klant, toestemming of geboekt tijdslot; escaleer onafhankelijk.</p>");
     }
