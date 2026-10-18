@@ -136,8 +136,7 @@ def _source_snapshot(database: str, *, actor_id: str, client_id: str | None) -> 
             "SELECT grant_id,client_id,engagement_id,approved_request_id,"
             "max_risk,valid_from,valid_until,created_at "
             "FROM authorization_grants WHERE client_id=? "
-            "OR engagement_id IN (SELECT engagement_id FROM engagements WHERE client_id=?) "
-            "ORDER BY created_at DESC,grant_id", (chosen, chosen),
+            "ORDER BY created_at DESC,grant_id", (chosen,),
         )
         risks = _bounded_rows(
             con,
@@ -147,6 +146,26 @@ def _source_snapshot(database: str, *, actor_id: str, client_id: str | None) -> 
             "(SELECT engagement_id FROM engagements WHERE client_id=?) "
             "ORDER BY created_at DESC,approval_id", (chosen, chosen),
         )
+
+        # Never disclose records from a FOREIGN client merely because a
+        # corrupted foreign row points at this tenant's engagement. Report
+        # only which of OUR engagement IDs are affected and aggregate counts.
+        foreign_rows = con.execute(
+            "SELECT engagement_id, COUNT(*) AS n FROM ("
+            "SELECT g.engagement_id FROM authorization_grants AS g "
+            "JOIN engagements AS e ON e.engagement_id=g.engagement_id "
+            "WHERE e.client_id=? AND (g.client_id<>? OR g.client_id IS NULL) "
+            "UNION ALL "
+            "SELECT r.engagement_id FROM risk_approvals AS r "
+            "JOIN engagements AS e ON e.engagement_id=r.engagement_id "
+            "WHERE e.client_id=? AND (r.client_id<>? OR r.client_id IS NULL)"
+            ") GROUP BY engagement_id",
+            (chosen, chosen, chosen, chosen),
+        ).fetchall()
+        foreign_by_engagement = {
+            _identity(r["engagement_id"], "stored engagement"): r["n"]
+            for r in foreign_rows
+        }
 
         reqs = {}
         request_view = []
@@ -230,7 +249,7 @@ def _source_snapshot(database: str, *, actor_id: str, client_id: str | None) -> 
             associated_risk = [
                 item for item in risk_view if item["engagement_id"] == eid
             ]
-            if any(item["request_link_observation"].startswith("HOLD_")
+            if foreign_by_engagement.get(eid, 0) or any(item["request_link_observation"].startswith("HOLD_")
                    for item in linked) or any(
                 not item["source_tenant_matches"] for item in associated_risk
             ):
@@ -264,6 +283,7 @@ def _source_snapshot(database: str, *, actor_id: str, client_id: str | None) -> 
                 "grant_link_hold": sum(v for k, v in anomalies.items() if k.startswith("HOLD_")),
                 "risk_tenant_hold": sum(not v["source_tenant_matches"] for v in risk_view),
                 "case_attention_hold": sum(v["attention"].startswith("HOLD_") for v in case_overview),
+                "foreign_tenant_row_count": sum(foreign_by_engagement.values()),
             },
             **AUTHORITY,
         }
