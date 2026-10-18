@@ -196,10 +196,15 @@ function createAxis(days) {
 function render(){
   const timed=shown(),unsafe=entries.filter(e=>e.interval.state!=='resolved');
   const {pairs,active}=timeClashes(timed);
+  const policy=workPolicy();
+  activeWorkNote(policy);
+  const invalidHours=timed.filter(e=>!withinWorkHours(e.interval,policy));
   const blockHits=[];
   timed.forEach((e,i)=>blackouts.forEach((b,j)=>{
     if(e.interval.start<b.end && b.start<e.interval.end){blockHits.push([i,j]);active.add(i);}
   }));
+  for(const e of invalidHours){const i=timed.findIndex(item=>item.key===e.key);if(i>=0)active.add(i);}
+  $('hoursClashes').textContent=invalidHours.length;
   $('blocked').textContent=blackouts.length;
   $('changed').textContent=scenarioShifts.size;
   renderBlocks();
@@ -207,11 +212,13 @@ function render(){
   $('unscheduled').textContent=unsafe.length;$('clashes').textContent=pairs.length+blockHits.length;
   const original=entries.filter(e=>e.interval.state==='resolved');
   const baseline=timeClashes(original).pairs.length+
-    original.reduce((total,e)=>total+blackouts.filter(b=>e.interval.start<b.end&&b.start<e.interval.end).length,0);
-  const current=pairs.length+blockHits.length;
+    original.reduce((total,e)=>total+blackouts.filter(b=>e.interval.start<b.end&&b.start<e.interval.end).length,0)+
+    original.filter(e=>!withinWorkHours(e.interval,policy)).length;
+  const current=pairs.length+blockHits.length+invalidHours.length;
   $('baselineClashes').textContent=baseline;
   $('clashReduction').textContent=String(baseline-current);
-  $('ics').disabled=!timed.length;$('print').disabled=!entries.length;
+  $('ics').disabled=!timed.length||invalidHours.length>0||!policy.valid;
+  $('print').disabled=!entries.length;
   const days=Number($('horizon').value),lo=anchorUTC,hi=anchorUTC+days*DAY;
   createAxis(days);
   const lanes=$('lanes');lanes.replaceChildren();
@@ -250,7 +257,13 @@ function render(){
     } else append(track,'span','Outside visible horizon','muted');
   });
   const conflict=$('conflicts');conflict.replaceChildren();
-  if(!pairs.length && !blockHits.length)append(conflict,'p','No collisions detected against other drafts or locally unavailable periods. This does not prove availability or approval.','muted');
+  if(invalidHours.length){
+    const box=document.createElement('div');box.className='item danger';conflict.append(box);
+    append(box,'strong',invalidHours.length+' draft(s) violate current UTC working-day preference');
+    append(box,'p','HOLD for calendar export until every current scenario window fits fully within allowed weekdays and hours. Adjust scenario or disable this optional local policy.');
+    for(const e of invalidHours.slice(0,20))append(box,'div',e.name+' · '+formatUTC(e.interval.start)+' → '+formatUTC(e.interval.end));
+  }
+  if(!pairs.length && !blockHits.length && !invalidHours.length)append(conflict,'p','No collisions detected against other drafts or locally unavailable periods. This does not prove availability or approval.','muted');
   for(const [i,j] of pairs){
     const a=timed[i],b=timed[j],box=document.createElement('div');box.className='item danger';conflict.append(box);
     append(box,'strong',a.name+' ↔ '+b.name);
@@ -343,6 +356,7 @@ function scenarioPacket(){
   const current=shown();
   const {pairs}=timeClashes(current);
   const blockHits=current.reduce((n,e)=>n+blackouts.filter(b=>e.interval.start<b.end&&b.start<e.interval.end).length,0);
+  const policy=workPolicy();
   return {
     kind:'lightup.scope_schedule_scenario',schema_version:1,
     disposition:'LOCAL_REVIEW_ONLY',source:'UNTRUSTED_USER_DRAFTS',
@@ -362,7 +376,9 @@ function scenarioPacket(){
         shifted:proposed!==undefined};
     }),
     unavailable_utc:blackouts.map(b=>({start:new Date(b.start).toISOString(),end:new Date(b.end).toISOString()})),
-    proposed_time_overlap_pairs:pairs.length,proposed_unavailability_overlap_pairs:blockHits
+    workday_utc:{enabled:policy.enabled,start:policy.start_utc,end:policy.end_utc,weekdays:policy.weekdays},
+    proposed_time_overlap_pairs:pairs.length,proposed_unavailability_overlap_pairs:blockHits,
+    proposed_outside_workday_count:current.filter(e=>!withinWorkHours(e.interval,policy)).length
   };
 }
 function firstFit(base,forbidden,policy){
@@ -409,8 +425,8 @@ $('scenarioArrange').addEventListener('click',arrangeAll);
 function decodeScenario(snapshot){
   const rootKeys=new Set(['kind','schema_version','disposition','source','authenticated',
     'authorization','client_consent','operator_consent','grant','risk_approved','scan',
-    'execution','release','note','proposals','unavailable_utc','proposed_time_overlap_pairs',
-    'proposed_unavailability_overlap_pairs']);
+    'execution','release','note','proposals','unavailable_utc','workday_utc',
+    'proposed_time_overlap_pairs','proposed_unavailability_overlap_pairs','proposed_outside_workday_count']);
   const rowKeys=new Set(['local_ordinal','source_file_sha256','requested_mode','requested_risk','state','original_start_utc',
     'original_end_utc','scenario_start_utc','scenario_end_utc','shifted']);
   const blockKeys=new Set(['start','end']);
@@ -426,7 +442,25 @@ function decodeScenario(snapshot){
      snapshot.proposed_time_overlap_pairs<0||
      !Number.isSafeInteger(snapshot.proposed_unavailability_overlap_pairs)||
      snapshot.proposed_unavailability_overlap_pairs<0)throw Error('invalid envelope');
-  const shifts=new Map(),busy=[];
+  let policy={enabled:false,start:'09:00',end:'17:00',weekdays:[1,2,3,4,5]};
+  if(own(snapshot,'workday_utc')){
+    const p=snapshot.workday_utc;
+    if(!record(p)||!exactKeys(p,new Set(['enabled','start','end','weekdays']))||
+      typeof p.enabled!=='boolean'||minutesFromClock(p.start)===null||
+      minutesFromClock(p.end)===null||!Array.isArray(p.weekdays)||
+      p.weekdays.length>7||!p.weekdays.every((day,i)=>Number.isInteger(day)&&day>=0&&day<=6&&
+        (i===0||day>p.weekdays[i-1]))||
+      (p.enabled&&(p.weekdays.length===0||minutesFromClock(p.end)<=minutesFromClock(p.start))))
+      throw Error('invalid UTC workday settings');
+    policy={enabled:p.enabled,start:p.start,end:p.end,weekdays:p.weekdays};
+  }
+  if(own(snapshot,'proposed_outside_workday_count') &&
+     (!Number.isInteger(snapshot.proposed_outside_workday_count) ||
+      snapshot.proposed_outside_workday_count<0 ||
+      snapshot.proposed_outside_workday_count>entries.length))throw Error('invalid workday count');
+  const effectivePolicy={enabled:policy.enabled,valid:true,start_utc:policy.start,
+    end_utc:policy.end,weekdays:policy.weekdays};
+  const shifts=new Map(),busy=[],resolvedIntervals=[];
   for(let i=0;i<entries.length;i++){
     const source=entries[i],row=snapshot.proposals[i],resolved=source.interval.state==='resolved';
     if(!record(row)||!exactKeys(row,rowKeys)||row.local_ordinal!==i+1||
@@ -449,7 +483,11 @@ function decodeScenario(snapshot){
        Math.abs(a-source.interval.start)>31*DAY ||
        row.shifted!==(a!==source.interval.start))throw Error('invalid proposed window');
     if(row.shifted)shifts.set(source.key,a);
+    resolvedIntervals.push({start:a,end:b});
   }
+  if(own(snapshot,'proposed_outside_workday_count') &&
+     snapshot.proposed_outside_workday_count!==resolvedIntervals.filter(t=>
+       !withinWorkHours(t,effectivePolicy)).length)throw Error('inconsistent workday count');
   for(const block of snapshot.unavailable_utc){
     if(!record(block)||!exactKeys(block,blockKeys))throw Error('invalid block');
     const start=isoMillis(block.start),end=isoMillis(block.end);
@@ -457,7 +495,7 @@ function decodeScenario(snapshot){
        busy.some(b=>b.start===start&&b.end===end))throw Error('invalid unavailable window');
     busy.push({start,end});
   }
-  return {shifts,busy};
+  return {shifts,busy,policy};
 }
 $('scenarioImport').addEventListener('change',async ev=>{
   const file=ev.target.files&&ev.target.files[0];ev.target.value='';
@@ -468,6 +506,12 @@ $('scenarioImport').addEventListener('change',async ev=>{
     const candidate=JSON.parse(text),next=decodeScenario(candidate);
     // The entire replacement is committed at once: no partial restoration on invalid input.
     scenarioShifts=next.shifts;blackouts=next.busy;
+    $('hoursEnabled').checked=next.policy.enabled;
+    $('hoursStart').value=next.policy.start;
+    $('hoursEnd').value=next.policy.end;
+    $('hoursDays').querySelectorAll('input[data-day]').forEach(input=>{
+      input.checked=next.policy.weekdays.includes(Number(input.dataset.day));
+    });
     $('status').textContent='Restored untrusted local planning scenario against source UTC windows and risk/mode. Never a grant or booking.';
     render();
   }catch(_){
@@ -598,7 +642,10 @@ function foldIcsLine(line){
   return chunks.join('\r\n ');
 }
 $('ics').addEventListener('click',()=>{
-  const active=shown();if(!active.length)return;
+  const active=shown(),policy=workPolicy();
+  if(!active.length||!policy.valid||active.some(e=>!withinWorkHours(e.interval,policy))){
+    $('status').textContent='HOLD: fix time windows outside allowed UTC workdays before exporting tentative calendar events.';return;
+  }
   // No client names, notes, assets, URLs, contacts, identifiers or original file text are exported.
   const stamp=icsTimestamp(Date.now());
   const entropy=new Uint32Array(2);
