@@ -70,7 +70,10 @@ tbody button{font-size:11px;padding:5px 7px}
 <section class="grid"><div class="card"><h2 id="focus-title">03 / Select one original source record</h2><p id="focus-description">Select a source record to inspect its connected original references.</p>
 <div class="flex" id="focus-list"></div><div class="divider"></div>
 <h3>Exact original reference paths</h3><p class="caption">These paths show the shortest source-record connection, including backwards references and shared-engagement siblings. An indirect path is NOT the selected request's permission for another grant or tenant.</p>
-<div class="table-wrap" style="max-height:230px"><table><thead><tr><th>Distance</th><th>Recorded source link sequence</th><th></th></tr></thead><tbody id="reference-paths"></tbody></table></div><div class="divider"></div><div class="actions"><button id="selected-anonymous" type="button" class="secondary" disabled>Anonymous selected impact</button><button id="selected-private-html" type="button" disabled>PRIVATE offline selected dossier</button><button id="selected-private-json" type="button" disabled>PRIVATE selected JSON</button></div><p class="caption">A selected private dossier contains original row IDs, tenant, reference paths and self-reported human notes, and requires recipient confirmation. The anonymous export contains counts only.</p><div class="divider"></div><h3>Potential follow-up and absent source rows</h3><ol id="impact-list"></ol>
+<div class="table-wrap" style="max-height:230px"><table><thead><tr><th>Distance</th><th>Recorded source link sequence</th><th></th></tr></thead><tbody id="reference-paths"></tbody></table></div><div class="divider"></div><div class="actions"><button id="selected-anonymous" type="button" class="secondary" disabled>Anonymous selected impact</button><button id="selected-private-html" type="button" disabled>PRIVATE offline selected dossier</button><button id="selected-private-json" type="button" disabled>PRIVATE selected JSON</button></div><p class="caption">A selected private dossier contains original row IDs, tenant, reference paths and self-reported human notes, and requires recipient confirmation. The anonymous export contains counts only.</p><div class="divider"></div><section class="card" style="margin:14px 0;background:#111f36"><h3>Human-only group follow-up drafting</h3><p class="caption">For the currently selected connected source group, prepare action entries ONLY for records with source-observed attention or unresolved missing links and NO existing human notes. Never edits original approvals, existing notes or any grant. <strong id="batch-count">0</strong> unassigned original attention records.</p>
+<div class="row"><label class="field">Human review stage<select id="batch-stage"><option value="investigating">Investigating</option><option value="waiting-client">Waiting for genuine client follow-up</option><option value="waiting-operator">Waiting for original operator</option><option value="escalated">Escalated for review</option></select></label><label class="field">Self-declared reviewer<input id="batch-reviewer" type="text" maxlength="80" placeholder="Unverified label"></label></div>
+<label class="field">Next human-only action<input id="batch-action" type="text" maxlength="180" value="Review recorded scope relations with the original authorized owner"></label><label class="field">Proposed follow-up date<input id="batch-due" type="date"></label>
+<div class="actions"><button id="batch-followup" type="button" disabled>Prepare connected human follow-ups</button></div><p class="caption">Drafts remain in this tab until separately exported with a private source-bound human handoff. Nothing is submitted, scanned or approved.</p></section><h3>Potential follow-up and absent source rows</h3><ol id="impact-list"></ol>
 <div class="warning">Human impact review only: a missing reference is an unresolved historical source observation, not proof that a customer cancelled approval or a target is safe.</div></div>
 <div class="card"><h2>04 / Local human-only follow-up</h2><fieldset id="review-fields" disabled style="border:0;padding:0;margin:0">
 <label class="field">Stage<select id="stage"><option value="unreviewed">Unreviewed</option><option value="investigating">Investigating</option><option value="waiting-client">Waiting for genuine client contact</option><option value="waiting-operator">Waiting for original operator</option><option value="escalated">Escalated</option><option value="documented">Documented, not approved</option></select></label>
@@ -265,6 +268,8 @@ el("private-import").disabled=!source||!sourceSHA||fictional;
 el("selected-anonymous").disabled=!node;
 el("selected-private-json").disabled=!node||!sourceSHA||fictional;
 el("selected-private-html").disabled=!node||!sourceSHA||fictional;
+el("batch-followup").disabled=!node||!batchAttentionCandidates().length;
+el("batch-count").textContent=node?batchAttentionCandidates().length:0;
 renderInbox();renderSchedule();
 }
 function renderSchedule(){
@@ -319,6 +324,26 @@ function download(name,type,contents){
 var url=URL.createObjectURL(new Blob([contents],{type:type})),a=document.createElement("a");a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(function(){URL.revokeObjectURL(url);},1200);
 }
 
+
+function batchAttentionCandidates(){
+if(!source||!selection)return [];
+var graph=connected(selection),marked=new Set(graph.broken.map(function(e){return e.from;}));
+return nodes().filter(function(n){return graph.found.has(n.key)&&!human.has(n.key)&&(troubled(n)||marked.has(n.key)||n.family==="engagements"&&source.case_overview.some(function(c){return c.engagement_id===n.id&&c.attention==="NO_GRANT_RECORDED";}));});
+}
+function batchHumanFollowup(){
+try{
+if(!source||!selection)throw Error("missing source selection");
+var stage=el("batch-stage").value,reviewer=el("batch-reviewer").value.trim(),action=el("batch-action").value.trim(),due=el("batch-due").value;
+if(!["investigating","waiting-client","waiting-operator","escalated"].includes(stage)||reviewer.length>80||!action||action.length>180||/[\x00-\x08\x0B-\x1F]/.test(reviewer+action)||due&&(!/^\d{4}-\d{2}-\d{2}$/.test(due)||new Date(due+"T00:00:00Z").toISOString().slice(0,10)!==due))throw Error("bad draft");
+var candidates=batchAttentionCandidates();
+if(!candidates.length){setMessage("Nothing new to prepare: all linked source-attention rows already have human notes.");return;}
+if(!confirm("Create "+candidates.length+" HUMAN-ONLY follow-up drafts for original source-attention rows in this selected relationship group? Existing human notes will NOT be changed, and this does NOT approve a grant."))return;
+var draft=new Map(human);
+candidates.forEach(function(n){draft.set(n.key,{stage:stage,reviewer:reviewer,next:action,due:due,note:""});});
+human=draft;render();
+setMessage("Prepared "+candidates.length+" human-only source-attention follow-up drafts. No original source or permission changed.");
+}catch(e){setMessage("HOLD: provide a valid human follow-up action and stage. No records changed.");}
+}
 function safeDossierText(s){return String(s).replace(/[&<>"']/g,function(x){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[x];});}
 function selectedDossier(){
 if(!source||!sourceSHA||fictional||!selection)throw Error("source required");
@@ -368,6 +393,7 @@ el("anonymous").addEventListener("click",function(){if(source)download("lightup-
 el("selected-anonymous").addEventListener("click",exportSelectedAnonymous);
 el("selected-private-json").addEventListener("click",function(){exportSelectedDossier("json");});
 el("selected-private-html").addEventListener("click",function(){exportSelectedDossier("html");});
+el("batch-followup").addEventListener("click",batchHumanFollowup);
 el("private-export").addEventListener("click",function(){
 if(!sourceSHA||!source||fictional)return;
 if(!confirm("This PRIVATE file includes original source IDs, tenant ID, reviewers and notes. Confirm local authorized recipient and destination."))return;
