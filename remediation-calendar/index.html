@@ -37,8 +37,20 @@
 <p id="scope-info" class="muted"></p>
 <div class="tablewrap"><table><thead><tr><th>Finding</th><th>Original retest</th><th>Human stage</th><th>Owner</th><th>Human due</th><th>Follow-up</th><th>Edit human notes</th></tr></thead><tbody id="rows"></tbody></table></div>
 </section>
+<section class="panel">
+<h2>3. Refresh the original authorized finding summary</h2>
+<p>Import a separately authorized, original five-column LightUp findings CSV for the <strong>same actual client and exact engagement</strong>. This preview is historical and never validates a new retest, permission or real remediation. New/changed original records reset their human casework; records absent from this CSV are NOT confirmed fixed.</p>
+<label class="filelabel">New original findings CSV (maximum 1 MiB / 350 findings)<input id="refresh-file" type="file" accept=".csv,text/csv"></label>
+<label class="check"><input id="refresh-ack" type="checkbox"> I independently confirmed the SAME real client and exact engagement for both original authenticated exports, and know this browser cannot prove that claim or current consent.</label>
+<button id="refresh-preview-button" type="button">Preview source differences</button>
+<div id="refresh-preview" class="refresh-preview" hidden><h3>Private source difference preview</h3><p id="refresh-summary" role="status" aria-live="polite"></p><div class="tablewrap"><table><thead><tr><th>Source difference</th><th>Original finding ID</th><th>Original fields changed</th></tr></thead><tbody id="refresh-rows"></tbody></table></div>
+<p class="hold">Changed or newly added source rows lose previous human notes. Missing rows are never proof of remediation or verified retest. Export the old private Casework draft before replacing it.</p>
+<label class="check"><input id="refresh-apply-ack" type="checkbox"> I reviewed all changes and accept that the previous private human notes must be preserved separately before this source replacement.</label>
+<button id="refresh-apply" type="button" disabled>Apply reviewed source to local human calendar</button> <button id="refresh-receipt" type="button" disabled>Export PRIVATE source-change receipt</button></div>
+<p id="refresh-message" role="status" aria-live="polite"></p>
+</section>
 <section id="edit-panel" class="panel" hidden>
-<h2>3. Update HUMAN-ONLY casework</h2>
+<h2>4. Update HUMAN-ONLY casework</h2>
 <p id="edit-label">Choose Edit next to a finding. Changes affect only local planning, never original source retest, the database or consent.</p>
 <form id="edit-form">
 <div class="grid"><label>Human owner/team<input id="edit-owner" maxlength="120"></label>
@@ -51,7 +63,7 @@
 </form>
 </section>
 <section class="panel">
-<h2>4. Export private Casework or calendar</h2>
+<h2>5. Export private Casework or calendar</h2>
 <p>Only locally scheduled open casework is included; <strong>completed or deferred human plans are excluded</strong>. No new deadlines are invented. Calendar clients may upload imported items to external services: use only an independently approved destination.</p>
 <div class="grid"><label>Calendar events <select id="export-scope"><option value="filtered">Currently visible eligible queue</option><option value="all">All eligible scheduled casework</option></select></label>
 <label>Output detail <select id="detail"><option value="anonymous">Redacted — no finding IDs, titles, owner or private notes</option><option value="private">PRIVATE — finding ID, title, owner and next action</option></select></label>
@@ -65,6 +77,7 @@
 </main>
 <footer>Local memory only · no network, storage, authentication, consent capture, automatic changes, scans or grant issuance. Files are unsigned human drafts.</footer>
 <script src="../casework/remediation-engine.js"></script>
+<script src="source-refresh.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

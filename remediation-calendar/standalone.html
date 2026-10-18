@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-wpPFZOyxFDTkVCPSRLe+ulmbav4+u8hRIYgukbiqEiU=' 'sha256-5v5WlPuYM/jihu9s1aBxHlBEItl1Zs76WXPBkvHURv8='; style-src 'sha256-eBXNpKwV7Tfx/VR+iD+lRaRbr6g4N6xCctCZfuuIIvE='; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-wpPFZOyxFDTkVCPSRLe+ulmbav4+u8hRIYgukbiqEiU=' 'sha256-2NU0ysKRFZNzkPxlEBUtRttxZzRCBx0/j+wVe5U1veQ=' 'sha256-EVJsVXa0tP2uz0bOoEFLd+G5dpzKeUD8oN0TwKZNFTs='; style-src 'sha256-eBXNpKwV7Tfx/VR+iD+lRaRbr6g4N6xCctCZfuuIIvE='; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <title>LightUp · Private Remediation Calendar</title>
 <style>:root{color-scheme:dark;font:16px/1.55 system-ui,-apple-system,Segoe UI,sans-serif;background:#0c111d;color:#eef2fb}*{box-sizing:border-box}body{margin:0}header,main,footer{max-width:1160px;margin:auto;padding:26px 24px}header{padding-top:48px}.brand{color:#a4bcff;letter-spacing:.18em;font-size:.75rem;font-weight:800}h1{font-size:clamp(2rem,5vw,3.3rem);line-height:1.08;margin:.5em 0}h2{font-size:1.32rem;margin:0 0 16px}p{color:#bbc5d6}.hold{display:inline-block;color:#ffca7a;border:1px solid #846332;background:#3a2b19;padding:8px 12px;border-radius:8px;font-size:.82rem}.panel{background:#172137;border:1px solid #34435d;border-radius:18px;padding:24px;margin:22px 0;box-shadow:0 8px 24px #050b1740}label{display:block;font-weight:650;color:#ebf0fa}input,select,button{font:inherit}select,input[type=search],input[type=file]{width:100%;background:#0e182b;color:#fff;border:1px solid #52647e;padding:10px;border-radius:8px;margin-top:6px}input:focus,select:focus,button:focus-visible{outline:2px solid #8ab2ff;outline-offset:2px}.filelabel{max-width:600px}.check{display:flex;gap:12px;align-items:flex-start;margin:18px 0;max-width:950px;font-weight:450;color:#d3dced}.check input{width:20px;height:20px;flex:none;margin-top:3px}.metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin-top:20px}.metric{background:#202e49;border-radius:12px;padding:16px}.metric strong{font-size:1.8rem;display:block}.metric span{color:#bbc5d6;font-size:.88rem}.filters,.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px}.tablewrap{overflow-x:auto}table{width:100%;border-collapse:collapse;min-width:760px;text-align:left}th,td{border-bottom:1px solid #34445e;padding:13px 10px;vertical-align:top;overflow-wrap:anywhere}th{color:#9fb7e8;font-size:.8rem;text-transform:uppercase;letter-spacing:.05em}td{font-size:.88rem}td small{color:#aebed0;display:block}.chip{display:inline-block;background:#293957;border-radius:6px;padding:2px 7px}.urgent{color:#ffcc9d}.muted{color:#aab7cf}.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:20px}button{background:#a7c1ff;border:0;border-radius:9px;color:#071226;padding:11px 17px;font-weight:750;cursor:pointer}button:hover:not(:disabled){filter:brightness(1.12)}button:disabled{opacity:.35;cursor:not-allowed}.muted-button{background:#394961;color:#fff}footer{font-size:.83rem;color:#aeb8c8;padding-bottom:50px}@media(max-width:600px){header,main,footer{padding-left:16px;padding-right:16px}.panel{padding:17px}}
 textarea{display:block;width:100%;background:#0e182b;color:#fff;border:1px solid #52647e;padding:10px;border-radius:8px;margin:6px 0 14px;resize:vertical}#edit-form .grid{margin-bottom:14px}input[type=date],#edit-owner{display:block;width:100%;background:#0e182b;color:#fff;border:1px solid #52647e;padding:10px;border-radius:8px;margin-top:6px}textarea:focus-visible{outline:2px solid #8ab2ff}#edit-panel[hidden]{display:none}
@@ -40,8 +40,20 @@ textarea{display:block;width:100%;background:#0e182b;color:#fff;border:1px solid
 <p id="scope-info" class="muted"></p>
 <div class="tablewrap"><table><thead><tr><th>Finding</th><th>Original retest</th><th>Human stage</th><th>Owner</th><th>Human due</th><th>Follow-up</th><th>Edit human notes</th></tr></thead><tbody id="rows"></tbody></table></div>
 </section>
+<section class="panel">
+<h2>3. Refresh the original authorized finding summary</h2>
+<p>Import a separately authorized, original five-column LightUp findings CSV for the <strong>same actual client and exact engagement</strong>. This preview is historical and never validates a new retest, permission or real remediation. New/changed original records reset their human casework; records absent from this CSV are NOT confirmed fixed.</p>
+<label class="filelabel">New original findings CSV (maximum 1 MiB / 350 findings)<input id="refresh-file" type="file" accept=".csv,text/csv"></label>
+<label class="check"><input id="refresh-ack" type="checkbox"> I independently confirmed the SAME real client and exact engagement for both original authenticated exports, and know this browser cannot prove that claim or current consent.</label>
+<button id="refresh-preview-button" type="button">Preview source differences</button>
+<div id="refresh-preview" class="refresh-preview" hidden><h3>Private source difference preview</h3><p id="refresh-summary" role="status" aria-live="polite"></p><div class="tablewrap"><table><thead><tr><th>Source difference</th><th>Original finding ID</th><th>Original fields changed</th></tr></thead><tbody id="refresh-rows"></tbody></table></div>
+<p class="hold">Changed or newly added source rows lose previous human notes. Missing rows are never proof of remediation or verified retest. Export the old private Casework draft before replacing it.</p>
+<label class="check"><input id="refresh-apply-ack" type="checkbox"> I reviewed all changes and accept that the previous private human notes must be preserved separately before this source replacement.</label>
+<button id="refresh-apply" type="button" disabled>Apply reviewed source to local human calendar</button> <button id="refresh-receipt" type="button" disabled>Export PRIVATE source-change receipt</button></div>
+<p id="refresh-message" role="status" aria-live="polite"></p>
+</section>
 <section id="edit-panel" class="panel" hidden>
-<h2>3. Update HUMAN-ONLY casework</h2>
+<h2>4. Update HUMAN-ONLY casework</h2>
 <p id="edit-label">Choose Edit next to a finding. Changes affect only local planning, never original source retest, the database or consent.</p>
 <form id="edit-form">
 <div class="grid"><label>Human owner/team<input id="edit-owner" maxlength="120"></label>
@@ -54,7 +66,7 @@ textarea{display:block;width:100%;background:#0e182b;color:#fff;border:1px solid
 </form>
 </section>
 <section class="panel">
-<h2>4. Export private Casework or calendar</h2>
+<h2>5. Export private Casework or calendar</h2>
 <p>Only locally scheduled open casework is included; <strong>completed or deferred human plans are excluded</strong>. No new deadlines are invented. Calendar clients may upload imported items to external services: use only an independently approved destination.</p>
 <div class="grid"><label>Calendar events <select id="export-scope"><option value="filtered">Currently visible eligible queue</option><option value="all">All eligible scheduled casework</option></select></label>
 <label>Output detail <select id="detail"><option value="anonymous">Redacted — no finding IDs, titles, owner or private notes</option><option value="private">PRIVATE — finding ID, title, owner and next action</option></select></label>
@@ -267,6 +279,75 @@ function reconcileSource(before,existingCases,after){
 global.LightUpCasework=Object.freeze({compareSource,reconcileSource,parseCSV,normalizeSource,newCase,cleanCase,digest,makePacket,loadPacket,metrics,exportActionsCSV,SEVERITY,RETEST,PROGRESS,MAX_BYTES});
 })(window);
 </script>
+<script>/* LightUp offline original-source revision handoff. Never authenticates a CSV or approves remediation. */
+(function(global){
+'use strict';
+const SOURCE_COLS=Object.freeze(['finding_id','title','severity','retest_status','remediation']);
+function ensureBaseline(findings,cases){
+ const engine=global.LightUpCasework;
+ const current=engine.normalizeSource(findings);
+ if(!Array.isArray(cases)||cases.length!==current.length)throw Error('Incomplete previous human Casework draft.');
+ const packet=engine.makePacket(current,cases,null);
+ const checked=engine.loadPacket(packet);
+ return {findings:checked.findings,cases:checked.cases};
+}
+function sameSource(a,b){
+ if(!Array.isArray(a)||!Array.isArray(b)||a.length!==b.length)return false;
+ const old=new Map(a.map(f=>[f.finding_id,f]));
+ return b.every(f=>{
+  const was=old.get(f.finding_id);
+  return was&&SOURCE_COLS.every(k=>was[k]===f[k]);
+ });
+}
+function sameHumanCases(a,b){
+ if(!Array.isArray(a)||!Array.isArray(b)||a.length!==b.length)return false;
+ return JSON.stringify(a)===JSON.stringify(b);
+}
+async function prepare(beforeFindings,beforeCases,newOriginalCSV){
+ const old=ensureBaseline(beforeFindings,beforeCases);
+ const incoming=global.LightUpCasework.parseCSV(newOriginalCSV);
+ const reconciled=global.LightUpCasework.reconcileSource(old.findings,old.cases,incoming);
+ const diff=reconciled.change_summary;
+ if(diff.added.length+diff.changed.length+diff.unchanged.length!==incoming.length)
+  throw Error('Source change partition is incomplete.');
+ if(diff.missing.length+diff.changed.length+diff.unchanged.length!==old.findings.length)
+  throw Error('Original source change partition is incomplete.');
+ const digest=await global.LightUpCasework.digest(reconciled.findings);
+ global.LightUpCasework.loadPacket(global.LightUpCasework.makePacket(reconciled.findings,reconciled.cases,digest));
+ const changedFields=diff.changed.map(x=>({finding_id:x.finding_id,changed_fields:x.changed_fields.slice()}));
+ return Object.freeze({
+  before:old,digest,after:reconciled.findings,cases:reconciled.cases,
+  diff:Object.freeze({
+   added:diff.added.slice(),missing:diff.missing.slice(),
+   changed:changedFields,unchanged:diff.unchanged.slice()
+  })
+ });
+}
+function stillCurrent(prepared,currentFindings,currentCases){
+ return sameSource(prepared.before.findings,currentFindings)&&
+   sameHumanCases(prepared.before.cases,currentCases);
+}
+function revisionReceipt(prepared,previousDigest){
+ if(!prepared||!prepared.diff)throw Error('Missing completed original source preview.');
+ const normalize=xs=>xs.slice().sort();
+ const changed=prepared.diff.changed.map(x=>({finding_id:x.finding_id,changed_fields:normalize(x.changed_fields)}))
+  .sort((a,b)=>a.finding_id<b.finding_id?-1:a.finding_id>b.finding_id?1:0);
+ return {
+  kind:'lightup.private_human_casework_source_revision',schema_version:1,
+  disposition:'UNVERIFIED_HUMAN_FOLLOWUP_ONLY',
+  authenticated:false,source_authorized:false,tenant_verified:false,
+  assessment_authorized:false,client_consent:false,operator_consent:false,
+  grant:false,scan:false,execution:false,retest_verified:false,release:false,
+  previous_source_sha256:previousDigest||null,
+  next_source_sha256:prepared.digest||null,
+  added:normalize(prepared.diff.added),changed,missing_NOT_VERIFIED_FIXED:normalize(prepared.diff.missing),
+  exact_unchanged_human_notes_retained:prepared.diff.unchanged.length,
+  warning:'Human source revision only. Absent findings are NEVER verified fixed. These unsigned source digests do not prove client identity, consent, authorization or a retest.'
+ };
+}
+global.LightUpCalendarRefresh=Object.freeze({prepare,stillCurrent,revisionReceipt});
+})(window);
+</script>
 <script>/* LightUp private human Remediation Calendar. Browser-only; no authority or network. */
 (function(global){
 'use strict';
@@ -276,7 +357,7 @@ const COLS=['finding_id','title','severity','retest_status','remediation'];
 const CASE=['finding_id','owner','status','due_date','next_action','verification_plan','blocker','note','updated_utc'];
 const PACKET=['kind','schema_version','disposition','source_contract','source_sha256','findings','cases','instructions',...FLAGS];
 const PRIORITY=['critical','high','medium','low','info'];
-let state=null,activeId=null,dirty=false,selectedDay=null;
+let state=null,activeId=null,dirty=false,selectedDay=null,pendingRefresh=null;
 function fail(message){throw Error(message);}
 function bytes(s){return new TextEncoder().encode(s).length;}
 function exactKeys(o,keys,what){
@@ -353,6 +434,87 @@ function filtered(){
   return true;
  });
 }
+function clearRefresh(){
+ pendingRefresh=null;
+ $('refresh-preview').hidden=true;$('refresh-apply-ack').checked=false;
+ $('refresh-rows').replaceChildren();$('refresh-apply').disabled=true;
+ $('refresh-receipt').disabled=true;
+}
+function refreshControls(){
+ const ready=!!pendingRefresh&&!!state&&$('source-ack').checked&&
+  $('refresh-ack').checked&&$('refresh-apply-ack').checked;
+ $('refresh-apply').disabled=!ready;$('refresh-receipt').disabled=!ready;
+}
+async function previewRefresh(){
+ clearRefresh();
+ if(!state||!$('source-ack').checked||!$('refresh-ack').checked)
+  fail('Confirm original source and independently verified same client/exact engagement.');
+ const file=$('refresh-file').files[0];
+ if(!file||file.size>global.LightUpCasework.MAX_BYTES)
+  fail('Select original five-column CSV at most 1 MiB.');
+ const baseline=state,priorCases=JSON.stringify(state.cases),priorSource=JSON.stringify(state.findings);
+ const incoming=await file.text();
+ if(state!==baseline||JSON.stringify(state.cases)!==priorCases)
+  fail('Previous human notes changed during import. Preview again.');
+ const prepared=await global.LightUpCalendarRefresh.prepare(baseline.findings,baseline.cases,incoming);
+ if(state!==baseline||JSON.stringify(state.cases)!==priorCases||
+    JSON.stringify(state.findings)!==priorSource)fail('Previous source changed during preview; held.');
+ pendingRefresh={prepared,baseline,priorCases,priorSource};
+ const diff=prepared.diff,tbody=$('refresh-rows');
+ const add=(kind,id,fields)=>{
+  const row=document.createElement('tr');
+  row.append(textEl('td',kind),textEl('td',id),textEl('td',fields));
+  tbody.append(row);
+ };
+ for(const id of diff.added)add('NEW: reset human work',id,'New original finding');
+ for(const x of diff.changed)add('CHANGED: reset human work',x.finding_id,x.changed_fields.join(', '));
+ for(const id of diff.missing)add('MISSING: not repaired',id,'Absent is NOT proof of remediation');
+ if(!diff.added.length&&!diff.changed.length&&!diff.missing.length)
+  add('No original source change','—','Existing human notes remain');
+ $('refresh-summary').textContent=
+  diff.unchanged.length+' original rows unchanged; '+diff.added.length+' new; '+
+  diff.changed.length+' changed; '+diff.missing.length+' missing. Missing never means fixed.';
+ $('refresh-preview').hidden=false;$('refresh-message').textContent=
+  'Private changes previewed only in memory. Your old Casework draft is unchanged.';
+ refreshControls();
+}
+function checkRefreshReady(){
+ if(!state||!pendingRefresh||!$('source-ack').checked||
+    !$('refresh-ack').checked||!$('refresh-apply-ack').checked)
+  fail('Review original source preview and confirm same exact client/engagement before handoff.');
+ const x=pendingRefresh;
+ if(state!==x.baseline||JSON.stringify(state.cases)!==x.priorCases||
+   JSON.stringify(state.findings)!==x.priorSource||
+   !global.LightUpCalendarRefresh.stillCurrent(x.prepared,state.findings,state.cases)){
+  clearRefresh();fail('Source or human notes changed. Preview anew before applying.');
+ }
+ return x;
+}
+function exportRefreshReceipt(){
+ const x=checkRefreshReady();
+ if(!global.confirm('Export PRIVATE original finding IDs and source differences through an approved protected channel? This is NOT an authenticated source or retest verdict.'))return;
+ const receipt=global.LightUpCalendarRefresh.revisionReceipt(x.prepared,x.baseline.digest);
+ saveFile('lightup-PRIVATE-source-change-review.json',JSON.stringify(receipt,null,2)+'\n',
+          'application/json;charset=utf-8');
+ $('refresh-message').textContent='Unsigned PRIVATE historical source-change receipt exported.';
+}
+function applyRefresh(){
+ const x=checkRefreshReady();
+ if(!global.confirm('You must retain the previous PRIVATE Casework draft separately. Apply newer original source and RESET all human notes for changed/new rows? Missing findings are NOT fixed.'))return;
+ const data=x.prepared;
+ const packet=global.LightUpCasework.makePacket(data.after,data.cases,data.digest);
+ const clean=packetStructure(packet);
+ state={...clean,digest:data.digest};
+ dirty=true;activeId=null;selectedDay=null;$('edit-panel').hidden=true;
+ $('month').value=todayUTC().slice(0,7);
+ $('refresh-file').value='';$('refresh-ack').checked=false;
+ $('draft-ack').checked=false;$('calendar-ack').checked=false;
+ clearRefresh();render();
+ $('refresh-message').textContent='New original CSV applied locally: '+data.diff.added.length+
+ ' added, '+data.diff.changed.length+' changed, '+data.diff.missing.length+
+ ' absent (NOT verified fixed); '+data.diff.unchanged.length+
+ ' unchanged human plans retained. Export updated PRIVATE Casework before closing.';
+}
 function openEdit(id){
  if(!state||!$('source-ack').checked)fail('Source confirmation required.');
  const c=state.cases.find(x=>x.finding_id===id);
@@ -376,7 +538,7 @@ function saveEdit(event){
   blocker:$('edit-blocker').value,updated_utc:new Date().toISOString()
  },new Set(state.findings.map(f=>f.finding_id)));
  const cases=state.cases.slice();cases[index]=next;state={...state,cases};
- dirty=true;activeId=null;$('edit-panel').hidden=true;render();
+ dirty=true;activeId=null;clearRefresh();$('edit-panel').hidden=true;render();
  $('export-message').textContent='Human-only local change saved in memory. Export a PRIVATE Casework v1 draft before closing.';
 }
 function exportDraft(){
@@ -474,7 +636,7 @@ async function openFile(file){
  const digest=await global.LightUpCasework.digest(clean.findings);
  if(clean.source_sha256&&(!digest||clean.source_sha256!==digest))fail('Original source fingerprint mismatch or browser digest unavailable.');
  const newState={...clean,digest};
- state=newState;dirty=false;activeId=null;selectedDay=null;$('month').value=todayUTC().slice(0,7);$('edit-panel').hidden=true;$('draft-ack').checked=false;
+ state=newState;clearRefresh();$('refresh-file').value='';$('refresh-ack').checked=false;dirty=false;activeId=null;selectedDay=null;$('month').value=todayUTC().slice(0,7);$('edit-panel').hidden=true;$('draft-ack').checked=false;
  $('workspace').hidden=false;$('calendar-ack').checked=false;$('export-message').textContent='';
  render();
  $('message').textContent=clean.findings.length+' original findings loaded locally. Source is a historical unsigned draft; no current identity or consent checked.';
@@ -529,7 +691,7 @@ function exportAggregate(){
  $('export-message').textContent='Anonymous category counts exported. This is neither a retest outcome nor proof of a safe public disclosure.';
 }
 function reset(){
- state=null;activeId=null;dirty=false;selectedDay=null;$('file').value='';$('source-ack').checked=false;$('calendar-ack').checked=false;$('draft-ack').checked=false;$('edit-panel').hidden=true;
+ state=null;activeId=null;dirty=false;selectedDay=null;clearRefresh();$('refresh-file').value='';$('refresh-ack').checked=false;$('file').value='';$('source-ack').checked=false;$('calendar-ack').checked=false;$('draft-ack').checked=false;$('edit-panel').hidden=true;
  $('workspace').hidden=true;$('message').textContent='Private workspace cleared from app state. Already exported files and calendar imports remain under your control.';
 }
 $('file').addEventListener('change',async e=>{
@@ -539,6 +701,12 @@ $('file').addEventListener('change',async e=>{
  try{await openFile(e.target.files[0]);}catch(err){$('message').textContent='HOLD: '+err.message;}
 });
 for(const id of ['filter','severity','search'])$(id).addEventListener('input',render);
+$('refresh-preview-button').addEventListener('click',async()=>{try{await previewRefresh();}catch(e){clearRefresh();$('refresh-message').textContent='HOLD: '+e.message;}});
+$('refresh-apply-ack').addEventListener('change',refreshControls);
+$('refresh-ack').addEventListener('change',()=>{clearRefresh();});
+$('refresh-file').addEventListener('change',clearRefresh);
+$('refresh-apply').addEventListener('click',()=>{try{applyRefresh();}catch(e){$('refresh-message').textContent='HOLD: '+e.message;}});
+$('refresh-receipt').addEventListener('click',()=>{try{exportRefreshReceipt();}catch(e){$('refresh-message').textContent='HOLD: '+e.message;}});
 $('calendar-ack').addEventListener('change',render);
 $('draft-ack').addEventListener('change',render);
 $('month').addEventListener('change',()=>{selectedDay=null;render();});
@@ -548,7 +716,7 @@ $('day-clear').addEventListener('click',()=>{selectedDay=null;render();});
 $('edit-form').addEventListener('submit',e=>{try{saveEdit(e);}catch(err){e.preventDefault();$('export-message').textContent='HOLD: '+err.message;}});
 $('edit-cancel').addEventListener('click',()=>{activeId=null;$('edit-panel').hidden=true;});
 $('casework-save').addEventListener('click',()=>{try{exportDraft();}catch(err){$('export-message').textContent='HOLD: '+err.message;}});
-$('source-ack').addEventListener('change',()=>{if(state)render();});
+$('source-ack').addEventListener('change',()=>{if(!$('source-ack').checked)clearRefresh();if(state)render();});
 $('download').addEventListener('click',async()=>{try{await exportCalendar();}catch(e){$('export-message').textContent='HOLD: '+e.message;}});
 $('aggregate').addEventListener('click',()=>{try{exportAggregate();}catch(e){$('export-message').textContent='HOLD: '+e.message;}});
 $('clear').addEventListener('click',()=>{if(dirty&&!global.confirm('Discard unsaved human notes?'))return;reset();});
