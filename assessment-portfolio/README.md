@@ -108,3 +108,7 @@ The original private browser Review Studio now has a [single portfolio-wide huma
 ### Original offline package continuity
 
 Every newly built original human workspace and revised next-cycle workspace includes a [private per-file byte correlation document](CONTENT-INTEGRITY.md). Original-source return checks all recorded HTML, report and bindings member bytes before accepting human proposals. This unsigned in-ZIP SHA map catches changed or missing bundle components; it does **not** prove genuine provenance or prevent an attacker from replacing both ZIP and map. Older private original ZIPs remain readable under their legacy original-source gates.
+
+### Resume all human review proposals in one action
+
+The original private Review Studio now [restores a previously exported complete all-agenda proposal JSON bundle](RESTORE-ALL.md) atomically in the browser: every source SHA, original prior human field, date, row and original source count must match before it replaces any in-memory draft. It uses the same strict per-source decoder for single source restores and remains non-authorizing.

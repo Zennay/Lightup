@@ -58,7 +58,12 @@
 <label><input id="bulkClearDate" type="checkbox"> Remove proposed date</label>
 <button id="applySelected" type="button">Apply only to selected human rows</button></div></section>
 <section class="panel"><h2>Private original-bound proposal continuation</h2><p>Resume a previously exported private human proposal in this local browser. Only an exact matching source digest, original prior fields and full source slot membership are accepted; this never updates original files.</p>
-<label>Restore PRIVATE proposal JSON <input id="restore" type="file" accept=".json,application/json"></label></section>
+<label>Restore PRIVATE proposal JSON <input id="restore" type="file" accept=".json,application/json"></label>
+<h3>Continue a complete all-agenda human proposal session</h3>
+<p>Open a previously exported ALL-original-agenda private proposal bundle in one step. Original source binding and all prior human values must match before any local draft is replaced. This operation does not edit original files.</p>
+<label>Restore ALL PRIVATE human proposals JSON <input id="restoreAll" type="file" accept=".json,application/json"></label>
+<label class="confirm"><input id="confirmRestoreAll" type="checkbox"> I explicitly want to replace current UNSAVED LOCAL human drafts for all agendas; original source records will remain unchanged.</label>
+</section>
 <section class="panel">
 <h2>Original-source-bound human review fields</h2>
 <p>Original fields are shown read-only. A change here creates an untrusted private proposal, not a saved original finding, scheduled job or approved assessment.</p>

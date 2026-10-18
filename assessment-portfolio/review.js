@@ -194,36 +194,11 @@
     if (!file || file.size<1 || file.size>262144) throw Error("private proposal size");
     const doc=JSON.parse(await file.text());
     const src=source();
-    if (!doc || Array.isArray(doc) || keys(doc)!==packetKeys ||
-        doc.schema!=="lightup.assessment_portfolio_human_proposal.v1" ||
-        doc.source_agenda_sha256!==src.source_sha256 ||
-        doc.reference_date!==input.reference_date ||
-        !Number.isInteger(doc.source_count) || doc.source_count!==src.rows.length ||
-        !Array.isArray(doc.items) || doc.items.length!==src.rows.length ||
-        doc.authorized!==false || doc.consent_verified!==false ||
-        doc.dispatch_allowed!==false || doc.release_allowed!==false) {
-      throw Error("incompatible private human proposal");
-    }
-    const replacement=[];
-    for (let n=0;n<src.rows.length;n++) {
-      const old=originalItem(src.rows[n]);
-      const row=doc.items[n];
-      if (!row || Array.isArray(row) || keys(row)!==itemKeys ||
-          !Number.isInteger(row.slot) || row.slot!==old.slot ||
-          row.prior_stage!==old.prior_stage ||
-          row.prior_next_role!==old.prior_next_role ||
-          row.prior_review_date!==old.prior_review_date ||
-          !stageChoices.includes(row.stage) || !roles.includes(row.next_role) ||
-          dateValue(row.review_date)===false) {
-        throw Error("proposal changes original identity or prior human record");
-      }
-      replacement.push({...old,
-        stage:row.stage,next_role:row.next_role,review_date:dateValue(row.review_date)});
-    }
-    // Atomic local import. Never modify the previous workspace on error.
+    const replacement=admitRestoredProposal(src,doc);
     state.set(src.slot,replacement);
     selected.clear();
-    get("confirm").checked=false;
+    get("confirm").checked=false;get("confirmAll").checked=false;
+    get("confirmRestoreAll").checked=false;
     message("Original-bound human proposal resumed locally; original choices remain unchanged.");
     view();
   }
@@ -442,6 +417,84 @@
     get("confirm").checked=false;
     message(targets.length+" original human slots edited locally across agendas. Export a new PRIVATE all-agenda proposal bundle; original inputs remain unchanged.");
     view();
+  });
+  const bundleKeys=["schema","reference_date","source_count","sources",
+                    "planning_not_permission","authorized","consent_verified",
+                    "dispatch_allowed","release_allowed"].sort().join("|");
+  const bundleSourceKeys=["slot","source_agenda_sha256","proposal"].sort().join("|");
+  function admitRestoredProposal(src,doc) {
+    if (!doc || Array.isArray(doc) || typeof doc!=="object" ||
+        keys(doc)!==packetKeys ||
+        doc.schema!=="lightup.assessment_portfolio_human_proposal.v1" ||
+        doc.source_agenda_sha256!==src.source_sha256 ||
+        doc.reference_date!==input.reference_date ||
+        !Number.isInteger(doc.source_count) || doc.source_count!==src.rows.length ||
+        !Array.isArray(doc.items) || doc.items.length!==src.rows.length ||
+        doc.authorized!==false || doc.consent_verified!==false ||
+        doc.dispatch_allowed!==false || doc.release_allowed!==false) {
+      throw Error("complete bundle original source/proposal mismatch");
+    }
+    return doc.items.map((row,index)=>{
+      const old=originalItem(src.rows[index]);
+      if (!row || Array.isArray(row) || typeof row!=="object" ||
+          keys(row)!==itemKeys || !Number.isInteger(row.slot) ||
+          row.slot!==old.slot || row.prior_stage!==old.prior_stage ||
+          row.prior_next_role!==old.prior_next_role ||
+          row.prior_review_date!==old.prior_review_date ||
+          !stageChoices.includes(row.stage) || !roles.includes(row.next_role) ||
+          (row.review_date!==null && (typeof row.review_date!=="string" ||
+             row.review_date==="" || dateValue(row.review_date)===false))) {
+        throw Error("complete bundle changes original human prior source membership");
+      }
+      return {...old,stage:row.stage,next_role:row.next_role,
+              review_date:row.review_date};
+    });
+  }
+  async function restoreCompleteBundle(file) {
+    if (!get("confirmRestoreAll").checked)
+      throw Error("explicit private replacement acknowledgement required");
+    if (!file || file.size<1 || file.size>4194304)
+      throw Error("complete private bundle must be a regular bounded local file");
+    const doc=JSON.parse(await file.text());
+    if (!doc || Array.isArray(doc) || typeof doc!=="object" ||
+        keys(doc)!==bundleKeys ||
+        doc.schema!=="lightup.assessment_portfolio_human_proposal_bundle.v1" ||
+        doc.reference_date!==input.reference_date ||
+        !Number.isInteger(doc.source_count) ||
+        doc.source_count!==input.sources.length ||
+        !Array.isArray(doc.sources) ||
+        doc.sources.length!==input.sources.length ||
+        doc.planning_not_permission!==true ||
+        doc.authorized!==false || doc.consent_verified!==false ||
+        doc.dispatch_allowed!==false || doc.release_allowed!==false) {
+      throw Error("complete private human bundle has invalid source metadata");
+    }
+    const next=new Map();
+    for(let index=0; index<input.sources.length; index++){
+      const src=input.sources[index], record=doc.sources[index];
+      if (!record || Array.isArray(record) || typeof record!=="object" ||
+          keys(record)!==bundleSourceKeys ||
+          !Number.isInteger(record.slot) || record.slot!==src.slot ||
+          record.source_agenda_sha256!==src.source_sha256) {
+        throw Error("incomplete/ambiguous original human source sequence");
+      }
+      next.set(src.slot,admitRestoredProposal(src,record.proposal));
+    }
+    // Commit only after every original agenda and every prior human slot matches.
+    state.clear();
+    for(const [slot,rows] of next) state.set(slot,rows);
+    selected.clear();portfolioSelected.clear();
+    for(const id of ["confirm","confirmAll","confirmRestoreAll","pConfirm"])
+      get(id).checked=false;
+    const changed=allPortfolio().filter(item=>modified(item.row)).length;
+    message("Restored "+doc.source_count+" private original agendas and "+
+            changed+" locally edited human slots in one step. Nothing was written to original sources.");
+    view();
+  }
+  get("restoreAll").addEventListener("change",async()=>{
+    try {await restoreCompleteBundle(get("restoreAll").files[0]);}
+    catch(e){message("HOLD: all-agenda private bundle does not match ALL original sources/prior human choices. No local draft was replaced.");}
+    finally {get("restoreAll").value="";}
   });
   view();
 })();
