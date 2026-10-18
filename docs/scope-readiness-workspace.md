@@ -12,6 +12,18 @@ Open `coordination/scope-readiness.html` locally from this PR checkout. This is 
 6. **Revision-safe follow-up reuse:** select a second draft and deliberately copy only human coordinator labels, suggested deadlines and next-action text to an otherwise untouched draft. Reject nonempty destinations, ask explicit confirmation, surface differing client labels/risk/mode/asset counts, and reset every imported task state to **not started**. Prepared paperwork and anything resembling client/operator approval never transfer across revisions. Matching counts are not proof of identical effective scope.
 7. Unsaved-change confirmation, full local reset, source file batch atomicity, bounded tracking input and accessible mobile-friendly layout.
 
+## New: multi-draft action planning and separate recipient packets
+
+The **Batch follow-up planner** supports a selected workstream across the current filtered review queue, all source-attached drafts or every local draft. Enter a coordinator label, paperwork target date and/or next-action template; preview all eligible assignments first. Preview reports number of touched records and unbound-source HOLDs. Applying requires explicit confirmation, fills **only empty fields of incomplete tasks**, and never overwrites existing values, marks a task `prepared`, carries approval state forward, or grants access. A change to underlying data or batch selection invalidates the preview. Prepared records and human-decided task statuses remain untouched.
+
+The **Separated preparation briefs** workflow produces two distinct, private local Markdown packets:
+- **Client-side:** only ownership-evidence and client-coordination preparation tasks; omits internal operator checklist items.
+- **Operator-side:** only scope/exclusion, independent operator, UTC/risk/STOP and privacy/incident-preparation tasks; omits client-coordination notes.
+
+Both can address a single selected draft, the filtered draft queue or the entire workspace. They include precise unsigned source digest hints, explicit UNBOUND-source HOLDs, strictly non-authorizing activity descriptions and dates, and **literal FALSE** statements for authenticated consent, approval, grant, current revocation, execution, scan and release. They omit original proposed target asset values, excluded-asset details, source free-text notes, client labels and assigned coordinator names. User-entered next-action text is still potentially sensitive; inspect the preview and manually verify the intended recipient. No messages are sent and nothing is uploaded. Any subsequent source/assignment change invalidates the preview; download demands separate confirmation.
+
+Neither a stage marked `prepared` nor a local client/operator packet equals authenticated consent or operator approval. Source continuity hashes do not prove that two different clients or people consented. Separation of packet content protects against casual over-sharing but cannot authenticate a recipient.
+
 ## Readiness is not authorization
 
 This is a paperwork tracking board, not an approval queue. Even if every row says **prepared**, the board remains **REVIEW_ONLY / DRAFT-HOLD**, all exported `authenticated`, `client_consent`, `operator_consent`, `authorization`, `risk_approved`, `grant`, `revocation_checked`, `execution`, `scan`, and `release` security flags are **literal false**. Imported source labels, source SHA-256, due dates, coordinator names, prepared fields, selected risk levels and printouts are **self-reported** and do not establish authenticated identity, possession of an asset, client consent, operator approval, approval of a proposed risk-4 activity, action-time scope/revocation enforcement or permission to contact a target.
