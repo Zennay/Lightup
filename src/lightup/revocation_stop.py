@@ -245,6 +245,76 @@ def deny_only_stop_state(db_path: str, *, engagement_id: str,
     }
 
 
+
+def engagement_inbox(db_path: str, *, actor_id: str) -> dict:
+    """Authenticated, bounded list of real engagements and recorded STOP state.
+
+    No synthesized scope, consent, capability or launch permission is returned.
+    """
+    actor_id = _literal(actor_id, "actor identity")
+    con = _open_existing_db(db_path)
+    try:
+        con.execute("PRAGMA query_only=ON")
+        con.execute("BEGIN")
+        actor = con.execute(
+            "SELECT role,client_id FROM users WHERE user_id=?", (actor_id,)
+        ).fetchone()
+        if actor is None:
+            raise StopLedgerError("actor no longer exists")
+        try:
+            role = Role(actor["role"])
+        except (ValueError, TypeError):
+            raise StopLedgerError("invalid persisted role") from None
+        if role is Role.OPERATOR and actor["client_id"] is None:
+            rows = con.execute(
+                "SELECT e.engagement_id,e.status FROM engagements AS e "
+                "JOIN clients AS c ON c.client_id=e.client_id "
+                "ORDER BY e.created_at DESC,e.engagement_id LIMIT 101"
+            ).fetchall()
+        elif role in (Role.CLIENT_ADMIN, Role.CLIENT_MEMBER) and actor["client_id"]:
+            rows = con.execute(
+                "SELECT e.engagement_id,e.status FROM engagements AS e "
+                "JOIN clients AS c ON c.client_id=e.client_id "
+                "WHERE e.client_id=? ORDER BY e.created_at DESC,e.engagement_id LIMIT 101",
+                (actor["client_id"],),
+            ).fetchall()
+        else:
+            raise StopLedgerError("account cannot view engagement inbox")
+        has_table = con.execute(
+            "SELECT 1 FROM sqlite_master "
+            "WHERE type='table' AND name='authorization_stop_events'"
+        ).fetchone() is not None
+        result = []
+        for row in rows[:100]:
+            engagement_id = _literal(row["engagement_id"], "persisted engagement")
+            if has_table:
+                stopped = con.execute(
+                    "SELECT 1 FROM authorization_stop_events "
+                    "WHERE engagement_id=? LIMIT 1", (engagement_id,),
+                ).fetchone() is not None
+                state = "STOP_ACTIVE" if stopped else "NO_STOP_RECORDED"
+            else:
+                state = "HOLD_LEDGER_NOT_INITIALIZED"
+            result.append({
+                "engagement_id": engagement_id,
+                "original_engagement_status": row["status"],
+                "stop_status": state,
+            })
+        return {
+            "schema": "lightup.authenticated_stop_inbox.v1",
+            "status": "REVIEW_ONLY",
+            "engagements": result,
+            "truncated": len(rows) > 100,
+            "authorization_granted": False,
+            "execution_allowed": False,
+            "release_approved": False,
+        }
+    except (sqlite3.Error, ValueError, TypeError):
+        raise StopLedgerError("STOP inbox unavailable: HOLD") from None
+    finally:
+        con.close()
+
+
 def _private_receipt(path: str, result: dict) -> None:
     flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0)
     body = (json.dumps(result, sort_keys=True, indent=2) + "\n").encode("utf-8")
@@ -270,13 +340,17 @@ def main(argv: list[str] | None = None) -> int:
         prog="python -m lightup.revocation_stop",
         description="Authenticated deny-only engagement STOP (NOT an authorization).",
     )
-    parser.add_argument("action", choices=("stop", "status"))
+    parser.add_argument("action", choices=("stop", "status", "list"))
     parser.add_argument("--database", required=True, help="existing LightUp domain SQLite")
-    parser.add_argument("--engagement", required=True, help="exact existing engagement ID")
+    parser.add_argument("--engagement", help="exact existing engagement ID for stop/status")
     parser.add_argument("--email", required=True, help="existing operator/client account")
     parser.add_argument("--reason", default="", help="optional STOP reason; private DB only")
     parser.add_argument("--receipt", help="optional NEW owner-only JSON receipt for STOP")
     args = parser.parse_args(argv)
+    if args.action != "list" and not args.engagement:
+        parser.error("--engagement is required for stop/status")
+    if args.action == "list" and args.engagement:
+        parser.error("--engagement is not used with list")
     if args.receipt and args.action != "stop":
         parser.error("--receipt is available only with stop")
     if args.action == "status" and args.reason:
@@ -284,6 +358,9 @@ def main(argv: list[str] | None = None) -> int:
     try:
         password = getpass("LightUp password: ")
         actor_id = authenticate_domain_user(args.database, args.email, password)
+        if args.action == "list":
+            print(json.dumps(engagement_inbox(args.database, actor_id=actor_id), sort_keys=True, indent=2))
+            return 2
         if args.action == "stop":
             result = record_stop(
                 args.database, engagement_id=args.engagement,
