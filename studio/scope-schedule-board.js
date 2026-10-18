@@ -683,6 +683,101 @@ $('briefExport').addEventListener('click',()=>{
   $('status').textContent='Private, script-free operator schedule brief downloaded. Nothing approved, booked or sent.';
 });
 
+
+// A Studio v1 revision is exported only after explicitly re-reading the matching original
+// source bytes. UTC-to-local is computed in the *original* proposal IANA timezone, never
+// from the operating machine's timezone or a guessed unchanged DST offset.
+function wallFromUTC(instant,zone) {
+  if(!Number.isFinite(instant)||instant%MINUTE!==0||typeof zone!=='string'||
+      zone.length>100||!zone||!globalThis.Intl)throw Error('unsupported timezone');
+  const formatter=new Intl.DateTimeFormat('en-GB',{
+    timeZone:zone,year:'numeric',month:'2-digit',day:'2-digit',
+    hour:'2-digit',minute:'2-digit',hourCycle:'h23'
+  });
+  function wallAt(when) {
+    const parts=formatter.formatToParts(new Date(when));
+    const values=Object.fromEntries(parts.filter(p=>
+      ['year','month','day','hour','minute'].includes(p.type)).map(p=>[p.type,p.value]));
+    if(!/^\d{4}$/.test(values.year||'')||
+       !['month','day','hour','minute'].every(k=>/^\d{2}$/.test(values[k]||'')))
+      throw Error('unsupported timezone wall');
+    return values.year+'-'+values.month+'-'+values.day+'T'+values.hour+':'+values.minute;
+  }
+  const wall=wallAt(instant);
+  if(!validLocal(wall))throw Error('invalid converted wall');
+  const parts=LOCAL.exec(wall).slice(1).map(Number);
+  const wallMillis=Date.UTC(parts[0],parts[1]-1,parts[2],parts[3],parts[4]);
+  const offset=(instant-wallMillis)/MINUTE;
+  if(!minutes(offset)||localToUTC(wall,offset)!==new Date(instant).toISOString())
+    throw Error('invalid converted offset');
+  // Reject repeated DST clock hours, including 30/60/90/120-minute rollbacks.
+  // A local wall time must identify exactly one UTC instant for a Studio draft.
+  for(let distance=30;distance<=180;distance+=30){
+    if(wallAt(instant-distance*MINUTE)===wall||
+       wallAt(instant+distance*MINUTE)===wall)
+      throw Error('ambiguous local time');
+  }
+  return {wall,offset};
+}
+function downloadRevisedDraft(data, selected, raw){
+  if(!selected||selected.interval.state!=='resolved'||
+      !scenarioShifts.has(selected.key)||!selected.sourceHash||
+      !globalThis.crypto||!crypto.subtle)throw Error('no eligible shift');
+  if(!parseDraft(data))throw Error('invalid original');
+  const previous=isoMillis(data.proposed_window_utc?.start);
+  if(previous!==selected.interval.start||
+      isoMillis(data.proposed_window_utc?.end)!==selected.interval.end||
+      data.proposal_name!==selected.name||data.requested_mode!==selected.mode||
+      data.requested_risk!==selected.risk)throw Error('source mismatch');
+  const start=scenarioShifts.get(selected.key),duration=selected.interval.end-selected.interval.start;
+  const end=start+duration;
+  if(!Number.isFinite(start)||!Number.isFinite(end)||
+      Math.abs(start-previous)>31*DAY||start===previous||
+      !withinWorkHours({start,end},workPolicy()))throw Error('invalid shift');
+  const zone=data.proposed_window_utc.timezone;
+  const localStart=wallFromUTC(start,zone),localEnd=wallFromUTC(end,zone);
+  // This only builds another Studio DRAFT_ONLY file; no approval, consent or grant
+  // markers are updated or derived from the original source.
+  const revised={...data,
+    proposed_window_local:{start:localStart.wall,end:localEnd.wall},
+    proposed_window_utc:{
+      status:'resolved',timezone:zone,
+      start:new Date(start).toISOString(),end:new Date(end).toISOString(),
+      start_offset_minutes:localStart.offset,end_offset_minutes:localEnd.offset
+    },
+    exported_at_utc:new Date().toISOString()
+  };
+  delete revised.scope_fingerprint_sha256;
+  if(!parseDraft(revised))throw Error('updated Studio schema mismatch');
+  const fileName='lightup-revised-scope-draft-'+(entries.indexOf(selected)+1)+'.json';
+  const blob=new Blob([JSON.stringify(revised,null,2)+'\n'],{type:'application/json'});
+  const url=URL.createObjectURL(blob),link=document.createElement('a');
+  link.href=url;link.download=fileName;document.body.append(link);link.click();link.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),500);
+}
+$('revisionSource').addEventListener('change',async ev=>{
+  const file=ev.target.files&&ev.target.files[0];ev.target.value='';
+  if(!file)return;
+  const selected=chosenScenario();
+  if(!selected||!scenarioShifts.has(selected.key)||!selected.sourceHash){
+    $('status').textContent='HOLD: select a draft with a changed UTC start and an available original-file digest.';
+    return;
+  }
+  try{
+    if(file.size<2||file.size>MAX_FILE_BYTES)throw Error('size');
+    const raw=await file.arrayBuffer();
+    if(!crypto||!crypto.subtle)throw Error('web crypto');
+    const digest=await crypto.subtle.digest('SHA-256',raw);
+    const hex=Array.from(new Uint8Array(digest),b=>b.toString(16).padStart(2,'0')).join('');
+    if(hex!==selected.sourceHash)throw Error('different original');
+    const data=JSON.parse(new TextDecoder('utf-8',{fatal:true}).decode(raw));
+    downloadRevisedDraft(data,selected,raw);
+    $('status').textContent='Revised Studio v1 DRAFT_ONLY JSON downloaded from the exact original source. No fingerprint, consent, booking or grant carried forward.';
+  }catch(_){
+    $('status').textContent='HOLD: draft revision not exported. Select the exact imported source, a shifted window and a supported unambiguous IANA timezone; otherwise use the original Studio.';
+  }
+});
+
 $('scenarioExport').addEventListener('click',()=>{
   if(!entries.length||entries.some(e=>!e.sourceHash)){
     $('status').textContent='HOLD: source SHA-256 is unavailable. This browser cannot export a source-bound scenario.';return;
