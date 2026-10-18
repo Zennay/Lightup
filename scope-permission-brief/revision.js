@@ -84,6 +84,41 @@ function reissue(role){
  download('lightup-'+role+'-fresh-preparation-HOLD.json','application/json',JSON.stringify(fresh,null,2)+'\\n');
 }
 
+/* Script-free standalone document for handover; only bounded counts and fixed
+   review guidance. Never render client identities, host literals or notes. */
+function escapeHTML(value){
+ return String(value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function impactPack(item){
+ const e=escapeHTML,impact=item.literal_change_impact;
+ const summary=impact?
+  '<section><h2>Literal proposed asset identity changes</h2><p>Proposed assets: +'+e(impact.proposed_assets.added)+
+   ' / −'+e(impact.proposed_assets.removed)+'; exclusions: +'+e(impact.exclusions.added)+
+   ' / −'+e(impact.exclusions.removed)+'.</p><p>Human attention: '+
+   e(impact.human_review_level.replaceAll('_',' '))+'</p></section>':
+  '<section><h2>Source review needed</h2><p>Detailed literal differences unavailable. No equivalence is asserted.</p></section>';
+ const attention=impact?.attention_codes.length?
+  '<ol>'+impact.attention_codes.map(code=>'<li>'+e(ATTENTION_LABELS[code]||'Review revised source')+'</li>').join('')+'</ol>':
+  '<p>There is still a byte-level revision; both roles must review the exact new source.</p>';
+ const adjustments=item.summaries_changed.length?
+  '<ul>'+item.summaries_changed.map(a=>'<li>'+e(a.description)+': '+e(a.previous)+
+   ' → '+e(a.current)+'</li>').join('')+'</ul>':
+  '<p>Summary fields unchanged; individual literals or private notes may still differ.</p>';
+ return '<!doctype html><html lang="en"><head><meta charset="utf-8">'+
+  '<meta name="viewport" content="width=device-width,initial-scale=1">'+
+  '<meta name="referrer" content="no-referrer">'+
+  '<meta http-equiv="Content-Security-Policy" content="default-src &#39;none&#39;; style-src &#39;unsafe-inline&#39;; base-uri &#39;none&#39;; object-src &#39;none&#39;; form-action &#39;none&#39;">'+
+  '<title>LightUp source revision · HOLD</title>'+
+  '<style>body{font:16px/1.5 system-ui,sans-serif;color:#142536;max-width:890px;margin:auto;padding:24px}h1{font-size:30px}h2{font-size:20px;border-bottom:1px solid #ccd5df}section{margin-top:24px;break-inside:avoid}li{margin:8px 0}.hold{border:2px solid #a44730;background:#fff6ed;padding:16px}.meta{font:12px/1.6 ui-monospace,monospace;overflow-wrap:anywhere}footer{border-top:1px solid #ccc;margin-top:30px;font-size:12px}@media print{body{padding:4px}section{break-inside:auto}}</style></head><body>'+
+  '<p>LIGHTUP / PRIVACY-MINIMAL OFFLINE HUMAN HANDOFF</p><h1>Revised scope · REVIEW ONLY / HOLD</h1>'+
+  '<div class="hold"><strong>Both parties must start fresh.</strong> Client and operator must independently review the NEW exact source, restore genuine identity and authorization gates and issue new authenticated decisions in the protected system. This document never approves, consents, issues a grant or permits an assessment.</div>'+
+  '<p class="meta">Previous SHA-256: '+e(item.previous_source_sha256)+'<br>Current SHA-256: '+e(item.current_source_sha256)+'</p>'+
+  summary+'<section><h2>Category differences</h2>'+adjustments+'</section>'+
+  '<section><h2>Human follow-up queue</h2>'+attention+'</section>'+
+  '<section><h2>Required recipient handoff</h2><ol><li>Client: reopen full revised proposal and independently re-confirm owned assets, exclusions and intended limits in authenticated workflow.</li><li>Operator: review exact effective scope, permissions, risk, UTC window and revocation independently.</li><li>Reject all prior-version human replies as current authorization evidence.</li></ol></section>'+
+  '<footer>No raw targets, contacts, client identities, notes or per-asset hashes. Literal string comparison does NOT establish equivalent CIDR coverage, DNS identity, owned scope or effective policy. All consent, authorization, grant, scan, deploy and release claims are FALSE.</footer></body></html>';
+}
+
 function toCSV(){
  const rows=[['sequence','previous_source_sha256','current_source_sha256','summary_changed_categories','literal_assets_added','literal_assets_removed','literal_exclusions_added','literal_exclusions_removed','human_review_level','attention_codes','review_disposition','reissue_client','reissue_operator']];
  for(const h of history)rows.push([h.sequence,h.previous_source_sha256,h.current_source_sha256,
@@ -99,6 +134,7 @@ function render(){
  const root=$('revisionHistory');root.replaceChildren();
  $('revisionJSON').disabled=history.length===0;
  $('revisionCSV').disabled=history.length===0;
+ $('revisionPack').disabled=history.length===0;
  $('revisionForget').disabled=history.length===0;
  $('revisionClient').disabled=!active;
  $('revisionOperator').disabled=!active;
@@ -172,6 +208,10 @@ $('revisionJSON').addEventListener('click',()=>{
 });
 $('revisionCSV').addEventListener('click',()=>{
  if(history.length)download('lightup-source-revision-timeline-HOLD.csv','text/csv;charset=utf-8',toCSV());
+});
+$('revisionPack').addEventListener('click',()=>{
+ const last=history.at(-1);
+ if(last)download('lightup-scope-change-impact-HOLD.html','text/html;charset=utf-8',impactPack(last));
 });
 $('revisionClient').addEventListener('click',()=>reissue('client'));
 $('revisionOperator').addEventListener('click',()=>reissue('operator'));
