@@ -354,6 +354,27 @@ def run_planned_assessment(
     return assessment_output
 
 
+def _admit_private_output_path(output: str | None) -> None:
+    """Reject unavailable private artifact destinations before model dispatch.
+
+    This is a read-only early check; the final O_EXCL/O_NOFOLLOW open still
+    decides atomically whether the completed artifact can be published.
+    """
+    if output is None:
+        return
+    if type(output) is not str or not output or "\x00" in output:
+        raise ValueError("private output destination is invalid")
+    destination = Path(output)
+    if destination.suffix != ".json" or destination.is_symlink() or destination.exists():
+        raise ValueError("private output destination is unavailable")
+    if not destination.parent.is_dir():
+        raise ValueError("private output directory does not exist")
+    # Reject aliases through symlinked ancestor directories in the user
+    # selected path; a 0600 result should not silently leave the expected tree.
+    if any(parent.is_symlink() for parent in destination.parents):
+        raise ValueError("private output directory is ambiguous")
+
+
 def _deliver_lab_result(payload: dict, output: str | None) -> None:
     """Publish a complete lab artifact without overwriting any existing data.
 
@@ -534,6 +555,7 @@ def main_assess(argv: list[str] | None = None) -> int:
             raise ValueError("--profile ground truth applies only to one lab endpoint")
         if args.artifact_format == "benchmark-case" and (args.output is None or args.preview_only):
             raise ValueError("benchmark-case export requires --output and a completed lab run")
+        _admit_private_output_path(args.output)
         if (args.catalog_file is None) != (args.scenario_id is None):
             raise ValueError("--catalog-file and --scenario-id must be supplied together")
         if args.catalog_file is not None and not args.catalog_file.strip():
