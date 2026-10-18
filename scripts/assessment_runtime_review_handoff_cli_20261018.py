@@ -13,6 +13,7 @@ import json
 import os
 from pathlib import Path
 import stat
+import tempfile
 
 from assessment_runtime_compare_cli_1513 import (
     _dict_no_duplicates,
@@ -160,20 +161,25 @@ def _build_report(result, baseline_sha: str, candidate_sha: str, cohort: bool):
 
 
 def _write_exclusive(path: str, payload: bytes):
-    flags = os.O_CREAT | os.O_EXCL | os.O_WRONLY | getattr(os, "O_NOFOLLOW", 0)
-    fd = os.open(path, flags, 0o600)
+    """Publish complete 0600 bytes only; never expose a partial final filename.
+
+    A new private temporary file is fsynced in the *same directory*, then
+    hard-linked to the requested absent destination with no overwrite window.
+    Link-based publication refuses existing files and symlinks atomically.
+    """
+    destination = Path(path)
+    fd, temporary = tempfile.mkstemp(
+        prefix=".lightup-private-", suffix=".partial", dir=destination.parent,
+    )
     try:
         with os.fdopen(fd, "wb") as output:
             os.fchmod(output.fileno(), 0o600)
             output.write(payload)
             output.flush()
             os.fsync(output.fileno())
-    except BaseException:
-        try:
-            os.unlink(path)
-        except OSError:
-            pass
-        raise
+        os.link(temporary, destination, follow_symlinks=False)
+    finally:
+        os.unlink(temporary)
 
 
 def main(argv=None):

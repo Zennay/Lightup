@@ -14,7 +14,7 @@ PYTHONPATH=src:scripts python scripts/assessment_runtime_review_handoff_cli_2026
   --output /private/NEW-lab-review.html
 ```
 
-For original #1515 **cohort** format (each file an array of 1–64 two-field cases), add `--cohort`. This does not import Lab Scenario Studio ground-truth into comparative scores or claim those self-declared expectations as verified. An existing private report path or symlink is refused, never overwritten.
+For original #1515 **cohort** format (each file an array of 1–64 two-field cases), add `--cohort`. This does not import Lab Scenario Studio ground-truth into comparative scores or claim those self-declared expectations as verified. An existing private report path or symlink is refused, never overwritten. Both bundle and report are completely written and fsynced into a private same-directory temporary file before the final destination becomes visible via a no-overwrite hard link; a failed/incomplete export never publishes a partial final file.
 
 A valid comparison creates a bounded **owner-only 0600, single-file printable HTML** review with per-metric deltas, scenario-specific regressions for cohorts, original input-byte SHA-256 digests, and an explicit pending human handoff. No JavaScript, remote assets, HTTP calls, source filesystem paths, raw evidence, or credential payloads are embedded. SHA-256 is **not** signature/attestation/provenance. Retain the source files privately; the output itself is confidential. Invalid/replayed HOLD input creates no document. A canonical comparison with actual metric regressions still creates a clearly HOLD-marked private review document and exits 3, so a human can inspect the regression without any execution/release authority.
 
