@@ -486,6 +486,19 @@ class LightUpWebApp:
         engagements = self.store.list_engagements(ctx, client_id)
         findings = self.store.list_findings(ctx, client_id=client_id)
         csrf = self._csrf_field(auth)
+        # Candidate requests are display-only. DomainStore rechecks original
+        # persisted client/operator provenance, scope and risk atomically.
+        approved_requests = [
+            request for request in self.store.list_assessment_requests(ctx, client_id)
+            if request.status is RequestStatus.APPROVED
+            and request.requested_mode is AssessmentMode.AUTHORIZED_ASSESSMENT
+        ]
+        approved_request_options = "".join(
+            f'<option value="{_e(request.request_id)}">'
+            f'{_e(request.request_id)} · risk {_e(int(request.requested_risk))}'
+            f' · {len(request.requested_assets)} requested asset(s)</option>'
+            for request in approved_requests
+        )
         engagement_cards = []
         for eng in engagements:
             grant = self.store.get_current_grant(ctx, eng.engagement_id)
@@ -501,11 +514,25 @@ class LightUpWebApp:
                     f"<br>Valid {_e(grant.valid_from.date())} – {_e(grant.valid_until.date())}"
                     "</p></details>"
                 )
+            elif not approved_request_options:
+                grant_detail = (
+                    '<p class="meta">HOLD: no approved client assessment request '
+                    'is available to bind to this engagement. A real client '
+                    'must submit a request and a different authenticated '
+                    'operator must review it first.</p>'
+                )
             else:
                 grant_detail = (
                     "<details><summary>Record authorization grant</summary>"
                     f"<form method=\"post\" action=\"/engagements/{_e(eng.engagement_id)}/grants\">"
                     f"{csrf}"
+                    '<label>Original approved client request (required)</label>'
+                    '<select name="approved_request_id" required>'
+                    '<option value="">Select approved request…</option>'
+                    f'{approved_request_options}</select>'
+                    '<p class="meta">Selection is not permission. The original '
+                    'stored request, client and operator identities, approved '
+                    'scope and risk are rechecked within grant issuance.</p>'
                     "<label>Approved by (client signatory)</label>"
                     "<input name=\"approved_by\" required>"
                     "<label>Authorization reference</label>"
@@ -514,7 +541,7 @@ class LightUpWebApp:
                     "<input name=\"assets\" required>"
                     "<label>Excluded assets (comma-separated, optional)</label>"
                     "<input name=\"excluded_assets\">"
-                    "<label>Allowed capabilities (comma-separated ids; empty = all)</label>"
+                    "<label>Allowed capability IDs (comma-separated; explicit scope required)</label>"
                     "<input name=\"capabilities\">"
                     "<label>Maximum risk level</label><select name=\"max_risk\">"
                     "<option value=\"1\">1 — Passive</option>"
@@ -562,6 +589,12 @@ class LightUpWebApp:
 
     def record_grant(self, auth: AuthState, form: dict[str, str],
                      engagement_id: str) -> Response:
+        # Operator must explicitly bind one persisted request; no silent
+        # guessed match when several requests cover overlapping scopes.
+        approved_request_id = form.get("approved_request_id")
+        if (type(approved_request_id) is not str or not approved_request_id
+                or approved_request_id.strip() != approved_request_id):
+            raise ValueError("choose one approved client assessment request")
         from datetime import datetime, timedelta, timezone
 
         from ..engagements import ScopeDefinition
@@ -570,10 +603,17 @@ class LightUpWebApp:
             return tuple(part.strip() for part in form.get(name, "").split(",")
                          if part.strip())
 
-        max_risk = RiskLevel(int(form.get("max_risk", "3")))
-        if max_risk is RiskLevel.DESTRUCTIVE_LAB_ONLY:
-            raise ValueError("destructive simulation cannot be granted for client assets")
-        valid_days = max(1, min(365, int(form.get("valid_days", "30"))))
+        raw_max_risk = form.get("max_risk")
+        if type(raw_max_risk) is not str or raw_max_risk not in {"1", "2", "3", "4"}:
+            raise ValueError("maximum risk must be exactly 1, 2, 3, or 4")
+        max_risk = RiskLevel(int(raw_max_risk))
+        raw_valid_days = form.get("valid_days")
+        if (type(raw_valid_days) is not str or not raw_valid_days.isascii()
+                or not raw_valid_days.isdigit()):
+            raise ValueError("grant validity must be an exact whole number of days")
+        valid_days = int(raw_valid_days)
+        if not 1 <= valid_days <= 365:
+            raise ValueError("grant validity must be between 1 and 365 days")
         now = datetime.now(timezone.utc)
         scope = ScopeDefinition(
             assets=_csv("assets"),
@@ -588,6 +628,7 @@ class LightUpWebApp:
             reference=form.get("reference", ""),
             scope=scope, valid_from=now,
             valid_until=now + timedelta(days=valid_days),
+            approved_request_id=approved_request_id,
         )
         return _redirect(f"/clients/{engagement.client_id}")
 
@@ -655,14 +696,20 @@ class LightUpWebApp:
 
     def decide_request(self, auth: AuthState, form: dict[str, str],
                        request_id: str) -> Response:
-        approve = form.get("decision") == "approve"
-        self.store.review_assessment_request(auth.context, request_id, approve)
+        decision = form.get("decision")
+        if decision not in {"approve", "reject"}:
+            raise ValueError("assessment decision must be exactly approve or reject")
+        self.store.review_assessment_request(auth.context, request_id,
+                                             decision == "approve")
         return _redirect("/assessments")
 
     def decide_elevation(self, auth: AuthState, form: dict[str, str],
                          approval_id: str) -> Response:
-        approve = form.get("decision") == "approve"
-        self.store.decide_risk_elevation(auth.context, approval_id, approve)
+        decision = form.get("decision")
+        if decision not in {"approve", "deny"}:
+            raise ValueError("risk elevation decision must be exactly approve or deny")
+        self.store.decide_risk_elevation(auth.context, approval_id,
+                                         decision == "approve")
         return _redirect("/assessments")
 
     # -- client portal --------------------------------------------------------
@@ -749,9 +796,10 @@ class LightUpWebApp:
                             status="403 Forbidden")
         ctx = auth.context
         assets = tuple(part.strip() for part in form.get("assets", "").split(",") if part.strip())
-        risk = RiskLevel(int(form.get("risk", "3")))
-        if risk is RiskLevel.DESTRUCTIVE_LAB_ONLY:
-            raise ValueError("destructive simulation cannot be requested from the portal")
+        raw_risk = form.get("risk")
+        if type(raw_risk) is not str or raw_risk not in {"1", "2", "3", "4"}:
+            raise ValueError("requested risk must be exactly 1, 2, 3, or 4")
+        risk = RiskLevel(int(raw_risk))
         self.store.submit_assessment_request(
             ctx,
             requested_assets=assets,
