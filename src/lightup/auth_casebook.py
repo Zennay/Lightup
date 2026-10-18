@@ -19,6 +19,7 @@ import tempfile
 from urllib.parse import quote
 
 from .domain import AccountLockedError, DomainStore, Role
+from .grant_request_binding import approved_request_is_compatible
 
 LIMIT = 200
 MAX_OUTPUT_BYTES = 512 * 1024
@@ -122,9 +123,15 @@ def _source_snapshot(database: str, *, actor_id: str, client_id: str | None) -> 
 
         requests = _bounded_rows(
             con,
-            "SELECT request_id,status,requested_mode,requested_risk,created_at,decided_at,"
-            "client_id,requested_by,decided_by FROM assessment_requests "
-            "WHERE client_id=? ORDER BY created_at DESC,request_id", (chosen,),
+            "SELECT r.request_id,r.status,r.requested_mode,r.requested_risk,"
+            "r.created_at,r.decided_at,r.client_id,r.requested_by,r.decided_by,"
+            "r.requested_assets_json,"
+            "requester.role AS requester_role, requester.client_id AS requester_client,"
+            "reviewer.role AS reviewer_role, reviewer.client_id AS reviewer_client "
+            "FROM assessment_requests AS r "
+            "LEFT JOIN users AS requester ON requester.user_id=r.requested_by "
+            "LEFT JOIN users AS reviewer ON reviewer.user_id=r.decided_by "
+            "WHERE r.client_id=? ORDER BY r.created_at DESC,r.request_id", (chosen,),
         )
         engagements = _bounded_rows(
             con,
@@ -134,7 +141,7 @@ def _source_snapshot(database: str, *, actor_id: str, client_id: str | None) -> 
         grants = _bounded_rows(
             con,
             "SELECT grant_id,client_id,engagement_id,approved_request_id,"
-            "max_risk,valid_from,valid_until,created_at "
+            "max_risk,assets_json,valid_from,valid_until,created_at "
             "FROM authorization_grants WHERE client_id=? "
             "ORDER BY created_at DESC,grant_id", (chosen,),
         )
@@ -142,9 +149,8 @@ def _source_snapshot(database: str, *, actor_id: str, client_id: str | None) -> 
             con,
             "SELECT approval_id,client_id,engagement_id,requested_risk,status,"
             "created_at,decided_at FROM risk_approvals "
-            "WHERE client_id=? OR engagement_id IN "
-            "(SELECT engagement_id FROM engagements WHERE client_id=?) "
-            "ORDER BY created_at DESC,approval_id", (chosen, chosen),
+            "WHERE client_id=? "
+            "ORDER BY created_at DESC,approval_id", (chosen,),
         )
 
         # Never disclose records from a FOREIGN client merely because a
@@ -222,7 +228,29 @@ def _source_snapshot(database: str, *, actor_id: str, client_id: str | None) -> 
             elif origin["status"] != "approved":
                 notice = "HOLD_REQUEST_NOT_APPROVED"
             else:
-                notice = "REQUEST_LINK_DECLARED_NOT_VERIFIED"
+                # Reuse the ORIGINAL owner-maintained request/grant
+                # compatibility rule against existing persisted source rows.
+                # This is a retrospective review observation; it does NOT
+                # re-authorize a grant, attest fresh client/operator consent,
+                # validate execution scope or permit target interaction.
+                try:
+                    raw_grant_assets = json.loads(row["assets_json"])
+                    compatible = (
+                        type(raw_grant_assets) is list
+                        and all(type(asset) is str for asset in raw_grant_assets)
+                        and approved_request_is_compatible(
+                            origin, client_id=chosen,
+                            grant_assets=tuple(raw_grant_assets),
+                            grant_max_risk=row["max_risk"],
+                            grant_created_at=row["created_at"],
+                        )
+                    )
+                except (TypeError, ValueError, OverflowError):
+                    compatible = False
+                notice = (
+                    "REQUEST_SCOPE_COMPATIBLE_UNVERIFIED"
+                    if compatible else "HOLD_REQUEST_SCOPE_OR_PROVENANCE_MISMATCH"
+                )
             if type(row["max_risk"]) is not int or not 0 <= row["max_risk"] <= 5:
                 raise CasebookHold("noncanonical stored grant risk")
             grant_view.append({
