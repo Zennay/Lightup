@@ -28,6 +28,16 @@ A **script-free, read-only HTML meeting pack** is also downloadable for an offli
 
 All three return-desk exports (JSON, CSV, read-only HTML) are optional downloads from the local browser only. The existing user-selected roles and question state edits remain strictly non-authorizing. The native browser's file picker can display a filename even though app-generated previews/exports do not.
 
+## Revision-safe source replacement and reply reissue
+
+**A completed human preparation note never follows a changed scope automatically.** With a first Studio v1 draft loaded, select a later draft in the same file chooser. The viewer verifies the full new file **before changing any existing local data**. If it is invalid, oversized or contradictory, the earlier accepted draft and its human replies remain intact with an explicit HOLD message. Re-importing **identical exact source bytes** retains existing human answers and returns. An accepted different byte stream switches the current draft atomically, clears the previous source-bound preparation/returns, and adds a privacy-minimal record to the local revision board.
+
+The revision board tracks up to **12** local old/new SHA-256 byte fingerprints and category-only changes in requested mode, risk, asset count, exclusion count and UTC-status. Identical counts do not prove identical targets, notes, consent or scope: this board does **not** perform a semantic asset comparison. It explicitly marks every old human reply stale, and instructs both roles to prepare a new review. A session-only timeline can be exported as REVIEW_ONLY_HOLD JSON or spreadsheet-formula-safe CSV. There are no names, IP addresses, source body, comments, file paths, timestamps claimed as trusted evidence, signatures or permission claims.
+
+Buttons prepare **fresh client- and operator-specific JSON response templates** for the currently loaded source (every question unanswered; opposite-role entries also unanswered). These packets intentionally conform to the same strict input envelope used by the existing human return desk, so a recipient can separately review the *matching original Studio source* locally and then return a role-specific preparation note. They do **not** carry earlier answers, transfer actual consent or prove a party's identity. If an actor lacks the original scope proposal, this anonymous template cannot authenticate or reconstruct it.
+
+The **Forget draft & answers** action clears current source, replies, and the entire volatile revision timeline. The optional timeline-only clear leaves the current source unchanged. Temporary parsing failures do not create false revision events or erase accepted drafts. This is a usable human coordination feature, never an executable policy / authorization amendment.
+
 ## Strict import and privacy boundaries
 
 - Maximum one 64-KiB original UTF-8 file; invalid bytes, unsupported schema, empty asset list, malformed activities, duplicate JSON keys **at any depth**, unsafe prototype-style keys, unknown authority fields, ambiguous source boolean flags and unsafe control text are refused. Multi-line safety notes are accepted (line breaks and tabs only) but never rendered or re-exported.
@@ -45,6 +55,7 @@ Source is isolated to four **new** paths:
 - `scope-permission-brief/style.css`
 - `scope-permission-brief/app.js`
 - `scope-permission-brief/reconciliation.js` (separated, read-only reply coordination)
+- `scope-permission-brief/revision.js` (source-byte revision timeline and fresh human reissue)
 - `scope-permission-brief/build_standalone.py`
 - `scope-permission-brief/standalone.html` (generated, one-file offline edition)
 - `docs/scope-permission-brief.md`
