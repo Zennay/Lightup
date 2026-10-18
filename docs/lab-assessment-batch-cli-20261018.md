@@ -88,6 +88,19 @@ When the original evaluation successfully completes, the existing `LabEvaluation
 - `--profile` fixture scoring is restricted to **one** endpoint; multi-endpoint assessments must be unscored rather than being wrongly measured against a one-fixture ground truth.
 - Multi-endpoint result JSON reuses existing `targets`, `plan`, `findings`, `coverage`, `evaluation`, and optional `review` fields. Each planner-produced finding already has the concrete `target` identity. This change does not claim completeness, valid security findings or verified remediation.
 
+## Inspect saved PRIVATE results without exposing details
+
+After an operator has an explicitly chosen local result file, `lightup lab-inspect /private/path/report.json` reads **only that existing local regular JSON file**. It uses bounded, no-follow, no-network input, rejects duplicate JSON keys and nonfinite values, and prints a privacy-minimal summary without original host IPs, scenario or finding names, evidence, full model output, client information, passwords or original file paths. Supported inputs are the CLI's preview JSON, completed original full-assessment JSON, and the two-field `benchmark-case` JSON artifact.
+
+The output includes *declared* endpoint/finding counts, severity breakdown, evidence-reference availability, source finding-ID continuity and whether an optional model review is present. Benchmark packets show only explicitly declared aggregate metrics. Invalid, ambiguous or unsupported files produce generic `HOLD` without source data. **Exit status 2 is REVIEW_ONLY; status 3 is HOLD. Success exit 0 is deliberately impossible for the inspector**, and REVIEW_ONLY does not mean a source was authentic, a target was authorized, metrics are reliable, a vulnerability is confirmed, or anything can be released.
+
+```sh
+lightup lab-assess --targets-file ./lab-targets.txt --preview-only --output ./new-private-preview.json
+lightup lab-inspect ./new-private-preview.json
+```
+
+A separately authored Studio design is still untrusted until admitted through the original native LabScenario boundary. No benchmark comparison, model, lab work, scan or approval is initiated by this inspector.
+
 ## Safe lab URL and manifest admission
 
 Before any model gateway, planner or target tool, the installed lab CLI admits only bounded printable HTTP(S) URLs with host identities, syntactically valid ports, and **no embedded username/password or URL fragments**. Every endpoint still passes the independent original lab scope fence. No DNS lookup, enumeration or external URL fetching is introduced. A local `--targets-file` must be an actual bounded regular file (not a symbolic link, FIFO, character device or directory); it is read without following the final pathname symlink. Invalid or rejected inputs, private catalog data and provider failures produce **generic CLI errors** rather than echoing source URLs, filenames or provider exception text. A model-review failure is explicitly marked incomplete rather than appearing as verified evidence.
