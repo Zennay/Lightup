@@ -49,6 +49,16 @@
 <p id="comparison-summary" class="status" aria-live="polite">Nothing is displayed until you request a preview or comparison. Maximum 400 lines per file, 2,048 characters per line, for bounded inspection.</p>
 <pre id="comparison-output" class="comparison" hidden aria-label="Private text comparison output"></pre>
 </section>
-<section aria-labelledby="review-title"><h2 id="review-title">5. Handle review material</h2><p>Files stay in tab memory only. Download a recovered original only after an explicit click. The workspace forgets plaintext when hidden or idle for five minutes.</p><div id="recovered" class="items"></div>
+<section aria-labelledby="redact-title">
+<h2 id="redact-title">5. Create a privacy-edited review copy</h2>
+<p>Prepare a distinct, <strong>unverified</strong> text derivative from one local draft. Replace common credentials and, optionally, one exact private term without altering the original. Each derivative receives a new SHA-256 fingerprint and stays unselected for sharing until you inspect it. This is <strong>not</strong> an assurance that no secrets remain.</p>
+<div class="grid">
+<label>Local source file<select id="redact-source" aria-label="Original file for privacy editing"><option value="">Choose a local draft</option></select></label>
+<label>Optional exact additional private term (6–128 characters)<input id="redact-term" type="password" autocomplete="off" maxlength="128" placeholder="Never saved or transmitted"></label></div>
+<label class="checkline"><input id="redact-credentials" type="checkbox" checked> Replace recognized credential patterns (best effort; unknown variants will remain)</label>
+<div class="actions"><button id="redact-create" type="button">Create local edited copy</button><button id="redact-clear" type="button" class="secondary">Clear private term</button></div>
+<p class="subtle" id="redact-summary" aria-live="polite">No copy prepared. Sensitive values are never shown in redaction summaries. Compare the new derivative with the original and inspect all contents before any human-approved handoff.</p>
+</section>
+<section aria-labelledby="review-title"><h2 id="review-title">6. Handle review material</h2><p>Files stay in tab memory only. Download a recovered original only after an explicit click. The workspace forgets plaintext when hidden or idle for five minutes.</p><div id="recovered" class="items"></div>
 <h3>Required real-world next steps</h3><ol><li>Have the actual client identify and approve their exact targets through the separately authenticated system.</li><li>Obtain independent operator approval, exact scope/risks and the active grant window.</li><li>Re-check revocation at action time and pass original security/privacy and CI release gates.</li></ol><p>Opening or sealing this packet performs none of those steps.</p></section>
 <footer><p id="message" class="message" role="status" aria-live="polite">Offline draft handling only. Never use this vault as execution permission.</p><small>No trackers · No network calls · No persistent browser storage · No target contact</small></footer></main></body></html>
