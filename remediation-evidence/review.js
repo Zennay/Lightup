@@ -800,7 +800,14 @@ $('clear').addEventListener('click',()=>{
  $('packTeam').replaceChildren();$('packCount').textContent='No original findings imported.';
  $('board').replaceChildren();renderRevisions();status('All source and local notes forgotten from this tab.');
 });
-$('save').addEventListener('click',()=>{if(!sourceHash)return;download('lightup-evidence-coordination-private.json',JSON.stringify(snapshot(),null,2),'application/json');changed=false;status('Private unsigned coordination notes downloaded; protect as sensitive data.');});
+$('save').addEventListener('click',()=>{
+ try{
+  if(!sourceHash)throw Error('Original source required before saving private notes.');
+  const privatePacket=snapshot();
+  download('lightup-evidence-coordination-private.json',JSON.stringify(privatePacket,null,2),'application/json');
+  changed=false;status('Private unsigned coordination notes downloaded; protect as sensitive data.');
+ }catch(err){status('Private save denied: '+err.message,true);}
+});
 $('aggregate').addEventListener('click',()=>{
  if(!sourceHash)return;const m=count();
  const data={kind:'lightup.remediation_evidence_aggregate',schema_version:1,disposition:'UNVERIFIED_AGGREGATE_ONLY',
@@ -808,7 +815,8 @@ $('aggregate').addEventListener('click',()=>{
  download('lightup-evidence-gaps-aggregate.json',JSON.stringify(data,null,2),'application/json');
 });
 $('brief').addEventListener('click',()=>{
- if(!sourceHash)return;
+ try{
+ if(!sourceHash)throw Error('Original source required before exporting a private brief.');
  snapshot(); /* refuse exporting untrusted human reference controls in a private brief */
  const m=count(),rows=source.map(f=>({f,c:casework?.get(f.finding_id),r:review.get(f.finding_id)}));
  const escape=s=>String(s).replace(/[\x00-\x1f\x7f\r\n]/g,' ').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\\/g,'\\\\').replace(/\|/g,'\\|').replace(/[\x60\[\]*_]/g,'\\$&').slice(0,800);
@@ -826,7 +834,8 @@ $('brief').addEventListener('click',()=>{
   for(const [key,,label] of EVIDENCE_FIELDS)lines.push('- '+label+': '+escape(r.evidence[key]||'NOT PROVIDED'));
  }
  lines.push('','Any real retest, evidence validation, closure or client/operator approval must occur in the separate authenticated original system.');
- download('lightup-evidence-coordination-private.md',lines.join('\n'),'text/markdown'); 
+ download('lightup-evidence-coordination-private.md',lines.join('\n'),'text/markdown');
+ }catch(err){status('Private brief denied: '+err.message,true);}
 });
 window.addEventListener('beforeunload',e=>{if(changed){e.preventDefault();e.returnValue='';}});
 status('Load an originally authorized five-column LightUp findings CSV to start.');
