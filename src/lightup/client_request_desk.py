@@ -43,6 +43,15 @@ def _client_access_epoch(db: DomainStore, ctx) -> str:
     return row["updated_at"]
 
 
+def _terminal_text(value: str) -> str:
+    """Show untrusted stored/imported text without ANSI or terminal control."""
+    return "".join(
+        char if char.isprintable() or char == "\n"
+        else "<U+" + format(ord(char), "04X") + ">"
+        for char in value
+    )
+
+
 def _ask(label: str, *, max_chars: int = _MAX_INPUT) -> str:
     value = input(label).strip()
     if len(value) > max_chars or "\x00" in value:
@@ -109,7 +118,7 @@ def _manual_revision(original) -> dict:
         raise ClientRequestError("risk must remain between 1 and 4")
     risk = int(risk_choice) if risk_choice else original_risk
     print("Existing client notes and constraints:")
-    print(original.notes)
+    print(_terminal_text(original.notes))
     notes_choice = _ask("Replace client notes? Type y or Enter to keep: ", max_chars=1)
     if notes_choice not in ("", "y", "Y"):
         raise ClientRequestError("choose y or Enter for unchanged notes")
@@ -135,7 +144,7 @@ def _decision(db: DomainStore, ctx, *, payload: dict, previous_id: str | None = 
     print("Assets (NOT an allowlist):")
     for asset in assets:
         print("  - " + asset)
-    print("Explanation and constraints: " + payload["notes"])
+    print("Explanation and constraints: " + _terminal_text(payload["notes"]))
     if previous_id:
         print("Previous rejected request: " + previous_id + " (left unchanged)")
     if payload.get("proposal_file_sha256"):
