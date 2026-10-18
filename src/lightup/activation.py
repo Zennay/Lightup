@@ -4,7 +4,9 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from enum import Enum
 from secrets import token_urlsafe
+from re import fullmatch
 
+from .capabilities import get_capabilities
 from .models import Authorization, Target
 from .scope import ScopeDecision, ScopePolicy, ScopeReason
 
@@ -145,11 +147,17 @@ class ActivationGate:
         # cannot change the original target/authorization during its own decision.
         if (
             type(capability_id) is not str
-            or not 1 <= len(capability_id) <= 256
-            or capability_id != capability_id.strip()
-            or any(ord(char) < 33 or ord(char) == 127 for char in capability_id)
+            or not 1 <= len(capability_id) <= 128
+            or fullmatch(r"[a-z][a-z0-9]*(?:-[a-z0-9]+)*", capability_id) is None
         ):
             raise PermissionError("capability identity is not canonical")
+        # A syntactically valid invented ID is not automatically an installed
+        # capability: the registry is an identity inventory, not permission.
+        if capability_id not in {
+            item.capability_id for item in get_capabilities()
+            if type(item.capability_id) is str
+        }:
+            raise PermissionError("capability is not registered")
         if (
             self.scope_policy is not self._bound_scope_policy
             or self.activation_policy is not self._bound_activation_policy
