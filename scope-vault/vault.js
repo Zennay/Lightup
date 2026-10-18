@@ -346,6 +346,16 @@
         notice("Encryption cancelled before creating a packet; no files were sent or downloaded.");
         return;
       }
+      // A client/export-only packet deliberately omits internal annotations.
+      // Auto-lock would irreversibly discard unsaved local work. Explicit
+      // acknowledgement prevents silently destroying the only review copy.
+      if (els.lockAfterExport.checked &&
+          (route !== "private-archive" || outgoing.length !== entries.length)) {
+        if (!window.confirm("DATA LOSS WARNING: this export does NOT preserve every document and private note in a full encrypted archive. Automatic lock will forget ALL current files and unsaved internal review notes from this tab after download.\n\nCreate a full private archive backup first, or uncheck automatic lock to continue editing. Explicitly discard the remaining workspace after export?")) {
+          notice("Export cancelled without clearing local notes. Save a full private archive or disable automatic lock before limited handoff.");
+          return;
+        }
+      }
       const salt = crypto.getRandomValues(new Uint8Array(16));
       const iv = crypto.getRandomValues(new Uint8Array(12));
       const payload = {
