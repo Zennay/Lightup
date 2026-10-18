@@ -74,14 +74,39 @@ def _covered(granted: str, requested: tuple[str, ...]) -> bool:
     return False
 
 
-def _candidate(grant: sqlite3.Row, request: sqlite3.Row) -> bool:
+def _time(value: str) -> datetime | None:
+    try:
+        result = datetime.fromisoformat(value)
+        return result if result.tzinfo is not None and result.utcoffset() is not None else None
+    except (TypeError, ValueError, OverflowError):
+        return None
+
+
+def _trusted_request_origin(request: sqlite3.Row, users: dict) -> bool:
+    """Current stored user roles are corroboration, never immutable consent proof."""
+    requester = users.get(request["requested_by"])
+    reviewer = users.get(request["decided_by"])
+    return bool(
+        requester is not None and reviewer is not None
+        and requester["role"] in {"client_admin", "client_member"}
+        and requester["client_id"] == request["client_id"]
+        and reviewer["role"] == "operator" and reviewer["client_id"] is None
+        and request["requested_by"] != request["decided_by"]
+    )
+
+
+def _candidate(grant: sqlite3.Row, request: sqlite3.Row, users: dict) -> bool:
     if grant["client_id"] != request["client_id"]:
         return False
     if request["status"] != "approved" or request["requested_mode"] != "authorized_assessment":
         return False
     if not request["decided_at"] or not request["decided_by"]:
         return False
-    if request["decided_by"] == request["requested_by"]:
+    if not _trusted_request_origin(request, users):
+        return False
+    issued = _time(grant["created_at"])
+    decided = _time(request["decided_at"])
+    if issued is None or decided is None or decided >= issued:
         return False
     assets = _assets(request["requested_assets_json"])
     granted = _assets(grant["assets_json"])
@@ -120,9 +145,10 @@ def _read_report(database: Path, *, client_id: str | None = None,
         con.execute("PRAGMA query_only=ON")
         con.execute("BEGIN")
         clients = _rows(con, "SELECT client_id,name FROM clients ORDER BY name")
+        users = _rows(con, "SELECT user_id,role,client_id FROM users ORDER BY user_id")
         engagements = _rows(con, "SELECT engagement_id,client_id,name,status FROM engagements ORDER BY created_at")
         requests = _rows(con, "SELECT request_id,client_id,requested_assets_json,requested_mode,requested_risk,status,requested_by,decided_by,decided_at FROM assessment_requests ORDER BY created_at")
-        grants = _rows(con, "SELECT grant_id,client_id,engagement_id,assets_json,max_risk,valid_from,valid_until FROM authorization_grants ORDER BY created_at")
+        grants = _rows(con, "SELECT grant_id,client_id,engagement_id,assets_json,max_risk,valid_from,valid_until,created_at FROM authorization_grants ORDER BY created_at")
         con.rollback()
 
     # Limit private exports to the one explicitly selected operator tenant or job.
@@ -149,6 +175,7 @@ def _read_report(database: Path, *, client_id: str | None = None,
         grants = [g for g in grants if g["engagement_id"] in included_engagement_ids]
 
     by_client = {c["client_id"]: c["name"] for c in clients}
+    users_by_id = {u["user_id"]: u for u in users}
     by_engagement = {e["engagement_id"]: e for e in engagements}
     requests_by_client: dict[str, list] = defaultdict(list)
     for req in requests:
@@ -164,12 +191,17 @@ def _read_report(database: Path, *, client_id: str | None = None,
         own_requests = requests_by_client[own]
         own_grants = by_engagement_grants[engagement["engagement_id"]]
         approved = sum(r["status"] == "approved" for r in own_requests)
+        untrusted_approved = sum(
+            r["status"] == "approved" and not _trusted_request_origin(r, users_by_id)
+            for r in own_requests
+        )
         entry = {
             "client": by_client.get(own, "(missing client)"),
             "engagement": engagement["name"],
             "engagement_status": engagement["status"],
             "requests": len(own_requests),
             "approved_requests": approved,
+            "untrusted_approved_requests": untrusted_approved,
             "grants": len(own_grants),
             "grant_findings": [],
         }
@@ -182,12 +214,16 @@ def _read_report(database: Path, *, client_id: str | None = None,
             if grant["client_id"] != own:
                 problems.append("TENANT_LINEAGE_MISMATCH")
             else:
-                candidates = [r for r in own_requests if _candidate(grant, r)]
+                candidates = [r for r in own_requests if _candidate(grant, r, users_by_id)]
                 if not candidates:
                     problems.append("NO_COMPATIBLE_APPROVED_REQUEST")
                 elif len(candidates) > 1:
                     problems.append("AMBIGUOUS_APPROVED_REQUEST_MATCH")
                 # Even exactly one candidate CANNOT bind this grant to that request.
+            if _time(grant["created_at"]) is None:
+                problems.append("INVALID_GRANT_CREATION_TIME")
+            if untrusted_approved:
+                problems.append("UNTRUSTED_APPROVED_REQUEST_ORIGIN")
             if _assets(grant["assets_json"]) is None:
                 problems.append("INVALID_GRANT_ASSETS")
             window = _utc_window(grant)
@@ -222,6 +258,7 @@ def _read_report(database: Path, *, client_id: str | None = None,
         "limitations": [
             "Authenticated operator's local offline snapshot, not fresh consent evidence.",
             "There is no durable grant-to-approved-request foreign key in the current domain schema.",
+            "A candidate needs current user-role coherence and chronologically prior administrative approval; current roles cannot prove historical provenance, independent consent, or revocation.",
             "A compatible requested asset/risk is only a conservative comparison; canonical scope, identity, ownership, approval provenance, and runtime revocation are not verified.",
             "A within_window grant is NOT currently authorized. Review does not issue, edit or revoke grants.",
             "All grant records remain unverified. Do not merge, deploy or scan on this report.",
@@ -291,6 +328,7 @@ def _render_html(report: dict) -> str:
             '<p class="muted">Engagement: ' + esc(record["engagement_status"]) +
             " · Requests: " + esc(record["requests"]) +
             " · Recorded approvals: " + esc(record["approved_requests"]) +
+            " · Untrusted approved request origins: " + esc(record["untrusted_approved_requests"]) +
             " · Grants: " + esc(record["grants"]) + "</p>"
             "<p>" + esc(record["attention"]) + "</p>" + table + "</section>"
         )
