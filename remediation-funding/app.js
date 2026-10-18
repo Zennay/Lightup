@@ -88,6 +88,9 @@ function display(model){
  risk.append(stat('Potential urgent funding gap (min)',model.critical_high_potential_unfunded_hours_minimum+' h'));
  risk.append(stat('Potential urgent funding gap (max)',model.critical_high_potential_unfunded_hours_maximum+' h'));
  risk.append(stat('Critical/high backlog outside proposed plan',model.critical_high_outside_source_plan_hours+' h'));
+ risk.append(stat('Urgent work — optimistic minimum budget',currency(model.currency,model.urgent_work_budget_best_case_minimum)));
+ risk.append(stat('Urgent work — conservative budget threshold',currency(model.currency,model.urgent_work_budget_conservative_threshold)));
+ risk.append(stat('Additional funding toward conservative threshold',currency(model.currency,model.additional_funding_for_conservative_urgent_coverage)));
  const riskTable=el('risk-weeks');riskTable.replaceChildren();
  for(const riskWeek of model.weekly_critical_high_funding_bounds){
   const tr=mk('tr');
