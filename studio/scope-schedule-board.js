@@ -19,7 +19,7 @@ const exactKeys = (v,allowed) => Object.keys(v).every(k => allowed.has(k));
 const validString = (s,n) => typeof s === 'string' && s.length <= n;
 const str = s => String(s == null ? '' : s);
 const minutes = v => Number.isInteger(v) && v >= -840 && v <= 840;
-let entries = [], blackouts = [], anchorUTC = 0, anchorChangedByUser = false;
+let entries = [], blackouts = [], scenarioShifts = new Map(), anchorUTC = 0, anchorChangedByUser = false;
 
 function validLocal(value) {
   if (value === null) return true;
@@ -104,7 +104,14 @@ function append(parent,tag,value,klass) {
 }
 function formatUTC(n){return new Date(n).toISOString().replace('.000Z',' UTC').replace('T',' ');}
 function fmtDate(n){return new Date(n).toISOString().slice(0,10);}
-function shown(){return entries.filter(e=>e.interval.state==='resolved');}
+function shown(){
+  return entries.filter(e=>e.interval.state==='resolved').map(e=>{
+    const shift=scenarioShifts.get(e.key);
+    return shift===undefined ? {...e,scenario:false,original:e.interval} :
+      {...e,interval:{state:'resolved',start:shift,end:shift+(e.interval.end-e.interval.start)},
+        scenario:true,original:e.interval};
+  });
+}
 function timeClashes(list) {
   const pairs=[],active=new Set();
   for(let i=0;i<list.length;i++)for(let j=i+1;j<list.length;j++){
@@ -156,6 +163,7 @@ function render(){
     if(e.interval.start<b.end && b.start<e.interval.end){blockHits.push([i,j]);active.add(i);}
   }));
   $('blocked').textContent=blackouts.length;
+  $('changed').textContent=scenarioShifts.size;
   renderBlocks();
   $('total').textContent=entries.length;$('timed').textContent=timed.length;
   $('unscheduled').textContent=unsafe.length;$('clashes').textContent=pairs.length+blockHits.length;
@@ -168,19 +176,20 @@ function render(){
   for(const {entry:e,i} of ordered){
     const row=document.createElement('div');row.className='lane';lanes.append(row);
     const label=document.createElement('div');label.className='label';row.append(label);
-    append(label,'strong',e.name);
-    append(label,'span','Risk '+e.risk+' · '+e.mode,'pill');
+    append(label,'strong',e.name+(e.scenario?' · WHAT-IF':' '));
+    append(label,'span','Risk '+e.risk+' · '+e.mode+(e.scenario?' · SHIFTED':''),'pill');
     const track=document.createElement('div');track.className='track';track.style.setProperty('--days',days);row.append(track);
     const start=Math.max(e.interval.start,lo),end=Math.min(e.interval.end,hi);
     if(start<end){
       const bar=document.createElement('div');
-      bar.className='bar'+(e.risk===4?' high':'')+(active.has(i)?' conflict':'');
+      bar.className='bar'+(e.risk===4?' high':'')+(e.scenario?' scenario':'')+(active.has(i)?' conflict':'');
       bar.style.left=100*(start-lo)/(days*DAY)+'%';
       bar.style.width=100*(end-start)/(days*DAY)+'%';
       bar.title=formatUTC(e.interval.start)+' → '+formatUTC(e.interval.end)+'; DRAFT ONLY';
       track.append(bar);
     } else append(track,'span','Outside visible horizon','muted');
     append(label,'small',formatUTC(e.interval.start)+' → '+formatUTC(e.interval.end));
+    if(e.scenario)append(label,'small','Original: '+formatUTC(e.original.start));
   }
   blackouts.forEach((b,j)=>{
     const row=document.createElement('div');row.className='lane';lanes.append(row);
@@ -234,6 +243,7 @@ function render(){
       formatUTC(proposed.start)+' → '+formatUTC(proposed.end));
     append(box,'small','Suggestion only; never modifies source request or authenticates resource ownership.');
   }
+  renderScenarios();
 }
 function setAnchor(){
   const v=$('anchor').value;
@@ -247,6 +257,115 @@ $('anchor').value=new Date().toISOString().slice(0,10);
 setAnchor();
 $('anchor').addEventListener('change',()=>{anchorChangedByUser=true;setAnchor();});
 $('horizon').addEventListener('change',render);
+function chosenScenario(){
+  const index=Number($('scenarioSelect').value);
+  return $('scenarioSelect').value!=='' && Number.isSafeInteger(index) && index>=0 &&
+      index<entries.length && entries[index].interval.state==='resolved' ? entries[index] : null;
+}
+function renderScenarios(){
+  const select=$('scenarioSelect'),old=select.value;
+  select.replaceChildren();
+  append(select,'option','Select a resolved draft').value='';
+  entries.forEach((e,i)=>{
+    if(e.interval.state!=='resolved')return;
+    const option=append(select,'option',e.name+' · #'+(i+1)+(scenarioShifts.has(e.key)?' (shifted)':''));
+    option.value=String(i);
+  });
+  select.value=Array.from(select.options).some(o=>o.value===old) ? old : '';
+  const chosen=chosenScenario();
+  $('scenarioApply').disabled=!chosen;
+  $('scenarioSuggest').disabled=!chosen;
+  $('scenarioRevert').disabled=!chosen||!scenarioShifts.has(chosen.key);
+  $('scenarioClear').disabled=!scenarioShifts.size;
+  $('scenarioExport').disabled=!entries.length;
+  const changes=$('scenarioChanges');changes.replaceChildren();
+  if(!scenarioShifts.size)append(changes,'p','No time adjustments proposed.','muted');
+  entries.forEach((e,i)=>{
+    const shifted=scenarioShifts.get(e.key);
+    if(shifted===undefined)return;
+    const box=document.createElement('div');box.className='item';changes.append(box);
+    append(box,'strong',e.name+' · #'+(i+1));
+    const duration=e.interval.end-e.interval.start;
+    append(box,'div','Original: '+formatUTC(e.interval.start)+' → '+formatUTC(e.interval.end));
+    append(box,'div','What-if: '+formatUTC(shifted)+' → '+formatUTC(shifted+duration));
+  });
+  $('scenarioPreview').textContent=JSON.stringify(scenarioPacket(),null,2);
+}
+function scenarioPacket(){
+  const current=shown();
+  const {pairs}=timeClashes(current);
+  const blockHits=current.reduce((n,e)=>n+blackouts.filter(b=>e.interval.start<b.end&&b.start<e.interval.end).length,0);
+  return {
+    kind:'lightup.scope_schedule_scenario',schema_version:1,
+    disposition:'LOCAL_REVIEW_ONLY',source:'UNTRUSTED_USER_DRAFTS',
+    authenticated:false,authorization:false,client_consent:false,
+    operator_consent:false,grant:false,risk_approved:false,
+    scan:false,execution:false,release:false,
+    note:'Ordinal labels reference only this tab session. Exact source Studio proposals remain unchanged. No actual reservation or permission.',
+    proposals:entries.map((e,i)=>{
+      const proposed=scenarioShifts.get(e.key);
+      const valid=e.interval.state==='resolved';
+      const duration=valid ? e.interval.end-e.interval.start:0;
+      return {local_ordinal:i+1,state:valid?'DRAFT_PLANNED':'HOLD_MISSING_UTC',
+        original_start_utc:valid?new Date(e.interval.start).toISOString():null,
+        original_end_utc:valid?new Date(e.interval.end).toISOString():null,
+        scenario_start_utc:valid?new Date(proposed===undefined?e.interval.start:proposed).toISOString():null,
+        scenario_end_utc:valid?new Date((proposed===undefined?e.interval.start:proposed)+duration).toISOString():null,
+        shifted:proposed!==undefined};
+    }),
+    unavailable_utc:blackouts.map(b=>({start:new Date(b.start).toISOString(),end:new Date(b.end).toISOString()})),
+    proposed_time_overlap_pairs:pairs.length,proposed_unavailability_overlap_pairs:blockHits
+  };
+}
+function applyScenario(start){
+  const selected=chosenScenario();
+  if(!selected){$('status').textContent='Select a resolved original proposal first.';return;}
+  const duration=selected.interval.end-selected.interval.start;
+  const upper=Date.UTC(2100,0,1);
+  if(start===null||start< Date.UTC(2020,0,1)||start+duration>upper){
+    $('status').textContent='Choose a valid UTC start from 2020 through 2099 that preserves the proposed duration.';return;
+  }
+  if(start===selected.interval.start)scenarioShifts.delete(selected.key);
+  else scenarioShifts.set(selected.key,start);
+  $('status').textContent='Local what-if scenario updated; original Studio proposal unchanged. Review all collisions.';
+  render();
+}
+$('scenarioSelect').addEventListener('change',()=>{
+  const e=chosenScenario();
+  $('scenarioStart').value=e?new Date(scenarioShifts.get(e.key)??e.interval.start).toISOString().slice(0,16):'';
+  renderScenarios();
+});
+$('scenarioApply').addEventListener('click',()=>applyScenario(parseUTCWallTime($('scenarioStart').value)));
+$('scenarioSuggest').addEventListener('click',()=>{
+  const selected=chosenScenario(),current=shown();
+  if(!selected)return;
+  const e=current.find(item=>item.key===selected.key);
+  if(!e)return;
+  const candidate=suggest(e,current);
+  if(!candidate){$('status').textContent='No supported alternative slot found.';return;}
+  $('scenarioStart').value=new Date(candidate.start).toISOString().slice(0,16);
+  applyScenario(candidate.start);
+});
+$('scenarioRevert').addEventListener('click',()=>{
+  const selected=chosenScenario();if(!selected)return;
+  scenarioShifts.delete(selected.key);
+  $('scenarioStart').value=new Date(selected.interval.start).toISOString().slice(0,16);
+  render();
+});
+$('scenarioClear').addEventListener('click',()=>{
+  scenarioShifts.clear();$('scenarioStart').value='';
+  $('status').textContent='All what-if shifts reverted. Original Studio drafts were always unchanged.';
+  render();
+});
+$('scenarioExport').addEventListener('click',()=>{
+  if(!entries.length)return;
+  const blob=new Blob([JSON.stringify(scenarioPacket(),null,2)+'\n'],{type:'application/json'});
+  const url=URL.createObjectURL(blob),a=document.createElement('a');
+  a.href=url;a.download='lightup-schedule-review-only.json';
+  document.body.append(a);a.click();a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),500);
+  $('status').textContent='Unsigned review-only scenario exported locally. No approved schedule or execution rights.';
+});
 $('addBlock').addEventListener('click',()=>{
   if(blackouts.length>=30){$('status').textContent='Unavailable-period limit is 30 per tab.';return;}
   const start=parseUTCWallTime($('blockStart').value);
@@ -299,7 +418,7 @@ $('files').addEventListener('change',async ev=>{
 $('clear').addEventListener('click',()=>{
   if(!entries.length && !blackouts.length)return;
   if(!window.confirm('Clear all imported drafts and unavailable periods from this tab?'))return;
-  entries=[];blackouts=[];$('status').textContent='Local drafts cleared; no persisted history.';render();
+  entries=[];blackouts=[];scenarioShifts.clear();$('scenarioStart').value='';$('status').textContent='Local drafts and scenarios cleared; no persisted history.';render();
 });
 $('print').addEventListener('click',()=>{if(entries.length)window.print();});
 function icsTimestamp(n){return new Date(n).toISOString().replace(/[-:]/g,'').replace('.000Z','Z');}
