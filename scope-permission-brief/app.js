@@ -272,11 +272,17 @@ function download(){
  document.body.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
 }
 async function loadFile(file){
- // Capture only privacy-minimal, unverified previous review context before clearing it.
+ // Transactional replace: a malformed NEW file must not silently erase the current
+ // source or its human-only notes. No source-change event fires until admission succeeds.
  const priorRevision=exportModel();
- hold('Reading draft');
- if(!file||file.size===0||file.size>MAX_BYTES){hold('Missing or oversized file');return;}
- const token=epoch;
+ const token=++epoch;
+ const sourceLabel=priorRevision?'Previous source and human replies still retained':'No accepted source';
+ $('sourceState').textContent='Reading proposed source · '+sourceLabel+' · HOLD';
+ if(!file||file.size===0||file.size>MAX_BYTES){
+  $('sourceState').textContent='New file missing or too large; '+sourceLabel+' · HOLD';
+  $('source').value='';
+  return;
+ }
  try{
   const bytes=await file.arrayBuffer();
   assert(bytes.byteLength>0&&bytes.byteLength<=MAX_BYTES,'Oversized source');
@@ -289,23 +295,27 @@ async function loadFile(file){
   const digest=await crypto.subtle.digest('SHA-256',bytes);
   const sha256=Array.from(new Uint8Array(digest),n=>n.toString(16).padStart(2,'0')).join('');
   if(token!==epoch)return;
+  if(priorRevision?.source_sha256===sha256){
+   $('sourceState').textContent='Exact same source bytes already loaded · previous preparation retained · REVIEW_ONLY/HOLD';
+   $('source').value='';
+   return;
+  }
+  // Only NOW invalidate any old self-labelled returns, statuses and current source.
+  document.dispatchEvent(new CustomEvent('lightup:brief-source-change'));
   current={draft,window,sha256};
   questions=questionIds(draft,window).map(code=>({code,role:questionCatalog[code][0],status:'unanswered'}));
-  document.dispatchEvent(new CustomEvent('lightup:brief-source-change'));
-
   $('workspace').hidden=false;$('export').disabled=false;$('textExport').disabled=false;$('print').disabled=false;
   $('sourceState').textContent='Source loaded · '+draft.requested_assets.length+' proposed assets · REVIEW_ONLY/HOLD';
   render();
   document.dispatchEvent(new CustomEvent('lightup:brief-revision',{
    detail:{before:priorRevision,after:exportModel()}
   }));
- }catch(_){if(token===epoch)hold('Invalid, ambiguous or unsafe Studio draft');}
+ }catch(_){
+  if(token!==epoch)return;
+  $('sourceState').textContent='New Studio source rejected without replacing existing data · '+sourceLabel+' · HOLD';
+  $('source').value='';
+ }
 }
-/* Only privacy-minimal snapshot/strict parser are exposed to the adjacent offline reconciliation view. */
-window.LightUpBriefRuntime=Object.freeze({
- snapshot:()=>{const m=exportModel();return m?JSON.parse(JSON.stringify(m)):null;},
- assertUnambiguousJSON
-});
 $('source').addEventListener('change',event=>loadFile(event.target.files?.[0]));
 $('clear').addEventListener('click',()=>{hold('Source forgotten');document.dispatchEvent(new CustomEvent('lightup:brief-forget'));$('source').value='';$('reply').value='';$('preview').textContent='';$('receipt').textContent='';});
 $('export').addEventListener('click',download);
