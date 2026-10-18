@@ -21,6 +21,7 @@ from pathlib import Path
 import sqlite3
 import stat
 import sys
+import unicodedata
 import warnings
 from urllib.parse import quote
 
@@ -163,6 +164,14 @@ def _source_snapshot(db: Path, *, engagement_id: str, client_id: str | None,
         ).fetchall()
         if len(grants) > MAX_ROWS:
             raise ValueError("too many stored grants; narrow source offline")
+        if any(
+            type(g["grant_id"]) is not str or not 1 <= len(g["grant_id"]) <= 180
+            or (g["approved_request_id"] is not None
+                and (type(g["approved_request_id"]) is not str
+                     or not 1 <= len(g["approved_request_id"]) <= 180))
+            for g in grants
+        ):
+            raise ValueError("malformed stored grant/request lineage identity")
         cross_tenant = sum(g["client_id"] != engagement["client_id"] for g in grants)
         if cross_tenant:
             # Do not expose even a plausible shortlist amid tenant corruption.
@@ -175,6 +184,10 @@ def _source_snapshot(db: Path, *, engagement_id: str, client_id: str | None,
         items = []
         matched = []
         for ordinal, request in enumerate(operator_requests, 1):
+            request_id = request["request_id"]
+            if (type(request_id) is not str or not (1 <= len(request_id) <= 180)
+                    or any(ord(ch) < 32 or ord(ch) == 127 for ch in request_id)):
+                raise ValueError("malformed stored request identity")
             approved = request["status"] == "approved"
             compatible = approved and approved_request_is_compatible(
                 request,
@@ -340,6 +353,21 @@ def _html(report: dict) -> str:
     )
 
 
+def _safe_spreadsheet_cell(value: object) -> object:
+    if type(value) is not str:
+        return value
+    # Inspect NFKC text while stripping zero-width controls and combining
+    # format marks: a hidden mark before =, +, - or @ cannot hide a formula.
+    inspection = unicodedata.normalize("NFKC", value)
+    inspection = "".join(ch for ch in inspection if unicodedata.category(ch)
+                         not in {"Mn", "Me", "Cf", "Cc"})
+    inspection = inspection.lstrip()
+    if inspection.startswith(("=", "+", "-", "@")) or value.startswith(
+            ("\t", "\r", "\n", "\ufeff")):
+        return "'" + value
+    return value
+
+
 def _csv(report: dict) -> str:
     stream = io.StringIO(newline="")
     w = csv.writer(stream, lineterminator="\r\n")
@@ -351,9 +379,7 @@ def _csv(report: dict) -> str:
         values = [(";".join(row[k]) if k == "review_flags_non_authorizing" else
                    row[k] if row[k] is not None else "") for k in cols]
         # Every nonnumeric cell is escaped to prevent spreadsheet formulas.
-        safe = [("'" + v) if type(v) is str and
-                (v.lstrip("\ufeff \t\r\n").startswith(("=", "+", "-", "@")) or
-                 v.startswith(("\t", "\r", "\n"))) else v for v in values]
+        safe = [_safe_spreadsheet_cell(v) for v in values]
         w.writerow(safe + ["REVIEW_ONLY", "false", "false", "false"])
     return stream.getvalue()
 

@@ -46,3 +46,7 @@ Original DomainStore password authentication **does** mutate original sign-in bo
 INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD. A compatible administrative request is not authentic client/operator consent, a grant or live permission; the actual source owner must revalidate request provenance, tenant, scope, risk and window inside the later write transaction. This CLI cannot approve, issue/revoke a grant, create accounts, dispatch handlers, touch targets, scan, retest, deploy or release. Real authenticated independent client and operator consent including at-use revocation, independent security/privacy and original exact-head hosted + named permanent VPS CI and human GO remain mandatory.
 
 Separate original owners: [source PR #1570](https://github.com/Zennay/Lightup/pull/1570) · [issue #177](https://github.com/Zennay/Lightup/issues/177). No QA/regression/testsuites authored or run.
+
+## Private review output integrity
+
+Source importer refuses malformed historical request/grant lineage identities and cross-tenant grant rows before producing an apparently valid shortlist. CSV additionally neutralizes Unicode-normalized and combining-mark-obscured spreadsheet formula prefixes when original IDs are explicitly included. This is a **safe review export** only, not a claim that the original underlying SQL tables are fully repaired or permitted for actual activation.
