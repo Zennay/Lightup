@@ -3,6 +3,14 @@
 'use strict';
 const ACTIVITIES=['passive_analysis','configuration_review','private_lab_network_checks'];
 const STAGES=['client_evidence','scope_boundary','client_consent','operator_review','window_stop','privacy_handoff'];
+const FOLLOWUPS=Object.freeze({
+ client_evidence:'Re-request authentic client and asset ownership evidence for the changed scope through a separately authenticated channel.',
+ scope_boundary:'Review complete requested and excluded scope using the authoritative policy engine; do not infer permission from literal comparison.',
+ client_consent:'Request fresh explicit client consent bound to the precise revised proposal in the authenticated workflow.',
+ operator_review:'Arrange independent operator re-review against the precise updated scope; do not treat prepared paperwork as approval.',
+ window_stop:'Reconfirm risk escalation, approved UTC window, STOP route and action-time revocation in the authorized system.',
+ privacy_handoff:'Review evidence minimization, privacy handling and incident/rollback instructions for the revised activities.'
+});
 function compare(original,updated){
  if(!original||!updated||original.kind!=='lightup.scope_proposal_draft'||
   updated.kind!==original.kind||original.schema_version!==1||updated.schema_version!==1||
@@ -70,6 +78,7 @@ function compare(original,updated){
   risk_approved:false,grant:false,revocation_checked:false,execution:false,scan:false,release:false,
   summary:changes,affectedStages:affected,
   scopeMembershipUnverified:scopeConcern,
+  followups:affected.map(stage=>({stage,action:FOLLOWUPS[stage]})),
   message:!changes.length?'No listed Studio proposal fields differ. Matching drafts still do not prove identity, consent or approval.':
    'Changes require independent human review. Literal asset comparisons are NOT CIDR coverage or DNS membership decisions.'
  };
