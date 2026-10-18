@@ -34,16 +34,25 @@ def original_revision_sha256(record: AssessmentRequestRecord) -> str:
 
 
 def _covered(asset: str, candidates: tuple[str, ...]) -> bool:
-    """Conservative, literal hostname or same-family network coverage only."""
+    """Literal hosts or the exact union of declared same-family IP networks.
+
+    Adjacent CIDRs such as two /25 blocks can describe the same range as one
+    /24; a text-only or single-block comparison falsely calls that expansion.
+    This is an offline proposal comparison, not authorization to scan.
+    """
+    from ipaddress import collapse_addresses
+
     kind, target = _asset(asset)
+    same_family = []
     for candidate in candidates:
         source_kind, source = _asset(candidate)
         if kind == source_kind == "host" and target == source:
             return True
-        if kind == source_kind == "network" and (
-            target.version == source.version and target.subnet_of(source)
-        ):
-            return True
+        if kind == source_kind == "network" and target.version == source.version:
+            same_family.append(source)
+    if kind == "network":
+        return any(target.subnet_of(network)
+                   for network in collapse_addresses(same_family))
     return False
 
 
