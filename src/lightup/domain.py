@@ -878,7 +878,9 @@ class DomainStore:
                 "SELECT role, client_id FROM users WHERE user_id=?", (ctx.user_id,),
             ).fetchone()
             owning_engagement = con.execute(
-                "SELECT client_id,status FROM engagements WHERE engagement_id=?",
+                "SELECT e.client_id,e.status,c.status AS client_status "
+                "FROM engagements AS e JOIN clients AS c ON c.client_id=e.client_id "
+                "WHERE e.engagement_id=?",
                 (engagement.engagement_id,),
             ).fetchone()
             if (
@@ -887,6 +889,7 @@ class DomainStore:
                 or owning_engagement is None
                 or owning_engagement["client_id"] != engagement.client_id
                 or owning_engagement["status"] == EngagementStatus.CLOSED.value
+                or owning_engagement["client_status"] != "active"
             ):
                 con.rollback()
                 raise RoleError("grant requires a current operator and an owned, open engagement")
@@ -961,11 +964,14 @@ class DomainStore:
             rows = con.execute(
                 "SELECT g.* FROM authorization_grants AS g "
                 "JOIN engagements AS e ON e.engagement_id=g.engagement_id "
+                "JOIN clients AS c ON c.client_id=e.client_id "
                 "WHERE g.engagement_id=? AND e.client_id=? "
+                "AND e.status<>? AND c.status='active' "
                 "AND g.client_id=e.client_id "
                 "AND g.approved_request_id IS NOT NULL "
                 "ORDER BY g.created_at DESC",
-                (engagement.engagement_id, engagement.client_id),
+                (engagement.engagement_id, engagement.client_id,
+                 EngagementStatus.CLOSED.value),
             ).fetchall()
             for row in rows:
                 try:
