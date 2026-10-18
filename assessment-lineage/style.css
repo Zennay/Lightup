@@ -50,3 +50,8 @@ textarea:focus-visible{outline:3px solid var(--hold);outline-offset:3px}
   #printAnonymous tr{break-inside:avoid}
   #printAnonymous th,#printAnonymous td{border:1px solid #555!important}
 }
+
+.private-mismatch{border-left:4px solid var(--hold)}
+.private-mismatch #mismatchDetails{margin-top:.8rem}
+.private-mismatch td{overflow-wrap:anywhere;max-width:380px}
+@media print{.private-mismatch{display:none!important}}
