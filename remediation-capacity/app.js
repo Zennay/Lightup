@@ -550,6 +550,27 @@
     setFeedback('Private, static-label aggregate discussion register exported. No cases or identities included.');
   });
 
+
+  el('export-casework-pressure').addEventListener('click',()=>{
+    if(!reviewedCasework||!el('casework-ack').checked||!result)return;
+    if(!window.confirm('Export private aggregate planned-hours-at-risk by week? These values are HUMAN NOTES only and do not create assignments, scan access, verified fixes or booked work.'))return;
+    const quote=value=>'"'+String(value).replace(/"/g,'""')+'"';
+    const keys=['week','week_start_utc','allocated_estimated_hours','locally_blocked_estimated_hours',
+      'critical_high_locally_blocked_estimated_hours','source_regression_locally_completed_estimated_hours'];
+    const rows=[keys.map(quote).join(',')];
+    for(const week of reviewedCasework.weekly_blocker_pressure) {
+      rows.push([
+        week.week,week.start,week.provisionally_allocated_hours,
+        week.locally_blocked_estimated_hours,
+        week.locally_blocked_critical_high_estimated_hours,
+        week.source_regression_locally_completed_estimated_hours
+      ].map(quote).join(','));
+    }
+    download('lightup-casework-weekly-pressure.csv',rows.join('\r\n')+'\r\n',
+      'text/csv;charset=utf-8');
+    setFeedback('Anonymous, aggregate only weekly Casework coordination pressure exported for human review.');
+  });
+
   // Source-bound, user-controlled resume: no browser persistence or implicit restore.
   function numericWorkingOptions(options) {
     if(!options)throw new Error('Generate a current proposal before saving');
