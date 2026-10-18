@@ -150,7 +150,7 @@ function project(source,raw) {
   return Object.freeze({
     week:w.week,start:w.start,planned_cost:w.proposed_cost,
     funded_cost:Math.round((fundedSetup+spend)*100)/100,
-    provisionally_funded_hours:Math.round(hours*10)/10,
+    provisionally_funded_hours:Math.floor((hours+1e-10)*10)/10,
     proposed_hours:w.proposed_hours
   });
  });
@@ -234,7 +234,7 @@ function stagedFunding(source,raw,percentages) {
   const unitLabor=weeklyCost[i].proposed_hours
    ?laborProposed/weeklyCost[i].proposed_hours:0;
   const fundedHours=unitLabor===0?0:Math.min(weeklyCost[i].proposed_hours,laborPaid/unitLabor);
-  const roundedHours=Math.round(fundedHours*10)/10;
+  const roundedHours=Math.floor((fundedHours+1e-10)*10)/10;
   assignedTotal+=roundedHours;
   const risk=source.weeks[i].risk_hours;
   const urgent=risk.critical+risk.high;
