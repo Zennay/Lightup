@@ -53,6 +53,22 @@ A separately authenticated REAL operator, different from the original STOP actor
 
 The additional table records acknowledgment identity, original STOP ID and timestamp in one database transaction, UNIQUE per STOP; it cannot remove, reverse, supersede or release the original STOP. Two different accounts are required for the acknowledgment event; this is human coordination, **not** two-party client/operator permission to execute. If the original STOP is corrupt/missing or the operator is not currently active in the original users table, the action fails HOLD without recording a false acknowledgment.
 
+## Optional offline graphical STOP console
+
+Open the new local stop-console/standalone.html directly in a trusted modern browser. It is a single responsive HTML/CSS/JS file, with a restrictive offline Content Security Policy; no server, network request, scanner, account password, external package or browser persistence. It shows original CLI data as declared/unverified source and never decides permission.
+
+First export a private status artifact from the original CLI in a trusted local terminal (not a repo path). For example:
+
+    umask 077
+    PYTHONPATH=src python -m lightup.revocation_stop list \
+      --database /private/path/lightup.sqlite \
+      --email your-existing-account@example.invalid \
+      > /private/path/NEW-engagement-inbox.json
+
+The list and pending commands deliberately exit 2 because they only inspect. The private file contains original engagement IDs and should never be committed, publicly uploaded or emailed unencrypted. Use the graphical file chooser to import up to five real original CLI JSON exports: the authenticated engagement inbox, operator pending STOP inbox and selected status history. The desk validates bounded record shapes and literal-false authority flags, renders IDs as text rather than executable HTML, allows local filtering and prints a review brief. The exported aggregate JSON contains counts only, never private identifiers, original reasons, email addresses, timestamps or engagement labels. Import failures preserve the prior workspace. A clearly labeled fictional demo is available without any private source.
+
+The console cannot send a STOP, acknowledge a STOP, sign in a user or resume a task. These remain native credential-protected CLI actions; the browser only displays previously obtained private source data. A correctly shaped imported JSON file is NOT authenticated evidence or permission. No source file should be trusted to override original authorization or consent policy.
+
 ## Future required action-time integration
 
 The module exposes deny_only_stop_state(db_path, engagement_id=..., client_id=...) for the ORIGINAL runtime owner to install as an additional veto alongside existing canonical scope, client/operator consent, request/grant/activation, risk and tool policy. This function returns STOP_ACTIVE, NO_STOP_RECORDED or HOLD; it returns veto_execution true for STOP_ACTIVE or HOLD, and ALWAYS returns authorization_granted false, execution_allowed false, release_approved false. NO_STOP_RECORDED is not proof of authorization and is never an allow permit. The existing live runtime **does not yet call this module**. A STOP entered here does not magically stop an already running or unrelated process. No concurrency or distributed kill guarantee is claimed.
