@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src 'none'; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<title>LightUp | Emergency STOP Desk</title>
+<style>
+:root{font-family:Inter,system-ui,-apple-system,Segoe UI,sans-serif;color:#f3f4fa;background:#10121c;font-size:15px}
+*{box-sizing:border-box}body{margin:0;min-height:100vh;background:radial-gradient(circle at 80% 1%,#263154 0,transparent 38%),#10121c}
+.container{max-width:1260px;margin:auto;padding:26px}header{display:flex;align-items:center;justify-content:space-between;gap:20px;margin-bottom:28px}
+.brand{font-size:21px;font-weight:800;letter-spacing:.01em}.brand span{color:#97aeff}.pill{font-size:12px;font-weight:700;border:1px solid #e4a46a;color:#ffcc99;border-radius:40px;padding:9px 15px;white-space:nowrap}
+h1{font-size:clamp(29px,4.5vw,47px);letter-spacing:-.05em;line-height:1.1;margin:4px 0 10px}h2{font-size:17px;letter-spacing:-.02em;margin:0 0 15px}p{line-height:1.55;color:#aeb7ce}
+.lead{max-width:780px;margin-bottom:25px}.grid{display:grid;grid-template-columns:1.3fr 1fr;gap:16px}.card{border:1px solid #30374e;border-radius:17px;background:#191e30;padding:21px;min-width:0;box-shadow:0 12px 34px #070a1250}
+.card p{font-size:13px;margin:10px 0 0}.action{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}
+label.import,button{font:inherit;font-size:13px;border-radius:9px;padding:11px 16px;cursor:pointer;font-weight:700;background:#9cacff;color:#14192b;border:0}
+button.secondary{color:#e3e7ff;background:#2b344f;border:1px solid #536387}button:focus-visible,label:focus-within,input:focus-visible{outline:3px solid #abbaff;outline-offset:3px}
+input[type=file]{position:absolute;width:1px;height:1px;opacity:0}input[type=search]{background:#11182c;color:white;border:1px solid #44506e;border-radius:10px;padding:11px 14px;width:100%;max-width:310px}
+.kpis{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin:18px 0}
+.kpi{background:#191e30;border:1px solid #30374e;border-radius:15px;padding:19px}.kpi strong{display:block;font-size:30px;font-variant-numeric:tabular-nums;margin:7px 0}.kpi small{font-size:12px;color:#aeb7ce}
+.layout{display:grid;grid-template-columns:1fr 340px;gap:16px}
+.toolbar{display:flex;gap:12px;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap}
+.tag{padding:4px 8px;font-size:11px;border-radius:7px;background:#3b2d32;color:#ffb7a0;font-weight:750}
+.tag.neutral{background:#2b3652;color:#bdc9ff}table{width:100%;border-collapse:collapse;font-size:13px}td,th{text-align:left;border-bottom:1px solid #30384e;padding:12px 10px;vertical-align:top}
+th{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:#98a8c7}td.ident{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:11px;overflow-wrap:anywhere}
+.muted{color:#aeb7ce}.notice{background:#282633;border-left:3px solid #f1b474;padding:13px 16px;border-radius:5px;margin-top:20px;font-size:12px;color:#f9d6b3}
+.statusline{min-height:24px;font-size:12px;color:#bbd1ff;margin-top:8px}.empty{padding:36px 0;color:#b8c4db}
+footer{color:#8e9bb8;font-size:12px;line-height:1.65;padding:28px 0 10px}
+@media(max-width:950px){.layout,.grid{grid-template-columns:1fr}.kpis{grid-template-columns:1fr 1fr}}
+@media(max-width:530px){.container{padding:16px}.kpis{grid-template-columns:1fr 1fr}.kpi{padding:14px}.kpi strong{font-size:24px}header{flex-wrap:wrap}td,th{padding:10px 6px;font-size:11px}.layout{grid-template-columns:minmax(0,1fr)}}
+@media print{body{background:#fff;color:#111}.card,.kpi{background:white;color:#111;box-shadow:none;border:1px solid #ccc}p,.muted,.kpi small{color:#444}.action,.toolbar input,footer{display:none}header{color:#111}}
+</style>
+</head>
+<body><div class="container">
+<header><div class="brand">LIGHT<span>UP</span> / CONTROL ROOM</div><div class="pill">DRAFT / HOLD · NO AUTHORITY</div></header>
+<main>
+<h1>Emergency STOP Desk</h1>
+<p class="lead">Review existing engagement and STOP records, coordinate operator acknowledgment, and export a privacy-minimal summary. This offline room cannot grant consent, restart a stopped task, access a target, or dispatch a scanner.</p>
+<section class="grid" aria-label="Local source import">
+<div class="card"><h2>01 / Load original private exports</h2>
+<p>Import a real JSON result from the authenticated LightUp list, status, or operator pending commands. All files stay in this browser session. Import is atomic; a rejected file leaves the previous workspace intact.</p>
+<div class="action"><label class="import">Choose private JSON files<input id="source" type="file" accept=".json,application/json" multiple></label><button class="secondary" id="demo" type="button">Fictional demo</button><button class="secondary" id="clear" type="button">Clear workspace</button></div>
+<div id="message" class="statusline" aria-live="polite">No source imported.</div>
+</div>
+<div class="card"><h2>02 / Safety boundary</h2>
+<p>These records are unsigned local exports. A STOP means human coordination and a deny signal, not proven live enforcement. Missing ledger means HOLD, never permission. Acknowledgment does not clear a STOP.</p>
+<div class="notice">Authorization: NO · Dispatch: NO · Release: NO<br>Mandatory original consent, runtime guards and human approval remain separate.</div>
+</div>
+</section>
+<section class="kpis" aria-label="Declared source counts">
+<div class="kpi"><small>Engagement records</small><strong id="count-eng">0</strong><small>Authenticated export only</small></div>
+<div class="kpi"><small>Stopped engagements</small><strong id="count-stop">0</strong><small>Original declarations</small></div>
+<div class="kpi"><small>Unacknowledged STOPs</small><strong id="count-pend">0</strong><small>Source-reported queue</small></div>
+<div class="kpi"><small>Uncertain / HOLD</small><strong id="count-hold">0</strong><small>Never infer an allow</small></div>
+<div class="kpi"><small>Stored grant rows</small><strong id="count-grants">0</strong><small>Inventory, not valid authority</small></div>
+</section>
+<section class="layout">
+<div class="card"><div class="toolbar"><h2>Source-bound coordination</h2><input id="filter" type="search" placeholder="Filter local IDs / statuses" aria-label="Filter source IDs"></div>
+<div style="overflow-x:auto"><table><thead><tr><th>Record</th><th>Source ID</th><th>Declared status</th><th>Attention</th></tr></thead><tbody id="rows"></tbody></table></div><div id="empty" class="empty">Load a private original export or the fictional demo.</div></div>
+<div class="card"><h2>Human handoff</h2>
+<p><b>1.</b> Authenticate with your real account through the LightUp CLI and select an engagement.</p>
+<p><b>2.</b> Record STOP with the CLI. Existing runtime owners must separately connect the action-time veto.</p>
+<p><b>3.</b> A different real operator can review the pending queue and acknowledge the event. STOP stays active.</p>
+<p><b>4.</b> Retain original authorization, privacy, source-owner CI and human GO processes. Never release based on this desk.</p>
+<div class="action"><button type="button" id="brief">Export aggregate-only briefing</button><button type="button" class="secondary" id="print">Print review</button></div>
+<div class="notice" id="source-note">The displayed records are unverified declarations; missing sources are not zero risk.</div>
+</div>
+</section>
+</main>
+<footer>LightUp / local offline STOP coordination · No network requests, browser persistence or external scripts · INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD</footer>
+</div>
+<script>
+(function(){
+"use strict";
+var docs=[], fictional=false, MAX_FILES=5, MAX_SIZE=1024*1024;
+var source=document.getElementById("source"), msg=document.getElementById("message");
+var rows=document.getElementById("rows"), empty=document.getElementById("empty");
+function obj(x){return x!==null&&typeof x==="object"&&!Array.isArray(x);}
+function txt(id,v){document.getElementById(id).textContent=String(v);}
+function bounded(v,max){return typeof v==="string"&&v.length>0&&v.length<=max&&![...v].some(function(ch){return ch.charCodeAt(0)<32;});}
+function exactFlags(d){return d.authorization_granted===false&&d.execution_allowed===false&&d.release_approved===false;}
+function uniq(items,field){return new Set(items.map(function(x){return x[field];})).size===items.length;}
+function rejectDuplicateKeys(raw){
+var i=0, steps=0;
+function ws(){while(i<raw.length&&(" \r\n\t".indexOf(raw[i])>=0))i++;}
+function quoted(){
+var start=i;if(raw[i]!=='"')throw Error("Expected string");
+i++;while(i<raw.length){
+if(raw[i]==='\\'){i+=2;continue;}
+if(raw[i]==='"'){i++;return JSON.parse(raw.slice(start,i));}
+i++;
+}throw Error("Unterminated source string");
+}
+function value(depth){
+if(++steps>100000||depth>35)throw Error("JSON too deep/large");
+ws();var ch=raw[i];
+if(ch==='{'){
+i++;ws();var seen=new Set();
+if(raw[i]==='}'){i++;return;}
+while(true){
+ws();var key=quoted();if(seen.has(key))throw Error("Duplicate JSON key");seen.add(key);
+ws();if(raw[i]!==':')throw Error("Expected field separator");i++;value(depth+1);
+ws();if(raw[i]==='}'){i++;break;}
+if(raw[i]!==',')throw Error("Expected field comma");i++;
+}
+return;
+}
+if(ch==='['){
+i++;ws();if(raw[i]===']'){i++;return;}
+while(true){value(depth+1);ws();if(raw[i]===']'){i++;break;}if(raw[i]!==',')throw Error("Expected array comma");i++;}
+return;
+}
+if(ch==='"'){quoted();return;}
+var start=i;while(i<raw.length&&",]} \r\n\t".indexOf(raw[i])<0)i++;
+if(i===start)throw Error("Expected JSON value");
+}
+value(0);ws();if(i!==raw.length)throw Error("Trailing source data");
+}
+function parseSource(d){
+if(!obj(d)||!exactFlags(d))throw Error("Authority flags invalid or source not admitted");
+if(d.schema==="lightup.authenticated_stop_inbox.v1"){
+if(d.status!=="REVIEW_ONLY"||!Array.isArray(d.engagements)||d.engagements.length>100||typeof d.truncated!=="boolean")throw Error("Engagement shape invalid");
+d.engagements.forEach(function(x){if(!obj(x)||!bounded(x.engagement_id,180)||!bounded(x.original_engagement_status,80)||!["STOP_ACTIVE","NO_STOP_RECORDED","HOLD_LEDGER_NOT_INITIALIZED"].includes(x.stop_status))throw Error("Invalid engagement row");});
+if(!uniq(d.engagements,"engagement_id"))throw Error("Duplicate engagement identity");
+return {kind:"engagement",items:d.engagements.map(function(x){return {type:"Engagement",id:x.engagement_id,status:x.stop_status,attention:x.stop_status==="STOP_ACTIVE"?"Stopped":x.stop_status.indexOf("HOLD")>=0?"HOLD":"Not an allow"};}),truncated:d.truncated};
+}
+if(d.schema==="lightup.stop_acknowledgment_inbox.v1"){
+if(d.status!=="REVIEW_ONLY"||d.client_consent_verified!==false||d.operator_consent_verified!==false||!Array.isArray(d.pending)||d.pending.length>100||typeof d.truncated!=="boolean")throw Error("Pending shape invalid");
+d.pending.forEach(function(x){if(!obj(x)||!bounded(x.stop_id,180)||!bounded(x.stopped_at,80)||!["operator","client_admin","client_member"].includes(x.actor_role))throw Error("Invalid pending STOP");});
+if(!uniq(d.pending,"stop_id"))throw Error("Duplicate STOP ID");
+return {kind:"pending",items:d.pending.map(function(x){return {type:"Pending STOP",id:x.stop_id,status:"STOP_ACTIVE",attention:"Operator acknowledgment needed"};}),truncated:d.truncated};
+}
+if(d.schema==="lightup.stop_grant_exposure.v1"){
+if(d.status!=="REVIEW_ONLY"||d.stop_active!==true&&d.stop_active!==false||d.grant_validity_verified!==false||d.source_authenticated!==false||d.consent_verified!==false)throw Error("Invalid exposure provenance");
+var n=d.persisted_grant_count,linked=d.request_linked_grant_count,legacy=d.legacy_unbound_grant_count,windowCount=d.time_window_current_by_untrusted_columns,invalid=d.invalid_time_window_row_count;
+if(![n,linked,legacy,windowCount,invalid].every(function(v){return Number.isInteger(v)&&v>=0&&v<=256;})||linked+legacy!==n||windowCount+invalid>n)throw Error("Invalid exposure counters");
+if(!["STOP_WITH_STORED_GRANTS","STOP_WITHOUT_STORED_GRANTS","SOURCE_GRANTS_REQUIRE_INDEPENDENT_REVIEW","HOLD_MALFORMED_GRANT_SOURCE"].includes(d.human_attention))throw Error("Invalid exposure attention");
+if(d.stop_active&&n>0&&d.human_attention!=="STOP_WITH_STORED_GRANTS"&&d.human_attention!=="HOLD_MALFORMED_GRANT_SOURCE")throw Error("Contradictory STOP exposure");
+if(!d.stop_active&&d.human_attention.indexOf("STOP_")===0)throw Error("Contradictory exposure status");
+if(invalid>0&&d.human_attention!=="HOLD_MALFORMED_GRANT_SOURCE")throw Error("Malformed grant source not marked HOLD");
+return {kind:"exposure",declaredGrants:n,items:[{type:"Grant inventory",id:"local source declaration",status:d.stop_active?"STOP_ACTIVE":invalid>0?"HOLD_SOURCE":"REVIEW_ONLY",attention:d.human_attention}],truncated:false};
+}
+if(d.schema==="lightup.authenticated_stop_batch.v1"){
+if(d.status!=="STOP_RECORDED_BATCH"||!Number.isInteger(d.recorded_count)||d.recorded_count<1||d.recorded_count>32||!bounded(d.stopped_at,80)||!Array.isArray(d.records)||d.records.length!==d.recorded_count)throw Error("Batch stop shape invalid");
+d.records.forEach(function(x){if(!obj(x)||!bounded(x.engagement_id,180)||!bounded(x.stop_id,180))throw Error("Invalid batch STOP record");});
+if(!uniq(d.records,"stop_id")||!uniq(d.records,"engagement_id"))throw Error("Duplicate batch STOP identity");
+return {kind:"batch",items:d.records.map(function(x){return {type:"Incident STOP",id:x.engagement_id,status:"STOP_ACTIVE",attention:"Incident stop recorded locally"};}),truncated:false};
+}
+if(d.schema==="lightup.authenticated_stop.v1"){
+if(!["STOP_ACTIVE","NO_STOP_RECORDED"].includes(d.status)||typeof d.stop_active!=="boolean"||d.stop_active!==(d.status==="STOP_ACTIVE")||typeof d.history_truncated!=="boolean"||!Array.isArray(d.recent_events)||d.recent_events.length>64)throw Error("Status shape invalid");
+d.recent_events.forEach(function(x){if(!obj(x)||!bounded(x.stop_id,180)||!bounded(x.stopped_at,80)||!["operator","client_admin","client_member"].includes(x.actor_role))throw Error("Invalid STOP history");});
+if(!uniq(d.recent_events,"stop_id"))throw Error("Duplicate STOP history");
+return {kind:"history",items:d.recent_events.map(function(x){return {type:"STOP history",id:x.stop_id,status:"STOP_ACTIVE",attention:"STOP remains active"};}),truncated:d.history_truncated};
+}
+throw Error("Unsupported original CLI schema");
+}
+function reconcile(batch){
+var states=new Map();
+batch.forEach(function(d){if(d.kind!=="engagement"&&d.kind!=="batch")return;d.items.forEach(function(x){
+if(!states.has(x.id))states.set(x.id,new Set());states.get(x.id).add(x.status);
+});});
+batch.forEach(function(d){if(d.kind!=="engagement"&&d.kind!=="batch")return;d.items.forEach(function(x){
+if(states.get(x.id).size>1){x.status="HOLD_SOURCE_CONFLICT";x.attention="Contradictory imported snapshots";}
+});});
+}
+function render(){
+var items=docs.flatMap(function(d){return d.items;});
+var filter=document.getElementById("filter").value.toLowerCase();
+rows.replaceChildren();
+items.filter(function(x){return (x.id+" "+x.type+" "+x.status+" "+x.attention).toLowerCase().includes(filter);}).slice(0,350).forEach(function(x){
+var tr=document.createElement("tr");
+[x.type,x.id,x.status,x.attention].forEach(function(v,i){var td=document.createElement("td");if(i===1)td.className="ident";else if(i===2)td.className="muted";if(i===2){var badge=document.createElement("span");badge.className="tag"+(v==="NO_STOP_RECORDED"?" neutral":"");badge.textContent=v;td.appendChild(badge);}else td.textContent=v;tr.appendChild(td);});rows.appendChild(tr);
+});
+empty.hidden=rows.children.length>0;
+txt("count-eng",docs.filter(function(d){return d.kind==="engagement";}).reduce(function(n,d){return n+d.items.length;},0));
+txt("count-stop",docs.filter(function(d){return (d.kind==="engagement"||d.kind==="batch");}).reduce(function(n,d){return n+d.items.filter(function(x){return x.status==="STOP_ACTIVE";}).length;},0));
+txt("count-pend",docs.filter(function(d){return d.kind==="pending";}).reduce(function(n,d){return n+d.items.length;},0));
+txt("count-hold",items.filter(function(x){return x.status.indexOf("HOLD")>=0;}).length);
+txt("count-grants",docs.filter(function(d){return d.kind==="exposure";}).reduce(function(n,d){return n+d.declaredGrants;},0));
+txt("source-note",(fictional?"FICTIONAL DEMO · ":"UNVERIFIED LOCAL INPUT · ")+docs.length+" source(s). "+(docs.some(function(d){return d.truncated;})?"One or more original sources are truncated. ":"")+"No source can authorize execution.");
+}
+source.addEventListener("change",async function(){
+var f=Array.from(source.files||[]);source.value="";
+if(!f.length)return;
+if(f.length>MAX_FILES||f.some(function(x){return x.size<2||x.size>MAX_SIZE;})){msg.textContent="HOLD: source file count/size rejected (1–5; max 1 MiB each).";return;}
+try{var parsed=[];for(var file of f){var raw=await file.text();rejectDuplicateKeys(raw);var decoded=JSON.parse(raw);parsed.push(parseSource(decoded));}
+reconcile(parsed);docs=parsed;fictional=false;msg.textContent=docs.length+" private source(s) loaded locally. UNVERIFIED / REVIEW_ONLY.";render();
+}catch(e){msg.textContent="HOLD: invalid or unsupported input. Previous workspace preserved.";}
+});
+document.getElementById("demo").addEventListener("click",function(){
+docs=[{kind:"engagement",truncated:false,items:[
+{type:"Engagement",id:"fictional-engagement-01",status:"STOP_ACTIVE",attention:"Stopped"},
+{type:"Engagement",id:"fictional-engagement-02",status:"HOLD_LEDGER_NOT_INITIALIZED",attention:"HOLD"},
+{type:"Engagement",id:"fictional-engagement-03",status:"NO_STOP_RECORDED",attention:"Not an allow"}]},
+{kind:"pending",truncated:false,items:[{type:"Pending STOP",id:"fictional-stop-01",status:"STOP_ACTIVE",attention:"Operator acknowledgment needed"}]}];
+fictional=true;msg.textContent="FICTIONAL demo only — no real clients, sources or consent.";render();
+});
+document.getElementById("clear").addEventListener("click",function(){docs=[];fictional=false;msg.textContent="Workspace cleared; no local storage used.";render();});
+document.getElementById("filter").addEventListener("input",render);
+document.getElementById("print").addEventListener("click",function(){window.print();});
+document.getElementById("brief").addEventListener("click",function(){
+if(!docs.length){msg.textContent="HOLD: import a genuine private source before exporting a brief.";return;}
+var all=docs.flatMap(function(d){return d.items;});var out={
+schema:"lightup.stop_aggregate_handoff.v1",status:"REVIEW_ONLY",fictional_demo:fictional,
+source_count:docs.length,engagement_record_count:docs.filter(function(d){return d.kind==="engagement";}).reduce(function(n,d){return n+d.items.length;},0),
+stopped_engagement_count:all.filter(function(x){return x.type==="Engagement"&&x.status==="STOP_ACTIVE";}).length,
+pending_stop_count:all.filter(function(x){return x.type==="Pending STOP";}).length,
+hold_record_count:all.filter(function(x){return x.status.indexOf("HOLD")>=0;}).length,
+source_truncated:docs.some(function(d){return d.truncated;}),stored_grant_rows_declared:docs.filter(function(d){return d.kind==="exposure";}).reduce(function(n,d){return n+d.declaredGrants;},0),source_authenticated:false,
+client_consent_verified:false,operator_consent_verified:false,authorization_granted:false,execution_allowed:false,release_approved:false};
+var a=document.createElement("a"),url=URL.createObjectURL(new Blob([JSON.stringify(out,null,2)],{type:"application/json"}));
+a.href=url;a.download="lightup-stop-aggregate-review-only.json";document.body.appendChild(a);a.click();a.remove();setTimeout(function(){URL.revokeObjectURL(url);},1000);
+});
+render();
+})();
+</script>
+</body>
+</html>
