@@ -752,6 +752,23 @@
         utc.start<utc.end &&
         Number.isInteger(utc.start_offset_minutes) && Math.abs(utc.start_offset_minutes)<=840 &&
         Number.isInteger(utc.end_offset_minutes) && Math.abs(utc.end_offset_minutes)<=840);
+      const expectedUtc=(wall,offset)=>{
+        invariant(typeof wall==='string' && /^\\d{4}-\\d\\d-\\d\\dT\\d\\d:\\d\\d$/.test(wall));
+        const parts=wall.match(/^(\\d{4})-(\\d\\d)-(\\d\\d)T(\\d\\d):(\\d\\d)$/);
+        const y=Number(parts[1]),m=Number(parts[2]),d=Number(parts[3]),
+          hh=Number(parts[4]),mm=Number(parts[5]);
+        invariant(y>=2020 && y<=2100 && m>=1 && m<=12 &&
+          d>=1 && d<=31 && hh<=23 && mm<=59);
+        const localTicks=Date.UTC(y,m-1,d,hh,mm);
+        invariant(Number.isFinite(localTicks) &&
+          new Date(localTicks).toISOString().slice(0,16)===wall);
+        return new Date(localTicks+offset*60000).toISOString();
+      };
+      // A reported "resolved" UTC interval must agree with its OWN local
+      // wall-time and stored offsets. This does not verify the source timezone,
+      // daylight-saving provenance, approved schedule or authority.
+      invariant(utc.start === expectedUtc(p.proposed_window_local.start,utc.start_offset_minutes));
+      invariant(utc.end === expectedUtc(p.proposed_window_local.end,utc.end_offset_minutes));
     } else {
       invariant(utc.start === null && utc.end === null);
     }
