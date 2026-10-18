@@ -204,7 +204,7 @@ function privateCaseBrief(){
   return high(f)||caseBlocked(c)||pastDue(c)||windowAfterHumanDue(f)||
    state.caseworkChanges?.has(f.finding_id)||hasHumanHold(f,r)||!c.owner.trim();
  };
- const urgent=state.source.filter(attention);
+ const urgent=state.source.filter(f=>attention(f)||followupPastDue(f));
  lines.push('## Human discussion priorities ('+urgent.length+' unverified item(s))','');
  if(!urgent.length)lines.push('No local priority flags. This is not evidence of verified remediation or authorization.','');
  for(const [slotKey,title] of [[0,'Unscheduled — human follow-up required'],...windows.map((w,i)=>[i+1,
@@ -219,8 +219,8 @@ function privateCaseBrief(){
    Number(attention(b))-Number(attention(a))||
    Number(high(b))-Number(high(a))||
    a.finding_id.localeCompare(b.finding_id));
-  lines.push('| Original ID | Source severity / retest | Human owner and Casework state | Local due UTC | Human evidence review | Private human flags | Human next action |',
-    '| --- | --- | --- | --- | --- | --- | --- |');
+  lines.push('| Original ID | Source severity / retest | Human owner and Casework state | Local due UTC | Human evidence review | Human follow-up stage / reminder | Private human flags | Human next action |',
+    '| --- | --- | --- | --- | --- | --- | --- | --- |');
   for(const f of byPriority){
    const c=state.casework.get(f.finding_id),r=state.review.get(f.finding_id);
    const flags=[];
@@ -230,14 +230,16 @@ function privateCaseBrief(){
    if(!c.owner.trim())flags.push('NO HUMAN OWNER');
    if(state.caseworkChanges?.has(f.finding_id))flags.push('LOCAL CASEWORK CHANGED: '+state.caseworkChanges.get(f.finding_id).join('/'));
    if(hasHumanHold(f,r))flags.push('EVIDENCE REFERENCES/REVIEW INCOMPLETE');
+   if(followupPastDue(f))flags.push('HUMAN REMINDER PAST DUE');
    if(high(f))flags.push('ORIGINAL CRITICAL/HIGH');
    if(f.retest_status==='regression')flags.push('SOURCE RETEST REGRESSION');
    lines.push('| '+[
     f.finding_id,f.severity+' / '+f.retest_status,
     (c.owner||'UNASSIGNED')+' / '+c.status,c.due_date||'',
     r.stage+' / '+(r.reviewer||'no human reviewer'),
+    FOLLOW_LABELS[followupFor(f.finding_id).status]+' / '+(followupFor(f.finding_id).due_date||'no human reminder'),
     flags.join('; ')||'No local human flags (NOT a verified fix)',
-    c.next_action||r.next_step||'HUMAN NEXT ACTION NOT RECORDED'
+    followupFor(f.finding_id).note||c.next_action||r.next_step||'HUMAN NEXT ACTION NOT RECORDED'
    ].map(clean).join(' | ')+' |');
   }
   lines.push('');
@@ -245,7 +247,7 @@ function privateCaseBrief(){
  lines.push('## Required human handoff checks','',
  '- Confirm real client and exact original engagement, independent issuer and authorized confidential recipient.',
  '- Reconcile any prior/current private human Casework drift and original source CSV changes.',
- '- Assign human owners and collect genuine deployment, change, rollback and authorized retest references.',
+ '- Assign human owners, review outstanding private follow-up statuses/reminders and collect genuine deployment, change, rollback and authorized retest references.',
  '- Independently check that the proposed UTC discussion time is compatible with real approved change windows.',
  '- All original product permission, source-owner review, actual operator/client consent and revocation checks remain external.',
  '',
@@ -331,6 +333,7 @@ function assertCaseworkPreview(){
 function applyCaseworkRevision(){
  const p=assertCaseworkPreview();
  if(!confirm('Replace PRIVATE in-memory original Casework human rows with this complete newer ORIGINAL snapshot? Prior saved plans bound to previous Casework will not resume. No backend or permission is changed.'))return;
+ ensureHumanEditorSaved();
  state.casework=p.next;state.caseworkDigest=p.digest;state.caseworkHashless=p.original_packet_hashless;
  state.caseworkChanges=new Map([...p.changes].map(([id,c])=>[id,c.fields]));
  state.caseworkUpdate={from_sha256:p.old_sha256,to_sha256:p.digest,source_sha256:state.hash,
@@ -879,6 +882,7 @@ function applySourceRevision(){
  };
  /* Atomic swap only after the full original five-field comparator, digest,
   * review/slot mapping and preview fingerprint have been accepted. */
+ closeHumanEditor(true);lastFollowBulkSnapshot=null;$('bulkFollowUndo').disabled=true;
  state={source:next,hash,review:notes,assignments:slots,followup:nextFollowup,casework:null,caseworkDigest:null,
   caseworkHashless:false,caseworkChanges:new Map(),caseworkUpdate:null,refreshSummary:summary};
  $('nextCasework').value='';$('confirmCasework').checked=false;clearCaseworkPreview('Source revision invalidated prior Casework; import a new original snapshot.');
@@ -935,8 +939,8 @@ function calendarExport(){
 }
 function aggregateExport(){
  const windows=plan();
- const data=['window_slot,proposed_start_utc,minutes,source_findings,critical_high,local_reference_holds,locally_blocked_casework,locally_past_due,proposed_window_after_local_due,original_human_casework_rows_changed_since_last_snapshot'];
- for(const row of stats(windows))data.push([row.slot,row.window?.start_utc||'',row.window?.minutes||0,row.findings,row.critical_high,row.local_review_holds,row.local_casework_blocked,row.locally_past_due,row.proposed_after_local_due,state.source.filter(f=>state.assignments.get(f.finding_id)===row.slot&&state.caseworkChanges?.has(f.finding_id)).length].join(','));
+ const data=['window_slot,proposed_start_utc,minutes,source_findings,critical_high,local_reference_holds,locally_blocked_casework,locally_past_due,proposed_window_after_local_due,original_human_casework_rows_changed_since_last_snapshot,private_human_followups_open,private_human_followups_past_due,private_human_discussions_logged_not_approved'];
+ for(const row of stats(windows))data.push([row.slot,row.window?.start_utc||'',row.window?.minutes||0,row.findings,row.critical_high,row.local_review_holds,row.local_casework_blocked,row.locally_past_due,row.proposed_after_local_due,state.source.filter(f=>state.assignments.get(f.finding_id)===row.slot&&state.caseworkChanges?.has(f.finding_id)).length,...[f=>humanFollowupOpen(f),f=>followupPastDue(f),f=>followupFor(f.finding_id).status==='discussion_logged'].map(check=>state.source.filter(f=>state.assignments.get(f.finding_id)===row.slot&&check(f)).length)].join(','));
  output('lightup-aggregate-human-windows.csv',data.join('\r\n')+'\r\n','text/csv');
 }
 function forget(){
