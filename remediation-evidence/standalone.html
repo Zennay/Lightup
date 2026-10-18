@@ -1,9 +1,9 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="referrer" content="no-referrer">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-wpPFZOyxFDTkVCPSRLe+ulmbav4+u8hRIYgukbiqEiU=' 'sha256-IHpCSK09WHH4Xls315MeRdpUTFwbmaJbdhpceB7eL6k='; style-src 'unsafe-inline'; connect-src 'none'; img-src 'none'; font-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-wpPFZOyxFDTkVCPSRLe+ulmbav4+u8hRIYgukbiqEiU=' 'sha256-qCmAsOLNfqDg36fwFQuapY1Bd6zAM1JYojyb2zPCEYk='; style-src 'unsafe-inline'; connect-src 'none'; img-src 'none'; font-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <title>LightUp · Remediation Evidence Review</title>
 <style>
-:root{font:15px/1.5 system-ui,sans-serif;color:#eef5fc;background:#0b1420;--panel:#152538;--stroke:#456178;--muted:#bdd1e0;--accent:#79e9cc}*{box-sizing:border-box}body{margin:0}header{padding:28px max(20px,calc((100% - 1180px)/2));background:#102237;border-bottom:1px solid var(--stroke)}.eyebrow{font-weight:800;letter-spacing:.14em;color:var(--accent);font-size:.75rem}h1{font-size:clamp(27px,4vw,42px);line-height:1.1;letter-spacing:-.045em;margin:5px 0}p{color:var(--muted)}main{max-width:1220px;margin:auto;padding:20px 20px 80px}.warning{padding:17px 21px;border-radius:12px;background:#382c25;border:1px solid #ad9376;color:#fff0d7}.warning strong{color:#ffe0a7}.card{border:1px solid var(--stroke);background:var(--panel);padding:19px;border-radius:14px;margin:18px 0}h2{margin:0 0 6px;font-size:1.35rem}h3{font-size:1.05rem;margin:0}label{display:block;font-weight:650;min-width:0;margin:8px 0}input,select,textarea{width:100%;font:inherit;color:#fff;background:#0b1a2b;border:1px solid #65839d;border-radius:8px;padding:10px 12px;display:block;margin:5px 0 0}input[type=checkbox]{width:auto;display:inline-block;vertical-align:middle;margin:0 8px 0 0}button{font:inherit;cursor:pointer;background:#26465b;color:#fff;border:1px solid #6a8ca5;border-radius:8px;padding:11px 15px;font-weight:700}button:hover{border-color:var(--accent)}button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid var(--accent);outline-offset:2px}.primary{background:var(--accent);color:#0a2925;border-color:var(--accent)}.row,.files{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px}.buttons{display:flex;flex-wrap:wrap;gap:10px;margin:14px 0}.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin:20px 0}.stat{background:#20384d;border-radius:10px;border:1px solid var(--stroke);padding:12px;color:var(--muted)}.stat strong{font-size:2rem;line-height:1.25;display:block;color:var(--accent)}.board{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,370px),1fr));gap:13px}.finding{padding:17px;border:1px solid #52758f;background:#13283b;border-radius:13px;min-width:0;overflow-wrap:anywhere}.finding h3{font-size:1.12rem;line-height:1.3}.detail{font-size:.8rem;margin:6px 0;color:#c1d3e2}.cues{padding:11px 11px 11px 27px;border:1px solid #856d51;background:#332a24;border-radius:8px;font-size:.85rem;color:#ffead0}.cues li+li{margin-top:5px}.field span{font-size:.85rem}.field textarea{min-height:76px;resize:vertical}#status[data-error=true]{color:#ffb9ad}#status{min-height:28px;font-weight:700}#fingerprint{overflow-wrap:anywhere;font:12px/1.6 ui-monospace,monospace;color:var(--muted)}.foot{font-size:.83rem}a{color:var(--accent)}[hidden]{display:none!important}@media print{body{background:white;color:#111}header,.warning,.files,.buttons,.field,#actions,#status{display:none!important}main{padding:0}.card,.finding{color:#000;background:#fff;border-color:#aaa;break-inside:avoid}p,.detail,.stat{color:#333}.cues{background:white;color:#000}.board{display:block}.finding{margin:10px 0}}
+:root{font:15px/1.5 system-ui,sans-serif;color:#eef5fc;background:#0b1420;--panel:#152538;--stroke:#456178;--muted:#bdd1e0;--accent:#79e9cc}*{box-sizing:border-box}body{margin:0}header{padding:28px max(20px,calc((100% - 1180px)/2));background:#102237;border-bottom:1px solid var(--stroke)}.eyebrow{font-weight:800;letter-spacing:.14em;color:var(--accent);font-size:.75rem}h1{font-size:clamp(27px,4vw,42px);line-height:1.1;letter-spacing:-.045em;margin:5px 0}p{color:var(--muted)}main{max-width:1220px;margin:auto;padding:20px 20px 80px}.warning{padding:17px 21px;border-radius:12px;background:#382c25;border:1px solid #ad9376;color:#fff0d7}.warning strong{color:#ffe0a7}.card{border:1px solid var(--stroke);background:var(--panel);padding:19px;border-radius:14px;margin:18px 0}h2{margin:0 0 6px;font-size:1.35rem}h3{font-size:1.05rem;margin:0}label{display:block;font-weight:650;min-width:0;margin:8px 0}input,select,textarea{width:100%;font:inherit;color:#fff;background:#0b1a2b;border:1px solid #65839d;border-radius:8px;padding:10px 12px;display:block;margin:5px 0 0}input[type=checkbox]{width:auto;display:inline-block;vertical-align:middle;margin:0 8px 0 0}button{font:inherit;cursor:pointer;background:#26465b;color:#fff;border:1px solid #6a8ca5;border-radius:8px;padding:11px 15px;font-weight:700}button:hover{border-color:var(--accent)}button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid var(--accent);outline-offset:2px}.primary{background:var(--accent);color:#0a2925;border-color:var(--accent)}.row,.files{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px}.buttons{display:flex;flex-wrap:wrap;gap:10px;margin:14px 0}.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin:20px 0}.stat{background:#20384d;border-radius:10px;border:1px solid var(--stroke);padding:12px;color:var(--muted)}.stat strong{font-size:2rem;line-height:1.25;display:block;color:var(--accent)}.board{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,370px),1fr));gap:13px}.finding{padding:17px;border:1px solid #52758f;background:#13283b;border-radius:13px;min-width:0;overflow-wrap:anywhere}.finding h3{font-size:1.12rem;line-height:1.3}.detail{font-size:.8rem;margin:6px 0;color:#c1d3e2}.cues{padding:11px 11px 11px 27px;border:1px solid #856d51;background:#332a24;border-radius:8px;font-size:.85rem;color:#ffead0}.cues li+li{margin-top:5px}.matrix{border-collapse:collapse;width:100%;font-size:.84rem}.matrix th,.matrix td{padding:10px;border-bottom:1px solid var(--stroke);text-align:left;white-space:nowrap}.matrix th{color:var(--accent)}.evidence-dossier{background:#0c1c2d;border-radius:9px;border:1px solid var(--stroke);padding:12px;margin:12px 0}.evidence-dossier summary{font-weight:750;cursor:pointer}.field span{font-size:.85rem}.field textarea{min-height:76px;resize:vertical}#status[data-error=true]{color:#ffb9ad}#status{min-height:28px;font-weight:700}#fingerprint{overflow-wrap:anywhere;font:12px/1.6 ui-monospace,monospace;color:var(--muted)}.foot{font-size:.83rem}a{color:var(--accent)}[hidden]{display:none!important}@media print{body{background:white;color:#111}header,.warning,.files,.buttons,.field,#actions,#status{display:none!important}main{padding:0}.card,.finding{color:#000;background:#fff;border-color:#aaa;break-inside:avoid}p,.detail,.stat{color:#333}.cues{background:white;color:#000}.board{display:block}.finding{margin:10px 0}}
 </style></head>
 <body>
 <header><div class="eyebrow">LIGHTUP · PRIVATE REMEDIATION COORDINATION</div><h1>Evidence Review Board</h1><p>Coordinate missing evidence references, casework handoffs and human retest requests. Existing original source stays read-only.</p></header>
@@ -30,13 +30,19 @@
 <p class="foot">The private CSV includes original finding IDs and source content fingerprints; it is sensitive and intended only for independently authorized recipients. The aggregate JSON omits IDs and notes but may still reveal revision activity; neither is proof of a fix or approval.</p>
 </section>
 <section id="dashboard" class="card" hidden><h2>2. Human review summary</h2><p>All counts reflect original summary records and local, editable coordination notes only.</p>
-<div class="stats"><div class="stat"><strong id="total">0</strong>Original findings</div><div class="stat"><strong id="urgent">0</strong>Critical/high</div><div class="stat"><strong id="no_reference">0</strong>No evidence reference</div><div class="stat"><strong id="needs_changes">0</strong>Needs human changes</div><div class="stat"><strong id="retest">0</strong>Local retest requests</div><div class="stat"><strong id="contradictions">0</strong>Warning conditions</div><div class="stat"><strong id="blocked">0</strong>Blocked local cases</div><div class="stat"><strong id="overdue">0</strong>Overdue local plans</div><div class="stat"><strong id="next7">0</strong>Due within 7 days (local)</div></div>
+<div class="stats"><div class="stat"><strong id="total">0</strong>Original findings</div><div class="stat"><strong id="urgent">0</strong>Critical/high</div><div class="stat"><strong id="no_reference">0</strong>No evidence reference</div><div class="stat"><strong id="needs_changes">0</strong>Needs human changes</div><div class="stat"><strong id="retest">0</strong>Local retest requests</div><div class="stat"><strong id="contradictions">0</strong>Warning conditions</div><div class="stat"><strong id="blocked">0</strong>Blocked local cases</div><div class="stat"><strong id="overdue">0</strong>Overdue local plans</div><div class="stat"><strong id="next7">0</strong>Due within 7 days (local)</div><div class="stat"><strong id="evidence_gaps">0</strong>Evidence dossiers incomplete</div><div class="stat"><strong id="evidence_references_ready">0</strong>4 references entered (unverified)</div></div>
 </section>
-<section id="boardSection" class="card" hidden><h2>3. Coordinate each finding</h2><p>Review stages never change the original source or authorize active retest. A reference is descriptive text only; actual evidence must remain in an approved separate authenticated system.</p>
+<section id="evidenceReadiness" class="card"><h2>Human evidence readiness by original severity</h2>
+<p>Count missing patch/change, deployment, rollback and independent retest-request references per original finding. <strong>Four references present does not prove that any document was examined, that a patch works or that a retest was authorized.</strong> This is a private human coordination inventory, not a security score or grant.</p>
+<div id="readinessTable" style="overflow-x:auto"><p class="detail">Import original findings to populate the local evidence matrix.</p></div>
+<p class="foot">¹ Reference completeness is self-reported and unsigned. High-priority follow-up counts are only human planning candidates (source regression or critical/high incomplete references).</p>
+<div class="buttons"><button id="exportEvidenceMatrix">Export aggregate evidence-readiness CSV</button></div>
+</section>
+<section id="boardSection" class="card" hidden><h2>3. Coordinate each finding</h2><p>Each finding now includes an expandable <strong>human evidence dossier</strong> with separate patch, deployment, rollback and retest-request references, plus an open reviewer question. References are not proof; only store identifiers to separately authorized private records, never raw evidence.</p><p>Review stages never change the original source or authorize active retest. A reference is descriptive text only; actual evidence must remain in an approved separate authenticated system.</p>
 <div class="row"><label>Search original findings and human coordination<input id="boardSearch" type="search" maxlength="160" placeholder="Find finding, mitigation, owner, blocker…"></label>
 <label>Local routing team<select id="boardTeam"><option value="">All teams</option></select></label>
 <label>Order by<select id="boardSort"><option value="severity">Original severity</option><option value="due">Local Casework due date</option><option value="followup">Human follow-up urgency</option></select></label></div>
-<label>Show findings <select id="filter"><option value="all">All findings</option><option value="urgent">Critical/high only</option><option value="gaps">Evidence gaps and follow-ups</option><option value="retest">Local retest requests</option><option value="blocked">Blocked original local Casework items</option><option value="overdue">Overdue original local planning dates</option><option value="contradictions">Source/local status contradictions</option></select></label>
+<label>Show findings <select id="filter"><option value="all">All findings</option><option value="urgent">Critical/high only</option><option value="gaps">Evidence gaps and follow-ups</option><option value="retest">Local retest requests</option><option value="evidence_missing">Missing human evidence references</option><option value="evidence_present">All four references entered (unverified)</option><option value="blocked">Blocked original local Casework items</option><option value="overdue">Overdue original local planning dates</option><option value="contradictions">Source/local status contradictions</option></select></label>
 <div class="card"><h3>Apply human coordination to current filtered findings</h3><p>Bulk changes affect only the <strong id="bulkCount">0</strong> displayed local review entries after search, team and status filters, never original source statuses, casework fields, actual evidence, grants or retests. You must confirm before applying.</p><div class="row"><label>Set local human stage<select id="bulkStage"><option value="">Do not change stage</option><option value="missing">Missing reference / follow-up</option><option value="submitted">Submitted for human review</option><option value="needs_changes">Human changes needed</option><option value="ready_for_authorized_retest">Coordinate authorized retest</option></select></label><label>Assign local human reviewer/team<input type="text" id="bulkReviewer" maxlength="120" placeholder="Optional; leave blank to preserve"></label></div><div class="buttons"><button id="applyBulk">Apply to filtered records after confirmation</button></div></div>
 <p class="foot">Showing <strong id="shown">0</strong> records. Content stays in memory until you explicitly download a private file.</p>
 <div id="board" class="board"></div></section>
@@ -48,7 +54,7 @@
 <div class="buttons"><button id="exportTeamJSON">Download private JSON handoff</button><button id="exportTeamCSV">Download spreadsheet-safe CSV handoff</button></div>
 <p class="foot">These are unsigned human work-preparation documents, not tickets in an external system, verified remediation results, approved grants, retest invitations, client permissions or evidence attestation. CSV strings are escaped to prevent spreadsheet formulas. All source details remain in the file; never send to an unverified recipient.</p>
 <h3>Reconcile a returned private single-team JSON</h3>
-<p>The original selected team may edit only its <strong>human review stage, reference, reviewer and next-step text</strong> in the exported JSON. Import requires the exact original source SHA-256, five source fields, original Casework state, team membership and unchanged local baseline. A rejected packet makes no changes. This cannot authenticate the sender or approve a retest.</p>
+<p>The original selected team may edit only its <strong>human review stage, reference, reviewer, next-step text and five unverified evidence-dossier fields</strong> in the exported JSON. Import requires the exact original source SHA-256, five source fields, original Casework state, team membership and unchanged local baseline. A rejected packet makes no changes. This cannot authenticate the sender or approve a retest.</p>
 <label>Returned PRIVATE original team JSON <input type="file" id="teamReturnFile" accept=".json,application/json"></label>
 <label><input type="checkbox" id="sameTeamReturn">I independently verified the recipient, client, engagement and local team correspondence. I understand this checkbox is not authentication or authorization.</label>
 <div class="buttons"><button id="importTeamReturn">Review and apply returned HUMAN notes</button></div></section>
@@ -263,6 +269,28 @@ if(!engine)throw Error('Original LightUp Casework source module required.');
 const $=id=>document.getElementById(id);
 const LIMIT_CSV=1048576, LIMIT_JSON=2097152;
 const DECISIONS=Object.freeze(['missing','submitted','needs_changes','ready_for_authorized_retest']);
+const EVIDENCE_FIELDS=Object.freeze([
+ ['change_reference',240,'Patch/change ticket reference'],
+ ['deployment_reference',240,'Deployment/rollout record reference'],
+ ['rollback_reference',240,'Rollback/recovery plan reference'],
+ ['retest_request_reference',240,'Authorized retest request reference'],
+ ['review_question',700,'Open evidence question / next human decision']
+]);
+function emptyEvidence(){return Object.fromEntries(EVIDENCE_FIELDS.map(([name])=>[name,'']));}
+function normalizeEvidence(raw){
+ if(raw===undefined||raw===null)return emptyEvidence(); /* accept existing v1 review drafts */
+ if(!raw||Object.getPrototypeOf(raw)!==Object.prototype||
+    Object.keys(raw).some(key=>!EVIDENCE_FIELDS.some(([name])=>name===key)))
+  throw Error('Invalid local evidence coordination fields.');
+ const value={};
+ for(const [name,max] of EVIDENCE_FIELDS){
+  const field=raw[name];
+  if(typeof field!=='string'||field.length>max||field.includes('\u0000'))
+   throw Error('Invalid evidence reference '+name+'.');
+  value[name]=field;
+ }
+ return value;
+}
 let source=null,casework=null,sourceHash=null,review=new Map(),changed=false,refreshCandidate=null,revisions=[];
 const SEV=engine.SEVERITY;
 const flags=['authenticated','tenant_verified','source_authorized','assessment_authorized','grant','client_consent','operator_consent','execution','scan','audit_verdict','retest_verified','release'];
@@ -321,9 +349,10 @@ function validReview(row,ids){
  if(!DECISIONS.includes(row.stage))throw Error('Unsupported review stage.');
  const reference=safeText(row.reference,240),reviewer=safeText(row.reviewer,120),next=safeText(row.next_step,500);
  if(reference===null||reviewer===null||next===null)throw Error('Invalid review text.');
- return {finding_id:row.finding_id,stage:row.stage,reference,reviewer,next_step:next};
+ return {finding_id:row.finding_id,stage:row.stage,reference,reviewer,next_step:next,
+  evidence:normalizeEvidence(row.evidence)};
 }
-function stageStart(id){return {finding_id:id,stage:'missing',reference:'',reviewer:'',next_step:''};}
+function stageStart(id){return {finding_id:id,stage:'missing',reference:'',reviewer:'',next_step:'',evidence:emptyEvidence()};}
 function snapshot(){
  if(!source)return null;
  return {kind:'lightup.remediation_evidence_coordination',schema_version:1,
@@ -415,7 +444,7 @@ function localWindow(){
  return {today:localDay(now),next7:localDay(end)};
 }
 function count(){
- const metrics={total:source.length,urgent:0,no_reference:0,needs_changes:0,retest:0,contradictions:0,blocked:0,overdue:0,next7:0};
+ const metrics={total:source.length,urgent:0,no_reference:0,needs_changes:0,retest:0,contradictions:0,blocked:0,overdue:0,next7:0,evidence_gaps:0,evidence_references_ready:0};
  const window=localWindow();
  for(const f of source){
   const r=review.get(f.finding_id),c=casework?.get(f.finding_id);
@@ -426,6 +455,8 @@ function count(){
    else if(c.due_date<=window.next7)metrics.next7++;
   }
   if(!r.reference.trim())metrics.no_reference++;
+  const ready=EVIDENCE_FIELDS.slice(0,4).every(([key])=>r.evidence?.[key]?.trim());
+  if(ready)metrics.evidence_references_ready++;else metrics.evidence_gaps++;
   if(r.stage==='needs_changes')metrics.needs_changes++;
   if(r.stage==='ready_for_authorized_retest')metrics.retest++;
   if((r.stage==='ready_for_authorized_retest'&&!r.reference.trim())||
@@ -435,6 +466,46 @@ function count(){
  }
  return metrics;
 }
+
+/* Aggregate-only human evidence readiness, grouped strictly by original severity.
+   No IDs, owner labels, raw findings, notes or declared customer identity. */
+function evidenceMatrix(){
+ const groups=SEV.map(severity=>({severity,total:0,missing_change:0,missing_deployment:0,
+  missing_rollback:0,missing_retest_request:0,all_four_entered_unverified:0,high_priority_followup:0}));
+ const bySeverity=new Map(groups.map(x=>[x.severity,x]));
+ for(const f of source||[]){
+  const g=bySeverity.get(f.severity),r=review.get(f.finding_id);
+  if(!g||!r)continue;
+  g.total++;
+  for(const [key,metric] of [['change_reference','missing_change'],['deployment_reference','missing_deployment'],
+    ['rollback_reference','missing_rollback'],['retest_request_reference','missing_retest_request']]){
+   if(!r.evidence?.[key]?.trim())g[metric]++;
+  }
+  if(EVIDENCE_FIELDS.slice(0,4).every(([key])=>r.evidence?.[key]?.trim()))g.all_four_entered_unverified++;
+  if(f.retest_status==='regression'||(SEV.indexOf(f.severity)<=1&&
+   EVIDENCE_FIELDS.slice(0,4).some(([key])=>!r.evidence?.[key]?.trim())))g.high_priority_followup++;
+ }
+ return groups;
+}
+function renderEvidenceMatrix(){
+ const parent=$('readinessTable');if(!parent)return;
+ parent.replaceChildren();
+ const headings=['Severity','Findings','No patch ref','No deploy ref','No rollback ref',
+  'No retest request ref','4 refs present¹','Follow-up candidates'];
+ const table=el('table','matrix'),thead=el('thead'),tr=el('tr');
+ for(const col of headings){const th=el('th','',col);th.scope='col';tr.append(th);}
+ thead.append(tr);table.append(thead);
+ const body=el('tbody');
+ for(const item of evidenceMatrix()){
+  const row=el('tr');
+  for(const v of [item.severity,item.total,item.missing_change,item.missing_deployment,
+    item.missing_rollback,item.missing_retest_request,item.all_four_entered_unverified,
+    item.high_priority_followup])row.append(el('td','',String(v)));
+  body.append(row);
+ }
+ table.append(body);parent.append(table);
+}
+
 function humanQueue(f,c,r){
  const cues=[];
  if(f.retest_status==='regression')cues.push('Source reports regression: escalate to source owner.');
@@ -449,6 +520,9 @@ function humanQueue(f,c,r){
  if(r.stage==='ready_for_authorized_retest'&&!r.reference.trim())cues.push('Retest requested locally without a reference.');
  if(r.stage==='ready_for_authorized_retest'&&c?.status==='blocked')cues.push('Review and casework status conflict.');
  if(!r.reference.trim())cues.push('Ask for an approved private evidence reference, not raw evidence.');
+ const missing=EVIDENCE_FIELDS.slice(0,4).filter(([key])=>!r.evidence?.[key]?.trim());
+ if(missing.length)cues.push('Human evidence packet incomplete: '+missing.length+'/4 references missing; collect documentation via approved channels.');
+ if(r.stage==='ready_for_authorized_retest'&&missing.length)cues.push('Local retest coordination requested with incomplete human evidence references.');
  return cues;
 }
 function el(tag,cls,text){const node=document.createElement(tag);if(cls)node.className=cls;if(text!==undefined)node.textContent=text;return node;}
@@ -472,6 +546,8 @@ function included(f,c,r,filter){
  if(filter==='urgent'&&SEV.indexOf(f.severity)>1)return false;
  if(filter==='gaps'&&r.reference.trim()&&cues.length===0)return false;
  if(filter==='retest'&&r.stage!=='ready_for_authorized_retest')return false;
+ if(filter==='evidence_missing'&&EVIDENCE_FIELDS.slice(0,4).every(([key])=>r.evidence?.[key]?.trim()))return false;
+ if(filter==='evidence_present'&&!EVIDENCE_FIELDS.slice(0,4).every(([key])=>r.evidence?.[key]?.trim()))return false;
  if(filter==='blocked'&&c?.status!=='blocked')return false;
  if(filter==='overdue'&&(!c?.due_date||c.status==='completed'||c.status==='deferred'||c.due_date>=localWindow().today))return false;
  if(filter==='contradictions'&&!cues.some(x=>/NOT|conflict|without/.test(x)))return false;
@@ -519,13 +595,13 @@ function teamPacket(rows){
  const selected=$('packTeam').value;
  if(!sourceHash||!selected||!rows.length)throw Error('Choose a populated local routing group.');
  const team=selected==='unassigned'?null:selected.slice(5);
- return {kind:'lightup.remediation_private_team_handoff',schema_version:1,
+ return {kind:'lightup.remediation_private_team_handoff',schema_version:2,
   disposition:'UNVERIFIED_PRIVATE_HUMAN_COORDINATION',
   source_contract:'lightup.finding_export._COLUMNS_v1',source_sha256:sourceHash,
   team_label:team,
   original_findings_total:source.length,selected_findings_total:rows.length,
   original_review_sha256:localSha256(JSON.stringify(rows.map(({finding:f,coordination:r})=>
-   [f.finding_id,r.stage,r.reference,r.reviewer,r.next_step]))),
+   [f.finding_id,r.stage,r.reference,r.reviewer,r.next_step,...EVIDENCE_FIELDS.map(([key])=>r.evidence[key])]))),
   ...Object.fromEntries(flags.map(k=>[k,false])),
   cases:rows.map(({finding:f,plan:c,coordination:r})=>({
    finding_id:f.finding_id,title:f.title,severity:f.severity,original_retest_status:f.retest_status,
@@ -533,6 +609,7 @@ function teamPacket(rows){
    local_owner:c.owner,next_action:c.next_action,verification_plan:c.verification_plan,
    blocker:c.blocker,review_stage:r.stage,evidence_reference:r.reference,
    local_reviewer:r.reviewer,human_follow_up:r.next_step,
+   ...Object.fromEntries(EVIDENCE_FIELDS.map(([key])=>[key,r.evidence[key]])),
    warnings:humanQueue(f,c,r)
   })),
   warning:'Private unsigned subset of original exported findings and local notes. Not verified, not an approved work order, not consent, not an authorized retest or grant.'
@@ -547,7 +624,8 @@ function safeSpreadsheetCell(value){
 function teamCsv(packet){
  const keys=['finding_id','title','severity','original_retest_status','original_remediation',
   'casework_status','due_date','local_owner','next_action','verification_plan','blocker',
-  'review_stage','evidence_reference','local_reviewer','human_follow_up'];
+  'review_stage','evidence_reference','local_reviewer','human_follow_up',
+  ...EVIDENCE_FIELDS.map(([key])=>key)];
  const body=packet.cases.map(c=>keys.map(k=>c[k]));
  return '\ufeff'+keys.map(v=>'"'+v+'"').join(',')+'\r\n'+body.map(row=>row.map(safeSpreadsheetCell).join(',')).join('\r\n')+'\r\n';
 }
@@ -567,7 +645,7 @@ function render(){
  const ready=!!source;$('dashboard').hidden=!ready;$('boardSection').hidden=!ready;$('actions').hidden=!ready;$('refreshPanel').hidden=!ready;$('teamPanel').hidden=!ready;
  if(!ready)return;
  const m=count();for(const [key,num] of Object.entries(m))$(key).textContent=String(num);
- updateTeamChoices();renderRevisions();
+ updateTeamChoices();renderRevisions();renderEvidenceMatrix();
  $('fingerprint').textContent=sourceHash?'Local source SHA-256: '+sourceHash+' (NOT authentication)':'Source fingerprint unavailable. All exports disabled.';
  const filter=$('filter').value;
  const selectedSort=$('boardSort').value;
@@ -604,6 +682,14 @@ function render(){
   section.append(formField('Private evidence reference (no secrets or raw evidence)',r.reference,240,v=>{r.reference=v;changed=true;renderMetrics();}));
   section.append(formField('Human reviewer/team (local, unverified)',r.reviewer,120,v=>{r.reviewer=v;changed=true;updateTeamChoices();}));
   section.append(formField('Next evidence or retest coordination step',r.next_step,500,v=>{r.next_step=v;changed=true;},true));
+  const evidenceBox=el('details','evidence-dossier');
+  const entered=EVIDENCE_FIELDS.slice(0,4).filter(([key])=>r.evidence[key].trim()).length;
+  evidenceBox.append(el('summary','', 'Evidence dossier · '+entered+'/4 references entered (UNVERIFIED)'));
+  evidenceBox.append(el('p','detail','Only references to approved private evidence storage; do not paste artifacts, credentials or raw findings.'));
+  for(const [key,max,label] of EVIDENCE_FIELDS){
+   evidenceBox.append(formField(label,r.evidence[key],max,v=>{r.evidence[key]=v;changed=true;renderMetrics();},key==='review_question'));
+  }
+  section.append(evidenceBox);
   board.append(section);
  }
  $('shown').textContent=String(board.childElementCount);
@@ -612,6 +698,7 @@ function render(){
 function renderMetrics(){
  if(!source)return;
  const m=count();for(const [key,num] of Object.entries(m))$(key).textContent=String(num);
+ renderEvidenceMatrix();
 }
 async function readCSV(file){return engine.parseCSV(await read(file,LIMIT_CSV));}
 
@@ -740,6 +827,21 @@ $('applyBulk').addEventListener('click',()=>{
 
 /* Explicit revision coordination exports: a private action register retaining original
    changed/absent IDs, or anonymous counts. Neither document verifies a fix. */
+
+$('exportEvidenceMatrix').addEventListener('click',()=>{
+ try{
+  if(!sourceHash)throw Error('Load an original source first.');
+  const cols=['original_severity','source_findings','missing_patch_reference','missing_deploy_reference',
+   'missing_rollback_reference','missing_retest_request_reference','all_four_present_unverified',
+   'human_followup_candidates'];
+  const rows=evidenceMatrix().map(x=>[x.severity,x.total,x.missing_change,x.missing_deployment,
+   x.missing_rollback,x.missing_retest_request,x.all_four_entered_unverified,x.high_priority_followup]);
+  const content=[cols,...rows].map(row=>row.map(x=>'"'+String(x).replace(/"/g,'""')+'"').join(',')).join('\r\n')+'\r\n';
+  download('lightup-human-evidence-readiness-aggregate.csv',content,'text/csv');
+  status('Aggregate human evidence-readiness matrix downloaded. All reference counts remain unverified, never consent or retest.');
+ }catch(err){status(err.message,true);}
+});
+
 $('exportRevisionCSV').addEventListener('click',()=>{
  try{
   if(!sourceHash||!revisions.length)throw Error('No acknowledged original-source revision available.');
@@ -785,7 +887,7 @@ $('importTeamReturn').addEventListener('click',async()=>{
    'cases','warning',...flags]);
   if(!packet||Object.getPrototypeOf(packet)!==Object.prototype||
    Object.keys(packet).some(k=>!topFields.has(k))||
-   packet.kind!=='lightup.remediation_private_team_handoff'||packet.schema_version!==1||
+   packet.kind!=='lightup.remediation_private_team_handoff'||![1,2].includes(packet.schema_version)||
    packet.disposition!=='UNVERIFIED_PRIVATE_HUMAN_COORDINATION'||
    packet.source_contract!=='lightup.finding_export._COLUMNS_v1'||
    packet.source_sha256!==sourceHash||packet.original_findings_total!==source.length||
@@ -802,7 +904,7 @@ $('importTeamReturn').addEventListener('click',async()=>{
   const rowFields=new Set(['finding_id','title','severity','original_retest_status',
    'original_remediation','casework_status','due_date','local_owner','next_action',
    'verification_plan','blocker','review_stage','evidence_reference',
-   'local_reviewer','human_follow_up','warnings']);
+   'local_reviewer','human_follow_up','warnings',...EVIDENCE_FIELDS.map(([key])=>key)]);
   const received=new Map();
   for(const row of packet.cases){
    if(!row||Object.getPrototypeOf(row)!==Object.prototype||
@@ -822,14 +924,17 @@ $('importTeamReturn').addEventListener('click',async()=>{
     throw Error('Malformed local human warning list.');
    const next=validReview({finding_id:src.finding_id,stage:row.review_stage,
     reference:row.evidence_reference,reviewer:row.local_reviewer,
-    next_step:row.human_follow_up},new Set([src.finding_id]));
+    next_step:row.human_follow_up,
+    evidence:packet.schema_version===2?Object.fromEntries(EVIDENCE_FIELDS.map(([key])=>[key,row[key]])):review.get(src.finding_id).evidence
+   },new Set([src.finding_id]));
    received.set(src.finding_id,next);
   }
   /* Use the exact original team-packet order, not sorting, for the baseline.
      Member count and identities have already been verified completely. */
   const baseline=localSha256(JSON.stringify(packet.cases.map(row=>{
    const r=review.get(row.finding_id);
-   return [row.finding_id,r.stage,r.reference,r.reviewer,r.next_step];
+   return [row.finding_id,r.stage,r.reference,r.reviewer,r.next_step,
+    ...(packet.schema_version===2?EVIDENCE_FIELDS.map(([key])=>r.evidence[key]):[])];
   })));
   if(baseline!==packet.original_review_sha256)throw Error('Local notes changed since private team handoff; re-export rather than overwriting newer notes.');
   if(received.size!==expected.length)throw Error('Incomplete private team response; no local edits applied.');
@@ -878,6 +983,11 @@ $('brief').addEventListener('click',()=>{
   '| Finding ID | Severity | Original retest | Local case stage | Evidence coordination | Reference (unverified) | Next action |',
   '| --- | --- | --- | --- | --- | --- | --- |'];
  for(const {f,c,r} of rows)lines.push('| '+[f.finding_id,f.severity,f.retest_status,c?.status||'not loaded',r.stage,r.reference,r.next_step].map(escape).join(' | ')+' |');
+ lines.push('','## Private human evidence-reference dossiers (all entries unverified)');
+ for(const {f,r} of rows){
+  lines.push('','### Finding '+escape(f.finding_id));
+  for(const [key,,label] of EVIDENCE_FIELDS)lines.push('- '+label+': '+escape(r.evidence[key]||'NOT PROVIDED'));
+ }
  lines.push('','Any real retest, evidence validation, closure or client/operator approval must occur in the separate authenticated original system.');
  download('lightup-evidence-coordination-private.md',lines.join('\n'),'text/markdown'); 
 });
