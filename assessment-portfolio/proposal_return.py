@@ -63,10 +63,14 @@ def reconcile(manifest_path, choices_path, agenda_path, proposal_path, *, agenda
         updates[slot]=item
     if set(updates)!=set(range(1,len(choices)+1)):
         raise Hold("incomplete original human source membership")
+    # Original agenda.py sorts rows by human priority/date; source membership is
+    # keyed by immutable original slot, NEVER by display/priority list order.
+    source_rows={item["slot"]:item for item in agenda["rows"]}
     fresh=[]
     changed=0
-    for row, prior, source_row in zip(original["entries"],choices,agenda["rows"]):
+    for row, prior in zip(original["entries"],choices):
         slot=row["slot"]
+        source_row=source_rows[slot]
         item=updates[slot]
         if (source_row["slot"]!=slot
                 or source_row["source_kind"]!=row["kind"]

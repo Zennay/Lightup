@@ -86,3 +86,7 @@ Operators who already possess original archive manifests and original source-bou
 ### Original workspace ZIP → human review return
 
 Use [workspace_return.py](WORKSPACE-RETURN.md) to submit 1–12 offline review-Studio proposals against the same untouched original manifests and human choices. Complete source/ZIP binding is checked before publishing a single new private original-schema choices ZIP; no original inputs are changed and no authority is implied.
+
+### Continue complete human review cycles
+
+Use [review_cycle.py](REVIEW-CYCLE.md) to take a private one-command workbench, the unchanged original manifests and prior choices, and human review proposals, then atomically create both a **new private original-schema choices set** and a **new ready-to-open offline portfolio workbench** for an explicit planning date. Every source must rebind to its original identity; no original is edited.

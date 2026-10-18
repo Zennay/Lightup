@@ -32,6 +32,8 @@ The source snapshots are checked before a single fully assembled ZIP is publishe
 
 A source hash is only an unsigned local byte correlation. No original raw lab finding/evidence/target file, source manifest, choices draft or customer credential is bundled. The user still needs the original trusted manifest and choices separately to submit human-only changes via [proposal_return.py](REVIEW-RETURN.md). The portable ZIP is PRIVATE and must not be shared as anonymous evidence.
 
+For preparing the **next full private offline review workspace** directly from those proposals, use [review_cycle.py](REVIEW-CYCLE.md). This also returns new original human choices without touching any previous files.
+
 For returning the human proposals from the complete ZIP **without manually extracting the original agendas**, use [workspace_return.py](WORKSPACE-RETURN.md). It independently reconstructs each original agenda and emits a new private original-schema human choices bundle.
 
 The new CLI only composes existing offline source-owner modules; it never initiates lab evaluation, original scan, dispatch, consent, grant, retest or release. Exit 2 for REVIEW_ONLY, 3 for original HOLD/rejected input, never permission. Original exact-head hosted/permanent named VPS CI, source-owner + independent privacy/security reviews, genuine separately authenticated current client/operator consent with at-use revocation and explicit HUMAN GO remain mandatory before release.

@@ -1,0 +1,33 @@
+# LightUp · Continue an original offline human assessment review cycle
+
+**INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD · NO GO.**
+
+Once the private offline human workbench has been used for original-source human review, `review_cycle.py` can deliver **both** (a) updated new ORIGINAL-schema human-only choices and (b) a complete, ready-to-open **new** standalone offline assessment workbench from the same set of human proposals. This avoids manually extracting each old agenda, individually reconciling the proposals, and independently rebuilding the next portfolio. Neither stage mutates any previous file.
+
+```sh
+python3 assessment-portfolio/review_cycle.py \
+  --workspace /private/ORIGINAL-human-workspace.zip \
+  --original-manifest /private/ORIGINAL-A.json \
+  --original-manifest /private/ORIGINAL-B.json \
+  --original-choices /private/ORIGINAL-choices-A.json \
+  --original-choices /private/ORIGINAL-choices-B.json \
+  --proposal /private/HUMAN-proposal-A.json \
+  --proposal /private/HUMAN-proposal-B.json \
+  --next-as-of 2026-10-19 \
+  --output /private/NEW-private-review-cycle.zip
+```
+
+Exactly 1–12 original source groups in the **original workspace order** are supported. The new date is explicit and limited to canonical human planning dates. The original `workspace_return.build` performs complete source, original-choice, original-agenda and private human-proposal reconciliation first. A changed, missing, duplicated, ambiguous or unrecognized original source causes entire-operation HOLD. At no point are original manifest/choices, the previous ZIP, proposals or existing outputs replaced.
+
+The **new outer owner-private ZIP** contains:
+
+- `next-human-workspace.zip`: a complete new `one_command.py`-compatible standalone workbench (scriptless index, interactive role capacity studio, private human review studio, aggregate-only outputs, fresh original agenda snapshots, newly source-bound private map) for the selected planning date.
+- `original-human-choices-NN.json`: each new original `lightup.archive_human_followup.v1` private human choices document, matching exactly the original immutable manifest. Preserve the prior versions.
+- `private-revision-record.json`: unsigned previous/current SHA-256 byte correlations and human change counts for **owner-only** audit, with explicit false authority.
+- `index.html` and `START-HERE.txt`: offline, scriptless return overview and instructions.
+
+A new cycle can be started by giving `workspace_return.py` or `review_cycle.py` the extracted `next-human-workspace.zip` plus the **new matching original-human-choices-NN.json** and the same separately retained original manifests. The raw previous original manifests are intentionally absent from both ZIPs; do not treat a new human planning status or unsigned digest as verification of source, user, evidence, remediation or permissions.
+
+**Important compatibility repair:** original `assessment-archive/agenda.py` sorts human rows for priority display. `proposal_return.py` now matches every original row by its immutable original slot instead of assuming presentation order equals source order. Without this repair, a legitimate human review could be rejected whenever agenda priority/date reorders rows. It still requires exact prior stage, role, proposed date, immutable source and complete original membership. No authority is broadened.
+
+The process is offline, bounded and only publishes an atomic new 0600 private ZIP. It does not perform lab evaluation, scans, target interaction, client-tenant database changes, authorization grants, official task assignment, execution, real consent or fixes. Even a successfully prepared next workbench remains **REVIEW_ONLY or HOLD** and cannot become GO. Existing original exact-head hosted/permanent named-VPS CI, original source owner, independent privacy/security review, actual separately authenticated client and operator consent with at-use revocation, #177/#182/#829 and HUMAN GO remain mandatory for release.
