@@ -240,6 +240,10 @@ def build(endpoints: tuple[str, ...], output_dir: str,
                 "Any future assessment requires all original independent permissions,\n"
                 "action-time revocation checks, CI/security/privacy and HUMAN GO.\n"
                 "No completed assessment, grant, scan or verified finding here.\n"
+                "Read-only source-bound reopen from the repository (not executed here):\n"
+                "  PYTHONPATH=<LightUp_repo>/src python3 "
+                "<LightUp_repo>/assessment-launchpad/reopen.py --packet .\n"
+                "Unsigned integrity cannot authenticate a source or grant permission.\n"
             ).encode("utf-8")),
         )
         if studio is not None:
