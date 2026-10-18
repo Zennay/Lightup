@@ -99,7 +99,7 @@ tbody button{font-size:11px;padding:5px 7px}
 <div class="actions"><button id="scenario-export-anon" type="button" class="secondary" disabled>Anonymous hypothetical counts</button><button id="scenario-export-private" type="button" disabled>PRIVATE what-if human briefing JSON</button></div>
 <p class="caption">The private briefing requires an exact original source SHA-256 and explicit recipient confirmation; the anonymous one exports only record/engagement counts. A hypothetical missing record never proves an actual revocation or an approved scope decision.</p></section>
 <footer><p class="caption">LightUp · isolated original-source companion · fully offline · private exports stay with the operator · PLAN/LAB ONLY / DRAFT/HOLD. Human notes are never original domain evidence.</p></footer>
-</main><script>
+</main><template id="original-casebook-b64" data-source-sha256=""></template><script>
 (function(){
 "use strict";
 var source=null,sourceSHA=null,fictional=false,selection=null,human=new Map(),hypothetical=new Set(),MAX=524288,REV_LIMIT=262144;
@@ -369,6 +369,35 @@ if(!STAGES.includes(stage)||reviewer.length>80||next.length>180||note.length>100
 if(stage==="unreviewed"&&!reviewer&&!next&&!due&&!note)human.delete(selection);
 else human.set(selection,{stage:stage,reviewer:reviewer,next:next,due:due,note:note});
 }
+async function loadEmbeddedOriginal(){
+var holder=el("original-casebook-b64");if(!holder)return;
+var encoded=holder.textContent.trim(),declared=holder.getAttribute("data-source-sha256");
+if(!encoded)return;
+try{
+if(!/^[A-Za-z0-9+/]+={0,2}$/.test(encoded)||encoded.length>700000||!decodeURIComponent)throw Error("invalid inert source envelope");
+if(!/^[0-9a-f]{64}$/.test(declared))throw Error("missing source fingerprint");
+var binary=atob(encoded),buffer=new Uint8Array(binary.length);
+for(var i=0;i<binary.length;i++)buffer[i]=binary.charCodeAt(i);
+if(buffer.length<2||buffer.length>MAX)throw Error("bounded source length");
+var hash=await sha256(buffer.buffer);
+if(!hash||hash!==declared)throw Error("embedded source byte digest mismatch");
+var decoder=new TextDecoder("utf-8",{fatal:true,ignoreBOM:true}),raw=decoder.decode(buffer);
+if(raw.charCodeAt(0)===0xfeff)throw Error("ambiguous UTF-8 BOM");
+var candidate=validate(strictJSON(raw));
+if(source||human.size)throw Error("source is already active");
+source=candidate;sourceSHA=hash;fictional=false;selection=null;human.clear();hypothetical.clear();
+render();
+setMessage("PRIVATE Casebook automatically opened from this owner-private offline packet. Original source bytes SHA-256 bound. REVIEW_ONLY / HUMAN HOLD. No current consent or authorization checked.");
+}catch(e){
+source=null;sourceSHA=null;selection=null;human.clear();hypothetical.clear();render();
+setMessage("HOLD: PRIVATE embedded Casebook could not be admitted. Use the original source file picker only after confirming legitimate private provenance.");
+}finally{
+// Remove the inert encoded original payload from the DOM after reading it.
+// The original in-memory source remains private to this tab.
+holder.replaceChildren();holder.removeAttribute("data-source-sha256");
+}
+}
+
 async function strictFileBytes(file){
 var buffer=await file.arrayBuffer(),bytes=new Uint8Array(buffer);
 if(bytes.length<2||bytes[0]===0xef&&bytes[1]===0xbb&&bytes[2]===0xbf)throw Error("unsupported UTF8 BOM/length");
