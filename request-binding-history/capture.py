@@ -219,38 +219,58 @@ def capture(args: argparse.Namespace) -> int:
     now = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     name = f"original-{now}-{secrets.token_hex(8)}.json"
     dest = root / name
+    staging = root / (".capture-pending-" + secrets.token_hex(16) + ".json")
+    # This is always a wholly NEW file belonging to this capture attempt.
+    # On source denial/scope mismatch/size failure it is deleted, so a
+    # rejected private capture cannot leave an untracked sensitive source.
     cmd = [
         sys.executable, "-m", "lightup.request_binding_readiness_cli",
         "--db", str(Path(args.db).resolve()), "--email", args.email,
-        "--engagement-id", args.engagement_id, "--output", str(dest), "--risk", str(args.risk),
+        "--engagement-id", args.engagement_id, "--output", str(staging), "--risk", str(args.risk),
     ]
     if args.client_id:
         cmd.extend(["--client-id", args.client_id])
     for literal in args.asset:
         cmd.extend(["--asset", literal])
-    # The separate original CLI implements authenticated operator login with
-    # existing lockout, canonical asset checks, and read-only SQLite review.
-    # Password is entered directly by the operator into that exact CLI's TTY.
-    status = subprocess.run(cmd, check=False).returncode
-    if status != 0:
-        raise Hold("original persisted operator authentication/source review refused capture")
-    if not dest.is_file() or dest.is_symlink() or stat.S_IMODE(dest.stat().st_mode) & 0o077:
-        raise Hold("source exporter did not write a protected private report")
-    raw = read_bytes(dest, MAX_FILE_BYTES)
-    meta = source_metadata(raw)
-    if ledger["selection_digest_unsigned"] is not None and meta["selection"] != ledger["selection_digest_unsigned"]:
-        raise Hold("new source snapshot describes a DIFFERENT proposed scope; never mix selections")
-    if sum(map(len, old)) + len(raw) > MAX_TOTAL_BYTES:
-        raise Hold("bounded private original source collection exceeded")
-    if any(entry["original_file_sha256"] == digest(raw) for entry in ledger["snapshots"]):
-        raise Hold("identical private original source export already recorded")
-    ledger["selection_digest_unsigned"] = meta["selection"]
-    ledger["snapshots"].append({
-        "filename": name, "original_file_sha256": digest(raw),
-        "source_revision_sha256_unsigned": meta["revision"],
-        "review_instant_utc": meta["review_instant_utc"],
-    })
-    persist_ledger(root, ledger)
+    created = False
+    try:
+        # Original source module (not this helper) enforces authenticated
+        # operator lockout, canonical scope checks, persisted source lineage.
+        # Password is entered only into its live interactive TTY prompt.
+        status = subprocess.run(cmd, check=False).returncode
+        if status != 0:
+            raise Hold("genuine original operator/source review refused capture")
+        raw = read_bytes(staging, MAX_FILE_BYTES)
+        meta = source_metadata(raw)
+        if (ledger["selection_digest_unsigned"] is not None
+                and meta["selection"] != ledger["selection_digest_unsigned"]):
+            raise Hold("captured source selection differs from existing restricted ledger")
+        if sum(map(len, old)) + len(raw) > MAX_TOTAL_BYTES:
+            raise Hold("private original source budget exceeded")
+        if any(entry["original_file_sha256"] == digest(raw) for entry in ledger["snapshots"]):
+            raise Hold("identical original file bytes already stored")
+        # Safe named capture can only be created if no destination already
+        # exists: never overwrite an operator's existing original records.
+        os.link(staging, dest, follow_symlinks=False)
+        created = True
+        ledger["selection_digest_unsigned"] = meta["selection"]
+        ledger["snapshots"].append({
+            "filename": name, "original_file_sha256": digest(raw),
+            "source_revision_sha256_unsigned": meta["revision"],
+            "review_instant_utc": meta["review_instant_utc"],
+        })
+        try:
+            persist_ledger(root, ledger)
+        except BaseException:
+            # Remove only this just-created, uncommitted source artifact.
+            dest.unlink()
+            created = False
+            raise
+    finally:
+        if staging.exists():
+            staging.unlink()
+    if not created:
+        raise Hold("original export was never committed to the private ledger")
     print(f"REVIEW_ONLY: recorded original authenticated-source export as PRIVATE {name}.")
     print(f"Snapshots: {len(ledger['snapshots'])}/{MAX_FILES}. Open the offline history desk and select these original JSON files together.")
     return 0
