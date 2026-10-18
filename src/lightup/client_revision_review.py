@@ -38,6 +38,7 @@ def render_revision_review(original: AssessmentRequestRecord, draft: dict) -> st
     # The request provenance digest is only an unsigned exact-row consistency hint.
     stamp = escape(datetime.now(timezone.utc).isoformat())
     source_digest = escape(draft["previous_record_sha256"])
+    proposed_digest = escape(draft["revision_sha256"])
     current_risk = escape(draft["requested_risk"])
     previous_risk = escape(draft["previous_risk"])
     return (
@@ -86,10 +87,11 @@ def render_revision_review(original: AssessmentRequestRecord, draft: dict) -> st
         + rows(removed) + '</ul></section></div>'
         '<section class="panel"><h2>Next action</h2><p>Review this private comparison. '
         'In the authenticated CLI, run <code>revise-submit</code> using the exact '
-        'source SHA-256 shown below, <code>--confirm-new-request</code> and, when '
+        'source SHA-256 and complete proposed revision SHA-256 shown below, <code>--confirm-new-request</code> and, when '
         'scope has expanded, <code>--confirm-scope-expansion</code>. '
         'Do not interpret confirmations as security authorization.</p>'
         '<p>Source review SHA-256 (unsigned): <code>' + source_digest + '</code></p>'
+        '<p>Complete proposed revision SHA-256 (unsigned): <code>' + proposed_digest + '</code></p>'
         '<p class="muted">Fresh login and a new independent operator review are mandatory. '
         'An approved request alone is not a durable authorization grant.</p></section></main>'
         '<footer>INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD · '
