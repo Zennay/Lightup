@@ -1,8 +1,8 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-qskirocgia198OhrQU3+zK6LNAt5wTKm7Vdk7LunzOI='; style-src 'sha256-memtTUZD64P88m3AtjdQByVLKkzxIjTexcFy8OTQNDk='; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-WMF+jZulZWOAcvrckliyKbQjpH6ZDli8kYbL5J0ObXg='; style-src 'sha256-AwjXpv5sx1tfU2ICao/QArGc5FJ0GfifDR7aoFMRpsQ='; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'">
 <title>LightUp · Private Scope Packet Vault (Offline)</title><style>
-:root{font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#090f1c;color:#e9f1ff;color-scheme:dark}*{box-sizing:border-box}body{margin:0}main{max-width:940px;padding:24px;margin:auto}header{padding:30px 0 22px}.eyebrow{color:#7ed3fd;font-size:12px;letter-spacing:.16em;font-weight:800}h1{font-size:clamp(34px,6vw,58px);line-height:1.02;letter-spacing:-.04em;margin:16px 0}h2{font-size:20px;margin:0 0 12px}h3{font-size:15px;margin:24px 0 10px}.lead{color:#afc3de;font-size:18px;line-height:1.6;max-width:750px}.hold{border:1px solid #eec06c;background:#2f2419;border-radius:10px;color:#ffe5ac;font-weight:700;font-size:12px;letter-spacing:.06em;padding:12px 16px;line-height:1.6}section{background:#111c30;border:1px solid #324158;border-radius:16px;padding:24px;margin-bottom:18px;box-shadow:0 6px 36px #0002}section p,li{color:#bfcbdf;line-height:1.65}section strong{color:#fff}label{display:block;font-size:14px;font-weight:650;color:#dfeafa}input{display:block;width:100%;margin-top:9px;padding:12px 13px;border:1px solid #60718d;border-radius:10px;background:#0b1425;color:#fff;font:inherit}input:focus,button:focus-visible{outline:3px solid #75bcff;outline-offset:2px}.picker{cursor:pointer;border:1px dashed #659de1;padding:17px;border-radius:12px;background:#102942}.picker input{border:0;padding:0;background:none}.grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:20px}button{font:inherit;border:0;border-radius:10px;padding:12px 18px;cursor:pointer;font-weight:700;background:#80cdfb;color:#071727}button.secondary{background:#23324c;color:#ecf6ff;border:1px solid #50617b}button:disabled{opacity:.5;cursor:not-allowed}.status{font-size:14px}.items{display:grid;gap:10px;margin-top:12px}.item{display:flex;align-items:center;justify-content:space-between;gap:18px;padding:13px;border:1px solid #40536f;border-radius:10px;background:#14223a;overflow-wrap:anywhere}.item small{color:#b1c1d6;display:block;margin-top:4px}.item button{flex-shrink:0;padding:9px 13px}.message{padding:16px;border-left:4px solid #7bcdff;background:#122b46;min-height:56px;border-radius:5px;line-height:1.5}.message.error{border-color:#eab3a0;background:#391e25}footer{padding:0 0 40px}footer small{color:#90a4be}ol{padding-left:24px}@media(max-width:650px){.grid{grid-template-columns:1fr}.item{align-items:flex-start;flex-direction:column}section{padding:17px}main{padding:12px}.item button{width:100%}}
+:root{font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#090f1c;color:#e9f1ff;color-scheme:dark}*{box-sizing:border-box}body{margin:0}main{max-width:940px;padding:24px;margin:auto}header{padding:30px 0 22px}.eyebrow{color:#7ed3fd;font-size:12px;letter-spacing:.16em;font-weight:800}h1{font-size:clamp(34px,6vw,58px);line-height:1.02;letter-spacing:-.04em;margin:16px 0}h2{font-size:20px;margin:0 0 12px}h3{font-size:15px;margin:24px 0 10px}.lead{color:#afc3de;font-size:18px;line-height:1.6;max-width:750px}.hold{border:1px solid #eec06c;background:#2f2419;border-radius:10px;color:#ffe5ac;font-weight:700;font-size:12px;letter-spacing:.06em;padding:12px 16px;line-height:1.6}section{background:#111c30;border:1px solid #324158;border-radius:16px;padding:24px;margin-bottom:18px;box-shadow:0 6px 36px #0002}section p,li{color:#bfcbdf;line-height:1.65}section strong{color:#fff}label{display:block;font-size:14px;font-weight:650;color:#dfeafa}input,select{display:block;width:100%;margin-top:9px;padding:12px 13px;border:1px solid #60718d;border-radius:10px;background:#0b1425;color:#fff;font:inherit}input:focus,button:focus-visible{outline:3px solid #75bcff;outline-offset:2px}.picker{cursor:pointer;border:1px dashed #659de1;padding:17px;border-radius:12px;background:#102942}.picker input{border:0;padding:0;background:none}.grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:20px}button{font:inherit;border:0;border-radius:10px;padding:12px 18px;cursor:pointer;font-weight:700;background:#80cdfb;color:#071727}button.secondary{background:#23324c;color:#ecf6ff;border:1px solid #50617b}button:disabled{opacity:.5;cursor:not-allowed}.status{font-size:14px}.items{display:grid;gap:10px;margin-top:12px}.item{display:flex;align-items:center;justify-content:space-between;gap:18px;padding:13px;border:1px solid #40536f;border-radius:10px;background:#14223a;overflow-wrap:anywhere}.item small{color:#b1c1d6;display:block;margin-top:4px}.item button{flex-shrink:0;padding:9px 13px}.message{padding:16px;border-left:4px solid #7bcdff;background:#122b46;min-height:56px;border-radius:5px;line-height:1.5}.message.error{border-color:#eab3a0;background:#391e25}footer{padding:0 0 40px}footer small{color:#90a4be}ol{padding-left:24px}@media(max-width:650px){.grid{grid-template-columns:1fr}.item{align-items:flex-start;flex-direction:column}section{padding:17px}main{padding:12px}.item button{width:100%}}
 </style><script>
 "use strict";
 
@@ -22,6 +22,8 @@
   const ENC = new TextEncoder();
   const DEC = new TextDecoder("utf-8", {fatal: true});
   const allowed = /\.(json|md|txt|ics|csv)$/i;
+  const roles = ["Unclassified", "Client proposal — unverified", "Operator review — unverified", "Scope revision — unverified", "Schedule handoff — unverified"];
+  function validRole(role) { return typeof role === "string" && roles.includes(role); }
   const $ = (id) => document.getElementById(id);
   const els = {
     files: $("files"), list: $("file-list"), summary: $("file-summary"),
@@ -113,6 +115,20 @@
         touch(); paint();
         notice("File forgotten from tab memory. Existing downloaded vault files were not changed.");
       });
+      const role = document.createElement("select");
+      role.setAttribute("aria-label", "Self-reported, unverified review role for " + entry.name);
+      role.title = "Offline sorting label only. Never client or operator approval.";
+      for (const name of roles) {
+        const option = document.createElement("option"); option.value = name; option.textContent = name;
+        role.append(option);
+      }
+      role.value = entry.role;
+      role.addEventListener("change", () => {
+        if (busy) return;
+        entry.role = role.value;
+        touch(); notice("Self-reported role updated in tab memory; this is not independent identity or authorization.");
+      });
+      text.append(role);
       box.append(text, remove);
       els.list.append(box);
       const recovered = document.createElement("div");
@@ -199,7 +215,7 @@
           const bytes = new Uint8Array(await file.arrayBuffer());
           invariant(bytes.length === file.size);
           DEC.decode(bytes); // Only canonical UTF-8 text drafts, not arbitrary binary payloads.
-          staged.push({name, bytes, hash: await digest(bytes)});
+          staged.push({name, bytes, hash: await digest(bytes), role: roles[0]});
         }
         entries.push(...staged);
         notice("New local draft files loaded. They are not persisted until you explicitly export an encrypted vault.");
@@ -226,7 +242,7 @@
         schema: "lightup.offline.scope-packet.payload.v1",
         createdUtc: new Date().toISOString(),
         authority: {may_authorize: false, may_consent: false, may_grant: false, may_scan: false, may_dispatch: false, may_deploy: false, may_release: false},
-        files: entries.map((entry) => ({name: entry.name, length: entry.bytes.length, sha256: entry.hash, base64: b64(entry.bytes)}))
+        files: entries.map((entry) => ({name: entry.name, length: entry.bytes.length, sha256: entry.hash, role: entry.role, base64: b64(entry.bytes)}))
       };
       const cleartext = ENC.encode(JSON.stringify(payload));
       try {
@@ -282,7 +298,9 @@
         const names = new Set();
         let total = 0;
         for (const record of payload.files) {
-          strictKeys(record, ["name", "length", "sha256", "base64"]);
+          const hasRole = Object.prototype.hasOwnProperty.call(record, "role");
+          strictKeys(record, hasRole ? ["name", "length", "sha256", "role", "base64"] : ["name", "length", "sha256", "base64"]);
+          if (hasRole) invariant(validRole(record.role));
           const name = nameOf(record.name);
           invariant(!names.has(name));
           names.add(name);
@@ -291,7 +309,7 @@
           total += record.length;
           invariant(total <= MAX_TOTAL_BYTES);
           const bytes = unb64(record.base64, MAX_FILE_BYTES);
-          staged.push({name, bytes, hash: record.sha256});
+          staged.push({name, bytes, hash: record.sha256, role: hasRole ? record.role : roles[0]});
           invariant(bytes.length === record.length && (await digest(bytes)) === record.sha256);
           DEC.decode(bytes);
         }
@@ -341,7 +359,7 @@
 <header><p class="eyebrow">LIGHTUP / PRIVATE SCOPE WORKSPACE</p><h1>Private packet vault</h1><p class="lead">Encrypt draft scope packets into one password-protected offline file. Nothing is uploaded, sent, approved or authorized.</p><div class="hold">PLAN / LAB ONLY · REVIEW MATERIAL · NOT CLIENT CONSENT, NOT A GRANT, NOT A PERMIT</div></header>
 <section aria-labelledby="add-title">
 <h2 id="add-title">1. Collect local review files</h2>
-<p>Collect up to 12 draft files (.json, .md, .txt, .ics, .csv; each max 512 KiB, combined max 2 MiB). Names and file content are <strong>inside</strong> the encrypted packet, not in its public metadata. Avoid importing passwords, API keys or live customer secrets.</p>
+<p>Self-label each file as a client proposal, operator note, scope revision or schedule handoff for offline sorting; labels are never verified authority. Collect up to 12 draft files (.json, .md, .txt, .ics, .csv; each max 512 KiB, combined max 2 MiB). Names and file content are <strong>inside</strong> the encrypted packet, not in its public metadata. Avoid importing passwords, API keys or live customer secrets.</p>
 <label class="picker" for="files">Choose local draft files<input id="files" type="file" accept=".json,.md,.txt,.ics,.csv" multiple></label>
 <p id="file-summary" class="status" aria-live="polite">No files selected. Decrypt a saved vault below or collect new files.</p>
 <div id="file-list" class="items" aria-live="polite"></div>
