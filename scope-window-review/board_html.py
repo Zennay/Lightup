@@ -94,6 +94,99 @@ document.getElementById('aggregate').addEventListener('click',()=>{
  }
  emit('lightup-anonymous-human-review-counts.csv',csv.join('\\r\\n')+'\\r\\n','text/csv');
 });
+const restoreInput=document.getElementById('restore');
+const approveInput=document.getElementById('approve-restore');
+const applyButton=document.getElementById('apply-restore');
+const preview=document.getElementById('restore-preview');
+const rowByOriginal=new Map(rows.map(row=>[
+  JSON.stringify([row.dataset.grant,row.dataset.engagement||null]),row
+]));
+const legalStages=new Set(['unreviewed','investigating','escalated','documented']);
+const requiredTop=['schema','status','source_digest','note','authorization_granted',
+  'execution_allowed','release_approved','entries'];
+const requiredEntry=['grant_id','engagement_id','human_stage'];
+const exactKeys=(obj,fields)=>obj!==null && typeof obj==='object' &&
+  !Array.isArray(obj) && Object.keys(obj).sort().join('|')===[...fields].sort().join('|');
+let proposed=null;
+const clearProposal=(message)=>{
+ proposed=null;approveInput.checked=false;applyButton.disabled=true;
+ preview.textContent=message;
+};
+restoreInput.addEventListener('change',async()=>{
+ clearProposal('Reading local private human follow-up. No network request.');
+ const file=restoreInput.files && restoreInput.files[0];
+ if(!file){clearProposal('No local private file selected.');return;}
+ try{
+  if(file.size<1||file.size>131072)throw Error('Source note size exceeds 128 KiB.');
+  const raw=new TextDecoder('utf-8',{fatal:true}).decode(await file.arrayBuffer());
+  const data=JSON.parse(raw);
+  // Canonical serialization: duplicate keys, unexpected alternative spellings,
+  // hidden extra whitespace and nonstandard JSON cannot survive this boundary.
+  if(raw!==JSON.stringify(data,null,2)+'\n')
+   throw Error('Non-canonical or duplicate-key private handoff.');
+  if(!exactKeys(data,requiredTop) ||
+     data.schema!=='lightup.scope_window_human_handoff.v1' ||
+     data.status!=='REVIEW_ONLY' ||
+     data.source_digest!==document.body.dataset.digest ||
+     typeof data.note!=='string' || data.note.length>500 ||
+     data.authorization_granted!==false || data.execution_allowed!==false ||
+     data.release_approved!==false || !Array.isArray(data.entries) ||
+     data.entries.length>rows.length)
+   throw Error('Original source digest, schema, or safety flags differ.');
+  const chosen=new Map();
+  for(const entry of data.entries){
+   if(!exactKeys(entry,requiredEntry) || typeof entry.grant_id!=='string' ||
+      !legalStages.has(entry.human_stage) ||
+      (entry.engagement_id!==null && typeof entry.engagement_id!=='string'))
+    throw Error('Unknown private human-stage row.');
+   const key=JSON.stringify([entry.grant_id,entry.engagement_id]);
+   const matched=rowByOriginal.get(key);
+   if(!matched || chosen.has(matched.dataset.key))
+    throw Error('Duplicate, missing, or mismatching original case.');
+   chosen.set(matched.dataset.key,entry.human_stage);
+  }
+  const expected=new Map(rows.map(row=>[
+   row.dataset.key,row.querySelector('.stage').value
+  ]));
+  const changed=[...chosen].filter(([key,value])=>value!==expected.get(key));
+  proposed={chosen,expected};
+  const sample=changed.slice(0,8).map(([key,value])=>{
+    const row=rows.find(r=>r.dataset.key===key);
+    return (row?.dataset.grant||'')+': '+expected.get(key)+' → '+value;
+  });
+  preview.textContent='Private source-bound human preview: '+
+    changed.length+' proposed stage change(s), '+chosen.size+
+    ' total returned row(s). '+(sample.length?sample.join(' | '):'No stage changes.')+
+    ' Only these local human fields can change. Verify sender and exact tenant externally.';
+  applyButton.disabled=!changed.length;
+ }catch(error){
+  clearProposal('HOLD — private follow-up not imported: '+error.message);
+ }
+});
+approveInput.addEventListener('change',()=>{
+ if(!proposed)applyButton.disabled=true;
+});
+applyButton.addEventListener('click',()=>{
+ if(!proposed||!approveInput.checked){
+  preview.textContent='HOLD — verify the source and sender separately and tick the confirmation.';
+  return;
+ }
+ if([...proposed.expected].some(([key,before])=>
+    rows.find(row=>row.dataset.key===key)?.querySelector('.stage').value!==before)){
+  clearProposal('HOLD — local human stages changed since preview; reselect the private file.');
+  return;
+ }
+ const modified=[...proposed.chosen].filter(([key,stage])=>
+   stage!==proposed.expected.get(key));
+ for(const [key,stage] of modified){
+  const row=rows.find(r=>r.dataset.key===key);
+  row.querySelector('.stage').value=stage;
+  if(stage==='unreviewed')stages.delete(key);
+  else stages.set(key,stage);
+ }
+ clearProposal('Applied '+modified.length+' locally reviewed human stage(s). No original data, grant, STOP, consent or scanner changed.');
+ restoreInput.value='';
+});
 refresh();
 """
 
@@ -196,6 +289,15 @@ Private selected tenant: <span class="private">{_text(agenda["client_id"])}</spa
 <option value="RECORDED_END_UPCOMING">End upcoming</option></select></label></div>
 <p aria-live="polite" class="muted"><span id="shown">{counts["items"]}</span> visible items.
 Review dates are capacity-adjusted HUMAN suggestions only, not original authorization deadlines.</p>
+<section class="group" aria-label="Private human follow-up import">
+<h2>Import original-source-bound PRIVATE human follow-up</h2>
+<div class="controls"><label>Original private human JSON note
+<input type="file" id="restore" accept=".json,application/json"></label></div>
+<p id="restore-preview" class="muted" aria-live="polite">Only locally exported canonical notes for this exact source are accepted.</p>
+<div class="controls"><label><input id="approve-restore" type="checkbox">
+I independently verified the correct client, sender, source and proposed human changes (not consent)</label>
+<button id="apply-restore" type="button" disabled>Apply human stage changes locally</button></div>
+</section>
 <div class="controls"><button id="save" type="button">Export PRIVATE human stage note</button>
 <button id="aggregate" type="button">Export anonymous daily counts CSV</button></div>
 <main>{''.join(rows) or '<p>No upcoming original grant-window records for this selected horizon.</p>'}</main>
