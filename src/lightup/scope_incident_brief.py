@@ -78,6 +78,15 @@ def compose_scope_incident_brief(
             linked = exposure["request_linked_grant_count"]
             unbound = exposure["legacy_unbound_grant_count"]
             warning = exposure["human_attention"]
+            # A changed binding can preserve the total number of grants.
+            # Verify the independent original casebook request-link classes,
+            # not just the source count before reporting a reviewed row.
+            source_grants = [g for g in source["grants"] if g["engagement_id"] == eid]
+            source_linked = sum(g["approved_request_id"] is not None for g in source_grants)
+            source_unbound = len(source_grants) - source_linked
+            if (linked != source_linked or unbound != source_unbound
+                    or len(source_grants) != case["grant_count"]):
+                raise StopLedgerError("cross-source request binding drift")
             if type(linked) is not int or type(unbound) is not int or linked + unbound != count:
                 raise StopLedgerError("stored grant source inconsistent")
         except (StopLedgerError, KeyError, TypeError, ValueError):
