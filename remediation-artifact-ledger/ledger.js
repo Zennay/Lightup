@@ -15,7 +15,7 @@ function bounded(s,max,name,required) {
  return s;
 }
 function hex(buffer) { return Array.from(new Uint8Array(buffer), v=>v.toString(16).padStart(2,'0')).join(''); }
-function cryptoReady(){if(!crypto||!crypto.subtle)fail('This browser context has no WebCrypto SHA-256. Use a supported local browser.');}
+function cryptoReady(){if(typeof crypto==='undefined'||!crypto.subtle)fail('This browser context has no WebCrypto SHA-256. Use a supported local browser.');}
 async function digest(buffer){cryptoReady();return hex(await crypto.subtle.digest('SHA-256',buffer));}
 function utf8(text) { return encoder.encode(text); }
 function download(name, content, mime) {
@@ -84,7 +84,7 @@ function privatePacket(){
 }
 function fileReader(file,max){
  if(!file||file.size>max)fail('File exceeds permitted size: '+max+' bytes.');
- return file.text();
+ return new TextDecoder('utf-8',{fatal:true}).decode(await file.arrayBuffer());
 }
 function render(){
  const root=$('rows');root.replaceChildren();
@@ -126,7 +126,7 @@ function renderSummary(){
  for(const x of state.rows)counts[x.human_stage]++;
  $('summary').textContent=state.findings.length+' original findings · '+state.rows.length+' local file fingerprints · '+STAGES.map(s=>s+': '+counts[s]).join(' · ');
  $('source').textContent=state.sha?'Original canonical source SHA-256: '+state.sha:'No original CSV loaded.';
- for(const id of ['addFiles','privateExport','aggregateExport','privateImport','clear','verify'])$(id).disabled=!state.sha;
+ for(const id of ['addFiles','export','aggregate','privateImport','forget','verify'])$(id).disabled=!state.sha;
 }
 async function loadSource(){
  const file=$('original').files[0];if(!file)fail('Select an original findings CSV.');
@@ -135,11 +135,12 @@ async function loadSource(){
  const txt=await fileReader(file,LightUpCasework.MAX_BYTES);
  const findings=LightUpCasework.parseCSV(txt);
  const hash=await digest(utf8(sourceFingerprint(findings)));
+ const oldSource=state.sha,oldClient=state.client,oldEngagement=state.engagement;
  if(state.sha && (hash!==state.sha||state.client!==client||state.engagement!==engagement)){
    if(!confirm('New original source or context. Discard ALL existing private notes and attachments?'))return;
  }
  state.findings=findings;state.sha=hash;state.client=client;state.engagement=engagement;
- if(state.rows.length)state.rows=[];state.verify=null;
+ if(state.rows.length && (oldSource !== hash || oldClient !== client || oldEngagement !== engagement))state.rows=[];state.verify=null;
  $('finding').replaceChildren();
  for(const f of findings){const op=document.createElement('option');op.value=f.finding_id;op.textContent=f.finding_id+' · '+f.severity+' · '+f.title.slice(0,75);$('finding').append(op);}
  $('original').value='';render();message('Original five-column source loaded as unverified. File bytes are not stored.',false);
