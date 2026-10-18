@@ -79,3 +79,18 @@ PYTHONPATH=src python3 assessment-launchpad/build.py \
 Only the original `lightup.lab_catalog.read_selected_lab_design` and original `LabScenario` policy are binding. The native producer rejects duplicated/malformed scenario JSON keys using the ORIGINAL Studio validator; reads and pins the exact original source's SHA-256; checks the unchanged original whole-scenario schema and every target; enforces explicit port plus exact **unique** normalized private-IP membership; and creates a private 0700 folder with private 0600 `targets.txt`, `studio-catalog.json`, scriptless `private-launchpad.html`, `private-plan.json`, and `START-HERE.txt`. Any original byte drift before the native handoff produces HOLD, no partial directory.
 
 The generated operator command text includes `--catalog-file ./studio-catalog.json --scenario-id ... --preview-only`. **It is never executed by this module.** An offline catalog contains unsigned, self-declared scenarios and possibly declared expected findings; these are NOT factual planted ground truth, client permission, verified assessment, evidence, authority, or a scanner instruction. Browser `JSON.parse` is *not* a duplicate-key validator; native original schema admission is explicitly mandatory. Source revision changes require a fresh human binding, not silent notes carryover.
+
+## Source-bound private packet reopen after handoff
+
+The native packet builder now places an **artifact_sha256** map in the final `private-plan.json`, binding every original private file's bytes (including Studio catalog when present) without storing client identities, authority or secrets in aggregate output. These digests are **unsigned** and cannot authenticate a producer or proof of client permission.
+
+After an operator transfers a prepared packet through a separately approved private channel, they can reopen the original source-bounded handoff without executing a scanner:
+
+```sh
+PYTHONPATH=src python3 assessment-launchpad/reopen.py \
+  --packet ./NEW-PRIVATE-LAB-SCENARIO-HANDOFF
+```
+
+`reopen.py` opens only an existing owner-private ordinary directory (0700) and its exact original owner-private ordinary files (0600), refusing symlink entrypoints, missing/extra files, changed bytes or partial manifests. It checks the pinned original manifest bytes, reuses the unchanged original lab-scope admission, verifies exact total/unique endpoints and, for a Studio packet, revalidates the original Studio v1 source using the unchanged native source owner and the exact explicit-IP membership. It reports **only anonymous endpoint count + presence/absence of a Studio draft**, never paths, IPs, scenarios or credentials. Return code 2 means unsigned source revision is internally consistent **for human REVIEW_ONLY**; 3 is HOLD. Neither is an authorization/consent result.
+
+Reopening an old private packet does **not** make previously permitted endpoints currently safe to run. Any subsequent activity must independently recheck original scope, authenticated client/operator consent, revocation-at-use and required release gates. A copied, replaced or missing source cannot be interpreted as remediated or approved.
