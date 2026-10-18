@@ -44,7 +44,7 @@ a{color:#9bdafc}
 <section id="workspace" hidden>
 <section class="panel" aria-labelledby="appendtitle"><h2 id="appendtitle">Append new original snapshots</h2><p>Keep your existing human discussion markers while adding 1–10 additional source reports. New files must have the exact same original proposed selection, and duplicates are held. Nothing is appended when even one file is invalid.</p><input id="extra" type="file" multiple accept=".json,application/json" aria-label="Append original source snapshots"><button id="append">Append original reports atomically</button></section>
 <section class="panel"><h2>2 · Evidence summary</h2><div class="grid" id="stats"></div>
-<p class="muted">The file order is chosen by the operator. It is not authenticated chronological order. A copied JSON report is untrusted even when originally created by an authenticated operator. Reauthenticate and re-export directly from the original database before making decisions.</p></section>
+<p class="muted">The file order is chosen by the operator. It is not authenticated chronological order. A copied JSON report is untrusted even when originally created by an authenticated operator. Identical claimed original stored-row revision fingerprints must agree on stored request/risk/grant facts; time-dependent matching results may differ legitimately. Reauthenticate and re-export directly from the original database before making decisions.</p></section>
 <section class="panel"><h2>3 · Human-selected snapshot order</h2><p>Reorder source slots yourself for hypothetical comparisons; this never changes original records or establishes authenticated chronology. PRIVATE draft file bindings follow the chosen order.</p><button id="reverse" class="secondary">Reverse local source order</button><div class="table-wrap"><table><thead><tr><th>Slot</th><th>Original source review UTC</th><th>Stored source revision</th><th>Matching requests</th><th>Other requests</th><th>Historical grant rows</th><th>Human-only outcome</th><th>Manual order</th></tr></thead><tbody id="rows"></tbody></table></div>
 <h3>Administrative candidate count (not permissions)</h3><div id="chart" class="chart" aria-label="Candidate count by selected file slot"></div></section>
 <section class="panel"><h2>4 · Adjacent source-change reconciliation</h2>
@@ -184,6 +184,20 @@ function esc(v){return String(v).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",
 function download(filename,mime,content){
  const blob=new Blob([content],{type:mime}),url=URL.createObjectURL(blob),a=document.createElement("a");
  a.href=url;a.download=filename;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),2000);
+}
+function requireRevisionCoherence(reports){
+ // The original exporter fingerprints stored engagement/request/grant row values.
+ // Matching unsigned revision claims must describe matching persisted facts.
+ // Source-derived compatibility can still change with the review clock; never
+ // require source-computed candidate categories/reasons to stay identical.
+ const seen=new Map();
+ for(const r of reports){
+  const durable=JSON.stringify([r.total,r.grants,r.legacy,
+   r.cases.map(c=>[c.ref,c.storedStatus,c.risk,c.bound]).sort((a,b)=>a[0].localeCompare(b[0]))]);
+  if(seen.has(r.revision)&&seen.get(r.revision)!==durable)
+   fail("HOLD: copied snapshots claim one stored-source revision but disagree on original persisted request/grant facts");
+  seen.set(r.revision,durable);
+ }
 }
 function adjacentRecordChanges(left,right){
  const old=new Map(left.cases.map(c=>[c.ref,c])),next=new Map(right.cases.map(c=>[c.ref,c]));
@@ -392,6 +406,7 @@ $("import").addEventListener("click",async()=>{
   const fingerprint=r=>[r.revision,r.stamp,r.matched,r.other,r.notApproved,r.grants,r.legacy].join("|");
   if(new Set(parsed.map(fingerprint)).size!==parsed.length)fail("duplicate original snapshot metadata detected");
   if(parsed.some(v=>v.revision===undefined))fail("Original stored source revision missing.");
+  requireRevisionCoherence(parsed);
   const localHashes=(globalThis.crypto&&crypto.subtle)?await fingerprints(bytes):[];
   workspace={records:parsed,checks:ACTIONS.map(()=>false),casework:Object.create(null),pair:0,page:0,sourceBytes:chosen.reduce((sum,f)=>sum+f.size,0)};hashes=localHashes;
   render();note(parsed.length+" valid original source-export snapshots loaded for private REVIEW_ONLY (not permission).",false);
@@ -410,6 +425,7 @@ $("append").addEventListener("click",async()=>{
   const key=r=>[r.revision,r.stamp,r.matched,r.other,r.notApproved,r.grants,r.legacy].join("|");
   const keys=workspace.records.map(key).concat(extras.map(key));
   if(new Set(keys).size!==keys.length)fail("duplicate original snapshot metadata detected");
+  requireRevisionCoherence(workspace.records.concat(extras));
   const moreHashes=(hashes.length===workspace.records.length&&globalThis.crypto&&crypto.subtle)?await fingerprints(bytes):[];
   const newHashes=moreHashes.length===extras.length?hashes.concat(moreHashes):[];
   // Human-only casework from an earlier copied source must not silently remain
