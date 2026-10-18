@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-Iul0Ke5ytCGLqR70sNctmNBuOaGMqRb1i+qLIUlGjps='; style-src 'sha256-ly97SKZCWz9m1wg+hn1KrYh2cBx6ImLvi3ydBZA//9U='; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-XHDa5/0kJ8LAENNcear4sV7AFFVQxIOU+E2SDtW8i3E='; style-src 'sha256-ly97SKZCWz9m1wg+hn1KrYh2cBx6ImLvi3ydBZA//9U='; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'">
 <title>LightUp · Private Scope Packet Vault (Offline)</title><style>
 :root{font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#090f1c;color:#e9f1ff;color-scheme:dark}*{box-sizing:border-box}body{margin:0}main{max-width:940px;padding:24px;margin:auto}header{padding:30px 0 22px}.eyebrow{color:#7ed3fd;font-size:12px;letter-spacing:.16em;font-weight:800}h1{font-size:clamp(34px,6vw,58px);line-height:1.02;letter-spacing:-.04em;margin:16px 0}h2{font-size:20px;margin:0 0 12px}h3{font-size:15px;margin:24px 0 10px}.lead{color:#afc3de;font-size:18px;line-height:1.6;max-width:750px}.hold{border:1px solid #eec06c;background:#2f2419;border-radius:10px;color:#ffe5ac;font-weight:700;font-size:12px;letter-spacing:.06em;padding:12px 16px;line-height:1.6}section{background:#111c30;border:1px solid #324158;border-radius:16px;padding:24px;margin-bottom:18px;box-shadow:0 6px 36px #0002}section p,li{color:#bfcbdf;line-height:1.65}section strong{color:#fff}label{display:block;font-size:14px;font-weight:650;color:#dfeafa}input,select{display:block;width:100%;margin-top:9px;padding:12px 13px;border:1px solid #60718d;border-radius:10px;background:#0b1425;color:#fff;font:inherit}input:focus,button:focus-visible{outline:3px solid #75bcff;outline-offset:2px}.picker{cursor:pointer;border:1px dashed #659de1;padding:17px;border-radius:12px;background:#102942}.picker input{border:0;padding:0;background:none}.grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:20px}button{font:inherit;border:0;border-radius:10px;padding:12px 18px;cursor:pointer;font-weight:700;background:#80cdfb;color:#071727}button.secondary{background:#23324c;color:#ecf6ff;border:1px solid #50617b}button:disabled{opacity:.5;cursor:not-allowed}.status{font-size:14px}.items{display:grid;gap:10px;margin-top:12px}.item{display:flex;align-items:center;justify-content:space-between;gap:18px;padding:13px;border:1px solid #40536f;border-radius:10px;background:#14223a;overflow-wrap:anywhere}.item small{color:#b1c1d6;display:block;margin-top:4px}.item button{flex-shrink:0;padding:9px 13px}.message{padding:16px;border-left:4px solid #7bcdff;background:#122b46;min-height:56px;border-radius:5px;line-height:1.5}.message.error{border-color:#eab3a0;background:#391e25}footer{padding:0 0 40px}footer small{color:#90a4be}ol{padding-left:24px}@media(max-width:650px){.grid{grid-template-columns:1fr}.item{align-items:flex-start;flex-direction:column}section{padding:17px}main{padding:12px}.item button{width:100%}}
 /* Source inspection is private text, never rendered as imported HTML. */
@@ -91,7 +91,7 @@ details summary{cursor:pointer;font-weight:650;color:#d1ebfe}
     unlock: $("unlock"), lock: $("lock"), recovered: $("recovered"),
     mergeMode: $("merge-mode"), handoffRoute: $("handoff-route"),
     before: $("compare-before"), after: $("compare-after"),
-    studioSource: $("studio-source"), studioInspect: $("studio-inspect"), studioBulk: $("studio-bulk"), studioBulkExport: $("studio-bulk-export"),
+    studioSource: $("studio-source"), studioInspect: $("studio-inspect"), studioBulk: $("studio-bulk"), studioBulkExport: $("studio-bulk-export"), studioBulkFlag: $("studio-bulk-flag"),
     studioFlag: $("studio-flag"), studioReport: $("studio-report"),
     studioClear: $("studio-clear"), studioStatus: $("studio-status"),
     studioSummary: $("studio-summary"), studioAssets: $("studio-assets"),
@@ -974,6 +974,51 @@ details summary{cursor:pointer;font-weight:650;color:#d1ebfe}
     }
   }
 
+
+  function filePortfolioFollowUps() {
+    if(busy)return;
+    touch();
+    try {
+      invariant(inspectedPortfolio && inspectedPortfolio.records.length);
+      const snapshot=entries.map(entry=>entry.name+'\n'+entry.hash);
+      invariant(JSON.stringify(snapshot)===JSON.stringify(inspectedPortfolio.snapshot));
+      const byHash=new Map(inspectedPortfolio.records.map(
+        row=>[row.source_sha256,row.human_followup_codes]
+      ));
+      const candidates=[];
+      let skipped=0;
+      for(const entry of entries) {
+        if(!entry.name.toLowerCase().endsWith('.json')||!byHash.has(entry.hash)) continue;
+        // An explicitly historic or human-reviewed draft must never be
+        // silently moved backward by a portfolio action.
+        if(entry.stage==='ready'||entry.stage==='historical'){skipped++;continue;}
+        const marker='Studio portfolio human follow-up ['+entry.hash.slice(0,12)+']';
+        if(entry.note.includes(marker)){skipped++;continue;}
+        const line=marker+': '+byHash.get(entry.hash).join(', ');
+        const updated=entry.note ? entry.note+'\n'+line : line;
+        invariant(updated.length <= MAX_NOTE_CHARS);
+        candidates.push({entry,updated});
+      }
+      invariant(candidates.length>0);
+      if(!window.confirm('File private human-follow-up codes for '+candidates.length+
+        ' unapproved imported Studio drafts? '+skipped+
+        ' previously prepared/historical/already-filed draft(s) remain unchanged. '+
+        'Original files are untouched. All edits remain only in tab memory until you export a FULL encrypted private archive. No consent, grant or release rights are created.')) return;
+      // Atomic casework update only AFTER every note is fully bounded.
+      for(const {entry,updated} of candidates) {
+        entry.note=updated;
+        entry.stage='clarify';
+      }
+      paint();
+      // Source checks remain available; no changes to source bytes.
+      els.studioStatus.textContent=candidates.length+
+        ' private follow-up note(s) filed. Save FULL encrypted private archive; changing review stages is NOT operator authorization.';
+      notice('Human clarification follow-ups filed in temporary private dossier memory. No original Studio sources or permissions modified.');
+    } catch {
+      notice('HOLD: refresh the Studio portfolio view or resolve oversized/private notes; nothing was filed.',true);
+    }
+  }
+
   function currentStudio() {
     invariant(inspectedStudio && entries[inspectedStudio.index] &&
       entries[inspectedStudio.index].hash===inspectedStudio.hash &&
@@ -1111,6 +1156,7 @@ details summary{cursor:pointer;font-weight:650;color:#d1ebfe}
   els.studioInspect.addEventListener("click",inspectStudio);
   els.studioBulk.addEventListener("click",inspectStudioPortfolio);
   els.studioBulkExport.addEventListener("click",exportStudioPortfolio);
+  els.studioBulkFlag.addEventListener("click",filePortfolioFollowUps);
   els.studioFlag.addEventListener("click",flagStudio);
   els.studioReport.addEventListener("click",exportStudioReport);
   els.studioClear.addEventListener("click",()=>{
@@ -1226,7 +1272,7 @@ details summary{cursor:pointer;font-weight:650;color:#d1ebfe}
 <p>Read an <strong>exact original</strong> Scope Planning Studio v1 JSON draft already loaded in the vault. See proposed scope, exclusions, risk, activities and UTC scheduling flags without querying DNS, scanning or issuing authority. Recognized input is still untrusted and self-reported.</p>
 <label>Select original Studio v1 proposal<select id="studio-source"><option value="">Select a local JSON draft</option></select></label>
 <div class="actions"><button id="studio-inspect" type="button">Inspect draft locally</button><button id="studio-bulk" type="button" class="secondary">Review all local Studio v1 proposals</button>
-<button id="studio-bulk-export" type="button" class="secondary">Export anonymous portfolio handoff</button><button id="studio-flag" type="button" class="secondary">Add missing decisions to private review note</button><button id="studio-report" type="button" class="secondary">Export anonymous review checklist</button><button id="studio-clear" type="button" class="secondary">Hide proposal inspection</button></div>
+<button id="studio-bulk-export" type="button" class="secondary">Export anonymous portfolio handoff</button><button id="studio-bulk-flag" type="button" class="secondary">File private follow-up notes for all inspected drafts</button><button id="studio-flag" type="button" class="secondary">Add missing decisions to private review note</button><button id="studio-report" type="button" class="secondary">Export anonymous review checklist</button><button id="studio-clear" type="button" class="secondary">Hide proposal inspection</button></div>
 <p id="studio-status" aria-live="polite" class="status">Nothing inspected. This review is not authenticated or authorizing.</p>
 <div id="studio-summary" class="items" aria-label="Offline scope preparation findings"></div>
 <details><summary>Show proposed asset labels in this private tab only</summary><p>Labels are unverified user input. Do not copy them into an anonymous handoff report.</p><pre id="studio-assets" class="comparison"></pre></details>
