@@ -30,6 +30,9 @@ def package(args):
     original = _manifest(decode_json(source))
     fingerprint = sha256(source).hexdigest()
     public = bool(args.aggregate_only)
+    with_studio = bool(getattr(args, "include_studio", False))
+    if public and with_studio:
+        raise Hold("private interactive studio cannot enter aggregate-only packet")
     inventory = aggregate(original) if public else original
     human = None
     stages = None
@@ -72,6 +75,13 @@ def package(args):
         _entry(zf, "receipt.json", encode(receipt))
         _entry(zf, "archive-index.json", encode(inventory))
         _entry(zf, "archive-dashboard.html", html_doc(inventory, public))
+        from portal import render as render_portal
+        _entry(zf, "index.html", render_portal(
+            is_private=not public, with_followup=stages is not None,
+            with_studio=with_studio, hold=original["status"] == "HOLD"))
+        if with_studio:
+            from archive_studio import render_bytes
+            _entry(zf, "archive-studio.html", render_bytes(source, original))
         if stages is not None:
             _entry(zf, "human-worklist.json", encode(human))
             _entry(zf, "human-worklist.html", html_board(original, stages, public))
@@ -89,6 +99,7 @@ def main(argv=None):
     parser.add_argument("--choices", help="Optional original manifest-bound human follow-up form")
     parser.add_argument("--output", required=True, help="Exact new private ZIP path; no overwrite")
     parser.add_argument("--aggregate-only", action="store_true", help="Remove all original source byte hashes and human slot, role/date assignments")
+    parser.add_argument("--include-studio", action="store_true", help="Owner-private interactive review page; incompatible with --aggregate-only")
     args = parser.parse_args(argv)
     try:
         return package(args)

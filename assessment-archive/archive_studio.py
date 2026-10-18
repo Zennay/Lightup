@@ -78,9 +78,8 @@ revocation and explicit HUMAN GO remain outside and mandatory.</p>
 """
 
 
-def build(manifest_path, output_path):
-    raw = read_regular(manifest_path, MAX_MANIFEST)
-    original = _manifest(decode_json(raw))
+def render_bytes(raw: bytes, original: dict) -> bytes:
+    """Render from ONE original validated manifest byte snapshot."""
     assets = Path(__file__).resolve().parent
     script = (assets / "studio.js").read_text(encoding="utf-8")
     styles = (assets / "studio.css").read_text(encoding="utf-8")
@@ -112,7 +111,13 @@ def build(manifest_path, output_path):
     result = page.encode("utf-8")
     if len(result) > 512_000:
         raise Hold("rendered studio too large")
-    publish(output_path, result)
+    return result
+
+
+def build(manifest_path, output_path):
+    raw = read_regular(manifest_path, MAX_MANIFEST)
+    original = _manifest(decode_json(raw))
+    publish(output_path, render_bytes(raw, original))
     print("PRIVATE_ARCHIVE_STUDIO_CREATED — HUMAN DRAFT ONLY; NOT AUTHORIZED")
     return 3 if original["status"] == "HOLD" else 2
 

@@ -117,3 +117,26 @@ The console now offers choice 9: generate a fully self-contained, source-bound p
     python3 assessment-archive/archive.py studio --manifest /private/ARCHIVE.json --output /private/NEW-private-studio.html
 
 Open NEW-private-studio.html locally to explore source slots, filter and search, select human follow-up stages/neutral roles/dates, import a previously source-matched draft, export a private JSON draft, export anonymous counts and print. No external resources or browser persistence. This is a **private** HTML containing the original archive source-byte hashes; do not publicly share it. The original strict followup.py render must validate the browser-downloaded draft before any archive handoff. See STUDIO.md.
+
+### One-click private coordination ZIP with integrated Archive Studio
+
+Use the existing packet CLI for a navigable **local portal**, archived source overview,
+optional human worklist and fully interactive private Studio, all packaged from
+exactly the same validated original manifest byte snapshot:
+
+    python3 assessment-archive/packet.py --manifest /private/ARCHIVE.json --choices /private/EDITED-followup.json --include-studio --output /private/NEW-private-review-room.zip
+
+The packet now always includes index.html, a responsive local launcher that links
+to the original static archive inventory and optional worklist. Owner-private
+--include-studio also adds source-bound interactive archive-studio.html where
+the human can edit stages and export a new review draft. The ZIP contains no
+original lab cases, targets, evidence or credentials. Local browser downloads
+still require strict original Python revalidation.
+
+**Privacy constraint:** --include-studio is rejected when --aggregate-only is
+selected: the interactive page contains original private file byte fingerprints
+and manifest SHA-256, so bundling it in an anonymous export would leak data.
+Aggregate-only ZIPs still get the static script-free index, category counts
+and (if supplied) anonymous human worklist; no Studio or hashes. All ZIP members
+have fixed non-traversing paths and private metadata, and the outer ZIP is a new
+exclusive fsynced 0600 output. Review before distributing any aggregate metadata.

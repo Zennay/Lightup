@@ -38,3 +38,16 @@ A REVIEW_ONLY (2) or HOLD (3) CLI exit is intentional. It never returns 0 for se
 - Edits exist only in browser memory until an explicit download. No Approve/GO/Start/activation controls exist.
 - Browser JSON import is a human convenience, not the original strict parser or final admission boundary. Always pass its output to followup.py render.
 - Mandatory original exact-head hosted + permanent registered VPS CI, original source-owner review, independent security/privacy, separately authenticated actual client/operator permissions, at-use revocation and explicit HUMAN GO remain required prior to merge or deploy.
+
+### Portable owner-private review room
+
+For a single navigable offline ZIP containing the original source-bound Studio,
+a static dashboard and optional human worklist, create:
+
+    python3 assessment-archive/packet.py --manifest /private/ARCHIVE.json --choices /private/FOLLOWUP.json --include-studio --output /private/NEW-private-review.zip
+
+Open index.html after locally extracting to a private directory. For safety and
+confidentiality, use a trusted ZIP extractor and keep the contents private.
+Studio cannot be included in an aggregate-only packet, because the original
+private byte fingerprints and manifest SHA-256 are embedded in its HTML.
+The original source review and authorization gates remain independent.
