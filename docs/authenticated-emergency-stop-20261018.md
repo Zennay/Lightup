@@ -115,6 +115,18 @@ The new src/lightup/stop_policy_adapter.py composes (rather than replaces) the o
 
 This is a product source integration seam for the original runtime owners, **not a production default**. It does NOT intercept direct calls to unmodified ToolExecutor, existing handlers, live scanners, asynchronous workers, or already running tasks. Read-before/after-decision still has a time-of-check/time-of-use race before handler dispatch. The original owners must separately install an atomic action-time revocation boundary and preserve authentic client/operator consent before release.
 
+## Read-only stored-grant exposure for a STOP engagement
+
+A STOP event in this local module is **not** an automatic revocation of older grant rows or background jobs. Operators must therefore see whether persisted authorization_grants rows still exist for an affected engagement. The new credential-protected source inventory makes that operational gap explicit:
+
+    PYTHONPATH=src python -m lightup.stop_exposure \
+      --database /private/path/lightup.sqlite \
+      --engagement EXACT_EXISTING_ENGAGEMENT_ID \
+      --email original-registered-account@example.invalid
+
+The CLI authenticates with the original DomainStore password and lockout, rechecks the real tenant role inside a read-only SQLite snapshot, requires a canonical STOP ledger, and collects a bounded maximum of 256 existing grant rows for the selected engagement. It rejects cross-tenant stored rows and marks corrupt datetime provenance HOLD. Output shows only **aggregate** stored-grant counts, legacy unbound versus request-linked grant counts, claimed current date-window count and whether a STOP is recorded. It does not print original customer names, hosts, grant IDs, tokens or grant dates. Both the terminal incident control room (menu 7) and offline STOP console can display this schema.
+
+Count labels are explicitly **stored source declarations**, never verified live authorization. A source grant might have expired, been revoked elsewhere, or failed the original request/consent checks. In particular, a STOP_WITH_STORED_GRANTS record requires independent source-owner action and never means that our local STOP has made all existing executor instances stop. Source review exits 2 (REVIEW_ONLY); errors exit 3 (HOLD); no permission/exit 0.
 ## Future required action-time integration
 
 The module exposes deny_only_stop_state(db_path, engagement_id=..., client_id=...) for the ORIGINAL runtime owner to install as an additional veto alongside existing canonical scope, client/operator consent, request/grant/activation, risk and tool policy. This function returns STOP_ACTIVE, NO_STOP_RECORDED or HOLD; it returns veto_execution true for STOP_ACTIVE or HOLD, and ALWAYS returns authorization_granted false, execution_allowed false, release_approved false. NO_STOP_RECORDED is not proof of authorization and is never an allow permit. The existing live runtime **does not yet call this module**. A STOP entered here does not magically stop an already running or unrelated process. No concurrency or distributed kill guarantee is claimed.
