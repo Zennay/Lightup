@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="referrer" content="no-referrer">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-CYXlpm1XgIrDcoxO0af2QTnlcgQEGhkmTFjTR6nWc3g='; style-src 'sha256-mQfXffpmbi5d4e5Sgxeymtm2SzbpvightdAySbr/XyA='; connect-src 'none'; img-src 'none'; object-src 'none'; form-action 'none'; base-uri 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-soFZjJDlPbfYBUtwntzeieHUSOX7L4FsUw65hTmH/xQ='; style-src 'sha256-6UjF33fZOGkcUTyqIX53n4/Ios7JAfzYtGcueBZ3y3Y='; connect-src 'none'; img-src 'none'; object-src 'none'; form-action 'none'; base-uri 'none'">
   <title>LightUp · Lab Launchpad</title>
   <style>:root{font:16px/1.5 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#0b1522;color:#e5f0fa;color-scheme:dark}
 *{box-sizing:border-box}
@@ -44,6 +44,16 @@ button.small{font-size:.79rem;padding:6px 10px}
 .warning p{color:#ebd8b9}
 footer{text-align:center;color:#9db5c9;font-size:.83rem;margin-top:27px}
 @media(max-width:760px){body{padding:14px}header,section{padding:21px}.targets li{flex-direction:column;align-items:stretch}.buttons.tight{width:100%}.buttons.tight button{flex:1}.section-head{align-items:flex-start}button{min-height:42px}}
+
+/* Private Studio source preparation and accessible local import. */
+input[type=file],select{display:block;width:100%;max-width:100%;margin:7px 0 14px;padding:12px 14px;background:#0c1828;border:1px solid #46627b;border-radius:12px;color:#e4f5ff;font:inherit}
+select:disabled,input:disabled{opacity:.58}
+input[type=file]:focus-visible,select:focus-visible,summary:focus-visible{outline:3px solid #74dff0;outline-offset:3px}
+details.import{border:1px solid #46627b;background:#112238;border-radius:14px;padding:17px;margin-top:13px}
+details summary{color:#b8e3f1;font-weight:750;cursor:pointer}
+details[open] summary{margin-bottom:14px}
+#studio-status{background:#12283a;border-left:3px solid #84cee0;border-radius:8px;padding:12px 16px;min-height:50px}
+#studio-area .buttons{margin-bottom:13px}
 </style>
 
 </head>
@@ -78,8 +88,23 @@ footer{text-align:center;color:#9db5c9;font-size:.83rem;margin-top:27px}
       <ol id="targets" class="targets" aria-label="Prepared endpoints"></ol>
       <p id="empty">Your private batch is empty.</p>
     </section>
+    <section id="studio-area">
+      <h2>3 · Optionally bind an original Lab Scenario Studio design</h2>
+      <p>Import an existing PRIVATE Studio v1 catalog locally (up to 256 KiB), then choose one original scenario. An independently entered explicit URL with port must exist for <em>each</em> exact declared lab IP. An imported design is an untrusted draft, not verified ground truth or permission.</p>
+      <label for="studio-file">Original private Studio JSON catalog</label>
+      <input id="studio-file" type="file" accept=".json,application/json">
+      <div class="buttons">
+        <button type="button" id="studio-import" class="quiet">Read catalog locally</button>
+        <button type="button" id="studio-clear" class="quiet">Discard private Studio draft</button>
+      </div>
+      <label for="studio-select">Original scenario (one at a time)</label>
+      <select id="studio-select" disabled><option value="">Choose a locally imported original Studio catalog</option></select>
+      <p id="studio-status" role="status" aria-live="polite">No original Studio draft imported. Plain lab-batch preparation remains available.</p>
+      <div class="buttons"><button id="studio-export" type="button" disabled>Download exact private studio-catalog.json</button></div>
+      <p class="fine">Browser matching is only an advisory operator preview. The native <code>build.py --catalog-file ... --scenario-id ...</code> and original <code>read_selected_lab_design</code> validators must still approve the complete byte-exact source before any handoff.</p>
+    </section>
     <section>
-      <h2>3 · Export a no-work handoff</h2>
+      <h2>4 · Export a no-work handoff</h2>
       <p>Download <code>targets.txt</code> for the already-existing held CLI. Also available: an anonymous counts-only planning summary. Export downloads include only explicitly prepared local inputs.</p>
       <div class="buttons"><button id="manifest" type="button" disabled>Download private targets.txt</button><button id="receipt" type="button" class="quiet" disabled>Download anonymous plan.json</button></div>
       <label for="command">Display-only original CLI preview command</label>
@@ -154,6 +179,59 @@ footer{text-align:center;color:#9db5c9;font-size:.83rem;margin-top:27px}
     return raw;
   }
 
+  const studioSelect = document.getElementById("studio-select");
+  const studioStatus = document.getElementById("studio-status");
+  const studioExport = document.getElementById("studio-export");
+  const previewCommand = document.getElementById("command");
+  let studio = null;
+
+  function selectedStudio() {
+    return studio?.rows.find(row => row.scenario_id === studioSelect.value) || null;
+  }
+
+  function activeStudioBinding() {
+    const selected = selectedStudio();
+    if (!selected) return null;
+    const endpointIps = [];
+    for (const endpoint of list) {
+      const sourceAuthority = endpoint.match(/^https?:\/\/([^/?#]+)/)?.[1] || "";
+      const port = sourceAuthority.match(/:([0-9]{1,5})$/)?.[1];
+      if (!port || Number(port) < 1 || Number(port) > 65535) return null;
+      let parsed;
+      try { parsed = new URL(endpoint); } catch (_) { return null; }
+      endpointIps.push(parsed.hostname.replace(/^\[|\]$/g, "").toLowerCase());
+    }
+    const declared = selected.targets.map(value => value.toLowerCase());
+    if (endpointIps.length !== declared.length ||
+        new Set(endpointIps).size !== endpointIps.length ||
+        new Set(declared).size !== declared.length ||
+        !endpointIps.every(ip => declared.includes(ip))) return null;
+    return selected;
+  }
+
+  function renderStudio() {
+    const selected = selectedStudio();
+    const bound = activeStudioBinding();
+    if (!studio) {
+      studioStatus.textContent = "No original Studio draft imported. Plain lab-batch preparation remains available.";
+    } else if (!selected) {
+      studioStatus.textContent = "Private Studio draft loaded. Choose one original scenario; this is not source authentication.";
+    } else if (!bound) {
+      studioStatus.textContent = "HOLD: the chosen Studio scenario requires exactly one explicit URL+port for each original declared lab IP. No Studio export yet.";
+    } else {
+      const count = bound.expected_findings === null
+        ? "UNKNOWN (not zero)"
+        : String(bound.expected_findings.length) + " self-declared, unverified expected findings";
+      studioStatus.textContent = "Draft match: " + bound.targets.length +
+        " original lab IPs, " + count +
+        ". Only the original native schema, scope and byte-source checks may accept this draft.";
+    }
+    studioExport.disabled = !bound;
+    previewCommand.textContent = "lightup lab-assess --targets-file ./targets.txt" +
+      (bound ? " --catalog-file ./studio-catalog.json --scenario-id " + bound.scenario_id : "") +
+      " --preview-only";
+  }
+
   function status(message, isError = false) {
     feedback.textContent = message;
     feedback.classList.toggle("error", isError);
@@ -200,6 +278,7 @@ footer{text-align:center;color:#9db5c9;font-size:.83rem;margin-top:27px}
     empty.hidden = list.length !== 0;
     manifest.disabled = list.length === 0;
     receipt.disabled = list.length === 0;
+    renderStudio();
   }
 
   function download(filename, payload, mime) {
@@ -278,6 +357,88 @@ footer{text-align:center;color:#9db5c9;font-size:.83rem;margin-top:27px}
     input.value = "";
     render();
     status(String(list.length) + " private URLs restored as a local proposed batch. No contact or authorization.");
+  });
+
+  document.getElementById("studio-import").addEventListener("click", async () => {
+    const picker = document.getElementById("studio-file");
+    const file = picker.files?.[0];
+    if (!file) { status("Choose a private Studio JSON file first.", true); return; }
+    if (!Number.isSafeInteger(file.size) || file.size < 1 || file.size > 262144) {
+      status("Studio draft held: expected an existing file of at most 256 KiB.", true);
+      picker.value = "";
+      return;
+    }
+    let candidate;
+    try {
+      const bytes = new Uint8Array(await file.arrayBuffer());
+      if (bytes.length !== file.size) throw new Error("Source changed while reading.");
+      const decoded = new TextDecoder("utf-8", {fatal: true}).decode(bytes);
+      const catalogDoc = JSON.parse(decoded);
+      const flags = ["authorized", "consent_verified", "dispatch_allowed", "release_allowed"];
+      if (!catalogDoc || Array.isArray(catalogDoc) || typeof catalogDoc !== "object" ||
+          catalogDoc.schema !== "lightup.lab_design_catalog.v1" ||
+          catalogDoc.status !== "DRAFT_ONLY" ||
+          flags.some(key => catalogDoc[key] !== false) ||
+          !Array.isArray(catalogDoc.scenarios) ||
+          catalogDoc.scenarios.length < 1 || catalogDoc.scenarios.length > 32) {
+        throw new Error("Source is not the original Studio v1 DRAFT_ONLY format.");
+      }
+      const names = new Set();
+      for (const row of catalogDoc.scenarios) {
+        if (!row || typeof row !== "object" || Array.isArray(row) ||
+            typeof row.scenario_id !== "string" ||
+            !/^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/.test(row.scenario_id) ||
+            names.has(row.scenario_id) ||
+            typeof row.name !== "string" || !Array.isArray(row.targets) ||
+            !row.targets.length || row.targets.length > 16 ||
+            row.targets.some(ip => typeof ip !== "string" || ip.length > 45) ||
+            (row.expected_findings !== null && !Array.isArray(row.expected_findings))) {
+          throw new Error("Catalog contains a noncanonical draft scenario.");
+        }
+        names.add(row.scenario_id);
+      }
+      // Preserve the *exact original bytes* for subsequent native admission.
+      // Browser JSON.parse cannot reject duplicate JSON keys: Python source
+      // read_selected_lab_design is mandatory and authoritative, never skipped.
+      candidate = {raw: bytes, rows: catalogDoc.scenarios};
+    } catch (e) {
+      picker.value = "";
+      status("Studio HOLD, previous private selection kept. " + e.message, true);
+      return;
+    }
+    studio = candidate;
+    studioSelect.replaceChildren();
+    const prompt = document.createElement("option");
+    prompt.value = "";
+    prompt.textContent = "Select one original draft scenario";
+    studioSelect.appendChild(prompt);
+    for (const row of studio.rows) {
+      const option = document.createElement("option");
+      option.value = row.scenario_id;
+      option.textContent = row.name.slice(0, 100) + " (" + row.scenario_id + ")";
+      studioSelect.appendChild(option);
+    }
+    studioSelect.disabled = false;
+    picker.value = "";
+    renderStudio();
+    status("Original Studio bytes loaded locally for human preparation; authority NOT verified.");
+  });
+
+  studioSelect.addEventListener("change", renderStudio);
+
+  document.getElementById("studio-clear").addEventListener("click", () => {
+    studio = null;
+    studioSelect.replaceChildren();
+    studioSelect.disabled = true;
+    document.getElementById("studio-file").value = "";
+    renderStudio();
+    status("Private Studio draft discarded from the offline editor memory.");
+  });
+
+  studioExport.addEventListener("click", () => {
+    if (!studio || !activeStudioBinding()) return;
+    download("studio-catalog.json", studio.raw, "application/json");
+    status("Original Studio source bytes exported PRIVATE. The native original schema and scope gate must still admit them.");
   });
 
   document.getElementById("clear").addEventListener("click", () => {
