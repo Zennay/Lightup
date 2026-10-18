@@ -307,7 +307,7 @@ window.LightUpBriefRuntime=Object.freeze({
  assertUnambiguousJSON
 });
 $('source').addEventListener('change',event=>loadFile(event.target.files?.[0]));
-$('clear').addEventListener('click',()=>{hold('Source forgotten');$('source').value='';$('reply').value='';$('preview').textContent='';$('receipt').textContent='';});
+$('clear').addEventListener('click',()=>{hold('Source forgotten');document.dispatchEvent(new CustomEvent('lightup:brief-forget'));$('source').value='';$('reply').value='';$('preview').textContent='';$('receipt').textContent='';});
 $('export').addEventListener('click',download);
 $('textExport').addEventListener('click',downloadText);
 $('reply').addEventListener('change',event=>importReview(event.target.files?.[0]));
