@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'none'; connect-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'">
+<title>LightUp · Scope Permission Brief</title>
+<link rel="stylesheet" href="./style.css">
+<script src="./app.js" defer></script>
+<script src="./reconciliation.js" defer></script>
+<script src="./revision.js" defer></script>
+</head>
+<body>
+<header><div class="head"><div class="eyebrow">LIGHTUP / CLIENT + OPERATOR EDUCATION</div><h1>Understand the scope. Never mistake a draft for permission.</h1><p>A local, privacy-minimal handoff brief derived from a LightUp Scope Planning Studio v1 draft. No uploads, network requests, identity checking, consent recording, grants or scans.</p></div></header>
+<main>
+<section class="notice" aria-label="Safety notice"><strong>Always HOLD:</strong> This explainer does not create or accept authorization. Even an answered checklist cannot approve a request. Genuine separately authenticated client consent, independent operator approval, approved scope, risk and revocation checks must happen inside the authorized system.</section>
+<section class="controls" aria-label="Source import">
+ <div><h2>1. Load a proposed assessment</h2><p>Choose an original <code>lightup.scope_proposal_draft</code> JSON export (64 KiB maximum). The first source opens immediately; later revisions are staged for review and require a separate explicit apply. Exact source bytes are SHA-256 fingerprinted locally. Labels, domains, IP addresses and notes will not appear in this interface or exports.</p>
+ <label class="filelabel" for="source">Choose local draft JSON</label><input id="source" type="file" accept=".json,application/json"><p id="sourceState" role="status" aria-live="polite">No source selected · HOLD</p></div>
+ <div><h2>2. Choose the audience</h2><p>A single bounded review brief, with relevant questions for each role. Neither role can endorse or sign inside this application.</p>
+ <fieldset><legend>Primary handoff audience</legend><label><input type="radio" name="audience" value="client" checked> Client preparation</label><label><input type="radio" name="audience" value="operator"> Operator preparation</label></fieldset>
+ <div class="buttons"><button id="export" disabled>Export privacy-minimal brief</button><button id="textExport" disabled>Save plain-language note</button><button id="print" disabled>Print brief</button><button id="clear" class="subtle">Forget draft & answers</button></div>
+ <label for="reply">Restore a saved review note (after the original draft)</label><input id="reply" type="file" accept=".json,application/json"><p id="replyState" role="status" aria-live="polite">No review note imported.</p>
+ </div>
+</section>
+<div id="workspace" hidden>
+<section class="metrics" aria-label="Draft summary">
+ <div class="metric"><div>Proposed assets</div><strong id="assets">—</strong><small>Unverified declarations</small></div>
+ <div class="metric"><div>Exclusions</div><strong id="excluded">—</strong><small>Not enforcement</small></div>
+ <div class="metric"><div>Requested risk</div><strong id="risk">—</strong><small>Not an approval</small></div>
+ <div class="metric"><div>Planning window</div><strong id="window">—</strong><small>Not a booking</small></div>
+</section>
+<section id="revisionPreview" class="panel revision-preview" aria-label="Review staged source change before applying" hidden>
+ <div class="eyebrow">REVIEW BEFORE REPLACE · NON-AUTHORIZING</div>
+ <h2>Proposed scope revision — not yet applied</h2>
+ <p id="pendingPreviewStatus" class="notice subnote" role="status" aria-live="polite"></p>
+ <p>Compare the staged source with the accepted version. Existing source, role answers and return notes remain usable until you explicitly apply this revision. All differences below are private aggregate literal counts, not verified IP/CIDR/DNS coverage or ownership.</p>
+ <div id="pendingCompare" class="pending-compare" aria-label="Privacy-minimal source version differences"></div>
+ <h3>Human issues to discuss before accepting</h3>
+ <ul id="pendingAdvice"></ul>
+ <div class="buttons">
+  <button id="pendingExport">Export non-authorizing preview JSON</button>
+  <button id="pendingPaper">Save printable pre-apply brief</button>
+  <button id="pendingBackup">Save current role answers first</button>
+  <button id="pendingApply">Apply revision and reset prior human replies</button>
+  <button id="pendingDiscard" class="subtle">Discard proposal — preserve existing work</button>
+ </div>
+ <p class="receipt">A stage/apply action is NOT authenticated client consent, operator signoff, scope approval, grant, execution or deployment.</p>
+</section>
+<section class="details">
+ <div class="panel"><div class="eyebrow">CLIENT VIEW · DRAFT</div><h2>What you would be asking for</h2><p id="clientSummary"></p><div class="anchor">What you are <em>not</em> granting here</div><p>This tool cannot verify your identity or asset ownership. Uploading a draft, selecting a checkbox, or sharing a downloaded brief is not client consent and does not authorize any work.</p></div>
+ <div class="panel"><div class="eyebrow">OPERATOR VIEW · DRAFT</div><h2>What an operator must still independently decide</h2><p id="operatorSummary"></p><div class="anchor">No executable authorization</div><p>Actual assessment requests, grants, scope enforcement, risk signoff, explicit stop mechanisms and at-use revocation require the protected production workflow, not this local summary.</p></div>
+</section>
+<section class="panel">
+ <div class="row"><div><div class="eyebrow">3. Human clarification queue</div><h2>Questions to resolve before approval</h2><p>Mark whether a question has merely been sent or answered. These are self-reported preparation notes, never verification or proof. Export only includes updates for the selected audience; a client-labelled note cannot claim operator answers, or vice versa.</p></div><div class="counter"><strong id="openCount">—</strong><small>unanswered / unresolved</small></div></div>
+ <div id="questions" aria-live="polite"></div>
+</section>
+<section class="panel backup-panel" aria-label="Local human question backup">
+ <div class="eyebrow">LOCAL RESUME · NO AUTHORIZATION OR BROWSER STORAGE</div>
+ <h2>Save or reopen both roles’ current question statuses</h2>
+ <p>Download a single privacy-minimal JSON snapshot of the current unanswered, sent and answered-but-unverified preparation questions. To resume later, first open the <strong>exact original Studio source</strong> again, then import this backup. It never includes raw targets, client names, safety notes, consent or execution rights.</p>
+ <div class="buttons"><button id="backupSave">Save both roles’ local preparation (HOLD)</button></div>
+ <label class="backup-label" for="backupImport">Reopen local preparation backup (JSON)</label>
+ <input type="file" id="backupImport" accept=".json,application/json">
+ <p id="backupState" role="status" aria-live="polite">No local preparation backup restored.</p>
+ <p class="receipt">Imported role statuses are unverified human reminders only. Conflicting existing work cannot be silently replaced.</p>
+</section>
+<section class="panel">
+ <div class="eyebrow">SOURCE-BOUND · PRIVATE DATA OMITTED</div><h2>Handoff preview</h2><p>Only count, category, source SHA-256 and generic question states are exported. No client name, targets, IPs, domains, notes, filenames or source bytes.</p>
+ <pre id="preview"></pre><h3>Human-readable handoff (not consent)</h3><pre id="handoff"></pre><p id="receipt" class="receipt"></p>
+</section>
+<section class="panel" id="reconciliation" aria-label="Independent human preparation replies">
+ <div class="eyebrow">4. CLIENT + OPERATOR RETURN DESK · NON-AUTHORIZING</div>
+ <h2>Bring two private human preparation replies together</h2>
+ <p>Load separate role-labelled JSON review notes exported from this same original Studio draft. These labels do <strong>not</strong> authenticate the sender. A return can only change the questions assigned to its own role; contradictory, wrong-source or authority-bearing packets are rejected.</p>
+ <div class="inputs-row">
+  <div><label for="reconcileClient">Client preparation note (JSON)</label><input type="file" id="reconcileClient" accept=".json,application/json"><p role="status" id="reconcileClientState">No client preparation note</p></div>
+  <div><label for="reconcileOperator">Operator preparation note (JSON)</label><input type="file" id="reconcileOperator" accept=".json,application/json"><p role="status" id="reconcileOperatorState">No operator preparation note</p></div>
+ </div>
+ <div class="restore-row"><label for="reconcileCombined">Restore saved combined HOLD handoff (JSON)</label><input id="reconcileCombined" type="file" accept=".json,application/json"><p role="status" id="reconcileCombinedState">No combined human preparation imported</p><small>Open the original exact Studio draft first. This restores only unverified human progress; actual consent is never imported.</small></div>
+ <p class="notice subnote" id="reconcileStatus" role="status" aria-live="polite">No source loaded · HOLD</p>
+ <p class="receipt" id="reconcileSummary"></p>
+ <div id="reconcileBoard" aria-label="Unverified cross-role followup queue"></div>
+ <div class="buttons"><button id="reconcileJSON" disabled>Export combined HOLD summary</button><button id="reconcileCSV" disabled>Download follow-up actions CSV</button><button id="reconcileHTML" disabled>Save read-only meeting pack</button><button class="subtle" id="reconcileForget">Forget both reply notes</button></div>
+ <p>This read-only human follow-up board never reconciles actual consent, client identity, operator identity, revocation, authorization, tenant membership or approval. A reply marked “answered” still requires an independently verified decision in the protected system.</p>
+</section>
+<section class="panel" id="revisionBoard" aria-label="Source revision handoff">
+ <div class="eyebrow">5. REVISION HANDOFF · EVERY NEW SOURCE REQUIRES NEW HUMAN PREPARATION</div>
+ <h2>Know when earlier replies no longer apply</h2>
+ <p>Load a revised Studio draft using the original file chooser above. This local board compares old/new SHA-256 bytes and <strong>aggregate, case-insensitive literal asset/exclusion changes</strong>, proposed risk/mode/activity changes and revised safety/UTC categories. Elevated changes get additional human clarification questions. It never interprets DNS, equivalent CIDRs, effective grants or ownership. Equal counts never establish equal scope; both roles must prepare new replies.</p>
+ <p id="revisionStatus" class="notice subnote" role="status" aria-live="polite">Load a draft to begin.</p>
+ <div class="buttons"><button id="revisionJSON" disabled>Save reissue handoff JSON</button><button id="revisionCSV" disabled>Export revision timeline CSV</button><button id="revisionPack" disabled>Save human impact brief (HTML)</button><button id="revisionClient" disabled>Prepare fresh client reply</button><button id="revisionOperator" disabled>Prepare fresh operator reply</button><button id="revisionForget" class="subtle" disabled>Forget revision history</button></div>
+ <div id="revisionHistory" aria-label="Recent local draft revisions"></div>
+ <p>History is bounded to twelve changes in this browser tab; no browser storage or network is used. These are unsigned source-byte correlation hints, not a legal approval chain, permission certificate or scope-membership verdict.</p>
+</section>
+</div>
+<footer>LightUp · INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD. Never use this file or its exports as evidence of consent, scope membership, a grant or release.</footer>
+</main>
+</body></html>
