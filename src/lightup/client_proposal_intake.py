@@ -104,7 +104,7 @@ def read_studio_draft(filename: str) -> tuple[dict, str]:
     if type(local) is not dict or set(local) != {"start", "end"}:
         raise ValueError("invalid Studio local time envelope")
     import re
-    clock_pattern = re.compile(r"^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}$")
+    clock_pattern = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$")
     for field in ("start", "end"):
         val = local[field]
         if val is not None and (
@@ -179,6 +179,7 @@ def load_studio_proposal(filename: str) -> dict:
     from .client_request_cli import prepare_request
 
     proposal, raw_sha256 = read_studio_draft(filename)
+    title, client_label, notes = (proposal[k] for k in ("proposal_name", "client_label", "notes"))
     if (type(proposal["requested_assets"]) is not list
             or type(proposal["excluded_assets"]) is not list
             or len(proposal["excluded_assets"]) > 80
