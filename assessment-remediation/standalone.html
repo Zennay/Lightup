@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; connect-src 'none'; form-action 'none'; base-uri 'none'; img-src 'none'; object-src 'none'; script-src 'sha256-09CbMnQsSTBTsSsHMIaIjYqH4ySJwnBF8wvLPlizadk='; style-src 'sha256-vbe3i+CHUPDM10TWrOf2ZuecHwUHD73THMMKPuwvOk0='">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; connect-src 'none'; form-action 'none'; base-uri 'none'; img-src 'none'; object-src 'none'; script-src 'sha256-cuMW2WdvaNE03FJSrJ26NMhjwO6epfjB/ptSz/HPUHI='; style-src 'sha256-vbe3i+CHUPDM10TWrOf2ZuecHwUHD73THMMKPuwvOk0='">
 <title>LightUp · private assessment-to-finding mapping</title>
 <style>:root{color-scheme:light;--ink:#1b2b45;--muted:#566579;--line:#d6dfeb;--paper:#f2f5fa;--action:#214c88;--warning:#85450f}
 *{box-sizing:border-box}html{scroll-behavior:smooth}
@@ -169,6 +169,72 @@ footer{padding:2rem 1.5rem;text-align:center;font-size:.82rem;color:var(--muted)
     return { text: bytes.decode(raw), hash };
   }
 
+  // Source-owner-compatible strict local JSON reader: browser JSON.parse
+  // alone discards duplicate object keys, including escaped key aliases.
+  // The final Python bridge remains the authoritative original source reader.
+  function strictJSON(raw) {
+    let offset = 0, nodes = 0;
+    function space() { while (offset < raw.length && /\s/u.test(raw[offset])) offset++; }
+    function scanString() {
+      if (raw[offset] !== '"') refuse("Invalid JSON string boundary.");
+      const start = offset++;
+      let escapeNext = false;
+      while (offset < raw.length) {
+        const char = raw[offset++];
+        if (char === '"' && !escapeNext) return JSON.parse(raw.slice(start, offset));
+        if (char === "\\" && !escapeNext) escapeNext = true;
+        else escapeNext = false;
+      }
+      refuse("Unterminated original JSON string.");
+    }
+    function value(depth) {
+      if (depth > 28 || ++nodes > 90000) refuse("Original JSON exceeds nesting/entry bound.");
+      space();
+      if (raw[offset] === '"') return scanString();
+      if (raw[offset] === "{") {
+        offset++; space();
+        const result = Object.create(null), keys = new Set();
+        if (raw[offset] === "}") { offset++; return result; }
+        for (;;) {
+          space(); const key = scanString();
+          if (keys.has(key)) refuse("Duplicate original JSON key.");
+          keys.add(key);
+          space();
+          if (raw[offset++] !== ":") refuse("Malformed JSON object.");
+          result[key] = value(depth + 1);
+          space();
+          if (raw[offset] === "}") { offset++; return result; }
+          if (raw[offset++] !== ",") refuse("Malformed JSON object member.");
+        }
+      }
+      if (raw[offset] === "[") {
+        offset++; space();
+        const result = [];
+        if (raw[offset] === "]") { offset++; return result; }
+        for (;;) {
+          result.push(value(depth + 1));
+          if (result.length > 90000) refuse("JSON array exceeds safety bound.");
+          space();
+          if (raw[offset] === "]") { offset++; return result; }
+          if (raw[offset++] !== ",") refuse("Malformed JSON array.");
+        }
+      }
+      for (const [literal, parsed] of [["true", true], ["false", false], ["null", null]]) {
+        if (raw.startsWith(literal, offset)) { offset += literal.length; return parsed; }
+      }
+      const match = raw.slice(offset).match(/^-?(?:0|[1-9][0-9]*)(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?/u);
+      if (!match) refuse("Malformed original JSON value.");
+      offset += match[0].length;
+      const number = Number(match[0]);
+      if (!Number.isFinite(number)) refuse("Nonfinite original JSON numeric value.");
+      return number;
+    }
+    const result = value(0);
+    space();
+    if (offset !== raw.length) refuse("Unexpected trailing JSON data.");
+    return result;
+  }
+
   function parseCsv(text) {
     text = text.replace(/^\uFEFF/u, "");
     // RFC 4180 quoted fields, including quoted commas, doubled quotes and line breaks.
@@ -215,7 +281,7 @@ footer{padding:2rem 1.5rem;text-align:center;font-size:.82rem;color:var(--muted)
   }
 
   function parseComparison(text) {
-    const doc = JSON.parse(text);
+    const doc = strictJSON(text);
     if (!exactKeys(doc, ["status", "regressed_scenarios", "comparisons", ...FLAGS]) ||
         !hasNoAuthority(doc) || !Array.isArray(doc.comparisons) ||
         doc.comparisons.length < 1 || doc.comparisons.length > 64 ||
@@ -497,7 +563,7 @@ footer{padding:2rem 1.5rem;text-align:center;font-size:.82rem;color:var(--muted)
       const file = $("restore").files[0];
       if (!file || file.size < 1 || file.size > LIMITS.links)
         refuse("Private mapping missing or oversized.");
-      const document = JSON.parse(bytes.decode(new Uint8Array(await file.arrayBuffer())));
+      const document = strictJSON(bytes.decode(new Uint8Array(await file.arrayBuffer())));
       if (!exactKeys(document, ["schema", "comparison_sha256", "findings_sha256",
         "links", ...FLAGS]) ||
           document.schema !== "lightup.assessment_remediation_links.v1" ||

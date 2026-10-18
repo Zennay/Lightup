@@ -194,3 +194,15 @@ visible gaps for unlinked original findings and scenarios. Its first-pass
 metric/delta/adverse check reduces misleading source displays; the native
 Python backend remains the final original reader, including rejection of
 duplicate JSON keys.
+
+## Strict local original JSON intake in portable Studio
+
+The portable Studio now rejects duplicate decoded JSON object keys, including
+Unicode-escape alias collisions, at every nesting level. It refuses excessive
+nesting/object size, nonfinite numbers and trailing JSON, before permitting
+local original metrics to be displayed or a private human link draft to be
+restored. This prevents the browser's usual JSON.parse key-overwrite behavior
+from misleading reviewers about original authority flags, source metrics or
+previously saved human annotations. The source CLI remains the final strict
+original validator. The private single-file browser package has no extra
+dependencies and its CSP hashes are updated with the source.
