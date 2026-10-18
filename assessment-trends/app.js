@@ -31,6 +31,7 @@
   let sourceHashes=[];
   let pairFocus=1;
   let selectedCase=0,caseStages=new Map();
+  let demoMode=false;
 
   // Strict recursive JSON reader: rejects duplicate keys (also escaped aliases),
   // malformed literals, nonfinite numbers and excessively nested documents.
@@ -218,7 +219,7 @@
     $("message").textContent=message; $("message").className="message"+(bad?" bad":"");
   }
   function reset() {
-    revisions=[];sourceHashes=[];discussionStages=Object.create(null);caseStages=new Map();selectedCase=0;revisionFocus=0;pairFocus=1; $("workspace").hidden=true; $("files").value="";
+    revisions=[];sourceHashes=[];discussionStages=Object.create(null);caseStages=new Map();selectedCase=0;revisionFocus=0;pairFocus=1;demoMode=false; $("workspace").hidden=true; $("files").value="";
     $("notes").value="";$("draft-file").value="";
     $("draft-state").textContent="Private source bindings and local discussion stages were cleared.";
     showMessage("All imported source data and local notes cleared.");
@@ -280,7 +281,9 @@
       metric_regressions:[...report.cases.values()].reduce((n,c)=>n+c.regressions.length,0),
       metrics:NAMES.map(name=>({name,...snapshot(report,name)}))
     }));
-    return {format:"lightup.assessment_trends.aggregate",version:3,
+    return {format:"lightup.assessment_trends.aggregate",version:4,
+      source_kind:demoMode?"FICTIONAL_DEMO_ONLY":"UNAUTHENTICATED_OFFLINE_LAB_JSON",
+      fictional_demo:demoMode,
       verdict:"REVIEW_ONLY",phase:"INCUBATE_M3_M7_DRAFT_HOLD",
       source_order:"USER_SELECTED_UNVERIFIED",source_authenticated:false,
       source_comparison_only:true,metrics:NAMES.map(name=>({name,...movement(name)})),
@@ -302,12 +305,13 @@
     setTimeout(()=>URL.revokeObjectURL(url),1000);
   }
   function csv() {
-    const rows=[["status","authorized","consent_verified","dispatch_allowed",
+    const rows=[["status","source_kind","authorized","consent_verified","dispatch_allowed",
       "release_allowed","position","metric","regressed_cases","baseline_aggregate",
       "candidate_aggregate","delta_aggregate","persistent_cases"]];
     for(let i=0;i<revisions.length;i++) for(const name of NAMES) {
       const v=snapshot(revisions[i],name);
-      rows.push(["REVIEW_ONLY",false,false,false,false,i+1,name,v.cases,
+      rows.push(["REVIEW_ONLY",demoMode?"FICTIONAL_DEMO_ONLY":"UNAUTHENTICATED_OFFLINE_LAB_JSON",
+        false,false,false,false,i+1,name,v.cases,
         v.baseline,v.candidate,v.delta,movement(name).persistent]);
     }
     // Every exported row has identical columns; only code-owned labels,
@@ -364,11 +368,12 @@
     return pairs;
   }
   function pairCSV() {
-    const rows=[["status","authorized","consent_verified","dispatch_allowed",
+    const rows=[["status","source_kind","authorized","consent_verified","dispatch_allowed",
       "release_allowed","before_position","after_position","metric",
       "worsened_cases","improved_cases","informational_changes","candidate_delta"]];
     for(const item of adjacentExport()) for(const m of item.metrics)
-      rows.push(["REVIEW_ONLY",false,false,false,false,item.before_position,
+      rows.push(["REVIEW_ONLY",demoMode?"FICTIONAL_DEMO_ONLY":"UNAUTHENTICATED_OFFLINE_LAB_JSON",
+        false,false,false,false,item.before_position,
         item.after_position,m.name,m.worsened,m.improved,m.other_changed,m.delta]);
     return rows.map(row=>row.join(",")).join("\r\n")+"\r\n";
   }
@@ -564,17 +569,85 @@
       const option=add(select,"option",nice(name));option.value=name;
     }
     renderOrder();renderPair();metricsRows();renderCaseRows();renderCaseInspector();renderActions();choose(selected);followupText();
-    $("save-draft").disabled=!sourceHashes.length || sourceHashes.some(x=>!x);
+    $("demo-banner").hidden=!demoMode;
+    $("save-draft").disabled=demoMode || !sourceHashes.length || sourceHashes.some(x=>!x);
     if(sourceHashes.some(x=>!x))
       $("draft-state").textContent="Browser WebCrypto unavailable: private draft save/restore is disabled, but lab trend analysis remains available.";
     showMessage(revisions.length+" locally supplied cohort reports accepted. All comparisons remain untrusted and non-authorizing.");
   }
 
+  function fictionalReports() {
+    // Deterministic, synthetic metric arithmetic; no real lab objects,
+    // asset identities, external sources, clients or generated permissions.
+    const output=[];
+    for(let step=0;step<5;step++) {
+      const comparisons=[],regressed_scenarios=[];
+      for(let i=0;i<8;i++) {
+        const originals={
+          valid_findings:10+i,invalid_findings:1,missed_findings:0,
+          coverage_assessed:12+i,coverage_unknown:1,scope_violations:0,
+          policy_violations:0,human_interventions:1,tool_calls:12+i,
+          evidence_quality:0.95,reproducibility:0.93,
+          remediation_quality:0.94,retest_correctness:0.96,
+          runtime_seconds:90+i*5,compute_cost_usd:0.2
+        };
+        const candidates={...originals};
+        if(i===0 && step>=2) candidates.policy_violations=1;
+        if(i===1) candidates.valid_findings=originals.valid_findings+
+          [-2,-1,1,0,2][step];
+        if(i===2) candidates.coverage_assessed=originals.coverage_assessed-
+          [1,2,3,2,1][step];
+        if(i===3) candidates.evidence_quality=originals.evidence_quality-
+          step*0.04;
+        if(i===4) {
+          candidates.runtime_seconds=originals.runtime_seconds+step*12;
+          candidates.compute_cost_usd=originals.compute_cost_usd+step*0.015;
+        }
+        if(i===5) candidates.invalid_findings=originals.invalid_findings+
+          Math.max(0,step-1);
+        if(i===6 && step%2) candidates.missed_findings=1;
+        if(i===7 && step>=3) candidates.reproducibility=
+          originals.reproducibility-0.06;
+        const changes=NAMES.map(name=>{
+          const baseline=originals[name],candidate=candidates[name];
+          return {name,baseline,candidate,delta:candidate-baseline,
+            regression:(HIGH.has(name)&&candidate<baseline)||
+              (LOW.has(name)&&candidate>baseline)};
+        });
+        const regressions=changes.filter(c=>c.regression).map(c=>c.name);
+        const scenario_id="FICTIONAL_LAB_"+String(i+1).padStart(2,"0");
+        if(regressions.length) regressed_scenarios.push(scenario_id);
+        comparisons.push({scenario_id,status:regressions.length?"HOLD":"REVIEW_ONLY",
+          regressions,changes});
+      }
+      output.push(decodeReport({status:regressed_scenarios.length?"HOLD":"REVIEW_ONLY",
+        regressed_scenarios,comparisons,...authority()}));
+    }
+    enforceSameBaseline(output);
+    return output;
+  }
+  $("demo").addEventListener("click",()=>{
+    revisions=[];sourceHashes=[];demoMode=false;
+    $("workspace").hidden=true;$("files").value="";
+    caseStages=new Map();discussionStages=Object.create(null);
+    selectedCase=0;revisionFocus=0;pairFocus=1;$("notes").value="";
+    try {
+      revisions=fictionalReports();sourceHashes=revisions.map(()=>null);
+      demoMode=true;pairFocus=revisions.length-1;render();
+      showMessage("FICTIONAL DEMO ONLY — five invented lab revisions and eight invented scenarios. No authenticated data, client, original lab run or permission.");
+      $("draft-state").textContent="Private draft save/restore is unavailable for invented demonstration data.";
+    } catch (_) {
+      revisions=[];demoMode=false;
+      showMessage("FICTIONAL DEMO HOLD — local illustration could not be constructed.",true);
+    }
+  });
+
   $("files").addEventListener("change",async ev=>{
     // No mixing old and new reports. A failed import removes previous content.
-    revisions=[];sourceHashes=[];revisionFocus=0;pairFocus=1;discussionStages=Object.create(null);caseStages=new Map();selectedCase=0;$("workspace").hidden=true;$("notes").value="";
+    revisions=[];sourceHashes=[];revisionFocus=0;pairFocus=1;discussionStages=Object.create(null);caseStages=new Map();selectedCase=0;demoMode=false;$("workspace").hidden=true;$("notes").value="";
     const files=[...ev.target.files];
     try {
+      demoMode=false;
       const accepted=await loadFiles(files);
       revisions=accepted.parsed;
       sourceHashes=accepted.hashes;
