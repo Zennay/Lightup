@@ -1,0 +1,32 @@
+# LightUp Authorization Risk Portfolio
+
+**INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD · REVIEW_ONLY.** This is an isolated, offline human operator product, not a second authorization system.
+
+## What is delivered
+
+- Load **1–12 real previously generated private JSON exports** from the separately owned [Authorization Readiness Desk, PR #1569](https://github.com/Zennay/Lightup/pull/1569). Exports are genuinely operator-authenticated **at original creation time**, but copies brought here are **unsigned, untrusted, potentially stale**. The interface does not reauthenticate either a user or a tenant.
+- Atomic bounded imports, duplicate JSON key denial, exact schema and literal five-false authority envelope, exact selection scope duplication rejection, report/record identity and count consistency checks. A failed import preserves the last accepted workspace.
+- A **multi-scope risk board** with critical/high/other recorded warnings, pending genuine client-request counts and stored grant records (which never imply permission), filtering and separate *self-reported* human escalation/discussion stages.
+- A cross-scope human review-hours capacity projection using bounded, editable per-severity effort and weekly hours. The eight hypothetical weeks deliberately create **no commitments**, staffing orders or scans.
+- Privacy-minimal manual CSV, JSON and Markdown exports for human coordination. They use numbered source slots and fixed flag names; original host/IP, client/engagement labels, filenames, source pseudo-IDs, credentials, original case notes and source digest are absent.
+- Optional **private** resume JSON containing only original-byte SHA-256 fingerprints and local discussion states. Restore requires reimporting **identical original files in identical order**. WebCrypto unavailability disables the resume feature without rejecting otherwise valid sources. Fingerprints are not signatures.
+- Restrictive SHA-256-pinned inline CSP and reproducible single-file **`standalone.html`**. No remote scripts, network requests, browser storage, IndexedDB, cookies or targets.
+
+## Operator use
+
+1. In a separately approved local LightUp checkout, use the existing PR #1569 authenticated operator command to create private JSON reports:
+   `PYTHONPATH=src python -m lightup.authorization_readiness_cli --db /path/to/private.db --email operator@example.com --client-id EXISTING-CLIENT-ID --output /private/readiness-01.json`.
+   The original command prompts for the operator's password (never put one in arguments). Obtain several **distinct** scope selections with review rights; no client identity is inferred from a copied file.
+2. Open **`standalone.html`** directly in a modern browser; import original JSON snapshots locally (max 2 MiB each, 8 MiB batch).
+3. Inspect source-wise flagged findings and human triage stages, adjust staffing estimates; download only the intended aggregate handoff. If saving a private resume, protect it and the original source exports as sensitive operator documents.
+4. Restore later by first importing exactly the original files again in the same order. A different source revision must start with fresh human status rather than silently importing approval or a previous triage result.
+
+For maintainers: run `python3 authorization-portfolio/build.py` to reproduce the bundled file; it uses only the Python standard library. A syntax-only `node --check authorization-portfolio/app.js` can inspect the generated script. **No QA, regression or testsuite is added or required by this feature branch.**
+
+## Source safety and overlap limits
+
+The source's selected scope fingerprint is opaque. Distinct exported scopes **may still overlap** in clients, grants, and requests. The app refuses combining an all-client snapshot with narrower ones, refuses duplicate scope fingerprints, and labels every sum as **possibly double-counted**. Report flags and records are reviewed **as documented by their original exporter**; no ground truth, active revocation, issuance permission, chronological validation, authenticated proof of origin, or tenant ownership can be concluded from a file. A source file with an unexpected schema is **HOLD**, not silently downgraded.
+
+The app does not modify domain, grants, webapp, entrypoint, activation, authorization policy, CI, runners, or independent worker-owned source. It performs no credential handling, real target interaction, permission issuance, incident STOP, grant revocation, dispatch or scan. Original source owner fixes [#177](https://github.com/Zennay/Lightup/issues/177), [#673](https://github.com/Zennay/Lightup/issues/673), [#829](https://github.com/Zennay/Lightup/issues/829) and other source branches remain separate.
+
+**Do not merge, deploy to production, issue grants, or scan based on this product** without original exact-head hosted CI, permanent registered VPS CI, independently authenticated client/operator consent and action-time revocation, security/privacy review and explicit HUMAN GO. Human stages marked 'discussed' are always **unverified**.
