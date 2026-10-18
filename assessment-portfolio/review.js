@@ -135,6 +135,9 @@
       for(let i=0;i<3;i++) node("td",tr,"—");
     }
   }
+  // Keep the complete portfolio attention board current after individual edits.
+  const originalView=view;
+  view=()=>{originalView();renderPortfolio();};
   sourceSelect.addEventListener("change",()=>{
     selected.clear();get("confirm").checked=false;get("confirmAll").checked=false;
     get("restore").value="";
@@ -312,6 +315,133 @@
     } catch(e) {
       message("HOLD: invalid proposal in at least one agenda. Nothing exported.");
     }
+  });
+  const portfolioSelected=new Set();
+  const crossId=(src,row)=>src.slot+":"+row.slot;
+  function dayClass(date) {
+    if (date===null) return "unscheduled";
+    if (date<input.reference_date) return "past";
+    if (date>input.reference_date) return "future";
+    return "today";
+  }
+  for(const stage of stageChoices) {
+    for(const id of ["pStage","pApplyStage"]) {
+      const opt=node("option",get(id),stage);opt.value=stage;
+    }
+  }
+  for(const role of roles) {
+    for(const id of ["pRole","pApplyRole"]) {
+      const opt=node("option",get(id),role);opt.value=role;
+    }
+  }
+  function portfolioMatches(row) {
+    return (!get("pStage").value || row.stage===get("pStage").value)
+      && (!get("pRole").value || row.next_role===get("pRole").value)
+      && (!get("pDateBucket").value || dayClass(row.review_date)===get("pDateBucket").value);
+  }
+  function allPortfolio() {
+    const all=[];
+    for(const src of input.sources) {
+      for(const row of currentRows(src)) {
+        const original=src.rows.find(item=>item.source_slot===row.slot);
+        if (!original) throw Error("Missing source-local original human row");
+        all.push({src,row,kind:original.source_kind});
+      }
+    }
+    return all;
+  }
+  function renderPortfolio() {
+    const all=allPortfolio();
+    const filtered=all.filter(item=>portfolioMatches(item.row));
+    get("pTotal").textContent=String(all.length);
+    get("pVisible").textContent=String(filtered.length);
+    get("pSelected").textContent=String(portfolioSelected.size);
+    get("pModified").textContent=String(all.filter(item=>modified(item.row)).length);
+    const rows=get("pRows");rows.replaceChildren();
+    for(const {src,row,kind} of filtered) {
+      const tr=node("tr",rows);
+      if(modified(row)) tr.classList.add("changed");
+      const checkbox=node("input",node("td",tr));
+      checkbox.type="checkbox";
+      checkbox.checked=portfolioSelected.has(crossId(src,row));
+      checkbox.setAttribute("aria-label","Select human agenda "+src.slot+" slot "+row.slot);
+      checkbox.addEventListener("change",()=>{
+        if(checkbox.checked) portfolioSelected.add(crossId(src,row));
+        else portfolioSelected.delete(crossId(src,row));
+        get("pSelected").textContent=String(portfolioSelected.size);
+      });
+      for(const value of [src.slot,row.slot,kind,row.stage,row.next_role,
+                           row.review_date || "—",src.claimed_status,
+                           modified(row) ? "Locally edited" : "Original"]) {
+        node("td",tr,value);
+      }
+    }
+    if(!filtered.length){
+      const tr=node("tr",rows);
+      const cell=node("td",tr,"No original human items match these filters.");
+      cell.colSpan=9;
+    }
+  }
+  for(const id of ["pStage","pRole","pDateBucket"]) {
+    get(id).addEventListener("change",()=>{
+      portfolioSelected.clear();
+      get("pConfirm").checked=false;
+      renderPortfolio();
+    });
+  }
+  get("pSelectVisible").addEventListener("click",()=>{
+    portfolioSelected.clear();
+    for(const item of allPortfolio()){
+      if(portfolioMatches(item.row))portfolioSelected.add(crossId(item.src,item.row));
+    }
+    get("pConfirm").checked=false;
+    message(portfolioSelected.size+" human-only slots selected across original agendas.");
+    renderPortfolio();
+  });
+  get("pClear").addEventListener("click",()=>{
+    portfolioSelected.clear();
+    get("pConfirm").checked=false;
+    message("Cross-agenda selection cleared; original sources unchanged.");
+    renderPortfolio();
+  });
+  get("pApply").addEventListener("click",()=>{
+    if(!portfolioSelected.size){
+      message("Select visible original human slots before applying cross-agenda changes.");
+      return;
+    }
+    if(!get("pConfirm").checked){
+      message("Explicitly confirm human-only cross-agenda changes first.");
+      return;
+    }
+    const stage=get("pApplyStage").value,role=get("pApplyRole").value;
+    const day=get("pApplyDate").value,clear=get("pClearDate").checked;
+    if((day&&clear)||(!stage&&!role&&!day&&!clear)){
+      message("Choose a new human field; a date cannot be set and cleared simultaneously.");
+      return;
+    }
+    const date=dateValue(day);
+    if(date===false || (stage&&!stageChoices.includes(stage))
+       ||(role&&!roles.includes(role))){
+      message("HOLD: invalid original human stage, role or date. No changes applied.");
+      return;
+    }
+    const all=allPortfolio();
+    const targets=all.filter(item=>portfolioSelected.has(crossId(item.src,item.row)));
+    if(targets.length!==portfolioSelected.size) {
+      message("HOLD: stale cross-agenda human selection. No changes applied.");
+      return;
+    }
+    // All admission checks finish before a single human-only in-memory mutation.
+    for(const item of targets) {
+      if(stage)item.row.stage=stage;
+      if(role)item.row.next_role=role;
+      if(day||clear)item.row.review_date=clear?null:date;
+    }
+    portfolioSelected.clear();selected.clear();
+    get("pConfirm").checked=false;get("confirmAll").checked=false;
+    get("confirm").checked=false;
+    message(targets.length+" original human slots edited locally across agendas. Export a new PRIVATE all-agenda proposal bundle; original inputs remain unchanged.");
+    view();
   });
   view();
 })();

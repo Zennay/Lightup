@@ -100,3 +100,7 @@ The private Review Studio can now [export all original agenda human proposals as
 ### One-page offline workspace navigation
 
 Each newly generated portfolio (and every subsequent private review cycle) includes **[workspace-home.html](NAVIGATION.md)**, a scriptless local start page linking to the current human queue, cross-agenda Review Studio, hypothetical capacity studio and aggregate handoff, with the exact command-line next-cycle flow. Older original-source workspaces without this optional page remain readable by the original source-bound return command.
+
+### Cross-agenda human review
+
+The original private browser Review Studio now has a [single portfolio-wide human attention desk](CROSS-AGENDA.md), letting an operator filter all original agenda rows by stage, neutral role and planned-date status, bulk-edit human notes across different sources with explicit acknowledgement, and export the complete original-bound PRIVATE human proposal bundle. Original evidence and authority remain unchanged.

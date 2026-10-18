@@ -33,3 +33,7 @@ No QA/regression/test suites, original scanner, model, login, grant, assessment 
 ## Saved original-source-bound human capacity presets
 
 The self-contained capacity Studio now supports **Download PRIVATE source-bound plan** and **Restore PRIVATE source-bound plan**. All original selected agenda slot/hash/status tuples, shared date, and 1–12-week neutral role capacities must match exactly; restore is atomic in browser memory and cannot imply review assignment or authorization. A separate [saved-capacity CLI](SAVED-CAPACITY.md) reads the unchanged original PRIVATE agendas and the saved private plan to regenerate the original hypothetical HTML or anonymous aggregate reports. No browser storage or active target work is added.
+
+## Unified review and navigation
+
+Open `workspace-home.html` in the complete original private workspace ZIP to navigate original queue, cross-agenda human Review Studio, hypothetical capacity planner and counts-only reporting. The [cross-agenda human attention desk](CROSS-AGENDA.md) supports bounded human-only batch edits across all original agenda slots; private `--proposal-bundle` return and continued review cycles retain original source/HOLD admission and never change actual permissions.

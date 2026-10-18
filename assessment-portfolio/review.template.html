@@ -20,6 +20,35 @@
 <div><small>Locally edited</small><strong id="modified">—</strong></div>
 <div><small>Original state</small><strong id="sourceState">—</strong></div>
 </section>
+<section class="panel" id="portfolioDesk">
+<h2>Portfolio-wide human attention desk</h2>
+<p>Review across all original agendas at once. Selected changes affect only human planning notes in memory; no original finding, evidence, grant or consent is changed. Every changed agenda is included in the existing single private proposal-bundle export.</p>
+<div class="stats">
+<div><small>Portfolio human items</small><strong id="pTotal">—</strong></div>
+<div><small>Filtered items</small><strong id="pVisible">—</strong></div>
+<div><small>Selected human slots</small><strong id="pSelected">—</strong></div>
+<div><small>Locally changed</small><strong id="pModified">—</strong></div>
+</div>
+<div class="toolbar">
+<label>Human stage filter<select id="pStage"><option value="">All human stages</option></select></label>
+<label>Neutral role filter<select id="pRole"><option value="">All neutral roles</option></select></label>
+<label>Proposed date filter<select id="pDateBucket">
+<option value="">All proposed dates</option><option value="past">Past proposed date</option>
+<option value="today">On selected reference day</option><option value="future">Later proposed date</option>
+<option value="unscheduled">Not scheduled</option></select></label>
+<button id="pSelectVisible" type="button">Select visible human slots</button>
+<button id="pClear" type="button">Clear cross-agenda selection</button>
+</div>
+<div class="toolbar">
+<label>Apply human stage<select id="pApplyStage"><option value="">Leave unchanged</option></select></label>
+<label>Apply neutral role<select id="pApplyRole"><option value="">Leave unchanged</option></select></label>
+<label>Propose date<input id="pApplyDate" type="date" min="2020-01-01" max="2100-12-31"></label>
+<label><input id="pClearDate" type="checkbox"> Remove proposed date</label>
+</div>
+<label class="confirm"><input id="pConfirm" type="checkbox"> I acknowledge these bulk changes affect original-source human-only drafts, not verified issues, authorization, assignments, customer approval or GO.</label>
+<button id="pApply" type="button">Apply human-only changes to selected agendas</button>
+<div class="scroll"><table><thead><tr><th>Select</th><th>Agenda</th><th>Source slot</th><th>Original kind</th><th>Human stage</th><th>Neutral role</th><th>Proposed date</th><th>Original status</th><th>Local change</th></tr></thead><tbody id="pRows"></tbody></table></div>
+</section>
 <section class="panel"><h2>Batch human follow-up editor</h2>
 <p>Select particular visible original source slots. Bulk operations change only local human planning fields; source IDs and old values cannot change.</p>
 <div class="toolbar"><button id="selectVisible" type="button">Select visible source slots</button><button id="clearSelected" type="button">Clear selection</button>
