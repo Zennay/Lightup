@@ -36,3 +36,20 @@ Or use --format html for an anonymous human-facing document. Aggregate exports c
 Files are always NEW, atomically fsynced and mode 0600 (no overwrite). Browser HTML has no scripts/network/storage and a static restrictive CSP. Operator input is never treated as trusted target or consent evidence. The CLI exits 2 on source-available REVIEW_ONLY, 3 on HOLD, never 0 as successful authorization.
 
 **DRAFT/HOLD, INCUBATE M3/M7 PLAN/LAB ONLY:** This is a human coordination form, not a grant, approval, scope resolver, scan, benchmark, automated remediation or completed security finding. The original hosted and permanently registered VPS CI, source-owner reviews, independent privacy/security, actual separate client/operator permissions, revocation and HUMAN GO remain mandatory. No active code, original webapp or other workers' source was modified. No QA suites were added or executed.
+
+## Turn original human follow-up into an actionable agenda
+
+After the strict original source-bound followup form has been saved, build
+an owner-private chronological, source-neutral human agenda:
+
+    python3 assessment-archive/agenda.py --manifest /private/ARCHIVE.json --choices /private/EDITED-followup.json --as-of 2026-10-18 --format html --output /private/NEW-private-agenda.html
+
+The agenda has a source-slot human review question and shows planning dates
+before/on/after the **explicit** chosen as-of date; these are private
+coordination notes, not actual security incidents, deadlines or execution
+permissions. --format md or --format json provides source-neutral textual
+handoff, while --aggregate-only drops all individual source slots, neutral
+role assignments and review dates (only group counts remain). The source
+checksum and original human stage validation are still mandatory.
+
+Console option 10 exposes the same locally bounded workflow.

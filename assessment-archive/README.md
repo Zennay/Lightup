@@ -156,3 +156,25 @@ REVIEW_ONLY. A missing source is never considered a fixed vulnerability.
 Historical Studio is not available in anonymous ZIPs; this boundary is enforced,
 not silently downgraded. The existing standalone source comparison CLI still
 works independently.
+
+### Human follow-up planning agenda · console option 10
+
+The project now also supports a human-reviewed agenda for many already-indexed
+source artifacts with **explicit planning reference date**, sorted private
+source slots and non-approving role-specific next conversation prompts.
+
+    python3 assessment-archive/agenda.py --manifest /private/ARCHIVE.json --choices /private/EDITED-followup.json --as-of 2026-10-18 --format html --output /private/NEW-human-agenda.html
+
+The original manifest and human follow-up form are cryptographically byte-bound;
+a different source or corrupted stage/role/date is rejected. Three printable
+or machine-readable formats are available (HTML, Markdown, JSON). Each preserves
+the original source owner worklist with human proposed dates categorized as
+PAST_PLANNED_DATE, PLANNED_FOR_REFERENCE_DAY, FUTURE_PLANNED_DATE, UNSCHEDULED.
+The agenda sorts planned human attention by date category and static source
+question. It does not infer risk, legal deadlines, overdue SLAs, fixed
+vulnerabilities, authentic consent or a pass/fail security verdict.
+
+--aggregate-only removes individual source slots and dates, replacing them
+with anonymous counts by human stage, neutral role and planned-date category.
+All output is exclusively new, 0600 and fsynced. Original QA/CI and
+authorization owners are untouched.

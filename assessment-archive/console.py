@@ -12,6 +12,7 @@ from zipfile import BadZipFile
 
 import archive
 import archive_studio
+import agenda
 import followup
 import packet
 
@@ -26,6 +27,7 @@ ACTIONS = (
     ("7", "Publish follow-up desk from locally edited form"),
     ("8", "Package existing archive and human worklist for private local coordination"),
     ("9", "Build a private interactive Archive Studio browser workspace"),
+    ("10", "Create source-bound human follow-up agenda and planned-date overview"),
     ("q", "Exit without changing files"),
 )
 
@@ -129,6 +131,18 @@ def operation(choice: str) -> int:
                     if yes_no("Compare against an earlier private archive") else None)
         output = ask("New interactive private Archive Studio HTML path (must not exist)")
         return archive_studio.build(manifest, output, previous)
+    if choice == "10":
+        manifest = ask("Original private archive manifest JSON path")
+        choices = ask("Exact matching edited human follow-up JSON path")
+        as_of = ask("Human agenda reference date YYYY-MM-DD")
+        output_format = optional("Agenda format: html, md or json", "html").lower()
+        if output_format not in ("html", "md", "json"):
+            raise archive.Hold("unsupported human agenda format")
+        anonymous = yes_no("Export category counts only with no source slot details")
+        output = ask("New local human agenda output path (must not exist)")
+        return agenda.action(SimpleNamespace(manifest=manifest, choices=choices,
+                            as_of=as_of, format=output_format,
+                            aggregate_only=anonymous, output=output))
     raise archive.Hold("invalid operation")
 
 
