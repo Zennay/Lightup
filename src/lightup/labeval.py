@@ -149,6 +149,11 @@ class EvaluationRecord:
     notes: str = ""
 
     def to_dict(self) -> dict:
+        # Directly instantiated records must not publish unvalidated lab metrics.
+        # Fail before emitting an evidence-like JSON payload or derived FPR.
+        if type(self.metrics) is not EvaluationMetrics:
+            raise ValueError("record metrics must be canonical EvaluationMetrics")
+        self.metrics.validate()
         data = asdict(self)
         data["metrics"]["false_positive_rate"] = self.metrics.false_positive_rate
         return data
@@ -213,6 +218,8 @@ class LabEvaluationHarness:
             raise LabIsolationError("evaluation records require an exact lab context")
         if context.authorization is not None:
             raise LabIsolationError("lab evaluation contexts cannot carry authorization")
+        if type(metrics) is not EvaluationMetrics:
+            raise ValueError("evaluation metrics must be canonical EvaluationMetrics")
         metrics.validate()
         record = EvaluationRecord(
             record_id=str(uuid4()),
