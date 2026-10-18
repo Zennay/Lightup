@@ -356,6 +356,8 @@ def _read_report(database: Path, *, client_id: str | None = None,
                     if "TENANT_LINEAGE_MISMATCH" in problems
                     else "Escalate invalid or missing approved-request binding to the #177 source owner."
                     if binding != "recorded_coherent_review_only"
+                    else "Escalate remaining grant integrity warnings; stored binding alone is insufficient."
+                    if problems
                     else "Stored request binding appears coherent on this snapshot only. "
                     "Independent client/operator consent, action-time revocation and release "
                     "remain unverified; never execute from this report."
@@ -429,6 +431,7 @@ def _read_report(database: Path, *, client_id: str | None = None,
     report = {
         "format": "lightup.authorization_readiness_operator_v1",
         "disposition": "REVIEW_ONLY",
+        "request_binding_schema_present": "approved_request_id" in columns,
         "scope_fingerprint": hashlib.sha256(json.dumps(
             ["lightup.readiness.scope.v1", client_id or "all",
              engagement_id or "all"], separators=(",", ":")
@@ -696,8 +699,8 @@ def _render_html(report: dict) -> str:
         '<p class="sub">Private, authenticated operator triage of stored assessment requests '
         "and grant lineage. This is a static offline report, not permission or a security verdict.</p></header>"
         '<main><section class="grid">' + cards + "</section>"
-        '<div class="warning"><strong>HOLD:</strong> The existing domain has no durable approved request → '
-        "grant link. Even a compatible record is UNBOUND; independent client/operator consent, "
+        '<div class="warning"><strong>HOLD:</strong> A stored approved-request binding is only '
+        "administrative provenance and may be missing on legacy grants; independent client/operator consent, "
         "at-use revocation and all release gates remain mandatory. Never contact a target based on this export.</div>"
         "<h2>Pending client requests — operator review required</h2>" + request_inbox +
         "<h2>Engagement review queue</h2>" + ("".join(blocks) or "<p>No engagements with recorded requests/grants.</p>") +
@@ -758,6 +761,7 @@ def _render_csv(report: dict) -> str:
     for e in report["engagements"]:
         grants = e["grant_findings"] or [{
             "grant_number": "", "window": "", "flags": ["NO_GRANT_RECORD"],
+            "binding": "none",
             "next_action": "No grant record. No scope authorization is inferred.",
         }]
         for grant in grants:
