@@ -8,6 +8,8 @@ An actual persisted LightUp operator can preview whether zero, one or several re
 
 The private output shows original request review statuses, strict mismatch versus matching candidate, historical grant-request binding row counts, legacy unbound grant counts, and current-tenant/engagement source warnings. A single match is only REVIEW_ONLY_SINGLE_CANDIDATE. Multiple matches are HOLD_AMBIGUOUS_CANDIDATES; zero is HOLD_NO_CANDIDATE.
 
+**New integrated batch scenario workflow:** In addition to one set of --asset and --risk arguments, supply a strict --scenarios-file containing 2–8 human-proposed risk/scope alternatives for one existing engagement. The CLI runs the original canonical predicate against one shared **read-only SQLite transaction**, not multiple moving source snapshots. Original request matches are grouped by alternative and compared adjacent by record identity as matching/no-longer-matching/newly-matching. Alternative order is manually selected, **never original chronology or revocation**. The original single-proposal CLI remains supported.
+
 Three formats: accessible script-free private HTML, private JSON, formula-escaped CSV. Output is bounded and new-only (mode 0600). Original request IDs and client/engagement labels require separate opt-in options; the default uses private pseudonyms and counters. SHA-256 selection digest is unsigned and no permission certificate.
 
 ## How to use
@@ -19,6 +21,19 @@ In a separate authorized local environment, using a genuine LightUp database and
       --engagement-id EXISTING_ID --client-id EXPECTED_CLIENT_ID \
       --asset example.org --asset 192.0.2.0/24 --risk 2 \
       --output /private/request-binding-shortlist.html
+
+Alternative plan JSON (private, strict 2–8 entries; do not place real target details in public locations):
+
+    {
+      "format": "lightup.request_binding_scenarios.v1",
+      "scenarios": [
+        {"label": "Narrow host risk 1", "risk": 1, "assets": ["example.org"]},
+        {"label": "Host and lab subnet", "risk": 2,
+         "assets": ["example.org", "192.0.2.0/24"]}
+      ]
+    }
+
+Use --scenarios-file /private/scenarios.json **instead of** --asset/--risk with exactly the same --db, --email, --engagement-id and --output options. Each scenario has one separately reported zero/one/multiple administrative match; no scenario actually issues authorization. Labels are fixed ASCII text and imported JSON rejects duplicate keys, hidden NaN and unexpected fields. If the underlying source changes later, reopen through an authenticated operator and recheck from fresh records.
 
 The CLI requires an interactive password prompt; passwords cannot be passed as argv or env. Choose new .json or .csv filename for an alternative private format. The opt-in --include-request-ids shows real stored IDs where needed for separately authorized operator reconciliation. --include-labels shows client/engagement names.
 

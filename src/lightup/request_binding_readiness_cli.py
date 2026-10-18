@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import argparse
 from collections import Counter
-from contextlib import closing
+from contextlib import closing, nullcontext
 from datetime import datetime, timezone
 import csv
 from getpass import getpass, GetPassWarning
@@ -85,8 +85,9 @@ def _private_output(path: Path, body: str) -> None:
 
 def _source_snapshot(db: Path, *, engagement_id: str, client_id: str | None,
                      assets: tuple[str, ...], risk: int,
-                     include_request_ids: bool, include_labels: bool, operator_user_id: str) -> dict:
-    with closing(_read_only(db)) as con:
+                     include_request_ids: bool, include_labels: bool, operator_user_id: str,
+                     connection: sqlite3.Connection | None = None) -> dict:
+    with (closing(_read_only(db)) if connection is None else nullcontext(connection)) as con:
         operator = con.execute(
             "SELECT role,client_id FROM users WHERE user_id=?",
             (operator_user_id,)
@@ -309,8 +310,9 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--email", required=True, help="current persisted real operator")
     parser.add_argument("--engagement-id", required=True, help="real pre-existing engagement")
     parser.add_argument("--client-id", help="optional expected tenant consistency assertion")
-    parser.add_argument("--asset", action="append", required=True, help="canonical proposed host/IP/CIDR literal; repeat")
-    parser.add_argument("--risk", required=True, type=int, choices=range(1, 5))
+    parser.add_argument("--asset", action="append", help="canonical proposed host/IP/CIDR literal; repeat")
+    parser.add_argument("--risk", type=int, choices=range(1, 5))
+    parser.add_argument("--scenarios-file", help="optional 2–8 bounded alternative risk/scope proposals JSON")
     parser.add_argument("--output", required=True, help="new, private .json, .html or .csv filename")
     parser.add_argument("--include-request-ids", action="store_true", help="private original IDs for human reconciliation")
     parser.add_argument("--include-labels", action="store_true", help="private original client/engagement labels")
@@ -324,7 +326,17 @@ def main(argv: list[str] | None = None) -> int:
         print("HOLD: require existing regular database, interactive operator and a new private output.", file=sys.stderr)
         return 2
     try:
-        assets = _assets(args.asset)
+        if args.scenarios_file is not None:
+            if args.asset is not None or args.risk is not None:
+                raise ValueError("scenario file cannot be mixed with single proposal flags")
+            from .request_binding_scenarios import read_scenarios
+            scenarios = read_scenarios(Path(args.scenarios_file))
+            assets = None
+        else:
+            if args.asset is None or args.risk is None:
+                raise ValueError("single scenario requires assets and risk")
+            assets = _assets(args.asset)
+            scenarios = None
         with warnings.catch_warnings():
             warnings.simplefilter("error", GetPassWarning)
             password = getpass("LightUp operator password: ")
@@ -336,17 +348,30 @@ def main(argv: list[str] | None = None) -> int:
             raise PermissionError("invalid operator")
         ctx = store.context_for_user(user.user_id)
         ctx.require_operator("offline approved-request selection preview")
-        report = _source_snapshot(
-            db, engagement_id=args.engagement_id, client_id=args.client_id,
-            assets=assets, risk=args.risk,
-            include_request_ids=args.include_request_ids,
-            include_labels=args.include_labels,
-            operator_user_id=user.user_id,
-        )
         kind = out.suffix.lower()
-        body = (_html(report) if kind == ".html" else
-                _csv(report) if kind == ".csv" else
-                json.dumps(report, indent=2, ensure_ascii=True) + "\n")
+        if scenarios is not None:
+            from .request_binding_scenarios import (
+                compare_scenarios, format_html, format_csv, format_json
+            )
+            report = compare_scenarios(
+                db, engagement_id=args.engagement_id, client_id=args.client_id,
+                scenarios=scenarios, operator_user_id=user.user_id,
+                include_request_ids=args.include_request_ids,
+                include_labels=args.include_labels,
+            )
+            body = (format_html(report) if kind == ".html" else
+                    format_csv(report) if kind == ".csv" else format_json(report))
+        else:
+            report = _source_snapshot(
+                db, engagement_id=args.engagement_id, client_id=args.client_id,
+                assets=assets, risk=args.risk,
+                include_request_ids=args.include_request_ids,
+                include_labels=args.include_labels,
+                operator_user_id=user.user_id,
+            )
+            body = (_html(report) if kind == ".html" else
+                    _csv(report) if kind == ".csv" else
+                    json.dumps(report, indent=2, ensure_ascii=True) + "\n")
         _private_output(out, body)
     except (ValueError, PermissionError, AccountLockedError, sqlite3.DatabaseError,
             OSError, EOFError, KeyboardInterrupt, GetPassWarning):
