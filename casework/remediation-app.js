@@ -5,7 +5,7 @@ const $=id=>document.getElementById(id);
 const workflow=LightUpCasework.PROGRESS;
 for(const status of workflow){const opt=document.createElement('option');opt.value=status;opt.textContent=status.replaceAll('_',' ');$('workflow').append(opt);}
 let findings=[],cases=[],fingerprint=null,sourceLabel='',edited=false;
-let pendingRefresh=null;
+let pendingRefresh=null,pendingSchedule=null;
 const byId=()=>new Map(cases.map(c=>[c.finding_id,c]));
 const ids=()=>new Set(findings.map(f=>f.finding_id));
 function inform(message){$('status').textContent=message;}
@@ -33,7 +33,7 @@ function makeInput(container,label,key,selected,options){
   try{
    const validated=LightUpCasework.cleanCase(next,ids());
    const index=cases.findIndex(c=>c.finding_id===selected.finding_id);
-   cases[index]=validated;edited=true;
+   cases[index]=validated;edited=true;clearSchedulePreview();
    inform('Unsaved local changes. Export casework JSON to keep your plan.');
    render();
   }catch(_){inform('Invalid case field; change not saved.');el.value=selected[key]??'';}
@@ -59,6 +59,8 @@ function render(){
  $('empty').style.display=available?'none':'block';
  const listed=filteredFindings();
  $('bulkApply').disabled=!available||!listed.length;
+ $('schedulePreview').disabled=!available;
+ $('scheduleApply').disabled=!available||!pendingSchedule;
  $('bulkCount').textContent=listed.length+' matching findings';
  const kind=$('sort').value;
  listed.sort((a,b)=>{
@@ -113,7 +115,7 @@ async function withCsv(file){
  const hash=await LightUpCasework.digest(source);
  if(findings.length && !window.confirm('Replace current unsaved casework with imported findings?'))return false;
  findings=source;cases=source.map(LightUpCasework.newCase);fingerprint=hash;sourceLabel='LightUp CSV: '+file.name.slice(0,100);
- edited=true;pendingRefresh=null;resetRefreshUI();return true;
+ edited=true;pendingRefresh=null;resetRefreshUI();clearSchedulePreview();return true;
 }
 async function withPacket(file){
  if(!file||file.size>2097152)throw Error('Saved casework exceeds 2 MiB.');
@@ -122,7 +124,7 @@ async function withPacket(file){
  if(loaded.source_sha256 && (!actual||loaded.source_sha256!==actual))throw Error('Finding source revision does not match saved casework.');
  if(findings.length && !window.confirm('Replace current unsaved casework with this saved draft?'))return false;
  findings=loaded.findings;cases=loaded.cases;fingerprint=actual;sourceLabel='Saved local casework: '+file.name.slice(0,100);
- edited=false;pendingRefresh=null;resetRefreshUI();return true;
+ edited=false;pendingRefresh=null;resetRefreshUI();clearSchedulePreview();return true;
 }
 for(const [id,load] of [['csvSource',withCsv],['caseworkSource',withPacket]]){
  $(id).addEventListener('change',async event=>{
@@ -134,6 +136,55 @@ for(const [id,load] of [['csvSource',withCsv],['caseworkSource',withPacket]]){
   }catch(err){inform('Import rejected: '+(err.message||'invalid or unsupported file')+'. Current plan unchanged.');}
  });
 }
+
+
+function clearSchedulePreview(){
+ pendingSchedule=null;
+ $('scheduleApply').disabled=true;
+ $('scheduleText').textContent='No pending planning date suggestions. Preview again after editing or changing a source.';
+}
+function severityPolicy(){
+ return {
+  critical:Number($('daysCritical').value),high:Number($('daysHigh').value),
+  medium:Number($('daysMedium').value),low:Number($('daysLow').value),
+  info:Number($('daysInfo').value)
+ };
+}
+for(const id of ['scheduleAnchor','daysCritical','daysHigh','daysMedium','daysLow','daysInfo'])
+ $(id).addEventListener('input',clearSchedulePreview);
+const date=new Date();
+$('scheduleAnchor').value=new Date(date.getTime()-date.getTimezoneOffset()*60000).toISOString().slice(0,10);
+$('schedulePreview').addEventListener('click',()=>{
+ if(!findings.length)return;
+ try{
+  pendingSchedule=LightUpRemediationSchedule.prepare(findings,cases,$('scheduleAnchor').value,severityPolicy());
+  $('scheduleApply').disabled=!pendingSchedule.entries.length;
+  const examples=pendingSchedule.entries.slice(0,15).map(e=>e.finding_id+' · '+e.severity+' · '+e.proposed_due_date);
+  $('scheduleText').textContent=pendingSchedule.entries.length+' local due dates suggested. Existing deadlines are never overwritten.\n'+
+    (examples.join('\n')||'No eligible cases without deadlines.')+
+    (pendingSchedule.entries.length>examples.length?'\n… '+(pendingSchedule.entries.length-examples.length)+' more':'')+
+    '\nThese are not verified or contractually binding SLAs.';
+  inform('Review proposed dates; apply only after explicit confirmation. Unassigned dates remain unchanged until then.');
+ }catch(err){clearSchedulePreview();inform('Planning policy rejected: '+(err.message||'invalid date')+'.');}
+});
+$('scheduleApply').addEventListener('click',()=>{
+ if(!pendingSchedule||!findings.length)return;
+ let current;
+ try{current=LightUpRemediationSchedule.prepare(findings,cases,$('scheduleAnchor').value,severityPolicy());}
+ catch(err){clearSchedulePreview();inform('Planning dates require a new preview: '+(err.message||'invalid policy'));return;}
+ if(JSON.stringify(current)!==JSON.stringify(pendingSchedule)){clearSchedulePreview();inform('Planning source changed; preview dates again.');return;}
+ if(!window.confirm('Assign '+current.entries.length+' suggested deadlines to eligible open local cases? This does not override existing dates or establish contractual SLAs.'))return;
+ const choices=new Map(current.entries.map(entry=>[entry.finding_id,entry.proposed_due_date]));
+ const existingIds=ids(),now=new Date().toISOString();
+ let updated;
+ try{updated=cases.map(c=>choices.has(c.finding_id)?
+  LightUpCasework.cleanCase({...c,due_date:choices.get(c.finding_id),updated_utc:now},existingIds):c);}
+ catch(err){clearSchedulePreview();inform('Deadline plan refused: '+(err.message||'invalid value'));return;}
+ cases=updated;edited=true;
+ const count=choices.size;
+ clearSchedulePreview();render();
+ inform(count+' local deadline proposals assigned; source findings and genuine SLAs remain unchanged. Export JSON to retain the plan.');
+});
 
 function resetRefreshUI(){
  $('refreshReview').replaceChildren();
@@ -178,7 +229,7 @@ $('applyRefresh').addEventListener('click',()=>{
  if(!window.confirm('Apply revised source? Changed findings lose old casework assignments and absent findings are removed from the working board. Save your current casework JSON first.'))return;
  const {findings:newFindings,cases:newCases,change_summary:d}=LightUpCasework.reconcileSource(findings,cases,pendingRefresh.incoming);
  findings=newFindings;cases=newCases;fingerprint=pendingRefresh.hash;sourceLabel='Refreshed LightUp CSV: '+pendingRefresh.label;
- edited=true;pendingRefresh=null;resetRefreshUI();render();
+ edited=true;pendingRefresh=null;resetRefreshUI();clearSchedulePreview();render();
  inform('Source refreshed locally: '+d.added.length+' new, '+d.changed.length+' changed/reset, '+d.missing.length+' absent/not fixed, '+d.unchanged.length+' unchanged assignments kept. Export updated JSON.');
 });
 
@@ -198,7 +249,7 @@ $('bulkApply').addEventListener('click',()=>{
    return LightUpCasework.cleanCase({...c,...(owner?{owner}:{}),...(due?{due_date:due}:{}),updated_utc:now},all);
   });
  }catch(err){inform('Bulk change rejected: '+(err.message||'invalid field')+'. No changes made.');return;}
- cases=revised;edited=true;
+ cases=revised;edited=true;clearSchedulePreview();
  inform('Updated '+matched.size+' filtered local remediation assignments. Export JSON to save.');
  render();
 });
@@ -252,7 +303,7 @@ $('print').addEventListener('click',()=>{if(findings.length)window.print();});
 $('reset').addEventListener('click',()=>{
  if(!findings.length)return;
  if(!window.confirm('Erase all imported findings and unsaved edits from this tab?'))return;
- findings=[];cases=[];fingerprint=null;sourceLabel='';edited=false;pendingRefresh=null;resetRefreshUI();
+ findings=[];cases=[];fingerprint=null;sourceLabel='';edited=false;pendingRefresh=null;resetRefreshUI();clearSchedulePreview();
  $('search').value='';$('severity').value='';$('workflow').value='';
  inform('Workspace cleared; no browser storage or server request was used.');render();
 });
