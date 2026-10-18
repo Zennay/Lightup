@@ -141,13 +141,16 @@ el('json').addEventListener('click',()=>{
 el('csv').addEventListener('click',()=>{
  if(!forecast)return;
  if(!confirm('Export private weekly aggregate cost estimates? Review the recipient before sharing.'))return;
- const cols=['week','start_utc','proposed_hours','proposed_cost','funding_applied','provisionally_funded_hours'];
+ const cols=['week','start_utc','proposed_hours','proposed_cost','funding_applied','provisionally_funded_hours','critical_high_proposed_hours','urgent_potentially_unfunded_min_hours','urgent_potentially_unfunded_max_hours'];
  const q=v=>'"'+String(v).replace(/"/g,'""')+'"';
  const lines=[cols.map(q).join(',')];
  forecast.weeks.forEach((w,index)=>{
   const funded=forecast.funding[index];
   lines.push([w.week,w.start,w.proposed_hours,w.proposed_cost,
-   funded.funded_cost,funded.provisionally_funded_hours].map(q).join(','));
+   funded.funded_cost,funded.provisionally_funded_hours,
+   forecast.weekly_critical_high_funding_bounds[index].urgent_scheduled_hours,
+   forecast.weekly_critical_high_funding_bounds[index].urgent_potentially_unfunded_minimum_hours,
+   forecast.weekly_critical_high_funding_bounds[index].urgent_potentially_unfunded_maximum_hours].map(q).join(','));
  });
  download('lightup-remediation-funding-weeks.csv',lines.join('\r\n')+'\r\n','text/csv;charset=utf-8');
  show('Private CSV of weekly aggregate financial assumptions exported.');
