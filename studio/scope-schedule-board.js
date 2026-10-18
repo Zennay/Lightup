@@ -143,9 +143,13 @@ function minutesFromClock(raw){
 }
 function workPolicy(){
   const enabled=$('hoursEnabled').checked;
-  const start=$('hoursStart').value,end=$('hoursEnd').value;
-  const days=Array.from($('hoursDays').querySelectorAll('input[data-day]'))
+  const rawStart=$('hoursStart').value,rawEnd=$('hoursEnd').value;
+  const rawDays=Array.from($('hoursDays').querySelectorAll('input[data-day]'))
     .filter(input=>input.checked).map(input=>Number(input.dataset.day)).sort();
+  // Disabled policy always serializes to valid neutral defaults: local edits while disabled
+  // must not make a saved private scenario unrecoverable.
+  const start=enabled?rawStart:'09:00',end=enabled?rawEnd:'17:00';
+  const days=enabled?rawDays:[1,2,3,4,5];
   const begin=minutesFromClock(start),finish=minutesFromClock(end);
   const valid=!enabled||(begin!==null&&finish!==null&&finish>begin&&days.length>0);
   return {enabled,start_utc:start,end_utc:end,weekdays:days,valid,
@@ -193,6 +197,35 @@ function createAxis(days) {
   for(let i=0;i<days;i++)append(axis,'span',new Date(anchorUTC+i*DAY).toISOString().slice(5,10));
   head.append(axis);
 }
+function renderInventory(){
+  const list=$('proposalInventory');list.replaceChildren();
+  if(!entries.length){append(list,'p','No proposals imported. Select Studio v1 files above.','muted');return;}
+  entries.forEach((entry,index)=>{
+    const box=document.createElement('article');box.className='item';list.append(box);
+    append(box,'strong','#'+(index+1)+' · '+entry.name);
+    append(box,'small','Risk '+entry.risk+' · '+entry.mode+' · '+
+      (entry.interval.state==='resolved'?'UTC interval resolved': 'HOLD: '+entry.interval.state));
+    if(entry.sourceHash)append(box,'small',' · Source SHA-256 '+entry.sourceHash.slice(0,12)+'…');
+    const controls=document.createElement('div');controls.className='row';box.append(controls);
+    if(entry.interval.state==='resolved'){
+      const focus=append(controls,'button','Focus UTC timeline');
+      focus.type='button';focus.addEventListener('click',()=>{
+        $('anchor').value=fmtDate(entry.interval.start);
+        anchorChangedByUser=true;setAnchor();
+        $('axis').scrollIntoView({behavior:'smooth',block:'nearest'});
+      });
+    }
+    const remove=append(controls,'button','Remove this source draft');
+    remove.type='button';
+    remove.addEventListener('click',()=>{
+      if(!window.confirm('Remove this imported proposal from the local board? Its original file will stay unchanged. Previously exported scenario ordinals may no longer match.'))return;
+      const removed=entries.splice(index,1)[0];
+      scenarioShifts.delete(removed.key);
+      $('status').textContent='One local proposal removed. Source file untouched. Re-export the private scenario if needed.';
+      render();
+    });
+  });
+}
 function render(){
   const timed=shown(),unsafe=entries.filter(e=>e.interval.state!=='resolved');
   const {pairs,active}=timeClashes(timed);
@@ -208,6 +241,7 @@ function render(){
   $('blocked').textContent=blackouts.length;
   $('changed').textContent=scenarioShifts.size;
   renderBlocks();
+  renderInventory();
   $('total').textContent=entries.length;$('timed').textContent=timed.length;
   $('unscheduled').textContent=unsafe.length;$('clashes').textContent=pairs.length+blockHits.length;
   const original=entries.filter(e=>e.interval.state==='resolved');
