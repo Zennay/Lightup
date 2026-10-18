@@ -232,6 +232,8 @@ def deny_only_stop_state(db_path: str, *, engagement_id: str,
             con.execute("BEGIN")
             if _engagement_client(con, engagement_id) != client_id:
                 raise StopLedgerError("tenant mismatch")
+            if not _stop_schema_current(con):
+                raise StopLedgerError("STOP schema mismatch")
             count = con.execute(
                 "SELECT COUNT(*) AS n FROM authorization_stop_events "
                 "WHERE client_id=? AND engagement_id=?",
@@ -254,6 +256,69 @@ def deny_only_stop_state(db_path: str, *, engagement_id: str,
         "release_approved": False,
     }
 
+
+
+def initialize_authenticated_stop_ledger(db_path: str, *,
+                                         email: str, password: str) -> dict:
+    """Create empty deny-only STOP schema, with an authenticated real operator.
+
+    This prepares only storage. It never approves, issues or resumes anything.
+    """
+    actor_id = authenticate_domain_user(db_path, email, password)
+    con = _open_existing_db(db_path)
+    try:
+        con.execute("BEGIN IMMEDIATE")
+        actor = con.execute(
+            "SELECT role,client_id FROM users WHERE user_id=?", (actor_id,)
+        ).fetchone()
+        if (actor is None or actor["role"] != Role.OPERATOR.value
+                or actor["client_id"] is not None):
+            raise StopLedgerError("STOP ledger setup requires a real operator")
+        for statement in _SCHEMA.split(";"):
+            if statement.strip():
+                con.execute(statement)
+        if not _stop_schema_current(con):
+            raise StopLedgerError("STOP schema mismatch: HOLD")
+        con.execute("COMMIT")
+        return {
+            "schema": "lightup.authenticated_stop_setup.v1",
+            "status": "LEDGER_INITIALIZED_REVIEW_ONLY",
+            "authorization_granted": False,
+            "execution_allowed": False,
+            "release_approved": False,
+        }
+    except (sqlite3.Error, ValueError, TypeError) as exc:
+        if con.in_transaction:
+            con.execute("ROLLBACK")
+        if isinstance(exc, StopLedgerError):
+            raise
+        raise StopLedgerError("STOP ledger initialization refused: HOLD") from None
+    finally:
+        con.close()
+
+
+def _stop_schema_current(con: sqlite3.Connection) -> bool:
+    """Check exact expected core shape before interpreting an empty ledger."""
+    cols = con.execute("PRAGMA table_info(authorization_stop_events)").fetchall()
+    if len(cols) != 7:
+        return False
+    names = ("stop_id", "client_id", "engagement_id", "actor_id",
+             "actor_role", "reason", "stopped_at")
+    if tuple(r["name"] for r in cols) != names:
+        return False
+    if any(r["type"].upper() != "TEXT" for r in cols):
+        return False
+    if cols[0]["pk"] != 1 or any(r["pk"] for r in cols[1:]):
+        return False
+    if any(r["notnull"] != 1 for r in cols[1:]):
+        return False
+    refs = {(r["from"], r["table"], r["to"])
+            for r in con.execute("PRAGMA foreign_key_list(authorization_stop_events)")}
+    return refs == {
+        ("client_id", "clients", "client_id"),
+        ("engagement_id", "engagements", "engagement_id"),
+        ("actor_id", "users", "user_id"),
+    }
 
 
 def engagement_inbox(db_path: str, *, actor_id: str) -> dict:
@@ -350,23 +415,28 @@ def main(argv: list[str] | None = None) -> int:
         prog="python -m lightup.revocation_stop",
         description="Authenticated deny-only engagement STOP (NOT an authorization).",
     )
-    parser.add_argument("action", choices=("stop", "status", "list"))
+    parser.add_argument("action", choices=("stop", "status", "list", "init"))
     parser.add_argument("--database", required=True, help="existing LightUp domain SQLite")
     parser.add_argument("--engagement", help="exact existing engagement ID for stop/status")
     parser.add_argument("--email", required=True, help="existing operator/client account")
     parser.add_argument("--reason", default="", help="optional STOP reason; private DB only")
     parser.add_argument("--receipt", help="optional NEW owner-only JSON receipt for STOP")
     args = parser.parse_args(argv)
-    if args.action != "list" and not args.engagement:
+    if args.action not in ("list", "init") and not args.engagement:
         parser.error("--engagement is required for stop/status")
-    if args.action == "list" and args.engagement:
+    if args.action in ("list", "init") and args.engagement:
         parser.error("--engagement is not used with list")
     if args.receipt and args.action != "stop":
         parser.error("--receipt is available only with stop")
-    if args.action == "status" and args.reason:
+    if args.action != "stop" and args.reason:
         parser.error("--reason is available only with stop")
     try:
         password = getpass("LightUp password: ")
+        if args.action == "init":
+            print(json.dumps(initialize_authenticated_stop_ledger(
+                args.database, email=args.email, password=password,
+            ), sort_keys=True, indent=2))
+            return 2
         if args.action == "stop":
             result = record_authenticated_stop(
                 args.database, engagement_id=args.engagement,
