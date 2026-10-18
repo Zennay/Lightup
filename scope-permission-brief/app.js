@@ -31,6 +31,7 @@ function hold(message){
 function assert(condition,message){if(!condition)throw Error(message);}
 function object(v){return v!==null&&typeof v==='object'&&!Array.isArray(v);}
 function text(v,max){return typeof v==='string'&&v.length<=max&&!/[\u0000-\u001f\u007f]/.test(v);}
+function noteText(v,max){return typeof v==='string'&&v.length<=max&&!/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/.test(v);}
 function exactKeys(v,keys){return object(v)&&Object.keys(v).every(k=>keys.includes(k));}
 /* Lexically parse the entire JSON, rejecting duplicate keys anywhere (including nested).
    JSON.parse alone would silently accept contradictory authority fields. */
@@ -117,7 +118,7 @@ function validateDraft(d){
  assert(d.schema_version===1&&d.kind==='lightup.scope_proposal_draft'&&d.state==='DRAFT_ONLY','Unsupported Studio v1 draft');
  for(const f of ['authorization','client_consent','operator_consent','grant','execution'])assert(d[f]===false,'Unsafe authority assertion');
  assert(d.revocation_checked===undefined||d.revocation_checked===false,'Unsafe revocation assertion');
- assert(text(d.proposal_name,120)&&text(d.client_label,100)&&text(d.notes,3000),'Invalid private proposal text');
+ assert(text(d.proposal_name,120)&&text(d.client_label,100)&&noteText(d.notes,3000),'Invalid private proposal text');
  assert(d.requested_mode==='analysis_only'||d.requested_mode==='authorized_assessment','Invalid mode');
  assert([1,2,3,4].includes(d.requested_risk),'Invalid risk');
  for(const f of ['requested_assets','excluded_assets']){
@@ -229,7 +230,7 @@ async function importReview(file){
   const bytes=await file.arrayBuffer();
   assert(bytes.byteLength<=MAX_BYTES,'Review too large');
   const source=new TextDecoder('utf-8',{fatal:true,ignoreBOM:true}).decode(bytes);
-  assert(!source.startsWith('\\ufeff'),'BOM refused');
+  assert(!source.startsWith('\ufeff'),'BOM refused');
   assertUnambiguousJSON(source);
   const incoming=JSON.parse(source),reference=exportModel();
   assert(oldEpoch===epoch&&current?.sha256===originalSha,'Original source changed');
