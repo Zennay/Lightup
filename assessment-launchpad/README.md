@@ -59,3 +59,23 @@ Before any main merge, deployment, real target assessment or approval: original 
 ## Standalone portable editor (repository artifact)
 
 The committed `standalone.html` is already bundled from the exact new browser source and includes both CSS and JavaScript inline, constrained by exact SHA-256 CSP pins. It works as a local single-file editor and supports source-private file import/export without a web server. If changing `index.html`, `style.css` or `app.js`, rebuild the portable file with `bundle.py` before sending it to an operator: a stale source/CSP bundle is not equivalent to the current editor. The browser does not emit an original-authority approval.
+
+## Studio source binding — original scenario-to-exact-IP handoff
+
+The new Lab Launchpad composes the existing [Lab Scenario Studio](https://github.com/Zennay/Lightup/pull/1595) with the existing [lab-assess CLI](https://github.com/Zennay/Lightup/pull/1610) **without taking over either original owner**. The whole workflow remains offline and does not execute lab assessments:
+
+1. In `standalone.html`, prepare exact numeric HTTP(S) lab endpoints with explicit ports. Choose an existing original **PRIVATE Studio v1** JSON source from the Studio app, select one scenario, and review the advisory declared-IP membership. The Studio source is read into local browser memory only, and no origin network calls are made.
+2. When the original selected scenario's IP set matches the independently entered URL host set *with no duplicates*, download BOTH `targets.txt` and **exact original bytes** as `studio-catalog.json`. If the local endpoints later change, the Studio download is disabled until the mapping matches again.
+3. Use the native, **original-validator-backed** private packet builder from the repository, e.g.:
+
+```sh
+PYTHONPATH=src python3 assessment-launchpad/build.py \
+  --targets-file ./targets.txt \
+  --catalog-file ./studio-catalog.json \
+  --scenario-id my-isolated-lab-scenario \
+  --output-dir ./NEW-PRIVATE-LAB-SCENARIO-HANDOFF
+```
+
+Only the original `lightup.lab_catalog.read_selected_lab_design` and original `LabScenario` policy are binding. The native producer rejects duplicated/malformed scenario JSON keys using the ORIGINAL Studio validator; reads and pins the exact original source's SHA-256; checks the unchanged original whole-scenario schema and every target; enforces explicit port plus exact **unique** normalized private-IP membership; and creates a private 0700 folder with private 0600 `targets.txt`, `studio-catalog.json`, scriptless `private-launchpad.html`, `private-plan.json`, and `START-HERE.txt`. Any original byte drift before the native handoff produces HOLD, no partial directory.
+
+The generated operator command text includes `--catalog-file ./studio-catalog.json --scenario-id ... --preview-only`. **It is never executed by this module.** An offline catalog contains unsigned, self-declared scenarios and possibly declared expected findings; these are NOT factual planted ground truth, client permission, verified assessment, evidence, authority, or a scanner instruction. Browser `JSON.parse` is *not* a duplicate-key validator; native original schema admission is explicitly mandatory. Source revision changes require a fresh human binding, not silent notes carryover.
