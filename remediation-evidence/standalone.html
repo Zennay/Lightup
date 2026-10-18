@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="referrer" content="no-referrer">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-wpPFZOyxFDTkVCPSRLe+ulmbav4+u8hRIYgukbiqEiU=' 'sha256-cCXW0fgAd2k3dP4oEXPpsm8Q60NY7VbIhk2u1eZZIw0='; style-src 'unsafe-inline'; connect-src 'none'; img-src 'none'; font-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-wpPFZOyxFDTkVCPSRLe+ulmbav4+u8hRIYgukbiqEiU=' 'sha256-CQxpcucPXxFcl1lze0RelO9K6ayC6+01m0h3TsorgDc='; style-src 'unsafe-inline'; connect-src 'none'; img-src 'none'; font-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <title>LightUp · Remediation Evidence Review</title>
 <style>
 :root{font:15px/1.5 system-ui,sans-serif;color:#eef5fc;background:#0b1420;--panel:#152538;--stroke:#456178;--muted:#bdd1e0;--accent:#79e9cc}*{box-sizing:border-box}body{margin:0}header{padding:28px max(20px,calc((100% - 1180px)/2));background:#102237;border-bottom:1px solid var(--stroke)}.eyebrow{font-weight:800;letter-spacing:.14em;color:var(--accent);font-size:.75rem}h1{font-size:clamp(27px,4vw,42px);line-height:1.1;letter-spacing:-.045em;margin:5px 0}p{color:var(--muted)}main{max-width:1220px;margin:auto;padding:20px 20px 80px}.warning{padding:17px 21px;border-radius:12px;background:#382c25;border:1px solid #ad9376;color:#fff0d7}.warning strong{color:#ffe0a7}.card{border:1px solid var(--stroke);background:var(--panel);padding:19px;border-radius:14px;margin:18px 0}h2{margin:0 0 6px;font-size:1.35rem}h3{font-size:1.05rem;margin:0}label{display:block;font-weight:650;min-width:0;margin:8px 0}input,select,textarea{width:100%;font:inherit;color:#fff;background:#0b1a2b;border:1px solid #65839d;border-radius:8px;padding:10px 12px;display:block;margin:5px 0 0}input[type=checkbox]{width:auto;display:inline-block;vertical-align:middle;margin:0 8px 0 0}button{font:inherit;cursor:pointer;background:#26465b;color:#fff;border:1px solid #6a8ca5;border-radius:8px;padding:11px 15px;font-weight:700}button:hover{border-color:var(--accent)}button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid var(--accent);outline-offset:2px}.primary{background:var(--accent);color:#0a2925;border-color:var(--accent)}.row,.files{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px}.buttons{display:flex;flex-wrap:wrap;gap:10px;margin:14px 0}.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin:20px 0}.stat{background:#20384d;border-radius:10px;border:1px solid var(--stroke);padding:12px;color:var(--muted)}.stat strong{font-size:2rem;line-height:1.25;display:block;color:var(--accent)}.board{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,370px),1fr));gap:13px}.finding{padding:17px;border:1px solid #52758f;background:#13283b;border-radius:13px;min-width:0;overflow-wrap:anywhere}.finding h3{font-size:1.12rem;line-height:1.3}.detail{font-size:.8rem;margin:6px 0;color:#c1d3e2}.cues{padding:11px 11px 11px 27px;border:1px solid #856d51;background:#332a24;border-radius:8px;font-size:.85rem;color:#ffead0}.cues li+li{margin-top:5px}.matrix{border-collapse:collapse;width:100%;font-size:.84rem}.matrix th,.matrix td{padding:10px;border-bottom:1px solid var(--stroke);text-align:left;white-space:nowrap}.matrix th{color:var(--accent)}.evidence-dossier{background:#0c1c2d;border-radius:9px;border:1px solid var(--stroke);padding:12px;margin:12px 0}.evidence-dossier summary{font-weight:750;cursor:pointer}.agenda-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,370px),1fr));gap:10px}.agenda-item{background:#112a3f;border:1px solid var(--stroke);padding:13px;border-radius:10px}.agenda-item button{font-size:.85rem;padding:8px 11px}.field span{font-size:.85rem}.field textarea{min-height:76px;resize:vertical}#status[data-error=true]{color:#ffb9ad}#status{min-height:28px;font-weight:700}#fingerprint{overflow-wrap:anywhere;font:12px/1.6 ui-monospace,monospace;color:var(--muted)}.foot{font-size:.83rem}a{color:var(--accent)}[hidden]{display:none!important}@media print{body{background:white;color:#111}header,.warning,.files,.buttons,.field,#actions,#status{display:none!important}main{padding:0}.card,.finding{color:#000;background:#fff;border-color:#aaa;break-inside:avoid}p,.detail,.stat{color:#333}.cues{background:white;color:#000}.board{display:block}.finding{margin:10px 0}}
@@ -33,7 +33,7 @@
 <div class="stats"><div class="stat"><strong id="total">0</strong>Original findings</div><div class="stat"><strong id="urgent">0</strong>Critical/high</div><div class="stat"><strong id="no_reference">0</strong>No evidence reference</div><div class="stat"><strong id="needs_changes">0</strong>Needs human changes</div><div class="stat"><strong id="retest">0</strong>Local retest requests</div><div class="stat"><strong id="contradictions">0</strong>Warning conditions</div><div class="stat"><strong id="blocked">0</strong>Blocked local cases</div><div class="stat"><strong id="overdue">0</strong>Overdue local plans</div><div class="stat"><strong id="next7">0</strong>Due within 7 days (local)</div><div class="stat"><strong id="evidence_gaps">0</strong>Evidence dossiers incomplete</div><div class="stat"><strong id="evidence_references_ready">0</strong>4 references entered (unverified)</div></div>
 </section>
 <section id="evidenceReadiness" class="card"><h2>Human evidence readiness by original severity</h2>
-<p>Count missing patch/change, deployment, rollback and independent retest-request references per original finding. <strong>Four references present does not prove that any document was examined, that a patch works or that a retest was authorized.</strong> This is a private human coordination inventory, not a security score or grant.</p>
+<p>Count missing patch/change, deployment, rollback and independent retest-request references per original finding. Select a severity row's review action to open exactly those original findings with incomplete local evidence references. <strong>Four references present does not prove that any document was examined, that a patch works or that a retest was authorized.</strong> This is a private human coordination inventory, not a security score or grant.</p>
 <div id="readinessTable" style="overflow-x:auto"><p class="detail">Import original findings to populate the local evidence matrix.</p></div>
 <p class="foot">¹ Reference completeness is self-reported and unsigned. High-priority follow-up counts are only human planning candidates (source regression or critical/high incomplete references).</p>
 <div class="buttons"><button id="exportEvidenceMatrix">Export aggregate evidence-readiness CSV</button></div>
@@ -47,7 +47,7 @@
 </section>
 <section id="boardSection" class="card" hidden><h2>3. Coordinate each finding</h2><p>Each finding now includes an expandable <strong>human evidence dossier</strong> with separate patch, deployment, rollback and retest-request references, plus an open reviewer question. References are not proof; only store identifiers to separately authorized private records, never raw evidence.</p><p>Review stages never change the original source or authorize active retest. A reference is descriptive text only; actual evidence must remain in an approved separate authenticated system.</p>
 <div class="row"><label>Search original findings and human coordination<input id="boardSearch" type="search" maxlength="160" placeholder="Find finding, mitigation, owner, blocker…"></label>
-<label>Local routing team<select id="boardTeam"><option value="">All teams</option></select></label>
+<label>Original severity<select id="boardSeverity"><option value="">All severities</option><option value="critical">Critical</option><option value="high">High</option><option value="medium">Medium</option><option value="low">Low</option><option value="info">Info</option></select></label><label>Local routing team<select id="boardTeam"><option value="">All teams</option></select></label>
 <label>Order by<select id="boardSort"><option value="severity">Original severity</option><option value="due">Local Casework due date</option><option value="followup">Human follow-up urgency</option></select></label></div>
 <label>Show findings <select id="filter"><option value="all">All findings</option><option value="urgent">Critical/high only</option><option value="gaps">Evidence gaps and follow-ups</option><option value="retest">Local retest requests</option><option value="evidence_missing">Missing human evidence references</option><option value="evidence_present">All four references entered (unverified)</option><option value="blocked">Blocked original local Casework items</option><option value="overdue">Overdue original local planning dates</option><option value="contradictions">Source/local status contradictions</option></select></label>
 <div class="card"><h3>Apply human coordination to current filtered findings</h3><p>Bulk changes affect only the <strong id="bulkCount">0</strong> displayed local review entries after search, team and status filters, never original source statuses, casework fields, actual evidence, grants or retests. You must confirm before applying.</p><div class="row"><label>Set local human stage<select id="bulkStage"><option value="">Do not change stage</option><option value="missing">Missing reference / follow-up</option><option value="submitted">Submitted for human review</option><option value="needs_changes">Human changes needed</option><option value="ready_for_authorized_retest">Coordinate authorized retest</option></select></label><label>Assign local human reviewer/team<input type="text" id="bulkReviewer" maxlength="120" placeholder="Optional; leave blank to preserve"></label></div><div class="buttons"><button id="applyBulk">Apply to filtered records after confirmation</button></div></div>
@@ -276,6 +276,7 @@ if(!engine)throw Error('Original LightUp Casework source module required.');
 const $=id=>document.getElementById(id);
 const LIMIT_CSV=1048576, LIMIT_JSON=2097152;
 const DECISIONS=Object.freeze(['missing','submitted','needs_changes','ready_for_authorized_retest']);
+const HUMAN_BIDI_CONTROL=/[\u202a-\u202e\u2066-\u2069]/;
 const EVIDENCE_FIELDS=Object.freeze([
  ['change_reference',240,'Patch/change ticket reference'],
  ['deployment_reference',240,'Deployment/rollout record reference'],
@@ -292,7 +293,7 @@ function normalizeEvidence(raw){
  const value={};
  for(const [name,max] of EVIDENCE_FIELDS){
   const field=raw[name];
-  if(typeof field!=='string'||field.length>max||field.includes('\u0000'))
+  if(typeof field!=='string'||field.length>max||field.includes('\u0000')||HUMAN_BIDI_CONTROL.test(field))
    throw Error('Invalid evidence reference '+name+'.');
   value[name]=field;
  }
@@ -350,9 +351,11 @@ function strictJSON(s){
  return JSON.parse(s);
 }
 function exactFields(a,b){return ['finding_id','title','severity','retest_status','remediation'].every(k=>a[k]===b[k]);}
-function safeText(v,max){return typeof v==='string'&&v.length<=max&&![...v].some(c=>c==='\u0000') ? v : null;}
+function safeText(v,max){return typeof v==='string'&&v.length<=max&&!v.includes('\u0000')&&!HUMAN_BIDI_CONTROL.test(v) ? v : null;}
 function validReview(row,ids){
- if(!row||Object.getPrototypeOf(row)!==Object.prototype||!ids.has(row.finding_id))throw Error('Unknown review finding.');
+ if(!row||Object.getPrototypeOf(row)!==Object.prototype||!ids.has(row.finding_id)||
+    Object.keys(row).some(key=>!['finding_id','stage','reference','reviewer','next_step','evidence'].includes(key)))
+  throw Error('Unknown review finding or unauthorized local review field.');
  if(!DECISIONS.includes(row.stage))throw Error('Unsupported review stage.');
  const reference=safeText(row.reference,240),reviewer=safeText(row.reviewer,120),next=safeText(row.next_step,500);
  if(reference===null||reviewer===null||next===null)throw Error('Invalid review text.');
@@ -367,7 +370,7 @@ function snapshot(){
   source_sha256:sourceHash,authenticated:false,tenant_verified:false,source_authorized:false,
   assessment_authorized:false,grant:false,client_consent:false,operator_consent:false,
   execution:false,scan:false,audit_verdict:false,retest_verified:false,release:false,
-  review:source.map(f=>review.get(f.finding_id)),
+  review:source.map(f=>validReview(review.get(f.finding_id),new Set([f.finding_id]))),
   revision_register:revisions,
   warning:'References and local stages are unverified human notes, not evidence authenticity, remediation proof or retest results.'};
 }
@@ -498,7 +501,7 @@ function renderEvidenceMatrix(){
  const parent=$('readinessTable');if(!parent)return;
  parent.replaceChildren();
  const headings=['Severity','Findings','No patch ref','No deploy ref','No rollback ref',
-  'No retest request ref','4 refs present¹','Follow-up candidates'];
+  'No retest request ref','4 refs present¹','Follow-up candidates','Review gaps'];
  const table=el('table','matrix'),thead=el('thead'),tr=el('tr');
  for(const col of headings){const th=el('th','',col);th.scope='col';tr.append(th);}
  thead.append(tr);table.append(thead);
@@ -508,7 +511,15 @@ function renderEvidenceMatrix(){
   for(const v of [item.severity,item.total,item.missing_change,item.missing_deployment,
     item.missing_rollback,item.missing_retest_request,item.all_four_entered_unverified,
     item.high_priority_followup])row.append(el('td','',String(v)));
-  body.append(row);
+  const cell=el('td'),button=el('button','', 'Review missing '+item.severity);
+  button.type='button';button.disabled=!item.total||
+   item.all_four_entered_unverified===item.total;
+  button.addEventListener('click',()=>{
+   $('boardSeverity').value=item.severity;$('filter').value='evidence_missing';
+   $('boardSearch').value='';$('boardTeam').value='';render();
+   $('boardSection').scrollIntoView({block:'start',behavior:'smooth'});
+  });
+  cell.append(button);row.append(cell);body.append(row);
  }
  table.append(body);parent.append(table);
 }
@@ -560,7 +571,7 @@ function renderWorkQueue(){
   const button=el('button','', 'Open local evidence dossier');
   button.type='button';
   button.addEventListener('click',()=>{
-   $('filter').value='all';$('boardSearch').value='';$('boardTeam').value='';
+   $('filter').value='all';$('boardSearch').value='';$('boardTeam').value='';$('boardSeverity').value='';
    $('boardSort').value='followup';render();
    const card=[...$('board').children].find(el=>el.dataset.findingId===row.finding.finding_id);
    if(card){card.scrollIntoView({block:'start',behavior:'smooth'});
@@ -601,9 +612,12 @@ function included(f,c,r,filter){
  const query=$('boardSearch').value.trim().toLocaleLowerCase();
  if(query){
   const fields=[f.finding_id,f.title,f.remediation,f.severity,f.retest_status,
-   c?.owner,c?.next_action,c?.blocker,r.reference,r.reviewer,r.next_step,r.stage];
+   c?.owner,c?.next_action,c?.blocker,r.reference,r.reviewer,r.next_step,r.stage,
+   ...EVIDENCE_FIELDS.map(([key])=>r.evidence?.[key])];
   if(!fields.some(v=>String(v||'').toLocaleLowerCase().includes(query)))return false;
  }
+ const severity=$('boardSeverity').value;
+ if(severity&&f.severity!==severity)return false;
  const selectedTeam=$('boardTeam').value;
  if(selectedTeam&&(teamFor(f)===null?'unassigned':'team:'+teamFor(f))!==selectedTeam)return false;
  const cues=humanQueue(f,c,r);
@@ -656,6 +670,7 @@ function updateTeamCount(){
   String(selectedTeamRows().length)+' source findings in this locally declared routing group':'Select a team to scope a private export.';
 }
 function teamPacket(rows){
+ for(const {finding:f,coordination:r} of rows)validReview(r,new Set([f.finding_id]));
  const selected=$('packTeam').value;
  if(!sourceHash||!selected||!rows.length)throw Error('Choose a populated local routing group.');
  const team=selected==='unassigned'?null:selected.slice(5);
@@ -748,10 +763,13 @@ function render(){
   section.append(formField('Next evidence or retest coordination step',r.next_step,500,v=>{r.next_step=v;changed=true;},true));
   const evidenceBox=el('details','evidence-dossier');
   const entered=EVIDENCE_FIELDS.slice(0,4).filter(([key])=>r.evidence[key].trim()).length;
-  evidenceBox.append(el('summary','', 'Evidence dossier · '+entered+'/4 references entered (UNVERIFIED)'));
+  const dossierSummary=el('summary','', 'Evidence dossier · '+entered+'/4 references entered (UNVERIFIED)');
+  evidenceBox.append(dossierSummary);
   evidenceBox.append(el('p','detail','Only references to approved private evidence storage; do not paste artifacts, credentials or raw findings.'));
   for(const [key,max,label] of EVIDENCE_FIELDS){
-   evidenceBox.append(formField(label,r.evidence[key],max,v=>{r.evidence[key]=v;changed=true;renderMetrics();},key==='review_question'));
+   evidenceBox.append(formField(label,r.evidence[key],max,v=>{r.evidence[key]=v;changed=true;
+    dossierSummary.textContent='Evidence dossier · '+EVIDENCE_FIELDS.slice(0,4).filter(([k])=>r.evidence[k].trim()).length+'/4 references entered (UNVERIFIED)';
+    renderMetrics();},key==='review_question'));
   }
   section.append(evidenceBox);
   board.append(section);
@@ -825,6 +843,8 @@ $('restore').addEventListener('click',async()=>{
   if(!packet||packet.kind!=='lightup.remediation_evidence_coordination'||packet.schema_version!==1||
      packet.disposition!=='UNVERIFIED_OFFLINE_HUMAN_COORDINATION'||
      packet.source_contract!=='lightup.finding_export._COLUMNS_v1'||
+     Object.keys(packet).some(k=>!['kind','schema_version','disposition','source_contract','source_sha256',
+       'review','revision_register','warning',...flags].includes(k))||
      flags.some(k=>packet[k]!==false)||packet.source_sha256!==sourceHash||
      !Array.isArray(packet.review)||packet.review.length!==source.length)throw Error('Invalid review file, unsafe authority claim or different source.');
   const ids=new Set(source.map(f=>f.finding_id)),next=new Map();
@@ -896,6 +916,7 @@ $('applyBulk').addEventListener('click',()=>{
 $('exportHumanAgenda').addEventListener('click',()=>{
  try{
   if(!sourceHash)throw Error('Original source required for private human agenda.');
+  snapshot();
   const rows=humanFollowupItems().slice(0,100);
   if(!rows.length)throw Error('No local follow-up candidates.');
   if(!confirm('Download PRIVATE original IDs, local teams and human follow-up proposals for '+rows.length+
@@ -1038,18 +1059,26 @@ $('exportTeamCSV').addEventListener('click',()=>doTeamExport('csv'));
 $('filter').addEventListener('change',render);
 $('boardSearch').addEventListener('input',render);
 $('boardTeam').addEventListener('change',render);
+$('boardSeverity').addEventListener('change',render);
 $('boardSort').addEventListener('change',render);
 $('clear').addEventListener('click',()=>{
  if(changed&&!confirm('Discard unsaved local review notes?'))return;
  source=null;casework=null;sourceHash=null;review=new Map();changed=false;refreshCandidate=null;revisions=[];
  $('teamReturnFile').value='';$('sameTeamReturn').checked=false;
- $('boardSearch').value='';$('boardTeam').value='';$('boardSort').value='severity';$('filter').value='all';
+ $('boardSearch').value='';$('boardTeam').value='';$('boardSeverity').value='';$('boardSort').value='severity';$('filter').value='all';
  $('sourceFile').value='';$('caseFile').value='';$('reviewFile').value='';$('refreshFile').value='';$('allowHashlessCasework').checked=false;$('refreshConfirm').checked=false;$('refreshSummary').textContent='No refresh preview.';
  $('dashboard').hidden=true;$('boardSection').hidden=true;$('actions').hidden=true;$('refreshPanel').hidden=true;$('teamPanel').hidden=true;
  $('packTeam').replaceChildren();$('packCount').textContent='No original findings imported.';
  $('board').replaceChildren();renderRevisions();status('All source and local notes forgotten from this tab.');
 });
-$('save').addEventListener('click',()=>{if(!sourceHash)return;download('lightup-evidence-coordination-private.json',JSON.stringify(snapshot(),null,2),'application/json');changed=false;status('Private unsigned coordination notes downloaded; protect as sensitive data.');});
+$('save').addEventListener('click',()=>{
+ try{
+  if(!sourceHash)throw Error('Original source required before saving private notes.');
+  const privatePacket=snapshot();
+  download('lightup-evidence-coordination-private.json',JSON.stringify(privatePacket,null,2),'application/json');
+  changed=false;status('Private unsigned coordination notes downloaded; protect as sensitive data.');
+ }catch(err){status('Private save denied: '+err.message,true);}
+});
 $('aggregate').addEventListener('click',()=>{
  if(!sourceHash)return;const m=count();
  const data={kind:'lightup.remediation_evidence_aggregate',schema_version:1,disposition:'UNVERIFIED_AGGREGATE_ONLY',
@@ -1057,7 +1086,9 @@ $('aggregate').addEventListener('click',()=>{
  download('lightup-evidence-gaps-aggregate.json',JSON.stringify(data,null,2),'application/json');
 });
 $('brief').addEventListener('click',()=>{
- if(!sourceHash)return;
+ try{
+ if(!sourceHash)throw Error('Original source required before exporting a private brief.');
+ snapshot(); /* refuse exporting untrusted human reference controls in a private brief */
  const m=count(),rows=source.map(f=>({f,c:casework?.get(f.finding_id),r:review.get(f.finding_id)}));
  const escape=s=>String(s).replace(/[\x00-\x1f\x7f\r\n]/g,' ').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\\/g,'\\\\').replace(/\|/g,'\\|').replace(/[\x60\[\]*_]/g,'\\$&').slice(0,800);
  const lines=['# Private LightUp remediation-evidence coordination','',
@@ -1074,7 +1105,8 @@ $('brief').addEventListener('click',()=>{
   for(const [key,,label] of EVIDENCE_FIELDS)lines.push('- '+label+': '+escape(r.evidence[key]||'NOT PROVIDED'));
  }
  lines.push('','Any real retest, evidence validation, closure or client/operator approval must occur in the separate authenticated original system.');
- download('lightup-evidence-coordination-private.md',lines.join('\n'),'text/markdown'); 
+ download('lightup-evidence-coordination-private.md',lines.join('\n'),'text/markdown');
+ }catch(err){status('Private brief denied: '+err.message,true);}
 });
 window.addEventListener('beforeunload',e=>{if(changed){e.preventDefault();e.returnValue='';}});
 status('Load an originally authorized five-column LightUp findings CSV to start.');
