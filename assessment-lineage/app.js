@@ -537,7 +537,7 @@
     if(!Number.isSafeInteger(i)||i<0||j<0||j>=reports.length)return;
     [reports[i],reports[j]]=[reports[j],reports[i]];
     [reportHashes[i],reportHashes[j]]=[reportHashes[j],reportHashes[i]];
-    mismatchRevealed=false;
+    mismatchRevealed=false;clearPendingDraft();
     undoBatch=null;undoRouteBatch=null;
     render();$("sourceOrder").value=String(j);renderSourceOrder();
     message("Changed private source DISPLAY order only. Not proven chronology. "+
@@ -548,7 +548,7 @@
     if(!Number.isSafeInteger(i)||i<0||i>=reports.length)return;
     if(!confirm("Remove original source slot "+(i+1)+" from this in-memory review? "+
       "The original private file is NOT deleted. No measurement or scan is repeated."))return;
-    reports.splice(i,1);reportHashes.splice(i,1);mismatchRevealed=false;reopenHumanStages();
+    reports.splice(i,1);reportHashes.splice(i,1);mismatchRevealed=false;clearPendingDraft();reopenHumanStages();
     render();message("One original completed report removed from private memory; "+
       "catalog and private notes preserved. Human stages reopened for source review.");
   }
@@ -990,7 +990,7 @@
     }catch(_){message("HOLD: brief not available until sources match exactly.",true);}
   }
   function forget(){catalog=null;reports=[];reviews=new Map();humanNotes=new Map();humanRoutes=new Map();humanActions=new Map();mismatchRevealed=false;catalogHash=null;
-    reportHashes=[];undoBatch=null;undoRouteBatch=null;resetFilters();fictional=false;render();message("All source and review data cleared from memory.");}
+    reportHashes=[];undoBatch=null;undoRouteBatch=null;clearPendingDraft();resetFilters();fictional=false;render();message("All source and review data cleared from memory.");}
   function makeDemo(){
     const names=["scenario-FAKE-01","scenario-FAKE-02","scenario-FAKE-03"];
     catalog=names.map((id,i)=>({id,mode:i===0?"unscored":i===1?
@@ -1008,13 +1008,19 @@
       }))
     });
     reports=[candidate(0),candidate(1)];reviews=new Map();humanNotes=new Map();humanRoutes=new Map();humanActions=new Map();mismatchRevealed=false;catalogHash=null;
-    reportHashes=[];undoBatch=null;undoRouteBatch=null;resetFilters();fictional=true;
+    reportHashes=[];undoBatch=null;undoRouteBatch=null;clearPendingDraft();resetFilters();fictional=true;
     render();message("FICTIONAL offline demonstration loaded; no source evidence or permission.");
   }
 
   // A PRIVATE workroom contains only inert base64 template text; never eval it.
   // No original data loads until the operator explicitly chooses to import it.
+  let pendingPrivateDraft=null;
   const privateTemplate=document.getElementById("originalPrivateBundle");
+  function clearPendingDraft(){
+    pendingPrivateDraft=null;
+    $("restoreEmbeddedDraft").hidden=true;
+    $("restoreEmbeddedDraft").disabled=true;
+  }
   const hasPrivateBundle=privateTemplate instanceof HTMLTemplateElement;
   $("loadPrivateBundle").hidden=!hasPrivateBundle;
   $("embeddedAvailability").textContent=hasPrivateBundle?
@@ -1022,11 +1028,16 @@
     "remain inert until you explicitly load them. Never upload or share this HTML.":
     "This is the public offline standalone; no private source data is embedded.";
   function exactBundleShape(bundle){
-    admit(exact(bundle,["schema","status",...FLAGS,"catalog_b64","reports_b64"])&&
-      bundle.schema==="lightup.private_lineage_bundle.v1"&&
+    const includesDraft=bundle?.schema==="lightup.private_lineage_bundle.v2";
+    admit((bundle?.schema==="lightup.private_lineage_bundle.v1"||includesDraft)&&
+      exact(bundle,["schema","status",...FLAGS,"catalog_b64","reports_b64",
+        ...(includesDraft?["human_draft_b64"]:[])])&&
       bundle.status==="PRIVATE_UNTRUSTED_SOURCE_ONLY"&&flags(bundle)&&
       typeof bundle.catalog_b64==="string"&&Array.isArray(bundle.reports_b64)&&
       bundle.reports_b64.length>=1&&bundle.reports_b64.length<=8);
+    if(includesDraft)admit(typeof bundle.human_draft_b64==="string"&&
+      bundle.human_draft_b64.length>=4&&bundle.human_draft_b64.length<=90000);
+    return includesDraft;
   }
   function decodedPrivateFile(value,index,maximum){
     admit(typeof value==="string"&&value.length>0&&
@@ -1046,7 +1057,7 @@
     try{
       const raw=privateTemplate.content.textContent;
       admit(typeof raw==="string"&&raw.length>0&&raw.length<=5_000_000);
-      const bundle=parse(raw);exactBundleShape(bundle);
+      const bundle=parse(raw),hasDraft=exactBundleShape(bundle);
       const sourceCatalog=await read(decodedPrivateFile(bundle.catalog_b64,0,MAX_CATALOG),
         MAX_CATALOG);
       const nextCatalog=parseCatalog(sourceCatalog.result),nextReports=[],nextHashes=[];
@@ -1060,12 +1071,18 @@
       // All source files are fully canonical and mutually consistent before ANY mutation.
       catalog=nextCatalog;reports=nextReports;catalogHash=sourceCatalog.digest;
       reportHashes=nextHashes;reviews=new Map();humanNotes=new Map();humanRoutes=new Map();humanActions=new Map();mismatchRevealed=false;undoBatch=null;undoRouteBatch=null;fictional=false;
+      clearPendingDraft();
+      pendingPrivateDraft=hasDraft?bundle.human_draft_b64:null;
+      $("restoreEmbeddedDraft").hidden=!pendingPrivateDraft;
+      $("restoreEmbeddedDraft").disabled=!pendingPrivateDraft;
       resetFilters();render();
       // The template is no longer needed after import and should not linger in DOM.
       privateTemplate.content.replaceChildren();
       $("loadPrivateBundle").disabled=true;
       $("embeddedAvailability").textContent=
         "PRIVATE original files admitted in memory. Embedded template cleared. "+
+        (pendingPrivateDraft?"An additional original-byte-bound PRIVATE human draft is "+
+          "available for separate explicit restore. ":"")+
         "Source report membership is not verified until reviewed below.";
       message("Private originals loaded from inert offline HTML. No network, scanner, "+
         "authenticated consent or grants used.");
@@ -1075,6 +1092,16 @@
     }
   }
   $("loadPrivateBundle").addEventListener("click",loadPrivateBundle);
+  $("restoreEmbeddedDraft").addEventListener("click",async()=>{
+    if(!pendingPrivateDraft)return;
+    if(!confirm("Restore the exact-original-source-bound PRIVATE human work state "+
+      "from this owner-private HTML? Existing local stage, notes and planning "+
+      "labels would be replaced; this grants NO permission."))return;
+    const source=pendingPrivateDraft;clearPendingDraft();
+    try{
+      await restorePrivateDraft(decodedPrivateFile(source,99,65536));
+    }catch(_){message("HOLD: embedded PRIVATE human draft could not be admitted.",true);}
+  });
 
   $("catalogFile").addEventListener("change",async e=>{
     const file=e.target.files?.[0];if(!file)return;e.target.value="";
@@ -1083,7 +1110,7 @@
       const candidate=parseCatalog(imported.result);
       if((catalog||reports.length)&&!confirm("Replace private catalog and clear previously imported lab comparisons and human stage work?"))return;
       catalog=candidate;reports=[];reviews=new Map();humanNotes=new Map();humanRoutes=new Map();humanActions=new Map();mismatchRevealed=false;catalogHash=imported.digest;
-      reportHashes=[];undoBatch=null;undoRouteBatch=null;resetFilters();fictional=false;render();
+      reportHashes=[];undoBatch=null;undoRouteBatch=null;clearPendingDraft();resetFilters();fictional=false;render();
       message("PRIVATE lab design admitted. Targets and finding IDs were discarded after validation.");
     }catch(_){message("HOLD: incompatible PRIVATE Lab Scenario Studio source. Existing data preserved.",true);}
   });
@@ -1098,7 +1125,7 @@
         add.push(parseReport(imported.result));digests.push(imported.digest);
       }
       harmonize([...reports,...add]);
-      reports=[...reports,...add];reportHashes=[...reportHashes,...digests];mismatchRevealed=false;
+      reports=[...reports,...add];reportHashes=[...reportHashes,...digests];mismatchRevealed=false;clearPendingDraft();
       reopenHumanStages();render();
       message("Canonical summaries admitted; all human stages reopened for source review. "+
         "Private notes kept locally. Original benchmark data is not authenticated.");
