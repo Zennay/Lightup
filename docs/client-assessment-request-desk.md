@@ -34,8 +34,10 @@ documents are not network-published or considered current consent.
 The desk requires a **private interactive TTY** and authenticates with
 `DomainStore.authenticate` using a hidden password prompt. It then offers:
 
-1. **Own request inbox:** latest 30 current tenant-owned request statuses,
-   preserving the independent operator review meaning.
+1. **Own request inbox:** authenticated status-filtered client request
+   history with 20 records per page, next/previous navigation, plus
+   submitted, under-review, approved and rejected filters. No operator data
+   or grant availability is inferred from this status.
 2. **Manual request creation:** guided exact hostname/IP/CIDR entry,
    risk 1–4, and explanation; canonicalizes with the native domain binding
    parser. Shows the full normalized request before submission.
@@ -43,10 +45,11 @@ The desk requires a **private interactive TTY** and authenticates with
    same strict Studio importer as `preview --proposal`. Exclusions,
    scheduled windows and private lab activities still HOLD rather than
    silently disappearing.
-4. **Revision after rejection:** choose a genuinely rejected own request,
-   then manual or Studio replacement. Shows changes and requires a separate
-   typed expansion acknowledgement if assets or risk widen. Never edits the
-   original rejected record.
+4. **Revision after rejection:** select one of the latest 15 rejected
+   tenant-owned requests by number, or enter its full request ID for an older
+   rejection. Then choose manual or Studio replacement. Shows changes and
+   requires separate typed expansion acknowledgement for wider scope/risk.
+   Never edits the original rejected record.
 5. **Inspect own stored request** by ID, including originally requested assets,
    risk and notes; no operator impersonation or cross-tenant access.
 6. **Export private HTML inbox:** at most the most recent 200 stored requests
