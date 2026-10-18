@@ -30,6 +30,26 @@ This is intentionally a *relationship impact/work coordination viewer*, not anot
 
 **Source-byte integrity and loss prevention:** the browser now reads an imported source file as original bytes, rejects a UTF-8 BOM or malformed UTF-8 instead of silently replacing or stripping bytes, and computes SHA-256 over the **original ArrayBuffer**, not decoded/re-encoded text. Rejected sources leave the current snapshot unchanged. The human-only return handoff uses the same strict UTF-8 admission. Any unsaved reviewer fields are offered for a local save before navigating away, replacing/importing sources, creating exports or drafting bulk follow-ups; invalid fields HOLD without silent data loss. Switching source requires a separate explicit confirmation because previous private notes are revision-bound and cleared.
 
+## Preferred: one original-authenticated command
+
+The independent [authenticated workspace CLI](authenticated_workspace.py) now joins the **unchanged original** `lightup.auth_casebook.authenticated_casebook` to this review-only packaging workflow. It uses the original persisted-account password, lockout and operator/client tenant selector once, obtains one original query-only source snapshot and builds the full owner-private offline Impact Map in a previously nonexistent destination. **No intermediate plaintext export path, second login, new authentication mechanism or special grant.** Use an interactive private terminal:
+
+```bash
+PYTHONPATH=src python3 authorization-impact/authenticated_workspace.py \
+  --database /private/path/lightup.db \
+  --email existing-operator@example.test \
+  --client ORIGINAL-EXACT-CLIENT-ID \
+  --workspace /private/path/NEW-impact-room
+```
+
+For a **client** identity, omit `--client` to use the original account's enforced persisted tenant. An **operator** must provide an exact original client ID. To discover permitted original tenant IDs, use the original unmodified Casebook command `PYTHONPATH=src python -m lightup.auth_casebook --database ... --email ... --list-clients` separately; it uses original authentication and is not an authority check. Never copy the fictional placeholder email, database path or client ID into real operations.
+
+The combined CLI accepts password input **only via the interactive hidden prompt**, rejects non-interactive terminal execution and does not read credentials from command-line arguments, environment variables or saved files. The existing original DomainStore authentication/lockout is not rewritten. Existing account authentication may update its original lockout metadata according to original source semantics; no grants, risk decisions, approvals, scans or STOP states are written by this companion. Successful private packet creation intentionally returns exit **2 / REVIEW_ONLY**; failed admission returns **3 / HOLD** with generic redacted output. Neither is permission, and a fresh account login does not imply genuine independent client consent or action-time revocation approval. Follow the same [recipient inspector](workspace_inspect.py) and offline browser opening instructions below.
+
+### Alternative: separately exported private original source
+
+If the original authenticated Casebook JSON was **already** created by an authorized operator, use `prepare.py` as documented below; it requires an owner-only regular 0600 source and does not authenticate source freshness.
+
 ## Start with genuine original data
 
 Use the unchanged original authenticated Casebook exporter, which applies the existing DomainStore identity/lockout and tenant selection; do **not** fabricate a client grant, source approval, role, or proof. Inspect its supported CLI usage:
