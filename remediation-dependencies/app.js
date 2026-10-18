@@ -80,14 +80,15 @@ function drawEfforts(){
   });cell.append(input);tr.append(cell);body.append(tr);
  }
 }
-function renderGuidance(view){
+function renderGuidance(view,critical){
  const body=$('bottlenecks');body.replaceChildren();
- for(const item of view.bottlenecks.filter(x=>visibleRow(x,new Set()))){
+ const shown=view.bottlenecks.filter(x=>visibleRow(x,critical)).slice(0,20);
+ for(const item of shown){
   const tr=E('tr');td(tr,item.finding_id+' / '+item.severity);td(tr,item.downstream_count);
   td(tr,item.human_ready?'Potentially ready for HUMAN planning':'Needs prerequisite / on hold');
   td(tr,item.owner||'(unassigned)');body.append(tr);
  }
- if(!view.bottlenecks.some(x=>visibleRow(x,new Set()))){const row=E('tr'),cell=E('td','No open human plans.');cell.colSpan=4;row.append(cell);body.append(row);}
+ if(!shown.length){const row=E('tr'),cell=E('td','No open human plans.');cell.colSpan=4;row.append(cell);body.append(row);}
  const blocked=$('contradictions');blocked.replaceChildren();
  for(const x of view.contradictions){
   const row=E('tr');td(row,x.from);td(row,x.to);td(row,x.human_prerequisite_due);td(row,x.human_dependent_due);blocked.append(row);
@@ -100,7 +101,7 @@ function renderGuidance(view){
  if(!view.hypotheticalLate.length){const row=E('tr'),cell=E('td','No indicative conflict, or no human planning start date selected.');cell.colSpan=3;row.append(cell);scenarios.append(row);}
 }
 function drawGraph(){
- const graph=g.LightUpHumanDependencies.graph(state,links,efforts,$('start').value||null);metrics(graph);renderGuidance(g.LightUpHumanDependencies.guidance(state,links,efforts,$('start').value||null));
+ const graph=g.LightUpHumanDependencies.graph(state,links,efforts,$('start').value||null);metrics(graph);renderGuidance(g.LightUpHumanDependencies.guidance(state,links,efforts,$('start').value||null),new Set(graph.critical));
  const body=$('results');body.replaceChildren();const filter=$('filter').value,critical=new Set(graph.critical);
  let n=0;
  for(const item of graph.rows){
