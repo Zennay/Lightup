@@ -191,7 +191,14 @@ python -m lightup.client_request_cli studio-handoff \
 ```
 
 The same functionality is accessible through menu **7** in the authenticated
-interactive client desk. Studio handoff itself does **not** create/modify an
+interactive client desk. Additionally, **menu 3 (Studio intake) and menu 4
+(rejected-request revision via Studio)** now recognize a valid but
+unrepresentable proposal and directly offer to save this complete private
+HOLD dossier instead of stopping with an opaque error. Choosing to save it
+does not submit a request. Press Enter to cancel without writing a file;
+the original Studio export is never modified.
+
+Studio handoff itself does **not** create/modify an
 assessment request, approve a schedule, bind client or operator identities,
 grant access, scan a target, dispatch a tool, contact a host or bypass an
 existing restriction.
