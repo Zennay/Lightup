@@ -30,10 +30,11 @@ CAPS = {
 ANNOTATED_CAPS = dict(CAPS, **{
     "saved-human-review.json": 131_072,
     "human-summary.html": 131_072,
+    "review-followup.html": 16_384,
 })
 ANNOTATED_KEYS = frozenset((
     "saved_human_review_sha256", "saved_human_review_source_sha256",
-    "human_summary_sha256",
+    "human_summary_sha256", "followup_landing_sha256",
 ))
 
 FOLLOWUP_CAPS = {
@@ -221,6 +222,11 @@ def inspect_bytes(raw: bytes):
                               ("human_summary_sha256", "human-summary.html")):
             if not _hex(manifest[key]) or manifest[key] != sha256(content[filename]).hexdigest():
                 raise ValueError("annotated review member changed")
+        if (manifest["followup_landing_sha256"] !=
+                "7aafc195b3ed5d4f748c61ac6a846925124355db44a36a43c06835eca5295dcb"
+                or manifest["followup_landing_sha256"] !=
+                sha256(content["review-followup.html"]).hexdigest()):
+            raise ValueError("unrecognized offline follow-up screen")
         if manifest["saved_human_review_source_sha256"] != base_hash:
             raise ValueError("source-bound human review mismatch")
     return manifest["status"]

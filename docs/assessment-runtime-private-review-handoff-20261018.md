@@ -130,7 +130,7 @@ The existing read-only package inspector `assessment_runtime_verify_pack_cli_202
 
 ## Restore original human Review Desk planning into a complete private archive
 
-The independent unchanged browser Review Desk #1576 can export human stages, workstreams and follow-up dates as `lightup-offline-human-triage-v1/v2` JSON. The new CLI turns a validated original seven-file private ZIP and **that exact source-bound browser export** into a complete new nine-file private archive:
+The independent unchanged browser Review Desk #1576 can export human stages, workstreams and follow-up dates as `lightup-offline-human-triage-v1/v2` JSON. The new CLI turns a validated original seven-file private ZIP and **that exact source-bound browser export** into a complete new ten-file private archive:
 
 ```bash
 PYTHONPATH=src:scripts python scripts/assessment_runtime_attach_triage_cli_20261018.py \
@@ -140,7 +140,7 @@ PYTHONPATH=src:scripts python scripts/assessment_runtime_attach_triage_cli_20261
 
 Original `review-desk.json` bytes must SHA-256 match the browser review `source_sha256`; accepted cases must match original ordered ordinal labels, statuses, source-regression names and derived priorities. The v1/v2 import strictly accepts original human stage, optional calendar due date and selected workstream; no extra fields/identity/permission claims. On mismatch generic HOLD and no new output. Source comparison data, authority flags and original browser app remain unmodified.
 
-The nine-file source-bound packet preserves seven original members except the versioned v2 manifest, and adds `saved-human-review.json` plus `human-summary.html` (print-ready human follow-up without original case identities). In the original browser open `review-desk.json`, then **Restore saved review** by selecting `saved-human-review.json`; its original SHA gate is preserved. The read-only package inspector now admits the exact v1 (7-file) and v2 (9-file) manifests and verifies the saved review against its original comparison source, plus all member hashes. The ZIP remains private 0600 with atomic publication and cannot approve scanning, consent, dispatch, release or waive HUMAN GO.
+The ten-file source-bound packet preserves seven original members except the versioned v2 manifest, and adds `saved-human-review.json` plus `human-summary.html` (print-ready human follow-up without original case identities). In the original browser open `review-desk.json`, then **Restore saved review** by selecting `saved-human-review.json`; its original SHA gate is preserved. The read-only package inspector now admits the exact v1 (7-file) and v2 (10-file) manifests and verifies the saved review against its original comparison source, plus all member hashes. The ZIP remains private 0600 with atomic publication and cannot approve scanning, consent, dispatch, release or waive HUMAN GO.
 
 ### Single-snapshot source handling for a saved review
 
@@ -148,14 +148,19 @@ The source-bound human follow-up command opens and reads its explicitly selected
 
 ## Separate minimized recipient handoff AFTER human review
 
-After the browser's source-bound saved review has been attached to an original seven-file package, the resulting valid **nine-file private ZIP** can be turned into a small **four-file human-only handoff** without disclosing the original scenario IDs or source SHA fingerprints:
+After the browser's source-bound saved review has been attached to an original seven-file package, the resulting valid **ten-file private ZIP** can be turned into a small **four-file human-only handoff** without disclosing the original scenario IDs or source SHA fingerprints:
 
 ```bash
 PYTHONPATH=src:scripts python scripts/assessment_runtime_human_handoff_cli_20261018.py \
-  /private/ORIGINAL-annotated-nine-file-review.zip \
+  /private/ORIGINAL-annotated-ten-file-review.zip \
   --output /private/NEW-private-recipient-handoff.zip
 ```
 
 The source annotated packet is snapshotted once, inspected using its original source/manifest/plan binding, and never revisited. The output contains only `human-summary.html` (ordinal case labels, human stages, route, due date and metric names), `human-worklist.csv` (original suggested human-only regression follow-up), `READ-ME.txt` and `manifest.json` (source status, aggregate stage counts and unsigned recipient-member SHA-256 hashes, all authorization/consent/dispatch/release flags false). It has **no** original scenario IDs, URLs, clients, source record JSON, source byte fingerprints, private interactive desk, grants or imported raw human planning JSON. Numeric metric combinations or dates could nevertheless be identifying: this is minimized private disclosure, NOT anonymous public data. A recipient cannot use this smaller packet to impersonate a source report or restore an authorization.
 
 The same read-only `assessment_runtime_verify_pack_cli_20261018.py` product inspector now admits this exact fourth fixed layout and checks aggregated stage-count coherence, hashes and all no-authority flags. The original full private and redacted metric packets remain unaffected. Source HOLD stays HOLD, and publication uses the original atomic `0600` new-only output primitive.
+
+
+### Direct offline entry screen for saved human reviews
+
+A complete source-bound **ten-member** follow-up ZIP includes `review-followup.html`, a separately hash-pinned responsive browser launcher. Open it after extracting the trusted private archive: it links to `human-summary.html` and provides the exact two-step original desk workflow (select `review-desk.json`, then restore `saved-human-review.json`). It also links to the unchanged metric source printout. The screen has no scripts or network access and never changes case status or grants approval. The original pinned Review Desk and older seven-file package remain byte-for-byte unchanged. The same archive inspector admits exactly the ten fixed v2 members and their expected manifest hashes.

@@ -1,6 +1,6 @@
 """Export a minimized offline human follow-up from an existing source-bound review.
 
-Only accepted nine-member private review packets can be summarized.
+Only accepted ten-member private review packets can be summarized.
 The shared ZIP contains neither original scenario IDs nor source-byte hashes.
 It cannot prove authenticity, authorize an assessment or release anything.
 """
@@ -72,7 +72,7 @@ def _recipient_brief(raw: bytes):
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("source", help="Intact nine-member private source-bound review ZIP")
+    parser.add_argument("source", help="Intact ten-member private source-bound review ZIP")
     parser.add_argument("--output", required=True, help="New private minimized follow-up ZIP")
     args = parser.parse_args(argv)
     try:

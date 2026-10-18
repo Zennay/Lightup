@@ -14,13 +14,14 @@ import re
 from zipfile import BadZipFile, LargeZipFile, ZipFile, ZIP_DEFLATED, ZipInfo
 
 from assessment_runtime_review_handoff_cli_20261018 import (
-    _snapshot, _write_exclusive, _e,
+    _snapshot, _write_exclusive, _e, _pinned_pack_asset,
 )
 from assessment_runtime_verify_pack_cli_20261018 import inspect_bytes as inspect_pack_bytes
 from assessment_runtime_verify_pack_cli_20261018 import _json, CAPS
 
 MAX_REVIEW = 131_072
 MAX_PACK = 1_700_000
+FOLLOWUP_SHA256 = "7aafc195b3ed5d4f748c61ac6a846925124355db44a36a43c06835eca5295dcb"
 MAX_ATTACHED = 1_700_000
 STAGES = frozenset(("todo", "investigating", "waiting", "planned", "reviewed"))
 ROUTES = frozenset(("unassigned", "lab-runtime", "scope-review",
@@ -194,10 +195,12 @@ def main(argv=None):
         if len(plan) > MAX_REVIEW:
             raise ValueError("review too large")
         summary = _human_report(rows, status)
+        followup_landing = _pinned_pack_asset("followup.html", FOLLOWUP_SHA256, 16_384)
         manifest = _json(content["manifest.json"])
         manifest["format"] = "lightup.private_lab_review_pack.v2"
         manifest["saved_human_review_sha256"] = sha256(plan).hexdigest()
         manifest["human_summary_sha256"] = sha256(summary).hexdigest()
+        manifest["followup_landing_sha256"] = FOLLOWUP_SHA256
         manifest["saved_human_review_source_sha256"] = source_hash
         content["manifest.json"] = json.dumps(
             manifest, sort_keys=True, separators=(",", ":"), ensure_ascii=True,
@@ -205,6 +208,7 @@ def main(argv=None):
         ).encode("ascii")
         content["saved-human-review.json"] = plan
         content["human-summary.html"] = summary
+        content["review-followup.html"] = followup_landing
         buffer = BytesIO()
         with ZipFile(buffer, "w") as target:
             for name, data in content.items():
