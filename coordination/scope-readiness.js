@@ -316,6 +316,65 @@ $('intakeExport').addEventListener('click',()=>{
   $('intakeStatus').textContent='Private structural routing note saved. No client request, grant or scan issued.';
  }catch(e){clearIntakePreview('Export HOLD: '+e.message);}
 });
+// Revision ancestry is self-reported, local and non-authorizing. All fields are
+// saved as unsigned coordination data and must never be used by a domain policy.
+function renderLineage(){
+ const list=$('lineageList');list.replaceChildren();
+ let graph;
+ try{graph=LightUpLocalLineage.inspect(entries);}
+ catch(e){$('lineageStatus').textContent='LOCAL ANCESTRY HOLD: '+e.message; $('lineageDownload').disabled=true;return;}
+ $('lineageDownload').disabled=!graph.linked;
+ $('lineageStatus').textContent=graph.linked+' local source link(s); '+
+  graph.orphans+' missing parent source(s); '+graph.forks.length+
+  ' fork(s). ALL unsigned and non-authorizing.';
+ if(!entries.length){list.append(make('p','Import original Studio sources to begin local tracking.','small'));return;}
+ const bySha=new Map(entries.map(r=>[r.source_sha256,r]));
+ const seen=graph.chains.slice().sort((a,b)=>{
+  const ar=bySha.get(a.sha),br=bySha.get(b.sha);
+  return Number(b.missingParent)-Number(a.missingParent)||
+   Number(Boolean(b.parent))-Number(Boolean(a.parent))||
+   ar.name.localeCompare(br.name);
+ });
+ for(const entry of seen){
+  const r=bySha.get(entry.sha),container=make('div',undefined,'item');
+  const title=make('strong',(r.name||'Untitled')+' · '+entry.sha.slice(0,12));
+  container.append(title);
+  const parent=entry.parent?bySha.get(entry.parent):null;
+  container.append(make('p',!entry.parent?'Local origin — NO validated provenance':
+   entry.missingParent?'PARENT MISSING · HOLD · '+entry.parent.slice(0,12):
+   'Unsigned human link to '+(parent.name||'Untitled')+' · '+entry.parent.slice(0,12),
+   entry.missingParent?'bad':'small'));
+  container.append(make('p',(entry.changes.length?entry.changes.length+' change category/categories':'No tracked difference categories')+
+   ' · '+entry.affected.length+' impacted workstream(s)'+
+   (r.source_attached?' · local source attached':' · SOURCE UNBOUND HOLD'),'small'));
+  const prepared=entry.affected.filter(k=>r.tasks[k]?.status==='prepared').length;
+  if(prepared)container.append(make('p',prepared+
+   ' impacted preparation status(es) marked prepared but UNVERIFIED; obtain new independent authentic approvals.','hint'));
+  const button=make('button','Open paperwork');
+  button.type='button';button.addEventListener('click',()=>{
+   active=r.source_sha256;$('filter').value='all';clearBulkPreview();clearPacketPreview();renderList();renderDetail();
+   $('detail').scrollIntoView({behavior:'smooth',block:'start'});
+  });
+  container.append(button);list.append(container);
+ }
+ if(graph.forks.length)list.append(make('p','Multiple local revisions share a parent. Branches are alternatives, not an approval chain; review each source independently.','hint'));
+}
+$('lineageDownload').addEventListener('click',()=>{
+ try{
+  const graph=LightUpLocalLineage.inspect(entries);
+  if(!graph.linked)throw Error('No linked local revisions.');
+  if(!confirm('Export UNSIGNED review-only history of source hashes and changed category identifiers? It does not establish tenant identity, authentic approvals or grants.'))return;
+  const packet={kind:'lightup.local_scope_revision_history',schema_version:1,
+   disposition:'REVIEW_ONLY',security:flags(),
+   sources:graph.chains.map(c=>({source_sha256:c.sha,parent_source_sha256:c.parent,
+    parent_missing:c.missingParent,change_categories:c.changes,
+    affected_workstreams:c.affected})),
+   notice:'Unsigned local preparation history only. No original asset contents, client identity, consent, approvals, grants or executable permissions.'
+  };
+  download('lightup-private-source-revision-history.json',
+   JSON.stringify(packet,null,2)+'\\n','application/json');
+ }catch(e){$('lineageStatus').textContent='History export HOLD: '+e.message;}
+});
 function clearRevisionPreview(message='Source or paperwork changed; compare the exact originals again.'){
  revisionPreview=null;$('revisionReopen').disabled=true;$('revisionCarry').disabled=true;$('revisionLink').disabled=true;$('revisionExport').disabled=true;
  $('revisionStatus').textContent=message;$('revisionChanges').replaceChildren();
@@ -382,6 +441,29 @@ function checkedRevisionPreview(){
  if(JSON.stringify(current)!==JSON.stringify(revisionPreview.result))throw Error('Original proposal evidence changed.');
  return {current,target:entries.find(r=>r.source_sha256===to),from,to};
 }
+$('revisionLink').addEventListener('click',()=>{
+ try{
+  const {current,target,from,to}=checkedRevisionPreview();
+  const original=entries.find(r=>r.source_sha256===from);
+  if(!original||!original.client_label||!target.client_label||
+    original.client_label!==target.client_label)
+   throw Error('Only identical nonempty self-reported client labels may be linked. This still does not authenticate either client.');
+  const desired=LightUpLocalLineage.create(from,to,current);
+  if(target.revision_link){
+   if(JSON.stringify(target.revision_link)===JSON.stringify(desired)){
+    $('revisionStatus').textContent='Same unsigned local parent already recorded. Nothing changed.';return;
+   }
+   throw Error('Updated draft has a different recorded parent/change summary. Never replace an existing relationship automatically.');
+  }
+  const potential=entries.map(r=>r===target?{...r,revision_link:desired}:r);
+  LightUpLocalLineage.inspect(potential); // reject cycles and cross-label ancestry BEFORE writing
+  if(!confirm('Record unsigned, LOCAL relationship of these two exact source SHA-256 files? '+
+   current.summary.length+' proposed change categor(ies) and '+current.affectedStages.length+
+   ' human re-review workstream(s) will be saved in private casework. This does NOT transfer prepared evidence, ownership, identity, consent, grant or permission.'))return;
+  target.revision_link=desired;setDirty();render();
+  $('revisionStatus').textContent='Saved local source relationship on the updated proposal. Unsigned and unverified; review preparation and real approvals separately.';
+ }catch(e){clearRevisionPreview('Revision link HOLD: '+e.message);}
+});
 $('revisionCarry').addEventListener('click',()=>{
  try{
   const {current,target,from}=checkedRevisionPreview();
