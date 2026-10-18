@@ -66,6 +66,8 @@ function inspect(records){
    seenLocal.add(cursor.source_sha256);
    const prior=bySha.get(cursor.revision_link.parent_source_sha256);
    if(!prior){missing.push(cursor.source_sha256);break;}
+   if(!cursor.client_label||cursor.client_label!==prior.client_label)
+    throw Error('Cross-label or unlabeled source ancestry is not allowed in local tracking.');
    if(prior.source_sha256===r.source_sha256)throw Error('Self-referential revision ancestry: HOLD.');
    cursor=prior;
   }
