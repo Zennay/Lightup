@@ -268,6 +268,7 @@ function render(){
  $('requestCount').textContent=state.requests.length+' PRIVATE HUMAN requests · '+
   shown.length+' displayed · '+state.requests.filter(x=>x.human_stage==='needs_changes').length+
   ' awaiting human changes; requests are NOT sent by this offline tool.';
+ window.dispatchEvent(new Event('lightup-human-requests-updated'));
 }
 function bind(id,event,fn){
  $(id).addEventListener(event,async()=>{
@@ -290,6 +291,9 @@ window.LightUpArtifactRequests=Object.freeze({
   return state.requests.map(r=>validate(r,c));
  },
  snapshotJSON(){return JSON.stringify(state.requests);},
+ currentRows(){
+  return same(B.context())?state.requests.map(r=>({...r})):[];
+ },
  validateSnapshot(raw,c){
   if(!Array.isArray(raw)||raw.length>MAX_ROWS)
    problem('Invalid PRIVATE unified HUMAN request count.');
