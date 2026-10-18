@@ -14,6 +14,16 @@ OUTPUT = HERE / "LightUp-Private-Handoff-Vault.zip"
 # Immutable original source-owner artifacts: MUST FAIL if upstream bytes change.
 # Names are purposefully under own new directory; no active source-owner files edited.
 ORIGINALS = {
+    "partner-apps/capacity-studio.html": {
+        "sha256": "88a8e13ff62915f96a6ef74fccc2fe513e2fc92582a4d48e7fd2cc4fd7ab1659",
+        "source_commit": "05d148260a28dd3f09f4ec8161742ff7e0031abe",
+        "source_path": "remediation-capacity/standalone.html", "source_owner_pr": 1583,
+    },
+    "partner-apps/funding-studio.html": {
+        "sha256": "c118071dc2cb5e85ba204113f2f65bcc3e56f419ed9a46b49916477b651f125a",
+        "source_commit": "b23b87e4797412053b006180239b8206f8708d09",
+        "source_path": "remediation-funding/standalone.html", "source_owner_pr": 1586,
+    },
     "partner-apps/evidence-review.html": {
         "sha256": "a818110f7078aa8a9981ea9857cc898221cd01b9b7490493a8945357d0ee967f",
         "source_commit": "4494e6a2031900c050af5932d5cd7eb182b3ddf4",

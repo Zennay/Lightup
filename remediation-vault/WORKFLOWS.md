@@ -4,7 +4,7 @@
 
 ## Getting started without a server
 
-Unzip **LightUp-Private-Handoff-Vault.zip** onto a trusted, local device. Open **START-HERE.html** directly. Use the five independent links for these separate, original human-only workflows:
+Unzip **LightUp-Private-Handoff-Vault.zip** onto a trusted, local device. Open **START-HERE.html** directly. Use the seven independent links for these separate, original human-only workflows:
 
 | Screen | Original source and use | What you may export |
 | --- | --- | --- |
@@ -12,6 +12,8 @@ Unzip **LightUp-Private-Handoff-Vault.zip** onto a trusted, local device. Open *
 | Casework Calendar | Original held PR #1635; import original Casework v1 bound to exact current CSV | Tentative ICS, human follow-up drafts, owner-specific private packets and anonymous human workload |
 | Owner Reply Desk | Original held PR #1635; import exact source-bound *single-owner* handoff from Calendar | PRIVATE original-owner human reply, not a grant or application |
 | Dependency Board | Original held PR #1638; import original Casework v1 bound to same confirmed engagement | Tentative human dependencies and work estimates; does not issue actual remediation |
+| Remediation Capacity Studio | Original held PR #1583; import separately authorized original findings and original Casework source | Hypothetical priority staffing, available hours, effort/backlog, anonymous weekly summaries |
+| Remediation Funding Studio | Original held PR #1586; import original Capacity Studio aggregate export ONLY | Hypothetical budget/cash release timing and priority-based finance risk, never binding commitments |
 | Encrypted Handoff Vault | Own isolated PR #1640; select already approved human-only local text exports | AES-256-GCM encrypted .vault.json; later separate local restore, re-encryption or minimal-files handoff |
 
 ### Recommended single-engagement operator workflow
@@ -36,6 +38,6 @@ Unzip **LightUp-Private-Handoff-Vault.zip** onto a trusted, local device. Open *
 
 ## Offline distribution
 
-`python3 remediation-vault/package.py` creates a SHA-CSP-pinned encrypted vault browser standalone. `python3 remediation-vault/package_kit.py` builds the complete pinned five-app ZIP. Neither command runs tests, networks or deployment. Files remain available individually under `remediation-vault/partner-apps/` for original owner review.
+`python3 remediation-vault/package.py` creates a SHA-CSP-pinned encrypted vault browser standalone. `python3 remediation-vault/package_kit.py` builds the complete pinned seven-app ZIP. Neither command runs tests, networks or deployment. Files remain available individually under `remediation-vault/partner-apps/` for original owner review.
 
 To inspect the generated kit, open its **MANIFEST.json**: it lists every packaged file's SHA-256, size, original PR and exact immutable source commit. Never treat these fingerprints as permission or authentic client approval.

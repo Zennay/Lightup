@@ -58,3 +58,7 @@ Following two source-bound local private vault unlocks, deliberately confirm the
 ## Private session and minimum disclosure
 
 The single **Clear private session** control reliably clears private browser selections. The original anonymous-count clipboard handler is initialized on the full standalone. Following unlock, onward-handoff checkboxes start **unselected**, requiring a deliberate per-file minimum disclosure decision; changing this choice clears the previous human recipient acknowledgement. The private decrypted payload parser also refuses noncanonical or duplicate-key JSON inside the authenticated envelope instead of accepting ambiguous source structures. This does not establish client identity or permission.
+
+## Seven-app complete offline remediation edition
+
+The current ZIP adds unchanged source-owner Capacity Studio #1583 and Funding Studio #1586 to the original five-app preview. Both are SHA-256-pinned to immutable original commits. Capacity consumes separately authorized original finding/Casework human data; Funding consumes only the original aggregate Capacity draft. No actual staffing, funding commitment, verified remediation, consent, grant, scan or release is created. The separately owned latest Client Brief #1582 is NOT included: its 152 KiB upstream standalone exceeded the connected zSSH scoped maximum file size and that restriction was respected without alternate bypass. Obtain Client Brief independently from its own held source-owner PR if separately permitted; it is not part of this offline package.
