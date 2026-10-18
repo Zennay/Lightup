@@ -82,3 +82,7 @@ In the standalone private capacity Studio, human planners can download a PRIVATE
 ## Recommended one-command original-source entry
 
 Operators who already possess original archive manifests and original source-bound human choices can now skip all manually exported intermediate agendas. The new [one-command original-source builder](ONE-COMMAND.md) accepts 1–12 ORIGINAL manifest+choices pairs and publishes a complete private, portable offline ZIP with original private agenda JSONs, all existing portfolio/Capacity/Review Studios, aggregate-only exports and source-bound human return instructions. No original scanner, authority, CI, existing source branch or tests are touched.
+
+### Original workspace ZIP → human review return
+
+Use [workspace_return.py](WORKSPACE-RETURN.md) to submit 1–12 offline review-Studio proposals against the same untouched original manifests and human choices. Complete source/ZIP binding is checked before publishing a single new private original-schema choices ZIP; no original inputs are changed and no authority is implied.

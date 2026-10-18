@@ -22,16 +22,23 @@ FIELDS={"schema","source_agenda_sha256","reference_date","source_count",
 ROW_FIELDS={"slot","prior_stage","prior_next_role","prior_review_date",
             "stage","next_role","review_date"}
 
-def reconcile(manifest_path, choices_path, agenda_path, proposal_path):
+def reconcile(manifest_path, choices_path, agenda_path, proposal_path, *, agenda_raw=None, proposal_raw=None):
     # Original validators handle immutable source membership and manifest binding.
     original,manifest_fingerprint=manifest_identity(manifest_path)
     choices=load_choices(choices_path, original, manifest_fingerprint)
-    agenda_raw=read_regular(agenda_path,MAX_BYTES)
+    if agenda_raw is None:
+        agenda_raw=read_regular(agenda_path,MAX_BYTES)
+    elif type(agenda_raw) is not bytes or not 0 < len(agenda_raw) <= MAX_BYTES:
+        raise Hold("invalid original in-memory agenda")
     agenda_document=decode_json(agenda_raw)
     if type(agenda_document) is not dict or type(agenda_document.get("reference_date")) is not str:
         raise Hold("agenda missing original day")
     agenda=load_one(agenda_path,agenda_document["reference_date"],raw=agenda_raw)
-    proposed=decode_json(read_regular(proposal_path,MAX_BYTES))
+    if proposal_raw is None:
+        proposal_raw=read_regular(proposal_path,MAX_BYTES)
+    elif type(proposal_raw) is not bytes or not 0 < len(proposal_raw) <= MAX_BYTES:
+        raise Hold("invalid private in-memory proposal")
+    proposed=decode_json(proposal_raw)
     reject_authority(proposed)
     if (type(proposed) is not dict or set(proposed)!=FIELDS
             or proposed["schema"]!=SCHEMA
