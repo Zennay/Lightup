@@ -91,6 +91,26 @@ def _value(row: sqlite3.Row, key: str, length: int = 180) -> str:
     return value
 
 
+def _recorded_window_observation(valid_from: object, valid_until: object,
+                                 observed_at: datetime) -> str:
+    """Human source window classification only; never a permit or consent."""
+    try:
+        if type(valid_from) is not str or type(valid_until) is not str:
+            return "HOLD_INVALID_RECORDED_WINDOW"
+        start, end = datetime.fromisoformat(valid_from), datetime.fromisoformat(valid_until)
+        if (start.tzinfo is None or end.tzinfo is None
+                or start.utcoffset() is None or end.utcoffset() is None
+                or start >= end):
+            return "HOLD_INVALID_RECORDED_WINDOW"
+        if observed_at > end:
+            return "EXPIRED_RECORDED_WINDOW"
+        if observed_at < start:
+            return "FUTURE_RECORDED_WINDOW"
+        return "WITHIN_RECORDED_WINDOW_NOT_AUTHORITY"
+    except (TypeError, ValueError, OverflowError, AttributeError):
+        return "HOLD_INVALID_RECORDED_WINDOW"
+
+
 def _source_snapshot(database: str, *, actor_id: str, client_id: str | None) -> dict:
     con = _read_connection(database)
     try:
@@ -175,6 +195,7 @@ def _source_snapshot(database: str, *, actor_id: str, client_id: str | None) -> 
         if sum(foreign_by_engagement.values()) > LIMIT:
             raise CasebookHold("too many foreign-tenant source conflicts")
 
+        snapshot_at = datetime.now(timezone.utc)
         reqs = {}
         request_view = []
         for row in requests:
@@ -259,6 +280,9 @@ def _source_snapshot(database: str, *, actor_id: str, client_id: str | None) -> 
                 "max_risk": row["max_risk"],
                 "valid_from": _value(row, "valid_from", 80),
                 "valid_until": _value(row, "valid_until", 80),
+                "validity_observation": _recorded_window_observation(
+                    row["valid_from"], row["valid_until"], snapshot_at
+                ),
             })
         risk_view = []
         seen_risks = set()
@@ -285,28 +309,44 @@ def _source_snapshot(database: str, *, actor_id: str, client_id: str | None) -> 
             associated_risk = [
                 item for item in risk_view if item["engagement_id"] == eid
             ]
-            if foreign_by_engagement.get(eid, 0) or any(item["request_link_observation"].startswith("HOLD_")
-                   for item in linked) or any(
-                not item["source_tenant_matches"] for item in associated_risk
-            ):
+            if foreign_by_engagement.get(eid, 0) or any(
+                item["request_link_observation"].startswith("HOLD_") or
+                item["validity_observation"].startswith("HOLD_")
+                for item in linked
+            ) or any(not item["source_tenant_matches"] for item in associated_risk):
                 attention = "HOLD_SOURCE_PROVENANCE"
+                next_action = "RECONCILE_PERSISTED_PROVENANCE"
+            elif engagement["status"] == "closed" and linked:
+                attention = "HOLD_CLOSED_ENGAGEMENT_WITH_GRANTS"
+                next_action = "REVIEW_CLOSED_ENGAGEMENT"
+            elif any(item["validity_observation"] == "EXPIRED_RECORDED_WINDOW"
+                     for item in linked):
+                attention = "EXPIRED_GRANT_SOURCE_REVIEW"
+                next_action = "REVIEW_ORIGINAL_GRANT_WINDOW"
+            elif any(item["validity_observation"] == "FUTURE_RECORDED_WINDOW"
+                     for item in linked):
+                attention = "FUTURE_GRANT_SOURCE_REVIEW"
+                next_action = "CHECK_ORIGINAL_GRANT_WINDOW"
             elif linked:
                 attention = "REVIEW_ONLY_UNVERIFIED_GRANT_LINK"
+                next_action = "CONFIRM_SEPARATE_CONSENT_AND_AT_USE_REVOCATION"
             else:
                 attention = "NO_GRANT_RECORDED"
+                next_action = "REVIEW_REQUEST_BEFORE_ANY_GRANT"
             case_overview.append({
                 "engagement_id": eid,
                 "status": engagement["status"],
                 "grant_count": len(linked),
                 "risk_record_count": len(associated_risk),
                 "attention": attention,
+                "next_review_action": next_action,
             })
         anomalies = Counter(x["request_link_observation"] for x in grant_view)
         result = {
             "schema": "lightup.auth_casebook.v1",
             "status": "REVIEW_ONLY",
             "source": "original_persisted_domain_unverified",
-            "as_of": datetime.now(timezone.utc).isoformat(),
+            "as_of": snapshot_at.isoformat(),
             "client_id": chosen,
             "requests": request_view,
             "engagements": engagement_view,
@@ -320,6 +360,7 @@ def _source_snapshot(database: str, *, actor_id: str, client_id: str | None) -> 
                 "risk_tenant_hold": sum(not v["source_tenant_matches"] for v in risk_view),
                 "case_attention_hold": sum(v["attention"].startswith("HOLD_") for v in case_overview),
                 "foreign_tenant_row_count": sum(foreign_by_engagement.values()),
+                "recorded_window_review": sum(v["validity_observation"] != "WITHIN_RECORDED_WINDOW_NOT_AUTHORITY" for v in grant_view),
             },
             **AUTHORITY,
         }
