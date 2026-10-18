@@ -37,7 +37,7 @@ function verify(packet,sourceBySha){
    packet.excluded_assets_count===source.excluded.length,"risk, mode or asset count mismatch");
  check(typeof packet.window_status==="string" && packet.window_status.length<=64 &&
    packet.window_status===(source.utcWindow?.status==="resolved"?"resolved_unapproved":
-     source.utcWindow?.status??"unscheduled"),"window planning status mismatch");
+     source.utcWindow?.status==="incomplete"?"incomplete":"unscheduled"),"window planning status mismatch");
  check(exact(packet.flags,FLAGS)&&FLAGS.every(k=>packet.flags[k]===false),"authority flag not literally FALSE");
  check(typeof packet.client_note_present==="boolean"&&typeof packet.operator_note_present==="boolean","note presences");
  check(typeof packet.notice==="string" && packet.notice.length<=500 &&
