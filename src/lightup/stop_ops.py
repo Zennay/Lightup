@@ -18,6 +18,7 @@ from .revocation_stop import (
 )
 from .stop_batch import record_authenticated_stop_batch
 from .stop_acknowledgment import pending_stops, acknowledge_stop
+from .stop_exposure import grant_exposure
 
 
 def _menu() -> None:
@@ -28,6 +29,7 @@ def _menu() -> None:
     print("  4  Review operator acknowledgment inbox")
     print("  5  Acknowledge existing STOP (different original operator)")
     print("  6  Initialize empty STOP ledger (real operator only)")
+    print("  7  Review stored grant exposure for an engagement")
     print("  q  Close this offline workspace")
 
 
@@ -149,6 +151,12 @@ def main(argv: list[str] | None = None) -> int:
                         args.database, email=args.email, password=password,
                     )
                     print(result["status"], "· NO execution permission")
+                elif choice == "7":
+                    engagement_id = input("Exact persisted engagement ID: ").strip()
+                    print(json.dumps(grant_exposure(
+                        args.database, engagement_id=engagement_id,
+                        email=args.email, password=password,
+                    ), sort_keys=True, indent=2))
                 else:
                     print("Unknown operation. No changes made.")
             except StopLedgerError:
