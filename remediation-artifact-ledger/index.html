@@ -17,13 +17,24 @@
 <label>Independently checked engagement reference<input id="engagement" maxlength="120" autocomplete="off" placeholder="Private engagement label" required></label>
 <label>Original findings CSV<input id="original" type="file" accept=".csv,text/csv"></label>
 </div><p><button id="load">Load original findings</button></p><p id="source" class="fingerprint">No original CSV loaded.</p></section>
-<section class="card"><h2>2 · Fingerprint evidence without uploading it</h2>
+<section class="card"><h2>2 · Original source revisions / private human quarantine</h2>
+<p>Planning evidence must stay tied to the exact original finding source. When an independently checked replacement CSV arrives for the <strong>same</strong> client and engagement, preview the five-column original diff before moving private HUMAN fingerprints. Only byte-for-byte unchanged original findings retain their human notes. Changed, absent or ambiguous original findings are NOT a verified fix.</p>
+<label>Separately obtained revised original findings CSV<input type="file" id="newSource" accept=".csv,text/csv"></label>
+<label class="check"><input type="checkbox" id="sameEngagement"> I independently confirmed the same genuine client and engagement. This checkbox does not grant authority.</label>
+<p><button id="previewMigration">Preview revised original source</button></p>
+<div id="migrationResult" hidden>
+<h3>Proposed original finding reconciliation</h3><pre id="migrationPreview" class="migration"></pre>
+<p><strong>Important:</strong> Export and protect your complete OLD PRIVATE ledger before applying. Quarantined HUMAN entries are not copied to changed or absent source records.</p>
+<label class="check"><input type="checkbox" id="ackBackup"> I saved the old PRIVATE ledger securely and accept quarantine of changed/absent-source HUMAN fingerprints.</label>
+<button id="applyMigration" disabled>Apply source revision (human-only)</button>
+</div></section>
+<section class="card"><h2>3 · Fingerprint evidence without uploading it</h2>
 <div class="grid">
 <label>Original finding<select id="finding" aria-label="Original finding ID"></select></label>
 <label>Local evidence files (≤16 MiB each, ≤120 records)<input id="addFiles" type="file" multiple disabled></label>
 </div>
 <p><button id="add">Hash &amp; link local files</button></p><p>Stored in memory: original finding ID, local filename, size, SHA-256, MIME label, local timestamp and human notes. Never stored: the contents of attached files. SHA-256 equality only compares bytes; it does not prove chronology or authenticity.</p></section>
-<section class="card"><h2>3 · Human review desk</h2>
+<section class="card"><h2>4 · Human review desk</h2>
 <p id="summary" aria-live="polite"></p>
 <label class="search">Filter by original finding, title, filename or human notes<input id="filter" placeholder="Local filter; never transmitted" autocomplete="off"></label>
 <section id="tableSection" hidden><p id="shown"></p>
@@ -32,7 +43,7 @@
 <input id="verify" type="file" hidden disabled aria-label="Recheck local evidence file">
 <p class="subtle">Human review stages are private notes, not verified security remediation, successful retest, an acceptance sign-off or permission to scan.</p>
 </section>
-<section class="card"><h2>4 · Offline handoff</h2>
+<section class="card"><h2>5 · Offline handoff</h2>
 <div class="grid">
 <div><h3>PRIVATE human draft</h3><p>Includes original source SHA, self-declared context, filenames, checksums, and human notes. Protect exported data separately.</p><button id="export" disabled>Export PRIVATE JSON</button></div>
 <div><h3>Restore PRIVATE draft</h3><p>Load only with the exact same original CSV, client and engagement. Reject incomplete, mismatched or elevated authority packets.</p>
