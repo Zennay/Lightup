@@ -50,6 +50,30 @@
     <h2 id="caseTitle">3. Human casebook — private in memory</h2>
     <p>Rows use locally assigned ordinals, not original identifiers. <strong>UNSCORED</strong>, <strong>declared zero</strong>, and <strong>planted</strong> are authored scenario declarations, never proof of an observed finding or assessed coverage. Adverse flags are source-reported metrics, not new evaluation verdicts.</p>
     <p>Discussion stages are purely human labels, not approvals. They remain only in this browser tab; closing or refreshing discards them.</p>
+    <div class="queue-controls" aria-label="Local human discussion filters">
+      <div><label for="familyFilter">Original source flag family</label>
+        <select id="familyFilter"><option value="all">All source flags</option>
+          <option value="missing">Missing comparison scenario — HOLD</option>
+          <option value="scope">Scope and policy</option><option value="findings">Findings and coverage</option>
+          <option value="evidence">Evidence and scoring</option><option value="operations">Informational operations</option></select></div>
+      <div><label for="truthFilter">Original authored ground-truth mode</label>
+        <select id="truthFilter"><option value="all">All declarations</option>
+          <option value="unscored">Unscored / unknown</option>
+          <option value="declared_zero">Declared zero</option>
+          <option value="planted">Declared planted</option></select></div>
+      <div><label for="stageFilter">Local human discussion stage</label>
+        <select id="stageFilter"><option value="all">All stages</option>
+          <option value="needs_review">Needs review</option><option value="in_discussion">In discussion</option>
+          <option value="documented">Documented</option></select></div>
+      <div><label for="bulkStage">Set selected visible cases to</label>
+        <select id="bulkStage"><option value="needs_review">Needs review</option>
+          <option value="in_discussion">In discussion</option>
+          <option value="documented">Documented</option></select></div>
+    </div>
+    <p id="queueCount"></p>
+    <div class="actions"><button id="applyStage" type="button">Confirm bulk stage for visible cases</button>
+      <button id="undoStage" class="secondary" type="button" disabled>Undo previous bulk change</button></div>
+    <p>Filtering or moving a human discussion stage never changes a source report, invokes an evaluator or grants permission.</p>
     <div id="cases" class="scroll" aria-label="Private human scenario review"></div>
   </section>
   <section aria-labelledby="handoffTitle">
