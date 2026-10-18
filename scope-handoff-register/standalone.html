@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-agbJO3OVuciws7hX4E7Wd1Wbb+9OKp74lLmTy/0lq+Q=' 'sha256-X4nOjHqXl4cEjDVdqODJ4miIGbKHwaSBHfgk1Y4EyQ4=' 'sha256-F/FTboDDkAFr+2CnZVzOxVrUYtmAzfKdvueiY9ELeiE=' 'sha256-q2H7I7Cc6aN4tRcTstlhC46PorQX4BrBkW7U9OqaxeM='; style-src 'sha256-Oub9w2kN1ylYdNlqldiXYkPULGkxx4E9yFKkE09ZEuo='; img-src 'none'; connect-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-agbJO3OVuciws7hX4E7Wd1Wbb+9OKp74lLmTy/0lq+Q=' 'sha256-X4nOjHqXl4cEjDVdqODJ4miIGbKHwaSBHfgk1Y4EyQ4=' 'sha256-F/FTboDDkAFr+2CnZVzOxVrUYtmAzfKdvueiY9ELeiE=' 'sha256-lSOJyr89PTEpuke5Zs2JIzmfw3o+KZNcozWQsu1kUkE='; style-src 'sha256-Oub9w2kN1ylYdNlqldiXYkPULGkxx4E9yFKkE09ZEuo='; img-src 'none'; connect-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'">
   <title>LightUp · Scope Handoff Register</title>
   <style>:root{font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;color-scheme:dark;--bg:#0b111c;--panel:#172236;--line:#31445e;--text:#f2f6ff;--muted:#b8c7dc;--accent:#77bfff;--warn:#ffd89c}
 *{box-sizing:border-box}body{background:linear-gradient(145deg,#0d1626,#111826 58%,#0d1320);color:var(--text);margin:0;min-height:100vh}header,main,footer{max-width:1160px;margin:auto;padding:24px}header{padding-top:45px}.topline{display:flex;align-items:center;justify-content:space-between;gap:16px;font-size:.76rem;letter-spacing:.15em;color:var(--accent)}.flag{background:#43321e;color:var(--warn);padding:8px 12px;border-radius:30px;border:1px solid #6e5530;font-size:.7rem}h1{font-size:clamp(1.9rem,5vw,3.6rem);max-width:750px;margin:35px 0 15px;line-height:1.11;letter-spacing:-.045em}h2{font-size:1.25rem;margin:0 0 8px;letter-spacing:-.02em}h3{margin:0 0 10px;font-size:1.07rem}p{color:var(--muted);line-height:1.55}header>p{max-width:780px}main{display:grid;gap:23px}.panel{border:1px solid var(--line);border-radius:17px;padding:25px;background:var(--panel);box-shadow:0 18px 44px #0002}.section-head{display:flex;align-items:start;justify-content:space-between;gap:24px;flex-wrap:wrap}.section-head p{margin:0 0 14px}.toolbar,.actions{display:flex;align-items:end;gap:12px;flex-wrap:wrap;margin:14px 0}.toolbar>label{display:grid;gap:6px;flex:1;min-width:180px;font-size:.86rem;color:var(--muted)}input,select,textarea,button,.button{font:inherit;border-radius:10px}input,select,textarea{padding:11px 12px;color:var(--text);background:#0c1525;border:1px solid #52617b;min-width:0}button,.button{display:inline-block;color:var(--text);padding:11px 14px;background:#253d59;border:1px solid #64809c;cursor:pointer;white-space:normal;text-align:center}button:hover,.button:hover{background:#31567c}button:focus-visible,.button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid var(--accent);outline-offset:2px}.button.primary{background:#086ab3;border-color:#5eb7ff;font-weight:700}button[disabled]{opacity:.45;cursor:not-allowed}.notice{padding:11px 14px;background:#101b2a;border-left:3px solid var(--accent);white-space:pre-wrap}.notice.error{border-color:#ff8181;color:#ffcdcd}.stats{display:flex;flex-wrap:wrap;gap:9px;margin:14px 0}.metric{padding:9px 14px;border-radius:12px;border:1px solid #405577;background:#0e1a2b;font-size:.9rem}.metric strong{font-size:1.25rem;margin-right:6px}.boards{display:grid;grid-template-columns:repeat(auto-fill,minmax(255px,1fr));gap:12px}.card{display:grid;text-align:left;gap:9px;white-space:normal;background:#102136;border:1px solid #3e5877;padding:17px}.card.selected{outline:2px solid #80c9ff}.card-title{font-size:1.08rem;font-weight:700;overflow-wrap:anywhere}.meta{font-size:.82rem;color:var(--muted)}.chips{display:flex;flex-wrap:wrap;gap:5px}.chip{font-size:.72rem;padding:4px 7px;border-radius:6px;background:#34455e}.chip.alert{background:#674827;color:#fff2d9}.controls{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:15px}.controls label{display:grid;gap:5px;min-width:190px;flex:1;color:var(--muted)}.checkrow{display:grid;grid-template-columns:1fr 170px;gap:14px;align-items:center;padding:11px 0;border-bottom:1px solid #334860}.checkrow label{font-weight:600}.checkrow small{color:var(--muted);display:block;margin-top:4px}.summary{background:#102136;border:1px solid #344c67;border-radius:12px;padding:15px}.warning{border-left:3px solid #d69e53;padding:11px 14px;background:#2e261d;color:#f9e8d2}.small{font-size:.83rem}footer{font-size:.82rem;color:#94a7bf;padding-bottom:50px}@media(max-width:600px){header,main,footer{padding-left:15px;padding-right:15px}.panel{padding:17px}.checkrow{grid-template-columns:1fr}.topline{align-items:start;flex-direction:column}.controls{flex-direction:column}.controls label{width:100%}}@media print{*{color:#000!important;box-shadow:none!important;background:white!important}header,main{padding:5px}.panel{break-inside:avoid;border:1px solid #888}.toolbar,.actions,.button,#clear,footer{display:none!important}.boards{grid-template-columns:repeat(2,1fr)}.warning{border:1px solid #888}body{font-size:11pt}}
@@ -434,12 +434,24 @@ global.LightUpPlanningWindow=Object.freeze({localTimestamp,resolve,validateStore
   };
   const isPlain = value => value !== null && typeof value === "object" && !Array.isArray(value) && Object.getPrototypeOf(value) === Object.prototype;
   const assert = (ok, message) => { if (!ok) throw new Error(message); };
-  const bytes = s => new TextEncoder().encode(s);
-  const digest = async s => {
-    assert(globalThis.crypto && crypto.subtle && crypto.subtle.digest, "SHA-256 niet beschikbaar in deze browsercontext. Open lokaal in een moderne browser.");
-    const array = new Uint8Array(await crypto.subtle.digest("SHA-256",bytes(s)));
+  const digestBytes = async original => {
+    assert(original instanceof Uint8Array && globalThis.crypto && crypto.subtle && crypto.subtle.digest,
+      "Originele SHA-256 bronbytes niet beschikbaar in deze browsercontext.");
+    const array = new Uint8Array(await crypto.subtle.digest("SHA-256",original));
     return Array.from(array,b=>b.toString(16).padStart(2,"0")).join("");
   };
+  // Do not use file.text(): lossy UTF-8 replacement corrupts source-byte identity.
+  async function readOriginalBytes(file,max) {
+    assert(file instanceof File && file.size>0 && file.size<=max,"Bestand leeg of boven de toegestane bytegrens.");
+    const sourceBytes=new Uint8Array(await file.arrayBuffer());
+    assert(sourceBytes.byteLength===file.size && sourceBytes.byteLength<=max,"Originele bronbytegrootte komt niet overeen.");
+    assert(!(sourceBytes[0]===0xef && sourceBytes[1]===0xbb && sourceBytes[2]===0xbf),
+      "UTF-8 BOM niet ondersteund: gebruik het originele Studio JSON.");
+    let raw;
+    try {raw=new TextDecoder("utf-8",{fatal:true}).decode(sourceBytes);}
+    catch(_) {throw new Error("Ongeldige UTF-8-bronbytes; geen verliesgevende vervangingsdecodering.");}
+    return {raw,sha:await digestBytes(sourceBytes)};
+  }
   // JSON.parse alone silently accepts duplicate object keys. Enforce unique decoded names first.
   function parseUnique(s) {
     const value = JSON.parse(s);
@@ -739,19 +751,18 @@ global.LightUpPlanningWindow=Object.freeze({localTimestamp,resolve,validateStore
     detail.append(node("p","small","Status: "+prepared(r)+" van "+TASKS.length+" voorbereid. Zelfs bij 8/8 blijft dit REVIEW_ONLY_HOLD. Gebruik het originele geauthenticeerde proces voor toestemming en directe herroepingscontrole."));
   }
   async function readBounded(file,max) {
-    assert(file instanceof File && file.size<=max && file.size>0,"Bestand leeg of groter dan limiet.");
-    const data=await file.text();
-    assert(bytes(data).length<=max,"UTF-8 bestandslimiet overschreden.");
-    return parseUnique(data);
+    const source=await readOriginalBytes(file,max);
+    return parseUnique(source.raw);
   }
   async function importDrafts(files) {
     assert(files.length>0&&files.length<=MAX,"Selecteer maximaal 16 bestanden.");
     const incoming=[];const seen=new Set(records.map(x=>x.sha));
+    const seenSemantic=new Set(records.map(x=>x.source.studioDigest));
+    let formatOnlyDuplicates=0;
     // Validate every document before changing the live view.
     for (const file of files) {
-      const raw=await file.text();
-      assert(file.size>0 && file.size<=SIZE && bytes(raw).length<=SIZE,"Studio-concept overschrijdt 64 KiB.");
-      const parsed=parseUnique(raw);
+      const fileSource=await readOriginalBytes(file,SIZE);
+      const parsed=parseUnique(fileSource.raw);
       const source=validateDraft(parsed);
       const studioDigest=await LightUpScopeDigest.fingerprint(parsed);
       assert(studioDigest && /^[a-f0-9]{64}$/.test(studioDigest),
@@ -760,14 +771,18 @@ global.LightUpPlanningWindow=Object.freeze({localTimestamp,resolve,validateStore
         assert(parsed.scope_fingerprint_sha256===studioDigest,
           "Studio-v1 scope-fingerprint komt niet overeen met het oorspronkelijke concept.");
       source.studioDigest=studioDigest;
-      const sha=await digest(raw);
+      const sha=fileSource.sha;
       if (seen.has(sha)) continue;
-      seen.add(sha);incoming.push({sha,source});
+      if (seenSemantic.has(studioDigest)) {
+        formatOnlyDuplicates++;
+        continue; // Edited export time/format is not a new scope revision.
+      }
+      seen.add(sha);seenSemantic.add(studioDigest);incoming.push({sha,source});
     }
     assert(records.length+incoming.length<=MAX,"Het register bevat maximaal 16 verschillende conceptversies.");
     incoming.forEach(x=>records.push(newRecord(x.sha,x.source)));
     if (!active && records.length) active=records[0].sha;
-    show(incoming.length+" conceptversie(s) geladen. Identieke bronbytes zijn niet dubbel toegevoegd; wijzigingen moeten als afzonderlijke versie worden beoordeeld.");
+    show(incoming.length+" nieuwe Studio-scopeversie(s) geladen; "+formatOnlyDuplicates+" herexport(s) met identieke semantische scope genegeerd. Exacte bronbytes blijven nodig voor herstel van bestaande taakstatussen.");
     render();
   }
   function download(data,name,type) {
