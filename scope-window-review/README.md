@@ -1,0 +1,59 @@
+# LightUp · Private grant-window human review (DRAFT/HOLD)
+
+**INCUBATE M3/M7 · PLAN/LAB ONLY. No authority, scan, grant, consent, worker dispatch or production release.**
+
+This feature fills a human-operations gap alongside the **original authenticated Authorization Casebook** and the separate **emergency STOP/Incident Room**. Existing Casebook shows retrospective grant windows but does not provide a ready-to-open *private scheduled human review board* and an *identity-free calendar reminder*. This independent child branch changes **only** new files in `scope-window-review/`, based on the held integrated PR #1624 pinned at `8e14d9389699e6bf9b912042e40f17eff2fd95f4`. No original source-owner, CLI authorization, web portal, scan, CI, QA, STOP or existing test paths are modified.
+
+## Workflow
+
+1. On a trusted private LightUp operator machine, use the original **persisted** DomainStore account to export an original single-tenant Casebook through the owner module. No copied/synthetic consent is accepted:
+
+```sh
+umask 077
+PYTHONPATH=src python3 -m lightup.auth_casebook \
+  --database /private/domain.sqlite --email EXISTING_OPERATOR_EMAIL \
+  --client EXACT_EXISTING_TENANT_ID --output /private/NEW-casebook.json
+```
+
+2. In a local directory **owned by your OS account with mode 0700**, create a private, self-contained operator dashboard; no HTTP server is needed:
+
+```sh
+python3 scope-window-review/window_review.py \
+  --casebook /private/NEW-casebook.json \
+  --board /private/NEW-window-board.html --lead-days 7 --future-days 45
+```
+
+Open the resulting HTML on the same trusted machine, filter by original case and source observations, select temporary human review stages and save an **unsigned private human follow-up packet**. Refreshing the page deliberately loses stages; stage packets are human handoffs, NOT importable authorizations or durable original source mutations. Do not upload the private HTML or packet to a public hosting service.
+
+3. Alternatively request a private machine-readable source-linked agenda, or a much smaller **calendar with generic titles and without original tenant/engagement/grant/request IDs**:
+
+```sh
+python3 scope-window-review/window_review.py \
+  --casebook /private/NEW-casebook.json \
+  --agenda-json /private/NEW-window-agenda.json
+
+python3 scope-window-review/window_review.py \
+  --casebook /private/NEW-casebook.json \
+  --calendar /private/NEW-human-review.ics
+```
+
+The calendar uses **09:00–09:15 UTC** on candidate human follow-up dates, grouped into a generic entry per day and source-attention category. Dates can still correlate with confidential customer work: handle even redacted calendars privately. The dates are proposed *human follow-up reminders*, **never authorization expiry enforcement or a substitute for checking original live stored data**.
+
+Exit status is **2 = REVIEW_ONLY**, **3 = HOLD** or invalid input; never 0 as an execution approval. Tool output displays anonymous counts, not private IDs. Outputs must not exist already. Each single output is created as a new, owner-only 0600 file with same-directory fsync, exclusive non-overwriting link, and no intermediate exposure of a partially written final path.
+
+## What is actually derived
+
+- The original Casebook single-tenant `lightup.auth_casebook.v1` grants, engagement links, original recorded `valid_from` / `valid_until`, the source-declared original `validity_observation` and original request-link observation. **Source data is retrospective, not a trusted runtime fact**.
+- Bounded strict JSON with duplicate-key/nonfinite rejection, six false-only authority fields, source identity, grants/engagement declared count and identity consistency, and source-stated observation against original snapshot time. Input is an ordinary no-follow regular file, max 512 KiB. 200 source grants / engagements max. Limits: `--lead-days 0..30` and `--future-days 1..366`.
+- Historical observation older than 24 hours, invalid recorded grant windows, detached original engagements, original `HOLD_` request bindings, and passed recorded windows all yield HUMAN HOLD attention. **Even a non-HOLD entry is REVIEW_ONLY and does not validate a grant, its original consent, the selected target, or live revocation.**
+- Next review = the start date for a future source window or end date for a source-in-progress window, minus user-supplied planning lead; overdue/invalid follow-ups are queued for the next UTC day. Each output is a local human planning suggestion. The unrelated original runtime authorization/STOP/consent code is never called.
+- Private HTML shows precise original IDs and timestamps for local coordination and supports local human stages; identity-free aggregate CSV export only contains a date/attention/count summary. Private human handoff contains IDs for operator routing, original derived agenda digest and **false** authority flags, not permissions. Neither hashed source nor human declarations authenticate who produced the underlying export.
+- The `.ics` output includes no original IDs, targets, risk, evidence, mailboxes or URLs, and never emits an alarm that could be mistaken for an active control.
+
+## Separation and release gates
+
+This feature **is not a real-time revocation monitor** and cannot prove an actual STOP took effect, that a previous grant remained valid, or that a security assessment may proceed. No network, browser persistence, target discovery, scanner, LLM, handler, grant issuance, STOP mutation, live credentials in the board, real domain table writes or automation. The original Casebook export operation itself invokes original authenticated login, which may update ordinary original login/lockout counters.
+
+**Required to release any LightUp code:** exact-head original hosted and registered permanent named VPS CI, original source-owner and independent security/privacy approval, actual separately authenticated client and operator consent and revocation on use (including retry and resume), and explicit HUMAN GO. Known original scope #301/source-contract CI issue is not fixed or waived here. This is a **DRAFT/HOLD child PR**, not a main merge or deploy. No QA/regression/test suites were written, expanded or manually run.
+
+Original source reference: https://github.com/Zennay/Lightup/pull/1620 and integrated separate candidate https://github.com/Zennay/Lightup/pull/1624 .
