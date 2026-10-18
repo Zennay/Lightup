@@ -153,8 +153,11 @@ function exportModel(){
   requested_mode:current.draft.requested_mode,requested_risk:current.draft.requested_risk,
   proposed_assets_count:current.draft.requested_assets.length,excluded_assets_count:current.draft.excluded_assets.length,
   window_status:current.window==='Resolved (still unapproved)'?'resolved_unapproved':current.window.toLowerCase(),
-  question_states:questions.map(q=>({code:q.code,role:q.role,status:q.status})),
-  outstanding_questions:questions.filter(q=>q.status!=='answered_unverified').length,
+  // A role-labelled export may report ONLY that role's own preparation questions.
+  // Other-role local annotations stay private and cannot impersonate another reply.
+  question_states:questions.map(q=>({code:q.code,role:q.role,
+   status:q.role===document.querySelector('[name="audience"]:checked').value?q.status:'unanswered'})),
+  outstanding_questions:questions.filter(q=>q.role!==document.querySelector('[name="audience"]:checked').value||q.status!=='answered_unverified').length,
   flags:flags(),
   notice:'No approval, consent, permission, grant, scan, deployment, release or authority. Answers are unverified.'
  };
@@ -248,11 +251,13 @@ async function importReview(file){
    const q=incoming.question_states[i],expected=questions[i];
    assert(exactKeys(q,['code','role','status'])&&Object.keys(q).length===3,'Unknown question fields');
    assert(q.code===expected.code&&q.role===expected.role&&statuses.includes(q.status),'Review question changed');
+   assert(q.role===incoming.audience||q.status==='unanswered','Foreign-role reply claims are forbidden');
    restored.push(q.status);
   }
   assert(incoming.outstanding_questions===restored.filter(x=>x!=='answered_unverified').length,'Review summary mismatch');
   // All imported labels remain explicitly unverified. Commit the whole restore only after preflight.
-  questions.forEach((q,i)=>{q.status=restored[i];});
+  // Preserve other-role local work; importing this role never overwrites it.
+  questions.forEach((q,i)=>{if(q.role===incoming.audience)q.status=restored[i];});
   document.querySelector('[name="audience"][value="'+incoming.audience+'"]').checked=true;
   render();$('replyState').textContent='Review note matches exact original bytes · imported as unverified preparation only · HOLD';
  }catch(_){
