@@ -32,3 +32,10 @@
 .withdrawal-card .actions button{font-size:.85rem;padding:9px 13px}
 @media(max-width:540px){.withdrawal-board{grid-template-columns:1fr}}
 @media print{.withdrawal-card .actions{display:none!important}.withdrawal-card{border-color:#888}}
+
+.withdrawal-checklist{display:grid;gap:8px;padding:10px 0;border-top:1px solid #8e5744;border-bottom:1px solid #8e5744}
+.withdrawal-step{display:grid;grid-template-columns:minmax(110px,1fr) minmax(155px,2.3fr);gap:5px 14px;padding:7px 0}
+.withdrawal-step .meta{grid-column:2}
+.withdrawal-step strong{font-size:.8rem;overflow-wrap:anywhere}
+.withdrawal-step span{color:#f6dccd}
+@media(max-width:600px){.withdrawal-step{grid-template-columns:1fr}.withdrawal-step .meta{grid-column:1}}
