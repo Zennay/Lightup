@@ -9,7 +9,7 @@ REPO=ROOT.parent
 APPS=ROOT/"apps"
 SOURCES={
 "studio":(1567,"71d9e5f760ef2bff46a72b979173bb3181179afb",("studio/","docs/scope-proposal-studio.md")),
-"schedule":(1572,"b9bfaf439cdd506f5cd7292b25c14db017fb5dc6",("studio/scope-schedule-board.html","studio/scope-schedule-board.js")),
+"schedule":(1572,"b9bfaf439cdd506f5cd7292b25c14db017fb5dc6",("studio/scope-schedule-board.html","studio/scope-schedule-board.js","docs/scope-schedule-board.md")),
 "readiness":(1573,"1786ee9e8034736aa0f1ff1b3904f2b1b5305678",("coordination/","docs/scope-readiness-workspace.md")),
 "vault":(1574,"49a569b2125a80dcaac21655febc07861afa0df2",("scope-vault/","docs/private-scope-packet-vault.md")),
 "assessment":(1576,"bb5c2299d3697781db7093aaea79ed418f1cc07c",("assessment-review/","docs/assessment-review-desk.md")),
@@ -54,6 +54,15 @@ def main():
     for p in ("scope-network.js","scope-fingerprint.js","planning-window.js"):
         artifacts.append(put("readiness",1567,original,"studio/"+p,"coordination/"+p))
     (APPS/"README.md").write_text("DRAFT/HOLD offline source snapshots; no authority. See ../README.md.\n")
+    for group in ("studio", "schedule"):
+        (APPS/group/"README.md").write_text(
+            "# LightUp "+group+" offline preview\n\n"
+            "DRAFT / HOLD, not consent, authorization, permission or release.\n\n"
+            "Read the copied original documentation under docs/ in this folder.\n"
+            "Open studio/index.html for original Studio navigation; for the schedule "
+            "board open studio/scope-schedule-board.html.\n"
+            "Return to ../../index.html for the full nine-app launcher.\n",
+            encoding="utf-8")
     manifest={
         "kind":"lightup.offline_scope_workbench","schema_version":1,"state":"DRAFT_HOLD_REVIEW_ONLY",
         "authenticated":False,"consent_verified":False,"authorized":False,"grant_issued":False,

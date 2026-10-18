@@ -457,6 +457,15 @@
     },
     {
       "component": "schedule",
+      "pr": 1572,
+      "commit": "b9bfaf439cdd506f5cd7292b25c14db017fb5dc6",
+      "source_path": "docs/scope-schedule-board.md",
+      "bundled_path": "apps/schedule/docs/scope-schedule-board.md",
+      "sha256": "06dc7b03194efed7288e2be0394d140d04ce5ee683042876ff14d7b52ce74752",
+      "bytes": 18155
+    },
+    {
+      "component": "schedule",
       "pr": 1567,
       "commit": "71d9e5f760ef2bff46a72b979173bb3181179afb",
       "source_path": "studio/effective-scope.html",
