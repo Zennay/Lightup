@@ -57,7 +57,24 @@
 <input id="verify" type="file" hidden disabled aria-label="Recheck local evidence file">
 <p class="subtle">Human review stages are private notes, not verified security remediation, successful retest, an acceptance sign-off or permission to scan.</p>
 </section>
-<section class="card"><h2>5 · Offline handoff</h2>
+<section class="card"><h2>5 · Original-finding evidence coverage (PRIVATE)</h2>
+<p>Review which exact original findings have local fingerprints in this desk, prioritising critical/high rows without any local registration. Absence in this browser is <strong>not</strong> proof that evidence does not exist elsewhere. Original source retest labels are only source claims.</p>
+<p id="coverageSummary" role="status"></p>
+<div class="grid">
+<label>Local coverage view<select id="coverageFilter">
+<option value="critical_unlinked">Critical/high without LOCAL fingerprints</option>
+<option value="unlinked">All without LOCAL fingerprints</option>
+<option value="follow_up">Human follow-up requested</option>
+<option value="all">Every original finding</option>
+</select></label>
+<div><p>Export private per-original-ID coverage counts only after separately verifying your recipient. No evidence bytes, filenames, titles or human notes are exported.</p><button id="coverageExport" disabled>Export PRIVATE coverage CSV</button></div>
+</div>
+<p id="coverageShown"></p>
+<div class="scroll"><table><thead><tr>
+<th>Original ID</th><th>Severity</th><th>Source retest claim</th>
+<th>Local files</th><th>Human review</th><th>Follow-up</th><th>Human action</th>
+</tr></thead><tbody id="coverageRows"></tbody></table></div></section>
+<section class="card"><h2>6 · Offline handoff</h2>
 <div class="grid">
 <div><h3>PRIVATE human draft</h3><p>Includes original source SHA, self-declared context, filenames, checksums, and human notes. Protect exported data separately.</p><button id="export" disabled>Export PRIVATE JSON</button></div>
 <div><h3>Restore PRIVATE draft</h3><p>Load only with the exact same original CSV, client and engagement. Reject incomplete, mismatched or elevated authority packets.</p>
