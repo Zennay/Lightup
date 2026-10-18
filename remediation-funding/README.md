@@ -44,6 +44,12 @@ The comparison presents proposed, tentatively financed and unfunded hours by ris
 
 There are two separate, explicit private exports: a non-authorising aggregate JSON for later human review and a table-based Markdown discussion brief covering finance strategy trade-offs. These are unsigned and should be independently reviewed with the client, original scope owner, and procurement team before anyone uses them for actual budgeting.
 
+## Release timing comparison (same total, different access to cash)
+
+The application can now compare three complete private scenarios in one view, using the same original imported Capacity Studio aggregate and the same estimated costs: **100% upfront**, **equally released across weeks**, and **the selected staged cashflow** (including exact manually entered percentages when relevant). It computes source hours provisionally funded within the original week, hours still unfunded at that time, critical/high unfunded ranges under both hypothetical risk-first/proportional financing, and unused cash. Money appearing in a later week does not retroactively pay for lost earlier capacity, nor does it reschedule already missed estimates.
+
+The panel directly shows the difference between the user's selected funding sequence and all-upfront financial access, with separate user-confirmed privacy-minimal aggregate JSON and Markdown discussion exports. No original findings, client identifiers, private assets, source revisions, grants, banking API calls, work assignments or permissions are present. The comparison makes **no recommendation to pay or run a scan**; it is a nonbinding planning illustration whose inputs must be independently checked.
+
 ## Security and scope boundaries
 
 - Source input schema must be the original unsigned review-only aggregate export. Its claimed "review only" controls do **not** authenticate the real client/engagement, source bytes or current consent. Only its totals are used as untrusted planning numbers.
