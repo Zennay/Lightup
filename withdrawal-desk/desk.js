@@ -169,12 +169,13 @@
   }
   function preview(){ $('preview').textContent=brief(selectedCase());}
   function flagsOkay(x){return exactKeys(x,Object.keys(FLAGS))&&Object.entries(FLAGS).every(([k,v])=>x[k]===v);}
-  function exportData(){
-    if(!cases.length||cases.some(c=>!c.bound))throw Error('HOLD: every record must have its exact original source reattached before source-bound export.');
+  function exportData(single=false){
+    const inputs=single?(selectedCase()?[selectedCase()]:[]):cases;
+    if(!inputs.length||inputs.some(c=>!c.bound))throw Error('HOLD: source-bound exports require each included original source to be attached.');
     return {kind:'lightup.scope_withdrawal_review_only',schema_version:1,
       disposition:'REVIEW_ONLY',flags:{...FLAGS},
       generated_at_utc:new Date().toISOString(),
-      cases:cases.map(c=>({source_sha256:c.sha,risk:c.risk,
+      cases:inputs.map(c=>({source_sha256:c.sha,risk:c.risk,
         intent:c.intent,urgency:c.urgency,requested_effective_utc:c.effective||null,
         proposed_asset_count:c.assets,proposed_exclusion_count:c.excluded,
         paperwork_prepared:c.prepared,
@@ -274,6 +275,19 @@
   $('jsonExport').addEventListener('click',()=>{
     try{download('lightup-withdrawal-review-only.json',JSON.stringify(exportData(),null,2)+'\n','application/json');setFeedback('REVIEW_ONLY export created. Must still use real authenticated withdrawal channel.');}
     catch(e){setFeedback(e.message,true);}
+  });
+  $('stopExport').addEventListener('click',()=>{
+    try {
+      const c=selectedCase();
+      if(!c)throw Error('HOLD: select a source-bound case first.');
+      if(c.urgency!=='urgent')throw Error('HOLD: mark priority Urgent and prepare the follow-up list before using urgent handoff.');
+      if(!c.prepared)throw Error('HOLD: prepare the local human follow-up list first.');
+      if(!c.bound)throw Error('HOLD: exact original source is not attached.');
+      if(!confirm('This only downloads paperwork. It DOES NOT stop live work or revoke a grant. Have you contacted the genuine authenticated incident channel?'))return;
+      download('lightup-urgent-human-stop-request.json',
+        JSON.stringify(exportData(true),null,2)+'\\n','application/json');
+      setFeedback('Single-case STOP paperwork downloaded. No live operation changed. Contact the real authenticated human channel.');
+    } catch(e){setFeedback(e.message,true);}
   });
   $('csvExport').addEventListener('click',()=>{
     try{
