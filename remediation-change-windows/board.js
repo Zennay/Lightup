@@ -25,11 +25,15 @@ function meetingNote(s){
  if(typeof s!=='string'||s.length>600||/[\u0000-\u0009\u000b-\u001f\u007f]/.test(s)||bidi.test(s))fail('Invalid human meeting note.');
  return s;
 }
-async function read(file,max){
+async function read(file,max,allowOriginalCsvBom=false){
  if(!file||file.size<1||file.size>max)fail('Private input missing or exceeds limit.');
  const buffer=await file.arrayBuffer();if(buffer.byteLength>max)fail('Private input exceeds limit.');
  const text=new TextDecoder('utf-8',{fatal:true}).decode(buffer);
- if(!text||text.charCodeAt(0)===0xfeff)fail('UTF-8 BOM or empty private input.');
+ if(!text)fail('Empty private input.');
+ if(text.charCodeAt(0)===0xfeff){
+  if(!allowOriginalCsvBom)fail('UTF-8 BOM is not accepted in private JSON.');
+  return text.slice(1);
+ }
  return text;
 }
 /* Reject repeated keys BEFORE native JSON.parse; JSON.parse alone silently accepts them. */
@@ -207,8 +211,7 @@ function privateCaseBrief(){
     ' after local human due date. All are unverified.**','');
   if(!group.length){lines.push('No human records assigned.','');continue;}
   const byPriority=group.slice().sort((a,b)=>
-   Number(attention(b))-Number(attention(a))+
-   (Number(attention(a))===Number(attention(b))?0:0)||
+   Number(attention(b))-Number(attention(a))||
    Number(high(b))-Number(high(a))||
    a.finding_id.localeCompare(b.finding_id));
   lines.push('| Original ID | Source severity / retest | Human owner and Casework state | Local due UTC | Human evidence review | Private human flags | Human next action |',
@@ -538,7 +541,7 @@ async function load(){
  purgeRenderedPrivateData();
  const file=$('csv').files[0],review=$('review').files[0],caseFile=$('casework').files[0];
  if((review||caseFile)&&!$('same').checked)fail('Independent exact client/engagement confirmation required for review/Casework join.');
- const src=C.parseCSV(await read(file,1048576)),hash=await digest(src);
+ const src=C.parseCSV(await read(file,1048576,true)),hash=await digest(src);
  let notes=new Map(src.map(f=>[f.finding_id,emptyReview()]));
  if(review)notes=reviewFile(strictJSON(await read(review,2097152)),src,hash);
  const casework=caseFile?caseworkFile(strictJSON(await read(caseFile,2097152)),src,hash):null;
@@ -718,7 +721,7 @@ async function previewSourceRevision(){
  if(!state)fail('Load original authorized finding summary first.');
  clearRevisionPreview();
  if(!$('confirmRevision').checked)fail('Independent same original client and exact engagement confirmation required.');
- const next=C.parseCSV(await read($('nextCsv').files[0],1048576));
+ const next=C.parseCSV(await read($('nextCsv').files[0],1048576,true));
  const hash=await digest(next);
  if(hash===state.hash)fail('Original source is unchanged; no revision needed.');
  const diff=C.compareSource(state.source,next);
