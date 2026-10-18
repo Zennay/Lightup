@@ -16,7 +16,7 @@
 <main>
 <section class="notice" aria-label="Safety notice"><strong>Always HOLD:</strong> This explainer does not create or accept authorization. Even an answered checklist cannot approve a request. Genuine separately authenticated client consent, independent operator approval, approved scope, risk and revocation checks must happen inside the authorized system.</section>
 <section class="controls" aria-label="Source import">
- <div><h2>1. Load a proposed assessment</h2><p>Choose an original <code>lightup.scope_proposal_draft</code> JSON export (64 KiB maximum). Exact source bytes are SHA-256 fingerprinted locally. Labels, domains, IP addresses and notes will not appear in this interface or exports.</p>
+ <div><h2>1. Load a proposed assessment</h2><p>Choose an original <code>lightup.scope_proposal_draft</code> JSON export (64 KiB maximum). The first source opens immediately; later revisions are staged for review and require a separate explicit apply. Exact source bytes are SHA-256 fingerprinted locally. Labels, domains, IP addresses and notes will not appear in this interface or exports.</p>
  <label class="filelabel" for="source">Choose local draft JSON</label><input id="source" type="file" accept=".json,application/json"><p id="sourceState" role="status" aria-live="polite">No source selected · HOLD</p></div>
  <div><h2>2. Choose the audience</h2><p>A single bounded review brief, with relevant questions for each role. Neither role can endorse or sign inside this application.</p>
  <fieldset><legend>Primary handoff audience</legend><label><input type="radio" name="audience" value="client" checked> Client preparation</label><label><input type="radio" name="audience" value="operator"> Operator preparation</label></fieldset>
@@ -30,6 +30,21 @@
  <div class="metric"><div>Exclusions</div><strong id="excluded">—</strong><small>Not enforcement</small></div>
  <div class="metric"><div>Requested risk</div><strong id="risk">—</strong><small>Not an approval</small></div>
  <div class="metric"><div>Planning window</div><strong id="window">—</strong><small>Not a booking</small></div>
+</section>
+<section id="revisionPreview" class="panel revision-preview" aria-label="Review staged source change before applying" hidden>
+ <div class="eyebrow">REVIEW BEFORE REPLACE · NON-AUTHORIZING</div>
+ <h2>Proposed scope revision — not yet applied</h2>
+ <p id="pendingPreviewStatus" class="notice subnote" role="status" aria-live="polite"></p>
+ <p>Compare the staged source with the accepted version. Existing source, role answers and return notes remain usable until you explicitly apply this revision. All differences below are private aggregate literal counts, not verified IP/CIDR/DNS coverage or ownership.</p>
+ <div id="pendingCompare" class="pending-compare" aria-label="Privacy-minimal source version differences"></div>
+ <h3>Human issues to discuss before accepting</h3>
+ <ul id="pendingAdvice"></ul>
+ <div class="buttons">
+  <button id="pendingExport">Export non-authorizing preview JSON</button>
+  <button id="pendingApply">Apply revision and reset prior human replies</button>
+  <button id="pendingDiscard" class="subtle">Discard proposal — preserve existing work</button>
+ </div>
+ <p class="receipt">A stage/apply action is NOT authenticated client consent, operator signoff, scope approval, grant, execution or deployment.</p>
 </section>
 <section class="details">
  <div class="panel"><div class="eyebrow">CLIENT VIEW · DRAFT</div><h2>What you would be asking for</h2><p id="clientSummary"></p><div class="anchor">What you are <em>not</em> granting here</div><p>This tool cannot verify your identity or asset ownership. Uploading a draft, selecting a checkbox, or sharing a downloaded brief is not client consent and does not authorize any work.</p></div>
