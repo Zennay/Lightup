@@ -556,45 +556,86 @@
     }
   }
 
+  function caseQueue() {
+    if(!revisions.length) return [];
+    const filter=$("case-filter").value;
+    const sort=$("case-sort").value;
+    const cases=ordinalCaseIds().map((id,i)=>{
+      const counts=revisions.map(r=>r.cases.get(id).regressions.length);
+      const bools=counts.map(n=>n>0);
+      const persistent=bools.every(Boolean);
+      const emerged=!bools[0]&&bools.at(-1);
+      const recovered=bools[0]&&!bools.at(-1);
+      const changed=bools.slice(1).some((value,j)=>value!==bools[j]);
+      let worsening=0;
+      for(let r=1;r<revisions.length;r++) for(const name of NAMES) {
+        const previous=revisions[r-1].cases.get(id).metrics[name].candidate;
+        const current=revisions[r].cases.get(id).metrics[name].candidate;
+        if((HIGH.has(name)&&current<previous)||
+          (LOW.has(name)&&current>previous)) worsening++;
+      }
+      const priority=caseSeverity(id);
+      const rank=priority==="Critical lab drift"?0:
+        priority==="High lab drift"?1:priority==="Human follow-up"?2:3;
+      const stage=caseStages.get(id)||"unreviewed";
+      const pattern=persistent?"Persistent":emerged?"Newly flagged":
+        recovered?"No longer flagged":changed?"Variable":
+        bools.some(Boolean)?"Intermittent":"No original-baseline regression";
+      return {id,i,counts,persistent,emerged,recovered,changed,
+        worsening,priority,rank,stage,pattern};
+    }).filter(x=>
+      filter==="all"||
+      filter==="persistent"&&x.persistent||
+      filter==="emerged"&&x.emerged||
+      filter==="recovered"&&x.recovered||
+      filter==="changed"&&x.changed||
+      filter==="critical"&&x.rank===0||
+      filter==="high"&&x.rank===1||
+      filter==="worsening"&&x.worsening>0||
+      filter==="pending"&&x.stage!=="discussion-recorded"
+    );
+    if(sort==="priority")cases.sort((a,b)=>
+      a.rank-b.rank||b.worsening-a.worsening||
+      b.counts.at(-1)-a.counts.at(-1)||a.i-b.i);
+    else if(sort==="last")cases.sort((a,b)=>
+      b.counts.at(-1)-a.counts.at(-1)||
+      a.rank-b.rank||a.i-b.i);
+    return cases;
+  }
   function renderCaseRows() {
     const head=$("case-head"),body=$("case-rows");
     head.replaceChildren();body.replaceChildren();
     const tr=add(head,"tr");add(tr,"th","Source case");
     revisions.forEach((_,i)=>add(tr,"th","R"+(i+1)));
-    add(tr,"th","Pattern");
-    const filter=$("case-filter").value;
-    const ids=[...revisions[0].cases.keys()].sort();
-    ids.forEach((id,i)=>{
-      const counts=revisions.map(r=>r.cases.get(id).regressions.length);
-      const bools=counts.map(n=>n>0);
-      const persistent=bools.every(Boolean);
-      const emerged=!bools[0] && bools.at(-1);
-      const recovered=bools[0] && !bools.at(-1);
-      const changed=bools.slice(1).some((value,j)=>value!==bools[j]);
-      if(filter==="persistent"&&!persistent ||
-         filter==="emerged"&&!emerged ||
-         filter==="recovered"&&!recovered ||
-         filter==="changed"&&!changed) return;
-      const pattern=persistent?"Persistent":emerged?"Newly flagged":
-        recovered?"No longer flagged":changed?"Variable":
-        bools.some(Boolean)?"Intermittent":"No reported regression";
+    add(tr,"th","Pattern");add(tr,"th","Priority");add(tr,"th","Human stage");
+    const visible=caseQueue();
+    $("case-queue-summary").textContent=visible.length+" of "+
+      revisions[0].cases.size+" anonymous original scenarios displayed. "+
+      visible.filter(x=>x.stage!=="discussion-recorded").length+
+      " local discussion stages remain open in this view; this is not evidence of a resolved assessment.";
+    for(const c of visible) {
       const row=add(body,"tr");
-      add(row,"th","Case "+String(i+1).padStart(2,"0"));
-      counts.forEach(n=>add(row,"td",String(n),
+      add(row,"th","Case "+String(c.i+1).padStart(2,"0"));
+      c.counts.forEach(n=>add(row,"td",String(n),
         n===0?"heat-0":n<3?"heat-1":n<8?"heat-2":"heat-3"));
-      add(row,"td",pattern);
+      add(row,"td",c.pattern+(c.worsening?" / "+c.worsening+" sequential worsening":""));
+      add(row,"td",c.priority);
+      add(row,"td",c.stage.replaceAll("-"," "));
       row.tabIndex=0;
       row.setAttribute("role","button");
-      row.setAttribute("aria-label","Inspect anonymous case "+String(i+1));
-      row.setAttribute("aria-pressed",String(i===selectedCase));
-      if(i===selectedCase) row.classList.add("active");
-      row.addEventListener("click",()=>{selectedCase=i;renderCaseInspector();renderCaseRows();});
+      row.setAttribute("aria-label","Inspect anonymous case "+String(c.i+1));
+      row.setAttribute("aria-pressed",String(c.i===selectedCase));
+      if(c.i===selectedCase)row.classList.add("active");
+      row.addEventListener("click",()=>{
+        selectedCase=c.i;renderCaseInspector();renderCaseRows();
+      });
       row.addEventListener("keydown",event=>{
         if(event.key==="Enter"||event.key===" ") {
-          event.preventDefault();selectedCase=i;renderCaseInspector();renderCaseRows();
+          event.preventDefault();selectedCase=c.i;renderCaseInspector();renderCaseRows();
+          $("case-select").focus();
         }
       });
-    });
+    }
   }
 
   const ordinalCaseIds=()=>[...revisions[0].cases.keys()].sort();
@@ -834,12 +875,26 @@
   });
   $("earlier").addEventListener("click",()=>moveReport(-1));
   $("later").addEventListener("click",()=>moveReport(1));
+  $("case-sort").addEventListener("change",renderCaseRows);
+  $("case-next").addEventListener("click",()=>{
+    const pending=caseQueue().filter(c=>
+      c.rank<3 && c.stage!=="discussion-recorded");
+    if(!pending.length) {
+      $("case-queue-summary").textContent=
+        "No additional pending adverse case is visible with these review filters. This is not remediation, authorization or release evidence.";
+      return;
+    }
+    const selected=pending.find(c=>c.i!==selectedCase)||pending[0];
+    selectedCase=selected.i;renderCaseInspector();renderCaseRows();
+    $("case-select").focus();
+  });
   $("case-filter").addEventListener("change",renderCaseRows);
   $("case-select").addEventListener("change",event=>{
     selectedCase=Number(event.target.value);renderCaseInspector();renderCaseRows();
   });
   $("case-stage").addEventListener("change",event=>{
     caseStages.set(ordinalCaseIds()[selectedCase],event.target.value);
+    renderCaseRows();
   });
   const CASE_STAGES=new Set(["unreviewed","investigating",
     "awaiting-independent-review","followup-proposed","discussion-recorded"]);
