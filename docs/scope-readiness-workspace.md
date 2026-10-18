@@ -12,6 +12,20 @@ Open `coordination/scope-readiness.html` locally from this PR checkout. This is 
 6. **Revision-safe follow-up reuse:** select a second draft and deliberately copy only human coordinator labels, suggested deadlines and next-action text to an otherwise untouched draft. Reject nonempty destinations, ask explicit confirmation, surface differing client labels/risk/mode/asset counts, and reset every imported task state to **not started**. Prepared paperwork and anything resembling client/operator approval never transfer across revisions. Matching counts are not proof of identical effective scope.
 7. Unsaved-change confirmation, full local reset, source file batch atomicity, bounded tracking input and accessible mobile-friendly layout.
 
+## Native client intake vs full-fidelity private handoff — structural preview
+
+The new **Studio → authenticated client request** routing panel inspects one reattached original Studio v1 draft and applies the *documented lossless representation constraints* from the independent client-intake source owner [PR #1571](https://github.com/Zennay/Lightup/pull/1571) read-only. It highlights the cases where a normal native request would drop material safety constraints:
+
+- **Explicit exclusions:** the persistent request cannot enforce excluded assets; dropping them could silently widen scope.
+- **`analysis_only` mode:** the native CLI intentionally refuses automatic conversion into an authorized-assessment request.
+- **Private-lab network checks:** the dedicated lab workflow is required.
+- **Any proposed local window / incompatible UTC provenance:** the durable native request lacks equivalent schedule enforcement. Use the full operator handoff, not an unconstrained request.
+- **Requested risk 4:** explicitly prompts separate human risk escalation review, even when other proposal fields are structurally compatible.
+
+Hard representability blockers yield `PRIVATE_HANDOFF_REQUIRED` and **HOLD for native submission**. No blockers yields only `NATIVE_PREVIEW_POSSIBLE_NOT_AUTHORIZED`: this **does not** imply the draft passes the authenticated client CLI, `DomainStore`, operator review, consent, independent risk approval, revocation or scope policy. The panel never rewrites the original Studio JSON to remove exclusions, never creates a request and never edits another source owner's PR.
+
+An optional privacy-minimal `lightup.scope_native_intake_route` JSON download records only original unsigned source SHA-256, blocker categories, human-routing designation and hard-false security flags. It omits target assets, client labels and free-text notes. Replacing/restoring/clearing original files invalidates the local classification. The full-fidelity handoff feature itself remains owned by #1571 and is explicitly separate from this offline review interface. Its branch has not been merged/released.
+
 ## New: source-bound Studio revision impact workflow
 
 A new **Scope revision impact** panel compares two distinct, fully reattached original Studio v1 JSON exports **inside browser memory**. The tool stores source objects only in a volatile in-tab `Map` keyed by SHA-256 of exact original file bytes. Source payloads do not enter the saved casework schema, printed overview, CSV, iCalendar or private change summaries. Restoring a saved workspace clears volatile source copies; reattach exact originals before reviewing. Removing a draft or clearing the board discards corresponding source objects. A changed file/import invalidates the comparison before actions can run.
