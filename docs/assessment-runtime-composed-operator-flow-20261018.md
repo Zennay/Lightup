@@ -76,3 +76,18 @@ python3 scripts/lightup_review.py compare /private/BASE-cohort.json /private/NEX
 ```
 
 The Lineage Desk uses the original comparator `scenario_id` values **privately for in-memory reconciliation** and never exports them in anonymous aggregate handoff. Its optional owner-private `assessment-lineage/private_workroom.py` can combine explicit existing private catalog + comparison JSON files into one private local HTML; it never calls the lab runner. This is an **existing original app directly combined into the same source checkout**, not an invented evaluation or new trust/release gate. The separate original [#1597](https://github.com/Zennay/Lightup/pull/1597) and [#1595](https://github.com/Zennay/Lightup/pull/1595) owners remain unmodified.
+
+## Original candidate matrix for multiple completed lab comparisons
+
+The composition now includes unchanged [original offline Candidate Matrix #1592](https://github.com/Zennay/Lightup/pull/1592), pinned source commit `393af8a9c7c8a6ff827ce0092ffa2436f5aab061` and its complete six-file `assessment-candidates/` product. Open `assessment-workspace/standalone.html` then **Candidate Matrix**, or open the original `assessment-candidates/standalone.html` directly. Import **2–12 previously completed** compatible canonical cohort comparison JSON files generated from the installed original #1515 comparator. The original app checks baseline and scenario membership consistency, shows the original reported 15-metric tradeoffs and anonymous human casework priorities. It never executes a candidate, chooses a safe model, changes source observations or grants release permission. The original candidate owner and its branch remain untouched.
+
+Use the same central offline entry point for preparing the source files:
+
+```sh
+python3 scripts/lightup_review.py compare /private/BASE.json /private/CANDIDATE-A.json \
+  --cohort --format desk-json --output /private/NEW-candidate-A-review.json
+python3 scripts/lightup_review.py compare /private/BASE.json /private/CANDIDATE-B.json \
+  --cohort --format desk-json --output /private/NEW-candidate-B-review.json
+```
+
+These are **local** source-comparison operations only, producing original unsigned REVIEW_ONLY/HOLD JSON. The Matrix UI imports the files explicitly and does not contact any target or provider. Its visual filters and human planning stages can never substitute for source-owner, security/privacy, consent or CI acceptance.
