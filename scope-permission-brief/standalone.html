@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="referrer" content="no-referrer">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-zErBpTbnbPTJh4jfZ8b8ONze74rcNE2yz0xSrFX84yQ=' 'sha256-3YElSulPng6IagNKFaaAnYHz28eIa5AFzgrUS5+0FcY=' 'sha256-cIhW7AQbuUx/nySMeyEGaGfCkdthJsg3XZKw7T81SCk='; style-src 'sha256-Oh1qcuuxMsMAsrloUOCSvuxx/nPDHr3gWYQWmtj6gWo='; img-src 'none'; connect-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-COQbJZckN2Z+WcBR6VJr61RFcpmrGeyz8kgQdedt6Vw=' 'sha256-3YElSulPng6IagNKFaaAnYHz28eIa5AFzgrUS5+0FcY=' 'sha256-cIhW7AQbuUx/nySMeyEGaGfCkdthJsg3XZKw7T81SCk='; style-src 'sha256-Oh1qcuuxMsMAsrloUOCSvuxx/nPDHr3gWYQWmtj6gWo='; img-src 'none'; connect-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'">
 <title>LightUp · Scope Permission Brief</title>
 <style>
 :root{color-scheme:dark;font:15px/1.55 system-ui,-apple-system,Segoe UI,sans-serif;--bg:#0a1020;--surface:#121e32;--line:#35455d;--muted:#b8c5d8;--mint:#7de5cd;--warn:#eac081;color:#f2f8ff;background:var(--bg)}
@@ -437,8 +437,15 @@ async function importReview(file){
    restored.push(q.status);
   }
   assert(incoming.outstanding_questions===restored.filter(x=>x!=='answered_unverified').length,'Review summary mismatch');
-  // All imported labels remain explicitly unverified. Commit the whole restore only after preflight.
-  // Preserve other-role local work; importing this role never overwrites it.
+  // The imported note cannot silently replace progress already entered by this role.
+  // Other-role statuses are never rewritten.
+  const conflict=questions.some((q,i)=>q.role===incoming.audience&&
+   q.status!=='unanswered'&&q.status!==restored[i]);
+  if(conflict&&!confirm('A different '+incoming.audience+' preparation status is already entered locally. Replace only that role\'s unverified answers?')){
+   $('replyState').textContent='Import cancelled; existing human preparation retained · HOLD';return;
+  }
+  assert(oldEpoch===epoch&&current?.sha256===originalSha,'Original source changed before applying review');
+  // Commit the restored role's statuses together only after full preflight and confirmation.
   questions.forEach((q,i)=>{if(q.role===incoming.audience)q.status=restored[i];});
   document.querySelector('[name="audience"][value="'+incoming.audience+'"]').checked=true;
   render();$('replyState').textContent='Review note matches exact original bytes · imported as unverified preparation only · HOLD';
