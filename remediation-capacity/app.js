@@ -68,6 +68,25 @@
     }
   });
   const input = name => el('settings').elements.namedItem(name).value;
+  function renderWeekAvailability() {
+    const count=Math.min(12,Math.max(1,Number(input('weeks'))||1));
+    const previous=Array.from(el('week-availability').querySelectorAll('input'),x=>x.value);
+    const start=input('start');
+    const startMS=/^\d{4}-\d\d-\d\d$/.test(start) ? Date.parse(start+'T00:00:00Z') : NaN;
+    const grid=el('week-availability');grid.replaceChildren();
+    for(let i=0;i<count;i++) {
+      const label=$('label',undefined,'availability-field');
+      const day=Number.isFinite(startMS)?new Date(startMS+i*7*86400000).toISOString().slice(0,10):'date not set';
+      label.append(document.createTextNode('Week '+(i+1)+' · '+day+' (%)'));
+      const v=document.createElement('input');
+      v.type='number';v.min='0';v.max='100';v.step='1';v.required=true;
+      v.value=previous[i]===undefined?'100':previous[i];
+      v.setAttribute('aria-label','Week '+(i+1)+' availability percentage');
+      label.append(v);grid.append(label);
+    }
+  }
+  el('settings').elements.namedItem('weeks').addEventListener('input',renderWeekAvailability);
+  el('settings').elements.namedItem('start').addEventListener('change',renderWeekAvailability);
   el('settings').addEventListener('submit',event=>{
     event.preventDefault();
     if (!findings) {setFeedback('Load an authorised source export first.',true);return;}
@@ -77,7 +96,8 @@
       lastOptions = {
         start:input('start'),weeks:input('weeks'),engineers:input('engineers'),
         workDays:input('workDays'),hoursPerDay:input('hoursPerDay'),
-        reserve:input('reserve'),hours
+        reserve:input('reserve'),hours,
+        weekAvailability:Array.from(el('week-availability').querySelectorAll('input'),v=>v.value)
       };
       result = engine.plan(findings,lastOptions);
       clearHistory();
@@ -111,12 +131,12 @@
         $('span',week.assigned+' / '+week.capacity+' h'));
       const track=$('div',undefined,'track');
       track.setAttribute('role','meter');track.setAttribute('aria-valuemin','0');
-      track.setAttribute('aria-valuemax',String(week.capacity));
+      track.setAttribute('aria-valuemax',String(Math.max(week.capacity,1)));
       track.setAttribute('aria-valuenow',String(week.assigned));
       track.setAttribute('aria-label','Week '+week.week+' allocated hours');
-      const fill=$('div',undefined,'fill');fill.style.width=String(100*week.assigned/week.capacity)+'%';
+      const fill=$('div',undefined,'fill');fill.style.width=String(week.capacity?100*week.assigned/week.capacity:0)+'%';
       track.append(fill);block.append(title,track);
-      block.append($('p',week.portions.length+' planned allocations; '+week.remaining+' h free.','subtle'));
+      block.append($('p',week.availability+'% availability · '+week.portions.length+' planned allocations; '+week.remaining+' h free.','subtle'));
       weekly.append(block);
     }
     const rows=el('allocations');rows.replaceChildren();
@@ -268,4 +288,5 @@
   el('settings').elements.namedItem('start').value = [
     now.getFullYear(),String(now.getMonth()+1).padStart(2,'0'),String(now.getDate()).padStart(2,'0')
   ].join('-');
+  renderWeekAvailability();
 })();
