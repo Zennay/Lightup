@@ -98,8 +98,16 @@
     strictArray(o.requested_assets,"Assets",80);
     strictArray(o.excluded_assets,"Exclusions",80);
     assert(o.requested_assets.length>0,"Een concept zonder voorgestelde assets kan niet worden geregistreerd.");
-    if (o.proposed_activities !== undefined) strictArray(o.proposed_activities,"Activities",25,150);
-    if (o.proposed_window_local !== undefined) assert(isPlain(o.proposed_window_local),"Ongeldige geplande tijd.");
+    assert(isPlain(o.proposed_activities) &&
+      Object.keys(o.proposed_activities).length===3 &&
+      ["passive_analysis","configuration_review","private_lab_network_checks"].every(k=>typeof o.proposed_activities[k]==="boolean"),
+      "Ongeldig Studio-v1 activiteitenobject.");
+    const immutableDenials=["authorization","client_consent","operator_consent","grant","execution","revocation_checked"];
+    assert(immutableDenials.every(k=>Object.hasOwn(o,k) && o[k]===false),
+      "Studio-concept met ontbrekende of afwijkende autorisatie-/consentstatus geweigerd.");
+    assert(isPlain(o.proposed_window_local)&&
+      ["start","end"].every(k=>o.proposed_window_local[k]===null || typeof o.proposed_window_local[k]==="string"),
+      "Ongeldige lokale planning.");
     const forbidden = ["grant_id","access_token","password","session_token","approved","authorized","consent","signature","execution_permit"];
     const scan = (x,depth=0) => {
       assert(depth<=24,"Concept te diep genest.");
@@ -114,7 +122,12 @@
       assets:o.requested_assets.map(x=>x.toLowerCase().trim()),
       excluded:o.excluded_assets.map(x=>x.toLowerCase().trim()),
       risk:o.requested_risk, mode:o.requested_mode,
-      hasWindow: !!o.proposed_window_local && Object.values(o.proposed_window_local).some(x=>typeof x==="string"&&x.trim()!=="")
+      hasWindow: isPlain(o.proposed_window_utc) && o.proposed_window_utc.status==="resolved" &&
+        typeof o.proposed_window_utc.start==="string" &&
+        typeof o.proposed_window_utc.end==="string" &&
+        Number.isFinite(Date.parse(o.proposed_window_utc.start)) &&
+        Number.isFinite(Date.parse(o.proposed_window_utc.end)) &&
+        Date.parse(o.proposed_window_utc.end)>Date.parse(o.proposed_window_utc.start)
     };
   }
   function newRecord(sha,source) {
