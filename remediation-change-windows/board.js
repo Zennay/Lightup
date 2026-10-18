@@ -166,6 +166,15 @@ function pastDue(c){
  return c.due_date<new Date().toISOString().slice(0,10);
 }
 function caseBlocked(c){return Boolean(c&&(c.status==='blocked'||c.blocker.trim()));}
+
+function windowAfterHumanDue(f){
+ if(!state?.casework)return false;
+ const c=state.casework.get(f.finding_id),slot=state.assignments.get(f.finding_id)||0;
+ if(!c?.due_date||['completed','deferred'].includes(c.status)||!slot)return false;
+ const proposed=$('date'+(slot-1)).value;
+ return Boolean(proposed&&proposed.slice(0,10)>c.due_date);
+}
+
 function caseLabel(c){return c?(c.owner||'Unassigned owner')+' · '+c.status+(c.due_date?' · '+c.due_date+' UTC':' · no due date'):'No original Casework attached';}
 function privateCaseBrief(){
  if(!state?.casework)fail('Import an original exact-source Casework draft first.');
@@ -212,6 +221,7 @@ function readiness(f,r){
   const c=state.casework.get(f.finding_id);
   if(caseBlocked(c))concerns.push('Original local Casework blocked');
   if(pastDue(c))concerns.push('Local Casework planning date passed');
+  if(windowAfterHumanDue(f))concerns.push('Proposed human slot AFTER local Casework due date');
   if(c&&!c.owner.trim())concerns.push('Original Casework owner missing');
  }
  if(f.retest_status==='regression')concerns.push('Source reports regression');
@@ -236,6 +246,7 @@ function visibleFinding(f,r){
   const c=state.casework.get(f.finding_id);
   if(caseFilter==='blocked'&&!caseBlocked(c))return false;
   if(caseFilter==='overdue'&&!pastDue(c))return false;
+  if(caseFilter==='window-late'&&!windowAfterHumanDue(f))return false;
   if(caseFilter==='no-owner'&&c?.owner.trim())return false;
   if(caseFilter==='open'&&['completed','deferred'].includes(c?.status))return false;
  }
@@ -286,13 +297,15 @@ function render(){
  $('unassigned').textContent=unassigned;$('holds').textContent=holds;
  $('caseBlocked').textContent=state.casework?[...state.casework.values()].filter(caseBlocked).length:'—';
  $('caseOverdue').textContent=state.casework?[...state.casework.values()].filter(pastDue).length:'—';
+ $('lateSlot').textContent=state.casework?src.filter(windowAfterHumanDue).length:'—';
  const board=$('summary');board.replaceChildren();
  try{
   const windows=currentWindows();for(let i=0;i<HOURS;i++){
    const assigned=src.filter(f=>state.assignments.get(f.finding_id)===i+1);
    const risky=assigned.filter(f=>{const r=state.review.get(f.finding_id);return r.stage==='missing'||r.stage==='needs_changes'||EVIDENCE.slice(0,4).some(k=>!r.evidence[k]);}).length;
    const card=el('div');const head=el('h3','Window '+(i+1)+(windows[i]?' · '+windows[i].label:' · not scheduled'));
-   const detail=el('p',assigned.length+' source finding(s); '+risky+' human-reference HOLD(s); '+assigned.filter(f=>['critical','high'].includes(f.severity)).length+' critical/high. '+(windows[i]?windows[i].start_utc+' / '+windows[i].minutes+' min':'No UTC time.'));
+   const late=assigned.filter(windowAfterHumanDue).length,blocked=assigned.filter(f=>caseBlocked(state.casework?.get(f.finding_id))).length;
+   const detail=el('p',assigned.length+' source finding(s); '+risky+' human-reference HOLD(s); '+assigned.filter(f=>['critical','high'].includes(f.severity)).length+' critical/high; '+blocked+' locally blocked; '+late+' after local due date. '+(windows[i]?windows[i].start_utc+' / '+windows[i].minutes+' min':'No UTC time.'));
    card.append(head,detail);board.appendChild(card);
   }
  }catch(e){const warn=el('p',e.message);warn.className='hold';board.appendChild(warn);}
@@ -312,7 +325,7 @@ function purgeRenderedPrivateData(){
  }
  for(const id of ['filter','caseFilter','humanFilter','bulkWindow'])$(id).value=$(id).options[0].value;
  for(const id of ['total','urgent','unassigned','holds'])$(id).textContent='0';
- $('caseBlocked').textContent='—';$('caseOverdue').textContent='—';
+ $('caseBlocked').textContent='—';$('caseOverdue').textContent='—';$('lateSlot').textContent='—';
 }
 function originalInputChanged(){
  purgeRenderedPrivateData();$('same').checked=false;
@@ -355,7 +368,10 @@ function stats(windows){
   const findings=state.source.filter(f=>state.assignments.get(f.finding_id)===i+1);
   const holds=findings.filter(f=>{const r=state.review.get(f.finding_id);
    return r.stage==='missing'||r.stage==='needs_changes'||EVIDENCE.slice(0,4).some(k=>!r.evidence[k]);}).length;
-  return {slot:i+1,window:w,findings:findings.length,critical_high:findings.filter(f=>['critical','high'].includes(f.severity)).length,local_review_holds:holds};
+  return {slot:i+1,window:w,findings:findings.length,critical_high:findings.filter(f=>['critical','high'].includes(f.severity)).length,local_review_holds:holds,
+   local_casework_blocked:findings.filter(f=>caseBlocked(state.casework?.get(f.finding_id))).length,
+   locally_past_due:findings.filter(f=>pastDue(state.casework?.get(f.finding_id))).length,
+   proposed_after_local_due:findings.filter(windowAfterHumanDue).length};
  });
 }
 
@@ -392,7 +408,10 @@ async function resumePlan(){
  const restoredWindows=[],scheduled=[];
  for(let i=0;i<HOURS;i++){
   const entry=raw.windows[i];
-  keys(entry,['slot','window','findings','critical_high','local_review_holds']);
+  keys(entry,['slot','window','findings','critical_high','local_review_holds','local_casework_blocked','locally_past_due','proposed_after_local_due'],
+   ['slot','window','findings','critical_high','local_review_holds']);
+  for(const k of ['local_casework_blocked','locally_past_due','proposed_after_local_due'])
+   if(entry[k]!==undefined&&(!Number.isSafeInteger(entry[k])||entry[k]<0||entry[k]>350))fail('Malformed original Casework aggregate count.');
   if(entry.slot!==i+1||!['findings','critical_high','local_review_holds'].every(k=>Number.isSafeInteger(entry[k])&&entry[k]>=0&&entry[k]<=350))
    fail('Invalid private window summary.');
   const w=entry.window;
@@ -446,7 +465,13 @@ async function resumePlan(){
   const entry=raw.windows[i];
   if(entry.findings!==findings.length||
      entry.critical_high!==findings.filter(f=>['critical','high'].includes(f.severity)).length||
-     entry.local_review_holds!==holds)
+     entry.local_review_holds!==holds||
+     (entry.local_casework_blocked!==undefined&&entry.local_casework_blocked!==findings.filter(f=>caseBlocked(state.casework?.get(f.finding_id))).length)||
+     (entry.locally_past_due!==undefined&&entry.locally_past_due!==findings.filter(f=>pastDue(state.casework?.get(f.finding_id))).length)||
+     (entry.proposed_after_local_due!==undefined&&entry.proposed_after_local_due!==findings.filter(f=>{
+      const c=state.casework?.get(f.finding_id),slot=imported.get(f.finding_id),w=slot&&restoredWindows[slot-1];
+      return Boolean(c?.due_date&&w&&!['completed','deferred'].includes(c.status)&&w.start_utc.slice(0,10)>c.due_date);
+     }).length))
    fail('Private window aggregate contradicts original source/review records.');
  }
  /* All admissions are complete; apply the whole human draft in one step. */
@@ -561,8 +586,8 @@ function calendarExport(){
 }
 function aggregateExport(){
  const windows=plan();
- const data=['window_slot,proposed_start_utc,minutes,source_findings,critical_high,local_reference_holds'];
- for(const row of stats(windows))data.push([row.slot,row.window?.start_utc||'',row.window?.minutes||0,row.findings,row.critical_high,row.local_review_holds].join(','));
+ const data=['window_slot,proposed_start_utc,minutes,source_findings,critical_high,local_reference_holds,locally_blocked_casework,locally_past_due,proposed_window_after_local_due'];
+ for(const row of stats(windows))data.push([row.slot,row.window?.start_utc||'',row.window?.minutes||0,row.findings,row.critical_high,row.local_review_holds,row.local_casework_blocked,row.locally_past_due,row.proposed_after_local_due].join(','));
  output('lightup-aggregate-human-windows.csv',data.join('\r\n')+'\r\n','text/csv');
 }
 function forget(){
