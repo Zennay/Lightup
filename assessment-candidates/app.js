@@ -22,7 +22,7 @@
   const fixedFlags=()=>({authorized:false,consent_verified:false,dispatch_allowed:false,release_allowed:false});
   const nice=x=>x.replaceAll("_"," ");
   const format=x=>Number.isInteger(x)?String(x):Number(x).toPrecision(5).replace(/\.?0+($|e)/,"$1");
-  let reports=[],demo=false,selectedCase="",settings=null,sourceHashes=[];
+  let reports=[],demo=false,selectedCase="",settings=null,sourceHashes=[],sourceMeta=[];
   const DISCUSSION_STAGES=["needs_review","in_discussion","documented"];
   const DISCUSSION_ROUTES=["unrouted","scope","findings","evidence","operations"];
   const TOPICS={scope:["scope_violations","policy_violations"],
@@ -320,6 +320,49 @@
           String(r.i+1).padStart(2,"0")+"</button>",
         r.count,r.review.stage.replaceAll("_"," "),r.review.route.replaceAll("_"," ")]));
   }
+  function renderSourceManifest(){
+    const root=$("sourceManifest");
+    root.replaceChildren();
+    if(!reports.length||demo||sourceMeta.length!==reports.length){
+      root.textContent=demo?"Fictional source snapshots: invented, no original file provenance.":
+        "Original source fingerprints and optional private aliases appear after real import.";
+      return;
+    }
+    const table=document.createElement("table"),head=document.createElement("thead");
+    const header=document.createElement("tr");
+    for(const name of ["Slot","Input size","Local source-byte SHA-256 prefix",
+      "Private alias (never in public exports)"]){
+      const th=document.createElement("th");th.textContent=name;header.append(th);
+    }
+    head.append(header);table.append(head);
+    const body=document.createElement("tbody");
+    sourceMeta.forEach((entry,i)=>{
+      const row=document.createElement("tr");
+      const parts=[String(i+1),String(entry.bytes)+" bytes",
+        entry.sha?entry.sha.slice(0,12)+"… (unsigned)":"Hash unavailable"];
+      for(const val of parts){const td=document.createElement("td");
+        td.textContent=val;row.append(td);}
+      const td=document.createElement("td"),input=document.createElement("input");
+      input.type="text";input.maxLength=40;input.value=entry.alias||"";
+      input.placeholder="Optional local label";
+      input.setAttribute("aria-label","Private alias for unverified source candidate "+(i+1));
+      input.addEventListener("change",()=>{
+        const value=input.value.trim();
+        if(value.length>40||!(/^[\x20-\x7e]*$/.test(value))){
+          input.value=entry.alias||"";return;
+        }
+        entry.alias=value;input.value=value;
+        const label=$("cardLabel"+i);
+        if(label)label.textContent=value?" · "+value:"";
+      });
+      td.append(input);row.append(td);body.append(row);
+    });
+    table.append(body);root.append(table);
+    sourceMeta.forEach((entry,i)=>{
+      const label=$("cardLabel"+i);
+      if(label)label.textContent=entry.alias?" · "+entry.alias:"";
+    });
+  }
   function render(){
     const active=reports.length>0,stats=reports.map(aggregates);
     $("sourceKind").textContent=!active?"No data":demo?"FICTIONAL DEMO ONLY":"UNVERIFIED LAB SOURCES";
@@ -330,6 +373,7 @@
     $("saveDraft").disabled=!(active&&!demo&&sourceHashes.length===reports.length);
     $("draftFile").disabled=$("saveDraft").disabled;
     if(!active){
+      renderSourceManifest();
       $("cards").innerHTML='<p class="empty">Import reports to compare lab candidates.</p>';
       drawQueue();
       for(const id of ["thresholds","frontier","caseDetail","metricBoard","pairMetrics","pairChurn","pairChurnSummary"])$(id).innerHTML="";
@@ -337,7 +381,8 @@
       return;
     }
     $("cards").innerHTML=stats.map((s,i)=>
-      '<article class="card"><h3>Candidate '+(i+1)+'</h3><p class="'+
+      '<article class="card"><h3>Candidate '+(i+1)+
+      '<small id="cardLabel'+i+'"></small></h3><p class="'+
       (s.affected?"danger":"warn")+'">'+reports[i].sourceStatus+
       " · "+s.affected+" source-regressed cases</p>"+
       '<p class="big">'+s.regressionEvents+' <small>metric regressions</small></p>'+
@@ -345,6 +390,7 @@
       "<p>Mean evidence quality: "+format(s.quality)+"</p>"+
       "<p>Runtime: "+format(s.runtime)+" sec · Cost: $"+format(s.cost)+"</p>"+
       "<p class='footnote'>No safety approval; separate human review required.</p></article>").join("");
+    renderSourceManifest();
     renderMetricBoard(stats);
     drawQueue();
     let t;try{t=threshold();settings=t;$("thresholdMessage").textContent="Review suggestions recomputed locally; no source metrics changed.";}
@@ -388,17 +434,18 @@
   async function importFiles(files){
     try{
       assert(files.length>=2&&files.length<=12);
-      const next=[],hashes=[];
+      const next=[],hashes=[],meta=[];
       for(const file of files){
         assert(file.size>0&&file.size<=262144);
         const bytes=await file.arrayBuffer();
         assert(bytes.byteLength>0&&bytes.byteLength<=262144);
         const source=new TextDecoder("utf-8",{fatal:true}).decode(bytes);
-        hashes.push(await hashBytes(bytes));
+        const sha=await hashBytes(bytes);hashes.push(sha);
+        meta.push({bytes:bytes.byteLength,sha,alias:""});
         next.push(decodeReport(strictJSON(source)));
       }
       compatible(next);discussions.clear();batchUndo=null;queueFocus=0;$("queueMessage").textContent="";
-      reports=next;sourceHashes=hashes.every(h=>typeof h==="string")?hashes:[];demo=false;selectedCase="";
+      reports=next;sourceMeta=meta;sourceHashes=hashes.every(h=>typeof h==="string")?hashes:[];demo=false;selectedCase="";
       $("draftMessage").textContent=sourceHashes.length?"Private restore available only for identical source bytes.":"WebCrypto unavailable: private draft save/restore disabled.";
       setStatus("Accepted "+next.length+" compatible, unverified lab comparison files. All remain non-authorizing.");
       render();
@@ -417,7 +464,8 @@
       const hash=await hashBytes(bytes);
       const newHashes=sourceHashes.length===reports.length&&hash?
         [...sourceHashes,hash]:[];
-      reports=newReports;sourceHashes=newHashes;batchUndo=null;
+      reports=newReports;sourceHashes=newHashes;
+      sourceMeta=[...sourceMeta,{bytes:bytes.byteLength,sha:hash,alias:""}];batchUndo=null;
       $("draftMessage").textContent=sourceHashes.length?
         "Source set changed: earlier private drafts no longer bind; save new preferences.":
         "Private draft save disabled: original hashes unavailable.";
@@ -455,7 +503,7 @@
   }
   function demoLoad(){
     try{const next=fictional().map(decodeReport);compatible(next);discussions.clear();batchUndo=null;queueFocus=0;$("queueMessage").textContent="";
-      reports=next;sourceHashes=[];demo=true;
+      reports=next;sourceMeta=[];sourceHashes=[];demo=true;
       $("draftMessage").textContent="Private source-bound drafts are unavailable for fictional demo.";
       selectedCase="";setStatus("FICTIONAL DEMO ONLY: four invented candidates; no real assessments or permissions.");render();
     }catch(_){setStatus("HOLD: demonstration source could not be prepared.",true);}
@@ -584,15 +632,18 @@
     download("lightup-human-candidate-brief-REVIEW-ONLY.html",html,"text/html");
   }
   const DRAFT_SCHEMA_V1="lightup.lab_candidate_private_preferences.v1";
-  const DRAFT_SCHEMA="lightup.lab_candidate_private_preferences.v2";
+  const DRAFT_SCHEMA_V2="lightup.lab_candidate_private_preferences.v2";
+  const DRAFT_SCHEMA="lightup.lab_candidate_private_preferences.v3";
   const PREF_KEYS=["maxScope","maxPolicy","minQuality","minCoverage","maxRuntime","maxCost"];
   const DIM_KEYS=["dimQuality","dimCoverage","dimRuntime","dimCost"];
   function checkDraft(x){
     assert(!demo&&reports.length>=2&&sourceHashes.length===reports.length);
-    const v2=x?.schema===DRAFT_SCHEMA;
-    assert((v2||x?.schema===DRAFT_SCHEMA_V1)&&
+    const v3=x?.schema===DRAFT_SCHEMA,v2=x?.schema===DRAFT_SCHEMA_V2;
+    const withDiscussions=v2||v3;
+    assert((withDiscussions||x?.schema===DRAFT_SCHEMA_V1)&&
       exact(x,["schema","private_unsigned","source_sha256","thresholds",
-        "dimensions","focus",...(v2?["discussions"]:[]),...AUTH])&&
+        "dimensions","focus",...(withDiscussions?["discussions"]:[]),
+        ...(v3?["source_aliases"]:[]),...AUTH])&&
       x.private_unsigned===true&&AUTH.every(k=>x[k]===false));
     assert(Array.isArray(x.source_sha256)&&x.source_sha256.length===sourceHashes.length&&
       x.source_sha256.every((h,i)=>typeof h==="string"&&
@@ -611,7 +662,7 @@
       f.pairA>=0&&f.pairB>=0&&f.pairA<reports.length&&f.pairB<reports.length&&
       f.pairA!==f.pairB&&Number.isSafeInteger(f.caseIndex)&&
       f.caseIndex>=0&&f.caseIndex<reports[0].cases.size&&NAMES.includes(f.metric));
-    if(v2){
+    if(withDiscussions){
       assert(Array.isArray(x.discussions)&&x.discussions.length<=reports[0].cases.size);
       const ordinals=new Set();
       for(const row of x.discussions){
@@ -623,13 +674,17 @@
         ordinals.add(row.ordinal);
       }
     }
+    if(v3)assert(Array.isArray(x.source_aliases)&&
+      x.source_aliases.length===sourceHashes.length&&
+      x.source_aliases.every(label=>typeof label==="string"&&label.length<=40&&
+        label===label.trim()&&/^[\x20-\x7e]*$/.test(label)));
     return x;
   }
   function saveDraft(){
     if(demo||sourceHashes.length!==reports.length||!settings)return;
     const ids=[...reports[0].cases.keys()].sort();
     const obj={schema:DRAFT_SCHEMA,private_unsigned:true,source_sha256:[...sourceHashes],
-      thresholds:{...settings},
+      source_aliases:sourceMeta.map(e=>e.alias||""),thresholds:{...settings},
       dimensions:Object.fromEntries(DIM_KEYS.map(k=>[k,$(k).checked])),
       focus:{pairA:Number($("pairA").value),pairB:Number($("pairB").value),
         caseIndex:Math.max(0,ids.indexOf(selectedCase)),metric:$("metricSelect").value},
@@ -652,6 +707,7 @@
       for(const row of x.discussions||[])next.set(ids[row.ordinal-1],
         {route:row.route,stage:row.stage});
       discussions=next;batchUndo=null;queueFocus=x.focus.caseIndex;
+      sourceMeta.forEach((entry,i)=>entry.alias=x.source_aliases?.[i]||"");
       PREF_KEYS.forEach(k=>$(k).value=String(x.thresholds[k]));
       DIM_KEYS.forEach(k=>$(k).checked=x.dimensions[k]);
       $("pairA").value=String(x.focus.pairA);
@@ -663,7 +719,7 @@
     }catch(_){$("draftMessage").textContent="HOLD: changed, malformed or incompatible PRIVATE draft. Workspace unchanged.";}
   }
   function forget(){
-    reports=[];sourceHashes=[];demo=false;selectedCase="";settings=null;
+    reports=[];sourceMeta=[];sourceHashes=[];demo=false;selectedCase="";settings=null;
     discussions.clear();batchUndo=null;queueFocus=0;$("queueMessage").textContent="";
     $("draftFile").value="";$("draftMessage").textContent="";
     const defaults={maxScope:0,maxPolicy:0,minQuality:0.75,minCoverage:0,
