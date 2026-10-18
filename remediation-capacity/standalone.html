@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-7uVWP+8F4rK20N4waCez9ECs4twj73TKRFULKGnKH8E=' 'sha256-k063sX7gui1MHh7KSFsfBDpeNsiUePvLBCuTQLOmh0c=' 'sha256-wpPFZOyxFDTkVCPSRLe+ulmbav4+u8hRIYgukbiqEiU=' 'sha256-9Sgthab0koAje99ePkZAIFYEsTwR6GkdrKmO0uc06dM=' 'sha256-EZP2PxcLhbPw+boqUtGguuh3w74QN6cTv78sskvqSes='; style-src 'sha256-x11eSo+JLC9F9DQar7xmvHakUfjRSCwlFZtkHAZnECI='; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-7uVWP+8F4rK20N4waCez9ECs4twj73TKRFULKGnKH8E=' 'sha256-k063sX7gui1MHh7KSFsfBDpeNsiUePvLBCuTQLOmh0c=' 'sha256-wpPFZOyxFDTkVCPSRLe+ulmbav4+u8hRIYgukbiqEiU=' 'sha256-0gJsPkgQ+hyGI3c+7pxUCr+zU+w9HIFUW12Kgef7hps=' 'sha256-dtUGpkwwlFHzWzWQYFLNH/ceYEPkYYwb7g1gJk5pxU8='; style-src 'sha256-D+ag+T3avNvZ/neCawZ63+JXdkVwq1BKmCqYv7qQlu8='; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <title>LightUp | Remediation Capacity Studio — offline draft</title>
 <style>:root{color-scheme:dark;--bg:#0a1119;--panel:#111e29;--edge:#304451;--text:#edf5f7;--muted:#a4bac8;--teal:#7ee4bd;--amber:#f9d48a;--blue:#7cb8ff}
 *{box-sizing:border-box}
@@ -68,6 +68,8 @@ footer{padding:22px 0 60px}
 .milestone-action{display:flex;align-items:end;padding-bottom:2px}.milestone-overview{border-left:3px solid var(--teal);padding:12px 18px;margin:18px 0;background:#0b1922;border-radius:5px}.milestone-overview strong{color:var(--teal)}.milestone-overview p{margin:.6em 0}#milestone-export{margin:5px 0 12px}@media print{#milestone-calculate,#milestone-export,.milestone-action{display:none!important}}
 
 #casework-risk-table td{font-variant-numeric:tabular-nums}#casework-risk-table td:first-child{text-transform:capitalize;font-weight:700}#casework-risk-table .outstanding-row td{border-color:#7b7651}.panel:has(#casework-review-title){border-color:#52696d}#casework-status-cards{margin:18px 0}#casework-summary p{max-width:85ch}@media print{#casework-packet,#review-casework,#clear-casework,#casework-ack,#export-casework-summary{display:none!important}.panel:has(#casework-review-title){break-inside:auto}}
+
+.triage-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:15px 0}.triage-card{border:1px solid #766f48;border-radius:10px;padding:14px;background:#1f251f}.triage-card strong{color:var(--amber);font-size:.93rem}.triage-card p{margin:.5em 0;font-size:.87rem;color:var(--muted)}@media(max-width:600px){.triage-grid{grid-template-columns:1fr}}@media print{.triage-grid{display:block}.triage-card{break-inside:avoid;background:white;color:#111;border:1px solid #999}.triage-card strong,.triage-card p{color:#111}}
 </style>
 
 
@@ -151,8 +153,12 @@ footer{padding:22px 0 60px}
   <div id="casework-summary" hidden>
     <div id="casework-status-cards" class="stats"></div>
     <div class="table-scroll"><table><thead><tr><th scope="col">Severity</th><th scope="col">Source cases</th><th scope="col">Blocked</th><th scope="col">Unlabelled owners</th><th scope="col">Undated</th><th scope="col">Human retest coordination</th><th scope="col">Self-reported complete (unverified)</th></tr></thead><tbody id="casework-risk-table"></tbody></table></div>
+    <h3>Source-linked human coordination questions</h3>
+    <p class="subtle">Only aggregate, source-derived counts are displayed. Suggested conversations are not actions, grants, assignments or a verified retest.</p>
+    <div id="casework-triage" class="triage-grid"></div>
     <p class="subtle">Casework “completed” is a self-reported human work stage, <strong>never proof of a fix or authorised retest</strong>. Casework imports never change the current capacity plan or grant execution rights.</p>
     <button id="export-casework-summary" type="button" class="secondary">Export aggregate Casework discussion</button>
+    <button id="export-casework-triage" type="button" class="secondary">Export aggregate discussion register CSV</button>
   </div>
 </section>
 <section id="results" hidden aria-labelledby="results-title">
@@ -975,6 +981,10 @@ global.LightUpCasework=Object.freeze({compareSource,reconcileSource,parseCSV,nor
       deferred:0,locally_completed_unverified:0
     }]));
     let assigned=0,withDueDate=0,blockedWithNotes=0;
+    const advisories={critical_high_blocked:0,critical_high_unowned:0,
+      critical_high_undated:0,source_regression_locally_completed:0,
+      source_regression_deferred:0,retest_coordination_without_owner:0,
+      blocked_without_note:0};
     for(const row of loaded.cases) {
       const originalRow=reference.get(row.finding_id);
       if(!originalRow)throw Error('Unknown Casework source ID');
@@ -991,6 +1001,17 @@ global.LightUpCasework=Object.freeze({compareSource,reconcileSource,parseCSV,nor
       if(row.status==='ready_for_retest')segment.ready_for_retest++;
       if(row.status==='deferred')segment.deferred++;
       if(row.status==='completed')segment.locally_completed_unverified++;
+      const urgent=originalRow.severity==='critical'||originalRow.severity==='high';
+      if(urgent&&row.status==='blocked')advisories.critical_high_blocked++;
+      if(urgent&&!row.owner.trim())advisories.critical_high_unowned++;
+      if(urgent&&!row.due_date)advisories.critical_high_undated++;
+      if(originalRow.retest_status==='regression'&&row.status==='completed')
+        advisories.source_regression_locally_completed++;
+      if(originalRow.retest_status==='regression'&&row.status==='deferred')
+        advisories.source_regression_deferred++;
+      if(row.status==='ready_for_retest'&&!row.owner.trim())
+        advisories.retest_coordination_without_owner++;
+      if(row.status==='blocked'&&!row.blocker.trim())advisories.blocked_without_note++;
     }
     // Discard all source identifiers, case notes, owners and expiry metadata;
     // the result is only aggregate, untrusted human self-report.
@@ -1002,7 +1023,8 @@ global.LightUpCasework=Object.freeze({compareSource,reconcileSource,parseCSV,nor
       matched_original_source_locally:true,client_engagement_authenticated:false,
       source_records:current.length,assigned_owner_labels:assigned,
       source_casework_due_dates:withDueDate,blocked_with_local_notes:blockedWithNotes,
-      source_casework_statuses:statuses,severity_statuses:severity
+      source_casework_statuses:statuses,severity_statuses:severity,
+      human_review_flags:advisories
     });
   }
   root.LightUpCapacityCasework=Object.freeze({review,MAX_BYTES});
@@ -1055,6 +1077,7 @@ global.LightUpCasework=Object.freeze({compareSource,reconcileSource,parseCSV,nor
     el('casework-summary').hidden=true;
     el('casework-status-cards').replaceChildren();
     el('casework-risk-table').replaceChildren();
+    el('casework-triage').replaceChildren();
     el('casework-feedback').textContent='No Casework record reviewed.';
   }
   el('clear-casework').addEventListener('click',clearCasework);
@@ -1440,6 +1463,20 @@ global.LightUpCasework=Object.freeze({compareSource,reconcileSource,parseCSV,nor
   });
 
 
+  const CASEWORK_TRIAGE=Object.freeze([
+    ['critical_high_blocked','Urgent cases blocked','Discuss recorded blockers with an independently authorised remediation owner.','urgent'],
+    ['critical_high_unowned','Urgent cases without local owner labels','Obtain a human-only proposal for an accountable remediation contact.','urgent'],
+    ['critical_high_undated','Urgent cases without proposed dates','Discuss a realistic, not yet committed remediation window.','urgent'],
+    ['source_regression_locally_completed','Source regressions locally labelled completed','Resolve original source vs self-reported progress conflict; do not infer a fix.','urgent'],
+    ['source_regression_deferred','Source regressions locally deferred','Discuss deferred regression risk and independently approved next steps.','urgent'],
+    ['retest_coordination_without_owner','Proposed retest coordination lacks an owner label','Agree who will request separate real retest authorisation.','review'],
+    ['blocked_without_note','Locally blocked cases without explanatory notes','Request private human clarification before treating estimates as achievable.','review']
+  ]);
+  function caseworkTriageRows(summary){
+    return CASEWORK_TRIAGE.map(([code,label,nextStep,priority])=>({
+      code,label,nextStep,priority,count:summary.human_review_flags[code]||0
+    })).filter(item=>item.count>0);
+  }
   function showCaseworkSummary(summary) {
     const cards=el('casework-status-cards');
     cards.replaceChildren();
@@ -1463,6 +1500,14 @@ global.LightUpCasework=Object.freeze({compareSource,reconcileSource,parseCSV,nor
       for(const value of [severity,v.total,v.blocked,v.missing_owner,
         v.undated,v.ready_for_retest,v.locally_completed_unverified])row.append($('td',value));
       rows.append(row);
+    }
+    const triage=el('casework-triage');triage.replaceChildren();
+    const todo=caseworkTriageRows(summary);
+    if(!todo.length)triage.append($('p','No source-linked local planning contradictions were reported in these categories. This is not verification of repairs, permission or release.','subtle'));
+    for(const item of todo){
+      const card=$('article',undefined,'triage-card');
+      card.append($('strong',item.count+' · '+item.label),$('p',item.nextStep));
+      triage.append(card);
     }
     el('casework-summary').hidden=false;
   }
@@ -1504,6 +1549,21 @@ global.LightUpCasework=Object.freeze({compareSource,reconcileSource,parseCSV,nor
     download('lightup-capacity-casework-review.json',
       JSON.stringify(reviewedCasework,null,2)+'\n','application/json;charset=utf-8');
     setFeedback('Only group-level unsigned Casework notes exported.');
+  });
+
+
+  el('export-casework-triage').addEventListener('click',()=>{
+    if(!reviewedCasework||!el('casework-ack').checked)return;
+    if(!window.confirm('Export the UNASSIGNED INTERNAL human discussion suggestions as aggregate counts only? This does not create a work order, retest, finding closure or permission.'))return;
+    const quote=x=>'"'+String(x).replace(/"/g,'""')+'"';
+    const columns=['severity','reason_code','count','suggested_human_discussion','authority'];
+    const lines=[columns.map(quote).join(',')];
+    for(const row of caseworkTriageRows(reviewedCasework)){
+      lines.push([row.priority,row.code,row.count,row.nextStep,'REVIEW_ONLY'].map(quote).join(','));
+    }
+    download('lightup-casework-human-discussion.csv',lines.join('\r\n')+'\r\n',
+      'text/csv;charset=utf-8');
+    setFeedback('Private, static-label aggregate discussion register exported. No cases or identities included.');
   });
 
   // Source-bound, user-controlled resume: no browser persistence or implicit restore.
