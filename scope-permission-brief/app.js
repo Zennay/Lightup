@@ -24,7 +24,8 @@ const questionCatalog={
  network_activity:['client','Network interaction expectations','Clarify that proposed lab checks cannot be performed against public or unapproved targets.']
 };
 function hold(message){
- epoch++;current=null;questions=[];$('workspace').hidden=true;$('export').disabled=true;$('print').disabled=true;
+ epoch++;current=null;questions=[];$('workspace').hidden=true;$('export').disabled=true;$('textExport').disabled=true;$('print').disabled=true;
+ $('handoff').textContent='';$('replyState').textContent='No review note imported.';
  $('sourceState').textContent=message+' · HOLD';
 }
 function assert(condition,message){if(!condition)throw Error(message);}
@@ -192,7 +193,68 @@ function refreshExport(){
  const model=exportModel();if(!model)return;
  $('openCount').textContent=String(model.outstanding_questions);
  $('preview').textContent=JSON.stringify(model,null,2);
+ $('handoff').textContent=handoffText(model);
  $('receipt').textContent='Unsigned SHA-256 of original local bytes: '+current.sha256+' · REFERENCE ONLY, NOT A SIGNATURE';
+}
+function handoffText(model){
+ const role=model.audience==='client'?'Client':'Operator';
+ const unresolved=questions.filter(q=>q.status!=='answered_unverified' && q.role===model.audience);
+ return [
+  'LIGHTUP / '+role.toUpperCase()+' PREPARATION / REVIEW_ONLY_HOLD',
+  'This note is not consent, approval, a grant, execution or release.',
+  'Original source SHA-256: '+model.source_sha256,
+  'Requested mode: '+model.requested_mode+' · Risk: '+model.requested_risk+' / 4',
+  'Proposed asset counts: '+model.proposed_assets_count+' · Exclusions: '+model.excluded_assets_count,
+  'Planning window: '+model.window_status+' (not approved)',
+  '',
+  'Open '+role.toLowerCase()+' clarification questions ('+unresolved.length+'):',
+  ...unresolved.map((q,i)=>(i+1)+'. '+questionCatalog[q.code][1]+' ['+q.status+']'),
+  '',
+  'Every identity, consent, grant, risk approval, revocation, scan, deploy and release flag is FALSE.',
+  'Please use independent authenticated channels for any actual decision.'
+ ].join('\\n').replaceAll('\\n','\n');
+}
+function downloadText(){
+ const model=exportModel();if(!model)return;
+ const blob=new Blob([handoffText(model)+'\n'],{type:'text/plain;charset=utf-8'});
+ const url=URL.createObjectURL(blob),a=document.createElement('a');
+ a.href=url;a.download='lightup-human-permission-note-HOLD.txt';document.body.append(a);a.click();a.remove();
+ setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+async function importReview(file){
+ if(!current){$('replyState').textContent='Load the original draft first · HOLD';return;}
+ const oldEpoch=epoch,originalSha=current.sha256;
+ try{
+  assert(file&&file.size>0&&file.size<=MAX_BYTES,'Review file size is unsafe');
+  const bytes=await file.arrayBuffer();
+  assert(bytes.byteLength<=MAX_BYTES,'Review too large');
+  const source=new TextDecoder('utf-8',{fatal:true,ignoreBOM:true}).decode(bytes);
+  assert(!source.startsWith('\\ufeff'),'BOM refused');
+  assertUnambiguousJSON(source);
+  const incoming=JSON.parse(source),reference=exportModel();
+  assert(oldEpoch===epoch&&current?.sha256===originalSha,'Original source changed');
+  assert(exactKeys(incoming,Object.keys(reference))&&Object.keys(incoming).length===Object.keys(reference).length,'Unexpected review fields');
+  for(const key of Object.keys(reference)){
+   if(['audience','question_states','outstanding_questions'].includes(key))continue;
+   assert(JSON.stringify(incoming[key])===JSON.stringify(reference[key]),'Review source or flags mismatch');
+  }
+  assert(['client','operator'].includes(incoming.audience),'Unknown audience');
+  assert(Array.isArray(incoming.question_states)&&incoming.question_states.length===questions.length,'Review question mismatch');
+  const restored=[];
+  for(let i=0;i<questions.length;i++){
+   const q=incoming.question_states[i],expected=questions[i];
+   assert(exactKeys(q,['code','role','status'])&&Object.keys(q).length===3,'Unknown question fields');
+   assert(q.code===expected.code&&q.role===expected.role&&statuses.includes(q.status),'Review question changed');
+   restored.push(q.status);
+  }
+  assert(incoming.outstanding_questions===restored.filter(x=>x!=='answered_unverified').length,'Review summary mismatch');
+  // All imported labels remain explicitly unverified. Commit the whole restore only after preflight.
+  questions.forEach((q,i)=>{q.status=restored[i];});
+  document.querySelector('[name="audience"][value="'+incoming.audience+'"]').checked=true;
+  render();$('replyState').textContent='Review note matches exact original bytes · imported as unverified preparation only · HOLD';
+ }catch(_){
+  $('replyState').textContent='Review note rejected: ambiguous, altered or not source-bound · HOLD';
+ }
 }
 function download(){
  const model=exportModel();if(!model)return;
@@ -219,14 +281,16 @@ async function loadFile(file){
   if(token!==epoch)return;
   current={draft,window,sha256};
   questions=questionIds(draft,window).map(code=>({code,role:questionCatalog[code][0],status:'unanswered'}));
-  $('workspace').hidden=false;$('export').disabled=false;$('print').disabled=false;
+  $('workspace').hidden=false;$('export').disabled=false;$('textExport').disabled=false;$('print').disabled=false;
   $('sourceState').textContent='Source loaded · '+draft.requested_assets.length+' proposed assets · REVIEW_ONLY/HOLD';
   render();
  }catch(_){if(token===epoch)hold('Invalid, ambiguous or unsafe Studio draft');}
 }
 $('source').addEventListener('change',event=>loadFile(event.target.files?.[0]));
-$('clear').addEventListener('click',()=>{hold('Source forgotten');$('source').value='';$('preview').textContent='';$('receipt').textContent='';});
+$('clear').addEventListener('click',()=>{hold('Source forgotten');$('source').value='';$('reply').value='';$('preview').textContent='';$('receipt').textContent='';});
 $('export').addEventListener('click',download);
+$('textExport').addEventListener('click',downloadText);
+$('reply').addEventListener('change',event=>importReview(event.target.files?.[0]));
 $('print').addEventListener('click',()=>{if(current)window.print();});
 document.querySelectorAll('[name="audience"]').forEach(el=>el.addEventListener('change',refreshExport));
 })();
