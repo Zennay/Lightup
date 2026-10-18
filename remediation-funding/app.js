@@ -21,6 +21,7 @@ let source=null,forecast=null,settings=null,comparison=null;
 function clearResults(){
  forecast=null;settings=null;comparison=null;el('results').hidden=true;
  el('kpis').replaceChildren();el('weeks').replaceChildren();el('scenario').replaceChildren();
+ el('risk-exposure').replaceChildren();el('risk-weeks').replaceChildren();
 }
 function forget(){
  source=null;clearResults();el('input').value='';el('forecast').disabled=true;
@@ -82,6 +83,20 @@ function display(model){
   ['Blended labor cost / hour',currency(model.currency,model.hourly_blended_rate)]
  ];
  for(const [a,b] of stats)kpis.append(stat(a,b));
+ const risk=el('risk-exposure');risk.replaceChildren();
+ risk.append(stat('Proposed critical/high hours',model.critical_high_proposed_hours+' h'));
+ risk.append(stat('Potential urgent funding gap (min)',model.critical_high_potential_unfunded_hours_minimum+' h'));
+ risk.append(stat('Potential urgent funding gap (max)',model.critical_high_potential_unfunded_hours_maximum+' h'));
+ risk.append(stat('Critical/high backlog outside proposed plan',model.critical_high_outside_source_plan_hours+' h'));
+ const riskTable=el('risk-weeks');riskTable.replaceChildren();
+ for(const riskWeek of model.weekly_critical_high_funding_bounds){
+  const tr=mk('tr');
+  for(const value of [riskWeek.week,riskWeek.urgent_scheduled_hours+' h',
+    riskWeek.urgent_potentially_unfunded_minimum_hours+' h',
+    riskWeek.urgent_potentially_unfunded_maximum_hours+' h'])
+    tr.append(mk('td',value));
+  riskTable.append(tr);
+ }
  rows(model);el('results').hidden=false;renderScenario();
 }
 function renderScenario(){
