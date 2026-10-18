@@ -5,7 +5,7 @@
 ## Working product
 **Quickest way:** download and open remediation-evidence/standalone.html locally. It is a complete single-file application with the exact original Casework parser and this review UI embedded under per-script SHA-256 CSP hashes. No checkout or local server is necessary. For source development, remediation-evidence/index.html also works from a full checkout containing the original sibling casework/remediation-engine.js. Everything runs offline without cookies, network, storage, a server, credentials or runtime targets.
 
-The deterministic stdlib bundler remediation-evidence/package.py refuses a changed original Casework JS (pinned SHA-256 c293c564ecb11434e45423d244b7beba599b6afe3ebbc85121882e91b8aa1225) and writes standalone.html atomically. The produced one-file artifact was built with authorized zSSH on vps-bb300bba: 44,068 UTF-8 bytes, SHA-256 3d46fe94dab024c8581f031b4b65f847cf4619e7860feea4a6a44ec06a53be07.
+The deterministic stdlib bundler remediation-evidence/package.py refuses a changed original Casework JS (pinned SHA-256 c293c564ecb11434e45423d244b7beba599b6afe3ebbc85121882e91b8aa1225) and writes standalone.html atomically. The produced one-file artifact was built with authorized zSSH on vps-bb300bba: 44,631 UTF-8 bytes, SHA-256 ffd1ff30755d4fe1ebbb5c0be922fab5febf89d8a93d6e25c63ab3fd9795713a.
 
 This new isolated implementation is **stacked on original Casework PR #1568**, pinned to immutable original commit 9c73e8468ce271bf8c6bef4cac071e5ad9c1806b. No original Casework source or active owner branch is changed.
 
