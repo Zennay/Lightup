@@ -30,8 +30,10 @@ def _append(z, name, blob):
     z.writestr(member, blob)
 
 
-def build(workspace_path, manifests, choices, proposals, reference_date, proposal_bundle_path=None):
+def build(workspace_path, manifests, choices, proposals, reference_date, proposal_bundle_path=None, previous_capacity_path=None, capacity_reconfirmed=False):
     selected_day(reference_date)
+    if (previous_capacity_path is None) != (capacity_reconfirmed is False):
+        raise Hold("old capacity assumptions require explicit human reconfirmation")
     previous_map, previous_agendas = _workspace(read_regular(workspace_path, MAX_WORKSPACE))
     source_count = previous_map["source_count"]
     if len(manifests) != source_count or len(choices) != source_count:
@@ -148,6 +150,13 @@ def build(workspace_path, manifests, choices, proposals, reference_date, proposa
                    "No evidence validation, assessment execution, grants or client consent.\n"
                    "INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD.\n"
                ).encode("utf-8")}
+    if previous_capacity_path is not None:
+        from capacity_handoff import rebind as human_capacity_handoff
+        outputs.update(human_capacity_handoff(
+            previous_capacity_path, [load_one(None, previous_map["reference_date"], raw=raw)
+                                     for raw in previous_agendas],
+            previous_map["reference_date"], revised_sources, reference_date,
+            human_reconfirmed=capacity_reconfirmed))
     for ix, blob in enumerate(updated_bytes, 1):
         outputs[f"original-human-choices-{ix:02d}.json"] = blob
     return _zip(outputs), status, change_total
@@ -162,12 +171,17 @@ def main(argv=None):
     human.add_argument("--proposal", action="append", help="Private human proposal per original source")
     human.add_argument("--proposal-bundle", help="Single offline all-agenda human proposal bundle")
     p.add_argument("--next-as-of", required=True, help="Explicit date for next human-only agenda")
+    p.add_argument("--previous-private-capacity-plan", help="Optional previous ORIGINAL source-bound human capacity plan")
+    p.add_argument("--reconfirm-human-capacity", action="store_true",
+                   help="Required with previous plan: explicitly carry ONLY hypothetical neutral-role assumptions")
     p.add_argument("--output", required=True, help="NEW private revision ZIP, never overwrite")
     args = p.parse_args(argv)
     try:
         new_zip, status, changed = build(args.workspace, args.original_manifest,
                                          args.original_choices, args.proposal, args.next_as_of,
-                                         args.proposal_bundle)
+                                         args.proposal_bundle,
+                                         args.previous_private_capacity_plan,
+                                         args.reconfirm_human_capacity)
         publish(args.output, new_zip)
         print(f"NEXT_PRIVATE_HUMAN_WORKSPACE_CREATED changed_human_slots={changed} — NO GO")
         return 3 if status == "HOLD" else 2

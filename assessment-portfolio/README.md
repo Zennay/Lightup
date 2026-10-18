@@ -112,3 +112,7 @@ Every newly built original human workspace and revised next-cycle workspace incl
 ### Resume all human review proposals in one action
 
 The original private Review Studio now [restores a previously exported complete all-agenda proposal JSON bundle](RESTORE-ALL.md) atomically in the browser: every source SHA, original prior human field, date, row and original source count must match before it replaces any in-memory draft. It uses the same strict per-source decoder for single source restores and remains non-authorizing.
+
+### Explicitly continue original hypothetical review capacity
+
+The [next private human review cycle](CAPACITY-CONTINUATION.md) can optionally rebind a previous strict original-source human Capacity Studio plan to the **NEW** original agenda hashes/date, only when the human independently supplies `--previous-private-capacity-plan` **and** `--reconfirm-human-capacity`. Its new private original-schema plan, role schedule and aggregates are included in the same new review-cycle ZIP, never applied to any real worker or task.
