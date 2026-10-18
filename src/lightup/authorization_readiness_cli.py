@@ -7,6 +7,8 @@ The report is a triage aid, never an authorization certificate.
 from __future__ import annotations
 
 import argparse
+import base64
+import hashlib
 from collections import Counter, defaultdict
 from contextlib import closing
 import csv
@@ -298,6 +300,106 @@ ol li{margin-bottom:7px}details{margin-top:16px}summary{cursor:pointer}
 """
 
 
+
+def _interactive_workspace(report: dict, nonce: str) -> str:
+    """Bundle one exact database-derived review queue; no target or web backend."""
+    snapshot = {
+        "format": "lightup.authorization_casework_snapshot_v1",
+        "disposition": "REVIEW_ONLY",
+        "fingerprint": hashlib.sha256(
+            json.dumps(report["engagements"], ensure_ascii=True,
+                       sort_keys=True, separators=(",", ":")).encode("ascii")
+        ).hexdigest(),
+        "engagements": report["engagements"],
+    }
+    source = Path(__file__).with_name("authorization_casework.js").read_text("utf-8")
+    marker = "LIGHTUP_SNAPSHOT_B64_PLACEHOLDER"
+    if source.count(marker) != 1:
+        raise ValueError("offline casework asset missing its bounded snapshot placeholder")
+    encoded = base64.b64encode(json.dumps(snapshot, ensure_ascii=True,
+                         separators=(",", ":")).encode("ascii")).decode("ascii")
+    # The untrusted database values only ever enter a base64 string literal,
+    # never raw HTML/script syntax; JS uses textContent for all case values.
+    source = source.replace(marker, encoded, 1)
+    ui = r'''
+    <section class="workspace" aria-label="Offline operator remediation actions">
+      <h2>Operator follow-up workspace</h2>
+      <p class="sub">Sort and assign the real stored-source problems above. This is local
+      documentation only — a task marked "locally documented" is NOT an authorized
+      assessment, a resolved grant defect, consent, revocation, or a verified remediation.</p>
+      <div class="actions">
+        <label>Search cases<input id="workspaceSearch" type="search" placeholder="Client, engagement, issue or owner"></label>
+        <label>Local status<select id="workspaceState">
+          <option value="all">All</option><option value="open">Open</option>
+          <option value="working">Working</option><option value="escalated">Escalated</option>
+          <option value="locally_documented">Locally documented (NOT authorized)</option>
+        </select></label>
+        <label class="toggle"><input id="workspaceCritical" type="checkbox">Critical concerns only</label>
+      </div>
+      <p class="muted" id="workspaceTotals"></p>
+      <div class="workspaceGrid">
+        <nav id="workspaceCases" class="caseList" aria-label="Authorization cases"></nav>
+        <div id="workspaceEditor" class="caseEditor">
+          <h3 id="workspaceTitle"></h3>
+          <div id="workspaceFlags"></div>
+          <p id="workspaceNotice" class="warning"></p>
+          <div class="editorGrid">
+            <label>Local follow-up status<select id="workspaceStatus">
+              <option value="open">Open</option><option value="working">Working</option>
+              <option value="escalated">Escalated</option>
+              <option value="locally_documented">Locally documented — NOT authorized</option>
+            </select></label>
+            <label>Responsible operator/team<input id="workspaceOwner" maxlength="90" autocomplete="off"></label>
+            <label>Ticket reference<input id="workspaceTicket" maxlength="120" autocomplete="off"></label>
+            <label>Follow-up due date<input id="workspaceDue" type="date"></label>
+          </div>
+          <label>Operator notes (private)<textarea id="workspaceNotes" maxlength="2000" rows="4"></textarea></label>
+          <label>Local resolution / next escalation (NOT a source change)
+            <textarea id="workspaceResolution" maxlength="1200" rows="3"></textarea></label>
+          <p class="muted">The imported database findings and original flags are read-only.
+          Only task notes/status change, in browser memory. No automatic autosave.</p>
+        </div>
+      </div>
+      <div class="workspaceExports">
+        <button id="workspaceExport" type="button">Export action plan JSON</button>
+        <button id="workspaceCsv" type="button">Export filtered actions CSV</button>
+        <label class="importLabel">Import same-snapshot action plan
+          <input id="workspaceImport" type="file" accept=".json,application/json"></label>
+      </div>
+      <p id="workspaceUnsaved" class="muted" role="status">No local edits yet</p>
+      <p id="workspaceFeedback" class="muted" aria-live="polite">
+        This report is an unsigned, sensitive private offline copy. No network, storage,
+        service, grant, client consent, execution or automatic synchronization.
+      </p>
+    </section>'''
+    css = r'''
+    .workspace{border-top:2px solid #375067;margin-top:32px;padding:24px 0}
+    .actions,.workspaceExports{display:flex;gap:13px;flex-wrap:wrap;align-items:end;margin:18px 0}
+    label{display:block;font-size:.87rem;font-weight:700;color:#dfecfa}
+    input,textarea,select{display:block;width:100%;border:1px solid #63738b;
+      background:#0e1829;color:#fff;border-radius:8px;padding:10px;margin-top:5px;font:inherit}
+    textarea{resize:vertical;max-width:100%}
+    input:focus,textarea:focus,select:focus,button:focus{outline:2px solid #8de6d2;outline-offset:2px}
+    .actions label{min-width:180px;flex:1}.toggle{display:flex;gap:9px;align-items:center}
+    .toggle input{width:auto}.workspaceGrid{display:grid;grid-template-columns:minmax(240px,1fr) minmax(360px,2fr);gap:16px}
+    .caseList{display:grid;gap:8px;align-content:start;max-height:720px;overflow-y:auto}
+    .caseChoice{display:grid;gap:3px;text-align:left;border:1px solid #455a76;
+      background:#14233a;color:#f3f8ff;padding:14px;border-radius:11px;cursor:pointer}
+    .caseChoice.selected{border-color:#7de6c9;background:#213f47}
+    .caseChoice small{overflow-wrap:anywhere}
+    .caseEditor{border:1px solid #455a76;background:#142239;padding:18px;border-radius:12px}
+    .caseEditor h3{margin-top:0;overflow-wrap:anywhere}.caseEditor>label{margin-top:15px}
+    .editorGrid{display:grid;grid-template-columns:1fr 1fr;gap:13px;margin:18px 0}
+    .workspaceExports button,.importLabel{background:#244254;color:#e8fafa;cursor:pointer;
+      border:1px solid #70b9ac;border-radius:8px;padding:11px 15px;font-weight:750}
+    .importLabel input{max-width:310px;font-size:.82rem}
+    @media(max-width:800px){.workspaceGrid{grid-template-columns:1fr}.editorGrid{grid-template-columns:1fr}}
+    @media print{.workspace{display:none}}
+    '''
+    return (ui + '<style nonce="' + nonce + '">' + css + '</style>'
+            + '<script nonce="' + nonce + '">' + source + '</script>')
+
+
 def _render_html(report: dict) -> str:
     nonce = secrets.token_urlsafe(24)
     esc = lambda item: html.escape(str(item), quote=True)
@@ -335,7 +437,7 @@ def _render_html(report: dict) -> str:
             "<p>" + esc(record["attention"]) + "</p>" + table + "</section>"
         )
     limits = "".join("<li>" + esc(l) + "</li>" for l in report["limitations"])
-    csp = "default-src 'none'; style-src 'nonce-" + nonce + "'; script-src 'none'; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'"
+    csp = "default-src 'none'; style-src 'nonce-" + nonce + "'; script-src 'nonce-" + nonce + "'; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'"
     return (
         '<!doctype html><html lang="en"><head><meta charset="utf-8">'
         '<meta name="viewport" content="width=device-width,initial-scale=1">'
@@ -356,7 +458,7 @@ def _render_html(report: dict) -> str:
         limits + "</ol><p>Owner follow-ups: #177 request-to-grant binding, #829 grant tenant-lineage reads, "
         "#182 default web admission. This report repairs none of them.</p>"
         "<p>Contains private client/engagement names; keep mode 0600, do not host or share publicly.</p>"
-        "</details></main></body></html>"
+        "</details>" + _interactive_workspace(report, nonce) + "</main></body></html>"
     )
 
 
