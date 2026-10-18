@@ -139,5 +139,28 @@
       w.portions.filter(p=>p.severity===s).reduce((a,p)=>a+p.hours,0))]);
     return [headers.map(escape).join(','),...rows.map(row=>row.map(escape).join(','))].join('\r\n')+'\r\n';
   }
-  root.LightUpCapacity = Object.freeze({parseCSV,plan,summary,csvReport,DEFAULT_HOURS,MAX_BYTES,MAX_ROWS});
+  function markdownReport(plan) {
+    const data=summary(plan);
+    const lines=[
+      '# LightUp — remediation capacity discussion draft',
+      '',
+      '**REVIEW_ONLY · DRAFT/HOLD. No authentication, consent, grant, scan, execution, retest verification, deployment or release.**',
+      '',
+      'This is an unsigned aggregate planning estimate only; source-reported fixed does not mean verified repair.',
+      '',
+      '- Source records: '+data.source_count,
+      '- Total estimated repair effort: '+data.total_estimated_hours+' h',
+      '- Hours tentatively assigned to weekly buckets: '+data.assigned_hours+' h',
+      '- Backlog beyond modelled capacity: '+data.backlog_hours+' h across '+data.backlog_findings+' records',
+      '',
+      '| Week | Week beginning (UTC) | Capacity (h) | Planned (h) | Critical (h) | High (h) | Medium (h) | Low (h) | Info (h) |',
+      '| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |'
+    ];
+    for(const w of data.sprint_weeks) lines.push(
+      '| '+[w.week,w.start,w.available_hours,w.allocated_hours,...SEVERITIES.map(s=>w.severity_hours[s])].join(' | ')+' |'
+    );
+    lines.push('','Human follow-up: confirm source client/engagement externally, review estimates and staffing, assign owners through existing authorised channels, verify repairs/retests separately.','');
+    return lines.join('\n');
+  }
+  root.LightUpCapacity = Object.freeze({parseCSV,plan,summary,csvReport,markdownReport,DEFAULT_HOURS,MAX_BYTES,MAX_ROWS});
 })(window);
