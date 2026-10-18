@@ -223,21 +223,21 @@ function teamFor(f){
 }
 function updateTeamChoices(){
  const box=$('packTeam'),previous=box.value,available=new Set();
- for(const f of source||[])available.add(teamFor(f)||'__UNASSIGNED__');
- const sorted=[...available].sort((a,b)=>a.localeCompare(b));
+ for(const f of source||[])available.add(teamFor(f));
+ const sorted=[...available].sort((a,b)=>(a===null?-1:b===null?1:a.localeCompare(b)));
  box.replaceChildren();
  const initial=el('option','','Choose one locally declared team');initial.value='';box.append(initial);
  for(const t of sorted){
-  const opt=el('option','',t==='__UNASSIGNED__'?'Unassigned (private triage only)':t);
-  opt.value=t;box.append(opt);
+  const opt=el('option','',t===null?'Unassigned (private triage only)':t);
+  opt.value=t===null?'unassigned':'team:'+t;box.append(opt);
  }
- box.value=sorted.includes(previous)?previous:'';
+ box.value=sorted.some(t=>(t===null?'unassigned':'team:'+t)===previous)?previous:'';
  updateTeamCount();
 }
 function selectedTeamRows(){
- const team=$('packTeam').value;
- if(!team)return [];
- return (source||[]).filter(f=>(teamFor(f)||'__UNASSIGNED__')===team).map(f=>({
+ const group=$('packTeam').value;
+ if(!group)return [];
+ return (source||[]).filter(f=>(teamFor(f)===null?'unassigned':'team:'+teamFor(f))===group).map(f=>({
   finding:f,plan:casework?.get(f.finding_id)||engine.newCase(f),coordination:review.get(f.finding_id)
  }));
 }
@@ -246,12 +246,13 @@ function updateTeamCount(){
   String(selectedTeamRows().length)+' source findings in this locally declared routing group':'Select a team to scope a private export.';
 }
 function teamPacket(rows){
- const team=$('packTeam').value;
- if(!sourceHash||!team||!rows.length)throw Error('Choose a populated local routing group.');
+ const selected=$('packTeam').value;
+ if(!sourceHash||!selected||!rows.length)throw Error('Choose a populated local routing group.');
+ const team=selected==='unassigned'?null:selected.slice(5);
  return {kind:'lightup.remediation_private_team_handoff',schema_version:1,
   disposition:'UNVERIFIED_PRIVATE_HUMAN_COORDINATION',
   source_contract:'lightup.finding_export._COLUMNS_v1',source_sha256:sourceHash,
-  team_label:team==='__UNASSIGNED__'?null:team,
+  team_label:team,
   original_findings_total:source.length,selected_findings_total:rows.length,
   ...Object.fromEntries(flags.map(k=>[k,false])),
   cases:rows.map(({finding:f,plan:c,coordination:r})=>({
@@ -494,7 +495,7 @@ $('clear').addEventListener('click',()=>{
  $('sourceFile').value='';$('caseFile').value='';$('reviewFile').value='';$('refreshFile').value='';$('allowHashlessCasework').checked=false;$('refreshConfirm').checked=false;$('refreshSummary').textContent='No refresh preview.';
  $('dashboard').hidden=true;$('boardSection').hidden=true;$('actions').hidden=true;$('refreshPanel').hidden=true;$('teamPanel').hidden=true;
  $('packTeam').replaceChildren();$('packCount').textContent='No original findings imported.';
- $('board').replaceChildren();status('All source and local notes forgotten from this tab.');
+ $('board').replaceChildren();renderRevisions();status('All source and local notes forgotten from this tab.');
 });
 $('save').addEventListener('click',()=>{if(!sourceHash)return;download('lightup-evidence-coordination-private.json',JSON.stringify(snapshot(),null,2),'application/json');changed=false;status('Private unsigned coordination notes downloaded; protect as sensitive data.');});
 $('aggregate').addEventListener('click',()=>{
