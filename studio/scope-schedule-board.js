@@ -132,7 +132,7 @@ function suggest(entry,list){
   let candidate=entry.interval.start,cycles=0;
   const duration=entry.interval.end-entry.interval.start;
   const others=list.filter(x=>x!==entry).concat(blackouts.map(b=>({interval:b}))).sort((a,b)=>a.interval.start-b.interval.start);
-  while(cycles++<MAX_FILES+2) {
+  while(cycles++<MAX_FILES+blackouts.length+2) {
     const conflict=others.find(e=>candidate<e.interval.end+BUFFER &&
       candidate+duration+BUFFER>e.interval.start);
     if(!conflict) return {start:candidate,end:candidate+duration};
