@@ -753,8 +753,8 @@
         Number.isInteger(utc.start_offset_minutes) && Math.abs(utc.start_offset_minutes)<=840 &&
         Number.isInteger(utc.end_offset_minutes) && Math.abs(utc.end_offset_minutes)<=840);
       const expectedUtc=(wall,offset)=>{
-        invariant(typeof wall==='string' && /^\\d{4}-\\d\\d-\\d\\dT\\d\\d:\\d\\d$/.test(wall));
-        const parts=wall.match(/^(\\d{4})-(\\d\\d)-(\\d\\d)T(\\d\\d):(\\d\\d)$/);
+        invariant(typeof wall==='string' && /^\d{4}-\d\d-\d\dT\d\d:\d\d$/.test(wall));
+        const parts=wall.match(/^(\d{4})-(\d\d)-(\d\d)T(\d\d):(\d\d)$/);
         const y=Number(parts[1]),m=Number(parts[2]),d=Number(parts[3]),
           hh=Number(parts[4]),mm=Number(parts[5]);
         invariant(y>=2020 && y<=2100 && m>=1 && m<=12 &&
