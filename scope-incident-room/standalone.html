@@ -52,6 +52,12 @@ h3{font-size:15px;margin:20px 0 9px}.source-card{border:1px solid #455877;border
 <div class="metric"><strong id="riskHold">—</strong><small>Risk provenance HOLD</small></div></section>
 <section class="panel"><div class="bar"><div><h2>02 / Human incident caseboard</h2><p class="muted">Private source IDs are not included in anonymous exports. Compare historical snapshots of the same tenant and case set; vanished STOP is HOLD. Stages are tab-only.</p></div>
 <input id="search" type="search" placeholder="Filter case / STOP state" disabled>
+<select id="bulkStage" aria-label="Human follow-up for visible original cases">
+<option value="investigating">Investigating visible</option>
+<option value="escalated">Escalate visible</option>
+<option value="documented">Document visible (NOT approved)</option>
+<option value="unreviewed">Reset visible to unreviewed</option>
+</select><button class="secondary" id="bulkApply" disabled>Update visible human stages</button>
 <select id="focus" aria-label="Human triage filter" disabled><option value="all">All original cases</option>
 <option value="attention">STOP / HOLD / pending risk</option>
 <option value="risk">Risk-source follow-up</option>
@@ -211,7 +217,7 @@ if(focus==="attention"&&priority(r)===3)continue;
 if(focus==="risk"&&!(r.casebook_attention.includes("RISK")||
  report.casebook.risk_approvals.some(x=>x.engagement_id===r.engagement_id)))continue;
 if(focus==="changes"&&(!older||!(changes.get(r.engagement_id)||[]).length))continue;
-n++;var tr=document.createElement("tr");
+n++;var tr=document.createElement("tr");tr.dataset.originalEngagement=r.engagement_id;
 TD(tr,r.engagement_id,"id");
 TD(tr,r.stop_observation,r.stop_observation==="NO_STOP_RECORDED_NOT_PERMISSION"?"good":"risk");
 TD(tr,r.grant_source_count===null?"HOLD":r.grant_source_count);
@@ -228,7 +234,7 @@ s.value=stages.get(r.engagement_id)||"unreviewed";s.addEventListener("change",fu
  action.appendChild(button);tr.appendChild(action);
  tbody.appendChild(tr);
 }
-E("empty").hidden=n>0;E("empty").textContent="No original cases match the current filter.";
+E("empty").hidden=n>0;E("empty").textContent="No original cases match the current filter.";E("bulkApply").disabled=n===0;
 E("count").textContent=report.summary.selected;E("stops").textContent=report.summary.active_stop_observations;
 E("holds").textContent=report.summary.stop_source_hold;E("attention").textContent=report.summary.cases_requiring_human_attention;
 E("pendingRisk").textContent=report.summary.pending_risk_review;
@@ -256,6 +262,17 @@ E("previous").addEventListener("change",async function(){
 });
 E("search").addEventListener("input",render);
 E("focus").addEventListener("change",render);
+E("bulkApply").addEventListener("click",function(){
+ if(!report)return;
+ var ids=[...E("rows").querySelectorAll("tr")].map(tr=>tr.dataset.originalEngagement);
+ var stage=E("bulkStage").value;
+ if(!ids.length||ids.length>32||!stageLabels.includes(stage)||new Set(ids).size!==ids.length)return;
+ if(!window.confirm("Apply human-only stage '"+stage+"' to "+ids.length+" visible original cases? This is NOT an approval, execution or release."))return;
+ var next=new Map(stages);
+ for(var id of ids)next.set(id,stage);
+ stages=next;render();
+ E("message").textContent="Updated "+ids.length+" local HUMAN follow-up statuses; original source/STOPs unchanged.";
+});
 E("saveStages").addEventListener("click",function(){
  if(!report||!sourceDigest)return;
  download({
