@@ -32,7 +32,7 @@
   };
   const TOKEN = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
   const MAX_CATALOG = 1048576, MAX_REPORT = 262144;
-  let catalog=null, reports=[], reviews=new Map(), humanNotes=new Map(), humanRoutes=new Map(), humanActions=new Map(), fictional=false;
+  let catalog=null, reports=[], reviews=new Map(), humanNotes=new Map(), noteScratch=new Map(), humanRoutes=new Map(), humanActions=new Map(), fictional=false;
   let mismatchRevealed=false,undoRouteBatch=null;
   let catalogHash=null, reportHashes=[];
   function admit(ok){if(!ok)throw Error("Incompatible or unsafe private source");}
@@ -575,6 +575,7 @@
     }
     if(note.trim())humanNotes.set(catalog[index].id,note);
     else humanNotes.delete(catalog[index].id);
+    noteScratch.delete(catalog[index].id);
     $("privateNoteState").textContent=note.trim()?
       "PRIVATE note saved only in memory. Include it only in PRIVATE source-bound draft.":
       "Private note removed from memory.";
@@ -635,13 +636,17 @@
     selector.value=old!==""&&Number.isSafeInteger(Number(old))&&Number(old)>=0&&
       Number(old)<catalog.length?old:"0";
     const index=Number(selector.value),scenario=catalog[index];
-    $("privateCaseNote").value=humanNotes.get(scenario.id)||"";
+    $("privateCaseNote").value=noteScratch.has(scenario.id)?
+      noteScratch.get(scenario.id):humanNotes.get(scenario.id)||"";
     $("humanRoute").value=humanRouteFor(scenario);
     $("humanAction").value=humanActionFor(scenario);
     $("sourceRouteHint").textContent="Proposed source-flag discussion group: "+
       ROUTE_LABELS[sourceRouteHint(scenario)]+". Never an authenticated assignment.";
     $("humanPlanState").textContent="Human planning fields are PRIVATE and unsigned.";
-    $("privateNoteState").textContent="PRIVATE human notes are local and never appear in anonymous exports.";
+    $("privateNoteState").textContent=noteScratch.has(scenario.id)?
+      "UNSAVED private note draft retained in tab memory for this case. "+
+        "Click Save note before private draft/dossier export.":
+      "PRIVATE human notes are local and never appear in anonymous exports.";
     const rows=METRICS.map(metric=>[
       metric.replaceAll("_"," "),
       ...reports.map(report=>{
@@ -812,7 +817,7 @@
       const nextActions=withPlan?new Map(catalog.flatMap((s,i)=>
         draft.next_human_actions[i]!=="none_recorded"?
           [[s.id,draft.next_human_actions[i]]]:[])):new Map();
-      reviews=nextReviews;humanNotes=nextNotes;
+      reviews=nextReviews;humanNotes=nextNotes;noteScratch=new Map();
       humanRoutes=nextRoutes;humanActions=nextActions;undoBatch=null;undoRouteBatch=null;render();
       message("PRIVATE stages, notes and proposed human plans restored for original "+
         "exact source bytes. Legacy v1/v2 drafts have no proposed plans.");
@@ -989,7 +994,7 @@
       message("Script-free, target-free human brief downloaded.");
     }catch(_){message("HOLD: brief not available until sources match exactly.",true);}
   }
-  function forget(){catalog=null;reports=[];reviews=new Map();humanNotes=new Map();humanRoutes=new Map();humanActions=new Map();mismatchRevealed=false;catalogHash=null;
+  function forget(){catalog=null;reports=[];reviews=new Map();humanNotes=new Map();noteScratch=new Map();humanRoutes=new Map();humanActions=new Map();mismatchRevealed=false;catalogHash=null;
     reportHashes=[];undoBatch=null;undoRouteBatch=null;clearPendingDraft();
     if(privateTemplate instanceof HTMLTemplateElement){
       privateTemplate.content.replaceChildren();
@@ -1153,6 +1158,17 @@
     $(id).addEventListener("change",render);
   for(const id of ["boardStatus","boardRoute"])$(id).addEventListener("change",renderHumanActionBoard);
   $("inspectCase").addEventListener("change",renderInspector);
+  $("privateCaseNote").addEventListener("input",()=>{
+    const index=Number($("inspectCase").value);
+    if(!catalog||!Number.isSafeInteger(index)||index<0||index>=catalog.length)return;
+    const id=catalog[index].id,raw=$("privateCaseNote").value;
+    if(raw===(humanNotes.get(id)||""))noteScratch.delete(id);
+    else noteScratch.set(id,raw);
+    $("privateNoteState").textContent=noteScratch.has(id)?
+      "UNSAVED PRIVATE note draft retained in memory across case navigation. "+
+      "Not included in any output until Save note is clicked.":
+      "PRIVATE note matches saved local version.";
+  });
   $("saveCaseNote").addEventListener("click",saveCaseNote);
   $("saveHumanPlan").addEventListener("click",setHumanPlan);
   $("adoptSourceHint").addEventListener("click",adoptSourceHint);
