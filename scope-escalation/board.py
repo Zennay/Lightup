@@ -305,7 +305,7 @@ def _page(data, tasks, digest, script):
             '<div class="edit"><label>Human reviewer <input maxlength="80" data-field="owner" autocomplete="off"></label>'
             '<label>Proposed UTC follow-up <input type="date" data-field="due"></label>'
             '<label>Human stage <select data-field="stage">' +
-            "".join('<option value="' + esc(s) + '">' + esc(s.replace("_", " ")) + '</option>'
+            "".join('<option value="' + esc(s) + '"' + (' selected' if s == 'unassigned' else '') + '>' + esc(s.replace("_", " ")) + '</option>'
                     for s in sorted(REVIEW_STATUSES)) + '</select></label>'
             '<label class="wide">Human next step <textarea maxlength="500" data-field="next"></textarea></label>'
             '</div></article>'
