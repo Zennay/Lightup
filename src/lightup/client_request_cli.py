@@ -119,6 +119,7 @@ def main(argv: list[str] | None = None) -> int:
         command.add_argument("--proposal", help="existing offline Scope Planning Studio v1 JSON export")
         command.add_argument("--risk", type=int, choices=(1, 2, 3, 4))
         command.add_argument("--notes", help="request explanation; never use secrets")
+    preview.add_argument("--output", help="new private offline HTML preview file; no user authentication")
     submit.add_argument("--confirm-submit", action="store_true", help="explicitly submit for operator review")
     submit.add_argument("--expect-proposal-sha256", help="exact untrusted proposal file SHA-256 from preview")
     # A rejected request stays immutable: any edit creates an independently
@@ -181,6 +182,14 @@ def main(argv: list[str] | None = None) -> int:
                 payload = prepare_request(args.asset, args.risk, args.notes or "")
         if args.command == "preview":
             output = payload
+            if args.output:
+                from .client_intake_preview import render_client_intake_preview
+                from .client_request_snapshot import save_private_snapshot
+
+                save_private_snapshot(
+                    Path(args.output), render_client_intake_preview(payload)
+                )
+                output["private_preview_saved"] = str(Path(args.output))
         else:
             if args.command == "submit" and not args.confirm_submit:
                 raise ClientRequestError("no request created; pass --confirm-submit to persist")
