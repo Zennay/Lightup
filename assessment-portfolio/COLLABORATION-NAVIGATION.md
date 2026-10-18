@@ -1,0 +1,15 @@
+# Human collaboration is available in the original offline workspace
+
+**INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD · NO GO.**
+
+The complete private original assessment-portfolio ZIP created by `one_command.py`, and each NEW next-review workspace created by `review_cycle.py`, now includes a **scriptless self-contained `collaboration-guide.html`**. It is accessible as the fifth workflow tile in the existing central `workspace-home.html` navigation.
+
+The collaboration guide explains the actual existing source-bound workflow in one private browser page: each human reviewer independently opens the same original `original-human-review-studio.html` in their own authorized private working copy, edits only original human planning fields, and explicitly exports one complete original-bound all-agenda private bundle. They retain separately provided unchanged ORIGINAL manifests and choices outside the ZIP.
+
+For independent bundles that modify **different** original human source slots, use [portfolio_merge.py](PORTFOLIO-COLLABORATION.md) or the one-command [collaboration_cycle.py](COLLABORATION-CYCLE.md). They strictly reject any overlap; without overlap the latter generates a complete new offline next human review workspace. For overlapping human source slots, use [portfolio_mediation.py](PRIVATE-MEDIATION.md): its separate offline browser Studio displays all original values and candidate human-only proposals, requiring an explicit selection for every contested original agenda/slot or keeping the original. Then [mediation_return.py](MEDIATION-RETURN.md) verifies that the human proposal chosen matches an independently admitted original candidate (or exact original old values) before building a NEW private next review packet.
+
+Original client identity, targets, evidence or credentials are not included in this guide. The page is scriptless, has only local fixed file links, no external assets, style-sha256 CSP, no network or browser storage, and has explicit DRAFT/HOLD/NO GO/unsigned contributor warnings. Any subsequent original source return still requires actual original source files and original permission/HUMAN GO gates.
+
+The new `collaboration-guide.html` is also included in the existing bounded signed-by-no-one private **ZIP byte-consistency map** alongside the other generated HTML and aggregate artifacts. `workspace_return.py` was updated to recognize the new exact canonical layout and check the guide digest with all prior unchanged original source-bound checks. Older original workspaces generated before this optional guide (with and without the optional home/content map) remain readable **without relaxing their existing source validation**. The ZIP's SHA-256 digest is an unsigned local byte correlation, not proof that the page or original assessment sources are trusted or authorized.
+
+This changes only new isolated `assessment-portfolio/` package/navigation/reader code and documentation. It does not touch original grants, authorizations, scanner, testing, CI, domain data, or deployments.

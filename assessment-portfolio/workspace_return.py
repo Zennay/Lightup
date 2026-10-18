@@ -65,7 +65,9 @@ def _workspace(blob):
             nameset = set(names)
             new_map = "private-workspace-content-map.json" in nameset
             if nameset not in (expected, expected | {"workspace-home.html"},
-                               expected | {"workspace-home.html", "private-workspace-content-map.json"}):
+                               expected | {"workspace-home.html", "private-workspace-content-map.json"},
+                               expected | {"workspace-home.html", "private-workspace-content-map.json",
+                                           "collaboration-guide.html"}):
                 raise Hold("incomplete or unexpected workspace ZIP members")
             if new_map:
                 from content_map import verify as verify_private_content_map
@@ -74,6 +76,8 @@ def _workspace(blob):
                                     and name not in {"private-original-source-map.json",
                                                      "ORIGINAL-HUMAN-START-HERE.txt"}}
                 expected_content.add("workspace-home.html")
+                if "collaboration-guide.html" in nameset:
+                    expected_content.add("collaboration-guide.html")
                 verify_private_content_map(z, expected_content,
                                            mapping["source_count"], mapping["reference_date"])
             if any(i.file_size > MAX_BYTES for i in infos

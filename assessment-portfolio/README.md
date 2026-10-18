@@ -138,3 +138,7 @@ When [multi-reviewer original human portfolio merge](PORTFOLIO-COLLABORATION.md)
 ### Complete source-bound human conflict resolution into NEXT review cycle
 
 Use [mediation_return.py](MEDIATION-RETURN.md) with the original offline workspace, original manifest/choices, every independently exported human reviewer bundle, a separately exported human-resolved original all-agenda private proposal and the explicit next planning date. It permits only exact original human prior values or originally proposed candidate human values at each source slot, then reuses the strict full original human return and next review-cycle gates to produce **one new private next-cycle ZIP** without any intermediate file or target action. An unsigned browser decision is never client permission.
+
+### Original offline collaboration navigation
+
+New complete original-source private assessment workspaces include [collaboration-guide.html](COLLABORATION-NAVIGATION.md) linked directly from `workspace-home.html`. It gives operators the full source-bound independent human contribution, strict conflict-free merge, explicit mediation and next-cycle return workflows without needing to find repository docs. The new guide is covered by the private local content byte-consistency map, and older original workspaces remain readable under their existing strict original-source gates.

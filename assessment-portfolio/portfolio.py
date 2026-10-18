@@ -199,8 +199,10 @@ def package(agendas, summary):
     from browser_studio import build as build_interactive_studio
     from review_studio import build as build_private_review_studio
     from navigation import build as build_workspace_home
+    from collaboration_guide import build as build_private_collaboration_guide
     public=encode(summary)
     files={"workspace-home.html":build_workspace_home(summary),
+           "collaboration-guide.html":build_private_collaboration_guide(summary),
            "START-HERE.txt":("LIGHTUP PRIVATE HUMAN PORTFOLIO. Open workspace-home.html offline.\n"
           "private-source-bindings.json includes source SHA hashes and human item slots; keep private.\n"
           "aggregate.html/json/csv contain counts only; review before sharing.\n"

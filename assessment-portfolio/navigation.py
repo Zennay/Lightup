@@ -45,6 +45,8 @@ def build(summary):
          "interactive-capacity-studio.html","Open capacity studio"),
         ("4 · Aggregate-only summary", "Inspect source-neutral totals before a separately reviewed anonymous handoff.",
          "aggregate.html","View totals"),
+        ("5 · Independent human collaboration", "Combine independently reviewed human proposal bundles without overlapping source changes, or resolve conflicts in an offline human Studio.",
+         "collaboration-guide.html","Open collaboration guide"),
     ]
     cards="".join(
         "<section class='card'><h2>"+escape(title)+"</h2><p>"+escape(description)+
