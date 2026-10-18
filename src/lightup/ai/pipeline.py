@@ -77,6 +77,7 @@ def _admit_review_findings(labrun_result: dict, target_label: str) -> tuple[tupl
     if type(originals) is not list or len(originals) > _MAX_REVIEW_FINDINGS:
         raise ValueError("review findings must be a bounded JSON list")
     batch: list[tuple[dict, str, tuple[str, ...], str, str]] = []
+    seen_finding_ids: set[str] = set()
     for finding in originals:
         if type(finding) is not dict:
             raise ValueError("review finding must be an ordinary dictionary")
@@ -122,6 +123,10 @@ def _admit_review_findings(labrun_result: dict, target_label: str) -> tuple[tupl
                 or any(ord(ch) < 33 or ord(ch) > 126 for ch in finding_id)
         ):
             raise ValueError("review finding requires a canonical finding identity")
+        if finding_id is not None:
+            if finding_id in seen_finding_ids:
+                raise ValueError("review findings require distinct finding identities")
+            seen_finding_ids.add(finding_id)
         # Freeze the same finding-local target used by verification, advice,
         # serialized review and reporting before ANY model call.
         batch.append((dict(finding), summary, refs, fix, finding_target))
