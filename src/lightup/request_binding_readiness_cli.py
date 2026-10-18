@@ -374,7 +374,7 @@ def main(argv: list[str] | None = None) -> int:
 
     db, out = Path(args.db), Path(args.output)
     if (db.is_symlink() or not db.is_file() or not stat.S_ISREG(db.stat().st_mode)
-            or out.suffix.lower() not in {".html", ".json", ".csv"}
+            or out.suffix.lower() not in {".html", ".json", ".csv", ".md"}
             or out.exists() or not out.parent.is_dir()
             or not sys.stdin.isatty()):
         print("HOLD: require existing regular database, interactive operator and a new private output.", file=sys.stderr)
@@ -426,6 +426,9 @@ def main(argv: list[str] | None = None) -> int:
             body = (_html(report) if kind == ".html" else
                     _csv(report) if kind == ".csv" else
                     json.dumps(report, indent=2, ensure_ascii=True) + "\n")
+        if kind == ".md":
+            from .request_binding_handoff import format_markdown
+            body = format_markdown(report)
         _private_output(out, body)
     except (ValueError, PermissionError, AccountLockedError, sqlite3.DatabaseError,
             OSError, EOFError, KeyboardInterrupt, GetPassWarning):
