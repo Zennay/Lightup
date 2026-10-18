@@ -199,6 +199,33 @@ def _diff(before: dict, now: dict, old_sha: str) -> dict:
                 "changed_fields_only": fields,
                 "human_follow_up": "UNREVIEWED",
             })
+    # A changed ORIGINAL approved-request record can affect an unchanged grant
+    # that references it. Existing source-grant bytes are not permission proof.
+    changed_requests = {
+        rid for rid in set(old["requests"]) | set(new["requests"])
+        if old["requests"].get(rid) != new["requests"].get(rid)
+    }
+    unchanged_linked = []
+    for gid in sorted(set(old["grants"]) & set(new["grants"])):
+        grant = new["grants"][gid]
+        if grant != old["grants"][gid]:
+            continue  # This grant is already a normal source-change row.
+        request_id = grant.get("approved_request_id")
+        if type(request_id) is not str or request_id not in changed_requests:
+            continue
+        prior_req = old["requests"].get(request_id)
+        current_req = new["requests"].get(request_id)
+        unchanged_linked.append({
+            "original_grant_id": gid,
+            "recorded_request_id": request_id,
+            "original_engagement_id": grant.get("engagement_id"),
+            "recorded_request_status_before": (
+                prior_req.get("status") if prior_req is not None else "not recorded"),
+            "recorded_request_status_after": (
+                current_req.get("status") if current_req is not None else "not recorded"),
+            "human_follow_up": "UNREVIEWED",
+            "authority_claim": False,
+        })
     counts = Counter(f"{r['family']}/{r['change']}/{r['priority']}" for r in result)
     return {
         "schema": "lightup.casebook_change_private_review.v1",
@@ -213,8 +240,10 @@ def _diff(before: dict, now: dict, old_sha: str) -> dict:
         ],
         "source_times": [before["as_of"], now["as_of"]],
         "changes": result,
+        "unchanged_grant_request_dependencies": unchanged_linked,
         "aggregate_without_original_ids": {
             "snapshot_count": 2, "changed_record_count": len(result),
+            "linked_unchanged_grant_attention_count": len(unchanged_linked),
             "urgent_review_count": sum(r["priority"] == "URGENT_HUMAN_REVIEW" for r in result),
             "source_delta_counts": dict(sorted(counts.items())),
         },
