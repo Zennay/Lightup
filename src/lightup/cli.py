@@ -30,10 +30,11 @@ def build_parser() -> argparse.ArgumentParser:
     shared = argparse.ArgumentParser(add_help=False)
     shared.add_argument("--allow-host", action="append", default=[])
     shared.add_argument("--allow-cidr", action="append", default=[])
-    shared.add_argument("--allow-private-lab", action="store_true",
-                        help="explicitly trust RFC1918/ULA as an isolated lab")
-    shared.add_argument("--no-private-lab", action="store_true",
-                        help="legacy explicit deny; default is already deny")
+    private = shared.add_mutually_exclusive_group()
+    private.add_argument("--allow-private-lab", action="store_true",
+                         help="explicitly trust RFC1918/ULA as an isolated lab")
+    private.add_argument("--no-private-lab", action="store_true",
+                         help="legacy explicit deny; default is already deny")
 
     sub = parser.add_subparsers(dest="command", required=True)
     scope = sub.add_parser("scope-check", parents=[shared])
@@ -99,7 +100,8 @@ def _account_command(args: argparse.Namespace) -> int:
 
 
 def main(argv: list[str] | None = None) -> int:
-    args = build_parser().parse_args(argv)
+    parser = build_parser()
+    args = parser.parse_args(argv)
 
     if args.command == "serve":
         from .webapp.__main__ import main as serve_main
@@ -129,9 +131,14 @@ def main(argv: list[str] | None = None) -> int:
     if args.command in {"create-operator", "create-client-user"}:
         return _account_command(args)
 
-    planner = Planner(_policy(args))
-    target = Target(args.target)
-    plan = planner.build(target)
+    try:
+        planner = Planner(_policy(args))
+        target = Target(args.target)
+        plan = planner.build(target)
+    except (TypeError, ValueError):
+        # Do not display a traceback or echo untrusted CIDR/host input.
+        parser.error("invalid scope configuration or target")
+
 
     if args.command == "scope-check":
         print(json.dumps({
