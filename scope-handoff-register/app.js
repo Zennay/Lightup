@@ -331,6 +331,36 @@
     show("Lokale voorbereidingsstatussen atomisch hersteld voor identieke originele bestandsbytes.");
     render();
   }
+  function fullHtmlPacket() {
+    const data=report();
+    const esc = value => String(value).replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;").replaceAll("'","&#39;");
+    const parts=[
+      "<!doctype html><html lang=\"nl\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">",
+      "<meta http-equiv=\"Content-Security-Policy\" content=\"default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; connect-src 'none'; form-action 'none'\">",
+      "<title>LightUp · lokale reviewoverdracht</title><style>",
+      "body{font-family:system-ui,sans-serif;color:#142238;max-width:940px;margin:25px auto;padding:16px}article{border:1px solid #bcc7d7;border-radius:8px;margin:15px 0;padding:17px;break-inside:avoid}p{line-height:1.45}th,td{text-align:left;border-bottom:1px solid #bfc8d7;padding:8px}table{border-collapse:collapse;width:100%}.alert{color:#8e450e}.hold{padding:12px;border:2px solid #8e450e}@media print{body{max-width:100%;margin:0}article{break-inside:avoid}}",
+      "</style></head><body><h1>LightUp · voorbereidingsregister</h1>",
+      "<p class=\"hold\"><strong>REVIEW_ONLY_HOLD — GEEN toestemming, identiteit, asset-eigendom, grant, scan, handler, deploy of vrijgave.</strong> Dit is uitsluitend een lokale menselijke planning. Controleer cliënt en operator onafhankelijk via het echte geauthenticeerde proces en controleer herroeping op het moment van gebruik.</p>",
+      "<p>Persoonsgegevens, bestandsnamen, vrije tekst en originele asset-identiteiten zijn niet opgenomen. Deze handoff heeft geen handtekening, actuele geldigheid of onafhankelijk herkomstbewijs.</p>",
+      "<p>Conceptdossiers: "+data.entries.length+". De SHA-256 is een byte-identificatie, géén autorisatie- of identiteitshandtekening.</p>"
+    ];
+    for(const e of data.entries) {
+      parts.push("<article><h2>"+esc(e.dossier)+" · voorgesteld risico "+esc(e.proposed_risk)+"</h2>");
+      parts.push("<p>Studio-source SHA-256: <code>"+esc(e.source_sha256)+"</code><br>Voorgestelde modus: "+esc(e.proposed_mode)+"<br>Inclusies: "+esc(e.asset_count)+", exclusies: "+esc(e.excluded_count)+"</p>");
+      if(e.replaces_source_sha256) {
+        parts.push("<p>Zelfverklaarde revisie van <code>"+esc(e.replaces_source_sha256)+"</code>. Statussen van oudere concepten zijn niet overgenomen.</p>");
+        if(e.revision) parts.push("<p>Letterlijke revisietellingen: assets toegevoegd "+esc(e.revision.assets.added)+", verwijderd "+esc(e.revision.assets.removed)+
+          "; exclusies toegevoegd "+esc(e.revision.exclusions.added)+", verwijderd "+esc(e.revision.exclusions.removed)+
+          ". Mogelijke uitbreiding: <strong>"+(e.revision.possible_expansion?"JA":"niet uit deze ruwe vergelijking vastgesteld")+"</strong>. Geen CIDR/DNS-verificatie.</p>");
+      }
+      parts.push("<p class=\"alert\">Lokale signalen: "+esc(e.review_codes.length?e.review_codes.join(", "):"geen automatisch signaal; geen veiligheidsbewijs")+"</p>");
+      parts.push("<table><thead><tr><th>Menselijke voorbereidingsactie</th><th>Zelfgerapporteerde status</th></tr></thead><tbody>");
+      for(const [id,title] of TASKS) parts.push("<tr><td>"+esc(title)+"</td><td>"+esc(STATUS_TEXT[e.tasks[id]])+"</td></tr>");
+      parts.push("</tbody></table></article>");
+    }
+    parts.push("<p class=\"hold\">Elk veld authenticated, consent, authorized, grant, execution, scan, dispatch, deploy en release staat letterlijk FALSE. Ook 8/8 voorbereide acties hebben geen juridische of technische autoriteit.</p></body></html>");
+    return parts.join("");
+  }
   function csv() {
     const rows=[["dossier","scope_sha256","task","status","authority"]];
     report().entries.forEach(e=>TASKS.forEach(([id])=>rows.push([e.dossier,e.source_sha256,id,e.tasks[id],"REVIEW_ONLY_HOLD"])));
@@ -363,6 +393,7 @@
   $("save").addEventListener("click",()=>records.length?json(snapshot(),"lightup-local-progress.json"):show("Laad eerst concepten.",true));
   $("export").addEventListener("click",()=>records.length?json(report(),"lightup-review-only-handoff.json"):show("Laad eerst concepten.",true));
   $("csv").addEventListener("click",()=>records.length?download(csv(),"lightup-handoff-actions.csv","text/csv;charset=utf-8"):show("Laad eerst concepten.",true));
+  $("printPack").addEventListener("click",()=>records.length?download(fullHtmlPacket(),"lightup-review-only-handoff.html","text/html;charset=utf-8"):show("Laad eerst concepten.",true));
   $("print").addEventListener("click",()=>records.length?window.print():show("Laad eerst concepten.",true));
   render();
 })();
