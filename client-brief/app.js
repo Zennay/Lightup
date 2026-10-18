@@ -54,10 +54,9 @@ function chart(where, data) {
  for(const [label,amount] of Object.entries(data)){
   const line=document.createElement('div');line.className='chart-row';
   const text=document.createElement('span');text.textContent=label.replaceAll('_',' ');
-  const track=document.createElement('div');track.className='track';track.setAttribute('role','img');track.setAttribute('aria-label',label+': '+amount+' of '+total);
-  const bar=document.createElement('div');bar.className='bar '+label;bar.style.width=((amount/Math.max(total,1))*100).toFixed(2)+'%';
+  const track=document.createElement('progress');track.className='severity-'+label;track.max=total;track.value=amount;track.setAttribute('aria-label',label+': '+amount+' of '+total);
   const number=document.createElement('span');number.className='count';number.textContent=amount;
-  track.append(bar);line.append(text,track,number);$(where).append(line);
+  line.append(text,track,number);$(where).append(line);
  }
 }
 function kpis(severity,retest) {
