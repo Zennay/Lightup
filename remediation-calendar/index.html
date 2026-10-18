@@ -25,16 +25,30 @@
 <label>Severity <select id="severity"><option value="all">All</option><option value="critical">Critical</option><option value="high">High</option><option value="medium">Medium</option><option value="low">Low</option><option value="info">Info</option></select></label>
 <label>Search <input id="search" type="search" maxlength="120" placeholder="Human owner or finding ID"></label></div>
 <p id="scope-info" class="muted"></p>
-<div class="tablewrap"><table><thead><tr><th>Finding</th><th>Original retest</th><th>Human stage</th><th>Owner</th><th>Human due</th><th>Follow-up</th></tr></thead><tbody id="rows"></tbody></table></div>
+<div class="tablewrap"><table><thead><tr><th>Finding</th><th>Original retest</th><th>Human stage</th><th>Owner</th><th>Human due</th><th>Follow-up</th><th>Edit human notes</th></tr></thead><tbody id="rows"></tbody></table></div>
+</section>
+<section id="edit-panel" class="panel" hidden>
+<h2>3. Update HUMAN-ONLY casework</h2>
+<p id="edit-label">Choose Edit next to a finding. Changes affect only local planning, never original source retest, the database or consent.</p>
+<form id="edit-form">
+<div class="grid"><label>Human owner/team<input id="edit-owner" maxlength="120"></label>
+<label>Human stage<select id="edit-status">
+<option value="unassigned">Unassigned</option><option value="planned">Planned</option><option value="in_progress">In progress</option><option value="blocked">Blocked</option><option value="ready_for_retest">Ready for independently authorized retest</option><option value="deferred">Deferred</option><option value="completed">Locally completed — NOT a verified fix</option></select></label>
+<label>Human follow-up date (not an authorized test window)<input id="edit-date" type="date" min="2020-01-01" max="2100-12-30"></label></div>
+<label>Human next action<textarea id="edit-action" maxlength="1800" rows="3"></textarea></label>
+<label>Human blocker<textarea id="edit-blocker" maxlength="1200" rows="2"></textarea></label>
+<div class="actions"><button type="submit">Apply to local draft</button><button id="edit-cancel" type="button" class="muted-button">Cancel</button></div>
+</form>
 </section>
 <section class="panel">
-<h2>3. Build a local calendar file</h2>
+<h2>4. Export private Casework or calendar</h2>
 <p>Only locally scheduled open casework is included; <strong>completed or deferred human plans are excluded</strong>. No new deadlines are invented. Calendar clients may upload imported items to external services: use only an independently approved destination.</p>
 <div class="grid"><label>Calendar events <select id="export-scope"><option value="filtered">Currently visible eligible queue</option><option value="all">All eligible scheduled casework</option></select></label>
 <label>Output detail <select id="detail"><option value="anonymous">Redacted — no finding IDs, titles, owner or private notes</option><option value="private">PRIVATE — finding ID, title, owner and next action</option></select></label>
 </div>
 <label class="check"><input id="calendar-ack" type="checkbox"> I have explicitly checked the receiving calendar or handoff channel and understand that even redacted dates, risk levels and event counts can be confidential.</label>
-<div class="actions"><button id="download" type="button" disabled>Export private local .ics</button><button id="aggregate" type="button">Export anonymous workload CSV</button><button id="clear" type="button" class="muted-button">Clear private workspace</button></div>
+<label class="check"><input id="draft-ack" type="checkbox"> I approve saving a PRIVATE source-bound human planning draft for an independently authorized receiving channel. This is not verified remediation or a grant.</label>
+<div class="actions"><button id="casework-save" type="button" disabled>Save updated PRIVATE Casework v1 JSON</button><button id="download" type="button" disabled>Export private local .ics</button><button id="aggregate" type="button">Export anonymous workload CSV</button><button id="clear" type="button" class="muted-button">Clear private workspace</button></div>
 <p id="export-message" role="status" aria-live="polite"></p>
 </section>
 </section>

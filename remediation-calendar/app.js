@@ -7,7 +7,7 @@ const COLS=['finding_id','title','severity','retest_status','remediation'];
 const CASE=['finding_id','owner','status','due_date','next_action','verification_plan','blocker','note','updated_utc'];
 const PACKET=['kind','schema_version','disposition','source_contract','source_sha256','findings','cases','instructions',...FLAGS];
 const PRIORITY=['critical','high','medium','low','info'];
-let state=null;
+let state=null,activeId=null,dirty=false;
 function fail(message){throw Error(message);}
 function bytes(s){return new TextEncoder().encode(s).length;}
 function exactKeys(o,keys,what){
@@ -83,6 +83,39 @@ function filtered(){
   return true;
  });
 }
+function openEdit(id){
+ if(!state||!$('source-ack').checked)fail('Source confirmation required.');
+ const c=state.cases.find(x=>x.finding_id===id);
+ if(!c)fail('Original finding is not in this private workspace.');
+ activeId=id;
+ $('edit-label').textContent='Editing human notes for original finding '+id+'. The original finding and source retest state remain read-only.';
+ $('edit-owner').value=c.owner;$('edit-status').value=c.status;
+ $('edit-date').value=c.due_date||'';$('edit-action').value=c.next_action;$('edit-blocker').value=c.blocker;
+ $('edit-panel').hidden=false;$('edit-panel').scrollIntoView({block:'nearest'});
+}
+function saveEdit(event){
+ event.preventDefault();
+ if(!state||!$('source-ack').checked||!activeId)fail('No editable human case selected.');
+ const index=state.cases.findIndex(x=>x.finding_id===activeId);
+ if(index<0)fail('Original finding no longer present.');
+ const old=state.cases[index],date=$('edit-date').value;
+ if(date&&!safeDate(date))fail('Human follow-up date must be within 2020–2100.');
+ const next=global.LightUpCasework.cleanCase({
+  ...old,owner:$('edit-owner').value,status:$('edit-status').value,
+  due_date:date||null,next_action:$('edit-action').value,
+  blocker:$('edit-blocker').value,updated_utc:new Date().toISOString()
+ },new Set(state.findings.map(f=>f.finding_id)));
+ const cases=state.cases.slice();cases[index]=next;state={...state,cases};
+ dirty=true;activeId=null;$('edit-panel').hidden=true;render();
+ $('export-message').textContent='Human-only local change saved in memory. Export a PRIVATE Casework v1 draft before closing.';
+}
+function exportDraft(){
+ if(!state||!$('source-ack').checked||!$('draft-ack').checked)
+  fail('Private Casework export requires separately confirmed source and handoff.');
+ const packet=global.LightUpCasework.makePacket(state.findings,state.cases,state.digest);
+ saveFile('lightup-PRIVATE-updated-casework.json',JSON.stringify(packet,null,2)+'\n','application/json;charset=utf-8');
+ dirty=false;$('export-message').textContent='Updated PRIVATE human Casework draft saved. Return via a separately approved secure channel, never as proof of remediation.';
+}
 function textEl(tag,text,cls){const e=document.createElement(tag);e.textContent=String(text);if(cls)e.className=cls;return e;}
 function render(){
  if(!state)return;
@@ -95,9 +128,9 @@ function render(){
   tr.append(textEl('td',c.status));
   tr.append(textEl('td',c.owner||'Unassigned'));
   tr.append(textEl('td',c.due_date||'No human date',!c.due_date?'muted':undefined));
-  const next=document.createElement('td');next.append(textEl('span',c.next_action||'No human action'));if(c.blocker.trim())next.append(textEl('small','BLOCKED: '+c.blocker));tr.append(next);body.append(tr);
+  const next=document.createElement('td');next.append(textEl('span',c.next_action||'No human action'));if(c.blocker.trim())next.append(textEl('small','BLOCKED: '+c.blocker));tr.append(next);const action=document.createElement('td'),button=textEl('button','Edit','muted-button');button.type='button';button.addEventListener('click',()=>{try{openEdit(f.finding_id);}catch(e){$('export-message').textContent='HOLD: '+e.message;}});action.append(button);tr.append(action);body.append(tr);
  }
- if(!rows.length){const tr=document.createElement('tr'),td=document.createElement('td');td.colSpan=6;td.textContent='No matching original findings.';tr.append(td);body.append(tr);}
+ if(!rows.length){const tr=document.createElement('tr'),td=document.createElement('td');td.colSpan=7;td.textContent='No matching original findings.';tr.append(td);body.append(tr);}
  const all=allRows(),counts=[
   ['Original findings',all.length],['Scheduled human dates',all.filter(eligible).length],
   ['Past-due human dates',all.filter(x=>eligible(x)&&x.case.due_date<todayUTC()).length],
@@ -108,6 +141,7 @@ function render(){
  const m=$('metrics');m.replaceChildren();for(const [label,count] of counts){const d=textEl('div','', 'metric');d.append(textEl('strong',count),textEl('span',label));m.append(d);}
  $('scope-info').textContent=rows.length+' matching original findings; '+rows.filter(eligible).length+' with eligible human follow-up dates. Missing dates are NOT assumed resolved.';
  $('download').disabled=!$('calendar-ack').checked||!$('source-ack').checked;
+ $('casework-save').disabled=!$('draft-ack').checked||!$('source-ack').checked;
 }
 async function shaHex(s){
  if(!global.crypto||!global.crypto.subtle)fail('This browser cannot calculate SHA-256 offline; calendar export held.');
@@ -131,7 +165,7 @@ async function openFile(file){
  const digest=await global.LightUpCasework.digest(clean.findings);
  if(clean.source_sha256&&(!digest||clean.source_sha256!==digest))fail('Original source fingerprint mismatch or browser digest unavailable.');
  const newState={...clean,digest};
- state=newState;
+ state=newState;dirty=false;activeId=null;$('edit-panel').hidden=true;$('draft-ack').checked=false;
  $('workspace').hidden=false;$('calendar-ack').checked=false;$('export-message').textContent='';
  render();
  $('message').textContent=clean.findings.length+' original findings loaded locally. Source is a historical unsigned draft; no current identity or consent checked.';
@@ -186,14 +220,24 @@ function exportAggregate(){
  $('export-message').textContent='Anonymous category counts exported. This is neither a retest outcome nor proof of a safe public disclosure.';
 }
 function reset(){
- state=null;$('file').value='';$('source-ack').checked=false;$('calendar-ack').checked=false;
+ state=null;activeId=null;dirty=false;$('file').value='';$('source-ack').checked=false;$('calendar-ack').checked=false;$('draft-ack').checked=false;$('edit-panel').hidden=true;
  $('workspace').hidden=true;$('message').textContent='Private workspace cleared from app state. Already exported files and calendar imports remain under your control.';
 }
-$('file').addEventListener('change',async e=>{state=null;$('workspace').hidden=true;try{await openFile(e.target.files[0]);}catch(err){$('message').textContent='HOLD: '+err.message;}});
+$('file').addEventListener('change',async e=>{
+ if(dirty&&!global.confirm('Discard in-memory human changes? Export your PRIVATE Casework draft first.')){e.target.value='';return;}
+ if(state&&!global.confirm('Replace the previous source? Independently verify the newly selected client and exact engagement first.')){e.target.value='';return;}
+ state=null;activeId=null;dirty=false;$('edit-panel').hidden=true;$('workspace').hidden=true;
+ try{await openFile(e.target.files[0]);}catch(err){$('message').textContent='HOLD: '+err.message;}
+});
 for(const id of ['filter','severity','search'])$(id).addEventListener('input',render);
 $('calendar-ack').addEventListener('change',render);
+$('draft-ack').addEventListener('change',render);
+$('edit-form').addEventListener('submit',e=>{try{saveEdit(e);}catch(err){e.preventDefault();$('export-message').textContent='HOLD: '+err.message;}});
+$('edit-cancel').addEventListener('click',()=>{activeId=null;$('edit-panel').hidden=true;});
+$('casework-save').addEventListener('click',()=>{try{exportDraft();}catch(err){$('export-message').textContent='HOLD: '+err.message;}});
 $('source-ack').addEventListener('change',()=>{if(state)render();});
 $('download').addEventListener('click',async()=>{try{await exportCalendar();}catch(e){$('export-message').textContent='HOLD: '+e.message;}});
 $('aggregate').addEventListener('click',()=>{try{exportAggregate();}catch(e){$('export-message').textContent='HOLD: '+e.message;}});
-$('clear').addEventListener('click',reset);
+$('clear').addEventListener('click',()=>{if(dirty&&!global.confirm('Discard unsaved human notes?'))return;reset();});
+global.addEventListener('beforeunload',e=>{if(dirty){e.preventDefault();e.returnValue='';}});
 })(window);

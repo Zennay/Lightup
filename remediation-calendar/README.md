@@ -19,3 +19,11 @@ Open [index.html](./index.html) from a **complete local repository checkout** wi
 ## Branch ownership
 
 Only new `remediation-calendar/` paths. Based on immutable original Casework PR #1568 commit `9c73e8468ce271bf8c6bef4cac071e5ad9c1806b`; no changes to original Casework, Evidence Review #1623, Cockpit #1627, domain, scope, web, scanner, CI or tests. This remains a standalone DRAFT/HOLD review candidate.
+
+## Complete private roundtrip back to original Casework
+
+The Calendar now supports an Edit action per original finding. A human can change only the local owner/team, human stage, human proposed due date, next human action and blocker. Each save uses the unchanged original LightUpCasework.cleanCase validator, updates only the selected case's in-memory planning record and keeps all five original finding fields and server-side retest_status immutable. Original verification plans and private case notes are preserved instead of overwritten.
+
+Use Save updated PRIVATE Casework v1 JSON after explicitly confirming the intended secure receiving channel. Export uses unchanged original LightUpCasework.makePacket, with complete original findings/case membership, source SHA-256 where available, and all original authority flags false. The exported packet remains an unsigned human planning draft, not verified remediation or an authorization. Return only through a separately approved protected channel to the original source-aware Casework workflow.
+
+Changing or clearing a workspace warns before discarding unsaved in-memory notes. Nothing is automatically saved to browser storage or sent externally. Clearing the workspace cannot remove previously exported files or calendar events. The CSP-pinned one-file standalone contains the full editable return workflow.
