@@ -24,21 +24,22 @@ For two previously completed original isolated lab benchmark-case JSON sources:
 
     python3 scripts/lightup_workbench.py compose /private/BASE-case.json /private/NEXT-case.json --output-dir /private/reviews --prefix review01
 
-The chosen existing directory must be owner-only 0700, owned by the current user and not a symlink. All five destination names must be unused. The command reads only the two explicit original private case files, checks source bytes before/after the original comparator, and never invokes a lab runner.
+The chosen existing directory must be owner-only 0700, owned by the current user and not a symlink. All six destination names must be unused. The command reads only the two explicit original private case files, checks source bytes before/after the original comparator, and never invokes a lab runner.
 
-On original REVIEW_ONLY (2), it produces five new fsynced exclusive mode-0600 artifacts:
+On a valid original comparison with real metrics — REVIEW_ONLY (2), or HOLD (3) for actual measured regressions — it preserves **six** new fsynced exclusive mode-0600 artifacts:
 
 - review01-original-review.zip — original source-rich source-owner comparator review pack.
-- review01-source-archive.json — canonical local pathless manifest for both source files and original report ZIP.
+- review01-original-comparison.json — **byte-identical original source-owner review-desk JSON**, including the actual REVIEW_ONLY/HOLD status and original cohort/case metric changes.
+- review01-source-archive.json — canonical local pathless manifest for both source files, original comparison JSON and original private review ZIP.
 - review01-archive-studio.html — self-contained, no-network private source-bound browser worklist.
 - review01-human-followup.json — editable SHA-bound human planning choices.
 - review01-review-room.zip — navigable private offline coordination room with human stages and Studio.
 
 With already-completed original 1–64 case cohort JSON-array files add --cohort; this merely delegates to the original comparator's cohort format.
 
-The original comparator's source/metric semantics are retained unmodified. If it returns HOLD, or if source bytes change, archive admission fails, a destination already exists, permissions are not private, or original source record shape is not supported, the product returns HOLD (3), never a cleared or authorized claim.
+The original comparator's source/metric semantics are retained unmodified. The integrated reader verifies original ZIP member names, its original manifest's precise source SHA-256 fingerprints, exact original review-desk JSON hash and all false permission flags. A **genuine HOLD caused by original measured regression is archived** for a human to inspect, and remains HOLD in both private manifest and review-room output; there is no silent conversion to REVIEW_ONLY. Malformed inputs, a comparator HOLD with no valid reviewable report, changed source bytes, occupied destinations or invalid original evidence are rejected without producing a misleading archive. HOLD is never clearance.
 
-Private temporary staging builds all outputs before final publication. A partial set of NEW files may remain if a later final publication fails, but no existing user path is overwritten; original case files remain read-only. Original completed source files and SHA indexes are private evidence; protect generated outputs.
+Private temporary staging builds all six outputs before final publication. A partial set of NEW files may remain if a later final publication fails, but no existing user path is overwritten; original case files remain read-only. Original completed source files and SHA indexes are private evidence; protect generated outputs.
 
 ## Original comparator and independent archive from one CLI
 

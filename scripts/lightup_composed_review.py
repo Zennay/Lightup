@@ -26,11 +26,13 @@ from archive_studio import build as build_studio
 from followup import draft as build_followup
 from packet import package as build_packet
 from lightup_review import compare as original_compare
+from lightup_composed_admission import admit_original_review
 
 from types import SimpleNamespace
 
 ARTIFACT_SUFFIXES = (
     "-original-review.zip",
+    "-original-comparison.json",
     "-source-archive.json",
     "-archive-studio.html",
     "-human-followup.json",
@@ -76,19 +78,27 @@ def run(args):
             *(["--cohort"] if args.cohort else []),
             "--format", "review-pack", "--output", str(review_path)
         ])
-        if compared != 2 or not review_path.is_file():
-            raise Hold("original source comparator placed result on HOLD")
+        if compared not in (2, 3) or not review_path.is_file():
+            raise Hold("original comparator supplied no reviewable evidence")
+        desk_bytes, original_state = admit_original_review(
+            read_regular(str(review_path), MAX_SOURCE),
+            baseline_sha=before[0].hex(), candidate_sha=before[1].hex(),
+            comparator_exit=compared, cohort=args.cohort,
+        )
         after = [sha256(read_regular(str(p), source_sizes)).digest() for p in (first, second)]
         if before != after:
             raise Hold("original source bytes changed while comparing")
+        comparison_path = stage / "comparison.json"
+        publish(comparison_path, desk_bytes)
         archive_path = stage / "archive.json"
-        if archive_capture(SimpleNamespace(
-            sources=[str(first), str(second), str(review_path)],
+        archival = archive_capture(SimpleNamespace(
+            sources=[str(first), str(second), str(comparison_path), str(review_path)],
             output=str(archive_path)
-        )) != 2:
-            raise Hold("original archive admission failed")
+        ))
+        if archival != compared or not archive_path.is_file():
+            raise Hold("original archive status differs from comparator")
         studio_path = stage / "studio.html"
-        if build_studio(str(archive_path), str(studio_path)) != 2:
+        if build_studio(str(archive_path), str(studio_path)) != compared:
             raise Hold("source-bound browser source admission failed")
         human_path = stage / "human.json"
         if build_followup(SimpleNamespace(
@@ -96,26 +106,31 @@ def run(args):
         )) != 2:
             raise Hold("source-bound human form admission failed")
         packet_path = stage / "packet.zip"
-        if build_packet(SimpleNamespace(
+        packaged = build_packet(SimpleNamespace(
             manifest=str(archive_path), choices=str(human_path),
             agenda_date=None, previous=None, include_studio=True,
             aggregate_only=False, output=str(packet_path)
-        )) != 2:
-            raise Hold("source-bound offline packet admission failed")
-        # Materialize only after the *whole private product* was composed.
+        ))
+        if packaged != compared:
+            raise Hold("private packet status differs from original comparator")
+        last = [sha256(read_regular(str(p), source_sizes)).digest() for p in (first, second)]
+        if last != before:
+            raise Hold("source bytes changed before private publication")
+        # Materialize only after the whole private source-bound package is composed.
         # Every final file is new, no-replace and fsynced; failure never
         # overwrites a pre-existing user file. We do not delete partial outputs
         # because other operators may already have opened a newly published path.
         for part, dest in zip(
-            (review_path, archive_path, studio_path, human_path, packet_path),
+            (review_path, comparison_path, archive_path, studio_path, human_path, packet_path),
             targets
         ):
             publish(dest, read_regular(str(part), MAX_SOURCE))
-    print("COMPLETED_LAB_OFFLINE_REVIEW_ROOM_CREATED — HUMAN REVIEW ONLY")
-    print("Original comparator, source archive, browser studio, bound human form,")
-    print("and portable private review room are stored in the selected directory.")
-    print("Original source review is NOT client consent, target permission or release GO.")
-    return 2
+    print("ORIGINAL_LAB_HUMAN_REVIEW_PACKAGE_CREATED — " + original_state + "; NO AUTHORITY")
+    print("Original comparator report, canonical source-bound comparison, archive,")
+    print("private browser Studio, human draft and review room were preserved.")
+    print("HOLD indicates original measured regressions requiring human investigation.")
+    print("No original record authenticates a client, verifies consent or grants GO.")
+    return compared
 
 
 def main(argv=None):

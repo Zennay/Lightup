@@ -53,12 +53,12 @@ pre{background:#081926;border:1px solid #3c5368;padding:17px;white-space:pre-wra
 <section class="panel">
 <div class="eyebrow">02 / ORIGINAL COMPLETED LAB SOURCES ONLY</div>
 <h2>One private review handoff command</h2>
-<p>For two **already-completed** original lab benchmark source files, one command runs the existing original comparator and creates five private outputs, without calling any lab runner or target:</p>
+<p>For two **already-completed** original lab benchmark source files, one command runs the existing original comparator and creates six private outputs, without calling any lab runner or target:</p>
 <pre>python3 scripts/lightup_composed_review.py \
   /private/BASE-completed-case.json /private/NEXT-completed-case.json \
   --output-dir /private/reviews \
   --prefix review01</pre>
-<p>This produces an original comparator review ZIP, a private multi-artifact archive manifest, an interactive source-bound HTML Studio, an editable human follow-up draft and a private review-room ZIP.</p>
+<p>This produces an original comparator review ZIP, unchanged canonical comparison JSON with source-owner metrics and REVIEW_ONLY/HOLD, an archive manifest, interactive source-bound Studio, editable human draft and private review-room ZIP. Genuine metric-regression HOLD remains visible for human investigation and never becomes clearance.</p>
 <p class="muted">Destination must be an already-existing privately owned 0700 directory. Files are new, 0600 and never overwritten; failures are HOLD. For previously completed original cohort-array inputs add --cohort.</p>
 </section>
 <section class="panel">
