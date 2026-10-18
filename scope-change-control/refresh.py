@@ -141,6 +141,8 @@ def _admit(doc: dict) -> dict[str, dict[str, dict]]:
             raise ReviewHold("unknown original grant engagement")
         if (not _identity(grant.get("request_link_observation"))
                 or not _identity(grant.get("validity_observation"))
+                or (grant.get("approved_request_id") is not None
+                    and not _identity(grant.get("approved_request_id")))
                 or type(grant.get("max_risk")) is not int
                 or not 0 <= grant["max_risk"] <= 5):
             raise ReviewHold("malformed original grant observation")
@@ -161,6 +163,11 @@ def _admit(doc: dict) -> dict[str, dict[str, dict]]:
             or declared["case_attention_hold"] != sum(
                 x["attention"].startswith("HOLD_") for x in indexed["case_overview"].values())):
         raise ReviewHold("case HOLD total contradicts original rows")
+    if (type(declared.get("grant_link_hold")) is not int
+            or declared["grant_link_hold"] != sum(
+                x["request_link_observation"].startswith("HOLD_")
+                for x in indexed["grants"].values())):
+        raise ReviewHold("original recorded grant-link HOLD count mismatch")
     return indexed
 
 
