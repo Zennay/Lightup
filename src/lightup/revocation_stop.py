@@ -118,7 +118,7 @@ def authenticate_domain_user(db_path: str, email: str, password: str) -> str:
     return _literal(user.user_id, "authenticated actor identity")
 
 
-def record_stop(db_path: str, *, engagement_id: str, actor_id: str,
+def _append_stop_authenticated_actor(db_path: str, *, engagement_id: str, actor_id: str,
                 reason: str) -> dict:
     """Append one irreversible-through-this-API STOP with current persisted roles.
 
@@ -168,6 +168,16 @@ def record_stop(db_path: str, *, engagement_id: str, actor_id: str,
         raise StopLedgerError("STOP could not be durably recorded") from None
     finally:
         con.close()
+
+
+def record_authenticated_stop(db_path: str, *, engagement_id: str,
+                              email: str, password: str, reason: str = "") -> dict:
+    """Public authenticated write entry point; identity is never caller-supplied."""
+    actor_id = authenticate_domain_user(db_path, email, password)
+    return _append_stop_authenticated_actor(
+        db_path, engagement_id=engagement_id, actor_id=actor_id,
+        reason=reason,
+    )
 
 
 def status_for_actor(db_path: str, *, engagement_id: str, actor_id: str) -> dict:
@@ -357,16 +367,11 @@ def main(argv: list[str] | None = None) -> int:
         parser.error("--reason is available only with stop")
     try:
         password = getpass("LightUp password: ")
-        actor_id = authenticate_domain_user(args.database, args.email, password)
-        if args.action == "list":
-            print(json.dumps(engagement_inbox(args.database, actor_id=actor_id), sort_keys=True, indent=2))
-            return 2
         if args.action == "stop":
-            result = record_stop(
+            result = record_authenticated_stop(
                 args.database, engagement_id=args.engagement,
-                actor_id=actor_id, reason=args.reason,
+                email=args.email, password=password, reason=args.reason,
             )
-            # A receipt is a convenience only. STOP was committed beforehand.
             if args.receipt:
                 try:
                     _private_receipt(args.receipt, result)
@@ -375,6 +380,10 @@ def main(argv: list[str] | None = None) -> int:
                     result["private_receipt_created"] = False
             print(json.dumps(result, sort_keys=True, indent=2))
             return 0
+        actor_id = authenticate_domain_user(args.database, args.email, password)
+        if args.action == "list":
+            print(json.dumps(engagement_inbox(args.database, actor_id=actor_id), sort_keys=True, indent=2))
+            return 2
         result = status_for_actor(
             args.database, engagement_id=args.engagement, actor_id=actor_id,
         )
