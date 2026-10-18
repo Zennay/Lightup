@@ -48,6 +48,16 @@ def reject_constant(_):
     raise ReviewHold("non-finite source value")
 
 
+def admitted_casebook_envelope(doc: object) -> dict:
+    if type(doc) is not dict or doc.get("schema") != SOURCE_SCHEMA:
+        raise ReviewHold("not an original Casebook v1 export")
+    if doc.get("status") != "REVIEW_ONLY" or doc.get("source") != "original_persisted_domain_unverified":
+        raise ReviewHold("unknown original Casebook provenance")
+    if any(doc.get(key) is not False for key in AUTHORITY_FLAGS):
+        raise ReviewHold("Casebook asserts or omits non-authority flags")
+    return doc
+
+
 def source_file(path: Path) -> dict:
     # Open once with O_NOFOLLOW; reject FIFOs, links, devices and oversized input.
     flags = os.O_RDONLY | getattr(os, "O_CLOEXEC", 0) | getattr(os, "O_NOFOLLOW", 0)
@@ -67,12 +77,7 @@ def source_file(path: Path) -> dict:
                          parse_constant=reject_constant)
     except (UnicodeError, json.JSONDecodeError) as exc:
         raise ReviewHold("malformed original Casebook JSON") from exc
-    if type(doc) is not dict or doc.get("schema") != SOURCE_SCHEMA:
-        raise ReviewHold("not an original Casebook v1 export")
-    if doc.get("status") != "REVIEW_ONLY" or doc.get("source") != "original_persisted_domain_unverified":
-        raise ReviewHold("unknown original Casebook provenance")
-    if any(doc.get(key) is not False for key in AUTHORITY_FLAGS):
-        raise ReviewHold("Casebook asserts or omits non-authority flags")
+    admitted_casebook_envelope(doc)
     doc["_private_original_sha256"] = hashlib.sha256(raw).hexdigest()
     return doc
 
@@ -385,7 +390,7 @@ def main(argv=None) -> int:
                               allow_nan=False) + "\n").encode("utf-8")
             if len(raw) > MAX_SOURCE:
                 raise ReviewHold("original authenticated Casebook is too large")
-            source = dict(original)
+            source = admitted_casebook_envelope(dict(original))
             source["_private_original_sha256"] = hashlib.sha256(raw).hexdigest()
         else:
             if args.email or args.client:
