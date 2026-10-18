@@ -9,7 +9,7 @@ from html import escape
 from base64 import b64encode
 import sys
 
-from archive import FLAGS, Hold, decode_json, encode, publish, read_regular, reject_authority
+from portfolio import FLAGS, Hold, decode_json, encode, publish, read_regular, reject_authority
 from agenda import selected_day
 from multi_return import _zip
 
