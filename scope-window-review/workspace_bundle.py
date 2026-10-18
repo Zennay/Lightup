@@ -29,7 +29,7 @@ def _bytes(source: dict) -> bytes:
     return payload
 
 
-def create_workspace(destination: Path, agenda: dict) -> dict:
+def create_workspace(destination: Path, agenda: dict, *, original_bytes: bytes) -> dict:
     """Publish an all-from-one-source operator workspace, no final overwrite.
 
     The new, private 0700 directory is only considered complete when its
@@ -40,13 +40,17 @@ def create_workspace(destination: Path, agenda: dict) -> dict:
     if destination.name in ("", ".", ".."):
         raise ReviewHold("invalid workspace directory")
     ensure_private_destination(destination)
+    if (type(original_bytes) is not bytes or not 0 < len(original_bytes) <= 512 * 1024
+            or sha256(original_bytes).hexdigest() != agenda["original_source_sha256"]):
+        raise ReviewHold("exact original private Casebook bytes do not match source")
     files = {
+        "original-private-casebook.json": original_bytes,
         "human-review-board.html": render(agenda),
         "human-review-agenda.json": _bytes(agenda),
         "human-review-calendar.ics": ics(agenda),
     }
     filenames = tuple(files)
-    # No browser workspace contains the original private Casebook input bytes.
+    # The exact original source is in a separate private file, NEVER inside HTML.
     manifest = {
         "schema": "lightup.scope_window_workspace.v1",
         "status": agenda["status"],
