@@ -27,6 +27,19 @@ CAPS = {
     "human-worklist.csv": 131_072,
     "manifest.json": 8_192,
 }
+BRIEF_CAPS = {
+    "READ-ME.txt": 4_096,
+    "review.html": 1_048_576,
+    "human-worklist.csv": 131_072,
+    "manifest.json": 8_192,
+}
+BRIEF_KEYS = frozenset((
+    "format", "status", "case_count", "reported_regressions",
+    "printable_review_sha256", "human_worklist_sha256",
+    "source_authenticated", "authorized", "consent_verified",
+    "dispatch_allowed", "release_allowed",
+))
+
 DENY_KEYS = (
     "authorized", "consent_verified", "dispatch_allowed",
     "release_allowed", "source_authenticated", "approval_granted",
@@ -56,6 +69,30 @@ def _hex(value):
     )
 
 
+def _inspect_brief(content):
+    manifest = _json(content["manifest.json"])
+    if type(manifest) is not dict or set(manifest) != BRIEF_KEYS:
+        raise ValueError("invalid brief manifest")
+    if (manifest["format"] != "lightup.ordinal_review_brief.v1"
+            or manifest["status"] not in ("REVIEW_ONLY", "HOLD")
+            or type(manifest["case_count"]) is not int
+            or not 1 <= manifest["case_count"] <= 64
+            or type(manifest["reported_regressions"]) is not int
+            or not 0 <= manifest["reported_regressions"] <= 960):
+        raise ValueError("invalid brief status")
+    if any(manifest[key] is not False for key in (
+            "authorized", "consent_verified", "dispatch_allowed",
+            "release_allowed", "source_authenticated")):
+        raise ValueError("brief claims authority")
+    for key, filename in (("printable_review_sha256", "review.html"),
+                          ("human_worklist_sha256", "human-worklist.csv")):
+        if not _hex(manifest[key]) or manifest[key] != sha256(content[filename]).hexdigest():
+            raise ValueError("brief content mismatch")
+    if not content["human-worklist.csv"].startswith(b"case,priority,"):
+        raise ValueError("invalid human worklist")
+    return manifest["status"]
+
+
 def inspect(path):
     fd = os.open(
         path,
@@ -69,18 +106,22 @@ def inspect(path):
         raise ValueError("archive over limit")
     with ZipFile(BytesIO(raw)) as archive:
         entries = archive.infolist()
-        if len(entries) != len(CAPS) or set(member.filename for member in entries) != set(CAPS):
+        names = set(member.filename for member in entries)
+        caps = CAPS if names == set(CAPS) else (BRIEF_CAPS if names == set(BRIEF_CAPS) else None)
+        if caps is None or len(entries) != len(caps):
             raise ValueError("unexpected archive members")
         content = {}
         for member in entries:
             if (member.is_dir() or member.flag_bits & 1
                     or member.compress_type != ZIP_DEFLATED
-                    or not 0 < member.file_size <= CAPS[member.filename]):
+                    or not 0 < member.file_size <= caps[member.filename]):
                 raise ValueError("unsupported archive member")
             data = archive.read(member)
             if len(data) != member.file_size:
                 raise ValueError("member size mismatch")
             content[member.filename] = data
+    if caps is BRIEF_CAPS:
+        return _inspect_brief(content)
     manifest = _json(content["manifest.json"])
     if type(manifest) is not dict or set(manifest) != MANIFEST_KEYS:
         raise ValueError("unexpected manifest")

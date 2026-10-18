@@ -334,6 +334,50 @@ def _review_pack(result, first_sha: str, second_sha: str,
     return payload
 
 
+def _redacted_pack(result, first_sha: str, second_sha: str,
+                   cohort: bool, selected_cases: bool):
+    """Share-minimal human packet: no source IDs, source hashes or browser input."""
+    report = _build_report(result, first_sha, second_sha, cohort,
+                           selected_cases=selected_cases, include_source_hashes=False)
+    worklist = _human_worklist(result, cohort)
+    manifest = json.dumps({
+        "format": "lightup.ordinal_review_brief.v1",
+        "status": result.status,
+        "case_count": len(result.comparisons) if cohort else 1,
+        "reported_regressions": (sum(len(c.regressions) for _, c in result.comparisons)
+                                 if cohort else len(result.regressions)),
+        "printable_review_sha256": sha256(report).hexdigest(),
+        "human_worklist_sha256": sha256(worklist).hexdigest(),
+        "source_authenticated": False,
+        "authorized": False,
+        "consent_verified": False,
+        "dispatch_allowed": False,
+        "release_allowed": False,
+    }, sort_keys=True, separators=(",", ":")).encode("ascii")
+    instructions = (
+        "LIGHTUP ORDINAL HUMAN BRIEF — HOLD FOR ANY ACTIVE WORK\n"
+        "Open review.html to read the printable metric brief.\n"
+        "Open human-worklist.csv for suggested human-only follow-up.\n"
+        "Source identifiers, original file fingerprints and interactive raw JSON "
+        "are intentionally omitted. Numeric metrics may remain sensitive.\n"
+        "Not consent, security proof, or permission to scan or release.\n"
+    ).encode("utf-8")
+    buffer = BytesIO()
+    with ZipFile(buffer, "w") as archive:
+        for name, data in (("READ-ME.txt", instructions),
+                           ("review.html", report),
+                           ("human-worklist.csv", worklist),
+                           ("manifest.json", manifest)):
+            info = ZipInfo(name, date_time=(2026, 10, 18, 0, 0, 0))
+            info.compress_type = ZIP_DEFLATED
+            info.external_attr = 0o600 << 16
+            archive.writestr(info, data)
+    payload = buffer.getvalue()
+    if len(payload) > REPORT_LIMIT + 150_000:
+        raise ValueError("private brief exceeds bound")
+    return payload
+
+
 def _write_exclusive(path: str, payload: bytes):
     """Publish complete 0600 bytes only; never expose a partial final filename.
 
@@ -368,7 +412,7 @@ def main(argv=None):
                         help="Input files contain arrays of 1–64 case exports")
     parser.add_argument("--output", required=True,
                         help="New private output file (existing files are refused)")
-    parser.add_argument("--format", choices=("html", "desk-json", "review-pack", "redacted-html"), default="html",
+    parser.add_argument("--format", choices=("html", "desk-json", "review-pack", "redacted-html", "redacted-pack"), default="html",
                         help="Printable HTML, original Review Desk #1576 JSON, or private combined ZIP")
     args = parser.parse_args(argv)
     try:
@@ -399,7 +443,10 @@ def main(argv=None):
         if result.status not in ("REVIEW_ONLY", "HOLD") or not metrics_ready:
             print("LAB_REVIEW_HOLD")
             return 3
-        if args.format == "review-pack":
+        if args.format == "redacted-pack":
+            document = _redacted_pack(result, first_sha, second_sha, cohort,
+                                      selected_cases)
+        elif args.format == "review-pack":
             document = _review_pack(result, first_sha, second_sha, cohort,
                                     selected_cases)
         elif args.format == "desk-json":
