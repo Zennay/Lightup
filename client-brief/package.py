@@ -22,6 +22,7 @@ SCRIPT_TAGS = {
     "remediation-engine.js": '<script src="remediation-engine.js"></script>',
     "casework-import.js": '<script src="casework-import.js"></script>',
     "readiness-import.js": '<script src="readiness-import.js"></script>',
+    "session-draft.js": '<script src="session-draft.js"></script>',
     "app.js": '<script src="app.js"></script>',
 }
 

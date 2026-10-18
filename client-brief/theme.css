@@ -2,3 +2,5 @@
 .chart-row progress{display:block;width:100%;height:14px;accent-color:#78d3d5;border:0;border-radius:8px;overflow:hidden}.chart-row progress.severity-critical{color:#ff7993;accent-color:#ff7993}.chart-row progress.severity-high{color:#ffb37d;accent-color:#ffb37d}.chart-row progress.severity-medium{color:#f1d986;accent-color:#f1d986}.chart-row progress.severity-low{color:#78d3d5;accent-color:#78d3d5}.chart-row progress.severity-info{color:#8ba7dc;accent-color:#8ba7dc}.chart-row progress::-webkit-progress-bar{background:#263d54;border-radius:8px}.chart-row progress::-webkit-progress-value{background:currentColor;border-radius:8px}.chart-row progress::-moz-progress-bar{background:currentColor;border-radius:8px}
 
 @media print{#readiness-panel{display:none!important}}
+
+@media print{#session-panel{display:none!important}}

@@ -64,6 +64,38 @@ function clearReadiness(){
  $('readiness-status').textContent='No operator snapshot loaded.';
  renderReadiness();if(state)render();
 }
+function sessionFields(){
+ return {title:$('report-title').value.trim(),anchor:$('anchor').value,
+  urgent_days:Number($('urgent-days').value),medium_days:Number($('medium-days').value),
+  low_days:Number($('low-days').value),discussion:{urgent:$('urgent-decision').value,
+  medium:$('medium-decision').value,low:$('low-decision').value}};
+}
+function saveSession(){
+ try{
+  if(!state)throw Error('Open a current findings CSV first.');
+  const packet=LightUpBriefDraft.make(state.fresh.sha,state.older?.sha??null,sessionFields());
+  if(!confirm('Save a private unsigned working draft containing the brief heading and source hashes? It never includes grants, consent or findings.'))return;
+  download(JSON.stringify(packet,null,2)+'\n','lightup-client-brief-local-review-DRAFT.json','application/json;charset=utf-8');
+  $('session-status').textContent='Working draft downloaded; store privately.';
+ }catch(e){$('session-status').textContent='Not saved: '+e.message;}
+}
+async function restoreSession(){
+ if(!state)return note('Reopen the original current findings CSV before restoring.',true);
+ const file=$('session-file').files[0];if(!file)return note('Select a saved source-bound review draft.',true);
+ $('session-load').disabled=true;
+ try{
+  const fields=await LightUpBriefDraft.read(file,state.fresh.sha,state.older?.sha??null);
+  if(!confirm('Restore human planning inputs from this unsigned file, replacing current local edits? This is NOT scope or permission restoration.'))return;
+  $('report-title').value=fields.title;$('anchor').value=fields.anchor;
+  ['urgent','medium','low'].forEach(k=>{$(k+'-days').value=fields[k+'_days'];$(k+'-decision').value=fields.discussion[k];});
+  // Never carry over internal operator report sharing or sensitive source details.
+  $('internal-readiness').checked=false;$('details').checked=false;
+  $('audience').value='Client and operator';render();
+  $('session-status').textContent='Exact-source human draft restored; consent and authorization remain absent.';
+  note('Local human follow-up settings restored only. Operator/source documents were not restored.');
+ }catch(e){$('session-status').textContent='Draft rejected, existing settings unchanged.';note('Restore refused: '+e.message,true);}
+ finally{$('session-load').disabled=false;}
+}
 function note(text, bad=false) { $('message').textContent=text; $('message').style.color=bad?'#ff9fac':'#b6e3d9'; }
 async function sha256(bytes) {
  if (!globalThis.crypto || !crypto.subtle) return null;
@@ -91,6 +123,7 @@ async function load() {
   state={fresh,older,changes,sameScopeAcknowledged:!!older,casework:null,readiness:null};
   $('casework-file').value='';$('casework-confirm').checked=false;$('casework-status').textContent='No Casework loaded.';
   $('readiness-file').value='';$('readiness-confirm').checked=false;$('readiness-status').textContent='No operator snapshot loaded.';
+  $('session-file').value='';$('session-status').textContent='No working draft restored.';
   ['urgent','medium','low'].forEach(key=>$(key+'-decision').value='discussion_pending');
   $('details').checked=false;$('internal-readiness').checked=false;
   $('workspace').hidden=false;
@@ -242,7 +275,7 @@ function exportJSON() {
  catch(e){note('JSON export refused: '+e.message,true);}
 }
 function forget() {
- state=null;$('readiness-file').value='';$('readiness-confirm').checked=false;$('readiness-status').textContent='No operator snapshot loaded.';$('readiness-summary').replaceChildren();$('casework-file').value='';$('casework-confirm').checked=false;$('casework-status').textContent='No Casework loaded.';$('current').value='';$('previous').value='';$('same-scope').checked=false;$('details').checked=false;
+ state=null;$('session-file').value='';$('session-status').textContent='No working draft restored.';$('readiness-file').value='';$('readiness-confirm').checked=false;$('readiness-status').textContent='No operator snapshot loaded.';$('readiness-summary').replaceChildren();$('casework-file').value='';$('casework-confirm').checked=false;$('casework-status').textContent='No Casework loaded.';$('current').value='';$('previous').value='';$('same-scope').checked=false;$('details').checked=false;
  $('workspace').hidden=true;$('internal-readiness').checked=false;['urgent','medium','low'].forEach(key=>$(key+'-decision').value='discussion_pending');$('kpis').replaceChildren();$('changes').replaceChildren();$('preview').replaceChildren();
  note('In-memory findings forgotten. Previously downloaded files must be deleted separately.');
 }
@@ -251,6 +284,8 @@ $('casework-load').addEventListener('click',importCasework);
 $('casework-clear').addEventListener('click',clearCasework);
 $('readiness-load').addEventListener('click',importReadiness);
 $('readiness-clear').addEventListener('click',clearReadiness);
+$('session-save').addEventListener('click',saveSession);
+$('session-load').addEventListener('click',restoreSession);
 $('audience').addEventListener('change',()=>{if($('audience').value!=='Internal operators only')$('internal-readiness').checked=false;render();});
 $('forget').addEventListener('click',forget);
 $('html-export').addEventListener('click',exportHTML);
