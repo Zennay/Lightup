@@ -64,8 +64,28 @@
     <h2>Weekly workload</h2>
     <div id="weekly" class="weeks"></div>
   </div>
+  <div class="panel" aria-labelledby="history-title">
+    <p class="eyebrow">04 / HISTORICAL LOAD CHANGE</p>
+    <h2 id="history-title">Compare repair workload between two original reports</h2>
+    <p>Import one <em>earlier</em> authenticated LightUp findings CSV. Compare it with the current CSV above, using exactly the current hour assumptions. A record missing from the newer source is <strong>not proven fixed</strong>. The CSVs do not authenticate client or assessment identity.</p>
+    <div class="upload">
+      <label for="previous">Earlier original findings CSV</label>
+      <input id="previous" type="file" accept=".csv,text/csv">
+    </div>
+    <label class="ack"><input type="checkbox" id="same-engagement"> I independently checked that both exported reports refer to the <strong>same authenticated client and assessment engagement</strong>. This statement is a human assertion only; the application cannot verify it.</label>
+    <div class="actions">
+      <button type="button" id="review-history" class="secondary">Compare workloads</button>
+      <button type="button" id="clear-history" class="secondary">Forget historical comparison</button>
+    </div>
+    <p id="history-feedback" class="subtle" aria-live="polite">No earlier report compared.</p>
+    <div id="history-data" hidden>
+      <div class="stats" id="history-stats"></div>
+      <p class="subtle">A smaller estimated workload, or a source status of “fixed”, is not verified remediation. Added, changed and missing records require human reconciliation before any decisions.</p>
+      <button type="button" id="export-history" class="secondary">Export aggregate workload change</button>
+    </div>
+  </div>
   <div class="panel">
-    <p class="eyebrow">04 / CAPACITY WHAT-IF</p>
+    <p class="eyebrow">05 / CAPACITY WHAT-IF</p>
     <h2>What if the team had more capacity?</h2>
     <p>Compare the baseline with an alternative number of engineers. This does not hire, assign or book anyone; assumptions remain unchanged except staffing.</p>
     <div class="scenario-controls">
