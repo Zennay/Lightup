@@ -223,6 +223,29 @@ def _source_snapshot(database: str, *, actor_id: str, client_id: str | None) -> 
                 "decision_recorded": row["decided_at"] is not None,
             })
         # Report no releases or consent. Do not validate grants by tally.
+        case_overview = []
+        for engagement in engagement_view:
+            eid = engagement["engagement_id"]
+            linked = [item for item in grant_view if item["engagement_id"] == eid]
+            associated_risk = [
+                item for item in risk_view if item["engagement_id"] == eid
+            ]
+            if any(item["request_link_observation"].startswith("HOLD_")
+                   for item in linked) or any(
+                not item["source_tenant_matches"] for item in associated_risk
+            ):
+                attention = "HOLD_SOURCE_PROVENANCE"
+            elif linked:
+                attention = "REVIEW_ONLY_UNVERIFIED_GRANT_LINK"
+            else:
+                attention = "NO_GRANT_RECORDED"
+            case_overview.append({
+                "engagement_id": eid,
+                "status": engagement["status"],
+                "grant_count": len(linked),
+                "risk_record_count": len(associated_risk),
+                "attention": attention,
+            })
         anomalies = Counter(x["request_link_observation"] for x in grant_view)
         result = {
             "schema": "lightup.auth_casebook.v1",
@@ -234,11 +257,13 @@ def _source_snapshot(database: str, *, actor_id: str, client_id: str | None) -> 
             "engagements": engagement_view,
             "grants": grant_view,
             "risk_approvals": risk_view,
+            "case_overview": case_overview,
             "declared_counts": {
                 "requests": len(request_view), "engagements": len(engagement_view),
                 "grants": len(grant_view), "risk_approvals": len(risk_view),
                 "grant_link_hold": sum(v for k, v in anomalies.items() if k.startswith("HOLD_")),
                 "risk_tenant_hold": sum(not v["source_tenant_matches"] for v in risk_view),
+                "case_attention_hold": sum(v["attention"].startswith("HOLD_") for v in case_overview),
             },
             **AUTHORITY,
         }
