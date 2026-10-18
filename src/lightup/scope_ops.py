@@ -10,6 +10,7 @@ from __future__ import annotations
 import argparse
 from getpass import getpass
 import json
+import sqlite3
 import sys
 from pathlib import Path
 
@@ -157,7 +158,7 @@ def _shortlist(db: str, actor: str, source: dict, engagement: str) -> None:
             "release_approved": False,
         }, sort_keys=True, indent=2))
         print("Administrative shortlist is NOT independent consent, a stored grant, or a runtime permit.")
-    except (ValueError, TypeError, KeyError, PermissionError, OSError, OverflowError):
+    except (ValueError, TypeError, KeyError, PermissionError, OSError, OverflowError, sqlite3.Error, UnicodeError):
         print("HOLD: original persisted operator, proposal or request-source integrity refused.")
 
 
