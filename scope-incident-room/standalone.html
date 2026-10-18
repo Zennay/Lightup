@@ -39,6 +39,7 @@ h3{font-size:15px;margin:20px 0 9px}.source-card{border:1px solid #455877;border
 <button class="secondary" id="export" disabled>Export anonymous totals</button>
 <button class="secondary" id="print" disabled>Print briefing</button>
 <button class="secondary" id="saveStages" disabled>Save private follow-up</button>
+<button class="secondary" id="handoff" disabled>Export PRIVATE operator handoff</button>
 <label class="load">Restore saved follow-up<input id="restoreStages" type="file" accept=".json,application/json"></label></div>
 <div id="message" aria-live="polite" role="status">No private source imported.</div>
 <div class="note"><b>Never permission:</b> NO_STOP_RECORDED is not approval. STOP and Casebook are separate historical snapshots, not one atomic runtime check. Release still requires independent client/operator consent, action-time revocation, original CI, security/privacy reviews and explicit HUMAN GO.</div>
@@ -99,6 +100,74 @@ async function digestFile(file){
 }
 async function privateText(file){
  return new TextDecoder("utf-8",{fatal:true}).decode(await file.arrayBuffer());
+}
+function downloadPlain(content,name){
+ if(typeof content!=="string"||content.length>90000)return;
+ var blob=new Blob([content],{type:"text/markdown;charset=utf-8"}),url=URL.createObjectURL(blob);
+ var a=document.createElement("a");a.href=url;a.download=name;a.click();
+ setTimeout(function(){URL.revokeObjectURL(url);},250);
+}
+function md(value){
+ // Original source identifiers may contain Markdown punctuation; they may
+ // never become markup, links, images, headings or injected handoff roles.
+ return String(value).replace(/[\\`*_{}\[\]()#+.!|<>~-]/g,"\$&");
+}
+function originalHandoff(){
+ if(!report)return;
+ var notes=[
+ "# PRIVATE LightUp human scope/incident handoff",
+ "",
+ "**DRAFT/HOLD · NO AUTHORIZATION · NO CONSENT · NO EXECUTION · NO RELEASE**",
+ "",
+ "This is a historical operator worklist, NOT authenticated evidence or an action-time revocation check.",
+ "Request/grant and STOP observations were read in SEPARATE snapshots. Never infer authority from NO_STOP_RECORDED or a single matching approved administrative request.",
+ "Contains actual original engagement identities. Share only within the original authorized private operator team, never as an anonymous export.",
+ "",
+ "## Original source totals",
+ "",
+ "- Selected engagements: "+report.summary.selected,
+ "- Persisted STOP observations: "+report.summary.active_stop_observations,
+ "- STOP-source HOLD: "+report.summary.stop_source_hold,
+ "- Original pending risk decisions: "+report.summary.pending_risk_review,
+ "- Original risk-provenance HOLD: "+report.summary.risk_provenance_hold,
+ "- Human attention cases: "+report.summary.cases_requiring_human_attention,
+ "",
+ "## Exact original case follow-up",
+ ""
+ ];
+ for(var r of report.engagements.slice().sort((a,b)=>priority(a)-priority(b))){
+  var eid=md(r.engagement_id),stage=stages.get(r.engagement_id)||"unreviewed";
+  notes.push("### Engagement "+eid);
+  notes.push("- STOP source: "+md(r.stop_observation));
+  notes.push("- Original source attention: "+md(r.casebook_attention));
+  notes.push("- Requested next HUMAN review: "+md(r.casebook_next_human_action));
+  notes.push("- Local follow-up stage (NOT persisted): "+stage);
+  notes.push("- Source grant count: "+(r.grant_source_count===null?"HOLD":r.grant_source_count));
+  if(r.stop_observation==="STOP_ACTIVE"||r.stop_observation.startsWith("HOLD_"))
+    notes.push("- **Operator + source owner:** manually check recorded STOP, actual runtime dispatch/retry/revocation wiring, and original persisted provenance. Do not interpret this review as confirmation of an already-running worker halt.");
+  if(r.casebook_attention==="RISK_DECISION_PENDING_SOURCE_REVIEW")
+    notes.push("- **Independent operator reviewer:** examine the original pending risk decision under existing role and tenant controls. This file cannot approve it.");
+  if(r.casebook_attention.startsWith("HOLD_"))
+    notes.push("- **Source owner/security:** reconcile original request, grant and risk provenance privately; retain HOLD.");
+  if(older&&(changes.get(r.engagement_id)||[]).length)
+    notes.push("- Historical source differences (human review only): "+(changes.get(r.engagement_id)||[]).map(md).join("; "));
+  var b=report.binding_review;
+  if(b&&b.engagement_id===r.engagement_id){
+   notes.push("- Request-binding shortlist: "+md(b.status)+" (NOT client/operator consent).");
+   if(Number.isSafeInteger(b.matching_request_count))
+    notes.push("- Original matching administrative requests: "+b.matching_request_count+" (NOT grants).");
+   if(b.status.startsWith("HOLD_"))
+    notes.push("- **Client + operator/source owner:** identify an unambiguous original administratively approved request and reconfirm client/operator consent; do not grant from this handoff.");
+   else notes.push("- **Client + operator/source owner:** separately authenticate the scope/risk/time and revalidate all source records at actual issuance/use; do not mint a grant from retrospective data.");
+  }
+  notes.push("");
+ }
+ notes.push("## Mandatory release control");
+ notes.push("");
+ notes.push("Before any active target work: original independently authenticated client/operator approval; original scope/grant/risk admission; mandatory action-time revocation on dispatch, retry and resume; approved source-owner/security/privacy review; original full exact-HEAD hosted + permanent named VPS CI; explicit HUMAN GO.");
+ notes.push("");
+ notes.push("No individual assent, grant, scan, target contact, runtime stop or deployment was performed by this offline viewer.");
+ return notes.join("\n")+"\n";
 }
 function checkDuplicateKeys(raw){
 var i=0,steps=0;
@@ -313,7 +382,7 @@ var f=this.files&&this.files[0];this.value="";if(!f)return;
 if(f.size<2||f.size>MAX){E("message").textContent="HOLD: source exceeds private file bound.";return;}
 try{
  var next=importSource(await privateText(f)),digest=await digestFile(f);
- report=next;sourceDigest=digest;older=null;changes.clear();stages.clear();selectedCase=null;E("detail").hidden=true;E("binding").hidden=true;E("search").value="";E("search").disabled=false;E("focus").disabled=false;E("focus").value="all";E("export").disabled=false;E("saveStages").disabled=!sourceDigest;E("print").disabled=false;E("message").textContent="Imported locally · "+next.status+" · never authorized";render();}
+ report=next;sourceDigest=digest;older=null;changes.clear();stages.clear();selectedCase=null;E("detail").hidden=true;E("binding").hidden=true;E("search").value="";E("search").disabled=false;E("focus").disabled=false;E("focus").value="all";E("export").disabled=false;E("handoff").disabled=false;E("saveStages").disabled=!sourceDigest;E("print").disabled=false;E("message").textContent="Imported locally · "+next.status+" · never authorized";render();}
 catch(e){E("message").textContent="HOLD: malformed, contradictory or unsupported original source. Previous caseboard retained.";}}
 );
 E("previous").addEventListener("change",async function(){
@@ -367,6 +436,12 @@ E("restoreStages").addEventListener("change",async function(){
  }catch(e){E("message").textContent="HOLD: stages not bound to this original file. Existing human stages preserved.";}
 });
 E("print").addEventListener("click",function(){if(report)window.print();});
+E("handoff").addEventListener("click",function(){
+ if(!report)return;
+ if(!window.confirm("This PRIVATE file includes original engagement identities. It is NOT consent, a grant, or authority. Export for authorized human review only?"))return;
+ downloadPlain(originalHandoff(),"lightup-PRIVATE-scope-incident-handoff.md");
+ E("message").textContent="Private original-case human handoff exported locally. Share only under original confidentiality controls.";
+});
 E("export").addEventListener("click",function(){
 if(!report)return;var stageCounts={unreviewed:0,investigating:0,escalated:0,documented:0};
 for(var r of report.engagements)stageCounts[stages.get(r.engagement_id)||"unreviewed"]++;
