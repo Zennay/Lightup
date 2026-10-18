@@ -151,7 +151,7 @@ function clearPacketPreview(message='Source or coordination data changed. Create
  packetDraft=null;$('packetDownload').disabled=true;$('packetStatus').textContent=message;
  $('packetText').textContent='No prepared packet.';
 }
-function setDirty(){dirty=true;editEpoch++;clearPacketPreview();clearBulkPreview();$('save').disabled=!entries.length;$('csv').disabled=!entries.length;$('print').disabled=!entries.length;}
+function setDirty(){dirty=true;editEpoch++;clearPacketPreview();clearBulkPreview();$('save').disabled=!entries.length;$('csv').disabled=!entries.length;$('print').disabled=!entries.length;$('todoExport').disabled=!entries.length;}
 function make(tag,txt,cls){const el=document.createElement(tag);if(txt!==undefined)el.textContent=txt;if(cls)el.className=cls;return el;}
 function brief(){
  const lines=['LIGHTUP / HUMAN SCOPE COORDINATION — NON-AUTHORIZING','State: REVIEW_ONLY · DRAFT-HOLD',
@@ -180,6 +180,7 @@ function renderStats(){
  $('roleOverlap').textContent=String(entries.filter(roleOverlap).length);
  $('brief').textContent=brief();
  $('save').disabled=!entries.length;$('csv').disabled=!entries.length;$('print').disabled=!entries.length;
+ $('todoExport').disabled=!entries.length;
 }
 function visibleQueue(){
  const filter=$('filter').value;
@@ -430,6 +431,51 @@ $('packetDownload').addEventListener('click',()=>{
  if(!confirm('Download this PRIVATE, UNSIGNED '+audience+' follow-up note? Review recipient and any user-entered action text manually. This is NOT authenticated consent, approval or authority.'))return;
  download('lightup-'+audience+'-paperwork-request-private.md',text+'\\n','text/markdown;charset=utf-8');
  $('packetStatus').textContent='Private local Markdown saved. No message sent and no authentication/grant state changed.';
+});
+// Privacy-minimal local calendar TASKS, not assessment events or bookings.
+$('todoExport').addEventListener('click',()=>{
+ try{
+  const selected=packetSelection($('todoScope').value);
+  if(!selected.length)throw Error('Choose at least one local draft.');
+  if(!globalThis.crypto||!crypto.getRandomValues)throw Error('Secure random identifiers unavailable in this browser.');
+  const dueTasks=[];
+  for(let i=0;i<selected.length;i++)for(const [id] of STAGES){
+   const t=selected[i].tasks[id];
+   if(t.status==='prepared'||!t.due)continue;
+   if(!/^\\d{4}-\\d{2}-\\d{2}$/.test(t.due)||
+      new Date(t.due+'T00:00:00Z').toISOString().slice(0,10)!==t.due)throw Error('Invalid target date.');
+   dueTasks.push({draftOrdinal:i+1,id,due:t.due,unbound:!selected[i].source_attached});
+  }
+  if(!dueTasks.length)throw Error('No incomplete paperwork tasks with target dates in this selection.');
+  if(dueTasks.length>120)throw Error('Workload exceeds 120 calendar task limit.');
+  const missing=dueTasks.filter(t=>t.unbound).length;
+  if(!confirm('Export '+dueTasks.length+' PRIVATE task deadlines, including '+missing+
+   ' source-unbound HOLD(s)? Only anonymous paperwork labels and due dates are included. Do not mistake these tasks for scheduled assessments or import into an unapproved shared calendar.'))return;
+  const stages={
+   client_evidence:'Client ownership paperwork',
+   scope_boundary:'Scope boundary paperwork',
+   client_consent:'Client coordination paperwork',
+   operator_review:'Operator review paperwork',
+   window_stop:'Risk and STOP paperwork',
+   privacy_handoff:'Evidence privacy paperwork'
+  };
+  const stamp=new Date().toISOString().replace(/[-:]/g,'').replace(/\\.\\d{3}Z$/,'Z');
+  const rows=['BEGIN:VCALENDAR','VERSION:2.0','CALSCALE:GREGORIAN',
+   'PRODID:-//LightUp//Private Paperwork VTODO//EN','X-WR-CALNAME:LightUp Paperwork NOT Assessment Booking'];
+  for(const task of dueTasks){
+   const entropy=crypto.getRandomValues(new Uint8Array(16));
+   const uid=Array.from(entropy,x=>x.toString(16).padStart(2,'0')).join('')+'@lightup-paperwork.invalid';
+   rows.push('BEGIN:VTODO','UID:'+uid,'DTSTAMP:'+stamp,
+    'DUE;VALUE=DATE:'+task.due.replaceAll('-',''),'STATUS:NEEDS-ACTION','CLASS:PRIVATE',
+    'SUMMARY:LightUp paperwork '+task.draftOrdinal+' - '+stages[task.id],
+    'DESCRIPTION:PREPARATION ONLY. DRAFT HOLD. NO CONSENT APPROVAL GRANT OR SCAN.',
+    'X-LIGHTUP-AUTHORIZATION:FALSE','X-LIGHTUP-CONSENT:FALSE','END:VTODO');
+  }
+  rows.push('END:VCALENDAR');
+  download('lightup-private-paperwork-tasks.ics',rows.join('\\r\\n')+'\\r\\n','text/calendar;charset=utf-8');
+  $('todoStatus').textContent='Downloaded '+dueTasks.length+' anonymous, PRIVATE VTODO tasks ('+missing+
+   ' source-unbound). No client/asset data, assessment bookings or online sync.';
+ }catch(e){$('todoStatus').textContent='VTODO HOLD: '+e.message;}
 });
 function download(name,data,type){
  const url=URL.createObjectURL(new Blob([data],{type}));
