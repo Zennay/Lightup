@@ -565,6 +565,7 @@ function bulkApply(){
 }
 function bulkUndo(){
  if(!state||!lastBulkSnapshot)fail('No previous local bulk assignment to undo.');
+ ensureHumanEditorSaved();
  state.assignments=lastBulkSnapshot;lastBulkSnapshot=null;$('bulkUndo').disabled=true;
  render();setStatus('Most recent private bulk window selection undone. Original source and review notes unchanged.');
 }
@@ -665,6 +666,7 @@ function output(name,text,type){
 }
 function plan(){
  if(!state)fail('Load original source before export.');
+ ensureHumanEditorSaved();
  const windows=currentWindows();
  for(const f of state.source){const slot=state.assignments.get(f.finding_id)||0;
   if(slot&&!windows[slot-1])fail('Assigned finding has no fully specified UTC window.');}
@@ -755,10 +757,11 @@ async function resumePlan(){
   if(Date.parse(scheduled[i].start_utc)<Date.parse(scheduled[i-1].start_utc)+scheduled[i-1].minutes*60000)
    fail('Proposed private windows overlap; do not apply stale plan.');
  const idMap=new Map(state.source.map(f=>[f.finding_id,f]));
- const imported=new Map();
+ const imported=new Map(),restoredFollowup=new Map();
  for(const row of raw.assignments){
   keys(row,['finding_id','original_severity','original_retest_status','human_stage','human_reviewer',
-   'human_next_step','human_review_sha256','human_reference_gaps','proposed_window','casework_row_sha256'],
+   'human_next_step','human_review_sha256','human_reference_gaps','proposed_window','casework_row_sha256',
+   'human_followup_status','human_followup_due','human_followup_note'],
    ['finding_id','original_severity','original_retest_status','human_stage','human_reviewer','human_next_step','human_review_sha256','human_reference_gaps','proposed_window']);
   if((row.casework_row_sha256===undefined&&state.casework!==null)||
      (row.casework_row_sha256!==undefined&&row.casework_row_sha256!==(state.casework?localSha256(JSON.stringify(state.casework.get(row.finding_id))):null)))
@@ -778,6 +781,11 @@ async function resumePlan(){
   if(!Number.isInteger(row.proposed_window)||row.proposed_window<0||row.proposed_window>HOURS||
      (row.proposed_window>0&&!restoredWindows[row.proposed_window-1]))
    fail('Invalid or unscheduled human window assignment.');
+  const group=['human_followup_status','human_followup_due','human_followup_note'];
+  const count=group.filter(k=>Object.prototype.hasOwnProperty.call(row,k)).length;
+  if(count!==0&&count!==group.length)fail('Partial private human follow-up row rejected.');
+  restoredFollowup.set(f.finding_id,count===0?newFollowup():
+   followupValue({status:row.human_followup_status,due_date:row.human_followup_due,note:row.human_followup_note}));
   imported.set(f.finding_id,row.proposed_window);
  }
  if(imported.size!==idMap.size)fail('Private plan lacks complete original source membership.');
@@ -798,6 +806,8 @@ async function resumePlan(){
    fail('Private window aggregate contradicts original source/review records.');
  }
  /* All admissions are complete; apply the whole human draft in one step. */
+ closeHumanEditor(true);
+ state.followup=restoredFollowup;lastFollowBulkSnapshot=null;$('bulkFollowUndo').disabled=true;
  state.assignments=imported;state.refreshSummary=refresh;
  state.caseworkUpdate=raw.casework_update||null;
  state.caseworkChanges=new Map();
@@ -814,6 +824,7 @@ async function resumePlan(){
 
 function localPlanFingerprint(){
  if(!state)fail('No current original source.');
+ ensureHumanEditorSaved();
  return localSha256(JSON.stringify({
   source_sha256:state.hash,casework_sha256:state.caseworkDigest,
   casework_packet_hashless:state.caseworkHashless,
@@ -821,6 +832,7 @@ function localPlanFingerprint(){
   original_ids:state.source.map(f=>f.finding_id),
   human:state.source.map(f=>state.review.get(f.finding_id)),
   proposal:state.source.map(f=>state.assignments.get(f.finding_id)||0),
+  followups:state.source.map(f=>followupFor(f.finding_id)),
   windows:Array.from({length:HOURS},(_,i)=>[$('label'+i).value,$('date'+i).value,$('duration'+i).value]),
   meeting_note:$('note').value
  }));
@@ -853,11 +865,12 @@ function applySourceRevision(){
  if(candidate.base!==state.hash||candidate.plan!==localPlanFingerprint())
   fail('Source or local human plan changed after preview; preview again. No partial carry performed.');
  const {diff,next,hash}=candidate;
- const keep=new Set(diff.unchanged),oldReview=state.review,oldSlots=state.assignments;
- const notes=new Map(),slots=new Map();
+ const keep=new Set(diff.unchanged),oldReview=state.review,oldSlots=state.assignments,oldFollowups=state.followup;
+ const notes=new Map(),slots=new Map(),nextFollowup=new Map();
  for(const f of next){
   notes.set(f.finding_id,keep.has(f.finding_id)?oldReview.get(f.finding_id):emptyReview());
   slots.set(f.finding_id,keep.has(f.finding_id)?(oldSlots.get(f.finding_id)||0):0);
+  nextFollowup.set(f.finding_id,keep.has(f.finding_id)?{...oldFollowups.get(f.finding_id)}:newFollowup());
  }
  const summary={
   from_sha256:state.hash,to_sha256:hash,
@@ -866,7 +879,7 @@ function applySourceRevision(){
  };
  /* Atomic swap only after the full original five-field comparator, digest,
   * review/slot mapping and preview fingerprint have been accepted. */
- state={source:next,hash,review:notes,assignments:slots,casework:null,caseworkDigest:null,
+ state={source:next,hash,review:notes,assignments:slots,followup:nextFollowup,casework:null,caseworkDigest:null,
   caseworkHashless:false,caseworkChanges:new Map(),caseworkUpdate:null,refreshSummary:summary};
  $('nextCasework').value='';$('confirmCasework').checked=false;clearCaseworkPreview('Source revision invalidated prior Casework; import a new original snapshot.');
  $('caseFilter').value='';$('ownerFilter').value='';
@@ -897,6 +910,9 @@ function privateExport(){
     human_review_sha256:localSha256(JSON.stringify(r)),
     casework_row_sha256:state.casework?localSha256(JSON.stringify(state.casework.get(f.finding_id))):null,
     human_reference_gaps:EVIDENCE.slice(0,4).filter(k=>!r.evidence[k]),
+    human_followup_status:followupFor(f.finding_id).status,
+    human_followup_due:followupFor(f.finding_id).due_date,
+    human_followup_note:followupFor(f.finding_id).note,
     proposed_window:state.assignments.get(f.finding_id)||0};
   })
  };
