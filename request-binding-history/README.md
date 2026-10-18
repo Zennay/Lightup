@@ -6,6 +6,8 @@
 
 Open [standalone.html](standalone.html) as a local file in a browser; no server or build step. Select **2–12 original PRIVATE JSON files** produced by the independently owned, authenticated [Request Binding Readiness Desk PR #1590](https://github.com/Zennay/Lightup/pull/1590), always for the **same exact proposed engagement/scope/risk**. The original source owner's [#1570](https://github.com/Zennay/Lightup/pull/1570) request/grant predicate is not reproduced or changed here. The app does not authenticate the operator itself or touch the original database.
 
+**Incremental workflow:** after your first 2–12 source files are accepted, use **Append new original snapshots** for 1–10 additional source JSON files, up to 12 total. A rejected append keeps the earlier original reports and all private human follow-up statuses intact. The exact proposed selection must remain unchanged; duplicate source metadata is held. The full **12 MB combined limit continues across appends**, not just within one file picker operation. Source byte SHA-256 markers for private working-draft restoration cover all current input files in their chosen order.
+
 The product reads only the original single-selection `lightup.request_binding_preparation.v1` JSON format. Multi-scenario `lightup.request_binding_scenarios_review.v1` reports are intentionally **refused** rather than silently flattened to a misleading timeline. Select `.json` when exporting from PR #1590 (not `.html` or an anonymized `.csv`).
 
 ### Results
