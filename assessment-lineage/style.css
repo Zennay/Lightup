@@ -30,3 +30,10 @@ textarea{width:100%;max-width:100%;background:#0b1c2d;color:var(--ink);border:1p
   font:inherit;border-radius:8px;padding:.9rem;resize:vertical;line-height:1.5}
 textarea:focus-visible{outline:3px solid var(--hold);outline-offset:3px}
 @media print{.source-controls,.embedded-import,textarea,#saveCaseNote,#privateNoteState{display:none!important}}
+
+.queue-overview{display:grid;grid-template-columns:repeat(auto-fit,minmax(225px,1fr));gap:.85rem;margin:1rem 0}
+.queue-card{margin:0;padding:1rem;border:1px solid var(--line);border-radius:10px;background:#0c1e30}
+.queue-card h3{margin:.1rem 0 .4rem;font-size:1rem}
+.queue-card p{font-size:.92rem;color:var(--muted);margin:.45rem 0 1rem}
+.queue-card button{font-size:.85rem;padding:.45rem .65rem}
+@media print{.queue-overview{display:none!important}}
