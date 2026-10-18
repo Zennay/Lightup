@@ -187,6 +187,32 @@
     const better=dims.some(([_,key,dir])=>dir*a[key]>dir*b[key]);
     return atLeast&&better;
   }
+  function renderMetricBoard(stats){
+    const shared=stats[0];
+    $("metricBoard").innerHTML=table(["Original metric","Common baseline aggregate",
+      ...stats.map((_,i)=>"Candidate "+(i+1)+" · total / adverse cases")],
+      NAMES.map(n=>[nice(n),format(shared.total[n].baseline),
+        ...stats.map(s=>format(s.total[n].candidate)+" / "+s.total[n].adverse)]));
+    for(const id of ["pairA","pairB"]){
+      const selector=$(id),old=selector.value;
+      if(selector.options.length!==stats.length){
+        selector.innerHTML="";
+        stats.forEach((_,i)=>{const option=document.createElement("option");
+          option.value=String(i);option.textContent="Candidate "+(i+1);selector.append(option);});
+        selector.value=id==="pairA"?"0":String(Math.min(1,stats.length-1));
+      } else selector.value=old;
+    }
+    const a=Number($("pairA").value),b=Number($("pairB").value);
+    if(!Number.isSafeInteger(a)||!Number.isSafeInteger(b)||a<0||b<0||
+      a>=stats.length||b>=stats.length||a===b){
+      $("pairMetrics").textContent="Select two distinct candidates for a descriptive comparison.";return;
+    }
+    const aa=stats[a].total,bb=stats[b].total;
+    $("pairMetrics").innerHTML=table(["Metric","Candidate "+(a+1),
+      "Candidate "+(b+1),"Numeric change (second − first)","Original adverse case counts"],
+      NAMES.map(n=>[nice(n),format(aa[n].candidate),format(bb[n].candidate),
+        format(bb[n].candidate-aa[n].candidate),aa[n].adverse+" → "+bb[n].adverse]));
+  }
   function render(){
     const active=reports.length>0,stats=reports.map(aggregates);
     $("sourceKind").textContent=!active?"No data":demo?"FICTIONAL DEMO ONLY":"UNVERIFIED LAB SOURCES";
@@ -195,7 +221,7 @@
     for(const id of ["exportCSV","exportJSON","print"])$(id).disabled=!active;
     if(!active){
       $("cards").innerHTML='<p class="empty">Import reports to compare lab candidates.</p>';
-      for(const id of ["thresholds","frontier","caseDetail"])$(id).innerHTML="";
+      for(const id of ["thresholds","frontier","caseDetail","metricBoard","pairMetrics"])$(id).innerHTML="";
       $("caseSelect").innerHTML='<option value="">Load reports first</option>';
       return;
     }
@@ -208,6 +234,7 @@
       "<p>Mean evidence quality: "+format(s.quality)+"</p>"+
       "<p>Runtime: "+format(s.runtime)+" sec · Cost: $"+format(s.cost)+"</p>"+
       "<p class='footnote'>No safety approval; separate human review required.</p></article>").join("");
+    renderMetricBoard(stats);
     let t;try{t=threshold();settings=t;$("thresholdMessage").textContent="Review suggestions recomputed locally; no source metrics changed.";}
     catch(_){$("thresholdMessage").textContent="HOLD: invalid threshold — enter a bounded numerical value. No decision output.";
       settings=null;for(const id of ["exportCSV","exportJSON","print"])$(id).disabled=true;
@@ -344,6 +371,7 @@
   $("forget").addEventListener("click",forget);
   for(const id of ["maxScope","maxPolicy","minQuality","minCoverage","maxRuntime","maxCost",
     "dimQuality","dimCoverage","dimRuntime","dimCost"])$(id).addEventListener("change",render);
+  for(const id of ["pairA","pairB"])$(id).addEventListener("change",render);
   $("caseSelect").addEventListener("change",e=>{if(!reports.length)return;
     const ids=[...reports[0].cases.keys()].sort(),i=Number(e.target.value);
     if(Number.isSafeInteger(i)&&i>=0&&i<ids.length){selectedCase=ids[i];renderCase(selectedCase);}
