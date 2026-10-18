@@ -370,10 +370,13 @@ def _write_private_json(destination: str, source: dict) -> None:
     target = Path(destination)
     if not target.parent.is_dir() or target.is_symlink() or target.exists():
         raise CasebookHold("private report destination unavailable")
-    fd, temp = tempfile.mkstemp(prefix=".lightup-casebook-", dir=target.parent)
+    fd = -1
+    temp = None
     try:
+        fd, temp = tempfile.mkstemp(prefix=".lightup-casebook-", dir=target.parent)
         os.fchmod(fd, 0o600)
         with os.fdopen(fd, "wb") as stream:
+            fd = -1
             stream.write(payload)
             stream.flush()
             os.fsync(stream.fileno())
@@ -381,10 +384,13 @@ def _write_private_json(destination: str, source: dict) -> None:
     except OSError:
         raise CasebookHold("private source could not be published") from None
     finally:
-        try:
-            os.unlink(temp)
-        except OSError:
-            pass
+        if fd >= 0:
+            os.close(fd)
+        if temp is not None:
+            try:
+                os.unlink(temp)
+            except OSError:
+                pass
 
 
 def main(argv: list[str] | None = None) -> int:
