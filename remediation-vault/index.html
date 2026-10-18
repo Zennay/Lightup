@@ -55,7 +55,10 @@
 <label class="confirm"><input type="checkbox" id="compareack"><span>I separately verified both packets concern the identical real client and exact engagement. Their contents are untrusted human artifacts, not authoritative security status.</span></label>
 <button class="primary" id="compare" type="button">Compare original file versions locally ↗</button>
 <div class="receipt"><span class="tag">PRIVATE COMPARISON</span><p id="compareStats">No private comparison loaded.</p><div id="compareRows" class="filelist" aria-live="polite"></div>
-<button id="compareExport" type="button" class="secondary" disabled>Download anonymous counts only</button></div>
+<button id="compareExport" type="button" class="secondary" disabled>Download anonymous counts only</button>
+<label class="confirm"><input id="comparePrivateAck" type="checkbox"><span>I have separately verified the exact recipient, client, engagement and private channel for this confidential file-level comparison. File hashes or names are NOT evidence of permission or repaired findings.</span></label>
+<button id="comparePrivateExport" type="button" class="secondary" disabled>Download PRIVATE source-bound file-change index</button>
+</div>
 </section>
 <div class="footer-actions"><div><span class="tag">SESSION CONTROL</span><p>All selected and recovered bytes remain only in current browser memory until you deliberately save them. This application uses no localStorage, cookies, IndexedDB or network access.</p></div><button id="clear" class="secondary" type="button">Clear private session</button></div>
 <p role="status" id="status" aria-live="polite" class="status">Ready. No private material selected.</p>

@@ -5,7 +5,7 @@
   const TYPES = new Set(["json", "csv", "md", "txt"]);
   const $ = id => document.getElementById(id);
   const encode = new TextEncoder(), decode = new TextDecoder("utf-8", {fatal: true});
-  let selected = [], restored = [], busy = false, restoredLabel = '', receiptState = null, comparison = null;
+  let selected = [], restored = [], busy = false, restoredLabel = '', receiptState = null, comparison = null, restoredCipherSha = '';
   const say = (message, bad = false) => { $("status").textContent = message; $("status").dataset.kind = bad ? "error" : "ok"; };
   const clearNode = el => { while (el.firstChild) el.removeChild(el.firstChild); };
   const hex = b => Array.from(new Uint8Array(b), x => x.toString(16).padStart(2, "0")).join("");
@@ -38,6 +38,8 @@
   }
   function clearComparison() {
     comparison=null;
+    $("comparePrivateAck").checked=false;
+    $("comparePrivateExport").disabled=true;
     clearNode($("compareRows"));
     $("compareStats").textContent="No private comparison loaded.";
     $("compareExport").disabled=true;
@@ -83,7 +85,7 @@
     anchor.click(); anchor.remove(); setTimeout(()=>URL.revokeObjectURL(url), 30000);
   }
   function resetPrivate() {
-    selected=[]; restored=[]; restoredLabel='';
+    selected=[]; restored=[]; restoredLabel=''; restoredCipherSha='';
     $("files").value=""; $("vaultfile").value="";
     $("secret").value=""; $("unlock").value="";
     $("label").value=""; $("ack").checked=false;
@@ -220,9 +222,9 @@
     }
     return {pending,doc,total};
   }
-  $("vaultfile").addEventListener("change", () => {restored=[];restoredLabel="";clearNode($("restored"));$("summary").textContent="Nothing unlocked.";});
+  $("vaultfile").addEventListener("change", () => {restored=[];restoredLabel="";restoredCipherSha="";clearComparison();clearNode($("restored"));$("summary").textContent="Nothing unlocked.";});
   $("restore").addEventListener("click", () => withBusy(async () => {
-    restored=[]; clearComparison(); clearNode($("restored")); $("summary").textContent="Nothing unlocked.";
+    restored=[]; restoredCipherSha=""; clearComparison(); clearNode($("restored")); $("summary").textContent="Nothing unlocked.";
     const f=$("vaultfile").files?.[0];
     fail(!!f && ($("vaultfile").files||[]).length===1 && f.size>0 && f.size<=MAX_VAULT,
       "Select exactly one local .vault.json of at most 12 MiB.");
@@ -251,7 +253,8 @@
       $("receiptVerify").textContent="Ciphertext matched the supplied unsigned SHA-256 receipt. Sender identity and consent remain UNVERIFIED.";
     }
     const {pending,doc,total}=await decryptPacket(bytes,password);
-    restored=pending; restoredLabel=doc.label; table($("restored"),restored,true);
+    restored=pending; restoredLabel=doc.label; restoredCipherSha=await digest(bytes);
+    table($("restored"),restored,true);
     $("summary").textContent=String(restored.length)+" original file(s), "+humanSize(total)+
       ". PRIVATE original contents; source authority and recipient permission NOT verified.";
     $("vaultDetails").textContent="Private label (local only): "+doc.label+" · Saved: "+doc.savedAt;
@@ -260,7 +263,7 @@
   }));
   $("comparefile").addEventListener("change",clearComparison);
   $("compare").addEventListener("click",()=>withBusy(async()=>{
-    comparison=null; clearNode($("compareRows")); $("compareStats").textContent="Comparing private original bytes..."; $("compareExport").disabled=true;
+    comparison=null; $("comparePrivateAck").checked=false; $("comparePrivateExport").disabled=true; clearNode($("compareRows")); $("compareStats").textContent="Comparing private original bytes..."; $("compareExport").disabled=true;
     fail(restored.length>0, "Unlock the original baseline vault first.");
     fail($("compareack").checked, "Confirm the two privately received vaults concern the exact same real client and engagement.");
     const f=$("comparefile").files?.[0];
@@ -269,21 +272,29 @@
       "Select one bounded encrypted comparison vault.");
     const password=$("comparepass").value;
     fail(password.length>=12 && password.length<=256, "Enter the comparison vault's private passphrase.");
-    const {pending}=await decryptPacket(new Uint8Array(await f.arrayBuffer()),password);
+    const compareBytes=new Uint8Array(await f.arrayBuffer());
+    const {pending}=await decryptPacket(compareBytes,password);
     const original=new Map(restored.map(r=>[r.name.toLowerCase(),r]));
     const received=new Map(pending.map(r=>[r.name.toLowerCase(),r]));
     const rows=[]; const counts={unchanged:0,changed:0,added:0,absent:0};
     for(const [key,left] of original.entries()) {
       const right=received.get(key);
-      const category=!right?"absent":await digest(left.bytes)===await digest(right.bytes)?"unchanged":"changed";
+      const beforeSha=await digest(left.bytes);
+      const afterSha=right?await digest(right.bytes):null;
+      const category=!right?"absent":beforeSha===afterSha?"unchanged":"changed";
       counts[category]++;
-      rows.push({name:left.name,category});
+      rows.push({name:left.name,category,before_sha256:beforeSha,after_sha256:afterSha,
+        before_bytes:left.bytes.length,after_bytes:right?.bytes.length??null});
     }
     for(const [key,right] of received.entries()) if (!original.has(key)) {
-      counts.added++;rows.push({name:right.name,category:"added"});
+      counts.added++;rows.push({name:right.name,category:"added",
+        before_sha256:null,after_sha256:await digest(right.bytes),
+        before_bytes:null,after_bytes:right.bytes.length});
     }
     rows.sort((a,b)=>a.category.localeCompare(b.category)||a.name.localeCompare(b.name));
-    comparison={counts,rows,baseline_files:restored.length,candidate_files:pending.length};
+    comparison={counts,rows,baseline_files:restored.length,candidate_files:pending.length,
+      baseline_vault_sha256:restoredCipherSha,
+      candidate_vault_sha256:await digest(compareBytes)};
     const dest=$("compareRows");clearNode(dest);
     for(const entry of rows) {
       const line=document.createElement("div");line.className="file-row";
@@ -293,7 +304,7 @@
     }
     $("compareStats").textContent="UNCHANGED "+counts.unchanged+" · CHANGED "+counts.changed+
       " · ADDED "+counts.added+" · ABSENT "+counts.absent+". Comparison uses private original filenames and SHA-256 bytes ONLY.";
-    $("compareExport").disabled=false;
+    $("compareExport").disabled=false; $("comparePrivateExport").disabled=false;
     $("comparepass").value="";
     say("Private file-level comparison completed. Absent does NOT mean fixed. No actual finding or grant was changed.");
   }));
@@ -307,6 +318,30 @@
     save(encode.encode(JSON.stringify(summary,null,2)+"\n"),
       "lightup-anonymous-vault-diff.json","application/json");
     say("Anonymous counts-only comparison exported. No filenames, labels, hashes or client data exported.");
+  });
+  $("comparePrivateExport").addEventListener("click",()=>{
+    if(!comparison){say("First compare two original private vaults.",true);return;}
+    if(!$("comparePrivateAck").checked){
+      say("Confirm the independently authorized recipient/channel for confidential file details.",true);
+      return;
+    }
+    const report={
+      format:"lightup.remediation_vault_private_revision.v1",
+      classification:"PRIVATE HUMAN FILE VERSION REVIEW — NOT SECURITY FINDING STATUS",
+      baseline_vault_sha256:comparison.baseline_vault_sha256,
+      candidate_vault_sha256:comparison.candidate_vault_sha256,
+      baseline_files:comparison.baseline_files,
+      candidate_files:comparison.candidate_files,
+      counts:{...comparison.counts},
+      rows:comparison.rows.map(r=>({...r})),
+      verified_client:false,verified_source:false,verified_consent:false,
+      verified_remediation:false,authorized_retest:false
+    };
+    const bytes=encode.encode(JSON.stringify(report,null,2)+"\n");
+    if(bytes.length>65536) {say("Private file-diff report exceeds 64 KiB.",true);return;}
+    save(bytes,"lightup-PRIVATE-vault-file-diff.json","application/json");
+    $("comparePrivateAck").checked=false;
+    say("PRIVATE original file-level change index exported. Transfer only through independently authorized channels.");
   });
   $("rekey").addEventListener("click", () => withBusy(async () => {
     fail(restored.length>0, "Unlock the original local vault before re-encrypting.");
