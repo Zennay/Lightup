@@ -117,6 +117,19 @@ function formField(label,value,max,handler,multiline=false){
  if(!multiline)ctrl.type='text';ctrl.addEventListener('input',e=>handler(e.target.value));
  wrap.append(ctrl);return wrap;
 }
+function included(f,c,r,filter){
+ const cues=humanQueue(f,c,r);
+ if(filter==='urgent'&&SEV.indexOf(f.severity)>1)return false;
+ if(filter==='gaps'&&r.reference.trim()&&cues.length===0)return false;
+ if(filter==='retest'&&r.stage!=='ready_for_authorized_retest')return false;
+ if(filter==='contradictions'&&!cues.some(x=>/NOT|conflict|without/.test(x)))return false;
+ return true;
+}
+function selectedFindings(){
+ if(!source)return [];
+ const filter=$('filter').value;
+ return source.filter(f=>included(f,casework?.get(f.finding_id),review.get(f.finding_id),filter));
+}
 function render(){
  const ready=!!source;$('dashboard').hidden=!ready;$('boardSection').hidden=!ready;$('actions').hidden=!ready;$('refreshPanel').hidden=!ready;
  if(!ready)return;
@@ -128,10 +141,7 @@ function render(){
  for(const f of items){
   const c=casework?.get(f.finding_id),r=review.get(f.finding_id);
   const cues=humanQueue(f,c,r);
-  if(filter==='urgent'&&SEV.indexOf(f.severity)>1)continue;
-  if(filter==='gaps'&&r.reference.trim()&&cues.length===0)continue;
-  if(filter==='retest'&&r.stage!=='ready_for_authorized_retest')continue;
-  if(filter==='contradictions'&&!cues.some(x=>/NOT|conflict|without/.test(x)))continue;
+  if(!included(f,c,r,filter))continue;
   const section=el('article','finding');
   const heading=el('h3','',f.title);section.append(heading);
   section.append(el('p','detail',f.severity.toUpperCase()+' · Source retest: '+f.retest_status+' · Local casework: '+(c?.status||'not loaded')));
@@ -148,6 +158,7 @@ function render(){
   board.append(section);
  }
  $('shown').textContent=String(board.childElementCount);
+ $('bulkCount').textContent=String(board.childElementCount);
 }
 function renderMetrics(){
  if(!source)return;
@@ -252,6 +263,22 @@ $('applyRefresh').addEventListener('click',()=>{
   $('refreshSummary').textContent='Applied: '+diff.added.length+' new, '+diff.changed.length+' changed, '+
    diff.missing.length+' absent (not proven fixed); only '+diff.unchanged.length+' unchanged kept local notes.';
   render();status('Human-confirmed local source refresh applied. Historical source was NOT changed, retested or closed.');
+ }catch(err){status(err.message,true);}
+});
+
+
+$('applyBulk').addEventListener('click',()=>{
+ try{
+  if(!source)throw Error('Import original findings first.');
+  const stage=$('bulkStage').value,reviewer=$('bulkReviewer').value;
+  if(stage&&!DECISIONS.includes(stage))throw Error('Invalid bulk human stage.');
+  if(!stage&&!reviewer.trim())throw Error('Choose a review stage and/or human reviewer.');
+  if(reviewer.length>120||reviewer.includes('\0'))throw Error('Reviewer label too long or invalid.');
+  const selected=selectedFindings(),n=selected.length;
+  if(!n)throw Error('No findings match the current filter.');
+  if(!confirm('Update '+n+' currently visible local findings ONLY? Existing per-finding notes and original source/retest statuses remain unchanged. This is not approved remediation.'))return;
+  for(const f of selected){const row=review.get(f.finding_id);if(stage)row.stage=stage;if(reviewer.trim())row.reviewer=reviewer.trim();}
+  changed=true;render();status('Updated '+n+' LOCAL coordination records. Original findings, casework and retest statuses unchanged.');
  }catch(err){status(err.message,true);}
 });
 
