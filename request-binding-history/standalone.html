@@ -141,7 +141,7 @@ function validate(obj,slot){
   if(row.ordinal!==index+1||typeof row.private_reference!=="string"||!/^[a-f0-9]{16}$/.test(row.private_reference)||seen.has(row.private_reference))fail("duplicate or inconsistent original candidate pseudonym");
   seen.add(row.private_reference);
   if(row.request_id!==null&&(typeof row.request_id!=="string"||row.request_id.length<1||row.request_id.length>180||/[\x00-\x1f\x7f]/.test(row.request_id)))fail("malformed optional original request identity");
-  if(typeof row.stored_status!=="string"||!["approved","submitted","rejected"].includes(row.stored_status))fail("unknown original persisted request status");
+  if(typeof row.stored_status!=="string"||!["approved","submitted","under_review","rejected"].includes(row.stored_status))fail("unknown original persisted request status");
   if(row.request_source_status==="not_administratively_approved" ? row.stored_status==="approved": row.stored_status!=="approved")fail("contradicting original decision and category");
   if(row.requested_risk!==null&&(!Number.isSafeInteger(row.requested_risk)||row.requested_risk<1||row.requested_risk>4))fail("invalid original request risk");
   count(row.previously_bound_grant_rows,"historical bound-grant count",100000);
