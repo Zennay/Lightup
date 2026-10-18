@@ -59,6 +59,12 @@ footer{padding:29px 0 0;color:#8da0be;font-size:12px;line-height:1.6}#message{mi
 <div class="metric"><span>Missing source rows</span><strong id="diff-removed">0</strong></div>
 <div class="metric"><span>Changed source statuses</span><strong id="diff-changed">0</strong></div>
 </div></section>
+<section class="card" style="margin-top:16px" aria-label="Operator review queue">
+<h2>05 / Human review queue · derived from original sources</h2>
+<p class="small">Highest-attention engagement records first. Every suggested action is manual review, not a grant, scan, runtime STOP check, consent or release approval. Select Inspect to open original private detail.</p>
+<div style="overflow-x:auto"><table><thead><tr><th>Attention</th><th>Original engagement</th><th>Suggested next review</th><th>Local stage</th></tr></thead><tbody id="review-queue"></tbody></table></div>
+<p id="queue-empty" class="muted">Load a private source snapshot to populate the operator queue.</p>
+</section>
 <footer>LightUp authorization casebook · Local, read-only browser; no network, storage, scanner, target or model · Every export remains REVIEW_ONLY.</footer>
 </main>
 <script>
@@ -131,6 +137,7 @@ stage.value=localStages.get(one.engagement_id)||"unreviewed";
 stage.addEventListener("change",function(){
 if(stage.value==="unreviewed")localStages.delete(one.engagement_id);
 else localStages.set(one.engagement_id,stage.value);
+renderQueue();
 });
 stageCard.append(lbl,stage);host.appendChild(stageCard);
 var grants=snapshot.grants.filter(function(x){return x.engagement_id===selectedCase;});
@@ -181,6 +188,23 @@ elt("diff-removed").textContent=changes.missing_records;
 elt("diff-changed").textContent=changes.changed_statuses;
 elt("diff-note").textContent=previous?"UNVERIFIED two-file source comparison for one selected tenant. Added/removed/changed rows are retrospective declarations, not authorization or trusted chronology.":"Import an earlier ORIGINAL casebook JSON for the SAME tenant to compare source row IDs and statuses locally. No browser storage or network.";
 }
+
+function renderQueue(){
+var host=elt("review-queue");host.replaceChildren();
+if(!snapshot){elt("queue-empty").hidden=false;return;}
+var order={"HOLD_SOURCE_PROVENANCE":0,"HOLD_CLOSED_ENGAGEMENT_WITH_GRANTS":1,"EXPIRED_GRANT_SOURCE_REVIEW":2,"FUTURE_GRANT_SOURCE_REVIEW":3,"NO_GRANT_RECORDED":4,"REVIEW_ONLY_UNVERIFIED_GRANT_LINK":5};
+var sorted=snapshot.case_overview.slice().sort(function(a,b){return order[a.attention]-order[b.attention]||a.engagement_id.localeCompare(b.engagement_id);});
+elt("queue-empty").hidden=!!sorted.length;
+for(let record of sorted){
+var tr=document.createElement("tr"),a=document.createElement("td"),b=document.createElement("td"),c=document.createElement("td"),d=document.createElement("td");
+a.textContent=record.attention;b.className="id";b.textContent=record.engagement_id;
+c.textContent=record.next_review_action;
+d.textContent=localStages.get(record.engagement_id)||"unreviewed";
+var button=document.createElement("button");button.className="secondary inspect";button.type="button";button.textContent="Inspect";
+button.addEventListener("click",function(){selectedCase=record.engagement_id;detail();elt("selected-detail").scrollIntoView({block:"center",behavior:"smooth"});});
+d.appendChild(button);tr.append(a,b,c,d);host.appendChild(tr);
+}
+}
 function render(){
 var rows=elt("records");rows.replaceChildren();var list=entries();
 var typ=elt("category").value,filter=elt("filter").value.toLowerCase();
@@ -199,7 +223,7 @@ for(var item of list.filter(function(x){return x.at&&word(x.at);}).sort(function
 var li=document.createElement("li"),time=document.createElement("small"),title=document.createElement("strong"),badge=document.createElement("em");
 time.textContent=item.at;title.textContent=item.type+": "+item.state;badge.textContent=item.id;li.append(time,title,badge);timeline.appendChild(li);
 }
-detail();renderComparison();
+detail();renderComparison();renderQueue();
 elt("origin").textContent=snapshot?(fictional?"FICTIONAL DEMO — ":"PRIVATE UNVERIFIED ORIGINAL EXPORT — ")+"Recorded records, no authority; no original consent or runtime grant verification.": "No authenticated source. Nothing here can validate authorization.";
 }
 elt("file").addEventListener("change",async function(){var file=this.files&&this.files[0];this.value="";if(!file)return;if(file.size<2||file.size>MAX_BYTES){elt("message").textContent="HOLD: file size exceeds private bound.";return;}try{var s=parse(await file.text());snapshot=s;previous=null;fictional=false;selectedCase=null;localStages.clear();elt("message").textContent="Private casebook loaded locally (REVIEW_ONLY).";render();}catch(e){elt("message").textContent="HOLD: invalid/corrupt/unsupported original source. Previous snapshot preserved."; }});
