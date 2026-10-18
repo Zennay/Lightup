@@ -500,7 +500,7 @@
           doc.original_source_verified !== false ||
           doc.action_time_revocation_verified !== false)
         hold("Private handoff is not an original-source-bound human review");
-      for(const k of ["client_consent_verified","operator_consent_verified",
+      for(const k of ["source_authenticated","client_consent_verified","operator_consent_verified",
                        "authorization_granted","execution_allowed","release_approved"]) {
         if(doc[k] !== false) hold("Private handoff contains unauthorized claims");
       }
