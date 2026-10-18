@@ -32,6 +32,12 @@ Every original retest state remains an unverified work candidate: 'fixed' is not
 
 Only aggregate hours, weeks, severity counts and each week's non-sensitive availability percentage are shared. Historical comparison returns aggregate changes only; the original identifying rows remain temporary inside the local comparison call and are not included in exported metadata. The human-readable Markdown briefing adds explicit discussion prompts for independent client/engagement review and separately verified fixes; it contains no original finding identities. JSON includes explicit false values for authorization, consent, grant, scan, execution, dispatch, verified retest, deploy and release. These local exports are unsigned and carry no identity or authority. Aggregate data still warrants human privacy review.
 
+## Critical/high remediation milestone what-if
+
+The same offline imported original CSV and currently generated staffing plan can now be used to compare either **critical-only** or **critical + high** estimated remediation by a user-selected planning week. The milestone engine reuses the actual weekly availability and reserve assumptions; it computes hours provisionally covered by the selected week, hours still unallocated and the smallest modelled staffing level (1–30 engineers) that could fit the selected risk band's estimated work. Zero-capacity weeks stay unavailable. A local, aggregate-only non-authorising JSON receipt can be manually exported after explicit confirmation.
+
+All results are **planning-only**: not promised dates, validated security fixes, signed receipts, staffing directives, scan/dispatch approval, actual authorised retests or contractual SLAs. Source-reported regressions in other severity bands may consume time ahead of critical and high under the original queue ordering. Impossible goals remain explicitly unmet and require human decision; the feature never weakens authorization policy or runs a tool.
+
 ## Security and release boundaries
 
 - Fatal UTF-8 intake; bounded records/field lengths; strict schema and enums; duplicate IDs fail closed.
