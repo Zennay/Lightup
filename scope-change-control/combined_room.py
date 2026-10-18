@@ -148,9 +148,60 @@ def _launchpad() -> bytes:
     return html.encode("utf-8")
 
 
-def build(database: str, email: str, password: str, client: str | None,
+
+def _offline_original_sources(previous: str, current: str) -> tuple[dict[str, bytes], dict]:
+    """Two already-exported exact owner-private historical Casebook documents.
+
+    No fresh original account authentication, current consent, grant, revocation
+    or source authenticity is ever inferred from this offline route.
+    """
+    from refresh import _private_read, _admit, _diff
+    from workspace import read_original_bytes, read_local_offline_ui
+    old, old_sha = _private_read(previous)
+    new, new_sha = _private_read(current)
+    _admit(old)
+    _admit(new)
+    review = _diff(old, new, old_sha)
+    old_bytes = read_original_bytes(previous, old_sha)
+    new_bytes = read_original_bytes(current, new_sha)
+    review["source_sha256_unsigned"][1] = new_sha
+    anonymous = {
+        "schema": "lightup.casebook_change_aggregate.v1",
+        "disposition": "HOLD_HUMAN_REVIEW",
+        "snapshot_count": 2,
+        **FALSE_AUTHORITY,
+        **review["aggregate_without_original_ids"],
+    }
+    files = {
+        "OLDER-ORIGINAL.json": old_bytes,
+        "NEWER-ORIGINAL.json": new_bytes,
+        "PRIVATE-review.json": canonical_json(review),
+        "aggregate.json": canonical_json(anonymous),
+        "standalone.html": read_local_offline_ui(),
+        "START-HERE.txt": (
+            "LightUp ORIGINAL PRIVATE offline historical source comparison.\n"
+            "DRAFT/HOLD, no current DomainStore login or new consent performed.\n"
+            "Open standalone.html and choose OLDER-ORIGINAL.json and NEWER-ORIGINAL.json.\n"
+            "Missing original grants or STOP events do not prove revocation or clearance.\n"
+        ).encode("utf-8"),
+    }
+    files["manifest.json"] = canonical_json({
+        "schema": "lightup.casebook_change_private_workspace.v1",
+        "disposition": "HOLD_HUMAN_REVIEW",
+        "source_snapshots_atomic_together": False,
+        "source_hashes_unsigned": True,
+        **FALSE_AUTHORITY,
+        "files": {
+            name: {"sha256_unsigned": sha256(body).hexdigest(), "bytes": len(body)}
+            for name, body in files.items()
+        },
+    })
+    return files, anonymous
+
+
+def build(database: str | None, email: str | None, password: str | None, client: str | None,
           previous: str, destination: str, *, lead_days: int,
-          future_days: int, daily_capacity: int) -> dict:
+          future_days: int, daily_capacity: int, current_casebook: str | None = None) -> dict:
     if (not 0 <= lead_days <= 30 or not 1 <= future_days <= 366
             or not 1 <= daily_capacity <= 64):
         raise ReviewHold("invalid human scheduling horizon")
@@ -164,7 +215,14 @@ def build(database: str, email: str, password: str, client: str | None,
         raise ReviewHold("operations parent must be trusted and non-world-writable")
     # Original login occurs once. Exact original current source is reused from the
     # output below by the independent original Window Review child program.
-    files, anonymous = prepare_change_control(database, email, password, client, previous)
+    if current_casebook is not None:
+        if database is not None or email is not None or password is not None or client is not None:
+            raise ReviewHold("offline original-file mode cannot claim current authentication")
+        files, anonymous = _offline_original_sources(previous, current_casebook)
+    else:
+        if not database or not email or password is None:
+            raise ReviewHold("authenticated original-account source required")
+        files, anonymous = prepare_change_control(database, email, password, client, previous)
     root_created = False
     completed = False
     try:
@@ -277,8 +335,10 @@ def build(database: str, email: str, password: str, client: str | None,
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description="Create one original-authenticated PRIVATE offline Scope Operations Room (HOLD only).")
-    parser.add_argument("--database", required=True, help="existing original DomainStore SQLite file")
-    parser.add_argument("--email", required=True, help="existing original account email")
+    sources = parser.add_mutually_exclusive_group(required=True)
+    sources.add_argument("--database", help="existing original DomainStore SQLite file")
+    sources.add_argument("--current-casebook", help="already-exported newer original owner-0600 Casebook JSON, OFFLINE ONLY")
+    parser.add_argument("--email", help="existing original account email (required with --database)")
     parser.add_argument("--client", help="exact original tenant selection; required for operators")
     parser.add_argument("--previous", required=True, help="older original owner-0600 Casebook JSON")
     parser.add_argument("--room", required=True, help="new PRIVATE room directory under a trusted parent")
@@ -287,11 +347,19 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--daily-capacity", type=int, default=8)
     args = parser.parse_args(argv)
     try:
+        if args.current_casebook is not None:
+            if args.email is not None or args.client is not None:
+                raise ReviewHold("offline Casebook source cannot imply current login")
+            password = None
+        else:
+            if not args.email:
+                raise ReviewHold("original login email required")
+            password = getpass("Existing original account password: ")
         result = build(
-            args.database, args.email, getpass("Existing original account password: "),
+            args.database, args.email, password,
             args.client, args.previous, args.room,
             lead_days=args.lead_days, future_days=args.future_days,
-            daily_capacity=args.daily_capacity,
+            daily_capacity=args.daily_capacity, current_casebook=args.current_casebook,
         )
         print(json.dumps(result, sort_keys=True))
         return 2
