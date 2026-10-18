@@ -1,0 +1,328 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'none'; form-action 'none'; img-src 'none'; object-src 'none'; base-uri 'none'">
+<title>LightUp | Authorization Casebook</title>
+<style>
+:root{color-scheme:dark;font:15px system-ui,-apple-system,Segoe UI,sans-serif;background:#0f1421;color:#ecf3ff}*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 90% 0%,#25365455 0,transparent 45%),#0f1421}
+main{max-width:1250px;padding:26px;margin:auto}header{display:flex;align-items:center;justify-content:space-between;margin-bottom:34px;gap:15px}.brand{font-size:21px;letter-spacing:.04em;font-weight:800}.brand span{color:#a4baff}.label{padding:8px 13px;border-radius:99px;border:1px solid #cf9d73;color:#f8c396;font-size:11px;font-weight:800}
+h1{font-size:clamp(29px,5vw,50px);line-height:1.05;letter-spacing:-.055em;margin:10px 0}p{color:#a7b8d4;line-height:1.6}.lead{max-width:760px;margin:10px 0 22px}
+.card,.metric{background:#1b2437;border:1px solid #33425d;border-radius:16px;padding:20px;box-shadow:0 10px 27px #09122266}.top{display:grid;grid-template-columns:1.3fr 1fr;gap:16px}h2{font-size:18px;letter-spacing:-.025em;margin:0 0 13px}
+button,.import{background:#a8bbfa;color:#141f38;border:0;padding:11px 16px;border-radius:9px;font:700 13px system-ui;cursor:pointer}button.secondary{background:#2c3956;color:#e9f0ff;border:1px solid #50658e}
+button:focus-visible,.import:focus-within,input:focus-visible,select:focus-visible{outline:3px solid #b7c9ff;outline-offset:3px}
+input[type=file]{position:absolute;height:1px;width:1px;opacity:0}input[type=search],select{border:1px solid #506284;background:#121b2d;color:#f5f8ff;border-radius:9px;padding:12px;font:inherit;min-width:0}.actions{display:flex;gap:9px;margin-top:18px;flex-wrap:wrap}.small{font-size:12px}.note{border-left:3px solid #dba976;padding:12px 14px;background:#302b30;color:#ffdebc;border-radius:6px;margin-top:18px;font-size:12px;line-height:1.55}
+.metrics{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin:16px 0}.metric{padding:17px}.metric strong{display:block;font-size:27px;line-height:1.5;font-variant-numeric:tabular-nums}.metric span{font-size:12px;color:#aab9d5}
+.toolbar{display:flex;gap:12px;flex-wrap:wrap;align-items:center;justify-content:space-between;margin-bottom:14px}.toolbar>*{flex:0 1 250px}
+.grid{display:grid;grid-template-columns:minmax(0,2fr) minmax(260px,1fr);gap:16px}
+table{border-collapse:collapse;width:100%;font-size:13px}th,td{text-align:left;border-bottom:1px solid #35415c;padding:12px 9px;vertical-align:middle}
+th{color:#9aabd0;text-transform:uppercase;letter-spacing:.065em;font-size:10px}td.id{font:11px ui-monospace,Consolas,monospace;overflow-wrap:anywhere;max-width:160px}.badge{font-size:11px;font-weight:800;display:inline-block;white-space:normal;padding:5px 8px;border-radius:6px;color:#ffd2ae;background:#4b302c}.badge.info{color:#c2d5ff;background:#293957}.muted{color:#9bacc7}
+.detail-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.detail-item{border:1px solid #3c4d6a;background:#151e31;padding:15px;border-radius:10px;overflow-wrap:anywhere}.detail-item strong{display:block;margin:4px 0;font-size:12px}.detail-item small{font-size:11px;color:#aebcda}.detail-item p{font-size:12px;margin:5px 0 0}button.inspect{padding:5px 10px;margin-top:6px;display:block;font-size:11px}
+@media(max-width:780px){.detail-grid{grid-template-columns:1fr}}
+.timeline{list-style:none;margin:0;padding:0}.timeline li{border-left:2px solid #6e82a4;padding:2px 0 20px 18px;margin-left:3px;position:relative}.timeline li:before{content:"";position:absolute;left:-6px;top:8px;background:#93aefa;border-radius:50%;height:10px;width:10px}.timeline small{font-size:11px;color:#8fa2ca}.timeline strong{display:block;margin:4px 0;font-size:13px}.timeline em{font-size:11px;color:#e3b797;font-style:normal}
+footer{padding:29px 0 0;color:#8da0be;font-size:12px;line-height:1.6}#message{min-height:21px;color:#e5c396;font-size:12px;margin-top:12px}
+@media(max-width:940px){.top,.grid{grid-template-columns:1fr}.metrics{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:600px){main{padding:16px}.metrics{grid-template-columns:repeat(2,1fr)}.metric strong{font-size:22px}.card{padding:15px}.toolbar>*{flex:1 1 100%}header{flex-wrap:wrap}}
+@media print{body,:root{background:white;color:#111}main{max-width:none}.card,.metric{box-shadow:none;background:white;color:#111;border:1px solid #ccc}button,.actions,.toolbar,footer{display:none}.muted,.metric span,p{color:#444}.badge{border:1px solid #ccc;color:#111;background:white}}
+</style>
+</head><body><main>
+<header><div class="brand">LIGHT<span>UP</span> / SCOPE</div><div class="label">INCUBATE · DRAFT/HOLD</div></header>
+<h1>Authorization Casebook</h1>
+<p class="lead">Review a real, authenticated single-tenant snapshot of requests, engagements, recorded grant links and risk decisions. This is a private local evidence viewer: recorded source relationships are <b>not</b> live consent or permission.</p>
+<section class="top">
+<div class="card"><h2>01 / Import a private source snapshot</h2><p>Generate it with the original password-authenticated <code>python -m lightup.auth_casebook</code> CLI. The entire source stays in this browser tab. Invalid or incompatible imports leave the previous snapshot intact.</p>
+<div class="actions"><label class="import">Load private casebook JSON<input id="file" type="file" accept=".json,application/json"></label><label class="import" style="background:#293d61;color:#e3eaff">Compare earlier private JSON<input id="previous" type="file" accept=".json,application/json"></label><button type="button" id="demo" class="secondary">Fictional demo</button><button id="reset" type="button" class="secondary">Clear</button></div><div id="message" role="status" aria-live="polite">No casebook loaded.</div></div>
+<div class="card"><h2>02 / Non-authorizing review</h2><p>Source data might be stale or altered. A recorded approval request, grant or risk decision can still fail actual asset, tenant, validity, consent, STOP, revocation, scope and tool admission. This desk cannot approve, dispatch, retry or scan.</p><div class="note"><b>Authority = false.</b> Request-link observations are only source pointers. HUMAN GO, real separated client/operator approval, exact-head CI and action-time revocation remain mandatory.</div></div>
+</section>
+<section class="metrics" aria-label="Source-declared counts">
+<div class="metric"><span>Requests</span><strong id="requests-count">0</strong></div>
+<div class="metric"><span>Engagements</span><strong id="engagements-count">0</strong></div>
+<div class="metric"><span>Stored grants</span><strong id="grants-count">0</strong></div>
+<div class="metric"><span>Risk decisions</span><strong id="risk-count">0</strong></div>
+<div class="metric"><span>Source HOLD notices</span><strong id="hold-count">0</strong></div>
+</section>
+<section class="grid">
+<div class="card"><div class="toolbar"><h2>Private source records</h2><select id="category" aria-label="Record type"><option value="all">All source records</option><option value="case">Engagement caseboard</option><option value="request">Requests</option><option value="engagement">Engagements</option><option value="grant">Grant links</option><option value="risk">Risk decisions</option></select><input type="search" id="filter" aria-label="Filter records" placeholder="Search exact local IDs and statuses"></div>
+<div style="overflow-x:auto"><table><thead><tr><th>Source type</th><th>Original ID</th><th>State / lineage</th><th>Review</th></tr></thead><tbody id="records"></tbody></table></div><p id="empty" class="muted">Import an actual private source file or the clearly marked fictional demo.</p></div>
+<div class="card"><h2>Observed decision timeline</h2><p class="small">Ordering is based on the unverified source timestamps. Missing approval records or inconsistent joins are HOLD, not proof that a scan is allowed.</p><ul class="timeline" id="timeline"></ul>
+<div class="actions"><button id="export" type="button">Export aggregate brief</button><button id="brief-html" type="button" class="secondary">Create anonymous HTML briefing</button><button id="print" type="button" class="secondary">Print local review</button></div><div id="origin" class="note">No authenticated data imported. Nothing here can validate a customer signature or issue execution consent.</div></div>
+</section>
+<section class="card" style="margin-top:16px" aria-label="Selected engagement source details">
+<h2>03 / Engagement case detail</h2>
+<p id="selected-lead" class="small">Select an engagement from the caseboard to inspect original grant links and associated risk decisions. This cannot issue an approval.</p>
+<div id="selected-detail" class="detail-grid"></div>
+</section>
+<section class="card" style="margin-top:16px" aria-label="Private source snapshot comparison">
+<h2>04 / Compare two original source snapshots</h2>
+<p id="diff-note" class="small">Import a current source and optionally one separately saved earlier casebook for the SAME original tenant. Comparisons show only source-reported additions, disappearances and status changes. File timestamps are not proof of chronology.</p>
+<div class="metrics" style="grid-template-columns:repeat(3,minmax(0,1fr))">
+<div class="metric"><span>New source rows</span><strong id="diff-added">0</strong></div>
+<div class="metric"><span>Missing source rows</span><strong id="diff-removed">0</strong></div>
+<div class="metric"><span>Changed source statuses</span><strong id="diff-changed">0</strong></div>
+</div></section>
+<section class="card" style="margin-top:16px" aria-label="Operator review queue">
+<h2>05 / Human review queue · derived from original sources</h2>
+<p class="small">Highest-attention engagement records first. Every suggested action is manual review, not a grant, scan, runtime STOP check, consent or release approval. Select Inspect to open original private detail.</p>
+<div style="overflow-x:auto"><table><thead><tr><th>Attention</th><th>Original engagement</th><th>Suggested next review</th><th>Local stage</th></tr></thead><tbody id="review-queue"></tbody></table></div>
+<p id="queue-empty" class="muted">Load a private source snapshot to populate the operator queue.</p>
+</section>
+<section class="card" style="margin-top:16px" aria-label="Private original source changes">
+<h2>06 / Original source change inbox</h2>
+<p class="small">After loading a same-tenant earlier source, inspect exactly which original request, engagement, grant or risk record appeared, disappeared or changed. All IDs stay inside this local PRIVATE browser view. Changes are retrospective source assertions, not trustworthy chronology.</p>
+<div style="overflow-x:auto"><table><thead><tr><th>Change</th><th>Source type</th><th>Private ID</th><th>Earlier</th><th>Current</th></tr></thead><tbody id="changed-rows"></tbody></table></div>
+<p id="changed-empty" class="muted">Import two PRIVATE source snapshots for the same tenant to populate this inbox.</p>
+</section><footer>LightUp authorization casebook · Local, read-only browser; no network, storage, scanner, target or model · Every export remains REVIEW_ONLY.</footer>
+</main>
+<script>
+(function(){
+"use strict";
+var snapshot=null,previous=null,fictional=false,selectedCase=null,localStages=new Map(),MAX_BYTES=524288;
+function elt(id){return document.getElementById(id);}
+function word(v){return typeof v==="string"&&v.length>0&&v.length<=180&&![...v].some(function(ch){return ch.charCodeAt(0)<32||ch.charCodeAt(0)===127;});}
+function obj(x){return x!==null&&typeof x==="object"&&!Array.isArray(x);}
+function strictlyFalse(s){return ["source_authenticated","client_consent_verified","operator_consent_verified","authorization_granted","execution_allowed","release_approved"].every(function(k){return s[k]===false;});}
+function checkDuplicateKeys(raw){
+var i=0,steps=0;
+function ws(){while(i<raw.length&&" \n\t\r".includes(raw[i]))i++;}
+function string(){var start=i;if(raw[i]!=='"')throw Error("json string");i++;while(i<raw.length){if(raw[i]==='\\'){i+=2;continue;}if(raw[i]==='"'){i++;return JSON.parse(raw.slice(start,i));}i++;}throw Error("incomplete string");}
+function val(depth){if(++steps>90000||depth>40)throw Error("depth bound");ws();if(raw[i]==='{'){i++;ws();var keys=new Set();if(raw[i]==='}'){i++;return;}while(true){ws();var k=string();if(keys.has(k))throw Error("duplicate key");keys.add(k);ws();if(raw[i]!==':')throw Error("colon");i++;val(depth+1);ws();if(raw[i]==='}'){i++;return;}if(raw[i]!==',')throw Error("comma");i++;}}else if(raw[i]==='['){i++;ws();if(raw[i]===']'){i++;return;}while(true){val(depth+1);ws();if(raw[i]===']'){i++;return;}if(raw[i]!==',')throw Error("comma");i++;}}else if(raw[i]==='"'){string();}else{var at=i;while(i<raw.length&&!",]} \n\r\t".includes(raw[i]))i++;if(at===i)throw Error("primitive");}}
+val(0);ws();if(i!==raw.length)throw Error("trailing");
+}
+function parse(raw){
+checkDuplicateKeys(raw);
+var s=JSON.parse(raw);
+if(!obj(s)||s.schema!=="lightup.auth_casebook.v1"||s.status!=="REVIEW_ONLY"||!strictlyFalse(s)||!word(s.client_id)||!word(s.as_of)||!obj(s.declared_counts))throw Error("source schema");
+var names=["requests","engagements","grants","risk_approvals"];
+for(var name of names){if(!Array.isArray(s[name])||s[name].length>200||s[name].length!==s.declared_counts[name])throw Error("source count");}
+for(var key of ["requests","engagements","grants","risk_approvals","grant_link_hold","risk_tenant_hold","case_attention_hold","foreign_tenant_row_count","recorded_window_review","risk_provenance_hold","pending_risk_review"]){if(!Number.isInteger(s.declared_counts[key])||s.declared_counts[key]<0||s.declared_counts[key]>500)throw Error("aggregate count");}
+if(!Array.isArray(s.case_overview)||s.case_overview.length!==s.engagements.length||s.case_overview.length>200||!Number.isInteger(s.declared_counts.case_attention_hold))throw Error("caseboard shape");
+for(var ca of s.case_overview){if(!obj(ca)||!word(ca.engagement_id)||!word(ca.status)||!["HOLD_SOURCE_PROVENANCE","HOLD_CLOSED_ENGAGEMENT_WITH_GRANTS","RISK_DECISION_PENDING_SOURCE_REVIEW","EXPIRED_GRANT_SOURCE_REVIEW","FUTURE_GRANT_SOURCE_REVIEW","REVIEW_ONLY_UNVERIFIED_GRANT_LINK","NO_GRANT_RECORDED"].includes(ca.attention)||!word(ca.next_review_action)||!Number.isInteger(ca.grant_count)||!Number.isInteger(ca.risk_record_count)||ca.grant_count<0||ca.risk_record_count<0||ca.grant_count>200||ca.risk_record_count>200)throw Error("caseboard source mismatch");}
+if(new Set(s.case_overview.map(function(x){return x.engagement_id;})).size!==s.engagements.length||s.case_overview.filter(function(x){return x.attention.startsWith("HOLD_");}).length!==s.declared_counts.case_attention_hold)throw Error("caseboard HOLD mismatch");
+var sets=[["requests","request_id"],["engagements","engagement_id"],["grants","grant_id"],["risk_approvals","approval_id"]];
+for(var item of sets){var ids=new Set();for(var row of s[item[0]]){if(!obj(row)||!word(row[item[1]])||ids.has(row[item[1]]))throw Error("invalid or duplicated record");ids.add(row[item[1]]);}}
+var hold=s.grants.filter(function(g){return word(g.request_link_observation)&&g.request_link_observation.startsWith("HOLD_");}).length;
+if(hold!==s.declared_counts.grant_link_hold)throw Error("hold mismatch");
+for(var g of s.grants){if(!(g.engagement_id===null||word(g.engagement_id))||!word(g.request_link_observation)||!(g.approved_request_id===null||word(g.approved_request_id))||!["HOLD_INVALID_RECORDED_WINDOW","EXPIRED_RECORDED_WINDOW","FUTURE_RECORDED_WINDOW","WITHIN_RECORDED_WINDOW_NOT_AUTHORITY"].includes(g.validity_observation))throw Error("invalid grant");}
+if(s.grants.filter(function(g){return g.validity_observation!=="WITHIN_RECORDED_WINDOW_NOT_AUTHORITY";}).length!==s.declared_counts.recorded_window_review)throw Error("source-window review count mismatch");
+for(var r of s.requests){if(!word(r.status)||!word(r.requested_mode)||!word(r.created_at)||typeof r.decision_recorded!=="boolean")throw Error("invalid request");}
+if(s.risk_approvals.filter(function(r){return r.decision_provenance_observation.startsWith("HOLD_");}).length!==s.declared_counts.risk_provenance_hold || s.risk_approvals.filter(function(r){return r.decision_provenance_observation==="RISK_DECISION_PENDING_REVIEW";}).length!==s.declared_counts.pending_risk_review)throw Error("risk source summary mismatch");
+for(var risk of s.risk_approvals){if(!(risk.engagement_id===null||word(risk.engagement_id))||!word(risk.status)||typeof risk.source_tenant_matches!=="boolean"||!["HOLD_RISK_SOURCE_IDENTITY_OR_STATUS","HOLD_RISK_PENDING_WITH_DECISION","HOLD_RISK_DECIDER_PROVENANCE","RISK_DECISION_PENDING_REVIEW","RISK_DECISION_RECORDED_UNVERIFIED"].includes(risk.decision_provenance_observation))throw Error("invalid risk");}
+return s;
+}
+function entries(){
+if(!snapshot)return [];
+return [
+...snapshot.case_overview.map(function(x){return {type:"case",id:x.engagement_id,state:x.attention,review:x.next_review_action+" · "+x.grant_count+" grants · "+x.risk_record_count+" risk records",at:""};}),
+...snapshot.requests.map(function(x){return {type:"request",id:x.request_id,state:x.status,review:x.requested_mode,at:x.created_at};}),
+...snapshot.engagements.map(function(x){return {type:"engagement",id:x.engagement_id,state:x.status,review:"Original persisted status",at:x.created_at};}),
+...snapshot.grants.map(function(x){return {type:"grant",id:x.grant_id,state:x.request_link_observation,review:"Stored link only — NOT APPROVAL",at:x.valid_from};}),
+...snapshot.risk_approvals.map(function(x){return {type:"risk",id:x.approval_id,state:x.status,review:x.decision_provenance_observation+(x.source_tenant_matches?"":" · HOLD_TENANT_MISMATCH"),at:""};})
+];
+}
+
+function detail(){
+var host=elt("selected-detail");host.replaceChildren();
+if(!snapshot||!selectedCase){
+elt("selected-lead").textContent="Select a caseboard engagement. All source links remain unverified.";return;
+}
+var one=snapshot.case_overview.find(function(x){return x.engagement_id===selectedCase;});
+if(!one){selectedCase=null;elt("selected-lead").textContent="No engagement selected.";return;}
+elt("selected-lead").textContent="PRIVATE SOURCE ENGAGEMENT: "+one.engagement_id+" · "+one.attention+" — no grant or consent verification.";
+function card(title,lines){
+var div=document.createElement("div");div.className="detail-item";
+var strong=document.createElement("strong");strong.textContent=title;div.appendChild(strong);
+lines.forEach(function(line){var p=document.createElement("p");p.textContent=line;div.appendChild(p);});host.appendChild(div);
+}
+card("Original engagement",[one.status,"Stored grants: "+one.grant_count,"Stored risk rows: "+one.risk_record_count,"Review: "+one.attention,"Suggested human follow-up: "+one.next_review_action]);
+var stageCard=document.createElement("div");stageCard.className="detail-item";
+var lbl=document.createElement("label");lbl.textContent="Local human follow-up stage (no authority)";lbl.htmlFor="local-stage";
+var stage=document.createElement("select");stage.id="local-stage";
+["unreviewed","investigating","escalated","documented"].forEach(function(v){
+var option=document.createElement("option");option.value=v;option.textContent=v;stage.appendChild(option);
+});
+stage.value=localStages.get(one.engagement_id)||"unreviewed";
+stage.addEventListener("change",function(){
+if(stage.value==="unreviewed")localStages.delete(one.engagement_id);
+else localStages.set(one.engagement_id,stage.value);
+renderQueue();
+});
+stageCard.append(lbl,stage);host.appendChild(stageCard);
+var grants=snapshot.grants.filter(function(x){return x.engagement_id===selectedCase;});
+var risk=snapshot.risk_approvals.filter(function(x){return x.engagement_id===selectedCase;});
+grants.forEach(function(g){
+var req=snapshot.requests.find(function(r){return r.request_id===g.approved_request_id;});
+card("Stored grant "+g.grant_id,[
+"Source link: "+g.request_link_observation,
+"Original request: "+(g.approved_request_id===null?"NONE":g.approved_request_id),
+"Recorded request status: "+(req?req.status:"NOT PRESENT IN THIS SNAPSHOT"),
+"Original risk ceiling: "+g.max_risk,
+"Recorded UTC window source: "+g.validity_observation,
+"Local source only — not verified authorization"
+]);
+});
+risk.forEach(function(r){card("Risk decision "+r.approval_id,[
+"Recorded status: "+r.status,
+"Requested risk: "+r.requested_risk,
+"Source tenant relationship: "+(r.source_tenant_matches?"DECLARED MATCH":"HOLD"),
+"Reviewer provenance: "+r.decision_provenance_observation,
+"Not active risk permission"
+]);});
+if(!grants.length)card("No stored grant source",["No original grant row is linked to this engagement within the selected tenant.","This is an observation, not a security verdict."]);
+}
+
+
+function sourceShape(row,family){
+if(family==="requests")return [row.status,row.requested_mode,row.requested_risk,row.decision_recorded].join("|");
+if(family==="engagements")return row.status;
+if(family==="grants")return [row.request_link_observation,row.validity_observation,row.approved_request_id,row.max_risk].join("|");
+return [row.status,row.decision_provenance_observation,row.requested_risk,row.source_tenant_matches].join("|");
+}
+function comparisonEntries(){
+if(!snapshot||!previous)return [];
+var changes=[],shapes=[
+["requests","request_id","request"],
+["engagements","engagement_id","engagement"],
+["grants","grant_id","grant"],
+["risk_approvals","approval_id","risk"]];
+for(var shape of shapes){
+var family=shape[0],id=shape[1],label=shape[2],
+old=new Map(previous[family].map(function(x){return [x[id],x];})),
+now=new Map(snapshot[family].map(function(x){return [x[id],x];}));
+now.forEach(function(current,key){
+var earlier=old.get(key);
+if(!earlier)changes.push({type:label,id:key,change:"NEW_ORIGINAL_ROW",before:"—",after:sourceShape(current,family)});
+else if(sourceShape(current,family)!==sourceShape(earlier,family))
+changes.push({type:label,id:key,change:"SOURCE_FIELDS_CHANGED",before:sourceShape(earlier,family),after:sourceShape(current,family)});
+});
+old.forEach(function(earlier,key){if(!now.has(key))changes.push({type:label,id:key,change:"MISSING_FROM_CURRENT",before:sourceShape(earlier,family),after:"—"});});
+}
+return changes;
+}
+function comparisonCounts(){
+var changes=comparisonEntries();
+return {
+new_records:changes.filter(function(x){return x.change==="NEW_ORIGINAL_ROW";}).length,
+missing_records:changes.filter(function(x){return x.change==="MISSING_FROM_CURRENT";}).length,
+changed_statuses:changes.filter(function(x){return x.change==="SOURCE_FIELDS_CHANGED";}).length,
+baseline_provided:!!previous
+};
+}
+function renderChanges(){
+var host=elt("changed-rows");host.replaceChildren();
+var entries=comparisonEntries();
+elt("changed-empty").hidden=!!entries.length;
+elt("changed-empty").textContent=previous?"No changed original source fields found, or imported sources declare identical rows.":"Import two PRIVATE source snapshots for the same tenant to populate this inbox.";
+entries.sort(function(a,b){return a.type.localeCompare(b.type)||a.id.localeCompare(b.id);});
+for(var e of entries.slice(0,800)){
+var tr=document.createElement("tr");
+[e.change,e.type,e.id,e.before,e.after].forEach(function(value,index){
+var td=document.createElement("td");td.textContent=value;if(index===2)td.className="id";tr.appendChild(td);
+});host.appendChild(tr);
+}
+}
+function renderComparison(){
+var changes=comparisonCounts();
+elt("diff-added").textContent=changes.new_records;
+elt("diff-removed").textContent=changes.missing_records;
+elt("diff-changed").textContent=changes.changed_statuses;
+elt("diff-note").textContent=previous?"UNVERIFIED two-file source comparison for one selected tenant. Added/removed/changed rows are retrospective declarations, not authorization or trusted chronology.":"Import an earlier ORIGINAL casebook JSON for the SAME tenant to compare source row IDs and statuses locally. No browser storage or network.";
+}
+
+function renderQueue(){
+var host=elt("review-queue");host.replaceChildren();
+if(!snapshot){elt("queue-empty").hidden=false;return;}
+var order={"HOLD_SOURCE_PROVENANCE":0,"HOLD_CLOSED_ENGAGEMENT_WITH_GRANTS":1,"EXPIRED_GRANT_SOURCE_REVIEW":2,"FUTURE_GRANT_SOURCE_REVIEW":3,"NO_GRANT_RECORDED":4,"REVIEW_ONLY_UNVERIFIED_GRANT_LINK":5};
+var sorted=snapshot.case_overview.slice().sort(function(a,b){return order[a.attention]-order[b.attention]||a.engagement_id.localeCompare(b.engagement_id);});
+elt("queue-empty").hidden=!!sorted.length;
+for(let record of sorted){
+var tr=document.createElement("tr"),a=document.createElement("td"),b=document.createElement("td"),c=document.createElement("td"),d=document.createElement("td");
+a.textContent=record.attention;b.className="id";b.textContent=record.engagement_id;
+c.textContent=record.next_review_action;
+d.textContent=localStages.get(record.engagement_id)||"unreviewed";
+var button=document.createElement("button");button.className="secondary inspect";button.type="button";button.textContent="Inspect";
+button.addEventListener("click",function(){selectedCase=record.engagement_id;detail();elt("selected-detail").scrollIntoView({block:"center",behavior:"smooth"});});
+d.appendChild(button);tr.append(a,b,c,d);host.appendChild(tr);
+}
+}
+function render(){
+var rows=elt("records");rows.replaceChildren();var list=entries();
+var typ=elt("category").value,filter=elt("filter").value.toLowerCase();
+var chosen=list.filter(function(x){return (typ==="all"||x.type===typ)&&(x.id+" "+x.state+" "+x.review).toLowerCase().includes(filter);});
+for(let x of chosen.slice(0,500)){
+var tr=document.createElement("tr");
+var cols=[x.type,x.id,x.state,x.review];
+cols.forEach(function(t,i){var td=document.createElement("td");if(i===1)td.className="id";if(i===2){var b=document.createElement("span");b.className="badge"+(String(t).startsWith("HOLD")?"":" info");b.textContent=t;td.appendChild(b);}else td.textContent=t;tr.appendChild(td);});
+if(x.type==="case"){var btn=document.createElement("button");btn.type="button";btn.className="secondary inspect";btn.textContent="Inspect case";btn.addEventListener("click",function(){selectedCase=x.id;detail();});tr.lastChild.appendChild(btn);}rows.appendChild(tr);
+}
+elt("empty").hidden=!!chosen.length;
+for(var n of ["requests","engagements","grants","risk_approvals"])elt((n==="risk_approvals"?"risk":n)+"-count").textContent=snapshot?snapshot[n].length:0;
+elt("hold-count").textContent=snapshot?snapshot.declared_counts.grant_link_hold+snapshot.declared_counts.risk_tenant_hold+snapshot.declared_counts.foreign_tenant_row_count:0;
+var timeline=elt("timeline");timeline.replaceChildren();
+for(var item of list.filter(function(x){return x.at&&word(x.at);}).sort(function(a,b){return b.at.localeCompare(a.at);}).slice(0,18)){
+var li=document.createElement("li"),time=document.createElement("small"),title=document.createElement("strong"),badge=document.createElement("em");
+time.textContent=item.at;title.textContent=item.type+": "+item.state;badge.textContent=item.id;li.append(time,title,badge);timeline.appendChild(li);
+}
+detail();renderComparison();renderQueue();renderChanges();
+elt("origin").textContent=snapshot?(fictional?"FICTIONAL DEMO — ":"PRIVATE UNVERIFIED ORIGINAL EXPORT — ")+"Recorded records, no authority; no original consent or runtime grant verification.": "No authenticated source. Nothing here can validate authorization.";
+}
+elt("file").addEventListener("change",async function(){var file=this.files&&this.files[0];this.value="";if(!file)return;if(file.size<2||file.size>MAX_BYTES){elt("message").textContent="HOLD: file size exceeds private bound.";return;}try{var s=parse(await file.text());snapshot=s;previous=null;fictional=false;selectedCase=null;localStages.clear();elt("message").textContent="Private casebook loaded locally (REVIEW_ONLY).";render();}catch(e){elt("message").textContent="HOLD: invalid/corrupt/unsupported original source. Previous snapshot preserved."; }});
+
+elt("previous").addEventListener("change",async function(){
+var file=this.files&&this.files[0];this.value="";
+if(!snapshot){elt("message").textContent="HOLD: import current private casebook first.";return;}
+if(!file||file.size<2||file.size>MAX_BYTES){elt("message").textContent="HOLD: earlier source file not admitted.";return;}
+try{
+var candidate=parse(await file.text());
+if(candidate.client_id!==snapshot.client_id)throw Error("tenant mismatch");
+previous=candidate;elt("message").textContent="Private source comparison ready. No chronology or source authenticity is assumed.";renderComparison();
+}catch(e){elt("message").textContent="HOLD: earlier file invalid, non-matching tenant or corrupt. Current view unchanged.";}
+});
+elt("demo").addEventListener("click",function(){
+snapshot={schema:"lightup.auth_casebook.v1",status:"REVIEW_ONLY",client_id:"fictional-tenant",as_of:"2026-10-18T12:00:00+00:00",requests:[{request_id:"example-request-1",status:"approved",requested_mode:"authorized_assessment",created_at:"2026-10-15T10:00:00+00:00",decision_recorded:true}],engagements:[{engagement_id:"fictional-engagement-1",status:"draft",created_at:"2026-10-16T11:00:00+00:00"}],grants:[{grant_id:"fictional-grant-1",engagement_id:"fictional-engagement-1",approved_request_id:"example-request-1",request_link_observation:"REQUEST_SCOPE_COMPATIBLE_UNVERIFIED",validity_observation:"FUTURE_RECORDED_WINDOW",valid_from:"2026-10-18T09:00:00+00:00",valid_until:"2026-10-19T09:00:00+00:00"}],risk_approvals:[{approval_id:"fictional-risk-1",engagement_id:"fictional-engagement-1",status:"pending",source_tenant_matches:true,decision_provenance_observation:"RISK_DECISION_PENDING_REVIEW"}],case_overview:[{engagement_id:"fictional-engagement-1",status:"draft",grant_count:1,risk_record_count:1,attention:"RISK_DECISION_PENDING_SOURCE_REVIEW",next_review_action:"REVIEW_OUTSTANDING_ORIGINAL_RISK_REQUEST"}],declared_counts:{requests:1,engagements:1,grants:1,risk_approvals:1,grant_link_hold:0,risk_tenant_hold:0,case_attention_hold:0,foreign_tenant_row_count:0,recorded_window_review:1,risk_provenance_hold:0,pending_risk_review:1},source_authenticated:false,client_consent_verified:false,operator_consent_verified:false,authorization_granted:false,execution_allowed:false,release_approved:false};fictional=true;previous=null;selectedCase=null;localStages.clear();elt("message").textContent="Fictional demo only — NOT REAL CLIENT DATA";render();
+});
+elt("reset").addEventListener("click",function(){snapshot=null;previous=null;fictional=false;selectedCase=null;localStages.clear();elt("message").textContent="Private local snapshot cleared.";render();});
+elt("category").addEventListener("change",render);elt("filter").addEventListener("input",render);
+elt("print").addEventListener("click",function(){window.print();});
+
+function saveTextFile(filename,mime,body){
+var url=URL.createObjectURL(new Blob([body],{type:mime}));
+var a=document.createElement("a");a.href=url;a.download=filename;document.body.appendChild(a);
+a.click();a.remove();setTimeout(function(){URL.revokeObjectURL(url);},1000);
+}
+elt("brief-html").addEventListener("click",function(){
+if(!snapshot){elt("message").textContent="HOLD: a private casebook is required.";return;}
+var counts=snapshot.declared_counts,stages={unreviewed:0,investigating:0,escalated:0,documented:0};
+snapshot.case_overview.forEach(function(row){stages[localStages.get(row.engagement_id)||"unreviewed"]++;});
+var changes=comparisonCounts();
+var attentionLabels=[
+"HOLD_SOURCE_PROVENANCE","HOLD_CLOSED_ENGAGEMENT_WITH_GRANTS",
+"EXPIRED_GRANT_SOURCE_REVIEW","FUTURE_GRANT_SOURCE_REVIEW",
+"NO_GRANT_RECORDED","REVIEW_ONLY_UNVERIFIED_GRANT_LINK"];
+var labels=["Requests","Engagements","Stored grants","Risk source rows","Request-link HOLDs","Risk tenant HOLDs","Foreign-tenant conflicts","Non-current original grant windows","Risk provenance HOLDs","Outstanding risk reviews"];
+var values=[counts.requests,counts.engagements,counts.grants,counts.risk_approvals,counts.grant_link_hold,counts.risk_tenant_hold,counts.foreign_tenant_row_count,counts.recorded_window_review,counts.risk_provenance_hold,counts.pending_risk_review];
+function row(a,b){return "<tr><th>"+a+"</th><td>"+String(b)+"</td></tr>";}
+var table=labels.map(function(label,i){return row(label,values[i]);}).join("");
+var attention=attentionLabels.map(function(label){return row(label,snapshot.case_overview.filter(function(x){return x.attention===label;}).length);}).join("");
+var follow=["unreviewed","investigating","escalated","documented"].map(function(stage){return row(stage,stages[stage]);}).join("");
+var comparison=["new_records","missing_records","changed_statuses"].map(function(key){return row(key,changes[key]);}).join("");
+var html='<!doctype html><html lang="en"><head><meta charset="utf-8">'+
+'<meta name="viewport" content="width=device-width,initial-scale=1">'+
+'<meta http-equiv="Content-Security-Policy" content="default-src &#39;none&#39;; style-src &#39;unsafe-inline&#39;; base-uri &#39;none&#39;; form-action &#39;none&#39;">'+
+'<title>LightUp anonymous review briefing</title>'+
+'<style>body{font:15px system-ui;color:#161f32;background:#f7f9fe;max-width:900px;margin:24px auto;padding:20px}h1{font-size:30px}h2{font-size:19px;margin-top:30px}p{line-height:1.5}table{border-collapse:collapse;width:100%}th,td{text-align:left;border-bottom:1px solid #ccd5e3;padding:9px}td{text-align:right;font-variant-numeric:tabular-nums}.notice{border:2px solid #b77e43;padding:15px;background:#fff7eb}@media print{body{background:white}}</style></head><body>'+
+'<h1>LightUp | Human authorization review</h1>'+
+'<p class="notice"><b>REVIEW ONLY / DRAFT HOLD.</b> Source-declared aggregate counts and local human follow-up. Not verified consent, current grant authority, a scan outcome, risk acceptance, or a release gate. Every original authority flag is false.</p>'+
+'<h2>Original source aggregates</h2><table>'+table+'</table>'+
+'<h2>Human follow-up categories</h2><table>'+attention+'</table>'+
+'<h2>Local review stages</h2><table>'+follow+'</table>'+
+'<h2>Source comparison counts</h2><p>'+(
+changes.baseline_provided?"Two unverified local source snapshots were compared.":"No earlier source snapshot was supplied."
+)+'</p><table>'+comparison+'</table>'+
+'<p>All source identities, private customer fields, grant IDs, request IDs, contact details, assets and underlying casebook contents are intentionally absent. No script, network, storage or executable authority.</p></body></html>';
+saveTextFile("lightup-anonymous-human-review.html","text/html",html);
+elt("message").textContent="Scriptless identity-free review briefing saved locally (REVIEW_ONLY).";
+});
+
+elt("export").addEventListener("click",function(){var s=snapshot;if(!s)return;var o={schema:"lightup.auth_casebook_aggregate.v1",status:"REVIEW_ONLY",fictional_demo:fictional,declared_counts:s.declared_counts,comparison_counts:comparisonCounts(),local_human_stage_counts:{unreviewed:0,investigating:0,escalated:0,documented:0},source_authenticated:false,client_consent_verified:false,operator_consent_verified:false,authorization_granted:false,execution_allowed:false,release_approved:false};s.case_overview.forEach(function(c){var stage=localStages.get(c.engagement_id)||"unreviewed";o.local_human_stage_counts[stage]++;});var url=URL.createObjectURL(new Blob([JSON.stringify(o,null,2)],{type:"application/json"})),a=document.createElement("a");a.href=url;a.download="lightup-casebook-aggregate.json";document.body.appendChild(a);a.click();a.remove();setTimeout(function(){URL.revokeObjectURL(url);},1000);});
+render();
+})();
+</script></body></html>
