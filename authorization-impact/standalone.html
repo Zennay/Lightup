@@ -81,6 +81,7 @@ tbody button{font-size:11px;padding:5px 7px}
 <p class="caption">Private handoff requires local SHA-256 of the exact original source bytes and explicit recipient confirmation; hashes do not authenticate issuer. Anonymous exports include no IDs, targets or notes.</p></div></section>
 <section class="card" style="margin-top:17px"><h2>05 / Source-declared attention inbox</h2><p>Prioritizes recorded HOLD, pending and out-of-window source observations, plus missing referenced rows, without implying live state or permissions.</p>
 <div class="table-wrap"><table><thead><tr><th>Original row / missing link</th><th>Source attention</th><th>Inspect</th></tr></thead><tbody id="inbox"></tbody></table></div><p class="muted" id="inbox-empty">No source-declared attention rows.</p></section>
+<section class="card" style="margin-top:17px"><div class="flex"><h2>06 / Human-only follow-up schedule</h2><label class="field" style="min-width:180px">Stage filter<select id="follow-stage"><option value="all">All recorded notes</option><option value="unreviewed">Unreviewed</option><option value="investigating">Investigating</option><option value="waiting-client">Waiting for genuine client contact</option><option value="waiting-operator">Waiting for original operator</option><option value="escalated">Escalated</option><option value="documented">Documented only</option></select></label></div><p><span id="follow-count">0</span> human-only follow-up records; dates before this device's UTC day are shown as overdue reminders. Device time, reviewer names, assignments and stages are unverified human planning data, not current consent.</p><div class="table-wrap"><table><thead><tr><th>Original private source ID</th><th>Human stage</th><th>Proposed date</th><th>Self-reported reviewer</th><th>Next human action</th><th>Open</th></tr></thead><tbody id="followups"></tbody></table></div><p class="muted" id="follow-empty">No human follow-up notes for this filter.</p></section>
 <footer><p class="caption">LightUp · isolated original-source companion · fully offline · private exports stay with the operator · PLAN/LAB ONLY / DRAFT/HOLD. Human notes are never original domain evidence.</p></footer>
 </main><script>
 (function(){
@@ -238,8 +239,24 @@ el("review-fields").disabled=!node;
 el("anonymous").disabled=!source;
 el("private-export").disabled=!source||!sourceSHA||fictional;
 el("private-import").disabled=!source||!sourceSHA||fictional;
-renderInbox();
+renderInbox();renderSchedule();
 }
+function renderSchedule(){
+var body=el("followups");body.replaceChildren();var filter=el("follow-stage").value;
+var entries=Array.from(human.entries()).filter(function(e){return filter==="all"||e[1].stage===filter;});
+entries.sort(function(a,b){return (a[1].due||"9999-12-31").localeCompare(b[1].due||"9999-12-31")||a[0].localeCompare(b[0]);});
+el("follow-count").textContent=entries.length;
+var today=new Date().toISOString().slice(0,10);
+entries.forEach(function(entry){
+var row=entry[1],tr=document.createElement("tr");
+item(tr,"td",entry[0]);item(tr,"td",row.stage);
+var timing=row.due||"not proposed";var due=item(tr,"td",timing);if(row.due&&row.due<today)due.className="error";
+item(tr,"td",row.reviewer||"unassigned");item(tr,"td",row.next||"no action recorded");
+var controls=document.createElement("td"),btn=item(controls,"button","Open","secondary");btn.type="button";btn.addEventListener("click",function(){selection=entry[0];render();el("focus-title").scrollIntoView({behavior:"smooth",block:"center"});});tr.appendChild(controls);body.appendChild(tr);
+});
+el("follow-empty").hidden=!!entries.length;
+}
+
 function renderInbox(){
 var host=el("inbox");host.replaceChildren();if(!source)return;
 var all=nodes(),edgesList=edges(),keys=new Set(all.map(function(n){return n.key;}));
@@ -284,7 +301,7 @@ STAGES.forEach(function(s){stageCounts[s]=0;});humanRows().forEach(function(x){s
 return {schema:"lightup.scope_impact_aggregate.v1",status:"REVIEW_ONLY",source_records:all.length,recorded_links:e.length,missing_references:e.filter(function(x){return !keys.has(x.from)||!keys.has(x.to);}).length,attention_rows:all.filter(troubled).length,human_action_rows:human.size,human_stage_counts:stageCounts,source_authenticated:false,client_consent_verified:false,operator_consent_verified:false,authorization_granted:false,execution_allowed:false,release_approved:false};
 }
 el("source-file").addEventListener("change",async function(){var file=this.files&&this.files[0];this.value="";await importSource(file,false);});
-el("search").addEventListener("input",render);el("related").addEventListener("change",render);
+el("search").addEventListener("input",render);el("related").addEventListener("change",render);el("follow-stage").addEventListener("change",renderSchedule);
 el("clear").addEventListener("click",function(){source=null;sourceSHA=null;fictional=false;selection=null;human.clear();el("search").value="";render();setMessage("Private source and human notes cleared from this tab.");});
 el("save-review").addEventListener("click",function(){try{readFields();render();setMessage("Human-only note stored in tab memory. No original source has been edited.");}catch(e){setMessage("HOLD: review fields invalid. Nothing saved.");}});
 el("anonymous").addEventListener("click",function(){if(source)download("lightup-scope-impact-anonymous.json","application/json",JSON.stringify(anonymous(),null,2)+"\n");});
