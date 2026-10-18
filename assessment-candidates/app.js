@@ -261,7 +261,9 @@
   function queueAdverse(id,candidate,topic){
     const names=topic==="all"?NAMES:TOPICS[topic];
     return reports.reduce((sum,r,index)=>sum+(candidate==="all"||Number(candidate)===index?
-      names.filter(n=>r.cases.get(id).metrics[n].regression).length:0),0);
+      names.filter(n=>topic==="operations"?
+        r.cases.get(id).metrics[n].delta!==0:
+        r.cases.get(id).metrics[n].regression).length:0),0);
   }
   function queueSettings(id){
     return discussions.get(id)||{route:"unrouted",stage:"needs_review"};
@@ -295,16 +297,22 @@
     const topic=$("queueFamily").value||"all",filter=$("queueFilter").value||"all";
     const showNeutral=$("queueIncludeNeutral").checked;
     const rows=ids.map((id,i)=>({i,id,count:queueAdverse(id,cand,topic),
-      review:queueSettings(id)})).filter(r=>
+      safety:queueAdverse(id,cand,"scope"),review:queueSettings(id)})).filter(r=>
       (filter==="all"||r.review.stage===filter)&&(showNeutral||r.count>0));
-    rows.sort((a,b)=>b.count-a.count||a.i-b.i);
+    rows.sort((a,b)=>topic==="all"?
+      Number(b.safety>0)-Number(a.safety>0)||b.safety-a.safety||
+        b.count-a.count||a.i-b.i:
+      b.count-a.count||a.i-b.i);
     $("applyBulk").disabled=!rows.length;
     $("undoBulk").disabled=batchUndo===null;
     $("queueSummary").textContent=rows.length+" anonymized cases shown / "+ids.length+
-      " total · "+rows.filter(r=>r.count>0).length+" with original source-adverse metrics"+
+      " total · "+rows.filter(r=>r.count>0).length+
+      (topic==="operations"?" with informational source changes":
+       " with original source-adverse metrics")+
       " · "+[...discussions.values()].filter(r=>r.stage==="documented").length+
       " locally marked discussion documented (not fixed).";
-    $("queueRows").innerHTML=table(["Case ordinal","Original adverse metric instances",
+    $("queueRows").innerHTML=table(["Case ordinal",
+      topic==="operations"?"Informational source metric changes":"Original adverse metric instances",
       "Local discussion stage","Generic proposed reviewer group"],
       rows.map(r=>[
         "<button type='button' class='case-link' data-queue-index='"+r.i+
