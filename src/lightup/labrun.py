@@ -404,6 +404,14 @@ def main_assess(argv: list[str] | None = None) -> int:
         "--targets-file", metavar="PATH",
         help="local UTF-8 text file with one isolated lab URL per line (# comments allowed)",
     )
+    parser.add_argument(
+        "--catalog-file", metavar="PRIVATE_STUDIO_JSON",
+        help="PRIVATE Lab Scenario Studio v1 catalog (untrusted design only)",
+    )
+    parser.add_argument(
+        "--scenario-id", metavar="ID",
+        help="exact scenario ID in --catalog-file; all endpoint URLs must be separately supplied",
+    )
     parser.add_argument("--db", default="lightup-lab.db")
     parser.add_argument(
         "--output", metavar="NEW_PRIVATE_JSON",
@@ -440,7 +448,7 @@ def main_assess(argv: list[str] | None = None) -> int:
                 line.strip() for line in lines.splitlines()
                 if line.strip() and not line.lstrip().startswith("#")
             )
-        if not endpoints and args.targets_file is None:
+        if not endpoints and args.targets_file is None and args.catalog_file is None:
             endpoints = ["http://127.0.0.1:18080/"]
         if (not endpoints or len(endpoints) > 16
                 or any(not endpoint or len(endpoint) > 2048 for endpoint in endpoints)):
@@ -449,11 +457,42 @@ def main_assess(argv: list[str] | None = None) -> int:
             raise ValueError("duplicate lab endpoint is not allowed")
         if args.profile and len(endpoints) != 1:
             raise ValueError("--profile ground truth applies only to one lab endpoint")
+        if bool(args.catalog_file) != bool(args.scenario_id):
+            raise ValueError("--catalog-file and --scenario-id must be supplied together")
+        if args.catalog_file and args.profile:
+            raise ValueError("a private Studio catalog cannot authenticate a fixture profile")
+        catalog = None
+        if args.catalog_file:
+            from .lab_catalog import read_selected_lab_design
+            from ipaddress import ip_address
+            from urllib.parse import urlsplit
+            catalog = read_selected_lab_design(args.catalog_file, args.scenario_id)
+            # A draft Studio address is not a runnable endpoint. Require one
+            # independently entered numeric URL per declared private lab IP.
+            bound_ips: list[str] = []
+            for endpoint in endpoints:
+                try:
+                    url = urlsplit(endpoint)
+                    host = url.hostname
+                    if (url.scheme not in ("http", "https") or not host
+                            or url.username is not None or url.password is not None
+                            or url.fragment or url.port is None):
+                        raise ValueError("unbound endpoint")
+                    bound_ips.append(str(ip_address(host)))
+                except (ValueError, TypeError):
+                    raise ValueError("lab endpoint does not match the private Studio scenario") from None
+            if (len(bound_ips) != len(catalog["targets"])
+                    or len(set(bound_ips)) != len(bound_ips)
+                    or set(bound_ips) != set(catalog["targets"])):
+                raise ValueError("explicit lab endpoints do not exactly match selected Studio targets")
         scenario = LabScenario(
-            scenario_id="lab-assess",
-            name="Planner-driven lab assessment",
+            scenario_id=catalog["scenario_id"] if catalog else "lab-assess",
+            name=catalog["name"] if catalog else "Planner-driven lab assessment",
+            description=catalog["description"] if catalog else "",
             targets=tuple(endpoints),
-            expected_findings=expected,
+            # A locally authored draft is NOT authenticated ground truth:
+            # the existing explicit --profile is the only scoring path.
+            expected_findings=None if catalog else expected,
         )
         if args.preview_only:
             # Input review is non-authorizing. Avoid echoing URLs (which can
@@ -467,6 +506,13 @@ def main_assess(argv: list[str] | None = None) -> int:
                 "target_interaction_performed": False,
                 "authorization_granted": False,
             }
+            if catalog is not None:
+                preview["lab_design_source"] = {
+                    key: catalog[key] for key in ("schema", "scenario_id",
+                        "catalog_sha256", "declared_expected_count",
+                        "source_authenticated", "declared_ground_truth_used",
+                        "authorization_granted")
+                }
             try:
                 _deliver_lab_result(preview, args.output)
             except (OSError, ValueError):
@@ -476,6 +522,13 @@ def main_assess(argv: list[str] | None = None) -> int:
         gateway = (load_gateway(args.gateway_config) if args.gateway_config
                    else scripted_demo_gateway(tuple(endpoints)))
         result = run_planned_assessment(gateway, scenario, args.db)
+        if catalog is not None:
+            result["lab_design_source"] = {
+                key: catalog[key] for key in ("schema", "scenario_id",
+                    "catalog_sha256", "declared_expected_count",
+                    "source_authenticated", "declared_ground_truth_used",
+                    "authorization_granted")
+            }
     except (OSError, UnicodeError, GatewayConfigurationError, ModelProviderError,
             PlanRejected, PermissionError, ValueError) as exc:
         print(json.dumps({"error": str(exc)}, indent=2))
