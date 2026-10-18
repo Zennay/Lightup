@@ -7,7 +7,7 @@ const HEAD=["kind","schema_version","disposition","source_contract","source_sha2
 const ROW=["request_id","finding_id","request_kind","instructions","due_date","human_stage","human_response"];
 const KINDS=["missing_evidence","patch_change","deployment_record","rollback_plan","retest_request","followup_question","other"];
 const STAGES=["not_reviewed","needs_human_followup","human_triaged"];
-const LIMIT=1048576,MAX_PACKETS=24,MAX_ROWS=800;
+const LIMIT=1048576,MAX_SNAPSHOT=8*1048576,MAX_PACKETS=24,MAX_ROWS=800;
 const blank=()=>({binding:null,requestPackets:[],replyPackets:[],notes:{},revision:0});
 let db=blank();
 function fail(m){throw Error(m);}
@@ -24,8 +24,8 @@ function due(x){
  if(x==="")return;
  if(typeof x!=="string"||!/^\d{4}-\d\d-\d\d$/.test(x)||!Number.isFinite(Date.parse(x+"T00:00:00Z"))||new Date(x+"T00:00:00Z").toISOString().slice(0,10)!==x)fail("Invalid tentative due date");
 }
-function strictJSON(s){
- if(typeof s!=="string"||new TextEncoder().encode(s).length>LIMIT)fail("PRIVATE JSON exceeds 1 MiB");
+function strictJSON(s,limit=LIMIT){
+ if(typeof s!=="string"||new TextEncoder().encode(s).length>limit)fail("PRIVATE JSON exceeds its bounded size limit");
  let i=0,n=0;
  const ws=()=>{while(i<s.length&&/[ \r\n\t]/.test(s[i]))i++;};
  function quoted(){
@@ -271,9 +271,12 @@ async function intake(){
  if(!files.length||files.length>MAX_PACKETS)fail("Select 1–24 PRIVATE JSON files");
  const rev=db.revision,packets=[];
  for(const f of files){
-  if(f.size>LIMIT)fail("PRIVATE file exceeds 1 MiB");
+  if(f.size>MAX_SNAPSHOT)fail("PRIVATE input exceeds 8 MiB");
   const raw=new TextDecoder("utf-8",{fatal:true}).decode(await f.arrayBuffer());
-  packets.push(strictJSON(raw));
+  const parsed=strictJSON(raw,f.size>LIMIT?MAX_SNAPSHOT:LIMIT);
+  if(f.size>LIMIT&&parsed.kind!=="lightup.private_human_response_reconciliation")
+   fail("Original HUMAN owner handoff packet exceeds 1 MiB");
+  packets.push(parsed);
  }
  if(db.revision!==rev)fail("HOLD: register changed during asynchronous import");
  if(packets.length===1&&packets[0].kind==="lightup.private_human_response_reconciliation"){
