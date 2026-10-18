@@ -22,6 +22,15 @@ python -m lightup.client_request_desk \
   --db /private/lightup.sqlite --email client@example.org
 ```
 
+Manual intake in the desk accepts up to 80 canonical asset entries and
+multiline safety notes: finish notes with a single period (`.`) on its own
+line, within the 4000-character limit. After seeing the normalized request,
+the client can optionally create a private 0600 HTML preview, then either
+decline or type the explicit submission phrase. During rejected-request
+revision, a separate private 0600 before/after comparison can likewise be
+saved **before** deciding whether to create the new request. These saved
+documents are not network-published or considered current consent.
+
 The desk requires a **private interactive TTY** and authenticates with
 `DomainStore.authenticate` using a hidden password prompt. It then offers:
 
@@ -46,9 +55,11 @@ The desk requires a **private interactive TTY** and authenticates with
    if the client has more than 200.
 
 Every submission requires explicitly typing `SUBMIT NEW REQUEST`.
-A still-open exact duplicate causes a warning and requires typing
-`REPEAT REQUEST` as well. These are extra human safeguards, not atomic
-server-side deduplication. No request is submitted merely by importing
+An existing submitted/under-review request with **the same asset identities
+(regardless of ordering) and requested risk**, even when its explanation
+differs, causes a warning and requires typing `REPEAT REQUEST` as well.
+This helps avoid parallel duplicate reviews; it is an advisory pre-submit
+read, not atomic server-side deduplication. No request is submitted merely by importing
 a Studio draft or viewing an inbox. For rejected revision expansion,
 the client must additionally type `ACKNOWLEDGE EXPANSION`.
 Even an approved assessment request is **not** a grant or scan permit.
