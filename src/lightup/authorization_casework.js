@@ -34,7 +34,8 @@
       const id = String(ei) + '-' + String(gi);
       const score = Math.max(0, ...grant.flags.map(f => severity[f] || 2));
       cases.push(Object.freeze({
-        id, client:e.client, engagement:e.engagement, engagement_status:e.engagement_status,
+        id, key:grant.source_key || e.source_key,
+        client:e.client, engagement:e.engagement, engagement_status:e.engagement_status,
         requests:e.requests, approved:e.approved_requests, untrusted:e.untrusted_approved_requests,
         grant:grant.grant_number || '-', window:grant.window, flags:Object.freeze([...grant.flags]),
         action:grant.next_action, score
@@ -192,7 +193,7 @@
       format:'lightup.authorization_casework_actions_v1',
       disposition:'REVIEW_ONLY', authority:{...FALSE},
       source_fingerprint:snapshot.fingerprint,
-      cases:cases.map(c => ({id:c.id, ...read(c.id)}))
+      cases:cases.map(c => ({id:c.id, source_key:c.key, ...read(c.id)}))
     };
     downloadable('lightup-authorization-actions.json','application/json;charset=utf-8',
       JSON.stringify(payload,null,2)+'\n');
@@ -211,30 +212,70 @@
       rows.map(row=>row.map(safeCsv).join(',')).join('\r\n')+'\r\n');
   };
   const importPlan = async input => {
-    if (!input || input.size > 512000) throw Error('Import must be a local JSON file smaller than 500 KiB.');
+    if (!input || input.size > 512000) throw Error('Import must be local JSON smaller than 500 KiB.');
     const parsed=JSON.parse(await input.text());
+    const allowKeys = Object.keys(FALSE).sort().join(',');
     if (!parsed || parsed.format !== 'lightup.authorization_casework_actions_v1' ||
         parsed.disposition !== 'REVIEW_ONLY' ||
-        parsed.source_fingerprint !== snapshot.fingerprint ||
-        JSON.stringify(parsed.authority) !== JSON.stringify(FALSE) ||
-        !Array.isArray(parsed.cases) || parsed.cases.length !== cases.length)
-      throw Error('Import does not match the exact review snapshot or has invalid authority flags.');
-    const next=Object.create(null), seen=new Set();
+        !parsed.authority || typeof parsed.authority !== 'object' ||
+        Object.keys(parsed.authority).sort().join(',') !== allowKeys ||
+        Object.keys(FALSE).some(k => parsed.authority[k] !== false) ||
+        !Array.isArray(parsed.cases) || parsed.cases.length > 3000)
+      throw Error('Invalid local action-plan schema or authority flags.');
+    const exact = parsed.source_fingerprint === snapshot.fingerprint;
+    const currentKeys = new Map(cases.map(c => [c.key,c]));
+    const next=Object.create(null), seenIds=new Set(), seenKeys=new Set();
+    let restored=0;
     for (const row of parsed.cases) {
       if (!row || typeof row !== 'object' || Array.isArray(row) ||
-          Object.keys(row).sort().join(',') !== 'due,id,notes,owner,resolution,status,ticket' ||
-          typeof row.id !== 'string' || !casesById.has(row.id) || seen.has(row.id))
-        throw Error('Case IDs or schema do not match this review snapshot.');
-      const {id,...p}=row;
-      if (!valid(p)) throw Error('Invalid or oversized operator action.');
-      next[id]=p;seen.add(id);
+          typeof row.id !== 'string' || seenIds.has(row.id))
+        throw Error('Duplicate or invalid saved case identity.');
+      seenIds.add(row.id);
+      const hasKey = Object.prototype.hasOwnProperty.call(row,'source_key');
+      const wanted = hasKey ?
+        'due,id,notes,owner,resolution,source_key,status,ticket' :
+        'due,id,notes,owner,resolution,status,ticket';
+      if (Object.keys(row).sort().join(',') !== wanted)
+        throw Error('Saved case fields are not an accepted local action-plan schema.');
+      if (hasKey && (typeof row.source_key !== 'string' ||
+          !/^[0-9a-f]{64}$/.test(row.source_key) || seenKeys.has(row.source_key)))
+        throw Error('Missing, duplicate or malformed exact-source key.');
+      if (hasKey) seenKeys.add(row.source_key);
+      const {id,source_key,...p}=row;
+      if (!valid(p)) throw Error('Invalid or oversized local operator action.');
+      let target;
+      if (exact) {
+        target=casesById.get(id);
+        if (!target || (hasKey && target.key !== source_key))
+          throw Error('Exact-snapshot case identity drift.');
+      } else {
+        if (!hasKey) throw Error('Old action files cannot be carried across changed snapshots without source keys.');
+        target=currentKeys.get(source_key);
+      }
+      if (target) {
+        if (Object.prototype.hasOwnProperty.call(next,target.id))
+          throw Error('Two saved actions target one source case.');
+        next[target.id]=p;restored++;
+      }
     }
-    // Full atomic swap, never partially apply an invalid file.
+    if (exact && (parsed.cases.length !== cases.length || restored !== cases.length))
+      throw Error('Incomplete exact-snapshot action plan.');
+    if (!exact) {
+      if (!restored) throw Error('No unchanged source cases were found; old actions are not carried forward.');
+      const reset=cases.length-restored;
+      if (!window.confirm('The authenticated source has changed. Carry forward '+restored+
+          ' EXACTLY unchanged cases, reset '+reset+
+          ' new/changed cases to OPEN, and never infer grant authorization?'))return;
+    }
+    // Atomic rebind: unchanged cases keep only local operator notes; any new,
+    // changed, removed or ambiguous source case has NO carried task state.
     plans=next;selected=cases.length ? cases[0].id:null;
     modified=true;
     control('workspaceUnsaved').textContent='Imported action plan needs export to persist';
     render();
-    inform('Imported exact-snapshot action plan. Local status NEVER verifies a grant or consent.');
+    inform(exact ? 'Exact-source action plan restored; authorization remains unverified.' :
+      restored+' unchanged cases restored; '+(cases.length-restored)+
+      ' new/changed cases reset to OPEN. Export the new action plan to keep these notes.');
   };
   for (const id of ['workspaceOwner','workspaceTicket','workspaceDue','workspaceNotes',
                      'workspaceResolution','workspaceStatus'])
