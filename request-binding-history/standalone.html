@@ -64,6 +64,7 @@ a{color:#9bdafc}
 <label>Local follow-up stage <select id="queue-stage"><option value="all">All stages</option><option value="open">Needs human follow-up</option><option value="documented_only">Discussion noted (not verified)</option><option value="unreviewed">Not reviewed</option><option value="client_followup">Client follow-up</option><option value="operator_followup">Operator follow-up</option><option value="security_source_review">Security/source review</option></select></label></div>
 <div class="actions"><label>Prepare local follow-up for currently filtered <strong>unreviewed</strong> cases <select id="bulk-team"><option value="security_source_review">Independent security/source discussion</option><option value="client_followup">Client evidence discussion</option><option value="operator_followup">Original operator discussion</option></select></label><button id="queue-bulk" class="secondary">Confirm bulk human discussion stage</button></div>
 <p class="muted">Bulk staging is purely local, requires explicit human confirmation and never overwrites another previously selected human stage or creates a grant, work order, permission or backend update.</p>
+<div class="actions"><button id="queue-export" class="secondary">Download anonymous filtered queue handoff</button></div>
 <div class="grid" id="queue-summary"></div>
 <div class="table-wrap"><table><thead><tr><th>Local anonymous case</th><th>Source observations</th><th>Priority (discussion only)</th><th>Last original category</th><th>First human question</th><th>Human stage</th><th>Open private case</th></tr></thead><tbody id="queue-rows"></tbody></table></div>
 <div class="actions"><button id="queue-prev" class="secondary">Previous cases</button><span id="queue-pageinfo" aria-live="polite"></span><button id="queue-next" class="secondary">Next cases</button></div>
@@ -346,6 +347,35 @@ function renderQueue(){
   document.querySelector("#cases").scrollIntoView({behavior:"smooth",block:"center"});
  }));
 }
+$("queue-export").addEventListener("click",()=>{
+ if(!workspace)return;
+ const selected=visibleQueueCases(),priorities={urgent:0,review:0,routine:0};
+ const stages=Object.fromEntries(Object.keys(CASE_STAGES).map(k=>[k,0]));
+ const questions=Object.fromEntries([
+  ["recheck_original_security_identity",0],["reopen_original_request_grant",0],
+  ["check_missing_source_membership",0],["discuss_original_source_reason",0],
+  ["reauthenticate_source",0]
+ ]);
+ for(const item of selected){
+  priorities[item.priority]++;stages[caseEntry(item.ref).stage]++;
+  const k=item.question.startsWith("Ask original security/identity")?"recheck_original_security_identity":
+    item.changed?"reopen_original_request_grant":
+    item.gaps?"check_missing_source_membership":
+    item.question.startsWith("Discuss original source reason")?"discuss_original_source_reason":"reauthenticate_source";
+  questions[k]++;
+ }
+ const report={format:"lightup.request_binding_human_queue_aggregate.v1",
+  status:"REVIEW_ONLY",source_is_unsigned:true,verified_chronology:false,
+  client_consent_verified:false,operator_consent_verified:false,
+  authorization_granted:false,execution_allowed:false,release_approved:false,
+  applied_local_filter:{priority:$("queue-priority").value,stage:$("queue-stage").value},
+  source_selection_count:workspace.records.length,
+  human_discussion_only:{selected_count:selected.length,priority_counts:priorities,
+    self_reported_stages:stages,unverified_followup_themes:questions},
+  caveat:"This file includes only grouped counts; no client, engagement, asset, request pseudonym, source hash, note or permission. Original source must be reauthenticated before any real decision."};
+ download("lightup-private-queue-anonymous-handoff.json","application/json",JSON.stringify(report,null,2)+"\n");
+ note("Downloaded a FILTERED aggregate-only human queue handoff (not a permission, grant or authorization).",false);
+});
 $("queue-bulk").addEventListener("click",()=>{
  if(!workspace)return;
  const dest=$("bulk-team").value;
