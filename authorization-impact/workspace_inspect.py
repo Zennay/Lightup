@@ -158,7 +158,7 @@ def inspect(directory: Path) -> None:
                     raise Refused("private application CSP mismatch") from exc
         if ready_source is not None:
             from ready_room import admit_ready
-            admit_ready(original_app, original_source, ready_source)
+            admit_ready(original_app, original_source, ready_source, review_source)
         if review_source is not None:
             from review_binding import admit_private_review
             admit_private_review(original_source, review_source)
