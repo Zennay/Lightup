@@ -196,6 +196,43 @@ function renderDetail(){
  }
  table.append(tbody);scroll.append(table);box.append(scroll);
  const tools=make('div',undefined,'toolbar');
+ // Reuse only assignment logistics for a separately reviewed revision.
+ // Never propagate prepared evidence, user identity, consent, or approval state.
+ if(entries.length>1){
+  const copyLabel=make('label','Carry only follow-up assignments from another draft');
+  copyLabel.htmlFor='copyFrom';box.append(copyLabel);
+  const choose=make('select');choose.id='copyFrom';
+  const empty=make('option','Choose another untrusted draft');empty.value='';choose.append(empty);
+  for(const other of entries){
+   if(other===r)continue;
+   const opt=make('option',other.name+' · '+other.source_sha256.slice(0,12));
+   opt.value=other.source_sha256;choose.append(opt);
+  }
+  const transfer=make('button','Copy coordination fields only');
+  transfer.type='button';
+  transfer.addEventListener('click',()=>{
+   const source=entries.find(item=>item.source_sha256===choose.value);
+   if(!source||source===r)return;
+   if(STAGES.some(([id])=>{
+    const t=r.tasks[id];return t.status!=='todo'||t.owner||t.due||t.next_action;
+   })){notice('Transfer HOLD: target already has coordination data. Preserve existing work; no overwrite.');return;}
+   const changes=[];
+   if(r.client_label!==source.client_label)changes.push('client label differs');
+   if(r.requested_risk!==source.requested_risk)changes.push('risk changed');
+   if(r.requested_mode!==source.requested_mode)changes.push('mode changed');
+   if(r.asset_count!==source.asset_count||r.excluded_count!==source.excluded_count)changes.push('asset totals changed');
+   const warning=changes.length?changes.join(', '):'source metadata totals appear similar (not a scope equality proof)';
+   if(!confirm('Copy coordinator labels, planned target dates and next actions ONLY? All six target states remain NOT STARTED; no approvals or prepared evidence copied. '+warning+'.'))return;
+   for(const [id] of STAGES){
+    const t=source.tasks[id];
+    r.tasks[id]={status:'todo',owner:t.owner,due:t.due,next_action:t.next_action};
+   }
+   setDirty();render();
+   notice('Copied only follow-up logistics. All preparation states reset to NOT STARTED and require new human review.');
+  });
+  choose.setAttribute('aria-label','Source draft to copy coordination fields from');
+  tools.append(choose,transfer);
+ }
  const remove=make('button','Remove draft from local board');remove.type='button';
  remove.addEventListener('click',()=>{if(!confirm('Remove this local coordination draft? Source files are never changed.'))return;
  entries=entries.filter(x=>x!==r);active=entries[0]?.source_sha256||null;setDirty();render();});
