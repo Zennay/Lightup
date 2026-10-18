@@ -393,6 +393,7 @@ setMessage("HOLD: original source loaded, but PRIVATE human notes were NOT resto
 
 async function loadEmbeddedOriginal(){
 var holder=el("original-casebook-b64");if(!holder)return;
+var assigned=false;
 var encoded=holder.content.textContent.trim(),declared=holder.getAttribute("data-source-sha256");
 if(!encoded)return;
 try{
@@ -407,13 +408,15 @@ var decoder=new TextDecoder("utf-8",{fatal:true,ignoreBOM:true}),raw=decoder.dec
 if(raw.charCodeAt(0)===0xfeff)throw Error("ambiguous UTF-8 BOM");
 var candidate=validate(strictJSON(raw));
 if(source||human.size)throw Error("source is already active");
-source=candidate;sourceSHA=hash;fictional=false;selection=null;human.clear();hypothetical.clear();
+source=candidate;sourceSHA=hash;fictional=false;selection=null;human.clear();hypothetical.clear();assigned=true;
 render();
 setMessage("PRIVATE Casebook automatically opened from this owner-private offline packet. Original source bytes SHA-256 bound. REVIEW_ONLY / HUMAN HOLD. No current consent or authorization checked.");
 await loadEmbeddedReview();
 }catch(e){
-source=null;sourceSHA=null;selection=null;human.clear();hypothetical.clear();render();
-setMessage("HOLD: PRIVATE embedded Casebook could not be admitted. Use the original source file picker only after confirming legitimate private provenance.");
+if(assigned){source=null;sourceSHA=null;selection=null;human.clear();hypothetical.clear();render();}
+var privateHolder=el("private-review-b64");
+if(privateHolder){privateHolder.content.replaceChildren();privateHolder.removeAttribute("data-review-sha256");}
+setMessage("HOLD: PRIVATE embedded Casebook could not be admitted or was superseded by a manual selection. Existing manually selected data is never cleared by auto-load.");
 }finally{
 // Remove the inert encoded original payload from the DOM after reading it.
 // The original in-memory source remains private to this tab.
