@@ -112,6 +112,48 @@ def derive(casebook: dict, *, now: datetime, lead_days: int,
             or type(counts.get("engagements")) is not int
             or counts["engagements"] != len(engagements)):
         raise ReviewHold("original collection/count mismatch")
+    # Admit the entire original Casebook envelope before constructing even a
+    # retrospective operator suggestion. No missing source families or false
+    # count declarations may become a seemingly coherent partial calendar.
+    families = (
+        ("requests", "request_id"), ("engagements", "engagement_id"),
+        ("grants", "grant_id"), ("risk_approvals", "approval_id"),
+        ("case_overview", "engagement_id"),
+    )
+    for family, key in families:
+        rows = casebook.get(family)
+        count = counts.get(family) if family != "case_overview" else counts.get("engagements")
+        if (type(rows) is not list or len(rows) > MAX_RECORDS
+                or type(count) is not int or count != len(rows)):
+            raise ReviewHold("incomplete original Casebook collection")
+        keys = set()
+        for row in rows:
+            if type(row) is not dict:
+                raise ReviewHold("invalid original Casebook record")
+            rid = identity(row.get(key))
+            if rid in keys:
+                raise ReviewHold("duplicate original Casebook source identity")
+            keys.add(rid)
+    overview_by_engagement = {
+        row["engagement_id"]: row for row in casebook["case_overview"]
+    }
+    grant_counts = Counter(row.get("engagement_id") for row in grants)
+    risk_counts = Counter(row.get("engagement_id") for row in casebook["risk_approvals"])
+    for engagement in engagements:
+        eid = engagement["engagement_id"]
+        case = overview_by_engagement.get(eid)
+        if (case is None
+                or type(case.get("grant_count")) is not int
+                or type(case.get("risk_record_count")) is not int
+                or case["grant_count"] != grant_counts[eid]
+                or case["risk_record_count"] != risk_counts[eid]
+                or type(case.get("attention")) is not str):
+            raise ReviewHold("original engagement-caseboard count mismatch")
+    if (type(counts.get("case_attention_hold")) is not int
+            or counts["case_attention_hold"] != sum(
+                case["attention"].startswith("HOLD_")
+                for case in casebook["case_overview"])):
+        raise ReviewHold("original Casebook attention declarations mismatch")
     owned = set()
     for record in engagements:
         if type(record) is not dict:
