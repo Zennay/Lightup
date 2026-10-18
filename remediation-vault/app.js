@@ -62,9 +62,10 @@
       const size = document.createElement("small"); size.textContent = humanSize(entry.bytes.length);
       if (action) {
         const check = document.createElement("input");
-        check.type = "checkbox"; check.checked = true; check.className = "handoff-select";
+        check.type = "checkbox"; check.checked = false; check.className = "handoff-select";
         check.dataset.fileIndex = String(index);
         check.setAttribute("aria-label","Include " + entry.name + " in next encrypted private handoff");
+        check.addEventListener("change",()=>{$("rekeyack").checked=false;});
         row.append(check);
       }
       row.append(name, size);
@@ -191,7 +192,9 @@
     catch { throw new Error("Unable to unlock: wrong passphrase or modified vault."); }
     fail(plain.length<=MAX_VAULT,"Decrypted packet too large.");
     let doc;
-    try {doc=JSON.parse(decode.decode(plain));} catch {throw new Error("Encrypted payload is malformed.");}
+    const decoded=decode.decode(plain);
+    try {doc=JSON.parse(decoded);} catch {throw new Error("Encrypted payload is malformed.");}
+    fail(decoded===JSON.stringify(doc),"Noncanonical or duplicate-key private payload.");
     fail(doc && typeof doc==="object" && !Array.isArray(doc) &&
       Object.keys(doc).sort().join(",")==="entries,format,label,notice,savedAt",
       "Unsupported encrypted payload fields.");
@@ -391,7 +394,6 @@
     $("receiptVerify").textContent="Receipt selected; matching is checked only while unlocking.";
   });
   $("clear").addEventListener("click",resetPrivate);
-  $("clear2").addEventListener("click",resetPrivate);
   $("copy").addEventListener("click", () => withBusy(async () => {
     fail(restored.length>0,"Unlock a vault first.");
     const summary="LightUp private offline handoff: "+restored.length+

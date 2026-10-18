@@ -54,3 +54,7 @@ Unlock an existing private baseline vault, then privately select and decrypt a *
 ## Confidential file-level revision report
 
 Following two source-bound local private vault unlocks, deliberately confirm the real recipient, client, exact engagement and approved private channel. Export a PRIVATE JSON report listing original filenames, original file SHA-256/size before and after, changed/unchanged/added/absent classification, anonymous counts and encrypted vault SHA-256 fingerprints binding which two ciphertext packets were compared. No raw original file content is exported. Filenames and hashes can be sensitive and must be re-encrypted before transmission if the original approved channel requires it. All identity, consent, source and remediation/retest authority flags are false. An absent file NEVER means a resolved finding; no source is changed.
+
+## Private session and minimum disclosure
+
+The single **Clear private session** control reliably clears private browser selections. The original anonymous-count clipboard handler is initialized on the full standalone. Following unlock, onward-handoff checkboxes start **unselected**, requiring a deliberate per-file minimum disclosure decision; changing this choice clears the previous human recipient acknowledgement. The private decrypted payload parser also refuses noncanonical or duplicate-key JSON inside the authenticated envelope instead of accepting ambiguous source structures. This does not establish client identity or permission.
