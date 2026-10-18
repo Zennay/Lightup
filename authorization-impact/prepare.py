@@ -287,7 +287,7 @@ def publish_bytes(
         admit_private_review(original, review_raw)
     app = _read_private(Path(__file__).resolve().with_name("standalone.html"), APP_LIMIT, require_private=False)
     from ready_room import render_ready
-    ready = render_ready(app, original)
+    ready = render_ready(app, original, review_raw)
     from app_integrity import InvalidApp, admit_standalone
     try:
         admit_standalone(app)
