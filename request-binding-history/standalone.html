@@ -291,19 +291,30 @@ $("pair").addEventListener("change",()=>{if(workspace){workspace.pair=Number($("
 $("casetype").addEventListener("change",()=>{if(workspace){workspace.page=0;renderCases()}});
 $("caseprev").addEventListener("click",()=>{if(workspace&&workspace.page>0){workspace.page--;renderCases()}});
 $("casenext").addEventListener("click",()=>{if(workspace){workspace.page++;renderCases()}});
-async function fingerprints(files){if(!crypto||!crypto.subtle)fail("private draft feature unavailable without WebCrypto");return Promise.all(files.map(async src=>{const b=new TextEncoder().encode(src);const digest=await crypto.subtle.digest("SHA-256",b);return Array.from(new Uint8Array(digest),x=>x.toString(16).padStart(2,"0")).join("")}))}
+async function fingerprints(byteBuffers){
+ if(!globalThis.crypto||!crypto.subtle)fail("private draft feature unavailable without WebCrypto");
+ return Promise.all(byteBuffers.map(async bytes=>{
+  const digest=await crypto.subtle.digest("SHA-256",bytes);
+  return Array.from(new Uint8Array(digest),x=>x.toString(16).padStart(2,"0")).join("");
+ }));
+}
+function decodeOriginal(bytes){
+ try{return new TextDecoder("utf-8",{fatal:true}).decode(bytes)}
+ catch(_){fail("original JSON is not valid UTF-8 bytes")}
+}
 $("import").addEventListener("click",async()=>{
  try{
   const chosen=Array.from($("files").files);
   if(chosen.length<2||chosen.length>12)fail("Choose between 2 and 12 original single-selection JSON exports.");
   if(chosen.some(f=>f.size===0||f.size>2000000)||chosen.reduce((s,f)=>s+f.size,0)>12000000)fail("Source file limits exceeded.");
-  const raws=await Promise.all(chosen.map(f=>f.text()));
+  const bytes=await Promise.all(chosen.map(f=>f.arrayBuffer()));
+  const raws=bytes.map(decodeOriginal);
   const parsed=raws.map((v,i)=>validate(strictJSON(v),i+1));
   if(new Set(parsed.map(v=>v.selection)).size!==1)fail("Selected originals do not refer to one exact proposed scope/risk selection.");
   const fingerprint=r=>[r.revision,r.stamp,r.matched,r.other,r.notApproved,r.grants,r.legacy].join("|");
   if(new Set(parsed.map(fingerprint)).size!==parsed.length)fail("duplicate original snapshot metadata detected");
   if(parsed.some(v=>v.revision===undefined))fail("Original stored source revision missing.");
-  const localHashes=(globalThis.crypto&&crypto.subtle)?await fingerprints(raws):[];
+  const localHashes=(globalThis.crypto&&crypto.subtle)?await fingerprints(bytes):[];
   workspace={records:parsed,checks:ACTIONS.map(()=>false),casework:Object.create(null),pair:0,page:0,sourceBytes:chosen.reduce((sum,f)=>sum+f.size,0)};hashes=localHashes;
   render();note(parsed.length+" valid original source-export snapshots loaded for private REVIEW_ONLY (not permission).",false);
  }catch(e){note("HOLD · "+(e instanceof Error?e.message:"invalid source import")+". Earlier accepted workspace was preserved.",true)}
@@ -314,13 +325,14 @@ $("append").addEventListener("click",async()=>{
   const files=Array.from($("extra").files);
   if(!files.length||files.length>10||workspace.records.length+files.length>12)fail("append would exceed the bounded 12-source workspace");
   if(files.some(f=>f.size===0||f.size>2000000)||workspace.sourceBytes+files.reduce((sum,f)=>sum+f.size,0)>12000000)fail("total original source file limits exceeded");
-  const raws=await Promise.all(files.map(f=>f.text()));
+  const bytes=await Promise.all(files.map(f=>f.arrayBuffer()));
+  const raws=bytes.map(decodeOriginal);
   const extras=raws.map((raw,i)=>validate(strictJSON(raw),workspace.records.length+i+1));
   if(extras.some(x=>x.selection!==workspace.records[0].selection))fail("appended originals must share exact original proposed selection");
   const key=r=>[r.revision,r.stamp,r.matched,r.other,r.notApproved,r.grants,r.legacy].join("|");
   const keys=workspace.records.map(key).concat(extras.map(key));
   if(new Set(keys).size!==keys.length)fail("duplicate original snapshot metadata detected");
-  const moreHashes=(hashes.length===workspace.records.length&&globalThis.crypto&&crypto.subtle)?await fingerprints(raws):[];
+  const moreHashes=(hashes.length===workspace.records.length&&globalThis.crypto&&crypto.subtle)?await fingerprints(bytes):[];
   const newHashes=moreHashes.length===extras.length?hashes.concat(moreHashes):[];
   // Human-only casework from an earlier copied source must not silently remain
   // 'discussed' when an original pseudonymous row has since changed.
