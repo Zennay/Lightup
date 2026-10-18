@@ -379,6 +379,52 @@
     }
     return rows;
   }
+  function renderHumanActionBoard(){
+    const node=$("humanActionBoard"),summary=$("humanActionBoardStatus");
+    node.replaceChildren();
+    if(!catalog||!reports.length){
+      summary.textContent="Load existing completed original reports to review local human actions.";
+      return;
+    }
+    const filter=$("boardStatus").value,scope=$("boardRoute").value;
+    const cases=catalog.map((item,i)=>({item,i}))
+      .filter(({item})=>humanActionFor(item)!=="none_recorded")
+      .filter(({item})=>filter==="all"||(reviews.get(item.id)||"needs_review")===filter)
+      .filter(({item})=>scope==="all"||humanRouteFor(item)===scope)
+      .sort((a,b)=>priority(a.item)-priority(b.item)||a.i-b.i);
+    summary.textContent=cases.length+" private proposed HUMAN actions shown · "+
+      "not authenticated staff assignments or automatic work orders.";
+    const heading=["Private ordinal","Original source discussion priority","Human review group",
+      "Proposed next action","Local discussion stage","Open private inspector"];
+    const tableNode=document.createElement("table"),head=document.createElement("thead"),
+      tr=document.createElement("tr");
+    for(const label of heading){
+      const th=document.createElement("th");th.textContent=label;tr.append(th);
+    }
+    head.append(tr);tableNode.append(head);
+    const tbody=document.createElement("tbody");
+    for(const {item,i} of cases){
+      const row=document.createElement("tr");
+      td(row,"Lab case "+String(i+1).padStart(2,"0"));
+      td(row,QUEUE_LABELS[priority(item)]);
+      td(row,ROUTE_LABELS[humanRouteFor(item)]);
+      td(row,ACTION_LABELS[humanActionFor(item)]);
+      td(row,(reviews.get(item.id)||"needs_review").replaceAll("_"," "));
+      const next=document.createElement("td");
+      next.append(button("Open private case",()=>{
+        $("inspectCase").value=String(i);renderInspector();
+        $("inspectorSection").scrollIntoView({block:"start",behavior:"smooth"});
+      }));
+      row.append(next);tbody.append(row);
+    }
+    tableNode.append(tbody);
+    node.append(tableNode);
+    const explanation=document.createElement("p");
+    explanation.textContent="No human owner identity, contact channel, authorization, scanner "+
+      "or target instruction is inferred or sent. Original source data stays untouched.";
+    node.append(explanation);
+  }
+
   function renderQueueOverview(){
     const node=$("queueOverview");node.replaceChildren();
     if(!catalog||!reports.length){
@@ -552,7 +598,7 @@
     const id=catalog[index].id;
     if(route==="unrouted")humanRoutes.delete(id);else humanRoutes.set(id,route);
     if(action==="none_recorded")humanActions.delete(id);else humanActions.set(id,action);
-    undoBatch=null;
+    undoBatch=null;undoRouteBatch=null;
     render();
     $("inspectCase").value=String(index);renderInspector();
     message("Private proposed human reviewer route and next human action saved in memory. "+
@@ -628,6 +674,7 @@
     renderSourceOrder();
     renderMismatchDetails();
     renderQueueOverview();
+    renderHumanActionBoard();
     renderAnonymousPrint();
     $("cases").replaceChildren();
     const all=catalog?.length||0,visible=visibleCases();
@@ -1004,6 +1051,7 @@
   });
   for(const id of ["familyFilter","stageFilter","truthFilter","routeFilter","actionFilter"])
     $(id).addEventListener("change",render);
+  for(const id of ["boardStatus","boardRoute"])$(id).addEventListener("change",renderHumanActionBoard);
   $("inspectCase").addEventListener("change",renderInspector);
   $("saveCaseNote").addEventListener("click",saveCaseNote);
   $("saveHumanPlan").addEventListener("click",setHumanPlan);
