@@ -140,8 +140,11 @@ def inspect(directory: Path) -> None:
             elif filename == "PRIVATE-review.json":
                 review_source = raw
             elif filename == "standalone.html":
-                if b"<title>LightUp | Scope Impact Map</title>" not in raw:
-                    raise Refused("unknown offline application")
+                from app_integrity import InvalidApp, admit_standalone
+                try:
+                    admit_standalone(raw)
+                except InvalidApp as exc:
+                    raise Refused("private application CSP mismatch") from exc
         if review_source is not None:
             from review_binding import admit_private_review
             admit_private_review(original_source, review_source)
