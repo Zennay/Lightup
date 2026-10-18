@@ -164,12 +164,13 @@ def _admit(doc: dict) -> dict[str, dict[str, dict]]:
     return indexed
 
 
-def _priority(family: str, kind: str, record: dict | None) -> str:
+def _priority(family: str, kind: str, old: dict | None, record: dict | None) -> str:
     if kind == "MISSING_FROM_NEW_SOURCE" or family in ("grants", "case_overview"):
         return "URGENT_HUMAN_REVIEW"
-    if record is not None and (
-            record.get("status") == "approved"
-            or any(type(v) is str and v.startswith("HOLD_") for v in record.values())):
+    if any(candidate is not None and (
+            candidate.get("status") == "approved"
+            or any(type(v) is str and v.startswith("HOLD_") for v in candidate.values()))
+           for candidate in (old, record)):
         return "URGENT_HUMAN_REVIEW"
     return "REVIEW_ONLY"
 
@@ -194,7 +195,7 @@ def _diff(before: dict, now: dict, old_sha: str) -> dict:
             ) if a is not None and b is not None else [])
             result.append({
                 "family": family, "original_id": identity, "change": kind,
-                "priority": _priority(family, kind, b),
+                "priority": _priority(family, kind, a, b),
                 "changed_fields_only": fields,
                 "human_follow_up": "UNREVIEWED",
             })
