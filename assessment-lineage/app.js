@@ -17,6 +17,7 @@
   const TOKEN = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
   const MAX_CATALOG = 1048576, MAX_REPORT = 262144;
   let catalog=null, reports=[], reviews=new Map(), fictional=false;
+  let catalogHash=null, reportHashes=[];
   function admit(ok){if(!ok)throw Error("Incompatible or unsafe private source");}
   function exact(v,keys){return v!==null && typeof v==="object" && !Array.isArray(v) &&
     Object.keys(v).length===keys.length && keys.every(k=>Object.hasOwn(v,k));}
@@ -187,10 +188,19 @@
       admit(!signatures.has(sig));signatures.add(sig);
     }
   }
+  async function hashOriginal(bytes){
+    if(!globalThis.crypto?.subtle)return null;
+    try{
+      const digest=await crypto.subtle.digest("SHA-256",bytes);
+      return [...new Uint8Array(digest)].map(b=>b.toString(16).padStart(2,"0")).join("");
+    }catch(_){return null;}
+  }
   async function read(file,max){
     admit(file instanceof File&&file.size>0&&file.size<=max);
     const bytes=await file.arrayBuffer(),str=new TextDecoder("utf-8",{fatal:true}).decode(bytes);
-    admit(str.length>0&&str.length<=max);return parse(str);
+    admit(str.length>0&&str.length<=max);
+    const result=parse(str),digest=await hashOriginal(bytes);
+    return {result,digest};
   }
   function message(value,bad=false){$("message").textContent=value;$("message").className=bad?"error":"";}
   function td(tr,value){const col=document.createElement("td");col.textContent=String(value);tr.append(col);return col;}
@@ -381,6 +391,53 @@
     admit(catalog&&reports.length&&consistency().exact);
     const a=aggregates();admit(a.authorized===false&&a.release_allowed===false);return a;
   }
+
+  function privateSourceBound(){
+    admit(catalog && reports.length && !fictional &&
+      typeof catalogHash==="string"&&/^[0-9a-f]{64}$/.test(catalogHash)&&
+      reportHashes.length===reports.length&&
+      reportHashes.every(v=>typeof v==="string"&&/^[0-9a-f]{64}$/.test(v)));
+  }
+  function exportPrivateDraft(){
+    try{
+      privateSourceBound();
+      const draft={
+        schema:"lightup.assessment_lineage_private_draft.v1",
+        status:"PRIVATE_HUMAN_DRAFT_ONLY",
+        authorized:false,consent_verified:false,dispatch_allowed:false,release_allowed:false,
+        source_catalog_sha256:catalogHash,
+        source_report_sha256:[...reportHashes],
+        discussion_stages:catalog.map(s=>reviews.get(s.id)||"needs_review")
+      };
+      if(!confirm("Download a PRIVATE draft with the SHA-256 fingerprints of original "+
+        "private file bytes and human stages? Protect this file; it is not a consent or grant."))return;
+      download("lightup-PRIVATE-lineage-human-draft.json",
+        JSON.stringify(draft,null,2)+"\n","application/json");
+      message("PRIVATE SHA-256 source-bound human draft downloaded. Never share as anonymous handoff.");
+    }catch(_){message("HOLD: private draft needs original source bytes and available browser SHA-256.",true);}
+  }
+  async function restorePrivateDraft(file){
+    try{
+      privateSourceBound();
+      const input=await read(file,65536),draft=input.result;
+      admit(exact(draft,["schema","status",...FLAGS,"source_catalog_sha256",
+        "source_report_sha256","discussion_stages"])&&
+        draft.schema==="lightup.assessment_lineage_private_draft.v1"&&
+        draft.status==="PRIVATE_HUMAN_DRAFT_ONLY"&&flags(draft)&&
+        draft.source_catalog_sha256===catalogHash&&
+        Array.isArray(draft.source_report_sha256)&&
+        draft.source_report_sha256.length===reportHashes.length&&
+        draft.source_report_sha256.every((v,i)=>v===reportHashes[i])&&
+        Array.isArray(draft.discussion_stages)&&
+        draft.discussion_stages.length===catalog.length&&
+        draft.discussion_stages.every(v=>STAGES.includes(v)));
+      // Only replace human review stages after all file/source digest invariants hold.
+      reviews=new Map(catalog.map((s,i)=>[s.id,draft.discussion_stages[i]]));
+      undoBatch=null;render();
+      message("PRIVATE discussion stages restored for the exact original file bytes in source order.");
+    }catch(_){message("HOLD: draft or original source bytes do not match. Existing stages preserved.",true);}
+  }
+
   function exportJson(){
     try{const a=safeExport();download("lightup-lineage-aggregate.json",
       JSON.stringify(a,null,2)+"\n","application/json");message("Anonymous aggregate JSON downloaded. No source identities.");}
@@ -435,7 +492,8 @@
       message("Script-free, target-free human brief downloaded.");
     }catch(_){message("HOLD: brief not available until sources match exactly.",true);}
   }
-  function forget(){catalog=null;reports=[];reviews=new Map();undoBatch=null;resetFilters();fictional=false;render();message("All source and review data cleared from memory.");}
+  function forget(){catalog=null;reports=[];reviews=new Map();catalogHash=null;
+    reportHashes=[];undoBatch=null;resetFilters();fictional=false;render();message("All source and review data cleared from memory.");}
   function makeDemo(){
     const names=["scenario-FAKE-01","scenario-FAKE-02","scenario-FAKE-03"];
     catalog=names.map((id,i)=>({id,mode:i===0?"unscored":i===1?
@@ -452,15 +510,18 @@
         return [id,{metrics,adverse:variant&&i===2?["scope_violations"]:[]}];
       }))
     });
-    reports=[candidate(0),candidate(1)];reviews=new Map();undoBatch=null;resetFilters();fictional=true;
+    reports=[candidate(0),candidate(1)];reviews=new Map();catalogHash=null;
+    reportHashes=[];undoBatch=null;resetFilters();fictional=true;
     render();message("FICTIONAL offline demonstration loaded; no source evidence or permission.");
   }
   $("catalogFile").addEventListener("change",async e=>{
     const file=e.target.files?.[0];if(!file)return;e.target.value="";
     try{
-      const candidate=parseCatalog(await read(file,MAX_CATALOG));
+      const imported=await read(file,MAX_CATALOG);
+      const candidate=parseCatalog(imported.result);
       if((catalog||reports.length)&&!confirm("Replace private catalog and clear previously imported lab comparisons and human stage work?"))return;
-      catalog=candidate;reports=[];reviews=new Map();undoBatch=null;resetFilters();fictional=false;render();
+      catalog=candidate;reports=[];reviews=new Map();catalogHash=imported.digest;
+      reportHashes=[];undoBatch=null;resetFilters();fictional=false;render();
       message("PRIVATE lab design admitted. Targets and finding IDs were discarded after validation.");
     }catch(_){message("HOLD: incompatible PRIVATE Lab Scenario Studio source. Existing data preserved.",true);}
   });
@@ -469,10 +530,14 @@
     if(!files.length)return;
     try{
       admit(catalog&&!fictional&&files.length>=1&&reports.length+files.length<=8);
-      const add=[];
-      for(const file of files)add.push(parseReport(await read(file,MAX_REPORT)));
+      const add=[],digests=[];
+      for(const file of files){
+        const imported=await read(file,MAX_REPORT);
+        add.push(parseReport(imported.result));digests.push(imported.digest);
+      }
       harmonize([...reports,...add]);
-      reports=[...reports,...add];undoBatch=null;render();
+      reports=[...reports,...add];reportHashes=[...reportHashes,...digests];
+      undoBatch=null;render();
       message("Canonical offline summaries admitted; source identities remain private. "+
         "Original benchmark data is not authenticated.");
     }catch(_){message("HOLD: contradictory, duplicate, oversized or incompatible comparison source. Workspace preserved.",true);}
@@ -489,6 +554,11 @@
     $(id).addEventListener("change",render);
   $("applyStage").addEventListener("click",humanBulk);
   $("undoStage").addEventListener("click",undoHumanBulk);
+  $("exportDraft").addEventListener("click",exportPrivateDraft);
+  $("restoreDraft").addEventListener("change",async e=>{
+    const f=e.target.files?.[0];e.target.value="";
+    if(f)await restorePrivateDraft(f);
+  });
   $("exportJson").addEventListener("click",exportJson);
   $("exportCsv").addEventListener("click",exportCsv);
   $("exportBrief").addEventListener("click",brief);
