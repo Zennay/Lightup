@@ -21,6 +21,7 @@ from urllib.parse import urlsplit
 # Exact-original import: run with PYTHONPATH=src from the repository checkout.
 from lightup.labrun import _admit_explicit_lab_url
 from lightup.labeval import LabScenario
+from lightup.lab_catalog import read_selected_lab_design
 
 _MAX_ENDPOINTS = 16
 _MAX_INPUT = 16_384
@@ -32,21 +33,49 @@ class Hold(Exception):
     """Safe failure without disclosing untrusted endpoint values."""
 
 
-def _read_regular(path: str) -> str:
+def _read_regular_bytes(path: str, bound: int) -> bytes:
+    """Descriptor-pinned no-follow read, detecting in-place source revisions."""
     flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_NONBLOCK", 0)
     fd = os.open(path, flags)
     with os.fdopen(fd, "rb") as stream:
         before = os.fstat(stream.fileno())
-        if not stat.S_ISREG(before.st_mode) or not 0 < before.st_size <= _MAX_INPUT:
-            raise Hold("invalid local manifest")
-        raw = stream.read(_MAX_INPUT + 1)
+        if not stat.S_ISREG(before.st_mode) or not 0 < before.st_size <= bound:
+            raise Hold("invalid local source")
+        raw = stream.read(bound + 1)
         after = os.fstat(stream.fileno())
         if (len(raw) != before.st_size or before.st_size != after.st_size
                 or before.st_ino != after.st_ino or before.st_dev != after.st_dev
                 or before.st_mtime_ns != after.st_mtime_ns
                 or before.st_ctime_ns != after.st_ctime_ns):
-            raise Hold("unstable local manifest")
-    return raw.decode("utf-8")
+            raise Hold("unstable local source")
+    return raw
+
+
+def _read_regular(path: str) -> str:
+    return _read_regular_bytes(path, _MAX_INPUT).decode("utf-8")
+
+
+def admit_studio(catalog_file: str, scenario_id: str,
+                 endpoints: tuple[str, ...]) -> tuple[dict, bytes]:
+    """Reuse the exact original Studio schema and enforce CLI IP/port matching.
+
+    A Studio scenario is a design draft, never trusted ground truth or consent.
+    """
+    selected = read_selected_lab_design(catalog_file, scenario_id)
+    raw = _read_regular_bytes(catalog_file, 262_144)
+    if sha256(raw).hexdigest() != selected["catalog_sha256"]:
+        raise Hold("Studio file changed during original source admission")
+    if len(endpoints) != len(selected["targets"]):
+        raise Hold("Studio membership differs from explicit lab endpoints")
+    bound_ips = []
+    for endpoint in endpoints:
+        parsed = urlsplit(endpoint)
+        if parsed.port is None:  # Original CLI requires an explicitly declared port.
+            raise Hold("Studio endpoints require explicit ports")
+        bound_ips.append(str(ipaddress.ip_address(parsed.hostname or "")))
+    if len(set(bound_ips)) != len(bound_ips) or set(bound_ips) != set(selected["targets"]):
+        raise Hold("Studio declared lab IP set differs from independently entered URLs")
+    return selected, raw
 
 
 def admit(endpoints: list[str]) -> tuple[str, ...]:
@@ -95,11 +124,28 @@ def _safe_write(dir_fd: int, name: str, data: bytes) -> None:
         raise
 
 
-def _html(endpoints: tuple[str, ...], digest: str) -> bytes:
+def _html(endpoints: tuple[str, ...], digest: str, studio: dict | None = None) -> bytes:
     rows = "".join(
         "<tr><th scope='row'>Endpoint %s</th><td><code>%s</code></td></tr>"
         % (i, escape(url, quote=True))
         for i, url in enumerate(endpoints, 1)
+    )
+    studio_html = ""
+    if studio is not None:
+        studio_html = ("<section><h2>Private source-bound Studio draft</h2>"
+                       "<p>Selected original scenario: <code>" +
+                       escape(studio["scenario_id"], quote=True) +
+                       "</code>. Declared expected findings: <code>" +
+                       (str(studio["declared_expected_count"]) if
+                        studio["declared_expected_count"] is not None else "UNKNOWN") +
+                       "</code> — self-declared and never scored ground truth.</p>"
+                       "<p>Original catalog SHA-256 (unsigned): <code>" +
+                       studio["catalog_sha256"] + "</code>.</p></section>")
+    preview_command = (
+        "lightup lab-assess --targets-file ./targets.txt" +
+        (" --catalog-file ./studio-catalog.json --scenario-id " +
+         studio["scenario_id"] if studio is not None else "") +
+        " --preview-only"
     )
     # Entirely scriptless: safe to open directly from disk, no external assets.
     document = ("""<!doctype html><html lang="en"><head><meta charset="utf-8">
@@ -127,7 +173,8 @@ do not send it to recipients without independent human confidentiality review.</
 <thead><tr><th>Local slot</th><th>Private lab URL</th></tr></thead>
 <tbody>__ROWS__</tbody></table></section>
 <section><h2>Optional operator preview — never run by this packet</h2>
-<pre>lightup lab-assess --targets-file ./targets.txt --preview-only</pre>
+<pre>__COMMAND__</pre>
+__STUDIO_BLOCK__
 <p>The displayed command refers to the original held lab CLI and its original
 scope policy. Preview is no-work, not a security verdict or permission. The
 operator must separately validate the original release, environment and
@@ -138,7 +185,9 @@ lab fixture, guarantee isolation at later execution, give a customer consent,
 prove a finding, bypass an original CI gate or authorize a scan. Missing source
 does not mean remediated. Never share this packet as a client security report.</aside>
 </section></body></html>""".replace("__COUNT__", str(len(endpoints)))
-        .replace("__ROWS__", rows).replace("__DIGEST__", digest))
+        .replace("__ROWS__", rows).replace("__DIGEST__", digest)
+        .replace("__STUDIO_BLOCK__", studio_html)
+        .replace("__COMMAND__", escape(preview_command, quote=True)))
     start = document.index("<style>") + len("<style>")
     end = document.index("</style>", start)
     style_hash = b64encode(sha256(document[start:end].encode("utf-8")).digest()).decode("ascii")
@@ -147,7 +196,8 @@ does not mean remediated. Never share this packet as a client security report.</
     return document.encode("utf-8")
 
 
-def build(endpoints: tuple[str, ...], output_dir: str) -> Path:
+def build(endpoints: tuple[str, ...], output_dir: str,
+          studio: dict | None = None, studio_raw: bytes | None = None) -> Path:
     target = Path(output_dir)
     if target.name in ("", ".", "..") or not target.parent.is_dir():
         raise Hold("invalid output parent")
@@ -169,11 +219,15 @@ def build(endpoints: tuple[str, ...], output_dir: str) -> Path:
             "source_identity_authenticated": False,
             "preview_only": True,
             "planning_not_permission": True,
+            "studio_design_bound": studio is not None,
+            "studio_catalog_sha256": studio["catalog_sha256"] if studio else None,
+            "studio_scenario_id": studio["scenario_id"] if studio else None,
+            "declared_ground_truth_used": False,
             **{key: False for key in _FLAGS},
         }
         artifacts = (
             ("targets.txt", manifest),
-            ("private-launchpad.html", _html(endpoints, digest)),
+            ("private-launchpad.html", _html(endpoints, digest, studio)),
             ("private-plan.json", (json.dumps(packet, sort_keys=True, separators=(",", ":")) + "\n").encode("ascii")),
             ("START-HERE.txt", (
                 "LIGHTUP / OFFLINE HUMAN LAB LAUNCHPAD / DRAFT-HOLD\n\n"
@@ -187,6 +241,10 @@ def build(endpoints: tuple[str, ...], output_dir: str) -> Path:
                 "No completed assessment, grant, scan or verified finding here.\n"
             ).encode("utf-8")),
         )
+        if studio is not None:
+            if studio_raw is None or sha256(studio_raw).hexdigest() != studio["catalog_sha256"]:
+                raise Hold("missing or changed original Studio source")
+            artifacts += (("studio-catalog.json", studio_raw),)
         for name, content in artifacts:
             _safe_write(dir_fd, name, content)
             created.append(name)
@@ -217,6 +275,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--target", action="append", default=[], metavar="LAB_URL",
                         help="repeat: literal isolated HTTP(S) lab endpoint")
     parser.add_argument("--targets-file", help="optional local UTF-8 original-format endpoint list")
+    parser.add_argument("--catalog-file", help="optional original PRIVATE Studio v1 JSON draft")
+    parser.add_argument("--scenario-id", help="exact selected Studio scenario ID (paired)")
     parser.add_argument("--output-dir", required=True, metavar="NEW_PRIVATE_DIRECTORY")
     args = parser.parse_args(argv)
     try:
@@ -227,7 +287,11 @@ def main(argv: list[str] | None = None) -> int:
                 if row.strip() and not row.lstrip().startswith("#")
             )
         endpoints = admit(values)
-        build(endpoints, args.output_dir)
+        if (args.catalog_file is None) != (args.scenario_id is None):
+            raise Hold("Studio catalog and scenario ID must be supplied together")
+        studio, studio_raw = (admit_studio(args.catalog_file, args.scenario_id, endpoints)
+                              if args.catalog_file is not None else (None, None))
+        build(endpoints, args.output_dir, studio, studio_raw)
         print("LAB_LAUNCHPAD_PREPARED — PRIVATE DRAFT/HOLD; NO TARGET CONTACT OR AUTHORITY")
         return 2
     except (Hold, OSError, ValueError, TypeError, UnicodeError, KeyError,
