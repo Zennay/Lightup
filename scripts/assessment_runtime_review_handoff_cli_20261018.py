@@ -23,7 +23,7 @@ from assessment_runtime_compare_cli_1513 import (
 )
 from assessment_runtime_compare_cohort_cli_1513 import _display as _original_cohort_result
 from lightup.ai.assessment_runtime_diff_1513 import compare_lab_evaluations
-from lightup.ai.assessment_runtime_cohort_1513 import compare_lab_cohorts
+from lightup.ai.assessment_runtime_cohort_1513 import _index, compare_lab_cohorts
 
 SINGLE_LIMIT = 65_536
 COHORT_LIMIT = 262_144
@@ -62,6 +62,24 @@ def _load(path: str, cohort: bool):
     return tuple(_parse_case_document(item) for item in document), digest
 
 
+def _load_case_set(paths):
+    """Build a bounded original-format cohort from explicit local case files."""
+    if type(paths) is not list or not 1 <= len(paths) <= 64:
+        raise ValueError("invalid case selection")
+    documents, pairs = [], []
+    for path in paths:
+        document, _ = _snapshot(path, SINGLE_LIMIT)
+        pairs.append(_parse_case_document(document))
+        documents.append(document)
+    if _index(tuple(pairs)) is None:
+        raise ValueError("invalid lab cohort")
+    payload = json.dumps(documents, sort_keys=True, separators=(",", ":"),
+                         ensure_ascii=True, allow_nan=False).encode("ascii")
+    if len(payload) > COHORT_LIMIT:
+        raise ValueError("cohort over limit")
+    return tuple(pairs), sha256(payload).hexdigest()
+
+
 def _str(value):
     if value is None:
         return "—"
@@ -91,7 +109,8 @@ def _metrics(changes):
     )
 
 
-def _build_report(result, baseline_sha: str, candidate_sha: str, cohort: bool):
+def _build_report(result, baseline_sha: str, candidate_sha: str, cohort: bool,
+                  selected_cases: bool = False):
     sections = []
     regressions = []
     if cohort:
@@ -143,8 +162,10 @@ def _build_report(result, baseline_sha: str, candidate_sha: str, cohort: bool):
         "<p>Comparison type: " + ("cohort" if cohort else "single case") +
         " · Result: <strong>" + _e(result.status) + "</strong></p>"
         "<h2>Input snapshots (SHA-256, not signatures)</h2>"
-        "<p>Baseline bytes: <code>" + escape(baseline_sha) + "</code><br>"
-        "Candidate bytes: <code>" + escape(candidate_sha) + "</code></p>"
+        "<p>" + ("Canonical cohort-byte digests, not source-file digests." if selected_cases
+                  else "Original input-file byte digests.") + "</p>"
+        "<p>Baseline: <code>" + escape(baseline_sha) + "</code><br>"
+        "Candidate: <code>" + escape(candidate_sha) + "</code></p>"
         "<p>No source paths, raw evidence, credentials or finding payloads are"
         " embedded in this report. Preserve both originals privately.</p>" +
         issue_section + "".join(sections) +
@@ -186,8 +207,12 @@ def _write_exclusive(path: str, payload: bytes):
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("baseline", help="Private JSON baseline export")
-    parser.add_argument("candidate", help="Private JSON candidate export")
+    parser.add_argument("baseline", nargs="?", help="Private JSON baseline export")
+    parser.add_argument("candidate", nargs="?", help="Private JSON candidate export")
+    parser.add_argument("--baseline-case", action="append", default=[], metavar="FILE",
+                        help="Completed baseline case, repeated 1–64 times")
+    parser.add_argument("--candidate-case", action="append", default=[], metavar="FILE",
+                        help="Completed candidate case, repeated 1–64 times")
     parser.add_argument("--cohort", action="store_true",
                         help="Input files contain arrays of 1–64 case exports")
     parser.add_argument("--output", required=True,
@@ -196,16 +221,26 @@ def main(argv=None):
                         help="Printable HTML or exact original JSON result for offline Review Desk #1576")
     args = parser.parse_args(argv)
     try:
-        before, first_sha = _load(args.baseline, args.cohort)
-        after, second_sha = _load(args.candidate, args.cohort)
-        if args.cohort:
+        selected_cases = bool(args.baseline_case or args.candidate_case)
+        if selected_cases:
+            if args.baseline or args.candidate or args.cohort:
+                raise ValueError("cannot mix inputs")
+            before, first_sha = _load_case_set(args.baseline_case)
+            after, second_sha = _load_case_set(args.candidate_case)
+        else:
+            if not args.baseline or not args.candidate:
+                raise ValueError("two source files required")
+            before, first_sha = _load(args.baseline, args.cohort)
+            after, second_sha = _load(args.candidate, args.cohort)
+        cohort = args.cohort or selected_cases
+        if cohort:
             result = compare_lab_cohorts(before, after)
         else:
             result = compare_lab_evaluations(
                 before[0], after[0], before[1], after[1])
         metrics_ready = (bool(result.comparisons) and all(
             bool(comparison.changes) for _, comparison in result.comparisons
-        )) if args.cohort else bool(result.changes)
+        )) if cohort else bool(result.changes)
         # A *real metric regression* is HOLD, but must still be reviewable.
         # Invalid/replayed records produce an empty comparison and no document.
         if result.status not in ("REVIEW_ONLY", "HOLD") or not metrics_ready:
@@ -214,14 +249,15 @@ def main(argv=None):
         if args.format == "desk-json":
             # Delegate output shape to *unchanged* original #1515 CLI serializers.
             # The separate #1576 browser reads this exact comparison-result format.
-            summary = (_original_cohort_result(result) if args.cohort
+            summary = (_original_cohort_result(result) if cohort
                        else _original_single_result(result))
             document = json.dumps(summary, sort_keys=True, separators=(",", ":"),
                                   allow_nan=False).encode("utf-8")
             if len(document) > COHORT_LIMIT:
                 raise ValueError("private comparison result over limit")
         else:
-            document = _build_report(result, first_sha, second_sha, args.cohort)
+            document = _build_report(result, first_sha, second_sha, cohort,
+                                     selected_cases=selected_cases)
         _write_exclusive(args.output, document)
     except (OSError, ValueError, TypeError, KeyError, OverflowError,
             UnicodeError, RecursionError, AttributeError):

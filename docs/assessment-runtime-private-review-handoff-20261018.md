@@ -55,3 +55,18 @@ PYTHONPATH=src:scripts python scripts/assessment_runtime_review_handoff_cli_2026
 Download/open the original [Review Desk standalone HTML](https://github.com/Zennay/Lightup/blob/chatgpt/lightup-assessment-reviewdesk-20261018/assessment-review/standalone.html) **locally**, then use its file import to read the saved JSON. It recognizes the original single-case or cohort comparison data shape. The CLI reuses the original #1515 `_display`/`_output` serializers, not a locally invented contract. No network, website, backend or grant is involved; the browser consumes a user-selected file. **The intermediary JSON is source-rich and may contain raw scenario IDs and metric values; unlike the privacy-minimal desk's downstream exports, this JSON must remain private.** Use the separate HTML format when the human recipient must not see source scenario IDs.
 
 Regressions remain `HOLD`, with explicit false permission flags. Unlike an invalid or replayed record, a canonical regression produces a real JSON result so the browser can triage it. This import is evidence for *human preparation only*, never permission to scan, grant, deploy or merge.
+
+## Direct multi-scenario review without intermediate JSON bundle files
+
+For operators who already have a fixed, independently completed set of 1–64 original benchmark cases from baseline and candidate runs, the same review CLI now accepts **explicit repeated original case filenames**. It reuses the unchanged #1515 source parser/record admission and atomic comparator. There is no filesystem globbing, folder scan, wildcard, generated benchmark or implicit target interaction. The two sets must contain precisely the same original scenario IDs, no replayed record/run identities, and fit the original bounded cohort representation.
+
+```bash
+PYTHONPATH=src:scripts python scripts/assessment_runtime_review_handoff_cli_20261018.py \
+  --baseline-case /private/baseline-a.json \
+  --baseline-case /private/baseline-b.json \
+  --candidate-case /private/candidate-a.json \
+  --candidate-case /private/candidate-b.json \
+  --format desk-json --output /private/NEW-reviewdesk-input.json
+```
+
+Omit `--format desk-json` to get the print-ready private HTML instead. Explicit per-case inputs cannot be combined with positional cohort inputs or `--cohort`; unsupported combinations fail with the generic HOLD. For direct case lists, the report's SHA-256 identifiers cover the assembled **canonical cohort JSON bytes**, not the original individual on-disk file bytes and are never described as signed provenance. To retain a standalone cohort file for another original consumer, use the separate atomic case bundle command documented above.
