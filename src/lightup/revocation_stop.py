@@ -136,7 +136,9 @@ def record_stop(db_path: str, *, engagement_id: str, actor_id: str,
         con.execute("BEGIN IMMEDIATE")
         client_id = _engagement_client(con, engagement_id)
         role = _require_current_actor(con, actor_id, client_id)
-        con.executescript(_SCHEMA)
+        for statement in _SCHEMA.split(";"):
+            if statement.strip():
+                con.execute(statement)
         stop_id, when = str(uuid4()), datetime.now(timezone.utc).isoformat()
         con.execute(
             "INSERT INTO authorization_stop_events"
