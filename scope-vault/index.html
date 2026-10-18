@@ -9,6 +9,16 @@
 <p>Self-label each file as a client proposal, operator note, scope revision or schedule handoff for offline sorting; labels are never verified authority. Collect up to 12 draft files (.json, .md, .txt, .ics, .csv; each max 512 KiB, combined max 2 MiB). Names and file content are <strong>inside</strong> the encrypted packet, not in its public metadata. Avoid importing passwords, API keys or live customer secrets.</p>
 <label class="picker" for="files">Choose local draft files<input id="files" type="file" accept=".json,.md,.txt,.ics,.csv" multiple></label>
 <p id="file-summary" class="status" aria-live="polite">No files selected. Decrypt a saved vault below or collect new files.</p>
+<p class="subtle">Private dossier notes and preparation statuses stay inside encrypted internal archives. Client-review exports automatically remove them. These are <strong>not approvals</strong> or verified reviewer identities.</p>
+<label>Show documents by local preparation stage
+<select id="stage-filter">
+<option value="all">All documents</option>
+<option value="unsorted">Unsorted</option>
+<option value="clarify">Needs human clarification</option>
+<option value="drafting">Preparation in progress</option>
+<option value="ready">Prepared for human review (not approved)</option>
+<option value="historical">Historical draft (superseded)</option>
+</select></label>
 <div id="file-list" class="items" aria-live="polite"></div>
 </section>
 <section aria-labelledby="seal-title"><h2 id="seal-title">2. Seal an encrypted packet</h2>
@@ -21,9 +31,10 @@
 <option value="client-review">Client review — only client proposals, revisions, schedules</option>
 <option value="operator-review">Operator review — selected assessment paperwork</option>
 </select></label>
-<p class="subtle">Client-review exports refuse operator-labelled or unclassified files; every encrypted export shows the exact selected filenames for a final local confirmation. This routing choice never authenticates the recipient or grants rights.</p>
+<p class="subtle">Client-review exports always strip internal notes and preparation stages, even from client-labelled files. They also refuse operator-labelled or unclassified files; every encrypted export shows the exact selected filenames for a final local confirmation. This routing choice never authenticates the recipient or grants rights.</p>
 <p class="subtle">To prepare a smaller recipient handoff, select only the intended files in the inventory. All files remain selected by default. Never treat an encrypted handoff as recipient identity or consent.</p>
-<div class="actions"><button id="seal" type="button">Download selected encrypted packet</button><button id="select-all" type="button" class="secondary">Select all</button><button id="select-none" type="button" class="secondary">Select none</button><button id="clear" type="button" class="secondary">Forget all plaintext</button></div>
+<p class="subtle">To rotate a forgotten, exposed or old passphrase after unlocking your existing packet, enter a new password above and choose <strong>Re-encrypt entire private archive</strong>. Downloading a new copy cannot revoke any previously shared encrypted file.</p>
+<div class="actions"><button id="seal" type="button">Download selected encrypted packet</button><button id="select-all" type="button" class="secondary">Select all</button><button id="select-none" type="button" class="secondary">Select none</button><button id="select-route" type="button" class="secondary">Suggest recipient-safe selection</button><button id="rekey" type="button" class="secondary">Re-encrypt entire private archive</button><button id="clear" type="button" class="secondary">Forget all plaintext</button></div>
 </section>
 <section aria-labelledby="unlock-title"><h2 id="unlock-title">3. Restore a saved packet</h2>
 <p>Load one locally saved encrypted vault. Its encrypted inner payload also preserves the self-reported intended handoff route when present. Its authenticity depends on knowing the passphrase and trusting where you got the file. Encryption alone does <strong>not</strong> prove client identity, consent, scope approval or authorization.</p>
