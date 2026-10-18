@@ -65,6 +65,17 @@
     <div id="weekly" class="weeks"></div>
   </div>
   <div class="panel">
+    <p class="eyebrow">04 / CAPACITY WHAT-IF</p>
+    <h2>What if the team had more capacity?</h2>
+    <p>Compare the baseline with an alternative number of engineers. This does not hire, assign or book anyone; assumptions remain unchanged except staffing.</p>
+    <div class="scenario-controls">
+      <label for="extra-engineers">Additional engineers (0–10)</label>
+      <input id="extra-engineers" type="number" min="0" max="10" value="1">
+      <button type="button" id="compare">Compare staffing</button>
+    </div>
+    <div id="comparison" aria-live="polite"></div>
+  </div>
+  <div class="panel">
     <h2>Proposed work queue</h2>
     <p class="subtle">Anonymous source positions only. A task can be split between weeks. No raw case IDs, addresses, descriptions, or assignment records appear here.</p>
     <div class="table-scroll"><table><thead><tr><th scope="col">Week</th><th scope="col">Source position</th><th scope="col">Severity</th><th scope="col">Original source retest</th><th scope="col">Hours</th><th scope="col">Allocation</th></tr></thead><tbody id="allocations"></tbody></table></div>
