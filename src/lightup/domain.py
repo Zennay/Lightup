@@ -673,16 +673,53 @@ class DomainStore:
         self, ctx: AccessContext, request_id: str, approve: bool
     ) -> AssessmentRequestRecord:
         ctx.require_operator("review_assessment_request")
+        if type(approve) is not bool:
+            raise ValueError("assessment review decision must be boolean")
         status = RequestStatus.APPROVED if approve else RequestStatus.REJECTED
         with self._connect() as con:
-            updated = con.execute(
+            # Authenticate both parties from stored identities while holding
+            # one write transaction. Forged AccessContext instances cannot
+            # promote a client into an operator or an operator into a client.
+            con.execute("BEGIN IMMEDIATE")
+            operator = con.execute(
+                "SELECT role, client_id FROM users WHERE user_id=?", (ctx.user_id,)
+            ).fetchone()
+            request = con.execute(
+                "SELECT r.status, r.client_id, r.requested_by, "
+                "u.role AS requester_role, u.client_id AS requester_client, "
+                "c.status AS client_status "
+                "FROM assessment_requests AS r "
+                "LEFT JOIN users AS u ON u.user_id=r.requested_by "
+                "LEFT JOIN clients AS c ON c.client_id=r.client_id "
+                "WHERE r.request_id=?", (request_id,),
+            ).fetchone()
+            if (
+                operator is None or operator["role"] != Role.OPERATOR.value
+                or operator["client_id"] is not None
+            ):
+                con.rollback()
+                raise RoleError("assessment review requires a current operator account")
+            if (
+                request is None
+                or request["status"] not in (
+                    RequestStatus.SUBMITTED.value, RequestStatus.UNDER_REVIEW.value
+                )
+                or request["requested_by"] == ctx.user_id
+                or request["requester_role"] not in (
+                    Role.CLIENT_ADMIN.value, Role.CLIENT_MEMBER.value
+                )
+                or request["requester_client"] != request["client_id"]
+                or request["client_status"] != "active"
+            ):
+                con.rollback()
+                raise ValueError("assessment request lacks valid independent client provenance")
+            con.execute(
                 "UPDATE assessment_requests SET status=?, decided_by=?, decided_at=? "
                 "WHERE request_id=? AND status IN (?,?)",
                 (status.value, ctx.user_id, utcnow().isoformat(), request_id,
                  RequestStatus.SUBMITTED.value, RequestStatus.UNDER_REVIEW.value),
-            ).rowcount
-        if updated == 0:
-            raise ValueError(f"request {request_id!r} is not open for review")
+            )
+            con.commit()
         return self.get_assessment_request(ctx, request_id)
 
     # -- engagements ----------------------------------------------------------
