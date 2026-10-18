@@ -42,6 +42,7 @@
  <div class="buttons">
   <button id="pendingExport">Export non-authorizing preview JSON</button>
   <button id="pendingPaper">Save printable pre-apply brief</button>
+  <button id="pendingBackup">Save current role answers first</button>
   <button id="pendingApply">Apply revision and reset prior human replies</button>
   <button id="pendingDiscard" class="subtle">Discard proposal — preserve existing work</button>
  </div>
@@ -54,6 +55,16 @@
 <section class="panel">
  <div class="row"><div><div class="eyebrow">3. Human clarification queue</div><h2>Questions to resolve before approval</h2><p>Mark whether a question has merely been sent or answered. These are self-reported preparation notes, never verification or proof. Export only includes updates for the selected audience; a client-labelled note cannot claim operator answers, or vice versa.</p></div><div class="counter"><strong id="openCount">—</strong><small>unanswered / unresolved</small></div></div>
  <div id="questions" aria-live="polite"></div>
+</section>
+<section class="panel backup-panel" aria-label="Local human question backup">
+ <div class="eyebrow">LOCAL RESUME · NO AUTHORIZATION OR BROWSER STORAGE</div>
+ <h2>Save or reopen both roles’ current question statuses</h2>
+ <p>Download a single privacy-minimal JSON snapshot of the current unanswered, sent and answered-but-unverified preparation questions. To resume later, first open the <strong>exact original Studio source</strong> again, then import this backup. It never includes raw targets, client names, safety notes, consent or execution rights.</p>
+ <div class="buttons"><button id="backupSave">Save both roles’ local preparation (HOLD)</button></div>
+ <label class="backup-label" for="backupImport">Reopen local preparation backup (JSON)</label>
+ <input type="file" id="backupImport" accept=".json,application/json">
+ <p id="backupState" role="status" aria-live="polite">No local preparation backup restored.</p>
+ <p class="receipt">Imported role statuses are unverified human reminders only. Conflicting existing work cannot be silently replaced.</p>
 </section>
 <section class="panel">
  <div class="eyebrow">SOURCE-BOUND · PRIVATE DATA OMITTED</div><h2>Handoff preview</h2><p>Only count, category, source SHA-256 and generic question states are exported. No client name, targets, IPs, domains, notes, filenames or source bytes.</p>
