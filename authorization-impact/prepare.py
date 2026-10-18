@@ -304,11 +304,16 @@ def publish_bytes(
     )
     instructions = (
         "LIGHTUP PRIVATE SCOPE IMPACT MAP — REVIEW_ONLY / HOLD\\n\\n"
-        "1. Open standalone.html in an offline browser.\\n"
-        "2. Import casebook.json through 'Load PRIVATE Casebook JSON'.\\n"
-        "3. Inspect source links and add human-only notes.\\n"
-        "4. Export counts or confirm a PRIVATE recipient for human notes.\\n"
-        + ("5. If present, restore PRIVATE-review.json through Restore PRIVATE notes.\\n" if review_raw is not None else "")
+        "1. Open PRIVATE-ready.html directly from this owner-private directory.\\n"
+        "2. Original Casebook bytes load automatically after digest admission.\\n"
+        + ("3. Matching original PRIVATE-review.json human notes restore\\n"
+           "   automatically after exact source SHA-256 and schema checks.\\n"
+           if review_raw is not None else
+           "3. No existing human note handoff is included.\\n")
+        + "4. Review stored source links; prepare human-only follow-up.\\n"
+        + "5. Export counts or PRIVATE recipient-confirmed review notes.\\n"
+        + "6. Fallback: standalone.html + casebook.json; manually import\\n"
+        + "   PRIVATE-review.json through Restore PRIVATE notes if included.\\n"
         + "\\n"
         + provenance_note
         + "Recorded source state is retrospective; no current live authorization.\\n"
