@@ -131,7 +131,7 @@ def _metrics(changes):
 
 
 def _build_report(result, baseline_sha: str, candidate_sha: str, cohort: bool,
-                  selected_cases: bool = False):
+                  selected_cases: bool = False, include_source_hashes: bool = True):
     sections = []
     regressions = []
     if cohort:
@@ -161,6 +161,16 @@ def _build_report(result, baseline_sha: str, candidate_sha: str, cohort: bool,
     )
     authority = "".join("<li><code>" + escape(flag) +
                         " = false</code></li>" for flag in FLAGS)
+    fingerprint_section = (
+        "<h2>Input snapshots (SHA-256, not signatures)</h2>"
+        "<p>" + ("Canonical cohort-byte digests." if selected_cases
+                  else "Original input-file byte digests.") + "</p>"
+        "<p>Baseline: <code>" + escape(baseline_sha) + "</code><br>"
+        "Candidate: <code>" + escape(candidate_sha) + "</code></p>"
+    ) if include_source_hashes else (
+        "<p>Privacy-minimal handoff: original source fingerprint values "
+        "and original scenario identities intentionally omitted.</p>"
+    )
     body = (
         "<!doctype html><html lang='en'><head><meta charset='utf-8'>"
         "<meta name='viewport' content='width=device-width, initial-scale=1'>"
@@ -185,11 +195,7 @@ def _build_report(result, baseline_sha: str, candidate_sha: str, cohort: bool,
         "<ul>" + authority + "</ul></div>"
         "<p>Comparison type: " + ("cohort" if cohort else "single case") +
         " · Result: <strong>" + _e(result.status) + "</strong></p>"
-        "<h2>Input snapshots (SHA-256, not signatures)</h2>"
-        "<p>" + ("Canonical cohort-byte digests, not source-file digests." if selected_cases
-                  else "Original input-file byte digests.") + "</p>"
-        "<p>Baseline: <code>" + escape(baseline_sha) + "</code><br>"
-        "Candidate: <code>" + escape(candidate_sha) + "</code></p>"
+        + fingerprint_section +
         "<p>No source paths, raw evidence, credentials or finding payloads are"
         " embedded in this report. Preserve both originals privately.</p>" +
         issue_section + "".join(sections) +
@@ -362,7 +368,7 @@ def main(argv=None):
                         help="Input files contain arrays of 1–64 case exports")
     parser.add_argument("--output", required=True,
                         help="New private output file (existing files are refused)")
-    parser.add_argument("--format", choices=("html", "desk-json", "review-pack"), default="html",
+    parser.add_argument("--format", choices=("html", "desk-json", "review-pack", "redacted-html"), default="html",
                         help="Printable HTML, original Review Desk #1576 JSON, or private combined ZIP")
     args = parser.parse_args(argv)
     try:
@@ -407,7 +413,8 @@ def main(argv=None):
                 raise ValueError("private comparison result over limit")
         else:
             document = _build_report(result, first_sha, second_sha, cohort,
-                                     selected_cases=selected_cases)
+                                     selected_cases=selected_cases,
+                                     include_source_hashes=args.format != "redacted-html")
         _write_exclusive(args.output, document)
     except (OSError, ValueError, TypeError, KeyError, OverflowError,
             UnicodeError, RecursionError, AttributeError):
