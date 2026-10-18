@@ -858,6 +858,69 @@
     node.append(footer);
   }
 
+
+  function exportPrivateActionBrief(){
+    try{
+      privateSourceBound();
+      admit(catalog.length>=1&&catalog.length<=32&&reports.length<=8);
+      // Sensitive export: original case IDs, raw source-byte fingerprints, private
+      // text, and proposed human follow-up. Never part of anonymous exports/print.
+      if(!confirm("Download a SENSITIVE PRIVATE human action dossier containing "+
+        "original scenario IDs, source SHA-256 hashes, private case notes and "+
+        "proposed human follow-up? Keep it on protected storage; not an approval."))return;
+      const escape=x=>String(x).replaceAll("&","&amp;").replaceAll("<","&lt;")
+        .replaceAll(">","&gt;").replaceAll('"',"&quot;").replaceAll("'","&#39;");
+      const snapshot=consistency();
+      const rows=catalog.map((item,i)=>{
+        const flags=caseFlags(item),stage=reviews.get(item.id)||"needs_review";
+        const labels=[
+          "Lab case "+String(i+1).padStart(2,"0"),item.id,
+          QUEUE_LABELS[priority(item)],
+          flags.missing?"Missing original completed source":"Present in every original source",
+          item.mode,
+          stage,ROUTE_LABELS[humanRouteFor(item)],ACTION_LABELS[humanActionFor(item)],
+          humanNotes.get(item.id)||""
+        ];
+        return "<tr>"+labels.map(value=>"<td>"+escape(value)+"</td>").join("")+"</tr>";
+      }).join("");
+      const heads=["Ordinal","PRIVATE original case ID","Source-reported priority",
+        "Membership","Author-declared ground truth","Local human stage",
+        "Proposed discussion group","Proposed next human action","PRIVATE human note"];
+      const hashes=reportHashes.map((digest,i)=>
+        "<li>Completed source "+(i+1)+": "+escape(digest)+"</li>").join("");
+      const html="<!doctype html><html lang='en'><meta charset='utf-8'>"+
+        "<meta http-equiv='Content-Security-Policy' content=\"default-src 'none'; "+
+        "style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'\">"+
+        "<meta name='referrer' content='no-referrer'>"+
+        "<title>PRIVATE LightUp human action dossier</title>"+
+        "<style>body{font:15px/1.5 system-ui;max-width:1300px;margin:2rem auto;padding:1rem}"+
+        "table{border-collapse:collapse;width:100%}th,td{border:1px solid #777;"+
+        "padding:.45rem;vertical-align:top;overflow-wrap:anywhere}"+
+        "th{background:#eee}p{max-width:85ch}code{overflow-wrap:anywhere}"+
+        "@media print{tr{break-inside:avoid}}</style>"+
+        "<h1>PRIVATE LightUp original-source human review dossier</h1>"+
+        "<p><strong>SENSITIVE · HUMAN REVIEW ONLY · INCUBATE M3/M7 · DRAFT/HOLD"+
+        (fictional?" · FICTIONAL":"")+"</strong></p>"+
+        "<p>Source membership: "+(snapshot.exact?"Aligned format — unverified authenticity":
+          "HOLD — "+snapshot.missing+" missing and "+snapshot.unexpected+" extra memberships")+
+        ". Original findings and flags are untrusted retrospective lab declarations, "+
+        "not evidence of remediation, staff assignment, consent or execution permission.</p>"+
+        "<p>All authorized, consent_verified, dispatch_allowed and release_allowed "+
+        "remain false. No scanner, active target or tool is operated by this file.</p>"+
+        "<p>PRIVATE raw original catalog SHA-256: <code>"+escape(catalogHash)+"</code></p>"+
+        "<p>PRIVATE completed source byte-hashes (human display order):</p><ol>"+
+        hashes+"</ol><table><thead><tr>"+
+        heads.map(value=>"<th>"+escape(value)+"</th>").join("")+
+        "</tr></thead><tbody>"+rows+"</tbody></table>"+
+        "<p><strong>HOLD:</strong> Internal human discussion notes are unsigned, "+
+        "may include sensitive original references, and must be independently "+
+        "checked with the genuine source owners. Do not share or use as a grant.</p>"+
+        "</html>";
+      download("lightup-PRIVATE-human-action-dossier.html",html,"text/html");
+      message("Sensitive PRIVATE human action dossier downloaded. Protect it separately.");
+    }catch(_){message("HOLD: no PRIVATE action dossier without real source-byte fingerprints.",true);}
+  }
+
   function exportJson(){
     try{const a=safeExport();download("lightup-lineage-aggregate.json",
       JSON.stringify(a,null,2)+"\n","application/json");message("Anonymous aggregate JSON downloaded. No source identities.");}
@@ -1066,6 +1129,7 @@
   $("suggestRoutes").addEventListener("click",bulkSuggestHumanRoutes);
   $("undoRoute").addEventListener("click",undoHumanRoutes);
   $("exportDraft").addEventListener("click",exportPrivateDraft);
+  $("exportPrivateActionBrief").addEventListener("click",exportPrivateActionBrief);
   $("restoreDraft").addEventListener("change",async e=>{
     const f=e.target.files?.[0];e.target.value="";
     if(f)await restorePrivateDraft(f);
