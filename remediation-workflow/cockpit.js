@@ -10,7 +10,7 @@ const EVIDENCE=['change_reference','deployment_reference','rollback_reference','
 const FLAGS=['authenticated','tenant_verified','source_authorized','assessment_authorized','grant','client_consent','operator_consent','execution','scan','audit_verdict','retest_verified','release'];
 const REFMAX={change_reference:240,deployment_reference:240,rollback_reference:240,retest_request_reference:240,review_question:700};
 const BIDI=/[\u202a-\u202e\u2066-\u2069]/;
-let joined=null;
+let joined=null,preloadedSource=null;
 const size=text=>new TextEncoder().encode(text).byteLength;
 function status(message,error=false){$('status').textContent=message;$('status').dataset.error=error?'true':'false';}
 function fail(message){throw Error(message);}
@@ -133,18 +133,51 @@ function caseworkDocument(packet,source,sha){
 }
 function wipe(){
  joined=null;$('results').hidden=true;$('digest').textContent='';
- $('csv').value='';$('evidence').value='';$('casework').value='';$('capacity').value='';$('same').checked=false;
+ preloadedSource=null;$('csv').value='';$('evidence').value='';$('casework').value='';$('capacity').value='';$('same').checked=false;
  $('severity').value='';$('kind').value='';$('agenda').replaceChildren();$('matrix').replaceChildren();
+}
+/* Original authenticated interactive export embeds passive data, not credentials.
+ * This saved HTML can never prove current permission or source freshness. */
+async function sourceRawHash(csv){
+ if(typeof csv!=='string'||size(csv)>1048576||!window.crypto?.subtle)
+  fail('Exact raw source SHA-256 is unavailable.');
+ const result=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(csv));
+ return Array.from(new Uint8Array(result),x=>x.toString(16).padStart(2,'0')).join('');
+}
+async function importPreloadedSource(){
+ const node=$('preloadedCsv');
+ if(!node)return;
+ try{
+  if(size(node.textContent)>1400200)fail('Embedded original source envelope too large.');
+  const packet=strictJSON(node.textContent);
+  keysExact(packet,['format','csv_base64']);
+  if(packet.format!=='lightup.authenticated_findings_handoff_v1'||
+     typeof packet.csv_base64!=='string'||packet.csv_base64.length>1400000||
+     !/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(packet.csv_base64))
+   fail('Malformed original private handoff envelope.');
+  const bytes=Uint8Array.from(atob(packet.csv_base64),c=>c.charCodeAt(0));
+  if(!bytes.length||bytes.length>1048576)fail('Private findings exceed original source bound.');
+  const csv=new TextDecoder('utf-8',{fatal:true}).decode(bytes);
+  C.parseCSV(csv);
+  preloadedSource=csv;
+  await load();
+  status('Original summary imported from the login-protected export at creation time. Saved HTML is PRIVATE and does not prove current authentication, consent, revocation or retest.');
+ }catch(error){preloadedSource=null;status('Private source rejected: '+error.message,true);}
+ finally{node.remove();}
 }
 const checkSame=()=>{if(!$('same').checked)fail('Independently confirm the SAME original client and exact engagement before joining sources.');};
 async function load(){
  joined=null;$('results').hidden=true;$('digest').textContent='';status('Checking original source and private draft links …');
- checkSame();
  const file=$('csv').files[0];
- const csv=await readFile(file,1048576);
+ const extra=$('evidence').files.length||$('casework').files.length||$('capacity').files.length;
+ if(extra)checkSame();
+ const csv=file?await readFile(file,1048576):preloadedSource;
+ if(!csv)fail('First select an original authorized CSV or create the private authenticated handoff CLI export.');
  const source=C.parseCSV(csv),sha=await C.digest(source);
  if(!sha||!/^[a-f0-9]{64}$/.test(sha))fail('Canonical original source SHA-256 is unavailable; no unsafe fallback.');
- const evidence=reviewDocument(strictJSON(await readFile($('evidence').files[0],2097152)),source,sha);
+ const evidence=$('evidence').files.length?
+  reviewDocument(strictJSON(await readFile($('evidence').files[0],2097152)),source,sha):
+  new Map(source.map(f=>[f.finding_id,{stage:'missing',evidence:Object.fromEntries(EVIDENCE.map(name=>[name,'']))}]));
  let capacity=null, summary=null, casework=null;
  if($('casework').files.length){
   const packet=strictJSON(await readFile($('casework').files[0],2097152));
@@ -153,7 +186,7 @@ async function load(){
  if($('capacity').files.length){
   const capacityText=await readFile($('capacity').files[0],D.MAX_DRAFT_BYTES);
   const capacityRows=P.parseCSV(csv);
-  const rawSha=await D.fingerprint(file);
+  const rawSha=file?await D.fingerprint(file):await sourceRawHash(csv);
   const draft=D.importDraft(capacityText,rawSha,source.length,capacityRows,P);
   capacity=draft.plan;summary=P.summary(capacity);
   if(!summary||summary.source_count!==source.length)fail('Capacity source count mismatch.');
@@ -170,7 +203,7 @@ async function load(){
  joined={records,sha,summary};
  $('results').hidden=false;$('digest').textContent='Unsigned canonical findings fingerprint: '+sha+
    (summary?' · capacity assumptions bound to the original raw CSV SHA-256':' · no optional staffing draft loaded');
- render();status('Loaded '+source.length+' original findings with original review notes'+(summary?' and exact-CSV capacity estimates':'')+'. No permissions, retests or repairs inferred.');
+ render();status('Loaded '+source.length+' original findings with '+($('evidence').files.length?'private review notes':'empty local review notes')+(summary?' and exact-CSV capacity estimates':'')+'. No permissions, retests or repairs inferred.');
 }
 function render(){
  if(!joined)return;
@@ -256,4 +289,5 @@ $('private').addEventListener('click',()=>{
   download('lightup-private-remediation-coordination.md',privateMarkdown(),'text/markdown;charset=utf-8');
  }catch(e){status(e.message,true);}
 });
+void importPreloadedSource();
 })();

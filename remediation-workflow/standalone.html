@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="referrer" content="no-referrer">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-wpPFZOyxFDTkVCPSRLe+ulmbav4+u8hRIYgukbiqEiU=' 'sha256-7uVWP+8F4rK20N4waCez9ECs4twj73TKRFULKGnKH8E=' 'sha256-k063sX7gui1MHh7KSFsfBDpeNsiUePvLBCuTQLOmh0c=' 'sha256-A1nvjrFRy11eymBmW2eggWM7u1mdtnCsrMioCnXZM0Q='; style-src 'unsafe-inline'; connect-src 'none'; img-src 'none'; font-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-wpPFZOyxFDTkVCPSRLe+ulmbav4+u8hRIYgukbiqEiU=' 'sha256-7uVWP+8F4rK20N4waCez9ECs4twj73TKRFULKGnKH8E=' 'sha256-k063sX7gui1MHh7KSFsfBDpeNsiUePvLBCuTQLOmh0c=' 'sha256-Uh86G+RpDf97NlmFePjgNWYwZyG2xL6i9qIS9GaapK0='; style-src 'unsafe-inline'; connect-src 'none'; img-src 'none'; font-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <title>LightUp · Remediation Coordination Cockpit</title>
 <style>
 :root{font:15px/1.5 system-ui,sans-serif;background:#0c1423;color:#f0f6ff;--panel:#16273a;--line:#445f75;--muted:#bed0e1;--accent:#81f3c6}
@@ -21,14 +21,15 @@ a{color:var(--accent)}.muted{font-size:.88rem}.links{display:flex;gap:16px;flex-
 </style></head><body>
 <header><small>LIGHTUP · SOURCE-BOUND HUMAN REMEDIATION</small><h1>Coordination Cockpit</h1><p>Combine the existing Evidence Review Board and Capacity Studio into one local, decision-ready human follow-up view.</p></header>
 <main><div class="warning"><strong>INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD</strong><br>This is an offline coordination draft, NOT authentication, a client/operator approval, a verified patch, a retest permit, or authority to execute anything. Load only privately and independently authorized original exports. Hashes link contents, never identity or consent. No customer data is sent anywhere.</div>
-<section class="card"><h2>1 · Join original source and private working drafts</h2><p>Use the <em>exact same original CSV</em> exported through existing authorized LightUp access in all apps. Evidence JSON comes from Evidence Review Board; optional original Casework private JSON adds blockers and overdue planning, and capacity drafts come from Capacity Studio. Imports never change the source files.</p>
+<section class="card"><h2>1 · Join original source and private working drafts</h2><p>Use the <em>exact same original CSV</em> exported through existing authorized LightUp access in all apps, or start from a separate originally authenticated private HTML export. A saved private HTML is not proof of current identity or permission. Evidence JSON comes from Evidence Review Board; optional original Casework private JSON adds blockers and overdue planning, and capacity drafts come from Capacity Studio. Imports never change the source files.</p>
 <div class="grid files">
-<label>Original five-column findings CSV (required)<input id="csv" type="file" accept=".csv,text/csv"></label>
-<label>Evidence Review private JSON (required)<input id="evidence" type="file" accept=".json,application/json"></label>
+<label>Original five-column findings CSV (or authenticated-at-export HTML)<input id="csv" type="file" accept=".csv,text/csv"></label>
+<label>Evidence Review private JSON (optional; otherwise all local references start empty)<input id="evidence" type="file" accept=".json,application/json"></label>
 <label>Original Casework private draft JSON (optional)<input id="casework" type="file" accept=".json,application/json"></label>
 <label>Capacity Studio working draft JSON (optional)<input id="capacity" type="file" accept=".json,application/json"></label></div>
-<p><label><input id="same" type="checkbox">I independently confirmed that these private drafts and the original findings refer to the same authorized client and exact engagement. This statement grants no permission.</label></p>
+<p><label><input id="same" type="checkbox">When adding private drafts, I independently confirmed that these drafts and the original findings refer to the same authorized client and exact engagement. This statement grants no permission.</label></p>
 <div class="controls"><button id="load" class="primary">Load source-bound workspace</button><button id="clear">Forget all local data</button></div>
+<p class="muted">Optional original-domain interactive CLI: <code>python -m lightup.remediation_workflow_handoff_cli</code> produces a private 0600 no-overwrite offline HTML with original finding summary preloaded. An independently authenticated export can be viewed without locally declared evidence stages; adding separate drafts requires the confirmation above.</p>
 <p id="status" role="status" aria-live="polite"></p><p id="digest" class="muted"></p></section>
 <section class="card" hidden><h2>Original standalone workspaces</h2><div class="links"><a href="../remediation-evidence/standalone.html">Open Evidence Review Board</a><a href="../remediation-capacity/standalone.html">Open Capacity Studio</a><a href="../remediation-evidence/team-reply-standalone.html">Open private Team Reply Desk</a></div><p class="muted">All linked apps are static local files inside the complete repository checkout; private documents stay under your control. Links do not carry imported data or unlock one another.</p></section>
 <section id="results" hidden>
@@ -657,7 +658,7 @@ const EVIDENCE=['change_reference','deployment_reference','rollback_reference','
 const FLAGS=['authenticated','tenant_verified','source_authorized','assessment_authorized','grant','client_consent','operator_consent','execution','scan','audit_verdict','retest_verified','release'];
 const REFMAX={change_reference:240,deployment_reference:240,rollback_reference:240,retest_request_reference:240,review_question:700};
 const BIDI=/[\u202a-\u202e\u2066-\u2069]/;
-let joined=null;
+let joined=null,preloadedSource=null;
 const size=text=>new TextEncoder().encode(text).byteLength;
 function status(message,error=false){$('status').textContent=message;$('status').dataset.error=error?'true':'false';}
 function fail(message){throw Error(message);}
@@ -780,18 +781,51 @@ function caseworkDocument(packet,source,sha){
 }
 function wipe(){
  joined=null;$('results').hidden=true;$('digest').textContent='';
- $('csv').value='';$('evidence').value='';$('casework').value='';$('capacity').value='';$('same').checked=false;
+ preloadedSource=null;$('csv').value='';$('evidence').value='';$('casework').value='';$('capacity').value='';$('same').checked=false;
  $('severity').value='';$('kind').value='';$('agenda').replaceChildren();$('matrix').replaceChildren();
+}
+/* Original authenticated interactive export embeds passive data, not credentials.
+ * This saved HTML can never prove current permission or source freshness. */
+async function sourceRawHash(csv){
+ if(typeof csv!=='string'||size(csv)>1048576||!window.crypto?.subtle)
+  fail('Exact raw source SHA-256 is unavailable.');
+ const result=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(csv));
+ return Array.from(new Uint8Array(result),x=>x.toString(16).padStart(2,'0')).join('');
+}
+async function importPreloadedSource(){
+ const node=$('preloadedCsv');
+ if(!node)return;
+ try{
+  if(size(node.textContent)>1400200)fail('Embedded original source envelope too large.');
+  const packet=strictJSON(node.textContent);
+  keysExact(packet,['format','csv_base64']);
+  if(packet.format!=='lightup.authenticated_findings_handoff_v1'||
+     typeof packet.csv_base64!=='string'||packet.csv_base64.length>1400000||
+     !/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(packet.csv_base64))
+   fail('Malformed original private handoff envelope.');
+  const bytes=Uint8Array.from(atob(packet.csv_base64),c=>c.charCodeAt(0));
+  if(!bytes.length||bytes.length>1048576)fail('Private findings exceed original source bound.');
+  const csv=new TextDecoder('utf-8',{fatal:true}).decode(bytes);
+  C.parseCSV(csv);
+  preloadedSource=csv;
+  await load();
+  status('Original summary imported from the login-protected export at creation time. Saved HTML is PRIVATE and does not prove current authentication, consent, revocation or retest.');
+ }catch(error){preloadedSource=null;status('Private source rejected: '+error.message,true);}
+ finally{node.remove();}
 }
 const checkSame=()=>{if(!$('same').checked)fail('Independently confirm the SAME original client and exact engagement before joining sources.');};
 async function load(){
  joined=null;$('results').hidden=true;$('digest').textContent='';status('Checking original source and private draft links …');
- checkSame();
  const file=$('csv').files[0];
- const csv=await readFile(file,1048576);
+ const extra=$('evidence').files.length||$('casework').files.length||$('capacity').files.length;
+ if(extra)checkSame();
+ const csv=file?await readFile(file,1048576):preloadedSource;
+ if(!csv)fail('First select an original authorized CSV or create the private authenticated handoff CLI export.');
  const source=C.parseCSV(csv),sha=await C.digest(source);
  if(!sha||!/^[a-f0-9]{64}$/.test(sha))fail('Canonical original source SHA-256 is unavailable; no unsafe fallback.');
- const evidence=reviewDocument(strictJSON(await readFile($('evidence').files[0],2097152)),source,sha);
+ const evidence=$('evidence').files.length?
+  reviewDocument(strictJSON(await readFile($('evidence').files[0],2097152)),source,sha):
+  new Map(source.map(f=>[f.finding_id,{stage:'missing',evidence:Object.fromEntries(EVIDENCE.map(name=>[name,'']))}]));
  let capacity=null, summary=null, casework=null;
  if($('casework').files.length){
   const packet=strictJSON(await readFile($('casework').files[0],2097152));
@@ -800,7 +834,7 @@ async function load(){
  if($('capacity').files.length){
   const capacityText=await readFile($('capacity').files[0],D.MAX_DRAFT_BYTES);
   const capacityRows=P.parseCSV(csv);
-  const rawSha=await D.fingerprint(file);
+  const rawSha=file?await D.fingerprint(file):await sourceRawHash(csv);
   const draft=D.importDraft(capacityText,rawSha,source.length,capacityRows,P);
   capacity=draft.plan;summary=P.summary(capacity);
   if(!summary||summary.source_count!==source.length)fail('Capacity source count mismatch.');
@@ -817,7 +851,7 @@ async function load(){
  joined={records,sha,summary};
  $('results').hidden=false;$('digest').textContent='Unsigned canonical findings fingerprint: '+sha+
    (summary?' · capacity assumptions bound to the original raw CSV SHA-256':' · no optional staffing draft loaded');
- render();status('Loaded '+source.length+' original findings with original review notes'+(summary?' and exact-CSV capacity estimates':'')+'. No permissions, retests or repairs inferred.');
+ render();status('Loaded '+source.length+' original findings with '+($('evidence').files.length?'private review notes':'empty local review notes')+(summary?' and exact-CSV capacity estimates':'')+'. No permissions, retests or repairs inferred.');
 }
 function render(){
  if(!joined)return;
@@ -903,5 +937,6 @@ $('private').addEventListener('click',()=>{
   download('lightup-private-remediation-coordination.md',privateMarkdown(),'text/markdown;charset=utf-8');
  }catch(e){status(e.message,true);}
 });
+void importPreloadedSource();
 })();</script>
 </body></html>

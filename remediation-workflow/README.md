@@ -11,6 +11,23 @@
 
 This is a **new composition branch** based on an immutable original Evidence Review snapshot, not a modification of the original branches. Source lineage: [original Casework #1568](https://github.com/Zennay/Lightup/pull/1568), [Evidence Review #1623](https://github.com/Zennay/Lightup/pull/1623), [Capacity Studio #1583](https://github.com/Zennay/Lightup/pull/1583). The original Casework, Capacity Planner and Capacity Draft source scripts have exact bytes SHA-256 pinned by `package.py`. None of those modules has been edited in this integration.
 
+## Native authenticated source-to-Cockpit export (private)
+
+From a trusted checkout with an ORIGINAL existing LightUp account and existing authorized engagement, the newly integrated real-domain CLI can prepare a private HTML that opens already showing the original summary:
+
+```bash
+PYTHONPATH=src python -m lightup.remediation_workflow_handoff_cli \
+  --db /trusted/private/lightup.sqlite \
+  --email authorized-client@example.org \
+  --client-id existing-authorized-client \
+  --engagement-id exact-existing-engagement \
+  --output /trusted/private/new-remediation-cockpit.html
+```
+
+The CLI prompts for a password interactively (no argv/env password) and uses original `DomainStore.authenticate`, persisted original role/tenant/engagement context and `render_client_findings_csv`. It consumes only the bounded existing five-field CSV export, deterministically rebuilds SHA-pinned static HTML, embeds the original summary as *passive base64 JSON*, and publishes a 0600 atomically fsynced no-overwrite private file via the upstream owner `_publish_exclusive_private` routine. It creates no authorization or scope assertion, grant, request, scan, evidence proof or retest. The preloaded HTML automatically shows source findings with empty unverified local evidence stages, then optionally accepts independently reviewed Evidence/Casework/Capacity drafts for that same original client and engagement.
+
+**Crucially:** opening the saved HTML later does **not** authenticate the person opening it, re-check current client consent, refresh the source, or prove a verified fix. Never share it publicly: the original tenant findings text is embedded in cleartext and remains sensitive. Preserve the existing source owner's login, privacy, scope and release gates. The offline HTML has no network transport.
+
 ## Workflow
 
 1. **Independently authenticate elsewhere** and obtain the original tenant-/engagement-restricted LightUp CSV with exact headers `finding_id,title,severity,retest_status,remediation`. Keep it private. Do not use a CSV from an unknown source.
