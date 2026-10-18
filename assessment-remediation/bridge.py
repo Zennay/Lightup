@@ -17,7 +17,11 @@ import stat
 import sys
 
 ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT / "assessment-archive"))
+# Keep our product-local packet.py ahead of the original owner's
+# unrelated assessment-archive/packet.py. The archive is only imported
+# by its unambiguous module name "archive".
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+sys.path.insert(1, str(ROOT / "assessment-archive"))
 from archive import Hold, decode_json, encode, publish, read_regular
 
 FLAGS = ("authorized", "consent_verified", "dispatch_allowed", "release_allowed")

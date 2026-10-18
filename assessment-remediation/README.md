@@ -134,3 +134,36 @@ intermediate files; do not treat the five artifacts as a transactional DB commit
       --links /private/lightup-private-manual-links.json \
       --output-dir /private/lightup-followup \
       --prefix final-handoff --bundle
+
+## Direct path from two already-completed original cohorts
+
+Instead of creating an intermediate original cohort comparator JSON by hand,
+use the new **source-integrated offline CLI**:
+
+    python3 assessment-remediation/from_cohorts.py \
+      --baseline /private/original-baseline-cohort.json \
+      --candidate /private/original-candidate-cohort.json \
+      --findings-csv /private/authenticated-client-findings.csv \
+      --output-dir /private/lightup-followup \
+      --prefix first-run --bundle
+
+The tool takes bounded immutable private snapshots of TWO explicit
+already-completed original cohort files, invokes the unchanged original #1515
+comparison through its existing lightup_review compare --cohort --format
+desk-json entry point, verifies original canonical 15-metric source status and
+non-authority, rechecks the original source files, and then publishes the exact
+first-run-canonical-comparison.json alongside the four private bridge
+artifacts and optional confidential 0600 ZIP. No original cohort file or client
+export is modified or included in the handoff ZIP.
+
+For later human mapping, open the separately packaged standalone Mapping Studio,
+select first-run-canonical-comparison.json and the same original five-column
+findings CSV, then export source-bound private human links. Reinvoke bridge.py
+with a NEW prefix and --links to produce the linked dossier; do not expect
+human links to magically appear in the first direct cohort comparison. Review
+original source identity and same-client/engagement linkage with an independent
+operator before recording any human associations.
+
+All component outputs are private non-overwriting files; this is **not** a single
+transaction across files. The workflow stays REVIEW_ONLY/HOLD and returns 2/3;
+a newly constructed comparison is not verified security evidence, grants or GO.

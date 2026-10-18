@@ -17,8 +17,11 @@ from tempfile import TemporaryDirectory
 from types import SimpleNamespace
 
 ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT / "assessment-archive"))
+# Explicit module isolation: this workbench has its own packet.py,
+# distinct from assessment-archive/packet.py.
 sys.path.insert(0, str(ROOT / "scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+sys.path.insert(2, str(ROOT / "assessment-archive"))
 from archive import Hold, publish, read_regular
 
 from bridge import MAX_COMPARE, MAX_FINDINGS, fail_if, original_comparison, original_findings, private_dir, run as create_dossier
