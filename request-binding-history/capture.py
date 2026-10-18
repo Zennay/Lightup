@@ -54,7 +54,8 @@ def read_bytes(path: Path, cap: int) -> bytes:
     fd = os.open(path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
     try:
         s = os.fstat(fd)
-        if not stat.S_ISREG(s.st_mode) or not 0 < s.st_size <= cap:
+        if (not stat.S_ISREG(s.st_mode) or s.st_uid != os.getuid()
+                or stat.S_IMODE(s.st_mode) & 0o077 or not 0 < s.st_size <= cap):
             raise Hold("source file is not a bounded regular file")
         # Read exactly observed bytes, refuse a concurrent source mutation.
         payload = os.read(fd, cap + 1)
@@ -271,7 +272,8 @@ def bundle(folder: Path, outfile: Path, template: Path, explicit_private: bool) 
     ledger, originals = read_ledger(root, require_entries=True)
     if len(originals) > MAX_FILES:
         raise Hold("private bundled original report count exceeded")
-    if outfile.is_symlink() or outfile.exists() or outfile.parent.resolve(strict=True) != root:
+    if (outfile.suffix.lower() != ".html" or outfile.is_symlink() or outfile.exists()
+            or outfile.parent.resolve(strict=True) != root):
         raise Hold("PRIVATE bundle must be a NEW file inside its original restricted capture directory")
     template_bytes = read_bytes(template, 200_000)
     try:
