@@ -714,8 +714,10 @@ $('bulkPreview').addEventListener('click',()=>{
   bulkPlan={epoch:editEpoch,spec,planned};
   const fields=planned.reduce((sum,x)=>sum+Object.keys(x.fills).length,0);
   const held=planned.filter(x=>!x.r.source_attached).length;
+  const earlier=new Set(LightUpLocalLineage.inspect(entries).superseded);
+  const historic=planned.filter(x=>earlier.has(x.r.source_sha256)).length;
   $('bulkResult').textContent='PREVIEW ONLY: '+planned.length+' draft(s), '+fields+
-    ' empty field(s), '+held+' source-unbound HOLD(s). Prepared tasks and all existing values stay unchanged. Explicit confirmation required.';
+    ' empty field(s), '+held+' source-unbound HOLD(s), '+historic+' superseded local version(s). Prepared tasks and all existing values stay unchanged. Explicit confirmation required.';
   $('bulkApply').disabled=false;
  }catch(e){$('bulkResult').textContent='Batch HOLD: '+e.message;}
 });
@@ -727,7 +729,10 @@ $('bulkApply').addEventListener('click',()=>{
   const now=bulkSpec(),current=bulkCandidates(now);
   if(JSON.stringify(now)!==JSON.stringify(spec)||current.planned.length!==planned.length||
    current.planned.some((x,i)=>x.r!==planned[i].r||JSON.stringify(x.fills)!==JSON.stringify(planned[i].fills)))throw Error('Queue or field selection changed.');
-  if(!confirm('Apply '+planned.length+' coordination-only assignments? This fills EMPTY fields and does not change any paperwork status, authenticated consent, decision or grant.'))return;
+  const older=new Set(LightUpLocalLineage.inspect(entries).superseded);
+  const historic=planned.filter(x=>older.has(x.r.source_sha256)).length;
+  if(!confirm('Apply '+planned.length+' coordination-only assignments ('+historic+
+   ' superseded local version(s))? This fills EMPTY fields and does not change any paperwork status, authenticated consent, decision or grant. Prefer current local tips; historical drafts must be reviewed independently.'))return;
   const snapshots=planned.map(({r,fills})=>({
    r,original:{...r.tasks[spec.stage]},applied:{...r.tasks[spec.stage],...fills}
   }));
