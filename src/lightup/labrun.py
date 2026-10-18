@@ -611,17 +611,20 @@ def main_assess(argv: list[str] | None = None) -> int:
                     "authorization_granted")
             }
     except (OSError, UnicodeError, GatewayConfigurationError, ModelProviderError,
-            PlanRejected, PermissionError, ValueError) as exc:
-        print(json.dumps({"error": str(exc)}, indent=2))
+            PlanRejected, PermissionError, ValueError):
+        # Exception text may contain original URLs, provider credentials,
+        # filesystem paths or private catalog identities. Do not echo it.
+        print(json.dumps({"error": "isolated lab assessment was not admitted or could not complete"}, indent=2))
         return 2
 
     exit_code = 0
     if not args.no_review:
         try:
             result["review"] = AssessmentReviewPipeline(gateway).review(result).to_dict()
-        except (GatewayConfigurationError, ModelProviderError, ValueError) as exc:
-            # A failed review never hides the gated assessment result.
-            result["review_skipped"] = str(exc)
+        except (GatewayConfigurationError, ModelProviderError, ValueError):
+            # No provider/model exception or untrusted URL leaks into results.
+            # A failed review never masquerades as completed verification.
+            result["review_skipped"] = "model review incomplete; no verified verdict produced"
             exit_code = 2
     if exit_code != 0 and args.output:
         # Never persist a partial/failed review as a successful completed
