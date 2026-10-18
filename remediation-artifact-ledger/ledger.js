@@ -2,6 +2,7 @@
 (function () {
 'use strict';
 const MAX_FILE = 16 * 1024 * 1024, MAX_DOCS = 120, MAX_IMPORT = 1024 * 1024;
+const MAX_NATIVE_CASEWORK = 4 * MAX_IMPORT, MAX_NATIVE_EVIDENCE = 2 * MAX_IMPORT;
 const STAGES = ['unreviewed', 'human_review', 'follow_up', 'archived'];
 const AUTH_FLAGS = ['authenticated','tenant_verified','source_authorized','assessment_authorized','grant','client_consent','operator_consent','execution','scan','audit_verdict','retest_verified','release'];
 const $ = id => document.getElementById(id);
@@ -25,8 +26,8 @@ function download(name, content, mime) {
  setTimeout(()=>URL.revokeObjectURL(url),1500);
 }
 function sourceFingerprint(findings){return JSON.stringify(findings.slice().sort((a,b)=>a.finding_id<b.finding_id?-1:a.finding_id>b.finding_id?1:0));}
-function strictJSON(text){
- if(typeof text!=='string'||utf8(text).length>MAX_IMPORT)fail('PRIVATE import exceeds 1 MiB.');
+function strictJSON(text,cap=MAX_IMPORT){
+ if(typeof text!=='string'||utf8(text).length>cap)fail('PRIVATE import exceeds 1 MiB.');
  const data=JSON.parse(text);
  // Duplicate JSON property keys must not silently replace previously declared values.
  const stack=[];let quoted=false,start=0,escaped=false;
@@ -354,7 +355,7 @@ async function importCasework(){
  if(!state.sha)fail('Load original independently checked findings CSV first.');
  const file=$('caseworkImport').files[0];
  const sourceAtStart=state.sha,context=state.client+'|'+state.engagement;
- const raw=strictJSON(await fileReader(file,MAX_IMPORT));
+ const raw=strictJSON(await fileReader(file,MAX_NATIVE_CASEWORK),MAX_NATIVE_CASEWORK);
  const packet=LightUpCasework.loadPacket(raw);
  if(packet.source_sha256!==sourceAtStart)
   fail('Native Casework source digest absent or different from this ORIGINAL findings source.');
@@ -407,7 +408,7 @@ function parseEvidenceRow(v,ids){
 async function importEvidenceV2(){
  if(!state.sha)fail('Load original independently checked findings CSV first.');
  const sourceAtStart=state.sha,contextAtStart=state.client+'|'+state.engagement;
- const data=strictJSON(await fileReader($('evidenceImport').files[0],MAX_IMPORT));
+ const data=strictJSON(await fileReader($('evidenceImport').files[0],MAX_NATIVE_EVIDENCE),MAX_NATIVE_EVIDENCE);
  if(!data||Object.getPrototypeOf(data)!==Object.prototype||
  data.kind!=='lightup.remediation_evidence_coordination'||data.schema_version!==2||
  data.disposition!=='UNVERIFIED_OFFLINE_HUMAN_COORDINATION'||
