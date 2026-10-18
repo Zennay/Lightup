@@ -122,7 +122,7 @@ restoreInput.addEventListener('change',async()=>{
   const data=JSON.parse(raw);
   // Canonical serialization: duplicate keys, unexpected alternative spellings,
   // hidden extra whitespace and nonstandard JSON cannot survive this boundary.
-  if(raw!==JSON.stringify(data,null,2)+'\n')
+  if(raw!==JSON.stringify(data,null,2)+'\\n')
    throw Error('Non-canonical or duplicate-key private handoff.');
   if(!exactKeys(data,requiredTop) ||
      data.schema!=='lightup.scope_window_human_handoff.v1' ||
