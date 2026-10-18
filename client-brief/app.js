@@ -29,6 +29,7 @@ async function readSource(file) {
 async function load() {
  const current=$('current').files[0], previous=$('previous').files[0];
  if (!current) return note('Choose the current findings CSV.',true);
+ if (state && !confirm('Opening new sources replaces the current in-memory report and its local discussion stages. Export first if needed. Continue?')) return;
  if (previous&&!$('same-scope').checked) return note('Confirm the independently checked same-client and same-engagement context before loading an earlier CSV.',true);
  $('load').disabled=true;
  try {
@@ -36,6 +37,7 @@ async function load() {
   // Publish only after *both* original exports are fully parsed and bounded.
   const changes=older?LightUpCasework.compareSource(older.rows,fresh.rows):null;
   state={fresh,older,changes,sameScopeAcknowledged:!!older};
+  ['urgent','medium','low'].forEach(key=>$(key+'-decision').value='discussion_pending');
   $('details').checked=false;
   $('workspace').hidden=false;
   render();
@@ -90,6 +92,8 @@ function dateFromInput() {
  if(!Number.isFinite(ms)||new Date(ms).toISOString().slice(0,10)!==s)throw Error('Invalid planning date.');
  return ms;
 }
+const STAGES=Object.freeze(['discussion_pending','client_question_outstanding','operator_question_outstanding','joint_discussion_recorded']);
+function discussion(key){const stage=$(key+'-decision').value;if(!STAGES.includes(stage))throw Error('Invalid discussion stage.');return stage;}
 function plan() {
  const anchor=dateFromInput();
  return GROUPS.map(g=>{
@@ -97,11 +101,11 @@ function plan() {
   if(!Number.isInteger(days)||days<1||days>365)throw Error('Planning horizons must be whole calendar days from 1 to 365.');
   const subset=state.fresh.rows.filter(r=>g.severities.includes(r.severity));
   const due=anchor===null?'Not specified':new Date(anchor+days*86400000).toISOString().slice(0,10);
-  return {...g,days,amount:subset.length,regressions:subset.filter(r=>r.retest_status==='regression').length,due};
+  return {...g,days,amount:subset.length,regressions:subset.filter(r=>r.retest_status==='regression').length,due,discussion:discussion(g.key)};
  });
 }
 function planHTML(items) {
- return items.map(g=>'<article class="roadmap-item"><h3>'+H(g.label)+'</h3><p><strong>'+g.amount+'</strong> source findings'+(g.regressions?', including '+g.regressions+' source-reported regression(s)':'')+'</p><p>Suggested follow-up: '+H(g.days)+' calendar days'+(g.due==='Not specified'?' (no reference date)':' · '+H(g.due))+'</p><p>'+H(g.reason)+'</p></article>').join('');
+ return items.map(g=>'<article class="roadmap-item"><h3>'+H(g.label)+'</h3><p><strong>'+g.amount+'</strong> source findings'+(g.regressions?', including '+g.regressions+' source-reported regression(s)':'')+'</p><p>Suggested follow-up: '+H(g.days)+' calendar days'+(g.due==='Not specified'?' (no reference date)':' · '+H(g.due))+'</p><p>Local follow-up stage: '+H(g.discussion.replaceAll('_',' '))+' (self-reported)</p><p>'+H(g.reason)+'</p></article>').join('');
 }
 function sourceSummary() {
  return 'Current input '+state.fresh.byteLength+' bytes; SHA-256: '+(state.fresh.sha||'unavailable in this browser')+'. '+(state.older?'Earlier input '+state.older.byteLength+' bytes; SHA-256: '+(state.older.sha||'unavailable')+'. ':'')+'Fingerprints are NOT signatures, authentication, or consent receipts.';
@@ -140,7 +144,7 @@ function reportData() {
   imported_findings:state.fresh.rows.length,source_sha256:state.fresh.sha,
   earlier_sha256:state.older?.sha??null,severity_counts:severity,source_retest_counts:retest,
   source_changes:diff?{added:diff.added.length,changed:diff.changed.length,absent_unverified:diff.missing.length,unchanged:diff.unchanged.length}:null,
-  planning:road.map(g=>({group:g.key,findings:g.amount,suggested_days:g.days,suggested_follow_up:g.due,not_an_sla:true})),
+  planning:road.map(g=>({group:g.key,findings:g.amount,suggested_days:g.days,suggested_follow_up:g.due,self_reported_discussion_stage:g.discussion,not_an_sla:true})),
   caveat:'Local summary of untrusted CSV bytes. Never a grant, consent, permission, scan or verified retest.'};
 }
 function staticHTML(data) {
@@ -154,7 +158,7 @@ function staticHTML(data) {
  return '<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="Content-Security-Policy" content="default-src \'none\'; style-src \'unsafe-inline\'; connect-src \'none\'; img-src \'none\'; script-src \'none\'; object-src \'none\'"><title>'+H(title)+'</title><style>'+printCSS+'</style></head><body><small>LIGHTUP / REVIEW_ONLY / DRAFT-HOLD</small><h1>'+H(title)+'</h1><p class="tag">Audience: '+H($('audience').value)+'</p><div class="notice"><strong>Not an authorisation or verification document.</strong> This static, unsigned report is derived from a locally provided file. It does not establish client identity, scope, client/operator consent, live revocation, grant validity, execution authority, a scan outcome or verified remediation.</div><h2>Executive overview</h2>'+narrative(sev,ret,state.changes)+
  '<h2>Severity distribution</h2><table><thead><tr><th>Source severity</th><th>Count</th></tr></thead><tbody>'+rows+'</tbody></table>'+
  '<h2>Source-reported retest states</h2><table><thead><tr><th>Source state</th><th>Count</th></tr></thead><tbody>'+sourceRows+'</tbody></table>'+changes+
- '<h2>Illustrative follow-up roadmap</h2>'+road.map(g=>'<article><strong>'+H(g.label)+'</strong><p>'+g.amount+' findings; discuss within '+g.days+' calendar days'+(g.due==='Not specified'?' (no reference date)':' from the reference date, by '+H(g.due))+'. Not an SLA, order or booked activity.</p><p>'+H(g.reason)+'</p></article>').join('')+
+ '<h2>Illustrative follow-up roadmap</h2>'+road.map(g=>'<article><strong>'+H(g.label)+'</strong><p>'+g.amount+' findings; discuss within '+g.days+' calendar days'+(g.due==='Not specified'?' (no reference date)':' from the reference date, by '+H(g.due))+'. Not an SLA, order or booked activity.</p><p>Local follow-up stage: '+H(g.discussion.replaceAll('_',' '))+' (self-reported)</p><p>'+H(g.reason)+'</p></article>').join('')+
  details+'<h2>Evidence and provenance caveat</h2><p class="meta">'+H(sourceSummary())+'</p><p class="muted">Original report values are untrusted unless authenticated separately. This file contains no live permissions and has not checked current grants or independently verified remediation.</p></body></html>';
 }
 function download(content,name,mime) {
@@ -175,7 +179,7 @@ function exportJSON() {
 }
 function forget() {
  state=null;$('current').value='';$('previous').value='';$('same-scope').checked=false;$('details').checked=false;
- $('workspace').hidden=true;$('kpis').replaceChildren();$('changes').replaceChildren();$('preview').replaceChildren();
+ $('workspace').hidden=true;['urgent','medium','low'].forEach(key=>$(key+'-decision').value='discussion_pending');$('kpis').replaceChildren();$('changes').replaceChildren();$('preview').replaceChildren();
  note('In-memory findings forgotten. Previously downloaded files must be deleted separately.');
 }
 $('load').addEventListener('click',load);
@@ -183,5 +187,5 @@ $('forget').addEventListener('click',forget);
 $('html-export').addEventListener('click',exportHTML);
 $('json-export').addEventListener('click',exportJSON);
 $('print').addEventListener('click',()=>{if(state){try{reportData();window.print();}catch(e){note(e.message,true);}}});
-['anchor','urgent-days','medium-days','low-days','details','report-title','audience'].forEach(id=>$(id).addEventListener('input',render));
+['anchor','urgent-days','medium-days','low-days','details','report-title','audience','urgent-decision','medium-decision','low-decision'].forEach(id=>$(id).addEventListener('input',render));
 })();
