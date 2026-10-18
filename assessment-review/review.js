@@ -107,6 +107,24 @@
   const priority = c => !c.regressions.length ? "No regression" :
     c.regressions.some(x => x === "scope_violations" || x === "policy_violations") ? "Critical drift" :
     c.regressions.some(x => ["missed_findings", "invalid_findings", "valid_findings"].includes(x)) ? "High drift" : "Review drift";
+
+  function nextHumanAction(c) {
+    if (c.regressions.includes("scope_violations") || c.regressions.includes("policy_violations"))
+      return "Escalate policy drift to an independent scope reviewer. Do not expand or execute assessment activity.";
+    if (c.regressions.includes("missed_findings"))
+      return "Reconcile missed planted lab findings against original ground truth with the source owner.";
+    if (c.regressions.includes("invalid_findings"))
+      return "Examine evidence quality and false-positive classification in the isolated lab records.";
+    if (c.regressions.includes("valid_findings"))
+      return "Review detector/model version changes and loss of previously valid lab findings.";
+    if (c.regressions.includes("coverage_assessed"))
+      return "Review lab scenario coverage mapping and omitted assessment surfaces.";
+    if (c.regressions.some(x => ["evidence_quality","reproducibility","remediation_quality","retest_correctness"].includes(x)))
+      return "Request independent rubric/evidence review and a proposed remediation plan.";
+    if (c.regressions.length)
+      return "Compare source metric details and prepare an independent human follow-up.";
+    return "No scored regression reported. Review informational performance/cost changes if relevant.";
+  }
   const urgency = c => ["Critical drift", "High drift", "Review drift", "No regression"].indexOf(priority(c));
   const label = i => "Case " + String(i + 1).padStart(2, "0");
   const nice = s => s.replaceAll("_", " ");
@@ -171,6 +189,7 @@
     if (!c) return;
     badge(chips, c.status, c.status === "HOLD" ? "bad" : "ok");
     badge(chips, c.regressions.length + " regressed metrics", c.regressions.length ? "bad" : "ok");
+    $("guidance").textContent = nextHumanAction(c);
     $("stage").value = c.stage;
     $("due").value = c.due;
     for (const m of [...c.changes].sort((a,b) => Number(b.regression)-Number(a.regression))) {
@@ -312,6 +331,21 @@
     if (e.target.files[0]) await restoreReview(e.target.files[0]);
   });
   $("file").addEventListener("change", async e => {if(e.target.files[0]) await load(e.target.files[0]);});
+
+  $("batch-triage").addEventListener("click", () => {
+    if (!report) return;
+    const pending = report.cases.filter(c => c.regressions.length && c.stage === "todo");
+    if (!pending.length) {
+      alert("No new regressed cases need triage.");
+      return;
+    }
+    if (!window.confirm("Move " + pending.length +
+       " new regressed lab cases to human investigation? This is NOT assessment authorization.")) return;
+    pending.forEach(c => { c.stage = "investigating"; });
+    alert("Queued " + pending.length +
+      " human investigations. Original report HOLD and security flags are unchanged.", "good");
+    render();
+  });
   $("clear").addEventListener("click", reset);
   $("filter").addEventListener("change", renderQueue);
   $("stage").addEventListener("change", e => {
@@ -332,9 +366,13 @@
     if (!report) return;
     const out = reviewExport();
     const cols = ["case","priority","source_status","metric_regressions","human_stage","follow_up_date"];
+    cols.push("suggested_human_action");
     const rows = [cols.map(csvCell).join(",")];
-    for (const item of out.cases) rows.push(cols.map(key =>
-      csvCell(Array.isArray(item[key]) ? item[key].join(";") : item[key])).join(","));
+    for (let i = 0; i < out.cases.length; i++) {
+      const item = {...out.cases[i], suggested_human_action: nextHumanAction(report.cases[i])};
+      rows.push(cols.map(key =>
+        csvCell(Array.isArray(item[key]) ? item[key].join(";") : item[key])).join(","));
+    }
     download("lightup-human-follow-up.csv", rows.join("\r\n")+"\r\n", "text/csv;charset=utf-8");
   });
 
