@@ -150,10 +150,86 @@ function selectedFindings(){
  const filter=$('filter').value;
  return source.filter(f=>included(f,casework?.get(f.finding_id),review.get(f.finding_id),filter));
 }
+
+/* Explicit single-team private exports. No implicit all-tenant or all-team package. */
+function teamFor(f){
+ const localCase=casework?.get(f.finding_id),localReview=review.get(f.finding_id);
+ return (localCase?.owner?.trim()||localReview?.reviewer?.trim()||'') || null;
+}
+function updateTeamChoices(){
+ const box=$('packTeam'),previous=box.value,available=new Set();
+ for(const f of source||[])available.add(teamFor(f)||'__UNASSIGNED__');
+ const sorted=[...available].sort((a,b)=>a.localeCompare(b));
+ box.replaceChildren();
+ const initial=el('option','','Choose one locally declared team');initial.value='';box.append(initial);
+ for(const t of sorted){
+  const opt=el('option','',t==='__UNASSIGNED__'?'Unassigned (private triage only)':t);
+  opt.value=t;box.append(opt);
+ }
+ box.value=sorted.includes(previous)?previous:'';
+ updateTeamCount();
+}
+function selectedTeamRows(){
+ const team=$('packTeam').value;
+ if(!team)return [];
+ return (source||[]).filter(f=>(teamFor(f)||'__UNASSIGNED__')===team).map(f=>({
+  finding:f,plan:casework?.get(f.finding_id)||engine.newCase(f),coordination:review.get(f.finding_id)
+ }));
+}
+function updateTeamCount(){
+ $('packCount').textContent=$('packTeam').value?
+  String(selectedTeamRows().length)+' source findings in this locally declared routing group':'Select a team to scope a private export.';
+}
+function teamPacket(rows){
+ const team=$('packTeam').value;
+ if(!sourceHash||!team||!rows.length)throw Error('Choose a populated local routing group.');
+ return {kind:'lightup.remediation_private_team_handoff',schema_version:1,
+  disposition:'UNVERIFIED_PRIVATE_HUMAN_COORDINATION',
+  source_contract:'lightup.finding_export._COLUMNS_v1',source_sha256:sourceHash,
+  team_label:team==='__UNASSIGNED__'?null:team,
+  original_findings_total:source.length,selected_findings_total:rows.length,
+  ...Object.fromEntries(flags.map(k=>[k,false])),
+  cases:rows.map(({finding:f,plan:c,coordination:r})=>({
+   finding_id:f.finding_id,title:f.title,severity:f.severity,original_retest_status:f.retest_status,
+   original_remediation:f.remediation,casework_status:c.status,due_date:c.due_date,
+   local_owner:c.owner,next_action:c.next_action,verification_plan:c.verification_plan,
+   blocker:c.blocker,review_stage:r.stage,evidence_reference:r.reference,
+   local_reviewer:r.reviewer,human_follow_up:r.next_step,
+   warnings:humanQueue(f,c,r)
+  })),
+  warning:'Private unsigned subset of original exported findings and local notes. Not verified, not an approved work order, not consent, not an authorized retest or grant.'
+ };
+}
+function safeSpreadsheetCell(value){
+ const raw=String(value??'').replace(/\u0000/g,'');
+ /* Always prefix user-derived text so invisible/Unicode-spoofed formula prefixes
+    cannot become spreadsheet formulas after trimming or normalization. */
+ return '"'+("'"+raw).replace(/"/g,'""')+'"';
+}
+function teamCsv(packet){
+ const keys=['finding_id','title','severity','original_retest_status','original_remediation',
+  'casework_status','due_date','local_owner','next_action','verification_plan','blocker',
+  'review_stage','evidence_reference','local_reviewer','human_follow_up'];
+ const body=[keys,...packet.cases.map(c=>keys.map(k=>c[k]))];
+ return '\ufeff'+body.map(row=>row.map(safeSpreadsheetCell).join(',')).join('\r\n')+'\r\n';
+}
+function doTeamExport(kind){
+ try{
+  if(!sourceHash)throw Error('Load original source first.');
+  const rows=selectedTeamRows(),packet=teamPacket(rows);
+  const human=packet.team_label||'UNASSIGNED';
+  if(!confirm('Export ONLY '+rows.length+' PRIVATE finding summaries for locally declared group "'+
+    human+'"? This can expose sensitive client issue descriptions; confirm recipient independently in an approved channel. It does not grant access or authority.'))return;
+  if(kind==='json')download('lightup-private-single-team-handoff.json',JSON.stringify(packet,null,2),'application/json');
+  else download('lightup-private-single-team-handoff.csv',teamCsv(packet),'text/csv');
+  status('Private single-team '+kind.toUpperCase()+' created for '+rows.length+' original records. Sender must verify recipient; no client authorization or retest is asserted.');
+ }catch(err){status(err.message,true);}
+}
 function render(){
- const ready=!!source;$('dashboard').hidden=!ready;$('boardSection').hidden=!ready;$('actions').hidden=!ready;$('refreshPanel').hidden=!ready;
+ const ready=!!source;$('dashboard').hidden=!ready;$('boardSection').hidden=!ready;$('actions').hidden=!ready;$('refreshPanel').hidden=!ready;$('teamPanel').hidden=!ready;
  if(!ready)return;
  const m=count();for(const [key,num] of Object.entries(m))$(key).textContent=String(num);
+ updateTeamChoices();
  $('fingerprint').textContent=sourceHash?'Local source SHA-256: '+sourceHash+' (NOT authentication)':'Source fingerprint unavailable. All exports disabled.';
  const filter=$('filter').value;
  const items=source.slice().sort((a,b)=>SEV.indexOf(a.severity)-SEV.indexOf(b.severity)||a.finding_id.localeCompare(b.finding_id));
@@ -174,7 +250,7 @@ function render(){
   select.value=r.stage;select.addEventListener('change',e=>{r.stage=e.target.value;changed=true;render();});
   selectLabel.append(select);section.append(selectLabel);
   section.append(formField('Private evidence reference (no secrets or raw evidence)',r.reference,240,v=>{r.reference=v;changed=true;renderMetrics();}));
-  section.append(formField('Human reviewer/team (local, unverified)',r.reviewer,120,v=>{r.reviewer=v;changed=true;}));
+  section.append(formField('Human reviewer/team (local, unverified)',r.reviewer,120,v=>{r.reviewer=v;changed=true;updateTeamChoices();}));
   section.append(formField('Next evidence or retest coordination step',r.next_step,500,v=>{r.next_step=v;changed=true;},true));
   board.append(section);
  }
@@ -304,12 +380,17 @@ $('applyBulk').addEventListener('click',()=>{
  }catch(err){status(err.message,true);}
 });
 
+
+$('packTeam').addEventListener('change',updateTeamCount);
+$('exportTeamJSON').addEventListener('click',()=>doTeamExport('json'));
+$('exportTeamCSV').addEventListener('click',()=>doTeamExport('csv'));
 $('filter').addEventListener('change',render);
 $('clear').addEventListener('click',()=>{
  if(changed&&!confirm('Discard unsaved local review notes?'))return;
  source=null;casework=null;sourceHash=null;review=new Map();changed=false;refreshCandidate=null;
  $('sourceFile').value='';$('caseFile').value='';$('reviewFile').value='';$('refreshFile').value='';$('allowHashlessCasework').checked=false;$('refreshConfirm').checked=false;$('refreshSummary').textContent='No refresh preview.';
- $('dashboard').hidden=true;$('boardSection').hidden=true;$('actions').hidden=true;$('refreshPanel').hidden=true;
+ $('dashboard').hidden=true;$('boardSection').hidden=true;$('actions').hidden=true;$('refreshPanel').hidden=true;$('teamPanel').hidden=true;
+ $('packTeam').replaceChildren();$('packCount').textContent='No original findings imported.';
  $('board').replaceChildren();status('All source and local notes forgotten from this tab.');
 });
 $('save').addEventListener('click',()=>{if(!sourceHash)return;download('lightup-evidence-coordination-private.json',JSON.stringify(snapshot(),null,2),'application/json');changed=false;status('Private unsigned coordination notes downloaded; protect as sensitive data.');});
