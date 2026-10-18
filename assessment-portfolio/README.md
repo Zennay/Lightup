@@ -134,3 +134,7 @@ Use [collaboration_cycle.py](COLLABORATION-CYCLE.md) to merge 2–12 disjoint al
 ### Human mediation for overlapping original review proposals
 
 When [multi-reviewer original human portfolio merge](PORTFOLIO-COLLABORATION.md) rejects overlapping original agenda/slot edits, generate a [standalone private original-source mediation Studio](PRIVATE-MEDIATION.md) via `portfolio_mediation.py` with the same original workspace/manifest/choices plus all reviewed source-bound bundles. Every original conflict requires an **explicit human choice** between contributor drafts or retaining the original human stage/role/date. The owner-private offline HTML only exports a new complete `--proposal-bundle` after every contested slot and independent private human-only acknowledgement; it does not silently merge, verify security findings, grant consent, or alter originals.
+
+### Complete source-bound human conflict resolution into NEXT review cycle
+
+Use [mediation_return.py](MEDIATION-RETURN.md) with the original offline workspace, original manifest/choices, every independently exported human reviewer bundle, a separately exported human-resolved original all-agenda private proposal and the explicit next planning date. It permits only exact original human prior values or originally proposed candidate human values at each source slot, then reuses the strict full original human return and next review-cycle gates to produce **one new private next-cycle ZIP** without any intermediate file or target action. An unsigned browser decision is never client permission.
