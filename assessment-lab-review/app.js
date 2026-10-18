@@ -45,6 +45,38 @@ function parseStrict(raw){
  }
  const parsed=read(0);ws();require_(p===raw.length);return parsed;
 }
+
+const METRICS=[
+ "valid_findings","invalid_findings","missed_findings","coverage_assessed","coverage_unknown",
+ "scope_violations","policy_violations","human_interventions","tool_calls",
+ "evidence_quality","reproducibility","remediation_quality","retest_correctness",
+ "runtime_seconds","compute_cost_usd","false_positive_rate"];
+const COUNT_METRICS=new Set(METRICS.slice(0,9));
+const SCORE_METRICS=new Set(["evidence_quality","reproducibility","remediation_quality",
+ "retest_correctness","false_positive_rate"]);
+function admitEvaluation(record,runId,scenarioId){
+ require_(exact(record,["record_id","scenario_id","run_id","engine_version",
+  "model_bindings","metrics","created_at","notes"]));
+ require_(validText(record.record_id,256)&&record.record_id.length>0 &&
+  record.run_id===runId&&record.scenario_id===scenarioId &&
+  validText(record.engine_version,256)&&record.engine_version.length>0 &&
+  validText(record.created_at,128)&&validText(record.notes,32768));
+ require_(Array.isArray(record.model_bindings)&&record.model_bindings.length<=64 &&
+  record.model_bindings.every(pair=>Array.isArray(pair)&&pair.length===2&&
+   pair.every(v=>validText(v,1024))));
+ const m=record.metrics;require_(exact(m,METRICS));
+ for(const name of METRICS){
+  const value=m[name];
+  require_(typeof value==="number"&&Number.isFinite(value)&&value>=0);
+  if(COUNT_METRICS.has(name))require_(Number.isSafeInteger(value)&&value<=1e9);
+  if(SCORE_METRICS.has(name))require_(value<=1);
+  if(name==="runtime_seconds"||name==="compute_cost_usd")require_(value<=1e12);
+ }
+ const denom=m.valid_findings+m.invalid_findings;
+ const expected=denom?m.invalid_findings/denom:0;
+ require_(Math.abs(m.false_positive_rate-expected)<=1e-8);
+}
+
 function admit(x){
  require_(obj(x) && !Object.hasOwn(x,"mode") &&
   (Object.keys(x).sort().join(",")===[
@@ -60,10 +92,22 @@ function admit(x){
  require_(Array.isArray(x.plan)&&x.plan.length<=512 && Array.isArray(x.denied)&&x.denied.length<=512 &&
   Array.isArray(x.elevation_requests)&&x.elevation_requests.length<=512);
  require_(obj(x.coverage)&&obj(x.evaluation)&&validText(x.report_markdown,MAX_BYTES));
+ admitEvaluation(x.evaluation,x.run_id,x.scenario_id);
+ for(const call of x.plan){
+  require_(exact(call,["tool_id","asset","arguments"])&&
+   validText(call.tool_id,256)&&validText(call.asset,2048)&&obj(call.arguments)&&
+   Object.keys(call.arguments).length<=64);
+ }
+ for(const denial of x.denied){
+  require_(exact(denial,["tool_id","reason"])&&validText(denial.tool_id,256)&&
+   validText(denial.reason,8192));
+ }
  if(Object.hasOwn(x,"benchmark_case")){
   require_(exact(x.benchmark_case,["record","context"])&&obj(x.benchmark_case.record)&&obj(x.benchmark_case.context));
   require_(x.benchmark_case.context.is_lab===true&&x.benchmark_case.context.authorization===null&&
    x.benchmark_case.context.run_id===x.run_id);
+  admitEvaluation(x.benchmark_case.record,x.run_id,x.scenario_id);
+  require_(JSON.stringify(x.benchmark_case.record)===JSON.stringify(x.evaluation));
  }
  const ids=new Set();
  for(const f of x.findings){
