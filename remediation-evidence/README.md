@@ -2,6 +2,22 @@
 
 **Stage: INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD.** Never use this as permission to scan.
 
+## New complete human team collaboration package
+
+For offline operator and team review without any runtime server, download the **[two-app LightUp Evidence Collaboration ZIP](https://github.com/Zennay/Lightup/raw/refs/heads/chatgpt/lightup-remediation-evidence-review-20261018/remediation-evidence/LightUp-Evidence-Collaboration.zip)**. It includes:
+
+- `operator-evidence-review.html`: the original source-bound Evidence Review Board, with source import, human reference dossiers, priorities, targeted private team JSON handoffs and fail-closed return imports.
+- `team-reply.html`: a separate confidential recipient browser editor. The recipient opens their already authorized PRIVATE single-team JSON, sees only that handoff's original findings, and edits the human stage, reviewer, next-step and v2 evidence references through ordinary forms. The recipient saves another PRIVATE JSON for the original operator; they do not edit raw JSON manually.
+- `START-HERE.txt`: explicit human workflow and non-authorizing boundary.
+
+The ZIP itself contains **zero client findings, credentials, evidence, work orders or secrets**. The sensitive operator export and separately transferred private team packet are never bundled inside it. The source ZIP is reproducibly built by `python3 remediation-evidence/package_collaboration.py`; it uses the already original-SHA-pinned operator packager and independent script-CSP-pinned team reply packager. The recipient's `team-reply.js` strictly rejects unexpected or duplicated JSON fields, type-confused records, any true authority flag, unknown original findings and malformed local review fields. Both static browser apps run without network access or persistent browser storage.
+
+The recipient is NOT authenticated by the downloaded file; an actual LightUp operator must still validate the received packet against original current findings, team membership, Casework planning and review baseline. No real retest, patch acceptance, grant, consent, scan or source DB update is performed.
+
+### Separate single-file team editor
+
+You can also [download just the offline private Team Reply Desk](https://github.com/Zennay/Lightup/raw/refs/heads/chatgpt/lightup-remediation-evidence-review-20261018/remediation-evidence/team-reply-standalone.html) without the operator workbench. It supports both original team handoff v1 and new v2 evidence-dossier packets.
+
 ## Recommended: authenticated source directly into private standalone HTML
 
 Run the **new separate original-domain-integrated CLI** only from an interactive, trusted LightUp repository checkout with an original authorized account, client, engagement and private output location:
