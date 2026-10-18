@@ -127,3 +127,17 @@ The inspector admits only an explicitly selected bounded **regular, non-symlink 
 A separate `--format redacted-pack --output /private/NEW-brief.zip` creates a **different, 4-file** compact review packet with only `READ-ME.txt`, fingerprint-free ordinal `review.html`, `human-worklist.csv`, and a privacy-minimal `manifest.json` recording report/CSV SHA-256, review status, numeric case/regression counts and literal false permission flags. It deliberately excludes: the source-rich `review-desk.json`, original scenario IDs, asset names, original source fingerprints, standalone interactive browser and all raw evidence. All original cases still pass the same local admission and original comparator before any output is created; a canonical regression remains HOLD and a malformed/replayed input yields no artifact. Publication is the same exclusive fsynced private 0600 ZIP, not a public sharing action.
 
 The existing read-only package inspector `assessment_runtime_verify_pack_cli_20261018.py` now also recognizes the **exact separate 4-file** `lightup.ordinal_review_brief.v1` schema, bounding every decompressed member, preserving false permission flags and checking the brief's own unsigned manifest/member digests. It still recognizes the original full private seven-file package. Since even numeric aggregate metric combinations can be sensitive, **redacted means minimized, not anonymous or approved for publication**. No real benchmark truth, security assurance, authenticated consent, human GO or deployment permission is asserted.
+
+## Restore original human Review Desk planning into a complete private archive
+
+The independent unchanged browser Review Desk #1576 can export human stages, workstreams and follow-up dates as `lightup-offline-human-triage-v1/v2` JSON. The new CLI turns a validated original seven-file private ZIP and **that exact source-bound browser export** into a complete new nine-file private archive:
+
+```bash
+PYTHONPATH=src:scripts python scripts/assessment_runtime_attach_triage_cli_20261018.py \
+  /private/ORIGINAL-review.zip /private/BROWSER-saved-review.json \
+  --output /private/NEW-followup-review.zip
+```
+
+Original `review-desk.json` bytes must SHA-256 match the browser review `source_sha256`; accepted cases must match original ordered ordinal labels, statuses, source-regression names and derived priorities. The v1/v2 import strictly accepts original human stage, optional calendar due date and selected workstream; no extra fields/identity/permission claims. On mismatch generic HOLD and no new output. Source comparison data, authority flags and original browser app remain unmodified.
+
+The nine-file source-bound packet preserves seven original members except the versioned v2 manifest, and adds `saved-human-review.json` plus `human-summary.html` (print-ready human follow-up without original case identities). In the original browser open `review-desk.json`, then **Restore saved review** by selecting `saved-human-review.json`; its original SHA gate is preserved. The read-only package inspector now admits the exact v1 (7-file) and v2 (9-file) manifests and verifies the saved review against its original comparison source, plus all member hashes. The ZIP remains private 0600 with atomic publication and cannot approve scanning, consent, dispatch, release or waive HUMAN GO.

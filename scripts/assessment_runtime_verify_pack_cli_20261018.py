@@ -17,7 +17,7 @@ from assessment_runtime_review_handoff_cli_20261018 import (
     LANDING_SHA256, REVIEW_DESK_SHA256, REVIEW_DESK_SOURCE_COMMIT,
 )
 
-ARCHIVE_LIMIT = 1_500_000
+ARCHIVE_LIMIT = 1_700_000
 CAPS = {
     "index.html": 16_384,
     "START-HERE.txt": 4_096,
@@ -27,6 +27,15 @@ CAPS = {
     "human-worklist.csv": 131_072,
     "manifest.json": 8_192,
 }
+ANNOTATED_CAPS = dict(CAPS, **{
+    "saved-human-review.json": 131_072,
+    "human-summary.html": 131_072,
+})
+ANNOTATED_KEYS = frozenset((
+    "saved_human_review_sha256", "saved_human_review_source_sha256",
+    "human_summary_sha256",
+))
+
 BRIEF_CAPS = {
     "READ-ME.txt": 4_096,
     "review.html": 1_048_576,
@@ -107,7 +116,9 @@ def inspect(path):
     with ZipFile(BytesIO(raw)) as archive:
         entries = archive.infolist()
         names = set(member.filename for member in entries)
-        caps = CAPS if names == set(CAPS) else (BRIEF_CAPS if names == set(BRIEF_CAPS) else None)
+        caps = (CAPS if names == set(CAPS) else
+                ANNOTATED_CAPS if names == set(ANNOTATED_CAPS) else
+                BRIEF_CAPS if names == set(BRIEF_CAPS) else None)
         if caps is None or len(entries) != len(caps):
             raise ValueError("unexpected archive members")
         content = {}
@@ -123,9 +134,13 @@ def inspect(path):
     if caps is BRIEF_CAPS:
         return _inspect_brief(content)
     manifest = _json(content["manifest.json"])
-    if type(manifest) is not dict or set(manifest) != MANIFEST_KEYS:
+    annotated = caps is ANNOTATED_CAPS
+    expected_keys = MANIFEST_KEYS | (ANNOTATED_KEYS if annotated else frozenset())
+    expected_format = ("lightup.private_lab_review_pack.v2" if annotated
+                       else "lightup.private_lab_review_pack.v1")
+    if type(manifest) is not dict or set(manifest) != expected_keys:
         raise ValueError("unexpected manifest")
-    if (manifest["format"] != "lightup.private_lab_review_pack.v1"
+    if (manifest["format"] != expected_format
             or manifest["status"] not in ("HOLD", "REVIEW_ONLY")
             or manifest["comparison_type"] not in ("cohort", "single_case")
             or manifest["source_fingerprint_kind"] not in (
@@ -147,6 +162,18 @@ def inspect(path):
         raise ValueError("mismatched result")
     if any(comparison.get(key) is not False for key in DENY_KEYS[:4]):
         raise ValueError("source result claims permission")
+    if annotated:
+        import hashlib
+        from assessment_runtime_attach_triage_cli_20261018 import _validate_plan
+        base_hash = hashlib.sha256(content["review-desk.json"]).hexdigest()
+        attached = _json(content["saved-human-review.json"])
+        _validate_plan(attached, comparison, base_hash)
+        for key, filename in (("saved_human_review_sha256", "saved-human-review.json"),
+                              ("human_summary_sha256", "human-summary.html")):
+            if not _hex(manifest[key]) or manifest[key] != sha256(content[filename]).hexdigest():
+                raise ValueError("annotated review member changed")
+        if manifest["saved_human_review_source_sha256"] != base_hash:
+            raise ValueError("source-bound human review mismatch")
     return manifest["status"]
 
 
