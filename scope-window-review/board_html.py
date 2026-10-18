@@ -39,7 +39,7 @@ textarea{display:block;width:100%;min-height:76px;margin-top:8px}button{cursor:p
 JS = """
 'use strict';
 const rows = [...document.querySelectorAll('.entry')];
-const groups = [...document.querySelectorAll('.group')];
+const groups = [...document.querySelectorAll('.group')].filter(group=>group.querySelector('.entry'));
 const search = document.getElementById('query');
 const priority = document.getElementById('priority');
 const phase = document.getElementById('phase');
@@ -122,7 +122,8 @@ const entryV1=['grant_id','engagement_id','human_stage'];
 const entryV2=['grant_id','engagement_id','human_stage',
   'human_owner','human_next_action'];
 const exactKeys=(obj,fields)=>obj!==null && typeof obj==='object' &&
-  !Array.isArray(obj) && Object.keys(obj).sort().join('|')===[...fields].sort().join('|');
+  !Array.isArray(obj) && Object.keys(obj).length===fields.length &&
+  fields.every(field=>Object.prototype.hasOwnProperty.call(obj,field));
 let proposed=null;
 const clearProposal=(message)=>{
  proposed=null;approveInput.checked=false;applyButton.disabled=true;
