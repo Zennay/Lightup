@@ -69,7 +69,8 @@
         <select id="familyFilter"><option value="all">All source flags</option>
           <option value="missing">Missing comparison scenario — HOLD</option>
           <option value="scope">Scope and policy</option><option value="findings">Findings and coverage</option>
-          <option value="evidence">Evidence and scoring</option><option value="operations">Informational operations</option></select></div>
+          <option value="evidence">Evidence and scoring</option><option value="operations">Informational operations</option>
+          <option value="no_flags">No original source-reported flags</option></select></div>
       <div><label for="truthFilter">Original authored ground-truth mode</label>
         <select id="truthFilter"><option value="all">All declarations</option>
           <option value="unscored">Unscored / unknown</option>
@@ -84,6 +85,9 @@
           <option value="in_discussion">In discussion</option>
           <option value="documented">Documented</option></select></div>
     </div>
+    <h3>Private original-source review priorities</h3>
+    <p>Source-reported, anonymous local counts and human stages; not an incident severity rating, authorization recommendation or proof of findings. Open any category to filter the existing casebook.</p>
+    <div id="queueOverview" class="queue-overview" aria-label="Private source-based human review priorities"></div>
     <p id="queueCount"></p>
     <div class="actions"><button id="applyStage" type="button">Confirm bulk stage for visible cases</button>
       <button id="undoStage" class="secondary" type="button" disabled>Undo previous bulk change</button></div>
