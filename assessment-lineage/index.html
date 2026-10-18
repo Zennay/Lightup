@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'none'; img-src 'none'; font-src 'none'; object-src 'none'; frame-src 'none'; form-action 'none'; base-uri 'none'; worker-src 'none'; manifest-src 'none'">
+<title>LightUp · Offline Lab Lineage Desk</title>
+<link rel="stylesheet" href="style.css">
+<script src="app.js" defer></script>
+</head>
+<body>
+<header>
+  <p class="eyebrow">LIGHTUP / ASSESSMENT-RUNTIME / OFFLINE ONLY</p>
+  <h1>Lab lineage desk</h1>
+  <p>Reconcile manually declared PRIVATE lab scenarios with <strong>previously completed</strong> canonical comparator summaries. Human review only. No labs, scans, target access, permission, or runtime execution.</p>
+  <p class="warning"><strong>INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD.</strong> All authorization, consent, dispatch and release flags are false. Catalog targets are not evidence of authority. Original finished metrics are untrusted summaries, not independently authenticated measurements.</p>
+</header>
+<main>
+  <section aria-labelledby="importTitle">
+    <h2 id="importTitle">1. Source admission — all local</h2>
+    <div class="grid">
+      <article>
+        <h3>Original private scenario catalog</h3>
+        <p>Use the exact <code>lightup.lab_design_catalog.v1</code> PRIVATE export from <a href="../lab-design/standalone.html">Lab Scenario Studio</a>. The imported targets and finding IDs are validated then discarded from memory; only scenario membership and anonymous declaration counts remain.</p>
+        <label for="catalogFile">Choose ONE PRIVATE Lab Scenario Studio JSON</label>
+        <input id="catalogFile" type="file" accept=".json,application/json">
+        <p id="catalogState">No private catalog loaded</p>
+      </article>
+      <article>
+        <h3>Original completed lab comparison reports</h3>
+        <p>Choose 1–8 original canonical JSON exports from the <a href="../assessment-runtime/">assessment-runtime comparator</a>, each up to 256 KiB. Imports are atomic; the entire batch is rejected on conflicting baseline, duplicate candidate or malformed report. Files are never uploaded.</p>
+        <label for="reportFiles">Add one or more completed canonical reports</label>
+        <input id="reportFiles" type="file" multiple accept=".json,application/json">
+        <p id="reportState">0 canonical completed lab comparison sources loaded</p>
+      </article>
+    </div>
+    <div class="actions">
+      <button id="demo" type="button">Explore invented demo</button>
+      <button id="forget" class="secondary" type="button">Forget all local data</button>
+    </div>
+    <p id="message" role="status" aria-live="polite"></p>
+  </section>
+  <section aria-labelledby="alignmentTitle">
+    <h2 id="alignmentTitle">2. Membership and original status</h2>
+    <p id="summary">Load both source types to review.</p>
+    <div id="reports" class="scroll" aria-label="Original comparison source summaries"></div>
+  </section>
+  <section aria-labelledby="caseTitle">
+    <h2 id="caseTitle">3. Human casebook — private in memory</h2>
+    <p>Rows use locally assigned ordinals, not original identifiers. <strong>UNSCORED</strong>, <strong>declared zero</strong>, and <strong>planted</strong> are authored scenario declarations, never proof of an observed finding or assessed coverage. Adverse flags are source-reported metrics, not new evaluation verdicts.</p>
+    <p>Discussion stages are purely human labels, not approvals. They remain only in this browser tab; closing or refreshing discards them.</p>
+    <div id="cases" class="scroll" aria-label="Private human scenario review"></div>
+  </section>
+  <section aria-labelledby="handoffTitle">
+    <h2 id="handoffTitle">4. Anonymous human handoff</h2>
+    <p>Exports require exact case membership across the current original catalog and every selected comparison. A missing or extra case produces HOLD and no export. Original scenario IDs, IPs, finding identifiers, user names, uploaded files, and private notes are <strong>never</strong> included in these aggregate-only handoffs.</p>
+    <div class="actions">
+      <button id="exportJson" type="button">Anonymous aggregate JSON</button>
+      <button id="exportCsv" type="button">Anonymous aggregate CSV</button>
+      <button id="exportBrief" type="button">Script-free human brief</button>
+    </div>
+    <p class="warning">These documents are unsigned, retrospective, and non-authorizing. Security/privacy review, actual distinct client/operator consent, action-time revocation, original hosted and permanent VPS exact-head CI and explicit HUMAN GO remain mandatory for any production activation.</p>
+  </section>
+</main>
+<footer><p>Zero network / zero persistence / zero target access. Standalone, offline-only review product on a DRAFT/HOLD branch. No external scripts, telemetry, accounts, scanner or grant authority.</p></footer>
+</body>
+</html>
