@@ -97,6 +97,43 @@ Only existing original lab source and explicitly human-provided files are
 opened. No new model, target, grant, authenticated consent, scan,
 assessment or release action runs.
 
+## Original Candidate Matrix preparation for multiple completed models
+
+The composed product now also includes a single CLI to compare one ORIGINAL
+already-completed lab cohort baseline against 2–12 explicit previously
+completed candidate lab cohorts and package source-owner results into one
+private, portable offline Candidate Matrix workspace:
+
+    python3 scripts/lightup_workbench.py candidate-matrix /private/BASE-cohort.json --candidate /private/A-cohort.json --candidate /private/B-cohort.json --output-dir /private/reviews --prefix model-selection
+
+This delegates every pair to the UNCHANGED original LightUp canonical cohort
+comparator and emits canonical source-owner desk-json reports. It pins the
+ORIGINAL Candidate Matrix single-file browser asset to its exact SHA-256
+5e14ac1bffffa46007dfcbff7a31905abeda93f2d4547021daf0565ecc4fc4df,
+and packages that exact unmodified browser alongside numbered original
+candidate comparison outputs, original report byte fingerprints, a private
+original baseline digest and a plain README. No original lab case array or
+raw target output is copied into the Matrix ZIP, although comparison reports
+themselves may contain sensitive scenario identities.
+
+Private outputs include numbered candidate-01..12 JSON reports, one indexed
+private JSON receipt and an original Candidate Matrix ZIP. Open the ZIP only
+in a trusted private local extraction directory, open standalone.html,
+then select all numbered reports/candidate-XX.json files in the original
+browser's existing file picker. The source Matrix remains responsible for
+its own canonical cross-candidate schema, scenario and baseline consistency
+checks and cannot issue a release GO.
+
+All input cohorts are explicitly selected owner-private regular files,
+byte-checked before and after each original comparison and again before
+publication. Any missing/duplicate source, invalid report, source content
+change, unsupported original Matrix asset or occupied destination causes
+HOLD. Genuine original per-candidate metric regressions remain HOLD in the
+generated private reports and aggregate batch exit (3) while still
+preserving original source-review evidence for the original human reviewer.
+This remains only an offline discussion instrument: no new model,
+scan, target contact, trading of source metrics, client grant or release.
+
 ## Original comparator and independent archive from one CLI
 
 Original source-owner behavior retained:
