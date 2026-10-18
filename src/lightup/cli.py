@@ -66,6 +66,12 @@ def build_parser() -> argparse.ArgumentParser:
     assess.add_argument("--preview-only", action="store_true",
                         help="inspect normalized isolated lab targets without running an assessment")
 
+    inspect = sub.add_parser(
+        "lab-inspect",
+        help="inspect a PRIVATE saved lab JSON file offline; aggregate-only REVIEW_ONLY/HOLD",
+    )
+    inspect.add_argument("artifact", help="existing local PRIVATE lab JSON file")
+
     boot = sub.add_parser("create-operator",
                           help="bootstrap the first operator account")
     boot.add_argument("--db", default="lightup.db")
@@ -143,6 +149,11 @@ def main(argv: list[str] | None = None) -> int:
             argv += ["--output", args.output]
         argv += ["--artifact-format", args.artifact_format]
         return main_assess(argv)
+
+    if args.command == "lab-inspect":
+        from .lab_inspect import main as inspect_main
+
+        return inspect_main([args.artifact])
 
     if args.command in {"create-operator", "create-client-user"}:
         return _account_command(args)
