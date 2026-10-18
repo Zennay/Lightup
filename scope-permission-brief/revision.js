@@ -12,8 +12,18 @@ const LIMIT=12, FIELDS=[
  ['window_status','Window status']
 ];
 let history=[], counter=0, active=null;
+const ATTENTION_LABELS=Object.freeze({
+ literal_scope_entries_added:'Additional literal asset entries proposed — check exact coverage and ownership',
+ literal_exclusions_removed:'Previously excluded literal entries removed — review effective access',
+ requested_risk_raised:'Requested risk level increased — independent escalation',
+ requested_active_assessment_mode:'Mode changed to authorized assessment proposal — never direct execution',
+ private_lab_activity_proposed:'New private-lab network activity requested — independently validate lab provenance',
+ planning_window_changed:'Proposed time or offset changed — agree new UTC window and STOP',
+ scope_restriction_review:'Potential literal narrowing — confirm exact scope and exclusion handling',
+ safety_notes_changed:'Private safety instructions changed — re-read source in authorized channel'
+});
 function digest(v){return typeof v==='string'&&/^[a-f0-9]{64}$/.test(v);}
-function record(from,to){
+function record(from,to,impact){
  if(!from||!to||!digest(from.source_sha256)||!digest(to.source_sha256))return null;
  if(from.source_sha256===to.source_sha256)return null;
  if(!Object.values(from.flags||{}).every(v=>v===false)||!Object.values(to.flags||{}).every(v=>v===false))return null;
@@ -32,6 +42,8 @@ function record(from,to){
   previously_returned_review_notes_invalidated:true,
   client_reply_required_again:true,operator_reply_required_again:true,
   summaries_changed:changed,
+  literal_change_impact:impact||null,
+  human_review_level:impact?.human_review_level||'REVIEW_REQUIRED',
   all_current_permissions_false:true,
   disposition:'REVIEW_ONLY_HOLD'
  };
@@ -73,9 +85,14 @@ function reissue(role){
 }
 
 function toCSV(){
- const rows=[['sequence','previous_source_sha256','current_source_sha256','summary_changed_categories','review_disposition','reissue_client','reissue_operator']];
+ const rows=[['sequence','previous_source_sha256','current_source_sha256','summary_changed_categories','literal_assets_added','literal_assets_removed','literal_exclusions_added','literal_exclusions_removed','human_review_level','attention_codes','review_disposition','reissue_client','reissue_operator']];
  for(const h of history)rows.push([h.sequence,h.previous_source_sha256,h.current_source_sha256,
-  h.summaries_changed.map(x=>x.field).join(';'),h.disposition,'yes','yes']);
+  h.summaries_changed.map(x=>x.field).join(';'),
+  h.literal_change_impact?.proposed_assets.added??'unknown',
+  h.literal_change_impact?.proposed_assets.removed??'unknown',
+  h.literal_change_impact?.exclusions.added??'unknown',
+  h.literal_change_impact?.exclusions.removed??'unknown',
+  h.human_review_level,h.literal_change_impact?.attention_codes.join(';')||'',h.disposition,'yes','yes']);
  return rows.map(row=>row.map(csvCell).join(',')).join('\r\n')+'\r\n';
 }
 function render(){
@@ -104,6 +121,28 @@ function render(){
    'Changed summary categories: '+item.summaries_changed.map(c=>c.description).join(', '):
    'All shown counts/mode/risk/window match, BUT exact scope or notes may still differ. No semantic equality is asserted.';
   section.append(m);
+  const impact=item.literal_change_impact;
+  if(impact){
+   const summary=document.createElement('p');
+   summary.textContent='Literal proposed asset entries: +'+impact.proposed_assets.added+' / -'+impact.proposed_assets.removed+
+    '; exclusions: +'+impact.exclusions.added+' / -'+impact.exclusions.removed+
+    '. '+impact.human_review_level.replaceAll('_',' ')+'.';
+   section.append(summary);
+   if(impact.attention_codes.length){
+    const list=document.createElement('ul');
+    for(const code of impact.attention_codes){
+     const li=document.createElement('li');li.textContent=ATTENTION_LABELS[code]||'Review source change';list.append(li);
+    }
+    section.append(list);
+   }else{
+    const note=document.createElement('p');
+    note.textContent='No elevated literal-delta category; bytes still changed, and the new exact source requires fresh review.';
+    section.append(note);
+   }
+   const caveat=document.createElement('p');
+   caveat.textContent='Only exact case-insensitive literal strings were counted. Equivalent CIDR coverages, hostname aliases, ownership and effective grants have NOT been compared.';
+   section.append(caveat);
+  }
   const warn=document.createElement('strong');warn.textContent='Both roles must review the new source and issue fresh UNVERIFIED preparation replies. No prior answers, consent, approval or grant can be transferred.';
   section.append(warn);
   root.append(section);
@@ -113,7 +152,7 @@ document.addEventListener('lightup:brief-revision',event=>{
  const detail=event.detail;
  if(!detail||!detail.after)return;
  active={source_sha256:detail.after.source_sha256};
- const item=record(detail.before,detail.after);
+ const item=record(detail.before,detail.after,detail.impact);
  if(item){
   history.push(item);
   if(history.length>LIMIT)history.shift();
