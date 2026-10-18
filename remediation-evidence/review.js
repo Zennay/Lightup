@@ -198,6 +198,7 @@ function formField(label,value,max,handler,multiline=false){
  const wrap=el('label','field'),ctrl=document.createElement(multiline?'textarea':'input');
  wrap.append(el('span','',label));ctrl.value=value;ctrl.maxLength=max;
  if(!multiline)ctrl.type='text';ctrl.addEventListener('input',e=>handler(e.target.value));
+ if(max===120)ctrl.addEventListener('change',()=>render());
  wrap.append(ctrl);return wrap;
 }
 function included(f,c,r,filter){
@@ -287,8 +288,8 @@ function teamCsv(packet){
  const keys=['finding_id','title','severity','original_retest_status','original_remediation',
   'casework_status','due_date','local_owner','next_action','verification_plan','blocker',
   'review_stage','evidence_reference','local_reviewer','human_follow_up'];
- const body=[keys,...packet.cases.map(c=>keys.map(k=>c[k]))];
- return '\ufeff'+body.map(row=>row.map(safeSpreadsheetCell).join(',')).join('\r\n')+'\r\n';
+ const body=packet.cases.map(c=>keys.map(k=>c[k]));
+ return '\ufeff'+keys.map(v=>'"'+v+'"').join(',')+'\r\n'+body.map(row=>row.map(safeSpreadsheetCell).join(',')).join('\r\n')+'\r\n';
 }
 function doTeamExport(kind){
  try{
@@ -492,7 +493,7 @@ $('exportRevisionCSV').addEventListener('click',()=>{
     'Investigate absence; do not mark repaired or retested']);
   });
   if(!confirm('Download a PRIVATE historical source-revision register containing original finding IDs? Never interpret an absent row as repaired. Verify approved recipient independently.'))return;
-  download('lightup-private-source-revisions.csv','\ufeff'+rows.map(v=>v.map(safeSpreadsheetCell).join(',')).join('\r\n')+'\r\n','text/csv');
+  download('lightup-private-source-revisions.csv','\ufeff'+cols.map(v=>'"'+v+'"').join(',')+'\r\n'+rows.slice(1).map(v=>v.map(safeSpreadsheetCell).join(',')).join('\r\n')+'\r\n','text/csv');
   status('Private historical source-difference register downloaded; absent findings remain unverified.');
  }catch(err){status(err.message,true);}
 });
