@@ -5,6 +5,28 @@ if(!engine)throw Error('Original LightUp Casework source module required.');
 const $=id=>document.getElementById(id);
 const LIMIT_CSV=1048576, LIMIT_JSON=2097152;
 const DECISIONS=Object.freeze(['missing','submitted','needs_changes','ready_for_authorized_retest']);
+const EVIDENCE_FIELDS=Object.freeze([
+ ['change_reference',240,'Patch/change ticket reference'],
+ ['deployment_reference',240,'Deployment/rollout record reference'],
+ ['rollback_reference',240,'Rollback/recovery plan reference'],
+ ['retest_request_reference',240,'Authorized retest request reference'],
+ ['review_question',700,'Open evidence question / next human decision']
+]);
+function emptyEvidence(){return Object.fromEntries(EVIDENCE_FIELDS.map(([name])=>[name,'']));}
+function normalizeEvidence(raw){
+ if(raw===undefined||raw===null)return emptyEvidence(); /* accept existing v1 review drafts */
+ if(!raw||Object.getPrototypeOf(raw)!==Object.prototype||
+    Object.keys(raw).some(key=>!EVIDENCE_FIELDS.some(([name])=>name===key)))
+  throw Error('Invalid local evidence coordination fields.');
+ const value={};
+ for(const [name,max] of EVIDENCE_FIELDS){
+  const field=raw[name];
+  if(typeof field!=='string'||field.length>max||field.includes('\u0000'))
+   throw Error('Invalid evidence reference '+name+'.');
+  value[name]=field;
+ }
+ return value;
+}
 let source=null,casework=null,sourceHash=null,review=new Map(),changed=false,refreshCandidate=null,revisions=[];
 const SEV=engine.SEVERITY;
 const flags=['authenticated','tenant_verified','source_authorized','assessment_authorized','grant','client_consent','operator_consent','execution','scan','audit_verdict','retest_verified','release'];
@@ -63,9 +85,10 @@ function validReview(row,ids){
  if(!DECISIONS.includes(row.stage))throw Error('Unsupported review stage.');
  const reference=safeText(row.reference,240),reviewer=safeText(row.reviewer,120),next=safeText(row.next_step,500);
  if(reference===null||reviewer===null||next===null)throw Error('Invalid review text.');
- return {finding_id:row.finding_id,stage:row.stage,reference,reviewer,next_step:next};
+ return {finding_id:row.finding_id,stage:row.stage,reference,reviewer,next_step:next,
+  evidence:normalizeEvidence(row.evidence)};
 }
-function stageStart(id){return {finding_id:id,stage:'missing',reference:'',reviewer:'',next_step:''};}
+function stageStart(id){return {finding_id:id,stage:'missing',reference:'',reviewer:'',next_step:'',evidence:emptyEvidence()};}
 function snapshot(){
  if(!source)return null;
  return {kind:'lightup.remediation_evidence_coordination',schema_version:1,
@@ -157,7 +180,7 @@ function localWindow(){
  return {today:localDay(now),next7:localDay(end)};
 }
 function count(){
- const metrics={total:source.length,urgent:0,no_reference:0,needs_changes:0,retest:0,contradictions:0,blocked:0,overdue:0,next7:0};
+ const metrics={total:source.length,urgent:0,no_reference:0,needs_changes:0,retest:0,contradictions:0,blocked:0,overdue:0,next7:0,evidence_gaps:0,evidence_references_ready:0};
  const window=localWindow();
  for(const f of source){
   const r=review.get(f.finding_id),c=casework?.get(f.finding_id);
@@ -168,6 +191,8 @@ function count(){
    else if(c.due_date<=window.next7)metrics.next7++;
   }
   if(!r.reference.trim())metrics.no_reference++;
+  const ready=EVIDENCE_FIELDS.slice(0,4).every(([key])=>r.evidence?.[key]?.trim());
+  if(ready)metrics.evidence_references_ready++;else metrics.evidence_gaps++;
   if(r.stage==='needs_changes')metrics.needs_changes++;
   if(r.stage==='ready_for_authorized_retest')metrics.retest++;
   if((r.stage==='ready_for_authorized_retest'&&!r.reference.trim())||
@@ -191,6 +216,9 @@ function humanQueue(f,c,r){
  if(r.stage==='ready_for_authorized_retest'&&!r.reference.trim())cues.push('Retest requested locally without a reference.');
  if(r.stage==='ready_for_authorized_retest'&&c?.status==='blocked')cues.push('Review and casework status conflict.');
  if(!r.reference.trim())cues.push('Ask for an approved private evidence reference, not raw evidence.');
+ const missing=EVIDENCE_FIELDS.slice(0,4).filter(([key])=>!r.evidence?.[key]?.trim());
+ if(missing.length)cues.push('Human evidence packet incomplete: '+missing.length+'/4 references missing; collect documentation via approved channels.');
+ if(r.stage==='ready_for_authorized_retest'&&missing.length)cues.push('Local retest coordination requested with incomplete human evidence references.');
  return cues;
 }
 function el(tag,cls,text){const node=document.createElement(tag);if(cls)node.className=cls;if(text!==undefined)node.textContent=text;return node;}
@@ -214,6 +242,8 @@ function included(f,c,r,filter){
  if(filter==='urgent'&&SEV.indexOf(f.severity)>1)return false;
  if(filter==='gaps'&&r.reference.trim()&&cues.length===0)return false;
  if(filter==='retest'&&r.stage!=='ready_for_authorized_retest')return false;
+ if(filter==='evidence_missing'&&EVIDENCE_FIELDS.slice(0,4).every(([key])=>r.evidence?.[key]?.trim()))return false;
+ if(filter==='evidence_present'&&!EVIDENCE_FIELDS.slice(0,4).every(([key])=>r.evidence?.[key]?.trim()))return false;
  if(filter==='blocked'&&c?.status!=='blocked')return false;
  if(filter==='overdue'&&(!c?.due_date||c.status==='completed'||c.status==='deferred'||c.due_date>=localWindow().today))return false;
  if(filter==='contradictions'&&!cues.some(x=>/NOT|conflict|without/.test(x)))return false;
@@ -346,6 +376,14 @@ function render(){
   section.append(formField('Private evidence reference (no secrets or raw evidence)',r.reference,240,v=>{r.reference=v;changed=true;renderMetrics();}));
   section.append(formField('Human reviewer/team (local, unverified)',r.reviewer,120,v=>{r.reviewer=v;changed=true;updateTeamChoices();}));
   section.append(formField('Next evidence or retest coordination step',r.next_step,500,v=>{r.next_step=v;changed=true;},true));
+  const evidenceBox=el('details','evidence-dossier');
+  const entered=EVIDENCE_FIELDS.slice(0,4).filter(([key])=>r.evidence[key].trim()).length;
+  evidenceBox.append(el('summary','', 'Evidence dossier · '+entered+'/4 references entered (UNVERIFIED)'));
+  evidenceBox.append(el('p','detail','Only references to approved private evidence storage; do not paste artifacts, credentials or raw findings.'));
+  for(const [key,max,label] of EVIDENCE_FIELDS){
+   evidenceBox.append(formField(label,r.evidence[key],max,v=>{r.evidence[key]=v;changed=true;renderMetrics();},key==='review_question'));
+  }
+  section.append(evidenceBox);
   board.append(section);
  }
  $('shown').textContent=String(board.childElementCount);
