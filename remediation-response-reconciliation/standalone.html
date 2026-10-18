@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-iqjSjVSnLwiVtZYRFD/P3rb/Spx/js2LGbX6gRHGuvI='; style-src 'sha256-v39J4j727I0ZfU63j16iOHCOq9A1/oCo+LQohSv/tzg='; connect-src 'none'; object-src 'none'; form-action 'none'; base-uri 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-qHMcYNnJ2uIjNcwLugVv0pAVRxzMUzUHgqhlc9xlCsY='; style-src 'sha256-6i7FJiJry5Xnkn38B4IwCAhWEMAjFnj8DpdAJwdtZxI='; connect-src 'none'; object-src 'none'; form-action 'none'; base-uri 'none'">
 <title>LightUp · PRIVATE Human Response Register</title><style>:root{font-family:Inter,system-ui,-apple-system,Segoe UI,sans-serif;color-scheme:dark;color:#e8edf5;background:#0b1422;font-size:15px}*{box-sizing:border-box}body{margin:0}main{max-width:1380px;margin:auto;padding:2.4rem 1.4rem}header{max-width:900px;margin-bottom:2rem}h1{font-size:clamp(2rem,5vw,3.2rem);letter-spacing:-.04em;margin:.2rem 0}h2{font-size:1.2rem;margin-top:0}p{color:#c0d0e1;line-height:1.6}strong{color:#f2f8ff}.eyebrow{color:#6ee7bb;font-weight:800;letter-spacing:.11em;font-size:.75rem}section{border:1px solid #273b53;border-radius:14px;background:#112136;padding:1.4rem;margin:1.5rem 0;box-shadow:0 8px 32px #0003}.actions,.filters{display:flex;align-items:end;flex-wrap:wrap;gap:1rem;margin:1rem 0}.filters>label{flex:1;min-width:210px}label{display:block;color:#d5e1f0;font-weight:650}input,select,textarea,button{font:inherit;color:inherit;border-radius:8px}input[type=file],input[type=search],select,textarea{width:100%;background:#091726;border:1px solid #435971;padding:.7rem}input[type=file]{max-width:550px;margin-top:.7rem}input:focus-visible,select:focus-visible,textarea:focus-visible,button:focus-visible{outline:3px solid #84e6bd;outline-offset:3px}button{border:1px solid #25a881;background:#19876d;padding:.75rem 1rem;font-weight:750;cursor:pointer}button:hover:not(:disabled){background:#21a083}.secondary{background:#192b40;border-color:#465d72}button:disabled{opacity:.45;cursor:not-allowed}#message{border-left:3px solid #58c8a6;padding:.5rem .75rem;min-height:2.5rem}#message[data-error=true]{border-color:#f6a18c;color:#ffbcaf}.tablewrap{overflow:auto;max-height:580px}table{width:100%;min-width:1050px;border-collapse:collapse}th{text-align:left;color:#a9c5e0;font-size:.8rem;position:sticky;top:0;background:#18304b}td,th{border-bottom:1px solid #2a4259;padding:.7rem;vertical-align:top}td{overflow-wrap:anywhere;max-width:240px}td select,td textarea{min-width:125px}tr:hover td{background:#1b3147}code{background:#0b1829;padding:.12rem .3rem;border-radius:4px;overflow-wrap:anywhere}footer{border-top:1px solid #273b53;padding-top:1.4rem;color:#aabfd4;font-size:.89rem;line-height:1.8}@media(max-width:600px){main{padding:1.1rem .75rem}section{padding:.95rem}.actions button{width:100%}}
 /* Local HUMAN review and explicit bulk proposal, never an authorization control */
 .bulk{display:flex;flex-wrap:wrap;align-items:end;gap:1rem;border:1px solid #3a526a;background:#0d1d31;border-radius:10px;padding:1rem;margin:1rem 0}
@@ -13,6 +13,13 @@
 td details{max-width:350px;min-width:170px}
 td details summary{cursor:pointer;color:#87dcbf;font-weight:650}
 @media(max-width:700px){.bulk{display:block}.bulk>*{margin:.6rem 0;display:block}.bulk label:first-child{display:flex}}
+
+.ownerHandoff{padding:1.1rem;margin-top:1.4rem;border-radius:12px;background:#0c1b2d;border:1px solid #365d70}
+.ownerHandoff h3{font-size:1.02rem;margin:.15rem 0}
+.ownerHandoff .filters{align-items:end}
+.ownerHandoff select{max-width:500px;margin-top:.4rem}
+.ownerHandoff button{min-width:220px}
+@media(max-width:650px){.ownerHandoff button{width:100%}}
 </style></head>
 <body><main>
 <header><p class="eyebrow">LIGHTUP · REMEDIATION · OFFLINE · HUMAN ONLY</p>
@@ -27,7 +34,10 @@ td details summary{cursor:pointer;color:#87dcbf;font-weight:650}
 <pre id="bulkDetails" class="bulkpreview" hidden aria-live="polite"></pre>
 <p id="count"></p><div class="tablewrap"><table><thead><tr><th>Select</th><th>Batch</th><th>Self-declared owner</th><th>Original finding</th><th>Request</th><th>HUMAN due</th><th>Reply</th><th>Original request / HUMAN response</th><th>Human triage</th><th>Private follow-up note</th></tr></thead><tbody id="rows"></tbody></table></div></section>
 <section><h2>3 · Explicit PRIVATE handoff</h2><p>Exports contain original IDs and HUMAN metadata. Independently confirm the actual recipient and approved channel. No export grants execution authority or proves delivery.</p>
-<div class="actions"><button id="summaryCsv" disabled>Export anonymous HUMAN counts</button><button id="download" disabled>Download PRIVATE register JSON</button><button id="csv" disabled>Download PRIVATE CSV</button><button id="print" disabled>Print PRIVATE human brief</button></div></section>
+<div class="actions"><button id="summaryCsv" disabled>Export anonymous HUMAN counts</button><button id="download" disabled>Download PRIVATE register JSON</button><button id="csv" disabled>Download PRIVATE CSV</button><button id="print" disabled>Print PRIVATE human brief</button></div>
+<div class="ownerHandoff"><h3>Owner-specific PRIVATE HUMAN review handoff</h3>
+<p>Choose one self-declared owner and export only that owner's original request/reply context and local HUMAN follow-up notes. This is a review brief, <strong>not</strong> an authenticated message or a packet accepted by the original owner-reply app.</p>
+<div class="filters"><label>PRIVATE recipient alias<select id="ownerExport"><option value="">Select HUMAN owner</option></select></label><button id="exportOwner" disabled>Export one-owner PRIVATE follow-up JSON</button></div></div></section>
 <footer><strong>INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD.</strong> Original exact-head hosted and permanent VPS CI, source-owner/security/privacy review, authentic client/operator consent with revocation-at-use, #177/#182/#829 and HUMAN GO remain mandatory. This browser-only tool does not modify source owner records or make network requests.</footer>
 </main><script>/* LightUp PRIVATE HUMAN Response Register. Offline only; no authority/consent/scan. */
 (() => {
@@ -38,7 +48,7 @@ const HEAD=["kind","schema_version","disposition","source_contract","source_sha2
 const ROW=["request_id","finding_id","request_kind","instructions","due_date","human_stage","human_response"];
 const KINDS=["missing_evidence","patch_change","deployment_record","rollback_plan","retest_request","followup_question","other"];
 const STAGES=["not_reviewed","needs_human_followup","human_triaged"];
-const LIMIT=1048576,MAX_PACKETS=24,MAX_ROWS=800;
+const LIMIT=1048576,MAX_SNAPSHOT=8*1048576,MAX_PACKETS=24,MAX_ROWS=800;
 const blank=()=>({binding:null,requestPackets:[],replyPackets:[],notes:{},revision:0});
 let db=blank();
 function fail(m){throw Error(m);}
@@ -55,8 +65,8 @@ function due(x){
  if(x==="")return;
  if(typeof x!=="string"||!/^\d{4}-\d\d-\d\d$/.test(x)||!Number.isFinite(Date.parse(x+"T00:00:00Z"))||new Date(x+"T00:00:00Z").toISOString().slice(0,10)!==x)fail("Invalid tentative due date");
 }
-function strictJSON(s){
- if(typeof s!=="string"||new TextEncoder().encode(s).length>LIMIT)fail("PRIVATE JSON exceeds 1 MiB");
+function strictJSON(s,limit=LIMIT){
+ if(typeof s!=="string"||new TextEncoder().encode(s).length>limit)fail("PRIVATE JSON exceeds its bounded size limit");
  let i=0,n=0;
  const ws=()=>{while(i<s.length&&/[ \r\n\t]/.test(s[i]))i++;};
  function quoted(){
@@ -210,6 +220,7 @@ function draw(){
  $("summary").textContent=all.length+" HUMAN requests · "+answered+" UNVERIFIED replies · "+(all.length-answered)+" unanswered · "+needs+" need changes · "+db.requestPackets.length+" owner packets";
  $("binding").textContent=db.binding?"DECLARED source SHA "+db.binding[1]+" · client "+db.binding[2]+" · engagement "+db.binding[3]:"No source loaded.";
  for(const id of ["download","csv","print","summaryCsv"])$(id).disabled=!all.length;
+ refreshOwnerExportOptions();
  const visible=filteredRows();
  $("count").textContent=visible.length+" rows shown; "+selection.size+" selected. All owner labels and replies remain UNVERIFIED.";
  const shown=new Set(visible.map(x=>x.request.request_id));
@@ -247,6 +258,40 @@ function draw(){
   });
   const note=document.createElement("td");note.append(input);tr.append(note);body.append(tr);
  }
+}
+function refreshOwnerExportOptions(){
+ const select=$("ownerExport"),old=select.value;
+ const aliases=[...new Set(db.requestPackets.map(p=>p.recipient_alias))].sort((a,b)=>a.localeCompare(b));
+ select.replaceChildren(new Option("Select HUMAN owner",""));
+ for(const alias of aliases)select.append(new Option(alias,alias));
+ select.value=aliases.includes(old)?old:"";
+ $("exportOwner").disabled=!select.value;
+}
+function exportOwnerPrivate(){
+ const alias=$("ownerExport").value;
+ if(!db.binding||!alias||!db.requestPackets.some(x=>x.recipient_alias===alias))
+  fail("Choose an existing self-declared HUMAN owner");
+ const matching=allRows().filter(x=>x.packet.recipient_alias===alias);
+ if(!matching.length)fail("No ORIGINAL HUMAN records for this owner");
+ const declared=db.binding;
+ const envelope={kind:"lightup.private_human_owner_review_brief",schema_version:1,
+  disposition:"UNVERIFIED_HUMAN_COORDINATION_ONLY",
+  source_contract:declared[0],source_sha256:declared[1],
+  client_reference:declared[2],engagement_reference:declared[3],
+  recipient_alias:alias,...Object.fromEntries(FLAGS.map(k=>[k,false])),
+  requests:matching.map(x=>({request_id:x.request.request_id,
+    finding_id:x.request.finding_id,request_kind:x.request.request_kind,
+    tentative_human_due:x.request.due_date,original_instructions:x.request.instructions,
+    original_issued_utc:x.packet.issued_utc,
+    unverified_reply_stage:x.reply?x.reply.human_stage:"unanswered",
+    unverified_reply_text:x.reply?x.reply.human_response:"",
+    local_human_triage:x.review.stage,local_human_note:x.review.note}))};
+ if(!confirm("Export "+matching.length+" PRIVATE ORIGINAL HUMAN request/reply records for ONLY self-declared owner '"+alias+"'? Independently verify the actual recipient and confidential handoff channel. This DOES NOT send messages, authenticate identity, verify remediation, authorize testing or work in the original owner reply app."))return;
+ const payload=JSON.stringify(envelope,null,2)+"\n";
+ if(new TextEncoder().encode(payload).length>MAX_SNAPSHOT)
+  fail("Owner-specific PRIVATE handoff exceeds 8 MiB");
+ save("LightUp-PRIVATE-one-owner-human-review.json",payload,"application/json");
+ msg("Saved "+matching.length+" source-bound PRIVATE HUMAN records for ONE owner locally; no delivery or consent inferred.");
 }
 function previewBulk(){
  const originals=allRows().filter(x=>selection.has(x.request.request_id));
@@ -302,9 +347,12 @@ async function intake(){
  if(!files.length||files.length>MAX_PACKETS)fail("Select 1–24 PRIVATE JSON files");
  const rev=db.revision,packets=[];
  for(const f of files){
-  if(f.size>LIMIT)fail("PRIVATE file exceeds 1 MiB");
+  if(f.size>MAX_SNAPSHOT)fail("PRIVATE input exceeds 8 MiB");
   const raw=new TextDecoder("utf-8",{fatal:true}).decode(await f.arrayBuffer());
-  packets.push(strictJSON(raw));
+  const parsed=strictJSON(raw,f.size>LIMIT?MAX_SNAPSHOT:LIMIT);
+  if(f.size>LIMIT&&parsed.kind!=="lightup.private_human_response_reconciliation")
+   fail("Original HUMAN owner handoff packet exceeds 1 MiB");
+  packets.push(parsed);
  }
  if(db.revision!==rev)fail("HOLD: register changed during asynchronous import");
  if(packets.length===1&&packets[0].kind==="lightup.private_human_response_reconciliation"){
@@ -394,7 +442,9 @@ listen("load",intake);
 listen("download",()=>{if(!db.binding)fail("No PRIVATE register loaded");
  if(!confirm("Download PRIVATE owner identities, original request IDs, unverified replies and HUMAN notes? Confirm secure storage."))return;
  save("LightUp-PRIVATE-response-register.json",JSON.stringify(snapshot(),null,2)+"\n","application/json");});
-listen("csv",exportCSV);listen("summaryCsv",exportAnonymous);listen("print",report);
+listen("csv",exportCSV);listen("summaryCsv",exportAnonymous);
+listen("exportOwner",exportOwnerPrivate);
+$("ownerExport").addEventListener("change",()=>{$("exportOwner").disabled=!$("ownerExport").value;});listen("print",report);
 listen("bulkPreview",previewBulk);listen("bulkApply",applyBulk);
 $("selectShown").addEventListener("change",e=>{for(const x of filteredRows()){
  if(e.target.checked)selection.add(x.request.request_id);else selection.delete(x.request.request_id);
