@@ -86,11 +86,16 @@ def envelope(schema, original_raw, source):
 
 def read_team(raw, schema):
     doc = decode_json(raw)
-    fail_if(type(doc) is not dict or set(doc) != HEADER_KEYS or
+    expected = HEADER_KEYS | (
+        {"team_room_source_sha256"} if schema == TEAM_SCHEMA else set()
+    )
+    fail_if(type(doc) is not dict or set(doc) != expected or
             doc["schema"] != schema or
             not hash_string(doc["original_links_sha256"]) or
             not hash_string(doc["comparison_sha256"]) or
             not hash_string(doc["findings_sha256"]) or
+            (schema == TEAM_SCHEMA and
+             not hash_string(doc["team_room_source_sha256"])) or
             any(doc[k] is not False for k in FLAGS),
             "unsupported team handoff or authority claim")
     fail_if(type(doc["entries"]) is not list or len(doc["entries"]) > 512,
@@ -124,6 +129,7 @@ def prepare(args):
     handoff["team_room_source_sha256"] = source_hash
     destination = target(args.output_dir, args.prefix, "-team-handoff.json")
     page_destination = target(args.output_dir, args.prefix, "-team-room.html")
+    kit_destination = target(args.output_dir, args.prefix, "-private-team-kit.zip")
     published = encode(handoff)
     fail_if(len(published) > MAX_LINKS, "team handoff exceeds private document bound")
     if (sha256(read_regular(args.links, MAX_LINKS)).digest() != sha256(original).digest()
@@ -131,10 +137,13 @@ def prepare(args):
         raise Hold("private source or offline team room changed during handoff")
     # Each independent file is fsynced, exclusive and 0600. No source
     # mutation and no silent replacement of an existing team return.
+    from team_packet import pack
+    kit = pack(published, portable, encode)
     publish(destination, published)
     publish(page_destination, portable)
+    publish(kit_destination, kit)
     print("PRIVATE_TEAM_HANDOFF_CREATED — UNAUTHENTICATED HUMAN NOTES ONLY")
-    print("Private source-bound handoff JSON and standalone no-network HTML room created.")
+    print("Private JSON, standalone offline HTML and integrity-bound team ZIP created.")
     print("This artifact conveys NO permission, consent, scan, retest or verified fix.")
     return 2
 
@@ -213,8 +222,16 @@ def main(argv=None):
         if name == "receive":
             command.add_argument("--returned", required=True,
                                  help="Human team-return JSON exported from team room")
+    inspection = sub.add_parser("inspect", help="Read-only private team ZIP integrity")
+    inspection.add_argument("private_team_kit")
     args = parser.parse_args(argv)
     try:
+        if args.action == "inspect":
+            from team_packet import inspect, CAP
+            handoff = inspect(read_regular(args.private_team_kit, CAP), decode_json)
+            read_team(encode(handoff), TEAM_SCHEMA)
+            print("PRIVATE_TEAM_KIT_INTEGRITY_ONLY — not sender-authenticated or authorized")
+            return 2
         return prepare(args) if args.action == "prepare" else receive(args)
     except (Hold, OSError, ValueError, TypeError, KeyError, UnicodeError,
             OverflowError, RecursionError):

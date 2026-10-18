@@ -233,10 +233,12 @@ After producing a genuine source-bound private human link draft with bridge.py
       --links /private/lightup-followup/reviewed-links.json \
       --output-dir /private/lightup-followup --prefix team-01
 
-This creates two **new exclusive 0600 private files** in that 0700 operator
-folder: team-01-team-handoff.json (full source IDs and human notes plus baseline
-SHA-256 and literal-false authority fields), and team-01-team-room.html
-(standalone browser editor, immutable source membership). The browser works
+This creates three **new exclusive 0600 private files** in that 0700 operator
+folder: team-01-team-handoff.json (original source IDs and human notes plus
+baseline SHA-256 and literal-false authority fields), team-01-team-room.html
+(standalone browser editor, immutable source membership), and
+team-01-private-team-kit.zip (single confidential ZIP with exactly those two
+private inputs, SHA-256 integrity manifest and operator instructions). The browser works
 fully offline with no network requests, storage, accounts, permissions or
 external assets. A human reviewer loads the JSON, edits only the human stage,
 reviewer, next action and local note per original pair, and saves the unsigned
@@ -280,3 +282,21 @@ Use the private diff to understand exactly which human annotations arrived
 before manually choosing whether to use PREFIX-reviewed-links.json as the
 new private operator source. No collaboration export authenticates the sender,
 and nothing automatically updates actual LightUp findings or schedules work.
+
+### One-file offline confidential team transfer
+
+The private team ZIP includes **only** the unsigned human handoff and static
+editor plus private instructions and digest manifest; it does not include raw
+original client findings exports, completed lab cohorts, credentials, scan
+permissions or original evidence. Unzip in an owner-private local folder, open
+review/team-room.html and select review/private-handoff.json.
+
+You may inspect its exact four-member manifest and 0600 metadata offline:
+
+    python3 assessment-remediation/team_handoff.py inspect       /private/lightup-followup/team-01-private-team-kit.zip
+
+Integrity inspection checks original file hashes, the exact static offline
+team room SHA, no extra/duplicate/unsafe members and human-only authority
+fields. It returns 2 for structurally admissible private material or 3 HOLD,
+never grants client access or authenticates a sender. Keep all team ZIPs
+confidential; source IDs and human notes remain sensitive.
