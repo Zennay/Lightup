@@ -57,6 +57,9 @@ def build_parser() -> argparse.ArgumentParser:
     assess.add_argument("--db", default="lightup-lab.db")
     assess.add_argument("--output", metavar="NEW_PRIVATE_JSON",
                         help="write completed lab result as a new exclusive owner-only JSON artifact")
+    assess.add_argument("--artifact-format", choices=("assessment", "benchmark-case"),
+                        default="assessment",
+                        help="complete assessment JSON or #1513 offline record/context benchmark packet")
     assess.add_argument("--gateway-config")
     assess.add_argument("--profile")
     assess.add_argument("--no-review", action="store_true")
@@ -138,6 +141,7 @@ def main(argv: list[str] | None = None) -> int:
             argv.append("--preview-only")
         if args.output:
             argv += ["--output", args.output]
+        argv += ["--artifact-format", args.artifact_format]
         return main_assess(argv)
 
     if args.command in {"create-operator", "create-client-user"}:
