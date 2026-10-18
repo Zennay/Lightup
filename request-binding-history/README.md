@@ -24,7 +24,7 @@ Each later capture requires the real pre-existing operator account and interacti
 
 Repeat deliberately, with the same engagement/client, exact canonical proposed host/IP/CIDR literals, and same risk. The original CLI reauthenticates for **each capture**, including existing account lockout and persisted-source checks. Source creation may update original sign-in bookkeeping; review data is read-only. This is a human-invoked operation, not a scheduled check or monitoring daemon.
 
-The ledger records bounded original SHA-256 raw bytes, original review instant, and original **unsigned** selection/revision digests. It never grants authority. To list private source files and abbreviated source fingerprints without dumping original client notes/assets:
+The ledger records bounded original SHA-256 raw bytes, original review instant, and original **unsigned** selection/revision digests. The new export first lands in a **fresh protected temporary capture file**: only after the original exporter succeeds and exact scope, size, byte fingerprints and ledger constraints pass is it linked to a unique permanent private snapshot name and atomically included in the ledger. On a refused input, the temporary newly generated export is deleted rather than left as an untracked sensitive report. Existing accepted reports and ledger entries are never overwritten by that rejection. It never grants authority. To list private source files and abbreviated source fingerprints without dumping original client notes/assets:
 
     python3 request-binding-history/capture.py list --dir /private/lightup-history
 
