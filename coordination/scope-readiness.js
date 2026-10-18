@@ -20,10 +20,14 @@ function validText(v,max){return typeof v==='string' && v.length<=max && !/[\u00
 function plain(v){return v && typeof v==='object'&&!Array.isArray(v);}
 function allowedFlags(o){
   const keys=Object.keys(flags());
-  return plain(o)&&keys.every(k=>o[k]===false);
+  return plain(o)&&Object.keys(o).length===keys.length&&
+  Object.keys(o).every(k=>keys.includes(k))&&keys.every(k=>o[k]===false);
 }
 function parseJSON(text){
- const obj=JSON.parse(text,(k,v)=>(k==='__proto__'||k==='constructor'||k==='prototype')?undefined:v);
+ const obj=JSON.parse(text,(k,v)=>{
+  if(k==='__proto__'||k==='constructor'||k==='prototype')throw Error('Unsafe reserved JSON key.');
+  return v;
+ });
  if(!plain(obj))throw Error('Expected a JSON object.');
  return obj;
 }
@@ -104,7 +108,7 @@ function sourceRecord(d,digest){
 }
 function cleanRecord(r){
  // Imported casework is never allowed to smuggle a claimed authority field.
- if(!plain(r)||Object.keys(r).some(k=>![
+ if(!plain(r)||r.source_attached===true||Object.keys(r).some(k=>![
   'source_sha256','name','client_label','requested_mode','requested_risk',
   'asset_count','excluded_count','planned_utc','source_attached','tasks'
  ].includes(k)))return null;
@@ -529,7 +533,9 @@ $('restoreInput').addEventListener('change',async event=>{
  const file=event.target.files[0];event.target.value='';if(!file)return;
  try {
   if(!file.size||file.size>MAX_WORKSPACE)throw Error('Workspace file must be 1–262144 bytes.');
-  const parsed=parseJSON(await file.text());
+  const {text}=await readSourceBytes(file);
+  const parsed=parseJSON(text);
+  if(Object.keys(parsed).some(k=>!['kind','schema_version','disposition','security','exported_at_utc','records','notice'].includes(k)))throw Error('Unknown or authority-like workspace fields.');
   if(parsed.kind!=='lightup.scope_readiness_workspace'||parsed.schema_version!==1||parsed.disposition!=='REVIEW_ONLY'||
      !allowedFlags(parsed.security)||!Array.isArray(parsed.records)||parsed.records.length>MAX_RECORDS)throw Error('Unsupported or unsafe workspace schema.');
   const next=parsed.records.map(cleanRecord);
