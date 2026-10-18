@@ -139,20 +139,38 @@
   function newRecord(sha,source) {
     return {sha,source,reference:"Dossier "+String(records.length+1),replaces:null,tasks:Object.fromEntries(TASKS.map(([id])=>[id,"open"]))};
   }
+  function localCoverage(r) {
+    return LightUpScopeNetwork.effectiveCoverage(r.source.assets,r.source.excluded);
+  }
+  function sharedHints(r) {
+    const current=localCoverage(r), spatial=[],clock=[];
+    for(const other of records) {
+      if(other===r) continue;
+      if(LightUpScopeNetwork.coverageOverlap(current,localCoverage(other))) spatial.push(other.sha);
+      if(LightUpPlanningWindow.overlaps(r.source.utcWindow,other.source.utcWindow)===true) clock.push(other.sha);
+    }
+    return {spatial_count:spatial.length,utc_window_count:clock.length};
+  }
   // Explicit human-declared revision lineage. Shared file contents never prove shared client identity.
   function revisionDelta(r) {
     const old=records.find(x=>x.sha===r.replaces);
     if(!old)return null;
     const count=(from,to)=>({added:[...new Set(to)].filter(x=>!new Set(from).has(x)).length,
       removed:[...new Set(from)].filter(x=>!new Set(to).has(x)).length});
+    const coverageDiff=LightUpScopeNetwork.coverageDifference(localCoverage(old),localCoverage(r));
+    const changedTime=JSON.stringify(old.source.utcWindow)!==JSON.stringify(r.source.utcWindow);
     return {assets:count(old.source.assets,r.source.assets),
       exclusions:count(old.source.excluded,r.source.excluded),
+      effective_added_segments:coverageDiff?.added.length ?? null,
+      effective_removed_segments:coverageDiff?.removed.length ?? null,
+      effective_truncated:coverageDiff?.truncated ?? true,
       risk_changed:old.source.risk!==r.source.risk,
       risk_increased:r.source.risk>old.source.risk,
       mode_changed:old.source.mode!==r.source.mode,
       time_window_presence_changed:old.source.hasWindow!==r.source.hasWindow,
-      possible_expansion:count(old.source.assets,r.source.assets).added>0 ||
-        count(old.source.excluded,r.source.excluded).removed>0 || r.source.risk>old.source.risk ||
+      time_window_changed:changedTime,
+      possible_expansion:(coverageDiff?.added.length ?? 0)>0 || (coverageDiff?.truncated ?? true) ||
+        r.source.risk>old.source.risk ||
         (old.source.mode==="analysis_only" && r.source.mode==="authorized_assessment")};
   }
   function setRevision(r,priorSha) {
@@ -176,9 +194,12 @@
     if (r.source.mode==="authorized_assessment") w.push("actieve_modus_voorgesteld");
     if (!r.source.excluded.length) w.push("geen_exclusies_opgegeven");
     if (!r.source.hasWindow) w.push("tijdvenster_te_bespreken");
-    if (new Set(r.source.assets).size!==r.source.assets.length) w.push("dubbele_assetvermelding");
-    const siblings=records.filter(x=>x.sha!==r.sha);
-    if (siblings.some(x=>r.source.assets.some(a=>x.source.assets.includes(a)))) w.push("gedeelde_letterlijke_assetidentiteit");
+    for(const issue of LightUpScopeNetwork.inspect(r.source.assets,r.source.excluded))
+      if(["included_overlap","exclusion_overlap","global_range","ipv6"].includes(issue.code))
+        if(!w.includes("scope_"+issue.code))w.push("scope_"+issue.code);
+    const related=sharedHints(r);
+    if(related.spatial_count>0)w.push("effectieve_numerieke_of_host_scope_overlap");
+    if(related.utc_window_count>0)w.push("utc_planningsoverlap");
     return w;
   }
   const prepared = r => TASKS.filter(([id])=>r.tasks[id]==="prepared").length;
@@ -254,8 +275,11 @@
     if(rev) detail.append(node("p","summary","Letterlijke revisieverschillen (geen eigendom of CIDR-dekking): assets +"+rev.assets.added+"/−"+rev.assets.removed+
       ", exclusies +"+rev.exclusions.added+"/−"+rev.exclusions.removed+
       ", risicotoename: "+(rev.risk_increased?"ja":"nee")+", modus gewijzigd: "+(rev.mode_changed?"ja":"nee")+
+      ". Effectieve netwerk-/hostnameverschillen na exclusies (max 160 segmenten): +"+rev.effective_added_segments+"/−"+rev.effective_removed_segments+
+      (rev.effective_truncated?" (afgekapt)":"")+
+      ". UTC-venster gewijzigd: "+(rev.time_window_changed?"ja":"nee")+
       ". Mogelijke uitbreiding: "+(rev.possible_expansion?"JA — onafhankelijke herbeoordeling nodig":"niet uit deze signalen gebleken")+
-      ". Voorbereidingsacties blijven apart; geen automatische overname."));
+      ". Voorbereidingsacties blijven apart; geen automatische overname. Geen DNS of autorisatiecontrole."));
     const hint=node("p","summary","Reviewpunten: "+(warnings(r).length?warnings(r).join(", ").replaceAll("_"," "):"Geen automatisch aangemerkte signalen. Dat bewijst geen veilige scope.")+". Exacte asset-overlap betekent niet gedeeld eigendom of geldige toestemming.");
     detail.append(hint);
     for (const [id,title,description] of TASKS) {
@@ -315,7 +339,9 @@
     return {kind:"lightup.scope_handoff_review_register",schema_version:1,state:"REVIEW_ONLY_HOLD",authority:authority(),
       notice:"Unverified local human preparation; no authorization, consent, identity or ownership assertion.",
       entries:records.map((r,i)=>({
-        dossier:"D"+String(i+1).padStart(2,"0"),source_sha256:r.sha,replaces_source_sha256:r.replaces,revision:revisionDelta(r),
+        dossier:"D"+String(i+1).padStart(2,"0"),source_sha256:r.sha,
+        studio_revision_sha256:r.source.studioDigest,
+        replaces_source_sha256:r.replaces,revision:revisionDelta(r),offline_shared_review_hints:sharedHints(r),
         proposed_risk:r.source.risk,proposed_mode:r.source.mode,
         asset_count:r.source.assets.length,excluded_count:r.source.excluded.length,
         review_codes:warnings(r),tasks:Object.fromEntries(TASKS.map(([id])=>[id,r.tasks[id]])),
@@ -360,7 +386,9 @@
     ];
     for(const e of data.entries) {
       parts.push("<article><h2>"+esc(e.dossier)+" · voorgesteld risico "+esc(e.proposed_risk)+"</h2>");
-      parts.push("<p>Studio-source SHA-256: <code>"+esc(e.source_sha256)+"</code><br>Voorgestelde modus: "+esc(e.proposed_mode)+"<br>Inclusies: "+esc(e.asset_count)+", exclusies: "+esc(e.excluded_count)+"</p>");
+      parts.push("<p>Bronbytes SHA-256: <code>"+esc(e.source_sha256)+"</code><br>Studio semantische revisie SHA-256: <code>"+esc(e.studio_revision_sha256)+"</code><br>Voorgestelde modus: "+esc(e.proposed_mode)+"<br>Inclusies: "+esc(e.asset_count)+", exclusies: "+esc(e.excluded_count)+
+        "<br>Andere voorstellen met mogelijke effectieve scope-overlap: "+esc(e.offline_shared_review_hints.spatial_count)+
+        "<br>Andere voorstellen met voorgestelde UTC-tijdoverlap: "+esc(e.offline_shared_review_hints.utc_window_count)+"</p>");
       if(e.replaces_source_sha256) {
         parts.push("<p>Zelfverklaarde revisie van <code>"+esc(e.replaces_source_sha256)+"</code>. Statussen van oudere concepten zijn niet overgenomen.</p>");
         if(e.revision) parts.push("<p>Letterlijke revisietellingen: assets toegevoegd "+esc(e.revision.assets.added)+", verwijderd "+esc(e.revision.assets.removed)+
