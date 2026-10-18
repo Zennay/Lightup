@@ -65,7 +65,7 @@ This interface is a source-isolated integration on top of Studio's published sch
 
 ## Owner-private completion artifact
 
-Use `--output /private/path/NEW-NAME.json` to keep the original completed assessment JSON, or the optional no-execution input preview, in one **NEW** local private file. The file is created only once with owner-only mode `0600`, never follows the final-component symlink and never silently overwrites an existing file. It may contain targets, findings, evidence references and model-generated text; store it in a trusted private directory, do not commit it to Git and never publicly share it. The command prints only a non-sensitive completion status, not the full report, when writing to a private file. With no `--output`, existing stdout JSON remains unchanged.
+Use `--output /private/path/NEW-NAME.json` to keep the original completed assessment JSON, or the optional no-execution input preview, in one **NEW** local private file. The destination path and parent directory are checked before starting an assessment so obvious unavailable paths are rejected before model/tool interaction. The file is created only once with owner-only mode `0600`; the final exclusive open still rejects any destination created later, never follows the final-component symlink and never silently overwrites an existing file. It may contain targets, findings, evidence references and model-generated text; store it in a trusted private directory, do not commit it to Git and never publicly share it. The command prints only a non-sensitive completion status, not the full report, when writing to a private file. With no `--output`, existing stdout JSON remains unchanged.
 
 Original failed/incomplete model review is **not** written as a completed JSON artifact. The original assessment result remains inspectable using the existing stdout path, with an explicit incomplete-review indication. Neither saved JSON nor its source metadata is an authentication, consent, completed security assessment, audit-trust signature or proof of a fixed vulnerability. Only source-created private file permissions are asserted: already-present destination files and symlinks are refused.
 
@@ -87,6 +87,14 @@ When the original evaluation successfully completes, the existing `LabEvaluation
 - No-argument invocation retains `http://127.0.0.1:18080/`. An explicitly empty `--targets-file` is rejected rather than secretly using that default.
 - `--profile` fixture scoring is restricted to **one** endpoint; multi-endpoint assessments must be unscored rather than being wrongly measured against a one-fixture ground truth.
 - Multi-endpoint result JSON reuses existing `targets`, `plan`, `findings`, `coverage`, `evaluation`, and optional `review` fields. Each planner-produced finding already has the concrete `target` identity. This change does not claim completeness, valid security findings or verified remediation.
+
+## Safe lab URL and manifest admission
+
+Before any model gateway, planner or target tool, the installed lab CLI admits only bounded printable HTTP(S) URLs with host identities, syntactically valid ports, and **no embedded username/password or URL fragments**. Every endpoint still passes the independent original lab scope fence. No DNS lookup, enumeration or external URL fetching is introduced. A local `--targets-file` must be an actual bounded regular file (not a symbolic link, FIFO, character device or directory); it is read without following the final pathname symlink. Invalid or rejected inputs, private catalog data and provider failures produce **generic CLI errors** rather than echoing source URLs, filenames or provider exception text. A model-review failure is explicitly marked incomplete rather than appearing as verified evidence.
+
+## Stable finding correlation through review and report
+
+The original report Markdown had a source finding identity, but the planner-driven JSON result had omitted `finding_id`, leaving operators unable to reliably match similarly titled checks across endpoints. JSON findings now carry the original unique `finding_id` next to target, evidence references and evidence summary; the assessment-review pipeline preserves it in reviewed findings and the report synthesizer's per-finding inputs. Repeated IDs are rejected across the entire review batch before the first verifier/model request. For older standalone review dictionaries with no finding ID, the original output shape remains supported; no identity is invented. IDs identify local records, **not** authenticated provenance, unique vulnerability truth, or consent.
 
 ## Multi-endpoint evidence isolation
 
