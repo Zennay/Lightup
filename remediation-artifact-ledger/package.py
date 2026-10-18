@@ -28,8 +28,9 @@ def build() -> bytes:
     if hash_bytes(js_original).hex() != ORIGINAL_SHA256:
         raise ValueError("Original Casework source owner bytes changed. Refusing to build.")
     js_own = (HERE / "ledger.js").read_bytes()
+    js_requests = (HERE / "request-board.js").read_bytes()
     css = (HERE / "style.css").read_bytes()
-    for name, value in [("original JavaScript", js_original), ("ledger JavaScript", js_own)]:
+    for name, value in [("original JavaScript", js_original), ("ledger JavaScript", js_own), ("request JavaScript", js_requests)]:
         if b"</script" in value.lower() or b"<!--" in value:
             raise ValueError("Unsafe inline script terminator in " + name)
     if b"</style" in css.lower() or b"<!--" in css:
@@ -38,11 +39,12 @@ def build() -> bytes:
     if html.count(needle) != 1:
         raise ValueError("CSP script/style contract must occur once")
     html = html.replace(needle,
-                        "script-src " + token(js_original) + " " + token(js_own)
+                        "script-src " + token(js_original) + " " + token(js_own) + " " + token(js_requests)
                         + "; style-src " + token(css))
     for source, value in [
         ('<script src="../casework/remediation-engine.js"></script>', js_original),
         ('<script src="ledger.js"></script>', js_own),
+        ('<script src="request-board.js"></script>', js_requests),
         ('<link rel="stylesheet" href="style.css">', css),
     ]:
         if html.count(source) != 1:
