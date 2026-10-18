@@ -91,7 +91,7 @@ def main() -> None:
     args = parser.parse_args()
     out = args.output.expanduser().resolve()
     # Guard against accidental replacement of original source files.
-    if out in (HTML.resolve(), *(HERE / source).resolve() for source in SOURCES):
+    if out == HTML.resolve() or any(out == (HERE / source).resolve() for source in SOURCES):
         raise ValueError("Cannot overwrite a source file.")
     out.parent.mkdir(parents=True, exist_ok=True)
     result = build()
