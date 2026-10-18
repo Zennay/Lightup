@@ -87,17 +87,18 @@ class ExecutionPolicy:
         if request.requested_risk is RiskLevel.DESTRUCTIVE_LAB_ONLY:
             return PolicyDecision(False, "destructive risk is restricted to isolated labs")
 
-        grant = request.authorization
-        if grant is None:
+        original_grant = request.authorization
+        if original_grant is None:
             return PolicyDecision(False, "active target interaction requires authorization")
-        if not _canonical_grant(grant):
+        if not _canonical_grant(original_grant):
             return PolicyDecision(False, "noncanonical authorization grant")
-        scope = grant.scope
-        if not _canonical_scope(scope):
+        original_scope = original_grant.scope
+        if not _canonical_scope(original_scope):
             return PolicyDecision(False, "noncanonical authorization scope")
-
-        # Use a detached canonical source value rather than polymorphic
-        # grant/scope methods. Check the same UTC instant used for both bounds.
+        grant = _grant_snapshot(original_grant)
+        if not _canonical_grant(grant) or not _canonical_scope(grant.scope):
+            return PolicyDecision(False, "authorization snapshot changed while reading")
+        scope = grant.scope
         now = datetime.now(timezone.utc)
         if not (grant.valid_from <= now <= grant.valid_until):
             return PolicyDecision(False, "authorization is not currently valid")
@@ -107,6 +108,15 @@ class ExecutionPolicy:
             return PolicyDecision(False, "asset is outside the authorized scope")
         if not scope.allows_capability(request.capability_id):
             return PolicyDecision(False, "capability is outside the authorized scope")
+        if (
+            request.authorization is not original_grant
+            or original_grant.scope is not original_scope
+            or not _canonical_grant(original_grant)
+            or not _canonical_scope(original_scope)
+        ):
+            return PolicyDecision(False, "authorization identity changed during decision")
+        if _grant_snapshot(original_grant) != grant:
+            return PolicyDecision(False, "authorization fields changed during decision")
 
         return PolicyDecision(True, "authorized active assessment")
 
@@ -139,3 +149,23 @@ def _canonical_grant(grant: object) -> bool:
         ):
             return False
     return grant.valid_from <= grant.valid_until
+
+
+def _grant_snapshot(grant: AuthorizationGrant) -> AuthorizationGrant:
+    scope = grant.scope
+    return AuthorizationGrant(
+        grant_id=grant.grant_id,
+        client_id=grant.client_id,
+        engagement_id=grant.engagement_id,
+        approved_by=grant.approved_by,
+        reference=grant.reference,
+        scope=ScopeDefinition(
+            assets=scope.assets,
+            max_risk=scope.max_risk,
+            allowed_capabilities=scope.allowed_capabilities,
+            excluded_assets=scope.excluded_assets,
+        ),
+        valid_from=grant.valid_from,
+        valid_until=grant.valid_until,
+        recurring_retest_allowed=grant.recurring_retest_allowed,
+    )
