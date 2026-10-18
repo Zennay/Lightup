@@ -62,6 +62,8 @@ h3{font-size:15px;margin:20px 0 9px}.source-card{border:1px solid #455877;border
 <div class="metric"><strong id="attention">—</strong><small>Human attention cases</small></div>
 <div class="metric"><strong id="pendingRisk">—</strong><small>Original risk decisions pending</small></div>
 <div class="metric"><strong id="riskHold">—</strong><small>Risk provenance HOLD</small></div>
+<div class="metric"><strong id="teamReturned">—</strong><small>Unverified team notes to review</small></div>
+<div class="metric"><strong id="humanOpen">—</strong><small>Human follow-ups not documented</small></div>
 <div class="metric"><strong id="candidate">—</strong><small>Original admin request matches</small></div>
 <div class="metric"><strong id="bindingStatus">—</strong><small>Candidate source status (not permission)</small></div></section>
 <section class="panel"><div class="bar"><div><h2>02 / Human incident caseboard</h2><p class="muted">Private source IDs are not included in anonymous exports. Compare historical snapshots of the same tenant and case set; vanished STOP is HOLD. Stages are tab-only.</p></div>
@@ -75,8 +77,10 @@ h3{font-size:15px;margin:20px 0 9px}.source-card{border:1px solid #455877;border
 <select id="focus" aria-label="Human triage filter" disabled><option value="all">All original cases</option>
 <option value="attention">STOP / HOLD / pending risk</option>
 <option value="risk">Risk-source follow-up</option>
-<option value="changes">Changed source records</option></select></div>
-<div style="overflow:auto"><table><thead><tr><th style="width:22%">Engagement</th><th style="width:20%">STOP source</th><th style="width:12%">Grants</th><th style="width:28%">Casebook attention</th><th style="width:18%">Follow-up</th><th style="width:17%">Previous source</th><th>Inspect</th></tr></thead><tbody id="rows"></tbody></table></div>
+<option value="changes">Changed source records</option>
+<option value="team">UNVERIFIED team notes</option>
+<option value="open">Human follow-ups not documented</option></select></div>
+<div style="overflow:auto"><table><thead><tr><th style="width:22%">Engagement</th><th style="width:20%">STOP source</th><th style="width:12%">Grants</th><th style="width:28%">Casebook attention</th><th style="width:18%">Follow-up</th><th style="width:17%">Previous source</th><th>Team follow-up</th><th>Inspect</th></tr></thead><tbody id="rows"></tbody></table></div>
 <div id="empty">Import original private source for the caseboard.</div></section>
 <section class="panel" id="detail" hidden aria-label="Selected original engagement details">
 <h2>03 / Original engagement dossier</h2>
@@ -506,6 +510,8 @@ if(focus==="attention"&&priority(r)===3)continue;
 if(focus==="risk"&&!(r.casebook_attention.includes("RISK")||
  report.casebook.risk_approvals.some(x=>x.engagement_id===r.engagement_id)))continue;
 if(focus==="changes"&&(!older||!(changes.get(r.engagement_id)||[]).length))continue;
+if(focus==="team"&&!teamNotes.has(r.engagement_id))continue;
+if(focus==="open"&&(stages.get(r.engagement_id)||"unreviewed")==="documented")continue;
 n++;var tr=document.createElement("tr");tr.dataset.originalEngagement=r.engagement_id;
 TD(tr,r.engagement_id,"id");
 TD(tr,r.stop_observation,r.stop_observation==="NO_STOP_RECORDED_NOT_PERMISSION"?"good":"risk");
@@ -516,6 +522,9 @@ stageLabels.forEach(function(stage){var op=document.createElement("option");op.v
 s.value=stages.get(r.engagement_id)||"unreviewed";s.addEventListener("change",function(){stages.set(r.engagement_id,s.value);});cell.appendChild(s);tr.appendChild(cell);
  TD(tr,older ? ((changes.get(r.engagement_id)||[]).join(" / ")||"NO CHANGE") : "NOT COMPARED",
  older&&(changes.get(r.engagement_id)||[]).length ? "risk":"muted");
+ var reviewerNote=teamNotes.get(r.engagement_id);
+ TD(tr,reviewerNote?("UNVERIFIED "+reviewerNote.team+" / "+reviewerNote.note.slice(0,70)):"—",
+ reviewerNote?"risk":"muted");
  var action=document.createElement("td"),button=document.createElement("button");
  button.className="secondary";button.textContent="Inspect";
  button.setAttribute("aria-label","Inspect original case "+r.engagement_id);
@@ -528,6 +537,8 @@ E("count").textContent=report.summary.selected;E("stops").textContent=report.sum
 E("holds").textContent=report.summary.stop_source_hold;E("attention").textContent=report.summary.cases_requiring_human_attention;
 E("pendingRisk").textContent=report.summary.pending_risk_review;
 E("riskHold").textContent=report.summary.risk_provenance_hold;
+E("teamReturned").textContent=teamNotes.size;
+E("humanOpen").textContent=report.engagements.filter(r=>(stages.get(r.engagement_id)||"unreviewed")!=="documented").length;
 E("candidate").textContent=report.binding_review&&report.binding_review.scenario_count!==undefined?report.binding_review.scenario_count+" alternatives":report.binding_review&&report.binding_review.matching_request_count!==undefined?report.binding_review.matching_request_count:"—";
 E("bindingStatus").textContent=report.binding_review?report.binding_review.status:"NOT REQUESTED";
 if(selectedCase)inspect(selectedCase);}
