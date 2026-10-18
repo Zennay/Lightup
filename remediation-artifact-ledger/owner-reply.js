@@ -134,12 +134,13 @@ function draw(){
 }
 function download(){
  if(!packet)fail('No HUMAN owner request loaded.');
- const outgoing=edits.map(r=>{
+ const outgoing=edits.filter(r=>r.human_response.trim()).map(r=>{
   string(r.human_response.trim(),1800,'reply',true);
   if(!['submitted_unverified','needs_changes'].includes(r.human_stage))fail('Invalid HUMAN reply stage.');
   return {...r,human_response:r.human_response.trim()};
  });
- if(!confirm('Save '+outgoing.length+' PRIVATE UNVERIFIED HUMAN replies locally? This does not authenticate you, transmit to the operator, prove any security fix or authorize a retest. Return through a separately approved HUMAN channel.'))return;
+ if(!outgoing.length)fail('Write at least one HUMAN response before exporting; unanswered requests stay open.');
+ if(!confirm('Save '+outgoing.length+' of '+edits.length+' PRIVATE UNVERIFIED HUMAN responses locally (remaining '+(edits.length-outgoing.length)+' unanswered)? This does not authenticate you, transmit to the operator, prove any security fix or authorize a retest. Return through a separately approved HUMAN channel.'))return;
  const response={...packet,reply_kind:'unverified_human_reply',reply_utc:new Date().toISOString(),
   requests:outgoing};
  const blob=new Blob([JSON.stringify(response,null,2)+'\n'],{type:'application/json'});
