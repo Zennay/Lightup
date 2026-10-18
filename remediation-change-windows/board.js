@@ -133,6 +133,59 @@ function reviewFile(o,src,hash){
  if(seen.size!==src.length)fail('Missing original review record.');
  return result;
 }
+
+/* Existing source-owner Casework is read-only; its stage/date/owner is
+ * self-reported planning, never evidence or verified remediation. */
+function caseworkFile(o,src,hash){
+ const required=['kind','schema_version','disposition',...FLAGS,'source_contract','source_sha256','findings','cases'];
+ keys(o,[...required,'instructions'],required);
+ if(o.kind!=='lightup.remediation_casework_draft'||o.schema_version!==1||
+    o.disposition!=='LOCAL_CLIENT_PLANNING'||o.source_contract!=='lightup.finding_export._COLUMNS_v1'||
+    o.source_sha256!==hash||FLAGS.some(k=>o[k]!==false))
+  fail('Casework is not exact-source-bound original v1 or claims authority.');
+ if(o.instructions!==undefined&&typeof o.instructions!=='string')fail('Invalid original Casework instructions.');
+ if(!Array.isArray(o.findings)||o.findings.length!==src.length||
+    !Array.isArray(o.cases)||o.cases.length!==src.length)fail('Incomplete original Casework source rows.');
+ for(const row of o.findings)keys(row,FIELDS);
+ const originalIds=new Map(src.map(f=>[f.finding_id,f])),seen=new Set();
+ for(const row of o.findings){
+  if(typeof row.finding_id!=='string'||seen.has(row.finding_id))fail('Duplicated original Casework finding.');
+  const actual=originalIds.get(row.finding_id);
+  if(!actual||FIELDS.some(k=>actual[k]!==row[k]))fail('Original Casework finding differs from canonical CSV.');
+  seen.add(row.finding_id);
+ }
+ const fields=['finding_id','owner','status','due_date','next_action','verification_plan','blocker','note','updated_utc'];
+ for(const item of o.cases)keys(item,fields);
+ const parsed=C.loadPacket(o),rows=new Map(parsed.cases.map(c=>[c.finding_id,c]));
+ if(rows.size!==src.length)fail('Original Casework duplicate or missing human case.');
+ return {rows,sha256:localSha256(JSON.stringify(src.map(f=>rows.get(f.finding_id))))};
+}
+function pastDue(c){
+ if(!c||!c.due_date||['completed','deferred'].includes(c.status))return false;
+ /* UTC date is a local planning reminder, NOT a contractual deadline. */
+ return c.due_date<new Date().toISOString().slice(0,10);
+}
+function caseBlocked(c){return Boolean(c&&(c.status==='blocked'||c.blocker.trim()));}
+function caseLabel(c){return c?(c.owner||'Unassigned owner')+' · '+c.status+(c.due_date?' · '+c.due_date+' UTC':' · no due date'):'No original Casework attached';}
+function privateCaseBrief(){
+ if(!state?.casework)fail('Import an original exact-source Casework draft first.');
+ if(!confirm('PRIVATE: export original finding IDs, local human owner, next action, blocker and due date? Send only via an independently approved confidential channel.'))return;
+ plan();
+ const sanitize=v=>String(v).replace(/[\u0000-\u001f\u007f\u202a-\u202e\u2066-\u2069]/g,' ').replace(/[\\|]/g,' ').slice(0,700);
+ const lines=['# PRIVATE LightUp original Casework human window brief','',
+  '**UNVERIFIED HUMAN DRAFT. Not a grant, verified fix, retest permit, change authorization or authenticated source.**','',
+  'Original canonical source SHA-256: '+state.hash+' (unsigned, NOT identity/consent).',
+  'Original Casework row SHA-256: '+state.caseworkDigest+' (unsigned).','',
+  '| Original finding ID | Original severity | Local owner | Casework state | Local due date | Human proposed UTC slot | Local blocker | Next human action |',
+  '| --- | --- | --- | --- | --- | --- | --- | --- |'];
+ for(const f of state.source){
+  const c=state.casework.get(f.finding_id);
+  lines.push('| '+[f.finding_id,f.severity,c.owner,c.status,c.due_date||'',state.assignments.get(f.finding_id)||0,c.blocker,c.next_action].map(sanitize).join(' | ')+' |');
+ }
+ lines.push('','All statuses and windows are human proposals only. Each recipient must independently validate original account, engagement, scope, permissions and revocation.');
+ output('lightup-private-original-casework-change-brief.md',lines.join('\n')+'\n','text/markdown');
+}
+
 function emptyReview(){
  return {stage:'missing',reviewer:'',next_step:'',evidence:Object.fromEntries(EVIDENCE.map(k=>[k,'']))};
 }
@@ -155,6 +208,12 @@ function readiness(f,r){
  const concerns=[];
  if(r.stage==='missing'||r.stage==='needs_changes')concerns.push('Local review '+r.stage);
  if(lack.length)concerns.push(lack.length+' missing local references');
+ if(state?.casework){
+  const c=state.casework.get(f.finding_id);
+  if(caseBlocked(c))concerns.push('Original local Casework blocked');
+  if(pastDue(c))concerns.push('Local Casework planning date passed');
+  if(c&&!c.owner.trim())concerns.push('Original Casework owner missing');
+ }
  if(f.retest_status==='regression')concerns.push('Source reports regression');
  if(f.retest_status==='fixed')concerns.push('Source says fixed; not independently verified');
  if(r.stage==='ready_for_authorized_retest')concerns.push('Retest still requires separate authority');
@@ -166,12 +225,20 @@ function hasHumanHold(f,r){
  return r.stage==='missing'||r.stage==='needs_changes'||EVIDENCE.slice(0,4).some(k=>!r.evidence[k]);
 }
 function visibleFinding(f,r){
- const severity=$('filter').value,human=$('humanFilter').value;
+ const severity=$('filter').value,human=$('humanFilter').value,caseFilter=$('caseFilter').value;
  if(severity&&severity!==f.severity)return false;
  if(human==='gaps'&&!hasHumanHold(f,r))return false;
  if(human==='complete'&&hasHumanHold(f,r))return false;
  if(human==='regression'&&f.retest_status!=='regression')return false;
  if(human==='critical'&&!['critical','high'].includes(f.severity))return false;
+ if(caseFilter){
+  if(!state?.casework)return false;
+  const c=state.casework.get(f.finding_id);
+  if(caseFilter==='blocked'&&!caseBlocked(c))return false;
+  if(caseFilter==='overdue'&&!pastDue(c))return false;
+  if(caseFilter==='no-owner'&&c?.owner.trim())return false;
+  if(caseFilter==='open'&&['completed','deferred'].includes(c?.status))return false;
+ }
  return true;
 }
 function bulkApply(){
@@ -203,7 +270,7 @@ function render(){
   if(r.stage==='missing'||r.stage==='needs_changes'||EVIDENCE.slice(0,4).some(k=>!r.evidence[k]))holds++;
   if(!visibleFinding(f,r))continue;
   const tr=el('tr'),id=el('td',f.finding_id),severity=el('td',f.severity),source=el('td',f.retest_status),
-    stage=el('td',r.stage+' (human only)'),caveat=el('td',readiness(f,r)),slot=el('td');
+    stage=el('td',r.stage+' (human only)'),caseCell=el('td',caseLabel(state.casework?.get(f.finding_id))),caveat=el('td',readiness(f,r)),slot=el('td');
   if(r.stage==='needs_changes'||r.stage==='missing')caveat.className='hold';
   const sel=el('select');sel.setAttribute('aria-label','Proposed human window for finding '+f.finding_id);
   sel.appendChild(new Option('Unassigned',0));
@@ -211,12 +278,14 @@ function render(){
   sel.value=String(state.assignments.get(f.finding_id)||0);
   sel.addEventListener('change',()=>{lastBulkSnapshot=null;$('bulkUndo').disabled=true;state.assignments.set(f.finding_id,Number(sel.value));render();});
   slot.appendChild(sel);
-  for(const cell of [id,severity,source,stage,caveat,slot])tr.appendChild(cell);
+  for(const cell of [id,severity,source,stage,caseCell,caveat,slot])tr.appendChild(cell);
   rows.appendChild(tr);
  }
  $('total').textContent=src.length;
  $('urgent').textContent=src.filter(f=>['critical','high'].includes(f.severity)).length;
  $('unassigned').textContent=unassigned;$('holds').textContent=holds;
+ $('caseBlocked').textContent=state.casework?[...state.casework.values()].filter(caseBlocked).length:'—';
+ $('caseOverdue').textContent=state.casework?[...state.casework.values()].filter(pastDue).length:'—';
  const board=$('summary');board.replaceChildren();
  try{
   const windows=currentWindows();for(let i=0;i<HOURS;i++){
@@ -231,12 +300,13 @@ function render(){
 async function load(){
  /* Atomic import: always discard old state on a new attempt, never keep stale source on error. */
  state=null;revisionCandidate=null;lastBulkSnapshot=null;$('bulkUndo').disabled=true;$('results').hidden=true;$('digest').textContent='';clearRevisionPreview('');
- const file=$('csv').files[0],review=$('review').files[0];
- if(review&&!$('same').checked)fail('Independent exact client/engagement confirmation required for review join.');
+ const file=$('csv').files[0],review=$('review').files[0],caseFile=$('casework').files[0];
+ if((review||caseFile)&&!$('same').checked)fail('Independent exact client/engagement confirmation required for review/Casework join.');
  const src=C.parseCSV(await read(file,1048576)),hash=await digest(src);
  let notes=new Map(src.map(f=>[f.finding_id,emptyReview()]));
  if(review)notes=reviewFile(strictJSON(await read(review,2097152)),src,hash);
- state={source:src,hash,review:notes,assignments:new Map()};
+ const casework=caseFile?caseworkFile(strictJSON(await read(caseFile,2097152)),src,hash):null;
+ state={source:src,hash,review:notes,casework:casework?.rows||null,caseworkDigest:casework?.sha256||null,assignments:new Map()};
  $('digest').textContent='Original canonical source SHA-256: '+hash+' · unsigned content correlation only; NOT identity or consent.';
  $('results').hidden=false;render();
  setStatus('Source loaded for private, unverified human planning. No permissions or retest inferred.');
@@ -273,7 +343,7 @@ async function resumePlan(){
  if(!state)fail('Load original source before resuming a private plan.');
  if(!$('same').checked)fail('Independently confirm same original client and exact engagement.');
  const raw=strictJSON(await read($('planFile').files[0],2097152));
- const top=['kind','schema_version','disposition','source_contract','source_sha256','warning','windows','meeting_note','assignments','source_refresh',...FLAGS];
+ const top=['kind','schema_version','disposition','source_contract','source_sha256','warning','windows','meeting_note','assignments','source_refresh','casework_sha256',...FLAGS];
  keys(raw,top,top.filter(x=>!['warning','source_refresh'].includes(x)));
  const refresh=raw.source_refresh||null;
  if(refresh!==null){
@@ -289,6 +359,7 @@ async function resumePlan(){
     raw.source_contract!=='lightup.finding_export._COLUMNS_v1'||
     raw.source_sha256!==state.hash||FLAGS.some(k=>raw[k]!==false))
   fail('Plan is not an exact non-authorizing original-source-bound draft.');
+ if(raw.casework_sha256!==undefined&&raw.casework_sha256!==state.caseworkDigest)fail('Original Casework plan changed or was not loaded; refuse private resume.');
  if(raw.warning!==undefined)human(raw.warning,800);
  meetingNote(raw.meeting_note);
  if(!Array.isArray(raw.windows)||raw.windows.length!==HOURS||
@@ -321,7 +392,9 @@ async function resumePlan(){
  const imported=new Map();
  for(const row of raw.assignments){
   keys(row,['finding_id','original_severity','original_retest_status','human_stage','human_reviewer',
-   'human_next_step','human_review_sha256','human_reference_gaps','proposed_window']);
+   'human_next_step','human_review_sha256','human_reference_gaps','proposed_window','casework_row_sha256'],
+   ['finding_id','original_severity','original_retest_status','human_stage','human_reviewer','human_next_step','human_review_sha256','human_reference_gaps','proposed_window']);
+  if(row.casework_row_sha256!==undefined&&row.casework_row_sha256!==(state.casework?localSha256(JSON.stringify(state.casework.get(row.finding_id))):null))fail('Original Casework row changed during private plan resume.');
   const f=idMap.get(row.finding_id);
   if(typeof row.finding_id!=='string'||!f||imported.has(row.finding_id)||
      row.original_severity!==f.severity||row.original_retest_status!==f.retest_status)
@@ -364,7 +437,7 @@ async function resumePlan(){
 function localPlanFingerprint(){
  if(!state)fail('No current original source.');
  return localSha256(JSON.stringify({
-  source_sha256:state.hash,
+  source_sha256:state.hash,casework_sha256:state.caseworkDigest,
   original_ids:state.source.map(f=>f.finding_id),
   human:state.source.map(f=>state.review.get(f.finding_id)),
   proposal:state.source.map(f=>state.assignments.get(f.finding_id)||0),
@@ -413,7 +486,8 @@ function applySourceRevision(){
  };
  /* Atomic swap only after the full original five-field comparator, digest,
   * review/slot mapping and preview fingerprint have been accepted. */
- state={source:next,hash,review:notes,assignments:slots,refreshSummary:summary};
+ state={source:next,hash,review:notes,assignments:slots,casework:null,caseworkDigest:null,refreshSummary:summary};
+ $('caseFilter').value='';
  lastBulkSnapshot=null;$('bulkUndo').disabled=true;
  $('digest').textContent='Current original canonical source SHA-256: '+hash+
    ' · changed/new human notes and slots reset; absent source records are NOT fixed.';
@@ -431,12 +505,13 @@ function privateExport(){
   kind:'lightup.remediation_human_change_windows',schema_version:1,
   disposition:'DRAFT_UNVERIFIED_HUMAN_COORDINATION',source_contract:'lightup.finding_export._COLUMNS_v1',
   source_sha256:state.hash,warning:'Unsigned and non-authorizing; source absence or scheduled stage never means verified remediation.',
-  windows:detail,meeting_note:meetingNote($('note').value),source_refresh:state.refreshSummary||null,
+  windows:detail,meeting_note:meetingNote($('note').value),source_refresh:state.refreshSummary||null,casework_sha256:state.caseworkDigest,
   assignments:state.source.map(f=>{
    const r=state.review.get(f.finding_id);
    return {finding_id:f.finding_id,original_severity:f.severity,original_retest_status:f.retest_status,
     human_stage:r.stage,human_reviewer:r.reviewer,human_next_step:r.next_step,
     human_review_sha256:localSha256(JSON.stringify(r)),
+    casework_row_sha256:state.casework?localSha256(JSON.stringify(state.casework.get(f.finding_id))):null,
     human_reference_gaps:EVIDENCE.slice(0,4).filter(k=>!r.evidence[k]),
     proposed_window:state.assignments.get(f.finding_id)||0};
   })
@@ -465,7 +540,7 @@ function aggregateExport(){
  output('lightup-aggregate-human-windows.csv',data.join('\r\n')+'\r\n','text/csv');
 }
 function forget(){
- state=null;revisionCandidate=null;lastBulkSnapshot=null;$('bulkUndo').disabled=true;for(const id of ['csv','review','planFile','nextCsv'])$(id).value='';
+ state=null;revisionCandidate=null;lastBulkSnapshot=null;$('bulkUndo').disabled=true;for(const id of ['csv','review','casework','planFile','nextCsv'])$(id).value='';
  $('confirmRevision').checked=false;clearRevisionPreview('');
  $('same').checked=false;$('note').value='';$('digest').textContent='';$('results').hidden=true;
  for(let i=0;i<HOURS;i++){$('date'+i).value='';$('label'+i).value='';$('duration'+i).value='60';}
@@ -487,9 +562,11 @@ function init(){
  $('applyRevision').addEventListener('click',()=>{try{applySourceRevision();}catch(e){setStatus(e.message,true);}});
  for(const id of ['nextCsv','confirmRevision'])$(id).addEventListener('change',()=>clearRevisionPreview('Source selection changed. Create a new preview.'));
  $('filter').addEventListener('change',render);
+ $('caseFilter').addEventListener('change',render);
  $('humanFilter').addEventListener('change',render);
  $('bulkApply').addEventListener('click',()=>{try{bulkApply();}catch(e){setStatus(e.message,true);}});
  $('bulkUndo').addEventListener('click',()=>{try{bulkUndo();}catch(e){setStatus(e.message,true);}});
+ $('caseBrief').addEventListener('click',()=>{try{privateCaseBrief();setStatus('Private original Casework human brief downloaded locally; still UNVERIFIED.');}catch(e){setStatus(e.message,true);}});
  $('recalculate').addEventListener('click',()=>{try{plan();render();setStatus('Hypothetical windows checked for overlap; original authority remains HOLD.');}catch(e){setStatus(e.message,true);}});
  for(const [id,fn] of [['private',privateExport],['calendar',calendarExport],['aggregate',aggregateExport]])
   $(id).addEventListener('click',()=>{try{fn();setStatus('Local unsigned planning export prepared; not authorization or verified evidence.');}catch(e){setStatus(e.message,true);}});
