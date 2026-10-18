@@ -99,3 +99,13 @@ For the entire private intake-to-human-follow-up workflow, there is now one loca
 The menu exposes seven complete actions: capture, source integrity recheck, printable private/anonymized inventory, aggregate sharing, before/after source-delta, editable human planning form generation and source-bound worklist publication. The operator explicitly selects each input file, each output filename, and public versus private view. There is no directory scan, network, shell, model, target interaction, browser persistence, automatic source escalation, or non-0600 output. Invalid inputs yield a generic HOLD and return to the safe menu rather than exposing source paths. The console never offers an authorization, dispatch or GO action.
 
 Use --help for noninteractive usage hints. The original individual commands remain usable independently, with the same source and security requirements.
+
+### Portable, private coordination packet
+
+For an all-in-one owner-private, existing-source-only handoff, package the archive inventory and optional matching human follow-up:
+
+    python3 assessment-archive/packet.py --manifest /private/ARCHIVE.json --choices /private/EDITED-followup.json --output /private/NEW-coordination.zip
+
+Or select --aggregate-only for a packet that does NOT contain source hashes, per-slot stages, human roles, dates, paths, finding text or target/client identifiers. Both packages contain a static HTML archive view, metadata JSON, an explicit no-authority receipt, and optionally an HTML human worklist. Original evidence/record files are NOT included and cannot be reconstructed from the packet.
+
+Packet creation reuses one original private manifest byte snapshot and the exact original follow-up binding; a changed or mixed original source is a HOLD. ZIP members have deterministic local names and timestamps, source-neutral content and restrictive Unix metadata. The new ZIP is published atomically as a new 0600 private local file. Neither format certifies authenticity, data integrity beyond bytes, human consent, permitted active work, remediation or release. The console also offers this as option 8.

@@ -12,6 +12,7 @@ from zipfile import BadZipFile
 
 import archive
 import followup
+import packet
 
 
 ACTIONS = (
@@ -22,6 +23,7 @@ ACTIONS = (
     ("5", "Compare two private archive snapshots"),
     ("6", "Create source-bound human follow-up form"),
     ("7", "Publish follow-up desk from locally edited form"),
+    ("8", "Package existing archive and human worklist for private local coordination"),
     ("q", "Exit without changing files"),
 )
 
@@ -107,6 +109,14 @@ def operation(choice: str) -> int:
         return followup.render(SimpleNamespace(manifest=manifest, choices=choices,
                                                output=output, aggregate_only=anonymous,
                                                format=format_choice))
+    if choice == "8":
+        manifest = ask("Existing owner-private archive manifest JSON path")
+        with_choices = yes_no("Include source-bound human follow-up stages")
+        followup_file = ask("Original edited human follow-up form JSON path") if with_choices else None
+        anonymous = yes_no("Create aggregate-only packet without source fingerprints/roles/dates")
+        output = ask("New private coordination ZIP path (must not exist)")
+        return packet.package(SimpleNamespace(manifest=manifest, choices=followup_file,
+                                              output=output, aggregate_only=anonymous))
     raise archive.Hold("invalid operation")
 
 
