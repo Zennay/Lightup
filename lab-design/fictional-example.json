@@ -1,0 +1,44 @@
+{
+  "schema": "lightup.lab_design_catalog.v1",
+  "status": "DRAFT_ONLY",
+  "authorized": false,
+  "consent_verified": false,
+  "dispatch_allowed": false,
+  "release_allowed": false,
+  "scenarios": [
+    {
+      "scenario_id": "fictional-loopback-a",
+      "name": "FICTIONAL loopback HTTP lab",
+      "description": "Invented offline training exercise; no service is contacted.",
+      "targets": [
+        "127.0.0.1"
+      ],
+      "expected_findings": [
+        {
+          "identifier": "mock-header-1",
+          "title": "FICTIONAL header classification",
+          "capability_id": "lab.http.mock",
+          "severity": "medium"
+        }
+      ]
+    },
+    {
+      "scenario_id": "fictional-loopback-b",
+      "name": "FICTIONAL scored zero-finding lab",
+      "description": "Invented scoring baseline.",
+      "targets": [
+        "::1"
+      ],
+      "expected_findings": []
+    },
+    {
+      "scenario_id": "fictional-private-c",
+      "name": "FICTIONAL private unscored lab",
+      "description": "No claimed original lab ground truth.",
+      "targets": [
+        "10.20.0.7"
+      ],
+      "expected_findings": null
+    }
+  ]
+}
