@@ -247,6 +247,68 @@
       human_discussion_stages:stage,source_reported_adverse_cases:affected,
       source_reported_adverse_metric_instances:adverse,reports:byReport};
   }
+
+  const FAMILIES={
+    scope:["scope_violations","policy_violations"],
+    findings:["valid_findings","invalid_findings","missed_findings","coverage_assessed","coverage_unknown"],
+    evidence:["evidence_quality","reproducibility","remediation_quality","retest_correctness"],
+    operations:["human_interventions","tool_calls","runtime_seconds","compute_cost_usd"]
+  };
+  let undoBatch=null;
+  function caseFlags(item){
+    const flags=new Set();let missing=false;
+    for(const report of reports){
+      const c=report.cases.get(item.id);
+      if(!c){missing=true;continue;}
+      for(const flag of c.adverse)flags.add(flag);
+    }
+    return {flags,missing};
+  }
+  function priority(item){
+    const f=caseFlags(item);
+    if(f.missing)return 0;
+    if(FAMILIES.scope.some(n=>f.flags.has(n)))return 1;
+    if(FAMILIES.findings.some(n=>f.flags.has(n)))return 2;
+    if(FAMILIES.evidence.some(n=>f.flags.has(n)))return 3;
+    if(FAMILIES.operations.some(n=>f.flags.has(n)))return 4;
+    return 5;
+  }
+  function visibleCases(){
+    if(!catalog)return [];
+    const family=$("familyFilter").value;
+    const stage=$("stageFilter").value,truth=$("truthFilter").value;
+    return catalog.map((item,i)=>({item,i})).filter(({item})=>{
+      if(stage!=="all"&&(reviews.get(item.id)||"needs_review")!==stage)return false;
+      if(truth!=="all"&&item.mode!==truth)return false;
+      if(family!=="all"){
+        const current=caseFlags(item);
+        if(family==="missing"){if(!current.missing)return false;}
+        else if(!FAMILIES[family]?.some(n=>current.flags.has(n)))return false;
+      }
+      return true;
+    }).sort((a,b)=>priority(a.item)-priority(b.item)||a.i-b.i);
+  }
+  function humanBulk(){
+    if(!catalog||!reports.length){message("Load sources before changing review stages.",true);return;}
+    const selected=visibleCases(),stage=$("bulkStage").value;
+    if(!STAGES.includes(stage)||!selected.length){
+      message("No visible case or valid human discussion stage selected.",true);return;
+    }
+    if(!confirm("Set "+selected.length+" currently visible PRIVATE human cases to "+
+      stage+"? This is NOT an approval or assignment."))return;
+    undoBatch=new Map(reviews);
+    for(const {item} of selected)reviews.set(item.id,stage);
+    render();message("Updated "+selected.length+" PRIVATE human stages; one-step Undo available.");
+  }
+  function undoHumanBulk(){
+    if(!undoBatch){message("No local bulk action to undo.");return;}
+    reviews=undoBatch;undoBatch=null;render();
+    message("Previous human discussion stages restored in memory only.");
+  }
+  function resetFilters(){
+    for(const id of ["familyFilter","stageFilter","truthFilter"])$(id).value="all";
+  }
+
   function render(){
     const ready=Boolean(catalog&&reports.length),match=consistency();
     $("catalogState").textContent=catalog?catalog.length+" private design scenario slots loaded":"No private catalog loaded";
@@ -262,17 +324,24 @@
       [...r.cases.values()].reduce((n,c)=>n+c.adverse.length,0)]);
     table($("reports"),["Source slot","Original source status","Cases","Adverse cases","Adverse metric flags"],reportRows);
     $("cases").replaceChildren();
+    const all=catalog?.length||0,visible=visibleCases();
+    $("queueCount").textContent=visible.length+" visible of "+all+
+      " private source cases. Sorted: missing originals → scope/policy → findings → "+
+      "evidence → informational operations → no source flags. This is an analyst review order, not a verified risk score.";
+    $("undoStage").disabled=!undoBatch;
     if(!catalog)return;
     const grid=document.createElement("table"),head=document.createElement("thead"),h=document.createElement("tr");
-    for(const text of ["Private scenario","Declared ground truth","Planted count",
+    for(const text of ["Private scenario","Original source priority","Declared ground truth","Planted count",
       ...reports.map((_,i)=>"Source "+(i+1)+" flags"),"Human discussion"]){
       const th=document.createElement("th");th.textContent=text;h.append(th);
     }
     head.append(h);grid.append(head);
     const body=document.createElement("tbody");
-    catalog.forEach((item,i)=>{
+    visible.forEach(({item,i})=>{
       const row=document.createElement("tr");
       td(row,"Lab case "+String(i+1).padStart(2,"0"));
+      td(row,["MISSING source","scope / policy","findings / coverage","evidence / scoring",
+        "operations / informational","no source flags"][priority(item)]);
       td(row,item.mode==="unscored"?"UNSCORED / UNKNOWN":item.mode==="declared_zero"?
         "Declared zero (not verified)":"Declared planted (not verified)");
       td(row,item.planted===null?"unknown":item.planted);
@@ -289,14 +358,15 @@
       }
       selector.value=reviews.get(item.id)||"needs_review";
       selector.addEventListener("change",()=>{
-        reviews.set(item.id,selector.value);message("Private human stage updated in memory only.");
+        reviews.set(item.id,selector.value);undoBatch=null;
+        render();message("Private human stage updated in memory only.");
       });
       cell.append(selector);row.append(cell);body.append(row);
     });
     grid.append(body);$("cases").append(grid);
     const extras=document.createElement("p");
     extras.textContent=match.unexpected+" extra original report case memberships omitted from private scenario rows. "+
-      "No identities appear in public exports.";
+      "No identities appear in public exports. Filtering never changes original imports.";
     $("cases").append(extras);
   }
   function download(name,content,type){
@@ -365,7 +435,7 @@
       message("Script-free, target-free human brief downloaded.");
     }catch(_){message("HOLD: brief not available until sources match exactly.",true);}
   }
-  function forget(){catalog=null;reports=[];reviews=new Map();fictional=false;render();message("All source and review data cleared from memory.");}
+  function forget(){catalog=null;reports=[];reviews=new Map();undoBatch=null;resetFilters();fictional=false;render();message("All source and review data cleared from memory.");}
   function makeDemo(){
     const names=["scenario-FAKE-01","scenario-FAKE-02","scenario-FAKE-03"];
     catalog=names.map((id,i)=>({id,mode:i===0?"unscored":i===1?
@@ -382,7 +452,7 @@
         return [id,{metrics,adverse:variant&&i===2?["scope_violations"]:[]}];
       }))
     });
-    reports=[candidate(0),candidate(1)];reviews=new Map();fictional=true;
+    reports=[candidate(0),candidate(1)];reviews=new Map();undoBatch=null;resetFilters();fictional=true;
     render();message("FICTIONAL offline demonstration loaded; no source evidence or permission.");
   }
   $("catalogFile").addEventListener("change",async e=>{
@@ -390,7 +460,7 @@
     try{
       const candidate=parseCatalog(await read(file,MAX_CATALOG));
       if((catalog||reports.length)&&!confirm("Replace private catalog and clear previously imported lab comparisons and human stage work?"))return;
-      catalog=candidate;reports=[];reviews=new Map();fictional=false;render();
+      catalog=candidate;reports=[];reviews=new Map();undoBatch=null;resetFilters();fictional=false;render();
       message("PRIVATE lab design admitted. Targets and finding IDs were discarded after validation.");
     }catch(_){message("HOLD: incompatible PRIVATE Lab Scenario Studio source. Existing data preserved.",true);}
   });
@@ -402,7 +472,7 @@
       const add=[];
       for(const file of files)add.push(parseReport(await read(file,MAX_REPORT)));
       harmonize([...reports,...add]);
-      reports=[...reports,...add];render();
+      reports=[...reports,...add];undoBatch=null;render();
       message("Canonical offline summaries admitted; source identities remain private. "+
         "Original benchmark data is not authenticated.");
     }catch(_){message("HOLD: contradictory, duplicate, oversized or incompatible comparison source. Workspace preserved.",true);}
@@ -415,6 +485,10 @@
     if((catalog||reports.length)&&!confirm("Permanently forget in-memory private inputs and local discussion stages?"))return;
     forget();
   });
+  for(const id of ["familyFilter","stageFilter","truthFilter"])
+    $(id).addEventListener("change",render);
+  $("applyStage").addEventListener("click",humanBulk);
+  $("undoStage").addEventListener("click",undoHumanBulk);
   $("exportJson").addEventListener("click",exportJson);
   $("exportCsv").addEventListener("click",exportCsv);
   $("exportBrief").addEventListener("click",brief);
