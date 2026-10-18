@@ -23,6 +23,19 @@
   const MAX_NOTE_CHARS = 600;
   const roles = ["Unclassified", "Client proposal — unverified", "Operator review — unverified", "Scope revision — unverified", "Schedule handoff — unverified"];
   function validRole(role) { return typeof role === "string" && roles.includes(role); }
+  function likelyCredentialContent(bytes) {
+    // Intentional limited DLP warning for accidental client-handoff leaks only.
+    // NOT a comprehensive secrets scanner or proof of a clean/authorized target.
+    const source = DEC.decode(bytes);
+    const hints = [
+      /-----BEGIN (?:RSA |EC |DSA |OPENSSH )?PRIVATE KEY-----/i,
+      /\bAuthorization\s*:\s*Bearer\s+[^\s"'<>]{10,}/i,
+      /\b(?:api[_ -]?key|secret[_ -]?(?:key|token)|access[_ -]?token|password)\s*[:=]\s*["']?[^\s"'<>]{12,}/i,
+      /\bAKIA[0-9A-Z]{16}\b/,
+      /\b(?:session[_ -]?cookie|set-cookie)\s*[:=]\s*[^\r\n]{24,}/i
+    ];
+    return hints.some((pattern) => pattern.test(source));
+  }
   const $ = (id) => document.getElementById(id);
   const els = {
     files: $("files"), list: $("file-list"), summary: $("file-summary"),
@@ -90,6 +103,7 @@
   function scrub() {
     for (const entry of entries) entry.bytes.fill(0);
     entries = [];
+    els.stageFilter.value = "all";
     clearPreview();
     els.files.value = "";
     els.openFile.value = "";
@@ -180,7 +194,9 @@
       memo.value = entry.note;
       memo.addEventListener("input", () => {
         if (busy) return;
-        entry.note = memo.value.slice(0, MAX_NOTE_CHARS);
+        const cleaned = memo.value.replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g, "");
+        if (cleaned !== memo.value) memo.value = cleaned;
+        entry.note = cleaned.slice(0, MAX_NOTE_CHARS);
         touch();
       });
       noteLabel.append(memo);
@@ -308,7 +324,19 @@
         return;
       }
       invariant(handoffRoutes.includes(route));
-      if (route === "client-review") invariant(outgoing.every((entry) => clientReviewRoles.includes(entry.role)));
+      if (route === "client-review") {
+        // No internal notes/stages are exported. Historical drafts are not
+        // silently promoted to a current client handoff.
+        invariant(outgoing.every((entry) => clientReviewRoles.includes(entry.role) && entry.stage !== "historical"));
+        // Local bounded best-effort detection; reject on suspicious data,
+        // disclose no matching raw content or credential fragments.
+        const riskyCount = outgoing.filter((entry) => likelyCredentialContent(entry.bytes)).length;
+        if (riskyCount) {
+          notice("Client-facing export held: " + riskyCount +
+            " selected draft(s) contain potential credential material. Remove/redact it in the SOURCE file and re-import; do not bypass using a role label. Heuristics are not a guarantee.", true);
+          return;
+        }
+      }
       // An archive rotation always includes the complete in-memory dossier regardless
       // of export selection, and never downgrades it into a recipient packet.
       const manifest = outgoing.map((entry) => entry.name + " [" + entry.role + "]").join("\n");
@@ -329,7 +357,9 @@
           const record = {name: entry.name, length: entry.bytes.length, sha256: entry.hash,
             role: entry.role, base64: b64(entry.bytes)};
           if (route !== "client-review") {
-            invariant(prepStages.includes(entry.stage) && typeof entry.note === "string" && entry.note.length <= MAX_NOTE_CHARS);
+            invariant(prepStages.includes(entry.stage) && typeof entry.note === "string" &&
+              entry.note.length <= MAX_NOTE_CHARS &&
+              !/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/.test(entry.note));
             record.stage = entry.stage;
             record.note = entry.note;
           }
