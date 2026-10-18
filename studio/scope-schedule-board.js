@@ -123,6 +123,10 @@ function timeClashes(list) {
   return {pairs,active};
 }
 // Turnaround is only a local team-planning preference, not a safety clearance.
+function blockedFor(block, entry){
+  // Missing lane in historical JSON means global, not 'lane 1'.
+  return (block.lane??0)===0 || block.lane===entry.lane;
+}
 function turnaroundIssues(items, unavailable){
   const between=[],blocks=[];
   for(let i=0;i<items.length;i++){
@@ -136,6 +140,7 @@ function turnaroundIssues(items, unavailable){
     }
     for(let j=0;j<unavailable.length;j++){
       const a=items[i].interval,b=unavailable[j];
+      if(!blockedFor(b,items[i]))continue;
       const overlap=a.start<b.end&&b.start<a.end;
       const tooClose=a.start<b.end+BUFFER&&b.start<a.end+BUFFER;
       if(tooClose&&!overlap)blocks.push([i,j]);
@@ -154,7 +159,7 @@ function readyForTentativeCalendar(active){
     !active.some(e=>!withinWorkHours(e.interval,policy)) &&
     timeClashes(active).pairs.length===0 &&
     turnaroundIssues(active,blackouts).count===0 &&
-    !active.some(e=>blackouts.some(b=>e.interval.start<b.end&&b.start<e.interval.end));
+    !active.some(e=>blackouts.some(b=>blockedFor(b,e)&&e.interval.start<b.end&&b.start<e.interval.end));
 }
 function parseUTCWallTime(value){
   if(!validLocal(value) || typeof value!=='string')return null;
@@ -166,7 +171,7 @@ function renderBlocks(){
   if(!blackouts.length){append(box,'p','No unavailable periods added.','muted');return;}
   blackouts.forEach((b,i)=>{
     const row=document.createElement('div');row.className='item';box.append(row);
-    append(row,'span','Unavailable #'+(i+1)+': '+formatUTC(b.start)+' → '+formatUTC(b.end)+' ');
+    append(row,'span','Unavailable #'+(i+1)+' ['+((b.lane??0)===0?'All lanes':'Lane '+b.lane)+']: '+formatUTC(b.start)+' → '+formatUTC(b.end)+' ');
     const remove=append(row,'button','Remove');
     remove.type='button';remove.addEventListener('click',()=>{blackouts.splice(i,1);render();});
   });
@@ -223,7 +228,7 @@ function activeWorkNote(policy){
 }
 
 function suggest(entry,list){
-  const forbidden=list.filter(item=>item!==entry&&item.lane===entry.lane).map(item=>item.interval).concat(blackouts);
+  const forbidden=list.filter(item=>item!==entry&&item.lane===entry.lane).map(item=>item.interval).concat(blackouts.filter(b=>blockedFor(b,entry)));
   return firstFit(entry.interval,forbidden,workPolicy());
 }
 function createAxis(days) {
@@ -294,7 +299,7 @@ function render(){
   const spacing=turnaroundIssues(timed,blackouts);
   const blockHits=[];
   timed.forEach((e,i)=>blackouts.forEach((b,j)=>{
-    if(e.interval.start<b.end && b.start<e.interval.end){blockHits.push([i,j]);active.add(i);}
+    if(blockedFor(b,e)&&e.interval.start<b.end && b.start<e.interval.end){blockHits.push([i,j]);active.add(i);}
   }));
   for(const e of invalidHours){const i=timed.findIndex(item=>item.key===e.key);if(i>=0)active.add(i);}
   $('hoursClashes').textContent=invalidHours.length;
@@ -310,7 +315,7 @@ function render(){
   $('unscheduled').textContent=unsafe.length;$('clashes').textContent=pairs.length+blockHits.length;
   const original=entries.filter(e=>e.interval.state==='resolved').map(e=>({...e,lane:laneAssignments.get(e.key)||1}));
   const baseline=timeClashes(original).pairs.length+
-    original.reduce((total,e)=>total+blackouts.filter(b=>e.interval.start<b.end&&b.start<e.interval.end).length,0)+
+    original.reduce((total,e)=>total+blackouts.filter(b=>blockedFor(b,e)&&e.interval.start<b.end&&b.start<e.interval.end).length,0)+
     original.filter(e=>!withinWorkHours(e.interval,policy)).length;
   const current=pairs.length+blockHits.length+invalidHours.length;
   $('baselineClashes').textContent=baseline;
@@ -343,7 +348,7 @@ function render(){
   blackouts.forEach((b,j)=>{
     const row=document.createElement('div');row.className='lane';lanes.append(row);
     const label=document.createElement('div');label.className='label';row.append(label);
-    append(label,'strong','Unavailable #'+(j+1));append(label,'small',formatUTC(b.start)+' → '+formatUTC(b.end));
+    append(label,'strong','Unavailable #'+(j+1)+' · '+((b.lane??0)===0?'ALL':'Lane '+b.lane));append(label,'small',formatUTC(b.start)+' → '+formatUTC(b.end));
     const track=document.createElement('div');track.className='track';track.style.setProperty('--days',days);row.append(track);
     const start=Math.max(b.start,lo),end=Math.min(b.end,hi);
     if(start<end){
@@ -370,7 +375,7 @@ function render(){
   }
   for(const [i,j] of blockHits){
     const e=timed[i],b=blackouts[j],box=document.createElement('div');box.className='item danger';conflict.append(box);
-    append(box,'strong',e.name+' ↔ Unavailable #'+(j+1));
+    append(box,'strong',e.name+' ↔ Unavailable #'+(j+1)+' ('+((b.lane??0)===0?'all lanes':'lane '+b.lane)+')');
     append(box,'div','Local planning conflict: '+formatUTC(Math.max(e.interval.start,b.start))+' – '+formatUTC(Math.min(e.interval.end,b.end)));
   }
   for(const [i,j] of spacing.between){
@@ -479,7 +484,7 @@ function renderScenarios(){
 function scenarioPacket(){
   const current=shown();
   const {pairs}=timeClashes(current);
-  const blockHits=current.reduce((n,e)=>n+blackouts.filter(b=>e.interval.start<b.end&&b.start<e.interval.end).length,0);
+  const blockHits=current.reduce((n,e)=>n+blackouts.filter(b=>blockedFor(b,e)&&e.interval.start<b.end&&b.start<e.interval.end).length,0);
   const policy=workPolicy();
   return {
     kind:'lightup.scope_schedule_scenario',schema_version:1,
@@ -527,7 +532,7 @@ function arrangeAll(){
   if(!current.length)return;
   const policy=workPolicy();
   if(!policy.valid){$('status').textContent='HOLD: correct UTC workday boundaries first.';return;}
-  const perLane=new Map([1,2,3,4].map(lane=>[lane,blackouts.map(b=>({start:b.start,end:b.end}))]));
+  const perLane=new Map([1,2,3,4].map(lane=>[lane,blackouts.filter(b=>(b.lane??0)===0||b.lane===lane).map(b=>({start:b.start,end:b.end}))]));
   const proposals=new Map();
   // Before moving a single unpinned proposal, reserve all local pinned times.
   // If a pin clashes with another pin, work hours or global unavailability, HOLD atomically.
@@ -1053,10 +1058,12 @@ $('addBlock').addEventListener('click',()=>{
   if(start===null || end===null || end<=start || end-start>31*DAY){
     $('status').textContent='Enter valid ascending UTC start/end values, at most 31 days apart.';return;
   }
-  if(blackouts.some(b=>b.start===start&&b.end===end)){
+  const lane=Number($('blockLane').value);
+  if(!Number.isInteger(lane)||lane<0||lane>4){$('status').textContent='Select an available planning lane.';return;}
+  if(blackouts.some(b=>b.start===start&&b.end===end&&(b.lane??0)===lane)){
     $('status').textContent='That unavailable interval is already listed.';return;
   }
-  blackouts.push({start,end});
+  blackouts.push({start,end,lane});
   $('blockStart').value='';$('blockEnd').value='';
   $('status').textContent='Unavailable period added locally. Alternatives have been recomputed; no actual booking created.';
   render();
@@ -1073,16 +1080,19 @@ $('busyImport').addEventListener('change',async ev=>{
     if(file.size<20||file.size>131072)throw Error('file limit');
     const text=new TextDecoder('utf-8',{fatal:true}).decode(await file.arrayBuffer());
     const imported=readBusyCalendar(text);
+    const lane=Number($('busyLane').value);
+    if(!Number.isInteger(lane)||lane<0||lane>4)throw Error('lane');
     const updated=blackouts.slice();
     for(const slot of imported){
-      if(!updated.some(b=>b.start===slot.start&&b.end===slot.end))updated.push(slot);
+      if(!updated.some(b=>b.start===slot.start&&b.end===slot.end&&(b.lane??0)===lane))
+        updated.push({...slot,lane});
     }
     if(updated.length>30)throw Error('limit');
     blackouts=updated;
-    $('status').textContent=imported.length+' opaque, non-cancelled UTC event interval(s) read locally. Titles, contacts and notes discarded. No actual booking imported as authority.';
+    $('status').textContent=imported.length+' finite UTC busy interval(s) imported for '+(lane===0?'all lanes':'lane '+lane)+'. Calendar names, contacts and notes discarded; no resource booking or permission verified.';
     render();
   }catch(_){
-    $('status').textContent='HOLD: calendar import refused. Supply a bounded .ics with single, minute-exact UTC VEVENTs, no recurrence or timezone-local timestamps. Existing blocks unchanged.';
+    $('status').textContent='HOLD: calendar import refused. Use minute-accurate UTC VEVENTs, bounded DAILY/WEEKLY COUNT/UNTIL, optional BYDAY/EXDATE; no local TZ, override, unbounded series or over 30 busy intervals. Existing blocks unchanged.';
   }
 });
 $('files').addEventListener('change',async ev=>{
