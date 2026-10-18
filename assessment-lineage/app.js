@@ -255,7 +255,9 @@
       declared_zero_findings:zero,declared_planted_scenarios:planted,
       declared_planted_findings:findings,declared_severity_totals:severity,
       human_discussion_stages:stage,source_reported_adverse_cases:affected,
-      source_reported_adverse_metric_instances:adverse,reports:byReport};
+      source_reported_adverse_metric_instances:adverse,
+      human_queue_priorities:queueRollup().map(({category,cases,human_stages})=>
+        ({category,cases,human_stages})),reports:byReport};
   }
 
   const FAMILIES={
@@ -283,6 +285,47 @@
     if(FAMILIES.operations.some(n=>f.flags.has(n)))return 4;
     return 5;
   }
+
+  const QUEUE_LABELS=["Missing source membership","Scope / policy",
+    "Findings / coverage","Evidence / scoring","Informational operations",
+    "No source-reported flags"];
+  const QUEUE_KEYS=["missing_source","scope_policy","findings_coverage",
+    "evidence_scoring","operations_info","no_source_flags"];
+  const QUEUE_FILTERS=["missing","scope","findings","evidence","operations","no_flags"];
+  function queueRollup(){
+    const rows=QUEUE_KEYS.map((key,i)=>({
+      category:key,label:QUEUE_LABELS[i],cases:0,
+      human_stages:Object.fromEntries(STAGES.map(stage=>[stage,0]))
+    }));
+    if(!catalog)return rows;
+    for(const scenario of catalog){
+      const row=rows[priority(scenario)];
+      row.cases++;
+      row.human_stages[reviews.get(scenario.id)||"needs_review"]++;
+    }
+    return rows;
+  }
+  function renderQueueOverview(){
+    const node=$("queueOverview");node.replaceChildren();
+    if(!catalog||!reports.length){
+      node.textContent="Load original finished comparison files to summarize private source flags.";
+      return;
+    }
+    for(let i=0;i<QUEUE_KEYS.length;i++){
+      const entry=queueRollup()[i],card=document.createElement("article");
+      card.className="queue-card";
+      const name=document.createElement("h3");name.textContent=entry.label;
+      const counts=document.createElement("p");
+      counts.textContent=entry.cases+" original lab case(s) · "+
+        STAGES.map(stage=>stage.replaceAll("_"," ")+" "+entry.human_stages[stage]).join(" / ");
+      const action=button("View "+entry.label.toLowerCase(),()=>{
+        $("familyFilter").value=QUEUE_FILTERS[i];render();
+        $("caseTitle").scrollIntoView({block:"start",behavior:"smooth"});
+      });
+      card.append(name,counts,action);node.append(card);
+    }
+  }
+
   function visibleCases(){
     if(!catalog)return [];
     const family=$("familyFilter").value;
@@ -292,6 +335,7 @@
       if(truth!=="all"&&item.mode!==truth)return false;
       if(family!=="all"){
         const current=caseFlags(item);
+        if(family==="no_flags")return !current.flags.size&&!current.missing;
         if(family==="missing"){if(!current.missing)return false;}
         else if(!FAMILIES[family]?.some(n=>current.flags.has(n)))return false;
       }
@@ -435,6 +479,7 @@
       [...r.cases.values()].reduce((n,c)=>n+c.adverse.length,0)]);
     table($("reports"),["Source slot","Original source status","Cases","Adverse cases","Adverse metric flags"],reportRows);
     renderSourceOrder();
+    renderQueueOverview();
     $("cases").replaceChildren();
     const all=catalog?.length||0,visible=visibleCases();
     $("queueCount").textContent=visible.length+" visible of "+all+
@@ -572,6 +617,11 @@
         rows.push(["declared severity",0,key,value]);
       for(const [key,value] of Object.entries(a.human_discussion_stages))
         rows.push(["human discussion",0,key,value]);
+      for(const q of a.human_queue_priorities){
+        rows.push(["review priority",0,q.category,q.cases]);
+        for(const [stage,count] of Object.entries(q.human_stages))
+          rows.push(["review priority stage",0,q.category+" / "+stage,count]);
+      }
       for(const r of a.reports)
         for(const field of ["case_count","source_reported_adverse_cases",
           "source_reported_adverse_metrics","scope_policy_flag_instances"])
@@ -594,7 +644,8 @@
         ["Declared explicitly zero findings",a.declared_zero_findings],
         ["Declared planted expected findings",a.declared_planted_findings],
         ["Original source adverse metric instances",a.source_reported_adverse_metric_instances],
-        ...Object.entries(a.human_discussion_stages).map(([k,v])=>["Human "+k,v])];
+        ...Object.entries(a.human_discussion_stages).map(([k,v])=>["Human "+k,v]),
+        ...a.human_queue_priorities.map(q=>["Human priority "+q.category,q.cases])];
       const html="<!doctype html><html lang='en'><meta charset='utf-8'>"+
         "<meta http-equiv='Content-Security-Policy' content=\"default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'\">"+
         "<title>LightUp anonymous lineage brief</title><style>body{font:16px system-ui;max-width:900px;margin:3rem auto;padding:1rem}"+
