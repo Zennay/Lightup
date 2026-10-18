@@ -30,6 +30,17 @@
 <div class="grid"><label for="bulkOwner">Owner/team to assign<input id="bulkOwner" maxlength="120" placeholder="e.g. Platform team"></label>
 <label for="bulkDue">Target due date<input id="bulkDue" type="date"></label></div>
 <div class="buttons"><button id="bulkApply" type="button" disabled>Apply to filtered findings</button><span id="bulkCount" class="small">0 matches</span></div></div>
+<div class="panel actions" style="margin-bottom:15px"><h3>Optional severity-based planning dates</h3>
+<p class="small">Example day counts are editable planning assumptions, <strong>not</strong> contractual SLAs, compliance policy or approved risk acceptance. Only open cases with no existing due date are eligible. Completed and deferred cases are skipped.</p>
+<label for="scheduleAnchor">Planning start date<input id="scheduleAnchor" type="date"></label>
+<div class="stats">
+<label>Critical days<input id="daysCritical" type="number" min="1" max="365" step="1" value="3"></label>
+<label>High days<input id="daysHigh" type="number" min="1" max="365" step="1" value="14"></label>
+<label>Medium days<input id="daysMedium" type="number" min="1" max="365" step="1" value="30"></label>
+<label>Low days<input id="daysLow" type="number" min="1" max="365" step="1" value="60"></label>
+<label>Info days<input id="daysInfo" type="number" min="1" max="365" step="1" value="90"></label></div>
+<div class="buttons"><button id="schedulePreview" type="button" disabled>Preview suggested deadlines</button><button id="scheduleApply" type="button" disabled>Apply reviewed deadlines</button></div>
+<pre id="scheduleText">No planning dates proposed.</pre></div>
 <div id="empty">Import an approved LightUp findings CSV or a previously saved casework JSON to begin.</div><div id="board" class="board" aria-live="polite"></div></section>
 <section class="section"><h2>3 · Client and operator remediation handoff</h2><p>Exported plans contain finding summaries and local action assignments, not raw evidence, targets, passwords or verified authorization. Attach any real evidence only through the genuine, authorized LightUp workflow.</p><h3>Source reference <span class="badge">UNSIGNED / UNVERIFIED</span></h3><p id="reference" class="small">No source imported.</p><h3>Draft output preview</h3><pre id="preview">Nothing to preview.</pre><p class="small">Use the authenticated LightUp system to confirm any actual remediation, owner, retest status or closure. A local “completed” choice is an administrative planning note; it never updates LightUp's authoritative record.</p></section></main>
-<script src="./remediation-engine.js"></script><script src="./remediation-app.js"></script></body></html>
+<script src="./remediation-engine.js"></script><script src="./remediation-schedule.js"></script><script src="./remediation-app.js"></script></body></html>
