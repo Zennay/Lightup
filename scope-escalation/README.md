@@ -7,6 +7,7 @@
 - Turn one previously password-authenticated, one-tenant `lightup.auth_casebook.v1` source export into a readable **human escalation queue** for engagements and pending/rejected client requests. Source HOLD/provenance conflicts rise above pending and ordinary manual reviews; historically stored grants are **never** classified as permission.
 - Inspect each engagement's exact original grant-link/window and risk-decision observations; search original identifiers and filter HOLD/PENDING/REVIEW.
 - Assign self-declared human reviewers, next actions, stages and tentative UTC follow-up dates entirely offline in browser memory.
+- Bulk-select visible source-bound follow-ups, confirm HUMAN-only changes to self-declared reviewer, stage and proposed due date, and preserve already edited notes by default. See the live offline reviewer workload count. New records default to **unassigned**, never completed or approved.
 - Export a separately confirmed **PRIVATE** original-ID-bearing source SHA-256-bound human review return, or restore only against the same exact source snapshot and complete source row/order/attention identity. Invalid or partial imports preserve existing edits.
 - Download ID-free anonymous aggregate counts by review tier and human stage, or use the private CSV in the workspace to coordinate follow-ups.
 
