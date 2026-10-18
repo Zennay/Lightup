@@ -51,6 +51,14 @@
     <h2 id="alignmentTitle">2. Membership and original status</h2>
     <p id="summary">Load both source types to review.</p>
     <div id="reports" class="scroll" aria-label="Original comparison source summaries"></div>
+    <div class="source-controls">
+      <label for="sourceOrder">Original source display slot (not authenticated chronology)</label>
+      <select id="sourceOrder" aria-label="Original report to reorder or remove"></select>
+      <div class="actions"><button type="button" id="sourceEarlier">Move source earlier</button>
+        <button type="button" id="sourceLater">Move source later</button>
+        <button type="button" id="removeSource" class="secondary">Remove source from local view</button></div>
+    </div>
+    <p>Reordering only changes the human-selected display slot; it does NOT establish original execution order or timestamps. Removing never deletes your original PRIVATE file and never means an adverse metric was remedied. A new private draft must be saved after changing source order.</p>
   </section>
   <section aria-labelledby="caseTitle">
     <h2 id="caseTitle">3. Human casebook — private in memory</h2>
