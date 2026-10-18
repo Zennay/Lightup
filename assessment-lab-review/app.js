@@ -198,7 +198,7 @@ function render(){
  source.findings.forEach((f,i)=>{
   const n=notes[i];if(filter&&filter!==f.severity&&filter!==n.stage&&filter!=="endpoint:"+endpointOrdinal(f))return;
   shown++;
-  const tr=document.createElement("tr");
+  const tr=document.createElement("tr");tr.dataset.originalOrdinal=String(i+1);tr.tabIndex=-1;
   const meta=el("div");
   const selection=el("label",undefined,"handoff-check"),box=document.createElement("input");
   box.type="checkbox";box.checked=selectedForHandoff.has(i+1);
@@ -462,6 +462,19 @@ function renderPeer(){
    }
    tr.append(td);
   }
+  if(row.a.length===1){
+   const button=el("button","Open original A HUMAN follow-up","peer-jump");
+   button.type="button";
+   button.addEventListener("click",()=>{
+    filter="";$("filter").value="";render();
+    const original=$("findings").querySelector('tr[data-original-ordinal="'+row.a[0]+'"]');
+    if(!original)return;
+    original.classList.add("peer-focus");
+    original.scrollIntoView({behavior:"smooth",block:"center"});original.focus({preventScroll:true});
+    status("Opened original A HUMAN note row "+row.a[0]+". Source B never changes original evidence.");
+   });
+   const action=document.createElement("td");action.append(button);tr.append(action);
+  }else{tr.append(el("td","HUMAN review: no unique A row"));}
   result.append(tr);
  }
  $("peer-counter").textContent=matches.length+" original source-check groups; "+

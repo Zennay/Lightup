@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-myZFjsUkgwR5pbfcFpdUEg4oNW8qDH4MnKDbKix0t2E=' 'sha256-vhAP84xwYXWkxr4OJeLVBONQKf5GtZt6gVUvAzZV1jI='; style-src 'sha256-KBMr0soWn7Fn47X32chzGCAt0n+lGONMvefbZ+1anoY='; connect-src 'none'; img-src 'none'; font-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-C1bknDesfSGOyyLBw49eE+2XEhXxDH+iQzZRtZkkMwY=' 'sha256-vhAP84xwYXWkxr4OJeLVBONQKf5GtZt6gVUvAzZV1jI='; style-src 'sha256-I8wrXipsIIubWgUFxftSqZIQMWXF+4he3tIug0kW7Pc='; connect-src 'none'; img-src 'none'; font-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="referrer" content="no-referrer"><title>LightUp | Private Lab Review Desk</title>
 <style>:root{color-scheme:dark;font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;background:#101624;color:#f3f7fd;line-height:1.55}
 *{box-sizing:border-box}body{margin:0}header{padding:3.5rem max(2rem,calc((100vw - 1100px)/2));background:linear-gradient(130deg,#172d43,#151926)}header h1{font-size:clamp(2rem,5vw,3.35rem);line-height:1.1;letter-spacing:-.04em;margin:.6rem 0}header p{max-width:800px;color:#d5e1ed}.eyebrow{font-size:.7rem;font-weight:800;letter-spacing:.19em;color:#9bdef1}
@@ -25,6 +25,8 @@ button:disabled,.upload:has(input:disabled){opacity:.45;cursor:not-allowed}
 #peer-results td{min-width:7rem}#peer-results td:last-child{min-width:15rem;overflow-wrap:anywhere}#peer-overview{overflow-wrap:anywhere}
 
 #peer-results td:nth-child(n+4){min-width:17rem;max-width:31rem;overflow-wrap:anywhere}#peer-results td:nth-child(n+4) p{font-size:.82rem}#peer-results td:nth-child(n+4) details{padding:.5rem;margin-top:.5rem}
+
+#findings tr.peer-focus{outline:3px solid #8ed8f3;outline-offset:-3px;background:#1c3a47}#findings tr:focus{outline:3px solid #fdce67;outline-offset:-3px}.peer-jump{font-size:.78rem;white-space:normal;min-width:9rem}
 </style></head><body>
 <header><div class="eyebrow">LIGHTUP / ISOLATED LAB / HUMAN REVIEW ONLY</div>
 <h1>Private Lab Review Desk</h1><p>Explore an <strong>already-created</strong> isolated-lab assessment JSON. Review individual source-declared findings, track human follow-up and prepare a private handoff. Nothing scans, calls a model, contacts an asset, verifies consent or grants permission.</p>
@@ -85,7 +87,7 @@ button:disabled,.upload:has(input:disabled){opacity:.45;cursor:not-allowed}
 <button id="peer-export" type="button" disabled>Export counts-only comparison</button></div>
 <p id="peer-overview" class="stats">No second source admitted.</p>
 <div class="table-wrap"><table><caption>PRIVATE informational check-declaration differences</caption>
-<thead><tr><th>Source declaration</th><th>Original A ordinal</th><th>Original B ordinal</th><th>PRIVATE A description</th><th>PRIVATE B description</th></tr></thead><tbody id="peer-results"></tbody></table></div>
+<thead><tr><th>Source declaration</th><th>Original A ordinal</th><th>Original B ordinal</th><th>PRIVATE A description</th><th>PRIVATE B description</th><th>HUMAN follow-up</th></tr></thead><tbody id="peer-results"></tbody></table></div>
 <div class="toolbar"><button id="peer-prev" type="button" disabled>Previous page</button>
 <button id="peer-next" type="button" disabled>Next page</button><span id="peer-counter"></span></div>
 <p class="note">The comparison key is the literal original target + capability + check ID, **not authenticated vulnerability identity**. Duplicate identities remain ambiguous. Changed or absent claims never prove anything was newly discovered or repaired. This feature never transfers HUMAN notes into another source.</p>
@@ -292,7 +294,7 @@ function render(){
  source.findings.forEach((f,i)=>{
   const n=notes[i];if(filter&&filter!==f.severity&&filter!==n.stage&&filter!=="endpoint:"+endpointOrdinal(f))return;
   shown++;
-  const tr=document.createElement("tr");
+  const tr=document.createElement("tr");tr.dataset.originalOrdinal=String(i+1);tr.tabIndex=-1;
   const meta=el("div");
   const selection=el("label",undefined,"handoff-check"),box=document.createElement("input");
   box.type="checkbox";box.checked=selectedForHandoff.has(i+1);
@@ -556,6 +558,19 @@ function renderPeer(){
    }
    tr.append(td);
   }
+  if(row.a.length===1){
+   const button=el("button","Open original A HUMAN follow-up","peer-jump");
+   button.type="button";
+   button.addEventListener("click",()=>{
+    filter="";$("filter").value="";render();
+    const original=$("findings").querySelector('tr[data-original-ordinal="'+row.a[0]+'"]');
+    if(!original)return;
+    original.classList.add("peer-focus");
+    original.scrollIntoView({behavior:"smooth",block:"center"});original.focus({preventScroll:true});
+    status("Opened original A HUMAN note row "+row.a[0]+". Source B never changes original evidence.");
+   });
+   const action=document.createElement("td");action.append(button);tr.append(action);
+  }else{tr.append(el("td","HUMAN review: no unique A row"));}
   result.append(tr);
  }
  $("peer-counter").textContent=matches.length+" original source-check groups; "+
