@@ -393,7 +393,9 @@ authenticated client consent, operator authority, revocation, clearance or permi
 to interact with a target. Check the recipient channel separately. Never upload data.</div>
 <header><label>Open separately verified PRIVATE reviewer handoff
 <input type="file" id="import" accept=".json,application/json"></label>
-<button id="export" disabled>Export PRIVATE human reply</button></header>
+<button id="export" disabled>Export PRIVATE human reply</button>
+<button id="resume" disabled>Restore saved PRIVATE reply draft</button>
+<input type="file" id="resumeFile" accept=".json,application/json" hidden></header>
 <section class="recipient-tools"><label>Find selected original ID
 <input type="search" id="search" autocomplete="off" maxlength="180"></label>
 <label>Show
