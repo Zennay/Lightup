@@ -68,7 +68,7 @@ def _notes() -> str:
     return "\n".join(collected).strip()
 
 
-def _manual_proposal() -> dict:
+def _collect_assets() -> list[str]:
     print("Provide exact canonical hostnames, IPs or CIDRs, one per line.")
     print("Press Enter on an empty line after the final asset; maximum 80.")
     assets: list[str] = []
@@ -80,10 +80,41 @@ def _manual_proposal() -> dict:
     if len(assets) > 80:
         raise ClientRequestError("more than 80 assets")
     canonical_assets(assets)
+    return assets
+
+
+def _manual_proposal() -> dict:
+    assets = _collect_assets()
     risk = _ask("Requested risk (1 to 4): ", max_chars=1)
     if risk not in ("1", "2", "3", "4"):
         raise ClientRequestError("risk must be a single digit 1–4")
     return prepare_request(assets, int(risk), _notes())
+
+
+def _manual_revision(original) -> dict:
+    """Keep unchanged client fields rather than forcing complete re-entry."""
+    print("Previously rejected assets:")
+    for asset in original.requested_assets:
+        print("  - " + asset)
+    assets_choice = _ask("Replace all assets? Type y or Enter to keep: ", max_chars=1)
+    if assets_choice not in ("", "y", "Y"):
+        raise ClientRequestError("choose y or Enter for unchanged assets")
+    assets = _collect_assets() if assets_choice.lower() == "y" else list(original.requested_assets)
+    original_risk = int(original.requested_risk)
+    risk_choice = _ask(
+        "Risk 1–4 (Enter keeps original " + str(original_risk) + "): ",
+        max_chars=1,
+    )
+    if risk_choice and risk_choice not in ("1", "2", "3", "4"):
+        raise ClientRequestError("risk must remain between 1 and 4")
+    risk = int(risk_choice) if risk_choice else original_risk
+    print("Existing client notes and constraints:")
+    print(original.notes)
+    notes_choice = _ask("Replace client notes? Type y or Enter to keep: ", max_chars=1)
+    if notes_choice not in ("", "y", "Y"):
+        raise ClientRequestError("choose y or Enter for unchanged notes")
+    notes = _notes() if notes_choice.lower() == "y" else original.notes
+    return prepare_request(assets, risk, notes)
 
 
 def _studio_proposal() -> dict:
@@ -191,7 +222,7 @@ def _revise(db: DomainStore, ctx, check_session=None) -> None:
     print("Revision input: choose m for manually edited scope or s for Studio JSON.")
     origin = _ask("Choice [m/s]: ", max_chars=1).lower()
     if origin == "m":
-        new = _manual_proposal()
+        new = _manual_revision(original)
     elif origin == "s":
         new = _studio_proposal()
     else:
