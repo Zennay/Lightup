@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'none'; connect-src 'none'; form-action 'none'; object-src 'none'; base-uri 'none'">
+<title>LightUp · Client Security Brief</title><link rel="stylesheet" href="theme.css"></head>
+<body><header class="top"><div class="shell"><p class="eyebrow">LIGHTUP / CLIENT BRIEF</p><h1>Turn authorised findings into a readable security update.</h1>
+<p class="lead">A private, offline reporting room. Import a previously authenticated LightUp findings CSV; review priorities and generate a static, human-reviewed client brief. This workspace neither authenticates a client nor permits an assessment.</p>
+<div class="flags"><span>INCUBATE · DRAFT/HOLD</span><span>Local browser memory only</span><span>No network, scan or grant</span></div></div></header>
+<main class="shell">
+<section class="panel" aria-labelledby="source-heading"><div class="section-top"><div><p class="eyebrow">01 / SOURCE</p><h2 id="source-heading">Import a previously authorised summary</h2></div><span class="step">≤ 350 findings / 1 MiB each</span></div>
+<p>The source must come from the existing authenticated LightUp export workflow. Uploading a file here is <strong>not</strong> proof of authentication, scope, consent or freshness. Never upload unknown or other-tenant data.</p>
+<div class="input-grid"><label>Current findings CSV<input id="current" type="file" accept=".csv,text/csv"></label>
+<label>Earlier findings CSV (optional)<input id="previous" type="file" accept=".csv,text/csv"></label></div>
+<label class="check"><input id="same-scope" type="checkbox"> I have separately checked that both exports refer to the exact same authorised client and engagement; the CSV itself cannot prove that.</label>
+<div class="toolbar"><button id="load">Open local report</button><button class="secondary" id="forget">Forget all imported data</button><span id="message" role="status" aria-live="polite">No files loaded.</span></div>
+</section>
+<section id="workspace" hidden>
+<div class="kpi-grid" id="kpis" aria-label="Source summary"></div>
+<div class="two">
+<section class="panel"><div class="section-top"><div><p class="eyebrow">02 / RISK MIX</p><h2>Findings by severity</h2></div></div><div id="severity-chart" class="chart"></div><p class="hint">Severity is sourced from the uploaded report, not independently scored here.</p></section>
+<section class="panel"><div class="section-top"><div><p class="eyebrow">03 / SOURCE STATUS</p><h2>Reported retest states</h2></div></div><div id="retest-chart" class="chart"></div><p class="hint">A source-reported “fixed” value is not verification; only an independently authorised retest can confirm it.</p></section></div>
+<section class="panel" id="changes-panel" hidden><p class="eyebrow">04 / HISTORICAL CONTEXT</p><h2>Review what changed</h2><div id="changes"></div>
+<p class="hint">“Missing” means absent from the newer file, not resolved. “Changed” does not demonstrate improvement. Identity, tenant and freshness remain unverified by these CSV files.</p></section>
+<section class="panel"><p class="eyebrow">05 / REMEDIATION DISCUSSION</p><h2>Suggested order of human follow-up</h2>
+<p>Adjust relative planning horizons before export. These are <strong>illustrative calendar-day targets</strong>, not contractual deadlines or permission to perform retests.</p>
+<div class="input-grid"><label>Local planning reference date<input id="anchor" type="date"></label>
+<label>Critical / high discussion horizon (days)<input id="urgent-days" type="number" min="1" max="365" value="7"></label>
+<label>Medium discussion horizon (days)<input id="medium-days" type="number" min="1" max="365" value="30"></label>
+<label>Low / info discussion horizon (days)<input id="low-days" type="number" min="1" max="365" value="90"></label></div>
+<div id="roadmap" class="roadmap"></div></section>
+<section class="panel"><p class="eyebrow">06 / PRIVATE REVIEW</p><h2>Compile the client handoff</h2>
+<div class="input-grid"><label>Brief heading<input id="report-title" type="text" maxlength="100" value="Security findings — executive brief"></label>
+<label>Review audience<select id="audience"><option value="Client and operator">Client and operator</option><option value="Internal operators only">Internal operators only</option></select></label></div>
+<label class="check"><input id="details" type="checkbox"> Include original finding titles and remediation text in the exported HTML. <strong>Contains potentially sensitive client data; explicit review and secure distribution required.</strong></label>
+<p id="source-info" class="source-meta"></p>
+<div class="toolbar"><button id="html-export">Download static HTML brief</button><button class="secondary" id="json-export">Download redacted JSON counters</button><button class="secondary" id="print">Print review view</button></div>
+<div id="preview" class="preview" aria-live="polite"></div>
+</section></section>
+</main><footer class="shell"><p>LightUp client reporting preview · <strong>REVIEW_ONLY / DRAFT/HOLD</strong>. No grant, client/operator consent, live revocation, release, scan, retest or production authorisation is conferred by this document. Protect locally downloaded copies.</p></footer>
+<script src="remediation-engine.js"></script><script src="app.js"></script></body></html>
