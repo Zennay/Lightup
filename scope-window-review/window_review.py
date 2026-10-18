@@ -342,11 +342,19 @@ def private_publish(path: Path, payload: bytes) -> None:
             os.fsync(dfd)
         finally:
             os.close(dfd)
+    except BaseException:
+        # If publication fails *after* exclusive link, don't leave a purported
+        # completed final artifact visible. Never touch a pre-existing target:
+        # os.link above only succeeds when this run created the link.
+        if linked:
+            try:
+                path.unlink()
+            except OSError:
+                pass
+        raise
     finally:
         if os.path.exists(tmp):
             os.unlink(tmp)
-    if not linked:
-        raise ReviewHold("private exclusive output failed")
 
 
 def main(argv=None) -> int:
