@@ -204,6 +204,8 @@ def main(argv=None) -> int:
     parser.add_argument("--new-casebook", type=Path, required=True)
     parser.add_argument("--previous-note", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--private-diff", type=Path,
+                        help="separate 0600 scriptless human source-difference desk")
     parser.add_argument("--old-review-at", help="old prepared_at ISO timestamp, default old as_of")
     parser.add_argument("--lead-days", type=int, default=7)
     parser.add_argument("--future-days", type=int, default=45)
@@ -222,13 +224,36 @@ def main(argv=None) -> int:
         current = datetime.now(timezone.utc)
         if earlier > current:
             raise ReviewHold("previous review date is in the future")
-        proposal, stats = rebase(old, fresh, note, previous_now=earlier,
-                                 current_now=current, lead_days=args.lead_days,
-                                 future_days=args.future_days,
-                                 daily_capacity=args.daily_capacity)
-        private_publish(args.output, (json.dumps(proposal, ensure_ascii=False,
-                                                 indent=2, allow_nan=False) + "\n").encode("utf-8"))
-        print("HOLD: private human source-refresh proposal, "
+        proposal, stats, withheld = rebase(
+            old, fresh, note, previous_now=earlier, current_now=current,
+            lead_days=args.lead_days, future_days=args.future_days,
+            daily_capacity=args.daily_capacity)
+        # Preflight both outputs before either source-bound private handoff is
+        # published; on second-output failure, remove only this newly-created
+        # candidate, never an existing operator file.
+        ensure_private_destination(args.output)
+        if args.private_diff:
+            ensure_private_destination(args.private_diff)
+            if args.output.resolve() == args.private_diff.resolve():
+                raise ReviewHold("private proposal and review desk must be distinct")
+        payload = (json.dumps(proposal, ensure_ascii=False,
+                              indent=2, allow_nan=False) + "\n").encode("utf-8")
+        diff = private_diff_html(old=old, fresh=fresh, stats=stats,
+                                 withheld=withheld) if args.private_diff else None
+        published = False
+        try:
+            private_publish(args.output, payload)
+            published = True
+            if args.private_diff:
+                private_publish(args.private_diff, diff)
+        except BaseException:
+            if published:
+                try:
+                    args.output.unlink()
+                except OSError:
+                    pass
+            raise
+        print("HOLD: private human source-refresh proposal, 
               + ", ".join(f"{k}={v}" for k, v in stats.items())
               + "; separately review proposed entries inside the new offline board. "
                 "No original-source or consent writes.")
