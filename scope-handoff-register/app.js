@@ -34,6 +34,20 @@
   const STATUS_TEXT = Object.freeze({open:"Open",working:"In gesprek",prepared:"Voor overdracht voorbereid",needs_revision:"Herziening nodig"});
   const records = [];
   const pairReviews = new Map();
+  const WITHDRAWAL_ACTION_TEXT = Object.freeze({
+    client_channel:"Contact cliënt via onafhankelijk geauthenticeerd kanaal; verifieer verzoek en scope.",
+    operator_channel:"Waarschuw bevoegde operator via afgesproken onafhankelijke urgente route.",
+    active_work:"Vraag operator om lopend werk te pauzeren of te stoppen en status onafhankelijk te controleren.",
+    grant_revoke:"Vraag echte grant-eigenaar om betrokken rechten werkelijk in te trekken en controleer bij gebruik.",
+    scope_schedule:"Laat verantwoordelijken werkelijke goedgekeurde scope en planning opnieuw afstemmen.",
+    evidence_privacy:"Laat data-eigenaar toegang, bewaartermijn en delen van bewijsmateriaal opnieuw beoordelen.",
+    human_ack:"Vraag onafhankelijke geauthenticeerde ontvangstbevestiging; app biedt die zelf niet.",
+    incident_log:"Leg het besluit vast in het echte operationele audit-/incidentregister."
+  });
+  const WITHDRAWAL_STATUS_TEXT=Object.freeze({
+    todo:"Nog niet lokaal voorbereid",drafted_local:"Alleen lokaal concept opgesteld",
+    requested_unverified:"Zelfgerapporteerd verzoek, ontvangst NIET geverifieerd"
+  });
   const PAIR_STATES = Object.freeze(["open","discussion_started","needs_followup","discussion_recorded"]);
   const PAIR_LABELS = Object.freeze({
     open:"Open voor overleg",discussion_started:"Bespreking gestart",
@@ -230,6 +244,15 @@
           " van 8 externe menselijke stop-/wijzigingsacties nog zonder zelfs een ongeverifieerd verzoek. "+
           (x.effective?"Voorgesteld UTC-moment: "+x.effective+". ":"")+
           "Geen geauthenticeerde cliënt, echte grant-intrekking, dispatchstop of toestemming vastgesteld."));
+      const checklist=node("div","withdrawal-checklist");
+      for(const [id,description] of Object.entries(WITHDRAWAL_ACTION_TEXT)){
+        const row=node("div","withdrawal-step");
+        row.append(node("strong","",id.replaceAll("_"," ")),
+          node("span","small",description),
+          node("span","meta",WITHDRAWAL_STATUS_TEXT[x.statuses[id]]));
+        checklist.append(row);
+      }
+      card.append(checklist);
       const actions=node("div","actions");
       const open=node("button","","Dossier / stopacties bekijken");open.type="button";
       open.addEventListener("click",()=>{active=r.sha;render();$("detail").scrollIntoView({block:"start",behavior:"smooth"});});
@@ -238,7 +261,23 @@
         if(!confirm("Alleen deze ongeverifieerde offline reviewkopie wissen? Dit heft GEEN echt stopverzoek of revocation op."))return;
         r.withdrawal=null;show("Alleen lokale reviewkopie gewist; status 'Herziening nodig' blijft waar van toepassing.");render();
       });
-      actions.append(open,remove);card.append(actions);area.append(card);
+      const handoff=node("button","","Download anonieme STOP-overdracht");handoff.type="button";
+      handoff.addEventListener("click",()=>{
+        const lines=[
+          "LIGHTUP — SELF-REPORTED HUMAN STOP/SCOPE-CHANGE REQUEST — REVIEW_ONLY_HOLD",
+          "NO VERIFIED CLIENT/OPERATOR IDENTITY, ACTUAL REVOCATION, HANDLER STOP OR PERMISSION.",
+          "Source bytes SHA-256: "+r.sha,
+          "Self-reported urgency: "+x.urgency,
+          "Self-reported intent: "+x.intent,
+          "Proposed UTC effective moment: "+(x.effective||"not supplied"),
+          "Next actions (must use real authenticated channels):",
+          ...Object.entries(WITHDRAWAL_ACTION_TEXT).map(([id,description])=>
+            "- "+id+" ["+x.statuses[id]+"] "+description),
+          "This note does not stop a service or revoke any grant. Confirm status independently."
+        ];
+        download(lines.join("\n")+"\n","lightup-offline-stop-handoff.txt","text/plain;charset=utf-8");
+      });
+      actions.append(open,handoff,remove);card.append(actions);area.append(card);
     }
     if(!cases.length)area.append(node("p","small","Importeer een REVIEW_ONLY-export vanuit de zelfstandige Withdrawal Desk, na openen van dezelfde exacte Studio-bronbytes. Dit register kan geen echte operatie stoppen."));
   }
@@ -251,8 +290,9 @@
       const r=records.find(x=>x.sha===item.sha);
       const {sha,...safe}=item;
       r.withdrawal={...safe,statuses:{...safe.statuses}};
-      const touched=new Set(["client","operator","stops","owner"]);
-      if(safe.intent==="narrow_scope")touched.add("assets");
+      const touched=safe.intent==="stop_all" ?
+        new Set(TASKS.map(([id])=>id)) : new Set(["client","operator","stops","owner"]);
+      if(safe.intent==="narrow_scope"){touched.add("assets");touched.add("risk");}
       if(safe.intent==="postpone")touched.add("schedule");
       if(safe.intent==="withdraw_share")touched.add("privacy");
       for(const id of touched)if(r.tasks[id]==="prepared")r.tasks[id]="needs_revision";
@@ -269,6 +309,8 @@
     }
     const priority={needs_revision:0,working:1,open:2};
     return all.sort((a,b)=>{
+      const urgentA=a.r.withdrawal?.urgency==="urgent"?1:0,urgentB=b.r.withdrawal?.urgency==="urgent"?1:0;
+      if(urgentA!==urgentB)return urgentB-urgentA;
       if(a.due!==b.due)return a.due===null?1:b.due===null?-1:a.due.localeCompare(b.due);
       if(a.status!==b.status)return priority[a.status]-priority[b.status];
       return b.r.source.risk-a.r.source.risk;
@@ -287,6 +329,7 @@
       if(dueFilter==="week")return t.due!==null&&t.due>=today&&t.due<=weekEnd;
       if(dueFilter==="undated")return t.due===null;
       if(dueFilter==="revision")return t.status==="needs_revision";
+      if(dueFilter==="withdrawal")return t.r.withdrawal!==null;
       return true;
     });
     const metric=(label,value)=>{
