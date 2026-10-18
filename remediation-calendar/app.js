@@ -137,7 +137,7 @@ async function openFile(file){
  $('message').textContent=clean.findings.length+' original findings loaded locally. Source is a historical unsigned draft; no current identity or consent checked.';
 }
 function icalEscape(s){
- return String(s).replace(/[\u0000-\u001f\u007f-\u009f]/g,c=>c==='\n'?'\\n':c==='\r'?'':c==='\t'?' ':'').replace(/\\/g,'\\\\').replace(/;/g,'\\;').replace(/,/g,'\\,');
+ return String(s).replace(/\r\n?/g,'\n').replace(/\\/g,'\\\\').replace(/\n/g,'\\n').replace(/;/g,'\\;').replace(/,/g,'\\,').replace(/[\u0000-\u0009\u000b-\u001f\u007f-\u009f]/g,'');
 }
 function fold(line){
  let out='',length=0;
