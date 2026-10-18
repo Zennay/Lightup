@@ -45,6 +45,10 @@
     unlock: $("unlock"), lock: $("lock"), recovered: $("recovered"),
     mergeMode: $("merge-mode"), handoffRoute: $("handoff-route"),
     before: $("compare-before"), after: $("compare-after"),
+    studioSource: $("studio-source"), studioInspect: $("studio-inspect"),
+    studioFlag: $("studio-flag"), studioReport: $("studio-report"),
+    studioClear: $("studio-clear"), studioStatus: $("studio-status"),
+    studioSummary: $("studio-summary"), studioAssets: $("studio-assets"),
     redactSource: $("redact-source"), redactTerm: $("redact-term"),
     redactCredentials: $("redact-credentials"), redactCreate: $("redact-create"),
     redactClear: $("redact-clear"), redactSummary: $("redact-summary"),
@@ -56,6 +60,7 @@
   let entries = [];
   let busy = false;
   let lastAction = Date.now();
+  let inspectedStudio = null;
 
   function touch() { lastAction = Date.now(); }
   function notice(message, error = false) {
@@ -106,6 +111,9 @@
   function scrub() {
     for (const entry of entries) entry.bytes.fill(0);
     entries = [];
+    inspectedStudio = null;
+    els.studioStatus.textContent = "Locked. No proposal inspection retained.";
+    els.studioSummary.replaceChildren(); els.studioAssets.textContent = "";
     els.stageFilter.value = "all";
     clearPreview();
     els.files.value = "";
@@ -122,6 +130,7 @@
     els.recovered.replaceChildren();
     const beforeValue = els.before.value, afterValue = els.after.value;
     const redactValue = els.redactSource.value;
+    const studioValue = els.studioSource.value;
     els.before.replaceChildren();
     els.after.replaceChildren();
     for (const dropdown of [els.before, els.after]) {
@@ -133,6 +142,20 @@
         option.value = String(index); option.textContent = entry.name;
         dropdown.append(option);
       });
+    }
+    els.studioSource.replaceChildren();
+    const studioPlaceholder = document.createElement("option");
+    studioPlaceholder.value = ""; studioPlaceholder.textContent = "Choose a Studio v1 JSON draft";
+    els.studioSource.append(studioPlaceholder);
+    entries.forEach((entry, index) => {
+      if (!entry.name.toLowerCase().endsWith(".json")) return;
+      const option = document.createElement("option");
+      option.value = String(index); option.textContent = entry.name;
+      els.studioSource.append(option);
+    });
+    if (studioValue !== "" && entries[Number(studioValue)] &&
+        entries[Number(studioValue)].name.toLowerCase().endsWith(".json")) {
+      els.studioSource.value = studioValue;
     }
     els.redactSource.replaceChildren();
     const redactPlaceholder = document.createElement("option");
@@ -166,6 +189,9 @@
       remove.addEventListener("click", () => {
         if (busy) return;
         clearPreview();
+        inspectedStudio = null; els.studioAssets.textContent = "";
+        els.studioSummary.replaceChildren();
+        els.studioStatus.textContent = "Source selection changed; inspect a current exact file.";
         entry.bytes.fill(0);
         entries.splice(index, 1);
         touch(); paint();
@@ -319,6 +345,8 @@
           staged.push({name, bytes, hash: await digest(bytes), role: roles[0], selected: true, stage: "unsorted", note: ""});
         }
         entries.push(...staged);
+        inspectedStudio = null;
+        els.studioSummary.replaceChildren(); els.studioAssets.textContent = "";
         clearPreview();
         notice("New local draft files loaded. They are not persisted until you explicitly export an encrypted vault.");
       } catch (err) {
@@ -618,12 +646,16 @@
             }
           }
           entries = merged;
+          inspectedStudio = null;
+          els.studioSummary.replaceChildren(); els.studioAssets.textContent = "";
           clearPreview();
           notice(newCount + " new local file(s) merged atomically from " + importedRoute + " handoff. Roles/recipient identities remain unverified.");
         } else {
           // Atomic replacement: previous plaintext is forgotten only after authenticated validation.
           for (const item of entries) item.bytes.fill(0);
           entries = staged;
+          inspectedStudio = null;
+          els.studioSummary.replaceChildren(); els.studioAssets.textContent = "";
           clearPreview();
           notice("Encrypted " + importedRoute + " packet restored locally. Verify drafts with real client/operator; the vault grants no authorization.");
         }
