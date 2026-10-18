@@ -29,7 +29,6 @@
   const human = obj => exact(obj,humanKeys) &&
     clean(obj.owner,80) && clean(obj.next,500) && date(obj.due) &&
     allowedStages.has(obj.stage);
-  const safe = value => structuredClone ? structuredClone(value) : JSON.parse(JSON.stringify(value));
   function notify(message, hold=false) {
     status.textContent = (hold?"HOLD · ":"") + message;
     status.dataset.hold=hold?"true":"false";
@@ -49,10 +48,12 @@
     }
     const ids = new Set();
     for (const row of doc.rows) {
-      if (!exact(row,["key","tier","attention","baseline"]) ||
+      if (!exact(row,["key","tier","attention","action","observations","baseline"]) ||
           !clean(row.key,200) || !/^(request|engagement):/.test(row.key) ||
           !["HOLD","PENDING","REVIEW"].includes(row.tier) ||
-          !clean(row.attention,120) ||
+          !clean(row.attention,120) || !clean(row.action,200) ||
+          !Array.isArray(row.observations) || row.observations.length>400 ||
+          !row.observations.every(x=>clean(x,230)) ||
           !human(row.baseline) || row.baseline.owner!==doc.reviewer ||
           ids.has(row.key)) throw Error("invalid or duplicated source identity");
       ids.add(row.key);
@@ -79,6 +80,16 @@
     const hint=document.createElement("p");
     hint.className="muted";
     hint.textContent=row.tier+" · "+row.attention+" · original source observation, NOT an approval";
+    const recommendation=document.createElement("p");
+    recommendation.textContent="Original proposed HUMAN action: "+row.action;
+    const detail=document.createElement("details"),summary=document.createElement("summary");
+    summary.textContent="Historical source observations ("+row.observations.length+")";
+    detail.append(summary);
+    const listing=document.createElement("ul");
+    row.observations.forEach(value=>{
+      const item=document.createElement("li");item.textContent=value;listing.append(item);
+    });
+    detail.append(listing);
     const previous=document.createElement("p");
     previous.textContent="Original human stage: "+row.baseline.stage+
       " · proposed due: "+(row.baseline.due||"unset");
@@ -99,7 +110,7 @@
     form.append(labeled("Human stage",stage),
       labeled("Proposed UTC follow-up day",due),
       labeled("Private human next action / question",next));
-    article.append(heading,hint,previous,form);
+    article.append(heading,hint,recommendation,detail,previous,form);
     article.addEventListener("change",()=>{
       edited=true;notify("Local human-only draft changed; use PRIVATE reply export.");
     });
@@ -148,6 +159,7 @@
     const rows=[...cards.children].map((card,i)=>{
       const r=packet.rows[i];
       return {key:r.key,tier:r.tier,attention:r.attention,
+        action:r.action,observations:r.observations,
         baseline:r.baseline,proposed:getHuman(card,r.baseline)};
     });
     if (rows.some(r=>!human(r.proposed)||r.proposed.owner!==packet.reviewer)) {
