@@ -3,6 +3,7 @@
 (() => {
 'use strict';
 const $=id=>document.getElementById(id);
+const runtime=window.LightUpBriefRuntime;
 const LIMIT=12, FIELDS=[
  ['requested_mode','Mode'],
  ['requested_risk','Risk'],
@@ -56,6 +57,22 @@ function csvCell(v){
  let s=String(v);if(/^[=+\-@\t\r\n]/.test(s))s="'"+s;
  return '"'+s.replaceAll('"','""')+'"';
 }
+/* A reissue template is a NEW, unanswered, role-labelled coordination note.
+   Never copy stale statuses from the prior scope. */
+function reissue(role){
+ const current=runtime?.snapshot();
+ if(!current)return;
+ const fresh={
+  ...current,
+  audience:role,
+  question_states:current.question_states.map(q=>({code:q.code,role:q.role,status:'unanswered'})),
+  outstanding_questions:current.question_states.length,
+  flags:Object.fromEntries(Object.keys(current.flags).map(key=>[key,false])),
+  notice:'Fresh source-bound human preparation template only. No old answers, identity, consent, operator approval, grant, execution or release is transferable.'
+ };
+ download('lightup-'+role+'-fresh-preparation-HOLD.json','application/json',JSON.stringify(fresh,null,2)+'\\n');
+}
+
 function toCSV(){
  const rows=[['sequence','previous_source_sha256','current_source_sha256','summary_changed_categories','review_disposition','reissue_client','reissue_operator']];
  for(const h of history)rows.push([h.sequence,h.previous_source_sha256,h.current_source_sha256,
@@ -67,6 +84,8 @@ function render(){
  $('revisionJSON').disabled=history.length===0;
  $('revisionCSV').disabled=history.length===0;
  $('revisionForget').disabled=history.length===0;
+ $('revisionClient').disabled=!active;
+ $('revisionOperator').disabled=!active;
  if(!active){
   $('revisionStatus').textContent=history.length?
    'Earlier source fingerprints remain only in this local tab; no current draft loaded · HOLD':
@@ -116,6 +135,8 @@ $('revisionJSON').addEventListener('click',()=>{
 $('revisionCSV').addEventListener('click',()=>{
  if(history.length)download('lightup-source-revision-timeline-HOLD.csv','text/csv;charset=utf-8',toCSV());
 });
+$('revisionClient').addEventListener('click',()=>reissue('client'));
+$('revisionOperator').addEventListener('click',()=>reissue('operator'));
 $('revisionForget').addEventListener('click',()=>{history=[];counter=0;render();});
 render();
 })();
