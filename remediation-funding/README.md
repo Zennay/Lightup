@@ -33,6 +33,17 @@ The **phased funding** section is an additional complete offline workflow over t
 
 The app reports weekly deposits, setup coverage, paid hypothetical labour, remaining unpaid work hours, carried cash, and conservative uncertain critical/high exposure. Fractional funded hours are **rounded down** to tenths so the UI never claims to have financed more work than the numerical model supports. The separately confirmed staged report export contains only aggregate money, hours, weeks, risk bounds and literal false authority fields. It does not include a client's original CSV, IDs, contacts, grant details or customer financial credentials. Changing any financial assumptions invalidates old on-screen results before further export.
 
+## Weekly financing strategies — urgent first versus proportional
+
+A new integrated **Funding priorities** workspace reads only the same already-imported original Capacity Studio aggregate and current week-specific cash release settings. It models two explicit alternatives under the **exact same hypothetical budget**:
+
+- **Urgent-first:** finance critical, then high, medium, low and info aggregate hours in sequence within the available weekly financial allowance.
+- **Proportional:** spread the identical weekly financed tenths of an hour proportionally across each severity's proposed workload, with deterministic remainder allocation.
+
+The comparison presents proposed, tentatively financed and unfunded hours by risk band, the modeled gain or loss of critical/high funding and original unscheduled urgent backlog (which is explicitly **not** reclassified as financed). Rounding is conservatively to funded tenths of an hour; per-week coverage cannot exceed original proposed severity hours or original source capacity. No source case ID or customer target was available to either algorithm, so neither model may be interpreted as real per-finding allocation, assigned work, completed fix or consent to retest. The priority decision is deliberately **not** persisted or executed.
+
+There are two separate, explicit private exports: a non-authorising aggregate JSON for later human review and a table-based Markdown discussion brief covering finance strategy trade-offs. These are unsigned and should be independently reviewed with the client, original scope owner, and procurement team before anyone uses them for actual budgeting.
+
 ## Security and scope boundaries
 
 - Source input schema must be the original unsigned review-only aggregate export. Its claimed "review only" controls do **not** authenticate the real client/engagement, source bytes or current consent. Only its totals are used as untrusted planning numbers.
