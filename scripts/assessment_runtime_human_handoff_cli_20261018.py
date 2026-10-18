@@ -80,7 +80,8 @@ def main(argv=None):
         payload, status = _recipient_brief(raw)
         _write_exclusive(args.output, payload)
     except (OSError, ValueError, TypeError, KeyError, OverflowError,
-            UnicodeError, RecursionError, AttributeError):
+            UnicodeError, RecursionError, AttributeError, RuntimeError,
+            EOFError, NotImplementedError, BadZipFile, LargeZipFile):
         print("PRIVATE_HUMAN_HANDOFF_HOLD")
         return 3
     print("PRIVATE_HUMAN_HANDOFF_WRITTEN — " + status +

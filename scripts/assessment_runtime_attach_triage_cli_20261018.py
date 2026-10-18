@@ -11,7 +11,7 @@ from hashlib import sha256
 from io import BytesIO
 import json
 import re
-from zipfile import ZipFile, ZIP_DEFLATED, ZipInfo
+from zipfile import BadZipFile, LargeZipFile, ZipFile, ZIP_DEFLATED, ZipInfo
 
 from assessment_runtime_review_handoff_cli_20261018 import (
     _snapshot, _write_exclusive, _e,
@@ -216,7 +216,8 @@ def main(argv=None):
             raise ValueError("annotated package exceeds bound")
         _write_exclusive(args.output, buffer.getvalue())
     except (OSError, ValueError, TypeError, KeyError, OverflowError,
-            UnicodeError, RecursionError, AttributeError):
+            UnicodeError, RecursionError, AttributeError, RuntimeError,
+            EOFError, NotImplementedError, BadZipFile, LargeZipFile):
         print("PRIVATE_HUMAN_REVIEW_HOLD")
         return 3
     print("PRIVATE_HUMAN_REVIEW_ATTACHED — " + status +
