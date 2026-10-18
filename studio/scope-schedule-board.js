@@ -135,18 +135,56 @@ function renderBlocks(){
     remove.type='button';remove.addEventListener('click',()=>{blackouts.splice(i,1);render();});
   });
 }
-function suggest(entry,list){
-  let candidate=entry.interval.start,cycles=0;
-  const duration=entry.interval.end-entry.interval.start;
-  const others=list.filter(x=>x!==entry).concat(blackouts.map(b=>({interval:b}))).sort((a,b)=>a.interval.start-b.interval.start);
-  while(cycles++<MAX_FILES+blackouts.length+2) {
-    const conflict=others.find(e=>candidate<e.interval.end+BUFFER &&
-      candidate+duration+BUFFER>e.interval.start);
-    if(!conflict) return {start:candidate,end:candidate+duration};
-    candidate=Math.max(candidate,conflict.interval.end+BUFFER);
-    if(!Number.isFinite(candidate+duration)||candidate+duration>Date.UTC(2100,0,1))break;
+
+const WORK_DAYS = Object.freeze([0,1,2,3,4,5,6]);
+function minutesFromClock(raw){
+  if(typeof raw!=='string'||!/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(raw))return null;
+  return Number(raw.slice(0,2))*60+Number(raw.slice(3,5));
+}
+function workPolicy(){
+  const enabled=$('hoursEnabled').checked;
+  const start=$('hoursStart').value,end=$('hoursEnd').value;
+  const days=Array.from($('hoursDays').querySelectorAll('input[data-day]'))
+    .filter(input=>input.checked).map(input=>Number(input.dataset.day)).sort();
+  const begin=minutesFromClock(start),finish=minutesFromClock(end);
+  const valid=!enabled||(begin!==null&&finish!==null&&finish>begin&&days.length>0);
+  return {enabled,start_utc:start,end_utc:end,weekdays:days,valid,
+    reason:valid?'':'Choose a later UTC end time and at least one weekday.'};
+}
+function withinWorkHours(interval,policy){
+  if(!policy.enabled)return true;
+  if(!policy.valid||!interval||interval.end<=interval.start)return false;
+  const midnight=Math.floor(interval.start/DAY)*DAY;
+  if(interval.end>midnight+DAY)return false;
+  return policy.weekdays.includes(new Date(midnight).getUTCDay()) &&
+    interval.start>=midnight+minutesFromClock(policy.start_utc)*MINUTE &&
+    interval.end<=midnight+minutesFromClock(policy.end_utc)*MINUTE;
+}
+function nextWorkStart(candidate,duration,policy){
+  if(!policy.enabled)return candidate;
+  if(!policy.valid||duration<=0||duration>(minutesFromClock(policy.end_utc)-
+      minutesFromClock(policy.start_utc))*MINUTE)return null;
+  const begin=minutesFromClock(policy.start_utc)*MINUTE;
+  const finish=minutesFromClock(policy.end_utc)*MINUTE;
+  for(let day=0;day<=33;day++){
+    const midnight=(Math.floor(candidate/DAY)+day)*DAY;
+    if(!policy.weekdays.includes(new Date(midnight).getUTCDay()))continue;
+    const possible=Math.max(candidate,midnight+begin);
+    if(possible+duration<=midnight+finish)return possible;
   }
   return null;
+}
+function activeWorkNote(policy){
+  const node=$('hoursStatus');node.className=policy.valid?'muted':'hours-alert';
+  node.textContent=!policy.enabled?'Work-hour limits disabled. All UTC days and hours remain planning candidates.':
+    policy.valid ? 'Local preference active: '+policy.weekdays.map(day=>['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][day]).join(', ')+
+      ' · '+policy.start_utc+'–'+policy.end_utc+' UTC. No grant or real staffing verified.':
+      'HOLD: '+policy.reason+' The optimizer and source-bound exports are unavailable until corrected.';
+}
+
+function suggest(entry,list){
+  const forbidden=list.filter(item=>item!==entry).map(item=>item.interval).concat(blackouts);
+  return firstFit(entry.interval,forbidden,workPolicy());
 }
 function createAxis(days) {
   const head=$('axis');head.replaceChildren();
@@ -263,6 +301,8 @@ $('anchor').value=new Date().toISOString().slice(0,10);
 setAnchor();
 $('anchor').addEventListener('change',()=>{anchorChangedByUser=true;setAnchor();});
 $('horizon').addEventListener('change',render);
+for(const id of ['hoursEnabled','hoursStart','hoursEnd'])$(id).addEventListener('change',render);
+$('hoursDays').addEventListener('change',render);
 function chosenScenario(){
   const index=Number($('scenarioSelect').value);
   return $('scenarioSelect').value!=='' && Number.isSafeInteger(index) && index>=0 &&
@@ -279,12 +319,13 @@ function renderScenarios(){
   });
   select.value=Array.from(select.options).some(o=>o.value===old) ? old : '';
   const chosen=chosenScenario();
-  $('scenarioApply').disabled=!chosen;
-  $('scenarioSuggest').disabled=!chosen;
+  const policy=workPolicy();
+  $('scenarioApply').disabled=!chosen||!policy.valid;
+  $('scenarioSuggest').disabled=!chosen||!policy.valid;
   $('scenarioRevert').disabled=!chosen||!scenarioShifts.has(chosen.key);
   $('scenarioClear').disabled=!scenarioShifts.size;
-  $('scenarioArrange').disabled=!shown().length;
-  $('scenarioExport').disabled=!entries.length || entries.some(e=>!e.sourceHash);
+  $('scenarioArrange').disabled=!shown().length||!policy.valid;
+  $('scenarioExport').disabled=!entries.length || !policy.valid || entries.some(e=>!e.sourceHash);
   const changes=$('scenarioChanges');changes.replaceChildren();
   if(!scenarioShifts.size)append(changes,'p','No time adjustments proposed.','muted');
   entries.forEach((e,i)=>{
@@ -324,26 +365,30 @@ function scenarioPacket(){
     proposed_time_overlap_pairs:pairs.length,proposed_unavailability_overlap_pairs:blockHits
   };
 }
-function firstFit(base,forbidden) {
-  const duration=base.end-base.start;
+function firstFit(base,forbidden,policy){
+  const duration=base.end-base.start,limit=Date.UTC(2100,0,1);
+  if(!policy.valid||duration<=0)return null;
   let candidate=base.start;
   const busy=forbidden.slice().sort((a,b)=>a.start-b.start);
-  for(const item of busy){
-    if(candidate+duration+BUFFER<=item.start) break;
-    if(candidate<item.end+BUFFER && candidate+duration+BUFFER>item.start)
-      candidate=Math.max(candidate,item.end+BUFFER);
+  for(let iteration=0;iteration<2048;iteration++){
+    candidate=nextWorkStart(candidate,duration,policy);
+    if(candidate===null||candidate+duration>limit||candidate-base.start>31*DAY)return null;
+    const conflict=busy.find(item=>candidate<item.end+BUFFER &&
+      candidate+duration+BUFFER>item.start);
+    if(!conflict)return {start:candidate,end:candidate+duration};
+    candidate=Math.max(candidate+MINUTE,conflict.end+BUFFER);
   }
-  if(!Number.isFinite(candidate+duration)||candidate+duration>Date.UTC(2100,0,1) ||
-    candidate-base.start>31*DAY) return null;
-  return {start:candidate,end:candidate+duration};
+  return null;
 }
 function arrangeAll(){
   const current=shown().sort((a,b)=>a.interval.start-b.interval.start||b.risk-a.risk||
     a.name.localeCompare(b.name));
   if(!current.length)return;
+  const policy=workPolicy();
+  if(!policy.valid){$('status').textContent='HOLD: correct UTC workday boundaries first.';return;}
   const busy=blackouts.map(b=>({start:b.start,end:b.end})),proposals=new Map();
   for(const e of current){
-    const slot=firstFit(e.interval,busy);
+    const slot=firstFit(e.interval,busy,policy);
     if(!slot || Math.abs(slot.start-e.original.start)>31*DAY){
       $('status').textContent='HOLD: could not schedule all proposals within 31 days of their ORIGINAL UTC windows. No changes applied.';
       return;
@@ -436,6 +481,11 @@ function applyScenario(start){
   const upper=Date.UTC(2100,0,1);
   if(start===null||start< Date.UTC(2020,0,1)||start+duration>upper||Math.abs(start-selected.interval.start)>31*DAY){
     $('status').textContent='Choose a valid UTC start within 31 days of the original proposal and preserve its duration.';return;
+  }
+  const policy=workPolicy();
+  if(!policy.valid||!withinWorkHours({start,end:start+duration},policy)){
+    $('status').textContent='HOLD: proposed window falls outside selected UTC weekdays/hours. Adjust working hours or choose a permitted time.';
+    return;
   }
   if(start===selected.interval.start)scenarioShifts.delete(selected.key);
   else scenarioShifts.set(selected.key,start);
