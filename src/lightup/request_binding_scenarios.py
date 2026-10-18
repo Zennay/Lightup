@@ -83,6 +83,12 @@ def compare_scenarios(db: Path, *, engagement_id: str, client_id: str | None,
                 operator_user_id=operator_user_id, connection=con,
             )
             records.append({"label": label, "original_source": source})
+    source_fingerprints = {
+        entry["original_source"]["source"]["source_revision_sha256_unsigned"]
+        for entry in records
+    }
+    if len(source_fingerprints) != 1:
+        raise ValueError("original source rows changed during scenario review")
     record_sets = [
         {item["private_reference"] for item in rec["original_source"]["candidates"]
          if item["request_source_status"] == "candidate_review_only"}
@@ -105,6 +111,7 @@ def compare_scenarios(db: Path, *, engagement_id: str, client_id: str | None,
         "disposition": "REVIEW_ONLY_SCENARIOS",
         "authority": dict(AUTHORITY),
         "source_context": "same local query-only SQLite transaction; no live consent or grant",
+        "source_revision_sha256_unsigned": next(iter(source_fingerprints)),
         "ordering": "human selected alternatives; NOT chronological grant history",
         "overlap_limits": "same stored requests can match multiple choices; not independent evidence",
         "scenarios": records,

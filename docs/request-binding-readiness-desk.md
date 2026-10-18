@@ -41,6 +41,8 @@ The CLI requires an interactive password prompt; passwords cannot be passed as a
 
 Original DomainStore password authentication **does** mutate original sign-in bookkeeping and may use existing schema migration; only the subsequent request/grant inspection is strictly read-only. This is not a DB byte-level immutability tool.
 
+**Original source freshness hint:** the private report now includes a separate bounded SHA-256 fingerprint of the original stored engagement, request and grant row values at read time. Unlike the proposal-selection fingerprint, this value changes when an original stored request decision/asset/risk or grant lineage row changes. The raw underlying records, requester identifiers and notes are never exported through the fingerprint itself. The digest is UNSIGNED and is not an authenticated snapshot receipt, historical chronology, consent, revocation or permission. All 2–8 proposals use one original transaction and require the same exact stored-row digest.
+
 ## Release safety
 
 INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD. A compatible administrative request is not authentic client/operator consent, a grant or live permission; the actual source owner must revalidate request provenance, tenant, scope, risk and window inside the later write transaction. This CLI cannot approve, issue/revoke a grant, create accounts, dispatch handlers, touch targets, scan, retest, deploy or release. Real authenticated independent client and operator consent including at-use revocation, independent security/privacy and original exact-head hosted + named permanent VPS CI and human GO remain mandatory.

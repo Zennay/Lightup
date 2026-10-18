@@ -228,6 +228,28 @@ def _source_snapshot(db: Path, *, engagement_id: str, client_id: str | None,
             }
             items.append(item)
 
+        # Bind this unsigned offline snapshot to the ORIGINAL stored request
+        # and grant row values, not only the user's proposed scope parameters.
+        # IDs are UUID-derived original stored identities; no source contents
+        # are exported through this digest and it never proves authenticity.
+        try:
+            source_wire = json.dumps({
+                "schema": "lightup.request-binding-source-rows.v1",
+                "engagement": dict(engagement),
+                "original_requests": [
+                    dict(r) for r in sorted(operator_requests,
+                                             key=lambda x: x["request_id"])
+                ],
+                "original_grants": [
+                    dict(g) for g in sorted(grants, key=lambda x: x["grant_id"])
+                ],
+            }, sort_keys=True, separators=(",", ":"), ensure_ascii=True,
+               allow_nan=False).encode("ascii")
+        except (TypeError, ValueError, UnicodeError) as error:
+            raise ValueError("malformed stored source record for fingerprint") from error
+        if len(source_wire) > MAX_BYTES:
+            raise ValueError("source revision too large for private review")
+        source_revision = hashlib.sha256(source_wire).hexdigest()
         selection = hashlib.sha256(json.dumps(
             ["lightup.request-binding-review-selection.v1",
              engagement["client_id"], engagement_id, list(assets), risk],
@@ -261,6 +283,7 @@ def _source_snapshot(db: Path, *, engagement_id: str, client_id: str | None,
             "source": {
                 "source_owner_ref": "PR-1570",
                 "request_selection_digest_unsigned": selection,
+                "source_revision_sha256_unsigned": source_revision,
                 "review_instant_utc": now,
                 "engagement": engagement["name"] if include_labels else "Engagement 001",
                 "client": engagement["client_name"] if include_labels else "Client 001",
@@ -331,6 +354,9 @@ def _html(report: dict) -> str:
         " · proposed assets (count only): " + str(source["proposed_asset_count"]) +
         " · proposed risk: " + str(source["requested_risk"]) + "</p>"
         "<p>Disposition: <strong>" + esc(report["disposition"]) + "</strong></p>"
+        "<p>Original stored-row fingerprint (unsigned; private, NOT "
+        "authentication): <code>" +
+        esc(source["source_revision_sha256_unsigned"]) + "</code></p>"
         "<p>Stored requests: " + str(summary["recorded_requests"]) +
         " · matching candidates: " + str(summary["approved_candidate_matches"]) +
         " · stored grant rows: " + str(summary["prior_stored_grant_rows"]) +
