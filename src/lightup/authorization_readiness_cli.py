@@ -289,16 +289,39 @@ def _read_report(database: Path, *, client_id: str | None = None,
         else:
             entry["attention"] = "Review existing grant records; none proves client/operator consent."
         for grant in own_grants:
-            problems = ["UNBOUND_APPROVAL_REQUEST"]
+            problems = []
+            binding = "missing"
+            bound_id = grant["approved_request_id"]
             if grant["client_id"] != own:
                 problems.append("TENANT_LINEAGE_MISMATCH")
+            if type(bound_id) is str and bound_id:
+                bound = next(
+                    (r for r in own_requests if r["request_id"] == bound_id), None
+                )
+                if (
+                    grant["client_id"] == own
+                    and bound is not None
+                    and _candidate(grant, bound, users_by_id)
+                ):
+                    # Recorded administrative binding is coherent *on this
+                    # point-in-time snapshot*. It does NOT sign consent,
+                    # revoke permissions or confer execution authority.
+                    binding = "recorded_coherent_review_only"
+                else:
+                    binding = "invalid"
+                    problems.append("INVALID_APPROVED_REQUEST_BINDING")
             else:
-                candidates = [r for r in own_requests if _candidate(grant, r, users_by_id)]
-                if not candidates:
-                    problems.append("NO_COMPATIBLE_APPROVED_REQUEST")
-                elif len(candidates) > 1:
-                    problems.append("AMBIGUOUS_APPROVED_REQUEST_MATCH")
-                # Even exactly one candidate CANNOT bind this grant to that request.
+                problems.append("UNBOUND_APPROVAL_REQUEST")
+                if grant["client_id"] == own:
+                    candidates = [
+                        r for r in own_requests
+                        if _candidate(grant, r, users_by_id)
+                    ]
+                    if not candidates:
+                        problems.append("NO_COMPATIBLE_APPROVED_REQUEST")
+                    elif len(candidates) > 1:
+                        problems.append("AMBIGUOUS_APPROVED_REQUEST_MATCH")
+                # A compatible candidate is NOT an actual persisted binding.
             if _time(grant["created_at"]) is None:
                 problems.append("INVALID_GRANT_CREATION_TIME")
             if untrusted_approved:
@@ -325,13 +348,17 @@ def _read_report(database: Path, *, client_id: str | None = None,
                 "source_key": grant_source_key,
                 "grant_number": len(entry["grant_findings"]) + 1,
                 "window": window,
+                "binding": binding,
                 "flags": problems,
                 "next_action": (
                     "Quarantine this record from client-visible authorization views; "
                     "require the domain source-owner lineage repair."
                     if "TENANT_LINEAGE_MISMATCH" in problems
-                    else "Reconcile request identity, approved scope and genuine dual-party consent "
-                    "through the domain source-owner workflow. Never issue or execute from this report."
+                    else "Escalate invalid or missing approved-request binding to the #177 source owner."
+                    if binding != "recorded_coherent_review_only"
+                    else "Stored request binding appears coherent on this snapshot only. "
+                    "Independent client/operator consent, action-time revocation and release "
+                    "remain unverified; never execute from this report."
                 ),
             })
         if own_grants or own_requests:
@@ -413,7 +440,7 @@ def _read_report(database: Path, *, client_id: str | None = None,
         "authority": AUTHORIZATION_FALSE.copy(),
         "limitations": [
             "Authenticated operator's local offline snapshot, not fresh consent evidence.",
-            "There is no durable grant-to-approved-request foreign key in the current domain schema.",
+            "Legacy schema may lack a durable grant-to-approved-request link; new schema binding is reviewed only and cannot prove independently authenticated consent.",
             "A candidate needs current user-role coherence and chronologically prior administrative approval; current roles cannot prove historical provenance, independent consent, or revocation.",
             "A compatible requested asset/risk is only a conservative comparison; canonical scope, identity, ownership, approval provenance, and runtime revocation are not verified.",
             "A within_window grant is NOT currently authorized. Review does not issue, edit or revoke grants.",
