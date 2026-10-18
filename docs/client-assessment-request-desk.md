@@ -32,7 +32,9 @@ python -m lightup.client_request_cli preview \
 python -m lightup.client_request_cli submit \
   --db /private/lightup.sqlite --email client@example.org \
   --asset example.org --risk 2 \
-  --notes "Request independent operator review" --confirm-submit
+  --notes "Request independent operator review" \
+  --expect-intake-sha256 "<exact intake_sha256 from preview>" \
+  --confirm-submit
 
 # Return only your own stored request states, without asset inventory.
 python -m lightup.client_request_cli list \
@@ -62,7 +64,7 @@ python -m lightup.client_request_cli preview \
   --output /private/studio-intake-preview.html
 ```
 
-The output is an exclusive mode-`0600` HTML file containing the **exact
+Every ordinary `submit` additionally requires the `intake_sha256` shown by `preview` via\n`--expect-intake-sha256`, even for manually entered assets. Any change to the\nnormalized assets, risk or notes requires a new preview, not just the same\n`--confirm-submit` flag. This is an unsigned review continuity guard only.\n\nThe output is an exclusive mode-`0600` HTML file containing the **exact
 normalized assets and risk**, a readable safety notice and (when present) the
 source Studio proposal's SHA-256 file-continuity hint. The document contains
 no JavaScript, network requests, forms or remote resources. It is *not* a
@@ -103,6 +105,7 @@ python -m lightup.client_request_cli submit \
   --db /private/lightup.sqlite --email client@example.org \
   --proposal ~/Downloads/lightup-scope-draft.json \
   --expect-proposal-sha256 "<64 lowercase hexadecimal characters from preview>" \
+  --expect-intake-sha256 "<exact intake_sha256 from preview>" \
   --confirm-submit
 ```
 
