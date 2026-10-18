@@ -9,6 +9,7 @@
   <script src="./studio-network-v1.js" defer></script>
   <script src="./studio-fingerprint-v1.js" defer></script>
   <script src="./studio-window-v1.js" defer></script>
+  <script src="./permission-reply-import.js" defer></script>
   <script src="./withdrawal-import.js" defer></script>
   <script src="./app.js" defer></script>
 </head>
@@ -32,28 +33,33 @@
     </div>
   </section>
   <section class="panel">
-    <div class="section-head"><div><h2>2. Stop-/wijzigingsverzoeken</h2><p>Importeer brongebonden Withdrawal Desk-reviewbestanden. Een verzoek is slechts een ongeverifieerde menselijke melding, nooit een daadwerkelijke stop, intrekking of bevestiging van toestemming.</p></div>
+    <div class="section-head"><div><h2>2. Cliënt- en operatorvragen</h2><p>Laad een gecombineerd, niet-autorisend antwoordoverzicht uit de bestaande Permission Brief. Antwoorden blijven onbevestigd; een teruggestuurde vraag betekent geen cliënttoestemming of operatorakkoord.</p></div>
+      <label class="button">Permission Brief-overzicht importeren<input id="permissionFile" type="file" accept=".json,application/json" hidden></label></div>
+    <p id="permissionFeedback" class="notice" role="status" aria-live="polite">Geen gecombineerd vragenoverzicht geladen.</p><div id="permissionBoard" class="permission-board"></div>
+  </section>
+  <section class="panel">
+    <div class="section-head"><div><h2>3. Stop-/wijzigingsverzoeken</h2><p>Importeer brongebonden Withdrawal Desk-reviewbestanden. Een verzoek is slechts een ongeverifieerde menselijke melding, nooit een daadwerkelijke stop, intrekking of bevestiging van toestemming.</p></div>
     <label class="button">Review-only stopverzoek importeren <input id="withdrawalFile" type="file" accept=".json,application/json" hidden></label></div>
     <p id="withdrawalFeedback" class="notice" role="status">Er is nog geen externe review-only melding gekoppeld.</p>
     <div id="withdrawalBoard" class="withdrawal-board"></div>
   </section>
   <section class="panel">
-    <div class="section-head"><div><h2>3. Actiewerkvoorraad per rol</h2><p>Bereid menselijk werk voor per dossier en verantwoordelijke rol (cliënt, operator of gezamenlijk). De optionele doeldatum is lokaal, geen gereserveerd scanmoment of toestemmingsdeadline.</p></div></div>
+    <div class="section-head"><div><h2>4. Actiewerkvoorraad per rol</h2><p>Bereid menselijk werk voor per dossier en verantwoordelijke rol (cliënt, operator of gezamenlijk). De optionele doeldatum is lokaal, geen gereserveerd scanmoment of toestemmingsdeadline.</p></div></div>
     <div class="toolbar"><label>Rolverdeling <select id="taskRoleFilter"><option value="all">Alle rollen</option><option value="client">Cliëntvoorbereiding</option><option value="operator">Operatorvoorbereiding</option><option value="joint">Gezamenlijke afstemming</option></select></label>
     <label>Aandacht <select id="taskDueFilter"><option value="all">Alle open voorbereiding</option><option value="overdue">Doeldatum verstreken</option><option value="week">Binnen 7 dagen</option><option value="undated">Zonder doeldatum</option><option value="revision">Herziening nodig</option><option value="withdrawal">Extern stop-/wijzigingsverzoek</option></select></label></div>
     <div id="actionStats" class="stats"></div><div id="actionQueue" class="action-queue"></div>
   </section>
   <section class="panel">
-    <div class="section-head"><div><h2>4. Gedeelde review-agenda</h2><p>Welke voorstellen vragen gezamenlijk overleg door mogelijke numerieke netwerk- of letterlijke hostname-overlap en/of samenvallende voorgestelde UTC-tijden? Geen identiteits- of eigendomscontrole.</p></div></div>
+    <div class="section-head"><div><h2>5. Gedeelde review-agenda</h2><p>Welke voorstellen vragen gezamenlijk overleg door mogelijke numerieke netwerk- of letterlijke hostname-overlap en/of samenvallende voorgestelde UTC-tijden? Geen identiteits- of eigendomscontrole.</p></div></div>
     <div id="conflictStats" class="stats"></div>
     <div id="conflicts" class="conflicts"></div>
   </section>
   <section class="panel">
-    <div class="section-head"><div><h2>5. Menselijke vervolgacties</h2><p>Lokale voorbereiding, geen klant-/operatorauthenticatie. Controleer identiteit en toestemming altijd afzonderlijk in het echte LightUp-domein.</p></div></div>
+    <div class="section-head"><div><h2>6. Menselijke vervolgacties</h2><p>Lokale voorbereiding, geen klant-/operatorauthenticatie. Controleer identiteit en toestemming altijd afzonderlijk in het echte LightUp-domein.</p></div></div>
     <div id="detail"><p>Selecteer een scopeconcept om acties en overdrachtsnotities vast te leggen.</p></div>
   </section>
   <section class="panel">
-    <h2>6. Overdracht en hervatten</h2>
+    <h2>7. Overdracht en hervatten</h2>
     <p>Download een privacy-minimaal register, actielijst-CSV of printbare handoff. Bevat geen ruwe assets, namen, hostnamen, klantnotities, authenticatie of handtekeningen. Hervatten vereist opnieuw openen van de oorspronkelijke conceptbestanden.</p>
     <div class="actions"><button id="save" type="button">Bewaar lokale voortgang (.json)</button><label class="button">Herstel voortgang (.json)<input id="restore" type="file" accept=".json,application/json" hidden></label><button id="export" type="button">Exporteer review-JSON</button><button id="csv" type="button">Acties als CSV</button><button id="agendaCsv" type="button">Overlegagenda als CSV</button><button id="printPack" type="button">Volledig HTML-overdrachtspakket</button><button id="print" type="button">Print overzicht</button></div>
     <p class="warning"><strong>Niet-autoriseren­de informatie.</strong> Concepten, lokale vinkjes, SHA-256, acties en exports zijn géén bewijs van asset-eigendom, scopegoedkeuring, revocationstatus, toestemming, bevoegdheid of vrijgave. Stop onmiddellijk met een echte beoordeling als bevoegdheid of context ontbreekt.</p>
