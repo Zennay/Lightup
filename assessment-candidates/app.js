@@ -428,6 +428,13 @@
       ...fixedFlags()
     }));
   }
+  function discussionSummary(){
+    const ids=queueIds(),stages=Object.fromEntries(DISCUSSION_STAGES.map(s=>[s,0]));
+    const routes=Object.fromEntries(DISCUSSION_ROUTES.map(s=>[s,0]));
+    for(const id of ids){const d=queueSettings(id);stages[d.stage]++;routes[d.route]++;}
+    return {source_case_count:ids.length,locally_recorded:discussions.size,
+      stages,routes,source_identity_authenticated:false,...fixedFlags()};
+  }
   function download(name,text,mime){
     const url=URL.createObjectURL(new Blob([text],{type:mime}));
     const a=document.createElement("a");a.href=url;a.download=name;
@@ -435,22 +442,25 @@
   }
   function exportJSON(){
     if(!reports.length||!settings)return;
-    const out={schema:"lightup.lab_candidate_matrix_review.v1",
+    const out={schema:"lightup.lab_candidate_matrix_review.v2",
       posture:"INCUBATE_M3_M7_PLAN_LAB_ONLY_DRAFT_HOLD",
       status:"REVIEW_ONLY",source_identity_authenticated:false,
       temporal_order_authenticated:false,fictional_demo_only:demo,
       disclaimer:"Human review of untrusted pre-existing lab summaries only. No permission, release, scan or verified remediation.",
-      dimensions:dimensions().map(x=>x[1]),review_thresholds:settings,candidates:metricRows(),...fixedFlags()};
+      dimensions:dimensions().map(x=>x[1]),review_thresholds:settings,
+      human_discussion_summary:discussionSummary(),candidates:metricRows(),...fixedFlags()};
     download("lightup-candidate-aggregate-REVIEW-ONLY.json",JSON.stringify(out,null,2)+"\n","application/json");
   }
   function exportCSV(){
     if(!reports.length||!settings)return;
     const head=["candidate_slot","source_status","regressed_cases","metric_regressions",
       "threshold_discussions","scope_flags","policy_flags","fictional_demo_only","report_status",
+      "private_discussions_documented","private_discussions_in_progress",
       ...NAMES.map(n=>n+"_total"),"authorized","consent_verified","dispatch_allowed","release_allowed"];
     const rows=metricRows().map(r=>[r.candidate_slot,r.source_status,r.regressed_cases,
       r.metric_regressions,r.threshold_discussions,r.scope_flags,r.policy_flags,
-      demo?"true":"false","REVIEW_ONLY",...NAMES.map(n=>r.metrics[n].candidate_total),"false","false","false","false"]);
+      demo?"true":"false","REVIEW_ONLY",discussionSummary().stages.documented,
+      discussionSummary().stages.in_discussion,...NAMES.map(n=>r.metrics[n].candidate_total),"false","false","false","false"]);
     download("lightup-candidate-aggregate-REVIEW-ONLY.csv",
       head.join(",")+"\n"+rows.map(r=>r.join(",")).join("\n")+"\n","text/csv");
   }
@@ -486,13 +496,16 @@
       "CI, independent security/privacy review and human GO remain mandatory.</p></body></html>";
     download("lightup-human-candidate-brief-REVIEW-ONLY.html",html,"text/html");
   }
-  const DRAFT_SCHEMA="lightup.lab_candidate_private_preferences.v1";
+  const DRAFT_SCHEMA_V1="lightup.lab_candidate_private_preferences.v1";
+  const DRAFT_SCHEMA="lightup.lab_candidate_private_preferences.v2";
   const PREF_KEYS=["maxScope","maxPolicy","minQuality","minCoverage","maxRuntime","maxCost"];
   const DIM_KEYS=["dimQuality","dimCoverage","dimRuntime","dimCost"];
   function checkDraft(x){
     assert(!demo&&reports.length>=2&&sourceHashes.length===reports.length);
-    assert(exact(x,["schema","private_unsigned","source_sha256","thresholds",
-      "dimensions","focus",...AUTH])&&x.schema===DRAFT_SCHEMA&&
+    const v2=x?.schema===DRAFT_SCHEMA;
+    assert((v2||x?.schema===DRAFT_SCHEMA_V1)&&
+      exact(x,["schema","private_unsigned","source_sha256","thresholds",
+        "dimensions","focus",...(v2?["discussions"]:[]),...AUTH])&&
       x.private_unsigned===true&&AUTH.every(k=>x[k]===false));
     assert(Array.isArray(x.source_sha256)&&x.source_sha256.length===sourceHashes.length&&
       x.source_sha256.every((h,i)=>typeof h==="string"&&
@@ -511,6 +524,18 @@
       f.pairA>=0&&f.pairB>=0&&f.pairA<reports.length&&f.pairB<reports.length&&
       f.pairA!==f.pairB&&Number.isSafeInteger(f.caseIndex)&&
       f.caseIndex>=0&&f.caseIndex<reports[0].cases.size&&NAMES.includes(f.metric));
+    if(v2){
+      assert(Array.isArray(x.discussions)&&x.discussions.length<=reports[0].cases.size);
+      const ordinals=new Set();
+      for(const row of x.discussions){
+        assert(exact(row,["ordinal","route","stage"])&&
+          Number.isSafeInteger(row.ordinal)&&row.ordinal>=1&&
+          row.ordinal<=reports[0].cases.size&&!ordinals.has(row.ordinal)&&
+          DISCUSSION_ROUTES.includes(row.route)&&DISCUSSION_STAGES.includes(row.stage)&&
+          (row.route!=="unrouted"||row.stage!=="needs_review"));
+        ordinals.add(row.ordinal);
+      }
+    }
     return x;
   }
   function saveDraft(){
@@ -521,7 +546,9 @@
       dimensions:Object.fromEntries(DIM_KEYS.map(k=>[k,$(k).checked])),
       focus:{pairA:Number($("pairA").value),pairB:Number($("pairB").value),
         caseIndex:Math.max(0,ids.indexOf(selectedCase)),metric:$("metricSelect").value},
-      ...fixedFlags()};
+      discussions:[...discussions].map(([id,value])=>({
+        ordinal:ids.indexOf(id)+1,route:value.route,stage:value.stage
+      })).sort((a,b)=>a.ordinal-b.ordinal),...fixedFlags()};
     try{checkDraft(obj);
       download("lightup-PRIVATE-local-review-preferences.json",
         JSON.stringify(obj,null,2)+"\n","application/json");
@@ -534,6 +561,10 @@
       const source=new TextDecoder("utf-8",{fatal:true}).decode(await file.arrayBuffer());
       const x=checkDraft(strictJSON(source));
       // Atomic validation already completed before changing live review state.
+      const ids=queueIds(),next=new Map();
+      for(const row of x.discussions||[])next.set(ids[row.ordinal-1],
+        {route:row.route,stage:row.stage});
+      discussions=next;queueFocus=x.focus.caseIndex;
       PREF_KEYS.forEach(k=>$(k).value=String(x.thresholds[k]));
       DIM_KEYS.forEach(k=>$(k).checked=x.dimensions[k]);
       $("pairA").value=String(x.focus.pairA);
@@ -541,7 +572,7 @@
       selectedCase=[...reports[0].cases.keys()].sort()[x.focus.caseIndex];
       $("metricSelect").value=x.focus.metric;
       render();
-      $("draftMessage").textContent="PRIVATE unsigned preferences restored to identical original bytes. No grant or permission created.";
+      $("draftMessage").textContent="PRIVATE source-bound settings and discussion state restored. No grant, consent or permission created.";
     }catch(_){$("draftMessage").textContent="HOLD: changed, malformed or incompatible PRIVATE draft. Workspace unchanged.";}
   }
   function forget(){
