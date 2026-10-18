@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-agbJO3OVuciws7hX4E7Wd1Wbb+9OKp74lLmTy/0lq+Q=' 'sha256-X4nOjHqXl4cEjDVdqODJ4miIGbKHwaSBHfgk1Y4EyQ4=' 'sha256-F/FTboDDkAFr+2CnZVzOxVrUYtmAzfKdvueiY9ELeiE=' 'sha256-rJwtc90GmCO8O1SNqA1oo/SEMLowFn1Y89fpZxcBCEM='; style-src 'sha256-Uto44yuCNVdVV7o7RSN9uF4H44hofQ9YswgUJ0KiCPU='; img-src 'none'; connect-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-agbJO3OVuciws7hX4E7Wd1Wbb+9OKp74lLmTy/0lq+Q=' 'sha256-X4nOjHqXl4cEjDVdqODJ4miIGbKHwaSBHfgk1Y4EyQ4=' 'sha256-F/FTboDDkAFr+2CnZVzOxVrUYtmAzfKdvueiY9ELeiE=' 'sha256-8MhMb58WJkc5Llfd0r2NRUn7+l0Xue3qzNmyNgkIuUw=' 'sha256-mItETud1dziIcS3n7S9FPP1RE4zpMTnINDPMW6YKEuI='; style-src 'sha256-1gZfNVRORihN1vpFpE4fKdG2JY5pvhgWdk9UnRqp5Oc='; img-src 'none'; connect-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'">
   <title>LightUp · Scope Handoff Register</title>
   <style>:root{font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;color-scheme:dark;--bg:#0b111c;--panel:#172236;--line:#31445e;--text:#f2f6ff;--muted:#b8c7dc;--accent:#77bfff;--warn:#ffd89c}
 *{box-sizing:border-box}body{background:linear-gradient(145deg,#0d1626,#111826 58%,#0d1320);color:var(--text);margin:0;min-height:100vh}header,main,footer{max-width:1160px;margin:auto;padding:24px}header{padding-top:45px}.topline{display:flex;align-items:center;justify-content:space-between;gap:16px;font-size:.76rem;letter-spacing:.15em;color:var(--accent)}.flag{background:#43321e;color:var(--warn);padding:8px 12px;border-radius:30px;border:1px solid #6e5530;font-size:.7rem}h1{font-size:clamp(1.9rem,5vw,3.6rem);max-width:750px;margin:35px 0 15px;line-height:1.11;letter-spacing:-.045em}h2{font-size:1.25rem;margin:0 0 8px;letter-spacing:-.02em}h3{margin:0 0 10px;font-size:1.07rem}p{color:var(--muted);line-height:1.55}header>p{max-width:780px}main{display:grid;gap:23px}.panel{border:1px solid var(--line);border-radius:17px;padding:25px;background:var(--panel);box-shadow:0 18px 44px #0002}.section-head{display:flex;align-items:start;justify-content:space-between;gap:24px;flex-wrap:wrap}.section-head p{margin:0 0 14px}.toolbar,.actions{display:flex;align-items:end;gap:12px;flex-wrap:wrap;margin:14px 0}.toolbar>label{display:grid;gap:6px;flex:1;min-width:180px;font-size:.86rem;color:var(--muted)}input,select,textarea,button,.button{font:inherit;border-radius:10px}input,select,textarea{padding:11px 12px;color:var(--text);background:#0c1525;border:1px solid #52617b;min-width:0}button,.button{display:inline-block;color:var(--text);padding:11px 14px;background:#253d59;border:1px solid #64809c;cursor:pointer;white-space:normal;text-align:center}button:hover,.button:hover{background:#31567c}button:focus-visible,.button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid var(--accent);outline-offset:2px}.button.primary{background:#086ab3;border-color:#5eb7ff;font-weight:700}button[disabled]{opacity:.45;cursor:not-allowed}.notice{padding:11px 14px;background:#101b2a;border-left:3px solid var(--accent);white-space:pre-wrap}.notice.error{border-color:#ff8181;color:#ffcdcd}.stats{display:flex;flex-wrap:wrap;gap:9px;margin:14px 0}.metric{padding:9px 14px;border-radius:12px;border:1px solid #405577;background:#0e1a2b;font-size:.9rem}.metric strong{font-size:1.25rem;margin-right:6px}.boards{display:grid;grid-template-columns:repeat(auto-fill,minmax(255px,1fr));gap:12px}.card{display:grid;text-align:left;gap:9px;white-space:normal;background:#102136;border:1px solid #3e5877;padding:17px}.card.selected{outline:2px solid #80c9ff}.card-title{font-size:1.08rem;font-weight:700;overflow-wrap:anywhere}.meta{font-size:.82rem;color:var(--muted)}.chips{display:flex;flex-wrap:wrap;gap:5px}.chip{font-size:.72rem;padding:4px 7px;border-radius:6px;background:#34455e}.chip.alert{background:#674827;color:#fff2d9}.controls{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:15px}.controls label{display:grid;gap:5px;min-width:190px;flex:1;color:var(--muted)}.checkrow{display:grid;grid-template-columns:1fr 170px;gap:14px;align-items:center;padding:11px 0;border-bottom:1px solid #334860}.checkrow label{font-weight:600}.checkrow small{color:var(--muted);display:block;margin-top:4px}.summary{background:#102136;border:1px solid #344c67;border-radius:12px;padding:15px}.warning{border-left:3px solid #d69e53;padding:11px 14px;background:#2e261d;color:#f9e8d2}.small{font-size:.83rem}footer{font-size:.82rem;color:#94a7bf;padding-bottom:50px}@media(max-width:600px){header,main,footer{padding-left:15px;padding-right:15px}.panel{padding:17px}.checkrow{grid-template-columns:1fr}.topline{align-items:start;flex-direction:column}.controls{flex-direction:column}.controls label{width:100%}}@media print{*{color:#000!important;box-shadow:none!important;background:white!important}header,main{padding:5px}.panel{break-inside:avoid;border:1px solid #888}.toolbar,.actions,.button,#clear,footer{display:none!important}.boards{grid-template-columns:repeat(2,1fr)}.warning{border:1px solid #888}body{font-size:11pt}}
@@ -31,7 +31,16 @@
 @media(max-width:780px){.action-row{grid-template-columns:1fr 1fr}.action-row .action-main{grid-column:1 / -1}}
 @media(max-width:580px){.task-controls{grid-template-columns:1fr}.action-row{grid-template-columns:1fr}.action-row .action-main{grid-column:auto}}
 @media print{.action-row button,.task-controls{display:none!important}.action-row{break-inside:avoid}}
+
+.withdrawal-board{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px;margin:16px 0}
+.withdrawal-card{padding:17px;background:#352526;border:1px solid #c58a73;border-radius:13px;break-inside:avoid}
+.withdrawal-card h3{color:#ffe0c9}
+.withdrawal-card p{color:#f5cfbe}
+.withdrawal-card .actions button{font-size:.85rem;padding:9px 13px}
+@media(max-width:540px){.withdrawal-board{grid-template-columns:1fr}}
+@media print{.withdrawal-card .actions{display:none!important}.withdrawal-card{border-color:#888}}
 </style>
+  
   
   
   
@@ -57,22 +66,28 @@
     </div>
   </section>
   <section class="panel">
-    <div class="section-head"><div><h2>2. Actiewerkvoorraad per rol</h2><p>Bereid menselijk werk voor per dossier en verantwoordelijke rol (cliënt, operator of gezamenlijk). De optionele doeldatum is lokaal, geen gereserveerd scanmoment of toestemmingsdeadline.</p></div></div>
+    <div class="section-head"><div><h2>2. Stop-/wijzigingsverzoeken</h2><p>Importeer brongebonden Withdrawal Desk-reviewbestanden. Een verzoek is slechts een ongeverifieerde menselijke melding, nooit een daadwerkelijke stop, intrekking of bevestiging van toestemming.</p></div>
+    <label class="button">Review-only stopverzoek importeren <input id="withdrawalFile" type="file" accept=".json,application/json" hidden></label></div>
+    <p id="withdrawalFeedback" class="notice" role="status">Er is nog geen externe review-only melding gekoppeld.</p>
+    <div id="withdrawalBoard" class="withdrawal-board"></div>
+  </section>
+  <section class="panel">
+    <div class="section-head"><div><h2>3. Actiewerkvoorraad per rol</h2><p>Bereid menselijk werk voor per dossier en verantwoordelijke rol (cliënt, operator of gezamenlijk). De optionele doeldatum is lokaal, geen gereserveerd scanmoment of toestemmingsdeadline.</p></div></div>
     <div class="toolbar"><label>Rolverdeling <select id="taskRoleFilter"><option value="all">Alle rollen</option><option value="client">Cliëntvoorbereiding</option><option value="operator">Operatorvoorbereiding</option><option value="joint">Gezamenlijke afstemming</option></select></label>
     <label>Aandacht <select id="taskDueFilter"><option value="all">Alle open voorbereiding</option><option value="overdue">Doeldatum verstreken</option><option value="week">Binnen 7 dagen</option><option value="undated">Zonder doeldatum</option><option value="revision">Herziening nodig</option></select></label></div>
     <div id="actionStats" class="stats"></div><div id="actionQueue" class="action-queue"></div>
   </section>
   <section class="panel">
-    <div class="section-head"><div><h2>3. Gedeelde review-agenda</h2><p>Welke voorstellen vragen gezamenlijk overleg door mogelijke numerieke netwerk- of letterlijke hostname-overlap en/of samenvallende voorgestelde UTC-tijden? Geen identiteits- of eigendomscontrole.</p></div></div>
+    <div class="section-head"><div><h2>4. Gedeelde review-agenda</h2><p>Welke voorstellen vragen gezamenlijk overleg door mogelijke numerieke netwerk- of letterlijke hostname-overlap en/of samenvallende voorgestelde UTC-tijden? Geen identiteits- of eigendomscontrole.</p></div></div>
     <div id="conflictStats" class="stats"></div>
     <div id="conflicts" class="conflicts"></div>
   </section>
   <section class="panel">
-    <div class="section-head"><div><h2>4. Menselijke vervolgacties</h2><p>Lokale voorbereiding, geen klant-/operatorauthenticatie. Controleer identiteit en toestemming altijd afzonderlijk in het echte LightUp-domein.</p></div></div>
+    <div class="section-head"><div><h2>5. Menselijke vervolgacties</h2><p>Lokale voorbereiding, geen klant-/operatorauthenticatie. Controleer identiteit en toestemming altijd afzonderlijk in het echte LightUp-domein.</p></div></div>
     <div id="detail"><p>Selecteer een scopeconcept om acties en overdrachtsnotities vast te leggen.</p></div>
   </section>
   <section class="panel">
-    <h2>5. Overdracht en hervatten</h2>
+    <h2>6. Overdracht en hervatten</h2>
     <p>Download een privacy-minimaal register, actielijst-CSV of printbare handoff. Bevat geen ruwe assets, namen, hostnamen, klantnotities, authenticatie of handtekeningen. Hervatten vereist opnieuw openen van de oorspronkelijke conceptbestanden.</p>
     <div class="actions"><button id="save" type="button">Bewaar lokale voortgang (.json)</button><label class="button">Herstel voortgang (.json)<input id="restore" type="file" accept=".json,application/json" hidden></label><button id="export" type="button">Exporteer review-JSON</button><button id="csv" type="button">Acties als CSV</button><button id="agendaCsv" type="button">Overlegagenda als CSV</button><button id="printPack" type="button">Volledig HTML-overdrachtspakket</button><button id="print" type="button">Print overzicht</button></div>
     <p class="warning"><strong>Niet-autoriseren­de informatie.</strong> Concepten, lokale vinkjes, SHA-256, acties en exports zijn géén bewijs van asset-eigendom, scopegoedkeuring, revocationstatus, toestemming, bevoegdheid of vrijgave. Stop onmiddellijk met een echte beoordeling als bevoegdheid of context ontbreekt.</p>
@@ -419,6 +434,87 @@ function overlaps(a,b){
 }
 global.LightUpPlanningWindow=Object.freeze({localTimestamp,resolve,validateStored,overlaps,timezone});
 })(window);
+</script>\n<script>/* Import only source-bound, review-only Withdrawal Desk exports. Never a revocation, consent or stop actuator. */
+(function(global){
+"use strict";
+const DENIAL_KEYS=["authenticated_client","authenticated_operator","approved","consent",
+  "authorization","grant","revoked","handler_stopped","dispatch","scan","deploy","release"];
+const INTENTS=["stop_all","narrow_scope","postpone","withdraw_share"];
+const URGENCY=["urgent","normal"];
+const ACTIONS=["client_channel","operator_channel","active_work","grant_revoke",
+  "scope_schedule","evidence_privacy","human_ack","incident_log"];
+const STATES=["todo","drafted_local","requested_unverified"];
+const validSHA=x=>typeof x==="string"&&/^[a-f0-9]{64}$/.test(x);
+function exact(o,keys){
+  return o!==null&&typeof o==="object"&&!Array.isArray(o)&&Object.getPrototypeOf(o)===Object.prototype &&
+    Object.keys(o).length===keys.length&&keys.every(k=>Object.hasOwn(o,k));
+}
+function deny(o){
+  return exact(o,DENIAL_KEYS)&&DENIAL_KEYS.every(k=>o[k]===false);
+}
+function demand(ok,why){if(!ok)throw Error("HOLD · withdrawal-import: "+why);}
+function parse(packet,knownSources){
+  demand(exact(packet,["kind","schema_version","disposition","flags","generated_at_utc","cases"]),
+    "unexpected envelope shape");
+  demand(packet.kind==="lightup.scope_withdrawal_review_only" && packet.schema_version===1 &&
+    packet.disposition==="REVIEW_ONLY" && deny(packet.flags),"not a literal non-authorizing withdrawal export");
+  demand(typeof packet.generated_at_utc==="string"&&packet.generated_at_utc.length<=40 &&
+    /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z$/.test(packet.generated_at_utc) &&
+    Number.isFinite(Date.parse(packet.generated_at_utc)),"invalid generated UTC timestamp");
+  demand(knownSources instanceof Map && Array.isArray(packet.cases) &&
+    packet.cases.length>=1 && packet.cases.length<=16,"case count");
+  const base=["source_sha256","risk","intent","urgency","requested_effective_utc",
+    "proposed_asset_count","proposed_exclusion_count","paperwork_prepared","human_work_items"];
+  const all=[...base,...DENIAL_KEYS];
+  const seen=new Set(),accepted=[];
+  for(const item of packet.cases){
+    demand(exact(item,all)&&DENIAL_KEYS.every(k=>item[k]===false),"case has an unexpected or elevated field");
+    demand(validSHA(item.source_sha256)&&!seen.has(item.source_sha256),"duplicate or invalid source hash");
+    const source=knownSources.get(item.source_sha256);
+    demand(source!==undefined,"source bytes have not been re-imported locally");
+    demand(item.risk===source.risk &&
+      item.proposed_asset_count===source.assets.length &&
+      item.proposed_exclusion_count===source.excluded.length,"source metadata mismatch");
+    demand(INTENTS.includes(item.intent)&&URGENCY.includes(item.urgency),"unknown intent or urgency");
+    demand(typeof item.paperwork_prepared==="boolean","invalid preparation label");
+    const effective=item.requested_effective_utc;
+    demand(effective===null||(
+      typeof effective==="string"&& /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z$/.test(effective)&&
+      Number.isFinite(Date.parse(effective))
+    ),"invalid self-reported effective time");
+    demand(Array.isArray(item.human_work_items)&&item.human_work_items.length===ACTIONS.length,"incomplete human work items");
+    const states={};
+    for(const action of item.human_work_items){
+      demand(exact(action,["code","status"])&&ACTIONS.includes(action.code)&&
+        !Object.hasOwn(states,action.code)&&STATES.includes(action.status),"invalid or repeated human action");
+      states[action.code]=action.status;
+    }
+    demand(ACTIONS.every(k=>Object.hasOwn(states,k)),"missing human action");
+    accepted.push(Object.freeze({
+      sha:item.source_sha256,intent:item.intent,urgency:item.urgency,effective,
+      paperwork:item.paperwork_prepared,
+      outstanding:ACTIONS.filter(k=>states[k]!=="requested_unverified").length,
+      // Only non-authorizing statuses, never a proof of revocation/acknowledgment.
+      statuses:Object.freeze(states)
+    }));
+    seen.add(item.source_sha256);
+  }
+  return accepted;
+}
+function safeSaved(o,source) {
+  if(!exact(o,["intent","urgency","effective","paperwork","outstanding","statuses"]) ||
+    !INTENTS.includes(o.intent)||!URGENCY.includes(o.urgency)||
+    typeof o.paperwork!=="boolean" || !Number.isInteger(o.outstanding) ||
+    o.outstanding<0||o.outstanding>ACTIONS.length)return false;
+  if(o.effective!==null && (typeof o.effective!=="string" ||
+     !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z$/.test(o.effective) ||
+     !Number.isFinite(Date.parse(o.effective))))return false;
+  if(!exact(o.statuses,ACTIONS)||!ACTIONS.every(k=>STATES.includes(o.statuses[k])))return false;
+  return ACTIONS.filter(k=>o.statuses[k]!=="requested_unverified").length===o.outstanding &&
+    !!source;
+}
+global.LightUpWithdrawalImport=Object.freeze({parse,safeSaved});
+})(window);
 </script>\n<script>"use strict";
 (() => {
   // Offline preparation only: no fetch, storage, authentication or authorization surface.
@@ -592,7 +688,7 @@ global.LightUpPlanningWindow=Object.freeze({localTimestamp,resolve,validateStore
   function newRecord(sha,source) {
     return {sha,source,reference:"Dossier "+String(records.length+1),replaces:null,
       tasks:Object.fromEntries(TASKS.map(([id])=>[id,"open"])),
-      dueDates:Object.fromEntries(TASKS.map(([id])=>[id,null]))};
+      dueDates:Object.fromEntries(TASKS.map(([id])=>[id,null])),withdrawal:null};
   }
   function localCoverage(r) {
     return LightUpScopeNetwork.effectiveCoverage(r.source.assets,r.source.excluded);
@@ -636,6 +732,51 @@ global.LightUpPlanningWindow=Object.freeze({localTimestamp,resolve,validateStore
     return pairs.sort((a,b)=>weight[a.priority]-weight[b.priority] ||
       Math.max(records.find(x=>x.sha===b.left).source.risk,records.find(x=>x.sha===b.right).source.risk)-
       Math.max(records.find(x=>x.sha===a.left).source.risk,records.find(x=>x.sha===a.right).source.risk));
+  }
+  function renderWithdrawals() {
+    const area=$("withdrawalBoard");area.replaceChildren();
+    const cases=records.filter(r=>r.withdrawal);
+    $("withdrawalFeedback").textContent=cases.length?
+      cases.length+" brongebonden ONGEVERIFIEERDE reviewverzoeken lokaal ingelezen. Er is geen daadwerkelijk stop- of herroepingscommando verstuurd.":
+      "Er is nog geen externe review-only melding gekoppeld.";
+    for(const r of cases){
+      const x=r.withdrawal,card=node("article","withdrawal-card");
+      card.append(node("h3","",r.reference+" · "+(x.urgency==="urgent"?"DRINGEND":"normaal")+
+        " · "+x.intent.replaceAll("_"," ")),
+        node("p","small","Bronbytes "+r.sha.slice(0,16)+"… · "+x.outstanding+
+          " van 8 externe menselijke stop-/wijzigingsacties nog zonder zelfs een ongeverifieerd verzoek. "+
+          (x.effective?"Voorgesteld UTC-moment: "+x.effective+". ":"")+
+          "Geen geauthenticeerde cliënt, echte grant-intrekking, dispatchstop of toestemming vastgesteld."));
+      const actions=node("div","actions");
+      const open=node("button","","Dossier / stopacties bekijken");open.type="button";
+      open.addEventListener("click",()=>{active=r.sha;render();$("detail").scrollIntoView({block:"start",behavior:"smooth"});});
+      const remove=node("button","","Alleen lokale kopie wissen");remove.type="button";
+      remove.addEventListener("click",()=>{
+        if(!confirm("Alleen deze ongeverifieerde offline reviewkopie wissen? Dit heft GEEN echt stopverzoek of revocation op."))return;
+        r.withdrawal=null;show("Alleen lokale reviewkopie gewist; status 'Herziening nodig' blijft waar van toepassing.");render();
+      });
+      actions.append(open,remove);card.append(actions);area.append(card);
+    }
+    if(!cases.length)area.append(node("p","small","Importeer een REVIEW_ONLY-export vanuit de zelfstandige Withdrawal Desk, na openen van dezelfde exacte Studio-bronbytes. Dit register kan geen echte operatie stoppen."));
+  }
+  async function importWithdrawal(file) {
+    const obj=await readBounded(file,131072);
+    const items=LightUpWithdrawalImport.parse(obj,new Map(records.map(r=>[r.sha,r.source])));
+    if(items.some(x=>records.find(r=>r.sha===x.sha).withdrawal) &&
+      !confirm("Een bron heeft al een lokaal stop-/wijzigingsverzoek. Alleen de ongeverifieerde reviewnotities vervangen?"))return;
+    for(const item of items){
+      const r=records.find(x=>x.sha===item.sha);
+      const {sha,...safe}=item;
+      r.withdrawal={...safe,statuses:{...safe.statuses}};
+      const touched=new Set(["client","operator","stops","owner"]);
+      if(safe.intent==="narrow_scope")touched.add("assets");
+      if(safe.intent==="postpone")touched.add("schedule");
+      if(safe.intent==="withdraw_share")touched.add("privacy");
+      for(const id of touched)if(r.tasks[id]==="prepared")r.tasks[id]="needs_revision";
+      for(const key of pairReviews.keys())if(key.split(":").includes(r.sha))pairReviews.delete(key);
+    }
+    show(items.length+" echte brongebonden, maar NIET geauthenticeerde Withdrawal Desk-melding(en) ingelezen. Relevante menselijke voorbereiding heropend. Geen operaties geraakt.");
+    render();
   }
   function actionRows() {
     const all=[];
@@ -799,6 +940,9 @@ global.LightUpPlanningWindow=Object.freeze({localTimestamp,resolve,validateStore
     if (rev?.time_window_changed) w.push("revisie_planning_gewijzigd");
     if (rev && revisionTaskRechecks(rev).some(id=>r.tasks[id]==="needs_revision"))
       w.push("revisie_menselijke_herbeoordeling_nodig");
+    if(r.withdrawal){
+      w.push(r.withdrawal.urgency==="urgent"?"dringend_niet_geauthenticeerd_stopverzoek":"onbevestigd_stop_of_scopewijzigingsverzoek");
+    }
     if (r.source.risk===4) w.push("hoog_risico");
     if (r.source.mode==="authorized_assessment") w.push("actieve_modus_voorgesteld");
     if (!r.source.excluded.length) w.push("geen_exclusies_opgegeven");
@@ -851,6 +995,7 @@ global.LightUpPlanningWindow=Object.freeze({localTimestamp,resolve,validateStore
     }
     if (!boards.children.length) boards.append(node("p","small","Geen concepten gevonden voor deze selectie."));
     renderDetail();
+    renderWithdrawals();
     renderActionQueue();
     renderMeetingAgenda();
   }
@@ -957,8 +1102,9 @@ global.LightUpPlanningWindow=Object.freeze({localTimestamp,resolve,validateStore
   const json=(data,name)=>download(JSON.stringify(data,null,2)+"\n",name,"application/json;charset=utf-8");
   const authority=()=>({...DENIAL});
   function snapshot() {
-    return {kind:"lightup.scope_handoff_local_progress",schema_version:3,state:"REVIEW_ONLY_HOLD",authority:authority(),
-      entries:records.map(r=>({sha256:r.sha,reference:r.reference,replaces:r.replaces,tasks:{...r.tasks},due_dates:{...r.dueDates}})),
+    return {kind:"lightup.scope_handoff_local_progress",schema_version:4,state:"REVIEW_ONLY_HOLD",authority:authority(),
+      entries:records.map(r=>({sha256:r.sha,reference:r.reference,replaces:r.replaces,tasks:{...r.tasks},
+        due_dates:{...r.dueDates},withdrawal:r.withdrawal?{...r.withdrawal,statuses:{...r.withdrawal.statuses}}:null})),
       pair_reviews:meetingPairs().map(p=>({sources:[p.left,p.right].sort(),status:p.human_status}))};
   }
   function report() {
@@ -981,24 +1127,32 @@ global.LightUpPlanningWindow=Object.freeze({localTimestamp,resolve,validateStore
         asset_count:r.source.assets.length,excluded_count:r.source.excluded.length,
         review_codes:warnings(r),tasks:Object.fromEntries(TASKS.map(([id])=>[id,r.tasks[id]])),
         task_roles:{...TASK_ROLES},task_due_dates:{...r.dueDates},
+        external_withdrawal_review_only:r.withdrawal?{
+          intent:r.withdrawal.intent,urgency:r.withdrawal.urgency,
+          suggested_utc:r.withdrawal.effective,paperwork_prepared:r.withdrawal.paperwork,
+          outstanding_unverified_human_actions:r.withdrawal.outstanding
+        }:null,
         preparation_only:prepared(r)===TASKS.length
       }))};
   }
   function restore(o) {
-    assert(isPlain(o)&&o.kind==="lightup.scope_handoff_local_progress"&&[1,2,3].includes(o.schema_version)&&o.state==="REVIEW_ONLY_HOLD","Geen compatibele lokale voortgang.");
+    assert(isPlain(o)&&o.kind==="lightup.scope_handoff_local_progress"&&[1,2,3,4].includes(o.schema_version)&&o.state==="REVIEW_ONLY_HOLD","Geen compatibele lokale voortgang.");
     assert(isPlain(o.authority)&&Object.keys(DENIAL).length===Object.keys(o.authority).length && Object.entries(DENIAL).every(([k,v])=>o.authority[k]===v),"Autorisatievlaggen mogen nooit waar zijn.");
     assert(Array.isArray(o.entries) && o.entries.length===records.length && records.length>0 && o.entries.length<=MAX,"Open eerst precies de oorspronkelijke conceptversies.");
     const shaMap=new Map(records.map(x=>[x.sha,x])),found=new Set(),updates=[];
     for (const entry of o.entries) {
       assert(isPlain(entry)&&typeof entry.sha256==="string" && /^[a-f0-9]{64}$/.test(entry.sha256) && shaMap.has(entry.sha256) && !found.has(entry.sha256),"Bron-SHA mist, is dubbel of niet gelijk.");
       assert(typeof entry.reference==="string"&&entry.reference.length>0&&entry.reference.length<=32 && isPlain(entry.tasks),"Ongeldige lokale label-/takenstructuur.");
-      const expectedKeys=["sha256","reference","replaces","tasks",...(o.schema_version===3?["due_dates"]:[])];
+      const expectedKeys=["sha256","reference","replaces","tasks",...(o.schema_version>=3?["due_dates"]:[]),...(o.schema_version===4?["withdrawal"]:[])];
       assert(Object.keys(entry).length===expectedKeys.length && expectedKeys.every(k=>Object.hasOwn(entry,k)),"Onbekende of ontbrekende status-/doeldatumvelden.");
-      if(o.schema_version===3){
+      if(o.schema_version>=3){
         assert(isPlain(entry.due_dates)&&Object.keys(entry.due_dates).length===TASKS.length &&
           TASKS.every(([id])=>Object.hasOwn(entry.due_dates,id)&&validDay(entry.due_dates[id])),
           "Onjuiste doeldatumset; import wordt geheel geweigerd.");
       }
+      if(o.schema_version===4 && entry.withdrawal!==null)
+        assert(LightUpWithdrawalImport.safeSaved(entry.withdrawal,shaMap.get(entry.sha256)?.source),
+          "Ongeldige, bronloze of verhoogde externe stopnotitie.");
       assert(Object.keys(entry.tasks).length===TASKS.length && TASKS.every(([id])=>STATUSES.includes(entry.tasks[id])),"Taakset of status is vervormd.");
       assert(entry.replaces===null || (typeof entry.replaces==="string" && shaMap.has(entry.replaces)),"Vreemde revisievoorganger.");
       found.add(entry.sha256);updates.push([shaMap.get(entry.sha256),entry]);
@@ -1024,7 +1178,8 @@ global.LightUpPlanningWindow=Object.freeze({localTimestamp,resolve,validateStore
     }
     if (!confirm("De huidige lokale voorbereidings- en overlegstatussen vervangen voor exact deze bronbestanden?"))return;
     updates.forEach(([r,e])=>{r.reference=e.reference;r.replaces=e.replaces;r.tasks={...e.tasks};
-      r.dueDates=o.schema_version===3?{...e.due_dates}:Object.fromEntries(TASKS.map(([id])=>[id,null]));
+      r.dueDates=o.schema_version>=3?{...e.due_dates}:Object.fromEntries(TASKS.map(([id])=>[id,null]));
+      r.withdrawal=o.schema_version===4&&e.withdrawal?{...e.withdrawal,statuses:{...e.withdrawal.statuses}}:null;
     });
     pairReviews.clear();
     for(const [key,status] of nextPairs)if(status!=="open")pairReviews.set(key,status);
@@ -1064,6 +1219,10 @@ global.LightUpPlanningWindow=Object.freeze({localTimestamp,resolve,validateStore
           ". Mogelijke uitbreiding: <strong>"+(e.revision.possible_expansion?"JA":"niet uit deze ruwe vergelijking vastgesteld")+"</strong>. Geen CIDR/DNS-verificatie.</p>");
       }
       parts.push("<p class=\"alert\">Lokale signalen: "+esc(e.review_codes.length?e.review_codes.join(", "):"geen automatisch signaal; geen veiligheidsbewijs")+"</p>");
+      if(e.external_withdrawal_review_only)parts.push("<p class=\"hold\">EXTERNE, ONGEVERIFIEERDE STOP-/WIJZIGINGSMELDING: "+
+        esc(e.external_withdrawal_review_only.intent)+", urgentie "+esc(e.external_withdrawal_review_only.urgency)+
+        ", open externe menselijke stappen "+esc(e.external_withdrawal_review_only.outstanding_unverified_human_actions)+
+        ". Geen daadwerkelijke intrekking, uitvoeringstop of geauthenticeerd oordeel.</p>");
       parts.push("<table><thead><tr><th>Menselijke voorbereidingsactie</th><th>Zelfgerapporteerde status</th></tr></thead><tbody>");
       for(const [id,title] of TASKS) parts.push("<tr><td>"+esc(title)+" · "+esc(ROLE_LABELS[e.task_roles[id]])+
         "</td><td>"+esc(STATUS_TEXT[e.tasks[id]])+
@@ -1074,9 +1233,9 @@ global.LightUpPlanningWindow=Object.freeze({localTimestamp,resolve,validateStore
     return parts.join("");
   }
   function csv() {
-    const rows=[["dossier","scope_sha256","task","role","status","local_target_day","authority"]];
+    const rows=[["dossier","scope_sha256","task","role","status","local_target_day","unverified_withdrawal_urgency","authority"]];
     report().entries.forEach(e=>TASKS.forEach(([id])=>rows.push([e.dossier,e.source_sha256,id,
-      e.task_roles[id],e.tasks[id],e.task_due_dates[id]||"","REVIEW_ONLY_HOLD"])));
+      e.task_roles[id],e.tasks[id],e.task_due_dates[id]||"",e.external_withdrawal_review_only?.urgency||"","REVIEW_ONLY_HOLD"])));
     const escape=x=>'"'+String(x).replaceAll('"','""')+'"';
     return "\ufeff"+rows.map(row=>row.map(escape).join(",")).join("\r\n")+"\r\n";
   }
@@ -1090,6 +1249,11 @@ global.LightUpPlanningWindow=Object.freeze({localTimestamp,resolve,validateStore
   }
   $("imports").addEventListener("change",async e=>{
     try{await importDrafts(Array.from(e.target.files));}catch(err){show("Import geweigerd; bestaande concepten behouden: "+err.message,true);}
+    e.target.value="";
+  });
+  $("withdrawalFile").addEventListener("change",async e=>{
+    try{await importWithdrawal(e.target.files[0]);}
+    catch(err){show("Stopverzoekimport VOLLEDIG geweigerd zonder dossierwijziging: "+err.message,true);}
     e.target.value="";
   });
   $("restore").addEventListener("change",async e=>{
