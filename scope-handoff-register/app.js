@@ -357,6 +357,8 @@
   async function importDrafts(files) {
     assert(files.length>0&&files.length<=MAX,"Selecteer maximaal 16 bestanden.");
     const incoming=[];const seen=new Set(records.map(x=>x.sha));
+    const seenSemantic=new Set(records.map(x=>x.source.studioDigest));
+    let formatOnlyDuplicates=0;
     // Validate every document before changing the live view.
     for (const file of files) {
       const fileSource=await readOriginalBytes(file,SIZE);
@@ -371,12 +373,16 @@
       source.studioDigest=studioDigest;
       const sha=fileSource.sha;
       if (seen.has(sha)) continue;
-      seen.add(sha);incoming.push({sha,source});
+      if (seenSemantic.has(studioDigest)) {
+        formatOnlyDuplicates++;
+        continue; // Edited export time/format is not a new scope revision.
+      }
+      seen.add(sha);seenSemantic.add(studioDigest);incoming.push({sha,source});
     }
     assert(records.length+incoming.length<=MAX,"Het register bevat maximaal 16 verschillende conceptversies.");
     incoming.forEach(x=>records.push(newRecord(x.sha,x.source)));
     if (!active && records.length) active=records[0].sha;
-    show(incoming.length+" conceptversie(s) geladen. Identieke bronbytes zijn niet dubbel toegevoegd; wijzigingen moeten als afzonderlijke versie worden beoordeeld.");
+    show(incoming.length+" nieuwe Studio-scopeversie(s) geladen; "+formatOnlyDuplicates+" herexport(s) met identieke semantische scope genegeerd. Exacte bronbytes blijven nodig voor herstel van bestaande taakstatussen.");
     render();
   }
   function download(data,name,type) {
