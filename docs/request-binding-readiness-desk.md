@@ -70,3 +70,14 @@ Data stays in browser memory until explicit file downloads. Clearing local state
 ## Source reason-driven human follow-up (offline)
 
 The new original-source issue panel groups request-binding mismatch categories emitted by the existing canonical #1570 predicate explanation. Each group lists the fixed human question and intended client/operator/security-source-owner channel, counts both occurrence frequency across human alternatives and distinct original pseudonymous request records, and differentiates still-unreviewed versus locally escalated work. The operator may explicitly confirm **Prepare unanswered** or **Escalate unanswered** for an entire reason; this changes only local unreviewed human discussion states, never already handled cases or any original backend request/grant/consent status. Aggregate JSON includes fixed source reason categories and source-only counts, without original record IDs, names, asset details or operator notes.
+
+
+## Integratie met LightUp Scope Planning Studio
+
+De operator kan nu 1–8 originele JSON-voorstellen van de afzonderlijk gebouwde Scope Planning Studio (PR #1567) gebruiken als invoer voor deze echte, geauthenticeerde maar NIET-autoriserende request-bindingverkenning. Herhaal hiervoor --studio-proposal /private/proposal-a.json (en desgewenst --studio-proposal /private/proposal-b.json), naast de bestaande verplichte --db, --email, --engagement-id en --output parameters. --asset/--risk/--scenarios-file kunnen niet samen met Studio-import worden gebruikt.
+
+De import leest uitsluitend een v1 DRAFT_ONLY JSON-export. Het originele operatoraccount, de opgeslagen echte engagement-eigenaar, de oorspronkelijke klantverzoeken en exact dezelfde request-compatibiliteit uit bronhouder-PR #1570 blijven leidend. De losse client_label, proposal_name en notes uit Studio zijn NIET de geauthenticeerde cliënt/tenantidentiteit en creëren geen instemming.
+
+De vertaling weigert ongeldige/extra JSON-velden, dubbele sleutels, ontbrekende of afwijkende false authority-vlaggen, elke assetuitsluiting (kan niet stilzwijgend worden genegeerd), private lab-netwerkchecks, analysis_only, dubbele voorstellen, niet-canonieke host/IP/CIDR, onjuiste risico's en inconsistente lokale/UTC-planningstijden. De oorspronkelijke optionele Studio-draft-SHA wordt op basis van de originele v1 canonicalizer nagekeken: nog steeds uitsluitend ongetekende lokale integriteitsinformatie, NOOIT een cliëntsignatuur.
+
+Bij 1 voorstel ontstaat de bestaande privé-operatorreview; bij 2–8 voorstellen volgt de al gebouwde gezamenlijke read-only vergelijking, met afzonderlijke menselijke opvolging, lokale werkstatus en brongebonden conceptoverdracht. De Studio-branch zelf, oorspronkelijke grant-issuer, werkende security gates, CI, echte toestemming en productie zijn niet aangepast.
