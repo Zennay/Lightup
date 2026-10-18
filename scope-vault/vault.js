@@ -45,7 +45,7 @@
     unlock: $("unlock"), lock: $("lock"), recovered: $("recovered"),
     mergeMode: $("merge-mode"), handoffRoute: $("handoff-route"),
     before: $("compare-before"), after: $("compare-after"),
-    studioSource: $("studio-source"), studioInspect: $("studio-inspect"),
+    studioSource: $("studio-source"), studioInspect: $("studio-inspect"), studioBulk: $("studio-bulk"),
     studioFlag: $("studio-flag"), studioReport: $("studio-report"),
     studioClear: $("studio-clear"), studioStatus: $("studio-status"),
     studioSummary: $("studio-summary"), studioAssets: $("studio-assets"),
@@ -835,6 +835,57 @@
       notice('Scope proposal inspection refused; no trusted client/operator authority was created.',true);
     }
   }
+
+  function inspectStudioPortfolio() {
+    if (busy) return;
+    touch(); clearStudioInspection();
+    try {
+      const candidates=entries.filter(item=>item.name.toLowerCase().endsWith('.json'));
+      invariant(candidates.length>0 && candidates.length<=MAX_FILES);
+      const records=[];
+      let rejected=0;
+      for (const entry of candidates) {
+        try {
+          const p=parseStudioStrict(entry);
+          const warnings=studioReview(p);
+          records.push({hash:entry.hash,risk:p.requested_risk,mode:p.requested_mode,
+            assets:p.requested_assets.length,exclusions:p.excluded_assets.length,
+            utc:p.proposed_window_utc.status,concerns:warnings});
+        } catch {rejected++; }
+      }
+      invariant(records.length>0);
+      const summary=document.createElement('div');summary.className='item';
+      summary.textContent=records.length+' self-reported Studio v1 drafts inspected · '+
+        rejected+' unknown/incompatible JSON document(s) excluded · '+
+        records.filter(x=>x.risk===4).length+' high-risk draft(s) · '+
+        records.filter(x=>x.utc!=='resolved').length+' unresolved UTC window(s). '+
+        'This is human preparation, never evidence of consent or authority.';
+      els.studioSummary.append(summary);
+      const aggregate=new Map();
+      for (const record of records) for(const x of record.concerns)
+        aggregate.set(x.code,(aggregate.get(x.code)||0)+1);
+      for (const [code,n] of [...aggregate.entries()].sort((a,b)=>b[1]-a[1])) {
+        const line=document.createElement('div');line.className='item';
+        line.textContent=n+' of '+records.length+' draft(s) need human follow-up: '+code;
+        els.studioSummary.append(line);
+      }
+      for (const record of records) {
+        const row=document.createElement('div');row.className='item';
+        row.textContent='Local source SHA-256 '+record.hash.slice(0,16)+
+          '… · risk '+record.risk+' · '+record.mode+
+          ' · '+record.assets+' proposed / '+record.exclusions+' excluded'+
+          ' · UTC '+record.utc+' · '+record.concerns.length+' review questions';
+        els.studioSummary.append(row);
+      }
+      els.studioStatus.textContent='Private portfolio review only. For notes and anonymous file-bound export, inspect ONE exact source. '+rejected+' incompatible file(s) excluded.';
+      els.studioAssets.textContent='';
+      notice('Local portfolio overview prepared without raw asset or client labels. Nothing authorized.');
+    } catch {
+      clearStudioInspection('HOLD: import a well-formed bounded Studio v1 JSON source before making a local portfolio view.');
+      notice('Portfolio review unavailable; no authority was established.',true);
+    }
+  }
+
   function currentStudio() {
     invariant(inspectedStudio && entries[inspectedStudio.index] &&
       entries[inspectedStudio.index].hash===inspectedStudio.hash &&
@@ -970,6 +1021,7 @@
     els.redactSummary.textContent = "Sensitive term input cleared from the form.";
   });
   els.studioInspect.addEventListener("click",inspectStudio);
+  els.studioBulk.addEventListener("click",inspectStudioPortfolio);
   els.studioFlag.addEventListener("click",flagStudio);
   els.studioReport.addEventListener("click",exportStudioReport);
   els.studioClear.addEventListener("click",()=>{
