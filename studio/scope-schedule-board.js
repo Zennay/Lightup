@@ -19,7 +19,7 @@ const exactKeys = (v,allowed) => Object.keys(v).every(k => allowed.has(k));
 const validString = (s,n) => typeof s === 'string' && s.length <= n;
 const str = s => String(s == null ? '' : s);
 const minutes = v => Number.isInteger(v) && v >= -840 && v <= 840;
-let entries = [], blackouts = [], scenarioShifts = new Map(), laneAssignments = new Map(), pinnedKeys = new Set(), anchorUTC = 0, anchorChangedByUser = false;
+let entries = [], blackouts = [], scenarioShifts = new Map(), laneAssignments = new Map(), pinnedKeys = new Set(), pendingBusyImport = null, anchorUTC = 0, anchorChangedByUser = false;
 
 function validLocal(value) {
   if (value === null) return true;
@@ -330,6 +330,7 @@ function render(){
   $('changed').textContent=scenarioShifts.size;
   $('pinned').textContent=pinnedKeys.size;
   renderBlocks();
+  renderPendingCalendar();
   renderInventory();
   $('total').textContent=entries.length;$('timed').textContent=timed.length;
   $('unscheduled').textContent=unsafe.length;$('clashes').textContent=pairs.length+blockHits.length;
@@ -1095,6 +1096,66 @@ $('addBlock').addEventListener('click',()=>{
   $('status').textContent='Unavailable period added locally. Alternatives have been recomputed; no actual booking created.';
   render();
 });
+function nextPreviewBlocks(){
+  if(!pendingBusyImport)return null;
+  const lane=pendingBusyImport.lane;
+  const proposed=blackouts.slice();
+  let newCount=0;
+  for(const slot of pendingBusyImport.slots){
+    if(!proposed.some(b=>b.start===slot.start&&b.end===slot.end&&(b.lane??0)===lane)){
+      proposed.push({...slot,lane});newCount++;
+    }
+  }
+  return {proposed,newCount};
+}
+function renderPendingCalendar(){
+  const box=$('busyPreview');box.replaceChildren();
+  $('discardBusy').disabled=!pendingBusyImport;
+  const preview=nextPreviewBlocks();
+  $('applyBusy').disabled=!preview || preview.proposed.length>30 || !preview.newCount;
+  if(!pendingBusyImport){
+    append(box,'p','Choose a local .ics to preview its UTC busy windows without changing the board.','muted');
+    return;
+  }
+  const lane=pendingBusyImport.lane;
+  const label=lane===0?'all lanes':'lane '+lane;
+  append(box,'strong','Private UTC preview · '+pendingBusyImport.slots.length+' expanded interval(s) · '+label);
+  if(!preview.newCount){
+    append(box,'p','All previewed intervals already exist for this lane. No changes to apply.','muted');
+  }else if(preview.proposed.length>30){
+    append(box,'p','HOLD: '+preview.proposed.length+' total unavailable periods would exceed the 30-period limit. Remove other blocks before applying.','badge');
+  }else{
+    append(box,'p','Ready to add '+preview.newCount+' time-only interval(s) to the local planning board. This does not verify calendar ownership or resource availability.','muted');
+  }
+  const list=document.createElement('ol');box.append(list);
+  for(const slot of pendingBusyImport.slots){
+    append(list,'li',formatUTC(slot.start)+' → '+formatUTC(slot.end));
+  }
+}
+$('applyBusy').addEventListener('click',()=>{
+  const result=nextPreviewBlocks();
+  if(!result||result.proposed.length>30||!result.newCount){
+    $('status').textContent='HOLD: preview is not applicable; check duplicate or overall busy-period limit.';
+    renderPendingCalendar();return;
+  }
+  const applied=result.newCount,lane=pendingBusyImport.lane;
+  blackouts=result.proposed;
+  pendingBusyImport=null;
+  $('status').textContent=applied+' private UTC busy interval(s) applied locally to '+
+    (lane===0?'all lanes':'lane '+lane)+'. Calendar metadata was discarded; not an authenticated booking.';
+  render();
+});
+$('discardBusy').addEventListener('click',()=>{
+  pendingBusyImport=null;
+  $('status').textContent='Unapplied calendar preview discarded; existing unavailable periods unchanged.';
+  renderPendingCalendar();
+});
+$('busyLane').addEventListener('change',()=>{
+  if(!pendingBusyImport)return;
+  const lane=Number($('busyLane').value);
+  if(!Number.isInteger(lane)||lane<0||lane>4)return;
+  pendingBusyImport.lane=lane;renderPendingCalendar();
+});
 $('clearBlocks').addEventListener('click',()=>{
   if(!blackouts.length)return;
   if(!window.confirm('Clear all local unavailable periods? No source drafts will be changed.'))return;
@@ -1103,23 +1164,21 @@ $('clearBlocks').addEventListener('click',()=>{
 $('busyImport').addEventListener('change',async ev=>{
   const file=ev.target.files&&ev.target.files[0];ev.target.value='';
   if(!file)return;
+  // Never leave an older preview looking as if it came from a newly rejected file.
+  pendingBusyImport=null;renderPendingCalendar();
   try{
     if(file.size<20||file.size>131072)throw Error('file limit');
-    const text=new TextDecoder('utf-8',{fatal:true}).decode(await file.arrayBuffer());
-    const imported=readBusyCalendar(text);
+    const input=new TextDecoder('utf-8',{fatal:true}).decode(await file.arrayBuffer());
+    const imported=readBusyCalendar(input);
     const lane=Number($('busyLane').value);
     if(!Number.isInteger(lane)||lane<0||lane>4)throw Error('lane');
-    const updated=blackouts.slice();
-    for(const slot of imported){
-      if(!updated.some(b=>b.start===slot.start&&b.end===slot.end&&(b.lane??0)===lane))
-        updated.push({...slot,lane});
-    }
-    if(updated.length>30)throw Error('limit');
-    blackouts=updated;
-    $('status').textContent=imported.length+' finite UTC busy interval(s) imported for '+(lane===0?'all lanes':'lane '+lane)+'. Calendar names, contacts and notes discarded; no resource booking or permission verified.';
-    render();
+    pendingBusyImport={slots:imported,lane};
+    renderPendingCalendar();
+    $('status').textContent=imported.length+' local UTC busy interval(s) previewed for '+
+      (lane===0?'all lanes':'lane '+lane)+'. Review the list and choose Apply. No calendar metadata retained.';
   }catch(_){
-    $('status').textContent='HOLD: calendar import refused. Use minute-accurate UTC VEVENTs, bounded DAILY/WEEKLY COUNT/UNTIL, optional BYDAY/EXDATE; no local TZ, override, unbounded series or over 30 busy intervals. Existing blocks unchanged.';
+    pendingBusyImport=null;renderPendingCalendar();
+    $('status').textContent='HOLD: calendar preview refused. Use minute-accurate UTC VEVENTs, bounded DAILY/WEEKLY COUNT/UNTIL, optional BYDAY/EXDATE; no local timezone, recurrence overrides or >30 intervals. Existing blocks unchanged.';
   }
 });
 $('files').addEventListener('change',async ev=>{
@@ -1165,7 +1224,7 @@ $('files').addEventListener('change',async ev=>{
 $('clear').addEventListener('click',()=>{
   if(!entries.length && !blackouts.length)return;
   if(!window.confirm('Clear all imported drafts and unavailable periods from this tab?'))return;
-  entries=[];blackouts=[];scenarioShifts.clear();laneAssignments.clear();pinnedKeys.clear();$('scenarioStart').value='';$('status').textContent='Local drafts and scenarios cleared; no persisted history.';render();
+  entries=[];blackouts=[];pendingBusyImport=null;scenarioShifts.clear();laneAssignments.clear();pinnedKeys.clear();$('scenarioStart').value='';$('status').textContent='Local drafts and scenarios cleared; no persisted history.';render();
 });
 $('print').addEventListener('click',()=>{if(entries.length)window.print();});
 function icsTimestamp(n){return new Date(n).toISOString().replace(/[-:]/g,'').replace('.000Z','Z');}
