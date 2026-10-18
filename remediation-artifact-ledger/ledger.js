@@ -673,6 +673,8 @@ async function previewUnified(){
  }
  const api=window.LightUpArtifactRequests;
  if(!api)fail('Original HUMAN follow-up desk required for private handoff.');
+ // Refuse a unified restore while old-source HUMAN follow-up requests remain locked.
+ api.snapshot();
  const requests=api.validateSnapshot(raw.schema_version===2?raw.human_requests:[],apiContext());
  if(state.sha!==sha||state.client!==client||state.engagement!==engagement)
   fail('Original source/context changed while importing PRIVATE unified handoff; retry.');
