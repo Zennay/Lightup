@@ -57,9 +57,9 @@ def main() -> None:
         'object-src \'none\'; base-uri \'none\'">'
     )
     page = one_replace(page, SRC_CSP, dest_csp)
-    page = one_replace(page, STYLE_TAG, "<style>\n" + css.decode("utf-8") + "\n</style>")
+    page = one_replace(page, STYLE_TAG, "<style>" + css.decode("utf-8") + "</style>")
     for name, tag in SCRIPT_TAGS.items():
-        page = one_replace(page, tag, "<script>\n" + scripts[name].decode("utf-8") + "\n</script>")
+        page = one_replace(page, tag, "<script>" + scripts[name].decode("utf-8") + "</script>")
     out = ROOT / "standalone.html"
     out.write_bytes(page.encode("utf-8"))
     print(
