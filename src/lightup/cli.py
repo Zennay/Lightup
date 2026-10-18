@@ -45,7 +45,11 @@ def build_parser() -> argparse.ArgumentParser:
     assess = sub.add_parser("lab-assess",
                             help="planner-driven multi-lane lab assessment with "
                                  "AI review (scripted demo gateway by default)")
-    assess.add_argument("url", nargs="?", default="http://127.0.0.1:18080/")
+    assess.add_argument("url", nargs="?", default=None)
+    assess.add_argument("--target", action="append", default=[], metavar="LAB_URL",
+                        help="repeat for each additional isolated lab endpoint")
+    assess.add_argument("--targets-file", metavar="PATH",
+                        help="local bounded UTF-8 manifest of lab endpoints")
     assess.add_argument("--db", default="lightup-lab.db")
     assess.add_argument("--gateway-config")
     assess.add_argument("--profile")
@@ -106,7 +110,12 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "lab-assess":
         from .labrun import main_assess
 
-        argv = [args.url, "--db", args.db]
+        argv = [args.url] if args.url is not None else []
+        for endpoint in args.target:
+            argv += ["--target", endpoint]
+        if args.targets_file is not None:
+            argv += ["--targets-file", args.targets_file]
+        argv += ["--db", args.db]
         if args.gateway_config:
             argv += ["--gateway-config", args.gateway_config]
         if args.profile:
