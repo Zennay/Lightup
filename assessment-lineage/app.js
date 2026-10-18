@@ -320,6 +320,45 @@
   }
 
 
+
+  function renderSourceOrder(){
+    const select=$("sourceOrder"),old=select.value;
+    select.replaceChildren();
+    reports.forEach((r,i)=>{
+      const option=document.createElement("option");option.value=String(i);
+      option.textContent="Original source "+(i+1)+" · "+r.cases.size+" cases · "+r.status;
+      select.append(option);
+    });
+    if(reports.length){
+      select.value=old!==""&&Number.isSafeInteger(Number(old))&&Number(old)>=0&&
+        Number(old)<reports.length?old:"0";
+    }
+    for(const id of ["sourceEarlier","sourceLater","removeSource"])
+      $(id).disabled=!reports.length;
+    $("sourceEarlier").disabled=!reports.length||select.value==="0";
+    $("sourceLater").disabled=!reports.length||
+      Number(select.value)===reports.length-1;
+  }
+  function chooseSource(delta){
+    const i=Number($("sourceOrder").value),j=i+delta;
+    if(!Number.isSafeInteger(i)||i<0||j<0||j>=reports.length)return;
+    [reports[i],reports[j]]=[reports[j],reports[i]];
+    [reportHashes[i],reportHashes[j]]=[reportHashes[j],reportHashes[i]];
+    undoBatch=null;
+    render();$("sourceOrder").value=String(j);renderSourceOrder();
+    message("Changed private source DISPLAY order only. Not proven chronology. "+
+      "Private source-bound resume must be saved again.");
+  }
+  function removeSource(){
+    const i=Number($("sourceOrder").value);
+    if(!Number.isSafeInteger(i)||i<0||i>=reports.length)return;
+    if(!confirm("Remove original source slot "+(i+1)+" from this in-memory review? "+
+      "The original private file is NOT deleted. No measurement or scan is repeated."))return;
+    reports.splice(i,1);reportHashes.splice(i,1);undoBatch=null;
+    render();message("One original completed report removed from private memory; "+
+      "catalog and human work preserved.");
+  }
+
   function numberLabel(n){
     return Number.isInteger(n)?String(n):n.toPrecision(6).replace(/\.?0+($|e)/,"$1");
   }
@@ -366,6 +405,7 @@
       [...r.cases.values()].filter(c=>c.adverse.length).length,
       [...r.cases.values()].reduce((n,c)=>n+c.adverse.length,0)]);
     table($("reports"),["Source slot","Original source status","Cases","Adverse cases","Adverse metric flags"],reportRows);
+    renderSourceOrder();
     $("cases").replaceChildren();
     const all=catalog?.length||0,visible=visibleCases();
     $("queueCount").textContent=visible.length+" visible of "+all+
@@ -658,6 +698,10 @@
   for(const id of ["familyFilter","stageFilter","truthFilter"])
     $(id).addEventListener("change",render);
   $("inspectCase").addEventListener("change",renderInspector);
+  $("sourceOrder").addEventListener("change",renderSourceOrder);
+  $("sourceEarlier").addEventListener("click",()=>chooseSource(-1));
+  $("sourceLater").addEventListener("click",()=>chooseSource(1));
+  $("removeSource").addEventListener("click",removeSource);
   $("applyStage").addEventListener("click",humanBulk);
   $("undoStage").addEventListener("click",undoHumanBulk);
   $("exportDraft").addEventListener("click",exportPrivateDraft);
