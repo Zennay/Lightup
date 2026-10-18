@@ -423,8 +423,13 @@ function classifyPeer(second){
   else kind="same_description";
   counts[kind]++;
   const head=a[0]||b[0];
+  const privateSummary=x=>x.length===1?{
+   title:x[0].f.finding,severity:x[0].f.severity,retest:x[0].f.retest,
+   impact:x[0].f.impact,fix:x[0].f.fix,evidence_summary:x[0].f.evidence_summary
+  }:null;
   rows.push({kind,a:a.map(x=>x.slot),b:b.map(x=>x.slot),
-   title:head.f.finding,severity:head.f.severity});
+   aSummary:privateSummary(a),bSummary:privateSummary(b),
+   repeatedA:a.length>1,repeatedB:b.length>1});
  }
  const ranks=Object.fromEntries(PEER_KINDS.map(([k],i)=>[k,i]));
  rows.sort((x,y)=>ranks[x.kind]-ranks[y.kind]||x.a[0]-y.a[0]);
@@ -439,8 +444,24 @@ function renderPeer(){
  peerPage=Math.min(peerPage,max);
  for(const row of matches.slice(peerPage*pageSize,(peerPage+1)*pageSize)){
   const tr=document.createElement("tr");
-  [peerKindLabel[row.kind],row.a.join(", ")||"—",row.b.join(", ")||"—",
-   row.severity+" · "+row.title].forEach(value=>tr.append(el("td",value)));
+  [peerKindLabel[row.kind],row.a.join(", ")||"—",row.b.join(", ")||"—"]
+   .forEach(value=>tr.append(el("td",value)));
+  for(const [info,repeated] of [[row.aSummary,row.repeatedA],[row.bSummary,row.repeatedB]]){
+   const td=document.createElement("td");
+   if(repeated){td.textContent="AMBIGUOUS repeated source check — not pairable";}
+   else if(!info){td.textContent="No source declaration in this input (NOT a fix verdict)";}
+   else{
+    td.append(el("strong",info.severity+" · "+info.title),
+      el("p","Original declared retest: "+info.retest));
+    const more=document.createElement("details");
+    more.append(el("summary","PRIVATE original impact / mitigation / evidence text"));
+    more.append(el("p","Impact: "+info.impact),
+      el("p","Fix text: "+info.fix),
+      el("p","Unverified evidence summary: "+info.evidence_summary));
+    td.append(more);
+   }
+   tr.append(td);
+  }
   result.append(tr);
  }
  $("peer-counter").textContent=matches.length+" original source-check groups; "+
