@@ -16,6 +16,8 @@
   const ENC = new TextEncoder();
   const DEC = new TextDecoder("utf-8", {fatal: true});
   const allowed = /\.(json|md|txt|ics|csv)$/i;
+  const roles = ["Unclassified", "Client proposal — unverified", "Operator review — unverified", "Scope revision — unverified", "Schedule handoff — unverified"];
+  function validRole(role) { return typeof role === "string" && roles.includes(role); }
   const $ = (id) => document.getElementById(id);
   const els = {
     files: $("files"), list: $("file-list"), summary: $("file-summary"),
@@ -107,6 +109,20 @@
         touch(); paint();
         notice("File forgotten from tab memory. Existing downloaded vault files were not changed.");
       });
+      const role = document.createElement("select");
+      role.setAttribute("aria-label", "Self-reported, unverified review role for " + entry.name);
+      role.title = "Offline sorting label only. Never client or operator approval.";
+      for (const name of roles) {
+        const option = document.createElement("option"); option.value = name; option.textContent = name;
+        role.append(option);
+      }
+      role.value = entry.role;
+      role.addEventListener("change", () => {
+        if (busy) return;
+        entry.role = role.value;
+        touch(); notice("Self-reported role updated in tab memory; this is not independent identity or authorization.");
+      });
+      text.append(role);
       box.append(text, remove);
       els.list.append(box);
       const recovered = document.createElement("div");
@@ -193,7 +209,7 @@
           const bytes = new Uint8Array(await file.arrayBuffer());
           invariant(bytes.length === file.size);
           DEC.decode(bytes); // Only canonical UTF-8 text drafts, not arbitrary binary payloads.
-          staged.push({name, bytes, hash: await digest(bytes)});
+          staged.push({name, bytes, hash: await digest(bytes), role: roles[0]});
         }
         entries.push(...staged);
         notice("New local draft files loaded. They are not persisted until you explicitly export an encrypted vault.");
@@ -220,7 +236,7 @@
         schema: "lightup.offline.scope-packet.payload.v1",
         createdUtc: new Date().toISOString(),
         authority: {may_authorize: false, may_consent: false, may_grant: false, may_scan: false, may_dispatch: false, may_deploy: false, may_release: false},
-        files: entries.map((entry) => ({name: entry.name, length: entry.bytes.length, sha256: entry.hash, base64: b64(entry.bytes)}))
+        files: entries.map((entry) => ({name: entry.name, length: entry.bytes.length, sha256: entry.hash, role: entry.role, base64: b64(entry.bytes)}))
       };
       const cleartext = ENC.encode(JSON.stringify(payload));
       try {
@@ -276,7 +292,9 @@
         const names = new Set();
         let total = 0;
         for (const record of payload.files) {
-          strictKeys(record, ["name", "length", "sha256", "base64"]);
+          const hasRole = Object.prototype.hasOwnProperty.call(record, "role");
+          strictKeys(record, hasRole ? ["name", "length", "sha256", "role", "base64"] : ["name", "length", "sha256", "base64"]);
+          if (hasRole) invariant(validRole(record.role));
           const name = nameOf(record.name);
           invariant(!names.has(name));
           names.add(name);
@@ -285,7 +303,7 @@
           total += record.length;
           invariant(total <= MAX_TOTAL_BYTES);
           const bytes = unb64(record.base64, MAX_FILE_BYTES);
-          staged.push({name, bytes, hash: record.sha256});
+          staged.push({name, bytes, hash: record.sha256, role: hasRole ? record.role : roles[0]});
           invariant(bytes.length === record.length && (await digest(bytes)) === record.sha256);
           DEC.decode(bytes);
         }
