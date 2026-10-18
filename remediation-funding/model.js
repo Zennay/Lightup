@@ -95,6 +95,16 @@ function intake(text){
    risk_hours:Object.freeze(Object.fromEntries(BANDS.map(b=>[b,w.severity_hours[b]])))});
  });
  if(weekHours!==data.assigned_hours)fail('Aggregate weeks do not match source total');
+ if(data.proposed_completed + data.backlog_findings !== data.source_count)
+   fail('Reported finished estimates contradict source backlog');
+ if(BANDS.reduce((sum,b)=>sum+risk[b].fully_scheduled_estimates,0)!==data.proposed_completed)
+   fail('Risk-band completed estimates contradict source totals');
+ for(const severity of BANDS) {
+   const allocatedInWeeks=data.sprint_weeks.reduce((sum,week)=>sum+week.severity_hours[severity],0);
+   if(allocatedInWeeks!==risk[severity].scheduled_hours)
+     fail('Week and priority-band allocations contradict each other');
+ }
+
  return Object.freeze({
   source_count:data.source_count,total_hours:hours,allocated_hours:weekHours,
   backlog_hours:data.backlog_hours,backlog_findings:data.backlog_findings,
