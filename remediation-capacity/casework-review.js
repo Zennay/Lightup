@@ -195,5 +195,72 @@
       weekly_blocker_pressure:weeklyRisk
     });
   }
-  root.LightUpCapacityCasework=Object.freeze({review,MAX_BYTES});
+
+  function combinedBrief(plan,sourceReview,planner) {
+    if(!plan||!sourceReview||sourceReview.schema!=='lightup.capacity_casework_review_draft.v1'||
+      sourceReview.review_only!==true||sourceReview.authorization!==false||
+      !Array.isArray(sourceReview.weekly_blocker_pressure)||
+      sourceReview.weekly_blocker_pressure.length!==plan.schedule.length||
+      sourceReview.source_records!==plan.sourceCount)
+      throw Error('Generate and review matching original capacity + Casework sources first');
+    const summary=planner.summary(plan);
+    const lines=[
+      '# LightUp — private remediation coordination brief',
+      '',
+      '**INTERNAL HUMAN DISCUSSION · UNSIGNED · REVIEW_ONLY · DRAFT/HOLD.**',
+      '',
+      'This is not authentication, current consent, verified remediation, retest, a granted assessment scope, execution or deployment permission.',
+      '',
+      '## Current source and planning workload',
+      '',
+      '- Original source findings: '+plan.sourceCount,
+      '- Estimated total remediation effort: '+plan.totalHours+' h',
+      '- Proposed planning allocation: '+plan.assignedHours+' h',
+      '- Unallocated work: '+plan.backlogHours+' h across '+plan.backlogCount+' source records',
+      '- Proposed urgent (critical/high) backlog: '+
+        (plan.priorityBands.critical.unscheduled_hours+plan.priorityBands.high.unscheduled_hours)+' h',
+      '- Locally blocked Casework notes: '+sourceReview.source_casework_statuses.blocked,
+      '- Casework owner labels absent: '+(plan.sourceCount-sourceReview.assigned_owner_labels),
+      '- Local Casework status marked completed (UNVERIFIED): '+
+        sourceReview.source_casework_statuses.completed,
+      '',
+      '## Week-by-week coordination risk',
+      '',
+      '| Week | Week beginning UTC | Planned h | Locally blocked h | Critical/high blocked h | Regressions locally called completed h |',
+      '| --- | --- | ---: | ---: | ---: | ---: |'
+    ];
+    for(const row of sourceReview.weekly_blocker_pressure) {
+      lines.push('| '+[row.week,row.start,row.provisionally_allocated_hours,
+        row.locally_blocked_estimated_hours,row.locally_blocked_critical_high_estimated_hours,
+        row.source_regression_locally_completed_estimated_hours].join(' | ')+' |');
+    }
+    lines.push('','## Human follow-up by risk classification','','| Risk class | Original records | Locally blocked | Missing owner labels | Proposed undated |',
+      '| --- | ---: | ---: | ---: | ---: |');
+    for(const severity of SEVERITIES) {
+      const row=sourceReview.severity_statuses[severity];
+      lines.push('| '+[severity,row.total,row.blocked,row.missing_owner,row.undated].join(' | ')+' |');
+    }
+    const questions=[
+      ['critical_high_blocked','Discuss blockers delaying critical/high remediation.'],
+      ['critical_high_unowned','Find a human point of contact for critical/high cases.'],
+      ['critical_high_undated','Discuss tentative target dates for urgent source findings.'],
+      ['source_regression_locally_completed','Resolve contradictory self-reported completed work vs source regressions.'],
+      ['source_regression_deferred','Discuss a plan for deferred regressions.'],
+      ['retest_coordination_without_owner','Agree who will separately request real, authorised retest.'],
+      ['blocked_without_note','Request human clarification for missing blocker explanations.']
+    ];
+    lines.push('','## Open human discussion questions','');
+    let any=false;
+    for(const [key,description] of questions) {
+      const count=sourceReview.human_review_flags[key];
+      if(count) {lines.push('- '+count+' aggregate cases: '+description);any=true;}
+    }
+    if(!any)lines.push('- No flagged source-bound coordination contradictions in these specific categories. This is **not** proof of repair or consent.');
+    lines.push('','## Mandatory operator boundaries','',
+      'Independently authenticate the client and engagement, recheck current scope consent and revocation at use, and do not treat this review packet as a grant.',
+      'Never infer a vulnerability was fixed from a missing source finding, a local Casework completion label or a planned allocation.',
+      'Keep original authorisation, separate client/operator consent, source owner integration, security/privacy review, exact-head hosted/VPS CI and HUMAN GO intact.','');
+    return lines.join('\n');
+  }
+  root.LightUpCapacityCasework=Object.freeze({review,combinedBrief,MAX_BYTES});
 })(window);
