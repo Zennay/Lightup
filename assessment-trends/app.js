@@ -32,6 +32,7 @@
   let pairFocus=1;
   let selectedCase=0,caseStages=new Map();
   let demoMode=false,sourceMeta=[];
+  let crossA=0,crossB=1,crossMetric="policy_violations";
 
   // Strict recursive JSON reader: rejects duplicate keys (also escaped aliases),
   // malformed literals, nonfinite numbers and excessively nested documents.
@@ -220,7 +221,7 @@
     $("message").textContent=message; $("message").className="message"+(bad?" bad":"");
   }
   function reset() {
-    revisions=[];sourceHashes=[];sourceMeta=[];discussionStages=Object.create(null);caseStages=new Map();selectedCase=0;revisionFocus=0;pairFocus=1;demoMode=false; $("workspace").hidden=true; $("files").value="";
+    revisions=[];sourceHashes=[];sourceMeta=[];discussionStages=Object.create(null);caseStages=new Map();selectedCase=0;revisionFocus=0;pairFocus=1;crossA=0;crossB=1;demoMode=false; $("workspace").hidden=true; $("files").value="";
     $("notes").value="";$("draft-file").value="";
     $("draft-state").textContent="Private source bindings and local discussion stages were cleared.";
     showMessage("All imported source data and local notes cleared.");
@@ -282,7 +283,7 @@
       metric_regressions:[...report.cases.values()].reduce((n,c)=>n+c.regressions.length,0),
       metrics:NAMES.map(name=>({name,...snapshot(report,name)}))
     }));
-    return {format:"lightup.assessment_trends.aggregate",version:5,
+    return {format:"lightup.assessment_trends.aggregate",version:6,
       source_kind:demoMode?"FICTIONAL_DEMO_ONLY":"UNAUTHENTICATED_OFFLINE_LAB_JSON",
       fictional_demo:demoMode,
       verdict:"REVIEW_ONLY",phase:"INCUBATE_M3_M7_DRAFT_HOLD",
@@ -291,6 +292,7 @@
       revisions:entries,
       descriptive_lab_tradeoffs:relativeTradeoffs(),
       adjacent_pairs:adjacentExport(),
+      selected_candidate_pair:crossAggregate(),
       human_case_discussion_counts:caseStageCounts(),
       human_discussion:actionItems().map(x=>({
         metric:x.metric,priority:x.priority,persistent_cases:x.persistent,
@@ -359,6 +361,14 @@
         chunks.push(row([m.name,m.worsened,m.improved,m.other_changed,fmt(m.delta)]));
       chunks.push("</tbody></table>");
     }
+    const cross=model.selected_candidate_pair;
+    chunks.push("<h2>User-selected two-candidate comparison</h2>",
+      "<p>Unverified source positions R"+cross.first_position+" and R"+
+      cross.second_position+" are compared as supplied; no scenario IDs included.</p>",
+      "<table><thead><tr><th>Metric</th><th>Worse cases</th><th>Better cases</th><th>Other changes</th><th>Aggregate candidate delta</th></tr></thead><tbody>");
+    for(const m of cross.metrics)
+      chunks.push(row([m.name,m.worse,m.better,m.neutral,fmt(m.delta)]));
+    chunks.push("</tbody></table>");
     chunks.push("<h2>Descriptive lab tradeoffs</h2>",
       "<p>Compared dimensions: "+safe(model.descriptive_lab_tradeoffs.axes.join(", ")||
       "none selected")+". Relative non-dominance is NOT a safety, authorization, release or approval score.</p>",
@@ -469,6 +479,116 @@
         false,false,false,false,item.before_position,
         item.after_position,m.name,m.worsened,m.improved,m.other_changed,m.delta]);
     return rows.map(row=>row.join(",")).join("\r\n")+"\r\n";
+  }
+  function crossValues(first,second,name) {
+    const left=revisions[first],right=revisions[second];
+    REQUIRE(left && right && first!==second && NAMES.includes(name));
+    let worse=0,better=0,neutral=0,sumA=0,sumB=0;
+    const cases=[];
+    for(const id of ordinalCaseIds()) {
+      const a=left.cases.get(id).metrics[name].candidate;
+      const b=right.cases.get(id).metrics[name].candidate;
+      const delta=b-a;sumA+=a;sumB+=b;
+      const direction=HIGH.has(name) ? (delta<0?"worse":delta>0?"better":"same") :
+        LOW.has(name) ? (delta>0?"worse":delta<0?"better":"same") :
+        delta===0?"same":"informational";
+      if(direction==="worse")worse++;
+      else if(direction==="better")better++;
+      else if(direction!=="same")neutral++;
+      cases.push({id,a,b,delta,direction});
+    }
+    return {name,worse,better,neutral,sumA,sumB,delta:sumB-sumA,cases};
+  }
+  function crossAggregate() {
+    if(!revisions.length)return null;
+    const comparisons=NAMES.map(name=>crossValues(crossA,crossB,name));
+    return {first_position:crossA+1,second_position:crossB+1,
+      source_order_authenticated:false,
+      metrics:comparisons.map(({cases,...rest})=>rest)};
+  }
+  function crossCSV() {
+    const model=crossAggregate();
+    REQUIRE(model);
+    const rows=[["status","source_kind","authorized","consent_verified",
+      "dispatch_allowed","release_allowed","first_position","second_position",
+      "metric","worse_cases","better_cases","informational_changes",
+      "first_candidate_sum","second_candidate_sum","aggregate_delta"]];
+    for(const m of model.metrics)rows.push([
+      "REVIEW_ONLY",demoMode?"FICTIONAL_DEMO_ONLY":"UNAUTHENTICATED_OFFLINE_LAB_JSON",
+      false,false,false,false,model.first_position,model.second_position,
+      m.name,m.worse,m.better,m.neutral,m.sumA,m.sumB,m.delta]);
+    return rows.map(r=>r.join(",")).join("\r\n")+"\r\n";
+  }
+  function renderCross() {
+    if(revisions.length<2)return;
+    if(crossA<0||crossA>=revisions.length)crossA=0;
+    if(crossB<0||crossB>=revisions.length||crossA===crossB)
+      crossB=crossA===0?1:0;
+    const first=$("compare-a"),second=$("compare-b"),metric=$("compare-metric");
+    first.replaceChildren();second.replaceChildren();
+    revisions.forEach((_,i)=>{
+      for(const selector of [first,second]) {
+        const option=add(selector,"option","R"+String(i+1));
+        option.value=String(i);
+      }
+    });
+    first.value=String(crossA);second.value=String(crossB);
+    metric.replaceChildren();
+    NAMES.forEach(name=>{
+      const option=add(metric,"option",nice(name));option.value=name;
+    });
+    metric.value=crossMetric;
+    const body=$("compare-metrics");body.replaceChildren();
+    const values=NAMES.map(name=>crossValues(crossA,crossB,name));
+    const worsened=values.reduce((n,m)=>n+m.worse,0);
+    const improved=values.reduce((n,m)=>n+m.better,0);
+    $("compare-summary").textContent="R"+(crossA+1)+" vs R"+(crossB+1)+
+      ": "+worsened+" adverse case-metric changes; "+improved+
+      " favourable case-metric changes across the selected candidates. These are untrusted source values, not authenticated chronology, risk acceptance, remediation or release proof.";
+    for(const m of values) {
+      const row=add(body,"tr");
+      add(row,"th",nice(m.name));
+      add(row,"td",m.worse,m.worse?"heat-2":"heat-0");
+      add(row,"td",m.better);
+      add(row,"td",m.neutral);
+      add(row,"td",fmt(m.sumA));
+      add(row,"td",fmt(m.sumB));
+      add(row,"td",(m.delta>0?"+":"")+fmt(m.delta));
+      row.tabIndex=0;row.setAttribute("role","button");
+      row.setAttribute("aria-label","Inspect "+nice(m.name));
+      const inspect=()=>{
+        crossMetric=m.name;renderCross();
+      };
+      row.addEventListener("click",inspect);
+      row.addEventListener("keydown",event=>{
+        if(event.key==="Enter"||event.key===" "){event.preventDefault();inspect();}
+      });
+    }
+    const casesBody=$("compare-cases");casesBody.replaceChildren();
+    const priorities={worse:0,better:1,informational:2,same:3};
+    const ordered=crossValues(crossA,crossB,crossMetric).cases.sort((a,b)=>
+      priorities[a.direction]-priorities[b.direction] ||
+      ordinalCaseIds().indexOf(a.id)-ordinalCaseIds().indexOf(b.id));
+    for(const c of ordered) {
+      const ordinal=ordinalCaseIds().indexOf(c.id);
+      const row=add(casesBody,"tr");
+      add(row,"th","Case "+String(ordinal+1).padStart(2,"0"));
+      add(row,"td",fmt(c.a));add(row,"td",fmt(c.b));
+      add(row,"td",(c.delta>0?"+":"")+fmt(c.delta));
+      add(row,"td",c.direction,c.direction==="worse"?"heat-2":"");
+      add(row,"td",(caseStages.get(c.id)||"unreviewed").replaceAll("-"," "));
+      row.tabIndex=0;row.setAttribute("role","button");
+      row.setAttribute("aria-label","Inspect local case "+String(ordinal+1));
+      const inspect=()=>{
+        selectedCase=ordinal;renderCaseInspector();renderCaseRows();
+        $("case-select").focus();
+        $("case-detail-title").scrollIntoView({block:"start"});
+      };
+      row.addEventListener("click",inspect);
+      row.addEventListener("keydown",event=>{
+        if(event.key==="Enter"||event.key===" "){event.preventDefault();inspect();}
+      });
+    }
   }
   function renderPair() {
     const control=$("pair-select");
@@ -767,7 +887,7 @@
     for(const name of NAMES) {
       const option=add(select,"option",nice(name));option.value=name;
     }
-    renderOrder();renderManifest();renderPair();renderTradeoffs();metricsRows();renderCaseRows();renderCaseInspector();renderActions();choose(selected);followupText();
+    renderOrder();renderManifest();renderPair();renderCross();renderTradeoffs();metricsRows();renderCaseRows();renderCaseInspector();renderActions();choose(selected);followupText();
     $("demo-banner").hidden=!demoMode;
     $("save-draft").disabled=demoMode || !sourceHashes.length || sourceHashes.some(x=>!x);
     if(sourceHashes.some(x=>!x))
@@ -827,6 +947,7 @@
   }
   $("demo").addEventListener("click",()=>{
     revisions=[];sourceHashes=[];sourceMeta=[];demoMode=false;
+    crossA=0;crossB=1;
     $("workspace").hidden=true;$("files").value="";
     caseStages=new Map();discussionStages=Object.create(null);
     selectedCase=0;revisionFocus=0;pairFocus=1;$("notes").value="";
@@ -846,7 +967,7 @@
 
   $("files").addEventListener("change",async ev=>{
     // No mixing old and new reports. A failed import removes previous content.
-    revisions=[];sourceHashes=[];sourceMeta=[];revisionFocus=0;pairFocus=1;discussionStages=Object.create(null);caseStages=new Map();selectedCase=0;demoMode=false;$("workspace").hidden=true;$("notes").value="";
+    revisions=[];sourceHashes=[];sourceMeta=[];revisionFocus=0;pairFocus=1;crossA=0;crossB=1;discussionStages=Object.create(null);caseStages=new Map();selectedCase=0;demoMode=false;$("workspace").hidden=true;$("notes").value="";
     const files=[...ev.target.files];
     try {
       demoMode=false;
@@ -865,6 +986,17 @@
   });
   for(const [id] of AXIS_IDS)
     $(id).addEventListener("change",renderTradeoffs);
+  $("compare-a").addEventListener("change",event=>{
+    crossA=Number(event.target.value);renderCross();
+  });
+  $("compare-b").addEventListener("change",event=>{
+    crossB=Number(event.target.value);renderCross();
+  });
+  $("compare-metric").addEventListener("change",event=>{
+    crossMetric=event.target.value;renderCross();
+  });
+  $("compare-csv").addEventListener("click",()=>download(
+    "lightup-lab-any-pair-review-only.csv",crossCSV(),"text/csv;charset=utf-8"));
   $("pair-select").addEventListener("change",event=>{
     pairFocus=Number(event.target.value);renderPair();
   });
