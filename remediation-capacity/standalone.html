@@ -1,0 +1,478 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-+q+vVBgp5v/82io5FbCWD/HkYYA1zuWjCOJeLRrhgj0=' 'sha256-+BUFw8sWBny56R1w8vht6y/1yefwZ3AyMSSBTDo5iso='; style-src 'sha256-zVywJm1zj7vaylmQUpfb9Vr5eCe6rDxI1GytJWQt8vU='; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<title>LightUp | Remediation Capacity Studio — offline draft</title>
+<style>:root{color-scheme:dark;--bg:#0a1119;--panel:#111e29;--edge:#304451;--text:#edf5f7;--muted:#a4bac8;--teal:#7ee4bd;--amber:#f9d48a;--blue:#7cb8ff}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:radial-gradient(ellipse 80% 360px at 50% 0,#1d3942 0,transparent 100%),var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,sans-serif;line-height:1.55}
+.wrap{width:min(1100px,calc(100% - 32px));margin-inline:auto}
+.mast{padding:46px 0 30px;border-bottom:1px solid var(--edge)}
+.eyebrow{margin:0 0 8px;letter-spacing:.16em;color:var(--teal);font-size:.71rem;font-weight:700}
+h1{font-size:clamp(2rem,5vw,3.45rem);letter-spacing:-.04em;line-height:1.05;margin:.25em 0}
+h2{font-size:clamp(1.2rem,2.5vw,1.6rem);letter-spacing:-.02em;margin:.2em 0 .6em}
+h1+p{max-width:65ch;color:var(--muted)}
+p{max-width:80ch}
+.notice{border-left:3px solid var(--amber);background:#362b1e;padding:12px 16px;margin-top:22px;color:#ffedc1}
+.notice strong{color:var(--amber)}
+.panel{border:1px solid var(--edge);background:var(--panel);padding:clamp(16px,3vw,30px);border-radius:15px;margin:24px 0;box-shadow:0 12px 30px #0002}
+.subtle,small{color:var(--muted);font-size:.89rem}
+.upload,.actions{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+.upload label{font-weight:700}
+.grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+.grid label{display:block;font-size:.88rem;font-weight:650;color:var(--muted)}
+input{display:block;width:100%;margin-top:6px;color:var(--text);background:#08141d;border:1px solid #557080;border-radius:8px;padding:10px 12px;font:inherit}
+input[type=file]{width:auto;max-width:100%;flex:1 1 260px}
+input:focus-visible,button:focus-visible{outline:3px solid var(--teal);outline-offset:3px}
+button{cursor:pointer;border-radius:8px;padding:12px 18px;border:1px solid var(--teal);font:inherit;font-weight:700;color:#071b22;background:var(--teal)}
+button:hover:not(:disabled){filter:brightness(1.12)}
+button:disabled{opacity:.4;cursor:not-allowed}
+.secondary{background:#203341;color:var(--text);border-color:#527a85}
+fieldset{border:1px solid var(--edge);border-radius:10px;margin:24px 0;padding:18px}
+legend{color:var(--teal);font-weight:700}
+.effort{grid-template-columns:repeat(5,minmax(0,1fr))}
+.stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.stat{background:#0c1922;border:1px solid var(--edge);padding:16px;border-radius:11px}
+.stat strong{display:block;font-size:clamp(1.2rem,3vw,2rem);font-variant-numeric:tabular-nums}
+.stat span{display:block;color:var(--muted);font-size:.85rem}
+.week{margin-bottom:20px}
+.week-header{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.track{height:13px;background:#09121a;border:1px solid var(--edge);border-radius:40px;overflow:hidden;margin:8px 0}
+.fill{background:linear-gradient(90deg,#2f9ba7,var(--teal));height:100%}
+.week p{margin:3px 0}
+.table-scroll{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:.92rem}
+th{text-align:left;color:var(--teal);border-bottom:2px solid var(--edge);white-space:nowrap}
+td,th{padding:10px;border-bottom:1px solid var(--edge)}
+tr:nth-child(odd) td{background:#142532}
+.feedback{min-height:1.4rem;font-weight:650;color:var(--teal)}
+.feedback.error{color:#ffbd8c}
+footer{padding:22px 0 60px}
+@media(max-width:760px){.grid,.stats{grid-template-columns:repeat(2,minmax(0,1fr))}.effort{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:490px){.grid,.stats{grid-template-columns:1fr}.effort{grid-template-columns:repeat(2,minmax(0,1fr))}.week-header{flex-direction:column;align-items:flex-start}}
+@media print{body{background:white;color:#111;font-size:11pt}.mast{padding:0}h1{font-size:22pt}.panel{border:1px solid #888;box-shadow:none;break-inside:avoid;margin:10px 0}.notice{background:white;color:#333}input,button,form,.upload,.actions,.feedback,.eyebrow,#source-status{display:none!important}.subtle,small{color:#444}.stat{background:white;color:#111}.stat span{color:#444}.fill{background:#444}.track{border:1px solid #555;background:white}.week{break-inside:avoid}td,th{color:#111;background:white!important;border-color:#aaa}}
+
+.scenario-controls{display:flex;gap:12px;align-items:end;flex-wrap:wrap;margin:18px 0}.scenario-controls input{width:110px}.scenario-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.scenario-card{padding:16px;border-radius:10px;background:#0b1922;border:1px solid var(--edge)}.scenario-card strong{color:var(--teal)}.scenario-card p{margin:8px 0;font-variant-numeric:tabular-nums}@media(max-width:490px){.scenario-grid{grid-template-columns:1fr}}
+</style>
+
+
+</head>
+<body>
+<header class="mast">
+  <div class="wrap">
+    <p class="eyebrow">LIGHTUP / DEFENSIVE PLANNING / OFFLINE</p>
+    <h1>Remediation Capacity Studio</h1>
+    <p>Turn an <em>already authorised</em> LightUp findings export into a practical, capacity-bounded repair proposal. No target access. No consent or grant issued.</p>
+    <div class="notice" role="status"><strong>DRAFT / HOLD</strong> · All outcomes are unverified planning assumptions. Reported “fixed” is not a verified retest. No authority to execute, scan or deploy.</div>
+  </div>
+</header>
+<main class="wrap">
+<section class="panel" aria-labelledby="upload-title">
+  <p class="eyebrow">01 / SOURCE</p>
+  <h2 id="upload-title">Load original findings report</h2>
+  <p>Import the original five-column <code>finding_id,title,severity,retest_status,remediation</code> CSV (≤1 MiB; ≤350 records). No customer name, finding title, finding ID or remediation text is displayed or exported.</p>
+  <div class="upload"><label for="source">Authorised findings CSV</label><input id="source" type="file" accept=".csv,text/csv">
+    <button type="button" id="forget" class="secondary">Forget source &amp; plan</button></div>
+  <p id="source-status" class="subtle" aria-live="polite">No report loaded. All files stay in this browser tab.</p>
+</section>
+<section class="panel" aria-labelledby="capacity-title">
+  <p class="eyebrow">02 / TEAM ASSUMPTIONS</p>
+  <h2 id="capacity-title">Available remediation capacity</h2>
+  <form id="settings" autocomplete="off">
+    <div class="grid">
+      <label>Sprint start date<input type="date" name="start" required></label>
+      <label>Sprint weeks<input type="number" name="weeks" min="1" max="12" value="4" required></label>
+      <label>Engineers<input type="number" name="engineers" min="1" max="30" value="3" required></label>
+      <label>Working days per week<input type="number" name="workDays" min="1" max="5" value="5" required></label>
+      <label>Available hours per person/day<input type="number" name="hoursPerDay" min="1" max="10" value="6" required></label>
+      <label>Capacity reserved for interruptions (%)<input type="number" name="reserve" min="0" max="80" value="25" required></label>
+    </div>
+    <fieldset>
+      <legend>Estimated repair effort per finding (hours, adjustable)</legend>
+      <div class="grid effort">
+        <label>Critical<input type="number" name="critical" min="1" max="200" value="20" required></label>
+        <label>High<input type="number" name="high" min="1" max="200" value="12" required></label>
+        <label>Medium<input type="number" name="medium" min="1" max="200" value="6" required></label>
+        <label>Low<input type="number" name="low" min="1" max="200" value="3" required></label>
+        <label>Info<input type="number" name="info" min="1" max="200" value="1" required></label>
+      </div>
+    </fieldset>
+    <button type="submit" id="generate" disabled>Prepare capacity plan</button>
+  </form>
+  <p class="subtle">Priority: source-reported regressions first, then critical → high → medium → low → info. Estimates are placeholders, not SLAs or retest authorisations. Sprint weeks are seven-day planning buckets; available capacity is per working week.</p>
+</section>
+<section id="results" hidden aria-labelledby="results-title">
+  <div class="panel">
+    <p class="eyebrow">03 / HUMAN PLANNING PREVIEW</p>
+    <h2 id="results-title">Capacity allocation</h2>
+    <div class="stats" id="stats" aria-live="polite"></div>
+    <p class="subtle">A fully allocated estimate only means it fits in this draft plan. It does not mean work has started, a vulnerability was fixed, or an authorised retest has happened.</p>
+  </div>
+  <div class="panel">
+    <h2>Weekly workload</h2>
+    <div id="weekly" class="weeks"></div>
+  </div>
+  <div class="panel">
+    <p class="eyebrow">04 / CAPACITY WHAT-IF</p>
+    <h2>What if the team had more capacity?</h2>
+    <p>Compare the baseline with an alternative number of engineers. This does not hire, assign or book anyone; assumptions remain unchanged except staffing.</p>
+    <div class="scenario-controls">
+      <label for="extra-engineers">Additional engineers (0–10)</label>
+      <input id="extra-engineers" type="number" min="0" max="10" value="1">
+      <button type="button" id="compare">Compare staffing</button>
+    </div>
+    <div id="comparison" aria-live="polite"></div>
+  </div>
+  <div class="panel">
+    <h2>Proposed work queue</h2>
+    <p class="subtle">Anonymous source positions only. A task can be split between weeks. No raw case IDs, addresses, descriptions, or assignment records appear here.</p>
+    <div class="table-scroll"><table><thead><tr><th scope="col">Week</th><th scope="col">Source position</th><th scope="col">Severity</th><th scope="col">Original source retest</th><th scope="col">Hours</th><th scope="col">Allocation</th></tr></thead><tbody id="allocations"></tbody></table></div>
+  </div>
+  <div class="panel">
+    <h2>Private aggregate handoff</h2>
+    <p>Downloads contain only counts, hour estimates and planning weeks. They contain no original findings, client identity or source filename. Share only after an independent human privacy review.</p>
+    <div class="actions"><button id="export-json" type="button" class="secondary">Export aggregate JSON</button>
+      <button id="export-csv" type="button" class="secondary">Export aggregate CSV</button>
+      <button type="button" id="print">Print review</button></div>
+  </div>
+</section>
+<p id="feedback" class="feedback" role="alert" aria-live="assertive"></p>
+</main>
+<footer class="wrap"><small>Local planning is not customer authentication, consent, revocation, a scan, a verified repair or release approval. INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD.</small></footer>
+<script>/* LightUp Remediation Capacity — disconnected, draft-only planning primitives.
+ * No execution, network calls, credentials, durable storage or authorization.
+ */
+(function (root) {
+  'use strict';
+  const HEADERS = ['finding_id','title','severity','retest_status','remediation'];
+  const SEVERITIES = ['critical','high','medium','low','info'];
+  const STATUSES = ['not_tested','fix_pending','fixed','regression'];
+  const MAX_BYTES = 1048576;
+  const MAX_ROWS = 350;
+  const DEFAULT_HOURS = Object.freeze({critical:20,high:12,medium:6,low:3,info:1});
+  const SEVERITY_INDEX = new Map(SEVERITIES.map((name, index) => [name, index]));
+  function fail(reason) { throw new Error(reason); }
+  function exactInteger(value, min, max, label) {
+    const n = typeof value === 'number' ? value : Number(value);
+    if (!Number.isSafeInteger(n) || n < min || n > max) fail('Invalid ' + label);
+    return n;
+  }
+  function csvRows(text) {
+    if (typeof text !== 'string' || text.length > MAX_BYTES || text.includes('\u0000')) fail('CSV is not a bounded text report');
+    const out = [], row = []; let field = '', quote = false, closed = false, atStart = true;
+    for (let i = 0; i < text.length; i++) {
+      const c = text[i];
+      if (quote) {
+        if (c === '"') {
+          if (text[i+1] === '"') {field += '"'; i++;}
+          else { quote = false; closed = true; }
+        } else field += c;
+      } else if (c === ',' || c === '\n' || c === '\r') {
+        row.push(field); field = ''; closed = false; atStart = true;
+        if (c !== ',') {
+          if (c === '\r' && text[i+1] === '\n') i++;
+          out.push(row.splice(0));
+          if (out.length > MAX_ROWS + 2) fail('Too many CSV records');
+        }
+      } else if (c === '"' && atStart && !closed) {
+        quote = true; atStart = false;
+      } else {
+        if (closed || c === '"') fail('Malformed CSV quoting');
+        field += c; atStart = false;
+      }
+      if (field.length > 8000) fail('Oversized CSV field');
+    }
+    if (quote) fail('Unclosed quoted CSV field');
+    if (field !== '' || row.length) { row.push(field); out.push(row); }
+    while (out.length && out[out.length-1].length === 1 && out[out.length-1][0] === '') out.pop();
+    return out;
+  }
+  function parseCSV(text) {
+    const rows = csvRows(text.replace(/^\uFEFF/, ''));
+    if (!rows.length || rows[0].length !== 5 || rows[0].some((x,i)=>x!==HEADERS[i])) fail('Not the original LightUp five-column finding CSV');
+    if (rows.length < 2 || rows.length > MAX_ROWS + 1) fail('Report must contain 1–350 findings');
+    const seen = new Set();
+    const findings = rows.slice(1).map((row, i) => {
+      if (row.length !== 5 || !row[0] || row[0].length > 200 || !row[1] || row[1].length > 600 || row[4].length > 4000) fail('Invalid source finding record');
+      if (!SEVERITIES.includes(row[2]) || !STATUSES.includes(row[3])) fail('Invalid severity or retest status');
+      if (seen.has(row[0])) fail('Duplicate finding identity');
+      seen.add(row[0]);
+      // Never retain or expose title, ID, remediation or source filename in planning views/exports.
+      return Object.freeze({ordinal:i+1,severity:row[2],retest:row[3]});
+    });
+    return Object.freeze(findings);
+  }
+  function utcStart(date) {
+    if (typeof date !== 'string' || !/^\d{4}-\d\d-\d\d$/.test(date)) fail('Use an ISO calendar start date');
+    const [y,m,d] = date.split('-').map(Number);
+    const ms = Date.UTC(y,m-1,d);
+    if (new Date(ms).toISOString().slice(0,10) !== date || y < 2020 || y > 2100) fail('Invalid planning date');
+    return ms;
+  }
+  function iso(ms) { return new Date(ms).toISOString().slice(0,10); }
+  function plan(findings, options) {
+    if (!Array.isArray(findings) || findings.length < 1 || findings.length > MAX_ROWS) fail('Import findings first');
+    const start = utcStart(options.start);
+    const weeks = exactInteger(options.weeks,1,12,'sprint weeks');
+    const engineers = exactInteger(options.engineers,1,30,'team size');
+    const workDays = exactInteger(options.workDays,1,5,'working days');
+    const hoursPerDay = exactInteger(options.hoursPerDay,1,10,'hours per day');
+    const reserve = exactInteger(options.reserve,0,80,'reserved capacity percentage');
+    const estimated = {};
+    SEVERITIES.forEach(s => { estimated[s] = exactInteger(options.hours[s],1,200,'estimated '+s+' effort'); });
+    const gross = engineers * workDays * hoursPerDay;
+    const capacity = Math.floor((gross * (100 - reserve)) / 100);
+    if (capacity < 1) fail('No available capacity after reserve');
+    const queue = findings.map((finding,i)=>{
+      if (!finding || !SEVERITIES.includes(finding.severity) || !STATUSES.includes(finding.retest)) fail('Noncanonical finding');
+      return {ordinal:finding.ordinal||i+1,severity:finding.severity,retest:finding.retest,
+        remaining:estimated[finding.severity],effort:estimated[finding.severity]};
+    });
+    // All four original retest states remain work candidates; "fixed" is not proof.
+    // Regressions and high severity first. This is a proposed queue, never an SLA.
+    queue.sort((a,b) => Number(b.retest==='regression')-Number(a.retest==='regression') ||
+      SEVERITY_INDEX.get(a.severity)-SEVERITY_INDEX.get(b.severity) || a.ordinal-b.ordinal);
+    const schedule = [];
+    for (let w=0;w<weeks;w++) {
+      let remaining = capacity;
+      const portions=[];
+      for (const task of queue) {
+        if (!remaining) break;
+        if (!task.remaining) continue;
+        const allocation = Math.min(remaining,task.remaining);
+        task.remaining -= allocation;
+        remaining -= allocation;
+        portions.push(Object.freeze({ordinal:task.ordinal,severity:task.severity,
+          sourceRetest:task.retest,hours:allocation,finished:task.remaining===0}));
+      }
+      schedule.push(Object.freeze({week:w+1,start:iso(start+w*7*86400000),
+        capacity,assigned:capacity-remaining,remaining,portions:Object.freeze(portions)}));
+    }
+    const outstanding = queue.filter(x=>x.remaining>0);
+    const totalHours = queue.reduce((n,x)=>n+x.effort,0);
+    return Object.freeze({schedule:Object.freeze(schedule),
+      capacity, totalHours, assignedHours:totalHours-outstanding.reduce((n,x)=>n+x.remaining,0),
+      backlogHours:outstanding.reduce((n,x)=>n+x.remaining,0),
+      backlogCount:outstanding.length,
+      completedProposals:queue.filter(x=>x.remaining===0).length,
+      sourceCount:queue.length,
+      reserve, start:options.start,daysPerWeek:workDays});
+  }
+  function summary(plan) {
+    return {
+      schema:'lightup.remediation_capacity_draft.v1',
+      review_only:true, authorization:false, consent:false, grant:false, scan:false,
+      execute:false, dispatch:false, retest_verified:false, deploy:false, release:false,
+      source_count:plan.sourceCount, proposed_completed:plan.completedProposals,
+      total_estimated_hours:plan.totalHours, assigned_hours:plan.assignedHours,
+      backlog_hours:plan.backlogHours, backlog_findings:plan.backlogCount,
+      sprint_weeks:plan.schedule.map(week=>{
+        const severity_hours=Object.fromEntries(SEVERITIES.map(s=>[s,week.portions.filter(p=>p.severity===s).reduce((a,p)=>a+p.hours,0)]));
+        return {week:week.week,start:week.start,available_hours:week.capacity,
+          allocated_hours:week.assigned,severity_hours};
+      })
+    };
+  }
+  function csvReport(plan) {
+    const escape = v => '"' + String(v).replace(/"/g,'""') + '"';
+    const headers=['week','week_start','available_hours','allocated_hours',...SEVERITIES.map(s=>s+'_hours')];
+    const rows=plan.schedule.map(w=>[w.week,w.start,w.capacity,w.assigned,...SEVERITIES.map(s=>
+      w.portions.filter(p=>p.severity===s).reduce((a,p)=>a+p.hours,0))]);
+    return [headers.map(escape).join(','),...rows.map(row=>row.map(escape).join(','))].join('\r\n')+'\r\n';
+  }
+  root.LightUpCapacity = Object.freeze({parseCSV,plan,summary,csvReport,DEFAULT_HOURS,MAX_BYTES,MAX_ROWS});
+})(window);
+</script>
+<script>/* LightUp Remediation Capacity Studio — no persistence, no network, no execution. */
+(function () {
+  'use strict';
+  const engine = window.LightUpCapacity;
+  const el = id => document.getElementById(id);
+  const $ = (tag, text, cls) => {
+    const node = document.createElement(tag);
+    if (text !== undefined) node.textContent = String(text);
+    if (cls) node.className = cls;
+    return node;
+  };
+  let findings = null;
+  let result = null;
+  let lastOptions = null;
+  const source = el('source');
+  const feedback = el('feedback');
+  const setFeedback = (msg, error=false) => {
+    feedback.textContent = msg;
+    feedback.classList.toggle('error',error);
+  };
+  function forget() {
+    findings = null; result = null; lastOptions = null;
+    source.value = '';
+    el('source-status').textContent = 'No report loaded. All files stay in this browser tab.';
+    el('generate').disabled = true;
+    el('results').hidden = true;
+    el('stats').replaceChildren();
+    el('weekly').replaceChildren();
+    el('allocations').replaceChildren();
+    setFeedback('Imported source and proposed capacity plan discarded from this workspace.');
+  }
+  el('forget').addEventListener('click',forget);
+  source.addEventListener('change',async () => {
+    const file = source.files && source.files[0];
+    if (!file) return;
+    try {
+      if (file.size > engine.MAX_BYTES || file.size === 0) throw new Error('Source must be a nonempty CSV no larger than 1 MiB.');
+      // Strict decoding; malformed UTF-8 must not be silently replaced.
+      const content = new TextDecoder('utf-8',{fatal:true}).decode(await file.arrayBuffer());
+      const prepared = engine.parseCSV(content);
+      findings = prepared; result = null; lastOptions = null;
+      el('generate').disabled = false;
+      el('results').hidden = true;
+      const counts = {};
+      for (const f of findings) counts[f.severity] = (counts[f.severity]||0)+1;
+      el('source-status').textContent = 'Loaded '+findings.length+' source records · severity counts: '+
+        ['critical','high','medium','low','info'].map(s=>s+' '+(counts[s]||0)).join(', ')+'. Source identities and descriptions are not shown.';
+      setFeedback('Report read locally. Review team estimates, then prepare a draft.');
+    } catch (err) {
+      setFeedback('Source held: '+(err instanceof Error?err.message:'Invalid report'),true);
+    }
+  });
+  const input = name => el('settings').elements.namedItem(name).value;
+  el('settings').addEventListener('submit',event=>{
+    event.preventDefault();
+    if (!findings) {setFeedback('Load an authorised source export first.',true);return;}
+    try {
+      const hours = {};
+      for (const severity of ['critical','high','medium','low','info']) hours[severity] = input(severity);
+      lastOptions = {
+        start:input('start'),weeks:input('weeks'),engineers:input('engineers'),
+        workDays:input('workDays'),hoursPerDay:input('hoursPerDay'),
+        reserve:input('reserve'),hours
+      };
+      result = engine.plan(findings,lastOptions);
+      render();
+      renderComparison();
+      el('results').hidden = false;
+      setFeedback('Draft allocations prepared offline. Nothing has been assigned or executed.');
+    } catch (err) {
+      result = null; el('results').hidden=true;
+      setFeedback('Plan held: '+(err instanceof Error?err.message:'Invalid inputs'),true);
+    }
+  });
+  function render() {
+    const stats = el('stats'); stats.replaceChildren();
+    const vals = [
+      ['Source findings',result.sourceCount],
+      ['Estimated effort',result.totalHours+' h'],
+      ['Planned hours',result.assignedHours+' h'],
+      ['Unplanned hours',result.backlogHours+' h'],
+      ['Still partly/unplanned',result.backlogCount],
+      ['Fully allocated estimates',result.completedProposals]
+    ];
+    for (const [label,value] of vals) {
+      const card=$('div',undefined,'stat'); card.append($('strong',value),$('span',label));stats.append(card);
+    }
+    const weekly=el('weekly'); weekly.replaceChildren();
+    for (const week of result.schedule) {
+      const block=$('div',undefined,'week');
+      const title=$('div',undefined,'week-header');
+      title.append($('strong','Week '+week.week+' · '+week.start),
+        $('span',week.assigned+' / '+week.capacity+' h'));
+      const track=$('div',undefined,'track');
+      track.setAttribute('role','meter');track.setAttribute('aria-valuemin','0');
+      track.setAttribute('aria-valuemax',String(week.capacity));
+      track.setAttribute('aria-valuenow',String(week.assigned));
+      track.setAttribute('aria-label','Week '+week.week+' allocated hours');
+      const fill=$('div',undefined,'fill');fill.style.width=String(100*week.assigned/week.capacity)+'%';
+      track.append(fill);block.append(title,track);
+      block.append($('p',week.portions.length+' planned allocations; '+week.remaining+' h free.','subtle'));
+      weekly.append(block);
+    }
+    const rows=el('allocations');rows.replaceChildren();
+    for (const week of result.schedule) {
+      for (const portion of week.portions) {
+        const tr=$('tr');
+        for (const value of [week.week,'Finding '+String(portion.ordinal).padStart(3,'0'),
+          portion.severity,portion.sourceRetest,portion.hours+' h',portion.finished?'Estimated effort allocated':'Continues']) {
+          tr.append($('td',value));
+        }
+        rows.append(tr);
+      }
+    }
+    if (!rows.children.length) {
+      const tr=$('tr'),cell=$('td','No allocations within the available capacity.');cell.colSpan=6;tr.append(cell);rows.append(tr);
+    }
+  }
+
+  function renderComparison() {
+    const box=el('comparison');box.replaceChildren();
+    if (!findings || !result || !lastOptions) return;
+    try {
+      const extra=Number(el('extra-engineers').value);
+      if (!Number.isSafeInteger(extra) || extra < 0 || extra > 10) throw new Error('Use 0–10 additional engineers.');
+      const n=Number(lastOptions.engineers)+extra;
+      if (n > 30) throw new Error('The scenario supports at most 30 engineers.');
+      const alternative=engine.plan(findings,{...lastOptions,engineers:n});
+      const candidates=[];
+      for (let count=1;count<=30;count++) {
+        const candidate=engine.plan(findings,{...lastOptions,engineers:count});
+        if (candidate.backlogHours===0) {candidates.push(count);break;}
+      }
+      const minTeam=candidates.length?candidates[0]:null;
+      const cards=$('div',undefined,'scenario-grid');
+      for (const [title,planned,team] of [
+        ['Baseline',result,Number(lastOptions.engineers)],
+        ['What-if +'+extra,alternative,n]
+      ]) {
+        const card=$('div',undefined,'scenario-card');
+        card.append($('strong',title),$('p',team+' engineers · '+planned.assignedHours+' assigned h'),
+          $('p',planned.backlogHours+' backlog h · '+planned.backlogCount+' unfinished estimates'));
+        cards.append(card);
+      }
+      box.append(cards);
+      const difference=result.backlogHours-alternative.backlogHours;
+      const msg= difference>0
+        ? 'Proposed additional capacity covers '+difference+' more estimated hours within the same time horizon.'
+        : 'The extra staffing does not reduce backlog within these planning assumptions.';
+      box.append($('p',msg,'subtle'));
+      box.append($('p',minTeam===null
+        ? 'Even a 30-person team would not fit all estimated work into these weeks.'
+        : 'The smallest modeled team fitting all estimated hours in these weeks is '+minTeam+
+        ' engineers. This is not a staffing recommendation, SLA or completion guarantee.','subtle'));
+    } catch (error) {
+      box.append($('p','Scenario held: '+(error instanceof Error?error.message:'Invalid scenario'),'feedback error'));
+    }
+  }
+  el('compare').addEventListener('click',renderComparison);
+  function download(name,content,mime) {
+    // Deliberate user-initiated, local-only export. URL revoked immediately.
+    const blob=new Blob([content],{type:mime});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    a.href=url;a.download=name;a.rel='noopener';document.body.append(a);a.click();a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),1500);
+  }
+  el('export-json').addEventListener('click',()=>{
+    if (!result) return;
+    const ok=window.confirm('Export aggregate planning counts only? This is an unsigned REVIEW_ONLY draft with no authorisation.');
+    if (!ok) return;
+    download('lightup-capacity-draft.json',JSON.stringify(engine.summary(result),null,2)+'\n','application/json;charset=utf-8');
+    setFeedback('Redacted aggregate draft exported. No source details included.');
+  });
+  el('export-csv').addEventListener('click',()=>{
+    if (!result) return;
+    const ok=window.confirm('Export aggregate weekly hours only? Verify the intended private recipient before sharing.');
+    if (!ok) return;
+    download('lightup-capacity-weeks.csv',engine.csvReport(result),'text/csv;charset=utf-8');
+    setFeedback('Weekly aggregate CSV exported. No individual findings included.');
+  });
+  el('print').addEventListener('click',()=>{if(result)window.print();});
+  const now = new Date();
+  el('settings').elements.namedItem('start').value = [
+    now.getFullYear(),String(now.getMonth()+1).padStart(2,'0'),String(now.getDate()).padStart(2,'0')
+  ].join('-');
+})();
+</script>
+</body>
+</html>
