@@ -12,6 +12,7 @@ from pathlib import Path
 import zipfile
 
 import package as calendar_package
+import package_owner_reply as owner_reply_package
 
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent
@@ -38,7 +39,15 @@ INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD
 4. View deadlines, select exact human owner, allocate human-only work,
    preview proposed severity dates, compare a NEW separately authenticated
    original CSV source, and export PRIVATE revised Casework JSON.
-5. Transfer revised private source/notes only through an independently
+5. For one assigned HUMAN owner, select the exact owner label in Calendar
+   and export a PRIVATE single-owner handoff over an approved secure channel.
+   The recipient opens owner-reply/index.html LOCALLY and edits only local
+   status, date, next action and blocker. The recipient exports a PRIVATE
+   owner reply and returns it over an independently verified secure channel.
+   The original Calendar checks full original finding IDs and the unchanged
+   human baseline before any atomic reply import. No authenticating identity
+   or permission is inferred from labels or digest values.
+6. Transfer revised private source/notes only through an independently
    approved secure channel. Optional .ics calendar events are TENTATIVE
    human follow-ups, NOT scan/retest authority or verified remediation.
 
@@ -69,6 +78,7 @@ def build() -> bytes:
             raise ValueError("Original owner source changed: " + filename)
         files["casework/" + filename] = content
     files["calendar/index.html"] = calendar_package.build()
+    files["owner-reply/index.html"] = owner_reply_package.build()
     manifest = "\n".join(
         f"{sha(data)}  {name}" for name, data in sorted(files.items())
     ) + "\n"

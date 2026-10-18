@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<title>LightUp · Private Owner Reply Desk</title><link rel="stylesheet" href="owner-reply.css"></head>
+<body><header><div class="brand">LIGHTUP / PRIVATE HUMAN COLLABORATION</div><h1>Owner Reply Desk</h1><p>Review only the original finding summaries selectively shared with your intended team. Update local human planning; no source, retest or permission changes.</p><div class="hold">INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD</div></header>
+<main>
+<section class="panel"><h2>1. Confirm an independently authorized private handoff</h2>
+<p>A file or hash does not verify your identity, the sender, client/engagement, consent, revocation, scope, or grant. Do not import data from an unknown source or an unapproved channel.</p>
+<label class="ack"><input id="ack" type="checkbox"> I independently verified that I am the intended recipient of this PRIVATE handoff for the exact actual client and engagement, through a separately approved confidential channel. My edits are human planning only.</label>
+<label>PRIVATE single-owner JSON<input id="file" type="file" accept=".json,application/json"></label>
+<p id="message" role="status" aria-live="polite">No private packet loaded.</p></section>
+<section id="workspace" hidden>
+<section class="panel"><h2>2. Coordinate human work for the selected owner</h2>
+<p id="owner" class="owner"></p><p id="count"></p><p>Original five finding fields and human owner label are read-only. All updates remain in browser memory until you explicitly export a PRIVATE reply.</p>
+<div id="cards" class="cards"></div></section>
+<section class="panel"><h2>3. Return only the privately reviewed human notes</h2>
+<p>The return includes the same original subset and human-baseline fingerprint so the sender can reject changed or stale work. It does not approve a real retest, verify a fix, or contact LightUp.</p>
+<label class="ack"><input id="return-ack" type="checkbox"> I explicitly confirm the independently approved PRIVATE return channel and understand this output is unsigned human coordination only.</label>
+<div class="actions"><button id="export" type="button" disabled>Export PRIVATE owner reply JSON</button><button id="clear" type="button" class="quiet">Clear private memory</button></div>
+<p id="reply-message" role="status" aria-live="polite"></p></section>
+</section></main><footer>Offline-only · no account, network, storage, scan, grant, verified retest or automated ticket. Handle downloaded PRIVATE files securely.</footer>
+<script src="../casework/remediation-engine.js"></script><script src="owner-private-json.js"></script><script src="owner-protocol.js"></script><script src="owner-reply.js"></script></body></html>
