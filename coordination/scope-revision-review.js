@@ -83,5 +83,45 @@ function compare(original,updated){
    'Changes require independent human review. Literal asset comparisons are NOT CIDR coverage or DNS membership decisions.'
  };
 }
-global.LightUpRevisionReview=Object.freeze({compare});
+function nativeIntakePreview(draft){
+ // Mirrors only the unmerged client source owner's *documented* lossless
+ // representability decisions. Never claims full DomainStore validation.
+ if(!draft||draft.kind!=='lightup.scope_proposal_draft'||draft.schema_version!==1||
+    draft.state!=='DRAFT_ONLY'||!Array.isArray(draft.excluded_assets)||
+    !draft.proposed_activities||!draft.proposed_window_local)
+    throw Error('Locally validated Studio v1 original required.');
+ const blockers=[];
+ if(draft.excluded_assets.length)blockers.push({
+  key:'exclusions',message:'Explicit exclusions cannot be persisted by the current native request schema. Never silently drop them.'
+ });
+ if(draft.requested_mode!=='authorized_assessment')blockers.push({
+  key:'analysis_mode',message:'Analysis-only proposals cannot be converted into native authorized-assessment requests.'
+ });
+ if(draft.proposed_activities.private_lab_network_checks)blockers.push({
+  key:'private_lab',message:'Private-lab checks need the separate lab intake; this native request cannot carry that activity.'
+ });
+ const local=draft.proposed_window_local;
+ if(local.start!==null||local.end!==null)blockers.push({
+  key:'requested_window',message:'Native request persistence does not enforce local scheduled assessment windows.'
+ });
+ const utc=draft.proposed_window_utc;
+ if(utc!==undefined&&(!utc||utc.status!=='unscheduled'||
+    Object.keys(utc).sort().join('|')!=='end|start|status|timezone'||
+    utc.start!==null||utc.end!==null))blockers.push({
+  key:'utc_provenance',message:'Source UTC/window provenance is not an unconstrained unscheduled native request.'
+ });
+ if(draft.requested_risk===4)blockers.push({
+  key:'risk_escalation',message:'High-risk proposals require independent operator risk escalation; this desk provides no approval.',
+  advisory:true
+ });
+ const hard=blockers.filter(item=>!item.advisory);
+ return {
+  disposition:'REVIEW_ONLY',authorization:false,client_consent:false,operator_consent:false,
+  grant:false,execution:false,scan:false,release:false,
+  nativeRequestShapeCandidate:hard.length===0,
+  blockers,stage:hard.length?'PRIVATE_HANDOFF_REQUIRED':'NATIVE_PREVIEW_POSSIBLE_NOT_AUTHORIZED',
+  warning:'Structural preview only. Native CLI, authenticated client request, separate operator authorization, current tenant lineage, risk approval and action-time revocation must validate independently. Do not use this result as permission.'
+ };
+}
+global.LightUpRevisionReview=Object.freeze({compare,nativeIntakePreview});
 })(window);
