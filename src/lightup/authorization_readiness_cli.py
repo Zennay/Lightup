@@ -328,13 +328,20 @@ def _read_report(database: Path, *, client_id: str | None = None,
     # An operator-origin spoofed portal submission must never be promoted to grant
     # evidence; this is human triage only and changes no DomainStore record.
     request_queue = []
+    request_history = []
     for request in requests:
-        if request["status"] not in {"submitted", "under_review"}:
-            continue
-        flags = ["PENDING_OPERATOR_REVIEW"]
+        pending = request["status"] in {"submitted", "under_review"}
+        approved = request["status"] == "approved"
+        rejected = request["status"] == "rejected"
+        flags = ["PENDING_OPERATOR_REVIEW" if pending else
+                 "RECORDED_ADMINISTRATIVE_APPROVAL" if approved else
+                 "RECORDED_ADMINISTRATIVE_REJECTION" if rejected else
+                 "UNKNOWN_REQUEST_STATUS"]
         origin_valid = _valid_requester(request, users_by_id)
         if not origin_valid:
             flags.append("INVALID_CLIENT_REQUEST_ORIGIN")
+        if approved and not _trusted_request_origin(request, users_by_id):
+            flags.append("UNTRUSTED_ADMINISTRATIVE_APPROVAL")
         if _assets(request["requested_assets_json"]) is None:
             flags.append("INVALID_REQUEST_ASSETS")
         risk = request["requested_risk"]
@@ -345,15 +352,17 @@ def _read_report(database: Path, *, client_id: str | None = None,
         created_at = _time(request["created_at"])
         if created_at is None:
             flags.append("INVALID_REQUEST_CREATION_TIME")
-        for flag in flags:
-            counter[flag] += 1
+        if pending:
+            for flag in flags:
+                counter[flag] += 1
         item = {
             "identity_key": _record_identity("request", request["request_id"]),
             "source_key": hashlib.sha256(json.dumps(
-                dict(request), sort_keys=True, ensure_ascii=True,
+                {"request": dict(request), "current_role_review_flags": flags},
+                sort_keys=True, ensure_ascii=True,
                 default=str, separators=(",", ":")
             ).encode("ascii")).hexdigest(),
-            "request_number": len(request_queue) + 1,
+            "request_number": len(request_history) + 1,
             "client": by_client.get(request["client_id"], "(missing client)"),
             "status": request["status"],
             "created_at": created_at.isoformat() if created_at is not None else "invalid",
@@ -364,9 +373,14 @@ def _read_report(database: Path, *, client_id: str | None = None,
                 if not origin_valid else
                 "Authenticate the genuine client request and review scope/risk independently; "
                 "do not create a grant before domain request-to-grant binding is implemented."
+                if pending else
+                "Compare historical administrative decision with verified client intent. "
+                "The stored state is not proof of client/operator consent or an executable grant."
             ),
         }
-        request_queue.append(item)
+        request_history.append(item)
+        if pending:
+            request_queue.append(item)
 
     # Orphans cannot be safely attributed to any engagement or client.
     orphan_count = sum(g["engagement_id"] not in by_engagement for g in grants) if client_id is None else 0
@@ -396,6 +410,7 @@ def _read_report(database: Path, *, client_id: str | None = None,
             "Opaque source-key hashes support local action continuity only; they are unsigned pseudonyms, not identities, digital signatures or authorization.",
             "Stable identity-key hashes distinguish unchanged/changed/removed stored rows across two offline reports; they are not proof that a missing record was remediated.",
             "Reports must have matching exact selection scope fingerprints for offline comparison; report contents are unsigned/untrusted and never authorize real work.",
+            "Historical submitted, approved or rejected request records are informational; transitions cannot prove authentic consent or entitlement to a scan.",
         ],
         "summary": {
             "clients": len(clients),
@@ -407,6 +422,7 @@ def _read_report(database: Path, *, client_id: str | None = None,
         },
         "engagements": findings,
         "review_queue": request_queue,
+        "request_history": request_history,
     }
     return report
 
@@ -442,12 +458,14 @@ def _interactive_workspace(report: dict, nonce: str) -> str:
         "scope_description": report["scope_description"],
         "fingerprint": hashlib.sha256(
             json.dumps({"engagements": report["engagements"],
-                        "review_queue": report["review_queue"]},
+                        "review_queue": report["review_queue"],
+                        "request_history": report["request_history"]},
                        ensure_ascii=True, sort_keys=True,
                        separators=(",", ":")).encode("ascii")
         ).hexdigest(),
         "engagements": report["engagements"],
         "review_queue": report["review_queue"],
+        "request_history": report["request_history"],
     }
     source = Path(__file__).with_name("authorization_casework.js").read_text("utf-8")
     compare_source = Path(__file__).with_name("authorization_snapshot_compare.js").read_text("utf-8")
@@ -664,7 +682,7 @@ def _pseudonymize_labels(report: dict) -> None:
             labels[real_client] = "Client " + str(len(labels) + 1).zfill(3)
         entry["client"] = labels[real_client]
         entry["engagement"] = "Engagement " + str(index).zfill(3)
-    for item in report["review_queue"]:
+    for item in report["request_history"]:
         client = item["client"]
         if client not in labels:
             labels[client] = "Client " + str(len(labels) + 1).zfill(3)
