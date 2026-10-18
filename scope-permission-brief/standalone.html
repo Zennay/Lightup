@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="referrer" content="no-referrer">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-COQbJZckN2Z+WcBR6VJr61RFcpmrGeyz8kgQdedt6Vw=' 'sha256-3YElSulPng6IagNKFaaAnYHz28eIa5AFzgrUS5+0FcY=' 'sha256-cIhW7AQbuUx/nySMeyEGaGfCkdthJsg3XZKw7T81SCk='; style-src 'sha256-Oh1qcuuxMsMAsrloUOCSvuxx/nPDHr3gWYQWmtj6gWo='; img-src 'none'; connect-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-ilmcG45K7h0DYg1dAC4tu2QQW7yTxA2o3WFpolAGLkk=' 'sha256-3YElSulPng6IagNKFaaAnYHz28eIa5AFzgrUS5+0FcY=' 'sha256-cIhW7AQbuUx/nySMeyEGaGfCkdthJsg3XZKw7T81SCk='; style-src 'sha256-YZK/7FpT/isnjzZAvtIIuYmVCpSjvQhZyODKkfTP6TE='; img-src 'none'; connect-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'">
 <title>LightUp · Scope Permission Brief</title>
 <style>
 :root{color-scheme:dark;font:15px/1.55 system-ui,-apple-system,Segoe UI,sans-serif;--bg:#0a1020;--surface:#121e32;--line:#35455d;--muted:#b8c5d8;--mint:#7de5cd;--warn:#eac081;color:#f2f8ff;background:var(--bg)}
@@ -47,6 +47,9 @@
 @media(max-width:720px){.revision-preview .pending-compare{grid-template-columns:1fr}}
 @media print{#revisionPreview{display:none!important}}
 
+/* Local two-role question resume: bounded file, no persistence and no authority. */
+.backup-panel{border:1px solid #506b81}.backup-label{display:block;font-weight:750;margin:17px 0 6px}.backup-panel input[type=file]{display:block;max-width:100%;font:inherit;color:var(--muted)}.backup-panel .receipt{margin-top:14px}@media print{.backup-panel{display:none!important}}
+
 </style>
 
 
@@ -83,6 +86,7 @@
  <div class="buttons">
   <button id="pendingExport">Export non-authorizing preview JSON</button>
   <button id="pendingPaper">Save printable pre-apply brief</button>
+  <button id="pendingBackup">Save current role answers first</button>
   <button id="pendingApply">Apply revision and reset prior human replies</button>
   <button id="pendingDiscard" class="subtle">Discard proposal — preserve existing work</button>
  </div>
@@ -95,6 +99,16 @@
 <section class="panel">
  <div class="row"><div><div class="eyebrow">3. Human clarification queue</div><h2>Questions to resolve before approval</h2><p>Mark whether a question has merely been sent or answered. These are self-reported preparation notes, never verification or proof. Export only includes updates for the selected audience; a client-labelled note cannot claim operator answers, or vice versa.</p></div><div class="counter"><strong id="openCount">—</strong><small>unanswered / unresolved</small></div></div>
  <div id="questions" aria-live="polite"></div>
+</section>
+<section class="panel backup-panel" aria-label="Local human question backup">
+ <div class="eyebrow">LOCAL RESUME · NO AUTHORIZATION OR BROWSER STORAGE</div>
+ <h2>Save or reopen both roles’ current question statuses</h2>
+ <p>Download a single privacy-minimal JSON snapshot of the current unanswered, sent and answered-but-unverified preparation questions. To resume later, first open the <strong>exact original Studio source</strong> again, then import this backup. It never includes raw targets, client names, safety notes, consent or execution rights.</p>
+ <div class="buttons"><button id="backupSave">Save both roles’ local preparation (HOLD)</button></div>
+ <label class="backup-label" for="backupImport">Reopen local preparation backup (JSON)</label>
+ <input type="file" id="backupImport" accept=".json,application/json">
+ <p id="backupState" role="status" aria-live="polite">No local preparation backup restored.</p>
+ <p class="receipt">Imported role statuses are unverified human reminders only. Conflicting existing work cannot be silently replaced.</p>
 </section>
 <section class="panel">
  <div class="eyebrow">SOURCE-BOUND · PRIVATE DATA OMITTED</div><h2>Handoff preview</h2><p>Only count, category, source SHA-256 and generic question states are exported. No client name, targets, IPs, domains, notes, filenames or source bytes.</p>
@@ -326,20 +340,22 @@ function questionIds(d,window){
  codes.push('revision_client','revision_operator');
  return codes;
 }
-function exportModel(){
+function exportModel(forAudience=null){
  if(!current)return null;
+ const audience=forAudience||document.querySelector('[name="audience"]:checked').value;
+ assert(['client','operator'].includes(audience),'Unknown review audience');
  return {
   kind:'lightup.scope_permission_brief',schema_version:1,state:'REVIEW_ONLY_HOLD',
   source_kind:'lightup.scope_proposal_draft',source_sha256:current.sha256,
-  audience:document.querySelector('[name="audience"]:checked').value,
+  audience,
   requested_mode:current.draft.requested_mode,requested_risk:current.draft.requested_risk,
   proposed_assets_count:current.draft.requested_assets.length,excluded_assets_count:current.draft.excluded_assets.length,
   window_status:current.window==='Resolved (still unapproved)'?'resolved_unapproved':current.window.toLowerCase(),
   // A role-labelled export may report ONLY that role's own preparation questions.
   // Other-role local annotations stay private and cannot impersonate another reply.
   question_states:questions.map(q=>({code:q.code,role:q.role,
-   status:q.role===document.querySelector('[name="audience"]:checked').value?q.status:'unanswered'})),
-  outstanding_questions:questions.filter(q=>q.role!==document.querySelector('[name="audience"]:checked').value||q.status!=='answered_unverified').length,
+   status:q.role===audience?q.status:'unanswered'})),
+  outstanding_questions:questions.filter(q=>q.role!==audience||q.status!=='answered_unverified').length,
   flags:flags(),
   notice:'No approval, consent, permission, grant, scan, deployment, release or authority. Answers are unverified.'
  };
@@ -460,6 +476,85 @@ function download(){
  link.href=url;link.download='lightup-permission-brief-review-only.json';
  document.body.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
 }
+/* Local human question workspace backup: source-bound coordination only.
+   This does not capture evidence, signatures, consent or any target literal. */
+function preparationBackup(){
+ if(!current)return null;
+ return {
+  kind:'lightup.scope_human_preparation_backup',
+  schema_version:1,state:'REVIEW_ONLY_HOLD',
+  source_sha256:current.sha256,
+  client:exportModel('client'),
+  operator:exportModel('operator'),
+  flags:flags(),
+  notice:'Unverified, unsent local question states only. To resume, load the exact original Studio-v1 JSON before importing. This file is NOT consent, approval, a grant or execution authority.'
+ };
+}
+function savePreparationBackup(){
+ const model=preparationBackup();if(!model)return;
+ const blob=new Blob([JSON.stringify(model,null,2)+'\n'],{type:'application/json'});
+ const url=URL.createObjectURL(blob),link=document.createElement('a');
+ link.href=url;link.download='lightup-local-human-preparation-backup-HOLD.json';
+ document.body.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+function reviewStatusFromBackup(value,audience){
+ const baseline=exportModel(audience);
+ assert(exactKeys(value,Object.keys(baseline))&&Object.keys(value).length===Object.keys(baseline).length,'Unknown role review schema');
+ for(const key of Object.keys(baseline)){
+  if(['question_states','outstanding_questions'].includes(key))continue;
+  assert(JSON.stringify(value[key])===JSON.stringify(baseline[key]),'Incompatible original or authority fields');
+ }
+ assert(Array.isArray(value.question_states)&&value.question_states.length===questions.length,'Missing role questions');
+ const statusesByQuestion=[];
+ for(let i=0;i<questions.length;i++){
+  const got=value.question_states[i],expected=questions[i];
+  assert(exactKeys(got,['code','role','status'])&&Object.keys(got).length===3,'Unknown question entry');
+  assert(got.code===expected.code&&got.role===expected.role&&statuses.includes(got.status),'Question identity mismatch');
+  assert(expected.role===audience||got.status==='unanswered','Foreign-role answers in backup');
+  statusesByQuestion.push(got.status);
+ }
+ assert(value.outstanding_questions===statusesByQuestion.filter(x=>x!=='answered_unverified').length,'Inconsistent unanswered count');
+ return statusesByQuestion;
+}
+async function restorePreparationBackup(file){
+ if(!current){$('backupState').textContent='Load the exact original Studio proposal before a local backup · HOLD';return;}
+ if(!file||!file.size||file.size>MAX_BYTES){
+  $('backupState').textContent='Missing or oversized local backup · HOLD';return;
+ }
+ const token=epoch,originalSha=current.sha256;
+ try{
+  const bytes=await file.arrayBuffer();
+  assert(bytes.byteLength>0&&bytes.byteLength<=MAX_BYTES,'Backup too large');
+  const source=new TextDecoder('utf-8',{fatal:true,ignoreBOM:true}).decode(bytes);
+  assert(!source.startsWith('\ufeff'),'BOM refused');
+  assertUnambiguousJSON(source);
+  const packet=JSON.parse(source);
+  const keys=['kind','schema_version','state','source_sha256','client','operator','flags','notice'];
+  assert(exactKeys(packet,keys)&&Object.keys(packet).length===keys.length,'Invalid backup fields');
+  assert(packet.kind==='lightup.scope_human_preparation_backup'&&
+   packet.schema_version===1&&packet.state==='REVIEW_ONLY_HOLD'&&
+   packet.source_sha256===originalSha,'Wrong source or backup type');
+  assert(JSON.stringify(packet.flags)===JSON.stringify(flags()),'Backup authority fields are unsafe');
+  assert(packet.notice===preparationBackup().notice,'Unknown backup notice');
+  const fromClient=reviewStatusFromBackup(packet.client,'client');
+  const fromOperator=reviewStatusFromBackup(packet.operator,'operator');
+  assert(token===epoch&&current?.sha256===originalSha,'Original changed during restore');
+  const restored=questions.map((q,i)=>q.role==='client'?fromClient[i]:fromOperator[i]);
+  const conflict=questions.some((q,i)=>q.status!=='unanswered'&&q.status!==restored[i]);
+  if(conflict&&!confirm("This source-bound backup conflicts with locally entered unverified statuses. Replace both roles' current answers?")){
+   $('backupState').textContent='Restore cancelled; previous client/operator answers remain unchanged · HOLD';return;
+  }
+  assert(token===epoch&&current?.sha256===originalSha,'Original changed before restore');
+  questions.forEach((q,i)=>{q.status=restored[i];});
+  render();
+  $('backupState').textContent='Both local role preparation statuses restored from exact original bytes · UNVERIFIED / HOLD';
+ }catch(_){
+  $('backupState').textContent='Local backup rejected without changing existing role answers · HOLD';
+ }finally{
+  $('backupImport').value='';
+ }
+}
+
 /* A revised source is staged separately from the accepted original.
    Nothing here mutates authorization and no raw identifiers cross to the UI/export. */
 function pendingRecord(){
@@ -668,6 +763,9 @@ $('pendingDiscard').addEventListener('click',discardPending);
 $('pendingApply').addEventListener('click',applyPending);
 $('pendingExport').addEventListener('click',exportPending);
 $('pendingPaper').addEventListener('click',exportPendingPaper);
+$('pendingBackup').addEventListener('click',savePreparationBackup);
+$('backupSave').addEventListener('click',savePreparationBackup);
+$('backupImport').addEventListener('change',event=>restorePreparationBackup(event.target.files?.[0]));
 $('clear').addEventListener('click',()=>{hold('Source forgotten');document.dispatchEvent(new CustomEvent('lightup:brief-forget'));$('source').value='';$('reply').value='';$('preview').textContent='';$('receipt').textContent='';});
 $('export').addEventListener('click',download);
 $('textExport').addEventListener('click',downloadText);
