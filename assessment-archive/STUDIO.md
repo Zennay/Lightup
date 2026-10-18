@@ -67,3 +67,24 @@ roles and dates. Subsequent per-slot edits, imports or Reset intentionally
 invalidate that undo snapshot, preventing rollback of unrelated new edits.
 Human review selections are still not persisted unless explicitly exported,
 and the strict original Python parser remains the binding gate.
+
+### Compare an earlier private archive directly in Studio
+
+The original Studio now accepts a second independently validated owner-private
+manifest snapshot. This is optional: the ordinary review still works without it.
+
+    python3 assessment-archive/archive.py studio --manifest /private/NEWER.json --previous /private/OLDER.json --output /private/NEW-historical-studio.html
+
+The private interactive page shows new, absent and byte-identical retained source
+file counts plus the previous archive's original claimed HOLD/REVIEW_ONLY state.
+Current source rows have source-byte history labels and can be filtered as new
+versus retained. An absent source is NOT fixed, a retained source is NOT
+independently verified and a source byte change is NOT a new security finding.
+Both original archives remain owner-private; historical source bytes/hashes never
+become a grant, human approval or execution mode.
+
+This same optional historical comparison is supported by Console option 9,
+and by private packet.py --include-studio --previous /private/OLDER.json.
+The option is refused for aggregate-only packages, protecting the original
+private history fingerprints. Any previous HOLD propagates to the generated
+output's operator-level HOLD result, without changing original source status.

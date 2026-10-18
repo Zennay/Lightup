@@ -33,6 +33,12 @@ def package(args):
     with_studio = bool(getattr(args, "include_studio", False))
     if public and with_studio:
         raise Hold("private interactive studio cannot enter aggregate-only packet")
+    previous_name = getattr(args, "previous", None)
+    if previous_name and (public or not with_studio):
+        raise Hold("historical private manifest requires private studio")
+    previous = (_manifest(decode_json(read_regular(previous_name, MAX_MANIFEST)))
+                if previous_name else None)
+    historical_hold = previous is not None and previous["status"] == "HOLD"
     inventory = aggregate(original) if public else original
     human = None
     stages = None
@@ -55,6 +61,7 @@ def package(args):
         "packet_mode": "AGGREGATE_ONLY" if public else "OWNER_PRIVATE",
         "source_count": original["source_count"], "claimed_status": original["status"],
         "has_human_followup": stages is not None,
+        "has_local_archive_history": previous is not None,
         "original_data_included": False,
         "is_authentication": False,
         **{key: False for key in FLAGS},
@@ -78,10 +85,11 @@ def package(args):
         from portal import render as render_portal
         _entry(zf, "index.html", render_portal(
             is_private=not public, with_followup=stages is not None,
-            with_studio=with_studio, hold=original["status"] == "HOLD"))
+            with_studio=with_studio,
+            hold=original["status"] == "HOLD" or historical_hold))
         if with_studio:
             from archive_studio import render_bytes
-            _entry(zf, "archive-studio.html", render_bytes(source, original))
+            _entry(zf, "archive-studio.html", render_bytes(source, original, previous))
         if stages is not None:
             _entry(zf, "human-worklist.json", encode(human))
             _entry(zf, "human-worklist.html", html_board(original, stages, public))
@@ -90,13 +98,14 @@ def package(args):
         raise Hold("coordination packet exceeds limit")
     publish(args.output, payload)
     print("OFFLINE_COORDINATION_PACKET_CREATED — NO ORIGINAL LAB DATA OR AUTHORITY")
-    return 3 if original["status"] == "HOLD" else 2
+    return 3 if original["status"] == "HOLD" or historical_hold else 2
 
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description="Private lab archive coordination without original source or authorization.")
     parser.add_argument("--manifest", required=True, help="Previously captured original private archive manifest")
     parser.add_argument("--choices", help="Optional original manifest-bound human follow-up form")
+    parser.add_argument("--previous", help="Owner-private previous archive; requires --include-studio, not aggregate-only")
     parser.add_argument("--output", required=True, help="Exact new private ZIP path; no overwrite")
     parser.add_argument("--aggregate-only", action="store_true", help="Remove all original source byte hashes and human slot, role/date assignments")
     parser.add_argument("--include-studio", action="store_true", help="Owner-private interactive review page; incompatible with --aggregate-only")

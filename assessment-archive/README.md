@@ -140,3 +140,19 @@ Aggregate-only ZIPs still get the static script-free index, category counts
 and (if supplied) anonymous human worklist; no Studio or hashes. All ZIP members
 have fixed non-traversing paths and private metadata, and the outer ZIP is a new
 exclusive fsynced 0600 output. Review before distributing any aggregate metadata.
+
+### Interactive previous-versus-current source history
+
+Archive Studio and the private ZIP review room now optionally accept an earlier
+owner-private archive as --previous. The interactive page shows historical
+source-byte changes beside editable human follow-up stages; users can filter
+to newly selected or retained byte sources without ever contacting a target.
+Both manifest snapshots are independently strictly admitted locally. Previous
+HOLD remains a HOLD for the comparison even if the current manifest is
+REVIEW_ONLY. A missing source is never considered a fixed vulnerability.
+
+    python3 assessment-archive/packet.py --manifest /private/NEWER.json --previous /private/OLDER.json --include-studio --output /private/NEW-local-review-room.zip
+
+Historical Studio is not available in anonymous ZIPs; this boundary is enforced,
+not silently downgraded. The existing standalone source comparison CLI still
+works independently.

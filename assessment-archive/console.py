@@ -117,14 +117,18 @@ def operation(choice: str) -> int:
         followup_file = ask("Original edited human follow-up form JSON path") if with_choices else None
         anonymous = yes_no("Create aggregate-only packet without source fingerprints/roles/dates")
         include_studio = False if anonymous else yes_no("Include private interactive browser studio in ZIP")
+        previous = (ask("Previous original private archive manifest path")
+                    if include_studio and yes_no("Compare Studio to a previous private archive") else None)
         output = ask("New private coordination ZIP path (must not exist)")
         return packet.package(SimpleNamespace(manifest=manifest, choices=followup_file,
                                               output=output, aggregate_only=anonymous,
-                                              include_studio=include_studio))
+                                              include_studio=include_studio, previous=previous))
     if choice == "9":
         manifest = ask("Existing owner-private archive manifest JSON path")
+        previous = (ask("Previously saved original private archive manifest JSON")
+                    if yes_no("Compare against an earlier private archive") else None)
         output = ask("New interactive private Archive Studio HTML path (must not exist)")
-        return archive_studio.build(manifest, output)
+        return archive_studio.build(manifest, output, previous)
     raise archive.Hold("invalid operation")
 
 

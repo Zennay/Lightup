@@ -40,6 +40,7 @@
   const typeFilter = byId("type-filter");
   const stageFilter = byId("stage-filter");
   const roleFilter = byId("role-filter");
+  const historyFilter = byId("history-filter");
   const countFormat = n => new Intl.NumberFormat().format(n);
   const notify = message => { status.textContent = message; };
   const fresh = () => choices.map(x => ({...x}));
@@ -82,7 +83,8 @@
     return (!q || terms.includes(q)) &&
       (!typeFilter.value || typeFilter.value === row.kind) &&
       (!stageFilter.value || stageFilter.value === selection.stage) &&
-      (!roleFilter.value || roleFilter.value === selection.next_role);
+      (!roleFilter.value || roleFilter.value === selection.next_role) &&
+      (!historyFilter.value || historyFilter.value === row.history);
   };
   const visibleEntries = () => seed.entries.filter((row, i) => matches(row, choices[i]));
   const entryItem = (row, selection) => {
@@ -92,6 +94,9 @@
     const titleWrap = make("div");
     titleWrap.append(make("div", "title", "Source slot #" + row.slot));
     titleWrap.append(make("div", "small", row.kind.replaceAll("_", " ")));
+    if (row.history) titleWrap.append(make("div", "help",
+      row.history === "NEW_SOURCE_BYTES" ? "New source bytes; not a new finding" :
+      "Unchanged source bytes; not proven correct"));
     head.append(titleWrap, make("span", "pill", row.review_state));
     const description = make("p", "hint", GUIDANCE[row.kind]);
     const meta = make("div", "small", countFormat(row.size_bytes) + " bytes · " +
@@ -267,7 +272,21 @@
     render();
     notify("Last confirmed batch human-plan edit reverted. Original source untouched.");
   });
-  for (const filter of [query,typeFilter,stageFilter,roleFilter]) {
+  if (seed.history) {
+    const h = seed.history;
+    if (h.new_count + h.retained_count !== seed.entries.length ||
+        h.absent_count + h.retained_count !== h.previous_count ||
+        !["HOLD","REVIEW_ONLY"].includes(h.previous_status)) {
+      document.body.textContent = "HISTORICAL_SOURCE_HOLD"; return;
+    }
+    byId("history-panel").hidden = false;
+    byId("history-filter-wrapper").hidden = false;
+    byId("history-new").textContent = String(h.new_count);
+    byId("history-absent").textContent = String(h.absent_count);
+    byId("history-retained").textContent = String(h.retained_count);
+    byId("history-previous-state").textContent = h.previous_status;
+  }
+  for (const filter of [query,typeFilter,stageFilter,roleFilter,historyFilter]) {
     filter.addEventListener(filter === query ? "input" : "change", render);
   }
   byId("export-draft").addEventListener("click",exportChoices);
@@ -276,7 +295,7 @@
     await importChoices(event.target.files?.[0]); event.target.value="";
   });
   byId("clear-filter").addEventListener("click",() => {
-    query.value=typeFilter.value=stageFilter.value=roleFilter.value="";render();
+    query.value=typeFilter.value=stageFilter.value=roleFilter.value=historyFilter.value="";render();
   });
   byId("reset-plan").addEventListener("click",() => {
     if (!window.confirm("Discard all local human planning selections? This cannot be undone.")) return;
