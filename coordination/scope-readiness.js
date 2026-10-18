@@ -369,6 +369,19 @@ function renderLineage(){
    $('detail').scrollIntoView({behavior:'smooth',block:'start'});
   });
   container.append(button);
+  if(r.revision_link&&parent&&sourceCopies.has(r.revision_link.parent_source_sha256)&&
+    sourceCopies.has(r.source_sha256)){
+   const compare=make('button','Compare this version with its local parent');
+   compare.type='button';
+   compare.addEventListener('click',()=>{
+    $('revisionFrom').value=r.revision_link.parent_source_sha256;
+    $('revisionTo').value=r.source_sha256;
+    clearRevisionPreview('Selected locally linked sources for exact-byte revision comparison.');
+    $('revisionCompare').click();
+    $('revisionChanges').scrollIntoView({behavior:'smooth',block:'start'});
+   });
+   container.append(compare);
+  }
   if(r.revision_link){
    const unlink=make('button','Correct/remove this unsigned parent link');
    unlink.type='button';
