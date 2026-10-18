@@ -33,11 +33,18 @@
   const humanSize = n => (n/1024).toFixed(1) + " KiB";
   const table = (container, entries, action) => {
     clearNode(container);
-    for (const entry of entries) {
+    for (const [index, entry] of entries.entries()) {
       const row = document.createElement("div");
       row.className = "file-row";
       const name = document.createElement("span"); name.textContent = entry.name;
       const size = document.createElement("small"); size.textContent = humanSize(entry.bytes.length);
+      if (action) {
+        const check = document.createElement("input");
+        check.type = "checkbox"; check.checked = true; check.className = "handoff-select";
+        check.dataset.fileIndex = String(index);
+        check.setAttribute("aria-label","Include " + entry.name + " in next encrypted private handoff");
+        row.append(check);
+      }
       row.append(name, size);
       if (action) {
         const btn = document.createElement("button"); btn.className="secondary small";
@@ -206,8 +213,15 @@
     fail($("rekeyack").checked, "Confirm that this private handoff is approved for its recipient.");
     const pass=$("rekeysecret").value;
     fail(pass.length>=12 && pass.length<=256, "New passphrase must have 12-256 characters.");
+    const selectors=Array.from($("restored").querySelectorAll(".handoff-select"));
+    fail(selectors.length===restored.length, "Recovered file selection is incomplete.");
+    const indexes=selectors.filter(selector=>selector.checked).map(selector=>Number(selector.dataset.fileIndex));
+    fail(indexes.length>0 && indexes.length<=MAX_COUNT &&
+      indexes.every((n,i)=>Number.isSafeInteger(n) && n>=0 && n<restored.length &&
+        (i===0 || n>indexes[i-1])), "Select at least one original file for re-encryption.");
     const entries=[]; let total=0;
-    for (const item of restored) {
+    for (const index of indexes) {
+      const item=restored[index];
       fail(validName(item.name) && item.bytes.length>0 && item.bytes.length<=MAX_FILE,
         "Recovered source files are not admissible.");
       total+=item.bytes.length; fail(total<=MAX_TOTAL,"Re-encrypted payload too large.");
@@ -229,7 +243,7 @@
     fail(bytes.length<=MAX_VAULT,"Re-encrypted vault is too large.");
     save(bytes,"lightup-private-handoff-rotated.vault.json","application/json");
     $("rekeysecret").value=""; $("rekeyack").checked=false;
-    say("New separate encrypted vault downloaded with fresh salt and IV. Prior copies and passwords are NOT revoked.");
+    say("Only " + entries.length + " selected original file(s) re-encrypted with fresh salt and IV. Prior copies and passwords are NOT revoked.");
   }));
   $("clear").addEventListener("click",resetPrivate);
   $("clear2").addEventListener("click",resetPrivate);

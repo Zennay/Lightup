@@ -30,3 +30,7 @@ All changes are exclusively new paths under remediation-vault/. Original Casewor
 ## Re-encrypt an existing private packet
 
 After unlocking a vault, the recipient can select **Re-encrypt unlocked files**, reconfirm the real recipient and exact engagement, and enter a new 12+ character passphrase. The application immediately creates a second ciphertext envelope using fresh random salt/nonce and its own SHA-256-checked original file bytes, without first saving decrypted files. The previous encrypted packet and its passphrase are **not revoked**; remove old copies separately according to the private retention policy. No original authority or finding status is changed.
+
+## Privacy-minimal selective onward transfer
+
+After unlocking, each recovered original file is shown with a checked **include in next private encrypted handoff** control and a separate manual plaintext-download button. Uncheck files the next authorised recipient must not receive, independently reconfirm that exact recipient/client/engagement and private channel, and re-encrypt only the selected in-memory files with a new passphrase. At least one file must remain selected. This is not consent or authority to share; do not assume every original record is permitted for a new recipient.
