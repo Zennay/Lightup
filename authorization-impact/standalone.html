@@ -1,0 +1,317 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<title>LightUp | Scope Impact Map</title><style>
+:root{color-scheme:dark;font:14px/1.48 system-ui,sans-serif;background:#0c1425;color:#edf3ff}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 85% 0,#263c67 0,transparent 45%),#0c1425}
+main{max-width:1370px;margin:auto;padding:24px}
+header,.flex{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+header{border-bottom:1px solid #324660;padding-bottom:21px;margin-bottom:25px}
+.brand{font-size:22px;font-weight:850;letter-spacing:.03em}.brand b{color:#9bb9ff}
+.pill{border:1px solid #c99869;padding:7px 12px;border-radius:30px;color:#ffd4af;font-size:11px;font-weight:800}
+h1{font-size:clamp(32px,5vw,54px);line-height:1.08;letter-spacing:-.055em;margin:0 0 10px}
+h2{font-size:17px;margin:0 0 14px}h3{font-size:14px;margin:8px 0}
+p{color:#b3c4df;max-width:950px}small,.muted{color:#a4b5ce}
+.grid{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(325px,1fr);gap:17px;margin-top:17px}
+.card,.stat{background:#182640;border:1px solid #365079;border-radius:15px;padding:19px;box-shadow:0 9px 26px #020b1a40}
+.stats{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-top:17px}
+.stat strong{display:block;font-size:28px;color:#e0eaff}.stat span{font-size:12px;color:#9eb4d4}
+button,.upload{display:inline-block;border:1px solid #a3bdfa;background:#a8c2ff;color:#112347;border-radius:8px;padding:10px 13px;font:750 13px system-ui;cursor:pointer}
+button.secondary,.upload.secondary{background:#243957;color:#e4ecff;border-color:#456287}
+button:disabled{cursor:not-allowed;opacity:.45}
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,.upload:focus-within{outline:3px solid #a6c2ff;outline-offset:2px}
+input[type=file]{position:absolute;width:1px;height:1px;opacity:0}
+input[type=text],input[type=date],select,textarea{background:#0f1b30;border:1px solid #4b6285;color:#f1f6ff;padding:10px;border-radius:8px;font:inherit;width:100%;min-width:0}
+textarea{min-height:78px;resize:vertical}label.field{font-size:12px;color:#bed0ea;display:block;margin:12px 0 0}
+label.field>*{margin-top:6px}
+.actions{display:flex;gap:9px;flex-wrap:wrap;margin-top:14px}
+.warning{background:#392d33;color:#ffe1bc;border-left:3px solid #e1a76b;padding:12px 15px;border-radius:6px;font-size:12px;margin-top:12px}
+#status{color:#ffdfad;min-height:30px;margin-top:13px;font-size:12px}
+.route{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:15px}
+.lane{border:1px solid #344b72;border-radius:10px;padding:11px;background:#101e34;min-width:0}
+.lane header{font-size:11px;font-weight:750;text-transform:uppercase;color:#a8c7ff;margin:0 0 10px;padding:0 0 9px}
+.node{display:block;width:100%;margin:0 0 7px;padding:11px;text-align:left;font-size:12px;background:#1b304f;color:#e9f1ff;border:1px solid #45648d;overflow-wrap:anywhere}
+.node:hover{border-color:#bbcdfd}.node.active{border-color:#f4c48c;background:#354158}
+.node b,.node span{display:block}.node span{color:#a9bddd;font-size:10px;margin-top:5px}
+.node.flag{border-left:4px solid #edab76}
+#focus-list{display:flex;gap:7px;flex-wrap:wrap}
+.token{background:#213757;border:1px solid #496389;border-radius:7px;color:#d0e0ff;padding:7px 9px;font-size:11px;overflow-wrap:anywhere}
+.token.alert{border-color:#ad7f65;color:#ffcead}
+.divider{border-top:1px solid #3a5172;margin:15px 0}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+#impact-list{padding-left:18px;color:#dbe6fa;max-height:290px;overflow:auto;font-size:12px}
+#impact-list li{margin-bottom:8px;overflow-wrap:anywhere}
+.caption{font-size:11px;color:#abbfda}
+.table-wrap{overflow:auto;max-height:370px}
+table{width:100%;border-collapse:collapse;font-size:12px}
+th,td{text-align:left;padding:10px 8px;border-bottom:1px solid #344969;vertical-align:top}
+th{font-size:10px;letter-spacing:.06em;color:#9db9df;text-transform:uppercase}
+tbody button{font-size:11px;padding:5px 7px}
+.error{color:#ffc49b}
+@media(max-width:1030px){.grid{grid-template-columns:1fr}.route{grid-template-columns:repeat(2,1fr)}.stats{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:570px){main{padding:14px}.route,.stats,.row{grid-template-columns:1fr}.card{padding:14px}}
+@media print{body,:root{background:white;color:#171717}.card,.stat{background:white;color:#111;box-shadow:none;border:1px solid #999}button,.actions,.upload,header .pill,#workspace,.field{display:none}p,small{color:#444}}
+</style></head><body><main>
+<header><div class="brand">LIGHT<b>UP</b> / SCOPE IMPACT</div><span class="pill">INCUBATE M3/M7 · DRAFT/HOLD</span></header>
+<h1>Trace what a scope change might affect.</h1><p>Private offline relationship explorer for existing original, authenticated-export Casebook records. See which requests, stored grants, engagements and risk decisions <strong>reference one another</strong>; flag missing references; prepare human follow-up. A record reference is not permission, consent, STOP clearance or a revocation.</p>
+<section class="card" id="workspace"><h2>01 / Load original source</h2><p>First generate a private JSON with the unchanged original <code>python -m lightup.auth_casebook</code> authenticated operator CLI. This browser cannot authenticate a file or obtain current consent. Import is local, size-bounded and atomic; no data is uploaded.</p><div class="actions">
+<label class="upload">Load PRIVATE Casebook JSON<input id="source-file" type="file" accept=".json,application/json"></label>
+<button class="secondary" id="demo" type="button">Fictional demo</button><button class="secondary" id="clear" type="button">Clear memory</button></div>
+<div id="status" role="status" aria-live="polite">No private source loaded.</div><small id="current-source">No source loaded.</small>
+<div class="warning">Every authority flag is false. Missing rows are not evidence of revocation, fixed scope or clearance. The original exact-head CI, source-owner/security/privacy review, separately authenticated client/operator consent, action-time revocation and explicit HUMAN GO remain required for any later live work.</div></section>
+<section class="stats">
+<div class="stat"><span>Requests</span><strong id="count-requests">0</strong></div><div class="stat"><span>Stored grants</span><strong id="count-grants">0</strong></div><div class="stat"><span>Engagements</span><strong id="count-engagements">0</strong></div><div class="stat"><span>Risk decisions</span><strong id="count-risks">0</strong></div><div class="stat"><span>Missing references</span><strong id="count-links">0</strong></div></section>
+<section class="card" style="margin-top:17px"><div class="flex"><h2>02 / Source relationship lanes</h2><label class="flex" style="font-size:12px"><input type="checkbox" id="related" style="width:auto"> Show only connected records</label></div><label class="field">Find original source ID or declared observation<input type="text" id="search" placeholder="Filter without sending data anywhere"></label>
+<div class="route"><div class="lane"><header>① Assessment requests</header><div id="lane-requests"></div></div>
+<div class="lane"><header>② Stored grant links</header><div id="lane-grants"></div></div>
+<div class="lane"><header>③ Engagements</header><div id="lane-engagements"></div></div>
+<div class="lane"><header>④ Recorded risk decisions</header><div id="lane-risk_approvals"></div></div></div>
+<p class="caption">A reference follows only recorded original request→grant→engagement→risk IDs. It never fabricates a direct request/engagement relationship, never rechecks eligibility, and never calls a target or live database.</p></section>
+<section class="grid"><div class="card"><h2 id="focus-title">03 / Select one original source record</h2><p id="focus-description">Select a source record to inspect its connected original references.</p>
+<div class="flex" id="focus-list"></div><div class="divider"></div><h3>Potential follow-up and absent source rows</h3><ol id="impact-list"></ol>
+<div class="warning">Human impact review only: a missing reference is an unresolved historical source observation, not proof that a customer cancelled approval or a target is safe.</div></div>
+<div class="card"><h2>04 / Local human-only follow-up</h2><fieldset id="review-fields" disabled style="border:0;padding:0;margin:0">
+<label class="field">Stage<select id="stage"><option value="unreviewed">Unreviewed</option><option value="investigating">Investigating</option><option value="waiting-client">Waiting for genuine client contact</option><option value="waiting-operator">Waiting for original operator</option><option value="escalated">Escalated</option><option value="documented">Documented, not approved</option></select></label>
+<div class="row"><label class="field">Reviewer label<input type="text" id="reviewer" maxlength="80"></label><label class="field">Proposed follow-up date<input type="date" id="due"></label></div>
+<label class="field">Next human action<input type="text" id="next" maxlength="180"></label>
+<label class="field">Private note<textarea id="note" maxlength="1000"></textarea></label><div class="actions"><button id="save-review" type="button">Save in this tab</button></div></fieldset>
+<div class="divider"></div><p class="caption">No browser persistence. These notes are self-reported and do not change source state, authorization, risk approvals, consent, grants or STOP.</p>
+<div class="actions"><button id="anonymous" type="button" class="secondary">Anonymous counts JSON</button><button id="private-export" type="button" disabled>PRIVATE follow-up handoff</button>
+<label class="upload secondary">Restore PRIVATE notes<input id="private-import" type="file" accept=".json,application/json"></label></div>
+<p class="caption">Private handoff requires local SHA-256 of the exact original source bytes and explicit recipient confirmation; hashes do not authenticate issuer. Anonymous exports include no IDs, targets or notes.</p></div></section>
+<section class="card" style="margin-top:17px"><h2>05 / Source-declared attention inbox</h2><p>Prioritizes recorded HOLD, pending and out-of-window source observations, plus missing referenced rows, without implying live state or permissions.</p>
+<div class="table-wrap"><table><thead><tr><th>Original row / missing link</th><th>Source attention</th><th>Inspect</th></tr></thead><tbody id="inbox"></tbody></table></div><p class="muted" id="inbox-empty">No source-declared attention rows.</p></section>
+<footer><p class="caption">LightUp · isolated original-source companion · fully offline · private exports stay with the operator · PLAN/LAB ONLY / DRAFT/HOLD. Human notes are never original domain evidence.</p></footer>
+</main><script>
+(function(){
+"use strict";
+var source=null,sourceSHA=null,fictional=false,selection=null,human=new Map(),MAX=524288,REV_LIMIT=262144;
+var FAMILIES=[["requests","request_id","Request"],["grants","grant_id","Grant"],["engagements","engagement_id","Engagement"],["risk_approvals","approval_id","Risk decision"]];
+var FALSE_FLAGS=["source_authenticated","client_consent_verified","operator_consent_verified","authorization_granted","execution_allowed","release_approved"];
+var STAGES=["unreviewed","investigating","waiting-client","waiting-operator","escalated","documented"];
+function el(id){return document.getElementById(id);}
+function object(v){return !!v&&typeof v==="object"&&!Array.isArray(v);}
+function literal(v){return typeof v==="string"&&v.length>0&&v.length<=180&&![...v].some(function(c){return c.charCodeAt(0)<32||c.charCodeAt(0)===127;});}
+function count(v,max){return Number.isInteger(v)&&v>=0&&v<=max;}
+function fail(){throw Error("unsupported source");}
+function strictJSON(raw){
+var i=0,steps=0;
+function whitespace(){while(i<raw.length&&" \r\n\t".includes(raw[i]))i++;}
+function quoted(){
+var begin=i;if(raw[i]!=='"')fail();i++;
+while(i<raw.length){if(raw[i]==="\\"){i+=2;continue;}if(raw[i]==='"'){i++;return JSON.parse(raw.slice(begin,i));}i++;}
+fail();
+}
+function value(depth){
+if(++steps>100000||depth>40)fail();whitespace();
+if(raw[i]==="{"){i++;whitespace();var keys=new Set();if(raw[i]==="}"){i++;return;}
+while(true){whitespace();var key=quoted();if(keys.has(key))fail();keys.add(key);whitespace();if(raw[i++]!==":")fail();value(depth+1);whitespace();if(raw[i]==="}"){i++;return;}if(raw[i++]!==",")fail();}}
+else if(raw[i]==="["){i++;whitespace();if(raw[i]==="]"){i++;return;}
+while(true){value(depth+1);whitespace();if(raw[i]==="]"){i++;return;}if(raw[i++]!==",")fail();}}
+else if(raw[i]==='"'){quoted();}
+else {var begin=i;while(i<raw.length&&!",]} \r\n\t".includes(raw[i]))i++;if(begin===i)fail();JSON.parse(raw.slice(begin,i));}
+}
+value(0);whitespace();if(i!==raw.length)fail();return JSON.parse(raw);
+}
+function validate(s){
+if(!object(s)||s.schema!=="lightup.auth_casebook.v1"||s.status!=="REVIEW_ONLY"||!literal(s.client_id)||!literal(s.as_of)||!object(s.declared_counts)||!FALSE_FLAGS.every(function(k){return s[k]===false;}))fail();
+var all=new Map();
+FAMILIES.forEach(function(f){
+var name=f[0],key=f[1],rows=s[name];
+if(!Array.isArray(rows)||rows.length>200||!count(s.declared_counts[name],200)||rows.length!==s.declared_counts[name])fail();
+var set=new Set();
+rows.forEach(function(row){
+if(!object(row)||!literal(row[key])||set.has(row[key]))fail();
+set.add(row[key]);all.set(name+":"+row[key],row);
+});});
+var counts=["grant_link_hold","risk_tenant_hold","case_attention_hold","foreign_tenant_row_count","recorded_window_review","risk_provenance_hold","pending_risk_review"];
+if(!counts.every(function(c){return count(s.declared_counts[c],500);}))fail();
+if(!Array.isArray(s.case_overview)||s.case_overview.length!==s.engagements.length)fail();
+var ids=new Set(),caseHold=0;
+var attention=["HOLD_SOURCE_PROVENANCE","HOLD_CLOSED_ENGAGEMENT_WITH_GRANTS","RISK_DECISION_PENDING_SOURCE_REVIEW","EXPIRED_GRANT_SOURCE_REVIEW","FUTURE_GRANT_SOURCE_REVIEW","REVIEW_ONLY_UNVERIFIED_GRANT_LINK","NO_GRANT_RECORDED"];
+s.case_overview.forEach(function(c){
+if(!object(c)||!literal(c.engagement_id)||ids.has(c.engagement_id)||!all.has("engagements:"+c.engagement_id)||!literal(c.status)||!attention.includes(c.attention)||!literal(c.next_review_action)||!count(c.grant_count,200)||!count(c.risk_record_count,200))fail();
+ids.add(c.engagement_id);
+if(c.attention.startsWith("HOLD_"))caseHold++;
+if(s.grants.filter(function(g){return g.engagement_id===c.engagement_id;}).length!==c.grant_count||s.risk_approvals.filter(function(r){return r.engagement_id===c.engagement_id;}).length!==c.risk_record_count)fail();
+});
+if(caseHold!==s.declared_counts.case_attention_hold)fail();
+s.requests.forEach(function(r){if(!literal(r.status)||!literal(r.requested_mode)||!literal(r.created_at)||typeof r.decision_recorded!=="boolean")fail();});
+s.engagements.forEach(function(r){if(!literal(r.status)||!literal(r.created_at))fail();});
+var grantHold=0,windowReview=0;
+s.grants.forEach(function(g){
+if(!(g.engagement_id===null||literal(g.engagement_id))||!(g.approved_request_id===null||literal(g.approved_request_id))||!literal(g.request_link_observation)||!["HOLD_INVALID_RECORDED_WINDOW","EXPIRED_RECORDED_WINDOW","FUTURE_RECORDED_WINDOW","WITHIN_RECORDED_WINDOW_NOT_AUTHORITY"].includes(g.validity_observation))fail();
+if(g.request_link_observation.startsWith("HOLD_"))grantHold++;
+if(g.validity_observation!=="WITHIN_RECORDED_WINDOW_NOT_AUTHORITY")windowReview++;
+});
+if(grantHold!==s.declared_counts.grant_link_hold||windowReview!==s.declared_counts.recorded_window_review)fail();
+var provenanceHold=0,pending=0;
+s.risk_approvals.forEach(function(r){
+if(!(r.engagement_id===null||literal(r.engagement_id))||!literal(r.status)||typeof r.source_tenant_matches!=="boolean"||!literal(r.decision_provenance_observation)||!["HOLD_RISK_SOURCE_IDENTITY_OR_STATUS","HOLD_RISK_PENDING_WITH_DECISION","HOLD_RISK_DECIDER_PROVENANCE","RISK_DECISION_PENDING_REVIEW","RISK_DECISION_RECORDED_UNVERIFIED"].includes(r.decision_provenance_observation))fail();
+if(r.decision_provenance_observation.startsWith("HOLD_"))provenanceHold++;
+if(r.decision_provenance_observation==="RISK_DECISION_PENDING_REVIEW")pending++;
+});
+if(provenanceHold!==s.declared_counts.risk_provenance_hold||pending!==s.declared_counts.pending_risk_review)fail();
+return s;
+}
+function nodeKey(f,id){return f+":"+id;}
+function nodes(){
+if(!source)return [];
+var result=[];
+FAMILIES.forEach(function(f){source[f[0]].forEach(function(row){result.push({family:f[0],id:row[f[1]],label:f[2],row:row,key:nodeKey(f[0],row[f[1]])});});});
+return result;
+}
+function edges(){
+if(!source)return [];
+var out=[];
+source.grants.forEach(function(g){
+if(g.approved_request_id!==null)out.push({from:nodeKey("requests",g.approved_request_id),to:nodeKey("grants",g.grant_id),kind:"recorded request reference"});
+if(g.engagement_id!==null)out.push({from:nodeKey("grants",g.grant_id),to:nodeKey("engagements",g.engagement_id),kind:"recorded engagement reference"});
+});
+source.risk_approvals.forEach(function(r){if(r.engagement_id!==null)out.push({from:nodeKey("engagements",r.engagement_id),to:nodeKey("risk_approvals",r.approval_id),kind:"recorded risk reference"});});
+return out;
+}
+function status(n){
+var x=n.row;
+if(n.family==="grants")return x.request_link_observation+" · "+x.validity_observation;
+if(n.family==="risk_approvals")return x.decision_provenance_observation;
+if(n.family==="engagements"){var c=source.case_overview.find(function(r){return r.engagement_id===n.id;});return c?c.attention:x.status;}
+return x.status;
+}
+function troubled(n){var s=status(n);return s.includes("HOLD")||s.includes("PENDING")||s.includes("EXPIRED")||s.includes("FUTURE");}
+function setMessage(m){el("status").textContent=m;}
+function item(parent,tag,value,classname){
+var e=document.createElement(tag);e.textContent=String(value);if(classname)e.className=classname;parent.appendChild(e);return e;
+}
+function connected(root){
+var edgesList=edges(),map=new Map(nodes().map(function(n){return [n.key,n];})),found=new Set([root]),queue=[root],broken=[];
+while(queue.length){
+var key=queue.shift();
+edgesList.forEach(function(e){
+if(e.from!==key&&e.to!==key)return;
+var other=e.from===key?e.to:e.from;
+if(!map.has(other)){broken.push({from:key,missing:other,kind:e.kind});return;}
+if(!found.has(other)){found.add(other);queue.push(other);}
+});}
+return {found:found,broken:broken};
+}
+function focusedNodes(){
+if(!source||!selection)return {members:[],broken:[]};
+var view=connected(selection);
+return {members:nodes().filter(function(n){return view.found.has(n.key);}),broken:view.broken};
+}
+function render(){
+var all=nodes(),e=edges(),map=new Map(all.map(function(n){return [n.key,n];}));var chosen=focusedNodes();
+el("count-requests").textContent=source?source.requests.length:0;
+el("count-grants").textContent=source?source.grants.length:0;
+el("count-engagements").textContent=source?source.engagements.length:0;
+el("count-risks").textContent=source?source.risk_approvals.length:0;
+el("count-links").textContent=source?e.filter(function(v){return !map.has(v.from)||!map.has(v.to);}).length:0;
+el("current-source").textContent=source?(fictional?"FICTIONAL DEMO":"PRIVATE original-format source")+" · "+source.client_id+" · "+source.as_of+" · SHA-256 "+(sourceSHA||"unavailable"):"No source loaded.";
+var filter=el("search").value.toLocaleLowerCase(),related=el("related").checked;
+FAMILIES.forEach(function(f){
+var host=el("lane-"+f[0]);host.replaceChildren();
+var subset=all.filter(function(n){return n.family===f[0]&&(!related||!selection||chosen.members.some(function(m){return m.key===n.key;}))&&(n.id.toLocaleLowerCase().includes(filter)||status(n).toLocaleLowerCase().includes(filter));});
+subset.sort(function(a,b){return Number(troubled(b))-Number(troubled(a))||a.id.localeCompare(b.id);});
+subset.forEach(function(n){
+var b=item(host,"button",n.id,"node"+(n.key===selection?" active":"")+(troubled(n)?" flag":""));b.type="button";b.setAttribute("aria-pressed",n.key===selection?"true":"false");
+item(b,"span",status(n));b.addEventListener("click",function(){selection=n.key;render();});
+});
+if(!subset.length)item(host,"small","No matching records.","muted");
+});
+var node=map.get(selection);
+el("focus-title").textContent=node?node.label+" · "+node.id:"Select one original source record";
+el("focus-description").textContent=node?status(node)+" — source references are retrospective, not authenticated consent or execution authority.":"Choose a request, stored grant, engagement, or risk record. Observe all recorded links without inferring authorization.";
+var reference=el("focus-list");reference.replaceChildren();
+if(node){
+chosen.members.forEach(function(n){var b=item(reference,"button",n.label+": "+n.id,"token"+(troubled(n)?" alert":""));b.type="button";b.addEventListener("click",function(){selection=n.key;render();});});
+}else item(reference,"small","No original record selected.");
+var impact=el("impact-list");impact.replaceChildren();
+if(node){
+chosen.broken.forEach(function(v){item(impact,"li","MISSING REFERENCED SOURCE: "+v.missing+" from "+v.from+" · "+v.kind,"error");});
+chosen.members.filter(function(n){return troubled(n);}).forEach(function(n){item(impact,"li",n.label+" "+n.id+": "+status(n));});
+if(!chosen.broken.length&&!chosen.members.some(troubled))item(impact,"li","No source-declared attention markers in this connected view. This is NOT a clearance.");
+}else item(impact,"li","Nothing selected.");
+var follow=selection&&human.get(selection)||{};
+el("stage").value=follow.stage||"unreviewed";el("reviewer").value=follow.reviewer||"";el("next").value=follow.next||"";el("due").value=follow.due||"";el("note").value=follow.note||"";
+el("review-fields").disabled=!node;
+el("anonymous").disabled=!source;
+el("private-export").disabled=!source||!sourceSHA||fictional;
+el("private-import").disabled=!source||!sourceSHA||fictional;
+renderInbox();
+}
+function renderInbox(){
+var host=el("inbox");host.replaceChildren();if(!source)return;
+var all=nodes(),edgesList=edges(),keys=new Set(all.map(function(n){return n.key;}));
+var missing=edgesList.filter(function(e){return !keys.has(e.from)||!keys.has(e.to);});
+var order=all.filter(troubled).sort(function(a,b){return a.family.localeCompare(b.family)||a.id.localeCompare(b.id);});
+var queue=order.map(function(n){return {key:n.key,title:n.label+" "+n.id,description:status(n)};});
+missing.forEach(function(e){queue.push({key:keys.has(e.from)?e.from:e.to,title:"Missing source reference",description:e.from+" → "+e.to});});
+queue.slice(0,450).forEach(function(x){
+var tr=document.createElement("tr");item(tr,"td",x.title);item(tr,"td",x.description);var td=document.createElement("td"),b=item(td,"button","Inspect","secondary");b.type="button";b.addEventListener("click",function(){selection=x.key;render();el("focus-title").scrollIntoView({behavior:"smooth",block:"center"});});tr.appendChild(td);host.appendChild(tr);
+});
+el("inbox-empty").hidden=!!queue.length;
+}
+function readFields(){
+if(!source||!selection)return;
+var stage=el("stage").value,reviewer=el("reviewer").value.trim(),next=el("next").value.trim(),due=el("due").value,note=el("note").value.trim();
+if(!STAGES.includes(stage)||reviewer.length>80||next.length>180||note.length>1000||/[\x00-\x08\x0B-\x1F]/.test(reviewer+next+note)||due&&(!/^\d{4}-\d{2}-\d{2}$/.test(due)||new Date(due+"T00:00:00Z").toISOString().slice(0,10)!==due))throw Error("invalid human note");
+if(stage==="unreviewed"&&!reviewer&&!next&&!due&&!note)human.delete(selection);
+else human.set(selection,{stage:stage,reviewer:reviewer,next:next,due:due,note:note});
+}
+async function sha256(raw){
+if(!globalThis.crypto||!crypto.subtle)return null;
+try{var digest=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(raw));return Array.from(new Uint8Array(digest)).map(function(x){return x.toString(16).padStart(2,"0");}).join("");}catch(e){return null;}
+}
+async function importSource(file,asDemo){
+if(!file||file.size<2||file.size>MAX){setMessage("HOLD: file is missing or outside source size limit.");return;}
+try{
+var raw=await file.text(),candidate=validate(strictJSON(raw));
+var hash=await sha256(raw);
+source=candidate;sourceSHA=hash;fictional=!!asDemo;selection=null;human.clear();render();
+setMessage((fictional?"FICTIONAL DEMO":"Source bytes loaded locally")+". REVIEW_ONLY, never permission."+(hash?"":" Browser SHA unavailable; private resume/export disabled."));
+}catch(e){setMessage("HOLD: corrupt, duplicate-key, malformed or unsupported casebook. Earlier source and notes preserved.");}
+}
+function download(name,type,contents){
+var url=URL.createObjectURL(new Blob([contents],{type:type})),a=document.createElement("a");a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(function(){URL.revokeObjectURL(url);},1200);
+}
+function humanRows(){
+return Array.from(human.entries()).sort(function(a,b){return a[0].localeCompare(b[0]);}).map(function(entry){return {source_key:entry[0],stage:entry[1].stage,reviewer:entry[1].reviewer,next_action:entry[1].next,due_date:entry[1].due,note:entry[1].note};});
+}
+function anonymous(){
+var all=nodes(),e=edges(),keys=new Set(all.map(function(n){return n.key;})),stageCounts={};
+STAGES.forEach(function(s){stageCounts[s]=0;});humanRows().forEach(function(x){stageCounts[x.stage]++;});
+return {schema:"lightup.scope_impact_aggregate.v1",status:"REVIEW_ONLY",source_records:all.length,recorded_links:e.length,missing_references:e.filter(function(x){return !keys.has(x.from)||!keys.has(x.to);}).length,attention_rows:all.filter(troubled).length,human_action_rows:human.size,human_stage_counts:stageCounts,source_authenticated:false,client_consent_verified:false,operator_consent_verified:false,authorization_granted:false,execution_allowed:false,release_approved:false};
+}
+el("source-file").addEventListener("change",async function(){var file=this.files&&this.files[0];this.value="";await importSource(file,false);});
+el("search").addEventListener("input",render);el("related").addEventListener("change",render);
+el("clear").addEventListener("click",function(){source=null;sourceSHA=null;fictional=false;selection=null;human.clear();el("search").value="";render();setMessage("Private source and human notes cleared from this tab.");});
+el("save-review").addEventListener("click",function(){try{readFields();render();setMessage("Human-only note stored in tab memory. No original source has been edited.");}catch(e){setMessage("HOLD: review fields invalid. Nothing saved.");}});
+el("anonymous").addEventListener("click",function(){if(source)download("lightup-scope-impact-anonymous.json","application/json",JSON.stringify(anonymous(),null,2)+"\n");});
+el("private-export").addEventListener("click",function(){
+if(!sourceSHA||!source||fictional)return;
+if(!confirm("This PRIVATE file includes original source IDs, tenant ID, reviewers and notes. Confirm local authorized recipient and destination."))return;
+download("PRIVATE-lightup-scope-impact-review.json","application/json",JSON.stringify({schema:"lightup.scope_impact_private_review.v1",status:"REVIEW_ONLY",source_schema:source.schema,source_sha256:sourceSHA,client_id:source.client_id,as_of:source.as_of,rows:humanRows(),source_authenticated:false,client_consent_verified:false,operator_consent_verified:false,authorization_granted:false,execution_allowed:false,release_approved:false},null,2)+"\n");
+});
+el("private-import").addEventListener("change",async function(){
+var file=this.files&&this.files[0];this.value="";
+if(!source||!sourceSHA||fictional||!file||file.size>REV_LIMIT||file.size<2){setMessage("HOLD: private review and exact source SHA required.");return;}
+try{
+var p=strictJSON(await file.text());
+if(!object(p)||p.schema!=="lightup.scope_impact_private_review.v1"||p.status!=="REVIEW_ONLY"||p.source_schema!==source.schema||p.client_id!==source.client_id||p.as_of!==source.as_of||p.source_sha256!==sourceSHA||!FALSE_FLAGS.every(function(k){return p[k]===false;})||!Array.isArray(p.rows)||p.rows.length>800)fail();
+var keys=new Set(nodes().map(function(n){return n.key;})),replacement=new Map();
+for(var r of p.rows){
+if(!object(r)||!keys.has(r.source_key)||replacement.has(r.source_key)||!STAGES.includes(r.stage)||typeof r.reviewer!=="string"||r.reviewer.length>80||typeof r.next_action!=="string"||r.next_action.length>180||typeof r.note!=="string"||r.note.length>1000||typeof r.due_date!=="string"||r.due_date.length>10||/[\x00-\x08\x0B-\x1F]/.test(r.reviewer+r.next_action+r.note)||r.due_date&&(!/^\d{4}-\d{2}-\d{2}$/.test(r.due_date)||new Date(r.due_date+"T00:00:00Z").toISOString().slice(0,10)!==r.due_date))fail();
+replacement.set(r.source_key,{stage:r.stage,reviewer:r.reviewer,next:r.next_action,due:r.due_date,note:r.note});
+}
+human=replacement;render();setMessage("PRIVATE human review restored for the exact same original source bytes (review-only).");
+}catch(e){setMessage("HOLD: review not source-bound, malformed or inconsistent. Earlier human data preserved.");}
+});
+el("demo").addEventListener("click",async function(){
+var s={schema:"lightup.auth_casebook.v1",status:"REVIEW_ONLY",client_id:"fictional-client",as_of:"2026-10-18T12:00:00+00:00",requests:[{request_id:"fictional-req-A",status:"approved",requested_mode:"authorized_assessment",created_at:"2026-10-10T12:00:00+00:00",decision_recorded:true}],engagements:[{engagement_id:"fictional-eng-A",status:"draft",created_at:"2026-10-12T12:00:00+00:00"}],grants:[{grant_id:"fictional-grant-A",engagement_id:"fictional-eng-A",approved_request_id:"fictional-req-A",request_link_observation:"REQUEST_SCOPE_COMPATIBLE_UNVERIFIED",validity_observation:"EXPIRED_RECORDED_WINDOW"}],risk_approvals:[{approval_id:"fictional-risk-A",engagement_id:"fictional-eng-A",status:"pending",source_tenant_matches:true,decision_provenance_observation:"RISK_DECISION_PENDING_REVIEW"}],case_overview:[{engagement_id:"fictional-eng-A",status:"draft",attention:"EXPIRED_GRANT_SOURCE_REVIEW",next_review_action:"REVIEW_ORIGINAL_GRANT_WINDOW",grant_count:1,risk_record_count:1}],declared_counts:{requests:1,engagements:1,grants:1,risk_approvals:1,grant_link_hold:0,risk_tenant_hold:0,case_attention_hold:0,foreign_tenant_row_count:0,recorded_window_review:1,risk_provenance_hold:0,pending_risk_review:1},source_authenticated:false,client_consent_verified:false,operator_consent_verified:false,authorization_granted:false,execution_allowed:false,release_approved:false};
+var body=JSON.stringify(s),file=new File([body],"fictional-demo.json",{type:"application/json"});
+await importSource(file,true);
+});
+render();
+})();
+</script></body></html>
