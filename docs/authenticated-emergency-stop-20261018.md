@@ -2,6 +2,14 @@
 
 **INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD.** This is a credential-backed durable emergency STOP recorder. It is not an end-to-end action-time revocation gate until original execution owners explicitly wire the veto into the runtime and independently review it.
 
+## Discover your engagements (authenticated inbox)
+
+    PYTHONPATH=src python -m lightup.revocation_stop list \
+      --database /private/path/lightup.sqlite \
+      --email your-existing-account@example.invalid
+
+This read-only inbox gives at most 100 actual persisted engagement IDs, their original product status, and their independent STOP state. Owning client accounts see only their own tenant; a verified operator sees authorized cross-tenant coordination inventory. It never prints client labels, contacts or reasons. A not-yet-created ledger is displayed as HOLD_LEDGER_NOT_INITIALIZED rather than misleadingly claiming an active authorization. Inbox is REVIEW_ONLY and returns exit code 2, not an execution success signal.
+
 ## Record an emergency STOP
 
 From an isolated, locally installed LightUp checkout with an existing local SQLite domain and authenticated client/member/admin or operator account:
@@ -15,7 +23,7 @@ From an isolated, locally installed LightUp checkout with an existing local SQLi
 
 The command interactively prompts for the real persisted account password using the original DomainStore login and lockout; it never accepts a password argument. The authenticated account's persisted role and tenant are rechecked inside the STOP transaction. A client can stop only their own engagement. A real unbound operator can record STOP for selected engagements.
 
-The first STOP creates a separate append-only event table and index inside the same SQLite write transaction as the first event; all later STOPs remain distinct historical events. No unstop, resume, authorize, dispatch, scan, target, model, or grant operation exists in this module. A requested receipt is only created at a new owner-only mode-0600 path and can never replace a prior file. Receipt creation happens AFTER the STOP commit, so receipt failure does not undo the STOP. Reasons are private DB text and never printed in stdout.
+The credential-protected record_authenticated_stop public API authenticates an original domain user itself; callers cannot supply a claimed actor ID. The first STOP creates a separate append-only event table and index inside the same SQLite write transaction as the first event; all later STOPs remain distinct historical events. No unstop, resume, authorize, dispatch, scan, target, model, or grant operation exists in this module. A requested receipt is only created at a new owner-only mode-0600 path and can never replace a prior file. Receipt creation happens AFTER the STOP commit, so receipt failure does not undo the STOP. Reasons are private DB text and never printed in stdout.
 
 ## Inspect current STOP status
 
