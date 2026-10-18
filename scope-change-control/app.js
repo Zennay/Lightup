@@ -457,6 +457,7 @@
           hold("Native source-review classification totals differ");
       }
       const stages=new Map();
+      const restoredDetails=new Map();
       for(const row of rows){
         if(!isObject(row) || !literal(row.category,100) || !literal(row.original_id,180))
           hold("Private handoff original ID missing");
@@ -469,10 +470,14 @@
            !STAGES.includes(row.local_human_stage))
           hold("Private human return changes original source classification");
         stages.set(key,row.local_human_stage);
+        if(!native && row.human_review !== undefined) {
+          restoredDetails.set(key,humanDetails(row.human_review));
+        }
       }
       if(stages.size!==expected.size) hold("Private handoff incomplete");
       // Commit the entire restored review only after every source-bound record agrees.
       state.notes=stages;
+      state.details=restoredDetails;
       render();
       text("restore-status",native ? "Authenticated-CLI source review admitted; all original human stages start unreviewed. No permissions inferred." : "Private local human stages restored against exact original source bytes. No authorization changes.");
     } catch(e){
