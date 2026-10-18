@@ -42,6 +42,25 @@ _MAX_EVIDENCE_REFS = 64
 _MAX_EVIDENCE_REF_CHARS = 256
 _MAX_REVIEW_FINDINGS = 64
 _MAX_CURRENT_FIX_CHARS = 8192
+_MAX_ADVICE_CHARS = 8192
+_MAX_ADVICE_UTF8_BYTES = 16384
+
+
+def _validated_remediation_advice(content: str) -> str:
+    """Deny unusable advice before it becomes a finding or report input."""
+    if type(content) is not str or not content.strip():
+        raise ValueError("remediation-advisor output must be non-empty plain text")
+    if len(content) > _MAX_ADVICE_CHARS:
+        raise ValueError("remediation-advisor output exceeds the display ceiling")
+    try:
+        encoded = content.encode("utf-8")
+    except UnicodeEncodeError as exc:
+        raise ValueError("remediation-advisor output must be valid UTF-8") from exc
+    if len(encoded) > _MAX_ADVICE_UTF8_BYTES:
+        raise ValueError("remediation-advisor output exceeds the byte ceiling")
+    return content
+
+
 
 
 def _admit_review_findings(labrun_result: dict) -> tuple[tuple[dict, str, tuple[str, ...], str], ...]:
@@ -140,10 +159,11 @@ class AssessmentReviewPipeline:
             gateway.binding_for(role)
 
     def review(self, labrun_result: dict) -> ReviewResult:
+        # Complete original source preflight before *any* gateway dispatch.
+        admitted = _admit_review_findings(labrun_result)
         # Single-lane runs carry "target"; planner-driven runs carry "targets".
         target_label = (labrun_result.get("target")
                         or ", ".join(labrun_result.get("targets", [])))
-        admitted = _admit_review_findings(labrun_result)
         reviewed: list[ReviewedFinding] = []
         for finding, evidence_summary, evidence_ids, current_fix in admitted:
             finding_target = finding.get("target", target_label)
@@ -177,6 +197,7 @@ class AssessmentReviewPipeline:
                      },
                      sort_keys=True))),
             ).content
+            advice = _validated_remediation_advice(advice)
             reviewed.append(ReviewedFinding(
                 title=finding["finding"], severity=finding["severity"],
                 verdict=verdict, remediation_advice=advice,
