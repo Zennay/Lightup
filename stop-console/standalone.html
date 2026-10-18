@@ -101,6 +101,15 @@ return {kind:"history",items:d.recent_events.map(function(x){return {type:"STOP 
 }
 throw Error("Unsupported original CLI schema");
 }
+function reconcile(batch){
+var states=new Map();
+batch.forEach(function(d){if(d.kind!=="engagement")return;d.items.forEach(function(x){
+if(!states.has(x.id))states.set(x.id,new Set());states.get(x.id).add(x.status);
+});});
+batch.forEach(function(d){if(d.kind!=="engagement")return;d.items.forEach(function(x){
+if(states.get(x.id).size>1){x.status="HOLD_SOURCE_CONFLICT";x.attention="Contradictory imported snapshots";}
+});});
+}
 function render(){
 var items=docs.flatMap(function(d){return d.items;});
 var filter=document.getElementById("filter").value.toLowerCase();
@@ -121,7 +130,7 @@ var f=Array.from(source.files||[]);source.value="";
 if(!f.length)return;
 if(f.length>MAX_FILES||f.some(function(x){return x.size<2||x.size>MAX_SIZE;})){msg.textContent="HOLD: source file count/size rejected (1–5; max 1 MiB each).";return;}
 try{var parsed=[];for(var file of f){var raw=await file.text();var decoded=JSON.parse(raw);parsed.push(parseSource(decoded));}
-docs=parsed;fictional=false;msg.textContent=docs.length+" private source(s) loaded locally. UNVERIFIED / REVIEW_ONLY.";render();
+reconcile(parsed);docs=parsed;fictional=false;msg.textContent=docs.length+" private source(s) loaded locally. UNVERIFIED / REVIEW_ONLY.";render();
 }catch(e){msg.textContent="HOLD: invalid or unsupported input. Previous workspace preserved.";}
 });
 document.getElementById("demo").addEventListener("click",function(){
