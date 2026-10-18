@@ -285,7 +285,7 @@
       if(!c.bound)throw Error('HOLD: exact original source is not attached.');
       if(!confirm('This only downloads paperwork. It DOES NOT stop live work or revoke a grant. Have you contacted the genuine authenticated incident channel?'))return;
       download('lightup-urgent-human-stop-request.json',
-        JSON.stringify(exportData(true),null,2)+'\\n','application/json');
+        JSON.stringify(exportData(true),null,2)+'\n','application/json');
       setFeedback('Single-case STOP paperwork downloaded. No live operation changed. Contact the real authenticated human channel.');
     } catch(e){setFeedback(e.message,true);}
   });
