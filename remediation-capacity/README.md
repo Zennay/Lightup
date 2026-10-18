@@ -8,7 +8,7 @@ This is an independent offline planning interface, not an assessment, authorizat
 
 **Recommended:** download and locally open [standalone.html](./standalone.html). It is a self-contained HTML with SHA-256 CSP-pinned inline JavaScript and stylesheet. To reproduce it, run Python 3: python3 remediation-capacity/package.py. The digest is a build fingerprint, NOT a signature or authority receipt.
 
-Alternatively open remediation-capacity/index.html from a local checkout with its sibling planner.js, app.js and style.css files. No server, build, installation, database, network, cookie, service worker or browser storage is required.
+Alternatively open remediation-capacity/index.html from a local checkout with its sibling planner.js, draft.js, app.js and style.css files. No server, build, installation, database, network, cookie, service worker or browser storage is required.
 
 1. Separately authenticate and authorise export in the existing original LightUp workflow. The canonical CSV header is precisely: finding_id,title,severity,retest_status,remediation. The planner never obtains that report itself.
 2. Choose the existing five-column CSV (max 1 MiB, 350 records). Invalid UTF-8, CSV quoting, extra fields, duplicated source IDs and unknown enum values are refused. Supported severities: critical, high, medium, low, info. Original retest states: not_tested, fix_pending, fixed, regression.
@@ -17,6 +17,14 @@ Alternatively open remediation-capacity/index.html from a local checkout with it
 5. Review anonymous per-week allocations. Compare baseline vs 0–10 additional engineers and see the smallest modelled team (up to 30) that fits the estimated work within the chosen horizon. This is hypothetical, not a staffing recommendation, authorised timeslot, task assignment or delivery guarantee. Export private aggregate CSV/JSON/Markdown and print a non-authorizing brief. No source finding ID, title, remediation, hostname, address or customer name is included in the exports.
 6. **Historical workload review:** optionally choose an older original, separately authorised five-column CSV and explicitly attest both exports refer to the same real client and engagement. The application cannot authenticate the assertion. It re-reads both locally, compares exact original records by finding ID without preserving raw IDs in its returned result, and reports aggregate added/changed/absent/unchanged counts and estimated hours. *Absent never means verified fixed*. The review is invalidated when a new source or effort plan is loaded. Export a separate, unsigned privacy-minimal comparison JSON after a second explicit confirmation.
 7. Select Forget source & plan or close the tab. No persistence is used; original CSV remains under your own local control.
+
+## Source-bound private save and resume
+
+The app now supports **Save private working draft** / **Reopen private draft**. Generate a plan from an already-authorised original CSV first, then deliberately download an unsigned `lightup.remediation_capacity_working_draft.v1` JSON file. Only the team's numeric effort/staffing settings, weekly availability, selected what-if staffing count, input row count and SHA-256 of the **original CSV bytes** are saved. No original finding IDs, target names, client/tenant identifiers, report descriptions, note contents, historical source or simulated permission values are saved.
+
+To reopen, reload the original CSV in the source import control **before** selecting the draft. Restoration requires WebCrypto SHA-256, exact original byte digest, exact row count, strict 8-KiB canonical JSON, exact field/primitive types, literal `review_only:true` and false grant/consent/authorization/scan/execute/dispatch/retest/deploy/release flags. Duplicate keys, whitespace-altered envelopes, unexpected fields and mismatched source fingerprints fail closed. Only after all checks does the app apply the saved options and reconstruct the proposal. Historical comparisons and user-confirmed client/engagement statements do **not** carry over; the operator must separately authenticate the source and confirm current permissions.
+
+This digest is a **local consistency binding**, NOT proof of genuine client identity, authentication, scope consent, revocation, production permission or recovery. The JSON can be modified and isn't signed. Nothing is auto-restored from cookies, localStorage or cloud storage; treat the saved draft as private planning data.
 
 ## Planning model and limitations
 
