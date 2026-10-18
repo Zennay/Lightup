@@ -28,7 +28,7 @@ Password is collected through a private interactive prompt, NEVER a CLI argument
 ## Useful product behavior
 
 - View recorded request status, mode, risk and decision-presence; these are untrusted retrospective records, never newly created approvals.
-- See original engagements, stored grants, source-declared request IDs and associated risk rows without a scan/model/handler.
+- See original engagements, stored grants, source-declared request IDs and associated risk rows without a scan/model/handler. Foreign-tenant rows are never imported wholesale; only anonymous counts tied to the selected tenant's own engagement IDs are reported, and malformed cross-tenant engagement identities are withheld.
 - Identify stored grants lacking an approved request link, referencing a missing/not-approved request, or contradicting stored tenant/engagement provenance. HOLD means human follow-up, not an authorization gate bypass.
 - Per-engagement caseboard combines counts of stored grants and risk decisions, source status and a descriptive attention label. A matching source link is explicitly REVIEW_ONLY_UNVERIFIED_GRANT_LINK, never a verified grant.
 - Operator can select one existing tenant by authenticated client-ID list; client login is hard-bound to the actual persisted tenant.
