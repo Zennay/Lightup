@@ -848,18 +848,20 @@ $('todoExport').addEventListener('click',()=>{
   if(!selected.length)throw Error('Choose at least one local draft.');
   if(!globalThis.crypto||!crypto.getRandomValues)throw Error('Secure random identifiers unavailable in this browser.');
   const dueTasks=[];
+  const earlier=new Set(LightUpLocalLineage.inspect(entries).superseded);
   for(let i=0;i<selected.length;i++)for(const [id] of STAGES){
    const t=selected[i].tasks[id];
    if(t.status==='prepared'||!t.due)continue;
    if(!/^\\d{4}-\\d{2}-\\d{2}$/.test(t.due)||
       new Date(t.due+'T00:00:00Z').toISOString().slice(0,10)!==t.due)throw Error('Invalid target date.');
-   dueTasks.push({draftOrdinal:i+1,id,due:t.due,unbound:!selected[i].source_attached});
+   dueTasks.push({draftOrdinal:i+1,id,due:t.due,unbound:!selected[i].source_attached,
+    superseded:earlier.has(selected[i].source_sha256)});
   }
   if(!dueTasks.length)throw Error('No incomplete paperwork tasks with target dates in this selection.');
   if(dueTasks.length>120)throw Error('Workload exceeds 120 calendar task limit.');
-  const missing=dueTasks.filter(t=>t.unbound).length;
+  const missing=dueTasks.filter(t=>t.unbound).length,older=dueTasks.filter(t=>t.superseded).length;
   if(!confirm('Export '+dueTasks.length+' PRIVATE task deadlines, including '+missing+
-   ' source-unbound HOLD(s)? Only anonymous paperwork labels and due dates are included. Do not mistake these tasks for scheduled assessments or import into an unapproved shared calendar.'))return;
+   ' source-unbound HOLD(s) and '+older+' superseded/cancelled historical task(s)? Only anonymous paperwork labels and due dates are included. Do not mistake these tasks for scheduled assessments or import into an unapproved shared calendar.'))return;
   const stages={
    client_evidence:'Client ownership paperwork',
    scope_boundary:'Scope boundary paperwork',
@@ -875,15 +877,19 @@ $('todoExport').addEventListener('click',()=>{
    const entropy=crypto.getRandomValues(new Uint8Array(16));
    const uid=Array.from(entropy,x=>x.toString(16).padStart(2,'0')).join('')+'@lightup-paperwork.invalid';
    rows.push('BEGIN:VTODO','UID:'+uid,'DTSTAMP:'+stamp,
-    'DUE;VALUE=DATE:'+task.due.replaceAll('-',''),'STATUS:NEEDS-ACTION','CLASS:PRIVATE',
+    'DUE;VALUE=DATE:'+task.due.replaceAll('-',''),
+    'STATUS:'+(task.superseded?'CANCELLED':'NEEDS-ACTION'),'CLASS:PRIVATE',
+    'X-LIGHTUP-SUPERSEDED:'+(task.superseded?'TRUE':'FALSE'),
     'SUMMARY:LightUp paperwork '+task.draftOrdinal+' - '+stages[task.id],
-    'DESCRIPTION:PREPARATION ONLY. DRAFT HOLD. NO CONSENT APPROVAL GRANT OR SCAN.',
+    'DESCRIPTION:'+(task.superseded?
+     'SUPERSEDED LOCAL VERSION. CANCELLED PAPERWORK TASK. DO NOT RELY ON OLD SCOPE.':
+     'PREPARATION ONLY. LOCAL TIP NOT AUTHORITY. NO CONSENT APPROVAL GRANT OR SCAN.'),
     'X-LIGHTUP-AUTHORIZATION:FALSE','X-LIGHTUP-CONSENT:FALSE','END:VTODO');
   }
   rows.push('END:VCALENDAR');
   download('lightup-private-paperwork-tasks.ics',rows.join('\\r\\n')+'\\r\\n','text/calendar;charset=utf-8');
-  $('todoStatus').textContent='Downloaded '+dueTasks.length+' anonymous, PRIVATE VTODO tasks ('+missing+
-   ' source-unbound). No client/asset data, assessment bookings or online sync.';
+  $('todoStatus').textContent='Downloaded '+dueTasks.length+' anonymous PRIVATE VTODO tasks ('+missing+
+   ' source-unbound; '+older+' superseded marked CANCELLED). No client/asset data, assessment bookings or online sync.';
  }catch(e){$('todoStatus').textContent='VTODO HOLD: '+e.message;}
 });
 function download(name,data,type){
