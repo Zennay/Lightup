@@ -22,7 +22,7 @@
   const fixedFlags=()=>({authorized:false,consent_verified:false,dispatch_allowed:false,release_allowed:false});
   const nice=x=>x.replaceAll("_"," ");
   const format=x=>Number.isInteger(x)?String(x):Number(x).toPrecision(5).replace(/\.?0+($|e)/,"$1");
-  let reports=[],demo=false,selectedCase="",settings=null;
+  let reports=[],demo=false,selectedCase="",settings=null,sourceHashes=[];
 
   // Unlike JSON.parse, reject repeated JSON keys (including escaped aliases) at every depth.
   function strictJSON(raw) {
@@ -148,6 +148,12 @@
       runtime:total.runtime_seconds.candidate,
       cost:total.compute_cost_usd.candidate};
   }
+  async function hashBytes(bytes){
+    if(!globalThis.crypto?.subtle)return null;
+    try{const raw=await crypto.subtle.digest("SHA-256",bytes);
+      return Array.from(new Uint8Array(raw),b=>b.toString(16).padStart(2,"0")).join("");}
+    catch(_){return null;}
+  }
   function cell(x){return String(x);}
   function tr(values){return "<tr>"+values.map(x=>"<td>"+cell(x)+"</td>").join("")+"</tr>";}
   function table(headers,rows){
@@ -219,6 +225,8 @@
     $("sourceLine").textContent=!active?"":reports.length+" candidate reports · "+reports[0].cases.size+
       " shared anonymized cases · all authority flags false · "+(demo?"FICTIONAL DATA":"UNVERIFIED SOURCE");
     for(const id of ["exportCSV","exportJSON","exportHTML","print"])$(id).disabled=!active;
+    $("saveDraft").disabled=!(active&&!demo&&sourceHashes.length===reports.length);
+    $("draftFile").disabled=$("saveDraft").disabled;
     if(!active){
       $("cards").innerHTML='<p class="empty">Import reports to compare lab candidates.</p>';
       for(const id of ["thresholds","frontier","caseDetail","metricBoard","pairMetrics"])$(id).innerHTML="";
@@ -237,7 +245,7 @@
     renderMetricBoard(stats);
     let t;try{t=threshold();settings=t;$("thresholdMessage").textContent="Review suggestions recomputed locally; no source metrics changed.";}
     catch(_){$("thresholdMessage").textContent="HOLD: invalid threshold — enter a bounded numerical value. No decision output.";
-      settings=null;for(const id of ["exportCSV","exportJSON","exportHTML","print"])$(id).disabled=true;
+      settings=null;$("saveDraft").disabled=true;for(const id of ["exportCSV","exportJSON","exportHTML","print"])$(id).disabled=true;
       $("thresholds").textContent="HOLD — invalid local thresholds";$("frontier").textContent="HOLD — invalid local thresholds";return;}
     $("thresholds").innerHTML=table(["Candidate","Source status","Human discussion triggers","Hard safety indicators"],
       stats.map((s,i)=>["Candidate "+(i+1),reports[i].sourceStatus,
@@ -276,15 +284,17 @@
   async function importFiles(files){
     try{
       assert(files.length>=2&&files.length<=12);
-      const next=[];
+      const next=[],hashes=[];
       for(const file of files){
         assert(file.size>0&&file.size<=262144);
         const bytes=await file.arrayBuffer();
         assert(bytes.byteLength>0&&bytes.byteLength<=262144);
         const source=new TextDecoder("utf-8",{fatal:true}).decode(bytes);
+        hashes.push(await hashBytes(bytes));
         next.push(decodeReport(strictJSON(source)));
       }
-      compatible(next);reports=next;demo=false;selectedCase="";
+      compatible(next);reports=next;sourceHashes=hashes.every(h=>typeof h==="string")?hashes:[];demo=false;selectedCase="";
+      $("draftMessage").textContent=sourceHashes.length?"Private restore available only for identical source bytes.":"WebCrypto unavailable: private draft save/restore disabled.";
       setStatus("Accepted "+next.length+" compatible, unverified lab comparison files. All remain non-authorizing.");
       render();
     }catch(_){setStatus("HOLD: at least one source is malformed, mismatched, repeated or oversized. Existing workspace preserved.",true);}
@@ -318,7 +328,8 @@
     });
   }
   function demoLoad(){
-    try{const next=fictional().map(decodeReport);compatible(next);reports=next;demo=true;
+    try{const next=fictional().map(decodeReport);compatible(next);reports=next;sourceHashes=[];demo=true;
+      $("draftMessage").textContent="Private source-bound drafts are unavailable for fictional demo.";
       selectedCase="";setStatus("FICTIONAL DEMO ONLY: four invented candidates; no real assessments or permissions.");render();
     }catch(_){setStatus("HOLD: demonstration source could not be prepared.",true);}
   }
@@ -393,11 +404,75 @@
       "CI, independent security/privacy review and human GO remain mandatory.</p></body></html>";
     download("lightup-human-candidate-brief-REVIEW-ONLY.html",html,"text/html");
   }
+  const DRAFT_SCHEMA="lightup.lab_candidate_private_preferences.v1";
+  const PREF_KEYS=["maxScope","maxPolicy","minQuality","minCoverage","maxRuntime","maxCost"];
+  const DIM_KEYS=["dimQuality","dimCoverage","dimRuntime","dimCost"];
+  function checkDraft(x){
+    assert(!demo&&reports.length>=2&&sourceHashes.length===reports.length);
+    assert(exact(x,["schema","private_unsigned","source_sha256","thresholds",
+      "dimensions","focus",...AUTH])&&x.schema===DRAFT_SCHEMA&&
+      x.private_unsigned===true&&AUTH.every(k=>x[k]===false));
+    assert(Array.isArray(x.source_sha256)&&x.source_sha256.length===sourceHashes.length&&
+      x.source_sha256.every((h,i)=>typeof h==="string"&&
+      /^[a-f0-9]{64}$/.test(h)&&h===sourceHashes[i]));
+    assert(exact(x.thresholds,PREF_KEYS)&&exact(x.dimensions,DIM_KEYS)&&
+      DIM_KEYS.every(k=>typeof x.dimensions[k]==="boolean")&&
+      exact(x.focus,["pairA","pairB","caseIndex","metric"]));
+    const t=x.thresholds;
+    for(const k of PREF_KEYS)assert(finite(t[k])&&t[k]>=0);
+    assert(Number.isSafeInteger(t.maxScope)&&t.maxScope<=1e6&&
+      Number.isSafeInteger(t.maxPolicy)&&t.maxPolicy<=1e6&&
+      t.minQuality<=1&&Number.isSafeInteger(t.minCoverage)&&t.minCoverage<=1e9&&
+      t.maxRuntime<=1e12&&t.maxCost<=1e12);
+    const f=x.focus;
+    assert(Number.isSafeInteger(f.pairA)&&Number.isSafeInteger(f.pairB)&&
+      f.pairA>=0&&f.pairB>=0&&f.pairA<reports.length&&f.pairB<reports.length&&
+      f.pairA!==f.pairB&&Number.isSafeInteger(f.caseIndex)&&
+      f.caseIndex>=0&&f.caseIndex<reports[0].cases.size&&NAMES.includes(f.metric));
+    return x;
+  }
+  function saveDraft(){
+    if(demo||sourceHashes.length!==reports.length||!settings)return;
+    const ids=[...reports[0].cases.keys()].sort();
+    const obj={schema:DRAFT_SCHEMA,private_unsigned:true,source_sha256:[...sourceHashes],
+      thresholds:{...settings},
+      dimensions:Object.fromEntries(DIM_KEYS.map(k=>[k,$(k).checked])),
+      focus:{pairA:Number($("pairA").value),pairB:Number($("pairB").value),
+        caseIndex:Math.max(0,ids.indexOf(selectedCase)),metric:$("metricSelect").value},
+      ...fixedFlags()};
+    try{checkDraft(obj);
+      download("lightup-PRIVATE-local-review-preferences.json",
+        JSON.stringify(obj,null,2)+"\n","application/json");
+      $("draftMessage").textContent="Private unsigned source-bound preferences saved. This does not authenticate provenance or consent.";
+    }catch(_){$("draftMessage").textContent="HOLD: invalid local review selection, private draft not saved.";}
+  }
+  async function restoreDraft(file){
+    try{
+      assert(file&&file.size>0&&file.size<=32768);
+      const source=new TextDecoder("utf-8",{fatal:true}).decode(await file.arrayBuffer());
+      const x=checkDraft(strictJSON(source));
+      // Atomic validation already completed before changing live review state.
+      PREF_KEYS.forEach(k=>$(k).value=String(x.thresholds[k]));
+      DIM_KEYS.forEach(k=>$(k).checked=x.dimensions[k]);
+      $("pairA").value=String(x.focus.pairA);
+      $("pairB").value=String(x.focus.pairB);
+      selectedCase=[...reports[0].cases.keys()].sort()[x.focus.caseIndex];
+      $("metricSelect").value=x.focus.metric;
+      render();
+      $("draftMessage").textContent="PRIVATE unsigned preferences restored to identical original bytes. No grant or permission created.";
+    }catch(_){$("draftMessage").textContent="HOLD: changed, malformed or incompatible PRIVATE draft. Workspace unchanged.";}
+  }
   function forget(){
-    reports=[];demo=false;selectedCase="";settings=null;$("files").value="";
+    reports=[];sourceHashes=[];demo=false;selectedCase="";settings=null;
+    $("draftFile").value="";$("draftMessage").textContent="";$("files").value="";
     setStatus("All imported records forgotten from this workspace.");render();
   }
   // No fetch, storage, workers, scanner or execution API.
+  $("saveDraft").addEventListener("click",saveDraft);
+  $("draftFile").addEventListener("change",e=>{
+    if(e.target.files.length)void restoreDraft(e.target.files[0]);
+    e.target.value="";
+  });
   $("files").addEventListener("change",e=>{if(e.target.files.length)void importFiles([...e.target.files]);});
   $("demo").addEventListener("click",demoLoad);
   $("forget").addEventListener("click",forget);
