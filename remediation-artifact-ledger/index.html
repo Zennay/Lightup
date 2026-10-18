@@ -37,8 +37,22 @@
 <section class="card"><h2>4 · Human review desk</h2>
 <p id="summary" aria-live="polite"></p>
 <label class="search">Filter by original finding, title, filename or human notes<input id="filter" placeholder="Local filter; never transmitted" autocomplete="off"></label>
+<div class="bulk"><h3>Exact-fingerprint HUMAN bulk review</h3>
+<p>Selections are the original finding ID and local file SHA-256, not screen row positions. Preview changes to every selected fingerprint before applying. Human stages never validate a fix.</p>
+<div class="bulkbar"><span id="selectedCount">0 selected</span>
+<button id="selectVisible">Select all matching records</button>
+<button class="secondary" id="clearSelection">Clear selection</button></div>
+<div class="grid">
+<label>Change selected HUMAN stages to<select id="bulkStage"><option value="keep">Keep current stage</option><option value="unreviewed">Unreviewed</option><option value="human_review">Human review</option><option value="follow_up">Follow up</option><option value="archived">Archived human record</option></select></label>
+<label>Human reviewer alias<input id="bulkReviewer" maxlength="120" autocomplete="off" placeholder="Optional team alias"></label></div>
+<label class="check"><input type="checkbox" id="bulkReviewerEnabled"> Explicitly change reviewer aliases (including clearing an alias).</label>
+<button id="previewBulk">Preview exact bulk changes</button>
+<pre id="bulkPreview" class="migration" hidden></pre>
+<div class="bulkbar"><button id="applyBulk" disabled>Apply HUMAN-only changes</button>
+<button id="undoBulk" class="secondary" disabled>Undo latest HUMAN batch (max 20)</button></div>
+</div>
 <section id="tableSection" hidden><p id="shown"></p>
-<div class="scroll"><table><thead><tr><th>Original finding</th><th>Local file</th><th>SHA-256</th><th>Human stage</th><th>Reviewer alias</th><th>Human note</th><th>Local controls</th></tr></thead>
+<div class="scroll"><table><thead><tr><th>Select</th><th>Original finding</th><th>Local file</th><th>SHA-256</th><th>Human stage</th><th>Reviewer alias</th><th>Human note</th><th>Local controls</th></tr></thead>
 <tbody id="rows"></tbody></table></div></section>
 <input id="verify" type="file" hidden disabled aria-label="Recheck local evidence file">
 <p class="subtle">Human review stages are private notes, not verified security remediation, successful retest, an acceptance sign-off or permission to scan.</p>
