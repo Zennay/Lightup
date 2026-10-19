@@ -36,6 +36,7 @@ MENU = (
     ("9", "Export source-bound anonymous PRIVATE HUMAN review calendar"),
     ("10", "Create PRIVATE offline bulk retention editor (.tsv)"),
     ("11", "Seal edited PRIVATE bulk retention review to NEW encrypted plan"),
+    ("12", "Preview edited PRIVATE HUMAN bulk differences (no write)"),
     ("0", "Exit — no material changed"),
 )
 MAX_INPUT_PATH = 1024
@@ -221,6 +222,14 @@ def _bulk_export(args, vault):
     print("NEVER use a synced spreadsheet or upload private review material.")
 
 
+def _bulk_preview(args, vault):
+    if args.plan is None:
+        raise ValueError("Select a source-bound encrypted HUMAN plan first.")
+    editor = _private_existing_path("Exact PRIVATE edited bulk TSV", ".tsv")
+    clone = SimpleNamespace(**vars(args), edited=editor, action="preview")
+    bulk._preview(clone, vault)
+
+
 def _bulk_import(args, vault):
     if args.plan is None:
         raise ValueError("Select matching previous encrypted HUMAN plan first.")
@@ -283,6 +292,7 @@ def main(argv: list[str] | None = None) -> int:
             "4": _desk, "5": _due_requests, "6": _history,
             "7": _request_reconciliation, "8": _switch, "9": _calendar,
             "10": _bulk_export, "11": _bulk_import,
+            "12": _bulk_preview,
         }
         while True:
             print("\n" + " | ".join(num + ": " + label for num,label in MENU))
