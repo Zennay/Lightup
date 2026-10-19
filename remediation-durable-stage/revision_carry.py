@@ -95,6 +95,11 @@ def carry(args, folder, vault, current_packet, current_key,
     if entry["state"] == "pending" and not destination.exists() and not destination.is_symlink():
         if entry["sha256"]:
             raise ValueError("Unpublished pending historical HUMAN SHA is not empty.")
+        current_ids = {_ref(row) for row in current_packet.get("human_requests", [])}
+        if any(ref in current_ids for ref in entry["requests"]):
+            raise ValueError(
+                "CURRENT original HUMAN workroom contains an older pending request;"
+                " missing local file is not proof it was never sent.")
         print("Historical pending original-native draft absent at recorded private output path.")
         if input('Type "CONFIRM HISTORICAL NO DRAFT PUBLISHED" after HUMAN review: ') != (
                 "CONFIRM HISTORICAL NO DRAFT PUBLISHED"):

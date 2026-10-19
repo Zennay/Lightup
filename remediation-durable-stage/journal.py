@@ -292,6 +292,11 @@ def _resolve(args, vault, folder, journal, current) -> None:
     destination = Path(entry["output"])
     source._hold_if_not_private_directory(destination.parent)
     if entry["state"] == "pending" and not destination.exists() and not destination.is_symlink():
+        current_ids = {_ref(row) for row in packet.get("human_requests", [])}
+        if any(ref in current_ids for ref in entry["requests"]):
+            raise ValueError(
+                "Original CURRENT HUMAN workroom already mentions this pending request;"
+                " cannot claim no published draft.")
         print("A pending previous invocation has no output at its recorded path.")
         if input('Type "CONFIRM NO DRAFT PUBLISHED" after independent PRIVATE review: ') != (
                 "CONFIRM NO DRAFT PUBLISHED"):
