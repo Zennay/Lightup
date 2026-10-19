@@ -132,6 +132,7 @@
   };
   const summary = data => {
     const totals={packets:data.length,slots:0,questions:0,attention:0,dated:0,planned:0,
+      possible_same_numeric_shape_appearances:0,
       stages:{unassigned:0,assigned:0,waiting_human:0,locally_answered:0}};
     for(const item of data){
       totals.slots+=item.slots;totals.questions+=item.questions;
@@ -139,6 +140,15 @@
         totals.dated+=item.plan.dated;
         for(const stage of STAGES)totals.stages[stage]+=item.plan.stages[stage];}
     }
+    const shapes=new Map();
+    for(const item of data){
+      const profile=JSON.stringify([item.type,item.slots,item.questions,
+        item.plan?[item.plan.attention,item.plan.dated,
+          ...STAGES.map(stage=>item.plan.stages[stage])]:null]);
+      shapes.set(profile,(shapes.get(profile)??0)+1);
+    }
+    totals.possible_same_numeric_shape_appearances=
+      Array.from(shapes.values()).filter(n=>n>1).reduce((a,b)=>a+b,0);
     return totals;
   };
   const queue = data => data.map((item,i)=>({...item,ordinal:i+1}))
@@ -172,6 +182,7 @@
     $("exportBrief").disabled=entries.length===0;
     $("exportJson").disabled=entries.length===0;
     $("missing").textContent=String(total.packets-total.planned);
+    $("overlap").textContent=String(total.possible_same_numeric_shape_appearances);
     for(const stage of STAGES)$("stage_"+stage).textContent=
       String(total.stages[stage])+" recorded slot appearances";
     const former=earlier;
@@ -233,6 +244,7 @@
       "Source-free slot appearances: "+t.slots,
       "Pending HUMAN questions (not fixes): "+t.questions,
       "Planning-stage packets: "+t.planned,
+      "Indistinguishable numeric profile appearances (not duplicates): "+t.possible_same_numeric_shape_appearances,
       "Attention slot appearances (only planning packets): "+t.attention,
       "Locally dated slot appearances (only planning packets): "+t.dated,
       "",
@@ -243,6 +255,7 @@
     if(t.stages.waiting_human)lines.push("Review waiting_human stages in original PRIVATE workrooms.");
     if(t.dated)lines.push("Review date-bearing slots only in original PRIVATE plans; exact dates are not imported.");
     if(t.packets!==t.planned)lines.push("Some packets lack HUMAN planning states; missing means NOT PROVIDED.");
+    if(t.possible_same_numeric_shape_appearances)lines.push("Several packets share identical anonymous numeric profiles; this is NOT proof of duplicate source work.");
     lines.push("Confirm source overlap privately; packet appearance changes are NOT remediation.",
       "Counts may identify people in small populations; human disclosure approval required.",
       "");
@@ -259,6 +272,7 @@
       source_free_slot_appearances_not_unique:totals.slots,
       pending_human_questions_not_fixes:totals.questions,
       planning_packet_count:totals.planned,
+      possible_same_numeric_shape_appearances_not_proven_duplicates:totals.possible_same_numeric_shape_appearances,
       human_attention_slot_appearances:totals.attention,
       locally_dated_slot_appearances:totals.dated,
       local_planning_stages:totals.stages,
