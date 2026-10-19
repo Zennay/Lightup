@@ -28,6 +28,30 @@ python3 remediation-cockpit-attestation/attest.py verify \
 
 **Success exits 2. HOLD exits 3** with deliberately generic errors. A receiver first checks the keyed HMAC over the exact canonical original `manifest.json` bytes. It then calls the unchanged native `read_cockpit.inspect` to validate exact owner-only file inventory, all SHA-256 content descriptors, anonymous stage schema, disclaimers and completely regenerated scriptless HTML. It rechecks the manifest after admission. The original cockpit remains unchanged; detached receipt is written exclusively as 0600 with no overwrite. Wrong key, modified manifest, missing content, changed native HTML or non-private/cross-owner files => HOLD.
 
+## Rotate an existing trusted shared-key receipt without changing the cockpit
+
+After generating a separate NEW 32-byte key in a different private keyfile, rotate only an already-authenticated cockpit. Rotation authenticates the **old** receipt with the original secret and native reader first, then binds the **same manifest bytes** to the new key with a new exclusive detached receipt. It refuses identical old/new key material and never overwrites the old receipt. The old key/receipt remain available for prior devices until a human separately revokes them. This procedure does **not** itself revoke a leaked key or invalidate previously copied receipts.
+
+```sh
+python3 remediation-cockpit-attestation/attest.py new-key \
+  --key-file "$HOME/private-lightup-handoff/team-secret-2.key"
+python3 remediation-cockpit-attestation/attest.py rotate \
+  --cockpit "$HOME/private-lightup-workroom/cockpit" \
+  --old-key-file "$HOME/private-lightup-handoff/team-secret.key" \
+  --old-receipt "$HOME/private-lightup-handoff/cockpit-receipt.json" \
+  --new-key-file "$HOME/private-lightup-handoff/team-secret-2.key" \
+  --new-receipt "$HOME/private-lightup-handoff/cockpit-receipt-2.json"
+```
+
+Trusted operators can confirm they received the **same shared key** through an independent call on each device, without printing the key:
+
+```sh
+python3 remediation-cockpit-attestation/attest.py key-fingerprint \
+  --key-file "$HOME/private-lightup-handoff/team-secret-2.key"
+```
+
+The short pairing hint is not a signature, authenticated identity or consent. Do not treat it as a substitute for verification of the full native cockpit and detached HMAC.
+
 ## Guarantees and non-guarantees
 
 - HMAC-SHA256 with 256-bit random local key; a fixed domain separator and length-delimited exact manifest bytes; constant-time MAC comparison.
