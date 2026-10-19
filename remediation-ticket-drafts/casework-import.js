@@ -5,8 +5,8 @@
 const MAX_PACKET_BYTES=2*1024*1024;
 const MAX_NODES=16000;
 const TEXT_FIELDS=['finding_id','title','severity','retest_status','remediation'];
-function duplicateSafeJSON(text){
- if(typeof text!=='string'||new TextEncoder().encode(text).length>MAX_PACKET_BYTES)throw Error('Casework JSON exceeds 2 MiB.');
+function duplicateSafeJSON(text,maxBytes=MAX_PACKET_BYTES){
+ if(typeof text!=='string'||new TextEncoder().encode(text).length>maxBytes)throw Error('PRIVATE JSON exceeds permitted byte limit.');
  let i=0,nodes=0;
  const invalid=()=>{throw Error('Malformed or ambiguous Casework JSON.');};
  const ws=()=>{while(/[\u0020\u0009\u000a\u000d]/.test(text[i]||'')&&i<text.length)i++;};
@@ -87,5 +87,5 @@ function decode(text,current,sourceHash){
  if(drafts.size!==current.length)throw Error('Casework admission incomplete.');
  return {drafts,suggested,resetCompleted};
 }
-global.LightUpTicketIntake=Object.freeze({decode});
+global.LightUpTicketIntake=Object.freeze({decode,parsePrivateJSON:(text)=>duplicateSafeJSON(text,4*1024*1024)});
 })(window);
