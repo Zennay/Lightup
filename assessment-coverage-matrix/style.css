@@ -31,3 +31,13 @@ footer{border-top:1px solid #283442;padding:22px clamp(18px,4vw,52px);max-width:
 .attention-link{background:none;border:0;padding:0;text-align:left;font-size:.85rem;font-weight:730;color:#a7e8e0;text-decoration:underline;text-underline-offset:3px}
 .attention-link:hover{color:#e0fff9}.attention-list small{display:block;margin-top:7px;color:#b7cbd2;line-height:1.5}
 @media(print){.attention{display:none!important}}
+
+.source-metrics{margin-bottom:18px;padding:20px 22px;border-color:#3e5266}
+.source-metrics h3{font-size:1.08rem;color:#d3eaf3;margin:0 0 5px}
+.source-metrics p{font-size:.86rem}
+.metrics-scroll{overflow-x:auto}
+.source-metrics table{min-width:630px;width:100%}
+.source-metrics th{background:#1c3040}.source-metrics td{padding:9px 11px}
+.source-metrics td:first-child{min-width:280px;color:#c7d7e2}
+.source-metrics .metric-alert{font-weight:780;color:#ffe0ac;background:#443328}
+@media(print){.source-metrics{display:none!important}}
