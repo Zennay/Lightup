@@ -264,7 +264,7 @@ main{max-width:1060px;margin:auto}h1{font-size:2.2rem}p{line-height:1.65;color:#
 .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(185px,1fr));gap:12px;margin:24px 0}
 article{background:#19283c;border:1px solid #344864;border-radius:14px;padding:18px}
 article strong{font-size:2.1rem;display:block;color:#c8f9e0}article span{color:#bad0e5}
-table{border-collapse:collapse;width:100%;min-width:700px}th,td{text-align:left;padding:14px;border-bottom:1px solid #344864}
+table{border-collapse:collapse;width:100%%;min-width:700px}th,td{text-align:left;padding:14px;border-bottom:1px solid #344864}
 .scroll{overflow-x:auto}ul{list-style:none;padding:0}li{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #344864}
 small{font-size:13px}aside{border-left:3px solid #f5c77b;padding:12px 18px;background:#29303e}
 </style></head><body><main>
@@ -338,6 +338,11 @@ def build(paths: list[Path], destination: Path) -> None:
         finally:
             os.close(folder_fd)
         publish(stage, destination)
+        parent_fd = os.open(destination.parent, os.O_RDONLY | os.O_DIRECTORY)
+        try:
+            os.fsync(parent_fd)
+        finally:
+            os.close(parent_fd)
     finally:
         if stage.exists():
             shutil.rmtree(stage)
