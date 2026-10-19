@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import sys
 
-from . import private_export_human_revision, private_export_human_revision_workqueue, private_export_human_revision_choices, private_export_human_revision_guided, private_export_human_revision_editor
+from . import private_export_human_revision, private_export_human_revision_workqueue, private_export_human_revision_choices, private_export_human_revision_guided, private_export_human_revision_editor, private_export_human_revision_vault
 
 
 def _ask(label: str) -> str:
@@ -44,13 +44,18 @@ def main() -> int:
         "7. Import verified HUMAN decisions into NEW encrypted source-bound plan\n"
         "8. Guided per-finding terminal approval, directly to NEW encrypted plan\n"
         "9. PRIVATE offline browser editor for per-finding selection (HTML)\n"
+        "10. Seal reviewed PRIVATE JSON choices to new encrypted .lud\n"
+        "11. Apply encrypted .lud to a NEW encrypted original .lun\n"
+        "12. Inspect encrypted original-source HUMAN decisions privately\n"
+        "13. Rotate encrypted HUMAN decision passphrase into NEW .lud\n"
+        "14. Open encrypted HUMAN choices as NEW UNENCRYPTED private JSON\n"
         "0. Exit"
     )
     try:
-        choice = _ask("Choose 0-9")
+        choice = _ask("Choose 0-14")
         if choice == "0":
             return 0
-        if choice not in ("1", "2", "3", "4", "5", "6", "7", "8", "9"):
+        if choice not in tuple(str(i) for i in range(1, 15)):
             raise ValueError("unknown option")
         before = _ask("Earlier authenticated encrypted original source .lue")
         plan = _ask("Earlier exact-source encrypted HUMAN plan .lun")
@@ -68,6 +73,50 @@ def main() -> int:
             "storage, actual recipient and approved transport; no output establishes "
             "consent, verified fixes or permission to test."
         )
+        if choice in ("10", "11", "12", "13", "14"):
+            action = {
+                "10": "seal", "11": "apply", "12": "inspect",
+                "13": "rotate", "14": "open",
+            }[choice]
+            params = [
+                action, before, plan, after,
+                "--ack-private-handling", "--ack-same-real-client",
+            ]
+            if action == "seal":
+                selection = _ask("Previously reviewed original PRIVATE JSON choice file (0600)")
+                if not selection.lower().endswith(".json"):
+                    raise ValueError("plaintext original decisions must end in .json")
+                _confirm(
+                    "I have manually reviewed the entire source-bound HUMAN-only "
+                    "decision sheet and approved PRIVATE encryption and secure storage."
+                )
+                params.extend(["--choices", selection, "--ack-human-decisions"])
+            else:
+                selection = _ask("Encrypted original-source PRIVATE choice file .lud (0600)")
+                if not selection.lower().endswith(".lud"):
+                    raise ValueError("encrypted original decisions must end in .lud")
+                params.extend(["--encrypted-choices", selection])
+                if action == "apply":
+                    _confirm(
+                        "I independently verified the real reviewer and original source "
+                        "and authorize local HUMAN coordination carry only; this does "
+                        "not prove findings, fixes or active assessment consent."
+                    )
+                    params.append("--ack-human-decisions")
+            if action != "inspect":
+                extension = "lun" if action == "apply" else "json" if action == "open" else "lud"
+                output = _ask("NEW PRIVATE output ." + extension)
+                if not output.lower().endswith("." + extension):
+                    raise ValueError("wrong output file extension")
+                params.extend(["--output", output])
+                if action == "open":
+                    _confirm(
+                        "This will write an UNENCRYPTED copy of original private IDs, "
+                        "titles and source labels. I verified exact recipient and "
+                        "owner-private storage independently."
+                    )
+                    params.append("--ack-unencrypted-original-ids")
+            return private_export_human_revision_vault.main(params)
         if choice == "9":
             destination = _ask("NEW PRIVATE offline browser editor .html")
             if not destination.lower().endswith(".html"):
