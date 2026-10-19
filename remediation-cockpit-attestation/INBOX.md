@@ -52,6 +52,19 @@ Once a complete source-free HUMAN inbox has been independently admitted, it can 
 
 For human follow-up coordination against an **already admitted original inbox**, use [COORDINATION.md](COORDINATION.md). It creates new encrypted 0600 per-slot owner, stage, urgency, date and local note snapshots, an offline private HTML board, anonymous tentative calendar and exact-original-prefix carry when this inbox is extended. A complete private inbox plus its HUMAN plan can also be sealed and reopened together as a portable workroom, never modifying these original source-free cockpit files.
 
+## PRIVACY: internal manifest inventory is not an anonymous export
+
+The workroom's private `summary.json` **contains linkable SHA-256 digests of source-free manifests** for native local duplicate detection, exact source-free slot continuity and original inbox admission. It is **PRIVATE integrity inventory**, not safe to describe as a fully anonymous external report. Keep it inside the trusted owner-only workroom. For a fresh true **counts-only** 0600 JSON that contains *no* slot digests, owner names, original source references, notes, due dates or per-case links, use:
+
+```sh
+python3 remediation-cockpit-attestation/inbox.py export-counts \
+  --inbox "$HOME/private-incoming/lightup-human-inbox-EXACT-ID" \
+  --key-file "$HOME/private-secrets/team-secret.key" \
+  --output "$HOME/private-incoming/inbox-counts-only.json"
+```
+
+When working from a **complete PRIVATE HUMAN workroom** with encrypted slot planning, `workroom_control.py export-counts` additionally aggregates anonymous stage and due-slot totals without revealing dates/aliases/notes. Even source-free aggregate counts remain PRIVATE unless an authorized human decides they may be shared; these counts prove no customer consent, fix or source evidence identity.
+
 ## Absolute boundaries
 
 This capability is private **HUMAN workflow bookkeeping** only. It does not infer unique clients, original finding identities, real evidence validity, remediation quality, active test permission, grant, current client consent, review approval, retest, release readiness or risk. A copied shared secret can authenticate alternate packages; HMAC/AEAD do not establish independently authenticated human sender identity. Unencrypted HTML only exists in already owner-private `0700` folders with `0600` files; keep devices trusted and secrets distributed via an independent human-approved channel. There is no archive/network/upload/scan target functionality or deletion of original material.
