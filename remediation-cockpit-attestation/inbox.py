@@ -198,7 +198,7 @@ def receive_many(packages: list[Path], key_file: Path, target_parent: Path) -> t
     strict_private_dir(target_parent)
     key = attest.key_bytes(key_file)
     require(all(p.is_absolute() and p not in (key_file, target_parent)
-                and target_parent not in p.parents and p not in target_parent.parents
+                and p not in target_parent.parents
                 for p in packages))
     require(len({str(p) for p in packages}) == len(packages))
     stage = Path(tempfile.mkdtemp(prefix=".lightup-inbox-pending-", dir=target_parent))
@@ -270,7 +270,7 @@ def main() -> int:
               " locally pending HUMAN questions, NOT unique findings or verified fixes.")
         print("No client identity, consent, authorized target, retest or original evidence certified.")
         return 2
-    except (OSError, TypeError, ValueError, UnicodeError, OverflowError,
+    except (OSError, TypeError, ValueError, KeyError, UnicodeError, OverflowError,
             RecursionError, review.Hold, transport.InvalidTag, transport.binascii.Error):
         print("HOLD: encrypted PRIVATE HUMAN inbox not admitted; nothing authorized.",
               file=sys.stderr)

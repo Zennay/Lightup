@@ -73,10 +73,10 @@ def extend(original: Path, packages: list[Path], secret: Path,
                    len({str(p) for p in packages}) == len(packages))
     attest.require(all(p.is_absolute() and p != secret and
                        p != original and original not in p.parents and
-                       output_parent not in p.parents and p not in output_parent.parents
+                       p not in output_parent.parents
                        for p in packages))
     attest.require(original != output_parent and
-                   output_parent not in original.parents)
+                   original not in output_parent.parents)
     key = attest.key_bytes(secret)
     temporary = Path(tempfile.mkdtemp(prefix=".lightup-inbox-extend-", dir=output_parent))
     complete = False
