@@ -13,6 +13,7 @@ import secrets
 import sys
 
 import journal
+import guided_queue
 
 ACTIONS = {
     "1": ("status", "Inspect original current HUMAN journal"),
@@ -26,6 +27,7 @@ ACTIONS = {
     "11": ("adopt-legacy", "Enroll previously unindexed original-native HUMAN journal"),
     "12": ("inbox", "View all registered engagement HUMAN handoffs and next actions"),
     "13": ("inbox-html", "Publish PRIVATE engagement HUMAN action dashboard"),
+    "14": ("guided-queue", "Select ONE exact HUMAN inbox item and run an existing action"),
 }
 NAMES = {
     "stage": ("native-human-draft-", ".ltv"),
@@ -131,6 +133,11 @@ def main(argv: list[str] | None = None) -> int:
                 print("Unknown HUMAN command. No state changed.")
                 continue
             action = ACTIONS[choice][0]
+            if action == "guided-queue":
+                result = guided_queue.run(args, human, plan, _common)
+                if result != 0:
+                    print("Guided HUMAN action is on HOLD or needs owner review.")
+                continue
             if action == "stage" and staged_in_session:
                 print("HUMAN HOLD: A new native draft was already staged this operator"
                       " session. Independently review it in the original app first.")
