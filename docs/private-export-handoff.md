@@ -34,3 +34,23 @@ python -m lightup.private_export_handoff report /path/to/private/handoff.zip \
 - All original exact-head hosted/permanent named VPS CI requirements, original source owner and independent privacy/security review, actual separate authenticated client/operator consent, at-use revocation, issues #177/#182/#829 and explicit **HUMAN GO** remain mandatory before any broader release. Existing parent PR #1611 has failed hosted acceptance due to old unchecked-CSV assumptions; that is **not resolved** here and must not be bypassed.
 
 No new QA, regression, or test suite was added or run. Only source syntax and the additive offline feature build are inspected within the current execution policy.
+
+## Original-source continuity — second concrete operator workflow
+
+Two separately created PRIVATE ZIP exports can be compared **locally** without modifying either source. The command strictly reopens both archives, checks their original CSV/manifest shapes and digest consistency, demands an explicit human confirmation of real shared client/engagement, and rejects any disagreement in the two *declared* client/engagement labels. The label check is NOT an independent identity check. The standalone module produces a private, scriptless HTML report with original source additions, disappearances, changed/unchanged records, field-change counts and severity/retest **source-label** transitions. It never infers closure/fix from disappearance.
+
+```sh
+python -m lightup.private_export_continuity earlier-private.zip later-private.zip \
+  --output /path/to/private/source-delta.html \
+  --acknowledge-same-client --ack-private-plaintext
+```
+
+An explicitly private investigation brief can additionally include original finding IDs and field names, without including customer descriptions, evidence or remediation text:
+
+```sh
+python -m lightup.private_export_continuity earlier-private.zip later-private.zip \
+  --output /path/to/private/source-delta-ids.html \
+  --acknowledge-same-client --ack-private-plaintext --include-original-ids
+```
+
+The first default report is ID-free; small counts may still be sensitive. Neither mode updates a source, owner decision, original stored finding, or previous HUMAN evidence/casework state. A changed source digest or record requires a separately authenticated and reviewed human decision before re-binding any old evidence or status.
