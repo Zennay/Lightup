@@ -42,7 +42,7 @@
         entry.delta !== canonical.delta || !STAGES.includes(entry.stage) ||
         !ROUTES.includes(entry.route) || typeof entry.note !== "string" ||
         entry.note.length > 800 || new TextEncoder().encode(entry.note).length > 1200 ||
-        /[\u0000-\u001f\u007f-\u009f\u200b\u200c\u200d\u202a-\u202e\u2066-\u2069\ufeff]/u.test(entry.note)) return false;
+        /[\p{C}\p{Zl}\p{Zp}]/u.test(entry.note.replaceAll("\n", ""))) return false;
     return true;
   }
   function validate(doc) {
