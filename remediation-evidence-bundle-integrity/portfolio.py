@@ -24,7 +24,7 @@ def sha(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
 def plan(folders: list[Path]) -> dict:
-    review.require(2 <= len(folders) <= 12, "Require 2–12 private workspace sources")
+    review.require(1 <= len(folders) <= 12, "Require 1–12 private workspace sources")
     review.require(len(set(folders)) == len(folders), "Repeated original workspace location")
     slots = []
     held = []
@@ -143,7 +143,7 @@ def render(report: dict) -> bytes:
 def main() -> int:
     p = argparse.ArgumentParser(description="Source-separated PRIVATE HUMAN workload board offline")
     p.add_argument("--bundle", type=Path, action="append", required=True,
-                   help="One full original 0700 PRIVATE evidence workspace (2–12 total)")
+                   help="One complete original PRIVATE evidence workspace (1–12 total)")
     p.add_argument("--html", type=Path, help="New scriptless PRIVATE owner-only HTML report")
     p.add_argument("--counts", type=Path, help="New source-free aggregate PRIVATE JSON")
     args = p.parse_args()

@@ -61,7 +61,7 @@ This is useful to hand over an offline readable status progression while keeping
 
 ## Separate-source PRIVATE HUMAN portfolio board
 
-`portfolio.py` now accepts 2–12 separately admitted, complete PRIVATE Evidence Relationship workspaces from **different original sources or contexts**. Each original workspace independently passes the exact same file/manifest/HUMAN session review as `verify.py`. It never merges source records, invents shared client identities, extracts evidence-byte contents or touches native LightUp requests. The operator gets a source-ID-free, scriptless private workload board with per-slot local HUMAN question counts, pending stages, outstanding follow-up reason groupings, and aggregate **slot workload** totals. It detects identical repeated source+HUMAN snapshots (HOLD) and highlights repeated original source packet identities across different human sessions to warn against double-counting. This is not an organization-wide set of authenticated distinct cases.
+`portfolio.py` now accepts 1–12 separately admitted, complete PRIVATE Evidence Relationship workspaces from **one or more original sources or contexts**. Each original workspace independently passes the exact same file/manifest/HUMAN session review as `verify.py`. It never merges source records, invents shared client identities, extracts evidence-byte contents or touches native LightUp requests. The operator gets a source-ID-free, scriptless private workload board with per-slot local HUMAN question counts, pending stages, outstanding follow-up reason groupings, and aggregate **slot workload** totals. It detects identical repeated source+HUMAN snapshots (HOLD) and highlights repeated original source packet identities across different human sessions to warn against double-counting. This is not an organization-wide set of authenticated distinct cases.
 
 ```sh
 python3 remediation-evidence-bundle-integrity/portfolio.py \
@@ -74,7 +74,7 @@ Or choose **only** `--counts /ABSOLUTE/NEW/SOURCE-FREE.json` for an aggregate lo
 
 ## One-command complete PRIVATE HTML evidence cockpit
 
-**Recommended multi-workspace operator entrypoint:** `board.py` fully integrates the independent original-bundle verifier, cross-source HUMAN workload portfolio, optional same-source revision progress and an advisory follow-up briefing into one **complete new private browser-readable offline folder**. No hand assembly of individual HTML is needed; a source-unchanged bundle is reviewed with the original rendered HTML reconstructed byte-for-byte first.
+**Recommended one-or-more-workspace operator entrypoint:** `board.py` fully integrates the independent original-bundle verifier, cross-source HUMAN workload portfolio, optional same-source revision progress and an advisory follow-up briefing into one **complete new private browser-readable offline folder**. No hand assembly of individual HTML is needed; a source-unchanged bundle is reviewed with the original rendered HTML reconstructed byte-for-byte first.
 
 ```sh
 python3 remediation-evidence-bundle-integrity/board.py \
@@ -83,7 +83,7 @@ python3 remediation-evidence-bundle-integrity/board.py \
   --output-dir "$HOME/lightup-private/receipts/cockpit-001"
 ```
 
-Open `cockpit-001/index.html` locally. The new private 0700 folder is created **atomically and exclusively** using the original parent workbench's Linux `renameat2(RENAME_NOREPLACE)` directory publisher, with fsynced 0600 files, scriptless Content Security Policy, source-free anonymous `portfolio.json`, `portfolio.html`, `actions.html` and its own unsigned output `manifest.json`. If every original input packet has identical source bytes and the HUMAN sessions are distinct, it also publishes `history.html` and `history.json` with only ordinal-local progression; otherwise it provides the multi-source workload and HUMAN action summary without pretending cross-client history exists.
+Open `cockpit-001/index.html` locally. The new private 0700 folder is created **atomically and exclusively** using the original parent workbench's Linux `renameat2(RENAME_NOREPLACE)` directory publisher, with fsynced 0600 files, scriptless Content Security Policy, source-free anonymous `portfolio.json`, `portfolio.html`, `actions.html` and its own unsigned output `manifest.json`. If two or more original input packets have identical source bytes and distinct HUMAN sessions, it also publishes `history.html` and `history.json` with only ordinal-local progression; otherwise it provides the multi-source workload and HUMAN action summary without pretending cross-client history exists.
 
 The `actions.html` summary translates the original source-proposed reason codes into local HUMAN-only next steps and keeps each original owner slot separated. The cockpit **never** copies original source JSON, evidence bytes, filenames, source hashes, HUMAN notes or client IDs into its generated files. Nonetheless aggregate operational workload remains private. A changed original byte during preparation causes HOLD without publishing a final directory; an interrupted crash may leave an owner-private staging directory. `--output-dir` must be unused and its parent must already be owner-only 0700. This is a local advisory product: no task dispatch, native Apply, client grant, operator consent, verified fix or active assessment.
 

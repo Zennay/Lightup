@@ -154,7 +154,7 @@ def action_brief(summary: dict) -> bytes:
                  "LightUp PRIVATE HUMAN Follow-up Brief")
 
 def publish(folders: list[Path], destination: Path) -> dict:
-    review.require(2 <= len(folders) <= 12, "Expected 2 to 12 original sources")
+    review.require(1 <= len(folders) <= 12, "Expected 1 to 12 original sources")
     review.require(destination not in folders and all(destination.parent != p for p in folders),
                    "Cannot publish within an original private source directory")
     # The original source files were admitted completely by every existing
@@ -167,7 +167,7 @@ def publish(folders: list[Path], destination: Path) -> dict:
         identities.append((current_snapshot["current.json"],
                            current_snapshot.get("previous.json")))
         source_snapshots.append(current_snapshot)
-    one_source = all(pair == identities[0] for pair in identities[1:])
+    one_source = len(identities) >= 2 and all(pair == identities[0] for pair in identities[1:])
     history = progression.assemble(folders) if one_source else None
 
     artifacts = {
@@ -206,7 +206,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=(
         "Make one complete, browser-ready PRIVATE offline HUMAN evidence coordination portal"))
     parser.add_argument("--bundle", type=Path, action="append", required=True,
-                        help="Existing original Evidence Relationship Desk directory; 2–12")
+                        help="Existing original Evidence Relationship Desk directory; 1–12")
     parser.add_argument("--output-dir", type=Path, required=True,
                         help="NEW unused PRIVATE directory under an existing owner-only 0700 parent")
     args = parser.parse_args()

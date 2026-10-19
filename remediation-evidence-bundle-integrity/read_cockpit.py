@@ -169,9 +169,10 @@ def inspect(path: Path) -> dict:
     review.require(m.get("warning") == board.WARNING,
                    "Offline cockpit disclaimer changed")
     total = nonnegative(m.get("slot_count"), "PRIVATE slot count", 12)
-    review.require(2 <= total <= 12 and type(m.get("original_packet_context_repeated")) is bool,
+    review.require(1 <= total <= 12 and type(m.get("original_packet_context_repeated")) is bool,
                    "Invalid original source-slot metadata")
     hist = m["original_packet_context_repeated"]
+    review.require(not hist or total >= 2, "A single original source cannot have a comparison")
     filenames = DEFAULT | (HISTORY if hist else frozenset())
     review.require(type(m.get("files")) is dict and set(m["files"]) == filenames and
                    {p.name for p in path.iterdir()} == set(filenames) | {"manifest.json"},
