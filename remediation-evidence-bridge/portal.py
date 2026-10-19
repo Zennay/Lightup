@@ -62,12 +62,22 @@ def _safe_source(rows: list[dict[str, str]]) -> dict[str, int]:
         counts[row["severity"]] += 1
     return counts
 
-def build_portal(rows: list[dict[str,str]], history_count: int, human_present: bool) -> bytes:
+def build_portal(rows: list[dict[str,str]], history_count: int, human_present: bool, previous_source: list[dict[str,str]] | None = None) -> bytes:
     """Render only source-labelled aggregates and local literal navigation targets."""
     counts = _safe_source(rows)
     if type(history_count) is not int or not 0 <= history_count <= 12 or type(human_present) is not bool:
         raise ValueError("Historical/HUMAN workbench provenance malformed.")
     high = counts["critical"] + counts["high"]
+    drift = None
+    if previous_source is not None:
+        _safe_source(previous_source)
+        old={row["finding_id"]:row for row in previous_source}
+        now={row["finding_id"]:row for row in rows}
+        drift={
+            "changed":sum(now[k]!=old[k] for k in now.keys() & old.keys()),
+            "added":len(now.keys()-old.keys()),
+            "absent":len(old.keys()-now.keys())
+        }
     cards = [
         ("01","Original finding review","01-review.html",
          "Read source claims, priorities and original remediation suggestions. Historical labels are not verified fixes."),
@@ -94,6 +104,23 @@ def build_portal(rows: list[dict[str,str]], history_count: int, human_present: b
     csp=("default-src 'none'; connect-src 'none'; script-src 'none'; "
          "style-src 'sha256-"+csp_hash+"'; img-src 'none'; font-src 'none'; "
          "form-action 'none'; object-src 'none'; base-uri 'none'; frame-src 'none'")
+    drift_html = ""
+    if drift is not None:
+        drift_html=(
+            '<section aria-label="Private historical original source changes">'
+            '<h2>Source changes since latest PRIVATE previous snapshot · HUMAN re-review</h2>'
+            '<div class="rail">'
+            '<div class="metric"><strong>'+str(drift["changed"])+
+            '</strong><span>Changed original source records · not verified</span></div>'
+            '<div class="metric"><strong>'+str(drift["added"])+
+            '</strong><span>Added original source records · HUMAN follow-up</span></div>'
+            '<div class="metric"><strong>'+str(drift["absent"])+
+            '</strong><span>Absent from current source · NOT resolved</span></div>'
+            '</div><p class="lead">Previous snapshots are PRIVATE historical claims, '
+            'not authenticated current findings or remediation evidence. '
+            '<a href="06-human-actions.html">Review source-bound HUMAN attention →</a></p>'
+            '</section>'
+        )
     html=('<!doctype html><html lang="en"><head><meta charset="utf-8">'
           '<meta name="viewport" content="width=device-width,initial-scale=1">'
           '<meta http-equiv="Content-Security-Policy" content="'+escape(csp,quote=True)+'">'
@@ -109,7 +136,7 @@ def build_portal(rows: list[dict[str,str]], history_count: int, human_present: b
           '<div class="metric"><strong>'+str(len(rows))+'</strong><span>original source findings (unverified labels)</span></div>'
           '<div class="metric"><strong>'+str(high)+'</strong><span>source-labelled critical/high (NOT verified exposure)</span></div>'
           '<div class="metric"><strong>'+str(history_count)+'</strong><span>older PRIVATE source revisions (not true retests)</span></div>'
-          '</section>'
+          '</section>'+drift_html+
           '<aside class="warning" role="note"><strong>HUMAN HOLD:</strong> '
           'A locally encrypted note or SHA-256 match is not proof of remediation, authenticity, '
           'client consent, current operator permission or a verified retest. '

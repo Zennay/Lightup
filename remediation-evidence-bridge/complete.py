@@ -97,7 +97,7 @@ def _build_all(
         snapshots=[(dict(unverified_historical=True), records) for records in prior]
         snapshots.append((dict(current_authenticated=True),now))
         contents["04-history.html"]=build_history_desk(history_review(snapshots))
-    contents["index.html"]=build_portal(now,len(prior),private_human is not None)
+    contents["index.html"]=build_portal(now,len(prior),private_human is not None,prior[-1] if prior else None)
     if not 6<=len(contents)<=MAX_FILES or sum(len(x) for x in contents.values())>MAX_TOTAL_OUTPUT:
         raise ValueError("PRIVATE source/HUMAN workbench file/size bounds exceeded.")
     for name,source_bytes in contents.items():
