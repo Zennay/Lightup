@@ -192,7 +192,7 @@
         if(sel.value)decisions.set(keyOf(x),sel.value);
         else decisions.delete(keyOf(x));
         updateSummary();
-        if(filter!=="all")render();
+        if(filter!=="all")render(); else renderMatrix();
       });
       td.append(sel);tr.append(td);body.append(tr);
     }
