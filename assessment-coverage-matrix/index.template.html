@@ -34,6 +34,36 @@
         </div>
       </div>
     </section>
+    <section class="panel vault-panel" aria-labelledby="vault-title">
+      <div>
+        <span class="eyebrow">LOCAL ENCRYPTED ORIGINALS + HUMAN CONTINUITY</span>
+        <h2 id="vault-title">Keep the whole offline workroom together.</h2>
+        <p>Unlike the HUMAN-only plan, a <strong>complete PRIVATE encrypted workspace includes your original lab report bytes</strong> (which may contain sensitive targets and evidence) and the exact associated HUMAN planning choices. Nothing is sent to any server. Encryption is local AES-256-GCM with a fresh salt and nonce; no account or recovery service exists.</p>
+        <p id="vaultAvailable" class="hint" aria-live="polite">Only admitted originals can be included in a complete encrypted workroom.</p>
+      </div>
+      <div class="vault-work">
+        <div class="vault-card">
+          <h3>Encrypt current originals + HUMAN decisions</h3>
+          <label for="vaultSavePass">PRIVATE passphrase (12–256 characters)
+            <input id="vaultSavePass" type="password" autocomplete="new-password" placeholder="Never sent or stored">
+          </label>
+          <button id="vaultSave" type="button" class="primary" disabled>Download complete ENCRYPTED workroom</button>
+          <p class="hint">Export accepts a total of at most 24 MiB original source bytes. Use the normal separate-source workflow for larger collections. Only someone who can unlock the file can read its PRIVATE original contents.</p>
+        </div>
+        <div class="vault-card">
+          <h3>Open complete PRIVATE encrypted workroom</h3>
+          <label for="vaultFile">Choose encrypted workspace file
+            <input id="vaultFile" type="file" accept=".json,application/json">
+          </label>
+          <label for="vaultOpenPass">PRIVATE decryption passphrase
+            <input id="vaultOpenPass" type="password" autocomplete="off" placeholder="Local passphrase">
+          </label>
+          <button id="vaultOpen" type="button" class="secondary" disabled>Open complete ENCRYPTED workroom</button>
+          <p class="hint">All ORIGINAL lab files and source-bound HUMAN decisions are admitted before replacing any in-memory work. A wrong password, edited source or inconsistent plan keeps the current workroom unchanged.</p>
+        </div>
+      </div>
+      <p class="hint"><strong>IMPORTANT:</strong> Encryption protects local file confidentiality, not source authenticity, reviewer identity, consent, true vulnerability status, action-time authorization or completed remediation. There has been no independent cryptographic audit; secure your device, passphrase and downloaded file.</p>
+    </section>
     <p id="message" role="status" aria-live="polite" data-error="false">Nothing loaded. This app has no network calls or scan operations.</p>
     <aside id="intro" class="note" aria-label="Privacy and interpretation" >
       <h2>Important boundaries</h2>
