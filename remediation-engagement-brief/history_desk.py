@@ -93,7 +93,9 @@ def build_history_desk(info):
         summary=(
             "Added: "+str(len(t["added"]))+" · Absent: "+str(len(t["absent"]))+
             " · Changed: "+str(len(t["changed"]))+
-            " · Original fixed-label changes (UNVERIFIED): "+str(len(t["unverified_fixed"]))
+            " · Original fixed-label changes (UNVERIFIED): "+str(len(t["unverified_fixed"]))+
+            " · Higher original severity labels: "+str(len(t["source_severity_escalations"]))+
+            " · New original regression labels: "+str(len(t["source_retest_regressions"]))
         )
         sections=[
             '<div class="change-count"><span>New original IDs '+str(len(t["added"]))+
@@ -104,6 +106,14 @@ def build_history_desk(info):
             _details("Absent original IDs — never automatically resolved",
                      _plain_ids(t["absent"],"No longer present means UNKNOWN, not fixed.")),
             _details("Changed original fields",_changed_rows(t["changed"],old,new)),
+            _details("HUMAN attention: original severity escalations (UNVERIFIED)",
+                     _plain_ids(t["source_severity_escalations"],
+                                "Source severity was raised. This is not independently verified risk."),
+                     bool(t["source_severity_escalations"])),
+            _details("HUMAN attention: new original regression labels (UNVERIFIED)",
+                     _plain_ids(t["source_retest_regressions"],
+                                "Original regression label requires independent HUMAN evidence review."),
+                     bool(t["source_retest_regressions"])),
             _details("Original retest label changed to fixed (UNVERIFIED)",
                      _plain_ids(t["unverified_fixed"],"A source label cannot verify remediation or retest.")),
         ]

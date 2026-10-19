@@ -342,6 +342,8 @@ def main(argv=None):
             print("Currently original IDs:",result["current"])
             print("Previously seen but now absent (NOT fixed):",len(result["currently_absent"]))
             print("Original source reappearances (not verified):",len(result["reappeared"]))
+            print("Original source severity escalations (UNVERIFIED):",result["source_escalation_events"])
+            print("New original source regression labels (UNVERIFIED):",result["source_regression_label_events"])
             if args.output is not None or args.sealed_markdown is not None:
                 args.capture_current=None
                 save_markdown(args, history_markdown(result))

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 FIELDS = ("title","severity","retest_status","remediation")
+SEVERITY_ORDER = ("critical","high","medium","low","info")
 MAX = 12
 
 def review(snapshots):
@@ -36,13 +37,25 @@ def review(snapshots):
                  for key in common if before[key]!=after[key]}
         fixed={key for key in common if before[key]["retest_status"]!=after[key]["retest_status"]
                and after[key]["retest_status"]=="fixed"}
+        escalated=sorted(key for key in common
+                         if before[key]["severity"] in SEVERITY_ORDER
+                         and after[key]["severity"] in SEVERITY_ORDER
+                         and SEVERITY_ORDER.index(after[key]["severity"]) <
+                         SEVERITY_ORDER.index(before[key]["severity"]))
+        regressions=sorted(key for key in common
+                           if before[key]["retest_status"]!="regression"
+                           and after[key]["retest_status"]=="regression")
         transitions.append(dict(index=index,added=sorted(after.keys()-before.keys()),
                                 absent=sorted(before.keys()-after.keys()),changed=changed,
-                                unchanged=len(common)-len(changed),unverified_fixed=sorted(fixed)))
+                                unchanged=len(common)-len(changed),unverified_fixed=sorted(fixed),
+                                source_severity_escalations=escalated,
+                                source_retest_regressions=regressions))
     return dict(snapshots=sequence,transitions=transitions,
                 historical=len(sequence)-1,source_ids=len(seen),
                 current=len(sequence[-1]),currently_absent=sorted(seen-sequence[-1].keys()),
-                reappeared=sorted(reappeared))
+                reappeared=sorted(reappeared),
+                source_escalation_events=sum(len(t["source_severity_escalations"]) for t in transitions),
+                source_regression_label_events=sum(len(t["source_retest_regressions"]) for t in transitions))
 
 def safe(value):
     if type(value) is not str:
@@ -64,7 +77,9 @@ def markdown(info):
         "- Distinct original finding IDs: "+str(info["source_ids"]),
         "- Current freshly authorized original findings: "+str(info["current"]),
         "- Currently absent historically observed IDs: "+str(len(info["currently_absent"])),
-        "- Original IDs that reappeared after absence: "+str(len(info["reappeared"])), "",
+        "- Original IDs that reappeared after absence: "+str(len(info["reappeared"])),
+        "- Source-only severity escalation events (UNVERIFIED): "+str(info["source_escalation_events"]),
+        "- Source-only new regression-label events (UNVERIFIED): "+str(info["source_regression_label_events"]), "",
     ]
     snapshots=info["snapshots"]
     for t in info["transitions"]:
@@ -74,7 +89,9 @@ def markdown(info):
             "- Absent original IDs (HOLD, not fixed): "+str(len(t["absent"])),
             "- Changed original records: "+str(len(t["changed"])),
             "- Unchanged common original records: "+str(t["unchanged"]),
-            "- Source-only changes into fixed retest label (UNVERIFIED): "+str(len(t["unverified_fixed"])), "",
+            "- Source-only changes into fixed retest label (UNVERIFIED): "+str(len(t["unverified_fixed"])),
+            "- Source-severity escalation to higher priority (UNVERIFIED): "+str(len(t["source_severity_escalations"])),
+            "- New source-regression labels (UNVERIFIED): "+str(len(t["source_retest_regressions"])), "",
         ])
         if t["added"]:
             lines.extend(["### Newly present original IDs",""])
@@ -82,6 +99,17 @@ def markdown(info):
         if t["absent"]:
             lines.extend(["", "### Absent IDs — HUMAN HOLD",""])
             lines.extend("- "+safe(x) for x in t["absent"])
+        if t["source_severity_escalations"]:
+            lines.extend(["", "### HUMAN priority: original source severity escalations",""])
+            previous=snapshots[t["index"]-1]
+            current=snapshots[t["index"]]
+            lines.extend("- "+safe(ident)+": "+safe(previous[ident]["severity"])+" to "+
+                         safe(current[ident]["severity"])+" (source labels, not verified risk)"
+                         for ident in t["source_severity_escalations"])
+        if t["source_retest_regressions"]:
+            lines.extend(["", "### HUMAN priority: new original regression labels",""])
+            lines.extend("- "+safe(ident)+" — original source now reports regression; not independently confirmed."
+                         for ident in t["source_retest_regressions"])
         if t["changed"]:
             lines.extend(["", "### Source field changes",""])
             before=snapshots[t["index"]-1]
@@ -109,10 +137,11 @@ def markdown(info):
     return result
 
 def anonymous_csv(info):
-    lines=["source_from,source_to,added,absent,changed,unchanged,original_fixed_label_changes"]
+    lines=["source_from,source_to,added,absent,changed,unchanged,original_fixed_label_changes,source_severity_escalations,source_regression_label_changes"]
     for t in info["transitions"]:
         lines.append(",".join(map(str,(
             t["index"],t["index"]+1,len(t["added"]),len(t["absent"]),
-            len(t["changed"]),t["unchanged"],len(t["unverified_fixed"])
+            len(t["changed"]),t["unchanged"],len(t["unverified_fixed"]),
+            len(t["source_severity_escalations"]),len(t["source_retest_regressions"])
         ))))
     return ("\r\n".join(lines)+"\r\n").encode("ascii")

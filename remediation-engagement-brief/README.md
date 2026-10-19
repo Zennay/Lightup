@@ -95,3 +95,9 @@ Commands:
     python3 remediation-engagement-brief/brief.py open-sealed-browser-current --db /private/lightup.sqlite --email operator@example.invalid --client-id YOUR_CLIENT --engagement-id YOUR_ENGAGEMENT --input /private/briefs/compare-browser.ltv --output /private/briefs/current-review.html --ack-private-html
 
 For history-current, use the same --sealed-html and --ack-sealed-html flags with the original --inputs and --ack-source-order. The package size is bounded by the original 4 MiB vault, so large histories may need fewer snapshots. Fresh account login is READ permission only, never approved scanning, a client consent record, an actual security finding or a verified repair. All existing release gates remain unchanged.
+
+## NEW: source-only escalation and regression attention in history
+
+The original human-ordered history workbench additionally distinguishes two high-attention SOURCE-label changes for finding IDs present in adjacent original revisions: a severity change upward along critical/high/medium/low/info, and a transition into the original regression retest label. They appear in the scriptless offline lineage browser as expanded HUMAN attention sections, in confidential HUMAN Markdown with before/after source-severity labels, and as **anonymous numeric columns only** in the aggregate CSV. Terminal history-current shows those counts as well.
+
+These indicators prioritize a human conversation; they are NOT risk-calibrated vulnerabilities, confirmed regressions, a verified retest, authorization or evidence of actual remediation. Only exact original IDs shared across adjacent snapshots are compared. Newly appearing original IDs remain new source rows and are not called regressions. Encrypted browser reopening regenerates these views only after the original present-day client/engagement authenticated source read passes its exact source hash gate.
