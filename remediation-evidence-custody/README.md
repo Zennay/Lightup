@@ -17,6 +17,19 @@ The offline browser now supports **real HUMAN assignment and staging of new sele
 
 The operator sees an append-only preview with original records count, planned new records, original source SHA and the preserved original PRIVATE schema. A separately acknowledged PRIVATE JSON export preserves **every preexisting original attachment and original HUMAN note as-is**, plus existing Casework, Evidence Review and HUMAN request arrays when the input is Unified HUMAN v2; Artifact Ledger v1 input exports a native Artifact Ledger v1 JSON. No evidence file bytes, service calls, background storage, original source-owner code mutation, target contact or automatic owner Apply. The operator must independently import the exported JSON through the existing ORIGINAL Artifact Ledger restore or Unified HUMAN preview+Apply on the unchanged exact original source; save the previous private original first.
 
+## Source-authenticated encrypted HUMAN intake continuity
+
+The new [seal_intake.py](seal_intake.py) closes the original-source private operator loop for **Unified HUMAN v2**: after a privately exported append-only JSON from section 4, the real LightUp account/tenant/engagement read is checked again against the unchanged current original original-source bytes. Existing PRIVATE encrypted HUMAN `.ltv` is decrypted using the original protected vault in process, its exact original source, all preexisting attachments, original Casework, Evidence Review and HUMAN requests are admitted by their existing original validators, and the new JSON is accepted **only when all original non-attachment metadata, all original HUMAN records and every existing fingerprint remain byte-semantically identical in the same order**. At least one newly appended fingerprint must be explicitly `unreviewed`; all native limits apply. The original AES-256-GCM/PBKDF2 vault creates a NEW encrypted owner-only 0600 `.ltv`; no plaintext intermediate is written by this CLI, original encrypted file and exported JSON remain unchanged, and no native HUMAN actions are silently applied.
+
+    PYTHONPATH=src python3 remediation-evidence-custody/seal_intake.py \
+      --db /private/existing-lightup.sqlite --email operator@example.invalid \
+      --client-id ALREADY_AUTHORIZED_CLIENT --engagement-id EXISTING_ENGAGEMENT \
+      --previous /private/original-human-collaboration.ltv \
+      --draft /private/new-PRESERVED-unified-evidence-intake.json \
+      --output /private/NEW-encrypted-human-intake.ltv --ack-private-intake
+
+All inputs must be existing original, owner-owned, regular **0600** files inside an owner-protected directory (restrict permissions on browser-downloaded PRIVATE JSON before invoking). The new output directory must already exist as owner-only **0700**; neither symlinks nor overwrites are permitted. Original old/new passphrases are requested via interactive private TTY; a *different* new passphrase is required. This CLI supports the native Unified HUMAN v2 form, not Artifact Ledger v1 (whose JSON must be imported through its unchanged original browser). The resulting `.ltv` can be passed as `--human` to `open_current.py` or `complete_custody.py`, reusing their real original authorization gate. These commands do not constitute assessment consent, retest proof, evidence provenance or customer deployment.
+
 ## Build and operate
 
 Open the generated offline [standalone.html](standalone.html) on a trusted private workstation; avoid public downloads, browser extensions and cloud-synced destinations for private client data. Deterministic build using the repository checkout:
