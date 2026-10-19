@@ -31,6 +31,15 @@ function validate(p){
  const ledger=p.kind==="lightup.private_artifact_ledger"&&p.schema_version===1&&p.disposition==="PRIVATE_HUMAN_EVIDENCE_INDEX_ONLY";
  const unified=p.kind==="lightup.private_unified_human_evidence_workspace"&&p.schema_version===2&&p.disposition==="PRIVATE_HUMAN_REVIEW_ONLY";
  if(!ledger&&!unified)fail("Unsupported original Artifact Ledger/Unified HUMAN schema.");
+ const expected=["kind","schema_version","disposition","source_contract","source_sha256",
+  "source_count","client_reference","engagement_reference","attachments","warning",...FLAGS,
+  ...(unified?["casework","evidence_review","human_requests"]:[])];
+ if(Object.keys(p).length!==expected.length||expected.some(k=>!Object.hasOwn(p,k)))
+  fail("Original PRIVATE source packet has unexpected/missing fields.");
+ clean(p.warning,600,"PRIVATE original warning");
+ if(unified&&(["casework","evidence_review"].some(k=>p[k]!==null&&
+  (!Array.isArray(p[k])||p[k].length!==p.source_count))))
+  fail("Original PRIVATE HUMAN Casework/Evidence Review baseline malformed.");
  if(p.source_contract!=="lightup.finding_export._COLUMNS_v1"||typeof p.source_sha256!=="string"||!/^[0-9a-f]{64}$/u.test(p.source_sha256))fail("Invalid original source digest.");
  if(!Number.isSafeInteger(p.source_count)||p.source_count<1||p.source_count>350)fail("Invalid original source row count.");
  clean(p.client_reference,120,"client label",true);clean(p.engagement_reference,120,"engagement label",true);
@@ -55,7 +64,8 @@ function validate(p){
  client_reference:p.client_reference,engagement_reference:p.engagement_reference,rows:Object.freeze(rows),
   hasNativeRequests:p.kind==="lightup.private_unified_human_evidence_workspace",
   nativeRequests:Object.freeze(p.kind==="lightup.private_unified_human_evidence_workspace"&&Array.isArray(p.human_requests)?
-  p.human_requests.map(r=>Object.freeze({...r})):[])});
+  p.human_requests.map(r=>Object.freeze({...r})):[]),
+  originalPacketJSON:JSON.stringify(p)});
 }
 function refresh(){
  $("import").disabled=busy;$("verifySource").disabled=busy||!current;$("run").disabled=busy||!current||!sourceVerified;
@@ -67,7 +77,8 @@ function refresh(){
   "PRIVATE self-declared context: "+current.client_reference+" / "+current.engagement_reference+
   " · source SHA-256 "+current.source_sha256+" · "+current.source_count+" original finding rows · "+current.rows.length+" fingerprints. No live authentication or client consent.":
   "No PRIVATE original evidence index loaded.";
- if(window.LightUpCustodyMerge)window.dispatchEvent(new Event("lightup-custody-updated"));
+ if(window.LightUpCustodyMerge||window.LightUpCustodyIntake)
+  window.dispatchEvent(new Event("lightup-custody-updated"));
  $("sourceState").textContent=sourceVerified?
  "MATCHED — original Casework source SHA-256, original finding count and indexed IDs all match. Not an authorization or security verdict.":
  "HUMAN HOLD — original five-column findings source not matched. Local comparison, reports and follow-up handoffs disabled.";
@@ -138,7 +149,7 @@ function evaluate(index,files,meta){
  const referenced=new Set(index.rows.map(r=>r.sha256+"|"+r.byte_length));
  for(const f of files)if(!used.has(f.n)){
   const duplicated=!f.error&&referenced.has(f.sha+"|"+f.size);
-  output.push({finding_id:"",indexed_name:"",local_name:f.name,
+  output.push({finding_id:"",indexed_name:"",local_name:f.name,local_mime:f.mime,
    indexed_sha:"",local_sha:f.sha,byte_length:f.size,
    status:f.error?"rejected":duplicated?"duplicate":"unindexed",
    reason:f.error||(duplicated?"Additional LOCAL copy of indexed bytes (not an unindexed artifact).":
@@ -202,7 +213,7 @@ async function run(){
    if(f.size>MAX_FILE)problem="File over 16 MiB was NOT hashed";
    else sha=Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256",await f.arrayBuffer())),
     x=>x.toString(16).padStart(2,"0")).join("");
-   candidate.push({n,name:f.name,size:f.size,sha,error:problem});
+   candidate.push({n,name:f.name,size:f.size,sha,error:problem,mime:typeof f.type==="string"?f.type.slice(0,120):""});
    if((n+1)%12===0){announce("Processed "+(n+1)+" of "+list.length+" local files.");await new Promise(ok=>setTimeout(ok,0));}
   }
   if(current!==initial||token!==revision)fail("Index changed during file read.");

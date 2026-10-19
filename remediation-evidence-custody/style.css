@@ -14,3 +14,4 @@ td,th{padding:11px 9px;text-align:left;border-bottom:1px solid #dce7e8;overflow-
 .export{margin-top:20px;border-top:1px solid #d8e3e5;padding-top:14px}.notice,.alert{padding:15px;border-radius:8px;background:#e3f0ee;overflow-wrap:anywhere}
 .alert{background:#fce8e6;color:#852419}footer{color:#516a71;font-size:.82rem;text-align:center;padding-top:14px}
 @media(max-width:550px){header{padding:28px 0}.card{padding:16px}button{width:100%;margin-right:0}}
+#intakeFiles table{min-width:670px}#intakeFiles select{max-width:230px;width:100%;padding:6px;background:#f8fcfc;border:1px solid #aabcc0;border-radius:5px}#intakeFiles td{max-width:280px}#intakeFiles small{display:block;color:#527078}#intakeNote,#intakeReviewer{display:block;width:100%;font:inherit;margin-top:5px;border:1px solid #b5c9cb;border-radius:7px;padding:10px}#intakePreview{white-space:pre-line}

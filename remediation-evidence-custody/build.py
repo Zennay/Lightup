@@ -17,6 +17,7 @@ def build() -> bytes:
     css = (ROOT / "style.css").read_text(encoding="utf-8").strip()
     script = (ROOT / "custody.js").read_text(encoding="utf-8").strip()
     merge_script = (ROOT / "request-merge.js").read_text(encoding="utf-8").strip()
+    intake_script = (ROOT / "artifact-intake.js").read_text(encoding="utf-8").strip()
     original = (ROOT.parent / "casework" / "remediation-engine.js").read_text(encoding="utf-8")
     if hashlib.sha256(original.encode("utf-8")).hexdigest() != EXPECTED_ORIGINAL_SHA:
         raise ValueError("Original Casework parser drift: HUMAN HOLD.")
@@ -25,10 +26,12 @@ def build() -> bytes:
         "__SCRIPT_HASH__": _pin(script),
         "__ORIGINAL_HASH__": _pin(original),
         "__MERGE_HASH__": _pin(merge_script),
+        "__INTAKE_HASH__": _pin(intake_script),
         "__STYLE__": css,
         "__SCRIPT__": script,
         "__ORIGINAL_JS__": original,
         "__MERGE_JS__": merge_script,
+        "__INTAKE_JS__": intake_script,
     }
     for marker in parts:
         if source.count(marker) != 1:

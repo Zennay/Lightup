@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-__SCRIPT_HASH__' 'sha256-__ORIGINAL_HASH__' 'sha256-__MERGE_HASH__'; style-src 'sha256-__STYLE_HASH__'; connect-src 'none'; img-src 'none'; font-src 'none'; object-src 'none'; media-src 'none'; frame-src 'none'; worker-src 'none'; form-action 'none'; base-uri 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-__SCRIPT_HASH__' 'sha256-__ORIGINAL_HASH__' 'sha256-__MERGE_HASH__' 'sha256-__INTAKE_HASH__'; style-src 'sha256-__STYLE_HASH__'; connect-src 'none'; img-src 'none'; font-src 'none'; object-src 'none'; media-src 'none'; frame-src 'none'; worker-src 'none'; form-action 'none'; base-uri 'none'">
 <title>LightUp · PRIVATE Evidence Custody Reconciliation</title>
 <style>__STYLE__</style></head>
 <body>
@@ -54,9 +54,20 @@
 <label class="check"><input id="mergeAck" type="checkbox"> I reviewed the preview and will retain an independent backup before importing into the original owner desk. The native desk requires its own source-bound preview and manual replace-all confirmation.</label>
 <button id="exportMerged" type="button" disabled>Export PRIVATE merged original HUMAN requests</button></div>
 </section>
-<section class="card"><h2>4 · Clear sensitive working memory</h2>
+<section class="card" id="new-artifact-section"><h2>4 · Add new LOCAL fingerprints to the original PRIVATE index</h2>
+<p>Only local files whose SHA-256 bytes are not in the selected index can be attached to an <strong>existing</strong> original finding. Select the finding for each file, then preview an append-only PRIVATE manifest. Existing evidence notes, Casework, Evidence Review and HUMAN requests are preserved verbatim. Every newly attached file starts as <strong>unreviewed</strong>: a hash is not provenance, source authenticity, remediation, or a verified retest.</p>
+<p id="intakeCount" class="detail">Compare local files and the ORIGINAL source before assigning new evidence.</p>
+<div id="intakeFiles" class="table-scroll"></div>
+<label>Optional HUMAN reviewer alias (shared for newly assigned files)<input id="intakeReviewer" type="text" maxlength="120" autocomplete="off"></label>
+<label>Optional HUMAN note (applies only to new records)<textarea id="intakeNote" maxlength="1200" rows="3"></textarea></label>
+<button id="intakePreviewButton" type="button" disabled>Preview append-only PRIVATE artifact intake</button>
+<p id="intakePreview" class="detail">No append-only preview.</p>
+<label class="check"><input type="checkbox" id="intakeAck"> I inspected all original and newly assigned file references, confirmed the PRIVATE storage/recipient and retained a secure backup. Native LightUp import will still require a separate exact-source preview and HUMAN Apply.</label>
+<button id="intakeExportButton" type="button" disabled>Export PRIVATE preserved original index + newly staged fingerprints</button>
+</section>
+<section class="card"><h2>5 · Clear sensitive working memory</h2>
 <p>Forget discards imported index and local comparison results in this tab. Previously downloaded files remain on disk.</p>
 <button id="forget" type="button">Forget PRIVATE workspace</button></section>
 <p id="notice" class="notice" role="status" aria-live="polite">Load original PRIVATE manifest to begin. No source identity authenticated.</p>
 <footer>HUMAN observations only · local byte agreement is not independent provenance, source authenticity, client/operator consent, a verified retest, a fixed vulnerability, or HUMAN GO.</footer>
-</main><script>__ORIGINAL_JS__</script><script>__SCRIPT__</script><script>__MERGE_JS__</script></body></html>
+</main><script>__ORIGINAL_JS__</script><script>__SCRIPT__</script><script>__MERGE_JS__</script><script>__INTAKE_JS__</script></body></html>
