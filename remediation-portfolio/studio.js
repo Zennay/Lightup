@@ -282,6 +282,8 @@
     $("exportJson").disabled=entries.length===0;
     $("saveBoard").disabled=entries.length===0;
     $("boardCSV").disabled=entries.length===0;
+    $("boardBrief").disabled=entries.length===0;
+    $("resetBoard").disabled=entries.length===0;
     $("saveSession").disabled=entries.length===0;
     $("sourceStatus").textContent=resumedFromNumericFile?
       "Resumed numeric browser summary (NOT freshly source-checked)":
@@ -352,7 +354,9 @@
       humanActions.push(assignmentDefaults());
     if(humanActions.length>entries.length)
       humanActions.length=entries.length;
+    const selectedState=$("boardFilter").value;
     for(const [index,packet] of entries.entries()){
+      if(selectedState!=="all" && humanActions[index].state!==selectedState)continue;
       const row=document.createElement("tr");
       td(row,String(index+1),"th");
       td(row,packet.questions);
@@ -379,12 +383,43 @@
       state.value=humanActions[index].state;
       state.addEventListener("change",()=>{
         humanActions[index].state=state.value;
+        renderBoard();
         $("boardStatus").textContent="Local HUMAN state changed in memory; not a verified fix or authorization.";
       });
       second.appendChild(state);row.appendChild(second);
       body.appendChild(row);
     }
+    $("boardVisible").textContent=String(body.childElementCount);
+    for(const [name] of BOARD_STATES)
+      $("count_"+name).textContent=String(
+        humanActions.filter(item=>item.state===name).length);
   };
+  $("boardFilter").addEventListener("change",()=>{renderBoard();});
+  $("resetBoard").addEventListener("click",()=>{
+    if(!entries.length || !window.confirm("Reset ALL local HUMAN follow-up choices? No original source, verified fix or grant will change."))return;
+    humanActions=entries.map(assignmentDefaults);
+    renderBoard();$("boardStatus").textContent="Local HUMAN routing choices reset to untriaged.";
+  });
+  $("boardBrief").addEventListener("click",()=>{
+    if(!entries.length)return;
+    const lines=[
+      "LIGHTUP PRIVATE HUMAN FOLLOW-UP ACTION DESK / NO AUTHORITY",
+      BOARD_WARNING,"",
+      "Original source/identity not authenticated. Ordinals are local appearances.",
+      ""
+    ];
+    for(const [i,record] of humanActions.entries()){
+      const p=entries[i];
+      const action=BOARD_ACTIONS.find(([code])=>code===record.action)?.[1]??"Unknown";
+      const state=BOARD_STATES.find(([code])=>code===record.state)?.[1]??"Unknown";
+      lines.push("ANONYMOUS PACKET "+(i+1)+" / "+p.questions+" HUMAN QUESTIONS",
+        "HUMAN NEXT STEP: "+action,"LOCAL ROUTING STATUS: "+state,
+        "No original case identifier, consent, verified fix or release.","");
+    }
+    download("lightup-private-human-action-brief.txt","text/plain",
+      lines.join("\n")+"\n");
+    $("boardStatus").textContent="HUMAN-only private routing brief saved; no original workroom changed.";
+  });
   $("saveBoard").addEventListener("click",()=>{
     if(!entries.length)return;
     try{
