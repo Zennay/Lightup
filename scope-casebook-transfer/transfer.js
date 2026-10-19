@@ -272,8 +272,8 @@
       if (!window.crypto?.subtle || !window.isSecureContext)
         fail("Deze browser geeft geen veilige WebCrypto-context voor het lokale bestand.");
       const f = $("vault-file").files[0];
-      if (!f || f.name !== "lightup-casebook-private-transfer.lupt" ||
-          f.size < 100 || f.size > MAX_VAULT)
+      if (!f || typeof f.name !== "string" || f.name.length > 160 ||
+          !/\.lupt$/i.test(f.name) || f.size < 100 || f.size > MAX_VAULT)
         fail("Kies een oorspronkelijke, begrensde .lupt overdracht.");
       const password = $("open-password").value;
       if (!password) fail("Voer het lokale wachtwoord in.");
