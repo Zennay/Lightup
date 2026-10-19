@@ -39,11 +39,11 @@ function compute(){
  const severityDowns=out.filter(x=>x.a&&x.b&&ranks[x.b.severity]>ranks[x.a.severity]).length;
  const retestChanges=out.filter(x=>x.a&&x.b&&x.a.retest_status!==x.b.retest_status).length;
  const summary={introduced:native.added.length,absent:native.missing.length,changed:native.changed.length,unchanged:native.unchanged.length,severityUps,severityDowns,retestChanges};
- compared={before,after,summary,rows:out,start,end};
- return compared;
+ return {before,after,summary,rows:out,start,end};
 }
 function renderComparison(){
  const c=compute(),s=c.summary;
+ compared={...c,revision:H.revision()};
  $('diffSummary').textContent=c.before.label+' → '+c.after.label+' · '+s.introduced+' newly present · '+s.absent+' missing (NOT fixed) · '+s.changed+' source changed · '+s.unchanged+' identical · '+s.severityUps+' severity increases · '+s.severityDowns+' decreases · '+s.retestChanges+' source retest label changes';
  const shown=c.rows.filter(r=>r.status!=='unchanged'||$('showUnchanged').checked);
  $('diffCount').textContent=shown.length+' source trajectories displayed (no evidence of actual fixes or retests)';
@@ -57,7 +57,7 @@ function renderComparison(){
 }
 function handleGo(){try{renderComparison();}catch(e){compared=null;$('diffRows').innerHTML='';message(e.message,true);}}
 function verified(){
- const c=compute();if(!compared||compared.before.sourceHash!==c.before.sourceHash||compared.after.sourceHash!==c.after.sourceHash)throw Error('First preview the exact original snapshot pair before exporting.');
+ const c=compute();if(!compared||compared.revision!==H.revision()||compared.start!==c.start||compared.end!==c.end||compared.before.sourceHash!==c.before.sourceHash||compared.after.sourceHash!==c.after.sourceHash||compared.before.fileHash!==c.before.fileHash||compared.after.fileHash!==c.after.fileHash)throw Error('HOLD: preview the current exact source pair after any revision or selection change before export.');
  return c;
 }
 function exportAggregate(){
