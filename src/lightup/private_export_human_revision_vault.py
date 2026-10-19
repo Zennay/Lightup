@@ -15,10 +15,13 @@ from pathlib import Path
 import stat
 import sys
 
-from .private_export_encrypted import _open_sealed, _passphrase, _seal, MAX_ENVELOPE_SIZE
-from .private_export_encrypted_notes import MAGIC_PLAN, MAX_SEALED_PLAN
+from .private_export_encrypted import _open_sealed, _passphrase, _seal
+from .private_export_encrypted_notes import MAGIC_PLAN
 from .private_export_handoff import _atomic_private_publish, _no_duplicate_keys, _output_path
-from .private_export_human_revision import _read_inputs, _review_revision
+from .private_export_human_revision import _review_revision
+from .private_export_human_revision_source import (
+    _read_with_binding, _source_binding, _require_same_originals,
+)
 from .private_export_human_revision_choices import (
     MAX_CHOICES, _apply_choices, _make_choices, _read_private_choices,
 )
@@ -29,38 +32,6 @@ DECISION_EXTENSION = ".lud"
 BINDING_SIZE = 3 * hashlib.sha256().digest_size
 MAX_BOUND_DECISIONS = MAX_CHOICES + BINDING_SIZE
 MAX_DECISION_ENVELOPE = len(MAGIC_DECISIONS) + 16 + 12 + MAX_BOUND_DECISIONS + 16
-
-
-def _artifact_hash(path: str, size_limit: int) -> bytes:
-    """Exact original encrypted byte identity, owner-private, no-follow."""
-    if not hasattr(os, "O_NOFOLLOW"):
-        raise ValueError("original encrypted no-follow admission unavailable")
-    fd = os.open(
-        Path(path).expanduser(),
-        os.O_RDONLY | os.O_NOFOLLOW | getattr(os, "O_CLOEXEC", 0),
-    )
-    try:
-        info = os.fstat(fd)
-        if not stat.S_ISREG(info.st_mode) or info.st_mode & 0o077 or info.st_size > size_limit:
-            raise ValueError("original encrypted source is not bounded and owner-private")
-        sha = hashlib.sha256()
-        with os.fdopen(fd, "rb", closefd=False) as f:
-            while True:
-                chunk = f.read(131072)
-                if not chunk:
-                    break
-                sha.update(chunk)
-        return sha.digest()
-    finally:
-        os.close(fd)
-
-
-def _source_binding(earlier: str, plan: str, later: str) -> bytes:
-    return b"".join((
-        _artifact_hash(earlier, MAX_ENVELOPE_SIZE),
-        _artifact_hash(plan, MAX_SEALED_PLAN),
-        _artifact_hash(later, MAX_ENVELOPE_SIZE),
-    ))
 
 
 def _read_ciphertext(path: str) -> bytes:
@@ -113,14 +84,9 @@ def _read_decisions(path: str, secret: str, binding: bytes) -> tuple[dict, bytes
 
 
 def _current_source(earlier: str, plan: str, later: str) -> tuple[dict, dict, list, dict, bytes]:
-    before_binding = _source_binding(earlier, plan, later)
-    old_meta, old_rows, old_annotations, new_meta, new_rows = _read_inputs(
-        earlier, plan, later
+    old_meta, old_rows, old_annotations, new_meta, new_rows, before_binding = (
+        _read_with_binding(earlier, plan, later)
     )
-    # Refuse a file replacement during original-source admission; this is an
-    # exact-ciphertext local integrity guard, never an identity or consent proof.
-    if before_binding != _source_binding(earlier, plan, later):
-        raise ValueError("original encrypted artifact changed during admission")
     expected = _make_choices(
         old_meta, old_rows, old_annotations, new_meta, new_rows
     )
@@ -133,10 +99,9 @@ def _current_source(earlier: str, plan: str, later: str) -> tuple[dict, dict, li
 
 def _require_current_original_ciphertext(args: argparse.Namespace, binding: bytes) -> None:
     """Refuse private publication if an original encrypted input has changed."""
-    if binding != _source_binding(
-        args.earlier_source, args.earlier_plan, args.later_source
-    ):
-        raise ValueError("original source ciphertext changed before HUMAN publication")
+    _require_same_originals(
+        args.earlier_source, args.earlier_plan, args.later_source, binding
+    )
 
 
 def _reconcile(document: dict, expected: dict, output: dict,
