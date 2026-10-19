@@ -2,7 +2,7 @@
 (() => {
 'use strict';
 const byId = id => document.getElementById(id);
-const ui = Object.fromEntries(['source-file','casework-file','search','severity','select-visible','clear-visible','select-urgent','findings','forget','chosen','owner','due','stage','action','review','blocker','apply','preview','notice','preview-output','private-ack','export-one','export-all','export-counts','source-diff','historical-holds','export-holds','metric-count','metric-risk','metric-picked','metric-hash'].map(k=>[k,byId(k)]));
+const ui = Object.fromEntries(['source-file','casework-file','workspace-file','save-workspace','search','severity','select-visible','clear-visible','select-urgent','findings','forget','chosen','owner','due','stage','action','review','blocker','apply','preview','notice','preview-output','private-ack','export-one','export-all','export-counts','source-diff','historical-holds','export-holds','metric-count','metric-risk','metric-picked','metric-hash'].map(k=>[k,byId(k)]));
 const engine = window.LightUpCasework;
 if (!engine || typeof engine.parseCSV !== 'function' || typeof engine.digest !== 'function') {
  ui.notice.textContent='Original source-owned Casework engine unavailable. Do not use this page without the complete pinned parent checkout.';
@@ -16,7 +16,7 @@ const todayUTC=()=>new Date().toISOString().slice(0,10);
 let state=null, active='';
 function show(msg, bad=false){ui.notice.textContent=msg;ui.notice.classList.toggle('error',bad);}
 function setControls(ready){
- for(const id of ['search','severity','select-visible','clear-visible','select-urgent','forget','chosen','export-counts','casework-file','private-ack'])ui[id].disabled=!ready;
+ for(const id of ['search','severity','select-visible','clear-visible','select-urgent','forget','chosen','export-counts','casework-file','workspace-file','private-ack'])ui[id].disabled=!ready;
  updateEditor();
  updateButtons();
 }
@@ -27,6 +27,7 @@ function updateButtons(){
  ui['export-all'].disabled=!(state&&state.selected.size&&permitted);
  ui['export-counts'].disabled=!state;
  ui['export-holds'].disabled=!(state&&state.holds.length&&permitted);
+ ui['save-workspace'].disabled=!(state&&permitted);
 }
 function byteHex(buf){return Array.from(new Uint8Array(buf),b=>b.toString(16).padStart(2,'0')).join('');}
 async function sha(bytes){if(!crypto?.subtle)throw Error('Secure SHA-256 unavailable in this local browser; source-bound export is disabled.');return byteHex(await crypto.subtle.digest('SHA-256',bytes));}
@@ -36,7 +37,7 @@ function checkText(x,field){
 function draft(){return {owner:'',due:'',stage:'triage',action:'',review:'',blocker:''};}
 function forget(){
  state=null;active='';
- ui['source-file'].value='';ui['casework-file'].value='';ui.search.value='';ui.severity.value='all';ui['private-ack'].checked=false;
+ ui['source-file'].value='';ui['casework-file'].value='';ui['workspace-file'].value='';ui.search.value='';ui.severity.value='all';ui['private-ack'].checked=false;
  ui.findings.replaceChildren();const row=ui.findings.insertRow();const cell=row.insertCell();cell.colSpan=4;cell.textContent='Import a local source file to begin.';
  ui.chosen.replaceChildren(new Option('No finding selected',''));
  ui['preview-output'].textContent='Nothing selected yet.';
@@ -209,7 +210,7 @@ async function importCSV(file){
   message='Source revision: '+diff.added.length+' added, '+diff.changed.length+' changed, '+diff.missing.length+' missing, '+diff.unchanged.length+' exactly unchanged. '+holds.length+' prior HUMAN draft(s) in historical SOURCE HOLD. No missing/“fixed” source claim proves a resolved issue.';
   if(!confirm('SOURCE REVISION — independently verify this NEW export is the SAME client and engagement. '+message+' Only exact unchanged original five-field findings may keep HUMAN notes. Changed/missing notes are quarantined, never promoted. Continue?'))return;
  }
- state=next;active='';ui['casework-file'].value='';ui['private-ack'].checked=false;ui.search.value='';ui.severity.value='all';
+ state=next;active='';ui['casework-file'].value='';ui['workspace-file'].value='';ui['private-ack'].checked=false;ui.search.value='';ui.severity.value='all';
  ui['metric-count'].textContent=imported.length;
  ui['metric-risk'].textContent=imported.filter(f=>['critical','high'].includes(f.severity)).length;
  ui['metric-hash'].textContent=canonical.slice(0,10)+'…';
@@ -220,6 +221,32 @@ async function importCSV(file){
 
 ui['source-file'].addEventListener('change',async event=>{
  try{await importCSV(event.target.files[0]);}catch(err){show('IMPORT HOLD: '+err.message,true);}
+});
+ui['workspace-file'].addEventListener('change',async event=>{
+ const file=event.target.files[0];if(!file)return;
+ try{
+  if(!state)throw Error('Import the exact original authorized CSV first.');
+  if(!Number.isSafeInteger(file.size)||file.size>4*MAX_BYTES)throw Error('Checkpoint exceeds 4 MiB.');
+  const bytes=await file.arrayBuffer();
+  let text;
+  try{text=new TextDecoder('utf-8',{fatal:true}).decode(bytes);}catch(e){throw Error('Checkpoint is not valid UTF-8.');}
+  if(!window.LightUpTicketWorkspace)throw Error('Offline workspace reader unavailable.');
+  const restored=window.LightUpTicketWorkspace.restore(text,state);
+  if(!confirm('This exact-source PRIVATE HUMAN checkpoint contains unverified work and replaces ALL local HUMAN tickets, selections and historical HOLDs. Confirm independently identical original client/engagement context and proceed?'))return;
+  state.selected=restored.selected;state.drafts=restored.drafts;state.holds=restored.holds;active='';
+  ui['private-ack'].checked=false;refresh();
+  show('PRIVATE HUMAN checkpoint restored for the identical original CSV bytes; '+restored.selected.size+' selected tickets, '+restored.holds.length+' historical holds. No authentication/consent/retest was inferred. Re-approve any disclosure.');
+ }catch(err){show('CHECKPOINT HOLD: '+err.message,true);}
+ finally{ui['workspace-file'].value='';}
+});
+ui['save-workspace'].addEventListener('click',()=>{
+ try{
+  if(!canDownload())return;
+  if(!window.LightUpTicketWorkspace)throw Error('Offline workspace writer unavailable.');
+  const sourceBound=window.LightUpTicketWorkspace.packet(state);
+  download(sourceBound,'lightup-PRIVATE-human-ticket-workspace.json','application/json;charset=utf-8');
+  show('PRIVATE PLAINTEXT (NOT ENCRYPTED) source-byte-bound HUMAN checkpoint saved locally. Keep only in an approved private location; original CSV required to reopen.');
+ }catch(err){show('CHECKPOINT EXPORT HOLD: '+err.message,true);}
 });
 ui['casework-file'].addEventListener('change',async event=>{
  const file=event.target.files[0];
