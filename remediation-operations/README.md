@@ -11,7 +11,7 @@
 5. Use **Runbook Editor + Owner Return** (upstream #1645) to prepare original-finding human tasks, brief individual self-declared owners, reconcile their replies, and plan human follow-ups.
 6. Return to the new **Operations Hub** to mark local preparation, human input and self-declared handoff progress. Record only human planning notes; export PRIVATE local JSON for later restoration or scriptless HTML for a human discussion. All workflows operate separately; transferring files requires a human action and the source-owner app's exact accepted format.
 
-**Use the packaged ZIP rather than saving the launcher HTML alone:** it contains all four original source-owned standalone apps and their required files. For a checkout, open the launcher at `remediation-operations/index.html` directly; same relative links.
+**Use the packaged ZIP rather than saving the launcher HTML alone:** it contains the four original source-owned HUMAN applications, the seven-app encrypted Handoff Vault composition, and the full cross-app coordination desk. For a checkout, open the launcher at `remediation-operations/index.html` directly; same relative links.
 
 ## NEW: source-pinned seven-app vault and local encrypted HUMAN transfer
 
@@ -35,7 +35,7 @@ The included [PRIVATE Source Change Review](compare.html) accepts two local `rem
 
 ## Content and integration contract
 
-This branch *copies unchanged* the four pre-existing separately-owned product paths from **the exact pinned PR heads** below, then adds only `remediation-operations/` integration/packaging code. No edits to original-owner branches, runtimes, authentication, scanners, CI configurations or QA suites.
+This branch *copies unchanged* five separately owned PR source directories from **the exact pinned PR heads** below (four HUMAN evidence apps plus the seven-app Vault), then adds only `remediation-operations/` integration/packaging code. No edits to original-owner branches, runtimes, authentication, scanners, CI configurations or QA suites.
 
 | Original PR | Original head at integration | Preserved source path |
 | --- | --- | --- |
@@ -61,7 +61,7 @@ This command only reads local source files and creates a deterministic, fully po
 - Four source-owner workflow IDs are fixed. Local annotations are **PRIVATE**, capped at 512 characters each. The standalone hub does not store anything in cookies, localStorage, IndexedDB or a server. Export before closing.
 - PRIVATE JSON restore is all-or-nothing: 64 KiB max, fatal UTF-8 decoding, duplicate JSON key rejection, exact 4 IDs/order, exact pinned source-app heads, all 12 authority fields literally false, bounded notes, user confirmation before replacement. Imported text is never used as HTML source.
 - PRIVATE discussion HTML has no scripts or connections and escapes all notes. Verify recipient identity and safe transport independently. No external identity is authenticated by the app.
-- The hub never directly reads original casework, original grant, owner evidence or findings. Only original apps can parse their own input files. No synthetic original-source joins or cross-app conversions are claimed.
+- The landing page never reads casework or scans targets; the dedicated Cross-app HUMAN Inbox optionally parses the locally chosen original CSV using the **unmodified original Casework parser**, then joins only exact SOURCE-SHA/ID-matching exported HUMAN evidence metadata. Original files, grants, permissions and security findings are never modified. No unsupported cross-app data conversion is claimed.
 
 ## Release HOLD (unchanged)
 
