@@ -24,9 +24,9 @@ def exact_inputs(current: Path, previous: Path | None):
     return selected_sources(current, previous)
 
 
-def state_from_files(current: Path, previous: Path | None) -> tuple[dict, bytes, bytes | None]:
+def state_from_files(current: Path, previous: Path | None) -> tuple[dict, dict, bytes, bytes | None]:
     source, prior, actual, earlier = exact_inputs(current, previous)
-    return make_session(source, prior, actual, earlier), actual, earlier
+    return make_session(source, prior, actual, earlier), source, actual, earlier
 
 
 def bridge(old: dict, fresh: dict) -> tuple[dict, dict]:
@@ -93,10 +93,14 @@ def main() -> int:
         if args.output:
             require(args.output not in source_paths,
                     "Never overwrite original source, session or previous packet")
-        old_expected, old_current_bytes, old_previous_bytes = state_from_files(
+        old_expected, old_source, old_current_bytes, old_previous_bytes = state_from_files(
             args.old_current, args.old_previous)
-        new_expected, new_current_bytes, new_previous_bytes = state_from_files(
+        new_expected, new_source, new_current_bytes, new_previous_bytes = state_from_files(
             args.new_current, args.new_previous)
+        for key in ("source_contract", "source_sha256", "source_count",
+                    "client_reference", "engagement_reference"):
+            require(old_source[key] == new_source[key],
+                    "Changed original source identity, finding count or HUMAN context; carry refused")
         require(old_expected["source_packet_sha256"] != new_expected["source_packet_sha256"] or
                 old_expected["previous_packet_sha256"] != new_expected["previous_packet_sha256"],
                 "Original PRIVATE packets are identical; use the existing HUMAN session")
