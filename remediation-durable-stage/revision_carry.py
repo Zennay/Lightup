@@ -111,3 +111,45 @@ def carry(args, folder, vault, current_packet, current_key,
     print("Earlier source's PRIVATE local HUMAN journal marked reviewed.")
     print("Original actual source/material must still be independently authorized; "
           "no native Apply, grant, scan, delete or retest occurred.")
+
+
+def adopt_legacy(args, folder, vault, current_packet,
+                 read_journal, write_journal, private_file) -> None:
+    """Explicitly enroll one older nonindexed staged source under this engagement."""
+    import re
+    index = history._load(folder, current_packet, vault, private_file)
+    if len(index["sources"]) >= history.MAX_REVISIONS:
+        raise ValueError("Original engagement source index full.")
+    available = []
+    # Names are opaque original source keys. No customer data printed.
+    for name in sorted(folder.iterdir(), key=lambda p: p.name):
+        if (re.fullmatch(r"[0-9a-f]{64}\.json", name.name)
+                and name.stem not in index["sources"]):
+            private_file(name)
+            old = read_journal(folder, name.stem, vault)
+            if (old["cycles"] and old["cycles"][-1]["state"] == "staged"
+                    and old["cycles"][-1]["sha256"]):
+                available.append((name.stem, old))
+    if not available:
+        raise ValueError("No eligible legacy original-native staged HUMAN journal.")
+    print("Previously unindexed PRIVATE historical source entries:")
+    for ordinal, (_, old) in enumerate(available, 1):
+        print(ordinal, "· encrypted native drafts:",
+              len(old["cycles"][-1]["requests"]))
+    raw = input("Choose one historical HUMAN journal ordinal to enroll: ").strip()
+    if not raw.isascii() or not raw.isdecimal() or not 1 <= int(raw) <= len(available):
+        raise ValueError("Choose one exact historical HUMAN journal.")
+    key, old = available[int(raw) - 1]
+    entry = old["cycles"][-1]
+    # Cryptographically decrypt original-native private historical workroom
+    # and independently validate its original exact client/engagement binding.
+    accepted = _old_native_drafts(Path(entry["output"]), entry, args, vault, private_file)
+    if len(accepted) != len(entry["requests"]):
+        raise ValueError("Legacy original-human draft identity count changed.")
+    if input('Type "ENROLL OLD HUMAN SOURCE ONLY" after private review: ') != (
+            "ENROLL OLD HUMAN SOURCE ONLY"):
+        raise ValueError("No explicit legacy HUMAN registration acknowledgment.")
+    index["sources"].append(key)
+    write_journal(folder, history._name(current_packet), index)
+    print("Historical owner-private original-native source journal enrolled.")
+    print("It remains HUMAN-only. Existing pending/staged HOLD is preserved.")
