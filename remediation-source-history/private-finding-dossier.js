@@ -73,10 +73,19 @@ function render(){
  $('dossierExport').disabled=!chosen;
  try{preview();}catch(err){$('dossierDetail').hidden=true;notice(err.message,true);}
 }
+function openDossier(id){
+ if(typeof id!=='string'||!sourceIndex().entries.some(e=>e.id===id))
+   throw Error('Exact original finding ID is no longer present in local source history.');
+ chosen=id;
+ $('dossierQuery').value='';
+ page=0;render();
+ $('originalFindingDossier').scrollIntoView({behavior:'smooth',block:'start'});
+ $('dossierDetail').scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+window.LightUpDossier=Object.freeze({open:openDossier});
 $('dossierRows').addEventListener('click',e=>{
  const button=e.target.closest('button[data-dossier-id]');if(!button)return;
- chosen=button.dataset.dossierId;
- try{preview();$('dossierDetail').scrollIntoView({behavior:'smooth',block:'nearest'});}
+ try{openDossier(button.dataset.dossierId);}
  catch(err){notice(err.message,true);}
 });
 $('dossierQuery').addEventListener('input',()=>{page=0;render();});
