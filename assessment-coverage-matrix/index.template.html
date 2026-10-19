@@ -117,6 +117,13 @@
       <div class="grid">
         <section class="panel matrix-pane" aria-label="Check declarations by local file">
           <div class="table-scroll"><table id="matrix"></table></div>
+          <div class="human-paging matrix-paging">
+            <span id="matrixPages">No matrix loaded.</span>
+            <div class="buttons">
+              <button id="matrixPrev" class="secondary" type="button" disabled>Previous 100</button>
+              <button id="matrixNext" class="secondary" type="button" disabled>Next 100</button>
+            </div>
+          </div>
           <p class="legend"><strong>— not declared</strong> is never a verified PASS, valid negative observation, scan coverage, fix or closure. Cell counts are source-reported finding appearances.</p>
         </section>
         <section id="details" class="panel details" tabindex="-1" aria-label="Original PRIVATE source detail">
