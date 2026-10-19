@@ -222,6 +222,22 @@ def capture_current_revision(args, source):
     vault._exclusive_output(output, vault._seal(vault._inner(payload, "application/json"), password))
 
 
+def save_original_ticketdesk(args, authenticated_source):
+    """Generate ORIGINAL SHA-pinned Ticket Desk, never duplicate the owner app."""
+    if not args.ack_original_ticketdesk:
+        raise ValueError("Explicit confidential ORIGINAL Ticket Desk acknowledgement required")
+    if args.original_ticketdesk_sealed is not None:
+        seal_browser(authenticated_source,args.client_id,args.engagement_id,
+                     mode="ticketdesk",history_csv=[],output=args.original_ticketdesk_sealed)
+        print("Original approved-source Ticket Desk sealed with the unchanged PRIVATE vault")
+    if args.original_ticketdesk_html is not None:
+        if args.original_ticketdesk_html.suffix.lower() != ".html":
+            raise ValueError("Original Ticket Desk HTML output must be new .html")
+        html=build_ticketdesk(authenticated_source).encode("utf-8","strict")
+        _vault()._exclusive_output(args.original_ticketdesk_html.expanduser().absolute(),html)
+        print("Original source-owner Ticket Desk emitted as NEW private HTML; no scan permitted")
+
+
 def save_html(args, current, earlier=None):
     """Explicitly publish a network-disabled source review view to a NEW 0600 file."""
     if args.private_html is None or not args.ack_private_html:
@@ -311,12 +327,13 @@ def main(argv=None):
         action.add_argument("--ack-sealed-html", action="store_true")
         action.add_argument("--ack-private-html", action="store_true",
                             help="Explicitly acknowledge confidential unencrypted HTML on a private device")
-    open_now.add_argument("--original-ticketdesk-html", type=Path,
-                          help="NEW 0600 original SHA-pinned Ticket Desk with exact authenticated original source")
-    open_now.add_argument("--original-ticketdesk-sealed", type=Path,
-                          help="NEW AES-256-GCM .ltv for original Ticket Desk reopening after fresh auth")
-    open_now.add_argument("--ack-original-ticketdesk", action="store_true",
-                          help="Acknowledge original HUMAN Ticket Desk and confidential source membership")
+    for action in (open_now, review):
+        action.add_argument("--original-ticketdesk-html", type=Path,
+                            help="NEW original source-pinned Ticket Desk HTML loaded from current authenticated findings")
+        action.add_argument("--original-ticketdesk-sealed", type=Path,
+                            help="NEW AES-256-GCM source-only original Ticket Desk reopening packet")
+        action.add_argument("--ack-original-ticketdesk", action="store_true",
+                            help="Acknowledge source-only original HUMAN Ticket Desk and confidential private handling")
     review.add_argument("--capture-current", type=Path, help="Fresh authorized source into NEW encrypted revision .ltv")
     args = ap.parse_args(argv)
     try:
@@ -428,16 +445,8 @@ def main(argv=None):
                 args.private_html is None and args.sealed_html is None and
                 args.original_ticketdesk_html is None and args.original_ticketdesk_sealed is None):
                 raise ValueError("No PRIVATE handoff output selected")
-            if args.original_ticketdesk_sealed is not None:
-                seal_browser(current_source,args.client_id,args.engagement_id,
-                             mode="ticketdesk",history_csv=[],output=args.original_ticketdesk_sealed)
-                print("Original pinned Ticket Desk source sealed in PRIVATE vault; no HTML written")
-            if args.original_ticketdesk_html is not None:
-                if args.original_ticketdesk_html.suffix.lower() != ".html":
-                    raise ValueError("Original Ticket Desk private recipient must be a new .html")
-                original_html=build_ticketdesk(current_source).encode("utf-8","strict")
-                vault._exclusive_output(args.original_ticketdesk_html.expanduser().absolute(),original_html)
-                print("Original SHA-pinned Ticket Desk HUMAN app emitted on approved private device")
+            if args.original_ticketdesk_html is not None or args.original_ticketdesk_sealed is not None:
+                save_original_ticketdesk(args,current_source)
             if args.sealed_html is not None:
                 if not args.ack_sealed_html:
                     raise ValueError("PRIVATE browser handoff acknowledgement required")
@@ -457,6 +466,11 @@ def main(argv=None):
         if args.output is not None or args.sealed_markdown is not None:
             save_markdown(args, revision_brief(old, now))
             print("PRIVATE HUMAN revision handoff created, not verified remediation.")
+        if args.original_ticketdesk_html is not None or args.original_ticketdesk_sealed is not None:
+            # Unlike open-current, review-current legitimately admits original
+            # source drift, but only CURRENT freshly authenticated rows go into
+            # the unchanged Ticket Desk. Old source records remain historical.
+            save_original_ticketdesk(args,current_source)
         if args.private_html is not None:
             save_html(args, now, old)
             print("PRIVATE offline original-source review dashboard created; no target activity.")
