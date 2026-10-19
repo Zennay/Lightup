@@ -299,7 +299,25 @@
         (moment.questions_difference>=0?"+":"")+moment.questions_difference);
       td(tr,moment.packet_count_changed?"Declared packet coverage changed":
         "Case coverage STILL unverified");
-      table.appendChild(tr);
+      const actions=document.createElement("td");
+      for(const [label,offset] of [["Earlier",-1],["Later",1]]){
+        const button=document.createElement("button");
+        button.type="button";button.textContent=label;
+        button.disabled=moment.ordinal+offset<1 ||
+          moment.ordinal+offset>timelineMoments.length;
+        button.setAttribute("aria-label","Move numeric moment "+moment.ordinal+
+          " "+label.toLowerCase()+" in self-selected order");
+        button.addEventListener("click",()=>{
+          const position=moment.ordinal-1,other=position+offset;
+          if(other<0 || other>=timelineMoments.length)return;
+          [timelineMoments[position],timelineMoments[other]]=
+            [timelineMoments[other],timelineMoments[position]];
+          renderTimeline();
+          $("momentStatus").textContent="Human-selected numeric moment order updated; ordinals are NOT verified dates.";
+        });
+        actions.appendChild(button);
+      }
+      tr.appendChild(actions);table.appendChild(tr);
     }
     $("momentExportCSV").disabled=rows.length<2;
     $("momentExportJSON").disabled=rows.length<2;
