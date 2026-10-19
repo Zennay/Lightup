@@ -79,9 +79,11 @@ def _pairs(args) -> list[tuple[Path, Path]]:
     return selected
 
 
-def collect(args, vault) -> tuple[dict, dict, dict, list[dict]]:
+def collect(args, vault, *, key_fingerprints: set[str] | None = None) -> tuple[dict, dict, dict, list[dict]]:
     pairs=_pairs(args)
-    meta,packet,indexed,_=reply._source(args,vault)
+    meta,packet,indexed,original_key_hash=reply._source(args,vault)
+    if key_fingerprints is not None:
+        key_fingerprints.add(original_key_hash)
     originals=inbox._source_rows(meta,transfer.ORIGINAL)
     all_entries=[]
     seen_responses=set()
@@ -97,6 +99,8 @@ def collect(args, vault) -> tuple[dict, dict, dict, list[dict]]:
         if mime!="application/json":
             raise ValueError("Original recipient HUMAN reply is not private JSON.")
         rows=reply._reply_packet(returned,plaintext,files,meta,packet)
+        if key_fingerprints is not None:
+            key_fingerprints.update((transfer.digest(material_key),transfer.digest(key)))
         pair_id=(transfer.digest(plaintext),transfer.digest(returned))
         if pair_id in seen_responses:
             raise ValueError("Identical source-bound HUMAN reply submitted twice.")
