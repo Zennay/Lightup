@@ -46,11 +46,14 @@ def inspect(root: Path, secret: Path) -> dict:
             (original_fields, original_fields | {"navigation"}))
     if "navigation" in manifest:
         import linked_board
+        import workroom_home
         require(manifest["navigation"] == linked_board.MODE)
         original_browser = linked_board.render(plan)
+        expected_home = workroom_home.render(plan)
     else:
         # Keep every previously published original PRIVATE workroom readable.
         original_browser = coordination.render(plan)
+        expected_home = workroom.root_page(plan["revision"], source["slot_count"])
     require(
             manifest["kind"] == "lightup.private_human_coordination_browser" and
             type(manifest["schema_version"]) is int and
@@ -66,7 +69,7 @@ def inspect(root: Path, secret: Path) -> dict:
             review.private_read(root / "board" / "index.html") == original_browser and
             review.private_read(root / "board" / "anonymous-counts.json") == anonymous and
             review.private_read(root / "index.html") ==
-            workroom.root_page(plan["revision"], source["slot_count"]))
+            expected_home)
     return plan
 
 
