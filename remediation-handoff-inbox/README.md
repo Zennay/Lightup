@@ -9,7 +9,9 @@ This working offline human-coordination companion reads two existing source-owne
 1. [Evidence Artifact Ledger PR #1642](https://github.com/Zennay/Lightup/pull/1642): export the original unified PRIVATE human evidence workspace v2 JSON.
 2. [Human Response Reconciliation PR #1643](https://github.com/Zennay/Lightup/pull/1643): export the original PRIVATE human response register backup v1/v2 JSON. Do not substitute individual owner-request or owner-reply packets.
 
-Obtain the three product files together from this directory: [index.html](index.html), [app.js](app.js), and [style.css](style.css). Open index.html locally in a browser; no installation, credentials, server or network connection is required. Choose both privately obtained JSON files and click **Inspect human handoff**.
+**Portable single-file version:** [Open or save standalone.html](standalone.html). This published offline HTML has embedded JS/CSS pinned by exact SHA-256 CSP hashes, with all network connections disabled. It is the simplest human preview; no local build or third-party dependency is necessary.
+
+Development source remains split into three editable files. Obtain the three product files together from this directory: [index.html](index.html), [app.js](app.js), and [style.css](style.css). Open index.html locally in a browser; no installation, credentials, server or network connection is required. Choose both privately obtained JSON files and click **Inspect human handoff**.
 
 The inbox matches the *declared* original source SHA-256, exact source contract, self-declared client and engagement labels, all-twelve-false non-authority flags, and complete original HUMAN request identity. It refuses ambiguous JSON duplicate keys, invalid UTF-8, oversized files, duplicate or orphan owner replies, stale original human instructions/kinds/dates/assignee and incomplete review records. Rejection does not replace already imported in-memory HUMAN state.
 
