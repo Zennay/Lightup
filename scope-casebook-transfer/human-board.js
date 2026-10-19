@@ -10,6 +10,7 @@
     "requires-revocation-review","unresolved-tenant-lineage"];
   const utf8 = new TextDecoder("utf-8",{fatal:true});
   const MAX_HUMAN = 131072, MAX_ROWS = 200;
+  let unsavedHumanEdits = false;
   const deny = message => {throw new Error(message);};
   function sourceDocs(records) {
     const source = records.filter(r => /^casebook-(?:0[1-9]|1[0-2])\.json$/.test(r.name));
@@ -126,6 +127,7 @@
     const root=document.getElementById("human-board");
     if(!root) return;
     root.replaceChildren();
+    unsavedHumanEdits = false;
     if(!records) {root.append(make("p","Geen PRIVATE Casebook-bronset geopend."));return;}
     const {cases,rows,hasCSV}=admit(records);
     const notice=make("p",hasCSV ?
@@ -186,6 +188,7 @@
         " actuele PRIVATE dossierregels zichtbaar; observaties zijn uitsluitend over de geselecteerde bronmomenten, niet over echte actuele toestemming.";
     };
     for(const values of inputs) for(const el of values) el.addEventListener("change",()=>{
+      unsavedHumanEdits = true;
       update();status.textContent="Niet-opgeslagen HUMAN-wijzigingen. Deze wijzigen geen bron of grant.";
     });
     search.addEventListener("input",update);filter.addEventListener("change",update);
@@ -211,5 +214,5 @@
     }
     return [...[FIELDS],...rows].map(row=>row.map(cell).join(",")).join("\r\n")+"\r\n";
   }
-  window.LightUpCasebookHandoff=Object.freeze({admit,render,serialize});
+  window.LightUpCasebookHandoff=Object.freeze({admit,render,serialize,hasUnsavedEdits:()=>unsavedHumanEdits});
 })();
