@@ -304,9 +304,9 @@
       "sha256": "db0c347e1a05645ca54cb85be67ea64da37904570d6bd281ac463889edd9f7df"
     },
     {
-      "bytes": 18102,
+      "bytes": 20264,
       "path": "remediation-operations/README.md",
-      "sha256": "40fb0763fd80673ae2bcc7b3b2fa50cca97c50a95e06df7828d72b8d3d3d79a6"
+      "sha256": "add9a92b02b116e35727e163d1ec3e4b1da6ccfaf4a37f0230ae8dd76119376e"
     },
     {
       "bytes": 5840,
@@ -314,9 +314,9 @@
       "sha256": "81bb14defca2512ddf611d4bab34acd05ad86b8cf47cce3279ae492d421dbeeb"
     },
     {
-      "bytes": 3815,
+      "bytes": 3887,
       "path": "remediation-operations/build_triage_standalone.py",
-      "sha256": "6c876535fc9e2d35288887f7a636ef064bfd4f9527c2813b479fd289a8e6fa4d"
+      "sha256": "7c81db06ad61db3370dda7196a176dfdfd7535c33ab45363927b56ed66d28b32"
     },
     {
       "bytes": 3627,
@@ -339,9 +339,14 @@
       "sha256": "1c2813bd408a860b0a678388db06ef900b248394d88d1a2a45d2b54cd506908c"
     },
     {
-      "bytes": 8908,
+      "bytes": 9008,
       "path": "remediation-operations/index.html",
-      "sha256": "b1e1702a771c932caaf4bd37f7125377eb1c61005b56a6283f18c7eb3268a9d8"
+      "sha256": "d47b38dc5f2108a9eaba2865509bc7c9d20107de0fc1543b8381b3a1725e07f0"
+    },
+    {
+      "bytes": 14546,
+      "path": "remediation-operations/owner-actions.js",
+      "sha256": "3454fe4bdcc2bea724ef88e30493816c2be08acd6698b46519b1bedd218854ab"
     },
     {
       "bytes": 2235,
@@ -349,9 +354,9 @@
       "sha256": "e01f6e9258d80d37ef7bffe245a9eaf52602ffaca60dd21d6ee5072202058d60"
     },
     {
-      "bytes": 92172,
+      "bytes": 110596,
       "path": "remediation-operations/triage-standalone.html",
-      "sha256": "808519efd8f54c9632b9914762beda7f7167769d63e144262961430f7ff9ee86"
+      "sha256": "3d536a13b6c5bb680b0e763a375aa46d84a69f58c7e60fbec18f0fb5901659ac"
     },
     {
       "bytes": 1701,
@@ -359,14 +364,14 @@
       "sha256": "1e29205bd4c661415a4fc83ebd29521d1ba917a83361e83a766d6216b8a6d391"
     },
     {
-      "bytes": 10802,
+      "bytes": 12878,
       "path": "remediation-operations/triage.html",
-      "sha256": "fc6ddb7fa08e92e6b69e90117ca1cf99c9bf88013b23d2dc12b29c04b2047a60"
+      "sha256": "7ba52bc20e9ad4b4af3a0b2b6d9b23393c98edb69fab9914a805f418b3e21abb"
     },
     {
-      "bytes": 44861,
+      "bytes": 46636,
       "path": "remediation-operations/triage.js",
-      "sha256": "46a306a38754d05caf11d74f902cadf6f99895ade2a98412cd818497b899a602"
+      "sha256": "a02e05177246ef221e4018ebd12c55cd0a3e01920c80a331ab66004786f2e1e8"
     },
     {
       "bytes": 8821,

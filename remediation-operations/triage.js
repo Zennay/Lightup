@@ -151,7 +151,7 @@ function validateResponse(p,base){
    if(requests.has(r.request_id))fail("Reused original HUMAN request ID");
    requests.set(r.request_id,{packet:pack,row:r});
    if(!byId.has(r.finding_id))byId.set(r.finding_id,[]);
-   byId.get(r.finding_id).push({original:r,reply:null,review:null,feedback:null});
+   byId.get(r.finding_id).push({recipient_alias:pack.recipient_alias,original:r,reply:null,review:null,feedback:null});
   }
  }
  if(requests.size>800||p.human_reviews.length!==requests.size)fail("Original owner requests incomplete");
@@ -628,7 +628,46 @@ window.addEventListener("lightup:human-change-windows",event=>{
     byFinding:new Map(detail.byFinding.map(row=>[row.finding_id,row]))}:null;
   if(loaded())draw();
 });
-window.LightUpHumanTriageBridge=Object.freeze({sourceSnapshot:()=>{
+window.LightUpHumanTriageBridge=Object.freeze({actionSnapshot:()=>{
+ if(!entries.workplan)return null;
+ const c=entries.workplan.source;
+ return {revision,source_sha256:c.source_sha256,source_contract:c.source_contract,
+  client_reference:c.client_reference,engagement_reference:c.engagement_reference,
+  source_count:c.source_count,source_imports:{
+   csv:!!entries.csv,artifacts:!!entries.artifact,
+   runbooks:!!entries.runbook,responses:!!entries.response},
+  findings:records().map(row=>({
+    finding_id:row.id,
+    source_title:row.source?.title||null,
+    source_severity:row.source?.severity||null,
+    source_retest_status:row.source?.retest_status||null,
+    owner_alias:row.plan.owner_alias,
+    human_stage:row.plan.stage,
+    tentative_due:row.plan.tentative_due,
+    next_action:row.plan.next_action,
+    runbook_steps:row.steps.map(s=>({
+      step_id:s.step_id,description:s.description,responsible_alias:s.responsible_alias,
+      tentative_date:s.tentative_date,human_stage:s.human_stage
+    })),
+    owner_requests:row.requests.map(r=>({
+      recipient_alias:r.recipient_alias,
+      request_id:r.original.request_id,
+      request_kind:r.original.request_kind,
+      due_date:r.original.due_date,
+      instructions:r.original.instructions,
+      unanswered:!r.reply,
+      needs_human_followup:r.review?.human_stage==="needs_human_followup"||
+       r.feedback?.stage==="needs_clarification"||
+       r.reply?.human_stage==="needs_changes"
+    })),
+    local_sha_review:row.custody?{listed:row.custody.listed,
+      matched:row.custody.matched,attention:row.custody.attention}:null,
+    proposed_window:row.proposed?{
+      slot:row.proposed.proposed_window,utc:row.proposed.slot_start,
+      needs_human_review:row.proposed.needs_human_review}:null
+  }))
+ };
+},sourceSnapshot:()=>{
  if(!entries.workplan||!entries.csv)return null;
  const base=entries.workplan.source;
  return {revision,source_contract:base.source_contract,source_sha256:base.source_sha256,

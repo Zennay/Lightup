@@ -16,7 +16,7 @@ HUB = Path(__file__).resolve().parent
 ROOT = HUB.parent
 ORIGINAL = ROOT / "remediation-handoff-inbox" / "original-casework.js"
 TARGET = HUB / "triage-standalone.html"
-SOURCES = (ORIGINAL, HUB / "triage.js", HUB / "custody.js", HUB / "windows-overlay.js")
+SOURCES = (ORIGINAL, HUB / "triage.js", HUB / "custody.js", HUB / "windows-overlay.js", HUB / "owner-actions.js")
 STYLES = (HUB / "theme.css", HUB / "triage.css")
 HTML = HUB / "triage.html"
 
@@ -42,7 +42,7 @@ def build() -> bytes:
         if html.count(tag) != 1:
             raise ValueError("Original CSS link changed; HOLD")
         html = html.replace(tag, "<style>" + stylesheet + "</style>" if name == "theme.css" else "", 1)
-    for name in ("../remediation-handoff-inbox/original-casework.js", "triage.js", "custody.js", "windows-overlay.js"):
+    for name in ("../remediation-handoff-inbox/original-casework.js", "triage.js", "custody.js", "windows-overlay.js", "owner-actions.js"):
         tag = '<script src="' + name + '" defer></script>'
         if html.count(tag) != 1:
             raise ValueError("Original script dependency changed; HOLD")
@@ -58,7 +58,7 @@ def build() -> bytes:
         raise ValueError("Unexpected triage template/CSP metadata; HOLD")
     # Original defer scripts execute only after parse; placing inline JS at end preserves that ordering.
     html = html.replace("</body>", "<script>" + javascript + "</script></body>", 1)
-    if any(t in html for t in ('src="triage.js"', 'src="custody.js"', "rel=\"stylesheet\"")):
+    if any(t in html for t in ('src="triage.js"', 'src="custody.js"', 'src="owner-actions.js"', "rel=\"stylesheet\"")):
         raise ValueError("Unexpected remote/sibling dependency in standalone")
     return html.encode("utf-8")
 
