@@ -321,10 +321,89 @@
     }
   }
 
+  // Bounded declarative *connection chains*, never verified attack paths.
+  function declaredChains(graph) {
+    const byId = new Map(graph.nodes.map(n => [n.id, n]));
+    const adjacency = new Map(graph.nodes.map(n => [n.id, []]));
+    for (const edge of graph.edges) adjacency.get(edge.from).push(edge);
+    for (const edges of adjacency.values()) edges.sort((a, b) => edgeKey(a).localeCompare(edgeKey(b)));
+    const roots = graph.nodes.filter(n => n.type === "identity")
+      .sort((a, b) => a.id.localeCompare(b.id));
+    const results = [];
+    let visits = 0;
+    let limited = false;
+    function walk(id, members, steps) {
+      if (limited) return;
+      if (++visits > 5000) { limited = true; return; }
+      const node = byId.get(id);
+      if (node.type === "data" && steps.length) {
+        results.push({
+          key: steps.map(edgeKey).join(" / "),
+          text: members.map(name => byId.get(name).label + " (" + name + ")").join(" → ")
+        });
+        if (results.length >= 200) limited = true;
+        return;
+      }
+      if (steps.length >= 4) return;
+      for (const edge of adjacency.get(id)) {
+        if (members.includes(edge.to)) continue;
+        walk(edge.to, [...members, edge.to], [...steps, edge]);
+        if (limited) return;
+      }
+    }
+    for (const root of roots) {
+      walk(root.id, [root.id], []);
+      if (limited) break;
+    }
+    return { entries: results, limited };
+  }
+
+  function renderChains() {
+    const old = declaredChains(documentState.current);
+    const future = declaredChains(documentState.proposed);
+    const oldByKey = new Map(old.entries.map(p => [p.key, p]));
+    const futureByKey = new Map(future.entries.map(p => [p.key, p]));
+    const added = future.entries.filter(p => !oldByKey.has(p.key));
+    const missing = old.entries.filter(p => !futureByKey.has(p.key));
+    const cells = [
+      ["Current declarations", old.entries.length],
+      ["Future declarations", future.entries.length],
+      ["Future-only", added.length],
+      ["Current-only", missing.length]
+    ];
+    el("chainMetrics").replaceChildren(...cells.map(([label, value]) => {
+      const item = textNode("div", "", "metric");
+      item.append(textNode("strong", String(value)), textNode("small", label));
+      return item;
+    }));
+    const hasLimit = old.limited || future.limited;
+    el("chainNotice").textContent = hasLimit
+      ? "HOLD: bounded enumeration limit reached; displayed list and comparison are incomplete. No completeness claim."
+      : "All displayed chains are human-authored hypotheses, not technical reachability or security evidence.";
+    const host = el("chainList");
+    host.replaceChildren();
+    for (const [caption, entries] of [
+      ["FUTURE-ONLY DECLARATION", added],
+      ["CURRENT-ONLY DECLARATION", missing]
+    ]) {
+      for (const path of entries) {
+        const row = textNode("div", "", "diff-row");
+        row.append(textNode("span", caption, "diff-tag"), textNode("span", path.text));
+        host.appendChild(row);
+      }
+    }
+    if (!added.length && !missing.length) {
+      host.appendChild(textNode("p",
+        "No difference in the bounded declared identity-to-data chains. Actual security outcome UNKNOWN.",
+        "subdued"));
+    }
+  }
+
   function render() {
     admitDocument(documentState);
     renderEditor();
     renderChanges();
+    renderChains();
     renderGraph("current");
     renderGraph("proposed");
   }
