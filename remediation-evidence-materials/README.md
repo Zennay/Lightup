@@ -30,6 +30,38 @@ PYTHONPATH=src python3 remediation-evidence-materials/selection.py \
 
 The operator does not need to copy SHA fields manually. Terminal output is confidential source-associated HUMAN metadata and must not be captured in public logs. This tool never downloads, discovers or scans endpoints and never changes the original HUMAN record or its stage.
 
+## Recommended: single-step private sender and receiver workflows
+
+For a human-friendly operation, the complete sender/recipient path no longer needs separately created plaintext `selection.json` or duplicate original-source authentication during the same operation:
+
+**Sender** — `send.py` uses the real original account/tenant/engagement read, opens the exact current encrypted original HUMAN attachment index once, shows numbered original registered file metadata, prompts for 1–12 explicitly chosen owner-private real files, checks SHA-256/size, and **reopens/rechecks all file bytes again just before encrypting**. It creates only a **new original vault-compatible AES-256-GCM 0600 `.ltv`**, without writing a selector to disk.
+
+```bash
+PYTHONPATH=src python3 remediation-evidence-materials/send.py \
+  --db /private/lightup/existing.sqlite \
+  --email operator@example.invalid \
+  --client-id CURRENT_CLIENT --engagement-id CURRENT_ENGAGEMENT \
+  --human /private/lightup/current-original-human.ltv \
+  --output /private/lightup/NEW-material-transport.ltv \
+  --ack-private-material
+```
+
+**Recipient** — `receive.py` requires its own currently permitted original account/engagement read, and an exact original encrypted HUMAN attachment inventory. The recipient opens the encrypted material once, enters explicit PRIVATE HUMAN receipt status and optional notes for each original file, then creates **a NEW encrypted 0600 recipient return `.ltv`** and a **NEW 0700 private folder with 0600 neutral file data and original receipt**. If extraction fails, the newly created reply is removed; existing originals are not modified. The resulting encrypted reply can be returned separately to the sender for independent current-source matching.
+
+```bash
+PYTHONPATH=src python3 remediation-evidence-materials/receive.py \
+  --db /private/lightup/existing.sqlite \
+  --email recipient@example.invalid \
+  --client-id CURRENT_CLIENT --engagement-id CURRENT_ENGAGEMENT \
+  --human /private/lightup/current-original-human.ltv \
+  --transfer /private/lightup/received-material-transport.ltv \
+  --output-dir /private/lightup/NEW-received-material \
+  --reply-output /private/lightup/NEW-private-human-reply.ltv \
+  --ack-private-material
+```
+
+These are **human-controlled passive local file operations**. They never authenticate the recipient's notes as a cryptographic identity signature, claim evidence provenance, change original HUMAN records, grant scope, initiate scanning, or verify a remediation. The original separate `selection.py`, `transfer.py pack/unpack`, and `reply.py prepare` interfaces remain available for staged workflows.
+
 ## 1. Select actual local indexed material
 
 Create an explicit **owner-only 0600** `/private/lightup/selection.json` using the *existing exact-original HUMAN Ledger* record's `finding_id` and `sha256`. Paths must be absolute files chosen manually by the legitimate evidence owner; the tool does not search folders or contact endpoints.
