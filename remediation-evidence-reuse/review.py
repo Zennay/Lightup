@@ -211,6 +211,49 @@ def anonymous(result: dict) -> dict:
             "notice": "Unverified HUMAN-local counts; none proves evidence authenticity, resolution, consent or permission."}
 
 
+def proposed_actions(current: dict, result: dict) -> dict:
+    """Private advisory HUMAN questions; never LightUp native Apply."""
+    items = {}
+    rows = {(r["finding_id"], r["sha256"]): r for r in current["attachments"]}
+    for group in result["shared_groups"]:
+        reasons = ["VERIFY_INTENTIONAL_CROSS_FINDING_REUSE"]
+        if group["stage_divergence"]:
+            reasons.append("RECONCILE_HUMAN_STAGE_DIFFERENCE")
+        if group["size_disagreement"]:
+            reasons.append("RECHECK_LOCAL_BYTES_WITH_ORIGINAL_LEDGER")
+        for row in group["rows"]:
+            items[(row["finding_id"], row["sha256"])] = set(reasons)
+    for key in result["added"]:
+        items.setdefault(key, set()).add("REVIEW_NEW_LOCAL_LINK")
+    for key in result["removed"]:
+        items.setdefault(key, set()).add("PREVIOUS_LOCAL_LINK_ABSENT_NOT_PROVEN_FIXED")
+    for change in result["changed"]:
+        items.setdefault(change["key"], set()).add("REVIEW_CHANGED_LOCAL_HUMAN_METADATA")
+    actions = []
+    for (finding_id, digest), reasons in sorted(items.items()):
+        row = rows.get((finding_id, digest))
+        actions.append({
+            "finding_id": finding_id, "local_sha256": digest,
+            "present_in_current_local_snapshot": row is not None,
+            "human_stage": row["human_stage"] if row is not None else None,
+            "human_reviewer": row["human_reviewer"] if row is not None else None,
+            "proposed_human_questions": sorted(reasons),
+        })
+    return {
+        "kind": "lightup.private_human_evidence_reuse_questions",
+        "schema_version": 1,
+        "disposition": "UNVERIFIED_HUMAN_FOLLOWUP_ONLY",
+        "source_contract": current["source_contract"],
+        "source_sha256": current["source_sha256"],
+        "source_count": current["source_count"],
+        "client_reference": current["client_reference"],
+        "engagement_reference": current["engagement_reference"],
+        **{flag: False for flag in FLAGS},
+        "actions": actions,
+        "warning": "Private advisory HUMAN questions only; never Apply, scan, grant, consent, evidence custody, fix or signed acceptance.",
+    }
+
+
 def render(current: dict, result: dict) -> str:
     e = lambda value: html.escape(str(value), quote=True)
     shared = result["shared_groups"]
@@ -228,11 +271,12 @@ def render(current: dict, result: dict) -> str:
             flags.append("REUSED LOCAL FINGERPRINT · provenance not established")
         records = "".join("<tr><td>" + e(r["finding_id"]) + "</td><td>" +
                           e(r["file_name"]) + "</td><td>" + e(r["byte_length"]) +
-                          "</td><td>" + e(r["human_stage"]) + "</td></tr>"
+                          "</td><td>" + e(r["human_stage"]) + "</td><td>" +
+                          e(r["human_reviewer"] or "unassigned") + "</td></tr>"
                           for r in g["rows"])
         sections.append("<section><h3>" + e(" · ".join(flags)) + "</h3><p>Local SHA-256: <code>" +
                         e(g["digest"]) + "</code></p><table><thead><tr><th>Source finding ID</th>" +
-                        "<th>Private filename label</th><th>Bytes</th><th>Human stage</th>" +
+                        "<th>Private filename label</th><th>Bytes</th><th>Human stage</th><th>Reviewer alias</th>" +
                         "</tr></thead><tbody>" + records + "</tbody></table></section>")
     sections_html = "".join(sections) or "<p>No repeated local fingerprints detected in this snapshot.</p>"
     def changed_group(title: str, values: list, fmt) -> str:
@@ -263,8 +307,15 @@ def render(current: dict, result: dict) -> str:
             "reads underlying evidence file bytes, authenticates a reviewer, issues scans/grants, or proves "
             "remediation, missing evidence, consent, legal custody or retest. Do not upload this PRIVATE report.</aside>"
             "<section><h2>Local relationship snapshot</h2><dl>" + cols + "</dl><p>Source claim digest: <code>" +
-            e(current["source_sha256"]) + "</code></p></section><h2>Shared fingerprints / attention</h2>" +
-            sections_html + ("<h2>Exact same-source private snapshot changes</h2>" + diff
+            e(current["source_sha256"]) + "</code></p><p>Self-declared PRIVATE client: " +
+            e(current["client_reference"]) + " · engagement: " +
+            e(current["engagement_reference"]) + "</p></section><h2>Shared fingerprints / attention</h2>" +
+            sections_html + "<section><h2>Suggested HUMAN follow-up</h2><p>Confirm why one local fingerprint is " +
+            "associated with several source finding IDs. Ask the original HUMAN reviewer to reconcile " +
+            "different local stages. For inconsistent byte lengths reselect files in the original Ledger. " +
+            "No missing local link proves a fix. The separate PRIVATE action packet contains exact " +
+            "finding-specific advisory questions, NOT an original LightUp Apply or authorization.</p></section>" +
+            ("<h2>Exact same-source private snapshot changes</h2>" + diff
                              if result["has_previous"] else "") +
             "<p>Work with original authenticated source and independent HUMAN review before any conclusion.</p></main></html>\n")
 
@@ -297,7 +348,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Read-only PRIVATE local fingerprint reuse / drift desk (no scans)")
     parser.add_argument("current", type=Path, help="PRIVATE original ledger v1 / unified v2 JSON export (0600)")
     parser.add_argument("--previous", type=Path, help="Earlier SAME SOURCE and SAME CONTEXT PRIVATE snapshot")
-    parser.add_argument("--format", choices=("inspect", "html", "counts"), default="inspect")
+    parser.add_argument("--format", choices=("inspect", "html", "counts", "actions"), default="inspect")
     parser.add_argument("--output", type=Path, help="New output in real owner-private 0700 directory")
     args = parser.parse_args()
     try:
@@ -311,7 +362,8 @@ def main() -> int:
             print(json.dumps(totals, sort_keys=True, indent=2))
         else:
             output = (render(current, result).encode("utf-8") if args.format == "html"
-                      else (json.dumps(totals, sort_keys=True, indent=2) + "\n").encode("utf-8"))
+                      else (json.dumps(proposed_actions(current, result) if args.format == "actions"
+                                       else totals, sort_keys=True, indent=2) + "\n").encode("utf-8"))
             private_publish(args.output, output)
             print("PRIVATE " + args.format + " published; no original source modified.")
         return 2  # HOLD / HUMAN only, never authority exit 0
