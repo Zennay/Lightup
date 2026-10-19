@@ -23,6 +23,8 @@ Click **Inspect evidence-only finding coverage** with the original unified PRIVA
 
 The **Complete ORIGINAL finding coverage** view enumerates every original ID in the native source-bound overlay, including zero-request findings. Original Casework status, self-declared owner, tentative date, HUMAN blocker/next action and original Evidence Review stage/notes/declared reference fields are shown only as PRIVATE, unverified coordination data. Human prompts distinguish absent LOCAL file labels, no original HUMAN request, missing declared HUMAN owner, Casework blocked, tentative date passed, missing HUMAN reply, Evidence Review follow-up and contradictory *human* statuses. Neither a reported status of completed nor a human retest request is proof of remediation, verified evidence, authorization or approval.
 
+The paired request table includes a direct **Inspect source-bound finding** action that opens the corresponding complete original HUMAN record. The finding board shows the exact declared source SHA/client/engagement visibly even in evidence-only mode. When the ledger has a source-authored HUMAN request not yet imported into the response register, it remains visible on the finding board as a separate unreconciled HUMAN context rather than vanishing or being presented as an authenticated owner reply.
+
 Select individual or all visible original finding IDs and export **PRIVATE source-bound finding action JSON** (only selected original IDs, native HUMAN plans and local metadata labels, no original file bytes) or **anonymous original-finding coverage CSV** (counts grouped by human Casework stage, human Evidence Review stage, LOCAL fingerprint presence and HUMAN request presence; no source identifiers, notes, owners or file hashes). In paired mode, **Select existing HUMAN requests for chosen findings** transfers only already-original-requested rows to the earlier response board. In evidence-only mode this control is disabled. For any missing original HUMAN request, return to the original Evidence Artifact Ledger; this desk cannot create one.
 
 The `package.py` script reproducibly rebuilds the full local standalone HTML with SHA-256-pinned inline CSS/JS and strict offline Content Security Policy. Packaging is not a QA suite and does not satisfy mandatory exact-head CI.
@@ -40,7 +42,7 @@ Outputs require explicit human confirmation and are deliberately separated:
 
 An apparently anonymized small cohort can still be sensitive. The receiving person, channel, storage policy and disclosure must be checked separately. Missing LOCAL evidence does not prove evidence absent globally. A response, file hash or human review is not proof a fix occurred or a retest passed.
 
-**Forget** clears imported private source objects, selections and file-picker references in browser memory. Choosing a different input file also clears the previous data/export view until the new pair is admitted. It cannot erase files already downloaded to disk.
+**Forget** clears imported private source objects, selections, file-picker references **and rendered visible/hidden original source labels, casework details, metrics and owner drop-down options** in browser memory. Choosing a different input file also clears the previous data/export view until the new pair is admitted. It cannot erase files already downloaded to disk.
 
 ### Security and release boundaries
 
