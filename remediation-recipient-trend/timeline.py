@@ -126,7 +126,7 @@ def render(data: dict) -> bytes:
         "<p>" + str(latest["pending"]) + " locally pending out of " +
         str(total) + " HUMAN questions. Reasons may overlap and "
         "must be followed up ONLY through the trusted original private owner.</p>"
-        "<ul>" + "".join(reason_list) + "</ul></section>"
+        "<ul>" + "".join(reason_list) + "</ul></section>" +
         full_stage_reason_matrix(data) +
         "<section><h2>Separate authentic sources required for real progress</h2>"
         "<ol><li>Ask the source owner whether each packet represents the same "
@@ -151,7 +151,9 @@ def full_stage_reason_matrix(data: dict) -> str:
                            for row in packets)
             lines.append("<tr><th scope='row'>" + board.safe(name) +
                          "</th>" + cell + "</tr>")
-        return "<table><thead><tr><th>HUMAN " + board.safe(kind) +                "</th>" + headers +                "</tr></thead><tbody>" + "".join(lines) + "</tbody></table>"
+        return ("<table><thead><tr><th>HUMAN " + board.safe(kind) +
+                "</th>" + headers + "</tr></thead><tbody>" +
+                "".join(lines) + "</tbody></table>")
     return ("<section><h2>All selected packets: local HUMAN stages</h2>"
             "<p>Slots may represent different source/client populations. "
             "Each cell is a local category count only, not the same underlying cases.</p>"
