@@ -16,6 +16,7 @@ sys.path.insert(0, str(ROOT / "remediation-secure-export"))
 from desk import build_desk
 from history import review as history_review, markdown as history_markdown, anonymous_csv
 from history_desk import build_history_desk
+from sealed_browser import seal as seal_browser, open_current as open_sealed_browser
 from secure_export import (AccountLockedError, COLUMNS, FALSE, SEVERITIES, STATES,
                            _authorized_summary, _literal, _strict_summary,
                            _unique_pairs, _vault)
@@ -236,6 +237,27 @@ def save_html(args, current, earlier=None):
 
 
 
+
+def _preflight_file_paths(args):
+    """Reject multi-output collisions before any credentials or private writes."""
+    inputs = ([args.input] if getattr(args, "input", None) is not None else [])
+    inputs.extend(getattr(args, "inputs", []) or [])
+    outputs = [getattr(args, name, None) for name in (
+        "output", "sealed_markdown", "private_html", "sealed_html",
+        "capture_current", "aggregate_csv"
+    )]
+    source_paths = [path.expanduser().absolute() for path in inputs]
+    target_paths = [path.expanduser().absolute() for path in outputs if path is not None]
+    if len(set(source_paths)) != len(source_paths):
+        raise ValueError("Duplicate original encrypted input path")
+    if len(set(target_paths)) != len(target_paths) or set(source_paths) & set(target_paths):
+        raise ValueError("Private source and destination paths must be distinct")
+    if getattr(args, "sealed_html", None) is not None and not args.ack_sealed_html:
+        raise ValueError("Encrypted browser handoff requires explicit acknowledgement")
+    if getattr(args, "private_html", None) is not None and not args.ack_private_html:
+        raise ValueError("Confidential plaintext browser export requires explicit acknowledgement")
+    return None
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__)
     cmd = ap.add_subparsers(dest="command", required=True)
@@ -243,6 +265,13 @@ def main(argv=None):
     inspect = cmd.add_parser("inspect", help="ID-free historical source aggregates, no current authority")
     review = cmd.add_parser("review-current", help="Fresh original account login + revision review")
     open_now = cmd.add_parser("open-current", help="Exact current original source -> private HUMAN brief")
+    release = cmd.add_parser("open-sealed-browser-current",
+                             help="Fresh original auth + exact source match -> regenerate private offline HTML from encrypted sources")
+    for key in ("db","email","client-id","engagement-id"):
+        release.add_argument("--"+key, required=True)
+    release.add_argument("--input", required=True, type=Path)
+    release.add_argument("--output", required=True, type=Path)
+    release.add_argument("--ack-private-html", action="store_true")
     for action in (capture, review, open_now):
         for key in ("db", "email", "client-id", "engagement-id"):
             action.add_argument("--" + key, required=True)
@@ -258,6 +287,9 @@ def main(argv=None):
     history.add_argument("--ack-private-markdown", action="store_true")
     history.add_argument("--aggregate-csv", type=Path, help="NEW 0600 identity-free numeric source churn .csv")
     history.add_argument("--private-html", type=Path, help="NEW private scriptless original-source history explorer .html")
+    history.add_argument("--sealed-html", type=Path,
+                         help="NEW encrypted self-contained browser source packet .ltv; no plaintext HTML")
+    history.add_argument("--ack-sealed-html", action="store_true")
     history.add_argument("--ack-private-html", action="store_true",
                          help="Explicitly acknowledge confidential local HTML output")
     capture.add_argument("--output", required=True, type=Path)
@@ -268,11 +300,15 @@ def main(argv=None):
         action.add_argument("--sealed-markdown", type=Path, help="Encrypted HUMAN .ltv, no plaintext file")
         action.add_argument("--ack-private-markdown", action="store_true")
         action.add_argument("--private-html", type=Path, help="NEW private 0600 offline finding review dashboard")
+        action.add_argument("--sealed-html", type=Path,
+                            help="NEW AES-GCM browser source handoff .ltv; no plaintext HTML on disk")
+        action.add_argument("--ack-sealed-html", action="store_true")
         action.add_argument("--ack-private-html", action="store_true",
                             help="Explicitly acknowledge confidential unencrypted HTML on a private device")
     review.add_argument("--capture-current", type=Path, help="Fresh authorized source into NEW encrypted revision .ltv")
     args = ap.parse_args(argv)
     try:
+        _preflight_file_paths(args)
         vault = _vault()
         if args.command == "history-current":
             if not args.ack_source_order or not 1 <= len(args.inputs) <= 12:
@@ -281,7 +317,8 @@ def main(argv=None):
             if len(set(sources))!=len(sources) or any(v.suffix.lower()!=".ltv" for v in sources):
                 raise ValueError("Historical encrypted sources must be unique .ltv paths")
             destinations=[v.expanduser().absolute() for v in
-                          (args.output,args.sealed_markdown,args.aggregate_csv,args.private_html) if v is not None]
+                          (args.output,args.sealed_markdown,args.aggregate_csv,args.private_html,
+                           args.sealed_html) if v is not None]
             if len(set(destinations))!=len(destinations) or set(destinations)&set(sources):
                 raise ValueError("Historical source and HUMAN output paths must be distinct")
             if args.output is not None and args.sealed_markdown is not None:
@@ -309,6 +346,14 @@ def main(argv=None):
                 args.capture_current=None
                 save_markdown(args, history_markdown(result))
                 print("PRIVATE HUMAN source continuity handoff created")
+            if args.sealed_html is not None:
+                if not args.ack_sealed_html:
+                    raise ValueError("Explicit PRIVATE encrypted browser source handoff acknowledgement required")
+                seal_browser(current, args.client_id, args.engagement_id,
+                             mode="history",
+                             history_csv=[old_packet["source_csv"] for old_packet,_ in snapshots[:-1]],
+                             output=args.sealed_html)
+                print("NEW encrypted multi-revision browser source package created; no plaintext HTML")
             if args.private_html is not None:
                 if not args.ack_private_html or args.private_html.suffix.lower()!=".html":
                     raise ValueError("Explicit acknowledgement for new confidential offline .html required")
@@ -321,6 +366,15 @@ def main(argv=None):
                     raise ValueError("Aggregate output must be .csv")
                 vault._exclusive_output(target,anonymous_csv(result))
                 print("Owner-private identity-free aggregate CSV created")
+            return 0
+        if args.command == "open-sealed-browser-current":
+            if not args.ack_private_html:
+                raise ValueError("Current source release into local PRIVATE plaintext HTML requires acknowledgement")
+            current=source_auth(args)
+            mode=open_sealed_browser(current,args.client_id,args.engagement_id,
+                                     source=args.input,output=args.output)
+            print("Fresh-authenticated, exact-source-bound PRIVATE offline "+mode+
+                  " browser regenerated into owner-only HTML. No consent or verified fix inferred.")
             return 0
         if args.command == "capture":
             if args.output.suffix.lower() != ".ltv":
@@ -355,8 +409,14 @@ def main(argv=None):
         if args.command == "open-current":
             if digest != packet["source_sha256"] or count != packet["source_count"]:
                 raise ValueError("Source drift: use review-current instead")
-            if args.output is None and args.sealed_markdown is None and args.private_html is None:
+            if args.output is None and args.sealed_markdown is None and args.private_html is None and args.sealed_html is None:
                 raise ValueError("No PRIVATE handoff output selected")
+            if args.sealed_html is not None:
+                if not args.ack_sealed_html:
+                    raise ValueError("PRIVATE browser handoff acknowledgement required")
+                seal_browser(current_source,args.client_id,args.engagement_id,
+                             mode="current",history_csv=[],output=args.sealed_html)
+                print("NEW encrypted original-source browser handoff created, without plaintext HTML")
             if args.output is not None or args.sealed_markdown is not None:
                 save_markdown(args, brief(now))
             if args.private_html is not None:
@@ -373,6 +433,12 @@ def main(argv=None):
         if args.private_html is not None:
             save_html(args, now, old)
             print("PRIVATE offline original-source review dashboard created; no target activity.")
+        if args.sealed_html is not None:
+            if not args.ack_sealed_html:
+                raise ValueError("PRIVATE browser handoff acknowledgement required")
+            seal_browser(current_source,args.client_id,args.engagement_id,
+                         mode="compare",history_csv=[packet["source_csv"]],output=args.sealed_html)
+            print("NEW encrypted original-source delta browser handoff created, no plaintext HTML")
         if args.capture_current is not None:
             capture_current_revision(args, current_source)
             print("New original-source revision encrypted independently; original history retained.")
