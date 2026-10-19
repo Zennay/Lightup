@@ -119,7 +119,9 @@ def carry(args, folder, vault, current_packet, current_key,
     now = current_packet.get("human_requests", [])
     if type(now) is not list:
         raise ValueError("Current original HUMAN request list is malformed.")
-    closed = {_ref(row) for row in now if row["human_stage"] == "closed_human"}
+    closed = {_ref(row) for row in now
+              if row["human_stage"] == "closed_human"
+              and row["request_kind"] == "followup_question"}
     if not historical.issubset(closed):
         raise ValueError("Current ORIGINAL HUMAN workroom does not report all old requests closed.")
     print("Current original HUMAN workroom reports", len(historical),

@@ -20,9 +20,11 @@ MAX_HTML = 192 * 1024
 LABELS = {
     "pending_no_file": ("Pending, no encrypted file", "Check whether the interrupted local intent truly published nothing; independently confirm before resolving."),
     "pending_has_file": ("Pending, encrypted file exists", "Reopen native encrypted draft with the original password and perform explicit HUMAN recovery/closeout."),
+    "staged_wrong_kind": ("Current HUMAN request kind changed", "HOLD: current native request kind does not match original follow-up; review with source owner."),
     "staged_not_observed": ("Staged, not in CURRENT HUMAN source", "Independently inspect the original native Request Desk; no assumption of Apply."),
     "staged_open": ("Staged, HUMAN work open", "Review current original reported stage and response; do not create a second draft."),
     "staged_human_closed": ("Staged, HUMAN reports closed", "Eligible for separate original-native encrypted draft review and explicit LOCAL HUMAN closeout."),
+    "reviewed_wrong_kind": ("Reviewed HUMAN request kind changed", "HOLD: current native request reused original identity for another request kind."),
     "reviewed_current_missing": ("Locally reviewed, current HUMAN record missing", "HOLD: source changed, inspect past HUMAN context independently."),
     "reviewed_current_open": ("Locally reviewed, CURRENT HUMAN reports open", "HOLD: original HUMAN status continuity changed, review with source owner."),
     "reviewed_current_closed": ("Locally reviewed, HUMAN still reports closed", "No action inferred: HUMAN state is not native Apply or consent."),
@@ -33,6 +35,7 @@ LABELS = {
     "staged_file_changed": ("Encrypted stage bytes changed", "HOLD: recorded original-native encrypted draft mismatch."),
 }
 PRIORITY = {
+    "staged_wrong_kind": 0, "reviewed_wrong_kind": 0,
     "staged_file_changed": 0, "staged_file_missing": 0,
     "reviewed_file_missing": 0, "aborted_file_present": 0,
     "reviewed_current_missing": 0, "reviewed_current_open": 0,
@@ -79,7 +82,11 @@ def _current_references(packet: dict) -> dict[str, str]:
         ref = _ref(row)
         if ref in found:
             raise ValueError("Repeated current native HUMAN request identity.")
-        found[ref] = row["human_stage"]
+        # A returned ORIGINAL request must retain the same native kind.
+        # An unrelated request reusing ID/finding/SHA cannot close the draft.
+        found[ref] = (row["human_stage"] if
+                      row["request_kind"] == "followup_question"
+                      else "kind_mismatch")
     return found
 
 
@@ -114,11 +121,13 @@ def _classification(entry: dict, stages: dict[str, str], material: str) -> tuple
     elif entry["state"] == "staged" and material == "missing":
         label = "staged_file_missing"
     elif entry["state"] == "staged":
-        label = ("staged_not_observed" if counts["not_observed"] else
+        label = ("staged_wrong_kind" if counts["kind_mismatch"] else
+                 "staged_not_observed" if counts["not_observed"] else
                  "staged_human_closed" if counts["closed_human"] == len(refs)
                  else "staged_open")
     elif entry["state"] == "reviewed":
-        label = ("reviewed_current_missing" if counts["not_observed"] else
+        label = ("reviewed_wrong_kind" if counts["kind_mismatch"] else
+                 "reviewed_current_missing" if counts["not_observed"] else
                  "reviewed_current_closed" if counts["closed_human"] == len(refs)
                  else "reviewed_current_open")
     else:

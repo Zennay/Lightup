@@ -183,7 +183,9 @@ def _closed(record: dict, packet: dict) -> bool:
     rows = packet.get("human_requests", [])
     if type(rows) is not list:
         raise ValueError("Canonical HUMAN requests required.")
-    closed = {_ref(row) for row in rows if row["human_stage"] == "closed_human"}
+    closed = {_ref(row) for row in rows
+              if row["human_stage"] == "closed_human"
+              and row["request_kind"] == "followup_question"}
     return bool(record["requests"]) and all(ref in closed for ref in record["requests"])
 
 
