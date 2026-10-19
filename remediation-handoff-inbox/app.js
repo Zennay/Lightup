@@ -586,7 +586,7 @@ $("load").addEventListener("click",async()=>{
  const rev=++version,ledgerInput=$("ledger").files[0],registerInput=$("register").files[0];info("Reading both PRIVATE snapshots locally…");
  try{const [l,r]=await Promise.all([openFile("ledger"),openFile("register")]);
   if(version!==rev||$("ledger").files[0]!==ledgerInput||$("register").files[0]!==registerInput)fail("workspace or selected original files changed during load");
-  const next=combine(l,r);current=next;selected.clear();selectedFindings.clear();window.LightUpHandoffHumanPlan?.reset();$("sourceCsv").value="";$("sourceNotice").textContent="No original five-column CSV locally matched."; $("search").value="";$("filter").value="all";draw();
+  const next=combine(l,r);if(window.LightUpHandoffHumanPlan&&!window.LightUpHandoffHumanPlan.canDiscard()){info("Original source handoff stopped to preserve unsaved PRIVATE HUMAN planning. Export the workplan before replacing it.");return;}current=next;selected.clear();selectedFindings.clear();window.LightUpHandoffHumanPlan?.reset();$("sourceCsv").value="";$("sourceNotice").textContent="No original five-column CSV locally matched."; $("search").value="";$("filter").value="all";draw();
   info("Matched and admitted original HUMAN requests and replies within the same DECLARED source. This does not authenticate source, author or permission.");
  }catch(e){info(e.message||String(e),true);}
 });
@@ -605,18 +605,22 @@ $("loadEvidenceOnly").addEventListener("click",async()=>{
  try{
   const l=await openFile("ledger");
   if(version!==rev||$("ledger").files[0]!==ledgerInput)fail("original PRIVATE evidence input changed during reading");
-  const next=evidenceOnly(l);current=next;selected.clear();selectedFindings.clear();window.LightUpHandoffHumanPlan?.reset();$("sourceCsv").value="";$("sourceNotice").textContent="No original five-column CSV locally matched.";
+  const next=evidenceOnly(l);if(window.LightUpHandoffHumanPlan&&!window.LightUpHandoffHumanPlan.canDiscard()){info("Evidence-only switch stopped to preserve unsaved PRIVATE HUMAN workplan.");return;}current=next;selected.clear();selectedFindings.clear();window.LightUpHandoffHumanPlan?.reset();$("sourceCsv").value="";$("sourceNotice").textContent="No original five-column CSV locally matched.";
   $("search").value="";$("filter").value="all";$("findingSearch").value="";$("findingFilter").value="all";draw();
   info(next.findingRows.length?"Original-source-declared HUMAN coverage opened WITHOUT a response register. No original request or authorization created.":"Original ledger loaded without complete native HUMAN source records. To enumerate all findings, attach the original five-column CSV and match its exact content SHA; no fake coverage inferred.");
  }catch(e){info(e.message||String(e),true);}
 });
 $("forget").addEventListener("click",()=>{
+ if(window.LightUpHandoffHumanPlan&&!window.LightUpHandoffHumanPlan.canDiscard()){info("Forget cancelled; export your unsaved PRIVATE HUMAN planning first.");return;}
  clearAllPrivateView();
  for(const id of ["ledger","register","search","findingSearch"])$(id).value="";
  $("filter").value="all";$("findingFilter").value="all";
  info("All PRIVATE working state, visible/hidden detail text, owner choices and file-picker references cleared. Previous downloads must be secured or deleted separately.");
 });
 for(const id of ["ledger","register"])$(id).addEventListener("change",()=>{
+ if(window.LightUpHandoffHumanPlan&&!window.LightUpHandoffHumanPlan.canDiscard()){
+  $(id).value="";info("Changed source selection cancelled. Export unsaved PRIVATE HUMAN notes before choosing a new source.");return;
+ }
  clearAllPrivateView();
  info("PRIVATE source selection changed. All prior HUMAN details, owner choices, summaries and exports were cleared. Inspect the new sources again.");
 });
