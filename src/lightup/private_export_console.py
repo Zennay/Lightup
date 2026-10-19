@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import sys
 
-from . import private_export_continuity, private_export_handoff, private_export_workdesk
+from . import private_export_continuity, private_export_handoff, private_export_workdesk, private_export_encrypted
 
 TITLE = "LightUp PRIVATE HUMAN Export & Remediation Desk"
 NOTICE = (
@@ -26,6 +26,12 @@ OPTIONS = (
     ("5", "Resume exact-source PRIVATE HUMAN workplan", "resume"),
     ("6", "Compare two original source ZIP snapshots", "continuity"),
     ("7", "Carry HUMAN annotations only for source-identical findings", "migrate"),
+    ("8", "Authenticated source → AES-GCM encrypted .lue (no plaintext ZIP)", "encrypt-create"),
+    ("9", "Inspect encrypted source in memory", "encrypt-inspect"),
+    ("10", "Encrypted source → ID-free local private report", "encrypt-report"),
+    ("11", "Encrypted source → private HUMAN Workdesk", "encrypt-workdesk"),
+    ("12", "Compare two encrypted private source versions", "encrypt-compare"),
+    ("13", "Rotate encrypted source passphrase without disk plaintext", "encrypt-rotate"),
     ("0", "Exit (no data or state written)", "exit"),
 )
 
@@ -64,6 +70,15 @@ def _private() -> None:
     )
 
 
+def _encrypted() -> None:
+    _confirm(
+        "Encrypted output is a distinct AES-256-GCM .lue format, NOT the original "
+        "browser Handoff Vault format. A secret passphrase and independently "
+        "verified recipient/transport remain necessary. The passphrase is "
+        "never stored by the console."
+    )
+
+
 def _original() -> None:
     _confirm(
         "This operation exposes ORIGINAL source finding IDs, titles and "
@@ -81,6 +96,54 @@ def _same_real_client() -> None:
 
 
 def _perform(action: str) -> int:
+    if action == "encrypt-create":
+        database = _ask("Existing local DomainStore database path")
+        email = _ask("Existing original account email")
+        client = _ask("Original authorized client ID")
+        engagement = _ask("Specific existing engagement ID", optional=True)
+        output = _output("New AES-GCM encrypted private source", "lue")
+        _encrypted()
+        command = ["create", "--db", database, "--email", email,
+                   "--client-id", client, "--output", output, "--ack-private-handling"]
+        if engagement:
+            command.extend(["--engagement-id", engagement])
+        return private_export_encrypted.main(command)
+
+    if action == "encrypt-inspect":
+        archive = _ask("Existing encrypted PRIVATE .lue")
+        _encrypted()
+        return private_export_encrypted.main(
+            ["inspect", archive, "--ack-private-handling"])
+
+    if action in ("encrypt-report", "encrypt-workdesk"):
+        archive = _ask("Existing encrypted PRIVATE .lue")
+        dest = _output("New PRIVATE locally DECRYPTED HTML output", "html")
+        if action == "encrypt-workdesk":
+            _original()
+        _private()
+        cmd = ["workdesk" if action == "encrypt-workdesk" else "report",
+               archive, "--output", dest, "--ack-private-handling"]
+        if action == "encrypt-workdesk":
+            cmd.append("--ack-original-identifiers")
+        return private_export_encrypted.main(cmd)
+
+    if action == "encrypt-compare":
+        earlier = _ask("Earlier encrypted source .lue")
+        later = _ask("Later encrypted source .lue")
+        dest = _output("New PRIVATE source comparison HTML", "html")
+        _same_real_client()
+        _private()
+        return private_export_encrypted.main(
+            ["compare", earlier, later, "--output", dest,
+             "--ack-private-handling", "--ack-same-real-client"])
+
+    if action == "encrypt-rotate":
+        original = _ask("Existing encrypted source .lue")
+        dest = _output("New encrypted .lue with different passphrase", "lue")
+        _encrypted()
+        return private_export_encrypted.main(
+            ["rotate", original, "--output", dest, "--ack-private-handling"])
+
     if action == "create":
         database = _ask("Existing local DomainStore database path")
         email = _ask("Existing operator/client account email")
