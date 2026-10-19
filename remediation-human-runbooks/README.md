@@ -10,7 +10,13 @@
 2. Import the full original JSON (1 MiB limit, up to 350 findings). The editor enforces its original v1 shape, all twelve authority flags literally false, exact source SHA/client/engagement labels and complete original finding-ID membership.
 3. Select an original finding and write up to eight sequential human discussion steps, naming proposed human follow-ups, self-declared owner, tentative date, prerequisites, rollback discussion and independent-review questions. Filter unplanned, blocked or handoff-prepared work.
 4. Download a complete PRIVATE source-bound JSON backup. Optionally export one selected original finding to a confidential, scriptless PRIVATE HTML human briefing, or only grouped anonymous human-stage counts CSV.
-5. Restore a previously saved PRIVATE JSON against **the identical full original finding set and source binding**. No partial migration or silent mixing of sources is performed. Replacement requires explicit confirmation.
+5. Restore a previously saved PRIVATE JSON (max 8 MiB; original input remains max 1 MiB) against **the identical full original finding set and source binding**. No partial migration or silent mixing of sources is performed. Replacement requires explicit confirmation.
+
+## Owner-specific human handoffs
+
+After assigning self-declared human owners to individual proposed steps, choose an alias in the recipient menu. Export **only** that owner's steps across original findings as PRIVATE JSON, or download a scriptless, HTML-escaped, printable **one-owner readable briefing**. These packets omit other owners' proposed steps, original private workplan notes, and raw evidence. Neither export verifies the recipient, source, fix, consent or grant; use a separately authenticated confidential human channel. Preserve the full PRIVATE runbook JSON independently as a backup: owner packets are intentionally partial handoffs, not restorable full runbooks.
+
+Full PRIVATE runbooks can exceed the 1 MiB *original source* import ceiling. The standalone editor now permits up to **8 MiB only for exact-schema PRIVATE runbook restore**, with source ID membership and source digest checks unchanged. Full exported files exceeding the allowed restore cap are refused at creation rather than producing an unusable backup.
 
 ## Source and privacy contract
 
