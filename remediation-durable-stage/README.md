@@ -223,9 +223,18 @@ only the earlier 0600 local journal to `reviewed`. No original database, grant,
 workspace, evidence material or legal state is modified. No native Apply,
 signed identity, actual client consent or remediation completion is inferred.
 
-An old `pending` attempt must first be recovered with its ORIGINAL compatible
-source, not silently carried. If that source is no longer accessible, retain
-HOLD for independent original owner review. Original hosted/permanent VPS CI,
+An older `pending` attempt also needs explicit HUMAN handling. If its
+recorded encrypted output exists but the local SHA was never finalized,
+`carry-closed` decrypts and admits the exact historical native original
+draft and full request identities under the CURRENT original-authenticated
+account+actual-evidence read, requires matching CURRENT `closed_human`
+markers and a separate HUMAN confirmation, and only then records its
+previously missing SHA and marks the old LOCAL cycle reviewed. If no file
+exists at the recorded private output path, an explicit
+`CONFIRM HISTORICAL NO DRAFT PUBLISHED` can mark only that old local
+pending intent aborted after independent HUMAN review. Neither outcome is
+proof of original Apply, historical client authorization or evidence custody.
+A partial/changed file or mismatched request stays HOLD. Original hosted/permanent VPS CI,
 independent owner/security/privacy/browser/crypto review, #177/#182/#829,
 action-time separately authenticated client/operator consent and HUMAN GO
 remain mandatory before any release, merge or deploy.
@@ -247,8 +256,9 @@ python3 remediation-durable-stage/journal.py adopt-legacy \
  --journal-dir /private/my-human-journal --ack-private-material
 ```
 
-Only owner-private, canonical, previously unindexed `staged` local journals
-are offered as anonymous ordinals. After an explicit choice the operator must
+Only owner-private, canonical previously unindexed `staged` journals,
+or interrupted `pending` journals that still have their actual encrypted
+native output file, are offered as anonymous ordinals. After an explicit choice the operator must
 decrypt the corresponding original-native historical HUMAN draft, match its
 exact encrypted bytes, source-embedded native client/engagement and all
 recorded request identities, then confirm with `ENROLL OLD HUMAN SOURCE ONLY`.
@@ -261,3 +271,13 @@ Standalone `stage`, `report` and `review-html` now also reject output
 files directly inside the original 0700 evidence material folder or the
 private journal directory. This prevents their additional entries from
 breaking the ORIGINAL exact evidence-folder membership contract.
+
+**Interrupted historical closeout:** the newly supported source-version
+handoff recovery handles both a prior fully written `staged` local record and
+a `pending` record with a genuine original-native encrypted output but no
+persisted local ciphertext hash. The latter is not auto-closed: old actual
+native AES-GCM contents and full recorded identifiers must independently
+match, the current separate original HUMAN workroom must report every
+matching request closed, and the human must acknowledge. A truly absent
+pending output can be marked locally aborted only by explicit separate HUMAN
+confirmation. No historical source/current consent claim is made.
