@@ -98,6 +98,58 @@ PYTHONPATH=src python3 remediation-evidence-materials/recheck.py \
 
 Any source revision, changed original attachment, altered or missing file bytes, receipt tampering, unexpected file in the folder, access mismatch or public filesystem permissions fail closed. The original source and private files remain unchanged. This is an **operator feature**, not a QA or test suite.
 
+## 5. Recipient HUMAN encrypted reply (never a retest verdict)
+
+The original encrypted material workflow now has a **two-way human follow-up**. Once `transfer.py unpack` creates its private folder, the recipient signs into the actual original LightUp account and opens their matching current original HUMAN workspace. `reply.py prepare` re-admits the original encrypted material and compares every extracted local file **byte-for-byte** to that material and its exact source-bound native receipt, then prompts the human for one explicit status and optional private note **per received file**. Status choices are only `received_unverified`, `needs_human_followup`, or `human_hold`. It creates a new 0600 encrypted `.ltv` containing **no evidence file bytes**, only bounded original IDs/SHA-256, human status/notes, current original source+HUMAN-inventory identity and an exact SHA-256 of the encrypted-transfer plaintext. A fresh passphrase distinct from the earlier workspace and transport passphrases is mandatory.
+
+```bash
+PYTHONPATH=src python3 remediation-evidence-materials/reply.py prepare \
+  --db /private/lightup/existing.sqlite \
+  --email recipient@example.invalid \
+  --client-id CURRENT_CLIENT --engagement-id CURRENT_ENGAGEMENT \
+  --human /private/lightup/current-original-human.ltv \
+  --transfer /private/lightup/received-evidence-materials.ltv \
+  --folder /private/lightup/NEW-received-evidence \
+  --output /private/lightup/NEW-recipient-human-return.ltv \
+  --ack-private-receipt
+```
+
+The sender receives the **encrypted reply** separately and must independently present their **own original-current READ**, the identical original encrypted transport, an identical original HUMAN source/inventory, and the reply's passphrase. The default review prints **only nonidentifying HUMAN status counts**. Add `--ack-private-details` only on an owner-private interactive terminal to deliberately display source labels and private notes.
+
+```bash
+PYTHONPATH=src python3 remediation-evidence-materials/reply.py inspect \
+  --db /private/lightup/existing.sqlite \
+  --email operator@example.invalid \
+  --client-id CURRENT_CLIENT --engagement-id CURRENT_ENGAGEMENT \
+  --human /private/lightup/current-original-human.ltv \
+  --transfer /private/lightup/sent-evidence-materials.ltv \
+  --reply /private/lightup/received-recipient-human-return.ltv \
+  --ack-private-receipt
+```
+
+This authenticated current-source READ **does not digitally sign the recipient's identity** or certify where material was collected, whether a finding exists, whether a fix succeeded, or that active activity is permitted.
+
+## 6. Stage recipient follow-up in ORIGINAL HUMAN Request Desk (separate manual Apply)
+
+The new **native follow-up bridge** `followup.py` transforms only reply rows explicitly marked `needs_human_followup` into existing original HUMAN Request Desk v1-shaped `followup_question` records. It conservatively groups multiple files into one question per **original finding**, refuses oversize HUMAN notes and the native 200-request ceiling, and **does not add duplicates when that finding already has a non-closed original HUMAN request**. Original Casework, Evidence Review, local attachment index, prior human request statuses and notes are retained unmodified.
+
+First view privacy-minimized counts:
+
+```bash
+PYTHONPATH=src python3 remediation-evidence-materials/followup.py preview \
+  --db /private/lightup/existing.sqlite \
+  --email operator@example.invalid \
+  --client-id CURRENT_CLIENT --engagement-id CURRENT_ENGAGEMENT \
+  --human /private/lightup/current-original-human.ltv \
+  --transfer /private/lightup/sent-evidence-materials.ltv \
+  --reply /private/lightup/received-recipient-human-return.ltv \
+  --ack-private-followup
+```
+
+After human review, run `carry` with the exact same arguments **plus** `--output /private/lightup/NEW-original-human-followup.ltv`; type `STAGE HUMAN DRAFT` and choose a **new private passphrase**. The result is **another, separate encrypted 0600 original-compatible Unified HUMAN v2 workspace** containing only newly appended `human_stage=draft` request suggestions with the recipient's private notes. It never changes the previous encrypted workroom or original app/database. The operator must still separately `open-current` this source through the original owner application, use its native original source-bound **Preview**, and manually confirm **Apply** if and only if the HUMAN owner chooses. No native automatic import/Apply and no security verdict.
+
+The return packet is **encrypted notes from a human**, not third-party identity proof, client consent, signed custody or a verified remediation.
+
 ## Operational posture
 
 The output is **human-supplied local file bytes matched against source-reported HUMANS**, **not** signed chain of custody, verified scanner evidence, validated security impact, remediation success, or consent. Treat any original severity or retest text as unverified source labels. Existing mandatory original exact-head hosted + permanently registered named VPS CI, source-owner review, independent privacy/security/crypto review, original #177/#182/#829, current independent client/operator consent with action-time revocation for future active work and explicit HUMAN GO remain necessary. This independent feature must stay **DRAFT/HOLD**, without main merge or production deployment, until actual release gates are satisfied.
