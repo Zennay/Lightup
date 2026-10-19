@@ -55,9 +55,10 @@ def _switch(args, human: Path, plan: Path, *, field: str) -> tuple[Path, Path]:
     if not text:
         print("No source selected; current source unchanged.")
         return human, plan
-    candidate = Path(text).expanduser().absolute()
+    requested = Path(text).expanduser()
+    candidate = requested.absolute()
     try:
-        if not candidate.is_absolute() or candidate.suffix.lower() != ".ltv":
+        if not requested.is_absolute() or candidate.suffix.lower() != ".ltv":
             raise ValueError("Exact private .ltv file required.")
         journal.source._hold_if_not_private_directory(candidate.parent)
         journal._owned_regular(candidate)
