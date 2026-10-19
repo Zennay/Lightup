@@ -115,13 +115,17 @@ def overview(summary: dict, has_history: bool) -> bytes:
             "</ol></section>")
     return shell(text, "LightUp PRIVATE HUMAN Evidence Cockpit")
 
+def reviewed_reasons() -> tuple[str, ...]:
+    return tuple(sorted(triage.REASONS))
+
 def action_brief(summary: dict) -> bytes:
     slot_cards = []
     portfolio_reasons = Counter()
     for row in summary["source_slots"]:
         pending = row["locally_pending"]
         pieces = []
-        for key, total in row["pending_human_reasons"].items():
+        for key in sorted(reviewed_reasons()):
+            total = row["pending_human_reasons"].get(key, 0)
             if total <= 0:
                 continue
             review.require(key in ADVICE, "Unknown original HUMAN question reason")

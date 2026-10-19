@@ -109,8 +109,9 @@ def render(value: dict) -> bytes:
         rows.append("<tr><th>" + str(s["slot"]) + "</th><td>" +
                     str(s["question_count"]) + "</td><td>" +
                     str(s["locally_pending"]) + "</td><td>" +
-                    " · ".join(h(k.replace("_", " ")) + ": " + str(v) for k,v in
-                               s["human_stage_counts"].items()) + "</td></tr>")
+                    " · ".join(h(k.replace("_", " ")) + ": " +
+                               str(s["human_stage_counts"][k])
+                               for k in triage.STAGES) + "</td></tr>")
     deltas = []
     for x in value["adjacent_user_order_transitions"]:
         deltas.append("<tr><th>" + str(x["from_slot"]) + " → " +

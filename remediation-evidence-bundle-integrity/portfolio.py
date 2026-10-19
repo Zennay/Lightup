@@ -97,10 +97,13 @@ def render(report: dict) -> bytes:
                     "These rows must not be counted as unique cases or clients.</p>"
                     if repeated else "<p>No exact same original packet repeated across slots. "
                     "This does NOT prove unique clients or independent findings.</p>")
-    stages = cells([(k.replace("_", " "), str(v)) for k, v in
-                    report["slot_human_stage_totals_not_unique_cases"].items()])
-    reasons = cells([(k.replace("_", " "), str(v)) for k, v in
-                     report["slot_pending_human_reason_totals_not_unique_cases"].items() if v])
+    stages = cells([(k.replace("_", " "),
+                     str(report["slot_human_stage_totals_not_unique_cases"][k]))
+                    for k in triage.STAGES])
+    reasons = cells([(k.replace("_", " "),
+                      str(report["slot_pending_human_reason_totals_not_unique_cases"][k]))
+                     for k in sorted(triage.REASONS)
+                     if report["slot_pending_human_reason_totals_not_unique_cases"][k]])
     if not reasons:
         reasons = "<tr><th>No locally proposed open reasons</th><td>0</td></tr>"
     return ("<!doctype html><html lang='en'><meta charset='utf-8'>"
