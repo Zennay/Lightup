@@ -12,7 +12,7 @@ from pathlib import Path
 import sys
 
 import receive
-import timeline
+import recipient_workload_series as timeline
 import timeline_receive
 import trend
 
