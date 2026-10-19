@@ -29,3 +29,14 @@ Even aggregate small-cell counts might identify people; outputs stay PRIVATE. A 
 ## Original owner and release boundaries
 
 This PR does not modify actively owned original remediation, source, domain, auth, consent, scanner, CI or grant paths. There is no merge to main or deployment in INCUBATE DRAFT/HOLD. Original hosted and permanent named VPS exact-head CI, independent source-owner/security/privacy/browser review, #177/#182/#829, authentic current separate client and operator consent including action-time revocation, and explicit HUMAN GO remain mandatory. No new QA, testsuites or regression runs.
+
+## New: source-free two-snapshot HUMAN comparison
+
+Compare any two **complete** private portfolio folders created by portfolio.py. Both complete folders are independently re-admitted: the comparison reconstructs the original source-free count and HUMAN summary, byte-exact static HTML, counts CSV and HUMAN follow-up brief. A tampered or partial input folder HOLDS the whole comparison before any new output. It does not re-open original evidence or assert authentic source ownership.
+
+    python3 remediation-portfolio/compare.py \
+      --earlier /home/operator/private-lightup/portfolio-previous \
+      --later /home/operator/private-lightup/portfolio-current \
+      --output-dir /home/operator/private-lightup/comparison-new
+
+A fresh exclusive 0700 directory contains 0600 index.html, comparison.csv, comparison.json and human-interpretation.txt, all identity-free numeric packet appearances. The scriptless static browser displays the left/right count difference and explicitly warns that different sets of packets, missing inputs and duplicate source-free workrooms **make any apparent decrease ambiguous**. There is deliberately no case matching, remediation-success claim, auth, target action or network request. Counts-only comparison is useful for local HUMAN workload discussion, not outcome measurement.
