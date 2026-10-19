@@ -18,6 +18,14 @@ After assigning self-declared human owners to individual proposed steps, choose 
 
 Full PRIVATE runbooks can exceed the 1 MiB *original source* import ceiling. The standalone editor now permits up to **8 MiB only for exact-schema PRIVATE runbook restore**, with source ID membership and source digest checks unchanged. Full exported files exceeding the allowed restore cap are refused at creation rather than producing an unusable backup.
 
+## Explicit PRIVATE HUMAN reviewer collaboration
+
+Load the **same complete original workplan** before importing another reviewer's full PRIVATE runbook backup (up to 8 MiB). The editor requires exact declared source contract/SHA/client/engagement, identical full original finding IDs and ordering, bounded canonical per-finding steps, and all 12 false authority flags. It does not infer that the source or reviewer is authenticated.
+
+Choose **Preview exact-source HUMAN differences**. An empty incoming runbook cannot erase existing local human notes. A new nonempty runbook for an originally empty local finding is proposed as an incoming change; competing nonempty per-finding plans display both original finding ID and existing/proposed steps. Every conflict requires an explicit **KEEP current local** or **APPLY other reviewer** decision. No silent overwrite is permitted. A single explicit confirmation applies only accepted HUMAN planning changes, with a guarded Undo available until another local edit. Changing the private source, selected file or local revision after preview causes a HOLD instead.
+
+Unlike an original owner reply, this reviewer's private runbook is just optional local HUMAN planning. It neither authenticates an original finding, verifies a fix, nor changes Casework, Evidence Review, source owner packets, grants, assessment runs or client/operator consent.
+
 ## Source and privacy contract
 
 This tool does not authenticate the imported client, recipient, source SHA or exported document. Matching declared source metadata protects from accidental mixing but is NOT proof of authorization. Verify origin, recipient and actual client/operator consent through a separate trusted, authenticated workflow.
