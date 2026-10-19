@@ -14,7 +14,8 @@ concurrency:
 jobs:
   preflight:
     name: Offline preflight Python ${{ matrix.python }} (not VPS proof)
-    runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: [self-hosted, lightup, vps]
     timeout-minutes: 10
     strategy:
       fail-fast: false
@@ -44,7 +45,8 @@ jobs:
     # Hosted diagnostic only; the required merge authority remains exact-head VPS CI.
     name: Real producer integration Python ${{ matrix.python }} (not VPS proof)
     needs: preflight
-    runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: [self-hosted, lightup, vps]
     timeout-minutes: 10
     strategy:
       fail-fast: false
