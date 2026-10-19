@@ -144,7 +144,7 @@ function renderGrid() {
  $('grid').innerHTML=rows.slice(0,350).map(x=>{
   const r=x.representative,tag=x.latest?'present':'absent',binding=noteBinding(x.id);
   const cells=x.series.map((f,i)=>'<td class="'+(f?'':'missing')+'">'+(f?'<strong>'+esc(f.severity)+'</strong><br>'+esc(f.retest_status):'—')+'</td>').join('');
-  return '<tr><td><button class="link" data-view="'+esc(x.id)+'">'+esc(x.id)+'</button><small>'+esc(r.title.slice(0,110))+'</small></td>'+cells+'<td><span class="pill">'+tag+'</span><small>'+esc(x.edits.join(' · ')||'No observed source delta')+'</small>'+(binding==='stale'||binding==='missing'?'<small><strong>HUMAN NOTE HELD — '+esc(binding)+'; not transferable without review</strong></small>':'')+'</td></tr>';
+  return '<tr><td><button class="link" data-view="'+esc(x.id)+'">'+esc(x.id)+'</button><small>'+esc(r.title.slice(0,110))+'</small><button type="button" class="link" data-original-dossier="'+esc(x.id)+'">View full PRIVATE finding dossier</button></td>'+cells+'<td><span class="pill">'+tag+'</span><small>'+esc(x.edits.join(' · ')||'No observed source delta')+'</small>'+(binding==='stale'||binding==='missing'?'<small><strong>HUMAN NOTE HELD — '+esc(binding)+'; not transferable without review</strong></small>':'')+'</td></tr>';
  }).join('');
  $('headers').innerHTML='<th>Original finding</th>'+state.snapshots.map((s,i)=>'<th>'+esc((i+1)+'. '+s.label.slice(0,36))+'</th>').join('')+'<th>Source change only</th>';
 }
@@ -321,7 +321,7 @@ $('privateExport').addEventListener('click',()=>{try{exportPrivate();}catch(e){m
 $('caseworkExport').addEventListener('click',()=>{try{exportCasework();}catch(e){message(e.message,true);}});
 $('decisionExport').addEventListener('click',()=>{try{window.LightUpHistory.exportHumanCarries();}catch(e){message(e.message,true);}});
 $('forget').addEventListener('click',forget);
-$('grid').addEventListener('click',event=>{const button=event.target.closest('button[data-view]');if(button){state.selected=button.dataset.view;renderDetail();$('detail').scrollIntoView({behavior:'smooth',block:'start'});}});
+$('grid').addEventListener('click',event=>{const dossier=event.target.closest('button[data-original-dossier]');if(dossier){try{window.LightUpDossier.open(dossier.dataset.originalDossier);}catch(e){message(e.message,true);}return;}const button=event.target.closest('button[data-view]');if(button){state.selected=button.dataset.view;renderDetail();$('detail').scrollIntoView({behavior:'smooth',block:'start'});}});
 $('snapshots').addEventListener('change',event=>{
  const el=event.target.closest('input[data-label]');
  if(!el)return;
