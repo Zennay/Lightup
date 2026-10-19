@@ -68,7 +68,7 @@ footer{text-align:center;color:#466074;padding:1rem}
  <button id="counts">Download counts-only CSV</button>
  </div>
  <p>PRIVATE exports include declared source and original finding identifiers; transfer only over a separately authenticated confidential channel. Counts-only CSV removes source, finding, recipient and note identifiers; small groups can still be sensitive.</p>
- <label for="restoreFile">Restore previously exported PRIVATE runbooks (max 1 MiB)</label>
+ <label for="restoreFile">Restore previously exported PRIVATE runbooks (max 8 MiB)</label>
  <input type="file" id="restoreFile" accept=".json,application/json">
  <div class="actions"><button id="restore">Preview and replace local HUMAN runbooks</button></div>
 </section>
@@ -86,7 +86,7 @@ var KINDS=['human_prepare','human_implementation_discussion','human_dependency_c
 var SKEYS=['step_id','kind','description','precondition','responsible_alias','rollback_discussion','verification_question','tentative_date','human_stage'];
 var RBKEYS=['kind','schema_version','disposition','source_contract','source_sha256','client_reference','engagement_reference','source_count','finding_ids','runbooks','warning'].concat(FLAGS);
 var BKEYS=['finding_id','steps'];
-var MAX=1048576, MAX_ROWS=350, MAX_STEPS=8, MAX_TOTAL=1600;
+var MAX=1048576, MAX_BACKUP=8388608, MAX_ROWS=350, MAX_STEPS=8, MAX_TOTAL=1600;
 var state=null, revision=0, exported=0;
 var fail=function(s){throw Error('HOLD: '+s);};
 function exact(obj,keys){return obj!==null&&typeof obj==='object'&&!Array.isArray(obj)&&Object.getPrototypeOf(obj)===Object.prototype&&Object.keys(obj).length===keys.length&&Object.keys(obj).every(function(k){return keys.indexOf(k)>=0;});}
@@ -111,8 +111,8 @@ function sourceData(p){
  return {source_contract:p.source_contract,source_sha256:p.source_sha256,client_reference:p.client_reference,engagement_reference:p.engagement_reference,ids:Array.from(ids),original:p.rows,runbooks:new Map(p.rows.map(function(r){return [r.finding_id,[]];}))};
 }
 // Reject duplicate JSON keys, including escaped aliases, before built-in JSON decoding.
-function parseStrict(text){
- if(text.length>MAX||!text.length)fail('JSON empty or oversized');
+function parseStrict(text,limit){
+ if(text.length>limit||!text.length)fail('JSON empty or oversized');
  var i=0;
  function white(){while(i<text.length&&/\s/.test(text[i]))i++;}
  function qstr(){var start=i;if(text[i]!=='"')fail('JSON string expected');i++;var esc=false;
@@ -133,7 +133,7 @@ function parseStrict(text){
  value(0);white();if(i!==text.length)fail('trailing JSON text');
  return JSON.parse(text);
 }
-async function read(file){if(!file||file.size<1||file.size>MAX)fail('select a nonempty JSON <= 1 MiB');return parseStrict(new TextDecoder('utf-8',{fatal:true}).decode(await file.arrayBuffer()));}
+async function read(file,limit){limit=limit||MAX;if(!file||file.size<1||file.size>limit)fail('select a nonempty JSON within configured size limit');return parseStrict(new TextDecoder('utf-8',{fatal:true}).decode(await file.arrayBuffer()),limit);}
 function message(s,bad){$('notice').textContent=s;$('notice').dataset.error=String(!!bad);}
 function dirty(){if(!state){$('dirty').textContent='No local storage. Import an original PRIVATE source first.';return;}
  $('dirty').textContent=revision!==exported?'UNSAVED PRIVATE runbooks: download a complete backup before closing or refreshing.':'PRIVATE runbooks locally unchanged since last export/restore.';}
@@ -211,7 +211,8 @@ function swap(index,d){var a=current(),to=index+d;if(to<0||to>=a.length)return;v
 function packet(){return Object.assign({kind:'lightup.private_human_remediation_runbooks',schema_version:1,disposition:'UNVERIFIED_HUMAN_PLANNING_ONLY',source_contract:state.source_contract,source_sha256:state.source_sha256,client_reference:state.client_reference,engagement_reference:state.engagement_reference,source_count:state.ids.length,finding_ids:state.ids.slice(),runbooks:state.ids.map(function(id){return {finding_id:id,steps:state.runbooks.get(id).map(function(s){return Object.assign({},s);})};}),warning:'PRIVATE HUMAN planning ONLY; not authenticated source, customer approval, authorized remediation, verified retest, grant or release.'},Object.fromEntries(FLAGS.map(function(k){return [k,false];})));}
 function download(name,data,type){var u=URL.createObjectURL(new Blob([data],{type:type})),a=document.createElement('a');a.download=name;a.href=u;document.body.append(a);a.click();a.remove();setTimeout(function(){URL.revokeObjectURL(u);},1600);}
 function save(){if(!state)fail('import original source first');if(!window.confirm('Save PRIVATE full original-ID runbook data to this device? Independently verify confidential storage and recipient.'))return;
- download('LightUp-PRIVATE-HUMAN-runbooks.json',JSON.stringify(packet(),null,2)+'\n','application/json');exported=revision;dirty();message('Full PRIVATE HUMAN runbook saved. No original source/authorization changed.');}
+ var body=JSON.stringify(packet(),null,2)+'\n';if(new TextEncoder().encode(body).byteLength>MAX_BACKUP)fail('PRIVATE backup exceeds safe restore maximum');
+ download('LightUp-PRIVATE-HUMAN-runbooks.json',body,'application/json');exported=revision;dirty();message('Full PRIVATE HUMAN runbook saved. No original source/authorization changed.');}
 async function importWork(){
  var f=$('workFile').files[0];if(!f)fail('choose ORIGINAL PRIVATE HUMAN workplan first');
  if(state&&!confirmDiscard())return;
@@ -222,7 +223,7 @@ async function importWork(){
 }
 async function restore(){
  if(!state)fail('load original workplan first');var f=$('restoreFile').files[0];if(!f)fail('choose exported PRIVATE runbooks JSON');
- var before=revision,ref=binding(state),p=await read(f);
+ var before=revision,ref=binding(state),p=await read(f,MAX_BACKUP);
  if(!exact(p,RBKEYS)||p.kind!=='lightup.private_human_remediation_runbooks'||p.schema_version!==1||p.disposition!=='UNVERIFIED_HUMAN_PLANNING_ONLY'||FLAGS.some(function(k){return p[k]!==false;})||p.source_count!==state.ids.length)fail('invalid PRIVATE runbook envelope or authority flags');
  ['source_contract','source_sha256','client_reference','engagement_reference'].forEach(function(k){if(p[k]!==state[k])fail('private runbook '+k+' mismatches original');});
  string(p.warning,500,'warning',true);
