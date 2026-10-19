@@ -1,0 +1,271 @@
+/* LightUp PRIVATE Human Evidence Handoff Inbox. No network or authorizing behavior. */
+(()=>{"use strict";
+const $=id=>document.getElementById(id),FLAGS=["authenticated","tenant_verified","source_authorized","assessment_authorized","grant","client_consent","operator_consent","execution","scan","audit_verdict","retest_verified","release"];
+const COMMON=["kind","schema_version","disposition","source_contract","source_sha256","client_reference","engagement_reference",...FLAGS],CONTRACT="lightup.finding_export._COLUMNS_v1";
+const LEDGER=[...COMMON,"source_count","casework","evidence_review","attachments","human_requests","warning"];
+const REGISTER=[...COMMON,"request_packets","reply_packets","human_reviews","owner_feedback","feedback_history"];
+const HUMAN_ROW=["request_id","finding_id","request_kind","assignee","due_date","instructions","linked_sha256","human_stage","human_response","created_utc","updated_utc"];
+const OWNER_HEAD=[...COMMON,"recipient_alias","reply_kind","issued_utc","reply_utc","requests"];
+const OWNER_ROW=["request_id","finding_id","request_kind","instructions","due_date","human_stage","human_response"];
+const ATT=["finding_id","file_name","byte_length","sha256","mime","added_utc","human_reviewer","human_stage","human_note"];
+const KINDS=["missing_evidence","patch_change","deployment_record","rollback_plan","retest_request","followup_question","other"];
+const MAX=8*1024*1024,MAX_ROWS=800;
+let current=null,version=0,selected=new Set();
+function fail(s){throw Error("HOLD: "+s);}
+const plain=x=>x&&Object.getPrototypeOf(x)===Object.prototype;
+const exact=(x,fields)=>plain(x)&&Object.keys(x).length===fields.length&&Object.keys(x).every(k=>fields.includes(k));
+const hex=x=>typeof x==="string"&&/^[0-9a-f]{64}$/.test(x);
+function value(x,max,label,required=false){
+ if(typeof x!=="string"||x.length>max||/[\u0000-\u001f\u007f\u202a-\u202e\u2066-\u2069]/.test(x)||(required&&!x.trim()))fail(label+" is not canonical");
+ return x;
+}
+function distinct(rows,label){if(rows.length!==new Set(rows).size)fail("duplicate "+label);}
+function base(obj,label){
+ if(obj.source_contract!==CONTRACT||!hex(obj.source_sha256))fail(label+" source format");
+ value(obj.client_reference,120,label+" client",true);value(obj.engagement_reference,120,label+" engagement",true);
+ if(FLAGS.some(k=>obj[k]!==false))fail(label+" has a claimed permission flag");
+}
+function strictJSON(text){
+ let at=0,nodes=0;const ws=()=>{while(/[ \t\r\n]/.test(text[at]||"X"))at++;};
+ function str(){if(text[at]!=='"')fail("expected JSON string");let start=at++,escape=false;
+  while(at<text.length){let c=text[at++];if(escape){escape=false;continue;}if(c==="\\"){escape=true;continue;}if(c==='"')return JSON.parse(text.slice(start,at));if(c<" ")fail("JSON control character");}fail("unclosed JSON string");}
+ function walk(depth){
+  if(depth>30||++nodes>50000)fail("JSON structural limit");
+  ws();const c=text[at];
+  if(c==="{"){at++;ws();const seen=new Set();if(text[at]==="}"){at++;return;}
+   while(true){ws();const k=str();if(seen.has(k))fail("duplicate JSON key: "+k);seen.add(k);ws();if(text[at++]!==":")fail("JSON separator");walk(depth+1);ws();const sep=text[at++];if(sep==="}")return;if(sep!==",")fail("JSON object boundary");}}
+  if(c==="["){at++;ws();if(text[at]==="]"){at++;return;}while(true){walk(depth+1);ws();const sep=text[at++];if(sep==="]")return;if(sep!==",")fail("JSON array boundary");}}
+  if(c==='"'){str();return;}const m=/^(true|false|null|-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?)/.exec(text.slice(at));if(!m)fail("JSON value");at+=m[0].length;
+ }
+ walk(0);ws();if(at!==text.length)fail("trailing JSON");return JSON.parse(text);
+}
+async function openFile(id){const f=$(id).files[0];if(!f)fail("select both original PRIVATE exports");
+ if(f.size===0||f.size>MAX)fail("PRIVATE file is empty or exceeds 8 MiB");
+ return strictJSON(new TextDecoder("utf-8",{fatal:true}).decode(await f.arrayBuffer()));
+}
+function admitLedger(x){
+ if(!exact(x,LEDGER)||x.kind!=="lightup.private_unified_human_evidence_workspace"||x.schema_version!==2||x.disposition!=="PRIVATE_HUMAN_REVIEW_ONLY")fail("expected original unified evidence workspace v2");
+ base(x,"evidence");
+ if(!Number.isSafeInteger(x.source_count)||x.source_count<1||x.source_count>350)fail("original finding count");
+ if(!Array.isArray(x.attachments)||x.attachments.length>120)fail("too many local fingerprints");
+ for(const kind of ["casework","evidence_review"]){
+  if(x[kind]!==null){
+   if(!Array.isArray(x[kind])||x[kind].length!==x.source_count)fail("incomplete native "+kind);
+   const ids=x[kind].map(r=>{if(!plain(r))fail("invalid native human record");return value(r.finding_id,160,"native finding ID",true);});
+   distinct(ids,"native finding identity");
+  }
+ }
+ const fp=[];
+ for(const a of x.attachments){
+  if(!exact(a,ATT)||!hex(a.sha256)||!Number.isSafeInteger(a.byte_length)||a.byte_length<0||a.byte_length>16*1024*1024)fail("malformed local file fingerprint");
+  value(a.finding_id,160,"attachment finding",true);value(a.file_name,240,"file name",true);
+  if(/[\/\\]/.test(a.file_name))fail("path-bearing file name");
+  value(a.mime,160,"file MIME");value(a.added_utc,70,"file time");
+  value(a.human_reviewer,120,"human reviewer");value(a.human_stage,70,"human file stage");value(a.human_note,1200,"human file note");
+  fp.push(a.finding_id+"|"+a.sha256);
+ }distinct(fp,"original-local fingerprint");
+ if(!Array.isArray(x.human_requests)||x.human_requests.length>MAX_ROWS)fail("native request capacity");
+ const seen=[];
+ for(const r of x.human_requests){
+  if(!exact(r,HUMAN_ROW)||typeof r.request_id!=="string"||!/^[0-9a-f]{32}$/.test(r.request_id))fail("native request identity");
+  seen.push(r.request_id);value(r.finding_id,160,"finding",true);value(r.assignee,120,"declared owner");
+  if(!KINDS.includes(r.request_kind))fail("native request type");
+  value(r.instructions,1400,"instructions",true);value(r.due_date,12,"tentative HUMAN date");
+  value(r.human_stage,48,"human stage",true);value(r.human_response,1800,"unverified HUMAN reply");
+  value(r.created_utc,70,"creation timestamp",true);value(r.updated_utc,70,"update timestamp",true);
+  if(r.linked_sha256!==""&&!hex(r.linked_sha256))fail("source local SHA reference");
+ }distinct(seen,"native HUMAN request");
+ if(typeof x.warning!=="string"||x.warning.length>1500)fail("original source warning");
+ return x;
+}
+function ownerPacket(p,type,r){
+ if(!exact(p,OWNER_HEAD)||p.kind!=="lightup.private_human_evidence_owner_handoff"||p.schema_version!==1||p.disposition!=="UNVERIFIED_HUMAN_REQUEST_ONLY")fail("original HUMAN owner packet schema");
+ base(p,"owner packet");for(const k of ["source_sha256","client_reference","engagement_reference"])if(p[k]!==r[k])fail("owner packet differs from register source");
+ if(p.reply_kind!==type||!Array.isArray(p.requests)||!p.requests.length||p.requests.length>60)fail("original owner reply/request type");
+ value(p.recipient_alias,120,"declared owner",true);value(p.issued_utc,70,"owner request issue time",true);
+ if(type==="owner_request"&&p.reply_utc!==null)fail("original unanswered request timestamp");
+ if(type==="unverified_human_reply")value(p.reply_utc,70,"unverified reply timestamp",true);
+ const ids=[];
+ for(const o of p.requests){
+  if(!exact(o,OWNER_ROW)||!/^[0-9a-f]{32}$/.test(o.request_id))fail("original owner request row");
+  ids.push(o.request_id);value(o.finding_id,160,"finding identity",true);
+  if(!KINDS.includes(o.request_kind))fail("unknown HUMAN request kind");
+  value(o.instructions,1400,"original instructions",true);value(o.due_date,12,"tentative due date");
+  if(type==="owner_request"&&(o.human_stage!=="requested_human"||o.human_response!==""))fail("original unanswered request mutated");
+  if(type==="unverified_human_reply"){
+   if(!["submitted_unverified","needs_changes"].includes(o.human_stage))fail("unknown HUMAN reply stage");
+   value(o.human_response,1800,"UNVERIFIED human reply",true);
+  }
+ }distinct(ids,"owner packet request");return p;
+}
+function admitRegister(x,l){
+ const f=x?.schema_version===1?REGISTER.filter(k=>!["owner_feedback","feedback_history"].includes(k)):REGISTER;
+ if(!exact(x,f)||x.kind!=="lightup.private_human_response_reconciliation"||![1,2].includes(x.schema_version)||x.disposition!=="UNVERIFIED_HUMAN_COORDINATION_ONLY")fail("original response register schema");
+ base(x,"register");
+ for(const k of ["source_sha256","source_contract","client_reference","engagement_reference"])if(x[k]!==l[k])fail("original ledger/register "+k+" mismatch");
+ if(!Array.isArray(x.request_packets)||!Array.isArray(x.reply_packets)||x.request_packets.length+x.reply_packets.length>24||
+ !Array.isArray(x.human_reviews)||x.human_reviews.length>MAX_ROWS)fail("private register capacity");
+ const originals=new Map(),answers=new Map(),packetAliases=[],native=new Map(l.human_requests.map(r=>[r.request_id,r]));
+ for(const p of x.request_packets){
+  ownerPacket(p,"owner_request",x);packetAliases.push(p.recipient_alias+"|"+p.issued_utc);
+  for(const o of p.requests){
+   if(originals.has(o.request_id))fail("original request reused across owner packets");
+   const source=native.get(o.request_id);if(!source)fail("original request not in evidence ledger");
+   for(const k of ["finding_id","request_kind","instructions","due_date"])if(source[k]!==o[k])fail("immutable original request "+k+" changed");
+   if(source.assignee!==p.recipient_alias)fail("human owner alias differs from original ledger");
+   originals.set(o.request_id,{o,p,source});
+  }
+ }distinct(packetAliases,"original owner packet identity");
+ for(const p of x.reply_packets){
+  ownerPacket(p,"unverified_human_reply",x);
+  for(const o of p.requests){
+   const previous=originals.get(o.request_id);
+   if(!previous||previous.p.recipient_alias!==p.recipient_alias||previous.p.issued_utc!==p.issued_utc)fail("orphan HUMAN reply");
+   for(const k of ["finding_id","request_kind","instructions","due_date"])if(o[k]!==previous.o[k])fail("reply rewrote original HUMAN request");
+   if(answers.has(o.request_id))fail("ambiguous repeated original owner reply");
+   answers.set(o.request_id,o);
+  }
+ }
+ if(x.human_reviews.length!==originals.size)fail("incomplete ORIGINAL HUMAN reviewer rows");
+ const reviews=new Map();
+ for(const a of x.human_reviews){
+  if(!exact(a,["request_id","human_stage","note"])||!originals.has(a.request_id)||reviews.has(a.request_id)||
+  !["not_reviewed","needs_human_followup","human_triaged"].includes(a.human_stage))fail("invalid HUMAN reviewer annotation");
+  value(a.note,400,"HUMAN reviewer note");reviews.set(a.request_id,a);
+ }
+ const feedback=new Map();
+ for(const a of x.owner_feedback||[]){
+  if(!exact(a,["request_id","stage","note","submitted_utc"])||!originals.has(a.request_id)||feedback.has(a.request_id)||
+  !["acknowledged_unverified","needs_clarification","cannot_provide"].includes(a.stage))fail("invalid human owner followup");
+  value(a.note,1000,"owner note");value(a.submitted_utc,70,"owner time",true);feedback.set(a.request_id,a);
+ }
+ if(!Array.isArray(x.feedback_history||[])||(x.feedback_history||[]).length>1600)fail("owner feedback history limit");
+ for(const f of x.feedback_history||[]){
+  if(!exact(f,["request_id","stage","note","submitted_utc","superseded_utc"])||!originals.has(f.request_id)||
+  !["acknowledged_unverified","needs_clarification","cannot_provide"].includes(f.stage))fail("invalid owner feedback history");
+  value(f.note,1000,"history note");value(f.submitted_utc,70,"history timestamp",true);value(f.superseded_utc,70,"history supersession timestamp",true);
+ }
+ return {originals,answers,reviews,feedback};
+}
+function combine(l,r){
+ const source=admitLedger(l),data=admitRegister(r,source),attached=new Map();
+ for(const a of source.attachments){if(!attached.has(a.finding_id))attached.set(a.finding_id,[]);attached.get(a.finding_id).push(a);}
+ const today=new Date().toISOString().slice(0,10),rows=[];
+ for(const [id,x] of data.originals){
+  const local=attached.get(x.o.finding_id)||[],answer=data.answers.get(id)||null,feedback=data.feedback.get(id)||null,notes=data.reviews.get(id);
+  const signals=[];
+  if(!answer)signals.push("No HUMAN reply received");
+  if(answer?.human_stage==="needs_changes")signals.push("HUMAN reply needs changes");
+  if(!local.length)signals.push("No LOCAL file fingerprint");
+  if(x.source.linked_sha256&&!local.some(a=>a.sha256===x.source.linked_sha256))signals.push("Linked LOCAL SHA not in this snapshot");
+  if(x.o.due_date&&/^\d{4}-\d\d-\d\d$/.test(x.o.due_date)&&x.o.due_date<today)signals.push("Tentative HUMAN date passed");
+  if(feedback)signals.push("Separate UNVERIFIED HUMAN follow-up exists");
+  rows.push({id,finding:x.o.finding_id,kind:x.o.request_kind,owner:x.p.recipient_alias,instructions:x.o.instructions,due:x.o.due_date,answer,feedback,notes,local,signals});
+ }
+ return {source,rows,version:++version};
+}
+const cell=(tag,content)=>{const e=document.createElement(tag);e.textContent=String(content);return e;};
+const info=(s,error=false)=>{$("notice").textContent=s;$("notice").dataset.error=error?"true":"false";};
+function filtered(){
+ const text=$("search").value.trim().toLowerCase(),filter=$("filter").value;
+ return (current?.rows||[]).filter(x=>{
+ if(text&&![x.finding,x.id,x.owner,x.kind].join(" ").toLowerCase().includes(text))return false;
+ if(filter==="unanswered"&&x.answer)return false;
+ if(filter==="missing"&&x.local.length)return false;
+ if(filter==="changed"&&x.answer?.human_stage!=="needs_changes")return false;
+ if(filter==="sha"&&!x.signals.includes("Linked LOCAL SHA not in this snapshot"))return false;
+ if(filter==="late"&&!x.signals.includes("Tentative HUMAN date passed"))return false;
+ return true;});
+}
+function summary(number,label){const e=cell("div","");e.className="number";e.append(cell("strong",number),cell("span",label));return e;}
+function draw(){
+ if(!current)return;
+ $("review").hidden=false;$("out").hidden=false;
+ const r=current.rows;
+ $("binding").textContent="DECLARED original SHA: "+current.source.source_sha256+" · client: "+current.source.client_reference+" · engagement: "+current.source.engagement_reference+" · "+current.source.source_count+" original findings reported. Not authenticated.";
+ $("numbers").replaceChildren(summary(r.length,"Matched HUMAN requests"),
+ summary(r.filter(x=>x.answer).length,"UNVERIFIED received replies"),
+ summary(r.filter(x=>!x.local.length).length,"No LOCAL fingerprint"),
+ summary(r.filter(x=>x.answer?.human_stage==="needs_changes").length,"HUMAN replies needing changes"),
+ summary(r.filter(x=>x.feedback).length,"Separate owner HUMAN follow-ups"));
+ const visible=filtered(),body=$("rows");body.replaceChildren();
+ for(const x of visible){
+  const tr=document.createElement("tr"),td=document.createElement("td"),cb=document.createElement("input");cb.type="checkbox";cb.checked=selected.has(x.id);
+  cb.setAttribute("aria-label","Select original HUMAN request "+x.id);
+  cb.addEventListener("change",()=>{cb.checked?selected.add(x.id):selected.delete(x.id);draw();});td.append(cb);tr.append(td);
+  const original=cell("td",x.finding);original.append(cell("small",x.id));tr.append(original);
+  tr.append(cell("td",x.owner),cell("td",x.kind),cell("td",x.answer?.human_stage||"NOT RECEIVED"),cell("td",x.local.length+" LOCAL files"),cell("td",x.signals.join(" · ")||"No local HUMAN follow-up signal"));
+  body.append(tr);
+ }
+ $("selectVisible").checked=!!visible.length&&visible.every(x=>selected.has(x.id));
+ $("selectVisible").indeterminate=visible.some(x=>selected.has(x.id))&&!$("selectVisible").checked;
+ $("selection").textContent=visible.length+" shown · "+selected.size+" selected for PRIVATE export.";
+ $("downloadPrivate").disabled=!selected.size;$("downloadAgenda").disabled=!selected.size;
+}
+function download(name,content,type){
+ const blob=new Blob([content],{type}),url=URL.createObjectURL(blob),a=document.createElement("a");
+ a.href=url;a.download=name;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+function chosen(){if(!current||!selected.size)fail("select exact original HUMAN requests first");
+ const a=current.rows.filter(r=>selected.has(r.id));if(a.length!==selected.size)fail("stale selected original IDs");return a;}
+function privateExport(){
+ const r=chosen(),s=current.source;
+ if(!confirm("Download PRIVATE selected original IDs, human responses, file SHA fingerprints and HUMAN notes? Independently check recipient, real consent and confidential transport. This is not authority."))return;
+ const data={kind:"lightup.private_human_evidence_handoff_inbox",schema_version:1,disposition:"UNVERIFIED_HUMAN_COORDINATION_ONLY",
+  source_contract:CONTRACT,source_sha256:s.source_sha256,client_reference:s.client_reference,engagement_reference:s.engagement_reference,
+  ...Object.fromEntries(FLAGS.map(k=>[k,false])),
+  selected_requests:r.map(x=>({request_id:x.id,original_finding_id:x.finding,declared_owner:x.owner,kind:x.kind,
+   original_instructions:x.instructions,tentative_human_due_date:x.due,
+   unverified_reply_stage:x.answer?.human_stage||"not_received",unverified_reply_text:x.answer?.human_response||"",
+   local_human_review_stage:x.notes.human_stage,local_human_review_note:x.notes.note,
+   separate_unverified_human_owner_feedback:x.feedback,
+   local_file_labels_only:x.local.map(f=>({file_name:f.file_name,sha256:f.sha256,byte_length:f.byte_length,human_stage:f.human_stage,human_note:f.human_note})),
+   human_followup_signals:x.signals})),
+  warning:"PRIVATE HUMAN draft only. Not authenticated original source, grant, consent, verified retest, remediation certification or release approval."};
+ download("LightUp-PRIVATE-selected-HUMAN-handoff.json",JSON.stringify(data,null,2)+"\n","application/json");
+ info("Selected PRIVATE human handoff downloaded. No original source or security status was modified.");
+}
+function csvCell(v){return '"'+String(v).replaceAll('"','""')+'"';}
+function aggregateExport(){
+ if(!current)fail("load original sources");
+ const counts=new Map();
+ for(const r of current.rows){
+  const key=JSON.stringify([r.kind,r.answer?.human_stage||"not_received",r.local.length?"local_label_recorded":"no_local_label"]);
+  counts.set(key,(counts.get(key)||0)+1);
+ }
+ if(!confirm("Download counts-only HUMAN CSV with no original IDs, source SHA, owners, filenames, file hashes or private notes? Counts cannot prove fixes."))return;
+ const rows=[["human_request_kind","unverified_human_reply_stage","local_fingerprint_label","count"]];
+ for(const [k,n] of [...counts].sort((a,b)=>a[0].localeCompare(b[0])))rows.push([...JSON.parse(k),n]);
+ download("LightUp-anonymous-human-evidence-counts.csv",rows.map(x=>x.map(csvCell).join(",")).join("\r\n")+"\r\n","text/csv;charset=utf-8");
+ info("Anonymous aggregate HUMAN counts exported, without source or identifying row data.");
+}
+function agendaExport(){
+ const rows=chosen();
+ if(!confirm("Download PRIVATE human conversation agenda with original IDs and notes? Secure the recipient and channel separately."))return;
+ const body=["PRIVATE LightUp HUMAN follow-up agenda — DRAFT/HOLD","Not authenticated; not an authorization, accepted fix or retest decision.",""];
+ for(const r of rows)body.push("Original finding: "+r.finding+" | request: "+r.id,"Declared owner: "+r.owner+" | HUMAN kind: "+r.kind,
+  "Instructions: "+r.instructions.replaceAll(/\s+/g," "),
+  "UNVERIFIED owner reply: "+(r.answer?.human_response||"Not received").replaceAll(/\s+/g," "),
+  "Human reviewer note: "+r.notes.note.replaceAll(/\s+/g," "),
+  "LOCAL labels: "+r.local.length+" | signals: "+r.signals.join("; "),"");
+ download("LightUp-PRIVATE-human-followup-agenda.txt",body.join("\n"),"text/plain;charset=utf-8");
+ info("PRIVATE HUMAN agenda exported. Operator approval or execution is not implied.");
+}
+$("load").addEventListener("click",async()=>{
+ const rev=version;info("Reading both PRIVATE snapshots locally…");
+ try{const [l,r]=await Promise.all([openFile("ledger"),openFile("register")]);
+  if(version!==rev)fail("workspace changed during original-source load");
+  const next=combine(l,r);current=next;selected.clear();$("search").value="";$("filter").value="all";draw();
+  info("Matched and admitted original HUMAN requests and replies within the same DECLARED source. This does not authenticate source, author or permission.");
+ }catch(e){info(e.message||String(e),true);}
+});
+$("forget").addEventListener("click",()=>{current=null;version++;selected.clear();
+ for(const id of ["ledger","register","search"])$(id).value="";$("filter").value="all";
+ $("rows").replaceChildren();$("review").hidden=true;$("out").hidden=true;
+ info("PRIVATE working state and file-picker references cleared from this page. Previously downloaded files must be secured or deleted separately.");});
+$("search").addEventListener("input",draw);$("filter").addEventListener("change",draw);
+$("selectVisible").addEventListener("change",e=>{for(const x of filtered())e.target.checked?selected.add(x.id):selected.delete(x.id);draw();});
+for(const [id,handler] of [["downloadPrivate",privateExport],["downloadAggregate",aggregateExport],["downloadAgenda",agendaExport]]){
+ $(id).addEventListener("click",()=>{try{handler();}catch(e){info(e.message||String(e),true);}});
+}
+})();
