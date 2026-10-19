@@ -72,7 +72,10 @@ def read_private(path: Path, limit: int = MAX_BYTES):
         require(info.st_mode & 0o077 == 0, "private input must not be accessible by group/others (chmod 600)")
         raw = os.read(fd, limit + 1)
         require(len(raw) == info.st_size, "file changed while being read")
-        require(os.fstat(fd).st_size == info.st_size, "file size changed during admission")
+        after = os.fstat(fd)
+        require(after.st_size == info.st_size and after.st_mtime_ns == info.st_mtime_ns
+            and after.st_ino == info.st_ino and after.st_dev == info.st_dev,
+            "file identity or contents changed during admission")
     finally:
         os.close(fd)
     try:
@@ -161,6 +164,34 @@ def admit_resolutions(packet, sources, n, fingerprints, conflicts):
     return decisions
 
 
+def interactive_decisions(conflicts):
+    require(sys.stdin.isatty() and sys.stdout.isatty(),
+        "interactive HUMAN resolution requires a foreground terminal")
+    require(len(conflicts) <= 512,
+        "too many interactive conflicts: use the bounded PRIVATE resolution packet instead")
+    print("PRIVATE HUMAN proposals, not scan decisions, identity, evidence or authorization.")
+    print("Select each original submitted choice; Ctrl-C cancels without publication.")
+    result = {}
+    for item in conflicts:
+        print("\\nSource-local row", item["ordinal"], "| HUMAN", item["field"])
+        for i, choice in enumerate(item["choices"], 1):
+            print(" ", i, "—", choice)
+        try:
+            answer = input("Enter an option number: ").strip()
+        except EOFError as exc:
+            raise Hold("interactive reconciliation cancelled") from exc
+        require(answer.isascii() and answer.isdecimal()
+            and 1 <= int(answer) <= len(item["choices"]),
+            "invalid HUMAN conflict choice; entire merge HOLD")
+        result[(item["ordinal"], item["field"])] = item["choices"][int(answer) - 1]
+    try:
+        confirm = input("Type PROPOSE to write a PRIVATE HUMAN draft (never authorize): ")
+    except EOFError as exc:
+        raise Hold("interactive confirmation not received") from exc
+    require(confirm == "PROPOSE", "operator did not confirm proposal")
+    return result
+
+
 def write_new(directory: Path, name: str, data: bytes):
     flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0)
     fd = os.open(directory / name, flags, 0o600)
@@ -208,8 +239,11 @@ def main():
     parser.add_argument("plans", nargs="+", type=Path, help="original LightUp PRIVATE HUMAN plan files (chmod 600)")
     parser.add_argument("--output", type=Path, required=True, help="new exclusive private review directory")
     parser.add_argument("--resolutions", type=Path, help="completed PRIVATE conflict packet from an earlier run")
+    parser.add_argument("--interactive", action="store_true", help="resolve <=512 original HUMAN field conflicts in this terminal")
     args = parser.parse_args()
     try:
+        require(not (args.resolutions and args.interactive),
+            "choose either --resolutions or --interactive")
         require(2 <= len(args.plans) <= 8, "select 2–8 original PRIVATE HUMAN plans")
         require(len({str(p.absolute()) for p in args.plans}) == len(args.plans),
             "do not reuse the same review file")
@@ -223,28 +257,34 @@ def main():
             "identical reviewer plans do not establish independent submissions")
         merged, conflicts, contributed = reconcile(admitted)
         sources, n, _ = admitted[0]
+        decisions = {}
         if args.resolutions is not None:
-            _raw, packet = read_private(args.resolutions)
-            decisions = admit_resolutions(packet, sources, n, fingerprints, conflicts)
-            for item in conflicts:
+            _raw, provided = read_private(args.resolutions)
+            decisions = admit_resolutions(provided, sources, n, fingerprints, conflicts)
+        elif args.interactive and conflicts:
+            decisions = interactive_decisions(conflicts)
+        for item in conflicts:
+            if decisions:
                 merged[item["ordinal"] - 1][item["field"]] = decisions[(
                     item["ordinal"], item["field"])]
         packet = {"kind": "lightup.private_lab_human_conflicts", "version": 1,
             "input_sha256": fingerprints, "source_sha256": sources,
-            "ordered_row_count": n, "resolutions": conflicts}
+            "ordered_row_count": n, "resolutions": [
+                {**item, "value": decisions.get((item["ordinal"], item["field"]))}
+                for item in conflicts]}
         counts = {"kind": "lightup.anonymous_lab_human_reconciliation_counts",
             "version": 1, "disposition": "REVIEW_ONLY_DRAFT_HOLD",
             "source_file_count": len(sources), "reviewer_packet_count": len(admitted),
             "row_count": n, "nondefault_submitted_field_slots": contributed,
             "conflicting_field_slots": len(conflicts),
-            "source_bound_human_plan_emitted": not conflicts or args.resolutions is not None,
+            "source_bound_human_plan_emitted": not conflicts or len(decisions) == len(conflicts),
             "interpretation": "Unsigned HUMAN choices, no reviewer identity, permission, scan, validated finding or actual repair. Small counts may be private."}
         outputs = {
             "anonymous-counts.json": json_bytes(counts),
             "private-resolutions.json": json_bytes(packet),
             "private-conflicts.html": make_review_html(conflicts, len(sources), n),
         }
-        if not conflicts or args.resolutions is not None:
+        if not conflicts or len(decisions) == len(conflicts):
             sparse = [{"ordinal": i + 1, **entry} for i, entry in enumerate(merged)
                 if any(entry[k] != DEFAULT[k] for k in ENUMS)]
             original = {"kind": PLAN_KIND, "version": 1,
