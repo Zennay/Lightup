@@ -16,7 +16,7 @@ import json
 import sys
 
 from .private_export_handoff import _atomic_private_publish, _output_path
-from .private_export_human_revision import _read_inputs
+from .private_export_human_revision_source import _read_with_binding, _require_same_originals
 from .private_export_human_revision_choices import _make_choices, MAX_CHOICES
 
 CSS = """
@@ -205,10 +205,11 @@ def main(argv: list[str] | None = None) -> int:
                 and a.ack_plaintext_original_ids):
             raise ValueError("privacy and independent client acknowledgment required")
         out = _output_path(a.output, ".html")
-        old_meta, old_rows, notes, new_meta, new_rows = _read_inputs(
+        old_meta, old_rows, notes, new_meta, new_rows, binding = _read_with_binding(
             a.earlier_source, a.earlier_plan, a.later_source
         )
         sheet = _make_choices(old_meta, old_rows, notes, new_meta, new_rows)
+        _require_same_originals(a.earlier_source, a.earlier_plan, a.later_source, binding)
         _atomic_private_publish(out, _html(sheet))
         print("Created PRIVATE, UNENCRYPTED offline per-finding HUMAN decision editor.")
         print("Review and export JSON locally; original source and plans untouched.")
