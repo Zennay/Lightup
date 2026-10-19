@@ -88,6 +88,7 @@
 <p id="mergeCount" class="help"></p>
 <div class="table-wrap"><table><thead><tr><th>Original finding / choose HUMAN row</th><th>Human-only reconciliation</th><th>Changed HUMAN fields</th><th>Incoming HUMAN data</th><th>Existing local HUMAN data</th></tr></thead><tbody id="mergeRows"></tbody></table></div>
 <div id="mergeFields" class="snapshot" aria-live="polite"></div>
+<label>PRIVATE human merge rationale (required, 8–500 characters)<textarea id="mergeReason" maxlength="500" minlength="8" rows="3" placeholder="Explain why the specifically chosen HUMAN fields should replace the existing local values. No secrets or verified-fix claims."></textarea></label>
 <label class="check"><input id="mergeHumanAck" type="checkbox"> I have reviewed the selected PRIVATE original-source Casework fields and separately preserved necessary existing HUMAN notes. Applying will replace ONLY explicitly selected HUMAN rows; it does not authenticate sender/client/operator, verify fixes/retests or grant authority.</label>
 <button id="mergeAccept" disabled>Atomically import only selected original HUMAN records</button>
 </div>
