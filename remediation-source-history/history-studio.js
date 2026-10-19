@@ -2,11 +2,11 @@
 (() => {
 "use strict";
 const $ = id => document.getElementById(id);
-const state = { snapshots:[], notes:new Map(), decisions:[], active:null, revision:0, importing:false };
+const state = { snapshots:[], notes:new Map(), decisions:[], merges:[], active:null, revision:0, importing:false };
 const FIELDS = ['finding_id','title','severity','retest_status','remediation'];
 const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const severityRank = {critical:0,high:1,medium:2,low:3,info:4};
-const limits = {maxSnapshots:12,maxBytes:1048576,maxRows:350,maxNotes:350,maxDecisions:200};
+const limits = {maxSnapshots:12,maxBytes:1048576,maxRows:350,maxNotes:350,maxDecisions:200,maxMerges:50};
 const toB64=bytes=>{let s='';for(let i=0;i<bytes.length;i+=32768)s+=String.fromCharCode(...bytes.subarray(i,i+32768));return btoa(s);};
 function message(value, error=false) { $('message').textContent=value; $('message').className=error?'error':'info'; }
 function exact(a,b) { return FIELDS.every(k=>a[k]===b[k]); }
@@ -239,7 +239,7 @@ function exportCasework() {
  download('lightup-PRIVATE-original-source-casework-human-v1.json',JSON.stringify(packet,null,2),'application/json;charset=utf-8');
  message('PRIVATE native original Casework v1 HUMAN draft exported; '+status.bound+' exact-row-bound note(s) included, '+status.held+' stale held. All consent/grant/retest/scan authority claims false.');
 }
-function forget(){state.snapshots=[];state.notes.clear();state.decisions=[];state.active=null;state.selected=null;state.revision++;$('client').value='';$('engagement').value='';$('ack').checked=false;$('privateAck').checked=false;$('files').value='';$('archivePass').value='';$('archiveFile').value='';render();message('Original imported source and private HUMAN notes forgotten from app memory. Previously downloaded exports remain on your device.');}
+function forget(){state.snapshots=[];state.notes.clear();state.decisions=[];state.merges=[];state.active=null;state.selected=null;state.revision++;$('client').value='';$('engagement').value='';$('ack').checked=false;$('privateAck').checked=false;$('files').value='';$('archivePass').value='';$('archiveFile').value='';render();message('Original imported source and private HUMAN notes forgotten from app memory. Previously downloaded exports remain on your device.');}
 $('load').addEventListener('click',()=>ingest($('files').files).catch(e=>message(e.message,true)));
 $('filter').addEventListener('input',renderGrid);
 $('kind').addEventListener('change',renderGrid);
@@ -276,7 +276,7 @@ window.LightUpHistory=Object.freeze({
     const ctx=requireContext();protect();
     if(!state.snapshots.length)throw Error('Import original source revisions before saving.');
     if(state.snapshots.some(s=>!s.csvBase64))throw Error('Original file bytes unavailable; re-import before private checkpoint.');
-    return {revision:state.revision,context:{...ctx},snapshots:state.snapshots.map(s=>({...s})),notes:[...state.notes].map(([id,n])=>({id,...n})),decisions:state.decisions.map(d=>({...d,from:{...d.from},to:{...d.to}}))};
+    return {revision:state.revision,context:{...ctx},snapshots:state.snapshots.map(s=>({...s})),notes:[...state.notes].map(([id,n])=>({id,...n})),decisions:state.decisions.map(d=>({...d,from:{...d.from},to:{...d.to}})),merges:state.merges.map(m=>structuredClone(m))};
   },
   empty(){return !state.snapshots.length&&!state.notes.size;},
   restore(packet,revision){
@@ -286,6 +286,7 @@ window.LightUpHistory=Object.freeze({
     state.snapshots=packet.snapshots;
     state.notes=new Map(packet.notes.map(n=>[n.id,{owner:n.owner,action:n.action,due:n.due,sourceRecord:n.sourceRecord?{...n.sourceRecord}:null,caseworkOriginal:n.caseworkOriginal?{...n.caseworkOriginal}:null}]));
     state.decisions=(packet.decisions||[]).map(d=>({...d,from:{...d.from},to:{...d.to}}));
+    state.merges=(packet.merges||[]).map(m=>structuredClone(m));
     state.active={...ctx};state.selected=null;state.revision++;render();
   },
   revision(){return state.revision;},
@@ -333,7 +334,8 @@ window.LightUpHistory=Object.freeze({
       throw Error('HOLD: client/engagement or HUMAN source revision changed during review.');
     return {sourceHash:latest.sourceHash,revision:state.revision,rows};
   },
-  mergeCasework(packet,expectedRevision,selectedDecisions){
+  mergeCasework(packet,expectedRevision,selectedDecisions,reason){
+    if(typeof reason!=='string'||reason.trim().length<8||reason.length>500||state.merges.length>=limits.maxMerges)throw Error('PRIVATE HUMAN merge reason (8–500 chars) and available journal capacity required.');
     const ctx=requireContext();protect();
     if(!Array.isArray(selectedDecisions)||!selectedDecisions.length||selectedDecisions.length>350||
       selectedDecisions.some(x=>!x||typeof x!=='object'||Array.isArray(x)||
@@ -346,7 +348,7 @@ window.LightUpHistory=Object.freeze({
     const proposed=new Map(state.notes);
     const latest=new Map(state.snapshots.at(-1).findings.map(f=>[f.finding_id,f]));
     const allowed=['owner','status','due_date','next_action','verification_plan','blocker','note','updated_utc'];
-    let fieldsMerged=0;
+    let fieldsMerged=0,receiptRows=[];
     for(const choice of selectedDecisions){
       const id=choice.id,row=byId.get(id),f=latest.get(id);
       if(!row||!f||!['NEW_HUMAN_NOTES','REVIEW_CONFLICT'].includes(row.classification))
@@ -354,6 +356,7 @@ window.LightUpHistory=Object.freeze({
       if(choice.fields.some(k=>typeof k!=='string'||!allowed.includes(k)||!row.changedFields.includes(k)))
         throw Error('HOLD: selection requested a HUMAN field that was not changed in the admitted original packet.');
       const copy={...row.current};
+      receiptRows.push({id,fields:[...choice.fields],previous:Object.fromEntries(choice.fields.map(k=>[k,row.current[k]])),accepted:Object.fromEntries(choice.fields.map(k=>[k,row.incoming[k]]))});
       for(const field of choice.fields)copy[field]=row.incoming[field];
       const c=LightUpCasework.cleanCase(copy,new Set([id]));
       proposed.set(id,{owner:c.owner,action:c.next_action,due:c.due_date||'',
@@ -363,7 +366,7 @@ window.LightUpHistory=Object.freeze({
     if(proposed.size>limits.maxNotes||state.importing||state.revision!==expectedRevision||
        context().client!==ctx.client||context().engagement!==ctx.engagement)
       throw Error('HOLD: private note limit or original source/context changed. Entire merge rejected.');
-    state.notes=proposed;state.revision++;render();
+    state.notes=proposed;state.merges.push({dateUtc:new Date().toISOString(),sourceHash:review.sourceHash,reason:reason.trim(),records:receiptRows});state.revision++;render();
     return {accepted:selectedDecisions.length,fieldsMerged,retained:review.rows.length-selectedDecisions.length};
   },
   importCasework(packet,sourceRevision,replaceNotes){
