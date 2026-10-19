@@ -327,6 +327,54 @@ window.LightUpHistory=Object.freeze({
   noteSummary(){
     return {bound:[...state.notes.keys()].filter(id=>noteBinding(id)==='bound').length,held:[...state.notes.keys()].filter(id=>noteBinding(id)!=='bound').length};
   },
+  caseworkRows(){
+    const latest=state.snapshots.at(-1);
+    if(!latest)return [];
+    return latest.findings.map(f=>{
+      const binding=noteBinding(f.finding_id),n=boundNote(f.finding_id);
+      const row=n?.caseworkOriginal||LightUpCasework.newCase(f);
+      return {id:f.finding_id,title:f.title,severity:f.severity,sourceRetest:f.retest_status,
+        binding,hasNote:!!n,owner:n?.owner||'',
+        action:n?.action||'',due:n?.due||'',status:n?row.status:'unassigned',
+        blocker:n?row.blocker:'',verification_plan:n?row.verification_plan:'',
+        note:n?row.note:'',updatedUTC:n?row.updated_utc:null};
+    });
+  },
+  saveCaseworkEdit(id,form,expectedRevision){
+    const ctx=requireContext();protect();
+    if(state.importing||expectedRevision!==state.revision)throw Error('Original source or HUMAN workspace changed: refresh the current work item.');
+    if(typeof id!=='string'||!form||typeof form!=='object'||Array.isArray(form))throw Error('Invalid HUMAN Casework edit.');
+    const f=latestFinding(id);
+    if(!f||noteBinding(id)==='stale'||noteBinding(id)==='missing')throw Error('HOLD: original finding absent or HUMAN note not tied to the latest exact original five-field row.');
+    const owner=String(form.owner??'').trim(),action=String(form.action??'').trim(),
+      due=String(form.due??''),blocker=String(form.blocker??'').trim(),
+      verification=String(form.verification_plan??'').trim(),note=String(form.note??'').trim(),
+      status=form.status;
+    if(!['unassigned','planned','in_progress','blocked','deferred'].includes(status))
+      throw Error('Only non-conclusive HUMAN planning progress can be newly selected, never completion or verified retest.');
+    const current=boundNote(id),base=current?.caseworkOriginal||LightUpCasework.newCase(f);
+    const proposed={...base,owner,next_action:action,due_date:due||null,blocker,
+      verification_plan:verification,note,status,updated_utc:new Date().toISOString()};
+    const normalized=LightUpCasework.cleanCase(proposed,new Set([id]));
+    if(owner.length>120||action.length>1800||blocker.length>1200||verification.length>1600||
+       note.length>1600)throw Error('HUMAN Casework field exceeds original native source length bounds.');
+    const hasValues=owner||action||due||blocker||verification||note||status!=='unassigned';
+    if(!hasValues){
+      state.notes.delete(id);
+    }else{
+      if(!state.notes.has(id)&&state.notes.size>=limits.maxNotes)throw Error('Private HUMAN source note capacity exceeded.');
+      state.notes.set(id,{owner,action,due,sourceRecord:Object.fromEntries(FIELDS.map(k=>[k,f[k]])),
+        caseworkOriginal:normalized});
+    }
+    if(context().client!==ctx.client||context().engagement!==ctx.engagement)
+      throw Error('Original client context changed; no cross-client updates permitted.');
+    state.revision++;render();
+    return {status:normalized.status,updatedUTC:normalized.updated_utc};
+  },
+  selectFinding(id){
+    const f=latestFinding(id);if(!f)throw Error('Original finding not present in latest source.');
+    state.selected=id;renderDetail();$('detail').scrollIntoView({behavior:'smooth',block:'start'});
+  },
   exportCasework(){
     requireContext();protect();
     const latest=state.snapshots.at(-1);if(!latest)throw Error('Import original source before creating a Casework handoff.');
