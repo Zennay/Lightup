@@ -43,8 +43,15 @@ PLAN_FIELDS = {"kind", "schema_version", "disposition", "source_sha256",
 
 def _hold_if_not_private_directory(path: Path) -> Path:
     directory = path.expanduser().absolute()
-    if directory.is_symlink():
-        raise ValueError("Symlinked private directory refused.")
+    # A final is_symlink() check alone does not catch redirected ancestor
+    # directories. PRIVATE material/output directories must use real literal
+    # paths throughout; do not silently follow a symlinked parent.
+    try:
+        resolved = directory.resolve(strict=True)
+    except (OSError, RuntimeError) as exc:
+        raise ValueError("Original PRIVATE directory path unavailable.") from exc
+    if resolved != directory or directory.is_symlink():
+        raise ValueError("PRIVATE directory or one of its ancestors is symlinked.")
     st = directory.stat()
     if (not stat.S_ISDIR(st.st_mode) or st.st_uid != os.getuid()
             or st.st_mode & 0o077):
