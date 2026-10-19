@@ -57,7 +57,13 @@ def _key(packet: dict, receipt_sha: str) -> str:
 def _source(args, vault):
     envelope, packet, indexed, items, old_hash, plan_hash = bridge._load(args, vault)
     _, receipt_sha = source._read_material(args.directory, packet, indexed, vault)
-    return envelope, packet, indexed, items, old_hash, plan_hash, _key(packet, receipt_sha)
+    # The original HUMAN and retention files are both private and bounded.
+    # Preserve encrypted byte identity as well as admitted semantic content:
+    # re-sealing or replacing a file during operator review must be visible.
+    human_cipher = vault._private_input(args.human.expanduser().absolute(), vault.MAX_VAULT)
+    plan_cipher = vault._private_input(args.plan.expanduser().absolute(), vault.MAX_VAULT)
+    return (envelope, packet, indexed, items, old_hash, plan_hash,
+            _key(packet, receipt_sha), _digest(human_cipher), _digest(plan_cipher))
 
 
 def _new_private_output(args, folder: Path, suffix: str) -> Path:
@@ -86,7 +92,9 @@ def _source_still_current(args, vault, original_snapshot) -> None:
             or latest[2] != original_snapshot[2]
             or latest[3] != original_snapshot[3]
             or latest[4] != original_snapshot[4]
-            or latest[5] != original_snapshot[5]):
+            or latest[5] != original_snapshot[5]
+            or latest[7] != original_snapshot[7]
+            or latest[8] != original_snapshot[8]):
         raise ValueError("Original HUMAN workroom/plan/source/material changed while reviewing.")
 
 
@@ -202,7 +210,7 @@ def _inspect(document: dict, packet: dict) -> None:
 
 
 def _stage(args, vault, folder, journal, current) -> None:
-    envelope, packet, indexed, items, old_hash, plan_hash, key = current
+    envelope, packet, indexed, items, old_hash, plan_hash, key = current[:7]
     cycles = journal["cycles"]
     if len(cycles) >= MAX_CYCLES:
         raise ValueError("Local HUMAN journal capacity reached.")
@@ -232,7 +240,7 @@ def _stage(args, vault, folder, journal, current) -> None:
     if (newer[6] != key or newer[1] != packet or newer[3] != items
             or newer[2] != indexed):
         raise ValueError("Original current source/HUMAN/material changed during review.")
-    envelope, packet, indexed, items, old_hash, plan_hash, key = newer
+    envelope, packet, indexed, items, old_hash, plan_hash, key = newer[:7]
     drafts = bridge._build(packet, chosen)
     updated = dict(packet)
     updated["schema_version"] = 2
@@ -276,7 +284,7 @@ def _stage(args, vault, folder, journal, current) -> None:
 
 def _recover(args, vault, folder, journal, current) -> None:
     """Complete a crash-interrupted local entry only from an admitted encrypted original draft."""
-    envelope, packet, indexed, items, _, _, key = current
+    envelope, packet, indexed, items, _, _, key = current[:7]
     cycles = journal["cycles"]
     if not cycles or cycles[-1]["state"] != "pending":
         raise ValueError("No interrupted pending HUMAN draft.")
@@ -305,7 +313,7 @@ def _recover(args, vault, folder, journal, current) -> None:
 
 
 def _resolve(args, vault, folder, journal, current) -> None:
-    envelope, packet, indexed, items, old_hash, plan_hash, key = current
+    envelope, packet, indexed, items, old_hash, plan_hash, key = current[:7]
     cycles = journal["cycles"]
     if not cycles or cycles[-1]["state"] not in ("pending", "staged"):
         raise ValueError("No unresolved original HUMAN stage in this local journal.")
