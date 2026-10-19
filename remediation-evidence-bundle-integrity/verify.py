@@ -5,6 +5,7 @@ Checks self-declared local consistency only, never source authenticity or author
 """
 from __future__ import annotations
 import argparse
+from collections import Counter
 import hashlib
 import html
 import json
@@ -108,7 +109,10 @@ def inspect(folder: Path) -> tuple[dict, dict[str, bytes]]:
     for name, b in contents.items():
         review.require(sha(review.private_read(folder / name)) == sha(b),
                        "PRIVATE workspace changed during local reading")
-    return ({"file_count": len(contents), "local_links": analysis["local_links"],
+    reasons = Counter(reason for row in session["records"]
+                      if row["stage"] != "answered_human" for reason in row["reasons"])
+    return ({"reason_counts": {k: reasons.get(k, 0) for k in sorted(triage.REASONS)},
+             "file_count": len(contents), "local_links": analysis["local_links"],
              "shared_fingerprints": len(analysis["shared_groups"]),
              "conflicting_groups": len(analysis["attention_groups"]),
              "human_questions": len(session["records"]),
@@ -120,6 +124,18 @@ def render_html(s: dict) -> bytes:
     stages = "".join("<tr><th>" + escape(k.replace("_", " ")) +
                      "</th><td>" + str(v) + "</td></tr>"
                      for k, v in s["human_stage_counts"].items())
+    followups = {
+        "VERIFY_INTENTIONAL_CROSS_FINDING_REUSE": "Ask owner whether evidence reuse is intentional.",
+        "RECONCILE_HUMAN_STAGE_DIFFERENCE": "Review conflicting local HUMAN stages with owner.",
+        "RECHECK_LOCAL_BYTES_WITH_ORIGINAL_LEDGER": "Reselect and check PRIVATE file bytes in original Ledger.",
+        "REVIEW_NEW_LOCAL_LINK": "Review newly declared local evidence link.",
+        "PREVIOUS_LOCAL_LINK_ABSENT_NOT_PROVEN_FIXED": "Ask owner about disappeared local link, not a proven fix.",
+        "REVIEW_CHANGED_LOCAL_HUMAN_METADATA": "Discuss changed HUMAN review metadata.",
+    }
+    actions = "".join("<tr><td>" + escape(followups[k]) + "</td><td>" +
+                      str(n) + "</td></tr>" for k, n in s["reason_counts"].items() if n)
+    if not actions:
+        actions = "<tr><td>No pending HUMAN reason codes</td><td>0</td></tr>"
     return ("<!doctype html><html lang='en'><meta charset='utf-8'>"
             "<meta http-equiv='Content-Security-Policy' content=\"default-src 'none'; "
             "style-src 'unsafe-inline'; script-src 'none'; connect-src 'none'; "
@@ -146,7 +162,8 @@ def render_html(s: dict) -> bytes:
             ("present" if s["has_previous"] else "not included") +
             ". No authenticated chronology or original file-byte inspection.</p></section>"
             "<section><h2>Local HUMAN stage distribution</h2><table>" + stages +
-            "</table><p>Locally answered does not mean fixed or approved. "
+            "</table><h2>Pending HUMAN follow-up</h2><table>" + actions +
+            "</table><p>Reason totals may overlap. Locally answered does not mean fixed or approved. "
             "Use the original owner-private Evidence Relationship Desk to modify "
             "HUMAN notes. This report never edits source state.</p></section>"
             "<p>Keep source folder and report on a trusted owner-private machine; "
@@ -157,17 +174,29 @@ def main() -> int:
     p = argparse.ArgumentParser(description="Inspect private original evidence workspace consistency offline")
     p.add_argument("--bundle", type=Path, required=True,
                    help="Absolute 0700 original Evidence Relationship Desk folder")
+    p.add_argument("--counts", type=Path,
+                   help="New aggregate-only JSON in separate private directory")
     p.add_argument("--report", type=Path,
                    help="New PRIVATE 0600 scriptless HTML in separate 0700 parent directory")
     args = p.parse_args()
     try:
-        if args.report is not None:
-            review.require(args.report.parent != args.bundle, "Report cannot modify source workspace")
-            triage.private_parent(args.report)
+        review.require(not (args.report and args.counts),
+                       "Choose one output to avoid partial multi-output publication")
+        destination = args.report or args.counts
+        if destination is not None:
+            review.require(destination.parent != args.bundle, "Cannot modify source workspace")
+            triage.private_parent(destination)
         summary, _ = inspect(args.bundle)
         if args.report is not None:
             review.private_publish(args.report, render_html(summary))
             print("PRIVATE local HTML summary created.")
+        if args.counts is not None:
+            result = {"kind": "lightup.anonymous_private_evidence_bundle_integrity_counts",
+                      "schema_version": 1, "disposition": "HUMAN_REVIEW_ONLY_NO_AUTHORITY",
+                      **{k: False for k in review.FLAGS}, **summary,
+                      "warning": "Local consistency, not authenticated source, approval or remediation."}
+            review.private_publish(args.counts, workspace.pretty(result))
+            print("Anonymous aggregate local JSON created.")
         print("REVIEW_ONLY: local bundle consistent; not authenticated source, consent, security or release.")
         print("Files " + str(summary["file_count"]) + "; HUMAN questions " +
               str(summary["human_questions"]) + "; local links " + str(summary["local_links"]))

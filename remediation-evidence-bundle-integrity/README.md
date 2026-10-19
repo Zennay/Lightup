@@ -30,6 +30,16 @@ python3 remediation-evidence-bundle-integrity/verify.py \
   --report "$HOME/lightup-private/receipts/desk-001-integrity.html"
 ```
 
+For a separate source-free local aggregate JSON instead of HTML:
+
+```sh
+python3 remediation-evidence-bundle-integrity/verify.py \
+  --bundle "$HOME/lightup-private/desk-001" \
+  --counts "$HOME/lightup-private/receipts/desk-001-anonymous.json"
+```
+
+This second output includes only anonymous stage and open question-reason counts; no source IDs, file digests, paths, notes, or finding identities. The HTML now includes a plain-language HUMAN follow-up table by original proposed-question reason. One question may count under more than one reason. Both output options are intentionally mutually exclusive to avoid partial multi-output publication.
+
 **Exit 2** is intentional `REVIEW_ONLY`: local byte/source/HUMAN consistency admitted, never an approval or security verdict. **Exit 3** means `HOLD`, and no report is produced. `--report` is optional for a console-only inspection. A report name must be unused. The verifier cannot write inside the original bundle; the original directory may remain immutable. Open the HTML locally only, not on a web server.
 
 Private exports must never enter public GitHub PRs, Notion pages, third-party tools or CI artifacts. If any byte fails, re-export from the original trusted source; do not patch `manifest.json` to force a local match. A manifest is **not signed**, a locally modified manifest and contents can agree, and private SHA hashes cannot authenticate who produced the original packet or prove the evidence file bytes exist. Source reference, original owner, client or engagement labels and HUMAN notes are self-declared; this is solely a local *internal-consistency* assistant.
