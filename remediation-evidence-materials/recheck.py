@@ -31,6 +31,8 @@ def review(args, vault) -> int:
         raise ValueError("Existing receipt folder must be real owner-private 0700.")
     receipt = vault._private_input(directory / "PRIVATE-receipt.json", MAX_RECEIPT)
     data = transfer.human._json(receipt, MAX_RECEIPT)
+    if transfer.canonical(data) != receipt:
+        raise ValueError("Original PRIVATE evidence receipt is not byte-canonical.")
     if (set(data) != RECEIPT_KEYS or transfer.canonical(data) != receipt
             or data.get("kind") != "lightup.private_local_material_receipt"
             or type(data.get("schema_version")) is not int
