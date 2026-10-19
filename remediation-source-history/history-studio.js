@@ -145,6 +145,15 @@ function renderDetail() {
  $('detailTitle').textContent=r.title+' · '+id;
  $('detailSource').innerHTML=entry.series.map((f,i)=>'<article class="snapshot"><h4>'+esc((i+1)+'. '+state.snapshots[i].label)+'</h4>'+(f?'<p><b>Source claim:</b> '+esc(f.severity)+' / '+esc(f.retest_status)+'</p><p><b>Suggested remediation (source text):</b> '+esc(f.remediation)+'</p>':'<p>Absent from this export; not proof of remediation.</p>')+'</article>').join('');
  $('humanOwner').value=n.owner;$('humanAction').value=n.action;$('humanDue').value=n.due;
+ $('caseworkNative').hidden=!n.caseworkOriginal;
+ if(n.caseworkOriginal){
+   const c=n.caseworkOriginal;
+   $('caseworkNative').innerHTML='<b>Original HUMAN Casework v1 (unverified source-only)</b>'+
+   '<p>Human status: '+esc(c.status)+' · last HUMAN updated: '+esc(c.updated_utc||'not recorded')+'</p>'+
+   '<p><b>Original blocker:</b> '+esc(c.blocker||'none')+'</p>'+
+   '<p><b>Original HUMAN verification plan:</b> '+esc(c.verification_plan||'none')+'</p>'+
+   '<p><b>Original HUMAN note:</b> '+esc(c.note||'none')+'</p>';
+ }
  const binding=noteBinding(id),held=binding==='stale'||binding==='missing';
  const original=n.sourceRecord;
  $('sourceChangeReview').hidden=!held;
@@ -171,7 +180,7 @@ function notesFromFields(){
  const owner=$('humanOwner').value.trim(),action=$('humanAction').value.trim(),due=$('humanDue').value;
  if(owner.length>120||action.length>1200|| (due && (new Date(due+'T00:00:00Z').toISOString().slice(0,10)!==due)))throw Error('Invalid HUMAN plan fields.');
  if(!owner&&!action&&!due)state.notes.delete(id);
- else {if(state.notes.size>=limits.maxNotes&&!state.notes.has(id))throw Error('Local HUMAN notes limit reached.');state.notes.set(id,{owner,action,due,sourceRecord:Object.fromEntries(FIELDS.map(k=>[k,current[k]]))});}
+ else {if(state.notes.size>=limits.maxNotes&&!state.notes.has(id))throw Error('Local HUMAN notes limit reached.');state.notes.set(id,{owner,action,due,sourceRecord:Object.fromEntries(FIELDS.map(k=>[k,current[k]])),caseworkOriginal:state.notes.get(id)?.caseworkOriginal||null});}
  state.revision++;renderGrid();renderDetail();message('Private HUMAN coordination note saved in memory only; no source finding, grant or retest changed.');
 }
 function carryHuman() {
@@ -179,7 +188,7 @@ function carryHuman() {
  if(!existing||!current||noteBinding(id)!=='stale'||!$('carryAck').checked)
   throw Error('Source change needs selected current finding and explicit human review acknowledgement.');
  if(!window.confirm('PRIVATE HUMAN REVIEW: Carry existing HUMAN notes to the CHANGED original five-field source record? This is NOT a verified fix, consent or authorization.'))return;
- const notes={...existing,sourceRecord:Object.fromEntries(FIELDS.map(k=>[k,current[k]]))};
+ const notes={...existing,sourceRecord:Object.fromEntries(FIELDS.map(k=>[k,current[k]]),caseworkOriginal:null};
  state.notes.set(id,notes);state.revision++;renderGrid();renderDetail();
  message('Human note deliberately carried to the exact latest original finding after acknowledgment; no security status or source changed.');
 }
@@ -253,6 +262,35 @@ window.LightUpHistory=Object.freeze({
   revision(){return state.revision;},
   view(){return state.snapshots.map(x=>({label:x.label,sourceHash:x.sourceHash,fileHash:x.fileHash,findings:x.findings.map(y=>({...y}))}));},
   privateAllowed(){requireContext();protect();return true;},
+  importCasework(packet,sourceRevision,replaceNotes){
+    const ctx=requireContext();protect();
+    if(state.importing||state.revision!==sourceRevision)throw Error('Current source changed while reading original Casework. No changes committed.');
+    const last=state.snapshots.at(-1);
+    if(!last)throw Error('Import original findings CSV before its native Casework packet.');
+    const loaded=LightUpCasework.loadPacket(packet);
+    if(loaded.source_sha256!==last.sourceHash||
+      loaded.findings.length!==last.findings.length)throw Error('Native Casework original canonical SHA or row count differs from latest imported source.');
+    const byId=new Map(loaded.findings.map(f=>[f.finding_id,f]));
+    for(const f of last.findings)if(!byId.has(f.finding_id)||!exact(byId.get(f.finding_id),f))
+      throw Error('Native Casework source contains a changed or mismatched original finding.');
+    if(state.notes.size&&!replaceNotes)throw Error('Existing private HUMAN notes must be explicitly retained in their current workspace or independently approved for replacement.');
+    const notes=new Map();
+    const canonical=new Map(last.findings.map(f=>[f.finding_id,f]));
+    for(const c of loaded.cases){
+      const f=canonical.get(c.finding_id);
+      if(!f)throw Error('Original Casework HUMAN record has an unknown exact finding ID.');
+      const empty=LightUpCasework.newCase(f);
+      const changed=['owner','status','due_date','next_action','verification_plan','blocker','note','updated_utc'].some(k=>c[k]!==empty[k]);
+      if(!changed)continue;
+      notes.set(c.finding_id,{owner:c.owner,action:c.next_action,due:c.due_date||'',
+        sourceRecord:Object.fromEntries(FIELDS.map(k=>[k,f[k]])),caseworkOriginal:{...c}});
+      if(notes.size>limits.maxNotes)throw Error('Original Casework has more than the maximum private HUMAN notes; no partial import.');
+    }
+    if(state.revision!==sourceRevision||context().client!==ctx.client||context().engagement!==ctx.engagement)
+      throw Error('Original source/context changed during PRIVATE native Casework preparation.');
+    state.notes=notes;state.revision++;render();
+    return {imported:notes.size,original:last.findings.length};
+  },
   noteSummary(){
     return {bound:[...state.notes.keys()].filter(id=>noteBinding(id)==='bound').length,held:[...state.notes.keys()].filter(id=>noteBinding(id)!=='bound').length};
   },
@@ -260,8 +298,9 @@ window.LightUpHistory=Object.freeze({
     requireContext();protect();
     const latest=state.snapshots.at(-1);if(!latest)throw Error('Import original source before creating a Casework handoff.');
     const cases=latest.findings.map(f=>{
-      const n=boundNote(f.finding_id),row=LightUpCasework.newCase(f);
-      return {...row,status:n?'planned':'unassigned',owner:n?.owner||'',next_action:n?.action||'',due_date:n?.due||null};
+      const n=boundNote(f.finding_id),row=n?.caseworkOriginal?{...n.caseworkOriginal}:LightUpCasework.newCase(f);
+      return {...row,status:n?.caseworkOriginal?row.status:(n?'planned':'unassigned'),
+       owner:n?.owner||'',next_action:n?.action||'',due_date:n?.due||null};
     });
     return LightUpCasework.makePacket(latest.findings,cases,latest.sourceHash);
   },
