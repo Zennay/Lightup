@@ -82,8 +82,15 @@
     }
     const complete=handoff.serialize(rows);
     if(complete.length>131072) deny("Nieuwe HUMAN-CSV overschrijdt 128 KiB.");
+    const previousSource=beforeRecords.filter(r=>namePattern.test(r.name)).at(-1);
+    const latestSource=afterRecords.filter(r=>namePattern.test(r.name)).at(-1);
+    if(!previousSource || !latestSource || !/^[a-f0-9]{64}$/.test(previousSource.sha256) ||
+       !/^[a-f0-9]{64}$/.test(latestSource.sha256))
+      deny("Bronbyte-identiteit voor PRIVATE continuïteit ontbreekt.");
     return {rows,updates,counts,oldHadCSV:old.hasCSV,newCount:next.cases.length,
-      beforeCount:old.cases.length};
+      beforeCount:old.cases.length,previousSourceName:previousSource.name,
+      latestSourceName:latestSource.name,previousSourceSha256:previousSource.sha256,
+      latestSourceSha256:latestSource.sha256};
   }
   function render(preview) {
     const panel=document.getElementById("continuation-preview");
@@ -91,7 +98,8 @@
     panel.replaceChildren();
     if(!preview){panel.textContent="Geen nieuwe bronmomenten geselecteerd.";return;}
     const make=(tag,text)=>{const e=document.createElement(tag);e.textContent=text;return e;};
-    const {counts,updates,oldHadCSV}=preview;
+    const {counts,updates,oldHadCSV,previousSourceName,latestSourceName,
+      previousSourceSha256,latestSourceSha256}=preview;
     panel.append(make("p",
       "Alleen retrospectieve menselijke bronvergelijking. "+
       (oldHadCSV ? "Bestaande opgeslagen HUMAN-keuzes kunnen onder strikte bronidentiteit doorlopen. " :
@@ -100,6 +108,11 @@
     panel.append(make("p",
       "OVERGENOMEN "+counts.carry+" · ZONDER EERDERE CSV "+counts.unrecorded+" · BRON-HOLD "+counts.source_hold+" · HEROPEND "+counts.changed+
       " · NIEUW "+counts.appeared+" · NIET MEER IN NIEUWE BRON "+counts.absent));
+    const sourceLine=make("p","Oorspronkelijk geselecteerde PRIVATE bronbytes: "+
+      previousSourceName+" SHA-256 "+previousSourceSha256+" → "+
+      latestSourceName+" SHA-256 "+latestSourceSha256+
+      ". Deze ongetekende digests binden de geselecteerde lokale bytes, niet de producent of actuele toestemming.");
+    sourceLine.className="muted";panel.append(sourceLine);
     const area=document.createElement("div");area.className="human-scroll";
     const table=document.createElement("table"),tr=document.createElement("tr");
     for(const name of ["PRIVATE dossier-ID","Retrospectieve continuïteit","Eerdere HUMAN-fase","Voorgestelde HUMAN-fase"])
@@ -121,8 +134,11 @@
     exportButton.addEventListener("click",()=>{
       if(!window.confirm("Download een afzonderlijke ONVERSLEUTELDE PRIVATE HUMAN-continuïteitslijst inclusief oorspronkelijke dossier-ID's? Gebruik uitsluitend een eigen vertrouwde lokale opslag; niet delen als onafhankelijke toestemming."))return;
       const header=["original_engagement_id","human_only_source_class","prior_human_stage",
-        "proposed_human_stage","source_authenticated","consent_verified","authorization_granted"];
+        "proposed_human_stage","previous_local_source_filename","previous_unsigned_source_sha256",
+        "latest_local_source_filename","latest_unsigned_source_sha256",
+        "source_authenticated","consent_verified","authorization_granted"];
       const rows=[header,...updates.map(u=>[u.id,u.status,u.priorStage,u.nextStage,
+        previousSourceName,previousSourceSha256,latestSourceName,latestSourceSha256,
         "false","false","false"])];
       const cell=value=>{
         const text=String(value);
