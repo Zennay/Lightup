@@ -24,7 +24,8 @@ from desk import build_desk
 from history import review as history_review
 from history_desk import build_history_desk
 from sealed_browser import _admit_encrypted_source, _original_workspace_apps, _rows, WORKSPACE_MODES
-from workspace_release import _admit_folder, _landing
+from workspace_release import _admit_folder
+from portal import build_portal
 from secure_export import _authorized_summary, _strict_summary, _vault
 
 def _module(name: str, filename: str):
@@ -67,20 +68,6 @@ def _evidence_view(
     # the HUMAN operator separately clicks original App's explicit Apply.
     return human._restore_html(raw,human_json,client,engagement)
 
-def _landing_five(views: tuple[str,...], count: int) -> bytes:
-    first=_landing(views,count).decode("utf-8","strict")
-    anchor="</ul></nav>"
-    if first.count(anchor)!=1 or "script-src &apos;none&apos;" not in first:
-        raise ValueError("Original offline source workbench navigation drift.")
-    first=first.replace(anchor,
-      '<li><a href="05-evidence-ledger.html">Original HUMAN Evidence Artifact Ledger</a></li>'+anchor)
-    html=first.replace(
-      "LightUp · PRIVATE HUMAN source-only workspace",
-      "LightUp · PRIVATE HUMAN five-view evidence workbench")
-    if len(html.encode("utf-8"))>8192:
-        raise ValueError("PRIVATE scriptless navigation exceeds original source limit.")
-    return html.encode("utf-8")
-
 def _build_all(
     csv_text: str, client: str, engagement: str,
     source: Path, private_human: Path | None
@@ -103,7 +90,7 @@ def _build_all(
         snapshots=[(dict(unverified_historical=True), records) for records in prior]
         snapshots.append((dict(current_authenticated=True),now))
         contents["04-history.html"]=build_history_desk(history_review(snapshots))
-    contents["index.html"]=_landing_five(views,len(now))
+    contents["index.html"]=build_portal(now,len(prior),private_human is not None)
     if not 5<=len(contents)<=MAX_FILES or sum(len(x) for x in contents.values())>MAX_TOTAL_OUTPUT:
         raise ValueError("PRIVATE source/HUMAN workbench file/size bounds exceeded.")
     for name,source_bytes in contents.items():
