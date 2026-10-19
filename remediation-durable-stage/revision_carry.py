@@ -28,8 +28,11 @@ def _old_native_drafts(path: Path, record: dict, args, vault, private_file) -> s
     bridge.source._hold_if_not_private_directory(path.parent)
     private_file(path)
     encrypted = vault._private_input(path, vault.MAX_VAULT)
-    if hashlib.sha256(encrypted).hexdigest() != record["sha256"]:
+    interrupted = (record["state"] == "pending" and record["sha256"] == "")
+    if not interrupted and hashlib.sha256(encrypted).hexdigest() != record["sha256"]:
         raise ValueError("Historical original HUMAN encrypted draft bytes changed.")
+    if not interrupted and record["state"] != "staged":
+        raise ValueError("Historical HUMAN draft is not a staged original record.")
     secret = vault._password("Historical ORIGINAL native HUMAN draft password: ", fresh=False)
     payload, mime, _ = vault._open(encrypted, secret)
     if mime != "application/json":
@@ -87,10 +90,25 @@ def carry(args, folder, vault, current_packet, current_key,
         raise ValueError("Choose exactly one earlier HUMAN source.")
     key, old = available[int(choice)-1]
     entry = old["cycles"][-1]
-    if entry["state"] != "staged" or not entry["sha256"]:
-        raise ValueError("Earlier pending native draft needs original recovery first.")
-    historical = _old_native_drafts(
-        Path(entry["output"]), entry, args, vault, private_file)
+    destination = Path(entry["output"])
+    bridge.source._hold_if_not_private_directory(destination.parent)
+    if entry["state"] == "pending" and not destination.exists() and not destination.is_symlink():
+        if entry["sha256"]:
+            raise ValueError("Unpublished pending historical HUMAN SHA is not empty.")
+        print("Historical pending original-native draft absent at recorded private output path.")
+        if input('Type "CONFIRM HISTORICAL NO DRAFT PUBLISHED" after HUMAN review: ') != (
+                "CONFIRM HISTORICAL NO DRAFT PUBLISHED"):
+            raise ValueError("Missing ORIGINAL source requires separate HUMAN attention.")
+        entry["state"] = "aborted_unpublished"
+        entry["updated"] = utc()
+        write_journal(folder, key, old)
+        print("Only older LOCAL pending record marked aborted_unpublished.")
+        return
+    if entry["state"] == "pending" and entry["sha256"]:
+        raise ValueError("Ambiguous interrupted historical encrypted HUMAN draft.")
+    if entry["state"] not in ("pending", "staged"):
+        raise ValueError("Earlier source has no eligible native HUMAN draft.")
+    historical = _old_native_drafts(destination, entry, args, vault, private_file)
     now = current_packet.get("human_requests", [])
     if type(now) is not list:
         raise ValueError("Current original HUMAN request list is malformed.")
@@ -105,6 +123,12 @@ def carry(args, folder, vault, current_packet, current_key,
     if confirm != "CARRY HUMAN CLOSED LABELS ONLY":
         raise ValueError("Separate original HUMAN continuity acknowledgment required.")
     # Only a local HUMAN journal state transition; no ORIGINAL source mutation.
+    if entry["state"] == "pending":
+        # For a previously interrupted publication, original-native
+        # encrypted identity admission + current reported HUMAN closure
+        # precede recording the previously missing local SHA.
+        entry["sha256"] = hashlib.sha256(
+            vault._private_input(destination, vault.MAX_VAULT)).hexdigest()
     entry["state"] = "reviewed"
     entry["updated"] = utc()
     write_journal(folder, key, old)
