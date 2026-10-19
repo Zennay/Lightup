@@ -8,12 +8,12 @@ The existing `docs/security-twin.md` specifies immutable future-state representa
 
 ## Open locally
 
-Download `index.html`, `app.js` and `style.css` from this *same branch* into one directory, and open `index.html` without a server. The strict content-security policy only allows sibling local scripts/styles, no remote URLs, requests or frames. Do not use a live server for sensitive work.
+**Easiest:** save [standalone.html](standalone.html) locally and double-click it. It is one complete self-contained review desk with inline JavaScript and CSS individually SHA-256 pinned in Content Security Policy; no server, connection or extra dependency. CSP hash pinning alone is **not** an independent browser or security audit.\n\nAlternatively download `index.html`, `app.js` and `style.css` from this *same branch* into one directory, and open `index.html` without a server. The multi-file policy allows only sibling local scripts/styles, no remote URLs, requests or frames. Do not use a live server for sensitive work. To regenerate a new portable file, run `python3 build_standalone.py` into a **new** filename; the generator rejects overwrite and unexpected source template drift.
 
 1. Start with fictional example or add a small graph manually (up to 32 nodes and 96 relationships per snapshot).
 2. Edit **current declaration** and **proposed declaration** separately. “Copy current → proposed” asks before replacing the future draft.
 3. Compare displayed nodes and relationships. The diff is exact by ID, edge endpoints, kind and editable human-readable labels; it cannot infer security consequences, actual reachability or verified mitigations.
-4. Select questions for human owners and export a **PRIVATE** entire declared snapshot JSON (which may contain sensitive asset descriptions) or **source-free counts-only** CSV/JSON.
+4. Select questions for human owners and export a **PRIVATE** entire declared snapshot JSON (which may contain sensitive asset descriptions) or **source-free counts-only** CSV/JSON. A separate PRIVATE human brief can be exported with changed component labels; it is not encrypted or safe to share broadly.
 5. Resume only with an explicitly selected strict same-format `lightup.twin_declared_review` v1 local JSON file. Any malformed/oversize/duplicate-key/unrecognized/authority-bearing file is a whole-input HOLD, preserving current work.
 
 All graph entries are `declared` and `unverified`. No evidence IDs, claims about authenticated client/tenant identity, grant, scanner, deployment or permission are accepted. Even a 0-delta display is **not PASS**.
