@@ -8,6 +8,7 @@ authorizes a scan, retest, grant or real remediation.
 from __future__ import annotations
 
 import html
+from collections import Counter
 import coordination
 
 MODE = "complete_workroom_source_free_inbox_v2"
@@ -25,6 +26,8 @@ def render(plan: dict) -> bytes:
     )
     due = sum(row["due_date"] is not None and
               row["stage"] != "locally_answered" for row in plan["slots"])
+    shapes = Counter(x["original_cockpit_manifest_sha256"] for x in plan["slots"])
+    extra_matching_shapes = sum(n - 1 for n in shapes.values() if n > 1)
     metrics = (
         ("Original source-free slots", total),
         ("Pending local HUMAN attention", pending),
@@ -66,6 +69,9 @@ def render(plan: dict) -> bytes:
         '<p class="warning"><strong>INCUBATE · DRAFT/HOLD · HUMAN ONLY.</strong> ' +
         html.escape(coordination.WARNING, quote=True) + '</p>'
         '<div class="metrics">' + tiles + '</div>'
+        '<p><strong>' + str(extra_matching_shapes) + '</strong> additional source-free '
+        'slot(s) have a matching anonymous manifest shape. Such a match cannot '
+        'prove original client identity or duplicate cases; HUMAN review required.</p>'
         '<nav class="nav" aria-label="Offline PRIVATE workroom navigation">'
         '<a href="board/index.html">Open HUMAN follow-up queue and assignments →</a>'
         '<a href="inbox/index.html">Open original source-free evidence cockpit inbox →</a>'
