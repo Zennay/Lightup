@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-__SCRIPT_HASH__' 'sha256-__ORIGINAL_HASH__' 'sha256-__MERGE_HASH__' 'sha256-__INTAKE_HASH__'; style-src 'sha256-__STYLE_HASH__'; connect-src 'none'; img-src 'none'; font-src 'none'; object-src 'none'; media-src 'none'; frame-src 'none'; worker-src 'none'; form-action 'none'; base-uri 'none'">
+<title>LightUp · PRIVATE Evidence Custody Reconciliation</title>
+<style>__STYLE__</style></head>
+<body>
+<header><div class="shell">
+<p class="eyebrow">LIGHTUP / EVIDENCE–REMEDIATION / PRIVATE OFFLINE WORKBENCH</p>
+<h1>Evidence Custody Reconciliation</h1>
+<p class="lead">Compare local evidence files against the original PRIVATE LightUp Artifact Ledger or Unified HUMAN workspace. SHA-256 runs in this browser; no evidence bytes are uploaded, retained, or transmitted.</p>
+<p class="chip">INCUBATE · M3/M7 PLAN/LAB ONLY · DRAFT/HOLD</p>
+</div></header>
+<main class="shell">
+<section class="card"><h2>1 · Load PRIVATE source-bound local index</h2>
+<p>Import the original private JSON produced by the Evidence Artifact Ledger. Private data such as client labels, human notes and hashes must stay on a trusted local device. The claimed source SHA and labels are <strong>not</strong> authenticated or granted here.</p>
+<label>Original PRIVATE artifact ledger / Unified HUMAN JSON
+<input type="file" id="manifest" accept=".json,application/json"></label>
+<button id="import" type="button">Import PRIVATE index</button>
+<div class="source-verification"><h3>Bind to exact original findings source</h3>
+<p>Select the separately obtained original five-column LightUp findings CSV for the same client and engagement. The unmodified original Casework parser checks all source rows and produces the same canonical SHA-256 as the Artifact Ledger. No imported labels or hashes authenticate a person or grant permission.</p>
+<label>Original independently obtained findings CSV<input id="sourceCSV" type="file" accept=".csv,text/csv"></label>
+<button id="verifySource" type="button" disabled>Verify source membership + SHA-256</button>
+<p id="sourceState" class="detail">HUMAN HOLD — source not yet matched.</p>
+</div>
+<p id="context" class="detail"></p></section>
+<section class="card"><h2>2 · Reconcile local evidence bytes in bulk</h2>
+<p>Select up to 240 local files (max 16 MiB each). The browser hashes each file and checks SHA-256 <em>and exact byte length</em>. HUMAN attention is ordered by local discrepancy then by severity labels from the verified original CSV, never by an independently proven risk rating. A renamed file with identical bytes gets a separate HUMAN review warning; missing matches only mean matching bytes were not selected here.</p>
+<label>Local files to compare (never uploaded)
+<input type="file" id="localFiles" multiple></label>
+<label>Optional folder picker (only if supported by your browser)
+<input type="file" id="folderFiles" webkitdirectory multiple></label>
+<p class="small">The folder path is deliberately ignored; only each local file label, length and bytes are inspected. Selected files and selected folder entries are combined.</p>
+<button id="run" type="button" disabled>Calculate local SHA-256 and compare</button>
+<p class="small">Nothing here contacts a target, scans, accepts consent, approves action, verifies remediation or signs provenance.</p>
+</section>
+<section class="card"><h2>3 · HUMAN-only results</h2>
+<p id="summary" aria-live="polite"></p>
+<div class="filters"><label>Find original finding ID or local filename<input id="resultSearch" type="search" maxlength="160" placeholder="Search local comparison"></label>
+<label>Show HUMAN status<select id="resultStatus"><option value="all">All results</option><option value="match">Same bytes and label</option><option value="rename">Same bytes, different label</option><option value="missing">Not in local selection</option><option value="unlinked">Original source has no LOCAL artifact index</option><option value="duplicate">Additional local copy of indexed bytes</option><option value="unindexed">Unindexed local file</option><option value="rejected">Oversize/unreadable</option></select></label>
+<label>Original severity claim (NOT verified)<select id="severityFilter"><option value="all">All original labels</option><option value="critical">Original critical</option><option value="high">Original high</option><option value="medium">Original medium</option><option value="low">Original low</option><option value="info">Original info</option></select></label></div>
+<div class="table-scroll" id="results"></div>
+<div class="export"><h3>Export carefully</h3>
+<p><strong>Anonymous counts:</strong> only local-category and high/critical attention counters; no client context, IDs, filenames or SHA values.</p>
+<button id="anonymous" type="button" disabled>Export anonymous counts CSV</button>
+<p><strong>PRIVATE comparison:</strong> exact original ID, indexed/local names and digests, context source hash and HUMAN local result. Not a chain-of-custody signature.</p>
+<label class="check"><input id="confirmPrivate" type="checkbox"> I independently verified the intended recipient and PRIVATE storage. I understand this includes sensitive metadata and makes no security/authorization claim.</label>
+<button id="private" type="button" disabled>Export PRIVATE HUMAN reconciliation CSV</button>
+<h3>Native LightUp HUMAN follow-up merge (preserves earlier work)</h3>
+<p>Missing local source-finding index references and selected-file discrepancies can become HUMAN draft questions. New local-file questions are merged with the existing PRIVATE HUMAN request list, never substituted without preview. An imported Unified HUMAN v2 index already carries original requests. If you imported Artifact Ledger v1, optionally select the separate original Evidence Request Desk v1 PRIVATE JSON. Conflicting two original baselines cause HOLD. Original outstanding questions are preserved unchanged, and fresh duplicate questions for the same finding are skipped.</p>
+<label>Optional original PRIVATE HUMAN request packet<input id="requestInput" type="file" accept=".json,application/json"></label>
+<label class="check"><input id="noExistingRequests" type="checkbox"> Only when no requests were supplied: I checked separately that the original owner desk has no HUMAN requests to preserve. This is not permission to overwrite an existing list.</label>
+<button id="requestDraft" type="button" disabled>Preview preserve-first HUMAN request merge</button>
+<p id="requestPreview" class="detail">No request merge preview.</p>
+<label class="check"><input id="mergeAck" type="checkbox"> I reviewed the preview and will retain an independent backup before importing into the original owner desk. The native desk requires its own source-bound preview and manual replace-all confirmation.</label>
+<button id="exportMerged" type="button" disabled>Export PRIVATE merged original HUMAN requests</button></div>
+</section>
+<section class="card" id="new-artifact-section"><h2>4 · Add new LOCAL fingerprints to the original PRIVATE index</h2>
+<p>Only local files whose SHA-256 bytes are not in the selected index can be attached to an <strong>existing</strong> original finding. Select the finding for each file, then preview an append-only PRIVATE manifest. Existing evidence notes, Casework, Evidence Review and HUMAN requests are preserved verbatim. Every newly attached file starts as <strong>unreviewed</strong>: a hash is not provenance, source authenticity, remediation, or a verified retest.</p>
+<p id="intakeCount" class="detail">Compare local files and the ORIGINAL source before assigning new evidence.</p>
+<div class="intake-bulk"><label>Assign all currently unassigned local files to one ORIGINAL finding
+<select id="intakeBulkFinding" aria-label="Bulk assign local evidence to original finding"><option value="">Choose existing original finding</option></select></label>
+<button id="intakeBulkAssign" type="button" disabled>Assign all unassigned file fingerprints</button></div>
+<div id="intakeFiles" class="table-scroll"></div>
+<label>Default HUMAN reviewer alias (each file may override)<input id="intakeReviewer" type="text" maxlength="120" autocomplete="off"></label>
+<label>Default HUMAN note (each file may override)<textarea id="intakeNote" maxlength="1200" rows="3"></textarea></label>
+<button id="intakePreviewButton" type="button" disabled>Preview append-only PRIVATE artifact intake</button>
+<p id="intakePreview" class="detail">No append-only preview.</p>
+<label class="check"><input type="checkbox" id="intakeAck"> I inspected all original and newly assigned file references, confirmed the PRIVATE storage/recipient and retained a secure backup. Native LightUp import will still require a separate exact-source preview and HUMAN Apply.</label>
+<button id="intakeExportButton" type="button" disabled>Export PRIVATE preserved original index + newly staged fingerprints</button>
+</section>
+<section class="card"><h2>5 · Clear sensitive working memory</h2>
+<p>Forget discards imported index and local comparison results in this tab. Previously downloaded files remain on disk.</p>
+<button id="forget" type="button">Forget PRIVATE workspace</button></section>
+<p id="notice" class="notice" role="status" aria-live="polite">Load original PRIVATE manifest to begin. No source identity authenticated.</p>
+<footer>HUMAN observations only · local byte agreement is not independent provenance, source authenticity, client/operator consent, a verified retest, a fixed vulnerability, or HUMAN GO.</footer>
+</main><script>__ORIGINAL_JS__</script><script>__SCRIPT__</script><script>__MERGE_JS__</script><script>__INTAKE_JS__</script></body></html>
