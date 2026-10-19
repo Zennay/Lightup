@@ -19,10 +19,13 @@ from pathlib import Path
 import sqlite3
 import sys
 import tempfile
+import unicodedata
 import warnings
 import zipfile
 
 from .domain import AccountLockedError, DomainStore
+from .finding_export import _cell
+from .finding_export_unicode_integrity import _checked_text, MAX_FIELD_BYTES
 from .finding_export_service import render_client_findings_csv
 from .models import RetestStatus, Severity
 
@@ -62,6 +65,7 @@ def _rows(data: bytes) -> list[dict[str, str]]:
             raise ValueError("unexpected CSV columns")
         records = []
         identifiers: set[str] = set()
+        displayed_identifiers: set[str] = set()
         for record in reader:
             if len(record) != len(HEADERS) or len(records) >= 128:
                 raise ValueError("invalid CSV row shape or batch size")
@@ -70,13 +74,30 @@ def _rows(data: bytes) -> list[dict[str, str]]:
             if not identity.strip() or identity in identifiers:
                 raise ValueError("invalid or duplicate original finding ID")
             identifiers.add(identity)
-            if not fields["title"].strip() or not fields["remediation"].strip():
-                raise ValueError("blank original finding description")
+            displayed = unicodedata.normalize("NFKC", identity)
+            if displayed in displayed_identifiers:
+                raise ValueError("ambiguous compatibility finding ID")
+            displayed_identifiers.add(displayed)
+            for key in ("finding_id", "title", "remediation"):
+                # The original exporter redacts known secrets and apostrophe-escapes
+                # ASCII formula prefixes. Do not trust a rehashed imported ZIP to
+                # claim it used that guarded producer: check each rendered cell.
+                _checked_text(fields[key], key, MAX_FIELD_BYTES[key])
+                if _cell(fields[key]) != fields[key]:
+                    raise ValueError("non-canonical or unsafe presentation cell")
             if fields["severity"] not in {level.value for level in Severity}:
                 raise ValueError("unknown source severity")
             if fields["retest_status"] not in {status.value for status in RetestStatus}:
                 raise ValueError("unknown source retest label")
             records.append(fields)
+        # A source archive is not just any well-formed CSV: it must be byte-for-byte
+        # the canonical original five-column, fully quoted CRLF presentation.
+        stream = io.StringIO(newline="")
+        writer = csv.writer(stream, quoting=csv.QUOTE_ALL, lineterminator="\r\n")
+        writer.writerow(HEADERS)
+        writer.writerows(tuple(row[name] for name in HEADERS) for row in records)
+        if stream.getvalue().encode("utf-8") != data:
+            raise ValueError("non-canonical source CSV serialization")
         return records
     except (UnicodeError, csv.Error, StopIteration) as exc:
         raise ValueError("invalid original CSV encoding or shape") from exc
