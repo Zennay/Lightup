@@ -71,7 +71,7 @@ The generated entirely OFFLINE private `index.html` is a navigable scriptless HT
 Use **one native receiver operator command** for the entire new product, always choosing an unused destination inside an existing private 0700 folder:
 
 ```sh
-python3 remediation-recipient-trend/operator.py series \
+python3 remediation-recipient-trend/receiver_desk.py series \
   --cockpit "$HOME/lightup-private/received-01" \
   --cockpit "$HOME/lightup-private/received-02" \
   --cockpit "$HOME/lightup-private/received-03" \
@@ -81,7 +81,7 @@ python3 remediation-recipient-trend/operator.py series \
 The standalone `timeline.py` CLI accepts identical `--cockpit` and `--output-dir` parameters. On a receiving machine that no longer has these original source-free packets, **independently re-open the entire private report**:
 
 ```sh
-python3 remediation-recipient-trend/operator.py reopen-series \
+python3 remediation-recipient-trend/receiver_desk.py reopen-series \
   --receipt "$HOME/lightup-private/recipient-series-001"
 ```
 
@@ -90,15 +90,17 @@ The standalone `timeline_receive.py` accepts `--receipt` as well. It reconstruct
 For simple two-snapshot comparisons the equivalent unified commands are:
 
 ```sh
-python3 remediation-recipient-trend/operator.py compare \
+python3 remediation-recipient-trend/receiver_desk.py compare \
   --left "$HOME/lightup-private/received-01" \
   --right "$HOME/lightup-private/received-02" \
   --output-dir "$HOME/lightup-private/two-moment-review-001"
 
-python3 remediation-recipient-trend/operator.py reopen-compare \
+python3 remediation-recipient-trend/receiver_desk.py reopen-compare \
   --receipt "$HOME/lightup-private/two-moment-review-001"
 ```
 
 **Important interpretation:** packet ordinals are a HUMAN-selected order, not authenticated timestamps. Original source/client case membership across handoffs is unknowable in the source-free recipient packets. A rising/falling total cannot be labeled a security improvement, new vulnerability, verified remediation or clinical/contractual SLA. Local checksums never authenticate the original producer. The recipient must contact the authenticated original private source owner for actual evidence, retest, client/operator consent and any real activation decisions.
 
 Every successful command returns exit **2 / REVIEW_ONLY**; invalid or unsafe packets return **3 / HOLD**. No QA suites or release gates are modified. Do not treat these values as green CI.
+
+The integrated CLI is deliberately named `receiver_desk.py`, **not** `operator.py`: Python imports its own standard `operator` module during startup, and a sibling `operator.py` would shadow it and prevent the actual installed CLI from loading.
