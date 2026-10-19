@@ -57,3 +57,7 @@ td details summary{cursor:pointer;color:#87dcbf;font-weight:650}
 #mergeStatus{border-left:3px solid #67d3ad;padding:.6rem .8rem;min-height:2.2rem;overflow-wrap:anywhere}
 #mergeStatus[data-error=true]{border-color:#e9a0a0;color:#ffc0b9}
 @media(max-width:650px){.mergeConflicts{display:block;max-height:none}.mergeConflict{margin-bottom:.8rem}}
+
+#saveState{border-left:3px solid #6cdbb5;padding:.65rem .85rem;margin:1rem 0;line-height:1.5}
+#saveState[data-dirty=true]{border-left-color:#f1c16d;color:#f8db9d;font-weight:700}
+#mergeUndo:disabled{opacity:.4}
