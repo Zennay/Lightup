@@ -23,6 +23,7 @@ HUMAN_HOLD_REVIEW = HERE / "human-hold-review.js"
 PRIVATE_SOURCE_RECOVERY = HERE / "private-source-recovery.js"
 PRIVATE_SOURCE_REIMPORT = HERE / "private-source-reimport.js"
 PRIVATE_DECISION_LEDGER = HERE / "private-decision-ledger.js"
+PRIVATE_FINDING_DOSSIER = HERE / "private-finding-dossier.js"
 CSS = HERE / "studio.css"
 TEMPLATE = HERE / "index.html"
 OUTPUT = HERE / "standalone.html"
@@ -46,6 +47,7 @@ def main() -> None:
     private_source_recovery = PRIVATE_SOURCE_RECOVERY.read_bytes()
     private_source_reimport = PRIVATE_SOURCE_REIMPORT.read_bytes()
     private_decision_ledger = PRIVATE_DECISION_LEDGER.read_bytes()
+    private_finding_dossier = PRIVATE_FINDING_DOSSIER.read_bytes()
     css = CSS.read_bytes()
     html = TEMPLATE.read_text(encoding="utf-8")
     engine_tag = '<script src="../casework/remediation-engine.js"></script>'
@@ -61,13 +63,14 @@ def main() -> None:
     recovery_tag = '<script src="./private-source-recovery.js"></script>'
     reimport_tag = '<script src="./private-source-reimport.js"></script>'
     decision_ledger_tag = '<script src="./private-decision-ledger.js"></script>'
+    dossier_tag = '<script src="./private-finding-dossier.js"></script>'
     css_tag = '<link rel="stylesheet" href="./studio.css">'
     csp_start = '<meta http-equiv="Content-Security-Policy" content="'
     start = html.index(csp_start)
     end = html.index('">', start)
     csp = (
         "default-src 'none'; script-src 'sha256-" + sha(engine) +
-        "' 'sha256-" + sha(js) + "' 'sha256-" + sha(checkpoint) + "' 'sha256-" + sha(pair_diff) + "' 'sha256-" + sha(native_casework) + "' 'sha256-" + sha(human_desk) + "' 'sha256-" + sha(human_calendar) + "' 'sha256-" + sha(human_intervention) + "' 'sha256-" + sha(bulk_source_carry) + "' 'sha256-" + sha(human_hold_review) + "' 'sha256-" + sha(private_source_recovery) + "' 'sha256-" + sha(private_source_reimport) + "' 'sha256-" + sha(private_decision_ledger) + "'; style-src 'sha256-" +
+        "' 'sha256-" + sha(js) + "' 'sha256-" + sha(checkpoint) + "' 'sha256-" + sha(pair_diff) + "' 'sha256-" + sha(native_casework) + "' 'sha256-" + sha(human_desk) + "' 'sha256-" + sha(human_calendar) + "' 'sha256-" + sha(human_intervention) + "' 'sha256-" + sha(bulk_source_carry) + "' 'sha256-" + sha(human_hold_review) + "' 'sha256-" + sha(private_source_recovery) + "' 'sha256-" + sha(private_source_reimport) + "' 'sha256-" + sha(private_decision_ledger) + "' 'sha256-" + sha(private_finding_dossier) + "'; style-src 'sha256-" +
         sha(css) + "'; img-src 'none'; font-src 'none'; connect-src 'none'; "
         "form-action 'none'; base-uri 'none'; object-src 'none'"
     )
@@ -87,6 +90,7 @@ def main() -> None:
         (recovery_tag, "<script>" + private_source_recovery.decode("utf-8") + "</script>"),
         (reimport_tag, "<script>" + private_source_reimport.decode("utf-8") + "</script>"),
         (decision_ledger_tag, "<script>" + private_decision_ledger.decode("utf-8") + "</script>"),
+        (dossier_tag, "<script>" + private_finding_dossier.decode("utf-8") + "</script>"),
     ):
         if html.count(search) != 1:
             raise SystemExit("HOLD: original HTML asset reference missing/duplicated")
