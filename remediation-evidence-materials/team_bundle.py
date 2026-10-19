@@ -111,7 +111,9 @@ def admit(raw: bytes, meta: dict, human: dict, indexed: dict) -> list[dict]:
 
 
 def seal(args,vault):
-    meta,human,originals,rows=team.collect(args,vault)
+    original_key_fingerprints=set()
+    meta,human,originals,rows=team.collect(args,vault,
+                        key_fingerprints=original_key_fingerprints)
     indexed=transfer.native._records(human,transfer._current_rows(
         transfer.human._unb64(meta["original_csv_base64"],transfer.ORIGINAL.MAX_CSV_BYTES)))["attachments"]
     raw=packet_from_current(meta,human,rows)
@@ -123,6 +125,8 @@ def seal(args,vault):
     if destination.suffix.lower()!=".ltv" or destination in reserved:
         raise ValueError("NEW distinct encrypted private team bundle .ltv required.")
     password=vault._password("NEW PRIVATE HUMAN team bundle passphrase: ",fresh=True)
+    if transfer.digest(password) in original_key_fingerprints:
+        raise ValueError("Encrypted HUMAN team bundle needs a distinct passphrase from every original source and reply.")
     vault._exclusive_output(destination,vault._seal(vault._inner(raw,"application/json"),password))
     print("Created NEW 0600 source-bound encrypted PRIVATE HUMAN team .ltv.")
     print("Human-only source-bound packets:",len({r["packet"] for r in rows}),
