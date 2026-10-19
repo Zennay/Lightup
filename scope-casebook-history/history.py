@@ -28,8 +28,8 @@ COUNTS = (
     "risk_provenance_hold", "pending_risk_review",
 )
 FAMILIES = (
-    ("requests", "request_id", ("status", "requested_mode", "requested_risk", "decision_recorded")),
-    ("engagements", "engagement_id", ("status",)),
+    ("requests", "request_id", ("status", "requested_mode", "requested_risk", "created_at", "decision_recorded")),
+    ("engagements", "engagement_id", ("status", "created_at")),
     ("grants", "grant_id", ("engagement_id", "approved_request_id", "request_link_observation",
                           "max_risk", "valid_from", "valid_until", "validity_observation")),
     ("risk_approvals", "approval_id", ("engagement_id", "status", "requested_risk",
@@ -97,7 +97,7 @@ def identity(value: object, nullable: bool = False) -> str | None:
         return None
     fail(type(value) is str and 1 <= len(value) <= 180
          and value.strip() == value
-         and all(32 < ord(c) < 127 for c in value), "invalid source identifier")
+         and value[0] in "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_"\n         and all(32 < ord(c) < 127 for c in value), "invalid source identifier")
     return value
 
 
