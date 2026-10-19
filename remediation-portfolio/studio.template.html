@@ -33,6 +33,7 @@ table{width:100%;min-width:810px;border-collapse:collapse}
 th,td{border-bottom:1px solid var(--border);text-align:left;padding:13px;font-variant-numeric:tabular-nums}
 td button{font-size:12px;padding:6px 10px}
 table th{font-size:13px;color:#d9e8fb}
+select{min-width:180px;max-width:360px;width:100%;padding:10px;border-radius:8px;background:#142539;color:var(--text);border:1px solid #63758b;font:inherit}label{color:var(--muted);font-size:14px}
 svg.trend{display:block;max-width:100%;height:auto;margin:18px auto;background:#122b32;border-radius:12px;border:1px solid var(--border)}
 footer{margin-top:40px;border-top:1px solid var(--border);padding-top:18px}
 </style>
@@ -72,7 +73,16 @@ footer{margin-top:40px;border-top:1px solid var(--border);padding-top:18px}
 <article><strong id="stage_locally_answered">0</strong><span>Locally answered (not verified fixes)</span></article>
 </div>
 </section>
-<section class="panel"><h2>3 · Compare two local HUMAN workload moments</h2>
+<section class="panel"><h2>3 · Plan HUMAN follow-up, per anonymous packet</h2>
+<p>For each local packet ordinal, choose a predefined <strong>HUMAN-only next step</strong> and a local routing status. No customer identifier, evidence, original-case link, personal name, attachment, freeform note, active assessment or consent decision can be entered. This is a local follow-up intention and does <strong>not</strong> change the original source workroom or verify a fix.</p>
+<div class="scroll"><table><thead><tr><th>Local packet ordinal</th><th>Open HUMAN questions</th><th>Suggested HUMAN next action</th><th>Local HUMAN routing state (not original)</th></tr></thead><tbody id="boardRows"></tbody></table></div>
+<div class="actions"><button id="saveBoard" class="primary" type="button" disabled>Save paired private HUMAN action board JSON</button>
+<button id="boardCSV" type="button" disabled>Save anonymous HUMAN action CSV</button>
+<label for="restoreBoard">Restore board for exact current numeric selection: <input type="file" id="restoreBoard" accept=".json,application/json" aria-label="Restore HUMAN routing JSON bound to exact source-free packet selection"></label></div>
+<p id="boardStatus" role="status" aria-live="polite">Local HUMAN routing is available after importing count packets.</p>
+<p>The exported action board is paired by full anonymous per-packet numeric shape and <strong>ordinal only</strong>. Download the matching <strong>resumable numeric session JSON</strong> separately to use <code>action_board.py</code> offline. Matching numbers are not authentication, stable client identities, proof of consent, or release. Keep these unencrypted exports private.</p>
+</section>
+<section class="panel"><h2>4 · Compare two local HUMAN workload moments</h2>
 <p>First import an earlier packet set, then click <strong>Freeze earlier counters</strong>. Clear the current imports and open the later packet set. Only aggregate numeric counts are kept for the earlier selection; there is no original case/finding matching or persistent storage. A lower number never proves a fix.</p>
 <div class="actions"><button id="freeze" type="button" disabled>Freeze earlier counters</button>
 <button id="forgetEarlier" type="button" disabled>Forget earlier counters</button>
@@ -87,7 +97,7 @@ footer{margin-top:40px;border-top:1px solid var(--border);padding-top:18px}
 </tbody></table></div>
 <p>Unchanged or decreasing counts are not evidence of remediation, verified retests, secure systems, customer identity, or matching source packets. The selected cohorts may differ or contain duplicate appearances.</p>
 </section>
-<section class="panel"><h2>4 · Multi-session HUMAN numbered moments (no Python)</h2>
+<section class="panel"><h2>5 · Multi-session HUMAN numbered moments (no Python)</h2>
 <p>Choose 2–12 separately saved <em>source-free browser sessions</em>. This imports only numeric work counters; complete source files are read locally but are never uploaded or saved in browser storage. The initial order follows the browser file picker, <strong>not independently verified dates</strong>. Use the arrows to arrange the moments yourself. No case-matching, source verification, real dates, or verified remediation conclusions.</p>
 <div class="actions"><input id="momentPick" type="file" accept=".json,application/json" multiple aria-label="Choose 2–12 previously saved private numeric HUMAN browser session JSON files"><button id="momentClear" type="button" disabled>Clear numbered moments</button></div>
 <p id="momentStatus" role="status" aria-live="polite">No numbered browser session moments loaded.</p>
