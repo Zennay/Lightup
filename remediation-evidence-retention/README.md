@@ -207,7 +207,7 @@ The [`bulk_review.py`](bulk_review.py) companion solves the multi-file private e
 
 Edit locally using an **offline, non-synchronizing** text or spreadsheet editor. Do **not** send it to a cloud spreadsheet provider or configure auto-upload. Change only the columns **`decision`**, **`review_on`**, **`note_edit`**; preserve every row/order and all immutable columns, header and UTF-8 LF line endings. Blank `note_edit` preserves the previous encrypted private note; `<clear>` removes it; another bounded safe value replaces the old note. Valid decisions remain only `retain_pending_review`, `legal_hold`, `review_for_deletion`. An edited next-review date must be today or later, not over 10 years away. Expired dates must be reissued when creating a new plan.
 
-**`import`** repeats all ORIGINAL current authentication and actual private material admissions independently, decrypts the actual previous private plan with its passphrase, and requires **every** header, identity column, row count, row order, source SHA, original file SHA, receipt hash, and previous encrypted-plan SHA to match exactly. Even one omitted row, a changed file, stale plan, reordered material or modified identity causes full HUMAN HOLD. Every prior HUMAN `legal_hold` label downgraded to something else requires an **additional explicit human phrase**; after all fields have passed native original admission, a distinct typed bulk acknowledgement and **NEW private encryption passphrase**, different from the original and previous plan, produce a separate 0600 encrypted review .ltv. Nothing overwrites old .ltv, actual source material or original HUMAN source.
+**`preview`** is a strictly read-only original-source/current-private-bytes validation of an edited TSV. It prints only neutral row ordinals, HUMAN old/new status and date, whether private note text changed (without exposing that note), and whether a second legal-hold review confirmation would be needed; **no output file or grant is created**.\n\n**`import`** repeats all ORIGINAL current authentication and actual private material admissions independently, decrypts the actual previous private plan with its passphrase, and requires **every** header, identity column, row count, row order, source SHA, original file SHA, receipt hash, and previous encrypted-plan SHA to match exactly. Even one omitted row, a changed file, stale plan, reordered material or modified identity causes full HUMAN HOLD. Every prior HUMAN `legal_hold` label downgraded to something else requires an **additional explicit human phrase**; after all fields have passed native original admission, a distinct typed bulk acknowledgement and **NEW private encryption passphrase**, different from the original and previous plan, produce a separate 0600 encrypted review .ltv. Nothing overwrites old .ltv, actual source material or original HUMAN source.
 
 ```sh
 python3 remediation-evidence-retention/bulk_review.py export \
@@ -221,6 +221,15 @@ python3 remediation-evidence-retention/bulk_review.py export \
 
 # Edit the file OFFLINE; do not change identity columns or the row order.
 
+python3 remediation-evidence-retention/bulk_review.py preview \
+  --db /private/lightup.db --email operator@example.invalid \
+  --client-id <original-client-id> --engagement-id <original-engagement-id> \
+  --human /private/existing-human.ltv \
+  --directory /private/received-material \
+  --plan /private/retention-review-v2.ltv \
+  --edited /private/neutral-edit-retention.tsv \
+  --ack-private-material
+
 python3 remediation-evidence-retention/bulk_review.py import \
   --db /private/lightup.db --email operator@example.invalid \
   --client-id <original-client-id> --engagement-id <original-engagement-id> \
@@ -232,7 +241,7 @@ python3 remediation-evidence-retention/bulk_review.py import \
   --ack-private-material
 ```
 
-Unified `workbench.py` menu item **10** creates the private neutral edit file in its existing 0700 output folder; menu item **11** accepts the revised exact TSV and selects the resulting NEW encrypted review plan within that same interactive session. Neither operation imports human policy as legal truth, creates or approves real requests, performs native Apply, deletes data or modifies scanner/grant/authorization behavior.
+Unified `workbench.py` menu item **10** creates the private neutral edit file in its existing 0700 output folder; menu item **12** privately previews exact HUMAN changes without writing anything; menu item **11** accepts the revised exact TSV and selects the resulting NEW encrypted review plan within that same interactive session. Neither operation imports human policy as legal truth, creates or approves real requests, performs native Apply, deletes data or modifies scanner/grant/authorization behavior.
 
 ## Ownership and acceptance posture
 
