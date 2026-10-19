@@ -129,7 +129,6 @@ def publish(receipt: Path, kind: str, journal: Path, output: Path) -> dict:
                    output not in receipt.parents and
                    journal not in output.parents and
                    output.parent != receipt and
-                   output.parent != journal.parent and
                    output.parent == output.parent.resolve(strict=True),
                    "Original PRIVATE journal/receipt must never be overwritten")
     triage.private_parent(output)
