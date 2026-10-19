@@ -52,13 +52,14 @@ def main() -> int:
         "15. Amend encrypted HUMAN choices in PRIVATE guided terminal (no plaintext)\n"
         "16. Resume encrypted HUMAN choices in PRIVATE offline browser editor\n"
         "17. Compare two encrypted HUMAN decision revisions privately (HTML)\n"
+        "18. Preview encrypted HUMAN choices directly in original PRIVATE workdesk\n"
         "0. Exit"
     )
     try:
-        choice = _ask("Choose 0-17")
+        choice = _ask("Choose 0-18")
         if choice == "0":
             return 0
-        if choice not in tuple(str(i) for i in range(1, 18)):
+        if choice not in tuple(str(i) for i in range(1, 19)):
             raise ValueError("unknown option")
         before = _ask("Earlier authenticated encrypted original source .lue")
         plan = _ask("Earlier exact-source encrypted HUMAN plan .lun")
@@ -76,6 +77,27 @@ def main() -> int:
             "storage, actual recipient and approved transport; no output establishes "
             "consent, verified fixes or permission to test."
         )
+        if choice == "18":
+            input_decisions = _ask("Existing original-ciphertext-bound HUMAN decisions .lud")
+            if not input_decisions.lower().endswith(".lud"):
+                raise ValueError("HUMAN decisions must be an encrypted .lud")
+            output = _ask("NEW UNENCRYPTED PRIVATE full original HUMAN workdesk .html")
+            if not output.lower().endswith(".html"):
+                raise ValueError("full HUMAN workdesk must be .html")
+            _confirm(
+                "This UNENCRYPTED HTML will contain ALL original finding IDs, "
+                "titles, full source remediation text, prior HUMAN aliases and "
+                "private notes for approved records. I independently confirmed "
+                "private storage and the actual recipient. This remains an "
+                "UNVERIFIED human planning proposal, not consent or a fix."
+            )
+            return private_export_human_revision_vault.main([
+                "workdesk", before, plan, after,
+                "--encrypted-choices", input_decisions,
+                "--output", output,
+                "--ack-private-handling", "--ack-same-real-client",
+                "--ack-plaintext-html",
+            ])
         if choice == "17":
             previous = _ask("Earlier encrypted original-source HUMAN choices .lud")
             current = _ask("Later encrypted original-source HUMAN choices .lud")
