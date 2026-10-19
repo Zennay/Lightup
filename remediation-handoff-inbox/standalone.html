@@ -1,5 +1,5 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-wpPFZOyxFDTkVCPSRLe+ulmbav4+u8hRIYgukbiqEiU=' 'sha256-msRCIp/Xw6vOOYmdG3SjHcnd8jheDsnbSi2ELus2iOY=' 'sha256-ikjxD03vV2K2Fa5H6OeukIU5fg6yah34d2K4K6KMWTs='; style-src 'sha256-K3eJUMpkQHuuUobfXldg3zbGaacxFtsmfNzMoCemXMQ='; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-wpPFZOyxFDTkVCPSRLe+ulmbav4+u8hRIYgukbiqEiU=' 'sha256-NBwC7CWSVjvIUGJNtqetuGtm8fMWq2aX2PZSPsHlPZI=' 'sha256-FGGrkrsZYtnLFsvLsY0JgM9gHVhiCS+Op6O6WPKVPRc='; style-src 'sha256-K3eJUMpkQHuuUobfXldg3zbGaacxFtsmfNzMoCemXMQ='; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <title>LightUp — Private Evidence Handoff Inbox</title><style>:root{font-family:ui-sans-serif,system-ui,sans-serif;color-scheme:dark;color:#e3f7f4;background:#081923}*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 10% 0%,#21546a,transparent 44%),#081923}main{max-width:1150px;margin:auto;padding:42px 20px 70px}header{max-width:830px;padding-bottom:14px}.eyebrow{color:#73efd4;font-weight:900;font-size:.8rem;letter-spacing:.23em}h1{font-size:clamp(2.3rem,6vw,4.2rem);letter-spacing:-.065em;margin:12px 0 14px}h2{margin-top:0;font-size:1.4rem}p{line-height:1.6;color:#b3d0d7}.hold{display:inline-block;padding:10px 15px;color:#f0d490;border:1px solid #c4a354;border-radius:9px;font-size:.85rem}section{border:1px solid #355f6d;background:#132b36;padding:25px;border-radius:17px;margin:18px 0}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:15px}label{font-weight:700;font-size:.87rem;display:grid;gap:7px}input:not([type=checkbox]),select{font:inherit;color:#fff;background:#0b202b;border:1px solid #73919b;border-radius:9px;padding:10px;margin:8px 0 16px;width:100%}button{padding:12px 17px;margin:5px 7px 5px 0;border:0;border-radius:9px;background:#72efd1;color:#072328;font-weight:900;cursor:pointer}.secondary{background:#315664;color:#e5ffff}button:disabled{opacity:.38;cursor:not-allowed}button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #e8ca85;outline-offset:3px}.numbers{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:12px;margin:18px 0}.number{background:#0d212a;border:1px solid #356071;border-radius:11px;padding:16px}.number strong{display:block;font-size:1.8rem;color:#78f4d5}.number span{font-size:.81rem;color:#b5cbd4}.warn{border-left:4px solid #d9ae5a;color:#f1d8a6;background:#24343a;padding:11px 14px;font-size:.87rem}.tableWrap{overflow:auto;max-height:660px}table{width:100%;border-collapse:collapse;font-size:.85rem}td,th{border-bottom:1px solid #315865;text-align:left;vertical-align:top;padding:11px 9px;overflow-wrap:anywhere}th{position:sticky;top:0;background:#1b3946}small{display:block;color:#95bac4}#binding{overflow-wrap:anywhere}#notice[data-error=true]{color:#ffb4b4}footer{text-align:center;font-size:.83rem;color:#98b9c2;margin-top:35px}
 /* HUMAN workplan: readable inline human-only editing, no status-as-verdict badges. */
 #workplan .tableWrap{max-height:680px}
@@ -857,7 +857,7 @@ $("load").addEventListener("click",async()=>{
  const rev=++version,ledgerInput=$("ledger").files[0],registerInput=$("register").files[0];info("Reading both PRIVATE snapshots locally…");
  try{const [l,r]=await Promise.all([openFile("ledger"),openFile("register")]);
   if(version!==rev||$("ledger").files[0]!==ledgerInput||$("register").files[0]!==registerInput)fail("workspace or selected original files changed during load");
-  const next=combine(l,r);current=next;selected.clear();selectedFindings.clear();window.LightUpHandoffHumanPlan?.reset();$("sourceCsv").value="";$("sourceNotice").textContent="No original five-column CSV locally matched."; $("search").value="";$("filter").value="all";draw();
+  const next=combine(l,r);if(window.LightUpHandoffHumanPlan&&!window.LightUpHandoffHumanPlan.canDiscard()){info("Original source handoff stopped to preserve unsaved PRIVATE HUMAN planning. Export the workplan before replacing it.");return;}current=next;selected.clear();selectedFindings.clear();window.LightUpHandoffHumanPlan?.reset();$("sourceCsv").value="";$("sourceNotice").textContent="No original five-column CSV locally matched."; $("search").value="";$("filter").value="all";draw();
   info("Matched and admitted original HUMAN requests and replies within the same DECLARED source. This does not authenticate source, author or permission.");
  }catch(e){info(e.message||String(e),true);}
 });
@@ -876,18 +876,22 @@ $("loadEvidenceOnly").addEventListener("click",async()=>{
  try{
   const l=await openFile("ledger");
   if(version!==rev||$("ledger").files[0]!==ledgerInput)fail("original PRIVATE evidence input changed during reading");
-  const next=evidenceOnly(l);current=next;selected.clear();selectedFindings.clear();window.LightUpHandoffHumanPlan?.reset();$("sourceCsv").value="";$("sourceNotice").textContent="No original five-column CSV locally matched.";
+  const next=evidenceOnly(l);if(window.LightUpHandoffHumanPlan&&!window.LightUpHandoffHumanPlan.canDiscard()){info("Evidence-only switch stopped to preserve unsaved PRIVATE HUMAN workplan.");return;}current=next;selected.clear();selectedFindings.clear();window.LightUpHandoffHumanPlan?.reset();$("sourceCsv").value="";$("sourceNotice").textContent="No original five-column CSV locally matched.";
   $("search").value="";$("filter").value="all";$("findingSearch").value="";$("findingFilter").value="all";draw();
   info(next.findingRows.length?"Original-source-declared HUMAN coverage opened WITHOUT a response register. No original request or authorization created.":"Original ledger loaded without complete native HUMAN source records. To enumerate all findings, attach the original five-column CSV and match its exact content SHA; no fake coverage inferred.");
  }catch(e){info(e.message||String(e),true);}
 });
 $("forget").addEventListener("click",()=>{
+ if(window.LightUpHandoffHumanPlan&&!window.LightUpHandoffHumanPlan.canDiscard()){info("Forget cancelled; export your unsaved PRIVATE HUMAN planning first.");return;}
  clearAllPrivateView();
  for(const id of ["ledger","register","search","findingSearch"])$(id).value="";
  $("filter").value="all";$("findingFilter").value="all";
  info("All PRIVATE working state, visible/hidden detail text, owner choices and file-picker references cleared. Previous downloads must be secured or deleted separately.");
 });
 for(const id of ["ledger","register"])$(id).addEventListener("change",()=>{
+ if(window.LightUpHandoffHumanPlan&&!window.LightUpHandoffHumanPlan.canDiscard()){
+  $(id).value="";info("Changed source selection cancelled. Export unsaved PRIVATE HUMAN notes before choosing a new source.");return;
+ }
  clearAllPrivateView();
  info("PRIVATE source selection changed. All prior HUMAN details, owner choices, summaries and exports were cleared. Inspect the new sources again.");
 });
@@ -1091,7 +1095,7 @@ function mergePreviewRows(incoming){
  for(const row of incoming){
   const old=store.rows.get(row.finding_id);
   if(!old)fail("incoming PRIVATE HUMAN review references a foreign original ID");
-  if(same(old,row))continue;
+  if(FIELDS.filter(k=>k!=="updated_utc").every(k=>old[k]===row[k]))continue;
   if(defaultPlan(row))continue; // an empty other-reviewer row cannot erase local planning
   const conflict=!defaultPlan(old);
   changes.push({id:row.finding_id,old:{...old},incoming:{...row},
@@ -1182,6 +1186,10 @@ for(const [id,event,fn] of [
 window.addEventListener("beforeunload",e=>{
  if(store.binding&&store.revision!==store.saved){e.preventDefault();e.returnValue="";}
 });
-window.LightUpHandoffHumanPlan=Object.freeze({reset,render});
+function canDiscard(){
+ return !store.binding||store.revision===store.saved||
+  confirm("This PRIVATE HUMAN workplan has UNSAVED local changes. Export the complete PRIVATE JSON first if you want to keep them. Discard the current local HUMAN annotations and switch source?");
+}
+window.LightUpHandoffHumanPlan=Object.freeze({reset,render,canDiscard});
 reset();
 })();</script></body></html>
