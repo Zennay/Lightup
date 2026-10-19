@@ -98,3 +98,9 @@ python -m lightup.private_export_workdesk NEW-PRIVATE.zip \
 ```
 
 Both archives and the previous human draft are independently admitted first, with strict duplicate-key rejection, source digest, exact finding membership and authority flags. The new workdesk displays total unchanged carried records, newly reset, changed/reset and absent previous records. Its fresh unsaved local annotation state references only the **new** original source digest; the old JSON remains unchanged. No automatic source equality = true fix, consent, owner authenticity, active scan/retest release or security proof. Output is a new private 0600 HTML and all old notes remain private in the original old file.
+
+## Unified local operator console (all existing guarded workflows)
+
+Run `python -m lightup.private_export_console` in a **foreground interactive terminal** to access all seven original-source workstreams from one menu: original password-authenticated tenant ZIP, local integrity inspection, aggregate HTML, new PRIVATE HUMAN Workdesk, exact-source workplan resume, two-snapshot source continuity, and explicit HUMAN unchanged-record migration. Each sensitive action asks for a typed literal `YES` before dispatch; passwords still use the original DomainStore/getpass path, not a new account provider. The menu never stores typed paths, passwords or source data, and it does not start a background job, web service, target scan, grant, retest, or deploy.
+
+The console is deliberately a UI on top of the **same source-bound validators** and 0600 no-clobber atomic output rules, not a substitute for independently authenticated client/operator consent, source-owner review, or delivery approval. The offline HTML and ZIP remain unencrypted and are not automatically opened, uploaded or shared. Operators must manually protect and transfer private artifacts.
