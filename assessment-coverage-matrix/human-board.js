@@ -48,6 +48,7 @@ function createHumanBoard(api) {
     $("humanSave").disabled=!safeDigests();
     $("humanResumeButton").disabled=!safeDigests();
     $("humanBrief").disabled=false;
+    $("humanHandoff").disabled=false;
   }
   function optionList(select,values,current){
     for(const value of values) {
@@ -108,7 +109,7 @@ function createHumanBoard(api) {
     $("humanUndo").disabled=true;
     clear($("humanTable"));clear($("humanSummary"));
     $("humanPages").textContent="No HUMAN work loaded.";
-    for(const id of ["humanSave","humanResumeButton","humanBrief","humanPrev","humanNext"])$(id).disabled=true;
+    for(const id of ["humanSave","humanResumeButton","humanBrief","humanHandoff","humanPrev","humanNext"])$(id).disabled=true;
     $("humanResume").value="";
   }
   function privatePlan() {
@@ -168,6 +169,37 @@ function createHumanBoard(api) {
       "Small aggregates may be sensitive. Do not disclose without separate approval.",
       "No original sources were modified. No scanner, grant, dispatch or live action.");
     return lines.join("\n")+"\n";
+  }
+  // Read-only PRIVATE HTML, deliberately containing original source-declared check labels.
+  // Source bytes, targets, evidence IDs/summaries and original run/tenant IDs are NEVER embedded.
+  function escaped(value) {
+    return String(value).replace(/[&<>"']/g, ch=>({
+      "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
+    }[ch]));
+  }
+  function privateHumanHandoff() {
+    const selected=matching().filter(({i})=>!isDefault(plans[i]));
+    fail(selected.length>0&&selected.length<=512,
+      "Select 1–512 HUMAN-planned groups with current search/stage filter");
+    const serializedRows=selected.map(({row,i})=>{
+      const p=plans[i];
+      return "<tr><td>"+(i+1)+"</td><td>"+escaped(row.capability)+"</td><td>"+
+        escaped(row.check)+"</td><td>"+escaped(p.stage)+"</td><td>"+
+        escaped(p.route)+"</td><td>"+escaped(p.action)+"</td></tr>";
+    }).join("\n");
+    return `<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'none'; style-src 'none'; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<title>LightUp PRIVATE HUMAN source-declaration handoff</title></head><body>
+<h1>PRIVATE HUMAN source-declaration follow-up</h1>
+<p><strong>REVIEW ONLY / DRAFT HOLD — NO SCAN, AUTHORIZATION, CLIENT CONSENT OR VERIFIED FINDINGS</strong></p>
+<p>Original-source capability/check labels below are PRIVATE unverified declarations. Do not distribute without separate HUMAN approval. Source labels may reveal confidential details. This standalone scriptless handoff has no externally loaded resources and is NOT a source-authenticated or byte-bound return. It does not include targets, original source bytes, evidence, provider data or scan credentials.</p>
+<p>Selected HUMAN routing rows: ${selected.length}. Local row ordinals refer only to the operator's current selected originals, not verified case identities.</p>
+<table border="1" cellpadding="8" cellspacing="0">
+<thead><tr><th>Local ordinal</th><th>Original capability label</th><th>Original check label</th><th>HUMAN stage</th><th>Proposed group</th><th>Next HUMAN question</th></tr></thead>
+<tbody>${serializedRows}</tbody></table>
+<p>Signed identity, authorization, consent, independent ground truth, remediation and subsequent scan results have NOT been established. Missing declarations never imply safe or fixed.</p>
+</body></html>\n`;
   }
   function wire() {
     $("humanSearch").addEventListener("input",()=>{page=0;render();});
@@ -238,6 +270,18 @@ function createHumanBoard(api) {
       } catch(error) {
         message("PRIVATE HUMAN plan HOLD: "+error.message+"; current notes unchanged.",true);
       } finally {$("humanResume").value="";}
+    });
+    $("humanHandoff").addEventListener("click",()=>{
+      if(!plans.length)return;
+      try {
+        const prepared=privateHumanHandoff();
+        if(new Blob([prepared]).size>MAX_PRIVATE_BYTES){
+          message("PRIVATE HUMAN brief exceeds the bounded local handoff size.",true);return;
+        }
+        if(!confirm("Download PRIVATE read-only HUMAN handoff containing ORIGINAL check/capability LABELS? Explicit separate protected distribution is required."))return;
+        download("lightup-PRIVATE-human-followup.html",prepared,"text/html");
+        message("Scriptless PRIVATE HUMAN brief downloaded. It is NOT a source-authenticated authorization or evidence record.");
+      } catch(error){message("PRIVATE HANDOFF HOLD: "+error.message,true);}
     });
     $("humanBrief").addEventListener("click",()=>{
       if(!plans.length||!confirm("Download counts-only HUMAN follow-up brief? Small numeric groups can be sensitive."))return;
