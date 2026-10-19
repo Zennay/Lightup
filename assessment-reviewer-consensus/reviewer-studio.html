@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-HPlNcbvMlhxddnK2QZBeTb65/8V6ZB9wSCnUPCTaF+o='; style-src 'sha256-peguHx6DyjlbxVxNl+hSc/lETjyAgwUrGWmhhIwOXBQ='; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-Xobbo2w80wRBQp4Ng9BDZ6UnXDHqygFWyFBZDS5B6ls='; style-src 'sha256-peguHx6DyjlbxVxNl+hSc/lETjyAgwUrGWmhhIwOXBQ='; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <title>LightUp · PRIVATE HUMAN Reviewer Studio</title><style>:root{color-scheme:dark;font-family:system-ui,-apple-system,sans-serif}*{box-sizing:border-box}body{background:#0b1725;color:#eef5ff;margin:0;line-height:1.5}main{max-width:1190px;margin:0 auto;padding:26px 20px 65px}header{padding:28px 0;border-bottom:1px solid #405369}h1{font-size:clamp(1.65rem,4vw,2.5rem);margin:8px 0}h2{font-size:1.3rem}h3{font-size:1.1rem}p{max-width:90ch}small,.muted{color:#bac9d8}.eyebrow{text-transform:uppercase;letter-spacing:.12em;color:#aacff3;font-size:.78rem;font-weight:700}.panel{background:#17263a;border:1px solid #3b556b;padding:20px;margin-top:18px;border-radius:12px}.warning{border-left:4px solid #ebc46e;padding:12px 16px;background:#2b2b2c}label{display:block;font-weight:600;margin:10px 0}input,select,button{font:inherit;padding:10px;background:#102033;border:1px solid #89a5bb;color:#f3f7ff;border-radius:7px;max-width:100%}input[type=file]{width:100%}button{cursor:pointer;background:#dbeafb;color:#081321;font-weight:700;border:0;margin:5px 6px 5px 0}button:disabled{opacity:.4;cursor:not-allowed}.actions{display:flex;flex-wrap:wrap;gap:10px;align-items:center}.toolbar{display:flex;flex-wrap:wrap;gap:12px;align-items:center}.toolbar label{margin:0}.toolbar input{min-width:130px}table{border-collapse:collapse;width:100%}th,td{border-bottom:1px solid #43556c;text-align:left;vertical-align:top;padding:10px}th{color:#c7dced}.scroll{overflow:auto}.small{font-size:.82rem;min-width:270px;color:#d3e0ee}.bad{color:#ffb3b5}.good{color:#b2ebcb}#status{min-height:1.6em}select:focus,button:focus,input:focus{outline:3px solid #8cd4ff;outline-offset:2px}@media(max-width:700px){main{padding:12px}th,td{font-size:.82rem;padding:7px}.panel{padding:13px}}</style></head><body>
 <main><header><div class="eyebrow">LIGHTUP · ASSESSMENT RUNTIME · OFFLINE / PRIVATE</div>
 <h1>Reviewer Consensus Studio</h1>
@@ -28,7 +28,19 @@
 <div class="scroll"><table><thead><tr><th>Original row</th><th>HUMAN field</th><th>Reviewer proposals (not identities)</th><th>Choose submitted value</th></tr></thead><tbody id="reviewRows"></tbody></table></div>
 <div class="actions"><button id="previous" type="button">Previous</button><span id="pages">No HUMAN conflicts.</span><button id="next" type="button">Next</button></div>
 <p class="muted">Defaults indicate no proposal. A single non-default selection is only an uncontested HUMAN suggestion, never an authenticated agreement. Conflicting non-defaults remain on HOLD until explicitly resolved.</p></section>
-<section class="panel" aria-labelledby="exportHeading"><h2 id="exportHeading">4 · Export, resume or hand off</h2>
+<section class="panel" aria-labelledby="matrixHeading">
+<h2 id="matrixHeading">4 · Original HUMAN row and reviewer proposal explorer</h2>
+<p>View <strong>every original row</strong>, not only rows that conflict. This makes uncontested HUMAN suggestions visible instead of treating them as invisible agreement. Reviewer slots are ordinal positions, never authenticated people.</p>
+<div class="toolbar">
+<label for="matrixFilter">Row class</label>
+<select id="matrixFilter"><option value="all">All original rows</option><option value="conflicts">Conflicting HUMAN rows</option><option value="proposals">Uncontested HUMAN proposals</option><option value="neutral">No HUMAN proposal</option></select>
+<label for="matrixSearch">Original row ordinal</label><input id="matrixSearch" type="search" placeholder="e.g. 42"></div>
+<p id="matrixSummary" class="muted">Load an original PRIVATE reviewer batch to inspect its complete HUMAN row set.</p>
+<div class="scroll"><table><thead><tr><th>Original ordinal</th><th>Review state</th><th>Merged HUMAN-only proposal</th><th>Original reviewer positions</th><th>Follow-up</th></tr></thead><tbody id="matrixRows"></tbody></table></div>
+<div class="actions"><button id="matrixPrevious" type="button" disabled>Previous 80</button><span id="matrixPages">No original row inventory</span><button id="matrixNext" type="button" disabled>Next 80</button></div>
+<p class="muted">The row explorer is a transparent view of previously submitted human selections; it never changes original lab findings, validates vulnerabilities, grants authority or identifies reviewers.</p>
+</section>
+<section class="panel" aria-labelledby="exportHeading"><h2 id="exportHeading">5 · Export, resume or hand off</h2>
 <div class="actions"><button id="export" type="button" disabled>Download merged PRIVATE original-format plan</button>
 <button id="encryptedExport" type="button" disabled>Download ENCRYPTED PRIVATE merged plan</button>
 <button id="saveDraft" type="button" disabled>Save PRIVATE session decisions</button>
@@ -402,7 +414,89 @@ async function unsealReviewerWorkspace(envelope,password) {
     $("pages").textContent="Page "+(page+1)+" / "+(last+1)+" · "+entries.length+" matching HUMAN conflicts";
     $("previous").disabled=page===0;$("next").disabled=page===last;
     updateSummary();
+    renderMatrix();
   }
+  let matrixPage=0;
+  function renderMatrix() {
+    const tbody=$("matrixRows");
+    tbody.replaceChildren();
+    if(!state) {
+      $("matrixSummary").textContent="Load an original PRIVATE reviewer batch to inspect its complete HUMAN row set.";
+      $("matrixPages").textContent="No original row inventory";
+      $("matrixPrevious").disabled=true;$("matrixNext").disabled=true;
+      return;
+    }
+    const mode=$("matrixFilter").value,needle=$("matrixSearch").value.trim();
+    const conflictRows=new Set(state.conflicts.map(c=>c.ordinal));
+    const indices=[];
+    let allSuggested=0,allNeutral=0;
+    for(let i=0;i<state.n;i++) {
+      const hasConflict=conflictRows.has(i+1);
+      const hasProposal=FIELDS.some(k=>state.merged[i][k]!==DEFAULT[k])||hasConflict;
+      if(hasProposal)allSuggested++;else allNeutral++;
+      if((mode==="all" || mode==="conflicts"&&hasConflict ||
+          mode==="proposals"&&hasProposal&&!hasConflict ||
+          mode==="neutral"&&!hasProposal) &&
+          (!needle||String(i+1).includes(needle)))indices.push(i);
+    }
+    matrixPage=Math.min(matrixPage,Math.max(0,Math.ceil(indices.length/80)-1));
+    for(const i of indices.slice(matrixPage*80,matrixPage*80+80)){
+      const ordinal=i+1,tr=document.createElement("tr");
+      const original=state.merged[i];
+      const holdFields=state.conflicts.filter(c=>c.ordinal===ordinal);
+      const stillHeld=holdFields.some(x=>!decisions.has(keyOf(x)));
+      const human={...original};
+      for(const x of holdFields){
+        const v=decisions.get(keyOf(x));
+        if(v!==undefined)human[x.field]=v;
+      }
+      tr.append(makeCell(ordinal));
+      tr.append(makeCell(stillHeld?"HOLD / unresolved":holdFields.length?"HUMAN resolved draft":
+        FIELDS.some(k=>human[k]!==DEFAULT[k])?"HUMAN suggestion":"No proposal"));
+      const output=makeCell(FIELDS.map(k=>k+": "+human[k]).join(" · "));
+      output.className="small";tr.append(output);
+      const source=document.createElement("td");
+      const details=document.createElement("details");
+      const summary=document.createElement("summary");
+      summary.textContent=state.inputs.length+" input plan slots";
+      details.append(summary);
+      for(let j=0;j<state.inputs.length;j++){
+        const line=document.createElement("div");
+        const record=state.inputs[j].parsed.rows[i];
+        line.textContent="Reviewer slot "+(j+1)+": "+FIELDS.map(k=>record[k]===DEFAULT[k]?
+          k+" (no proposal)":k+" "+record[k]).join(" · ");
+        details.append(line);
+      }
+      source.append(details);tr.append(source);
+      const action=document.createElement("td");
+      if(holdFields.length){
+        const button=document.createElement("button");
+        button.type="button";
+        button.textContent="Open "+holdFields.length+" HUMAN conflict(s)";
+        button.addEventListener("click",()=>{
+          $("filter").value="all";filter="all";$("search").value=String(ordinal);
+          page=0;render();
+          $("resolveHeading").scrollIntoView({behavior:"smooth",block:"start"});
+        });
+        action.append(button);
+      } else {
+        const note=document.createElement("span");note.textContent="—";action.append(note);
+      }
+      tr.append(action);tbody.append(tr);
+    }
+    $("matrixSummary").textContent=state.n+" source-bound original HUMAN rows · "+
+      allSuggested+" with any proposal or conflict · "+allNeutral+
+      " default-only. Every reviewer slot shown is positional, NOT authenticated identity.";
+    const totalPages=Math.max(1,Math.ceil(indices.length/80));
+    $("matrixPages").textContent="Page "+(matrixPage+1)+" / "+totalPages+
+      " · "+indices.length+" matching original row(s)";
+    $("matrixPrevious").disabled=matrixPage===0;
+    $("matrixNext").disabled=matrixPage===totalPages-1;
+  }
+  $("matrixFilter").addEventListener("change",()=>{matrixPage=0;renderMatrix();});
+  $("matrixSearch").addEventListener("input",()=>{matrixPage=0;renderMatrix();});
+  $("matrixPrevious").addEventListener("click",()=>{matrixPage=Math.max(0,matrixPage-1);renderMatrix();});
+  $("matrixNext").addEventListener("click",()=>{matrixPage++;renderMatrix();});
   function reset() {
     state=null;decisions=new Map();page=0;
     $("reviewRows").replaceChildren();$("search").value="";
@@ -411,6 +505,7 @@ async function unsealReviewerWorkspace(envelope,password) {
     $("saveWorkspace").disabled=true;
     $("summary").textContent="No PRIVATE reviewer plans loaded.";
     $("pages").textContent="No HUMAN conflicts.";
+    matrixPage=0;renderMatrix();
   }
   function jsonFile(name,obj,privateData=true) {
     const payload=JSON.stringify(obj,null,2)+"\n";
