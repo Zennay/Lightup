@@ -13,7 +13,8 @@ import sys
 from .private_export_encrypted import _passphrase, _seal
 from .private_export_encrypted_notes import MAGIC_PLAN
 from .private_export_handoff import _atomic_private_publish, _output_path
-from .private_export_human_revision import _read_inputs, _review_revision
+from .private_export_human_revision import _review_revision
+from .private_export_human_revision_source import _read_with_binding, _require_same_originals
 from .private_export_human_revision_choices import _make_choices, _apply_choices
 from .private_export_workdesk import MAX_PLAN
 
@@ -72,7 +73,7 @@ def main(argv: list[str] | None = None) -> int:
         if not sys.stdin.isatty() or not sys.stderr.isatty():
             raise ValueError("private HUMAN interactive terminal required")
         destination = _output_path(args.output, ".lun")
-        before, original, earlier_notes, later, current = _read_inputs(
+        before, original, earlier_notes, later, current, binding = _read_with_binding(
             args.earlier_source, args.earlier_plan, args.later_source
         )
         decisions = _make_choices(before, original, earlier_notes, later, current)
@@ -89,6 +90,7 @@ def main(argv: list[str] | None = None) -> int:
         passphrase = _passphrase("NEW encrypted HUMAN plan passphrase", confirm=True)
         envelope = _seal(blob, passphrase, magic=MAGIC_PLAN, max_plaintext=MAX_PLAN)
         del passphrase
+        _require_same_originals(args.earlier_source, args.earlier_plan, args.later_source, binding)
         _atomic_private_publish(destination, envelope)
         print("NEW encrypted, source-bound HUMAN draft created without any plaintext decisions.")
         for key, value in summary.items():
