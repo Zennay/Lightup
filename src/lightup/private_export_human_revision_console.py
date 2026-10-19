@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import sys
 
-from . import private_export_human_revision, private_export_human_revision_workqueue
+from . import private_export_human_revision, private_export_human_revision_workqueue, private_export_human_revision_choices
 
 
 def _ask(label: str) -> str:
@@ -40,13 +40,15 @@ def main() -> int:
         "3. Create encrypted NEW source-bound HUMAN plan (owner/note carry only)\n"
         "4. Create encrypted NEW plan including old HUMAN stage/due (explicit opt-in)\n"
         "5. PRIVATE original-ID/title source change workqueue (unencrypted HTML)\n"
+        "6. Export FALSE-by-default private per-finding decision sheet (JSON)\n"
+        "7. Import verified HUMAN decisions into NEW encrypted source-bound plan\n"
         "0. Exit"
     )
     try:
-        choice = _ask("Choose 0-5")
+        choice = _ask("Choose 0-7")
         if choice == "0":
             return 0
-        if choice not in ("1", "2", "3", "4", "5"):
+        if choice not in ("1", "2", "3", "4", "5", "6", "7"):
             raise ValueError("unknown option")
         before = _ask("Earlier authenticated encrypted original source .lue")
         plan = _ask("Earlier exact-source encrypted HUMAN plan .lun")
@@ -64,6 +66,38 @@ def main() -> int:
             "storage, actual recipient and approved transport; no output establishes "
             "consent, verified fixes or permission to test."
         )
+        if choice in ("6", "7"):
+            if choice == "6":
+                destination = _ask("NEW private, UNENCRYPTED original-ID choice sheet .json")
+                if not destination.lower().endswith(".json"):
+                    raise ValueError("selection sheet must end in .json")
+                _confirm(
+                    "The selection sheet contains original PRIVATE finding IDs, titles, "
+                    "severity and record hashes as PLAINTEXT. All approvals begin FALSE. "
+                    "I separately approve recipient and storage."
+                )
+                return private_export_human_revision_choices.main([
+                    "prepare", before, plan, after, "--output", destination,
+                    "--ack-private-handling", "--ack-same-real-client",
+                    "--ack-plaintext-original-ids",
+                ])
+            selection = _ask("Operator-reviewed owner-private decision sheet .json (0600)")
+            if not selection.lower().endswith(".json"):
+                raise ValueError("selection sheet must end in .json")
+            destination = _ask("NEW encrypted source-bound HUMAN plan .lun")
+            if not destination.lower().endswith(".lun"):
+                raise ValueError("new plan must end in .lun")
+            _confirm(
+                "I have PERSONALLY reviewed every private per-finding source-row "
+                "choice. TRUE only means copying unverified HUMAN coordination "
+                "from five-column-identical sources, NEVER verified evidence, "
+                "fix, active authorization, genuine recipient identity or consent."
+            )
+            return private_export_human_revision_choices.main([
+                "apply", before, plan, after, "--choices", selection,
+                "--output", destination, "--ack-private-handling",
+                "--ack-same-real-client", "--ack-manual-human-decisions",
+            ])
         if choice == "5":
             destination = _ask("NEW PRIVATE original-ID workqueue .html")
             if not destination.lower().endswith(".html"):
