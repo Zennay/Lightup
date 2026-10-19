@@ -37,6 +37,7 @@ The one new PRIVATE folder contains:
 - `private-source-changes.csv`: original record IDs and changed field names in private report only; CSV formula-spoofing is escaped.
 - `human-followup.txt`: original counts and human follow-up questions; contains no raw evidence, customer names, passwords, hostnames, grant references or source record IDs.
 - `private-source-inventory.json`: exact original-input byte length and SHA-256 by private ordinal, **unsigned/untrusted** and excluded entirely from anonymous handoffs.
+- `private-human-case-queue.csv`: all original engagement IDs from the selected packet series, the most recently **declared** HUMAN next action, recorded status, first-party original attention category, number of snapshot appearances and attention transitions. The accompanying private HTML displays the same ranked queue. This ranking describes HUMAN source reconciliation workload, **not** verified security risk or real authorization priority.
 
 The browser is HTML+CSS only: strict default-deny CSP with one pinned local style hash, no script, network, forms, external resources or dependency. Source record values are escaped as text. All original identity matching is exact within the same selected original tenant; a cross-tenant imported file refuses the **entire batch**. Duplicate JSON keys, altered source structure, unknown authority, invalid count consistency, duplicate IDs, non-regular/symlink files and unsafe directory permissions are rejected.
 
