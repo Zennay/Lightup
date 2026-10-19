@@ -117,6 +117,21 @@ def pack(args, vault) -> None:
         args, vault, keep_passphrase_fingerprint=True)
     selection = parse_selection(required_private_file(
         args.selection, ".json", vault, MAX_SELECTION))
+    pack_selected(args, vault, envelope, packet, indexed, old_key_digest, selection)
+
+
+def pack_selected(args, vault, envelope: dict, packet: dict,
+                  indexed: dict, old_key_digest: str,
+                  selection: list[dict]) -> None:
+    """Original-current checked already; seal from an exact validated selection.
+
+    Shared by the existing PRIVATE selection.json and single-step terminal send.
+    No selector is ever implicitly saved by the one-step workflow.
+    """
+    selection = parse_selection(canonical({
+        "kind":"lightup.private_local_material_selection",
+        "schema_version":1,"items":selection
+    }))
     all_material = []
     total = 0
     # All-or-nothing: admit native original exact attachment inventory and
