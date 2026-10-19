@@ -331,6 +331,15 @@ def main(argv=None):
     advance.add_argument("--output",required=True,type=Path)
     advance.add_argument("--ack-source-carry",action="store_true",
                          help="Explicitly confirm carry of the old source as UNVERIFIED historical text")
+    quick=cmd.add_parser(
+        "capture-workspace-current",
+        help="ONE original login -> ONE PRIVATE encrypted original review/Ticket Desk/Casework workspace"
+    )
+    for key in ("db","email","client-id","engagement-id"):
+        quick.add_argument("--"+key,required=True)
+    quick.add_argument("--output",required=True,type=Path)
+    quick.add_argument("--ack-workspace",action="store_true",
+                       help="Confirm creation of confidential encrypted HUMAN-only source package")
     capture = cmd.add_parser("capture", help="Current original login -> encrypted .ltv only")
     inspect = cmd.add_parser("inspect", help="ID-free historical source aggregates, no current authority")
     review = cmd.add_parser("review-current", help="Fresh original account login + revision review")
@@ -489,6 +498,17 @@ def main(argv=None):
                     raise ValueError("Aggregate output must be .csv")
                 vault._exclusive_output(target,anonymous_csv(result))
                 print("Owner-private identity-free aggregate CSV created")
+            return 0
+        if args.command == "capture-workspace-current":
+            if not args.ack_workspace:
+                raise ValueError("Explicit PRIVATE workspace source acknowledgement required")
+            current=source_auth(args)
+            _strict_summary(current)
+            seal_browser(current,args.client_id,args.engagement_id,
+                         mode="workspace",history_csv=[],output=args.output)
+            print("NEW AES-256-GCM PRIVATE original source workspace from ONE actual LightUp account read.")
+            print("Review, original Ticket Desk and original Casework are sealed; no plaintext HTML.")
+            print("Read permission is NOT client/operator execution consent or a verified fix.")
             return 0
         if args.command == "advance-sealed-workspace-current":
             if not args.ack_source_carry:
