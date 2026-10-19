@@ -85,3 +85,17 @@ The existing foreground operator console `python -m lightup.private_export_conso
 Original private exports `.lue` and HUMAN notes `.lun` are independent encrypted data. Owner briefs `.luo` and replies `.lur` are separately encrypted and passphrase-protected. A static HTML output is **NOT encrypted** even if derived from ciphertext. Local file mode 0600 does not control remote transport, backups, copied plaintext, terminal visibility or recipient behavior. Client labels, checksum matches, guessed owner aliases and acceptance prompts **are not identity verification**. Real recipients, permissions, reviewer identities and secure transfer mechanisms require human independent confirmation. Browser-exported plaintext notes are not automatically deleted.
 
 **DRAFT/HOLD:** Source-owning [#1611](https://github.com/Zennay/Lightup/pull/1611) hosted acceptance is RED due to existing legacy unchecked-export expectations. All actual source-owner review, independent cryptography/privacy/security review, exact-head hosted and permanently named VPS CI, current *separate* authenticated client/operator consent, action-time revocation, issues #177/#182/#829 and explicit HUMAN GO remain mandatory for merging or deploying any of this. No release gates are bypassed, no old QA suites executed, no live targets or actual customer data used.
+
+## Privacy-minimized HUMAN management pulse (new)
+
+To review the original-source human return backlog without disclosing names, exact finding IDs, assets, descriptions, private notes or recipient reply text, use the opt-in **ID-free source-bound PRIVATE management pulse**. Decrypt the original encrypted source `.lue` plus exact encrypted HUMAN workplan `.lun`, then one to 32 encrypted brief/reply pairs. Before publishing one new PRIVATE **UNENCRYPTED** 0600 scriptless HTML report, the program independently verifies every original full owner packet against the original source+workplan, every reply against its precise encrypted brief SHA/source record hashes/full original ID membership, rejects duplicate owner aliases and overlapping finding IDs, and bounds the entire batch. No partial report is published on late invalid reply.
+
+```sh
+python -m lightup.private_export_owner_pulse /private/source.lue /private/human-plan.lun \
+  --pair /private/A.luo /private/A.lur \
+  --pair /private/B.luo /private/B.lur \
+  --output /private/owner-pulse.html \
+  --ack-human-recipient-verification --ack-unencrypted-private-summary
+```
+
+The HTML shows only original source finding count, self-declared assigned finding count, returned distinct owner-alias count, returned original finding count, severity frequencies and allowed **unverified HUMAN progress-state** frequencies. It deliberately omits original SHA/client/engagement, all aliases, original finding IDs, asset identifiers, titles, remediation, original notes and reply text. Small aggregate groups can still be personally identifying: use only with independently approved private recipients and transfer. Neither the report nor its counts certify repairs, consent, scope authorization, actual owner identities or retest. The original encrypted source, workplan, owner briefs and replies are never modified. Foreground menu option **24** offers the same operation without bypassing validation.
