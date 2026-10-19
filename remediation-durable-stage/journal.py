@@ -189,6 +189,9 @@ def _stage(args, vault, folder, journal, current) -> None:
             args.human.expanduser().absolute(), args.plan.expanduser().absolute()}
             or out.exists() or out.is_symlink()):
         raise ValueError("Distinct unoccupied encrypted HUMAN .ltv output required.")
+    # Keep confidential original-native draft paths under a real private owner
+    # directory; source material and journal paths have the same no-symlink rule.
+    source._hold_if_not_private_directory(out.parent)
     # A fresh ORIGINAL authenticated read after the human interaction. If current
     # source/requests/plan/bytes drift, there is no journal or encrypted output.
     newer = _source(args, vault)
@@ -234,6 +237,7 @@ def _recover(args, vault, folder, journal, current) -> None:
         raise ValueError("No interrupted pending HUMAN draft.")
     entry = cycles[-1]
     draft_path = Path(entry["output"])
+    source._hold_if_not_private_directory(draft_path.parent)
     _owned_regular(draft_path)
     original_csv = original.human._unb64(
         envelope["original_csv_base64"], original.ORIGINAL.MAX_CSV_BYTES)
@@ -261,6 +265,7 @@ def _resolve(args, vault, folder, journal, current) -> None:
         raise ValueError("No unresolved original HUMAN stage in this local journal.")
     entry = cycles[-1]
     destination = Path(entry["output"])
+    source._hold_if_not_private_directory(destination.parent)
     if entry["state"] == "pending" and not destination.exists() and not destination.is_symlink():
         print("A pending previous invocation has no output at its recorded path.")
         if input('Type "CONFIRM NO DRAFT PUBLISHED" after independent PRIVATE review: ') != (
@@ -319,6 +324,7 @@ def main(argv=None) -> int:
                 latest = document["cycles"][-1] if document["cycles"] else None
                 closed = _closed(latest, packet) if latest and latest["requests"] else False
                 payload = local_dashboard.build(document, closed)
+                source._hold_if_not_private_directory(destination.parent)
                 vault._exclusive_output(destination, payload)
                 print("New owner-private 0600 scriptless offline HUMAN journal created.")
                 print("Only anonymous local cycle states, timestamps and counts included.")
@@ -337,6 +343,7 @@ def main(argv=None) -> int:
                                 args.plan.expanduser().absolute()}
                             or destination.exists() or destination.is_symlink()):
                         raise ValueError("Distinct NEW private review HTML required.")
+                    source._hold_if_not_private_directory(destination.parent)
                     vault._exclusive_output(destination, delivery.html_review(records, totals))
                     print("NEW PRIVATE scriptless original HUMAN delivery review published.")
             elif args.action == "stage":

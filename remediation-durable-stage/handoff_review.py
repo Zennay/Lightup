@@ -31,6 +31,7 @@ def collect(record: dict, args, vault, envelope: dict, current: dict) -> tuple[l
         raise ValueError("Only a completed staged or reviewed HUMAN packet can be reconciled.")
     destination = Path(record["output"])
     # Reject symlinks/hardlinks and unsafe private path before reading ciphertext.
+    bridge.source._hold_if_not_private_directory(destination.parent)
     info = destination.lstat()
     import os, stat
     if (not stat.S_ISREG(info.st_mode) or info.st_uid != os.getuid()
