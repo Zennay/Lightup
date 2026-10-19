@@ -137,6 +137,11 @@ def main() -> int:
         "Inspect a PRIVATE HUMAN team workroom or create the next complete "
         "immutable review assignment version, without source changes"))
     actions = parser.add_subparsers(dest="action", required=True)
+    intake = actions.add_parser("extend", help="Receive new encrypted cockpits and carry existing HUMAN assignments into one new workroom")
+    intake.add_argument("--workroom", required=True, type=Path)
+    intake.add_argument("--key-file", required=True, type=Path)
+    intake.add_argument("--package", action="append", required=True, type=Path)
+    intake.add_argument("--output-parent", required=True, type=Path)
     inspector = actions.add_parser("inspect", help="Independently admit the entire private workroom")
     inspector.add_argument("--workroom", required=True, type=Path)
     inspector.add_argument("--key-file", required=True, type=Path)
@@ -176,7 +181,14 @@ def main() -> int:
     editing.add_argument("--clear-note", action="store_true")
     args = parser.parse_args()
     try:
-        if args.action == "rekey":
+        if args.action == "extend":
+            result, plan = extend_workroom(args.workroom, args.key_file,
+                                           args.package, args.output_parent)
+            print("New complete PRIVATE HUMAN workroom after encrypted intake: " + str(result))
+            print("Existing local HUMAN assignees/notes/dates carried byte-exact; "
+                  "new received slots start unassigned.")
+            print("Previous original workroom and all encrypted incoming packets unchanged.")
+        elif args.action == "rekey":
             import rekey_workroom
             destination, plan = rekey_workroom.rotate(
                 args.workroom, args.old_key_file, args.new_key_file,
