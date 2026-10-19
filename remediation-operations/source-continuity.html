@@ -1,0 +1,31 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'none'; connect-src 'none'; object-src 'none'; frame-src 'none'; form-action 'none'; base-uri 'none'">
+<title>LightUp · PRIVATE original HUMAN source continuity</title>
+<link rel="stylesheet" href="theme.css"><link rel="stylesheet" href="triage.css"><script src="source-continuity.js" defer></script></head>
+<body><header><p class="kicker">LIGHTUP · PRIVATE ORIGINAL HUMAN SOURCE · DRAFT/HOLD</p><h1>Human Source Continuity</h1>
+<p>Compare two locally exported ORIGINAL HUMAN source sessions without moving a HUMAN case, owner, security finding, consent or retest between sources. This is an offline human discussion tool, not a merge operation.</p>
+<nav><a href="index.html">← Operations Hub</a><a href="triage.html">HUMAN Inbox</a><a href="#compare">Original-source continuity</a><a href="#boundaries">Authority HOLD</a></nav></header>
+<main><section id="compare"><h2>1 · Load two original PRIVATE source sessions</h2>
+<p>Select the unencrypted <code>lightup.private_original_human_source_session</code> JSON exported by the Cross-app HUMAN Inbox. These may contain customer/engagement aliases, private owner notes and original finding IDs. Nothing is transmitted or persisted. The two self-declared sources must have the same client and engagement labels; independently verify the real identities before comparing.</p>
+<div class="cards"><article><h3>Earlier ORIGINAL HUMAN source</h3><label for="old">Earlier PRIVATE session (max 12 MiB)</label><input type="file" id="old" accept=".json,application/json"><p id="old-status" role="status">No earlier source loaded</p></article>
+<article><h3>Newer ORIGINAL HUMAN source</h3><label for="new">Newer PRIVATE session (max 12 MiB)</label><input type="file" id="new" accept=".json,application/json"><p id="new-status" role="status">No newer source loaded</p></article></div>
+<div class="actions"><label><input type="checkbox" id="same-client"> I independently confirmed the SAME actual client and exact engagement. Matching text alone is NOT authentication.</label></div>
+<div class="actions"><button type="button" id="apply-diff">Compare ORIGINAL source sessions (read-only)</button><button type="button" id="clear-diff" class="quiet">Forget PRIVATE source files/results</button></div>
+<p id="continuity-state" role="status" aria-live="polite">No original source comparison performed.</p></section>
+<section id="results" hidden><h2>2 · Complete ORIGINAL finding continuity</h2>
+<p class="notice">A finding missing from the newer source is <strong>ABSENT, UNVERIFIED — NOT FIXED</strong>. Repeated IDs across different source SHA declarations do not prove that the underlying finding is unchanged. A modified HUMAN owner/status/note is not security remediation or permission to proceed.</p>
+<p class="source-line" id="source-comparison"></p>
+<div class="stats" id="continuity-stats"></div>
+<div class="filters"><label>Search original finding ID<input type="search" id="finding-search" placeholder="Filter locally"></label>
+<label>Review category<select id="change-filter"><option value="all">All original findings</option>
+<option value="new">Added original IDs (newer)</option><option value="absent">Absent original IDs (UNVERIFIED)</option>
+<option value="changed">HUMAN plan fields changed</option><option value="same">No visible HUMAN plan field change</option></select></label>
+<label><input type="checkbox" id="private-values"> Display confidential original HUMAN note/owner/due/action values on screen</label></div>
+<p id="shown" class="counter"></p><div class="inbox-items" id="continuity-items"></div>
+<div class="actions"><button type="button" id="export-brief">Export scriptless PRIVATE human change brief</button>
+<button type="button" id="export-minimal" class="quiet">Export aggregate-only continuity CSV</button></div>
+<p class="small">The PRIVATE brief reports only original IDs and changed HUMAN field names, not their values. Screen display of sensitive values requires a separate opt-in. Summary CSV contains only status counts, no source/customer/owner/ID/note. Nothing is carried into another source.</p>
+</section>
+<section id="boundaries"><h2>Mandatory release HOLD unchanged</h2>
+<p><strong>INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD.</strong> This page cannot authenticate source, recipient identity, customer/engagement consent, grant, security fixes, active retest or review decisions. It cannot update original findings or migrate PRIVATE human state. Original exact-head hosted and permanently named VPS CI, source-owner reviews, independent privacy/security reviews, genuinely authenticated separate client/operator consent with action-time revocation, original #177/#182/#829 and explicit HUMAN GO remain mandatory before main merge/production.</p></section></main>
+<footer><p>PRIVATE offline HUMAN-only review · no active targets · no scanning · no browser persistence</p></footer></body></html>

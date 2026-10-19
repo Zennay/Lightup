@@ -304,9 +304,9 @@
       "sha256": "db0c347e1a05645ca54cb85be67ea64da37904570d6bd281ac463889edd9f7df"
     },
     {
-      "bytes": 20264,
+      "bytes": 21765,
       "path": "remediation-operations/README.md",
-      "sha256": "add9a92b02b116e35727e163d1ec3e4b1da6ccfaf4a37f0230ae8dd76119376e"
+      "sha256": "12fc0cdb0127b5d8fa8bdcf8b3d31e777b6774567328c8d3f03eb217b197032a"
     },
     {
       "bytes": 5840,
@@ -339,14 +339,24 @@
       "sha256": "1c2813bd408a860b0a678388db06ef900b248394d88d1a2a45d2b54cd506908c"
     },
     {
-      "bytes": 9008,
+      "bytes": 9662,
       "path": "remediation-operations/index.html",
-      "sha256": "d47b38dc5f2108a9eaba2865509bc7c9d20107de0fc1543b8381b3a1725e07f0"
+      "sha256": "2fe97d05423c7ea0e127109cbd54916544da874f04e3b1c64967a4c4abaade12"
     },
     {
       "bytes": 14546,
       "path": "remediation-operations/owner-actions.js",
       "sha256": "3454fe4bdcc2bea724ef88e30493816c2be08acd6698b46519b1bedd218854ab"
+    },
+    {
+      "bytes": 5132,
+      "path": "remediation-operations/source-continuity.html",
+      "sha256": "670cc0cd6ab74d5d5d69e3ea9d0718105cd2ee1f70b7cb11bd3c1c63df5f126d"
+    },
+    {
+      "bytes": 15867,
+      "path": "remediation-operations/source-continuity.js",
+      "sha256": "63c96f2f95c0ca227bb6d60ea86ebd7123e32410e8f7eeae4866d73b0777fefd"
     },
     {
       "bytes": 2235,
