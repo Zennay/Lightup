@@ -15,6 +15,7 @@ from types import SimpleNamespace
 import secrets
 import sys
 
+import calendar as private_calendar
 import desk
 import history
 import reconcile
@@ -31,6 +32,7 @@ MENU = (
     ("6", "Publish encrypted HUMAN retention revision history"),
     ("7", "Inspect/publish later original HUMAN Request Desk continuity"),
     ("8", "Switch to an existing PRIVATE encrypted retention plan"),
+    ("9", "Export source-bound anonymous PRIVATE HUMAN review calendar"),
     ("0", "Exit — no material changed"),
 )
 MAX_INPUT_PATH = 1024
@@ -194,6 +196,18 @@ def _history(args, vault):
           stats.get("files_changed", 0))
 
 
+def _calendar(args, vault):
+    if args.plan is None:
+        raise ValueError("An original-source-bound encrypted HUMAN plan is required.")
+    # This native read must happen afresh, not from prior menu actions.
+    ics, days, files = private_calendar.current_calendar(args, vault)
+    target = _new(args, "human-review-calendar", ".ics")
+    vault._exclusive_output(target, ics)
+    print("Created new anonymized PRIVATE 0600 local iCalendar:", target.name)
+    print("HUMAN review days:", days, "· original private material:", files)
+    print("No calendar connected, no identifier, automatic deletion or consent.")
+
+
 def _request_reconciliation(args, vault):
     if args.plan is None:
         raise ValueError("Stage or select an existing private review plan first.")
@@ -238,7 +252,7 @@ def main(argv: list[str] | None = None) -> int:
         choices = {
             "1": _inspect, "2": _stage_first, "3": _renew,
             "4": _desk, "5": _due_requests, "6": _history,
-            "7": _request_reconciliation, "8": _switch,
+            "7": _request_reconciliation, "8": _switch, "9": _calendar,
         }
         while True:
             print("\n" + " | ".join(num + ": " + label for num,label in MENU))
