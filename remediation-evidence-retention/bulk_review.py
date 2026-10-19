@@ -107,7 +107,7 @@ def _export(args, vault):
     print("Use a LOCAL offline editor, not a synced spreadsheet provider.")
 
 
-def _import(args, vault):
+def _prepare(args, vault):
     packet, old, files, receipt, plan_sha, source_key, prior_key = _bound(args, vault)
     edited_path = args.edited.expanduser().absolute()
     if edited_path.suffix.lower() != ".tsv":
@@ -116,10 +116,32 @@ def _import(args, vault):
                       packet, old, receipt, plan_sha)
     modified = [r for r in records if r["changed"]]
     if not modified:
-        raise ValueError("No real HUMAN changes, no new encrypted plan needed.")
+        raise ValueError("No original HUMAN review changes found.")
     hold_changes = [r for r in modified if r["hold_downgrade"]]
-    print("PRIVATE HUMAN reviews changed:", len(modified),
-          "· HUMAN legal-hold label changes:", len(hold_changes))
+    print("PRIVATE HUMAN change preview. No grant, Apply or legal conclusion.")
+    print("Original private material:", len(old), "· changed HUMAN rows:", len(modified),
+          "· HUMAN hold-label downgrades:", len(hold_changes))
+    for entry in modified:
+        old_item = old[entry["ordinal"] - 1]
+        new_item = entry["item"]
+        print("NEUTRAL ROW", entry["ordinal"], "· HUMAN", old_item["decision"],
+              "→", new_item["decision"], "· date", old_item["review_on"], "→",
+              new_item["review_on"], "· PRIVATE note",
+              "changed" if old_item["note"] != new_item["note"] else "unchanged",
+              "· EXPLICIT HOLD-LABEL ACK REQUIRED" if entry["hold_downgrade"] else "")
+    return packet, files, receipt, source_key, prior_key, records, modified, hold_changes
+
+
+def _preview(args, vault):
+    _prepare(args, vault)
+    print("All original current source, encrypted plan and actual material bytes admitted.")
+    print("No new file or original HUMAN status created by this preview.")
+
+
+def _import(args, vault):
+    packet, files, receipt, source_key, prior_key, records, modified, hold_changes = (
+        _prepare(args, vault))
+    edited_path = args.edited.expanduser().absolute()
     for rec in hold_changes:
         command = input(
             "Row " + str(rec["ordinal"]) +
@@ -162,13 +184,13 @@ def _import(args, vault):
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest="action", required=True)
-    for operation in ("export", "import"):
+    for operation in ("export", "preview", "import"):
         p = sub.add_parser(operation)
         for k in ("db", "email", "client-id", "engagement-id"):
             p.add_argument("--" + k, required=True)
         for k in ("human", "directory", "plan", "output"):
             p.add_argument("--" + k, type=Path, required=True)
-        if operation == "import":
+        if operation in ("preview", "import"):
             p.add_argument("--edited", type=Path, required=True)
         p.add_argument("--ack-private-material", action="store_true")
     args = parser.parse_args(argv)
@@ -176,7 +198,7 @@ def main(argv=None) -> int:
         if not args.ack_private_material or not sys.stdin.isatty():
             raise ValueError("Actual PRIVATE HUMAN interactive terminal required.")
         vault = original.ORIGINAL._vault()
-        (_export if args.action == "export" else _import)(args, vault)
+        {"export": _export, "preview": _preview, "import": _import}[args.action](args, vault)
         return 0
     except Exception:
         print("HUMAN HOLD: No complete original-source-bound PRIVATE batch review "
