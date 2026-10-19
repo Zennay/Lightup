@@ -396,6 +396,38 @@ def case_queue(docs: list[dict]) -> list[dict]:
     return queue
 
 
+def human_case_transitions(docs: list[dict]) -> list[dict]:
+    """A source-declared original HUMAN case timeline, never verified history."""
+    result: list[dict] = []
+    for ordinal, (earlier, later) in enumerate(zip(docs, docs[1:]), start=1):
+        old = {case["engagement_id"]: case for case in earlier["case_overview"]}
+        new = {case["engagement_id"]: case for case in later["case_overview"]}
+        for engagement_id in sorted(old.keys() | new.keys()):
+            a, b = old.get(engagement_id), new.get(engagement_id)
+            if a is None:
+                kind = "SOURCE_CASE_APPEARED"
+            elif b is None:
+                kind = "SOURCE_CASE_ABSENT"
+            elif a["attention"] != b["attention"] or a["next_review_action"] != b["next_review_action"]:
+                kind = "SOURCE_HUMAN_ATTENTION_CHANGED"
+            elif a["status"] != b["status"]:
+                kind = "SOURCE_ENGAGEMENT_STATUS_CHANGED"
+            else:
+                continue
+            result.append({
+                "earlier_ordinal": ordinal,
+                "later_ordinal": ordinal + 1,
+                "original_engagement_id": engagement_id,
+                "source_transition": kind,
+                "before_source_attention": a["attention"] if a is not None else "ABSENT",
+                "after_source_attention": b["attention"] if b is not None else "ABSENT",
+                "before_source_human_action": a["next_review_action"] if a is not None else "ABSENT",
+                "after_source_human_action": b["next_review_action"] if b is not None else "ABSENT",
+            })
+    fail(len(result) <= 2400, "original HUMAN case transitions exceed complete report bound")
+    return result
+
+
 def csv_text(rows: list[list[object]]) -> str:
     out = io.StringIO(newline="")
     writer = csv.writer(out, lineterminator="\r\n")
@@ -507,6 +539,17 @@ def html_page(docs: list[dict], delta: list[list[dict]], *, public: bool) -> str
                              [[*k, v] for k, v in sorted(counts.items())]))
         summary.append("<p>Anonymous aggregate still may be sensitive for small groups; treat as PRIVATE.</p>")
     else:
+        transitions = human_case_transitions(docs)
+        summary.append("<h2>PRIVATE original engagement attention transitions</h2>")
+        summary.append("<p>Only source-declared recorded changes; a vanished case "
+                       "does not prove closure, consent withdrawal or revocation.</p>")
+        summary.append(table(
+            ["Earlier ordinal", "Later ordinal", "Original engagement ID",
+             "Source change", "Earlier HUMAN action", "Later HUMAN action"],
+            [[row["earlier_ordinal"], row["later_ordinal"],
+              row["original_engagement_id"], row["source_transition"],
+              row["before_source_human_action"], row["after_source_human_action"]]
+             for row in transitions]))
         summary.extend([
             "<h2>PRIVATE original identifiers and literal source changes</h2>",
             "<p>Only open this private file on a trusted machine. Identifiers were copied from "
@@ -603,6 +646,15 @@ def generate(docs: list[dict]) -> dict[str, bytes]:
     chronology_rows.extend([[entry["earlier_ordinal"], entry["later_ordinal"],
                              entry["source_chronology_observation"]]
                             for entry in source_order_flags(docs)])
+    transition_columns = (
+        "earlier_ordinal", "later_ordinal", "original_engagement_id",
+        "source_transition", "before_source_attention", "after_source_attention",
+        "before_source_human_action", "after_source_human_action",
+    )
+    all_case_transitions = human_case_transitions(docs)
+    transitions_csv = csv_text([list(transition_columns)] +
+                               [[row[key] for key in transition_columns]
+                                for row in all_case_transitions])
     private_rows = [["later_ordinal", "family", "source_declaration", "source_record_id",
                      "changed_source_fields"]]
     for i, group in enumerate(delta):
@@ -638,6 +690,7 @@ def generate(docs: list[dict]) -> dict[str, bytes]:
     private_queue = csv_text([list(queue_fields)] +
                              [[entry[field] for field in queue_fields] for entry in queue])
     return {
+        "private-human-case-transitions.csv": transitions_csv.encode("utf-8"),
         "private-human-review-template.csv": human_template(docs),
         "private-human-case-queue.csv": private_queue.encode(),
         "index.html": html_page(docs,delta,public=False).encode("utf-8"),
