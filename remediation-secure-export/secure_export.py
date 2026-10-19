@@ -181,24 +181,33 @@ def _unique_pairs(items: list[tuple[str, object]]) -> dict:
     return result
 
 
-def _authenticated_export(args) -> bytes:
+def _authorized_summary(*, db: str, email: str, client_id: str, engagement_id: str) -> str:
+    """Use only the unchanged original authenticated tenant and engagement selector."""
     if not sys.stdin.isatty():
         raise ValueError("Interactive private TTY required for the original account login.")
-    path = Path(args.db)
+    path = Path(db)
     if not path.is_file():
         raise ValueError("Existing LightUp domain database required.")
+    _literal(client_id, "client ID")
+    _literal(engagement_id, "engagement ID")
     with warnings.catch_warnings():
         warnings.simplefilter("error", GetPassWarning)
         password = getpass("Current LightUp account password (private TTY): ")
     try:
         store = DomainStore(str(path))
-        user = store.authenticate(args.email, password)
+        user = store.authenticate(email, password)
     finally:
         del password
     if user is None:
         raise ValueError("Original LightUp authentication denied.")
     ctx = store.context_for_user(user.user_id)
-    csv_text = render_client_findings_csv(store, ctx, args.client_id, engagement_id=args.engagement_id)
+    return render_client_findings_csv(store, ctx, client_id, engagement_id=engagement_id)
+
+
+def _authenticated_export(args) -> bytes:
+    csv_text = _authorized_summary(
+        db=args.db, email=args.email, client_id=args.client_id, engagement_id=args.engagement_id
+    )
     return _make_envelope(csv_text, args.client_id, args.engagement_id)
 
 
@@ -215,6 +224,17 @@ def main(argv: list[str] | None = None) -> int:
     op.add_argument("--input", required=True, type=Path)
     op.add_argument("--output", required=True, type=Path)
     op.add_argument("--ack-private-html", required=True, action="store_true")
+    checked = p.add_parser(
+        "open-current",
+        help="Re-authenticate original client/engagement, require EXACT current authorized CSV bytes, then release new PRIVATE HTML",
+    )
+    checked.add_argument("--db", required=True)
+    checked.add_argument("--email", required=True)
+    checked.add_argument("--client-id", required=True)
+    checked.add_argument("--engagement-id", required=True)
+    checked.add_argument("--input", required=True, type=Path)
+    checked.add_argument("--output", required=True, type=Path)
+    checked.add_argument("--ack-private-html", required=True, action="store_true")
     inspect = p.add_parser("inspect", help="Authenticate an encrypted source snapshot and show ID-free aggregates in the terminal")
     inspect.add_argument("--input", required=True, type=Path)
     rotate = p.add_parser("rotate", help="Rotate source-bound Casework into a NEW encrypted vault without plaintext file")
@@ -237,16 +257,25 @@ def main(argv: list[str] | None = None) -> int:
         else:
             if args.input.suffix.lower() != ".ltv":
                 raise ValueError("PRIVATE Casework input must use .ltv.")
-            if args.operation == "open":
+            if args.operation in ("open", "open-current"):
                 if not args.ack_private_html or args.output.suffix.lower() != ".html":
                     raise ValueError("PRIVATE HTML requires --ack-private-html and a new .html destination.")
             if args.operation == "rotate":
                 if args.output.suffix.lower() != ".ltv":
                     raise ValueError("Rotated PRIVATE Casework output must use .ltv.")
-            if args.operation in ("open", "rotate") and (
+            if args.operation in ("open", "open-current", "rotate") and (
                 args.input.expanduser().absolute() == args.output.expanduser().absolute()
             ):
                 raise ValueError("Original and new PRIVATE source paths must differ.")
+            current_sha = None
+            current_count = None
+            if args.operation == "open-current":
+                # Reevaluate original stored account/tenant/engagement before any
+                # decrypted casework HTML can be published. Not signed client consent.
+                current_csv = _authorized_summary(
+                    db=args.db, email=args.email, client_id=args.client_id, engagement_id=args.engagement_id
+                )
+                current_sha, current_count = _strict_summary(current_csv)
             vault_path = args.input.expanduser().absolute()
             ciphertext = vault._private_input(vault_path, vault.MAX_VAULT)
             old_passphrase = vault._password("Existing PRIVATE Casework vault passphrase: ", fresh=False)
@@ -268,8 +297,18 @@ def main(argv: list[str] | None = None) -> int:
                 print("New owner-private encrypted Casework vault created, original encrypted source preserved.")
                 print("No plaintext file created; no authority/consent/retest state inferred.")
             else:
+                if args.operation == "open-current":
+                    if (manifest["client_id_self_declared"] != args.client_id or
+                        manifest["engagement_id_self_declared"] != args.engagement_id or
+                        manifest["original_csv_sha256"] != current_sha or
+                        manifest["original_finding_count"] != current_count):
+                        raise ValueError("Current original authorized source does not match encrypted Casework snapshot.")
                 vault._exclusive_output(args.output.expanduser().absolute(), html)
-                print("New 0600 offline HUMAN Casework HTML restored; sensitive plaintext, never a grant or verified finding.")
+                if args.operation == "open-current":
+                    print("New 0600 PRIVATE Casework HTML restored from exact currently authenticated original source.")
+                    print("This checked only current account/tenant/source; not client consent, grant, retest or release.")
+                else:
+                    print("New 0600 offline HUMAN Casework HTML restored; sensitive plaintext, never a grant or verified finding.")
         return 0
     except (AccountLockedError, GetPassWarning, PermissionError, ValueError, KeyError, OSError,
             UnicodeError, sqlite3.DatabaseError, EOFError, KeyboardInterrupt) as exc:
