@@ -49,6 +49,11 @@ footer{margin-top:40px;border-top:1px solid var(--border);padding-top:18px}
 <section class="panel"><h2>1 · Import original counts-only files</h2>
 <p>Choose one or more exports produced through the original source-owner's <code>inbox.py export-counts</code> or <code>workroom_control.py export-counts</code>. Only the native anonymous numeric schema is accepted. Files are never uploaded. Each group is accepted in full or rejected in full.</p>
 <div class="actions"><input type="file" id="pick" accept=".json,application/json" multiple aria-label="Choose original counts-only JSON exports"><button id="clear" type="button" disabled>Clear current imports</button></div>
+<p><strong>Current input origin:</strong> <span id="sourceStatus">Native-shaped count exports (not source authenticated)</span></p>
+<div class="panel"><h3>Pause and resume a private numeric HUMAN session</h3><p>Save the source-free numeric packet descriptions and optional earlier numeric baseline into one standalone local JSON. Resume it later without having to select all original count exports again. A resumed session is <strong>not original source-authenticated evidence</strong>; to get fresh source assurance, export the original native counts again. Restoring a session replaces the current browser selection only after explicit confirmation.</p>
+<div class="actions"><button id="saveSession" class="primary" type="button" disabled>Save resumable numeric session</button>
+<label for="resumeSession">Restore private session: <input type="file" id="resumeSession" accept=".json,application/json" aria-label="Restore existing source-free HUMAN browser session"></label></div>
+</div>
 <div id="status" role="status" aria-live="polite">Initializing local studio…</div>
 </section>
 <section class="panel"><h2>2 · Private HUMAN question-volume desk</h2>
