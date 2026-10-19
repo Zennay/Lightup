@@ -120,9 +120,10 @@ def _render(csv_raw: bytes, client: str, engagement: str) -> bytes:
     def add_hash(match):
         return match.group(1) + " " + csp + match.group(2)
     page, count = re.subn(r"(script-src [^;]+)(; style-src )", add_hash, page)
-    if count != 1 or page.count("</body>") != 1:
+    if count != 1 or "</body>" not in page:
         raise ValueError("Original offline Evidence Ledger CSP/body has changed.")
-    page = page.replace("</body>", "<script>" + js.decode("utf-8") + "</script></body>")
+    before, marker, after = page.rpartition("</body>")
+    page = before + "<script>" + js.decode("utf-8") + "</script>" + marker + after
     rendered = page.encode("utf-8", "strict")
     if len(rendered) > MAX_RENDERED or b"connect-src 'none'" not in rendered:
         raise ValueError("PRIVATE Evidence Ledger offline policy/size HOLD.")
@@ -271,8 +272,7 @@ def main(argv: list[str] | None = None) -> int:
         print("New 0600 PRIVATE offline Evidence Ledger HTML created.")
         print("Browser auto-loads original exported CSV locally. No scanning, consent, verified fix or deployment.")
         return 0
-    except (ValueError, TypeError, OSError, sqlite3.DatabaseError, UnicodeError,
-            GetPassWarning, EOFError, KeyboardInterrupt, ImportError) as exc:
+    except Exception:
         # No confidential filenames, request identifiers, passwords or original text in errors.
         print("HOLD: No Evidence Ledger output. Check permitted original account, encrypted source and private directory.", file=sys.stderr)
         return 2
