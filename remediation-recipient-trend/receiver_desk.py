@@ -18,6 +18,7 @@ import trend
 import recipient_studio
 import recipient_journal
 import recipient_journal_receive
+import recipient_studio_receive
 
 
 def parser() -> argparse.ArgumentParser:
@@ -49,6 +50,10 @@ def parser() -> argparse.ArgumentParser:
     p.add_argument("--receipt", type=Path, required=True)
     p.add_argument("--kind", choices=("compare", "series"), required=True)
     p.add_argument("--output-dir", type=Path, required=True)
+
+    p = cmds.add_parser("human-open-studio",
+                        help="Reopen complete native private interactive studio before browser use")
+    p.add_argument("--folder", type=Path, required=True)
 
     p = cmds.add_parser("human-publish",
                         help="Publish native source-bound PRIVATE HUMAN local journal handoff")
@@ -90,6 +95,11 @@ def execute(args: argparse.Namespace) -> None:
         print("PRIVATE networkless HUMAN reason workroom created; " +
               str(result["human_reason_groups"]) + " local reason groups. "
               "Open private index.html in a trusted offline browser.")
+    elif args.action == "human-open-studio":
+        result = recipient_studio_receive.inspect(args.folder)
+        print("PRIVATE interactive HUMAN studio locally consistent, " +
+              str(result["human_reason_groups"]) +
+              " reason groups. Sender/client identity not authenticated.")
     elif args.action == "human-publish":
         result = recipient_journal.publish(args.receipt, args.kind,
                                            args.journal, args.output_dir)
