@@ -24,11 +24,14 @@ ACTIONS = {
     "7": ("resolve", "Resolve original HUMAN stage with separate acknowledgment"),
     "10": ("carry-closed", "Review closure from an earlier ORIGINAL source revision"),
     "11": ("adopt-legacy", "Enroll previously unindexed original-native HUMAN journal"),
+    "12": ("inbox", "View all registered engagement HUMAN handoffs and next actions"),
+    "13": ("inbox-html", "Publish PRIVATE engagement HUMAN action dashboard"),
 }
 NAMES = {
     "stage": ("native-human-draft-", ".ltv"),
     "review-html": ("human-delivery-", ".html"),
     "report": ("human-stage-history-", ".html"),
+    "inbox-html": ("engagement-human-inbox-", ".html"),
 }
 
 def _common(args, *, human: Path, plan: Path) -> list[str]:

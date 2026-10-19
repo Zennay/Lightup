@@ -26,6 +26,7 @@ import report as local_dashboard
 import handoff_review as delivery
 import engagement_index as source_revisions
 import revision_carry as cross_source_human
+import engagement_inbox as engagement_work
 
 source = bridge.source
 original = bridge.original
@@ -317,13 +318,13 @@ def _resolve(args, vault, folder, journal, current) -> None:
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     subs = parser.add_subparsers(dest="action", required=True)
-    for action in ("status", "stage", "report", "review", "review-html", "recover", "resolve", "carry-closed", "adopt-legacy"):
+    for action in ("status", "stage", "report", "review", "review-html", "recover", "resolve", "carry-closed", "adopt-legacy", "inbox", "inbox-html"):
         p = subs.add_parser(action)
         for name in ("db", "email", "client-id", "engagement-id"):
             p.add_argument("--" + name, required=True)
         for name in ("human", "directory", "plan", "journal-dir"):
             p.add_argument("--" + name, type=Path, required=True)
-        if action in ("stage", "report", "review-html"):
+        if action in ("stage", "report", "review-html", "inbox-html"):
             p.add_argument("--output", type=Path, required=True)
         p.add_argument("--ack-private-material", action="store_true")
     args = parser.parse_args(argv)
@@ -354,6 +355,16 @@ def main(argv=None) -> int:
                 vault._exclusive_output(destination, payload)
                 print("New owner-private 0600 scriptless offline HUMAN journal created.")
                 print("Only anonymous local cycle states, timestamps and counts included.")
+            elif args.action in ("inbox", "inbox-html"):
+                rows, totals = engagement_work.collect(
+                    folder, packet, vault, _owned_regular, _read, key)
+                if args.action == "inbox":
+                    engagement_work.show(rows, totals)
+                else:
+                    destination = _new_private_output(args, folder, ".html")
+                    vault._exclusive_output(
+                        destination, engagement_work.html(rows, totals))
+                    print("NEW owner-only 0600 original HUMAN engagement inbox published.")
             elif args.action in ("review", "review-html"):
                 entry = document["cycles"][-1] if document["cycles"] else None
                 if entry is None:
