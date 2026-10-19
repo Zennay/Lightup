@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import sys
 
-from . import private_export_human_revision, private_export_human_revision_workqueue, private_export_human_revision_choices, private_export_human_revision_guided, private_export_human_revision_editor, private_export_human_revision_vault, private_export_human_revision_amend
+from . import private_export_human_revision, private_export_human_revision_workqueue, private_export_human_revision_choices, private_export_human_revision_guided, private_export_human_revision_editor, private_export_human_revision_vault, private_export_human_revision_amend, private_export_human_revision_resume
 
 
 def _ask(label: str) -> str:
@@ -50,13 +50,14 @@ def main() -> int:
         "13. Rotate encrypted HUMAN decision passphrase into NEW .lud\n"
         "14. Open encrypted HUMAN choices as NEW UNENCRYPTED private JSON\n"
         "15. Amend encrypted HUMAN choices in PRIVATE guided terminal (no plaintext)\n"
+        "16. Resume encrypted HUMAN choices in PRIVATE offline browser editor\n"
         "0. Exit"
     )
     try:
-        choice = _ask("Choose 0-15")
+        choice = _ask("Choose 0-16")
         if choice == "0":
             return 0
-        if choice not in tuple(str(i) for i in range(1, 16)):
+        if choice not in tuple(str(i) for i in range(1, 17)):
             raise ValueError("unknown option")
         before = _ask("Earlier authenticated encrypted original source .lue")
         plan = _ask("Earlier exact-source encrypted HUMAN plan .lun")
@@ -74,6 +75,24 @@ def main() -> int:
             "storage, actual recipient and approved transport; no output establishes "
             "consent, verified fixes or permission to test."
         )
+        if choice == "16":
+            existing = _ask("Original encrypted source-bound HUMAN choices .lud")
+            if not existing.lower().endswith(".lud"):
+                raise ValueError("existing private choices must be .lud")
+            output = _ask("NEW PRIVATE offline browser review .html")
+            if not output.lower().endswith(".html"):
+                raise ValueError("visual review must be .html")
+            _confirm(
+                "The newly generated HTML is UNENCRYPTED and contains original "
+                "private finding IDs, titles, source labels and previous HUMAN "
+                "boolean choices. I have independently approved secure local "
+                "storage, actual intended recipient, and private browser use."
+            )
+            return private_export_human_revision_resume.main([
+                before, plan, after, "--encrypted-choices", existing,
+                "--output", output, "--ack-private-handling",
+                "--ack-same-real-client", "--ack-plaintext-original-ids",
+            ])
         if choice == "15":
             existing = _ask("Existing PRIVATE encrypted HUMAN choices .lud")
             if not existing.lower().endswith(".lud"):
