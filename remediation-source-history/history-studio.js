@@ -191,7 +191,7 @@ function notesFromFields(){
  });
  if(!owner&&!action&&!due&&!retainNative)state.notes.delete(id);
  else {if(state.notes.size>=limits.maxNotes&&!state.notes.has(id))throw Error('Local HUMAN notes limit reached.');state.notes.set(id,{owner,action,due,sourceRecord:Object.fromEntries(FIELDS.map(k=>[k,current[k]])),caseworkOriginal:state.notes.get(id)?.caseworkOriginal||null});}
- state.revision++;renderGrid();renderDetail();message('Private HUMAN coordination note saved in memory only; no source finding, grant or retest changed.');
+ state.revision++;render();message('Private HUMAN coordination note saved in memory only; no source finding, grant or retest changed.');
 }
 function carryHuman() {
  const id=state.selected,existing=state.notes.get(id),current=latestFinding(id);
@@ -204,14 +204,14 @@ function carryHuman() {
  const latest=Object.fromEntries(FIELDS.map(k=>[k,current[k]]));
  const notes={...existing,sourceRecord:latest,caseworkOriginal:null};
  state.decisions.push({id,from:prior,to:latest,reason,decidedUTC:new Date().toISOString()});
- state.notes.set(id,notes);state.revision++;renderGrid();renderDetail();
+ state.notes.set(id,notes);state.revision++;render();
  message('Human note deliberately carried to the exact latest original finding after acknowledgment; no security status or source changed.');
 }
 function discardHeldHuman(){
  const id=state.selected;
  if(!id||!state.notes.has(id)||noteBinding(id)==='bound')throw Error('Only an explicitly selected held HUMAN note can be discarded.');
  if(!window.confirm('Discard the currently held PRIVATE HUMAN note? This does not affect original source findings, prior private downloads or HUMAN carry decisions. Preserve a separate encrypted checkpoint if necessary.'))return;
- state.notes.delete(id);state.revision++;renderGrid();renderDetail();
+ state.notes.delete(id);state.revision++;render();
  message('Selected held HUMAN note discarded locally; original findings and the separate private decision journal are unchanged.');
 }
 function exportAggregate(){
