@@ -190,6 +190,13 @@ function exportPrivate() {
  download('lightup-PRIVATE-source-history-human-handoff.csv','\uFEFF'+[headers,...rows].map(r=>r.map(csvCell).join(',')).join('\r\n')+'\r\n','text/csv;charset=utf-8');
  message('PRIVATE original-ID handoff exported; verify destination and recipients. Never a grant, verified fix or retest.');
 }
+function exportCasework() {
+ const packet=window.LightUpHistory.exportCasework();
+ const status=window.LightUpHistory.noteSummary();
+ if(status.held)message(status.held+' source-changed/missing HUMAN note(s) held out of original Casework export; no implicit carry. Confirm private recipient.',true);
+ download('lightup-PRIVATE-original-source-casework-human-v1.json',JSON.stringify(packet,null,2),'application/json;charset=utf-8');
+ message('PRIVATE native original Casework v1 HUMAN draft exported; '+status.bound+' exact-row-bound note(s) included, '+status.held+' stale held. All consent/grant/retest/scan authority claims false.');
+}
 function forget(){state.snapshots=[];state.notes.clear();state.active=null;state.selected=null;state.revision++;$('client').value='';$('engagement').value='';$('ack').checked=false;$('privateAck').checked=false;$('files').value='';$('archivePass').value='';$('archiveFile').value='';render();message('Original imported source and private HUMAN notes forgotten from app memory. Previously downloaded exports remain on your device.');}
 $('load').addEventListener('click',()=>ingest($('files').files).catch(e=>message(e.message,true)));
 $('filter').addEventListener('input',renderGrid);
@@ -199,6 +206,7 @@ $('saveHuman').addEventListener('click',()=>{try{notesFromFields();}catch(e){mes
 $('carryHuman').addEventListener('click',()=>{try{carryHuman();}catch(e){message(e.message,true);}});
 $('aggregate').addEventListener('click',()=>{try{exportAggregate();}catch(e){message(e.message,true);}});
 $('privateExport').addEventListener('click',()=>{try{exportPrivate();}catch(e){message(e.message,true);}});
+$('caseworkExport').addEventListener('click',()=>{try{exportCasework();}catch(e){message(e.message,true);}});
 $('forget').addEventListener('click',forget);
 $('grid').addEventListener('click',event=>{const button=event.target.closest('button[data-view]');if(button){state.selected=button.dataset.view;renderDetail();$('detail').scrollIntoView({behavior:'smooth',block:'start'});}});
 $('snapshots').addEventListener('change',event=>{
