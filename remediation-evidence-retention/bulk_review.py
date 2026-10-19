@@ -76,7 +76,12 @@ def _edited(raw: bytes, packet: dict, old: list,
             raise ValueError("Original source, actual file, receipt or previous plan changed.")
         if rec["decision"] not in native.DECISIONS:
             raise ValueError("Invalid HUMAN review status.")
-        review_date = native._review_day(rec["review_on"])
+        # Keep an unchanged overdue HUMAN review date as genuinely DUE.
+        # Moving/changing a date requires a fresh canonical future-or-today
+        # human choice, but partial batch edits must not silently reschedule
+        # unrelated material or force unrelated acknowledgements.
+        review_date = (previous["review_on"] if rec["review_on"] == previous["review_on"]
+                       else native._review_day(rec["review_on"]))
         if not rec["note_edit"]:
             note = previous["note"]
         elif rec["note_edit"] == "<clear>":
