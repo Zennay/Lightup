@@ -40,6 +40,12 @@
 <div class="grid"><label>Restore source-bound PRIVATE HUMAN workplan JSON<input type="file" id="planImport" accept=".json,application/json"></label><div><button id="planRestore" class="secondary">Restore PRIVATE HUMAN plan</button></div>
 <label>One local HUMAN owner only<select id="planOwner"><option value="">Choose local HUMAN owner</option></select></label><div><button id="planOwnerBrief" class="secondary" disabled>Download PRIVATE one-owner plan</button></div></div>
 <button id="planAggregate" class="secondary">Anonymous HUMAN planning counts CSV</button>
+<h3>Combine two PRIVATE human reviewer workplans</h3>
+<p>Preview another original-source-bound workplan. Both must match the exact original SHA/client/engagement and full finding set. Different local HUMAN annotations need an explicit per-finding choice; no original security source or owner reply is changed.</p>
+<div class="grid"><label>Other reviewer's PRIVATE HUMAN workplan JSON<input id="planMergeFile" type="file" accept=".json,application/json"></label><div><button id="planMergePreview" class="secondary">Preview PRIVATE reviewer merge</button></div></div>
+<div id="planMergePanel" hidden><p id="planMergeSummary"></p><div id="planMergeChoices" class="tableWrap"></div>
+<button id="planMergeApply" disabled>Confirm local HUMAN-only reviewer merge</button><button id="planMergeCancel" class="secondary">Cancel merge preview</button></div>
+<button id="planMergeUndo" class="secondary" disabled>Undo last reviewer workspace merge</button>
 <p id="planNotice" role="status" aria-live="polite">No original human finding context loaded.</p>
 <p class="warn">Human-only plans and aliases are unverified local declarations. Original finding source, Casework, Evidence Review, owner replies, security grants, action-time consent and production remain unchanged. PRIVATE exports can contain customer context: independently verify recipient, channel and storage.</p></section>
 <section id="out" hidden><h2>6. Explicit human handoffs</h2><p>PRIVATE export includes selected original request IDs, local fingerprint labels, human replies and notes. Counts-only CSV never includes original identifiers, source/client hashes, owner aliases, notes, filenames, dates or file SHA values.</p>
