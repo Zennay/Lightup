@@ -13,6 +13,7 @@ from pathlib import Path
 import secrets
 import shutil
 import sys
+from typing import Callable
 
 import board
 import verify
@@ -148,7 +149,8 @@ def local_home(number: int) -> bytes:
         "</p></section></main></html>\n").encode("utf-8")
 
 def publish(input_paths: list[Path], output: Path,
-            existing_bundles: list[Path] | None = None) -> dict:
+            existing_bundles: list[Path] | None = None,
+            before_publish: Callable[[], None] | None = None) -> dict:
     existing_bundles = existing_bundles or []
     sources = input_paths + existing_bundles
     review.require(1 <= len(sources) <= 12 and len(set(sources)) == len(sources),
@@ -199,6 +201,8 @@ def publish(input_paths: list[Path], output: Path,
             os.fsync(dirfd)
         finally:
             os.close(dirfd)
+        if before_publish is not None:
+            before_publish()  # fail closed if original private source changed
         workspace.exclusive_dir_publish(stage, output)
         published = True
         return {"source_slots": len(originals), "cockpit_files": summary["private_files"],

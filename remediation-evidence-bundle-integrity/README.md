@@ -143,6 +143,35 @@ python3 remediation-evidence-bundle-integrity/read_cockpit.py \
 
 Exit 2 means the current local **self-declared** bundle is internally consistent. Exit 3 means it must be returned to the original private owner and never opened as a trusted workdesk. The receipt only prints source-free aggregate counts, writes nothing and does not reach any network/target/authorization subsystem. This feature is **not** an attestation of who sent it: anyone controlling both the aggregate JSON and unsigned manifest could fabricate a different internally consistent HUMAN-only cockpit. Original source authenticity, original custody, distinct consent, signed chronology, trusted producer authentication, security findings and verified remediation remain outside this tool and require their existing separate LightUp release safeguards. Do not confuse local byte reconstruction with cryptographic sender identification.
 
+## Original-source HUMAN revisions: new complete offline workroom
+
+The new `revise.py` closes the loop between the PRIVATE `tasks.html` source-owner action queue and the portable anonymous HUMAN cockpit. Original source records and earlier workrooms are immutable. Up to **64 source-bound HUMAN stage/note edits** across **1–12** original owner-private sources can be applied in one operation, with no execution, scan, grant, signed review or verified fix. Changes regenerate original native inbox/attention/manifest files and the source-free portable cockpit in a **NEW exclusively published private workroom**; source-owner PRIVATE notes never go into `cockpit/`.
+
+First create a source-session-SHA-pinned **owner-only 0600 JSON plan**:
+```sh
+python3 remediation-evidence-bundle-integrity/revise.py \
+  --workroom "$HOME/lightup-private/workroom-001" \
+  --draft-plan "$HOME/lightup-private/receipts/human-revision-001.json"
+```
+
+Open the private JSON locally. Keep its generated `kind`, `schema_version`, `disposition`, `source_sessions` and `warning` unchanged. Change only `changes: []`: insert records indexed by **source slot and HUMAN row ordinal** from the PRIVATE `tasks.html` file, for example:
+```json
+{"slot":1,"ordinal":2,"stage":"needs_source_owner",
+ "note_action":"replace","human_note":"Ask source owner to clarify local evidence."}
+```
+
+Stages are strictly `open`, `in_human_review`, `needs_source_owner`, `answered_human`. Note action is `keep` (empty `human_note`), `replace` (up to 1200 characters) or `clear` (empty `human_note`). No-op or duplicate edits and plans based on changed original HUMAN session bytes HOLD completely. Original timestamp is replaced only in the newly constructed session and is NOT authenticated chronology. Never enter private notes into command-line options.
+
+Then atomically publish a new private source-owner workroom:
+```sh
+python3 remediation-evidence-bundle-integrity/revise.py \
+  --workroom "$HOME/lightup-private/workroom-001" \
+  --plan "$HOME/lightup-private/receipts/human-revision-001.json" \
+  --output-dir "$HOME/lightup-private/workroom-002"
+```
+
+Every original input workroom source, local HUMAN journal, native task view, standalone cockpit, private edit plan and resulting source files must be consistent with unchanged native original parsers. Re-read immediately before exclusive atomic publication; if changed or incomplete the new destination is not published. Original source-owner files are never overwritten. Review stages remain HUMAN bookkeeping only, not verified remediation, source authenticity or approval. Use `handoff.py` separately to prepare ONLY the recipient's source-free standalone `cockpit/`.
+
 ## Scope and release
 
 No modifications to `src/`, original Evidence Artifact Ledger, Request Desk, native Apply, auth, scanner, scope, evidence files, CI or QA suites. Never feeds data to targets, issues grants, stages client action, changes HUMAN journals, concludes remediation or bypasses action-time revocation. As with the parent draft, **no main merge, production deploy or live use** until existing original exact-head hosted + permanently registered named VPS CI, original source-owner and independent security/privacy/browser/crypto reviews, #177/#182/#829, true independent revocable current client/operator consent and explicit HUMAN GO have all been satisfied. No new release gate is created by this utility.
