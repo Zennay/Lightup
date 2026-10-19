@@ -61,7 +61,7 @@ python3 remediation-evidence-retention/retention.py renew \
   --ack-private-material
 ```
 
-`renew` refuses passphrase reuse against the original HUMAN vault **and** the previous retention plan, requires current native source-and-bytes continuity, and never overwrites the old encrypted plan. A blank decision or note keeps the previous human input; `<clear>` explicitly removes a former human note. An old due date requires selecting a new nonpast date when reissuing. No silent renewal or legal policy determination occurs.
+`renew` refuses passphrase reuse against the original HUMAN vault **and** the previous retention plan, requires current native source-and-bytes continuity, and never overwrites the old encrypted plan. A blank decision or note keeps the previous human input; `<clear>` explicitly removes a former human note. An old due date requires selecting a new nonpast date when reissuing. Changing an earlier HUMAN `legal_hold` label to another HUMAN label requires a **separate exact terminal confirmation** and still never authorizes an actual legal-hold release; all freeform private HUMAN notes reject unsafe control/format/bidi characters before encrypted sealing or private display. No silent renewal or legal policy determination occurs.
 
 
 ## Multi-version PRIVATE HUMAN review history
