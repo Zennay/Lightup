@@ -13,6 +13,8 @@ const TYPES=["missing_evidence","patch_change","deployment_record","rollback_pla
  "retest_request","followup_question","other"];
 const LIMIT=8*1048576;
 let packet=null,epoch=0;
+const feedbackDrafts=new Map();
+const FEEDBACK_STAGES=["acknowledged_unverified","needs_clarification","cannot_provide"];
 const fail=m=>{throw Error(m);};
 function exact(x,keys){
  return x&&Object.getPrototypeOf(x)===Object.prototype&&Object.keys(x).length===keys.length&&
@@ -94,12 +96,86 @@ function validate(p){
 const tag=(name,value)=>{const x=document.createElement(name);x.textContent=value;return x;};
 function notice(m,err=false){$("briefMessage").textContent=m;$("briefMessage").dataset.error=err?"true":"false";}
 function clear(){
- epoch++;packet=null;$("briefFile").value="";$("briefIdentity").textContent="No PRIVATE source loaded.";
+ epoch++;packet=null;feedbackDrafts.clear();$("briefFile").value="";$("briefIdentity").textContent="No PRIVATE source loaded.";
  $("briefSearch").value="";$("briefFilter").value="all";$("briefItems").replaceChildren();
  $("briefCount").textContent="All locally held HUMAN metadata cleared; files on disk remain.";
- $("briefPrint").disabled=true;
+ $("briefPrint").disabled=true;$("feedbackClear").disabled=true;$("feedbackExport").disabled=true;
+ $("draftCount").textContent="No HUMAN feedback drafted.";
  notice("Forgot all browser-memory source, original request and unverified reply content.");
 }
+function updateFeedbackCount(){
+ const ready=[...feedbackDrafts.values()].filter(x=>FEEDBACK_STAGES.includes(x.stage));
+ $("draftCount").textContent=ready.length+" unverified HUMAN response(s) drafted for this private source; nothing sent.";
+ $("feedbackExport").disabled=!packet||!ready.length;
+ $("feedbackClear").disabled=!feedbackDrafts.size;
+}
+function feedbackEditor(r){
+ const wrapper=document.createElement("div");wrapper.className="feedbackEditor";
+ const heading=tag("h4","PRIVATE owner HUMAN feedback (not remediation proof)");
+ const label=tag("label","Human response status");
+ const select=document.createElement("select");
+ select.setAttribute("aria-label","HUMAN feedback for original "+r.finding_id);
+ select.append(new Option("No HUMAN feedback drafted",""));
+ for(const type of FEEDBACK_STAGES)select.append(new Option(type.replaceAll("_"," "),type));
+ const existing=feedbackDrafts.get(r.request_id);
+ select.value=existing?.stage||"";
+ label.append(select);
+ const commentLabel=tag("label","PRIVATE HUMAN note (up to 1000 characters)");
+ const textarea=document.createElement("textarea");textarea.rows=3;textarea.maxLength=1000;
+ textarea.setAttribute("aria-label","Private HUMAN feedback note for "+r.finding_id);
+ textarea.value=existing?.note||"";
+ commentLabel.append(textarea);
+ function update(){
+  const stage=select.value;
+  if(stage){
+   feedbackDrafts.set(r.request_id,{stage,note:textarea.value});
+  }else{
+   feedbackDrafts.delete(r.request_id);
+  }
+  epoch++;updateFeedbackCount();
+ }
+ select.addEventListener("change",update);
+ textarea.addEventListener("input",update);
+ wrapper.append(heading,label,commentLabel);return wrapper;
+}
+function downloadLocal(name,content){
+ const url=URL.createObjectURL(new Blob([content],{type:"application/json"}));
+ const link=document.createElement("a");link.href=url;link.download=name;document.body.append(link);
+ link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+function exportFeedback(){
+ if(!packet||!feedbackDrafts.size)fail("Load an original one-owner PRIVATE brief and draft HUMAN feedback first");
+ const rows=[];
+ for(const r of packet.requests){
+  const form=feedbackDrafts.get(r.request_id);if(!form)continue;
+  if(!FEEDBACK_STAGES.includes(form.stage))fail("Invalid HUMAN response status");
+  text(form.note,1000,"HUMAN feedback note");
+  if(form.stage!=="acknowledged_unverified"&&!form.note.trim())
+   fail("Needs clarification/cannot provide requires a nonempty HUMAN explanation");
+  rows.push({
+   request_id:r.request_id,finding_id:r.finding_id,request_kind:r.request_kind,
+   original_issued_utc:r.original_issued_utc,original_instructions:r.original_instructions,
+   tentative_human_due:r.tentative_human_due,
+   observed_unverified_reply_stage:r.unverified_reply_stage,
+   observed_unverified_reply_text:r.unverified_reply_text,
+   human_feedback_stage:form.stage,human_feedback_note:form.note.trim()
+  });
+ }
+ if(!rows.length||rows.length>800)fail("Invalid original HUMAN feedback selection");
+ const report={kind:"lightup.private_human_owner_followup",schema_version:1,
+  disposition:"UNVERIFIED_HUMAN_COORDINATION_ONLY",
+  source_contract:packet.source_contract,source_sha256:packet.source_sha256,
+  client_reference:packet.client_reference,engagement_reference:packet.engagement_reference,
+  recipient_alias:packet.recipient_alias,created_utc:new Date().toISOString(),
+  ...Object.fromEntries(FLAGS.map(x=>[x,false])),feedback:rows};
+ const body=JSON.stringify(report,null,2)+"\n";
+ if(new TextEncoder().encode(body).length>LIMIT)
+  fail("PRIVATE HUMAN feedback packet exceeds 8 MiB");
+ if(!confirm("Download "+rows.length+" PRIVATE HUMAN feedback statement(s) for declared owner '"+packet.recipient_alias+"'? This does NOT authenticate the owner, send anything, certify remediation, grant consent or authorize retesting. Independently verify your actual operator recipient and secure channel."))return;
+ downloadLocal("LightUp-PRIVATE-owner-human-feedback.json",body);
+ notice("PRIVATE owner HUMAN feedback exported locally. No messages transmitted or security decisions changed.");
+}
+
 function render(){
  const box=$("briefItems");box.replaceChildren();
  if(!packet)return;
@@ -114,6 +190,7 @@ function render(){
  $("briefIdentity").textContent="DECLARED recipient: "+packet.recipient_alias+" · original source SHA-256: "+
  packet.source_sha256+" · DECLARED client: "+packet.client_reference+
  " · DECLARED engagement: "+packet.engagement_reference;
+ updateFeedbackCount();
  $("briefCount").textContent=selected.length+" shown of "+packet.requests.length+
  " original HUMAN items · unverified data, not evidence of repair or permission.";
  for(const r of selected){
@@ -135,7 +212,7 @@ function render(){
    sec.append(tag("strong",heading+" : "),tag("span",content));
    detail.append(sec);
   }
-  card.append(detail);box.append(card);
+  card.append(detail,feedbackEditor(r));box.append(card);
  }
 }
 async function load(){
@@ -147,11 +224,17 @@ async function load(){
  if(epoch!==before)fail("HOLD: PRIVATE viewer context changed during file read");
  if(!confirm("View "+next.requests.length+" PRIVATE original HUMAN items for UNVERIFIED alias '"+next.recipient_alias+"'? Verify actual sender, original engagement and your right to receive this data independently."))return;
  if(epoch!==before)fail("HOLD: PRIVATE viewer changed during human confirmation");
- packet=next;epoch++;$("briefFile").value="";render();$("briefPrint").disabled=false;
+ packet=next;feedbackDrafts.clear();epoch++;$("briefFile").value="";render();$("briefPrint").disabled=false;
  notice("Opened PRIVATE one-owner HUMAN brief locally; no transmission, authentication, authorization or verified remediation.");
 }
 function listen(id,fn){$(id).addEventListener("click",async()=>{try{await fn();}catch(e){notice(e.message||"Invalid PRIVATE source",true);}});}
-listen("briefLoad",load);listen("briefForget",()=>{if(confirm("Forget all locally held PRIVATE HUMAN briefing data?"))clear();});
+listen("briefLoad",load);
+listen("feedbackExport",exportFeedback);
+listen("feedbackClear",()=>{if(!feedbackDrafts.size)return;
+ if(!confirm("Discard all local unexported owner HUMAN feedback?"))return;
+ feedbackDrafts.clear();epoch++;render();notice("Unexported PRIVATE HUMAN feedback cleared.");
+});
+listen("briefForget",()=>{if(confirm("Forget all locally held PRIVATE HUMAN briefing data?"))clear();});
 listen("briefPrint",()=>{if(!packet)fail("Load original source-bound brief first");
  if(confirm("Print this PRIVATE unverified HUMAN brief? Ensure printer/output are confidential.")){
   for(const details of document.querySelectorAll(".briefCard details"))details.open=true;
