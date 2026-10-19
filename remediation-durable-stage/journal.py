@@ -144,7 +144,18 @@ def _read(folder: Path, key: str, vault) -> dict:
                 or type(record["output"]) is not str
                 or type(record["sha256"]) is not str
                 or type(record["requests"]) is not list
-                or len(record["requests"]) > original.native.MAX_REQUESTS
+                or not 1 <= len(record["requests"]) <= original.native.MAX_REQUESTS
+                or len(record["requests"]) != len(set(
+                    ref for ref in record["requests"] if type(ref) is str))
+                or type(record["output"]) is not str
+                or not os.path.isabs(record["output"])
+                or not record["output"].endswith(".ltv")
+                or "\x00" in record["output"]
+                or (record["state"] in ("pending", "aborted_unpublished")
+                    and record["sha256"] != "")
+                or (record["state"] in ("staged", "reviewed")
+                    and (len(record["sha256"]) != 64 or any(
+                        ch not in "0123456789abcdef" for ch in record["sha256"])))
                 or any(type(ref) is not str or len(ref) != 64
                        or any(c not in "0123456789abcdef" for c in ref)
                        for ref in record["requests"])
