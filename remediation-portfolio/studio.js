@@ -16,6 +16,7 @@
     "local_human_planning","warning",...FLAGS];
   const $ = id => document.getElementById(id);
   let entries = [];
+  let earlier = null; // Source-free NUMERIC aggregate snapshot only, never raw inputs.
   const ensure = ok => { if (!ok) throw Error("HOLD"); };
   const integer = (v,min,max) => Number.isSafeInteger(v) && v >= min && v <= max;
   const keys = (o,expected) => o !== null && typeof o === "object" &&
@@ -163,7 +164,19 @@
     }
     $("export").disabled=entries.length===0;
     $("clear").disabled=entries.length===0;
+    $("freeze").disabled=entries.length===0;
+    $("forgetEarlier").disabled=earlier===null;
+    $("exportDelta").disabled=earlier===null || entries.length===0;
     $("missing").textContent=String(total.packets-total.planned);
+    const former=earlier;
+    $("earlierLabel").textContent=former===null?"None saved in memory":"Earlier numeric counters held in memory";
+    const baselineCells=[["packets","deltaPackets"],["slots","deltaSlots"],
+      ["questions","deltaQuestions"],["attention","deltaAttention"],["dated","deltaDated"]];
+    for(const [key,id] of baselineCells){
+      const difference=former===null?"No baseline":
+         String(total[key]-former[key]);
+      $(id).textContent=difference;
+    }
   };
   const download=(name,mime,text)=>{
     const blob=new Blob([text],{type:mime});
@@ -180,7 +193,7 @@
       const staged=[];
       for(const f of files){
         ensure(f.size>0 && f.size<=LIMIT);
-        const raw=await f.text();
+        const raw=new TextDecoder("utf-8",{fatal:true}).decode(await f.arrayBuffer());
         ensure(new TextEncoder().encode(raw).length<=LIMIT);
         staged.push(admit(strictJSON(raw)));
       }
@@ -191,7 +204,26 @@
     }
   });
   $("clear").addEventListener("click",()=>{
-    entries=[];render();showStatus("Private browser memory cleared.");
+    entries=[];render();showStatus("Current anonymous imports cleared. Earlier aggregate remains until forgotten.");
+  });
+  $("freeze").addEventListener("click",()=>{
+    if(!entries.length)return;
+    earlier=Object.freeze({...summary(entries)});
+    render();showStatus("Earlier numeric counters frozen in memory. Clear current imports, then add later packets.");
+  });
+  $("forgetEarlier").addEventListener("click",()=>{
+    earlier=null;render();showStatus("Earlier numeric snapshot forgotten.");
+  });
+  $("exportDelta").addEventListener("click",()=>{
+    if(earlier===null || entries.length===0)return;
+    const now=summary(entries);
+    const keys=["packets","slots","questions","attention","dated","planned"];
+    const lines=["metric,earlier,later,change_in_packet_appearances"];
+    for(const key of keys)lines.push([key,earlier[key],now[key],
+      now[key]-earlier[key]].join(","));
+    download("lightup-human-two-snapshot-counts.csv","text/csv",
+      lines.join("\r\n")+"\r\n");
+    showStatus("Local numeric delta saved. No matching cases or verified progress inferred.");
   });
   $("export").addEventListener("click",()=>{
     if(!entries.length)return;
