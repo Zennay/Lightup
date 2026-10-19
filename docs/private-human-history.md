@@ -66,3 +66,26 @@ python -m lightup.private_export_history_console
 The menu provides anonymous HTML, privacy-acknowledged original ID/owner details, ID-free JSON, direct encrypted vault creation, vault inspection, decrypted HTML and passphrase rotation. All prompts execute in the foreground; no background process, persistence, remote network, password storage, target scan, scope grant, evidence collection, retest or automatic remediation runs.
 
 **HOLD is unchanged:** parent #1647 and original guarded-export parent #1611 remain draft and dependent on hosted and permanently registered VPS exact-head CI, source-owner acceptance, independent security/privacy/crypto review, current independently authenticated client/operator consent, revocation-at-use, #177/#182/#829 and explicit HUMAN GO. No main merge or production release. Python source and CLI syntax may be inspected without writing or running a QA suite. No real customer evidence or targets are included or exercised in this feature delivery.
+
+## NEW: proposed HUMAN follow-up calendar (ICS; no approved change windows)
+
+The independent [`private_export_history_calendar.py`](../src/lightup/private_export_history_calendar.py) projects only the **latest original encrypted source + one exact-source encrypted HUMAN plan** into a private local RFC-5545 all-day calendar. This is *not* a remediation/change window, security deadline, scan, retest or approval. It never calls calendar APIs; human operators manually review and import events. All exports are newly created 0600 **UNENCRYPTED** `.ics` files, atomic no-overwrite, bounded 512 KiB, UTF-8/CRLF with RFC-5545 line folding at 75 octets, strict text escaping, `TRANSP:TRANSPARENT`, `STATUS:TENTATIVE`. Proposed HUMAN due dates may not reflect actual remediation commitments.
+
+**Default aggregate privacy mode:** one all-day event for each date, with only the **count** of human-proposed follow-ups on that date; no client/engagement identity, finding ID, title, source SHA, owner alias, asset, remedy, evidence or HUMAN notes. This reduces disclosure but small counts/dates can still identify a customer. Each manual export uses fresh opaque event IDs: *reimporting the same export can create duplicate events*; a human must prevent duplicates.
+
+```sh
+python -m lightup.private_export_history_calendar \
+  /private/original-source.lue /private/latest-human.lun \
+  --output /private/human-followups.ics --ack-unencrypted-calendar
+```
+
+**Explicit private per-finding mode:** one event per original finding with a proposed date, including original title, original finding ID, original source-claimed severity, HUMAN stage and **self-declared** owner alias. No remedy, target, notes or raw evidence is included, and none of those labels is authenticated as real client/operator identity. Use only after independently checking the intended PRIVATE calendar and recipient; unlike the aggregate export, this option intentionally includes original identity-bearing fields.
+
+```sh
+python -m lightup.private_export_history_calendar \
+  /private/original-source.lue /private/latest-human.lun \
+  --output /private/human-followups-private.ics \
+  --include-private-events --ack-private-records --ack-unencrypted-calendar
+```
+
+The standalone foreground history console now includes aggregate calendar **menu 8** and explicit private calendar **menu 9**, separate from the concurrently owned original PR #1647 console. The calendar is NOT automatically encrypted or transmitted, and it cannot assert that a fix is due, done, safe, authorized or tested.
