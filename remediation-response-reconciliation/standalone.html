@@ -1,0 +1,928 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-IKEfEgdWyPYR2CBzMbWvU3s53H85SQu41SMLi/L5qTY='; style-src 'sha256-hPDrgJFQTfQg56lCEK7ZOPEh6rrBqwGDGwiwxj3NrJM='; connect-src 'none'; object-src 'none'; form-action 'none'; base-uri 'none'">
+<title>LightUp · PRIVATE Human Response Register</title><style>:root{font-family:Inter,system-ui,-apple-system,Segoe UI,sans-serif;color-scheme:dark;color:#e8edf5;background:#0b1422;font-size:15px}*{box-sizing:border-box}body{margin:0}main{max-width:1380px;margin:auto;padding:2.4rem 1.4rem}header{max-width:900px;margin-bottom:2rem}h1{font-size:clamp(2rem,5vw,3.2rem);letter-spacing:-.04em;margin:.2rem 0}h2{font-size:1.2rem;margin-top:0}p{color:#c0d0e1;line-height:1.6}strong{color:#f2f8ff}.eyebrow{color:#6ee7bb;font-weight:800;letter-spacing:.11em;font-size:.75rem}section{border:1px solid #273b53;border-radius:14px;background:#112136;padding:1.4rem;margin:1.5rem 0;box-shadow:0 8px 32px #0003}.actions,.filters{display:flex;align-items:end;flex-wrap:wrap;gap:1rem;margin:1rem 0}.filters>label{flex:1;min-width:210px}label{display:block;color:#d5e1f0;font-weight:650}input,select,textarea,button{font:inherit;color:inherit;border-radius:8px}input[type=file],input[type=search],select,textarea{width:100%;background:#091726;border:1px solid #435971;padding:.7rem}input[type=file]{max-width:550px;margin-top:.7rem}input:focus-visible,select:focus-visible,textarea:focus-visible,button:focus-visible{outline:3px solid #84e6bd;outline-offset:3px}button{border:1px solid #25a881;background:#19876d;padding:.75rem 1rem;font-weight:750;cursor:pointer}button:hover:not(:disabled){background:#21a083}.secondary{background:#192b40;border-color:#465d72}button:disabled{opacity:.45;cursor:not-allowed}#message{border-left:3px solid #58c8a6;padding:.5rem .75rem;min-height:2.5rem}#message[data-error=true]{border-color:#f6a18c;color:#ffbcaf}.tablewrap{overflow:auto;max-height:580px}table{width:100%;min-width:1050px;border-collapse:collapse}th{text-align:left;color:#a9c5e0;font-size:.8rem;position:sticky;top:0;background:#18304b}td,th{border-bottom:1px solid #2a4259;padding:.7rem;vertical-align:top}td{overflow-wrap:anywhere;max-width:240px}td select,td textarea{min-width:125px}tr:hover td{background:#1b3147}code{background:#0b1829;padding:.12rem .3rem;border-radius:4px;overflow-wrap:anywhere}footer{border-top:1px solid #273b53;padding-top:1.4rem;color:#aabfd4;font-size:.89rem;line-height:1.8}@media(max-width:600px){main{padding:1.1rem .75rem}section{padding:.95rem}.actions button{width:100%}}
+/* Local HUMAN review and explicit bulk proposal, never an authorization control */
+.bulk{display:flex;flex-wrap:wrap;align-items:end;gap:1rem;border:1px solid #3a526a;background:#0d1d31;border-radius:10px;padding:1rem;margin:1rem 0}
+.bulk label{min-width:210px;flex:1}
+.bulk label:first-child{display:flex;align-items:center;gap:.6rem;flex:1 0 250px}
+.bulk input[type=checkbox],td input[type=checkbox]{width:18px;height:18px;accent-color:#58d3b4;cursor:pointer}
+.bulk select{margin-top:.4rem}
+.bulkpreview{background:#071422;border:1px dashed #6a87a4;border-radius:8px;padding:1rem;max-height:300px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;color:#d8f4e9}
+.privateDetail{margin-top:.65rem;line-height:1.5;overflow-wrap:anywhere;white-space:pre-wrap}
+td details{max-width:350px;min-width:170px}
+td details summary{cursor:pointer;color:#87dcbf;font-weight:650}
+@media(max-width:700px){.bulk{display:block}.bulk>*{margin:.6rem 0;display:block}.bulk label:first-child{display:flex}}
+
+.ownerHandoff{padding:1.1rem;margin-top:1.4rem;border-radius:12px;background:#0c1b2d;border:1px solid #365d70}
+.ownerHandoff h3{font-size:1.02rem;margin:.15rem 0}
+.ownerHandoff .filters{align-items:end}
+.ownerHandoff select{max-width:500px;margin-top:.4rem}
+.ownerHandoff button{min-width:220px}
+@media(max-width:650px){.ownerHandoff button{width:100%}}
+
+/* PRIVATE self-declared HUMAN recipient brief, no browser-side execution actions */
+.briefItems{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr));gap:1rem}
+.briefCard{border:1px solid #41576c;background:#0c1c2d;border-radius:12px;padding:1rem;min-width:0}
+.briefCard h3{font-size:1.1rem;overflow-wrap:anywhere;margin:.15rem 0;color:#b0efd6}
+.briefCard p{margin:.5rem 0;overflow-wrap:anywhere}
+.briefCard details{border-top:1px solid #2d465e;padding-top:.65rem;margin-top:.8rem}
+.briefCard summary{cursor:pointer;color:#91ead0;font-weight:650}
+@media print {
+  header .eyebrow,#briefFile,#briefLoad,#briefForget,#briefPrint,#briefSearch,#briefFilter,
+  label[for=briefFile],.filters,footer{display:none!important}
+  :root{color-scheme:light;background:white;color:black}
+  body,main,section,.briefCard{background:white!important;color:black!important;box-shadow:none;border-color:#999}
+  .briefCard{break-inside:avoid}
+  #briefIdentity,#briefCount,.briefCard h3,.briefCard p{color:black!important}
+  .briefCard details:not([open]){display:block}
+}
+
+/* Separate PRIVATE owner feedback preparation and approved HUMAN preview */
+.feedbackEditor{border:1px solid #425975;border-radius:10px;background:#10283a;margin-top:1rem;padding:.9rem}
+.feedbackEditor h4{margin:.15rem 0 .75rem;color:#b4f7dd;font-size:.93rem}
+.feedbackEditor label{display:block;margin:.65rem 0;font-size:.89rem;line-height:1.55}
+.feedbackEditor select,.feedbackEditor textarea{display:block;width:100%;margin-top:.25rem}
+.feedbackPrior{border-left:3px solid #86b9d1;padding:.5rem .75rem;margin:.85rem 0;background:#122738;border-radius:6px}
+.feedbackPrior p{margin:.35rem 0;color:#d2e5fa;overflow-wrap:anywhere}
+.feedbackPrior small{color:#b6cddd}
+#feedbackStatus{border-left:3px solid #66cfaa;padding:.45rem .7rem;min-height:2.2rem}
+#feedbackStatus[data-error=true]{border-color:#f7a2a2;color:#ffb9b4}
+@media print {.feedbackEditor,#feedbackExport,#feedbackClear,#draftCount{display:none!important}}
+
+/* Exact-original-source multi-reviewer PRIVATE human conflict merge */
+.mergeConflicts{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,460px),1fr));gap:1rem;max-height:670px;overflow:auto;margin:1rem 0}
+.mergeConflict{border:1px solid #698298;border-radius:11px;padding:1rem;background:#091e31;min-width:0}
+.mergeConflict h3{font-size:1rem;color:#a8e8d0;margin:.1rem 0 .85rem;overflow-wrap:anywhere}
+.mergeConflict label{display:block;margin:.75rem 0 0;color:#ebf4ff}
+.mergeConflict select{margin-top:.5rem}
+.mergeValue{white-space:pre-wrap;overflow-wrap:anywhere;max-height:200px;overflow:auto;background:#071323;padding:.8rem;border-radius:7px;color:#d9e7f8;border:1px solid #334b61;font-size:.8rem;line-height:1.5}
+#mergeStatus{border-left:3px solid #67d3ad;padding:.6rem .8rem;min-height:2.2rem;overflow-wrap:anywhere}
+#mergeStatus[data-error=true]{border-color:#e9a0a0;color:#ffc0b9}
+@media(max-width:650px){.mergeConflicts{display:block;max-height:none}.mergeConflict{margin-bottom:.8rem}}
+
+#saveState{border-left:3px solid #6cdbb5;padding:.65rem .85rem;margin:1rem 0;line-height:1.5}
+#saveState[data-dirty=true]{border-left-color:#f1c16d;color:#f8db9d;font-weight:700}
+#mergeUndo:disabled{opacity:.4}
+</style></head>
+<body><main>
+<header><p class="eyebrow">LIGHTUP · REMEDIATION · OFFLINE · HUMAN ONLY</p>
+<h1>Owner response reconciliation</h1><p>Combine multiple original source-bound owner requests and partial HUMAN replies. All records are unverified. This app <strong>does not authenticate people, send data, validate remediation, grant consent, or execute assessments</strong>.</p></header>
+<section><h2>1 · Private intake</h2><p>Choose original <code>lightup.private_human_evidence_owner_handoff</code> request and reply JSON, or a previously exported register JSON. All files stay on this device in memory.</p>
+<label for="files">PRIVATE JSON packets</label><input id="files" type="file" multiple accept=".json,application/json">
+<div class="actions"><button id="load">Import / reconcile</button><button id="forget" class="secondary">Forget all memory</button></div>
+<p id="message" role="status" aria-live="polite"></p></section>
+<section><h2>2 · Merge PRIVATE reviewer workspaces</h2>
+<p>Bring together separately exported operator register backups from the <strong>same original source, declared client and engagement</strong>. The existing workspace remains unchanged until a human reviews and explicitly resolves every different HUMAN note or unverified owner follow-up. Original requests and replies are immutable; inconsistent source packets are rejected, not reconciled.</p>
+<label for="mergeFile">PRIVATE source-bound register v1 or v2 JSON</label><input id="mergeFile" type="file" accept=".json,application/json">
+<div class="actions"><button id="mergePreview" class="secondary">Preview cross-reviewer merge</button><button id="mergeApply" disabled>Apply reviewed PRIVATE merge</button><button id="mergeUndo" class="secondary" disabled>Undo last reviewer merge</button><button id="mergeCancel" class="secondary">Discard merge preview</button></div>
+<p id="mergeStatus" role="status" aria-live="polite">No incoming reviewer workspace.</p>
+<div id="mergePlan" hidden><p id="mergeSummary"></p><div id="mergeConflicts" class="mergeConflicts"></div></div></section>
+<section><h2>3 · Independently review owner HUMAN feedback</h2>
+<p>Import only the separate <code>lightup.private_human_owner_followup</code> statement exported by the owner brief reader. No automatic changes to original request or reply records. Compare exact original source, owner, issue time, original instructions and current unverified reply before allowing explicit review.</p>
+<label for="feedbackFile">PRIVATE source-bound HUMAN owner feedback JSON</label><input id="feedbackFile" type="file" accept=".json,application/json">
+<div class="actions"><button id="feedbackPreview">Preview exact HUMAN feedback changes</button><button id="feedbackApply" disabled>Apply to PRIVATE human register</button><button id="feedbackCancel" class="secondary">Cancel preview</button></div>
+<pre id="feedbackPreviewText" class="bulkpreview" hidden aria-live="polite"></pre>
+<p id="feedbackStatus" role="status" aria-live="polite">No HUMAN owner feedback imported.</p>
+</section>
+<section><h2>4 · HUMAN follow-up board</h2><p id="binding">No source loaded.</p><p id="summary"></p>
+<div class="filters"><label>Find original ID, alias or request<input id="search" type="search" placeholder="Search PRIVATE rows"></label><label>Status<select id="filter"><option value="all">All</option><option value="unanswered">Unanswered</option><option value="replied">Reply received (UNVERIFIED)</option><option value="needs_changes">Needs changes</option><option value="triage">Not human-triaged</option><option value="feedback">Owner HUMAN feedback received</option><option value="no_feedback">Owner HUMAN feedback missing</option></select></label><label>HUMAN due<select id="dueFilter"><option value="all">Any tentative date</option><option value="overdue">Tentatively overdue</option><option value="week">Next 7 days</option><option value="undated">Unscheduled</option></select></label><label>Ordering<select id="sort"><option value="original">Original packet order</option><option value="due">Tentative HUMAN due first</option><option value="owner">Self-declared owner</option><option value="triage">Local HUMAN triage</option></select></label></div>
+<div class="bulk"><label><input id="selectShown" type="checkbox"> Select all currently filtered requests</label><label>HUMAN stage for selected requests<select id="bulkStage"><option value="not_reviewed">Not reviewed</option><option value="needs_human_followup">Needs HUMAN follow-up</option><option value="human_triaged">HUMAN triaged (not verified)</option></select></label><button id="bulkPreview" class="secondary" disabled>Preview selected HUMAN change</button><button id="bulkApply" disabled>Apply reviewed HUMAN changes</button><button id="bulkUndo" class="secondary" disabled>Undo last HUMAN bulk</button><button id="exportSelected" class="secondary" disabled>Export selected PRIVATE action brief</button></div>
+<pre id="bulkDetails" class="bulkpreview" hidden aria-live="polite"></pre>
+<p id="count"></p><div class="tablewrap"><table><thead><tr><th>Select</th><th>Batch</th><th>Self-declared owner</th><th>Original finding</th><th>Request</th><th>HUMAN due</th><th>Original reply</th><th>New owner HUMAN feedback</th><th>Original request / HUMAN response</th><th>Human triage</th><th>Private follow-up note</th></tr></thead><tbody id="rows"></tbody></table></div></section>
+<section><h2>5 · Explicit PRIVATE handoff</h2><p>Exports contain original IDs and HUMAN metadata. Independently confirm the actual recipient and approved channel. No export grants execution authority or proves delivery.</p>
+<p id="saveState" role="status" aria-live="polite">No private edits made.</p><div class="actions"><button id="summaryCsv" disabled>Export anonymous HUMAN counts</button><button id="download" disabled>Download PRIVATE register JSON</button><button id="csv" disabled>Download PRIVATE CSV</button><button id="print" disabled>Print PRIVATE human brief</button></div>
+<div class="ownerHandoff"><h3>Owner-specific PRIVATE HUMAN review handoff</h3>
+<p>Choose one self-declared owner and export only that owner's original request/reply context and local HUMAN follow-up notes. This is a review brief, <strong>not</strong> an authenticated message or a packet accepted by the original owner-reply app.</p>
+<div class="filters"><label>PRIVATE recipient alias<select id="ownerExport"><option value="">Select HUMAN owner</option></select></label><button id="exportOwner" disabled>Export one-owner PRIVATE follow-up JSON</button></div></div></section>
+<footer><strong>INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD.</strong> Original exact-head hosted and permanent VPS CI, source-owner/security/privacy review, authentic client/operator consent with revocation-at-use, #177/#182/#829 and HUMAN GO remain mandatory. This browser-only tool does not modify source owner records or make network requests.</footer>
+</main><script>/* LightUp PRIVATE HUMAN Response Register. Offline only; no authority/consent/scan. */
+(() => {
+"use strict";
+const $=id=>document.getElementById(id);
+const FLAGS=["authenticated","tenant_verified","source_authorized","assessment_authorized","grant","client_consent","operator_consent","execution","scan","audit_verdict","retest_verified","release"];
+const HEAD=["kind","schema_version","disposition","source_contract","source_sha256","client_reference","engagement_reference","recipient_alias","reply_kind","issued_utc","reply_utc","requests",...FLAGS];
+const ROW=["request_id","finding_id","request_kind","instructions","due_date","human_stage","human_response"];
+const KINDS=["missing_evidence","patch_change","deployment_record","rollback_plan","retest_request","followup_question","other"];
+const STAGES=["not_reviewed","needs_human_followup","human_triaged"];
+const LIMIT=1048576,MAX_SNAPSHOT=8*1048576,MAX_PACKETS=24,MAX_ROWS=800;
+const blank=()=>({binding:null,requestPackets:[],replyPackets:[],notes:{},ownerFeedback:{},feedbackHistory:[],revision:0});
+const OWNER_FEEDBACK_STAGES=["acknowledged_unverified","needs_clarification","cannot_provide"];
+let db=blank();
+function fail(m){throw Error(m);}
+function same(a,b){return JSON.stringify(a)===JSON.stringify(b);}
+function exact(x,keys){return x&&Object.getPrototypeOf(x)===Object.prototype&&Object.keys(x).length===keys.length&&Object.keys(x).every(k=>keys.includes(k));}
+function clean(x,n,label,required=false){
+ if(typeof x!=="string"||x.length>n||x.includes("\0")||/[\u202a-\u202e\u2066-\u2069]/.test(x)||(required&&!x.trim()))fail("Invalid "+label);
+ return x;
+}
+function timestamp(x){
+ if(typeof x!=="string"||!/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\.\d{3}Z$/.test(x)||!Number.isFinite(Date.parse(x))||new Date(x).toISOString()!==x)fail("Invalid HUMAN timestamp");
+}
+function due(x){
+ if(x==="")return;
+ if(typeof x!=="string"||!/^\d{4}-\d\d-\d\d$/.test(x)||!Number.isFinite(Date.parse(x+"T00:00:00Z"))||new Date(x+"T00:00:00Z").toISOString().slice(0,10)!==x)fail("Invalid tentative due date");
+}
+function strictJSON(s,limit=LIMIT){
+ if(typeof s!=="string"||new TextEncoder().encode(s).length>limit)fail("PRIVATE JSON exceeds its bounded size limit");
+ let i=0,n=0;
+ const ws=()=>{while(i<s.length&&/[ \r\n\t]/.test(s[i]))i++;};
+ function quoted(){
+  if(s[i]!=='"')fail("JSON string expected");
+  const a=i++;let esc=false;
+  while(i<s.length){const c=s[i++];if(esc){esc=false;continue;}if(c==="\\"){esc=true;continue;}
+   if(c==='"')return JSON.parse(s.slice(a,i));if(c<" ")fail("JSON control character");}
+  fail("Unclosed JSON string");
+ }
+ function visit(depth){
+  if(++n>40000||depth>30)fail("PRIVATE JSON exceeds nesting limit");
+  ws();const c=s[i];
+  if(c==="{"){i++;ws();const seen=new Set();if(s[i]==="}"){i++;return;}
+   while(true){ws();const k=quoted();if(seen.has(k))fail("Duplicate PRIVATE JSON key");seen.add(k);ws();if(s[i++]!==":")fail("JSON colon expected");
+    visit(depth+1);ws();const sep=s[i++];if(sep==="}")return;if(sep!==",")fail("JSON comma expected");}
+  }
+  if(c==="["){i++;ws();if(s[i]==="]"){i++;return;}
+   while(true){visit(depth+1);ws();const sep=s[i++];if(sep==="]")return;if(sep!==",")fail("JSON array separator expected");}
+  }
+  if(c==='"'){quoted();return;}
+  const scalar=/^(?:true|false|null|-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?)/.exec(s.slice(i));
+  if(!scalar)fail("Invalid JSON scalar");i+=scalar[0].length;
+ }
+ visit(0);ws();if(i!==s.length)fail("Trailing JSON content");
+ return JSON.parse(s);
+}
+function admit(p){
+ if(!exact(p,HEAD)||p.kind!=="lightup.private_human_evidence_owner_handoff"||
+ p.schema_version!==1||p.disposition!=="UNVERIFIED_HUMAN_REQUEST_ONLY"||
+ p.source_contract!=="lightup.finding_export._COLUMNS_v1"||
+ !/^[0-9a-f]{64}$/.test(p.source_sha256)||FLAGS.some(k=>p[k]!==false)||
+ !["owner_request","unverified_human_reply"].includes(p.reply_kind)||
+ !Array.isArray(p.requests)||!p.requests.length||p.requests.length>60)
+  fail("HOLD: not an exact original non-authorizing owner request/reply packet");
+ clean(p.client_reference,120,"client",true);clean(p.engagement_reference,120,"engagement",true);
+ clean(p.recipient_alias,120,"recipient alias",true);timestamp(p.issued_utc);
+ if(p.reply_kind==="owner_request" ? p.reply_utc!==null : typeof p.reply_utc!=="string")
+  fail("HOLD: reply timestamp does not match packet kind");
+ if(p.reply_kind==="unverified_human_reply")timestamp(p.reply_utc);
+ const seen=new Set();
+ for(const r of p.requests){
+  if(!exact(r,ROW)||typeof r.request_id!=="string"||!/^[0-9a-f]{32}$/.test(r.request_id)||seen.has(r.request_id))
+   fail("Invalid or repeated original HUMAN request ID");
+  seen.add(r.request_id);clean(r.finding_id,160,"original finding",true);
+  if(!KINDS.includes(r.request_kind))fail("Unknown HUMAN request type");
+  clean(r.instructions,1400,"original HUMAN instructions",true);due(r.due_date);
+  if(p.reply_kind==="owner_request"){
+   if(r.human_stage!=="requested_human"||r.human_response!=="")fail("Original HUMAN request must be unanswered");
+  }else{
+   if(!["submitted_unverified","needs_changes"].includes(r.human_stage))
+    fail("Invalid unverified HUMAN reply stage");
+   clean(r.human_response,1800,"unverified HUMAN reply",true);
+  }
+ }
+ return p;
+}
+const sourceId=p=>[p.source_contract,p.source_sha256,p.client_reference,p.engagement_reference];
+const requestId=(p,r)=>[p.recipient_alias,p.issued_utc,r.request_id,r.finding_id,r.request_kind,r.instructions,r.due_date];
+function assemble(current,packets){
+ const next={binding:current.binding&&[...current.binding],requestPackets:[...current.requestPackets],
+  replyPackets:[...current.replyPackets],notes:{...current.notes},
+  ownerFeedback:{...current.ownerFeedback},feedbackHistory:[...current.feedbackHistory],revision:current.revision+1};
+ const validated=packets.map(admit);
+ if(!validated.length)fail("No PRIVATE packets selected");
+ const binding=next.binding||sourceId(validated[0]);
+ for(const p of validated)if(!same(binding,sourceId(p)))fail("HOLD: original source SHA, client or engagement differs");
+ next.binding=binding;
+ for(const p of validated.filter(x=>x.reply_kind==="owner_request")){
+  const prior=next.requestPackets.find(x=>x.recipient_alias===p.recipient_alias&&x.issued_utc===p.issued_utc);
+  if(prior){if(!same(prior,p))fail("HOLD: changed original owner request packet");continue;}
+  for(const r of p.requests)if(next.requestPackets.some(x=>x.requests.some(t=>t.request_id===r.request_id)))
+   fail("HOLD: same request ID reused by distinct original owner packet");
+  next.requestPackets.push(p);
+ }
+ for(const p of validated.filter(x=>x.reply_kind==="unverified_human_reply")){
+  const req=next.requestPackets.find(x=>x.recipient_alias===p.recipient_alias&&x.issued_utc===p.issued_utc);
+  if(!req)fail("HOLD: original owner request packet required for each reply");
+  for(const r of p.requests){
+   const original=req.requests.find(x=>x.request_id===r.request_id);
+   if(!original||!same(requestId(req,original),requestId(p,r)))
+    fail("HOLD: reply changed original owner/source/request context");
+   const existing=next.replyPackets.flatMap(x=>x.requests).find(x=>x.request_id===r.request_id);
+   if(existing&&!same(existing,r))fail("HOLD: conflicting partial HUMAN replies; resolve independently");
+  }
+  if(next.replyPackets.some(x=>same(x,p)))continue;
+  // Multiple packets containing a previously seen identical row also have ambiguous issued/reply metadata.
+  if(p.requests.some(r=>next.replyPackets.some(x=>x.requests.some(y=>y.request_id===r.request_id))))
+   fail("HOLD: duplicate HUMAN response across different reply packets");
+  next.replyPackets.push(p);
+ }
+ if(next.requestPackets.length+next.replyPackets.length>MAX_PACKETS||
+ next.requestPackets.reduce((n,p)=>n+p.requests.length,0)>MAX_ROWS)
+  fail("Capacity exceeded: 24 packets or 800 HUMAN requests maximum");
+ return next;
+}
+function allRows(store=db){
+ const replied=new Map(store.replyPackets.flatMap(p=>p.requests.map(r=>[r.request_id,r])));
+ return store.requestPackets.flatMap((p,i)=>p.requests.map(r=>({slot:i+1,packet:p,request:r,
+  reply:replied.get(r.request_id)||null,
+  feedback:store.ownerFeedback[r.request_id]||null,
+  review:store.notes[r.request_id]||{stage:"not_reviewed",note:""}})));
+}
+function msg(m,err=false){$("message").textContent=m;$("message").dataset.error=err?"true":"false";}
+function node(tag,value){const n=document.createElement(tag);n.textContent=String(value);return n;}
+const selection=new Set();
+let pendingBulk=null;
+let lastBulkUndo=null;
+function invalidateUndo(){lastBulkUndo=null;$("bulkUndo").disabled=true;}
+function invalidateBulk(){
+ pendingBulk=null;$("bulkDetails").hidden=true;$("bulkApply").disabled=true;
+ $("selectShown").checked=false;
+}
+function filteredRows(){
+ const q=$("search").value.toLowerCase().trim(),filter=$("filter").value,
+  dateMode=$("dueFilter").value,today=new Date().toISOString().slice(0,10);
+ const week=new Date(Date.now()+7*86400000).toISOString().slice(0,10);
+ const entries=allRows().filter(x=>{
+  if(q&&![x.packet.recipient_alias,x.request.request_id,x.request.finding_id,x.request.request_kind].join(" ").toLowerCase().includes(q))return false;
+  if(filter==="unanswered"&&x.reply)return false;
+  if(filter==="replied"&&!x.reply)return false;
+  if(filter==="needs_changes"&&(!x.reply||x.reply.human_stage!=="needs_changes"))return false;
+  if(filter==="triage"&&x.review.stage==="human_triaged")return false;
+  if(filter==="feedback"&&!x.feedback)return false;
+  if(filter==="no_feedback"&&x.feedback)return false;
+  const d=x.request.due_date;
+  if(dateMode==="overdue"&&(!d||d>=today))return false;
+  if(dateMode==="week"&&(!d||d<today||d>week))return false;
+  if(dateMode==="undated"&&d)return false;
+  return true;
+ });
+ const sort=$("sort").value;
+ if(sort==="due")entries.sort((a,b)=>(a.request.due_date||"9999-12-31").localeCompare(b.request.due_date||"9999-12-31"));
+ if(sort==="owner")entries.sort((a,b)=>a.packet.recipient_alias.localeCompare(b.packet.recipient_alias));
+ if(sort==="triage")entries.sort((a,b)=>a.review.stage.localeCompare(b.review.stage));
+ return entries;
+}
+function contextDetails(x){
+ const cell=document.createElement("td"),details=document.createElement("details"),
+  title=node("summary",x.reply?"Review PRIVATE human response":"Review ORIGINAL human request");
+ details.append(title);
+ for(const [label,value] of [
+  ["ORIGINAL request ID",x.request.request_id],
+  ["Issued UTC (self-declared)",x.packet.issued_utc],
+  ["ORIGINAL HUMAN instructions",x.request.instructions],
+  ["HUMAN reply status",x.reply?x.reply.human_stage:"unanswered"],
+  ["Unverified owner response",x.reply?x.reply.human_response:"Not received; no fix inferred."],
+  ["Separate UNVERIFIED owner follow-up",x.feedback?x.feedback.stage:"Not submitted"],
+  ["Owner HUMAN follow-up text",x.feedback?x.feedback.note:"No separate HUMAN feedback."],
+  ["Owner self-declared follow-up time",x.feedback?x.feedback.submitted_utc:"Not submitted"]
+ ]){
+  const row=document.createElement("div"),strong=node("strong",label+": "),
+   content=node("span",value);
+  row.className="privateDetail";row.append(strong,content);details.append(row);
+ }
+ const history=db.feedbackHistory.filter(h=>h.request_id===x.request.request_id);
+ if(history.length){
+  const previous=node("summary","Earlier local HUMAN follow-up versions ("+history.length+")");
+  const archive=document.createElement("details");archive.className="feedbackHistory";archive.append(previous);
+  for(const past of history){
+   const block=document.createElement("div");block.className="privateDetail";
+   block.append(node("strong",past.stage+" · self-declared submitted "+past.submitted_utc+
+    " · locally superseded "+past.superseded_utc+" : "));
+   block.append(node("span",past.note||"(no HUMAN explanation)"));archive.append(block);
+  }
+  details.append(archive);
+ }
+ cell.append(details);return cell;
+}
+function draw(){
+ updateSavedState();
+ const all=allRows(),answered=all.filter(x=>x.reply).length,
+  ownerResponded=all.filter(x=>x.feedback).length,
+  needs=all.filter(x=>x.reply&&x.reply.human_stage==="needs_changes").length;
+ $("summary").textContent=all.length+" HUMAN requests · "+answered+" UNVERIFIED replies · "+(all.length-answered)+" unanswered · "+needs+" need changes · "+ownerResponded+" HUMAN owner follow-ups · "+db.requestPackets.length+" owner packets";
+ $("binding").textContent=db.binding?"DECLARED source SHA "+db.binding[1]+" · client "+db.binding[2]+" · engagement "+db.binding[3]:"No source loaded.";
+ for(const id of ["download","csv","print","summaryCsv"])$(id).disabled=!all.length;
+ refreshOwnerExportOptions();
+ const visible=filteredRows();
+ $("count").textContent=visible.length+" rows shown; "+selection.size+" selected. All owner labels and replies remain UNVERIFIED.";
+ const shown=new Set(visible.map(x=>x.request.request_id));
+ $("selectShown").checked=visible.length>0&&visible.every(x=>selection.has(x.request.request_id));
+ $("selectShown").indeterminate=visible.some(x=>selection.has(x.request.request_id))&&!$("selectShown").checked;
+ $("bulkPreview").disabled=!selection.size;
+ $("exportSelected").disabled=!selection.size;
+ const body=$("rows");body.replaceChildren();
+ for(const x of visible){
+  const tr=node("tr","");
+  const choice=document.createElement("td"),check=document.createElement("input");
+  check.type="checkbox";check.checked=selection.has(x.request.request_id);
+  check.setAttribute("aria-label","Select ORIGINAL HUMAN request "+x.request.request_id);
+  check.addEventListener("change",()=>{
+   if(check.checked)selection.add(x.request.request_id);else selection.delete(x.request.request_id);
+   invalidateBulk();draw();
+  });
+  choice.append(check);tr.append(choice);
+  for(const v of [x.slot,x.packet.recipient_alias,x.request.finding_id,x.request.request_kind,x.request.due_date||"—",x.reply?x.reply.human_stage:"unanswered",x.feedback?x.feedback.stage:"not submitted"])
+   tr.append(node("td",v));
+  tr.append(contextDetails(x));
+  const sel=document.createElement("select");
+  sel.setAttribute("aria-label","Human triage for "+x.request.finding_id);
+  for(const label of STAGES)sel.append(new Option(label.replaceAll("_"," "),label));
+  sel.value=x.review.stage;
+  sel.addEventListener("change",()=>{
+   db.notes[x.request.request_id]={...db.notes[x.request.request_id]||x.review,stage:sel.value};
+   db.revision++;updateSavedState();invalidateBulk();invalidateUndo();msg("Local HUMAN triage changed; original request and reply untouched.");
+  });
+  const stage=document.createElement("td");stage.append(sel);tr.append(stage);
+  const input=document.createElement("textarea");input.rows=2;input.maxLength=400;
+  input.setAttribute("aria-label","PRIVATE human note for "+x.request.finding_id);input.value=x.review.note;
+  input.addEventListener("input",()=>{
+   db.notes[x.request.request_id]={...db.notes[x.request.request_id]||x.review,note:input.value};
+   db.revision++;invalidateBulk();invalidateUndo();
+  });
+  const note=document.createElement("td");note.append(input);tr.append(note);body.append(tr);
+ }
+}
+function refreshOwnerExportOptions(){
+ const select=$("ownerExport"),old=select.value;
+ const aliases=[...new Set(db.requestPackets.map(p=>p.recipient_alias))].sort((a,b)=>a.localeCompare(b));
+ select.replaceChildren(new Option("Select HUMAN owner",""));
+ for(const alias of aliases)select.append(new Option(alias,alias));
+ select.value=aliases.includes(old)?old:"";
+ $("exportOwner").disabled=!select.value;
+}
+function exportOwnerPrivate(){
+ const alias=$("ownerExport").value;
+ if(!db.binding||!alias||!db.requestPackets.some(x=>x.recipient_alias===alias))
+  fail("Choose an existing self-declared HUMAN owner");
+ const matching=allRows().filter(x=>x.packet.recipient_alias===alias);
+ if(!matching.length)fail("No ORIGINAL HUMAN records for this owner");
+ const declared=db.binding;
+ const envelope={kind:"lightup.private_human_owner_review_brief",schema_version:2,
+  disposition:"UNVERIFIED_HUMAN_COORDINATION_ONLY",
+  source_contract:declared[0],source_sha256:declared[1],
+  client_reference:declared[2],engagement_reference:declared[3],
+  recipient_alias:alias,...Object.fromEntries(FLAGS.map(k=>[k,false])),
+  requests:matching.map(x=>({request_id:x.request.request_id,
+    finding_id:x.request.finding_id,request_kind:x.request.request_kind,
+    tentative_human_due:x.request.due_date,original_instructions:x.request.instructions,
+    original_issued_utc:x.packet.issued_utc,
+    unverified_reply_stage:x.reply?x.reply.human_stage:"unanswered",
+    unverified_reply_text:x.reply?x.reply.human_response:"",
+    local_human_triage:x.review.stage,local_human_note:x.review.note,
+    received_owner_feedback_stage:x.feedback?x.feedback.stage:"",
+    received_owner_feedback_note:x.feedback?x.feedback.note:"",
+    received_owner_feedback_utc:x.feedback?x.feedback.submitted_utc:""}))};
+ if(!confirm("Export "+matching.length+" PRIVATE ORIGINAL HUMAN request/reply records for ONLY self-declared owner '"+alias+"'? Independently verify the actual recipient and confidential handoff channel. This DOES NOT send messages, authenticate identity, verify remediation, authorize testing or work in the original owner reply app."))return;
+ const payload=JSON.stringify(envelope,null,2)+"\n";
+ if(new TextEncoder().encode(payload).length>MAX_SNAPSHOT)
+  fail("Owner-specific PRIVATE handoff exceeds 8 MiB");
+ save("LightUp-PRIVATE-one-owner-human-review.json",payload,"application/json");
+ msg("Saved "+matching.length+" source-bound PRIVATE HUMAN records for ONE owner locally; no delivery or consent inferred.");
+}
+function previewBulk(){
+ const originals=allRows().filter(x=>selection.has(x.request.request_id));
+ if(!originals.length||originals.length!==selection.size)fail("HOLD: selected original IDs are stale; reload");
+ const stage=$("bulkStage").value;if(!STAGES.includes(stage))fail("Invalid HUMAN bulk stage");
+ const changes=originals.map(x=>({id:x.request.request_id,finding:x.request.finding_id,
+  before:x.review.stage,after:stage,owner:x.packet.recipient_alias}));
+ pendingBulk={revision:db.revision,binding:JSON.stringify(db.binding),
+  ids:JSON.stringify([...selection].sort()),stage,changes};
+ const lines=["PRIVATE HUMAN change preview · "+changes.length+" ORIGINAL request IDs",
+  "UNVERIFIED source SHA "+db.binding[1],
+  "No original evidence, assessment, consent, grant, retest, delivery or verified fix changes.",
+  ...changes.map(x=>x.finding+" | "+x.id+" | HUMAN "+x.before+" → "+x.after+" | "+x.owner)];
+ $("bulkDetails").textContent=lines.join("\n");
+ $("bulkDetails").hidden=false;$("bulkApply").disabled=false;
+ msg("Review the original source-bound HUMAN changes before applying them in memory.");
+}
+function applyBulk(){
+ const p=pendingBulk;
+ if(!p||p.revision!==db.revision||p.binding!==JSON.stringify(db.binding)||
+ p.ids!==JSON.stringify([...selection].sort())||p.stage!==$("bulkStage").value)
+  fail("HOLD: HUMAN source, stage, selection or notes changed. Preview again.");
+ const map=new Map(allRows().map(x=>[x.request.request_id,x]));
+ if(p.changes.some(x=>!map.has(x.id)||map.get(x.id).review.stage!==x.before))
+  fail("HOLD: original HUMAN baselines changed. Preview again.");
+ if(!confirm("Apply local HUMAN triage status to "+p.changes.length+" ORIGINAL requests? This does NOT verify fixes, authorize a retest or send any notification."))return;
+ const before=p.changes.map(change=>({
+  id:change.id,stage:map.get(change.id).review.stage,note:map.get(change.id).review.note
+ }));
+ for(const change of p.changes){
+  const existing=map.get(change.id).review;
+  db.notes[change.id]={stage:p.stage,note:existing.note};
+ }
+ db.revision++;
+ lastBulkUndo={revision:db.revision,binding:JSON.stringify(db.binding),stage:p.stage,before};
+ $("bulkUndo").disabled=false;
+ selection.clear();invalidateBulk();draw();
+ msg("Applied "+p.changes.length+" HUMAN-only local stage changes. Original source and unverified replies untouched.");
+}
+function undoLastBulk(){
+ const snapshot=lastBulkUndo;
+ if(!snapshot||snapshot.revision!==db.revision||snapshot.binding!==JSON.stringify(db.binding))
+  fail("HOLD: no current HUMAN bulk undo; local source/notes changed");
+ const now=new Map(allRows().map(x=>[x.request.request_id,x]));
+ if(snapshot.before.some(x=>!now.has(x.id)||now.get(x.id).review.stage!==snapshot.stage||now.get(x.id).review.note!==x.note))
+  fail("HOLD: previous HUMAN bulk baseline changed");
+ if(!confirm("Undo the last "+snapshot.before.length+" HUMAN-only bulk stage changes? Does NOT edit original findings, replies, security grants or consent."))return;
+ for(const x of snapshot.before)db.notes[x.id]={stage:x.stage,note:x.note};
+ db.revision++;invalidateUndo();invalidateBulk();draw();
+ msg("Restored previous local HUMAN review stages; original source and unverified replies untouched.");
+}
+function exportSelectedPrivate(){
+ if(!db.binding||!selection.size)fail("Select exact ORIGINAL HUMAN request IDs first");
+ const chosen=allRows().filter(x=>selection.has(x.request.request_id));
+ if(chosen.length!==selection.size)fail("HOLD: selected PRIVATE requests changed; reselect.");
+ const envelope={kind:"lightup.private_human_selected_action_brief",schema_version:1,
+  disposition:"UNVERIFIED_HUMAN_COORDINATION_ONLY",
+  source_contract:db.binding[0],source_sha256:db.binding[1],
+  client_reference:db.binding[2],engagement_reference:db.binding[3],
+  ...Object.fromEntries(FLAGS.map(k=>[k,false])),
+  requests:chosen.map(x=>({request_id:x.request.request_id,
+   original_finding_id:x.request.finding_id,recipient_alias:x.packet.recipient_alias,
+   request_kind:x.request.request_kind,issued_utc:x.packet.issued_utc,
+   tentative_human_due:x.request.due_date,original_instructions:x.request.instructions,
+   unverified_reply_stage:x.reply?x.reply.human_stage:"unanswered",
+   unverified_reply_text:x.reply?x.reply.human_response:"",
+   local_human_stage:x.review.stage,local_human_note:x.review.note,
+   received_owner_feedback_stage:x.feedback?x.feedback.stage:"",
+   received_owner_feedback_note:x.feedback?x.feedback.note:"",
+   received_owner_feedback_utc:x.feedback?x.feedback.submitted_utc:""}))};
+ if(!confirm("Export only "+chosen.length+" SELECTED original HUMAN requests, private response text and local notes? Verify authorized recipient/channel. Nothing is authenticated, sent, repaired or consented to."))return;
+ const json=JSON.stringify(envelope,null,2)+"\n";
+ if(new TextEncoder().encode(json).length>MAX_SNAPSHOT)fail("Selected PRIVATE action brief exceeds 8 MiB");
+ save("LightUp-PRIVATE-selected-human-action-brief.json",json,"application/json");
+ msg("Saved "+chosen.length+" selected source-bound HUMAN action items locally, not sent to any recipient.");
+}
+function anonymousCounts(){
+ const groups=new Map();
+ for(const x of allRows()){
+  const key=[x.request.request_kind,x.reply?x.reply.human_stage:"unanswered",x.feedback?x.feedback.stage:"not submitted",x.review.stage];
+  const text=JSON.stringify(key);groups.set(text,(groups.get(text)||0)+1);
+ }
+ const table=[["human_request_kind","unverified_reply_status","unverified_owner_feedback","local_human_triage","count"]];
+ for(const [key,count] of [...groups.entries()].sort((a,b)=>a[0].localeCompare(b[0])))
+  table.push([...JSON.parse(key),count]);
+ return table;
+}
+function exportAnonymous(){
+ if(!db.binding)fail("Load original PRIVATE packets first");
+ if(!confirm("Export aggregate HUMAN request counts only? Counts do not establish evidence coverage, remediation status or source authenticity."))return;
+ save("LightUp-anonymous-human-response-counts.csv",
+  anonymousCounts().map(row=>row.map(csv).join(",")).join("\r\n")+"\r\n","text/csv");
+}
+/* Separate UNVERIFIED HUMAN owner feedback, never an original owner reply,
+   finding status, security approval or scan/retest action. */
+let pendingOwnerFeedback=null;
+const HUMAN_FEEDBACK_HEADER=["kind","schema_version","disposition","source_contract","source_sha256",
+ "client_reference","engagement_reference","recipient_alias","created_utc",...FLAGS,"feedback"];
+const HUMAN_FEEDBACK_ROW=["request_id","finding_id","request_kind","original_issued_utc",
+ "original_instructions","tentative_human_due","observed_unverified_reply_stage",
+ "observed_unverified_reply_text","human_feedback_stage","human_feedback_note"];
+function feedbackNotice(message,error=false){
+ $("feedbackStatus").textContent=message;$("feedbackStatus").dataset.error=error?"true":"false";
+}
+function cancelFeedbackPreview(){
+ pendingOwnerFeedback=null;$("feedbackApply").disabled=true;
+ $("feedbackPreviewText").hidden=true;$("feedbackPreviewText").textContent="";
+}
+function validateOwnerFeedback(p){
+ if(!exact(p,HUMAN_FEEDBACK_HEADER)||p.kind!=="lightup.private_human_owner_followup"||
+   p.schema_version!==1||p.disposition!=="UNVERIFIED_HUMAN_COORDINATION_ONLY"||
+   p.source_contract!=="lightup.finding_export._COLUMNS_v1"||
+   !/^[0-9a-f]{64}$/.test(p.source_sha256)||FLAGS.some(k=>p[k]!==false)||
+   !Array.isArray(p.feedback)||!p.feedback.length||p.feedback.length>MAX_ROWS)
+  fail("HOLD: not a strict non-authorizing HUMAN owner follow-up statement");
+ clean(p.client_reference,120,"feedback client",true);
+ clean(p.engagement_reference,120,"feedback engagement",true);
+ clean(p.recipient_alias,120,"self-declared owner",true);
+ timestamp(p.created_utc);
+ const seen=new Set();
+ for(const r of p.feedback){
+  if(!exact(r,HUMAN_FEEDBACK_ROW)||typeof r.request_id!=="string"||
+     !/^[0-9a-f]{32}$/.test(r.request_id)||seen.has(r.request_id))
+   fail("HOLD: duplicate or malformed original HUMAN request in feedback");
+  seen.add(r.request_id);clean(r.finding_id,160,"original finding",true);
+  if(!KINDS.includes(r.request_kind))fail("HOLD: unknown original request kind");
+  timestamp(r.original_issued_utc);
+  clean(r.original_instructions,1400,"original HUMAN instructions",true);
+  due(r.tentative_human_due);
+  if(!["unanswered","submitted_unverified","needs_changes"].includes(r.observed_unverified_reply_stage))
+   fail("HOLD: invalid snapshot of unverified HUMAN reply stage");
+  clean(r.observed_unverified_reply_text,1800,"prior unverified HUMAN reply");
+  if((r.observed_unverified_reply_stage==="unanswered")!==(r.observed_unverified_reply_text===""))
+   fail("HOLD: original request-reply stage/text snapshot inconsistent");
+  if(!OWNER_FEEDBACK_STAGES.includes(r.human_feedback_stage))
+   fail("HOLD: forbidden owner HUMAN feedback status");
+  clean(r.human_feedback_note,1000,"human feedback note");
+  if(r.human_feedback_stage!=="acknowledged_unverified"&&!r.human_feedback_note.trim())
+   fail("HOLD: human clarification requires an explanation");
+ }
+ return p;
+}
+function incomingFeedbackChanges(packet){
+ if(!db.binding||!same(sourceId(packet),db.binding))
+  fail("HOLD: source SHA, client or engagement does not match original HUMAN register");
+ const originals=new Map(allRows().map(x=>[x.request.request_id,x]));
+ const changes=[];
+ for(const item of packet.feedback){
+  const original=originals.get(item.request_id);
+  if(!original||original.packet.recipient_alias!==packet.recipient_alias||
+    original.packet.issued_utc!==item.original_issued_utc||
+    original.request.finding_id!==item.finding_id||
+    original.request.request_kind!==item.request_kind||
+    original.request.instructions!==item.original_instructions||
+    original.request.due_date!==item.tentative_human_due)
+   fail("HOLD: HUMAN owner feedback refers to an absent or altered ORIGINAL request/owner");
+  const replyStage=original.reply?original.reply.human_stage:"unanswered";
+  const replyText=original.reply?original.reply.human_response:"";
+  if(replyStage!==item.observed_unverified_reply_stage||replyText!==item.observed_unverified_reply_text)
+   fail("HOLD: original owner brief has a stale unverified HUMAN reply baseline");
+  const previous=original.feedback;
+  const proposed={stage:item.human_feedback_stage,note:item.human_feedback_note,
+    submitted_utc:packet.created_utc};
+  if(previous&&same(previous,proposed))continue; // replay is idempotent, never promotes authority
+  changes.push({request_id:item.request_id,finding_id:item.finding_id,
+    owner:packet.recipient_alias,previous:previous?{...previous}:null,next:proposed});
+ }
+ if(db.feedbackHistory.length+changes.filter(c=>c.previous).length>1600)
+  fail("HOLD: PRIVATE owner feedback history capacity exceeded; export & create a fresh register");
+ return changes;
+}
+async function previewOwnerFeedback(){
+ if(!db.binding)fail("Load original source-bound HUMAN request packets first");
+ const file=$("feedbackFile").files[0];
+ if(!file||file.size>MAX_SNAPSHOT)fail("PRIVATE HUMAN follow-up file must be at most 8 MiB");
+ const revision=db.revision;
+ const data=new TextDecoder("utf-8",{fatal:true}).decode(await file.arrayBuffer());
+ const packet=validateOwnerFeedback(strictJSON(data,MAX_SNAPSHOT));
+ if(revision!==db.revision)fail("HOLD: original private register changed while reading owner reply");
+ const changes=incomingFeedbackChanges(packet);
+ if(!changes.length){
+  cancelFeedbackPreview();
+  feedbackNotice("Exact HUMAN statement already present: no changes, no new authority.");
+  return;
+ }
+ const source=JSON.stringify(db.binding);
+ pendingOwnerFeedback={revision,source,packet,changes};
+ $("feedbackPreviewText").textContent=[
+  "PRIVATE HUMAN feedback PREVIEW · "+changes.length+" proposed human-only annotations",
+  "Declared owner alias: "+packet.recipient_alias,
+  "Original SHA-256: "+packet.source_sha256,
+  "Owner-supplied created UTC: "+packet.created_utc+" (NOT authenticated)",
+  "Original evidence, findings, existing HUMAN replies, grants and retests stay unchanged.",
+  ...changes.map(c=>c.finding_id+" · "+c.request_id+" · "+(c.previous?c.previous.stage:"no feedback")+
+   " → "+c.next.stage+" · "+c.owner+" · "+c.next.note)
+ ].join("\n");
+ $("feedbackPreviewText").hidden=false;$("feedbackApply").disabled=false;
+ feedbackNotice("Inspect original HUMAN request context and each pending change; nothing applied yet.");
+}
+function applyOwnerFeedback(){
+ const p=pendingOwnerFeedback;
+ if(!p||p.revision!==db.revision||p.source!==JSON.stringify(db.binding))
+  fail("HOLD: original HUMAN register or local review changed since feedback preview");
+ const current=incomingFeedbackChanges(p.packet);
+ if(!same(current,p.changes))fail("HOLD: HUMAN reply or annotation changed after preview");
+ if(!confirm("Apply "+p.changes.length+" UNVERIFIED HUMAN owner feedback annotation(s) to this PRIVATE local register? Existing original request/answer and security status will remain unchanged; identity and delivery are NOT verified."))return;
+ const revised={...db.ownerFeedback},history=[...db.feedbackHistory];
+ for(const change of p.changes){
+  if(change.previous)history.push({request_id:change.request_id,...change.previous,
+    superseded_utc:new Date().toISOString()});
+  revised[change.request_id]={...change.next};
+ }
+ db.ownerFeedback=revised;db.feedbackHistory=history;db.revision++;
+ cancelFeedbackPreview();invalidateBulk();invalidateUndo();$("feedbackFile").value="";draw();
+ feedbackNotice("Applied "+p.changes.length+" LOCAL HUMAN follow-up annotation(s). Original replies, findings and all authority unchanged.");
+}
+
+async function intake(){
+ const files=[...$("files").files];
+ if(!files.length||files.length>MAX_PACKETS)fail("Select 1–24 PRIVATE JSON files");
+ const rev=db.revision,packets=[];
+ for(const f of files){
+  if(f.size>MAX_SNAPSHOT)fail("PRIVATE input exceeds 8 MiB");
+  const raw=new TextDecoder("utf-8",{fatal:true}).decode(await f.arrayBuffer());
+  const parsed=strictJSON(raw,f.size>LIMIT?MAX_SNAPSHOT:LIMIT);
+  if(f.size>LIMIT&&parsed.kind!=="lightup.private_human_response_reconciliation")
+   fail("Original HUMAN owner handoff packet exceeds 1 MiB");
+  packets.push(parsed);
+ }
+ if(db.revision!==rev)fail("HOLD: register changed during asynchronous import");
+ if(packets.length===1&&packets[0].kind==="lightup.private_human_response_reconciliation"){
+  restore(packets[0],rev);return;
+ }
+ const next=assemble(db,packets);
+ if(!confirm("Import "+packets.length+" PRIVATE human packets? All identities, replies and source labels are UNVERIFIED. No data are sent, no retest or consent is granted."))return;
+ if(db.revision!==rev)fail("HOLD: register changed before confirmation");
+ db=next;previousRegisterMerge=null;selection.clear();invalidateBulk();invalidateUndo();cancelFeedbackPreview();cancelRegisterMerge();$("files").value="";draw();msg("Reconciled PRIVATE HUMAN owner and reply packets atomically.");
+}
+function snapshot(){
+ return {kind:"lightup.private_human_response_reconciliation",schema_version:2,
+ disposition:"UNVERIFIED_HUMAN_COORDINATION_ONLY",source_contract:db.binding[0],
+ source_sha256:db.binding[1],client_reference:db.binding[2],engagement_reference:db.binding[3],
+ ...Object.fromEntries(FLAGS.map(k=>[k,false])),
+ request_packets:db.requestPackets,reply_packets:db.replyPackets,
+ human_reviews:allRows().map(x=>({request_id:x.request.request_id,human_stage:x.review.stage,note:x.review.note})),
+ owner_feedback:allRows().filter(x=>x.feedback).map(x=>({request_id:x.request.request_id,...x.feedback})),
+ feedback_history:db.feedbackHistory.map(x=>({...x}))};
+}
+function decodeSnapshot(obj){
+ const keys=["kind","schema_version","disposition","source_contract","source_sha256","client_reference","engagement_reference",
+ ...FLAGS,"request_packets","reply_packets","human_reviews"];
+ const v2=[...keys,"owner_feedback","feedback_history"];
+ if(!((obj?.schema_version===1&&exact(obj,keys))||(obj?.schema_version===2&&exact(obj,v2)))||
+ obj.disposition!=="UNVERIFIED_HUMAN_COORDINATION_ONLY"||
+ obj.source_contract!=="lightup.finding_export._COLUMNS_v1"||
+ !/^[0-9a-f]{64}$/.test(obj.source_sha256)||FLAGS.some(k=>obj[k]!==false)||
+ !Array.isArray(obj.request_packets)||!Array.isArray(obj.reply_packets)||
+ !Array.isArray(obj.human_reviews)||obj.human_reviews.length>MAX_ROWS)
+  fail("HOLD: invalid PRIVATE register backup");
+ clean(obj.client_reference,120,"client",true);clean(obj.engagement_reference,120,"engagement",true);
+ const fresh=assemble(blank(),[...obj.request_packets,...obj.reply_packets]);
+ if(!same(fresh.binding,[obj.source_contract,obj.source_sha256,obj.client_reference,obj.engagement_reference]))
+  fail("HOLD: original source of backup changed");
+ const allowed=new Set(allRows(fresh).map(x=>x.request.request_id)),seen=new Set();
+ for(const r of obj.human_reviews){
+  if(!exact(r,["request_id","human_stage","note"])||!allowed.has(r.request_id)||seen.has(r.request_id)||!STAGES.includes(r.human_stage))
+   fail("HOLD: duplicate or unexpected HUMAN review in backup");
+  seen.add(r.request_id);clean(r.note,400,"PRIVATE HUMAN note");
+  fresh.notes[r.request_id]={stage:r.human_stage,note:r.note};
+ }
+ if(seen.size!==allowed.size)fail("HOLD: incomplete HUMAN review backup");
+ if(obj.schema_version===2){
+  if(!Array.isArray(obj.owner_feedback)||obj.owner_feedback.length>MAX_ROWS||
+     !Array.isArray(obj.feedback_history)||obj.feedback_history.length>1600)
+   fail("HOLD: invalid feedback history collection");
+  const included=new Set();
+  for(const item of obj.owner_feedback){
+   if(!exact(item,["request_id","stage","note","submitted_utc"])||
+      !allowed.has(item.request_id)||included.has(item.request_id)||
+      !OWNER_FEEDBACK_STAGES.includes(item.stage))fail("HOLD: invalid owner HUMAN feedback record");
+   clean(item.note,1000,"owner feedback note");timestamp(item.submitted_utc);
+   if(item.stage!=="acknowledged_unverified"&&!item.note.trim())fail("HOLD: missing owner HUMAN explanation");
+   included.add(item.request_id);
+   fresh.ownerFeedback[item.request_id]={stage:item.stage,note:item.note,submitted_utc:item.submitted_utc};
+  }
+  for(const item of obj.feedback_history){
+   if(!exact(item,["request_id","stage","note","submitted_utc","superseded_utc"])||
+      !allowed.has(item.request_id)||!OWNER_FEEDBACK_STAGES.includes(item.stage))
+    fail("HOLD: invalid prior HUMAN feedback entry");
+   clean(item.note,1000,"historical private HUMAN response");timestamp(item.submitted_utc);
+   timestamp(item.superseded_utc);
+   if(item.stage!=="acknowledged_unverified"&&!item.note.trim())fail("HOLD: missing historical human explanation");
+   fresh.feedbackHistory.push({...item});
+  }
+ }
+ return fresh;
+}
+function restore(obj,rev){
+ const fresh=decodeSnapshot(obj);
+ if(db.revision!==rev)fail("HOLD: changed register");
+ if(!confirm("REPLACE current PRIVATE register and HUMAN notes with this exact source-bound backup? Export current data first."))return;
+ if(db.revision!==rev)fail("HOLD: changed register before replace");
+ fresh.revision=rev+1;db=fresh;lastSavedRevision=db.revision;previousRegisterMerge=null;selection.clear();invalidateBulk();invalidateUndo();cancelFeedbackPreview();cancelRegisterMerge();$("files").value="";draw();msg("Restored PRIVATE HUMAN register from original-bound local backup.");
+}
+/* Source-bound, fail-closed PRIVATE operator register merge. Original source
+   packets stay immutable; only HUMAN annotations require human conflict choice. */
+let pendingRegisterMerge=null;
+let previousRegisterMerge=null;
+let lastSavedRevision=0;
+function updateSavedState(){
+ const dirty=!!db.binding&&db.revision!==lastSavedRevision;
+ $("saveState").textContent=dirty?
+  "UNSAVED local HUMAN workspace changes. Export the PRIVATE register JSON to preserve work; no browser storage is used.":
+  (db.binding?"PRIVATE register snapshot exported or restored; new edits will require another export.":"No PRIVATE workspace loaded.");
+ $("saveState").dataset.dirty=dirty?"true":"false";
+ $("mergeUndo").disabled=!previousRegisterMerge||previousRegisterMerge.afterRevision!==db.revision;
+}
+function undoRegisterMerge(){
+ const last=previousRegisterMerge;
+ if(!last||last.afterRevision!==db.revision||
+  !same(last.before.binding,db.binding))
+  fail("HOLD: reviewer merge cannot be undone because local HUMAN workspace changed");
+ if(!confirm("Revert the last PRIVATE reviewer workspace merge in browser memory? This removes any original request packets and HUMAN annotations added only by that merge. Export current data separately before reverting."))return;
+ const prior=last.before;
+ db={...prior,revision:db.revision+1};
+ previousRegisterMerge=null;selection.clear();invalidateBulk();invalidateUndo();
+ cancelFeedbackPreview();cancelRegisterMerge();$("mergeFile").value="";
+ draw();notifyMerge("Last HUMAN reviewer merge reverted locally. No original evidence or authority changed.");
+}
+
+const EMPTY_REVIEW={stage:"not_reviewed",note:""};
+function notifyMerge(message,bad=false){
+ $("mergeStatus").textContent=message;$("mergeStatus").dataset.error=bad?"true":"false";
+}
+function cancelRegisterMerge(){
+ pendingRegisterMerge=null;
+ $("mergeApply").disabled=true;
+ $("mergePlan").hidden=true;
+ $("mergeSummary").textContent="";
+ $("mergeConflicts").replaceChildren();
+}
+function reviewIsBlank(x){return !x||(x.stage==="not_reviewed"&&x.note==="");}
+function mergeRegisterPlan(incoming){
+ if(!db.binding)fail("Load the original PRIVATE register before importing a second reviewer's workspace");
+ if(!same(db.binding,incoming.binding))fail("HOLD: original SHA/client/engagement does not match this PRIVATE workspace");
+ const combined=assemble(db,[...incoming.requestPackets,...incoming.replyPackets]);
+ const legal=new Set(allRows(combined).map(x=>x.request.request_id));
+ const notes=[],followups=[];
+ for(const id of legal){
+  const existing=db.notes[id]||EMPTY_REVIEW,received=incoming.notes[id]||EMPTY_REVIEW;
+  if(same(existing,received)||reviewIsBlank(received))continue;
+  const needsChoice=!reviewIsBlank(existing);
+  notes.push({kind:"HUMAN review",id,current:{...existing},received:{...received},
+    conflict:needsChoice,choice:needsChoice?"": "incoming"});
+  const from=db.ownerFeedback[id]||null,next=incoming.ownerFeedback[id]||null;
+  // original source has no authority metadata in either annotations
+  if(next&&!same(from,next)){
+   followups.push({kind:"Owner HUMAN response",id,current:from&&{...from},
+    received:{...next},conflict:!!from,choice:from?"":"incoming"});
+  }
+ }
+ // IDs with no incoming review changes can still carry incoming owner feedback.
+ for(const [id,other] of Object.entries(incoming.ownerFeedback)){
+  if(!legal.has(id)||followups.some(x=>x.id===id))continue;
+  const from=db.ownerFeedback[id]||null;
+  if(!same(from,other))followups.push({kind:"Owner HUMAN response",id,current:from&&{...from},
+   received:{...other},conflict:!!from,choice:from?"":"incoming"});
+ }
+ const oldHistory=new Set(db.feedbackHistory.map(x=>JSON.stringify(x)));
+ const additions=incoming.feedbackHistory.filter(x=>!oldHistory.has(JSON.stringify(x)));
+ if(db.feedbackHistory.length+additions.length>1600)fail("HOLD: original local HUMAN feedback history capacity exceeded");
+ const addedOriginal=combined.requestPackets.length-db.requestPackets.length;
+ const addedReplies=combined.replyPackets.length-db.replyPackets.length;
+ return {combined,notes,followups,additions,addedOriginal,addedReplies};
+}
+function renderRegisterMerge(){
+ const p=pendingRegisterMerge;if(!p)return;
+ const all=[...p.plan.notes,...p.plan.followups],conflicts=all.filter(x=>x.conflict);
+ $("mergePlan").hidden=false;
+ $("mergeSummary").textContent=[
+  "Source-bound PRIVATE register merge · "+p.plan.addedOriginal+" new immutable owner request packet(s), "+
+   p.plan.addedReplies+" new immutable original HUMAN reply packet(s).",
+  p.plan.notes.length+" local HUMAN review change(s) · "+
+  p.plan.followups.length+" owner HUMAN follow-up change(s) · "+
+  p.plan.additions.length+" historical HUMAN revision(s).",
+  conflicts.length+" private HUMAN conflict(s) require explicit manual choice. No status, original evidence, grants or permissions are inferred.",
+ ].join(" ");
+ const parent=$("mergeConflicts");parent.replaceChildren();
+ const caption=document.createElement("p");
+ caption.textContent=conflicts.length?"Select a disposition for every differing HUMAN annotation. Compare private values before applying.":"No contradictory HUMAN annotations. Source-bound merge still requires human confirmation.";
+ parent.append(caption);
+ for(const item of conflicts){
+  const box=document.createElement("article");box.className="mergeConflict";
+  box.append(node("h3",item.kind+" · original request "+item.id));
+  const previous=document.createElement("pre");previous.className="mergeValue";
+  previous.textContent="CURRENT local HUMAN text:\n"+JSON.stringify(item.current,null,2);
+  const received=document.createElement("pre");received.className="mergeValue";
+  received.textContent="INCOMING unverified HUMAN text:\n"+JSON.stringify(item.received,null,2);
+  const label=node("label","Required private HUMAN decision");
+  const select=document.createElement("select");select.append(new Option("Choose: KEEP local or APPLY incoming",""));
+  select.append(new Option("KEEP current HUMAN annotation","local"));
+  select.append(new Option("APPLY incoming HUMAN annotation","incoming"));
+  select.value=item.choice;
+  select.setAttribute("aria-label","Conflict decision for original request "+item.id);
+  select.addEventListener("change",()=>{
+   item.choice=select.value;
+   $("mergeApply").disabled=conflicts.some(x=>!["local","incoming"].includes(x.choice));
+  });
+  label.append(select);box.append(previous,received,label);parent.append(box);
+ }
+ $("mergeApply").disabled=conflicts.some(x=>!["local","incoming"].includes(x.choice));
+}
+async function previewRegisterMerge(){
+ if(!db.binding)fail("Open an original HUMAN workspace before importing a reviewer snapshot");
+ const file=$("mergeFile").files[0];
+ if(!file||file.size>MAX_SNAPSHOT)fail("Choose an exported PRIVATE register snapshot at most 8 MiB");
+ const rev=db.revision,source=JSON.stringify(db.binding),fileRef=file;
+ const raw=new TextDecoder("utf-8",{fatal:true}).decode(await file.arrayBuffer());
+ const incoming=decodeSnapshot(strictJSON(raw,MAX_SNAPSHOT));
+ if(db.revision!==rev||JSON.stringify(db.binding)!==source)fail("HOLD: local HUMAN workspace changed while reading reviewer snapshot");
+ const plan=mergeRegisterPlan(incoming);
+ if(!plan.addedOriginal&&!plan.addedReplies&&!plan.notes.length&&!plan.followups.length&&!plan.additions.length){
+  cancelRegisterMerge();notifyMerge("Exact same original source and HUMAN annotations already present; nothing to merge.");
+  return;
+ }
+ pendingRegisterMerge={revision:rev,source,fileRef,plan};
+ renderRegisterMerge();
+ notifyMerge("Prepared source-bound reviewer merge. Review HUMAN text conflicts and confirm; no local records changed.");
+}
+function applyRegisterMerge(){
+ const p=pendingRegisterMerge;
+ if(!p||db.revision!==p.revision||JSON.stringify(db.binding)!==p.source||
+   $("mergeFile").files[0]!==p.fileRef)
+  fail("HOLD: local source, reviewer data or import selection changed since preview");
+ const changes=[...p.plan.notes,...p.plan.followups];
+ if(changes.some(x=>x.conflict&&!["local","incoming"].includes(x.choice)))
+  fail("HOLD: a conflicting HUMAN review still needs an explicit decision");
+ // Re-derive original packet constraints from the staged source without opening or executing anything.
+ const unchangedRequests=new Set(allRows(db).map(x=>x.request.request_id));
+ const combinedIDs=new Set(allRows(p.plan.combined).map(x=>x.request.request_id));
+ if([...unchangedRequests].some(id=>!combinedIDs.has(id)))
+  fail("HOLD: immutable original HUMAN request disappeared from proposed merge");
+ if(!confirm("Merge PRIVATE HUMAN workspaces: "+p.plan.addedOriginal+" original packet(s), "+
+   p.plan.addedReplies+" original response packet(s), "+
+   changes.filter(x=>x.choice==="incoming").length+" human-only annotation(s) and "+
+   p.plan.additions.length+" historical HUMAN record(s)? This does NOT authenticate either reviewer, prove remediation, contact anyone or authorize a retest."))
+  return;
+ if(db.revision!==p.revision||JSON.stringify(db.binding)!==p.source)
+  fail("HOLD: local HUMAN register changed during confirmation");
+ const updated=p.plan.combined;
+ updated.notes={...db.notes};
+ updated.ownerFeedback={...db.ownerFeedback};
+ updated.feedbackHistory=[...db.feedbackHistory,...p.plan.additions.map(x=>({...x}))];
+ const superseded=p.plan.followups.filter(x=>x.choice==="incoming"&&x.current);
+ if(updated.feedbackHistory.length+superseded.length>1600)
+  fail("HOLD: cannot preserve previous HUMAN feedback; export/archive first");
+ const supersededAt=new Date().toISOString();
+ for(const item of superseded)updated.feedbackHistory.push({
+  request_id:item.id,...item.current,superseded_utc:supersededAt
+ });
+ for(const item of p.plan.notes)if(item.choice==="incoming")updated.notes[item.id]={...item.received};
+ for(const item of p.plan.followups)if(item.choice==="incoming")updated.ownerFeedback[item.id]={...item.received};
+ updated.revision=db.revision+1;
+ previousRegisterMerge={before:db,afterRevision:updated.revision};
+ db=updated;selection.clear();invalidateBulk();invalidateUndo();cancelFeedbackPreview();
+ cancelRegisterMerge();$("mergeFile").value="";draw();
+ notifyMerge("Merged separately reviewed PRIVATE HUMAN annotations. Immutable original requests/responses and security gates unchanged.");
+}
+
+function save(filename,body,mime){
+ const url=URL.createObjectURL(new Blob([body],{type:mime}));
+ const a=document.createElement("a");a.href=url;a.download=filename;document.body.append(a);a.click();a.remove();
+ setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+function csv(x){
+ let v=String(x??"");
+ const normalized=v.normalize("NFKC").replace(/[\u200b-\u200f\u2060\ufeff]/g,"").replace(/^[\s\u0000-\u001f]+/g,"");
+ if(/^[=+\-@]/.test(normalized))v="'"+v;
+ return '"'+v.replaceAll('"','""')+'"';
+}
+function exportCSV(){
+ if(!db.binding)fail("Load original HUMAN packets first");
+ if(!confirm("Export PRIVATE original IDs and self-declared HUMAN aliases? Confirm secure recipient and channel."))return;
+ const table=[["batch","original_request_id","original_finding_id","human_owner_alias","request_kind","tentative_due",
+ "unverified_reply","owner_human_feedback","local_human_triage"],...allRows().map(x=>[x.slot,x.request.request_id,x.request.finding_id,
+ x.packet.recipient_alias,x.request.request_kind,x.request.due_date,x.reply?x.reply.human_stage:"unanswered",x.feedback?x.feedback.stage:"not submitted",x.review.stage])];
+ save("LightUp-PRIVATE-response-register.csv",table.map(row=>row.map(csv).join(",")).join("\r\n")+"\r\n","text/csv");
+}
+function report(){
+ if(!confirm("Open PRIVATE report containing original finding IDs and HUMAN aliases? No data sent."))return;
+ const win=window.open("","_blank");
+ if(!win)fail("Popup blocked; allow local PRIVATE print window");
+ const d=win.document;d.open();
+ d.write('<!doctype html><html><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src \'none\'; style-src \'unsafe-inline\'"><title>PRIVATE HUMAN review</title><style>body{font:15px system-ui;margin:2em}table{border-collapse:collapse}td,th{border:1px solid gray;padding:8px}</style></head><body><main id="report"></main></body></html>');
+ d.close();const main=d.getElementById("report");
+ function cell(tag,v){const e=d.createElement(tag);e.textContent=v;return e;}
+ main.append(cell("h1","LightUp PRIVATE · Unverified HUMAN response overview"));
+ main.append(cell("p","No identity verification, consent, remediation certification, scan or execution authority."));
+ main.append(cell("p",db.binding.join(" · ")));
+ const t=d.createElement("table"),headers=d.createElement("tr");
+ for(const v of ["Owner alias","Original finding","Request","UNVERIFIED reply","UNVERIFIED owner feedback","Local HUMAN triage","PRIVATE note"])headers.append(cell("th",v));
+ t.append(headers);
+ for(const x of allRows()){const tr=d.createElement("tr");
+  for(const v of [x.packet.recipient_alias,x.request.finding_id,x.request.request_kind,
+   x.reply?x.reply.human_stage:"unanswered",x.feedback?x.feedback.stage:"not submitted",x.review.stage,x.review.note])tr.append(cell("td",v));
+  t.append(tr);}
+ main.append(t);msg("Opened PRIVATE scriptless print brief in a local window.");
+}
+function listen(id,fn){$(id).addEventListener("click",async()=>{try{await fn();}catch(e){msg(e.message||"Invalid PRIVATE input",true);}});}
+listen("mergePreview",async()=>{try{await previewRegisterMerge();}catch(e){cancelRegisterMerge();notifyMerge(e.message||"PRIVATE reviewer snapshot rejected",true);}});
+listen("mergeApply",()=>{try{applyRegisterMerge();}catch(e){cancelRegisterMerge();notifyMerge(e.message||"PRIVATE merge denied",true);}});
+listen("mergeCancel",()=>{cancelRegisterMerge();notifyMerge("Discarded uncommitted reviewer merge proposal.");});
+listen("mergeUndo",()=>{try{undoRegisterMerge();}catch(e){notifyMerge(e.message||"Review merge undo denied",true);}});
+
+$("mergeFile").addEventListener("change",()=>{cancelRegisterMerge();notifyMerge("Reviewer file changed; preview again.");});
+listen("load",intake);
+listen("download",()=>{if(!db.binding)fail("No PRIVATE register loaded");
+ if(!confirm("Download PRIVATE owner identities, original request IDs, unverified replies and HUMAN notes? Confirm secure storage."))return;
+ save("LightUp-PRIVATE-response-register.json",JSON.stringify(snapshot(),null,2)+"\n","application/json");
+ lastSavedRevision=db.revision;updateSavedState();});
+listen("csv",exportCSV);listen("summaryCsv",exportAnonymous);
+listen("exportOwner",exportOwnerPrivate);
+$("ownerExport").addEventListener("change",()=>{$("exportOwner").disabled=!$("ownerExport").value;});listen("print",report);
+listen("bulkPreview",previewBulk);listen("bulkApply",applyBulk);
+listen("feedbackPreview",async()=>{try{await previewOwnerFeedback();}catch(e){cancelFeedbackPreview();feedbackNotice(e.message||"PRIVATE feedback rejected",true);}});
+listen("feedbackApply",()=>{try{applyOwnerFeedback();}catch(e){cancelFeedbackPreview();feedbackNotice(e.message||"PRIVATE feedback application rejected",true);}});
+listen("feedbackCancel",()=>{cancelFeedbackPreview();feedbackNotice("Discarded uncommitted HUMAN feedback preview.");});
+$("feedbackFile").addEventListener("change",()=>{cancelFeedbackPreview();feedbackNotice("New PRIVATE input selected; preview before applying.");});
+listen("bulkUndo",undoLastBulk);listen("exportSelected",exportSelectedPrivate);
+$("selectShown").addEventListener("change",e=>{for(const x of filteredRows()){
+ if(e.target.checked)selection.add(x.request.request_id);else selection.delete(x.request.request_id);
+ }invalidateBulk();draw();});
+$("bulkStage").addEventListener("change",invalidateBulk);
+listen("forget",()=>{if(!confirm("Clear ALL in-memory human responses and PRIVATE annotations? Saved downloads remain."))return;
+ const rev=db.revision+1;db=blank();db.revision=rev;lastSavedRevision=rev;previousRegisterMerge=null;selection.clear();invalidateBulk();invalidateUndo();cancelFeedbackPreview();cancelRegisterMerge();
+ $("files").value="";$("feedbackFile").value="";$("mergeFile").value="";$("search").value="";
+ notifyMerge("Private reviewer import file references and merge choices forgotten.");
+ feedbackNotice("All selected HUMAN feedback file references and previews forgotten.");
+ draw();msg("All locally held PRIVATE HUMAN data and input file references forgotten.");});
+$("search").addEventListener("input",draw);$("filter").addEventListener("change",draw);
+$("dueFilter").addEventListener("change",draw);$("sort").addEventListener("change",draw);
+window.addEventListener("beforeunload",event=>{
+ // Browser-native unsaved-data warning only; no outgoing network and no persisted browser state.
+ if(!db.binding||db.revision===lastSavedRevision)return;
+ event.preventDefault();
+ event.returnValue="";
+});
+draw();msg("Load original PRIVATE owner-request and partial-reply files. Everything stays in memory.");
+})();</script></body></html>
