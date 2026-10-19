@@ -39,6 +39,16 @@ The original [Runbook Editor](standalone.html) now has section **5 · Combined r
 
 No imported owner response can authenticate the sender, promote any finding into a verified fix, approve a live retest, change original evidence, write to the independently owned #1643 response register, or grant current customer/operator consent. The original main draft, current issues and mandatory release HOLD remain separate.
 
+## NEW — bulk HUMAN follow-up planning and one-coordinator PRIVATE handoffs
+
+When owner-return packets have been imported in the main offline editor's section 5, the **HUMAN follow-up action register** in section 6 supports coordinated triage across multiple exact-original findings and owner-return steps.
+
+**Batch human coordination:** Filter original HUMAN actions, select individual rows or all *currently filtered* steps, then propose one HUMAN-only status, optional locally declared coordinator alias, and optional tentative date. A blank coordinator/date retains each step's current assignment. The full selection is source-checked and previewed in an explicit confirmation before any local annotation changes. Existing PRIVATE notes and individually authored next actions are **preserved**. The last batch can be undone until a later action edit, incoming owner reply or source transition. This does not contact any coordinator, create a grant or prove a fix.
+
+**Recipient-minimized confidential briefing:** Select one locally declared coordinator from the drop-down after assigning coordinator aliases. The **PRIVATE one-coordinator HUMAN HTML** contains only human follow-up steps assigned to that alias, original finding IDs, self-declared owner reply stage, local next action, tentative date and private note. Other coordinators' actions and private notes are excluded. The generated HTML is scriptless, networkless and HTML escaped; the recipient, customer source and permission still require independent authentication and private delivery.
+
+The app's maintainable `editor.js`, `editor.css`, `editor.template.html` and Python-standard-library-only `build_editor.py` reproduce the exact standalone offline HTML with source-byte-bound SHA-256 CSP script/style hashes. The standalone artifact remains usable without Python, a server, login or network connection. Packaging is not QA, test evidence, owner authentication or a deployment.
+
 ## NEW — source-bound PRIVATE HUMAN operator follow-up register
 
 After receiving one or more original-source-matched owner returns in the **Combined HUMAN Owner Return Desk** (section 5 of [standalone.html](standalone.html)), section **6 · PRIVATE HUMAN follow-up action register** appears. Every displayed row is tied to the **current exact original finding ID, step ordinal, self-declared owner and unverified owner reply**, not merely to a client name or source SHA.
