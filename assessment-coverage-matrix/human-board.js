@@ -12,6 +12,8 @@ function createHumanBoard(api) {
   const DEFAULT = Object.freeze({stage:"needs_review",route:"unassigned",action:"none"});
   const KINDS = ["stage","route","action"];
   const MAX_PRIVATE_BYTES = 3 * 1024 * 1024;
+  const MAX_ENCRYPTED_BYTES = 5 * 1024 * 1024;
+  const privatePlanCrypto=createPrivatePlanCrypto();
   const PLAN_KEYS = ["ordinal","stage","route","action"];
   const FILE_KEYS = ["kind","version","disposition","authorized","consent_verified",
     "dispatch_allowed","release_allowed","source_sha256","ordered_row_count",
@@ -47,6 +49,7 @@ function createHumanBoard(api) {
       : "Source fingerprints are unavailable in this browser context. PRIVATE save and restore are disabled; local HUMAN planning and source-free count briefing remain available.");
     validity.className="hint";area.append(validity);
     $("humanSave").disabled=!safeDigests();
+    $("humanSaveEncrypted").disabled=!safeDigests()||!privatePlanCrypto.supported();
     $("humanResumeButton").disabled=!safeDigests();
     $("humanBrief").disabled=false;
     $("humanHandoff").disabled=false;
@@ -112,8 +115,9 @@ function createHumanBoard(api) {
     clearHistory();
     clear($("humanTable"));clear($("humanSummary"));
     $("humanPages").textContent="No HUMAN work loaded.";
-    for(const id of ["humanSave","humanResumeButton","humanBrief","humanHandoff","humanPrev","humanNext"])$(id).disabled=true;
+    for(const id of ["humanSave","humanSaveEncrypted","humanResumeButton","humanBrief","humanHandoff","humanPrev","humanNext"])$(id).disabled=true;
     $("humanResume").value="";
+    $("humanEncryptPass").value="";$("humanResumePass").value="";
   }
   function privatePlan() {
     fail(safeDigests(),"Browser cannot bind PRIVATE HUMAN plan to original bytes");
@@ -207,10 +211,20 @@ function createHumanBoard(api) {
 
   // The two user-selected PRIVATE snapshots are plans, NOT attested events or chronology.
   // Strict admission always reuses the original byte-bound private-plan contract.
-  async function readHistoryFile(file) {
-    fail(file&&file.size>0&&file.size<=MAX_PRIVATE_BYTES,"PRIVATE HUMAN snapshot must be 1–3 MiB or smaller");
+  async function parsePrivateJSONFile(file,password) {
+    fail(file&&file.size>0&&file.size<=MAX_ENCRYPTED_BYTES,
+      "PRIVATE HUMAN plan exceeds its bounded import size");
     const raw=new TextDecoder("utf-8",{fatal:true}).decode(await file.arrayBuffer());
-    return admitPrivatePlan(parseStrict(raw));
+    const envelope=parseStrict(raw);
+    if(privatePlanCrypto.isEncrypted(envelope)) {
+      const plain=await privatePlanCrypto.decrypt(envelope,password);
+      return parseStrict(plain);
+    }
+    fail(file.size<=MAX_PRIVATE_BYTES,"Unencrypted PRIVATE HUMAN plan exceeds 3 MiB");
+    return envelope;
+  }
+  async function readHistoryFile(file,password) {
+    return admitPrivatePlan(await parsePrivateJSONFile(file,password));
   }
   function historyChanges(earlier,later) {
     const results=[];
@@ -257,6 +271,7 @@ function createHumanBoard(api) {
     for(const key of ["historyPrev","historyNext","historyApply","historyCounts","historyPrivate"])
       $(key).disabled=true;
     $("historyEarlier").value="";$("historyLater").value="";
+    $("historyPassEarlier").value="";$("historyPassLater").value="";
     $("historySearch").value="";$("historyState").value="all";
   }
   function renderHistory() {
@@ -382,8 +397,8 @@ function createHumanBoard(api) {
     $("historyOpen").disabled=true;
     try {
       fail(earlier&&later,"Choose an earlier and a later PRIVATE saved plan explicitly");
-      const oldPlan=await readHistoryFile(earlier);
-      const newPlan=await readHistoryFile(later);
+      const oldPlan=await readHistoryFile(earlier,$("historyPassEarlier").value);
+      const newPlan=await readHistoryFile(later,$("historyPassLater").value);
       const next={earlier:oldPlan,later:newPlan,changes:historyChanges(oldPlan,newPlan)};
       // Entire two-file source-byte admission completed BEFORE any active comparison changes.
       history=next;historyPage=0;historyResolutions.clear();
@@ -396,6 +411,7 @@ function createHumanBoard(api) {
     } finally {
       $("historyOpen").disabled=false;
       $("historyEarlier").value="";$("historyLater").value="";
+      $("historyPassEarlier").value="";$("historyPassLater").value="";
     }
   }
   function applyHistory() {
@@ -519,20 +535,38 @@ function createHumanBoard(api) {
       changed=false;
       message("PRIVATE source-bound HUMAN plan downloaded. Unsigned hash binding is not identity authentication.");
     });
+    $("humanSaveEncrypted").addEventListener("click",async()=>{
+      if(!plans.length||!safeDigests()||!privatePlanCrypto.supported())return;
+      const password=$("humanEncryptPass").value;
+      try {
+        if(!confirm("Encrypt and download a PRIVATE HUMAN plan locally with your passphrase? If you lose this passphrase, the contents cannot be recovered. No password or file is sent anywhere."))return;
+        const original=JSON.stringify(privatePlan(),null,2)+"\n";
+        fail(new Blob([original]).size<=MAX_PRIVATE_BYTES,
+          "HUMAN plan exceeds local encryption size limit");
+        const encrypted=await privatePlanCrypto.encrypt(original,password);
+        const output=JSON.stringify(encrypted,null,2)+"\n";
+        fail(new Blob([output]).size<=MAX_ENCRYPTED_BYTES,
+          "Encrypted PRIVATE output is too large");
+        download("lightup-PRIVATE-human-plan-ENCRYPTED.json",output,"application/json");
+        changed=false;
+        message("AES-GCM encrypted PRIVATE HUMAN plan downloaded. The passphrase has not been saved or shared. Original source-byte binding remains mandatory after decryption.");
+      } catch(error){
+        message("Encrypted PRIVATE HUMAN save HOLD: "+error.message,true);
+      } finally {$("humanEncryptPass").value="";}
+    });
     $("humanResumeButton").addEventListener("click",async()=>{
       const file=$("humanResume").files[0];
       if(!safeDigests()||!file){message("Open the original source files, then choose one PRIVATE saved plan.",true);return;}
       try {
-        fail(file.size>0&&file.size<=MAX_PRIVATE_BYTES,"PRIVATE plan exceeds bounded import size");
-        const raw=new TextDecoder("utf-8",{fatal:true}).decode(await file.arrayBuffer());
-        const candidate=admitPrivatePlan(parseStrict(raw));
+        const candidate=admitPrivatePlan(
+          await parsePrivateJSONFile(file,$("humanResumePass").value));
         if(!confirm("Replace ALL local HUMAN notes with this PRIVATE exact-byte-bound plan?"))return;
         plans=candidate;changed=true;lastBulk=null;historyResolutions.clear();
         $("humanUndo").disabled=true;page=0;render();if(history)renderHistory();
         message("Source-byte-bound PRIVATE HUMAN plan restored after whole-document admission. No findings or authority changed.");
       } catch(error) {
         message("PRIVATE HUMAN plan HOLD: "+error.message+"; current notes unchanged.",true);
-      } finally {$("humanResume").value="";}
+      } finally {$("humanResume").value="";$("humanResumePass").value="";}
     });
     $("humanHandoff").addEventListener("click",()=>{
       if(!plans.length)return;
