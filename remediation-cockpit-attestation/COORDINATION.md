@@ -130,7 +130,7 @@ This creates a new encrypted HUMAN plan revision, rewraps the unchanged original
 
 ## Bulk update or whole-workroom key changeover
 
-For a group of independent local HUMAN slot changes, use [**BULK.md**](BULK.md): create a pinned 0600 JSON assignment template from the complete original workroom, privately edit multiple slots, preview aggregate changes, and atomically publish one new entire workroom without touching the old one. For new out-of-band team keys, use [**REKEY.md**](REKEY.md): `rekey_workroom.py` re-signs every independently verified original source-free cockpit with a new team key, re-encrypts the PRIVATE HUMAN plan, reconstructs the complete browser workroom and publishes it separately. Neither action authorizes remediation or revokes previously copied old keys.
+For a group of independent local HUMAN slot changes, use [**BULK.md**](BULK.md): create a pinned 0600 JSON assignment template from the complete original workroom, privately edit multiple slots, preview aggregate changes, and atomically publish one new entire workroom without touching the old one. For new out-of-band team keys, use [**REKEY.md**](REKEY.md): `workroom_control.py rekey` (or `rekey_workroom.py`) re-signs every independently verified original source-free cockpit with a new team key, re-encrypts the PRIVATE HUMAN plan, reconstructs the complete browser workroom and publishes it separately. Neither action authorizes remediation or revokes previously copied old keys.
 
 ## Privacy-minimal whole-workroom counts export
 

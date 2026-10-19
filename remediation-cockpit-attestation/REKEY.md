@@ -31,6 +31,20 @@ It then publishes **only a fresh workroom** under an exclusive new randomly name
 
 This operator operation is **not** replacing a key in place, changing original source/provenance or silently updating existing recipients. Every previous archived encrypted copy and original key/receipt remains a valid copied artifact until separately handled under authorized human key-compromise/revocation processes. Rotation **cannot erase or revoke a previously copied shared key**, prevent old recipients from viewing old copies, or make compromised-key source assertions trustworthy.
 
+### Alternative: use the unified PRIVATE workroom control interface
+
+The already existing human operator console now exposes the **same complete rekey procedure** without extracting any source-free inbox/plan files yourself:
+
+```sh
+python3 remediation-cockpit-attestation/workroom_control.py rekey \
+  --workroom "$HOME/private-lightup/lightup-human-workroom-OLD-ID" \
+  --old-key-file "$HOME/private-lightup/team-key-v1.key" \
+  --new-key-file "$HOME/private-lightup/team-key-v2.key" \
+  --output-parent "$HOME/private-lightup"
+```
+
+It calls the exact same native `rekey_workroom.py` implementation, requires the original and new private team keys, publishes **only** a new entire workroom, and does not claim that old keys or already copied ciphertext have been revoked.
+
 ## 3. Use new workroom and key for future distribution
 
 The tool prints the exact new `lightup-rekeyed-human-workroom-<random>` directory. Verify/read it with:
