@@ -27,7 +27,8 @@ FIELDS = frozenset(("kind", "schema_version", "disposition", "warning",
 MANIFEST = frozenset(("kind", "schema_version", "disposition",
                       "warning", "files", *review.FLAGS))
 STATS = frozenset((*trend.FIELDS, "stages", "reasons"))
-OUTPUTS = frozenset(("index.html", "counts.json", "counts.csv", "manifest.json"))
+OUTPUTS = frozenset(("index.html", "counts.json", "counts.csv",
+                     "recipient-actions.md", "manifest.json"))
 
 
 def valid_snapshot(snapshot: object) -> None:
@@ -61,10 +62,16 @@ def valid_report(report: object) -> None:
                    "Invalid original unsigned recipient comparison schema")
     valid_snapshot(report["left"])
     valid_snapshot(report["right"])
-    review.require(type(report["delta_right_minus_left"]) is dict and
-                   set(report["delta_right_minus_left"]) == STATS and
-                   report["delta_right_minus_left"] ==
-                   trend.difference(report["left"], report["right"]),
+    delta = report["delta_right_minus_left"]
+    review.require(type(delta) is dict and set(delta) == STATS and
+                   all(type(delta[k]) is int for k in trend.FIELDS) and
+                   type(delta["stages"]) is dict and
+                   set(delta["stages"]) == set(triage.STAGES) and
+                   type(delta["reasons"]) is dict and
+                   set(delta["reasons"]) == set(triage.REASONS) and
+                   all(type(v) is int for v in delta["stages"].values()) and
+                   all(type(v) is int for v in delta["reasons"].values()) and
+                   delta == trend.difference(report["left"], report["right"]),
                    "Human count deltas are not the exact native arithmetic")
 
 
