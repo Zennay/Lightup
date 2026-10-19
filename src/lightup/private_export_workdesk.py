@@ -107,12 +107,12 @@ render();
 """
 
 
-def _load_resume(filename: str, manifest: dict, rows: list[dict[str, str]]) -> dict:
-    file = Path(filename)
-    if not file.is_file() or file.stat().st_size > MAX_PLAN:
-        raise ValueError("oversized or absent private workplan")
+def _load_resume_bytes(content: bytes, manifest: dict, rows: list[dict[str, str]]) -> dict:
+    """Strict original-source workplan admission directly from decrypted memory."""
+    if type(content) is not bytes or len(content) > MAX_PLAN:
+        raise ValueError("oversized or invalid private workplan bytes")
     try:
-        draft = json.loads(file.read_text(encoding="utf-8"), object_pairs_hook=_no_duplicate_keys)
+        draft = json.loads(content.decode("utf-8", "strict"), object_pairs_hook=_no_duplicate_keys)
     except (UnicodeError, json.JSONDecodeError) as exc:
         raise ValueError("invalid private workplan") from exc
     required = {"kind", "version", "source_csv_sha256", "declared_client_id",
@@ -155,6 +155,13 @@ def _load_resume(filename: str, manifest: dict, rows: list[dict[str, str]]) -> d
     if set(result) != expected:
         raise ValueError("missing original finding in human workplan")
     return result
+
+
+def _load_resume(filename: str, manifest: dict, rows: list[dict[str, str]]) -> dict:
+    file = Path(filename)
+    if not file.is_file() or file.stat().st_size > MAX_PLAN:
+        raise ValueError("oversized or absent private workplan")
+    return _load_resume_bytes(file.read_bytes(), manifest, rows)
 
 
 def _render(manifest: dict, rows: list[dict[str, str]], annotations: dict,
