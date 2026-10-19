@@ -8,11 +8,14 @@ plaintext decision sheet, HTML or original plan is written to disk.
 from __future__ import annotations
 
 import argparse
+from copy import deepcopy
 import hashlib
+import json
 import sys
 
 from .private_export_encrypted import _passphrase, _seal
 from .private_export_handoff import _atomic_private_publish, _output_path
+from .private_export_human_revision_choices import MAX_CHOICES
 from .private_export_human_revision_vault import (
     DECISION_EXTENSION, MAGIC_DECISIONS, MAX_BOUND_DECISIONS,
     BINDING_SIZE, _current_source, _read_decisions, _reconcile,
@@ -88,7 +91,7 @@ def main(argv: list[str] | None = None) -> int:
         secret = _passphrase("Current encrypted HUMAN choices passphrase")
         document, _ = _read_decisions(args.encrypted_choices, secret, source_binding)
         del secret
-        _reconcile(document, expected, template, new_meta, new_rows)
+        _reconcile(document, expected, deepcopy(template), new_meta, new_rows)
 
         reviewed, changed = _review(document)
         if not changed:
@@ -96,14 +99,12 @@ def main(argv: list[str] | None = None) -> int:
         # Re-apply the whole selected set against the unchanged original newer
         # source before ANY encrypted file is published.
         _prepared_plan, summary = _reconcile(
-            reviewed, expected, template, new_meta, new_rows
+            reviewed, expected, deepcopy(template), new_meta, new_rows
         )
-        import json
         plain = json.dumps(
             reviewed, ensure_ascii=False, separators=(",", ":"),
             allow_nan=False,
         ).encode("utf-8", "strict")
-        from .private_export_human_revision_choices import MAX_CHOICES
         if len(plain) > MAX_CHOICES:
             raise ValueError("reviewed decision document exceeds original bound")
         signed_plain = source_binding + plain
