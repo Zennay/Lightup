@@ -1,11 +1,12 @@
 <!doctype html>
 <html lang="nl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-uhHsVebI74Sn7+QlJOJnmJR4Iq8CEK+aW/bCdm4diGI='; style-src 'sha256-YZ0mkg6wajVmcstzooqtym3sWHrUTklB1Bkf99BLDwY='; connect-src 'none'; img-src 'none'; base-uri 'none'; form-action 'none'; object-src 'none'; frame-src 'none'">
-<title>LightUp · PRIVATE Casebook Transport</title><style>:root{color-scheme:dark;--bg:#07121d;--card:#122335;--line:#30475a;--text:#edf6fa;--muted:#b3c5cf;--accent:#91dbcf;--warn:#ffe1ab}*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at top right,#163247,var(--bg) 65%);font:16px/1.6 system-ui,-apple-system,sans-serif;color:var(--text)}main{max-width:960px;padding:2rem 1rem 5rem;margin:auto}header{margin:1rem 0 2rem}h1{font-size:clamp(2.4rem,6vw,4.4rem);letter-spacing:-.06em;line-height:1.1;margin:.25rem 0 1rem}h2{font-size:1.25rem;margin:0 0 1rem}p{max-width:80ch}section{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:clamp(1.25rem,3vw,2rem);margin:1rem 0}header>p{color:var(--muted)}.eyebrow{font-size:.83rem;font-weight:800;letter-spacing:.16em;color:var(--accent)}.notice{padding:1rem 1.2rem;border:1px solid #967b49;border-radius:12px;background:#2d2b22;color:var(--warn)}.field{display:block;margin:1.1rem 0;font-weight:650}.field input{display:block;width:100%;margin-top:.4rem;background:#071726;border:1px solid #577081;color:var(--text);padding:.78rem;border-radius:9px;font:inherit}.field input[type=file]{cursor:pointer}.check{display:flex;align-items:start;gap:.6rem;font-size:.95rem;margin:1.2rem 0;color:var(--muted)}.check input{flex:none;margin-top:.35rem}button{background:var(--accent);border:0;border-radius:10px;padding:.8rem 1.2rem;font:700 .96rem system-ui;cursor:pointer;color:#062a30}button:hover{filter:brightness(1.08)}button:disabled{opacity:.52;cursor:wait}.subtle{background:transparent;border:1px solid #6d8899;color:var(--text)}.section-heading{display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap}.row{border-top:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:1rem 0;flex-wrap:wrap}.row strong{display:block;overflow-wrap:anywhere}.row small{color:var(--muted);display:block;overflow-wrap:anywhere}.status{padding:1.2rem;border-left:4px solid var(--accent);background:#193046;min-height:4rem;white-space:pre-wrap}.status.error{border-color:#ff9a9a;color:#ffc7c7}code{background:#071826;border-radius:5px;padding:.1rem .25rem;overflow-wrap:anywhere}footer{font-size:.9rem;color:var(--muted);margin-top:2rem}button:focus-visible,input:focus-visible{outline:3px solid #f5d289;outline-offset:3px}@media(max-width:520px){main{padding:1rem .7rem 3rem}.row button{width:100%}}</style></head>
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-6ggSAim8GDEd9YQF4gKX7B9iwHu+ANHCDRSa/2dHFqg='; style-src 'sha256-ZmJsN+3F7MmXHXc4yYXwLQ6rjUwLFOE9SYNKM6sX3qY='; connect-src 'none'; img-src 'none'; base-uri 'none'; form-action 'none'; object-src 'none'; frame-src 'none'">
+<title>LightUp · PRIVATE Casebook Transport</title><style>:root{color-scheme:dark;--bg:#07121d;--card:#122335;--line:#30475a;--text:#edf6fa;--muted:#b3c5cf;--accent:#91dbcf;--warn:#ffe1ab}*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at top right,#163247,var(--bg) 65%);font:16px/1.6 system-ui,-apple-system,sans-serif;color:var(--text)}main{max-width:960px;padding:2rem 1rem 5rem;margin:auto}header{margin:1rem 0 2rem}h1{font-size:clamp(2.4rem,6vw,4.4rem);letter-spacing:-.06em;line-height:1.1;margin:.25rem 0 1rem}h2{font-size:1.25rem;margin:0 0 1rem}p{max-width:80ch}section{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:clamp(1.25rem,3vw,2rem);margin:1rem 0}header>p{color:var(--muted)}.eyebrow{font-size:.83rem;font-weight:800;letter-spacing:.16em;color:var(--accent)}.notice{padding:1rem 1.2rem;border:1px solid #967b49;border-radius:12px;background:#2d2b22;color:var(--warn)}.field{display:block;margin:1.1rem 0;font-weight:650}.field input{display:block;width:100%;margin-top:.4rem;background:#071726;border:1px solid #577081;color:var(--text);padding:.78rem;border-radius:9px;font:inherit}.field input[type=file]{cursor:pointer}.check{display:flex;align-items:start;gap:.6rem;font-size:.95rem;margin:1.2rem 0;color:var(--muted)}.check input{flex:none;margin-top:.35rem}button{background:var(--accent);border:0;border-radius:10px;padding:.8rem 1.2rem;font:700 .96rem system-ui;cursor:pointer;color:#062a30}button:hover{filter:brightness(1.08)}button:disabled{opacity:.52;cursor:wait}.subtle{background:transparent;border:1px solid #6d8899;color:var(--text)}.section-heading{display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap}.row{border-top:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:1rem 0;flex-wrap:wrap}.row strong{display:block;overflow-wrap:anywhere}.row small{color:var(--muted);display:block;overflow-wrap:anywhere}.status{padding:1.2rem;border-left:4px solid var(--accent);background:#193046;min-height:4rem;white-space:pre-wrap}.status.error{border-color:#ff9a9a;color:#ffc7c7}code{background:#071826;border-radius:5px;padding:.1rem .25rem;overflow-wrap:anywhere}footer{font-size:.9rem;color:var(--muted);margin-top:2rem}button:focus-visible,input:focus-visible{outline:3px solid #f5d289;outline-offset:3px}@media(max-width:520px){main{padding:1rem .7rem 3rem}.row button{width:100%}}.rekey{margin-top:1.5rem;padding:1.2rem;border-radius:14px;border:1px solid #567783;background:#0a2231}.rekey h3{font-size:1.05rem;margin:0 0 .4rem}.rekey p{color:var(--muted);margin:.2rem 0 1rem}
+</style></head>
 <body><main><header><p class="eyebrow">LIGHTUP · SCOPE · PRIVATE / HUMAN ONLY</p><h1>Casebook Transfer</h1><p>Versleutel oorspronkelijke Casebook-bronbestanden en de huidige HUMAN-review-CSV tot één lokaal overdrachtsbestand. Heropen en herstel exact die bytes offline. Geen verzoeken naar het netwerk, accounts, browseropslag, grants of scans.</p><div class="notice"><strong>INCUBATE · PLAN/LAB ONLY · DRAFT/HOLD.</strong> Dit is versleuteld transport, geen verificatie van bron, toestemming, bevoegdheid, actueel risico of intrekking. Alleen de originele, actuele geauthenticeerde controles kunnen daarover beslissen.</div></header>
 <section aria-labelledby="pack-title"><h2 id="pack-title">1 · PRIVATE bronbestanden inpakken</h2><p>Kies <code>casebook-01.json</code> … <code>casebook-12.json</code> zonder hiaten, eventueel <code>workroom-current-template.csv</code>. Maximaal 12 MiB totaal, 4 MiB per bestand. De broninhoud wordt niet geïnterpreteerd.</p><label class="field">Lokale bestanden<input id="source-files" type="file" multiple accept=".json,.csv"></label><label class="field">Lokaal geheim (minimaal 12 tekens)<input id="new-password" type="password" autocomplete="new-password" minlength="12" spellcheck="false"></label><label class="check"><input id="ack" type="checkbox"> Ik begrijp dat dit geen onafhankelijke bronverificatie of uitvoeringsautorisatie is en dat ik het wachtwoord apart veilig moet delen.</label><button id="encrypt" type="button">Maak versleutelde PRIVATE overdracht</button></section>
 <section aria-labelledby="open-title"><h2 id="open-title">2 · PRIVATE overdracht heropenen</h2><p>Het ontsleutelen vervangt de huidige lokale werkset pas na volledige bestands- en hashcontrole én jouw bevestiging.</p><label class="field">Versleuteld bestand (.lupt)<input id="vault-file" type="file" accept=".lupt"></label><label class="field">Wachtwoord<input id="open-password" type="password" autocomplete="off" spellcheck="false"></label><button id="decrypt" type="button">Ontsleutel en controleer</button></section>
-<section aria-labelledby="files-title"><div class="section-heading"><h2 id="files-title">3 · Lokale werkset</h2><button type="button" id="clear" class="subtle">Wis werkgeheugen</button></div><p>Private originelen: exporteer afzonderlijk als bytes, nooit als uitvoerbare HTML. Hercontroleer alle bronnen daarna met de oorspronkelijke Casebook-software en actuele echte toestemmingsstatus.</p><p id="summary" aria-live="polite">Nog geen bronbestanden geladen.</p><div id="records" role="list"></div></section>
+<section aria-labelledby="files-title"><div class="section-heading"><h2 id="files-title">3 · Lokale werkset</h2><button type="button" id="clear" class="subtle">Wis werkgeheugen</button></div><p>Private originelen: exporteer afzonderlijk als bytes, nooit als uitvoerbare HTML. Hercontroleer alle bronnen daarna met de oorspronkelijke Casebook-software en actuele echte toestemmingsstatus.</p><p id="summary" aria-live="polite">Nog geen bronbestanden geladen.</p><div id="records" role="list"></div><div class="rekey"><h3>Beveiligde dooroverdracht, zonder extra plaintext-download</h3><p>Versleutel de volledige huidige werkset opnieuw met een ander lokaal wachtwoord. Dit verandert het oorspronkelijke overdrachtsbestand niet en geeft geen toestemming voor actief werk.</p><label class="field">Nieuw lokaal wachtwoord voor volgende ontvanger<input id="rekey-password" type="password" autocomplete="new-password" spellcheck="false" minlength="12"></label><button id="rekey" type="button">Maak nieuwe versleutelde overdracht</button></div></section>
 <p class="status" id="status" role="status" aria-live="polite"></p><footer>Offline HUMAN overdrachtsfunctie · AES-256-GCM / PBKDF2-SHA256 · wachtwoord uitsluitend in lokaal browsergeheugen · geen opslag zonder expliciete download · verlies van wachtwoord betekent onherstelbare gegevens.</footer></main><script>(() => {
   "use strict";
   const SCHEMA = "lightup-private-casebook-transfer";
@@ -123,7 +124,32 @@
       row.append(left, button); panel.append(row);
     }
   }
-  const busy = (state) => { $("encrypt").disabled = state; $("decrypt").disabled = state; };
+  const busy = state => {
+    $("encrypt").disabled = state;
+    $("decrypt").disabled = state;
+    $("rekey").disabled = state;
+  };
+  function checkPassword(password) {
+    if ([...password].length < 12 || encoder.encode(password).length > 1024)
+      fail("Kies een wachtwoord van minimaal 12 tekens en maximaal 1024 UTF-8 bytes.");
+  }
+  async function encryptPrivateRecords(records, password) {
+    checkPassword(password);
+    const body = { schema: SCHEMA, version: 1, files: records.map(r =>
+      ({ name: r.name, size: r.size, sha256: r.sha256, content_b64: to64(r.bytes) })) };
+    const salt = crypto.getRandomValues(new Uint8Array(16));
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    const key = await makeKey(password, salt);
+    const ciphertext = new Uint8Array(await crypto.subtle.encrypt(
+      { name: "AES-GCM", iv }, key, encoder.encode(JSON.stringify(body))
+    ));
+    const envelope = { schema: SCHEMA, version: 1, kdf: "PBKDF2-SHA256",
+      iterations: ITERATIONS, cipher: "AES-256-GCM", salt_b64: to64(salt),
+      iv_b64: to64(iv), ciphertext_b64: to64(ciphertext) };
+    const encoded = encoder.encode(JSON.stringify(envelope));
+    if (encoded.length > MAX_VAULT) fail("Versleutelde overdracht groter dan de toegestane 26 MiB.");
+    fileDownload("lightup-casebook-private-transfer.lupt", encoded, "application/octet-stream");
+  }
   $("encrypt").addEventListener("click", async () => {
     busy(true);
     try {
@@ -131,23 +157,8 @@
         fail("Deze browser geeft geen veilige WebCrypto-context voor het lokale bestand.");
       if (!$("ack").checked) fail("Bevestig eerst de HUMAN-only waarschuwing.");
       const password = $("new-password").value;
-      if ([...password].length < 12 || encoder.encode(password).length > 1024)
-        fail("Kies een wachtwoord van minimaal 12 tekens en maximaal 1024 UTF-8 bytes.");
       const records = await collectSources($("source-files").files);
-      const body = { schema: SCHEMA, version: 1, files: records.map(r =>
-        ({ name: r.name, size: r.size, sha256: r.sha256, content_b64: to64(r.bytes) })) };
-      const salt = crypto.getRandomValues(new Uint8Array(16));
-      const iv = crypto.getRandomValues(new Uint8Array(12));
-      const key = await makeKey(password, salt);
-      const ciphertext = new Uint8Array(await crypto.subtle.encrypt(
-        { name: "AES-GCM", iv }, key, encoder.encode(JSON.stringify(body))
-      ));
-      const envelope = { schema: SCHEMA, version: 1, kdf: "PBKDF2-SHA256",
-        iterations: ITERATIONS, cipher: "AES-256-GCM", salt_b64: to64(salt),
-        iv_b64: to64(iv), ciphertext_b64: to64(ciphertext) };
-      const encoded = encoder.encode(JSON.stringify(envelope));
-      if (encoded.length > MAX_VAULT) fail("Versleutelde overdracht groter dan de toegestane 26 MiB.");
-      fileDownload("lightup-casebook-private-transfer.lupt", encoded, "application/octet-stream");
+      await encryptPrivateRecords(records, password);
       show(records);
       setStatus("Versleutelde PRIVATE overdracht lokaal gedownload. Sla het wachtwoord elders veilig op. De oorspronkelijke bron is niet als echt, actueel of geautoriseerd geverifieerd.");
     } catch (e) { setStatus(e.message || "Versleutelen geweigerd.", true); }
@@ -156,6 +167,21 @@
       $("source-files").value = "";
       busy(false);
     }
+  });
+  $("rekey").addEventListener("click", async () => {
+    busy(true);
+    try {
+      if (!window.crypto?.subtle || !window.isSecureContext)
+        fail("Deze browser geeft geen veilige WebCrypto-context.");
+      if (!current || current.length === 0) fail("Laad eerst originele privé-bestanden of open een bestaande overdracht.");
+      const password = $("rekey-password").value;
+      checkPassword(password);
+      if (!window.confirm("Maak een NIEUW lokaal versleuteld bestand met dezelfde reeds geladen originele bytes? Er wordt geen toestemming of bronvalidatie verleend."))
+        fail("Dooroverdracht geannuleerd; huidige werkset ongewijzigd.");
+      await encryptPrivateRecords(current, password);
+      setStatus("Nieuwe PRIVATE overdracht opnieuw versleuteld met een verse willekeurige salt/nonce. Geen extra originele plaintextbestanden gedownload. Wachtwoord apart veilig delen.");
+    } catch (e) { setStatus(e.message || "Dooroverdracht geweigerd.", true); }
+    finally { $("rekey-password").value = ""; busy(false); }
   });
   $("decrypt").addEventListener("click", async () => {
     busy(true);
