@@ -108,6 +108,15 @@ Supported next actions: none; request a new authenticated original source count 
 
 The operator can filter rows by their local routing state, view live counts, reset choices after HUMAN confirmation, and explicitly export **one private follow-up JSON, anonymous routing CSV, or human-readable next-actions brief**. The board is kept in memory only and never updates original casework. Restoring a previous board accepts only the exact native v1 board format with 12 literally false authority fields and the **complete current numeric packet selection in the same local order**; invalid or nonmatching files leave all existing choices unchanged. Equal anonymous numbers are not unique original case fingerprints.
 
+**Linux operator file-placement before running the private CLI:** Browser download folders are not guaranteed to satisfy LightUp's owner-only file policy. Do not relax `session.py`, `action_board.py` or the 0700/0600 checks. Instead copy your own two downloaded files into a new owner-private directory, retaining your original backups:
+
+    mkdir -p -m 700 "$HOME/private-lightup"
+    chmod 700 "$HOME/private-lightup"
+    install -m 600 "$HOME/Downloads/lightup-private-human-browser-session.json" "$HOME/private-lightup/lightup-private-human-browser-session.json"
+    install -m 600 "$HOME/Downloads/lightup-private-human-followup-board.json" "$HOME/private-lightup/lightup-private-human-followup-board.json"
+
+Use the **absolute** output path inside that same private directory and a **fresh** output-directory name. Never put original client evidence, attachments, authentication keys or scanner configuration into these source-free artifacts. Do not run as root or weaken system permissions to make a shared folder pass validation.
+
 Pair the downloaded browser follow-up board JSON with the **matching separately downloaded resumable browser numeric session JSON**, created from the same in-memory selection before reordering or removing packets. Both contain unencrypted source-free small-cell counts; keep both in an owner-private folder and do not forward without human disclosure approval.
 
 ### Linux PRIVATE offline action report, directly or inside session handoff
