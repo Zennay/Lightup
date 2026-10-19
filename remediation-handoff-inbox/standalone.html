@@ -1,5 +1,5 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-wpPFZOyxFDTkVCPSRLe+ulmbav4+u8hRIYgukbiqEiU=' 'sha256-NBwC7CWSVjvIUGJNtqetuGtm8fMWq2aX2PZSPsHlPZI=' 'sha256-FGGrkrsZYtnLFsvLsY0JgM9gHVhiCS+Op6O6WPKVPRc='; style-src 'sha256-K3eJUMpkQHuuUobfXldg3zbGaacxFtsmfNzMoCemXMQ='; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-wpPFZOyxFDTkVCPSRLe+ulmbav4+u8hRIYgukbiqEiU=' 'sha256-NBwC7CWSVjvIUGJNtqetuGtm8fMWq2aX2PZSPsHlPZI=' 'sha256-gR7sgWMGNJ+9+cLzG4HYJ6HiE0IPpw9B9tmSzi61AOI='; style-src 'sha256-K3eJUMpkQHuuUobfXldg3zbGaacxFtsmfNzMoCemXMQ='; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <title>LightUp — Private Evidence Handoff Inbox</title><style>:root{font-family:ui-sans-serif,system-ui,sans-serif;color-scheme:dark;color:#e3f7f4;background:#081923}*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 10% 0%,#21546a,transparent 44%),#081923}main{max-width:1150px;margin:auto;padding:42px 20px 70px}header{max-width:830px;padding-bottom:14px}.eyebrow{color:#73efd4;font-weight:900;font-size:.8rem;letter-spacing:.23em}h1{font-size:clamp(2.3rem,6vw,4.2rem);letter-spacing:-.065em;margin:12px 0 14px}h2{margin-top:0;font-size:1.4rem}p{line-height:1.6;color:#b3d0d7}.hold{display:inline-block;padding:10px 15px;color:#f0d490;border:1px solid #c4a354;border-radius:9px;font-size:.85rem}section{border:1px solid #355f6d;background:#132b36;padding:25px;border-radius:17px;margin:18px 0}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:15px}label{font-weight:700;font-size:.87rem;display:grid;gap:7px}input:not([type=checkbox]),select{font:inherit;color:#fff;background:#0b202b;border:1px solid #73919b;border-radius:9px;padding:10px;margin:8px 0 16px;width:100%}button{padding:12px 17px;margin:5px 7px 5px 0;border:0;border-radius:9px;background:#72efd1;color:#072328;font-weight:900;cursor:pointer}.secondary{background:#315664;color:#e5ffff}button:disabled{opacity:.38;cursor:not-allowed}button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #e8ca85;outline-offset:3px}.numbers{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:12px;margin:18px 0}.number{background:#0d212a;border:1px solid #356071;border-radius:11px;padding:16px}.number strong{display:block;font-size:1.8rem;color:#78f4d5}.number span{font-size:.81rem;color:#b5cbd4}.warn{border-left:4px solid #d9ae5a;color:#f1d8a6;background:#24343a;padding:11px 14px;font-size:.87rem}.tableWrap{overflow:auto;max-height:660px}table{width:100%;border-collapse:collapse;font-size:.85rem}td,th{border-bottom:1px solid #315865;text-align:left;vertical-align:top;padding:11px 9px;overflow-wrap:anywhere}th{position:sticky;top:0;background:#1b3946}small{display:block;color:#95bac4}#binding{overflow-wrap:anywhere}#notice[data-error=true]{color:#ffb4b4}footer{text-align:center;font-size:.83rem;color:#98b9c2;margin-top:35px}
 /* HUMAN workplan: readable inline human-only editing, no status-as-verdict badges. */
 #workplan .tableWrap{max-height:680px}
@@ -57,7 +57,7 @@
 <p>Save or resume your exact-source-bound workplan using a confidential JSON file. Restore explicitly replaces local work and rejects changed original SHA/client/engagement/finding IDs, duplicate keys and asserted authority. Owner-specific export contains only that locally declared owner's assigned records.</p>
 <button id="planSave">Download full PRIVATE HUMAN plan</button>
 <div class="grid"><label>Restore source-bound PRIVATE HUMAN workplan JSON<input type="file" id="planImport" accept=".json,application/json"></label><div><button id="planRestore" class="secondary">Restore PRIVATE HUMAN plan</button></div>
-<label>One local HUMAN owner only<select id="planOwner"><option value="">Choose local HUMAN owner</option></select></label><div><button id="planOwnerBrief" class="secondary" disabled>Download PRIVATE one-owner plan</button></div></div>
+<label>One local HUMAN owner only<select id="planOwner"><option value="">Choose local HUMAN owner</option></select></label><div><button id="planOwnerBrief" class="secondary" disabled>Download PRIVATE one-owner plan</button><button id="planOwnerPrint" class="secondary" disabled>PRIVATE one-owner readable HTML brief</button></div></div>
 <button id="planAggregate" class="secondary">Anonymous HUMAN planning counts CSV</button>
 <h3>Combine two PRIVATE human reviewer workplans</h3>
 <p>Preview another original-source-bound workplan. Both must match the exact original SHA/client/engagement and full finding set. Different local HUMAN annotations need an explicit per-finding choice; no original security source or owner reply is changed.</p>
@@ -965,7 +965,7 @@ function render(){
  const owners=[...new Set(list.map(x=>x.plan.owner_alias).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
  sel.replaceChildren(new Option("Choose local HUMAN owner",""));
  for(const alias of owners)sel.append(new Option(alias,alias));sel.value=owners.includes(old)?old:"";
- $("planOwnerBrief").disabled=!sel.value;
+ $("planOwnerBrief").disabled=!sel.value;$("planOwnerPrint").disabled=!sel.value;
  const stages=new Map();for(const r of list)stages.set(r.plan.stage,(stages.get(r.plan.stage)||0)+1);
  $("planSummary").textContent=list.length+" ORIGINAL findings · "+(stages.get("unplanned")||0)+" unplanned · "+(stages.get("human_handoff_prepared")||0)+" HUMAN handoffs prepared · "+list.filter(x=>x.plan.owner_alias).length+" local owner assignments (unverified)";
  const body=$("planRows");body.replaceChildren();
@@ -997,7 +997,7 @@ function reset(ctx=null){
  pendingMerge=null;mergeUndo=null;
  store={binding:null,rows:new Map(),revision:0,saved:0,selected:new Set(),undo:null};
  const data=ctx||BRIDGE.context();$("planRows").replaceChildren();$("planImport").value="";$("planSearch").value="";$("planFilter").value="all";$("planBulkStage").value="request_evidence_human";$("planBulkOwner").value="";$("planBulkDue").value="";$("planUndo").disabled=true;
- $("planOwner").replaceChildren(new Option("Choose local HUMAN owner",""));$("planOwnerBrief").disabled=true;
+ $("planOwner").replaceChildren(new Option("Choose local HUMAN owner",""));$("planOwnerBrief").disabled=true;$("planOwnerPrint").disabled=true;
  $("planMergeFile").value="";cancelMerge();$("planMergeUndo").disabled=true;
  if(data?.ids.length){store.binding=binding(data);for(const id of data.ids)store.rows.set(id,blank(id));$("workplan").hidden=false;msg("New source-bound local HUMAN plan. Original findings and grants are unchanged.");}
  else{$("workplan").hidden=true;msg("No ORIGINAL finding context loaded.");}
@@ -1071,6 +1071,41 @@ function ownerBrief(){
   recipient_alias:owner,...Object.fromEntries(FLAGS.map(k=>[k,false])),
   rows:rows.map(r=>({...r})),warning:"Separate PRIVATE human workplan, NOT original owner reply or consent/grant/authenticated identity."};
  download("LightUp-PRIVATE-one-owner-HUMAN-plan.json",JSON.stringify(out,null,2)+"\n","application/json");msg("PRIVATE one-owner human plan exported without another owner's plan rows.");
+}
+/* Scriptless PRIVATE human one-owner briefing; all original/customer text escaped
+   and no remote resources, browser actions, evidence verification or grants. */
+function htmlEsc(s){return String(s??"").replace(/[&<>"']/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]));}
+function printableOwnerBrief(){
+ const c=active(),alias=$("planOwner").value;
+ if(!alias)fail("choose an existing locally declared HUMAN owner");
+ const source=new Map(c.findings.map(f=>[f.id,f]));
+ const rows=c.ids.map(id=>store.rows.get(id)).filter(r=>r.owner_alias===alias);
+ if(!rows.length)fail("no PRIVATE HUMAN follow-up for selected declared owner");
+ if(!confirm("Download a readable PRIVATE HTML HUMAN plan for "+rows.length+" original findings assigned to self-declared owner "+alias+"? Verify secure recipient, confidential printing and storage independently. No source authenticity or grant."))return;
+ const header=[
+ '<!doctype html><html lang="en"><head><meta charset="utf-8">',
+ '<meta http-equiv="Content-Security-Policy" content="default-src &#39;none&#39;; img-src &#39;none&#39;; connect-src &#39;none&#39;; script-src &#39;none&#39;; style-src &#39;none&#39;; form-action &#39;none&#39;; base-uri &#39;none&#39;">',
+ '<title>LightUp PRIVATE human owner action brief</title></head><body>',
+ '<h1>LightUp · PRIVATE HUMAN follow-up</h1>',
+ '<p><strong>DRAFT/HOLD · UNVERIFIED HUMAN PLANNING ONLY.</strong> This document is NOT a permission, verified fix, authorized retest, consent, approved scope or source-authenticity proof.</p>',
+ '<p>Self-declared recipient alias: <strong>'+htmlEsc(alias)+'</strong></p>',
+ '<p>Declared original source SHA-256: '+htmlEsc(c.source_sha256)+'</p>',
+ '<p>Declared client: '+htmlEsc(c.client_reference)+' · engagement: '+htmlEsc(c.engagement_reference)+'</p>',
+ '<p>Original HUMAN finding assignments: '+rows.length+'. Independently authenticate the original source and recipient before using this private document.</p>'
+ ];
+ const body=rows.map(r=>{
+  const f=source.get(r.finding_id);
+  return '<article><h2>Original finding '+htmlEsc(r.finding_id)+'</h2><dl>'+
+   '<dt>Original source severity (if independently matched)</dt><dd>'+htmlEsc(f?.source_severity||"not supplied")+'</dd>'+
+   '<dt>Local HUMAN follow-up stage</dt><dd>'+htmlEsc(r.stage)+'</dd>'+
+   '<dt>Locally declared HUMAN owner</dt><dd>'+htmlEsc(r.owner_alias)+'</dd>'+
+   '<dt>Tentative HUMAN date</dt><dd>'+htmlEsc(r.tentative_due||"not set")+'</dd>'+
+   '<dt>Human next action</dt><dd><pre>'+htmlEsc(r.next_action||"not set")+'</pre></dd>'+
+   '<dt>PRIVATE HUMAN note</dt><dd><pre>'+htmlEsc(r.private_note||"not set")+'</pre></dd></dl><hr></article>';
+ }).join("\n");
+ const doc=header.join("\n")+"\n"+body+"\n<p>No customer source, original request, original reply, scan authorization, remediation or release status has been changed by creating this human brief.</p></body></html>\n";
+ download("LightUp-PRIVATE-one-owner-HUMAN-readable-brief.html",doc,"text/html;charset=utf-8");
+ msg("Scriptless PRIVATE single-owner HUMAN briefing downloaded. Previously exported or printed documents remain the operator's responsibility.");
 }
 function csv(v){return '"'+String(v).replaceAll('"','""')+'"';}
 function aggregate(){
@@ -1179,7 +1214,7 @@ for(const [id,event,fn] of [
  ["planBulkApply","click",bulkApply],["planUndo","click",undoBulk],
  ["planMergePreview","click",()=>previewMerge().catch(e=>msg(e.message,true))],["planMergeApply","click",applyMerge],["planMergeCancel","click",cancelMerge],["planMergeUndo","click",undoMerge],
  ["planSave","click",exportPrivate],["planRestore","click",()=>importPrivate().catch(e=>msg(e.message,true))],
- ["planOwnerBrief","click",ownerBrief],["planAggregate","click",aggregate],["planOwner","change",()=>{$("planOwnerBrief").disabled=!$("planOwner").value;}]
+ ["planOwnerBrief","click",ownerBrief],["planOwnerPrint","click",printableOwnerBrief],["planAggregate","click",aggregate],["planOwner","change",()=>{$("planOwnerBrief").disabled=!$("planOwner").value;$("planOwnerPrint").disabled=!$("planOwner").value;}]
 ])$(id).addEventListener(event,e=>{try{fn(e)}catch(err){msg(err.message,true);}});
 /* Native browser warning is best-effort; users must explicitly export PRIVATE
    source-bound workplan JSON to preserve local HUMAN annotations. */
