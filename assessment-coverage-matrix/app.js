@@ -156,7 +156,8 @@
         const key=JSON.stringify([f.capability_id,f.check_id]);
         if(!map.has(key))map.set(key,{capability:f.capability_id,check:f.check_id,
           bySource:data.map(()=>[])});
-        const endpointIndex=source.targets.indexOf(f.target);
+        // Always map against FIRST source ordinals, regardless of each later file's target order.
+        const endpointIndex=data[0].targets.indexOf(f.target);
         map.get(key).bySource[sourceIndex].push({finding:f,sourceOrdinal,
           endpointOrdinal:endpointIndex<0?null:endpointIndex+1});
       });
@@ -186,6 +187,50 @@
     return row.bySource.map(list=>list.filter(({finding,endpointOrdinal})=>
       (!ep||endpointOrdinal===ep)&&
       (severity==="all"||finding.severity===severity)));
+  }
+  function renderAttention() {
+    const area=$("attention");clear(area);
+    const heading=node("h3","HUMAN attention · source-declaration differences");
+    const notice=node("p","Prioritized for human discussion only. Numeric variability, changed declared severity or unmatched endpoint labels are NOT new, fixed or verified vulnerabilities.");
+    area.append(heading,notice);
+    const candidates=rows.map(row=>{
+      const counts=row.bySource.map(list=>list.length);
+      const worst=row.bySource.map(list=>countsFor(list.map(r=>r.finding)).worst);
+      const changedCount=new Set(counts).size>1;
+      const changedSeverity=new Set(worst.filter(Boolean)).size>1;
+      const unmatched=row.bySource.some(items=>items.some(item=>item.endpointOrdinal===null));
+      const priority=(unmatched?5:0)+(changedSeverity?3:0)+(changedCount?2:0)+
+        (row.bySource.some(list=>list.some(x=>x.finding.severity==="critical"))?1:0);
+      return {row,counts,changedCount,changedSeverity,unmatched,priority};
+    }).filter(item=>item.changedCount||item.changedSeverity||item.unmatched)
+      .sort((a,b)=>b.priority-a.priority||
+        a.row.capability.localeCompare(b.row.capability)||
+        a.row.check.localeCompare(b.row.check));
+    const count=node("p",candidates.length+
+      " literal tuple groups suggest HUMAN discussion; showing at most 24. No clinical or security significance attached to ranking.");
+    area.append(count);
+    if(!candidates.length)return;
+    const list=node("ol","", "attention-list");
+    candidates.slice(0,24).forEach(item=>{
+      const li=node("li"),button=node("button",
+        (item.row.capability||"(empty capability)")+" · "+(item.row.check||"(empty check)"),
+        "attention-link");
+      button.type="button";
+      button.addEventListener("click",()=>{
+        $("query").value=item.row.capability+" "+item.row.check;
+        $("severity").value="all";$("endpoint").value="0";refresh();
+        const first=item.row.bySource.findIndex(items=>items.length>0);
+        if(first>=0)details(item.row,first,filteredPairs(item.row)[first]);
+        $("matrix").scrollIntoView({behavior:"smooth",block:"start"});
+      });
+      const descriptions=[
+        item.changedCount?"reported counts vary ("+item.counts.join(" / ")+")":null,
+        item.changedSeverity?"source severity labels differ":null,
+        item.unmatched?"at least one reported target is not an exact declared endpoint":null
+      ].filter(Boolean).join(" · ");
+      li.append(button,node("small",descriptions));list.append(li);
+    });
+    area.append(list);
   }
   function refresh() {
     const needle=$("query").value.trim().toLocaleLowerCase();
@@ -294,7 +339,7 @@
       $("sourceSummary").textContent=baseline.targets.length+
         " identical literal declared endpoint slots · "+rows.length+
         " literal capability/check groups · no verification of target, ownership or chronology";
-      refresh();
+      renderAttention();refresh();
       message("Local input admitted structurally. Source statements remain unverified. No original data uploaded.");
     } catch(error) {
       message("Entire selection held: "+error.message+
@@ -307,7 +352,7 @@
   $("forget").addEventListener("click",()=>{
     if(sources.length&&!confirm("Forget ALL locally opened original PRIVATE result data?"))return;
     sources=[];rows=[];visible=[];selected=null;
-    clear($("details"));clear($("matrix"));$("query").value="";
+    clear($("details"));clear($("matrix"));clear($("attention"));$("query").value="";
     $("workspace").hidden=true;$("intro").hidden=false;
     $("files").value="";message("Private originals discarded from this application state.");
   });
