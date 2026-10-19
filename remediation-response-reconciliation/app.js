@@ -813,5 +813,11 @@ listen("forget",()=>{if(!confirm("Clear ALL in-memory human responses and PRIVAT
  draw();msg("All locally held PRIVATE HUMAN data and input file references forgotten.");});
 $("search").addEventListener("input",draw);$("filter").addEventListener("change",draw);
 $("dueFilter").addEventListener("change",draw);$("sort").addEventListener("change",draw);
+window.addEventListener("beforeunload",event=>{
+ // Browser-native unsaved-data warning only; no outgoing network and no persisted browser state.
+ if(!db.binding||db.revision===lastSavedRevision)return;
+ event.preventDefault();
+ event.returnValue="";
+});
 draw();msg("Load original PRIVATE owner-request and partial-reply files. Everything stays in memory.");
 })();
