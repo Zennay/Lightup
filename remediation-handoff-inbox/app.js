@@ -477,11 +477,11 @@ $("load").addEventListener("click",async()=>{
  }catch(e){info(e.message||String(e),true);}
 });
 $("forget").addEventListener("click",()=>{current=null;version++;selected.clear();selectedFindings.clear();
- for(const id of ["ledger","register","search"])$(id).value="";$("filter").value="all";
+ for(const id of ["ledger","register","search","findingSearch"])$(id).value="";$("filter").value="all";$("findingFilter").value="all";
  $("rows").replaceChildren();$("findingRows").replaceChildren();$("review").hidden=true;$("findingDesk").hidden=true;$("out").hidden=true;
  info("PRIVATE working state and file-picker references cleared from this page. Previously downloaded files must be secured or deleted separately.");});
 for(const id of ["ledger","register"])$(id).addEventListener("change",()=>{
- current=null;version++;selected.clear();$("rows").replaceChildren();$("review").hidden=true;$("out").hidden=true;
+ current=null;version++;selected.clear();selectedFindings.clear();$("rows").replaceChildren();$("findingRows").replaceChildren();$("review").hidden=true;$("findingDesk").hidden=true;$("out").hidden=true;
  info("PRIVATE source file selection changed: old human review and export controls cleared. Inspect both selected sources again.");
 });
 $("ownerRecipient").addEventListener("change",draw);
