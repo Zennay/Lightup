@@ -200,6 +200,26 @@ PYTHONPATH=src python3 remediation-evidence-materials/inbox.py \
 
 Open the new HTML **locally on a trusted owner-only workstation**. It contains confidential original finding titles, IDs, hash references and HUMAN notes; never place it in a webserver, cloud-synced or publicly accessible folder. Source identity was authenticated **only at the moment this private HTML was created**; it is not ongoing access, approved scope or a security verdict.
 
+## 8. Multi-recipient PRIVATE HUMAN team conflict desk
+
+A sender working with several independent recipients can now combine **two to twelve existing encrypted transport/recipient-reply pairs** into a single scriptless owner-private review desk. `team.py` requires **one real original-current LightUp account/client/engagement read and identical complete original encrypted HUMAN attachment inventory**, followed by individual private passphrases and exact original source/material binding for each reply. The original encrypted bytes are only decoded in process and are never written into the team HTML; source labels, file SHA-256 and HUMAN notes are PRIVATE local content.
+
+```bash
+PYTHONPATH=src python3 remediation-evidence-materials/team.py \
+  --db /private/lightup/existing.sqlite \
+  --email operator@example.invalid \
+  --client-id CURRENT_CLIENT --engagement-id CURRENT_ENGAGEMENT \
+  --human /private/lightup/current-original-human.ltv \
+  --transfer /private/lightup/transfer-one.ltv --reply /private/lightup/reply-one.ltv \
+  --transfer /private/lightup/transfer-two.ltv --reply /private/lightup/reply-two.ltv \
+  --output-dir /private/lightup/NEW-private-team-review \
+  --ack-private-team-html
+```
+
+The operator gets **NEW 0700 directory** containing a **0600 `index.html`** (private offline status cards, conflicting HUMAN statuses side-by-side, source-claimed severity/retest clearly unverified, individual notes retained) and **0600 `anonymous-counts.json`** (no finding/recipient/source IDs, names or hashes; HUMAN counts only). Conflicting statuses are **never majority-voted or silently resolved**. Entries are labelled by input packet ordinal, **not authenticated reviewer identity**; alias/timestamp fields remain human-supplied. All static HTML is scriptless, CSP-pinned and offline; no file content, endpoints, grants, scans, verified fixes, browser persistence or automatic original HUMAN Apply.
+
+This is private collaboration with source-specific HUMAN notes, not a third-party security certification or a release approval.
+
 ## Operational posture
 
 The output is **human-supplied local file bytes matched against source-reported HUMANS**, **not** signed chain of custody, verified scanner evidence, validated security impact, remediation success, or consent. Treat any original severity or retest text as unverified source labels. Existing mandatory original exact-head hosted + permanently registered named VPS CI, source-owner review, independent privacy/security/crypto review, original #177/#182/#829, current independent client/operator consent with action-time revocation for future active work and explicit HUMAN GO remain necessary. This independent feature must stay **DRAFT/HOLD**, without main merge or production deployment, until actual release gates are satisfied.
