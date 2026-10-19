@@ -140,7 +140,7 @@ def render(*, source_queue: list[dict], source_details: list[list[object]],
         '<header><h1>LightUp | PRIVATE HUMAN Casebook Workroom</h1>'
         '<nav aria-label="Private original source">'
         '<a href="index.html">Original source history</a> · '
-        '<a href="private-human-review-template.csv">Source-bound CSV template</a>'
+        '<a href="workroom-current-template.csv">Source-bound CSV template</a>'
         '</nav></header>'
         '<div class="hold"><strong>DRAFT / HOLD — NEVER AN AUTHORIZATION</strong>'
         '<p>Only the LAST original Casebook packet is shown here. Source rows are unverified declarations, '
