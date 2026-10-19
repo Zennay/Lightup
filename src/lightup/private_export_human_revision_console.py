@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import sys
 
-from . import private_export_human_revision, private_export_human_revision_workqueue, private_export_human_revision_choices, private_export_human_revision_guided, private_export_human_revision_editor, private_export_human_revision_vault, private_export_human_revision_amend, private_export_human_revision_resume
+from . import private_export_human_revision, private_export_human_revision_workqueue, private_export_human_revision_choices, private_export_human_revision_guided, private_export_human_revision_editor, private_export_human_revision_vault, private_export_human_revision_amend, private_export_human_revision_resume, private_export_human_revision_compare
 
 
 def _ask(label: str) -> str:
@@ -51,13 +51,14 @@ def main() -> int:
         "14. Open encrypted HUMAN choices as NEW UNENCRYPTED private JSON\n"
         "15. Amend encrypted HUMAN choices in PRIVATE guided terminal (no plaintext)\n"
         "16. Resume encrypted HUMAN choices in PRIVATE offline browser editor\n"
+        "17. Compare two encrypted HUMAN decision revisions privately (HTML)\n"
         "0. Exit"
     )
     try:
-        choice = _ask("Choose 0-16")
+        choice = _ask("Choose 0-17")
         if choice == "0":
             return 0
-        if choice not in tuple(str(i) for i in range(1, 17)):
+        if choice not in tuple(str(i) for i in range(1, 18)):
             raise ValueError("unknown option")
         before = _ask("Earlier authenticated encrypted original source .lue")
         plan = _ask("Earlier exact-source encrypted HUMAN plan .lun")
@@ -75,6 +76,36 @@ def main() -> int:
             "storage, actual recipient and approved transport; no output establishes "
             "consent, verified fixes or permission to test."
         )
+        if choice == "17":
+            previous = _ask("Earlier encrypted original-source HUMAN choices .lud")
+            current = _ask("Later encrypted original-source HUMAN choices .lud")
+            if not previous.lower().endswith(".lud") or not current.lower().endswith(".lud"):
+                raise ValueError("both reviewed decision revisions must be .lud")
+            output = _ask("NEW UNENCRYPTED PRIVATE HUMAN change report .html")
+            if not output.lower().endswith(".html"):
+                raise ValueError("HUMAN decision review report must end in .html")
+            _confirm(
+                "I have independently verified SAME REAL source and permitted private "
+                "storage/recipient of a plaintext aggregate HUMAN change report. "
+                "Matching encrypted custody does not establish client consent, "
+                "unchanged underlying evidence, repairs or retests."
+            )
+            private = _ask("Include PRIVATE original finding IDs/titles? Type YES or NO")
+            if private not in ("YES", "NO"):
+                raise ValueError("exact PRIVATE original identity selection required")
+            args = [
+                before, plan, after, "--earlier-choices", previous,
+                "--later-choices", current, "--output", output,
+                "--ack-private-handling", "--ack-same-real-client",
+            ]
+            if private == "YES":
+                _confirm(
+                    "This plaintext HTML will contain original PRIVATE finding "
+                    "IDs and titles. I independently approved the real recipient "
+                    "and storage for identifiable source information."
+                )
+                args.extend(["--include-private-ids", "--ack-plaintext-original-ids"])
+            return private_export_human_revision_compare.main(args)
         if choice == "16":
             existing = _ask("Original encrypted source-bound HUMAN choices .lud")
             if not existing.lower().endswith(".lud"):
