@@ -121,26 +121,40 @@ def _review_day(value: str) -> str:
     return value
 
 
-def _new_decisions(files: list[dict]) -> list[dict]:
+def _new_decisions(files: list[dict], previous: list[dict] | None = None) -> list[dict]:
     selection = []
     print("PRIVATE EVIDENCE RETENTION · HUMAN REVIEW; no file deletion")
     print("Original source-matched private material members:", len(files))
-    for row in files:
+    for number, row in enumerate(files):
+        old = previous[number] if previous is not None else None
         print("Neutral local file:", row["stored_as"], "· bytes:", row["byte_length"])
-        decision = input("retain_pending_review / legal_hold / review_for_deletion: ").strip()
+        if old is not None:
+            print("Current HUMAN-only decision:", old["decision"],
+                  "· next review:", old["review_on"])
+        decision = input("retain_pending_review / legal_hold / review_for_deletion"
+                         + (" (Enter keeps previous): " if old else ": ")).strip()
+        if old is not None and not decision:
+            decision = old["decision"]
         if decision not in DECISIONS:
             raise ValueError("A known explicit HUMAN review decision is required.")
-        day = _review_day(input("NEXT HUMAN REVIEW ON (yyyy-mm-dd): ").strip())
-        note = input("Optional private HUMAN reason (<=400 characters): ").strip()
+        raw_day = input("NEXT HUMAN REVIEW ON (yyyy-mm-dd)"
+                        + (" (Enter keeps previous if not past): " if old else ": ")).strip()
+        day = _review_day(raw_day or (old["review_on"] if old else ""))
+        note = input("Optional private HUMAN reason (<=400 characters)"
+                     + (" (Enter keeps previous): " if old else ": ")).strip()
+        if old is not None and not note:
+            note = old["note"]
         if len(note) > MAX_NOTE or any(ord(char) < 32 or ord(char) == 127 for char in note):
             raise ValueError("Invalid private note.")
         selection.append({**row, "decision": decision, "review_on": day, "note": note})
     return selection
 
 
-def _seal_review(args, vault, packet, indexed, old_hash: str) -> None:
+def _seal_review(args, vault, packet, indexed, old_hash: str,
+                 previous: list[dict] | None = None,
+                 previous_key_hash: str | None = None) -> None:
     files, receipt_sha = _read_material(args.directory, packet, indexed, vault)
-    items = _new_decisions(files)
+    items = _new_decisions(files, previous)
     body = {"kind": KIND, "schema_version": 1, "disposition": DISPOSITION,
             "source_sha256": packet["source_sha256"], "receipt_sha256": receipt_sha,
             "items": items, "warning": WARNING,
@@ -149,10 +163,13 @@ def _seal_review(args, vault, packet, indexed, old_hash: str) -> None:
     if len(plain) > MAX_PLAN:
         raise ValueError("Private review plan exceeded byte limit.")
     password = vault._password("NEW separate PRIVATE retention-plan passphrase: ", fresh=True)
-    if transfer.digest(password) == old_hash:
-        raise ValueError("New HUMAN plan passphrase must differ from original source.")
+    if transfer.digest(password) in (old_hash, previous_key_hash):
+        raise ValueError("New HUMAN plan passphrase must differ from original/previous vault.")
     output = args.output.expanduser().absolute()
-    if output.suffix.lower() != ".ltv" or output == args.human.expanduser().absolute():
+    existing = {args.human.expanduser().absolute()}
+    if args.action == "renew":
+        existing.add(args.plan.expanduser().absolute())
+    if output.suffix.lower() != ".ltv" or output in existing:
         raise ValueError("A distinct new encrypted .ltv is required.")
     vault._exclusive_output(output, vault._seal(vault._inner(plain, "application/json"), password))
     print("New original-source-bound encrypted 0600 HUMAN retention review created.")
@@ -216,14 +233,20 @@ def _render_private(items: list[dict], source_digest: str) -> bytes:
     return html.encode("utf-8", "strict")
 
 
-def _review(args, vault, packet, indexed) -> None:
+def _load_current_plan(args, vault, packet, indexed) -> tuple[list[dict], str]:
     files, receipt_sha = _read_material(args.directory, packet, indexed, vault)
+    if args.plan.suffix.lower() != ".ltv":
+        raise ValueError("A native encrypted plan .ltv is required.")
     encrypted = vault._private_input(args.plan.expanduser().absolute(), vault.MAX_VAULT)
     passphrase = vault._password("Existing PRIVATE retention-plan passphrase: ", fresh=False)
     plain, mime, _ = vault._open(encrypted, passphrase)
     if mime != "application/json":
         raise ValueError("Retention plan MIME changed.")
-    items = _admit_plan(plain, files, receipt_sha, packet)
+    return _admit_plan(plain, files, receipt_sha, packet), transfer.digest(passphrase)
+
+
+def _review(args, vault, packet, indexed) -> None:
+    items, _ = _load_current_plan(args, vault, packet, indexed)
     due = sum(item["review_on"] <= date.today().isoformat() for item in items)
     if args.action == "inspect":
         print("Current ORIGINAL source and all local material bytes match encrypted HUMAN review.")
@@ -245,7 +268,7 @@ def _review(args, vault, packet, indexed) -> None:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest="action", required=True)
-    for action in ("stage", "inspect", "open-current"):
+    for action in ("stage", "renew", "inspect", "open-current"):
         p = sub.add_parser(action)
         for name in ("db", "email", "client-id", "engagement-id"):
             p.add_argument("--" + name, required=True)
@@ -268,6 +291,11 @@ def main(argv: list[str] | None = None) -> int:
         packet, indexed, previous_password_hash = _current(args, vault)
         if args.action == "stage":
             _seal_review(args, vault, packet, indexed, previous_password_hash)
+        elif args.action == "renew":
+            previous, old_plan_hash = _load_current_plan(args, vault, packet, indexed)
+            print("Current encrypted private HUMAN review loaded; original unchanged.")
+            _seal_review(args, vault, packet, indexed, previous_password_hash,
+                         previous=previous, previous_key_hash=old_plan_hash)
         else:
             _review(args, vault, packet, indexed)
         return 0
