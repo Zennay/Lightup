@@ -126,6 +126,24 @@ def _classification(entry: dict, stages: dict[str, str], material: str) -> tuple
     return label, counts
 
 
+def _human_command(label: str, current: bool, counts: Counter, amount: int) -> str:
+    """Show a next operator command, never trigger it or claim authorization."""
+    if label == "pending_no_file":
+        return "resolve" if current else "carry-closed"
+    if label == "pending_has_file":
+        if current:
+            return "recover"
+        return ("carry-closed" if counts["closed_human"] == amount
+                else "independent owner review")
+    if label == "staged_human_closed":
+        return "resolve" if current else "carry-closed"
+    if label in ("staged_open", "staged_not_observed") and current:
+        return "review"
+    if label in ("reviewed_current_closed", "aborted_unpublished"):
+        return "status"
+    return "independent owner review"
+
+
 def collect(folder: Path, packet: dict, vault, private_file,
             read_journal, current_source: str) -> tuple[list[dict], dict]:
     """Original-current account/material already admitted by journal.main()."""
@@ -147,6 +165,8 @@ def collect(folder: Path, packet: dict, vault, private_file,
                 "local_state": entry["state"],
                 "attention": label,
                 "priority": PRIORITY[label],
+                "suggested_operator_action": _human_command(
+                    label, key == current_source, counts, len(entry["requests"])),
                 "created_utc": created,
                 "elapsed_days": elapsed,
                 "draft_count": len(entry["requests"]),
@@ -180,7 +200,8 @@ def show(rows: list[dict], totals: dict) -> None:
               "·", "CURRENT" if row["current_revision"] else "historical",
               "·", label, "· drafts", row["draft_count"],
               "· days since local HUMAN draft:", row["elapsed_days"])
-        print("  HUMAN next step:", next_step)
+        print("  HUMAN next step:", next_step,
+              "· local command:", row["suggested_operator_action"])
     print(CAUTION)
 
 
@@ -198,6 +219,7 @@ def html(rows: list[dict], totals: dict) -> bytes:
                    str(row["draft_count"]) + "</td><td>" +
                    str(row["reported_closed"]) + "</td><td>" +
                    str(row["reported_unobserved"]) + "</td><td>" +
+                   e(row["suggested_operator_action"]) + "</td><td>" +
                    e(advice) + "</td></tr>")
     content = """<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -220,7 +242,7 @@ HUMAN attention: <b>""" + str(totals["human_attention"]) + """</b></p></section>
 <section><h2>Current and earlier local HUMAN handoffs</h2>
 <table><thead><tr><th>Attention priority</th><th>Source/cycle</th><th>Revision</th><th>HUMAN situation</th>
 <th>Elapsed days*</th><th>Drafts</th><th>Currently HUMAN-closed</th><th>Not observed</th>
-<th>Next HUMAN action</th></tr></thead><tbody>""" + "".join(out) + """</tbody></table></section>
+<th>Local command</th><th>Next HUMAN action</th></tr></thead><tbody>""" + "".join(out) + """</tbody></table></section>
 <footer><p>""" + e(CAUTION) + """ This 0600 offline scriptless file has no
 customer names, original source SHA, native request IDs, finding fingerprints,
 private notes, encrypted file paths, evidence content or provider links.
