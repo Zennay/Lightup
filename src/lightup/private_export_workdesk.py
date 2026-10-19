@@ -69,7 +69,7 @@ function render(){
   const choice=E("select");
   STAGES.forEach(s=>{const opt=E("option",fmt(s));opt.value=s;choice.append(opt);});
   choice.value=a.stage;
-  choice.addEventListener("change",()=>{a.stage=choice.value;summary();});
+  choice.addEventListener("change",()=>{a.stage=choice.value;render();});
   labeled(controls,"HUMAN stage (never a fix verdict)",choice);
   const owner=E("input");owner.value=a.owner_alias;owner.maxLength=80;owner.placeholder="Human contact alias";
   owner.addEventListener("input",()=>{a.owner_alias=owner.value;});
@@ -157,7 +157,8 @@ def _load_resume(filename: str, manifest: dict, rows: list[dict[str, str]]) -> d
     return result
 
 
-def _render(manifest: dict, rows: list[dict[str, str]], annotations: dict) -> bytes:
+def _render(manifest: dict, rows: list[dict[str, str]], annotations: dict,
+            migration: dict[str, int] | None = None) -> bytes:
     payload = {
         "source_csv_sha256": manifest["source_csv_sha256"],
         "declared_client_id": manifest["declared_client_id"],
@@ -174,6 +175,17 @@ def _render(manifest: dict, rows: list[dict[str, str]], annotations: dict) -> by
     csp = ("default-src 'none'; script-src 'sha256-" + js_hash + "'; style-src 'sha256-" +
            css_hash + "'; connect-src 'none'; object-src 'none'; img-src 'none'; "
            "frame-src 'none'; form-action 'none'; base-uri 'none'")
+    migration_notice = ""
+    if migration is not None:
+        migration_notice = (
+            '<div class="warning"><strong>Original source revision: PRIVATE HUMAN handoff.</strong> '
+            'Carried unchanged original findings: ' + str(migration["carried"]) +
+            '. New records reset: ' + str(migration["new"]) +
+            '. Changed records reset: ' + str(migration["changed"]) +
+            '. Former records absent: ' + str(migration["absent"]) +
+            '. Absence is never a verified fix. Carried notes remain unsigned HUMAN drafts; '
+            'even identical data is not proof of real-world identity or authorization.</div>'
+        )
     document = (
         '<!doctype html><html lang="en"><head><meta charset="utf-8">'
         '<meta name="viewport" content="width=device-width,initial-scale=1">'
@@ -204,9 +216,11 @@ def _render(manifest: dict, rows: list[dict[str, str]], annotations: dict) -> by
         '<section id="board" aria-label="Original findings and human follow-up"></section>'
         '<p>To resume, use the original unchanged ZIP with the exported PRIVATE JSON '
         'and the --resume option. Invalid/changed source or missing IDs are rejected. '
-        'No annotations are automatically migrated to other source versions.</p></main>'
+        'Different source versions require explicit, source-identical HUMAN carryover; no automatic migration.</p></main>'
         '<script>' + js + '</script></body></html>'
     )
+    if migration_notice:
+        document = document.replace('<section class="bar"', migration_notice + '<section class="bar"', 1)
     return document.encode("utf-8")
 
 
@@ -214,7 +228,11 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Private source-bound HUMAN evidence coordination only")
     parser.add_argument("archive", help="original authenticated export ZIP")
     parser.add_argument("--output", required=True, help="new private .html, never overwritten")
-    parser.add_argument("--resume", help="optional original-source human JSON export")
+    parser.add_argument("--resume", help="previous HUMAN JSON only for exactly this source")
+    parser.add_argument("--carry-forward-from", help="earlier original source ZIP")
+    parser.add_argument("--carry-forward-plan", help="earlier exact-source HUMAN JSON")
+    parser.add_argument("--ack-same-real-client", action="store_true")
+    parser.add_argument("--ack-review-carryover", action="store_true")
     parser.add_argument("--ack-private-plaintext", action="store_true")
     parser.add_argument("--ack-original-identifiers", action="store_true")
     args = parser.parse_args(argv)
@@ -223,13 +241,29 @@ def main(argv: list[str] | None = None) -> int:
             raise ValueError("must acknowledge original private data")
         destination = _output_path(args.output, ".html")
         manifest, rows = _read_archive(args.archive)
-        draft = _load_resume(args.resume, manifest, rows) if args.resume else {
+        carry = bool(args.carry_forward_from or args.carry_forward_plan)
+        if carry and args.resume:
+            raise ValueError("resume and cross-source carryover cannot be mixed")
+        migration = None
+        if carry:
+            if not (args.carry_forward_from and args.carry_forward_plan and
+                    args.ack_same_real_client and args.ack_review_carryover):
+                raise ValueError("separate human approval for source carryover required")
+            from .private_export_migration import migrate_exact_unchanged
+            draft, migration = migrate_exact_unchanged(
+                args.carry_forward_from, args.carry_forward_plan, manifest, rows)
+        else:
+            draft = _load_resume(args.resume, manifest, rows) if args.resume else {
             r["finding_id"]: {"finding_id": r["finding_id"], "stage": "unassigned",
                               "owner_alias": "", "due_date": "", "human_note": ""}
             for r in rows
         }
-        _atomic_private_publish(destination, _render(manifest, rows, draft))
+        _atomic_private_publish(destination, _render(manifest, rows, draft, migration))
         print("Created local PRIVATE HUMAN workdesk. No grants, retest or fixes verified.")
+        if migration is not None:
+            print("Human notes carried from source-identical records:", migration["carried"])
+            print("Changed/new records reset:", migration["changed"] + migration["new"])
+            print("Previous original IDs now absent (not repaired):", migration["absent"])
         return 0
     except (ValueError, OSError, UnicodeError):
         print("Private HUMAN workdesk HOLD: invalid source, annotation, or output.", file=sys.stderr)

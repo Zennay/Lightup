@@ -81,3 +81,20 @@ Resume uses Python duplicate-key-rejecting JSON admission and requires the origi
 ### Extra import hardening
 
 The original ZIP intake now also validates every imported exported field using the parent original Unicode presentation-boundary guard, requires all formula/redaction presentation cells to already be canonical, rejects NFKC-equivalent duplicate IDs and requires byte-for-byte match with the original quoted CRLF source CSV serializer. An attacker cannot simply rehash a hand-written or altered CSV and claim it was emitted by the guarded original service. This is a data-format acceptance rule, not cryptographic source authenticity.
+
+## Original CSV revision: explicit, safe HUMAN note carryover
+
+When a newer separately authorized original CSV has changed, exact-source `--resume` correctly refuses it. The new **explicit original-source migration** command preserves HUMAN coordination only for findings whose *entire original five-column record* (including original identity, title, severity, source retest status and proposed remediation) remains identical. Every changed/new record starts unassigned with **no migrated owner, due date or private note**; absent records are never called fixed. It does not rebind any evidence, consent or authenticated client identity.
+
+Use only after a human independently verifies that both original archives come from the **same real client and engagement**, not merely because their self-declared labels match:
+
+```sh
+python -m lightup.private_export_workdesk NEW-PRIVATE.zip \
+  --carry-forward-from OLD-PRIVATE.zip \
+  --carry-forward-plan OLD-PRIVATE-HUMAN-Workplan.json \
+  --ack-same-real-client --ack-review-carryover \
+  --ack-private-plaintext --ack-original-identifiers \
+  --output /path/to/private/NEW-HUMAN-workdesk.html
+```
+
+Both archives and the previous human draft are independently admitted first, with strict duplicate-key rejection, source digest, exact finding membership and authority flags. The new workdesk displays total unchanged carried records, newly reset, changed/reset and absent previous records. Its fresh unsaved local annotation state references only the **new** original source digest; the old JSON remains unchanged. No automatic source equality = true fix, consent, owner authenticity, active scan/retest release or security proof. Output is a new private 0600 HTML and all old notes remain private in the original old file.
