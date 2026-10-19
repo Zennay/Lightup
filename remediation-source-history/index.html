@@ -76,6 +76,7 @@
 <div class="actions"><button id="aggregate" class="secondary">Export aggregate source trends CSV</button><label class="check"><input id="privateAck" type="checkbox">I have approved a PRIVATE destination and verified recipients for original IDs, titles, human owner/action details.</label><button id="privateExport">Export currently filtered PRIVATE HUMAN CSV</button>
 <button id="caseworkExport" class="secondary">Export original Casework v1 PRIVATE human draft</button>
 <button id="decisionExport" class="secondary">Export PRIVATE HUMAN source-carry journal</button>
+<button id="mergeHistoryExport" class="secondary">Export PRIVATE per-field HUMAN Casework merge decisions</button>
 <h3>Import existing original Casework v1 PRIVATE human draft</h3>
 <p class="help">Import a PRIVATE original Casework v1 packet against the exact latest five-column original findings and its canonical SHA256. Duplicate JSON keys, mismatched original finding data, invalid auth flags or wrong source are rejected. Existing private notes cannot be overwritten without separate approval. HUMAN status, blockers, notes and verification plans remain unverified coordination information.</p>
 <label>Original PRIVATE Casework v1 JSON file (up to 2 MiB)<input id="nativeCaseworkFile" type="file" accept=".json,application/json"></label>
