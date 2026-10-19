@@ -233,6 +233,81 @@ async function importFile(kind,e){
   announce("Original-source-bound "+kind+" imported in memory. No original evidence, owner reply, action, grant or release changed.");
  }catch(_){announce("HOLD: "+kind+" import invalid, ambiguous, unsupported or source-mismatched. Current data unchanged.",true);}
 }
+/** Originals-only batch intake: never fabricates a source format or partial state. */
+async function batchAdmit(){
+ const chosen=Array.from($("batch-intake").files||[]);
+ if(!chosen.length){$("batch-status").textContent="Select original PRIVATE export files first.";return;}
+ if(chosen.length>5||chosen.some(f=>f.size<1||f.size>8*1048576)||
+     chosen.reduce((n,f)=>n+f.size,0)>12*1048576){
+  $("batch-status").textContent="HOLD: 1–5 supported original files, max 8 MiB/file and 12 MiB total.";return;
+ }
+ const captured=revision,current=entries.workplan;
+ const payload=new Map(),maxima={workplan:1048576,csv:1048576,artifact:1048576,runbook:8*1048576,response:8*1048576};
+ try{
+  for(const file of chosen){
+   if(file.size>8*1048576)fail("oversized original source file");
+   const original=new TextDecoder("utf-8",{fatal:true}).decode(await file.arrayBuffer());
+   if(revision!==captured)fail("source changed during original file intake");
+   let kind,raw;
+   if(file.name.toLowerCase().endsWith(".csv")){
+    kind="csv";raw=original;
+   }else{
+    raw=parseStrict(original);
+    kind=({"lightup.private_human_original_finding_workplan":"workplan",
+      "lightup.private_artifact_ledger":"artifact",
+      "lightup.private_human_remediation_runbooks":"runbook",
+      "lightup.private_human_response_reconciliation":"response"})[raw?.kind];
+    if(!kind)fail("unsupported original PRIVATE source type");
+   }
+   if(file.size>maxima[kind]||payload.has(kind))fail("duplicate or oversized original source file");
+   payload.set(kind,raw);
+  }
+  if(!payload.has("workplan")&&!current)fail("original HUMAN workplan must be present");
+  const source=payload.has("workplan")?validatePlan(payload.get("workplan")):current;
+  const admitted={...entries};
+  if(payload.has("workplan")){
+   for(const key of Object.keys(admitted))admitted[key]=null;
+   admitted.workplan=source;
+  }
+  if(payload.has("csv")){
+   if(!window.LightUpCasework)fail("original Casework parser unavailable");
+   const findings=window.LightUpCasework.parseCSV(payload.get("csv"));
+   const sha=await window.LightUpCasework.digest(findings);
+   if(!sha||sha!==source.source.source_sha256||findings.length!==source.ids.size||
+      findings.some(f=>!source.ids.has(f.finding_id)))fail("original CSV does not match full source");
+   admitted.csv={byId:new Map(findings.map(f=>[f.finding_id,f]))};
+  }
+  for(const kind of ["artifact","runbook","response"]){
+   if(!payload.has(kind))continue;
+   admitted[kind]=kind==="artifact"?validateArtifact(payload.get(kind),source):
+     kind==="runbook"?validateRunbook(payload.get(kind),source):
+     validateResponse(payload.get(kind),source);
+  }
+  if(revision!==captured)fail("original source changed during validation");
+  const names=[...payload.keys()].join(", ");
+  const msg=payload.has("workplan")?
+   "Replace the ORIGINAL HUMAN source and ALL previous local companions with "+names+
+   "? Missing companions will be UNKNOWN. This cannot confer any security permission.":
+   "Replace only selected same-source PRIVATE companion imports ("+names+
+   ")? Other local original exports remain. This grants no permissions.";
+  if(!confirm(msg)){$("batch-status").textContent="No changes: HUMAN multi-import cancelled.";return;}
+  if(revision!==captured)fail("original source changed after HUMAN confirmation");
+  for(const kind of Object.keys(entries)){
+   entries[kind]=admitted[kind];
+   stateLabel(kind,entries[kind]?"Imported locally · source-bound · UNVERIFIED":"Not imported / unknown");
+  }
+  revision++;
+  $("source").textContent=sourceLabel();
+  draw();window.dispatchEvent(new Event("lightup:human-sources-changed"));
+  $("batch-intake").value="";
+  $("batch-status").textContent="IMPORTED atomically: "+names+
+   ". Original source membership matched. Not authenticated; no scan/retest/fix/grant.";
+  announce("PRIVATE originals admitted together. No original source or authority fields changed.");
+ }catch(_){
+  $("batch-status").textContent="HOLD: ambiguous, malformed, incomplete or mismatched original source; ALL previous local state preserved.";
+ }
+}
+$("batch-admit").addEventListener("click",batchAdmit);
 function records(){
  if(!loaded())return [];
  const work=entries.workplan,source=entries.csv?.byId,docs=entries.artifact?.byId,books=entries.runbook?.byId,responses=entries.response?.byId;

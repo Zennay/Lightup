@@ -6,6 +6,14 @@
 <nav><a href="index.html">← Operations Hub</a><a href="#intake">Import local PRIVATE records</a><a href="#workqueue">Find human follow-ups</a><a href="#custody">Check local file fingerprints</a><a href="#boundaries">Authority boundaries</a></nav></header>
 <main><section id="intake"><h2>1 · Bind to the original HUMAN finding set</h2>
 <p>The original <strong>Evidence Handoff Inbox workplan JSON</strong> is required first; it supplies every original finding ID. The other three PRIVATE exports are optional and may join only to precisely the same declared source SHA, client label, engagement label, and original IDs. Never infer ownership or proof from these labels.</p>
+<div class="notice">
+<h3>Atomic multi-source intake</h3>
+<p>Select the original HUMAN workplan JSON and any combination of its original CSV, Artifact Ledger, HUMAN Runbooks and Response Register exports. The desk admits <strong>all complete matching sources together or none at all</strong>. Existing locally imported data is not changed on HOLD. With no workplan selected, the active original source is used and only chosen companions are replaced.</p>
+<label for="batch-intake">Select 1–5 original PRIVATE files (max 12 MiB total)</label>
+<input id="batch-intake" type="file" multiple accept=".json,.csv,application/json,text/csv">
+<div class="actions"><button id="batch-admit" type="button">Preview and import original sources atomically</button></div>
+<p id="batch-status" role="status" aria-live="polite">No multi-source intake queued.</p>
+</div>
 <div class="cards"><article><h3>Original HUMAN workplan <span class="required">REQUIRED</span></h3><label for="workplan">Import original `lightup.private_human_original_finding_workplan`</label><input type="file" id="workplan" accept=".json,application/json"><p id="workplan-state" class="intake-state">Not imported</p></article>
 <article><h3>Original findings CSV (optional)</h3><label for="csv">Import exact five-column ORIGINAL findings export; locally compare canonical SHA-256 to original workplan</label><input type="file" id="csv" accept=".csv,text/csv"><p id="csv-state" class="intake-state">Not imported · source severity unknown</p></article>
 <article><h3>PRIVATE evidence artifact inventory</h3><label for="artifact">Import `lightup.private_artifact_ledger`</label><input type="file" id="artifact" accept=".json,application/json"><p id="artifact-state" class="intake-state">Not imported</p></article>
