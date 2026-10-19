@@ -91,3 +91,51 @@ The separate interactive foreground console also exposes this workflow as menu *
 ### Additional source-chronology sanity condition
 
 In addition to the real-client human acknowledgment and strict matching self-declared client/engagement, `preview`, `carry` and the detailed workqueue **HOLD** if the later original archive's declared `generated_utc` timestamp is not strictly newer than the earlier original export in UTC. This prevents accidental backward movement in a source-revision handoff. The timestamp is only a **self-declared** sanity check and cannot prove actual temporal order or genuine source ownership.
+
+## Selective HUMAN per-finding approval — usable new workflows
+
+The original one-step `carry` and the historical private workqueue remain available. The **new selective workflow** does not silently carry all matching records: each of the original new-source finding rows begins with both HUMAN migration approvals literally **false**. It offers two operator routes using exactly the unchanged original encrypted source readers and v1 original workplan parser.
+
+### Route A: private source-bound editable decision sheet
+
+First produce a new **unencrypted private 0600 JSON** for a real human to review. Every row contains the original ID, potentially identifying title, source-claimed severity, five-column original record SHA-256, and one of `five_column_identical`, `changed`, or `new`. **No private HUMAN notes or aliases, remediation body or raw source evidence are exported.** All human choices default to false; disappearing original IDs are omitted rather than misrepresented as repaired. This is a private work document; secure handling and real recipient verification are required.
+
+```sh
+python -m lightup.private_export_human_revision_choices prepare \
+  /private/earlier.lue /private/earlier.lun /private/later.lue \
+  --output /private/revision-decisions.json \
+  --ack-private-handling --ack-same-real-client \
+  --ack-plaintext-original-ids
+```
+
+The human may edit **only** the boolean `copy_owner_and_note` and `copy_stage_and_due` for each `five_column_identical` row. Every other header, field, source digest, exact row digest, row sequence, original title, severity, and classification must remain unchanged. Setting `copy_stage_and_due=true` also requires `copy_owner_and_note=true`. It is prohibited to approve any change/new source row. A review document is **not** an authorization, verified client identity, test consent, security attestation or evidence of remediation.
+
+After an independent human review, import the exact source-bound choices, confirm them explicitly and create **one new encrypted `.lun`** against the new original source; no intermediate plaintext workplan is written. The choices file must be regular, no-follow and owner-private (`0600` or stricter). A late mismatch (original source, order, digest, classification, forbidden status, malformed JSON, unsafe file permissions, altered title, duplicate keys, missing rows) refuses the entire operation **before** any output.
+
+```sh
+python -m lightup.private_export_human_revision_choices apply \
+  /private/earlier.lue /private/earlier.lun /private/later.lue \
+  --choices /private/revision-decisions.json \
+  --output /private/reviewed-later-human.lun \
+  --ack-private-handling --ack-same-real-client \
+  --ack-manual-human-decisions
+```
+
+### Route B: in-terminal approval without a plaintext decision sheet
+
+The alternative `private_export_human_revision_guided` requires a trusted interactive terminal, loads/decrypts the three original files and prompts **once for every five-column-identical record**, displaying the original ID/title/severity and prior HUMAN stage plus whether a private note exists. It does not show note content. The human must enter exactly one of `SKIP`, `OWNER`, `OWNER_AND_STAGE`, or `QUIT`: omitted decisions, invalid inputs, cancellation and EOF fail closed without a new output. Changed/new rows cannot prompt or carry. Following the final decision, the original complete plan is re-admitted and published as a fresh 0600 encrypted `.lun` with a separately entered passphrase. **No intermediate plaintext decision file** is produced.
+
+```sh
+python -m lightup.private_export_human_revision_guided \
+  /private/earlier.lue /private/earlier.lun /private/later.lue \
+  --output /private/guided-human.lun \
+  --ack-private-terminal --ack-same-real-client \
+  --ack-human-decisions
+```
+
+The existing isolated menu now offers choice-sheet export **6**, strict choice-sheet import **7** and terminal-by-terminal guarded HUMAN review **8**; the parent source-owner console remains unchanged.
+
+### Reuse of the resulting real original HUMAN plan
+
+Both selective routes produce the same authenticated-AES envelope and original plan schema as the separately owned `private_export_encrypted_notes` consumer. Operators can use the parent unchanged `workdesk` route for the **later** original `.lue` and newly created `.lun`, only with independent private recipient/storage approval. Outputs cannot establish genuine client identity, authentication freshness, user consent, evidence equality, effectiveness of a fix, or authority for scanning. Original release HOLD remains binding.
+
