@@ -19,6 +19,7 @@ from .private_export_encrypted import _passphrase, _read_encrypted, _seal
 from .private_export_encrypted_notes import _read_plan, MAGIC_PLAN
 from .private_export_handoff import _atomic_private_publish, _output_path
 from .private_export_workdesk import KIND, MAX_PLAN, _load_resume_bytes
+from .private_export_human_revision_source import _read_with_binding, _require_same_originals
 
 _FALSE_FLAGS = (
     "authorizes_action", "certifies_remediation", "confirms_client_identity"
@@ -206,7 +207,7 @@ def main(argv: list[str] | None = None) -> int:
                 raise ValueError("explicit HUMAN carry and new encrypted output required")
             output = _output_path(args.output, ".lun")
 
-        old_meta, old_rows, previous, new_meta, new_rows = _read_inputs(
+        old_meta, old_rows, previous, new_meta, new_rows, binding = _read_with_binding(
             args.earlier_source, args.earlier_plan, args.later_source
         )
         next_plan, summary = _review_revision(
@@ -227,10 +228,12 @@ def main(argv: list[str] | None = None) -> int:
                 serialized, fresh_passphrase, magic=MAGIC_PLAN, max_plaintext=MAX_PLAN
             )
             del fresh_passphrase
+            _require_same_originals(args.earlier_source, args.earlier_plan, args.later_source, binding)
             _atomic_private_publish(output, ciphertext)
             print("Created NEW exact-later-source encrypted HUMAN coordination plan.")
             print("Unsigned local ciphertext SHA-256:", hashlib.sha256(ciphertext).hexdigest())
         elif output:
+            _require_same_originals(args.earlier_source, args.earlier_plan, args.later_source, binding)
             _atomic_private_publish(output, _private_html(summary))
             print("Created UNENCRYPTED local PRIVATE ID-free human revision brief.")
         for key, value in summary.items():
