@@ -56,7 +56,7 @@ function render(){
    (e.ids.length>12?' …':'')+'</small><small>'+e.changedCount+' original/HUMAN field delta(s)</small></td>'+
    '<td>'+esc(e.summary.slice(0,320))+'</td><td>'+sha+'</td></tr>';
  }).join('')||'<tr><td colspan="4">No original source-bound HUMAN decisions in the current filter.</td></tr>';
- if(chosen&&source.events.some(x=>x.kind===chosen.kind&&x.index===chosen.index)){
+ if(chosen&&events.some(x=>x.kind===chosen.kind&&x.index===chosen.index)){
   try{showDetail(chosen.kind,chosen.index);}catch(e){chosen=null;$('ledgerDetail').hidden=true;say(e.message,true);}
  }else{$('ledgerDetail').hidden=true;$('ledgerDetail').replaceChildren();chosen=null;}
 }
