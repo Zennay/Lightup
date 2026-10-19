@@ -148,8 +148,9 @@ def open_workroom(package: Path, key_file: Path,
                 original == source)
         coordination.publish(temporary / "inbox", key_file, plan_file,
                              temporary / "board", linked_workroom=True)
+        import workroom_home
         attest.exclusive_private_write(temporary / "index.html",
-                                       root_page(plan["revision"], source["slot_count"]))
+                                       workroom_home.render(plan))
         # Final admission against all original native source-free members,
         # encrypted plan attachment, and reconstructed coordination HTML.
         require(coordination.admitted_inbox(temporary / "inbox", key_file)

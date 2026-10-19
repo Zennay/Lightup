@@ -131,9 +131,9 @@ def rotate(old_workroom: Path, old_secret: Path, new_secret: Path,
         coordination.encrypt(next_plan, new_secret, staging / "plan.ltplan")
         coordination.publish(incoming, new_secret, staging / "plan.ltplan",
                              staging / "board", linked_workroom=True)
+        import workroom_home
         attest.exclusive_private_write(staging / "index.html",
-                                       workroom.root_page(next_plan["revision"],
-                                                          new_source["slot_count"]))
+                                       workroom_home.render(next_plan))
         # Full workroom admission by new key, old key untouched.
         require(workroom_control.inspect(staging, new_secret) == next_plan and
                 workroom_control.inspect(old_workroom, old_secret) == previous and
