@@ -67,3 +67,13 @@ footer{border-top:1px solid #283442;padding:22px clamp(18px,4vw,52px);max-width:
 @media(max-width:850px){.human-intro,.human-actions{grid-template-columns:1fr}}
 @media(max-width:540px){.human-panel{padding:15px}.human-paging{align-items:flex-start;flex-direction:column}}
 @media print{.human-panel{display:none!important}}
+
+.human-bulk{background:#0f222c;border:1px solid #3a6065;padding:16px;border-radius:11px;margin:18px 0 14px}
+.human-bulk h4{font-size:.99rem;color:#d3efeb;letter-spacing:-.01em;margin:0 0 12px}
+.bulk-fields{display:grid;grid-template-columns:repeat(3,minmax(140px,1fr));gap:12px;align-items:end}
+.bulk-fields label{display:grid;gap:6px;font-size:.79rem;font-weight:670;color:#ccdee5}
+.bulk-fields select{font-size:.84rem;padding:10px 7px}
+.bulk-fields .buttons{grid-column:1/-1;margin:0}
+.human-bulk .hint{margin:10px 0 0}
+@media(max-width:900px){.bulk-fields{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:600px){.bulk-fields{grid-template-columns:1fr}}
