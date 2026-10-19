@@ -5,7 +5,12 @@ const $=id=>document.getElementById(id),H=window.LightUpHistory;
 const fields=['finding_id','title','severity','retest_status','remediation'];
 const ranks={critical:0,high:1,medium:2,low:3,info:4};
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const csv=s=>{let t=String(s??'');if(/^[\s\u0000-\u001f\u200b-\u200f\u2060\ufeff]*[=+\-@]/u.test(t))t="'"+t;return '"'+t.replace(/"/g,'""')+'"';};
+const csv=s=>{
+ let t=String(s??'');
+ const probe=t.replace(/^[\u0000-\u0020\u007f-\u009f\u00a0\u1680\u2000-\u200f\u2028-\u202e\u205f\u2060-\u206f\u3000\ufeff]*/u,'').normalize('NFKC');
+ if(/^[=+\-@]/u.test(probe))t="'"+t;
+ return '"'+t.replace(/"/g,'""')+'"';
+};
 let compared=null;
 function message(s,fail=false){$('message').textContent=s;$('message').className=fail?'error':'info';}
 function download(filename,rows){const txt='\uFEFF'+rows.map(r=>r.map(csv).join(',')).join('\r\n')+'\r\n';const u=URL.createObjectURL(new Blob([txt],{type:'text/csv;charset=utf-8'}));const a=document.createElement('a');a.href=u;a.download=filename;a.click();setTimeout(()=>URL.revokeObjectURL(u),1000);}
@@ -18,6 +23,7 @@ function updateSelectors(){
  else if(snapshots.length)to.value=snapshots.at(-1).sourceHash;
  $('diffGo').disabled=snapshots.length<2;
  $('diffAggregate').disabled=snapshots.length<2;
+ $('diffProvenance').disabled=snapshots.length<2;
  $('diffPrivate').disabled=snapshots.length<2;
  $('diffSummary').textContent=snapshots.length<2?'Import two or more separately verified original source revisions.':'Select an earlier and a later historical export. Source labels are not security findings.';
  $('diffRows').innerHTML='';compared=null;
@@ -60,12 +66,17 @@ function verified(){
  const c=compute();if(!compared||compared.revision!==H.revision()||compared.start!==c.start||compared.end!==c.end||compared.before.sourceHash!==c.before.sourceHash||compared.after.sourceHash!==c.after.sourceHash||compared.before.fileHash!==c.before.fileHash||compared.after.fileHash!==c.after.fileHash)throw Error('HOLD: preview the current exact source pair after any revision or selection change before export.');
  return c;
 }
-function exportAggregate(){
+function exportAggregate(privateProvenance=false){
+ if(privateProvenance)H.privateAllowed();
  const c=verified(),s=c.summary;
- const columns=['earlier_label','later_label','original_earlier_sha256','original_later_sha256','introduced_source_records','absent_not_verified_fixed','exact_source_changes','unchanged','source_severity_escalations','source_severity_decreases','source_retest_label_changes'];
- const values=[c.before.label,c.after.label,c.before.sourceHash,c.after.sourceHash,s.introduced,s.absent,s.changed,s.unchanged,s.severityUps,s.severityDowns,s.retestChanges];
- download('lightup-source-pair-aggregate.csv',[columns,values]);
- message('Aggregate-only source comparison exported, no original finding IDs/remediation text or HUMAN notes.');
+ const columns=['earlier_revision_index','later_revision_index','introduced_source_records','absent_not_verified_fixed','exact_source_changes','unchanged','source_severity_escalations','source_severity_decreases','source_retest_label_changes'];
+ const values=[c.start+1,c.end+1,s.introduced,s.absent,s.changed,s.unchanged,s.severityUps,s.severityDowns,s.retestChanges];
+ if(privateProvenance){
+  columns.push('PRIVATE_earlier_label','PRIVATE_later_label','PRIVATE_earlier_canonical_source_sha256','PRIVATE_later_canonical_source_sha256','PRIVATE_earlier_original_file_sha256','PRIVATE_later_original_file_sha256');
+  values.push(c.before.label,c.after.label,c.before.sourceHash,c.after.sourceHash,c.before.fileHash,c.after.fileHash);
+ }
+ download(privateProvenance?'lightup-PRIVATE-source-pair-provenance.csv':'lightup-source-pair-anonymous-counts.csv',[columns,values]);
+ message(privateProvenance?'PRIVATE original source provenance exported to an explicitly approved destination.':'Aggregate comparison counts exported without original source hashes, labels or finding identifiers; small-group context may remain sensitive.');
 }
 function exportPrivate(){
  H.privateAllowed();
@@ -79,6 +90,7 @@ function exportPrivate(){
 $('diffGo').addEventListener('click',handleGo);
 $('showUnchanged').addEventListener('change',()=>{if(compared)handleGo();});
 $('diffAggregate').addEventListener('click',()=>{try{exportAggregate();}catch(e){message(e.message,true);}});
+$('diffProvenance').addEventListener('click',()=>{try{exportAggregate(true);}catch(e){message(e.message,true);}});
 $('diffPrivate').addEventListener('click',()=>{try{exportPrivate();}catch(e){message(e.message,true);}});
 window.addEventListener('lightup-history-changed',updateSelectors);
 updateSelectors();
