@@ -1,5 +1,7 @@
 # LightUp: PRIVATE Evidence Reuse & Drift Desk
 
+**Quick entrypoint:** [desk.py](desk.py) integrates all three source-bound PRIVATE operator workflows: `python3 remediation-evidence-reuse/desk.py --help`, `desk.py review`, `desk.py inbox` and `desk.py timeline`. These delegate in-process to the unchanged individual production CLI modes; there are no subprocesses, target network calls or new authorization interfaces.
+
 **Stage:** INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD. Independent HUMAN-only offline app, built as new-only remediation-evidence-reuse/ paths on the existing Evidence Artifact Ledger draft #1642. No original owner paths are edited.
 
 ## The product
