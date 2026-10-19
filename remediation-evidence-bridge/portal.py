@@ -82,6 +82,9 @@ def build_portal(rows: list[dict[str,str]], history_count: int, human_present: b
     cards.append(("05","Evidence Artifact Ledger","05-evidence-ledger.html",
        "Local source-bound evidence fingerprints, reviewer notes, human requests"+
        (" and separately previewable encrypted HUMAN collaboration." if human_present else ". No HUMAN notes were supplied.")))
+    cards.append(("06","Unified HUMAN action board","06-human-actions.html",
+       "Prioritised original finding labels, owner workload, LOCAL evidence gaps and HUMAN requests"+
+       (" from the separately opened private workroom." if human_present else ". Add encrypted HUMAN notes to see owners and requests.")))
     def card(row: tuple[str,str,str,str]) -> str:
         n,title,href,detail=row
         return ('<a class="card'+(' wide' if n == "05" else '')+'" href="'+escape(href,quote=True)+'">'
@@ -98,7 +101,7 @@ def build_portal(rows: list[dict[str,str]], history_count: int, human_present: b
           '<header><nav aria-label="Workroom status"><div class="logo">LIGHTUP / HUMAN OPERATIONS</div>'
           '<span class="phase">INCUBATE · M3/M7 · DRAFT/HOLD</span></nav></header>'
           '<main><p class="kicker">Authenticated source read · private device · offline only</p>'
-          '<h1>One private workroom. Five original views.</h1>'
+          '<h1>One private workroom. Original tools and HUMAN action board.</h1>'
           '<p class="lead">Review evidence references and coordinate human remediation across unchanged '
           'original LightUp applications. The source was read under original account and client permissions '
           'before this local folder was created. Nothing here grants assessment authority.</p>'

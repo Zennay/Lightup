@@ -26,6 +26,7 @@ from history_desk import build_history_desk
 from sealed_browser import _admit_encrypted_source, _original_workspace_apps, _rows, WORKSPACE_MODES
 from workspace_release import _admit_folder
 from portal import build_portal
+from triage import build_board
 from secure_export import _authorized_summary, _strict_summary, _vault
 
 def _module(name: str, filename: str):
@@ -41,15 +42,15 @@ bridge=_module("_lightup_original_evidence_bridge","bridge.py")
 human=_module("_lightup_private_human_workspace","workspace.py")
 
 MAX_TOTAL_OUTPUT = 12 * 1024 * 1024
-MAX_FILES = 6
+MAX_FILES = 7
 
 def _evidence_view(
     current_csv: str, client: str, engagement: str,
     private_human: Path | None, vault
-) -> bytes:
+) -> tuple[bytes, dict | None]:
     raw=current_csv.encode("utf-8","strict")
     if private_human is None:
-        return bridge._render(raw,client,engagement)
+        return bridge._render(raw,client,engagement), None
     if private_human.suffix.lower()!=".ltv":
         raise ValueError("Optional HUMAN workspace must be encrypted .ltv.")
     original=vault._private_input(private_human.expanduser().absolute(),vault.MAX_VAULT)
@@ -64,9 +65,13 @@ def _evidence_view(
         or metadata["client_reference"]!=client
         or metadata["engagement_reference"]!=engagement):
         raise ValueError("Original PRIVATE HUMAN notes do not match current authenticated source.")
+    # Re-admit HUMAN-only source binding before displaying any separate records.
+    packet=human._packet(human_json,
+        source_digest=human._native_digest(raw)[0],count=count,
+        client=client,engagement=engagement)
     # The original Evidence Ledger will only stage a user-triggered preview;
     # the HUMAN operator separately clicks original App's explicit Apply.
-    return human._restore_html(raw,human_json,client,engagement)
+    return human._restore_html(raw,human_json,client,engagement),packet
 
 def _build_all(
     csv_text: str, client: str, engagement: str,
@@ -80,18 +85,20 @@ def _build_all(
     prior=[_rows(csv) for csv in original["historical_original_csv"]]
     originals=_original_workspace_apps(original,csv_text,client,engagement)
     views=("review","ticketdesk","casework")+(("history",) if prior else ())
+    ledger_html, human_packet=_evidence_view(csv_text,client,engagement,private_human,vault)
     contents={
         "01-review.html":build_desk(now,prior[-1] if prior else None),
         "02-ticketdesk.html":originals["ticketdesk"],
         "03-casework.html":originals["casework"],
-        "05-evidence-ledger.html":_evidence_view(csv_text,client,engagement,private_human,vault),
+        "05-evidence-ledger.html":ledger_html,
+        "06-human-actions.html":build_board(now,human_packet),
     }
     if prior:
         snapshots=[(dict(unverified_historical=True), records) for records in prior]
         snapshots.append((dict(current_authenticated=True),now))
         contents["04-history.html"]=build_history_desk(history_review(snapshots))
     contents["index.html"]=build_portal(now,len(prior),private_human is not None)
-    if not 5<=len(contents)<=MAX_FILES or sum(len(x) for x in contents.values())>MAX_TOTAL_OUTPUT:
+    if not 6<=len(contents)<=MAX_FILES or sum(len(x) for x in contents.values())>MAX_TOTAL_OUTPUT:
         raise ValueError("PRIVATE source/HUMAN workbench file/size bounds exceeded.")
     for name,source_bytes in contents.items():
         if type(source_bytes) is not bytes or not source_bytes.startswith(b"<!doctype html>"):
@@ -142,10 +149,10 @@ def main(argv: list[str] | None = None) -> int:
         contents,views=_build_all(current,args.client_id,args.engagement_id,
                                  args.source,args.human)
         _publish(args.output_dir,contents)
-        print("PRIVATE LightUp five-view offline workbench created in a NEW 0700 directory.")
+        print("PRIVATE LightUp source-bound evidence and HUMAN action workbench created in a NEW 0700 directory.")
         print("Views: source findings, original Ticket Desk, original Casework, "
               +("source history, " if "history" in views else "")
-              +"original human Evidence Artifact Ledger.")
+              +"original human Evidence Artifact Ledger and unified HUMAN action board.")
         print("Every view is a 0600 offline HTML; index.html is the entrypoint.")
         print("Any HUMAN handoff is PREVIEW-ONLY pending separate original App Apply.")
         print("No scan, grant, verified remediation, live target or client/operator consent issued.")
