@@ -30,17 +30,14 @@ function refreshOwnerOptions(all){
  const options=$('weeklyOwner'),current=options.value;
  const owners=[...new Set(all.filter(inScope).map(x=>x.owner.trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
  options.innerHTML='<option value="">All HUMAN owners / unassigned</option><option value="__UNASSIGNED__">Unassigned HUMAN work</option>'+
-  owners.map((o,i)=>'<option value="'+i+'">'+esc(o)+'</option>').join('');
- // Use index-to-owner table to prevent special sentinel collisions in caller.
- options.dataset.owners=JSON.stringify(owners);
- if(current==='__UNASSIGNED__'||current==='')options.value=current;
- else if(Number.isInteger(+current)&&owners[+current])options.value=current;
+  owners.map(o=>'<option value="'+esc('owner:'+o)+'">'+esc(o)+'</option>').join('');
+ if([...options.options].some(o=>o.value===current))options.value=current;
+ else options.value='';
 }
 function ownerMatches(row,chosen){
  if(chosen==='')return true;
  if(chosen==='__UNASSIGNED__')return !row.owner.trim();
- const options=JSON.parse($('weeklyOwner').dataset.owners||'[]');
- return options[Number(chosen)]===row.owner.trim();
+ return chosen.startsWith('owner:')&&chosen.slice(6)===row.owner.trim();
 }
 function render(){
  const all=H.caseworkRows();refreshOwnerOptions(all);
