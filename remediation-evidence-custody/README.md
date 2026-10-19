@@ -34,6 +34,20 @@ Actual LightUp account and vault passphrases are requested **only interactively 
 
 The deterministic standalone `build.py` also exposes an in-memory `build()` for the authenticated entrypoint; running it directly still writes the separate public-source-only standalone HTML, **never any private source contents**.
 
+## Integrated original 7–8-view PRIVATE LightUp operator workroom
+
+The new [complete_custody.py](complete_custody.py) composes the **existing unchanged original-source application builders** into one owner-only offline workroom. On a real private TTY with a current original LightUp client/engagement read, the operator explicitly opens (i) their existing original engagement multiview encrypted `.ltv`, and (ii) their existing encrypted PRIVATE HUMAN `.ltv`, then creates one NEW `0700` folder containing `0600` individual HTML views. No source-owner file, grant or CI contract is modified, no decrypted CSV/JSON temporary file is created, and all app content is built/admitted in memory before the original owner publisher is invoked:
+
+    PYTHONPATH=src python3 remediation-evidence-custody/complete_custody.py \
+      --db /private/existing-lightup.sqlite --email operator@example.invalid \
+      --client-id ALREADY_AUTHORIZED_CLIENT --engagement-id EXISTING_ENGAGEMENT \
+      --source /private/original-engagement-source.ltv \
+      --human /private/original-human-collaboration.ltv \
+      --output-dir /private/NEW-lightup-current-workroom \
+      --ack-private-workspace
+
+The original source review, original HUMAN Ticket Desk, original Casework, original Evidence Artifact Ledger, integrated HUMAN action board and optional original source history all use their existing owner builders. **New workspace 07** is the full exact-source-pinned PRIVATE custody, original source-severity LOCAL attention desk and preserve-first original HUMAN request merge. The index gains only a static local link. Output is atomically published via the original secure folder/file publisher, with cleanup after a write error. Existing grant, client consent, scanner, target, verification and release controls remain entirely outside this offline HUMAN workflow. The original separately encrypted sources remain unchanged. The CLI does not make its private HTML safe to share: source names, original findings and HUMAN notes are sensitive plaintext.
+
 ## Release and scope
 
 No target requests, real scans, testsuites, grants, consent or existing owner file mutations. This branch is add-only under remediation-evidence-custody. Existing hosted and permanently named VPS exact-head CI, source-owner approval, independent privacy/security/crypto/browser review, original issues #177/#182/#829, independently authenticated current client/operator consent with action-time revocation and explicit HUMAN GO remain mandatory before any release. This standalone stays **DRAFT/HOLD**.
