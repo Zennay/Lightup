@@ -188,8 +188,10 @@ def main(argv=None) -> int:
         p = sub.add_parser(operation)
         for k in ("db", "email", "client-id", "engagement-id"):
             p.add_argument("--" + k, required=True)
-        for k in ("human", "directory", "plan", "output"):
+        for k in ("human", "directory", "plan"):
             p.add_argument("--" + k, type=Path, required=True)
+        if operation != "preview":
+            p.add_argument("--output", type=Path, required=True)
         if operation in ("preview", "import"):
             p.add_argument("--edited", type=Path, required=True)
         p.add_argument("--ack-private-material", action="store_true")
