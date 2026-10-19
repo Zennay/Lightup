@@ -42,3 +42,7 @@ python -m lightup.private_export_encrypted_notes rotate /private/source.lue /pri
 ```
 
 The HUMAN note source validation is the unchanged strict parser: duplicate-key JSON is rejected; exact five-column original finding set, source SHA/client/engagement declaration, false-only authority fields, bounded owner/date/note and non-authorizing stage are mandatory. `seal` only publishes the new 0600 ciphertext; it **does not delete** the already saved plaintext JSON. `inspect` prints counts but never notes, original IDs or aliases. `workdesk` decrypts both packages in RAM, rechecks their source binding, and produces one explicitly **UNENCRYPTED** private 0600 HTML for actual local editing. Rotation changes only ciphertext/passphrase and does not write the original notes to disk. The unified console contains these four flows in menu actions 14–17. No claims of browser-native encryption, real owner authentication, client consent, verified remediation, live authorization or cryptographic source signatures.
+
+## Encrypted single-owner HUMAN exchange + atomic multi-owner note returns
+
+For end-to-end original authenticated source+plan → one-alias encrypted brief → encrypted human recipient reply → original source-bound human review → new unchanged-original encrypted HUMAN plan, see [private one-owner exchange and batch reconciliation](private-owner-exchange.md). No original findings, grants, retests or original HUMAN plan are changed.
