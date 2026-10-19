@@ -454,6 +454,37 @@ def html_page(docs: list[dict], delta: list[list[dict]], *, public: bool) -> str
             "<footer>Offline · original human review only · no authority · source-owner unchanged</footer></body></html>")
 
 
+HUMAN_TEMPLATE_COLUMNS = (
+    "original_engagement_id",
+    "original_next_action",
+    "original_attention",
+    "human_stage",
+    "human_followup_route",
+    "human_blocker",
+)
+HUMAN_STAGES = {"unreviewed", "investigating", "awaiting-owner", "documented"}
+HUMAN_ROUTES = {
+    "original-scope-owner", "client-clarification", "independent-security-review",
+    "operator-followup", "unassigned",
+}
+HUMAN_BLOCKERS = {
+    "none", "missing-source", "missing-owner", "needs-independent-consent",
+    "requires-revocation-review", "unresolved-tenant-lineage",
+}
+
+
+def human_template(docs: list[dict]) -> bytes:
+    lines: list[list[object]] = [list(HUMAN_TEMPLATE_COLUMNS)]
+    for case in case_queue(docs):
+        lines.append([
+            case["local_original_engagement_id"],
+            case["source_next_human_action"],
+            case["source_attention"],
+            "unreviewed", "unassigned", "none",
+        ])
+    return csv_text(lines).encode("utf-8")
+
+
 def generate(docs: list[dict]) -> dict[str, bytes]:
     delta = [changes(a,b) for a,b in zip(docs, docs[1:])]
     fail(sum(len(group) for group in delta) <= 3200,
@@ -515,6 +546,7 @@ def generate(docs: list[dict]) -> dict[str, bytes]:
     private_queue = csv_text([list(queue_fields)] +
                              [[entry[field] for field in queue_fields] for entry in queue])
     return {
+        "private-human-review-template.csv": human_template(docs),
         "private-human-case-queue.csv": private_queue.encode(),
         "index.html": html_page(docs,delta,public=False).encode("utf-8"),
         "anonymous.html": html_page(docs,delta,public=True).encode("utf-8"),
