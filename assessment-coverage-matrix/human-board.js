@@ -86,7 +86,7 @@ function createHumanBoard(api) {
         select.setAttribute("aria-label","Row "+(i+1)+" HUMAN "+kind);
         optionList(select,choices,plans[i][kind]);
         select.addEventListener("change",()=>{
-          plans[i]={...plans[i],[kind]:select.value};changed=true;lastBulk=null;
+          plans[i]={...plans[i],[kind]:select.value};changed=true;lastBulk=null;historyResolutions.clear();
           $("humanUndo").disabled=true;
           summarize();if(history)renderHistory();
           if($("humanStage").value!=="all")render();
@@ -491,20 +491,20 @@ function createHumanBoard(api) {
         for(const kind of KINDS)if(modifications[kind]!=="keep")current[kind]=modifications[kind];
         plans[i]=current;
       });
-      changed=true;$("humanUndo").disabled=false;page=0;render();if(history)renderHistory();
+      changed=true;historyResolutions.clear();$("humanUndo").disabled=false;page=0;render();if(history)renderHistory();
       message("Changed "+proposal.length+" HUMAN planning rows only; last bulk edit is undoable.");
     });
     $("humanUndo").addEventListener("click",()=>{
       if(!lastBulk)return;
       const snapshot=lastBulk;lastBulk=null;
       snapshot.forEach(({i,before})=>{plans[i]={...before};});
-      changed=true;$("humanUndo").disabled=true;render();if(history)renderHistory();
+      changed=true;historyResolutions.clear();$("humanUndo").disabled=true;render();if(history)renderHistory();
       message("Restored "+snapshot.length+" HUMAN planning rows from last bulk edit; original sources unchanged.");
     });
     $("humanReset").addEventListener("click",()=>{
       if(!plans.length)return;
       if(!confirm("Reset ALL local HUMAN planning choices? No original source file changes."))return;
-      plans=getRows().map(fresh);changed=true;lastBulk=null;
+      plans=getRows().map(fresh);changed=true;lastBulk=null;historyResolutions.clear();
       $("humanUndo").disabled=true;page=0;render();if(history)renderHistory();message("Local HUMAN routing reset; source declarations unchanged.");
     });
     $("humanSave").addEventListener("click",()=>{
@@ -527,7 +527,7 @@ function createHumanBoard(api) {
         const raw=new TextDecoder("utf-8",{fatal:true}).decode(await file.arrayBuffer());
         const candidate=admitPrivatePlan(parseStrict(raw));
         if(!confirm("Replace ALL local HUMAN notes with this PRIVATE exact-byte-bound plan?"))return;
-        plans=candidate;changed=true;lastBulk=null;
+        plans=candidate;changed=true;lastBulk=null;historyResolutions.clear();
         $("humanUndo").disabled=true;page=0;render();if(history)renderHistory();
         message("Source-byte-bound PRIVATE HUMAN plan restored after whole-document admission. No findings or authority changed.");
       } catch(error) {
