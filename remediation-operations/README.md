@@ -13,6 +13,10 @@
 
 **Use the packaged ZIP rather than saving the launcher HTML alone:** it contains all four original source-owned standalone apps and their required files. For a checkout, open the launcher at `remediation-operations/index.html` directly; same relative links.
 
+## Offline source-revision change review
+
+The included [PRIVATE Source Change Review](compare.html) accepts two local `remediation-operations/MANIFEST.json` files from separately obtained integration ZIPs. Its browser-only UI validates exact source inventory membership/schema, duplicate JSON keys, original PR head strings, per-file SHA-256 and declared false authority; then shows added, removed and changed file content with optional scriptless PRIVATE HTML handoff. Everything stays in memory. A matching checksum is NOT an authenticated signature or release permission; original owner approval and CI are still mandatory.
+
 ## Content and integration contract
 
 This branch *copies unchanged* the four pre-existing separately-owned product paths from **the exact pinned PR heads** below, then adds only `remediation-operations/` integration/packaging code. No edits to original-owner branches, runtimes, authentication, scanners, CI configurations or QA suites.

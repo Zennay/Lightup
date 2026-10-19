@@ -199,9 +199,9 @@
       "sha256": "e05fb6a22cbe20e2fea32c8fa0492cd01f7e02305c4a2c99b4e7acc5f41042e2"
     },
     {
-      "bytes": 5474,
+      "bytes": 6102,
       "path": "remediation-operations/README.md",
-      "sha256": "e6a88c941e73d9b9f786ebed9939e803b26e16aeebcc402dff744324e3e5b1e8"
+      "sha256": "14bf41a164d7930bee63ab1aed5f9a7524068d7f6b55cef95880fc6222d6f1ff"
     },
     {
       "bytes": 5275,
@@ -209,14 +209,24 @@
       "sha256": "2a2609f1daa7118eb39a6b258a1c900f065c538ff45f035af04f9adf68955efa"
     },
     {
+      "bytes": 3627,
+      "path": "remediation-operations/compare.html",
+      "sha256": "c9378aa62512a23b23822f8ebb79855e5b5435974b73c1ceb3258263b64aff68"
+    },
+    {
+      "bytes": 9864,
+      "path": "remediation-operations/compare.js",
+      "sha256": "08a3eb4cf1ce5789387c9e02fea354c6759f16cf6cd451abac75c727b72b8cba"
+    },
+    {
       "bytes": 10014,
       "path": "remediation-operations/hub.js",
       "sha256": "c70a1f5ddd01bbe182e81acd30c29272a1f9f3ba2ecea46e8f0b02615ce4971a"
     },
     {
-      "bytes": 5899,
+      "bytes": 6356,
       "path": "remediation-operations/index.html",
-      "sha256": "36f5a6cb79b92d3164d4bf4a03b00d13bb645f30be5b95e1ad8ae235b400bedd"
+      "sha256": "80f65cabdaa0759b18c3573731484508090e1f2d98978ab32fcbcd2a5ed329ec"
     },
     {
       "bytes": 2235,
