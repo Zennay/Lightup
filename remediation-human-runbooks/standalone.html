@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-OUaPGcNB7ighbYudSS8byrxMCJM+y71SPby5Cr6AJDM='; style-src 'sha256-qmlE7woSaKjxGCp3C9x1qVZu4g8mARsOPncintfBTCY='; connect-src 'none'; img-src 'none'; object-src 'none'; frame-src 'none'; form-action 'none'; base-uri 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-qgMcbhPge4unVpfFtjuA4FwXOjPbD9A9W2CqYPFePIk='; style-src 'sha256-qmlE7woSaKjxGCp3C9x1qVZu4g8mARsOPncintfBTCY='; connect-src 'none'; img-src 'none'; object-src 'none'; frame-src 'none'; form-action 'none'; base-uri 'none'">
 <title>LightUp — PRIVATE HUMAN Remediation Runbook</title>
 <style>
 :root{font-family:system-ui,-apple-system,sans-serif;color:#162c41;background:#f3f6fa}
@@ -94,7 +94,7 @@ footer{text-align:center;color:#466074;padding:1rem}
  <label for="returnFile">Source-bound one-owner HUMAN return JSON (max 8 MiB)</label><input type="file" id="returnFile" accept=".json,application/json">
  <div class="actions"><button id="returnImport" class="primary">Add exact-source HUMAN reply to dashboard</button><button id="returnForget">Forget all received PRIVATE replies</button></div>
  <label for="returnFilter">Human-only status view</label><select id="returnFilter"><option value="all">All received human steps</option><option value="clarification_needed_human">Needs HUMAN clarification</option><option value="not_responded_human">Unanswered HUMAN steps</option><option value="received_human">HUMAN receipt acknowledged</option><option value="discussion_prepared_human">HUMAN discussion prepared</option></select>
- <p id="returnSummary" class="meta">No owner returns imported.</p><div id="returnRows"></div>
+ <p id="returnSummary" class="meta">No owner returns imported.</p><div id="returnCoverage"></div><div class="actions"><button id="returnAggregate">Download anonymous HUMAN team coverage counts</button></div><div id="returnRows"></div>
  <p class="warning">All received replies are ephemeral, private and UNVERIFIED. Any edit of the local authored runbooks invalidates imported replies; re-import exact-current owner returns after an edit. Original issue/evidence/source-owner/grant data are never mutated.</p>
 </section>
 </main>
@@ -437,7 +437,7 @@ function undoMerge(){
    This overlay NEVER updates original runbooks, source findings, replies or grants. */
 function clearReceivedReplies(){
  ownerReturns=new Map();$('returnFile').value='';$('returnFilter').value='all';
- $('returnRows').replaceChildren();$('returnSummary').textContent='No owner returns imported.';
+ $('returnRows').replaceChildren();$('returnCoverage').replaceChildren();$('returnSummary').textContent='No owner returns imported.';
  $('ownerReplies').hidden=!state;
 }
 function expectedOwnerSteps(alias){
@@ -478,6 +478,23 @@ function admitReceivedReply(p){
 function renderReceivedReplies(){
  $('ownerReplies').hidden=!state;if(!state)return;
  var selected=$('returnFilter').value,view=[],groups=[];
+ var humanExpected=new Map();
+ for(const id of state.ids)for(const step of state.runbooks.get(id)){
+  if(step.responsible_alias)humanExpected.set(step.responsible_alias,(humanExpected.get(step.responsible_alias)||0)+1);
+ }
+ var coverage=$('returnCoverage');coverage.replaceChildren();
+ if(humanExpected.size){
+  coverage.append(element('h3','PRIVATE HUMAN owner response coverage (self-declared, not verified)'));
+  for(const [alias,count] of [...humanExpected].sort((a,b)=>a[0].localeCompare(b[0]))){
+   var packet=ownerReturns.get(alias),ack=packet?.records.filter(r=>r.human_ack!=='not_responded_human').length||0;
+   var clarification=packet?.records.filter(r=>r.human_ack==='clarification_needed_human').length||0;
+   var row=document.createElement('div');row.className='listrow';
+   row.append(element('strong',alias));
+   row.append(element('span',packet?('PRIVATE packet imported · '+ack+'/'+count+' HUMAN replies · '+clarification+' clarification needed'):
+       ('NO PRIVATE owner-return packet · '+count+' proposed HUMAN steps')));
+   coverage.append(row);
+  }
+ }else coverage.append(element('p','No locally declared HUMAN owners; assign tentative roles to proposed original steps first.'));
  for(const [alias,data] of ownerReturns){
   groups.push(alias+': '+data.records.length+' HUMAN steps');
   view.push(...data.records.filter(row=>selected==='all'||row.human_ack===selected));
@@ -497,6 +514,31 @@ function renderReceivedReplies(){
   item.append(button);dest.append(item);
  }
 }
+
+function exportTeamHumanCoverage(){
+ if(!state)fail('load exact original HUMAN plan first');
+ var proposed=0,expectedOwners=new Set(),received=0,clarify=0,humanAck=0,unanswered=0;
+ for(const id of state.ids)for(const step of state.runbooks.get(id)){if(step.responsible_alias){proposed++;expectedOwners.add(step.responsible_alias);}}
+ for(const [alias,data] of ownerReturns){
+  received+=data.records.length;
+  for(const r of data.records){
+   if(r.human_ack==='clarification_needed_human')clarify++;
+   if(r.human_ack==='not_responded_human')unanswered++;else humanAck++;
+  }
+ }
+ if(!window.confirm('Download HUMAN team response COUNTS ONLY, without original finding IDs, private source SHA, customer, owner aliases, notes, steps or dates? Small cohorts may reveal patterns. These counts never mean verified fixes or authenticated permission.'))return;
+ var measures=[['local_original_human_steps_with_owner',proposed],
+  ['local_self_declared_human_owner_aliases',expectedOwners.size],
+  ['owner_return_packets_in_memory',ownerReturns.size],
+  ['human_steps_in_received_packets',received],
+  ['unverified_human_responses',humanAck],
+  ['unanswered_steps_within_received_packets',unanswered],
+  ['unverified_human_clarification_requests',clarify]];
+ var csvValue='human_only_metric,count\r\n'+measures.map(x=>'"'+x[0]+'",'+x[1]).join('\r\n')+'\r\n';
+ download('LightUp-anonymous-HUMAN-team-return-coverage.csv',csvValue,'text/csv;charset=utf-8');
+ message('Privacy-minimal HUMAN return coverage counts downloaded. No owner or original source has been authenticated.');
+}
+
 async function importReceivedReply(){
  if(!state)fail('load the complete original HUMAN workplan first');
  var f=$('returnFile').files[0];if(!f)fail('choose a one-owner HUMAN return packet');
@@ -520,6 +562,7 @@ bind('mergeFile','change',function(){pendingMerge=null;clearMerge();message('Oth
 bind('returnImport','click',importReceivedReply);
 bind('returnForget','click',function(){clearReceivedReplies();message('All locally imported PRIVATE HUMAN replies forgotten. Original runbook steps and external downloads unchanged.');});
 bind('returnFilter','change',renderReceivedReplies);
+bind('returnAggregate','click',exportTeamHumanCoverage);
 bind('returnFile','change',function(){message('New one-owner PRIVATE HUMAN reply selected. Import validates it against CURRENT exact original plan before displaying anything.');});
 bind('filter','change',render);bind('finding','change',render);
 bind('ownerSelect','change',function(){$('ownerExport').disabled=!$('ownerSelect').value;$('ownerPrint').disabled=!$('ownerSelect').value;});bind('ownerExport','click',ownerHandoff);bind('ownerPrint','click',ownerPrintable);
