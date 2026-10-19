@@ -17,6 +17,7 @@ PAIR_DIFF = HERE / "source-pair-diff.js"
 NATIVE_CASEWORK = HERE / "native-casework-bridge.js"
 HUMAN_DESK = HERE / "human-casework-desk.js"
 HUMAN_CALENDAR = HERE / "human-workload-calendar.js"
+HUMAN_INTERVENTION = HERE / "human-intervention-brief.js"
 CSS = HERE / "studio.css"
 TEMPLATE = HERE / "index.html"
 OUTPUT = HERE / "standalone.html"
@@ -34,6 +35,7 @@ def main() -> None:
     native_casework = NATIVE_CASEWORK.read_bytes()
     human_desk = HUMAN_DESK.read_bytes()
     human_calendar = HUMAN_CALENDAR.read_bytes()
+    human_intervention = HUMAN_INTERVENTION.read_bytes()
     css = CSS.read_bytes()
     html = TEMPLATE.read_text(encoding="utf-8")
     engine_tag = '<script src="../casework/remediation-engine.js"></script>'
@@ -43,13 +45,14 @@ def main() -> None:
     native_tag = '<script src="./native-casework-bridge.js"></script>'
     human_tag = '<script src="./human-casework-desk.js"></script>'
     calendar_tag = '<script src="./human-workload-calendar.js"></script>'
+    intervention_tag = '<script src="./human-intervention-brief.js"></script>'
     css_tag = '<link rel="stylesheet" href="./studio.css">'
     csp_start = '<meta http-equiv="Content-Security-Policy" content="'
     start = html.index(csp_start)
     end = html.index('">', start)
     csp = (
         "default-src 'none'; script-src 'sha256-" + sha(engine) +
-        "' 'sha256-" + sha(js) + "' 'sha256-" + sha(checkpoint) + "' 'sha256-" + sha(pair_diff) + "' 'sha256-" + sha(native_casework) + "' 'sha256-" + sha(human_desk) + "' 'sha256-" + sha(human_calendar) + "'; style-src 'sha256-" +
+        "' 'sha256-" + sha(js) + "' 'sha256-" + sha(checkpoint) + "' 'sha256-" + sha(pair_diff) + "' 'sha256-" + sha(native_casework) + "' 'sha256-" + sha(human_desk) + "' 'sha256-" + sha(human_calendar) + "' 'sha256-" + sha(human_intervention) + "'; style-src 'sha256-" +
         sha(css) + "'; img-src 'none'; font-src 'none'; connect-src 'none'; "
         "form-action 'none'; base-uri 'none'; object-src 'none'"
     )
@@ -63,6 +66,7 @@ def main() -> None:
         (native_tag, "<script>" + native_casework.decode("utf-8") + "</script>"),
         (human_tag, "<script>" + human_desk.decode("utf-8") + "</script>"),
         (calendar_tag, "<script>" + human_calendar.decode("utf-8") + "</script>"),
+        (intervention_tag, "<script>" + human_intervention.decode("utf-8") + "</script>"),
     ):
         if html.count(search) != 1:
             raise SystemExit("HOLD: original HTML asset reference missing/duplicated")
