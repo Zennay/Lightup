@@ -311,7 +311,12 @@ window.LightUpHistory=Object.freeze({
       if(!incoming)throw Error('HOLD: incomplete original native Casework entries.');
       const incomingHasValues=keys.some(k=>incoming[k]!==base[k]);
       const local=state.notes.get(f.finding_id),binding=noteBinding(f.finding_id);
-      const current=local?.caseworkOriginal||{
+      // The active short HUMAN editor may have newer owner/action/date values
+      // than an earlier imported full Casework object. Never silently roll back
+      // those local values when merging an unrelated incoming field.
+      const current=local?.caseworkOriginal?
+        {...local.caseworkOriginal,owner:local.owner,next_action:local.action,
+          due_date:local.due||null}:{
         ...base,owner:local?.owner||'',next_action:local?.action||'',due_date:local?.due||null,
         status:local?'planned':'unassigned'
       };
