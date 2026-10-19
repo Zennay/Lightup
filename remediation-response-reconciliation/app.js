@@ -353,6 +353,130 @@ function exportAnonymous(){
  save("LightUp-anonymous-human-response-counts.csv",
   anonymousCounts().map(row=>row.map(csv).join(",")).join("\r\n")+"\r\n","text/csv");
 }
+/* Separate UNVERIFIED HUMAN owner feedback, never an original owner reply,
+   finding status, security approval or scan/retest action. */
+let pendingOwnerFeedback=null;
+const HUMAN_FEEDBACK_HEADER=["kind","schema_version","disposition","source_contract","source_sha256",
+ "client_reference","engagement_reference","recipient_alias","created_utc",...FLAGS,"feedback"];
+const HUMAN_FEEDBACK_ROW=["request_id","finding_id","request_kind","original_issued_utc",
+ "original_instructions","tentative_human_due","observed_unverified_reply_stage",
+ "observed_unverified_reply_text","human_feedback_stage","human_feedback_note"];
+function feedbackNotice(message,error=false){
+ $("feedbackStatus").textContent=message;$("feedbackStatus").dataset.error=error?"true":"false";
+}
+function cancelFeedbackPreview(){
+ pendingOwnerFeedback=null;$("feedbackApply").disabled=true;
+ $("feedbackPreviewText").hidden=true;$("feedbackPreviewText").textContent="";
+}
+function validateOwnerFeedback(p){
+ if(!exact(p,HUMAN_FEEDBACK_HEADER)||p.kind!=="lightup.private_human_owner_followup"||
+   p.schema_version!==1||p.disposition!=="UNVERIFIED_HUMAN_COORDINATION_ONLY"||
+   p.source_contract!=="lightup.finding_export._COLUMNS_v1"||
+   !/^[0-9a-f]{64}$/.test(p.source_sha256)||FLAGS.some(k=>p[k]!==false)||
+   !Array.isArray(p.feedback)||!p.feedback.length||p.feedback.length>MAX_ROWS)
+  fail("HOLD: not a strict non-authorizing HUMAN owner follow-up statement");
+ clean(p.client_reference,120,"feedback client",true);
+ clean(p.engagement_reference,120,"feedback engagement",true);
+ clean(p.recipient_alias,120,"self-declared owner",true);
+ timestamp(p.created_utc);
+ const seen=new Set();
+ for(const r of p.feedback){
+  if(!exact(r,HUMAN_FEEDBACK_ROW)||typeof r.request_id!=="string"||
+     !/^[0-9a-f]{32}$/.test(r.request_id)||seen.has(r.request_id))
+   fail("HOLD: duplicate or malformed original HUMAN request in feedback");
+  seen.add(r.request_id);clean(r.finding_id,160,"original finding",true);
+  if(!KINDS.includes(r.request_kind))fail("HOLD: unknown original request kind");
+  timestamp(r.original_issued_utc);
+  clean(r.original_instructions,1400,"original HUMAN instructions",true);
+  due(r.tentative_human_due);
+  if(!["unanswered","submitted_unverified","needs_changes"].includes(r.observed_unverified_reply_stage))
+   fail("HOLD: invalid snapshot of unverified HUMAN reply stage");
+  clean(r.observed_unverified_reply_text,1800,"prior unverified HUMAN reply");
+  if((r.observed_unverified_reply_stage==="unanswered")!==(r.observed_unverified_reply_text===""))
+   fail("HOLD: original request-reply stage/text snapshot inconsistent");
+  if(!OWNER_FEEDBACK_STAGES.includes(r.human_feedback_stage))
+   fail("HOLD: forbidden owner HUMAN feedback status");
+  clean(r.human_feedback_note,1000,"human feedback note");
+  if(r.human_feedback_stage!=="acknowledged_unverified"&&!r.human_feedback_note.trim())
+   fail("HOLD: human clarification requires an explanation");
+ }
+ return p;
+}
+function incomingFeedbackChanges(packet){
+ if(!db.binding||!same(sourceId(packet),db.binding))
+  fail("HOLD: source SHA, client or engagement does not match original HUMAN register");
+ const originals=new Map(allRows().map(x=>[x.request.request_id,x]));
+ const changes=[];
+ for(const item of packet.feedback){
+  const original=originals.get(item.request_id);
+  if(!original||original.packet.recipient_alias!==packet.recipient_alias||
+    original.packet.issued_utc!==item.original_issued_utc||
+    original.request.finding_id!==item.finding_id||
+    original.request.request_kind!==item.request_kind||
+    original.request.instructions!==item.original_instructions||
+    original.request.due_date!==item.tentative_human_due)
+   fail("HOLD: HUMAN owner feedback refers to an absent or altered ORIGINAL request/owner");
+  const replyStage=original.reply?original.reply.human_stage:"unanswered";
+  const replyText=original.reply?original.reply.human_response:"";
+  if(replyStage!==item.observed_unverified_reply_stage||replyText!==item.observed_unverified_reply_text)
+   fail("HOLD: original owner brief has a stale unverified HUMAN reply baseline");
+  const previous=original.feedback;
+  const proposed={stage:item.human_feedback_stage,note:item.human_feedback_note,
+    submitted_utc:packet.created_utc};
+  if(previous&&same(previous,proposed))continue; // replay is idempotent, never promotes authority
+  changes.push({request_id:item.request_id,finding_id:item.finding_id,
+    owner:packet.recipient_alias,previous:previous?{...previous}:null,next:proposed});
+ }
+ if(db.feedbackHistory.length+changes.filter(c=>c.previous).length>1600)
+  fail("HOLD: PRIVATE owner feedback history capacity exceeded; export & create a fresh register");
+ return changes;
+}
+async function previewOwnerFeedback(){
+ if(!db.binding)fail("Load original source-bound HUMAN request packets first");
+ const file=$("feedbackFile").files[0];
+ if(!file||file.size>MAX_SNAPSHOT)fail("PRIVATE HUMAN follow-up file must be at most 8 MiB");
+ const revision=db.revision;
+ const data=new TextDecoder("utf-8",{fatal:true}).decode(await file.arrayBuffer());
+ const packet=validateOwnerFeedback(strictJSON(data,MAX_SNAPSHOT));
+ if(revision!==db.revision)fail("HOLD: original private register changed while reading owner reply");
+ const changes=incomingFeedbackChanges(packet);
+ if(!changes.length){
+  cancelFeedbackPreview();
+  feedbackNotice("Exact HUMAN statement already present: no changes, no new authority.");
+  return;
+ }
+ const source=JSON.stringify(db.binding);
+ pendingOwnerFeedback={revision,source,packet,changes};
+ $("feedbackPreviewText").textContent=[
+  "PRIVATE HUMAN feedback PREVIEW · "+changes.length+" proposed human-only annotations",
+  "Declared owner alias: "+packet.recipient_alias,
+  "Original SHA-256: "+packet.source_sha256,
+  "Owner-supplied created UTC: "+packet.created_utc+" (NOT authenticated)",
+  "Original evidence, findings, existing HUMAN replies, grants and retests stay unchanged.",
+  ...changes.map(c=>c.finding_id+" · "+c.request_id+" · "+(c.previous?c.previous.stage:"no feedback")+
+   " → "+c.next.stage+" · "+c.owner+" · "+c.next.note)
+ ].join("\n");
+ $("feedbackPreviewText").hidden=false;$("feedbackApply").disabled=false;
+ feedbackNotice("Inspect original HUMAN request context and each pending change; nothing applied yet.");
+}
+function applyOwnerFeedback(){
+ const p=pendingOwnerFeedback;
+ if(!p||p.revision!==db.revision||p.source!==JSON.stringify(db.binding))
+  fail("HOLD: original HUMAN register or local review changed since feedback preview");
+ const current=incomingFeedbackChanges(p.packet);
+ if(!same(current,p.changes))fail("HOLD: HUMAN reply or annotation changed after preview");
+ if(!confirm("Apply "+p.changes.length+" UNVERIFIED HUMAN owner feedback annotation(s) to this PRIVATE local register? Existing original request/answer and security status will remain unchanged; identity and delivery are NOT verified."))return;
+ const revised={...db.ownerFeedback},history=[...db.feedbackHistory];
+ for(const change of p.changes){
+  if(change.previous)history.push({request_id:change.request_id,...change.previous,
+    superseded_utc:new Date().toISOString()});
+  revised[change.request_id]={...change.next};
+ }
+ db.ownerFeedback=revised;db.feedbackHistory=history;db.revision++;
+ cancelFeedbackPreview();invalidateBulk();invalidateUndo();$("feedbackFile").value="";draw();
+ feedbackNotice("Applied "+p.changes.length+" LOCAL HUMAN follow-up annotation(s). Original replies, findings and all authority unchanged.");
+}
+
 async function intake(){
  const files=[...$("files").files];
  if(!files.length||files.length>MAX_PACKETS)fail("Select 1–24 PRIVATE JSON files");
@@ -372,7 +496,7 @@ async function intake(){
  const next=assemble(db,packets);
  if(!confirm("Import "+packets.length+" PRIVATE human packets? All identities, replies and source labels are UNVERIFIED. No data are sent, no retest or consent is granted."))return;
  if(db.revision!==rev)fail("HOLD: register changed before confirmation");
- db=next;selection.clear();invalidateBulk();invalidateUndo();$("files").value="";draw();msg("Reconciled PRIVATE HUMAN owner and reply packets atomically.");
+ db=next;selection.clear();invalidateBulk();invalidateUndo();cancelFeedbackPreview();$("files").value="";draw();msg("Reconciled PRIVATE HUMAN owner and reply packets atomically.");
 }
 function snapshot(){
  return {kind:"lightup.private_human_response_reconciliation",schema_version:2,
@@ -434,7 +558,7 @@ function restore(obj,rev){
  if(db.revision!==rev)fail("HOLD: changed register");
  if(!confirm("REPLACE current PRIVATE register and HUMAN notes with this exact source-bound backup? Export current data first."))return;
  if(db.revision!==rev)fail("HOLD: changed register before replace");
- fresh.revision=rev+1;db=fresh;selection.clear();invalidateBulk();invalidateUndo();$("files").value="";draw();msg("Restored PRIVATE HUMAN register from original-bound local backup.");
+ fresh.revision=rev+1;db=fresh;selection.clear();invalidateBulk();invalidateUndo();cancelFeedbackPreview();$("files").value="";draw();msg("Restored PRIVATE HUMAN register from original-bound local backup.");
 }
 function save(filename,body,mime){
  const url=URL.createObjectURL(new Blob([body],{type:mime}));
@@ -484,13 +608,17 @@ listen("csv",exportCSV);listen("summaryCsv",exportAnonymous);
 listen("exportOwner",exportOwnerPrivate);
 $("ownerExport").addEventListener("change",()=>{$("exportOwner").disabled=!$("ownerExport").value;});listen("print",report);
 listen("bulkPreview",previewBulk);listen("bulkApply",applyBulk);
+listen("feedbackPreview",async()=>{try{await previewOwnerFeedback();}catch(e){cancelFeedbackPreview();feedbackNotice(e.message||"PRIVATE feedback rejected",true);}});
+listen("feedbackApply",()=>{try{applyOwnerFeedback();}catch(e){cancelFeedbackPreview();feedbackNotice(e.message||"PRIVATE feedback application rejected",true);}});
+listen("feedbackCancel",()=>{cancelFeedbackPreview();feedbackNotice("Discarded uncommitted HUMAN feedback preview.");});
+$("feedbackFile").addEventListener("change",()=>{cancelFeedbackPreview();feedbackNotice("New PRIVATE input selected; preview before applying.");});
 listen("bulkUndo",undoLastBulk);listen("exportSelected",exportSelectedPrivate);
 $("selectShown").addEventListener("change",e=>{for(const x of filteredRows()){
  if(e.target.checked)selection.add(x.request.request_id);else selection.delete(x.request.request_id);
  }invalidateBulk();draw();});
 $("bulkStage").addEventListener("change",invalidateBulk);
 listen("forget",()=>{if(!confirm("Clear ALL in-memory human responses and PRIVATE annotations? Saved downloads remain."))return;
- const rev=db.revision+1;db=blank();db.revision=rev;selection.clear();invalidateBulk();invalidateUndo();$("files").value="";$("search").value="";draw();msg("All locally held PRIVATE HUMAN data forgotten.");});
+ const rev=db.revision+1;db=blank();db.revision=rev;selection.clear();invalidateBulk();invalidateUndo();cancelFeedbackPreview();$("files").value="";$("search").value="";draw();msg("All locally held PRIVATE HUMAN data forgotten.");});
 $("search").addEventListener("input",draw);$("filter").addEventListener("change",draw);
 $("dueFilter").addEventListener("change",draw);$("sort").addEventListener("change",draw);
 draw();msg("Load original PRIVATE owner-request and partial-reply files. Everything stays in memory.");
