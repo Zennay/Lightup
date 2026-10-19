@@ -151,6 +151,8 @@
       }
       records.push({ name: f.name, size: bytes.length, sha256: await sha(bytes), bytes });
     }
+    if (!window.LightUpCasebookHandoff) fail("PRIVATE HUMAN-admissiemodule ontbreekt.");
+    window.LightUpCasebookHandoff.admit(records);
     return records;
   }
   function fileDownload(name, bytes, type = "application/octet-stream") {
@@ -176,6 +178,7 @@
     current = null;
     $("records").replaceChildren();
     $("summary").textContent = "Geen lokale werkset geladen. Browsergeheugen is niet gegarandeerd fysiek gewist.";
+    window.LightUpCasebookHandoff?.render(null);
   }
   function show(records) {
     clearWorking();
@@ -200,6 +203,7 @@
       });
       row.append(left, button); panel.append(row);
     }
+    window.LightUpCasebookHandoff?.render(records);
   }
   const busy = state => {
     $("encrypt").disabled = state;
@@ -212,6 +216,8 @@
   }
   async function encryptPrivateRecords(records, password) {
     checkPassword(password);
+    if (!window.LightUpCasebookHandoff) fail("Brongebonden HUMAN module ontbreekt.");
+    window.LightUpCasebookHandoff.admit(records);
     const body = { schema: SCHEMA, version: 1, files: records.map(r =>
       ({ name: r.name, size: r.size, sha256: r.sha256, content_b64: to64(r.bytes) })) };
     const salt = crypto.getRandomValues(new Uint8Array(16));
@@ -317,6 +323,8 @@
         }
         candidate.push({ name: r.name, size: r.size, sha256: r.sha256, bytes });
       }
+      if (!window.LightUpCasebookHandoff) fail("Brongebonden HUMAN module ontbreekt.");
+      window.LightUpCasebookHandoff.admit(candidate);
       if (!window.confirm("Alle " + candidate.length +
         " bronbestanden zijn lokaal ontsleuteld en intern byte-vergeleken. Dit valideert GEEN originele bron, grant, toestemming of intrekking. Vervang de huidige lokale werkset?"))
         fail("Heropenen geannuleerd; bestaande lokale werkset ongewijzigd.");
@@ -327,6 +335,24 @@
       $("open-password").value = "";
       $("vault-file").value = "";
       busy(false);
+    }
+  });
+  window.LightUpTransfer = Object.freeze({
+    async setHumanCSV(rows) {
+      if (!current || !window.LightUpCasebookHandoff) fail("Geen PRIVATE bronset geladen.");
+      const csv = window.LightUpCasebookHandoff.serialize(rows);
+      const bytes = encoder.encode(csv);
+      if (bytes.length < 1 || bytes.length > 131072) fail("HUMAN-CSV moet kleiner dan 128 KiB zijn.");
+      const existing = current.filter(r => r.name !== "workroom-current-template.csv");
+      const copy = existing.map(r => ({...r, bytes: r.bytes.slice()}));
+      copy.push({name:"workroom-current-template.csv",size:bytes.length,
+        sha256:await sha(bytes),bytes});
+      copy.sort((a,b)=>a.name < b.name ? -1 : a.name > b.name ? 1 : 0);
+      checkNames(copy);
+      if (copy.reduce((n,r)=>n+r.size,0) > MAX_TOTAL) fail("Gecombineerde PRIVATE set groter dan 12 MiB.");
+      window.LightUpCasebookHandoff.admit(copy);
+      show(copy);
+      setStatus("Alleen de PRIVATE HUMAN-opvolg-CSV in lokale werkset bijgewerkt en aan huidige originele bron gekoppeld. Nieuwe versleutelde overdracht via dooroverdrachtknop vereist.");
     }
   });
   $("clear").addEventListener("click", () => {
