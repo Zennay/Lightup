@@ -23,6 +23,7 @@ FILES = {
     "index.html", "anonymous.html", "anonymous-counts.json",
     "anonymous-counts.csv", "private-source-changes.csv",
     "human-followup.txt", "private-source-inventory.json",
+    "private-human-case-queue.csv",
 }
 
 
