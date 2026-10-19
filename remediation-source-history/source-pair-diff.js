@@ -82,8 +82,8 @@ function exportPrivate(){
  H.privateAllowed();
  const c=verified(),rows=c.rows.filter(r=>r.status!=='unchanged'||$('showUnchanged').checked);
  if(!rows.length)throw Error('No source changes for private handoff at this selection.');
- const cols=['source_finding_id','source_change','original_changed_fields','old_source_severity','new_source_severity','old_source_retest_claim','new_source_retest_claim','original_old_title','original_new_title','original_old_remediation','original_new_remediation'];
- const data=rows.map(x=>[x.id,x.status,x.changes.join(' | '),x.a?.severity||'',x.b?.severity||'',x.a?.retest_status||'',x.b?.retest_status||'',x.a?.title||'',x.b?.title||'',x.a?.remediation||'',x.b?.remediation||'']);
+ const cols=['original_before_revision_index','original_after_revision_index','PRIVATE_original_before_canonical_sha256','PRIVATE_original_after_canonical_sha256','PRIVATE_original_before_file_sha256','PRIVATE_original_after_file_sha256','source_finding_id','source_change','original_changed_fields','old_source_severity','new_source_severity','old_source_retest_claim','new_source_retest_claim','original_old_title','original_new_title','original_old_remediation','original_new_remediation'];
+ const data=rows.map(x=>[c.start+1,c.end+1,c.before.sourceHash,c.after.sourceHash,c.before.fileHash,c.after.fileHash,x.id,x.status,x.changes.join(' | '),x.a?.severity||'',x.b?.severity||'',x.a?.retest_status||'',x.b?.retest_status||'',x.a?.title||'',x.b?.title||'',x.a?.remediation||'',x.b?.remediation||'']);
  download('lightup-PRIVATE-source-pair-review.csv',[cols,...data]);
  message('PRIVATE original-ID and original remediation-text comparison saved to the approved local device; no permission or verified fix implied.');
 }
