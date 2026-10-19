@@ -81,3 +81,27 @@ footer{border-top:1px solid #283442;padding:22px clamp(18px,4vw,52px);max-width:
 .matrix-paging{padding:10px 15px;border-top:1px solid #2d3c4c;background:#162330}
 .matrix-paging span{font-weight:650;color:#c3dfe3}
 .matrix-paging .buttons button{padding:8px 12px;font-size:.81rem}
+
+/* Source-byte-bound HUMAN-only two-snapshot comparison workroom. */
+.human-history{padding:25px;margin-bottom:24px;border-color:#52677c;background:linear-gradient(152deg,#15293a,#111d2c 70%)}
+.human-history h3{font-size:1.45rem;letter-spacing:-.04em;margin:8px 0 9px;color:#d9f1ff}
+.human-history>p{font-size:.91rem;max-width:1040px}
+.human-history-load{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:end;margin:20px 0}
+.human-history-load label{font-size:.82rem;font-weight:750;color:#e2edf4}
+.human-history-load input{display:block;margin-top:8px}
+.human-history-load .buttons{grid-column:1/-1;align-items:center;margin:0}
+.human-history .history-summary{background:#0b202c;border:1px solid #446375;border-radius:11px;padding:16px;margin-bottom:18px}
+.history-summary strong{display:block;font-size:1.02rem;color:#b5e6f4}
+.history-summary p{margin:5px 0;font-size:.84rem}
+.history-scroll{max-height:620px;border:1px solid #34485e;border-radius:9px}
+#historyTable{min-width:980px}
+#historyTable td{font-size:.84rem;white-space:pre-line;overflow-wrap:anywhere}
+#historyTable td:first-child{max-width:280px}
+#historyTable td:nth-child(3),#historyTable td:nth-child(4){min-width:160px}
+.history-actions{border-top:1px solid #40546a;padding-top:20px;margin-top:13px;display:grid;grid-template-columns:1.2fr 1fr;gap:22px}
+.history-actions strong{color:#d7f5f6}.history-actions p{font-size:.86rem;margin-top:8px}
+.history-actions .buttons{margin:0;align-content:start}
+.human-history>.hint{margin:19px 0 0}
+@media(max-width:920px){.history-actions{grid-template-columns:1fr}}
+@media(max-width:640px){.human-history{padding:16px}.human-history-load{grid-template-columns:1fr}.human-history h3{font-size:1.25rem}}
+@media print{.human-history{display:none!important}}
