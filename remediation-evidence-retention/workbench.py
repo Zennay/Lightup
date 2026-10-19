@@ -157,7 +157,7 @@ def _switch(args, vault):
     # A selected plan is not admitted just because its name or bytes exist.
     # Authenticate original again and check the actual original source + all
     # extracted material fingerprints against this candidate plan.
-    clone = SimpleNamespace(**vars(args), plan=path)
+    clone = SimpleNamespace(**{**vars(args), "plan": path})
     _, packet, indexed, _ = original.current_human(
         clone, vault, keep_passphrase_fingerprint=True)
     items, _ = retention._load_current_plan(clone, vault, packet, indexed)
@@ -181,7 +181,7 @@ def _history(args, vault):
     if len({str(path.expanduser().absolute()) for path in paths}) != len(paths):
         raise ValueError("Repeated private encrypted review file.")
     _, packet, indexed, original_sha, plan_sha, _ = _context(args, vault)
-    clone = SimpleNamespace(**vars(args), plan=paths)
+    clone = SimpleNamespace(**{**vars(args), "plan": paths})
     files, snapshots = history._open_plans(clone, vault, packet, indexed)
     rows, stats = history._row_deltas(files, snapshots)
     html = history._render(rows, snapshots, stats, packet["source_sha256"])
