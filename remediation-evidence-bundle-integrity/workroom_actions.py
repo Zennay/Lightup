@@ -68,7 +68,7 @@ def collect(originals: list[Path]) -> dict:
     return {"source_slots": len(originals), "local_questions": len(rows),
             "rows": rows}
 
-def render(data: dict) -> bytes:
+def render(data: dict, original_links: bool = True) -> bytes:
     review.require(type(data) is dict and set(data) == {"source_slots", "local_questions", "rows"},
                    "Only original source-owned HUMAN action plans are accepted")
     group_counts = Counter(row["stage"] for row in data["rows"])
@@ -80,11 +80,13 @@ def render(data: dict) -> bytes:
             review.require(type(row["slot"]) is int and 1 <= row["slot"] <= data["source_slots"],
                            "Invalid original private source slot")
             ref = "original-" + f"{row['slot']:02}" + "/inbox.html"
+            link = ("<a href='" + ref + "'>Open ORIGINAL PRIVATE inbox</a>"
+                    if original_links else "Open original source inbox locally (no link)")
             proposed = "<ul>" + "".join("<li>" + safe(board.ADVICE[k]) +
                                          "</li>" for k in row["reasons"]) + "</ul>"
             table.append("<tr><th scope='row'>" + str(row["slot"]) + " / " +
-                         str(row["ordinal"]) + "</th><td><a href='" + ref +
-                         "'>Open ORIGINAL PRIVATE inbox</a></td><td><code>" +
+                         str(row["ordinal"]) + "</th><td>" + link +
+                         "</td><td><code>" +
                          safe(row["finding_id"]) + "</code></td><td><code>" +
                          safe(row["fingerprint"]) + "</code></td><td>" + proposed +
                          "</td><td>" +
@@ -149,15 +151,13 @@ def main() -> int:
                    help="NEW PRIVATE HTML next to existing 0700 original owner workrooms")
     args = p.parse_args()
     try:
-        review.require(
-            args.html.parent == args.bundle[0].parent and
-            all(bundle.parent == args.html.parent and
-                bundle.name == f"original-{index:02}" for index, bundle in
-                enumerate(args.bundle, 1)) and
-            args.html.name not in {"index.html", "manifest.json"},
-            "Standalone PRIVATE queue must be placed next to matching original-NN folders")
+        review.require(args.bundle and
+                       all(args.html.parent != bundle.parent and
+                           bundle.parent not in args.html.parents and
+                           bundle not in args.html.parents for bundle in args.bundle),
+                       "Standalone HUMAN desk must not modify any original workroom")
         triage.private_parent(args.html)
-        payload = render(collect(args.bundle))
+        payload = render(collect(args.bundle), original_links=False)
         review.private_publish(args.html, payload)
         print("PRIVATE original-source HUMAN action list created (not source-free).")
         print("HUMAN ONLY: no fix, grant, consent, task execution or validated security verdict.")

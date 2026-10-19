@@ -100,15 +100,14 @@ def execute(args: argparse.Namespace) -> None:
               str(report["source_slots"]) + " original slot(s).")
     elif action == "questions":
         sources = args.bundle
-        review.require(
-            sources and args.html.parent == sources[0].parent and
-            all(s.parent == args.html.parent and
-                s.name == f"original-{i:02}" for i, s in enumerate(sources, 1)) and
-            args.html.name not in {"manifest.json", "index.html"},
-            "HUMAN task page must be placed next to original-XX private workspaces")
+        review.require(sources and
+                       all(args.html.parent != s.parent and
+                           s.parent not in args.html.parents and
+                           s not in args.html.parents for s in sources),
+                       "Standalone HUMAN questions must not modify original workroom")
         triage.private_parent(args.html)
         review.private_publish(args.html, workroom_actions.render(
-            workroom_actions.collect(sources)))
+            workroom_actions.collect(sources), original_links=False))
         print("Original-private HUMAN tasks page published (not source-free).")
     elif action == "draft":
         review.require(args.draft_plan.parent != args.workroom and
