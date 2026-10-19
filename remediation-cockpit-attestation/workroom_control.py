@@ -98,6 +98,14 @@ def main() -> int:
     inspector = actions.add_parser("inspect", help="Independently admit the entire private workroom")
     inspector.add_argument("--workroom", required=True, type=Path)
     inspector.add_argument("--key-file", required=True, type=Path)
+    batch_template = actions.add_parser("bulk-template", help="Create 0600 stale-plan-bound HUMAN batch edit template for a complete workroom")
+    batch_template.add_argument("--workroom", required=True, type=Path)
+    batch_template.add_argument("--key-file", required=True, type=Path)
+    batch_template.add_argument("--output", required=True, type=Path)
+    batch_preview = actions.add_parser("bulk-preview", help="Show only aggregate HUMAN changes without publishing")
+    batch_preview.add_argument("--workroom", required=True, type=Path)
+    batch_preview.add_argument("--key-file", required=True, type=Path)
+    batch_preview.add_argument("--edits", required=True, type=Path)
     batch = actions.add_parser("bulk-revise", help="Apply PRIVATE batch to a complete admitted workroom in one atomic new version")
     batch.add_argument("--workroom", required=True, type=Path)
     batch.add_argument("--key-file", required=True, type=Path)
@@ -120,6 +128,19 @@ def main() -> int:
         if args.action == "inspect":
             plan = inspect(args.workroom, args.key_file)
             print("REVIEW_ONLY: entire PRIVATE HUMAN workroom and original source-free slots admitted.")
+        elif args.action in ("bulk-template", "bulk-preview"):
+            plan = inspect(args.workroom, args.key_file)
+            import bulk
+            if args.action == "bulk-template":
+                bulk.edit_template(args.workroom / "inbox", args.key_file,
+                                   args.workroom / "plan.ltplan", args.output)
+                print("PRIVATE 0600 HUMAN batch template created for exactly this workroom.")
+            else:
+                changed, detail = bulk.prepare(args.workroom / "inbox",
+                    args.workroom / "plan.ltplan", args.edits, args.key_file)
+                require(changed["revision"] == plan["revision"] + 1)
+                print(f"REVIEW_ONLY: {detail['slots_changed']} HUMAN slots for revision "
+                      f"{detail['new_revision']}; nothing written.")
         elif args.action == "bulk-revise":
             # Do not trust a bare encrypted plan extracted from an incomplete
             # or edited workroom. Admit the full source, plan and rendered UI.
