@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-LC9DDjyYaP2Lwhk35CUBt+cIewPjHLuT3bF641ub4JI=' 'sha256-aRN6QvOi6JAh1L0DPhzTQ3DyaRifmnmVjyldZkVK86M=' 'sha256-3//Y675o+ghxJOQxowVNTFZgkI9dj+JSbtZP53OC6BI='; style-src 'unsafe-inline'; img-src 'none'; connect-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-LC9DDjyYaP2Lwhk35CUBt+cIewPjHLuT3bF641ub4JI=' 'sha256-MovBAZc+wKg6RjgHh1eUfjl2gp5RIC8aAUk3jdbuXcA=' 'sha256-/TRAraHzIAHMv5hNmON6kc2T9KUj8z2L8PRRtXZjIqA=' 'sha256-S8NYVKxOjJWyjFnU5NeB7tE3lCmSx1td9HZWUasCvlw='; style-src 'unsafe-inline'; img-src 'none'; connect-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'">
 <title>LightUp | Private Remediation Ticket Desk</title>
 <style>
 :root{font-family:Inter,ui-sans-serif,system-ui,-apple-system,sans-serif;color:#eaf0f9;background:#090f1b;line-height:1.5;color-scheme:dark}
@@ -76,6 +76,12 @@ pre{background:#081220;color:#dbe9fc;border:1px solid #354760;border-radius:12px
 <p id="source-diff" class="status">No source revision imported.</p>
 <div class="scroll"><table><thead><tr><th>Prior finding</th><th>Reason</th><th>Historical HUMAN planning</th></tr></thead><tbody id="historical-holds"><tr><td colspan="3" class="muted">No historical source HOLD records.</td></tr></tbody></table></div>
 <div class="actions"><button id="export-holds" disabled>Download PRIVATE historical HOLD register</button></div>
+<h3>Local PRIVATE workspace save & resume</h3>
+<p class="muted">The checkpoint includes sensitive original finding identifiers and HUMAN notes in <strong>plaintext JSON</strong>, not encrypted. Save only in an independently approved private directory; later reload the exact same original CSV bytes before the checkpoint. No automatic browser storage.</p>
+<div class="field"><label for="workspace-file">Resume existing PRIVATE workspace checkpoint</label>
+<input id="workspace-file" type="file" accept=".json,application/json" disabled>
+<small>All-or-nothing import, up to 4 MiB. Original canonical and byte SHA-256 must match exactly. Rejected/declined files never replace in-memory work.</small></div>
+<div class="actions"><button id="save-workspace" disabled>Download PRIVATE HUMAN workspace (.json)</button></div>
 </section>
 <section class="panel full">
 <h2>04 / Private release review</h2>
@@ -302,8 +308,8 @@ global.LightUpCasework=Object.freeze({compareSource,reconcileSource,parseCSV,nor
 const MAX_PACKET_BYTES=2*1024*1024;
 const MAX_NODES=16000;
 const TEXT_FIELDS=['finding_id','title','severity','retest_status','remediation'];
-function duplicateSafeJSON(text){
- if(typeof text!=='string'||new TextEncoder().encode(text).length>MAX_PACKET_BYTES)throw Error('Casework JSON exceeds 2 MiB.');
+function duplicateSafeJSON(text,maxBytes=MAX_PACKET_BYTES){
+ if(typeof text!=='string'||new TextEncoder().encode(text).length>maxBytes)throw Error('PRIVATE JSON exceeds permitted byte limit.');
  let i=0,nodes=0;
  const invalid=()=>{throw Error('Malformed or ambiguous Casework JSON.');};
  const ws=()=>{while(/[\u0020\u0009\u000a\u000d]/.test(text[i]||'')&&i<text.length)i++;};
@@ -384,7 +390,118 @@ function decode(text,current,sourceHash){
  if(drafts.size!==current.length)throw Error('Casework admission incomplete.');
  return {drafts,suggested,resetCompleted};
 }
-global.LightUpTicketIntake=Object.freeze({decode});
+global.LightUpTicketIntake=Object.freeze({decode,parsePrivateJSON:(text)=>duplicateSafeJSON(text,4*1024*1024)});
+})(window);
+
+</script>
+<script>
+/* Confidential source-bound HUMAN-only ticket workspace checkpoint; no network or browser persistence. */
+(function(global){
+'use strict';
+const e=global.LightUpCasework,intake=global.LightUpTicketIntake;
+const KIND='lightup.human_ticket_workspace_checkpoint';
+const FALSE=['authenticated','tenant_verified','source_authorized','assessment_authorized','grant','client_consent','operator_consent','execution','scan','audit_verdict','retest_verified','release'];
+const FIELDS=['finding_id','title','severity','retest_status','remediation'];
+const DRAFT=['owner','due','stage','action','review','blocker'];
+const MAX=350, MAX_BYTES=4*1024*1024;
+const STAGES=['triage','planned','blocked','in_progress','ready_for_review'];
+const FORMAT=/[\u0000-\u001f\u007f\u200b-\u200f\u2028-\u202e\u2060-\u206f\ufeff]/u;
+function exactKeys(object,keys,label){
+ if(!object||typeof object!=='object'||Array.isArray(object)||
+  Object.keys(object).length!==keys.length||!keys.every(k=>Object.prototype.hasOwnProperty.call(object,k)))
+  throw Error('Invalid or unknown '+label+' field.');
+}
+function string(v,max,label,blank=true){
+ if(typeof v!=='string'||v.length>max||FORMAT.test(v)||(!blank&&!v.trim()))
+  throw Error('Unsafe '+label+'.');
+ return v;
+}
+function date(day){
+ if(!day)return '';
+ if(typeof day!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(day))throw Error('Invalid tentative date.');
+ const x=new Date(day+'T00:00:00.000Z');
+ if(Number.isNaN(x.valueOf())||x.toISOString().slice(0,10)!==day)throw Error('Invalid calendar date.');
+ return day;
+}
+function digest(x,label){if(typeof x!=='string'||!/^[0-9a-f]{64}$/.test(x))throw Error('Invalid '+label+' SHA-256.');return x;}
+function validDraft(raw){
+ exactKeys(raw,DRAFT,'HUMAN draft');
+ const d={owner:string(raw.owner,120,'owner'),due:date(raw.due),stage:raw.stage,
+  action:string(raw.action,1200,'action'),review:string(raw.review,1200,'review'),blocker:string(raw.blocker,800,'blocker')};
+ if(!STAGES.includes(d.stage))throw Error('Unrecognised HUMAN stage.');
+ return d;
+}
+function validateHold(raw){
+ exactKeys(raw,['finding','draft','canonical','bytesHash','reason'],'historical HOLD');
+ const original=raw.finding;
+ exactKeys(original,FIELDS,'original source finding');
+ // Original immutable Casework parser retains the literal five-column validation contract.
+ const safe=e.normalizeSource([original])[0];
+ for(const k of FIELDS)string(safe[k],6000,'historical source '+k,k!=='finding_id'&&k!=='title'&&k!=='remediation');
+ const reason=raw.reason;
+ if(!['changed','missing'].includes(reason))throw Error('Unknown historical HOLD reason.');
+ return {finding:{...safe},draft:validDraft(raw.draft),canonical:digest(raw.canonical,'historical canonical'),
+  bytesHash:digest(raw.bytesHash,'historical byte'),reason};
+}
+function normalizeSource(source){
+ exactKeys(source,['contract','canonical','bytesHash'],'checkpoint source');
+ if(source.contract!=='lightup.finding_export._COLUMNS_v1')throw Error('Unsupported original source contract.');
+ return {contract:source.contract,canonical:digest(source.canonical,'canonical'),bytesHash:digest(source.bytesHash,'original byte')};
+}
+function packet(state){
+ if(!e||!intake||!state||!Array.isArray(state.rows))throw Error('No admitted original CSV.');
+ if(state.rows.length<1||state.rows.length>MAX)throw Error('Unbounded source.');
+ const ids=new Set(state.rows.map(f=>f.finding_id));
+ if(ids.size!==state.rows.length)throw Error('Duplicate original source ID.');
+ const selected=[...state.selected].sort();
+ if(selected.length>MAX||selected.some(id=>!ids.has(id)))throw Error('Invalid ticket selections.');
+ const drafts=[...state.drafts].map(([id,d])=>{
+  if(!ids.has(id))throw Error('Unmatched HUMAN draft.');
+  return {finding_id:id,human:validDraft(d)};
+ }).sort((a,b)=>a.finding_id.localeCompare(b.finding_id,'en'));
+ if(drafts.length>MAX)throw Error('Too many HUMAN drafts.');
+ const holds=state.holds.map(validateHold);
+ if(holds.length>MAX)throw Error('Historical HUMAN HOLD limit exceeded.');
+ const source=normalizeSource({contract:'lightup.finding_export._COLUMNS_v1',canonical:state.canonical,bytesHash:state.bytesHash});
+ const obj={kind:KIND,schema_version:1,disposition:'PRIVATE_LOCAL_HUMAN_ONLY',
+  ...Object.fromEntries(FALSE.map(k=>[k,false])),source,selected,drafts,holds,
+  warning:'Unverified PRIVATE HUMAN notes only. Not authentication, client/operator consent, grant, scan, fixed finding, retest or release.'};
+ const text=JSON.stringify(obj,null,2)+'\n';
+ if(new TextEncoder().encode(text).length>MAX_BYTES)throw Error('PRIVATE workspace checkpoint exceeds 4 MiB.');
+ return text;
+}
+function restore(text,state){
+ if(!state||!e||!intake||typeof intake.parsePrivateJSON!=='function')throw Error('Load the exact original source CSV first.');
+ const raw=intake.parsePrivateJSON(text);
+ exactKeys(raw,['kind','schema_version','disposition',...FALSE,'source','selected','drafts','holds','warning'],'workspace checkpoint');
+ if(raw.kind!==KIND||raw.schema_version!==1||raw.disposition!=='PRIVATE_LOCAL_HUMAN_ONLY'||
+  !FALSE.every(k=>raw[k]===false)||typeof raw.warning!=='string')
+  throw Error('Unsupported or authority-claiming workspace checkpoint.');
+ const source=normalizeSource(raw.source);
+ if(source.canonical!==state.canonical||source.bytesHash!==state.bytesHash)
+  throw Error('Private HUMAN workspace was authored for different original source CSV bytes. HOLD, never transfer across source revisions.');
+ const ids=new Set(state.rows.map(f=>f.finding_id));
+ if(!Array.isArray(raw.selected)||raw.selected.length>MAX)throw Error('Malformed ticket selection array.');
+ const selected=new Set();
+ for(const id of raw.selected){
+  string(id,160,'selected source ID',false);
+  if(!ids.has(id)||selected.has(id))throw Error('Duplicate or unknown selected original finding.');
+  selected.add(id);
+ }
+ if(!Array.isArray(raw.drafts)||raw.drafts.length>MAX)throw Error('Malformed HUMAN draft array.');
+ const drafts=new Map();
+ for(const item of raw.drafts){
+  exactKeys(item,['finding_id','human'],'workspace HUMAN item');
+  string(item.finding_id,160,'HUMAN finding ID',false);
+  if(!ids.has(item.finding_id)||drafts.has(item.finding_id))throw Error('Duplicate or unknown source-bound HUMAN draft.');
+  drafts.set(item.finding_id,Object.freeze(validDraft(item.human)));
+ }
+ if(!Array.isArray(raw.holds)||raw.holds.length>MAX)throw Error('Malformed historical HUMAN HOLD array.');
+ const holds=raw.holds.map(validateHold);
+ // Return fresh isolated values only after full cross-record admission.
+ return {selected,drafts,holds};
+}
+global.LightUpTicketWorkspace=Object.freeze({packet,restore});
 })(window);
 
 </script>
@@ -393,7 +510,7 @@ global.LightUpTicketIntake=Object.freeze({decode});
 (() => {
 'use strict';
 const byId = id => document.getElementById(id);
-const ui = Object.fromEntries(['source-file','casework-file','search','severity','select-visible','clear-visible','select-urgent','findings','forget','chosen','owner','due','stage','action','review','blocker','apply','preview','notice','preview-output','private-ack','export-one','export-all','export-counts','source-diff','historical-holds','export-holds','metric-count','metric-risk','metric-picked','metric-hash'].map(k=>[k,byId(k)]));
+const ui = Object.fromEntries(['source-file','casework-file','workspace-file','save-workspace','search','severity','select-visible','clear-visible','select-urgent','findings','forget','chosen','owner','due','stage','action','review','blocker','apply','preview','notice','preview-output','private-ack','export-one','export-all','export-counts','source-diff','historical-holds','export-holds','metric-count','metric-risk','metric-picked','metric-hash'].map(k=>[k,byId(k)]));
 const engine = window.LightUpCasework;
 if (!engine || typeof engine.parseCSV !== 'function' || typeof engine.digest !== 'function') {
  ui.notice.textContent='Original source-owned Casework engine unavailable. Do not use this page without the complete pinned parent checkout.';
@@ -407,7 +524,7 @@ const todayUTC=()=>new Date().toISOString().slice(0,10);
 let state=null, active='';
 function show(msg, bad=false){ui.notice.textContent=msg;ui.notice.classList.toggle('error',bad);}
 function setControls(ready){
- for(const id of ['search','severity','select-visible','clear-visible','select-urgent','forget','chosen','export-counts','casework-file','private-ack'])ui[id].disabled=!ready;
+ for(const id of ['search','severity','select-visible','clear-visible','select-urgent','forget','chosen','export-counts','casework-file','workspace-file','private-ack'])ui[id].disabled=!ready;
  updateEditor();
  updateButtons();
 }
@@ -418,6 +535,7 @@ function updateButtons(){
  ui['export-all'].disabled=!(state&&state.selected.size&&permitted);
  ui['export-counts'].disabled=!state;
  ui['export-holds'].disabled=!(state&&state.holds.length&&permitted);
+ ui['save-workspace'].disabled=!(state&&permitted);
 }
 function byteHex(buf){return Array.from(new Uint8Array(buf),b=>b.toString(16).padStart(2,'0')).join('');}
 async function sha(bytes){if(!crypto?.subtle)throw Error('Secure SHA-256 unavailable in this local browser; source-bound export is disabled.');return byteHex(await crypto.subtle.digest('SHA-256',bytes));}
@@ -427,7 +545,7 @@ function checkText(x,field){
 function draft(){return {owner:'',due:'',stage:'triage',action:'',review:'',blocker:''};}
 function forget(){
  state=null;active='';
- ui['source-file'].value='';ui['casework-file'].value='';ui.search.value='';ui.severity.value='all';ui['private-ack'].checked=false;
+ ui['source-file'].value='';ui['casework-file'].value='';ui['workspace-file'].value='';ui.search.value='';ui.severity.value='all';ui['private-ack'].checked=false;
  ui.findings.replaceChildren();const row=ui.findings.insertRow();const cell=row.insertCell();cell.colSpan=4;cell.textContent='Import a local source file to begin.';
  ui.chosen.replaceChildren(new Option('No finding selected',''));
  ui['preview-output'].textContent='Nothing selected yet.';
@@ -600,7 +718,7 @@ async function importCSV(file){
   message='Source revision: '+diff.added.length+' added, '+diff.changed.length+' changed, '+diff.missing.length+' missing, '+diff.unchanged.length+' exactly unchanged. '+holds.length+' prior HUMAN draft(s) in historical SOURCE HOLD. No missing/“fixed” source claim proves a resolved issue.';
   if(!confirm('SOURCE REVISION — independently verify this NEW export is the SAME client and engagement. '+message+' Only exact unchanged original five-field findings may keep HUMAN notes. Changed/missing notes are quarantined, never promoted. Continue?'))return;
  }
- state=next;active='';ui['casework-file'].value='';ui['private-ack'].checked=false;ui.search.value='';ui.severity.value='all';
+ state=next;active='';ui['casework-file'].value='';ui['workspace-file'].value='';ui['private-ack'].checked=false;ui.search.value='';ui.severity.value='all';
  ui['metric-count'].textContent=imported.length;
  ui['metric-risk'].textContent=imported.filter(f=>['critical','high'].includes(f.severity)).length;
  ui['metric-hash'].textContent=canonical.slice(0,10)+'…';
@@ -611,6 +729,32 @@ async function importCSV(file){
 
 ui['source-file'].addEventListener('change',async event=>{
  try{await importCSV(event.target.files[0]);}catch(err){show('IMPORT HOLD: '+err.message,true);}
+});
+ui['workspace-file'].addEventListener('change',async event=>{
+ const file=event.target.files[0];if(!file)return;
+ try{
+  if(!state)throw Error('Import the exact original authorized CSV first.');
+  if(!Number.isSafeInteger(file.size)||file.size>4*MAX_BYTES)throw Error('Checkpoint exceeds 4 MiB.');
+  const bytes=await file.arrayBuffer();
+  let text;
+  try{text=new TextDecoder('utf-8',{fatal:true}).decode(bytes);}catch(e){throw Error('Checkpoint is not valid UTF-8.');}
+  if(!window.LightUpTicketWorkspace)throw Error('Offline workspace reader unavailable.');
+  const restored=window.LightUpTicketWorkspace.restore(text,state);
+  if(!confirm('This exact-source PRIVATE HUMAN checkpoint contains unverified work and replaces ALL local HUMAN tickets, selections and historical HOLDs. Confirm independently identical original client/engagement context and proceed?'))return;
+  state.selected=restored.selected;state.drafts=restored.drafts;state.holds=restored.holds;active='';
+  ui['private-ack'].checked=false;refresh();
+  show('PRIVATE HUMAN checkpoint restored for the identical original CSV bytes; '+restored.selected.size+' selected tickets, '+restored.holds.length+' historical holds. No authentication/consent/retest was inferred. Re-approve any disclosure.');
+ }catch(err){show('CHECKPOINT HOLD: '+err.message,true);}
+ finally{ui['workspace-file'].value='';}
+});
+ui['save-workspace'].addEventListener('click',()=>{
+ try{
+  if(!canDownload())return;
+  if(!window.LightUpTicketWorkspace)throw Error('Offline workspace writer unavailable.');
+  const sourceBound=window.LightUpTicketWorkspace.packet(state);
+  download(sourceBound,'lightup-PRIVATE-human-ticket-workspace.json','application/json;charset=utf-8');
+  show('PRIVATE PLAINTEXT (NOT ENCRYPTED) source-byte-bound HUMAN checkpoint saved locally. Keep only in an approved private location; original CSV required to reopen.');
+ }catch(err){show('CHECKPOINT EXPORT HOLD: '+err.message,true);}
 });
 ui['casework-file'].addEventListener('change',async event=>{
  const file=event.target.files[0];
