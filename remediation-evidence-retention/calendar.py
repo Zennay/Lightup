@@ -58,6 +58,12 @@ def _fold(text: str) -> str:
     return "\r\n".join(chunks)
 
 
+def _ical_text(value: str) -> str:
+    if type(value) is not str or "\r" in value or "\n" in value:
+        raise ValueError("One-line original HUMAN reminder text required.")
+    return value.replace("\\", "\\\\").replace(";", "\\;").replace(",", "\\,")
+
+
 def _calendar(rows: list[tuple[str, int]], source_hash: str) -> bytes:
     if (type(source_hash) is not str or len(source_hash) != 64
             or any(c not in "0123456789abcdef" for c in source_hash)):
@@ -79,9 +85,9 @@ def _calendar(rows: list[tuple[str, int]], source_hash: str) -> bytes:
             "DTSTAMP:" + now,
             "DTSTART;VALUE=DATE:" + day.strftime("%Y%m%d"),
             "DTEND;VALUE=DATE:" + (day + timedelta(days=1)).strftime("%Y%m%d"),
-            "SUMMARY:" + HEADER,
-            "DESCRIPTION:" + str(count) + " PRIVATE local evidence material review(s). "
-            + DESCRIPTION,
+            "SUMMARY:" + _ical_text(HEADER),
+            "DESCRIPTION:" + _ical_text(str(count) + " PRIVATE local evidence material review(s). "
+            + DESCRIPTION),
             "STATUS:TENTATIVE",
             "TRANSP:TRANSPARENT",
             "END:VEVENT",
