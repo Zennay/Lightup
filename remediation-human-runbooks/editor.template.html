@@ -80,6 +80,15 @@
  </div>
  <p id="actionSaved" class="warning">No browser persistence. Save PRIVATE actions separately.</p>
  <p id="actionSummary" class="meta"></p>
+ <h3>HUMAN follow-up batch assignments (local annotations only)</h3>
+ <p id="actionSelection" class="meta">0 exact-current HUMAN steps selected.</p>
+ <div class="actions"><button id="actionSelectVisible">Select all filtered HUMAN steps</button><button id="actionDeselect">Clear HUMAN selection</button><button id="actionUndoBatch" disabled>Undo last local HUMAN batch</button></div>
+ <div class="grid">
+  <div><label for="actionBatchStage">HUMAN batch stage</label><select id="actionBatchStage"><option value="untriaged_human">Untriaged HUMAN</option><option value="needs_human_input">Needs HUMAN input</option><option value="human_contact_planned">HUMAN contact planned</option><option value="human_review_prepared">HUMAN review prepared</option><option value="human_discussion_closed">HUMAN discussion closed (not a fix)</option></select></div>
+  <div><label for="actionBatchOwner">Optional locally declared coordinator (blank retains each old)</label><input id="actionBatchOwner" maxlength="120"></div>
+  <div><label for="actionBatchDue">Optional tentative HUMAN date (blank retains each old)</label><input id="actionBatchDue" type="date"></div>
+ </div>
+ <div class="actions"><button class="primary" id="actionBatchApply">Preview and apply selected HUMAN changes</button></div>
  <div class="actions"><button id="actionSave" class="primary">Download complete PRIVATE HUMAN follow-up JSON</button><button id="actionBrief">Download scriptless PRIVATE human discussion agenda</button><button id="actionCounts">Download anonymous HUMAN action counts</button></div>
  <label for="actionRestoreFile">Restore full PRIVATE HUMAN follow-up JSON, exact current original source + reply snapshots only (8 MiB)</label>
  <input id="actionRestoreFile" type="file" accept=".json,application/json">
