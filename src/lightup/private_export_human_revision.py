@@ -145,7 +145,7 @@ def _private_html(summary: dict) -> bytes:
     return html.encode("utf-8")
 
 
-def _read_inputs(earlier: str, plan: str, later: str) -> tuple[dict, list, dict, dict, list]:
+def _read_unbound_inputs(earlier: str, plan: str, later: str) -> tuple[dict, list, dict, dict, list]:
     source_secret = _passphrase("Earlier original encrypted source passphrase")
     first_manifest, first_rows, _ = _read_encrypted(earlier, source_secret)
     del source_secret
@@ -158,6 +158,15 @@ def _read_inputs(earlier: str, plan: str, later: str) -> tuple[dict, list, dict,
     next_manifest, next_rows, _ = _read_encrypted(later, later_secret)
     del later_secret
     return first_manifest, first_rows, annotations, next_manifest, next_rows
+
+
+def _read_inputs(earlier: str, plan: str, later: str) -> tuple[dict, list, dict, dict, list]:
+    """Original reader plus exact-ciphertext owner-private before/after hold."""
+    from .private_export_human_revision_source import _read_with_binding
+    manifest, rows, notes, later_manifest, later_rows, _binding = _read_with_binding(
+        earlier, plan, later
+    )
+    return manifest, rows, notes, later_manifest, later_rows
 
 
 def main(argv: list[str] | None = None) -> int:
