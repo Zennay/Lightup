@@ -68,11 +68,11 @@ async function load(){
  $('nativeCaseworkFile').value='';$('replaceHumanNotes').checked=false;
 }
 /* Selective, original-source-bound HUMAN collaboration: preview first; no implicit overwrite. */
-let staged=null,stagedRevision=-1,checked=new Set();
+let staged=null,stagedRevision=-1,checked=new Set(),fieldChoices=new Map();
 const safe=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const FIELDS=['owner','status','due_date','next_action','verification_plan','blocker','note','updated_utc'];
 function resetStage(){
- staged=null;stagedRevision=-1;checked.clear();
+ staged=null;stagedRevision=-1;checked.clear();fieldChoices.clear();
  $('mergeReview').hidden=true;$('mergeHumanAck').checked=false;
  $('mergeSource').textContent='No original source-bound Casework review staged.';
  $('mergeRows').innerHTML='';$('mergeFields').textContent='';
@@ -107,7 +107,10 @@ function showFields(id){
  '<div class="revisions"><article class="snapshot"><h4>Incoming original HUMAN draft</h4>'+
   FIELDS.map(k=>'<p><b>'+safe(k)+':</b> '+safe(row.incoming[k]??'')+'</p>').join('')+'</article>'+
   '<article class="snapshot"><h4>Existing local HUMAN draft</h4>'+
-  FIELDS.map(k=>'<p><b>'+safe(k)+':</b> '+safe(row.current[k]??'')+'</p>').join('')+'</article></div>';
+  FIELDS.map(k=>'<p><b>'+safe(k)+':</b> '+safe(row.current[k]??'')+'</p>').join('')+'</article></div>'+ 
+ (checked.has(id)?'<h4>Choose exactly which incoming HUMAN fields to import; other fields stay local</h4>'+ 
+  row.changedFields.map(k=>'<label class="check"><input type="checkbox" data-field-id="'+safe(id)+'" data-field-key="'+safe(k)+'" '+((fieldChoices.get(id)||new Set()).has(k)?'checked':'')+'> Import incoming HUMAN '+safe(k)+'</label>').join(''):
+  '<p>Select this original finding above to choose incoming HUMAN fields.</p>');
 }
 async function stageReview(){
  const file=$('nativeCaseworkFile').files[0];
@@ -127,6 +130,7 @@ function selectNew(){
  if(!staged)throw Error('Preview original Casework before selecting newly imported HUMAN notes.');
  const review=H.reviewCasework(staged,stagedRevision);
  checked=new Set(review.rows.filter(r=>r.classification==='NEW_HUMAN_NOTES').map(r=>r.id));
+ fieldChoices=new Map(review.rows.filter(r=>checked.has(r.id)).map(r=>[r.id,new Set(r.changedFields)]));
  viewReview();
 }
 function applyReview(){
@@ -141,23 +145,34 @@ function applyReview(){
  const overwrite=selected.filter(r=>r.classification==='REVIEW_CONFLICT').length;
  if(!window.confirm('Import '+selected.length+' exact-source HUMAN notes, replacing '+overwrite+
    ' existing conflicting HUMAN notes? All other local notes and original findings remain unchanged. Save encrypted PRIVATE backup before merging. No grants/retests/fixes are confirmed.'))return;
- const result=H.mergeCasework(staged,stagedRevision,[...checked]);
+ const decisions=[...checked].map(id=>({id,fields:[...(fieldChoices.get(id)||new Set())]}));
+ if(decisions.some(d=>!d.fields.length))throw Error('Choose at least one changed incoming HUMAN field for every selected original record.');
+ const result=H.mergeCasework(staged,stagedRevision,decisions);
  resetStage();
  $('nativeCaseworkFile').value='';
- status('Imported '+result.accepted+' explicitly selected exact-source HUMAN records, retained '+result.retained+
+ status('Reconciled '+result.fieldsMerged+' selected HUMAN fields on '+result.accepted+' exact-source records, retained '+result.retained+
   ' other original source rows. Save encrypted PRIVATE checkpoint/native Casework export to preserve local changes.');
 }
 $('nativePreview').addEventListener('click',()=>stageReview().catch(e=>status(e.message,true)));
 $('mergeSelectNew').addEventListener('click',()=>{try{selectNew();}catch(e){status(e.message,true);}});
-$('mergeClear').addEventListener('click',()=>{checked.clear();if(staged)viewReview();});
+$('mergeClear').addEventListener('click',()=>{checked.clear();fieldChoices.clear();if(staged)viewReview();});
 $('mergeRows').addEventListener('click',event=>{
  const b=event.target.closest('button[data-inspect-id]');
  if(b)try{showFields(b.dataset.inspectId);}catch(e){status(e.message,true);}
 });
 $('mergeRows').addEventListener('change',event=>{
  const b=event.target.closest('input[data-merge-id]');if(!b)return;
- if(b.checked)checked.add(b.dataset.mergeId);else checked.delete(b.dataset.mergeId);
+ if(b.checked){checked.add(b.dataset.mergeId);const row=H.reviewCasework(staged,stagedRevision).rows.find(r=>r.id===b.dataset.mergeId);fieldChoices.set(b.dataset.mergeId,new Set(row?.changedFields||[]));}
+ else{checked.delete(b.dataset.mergeId);fieldChoices.delete(b.dataset.mergeId);}
  try{viewReview();}catch(e){status(e.message,true);resetStage();}
+});
+$('mergeFields').addEventListener('change',event=>{
+ const box=event.target.closest('input[data-field-id]');
+ if(!box||!staged||!checked.has(box.dataset.fieldId))return;
+ const fields=fieldChoices.get(box.dataset.fieldId)||new Set();
+ if(box.checked)fields.add(box.dataset.fieldKey);else fields.delete(box.dataset.fieldKey);
+ fieldChoices.set(box.dataset.fieldId,fields);
+ $('mergeCount').textContent=checked.size+' original HUMAN records, '+[...fieldChoices.values()].reduce((n,set)=>n+set.size,0)+' selected incoming HUMAN fields.';
 });
 $('mergeAccept').addEventListener('click',()=>{try{applyReview();}catch(e){status(e.message,true);}});
 $('nativeCaseworkFile').addEventListener('change',resetStage);
