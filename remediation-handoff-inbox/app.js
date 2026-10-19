@@ -16,7 +16,7 @@ const plain=x=>x&&Object.getPrototypeOf(x)===Object.prototype;
 const exact=(x,fields)=>plain(x)&&Object.keys(x).length===fields.length&&Object.keys(x).every(k=>fields.includes(k));
 const hex=x=>typeof x==="string"&&/^[0-9a-f]{64}$/.test(x);
 function value(x,max,label,required=false){
- if(typeof x!=="string"||x.length>max||/[\u0000-\u001f\u007f\u202a-\u202e\u2066-\u2069]/.test(x)||(required&&!x.trim()))fail(label+" is not canonical");
+ if(typeof x!=="string"||x.length>max||/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f\u202a-\u202e\u2066-\u2069]/.test(x)||(required&&!x.trim()))fail(label+" is not canonical");
  return x;
 }
 function distinct(rows,label){if(rows.length!==new Set(rows).size)fail("duplicate "+label);}
@@ -53,6 +53,8 @@ function admitLedger(x){
    if(!Array.isArray(x[kind])||x[kind].length!==x.source_count)fail("incomplete native "+kind);
    const ids=x[kind].map(r=>{if(!plain(r))fail("invalid native human record");return value(r.finding_id,160,"native finding ID",true);});
    distinct(ids,"native finding identity");
+   const other=kind==="evidence_review"?x.casework:x.evidence_review;
+   if(Array.isArray(other)&&other.length===ids.length){const otherIds=new Set(other.map(r=>r.finding_id));if(ids.some(id=>!otherIds.has(id)))fail("Casework and Evidence Review original finding identities differ");}
   }
  }
  const fp=[];
@@ -252,9 +254,9 @@ function agendaExport(){
  info("PRIVATE HUMAN agenda exported. Operator approval or execution is not implied.");
 }
 $("load").addEventListener("click",async()=>{
- const rev=version;info("Reading both PRIVATE snapshots locally…");
+ const rev=++version,ledgerInput=$("ledger").files[0],registerInput=$("register").files[0];info("Reading both PRIVATE snapshots locally…");
  try{const [l,r]=await Promise.all([openFile("ledger"),openFile("register")]);
-  if(version!==rev)fail("workspace changed during original-source load");
+  if(version!==rev||$("ledger").files[0]!==ledgerInput||$("register").files[0]!==registerInput)fail("workspace or selected original files changed during load");
   const next=combine(l,r);current=next;selected.clear();$("search").value="";$("filter").value="all";draw();
   info("Matched and admitted original HUMAN requests and replies within the same DECLARED source. This does not authenticate source, author or permission.");
  }catch(e){info(e.message||String(e),true);}
