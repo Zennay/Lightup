@@ -20,6 +20,14 @@ After closing the browser, re-open the complete standalone app, **first import t
 
 No automatic localStorage, cookies, database writes, GitHub API activity, cryptographic sender authenticity or real authorization is introduced. The user must protect and later manually remove downloaded plaintext checkpoints.
 
+## Recommended encrypted PRIVATE workspace vault
+
+The offline browser desk now has a separate **Encrypted PRIVATE HUMAN workspace vault** choice in addition to the explicitly marked plaintext JSON. First import the authorized original CSV and prepare HUMAN tickets. Enter a strong private 12–256 character passphrase and explicitly confirm the private destination, then choose **Download encrypted PRIVATE vault**. The browser encrypts the complete bounded source-bound HUMAN workspace directly in memory using AES-256-GCM with a fresh 16-byte random salt, 12-byte nonce, and PBKDF2-HMAC-SHA256 (600,000 rounds). The AES-GCM associated data binds the ciphertext to *both* imported original exact-file and canonical-record SHA-256, without publishing either source identity in the outer encrypted envelope. No plaintext intermediate file is written and the password input is cleared afterward.
+
+To resume, **first re-import the exact original CSV bytes**, choose the encrypted vault JSON, enter the same passphrase and select **Open selected encrypted vault locally**. The envelope has an 8 MiB strict limit, exact schema/version/algorithm and duplicate-key rejection; the private checkpoint inside is independently admitted by the strict 4 MiB original-byte and canonical-hash-bound HUMAN parser. AES-GCM decryption failures or incorrect/mismatched originals HOLD without overwriting existing in-memory plans. Successful decrypt still requires a separate HUMAN confirmation before replacing all in-tab HUMAN fields. Passwords are never written to the output, browser storage, cookies or URLs.
+
+Encryption protects the locally saved file from casual reading when the passphrase is strong and the workstation is trusted. It **does not establish authenticity of a real client/sender, grant, consent, security evidence, verified fix or retest**, and cannot protect against an already compromised browser/workstation or weak/reused passphrases. Losing the passphrase means no recovery. Both the plaintext and encrypted options remain local-only, DRAFT/HOLD, and are never automatically uploaded anywhere.
+
 ## Portable build
 
 From a checkout based on the **immutable** original Casework owner PR #1568, plus this ticket-desk branch:
