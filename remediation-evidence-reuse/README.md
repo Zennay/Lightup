@@ -43,3 +43,39 @@ Exit code 2 = HUMAN review held (intentionally never a green pass); exit 3 = inp
 - Product compilation / built-in help only; NO QA/regression/testsuites, release-workflow changes or CI bypass.
 
 Original exact-head hosted and permanently registered named VPS CI, independent source-owner/privacy/security/browser/crypto review, original #177/#182/#829, authenticated separate current client/operator consent with action-time revocation and explicit HUMAN GO are still required. This branch and its draft PR must NOT be merged to main, deployed or used for real targets without those external gates.
+
+
+## Durable PRIVATE HUMAN inbox (new full operator workflow)
+
+The standalone original-fingerprint reviewer above can now be followed by a **durable HUMAN-only session**, with an exact-byte-bound, owner-private record and an offline interactive command workflow in [triage.py](triage.py). It is not a native LightUp request, review signature, consent, deletion, retest, legal custody event, grant or verified remediation.
+
+The session is bound to the **SHA-256 of both complete actual PRIVATE input JSON file bytes**, plus a digest of the source-derived proposed-human-question packet. Every command requires the original same input files again; changed bytes, added actions, source revisions or changed private human session structure HOLD before proceeding. A single-host flock guards local operations and source/session bytes are freshly checked before marking or exporting. Other devices, other paths and independent original LightUp tools are not locked.
+
+First create a new session, then work through the original-provenance-labelled proposed HUMAN-only questions:
+
+    python3 remediation-evidence-reuse/triage.py start --current "$HOME/lightup-private-review/current.json" --session "$HOME/lightup-private-review/reuse-inbox.json"
+    python3 remediation-evidence-reuse/triage.py status --current "$HOME/lightup-private-review/current.json" --session "$HOME/lightup-private-review/reuse-inbox.json"
+    python3 remediation-evidence-reuse/triage.py list --current "$HOME/lightup-private-review/current.json" --session "$HOME/lightup-private-review/reuse-inbox.json"
+
+The first command creates new owner-only 0600 PRIVATE state. The list command deliberately prints sensitive source finding IDs and hashes **to the local terminal only**. The status command prints anonymous counts only. Every legitimate command exits status 2 (HUMAN HOLD), not 0.
+
+Mark one proposed question as requiring the original HUMAN owner:
+
+    python3 remediation-evidence-reuse/triage.py mark --current "$HOME/lightup-private-review/current.json" --session "$HOME/lightup-private-review/reuse-inbox.json" --ordinal 1 --stage needs_source_owner --note-prompt
+
+The PRIVATE note prompt requires an interactive terminal and hides the note while typing; it is not passed via command-line arguments or recorded in shell history. You can mark `open`, `in_human_review`, `needs_source_owner` or `answered_human`, but **answered_human only means a local human has acknowledged the question**, not that LightUp repaired, closed, authenticated or approved any issue. Set `--clear-note` to remove an existing local HUMAN note for the selected ordinal.
+
+Publish a new scriptless PRIVATE status HTML and a separately anonymous counts-only JSON:
+
+    python3 remediation-evidence-reuse/triage.py html --current "$HOME/lightup-private-review/current.json" --session "$HOME/lightup-private-review/reuse-inbox.json" --output "$HOME/lightup-private-review/PRIVATE-reuse-inbox.html"
+    python3 remediation-evidence-reuse/triage.py counts --current "$HOME/lightup-private-review/current.json" --session "$HOME/lightup-private-review/reuse-inbox.json" --output "$HOME/lightup-private-review/anonymous-progress.json"
+
+For an exact same-source earlier snapshot, **pass the identical --previous PRIVATE file on every command**, starting with `start`. Never silently attach a previous packet to an already-started current-only session.
+
+If another authorized local operator needs a copy of the HUMAN-only notes, use an explicitly new private file:
+
+    python3 remediation-evidence-reuse/triage.py handoff --current "$HOME/lightup-private-review/current.json" --session "$HOME/lightup-private-review/reuse-inbox.json" --output "$HOME/lightup-private-review/PRIVATE-human-handoff.json"
+
+The handoff is a copy of the exact current private session, **not** a delegated original-native request and not an approval. Receiving parties must separately obtain the **exact original packet bytes** and original source identity before reusing the state; a private hash never proves sender identity or client/operator authentication.
+
+Security boundaries: strict native source parser and exact-byte hash binding, independent PRIVATE 0600 output, actual non-symlinked owner-only 0700 path, single-host exclusive file lock, fsynced atomic session state replacement, scriptless CSP HTML output, bounded 1200-character HUMAN notes, and no background persistence/network/service worker. Do not put PRIVATE HTML/handoff/session files in a public repository or hosted page. Only separately authenticated original LightUp sources, actual source-owner/security/privacy review and action-time dual-party consent can resolve original project release gates.
