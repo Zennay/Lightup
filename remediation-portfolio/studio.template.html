@@ -54,10 +54,18 @@ footer{margin-top:40px;border-top:1px solid var(--border);padding-top:18px}
 <section class="panel"><h2>2 · Private HUMAN question-volume desk</h2>
 <p>Sorted by number of local pending questions only. This is <strong>not</strong> a risk score, vulnerability severity, finding identity, or remediation verification. Browser-only, no hidden persistent storage. <span id="missing">0</span> packets have no planning stage breakdown.</p>
 <div class="scroll"><table><thead><tr><th>Packet ordinal</th><th>Export type</th><th>Slot appearances</th><th>Pending questions</th><th>Planned attention</th><th>Dated slots</th><th>Local action</th></tr></thead><tbody id="rows"></tbody></table></div>
-<div class="actions"><button class="primary" type="button" id="export" disabled>Save anonymous HUMAN question-volume CSV</button></div>
+<div class="actions"><button class="primary" type="button" id="export" disabled>Save anonymous HUMAN question-volume CSV</button>
+<button type="button" id="exportBrief" disabled>Save source-free HUMAN follow-up brief</button></div>
+<h3>Declared HUMAN planning stages (only packets with planning)</h3>
+<div class="grid">
+<article><strong id="stage_unassigned">0</strong><span>Locally unassigned</span></article>
+<article><strong id="stage_assigned">0</strong><span>Locally assigned</span></article>
+<article><strong id="stage_waiting_human">0</strong><span>Awaiting HUMAN action</span></article>
+<article><strong id="stage_locally_answered">0</strong><span>Locally answered (not verified fixes)</span></article>
+</div>
 </section>
 <section class="panel"><h2>3 · Compare two local HUMAN workload moments</h2>
-<p>First import an earlier packet set, then click <strong>Freeze earlier counters</strong>. Clear the current imports and open the later packet set. Only five numeric aggregate counters are kept for the earlier selection; there is no original case/finding matching or persistent storage. A lower number never proves a fix.</p>
+<p>First import an earlier packet set, then click <strong>Freeze earlier counters</strong>. Clear the current imports and open the later packet set. Only aggregate numeric counts are kept for the earlier selection; there is no original case/finding matching or persistent storage. A lower number never proves a fix.</p>
 <div class="actions"><button id="freeze" type="button" disabled>Freeze earlier counters</button>
 <button id="forgetEarlier" type="button" disabled>Forget earlier counters</button>
 <button id="exportDelta" class="primary" type="button" disabled>Save source-free comparison CSV</button></div>
