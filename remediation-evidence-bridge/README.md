@@ -54,6 +54,27 @@ PYTHONPATH=src python3 remediation-evidence-bridge/bridge.py rotate \
 
 Open the private HTML only on a trusted workstation without browser extensions or cloud file synchronization that could exfiltrate file contents. Browser import occurs from the local original CSV embedded into the **explicitly decrypted** HTML, without network requests, DNS, browser persistence, grants or scanner invocations. The main ledger remains unchanged: the original source is imported as **unverified source-reported findings**, and all local evidence fingerprints and follow-ups are HUMAN-only records. Private exports in the browser require their original separate human confirmation and recipient checks.
 
+## New: privacy-minimal encrypted source-claim briefing
+
+The companion `brief.py` reads the existing encrypted authenticated Evidence Ledger `.ltv`, admits the original source and the pinned original HTML, and produces only **aggregate original severity × source retest-label counts**. No original finding ID, title, remediation instructions, client, engagement, account, digest or attachment details are included. This is human workload planning, **not a verified vulnerability or remediation statistic**.
+
+```sh
+# View anonymous original reported severity/retest-count Markdown only, no plaintext output file.
+PYTHONPATH=src python3 remediation-evidence-bridge/brief.py \
+  --input /trusted/private/lightup/evidence-ledger-original.ltv \
+  --format markdown
+
+# Re-authenticated current-source counts-only CSV directly to new 0600 file.
+PYTHONPATH=src python3 remediation-evidence-bridge/brief.py \
+  --input /trusted/private/lightup/evidence-ledger-original.ltv \
+  --current --db /path/to/already-existing-lightup.sqlite \
+  --email operator@example.invalid \
+  --client-id EXISTING_CLIENT_ID --engagement-id EXISTING_ENGAGEMENT_ID \
+  --format csv --output /trusted/private/lightup/source-claim-counts.csv
+```
+
+Both paths require an interactive private vault passphrase. `--current` additionally requires fresh authentic LightUp account and exact original client/engagement source access; it cannot imply permission to scan, client consent, acceptance of a remediation claim or proof of a retest. The CSV contains only fixed safe enum labels and positive integer counts; the `--output` writer uses the original owner-only no-follow/0600 writer and never overwrites a destination.
+
 ## Original ownership and enforced gates
 
 This integration is a **child candidate** of the original held [authenticated encrypted Casework PR #1653](https://github.com/Zennay/Lightup/pull/1653), with the [original unchanged Evidence Artifact Ledger PR #1642](https://github.com/Zennay/Lightup/pull/1642) copied as-is. All new feature code resides under `remediation-evidence-bridge/`. It does not alter the original file ownership, existing `src/lightup/`, active scope/authorization, scanner, tool runner, CI workflow or test/QA files.
