@@ -87,6 +87,17 @@ Open `cockpit-001/index.html` locally. The new private 0700 folder is created **
 
 The `actions.html` summary translates the original source-proposed reason codes into local HUMAN-only next steps and keeps each original owner slot separated. The cockpit **never** copies original source JSON, evidence bytes, filenames, source hashes, HUMAN notes or client IDs into its generated files. Nonetheless aggregate operational workload remains private. A changed original byte during preparation causes HOLD without publishing a final directory; an interrupted crash may leave an owner-private staging directory. `--output-dir` must be unused and its parent must already be owner-only 0700. This is a local advisory product: no task dispatch, native Apply, client grant, operator consent, verified fix or active assessment.
 
+## Independent source-free offline cockpit receipt (no original customer files needed)
+
+On a second **trusted, already authorized private machine**, a reviewer can check an exported **already-generated anonymized HUMAN-only cockpit** without transferring the underlying original source documents, original HUMAN note bodies or evidence bytes. The new `read_cockpit.py` requires a fully copied complete private cockpit folder, enforces literal 0700 + private 0600 files, exact canonical file manifest and whole-file hashes, and then **recomputes all standalone HTML views byte-for-byte from the aggregate-only `portfolio.json` and optional `history.json`** using the trusted product renderers. A changed page plus edited unsigned manifest is not accepted if it differs from the source-free JSON / deterministic browser renderer. Unknown or forged authority fields, invalid counts, impossible HUMAN stage distributions, reordered/unmatched slot histories, duplicate JSON property keys and unexplained source files cause complete HOLD.
+
+```sh
+python3 remediation-evidence-bundle-integrity/read_cockpit.py \
+  --cockpit "$HOME/lightup-private/receipts/cockpit-001"
+```
+
+Exit 2 means the current local **self-declared** bundle is internally consistent. Exit 3 means it must be returned to the original private owner and never opened as a trusted workdesk. The receipt only prints source-free aggregate counts, writes nothing and does not reach any network/target/authorization subsystem. This feature is **not** an attestation of who sent it: anyone controlling both the aggregate JSON and unsigned manifest could fabricate a different internally consistent HUMAN-only cockpit. Original source authenticity, original custody, distinct consent, signed chronology, trusted producer authentication, security findings and verified remediation remain outside this tool and require their existing separate LightUp release safeguards. Do not confuse local byte reconstruction with cryptographic sender identification.
+
 ## Scope and release
 
 No modifications to `src/`, original Evidence Artifact Ledger, Request Desk, native Apply, auth, scanner, scope, evidence files, CI or QA suites. Never feeds data to targets, issues grants, stages client action, changes HUMAN journals, concludes remediation or bypasses action-time revocation. As with the parent draft, **no main merge, production deploy or live use** until existing original exact-head hosted + permanently registered named VPS CI, original source-owner and independent security/privacy/browser/crypto reviews, #177/#182/#829, true independent revocable current client/operator consent and explicit HUMAN GO have all been satisfied. No new release gate is created by this utility.
