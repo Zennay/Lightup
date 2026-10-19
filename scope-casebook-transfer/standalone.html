@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="nl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-+p6rznfsNe9TFq1I5zXNMg8oqJQ9NfEMeVFXj1ATEE4=' 'sha256-eQAAHdyv9QK6bRrfBTtSfjqmIJRrNLz363yLBCNAaCs=' 'sha256-D1DiSfpByzhkZGEIN1P69Omvp3KeH1WlRq0EDfYArOg='; style-src 'sha256-iMALpFN8indnJMWlWX3qKwBFSp2s6naQxlglDZy1308='; connect-src 'none'; img-src 'none'; base-uri 'none'; form-action 'none'; object-src 'none'; frame-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-ZOWROCxXVcurb5BZ25bTPRhUsJQj0J6+2fjM1GP64E0=' 'sha256-eQAAHdyv9QK6bRrfBTtSfjqmIJRrNLz363yLBCNAaCs=' 'sha256-aVN0tiu6tc+DYoRwummMWTVGIk+A8GBny7oL7hAuQDo='; style-src 'sha256-iMALpFN8indnJMWlWX3qKwBFSp2s6naQxlglDZy1308='; connect-src 'none'; img-src 'none'; base-uri 'none'; form-action 'none'; object-src 'none'; frame-src 'none'">
 <title>LightUp · PRIVATE Casebook Transport</title><style>:root{color-scheme:dark;--bg:#07121d;--card:#122335;--line:#30475a;--text:#edf6fa;--muted:#b3c5cf;--accent:#91dbcf;--warn:#ffe1ab}*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at top right,#163247,var(--bg) 65%);font:16px/1.6 system-ui,-apple-system,sans-serif;color:var(--text)}main{max-width:960px;padding:2rem 1rem 5rem;margin:auto}header{margin:1rem 0 2rem}h1{font-size:clamp(2.4rem,6vw,4.4rem);letter-spacing:-.06em;line-height:1.1;margin:.25rem 0 1rem}h2{font-size:1.25rem;margin:0 0 1rem}p{max-width:80ch}section{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:clamp(1.25rem,3vw,2rem);margin:1rem 0}header>p{color:var(--muted)}.eyebrow{font-size:.83rem;font-weight:800;letter-spacing:.16em;color:var(--accent)}.notice{padding:1rem 1.2rem;border:1px solid #967b49;border-radius:12px;background:#2d2b22;color:var(--warn)}.field{display:block;margin:1.1rem 0;font-weight:650}.field input{display:block;width:100%;margin-top:.4rem;background:#071726;border:1px solid #577081;color:var(--text);padding:.78rem;border-radius:9px;font:inherit}.field input[type=file]{cursor:pointer}.check{display:flex;align-items:start;gap:.6rem;font-size:.95rem;margin:1.2rem 0;color:var(--muted)}.check input{flex:none;margin-top:.35rem}button{background:var(--accent);border:0;border-radius:10px;padding:.8rem 1.2rem;font:700 .96rem system-ui;cursor:pointer;color:#062a30}button:hover{filter:brightness(1.08)}button:disabled{opacity:.52;cursor:wait}.subtle{background:transparent;border:1px solid #6d8899;color:var(--text)}.section-heading{display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap}.row{border-top:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:1rem 0;flex-wrap:wrap}.row strong{display:block;overflow-wrap:anywhere}.row small{color:var(--muted);display:block;overflow-wrap:anywhere}.status{padding:1.2rem;border-left:4px solid var(--accent);background:#193046;min-height:4rem;white-space:pre-wrap}.status.error{border-color:#ff9a9a;color:#ffc7c7}code{background:#071826;border-radius:5px;padding:.1rem .25rem;overflow-wrap:anywhere}footer{font-size:.9rem;color:var(--muted);margin-top:2rem}button:focus-visible,input:focus-visible{outline:3px solid #f5d289;outline-offset:3px}@media(max-width:520px){main{padding:1rem .7rem 3rem}.row button{width:100%}}.rekey{margin-top:1.5rem;padding:1.2rem;border-radius:14px;border:1px solid #567783;background:#0a2231}.rekey h3{font-size:1.05rem;margin:0 0 .4rem}.rekey p{color:var(--muted);margin:.2rem 0 1rem}
 
 .human-scroll{overflow:auto;max-height:530px;border:1px solid var(--line);border-radius:10px}.human-scroll table{width:100%;border-collapse:collapse;font-size:.85rem}.human-scroll th,.human-scroll td{padding:.7rem .55rem;min-width:110px;border-bottom:1px solid var(--line);vertical-align:top;overflow-wrap:anywhere}.human-scroll th{position:sticky;top:0;background:#21374c;z-index:1;text-align:left}.human-scroll select{background:#071726;color:#fff;border:1px solid #678499;border-radius:6px;min-width:145px;max-width:215px;padding:.48rem}.metrics{font-weight:700;color:var(--accent)}.muted{color:var(--muted)}
@@ -242,7 +242,9 @@
 /* PRIVATELY compare only source-declared Casebook snapshots. Source continuity is NOT authorization. */
 (() => {
   const KIND = Object.freeze({
-    carry: "ONVERANDERDE BRON — HUMAN-KEUZES OVERGENOMEN",
+    carry: "ONVERANDERDE BRON — OPGESLAGEN HUMAN-KEUZES OVERGENOMEN",
+    unrecorded: "ONVERANDERDE BRON — GEEN EERDER OPGESLAGEN HUMAN-CSV",
+    source_hold: "VERZOEK-/GRANTBRON ONVOLLEDIG — VERPLICHTE HUMAN-HERBEOORDELING",
     changed: "BRON GEWIJZIGD — HUMAN-KEUZES HEROPEND",
     appeared: "NIEUW BRONDOSSIER — HUMAN-REVIEW NODIG",
     absent: "ONTBREEKT IN NIEUW BRONMOMENT — GEEN BEWIJS VAN INTREKKING"
@@ -273,8 +275,14 @@
     const ids=new Set(grants.map(g=>g.approved_request_id).filter(x=>x!==null&&x!==undefined));
     const requests=doc.requests.filter(r=>r&&ids.has(r.request_id))
       .sort((a,b)=>String(a.request_id).localeCompare(String(b.request_id),"en"));
-    if (requests.length !== ids.size) deny("Gebonden oorspronkelijk bronverzoek ontbreekt.");
-    return JSON.stringify([matchingEngagements[0], matchingCases[0], grants, risks, requests]);
+    // Original Casebook may legitimately be in HOLD for an unbound/missing
+    // approved request (#177). Do not deny all human review; reset any carried
+    // choices for this case even when the missing source is unchanged.
+    const unbound = grants.some(g => g.approved_request_id === null ||
+      g.approved_request_id === undefined || g.approved_request_id === "") ||
+      requests.length !== ids.size;
+    return {signature:JSON.stringify([matchingEngagements[0], matchingCases[0], grants, risks, requests]),
+      unbound};
   }
   function prepare(beforeRecords, afterRecords) {
     const handoff=window.LightUpCasebookHandoff;
@@ -286,7 +294,7 @@
     const olderCases=new Map(old.cases.map((c,i)=>[c.id,{case:c,row:old.rows[i]}]));
     const newerCases=new Set(next.cases.map(c=>c.id));
     const updates=[], rows=[];
-    const counts={carry:0,changed:0,appeared:0,absent:0};
+    const counts={carry:0,unrecorded:0,source_hold:0,changed:0,appeared:0,absent:0};
     for(const c of next.cases){
       const prior=olderCases.get(c.id);
       let status;
@@ -294,7 +302,9 @@
       else {
         const before=canonicalSourceCase(lastBefore,c.id);
         const after=canonicalSourceCase(lastAfter,c.id);
-        status=before===after ? "carry" : "changed";
+        status=before.unbound || after.unbound ? "source_hold" :
+          before.signature===after.signature ?
+          (old.hasCSV ? "carry" : "unrecorded") : "changed";
       }
       counts[status]++;
       const human=status==="carry" ? prior.row.slice(3) : ["unreviewed","unassigned","none"];
@@ -328,7 +338,7 @@
         "GEEN opgeslagen eerdere HUMAN-CSV; er kunnen dus geen bewaarde keuzes worden overgenomen. ")+
       "Bronverandering heropent de HUMAN-review; verdwenen dossiers zijn NIET ingetrokken of opgelost."));
     panel.append(make("p",
-      "ONVERANDERD "+counts.carry+" · HEROPEND "+counts.changed+
+      "OVERGENOMEN "+counts.carry+" · ZONDER EERDERE CSV "+counts.unrecorded+" · BRON-HOLD "+counts.source_hold+" · HEROPEND "+counts.changed+
       " · NIEUW "+counts.appeared+" · NIET MEER IN NIEUWE BRON "+counts.absent));
     const area=document.createElement("div");area.className="human-scroll";
     const table=document.createElement("table"),tr=document.createElement("tr");
@@ -342,6 +352,32 @@
       body.append(row);
     }
     table.append(body);area.append(table);panel.append(area);
+    const exportButton=document.createElement("button");
+    exportButton.type="button";exportButton.className="subtle";
+    exportButton.textContent="Exporteer afzonderlijke PRIVATE HUMAN-continuïteitslijst (CSV)";
+    const warning=make("p",
+      "OPTIONELE plaintext-download met PRIVATE dossieridentiteiten. De lijst heeft GEEN bron-signatuur, permission-, consent-, grant-, revocation- of veiligheidsverdict. Nooit anoniem/publiceren.");
+    panel.append(warning,exportButton);
+    exportButton.addEventListener("click",()=>{
+      if(!window.confirm("Download een afzonderlijke ONVERSLEUTELDE PRIVATE HUMAN-continuïteitslijst inclusief oorspronkelijke dossier-ID's? Gebruik uitsluitend een eigen vertrouwde lokale opslag; niet delen als onafhankelijke toestemming."))return;
+      const header=["original_engagement_id","human_only_source_class","prior_human_stage",
+        "proposed_human_stage","source_authenticated","consent_verified","authorization_granted"];
+      const rows=[header,...updates.map(u=>[u.id,u.status,u.priorStage,u.nextStage,
+        "false","false","false"])];
+      const cell=value=>{
+        const text=String(value);
+        if(/[\r\n]/.test(text)||/^[=+@\-]/.test(text))
+          deny("Onveilig PRIVATE CSV-veld; export geweigerd.");
+        return /[",]/.test(text) ? '"'+text.replace(/"/g,'""')+'"' : text;
+      };
+      const output=rows.map(row=>row.map(cell).join(",")).join("\r\n")+"\r\n";
+      const blob=new Blob([output],{type:"application/octet-stream"});
+      const url=URL.createObjectURL(blob);
+      const a=document.createElement("a");
+      a.href=url;a.download="lightup-PRIVATE-human-continuity-review.csv";
+      document.body.append(a);a.click();a.remove();
+      setTimeout(()=>URL.revokeObjectURL(url),30000);
+    });
   }
   window.LightUpCasebookContinuity=Object.freeze({prepare,render});
 })();</script><script>(() => {
@@ -769,8 +805,8 @@
       const c=pending.report.counts;
       if(!window.confirm(
         "Maak een NIEUW versleuteld PRIVATE bestand met de volledige bronreeks? "+
-        "Ongewijzigd en meegenomen: "+c.carry+"; heropend: "+c.changed+
-        "; nieuw: "+c.appeared+"; ontbreekt in laatste bron: "+c.absent+
+        "Ongewijzigd en meegenomen: "+c.carry+"; heropend: "+c.changed+"; bronverzoek-HOLD: "+c.source_hold+
+        "; zonder oude HUMAN-CSV: "+c.unrecorded+"; nieuw: "+c.appeared+"; ontbreekt in laatste bron: "+c.absent+
         ". Ontbrekende records bewijzen GEEN intrekking, risicoreductie of toestemming."
       )) return;
       await encryptPrivateRecords(pending.candidate,password);
