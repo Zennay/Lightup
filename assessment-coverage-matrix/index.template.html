@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>LightUp · Original Lab Declaration Matrix · PRIVATE</title>
+  <!--LIGHTUP_CSP-->
+  <!--LIGHTUP_STYLE-->
+</head>
+<body>
+  <a class="skip" href="#main">Skip to workspace</a>
+  <header class="top">
+    <div class="brand"><span class="mark">L<span>●</span></span> LightUp <span class="slash">/</span> Lab declarations</div>
+    <span class="posture">INCUBATE · HUMAN ONLY · DRAFT/HOLD</span>
+  </header>
+  <main id="main" class="shell">
+    <section class="hero">
+      <span class="eyebrow">OFFLINE REVIEW WORKSPACE / 01</span>
+      <h1>See what your lab results <em>declare.</em><br>Never mistake absence for safety.</h1>
+      <p class="lead">Compare the literal capability/check labels in <strong>2–8 previously produced PRIVATE isolated-lab result files</strong>. Rows are source declarations, not vulnerability verification or evidence of coverage. Nothing is assessed, contacted, dispatched or authorized here.</p>
+    </section>
+    <section class="load panel" aria-labelledby="load-title">
+      <div>
+        <h2 id="load-title">Choose existing PRIVATE original result files</h2>
+        <p>All files must declare the <strong>same exact scenario and endpoint set</strong>, with distinct original run IDs. You decide their display order; it is <em>not verified chronology</em>. Whole-batch structural admission; no partial import, storage, tracker or network.</p>
+      </div>
+      <div class="load-actions">
+        <label for="files">Local original .json files · 2–8 · ≤8 MiB each</label>
+        <input id="files" type="file" accept=".json,application/json" multiple aria-describedby="privacy">
+        <div class="buttons">
+          <button class="primary" id="load" type="button">Open PRIVATE batch</button>
+          <button class="secondary" id="forget" type="button">Forget local data</button>
+        </div>
+      </div>
+    </section>
+    <p id="message" role="status" aria-live="polite" data-error="false">Nothing loaded. This app has no network calls or scan operations.</p>
+    <aside id="intro" class="note" aria-label="Privacy and interpretation" >
+      <h2>Important boundaries</h2>
+      <p>PRIVATE source fields may contain customer names, target addresses, sensitive findings and evidence. Only open files on a trusted offline device. No identity, grant, consent or original source authenticity is established by this tool.</p>
+      <p id="privacy"><strong>An empty cell means not declared under the selected filter.</strong> It never means scanned, safe, fixed, remediated, covered or approved. This is not a ground-truth or release report.</p>
+    </aside>
+    <section id="workspace" hidden aria-label="PRIVATE declared check workspace">
+      <div class="workspace-heading">
+        <div>
+          <span class="eyebrow">PRIVATE / SOURCE-DECLARED MATRIX</span>
+          <h2 id="sourceCount">0 original PRIVATE files</h2>
+          <p id="sourceSummary"></p>
+        </div>
+        <div class="buttons">
+          <button id="exportJSON" class="secondary" type="button">Export counts JSON</button>
+          <button id="exportCSV" class="secondary" type="button">Export counts CSV</button>
+        </div>
+      </div>
+      <div class="panel filterbar">
+        <label for="query">Filter literal capability / check <input id="query" type="search" autocomplete="off" placeholder="Local check or capability label"></label>
+        <label for="severity">Source severity <select id="severity"><option value="all">All declared severities</option><option>critical</option><option>high</option><option>medium</option><option>low</option><option>info</option></select></label>
+        <label for="endpoint">Declared endpoint ordinal <select id="endpoint"><option value="0">All declared endpoints</option></select></label>
+        <p class="hint">Endpoint ordinals come from the first locally opened source; exact target literals stay private in memory.</p>
+      </div>
+      <p id="visible" class="summary"></p>
+      <div class="grid">
+        <section class="panel matrix-pane" aria-label="Check declarations by local file">
+          <div class="table-scroll"><table id="matrix"></table></div>
+          <p class="legend"><strong>— not declared</strong> is never a verified PASS, valid negative observation, scan coverage, fix or closure. Cell counts are source-reported finding appearances.</p>
+        </section>
+        <section id="details" class="panel details" tabindex="-1" aria-label="Original PRIVATE source detail">
+          <h3>Inspect a declared cell</h3>
+          <p>Click a cell to see the source’s unverified human-readable statement and proposed mitigation without changing the source file.</p>
+        </section>
+      </div>
+    </section>
+    <section class="hold panel">
+      <strong>REVIEW_ONLY · NOT AUTHORIZED</strong>
+      <p>No live targets, DNS, requests, grant issuance, scanning, consent claim, retesting, remediation verification or publication to main. The original hosted and permanent named VPS CI, owner/security/privacy reviews, #177/#182/#829, genuinely separate current client/operator consent including action-time revocation and explicit HUMAN GO remain required for any release.</p>
+    </section>
+  </main>
+  <footer>LightUp · PRIVATE untrusted original lab declarations · Source-only local HUMAN planning · No persistence</footer>
+  <!--LIGHTUP_SCRIPT-->
+</body>
+</html>
