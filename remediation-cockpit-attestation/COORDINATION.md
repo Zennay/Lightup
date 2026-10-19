@@ -128,6 +128,10 @@ python3 remediation-cockpit-attestation/workroom_control.py revise \
 
 This creates a new encrypted HUMAN plan revision, rewraps the unchanged original source-free inbox and plan, reconstructs and independently re-admits all original members, and publishes a completely separate owner-private browser-ready workroom. It does not delete or overwrite the earlier workroom.
 
+## Bulk update or whole-workroom key changeover
+
+For a group of independent local HUMAN slot changes, use [**BULK.md**](BULK.md): create a pinned 0600 JSON assignment template from the complete original workroom, privately edit multiple slots, preview aggregate changes, and atomically publish one new entire workroom without touching the old one. For new out-of-band team keys, use [**REKEY.md**](REKEY.md): `rekey_workroom.py` re-signs every independently verified original source-free cockpit with a new team key, re-encrypts the PRIVATE HUMAN plan, reconstructs the complete browser workroom and publishes it separately. Neither action authorizes remediation or revokes previously copied old keys.
+
 ## Security and release boundaries
 
 These modules handle **local HUMAN scheduling**, not authenticated original customer findings, remediation execution, vulnerability proof, consent, security decision or regulator-approved retention. Shared-key HMAC and AES-GCM prove possession of the separately distributed key, not verified human sender identity. A compromised shared key enables forging alternative locally admitted anonymous cockpit summaries, plan files and portable workrooms. The system provides no network upload, remote revoke, automatic key expiry, identity verification, source validation of real underlying evidence, active test, grant or native Apply action.
