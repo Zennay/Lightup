@@ -73,3 +73,21 @@ python -m lightup.private_export_encrypted_notes workdesk \
 All use is **operator-run on previously exported private files**. Protected storage, true identity, actual consent and handling authority must be independently established; the human-directed acknowledgment switches are **not** security gates for active testing. No original source file, grant, persisted finding, retest state, branch-owner source, test suite, CI workflow or deployment is changed.
 
 Project posture is **Notion Incubate · M3/M7 PLAN/LAB ONLY · DRAFT/HOLD**. No main merge, production deploy or active target work until pre-existing original exact-head hosted and permanent named VPS CI, original source-owner acceptance, independent security/privacy/cryptography review, real separately authenticated client and operator consent including use-time revocation, original issues #177/#182/#829, and explicit HUMAN GO. A local encrypted plan is never a client authorization token or verified remediation record.
+
+## Private original-ID HUMAN source reconciliation queue (second delivered product)
+
+The separate `python -m lightup.private_export_human_revision_workqueue` command performs the **same three complete source/workplan admissions** and requires a separate manual acknowledgment before saving an **unencrypted**, mode-0600 original-ID/title HTML briefing. This provides the human operator a real source-change queue organized into four sections: changed source fields (with changed column names, no old/new remediation text), newly present findings, absent records (explicitly NOT fixed), and exact five-column matches eligible for optional HUMAN coordination carry. Entries prioritize changed critical/high records and include original finding IDs, titles, severity and the *earlier unverified HUMAN stage/note presence only*. It **never** includes plaintext private HUMAN notes, actual owner aliases, client labels, source hashes, targets, remedies, source evidence or consent data.
+
+```sh
+python -m lightup.private_export_human_revision_workqueue \
+  /private/earlier.lue /private/earlier.lun /private/later.lue \
+  --output /private/original-id-source-review.html \
+  --ack-private-handling --ack-same-real-client \
+  --ack-original-ids-plaintext
+```
+
+The separate interactive foreground console also exposes this workflow as menu **5**; choose menu 2 if an ID-free summary is sufficient. No HTML files are encrypted. The customer recipient and private storage must be independently verified. Source-row equality is NOT equivalence of missing/non-exported evidence. This queue is not a security retest, proof of fixes or a resolution workflow.
+
+### Additional source-chronology sanity condition
+
+In addition to the real-client human acknowledgment and strict matching self-declared client/engagement, `preview`, `carry` and the detailed workqueue **HOLD** if the later original archive's declared `generated_utc` timestamp is not strictly newer than the earlier original export in UTC. This prevents accidental backward movement in a source-revision handoff. The timestamp is only a **self-declared** sanity check and cannot prove actual temporal order or genuine source ownership.
