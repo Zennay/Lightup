@@ -526,7 +526,7 @@ function snapshot(){
  owner_feedback:allRows().filter(x=>x.feedback).map(x=>({request_id:x.request.request_id,...x.feedback})),
  feedback_history:db.feedbackHistory.map(x=>({...x}))};
 }
-function restore(obj,rev){
+function decodeSnapshot(obj){
  const keys=["kind","schema_version","disposition","source_contract","source_sha256","client_reference","engagement_reference",
  ...FLAGS,"request_packets","reply_packets","human_reviews"];
  const v2=[...keys,"owner_feedback","feedback_history"];
@@ -573,6 +573,10 @@ function restore(obj,rev){
    fresh.feedbackHistory.push({...item});
   }
  }
+ return fresh;
+}
+function restore(obj,rev){
+ const fresh=decodeSnapshot(obj);
  if(db.revision!==rev)fail("HOLD: changed register");
  if(!confirm("REPLACE current PRIVATE register and HUMAN notes with this exact source-bound backup? Export current data first."))return;
  if(db.revision!==rev)fail("HOLD: changed register before replace");
