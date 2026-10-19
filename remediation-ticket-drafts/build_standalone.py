@@ -46,7 +46,7 @@ def build() -> bytes:
         data.decode("utf-8")
     hashes = []
     for item in (engine, intake, workspace, app):
-        exact_inline = b"\\n" + item + b"\\n"
+        exact_inline = b"\n" + item + b"\n"
         hashes.append("'sha256-" + base64.b64encode(hashlib.sha256(exact_inline).digest()).decode("ascii") + "'")
     if page.count("script-src 'self'") != 1:
         raise ValueError("CSP no longer has expected scripts source.")
