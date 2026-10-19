@@ -21,3 +21,7 @@ All graph entries are `declared` and `unverified`. No evidence IDs, claims about
 **Dependencies/gates:** Actual Security Twin ST2/ST3/ST4 evidence provenance, CI approval, source-owner acceptance, independent security/privacy review, scope issues #177/#182/#829, current separately authenticated client/operator permission including action-time revocation, and explicit HUMAN GO all remain separate before any actual execution, main merge or deployment. Do not treat a browser-edited draft or its digest as any of these gates.
 
 **Ownership:** Only new `twin-visual-review/` files; leave `src/lightup/`, source-owner PRs, scope, webapp, tests, QA and CI untouched. No test suite is added or run.
+
+## Bounded identity-to-data declaration chain exploration
+
+The human-only browser also enumerates *only explicitly entered* directed chains from nodes labelled `identity` to `data`, up to four relationships per chain. It labels future-only and current-only declared chains as discussion prompts, **not** verified attack paths. Enumeration is bounded to 200 chains and 5000 local graph traversals: a limit triggers visible **INCOMPLETE/HOLD**, never an all-clear. Purely non-technical trust assumptions such as `may-access` are treated as authored relationship text, not a permission, access check, or proof of real reachability. No algorithms infer edges or interact with any network.
