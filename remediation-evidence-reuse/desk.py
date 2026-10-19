@@ -19,7 +19,7 @@ Choose one offline operator workflow:
         Durable source-byte-bound HUMAN question inbox, local state,
         offline review HTML, counts-only progress and PRIVATE handoff.
 
-    python3 remediation-evidence-reuse/desk.py timeline --help
+    python3 remediation-evidence-reuse/desk.py bulk --help\n        PRIVATE HUMAN bulk edit worksheet, no-write preview and explicit\n        atomic same-source session update (never native Apply).\n\n    python3 remediation-evidence-reuse/desk.py timeline --help
         Ordered 2–12 same-source PRIVATE snapshot drift matrix,
         scriptless HTML, aggregate counts or HUMAN-only questions.
 
@@ -39,11 +39,13 @@ def main() -> int:
         print(USAGE)
         return 0  # CLI usage only: no import, operation or security verdict.
     kind = sys.argv[1]
-    if kind not in ("review", "inbox", "timeline"):
+    if kind not in ("review", "inbox", "timeline", "bulk"):
         print("HOLD: Unknown PRIVATE workflow. Use --help.", file=sys.stderr)
         return 3
     if kind == "review":
         import review as implementation
+    elif kind == "bulk":
+        import bulk as implementation
     elif kind == "inbox":
         import triage as implementation
     else:
