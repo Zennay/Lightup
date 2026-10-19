@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import sys
 
-from . import private_export_human_revision, private_export_human_revision_workqueue, private_export_human_revision_choices, private_export_human_revision_guided, private_export_human_revision_editor, private_export_human_revision_vault
+from . import private_export_human_revision, private_export_human_revision_workqueue, private_export_human_revision_choices, private_export_human_revision_guided, private_export_human_revision_editor, private_export_human_revision_vault, private_export_human_revision_amend
 
 
 def _ask(label: str) -> str:
@@ -49,13 +49,14 @@ def main() -> int:
         "12. Inspect encrypted original-source HUMAN decisions privately\n"
         "13. Rotate encrypted HUMAN decision passphrase into NEW .lud\n"
         "14. Open encrypted HUMAN choices as NEW UNENCRYPTED private JSON\n"
+        "15. Amend encrypted HUMAN choices in PRIVATE guided terminal (no plaintext)\n"
         "0. Exit"
     )
     try:
-        choice = _ask("Choose 0-14")
+        choice = _ask("Choose 0-15")
         if choice == "0":
             return 0
-        if choice not in tuple(str(i) for i in range(1, 15)):
+        if choice not in tuple(str(i) for i in range(1, 16)):
             raise ValueError("unknown option")
         before = _ask("Earlier authenticated encrypted original source .lue")
         plan = _ask("Earlier exact-source encrypted HUMAN plan .lun")
@@ -73,6 +74,23 @@ def main() -> int:
             "storage, actual recipient and approved transport; no output establishes "
             "consent, verified fixes or permission to test."
         )
+        if choice == "15":
+            existing = _ask("Existing PRIVATE encrypted HUMAN choices .lud")
+            if not existing.lower().endswith(".lud"):
+                raise ValueError("existing encrypted decisions must end in .lud")
+            destination = _ask("NEW encrypted amended HUMAN choices .lud")
+            if not destination.lower().endswith(".lud"):
+                raise ValueError("amended decisions must end in .lud")
+            _confirm(
+                "I will review every eligible original finding personally in a "
+                "PRIVATE trusted terminal. This is solely HUMAN note coordination. "
+                "No original security finding, actual client consent or fix is approved."
+            )
+            return private_export_human_revision_amend.main([
+                before, plan, after, "--encrypted-choices", existing,
+                "--output", destination, "--ack-private-handling",
+                "--ack-same-real-client", "--ack-manual-human-review",
+            ])
         if choice in ("10", "11", "12", "13", "14"):
             action = {
                 "10": "seal", "11": "apply", "12": "inspect",
