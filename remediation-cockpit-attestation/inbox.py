@@ -244,6 +244,38 @@ def receive_many(packages: list[Path], key_file: Path, target_parent: Path) -> t
             shutil.rmtree(stage)
 
 
+
+def anonymous_counts(admitted: dict) -> dict:
+    # A PRIVATE manifest digest in the internal summary may correlate two
+    # copies of the same source-free workroom. Never export it as anonymous.
+    require(type(admitted) is dict and admitted.get("kind") == KIND and
+            type(admitted.get("slots")) is list and
+            type(admitted.get("slot_count")) is int and
+            1 <= admitted["slot_count"] <= MAX and
+            admitted["slot_count"] == len(admitted["slots"]))
+    return {
+        "kind": "lightup.anonymous_human_inbox_counts_only",
+        "schema_version": 1,
+        "disposition": "PRIVATE_HUMAN_COUNTS_ONLY_NO_AUTHORITY",
+        "source_free_workrooms_not_unique_cases": admitted["slot_count"],
+        "local_pending_human_questions_not_fixes":
+            admitted["pending_human_questions_not_fixes"],
+        "warning": WARNING,
+        **{flag: False for flag in review.FLAGS},
+    }
+
+
+def export_counts(folder: Path, key_file: Path, output: Path) -> dict:
+    require(output != folder and output != key_file and
+            folder not in output.parents and not output.exists() and
+            not output.is_symlink())
+    original = inspect(folder, key_file)
+    result = anonymous_counts(original)
+    require(inspect(folder, key_file) == original)
+    attest.exclusive_private_write(output, pretty(result))
+    return result
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=(
         "Receive 1–12 encrypted source-free HUMAN cockpits into one native "
@@ -257,11 +289,24 @@ def main() -> int:
     inspect_action = actions.add_parser("inspect", help="Read-only native admission of complete inbox")
     inspect_action.add_argument("--inbox", required=True, type=Path)
     inspect_action.add_argument("--key-file", required=True, type=Path)
+    counts_action = actions.add_parser("export-counts", help="Separate privacy-minimal counts-only JSON, no manifest digests")
+    counts_action.add_argument("--inbox", required=True, type=Path)
+    counts_action.add_argument("--key-file", required=True, type=Path)
+    counts_action.add_argument("--output", required=True, type=Path)
     args = parser.parse_args()
     try:
         if args.action == "receive-many":
             result, data = receive_many(args.package, args.key_file, args.output_parent)
             print("PRIVATE offline HUMAN inbox atomically published: " + str(result))
+        elif args.action == "export-counts":
+            data = export_counts(args.inbox, args.key_file, args.output)
+            print("PRIVATE counts-only JSON exported: no source-free manifest digests or per-slot links.")
+            print(str(data["source_free_workrooms_not_unique_cases"]) +
+                  " source-free workroom slot(s); " +
+                  str(data["local_pending_human_questions_not_fixes"]) +
+                  " locally pending HUMAN questions (NOT fixes).")
+            print("No source identities, original findings, verified fixes or client consent.")
+            return 2
         else:
             data = inspect(args.inbox, args.key_file)
             print("REVIEW_ONLY: private native HUMAN inbox and all receipt pages admitted.")
