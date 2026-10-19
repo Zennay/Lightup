@@ -229,6 +229,7 @@ async function importFile(kind,e){
   }else entries[kind]=next;
   revision++;stateLabel(kind,"Imported locally · source-bound · unverified");
   $("source").textContent=sourceLabel();draw();
+  window.dispatchEvent(new Event("lightup:human-sources-changed"));
   announce("Original-source-bound "+kind+" imported in memory. No original evidence, owner reply, action, grant or release changed.");
  }catch(_){announce("HOLD: "+kind+" import invalid, ambiguous, unsupported or source-mismatched. Current data unchanged.",true);}
 }
@@ -402,12 +403,22 @@ $("forget").addEventListener("click",()=>{
  if(!loaded())return;
  if(!confirm("FORGET ALL locally imported PRIVATE workplan, evidence-index, owner response and runbook data? This cannot delete already exported or separately owned files."))return;
  for(const key of Object.keys(entries)){entries[key]=null;stateLabel(key,"Not imported");}
- rendered=[];revision++;$("workqueue").hidden=true;$("source").textContent=sourceLabel();$("items").replaceChildren();
+ rendered=[];revision++;window.dispatchEvent(new Event("lightup:human-sources-changed"));$("workqueue").hidden=true;$("source").textContent=sourceLabel();$("items").replaceChildren();
  announce("All PRIVATE cross-app records forgotten from this page.");
 });
 $("brief").addEventListener("click",exportTeam);
 $("ownerBrief").addEventListener("click",exportOwner);
 $("anonymous").addEventListener("click",anonymous);
 $("binding").addEventListener("click",receipt);
+window.LightUpHumanTriageBridge=Object.freeze({snapshot:()=>{
+ if(!entries.workplan||!entries.artifact)return null;
+ const base=entries.workplan.source;return {revision,source_sha256:base.source_sha256,
+ source_contract:base.source_contract,client_reference:base.client_reference,
+ engagement_reference:base.engagement_reference,source_count:base.source_count,
+ original_finding_ids:[...entries.workplan.ids].sort(),
+ records:[...entries.artifact.byId.entries()].flatMap(([finding_id,rows])=>rows.map(r=>({
+ finding_id,file_name:r.file_name,byte_length:r.byte_length,sha256:r.sha256,
+ human_stage:r.human_stage}))) };
+ }});
 window.addEventListener("beforeunload",()=>{for(const key of Object.keys(entries))entries[key]=null;});
 })();
