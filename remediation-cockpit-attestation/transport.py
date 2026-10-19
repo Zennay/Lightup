@@ -69,9 +69,11 @@ def canonical(data: dict) -> bytes:
                        separators=(",", ":")) + "\n").encode("ascii")
 
 
-def snapshot(cockpit: Path, receipt: Path, key: Path) -> tuple[dict, dict]:
-    # Full native reconstructed-HTML + signed-manifest proof first.
-    admitted = attest.inspect(cockpit, key, receipt)
+def snapshot(cockpit: Path, receipt: Path | None, key: Path) -> tuple[dict, dict]:
+    # With a previous receipt: verify it first. Without: independently
+    # admit original native bytes and create the key receipt in memory.
+    admitted = (attest.inspect(cockpit, key, receipt) if receipt is not None
+                else native.inspect(cockpit))
     manifest_raw = review.private_read(cockpit / "manifest.json")
     manifest_obj = json.loads(manifest_raw.decode("utf-8"),
                               object_pairs_hook=no_duplicate_pairs)
@@ -82,11 +84,23 @@ def snapshot(cockpit: Path, receipt: Path, key: Path) -> tuple[dict, dict]:
     files = {}
     for name in sorted(filenames):
         files[name] = review.private_read(cockpit / name)
-    receipt_raw = attest.private_file(receipt, attest.MAX_RECEIPT)
+    if receipt is not None:
+        receipt_raw = attest.private_file(receipt, attest.MAX_RECEIPT)
+    else:
+        secret = attest.key_bytes(key)
+        receipt_raw = canonical({
+            "kind": attest.KIND,
+            "schema_version": 1,
+            "algorithm": "HMAC-SHA256",
+            "manifest_sha256": hashlib.sha256(manifest_raw).hexdigest(),
+            "mac": attest.mac(secret, manifest_raw),
+        })
     # Reject changing originals between admission and encrypted packaging.
-    require(attest.inspect(cockpit, key, receipt) == admitted and
+    require((attest.inspect(cockpit, key, receipt) if receipt is not None
+             else native.inspect(cockpit)) == admitted and
             review.private_read(cockpit / "manifest.json") == manifest_raw and
-            attest.private_file(receipt, attest.MAX_RECEIPT) == receipt_raw)
+            (receipt is None or
+             attest.private_file(receipt, attest.MAX_RECEIPT) == receipt_raw))
     for name, raw in files.items():
         require(review.private_read(cockpit / name) == raw)
     data = {
@@ -101,9 +115,9 @@ def snapshot(cockpit: Path, receipt: Path, key: Path) -> tuple[dict, dict]:
     return data, admitted
 
 
-def pack(cockpit: Path, receipt: Path, key_file: Path, output: Path) -> dict:
+def pack(cockpit: Path, receipt: Path | None, key_file: Path, output: Path) -> dict:
     attest.private_parent(output)
-    require(output != key_file and output != receipt and
+    require(output != key_file and (receipt is None or output != receipt) and
             output != cockpit and cockpit not in output.parents and
             not output.exists() and not output.is_symlink())
     key = attest.key_bytes(key_file)
@@ -199,19 +213,24 @@ def main() -> int:
         "Encrypt or receive canonical source-free PRIVATE HUMAN cockpit as "
         "one offline AEAD file. No network, approval, fix or retest."))
     actions = parser.add_subparsers(dest="action", required=True)
-    sender = actions.add_parser("pack", help="Create one owner-private encrypted delivery file")
+    sender = actions.add_parser("pack", help="Encrypt an existing detached verified receipt and cockpit")
     sender.add_argument("--cockpit", required=True, type=Path)
     sender.add_argument("--receipt", required=True, type=Path)
     sender.add_argument("--key-file", required=True, type=Path)
     sender.add_argument("--output", required=True, type=Path)
+    quick = actions.add_parser("send", help="One-command native admission, HMAC receipt and encrypted delivery")
+    quick.add_argument("--cockpit", required=True, type=Path)
+    quick.add_argument("--key-file", required=True, type=Path)
+    quick.add_argument("--output", required=True, type=Path)
     recipient = actions.add_parser("receive", help="Privately unpack, authenticate and admit native cockpit")
     recipient.add_argument("--input", required=True, type=Path)
     recipient.add_argument("--key-file", required=True, type=Path)
     recipient.add_argument("--output-parent", required=True, type=Path)
     args = parser.parse_args()
     try:
-        if args.action == "pack":
-            status = pack(args.cockpit, args.receipt, args.key_file, args.output)
+        if args.action in ("pack", "send"):
+            status = pack(args.cockpit, args.receipt if args.action == "pack" else None,
+                          args.key_file, args.output)
             print("One PRIVATE AES-256-GCM source-free cockpit file published (0600).")
         else:
             folder, status = receive(args.input, args.key_file, args.output_parent)
