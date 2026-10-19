@@ -199,9 +199,9 @@
       "sha256": "e05fb6a22cbe20e2fea32c8fa0492cd01f7e02305c4a2c99b4e7acc5f41042e2"
     },
     {
-      "bytes": 6102,
+      "bytes": 6965,
       "path": "remediation-operations/README.md",
-      "sha256": "14bf41a164d7930bee63ab1aed5f9a7524068d7f6b55cef95880fc6222d6f1ff"
+      "sha256": "3c82e33b52beec1fda0f47613250ae6639fb7fcde07d0458d027cb07b3915210"
     },
     {
       "bytes": 5275,
@@ -232,6 +232,11 @@
       "bytes": 2235,
       "path": "remediation-operations/theme.css",
       "sha256": "e01f6e9258d80d37ef7bffe245a9eaf52602ffaca60dd21d6ee5072202058d60"
+    },
+    {
+      "bytes": 8750,
+      "path": "remediation-operations/verify_local_bundle.py",
+      "sha256": "1b0ef96885d13e464682edc8bc84ead6ce2c13885200f62b072be93565a0cca7"
     }
   ],
   "operator_consent": false,

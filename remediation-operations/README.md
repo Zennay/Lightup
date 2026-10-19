@@ -13,6 +13,10 @@
 
 **Use the packaged ZIP rather than saving the launcher HTML alone:** it contains all four original source-owned standalone apps and their required files. For a checkout, open the launcher at `remediation-operations/index.html` directly; same relative links.
 
+## Offline package integrity check
+
+The included `remediation-operations/verify_local_bundle.py` is a human-operator utility, not a QA or regression suite: it can check local extracted source files against the bundled SHA-256 inventory or inspect the archive in-place without extracting or running source. Run `python3 remediation-operations/verify_local_bundle.py` from your extracted workspace, or `python3 remediation-operations/verify_local_bundle.py --zip remediation-operations/LightUp-PRIVATE-Evidence-Hub.zip`. It rejects duplicate/unsafe archive entries, invalid JSON identities, missing source applications, changed source bytes, incorrect source lengths and non-false release assertions; it performs no network calls or source execution. Matching content integrity does NOT authenticate GitHub ownership, signatures, CI, permission or human approval.
+
 ## Offline source-revision change review
 
 The included [PRIVATE Source Change Review](compare.html) accepts two local `remediation-operations/MANIFEST.json` files from separately obtained integration ZIPs. Its browser-only UI validates exact source inventory membership/schema, duplicate JSON keys, original PR head strings, per-file SHA-256 and declared false authority; then shows added, removed and changed file content with optional scriptless PRIVATE HTML handoff. Everything stays in memory. A matching checksum is NOT an authenticated signature or release permission; original owner approval and CI are still mandatory.
