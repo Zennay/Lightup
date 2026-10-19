@@ -580,6 +580,16 @@ def html_page(docs: list[dict], delta: list[list[dict]], *, public: bool) -> str
                        '<a href="human-followup.txt">Read HUMAN next steps</a></p>'
                        '</nav>')
     if public:
+        human_action_counts = Counter(item["next_review_action"]
+                                      for item in docs[-1]["case_overview"])
+        summary.append("<h2>Anonymous latest original HUMAN next-action portfolio</h2>")
+        summary.append("<p>Only fixed original source next-action labels and counts, "
+                       "never authenticated consent, a grant, urgency or case resolution. "
+                       "Small-cell numbers may remain private.</p>")
+        summary.append(table(["Original HUMAN source follow-up", "Count"],
+                             [[label, count]
+                              for label, count in sorted(human_action_counts.items())]))
+    if public:
         summary.append("<h2>Changed source-record appearances by ordinal</h2>")
         counts = Counter((i + 2, row["family"], row["change"]) for i, group in enumerate(delta)
                          for row in group)
@@ -723,6 +733,12 @@ def generate(docs: list[dict]) -> dict[str, bytes]:
                                 for row in all_case_transitions])
     detail_rows = private_case_details(docs)
     details_csv = csv_text([list(CASE_DETAIL_COLUMNS), *detail_rows])
+    anonymous_actions = Counter(row["next_review_action"]
+                                for row in docs[-1]["case_overview"])
+    action_csv = csv_text(
+        [["original_human_next_action", "count"]] +
+        [[label, count] for label, count in sorted(anonymous_actions.items())]
+    )
     private_rows = [["later_ordinal", "family", "source_declaration", "source_record_id",
                      "changed_source_fields"]]
     for i, group in enumerate(delta):
@@ -767,6 +783,7 @@ def generate(docs: list[dict]) -> dict[str, bytes]:
         "anonymous-counts.json": (json.dumps(aggregate, indent=2,sort_keys=True)+"\n").encode(),
         "anonymous-counts.csv": csv_text(counts_rows).encode(),
         "anonymous-source-order.csv": csv_text(chronology_rows).encode(),
+        "anonymous-human-actions.csv": action_csv.encode("utf-8"),
         "private-source-changes.csv": csv_text(private_rows).encode(),
         "human-followup.txt": "\n".join(human).encode(),
     }
