@@ -126,7 +126,7 @@ function renderDetail() {
  $('detailSource').innerHTML=entry.series.map((f,i)=>'<article class="snapshot"><h4>'+esc((i+1)+'. '+state.snapshots[i].label)+'</h4>'+(f?'<p><b>Source claim:</b> '+esc(f.severity)+' / '+esc(f.retest_status)+'</p><p><b>Suggested remediation (source text):</b> '+esc(f.remediation)+'</p>':'<p>Absent from this export; not proof of remediation.</p>')+'</article>').join('');
  $('humanOwner').value=n.owner;$('humanAction').value=n.action;$('humanDue').value=n.due;
 }
-function render() {renderSnapshots();summary();renderGrid();renderDetail();$('forget').disabled=!state.snapshots.length;}
+function render() {renderSnapshots();summary();renderGrid();renderDetail();$('forget').disabled=!state.snapshots.length;window.dispatchEvent(new Event('lightup-history-changed'));}
 function notesFromFields(){
  const id=state.selected;
  if(!id)throw Error('Select an exact original finding.');
@@ -175,7 +175,7 @@ $('snapshots').addEventListener('change',event=>{
 $('snapshots').addEventListener('click',event=>{
  const move=event.target.closest('button[data-move]'),remove=event.target.closest('button[data-remove]');
  if(move){const i=Number(move.dataset.move),j=i+Number(move.dataset.shift);if(j>=0&&j<state.snapshots.length){[state.snapshots[i],state.snapshots[j]]=[state.snapshots[j],state.snapshots[i]];state.revision++;render();}}
- if(remove){const i=Number(remove.dataset.remove);state.snapshots.splice(i,1);state.revision++;if(!state.snapshots.length){state.active=null;state.notes.clear();state.selected=null;}render();}
+ if(remove){const i=Number(remove.dataset.remove);state.snapshots.splice(i,1);const remaining=idSet();for(const id of state.notes.keys())if(!remaining.has(id))state.notes.delete(id);state.revision++;if(!state.snapshots.length){state.active=null;state.selected=null;}render();}
 });
 /* Controlled archive bridge: no browser persistence or authority, atomic restoration only. */
 window.LightUpHistory=Object.freeze({
@@ -195,6 +195,8 @@ window.LightUpHistory=Object.freeze({
     state.active={...ctx};state.selected=null;state.revision++;render();
   },
   revision(){return state.revision;},
+  view(){return state.snapshots.map(x=>({label:x.label,sourceHash:x.sourceHash,fileHash:x.fileHash,findings:x.findings.map(y=>({...y}))}));},
+  privateAllowed(){requireContext();protect();return true;},
   limits:Object.freeze({...limits})
 });
 render();
