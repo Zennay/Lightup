@@ -22,6 +22,7 @@ ACTIONS = {
     "5": ("report", "Publish PRIVATE local staging chronology"),
     "6": ("recover", "Recover interrupted encrypted native HUMAN draft"),
     "7": ("resolve", "Resolve original HUMAN stage with separate acknowledgment"),
+    "10": ("carry-closed", "Review closure from an earlier ORIGINAL source revision"),
 }
 NAMES = {
     "stage": ("native-human-draft-", ".ltv"),

@@ -25,6 +25,7 @@ import reconcile as native_status
 import report as local_dashboard
 import handoff_review as delivery
 import engagement_index as source_revisions
+import revision_carry as cross_source_human
 
 source = bridge.source
 original = bridge.original
@@ -310,7 +311,7 @@ def _resolve(args, vault, folder, journal, current) -> None:
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     subs = parser.add_subparsers(dest="action", required=True)
-    for action in ("status", "stage", "report", "review", "review-html", "recover", "resolve"):
+    for action in ("status", "stage", "report", "review", "review-html", "recover", "resolve", "carry-closed"):
         p = subs.add_parser(action)
         for name in ("db", "email", "client-id", "engagement-id"):
             p.add_argument("--" + name, required=True)
@@ -375,6 +376,10 @@ def main(argv=None) -> int:
                 _stage(args, vault, folder, document, current)
             elif args.action == "recover":
                 _recover(args, vault, folder, document, current)
+            elif args.action == "carry-closed":
+                cross_source_human.carry(
+                    args, folder, vault, packet, key, _read, _write,
+                    _owned_regular, _utc)
             else:
                 _resolve(args, vault, folder, document, current)
         return 0

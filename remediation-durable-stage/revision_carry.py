@@ -10,8 +10,6 @@ from __future__ import annotations
 
 from pathlib import Path
 import hashlib
-import os
-import stat
 
 import engagement_index as history
 import request_handoff as bridge
@@ -93,7 +91,9 @@ def carry(args, folder, vault, current_packet, current_key,
         raise ValueError("Earlier pending native draft needs original recovery first.")
     historical = _old_native_drafts(
         Path(entry["output"]), entry, args, vault, private_file)
-    now = current_packet["human_requests"]
+    now = current_packet.get("human_requests", [])
+    if type(now) is not list:
+        raise ValueError("Current original HUMAN request list is malformed.")
     closed = {_ref(row) for row in now if row["human_stage"] == "closed_human"}
     if not historical.issubset(closed):
         raise ValueError("Current ORIGINAL HUMAN workroom does not report all old requests closed.")
