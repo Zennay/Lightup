@@ -1,3 +1,31 @@
+## Complete encrypted PRIVATE lab workspace (19 October 2026)
+
+**New standalone product behavior on this existing DRAFT/HOLD branch:** The same local one-file browser application can now securely **package original PRIVATE lab-result JSON bytes together with all HUMAN planning choices**, including their source-byte fingerprints, as *one locally encrypted, portable workroom*. This is different from the existing lightweight HUMAN-only plan: a complete workroom includes PRIVATE original targets, evidence and report text inside the ciphertext.
+
+### Export current complete PRIVATE workroom
+
+1. Independently obtain and open your **already-produced** original PRIVATE lab result files using the unchanged strict 2–8 file admission workflow. The original records are structurally checked, never trusted as signed evidence or live scan authority.
+2. Optionally edit HUMAN-only stage/reviewer-group/next-question selections.
+3. In **Keep the whole offline workroom together**, set a local passphrase of 12–256 characters and explicitly confirm **Download complete ENCRYPTED workroom**. WebCrypto generates a fresh random AES-GCM nonce and PBKDF2 salt for this export, encrypting the original source *bytes* (not reserialized reconstructed JSON) plus the bounded exact SHA-256-source-bound sparse HUMAN plan. Only encrypted bytes and the decryption algorithm parameters go into the downloaded file. There is no user account, external connection, browser persistence, cloud sync, API or key escrow. Passwords are cleared after processing.
+4. Keep that file private and protected. **The original source reports, target literals and evidence are all inside the encrypted workroom.** This format contains substantially more confidential content than the HUMAN-only plan; do not share casually. A good passphrase and an uncompromised device are essential. No password recovery exists.
+
+**Bounds:** Each original lab JSON must be 1–8 MiB or smaller, with 2–8 existing sources. To prevent browser memory exhaustion, full-workroom encryption supports up to **24 MiB of combined original source bytes** (48 MiB maximum encrypted plaintext; 65 MiB maximum uploaded encrypted envelope). Larger original sets remain supported by the ordinary separate-source-plus-plan workflow; encrypted complete export will explicitly hold instead of silently truncating anything.
+
+### Restore a complete PRIVATE workroom from one file
+
+1. On a trusted offline device, open the single self-contained [standalone.html](standalone.html); select **one complete ENCRYPTED workroom** and enter its passphrase.
+2. First the browser strictly parses the bounded outer format and authenticates/decrypts the AEAD ciphertext. It then validates the decrypted source inventory, all original raw JSON files, original run/scenario/endpoint membership, original findings/evaluation and each SHA-256 fingerprint, and the exact serialized private HUMAN plan. Any wrong password, changed original bytes, invalid grant/authority flags, mismatch or oversized structure HOLDS the entire replacement.
+3. **Only after all files and HUMAN fields are admitted**, the operator explicitly confirms replacing the current in-memory selection. Original lab bytes and matched HUMAN stages/groups/questions then reopen together; the regular matrix, endpoint distribution and HUMAN comparison desk are populated. Existing in-memory work is kept if admission fails or the operator cancels. No security assessment is run, no client or asset contacted, and no original-source or grant data is modified.
+4. You can export only HUMAN notes separately afterward, or forget all in-memory originals/choices. This does not delete any previously downloaded file; protect and remove such files according to your local private retention policy.
+
+### Trust boundaries and source code
+
+New separate module `workspace-vault.js` handles bounded base64 transport of encrypted original file bytes and the atomic operator workflow. The shared `private-plan-crypto.js` now supports a separate specifically bounded workspace AEAD envelope alongside its preexisting smaller HUMAN-only plan envelope; `human-board.js` exposes strict preflight of a plan against proposed original rows/digests; `app.js` shares one structural admission pipeline between normal local originals and decrypted originals. The Python standard-library `build_standalone.py` embeds all four runtime modules and CSP SHA-256 pins the exact complete inline source. No third-party code or remote assets are required.
+
+**AES-GCM with PBKDF2 does not establish original lab authenticity, validated findings, scan coverage, operator identity, real client/operator consent or authority to access targets.** This has not undergone independent security/cryptographic/browser acceptance. The source hash is an unsigned exact-byte binding, not a trustworthy producer signature. The product remains **INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD**, with the original exact-head hosted + permanently registered named VPS CI, original owner and independent security/privacy/browser approvals, #177/#182/#829, genuine separately authenticated current client/operator consent with revocation at use, and explicit HUMAN GO required for any merge, release, deployment, active scan, or target contact. This change only edits the independently owned `assessment-coverage-matrix/` companion; no QA/regression/test suites added or run.
+
+---
+
 ## Optional encrypted PRIVATE HUMAN plans (19 October 2026)
 
 The offline [standalone.html](standalone.html) now supports **both** the earlier unencrypted PRIVATE JSON workflow and a new optional encrypted plan export/import path, without changing original lab evidence, source hashes, assessments, grants or other worker branches.
