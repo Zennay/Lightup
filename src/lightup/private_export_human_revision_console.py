@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import sys
 
-from . import private_export_human_revision
+from . import private_export_human_revision, private_export_human_revision_workqueue
 
 
 def _ask(label: str) -> str:
@@ -39,13 +39,14 @@ def main() -> int:
         "2. Prepare a PRIVATE unencrypted ID-free local HTML review brief\n"
         "3. Create encrypted NEW source-bound HUMAN plan (owner/note carry only)\n"
         "4. Create encrypted NEW plan including old HUMAN stage/due (explicit opt-in)\n"
+        "5. PRIVATE original-ID/title source change workqueue (unencrypted HTML)\n"
         "0. Exit"
     )
     try:
-        choice = _ask("Choose 0-4")
+        choice = _ask("Choose 0-5")
         if choice == "0":
             return 0
-        if choice not in ("1", "2", "3", "4"):
+        if choice not in ("1", "2", "3", "4", "5"):
             raise ValueError("unknown option")
         before = _ask("Earlier authenticated encrypted original source .lue")
         plan = _ask("Earlier exact-source encrypted HUMAN plan .lun")
@@ -63,6 +64,20 @@ def main() -> int:
             "storage, actual recipient and approved transport; no output establishes "
             "consent, verified fixes or permission to test."
         )
+        if choice == "5":
+            destination = _ask("NEW PRIVATE original-ID workqueue .html")
+            if not destination.lower().endswith(".html"):
+                raise ValueError("new workqueue must end with .html")
+            _confirm(
+                "This HTML is UNENCRYPTED and contains original private finding "
+                "IDs and titles (but not notes, aliases, remedies or target data). "
+                "I have independently approved its precise storage and recipient."
+            )
+            return private_export_human_revision_workqueue.main([
+                before, plan, after, "--output", destination,
+                "--ack-private-handling", "--ack-same-real-client",
+                "--ack-original-ids-plaintext",
+            ])
         action = "preview" if choice in ("1", "2") else "carry"
         args = [
             action, before, plan, after,
