@@ -10,7 +10,8 @@ The original [encrypted actual evidence transfer](../remediation-evidence-materi
 2. Admits the original native receipt with canonical JSON, exact source SHA, literal-false authority flags, exact original indexed finding ID / SHA / file name / byte length and **every actual local 0600 file byte**. Directory must be a real owner-private 0700 directory; extra files are refused.
 3. For `stage`, prompts the human for each neutral file's review status (`retain_pending_review`, `legal_hold`, or `review_for_deletion`), a canonical next human review date and optional bounded private note. These are **advisory HUMAN states**, never erasure/hold determinations by a court or privacy officer.
 4. Seals the entire record in **a new exclusive 0600 AES-256-GCM/PBKDF2 `.ltv`** using the unchanged original vault. The new passphrase must differ from the original HUMAN workroom secret; no plaintext plan is stored by the CLI.
-5. `inspect` reauthenticates current account/client/source, verifies ALL original files, opens the encrypted plan, checks receipt identity and prints only total/due counts. `open-current` does the same and emits a NEW 0600 static private HTML review table with no scripts, network, browser storage or remote assets. Expired dates merely show **HUMAN REVIEW DUE**; they never trigger deletion.
+5. `renew` reopens the previously encrypted plan alongside the **current** original source and rechecks all actual file bytes, pre-fills HUMAN review decisions, permits explicit `<clear>` of old private notes, and seals a NEW distinct encrypted `.ltv` with a third, different passphrase. Original source/material/earlier plan remain untouched.
+6. `inspect` reauthenticates current account/client/source, verifies ALL original files, opens the encrypted plan, checks receipt identity and prints only total/due counts. `open-current` does the same and emits a NEW 0600 static private HTML review table with no scripts, network, browser storage or remote assets. Expired dates merely show **HUMAN REVIEW DUE**; they never trigger deletion.
 
 Nothing touches the LightUp domain/source-owner files, scans, grants, original encrypted vault, extracted material, persisted findings or live targets. This add-on only owns `remediation-evidence-retention/`.
 
@@ -46,6 +47,21 @@ python3 remediation-evidence-retention/retention.py open-current \
 ```
 
 All operations require a real interactive terminal, original matching private files and explicit private-data acknowledgement. Output path must be a **new** owner-private path. Never open the generated private HTML on an untrusted/shared device, send it to a cloud service, or treat it as a release artifact. Explicitly back up and handle original evidence according to an independently approved retention policy; this tool performs no wiping, secure erase, device revocation or actual legal-hold issuance.
+
+To revise an already-staged human plan while keeping the original immutable:
+
+```sh
+python3 remediation-evidence-retention/retention.py renew \
+  --db /private/lightup.db --email operator@example.invalid \
+  --client-id <original-client-id> --engagement-id <original-engagement-id> \
+  --human /private/existing-human.ltv \
+  --directory /private/received-material \
+  --plan /private/retention-review-v1.ltv \
+  --output /private/retention-review-v2.ltv \
+  --ack-private-material
+```
+
+`renew` refuses passphrase reuse against the original HUMAN vault **and** the previous retention plan, requires current native source-and-bytes continuity, and never overwrites the old encrypted plan. A blank decision or note keeps the previous human input; `<clear>` explicitly removes a former human note. An old due date requires selecting a new nonpast date when reissuing. No silent renewal or legal policy determination occurs.
 
 ## Ownership and acceptance posture
 
