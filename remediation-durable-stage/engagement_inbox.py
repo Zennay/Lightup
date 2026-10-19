@@ -26,10 +26,22 @@ LABELS = {
     "reviewed_current_open": ("Locally reviewed, CURRENT HUMAN reports open", "HOLD: original HUMAN status continuity changed, review with source owner."),
     "reviewed_current_closed": ("Locally reviewed, HUMAN still reports closed", "No action inferred: HUMAN state is not native Apply or consent."),
     "aborted_unpublished": ("Locally aborted without published file", "No signed absence proof; retain HUMAN operator record."),
+    "aborted_file_present": ("Aborted attempt now has a file", "HOLD: unexpected file at previously declared unpublished original-native draft path."),
     "staged_file_missing": ("Encrypted stage file missing", "HOLD: restore original private ciphertext or consult source owner."),
     "reviewed_file_missing": ("Previously reviewed encrypted stage missing", "HOLD: locate original private ciphertext before relying on historical local HUMAN closure."),
     "staged_file_changed": ("Encrypted stage bytes changed", "HOLD: recorded original-native encrypted draft mismatch."),
 }
+PRIORITY = {
+    "staged_file_changed": 0, "staged_file_missing": 0,
+    "reviewed_file_missing": 0, "aborted_file_present": 0,
+    "reviewed_current_missing": 0, "reviewed_current_open": 0,
+    "pending_has_file": 1, "pending_no_file": 1,
+    "staged_not_observed": 1, "staged_open": 2,
+    "staged_human_closed": 2, "reviewed_current_closed": 3,
+    "aborted_unpublished": 3,
+}
+PRIORITY_NAME = ("HOLD / investigate", "HUMAN intervention",
+                 "HUMAN follow-up", "Historical / low attention")
 CAUTION = ("These are LOCAL HUMAN bookkeeping observations. Current original "
            "authentication and material bytes do not prove historical native "
            "Apply, independent reviewer identity, signed consent, legal holds, "
@@ -58,13 +70,13 @@ def _current_references(packet: dict) -> dict[str, str]:
 
 
 def _material_indicator(entry: dict, vault, private_file) -> str:
-    if entry["state"] == "aborted_unpublished":
-        return "not_required"
     path = Path(entry["output"])
     handoff.source._hold_if_not_private_directory(path.parent)
     if not path.exists() and not path.is_symlink():
         return "missing"
     private_file(path)
+    if entry["state"] == "aborted_unpublished":
+        return "unexpected_file_after_abort"
     if entry["state"] == "pending" and not entry["sha256"]:
         return "exists_unverified"
     raw = vault._private_input(path, vault.MAX_VAULT)
@@ -77,7 +89,9 @@ def _material_indicator(entry: dict, vault, private_file) -> str:
 def _classification(entry: dict, stages: dict[str, str], material: str) -> tuple[str, Counter]:
     refs = entry["requests"]
     counts = Counter(stages.get(ref, "not_observed") for ref in refs)
-    if material == "changed":
+    if entry["state"] == "aborted_unpublished" and material != "missing":
+        label = "aborted_file_present"
+    elif material == "changed":
         label = "staged_file_changed"
     elif entry["state"] == "reviewed" and material == "missing":
         label = "reviewed_file_missing"
@@ -117,6 +131,7 @@ def collect(folder: Path, packet: dict, vault, private_file,
                 "current_revision": key == current_source,
                 "local_state": entry["state"],
                 "attention": label,
+                "priority": PRIORITY[label],
                 "draft_count": len(entry["requests"]),
                 "reported_closed": counts["closed_human"],
                 "reported_unobserved": counts["not_observed"],
@@ -126,6 +141,7 @@ def collect(folder: Path, packet: dict, vault, private_file,
             })
             totals[label] += 1
             totals["draft_references"] += len(entry["requests"])
+    rows.sort(key=lambda row: (row["priority"], row["source_ordinal"], row["cycle_ordinal"]))
     totals["source_revisions"] = len(keys)
     totals["cycles"] = len(rows)
     totals["human_attention"] = sum(1 for row in rows if row["attention"] not in (
@@ -140,7 +156,8 @@ def show(rows: list[dict], totals: dict) -> None:
           "· HUMAN attention:", totals["human_attention"])
     for row in rows:
         label, next_step = LABELS[row["attention"]]
-        print("Source", row["source_ordinal"], "· cycle", row["cycle_ordinal"],
+        print(PRIORITY_NAME[row["priority"]], "· Source", row["source_ordinal"],
+              "· cycle", row["cycle_ordinal"],
               "·", "CURRENT" if row["current_revision"] else "historical",
               "·", label, "· drafts", row["draft_count"])
         print("  HUMAN next step:", next_step)
@@ -152,7 +169,8 @@ def html(rows: list[dict], totals: dict) -> bytes:
     out = []
     for row in rows:
         label, advice = LABELS[row["attention"]]
-        out.append("<tr><td>" + str(row["source_ordinal"]) + "/" +
+        out.append("<tr><td>" + e(PRIORITY_NAME[row["priority"]]) +
+                   "</td><td>" + str(row["source_ordinal"]) + "/" +
                    str(row["cycle_ordinal"]) + "</td><td>" +
                    ("Current" if row["current_revision"] else "Earlier") +
                    "</td><td>" + e(label) + "</td><td>" +
@@ -179,7 +197,7 @@ or native Apply. Review historical requests independently.</p></header>
 Local cycles: <b>""" + str(totals["cycles"]) + """</b> ·
 HUMAN attention: <b>""" + str(totals["human_attention"]) + """</b></p></section>
 <section><h2>Current and earlier local HUMAN handoffs</h2>
-<table><thead><tr><th>Source/cycle</th><th>Revision</th><th>HUMAN situation</th>
+<table><thead><tr><th>Attention priority</th><th>Source/cycle</th><th>Revision</th><th>HUMAN situation</th>
 <th>Drafts</th><th>Currently HUMAN-closed</th><th>Not observed</th>
 <th>Next HUMAN action</th></tr></thead><tbody>""" + "".join(out) + """</tbody></table></section>
 <footer><p>""" + e(CAUTION) + """ This 0600 offline scriptless file has no
