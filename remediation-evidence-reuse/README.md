@@ -79,3 +79,21 @@ If another authorized local operator needs a copy of the HUMAN-only notes, use a
 The handoff is a copy of the exact current private session, **not** a delegated original-native request and not an approval. Receiving parties must separately obtain the **exact original packet bytes** and original source identity before reusing the state; a private hash never proves sender identity or client/operator authentication.
 
 Security boundaries: strict native source parser and exact-byte hash binding, independent PRIVATE 0600 output, actual non-symlinked owner-only 0700 path, single-host exclusive file lock, fsynced atomic session state replacement, scriptless CSP HTML output, bounded 1200-character HUMAN notes, and no background persistence/network/service worker. Do not put PRIVATE HTML/handoff/session files in a public repository or hosted page. Only separately authenticated original LightUp sources, actual source-owner/security/privacy review and action-time dual-party consent can resolve original project release gates.
+
+
+## 2–12 snapshot PRIVATE relationship timeline (new longitudinal product)
+
+[The standalone timeline CLI](timeline.py) extends the same independent PRIVATE original Evidence Ledger v1 / complete unified HUMAN v2 interpretation to between **two and twelve different original PRIVATE exports** of the **exact same original findings source SHA and self-declared client/engagement**. It does not modify the original Ledger or any active owner. Each snapshot is fully admitted without duplicate JSON keys or authority claims; duplicated exact input bytes HOLD, rather than being misrepresented as a time progression.
+
+Use the literal private 0600 export files inside the real 0700 private directory. Operators choose an order; that order **is not authenticated chronology**. E.g. (substitute your actual separate original PRIVATE files):
+
+    python3 remediation-evidence-reuse/timeline.py --snapshot "$HOME/lightup-private-review/export-a.json" --snapshot "$HOME/lightup-private-review/export-b.json"
+    python3 remediation-evidence-reuse/timeline.py --snapshot "$HOME/lightup-private-review/export-a.json" --snapshot "$HOME/lightup-private-review/export-b.json" --format html --output "$HOME/lightup-private-review/PRIVATE-evidence-timeline.html"
+    python3 remediation-evidence-reuse/timeline.py --snapshot "$HOME/lightup-private-review/export-a.json" --snapshot "$HOME/lightup-private-review/export-b.json" --format counts --output "$HOME/lightup-private-review/anonymous-timeline.json"
+    python3 remediation-evidence-reuse/timeline.py --snapshot "$HOME/lightup-private-review/export-a.json" --snapshot "$HOME/lightup-private-review/export-b.json" --format handoff --output "$HOME/lightup-private-review/PRIVATE-human-timeline-handoff.json"
+
+The private **scriptless HTML** shows per-slot original finding × local file SHA references, HUMAN stages and exact human-only attention reasons: missing local reference in one or more slots, changed stage/reviewer aliases, shared fingerprint across distinct original findings and contradictory reported local byte lengths. The per-slot dashboard shows aggregate local link churn, shared fingerprints and changed human metadata. The separate counts JSON contains only slot ordinals and coarse aggregate metrics (never identifiers, SHA, client, filenames, notes, targets, raw evidence or sources). The optional PRIVATE handoff contains exact source/context and priority finding+fingerprint relationships for **human coordination only**, with all authority flags false.
+
+An absent later LOCAL fingerprint, archived HUMAN stage, low severity source label or evidence reuse never proves a fix. The outputs never claim custody, chronology, authenticated owner, true vulnerability, consent, grant or security approval. Every output is new, exclusively published 0600 in an owner-only folder and original source bytes are re-read before publication to prevent stale snapshots. No background monitoring, scanners, active target requests, testsuites, CI bypass or deployment.
+
+The longitudinal timeline is deliberately independent of the durable triage session. A new snapshot requires a fresh human review session if review actions are needed; existing local status must not be silently carried to a new packet.
