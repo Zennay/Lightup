@@ -115,7 +115,32 @@
       row.append(left, button); panel.append(row);
     }
   }
-  const busy = (state) => { $("encrypt").disabled = state; $("decrypt").disabled = state; };
+  const busy = state => {
+    $("encrypt").disabled = state;
+    $("decrypt").disabled = state;
+    $("rekey").disabled = state;
+  };
+  function checkPassword(password) {
+    if ([...password].length < 12 || encoder.encode(password).length > 1024)
+      fail("Kies een wachtwoord van minimaal 12 tekens en maximaal 1024 UTF-8 bytes.");
+  }
+  async function encryptPrivateRecords(records, password) {
+    checkPassword(password);
+    const body = { schema: SCHEMA, version: 1, files: records.map(r =>
+      ({ name: r.name, size: r.size, sha256: r.sha256, content_b64: to64(r.bytes) })) };
+    const salt = crypto.getRandomValues(new Uint8Array(16));
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    const key = await makeKey(password, salt);
+    const ciphertext = new Uint8Array(await crypto.subtle.encrypt(
+      { name: "AES-GCM", iv }, key, encoder.encode(JSON.stringify(body))
+    ));
+    const envelope = { schema: SCHEMA, version: 1, kdf: "PBKDF2-SHA256",
+      iterations: ITERATIONS, cipher: "AES-256-GCM", salt_b64: to64(salt),
+      iv_b64: to64(iv), ciphertext_b64: to64(ciphertext) };
+    const encoded = encoder.encode(JSON.stringify(envelope));
+    if (encoded.length > MAX_VAULT) fail("Versleutelde overdracht groter dan de toegestane 26 MiB.");
+    fileDownload("lightup-casebook-private-transfer.lupt", encoded, "application/octet-stream");
+  }
   $("encrypt").addEventListener("click", async () => {
     busy(true);
     try {
@@ -123,23 +148,8 @@
         fail("Deze browser geeft geen veilige WebCrypto-context voor het lokale bestand.");
       if (!$("ack").checked) fail("Bevestig eerst de HUMAN-only waarschuwing.");
       const password = $("new-password").value;
-      if ([...password].length < 12 || encoder.encode(password).length > 1024)
-        fail("Kies een wachtwoord van minimaal 12 tekens en maximaal 1024 UTF-8 bytes.");
       const records = await collectSources($("source-files").files);
-      const body = { schema: SCHEMA, version: 1, files: records.map(r =>
-        ({ name: r.name, size: r.size, sha256: r.sha256, content_b64: to64(r.bytes) })) };
-      const salt = crypto.getRandomValues(new Uint8Array(16));
-      const iv = crypto.getRandomValues(new Uint8Array(12));
-      const key = await makeKey(password, salt);
-      const ciphertext = new Uint8Array(await crypto.subtle.encrypt(
-        { name: "AES-GCM", iv }, key, encoder.encode(JSON.stringify(body))
-      ));
-      const envelope = { schema: SCHEMA, version: 1, kdf: "PBKDF2-SHA256",
-        iterations: ITERATIONS, cipher: "AES-256-GCM", salt_b64: to64(salt),
-        iv_b64: to64(iv), ciphertext_b64: to64(ciphertext) };
-      const encoded = encoder.encode(JSON.stringify(envelope));
-      if (encoded.length > MAX_VAULT) fail("Versleutelde overdracht groter dan de toegestane 26 MiB.");
-      fileDownload("lightup-casebook-private-transfer.lupt", encoded, "application/octet-stream");
+      await encryptPrivateRecords(records, password);
       show(records);
       setStatus("Versleutelde PRIVATE overdracht lokaal gedownload. Sla het wachtwoord elders veilig op. De oorspronkelijke bron is niet als echt, actueel of geautoriseerd geverifieerd.");
     } catch (e) { setStatus(e.message || "Versleutelen geweigerd.", true); }
@@ -148,6 +158,21 @@
       $("source-files").value = "";
       busy(false);
     }
+  });
+  $("rekey").addEventListener("click", async () => {
+    busy(true);
+    try {
+      if (!window.crypto?.subtle || !window.isSecureContext)
+        fail("Deze browser geeft geen veilige WebCrypto-context.");
+      if (!current || current.length === 0) fail("Laad eerst originele privé-bestanden of open een bestaande overdracht.");
+      const password = $("rekey-password").value;
+      checkPassword(password);
+      if (!window.confirm("Maak een NIEUW lokaal versleuteld bestand met dezelfde reeds geladen originele bytes? Er wordt geen toestemming of bronvalidatie verleend."))
+        fail("Dooroverdracht geannuleerd; huidige werkset ongewijzigd.");
+      await encryptPrivateRecords(current, password);
+      setStatus("Nieuwe PRIVATE overdracht opnieuw versleuteld met een verse willekeurige salt/nonce. Geen extra originele plaintextbestanden gedownload. Wachtwoord apart veilig delen.");
+    } catch (e) { setStatus(e.message || "Dooroverdracht geweigerd.", true); }
+    finally { $("rekey-password").value = ""; busy(false); }
   });
   $("decrypt").addEventListener("click", async () => {
     busy(true);
