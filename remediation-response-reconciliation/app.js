@@ -732,6 +732,13 @@ function applyRegisterMerge(){
  updated.notes={...db.notes};
  updated.ownerFeedback={...db.ownerFeedback};
  updated.feedbackHistory=[...db.feedbackHistory,...p.plan.additions.map(x=>({...x}))];
+ const superseded=p.plan.followups.filter(x=>x.choice==="incoming"&&x.current);
+ if(updated.feedbackHistory.length+superseded.length>1600)
+  fail("HOLD: cannot preserve previous HUMAN feedback; export/archive first");
+ const supersededAt=new Date().toISOString();
+ for(const item of superseded)updated.feedbackHistory.push({
+  request_id:item.id,...item.current,superseded_utc:supersededAt
+ });
  for(const item of p.plan.notes)if(item.choice==="incoming")updated.notes[item.id]={...item.received};
  for(const item of p.plan.followups)if(item.choice==="incoming")updated.ownerFeedback[item.id]={...item.received};
  updated.revision=db.revision+1;
