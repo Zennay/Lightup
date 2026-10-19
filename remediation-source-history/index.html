@@ -19,8 +19,8 @@
 <div class="load"><button id="diffGo">Review exact source changes</button><label class="check"><input id="showUnchanged" type="checkbox">Include exact unchanged originals in comparison table and private export</label></div>
 <div id="diffSummary" class="summary" aria-live="polite">Import two original revisions.</div><p id="diffCount" class="help"></p>
 <div class="table-wrap"><table><thead><tr><th>Source-only classification</th><th>Exact original finding</th><th>Earlier source claim</th><th>Later source claim</th></tr></thead><tbody id="diffRows"></tbody></table></div>
-<div class="load"><button class="secondary" id="diffAggregate">Export aggregate pair-delta CSV</button><button class="secondary" id="diffPrivate">Export PRIVATE original-ID pair-delta CSV</button></div>
-<p class="help">The PRIVATE export contains exact original IDs, titles and remediation text and requires the same explicit PRIVATE destination/recipient checkbox below. All spreadsheets are escaped against formula-like prefixes.</p></section>
+<div class="load"><button class="secondary" id="diffAggregate">Export anonymous source pair counts CSV</button><button class="secondary" id="diffProvenance">Export PRIVATE source pair provenance CSV</button><button class="secondary" id="diffPrivate">Export PRIVATE original-ID pair-delta CSV</button></div>
+<p class="help">The anonymous comparison contains counts and revision positions only. Original hashes, file hashes, revision labels, finding IDs, titles and remediation text are PRIVATE, require independently approved recipients and the same separate PRIVATE destination checkbox below. All CSVs escape Unicode-disguised spreadsheet formulas.</p></section>
 <section id="detail" class="card" hidden><div class="heading"><span class="step">04</span><div><h2 id="detailTitle">Finding source timeline</h2><p>Exact original history. Local HUMAN coordination below never changes source rows.</p></div></div><div id="detailSource" class="revisions"></div>
 <h3>Optional private HUMAN follow-up (in memory only)</h3>
 <div id="caseworkNative" class="snapshot" hidden></div>
