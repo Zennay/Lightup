@@ -249,3 +249,26 @@ Usage — ID-free by default:
     python -m lightup.private_export_human_revision_compare /private/earlier.lue /private/earlier.lun /private/later.lue --earlier-choices /private/initial.lud --later-choices /private/amended.lud --output /private/human-change.html --ack-private-handling --ack-same-real-client
 
 For strictly approved original ID detail, append **--include-private-ids --ack-plaintext-original-ids** and select a different NEW private output file. The original interactive HUMAN revision console includes this feature as option **17**, with separate specific privacy acknowledgment when identifying original source fields are requested. No result is an authorization, security fix or retest claim. M3/M7 PLAN/LAB ONLY / DRAFT-HOLD remains unchanged.
+
+## Unified original encrypted-source custody and direct HUMAN workdesk preview
+
+Every source-reading action in this independent draft now shares one actual original-ciphertext custody boundary, implemented by `src/lightup/private_export_human_revision_source.py`. This covers the original `.lue` before, original exact-source encrypted HUMAN `.lun`, and original `.lue` after. The files must be Linux no-follow regular owner-private files (0600 or stricter), with original envelope size budgets. The SHA-256 byte digest of each distinct original ciphertext is checked **before and after** the original source-owner's existing authenticated decryption and strict parsing, and again **before local output publication** for source migration, JSON selection preparation/import, guided encrypted carry, original-ID review queue, visual editor, the encrypted v2 vault and its amendment/resume paths. The original source-owner reader/format, previous source and HUMAN workplan are unchanged. If any source file is replaced or re-encrypted, the action HOLDS without intentionally publishing a new result.
+
+**This is local file-integrity continuity, not a signature.** Reading a source archive cannot establish who issued it, real client/engagement identity, tenant authentication freshness, validity of included evidence, current client/operator approval, or consent for scans and remediation. The original source bytes must be independently reviewed with their actual custodian. A concurrent filesystem adversary may still require operating-system-level isolation; the comparison is not a filesystem lock.
+
+### Direct preview of an already encrypted decision set, without creating a plan
+
+The new **`workdesk`** action in `private_export_human_revision_vault` decrypts an existing validated v2 `.lud` decision artifact in memory, re-admits every original ordered finding decision against the same three original encrypted inputs and produces the **unchanged original-source HUMAN workdesk** from the exact later original source and selected inherited HUMAN entries. Unlike `vault apply`, it does **not** create a new encrypted `.lun`. This allows an operator to visually review the actual proposed coordination before deciding whether to create the new encrypted plan.
+
+```sh
+python -m lightup.private_export_human_revision_vault workdesk \
+  /private/earlier.lue /private/earlier.lun /private/later.lue \
+  --encrypted-choices /private/reviewed-original-decisions.lud \
+  --output /private/proposed-original-human-workdesk.html \
+  --ack-private-handling --ack-same-real-client \
+  --ack-plaintext-html
+```
+
+**Critical privacy distinction:** this particular workdesk HTML is **UNENCRYPTED** and may contain all original finding IDs/titles/source remediation descriptions, original source-reported statuses, inherited owner aliases and complete HUMAN private notes. Do not confuse it with the intentionally ID-free comparison report or the boolean-only visual selector. Explicit human recipient/storage approval is required; the resulting 0600 HTML must not be hosted publicly or sent to unverified recipients. It uses the unchanged original workdesk HTML renderer, whose input is the strictly admitted later original source and new candidate HUMAN plan. No raw original evidence bytes or client consent are inferred from this UI.
+
+The separate foreground revision console exposes this optional direct preview as **option 18**; options 1–17 retain their original purpose. This remains `Incubate · PLAN/LAB ONLY · DRAFT/HOLD`; original hosted/permanent VPS CI, original source-owner review, independent security/privacy/crypto, real distinct authenticated client and operator consent with at-use revocation and explicit HUMAN GO remain mandatory before merge/deploy or live activity.
