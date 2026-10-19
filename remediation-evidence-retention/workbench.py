@@ -16,6 +16,7 @@ import secrets
 import sys
 
 import human_calendar as private_calendar
+import bulk_review as bulk
 import desk
 import history
 import reconcile
@@ -33,6 +34,8 @@ MENU = (
     ("7", "Inspect/publish later original HUMAN Request Desk continuity"),
     ("8", "Switch to an existing PRIVATE encrypted retention plan"),
     ("9", "Export source-bound anonymous PRIVATE HUMAN review calendar"),
+    ("10", "Create PRIVATE offline bulk retention editor (.tsv)"),
+    ("11", "Seal edited PRIVATE bulk retention review to NEW encrypted plan"),
     ("0", "Exit — no material changed"),
 )
 MAX_INPUT_PATH = 1024
@@ -208,6 +211,32 @@ def _calendar(args, vault):
     print("No calendar connected, no identifier, automatic deletion or consent.")
 
 
+def _bulk_export(args, vault):
+    if args.plan is None:
+        raise ValueError("Select a source-bound original encrypted HUMAN plan first.")
+    clone = SimpleNamespace(**vars(args), output=_new(args, "bulk-review-editor", ".tsv"),
+                            action="export")
+    bulk._export(clone, vault)
+    print("PRIVATE neutral editor: edit only decision, review_on, note_edit.")
+    print("NEVER use a synced spreadsheet or upload private review material.")
+
+
+def _bulk_import(args, vault):
+    if args.plan is None:
+        raise ValueError("Select matching previous encrypted HUMAN plan first.")
+    editor = _private_existing_path("Exact existing owner-private edited TSV", ".tsv")
+    clone = SimpleNamespace(**vars(args), edited=editor,
+                            output=_new(args, "bulk-review-renewal", ".ltv"),
+                            action="import")
+    # New passphrase and any HUMAN legal-hold changes are explicitly admitted
+    # inside the original-source-bound bulk sealing function.
+    bulk._import(clone, vault)
+    args.plan = clone.output
+    args._staged_due_this_session = False
+    print("NEW encrypted owner-private HUMAN plan selected in current session."
+          " Original plan and evidence remain unchanged.")
+
+
 def _request_reconciliation(args, vault):
     if args.plan is None:
         raise ValueError("Stage or select an existing private review plan first.")
@@ -253,6 +282,7 @@ def main(argv: list[str] | None = None) -> int:
             "1": _inspect, "2": _stage_first, "3": _renew,
             "4": _desk, "5": _due_requests, "6": _history,
             "7": _request_reconciliation, "8": _switch, "9": _calendar,
+            "10": _bulk_export, "11": _bulk_import,
         }
         while True:
             print("\n" + " | ".join(num + ": " + label for num,label in MENU))
