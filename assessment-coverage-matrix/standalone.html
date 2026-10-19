@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="color-scheme" content="dark">
   <title>LightUp · Original Lab Declaration Matrix · PRIVATE</title>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-WQYRUjq2kXWc7bi5NHrHMPhfBhGELW6J7xN81RiFL4w='; style-src 'sha256-4W3/canyq4yw2PJxauznx9Dh0LFaUHHF+Eq0r60rQuw='; connect-src 'none'; img-src 'none'; font-src 'none'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-PPVrcDu9vvMXYXB1XZ4FyWsgc7krfO9j/Gokplj064Y='; style-src 'sha256-zTyx8d8MYSuvbrYC31YZVWAe9KlftHDs0ld1vSpge14='; connect-src 'none'; img-src 'none'; font-src 'none'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
   <style>:root{font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#ecf1f7;background:#0c111a;line-height:1.55;font-size:15px}
 *{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:radial-gradient(ellipse 70% 18% at 64% 0%,#1b3044 0,transparent 80%),#0c111a;min-height:100vh}
 [hidden]{display:none!important}button,input,select{font:inherit}button{cursor:pointer}button:focus-visible,input:focus-visible,select:focus-visible,a:focus-visible{outline:3px solid #89d7df;outline-offset:3px}
@@ -75,6 +75,16 @@ footer{border-top:1px solid #283442;padding:22px clamp(18px,4vw,52px);max-width:
 @media(max-width:850px){.human-intro,.human-actions{grid-template-columns:1fr}}
 @media(max-width:540px){.human-panel{padding:15px}.human-paging{align-items:flex-start;flex-direction:column}}
 @media print{.human-panel{display:none!important}}
+
+.human-bulk{background:#0f222c;border:1px solid #3a6065;padding:16px;border-radius:11px;margin:18px 0 14px}
+.human-bulk h4{font-size:.99rem;color:#d3efeb;letter-spacing:-.01em;margin:0 0 12px}
+.bulk-fields{display:grid;grid-template-columns:repeat(3,minmax(140px,1fr));gap:12px;align-items:end}
+.bulk-fields label{display:grid;gap:6px;font-size:.79rem;font-weight:670;color:#ccdee5}
+.bulk-fields select{font-size:.84rem;padding:10px 7px}
+.bulk-fields .buttons{grid-column:1/-1;margin:0}
+.human-bulk .hint{margin:10px 0 0}
+@media(max-width:900px){.bulk-fields{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:600px){.bulk-fields{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -140,6 +150,22 @@ footer{border-top:1px solid #283442;padding:22px clamp(18px,4vw,52px);max-width:
           <label for="humanSearch">Local source label search <input id="humanSearch" type="search" autocomplete="off" placeholder="Private capability / check"></label>
           <label for="humanStage">HUMAN stage <select id="humanStage"><option value="all">All HUMAN stages</option><option value="needs_review">Needs review</option><option value="queued">Queued</option><option value="discussing">Discussing</option><option value="documented">Documented (HUMAN only)</option><option value="blocked">Blocked</option></select></label>
         </div>
+        <section class="human-bulk" aria-label="Bulk HUMAN planning for current local filter">
+          <h4>Bulk HUMAN routing · current local search / stage selection</h4>
+          <div class="bulk-fields">
+            <label for="humanBulkStage">Stage <select id="humanBulkStage">
+              <option value="keep">Keep unchanged</option><option value="needs_review">Needs review</option><option value="queued">Queued</option><option value="discussing">Discussing</option><option value="documented">Documented (HUMAN only)</option><option value="blocked">Blocked</option>
+            </select></label>
+            <label for="humanBulkRoute">Review group <select id="humanBulkRoute">
+              <option value="keep">Keep unchanged</option><option value="unassigned">Unassigned</option><option value="scope">Scope</option><option value="findings">Findings</option><option value="evidence">Evidence</option><option value="remediation">Remediation</option><option value="privacy">Privacy</option>
+            </select></label>
+            <label for="humanBulkAction">Next HUMAN question <select id="humanBulkAction">
+              <option value="keep">Keep unchanged</option><option value="none">None</option><option value="clarify_source">Clarify source</option><option value="review_scope_policy">Review scope/policy</option><option value="request_evidence_review">Ask HUMAN evidence review</option><option value="discuss_declared_difference">Discuss source difference</option><option value="prepare_private_human_brief">Prepare private brief</option><option value="request_independent_human_review">Ask independent human review</option>
+            </select></label>
+            <div class="buttons"><button id="humanBulk" class="primary" type="button">Apply to matching HUMAN rows</button><button id="humanUndo" class="secondary" type="button" disabled>Undo last bulk edit</button></div>
+          </div>
+          <p class="hint">At most 512 matching rows per confirmed edit. No original source data or verified finding status is ever edited.</p>
+        </section>
         <div class="table-scroll human-table-scroll"><table id="humanTable"></table></div>
         <div class="human-paging">
           <span id="humanPages">No HUMAN work loaded.</span>
@@ -155,6 +181,7 @@ footer{border-top:1px solid #283442;padding:22px clamp(18px,4vw,52px);max-width:
             <button id="humanSave" class="primary" type="button" disabled>Save PRIVATE plan</button>
             <button id="humanResumeButton" class="secondary" type="button" disabled>Resume against same source bytes</button>
             <button id="humanBrief" class="secondary" type="button" disabled>Export counts-only HUMAN brief</button>
+            <button id="humanHandoff" class="secondary" type="button" disabled>Download PRIVATE read-only HUMAN handoff</button>
             <button id="humanReset" class="secondary" type="button">Reset HUMAN choices</button>
           </div>
         </div>
@@ -201,7 +228,7 @@ function createHumanBoard(api) {
   const FILE_KEYS = ["kind","version","disposition","authorized","consent_verified",
     "dispatch_allowed","release_allowed","source_sha256","ordered_row_count",
     "row_plans","interpretation"];
-  let plans = [], page = 0, changed = false;
+  let plans = [], page = 0, changed = false, lastBulk = null;
   const fresh = () => ({...DEFAULT});
   const isDefault = p => KINDS.every(k=>p[k]===DEFAULT[k]);
   const strictDigest = s => typeof s==="string"&&/^[0-9a-f]{64}$/.test(s);
@@ -233,6 +260,7 @@ function createHumanBoard(api) {
     $("humanSave").disabled=!safeDigests();
     $("humanResumeButton").disabled=!safeDigests();
     $("humanBrief").disabled=false;
+    $("humanHandoff").disabled=false;
   }
   function optionList(select,values,current){
     for(const value of values) {
@@ -240,13 +268,15 @@ function createHumanBoard(api) {
       option.value=value;option.selected=value===current;select.append(option);
     }
   }
-  function render() {
-    const items=getRows();
+  function matching() {
     const phrase=$("humanSearch").value.trim().toLocaleLowerCase();
     const stage=$("humanStage").value;
-    const candidates=items.map((row,i)=>({row,i})).filter(({row,i})=>
+    return getRows().map((row,i)=>({row,i})).filter(({row,i})=>
       (stage==="all"||plans[i]?.stage===stage)&&
       (row.capability+" "+row.check).toLocaleLowerCase().includes(phrase));
+  }
+  function render() {
+    const candidates=matching();
     const pages=Math.max(1,Math.ceil(candidates.length/64));
     page=Math.max(0,Math.min(page,pages-1));
     $("humanPages").textContent="Page "+(page+1)+" of "+pages+" · "+candidates.length+
@@ -267,7 +297,8 @@ function createHumanBoard(api) {
         select.setAttribute("aria-label","Row "+(i+1)+" HUMAN "+kind);
         optionList(select,choices,plans[i][kind]);
         select.addEventListener("change",()=>{
-          plans[i]={...plans[i],[kind]:select.value};changed=true;
+          plans[i]={...plans[i],[kind]:select.value};changed=true;lastBulk=null;
+          $("humanUndo").disabled=true;
           summarize();
           if($("humanStage").value!=="all")render();
         });
@@ -280,15 +311,17 @@ function createHumanBoard(api) {
     table.append(body);summarize();
   }
   function initialize() {
-    plans=getRows().map(fresh);page=0;changed=false;
+    plans=getRows().map(fresh);page=0;changed=false;lastBulk=null;
+    $("humanUndo").disabled=true;
     $("humanSearch").value="";$("humanStage").value="all";
     render();
   }
   function clearAll() {
-    plans=[];page=0;changed=false;
+    plans=[];page=0;changed=false;lastBulk=null;
+    $("humanUndo").disabled=true;
     clear($("humanTable"));clear($("humanSummary"));
     $("humanPages").textContent="No HUMAN work loaded.";
-    for(const id of ["humanSave","humanResumeButton","humanBrief","humanPrev","humanNext"])$(id).disabled=true;
+    for(const id of ["humanSave","humanResumeButton","humanBrief","humanHandoff","humanPrev","humanNext"])$(id).disabled=true;
     $("humanResume").value="";
   }
   function privatePlan() {
@@ -349,15 +382,79 @@ function createHumanBoard(api) {
       "No original sources were modified. No scanner, grant, dispatch or live action.");
     return lines.join("\n")+"\n";
   }
+  // Read-only PRIVATE HTML, deliberately containing original source-declared check labels.
+  // Source bytes, targets, evidence IDs/summaries and original run/tenant IDs are NEVER embedded.
+  function escaped(value) {
+    return String(value).replace(/[&<>"']/g, ch=>({
+      "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
+    }[ch]));
+  }
+  function privateHumanHandoff() {
+    const selected=matching().filter(({i})=>!isDefault(plans[i]));
+    fail(selected.length>0&&selected.length<=512,
+      "Select 1–512 HUMAN-planned groups with current search/stage filter");
+    const serializedRows=selected.map(({row,i})=>{
+      const p=plans[i];
+      return "<tr><td>"+(i+1)+"</td><td>"+escaped(row.capability)+"</td><td>"+
+        escaped(row.check)+"</td><td>"+escaped(p.stage)+"</td><td>"+
+        escaped(p.route)+"</td><td>"+escaped(p.action)+"</td></tr>";
+    }).join("\n");
+    return `<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'none'; style-src 'none'; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<title>LightUp PRIVATE HUMAN source-declaration handoff</title></head><body>
+<h1>PRIVATE HUMAN source-declaration follow-up</h1>
+<p><strong>REVIEW ONLY / DRAFT HOLD — NO SCAN, AUTHORIZATION, CLIENT CONSENT OR VERIFIED FINDINGS</strong></p>
+<p>Original-source capability/check labels below are PRIVATE unverified declarations. Do not distribute without separate HUMAN approval. Source labels may reveal confidential details. This standalone scriptless handoff has no externally loaded resources and is NOT a source-authenticated or byte-bound return. It does not include targets, original source bytes, evidence, provider data or scan credentials.</p>
+<p>Selected HUMAN routing rows: ${selected.length}. Local row ordinals refer only to the operator's current selected originals, not verified case identities.</p>
+<table border="1" cellpadding="8" cellspacing="0">
+<thead><tr><th>Local ordinal</th><th>Original capability label</th><th>Original check label</th><th>HUMAN stage</th><th>Proposed group</th><th>Next HUMAN question</th></tr></thead>
+<tbody>${serializedRows}</tbody></table>
+<p>Signed identity, authorization, consent, independent ground truth, remediation and subsequent scan results have NOT been established. Missing declarations never imply safe or fixed.</p>
+</body></html>\n`;
+  }
   function wire() {
     $("humanSearch").addEventListener("input",()=>{page=0;render();});
     $("humanStage").addEventListener("change",()=>{page=0;render();});
     $("humanPrev").addEventListener("click",()=>{if(page>0){page--;render();}});
     $("humanNext").addEventListener("click",()=>{page++;render();});
+    $("humanBulk").addEventListener("click",()=>{
+      if(!plans.length)return;
+      const rows=matching();
+      if(!rows.length){message("No HUMAN rows match the current local search and stage filter.",true);return;}
+      if(rows.length>512){
+        message("Bulk HUMAN change HOLD: narrow the selection to at most 512 literal groups; nothing changed.",true);return;
+      }
+      const modifications={stage:$("humanBulkStage").value,
+        route:$("humanBulkRoute").value,action:$("humanBulkAction").value};
+      if(Object.values(modifications).every(v=>v==="keep")){
+        message("Choose at least one HUMAN planning field for the bulk edit.",true);return;
+      }
+      const proposal=rows.filter(({i})=>Object.entries(modifications).some(([kind,value])=>
+        value!=="keep"&&plans[i][kind]!==value));
+      if(!proposal.length){message("No matching HUMAN planning values need changing.");return;}
+      if(!confirm("Change "+proposal.length+" matching local HUMAN planning rows? This changes no original finding, scanner state, grant or remediation. You may undo this one bulk edit."))return;
+      lastBulk=proposal.map(({i})=>({i,before:{...plans[i]}}));
+      proposal.forEach(({i})=>{
+        const current={...plans[i]};
+        for(const kind of KINDS)if(modifications[kind]!=="keep")current[kind]=modifications[kind];
+        plans[i]=current;
+      });
+      changed=true;$("humanUndo").disabled=false;page=0;render();
+      message("Changed "+proposal.length+" HUMAN planning rows only; last bulk edit is undoable.");
+    });
+    $("humanUndo").addEventListener("click",()=>{
+      if(!lastBulk)return;
+      const snapshot=lastBulk;lastBulk=null;
+      snapshot.forEach(({i,before})=>{plans[i]={...before};});
+      changed=true;$("humanUndo").disabled=true;render();
+      message("Restored "+snapshot.length+" HUMAN planning rows from last bulk edit; original sources unchanged.");
+    });
     $("humanReset").addEventListener("click",()=>{
       if(!plans.length)return;
       if(!confirm("Reset ALL local HUMAN planning choices? No original source file changes."))return;
-      plans=getRows().map(fresh);changed=true;page=0;render();message("Local HUMAN routing reset; source declarations unchanged.");
+      plans=getRows().map(fresh);changed=true;lastBulk=null;
+      $("humanUndo").disabled=true;page=0;render();message("Local HUMAN routing reset; source declarations unchanged.");
     });
     $("humanSave").addEventListener("click",()=>{
       if(!plans.length||!safeDigests())return;
@@ -379,11 +476,24 @@ function createHumanBoard(api) {
         const raw=new TextDecoder("utf-8",{fatal:true}).decode(await file.arrayBuffer());
         const candidate=admitPrivatePlan(parseStrict(raw));
         if(!confirm("Replace ALL local HUMAN notes with this PRIVATE exact-byte-bound plan?"))return;
-        plans=candidate;changed=true;page=0;render();
+        plans=candidate;changed=true;lastBulk=null;
+        $("humanUndo").disabled=true;page=0;render();
         message("Source-byte-bound PRIVATE HUMAN plan restored after whole-document admission. No findings or authority changed.");
       } catch(error) {
         message("PRIVATE HUMAN plan HOLD: "+error.message+"; current notes unchanged.",true);
       } finally {$("humanResume").value="";}
+    });
+    $("humanHandoff").addEventListener("click",()=>{
+      if(!plans.length)return;
+      try {
+        const prepared=privateHumanHandoff();
+        if(new Blob([prepared]).size>MAX_PRIVATE_BYTES){
+          message("PRIVATE HUMAN brief exceeds the bounded local handoff size.",true);return;
+        }
+        if(!confirm("Download PRIVATE read-only HUMAN handoff containing ORIGINAL check/capability LABELS? Explicit separate protected distribution is required."))return;
+        download("lightup-PRIVATE-human-followup.html",prepared,"text/html");
+        message("Scriptless PRIVATE HUMAN brief downloaded. It is NOT a source-authenticated authorization or evidence record.");
+      } catch(error){message("PRIVATE HANDOFF HOLD: "+error.message,true);}
     });
     $("humanBrief").addEventListener("click",()=>{
       if(!plans.length||!confirm("Download counts-only HUMAN follow-up brief? Small numeric groups can be sensitive."))return;
