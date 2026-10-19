@@ -276,6 +276,24 @@ PYTHONPATH=src python3 remediation-evidence-materials/team_bundle.py open-curren
 
 The team bundle authenticates its encryption and exact original **source and file index continuity**, not external reporter identity or actual provenance: HUMAN alias, timestamp and conclusions remain unverified reviewer claims. Once original finding source or attachment inventory changes, `open-current` fails closed until a legitimately source-matched original workspace is available. No client permission, scope grant, vulnerability proof, verified repair, authorized retest, scan or original native HUMAN Apply is conferred.
 
+## 11. Direct original HUMAN Request Desk drafting from encrypted team handoff
+
+The portable encrypted team bundle can now continue into the **unchanged original LightUp HUMAN Request Desk** without re-importing the historical encrypted evidence files, original transfers or individual recipient replies. `team_bundle_followup.py` requires the recipient's **own fresh current account/client/engagement READ**, complete current original encrypted HUMAN workspace and source/attachment-index admission, then decrypts the matching encrypted multi-recipient HUMAN bundle and uses the same original Request Desk native `followup_question` proposal rules.
+
+```bash
+PYTHONPATH=src python3 remediation-evidence-materials/team_bundle_followup.py preview \
+  --db /private/lightup/existing.sqlite \
+  --email recipient@example.invalid \
+  --client-id CURRENT_CLIENT --engagement-id CURRENT_ENGAGEMENT \
+  --human /private/lightup/current-original-human.ltv \
+  --input /private/lightup/received-encrypted-human-team.ltv \
+  --ack-private-team-followup
+```
+
+For a deliberately separate HUMAN staging action use the same source flags with `team_bundle_followup.py stage`, add `--output /private/lightup/NEW-native-team-human-drafts.ltv`, type **`STAGE SEALED TEAM FOLLOWUP`** in the private terminal and supply a new passphrase **different from the original encrypted source and received team bundle**. Only new bounded `human_stage=draft` follow-up questions are appended in an **exclusive 0600 original-native encrypted workroom**, retaining all original Casework, Evidence Review, attachment fingerprints and existing HUMAN Requests **unchanged**. Conflicting receipt statuses and explicit follow-up needs create at most one new HUMAN draft per original finding; already-open original requests are preserved, never duplicated, and oversized conflicting notes cause complete HOLD rather than truncation or automatic resolution.
+
+This does **not** sign off a claim, attest a reviewer identity, open a network connection, grant client approval, execute a scan, run an authorized retest, verify remediation or call the ORIGINAL native Apply. Reopening and any further HUMAN preview/application remain bounded by the original trusted app and its separate operator confirmation.
+
 ## Operational posture
 
 The output is **human-supplied local file bytes matched against source-reported HUMANS**, **not** signed chain of custody, verified scanner evidence, validated security impact, remediation success, or consent. Treat any original severity or retest text as unverified source labels. Existing mandatory original exact-head hosted + permanently registered named VPS CI, source-owner review, independent privacy/security/crypto review, original #177/#182/#829, current independent client/operator consent with action-time revocation for future active work and explicit HUMAN GO remain necessary. This independent feature must stay **DRAFT/HOLD**, without main merge or production deployment, until actual release gates are satisfied.
