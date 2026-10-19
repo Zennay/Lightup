@@ -179,3 +179,53 @@ It does not assert native Apply happened, infer reviewer signatures, accept
 missing/rebound staged request IDs, release an actual legal hold or confirm
 client permission. After a successful recovery, use `review` and later
 `resolve` for independent current HUMAN status inspection.
+
+## Multi-source HUMAN continuation (one trusted workstation)
+
+Each new original-native `stage` also persists a 0600 local engagement index.
+Within one owner-private 0700 journal folder, a new original source/receipt
+revision now sees previously registered `pending` and `staged` HUMAN drafts
+for the same original client/engagement. New staging will HOLD instead of
+silently forgetting them. This is voluntary LOCAL coordination, never a
+global/distributed lock or authenticated authorization. Old journals from
+BEFORE this addition are not indexed retroactively: review those separately.
+Missing indexed journals fail closed. To avoid an unrecoverable crash gap, an
+empty original-source journal is written and fsynced before first registration;
+the encrypted draft is never written before its later durable pending intent.
+The offline private chronology includes source revision / unresolved counts.
+
+### Original-native HUMAN closure from an earlier source
+
+If original source material has changed after a separate HUMAN handoff,
+normal old-version `resolve` may not work. New `carry-closed` (console
+option **10**) is a separate HUMAN bookkeeping path, not a grant:
+
+```sh
+python3 remediation-durable-stage/journal.py carry-closed \
+  --db /private/lightup.db --email operator@example.invalid \
+  --client-id ORIGINAL_CLIENT --engagement-id ORIGINAL_ENGAGEMENT \
+  --human /private/current-original-human.ltv \
+  --directory /private/current-extracted-material \
+  --plan /private/current-retention.ltv \
+  --journal-dir /private/my-human-journal --ack-private-material
+```
+
+It first reauthenticates the CURRENT original account/client/engagement, actual
+local original evidence bytes, HUMAN workroom and encrypted plan. The human
+selects an old registered **staged** version by neutral ordinal and supplies
+its old original-native encrypted draft password. The old embedded original
+source and all native request records are validated without claiming current
+authority for that old source. Exact recorded original-native request IDs,
+finding IDs and fingerprints must correspond to `closed_human` markers in
+the separately supplied CURRENT original HUMAN workroom; encrypted historical
+file bytes must match the old journal. An explicit HUMAN confirmation changes
+only the earlier 0600 local journal to `reviewed`. No original database, grant,
+workspace, evidence material or legal state is modified. No native Apply,
+signed identity, actual client consent or remediation completion is inferred.
+
+An old `pending` attempt must first be recovered with its ORIGINAL compatible
+source, not silently carried. If that source is no longer accessible, retain
+HOLD for independent original owner review. Original hosted/permanent VPS CI,
+independent owner/security/privacy/browser/crypto review, #177/#182/#829,
+action-time separately authenticated client/operator consent and HUMAN GO
+remain mandatory before any release, merge or deploy.
