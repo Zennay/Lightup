@@ -131,3 +131,28 @@ Safe operator flow (substitute independently obtained trusted 0600 PRIVATE paths
 The read-only preview exposes **anonymous counts only**, including how many original HUMAN questions would be preserved, how many new local questions start fresh and aggregate carried HUMAN statuses. The carry requires a real interactive terminal and explicit hidden confirmation; then all original PRIVATE bytes and old session bytes are checked again before publishing a **new exclusive 0600 owner-private** inbox. Continue through `desk.py inbox` with **the new exact PRIVATE packet and new session**. The old inbox is still available for separate human reconciliation.
 
 This is intentionally stricter than an automatic merge, because neither local fingerprint nor Human status proves original evidence provenance or client consent. Same-source metadata claims and owner-private local files are not signed/authenticated source-owner proof, and `answered_human` is not a validated fix, legal closeout, scan grant or native Apply. No cross-device locking, scanner, external target or HTTP call is performed.
+
+
+## Reversible PRIVATE HUMAN history and pre-change checkpoints
+
+The integrated [history.py](history.py) workflow adds a real recovery path for HUMAN-only status and private note mistakes without touching original source/evidence, scanner/grant, native LightUp HUMAN Apply or security approval. Checkpoints contain a **complete local HUMAN session** encoded inside an owner-private **0600** envelope, bound to the exact original current/previous packet byte hashes and canonical proposed question identities. They are **not encrypted or signed**: storing/sharing the files requires the same strong local privacy and source-owner policy as the HUMAN inbox itself. The claimed local save timestamp is not independently authenticated history.
+
+1. Save a new, immutable HUMAN checkpoint before private editing:
+
+       python3 remediation-evidence-reuse/desk.py history capture --current "$HOME/lightup-private-review/current.json" --session "$HOME/lightup-private-review/reuse-inbox.json" --checkpoint "$HOME/lightup-private-review/PRIVATE-before-review.json"
+
+2. Inspect its difference from the current HUMAN inbox (counts-only, no finding IDs or notes in console):
+
+       python3 remediation-evidence-reuse/desk.py history inspect --current "$HOME/lightup-private-review/current.json" --session "$HOME/lightup-private-review/reuse-inbox.json" --checkpoint "$HOME/lightup-private-review/PRIVATE-before-review.json"
+
+3. Create a NEW **scriptless, CSP-protected 0600 PRIVATE HTML** showing per-finding stage and PRIVATE-note-changed flags, never note text:
+
+       python3 remediation-evidence-reuse/desk.py history report --current "$HOME/lightup-private-review/current.json" --session "$HOME/lightup-private-review/reuse-inbox.json" --checkpoint "$HOME/lightup-private-review/PRIVATE-before-review.json" --output "$HOME/lightup-private-review/PRIVATE-restore-preview.html"
+
+4. Restore the prior local HUMAN status/notes only after a real private terminal acknowledgment. You **must** choose an additional unused owner-private backup destination: the current local state is preserved before atomic replacement and can itself be restored if desired.
+
+       python3 remediation-evidence-reuse/desk.py history restore --current "$HOME/lightup-private-review/current.json" --session "$HOME/lightup-private-review/reuse-inbox.json" --checkpoint "$HOME/lightup-private-review/PRIVATE-before-review.json" --backup-to "$HOME/lightup-private-review/PRIVATE-before-restore.json"
+
+All commands require exactly the same original source packet(s) that created the HUMAN session. If the inbox was created with `--previous`, repeat that same `--previous` on every command. The checkpoint is strictly schema-admitted (no duplicate JSON properties, no elevated authority flags, exact original source/proposal digests), and restoration never proceeds when the original session, checkpoint or source changed during the interactive confirmation.
+
+**Direct integration without extra release gates:** ordinary `desk.py inbox mark` and `desk.py bulk apply` now accept an optional `--backup-to "$HOME/lightup-private-review/PRIVATE-unique-before-edit.json"`. This publishes the old complete HUMAN state in a new exclusive private checkpoint before the actual HUMAN edit is applied; there is no approval claim and no mandatory new gate. Keep separate private names per operation and dispose of old files according to the real applicable privacy/retention policy. Files may contain PRIVATE notes, findings and file fingerprints; never put them in hosted CI artifacts, public Notion pages, issue attachments or browser cloud sync.
