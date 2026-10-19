@@ -13,6 +13,7 @@ from html import escape
 import hashlib
 import json
 import sys
+from datetime import datetime, timezone
 
 from .private_export_encrypted import _passphrase, _read_encrypted, _seal
 from .private_export_encrypted_notes import _read_plan, MAGIC_PLAN
@@ -41,6 +42,13 @@ def _review_revision(old_manifest: dict, old_rows: list[dict[str, str]],
         "declared_client_id", "declared_engagement_id"
     )):
         raise ValueError("declared client/engagement mismatch; no revision carry")
+    # Prevent accidentally applying later planning to a source that itself
+    # declares it was exported earlier. Timestamp is a self-declared sanity
+    # precondition, NOT evidence of chronology or authentic source ownership.
+    before_at = datetime.fromisoformat(old_manifest["generated_utc"])
+    after_at = datetime.fromisoformat(new_manifest["generated_utc"])
+    if after_at.astimezone(timezone.utc) <= before_at.astimezone(timezone.utc):
+        raise ValueError("later export does not declare a strictly newer timestamp")
     previous = {row["finding_id"]: row for row in old_rows}
     current = {row["finding_id"]: row for row in new_rows}
     if set(old_annotations) != set(previous):
