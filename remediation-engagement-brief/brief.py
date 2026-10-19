@@ -17,6 +17,7 @@ from desk import build_desk
 from history import review as history_review, markdown as history_markdown, anonymous_csv
 from history_desk import build_history_desk
 from sealed_browser import seal as seal_browser, open_current as open_sealed_browser
+from ticketdesk import build_ticketdesk
 from secure_export import (AccountLockedError, COLUMNS, FALSE, SEVERITIES, STATES,
                            _authorized_summary, _literal, _strict_summary,
                            _unique_pairs, _vault)
@@ -244,7 +245,8 @@ def _preflight_file_paths(args):
     inputs.extend(getattr(args, "inputs", []) or [])
     outputs = [getattr(args, name, None) for name in (
         "output", "sealed_markdown", "private_html", "sealed_html",
-        "capture_current", "aggregate_csv"
+        "capture_current", "aggregate_csv", "original_ticketdesk_html",
+        "original_ticketdesk_sealed"
     )]
     source_paths = [path.expanduser().absolute() for path in inputs]
     target_paths = [path.expanduser().absolute() for path in outputs if path is not None]
@@ -256,6 +258,10 @@ def _preflight_file_paths(args):
         raise ValueError("Encrypted browser handoff requires explicit acknowledgement")
     if getattr(args, "private_html", None) is not None and not args.ack_private_html:
         raise ValueError("Confidential plaintext browser export requires explicit acknowledgement")
+    if (getattr(args, "original_ticketdesk_html", None) is not None or
+        getattr(args, "original_ticketdesk_sealed", None) is not None
+    ) and not args.ack_original_ticketdesk:
+        raise ValueError("Original Ticket Desk source and private device acknowledgment required")
     return None
 
 def main(argv=None):
@@ -305,6 +311,12 @@ def main(argv=None):
         action.add_argument("--ack-sealed-html", action="store_true")
         action.add_argument("--ack-private-html", action="store_true",
                             help="Explicitly acknowledge confidential unencrypted HTML on a private device")
+    open_now.add_argument("--original-ticketdesk-html", type=Path,
+                          help="NEW 0600 original SHA-pinned Ticket Desk with exact authenticated original source")
+    open_now.add_argument("--original-ticketdesk-sealed", type=Path,
+                          help="NEW AES-256-GCM .ltv for original Ticket Desk reopening after fresh auth")
+    open_now.add_argument("--ack-original-ticketdesk", action="store_true",
+                          help="Acknowledge original HUMAN Ticket Desk and confidential source membership")
     review.add_argument("--capture-current", type=Path, help="Fresh authorized source into NEW encrypted revision .ltv")
     args = ap.parse_args(argv)
     try:
@@ -412,8 +424,20 @@ def main(argv=None):
         if args.command == "open-current":
             if digest != packet["source_sha256"] or count != packet["source_count"]:
                 raise ValueError("Source drift: use review-current instead")
-            if args.output is None and args.sealed_markdown is None and args.private_html is None and args.sealed_html is None:
+            if (args.output is None and args.sealed_markdown is None and
+                args.private_html is None and args.sealed_html is None and
+                args.original_ticketdesk_html is None and args.original_ticketdesk_sealed is None):
                 raise ValueError("No PRIVATE handoff output selected")
+            if args.original_ticketdesk_sealed is not None:
+                seal_browser(current_source,args.client_id,args.engagement_id,
+                             mode="ticketdesk",history_csv=[],output=args.original_ticketdesk_sealed)
+                print("Original pinned Ticket Desk source sealed in PRIVATE vault; no HTML written")
+            if args.original_ticketdesk_html is not None:
+                if args.original_ticketdesk_html.suffix.lower() != ".html":
+                    raise ValueError("Original Ticket Desk private recipient must be a new .html")
+                original_html=build_ticketdesk(current_source).encode("utf-8","strict")
+                vault._exclusive_output(args.original_ticketdesk_html.expanduser().absolute(),original_html)
+                print("Original SHA-pinned Ticket Desk HUMAN app emitted on approved private device")
             if args.sealed_html is not None:
                 if not args.ack_sealed_html:
                     raise ValueError("PRIVATE browser handoff acknowledgement required")

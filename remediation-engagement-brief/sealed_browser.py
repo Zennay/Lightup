@@ -16,12 +16,13 @@ from pathlib import Path
 from desk import build_desk
 from history import review as history_review
 from history_desk import build_history_desk
+from ticketdesk import build_ticketdesk
 from secure_export import COLUMNS, FALSE, _literal, _strict_summary, _unique_pairs, _vault
 
 KIND = "lightup.private_source_bound_browser_handoff"
 VERSION = 1
 DISPOSITION = "PRIVATE_HUMAN_OFFLINE_SOURCE_ONLY"
-MODES = ("current", "compare", "history")
+MODES = ("current", "compare", "history", "ticketdesk")
 KEYS = frozenset((
     "kind", "schema_version", "disposition", "mode", "client_id_self_declared",
     "engagement_id_self_declared", "current_original_csv_sha256", "current_original_count",
@@ -45,7 +46,7 @@ def _digest(source: str) -> tuple[str, int]:
 def _check_mode(mode: str, history: list[str]) -> None:
     if type(mode) is not str or mode not in MODES or type(history) is not list:
         raise ValueError("Unknown original-source browser handoff type")
-    required = {"current": 0, "compare": 1}
+    required = {"current": 0, "compare": 1, "ticketdesk": 0}
     if mode in required and len(history) != required[mode]:
         raise ValueError("Original browser source membership incorrect")
     if mode == "history" and not 1 <= len(history) <= 12:
@@ -173,6 +174,10 @@ def open_current(current_csv: str, client_id: str, engagement_id: str, *,
         document = build_desk(now)
     elif packet["mode"] == "compare":
         document = build_desk(now, old_sources[0])
+    elif packet["mode"] == "ticketdesk":
+        # Invoke the unmodified, SHA-pinned ORIGINAL Ticket Desk builder;
+        # it creates no duplicate HUMAN ticket state or alternative validator.
+        document = build_ticketdesk(current_csv).encode("utf-8", "strict")
     else:
         snapshots = [(dict(historical_local_only=True), records) for records in old_sources]
         snapshots.append((dict(current_auth_read=True), now))
