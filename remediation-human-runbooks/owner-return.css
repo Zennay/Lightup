@@ -1,0 +1,21 @@
+
+:root{font-family:system-ui,Arial,sans-serif;color:#152d42;background:#f1f5f8}*{box-sizing:border-box}body{margin:0}
+header{background:#14283b;color:#fff;padding:1.8rem max(1.2rem,calc((100vw - 1070px)/2))}
+h1{font-size:1.7rem}h2{font-size:1.14rem}h1,h2,h3{margin:.1rem 0 .65rem}
+header p{color:#d6e3ed}main{margin:auto;max-width:1070px;padding:1rem;display:grid;gap:1rem}
+section{background:white;border:1px solid #c6d4df;border-radius:12px;padding:1.2rem;min-width:0}
+.warning{padding:.8rem;border-left:4px solid #a66b1d;background:#fff7e8;line-height:1.5}
+small,.muted{color:#526b7d}label{display:block;margin:.7rem 0 .25rem;font-weight:650}
+input,textarea,select,button{font:inherit}input,textarea,select{display:block;width:100%;padding:.55rem;border:1px solid #869eb1;border-radius:6px;background:white;color:#172c3d}
+input[type=file]{background:#f8fbfd}textarea{min-height:78px;resize:vertical}
+button{background:#eaf2f8;border:1px solid #577f9f;border-radius:7px;padding:.55rem .8rem;cursor:pointer;color:#173a55;font-weight:650}
+button.primary{background:#18517b;color:white}button.danger{color:#853333;border-color:#cda3a3;background:#fff4f3}
+button:disabled{opacity:.5}button:focus-visible,select:focus-visible,textarea:focus-visible,input:focus-visible{outline:3px solid #e5ae4f;outline-offset:2px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(235px,1fr));gap:1rem}
+.actions{display:flex;gap:.6rem;align-items:center;flex-wrap:wrap;margin:.7rem 0}
+.card{border:1px solid #c8d9e4;border-left:5px solid #3f7194;margin:.8rem 0;padding:1rem;border-radius:9px}
+.card h3{font-size:1.02rem;overflow-wrap:anywhere}
+pre{font:inherit;white-space:pre-wrap;overflow-wrap:anywhere;margin:.2rem 0 .7rem}
+dl{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:.4rem}dt{font-weight:650}dd{margin:0}
+.status{padding:.6rem;border-left:4px solid #1e638e;background:#ecf5fb;white-space:pre-wrap;overflow-wrap:anywhere}
+.status[data-error=true]{background:#fff1f1;border-color:#bb3636}.hidden{display:none}summary{cursor:pointer}strong{font-weight:700}

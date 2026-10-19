@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'none'; img-src 'none'; font-src 'none'; form-action 'none'; frame-src 'none'; base-uri 'none'; object-src 'none'">
+<title>LightUp · Private Evidence Artifact Ledger</title>
+<link rel="stylesheet" href="style.css"></head><body>
+<header><div class="shell">
+<p class="eyebrow">LIGHTUP / EVIDENCE–REMEDIATION / OFFLINE</p>
+<h1>Evidence Artifact Ledger</h1>
+<p>Organise private human evidence references against exact original findings. Hash files locally; their contents never leave the selected browser file operation. Nothing here authenticates the source, approves security work or verifies a fix.</p>
+<span class="pill">INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD</span>
+</div></header>
+<main class="shell">
+<section class="card"><h2>1 · Confirm context and import the original source</h2>
+<p>Obtain the original exported five-column findings CSV through separately authenticated procedures. These self-declared labels are <strong>not</strong> an authentication or client consent step.</p>
+<div class="grid">
+<label>Independently checked client reference<input id="client" maxlength="120" autocomplete="off" placeholder="Private context label" required></label>
+<label>Independently checked engagement reference<input id="engagement" maxlength="120" autocomplete="off" placeholder="Private engagement label" required></label>
+<label>Original findings CSV<input id="original" type="file" accept=".csv,text/csv"></label>
+</div><p><button id="load">Load original findings</button></p><p id="source" class="fingerprint">No original CSV loaded.</p></section>
+<section class="card"><h2>2 · Original source revisions / private human quarantine</h2>
+<p>Planning evidence must stay tied to the exact original finding source. When an independently checked replacement CSV arrives for the <strong>same</strong> client and engagement, preview the five-column original diff before moving private HUMAN fingerprints. Only byte-for-byte unchanged original findings retain their file fingerprints; the unchanged ORIGINAL Casework engine reconciles existing HUMAN plans for unchanged records. Any imported Evidence Review v2 is detached and must be freshly obtained for the revised source. Changed, absent or ambiguous original findings are NOT a verified fix.</p>
+<label>Separately obtained revised original findings CSV<input type="file" id="newSource" accept=".csv,text/csv"></label>
+<label class="check"><input type="checkbox" id="sameEngagement"> I independently confirmed the same genuine client and engagement. This checkbox does not grant authority.</label>
+<p><button id="previewMigration">Preview revised original source</button></p>
+<div id="migrationResult" hidden>
+<h3>Proposed original finding reconciliation</h3><pre id="migrationPreview" class="migration"></pre>
+<p><strong>Important:</strong> Export and protect both your complete OLD PRIVATE unified HUMAN workspace and individual ledger before applying. Quarantined records are not copied to changed or absent source findings; stale original Evidence Review v2 is detached.</p>
+<label class="check"><input type="checkbox" id="ackBackup"> I saved the OLD PRIVATE unified HUMAN workspace and ledger securely, accept quarantine of changed/absent-source HUMAN fingerprints, and will re-import original Evidence Review v2 from the correct new source.</label>
+<button id="applyMigration" disabled>Apply source revision (human-only)</button>
+</div></section>
+<section class="card"><h2>3 · Fingerprint evidence without uploading it</h2>
+<div class="grid">
+<label>Original finding<select id="finding" aria-label="Original finding ID"></select></label>
+<label>Local evidence files (≤16 MiB each, ≤120 records)<input id="addFiles" type="file" multiple disabled></label>
+</div>
+<p><button id="add">Hash &amp; link local files</button></p><p>Stored in memory: original finding ID, local filename, size, SHA-256, MIME label, local timestamp and human notes. Never stored: the contents of attached files. SHA-256 equality only compares bytes; it does not prove chronology or authenticity.</p></section>
+<section class="card"><h2>4 · Human review desk</h2>
+<p id="summary" aria-live="polite"></p>
+<label class="search">Filter by original finding, title, filename or human notes<input id="filter" placeholder="Local filter; never transmitted" autocomplete="off"></label>
+<div class="bulk"><h3>Exact-fingerprint HUMAN bulk review</h3>
+<p>Selections are the original finding ID and local file SHA-256, not screen row positions. Preview changes to every selected fingerprint before applying. Human stages never validate a fix.</p>
+<div class="bulkbar"><span id="selectedCount">0 selected</span>
+<button id="selectVisible">Select all matching records</button>
+<button class="secondary" id="clearSelection">Clear selection</button></div>
+<div class="grid">
+<label>Change selected HUMAN stages to<select id="bulkStage"><option value="keep">Keep current stage</option><option value="unreviewed">Unreviewed</option><option value="human_review">Human review</option><option value="follow_up">Follow up</option><option value="archived">Archived human record</option></select></label>
+<label>Human reviewer alias<input id="bulkReviewer" maxlength="120" autocomplete="off" placeholder="Optional team alias"></label></div>
+<label class="check"><input type="checkbox" id="bulkReviewerEnabled"> Explicitly change reviewer aliases (including clearing an alias).</label>
+<button id="previewBulk">Preview exact bulk changes</button>
+<pre id="bulkPreview" class="migration" hidden></pre>
+<div class="bulkbar"><button id="applyBulk" disabled>Apply HUMAN-only changes</button>
+<button id="undoBulk" class="secondary" disabled>Undo latest HUMAN batch (max 20)</button></div>
+</div>
+<section id="tableSection" hidden><p id="shown"></p>
+<div class="scroll"><table><thead><tr><th>Select</th><th>Original finding</th><th>Local file</th><th>SHA-256</th><th>Human stage</th><th>Reviewer alias</th><th>Human note</th><th>Local controls</th></tr></thead>
+<tbody id="rows"></tbody></table></div></section>
+<input id="verify" type="file" hidden disabled aria-label="Recheck local evidence file">
+<p class="subtle">Human review stages are private notes, not verified security remediation, successful retest, an acceptance sign-off or permission to scan.</p>
+</section>
+<section class="card"><h2>5 · Existing ORIGINAL Casework integration (read-only)</h2>
+<p>Attach the existing native LightUp Casework v1 PRIVATE draft from the original Casework operator. The original five-column finding content and source SHA-256 must match exactly. Local owner, human plan status and tentative due date appear alongside each original finding; this page never writes to the Casework source or turns any status into verified remediation.</p>
+<div class="grid">
+<label>Native PRIVATE Casework v1 JSON<input id="caseworkImport" type="file" accept=".json,application/json" disabled></label>
+<div><p id="caseworkState">No native Casework imported.</p><button id="caseworkImportButton">Attach original Casework read-only</button><button class="secondary" id="detachCasework" disabled>Detach original Casework</button></div>
+</div></section>
+<section class="card"><h2>6 · Original Evidence Review v2 integration (read-only)</h2>
+<p>Import the complete original independently shared Evidence Review v2 PRIVATE packet. It must match exactly the same original finding source SHA and every original finding ID. Human evidence stage and a human retest-request reference indicator appear in the unified coverage table. A reference is not an approved retest request or proof that remediation succeeded.</p>
+<div class="grid">
+<label>Native PRIVATE Evidence Review v2 JSON<input id="evidenceImport" type="file" accept=".json,application/json" disabled></label>
+<div><p id="evidenceState">No native Evidence Review imported.</p><button id="evidenceImportButton">Attach Evidence Review v2 read-only</button><button class="secondary" id="detachEvidence" disabled>Detach Evidence Review</button></div>
+</div></section>
+<section class="card"><h2>7 · Original-finding evidence coverage (PRIVATE)</h2>
+<p>Review which exact original findings have local fingerprints in this desk, prioritising critical/high rows without any local registration. Absence in this browser is <strong>not</strong> proof that evidence does not exist elsewhere. Original source retest labels are only source claims.</p>
+<p id="coverageSummary" role="status"></p>
+<div class="grid">
+<label>Local coverage view<select id="coverageFilter">
+<option value="critical_unlinked">Critical/high without LOCAL fingerprints</option>
+<option value="unlinked">All without LOCAL fingerprints</option>
+<option value="follow_up">Human follow-up requested</option>
+<option value="all">Every original finding</option>
+</select></label>
+<div><p>Export private per-original-ID coverage counts only after separately verifying your recipient. No evidence bytes, filenames, titles or human notes are exported.</p><button id="coverageExport" disabled>Export PRIVATE coverage CSV</button></div>
+</div>
+<p id="coverageShown"></p>
+<div class="scroll"><table><thead><tr>
+<th>Original ID</th><th>Severity</th><th>Source retest claim</th>
+<th>Local files</th><th>Human review</th><th>Follow-up</th><th>Original Casework v1 human status / owner / date</th><th>Original Evidence Review v2 human stage / retest reference</th><th>Human action</th>
+</tr></thead><tbody id="coverageRows"></tbody></table></div></section>
+<section class="card"><h2>8 · Unified original-source HUMAN follow-up queue</h2>
+<p>One human-only action desk joins the <strong>original source finding</strong>, read-only native Casework v1, read-only native Evidence Review v2 and local artifact fingerprints. Local missing fields are prompts for a human reviewer, never proven missing external evidence, a verified vulnerability or permission to scan.</p>
+<p id="actionSummary" role="status"></p>
+<div class="grid">
+<label>LOCAL human attention filter<select id="actionFilter">
+<option value="critical_high">Critical/high original source claims with LOCAL human gaps</option>
+<option value="missing_file">No LOCAL artifact fingerprint</option>
+<option value="blocked">Tentative Casework blocker or overdue human date</option>
+<option value="human_followup">Human follow-up notes or original Evidence Review requests</option>
+<option value="all">All original findings</option>
+</select></label>
+<div><p>Export current HUMAN selection only as a separately confirmed PRIVATE CSV. Source SHA, original IDs, pending human requests and human planning fields are confidential.</p><button id="actionExport" disabled>Export PRIVATE HUMAN action queue</button></div>
+</div>
+<p id="actionShown"></p>
+<div class="scroll"><table><thead><tr>
+<th>Original ID</th><th>Source severity</th><th>Human owner</th><th>Casework HUMAN stage/date</th><th>Evidence Review HUMAN stage</th><th>Local file fingerprints</th><th>Outstanding PRIVATE HUMAN requests</th><th>Human follow-up reasons</th><th>Local filing</th>
+</tr></thead><tbody id="actionRows"></tbody></table></div></section>
+<section class="card"><h2>9 · Original evidence provenance and cross-reference review (PRIVATE)</h2>
+<p>Review exact LOCAL SHA-256 reuse across original findings, differing bytes under the same original finding+filename label, inconsistent file size claims and stale HUMAN request fingerprint references. These are HUMAN provenance follow-up signals only: legitimate evidence reuse is normal in some remediations, and local absence is not proof of missing client evidence, tampering or a verified fix.</p>
+<p id="provenanceSummary" role="status"></p>
+<div class="grid">
+<label>PRIVATE LOCAL provenance signals<select id="provenanceFilter">
+<option value="all">All LOCAL original-source signals</option>
+<option value="cross_finding_reuse">Same bytes linked to multiple original findings</option>
+<option value="same_name_different_bytes">Same filename label with different bytes</option>
+<option value="inconsistent_local_size">Same SHA-256 with conflicting local size metadata</option>
+<option value="human_request_unlinked">HUMAN request referencing an unregistered LOCAL hash</option>
+</select></label>
+<div><p>Export confidential original finding IDs, LOCAL filenames and byte digests only after verifying the receiver. No original file bytes are included.</p>
+<button id="provenanceExport" disabled>Export PRIVATE local provenance review CSV</button></div>
+</div><p id="provenanceShown"></p>
+<div class="scroll"><table><thead><tr><th>Human review signal</th><th>Original IDs</th><th>LOCAL file labels</th><th>Byte hash references</th><th>Interpretation (not verdict)</th><th>Local human action</th></tr></thead>
+<tbody id="provenanceRows"></tbody></table></div></section>
+<section class="card"><h2>10 · Unified PRIVATE HUMAN workspace handoff</h2>
+<p>Transfer the current LOCAL file fingerprints together with read-only imported Casework v1, Evidence Review v2 and PRIVATE HUMAN evidence requests/responses as one source-bound PRIVATE file. The recipient must load the same independently obtained original five-column findings CSV and type the same independently verified client/engagement labels before restoring. The bundled records contain no evidence file bytes and cannot establish authorization.</p>
+<div class="grid">
+<div><h3>Export current combined HUMAN workspace</h3><p>Private original source SHA, human status/date/reviewer, original finding IDs, local filenames and fingerprints. Independently approve the storage and recipient.</p><button id="unifiedExport" disabled>Download PRIVATE unified JSON</button></div>
+<div><h3>Restore original-bound HUMAN workspace</h3><label>PRIVATE combined JSON<input type="file" id="unifiedImport" accept=".json,application/json" disabled></label>
+<button id="unifiedPreviewButton">Preview complete PRIVATE import</button></div>
+</div>
+<pre id="unifiedPreview" class="migration" hidden></pre>
+<button id="applyUnified" disabled>Confirm atomic PRIVATE human restore</button>
+<p class="subtle">Import never writes to original Casework/Evidence modules. No target, scanner, credentials, grant, verified retest, session or actual source authentication is included.</p></section>
+<section class="card"><h2>11 · PRIVATE human evidence requests and owner responses</h2>
+<p>Turn original source-bound LOCAL evidence gaps into HUMAN follow-up requests. Draft an original finding-specific request, choose the evidence required and tentative human owner/date, and record an unverified HUMAN response. This desk is offline: it does not send requests, start assessments, confirm fixes, authorize testing or modify original Casework/Evidence Review source records. Keep recipient verification separate.</p>
+<p id="requestBound" class="fingerprint"></p>
+<div class="grid">
+<label>Original finding<select id="requestFinding" aria-label="Original finding to request evidence for"></select></label>
+<label>Evidence type requested<select id="requestKind">
+<option value="missing_evidence">Missing local evidence follow-up</option>
+<option value="patch_change">Patch or change record</option>
+<option value="deployment_record">Deployment record</option>
+<option value="rollback_plan">Rollback or recovery plan</option>
+<option value="retest_request">Human retest REQUEST (not authorization)</option>
+<option value="followup_question">Clarifying human question</option>
+<option value="other">Other human documentation</option>
+</select></label>
+<label>Human assignee alias<input id="requestAssignee" maxlength="120" autocomplete="off" placeholder="Unverified human owner"></label>
+<label>Optional tentative HUMAN date<input id="requestDue" type="date"></label>
+<label>Optional LOCAL file fingerprint to discuss<select id="requestLinkFile"><option value="">No current local file link</option></select></label>
+</div>
+<label>Human-only request text (do not paste credentials, raw sensitive evidence or live exploit instructions)
+<textarea id="requestInstructions" maxlength="1400" rows="3" placeholder="Describe the review document or evidence the human reviewer should provide; never infer permission."></textarea></label>
+<p><button id="requestCreate">Create PRIVATE human request draft</button></p>
+<div class="bulk"><h3>Batch original-source follow-up composer</h3>
+<p>Generate up to 40 HUMAN request drafts for original findings with the same documented local follow-up gap. Only original Casework HUMAN owner aliases are suggested. Preview exact IDs and confirm: nothing is sent.</p>
+<div class="grid">
+<label>Local follow-up gap<select id="requestBatchMode">
+<option value="critical_unlinked">Source critical/high with no LOCAL artifact fingerprint</option>
+<option value="all_unlinked">Any original finding with no LOCAL fingerprint</option>
+<option value="review_followup">Original HUMAN Evidence Review missing / needs changes</option>
+<option value="casework_blocked">Original HUMAN Casework blocked</option>
+</select></label>
+<label>Requested HUMAN evidence type<select id="requestBatchKind">
+<option value="missing_evidence">Missing local evidence</option>
+<option value="patch_change">Patch/change record</option>
+<option value="deployment_record">Deployment record</option>
+<option value="rollback_plan">Rollback plan</option>
+<option value="retest_request">Human retest request (not a permit)</option>
+<option value="followup_question">Human clarification</option>
+<option value="other">Other</option>
+</select></label>
+<label>Optional tentative human date<input type="date" id="requestBatchDue"></label>
+</div>
+<label>Human request instructions for selected ORIGINAL finding IDs<textarea id="requestBatchInstructions" maxlength="1400" rows="2" placeholder="Describe evidence needed, not executable assessment instructions."></textarea></label>
+<button id="requestBatchPreviewButton">Preview exact original HUMAN request batch</button>
+<pre id="requestBatchPreview" class="migration" hidden></pre>
+<button id="requestBatchApply" disabled>Create confirmed PRIVATE human requests</button>
+</div>
+<div class="grid">
+<label>PRIVATE requests to display<select id="requestFilter"><option value="open">Active HUMAN requests</option>
+<option value="awaiting">Requested from HUMAN owner (not automatically sent)</option>
+<option value="needs_changes">Needs HUMAN changes</option>
+<option value="unassigned">Missing HUMAN assignee</option><option value="all">All PRIVATE drafts</option></select></label>
+<div><p id="requestCount" role="status"></p></div>
+</div>
+<div class="scroll"><table><thead><tr><th>Original finding</th><th>HUMAN request type</th><th>Unverified assignee</th><th>Tentative date</th><th>HUMAN stage</th><th>Unverified human reply</th><th>Request details</th><th>Local SHA reference</th><th>Local actions</th></tr></thead><tbody id="requestRows"></tbody></table></div>
+<div class="grid">
+<div><h3>PRIVATE source-bound operator handoff</h3><p>Export request drafts and HUMAN responses as a source/declared-client-bound JSON packet; no file contents and no claimed consent.</p>
+<button id="requestExport">Download PRIVATE HUMAN requests</button></div>
+<div><h3>Restore PRIVATE HUMAN requests</h3><label>Exact original-source HUMAN request JSON<input type="file" id="requestImport" accept=".json,application/json"></label>
+<button id="requestImportButton">Confirm original-source human request import</button></div>
+<div><h3>Change original source or forget old requests</h3><p>Changing the original source locks old PRIVATE HUMAN notes. Export them separately before explicitly starting a fresh source-bound request desk.</p>
+<button id="requestClear" class="secondary">Discard PRIVATE requests / start current source</button></div>
+</div>
+<div class="bulk"><h3>PRIVATE owner-specific human request and reply handoff</h3>
+<p>Share only the selected HUMAN assignee's open original-finding request instructions: no complete Casework, other owners' PRIVATE records, original evidence files, filenames or local file fingerprints. The separately delivered <strong>Human Evidence Reply</strong> offline app lets that HUMAN owner answer without accessing this desk. These files never authenticate the sender or authorize retest.</p>
+<div class="grid">
+<div><label>Recipient alias from local HUMAN requests<select id="requestOwner"><option value="">Choose HUMAN recipient alias</option></select></label>
+<label>Owner-specific request page (maximum 60 private requests per packet)<select id="ownerPacketPage"></select></label>
+<button id="ownerPacketExport" disabled>Download owner-only PRIVATE request JSON</button></div>
+<div><label>Privately returned owner-specific HUMAN response JSON<input id="ownerReplyImport" type="file" accept=".json,application/json" disabled></label>
+<button id="ownerReplyPreviewButton" disabled>Preview exact source-bound HUMAN responses</button></div>
+</div>
+<pre id="ownerReplyPreview" class="migration" hidden></pre>
+<button id="ownerReplyApply" disabled>Confirm source-bound PRIVATE owner reply import</button>
+<p class="subtle">The responder uses a separate local owner-reply standalone application. Verify the recipient before sending, verify the alleged sender through an independent channel before accepting, and never treat their notes as validated findings or permission to scan.</p>
+</div>
+<p id="requestMessage" class="notice" role="status" aria-live="polite">No original-source-bound HUMAN request was sent or authorized.</p>
+</section>
+<section class="card"><h2>12 · Individual local handoff</h2>
+<div class="grid">
+<div><h3>PRIVATE human draft</h3><p>Includes original source SHA, self-declared context, filenames, checksums, and human notes. Protect exported data separately.</p><button id="export" disabled>Export PRIVATE JSON</button></div>
+<div><h3>Restore PRIVATE draft</h3><p>Load only with the exact same original CSV, client and engagement. Reject incomplete, mismatched or elevated authority packets.</p>
+<input id="privateImport" type="file" accept=".json,application/json" disabled><button id="restore">Restore complete draft</button></div>
+<div><h3>Anonymous counts</h3><p>Severity × human stage only. No target URLs, filenames, source hashes, IDs, client references or notes.</p><button id="aggregate" disabled>Export counts CSV</button></div>
+<div><h3>PRIVATE scriptless HUMAN brief</h3>
+<p>Download a scriptless, offline readable human case-by-case document with source claims, Casework planning, Evidence Review stages and local evidence fingerprints. Original file bytes are never included.</p>
+<button id="scriptlessExport" disabled>Download PRIVATE human HTML brief</button></div>
+</div>
+<p><button class="secondary" id="forget">Forget in-memory workspace</button></p></section>
+<p id="notice" role="status" aria-live="polite" class="notice">Private local application. No network requests, browser persistence, scanner, active target or granting of authority.</p>
+</main><footer><div class="shell">LightUp · untrusted original data and unverified human draft · no client consent or release granted</div></footer>
+<script src="../casework/remediation-engine.js"></script><script src="ledger.js"></script><script src="request-board.js"></script>
+</body></html>

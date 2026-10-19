@@ -1,0 +1,15 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'none'; img-src 'none'; font-src 'none'; form-action 'none'; frame-src 'none'; base-uri 'none'; object-src 'none'">
+<title>LightUp · PRIVATE Human Evidence Reply</title><link rel="stylesheet" href="style.css"></head>
+<body><header><div class="shell"><p class="eyebrow">LIGHTUP / PRIVATE HUMAN EVIDENCE REQUESTS / OFFLINE</p>
+<h1>Human Evidence Reply</h1><p>Respond to exactly the original finding-specific private request packet received through a separately verified HUMAN channel. Nothing in this app verifies sender identity, grants security consent, transmits your response or performs a scan.</p><span class="pill">UNVERIFIED HUMAN-ONLY · INCUBATE · DRAFT/HOLD</span></div></header>
+<main class="shell">
+<section class="card"><h2>1 · Open the owner-specific PRIVATE packet</h2><p>Ask the requesting HUMAN operator to verify the source and sender out of band. This packet contains only the selected HUMAN evidence requests for one assignee and not the original client evidence files, native Casework or other owners' notes.</p><label>PRIVATE owner-specific request packet JSON<input type="file" id="replySource" accept=".json,application/json"></label>
+<p><button id="replyLoad">Read PRIVATE HUMAN requests</button></p><p id="replyIdentity" class="fingerprint">No original human request packet loaded.</p></section>
+<section class="card"><h2>2 · Human responses (no external transmission)</h2><p id="replyCount">Load an original HUMAN owner request packet.</p><div class="scroll"><table><thead><tr><th>Original finding</th><th>Request type</th><th>Tentative HUMAN date</th><th>Requested human documentation</th><th>HUMAN reply stage</th><th>HUMAN response (unverified)</th></tr></thead><tbody id="replyRows"></tbody></table></div></section>
+<section class="card"><h2>3 · Export a PRIVATE human response</h2><p>Only response stages and text can be changed; original request IDs, source SHA-256, human recipient label, finding IDs, request types and instructions are locked. Save your response to a local PRIVATE JSON file and return it over a separately verified human channel. The recipient must independently authenticate you and confirm the contents before importing.</p>
+<button id="replyDownload" disabled>Download PRIVATE UNVERIFIED response JSON</button>
+<button id="replyForget" class="secondary">Forget HUMAN reply workspace in memory</button></section>
+<p class="notice" id="replyNotice" role="status" aria-live="polite">This private HTML app has no network or authorization capabilities.</p>
+</main><footer><div class="shell">PRIVATE LOCAL HUMAN NOTES · no sender identity proof, scanning, grants, authentication, retest or verified remediation</div></footer>
+<script src="owner-reply.js"></script></body></html>
