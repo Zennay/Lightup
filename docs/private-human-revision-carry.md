@@ -139,3 +139,20 @@ The existing isolated menu now offers choice-sheet export **6**, strict choice-s
 
 Both selective routes produce the same authenticated-AES envelope and original plan schema as the separately owned `private_export_encrypted_notes` consumer. Operators can use the parent unchanged `workdesk` route for the **later** original `.lue` and newly created `.lun`, only with independent private recipient/storage approval. Outputs cannot establish genuine client identity, authentication freshness, user consent, evidence equality, effectiveness of a fix, or authority for scanning. Original release HOLD remains binding.
 
+
+### Route C: portable PRIVATE offline browser editor (new visual product)
+
+The new `private_export_human_revision_editor` consumes the **same original three encrypted files** and produces a single-file, self-contained, 0600 **UNENCRYPTED** HTML application. Its per-finding decisions begin FALSE. An operator can search original findings, filter unchanged/changed/new rows, explicitly choose owner/note and optional HUMAN stage/date independently for **each eligible unchanged five-column original source row**, clear all choices, and download the same source-bound original JSON sheet as Route A. Changed/new records stay disabled, and stage/date stays disabled until owner/note is selected. There is deliberately no bulk-approve action.
+
+```sh
+python -m lightup.private_export_human_revision_editor \
+  /private/earlier.lue /private/earlier.lun /private/later.lue \
+  --output /private/visual-human-revision.html \
+  --ack-private-handling --ack-same-real-client \
+  --ack-plaintext-original-ids
+```
+
+The local browser editor embeds **private original finding IDs/titles and self-declared client/engagement/source hashes** so it must be treated as sensitive plaintext, even if it never displays earlier private HUMAN notes/aliases or raw remediation/evidence. No remote resources, HTTP requests, storage API, cookies or external scripts. Its inline CSS and JavaScript have exact SHA-256 CSP hashes, and all potentially untrusted source text is placed into safe browser `textContent`, never `innerHTML`. Generated JSON is held in browser memory until an explicit human export with an additional acknowledgment. **The JSON download itself is UNENCRYPTED**; ensure private owner-only file permissions before `choices apply`, as browsers cannot guarantee download permissions.
+
+After visually editing and saving the choice sheet, run the unchanged **Route A `apply`** command with all three original encrypted inputs, the exported JSON, and a new `.lun` destination. All original source-bound admission, duplicate-key handling, no-follow owner-private JSON input and new encrypted output conditions still apply. The visual editor is also available as separate console option **9**. This visual UI is only an offline human coordination interface — neither the CSP hash nor an original-source checksum authenticates actual clients, verifies findings/fixes, or grants permission.
+
