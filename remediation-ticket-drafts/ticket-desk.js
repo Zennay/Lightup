@@ -276,23 +276,23 @@ ui['export-holds'].addEventListener('click',()=>{
   if(!canDownload())return;
   if(!state.holds.length)throw Error('No historical source HOLD notes.');
   const md=state.holds.map((h,i)=>
-   '# HISTORICAL HUMAN SOURCE HOLD '+(i+1)+' / '+state.holds.length+'\\n\\n'+
-   '> OLD SOURCE: '+h.reason.toUpperCase()+' — not current finding; never resolved by absence.\\n\\n'+
-   '- Old original finding ID: '+escapeMarkdown(h.finding.finding_id)+'\\n'+
-   '- Old original title: '+escapeMarkdown(h.finding.title)+'\\n'+
-   '- Old original severity: '+escapeMarkdown(h.finding.severity)+'\\n'+
-   '- Old original source retest label: '+escapeMarkdown(h.finding.retest_status)+'\\n'+
-   '- Old original proposed remediation: '+escapeMarkdown(h.finding.remediation)+'\\n'+
-   '- Old source canonical SHA-256 (unsigned): '+h.canonical+'\\n'+
-   '- Old CSV bytes SHA-256 (unsigned): '+h.bytesHash+'\\n'+
-   '- OLD HUMAN owner: '+escapeMarkdown(h.draft.owner)+'\\n'+
-   '- OLD HUMAN stage (unverified): '+escapeMarkdown(h.draft.stage)+'\\n'+
-   '- OLD HUMAN tentative due: '+escapeMarkdown(h.draft.due)+'\\n'+
-   '- OLD HUMAN next action: '+escapeMarkdown(h.draft.action)+'\\n'+
-   '- OLD HUMAN verification plan: '+escapeMarkdown(h.draft.review)+'\\n'+
-   '- OLD HUMAN blocker: '+escapeMarkdown(h.draft.blocker)+'\\n'+
-   '- HOLD does not establish authenticity, retest, fix, grant, consent or action permission.\\n'
-  ).join('\\n---\\n\\n');
+   '# HISTORICAL HUMAN SOURCE HOLD '+(i+1)+' / '+state.holds.length+'\n\n'+
+   '> OLD SOURCE: '+h.reason.toUpperCase()+' — not current finding; never resolved by absence.\n\n'+
+   '- Old original finding ID: '+escapeMarkdown(h.finding.finding_id)+'\n'+
+   '- Old original title: '+escapeMarkdown(h.finding.title)+'\n'+
+   '- Old original severity: '+escapeMarkdown(h.finding.severity)+'\n'+
+   '- Old original source retest label: '+escapeMarkdown(h.finding.retest_status)+'\n'+
+   '- Old original proposed remediation: '+escapeMarkdown(h.finding.remediation)+'\n'+
+   '- Old source canonical SHA-256 (unsigned): '+h.canonical+'\n'+
+   '- Old CSV bytes SHA-256 (unsigned): '+h.bytesHash+'\n'+
+   '- OLD HUMAN owner: '+escapeMarkdown(h.draft.owner)+'\n'+
+   '- OLD HUMAN stage (unverified): '+escapeMarkdown(h.draft.stage)+'\n'+
+   '- OLD HUMAN tentative due: '+escapeMarkdown(h.draft.due)+'\n'+
+   '- OLD HUMAN next action: '+escapeMarkdown(h.draft.action)+'\n'+
+   '- OLD HUMAN verification plan: '+escapeMarkdown(h.draft.review)+'\n'+
+   '- OLD HUMAN blocker: '+escapeMarkdown(h.draft.blocker)+'\n'+
+   '- HOLD does not establish authenticity, retest, fix, grant, consent or action permission.\n'
+  ).join('\n---\n\n');
   if(new TextEncoder().encode(md).length>5*MAX_BYTES)throw Error('Historical private HOLD handoff exceeds size limit.');
   download(md,'lightup-PRIVATE-historical-source-HOLD.md','text/markdown;charset=utf-8');
   show('PRIVATE historical source-HOLD snapshot downloaded; not an active ticket or verified resolution.');
