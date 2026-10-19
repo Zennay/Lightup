@@ -104,3 +104,65 @@ python3 remediation-recipient-trend/receiver_desk.py reopen-compare \
 Every successful command returns exit **2 / REVIEW_ONLY**; invalid or unsafe packets return **3 / HOLD**. No QA suites or release gates are modified. Do not treat these values as green CI.
 
 The integrated CLI is deliberately named `receiver_desk.py`, **not** `operator.py`: Python imports its own standard `operator` module during startup, and a sibling `operator.py` would shadow it and prevent the actual installed CLI from loading.
+
+## Full PRIVATE editable HUMAN follow-up workroom — offline source-bound workflow
+
+The original comparison/series reports offer source-free aggregate snapshots. A receiving HUMAN reviewer also needs a real local **editable, saveable, resumable and source-bound** follow-up workspace, without editing source-owner records or leaking client identities.
+
+New `recipient_studio.py` / `recipient_studio.js` and `recipient_journal.py` / `recipient_journal_receive.py` complete this workflow. The unified native `receiver_desk.py` exposes them as `human-studio`, `human-publish`, `human-reopen`. All product files stay within this independent owned directory, with no original evidence/Casework/CI/source-owner modifications. Original source-free comparison/series producer and native receipt validators are **reused unchanged**.
+
+### 1. Create a private offline interactive workroom
+
+Starting with a **complete** already generated native PRIVATE comparison or multi-packet series receipt (not a hand-written JSON excerpt):
+
+```sh
+python3 remediation-recipient-trend/receiver_desk.py human-studio \
+  --receipt "$HOME/lightup-private/recipient-series-001" \
+  --kind series \
+  --output-dir "$HOME/lightup-private/human-studio-001"
+```
+
+For a two-cockpit comparison, use `--kind compare` and provide its original private comparison receipt. The original exact native `receive.inspect` or `timeline_receive.inspect` re-admits the **whole original receipt**, including private 0700/0600 provenance, original source-free schema, all file checksums and byte-identical output reconstruction. No substituted/unknown client record is admitted by our workflow.
+
+The new **atomic PRIVATE** `human-studio-001/` folder has native 0600 `index.html`, `source-free.json` and SHA-256 `manifest.json`, each under an exclusively published 0700 output directory. The HTML is fully portable and self-contained, with CSP-pinned inline CSS/JS, no scripts or assets fetched, no browser storage, analytics, authentication, remote provider, grant, scanner, target or active assessment.
+
+Open `index.html` locally in a trusted browser. For every **aggregate original HUMAN reason category**:
+
+- See current original source-free reason occurrence totals and the previous selected snapshot's arithmetic difference, plus the original unchanged native source-owner follow-up wording.
+- Set *only local HUMAN bookkeeping*: `open`, `in_review`, `waiting_source_owner`, `answered_human`.
+- Choose a **proposed HUMAN** route: `unassigned`, `source_owner`, `human_reviewer` or `privacy_reviewer`. These are advisory selections, **not assignments or approvals**.
+- Write up to 800 UTF-16 characters / 1,200 UTF-8 bytes of PRIVATE local text. Avoid entering actual customer identifiers, target information, evidence bytes, credentials or secrets.
+- Explicitly download a PRIVATE JSON journal; later re-import it into this browser using the file selector only when bound to the **same exact original source-free receipt byte fingerprint**. Import never writes partial rows. Reset requires confirmation.
+
+Journal import within the browser is advisory and cannot cryptographically authenticate a source; the next **native Python ingestion** is the definitive strict local schema/binding check. No browser `localStorage`, indexedDB, cookies, automatic file overwrite, online service or hidden background save exists.
+
+### 2. Publish the saved local HUMAN journal as a separate private handoff
+
+The browser typically downloads files with ordinary OS permissions. Because the journal can contain HUMAN notes, **first** copy it to an existing trusted owner-private 0700 folder as 0600 rather than passing an unrestricted Downloads file into the protected source boundary:
+
+```sh
+install -d -m 700 "$HOME/lightup-private/human-intake"
+install -m 600 "$HOME/Downloads/lightup-PRIVATE-HUMAN-journal.json" \
+  "$HOME/lightup-private/human-intake/review-001.json"
+
+python3 remediation-recipient-trend/receiver_desk.py human-publish \
+  --receipt "$HOME/lightup-private/recipient-series-001" \
+  --kind series \
+  --journal "$HOME/lightup-private/human-intake/review-001.json" \
+  --output-dir "$HOME/lightup-private/human-review-001"
+```
+
+The original **complete source-free receipt** is natively admitted again, before and immediately prior to publication. The HUMAN journal is read as one canonical bounded owner-private no-follow file with duplicate JSON keys rejected, exact original reason/count/delta/ordinal identity, no fabricated authority flags, fixed source byte fingerprint, fixed HUMAN stage/route enums, bounded Unicode-safe local notes and no partial acceptance. The new output includes only `journal.json`, a scriptless **private-review.html** with escaped HUMAN text, and a separate **anonymous-counts.json** containing only grouped stage/route totals (no notes, original IDs or source hash). Its SHA256 manifest is a **local unsigned checksum receipt**, never proof of who authored the source.
+
+The generated source-rich `private-review.html` and `journal.json` are owner-private; `anonymous-counts.json` must also remain private where low-volume workload could identify a client or team. No source-owner Casework, finding status, grant, consent, scan or retest is modified or sent.
+
+### 3. Safely reopen the published private HUMAN report without originals
+
+```sh
+python3 remediation-recipient-trend/receiver_desk.py human-reopen \
+  --folder "$HOME/lightup-private/human-review-001"
+```
+
+The separate receiver checks the exact private folder inventory, original valid-human reason categories, literal non-authorizing flags and count/delta/notes grammar; then **reconstructs the complete HTML and both JSON products byte-for-byte** against the native deterministic renderer and all manifest file SHA256. It does **not** need source/customer/evidence bytes or the original source-free snapshot. As with all checksum-only offline receipts, self-consistency does not establish trust in the author, real client permission, a security fix or actual original case membership.
+
+**All CLI commands intentionally return exit 2 (REVIEW_ONLY)** on an accepted local human-only operation and **3 (HOLD)** on invalid source or private output; never treat either as a security authorization, a green CI check or a verified remediation. This additional product remains **DRAFT/HOLD** until original exact-head hosted and named permanent VPS CI, original source-owner, independent privacy/security/browser review, existing #177/#182/#829, genuine separately authenticated current client/operator consent with action-time revocation where relevant, and explicit HUMAN GO.
