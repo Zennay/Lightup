@@ -6,6 +6,17 @@
   const encoder = new TextEncoder(), decoder = new TextDecoder("utf-8", { fatal: true });
   const $ = id => document.getElementById(id);
   let current = null;
+  let sourceRevision = 0, pendingContinuation = null;
+  const humanDirty = () => !!window.LightUpCasebookHandoff?.hasUnsavedEdits?.();
+  function assertHumanSaved() {
+    if (humanDirty()) fail("Sla eerst de HUMAN-wijzigingen op voordat je deze bronset vervangt of versleutelt.");
+  }
+  function discardContinuation() {
+    if (pendingContinuation) for (const r of pendingContinuation.candidate) r.bytes.fill(0);
+    pendingContinuation = null;
+    if ($("next-apply")) $("next-apply").disabled = true;
+    window.LightUpCasebookContinuity?.render(null);
+  }
   const setStatus = (message, error = false) => {
     $("status").textContent = message;
     $("status").classList.toggle("error", error);
@@ -174,6 +185,8 @@
     );
   }
   function clearWorking() {
+    sourceRevision++;
+    discardContinuation();
     if (current) for (const r of current) r.bytes.fill(0);
     current = null;
     $("records").replaceChildren();
@@ -208,6 +221,8 @@
   const busy = state => {
     $("encrypt").disabled = state;
     $("decrypt").disabled = state;
+    $("next-preview").disabled = state;
+    $("next-apply").disabled = state || !pendingContinuation;
     $("rekey").disabled = state;
   };
   function checkPassword(password) {
@@ -240,6 +255,7 @@
         fail("Deze browser geeft geen veilige WebCrypto-context voor het lokale bestand.");
       if (!$("ack").checked) fail("Bevestig eerst de HUMAN-only waarschuwing.");
       const password = $("new-password").value;
+      assertHumanSaved();
       const records = await collectSources($("source-files").files);
       await encryptPrivateRecords(records, password);
       show(records);
@@ -257,6 +273,7 @@
       if (!window.crypto?.subtle || !window.isSecureContext)
         fail("Deze browser geeft geen veilige WebCrypto-context.");
       if (!current || current.length === 0) fail("Laad eerst originele privé-bestanden of open een bestaande overdracht.");
+      assertHumanSaved();
       const password = $("rekey-password").value;
       checkPassword(password);
       if (!window.confirm("Maak een NIEUW lokaal versleuteld bestand met dezelfde reeds geladen originele bytes? Er wordt geen toestemming of bronvalidatie verleend."))
@@ -271,6 +288,7 @@
     try {
       if (!window.crypto?.subtle || !window.isSecureContext)
         fail("Deze browser geeft geen veilige WebCrypto-context voor het lokale bestand.");
+      assertHumanSaved();
       const f = $("vault-file").files[0];
       if (!f || typeof f.name !== "string" || f.name.length > 160 ||
           !/\.lupt$/i.test(f.name) || f.size < 100 || f.size > MAX_VAULT)
