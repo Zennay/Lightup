@@ -205,3 +205,35 @@ The isolated revision operator menu exposes the five actions as **10–14**, alo
 **Privacy reminder:** Encrypting the approved JSON does not erase the previously downloaded plaintext decision sheet or the unencrypted offline browser page. A secure reviewer must independently handle its retention, deletion, and recipient/transport. The `.lud` ciphertext is still sensitive and does not grant authority, attest fixes, establish authentic client identity, validate missing evidence or permit scans/retests.
 
 **Release posture:** Notion `Incubate`, M3/M7 PLAN/LAB ONLY, DRAFT/HOLD. Parent PR #1647, original source-owner and original hosted + permanent named VPS CI, independent security/privacy/crypto approvals, real distinct authenticated client/operator consent with at-use revocation, original issues #177/#182/#829 and explicit HUMAN GO must be cleared before any main merge or production deployment. No QA/regression/testsuites were introduced or run.
+
+## Iterative HUMAN review of sealed decisions: no plaintext intermediate or reset required
+
+Two distinct new, human-driven workflows let a reviewer return to **previously encrypted original-source-bound choices** without silently trusting a modified file or automatically transferring any security finding. Both reauthenticate the original `.lue`, `.lun`, later `.lue` source triple, require **the same exact three ciphertext byte SHA-256 fingerprints** and full original decision/row admission from the v2 `.lud`, and never modify the original encrypted sources, plan or decision ciphertext.
+
+### Option 15 · fully encrypted guided amendment
+
+`private_export_human_revision_amend` asks for the current encrypted `.lud` passphrase, reviews every eligible original five-column-identical finding again in a **trusted real terminal** with current HUMAN-only owner/note/stage/date decisions visible as booleans, and accepts exactly `KEEP`, `SKIP`, `OWNER`, `OWNER_AND_STAGE`, `QUIT`. New and changed source records cannot be selected. Cancellation, malformed input, no actual decision changes, missing TTY, incompatible original ciphertext or any invalid output aborts without a new artifact. The full changed decision set is readmitted against the original source and published atomically in **one NEW 0600 AES-GCM v2 `.lud`**, with fresh independent password, nonce and salt. No plaintext HTML or decision JSON is ever written.
+
+```sh
+python -m lightup.private_export_human_revision_amend \
+  /private/earlier.lue /private/earlier.lun /private/later.lue \
+  --encrypted-choices /private/original-approved.lud \
+  --output /private/changed-approved.lud \
+  --ack-private-handling --ack-same-real-client \
+  --ack-manual-human-review
+```
+
+### Option 16 · resume the offline editor with selected choices
+
+`private_export_human_revision_resume` loads and re-admits all original encrypted inputs and one matching v2 `.lud`, then creates a **NEW owner-private, UNENCRYPTED 0600 self-contained browser editor** in which all previous per-finding HUMAN selection checkboxes are restored. It never copies original private note text or aliases into the HTML, only original IDs/titles/severity, source provenance and prior boolean selections. Human reviewers may change only eligible identical records, clear choices, and deliberately export a new PRIVATE plaintext JSON document using the existing editor. The browser never directly writes an encrypted vault or mutates any source, and requires actual recipient/privacy acknowledgment before exporting. After download, set JSON file permissions to 0600 and use the existing **`vault seal`** then **`vault apply`** workflows to publish a new reviewed encrypted `.lud` and original-format source-bound `.lun`.
+
+```sh
+python -m lightup.private_export_human_revision_resume \
+  /private/earlier.lue /private/earlier.lun /private/later.lue \
+  --encrypted-choices /private/original-approved.lud \
+  --output /private/resumed-visual-review.html \
+  --ack-private-handling --ack-same-real-client \
+  --ack-plaintext-original-ids
+```
+
+**Caution:** A local `.lud` is custody of *unverified HUMAN decisions*, not proof of a completed review, valid consent, original finding accuracy, unchanged evidence or technical remediation. Both workflows require separate real source identity/recipient verification. The optional offline visual page is **not encrypted**, and no app can automatically delete older plaintext browser exports. The original M3/M7 Incubate DRAFT/HOLD release gates and no-target/no-scan restrictions remain fully in effect.
