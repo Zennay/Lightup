@@ -229,3 +229,35 @@ HOLD for independent original owner review. Original hosted/permanent VPS CI,
 independent owner/security/privacy/browser/crypto review, #177/#182/#829,
 action-time separately authenticated client/operator consent and HUMAN GO
 remain mandatory before any release, merge or deploy.
+
+### Adopt an already-existing local HUMAN stage journal
+
+For a PRIVATE source-stage journal produced **before** the engagement-index
+feature, `adopt-legacy` (console option **11**) can explicitly enroll one
+historical staged journal into the same single-workstation engagement index,
+rather than leaving it invisible during later source revisions:
+
+```sh
+python3 remediation-durable-stage/journal.py adopt-legacy \
+ --db /private/lightup.db --email operator@example.invalid \
+ --client-id ORIGINAL_CLIENT --engagement-id ORIGINAL_ENGAGEMENT \
+ --human /private/current-original-human.ltv \
+ --directory /private/current-extracted-material \
+ --plan /private/current-retention.ltv \
+ --journal-dir /private/my-human-journal --ack-private-material
+```
+
+Only owner-private, canonical, previously unindexed `staged` local journals
+are offered as anonymous ordinals. After an explicit choice the operator must
+decrypt the corresponding original-native historical HUMAN draft, match its
+exact encrypted bytes, source-embedded native client/engagement and all
+recorded request identities, then confirm with `ENROLL OLD HUMAN SOURCE ONLY`.
+A successful enrollment persists the earlier source entry in the PRIVATE
+engagement index, preserving any unresolved HUMAN stage block across later
+revisions. This is not an import of scan authority or proof of original Apply.
+Pending/incomplete legacy drafts cannot be silently enrolled as closed.
+
+Standalone `stage`, `report` and `review-html` now also reject output
+files directly inside the original 0700 evidence material folder or the
+private journal directory. This prevents their additional entries from
+breaking the ORIGINAL exact evidence-folder membership contract.
