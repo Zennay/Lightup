@@ -76,6 +76,12 @@ pre{background:#081220;color:#dbe9fc;border:1px solid #354760;border-radius:12px
 <p id="source-diff" class="status">No source revision imported.</p>
 <div class="scroll"><table><thead><tr><th>Prior finding</th><th>Reason</th><th>Historical HUMAN planning</th></tr></thead><tbody id="historical-holds"><tr><td colspan="3" class="muted">No historical source HOLD records.</td></tr></tbody></table></div>
 <div class="actions"><button id="export-holds" disabled>Download PRIVATE historical HOLD register</button></div>
+<h3>Local PRIVATE workspace save & resume</h3>
+<p class="muted">The checkpoint includes sensitive original finding identifiers and HUMAN notes in <strong>plaintext JSON</strong>, not encrypted. Save only in an independently approved private directory; later reload the exact same original CSV bytes before the checkpoint. No automatic browser storage.</p>
+<div class="field"><label for="workspace-file">Resume existing PRIVATE workspace checkpoint</label>
+<input id="workspace-file" type="file" accept=".json,application/json" disabled>
+<small>All-or-nothing import, up to 4 MiB. Original canonical and byte SHA-256 must match exactly. Rejected/declined files never replace in-memory work.</small></div>
+<div class="actions"><button id="save-workspace" disabled>Download PRIVATE HUMAN workspace (.json)</button></div>
 </section>
 <section class="panel full">
 <h2>04 / Private release review</h2>
@@ -94,6 +100,7 @@ pre{background:#081220;color:#dbe9fc;border:1px solid #354760;border-radius:12px
 </main>
 <script src="../casework/remediation-engine.js"></script>
 <script src="./casework-import.js"></script>
+<script src="./ticket-workspace.js"></script>
 <script src="./ticket-desk.js"></script>
 </body>
 </html>
