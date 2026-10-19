@@ -17,6 +17,7 @@ import os
 from pathlib import Path
 import stat
 import sys
+import unicodedata
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "remediation-evidence-materials"))
@@ -128,6 +129,15 @@ def _review_day(value: str) -> str:
     return value
 
 
+def _safe_human_note(value: object) -> str:
+    if (type(value) is not str or len(value) > MAX_NOTE
+            or any(unicodedata.category(char).startswith("C")
+                   or unicodedata.category(char) in ("Zl", "Zp")
+                   for char in value)):
+        raise ValueError("PRIVATE HUMAN notes must not contain controls, invisible format or bidi characters.")
+    return value
+
+
 def _new_decisions(files: list[dict], previous: list[dict] | None = None) -> list[dict]:
     selection = []
     print("PRIVATE EVIDENCE RETENTION · HUMAN REVIEW; no file deletion")
@@ -144,6 +154,10 @@ def _new_decisions(files: list[dict], previous: list[dict] | None = None) -> lis
             decision = old["decision"]
         if decision not in DECISIONS:
             raise ValueError("A known explicit HUMAN review decision is required.")
+        if (old is not None and old["decision"] == "legal_hold"
+                and decision != "legal_hold"):
+            if input('Type "RECORD HUMAN REVIEW ONLY" to change this unverified HUMAN legal-hold label: ') != "RECORD HUMAN REVIEW ONLY":
+                raise ValueError("Human did not deliberately acknowledge legal-hold review.")
         raw_day = input("NEXT HUMAN REVIEW ON (yyyy-mm-dd)"
                         + (" (Enter keeps previous if not past): " if old else ": ")).strip()
         day = _review_day(raw_day or (old["review_on"] if old else ""))
@@ -153,8 +167,7 @@ def _new_decisions(files: list[dict], previous: list[dict] | None = None) -> lis
             note = old["note"]
         elif old is not None and note == "<clear>":
             note = ""
-        if len(note) > MAX_NOTE or any(ord(char) < 32 or ord(char) == 127 for char in note):
-            raise ValueError("Invalid private note.")
+        note = _safe_human_note(note)
         selection.append({**row, "decision": decision, "review_on": day, "note": note})
     return selection
 
@@ -202,8 +215,7 @@ def _admit_plan(raw: bytes, files: list[dict], receipt_sha: str, packet: dict) -
         if (type(item) is not dict or set(item) != ENTRY_FIELDS
                 or any(item[k] != source[k] for k in source)
                 or item["decision"] not in DECISIONS or type(item["decision"]) is not str
-                or type(item["note"]) is not str or len(item["note"]) > MAX_NOTE
-                or any(ord(c) < 32 or ord(c) == 127 for c in item["note"])):
+                or _safe_human_note(item["note"]) != item["note"]):
             raise ValueError("HUMAN plan member changed.")
         # Old plans are allowed to become due; never treat age as automatic deletion.
         if type(item["review_on"]) is not str or len(item["review_on"]) != 10:
