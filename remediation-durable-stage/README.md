@@ -1,0 +1,406 @@
+# LightUp PRIVATE Durable HUMAN Stage (DRAFT/HOLD)
+
+An add-only, single-machine operator workflow for the **original** authenticated encrypted HUMAN Evidence Ledger, PRIVATE actual evidence material, and HUMAN retention plans in held parents [#1657](https://github.com/Zennay/Lightup/pull/1657) and [#1658](https://github.com/Zennay/Lightup/pull/1658).
+
+## Product behaviour
+
+This CLI maintains a local, owner-private journal keyed to the **current original source + actual material receipt + client/engagement** (not the retention-plan revision). It admits the original current account/client/engagement, original encrypted HUMAN workroom and retention review, and **all actual 0600 file bytes** before every operation. A source/attachment change fails closed.
+
+- `status` displays only anonymous HUMAN counts, latest stage state and whether original HUMAN closure is recorded. It does not publish evidence.
+- `stage` interactively selects original due HUMAN finding groups, performs a *second current original authentication + complete actual evidence re-read*, then persists an fsynced `pending` intent **before** writing the new 0600 original-native AES-GCM encrypted HUMAN draft. The same source/material cannot be restaged from this journal while `pending` or `staged`.
+- `recover` handles an interrupted `pending` operation **only** by opening the exact existing encrypted native draft, verifying native original-source admission and all recorded request identities, then recording the encrypted file fingerprint. No plaintext HUMAN workspace is created.
+- `resolve` requires each exact previously staged native request be present as `closed_human` in the **current original HUMAN workroom**, checks unchanged encrypted draft bytes, and obtains separate human confirmation before permitting a later cycle. An interrupted pending stage without any file at the recorded path may be marked aborted *only* after explicit human inspection; any existing unidentified encrypted output stays HOLD.
+
+This is LOCAL coordination, not authenticated reviewer identity, proof that native Apply occurred, legal-hold release, client consent, active-scan grant, evidence custody certification, deletion or remediation verification. It cannot prevent staging with another command, journal directory or device. It is **not a distributed lock** or product-wide admission gate.
+
+## Operator steps (trusted private Linux workstation only)
+
+Use a pinned compatible parent branch with a real original authorized account, original encrypted HUMAN Evidence Ledger, retention plan and extracted 0700 PRIVATE material folder containing its canonical receipt and unchanged material files.
+
+Create a **different** existing owner-private 0700 journal folder (not inside the original material folder):
+
+```sh
+mkdir -m 700 /private/my-human-journal
+```
+
+Every command needs these arguments; use literal values on a private terminal. Passphrases are prompted securely, not supplied as CLI flags.
+
+```sh
+python3 remediation-durable-stage/journal.py status \
+  --db /private/lightup.db --email operator@example.invalid \
+  --client-id ORIGINAL_CLIENT --engagement-id ORIGINAL_ENGAGEMENT \
+  --human /private/original-human.ltv \
+  --directory /private/extracted-material \
+  --plan /private/retention-review.ltv \
+  --journal-dir /private/my-human-journal --ack-private-material
+```
+
+For `stage`, use the same parameters and append `--output /private/new-native-human-drafts.ltv`. To recover a crash after the encrypted file was written but before its journal entry was finalized, use `recover` with the common parameters. For closeout use `resolve` with the common parameters, changing `--human` to a **separately received current original HUMAN workroom** that contains each exact recorded request with a HUMAN-reported `closed_human` status. Inspect that source independently; status is unverified.
+
+The operator still separately opens the original Request Desk, runs its original source-bound Preview and performs manual HUMAN Apply as appropriate. Nothing here executes that step. PRIVATE journals include absolute local encrypted-output paths and hashes and MUST remain owner-private; do not sync them.
+
+## Release fence
+
+**INCUBATE · M3/M7 PLAN/LAB ONLY · DRAFT/HOLD.** No main merge, production deploy, scan, grant, retest or QA rounds from this add-on. Original exact-head hosted and registered permanent named VPS CI, original source-owner and independent security/privacy/browser/crypto review, #177/#182/#829, genuine separately authenticated current client/operator consent with action-time revocation and explicit HUMAN GO are still required.
+## Offline local HUMAN chronology
+
+The optional `report` subcommand accepts the same source, journal and
+`--ack-private-material` options as `status`, plus a distinct NEW output:
+
+```sh
+python3 remediation-durable-stage/journal.py report \
+  --db /private/lightup.db --email operator@example.invalid \
+  --client-id ORIGINAL_CLIENT --engagement-id ORIGINAL_ENGAGEMENT \
+  --human /private/original-human.ltv \
+  --directory /private/extracted-material \
+  --plan /private/retention-review.ltv \
+  --journal-dir /private/my-human-journal \
+  --output /private/private-human-chronology.html --ack-private-material
+```
+
+After full ORIGINAL current source and real material admission, it exclusively
+publishes an owner-private 0600 scriptless, no-network HTML with local cycle
+timestamps, HUMAN states, counts, latest suggested operator action and explicit
+unknown-authority warnings. It contains no client/finding/request identity,
+fingerprint, source/evidence bytes, private notes, password or local file path.
+The chronology is just locally reported HUMAN state, not an authenticated
+audit trail or signed security outcome; never sync it or treat it as release
+authority.
+
+## Original native HUMAN delivery: see exactly what happened to drafts
+
+The local journal now includes a source-current, privacy-minimal ORIGINAL
+Request Desk delivery comparison. It opens the exact SHA-256-matching original
+encrypted `staged` HUMAN workroom with a separate private passphrase prompt,
+admitting that ORIGINAL native schema alongside the CURRENT separately
+provided encrypted original HUMAN workroom and all original evidence bytes.
+
+- `review` prints per-request **neutral ordinals** and aggregate HUMAN states:
+  `not_observed`, `draft`, `closed_human`, or the original approved HUMAN
+  enum, together with whether the HUMAN request text/response was edited.
+- `review-html` writes an exclusive 0600 PRIVATE, scriptless/no-network
+  offline browser dashboard with anonymized per-request state, assignment,
+  response-present indicator, HUMAN content-change indicator and aggregate
+  remaining-unclosed attention.
+- `resolve` now also decrypts/re-admits the recorded original-native staged
+  encrypted workroom and requires *exact recorded request identity continuity*
+  and all corresponding CURRENT original HUMAN entries reporting closed_human.
+  The reported HUMAN labels do not prove actual native Apply, signed user
+  identity, that the source owner authenticated the change, or client consent.
+- Every source-bound encrypted input, new native draft, private report and
+  local journal MUST reside beneath a real owner-private 0700 parent (no
+  symlinked directory ancestors). Missing/malformed/corrupt source material
+  HOLDs; no source mutation or automatic deletion is attempted.
+
+Example after independently obtaining the CURRENT original encrypted HUMAN
+workroom, replacing the `--human` argument with that newly provided workroom:
+
+```sh
+python3 remediation-durable-stage/journal.py review \
+ --db /private/lightup.db --email operator@example.invalid \
+ --client-id ORIGINAL_CLIENT --engagement-id ORIGINAL_ENGAGEMENT \
+ --human /private/current-original-human.ltv \
+ --directory /private/extracted-material \
+ --plan /private/retention-review.ltv \
+ --journal-dir /private/my-human-journal --ack-private-material
+
+python3 remediation-durable-stage/journal.py review-html \
+ --db /private/lightup.db --email operator@example.invalid \
+ --client-id ORIGINAL_CLIENT --engagement-id ORIGINAL_ENGAGEMENT \
+ --human /private/current-original-human.ltv \
+ --directory /private/extracted-material \
+ --plan /private/retention-review.ltv \
+ --journal-dir /private/my-human-journal \
+ --output /private/current-human-delivery.html --ack-private-material
+```
+
+Never send this report or any decrypted HUMAN workroom to a shared/cloud
+service. The comparison reports only what the separately supplied current
+original HUMAN workroom *says*, not authenticated execution or third-party
+approval. Every report is a distinct new private file, not an overwrite.
+
+## One-terminal PRIVATE original HUMAN operator console
+
+A cohesive **interactive HUMAN operations menu** is now available, wrapping
+the same original source-admitted `journal.main` actions. Each selection
+performs a **new** original current account/tenant/engagement read, reopens
+the current native encrypted HUMAN workroom + retention plan with individual
+private passphrase prompts and checks all actual PRIVATE evidence bytes.
+It does not cache earlier admission as a later grant.
+
+```sh
+mkdir -m 700 /private/local-human-console-output
+python3 remediation-durable-stage/human_console.py \
+  --db /private/lightup.db --email operator@example.invalid \
+  --client-id ORIGINAL_CLIENT --engagement-id ORIGINAL_ENGAGEMENT \
+  --human /private/current-original-human.ltv \
+  --plan /private/current-retention-plan.ltv \
+  --directory /private/extracted-material \
+  --journal-dir /private/my-human-journal \
+  --output-dir /private/local-human-console-output \
+  --ack-private-material
+```
+
+The console provides original source/journal status, native encrypted draft
+staging, encrypted-draft recovery, ORIGINAL HUMAN delivery comparison, private
+delivery HTML, private chronology HTML, source-checked reported-human closeout,
+and verified switching between separately supplied original-native HUMAN
+workrooms or retention-plan revisions without leaving the terminal. New
+PRIVATE outputs are exclusive, randomly named 0600 files in a **separate**
+0700 owner-private output directory. No original material files or journal
+entries may share that output directory.
+
+An additional within-session fence refuses a second staging after a completed
+stage in the same interactive console, even if a different plan/workroom is
+chosen. This is not a distributed or cross-device queue; other local tools
+remain outside it. For current original HUMAN workroom switching, the console
+first performs an entire fresh original source admission **before** changing
+its own selected path. A rejected candidate leaves the old selected source
+unchanged. This console does not itself invoke native Apply or prove an
+underlying HUMAN answer is true, authorized, signed or legally sufficient.
+It never scans, retests, deletes, grants or deploys.
+
+## Recovery after an independent ORIGINAL HUMAN handoff
+
+If the local process was interrupted *after* writing a new encrypted ORIGINAL
+native draft but *before* finalizing its `pending` journal entry, the draft
+may already have been sent to the independent original HUMAN Request Desk.
+`recover` now opens that recorded exact native encrypted draft with its
+password, validates the CURRENT separately supplied original source,
+complete evidence material and native request metadata, and insists the
+recorded HASHED request identities are present as actual original-compatible
+`draft` records in that encrypted file. It no longer incorrectly demands
+that the CURRENT original HUMAN workroom retain an older pre-handoff request
+prefix: the separately supplied current native workroom can have advanced.
+
+Recovery still requires separate HUMAN confirmation and records the actual
+original encrypted file SHA before the local journal becomes `staged`.
+It does not assert native Apply happened, infer reviewer signatures, accept
+missing/rebound staged request IDs, release an actual legal hold or confirm
+client permission. After a successful recovery, use `review` and later
+`resolve` for independent current HUMAN status inspection.
+
+## Multi-source HUMAN continuation (one trusted workstation)
+
+Each new original-native `stage` also persists a 0600 local engagement index.
+Within one owner-private 0700 journal folder, a new original source/receipt
+revision now sees previously registered `pending` and `staged` HUMAN drafts
+for the same original client/engagement. New staging will HOLD instead of
+silently forgetting them. This is voluntary LOCAL coordination, never a
+global/distributed lock or authenticated authorization. Old journals from
+BEFORE this addition are not indexed retroactively: review those separately.
+Missing indexed journals fail closed. To avoid an unrecoverable crash gap, an
+empty original-source journal is written and fsynced before first registration;
+the encrypted draft is never written before its later durable pending intent.
+The offline private chronology includes source revision / unresolved counts.
+
+### Original-native HUMAN closure from an earlier source
+
+If original source material has changed after a separate HUMAN handoff,
+normal old-version `resolve` may not work. New `carry-closed` (console
+option **10**) is a separate HUMAN bookkeeping path, not a grant:
+
+```sh
+python3 remediation-durable-stage/journal.py carry-closed \
+  --db /private/lightup.db --email operator@example.invalid \
+  --client-id ORIGINAL_CLIENT --engagement-id ORIGINAL_ENGAGEMENT \
+  --human /private/current-original-human.ltv \
+  --directory /private/current-extracted-material \
+  --plan /private/current-retention.ltv \
+  --journal-dir /private/my-human-journal --ack-private-material
+```
+
+It first reauthenticates the CURRENT original account/client/engagement, actual
+local original evidence bytes, HUMAN workroom and encrypted plan. The human
+selects an old registered **staged** version by neutral ordinal and supplies
+its old original-native encrypted draft password. The old embedded original
+source and all native request records are validated without claiming current
+authority for that old source. Exact recorded original-native request IDs,
+finding IDs and fingerprints must correspond to `closed_human` markers in
+the separately supplied CURRENT original HUMAN workroom; encrypted historical
+file bytes must match the old journal. An explicit HUMAN confirmation changes
+only the earlier 0600 local journal to `reviewed`. No original database, grant,
+workspace, evidence material or legal state is modified. No native Apply,
+signed identity, actual client consent or remediation completion is inferred.
+
+An older `pending` attempt also needs explicit HUMAN handling. If its
+recorded encrypted output exists but the local SHA was never finalized,
+`carry-closed` decrypts and admits the exact historical native original
+draft and full request identities under the CURRENT original-authenticated
+account+actual-evidence read, requires matching CURRENT `closed_human`
+markers and a separate HUMAN confirmation, and only then records its
+previously missing SHA and marks the old LOCAL cycle reviewed. If no file
+exists at the recorded private output path, an explicit
+`CONFIRM HISTORICAL NO DRAFT PUBLISHED` can mark only that old local
+pending intent aborted after independent HUMAN review. Neither outcome is
+proof of original Apply, historical client authorization or evidence custody.
+A partial/changed file or mismatched request stays HOLD. Original hosted/permanent VPS CI,
+independent owner/security/privacy/browser/crypto review, #177/#182/#829,
+action-time separately authenticated client/operator consent and HUMAN GO
+remain mandatory before any release, merge or deploy.
+
+### Adopt an already-existing local HUMAN stage journal
+
+For a PRIVATE source-stage journal produced **before** the engagement-index
+feature, `adopt-legacy` (console option **11**) can explicitly enroll one
+historical staged journal into the same single-workstation engagement index,
+rather than leaving it invisible during later source revisions:
+
+```sh
+python3 remediation-durable-stage/journal.py adopt-legacy \
+ --db /private/lightup.db --email operator@example.invalid \
+ --client-id ORIGINAL_CLIENT --engagement-id ORIGINAL_ENGAGEMENT \
+ --human /private/current-original-human.ltv \
+ --directory /private/current-extracted-material \
+ --plan /private/current-retention.ltv \
+ --journal-dir /private/my-human-journal --ack-private-material
+```
+
+Only owner-private, canonical previously unindexed `staged` journals,
+or interrupted `pending` journals that still have their actual encrypted
+native output file, are offered as anonymous ordinals. After an explicit choice the operator must
+decrypt the corresponding original-native historical HUMAN draft, match its
+exact encrypted bytes, source-embedded native client/engagement and all
+recorded request identities, then confirm with `ENROLL OLD HUMAN SOURCE ONLY`.
+A successful enrollment persists the earlier source entry in the PRIVATE
+engagement index, preserving any unresolved HUMAN stage block across later
+revisions. This is not an import of scan authority or proof of original Apply.
+Pending/incomplete legacy drafts cannot be silently enrolled as closed.
+
+Standalone `stage`, `report` and `review-html` now also reject output
+files directly inside the original 0700 evidence material folder or the
+private journal directory. This prevents their additional entries from
+breaking the ORIGINAL exact evidence-folder membership contract.
+
+**Interrupted historical closeout:** the newly supported source-version
+handoff recovery handles both a prior fully written `staged` local record and
+a `pending` record with a genuine original-native encrypted output but no
+persisted local ciphertext hash. The latter is not auto-closed: old actual
+native AES-GCM contents and full recorded identifiers must independently
+match, the current separate original HUMAN workroom must report every
+matching request closed, and the human must acknowledge. A truly absent
+pending output can be marked locally aborted only by explicit separate HUMAN
+confirmation. No historical source/current consent claim is made.
+
+## Engagement-wide ORIGINAL HUMAN inbox (offline, no execution)
+
+Use `inbox` to inspect the FULL registered local HUMAN draft handoff
+queue for the CURRENT authenticated client/engagement and its earlier
+registered source revisions. Use `inbox-html` to publish an exclusive NEW
+private 0600, CSP-locked scriptless browser dashboard in a **separate**
+real owner-private 0700 output folder. The interactive console exposes
+these as menu items **12** and **13**.
+
+```sh
+python3 remediation-durable-stage/journal.py inbox \
+ --db /private/lightup.db --email operator@example.invalid \
+ --client-id ORIGINAL_CLIENT --engagement-id ORIGINAL_ENGAGEMENT \
+ --human /private/current-original-human.ltv \
+ --directory /private/current-extracted-material \
+ --plan /private/current-retention.ltv \
+ --journal-dir /private/my-human-journal --ack-private-material
+
+python3 remediation-durable-stage/journal.py inbox-html \
+ --db /private/lightup.db --email operator@example.invalid \
+ --client-id ORIGINAL_CLIENT --engagement-id ORIGINAL_ENGAGEMENT \
+ --human /private/current-original-human.ltv \
+ --directory /private/current-extracted-material \
+ --plan /private/current-retention.ltv \
+ --journal-dir /private/my-human-journal \
+ --output /private/private-reports/engagement-inbox.html \
+ --ack-private-material
+```
+
+Each call first performs the original current account/client/engagement login,
+opens the current original AES-encrypted HUMAN source and retention plan, and
+validates ALL current real private material bytes and the original native
+request schema. It then reads all canonically indexed LOCAL source journals
+under their one-machine private lock. Without silently decrypting earlier
+passphrases, the inbox compares hashed ORIGINAL request identity to the
+independently supplied CURRENT native HUMAN statuses and checks whether
+their owner-private encrypted staged file is present and matches its stored
+ciphertext fingerprint. The displayed source/cycle ordinals, human-only
+reported states, missing current replies and explicit next steps are
+privacy-minimal; no original source, tenant, request, finding, path, SHA,
+password, notes, material bytes, or reviewer identity is exported. Missing
+or changed locally encrypted staged files are marked HOLD even where an older
+LOCAL `reviewed` flag exists.
+
+Pending stages with an actual encrypted file remain unverified until the
+operator separately decrypts that ORIGINAL native workroom using `recover`
+or `carry-closed` as permitted. Closed-human markers in a CURRENT file are
+not authenticated Apply, consent, verified remediation or legal obligations.
+This inbox can see only registered private journals in this one folder;
+legacy unindexed journals and other devices remain outside its scope.
+This dashboard never contacts a target, issues grants, changes evidence,
+performs scans, signs off a client, or starts release.
+
+### Prioritized, actionable HUMAN triage
+
+The engagement inbox sorts safety-critical local HOLDs first (missing/changed
+encrypted original-native files, contradictory CURRENT HUMAN statuses, or a
+previously aborted stage whose recorded output appeared later), followed by
+pending or not-yet-delivered stages, HUMAN follow-up, and closed history.
+Within a priority tier, older local HUMAN draft timestamps appear first.
+
+Each row shows **elapsed UTC days from its PRIVATE local journal timestamp**
+(not an evidence collection timestamp, legal retention deadline or guaranteed
+response SLA). The no-script HTML and terminal both suggest the *name* of the
+next explicit local command such as `recover`, `review`, `resolve` or
+`carry-closed`, or say independent owner review. Suggestions NEVER run the
+command, silently restore an original native draft, close a real legal hold,
+prove client consent, or issue authorization. Each actual command separately
+prompts and performs new original account, tenant and actual evidence checks.
+
+An unexpected actual encrypted file after a past `aborted_unpublished` state
+is now visibly marked HOLD rather than silently ignored. Conversely, neither
+the current-source nor the cross-source `pending`-without-output closeout
+can claim a native draft was never published when CURRENT original HUMAN
+records already contain its exact original request identity; independent
+source-owner review is required. These are safeguards against false HUMAN
+work-completion labels, not verified legal or security audit conclusions.
+
+## Guided PRIVATE HUMAN worklist — choose one exact native source/cycle
+
+Interactive `human_console.py` menu item **14** now opens an actual guided
+engagement worklist. After original account/client/engagement authentication,
+current encrypted HUMAN and retention plan admission, and re-reading all
+actual PRIVATE evidence bytes, it displays priority-sorted registered source
+revisions and native HUMAN cycles. Select one numbered row and explicitly type
+`RUN LOCAL HUMAN <command>`; nothing is executed automatically.
+
+The action calls the EXISTING native source-admitted `journal.main` after
+releasing its initial private file lock. The action acquires a new lock,
+authenticates and checks every source/evidence byte again, and applies all
+existing native HUMAN password and confirmation prompts. Current-source
+review/recover/resolve pins `--expected-cycle`. Earlier-source carry-closed
+pins both `--source-ordinal` and `--expected-cycle`, so another cycle or
+source cannot silently be selected after the operator reviewed the queue.
+Nonlatest, contradictory or unsupported historical items remain HUMAN HOLD.
+This is a single trusted workstation convenience aid, NOT an ORIGINAL Apply,
+legal release, signed reviewer, verified finding, scan, grant or consent.
+
+## Original encrypted-input continuity through HUMAN confirmation
+
+Before locally committing new stage, recover, resolve, legacy enrollment or
+cross-source HUMAN closeout, the module now repeats ORIGINAL account/client/
+engagement admission, current HUMAN and encrypted retention-plan admission
+and actual evidence byte checks. The exact AES-encrypted HUMAN workroom and
+retention plan ciphertext are also fingerprint-pinned. If either changed
+during the HUMAN prompts, the local transition HOLDS.
+
+Interrupted encrypted pending drafts keep the exact SHA of the actual native
+ciphertext admitted BEFORE operator confirmation. A different file cannot be
+silently promoted after the confirmation. Historical encrypted original
+drafts also require identical actual ciphertext before enrollment or
+carry-forward. The local journal refuses empty, duplicated or impossible
+state/request/SHA identities. A native HUMAN record with the same original
+request identity but a different request kind cannot count as a closed
+original follow-up request. A pending draft with missing output but already
+observed in CURRENT native HUMAN records is flagged HOLD, not reported
+as never published.
+
+None of these local checks proves separately authenticated action-time
+client/operator consent, legal retention release, native Apply, signed
+identity, correct provenance, or a verified security outcome. Existing strict
+release gates remain fully unchanged; keep this product DRAFT/HOLD.
