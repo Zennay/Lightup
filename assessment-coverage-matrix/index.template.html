@@ -111,6 +111,59 @@
           </div>
         </div>
       </section>
+      <section id="historyPanel" class="panel human-history" aria-label="PRIVATE HUMAN saved-plan comparison and conflict-safe rebase">
+        <span class="eyebrow">PRIVATE / HUMAN CHANGE CONTINUITY</span>
+        <h3>Review two saved HUMAN plans. Carry forward only compatible choices.</h3>
+        <p>Select an earlier and a later PRIVATE plan <strong>in the order you choose</strong>. Their filenames, order and downloaded content do not prove dates, client identity, authority or genuine team agreement. Both must match the original source files already opened in this app, byte-for-byte. Nothing scans, reaches the network or rewrites the originals.</p>
+        <div class="human-history-load">
+          <label for="historyEarlier">Earlier manually selected PRIVATE plan
+            <input id="historyEarlier" type="file" accept=".json,application/json" autocomplete="off">
+          </label>
+          <label for="historyLater">Later manually selected PRIVATE plan
+            <input id="historyLater" type="file" accept=".json,application/json" autocomplete="off">
+          </label>
+          <div class="buttons">
+            <button type="button" class="primary" id="historyOpen">Compare PRIVATE HUMAN plans</button>
+            <button type="button" class="secondary" id="historyForget">Forget comparison</button>
+          </div>
+        </div>
+        <div id="historySummary" class="history-summary" role="status" aria-live="polite">
+          No PRIVATE source-bound snapshots loaded.
+        </div>
+        <div class="human-tools">
+          <label for="historySearch">Find original private source labels
+            <input id="historySearch" type="search" autocomplete="off" placeholder="Source capability or check ID">
+          </label>
+          <label for="historyState">Local proposal reconciliation
+            <select id="historyState">
+              <option value="all">All changed HUMAN rows</option>
+              <option value="pending">Applicable to current HUMAN plan</option>
+              <option value="conflict">Conflicts — hold</option>
+              <option value="matched">Already matches later HUMAN choices</option>
+            </select>
+          </label>
+        </div>
+        <div class="table-scroll history-scroll"><table id="historyTable" aria-label="Private earlier and later HUMAN fields, original local labels and conflict disposition"></table></div>
+        <div class="human-paging">
+          <span id="historyPagination">No snapshots loaded.</span>
+          <div class="buttons">
+            <button type="button" class="secondary" id="historyPrev" disabled>Previous 60</button>
+            <button type="button" class="secondary" id="historyNext" disabled>Next 60</button>
+          </div>
+        </div>
+        <div class="history-actions">
+          <div>
+            <strong>Conflict-safe HUMAN-only merge</strong>
+            <p>Each proposed field from the later file is applied only when the CURRENT HUMAN field still equals the EARLIER plan. Fields already matching later are left alone. Any third value causes an <strong>all-or-nothing HOLD</strong>; there is no silent conflict override. The source records, evidence, targets, grants and actual security statuses never change. A valid HUMAN proposal is never authorization.</p>
+          </div>
+          <div class="buttons">
+            <button type="button" class="primary" id="historyApply" disabled>Apply nonconflicting HUMAN choices</button>
+            <button type="button" class="secondary" id="historyCounts" disabled>Download anonymous changes CSV + JSON</button>
+            <button type="button" class="secondary" id="historyPrivate" disabled>Download PRIVATE read-only change brief</button>
+          </div>
+        </div>
+        <p class="hint">PRIVATE original capability/check labels in the HTML handoff require a separately approved protected channel. Anonymous numeric outputs may still be sensitive. Snapshots never enter persistent browser storage. No true clock chronology is inferred.</p>
+      </section>
       <div class="panel filterbar">
         <label for="query">Filter literal capability / check <input id="query" type="search" autocomplete="off" placeholder="Local check or capability label"></label>
         <label for="severity">Source severity <select id="severity"><option value="all">All declared severities</option><option>critical</option><option>high</option><option>medium</option><option>low</option><option>info</option></select></label>
