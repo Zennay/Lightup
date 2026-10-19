@@ -84,6 +84,34 @@ python3 remediation-evidence-retention/history.py \
 
 Private encrypted plan filenames and source material should not be shared with third parties. Terminal output only contains counts; original finding identities and encrypted-input SHA-256 appear only in the private HTML. This is an independent HUMAN coordination capability, never provenance verification or an action-time grant.
 
+
+## Native HUMAN Request Desk handoff — live review workflow, never automatic Apply
+
+New [`request_handoff.py`](request_handoff.py) bridges **actual due** owner-private encrypted retention entries into the unchanged original LightUp native HUMAN Request Desk schema, instead of keeping due work stranded in a local calendar. Every command invokes the original current `DomainStore` authentication and current client/engagement source, decrypts the exact current original PRIVATE HUMAN workroom and encrypted retention plan, and admits the entire original 0600 evidence receipt plus all actual indexed private file bytes.
+
+**`preview`** shows only counts: finding groups with due HUMAN review dates, groups blocked by already-open original HUMAN requests, and fresh eligible groups; no new file, ID or request created. **`stage`** requires the operator to choose distinct *numbered* eligible finding groups, then type a separate explicit acknowledgement. It stages a bounded original-native `followup_question` with `human_stage=draft`, preserving all original Casework, evidence-review, attachments and prior original HUMAN requests unchanged; never inserts a second live original request for the same finding, silently trims human notes, or claims authorization/deletion. Review question text points to independent verification of any applicable retention policy; it contains only bounded source references and HUMAN counts/dates, **not** original private freeform notes. Result is a **new original-compatible private 0600 AES-GCM/PBKDF2 HUMAN workroom**, with a new passphrase distinct from both original HUMAN and retention-plan secrets.
+
+```sh
+python3 remediation-evidence-retention/request_handoff.py preview \
+  --db /private/lightup.db --email operator@example.invalid \
+  --client-id <original-client-id> --engagement-id <original-engagement-id> \
+  --human /private/existing-human.ltv \
+  --directory /private/received-material \
+  --plan /private/retention-review-v2.ltv \
+  --ack-private-review
+
+python3 remediation-evidence-retention/request_handoff.py stage \
+  --db /private/lightup.db --email operator@example.invalid \
+  --client-id <original-client-id> --engagement-id <original-engagement-id> \
+  --human /private/existing-human.ltv \
+  --directory /private/received-material \
+  --plan /private/retention-review-v2.ltv \
+  --output /private/retention-native-human-drafts.ltv \
+  --ack-private-review
+```
+
+The original HUMAN application must still perform its **own current source-bound Preview and explicit manual Apply**. This helper writes only a different, owner-private encrypted file, not an original database row or original workspace in-place. Even where an operator later decides a retention entry is reviewed, this workflow **does not delete, release legal holds, certify evidence/retests, verify client consent or issue scanner authority**.
+
 ## Ownership and acceptance posture
 
 **Base:** immutable [#1657](https://github.com/Zennay/Lightup/pull/1657) source snapshot `0c2f2689ad5862eb7372d9bf2ed3aa81831f43c4`, unchanged. Owner's subsequent commits are not silently assimilated. Added paths are independent from `remediation-evidence-materials/`, evidence transfer owners and issue #1182 CSV source owners. Release gates unchanged.
