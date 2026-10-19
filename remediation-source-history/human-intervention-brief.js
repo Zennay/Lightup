@@ -41,7 +41,7 @@ function priority(r){
 }
 function updateOwners(){
  const selected=$('briefOwner').value,all=H.caseworkRows();
- const aliases=[...new Set(all.map(r=>r.owner).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
+ const aliases=[...new Set([...all,...H.heldHumanRows()].map(r=>r.owner).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
  $('briefOwner').replaceChildren(new Option('All HUMAN owners',''),new Option('Only unassigned originals','__UNASSIGNED__'),...aliases.map(x=>new Option(x,'alias:'+x)));
  // Identity is literal: a real alias '__UNASSIGNED__' cannot collide with the sentinel.
  const option=selected.startsWith('alias:')?selected:'';
