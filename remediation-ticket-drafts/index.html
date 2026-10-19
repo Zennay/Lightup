@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'unsafe-inline'; img-src 'none'; connect-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'">
+<title>LightUp | Private Remediation Ticket Desk</title>
+<style>
+:root{font-family:Inter,ui-sans-serif,system-ui,-apple-system,sans-serif;color:#eaf0f9;background:#090f1b;line-height:1.5;color-scheme:dark}
+*{box-sizing:border-box}body{margin:0;min-height:100vh}main{max-width:1370px;padding:2.4rem 1.4rem 4rem;margin:auto}
+header{display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap;margin-bottom:2rem}
+.brand{color:#90bdff;font-size:.88rem;letter-spacing:.2em;font-weight:800}h1{font-size:clamp(2rem,4vw,3.15rem);line-height:1.14;margin:.35rem 0}.intro{color:#aabbd4;max-width:72ch;margin:.75rem 0 1.5rem}
+.pill{display:inline-block;border:1px solid #5b6578;border-radius:10rem;padding:.3rem .85rem;color:#f3c486;font-size:.78rem;font-weight:700}
+.grid{display:grid;grid-template-columns:minmax(310px,.88fr) minmax(440px,1.32fr);gap:1.2rem}
+.panel{border:1px solid #263248;background:#121d2c;border-radius:18px;padding:1.35rem;min-width:0}
+.panel h2{font-size:1.18rem;margin:.05rem 0 .8rem}.panel h3{font-size:.99rem;margin:1.2rem 0 .55rem}
+small,.muted{color:#aebed2}.field{display:grid;gap:.33rem;margin:.8rem 0}label{font-size:.83rem;font-weight:680;color:#d8e4f5}
+input,textarea,select,button{font:inherit;color:inherit}input:not([type=checkbox]),textarea,select{width:100%;min-width:0;border:1px solid #3c4e65;border-radius:10px;background:#0b1625;padding:.66rem .75rem}
+input[type=file]{padding:1rem;border:1px dashed #6b8cb8;border-radius:10px;background:#0d1a29;width:100%}input[type=checkbox]{width:1.1rem;height:1.1rem;accent-color:#85b7ff}
+textarea{min-height:5.5rem;resize:vertical}
+button{cursor:pointer;border:1px solid #577cad;border-radius:10px;padding:.68rem .95rem;background:#203752;font-size:.88rem;font-weight:700}
+button.primary{background:#80b4ff;color:#071522;border:0}button:disabled{cursor:not-allowed;opacity:.45}button:hover:not(:disabled){filter:brightness(1.12)}
+button.danger{border-color:#be6871;color:#ffe2df;background:#3b222f}
+.actions{display:flex;gap:.55rem;flex-wrap:wrap;align-items:center;margin:.8rem 0}.actions button{flex-shrink:0}
+.banner{background:#302b19;border:1px solid #8b7041;border-radius:10px;color:#f3d9a6;padding:.8rem 1rem;font-size:.84rem}
+.status{border-left:4px solid #81b5ff;background:#15253b;padding:.65rem .95rem;border-radius:6px;white-space:pre-wrap;overflow-wrap:anywhere}
+.status.error{border-color:#ed8686;background:#37252a}.metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:.5rem;margin:1.2rem 0}
+.metric{border:1px solid #304057;border-radius:12px;padding:.8rem;background:#0c1828}.metric strong{display:block;font-size:1.55rem}.metric span{color:#aebdd2;font-size:.77rem}
+.scroll{max-height:480px;overflow:auto;border:1px solid #304057;border-radius:12px;margin:.5rem 0 1rem}
+table{border-collapse:collapse;width:100%;font-size:.85rem}th,td{text-align:left;border-bottom:1px solid #2e3c50;padding:.65rem .5rem;vertical-align:middle}th{position:sticky;top:0;background:#16243a;z-index:2}td:nth-child(2){max-width:240px;word-break:break-word}
+tr[data-active=true]{background:#233955}.severity{font-weight:800;text-transform:uppercase;letter-spacing:.035em;font-size:.7rem}.severity.critical{color:#ff8e9c}.severity.high{color:#ffca91}.severity.medium{color:#e9de95}.severity.low{color:#a4c5f9}.severity.info{color:#b8c5d5}
+pre{background:#081220;color:#dbe9fc;border:1px solid #354760;border-radius:12px;white-space:pre-wrap;word-break:break-word;padding:1.15rem;max-height:560px;overflow:auto;font-size:.78rem}
+.checkbox{display:flex;align-items:flex-start;gap:.65rem;color:#d4e0f1;font-weight:500;margin:.8rem 0}
+.checkbox input{flex-shrink:0;margin-top:.2rem}
+.full{grid-column:1/-1}.hide{display:none!important}footer{color:#aebdd2;margin-top:1.5rem;font-size:.82rem}
+@media(max-width:900px){.grid{grid-template-columns:1fr}.metrics{grid-template-columns:repeat(2,1fr)}}
+</style>
+</head>
+<body>
+<main>
+<header><div><div class="brand">LIGHTUP / PRIVATE HUMAN DESK</div><h1>Remediation ticket drafts</h1><p class="intro">Turn an existing authorized LightUp five-column findings CSV into structured, source-bound HUMAN remediation tickets. No API access, no network calls and no issue creation.</p></div><span class="pill">INCUBATE · PLAN/LAB ONLY · DRAFT/HOLD</span></header>
+<p class="banner">A ticket draft does not mean an issue is verified, a fix is complete, a retest was authorized, or that you may publish client information. The CSV must already come from the original authenticated, tenant-checked LightUp exporter. Do not enter secrets, live targets or credentials here.</p>
+<section class="metrics" aria-label="Source overview">
+<div class="metric"><strong id="metric-count">—</strong><span>Source findings</span></div>
+<div class="metric"><strong id="metric-risk">—</strong><span>Critical / high</span></div>
+<div class="metric"><strong id="metric-picked">—</strong><span>Selected tickets</span></div>
+<div class="metric"><strong id="metric-hash">—</strong><span>Canonical source SHA</span></div>
+</section>
+<div class="grid">
+<section class="panel" aria-label="Source and tickets">
+<h2>01 / Source & selection</h2>
+<div class="field"><label for="source-file">Original authenticated findings.csv</label><input type="file" id="source-file" accept=".csv,text/csv"><small>Exact columns: finding_id,title,severity,retest_status,remediation · 1 MiB / 350 findings maximum</small></div>
+<div class="field"><label for="search">Filter by source title or finding ID</label><input id="search" type="search" placeholder="Search offline…" disabled></div>
+<div class="field"><label for="severity">Severity</label><select id="severity" disabled><option value="all">All severities</option><option>critical</option><option>high</option><option>medium</option><option>low</option><option>info</option></select></div>
+<div class="actions"><button id="select-visible" disabled>Select visible</button><button id="clear-visible" disabled>Clear visible</button><button id="select-urgent" disabled>Critical + high</button></div>
+<div class="scroll"><table><thead><tr><th scope="col">Use</th><th scope="col">Original finding</th><th scope="col">Severity</th><th scope="col">Source retest</th></tr></thead><tbody id="findings"><tr><td colspan="4" class="muted">Import a local source file to begin.</td></tr></tbody></table></div>
+<div class="actions"><button id="forget" class="danger" disabled>Forget private data</button></div>
+</section>
+<section class="panel" aria-label="Ticket authoring">
+<h2>02 / Human handoff</h2>
+<p class="muted">Select a row to edit the human-only ticket fields. The original source fields stay read-only and will be reproduced as explicitly unverified source claims.</p>
+<div class="field"><label for="chosen">Selected finding to edit</label><select id="chosen" disabled><option value="">No finding selected</option></select></div>
+<div class="field"><label for="owner">Proposed owner alias (not identity proof)</label><input id="owner" maxlength="120" disabled placeholder="Security engineering"></div>
+<div class="field"><label for="due">Tentative target date</label><input id="due" type="date" disabled></div>
+<div class="field"><label for="stage">Proposed HUMAN work stage</label><select id="stage" disabled><option value="triage">Needs human triage</option><option value="planned">Planning</option><option value="blocked">Blocked</option><option value="in_progress">In progress</option><option value="ready_for_review">Ready for human review</option></select></div>
+<div class="field"><label for="action">Proposed next remediation action (up to 1200 chars)</label><textarea id="action" maxlength="1200" disabled placeholder="Describe a concrete proposed engineering change…"></textarea></div>
+<div class="field"><label for="review">Proposed independent verification plan (up to 1200 chars)</label><textarea id="review" maxlength="1200" disabled placeholder="What evidence would be needed later? This is not a retest request."></textarea></div>
+<div class="field"><label for="blocker">Human dependency / blocker (up to 800 chars)</label><textarea id="blocker" maxlength="800" disabled placeholder="Missing design decision, review or owner…"></textarea></div>
+<div class="actions"><button id="apply" class="primary" disabled>Save this HUMAN draft</button><button id="preview" disabled>Preview chosen draft</button></div>
+<p id="notice" class="status" role="status" aria-live="polite">All edits stay only in this tab until an explicitly approved private download. Refreshing loses unsaved work.</p>
+</section>
+<section class="panel full">
+<h2>03 / Private release review</h2>
+<p class="muted">Review before copying text into your own approved private tracker. The ticket content includes source finding IDs, titles and remediation suggestions. It may be confidential. No generated ticket is sent anywhere automatically.</p>
+<div class="field"><label for="preview-output">Private GitHub-flavored Markdown preview</label><pre id="preview-output">Nothing selected yet.</pre></div>
+<label class="checkbox"><input type="checkbox" id="private-ack" disabled><span>I have independently checked the intended recipients, channel and source-client context, and approve handling these plaintext ticket drafts privately. This is not authorization to scan, release or claim a verified fix.</span></label>
+<div class="actions">
+<button id="export-one" class="primary" disabled>Download selected PRIVATE .md</button>
+<button id="export-all" disabled>Download selected PRIVATE .md bundle</button>
+<button id="export-counts" disabled>Download anonymous counts JSON</button>
+</div>
+<p class="banner">PRIVATE exports contain source IDs, titles, original remediation suggestions and HUMAN owner/action fields. The counts-only JSON contains none of those fields. Neither output is an authenticated client attestation or a verified remediation result.</p>
+</section>
+</div>
+<footer>Offline only. Authenticated source export remains a separate LightUp operation. Original Casework parser provided by unmodified source-owner PR #1568; this companion never writes to the LightUp database or GitHub.</footer>
+</main>
+<script src="../casework/remediation-engine.js"></script>
+<script src="./ticket-desk.js"></script>
+</body>
+</html>
