@@ -14,6 +14,7 @@
     dispatch_allowed:false,release_allowed:false});
   const MAX_SOURCE_BYTES = 8 * 1024 * 1024;
   let sources = [], rows = [], visible = [], selected = null, sourceDigests = [];
+  let rawOriginalBytes = [];
   let matrixPage = 0;
   const fail = (ok, message = "Untrusted or incompatible original lab result") => {
     if (!ok) throw new Error(message);
@@ -412,60 +413,95 @@
       }
     }
   });
+  async function prepareOriginalBytes(rawFiles) {
+    fail(Array.isArray(rawFiles)&&rawFiles.length>=2&&rawFiles.length<=8,
+      "Expected 2–8 existing original PRIVATE isolated lab results");
+    const next=[],nextDigests=[],bytes=[];
+    for(const data of rawFiles) {
+      fail(data instanceof Uint8Array&&data.byteLength>0&&
+        data.byteLength<=MAX_SOURCE_BYTES,"Original PRIVATE source outside the 8 MiB bound");
+      bytes.push(data);
+      let fingerprint=null;
+      try {
+        if(globalThis.crypto?.subtle){
+          const digest=await crypto.subtle.digest("SHA-256",data);
+          fingerprint=[...new Uint8Array(digest)].map(b=>b.toString(16).padStart(2,"0")).join("");
+        }
+      } catch {fingerprint=null;}
+      nextDigests.push(fingerprint);
+      const decoded=new TextDecoder("utf-8",{fatal:true}).decode(data);
+      next.push(admit(parseStrict(decoded)));
+    }
+    const baseline=next[0],sameTargets=new Set(baseline.targets);
+    fail(new Set(next.map(s=>s.run_id)).size===next.length,
+      "Repeated original run IDs; mixed PRIVATE batch held");
+    for(const item of next.slice(1)) {
+      fail(item.scenario_id===baseline.scenario_id,
+        "Different source-declared scenario; cannot compare original source claims");
+      fail(item.targets.length===baseline.targets.length&&
+        item.targets.every(t=>sameTargets.has(t)),
+        "Different exact literal endpoint sets; cannot compare originals");
+    }
+    return {next,nextDigests,bytes,baseline,newRows:aggregate(next)};
+  }
+  function commitOriginalBatch(prepared,privateHumanNotes=null) {
+    // All potentially invalid external ORIGINAL and HUMAN bytes were admitted
+    // before this synchronous commit changes any visible application state.
+    sources=prepared.next;sourceDigests=prepared.nextDigests;
+    rawOriginalBytes=prepared.bytes;rows=prepared.newRows;
+    selected=null;matrixPage=0;clear($("details"));
+    clear($("endpoint"));
+    $("endpoint").append(new Option("All declared endpoints",0));
+    prepared.baseline.targets.forEach((_,i)=>
+      $("endpoint").append(new Option("Endpoint ordinal "+(i+1),i+1)));
+    $("endpoint").append(new Option("Unmatched source-declared target","unmatched"));
+    $("workspace").hidden=false;$("intro").hidden=true;
+    $("sourceCount").textContent=sources.length+" original PRIVATE source files";
+    $("sourceSummary").textContent=prepared.baseline.targets.length+
+      " identical literal declared endpoint slots · "+rows.length+
+      " literal capability/check groups · no verification of target, ownership or chronology";
+    renderSourceMetrics();renderEndpointCounts();renderAttention();refresh();
+    humanBoard.initialize();
+    if(privateHumanNotes!==null)humanBoard.commitVaultPlan(privateHumanNotes);
+    workspaceVault.update();
+  }
+  async function prepareFullWorkspace(rawFiles,plan) {
+    const prepared=await prepareOriginalBytes(rawFiles);
+    fail(obj(plan),"Encrypted PRIVATE workspace missing complete HUMAN workplan");
+    fail(prepared.nextDigests.every(v=>typeof v==="string"),
+      "Browser cannot bind ORIGINAL source bytes to HUMAN plan without WebCrypto");
+    const notes=humanBoard.validateVaultPlan(plan,prepared.newRows,prepared.nextDigests);
+    return {...prepared,notes};
+  }
+  const workspaceVault=createPrivateWorkspaceVault({
+    $,fail,shape,int,parseStrict,message,download,
+    getRawFiles:()=>rawOriginalBytes,
+    getPrivatePlan:()=>humanBoard.exportVaultPlan(),
+    prepareFullWorkspace,
+    commitFullWorkspace:prepared=>commitOriginalBatch(prepared,prepared.notes)
+  });
   async function importFiles() {
     const files=[...$("files").files];
     if(files.length<2||files.length>8){
       message("Select 2–8 existing original PRIVATE lab JSON files in your chosen display order.",true);return;
     }
-    $("load").disabled=true;message("Reading selected local originals. No network or scan.");
+    $("load").disabled=true;
+    message("Reading explicit local originals. Nothing is uploaded or scanned.");
     try {
-      const next=[],nextDigests=[];
-      for(const file of files) {
-        fail(file.size>0&&file.size<=MAX_SOURCE_BYTES,"Source file outside the 8 MiB bound");
-        const data=new Uint8Array(await file.arrayBuffer());
-        let fingerprint=null;
-        try {
-          if(globalThis.crypto?.subtle){
-            const bytes=await crypto.subtle.digest("SHA-256",data);
-            fingerprint=[...new Uint8Array(bytes)].map(byte=>byte.toString(16).padStart(2,"0")).join("");
-          }
-        } catch {fingerprint=null;}
-        nextDigests.push(fingerprint);
-        const decoded=new TextDecoder("utf-8",{fatal:true}).decode(data);
-        next.push(admit(parseStrict(decoded)));
+      const prepared=await prepareOriginalBytes(
+        await Promise.all(files.map(async file=>{
+          fail(file.size>0&&file.size<=MAX_SOURCE_BYTES,
+            "Original PRIVATE source file outside the 8 MiB bound");
+          return new Uint8Array(await file.arrayBuffer());
+        })));
+      if(sources.length&&!confirm("Replace current original PRIVATE results and all HUMAN planning choices?")) {
+        message("Original file replacement cancelled. Current private workroom kept.");return;
       }
-      const baseline=next[0],sameTargets=new Set(baseline.targets);
-      fail(new Set(next.map(s=>s.run_id)).size===next.length,
-        "Repeated original run IDs; mixed source set held");
-      for(const source of next.slice(1)) {
-        fail(source.scenario_id===baseline.scenario_id,
-          "Different source-declared scenario; cannot present one comparison matrix");
-        fail(source.targets.length===baseline.targets.length&&
-          source.targets.every(t=>sameTargets.has(t)),
-          "Different exact declared endpoint set; cannot present one comparison matrix");
-      }
-      // Never discard an existing HUMAN plan unless replacement is deliberate.
-      if(sources.length&&!confirm("Replace the current original source set and all unsaved HUMAN routing choices?")){
-        message("New source set not applied. Existing workroom retained.");return;
-      }
-      // Only publish after the WHOLE batch has passed strict source admission.
-      sources=next;sourceDigests=nextDigests;rows=aggregate(next);
-      selected=null;matrixPage=0;clear($("details"));
-      clear($("endpoint"));
-      $("endpoint").append(new Option("All declared endpoints",0));
-      baseline.targets.forEach((_,i)=>$("endpoint").append(new Option("Endpoint ordinal "+(i+1),i+1)));
-      $("endpoint").append(new Option("Unmatched source-declared target","unmatched"));
-      $("workspace").hidden=false;
-      $("intro").hidden=true;
-      $("sourceCount").textContent=sources.length+" original PRIVATE source files";
-      $("sourceSummary").textContent=baseline.targets.length+
-        " identical literal declared endpoint slots · "+rows.length+
-        " literal capability/check groups · no verification of target, ownership or chronology";
-      renderSourceMetrics();renderEndpointCounts();renderAttention();refresh();humanBoard.initialize();
-      message("Local input admitted structurally. Source statements remain unverified. No original data uploaded.");
+      commitOriginalBatch(prepared);
+      message("Original PRIVATE result batch structurally admitted. Source statements are unverified; no target contact or upload.");
     } catch(error) {
-      message("Entire selection held: "+error.message+
-        ". Previously opened selection, if any, was not replaced.",true);
+      message("Entire original source batch HOLD: "+error.message+
+        ". Existing PRIVATE workspace retained.",true);
     } finally {
       $("load").disabled=false;$("files").value="";
     }
@@ -473,13 +509,14 @@
   $("load").addEventListener("click",importFiles);
   $("forget").addEventListener("click",()=>{
     if(sources.length&&!confirm("Forget ALL locally opened original PRIVATE result data?"))return;
-    sources=[];rows=[];visible=[];selected=null;sourceDigests=[];matrixPage=0;
+    sources=[];rows=[];visible=[];selected=null;sourceDigests=[];rawOriginalBytes=[];matrixPage=0;
     humanBoard.clearAll();
     clear($("details"));clear($("matrix"));clear($("attention"));clear($("sourceMetrics"));clear($("endpointCounts"));$("query").value="";
     $("matrixPages").textContent="No matrix loaded.";
     $("matrixPrev").disabled=true;$("matrixNext").disabled=true;
     $("workspace").hidden=true;$("intro").hidden=false;
-    $("files").value="";message("Private originals discarded from this application state.");
+    $("files").value="";workspaceVault.update();
+    message("Private originals and HUMAN plan discarded from this application state.");
   });
   ["query","severity","endpoint"].forEach(id=>$(id).addEventListener("input",()=>{
     matrixPage=0;refresh();
