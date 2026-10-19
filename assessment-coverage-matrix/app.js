@@ -14,7 +14,7 @@
     dispatch_allowed:false,release_allowed:false});
   const MAX_SOURCE_BYTES = 8 * 1024 * 1024;
   let sources = [], rows = [], visible = [], selected = null, sourceDigests = [];
-  let rawOriginalBytes = [];
+  let rawOriginalBytes = [], originalByteTotal = 0;
   let matrixPage = 0;
   const fail = (ok, message = "Untrusted or incompatible original lab result") => {
     if (!ok) throw new Error(message);
@@ -448,7 +448,11 @@
     // All potentially invalid external ORIGINAL and HUMAN bytes were admitted
     // before this synchronous commit changes any visible application state.
     sources=prepared.next;sourceDigests=prepared.nextDigests;
-    rawOriginalBytes=prepared.bytes;rows=prepared.newRows;
+    originalByteTotal=prepared.bytes.reduce((sum,b)=>sum+b.byteLength,0);
+    // Retain an exact-byte copy only when the operator can use full-vault export.
+    // Larger already-admitted source batches remain browsable without a 2nd 64MiB raw cache.
+    rawOriginalBytes=originalByteTotal<=24*1024*1024?prepared.bytes:[];
+    rows=prepared.newRows;
     selected=null;matrixPage=0;clear($("details"));
     clear($("endpoint"));
     $("endpoint").append(new Option("All declared endpoints",0));
@@ -476,6 +480,8 @@
   const workspaceVault=createPrivateWorkspaceVault({
     $,fail,shape,int,parseStrict,message,download,
     getRawFiles:()=>rawOriginalBytes,
+    getOriginalCount:()=>sources.length,
+    getOriginalByteTotal:()=>originalByteTotal,
     getPrivatePlan:()=>humanBoard.exportVaultPlan(),
     prepareFullWorkspace,
     commitFullWorkspace:prepared=>commitOriginalBatch(prepared,prepared.notes)
@@ -509,7 +515,8 @@
   $("load").addEventListener("click",importFiles);
   $("forget").addEventListener("click",()=>{
     if(sources.length&&!confirm("Forget ALL locally opened original PRIVATE result data?"))return;
-    sources=[];rows=[];visible=[];selected=null;sourceDigests=[];rawOriginalBytes=[];matrixPage=0;
+    sources=[];rows=[];visible=[];selected=null;sourceDigests=[];rawOriginalBytes=[];
+    originalByteTotal=0;matrixPage=0;
     humanBoard.clearAll();
     clear($("details"));clear($("matrix"));clear($("attention"));clear($("sourceMetrics"));clear($("endpointCounts"));$("query").value="";
     $("matrixPages").textContent="No matrix loaded.";
