@@ -1,3 +1,11 @@
+### Large-original-batch memory handling (19 October 2026)
+
+The browser matrix still structurally admits and displays **2–8 original files of up to 8 MiB each**. For batches exceeding the 24 MiB encrypted full-workroom export cap, it now releases the additional *raw source-byte cache* after admitting the source (the parsed, PRIVATE in-memory results remain available for HUMAN comparison). This avoids unnecessarily retaining up to 64 MiB of duplicate input bytes when the complete encrypted vault cannot be used. The vault explains the size cap without hiding the normal source set or preventing HUMAN-only export, and the operator can still import a smaller batch. The original results never leave the browser and the complete encrypted export never silently truncates sources.
+
+**Latest exact source [2480886](https://github.com/Zennay/Lightup/commit/2480886be480b4faf8eed77ad87be18cee868bd5)** (previous commits in older sections are milestones). Connected permitted zSSH direct source inspection found the combined production JavaScript syntax valid, Python standalone builder syntax valid, the exact committed HTML **111,572 UTF-8 bytes**, matching CSP SHA256 for the sole inline script and stylesheet and no external assets. No QA suites, actual customer imports, browser E2E approval, crypto audit or production release claimed. Original DRAFT/HOLD release gates unchanged.
+
+---
+
 ## Complete encrypted PRIVATE lab workspace (19 October 2026)
 
 **New standalone product behavior on this existing DRAFT/HOLD branch:** The same local one-file browser application can now securely **package original PRIVATE lab-result JSON bytes together with all HUMAN planning choices**, including their source-byte fingerprints, as *one locally encrypted, portable workroom*. This is different from the existing lightweight HUMAN-only plan: a complete workroom includes PRIVATE original targets, evidence and report text inside the ciphertext.
