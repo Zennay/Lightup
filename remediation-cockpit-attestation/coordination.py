@@ -258,14 +258,19 @@ def render(document: dict) -> bytes:
     return text.encode("utf-8")
 
 
-def publish(folder: Path, secret: Path, plan_file: Path, output: Path) -> dict:
+def publish(folder: Path, secret: Path, plan_file: Path, output: Path,
+            *, linked_workroom: bool = False) -> dict:
     original, digest = admitted_inbox(folder, secret)
     plan, raw = decrypt(plan_file, secret, original, digest)
     require(output.is_absolute() and output != folder and
             folder not in output.parents and output != plan_file and
             output != secret and not output.exists())
     public = overview(plan)
-    html_raw = render(plan)
+    if linked_workroom:
+        import linked_board
+        html_raw = linked_board.render(plan)
+    else:
+        html_raw = render(plan)
     anonymous = native.workspace.pretty(public)
     data = {"kind": "lightup.private_human_coordination_browser",
             "schema_version": 1, "files": {"index.html": inbox.descriptor(html_raw),
@@ -273,6 +278,8 @@ def publish(folder: Path, secret: Path, plan_file: Path, output: Path) -> dict:
             "source_inbox_manifest_sha256": digest,
             "encrypted_plan_sha256": hashlib.sha256(raw).hexdigest(),
             "warning": WARNING}
+    if linked_workroom:
+        data["navigation"] = linked_board.MODE
     require(inbox.inspect(folder, secret) == original and
             manifest_sha(folder) == digest and
             attest.private_file(plan_file, MAX_FILE) == raw)
