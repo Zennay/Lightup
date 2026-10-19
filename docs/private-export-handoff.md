@@ -54,3 +54,30 @@ python -m lightup.private_export_continuity earlier-private.zip later-private.zi
 ```
 
 The first default report is ID-free; small counts may still be sensitive. Neither mode updates a source, owner decision, original stored finding, or previous HUMAN evidence/casework state. A changed source digest or record requires a separately authenticated and reviewed human decision before re-binding any old evidence or status.
+
+## PRIVATE HUMAN Evidence Workdesk — interactive offline product
+
+The original authenticated tenant archive can now be turned into a **portable, source-bound, self-contained HUMAN workdesk** with the actual source finding IDs, titles, severity, source-claimed retest status and remediation. This is for locally trusted operators; the produced 0600 HTML is **unencrypted/private** and contains original customer information. It is neither a client-facing public report nor evidence of authorization, consent, a verified fix or a performed retest.
+
+```sh
+python -m lightup.private_export_workdesk /path/to/PRIVATE-handoff.zip \
+  --output /path/to/private/HUMAN-workdesk.html \
+  --ack-private-plaintext --ack-original-identifiers
+```
+
+Open the local HTML in a modern browser. Severity-prioritized finding cards support quick local search, severity and HUMAN-stage filters, editable human owner aliases, provisional follow-up dates and private coordination notes. **No fixed/approved state exists** in the authoring control. No remote calls, form submissions, persistent browser storage, scanners, grants or other network assets. All source descriptions render through browser `textContent` and the generated single inline script/style use their own exact SHA-256 CSP hashes, with all external content blocked.
+
+Click **Export PRIVATE HUMAN JSON** to explicitly save the source-bound, unsigned private draft. The browser intentionally does not autosave it. To resume a draft, return to the source-bound CLI with the exact original ZIP and exported JSON:
+
+```sh
+python -m lightup.private_export_workdesk /path/to/PRIVATE-handoff.zip \
+  --resume /path/to/LightUp-PRIVATE-HUMAN-Workplan.json \
+  --output /path/to/private/resumed-workdesk.html \
+  --ack-private-plaintext --ack-original-identifiers
+```
+
+Resume uses Python duplicate-key-rejecting JSON admission and requires the original source digest and declared client/engagement labels to match, exact original finding-ID membership, bounded text and recognized non-authorizing stage values, literally false authority flags and a fresh no-clobber 0600 output. A changed source cannot silently inherit old notes or mark absent findings as fixed. Private values and labels require separate real human source/recipient verification. This offline workdesk does not replace original authenticated Casework, the existing source-owning HUMAN Operations Hub, or any product/release gate.
+
+### Extra import hardening
+
+The original ZIP intake now also validates every imported exported field using the parent original Unicode presentation-boundary guard, requires all formula/redaction presentation cells to already be canonical, rejects NFKC-equivalent duplicate IDs and requires byte-for-byte match with the original quoted CRLF source CSV serializer. An attacker cannot simply rehash a hand-written or altered CSV and claim it was emitted by the guarded original service. This is a data-format acceptance rule, not cryptographic source authenticity.
