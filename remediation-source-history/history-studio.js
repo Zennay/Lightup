@@ -2,7 +2,7 @@
 (() => {
 "use strict";
 const $ = id => document.getElementById(id);
-const state = { snapshots:[], notes:new Map(), active:null, revision:0 };
+const state = { snapshots:[], notes:new Map(), active:null, revision:0, importing:false };
 const FIELDS = ['finding_id','title','severity','retest_status','remediation'];
 const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const severityRank = {critical:0,high:1,medium:2,low:3,info:4};
@@ -10,7 +10,12 @@ const limits = {maxSnapshots:12,maxBytes:1048576,maxRows:350,maxNotes:250};
 const toB64=bytes=>{let s='';for(let i=0;i<bytes.length;i+=32768)s+=String.fromCharCode(...bytes.subarray(i,i+32768));return btoa(s);};
 function message(value, error=false) { $('message').textContent=value; $('message').className=error?'error':'info'; }
 function exact(a,b) { return FIELDS.every(k=>a[k]===b[k]); }
-function csvCell(v) {let s=String(v??''); if (/^[\s\u0000-\u001f\u200b-\u200f\u2060\ufeff]*[=+\-@]/u.test(s)) s="'"+s; return '"'+s.replace(/"/g,'""')+'"';}
+function csvCell(v) {
+ let s=String(v??'');
+ const probe=s.replace(/^[\u0000-\u0020\u007f-\u009f\u00a0\u1680\u2000-\u200f\u2028-\u202e\u205f\u2060-\u206f\u3000\ufeff]*/u,'').normalize('NFKC');
+ if(/^[=+\-@]/u.test(probe))s="'"+s;
+ return '"'+s.replace(/"/g,'""')+'"';
+}
 function download(name,content,mime) {
  const url=URL.createObjectURL(new Blob([content],{type:mime}));
  const a=document.createElement('a');a.href=url;a.download=name;a.click();
@@ -37,9 +42,12 @@ async function sha(bytes) {
  return [...new Uint8Array(await crypto.subtle.digest('SHA-256',bytes))].map(x=>x.toString(16).padStart(2,'0')).join('');
 }
 async function ingest(files) {
- const ctx=requireContext();const input=Array.from(files);
+ if(state.importing)throw Error('Original import already underway; finish it before importing more.');
+ const ctx=requireContext(),baseline=state.revision;const input=Array.from(files);
  if (!input.length) throw Error('Choose at least one original CSV.');
  if (state.snapshots.length+input.length>limits.maxSnapshots) throw Error('At most 12 chronological exports.');
+ state.importing=true;
+ try {
  let parsed=[];
  for (const file of input) {
   if (file.size>limits.maxBytes||file.size===0) throw Error('Original CSV must be 1 MiB or smaller and nonempty.');
@@ -53,11 +61,20 @@ async function ingest(files) {
  }
  // Multiple await boundaries: fail closed on user context switching while files are loading.
  const same=context();
- if(same.client!==ctx.client||same.engagement!==ctx.engagement||state.active?.client!==ctx.client||state.active?.engagement!==ctx.engagement)
+ if(state.revision!==baseline||same.client!==ctx.client||same.engagement!==ctx.engagement||state.active?.client!==ctx.client||state.active?.engagement!==ctx.engagement)
   throw Error('Client/engagement context changed during import; no imported data committed.');
  state.snapshots.push(...parsed);state.revision++;render();
  message(parsed.length+' original source revision(s) loaded locally. Chronological order is your responsibility; missing does not mean fixed.');
+ } finally {state.importing=false;}
 }
+function latestFinding(id) {return state.snapshots.at(-1)?.findings.find(f=>f.finding_id===id)||null;}
+function noteBinding(id) {
+ const n=state.notes.get(id),latest=latestFinding(id);
+ if(!n)return 'none';
+ if(!latest)return 'missing';
+ return n.sourceRecord && exact(n.sourceRecord,latest)?'bound':'stale';
+}
+function boundNote(id) {return noteBinding(id)==='bound'?state.notes.get(id):null;}
 function idSet() {const ids=new Set();state.snapshots.forEach(s=>s.findings.forEach(f=>ids.add(f.finding_id)));return ids;}
 function timeline() {
  const snaps=state.snapshots,maps=snaps.map(s=>new Map(s.findings.map(f=>[f.finding_id,f])));
@@ -100,19 +117,19 @@ function filtered() {
   if(kind==='retest'&&!x.statusChanges)return false;
   if(kind==='high'&&severityRank[r.severity]>1)return false;
   if(sev!=='all'&&r.severity!==sev)return false;
-  return !filter||[x.id,r.title,r.remediation,state.notes.get(x.id)?.owner||''].join(' ').toLowerCase().includes(filter);
+  return !filter||[x.id,r.title,r.remediation,boundNote(x.id)?.owner||''].join(' ').toLowerCase().includes(filter);
  });
 }
 function renderSnapshots() {
  $('snapshots').innerHTML=state.snapshots.map((s,i)=>'<li><div><label>Revision '+(i+1)+' label<input data-label="'+i+'" maxlength="100" value="'+esc(s.label)+'" aria-label="Revision '+(i+1)+' label"></label><small>'+s.findings.length+' original rows · canonical '+esc(s.sourceHash.slice(0,12))+'… · file '+esc(s.fileHash.slice(0,12))+'…</small></div><div class="tools"><button data-move="'+i+'" data-shift="-1" '+(i===0?'disabled':'')+'>↑</button><button data-move="'+i+'" data-shift="1" '+(i===state.snapshots.length-1?'disabled':'')+'>↓</button><button data-remove="'+i+'">Remove</button></div></li>').join('');
 }
 function renderGrid() {
- const rows=filtered();
- $('count').textContent=rows.length+' trajectories matching current filters';
+ const rows=filtered(),stale=[...state.notes.keys()].filter(id=>noteBinding(id)!=='bound').length;
+ $('count').textContent=rows.length+' trajectories matching current filters · '+stale+' HUMAN notes held for source review';
  $('grid').innerHTML=rows.slice(0,350).map(x=>{
-  const r=x.representative,tag=x.latest?'present':'absent';
+  const r=x.representative,tag=x.latest?'present':'absent',binding=noteBinding(x.id);
   const cells=x.series.map((f,i)=>'<td class="'+(f?'':'missing')+'">'+(f?'<strong>'+esc(f.severity)+'</strong><br>'+esc(f.retest_status):'—')+'</td>').join('');
-  return '<tr><td><button class="link" data-view="'+esc(x.id)+'">'+esc(x.id)+'</button><small>'+esc(r.title.slice(0,110))+'</small></td>'+cells+'<td><span class="pill">'+tag+'</span><small>'+esc(x.edits.join(' · ')||'No observed source delta')+'</small></td></tr>';
+  return '<tr><td><button class="link" data-view="'+esc(x.id)+'">'+esc(x.id)+'</button><small>'+esc(r.title.slice(0,110))+'</small></td>'+cells+'<td><span class="pill">'+tag+'</span><small>'+esc(x.edits.join(' · ')||'No observed source delta')+'</small>'+(binding==='stale'||binding==='missing'?'<small><strong>HUMAN NOTE HELD — '+esc(binding)+'; not transferable without review</strong></small>':'')+'</td></tr>';
  }).join('');
  $('headers').innerHTML='<th>Original finding</th>'+state.snapshots.map((s,i)=>'<th>'+esc((i+1)+'. '+s.label.slice(0,36))+'</th>').join('')+'<th>Source change only</th>';
 }
@@ -125,16 +142,35 @@ function renderDetail() {
  $('detailTitle').textContent=r.title+' · '+id;
  $('detailSource').innerHTML=entry.series.map((f,i)=>'<article class="snapshot"><h4>'+esc((i+1)+'. '+state.snapshots[i].label)+'</h4>'+(f?'<p><b>Source claim:</b> '+esc(f.severity)+' / '+esc(f.retest_status)+'</p><p><b>Suggested remediation (source text):</b> '+esc(f.remediation)+'</p>':'<p>Absent from this export; not proof of remediation.</p>')+'</article>').join('');
  $('humanOwner').value=n.owner;$('humanAction').value=n.action;$('humanDue').value=n.due;
+ const binding=noteBinding(id),held=binding==='stale'||binding==='missing';
+ $('humanBinding').textContent=held
+  ? (binding==='missing'?'HOLD: original finding is absent from the latest source. No carry or export permitted.':'HOLD: exact original five-field finding changed (or old note has no original row binding). Review both source versions before deliberate HUMAN carry.')
+  : (binding==='bound'?'Current HUMAN note is bound to the exact five-field latest original source.':'New HUMAN note will be tied to the exact latest original source row.');
+ $('saveHuman').disabled=held||!entry.latest;
+ $('carryHuman').hidden=!held||!entry.latest;
+ $('carryAckLabel').hidden=!held||!entry.latest;
+ $('carryAck').checked=false;
 }
 function render() {renderSnapshots();summary();renderGrid();renderDetail();$('forget').disabled=!state.snapshots.length;window.dispatchEvent(new Event('lightup-history-changed'));}
 function notesFromFields(){
  const id=state.selected;
  if(!id)throw Error('Select an exact original finding.');
+ const current=latestFinding(id);
+ if(!current||['stale','missing'].includes(noteBinding(id)))throw Error('HOLD: existing HUMAN note requires explicit source-change review; cannot silently overwrite.');
  const owner=$('humanOwner').value.trim(),action=$('humanAction').value.trim(),due=$('humanDue').value;
  if(owner.length>120||action.length>1200|| (due && (new Date(due+'T00:00:00Z').toISOString().slice(0,10)!==due)))throw Error('Invalid HUMAN plan fields.');
  if(!owner&&!action&&!due)state.notes.delete(id);
- else {if(state.notes.size>=limits.maxNotes&&!state.notes.has(id))throw Error('Local HUMAN notes limit reached.');state.notes.set(id,{owner,action,due});}
- renderGrid();message('Private HUMAN coordination note saved in memory only; no source finding, grant or retest changed.');
+ else {if(state.notes.size>=limits.maxNotes&&!state.notes.has(id))throw Error('Local HUMAN notes limit reached.');state.notes.set(id,{owner,action,due,sourceRecord:Object.fromEntries(FIELDS.map(k=>[k,current[k]]))});}
+ state.revision++;renderGrid();renderDetail();message('Private HUMAN coordination note saved in memory only; no source finding, grant or retest changed.');
+}
+function carryHuman() {
+ const id=state.selected,existing=state.notes.get(id),current=latestFinding(id);
+ if(!existing||!current||noteBinding(id)!=='stale'||!$('carryAck').checked)
+  throw Error('Source change needs selected current finding and explicit human review acknowledgement.');
+ if(!window.confirm('PRIVATE HUMAN REVIEW: Carry existing HUMAN notes to the CHANGED original five-field source record? This is NOT a verified fix, consent or authorization.'))return;
+ const notes={...existing,sourceRecord:Object.fromEntries(FIELDS.map(k=>[k,current[k]]))};
+ state.notes.set(id,notes);state.revision++;renderGrid();renderDetail();
+ message('Human note deliberately carried to the exact latest original finding after acknowledgment; no security status or source changed.');
 }
 function exportAggregate(){
  if(!state.snapshots.length)throw Error('Load original source history first.');
@@ -148,8 +184,8 @@ function exportAggregate(){
 }
 function exportPrivate() {
  requireContext();protect();if(!state.snapshots.length)throw Error('No original source loaded.');
- const headers=['original_finding_id','original_title','latest_original_severity','latest_original_retest','original_history','human_owner_alias','human_next_action','human_due_date'];
- const rows=filtered().map(x=>{const n=state.notes.get(x.id)||{};return [x.id,x.representative.title,x.representative.severity,x.representative.retest_status,x.series.map((f,i)=>i+1+':'+(f?f.severity+'/'+f.retest_status:'ABSENT_NOT_FIXED')).join(' | '),n.owner||'',n.action||'',n.due||''];});
+ const headers=['original_finding_id','original_title','latest_original_severity','latest_original_retest','original_history','human_source_binding','human_owner_alias','human_next_action','human_due_date'];
+ const rows=filtered().map(x=>{const n=boundNote(x.id)||{};return [x.id,x.representative.title,x.representative.severity,x.representative.retest_status,x.series.map((f,i)=>i+1+':'+(f?f.severity+'/'+f.retest_status:'ABSENT_NOT_FIXED')).join(' | '),noteBinding(x.id)==='bound'?'EXACT_ORIGINAL_ROW':(state.notes.has(x.id)?'HOLD_STALE_OR_MISSING':'NO_NOTE'),n.owner||'',n.action||'',n.due||''];});
  if(!rows.length)throw Error('No filtered source findings for private handoff.');
  download('lightup-PRIVATE-source-history-human-handoff.csv','\uFEFF'+[headers,...rows].map(r=>r.map(csvCell).join(',')).join('\r\n')+'\r\n','text/csv;charset=utf-8');
  message('PRIVATE original-ID handoff exported; verify destination and recipients. Never a grant, verified fix or retest.');
@@ -160,6 +196,7 @@ $('filter').addEventListener('input',renderGrid);
 $('kind').addEventListener('change',renderGrid);
 $('severity').addEventListener('change',renderGrid);
 $('saveHuman').addEventListener('click',()=>{try{notesFromFields();}catch(e){message(e.message,true);}});
+$('carryHuman').addEventListener('click',()=>{try{carryHuman();}catch(e){message(e.message,true);}});
 $('aggregate').addEventListener('click',()=>{try{exportAggregate();}catch(e){message(e.message,true);}});
 $('privateExport').addEventListener('click',()=>{try{exportPrivate();}catch(e){message(e.message,true);}});
 $('forget').addEventListener('click',forget);
@@ -197,6 +234,18 @@ window.LightUpHistory=Object.freeze({
   revision(){return state.revision;},
   view(){return state.snapshots.map(x=>({label:x.label,sourceHash:x.sourceHash,fileHash:x.fileHash,findings:x.findings.map(y=>({...y}))}));},
   privateAllowed(){requireContext();protect();return true;},
+  noteSummary(){
+    return {bound:[...state.notes.keys()].filter(id=>noteBinding(id)==='bound').length,held:[...state.notes.keys()].filter(id=>noteBinding(id)!=='bound').length};
+  },
+  exportCasework(){
+    requireContext();protect();
+    const latest=state.snapshots.at(-1);if(!latest)throw Error('Import original source before creating a Casework handoff.');
+    const cases=latest.findings.map(f=>{
+      const n=boundNote(f.finding_id),row=LightUpCasework.newCase(f);
+      return {...row,status:n?'planned':'unassigned',owner:n?.owner||'',next_action:n?.action||'',due_date:n?.due||null};
+    });
+    return LightUpCasework.makePacket(latest.findings,cases,latest.sourceHash);
+  },
   limits:Object.freeze({...limits})
 });
 render();
