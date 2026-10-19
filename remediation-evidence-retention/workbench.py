@@ -15,7 +15,7 @@ from types import SimpleNamespace
 import secrets
 import sys
 
-import calendar as private_calendar
+import human_calendar as private_calendar
 import desk
 import history
 import reconcile
