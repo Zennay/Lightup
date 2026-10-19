@@ -160,11 +160,49 @@ PYTHONPATH=src python3 remediation-evidence-bridge/merge.py merge \
   --ack-private-human-review
 ```
 
-Original HUMAN Casework, Evidence Review, registered local evidence fingerprints and HUMAN follow-up requests retain their distinct original IDs; independently added source-bound records are kept. For the **same** original HUMAN record, differing owner/date/status/plan/note/fingerprint metadata and other editable fields are shown separately in the private terminal, field by field. The operator explicitly chooses **L** or **R** for each disputed field. An empty choice or **HOLD** stops before creating a merged artifact; there is **no** auto-winner, no overwrite of either encrypted source and no discarded independent change. Original finding membership remains fixed and cannot be reassigned by selecting a side.
+Original HUMAN Casework, Evidence Review, registered local evidence fingerprints and HUMAN follow-up requests retain their distinct original IDs; independently added source-bound records are kept. For the **same** original HUMAN record, differing owner/date/status/plan/note/fingerprint metadata and other editable fields are shown separately in the private terminal, field by field. The operator explicitly chooses **L** or **R** for each disputed field. An empty choice or **HOLD** stops before creating a merged artifact; there is **no** auto-winner, no overwrite of either encrypted source and no discarded independent change. Original finding membership remains fixed and cannot be reassigned by selecting a side. If one source has an entire Casework or Evidence Review view detached while the other retains it, even that **view-level presence conflict** requires a separate explicit local HUMAN retain/discard choice. No implicit preservation or deletion.
 
 The merged original HUMAN envelope is fully re-admitted, encrypted into a **new** 0600 file inside an owner-private directory and can be reopened using `workspace.py open-current`. After opening, the **original unchanged Ledger still requires its own separate preview and explicit HUMAN apply**, even for a conflict-free merge. Any originally source-labelled `fixed` is still just a retrospective, unverified label.
 
 **Operational safeguards:** original source bytes and exact client/engagement require a fresh authorized read; all source and human files must be owner-only single-linked regular files; recipient/offline-browser requirements and original privacy/crypto review still apply. Local terminal shows HUMAN note contents **only in the deliberate conflict-resolution step**, never in the aggregate `preview`. Do not capture that terminal session to shared logs. This feature is subject to the same DRAFT/HOLD release gates as the source owner.
+
+## Five-view original-authenticated offline workstation (integrated source owners)
+
+**`complete.py`** is the complete operational integration of **unchanged original [Authenticated Engagement Brief / Source History PR #1654](https://github.com/Zennay/Lightup/pull/1654)** into this candidate's original Evidence Artifact Ledger, original Casework and original Ticket Desk. No original owner source was rewritten. One genuine existing LightUp sign-in plus exact client+engagement read and one pre-existing original `workspace` / `workspace_history` encrypted source `.ltv` creates a **new owner-only 0700 offline folder** with 0600 separate original browser views:
+
+- `index.html`: source-only private navigation and unverified-source/HUMAN HOLD notice.
+- `01-review.html`: original source findings and optional previous-revision comparison.
+- `02-ticketdesk.html`: unchanged original source-bound HUMAN Ticket Desk.
+- `03-casework.html`: unchanged original source-bound HUMAN Casework.
+- `04-history.html` (when original historical snapshots are actually provided): original source-history review.
+- `05-evidence-ledger.html`: unchanged original Artifact Ledger and optionally a separate already encrypted, exactly current-source-bound HUMAN collaboration packet. **The HUMAN packet is only staged for original native user-driven preview**, never silently applied.
+
+All five/six HTML files and the navigation are built **completely in memory before a single output directory is created**. The original owner validates original source-app SHA pins and historical membership; the Evidence Bridge validates its original app/source pin. On any output failure the newly created directory's partial outputs are removed. No source/HTML bytes are uploaded or fetched from the network.
+
+```sh
+# First obtain an existing legitimate original encrypted workspace source by
+# using the original #1654 tooling on a trusted LightUp workstation.
+# Then create one complete private 5-view local dashboard:
+PYTHONPATH=src python3 remediation-evidence-bridge/complete.py \
+  --db /path/to/existing-lightup.sqlite \
+  --email operator@example.invalid \
+  --client-id EXISTING_CLIENT_ID --engagement-id EXISTING_ENGAGEMENT_ID \
+  --source /trusted/private/lightup/original-workspace-source.ltv \
+  --output-dir /trusted/private/lightup/new-private-five-view-workroom \
+  --ack-private-workspace
+
+# Optional already encrypted HUMAN follow-up packet (no plaintext intermediary):
+PYTHONPATH=src python3 remediation-evidence-bridge/complete.py \
+  --db /path/to/existing-lightup.sqlite \
+  --email operator@example.invalid \
+  --client-id EXISTING_CLIENT_ID --engagement-id EXISTING_ENGAGEMENT_ID \
+  --source /trusted/private/lightup/original-workspace-source.ltv \
+  --human /trusted/private/lightup/merged-human-review.ltv \
+  --output-dir /trusted/private/lightup/new-private-human-workroom \
+  --ack-private-workspace
+```
+
+Open the newly created `index.html` **locally** on a trusted private device. The five views remain separate offline files inside the same private folder to preserve original source ownership. Private HTML deliberately materializes source-labelled findings in plaintext only after explicit operator acknowledgement; do not publish, sync, email or serve the folder. Existing independent original CI, privacy/security/crypto/browser review, exact current separate client/operator consent, source owner review and HUMAN GO gates remain fully intact. A local human review is **not** an authorized scan, verified finding/retest, client approval or production release.
 
 ## Original ownership and enforced gates
 
