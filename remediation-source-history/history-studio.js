@@ -104,12 +104,15 @@ function summary() {
  if(!snaps.length){$('summary').textContent='Import two or more original CSV exports to see change history.';return;}
  const views=timeline(),last=snaps.at(-1),critical=last.findings.filter(f=>severityRank[f.severity]<=1).length;
  const variations=views.filter(x=>x.changed||x.added||x.missing).length,vanished=views.filter(x=>!x.latest).length;
- $('summary').textContent=snaps.length+' snapshots · '+last.findings.length+' latest source findings · '+critical+' source-labelled critical/high · '+variations+' changed trajectories · '+vanished+' absent from latest (NOT confirmed fixed)';
+ const held=[...state.notes.keys()].filter(id=>noteBinding(id)!=='bound').length;
+ $('summary').textContent=snaps.length+' snapshots · '+last.findings.length+' latest source findings · '+critical+' source-labelled critical/high · '+variations+' changed trajectories · '+vanished+' absent from latest (NOT confirmed fixed) · '+held+' HUMAN note(s) needing explicit source review';
 }
 function filtered() {
  const filter=$('filter').value.trim().toLowerCase(),kind=$('kind').value,sev=$('severity').value;
  return timeline().filter(x=>{
   const r=x.representative;
+  if(kind==='held'&&!['stale','missing'].includes(noteBinding(x.id)))return false;
+  if(kind==='bound'&&noteBinding(x.id)!=='bound')return false;
   if(kind==='changed'&&!x.changed)return false;
   if(kind==='added'&&!x.added)return false;
   if(kind==='absent'&&x.latest)return false;
@@ -143,6 +146,14 @@ function renderDetail() {
  $('detailSource').innerHTML=entry.series.map((f,i)=>'<article class="snapshot"><h4>'+esc((i+1)+'. '+state.snapshots[i].label)+'</h4>'+(f?'<p><b>Source claim:</b> '+esc(f.severity)+' / '+esc(f.retest_status)+'</p><p><b>Suggested remediation (source text):</b> '+esc(f.remediation)+'</p>':'<p>Absent from this export; not proof of remediation.</p>')+'</article>').join('');
  $('humanOwner').value=n.owner;$('humanAction').value=n.action;$('humanDue').value=n.due;
  const binding=noteBinding(id),held=binding==='stale'||binding==='missing';
+ const original=n.sourceRecord;
+ $('sourceChangeReview').hidden=!held;
+ if(held){
+   const changes=original&&entry.latest?FIELDS.filter(k=>original[k]!==entry.latest[k]):FIELDS;
+   $('sourceChangeReview').innerHTML='<strong>HUMAN SOURCE HOLD</strong><p>The note was attached to an older exact original row, or lacks a verified row binding. Current source differences: <b>'+esc(changes.join(', '))+'</b>.</p>'+
+    (original?'<div class="revisions"><article class="snapshot"><h4>Prior original note binding</h4>'+FIELDS.map(k=>'<p><b>'+esc(k)+':</b> '+esc(original[k])+'</p>').join('')+'</article>'+
+    (entry.latest?'<article class="snapshot"><h4>Latest original source</h4>'+FIELDS.map(k=>'<p><b>'+esc(k)+':</b> '+esc(entry.latest[k])+'</p>').join('')+'</article>':'<article class="snapshot"><h4>Missing from latest original export</h4><p>Absence is not evidence of a fix. The HUMAN note stays quarantined.</p></article>')+'</div>':'<p>Prior exact row binding unavailable (older archive). Treat the old note as unverified and review before manual carry.</p>');
+ }
  $('humanBinding').textContent=held
   ? (binding==='missing'?'HOLD: original finding is absent from the latest source. No carry or export permitted.':'HOLD: exact original five-field finding changed (or old note has no original row binding). Review both source versions before deliberate HUMAN carry.')
   : (binding==='bound'?'Current HUMAN note is bound to the exact five-field latest original source.':'New HUMAN note will be tied to the exact latest original source row.');
