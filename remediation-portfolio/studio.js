@@ -28,6 +28,7 @@
     "possible_same_numeric_shape_appearances","stages"];
   const SAVED_PLAN_FIELDS=["attention","dated","stages"];
   let resumedFromNumericFile=false;
+  let timelineMoments=[]; // Distinct temporary numeric session previews, NOT original evidence.
 
   const ensure = ok => { if (!ok) throw Error("HOLD"); };
   const integer = (v,min,max) => Number.isSafeInteger(v) && v >= min && v <= max;
@@ -275,6 +276,118 @@
       $(id).textContent=difference;
     }
   };
+
+  const numericTrendRows=()=>{
+    const rows=[];
+    for(const [index,now] of timelineMoments.entries()){
+      const old=index?timelineMoments[index-1]:null;
+      rows.push({...now,ordinal:index+1,
+        packet_count_changed:old!==null && old.packets!==now.packets,
+        questions_difference:old===null?null:now.questions-old.questions});
+    }
+    return rows;
+  };
+  const renderTimeline=()=>{
+    const rows=numericTrendRows();
+    const table=$("momentRows");table.replaceChildren();
+    for(const moment of rows){
+      const tr=document.createElement("tr");
+      td(tr,"Moment "+moment.ordinal,"th");
+      td(tr,moment.packets);td(tr,moment.slots);td(tr,moment.questions);
+      td(tr,moment.attention);
+      td(tr,moment.questions_difference===null?"First selection":
+        (moment.questions_difference>=0?"+":"")+moment.questions_difference);
+      td(tr,moment.packet_count_changed?"Declared packet coverage changed":
+        "Case coverage STILL unverified");
+      table.appendChild(tr);
+    }
+    $("momentExportCSV").disabled=rows.length<2;
+    $("momentExportJSON").disabled=rows.length<2;
+    $("momentClear").disabled=rows.length===0;
+    $("momentCount").textContent=String(rows.length);
+    const svg=$("momentPlot");
+    svg.replaceChildren();
+    svg.setAttribute("viewBox","0 0 820 240");
+    if(!rows.length){
+      svg.setAttribute("aria-label","No saved HUMAN moment selections loaded.");
+      return;
+    }
+    svg.setAttribute("aria-label","Numbered HUMAN pending-question packet appearances: "+
+      rows.map(x=>x.questions).join(", "));
+    const ns="http://www.w3.org/2000/svg";
+    const top=Math.max(1,...rows.map(x=>x.questions));
+    const points=rows.map((x,i)=>[
+      50+Math.round(i*700/Math.max(1,rows.length-1)),
+      20+Math.round((1-x.questions/top)*150)
+    ]);
+    const line=document.createElementNS(ns,"polyline");
+    line.setAttribute("points",points.map(p=>p.join(",")).join(" "));
+    line.setAttribute("fill","none");line.setAttribute("stroke","#a6f1d1");
+    line.setAttribute("stroke-width","3");svg.appendChild(line);
+    for(const [i,p] of points.entries()){
+      const dot=document.createElementNS(ns,"circle");
+      dot.setAttribute("cx",String(p[0]));dot.setAttribute("cy",String(p[1]));
+      dot.setAttribute("r","5");dot.setAttribute("fill","#a6f1d1");
+      svg.appendChild(dot);
+      const text=document.createElementNS(ns,"text");
+      text.setAttribute("x",String(p[0]));text.setAttribute("y","215");
+      text.setAttribute("fill","#d4e8f5");text.setAttribute("text-anchor","middle");
+      text.textContent=String(i+1);svg.appendChild(text);
+    }
+  };
+  $("momentPick").addEventListener("change",async event=>{
+    const files=Array.from(event.target.files??[]);
+    event.target.value="";
+    try{
+      ensure(files.length>=2 && files.length<=MAX);
+      const staged=[], seen=new Set();
+      for(const file of files){
+        ensure(file.size>0 && file.size<=LIMIT);
+        const raw=new TextDecoder("utf-8",{fatal:true}).decode(
+          await file.arrayBuffer());
+        ensure(new TextEncoder().encode(raw).length<=LIMIT);
+        ensure(!seen.has(raw));seen.add(raw);
+        const state=savedSession(strictJSON(raw));
+        staged.push(summary(state.packets)); // Only numeric counters survive.
+      }
+      if(timelineMoments.length &&
+          !window.confirm("Replace the current private numbered moments with this new source-free selection?"))return;
+      timelineMoments=staged;renderTimeline();
+      $("momentStatus").textContent=files.length+" self-declared browser numeric sessions admitted. Input order is NOT verified calendar order.";
+    }catch(_){
+      $("momentStatus").textContent="HOLD: invalid session selection. Previous numbered moments remain unchanged.";
+    }
+  });
+  $("momentClear").addEventListener("click",()=>{
+    timelineMoments=[];renderTimeline();
+    $("momentStatus").textContent="Private numbered moment counters cleared from memory.";
+  });
+  $("momentExportCSV").addEventListener("click",()=>{
+    if(timelineMoments.length<2)return;
+    const lines=["human_selected_ordinal_not_date,packets,slot_appearances,pending_human_questions_not_fixes,planned_human_attention,packet_count_changed"];
+    for(const moment of numericTrendRows()){
+      lines.push([moment.ordinal,moment.packets,moment.slots,moment.questions,
+        moment.attention,moment.packet_count_changed?"1":"0"].join(","));
+    }
+    download("lightup-private-human-numbered-moments.csv","text/csv",
+      lines.join("\r\n")+"\r\n");
+    $("momentStatus").textContent="Source-free numbered moment CSV saved; no fixes or dates verified.";
+  });
+  $("momentExportJSON").addEventListener("click",()=>{
+    if(timelineMoments.length<2)return;
+    const data={
+      kind:"lightup.private_human_browser_numbered_moments",
+      schema_version:1,
+      disposition:"UNVERIFIED_BROWSER_NUMERIC_SEQUENCE_NOT_ORIGINAL_EVIDENCE",
+      snapshots:numericTrendRows(),
+      warning:"Human-chosen numeric sequence only. No original timestamps, matching clients, verified fixes, source authenticity, consent, or target authority.",
+      ...Object.fromEntries(FLAGS.map(k=>[k,false]))
+    };
+    download("lightup-private-human-numbered-moments.json","application/json",
+      JSON.stringify(data,null,2)+"\n");
+    $("momentStatus").textContent="Source-free numeric sequence saved as separate unverified browser JSON.";
+  });
+
   const download=(name,mime,text)=>{
     const blob=new Blob([text],{type:mime});
     const url=URL.createObjectURL(blob);
@@ -425,6 +538,6 @@
       values.join("\r\n")+"\r\n");
     showStatus("Local volume-only CSV saved. No source/authenticity verified.");
   });
-  render();
+  render();renderTimeline();
   showStatus("Offline studio ready. Select native counts-only exports to begin.");
 })();
