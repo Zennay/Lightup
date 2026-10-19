@@ -317,6 +317,16 @@ def publish(stage: Path, destination: Path) -> None:
         raise OSError(ctypes.get_errno(), "HOLD: exclusive publication refused")
 
 
+def packet_directory(folder: Path) -> list[Path]:
+    """An explicit owner-private directory: nothing imported by broad globbing."""
+    private_dir(folder)
+    names = sorted(item.name for item in folder.iterdir())
+    require(1 <= len(names) <= MAX_FILES and
+            names == [f"packet-{i:02d}.json" for i in range(1, len(names) + 1)])
+    # Every member is further checked as owner-only, no-follow, bounded JSON.
+    return [folder / name for name in names]
+
+
 def build(paths: list[Path], destination: Path) -> None:
     require(1 <= len(paths) <= MAX_FILES and destination.is_absolute())
     private_dir(destination.parent)
@@ -351,13 +361,18 @@ def build(paths: list[Path], destination: Path) -> None:
 def main() -> int:
     parser = argparse.ArgumentParser(
         description="PRIVATE offline aggregate HUMAN count exports; no authority")
-    parser.add_argument("--input", required=True, type=Path, action="append",
-                        help="Absolute owner-private 0600 native counts-only JSON; 1-12")
+    sources = parser.add_mutually_exclusive_group(required=True)
+    sources.add_argument("--input", type=Path, action="append",
+                         help="Repeat for 1-12 explicit owner-private 0600 native count JSONs")
+    sources.add_argument("--packet-dir", type=Path,
+                         help="One private folder with ONLY packet-01.json...packet-NN.json")
     parser.add_argument("--output-dir", required=True, type=Path,
                         help="New absolute 0700 private directory, never overwritten")
     args = parser.parse_args()
     try:
-        build(args.input, args.output_dir)
+        paths = (packet_directory(args.packet_dir) if args.packet_dir is not None
+                 else args.input)
+        build(paths, args.output_dir)
     except (Hold, ValueError, OSError) as exc:
         print("HOLD: no complete new HUMAN portfolio published", file=sys.stderr)
         return 2
