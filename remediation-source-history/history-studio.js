@@ -256,7 +256,7 @@ window.LightUpHistory=Object.freeze({
     if(!this.empty()||state.revision!==revision)throw Error('Active session changed; Forget before restore.');
     if(!packet||packet.context.client!==ctx.client||packet.context.engagement!==ctx.engagement)throw Error('The original client/engagement context must be independently reconfirmed.');
     state.snapshots=packet.snapshots;
-    state.notes=new Map(packet.notes.map(n=>[n.id,{owner:n.owner,action:n.action,due:n.due}]));
+    state.notes=new Map(packet.notes.map(n=>[n.id,{owner:n.owner,action:n.action,due:n.due,sourceRecord:n.sourceRecord?{...n.sourceRecord}:null,caseworkOriginal:n.caseworkOriginal?{...n.caseworkOriginal}:null}]));
     state.active={...ctx};state.selected=null;state.revision++;render();
   },
   revision(){return state.revision;},
