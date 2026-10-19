@@ -65,6 +65,23 @@ If the peer proposes genuinely different local action/state enums compared with 
 
 A source-free peer board can also be supplied directly to the plaintext `browser_workflow.py` with `--peer-board /absolute/0700/peer.json`, in addition to the unchanged `--session`, `--original-board`, `--proposed-board` and `--output-dir` arguments. This is a *PRIVATE operator workspace feature*, not minimum-disclosure peer correspondence. Do not share the complete native workroom with a recipient who was authorized to receive only one selected HUMAN handoff.
 
+## Read encrypted selected .lheh handoffs privately without a browser
+
+An authorized local HUMAN operator who only receives a limited `.lheh` capsule **does not need** the original Studio numeric session, a full encrypted workspace or a browser. The new [`encrypted_handoff.py`](encrypted_handoff.py) opens the capsule locally using the existing common authenticated-decryption primitive, then produces a **read-only private dossier** consisting only of the source-free rows that the original HUMAN sender selected.
+
+```bash
+mkdir -m 700 -p "$HOME/lightup-private-human"
+install -m 600 "$HOME/Downloads/lightup-encrypted-selected-human-handoff.lheh" \
+  "$HOME/lightup-private-human/selected.lheh"
+python3 remediation-human-handoff/encrypted_handoff.py \
+  --encrypted-handoff "$HOME/lightup-private-human/selected.lheh" \
+  --output-dir "$HOME/lightup-private-human/local-recipient-01"
+```
+
+The password is requested with `getpass`, never provided as a command-line flag. The independent strict `.lheh` schema and cryptographic domain forbid substituting a `.lhew` full work-session, malformed binary fields, wrong passphrase or unknown plain fields. The encrypted payload must contain 1–12 strictly ordered, unique local ordinals, known source-free count types, bounded numeric appearances, accepted human-only action/state enums and all literal-false authority flags. Successful admission yields owner-private 0700 output folder with 0600 scriptless `index.html`, `summary.json` and per-action HTML/CSV/TXT. It is an offline **read-only** selected HUMAN proposal, not proof of an authenticated sender, delivery, review, findings, consent, original source authority or verified remediation.
+
+The decrypted output is **plaintext** and remains privacy-sensitive. Keep it under private device protections and never send the whole folder without an explicit HUMAN disclosure decision. The originally received encrypted `.lheh` stays intact; no network access, source mutation, target interaction or automatic reply occurs. Python's local optional `cryptography` package is required.
+
 ## No-Python: portable offline HUMAN Return Studio
 
 Open **[browser.html](browser.html)** directly on an offline computer. It is a self-contained HTML file with an embedded SHA-256 CSP-pinned local script, no third-party resources and no server or installation.

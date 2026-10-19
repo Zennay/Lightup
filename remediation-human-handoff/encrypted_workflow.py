@@ -95,7 +95,8 @@ def canonical_b64(data: object, length: int | tuple[int, int]) -> bytes:
     return raw
 
 
-def unlock(path: Path, passphrase: str) -> dict:
+def decrypt_payload(path: Path, passphrase: str,
+                    expected_kind: str = KIND, aad: bytes = AAD) -> dict:
     # A deliberate interactive passphrase cannot be blank or ambiguous unicode.
     portfolio.require(type(passphrase) is str and
                       passphrase == unicodedata.normalize("NFC", passphrase)
@@ -105,7 +106,7 @@ def unlock(path: Path, passphrase: str) -> dict:
     portfolio.require(14 <= len(password) <= 1024)
     envelope = strict_json(private_ciphertext(path))
     portfolio.require(set(envelope) == FIELDS and
-                      envelope["kind"] == KIND and
+                      envelope["kind"] == expected_kind and
                       type(envelope["schema_version"]) is int and
                       envelope["schema_version"] == 1 and
                       envelope["disposition"] == DISPOSITION and
@@ -119,7 +120,7 @@ def unlock(path: Path, passphrase: str) -> dict:
     try:
         from cryptography.hazmat.primitives.ciphers.aead import AESGCM
         key = hashlib.pbkdf2_hmac("sha256", password, salt, 600000, dklen=32)
-        plain = AESGCM(key).decrypt(nonce, ciphertext, AAD)
+        plain = AESGCM(key).decrypt(nonce, ciphertext, aad)
     except ImportError as exc:
         raise portfolio.Hold("HOLD: cryptography package unavailable") from exc
     except ValueError as exc:
@@ -129,7 +130,11 @@ def unlock(path: Path, passphrase: str) -> dict:
         raise portfolio.Hold("HOLD: encrypted PRIVATE HUMAN admission failed") from exc
 
     portfolio.require(1 <= len(plain) <= MAX_PAYLOAD_BYTES)
-    payload = strict_json(plain)
+    return strict_json(plain)
+
+
+def unlock(path: Path, passphrase: str) -> dict:
+    payload = decrypt_payload(path, passphrase)
     portfolio.header(payload, PAYLOAD_KIND, PAYLOAD_FIELDS,
                      PAYLOAD_DISPOSITION)
     portfolio.require(payload["warning"] == VAULT_WARNING)
