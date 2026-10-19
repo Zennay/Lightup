@@ -98,6 +98,11 @@ def main() -> int:
     inspector = actions.add_parser("inspect", help="Independently admit the entire private workroom")
     inspector.add_argument("--workroom", required=True, type=Path)
     inspector.add_argument("--key-file", required=True, type=Path)
+    batch = actions.add_parser("bulk-revise", help="Apply PRIVATE batch to a complete admitted workroom in one atomic new version")
+    batch.add_argument("--workroom", required=True, type=Path)
+    batch.add_argument("--key-file", required=True, type=Path)
+    batch.add_argument("--edits", required=True, type=Path)
+    batch.add_argument("--output-parent", required=True, type=Path)
     editing = actions.add_parser("revise", help="Publish NEW complete workroom after HUMAN slot edit")
     editing.add_argument("--workroom", required=True, type=Path)
     editing.add_argument("--key-file", required=True, type=Path)
@@ -115,6 +120,19 @@ def main() -> int:
         if args.action == "inspect":
             plan = inspect(args.workroom, args.key_file)
             print("REVIEW_ONLY: entire PRIVATE HUMAN workroom and original source-free slots admitted.")
+        elif args.action == "bulk-revise":
+            # Do not trust a bare encrypted plan extracted from an incomplete
+            # or edited workroom. Admit the full source, plan and rendered UI.
+            old_plan = inspect(args.workroom, args.key_file)
+            import bulk
+            destination, stats = bulk.publish(
+                args.workroom / "inbox", args.workroom / "plan.ltplan",
+                args.edits, args.key_file, args.output_parent)
+            plan = inspect(destination, args.key_file)
+            require(plan["revision"] == old_plan["revision"] + 1 and
+                    stats["slots_changed"] >= 1)
+            print("New complete PRIVATE HUMAN workroom after atomic batch: " + str(destination))
+            print("Original workroom and encrypted plan unchanged.")
         else:
             target, plan = revise(
                 args.workroom, args.key_file, args.output_parent,
