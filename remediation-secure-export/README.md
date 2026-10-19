@@ -24,6 +24,8 @@ chmod 700 /trusted/private/lightup
 
 The directory must be owned by the current user and be `0700` or stricter. Both account credentials and new/existing vault passphrases are entered **only interactively in a private TTY**. Never supply secrets in terminal arguments, environment variables or chat. The original persisted user/role/client/grant semantics are **not widened**.
 
+**Existing original CSV source fix composition:** this independent candidate also physically absorbs exact original guarded Unicode/whole-batch CSV source from held [PR #1611](https://github.com/Zennay/Lightup/pull/1611) `7e667173c0b2653600c51d4f0a6c6f56230acf2e` (original `finding_export_service.py` plus canonical checked-export modules) without changing that source owner's branch. The normal authenticated service now uses the original guarded producer as well as the independent additional final handoff validator. This does **not** by itself close #1182/#1193 or provide release approval; the existing source-owner tests and CI gates remain.
+
 ### 1. Authenticate and create a new encrypted private Casework, directly
 
 ```sh
@@ -39,7 +41,26 @@ The original LightUp account password is requested securely and the existing `Do
 
 Nothing is written until all original authorization/source admission and full HTML bundling finish **in memory**. A new `.ltv` file is published with the original vault `0600` exclusive/no-follow mechanism in a trusted owner-only directory. The original plaintext `findings.csv` and `casework.html` **are never created during this operation**.
 
-### 2. Later, explicitly retrieve original PRIVATE Casework HTML
+### 2. Privately inspect an authenticated encrypted source — no plaintext file
+
+```sh
+PYTHONPATH=src python3 remediation-secure-export/secure_export.py inspect \\
+  --input /trusted/private/lightup/casework-private.ltv
+```
+
+After your passphrase is entered privately, this validates the original full authenticated AES-GCM ciphertext, the entire source-bound HTML/checksum envelope and all literal false-authority fields, then shows **only original record count and HTML byte size**. It never prints client IDs, engagement, source digests, finding names/titles, owners or evidence, and never writes a decrypted file. This is a local integrity-checked copy only; any client authorization or consent may since have been revoked.
+
+### 3. Rotate to a new confidential vault without any plaintext file
+
+```sh
+PYTHONPATH=src python3 remediation-secure-export/secure_export.py rotate \\
+  --input /trusted/private/lightup/casework-private.ltv \\
+  --output /trusted/private/lightup/casework-rotated.ltv
+```
+
+The complete original Casework envelope and unchanged HTML are authenticated in memory before choosing the replacement passphrase. The new key must differ; the original ciphertext remains intact, the new file is exclusive owner-private `0600`, and no intermediate cleartext file is written.
+
+### 4. Later, explicitly retrieve original PRIVATE Casework HTML
 
 ```sh
 PYTHONPATH=src python3 remediation-secure-export/secure_export.py open \
@@ -50,7 +71,7 @@ PYTHONPATH=src python3 remediation-secure-export/secure_export.py open \
 
 After the encrypted vault tag, content type and all original JSON metadata are validated, a **new private 0600 HTML** is created locally. It contains confidential original finding IDs/titles and human planning surface; the saved report is an **offline, unsigned, potentially stale source snapshot**. It is not a new account session or evidence of current consent, grant, client identity, verified fix, retest, or security/production release. Do not share a decrypted HTML by public URL.
 
-### 3. Rotate or inspect the encrypted vault without plaintext
+### 5. Generic original vault CLI operations
 
 ```sh
 python3 remediation-ticket-vault/vault.py inspect \
@@ -62,6 +83,8 @@ python3 remediation-ticket-vault/vault.py rotate \
 ```
 
 Rotating produces a new encrypted `.ltv` with a new key and a fresh nonce/salt, without writing the original HTML or JSON as plaintext. The original vault is retained. `inspect` reads format parameters only and **does not authenticate ciphertext**.
+
+The dedicated `secure_export.py inspect/rotate` commands above perform **full original Casework envelope** checks before output, unlike generic vault `inspect` which only reads an unauthenticated anonymous header.
 
 The original [standalone offline HUMAN Ticket Desk](../remediation-ticket-drafts/standalone.html) and [standalone encrypted vault browser](../remediation-ticket-vault/standalone.html) remain separately available. Browser vault apps might show the internal JSON envelope instead of reconstructed HTML; use this dedicated `open` command to restore the original Casework page safely.
 
