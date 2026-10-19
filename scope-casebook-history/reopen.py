@@ -20,7 +20,7 @@ from history import (
 )
 
 FILES = {
-    "workroom.html", "index.html", "anonymous.html", "anonymous-counts.json",
+    "workroom.html", "workroom-current-template.csv", "index.html", "anonymous.html", "anonymous-counts.json",
     "anonymous-counts.csv", "private-source-changes.csv",
     "human-followup.txt", "private-source-inventory.json",
     "private-human-case-queue.csv",
