@@ -1,5 +1,5 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-wpPFZOyxFDTkVCPSRLe+ulmbav4+u8hRIYgukbiqEiU=' 'sha256-msRCIp/Xw6vOOYmdG3SjHcnd8jheDsnbSi2ELus2iOY=' 'sha256-GFW8MaPvB7LMTx1sxBTmpBhwVQiTC5xoGOIQROiaREA='; style-src 'sha256-cYejFTmQL5Nr/tx8ltpaiQvfWVLRwSxqmNfuxERAn90='; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-wpPFZOyxFDTkVCPSRLe+ulmbav4+u8hRIYgukbiqEiU=' 'sha256-msRCIp/Xw6vOOYmdG3SjHcnd8jheDsnbSi2ELus2iOY=' 'sha256-ikjxD03vV2K2Fa5H6OeukIU5fg6yah34d2K4K6KMWTs='; style-src 'sha256-K3eJUMpkQHuuUobfXldg3zbGaacxFtsmfNzMoCemXMQ='; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <title>LightUp — Private Evidence Handoff Inbox</title><style>:root{font-family:ui-sans-serif,system-ui,sans-serif;color-scheme:dark;color:#e3f7f4;background:#081923}*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 10% 0%,#21546a,transparent 44%),#081923}main{max-width:1150px;margin:auto;padding:42px 20px 70px}header{max-width:830px;padding-bottom:14px}.eyebrow{color:#73efd4;font-weight:900;font-size:.8rem;letter-spacing:.23em}h1{font-size:clamp(2.3rem,6vw,4.2rem);letter-spacing:-.065em;margin:12px 0 14px}h2{margin-top:0;font-size:1.4rem}p{line-height:1.6;color:#b3d0d7}.hold{display:inline-block;padding:10px 15px;color:#f0d490;border:1px solid #c4a354;border-radius:9px;font-size:.85rem}section{border:1px solid #355f6d;background:#132b36;padding:25px;border-radius:17px;margin:18px 0}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:15px}label{font-weight:700;font-size:.87rem;display:grid;gap:7px}input:not([type=checkbox]),select{font:inherit;color:#fff;background:#0b202b;border:1px solid #73919b;border-radius:9px;padding:10px;margin:8px 0 16px;width:100%}button{padding:12px 17px;margin:5px 7px 5px 0;border:0;border-radius:9px;background:#72efd1;color:#072328;font-weight:900;cursor:pointer}.secondary{background:#315664;color:#e5ffff}button:disabled{opacity:.38;cursor:not-allowed}button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #e8ca85;outline-offset:3px}.numbers{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:12px;margin:18px 0}.number{background:#0d212a;border:1px solid #356071;border-radius:11px;padding:16px}.number strong{display:block;font-size:1.8rem;color:#78f4d5}.number span{font-size:.81rem;color:#b5cbd4}.warn{border-left:4px solid #d9ae5a;color:#f1d8a6;background:#24343a;padding:11px 14px;font-size:.87rem}.tableWrap{overflow:auto;max-height:660px}table{width:100%;border-collapse:collapse;font-size:.85rem}td,th{border-bottom:1px solid #315865;text-align:left;vertical-align:top;padding:11px 9px;overflow-wrap:anywhere}th{position:sticky;top:0;background:#1b3946}small{display:block;color:#95bac4}#binding{overflow-wrap:anywhere}#notice[data-error=true]{color:#ffb4b4}footer{text-align:center;font-size:.83rem;color:#98b9c2;margin-top:35px}
 /* HUMAN workplan: readable inline human-only editing, no status-as-verdict badges. */
 #workplan .tableWrap{max-height:680px}
@@ -10,6 +10,15 @@
 #planNotice[data-error=true]{color:#ffb4b4}
 #workplan h3{margin-top:30px;border-top:1px solid #3a626d;padding-top:20px}
 #workplan .grid button{align-self:end}
+
+/* Source-bound PRIVATE reviewer merge decisions: readable conflicts without implying authority. */
+#planMergePanel{border:1px solid #7c9eae;border-radius:12px;padding:16px;background:#0b202b;margin:14px 0}
+#planMergeChoices{max-height:460px;margin:14px 0}
+.planMergeItem{margin:8px 0;padding:14px;border:1px solid #365766;border-radius:10px;background:#142d39;overflow-wrap:anywhere}
+.planMergeItem p{margin:8px 0;line-height:1.35}
+.planMergeItem strong{color:#d1f4ec}
+.planMergeItem label{max-width:440px;margin:12px 0 0}
+#planMergePanel button:disabled{opacity:.4}
 </style></head>
 <body><main><header><span class="eyebrow">LIGHTUP / EVIDENCE REMEDIATION</span><h1>Private Evidence Handoff Inbox</h1>
 <p>Bring original-source-bound local evidence and unverified human replies together for a human handoff. This page does not authenticate sources, grant access, contact systems or certify a fix.</p><strong class="hold">INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD</strong></header>
@@ -50,6 +59,12 @@
 <div class="grid"><label>Restore source-bound PRIVATE HUMAN workplan JSON<input type="file" id="planImport" accept=".json,application/json"></label><div><button id="planRestore" class="secondary">Restore PRIVATE HUMAN plan</button></div>
 <label>One local HUMAN owner only<select id="planOwner"><option value="">Choose local HUMAN owner</option></select></label><div><button id="planOwnerBrief" class="secondary" disabled>Download PRIVATE one-owner plan</button></div></div>
 <button id="planAggregate" class="secondary">Anonymous HUMAN planning counts CSV</button>
+<h3>Combine two PRIVATE human reviewer workplans</h3>
+<p>Preview another original-source-bound workplan. Both must match the exact original SHA/client/engagement and full finding set. Different local HUMAN annotations need an explicit per-finding choice; no original security source or owner reply is changed.</p>
+<div class="grid"><label>Other reviewer's PRIVATE HUMAN workplan JSON<input id="planMergeFile" type="file" accept=".json,application/json"></label><div><button id="planMergePreview" class="secondary">Preview PRIVATE reviewer merge</button></div></div>
+<div id="planMergePanel" hidden><p id="planMergeSummary"></p><div id="planMergeChoices" class="tableWrap"></div>
+<button id="planMergeApply" disabled>Confirm local HUMAN-only reviewer merge</button><button id="planMergeCancel" class="secondary">Cancel merge preview</button></div>
+<button id="planMergeUndo" class="secondary" disabled>Undo last reviewer workspace merge</button>
 <p id="planNotice" role="status" aria-live="polite">No original human finding context loaded.</p>
 <p class="warn">Human-only plans and aliases are unverified local declarations. Original finding source, Casework, Evidence Review, owner replies, security grants, action-time consent and production remain unchanged. PRIVATE exports can contain customer context: independently verify recipient, channel and storage.</p></section>
 <section id="out" hidden><h2>6. Explicit human handoffs</h2><p>PRIVATE export includes selected original request IDs, local fingerprint labels, human replies and notes. Counts-only CSV never includes original identifiers, source/client hashes, owner aliases, notes, filenames, dates or file SHA values.</p>
@@ -895,6 +910,7 @@ const FIELDS=["finding_id","stage","owner_alias","tentative_due","next_action","
 const PACKET=["kind","schema_version","disposition","source_contract","source_sha256","client_reference","engagement_reference","source_count","rows","warning",...FLAGS];
 const MAX=1048576,MAX_FINDINGS=350;
 let store={binding:null,rows:new Map(),revision:0,saved:0,selected:new Set(),undo:null};
+let pendingMerge=null,mergeUndo=null;
 const fail=s=>{throw Error("HOLD: "+s);};
 const exact=(o,k)=>o&&Object.getPrototypeOf(o)===Object.prototype&&Object.keys(o).length===k.length&&Object.keys(o).every(x=>k.includes(x));
 const str=(s,n,l,required=false)=>{if(typeof s!=="string"||s.length>n||/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f\u202a-\u202e\u2066-\u2069]/.test(s)||(required&&!s.trim()))fail("invalid "+l);return s;};
@@ -926,7 +942,7 @@ function visible(){const q=$("planSearch").value.toLowerCase().trim(),mode=$("pl
   return true;
  }).sort((a,b)=>{const rank={critical:0,high:1,medium:2,low:3,info:4};return (rank[a.source?.source_severity]??5)-(rank[b.source?.source_severity]??5)||a.plan.finding_id.localeCompare(b.plan.finding_id);});
 }
-function touch(message){store.revision++;store.undo=null;$("planUndo").disabled=true;dirty();if(message)msg(message);}
+function touch(message){store.revision++;store.undo=null;mergeUndo=null;cancelMerge();$("planUndo").disabled=true;$("planMergeUndo").disabled=true;dirty();if(message)msg(message);}
 function dirty(){$("planSaved").textContent=store.revision!==store.saved?"UNSAVED PRIVATE human plan. Export source-bound JSON; browser has NO persistent storage.":"HUMAN workplan is locally unchanged since the last PRIVATE export or restore.";
  $("planSaved").dataset.dirty=String(store.revision!==store.saved);}
 function edit(id,field,value){
@@ -974,9 +990,11 @@ function render(){
  $("planBulkApply").disabled=!store.selected.size;dirty();
 }
 function reset(ctx=null){
+ pendingMerge=null;mergeUndo=null;
  store={binding:null,rows:new Map(),revision:0,saved:0,selected:new Set(),undo:null};
  const data=ctx||BRIDGE.context();$("planRows").replaceChildren();$("planImport").value="";$("planSearch").value="";$("planFilter").value="all";$("planBulkStage").value="request_evidence_human";$("planBulkOwner").value="";$("planBulkDue").value="";$("planUndo").disabled=true;
  $("planOwner").replaceChildren(new Option("Choose local HUMAN owner",""));$("planOwnerBrief").disabled=true;
+ $("planMergeFile").value="";cancelMerge();$("planMergeUndo").disabled=true;
  if(data?.ids.length){store.binding=binding(data);for(const id of data.ids)store.rows.set(id,blank(id));$("workplan").hidden=false;msg("New source-bound local HUMAN plan. Original findings and grants are unchanged.");}
  else{$("workplan").hidden=true;msg("No ORIGINAL finding context loaded.");}
  dirty();
@@ -1016,7 +1034,7 @@ async function importPrivate(){
  if(before!==store.revision||key!==JSON.stringify(store.binding)||$("planImport").files[0]!==fileRef)fail("PRIVATE plan context changed during import");
  if(!confirm("REPLACE all "+store.rows.size+" LOCAL HUMAN plan annotations with this source-matched PRIVATE backup? Export current notes first. Does not change original source, responses or permission."))return;
  if(before!==store.revision||key!==JSON.stringify(store.binding))fail("HUMAN plan changed while awaiting import confirmation");
- store.rows=new Map(rows.map(r=>[r.finding_id,r]));store.selected.clear();store.undo=null;store.revision++;store.saved=store.revision;$("planImport").value="";render();msg("PRIVATE HUMAN plan restored for EXACT original source and finding IDs; no security status changed.");
+ store.rows=new Map(rows.map(r=>[r.finding_id,r]));store.selected.clear();store.undo=null;mergeUndo=null;cancelMerge();store.revision++;store.saved=store.revision;$("planImport").value="";render();msg("PRIVATE HUMAN plan restored for EXACT original source and finding IDs; no security status changed.");
 }
 function bulkApply(){
  const c=active(),ids=[...store.selected];if(!ids.length)fail("select HUMAN findings");
@@ -1029,14 +1047,14 @@ function bulkApply(){
  if(!confirm("Apply HUMAN-only stage "+stage+" to "+ids.length+" exact ORIGINAL findings? "+(owner?"Set local declared owner "+owner+". ":"Keep existing owner aliases. ")+(due?"Set tentative date "+due+". ":"Keep existing dates. ")+"No grant, retest or fix will be created."))return;
  if(!same(binding(active()),store.binding))fail("source changed before HUMAN batch");
  const beforeRevision=store.revision;for(const row of staged)store.rows.set(row.finding_id,row);
- store.revision++;store.undo={beforeRevision,afterRevision:store.revision,binding:JSON.stringify(store.binding),old:previous};
+ store.revision++;mergeUndo=null;cancelMerge();$("planMergeUndo").disabled=true;store.undo={beforeRevision,afterRevision:store.revision,binding:JSON.stringify(store.binding),old:previous};
  store.selected.clear();$("planUndo").disabled=false;render();msg(ids.length+" HUMAN-only source-bound planning updates applied locally. Undo available until another edit.");
 }
 function undoBulk(){
  const p=store.undo;if(!p||p.afterRevision!==store.revision||p.binding!==JSON.stringify(store.binding))fail("last HUMAN bulk change no longer safe to undo");
  if(!confirm("Undo the last HUMAN-only bulk assignment for "+p.old.size+" ORIGINAL findings?"))return;
  for(const [id,row] of p.old)store.rows.set(id,row);
- store.revision++;store.undo=null;render();msg("Last local HUMAN bulk assignment reverted. No original source changed.");
+ store.revision++;store.undo=null;mergeUndo=null;cancelMerge();$("planMergeUndo").disabled=true;render();msg("Last local HUMAN bulk assignment reverted. No original source changed.");
 }
 function ownerBrief(){
  const c=active(),owner=$("planOwner").value;if(!owner)fail("choose local HUMAN owner");
@@ -1060,13 +1078,110 @@ function aggregate(){
  if(!confirm("Download counts-only original HUMAN workplan CSV without original IDs, source hash, client, names, dates or notes? Small cohorts may still disclose sensitive patterns."))return;
  download("LightUp-anonymous-HUMAN-workplan-counts.csv",rows.map(r=>r.map(csv).join(",")).join("\r\n")+"\r\n","text/csv;charset=utf-8");msg("Aggregate HUMAN-only planning counts exported. Nothing proves actual fixes.");
 }
+
+/* Operator-to-operator PRIVATE HUMAN workspace merge. No source revision,
+   original reply or finding rewrite. No implicit resolution of conflicts. */
+function defaultPlan(r){return r.stage==="unplanned"&&!r.owner_alias&&!r.tentative_due&&!r.next_action&&!r.private_note;}
+function cancelMerge(){
+ pendingMerge=null;$("planMergePanel").hidden=true;$("planMergeApply").disabled=true;
+ $("planMergeChoices").replaceChildren();$("planMergeSummary").textContent="";
+}
+function mergePreviewRows(incoming){
+ const changes=[];
+ for(const row of incoming){
+  const old=store.rows.get(row.finding_id);
+  if(!old)fail("incoming PRIVATE HUMAN review references a foreign original ID");
+  if(same(old,row))continue;
+  if(defaultPlan(row))continue; // an empty other-reviewer row cannot erase local planning
+  const conflict=!defaultPlan(old);
+  changes.push({id:row.finding_id,old:{...old},incoming:{...row},
+   conflict,choice:conflict?"":"incoming"});
+ }
+ return changes;
+}
+function showMerge(){
+ const draft=pendingMerge;if(!draft)return;
+ const rows=draft.changes,conflicts=rows.filter(c=>c.conflict);
+ $("planMergePanel").hidden=false;
+ $("planMergeSummary").textContent=
+  rows.length+" proposed ORIGINAL HUMAN planning changes · "+conflicts.length+
+  " local-vs-incoming HUMAN conflicts requiring an explicit choice. No security status, original evidence, request or reply will change.";
+ const box=$("planMergeChoices");box.replaceChildren();
+ for(const change of rows){
+  const item=document.createElement("div");item.className="planMergeItem";
+  item.append(node("strong","Original finding "+change.id+" · "+(change.conflict?"HUMAN CONFLICT":"new HUMAN annotation")));
+  const a=document.createElement("p");a.append(node("strong","Current local: "),
+   node("span",change.old.stage+" · "+change.old.owner_alias+" · "+change.old.tentative_due+" · "+change.old.next_action+" · "+change.old.private_note));
+  const b=document.createElement("p");b.append(node("strong","Other reviewer: "),
+   node("span",change.incoming.stage+" · "+change.incoming.owner_alias+" · "+change.incoming.tentative_due+" · "+change.incoming.next_action+" · "+change.incoming.private_note));
+  item.append(a,b);
+  if(change.conflict){
+   const label=node("label","Resolve original finding "+change.id);
+   const sel=document.createElement("select");
+   sel.append(new Option("Choose how to resolve this HUMAN conflict",""),new Option("KEEP local HUMAN plan","local"),new Option("APPLY other reviewer HUMAN plan","incoming"));
+   sel.value=change.choice;
+   sel.addEventListener("change",()=>{change.choice=sel.value;showMerge();});
+   label.append(sel);item.append(label);
+  }
+  box.append(item);
+ }
+ $("planMergeApply").disabled=!rows.length||conflicts.some(c=>!c.choice);
+}
+async function previewMerge(){
+ const f=$("planMergeFile").files[0];if(!f||!f.size||f.size>MAX)fail("select an existing PRIVATE HUMAN workspace backup <= 1 MiB");
+ const ctx=active(),before=store.revision,orig=JSON.stringify(store.binding);
+ const textValue=new TextDecoder("utf-8",{fatal:true}).decode(await f.arrayBuffer());
+ const packet=BRIDGE.strictJSON(textValue),incoming=admit(packet,ctx);
+ if(store.revision!==before||JSON.stringify(store.binding)!==orig||$("planMergeFile").files[0]!==f)
+  fail("PRIVATE HUMAN local baseline/input changed while reading reviewer merge");
+ const changes=mergePreviewRows(incoming);
+ pendingMerge={before,source:orig,file:f,changes,packet};
+ showMerge();
+ msg(changes.length?"Previewed original-source-bound PRIVATE reviewer merge. Choose every HUMAN conflict explicitly before applying.":"No new HUMAN annotations: current local plan already covers every nonblank incoming row.");
+}
+function applyMerge(){
+ const draft=pendingMerge;if(!draft)fail("preview the other PRIVATE HUMAN workplan first");
+ if(store.revision!==draft.before||JSON.stringify(store.binding)!==draft.source||
+ $("planMergeFile").files[0]!==draft.file)fail("original PRIVATE HUMAN source, selection or local baseline changed after preview");
+ const fresh=admit(draft.packet,active()),recomputed=mergePreviewRows(fresh);
+ if(!same(recomputed.map(x=>({id:x.id,old:x.old,incoming:x.incoming,conflict:x.conflict})),
+ draft.changes.map(x=>({id:x.id,old:x.old,incoming:x.incoming,conflict:x.conflict}))))
+  fail("other-reviewer PRIVATE HUMAN plan drifted since preview");
+ if(draft.changes.some(x=>x.conflict&&!["local","incoming"].includes(x.choice)))fail("unresolved original HUMAN planning conflict");
+ const edits=draft.changes.filter(x=>x.choice==="incoming");
+ if(!edits.length){cancelMerge();msg("No HUMAN plan rows were replaced. Existing local annotations retained.");return;}
+ if(!confirm("Apply "+edits.length+" source-bound PRIVATE HUMAN workplan annotations and keep "+(draft.changes.length-edits.length)+" locally? No original findings, owner replies, verified remediation or authorization will be updated."))return;
+ if(store.revision!==draft.before||JSON.stringify(store.binding)!==draft.source)fail("original HUMAN baseline changed before reviewer merge");
+ const before=new Map([...store.rows].map(([id,r])=>[id,{...r}]));
+ for(const change of edits)store.rows.set(change.id,{...change.incoming});
+ store.revision++;store.undo=null;$("planUndo").disabled=true;
+ mergeUndo={before,afterRevision:store.revision,source:draft.source};
+ cancelMerge();$("planMergeUndo").disabled=false;render();
+ msg("PRIVATE HUMAN reviewer workplans merged for "+edits.length+" original finding IDs. Undo available until another local edit.");
+}
+function undoMerge(){
+ const u=mergeUndo;if(!u||u.afterRevision!==store.revision||u.source!==JSON.stringify(store.binding))
+  fail("reviewer workspace was changed after merge; a safe HUMAN undo is unavailable");
+ if(!confirm("Undo the last PRIVATE HUMAN reviewer merge, restoring all previous original-ID local annotations?"))return;
+ store.rows=new Map([...u.before].map(([id,r])=>[id,{...r}]));
+ store.revision++;mergeUndo=null;cancelMerge();$("planMergeUndo").disabled=true;render();
+ msg("Previous local HUMAN workplan restored. Already exported PRIVATE downloads remain on the recipient device.");
+}
+$("planMergeFile").addEventListener("change",()=>{cancelMerge();msg("Selected other-reviewer file changed; generate a new exact-source HUMAN merge preview.");});
+
 for(const [id,event,fn] of [
  ["planSearch","input",render],["planFilter","change",render],
  ["planVisible","change",e=>{for(const x of visible())e.target.checked?store.selected.add(x.plan.finding_id):store.selected.delete(x.plan.finding_id);render();}],
  ["planBulkApply","click",bulkApply],["planUndo","click",undoBulk],
+ ["planMergePreview","click",()=>previewMerge().catch(e=>msg(e.message,true))],["planMergeApply","click",applyMerge],["planMergeCancel","click",cancelMerge],["planMergeUndo","click",undoMerge],
  ["planSave","click",exportPrivate],["planRestore","click",()=>importPrivate().catch(e=>msg(e.message,true))],
  ["planOwnerBrief","click",ownerBrief],["planAggregate","click",aggregate],["planOwner","change",()=>{$("planOwnerBrief").disabled=!$("planOwner").value;}]
 ])$(id).addEventListener(event,e=>{try{fn(e)}catch(err){msg(err.message,true);}});
+/* Native browser warning is best-effort; users must explicitly export PRIVATE
+   source-bound workplan JSON to preserve local HUMAN annotations. */
+window.addEventListener("beforeunload",e=>{
+ if(store.binding&&store.revision!==store.saved){e.preventDefault();e.returnValue="";}
+});
 window.LightUpHandoffHumanPlan=Object.freeze({reset,render});
 reset();
 })();</script></body></html>
