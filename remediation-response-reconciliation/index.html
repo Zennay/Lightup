@@ -12,7 +12,7 @@
 <section><h2>2 · Merge PRIVATE reviewer workspaces</h2>
 <p>Bring together separately exported operator register backups from the <strong>same original source, declared client and engagement</strong>. The existing workspace remains unchanged until a human reviews and explicitly resolves every different HUMAN note or unverified owner follow-up. Original requests and replies are immutable; inconsistent source packets are rejected, not reconciled.</p>
 <label for="mergeFile">PRIVATE source-bound register v1 or v2 JSON</label><input id="mergeFile" type="file" accept=".json,application/json">
-<div class="actions"><button id="mergePreview" class="secondary">Preview cross-reviewer merge</button><button id="mergeApply" disabled>Apply reviewed PRIVATE merge</button><button id="mergeCancel" class="secondary">Discard merge preview</button></div>
+<div class="actions"><button id="mergePreview" class="secondary">Preview cross-reviewer merge</button><button id="mergeApply" disabled>Apply reviewed PRIVATE merge</button><button id="mergeUndo" class="secondary" disabled>Undo last reviewer merge</button><button id="mergeCancel" class="secondary">Discard merge preview</button></div>
 <p id="mergeStatus" role="status" aria-live="polite">No incoming reviewer workspace.</p>
 <div id="mergePlan" hidden><p id="mergeSummary"></p><div id="mergeConflicts" class="mergeConflicts"></div></div></section>
 <section><h2>3 · Independently review owner HUMAN feedback</h2>
@@ -28,7 +28,7 @@
 <pre id="bulkDetails" class="bulkpreview" hidden aria-live="polite"></pre>
 <p id="count"></p><div class="tablewrap"><table><thead><tr><th>Select</th><th>Batch</th><th>Self-declared owner</th><th>Original finding</th><th>Request</th><th>HUMAN due</th><th>Original reply</th><th>New owner HUMAN feedback</th><th>Original request / HUMAN response</th><th>Human triage</th><th>Private follow-up note</th></tr></thead><tbody id="rows"></tbody></table></div></section>
 <section><h2>5 · Explicit PRIVATE handoff</h2><p>Exports contain original IDs and HUMAN metadata. Independently confirm the actual recipient and approved channel. No export grants execution authority or proves delivery.</p>
-<div class="actions"><button id="summaryCsv" disabled>Export anonymous HUMAN counts</button><button id="download" disabled>Download PRIVATE register JSON</button><button id="csv" disabled>Download PRIVATE CSV</button><button id="print" disabled>Print PRIVATE human brief</button></div>
+<p id="saveState" role="status" aria-live="polite">No private edits made.</p><div class="actions"><button id="summaryCsv" disabled>Export anonymous HUMAN counts</button><button id="download" disabled>Download PRIVATE register JSON</button><button id="csv" disabled>Download PRIVATE CSV</button><button id="print" disabled>Print PRIVATE human brief</button></div>
 <div class="ownerHandoff"><h3>Owner-specific PRIVATE HUMAN review handoff</h3>
 <p>Choose one self-declared owner and export only that owner's original request/reply context and local HUMAN follow-up notes. This is a review brief, <strong>not</strong> an authenticated message or a packet accepted by the original owner-reply app.</p>
 <div class="filters"><label>PRIVATE recipient alias<select id="ownerExport"><option value="">Select HUMAN owner</option></select></label><button id="exportOwner" disabled>Export one-owner PRIVATE follow-up JSON</button></div></div></section>
