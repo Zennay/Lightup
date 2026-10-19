@@ -166,7 +166,7 @@ The merged original HUMAN envelope is fully re-admitted, encrypted into a **new*
 
 **Operational safeguards:** original source bytes and exact client/engagement require a fresh authorized read; all source and human files must be owner-only single-linked regular files; recipient/offline-browser requirements and original privacy/crypto review still apply. Local terminal shows HUMAN note contents **only in the deliberate conflict-resolution step**, never in the aggregate `preview`. Do not capture that terminal session to shared logs. This feature is subject to the same DRAFT/HOLD release gates as the source owner.
 
-## Five-view original-authenticated offline workstation (integrated source owners)
+## Unified original-authenticated offline workstation (integrated source owners)
 
 **`complete.py`** is the complete operational integration of **unchanged original [Authenticated Engagement Brief / Source History PR #1654](https://github.com/Zennay/Lightup/pull/1654)** into this candidate's original Evidence Artifact Ledger, original Casework and original Ticket Desk. No original owner source was rewritten. One genuine existing LightUp sign-in plus exact client+engagement read and one pre-existing original `workspace` / `workspace_history` encrypted source `.ltv` creates a **new owner-only 0700 offline folder** with 0600 separate original browser views:
 
@@ -176,13 +176,14 @@ The merged original HUMAN envelope is fully re-admitted, encrypted into a **new*
 - `03-casework.html`: unchanged original source-bound HUMAN Casework.
 - `04-history.html` (when original historical snapshots are actually provided): original source-history review.
 - `05-evidence-ledger.html`: unchanged original Artifact Ledger and optionally a separate already encrypted, exactly current-source-bound HUMAN collaboration packet. **The HUMAN packet is only staged for original native user-driven preview**, never silently applied.
+- `06-human-actions.html`: **new source-bound HUMAN attention board** with original unverified severity/retest labels, original finding navigation, tentative Casework due dates, local file fingerprint coverage, outstanding HUMAN requests and per-owner workload links. No scanning, execution, consent or verification is inferred.
 
 All five/six HTML files and the navigation are built **completely in memory before a single output directory is created**. The original owner validates original source-app SHA pins and historical membership; the Evidence Bridge validates its original app/source pin. On any output failure the newly created directory's partial outputs are removed. No source/HTML bytes are uploaded or fetched from the network.
 
 ```sh
 # First obtain an existing legitimate original encrypted workspace source by
 # using the original #1654 tooling on a trusted LightUp workstation.
-# Then create one complete private 5-view local dashboard:
+# Then create one complete private offline dashboard and original HUMAN views:
 PYTHONPATH=src python3 remediation-evidence-bridge/complete.py \
   --db /path/to/existing-lightup.sqlite \
   --email operator@example.invalid \
@@ -202,9 +203,11 @@ PYTHONPATH=src python3 remediation-evidence-bridge/complete.py \
   --ack-private-workspace
 ```
 
+**New cross-view HUMAN action board:** The [`triage.py`](triage.py) standalone `06-human-actions.html` is built from the exact same original authenticated five-column source as the rest of the workroom. It admits a **separately encrypted original HUMAN workspace** only through the existing `workspace.py` source digest/client/engagement gates and the current exact original Casework/Evidence Review/attachment/request membership contracts. It supports read-only owner-specific jump links, original finding priority groupings, local evidence fingerprint gaps, human blockers, tentative due dates **compared only with the workstation's UTC calendar date** and outstanding request summaries. Source-reported severity/fixed and HUMAN completed or due status remain **unverified labels**; missing LOCAL fingerprints do not prove missing external evidence. All original data and human notes are rendered only inside the owner's existing 0600 private HTML, with HTML escaping and CSP-SHA-pinned local CSS; the global `index.html` still shows only anonymous aggregate counts and no private names or finding IDs. Without a HUMAN handoff, the board displays only original unverified source details and LOCAL information explicitly unavailable. It never edits any record or triggers the original Ledger's manual Apply, sends requests or contacts targets.
+
 The startup view is now built by the independent [`portal.py`](portal.py): a responsive, keyboard-accessible, **zero-JavaScript** offline dashboard with an SHA-256 CSP-pinned in-page stylesheet, literal local file links, and **aggregate-only original source-labelled** finding / critical-high / historical-revision counts. It never prints original IDs, source hashes, client labels or human notes in its landing page; a source severity label is a retrospective **claim**, not a proven security issue. All existing owner apps remain separately SHA-pinned and unchanged.
 
-Open the newly created `index.html` **locally** on a trusted private device. The five views remain separate offline files inside the same private folder to preserve original source ownership. Private HTML deliberately materializes source-labelled findings in plaintext only after explicit operator acknowledgement; do not publish, sync, email or serve the folder. Existing independent original CI, privacy/security/crypto/browser review, exact current separate client/operator consent, source owner review and HUMAN GO gates remain fully intact. A local human review is **not** an authorized scan, verified finding/retest, client approval or production release.
+Open the newly created `index.html` **locally** on a trusted private device. The original views and new read-only HUMAN action board remain separate offline files inside the same private folder to preserve original source ownership. Private HTML deliberately materializes source-labelled findings in plaintext only after explicit operator acknowledgement; do not publish, sync, email or serve the folder. Existing independent original CI, privacy/security/crypto/browser review, exact current separate client/operator consent, source owner review and HUMAN GO gates remain fully intact. A local human review is **not** an authorized scan, verified finding/retest, client approval or production release.
 
 ## Original ownership and enforced gates
 
