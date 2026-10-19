@@ -15,7 +15,7 @@ from .private_export_encrypted import _passphrase
 from .private_export_handoff import _atomic_private_publish, _output_path
 from .private_export_human_revision_editor import _html
 from .private_export_human_revision_vault import (
-    _current_source, _read_decisions, _reconcile,
+    _current_source, _read_decisions, _reconcile, _require_current_original_ciphertext,
 )
 
 
@@ -53,6 +53,7 @@ def main(argv: list[str] | None = None) -> int:
             decisions, expected, deepcopy(template), new_meta, new_rows
         )
         rendered = _html(decisions)
+        _require_current_original_ciphertext(args, source_binding)
         _atomic_private_publish(destination, rendered)
         print("Created NEW UNENCRYPTED 0600 PRIVATE HUMAN visual review editor.")
         print("Existing source-bound HUMAN carry choices are preselected, not executed.")
