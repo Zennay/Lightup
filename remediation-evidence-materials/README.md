@@ -82,6 +82,22 @@ PYTHONPATH=src python3 remediation-evidence-materials/transfer.py unpack \
 
 The receiver's original current source and full original HUMAN Ledger inventory must match the received encrypted source identity. The tool rejects duplicate JSON keys, noncanonical content, other-than-literal-false authority flags, unknown IDs, mismatched material names/sizes/digests, duplicate finding+hash pairs and over-limit payloads **before creating a folder**. The new 0700 folder gets neutral `material-XX.bin` 0600 files and a 0600 `PRIVATE-receipt.json` mapping the original registered HUMAN labels to those neutral local names. A failed partial publication removes all newly written output; prior encrypted originals are untouched.
 
+## 4. Later PRIVATE local continuity review
+
+A recipient can independently reopen its **already extracted** folder at a later date. This human-only product operation reauthenticates the current original client/engagement source through LightUp, decrypts the existing original source-bound HUMAN inventory, admits the 0600 receipt with exact canonical JSON, rejects any unexpected file in the directory, and rehashes **every** neutral received file against the original registered original finding/file index. The result reports only anonymous local match counts or **HUMAN HOLD**; it does not certify origin, repairs, security outcomes or permission.
+
+```bash
+PYTHONPATH=src python3 remediation-evidence-materials/recheck.py \
+  --db /private/lightup/existing.sqlite \
+  --email recipient@example.invalid \
+  --client-id CURRENT_CLIENT --engagement-id CURRENT_ENGAGEMENT \
+  --human /private/lightup/current-original-human.ltv \
+  --folder /private/lightup/NEW-received-evidence \
+  --ack-private-review
+```
+
+Any source revision, changed original attachment, altered or missing file bytes, receipt tampering, unexpected file in the folder, access mismatch or public filesystem permissions fail closed. The original source and private files remain unchanged. This is an **operator feature**, not a QA or test suite.
+
 ## Operational posture
 
 The output is **human-supplied local file bytes matched against source-reported HUMANS**, **not** signed chain of custody, verified scanner evidence, validated security impact, remediation success, or consent. Treat any original severity or retest text as unverified source labels. Existing mandatory original exact-head hosted + permanently registered named VPS CI, source-owner review, independent privacy/security/crypto review, original #177/#182/#829, current independent client/operator consent with action-time revocation for future active work and explicit HUMAN GO remain necessary. This independent feature must stay **DRAFT/HOLD**, without main merge or production deployment, until actual release gates are satisfied.
