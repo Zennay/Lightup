@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="color-scheme" content="dark">
   <title>LightUp · Original Lab Declaration Matrix · PRIVATE</title>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-sJanbYyvx75gQ8Eh/tvQ9q6ggqETopxH7eEfTXqqYpc='; style-src 'sha256-rimt7wgtBaV1x8k4qhOgrode9Lp2WmNAdjIuMz+zeWw='; connect-src 'none'; img-src 'none'; font-src 'none'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-K2er0UckxydXkUDY02F4bOOuAgWIdB2PX2+v9RE1XeY='; style-src 'sha256-mArK/xeh0e3ZCWhrqvpOFgXHXas6SIlDbPpzbXq+WM0='; connect-src 'none'; img-src 'none'; font-src 'none'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
   <style>:root{font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#ecf1f7;background:#0c111a;line-height:1.55;font-size:15px}
 *{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:radial-gradient(ellipse 70% 18% at 64% 0%,#1b3044 0,transparent 80%),#0c111a;min-height:100vh}
 [hidden]{display:none!important}button,input,select{font:inherit}button{cursor:pointer}button:focus-visible,input:focus-visible,select:focus-visible,a:focus-visible{outline:3px solid #89d7df;outline-offset:3px}
@@ -31,6 +31,14 @@ footer{border-top:1px solid #283442;padding:22px clamp(18px,4vw,52px);max-width:
 @media(max-width:1000px){.grid{grid-template-columns:1fr}.details{max-height:unset}.load{grid-template-columns:1fr}.filterbar{grid-template-columns:1fr 1fr}.filterbar label:first-child{grid-column:1/-1}}
 @media(max-width:620px){.top{align-items:flex-start;flex-direction:column}.hero{padding-top:32px}.workspace-heading{flex-direction:column}.filterbar{grid-template-columns:1fr}.filterbar label:first-child{grid-column:auto}.load{padding:18px}.hero h1{font-size:2.3rem}}
 @media(print){body{background:white;color:black}.top,.load,.filterbar,.buttons,#details,.hold,.note,footer{display:none!important}.shell{padding:0}.panel{border:1px solid #aaa;box-shadow:none}th,td{background:white;color:black!important;border-bottom:1px solid #aaa}.matrix-pane{overflow:visible}.table-scroll{overflow:visible;max-height:none}.hero{display:none}td button{color:black!important;background:white!important}}
+
+.attention{padding:22px;margin-bottom:18px;border-color:#406b68;background:linear-gradient(110deg,#112b2e,#172332)}
+.attention h3{font-size:1.15rem;margin:0 0 6px;color:#b2e9e3}.attention p{font-size:.87rem;max-width:900px}
+.attention-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px;padding:0;list-style:none}
+.attention-list li{border:1px solid #345257;padding:12px;border-radius:10px;background:#102227;min-width:0;overflow-wrap:anywhere}
+.attention-link{background:none;border:0;padding:0;text-align:left;font-size:.85rem;font-weight:730;color:#a7e8e0;text-decoration:underline;text-underline-offset:3px}
+.attention-link:hover{color:#e0fff9}.attention-list small{display:block;margin-top:7px;color:#b7cbd2;line-height:1.5}
+@media(print){.attention{display:none!important}}
 </style>
 </head>
 <body>
@@ -77,6 +85,9 @@ footer{border-top:1px solid #283442;padding:22px clamp(18px,4vw,52px);max-width:
           <button id="exportCSV" class="secondary" type="button">Export counts CSV</button>
         </div>
       </div>
+      <section id="attention" class="panel attention" aria-label="Human attention suggestions">
+        <h3>HUMAN attention</h3><p>Loading local literal source differences…</p>
+      </section>
       <div class="panel filterbar">
         <label for="query">Filter literal capability / check <input id="query" type="search" autocomplete="off" placeholder="Local check or capability label"></label>
         <label for="severity">Source severity <select id="severity"><option value="all">All declared severities</option><option>critical</option><option>high</option><option>medium</option><option>low</option><option>info</option></select></label>
@@ -259,7 +270,8 @@ footer{border-top:1px solid #283442;padding:22px clamp(18px,4vw,52px);max-width:
         const key=JSON.stringify([f.capability_id,f.check_id]);
         if(!map.has(key))map.set(key,{capability:f.capability_id,check:f.check_id,
           bySource:data.map(()=>[])});
-        const endpointIndex=source.targets.indexOf(f.target);
+        // Always map against FIRST source ordinals, regardless of each later file's target order.
+        const endpointIndex=data[0].targets.indexOf(f.target);
         map.get(key).bySource[sourceIndex].push({finding:f,sourceOrdinal,
           endpointOrdinal:endpointIndex<0?null:endpointIndex+1});
       });
@@ -289,6 +301,50 @@ footer{border-top:1px solid #283442;padding:22px clamp(18px,4vw,52px);max-width:
     return row.bySource.map(list=>list.filter(({finding,endpointOrdinal})=>
       (!ep||endpointOrdinal===ep)&&
       (severity==="all"||finding.severity===severity)));
+  }
+  function renderAttention() {
+    const area=$("attention");clear(area);
+    const heading=node("h3","HUMAN attention · source-declaration differences");
+    const notice=node("p","Prioritized for human discussion only. Numeric variability, changed declared severity or unmatched endpoint labels are NOT new, fixed or verified vulnerabilities.");
+    area.append(heading,notice);
+    const candidates=rows.map(row=>{
+      const counts=row.bySource.map(list=>list.length);
+      const worst=row.bySource.map(list=>countsFor(list.map(r=>r.finding)).worst);
+      const changedCount=new Set(counts).size>1;
+      const changedSeverity=new Set(worst.filter(Boolean)).size>1;
+      const unmatched=row.bySource.some(items=>items.some(item=>item.endpointOrdinal===null));
+      const priority=(unmatched?5:0)+(changedSeverity?3:0)+(changedCount?2:0)+
+        (row.bySource.some(list=>list.some(x=>x.finding.severity==="critical"))?1:0);
+      return {row,counts,changedCount,changedSeverity,unmatched,priority};
+    }).filter(item=>item.changedCount||item.changedSeverity||item.unmatched)
+      .sort((a,b)=>b.priority-a.priority||
+        a.row.capability.localeCompare(b.row.capability)||
+        a.row.check.localeCompare(b.row.check));
+    const count=node("p",candidates.length+
+      " literal tuple groups suggest HUMAN discussion; showing at most 24. No clinical or security significance attached to ranking.");
+    area.append(count);
+    if(!candidates.length)return;
+    const list=node("ol","", "attention-list");
+    candidates.slice(0,24).forEach(item=>{
+      const li=node("li"),button=node("button",
+        (item.row.capability||"(empty capability)")+" · "+(item.row.check||"(empty check)"),
+        "attention-link");
+      button.type="button";
+      button.addEventListener("click",()=>{
+        $("query").value=item.row.capability+" "+item.row.check;
+        $("severity").value="all";$("endpoint").value="0";refresh();
+        const first=item.row.bySource.findIndex(items=>items.length>0);
+        if(first>=0)details(item.row,first,filteredPairs(item.row)[first]);
+        $("matrix").scrollIntoView({behavior:"smooth",block:"start"});
+      });
+      const descriptions=[
+        item.changedCount?"reported counts vary ("+item.counts.join(" / ")+")":null,
+        item.changedSeverity?"source severity labels differ":null,
+        item.unmatched?"at least one reported target is not an exact declared endpoint":null
+      ].filter(Boolean).join(" · ");
+      li.append(button,node("small",descriptions));list.append(li);
+    });
+    area.append(list);
   }
   function refresh() {
     const needle=$("query").value.trim().toLocaleLowerCase();
@@ -397,7 +453,7 @@ footer{border-top:1px solid #283442;padding:22px clamp(18px,4vw,52px);max-width:
       $("sourceSummary").textContent=baseline.targets.length+
         " identical literal declared endpoint slots · "+rows.length+
         " literal capability/check groups · no verification of target, ownership or chronology";
-      refresh();
+      renderAttention();refresh();
       message("Local input admitted structurally. Source statements remain unverified. No original data uploaded.");
     } catch(error) {
       message("Entire selection held: "+error.message+
@@ -410,7 +466,7 @@ footer{border-top:1px solid #283442;padding:22px clamp(18px,4vw,52px);max-width:
   $("forget").addEventListener("click",()=>{
     if(sources.length&&!confirm("Forget ALL locally opened original PRIVATE result data?"))return;
     sources=[];rows=[];visible=[];selected=null;
-    clear($("details"));clear($("matrix"));$("query").value="";
+    clear($("details"));clear($("matrix"));clear($("attention"));$("query").value="";
     $("workspace").hidden=true;$("intro").hidden=false;
     $("files").value="";message("Private originals discarded from this application state.");
   });
