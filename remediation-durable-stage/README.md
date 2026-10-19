@@ -42,3 +42,27 @@ The operator still separately opens the original Request Desk, runs its original
 ## Release fence
 
 **INCUBATE · M3/M7 PLAN/LAB ONLY · DRAFT/HOLD.** No main merge, production deploy, scan, grant, retest or QA rounds from this add-on. Original exact-head hosted and registered permanent named VPS CI, original source-owner and independent security/privacy/browser/crypto review, #177/#182/#829, genuine separately authenticated current client/operator consent with action-time revocation and explicit HUMAN GO are still required.
+## Offline local HUMAN chronology
+
+The optional `report` subcommand accepts the same source, journal and
+`--ack-private-material` options as `status`, plus a distinct NEW output:
+
+```sh
+python3 remediation-durable-stage/journal.py report \
+  --db /private/lightup.db --email operator@example.invalid \
+  --client-id ORIGINAL_CLIENT --engagement-id ORIGINAL_ENGAGEMENT \
+  --human /private/original-human.ltv \
+  --directory /private/extracted-material \
+  --plan /private/retention-review.ltv \
+  --journal-dir /private/my-human-journal \
+  --output /private/private-human-chronology.html --ack-private-material
+```
+
+After full ORIGINAL current source and real material admission, it exclusively
+publishes an owner-private 0600 scriptless, no-network HTML with local cycle
+timestamps, HUMAN states, counts, latest suggested operator action and explicit
+unknown-authority warnings. It contains no client/finding/request identity,
+fingerprint, source/evidence bytes, private notes, password or local file path.
+The chronology is just locally reported HUMAN state, not an authenticated
+audit trail or signed security outcome; never sync it or treat it as release
+authority.
