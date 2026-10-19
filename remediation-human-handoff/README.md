@@ -65,6 +65,22 @@ If the peer proposes genuinely different local action/state enums compared with 
 
 A source-free peer board can also be supplied directly to the plaintext `browser_workflow.py` with `--peer-board /absolute/0700/peer.json`, in addition to the unchanged `--session`, `--original-board`, `--proposed-board` and `--output-dir` arguments. This is a *PRIVATE operator workspace feature*, not minimum-disclosure peer correspondence. Do not share the complete native workroom with a recipient who was authorized to receive only one selected HUMAN handoff.
 
+## Create encrypted minimal HUMAN handoff directly from original Studio CLI
+
+Use [`encrypt_handoff.py`](encrypt_handoff.py) when operating entirely through Linux/Python with an original, **self-declared numeric** Studio session and its native source-free HUMAN board. No browser, recipient credentials, live network, original evidence, approved request, original case identity, real consent or active target is required or implied.
+
+```bash
+python3 remediation-human-handoff/encrypt_handoff.py \
+  --session "$HOME/lightup-private-human/session.json" \
+  --board "$HOME/lightup-private-human/board.json" \
+  --only request_original_human_review --ordinal 1 \
+  --output-file "$HOME/lightup-private-human/selected-handoff.lheh"
+```
+
+This executable validates **both** native files with the original unchanged Studio parser, requires an explicitly chosen action category and optionally exactly one local ordinal, refuses missing/mismatched/empty selections, and derives an independent AES-256-GCM key with 600,000 PBKDF2-SHA256 iterations, fresh cryptographic salt and nonce. The self-declared HUMAN capsule uses **the exact same versioned format, fixed encryption purpose, domain separation, 12 literal false authority fields and private owner-only .lheh output** as the standalone browser. Save/confirm a unique strong passphrase interactively; never put it in a command line, shell history or the same channel as the encrypted file. Output `--output-file` must not exist and its parent must be an existing 0700 private directory. No partial/plaintext fallback is written.
+
+The receiving HUMAN can open the file in offline `browser.html` section 6 or with `encrypted_handoff.py --encrypted-handoff ... --output-dir ...` as described below. The CLI receiver generates private 0600 *plaintext* HTML/CSV/TXT; do not forward the receiver directory indiscriminately. Even though the capsule reveals no original case ID or raw client evidence, anonymous small-cell counts can be sensitive. Neither recipient identity nor real delivery or review is authenticated.
+
 ## Read encrypted selected .lheh handoffs privately without a browser
 
 An authorized local HUMAN operator who only receives a limited `.lheh` capsule **does not need** the original Studio numeric session, a full encrypted workspace or a browser. The new [`encrypted_handoff.py`](encrypted_handoff.py) opens the capsule locally using the existing common authenticated-decryption primitive, then produces a **read-only private dossier** consisting only of the source-free rows that the original HUMAN sender selected.
