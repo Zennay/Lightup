@@ -114,7 +114,7 @@
         fail();
       }
       const rest=source.slice(p);
-      const m=/^(?:true|false|null|-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?)/.exec(rest);
+      const m=/^(?:true|false|null|(?:0|[1-9]\d*))/.exec(rest);
       if(!m) fail();
       p+=m[0].length;
     };
@@ -170,6 +170,7 @@
     $("forgetEarlier").disabled=earlier===null;
     $("exportDelta").disabled=earlier===null || entries.length===0;
     $("exportBrief").disabled=entries.length===0;
+    $("exportJson").disabled=entries.length===0;
     $("missing").textContent=String(total.packets-total.planned);
     for(const stage of STAGES)$("stage_"+stage).textContent=
       String(total.stages[stage])+" recorded slot appearances";
@@ -188,7 +189,8 @@
     const url=URL.createObjectURL(blob);
     const anchor=document.createElement("a");
     anchor.download=name;anchor.href=url;anchor.textContent="Save "+name;
-    anchor.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+    document.body.appendChild(anchor);anchor.click();anchor.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),1000);
   };
   $("pick").addEventListener("change",async event=>{
     const files=Array.from(event.target.files??[]);
@@ -246,6 +248,32 @@
       "");
     return lines.join("\n");
   };
+  $("exportJson").addEventListener("click",()=>{
+    if(!entries.length)return;
+    const totals=summary(entries);
+    const payload={
+      kind:"lightup.private_human_studio_numeric_snapshot",
+      schema_version:1,
+      disposition:"LOCAL_BROWSER_SOURCE_FREE_COUNTERS_NOT_ORIGINAL_ATTESTATION",
+      packet_count:totals.packets,
+      source_free_slot_appearances_not_unique:totals.slots,
+      pending_human_questions_not_fixes:totals.questions,
+      planning_packet_count:totals.planned,
+      human_attention_slot_appearances:totals.attention,
+      locally_dated_slot_appearances:totals.dated,
+      local_planning_stages:totals.stages,
+      packets_in_original_local_selection_order:entries.map((x,i)=>({
+        packet:i+1,source_type:x.type,slot_appearances:x.slots,
+        pending_human_questions_not_fixes:x.questions,
+        human_attention_slot_appearances:x.plan?.attention??null
+      })),
+      warning:"Self-reported source-free packet appearances only. No unique cases, authenticated source, verified findings/fixes, consent, grant or authority.",
+      ...Object.fromEntries(FLAGS.map(key=>[key,false]))
+    };
+    download("lightup-human-browser-numeric-snapshot.json","application/json",
+      JSON.stringify(payload,null,2)+"\n");
+    showStatus("One source-free browser snapshot downloaded, not an original verified export.");
+  });
   $("exportBrief").addEventListener("click",()=>{
     if(!entries.length)return;
     download("lightup-private-human-followup.txt","text/plain",brief());
