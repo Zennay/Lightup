@@ -26,6 +26,7 @@ FILES = {
     "private-human-case-queue.csv",
     "private-human-review-template.csv",
     "private-human-case-transitions.csv",
+    "private-original-case-details.csv",
     "anonymous-source-order.csv",
 }
 
