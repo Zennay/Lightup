@@ -28,25 +28,46 @@ def canonical(obj: object) -> bytes:
 
 def _admit_delta(old: dict, candidate: dict, ids: set[str]) -> dict:
     """An immutable full original HUMAN baseline plus genuinely appended files."""
-    if old.get("schema_version") != 2 or candidate.get("schema_version") != 2:
-        raise ValueError("Original Unified HUMAN v2 is required for append-only encrypted sealing.")
+    if old.get("schema_version") != 2:
+        raise ValueError("Encrypted original Unified HUMAN v2 baseline required.")
+    standalone = candidate.get("kind") == "lightup.private_artifact_ledger"
+    if standalone:
+        expected = {"kind","schema_version","disposition","source_contract",
+                    "source_sha256","source_count","client_reference",
+                    "engagement_reference","attachments","warning",*human.FLAGS}
+        if (set(candidate)!=expected or type(candidate.get("schema_version")) is not int
+            or candidate["schema_version"] != 1
+            or candidate["disposition"]!="PRIVATE_HUMAN_EVIDENCE_INDEX_ONLY"
+            or candidate["source_contract"]!="lightup.finding_export._COLUMNS_v1"
+            or any(candidate[flag] is not False for flag in human.FLAGS)
+            or type(candidate.get("warning")) is not str
+            or len(candidate["warning"]) > 600):
+            raise ValueError("Malformed or authority-claiming original Artifact Ledger v1 intake.")
+        for key in ("source_sha256","source_count","client_reference","engagement_reference"):
+            if canonical(candidate.get(key))!=canonical(old.get(key)):
+                raise ValueError("Original Ledger v1 local intake source identity differs from encrypted current original.")
+    elif (candidate.get("kind")!="lightup.private_unified_human_evidence_workspace"
+          or type(candidate.get("schema_version")) is not int
+          or candidate["schema_version"]!=2):
+        raise ValueError("Expected native original Ledger v1 or Unified HUMAN v2 intake.")
     # The original authenticated PRIVATE browser deliberately strips HUMAN
     # Casework/Evidence Review notes; never expand the browser to hold them.
     # Carry ALL non-attachment data from the encrypted original baseline.
-    fields=("kind","schema_version","disposition","source_contract",
-            "source_sha256","source_count","client_reference",
-            "engagement_reference","human_requests")
-    if any(canonical(old.get(key))!=canonical(candidate.get(key)) for key in fields):
-        raise ValueError("Original source identity or HUMAN request baseline changed.")
-    for key in ("casework","evidence_review"):
-        if candidate.get(key) is not None and canonical(candidate[key])!=canonical(old[key]):
-            raise ValueError("PRIVATE original Casework/Evidence Review was modified.")
-    limited_warning=(
-        "PRIVATE local human file comparisons. Original authenticated READ at build-time only; "
-        "no client consent, grants, verified remediation, retest or current authorization."
-    )
-    if candidate.get("warning") not in (old.get("warning"),limited_warning):
-        raise ValueError("Unrecognized privacy-minimized browser HUMAN warning.")
+    if not standalone:
+        fields=("kind","schema_version","disposition","source_contract",
+                "source_sha256","source_count","client_reference",
+                "engagement_reference","human_requests")
+        if any(canonical(old.get(key))!=canonical(candidate.get(key)) for key in fields):
+            raise ValueError("Original source identity or HUMAN request baseline changed.")
+        for key in ("casework","evidence_review"):
+            if candidate.get(key) is not None and canonical(candidate[key])!=canonical(old[key]):
+                raise ValueError("PRIVATE original Casework/Evidence Review was modified.")
+        limited_warning=(
+            "PRIVATE local human file comparisons. Original authenticated READ at build-time only; "
+            "no client consent, grants, verified remediation, retest or current authorization."
+        )
+        if candidate.get("warning") not in (old.get("warning"),limited_warning):
+            raise ValueError("Unrecognized privacy-minimized browser HUMAN warning.")
     if type(old.get("attachments")) is not list or type(candidate.get("attachments")) is not list:
         raise ValueError("Original artifact record arrays are required.")
     retained = len(old["attachments"])
@@ -62,7 +83,8 @@ def _admit_delta(old: dict, candidate: dict, ids: set[str]) -> dict:
             raise ValueError("New local fingerprint is not bound to a current original finding.")
     # Original schema admission validates every native record, limit, request,
     # casework and fingerprint, including duplicates per finding and SHA-256.
-    native._records(candidate, ids)
+    if not standalone:
+        native._records(candidate, ids)
     # The NEW trusted native packet is the old decrypted PRIVATE object with
     # appended fingerprints only. Casework/Evidence Review/requests/warnings
     # come from encrypted original, NEVER from a redacted browser projection.
@@ -78,7 +100,7 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--previous", required=True, type=Path,
                    help="Existing unchanged original encrypted PRIVATE HUMAN workspace .ltv")
     p.add_argument("--draft", required=True, type=Path,
-                   help="Owner-only 0600 PRIVATE Unified v2 JSON exported by offline custody intake")
+                   help="Owner-only 0600 PRIVATE Ledger v1 or Unified HUMAN v2 JSON exported by offline custody intake")
     p.add_argument("--output", required=True, type=Path,
                    help="NEW encrypted 0600 PRIVATE HUMAN .ltv under trusted owner-only 0700 directory")
     p.add_argument("--ack-private-intake", action="store_true", required=True,
@@ -117,8 +139,12 @@ def main(argv: list[str] | None = None) -> int:
                             client=opt.client_id,engagement=opt.engagement_id)
         native._records(old, original_ids)
         requested = vault._private_input(b,MAX_LOCAL_DRAFT)
-        candidate = human._packet(requested,source_digest=digest,count=count,
-                                   client=opt.client_id,engagement=opt.engagement_id)
+        parsed = human._json(requested,MAX_LOCAL_DRAFT)
+        if parsed.get("kind")=="lightup.private_artifact_ledger":
+            candidate = parsed
+        else:
+            candidate = human._packet(requested,source_digest=digest,count=count,
+                                      client=opt.client_id,engagement=opt.engagement_id)
         restored = _admit_delta(old,candidate,original_ids)
         appended = len(restored["attachments"]) - len(old["attachments"])
         packed = human._make_workspace(original_csv, canonical(restored),
