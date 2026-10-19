@@ -31,7 +31,7 @@ a{color:#9cf6e4}nav a{text-decoration:none;font-weight:700}h1{font-size:clamp(1.
 h2{font-size:1.3rem}h3{font-size:1.05rem;margin:.25rem 0}.lede{color:#b6ccd6;max-width:910px}
 .kicker{font-size:.79rem;letter-spacing:.13em;text-transform:uppercase;color:#79dacc;font-weight:760}
 .notice{background:#212a35;border-left:4px solid #d0ad75;padding:1rem 1.3rem;border-radius:0 10px 10px 0;margin:1.5rem 0}
-.stats{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:.8rem}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(172px,1fr));gap:.8rem}
 .stat{padding:1rem;border-radius:14px;border:1px solid #344e5e;background:#152c3a}
 .stat strong{display:block;font-size:2rem}.stat span{font-size:.82rem;color:#b1c6d0}
 .pills{display:flex;gap:.5rem;flex-wrap:wrap;margin:1.3rem 0}.pills a{padding:.5rem .8rem;border-radius:999px;text-decoration:none;background:#183746;border:1px solid #3a5966;font-size:.82rem}
@@ -59,7 +59,7 @@ def _limited(value: str, n: int) -> str:
     return value if len(value) <= n else value[:n] + " … [source excerpt; open original review]"
 
 
-def _table(source: list[dict[str, str]], packet: dict | None, utc_today: date) -> tuple[list[dict], dict]:
+def _table(source: list[dict[str, str]], packet: dict | None, utc_today: date, previous_source: list[dict[str,str]] | None) -> tuple[list[dict], dict]:
     if type(source) is not list or not 1 <= len(source) <= 350:
         raise ValueError("Current original five-column source required.")
     ids = set()
@@ -71,6 +71,21 @@ def _table(source: list[dict[str, str]], packet: dict | None, utc_today: date) -
         if not row["finding_id"] or row["finding_id"] in ids or row["severity"] not in SEVERITIES:
             raise ValueError("Duplicate/invalid original finding identity.")
         ids.add(row["finding_id"])
+    # A PRIVATE historical source is a source claim, never proof of a fix.
+    old = None
+    if previous_source is not None:
+        if type(previous_source) is not list or not 1 <= len(previous_source) <= 350:
+            raise ValueError("Invalid previous source.")
+        old = {}
+        for entry in previous_source:
+            if type(entry) is not dict or set(entry) != {
+                "finding_id","title","severity","retest_status","remediation"
+            } or any(type(v) is not str for v in entry.values()):
+                raise ValueError("Historical source schema drift.")
+            name = entry["finding_id"]
+            if not name or name in old or entry["severity"] not in SEVERITIES:
+                raise ValueError("Ambiguous prior original finding.")
+            old[name] = entry
     # The original Ledger still independently validates the private packet,
     # then original HUMAN-only browser preview+Apply after explicit user action.
     maps = ADMIT._records(packet, ids) if packet is not None else {
@@ -92,7 +107,15 @@ def _table(source: list[dict[str, str]], packet: dict | None, utc_today: date) -
         attached=files[fid]
         human_reqs=sorted(requests[fid],key=lambda v:(v["due_date"] or "9999-12-31",v["request_id"]))
         open_reqs=[r for r in human_reqs if r["human_stage"]!="closed_human"]
+        drift = ("historical source unavailable" if old is None else
+                 "new original source record" if fid not in old else
+                 "original source fields CHANGED" if f != old[fid] else
+                 "original source fields unchanged")
         attention=[]
+        if drift == "original source fields CHANGED":
+            attention.append("Prior original source CHANGED: re-review HUMAN plan")
+        elif drift == "new original source record":
+            attention.append("New relative to PRIVATE prior source: review HUMAN plan")
         if c is not None and not c["owner"].strip():
             attention.append("No LOCAL HUMAN owner")
         if c is not None and c["blocker"].strip():
@@ -108,7 +131,7 @@ def _table(source: list[dict[str, str]], packet: dict | None, utc_today: date) -
         if e is not None and e["stage"] in ("missing", "needs_changes"):
             attention.append("Imported original HUMAN Evidence Review needs follow-up")
         items.append({
-            "finding": f, "case":c, "evidence":e,
+            "finding": f, "case":c, "evidence":e, "source_drift":drift,
             "artifacts":attached, "requests":human_reqs, "open_requests":open_reqs,
             "attention":attention
         })
@@ -131,6 +154,10 @@ def _table(source: list[dict[str, str]], packet: dict | None, utc_today: date) -
             i["case"] is not None and i["case"]["due_date"] is not None
             and date.fromisoformat(i["case"]["due_date"]) < utc_today
             for i in items),
+        "source_previous_present":old is not None,
+        "source_changed":sum(i["source_drift"]=="original source fields CHANGED" for i in items),
+        "source_added":sum(i["source_drift"]=="new original source record" for i in items),
+        "source_absent":len(set(old)-ids) if old is not None else 0,
         "human_packet_present":packet is not None
     }
     return items, counters
@@ -144,6 +171,7 @@ def _row(item: dict, n: int) -> str:
     parts=[
         ("Original source remediation excerpt",_limited(f["remediation"],1400)),
         ("Original source retest LABEL (not verified)",f["retest_status"]),
+        ("Prior PRIVATE original source comparison",item["source_drift"]),
         ("HUMAN owner",c["owner"] if c is not None else "Not imported"),
         ("Tentative HUMAN due date",c["due_date"] or "not set" if c is not None else "Not imported"),
         ("Casework HUMAN stage",c["status"] if c is not None else "Not imported"),
@@ -178,9 +206,10 @@ def _row(item: dict, n: int) -> str:
     )
 
 
-def build_board(original_source: list[dict[str,str]], human_packet: dict | None) -> bytes:
+def build_board(original_source: list[dict[str,str]], human_packet: dict | None,
+                previous_source: list[dict[str,str]] | None = None) -> bytes:
     utc_today = datetime.now(timezone.utc).date()
-    items, counts = _table(original_source,human_packet,utc_today)
+    items, counts = _table(original_source,human_packet,utc_today,previous_source)
     css_hash=base64.b64encode(hashlib.sha256(CSS.encode("utf-8")).digest()).decode("ascii")
     csp=("default-src 'none'; connect-src 'none'; script-src 'none'; "
          "style-src 'sha256-"+css_hash+"'; img-src 'none'; font-src 'none'; "
@@ -211,6 +240,15 @@ def build_board(original_source: list[dict[str,str]], human_packet: dict | None)
             ("passed_human_due","Tentative HUMAN dates earlier than UTC today · not permission"),
         )
     )
+    if counts["source_previous_present"]:
+        summary += "".join(
+            '<div class="stat"><strong>'+str(counts[key])+'</strong><span>'+label+'</span></div>'
+            for key,label in (
+                ("source_changed","Changed source fields: HUMAN re-review, NOT fixed"),
+                ("source_added","New PRIVATE original source rows, unverified"),
+                ("source_absent","Absent from current source: NOT resolved"),
+            )
+        )
     sections=[]
     for severity in SEVERITIES:
         rows=[i for i in items if i["finding"]["severity"]==severity]

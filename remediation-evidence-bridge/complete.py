@@ -91,7 +91,7 @@ def _build_all(
         "02-ticketdesk.html":originals["ticketdesk"],
         "03-casework.html":originals["casework"],
         "05-evidence-ledger.html":ledger_html,
-        "06-human-actions.html":build_board(now,human_packet),
+        "06-human-actions.html":build_board(now,human_packet,prior[-1] if prior else None),
     }
     if prior:
         snapshots=[(dict(unverified_historical=True), records) for records in prior]
