@@ -328,28 +328,38 @@ window.LightUpHistory=Object.freeze({
       throw Error('HOLD: client/engagement or HUMAN source revision changed during review.');
     return {sourceHash:latest.sourceHash,revision:state.revision,rows};
   },
-  mergeCasework(packet,expectedRevision,selectedIds){
+  mergeCasework(packet,expectedRevision,selectedDecisions){
     const ctx=requireContext();protect();
-    if(!Array.isArray(selectedIds)||!selectedIds.length||selectedIds.length>350||
-      new Set(selectedIds).size!==selectedIds.length||selectedIds.some(id=>typeof id!=='string'))
-      throw Error('Select 1–350 distinct original HUMAN Casework records.');
+    if(!Array.isArray(selectedDecisions)||!selectedDecisions.length||selectedDecisions.length>350||
+      selectedDecisions.some(x=>!x||typeof x!=='object'||Array.isArray(x)||
+       typeof x.id!=='string'||!Array.isArray(x.fields)||!x.fields.length||
+       x.fields.length>8||new Set(x.fields).size!==x.fields.length)||
+      new Set(selectedDecisions.map(x=>x.id)).size!==selectedDecisions.length)
+      throw Error('Select distinct original HUMAN Casework records with explicit nonempty HUMAN field choices.');
     const review=this.reviewCasework(packet,expectedRevision);
     const byId=new Map(review.rows.map(r=>[r.id,r]));
     const proposed=new Map(state.notes);
     const latest=new Map(state.snapshots.at(-1).findings.map(f=>[f.finding_id,f]));
-    for(const id of selectedIds){
-      const row=byId.get(id),f=latest.get(id);
+    const allowed=['owner','status','due_date','next_action','verification_plan','blocker','note','updated_utc'];
+    let fieldsMerged=0;
+    for(const choice of selectedDecisions){
+      const id=choice.id,row=byId.get(id),f=latest.get(id);
       if(!row||!f||!['NEW_HUMAN_NOTES','REVIEW_CONFLICT'].includes(row.classification))
         throw Error('HOLD: selected original finding has no imported HUMAN notes or has a stale/mismatched source.');
-      const c=LightUpCasework.cleanCase(row.incoming,new Set([id]));
+      if(choice.fields.some(k=>typeof k!=='string'||!allowed.includes(k)||!row.changedFields.includes(k)))
+        throw Error('HOLD: selection requested a HUMAN field that was not changed in the admitted original packet.');
+      const copy={...row.current};
+      for(const field of choice.fields)copy[field]=row.incoming[field];
+      const c=LightUpCasework.cleanCase(copy,new Set([id]));
       proposed.set(id,{owner:c.owner,action:c.next_action,due:c.due_date||'',
         sourceRecord:Object.fromEntries(FIELDS.map(k=>[k,f[k]])),caseworkOriginal:c});
+      fieldsMerged+=choice.fields.length;
     }
     if(proposed.size>limits.maxNotes||state.importing||state.revision!==expectedRevision||
        context().client!==ctx.client||context().engagement!==ctx.engagement)
       throw Error('HOLD: private note limit or original source/context changed. Entire merge rejected.');
     state.notes=proposed;state.revision++;render();
-    return {accepted:selectedIds.length,retained:review.rows.length-selectedIds.length};
+    return {accepted:selectedDecisions.length,fieldsMerged,retained:review.rows.length-selectedDecisions.length};
   },
   importCasework(packet,sourceRevision,replaceNotes){
     const ctx=requireContext();protect();
