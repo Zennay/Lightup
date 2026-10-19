@@ -188,7 +188,7 @@ function carryHuman() {
  if(!existing||!current||noteBinding(id)!=='stale'||!$('carryAck').checked)
   throw Error('Source change needs selected current finding and explicit human review acknowledgement.');
  if(!window.confirm('PRIVATE HUMAN REVIEW: Carry existing HUMAN notes to the CHANGED original five-field source record? This is NOT a verified fix, consent or authorization.'))return;
- const notes={...existing,sourceRecord:Object.fromEntries(FIELDS.map(k=>[k,current[k]]),caseworkOriginal:null};
+ const notes={...existing,sourceRecord:Object.fromEntries(FIELDS.map(k=>[k,current[k]])),caseworkOriginal:null};
  state.notes.set(id,notes);state.revision++;renderGrid();renderDetail();
  message('Human note deliberately carried to the exact latest original finding after acknowledgment; no security status or source changed.');
 }
