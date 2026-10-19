@@ -11,7 +11,7 @@ var SKEYS=['step_id','kind','description','precondition','responsible_alias','ro
 var RBKEYS=['kind','schema_version','disposition','source_contract','source_sha256','client_reference','engagement_reference','source_count','finding_ids','runbooks','warning'].concat(FLAGS);
 var BKEYS=['finding_id','steps'];
 var MAX=1048576, MAX_BACKUP=8388608, MAX_ROWS=350, MAX_STEPS=8, MAX_TOTAL=1600;
-var state=null, revision=0, exported=0, pendingMerge=null, mergeUndo=null, ownerReturns=new Map(), followup=new Map(), actionRevision=0, actionSavedRevision=0;
+var state=null, revision=0, exported=0, pendingMerge=null, mergeUndo=null, ownerReturns=new Map(), followup=new Map(), actionRevision=0, actionSavedRevision=0, actionSelected=new Set(), actionBatchUndo=null;
 var fail=function(s){throw Error('HOLD: '+s);};
 function exact(obj,keys){return obj!==null&&typeof obj==='object'&&!Array.isArray(obj)&&Object.getPrototypeOf(obj)===Object.prototype&&Object.keys(obj).length===keys.length&&Object.keys(obj).every(function(k){return keys.indexOf(k)>=0;});}
 function string(v,max,label,required){
@@ -356,7 +356,7 @@ function guardReviewLoss(){
  fail('Unexported PRIVATE HUMAN notes retained; original source edit cancelled');
 }
 function clearHumanActions(){
- followup=new Map();actionRevision=0;actionSavedRevision=0;
+ followup=new Map();actionRevision=0;actionSavedRevision=0;actionSelected=new Set();actionBatchUndo=null;$('actionUndoBatch').disabled=true;
  $('actionRows').replaceChildren();$('actionSummary').textContent='';
  $('actionSearch').value='';$('actionFilter').value='all';$('actionRestoreFile').value='';
  $('humanReviewDesk').hidden=true;actionSavedStatus();
@@ -365,23 +365,34 @@ function actionSavedStatus(){$('actionSaved').textContent=actionRevision!==actio
  'UNSAVED PRIVATE HUMAN follow-up notes · export source-bound JSON before closing or changing original plans. No browser persistence.':
  'PRIVATE HUMAN follow-up locally unchanged since last complete export or restore. No browser persistence.';}
 function actionRows(){return actionSources().map(r=>({source:r,action:followup.get(actionKey(r.recipient_alias,r.finding_id,r.step_id))||blankAction()}));}
-function renderHumanActions(){
- $('humanReviewDesk').hidden=!state||!ownerReturns.size;
- if(!state||!ownerReturns.size){$('actionRows').replaceChildren();$('actionSummary').textContent='No current HUMAN owner returns.';actionSavedStatus();return;}
- const all=actionRows(),q=$('actionSearch').value.toLowerCase().trim(),mode=$('actionFilter').value,today=new Date().toISOString().slice(0,10);
- const filtered=all.filter(({source:r,action:a})=>{
+
+function visibleHumanActionRows(rows){
+ const q=$('actionSearch').value.toLowerCase().trim(),mode=$('actionFilter').value,today=new Date().toISOString().slice(0,10);
+ return rows.filter(({source:r,action:a})=>{
   if(q&&![r.recipient_alias,r.finding_id,r.human_ack,a.coordinator_alias,a.next_action,a.private_note].join(' ').toLowerCase().includes(q))return false;
   if(mode==='no_owner')return !a.coordinator_alias;
   if(mode==='overdue')return !!a.tentative_due&&a.tentative_due<today;
   return mode==='all'||a.human_stage===mode;
  });
+}
+function renderHumanActions(){
+ $('humanReviewDesk').hidden=!state||!ownerReturns.size;
+ if(!state||!ownerReturns.size){$('actionRows').replaceChildren();$('actionSummary').textContent='No current HUMAN owner returns.';actionSavedStatus();return;}
+ const all=actionRows(),filtered=visibleHumanActionRows(all);
  $('actionSummary').textContent=all.length+' unverified human-reply steps · '+filtered.length+' shown · '+
  all.filter(x=>x.action.human_stage==='needs_human_input').length+' HUMAN clarification assignments · '+
  all.filter(x=>x.action.tentative_due&&x.action.tentative_due<today).length+' tentative UTC human dates passed (not authorized windows).';
  const holder=$('actionRows');holder.replaceChildren();
+ $('actionSelection').textContent=actionSelected.size+' exact-current HUMAN steps selected. Selection is local, not an execution request.';
+ $('actionBatchApply').disabled=!actionSelected.size;
  for(const {source:r,action:a} of filtered){
   const key=actionKey(r.recipient_alias,r.finding_id,r.step_id),card=document.createElement('article');card.className='step';
   card.append(element('h3','ORIGINAL '+r.finding_id+' · HUMAN step '+r.step_id+' · '+r.recipient_alias));
+  const choose=document.createElement('label');choose.textContent='Select original HUMAN step for local-only batch assignment';
+  const tick=document.createElement('input');tick.type='checkbox';tick.checked=actionSelected.has(key);
+  tick.setAttribute('aria-label','Select original '+r.finding_id+' HUMAN step '+r.step_id+' for local-only batch');
+  tick.addEventListener('change',()=>{tick.checked?actionSelected.add(key):actionSelected.delete(key);renderHumanActions();});
+  choose.append(tick);card.append(choose);
   card.append(element('p','Original unverified HUMAN reply: '+r.human_ack));
   const row=document.createElement('div');row.className='two';
   const status=document.createElement('label');status.textContent='Local HUMAN follow-up stage';
@@ -403,10 +414,53 @@ function renderHumanActions(){
 function editHumanAction(key,field,v){
  try{
   if(!ACTION_FIELDS.includes(field)||!actionSources().some(x=>actionKey(x.recipient_alias,x.finding_id,x.step_id)===key))fail('stale HUMAN action identity');
-  const next=validateAction({...followup.get(key)||blankAction(),[field]:v});followup.set(key,next);actionRevision++;renderHumanActions();
+  const next=validateAction({...followup.get(key)||blankAction(),[field]:v});followup.set(key,next);actionRevision++;actionBatchUndo=null;$('actionUndoBatch').disabled=true;renderHumanActions();
   message('PRIVATE HUMAN coordination '+field+' saved in browser memory only. No original reply or security status changed.');
  }catch(e){message(e.message,true);renderHumanActions();}
 }
+
+function selectVisibleHumanActions(){
+ if(!state||!ownerReturns.size)fail('import exact-original HUMAN reply packets first');
+ for(const {source:r} of visibleHumanActionRows(actionRows()))actionSelected.add(actionKey(r.recipient_alias,r.finding_id,r.step_id));
+ renderHumanActions();message('Selected filtered source-bound HUMAN steps for local-only coordination. No execution or grant.');
+}
+function clearHumanActionSelection(){actionSelected.clear();renderHumanActions();}
+function applyHumanActionBatch(){
+ if(!state||!ownerReturns.size||!actionSelected.size)fail('select ORIGINAL HUMAN steps for local planning');
+ const source=binding(state),snap=JSON.stringify(actionSnapshot()),baseline=actionRevision,
+ stage=$('actionBatchStage').value,owner=string($('actionBatchOwner').value.trim(),120,'local HUMAN batch coordinator'),
+ due=date($('actionBatchDue').value);
+ if(!ACTION_STAGES.includes(stage))fail('unsupported HUMAN planning stage');
+ const all=new Map(actionRows().map(({source:r,action:a})=>[actionKey(r.recipient_alias,r.finding_id,r.step_id),a]));
+ const keys=[...actionSelected];
+ if(keys.some(k=>!all.has(k)))fail('stale original HUMAN action selection');
+ const previous=new Map(keys.map(k=>[k,{...all.get(k)}]));
+ const proposed=new Map(keys.map(k=>[k,validateAction({...all.get(k),human_stage:stage,
+  ...(owner?{coordinator_alias:owner}:{}),...(due?{tentative_due:due}:{})})]));
+ const preview=keys.slice(0,8).map(k=>{const v=JSON.parse(k);return v[1]+' · HUMAN step '+v[2]+' · '+v[0];}).join('\n');
+ const explanation='Apply '+keys.length+' LOCAL HUMAN stage assignments ('+stage+')?'+
+  (owner?' Set coordinator '+owner+'.':' Keep individual coordinators.')+
+  (due?' Set tentative date '+due+'.':' Keep individual dates.')+
+  '\nORIGINAL selections:\n'+preview+(keys.length>8?'\n... and '+(keys.length-8)+' more.':'')+
+  '\nNo original HUMAN replies, security verdicts, consent or grants change. PRIVATE notes remain intact.';
+ if(!window.confirm(explanation))return;
+ if(baseline!==actionRevision||source!==binding(state)||snap!==JSON.stringify(actionSnapshot())||
+ keys.some(k=>!actionSources().some(r=>actionKey(r.recipient_alias,r.finding_id,r.step_id)===k)))fail('stale exact-source HUMAN batch or old original selection');
+ for(const [k,v] of proposed)followup.set(k,v);
+ actionRevision++;actionBatchUndo={before:previous,source,snap,revision:actionRevision};
+ actionSelected.clear();$('actionUndoBatch').disabled=false;renderHumanActions();
+ message('Applied '+proposed.size+' local PRIVATE HUMAN stage assignments. Reversible until another local action edit, import or source change.');
+}
+function undoHumanActionBatch(){
+ const u=actionBatchUndo;
+ if(!u||u.revision!==actionRevision||u.source!==binding(state)||u.snap!==JSON.stringify(actionSnapshot()))
+  fail('last local HUMAN batch is not safe to undo after source, reply or note changes');
+ if(!window.confirm('Undo the last PRIVATE HUMAN-only batch assignment for '+u.before.size+' original reply steps? No original source or grant changes.'))return;
+ for(const [k,v] of u.before)followup.set(k,{...v});
+ actionRevision++;actionBatchUndo=null;$('actionUndoBatch').disabled=true;renderHumanActions();
+ message('Previous local HUMAN annotations restored for last bulk assignment. Already downloaded files remain outside this browser.');
+}
+
 function actionPacket(){
  if(!state||!ownerReturns.size)fail('no original source-bound owner returns');
  return {kind:'lightup.private_human_owner_return_followup',schema_version:1,disposition:'UNVERIFIED_HUMAN_PLANNING_ONLY',
@@ -447,7 +501,7 @@ async function restoreHumanActions(){
  $('actionRestoreFile').files[0]!==file)fail('PRIVATE human source changed while restoring');
  if(!window.confirm('REPLACE local PRIVATE HUMAN follow-up annotations with this EXACT-source / exact owner-reply snapshot backup? Save unsaved notes before replacement. No original evidence or grants changed.'))return;
  if(revision!==revisionBefore||actionRevision!==actionBefore||binding(state)!==origin||snap!==JSON.stringify(actionSnapshot()))fail('stale HUMAN restore confirmation');
- followup=rows;actionRevision++;actionSavedRevision=actionRevision;$('actionRestoreFile').value='';renderHumanActions();
+ followup=rows;actionRevision++;actionSavedRevision=actionRevision;actionSelected.clear();actionBatchUndo=null;$('actionUndoBatch').disabled=true;$('actionRestoreFile').value='';renderHumanActions();
  message('Complete PRIVATE HUMAN follow-up restored against current original source and owner replies.');
 }
 function humanEsc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
@@ -478,7 +532,7 @@ function exportHumanActionCounts(){
 }
 function forgetHumanActions(){
  if(actionRevision!==actionSavedRevision&&!window.confirm('Discard UNSAVED PRIVATE operator annotations? Export source-bound JSON first. The original runbooks and owner returns remain unchanged.'))return;
- followup=new Map();actionRevision++;actionSavedRevision=actionRevision;$('actionRestoreFile').value='';renderHumanActions();
+ followup=new Map();actionRevision++;actionSavedRevision=actionRevision;actionSelected.clear();actionBatchUndo=null;$('actionUndoBatch').disabled=true;$('actionRestoreFile').value='';renderHumanActions();
  message('Local HUMAN follow-up annotations forgotten without changing source, grants or incoming owner replies.');
 }
 
@@ -616,6 +670,10 @@ bind('returnFilter','change',renderReceivedReplies);
 bind('returnAggregate','click',exportTeamHumanCoverage);
 bind('actionFilter','change',renderHumanActions);
 bind('actionSearch','input',renderHumanActions);
+bind('actionSelectVisible','click',selectVisibleHumanActions);
+bind('actionDeselect','click',clearHumanActionSelection);
+bind('actionBatchApply','click',applyHumanActionBatch);
+bind('actionUndoBatch','click',undoHumanActionBatch);
 bind('actionSave','click',saveHumanActions);
 bind('actionBrief','click',printHumanAgenda);
 bind('actionCounts','click',exportHumanActionCounts);
