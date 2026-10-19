@@ -44,6 +44,10 @@ python3 remediation-cockpit-attestation/extend.py \
 
 The command prints a **new** privately published inbox path with a new HTML index, original old slots preserved as copies and additional slot(s) appended. Use `inbox.py inspect` on either old or new workroom. The source-free digest inventory identifies **local anonymous manifest byte copies**, never authenticated original customer evidence. A locally self-declared source slot or snapshot position is not a proven chronology.
 
+## Portable encrypted whole-inbox forwarding
+
+Once a complete source-free HUMAN inbox has been independently admitted, it can be transferred as **one encrypted `.ltinbox` ciphertext** with [PORTABLE.md](PORTABLE.md) using `portable_inbox.py send` and `portable_inbox.py receive`. The receiving operator must have the same separately trusted 32-byte team key. The original per-slot source-free HMAC receipts and native HTML/JSON files are reconstructed into a brand-new independent private 0700 folder before new index publication. No original source evidence or client identity is forwarded. The old team inbox stays intact.
+
 ## Absolute boundaries
 
 This capability is private **HUMAN workflow bookkeeping** only. It does not infer unique clients, original finding identities, real evidence validity, remediation quality, active test permission, grant, current client consent, review approval, retest, release readiness or risk. A copied shared secret can authenticate alternate packages; HMAC/AEAD do not establish independently authenticated human sender identity. Unencrypted HTML only exists in already owner-private `0700` folders with `0600` files; keep devices trusted and secrets distributed via an independent human-approved channel. There is no archive/network/upload/scan target functionality or deletion of original material.
