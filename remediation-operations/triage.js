@@ -92,7 +92,7 @@ function validateArtifact(p,base){
   if(!byId.has(a.finding_id))byId.set(a.finding_id,[]);
   byId.get(a.finding_id).push(a);
  }
- return {byId};
+ return {byId,original:p};
 }
 function validateRunbook(p,base){
  if(!exact(p,BASE.concat(["finding_ids","runbooks"]))||p.kind!=="lightup.private_human_remediation_runbooks"||
@@ -113,7 +113,7 @@ function validateRunbook(p,base){
    nums.add(s.step_id);
   }total+=b.steps.length;byId.set(b.finding_id,b.steps);
  }
- if(total>1600)fail("HUMAN runbook size exceeded");return {byId};
+ if(total>1600)fail("HUMAN runbook size exceeded");return {byId,original:p};
 }
 function validateOwnerPacket(p,base,kind){
  if(!exact(p,HEAD)||p.kind!=="lightup.private_human_evidence_owner_handoff"||
@@ -189,7 +189,7 @@ function validateResponse(p,base){
    item.review=reviews.get(item.original.request_id)||null;
    item.feedback=feedback.get(item.original.request_id)||null;
   }
- return {byId,requestCount:requests.size};
+ return {byId,requestCount:requests.size,original:p};
 }
 function loaded(){return Boolean(entries.workplan);}
 function sourceLabel(){const p=entries.workplan?.source;if(!p)return "No ORIGINAL HUMAN workplan loaded.";
@@ -214,7 +214,7 @@ async function importFile(kind,e){
     const base=entries.workplan;
     if(!sourceDigest||sourceDigest!==base.source.source_sha256||findings.length!==base.ids.size||
        findings.some(f=>!base.ids.has(f.finding_id)))fail("Original CSV source SHA or membership disagrees with imported HUMAN workplan");
-    next={byId:new Map(findings.map(f=>[f.finding_id,f]))};
+    next={byId:new Map(findings.map(f=>[f.finding_id,f])),text};
   }else if(kind==="workplan"){next=validatePlan(raw);
     if(loaded()&&!confirm("Replace original HUMAN source and FORGET all imported PRIVATE companion packets? Export external human notes independently. Nothing will be retained."))return;
   }else{
@@ -275,7 +275,7 @@ async function batchAdmit(){
    const sha=await window.LightUpCasework.digest(findings);
    if(!sha||sha!==source.source.source_sha256||findings.length!==source.ids.size||
       findings.some(f=>!source.ids.has(f.finding_id)))fail("original CSV does not match full source");
-   admitted.csv={byId:new Map(findings.map(f=>[f.finding_id,f]))};
+   admitted.csv={byId:new Map(findings.map(f=>[f.finding_id,f])),text:payload.get("csv")};
   }
   for(const kind of ["artifact","runbook","response"]){
    if(!payload.has(kind))continue;
@@ -308,6 +308,97 @@ async function batchAdmit(){
  }
 }
 $("batch-admit").addEventListener("click",batchAdmit);
+/** A PRIVATE source-only portable archive of the *original* untouched owner export objects.
+    Never implies consent, authenticated source, evidence truth, or permission. */
+function originalBundle(){
+ if(!entries.workplan)fail("original HUMAN workplan required");
+ const source=entries.workplan.source;
+ return {
+  kind:"lightup.private_original_human_source_session",schema_version:1,
+  disposition:"UNVERIFIED_OFFLINE_HUMAN_SOURCE_TRANSFER_ONLY",
+  source_contract:source.source_contract,source_sha256:source.source_sha256,
+  client_reference:source.client_reference,engagement_reference:source.engagement_reference,
+  source_count:source.source_count,
+  ...Object.fromEntries(FLAGS.map(k=>[k,false])),
+  originals:{
+   workplan:source,
+   csv:entries.csv?.text??null,
+   artifact:entries.artifact?.original??null,
+   runbook:entries.runbook?.original??null,
+   response:entries.response?.original??null
+  },
+  warning:"UNENCRYPTED PRIVATE source-export copies. Independently verify safe storage and the real recipient; use encrypted Handoff Vault to transport. All client/owner/source labels and security-fix claims remain UNVERIFIED. No grant, scan, retest, release or consent."
+ };
+}
+function exportSourceSession(){
+ if(!loaded())return;
+ let body;
+ try{body=JSON.stringify(originalBundle(),null,2)+"\n";
+  if(new TextEncoder().encode(body).length>12*1048576)fail("private source backup over 12 MiB");
+ }catch(_){$("session-status").textContent="HOLD: too much original PRIVATE source data for one session export.";return;}
+ if(!confirm("Export UNENCRYPTED PRIVATE original client/engagement/finding/owner notes as a JSON file? It contains sensitive human evidence metadata. Transfer only inside separately confirmed PRIVATE encrypted custody; source labels grant NO authority."))return;
+ download("LightUp-UNENCRYPTED-PRIVATE-original-human-source-session.json",body,"application/json");
+ $("session-status").textContent="UNENCRYPTED PRIVATE original-source session download requested. Recipient and filesystem security unverified.";
+}
+async function restoreSourceSession(){
+ const file=$("session-import").files[0];
+ if(!file){$("session-status").textContent="Choose a PRIVATE source session JSON file first.";return;}
+ if(file.size<1||file.size>12*1048576){
+  $("session-status").textContent="HOLD: source session must be 1 byte–12 MiB.";return;
+ }
+ const captured=revision;
+ try{
+  const text=new TextDecoder("utf-8",{fatal:true}).decode(await file.arrayBuffer());
+  const packet=parseStrict(text);
+  const fields=["kind","schema_version","disposition","source_contract","source_sha256",
+   "client_reference","engagement_reference","source_count","originals","warning",...FLAGS];
+  if(!exact(packet,fields)||packet.kind!=="lightup.private_original_human_source_session"||
+    packet.schema_version!==1||
+    packet.disposition!=="UNVERIFIED_OFFLINE_HUMAN_SOURCE_TRANSFER_ONLY"||
+    FLAGS.some(k=>packet[k]!==false)||!canonical(packet.warning,600,true))
+   fail("invalid PRIVATE non-authorizing source bundle");
+  const o=packet.originals;
+  if(!exact(o,["workplan","csv","artifact","runbook","response"])||
+      !o.workplan||o.csv!==null&&typeof o.csv!=="string")
+   fail("incomplete original source session envelope");
+  const source=validatePlan(o.workplan);
+  if(packet.source_contract!==source.source.source_contract||
+     packet.source_sha256!==source.source.source_sha256||
+     packet.client_reference!==source.source.client_reference||
+     packet.engagement_reference!==source.source.engagement_reference||
+     packet.source_count!==source.source.source_count)fail("source identity changed in session");
+  const draft={workplan:source,csv:null,artifact:null,runbook:null,response:null};
+  if(o.csv!==null){
+   if(new TextEncoder().encode(o.csv).length>1048576||!window.LightUpCasework)
+    fail("original Casework source parser or size boundary unavailable");
+   const findings=window.LightUpCasework.parseCSV(o.csv);
+   const digest=await window.LightUpCasework.digest(findings);
+   if(!digest||digest!==source.source.source_sha256||
+      findings.length!==source.ids.size||findings.some(x=>!source.ids.has(x.finding_id)))
+    fail("source CSV SHA / original finding membership mismatch");
+   draft.csv={byId:new Map(findings.map(x=>[x.finding_id,x])),text:o.csv};
+  }
+  if(o.artifact!==null)draft.artifact=validateArtifact(o.artifact,source);
+  if(o.runbook!==null)draft.runbook=validateRunbook(o.runbook,source);
+  if(o.response!==null)draft.response=validateResponse(o.response,source);
+  if(revision!==captured)fail("source changed while reading private source session");
+  if(!confirm("REPLACE all currently imported PRIVATE ORIGINAL HUMAN sources with this UNENCRYPTED, UNVERIFIED session? Existing local source overlays/file SHA comparisons will be discarded. This creates no authority, fix, scan, retest or client consent."))return;
+  if(revision!==captured)fail("source changed before confirmation");
+  for(const kind of Object.keys(entries)){
+   entries[kind]=draft[kind];
+   stateLabel(kind,entries[kind]?"Restored original PRIVATE source · UNVERIFIED":"Not present / unknown");
+  }
+  revision++;$("source").textContent=sourceLabel();draw();
+  window.dispatchEvent(new Event("lightup:human-sources-changed"));
+  $("session-import").value="";
+  $("session-status").textContent="Full original PRIVATE source session restored atomically; missing optional originals remain unknown. HUMAN-only, no authority.";
+  announce("PRIVATE unverified HUMAN originals restored without changing any source-owning files.");
+ }catch(_){
+  $("session-status").textContent="HOLD: invalid, inconsistent or ambiguous PRIVATE source bundle. Existing original imports unchanged.";
+ }
+}
+$("session-export").addEventListener("click",exportSourceSession);
+$("session-restore").addEventListener("click",restoreSourceSession);
 function records(){
  if(!loaded())return [];
  const work=entries.workplan,source=entries.csv?.byId,docs=entries.artifact?.byId,books=entries.runbook?.byId,responses=entries.response?.byId;
@@ -377,6 +468,7 @@ function filtered(rows){
 }
 function tag(box,text,kind=""){const s=document.createElement("span");s.className="tag "+kind;s.textContent=text;box.append(s);}
 function draw(){
+ $("session-export").disabled=!loaded();
  $("workqueue").hidden=!loaded();if(!loaded())return;
  const rows=records();summary(rows);
  const ownerSelect=$("owner"),prev=ownerSelect.value;
@@ -513,7 +605,7 @@ $("forget").addEventListener("click",()=>{
  if(!loaded())return;
  if(!confirm("FORGET ALL locally imported PRIVATE workplan, evidence-index, owner response and runbook data? This cannot delete already exported or separately owned files."))return;
  for(const key of Object.keys(entries)){entries[key]=null;stateLabel(key,"Not imported");}
- rendered=[];revision++;window.dispatchEvent(new Event("lightup:human-sources-changed"));$("workqueue").hidden=true;$("source").textContent=sourceLabel();$("items").replaceChildren();
+ rendered=[];revision++;$("session-export").disabled=true;window.dispatchEvent(new Event("lightup:human-sources-changed"));$("workqueue").hidden=true;$("source").textContent=sourceLabel();$("items").replaceChildren();
  announce("All PRIVATE cross-app records forgotten from this page.");
 });
 $("brief").addEventListener("click",exportTeam);

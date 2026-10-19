@@ -14,6 +14,15 @@
 <div class="actions"><button id="batch-admit" type="button">Preview and import original sources atomically</button></div>
 <p id="batch-status" role="status" aria-live="polite">No multi-source intake queued.</p>
 </div>
+<div class="notice">
+<h3>PRIVATE portable source session</h3>
+<p>Once the original sources are admitted, export them as a single source-bound PRIVATE JSON envelope to continue the same HUMAN investigation on another approved offline workstation. The export contains original finding IDs, self-declared client and owner details, notes and evidence metadata; <strong>it is not encrypted</strong>. For confidential transfer use the separately bundled encrypted Handoff Vault and verify your recipient.</p>
+<div class="actions"><button type="button" id="session-export" disabled>Export PRIVATE source session JSON</button>
+<label for="session-import">Choose existing PRIVATE source session JSON</label>
+<input type="file" id="session-import" accept=".json,application/json">
+<button type="button" id="session-restore">Restore entire PRIVATE source session atomically</button></div>
+<p id="session-status" role="status" aria-live="polite">No portable PRIVATE session restored.</p>
+</div>
 <div class="cards"><article><h3>Original HUMAN workplan <span class="required">REQUIRED</span></h3><label for="workplan">Import original `lightup.private_human_original_finding_workplan`</label><input type="file" id="workplan" accept=".json,application/json"><p id="workplan-state" class="intake-state">Not imported</p></article>
 <article><h3>Original findings CSV (optional)</h3><label for="csv">Import exact five-column ORIGINAL findings export; locally compare canonical SHA-256 to original workplan</label><input type="file" id="csv" accept=".csv,text/csv"><p id="csv-state" class="intake-state">Not imported · source severity unknown</p></article>
 <article><h3>PRIVATE evidence artifact inventory</h3><label for="artifact">Import `lightup.private_artifact_ledger`</label><input type="file" id="artifact" accept=".json,application/json"><p id="artifact-state" class="intake-state">Not imported</p></article>

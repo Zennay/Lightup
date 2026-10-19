@@ -1,5 +1,5 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-MlwuW59+b6TA5QHe2FNiTq1PpRrY657EpVYHFNUUUIo='; style-src 'sha256-K0Yn0zH9/W+duRiM6RqBDC6qaVcCGX+vXe3ydreE61o='; connect-src 'none'; img-src 'none'; font-src 'none'; object-src 'none'; frame-src 'none'; form-action 'none'; base-uri 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-+srMSkJgofIVdwCA0NkdeK8Cp+jGty+2RINRgKUFOQI='; style-src 'sha256-K0Yn0zH9/W+duRiM6RqBDC6qaVcCGX+vXe3ydreE61o='; connect-src 'none'; img-src 'none'; font-src 'none'; object-src 'none'; frame-src 'none'; form-action 'none'; base-uri 'none'">
 <title>LightUp · PRIVATE cross-app HUMAN triage</title><style>/* original bundle source: remediation-operations/theme.css */
 :root{color-scheme:dark;font-family:Inter,ui-sans-serif,system-ui,-apple-system,Segoe UI,sans-serif;background:#081221;color:#e9f1ff}*{box-sizing:border-box}body{margin:0}header,main,footer{max-width:1130px;margin:auto;padding:28px 24px}header{padding-top:54px}h1{font-size:clamp(2.3rem,6vw,4.5rem);letter-spacing:-.055em;line-height:1.1;margin:.25em 0}h2{font-size:1.5rem;letter-spacing:-.03em}h3{font-size:1.12rem}p{line-height:1.62;color:#b9c7d8}header>p{max-width:790px}.kicker,.step{font-size:.74rem;font-weight:800;letter-spacing:.13em;color:#70c8fb}nav{display:flex;gap:18px;flex-wrap:wrap;padding-top:22px}a{color:#85d9ff;text-underline-offset:4px}section{margin:0 0 34px;padding:24px 0}.intro{border-top:1px solid #33465c}.notice{padding:18px 22px;background:#15283b;border-left:4px solid #82c6ed;line-height:1.6;border-radius:5px}.cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}.cards article,.row{background:#102238;border:1px solid #2f4762;border-radius:12px;padding:22px}.cards article{display:flex;flex-direction:column;align-items:flex-start}.cards article p{flex:1}.cards a{margin-top:10px;font-weight:700}.cards a.secondary{font-size:.9rem;color:#b4cadc}.rows{display:grid;gap:12px}.row{display:grid;grid-template-columns:minmax(0,1fr) minmax(190px,240px);gap:14px}.row h3{margin:0}.row label{display:block;margin:6px 0;font-size:.82rem;color:#c9dcf1}.row textarea,.row select{width:100%;border:1px solid #476078;background:#08172b;color:white;border-radius:7px;padding:10px;font:inherit}.row textarea{resize:vertical;min-height:62px}.actions{display:flex;flex-wrap:wrap;gap:10px;margin:21px 0}button,.file-label{cursor:pointer;border-radius:8px;border:1px solid #77cbfd;background:#a2defe;color:#092139;padding:11px 14px;font:inherit;font-weight:700}.quiet{background:transparent;color:#9fd5f1}.file-label{display:inline-block}.small{font-size:.84rem}.counter{font-weight:750;color:#8fd3f9}#message{min-height:1.5rem;color:#b8eaff}footer{border-top:1px solid #283a50}code{font-family:ui-monospace,monospace;color:#e1eafe}@media(max-width:720px){.cards{grid-template-columns:1fr}.row{grid-template-columns:1fr}header{padding-top:25px}header,main,footer{padding-left:17px;padding-right:17px}}
 /* original bundle source: remediation-operations/triage.css */
@@ -16,6 +16,15 @@
 <input id="batch-intake" type="file" multiple accept=".json,.csv,application/json,text/csv">
 <div class="actions"><button id="batch-admit" type="button">Preview and import original sources atomically</button></div>
 <p id="batch-status" role="status" aria-live="polite">No multi-source intake queued.</p>
+</div>
+<div class="notice">
+<h3>PRIVATE portable source session</h3>
+<p>Once the original sources are admitted, export them as a single source-bound PRIVATE JSON envelope to continue the same HUMAN investigation on another approved offline workstation. The export contains original finding IDs, self-declared client and owner details, notes and evidence metadata; <strong>it is not encrypted</strong>. For confidential transfer use the separately bundled encrypted Handoff Vault and verify your recipient.</p>
+<div class="actions"><button type="button" id="session-export" disabled>Export PRIVATE source session JSON</button>
+<label for="session-import">Choose existing PRIVATE source session JSON</label>
+<input type="file" id="session-import" accept=".json,application/json">
+<button type="button" id="session-restore">Restore entire PRIVATE source session atomically</button></div>
+<p id="session-status" role="status" aria-live="polite">No portable PRIVATE session restored.</p>
 </div>
 <div class="cards"><article><h3>Original HUMAN workplan <span class="required">REQUIRED</span></h3><label for="workplan">Import original `lightup.private_human_original_finding_workplan`</label><input type="file" id="workplan" accept=".json,application/json"><p id="workplan-state" class="intake-state">Not imported</p></article>
 <article><h3>Original findings CSV (optional)</h3><label for="csv">Import exact five-column ORIGINAL findings export; locally compare canonical SHA-256 to original workplan</label><input type="file" id="csv" accept=".csv,text/csv"><p id="csv-state" class="intake-state">Not imported · source severity unknown</p></article>
@@ -348,7 +357,7 @@ function validateArtifact(p,base){
   if(!byId.has(a.finding_id))byId.set(a.finding_id,[]);
   byId.get(a.finding_id).push(a);
  }
- return {byId};
+ return {byId,original:p};
 }
 function validateRunbook(p,base){
  if(!exact(p,BASE.concat(["finding_ids","runbooks"]))||p.kind!=="lightup.private_human_remediation_runbooks"||
@@ -369,7 +378,7 @@ function validateRunbook(p,base){
    nums.add(s.step_id);
   }total+=b.steps.length;byId.set(b.finding_id,b.steps);
  }
- if(total>1600)fail("HUMAN runbook size exceeded");return {byId};
+ if(total>1600)fail("HUMAN runbook size exceeded");return {byId,original:p};
 }
 function validateOwnerPacket(p,base,kind){
  if(!exact(p,HEAD)||p.kind!=="lightup.private_human_evidence_owner_handoff"||
@@ -445,7 +454,7 @@ function validateResponse(p,base){
    item.review=reviews.get(item.original.request_id)||null;
    item.feedback=feedback.get(item.original.request_id)||null;
   }
- return {byId,requestCount:requests.size};
+ return {byId,requestCount:requests.size,original:p};
 }
 function loaded(){return Boolean(entries.workplan);}
 function sourceLabel(){const p=entries.workplan?.source;if(!p)return "No ORIGINAL HUMAN workplan loaded.";
@@ -470,7 +479,7 @@ async function importFile(kind,e){
     const base=entries.workplan;
     if(!sourceDigest||sourceDigest!==base.source.source_sha256||findings.length!==base.ids.size||
        findings.some(f=>!base.ids.has(f.finding_id)))fail("Original CSV source SHA or membership disagrees with imported HUMAN workplan");
-    next={byId:new Map(findings.map(f=>[f.finding_id,f]))};
+    next={byId:new Map(findings.map(f=>[f.finding_id,f])),text};
   }else if(kind==="workplan"){next=validatePlan(raw);
     if(loaded()&&!confirm("Replace original HUMAN source and FORGET all imported PRIVATE companion packets? Export external human notes independently. Nothing will be retained."))return;
   }else{
@@ -531,7 +540,7 @@ async function batchAdmit(){
    const sha=await window.LightUpCasework.digest(findings);
    if(!sha||sha!==source.source.source_sha256||findings.length!==source.ids.size||
       findings.some(f=>!source.ids.has(f.finding_id)))fail("original CSV does not match full source");
-   admitted.csv={byId:new Map(findings.map(f=>[f.finding_id,f]))};
+   admitted.csv={byId:new Map(findings.map(f=>[f.finding_id,f])),text:payload.get("csv")};
   }
   for(const kind of ["artifact","runbook","response"]){
    if(!payload.has(kind))continue;
@@ -564,6 +573,97 @@ async function batchAdmit(){
  }
 }
 $("batch-admit").addEventListener("click",batchAdmit);
+/** A PRIVATE source-only portable archive of the *original* untouched owner export objects.
+    Never implies consent, authenticated source, evidence truth, or permission. */
+function originalBundle(){
+ if(!entries.workplan)fail("original HUMAN workplan required");
+ const source=entries.workplan.source;
+ return {
+  kind:"lightup.private_original_human_source_session",schema_version:1,
+  disposition:"UNVERIFIED_OFFLINE_HUMAN_SOURCE_TRANSFER_ONLY",
+  source_contract:source.source_contract,source_sha256:source.source_sha256,
+  client_reference:source.client_reference,engagement_reference:source.engagement_reference,
+  source_count:source.source_count,
+  ...Object.fromEntries(FLAGS.map(k=>[k,false])),
+  originals:{
+   workplan:source,
+   csv:entries.csv?.text??null,
+   artifact:entries.artifact?.original??null,
+   runbook:entries.runbook?.original??null,
+   response:entries.response?.original??null
+  },
+  warning:"UNENCRYPTED PRIVATE source-export copies. Independently verify safe storage and the real recipient; use encrypted Handoff Vault to transport. All client/owner/source labels and security-fix claims remain UNVERIFIED. No grant, scan, retest, release or consent."
+ };
+}
+function exportSourceSession(){
+ if(!loaded())return;
+ let body;
+ try{body=JSON.stringify(originalBundle(),null,2)+"\n";
+  if(new TextEncoder().encode(body).length>12*1048576)fail("private source backup over 12 MiB");
+ }catch(_){$("session-status").textContent="HOLD: too much original PRIVATE source data for one session export.";return;}
+ if(!confirm("Export UNENCRYPTED PRIVATE original client/engagement/finding/owner notes as a JSON file? It contains sensitive human evidence metadata. Transfer only inside separately confirmed PRIVATE encrypted custody; source labels grant NO authority."))return;
+ download("LightUp-UNENCRYPTED-PRIVATE-original-human-source-session.json",body,"application/json");
+ $("session-status").textContent="UNENCRYPTED PRIVATE original-source session download requested. Recipient and filesystem security unverified.";
+}
+async function restoreSourceSession(){
+ const file=$("session-import").files[0];
+ if(!file){$("session-status").textContent="Choose a PRIVATE source session JSON file first.";return;}
+ if(file.size<1||file.size>12*1048576){
+  $("session-status").textContent="HOLD: source session must be 1 byte–12 MiB.";return;
+ }
+ const captured=revision;
+ try{
+  const text=new TextDecoder("utf-8",{fatal:true}).decode(await file.arrayBuffer());
+  const packet=parseStrict(text);
+  const fields=["kind","schema_version","disposition","source_contract","source_sha256",
+   "client_reference","engagement_reference","source_count","originals","warning",...FLAGS];
+  if(!exact(packet,fields)||packet.kind!=="lightup.private_original_human_source_session"||
+    packet.schema_version!==1||
+    packet.disposition!=="UNVERIFIED_OFFLINE_HUMAN_SOURCE_TRANSFER_ONLY"||
+    FLAGS.some(k=>packet[k]!==false)||!canonical(packet.warning,600,true))
+   fail("invalid PRIVATE non-authorizing source bundle");
+  const o=packet.originals;
+  if(!exact(o,["workplan","csv","artifact","runbook","response"])||
+      !o.workplan||o.csv!==null&&typeof o.csv!=="string")
+   fail("incomplete original source session envelope");
+  const source=validatePlan(o.workplan);
+  if(packet.source_contract!==source.source.source_contract||
+     packet.source_sha256!==source.source.source_sha256||
+     packet.client_reference!==source.source.client_reference||
+     packet.engagement_reference!==source.source.engagement_reference||
+     packet.source_count!==source.source.source_count)fail("source identity changed in session");
+  const draft={workplan:source,csv:null,artifact:null,runbook:null,response:null};
+  if(o.csv!==null){
+   if(new TextEncoder().encode(o.csv).length>1048576||!window.LightUpCasework)
+    fail("original Casework source parser or size boundary unavailable");
+   const findings=window.LightUpCasework.parseCSV(o.csv);
+   const digest=await window.LightUpCasework.digest(findings);
+   if(!digest||digest!==source.source.source_sha256||
+      findings.length!==source.ids.size||findings.some(x=>!source.ids.has(x.finding_id)))
+    fail("source CSV SHA / original finding membership mismatch");
+   draft.csv={byId:new Map(findings.map(x=>[x.finding_id,x])),text:o.csv};
+  }
+  if(o.artifact!==null)draft.artifact=validateArtifact(o.artifact,source);
+  if(o.runbook!==null)draft.runbook=validateRunbook(o.runbook,source);
+  if(o.response!==null)draft.response=validateResponse(o.response,source);
+  if(revision!==captured)fail("source changed while reading private source session");
+  if(!confirm("REPLACE all currently imported PRIVATE ORIGINAL HUMAN sources with this UNENCRYPTED, UNVERIFIED session? Existing local source overlays/file SHA comparisons will be discarded. This creates no authority, fix, scan, retest or client consent."))return;
+  if(revision!==captured)fail("source changed before confirmation");
+  for(const kind of Object.keys(entries)){
+   entries[kind]=draft[kind];
+   stateLabel(kind,entries[kind]?"Restored original PRIVATE source · UNVERIFIED":"Not present / unknown");
+  }
+  revision++;$("source").textContent=sourceLabel();draw();
+  window.dispatchEvent(new Event("lightup:human-sources-changed"));
+  $("session-import").value="";
+  $("session-status").textContent="Full original PRIVATE source session restored atomically; missing optional originals remain unknown. HUMAN-only, no authority.";
+  announce("PRIVATE unverified HUMAN originals restored without changing any source-owning files.");
+ }catch(_){
+  $("session-status").textContent="HOLD: invalid, inconsistent or ambiguous PRIVATE source bundle. Existing original imports unchanged.";
+ }
+}
+$("session-export").addEventListener("click",exportSourceSession);
+$("session-restore").addEventListener("click",restoreSourceSession);
 function records(){
  if(!loaded())return [];
  const work=entries.workplan,source=entries.csv?.byId,docs=entries.artifact?.byId,books=entries.runbook?.byId,responses=entries.response?.byId;
@@ -633,6 +733,7 @@ function filtered(rows){
 }
 function tag(box,text,kind=""){const s=document.createElement("span");s.className="tag "+kind;s.textContent=text;box.append(s);}
 function draw(){
+ $("session-export").disabled=!loaded();
  $("workqueue").hidden=!loaded();if(!loaded())return;
  const rows=records();summary(rows);
  const ownerSelect=$("owner"),prev=ownerSelect.value;
@@ -769,7 +870,7 @@ $("forget").addEventListener("click",()=>{
  if(!loaded())return;
  if(!confirm("FORGET ALL locally imported PRIVATE workplan, evidence-index, owner response and runbook data? This cannot delete already exported or separately owned files."))return;
  for(const key of Object.keys(entries)){entries[key]=null;stateLabel(key,"Not imported");}
- rendered=[];revision++;window.dispatchEvent(new Event("lightup:human-sources-changed"));$("workqueue").hidden=true;$("source").textContent=sourceLabel();$("items").replaceChildren();
+ rendered=[];revision++;$("session-export").disabled=true;window.dispatchEvent(new Event("lightup:human-sources-changed"));$("workqueue").hidden=true;$("source").textContent=sourceLabel();$("items").replaceChildren();
  announce("All PRIVATE cross-app records forgotten from this page.");
 });
 $("brief").addEventListener("click",exportTeam);
