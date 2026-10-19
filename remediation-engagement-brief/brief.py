@@ -20,7 +20,7 @@ from sealed_browser import seal as seal_browser, open_current as open_sealed_bro
 from ticketdesk import build_ticketdesk
 from secure_export import (AccountLockedError, COLUMNS, FALSE, SEVERITIES, STATES,
                            _authorized_summary, _literal, _strict_summary,
-                           _unique_pairs, _vault)
+                           _unique_pairs, _vault, _make_envelope, _read_envelope)
 
 KIND = "lightup.private_authenticated_engagement_brief"
 FIELDS = {"kind", "version", "disposition", "client", "engagement",
@@ -222,6 +222,23 @@ def capture_current_revision(args, source):
     vault._exclusive_output(output, vault._seal(vault._inner(payload, "application/json"), password))
 
 
+def save_original_casework(args, authenticated_source):
+    """Re-use unchanged original source-owning Casework workspace and manifest."""
+    if not args.ack_original_casework:
+        raise ValueError("Original CASEWORK confidential recipient acknowledgement required")
+    if args.original_casework_sealed is not None:
+        seal_browser(authenticated_source,args.client_id,args.engagement_id,
+                     mode="casework",history_csv=[],output=args.original_casework_sealed)
+        print("Original source-owner Casework source sealed in NEW private vault")
+    if args.original_casework_html is not None:
+        if args.original_casework_html.suffix.lower() != ".html":
+            raise ValueError("Original Casework requires a new owner-only .html destination")
+        original = _read_envelope(_make_envelope(
+            authenticated_source,args.client_id,args.engagement_id,app="casework"))
+        _vault()._exclusive_output(args.original_casework_html.expanduser().absolute(),original)
+        print("Unmodified original Casework workspace generated as NEW PRIVATE local HTML")
+
+
 def save_original_ticketdesk(args, authenticated_source):
     """Generate ORIGINAL SHA-pinned Ticket Desk, never duplicate the owner app."""
     if not args.ack_original_ticketdesk:
@@ -262,7 +279,8 @@ def _preflight_file_paths(args):
     outputs = [getattr(args, name, None) for name in (
         "output", "sealed_markdown", "private_html", "sealed_html",
         "capture_current", "aggregate_csv", "original_ticketdesk_html",
-        "original_ticketdesk_sealed"
+        "original_ticketdesk_sealed", "original_casework_html",
+        "original_casework_sealed"
     )]
     source_paths = [path.expanduser().absolute() for path in inputs]
     target_paths = [path.expanduser().absolute() for path in outputs if path is not None]
@@ -278,6 +296,10 @@ def _preflight_file_paths(args):
         getattr(args, "original_ticketdesk_sealed", None) is not None
     ) and not args.ack_original_ticketdesk:
         raise ValueError("Original Ticket Desk source and private device acknowledgment required")
+    if (getattr(args, "original_casework_html", None) is not None or
+        getattr(args, "original_casework_sealed", None) is not None
+    ) and not args.ack_original_casework:
+        raise ValueError("Original Casework source and private device acknowledgement required")
     return None
 
 def main(argv=None):
@@ -319,6 +341,9 @@ def main(argv=None):
     history.add_argument("--original-ticketdesk-sealed", type=Path,
                          help="NEW encrypted original Ticket Desk source handoff (no plaintext HTML)")
     history.add_argument("--ack-original-ticketdesk", action="store_true")
+    history.add_argument("--original-casework-html", type=Path)
+    history.add_argument("--original-casework-sealed", type=Path)
+    history.add_argument("--ack-original-casework", action="store_true")
     capture.add_argument("--output", required=True, type=Path)
     for action in (inspect, review, open_now):
         action.add_argument("--input", required=True, type=Path)
@@ -339,6 +364,11 @@ def main(argv=None):
                             help="NEW AES-256-GCM source-only original Ticket Desk reopening packet")
         action.add_argument("--ack-original-ticketdesk", action="store_true",
                             help="Acknowledge source-only original HUMAN Ticket Desk and confidential private handling")
+        action.add_argument("--original-casework-html", type=Path,
+                            help="NEW confidential 0600 original Casework workspace from current authorized findings")
+        action.add_argument("--original-casework-sealed", type=Path,
+                            help="NEW AES-256-GCM source-only original Casework reopening packet")
+        action.add_argument("--ack-original-casework", action="store_true")
     review.add_argument("--capture-current", type=Path, help="Fresh authorized source into NEW encrypted revision .ltv")
     args = ap.parse_args(argv)
     try:
@@ -379,6 +409,8 @@ def main(argv=None):
             print("Original source severity escalations (UNVERIFIED):",result["source_escalation_events"])
             print("New original source regression labels (UNVERIFIED):",result["source_regression_label_events"])
             print("Current original IDs flagged for HUMAN source review:",len(result["current_human_focus"]))
+            if args.original_casework_sealed is not None or args.original_casework_html is not None:
+                save_original_casework(args,current)
             if args.original_ticketdesk_sealed is not None or args.original_ticketdesk_html is not None:
                 # Historical source documents remain HUMAN-only reference.
                 # Only CURRENT freshly authorized original source reaches the
@@ -453,10 +485,13 @@ def main(argv=None):
                 raise ValueError("Source drift: use review-current instead")
             if (args.output is None and args.sealed_markdown is None and
                 args.private_html is None and args.sealed_html is None and
-                args.original_ticketdesk_html is None and args.original_ticketdesk_sealed is None):
+                args.original_ticketdesk_html is None and args.original_ticketdesk_sealed is None and
+                args.original_casework_html is None and args.original_casework_sealed is None):
                 raise ValueError("No PRIVATE handoff output selected")
             if args.original_ticketdesk_html is not None or args.original_ticketdesk_sealed is not None:
                 save_original_ticketdesk(args,current_source)
+            if args.original_casework_html is not None or args.original_casework_sealed is not None:
+                save_original_casework(args,current_source)
             if args.sealed_html is not None:
                 if not args.ack_sealed_html:
                     raise ValueError("PRIVATE browser handoff acknowledgement required")
@@ -476,6 +511,8 @@ def main(argv=None):
         if args.output is not None or args.sealed_markdown is not None:
             save_markdown(args, revision_brief(old, now))
             print("PRIVATE HUMAN revision handoff created, not verified remediation.")
+        if args.original_casework_html is not None or args.original_casework_sealed is not None:
+            save_original_casework(args,current_source)
         if args.original_ticketdesk_html is not None or args.original_ticketdesk_sealed is not None:
             # Unlike open-current, review-current legitimately admits original
             # source drift, but only CURRENT freshly authenticated rows go into
