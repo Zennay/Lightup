@@ -17,7 +17,7 @@ const stepKeys=["step_id","kind","description","precondition","responsible_alias
 const stepKinds=["human_prepare","human_implementation_discussion","human_dependency_coordination","human_rollback_discussion","human_review_request"];
 const OWNER_STAGES=["acknowledged_unverified","needs_clarification","cannot_provide"];
 const entries={workplan:null,csv:null,artifact:null,runbook:null,response:null};
-let rendered=[],revision=0;
+let rendered=[],revision=0,custodyCoverage=null;
 const fail=reason=>{throw Error(reason);};
 const exact=(o,fields)=>o!==null&&typeof o==="object"&&!Array.isArray(o)&&Object.keys(o).length===fields.length&&fields.every(k=>Object.hasOwn(o,k));
 const canonical=(s,max=120,required=false)=>typeof s==="string"&&s.length<=max&&(!required||s.trim().length>0)&&!/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f\u202a-\u202e\u2066-\u2069\ud800-\udfff]/.test(s);
@@ -244,7 +244,9 @@ function records(){
      r.review?.human_stage==="needs_human_followup"||r.feedback?.stage==="needs_clarification")||
     steps.some(s=>s.human_stage==="needs_human_input");
   const today=new Date().toISOString().slice(0,10),due=Boolean(plan.tentative_due&&plan.tentative_due<=today);
-  return {id,plan,source:source?.get(id)||null,files,steps,requests,needsReply,needsHuman,due,hasDocs:!!docs,hasBooks:!!books,hasResponse:!!responses};
+  return {id,plan,source:source?.get(id)||null,files,steps,requests,needsReply,needsHuman,due,
+   custody:(!custodyCoverage||custodyCoverage.revision!==revision)?null:custodyCoverage.byFinding.get(id)||null,
+   hasDocs:!!docs,hasBooks:!!books,hasResponse:!!responses};
  });
 }
 function summary(rows){
@@ -255,6 +257,9 @@ function summary(rows){
   [entries.artifact?String(rows.filter(r=>!r.files.length).length):"unknown","Zero listed fingerprints"],
   [entries.runbook?String(rows.filter(r=>!r.steps.length).length):"unknown","No HUMAN runbook steps"],
   [entries.response?String(rows.filter(r=>r.needsReply).length):"unknown","Unanswered HUMAN requests"],
+  [custodyCoverage&&custodyCoverage.revision===revision?
+    String(rows.filter(r=>r.custody?.attention>0).length):"unknown",
+    "Local SHA comparisons needing HUMAN review"],
   [String(rows.filter(r=>r.needsHuman).length),"Human input/clarification"],
   [String(rows.filter(r=>r.due).length),"Tentative dates reached"],
   [String(rows.filter(r=>r.plan.stage==="human_handoff_prepared").length),"Human handoffs prepared"]
@@ -275,6 +280,7 @@ function filtered(rows){
   if(mode==="no_owner"&&r.plan.owner_alias)return false;
   if(mode==="no_steps"&&(!r.hasBooks||r.steps.length))return false;
   if(mode==="needs_reply"&&(!r.hasResponse||!r.needsReply))return false;
+  if(mode==="custody_attention"&&(!r.custody||r.custody.attention===0))return false;
   if(mode==="needs_input"&&!r.needsHuman)return false;
   if(mode==="due"&&!r.due)return false;
   if(mode==="handoff"&&r.plan.stage!=="human_handoff_prepared")return false;
@@ -308,6 +314,10 @@ function draw(){
   tag(article,row.hasDocs?row.files.length+" artifact fingerprints":"Artifact inventory not imported",row.hasDocs?"":"unknown");
   tag(article,row.hasBooks?row.steps.length+" HUMAN runbook steps":"Runbooks not imported",row.hasBooks?"":"unknown");
   tag(article,row.hasResponse?row.requests.length+" original HUMAN requests":"Response register not imported",row.hasResponse?"":"unknown");
+  if(row.custody){
+    tag(article,"Local SHA matches: "+row.custody.matched+"/"+row.custody.listed+" Ledger rows");
+    if(row.custody.attention>0)tag(article,row.custody.attention+" local SHA comparisons need HUMAN review","alert");
+  }else if(row.hasDocs)tag(article,"Local file bytes not compared","unknown");
   if(row.needsReply)tag(article,"Unanswered HUMAN requests","alert");
   if(row.needsHuman)tag(article,"Needs HUMAN input","alert");
   if(row.due)tag(article,"Tentative date reached","alert");
@@ -320,6 +330,9 @@ function draw(){
    ["PRIVATE original HUMAN note",row.plan.private_note||"None"],
    ["Unverified replies",row.hasResponse?String(row.requests.filter(x=>Boolean(x.reply)).length):"Unknown"],
    ["Human clarification requests",String(row.requests.filter(x=>x.feedback?.stage==="needs_clarification").length)],
+   ["Local file SHA custody",row.custody?row.custody.matched+" listed file fingerprints matched; "+row.custody.attention+
+      " need HUMAN review; "+(row.custody.listed-row.custody.matched)+" not independently matched":
+      "Unknown / local files not compared"],
    ["Tentative runbook tasks",row.hasBooks?row.steps.map(x=>x.description).join("; ").slice(0,500)||"None":"Unknown"]
   ]){
    const p=document.createElement("p");const strong=document.createElement("strong");strong.textContent=label+": ";
@@ -410,6 +423,15 @@ $("brief").addEventListener("click",exportTeam);
 $("ownerBrief").addEventListener("click",exportOwner);
 $("anonymous").addEventListener("click",anonymous);
 $("binding").addEventListener("click",receipt);
+window.addEventListener("lightup:local-custody",event=>{
+  const detail=event.detail;
+  if(detail&&detail.revision!==revision)return;
+  custodyCoverage=detail?{revision:detail.revision,
+    byFinding:new Map(detail.byFinding.map(row=>[row.finding_id,{
+      listed:row.listed,matched:row.matched,attention:row.attention
+    }]))}:null;
+  if(loaded())draw();
+});
 window.LightUpHumanTriageBridge=Object.freeze({snapshot:()=>{
  if(!entries.workplan||!entries.artifact)return null;
  const base=entries.workplan.source;return {revision,source_sha256:base.source_sha256,

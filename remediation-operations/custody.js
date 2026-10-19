@@ -17,6 +17,7 @@ function clear(preserveFiles=false) {
  $("custody-export").disabled=true;
  $("custody-brief").disabled=true;
  status("No local bytes compared; previous results forgotten.");
+ window.dispatchEvent(new CustomEvent("lightup:local-custody", {detail:null}));
 }
 function snapshot() {return BRIDGE?.snapshot()||null;}
 function sync(){
@@ -86,6 +87,20 @@ function draw(){
  }
  $("custody-export").disabled=false;
  $("custody-brief").disabled=false;
+ const byFinding=new Map();
+ for(const original of review.source.original_finding_ids)byFinding.set(original,{listed:0,matched:0,attention:0});
+ for(const original of review.source.records)byFinding.get(original.finding_id).listed++;
+ for(const result of review.rows){
+   const affected=new Set(result.candidates.map(c=>c.finding_id));
+   for(const fid of affected){
+     const item=byFinding.get(fid);if(!item)continue;
+     if(result.kind==="local_fingerprint_matches_one_ledger_row")item.matched++;
+     else item.attention++;
+   }
+ }
+ window.dispatchEvent(new CustomEvent("lightup:local-custody",{detail:{
+   revision:review.source.revision,byFinding:[...byFinding.entries()].map(([finding_id,v])=>({finding_id,...v}))
+ }}));
 }
 async function compare(){
  if(!snapshot()){status("HOLD: original workplan / Ledger source missing.");return;}

@@ -35,6 +35,8 @@ In the [Cross-app HUMAN Inbox](triage.html#custody), first load an exact origina
 
 A fully matching original filename + byte size + SHA-256 + unique finding association is labeled **local fingerprint match**, NOT verified evidence. Source-bound duplicate fingerprints across findings, repeated local file picks, same-content renamed files, byte/size mismatches, and files absent from the selected local ledger are distinguished for human discussion. Unselected Ledger entries are not presumed missing or repaired. Original workplan/Ledger re-import clears old checksum results, and a mid-read original source revision aborts the comparison.
 
+The original-finding HUMAN queue now also shows per-finding local SHA match coverage, any ambiguity/mismatch requiring a HUMAN reviewer, and a dedicated attention filter. A change to the original workplan or Ledger invalidates this digest overlay. Unselected rows are **not locally compared**, never classified as missing or fixed.
+
 Exports: original-source-bound **PRIVATE JSON** report of local digest comparisons (all 12 authority fields false), or scriptless PRIVATE HTML for human custody discussion. These contain private file names, hashes and original IDs, so authenticate the recipient separately. Source ownership, unaltered chain-of-custody, evidence semantics, security fixes, genuine client/operator consent and release remain **unverified**. No QA/regression suite, live scanner, retest or remote target is invoked.
 
 ## Offline package integrity check

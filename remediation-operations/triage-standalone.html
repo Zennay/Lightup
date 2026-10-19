@@ -1,5 +1,5 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-JhSM079UMLxh7YXQVBhZ2z//ddRmJgi2SgDGSJUzW1I='; style-src 'sha256-K0Yn0zH9/W+duRiM6RqBDC6qaVcCGX+vXe3ydreE61o='; connect-src 'none'; img-src 'none'; font-src 'none'; object-src 'none'; frame-src 'none'; form-action 'none'; base-uri 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-eYcj0E4oPbLtslLiD5Q5Z1gegJHXBozdidZXGr7elH8='; style-src 'sha256-K0Yn0zH9/W+duRiM6RqBDC6qaVcCGX+vXe3ydreE61o='; connect-src 'none'; img-src 'none'; font-src 'none'; object-src 'none'; frame-src 'none'; form-action 'none'; base-uri 'none'">
 <title>LightUp · PRIVATE cross-app HUMAN triage</title><style>/* original bundle source: remediation-operations/theme.css */
 :root{color-scheme:dark;font-family:Inter,ui-sans-serif,system-ui,-apple-system,Segoe UI,sans-serif;background:#081221;color:#e9f1ff}*{box-sizing:border-box}body{margin:0}header,main,footer{max-width:1130px;margin:auto;padding:28px 24px}header{padding-top:54px}h1{font-size:clamp(2.3rem,6vw,4.5rem);letter-spacing:-.055em;line-height:1.1;margin:.25em 0}h2{font-size:1.5rem;letter-spacing:-.03em}h3{font-size:1.12rem}p{line-height:1.62;color:#b9c7d8}header>p{max-width:790px}.kicker,.step{font-size:.74rem;font-weight:800;letter-spacing:.13em;color:#70c8fb}nav{display:flex;gap:18px;flex-wrap:wrap;padding-top:22px}a{color:#85d9ff;text-underline-offset:4px}section{margin:0 0 34px;padding:24px 0}.intro{border-top:1px solid #33465c}.notice{padding:18px 22px;background:#15283b;border-left:4px solid #82c6ed;line-height:1.6;border-radius:5px}.cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}.cards article,.row{background:#102238;border:1px solid #2f4762;border-radius:12px;padding:22px}.cards article{display:flex;flex-direction:column;align-items:flex-start}.cards article p{flex:1}.cards a{margin-top:10px;font-weight:700}.cards a.secondary{font-size:.9rem;color:#b4cadc}.rows{display:grid;gap:12px}.row{display:grid;grid-template-columns:minmax(0,1fr) minmax(190px,240px);gap:14px}.row h3{margin:0}.row label{display:block;margin:6px 0;font-size:.82rem;color:#c9dcf1}.row textarea,.row select{width:100%;border:1px solid #476078;background:#08172b;color:white;border-radius:7px;padding:10px;font:inherit}.row textarea{resize:vertical;min-height:62px}.actions{display:flex;flex-wrap:wrap;gap:10px;margin:21px 0}button,.file-label{cursor:pointer;border-radius:8px;border:1px solid #77cbfd;background:#a2defe;color:#092139;padding:11px 14px;font:inherit;font-weight:700}.quiet{background:transparent;color:#9fd5f1}.file-label{display:inline-block}.small{font-size:.84rem}.counter{font-weight:750;color:#8fd3f9}#message{min-height:1.5rem;color:#b8eaff}footer{border-top:1px solid #283a50}code{font-family:ui-monospace,monospace;color:#e1eafe}@media(max-width:720px){.cards{grid-template-columns:1fr}.row{grid-template-columns:1fr}header{padding-top:25px}header,main,footer{padding-left:17px;padding-right:17px}}
 /* original bundle source: remediation-operations/triage.css */
@@ -17,7 +17,7 @@
 <p id="source" class="source-line">No ORIGINAL HUMAN workplan loaded. Import that first.</p><div class="actions"><button id="forget" class="quiet" type="button">Forget all imported PRIVATE data</button></div><p role="status" id="notice" aria-live="polite"></p></section>
 <section id="workqueue" hidden><h2>2 · Whole-finding HUMAN coordination queue</h2><div class="stats" id="stats" aria-live="polite"></div><p class="small">A missing optional import is <strong>unknown</strong>, not zero or proof of missing evidence, rejected owner consent, completed retest or genuine severity. Original report/source labels are self-declared; urgency is advisory for HUMAN coordination only.</p>
 <div class="filters"><label>Find exact ID / declared owner / note<input id="query" type="search" placeholder="Search local HUMAN work"></label>
-<label>Human follow-up filter<select id="mode"><option value="all">All ORIGINAL findings</option><option value="critical_high">Original source CLAIM: critical/high</option><option value="missing_docs">No listed artifact (inventory imported)</option><option value="no_owner">No HUMAN owner alias</option><option value="no_steps">No runbook steps (runbooks imported)</option><option value="needs_reply">Unanswered original HUMAN request (register imported)</option><option value="needs_input">HUMAN clarification/input flagged</option><option value="due">Tentative HUMAN due date reached</option><option value="handoff">Human handoff prepared</option></select></label>
+<label>Human follow-up filter<select id="mode"><option value="all">All ORIGINAL findings</option><option value="critical_high">Original source CLAIM: critical/high</option><option value="missing_docs">No listed artifact (inventory imported)</option><option value="no_owner">No HUMAN owner alias</option><option value="no_steps">No runbook steps (runbooks imported)</option><option value="needs_reply">Unanswered original HUMAN request (register imported)</option><option value="custody_attention">Local SHA checks needing HUMAN review</option><option value="needs_input">HUMAN clarification/input flagged</option><option value="due">Tentative HUMAN due date reached</option><option value="handoff">Human handoff prepared</option></select></label>
 <label>Self-declared human owner<select id="owner"><option value="">All owners</option></select></label></div>
 <p id="count" class="counter"></p><div id="items" class="inbox-items"></div>
 <div class="actions"><button type="button" id="brief">Export PRIVATE team discussion brief</button><button type="button" id="ownerBrief" class="quiet">Export PRIVATE one-owner handoff</button><button type="button" id="anonymous" class="quiet">Export anonymous coverage counts CSV</button><button type="button" id="binding" class="quiet">Export PRIVATE source-binding receipt</button></div>
@@ -259,7 +259,7 @@ const stepKeys=["step_id","kind","description","precondition","responsible_alias
 const stepKinds=["human_prepare","human_implementation_discussion","human_dependency_coordination","human_rollback_discussion","human_review_request"];
 const OWNER_STAGES=["acknowledged_unverified","needs_clarification","cannot_provide"];
 const entries={workplan:null,csv:null,artifact:null,runbook:null,response:null};
-let rendered=[],revision=0;
+let rendered=[],revision=0,custodyCoverage=null;
 const fail=reason=>{throw Error(reason);};
 const exact=(o,fields)=>o!==null&&typeof o==="object"&&!Array.isArray(o)&&Object.keys(o).length===fields.length&&fields.every(k=>Object.hasOwn(o,k));
 const canonical=(s,max=120,required=false)=>typeof s==="string"&&s.length<=max&&(!required||s.trim().length>0)&&!/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f\u202a-\u202e\u2066-\u2069\ud800-\udfff]/.test(s);
@@ -486,7 +486,9 @@ function records(){
      r.review?.human_stage==="needs_human_followup"||r.feedback?.stage==="needs_clarification")||
     steps.some(s=>s.human_stage==="needs_human_input");
   const today=new Date().toISOString().slice(0,10),due=Boolean(plan.tentative_due&&plan.tentative_due<=today);
-  return {id,plan,source:source?.get(id)||null,files,steps,requests,needsReply,needsHuman,due,hasDocs:!!docs,hasBooks:!!books,hasResponse:!!responses};
+  return {id,plan,source:source?.get(id)||null,files,steps,requests,needsReply,needsHuman,due,
+   custody:(!custodyCoverage||custodyCoverage.revision!==revision)?null:custodyCoverage.byFinding.get(id)||null,
+   hasDocs:!!docs,hasBooks:!!books,hasResponse:!!responses};
  });
 }
 function summary(rows){
@@ -497,6 +499,9 @@ function summary(rows){
   [entries.artifact?String(rows.filter(r=>!r.files.length).length):"unknown","Zero listed fingerprints"],
   [entries.runbook?String(rows.filter(r=>!r.steps.length).length):"unknown","No HUMAN runbook steps"],
   [entries.response?String(rows.filter(r=>r.needsReply).length):"unknown","Unanswered HUMAN requests"],
+  [custodyCoverage&&custodyCoverage.revision===revision?
+    String(rows.filter(r=>r.custody?.attention>0).length):"unknown",
+    "Local SHA comparisons needing HUMAN review"],
   [String(rows.filter(r=>r.needsHuman).length),"Human input/clarification"],
   [String(rows.filter(r=>r.due).length),"Tentative dates reached"],
   [String(rows.filter(r=>r.plan.stage==="human_handoff_prepared").length),"Human handoffs prepared"]
@@ -517,6 +522,7 @@ function filtered(rows){
   if(mode==="no_owner"&&r.plan.owner_alias)return false;
   if(mode==="no_steps"&&(!r.hasBooks||r.steps.length))return false;
   if(mode==="needs_reply"&&(!r.hasResponse||!r.needsReply))return false;
+  if(mode==="custody_attention"&&(!r.custody||r.custody.attention===0))return false;
   if(mode==="needs_input"&&!r.needsHuman)return false;
   if(mode==="due"&&!r.due)return false;
   if(mode==="handoff"&&r.plan.stage!=="human_handoff_prepared")return false;
@@ -550,6 +556,10 @@ function draw(){
   tag(article,row.hasDocs?row.files.length+" artifact fingerprints":"Artifact inventory not imported",row.hasDocs?"":"unknown");
   tag(article,row.hasBooks?row.steps.length+" HUMAN runbook steps":"Runbooks not imported",row.hasBooks?"":"unknown");
   tag(article,row.hasResponse?row.requests.length+" original HUMAN requests":"Response register not imported",row.hasResponse?"":"unknown");
+  if(row.custody){
+    tag(article,"Local SHA matches: "+row.custody.matched+"/"+row.custody.listed+" Ledger rows");
+    if(row.custody.attention>0)tag(article,row.custody.attention+" local SHA comparisons need HUMAN review","alert");
+  }else if(row.hasDocs)tag(article,"Local file bytes not compared","unknown");
   if(row.needsReply)tag(article,"Unanswered HUMAN requests","alert");
   if(row.needsHuman)tag(article,"Needs HUMAN input","alert");
   if(row.due)tag(article,"Tentative date reached","alert");
@@ -562,6 +572,9 @@ function draw(){
    ["PRIVATE original HUMAN note",row.plan.private_note||"None"],
    ["Unverified replies",row.hasResponse?String(row.requests.filter(x=>Boolean(x.reply)).length):"Unknown"],
    ["Human clarification requests",String(row.requests.filter(x=>x.feedback?.stage==="needs_clarification").length)],
+   ["Local file SHA custody",row.custody?row.custody.matched+" listed file fingerprints matched; "+row.custody.attention+
+      " need HUMAN review; "+(row.custody.listed-row.custody.matched)+" not independently matched":
+      "Unknown / local files not compared"],
    ["Tentative runbook tasks",row.hasBooks?row.steps.map(x=>x.description).join("; ").slice(0,500)||"None":"Unknown"]
   ]){
    const p=document.createElement("p");const strong=document.createElement("strong");strong.textContent=label+": ";
@@ -652,6 +665,15 @@ $("brief").addEventListener("click",exportTeam);
 $("ownerBrief").addEventListener("click",exportOwner);
 $("anonymous").addEventListener("click",anonymous);
 $("binding").addEventListener("click",receipt);
+window.addEventListener("lightup:local-custody",event=>{
+  const detail=event.detail;
+  if(detail&&detail.revision!==revision)return;
+  custodyCoverage=detail?{revision:detail.revision,
+    byFinding:new Map(detail.byFinding.map(row=>[row.finding_id,{
+      listed:row.listed,matched:row.matched,attention:row.attention
+    }]))}:null;
+  if(loaded())draw();
+});
 window.LightUpHumanTriageBridge=Object.freeze({snapshot:()=>{
  if(!entries.workplan||!entries.artifact)return null;
  const base=entries.workplan.source;return {revision,source_sha256:base.source_sha256,
@@ -686,6 +708,7 @@ function clear(preserveFiles=false) {
  $("custody-export").disabled=true;
  $("custody-brief").disabled=true;
  status("No local bytes compared; previous results forgotten.");
+ window.dispatchEvent(new CustomEvent("lightup:local-custody", {detail:null}));
 }
 function snapshot() {return BRIDGE?.snapshot()||null;}
 function sync(){
@@ -755,6 +778,20 @@ function draw(){
  }
  $("custody-export").disabled=false;
  $("custody-brief").disabled=false;
+ const byFinding=new Map();
+ for(const original of review.source.original_finding_ids)byFinding.set(original,{listed:0,matched:0,attention:0});
+ for(const original of review.source.records)byFinding.get(original.finding_id).listed++;
+ for(const result of review.rows){
+   const affected=new Set(result.candidates.map(c=>c.finding_id));
+   for(const fid of affected){
+     const item=byFinding.get(fid);if(!item)continue;
+     if(result.kind==="local_fingerprint_matches_one_ledger_row")item.matched++;
+     else item.attention++;
+   }
+ }
+ window.dispatchEvent(new CustomEvent("lightup:local-custody",{detail:{
+   revision:review.source.revision,byFinding:[...byFinding.entries()].map(([finding_id,v])=>({finding_id,...v}))
+ }}));
 }
 async function compare(){
  if(!snapshot()){status("HOLD: original workplan / Ledger source missing.");return;}
