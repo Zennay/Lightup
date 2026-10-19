@@ -73,6 +73,23 @@ def _new_private_output(args, folder: Path, suffix: str) -> Path:
     return out
 
 
+def _source_still_current(args, vault, original_snapshot) -> None:
+    """Re-admit original account, HUMAN workroom, plan and every material byte.
+
+    Called immediately before an operator-confirmed LOCAL journal transition.
+    This protects only local data continuity, NOT separately authenticated
+    action-time client/operator consent or native ORIGINAL Apply.
+    """
+    latest = _source(args, vault)
+    if (latest[6] != original_snapshot[6]
+            or latest[1] != original_snapshot[1]
+            or latest[2] != original_snapshot[2]
+            or latest[3] != original_snapshot[3]
+            or latest[4] != original_snapshot[4]
+            or latest[5] != original_snapshot[5]):
+        raise ValueError("Original HUMAN workroom/plan/source/material changed while reviewing.")
+
+
 def _owned_regular(path: Path) -> None:
     info = path.lstat()
     if (not stat.S_ISREG(info.st_mode) or info.st_uid != os.getuid()
@@ -227,6 +244,7 @@ def _stage(args, vault, folder, journal, current) -> None:
     password = vault._password("NEW PRIVATE native HUMAN draft passphrase: ", fresh=True)
     if original.digest(password) in (old_hash, plan_hash):
         raise ValueError("Never reuse an original source or retention-plan secret.")
+    _source_still_current(args, vault, newer)
     entry = {"state": "pending", "output": str(out), "sha256": "",
              "requests": [_ref(row) for row in drafts],
              "created": _utc(), "updated": _utc()}
@@ -275,6 +293,7 @@ def _recover(args, vault, folder, journal, current) -> None:
     if input('Type "RECOVER ENCRYPTED HUMAN DRAFT" after private inspection: ') != (
             "RECOVER ENCRYPTED HUMAN DRAFT"):
         raise ValueError("No HUMAN recovery acknowledgment.")
+    _source_still_current(args, vault, current)
     entry["sha256"] = _digest(vault._private_input(draft_path, vault.MAX_VAULT))
     entry["state"] = "staged"
     entry["updated"] = _utc()
@@ -315,6 +334,7 @@ def _resolve(args, vault, folder, journal, current) -> None:
                 "ACK HUMAN CLOSED ONLY"):
             raise ValueError("Human closeout not acknowledged.")
         entry["state"] = "reviewed"
+    _source_still_current(args, vault, current)
     entry["updated"] = _utc()
     _write(folder, key, journal)
     print("Local journal updated. HUMAN states remain unverified, no authority issued.")
