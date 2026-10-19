@@ -65,8 +65,17 @@ def reject_constant(value: str) -> None:
 
 
 def private_read(path: Path) -> bytes:
-    # No softlinks, hardlinks, devices or externally-readable local PRIVATE data.
-    flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_CLOEXEC", 0)
+    # Check literal owner-only directory as well as descriptor-bound file metadata.
+    # A symlinked ancestor or non-private download directory is not an admissible source.
+    parent = path.parent.resolve(strict=True)
+    require(path.is_absolute() and path.parent == parent,
+            "Input requires a literal absolute path without symlinked ancestors")
+    directory = parent.stat()
+    require(stat.S_ISDIR(directory.st_mode) and directory.st_uid == os.getuid() and
+            directory.st_mode & 0o077 == 0,
+            "Input must be inside a real owner-private 0700 directory")
+    flags = (os.O_RDONLY | getattr(os, "O_NONBLOCK", 0) |
+             getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_CLOEXEC", 0))
     fd = os.open(path, flags)
     try:
         info = os.fstat(fd)
