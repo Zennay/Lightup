@@ -228,17 +228,35 @@ def _merge_preflight(a: dict, b: dict, ids: set[str]) -> tuple[dict, list]:
 
 
 def _resolve(collection: str, identifier: object, left: dict, right: dict) -> dict:
+    """Preserve distinct human changes field by field; never guess a conflict."""
+    if left.get("finding_id") != right.get("finding_id"):
+        raise ValueError("Same HUMAN record key has conflicting ORIGINAL finding membership.")
     print("\nLOCAL PRIVATE HUMAN CONFLICT | " + collection + " | original record " + repr(identifier))
-    print("Left HUMAN record: " + _ordered(left))
-    print("Right HUMAN record: " + _ordered(right))
-    while True:
-        chosen = input("Choose original HUMAN record [L]eft / [R]ight / [H]OLD (default): ").strip().upper()
-        if chosen == "L":
-            return left
-        if chosen == "R":
-            return right
-        if chosen in ("", "H"):
-            raise ValueError("Operator held ambiguous HUMAN record; no merged artifact created.")
+    combined = json.loads(json.dumps(left, ensure_ascii=False))
+    for field in sorted(left):
+        if field in ("finding_id", "request_id", "sha256") or left[field] == right[field]:
+            continue
+        if field == "evidence" and collection == "evidence_review":
+            changes = [(sub, left[field][sub], right[field][sub]) for sub in sorted(left[field])
+                       if left[field][sub] != right[field][sub]]
+        else:
+            changes = [(None, left[field], right[field])]
+        for sub, a, b in changes:
+            label = field + ("." + sub if sub is not None else "")
+            print("Human field:", label)
+            print("LEFT: ", _ordered(a))
+            print("RIGHT:", _ordered(b))
+            choice = input("Keep [L]eft / [R]ight / [H]OLD (default): ").strip().upper()
+            if choice in ("", "H"):
+                raise ValueError("Unresolved HUMAN conflict; no merged artifact created.")
+            if choice not in ("L", "R"):
+                raise ValueError("Unknown HUMAN decision; no merged artifact created.")
+            selected = a if choice == "L" else b
+            if sub is None:
+                combined[field] = selected
+            else:
+                combined[field][sub] = selected
+    return combined
 
 
 def _assemble(a: dict, merged: dict, ids: list[str]) -> dict:
@@ -319,6 +337,9 @@ def main(argv: list[str] | None = None) -> int:
         for collection, identifier, v, w in conflicts:
             merged[collection][identifier] = _resolve(collection, identifier, v, w)
         answer = _assemble(left, merged, ids)
+        # Re-admit the entire composed HUMAN schema before requesting a new password;
+        # selection cannot silently create a dangling request or duplicate finding.
+        _records(answer, set(ids))
         human = json.dumps(answer, ensure_ascii=False, separators=(",", ":")).encode("utf-8", "strict")
         # Re-admit with original cross-source packet envelope; recipient's browser
         # will STILL require original unmodified separate preview and Apply.
