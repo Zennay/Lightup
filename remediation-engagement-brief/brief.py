@@ -13,6 +13,7 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "remediation-secure-export"))
+from desk import build_desk
 from secure_export import (AccountLockedError, COLUMNS, FALSE, SEVERITIES, STATES,
                            _authorized_summary, _literal, _strict_summary,
                            _unique_pairs, _vault)
@@ -217,6 +218,22 @@ def capture_current_revision(args, source):
     vault._exclusive_output(output, vault._seal(vault._inner(payload, "application/json"), password))
 
 
+def save_html(args, current, earlier=None):
+    """Explicitly publish a network-disabled source review view to a NEW 0600 file."""
+    if args.private_html is None or not args.ack_private_html:
+        raise ValueError("Explicit PRIVATE HTML recipient/device acknowledgement required")
+    path = args.private_html.expanduser().absolute()
+    destinations = (args.input, args.output, args.sealed_markdown,
+                    getattr(args, "capture_current", None))
+    if path.suffix.lower() != ".html" or any(
+        other is not None and other.expanduser().absolute() == path for other in destinations
+    ):
+        raise ValueError("PRIVATE HTML must be a new distinct .html output")
+    raw = build_desk(current, earlier)
+    _vault()._exclusive_output(path, raw)
+
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__)
     cmd = ap.add_subparsers(dest="command", required=True)
@@ -234,6 +251,9 @@ def main(argv=None):
         action.add_argument("--output", type=Path, help="New owner-private 0600 HUMAN .md")
         action.add_argument("--sealed-markdown", type=Path, help="Encrypted HUMAN .ltv, no plaintext file")
         action.add_argument("--ack-private-markdown", action="store_true")
+        action.add_argument("--private-html", type=Path, help="NEW private 0600 offline finding review dashboard")
+        action.add_argument("--ack-private-html", action="store_true",
+                            help="Explicitly acknowledge confidential unencrypted HTML on a private device")
     review.add_argument("--capture-current", type=Path, help="Fresh authorized source into NEW encrypted revision .ltv")
     args = ap.parse_args(argv)
     try:
@@ -271,8 +291,13 @@ def main(argv=None):
         if args.command == "open-current":
             if digest != packet["source_sha256"] or count != packet["source_count"]:
                 raise ValueError("Source drift: use review-current instead")
-            save_markdown(args, brief(now))
-            print("PRIVATE HUMAN action handoff created from exact freshly authenticated source.")
+            if args.output is None and args.sealed_markdown is None and args.private_html is None:
+                raise ValueError("No PRIVATE handoff output selected")
+            if args.output is not None or args.sealed_markdown is not None:
+                save_markdown(args, brief(now))
+            if args.private_html is not None:
+                save_html(args, now)
+            print("PRIVATE HUMAN handoff created from exact freshly authenticated source.")
             return 0
         added, absent, changed, _, _ = compare(old, now)
         print("Original-source changes: added", len(added), "absent", len(absent),
@@ -281,6 +306,9 @@ def main(argv=None):
         if args.output is not None or args.sealed_markdown is not None:
             save_markdown(args, revision_brief(old, now))
             print("PRIVATE HUMAN revision handoff created, not verified remediation.")
+        if args.private_html is not None:
+            save_html(args, now, old)
+            print("PRIVATE offline original-source review dashboard created; no target activity.")
         if args.capture_current is not None:
             capture_current_revision(args, current_source)
             print("New original-source revision encrypted independently; original history retained.")
