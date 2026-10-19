@@ -101,9 +101,17 @@
             <strong>PRIVATE save / exact original bytes required to resume</strong>
             <p>The downloaded PRIVATE JSON has original SHA-256 digests and anonymous original row ordinals, but never original result bytes or customer names. An unsigned digest is only a byte match, not proof of trusted sources, reviewer identity or consent. Without local WebCrypto you can still plan, but not save or resume this bound plan.</p>
             <label for="humanResume">Open saved PRIVATE HUMAN plan <input id="humanResume" type="file" accept=".json,application/json"></label>
+            <label for="humanResumePass">Resume passphrase (only if encrypted)
+              <input id="humanResumePass" type="password" autocomplete="off" placeholder="Private local passphrase">
+            </label>
+            <label for="humanEncryptPass">New encrypted plan passphrase (at least 12 characters)
+              <input id="humanEncryptPass" type="password" autocomplete="new-password" placeholder="Not stored, not sent, required for encrypted export">
+            </label>
+            <p class="hint">AES-256-GCM + PBKDF2-SHA256 with fresh random salt/IV. Optional encrypted exports protect at-rest confidentiality only to the extent your passphrase and device are secure; no independent crypto/security audit is implied. Wrong/lost passphrases cannot be recovered.</p>
           </div>
           <div class="buttons">
-            <button id="humanSave" class="primary" type="button" disabled>Save PRIVATE plan</button>
+            <button id="humanSave" class="secondary" type="button" disabled>Save UNENCRYPTED PRIVATE plan</button>
+            <button id="humanSaveEncrypted" class="primary" type="button" disabled>Save ENCRYPTED PRIVATE plan</button>
             <button id="humanResumeButton" class="secondary" type="button" disabled>Resume against same source bytes</button>
             <button id="humanBrief" class="secondary" type="button" disabled>Export counts-only HUMAN brief</button>
             <button id="humanHandoff" class="secondary" type="button" disabled>Download PRIVATE read-only HUMAN handoff</button>
@@ -119,8 +127,14 @@
           <label for="historyEarlier">Earlier manually selected PRIVATE plan
             <input id="historyEarlier" type="file" accept=".json,application/json" autocomplete="off">
           </label>
+          <label for="historyPassEarlier">Earlier plan passphrase (only if encrypted)
+            <input id="historyPassEarlier" type="password" autocomplete="off" placeholder="Private local passphrase">
+          </label>
           <label for="historyLater">Later manually selected PRIVATE plan
             <input id="historyLater" type="file" accept=".json,application/json" autocomplete="off">
+          </label>
+          <label for="historyPassLater">Later plan passphrase (only if encrypted)
+            <input id="historyPassLater" type="password" autocomplete="off" placeholder="Private local passphrase">
           </label>
           <div class="buttons">
             <button type="button" class="primary" id="historyOpen">Compare PRIVATE HUMAN plans</button>
