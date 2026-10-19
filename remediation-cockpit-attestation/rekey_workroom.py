@@ -130,7 +130,7 @@ def rotate(old_workroom: Path, old_secret: Path, new_secret: Path,
         coordination.sealed_fields(next_plan, new_source, new_manifest)
         coordination.encrypt(next_plan, new_secret, staging / "plan.ltplan")
         coordination.publish(incoming, new_secret, staging / "plan.ltplan",
-                             staging / "board")
+                             staging / "board", linked_workroom=True)
         attest.exclusive_private_write(staging / "index.html",
                                        workroom.root_page(next_plan["revision"],
                                                           new_source["slot_count"]))

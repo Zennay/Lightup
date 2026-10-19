@@ -147,7 +147,7 @@ def open_workroom(package: Path, key_file: Path,
         require(plan["revision"] == obj["plan_revision"] and
                 original == source)
         coordination.publish(temporary / "inbox", key_file, plan_file,
-                             temporary / "board")
+                             temporary / "board", linked_workroom=True)
         attest.exclusive_private_write(temporary / "index.html",
                                        root_page(plan["revision"], source["slot_count"]))
         # Final admission against all original native source-free members,
