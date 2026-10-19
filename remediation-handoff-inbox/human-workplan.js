@@ -59,7 +59,7 @@ function render(){
  const owners=[...new Set(list.map(x=>x.plan.owner_alias).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
  sel.replaceChildren(new Option("Choose local HUMAN owner",""));
  for(const alias of owners)sel.append(new Option(alias,alias));sel.value=owners.includes(old)?old:"";
- $("planOwnerBrief").disabled=!sel.value;
+ $("planOwnerBrief").disabled=!sel.value;$("planOwnerPrint").disabled=!sel.value;
  const stages=new Map();for(const r of list)stages.set(r.plan.stage,(stages.get(r.plan.stage)||0)+1);
  $("planSummary").textContent=list.length+" ORIGINAL findings · "+(stages.get("unplanned")||0)+" unplanned · "+(stages.get("human_handoff_prepared")||0)+" HUMAN handoffs prepared · "+list.filter(x=>x.plan.owner_alias).length+" local owner assignments (unverified)";
  const body=$("planRows");body.replaceChildren();
@@ -91,7 +91,7 @@ function reset(ctx=null){
  pendingMerge=null;mergeUndo=null;
  store={binding:null,rows:new Map(),revision:0,saved:0,selected:new Set(),undo:null};
  const data=ctx||BRIDGE.context();$("planRows").replaceChildren();$("planImport").value="";$("planSearch").value="";$("planFilter").value="all";$("planBulkStage").value="request_evidence_human";$("planBulkOwner").value="";$("planBulkDue").value="";$("planUndo").disabled=true;
- $("planOwner").replaceChildren(new Option("Choose local HUMAN owner",""));$("planOwnerBrief").disabled=true;
+ $("planOwner").replaceChildren(new Option("Choose local HUMAN owner",""));$("planOwnerBrief").disabled=true;$("planOwnerPrint").disabled=true;
  $("planMergeFile").value="";cancelMerge();$("planMergeUndo").disabled=true;
  if(data?.ids.length){store.binding=binding(data);for(const id of data.ids)store.rows.set(id,blank(id));$("workplan").hidden=false;msg("New source-bound local HUMAN plan. Original findings and grants are unchanged.");}
  else{$("workplan").hidden=true;msg("No ORIGINAL finding context loaded.");}
@@ -165,6 +165,41 @@ function ownerBrief(){
   recipient_alias:owner,...Object.fromEntries(FLAGS.map(k=>[k,false])),
   rows:rows.map(r=>({...r})),warning:"Separate PRIVATE human workplan, NOT original owner reply or consent/grant/authenticated identity."};
  download("LightUp-PRIVATE-one-owner-HUMAN-plan.json",JSON.stringify(out,null,2)+"\n","application/json");msg("PRIVATE one-owner human plan exported without another owner's plan rows.");
+}
+/* Scriptless PRIVATE human one-owner briefing; all original/customer text escaped
+   and no remote resources, browser actions, evidence verification or grants. */
+function htmlEsc(s){return String(s??"").replace(/[&<>"']/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]));}
+function printableOwnerBrief(){
+ const c=active(),alias=$("planOwner").value;
+ if(!alias)fail("choose an existing locally declared HUMAN owner");
+ const source=new Map(c.findings.map(f=>[f.id,f]));
+ const rows=c.ids.map(id=>store.rows.get(id)).filter(r=>r.owner_alias===alias);
+ if(!rows.length)fail("no PRIVATE HUMAN follow-up for selected declared owner");
+ if(!confirm("Download a readable PRIVATE HTML HUMAN plan for "+rows.length+" original findings assigned to self-declared owner "+alias+"? Verify secure recipient, confidential printing and storage independently. No source authenticity or grant."))return;
+ const header=[
+ '<!doctype html><html lang="en"><head><meta charset="utf-8">',
+ '<meta http-equiv="Content-Security-Policy" content="default-src &#39;none&#39;; img-src &#39;none&#39;; connect-src &#39;none&#39;; script-src &#39;none&#39;; style-src &#39;none&#39;; form-action &#39;none&#39;; base-uri &#39;none&#39;">',
+ '<title>LightUp PRIVATE human owner action brief</title></head><body>',
+ '<h1>LightUp · PRIVATE HUMAN follow-up</h1>',
+ '<p><strong>DRAFT/HOLD · UNVERIFIED HUMAN PLANNING ONLY.</strong> This document is NOT a permission, verified fix, authorized retest, consent, approved scope or source-authenticity proof.</p>',
+ '<p>Self-declared recipient alias: <strong>'+htmlEsc(alias)+'</strong></p>',
+ '<p>Declared original source SHA-256: '+htmlEsc(c.source_sha256)+'</p>',
+ '<p>Declared client: '+htmlEsc(c.client_reference)+' · engagement: '+htmlEsc(c.engagement_reference)+'</p>',
+ '<p>Original HUMAN finding assignments: '+rows.length+'. Independently authenticate the original source and recipient before using this private document.</p>'
+ ];
+ const body=rows.map(r=>{
+  const f=source.get(r.finding_id);
+  return '<article><h2>Original finding '+htmlEsc(r.finding_id)+'</h2><dl>'+
+   '<dt>Original source severity (if independently matched)</dt><dd>'+htmlEsc(f?.source_severity||"not supplied")+'</dd>'+
+   '<dt>Local HUMAN follow-up stage</dt><dd>'+htmlEsc(r.stage)+'</dd>'+
+   '<dt>Locally declared HUMAN owner</dt><dd>'+htmlEsc(r.owner_alias)+'</dd>'+
+   '<dt>Tentative HUMAN date</dt><dd>'+htmlEsc(r.tentative_due||"not set")+'</dd>'+
+   '<dt>Human next action</dt><dd><pre>'+htmlEsc(r.next_action||"not set")+'</pre></dd>'+
+   '<dt>PRIVATE HUMAN note</dt><dd><pre>'+htmlEsc(r.private_note||"not set")+'</pre></dd></dl><hr></article>';
+ }).join("\n");
+ const doc=header.join("\n")+"\n"+body+"\n<p>No customer source, original request, original reply, scan authorization, remediation or release status has been changed by creating this human brief.</p></body></html>\n";
+ download("LightUp-PRIVATE-one-owner-HUMAN-readable-brief.html",doc,"text/html;charset=utf-8");
+ msg("Scriptless PRIVATE single-owner HUMAN briefing downloaded. Previously exported or printed documents remain the operator's responsibility.");
 }
 function csv(v){return '"'+String(v).replaceAll('"','""')+'"';}
 function aggregate(){
@@ -273,7 +308,7 @@ for(const [id,event,fn] of [
  ["planBulkApply","click",bulkApply],["planUndo","click",undoBulk],
  ["planMergePreview","click",()=>previewMerge().catch(e=>msg(e.message,true))],["planMergeApply","click",applyMerge],["planMergeCancel","click",cancelMerge],["planMergeUndo","click",undoMerge],
  ["planSave","click",exportPrivate],["planRestore","click",()=>importPrivate().catch(e=>msg(e.message,true))],
- ["planOwnerBrief","click",ownerBrief],["planAggregate","click",aggregate],["planOwner","change",()=>{$("planOwnerBrief").disabled=!$("planOwner").value;}]
+ ["planOwnerBrief","click",ownerBrief],["planOwnerPrint","click",printableOwnerBrief],["planAggregate","click",aggregate],["planOwner","change",()=>{$("planOwnerBrief").disabled=!$("planOwner").value;$("planOwnerPrint").disabled=!$("planOwner").value;}]
 ])$(id).addEventListener(event,e=>{try{fn(e)}catch(err){msg(err.message,true);}});
 /* Native browser warning is best-effort; users must explicitly export PRIVATE
    source-bound workplan JSON to preserve local HUMAN annotations. */
