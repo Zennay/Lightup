@@ -66,3 +66,55 @@ fingerprint, source/evidence bytes, private notes, password or local file path.
 The chronology is just locally reported HUMAN state, not an authenticated
 audit trail or signed security outcome; never sync it or treat it as release
 authority.
+
+## Original native HUMAN delivery: see exactly what happened to drafts
+
+The local journal now includes a source-current, privacy-minimal ORIGINAL
+Request Desk delivery comparison. It opens the exact SHA-256-matching original
+encrypted `staged` HUMAN workroom with a separate private passphrase prompt,
+admitting that ORIGINAL native schema alongside the CURRENT separately
+provided encrypted original HUMAN workroom and all original evidence bytes.
+
+- `review` prints per-request **neutral ordinals** and aggregate HUMAN states:
+  `not_observed`, `draft`, `closed_human`, or the original approved HUMAN
+  enum, together with whether the HUMAN request text/response was edited.
+- `review-html` writes an exclusive 0600 PRIVATE, scriptless/no-network
+  offline browser dashboard with anonymized per-request state, assignment,
+  response-present indicator, HUMAN content-change indicator and aggregate
+  remaining-unclosed attention.
+- `resolve` now also decrypts/re-admits the recorded original-native staged
+  encrypted workroom and requires *exact recorded request identity continuity*
+  and all corresponding CURRENT original HUMAN entries reporting closed_human.
+  The reported HUMAN labels do not prove actual native Apply, signed user
+  identity, that the source owner authenticated the change, or client consent.
+- Every source-bound encrypted input, new native draft, private report and
+  local journal MUST reside beneath a real owner-private 0700 parent (no
+  symlinked directory ancestors). Missing/malformed/corrupt source material
+  HOLDs; no source mutation or automatic deletion is attempted.
+
+Example after independently obtaining the CURRENT original encrypted HUMAN
+workroom, replacing the `--human` argument with that newly provided workroom:
+
+```sh
+python3 remediation-durable-stage/journal.py review \
+ --db /private/lightup.db --email operator@example.invalid \
+ --client-id ORIGINAL_CLIENT --engagement-id ORIGINAL_ENGAGEMENT \
+ --human /private/current-original-human.ltv \
+ --directory /private/extracted-material \
+ --plan /private/retention-review.ltv \
+ --journal-dir /private/my-human-journal --ack-private-material
+
+python3 remediation-durable-stage/journal.py review-html \
+ --db /private/lightup.db --email operator@example.invalid \
+ --client-id ORIGINAL_CLIENT --engagement-id ORIGINAL_ENGAGEMENT \
+ --human /private/current-original-human.ltv \
+ --directory /private/extracted-material \
+ --plan /private/retention-review.ltv \
+ --journal-dir /private/my-human-journal \
+ --output /private/current-human-delivery.html --ack-private-material
+```
+
+Never send this report or any decrypted HUMAN workroom to a shared/cloud
+service. The comparison reports only what the separately supplied current
+original HUMAN workroom *says*, not authenticated execution or third-party
+approval. Every report is a distinct new private file, not an overwrite.
