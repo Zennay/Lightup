@@ -75,9 +75,18 @@ footer{margin-top:40px;border-top:1px solid var(--border);padding-top:18px}
 </section>
 <section class="panel"><h2>3 · Plan HUMAN follow-up, per anonymous packet</h2>
 <p>For each local packet ordinal, choose a predefined <strong>HUMAN-only next step</strong> and a local routing status. No customer identifier, evidence, original-case link, personal name, attachment, freeform note, active assessment or consent decision can be entered. This is a local follow-up intention and does <strong>not</strong> change the original source workroom or verify a fix.</p>
+<p><strong id="boardVisible">0</strong> visible anonymous packet appearances after local state filter.</p>
+<div class="grid"><article><strong id="count_not_triaged">0</strong><span>Not triaged</span></article>
+<article><strong id="count_needs_human_followup">0</strong><span>Needs HUMAN follow-up</span></article>
+<article><strong id="count_waiting_original_owner">0</strong><span>Waiting original source owner</span></article>
+<article><strong id="count_locally_discussed">0</strong><span>Locally discussed (not verified fixes)</span></article></div>
+<div class="actions"><label for="boardFilter">Show local HUMAN routing status:
+<select id="boardFilter"><option value="all">All anonymous packets</option><option value="not_triaged">Not triaged</option><option value="needs_human_followup">Needs HUMAN follow-up</option><option value="waiting_original_owner">Waiting original source owner</option><option value="locally_discussed">Locally discussed (not verified fix)</option></select></label>
+<button id="resetBoard" type="button" disabled>Reset local HUMAN choices</button></div>
 <div class="scroll"><table><thead><tr><th>Local packet ordinal</th><th>Open HUMAN questions</th><th>Suggested HUMAN next action</th><th>Local HUMAN routing state (not original)</th></tr></thead><tbody id="boardRows"></tbody></table></div>
 <div class="actions"><button id="saveBoard" class="primary" type="button" disabled>Save paired private HUMAN action board JSON</button>
 <button id="boardCSV" type="button" disabled>Save anonymous HUMAN action CSV</button>
+<button id="boardBrief" type="button" disabled>Save local HUMAN action briefing</button>
 <label for="restoreBoard">Restore board for exact current numeric selection: <input type="file" id="restoreBoard" accept=".json,application/json" aria-label="Restore HUMAN routing JSON bound to exact source-free packet selection"></label></div>
 <p id="boardStatus" role="status" aria-live="polite">Local HUMAN routing is available after importing count packets.</p>
 <p>The exported action board is paired by full anonymous per-packet numeric shape and <strong>ordinal only</strong>. Download the matching <strong>resumable numeric session JSON</strong> separately to use <code>action_board.py</code> offline. Matching numbers are not authentication, stable client identities, proof of consent, or release. Keep these unencrypted exports private.</p>
