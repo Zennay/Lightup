@@ -20,6 +20,20 @@ Open the generated offline [standalone.html](standalone.html) on a trusted priva
 
 The bundler pins the exact inline own JS/CSS AND unchanged original Casework parser to SHA-256-based restrictive CSP, refuses original source drift, and binds all output to a successfully compared original CSV. No network, remote assets, workers, or browser persistence. Needs only standard browser file picker and WebCrypto SHA-256. The manifest must come from an original, separately authorized and source-bound PRIVATE Evidence Ledger workflow. The original CSV must be independently obtained from that same exact source. Load the manifest, select the original CSV, press **Verify source membership + SHA-256**, then select local files. New source selection invalidates the prior binding and all comparisons. Previous CSV bytes are not persisted in this companion. This companion itself **does not authenticate** its claimed client/engagement/source information and never assumes that human text or file matching equals true evidence provenance.
 
+## One-command original-authenticated CURRENT PRIVATE custody review
+
+For an already existing genuine LightUp account with read permission to one exact client and engagement, the new `open_current.py` creates a **new owner-only offline HTML directly from the existing AES-256-GCM PRIVATE HUMAN collaboration `.ltv`** and the exact current original source. No intermediate plaintext JSON/CSV is written. It reuses the original `DomainStore` account-and-engagement authorized export, unchanged original encrypted-vault admission, complete canonical source-byte equality, and existing original HUMAN Casework/Evidence Request admission before publishing. All original owners remain immutable.
+
+    PYTHONPATH=src python3 remediation-evidence-custody/open_current.py \
+      --db /private/existing-lightup.sqlite --email operator@example.invalid \
+      --client-id ALREADY_AUTHORIZED_CLIENT --engagement-id EXISTING_ENGAGEMENT \
+      --human /private/existing-original-human-workroom.ltv \
+      --output /private/new-current-human-custody.html --ack-private-html
+
+Actual LightUp account and vault passphrases are requested **only interactively via private TTY**, never as flags, environment variables or CI secrets. The owner-only 0600 HTML embeds only the authenticated exact current source plus HUMAN file-index metadata, without unrelated private Casework/Evidence Review notes. The original SHA-pinned parser and HUMAN index are preloaded locally and the app's own exact source verification is performed before any comparison or export is enabled. Browser support for local File APIs and WebCrypto is required; missing support leads to HOLD. Original encrypted `.ltv` remains untouched. The private HTML contains sensitive plaintext metadata and original source text; it is not a durable consent/authorization token. No active targets or live actions.
+
+The deterministic standalone `build.py` also exposes an in-memory `build()` for the authenticated entrypoint; running it directly still writes the separate public-source-only standalone HTML, **never any private source contents**.
+
 ## Release and scope
 
 No target requests, real scans, testsuites, grants, consent or existing owner file mutations. This branch is add-only under remediation-evidence-custody. Existing hosted and permanently named VPS exact-head CI, source-owner approval, independent privacy/security/crypto/browser review, original issues #177/#182/#829, independently authenticated current client/operator consent with action-time revocation and explicit HUMAN GO remain mandatory before any release. This standalone stays **DRAFT/HOLD**.
