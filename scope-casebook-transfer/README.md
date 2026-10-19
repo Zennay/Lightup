@@ -26,6 +26,18 @@ The same offline transport now includes a fourth panel, **Huidige HUMAN dossiers
 
 The module is contained in [human-board.js](human-board.js); the deterministic portable `standalone.html` now bundles and independently CSP-hash-pins both product scripts plus CSS. It uses no external data, cookies, localStorage, scans, approvals, revocation APIs or network calls. Original IDs and labels may be PRIVATE and are shown only inside the private local page.
 
+## Product workflow: add a NEW original source moment and carry HUMAN work safely
+
+After a PRIVATE Casebook bundle is open and all on-screen HUMAN edits have been saved, the same app supports **append-only original source continuity** without recreating all review work manually:
+
+1. Capture new original authenticated source snapshots separately through the unchanged source-owner Casebook tool. Provide only the exact next filenames, such as `casebook-04.json` after `casebook-01.json` … `casebook-03.json`, optionally multiple contiguous moments. Never rename a document to pretend it is the next authentic source. Maximum 12 snapshots / 12 MiB private workset remains in force. Reaching the bound requires an independent new genuine source history; no silent truncation.
+2. Click **Bekijk volledig PRIVATE continuïteitsvoorstel**. The browser assembles a PRIVATE candidate entirely in memory, refuses different declared clients, unknown source schema/authority, missing ordinal, duplicate records, overbound files, and stale source-bound HUMAN CSV. It compares per ORIGINAL engagement identity the complete last recorded source case, original engagement, all source-linked grant/risk rows, and requests referenced by the grant rows. This is a literal retrospective source diff, *not authenticated current permission or verified risk*.
+3. The local preview shows four independent categories: **unchanged source → stored HUMAN stage/route/blocker may carry**; **any source change → HUMAN fields reset to unreviewed/unassigned/none**; **new current case → fresh HUMAN review**; **absent in new source → excluded from current CSV, explicitly flagged as NOT evidence of revocation/fix**. The old PRIVATE saved snapshot/file remains untouched. On-screen HUMAN changes not yet saved prohibit continuation rather than being silently discarded.
+4. Provide a NEW independent local password, inspect the PRIVATE table and approve the complete original-source + HUMAN continuation in one explicit action. The app creates a fresh AES-256-GCM `.lupt` download with new salt/nonce; **only after the encrypted package has been created** is the current tab's original in-memory workset replaced. On cancellation or failed input, the previous set remains loaded.
+5. The last-source-linked `workroom-current-template.csv` is always created as part of this new **private** candidate, even when the prior bundle had no HUMAN CSV; absent prior saved choices are labeled as such in preview. The original source JSON bytes are never modified. The original Casebook producer/validators and action-time grant, tenant, independent client/operator consent and revocation checks remain strictly outside this app and necessary for any real action.
+
+Do not interpret an unsigned source-case equality, repeated timestamps, an absent original row, or preserved HUMAN follow-up as a verified security or consent state. The preview is not a PASS decision or authority signal; never publish PRIVATE identifiers in anonymous summaries.
+
 ## Design boundary
 
 - Offline WebCrypto `PBKDF2-SHA256` with 310,000 iterations, cryptographically random 16-byte salt, `AES-256-GCM` with a fresh 12-byte nonce for every export. Nonces and salt are chosen by the browser CSPRNG; original files are encrypted **without any lossy text decoding**.
