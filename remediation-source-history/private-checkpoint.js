@@ -128,14 +128,14 @@ async function open(){
    if(!shape(d,['id','from','to','reason','decidedUTC'])||typeof d.id!=='string'||
     !validSource(d.from)||!validSource(d.to)||d.from.finding_id!==d.id||d.to.finding_id!==d.id||
     typeof d.reason!=='string'||d.reason.trim().length<8||d.reason.length>800||
-    typeof d.decidedUTC!=='string'||!/^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$/.test(d.decidedUTC)||
+    typeof d.decidedUTC!=='string'||!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(d.decidedUTC)||
     !Number.isFinite(Date.parse(d.decidedUTC)))throw Error('PRIVATE HUMAN carry decision is not bound to authenticated original source history.');
  }
  const allowedHumanFields=['owner','status','due_date','next_action','verification_plan','blocker','note','updated_utc'];
  const merges=packet.merges||[];
  for(const m of merges){
    if(!shape(m,['dateUtc','sourceHash','reason','records'])||
-     typeof m.dateUtc!=='string'||!/^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$/.test(m.dateUtc)||
+     typeof m.dateUtc!=='string'||!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(m.dateUtc)||
      !Number.isFinite(Date.parse(m.dateUtc))||
      typeof m.sourceHash!=='string'||!/^[a-f0-9]{64}$/.test(m.sourceHash)||
      !restored.some(x=>x.sourceHash===m.sourceHash)||
