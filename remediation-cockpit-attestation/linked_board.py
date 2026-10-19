@@ -8,6 +8,7 @@ board or original source-owner HTML.
 from __future__ import annotations
 
 import html
+from collections import Counter
 import coordination
 
 MODE = "complete_workroom_source_free_inbox_v3"
@@ -25,6 +26,9 @@ def render(plan: dict) -> bytes:
         row["due_date"] or "9999-12-31",
         row["slot"],
     ))
+    sha_shapes = Counter(item["original_cockpit_manifest_sha256"]
+                         for item in plan["slots"])
+    matched_extra = sum(count - 1 for count in sha_shapes.values() if count > 1)
     rows = []
     for item in order:
         index = item["slot"]
@@ -77,6 +81,9 @@ def render(plan: dict) -> bytes:
         str(summary["slots_not_unique_cases"]) + ' separately admitted '
         'source-free workroom slot(s), not unique clients or verified fixes.</p>'
         '<div class="metrics">' + cards + '</div>'
+        '<p><strong>' + str(matched_extra) + '</strong> additional delivered '
+        'slots share an anonymous source-free summary shape with another. '
+        'That alone does not prove the same source, client or original finding.</p>'
         '<p><strong>' +
         str(summary["pending_local_human_attention_slots"]) +
         '</strong> slots still need local HUMAN coordination. Unanswered '
