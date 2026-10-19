@@ -355,6 +355,88 @@
       busy(false);
     }
   });
+  // Source-declared offline continuity: no account, network or authorization mutation.
+  $("next-preview").addEventListener("click", async () => {
+    busy(true);
+    try {
+      if (!current || !window.LightUpCasebookContinuity)
+        fail("Open eerst een PRIVATE oorspronkelijke Casebook-bronset.");
+      assertHumanSaved();
+      discardContinuation();
+      const files = Array.from($("next-files").files)
+        .sort((a,b)=>a.name.localeCompare(b.name,"en"));
+      if (!files.length) fail("Kies minimaal één exact volgend origineel Casebook-bronbestand.");
+      const old = current.filter(r=>/^casebook-(?:0[1-9]|1[0-2])\.json$/.test(r.name));
+      if (old.length + files.length > 12)
+        fail("Originele bronreeksen blijven beperkt tot 12 opeenvolgende momenten.");
+      let total = old.reduce((acc,r)=>acc+r.size,0);
+      const candidate = old.map(r=>({...r, bytes:r.bytes.slice()}));
+      const sourceClient = parseCasebookJson(old[0].bytes);
+      for(let i=0;i<files.length;i++){
+        const file=files[i];
+        const ordinal=String(old.length+i+1).padStart(2,"0");
+        if(file.name!=="casebook-"+ordinal+".json")
+          fail("Verwacht exact het volgende originele bronmoment: casebook-"+ordinal+".json.");
+        if (!Number.isSafeInteger(file.size) || file.size<1 || file.size>MAX_EACH)
+          fail("Elk nieuw bronmoment moet 1 byte tot 4 MiB groot zijn.");
+        total+=file.size;
+        if(total>MAX_TOTAL)fail("De originele bronreeks mag niet groter dan 12 MiB zijn.");
+        const bytes=new Uint8Array(await file.arrayBuffer());
+        if (bytes.length!==file.size) fail("Bronbestand is tijdens het lezen veranderd.");
+        if (parseCasebookJson(bytes)!==sourceClient)
+          fail("Nieuw origineel bronmoment verklaart een andere cliënt.");
+        candidate.push({name:file.name,size:bytes.length,sha256:await sha(bytes),bytes});
+      }
+      checkNames(candidate);
+      window.LightUpCasebookHandoff.admit(candidate);
+      const report=window.LightUpCasebookContinuity.prepare(current,candidate);
+      const csvBytes=encoder.encode(window.LightUpCasebookHandoff.serialize(report.rows));
+      if (csvBytes.length>131072)fail("Nieuwe HUMAN-opvolg-CSV groter dan 128 KiB.");
+      candidate.push({name:"workroom-current-template.csv",size:csvBytes.length,
+        sha256:await sha(csvBytes),bytes:csvBytes});
+      candidate.sort((a,b)=>a.name < b.name?-1:a.name>b.name?1:0);
+      checkNames(candidate);
+      if(candidate.reduce((sum,r)=>sum+r.size,0)>MAX_TOTAL)
+        fail("De complete PRIVATE bronreeks is groter dan 12 MiB.");
+      window.LightUpCasebookHandoff.admit(candidate);
+      pendingContinuation={candidate,report,sourceRevision};
+      window.LightUpCasebookContinuity.render(report);
+      $("next-apply").disabled=false;
+      setStatus("Nieuwe bronreeks en HUMAN-overnamevoorstel lokaal klaargezet. Controleer PRIVATE gevolgen vóór versleutelde overdracht; er is geen actuele toestemming verleend.");
+    }catch(e){
+      discardContinuation();
+      setStatus("HOLD: "+(e.message||"Originele bronopvolging geweigerd.")+
+        " Eerdere PRIVATE werkset ongewijzigd.",true);
+    }finally{busy(false);}
+  });
+  $("next-apply").addEventListener("click", async () => {
+    busy(true);
+    try {
+      assertHumanSaved();
+      const pending=pendingContinuation;
+      if(!pending || pending.sourceRevision!==sourceRevision || !current)
+        fail("Continuïteitsvoorstel is verouderd. Maak eerst een nieuw voorstel.");
+      if (!window.crypto?.subtle || !window.isSecureContext)
+        fail("Geen beveiligde lokale WebCrypto-context.");
+      const password=$("next-password").value;
+      checkPassword(password);
+      const c=pending.report.counts;
+      if(!window.confirm(
+        "Maak een NIEUW versleuteld PRIVATE bestand met de volledige bronreeks? "+
+        "Ongewijzigd en meegenomen: "+c.carry+"; heropend: "+c.changed+
+        "; nieuw: "+c.appeared+"; ontbreekt in laatste bron: "+c.absent+
+        ". Ontbrekende records bewijzen GEEN intrekking, risicoreductie of toestemming."
+      )) return;
+      await encryptPrivateRecords(pending.candidate,password);
+      // Prevent clearWorking from destroying the candidate being adopted.
+      pendingContinuation=null;
+      show(pending.candidate);
+      setStatus("Nieuw bronmoment en HUMAN-volgstaten in volledige nieuwe versleutelde PRIVATE overdracht vastgelegd. Alleen bronidentieke dossiers hebben eerdere lokale HUMAN-keuzes behouden. Oorspronkelijke brondata ongewijzigd.");
+    }catch(e){
+      setStatus("HOLD: "+(e.message||"Versleutelde vervolgopname geweigerd.")+
+        " Bestaande werkset behouden.",true);
+    }finally{$("next-password").value="";$("next-files").value="";busy(false);}
+  });
   window.LightUpTransfer = Object.freeze({
     async setHumanCSV(rows) {
       if (!current || !window.LightUpCasebookHandoff) fail("Geen PRIVATE bronset geladen.");
