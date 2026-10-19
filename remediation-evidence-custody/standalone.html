@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-sBFyrHYwJYfG30e9gu1LMsjFkd0yl4JCEf+7DkRxumo=' 'sha256-wpPFZOyxFDTkVCPSRLe+ulmbav4+u8hRIYgukbiqEiU=' 'sha256-mLledwJ+NYbb7A6Tk/rUH/Q0XE/HVxCBP2vCfDn4jk0=' 'sha256-Rp0JVCuSlOUEVRRYfWOOeOI9Dso324/8abUYQNAi+yU='; style-src 'sha256-pcC7pSV40EUsugnByC/taEaN+Spne+JlnIirPtkttv8='; connect-src 'none'; img-src 'none'; font-src 'none'; object-src 'none'; media-src 'none'; frame-src 'none'; worker-src 'none'; form-action 'none'; base-uri 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-2bLNU/Ez7CgsAgkZi0o2as6EPEkAhiKBSX0yakN1KCY=' 'sha256-wpPFZOyxFDTkVCPSRLe+ulmbav4+u8hRIYgukbiqEiU=' 'sha256-mLledwJ+NYbb7A6Tk/rUH/Q0XE/HVxCBP2vCfDn4jk0=' 'sha256-Rp0JVCuSlOUEVRRYfWOOeOI9Dso324/8abUYQNAi+yU='; style-src 'sha256-pcC7pSV40EUsugnByC/taEaN+Spne+JlnIirPtkttv8='; connect-src 'none'; img-src 'none'; font-src 'none'; object-src 'none'; media-src 'none'; frame-src 'none'; worker-src 'none'; form-action 'none'; base-uri 'none'">
 <title>LightUp · PRIVATE Evidence Custody Reconciliation</title>
 <style>:root{font:15px/1.6 system-ui,-apple-system,sans-serif;color:#182e3b;background:#f3f7f8}
 *{box-sizing:border-box}body{margin:0}header{background:#0d2932;color:#f3fafb;padding:44px 0}
@@ -515,8 +515,10 @@ async function run(){
 }
 function escapeCell(value){
  let s=String(value??"");
- // NFKC exposes fullwidth formula operators; bidi/zero-width prefixes cannot mask them.
- const visible=s.normalize("NFKC").replace(/^[\s\p{Cf}\p{Zs}\uFEFF]*/u,"");
+ // Treat compatibility, leading invisible combining/format controls and Unicode
+ // whitespace as non-significant before formula-prefix classification. This is
+ // a PRIVATE report only; the original field bytes remain escaped as CSV text.
+ const visible=s.normalize("NFKC").replace(/^[\s\p{C}\p{M}\p{Z}\uFEFF]*/u,"");
  if(/^[=+\-@\t\r]/u.test(visible))s="'"+s;
  return '"'+s.replaceAll('"','""')+'"';
 }

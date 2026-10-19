@@ -224,8 +224,10 @@ async function run(){
 }
 function escapeCell(value){
  let s=String(value??"");
- // NFKC exposes fullwidth formula operators; bidi/zero-width prefixes cannot mask them.
- const visible=s.normalize("NFKC").replace(/^[\s\p{Cf}\p{Zs}\uFEFF]*/u,"");
+ // Treat compatibility, leading invisible combining/format controls and Unicode
+ // whitespace as non-significant before formula-prefix classification. This is
+ // a PRIVATE report only; the original field bytes remain escaped as CSV text.
+ const visible=s.normalize("NFKC").replace(/^[\s\p{C}\p{M}\p{Z}\uFEFF]*/u,"");
  if(/^[=+\-@\t\r]/u.test(visible))s="'"+s;
  return '"'+s.replaceAll('"','""')+'"';
 }
