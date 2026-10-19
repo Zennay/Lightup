@@ -15,8 +15,8 @@ from pathlib import Path
 import stat
 import sys
 
-from .private_export_encrypted import _open_sealed, _passphrase, _seal
-from .private_export_encrypted_notes import MAGIC_PLAN
+from .private_export_encrypted import _open_sealed, _passphrase, _seal, MAX_ENVELOPE_SIZE
+from .private_export_encrypted_notes import MAGIC_PLAN, MAX_SEALED_PLAN
 from .private_export_handoff import _atomic_private_publish, _no_duplicate_keys, _output_path
 from .private_export_human_revision import _read_inputs, _review_revision
 from .private_export_human_revision_choices import (
@@ -24,9 +24,43 @@ from .private_export_human_revision_choices import (
 )
 from .private_export_workdesk import MAX_PLAN
 
-MAGIC_DECISIONS = b"LIGHTUP-PRIVATE-HUMAN-CHOICES-V1\x00"
+MAGIC_DECISIONS = b"LIGHTUP-PRIVATE-HUMAN-CHOICES-V2\x00"
 DECISION_EXTENSION = ".lud"
-MAX_DECISION_ENVELOPE = len(MAGIC_DECISIONS) + 16 + 12 + MAX_CHOICES + 16
+BINDING_SIZE = 3 * hashlib.sha256().digest_size
+MAX_BOUND_DECISIONS = MAX_CHOICES + BINDING_SIZE
+MAX_DECISION_ENVELOPE = len(MAGIC_DECISIONS) + 16 + 12 + MAX_BOUND_DECISIONS + 16
+
+
+def _artifact_hash(path: str, size_limit: int) -> bytes:
+    """Exact original encrypted byte identity, owner-private, no-follow."""
+    if not hasattr(os, "O_NOFOLLOW"):
+        raise ValueError("original encrypted no-follow admission unavailable")
+    fd = os.open(
+        Path(path).expanduser(),
+        os.O_RDONLY | os.O_NOFOLLOW | getattr(os, "O_CLOEXEC", 0),
+    )
+    try:
+        info = os.fstat(fd)
+        if not stat.S_ISREG(info.st_mode) or info.st_mode & 0o077 or info.st_size > size_limit:
+            raise ValueError("original encrypted source is not bounded and owner-private")
+        sha = hashlib.sha256()
+        with os.fdopen(fd, "rb", closefd=False) as f:
+            while True:
+                chunk = f.read(131072)
+                if not chunk:
+                    break
+                sha.update(chunk)
+        return sha.digest()
+    finally:
+        os.close(fd)
+
+
+def _source_binding(earlier: str, plan: str, later: str) -> bytes:
+    return b"".join((
+        _artifact_hash(earlier, MAX_ENVELOPE_SIZE),
+        _artifact_hash(plan, MAX_SEALED_PLAN),
+        _artifact_hash(later, MAX_ENVELOPE_SIZE),
+    ))
 
 
 def _read_ciphertext(path: str) -> bytes:
@@ -67,19 +101,26 @@ def _admit_bytes(contents: bytes) -> dict:
     return document
 
 
-def _read_decisions(path: str, secret: str) -> tuple[dict, bytes]:
+def _read_decisions(path: str, secret: str, binding: bytes) -> tuple[dict, bytes]:
     ciphertext = _read_ciphertext(path)
     original = _open_sealed(
         ciphertext, secret, magic=MAGIC_DECISIONS,
-        max_plaintext=MAX_CHOICES,
+        max_plaintext=MAX_BOUND_DECISIONS,
     )
-    return _admit_bytes(original), original
+    if len(original) < BINDING_SIZE or original[:BINDING_SIZE] != binding:
+        raise ValueError("private decisions belong to different original encrypted artifacts")
+    return _admit_bytes(original[BINDING_SIZE:]), original
 
 
-def _current_source(earlier: str, plan: str, later: str) -> tuple[dict, dict, list, dict, dict]:
+def _current_source(earlier: str, plan: str, later: str) -> tuple[dict, dict, list, dict, bytes]:
+    before_binding = _source_binding(earlier, plan, later)
     old_meta, old_rows, old_annotations, new_meta, new_rows = _read_inputs(
         earlier, plan, later
     )
+    # Refuse a file replacement during original-source admission; this is an
+    # exact-ciphertext local integrity guard, never an identity or consent proof.
+    if before_binding != _source_binding(earlier, plan, later):
+        raise ValueError("original encrypted artifact changed during admission")
     expected = _make_choices(
         old_meta, old_rows, old_annotations, new_meta, new_rows
     )
@@ -87,7 +128,7 @@ def _current_source(earlier: str, plan: str, later: str) -> tuple[dict, dict, li
         old_meta, old_rows, old_annotations, new_meta, new_rows,
         carry_stage=True,
     )
-    return expected, output, new_rows, new_meta, old_annotations
+    return expected, output, new_rows, new_meta, before_binding
 
 
 def _reconcile(document: dict, expected: dict, output: dict,
@@ -152,18 +193,18 @@ def main(argv: list[str] | None = None) -> int:
             ext = (".lun" if args.action == "apply" else
                    ".json" if args.action == "open" else DECISION_EXTENSION)
             destination = _output_path(args.output, ext)
-        expected, template, new_rows, new_meta, _ = _current_source(
+        expected, template, new_rows, new_meta, source_binding = _current_source(
             args.earlier_source, args.earlier_plan, args.later_source
         )
 
         if args.action == "seal":
             document = _read_private_choices(args.choices)
             _reconcile(document, expected, template, new_meta, new_rows)
-            plaintext = _canonical_bytes(document)
+            plaintext = source_binding + _canonical_bytes(document)
             new_secret = _passphrase("New encrypted HUMAN decisions passphrase", confirm=True)
             package = _seal(
                 plaintext, new_secret,
-                magic=MAGIC_DECISIONS, max_plaintext=MAX_CHOICES,
+                magic=MAGIC_DECISIONS, max_plaintext=MAX_BOUND_DECISIONS,
             )
             del new_secret
             _atomic_private_publish(destination, package)
@@ -173,7 +214,7 @@ def main(argv: list[str] | None = None) -> int:
             return 0
 
         secret = _passphrase("Encrypted original HUMAN decisions passphrase")
-        document, original = _read_decisions(args.encrypted_choices, secret)
+        document, original = _read_decisions(args.encrypted_choices, secret, source_binding)
         del secret
         prepared_plan, summary = _reconcile(
             document, expected, template, new_meta, new_rows
@@ -198,7 +239,7 @@ def main(argv: list[str] | None = None) -> int:
         elif args.action == "rotate":
             fresh = _passphrase("Rotated HUMAN decision passphrase", confirm=True)
             refreshed = _seal(
-                original, fresh, magic=MAGIC_DECISIONS, max_plaintext=MAX_CHOICES
+                original, fresh, magic=MAGIC_DECISIONS, max_plaintext=MAX_BOUND_DECISIONS
             )
             del fresh
             _atomic_private_publish(destination, refreshed)
@@ -207,7 +248,7 @@ def main(argv: list[str] | None = None) -> int:
         else:
             # Private original IDs/titles and self-declared source identities will
             # become plaintext ONLY after a distinct explicit recipient approval.
-            _atomic_private_publish(destination, original)
+            _atomic_private_publish(destination, original[BINDING_SIZE:])
             print("Created NEW UNENCRYPTED PRIVATE source-bound HUMAN choices JSON.")
             print("Manually verify storage and recipient; no source or plan was changed.")
 
