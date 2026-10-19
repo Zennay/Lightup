@@ -19,6 +19,7 @@ import recipient_studio
 import recipient_journal
 import recipient_journal_receive
 import recipient_studio_receive
+import recipient_journal_history
 
 
 def parser() -> argparse.ArgumentParser:
@@ -65,6 +66,15 @@ def parser() -> argparse.ArgumentParser:
     p = cmds.add_parser("human-reopen",
                         help="Reopen previously published PRIVATE HUMAN handoff without source")
     p.add_argument("--folder", type=Path, required=True)
+    p = cmds.add_parser("human-diff",
+                        help="Compare two original-receipt-bound PRIVATE HUMAN journal revisions")
+    p.add_argument("--before", type=Path, required=True)
+    p.add_argument("--after", type=Path, required=True)
+    p.add_argument("--output-dir", type=Path, required=True)
+
+    p = cmds.add_parser("human-reopen-diff",
+                        help="Reopen locally published HUMAN-only changes without originals")
+    p.add_argument("--folder", type=Path, required=True)
     return top
 
 
@@ -110,6 +120,18 @@ def execute(args: argparse.Namespace) -> None:
         result = recipient_journal_receive.inspect(args.folder)
         print("PRIVATE human review locally reproduced; " +
               str(result["human_reason_groups"]) + " local aggregate reason groups.")
+    elif args.action == "human-diff":
+        result = recipient_journal_history.publish(args.before, args.after,
+                                                   args.output_dir)
+        print("PRIVATE HUMAN local follow-up changes published: " +
+              str(result["local_changed_stage"]) + " stage, " +
+              str(result["local_changed_route"]) + " route, " +
+              str(result["private_note_changes"]) +
+              " PRIVATE note-change flags (no notes copied).")
+    elif args.action == "human-reopen-diff":
+        result = recipient_journal_history.inspect(args.folder)
+        print("PRIVATE local HUMAN change receipt re-opened; " +
+              str(result["changed_stage"]) + " locally changed stages.")
     else:
         raise trend.review.Hold("Unrecognized HUMAN-only private action")
     print("REVIEW_ONLY: unsigned owner-selected counts, NOT verified source identity, "
