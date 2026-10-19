@@ -64,7 +64,7 @@ The companion stays separate and **DRAFT/HOLD**, stacked on original #1661; it d
 
 ## Multi-moment PRIVATE recipient workload studio (2–12 handoffs)
 
-The new `timeline.py` accepts **2–12 completely received original source-free cockpit folders**. Each complete input is independently admitted via the **existing native** `read_cockpit.inspect` (owner/private file modes, exact original manifest, original native schema and HTML reconstruction). Exact duplicate incoming complete packets are rejected rather than pretending another revision. Original packet bytes are re-admitted before the new output is published.
+The new `recipient_workload_series.py` accepts **2–12 completely received original source-free cockpit folders**. Each complete input is independently admitted via the **existing native** `read_cockpit.inspect` (owner/private file modes, exact original manifest, original native schema and HTML reconstruction). Exact duplicate incoming complete packets are rejected rather than pretending another revision. Original packet bytes are re-admitted before the new output is published.
 
 The generated entirely OFFLINE private `index.html` is a navigable scriptless HTML dashboard with a native accessible pending-workload progress view for every operator-selected packet, and adjacent count-only deltas. It includes a current-count HUMAN reason brief, not source data. The newly published PRIVATE directory contains canonical `series.json`, `series.csv`, original-owned `human-followup.md` discussion prompts and its own unsigned SHA-256 manifest. Neither original client/finding IDs, source hashes, evidence, free-text case notes nor confidential original file paths are included. Owner-only 0700/0600 permissions, exclusive no-overwrite atomic directory publication and zero network activity continue to apply.
 
@@ -78,7 +78,7 @@ python3 remediation-recipient-trend/receiver_desk.py series \
   --output-dir "$HOME/lightup-private/recipient-series-001"
 ```
 
-The standalone `timeline.py` CLI accepts identical `--cockpit` and `--output-dir` parameters. On a receiving machine that no longer has these original source-free packets, **independently re-open the entire private report**:
+The standalone `recipient_workload_series.py` CLI accepts identical `--cockpit` and `--output-dir` parameters. On a receiving machine that no longer has these original source-free packets, **independently re-open the entire private report**:
 
 ```sh
 python3 remediation-recipient-trend/receiver_desk.py reopen-series \
