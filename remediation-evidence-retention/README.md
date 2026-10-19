@@ -164,7 +164,7 @@ The later workroom must be legitimately provided by an existing independent orig
 
 ## Unified PRIVATE operator workbench — one original-system HUMAN workflow
 
-The new [`workbench.py`](workbench.py) brings the separate original-source HUMANS together in **one interactive local terminal menu**, without copying or modifying original source owners. It can: inspect current original material source; stage a first owner-private encrypted HUMAN review plan; renew an existing plan with separate legal-hold acknowledgment; publish a scriptless 0600 private Casework/retention desk; preview or stage original-native due `followup_question` drafts; publish encrypted plan revision histories; review separately supplied later original-native HUMAN request statuses; and securely switch between existing source-bound encrypted review plans.
+The new [`workbench.py`](workbench.py) brings the separate original-source HUMANS together in **one interactive local terminal menu**, without copying or modifying original source owners. It can: inspect current original material source; stage a first owner-private encrypted HUMAN review plan; renew an existing plan with separate legal-hold acknowledgment; publish a scriptless 0600 private Casework/retention desk; preview or stage original-native due `followup_question` drafts; publish encrypted plan revision histories; review separately supplied later original-native HUMAN request statuses; and securely switch between existing source-bound encrypted review plans. It also publishes count-only anonymous private iCalendar reminders.
 
 Each action performs a **fresh** original current-account/client/engagement login and decrypts the CURRENT original encrypted HUMAN source and all actual local owner-private indexed evidence bytes. An earlier successful menu action is **not** cached as consent or execution authority. Outputs are exclusively **NEW 0600 files beneath the existing real 0700 owner-private output folder**, with non-identifying random filenames and no plaintext intermediate drafts. The original current-scope validation, native encrypted vault, selected per-file SHA256 and original request admission are reused directly, not reimplemented by a new owner.
 
@@ -181,6 +181,24 @@ python3 remediation-evidence-retention/workbench.py \
 For an existing plan, add `--plan /private/retention-review-v2.ltv`. Without `--plan` the human may choose the first-stage flow in the menu. Each sensitive action prompts through a real private terminal for the original/passphrase(s) as needed. At each action boundary the original read/source and actual private file fingerprints are checked again. The menu requires a separate HUMAN confirmation for changing an existing `legal_hold` review marker, for staging original-native HUMAN draft requests, and for exporting private Casework notes. One draft Request Desk handoff per interactive session: another attempt is held until the human independently processes the previous original-native draft; this does not claim original Apply. Selecting a different plan also performs a fresh full original-source and actual-material admission.
 
 **Important:** The menu cannot issue valid execution grants, sign reviewer identities, prove native Apply, change original Casework findings, release actual legal holds, authorize deletion, perform scans/retests, or deploy. Neither the original source's read permission nor private passphrases substitute for independently authenticated current client/operator action-time consent and explicit HUMAN GO. All release gates apply to this new workflow too.
+
+
+## Anonymous PRIVATE human review calendar (.ics)
+
+The [`human_calendar.py`](human_calendar.py) companion exports owner-private **0600 iCalendar** reminders from the same original actual file evidence retention plan, with fresh original account/client/engagement read, current matching original encrypted HUMAN source and **all actual received 0600 file bytes revalidated** before creating a single output artifact. Reviews on the same date are grouped into one all-day **TENTATIVE** event with the number of local items only. Original finding IDs, customer identifiers, client references, evidence hashes, SHA-256, filenames, private notes, paths and passwords are **never included** in the calendar. Stable local event identities support deterministic calendar imports for an unchanged original source/date; the file remains private and should not be uploaded to external calendar providers without a separate privacy decision. There is no connected calendar synchronization, automatic scheduling, consent, scanner activity or actual deletion.
+
+```sh
+python3 remediation-evidence-retention/human_calendar.py \
+  --db /private/lightup.db --email operator@example.invalid \
+  --client-id <original-client-id> --engagement-id <original-engagement-id> \
+  --human /private/existing-human.ltv \
+  --directory /private/received-material \
+  --plan /private/retention-review-v2.ltv \
+  --output /private/PRIVATE-human-review-reminders.ics \
+  --ack-private-material
+```
+
+The unified operator workbench exposes the same current-source read and calendar generator through its **menu item 9**, producing a new randomized owner-private 0600 filename. A reminder is only a HUMAN cue to review separately approved retention policies and any real legal-hold obligations; it never certifies expiry, permission to remove a file, or authorized remediation.
 
 ## Ownership and acceptance posture
 
