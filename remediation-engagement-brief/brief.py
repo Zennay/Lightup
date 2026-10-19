@@ -15,6 +15,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "remediation-secure-export"))
 from desk import build_desk
 from history import review as history_review, markdown as history_markdown, anonymous_csv
+from history_desk import build_history_desk
 from secure_export import (AccountLockedError, COLUMNS, FALSE, SEVERITIES, STATES,
                            _authorized_summary, _literal, _strict_summary,
                            _unique_pairs, _vault)
@@ -113,7 +114,7 @@ def escape(value):
     if type(value) is not str:
         raise ValueError("Bad original text")
     value = value.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
-    for char in ("\\", "*", "_", "{", "}", "[", "]", "(", ")",
+    for char in ("\\","`", "*", "_", "{", "}", "[", "]", "(", ")",
                  "#", "+", "-", ".", "!", "|", "~"):
         value = value.replace(char, "\\" + char)
     return value.replace("\n", " ").replace("\r", " ")
@@ -256,6 +257,9 @@ def main(argv=None):
     history.add_argument("--sealed-markdown", type=Path, help="Direct encrypted original history report .ltv")
     history.add_argument("--ack-private-markdown", action="store_true")
     history.add_argument("--aggregate-csv", type=Path, help="NEW 0600 identity-free numeric source churn .csv")
+    history.add_argument("--private-html", type=Path, help="NEW private scriptless original-source history explorer .html")
+    history.add_argument("--ack-private-html", action="store_true",
+                         help="Explicitly acknowledge confidential local HTML output")
     capture.add_argument("--output", required=True, type=Path)
     for action in (inspect, review, open_now):
         action.add_argument("--input", required=True, type=Path)
@@ -277,7 +281,7 @@ def main(argv=None):
             if len(set(sources))!=len(sources) or any(v.suffix.lower()!=".ltv" for v in sources):
                 raise ValueError("Historical encrypted sources must be unique .ltv paths")
             destinations=[v.expanduser().absolute() for v in
-                          (args.output,args.sealed_markdown,args.aggregate_csv) if v is not None]
+                          (args.output,args.sealed_markdown,args.aggregate_csv,args.private_html) if v is not None]
             if len(set(destinations))!=len(destinations) or set(destinations)&set(sources):
                 raise ValueError("Historical source and HUMAN output paths must be distinct")
             if args.output is not None and args.sealed_markdown is not None:
@@ -305,6 +309,12 @@ def main(argv=None):
                 args.capture_current=None
                 save_markdown(args, history_markdown(result))
                 print("PRIVATE HUMAN source continuity handoff created")
+            if args.private_html is not None:
+                if not args.ack_private_html or args.private_html.suffix.lower()!=".html":
+                    raise ValueError("Explicit acknowledgement for new confidential offline .html required")
+                vault._exclusive_output(args.private_html.expanduser().absolute(),
+                                        build_history_desk(result))
+                print("Scriptless PRIVATE original-source lineage explorer created")
             if args.aggregate_csv is not None:
                 target=args.aggregate_csv.expanduser().absolute()
                 if target.suffix.lower()!=".csv":

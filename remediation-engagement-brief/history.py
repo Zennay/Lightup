@@ -48,7 +48,7 @@ def safe(value):
     if type(value) is not str:
         raise ValueError("Malformed source value")
     value=value.replace("&","&amp;").replace("<","&lt;").replace(">","&gt;")
-    for char in ("\\","*","_","{","}","[","]","(",")","#","+","-",".","!","|","~"):
+    for char in ("\\","`","*","_","{","}","[","]","(",")","#","+","-",".","!","|","~"):
         value=value.replace(char,"\\"+char)
     return value.replace("\n"," ").replace("\r"," ")
 
