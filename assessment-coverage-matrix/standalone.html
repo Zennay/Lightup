@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="color-scheme" content="dark">
   <title>LightUp · Original Lab Declaration Matrix · PRIVATE</title>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-F3k2muHn2Alkji5bYOr8ys6RhVFcj53ZMyW304sR/Uw='; style-src 'sha256-ry0sQT/jcw1OVtQ4cSJBhdKFyTviYvdaEkmp+UvomZg='; connect-src 'none'; img-src 'none'; font-src 'none'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-IXjOuKgh2a7KMeHEofXTydPSGJdbX808J00VQj78pfQ='; style-src 'sha256-GiwZL7dH+i8o4R86w8+GP+F7raPk9eokuVig2JVruXQ='; connect-src 'none'; img-src 'none'; font-src 'none'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
   <style>:root{font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#ecf1f7;background:#0c111a;line-height:1.55;font-size:15px}
 *{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:radial-gradient(ellipse 70% 18% at 64% 0%,#1b3044 0,transparent 80%),#0c111a;min-height:100vh}
 [hidden]{display:none!important}button,input,select{font:inherit}button{cursor:pointer}button:focus-visible,input:focus-visible,select:focus-visible,a:focus-visible{outline:3px solid #89d7df;outline-offset:3px}
@@ -117,6 +117,21 @@ footer{border-top:1px solid #283442;padding:22px clamp(18px,4vw,52px);max-width:
 #historyTable td:last-child label{display:block;margin-top:9px;color:#f2d3b0;font-weight:650}
 #historyTable td:last-child select{display:block;width:100%;min-width:190px;max-width:310px;margin-top:5px;border-color:#8b6e45;background:#2d241f;color:#fff2dc;font-size:.8rem}
 #historyTable td:last-child label+label{border-top:1px solid #74533a;padding-top:9px}
+
+/* Full original-source + HUMAN workroom transfer remains wholly offline and opt-in. */
+.vault-panel{margin:23px 0;padding:25px;border-color:#496c75;background:linear-gradient(145deg,#13262c,#151c30)}
+.vault-panel h2{font-size:1.55rem;color:#d3fff4;letter-spacing:-.03em;margin:8px 0}
+.vault-panel>div:first-child>p{max-width:920px;font-size:.92rem}
+.vault-work{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin:19px 0}
+.vault-card{background:#0d1d28;border:1px solid #3b5763;padding:19px;border-radius:12px}
+.vault-card h3{color:#e7f5f9;font-size:1.06rem;margin:0 0 14px}
+.vault-card label{display:grid;gap:6px;color:#c6e1e7;font-size:.85rem;font-weight:700;margin:12px 0}
+.vault-card input{max-width:100%;overflow:hidden}
+.vault-card>button{width:100%;margin:5px 0 12px}
+.vault-card .hint{font-size:.8rem;line-height:1.5}
+.vault-panel>.hint{font-size:.84rem;color:#d0bfb3;margin-bottom:0}
+@media(max-width:770px){.vault-work{grid-template-columns:1fr}.vault-panel{padding:16px}}
+@media print{.vault-panel{display:none!important}}
 </style>
 </head>
 <body>
@@ -144,6 +159,36 @@ footer{border-top:1px solid #283442;padding:22px clamp(18px,4vw,52px);max-width:
           <button class="secondary" id="forget" type="button">Forget local data</button>
         </div>
       </div>
+    </section>
+    <section class="panel vault-panel" aria-labelledby="vault-title">
+      <div>
+        <span class="eyebrow">LOCAL ENCRYPTED ORIGINALS + HUMAN CONTINUITY</span>
+        <h2 id="vault-title">Keep the whole offline workroom together.</h2>
+        <p>Unlike the HUMAN-only plan, a <strong>complete PRIVATE encrypted workspace includes your original lab report bytes</strong> (which may contain sensitive targets and evidence) and the exact associated HUMAN planning choices. Nothing is sent to any server. Encryption is local AES-256-GCM with a fresh salt and nonce; no account or recovery service exists.</p>
+        <p id="vaultAvailable" class="hint" aria-live="polite">Only admitted originals can be included in a complete encrypted workroom.</p>
+      </div>
+      <div class="vault-work">
+        <div class="vault-card">
+          <h3>Encrypt current originals + HUMAN decisions</h3>
+          <label for="vaultSavePass">PRIVATE passphrase (12–256 characters)
+            <input id="vaultSavePass" type="password" autocomplete="new-password" placeholder="Never sent or stored">
+          </label>
+          <button id="vaultSave" type="button" class="primary" disabled>Download complete ENCRYPTED workroom</button>
+          <p class="hint">Export accepts a total of at most 24 MiB original source bytes. Use the normal separate-source workflow for larger collections. Only someone who can unlock the file can read its PRIVATE original contents.</p>
+        </div>
+        <div class="vault-card">
+          <h3>Open complete PRIVATE encrypted workroom</h3>
+          <label for="vaultFile">Choose encrypted workspace file
+            <input id="vaultFile" type="file" accept=".json,application/json">
+          </label>
+          <label for="vaultOpenPass">PRIVATE decryption passphrase
+            <input id="vaultOpenPass" type="password" autocomplete="off" placeholder="Local passphrase">
+          </label>
+          <button id="vaultOpen" type="button" class="secondary" disabled>Open complete ENCRYPTED workroom</button>
+          <p class="hint">All ORIGINAL lab files and source-bound HUMAN decisions are admitted before replacing any in-memory work. A wrong password, edited source or inconsistent plan keeps the current workroom unchanged.</p>
+        </div>
+      </div>
+      <p class="hint"><strong>IMPORTANT:</strong> Encryption protects local file confidentiality, not source authenticity, reviewer identity, consent, true vulnerability status, action-time authorization or completed remediation. There has been no independent cryptographic audit; secure your device, passphrase and downloaded file.</p>
     </section>
     <p id="message" role="status" aria-live="polite" data-error="false">Nothing loaded. This app has no network calls or scan operations.</p>
     <aside id="intro" class="note" aria-label="Privacy and interpretation" >
@@ -326,6 +371,8 @@ footer{border-top:1px solid #283442;padding:22px clamp(18px,4vw,52px);max-width:
 function createPrivatePlanCrypto() {
   const MAGIC="lightup.private_human_matrix_aesgcm";
   const MAX_TEXT=3*1024*1024;
+  const WORKSPACE_MAGIC="lightup.private_lab_complete_workspace_aesgcm";
+  const MAX_WORKSPACE_TEXT=48*1024*1024;
   const ITERATIONS=310000;
   const FIELDS=["kind","version","kdf","iterations","cipher",
     "salt_b64","iv_b64","payload_b64"];
@@ -362,17 +409,17 @@ function createPrivatePlanCrypto() {
     return crypto.subtle.deriveKey({name:"PBKDF2",salt,iterations:ITERATIONS,hash:"SHA-256"},
       material,{name:"AES-GCM",length:256},false,["encrypt","decrypt"]);
   }
-  async function encrypt(plaintext,password) {
+  async function encryptBounded(plaintext,password,kind,maxBytes) {
     if(!supported())throw Error("Browser WebCrypto is unavailable for PRIVATE encryption");
     if(typeof plaintext!=="string")throw Error("Only local HUMAN JSON text may be encrypted");
     const bytes=new TextEncoder().encode(plaintext);
-    if(bytes.length===0||bytes.length>MAX_TEXT)throw Error("PRIVATE plan exceeds encryption size bound");
+    if(bytes.length===0||bytes.length>maxBytes)throw Error("PRIVATE content exceeds encryption size bound");
     const salt=crypto.getRandomValues(new Uint8Array(16));
     const iv=crypto.getRandomValues(new Uint8Array(12));
     const derived=await key(password,salt);
     const ciphertext=new Uint8Array(await crypto.subtle.encrypt({name:"AES-GCM",iv},
       derived,bytes));
-    return {kind:MAGIC,version:1,kdf:"PBKDF2-SHA256",iterations:ITERATIONS,
+    return {kind,version:1,kdf:"PBKDF2-SHA256",iterations:ITERATIONS,
       cipher:"AES-256-GCM",salt_b64:toBase64(salt),
       iv_b64:toBase64(iv),payload_b64:toBase64(ciphertext)};
   }
@@ -380,27 +427,36 @@ function createPrivatePlanCrypto() {
     return source!==null&&typeof source==="object"&&!Array.isArray(source)&&
       source.kind===MAGIC;
   }
-  async function decrypt(envelope,password) {
+  async function decryptBounded(envelope,password,kind,maxBytes) {
     if(!supported())throw Error("Browser WebCrypto unavailable for PRIVATE decryption");
     assert(envelope!==null&&typeof envelope==="object"&&!Array.isArray(envelope)&&
       Object.keys(envelope).length===FIELDS.length&&FIELDS.every(k=>Object.hasOwn(envelope,k)));
-    assert(envelope.kind===MAGIC&&envelope.version===1&&
+    assert(envelope.kind===kind&&envelope.version===1&&
       envelope.kdf==="PBKDF2-SHA256"&&envelope.cipher==="AES-256-GCM"&&
       envelope.iterations===ITERATIONS);
     const salt=fromBase64(envelope.salt_b64,16),iv=fromBase64(envelope.iv_b64,12);
     assert(salt.length===16&&iv.length===12);
-    const cipher=fromBase64(envelope.payload_b64,MAX_TEXT+16);
+    const cipher=fromBase64(envelope.payload_b64,maxBytes+16);
     assert(cipher.length>=17);
     try {
       const derived=await key(password,salt);
       const plain=await crypto.subtle.decrypt({name:"AES-GCM",iv},derived,cipher);
-      assert(plain.byteLength>0&&plain.byteLength<=MAX_TEXT);
+      assert(plain.byteLength>0&&plain.byteLength<=maxBytes);
       return new TextDecoder("utf-8",{fatal:true}).decode(plain);
     } catch {
       throw Error("Cannot open PRIVATE encrypted plan: wrong passphrase, changed bytes or incompatible envelope");
     }
   }
-  return Object.freeze({encrypt,decrypt,isEncrypted,supported});
+  const encrypt=(plain,password)=>encryptBounded(plain,password,MAGIC,MAX_TEXT);
+  const decrypt=(envelope,password)=>decryptBounded(envelope,password,MAGIC,MAX_TEXT);
+  const encryptWorkspace=(plain,password)=>
+    encryptBounded(plain,password,WORKSPACE_MAGIC,MAX_WORKSPACE_TEXT);
+  const decryptWorkspace=(envelope,password)=>
+    decryptBounded(envelope,password,WORKSPACE_MAGIC,MAX_WORKSPACE_TEXT);
+  const isWorkspace=source=>source!==null&&typeof source==="object"&&
+    !Array.isArray(source)&&source.kind===WORKSPACE_MAGIC;
+  return Object.freeze({encrypt,decrypt,isEncrypted,supported,
+    encryptWorkspace,decryptWorkspace,isWorkspace});
 }
 
 "use strict";
@@ -536,21 +592,21 @@ function createHumanBoard(api) {
       interpretation:"Source hashes bind local bytes only. Unsigned PRIVATE human plans are not authenticated client/operator identity, authorization, verified findings, or successful remediation."
     };
   }
-  function admitPrivatePlan(source) {
+  function admitPrivatePlan(source, expectedRows=getRows(), expectedDigests=getDigests()) {
     fail(shape(source,FILE_KEYS),"Incompatible PRIVATE HUMAN plan envelope");
     fail(source.kind==="lightup.private_original_lab_human_matrix_plan"&&
       source.version===1&&source.disposition==="REVIEW_ONLY_DRAFT_HOLD");
     for(const key of Object.keys(FLAGS))fail(source[key]===false);
     fail(Array.isArray(source.source_sha256)&&
-      source.source_sha256.length===getDigests().length&&
+      source.source_sha256.length===expectedDigests.length&&
       source.source_sha256.every(strictDigest));
-    fail(exactSet(source.source_sha256,getDigests()),
+    fail(exactSet(source.source_sha256,expectedDigests),
       "Different or reordered original source bytes; saved plan cannot be applied");
     fail(int(source.ordered_row_count,16384)&&
-      source.ordered_row_count===getRows().length);
+      source.ordered_row_count===expectedRows.length);
     fail(Array.isArray(source.row_plans)&&source.row_plans.length<=source.ordered_row_count);
     fail(text(source.interpretation,1024));
-    const next=getRows().map(fresh);
+    const next=expectedRows.map(fresh);
     let previous=0;
     for(const row of source.row_plans) {
       fail(shape(row,PLAN_KEYS)&&int(row.ordinal,source.ordered_row_count)&&row.ordinal>previous);
@@ -992,8 +1048,138 @@ function createHumanBoard(api) {
   }
   wire();clearAll();
   return {initialize,clearAll,render,
+    exportVaultPlan:()=>privatePlan(),
+    validateVaultPlan:(candidate,rows,digests)=>admitPrivatePlan(candidate,rows,digests),
+    commitVaultPlan:(prepared)=>{
+      fail(Array.isArray(prepared)&&prepared.length===getRows().length,
+        "Prepared PRIVATE workspace notes not bound to active local source rows");
+      plans=prepared.map(note=>({...note}));changed=false;lastBulk=null;
+      historyResolutions.clear();clearHistory();page=0;render();
+    },
     hasEdits:()=>changed&&plans.some(p=>!isDefault(p)),
     stageTotals:()=>plans.length?{...counts().stage}:null};
+}
+
+"use strict";
+/* Complete PRIVATE HUMAN workroom vault: original bytes + HUMAN notes, encrypted offline.
+ * No assessment execution, no grant, no network, no browser persistence. */
+function createPrivateWorkspaceVault(api) {
+  const {$,fail,shape,int,parseStrict,message,download,getRawFiles,
+    getPrivatePlan,prepareFullWorkspace,commitFullWorkspace} = api;
+  const cryptoBox=createPrivatePlanCrypto();
+  const MAX_SOURCE_TOTAL=24*1024*1024; // bounded, intentionally smaller than the 8x8MiB import limit
+  const MAX_ENCRYPTED_FILE=65*1024*1024;
+  const MAX_PLAN_CHARS=3*1024*1024;
+  const KIND="lightup.private_original_lab_complete_workspace_payload";
+  const FIELDS=["kind","version","authorized","consent_verified",
+    "dispatch_allowed","release_allowed","original_source_bytes_b64","human_plan",
+    "interpretation"];
+  const clearPasses=()=>{
+    $("vaultSavePass").value="";$("vaultOpenPass").value="";
+  };
+  const asciiBase64=bytes=>{
+    let raw="";
+    for(let offset=0;offset<bytes.length;offset+=16384)
+      raw+=String.fromCharCode(...bytes.subarray(offset,offset+16384));
+    return btoa(raw);
+  };
+  const decodeBase64=value=>{
+    fail(typeof value==="string"&&value.length>=4&&
+      value.length<=Math.ceil(8*1024*1024/3)*4+4&&
+      /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(value),
+      "Invalid original source encoding");
+    const raw=atob(value);
+    fail(raw.length>=1&&raw.length<=8*1024*1024,"Original file exceeds source bound");
+    const bytes=new Uint8Array(raw.length);
+    for(let i=0;i<raw.length;i++)bytes[i]=raw.charCodeAt(i);
+    fail(asciiBase64(bytes)===value,"Noncanonical PRIVATE source-byte envelope");
+    return bytes;
+  };
+  function available() {
+    const originals=getRawFiles();
+    return cryptoBox.supported()&&originals.length>=2&&
+      originals.length<=8&&originals.every(x=>x instanceof Uint8Array)&&
+      originals.every(x=>x.length>0&&x.length<=8*1024*1024);
+  }
+  function update() {
+    const sources=getRawFiles(),total=sources.reduce((sum,b)=>sum+b.length,0);
+    const allowed=available()&&total<=MAX_SOURCE_TOTAL;
+    $("vaultSave").disabled=!allowed;
+    $("vaultOpen").disabled=!cryptoBox.supported();
+    $("vaultAvailable").textContent=!cryptoBox.supported()
+      ?"Browser WebCrypto is unavailable. Encrypted PRIVATE workspace import/export disabled."
+      :!sources.length
+      ?"No ORIGINAL PRIVATE source files opened. You can still open an existing encrypted workspace."
+      :total>MAX_SOURCE_TOTAL
+      ?"Current original batch exceeds the 24 MiB total encrypted workspace export limit. The ordinary source+plan workflow still works. Importing a smaller batch is optional."
+      :"Private workspace available: "+sources.length+" original source slots, "+
+        total+" original bytes (encrypted, not published as filenames or target labels).";
+  }
+  async function save() {
+    if(!available()){message("Open and admit original PRIVATE source files first.",true);return;}
+    $("vaultSave").disabled=true;
+    try {
+      const sources=getRawFiles(),total=sources.reduce((n,b)=>n+b.length,0);
+      fail(total<=MAX_SOURCE_TOTAL,"Combined original bytes exceed the 24 MiB workspace vault export bound");
+      const plan=getPrivatePlan();
+      const content={kind:KIND,version:1,authorized:false,consent_verified:false,
+        dispatch_allowed:false,release_allowed:false,
+        original_source_bytes_b64:sources.map(asciiBase64),human_plan:plan,
+        interpretation:"PRIVATE offline original source bytes plus local HUMAN categories. Signed authorization, client identity, actual scan and finding authenticity remain unproven."};
+      const raw=JSON.stringify(content);
+      fail(raw.length<=48*1024*1024&&JSON.stringify(plan).length<=MAX_PLAN_CHARS,
+        "PRIVATE original+HUMAN workspace exceeds bounded encryption input");
+      if(!confirm("Encrypt and download ALL original PRIVATE lab source bytes together with HUMAN choices? This will store highly sensitive ORIGINAL targets and evidence inside a password-encrypted local file. No grant/assessment authority or independent security audit is implied. Protect your passphrase and device."))return;
+      const encrypted=await cryptoBox.encryptWorkspace(raw,$("vaultSavePass").value);
+      const wrapped=JSON.stringify(encrypted)+"\n";
+      fail(new Blob([wrapped]).size<=MAX_ENCRYPTED_FILE,"Encrypted PRIVATE workspace exceeds safe download limit");
+      download("lightup-PRIVATE-original-workroom-ENCRYPTED.json",wrapped,"application/json");
+      message("Complete PRIVATE original+HUMAN workspace encrypted and downloaded locally. Passphrase was not saved. Source ownership, vulnerability claims and assessment authorization remain unverified.");
+    } catch(error) {
+      message("Complete PRIVATE workspace encryption HOLD: "+error.message,true);
+    } finally {
+      clearPasses();update();
+    }
+  }
+  async function open() {
+    const file=$("vaultFile").files[0];
+    if(!file){message("Select one existing PRIVATE encrypted complete workspace first.",true);return;}
+    $("vaultOpen").disabled=true;
+    try {
+      fail(file.size>0&&file.size<=MAX_ENCRYPTED_FILE,"Encrypted PRIVATE workspace outside 65 MiB bound");
+      const raw=new TextDecoder("utf-8",{fatal:true}).decode(await file.arrayBuffer());
+      const outer=parseStrict(raw);
+      fail(cryptoBox.isWorkspace(outer),"Expected a complete encrypted PRIVATE lab workspace, not an ordinary HUMAN plan");
+      const plaintext=await cryptoBox.decryptWorkspace(outer,$("vaultOpenPass").value);
+      const payload=parseStrict(plaintext);
+      fail(shape(payload,FIELDS)&&payload.kind===KIND&&payload.version===1,
+        "Not a supported PRIVATE original+HUMAN workspace");
+      for(const key of ["authorized","consent_verified","dispatch_allowed","release_allowed"])
+        fail(payload[key]===false,"A complete workspace can never imply assessment authority");
+      fail(typeof payload.interpretation==="string"&&payload.interpretation.length<=1024,
+        "Invalid PRIVATE workroom interpretation");
+      const entries=payload.original_source_bytes_b64;
+      fail(Array.isArray(entries)&&entries.length>=2&&entries.length<=8,
+        "Complete workspace must hold 2–8 original PRIVATE sources");
+      const decoded=entries.map(decodeBase64);
+      fail(decoded.reduce((sum,b)=>sum+b.length,0)<=MAX_SOURCE_TOTAL,
+        "Complete PRIVATE sources exceed the 24 MiB total admission bound");
+      // Prepare all originals and the source-bound HUMAN plan before any replacement.
+      const prepared=await prepareFullWorkspace(decoded,payload.human_plan);
+      if(!confirm("Replace current original PRIVATE source selection AND current HUMAN workplan with this completely admitted encrypted workspace? Existing unsaved choices will be discarded. This does not authorize work, attest clients or contact targets."))return;
+      commitFullWorkspace(prepared);
+      message("Original PRIVATE source bytes and matching HUMAN choices reopened from local encrypted workroom. This is unverified operator-provided input; no scanner/grant/network was used.");
+    } catch(error) {
+      message("Complete PRIVATE workspace HOLD: "+error.message+
+        ". The active original source selection and HUMAN plan have not been replaced.",true);
+    } finally {
+      $("vaultFile").value="";clearPasses();update();
+    }
+  }
+  $("vaultSave").addEventListener("click",save);
+  $("vaultOpen").addEventListener("click",open);
+  update();
+  return {update};
 }
 
 "use strict";
@@ -1012,6 +1198,7 @@ function createHumanBoard(api) {
     dispatch_allowed:false,release_allowed:false});
   const MAX_SOURCE_BYTES = 8 * 1024 * 1024;
   let sources = [], rows = [], visible = [], selected = null, sourceDigests = [];
+  let rawOriginalBytes = [];
   let matrixPage = 0;
   const fail = (ok, message = "Untrusted or incompatible original lab result") => {
     if (!ok) throw new Error(message);
@@ -1410,60 +1597,95 @@ function createHumanBoard(api) {
       }
     }
   });
+  async function prepareOriginalBytes(rawFiles) {
+    fail(Array.isArray(rawFiles)&&rawFiles.length>=2&&rawFiles.length<=8,
+      "Expected 2–8 existing original PRIVATE isolated lab results");
+    const next=[],nextDigests=[],bytes=[];
+    for(const data of rawFiles) {
+      fail(data instanceof Uint8Array&&data.byteLength>0&&
+        data.byteLength<=MAX_SOURCE_BYTES,"Original PRIVATE source outside the 8 MiB bound");
+      bytes.push(data);
+      let fingerprint=null;
+      try {
+        if(globalThis.crypto?.subtle){
+          const digest=await crypto.subtle.digest("SHA-256",data);
+          fingerprint=[...new Uint8Array(digest)].map(b=>b.toString(16).padStart(2,"0")).join("");
+        }
+      } catch {fingerprint=null;}
+      nextDigests.push(fingerprint);
+      const decoded=new TextDecoder("utf-8",{fatal:true}).decode(data);
+      next.push(admit(parseStrict(decoded)));
+    }
+    const baseline=next[0],sameTargets=new Set(baseline.targets);
+    fail(new Set(next.map(s=>s.run_id)).size===next.length,
+      "Repeated original run IDs; mixed PRIVATE batch held");
+    for(const item of next.slice(1)) {
+      fail(item.scenario_id===baseline.scenario_id,
+        "Different source-declared scenario; cannot compare original source claims");
+      fail(item.targets.length===baseline.targets.length&&
+        item.targets.every(t=>sameTargets.has(t)),
+        "Different exact literal endpoint sets; cannot compare originals");
+    }
+    return {next,nextDigests,bytes,baseline,newRows:aggregate(next)};
+  }
+  function commitOriginalBatch(prepared,privateHumanNotes=null) {
+    // All potentially invalid external ORIGINAL and HUMAN bytes were admitted
+    // before this synchronous commit changes any visible application state.
+    sources=prepared.next;sourceDigests=prepared.nextDigests;
+    rawOriginalBytes=prepared.bytes;rows=prepared.newRows;
+    selected=null;matrixPage=0;clear($("details"));
+    clear($("endpoint"));
+    $("endpoint").append(new Option("All declared endpoints",0));
+    prepared.baseline.targets.forEach((_,i)=>
+      $("endpoint").append(new Option("Endpoint ordinal "+(i+1),i+1)));
+    $("endpoint").append(new Option("Unmatched source-declared target","unmatched"));
+    $("workspace").hidden=false;$("intro").hidden=true;
+    $("sourceCount").textContent=sources.length+" original PRIVATE source files";
+    $("sourceSummary").textContent=prepared.baseline.targets.length+
+      " identical literal declared endpoint slots · "+rows.length+
+      " literal capability/check groups · no verification of target, ownership or chronology";
+    renderSourceMetrics();renderEndpointCounts();renderAttention();refresh();
+    humanBoard.initialize();
+    if(privateHumanNotes!==null)humanBoard.commitVaultPlan(privateHumanNotes);
+    workspaceVault.update();
+  }
+  async function prepareFullWorkspace(rawFiles,plan) {
+    const prepared=await prepareOriginalBytes(rawFiles);
+    fail(obj(plan),"Encrypted PRIVATE workspace missing complete HUMAN workplan");
+    fail(prepared.nextDigests.every(v=>typeof v==="string"),
+      "Browser cannot bind ORIGINAL source bytes to HUMAN plan without WebCrypto");
+    const notes=humanBoard.validateVaultPlan(plan,prepared.newRows,prepared.nextDigests);
+    return {...prepared,notes};
+  }
+  const workspaceVault=createPrivateWorkspaceVault({
+    $,fail,shape,int,parseStrict,message,download,
+    getRawFiles:()=>rawOriginalBytes,
+    getPrivatePlan:()=>humanBoard.exportVaultPlan(),
+    prepareFullWorkspace,
+    commitFullWorkspace:prepared=>commitOriginalBatch(prepared,prepared.notes)
+  });
   async function importFiles() {
     const files=[...$("files").files];
     if(files.length<2||files.length>8){
       message("Select 2–8 existing original PRIVATE lab JSON files in your chosen display order.",true);return;
     }
-    $("load").disabled=true;message("Reading selected local originals. No network or scan.");
+    $("load").disabled=true;
+    message("Reading explicit local originals. Nothing is uploaded or scanned.");
     try {
-      const next=[],nextDigests=[];
-      for(const file of files) {
-        fail(file.size>0&&file.size<=MAX_SOURCE_BYTES,"Source file outside the 8 MiB bound");
-        const data=new Uint8Array(await file.arrayBuffer());
-        let fingerprint=null;
-        try {
-          if(globalThis.crypto?.subtle){
-            const bytes=await crypto.subtle.digest("SHA-256",data);
-            fingerprint=[...new Uint8Array(bytes)].map(byte=>byte.toString(16).padStart(2,"0")).join("");
-          }
-        } catch {fingerprint=null;}
-        nextDigests.push(fingerprint);
-        const decoded=new TextDecoder("utf-8",{fatal:true}).decode(data);
-        next.push(admit(parseStrict(decoded)));
+      const prepared=await prepareOriginalBytes(
+        await Promise.all(files.map(async file=>{
+          fail(file.size>0&&file.size<=MAX_SOURCE_BYTES,
+            "Original PRIVATE source file outside the 8 MiB bound");
+          return new Uint8Array(await file.arrayBuffer());
+        })));
+      if(sources.length&&!confirm("Replace current original PRIVATE results and all HUMAN planning choices?")) {
+        message("Original file replacement cancelled. Current private workroom kept.");return;
       }
-      const baseline=next[0],sameTargets=new Set(baseline.targets);
-      fail(new Set(next.map(s=>s.run_id)).size===next.length,
-        "Repeated original run IDs; mixed source set held");
-      for(const source of next.slice(1)) {
-        fail(source.scenario_id===baseline.scenario_id,
-          "Different source-declared scenario; cannot present one comparison matrix");
-        fail(source.targets.length===baseline.targets.length&&
-          source.targets.every(t=>sameTargets.has(t)),
-          "Different exact declared endpoint set; cannot present one comparison matrix");
-      }
-      // Never discard an existing HUMAN plan unless replacement is deliberate.
-      if(sources.length&&!confirm("Replace the current original source set and all unsaved HUMAN routing choices?")){
-        message("New source set not applied. Existing workroom retained.");return;
-      }
-      // Only publish after the WHOLE batch has passed strict source admission.
-      sources=next;sourceDigests=nextDigests;rows=aggregate(next);
-      selected=null;matrixPage=0;clear($("details"));
-      clear($("endpoint"));
-      $("endpoint").append(new Option("All declared endpoints",0));
-      baseline.targets.forEach((_,i)=>$("endpoint").append(new Option("Endpoint ordinal "+(i+1),i+1)));
-      $("endpoint").append(new Option("Unmatched source-declared target","unmatched"));
-      $("workspace").hidden=false;
-      $("intro").hidden=true;
-      $("sourceCount").textContent=sources.length+" original PRIVATE source files";
-      $("sourceSummary").textContent=baseline.targets.length+
-        " identical literal declared endpoint slots · "+rows.length+
-        " literal capability/check groups · no verification of target, ownership or chronology";
-      renderSourceMetrics();renderEndpointCounts();renderAttention();refresh();humanBoard.initialize();
-      message("Local input admitted structurally. Source statements remain unverified. No original data uploaded.");
+      commitOriginalBatch(prepared);
+      message("Original PRIVATE result batch structurally admitted. Source statements are unverified; no target contact or upload.");
     } catch(error) {
-      message("Entire selection held: "+error.message+
-        ". Previously opened selection, if any, was not replaced.",true);
+      message("Entire original source batch HOLD: "+error.message+
+        ". Existing PRIVATE workspace retained.",true);
     } finally {
       $("load").disabled=false;$("files").value="";
     }
@@ -1471,13 +1693,14 @@ function createHumanBoard(api) {
   $("load").addEventListener("click",importFiles);
   $("forget").addEventListener("click",()=>{
     if(sources.length&&!confirm("Forget ALL locally opened original PRIVATE result data?"))return;
-    sources=[];rows=[];visible=[];selected=null;sourceDigests=[];matrixPage=0;
+    sources=[];rows=[];visible=[];selected=null;sourceDigests=[];rawOriginalBytes=[];matrixPage=0;
     humanBoard.clearAll();
     clear($("details"));clear($("matrix"));clear($("attention"));clear($("sourceMetrics"));clear($("endpointCounts"));$("query").value="";
     $("matrixPages").textContent="No matrix loaded.";
     $("matrixPrev").disabled=true;$("matrixNext").disabled=true;
     $("workspace").hidden=true;$("intro").hidden=false;
-    $("files").value="";message("Private originals discarded from this application state.");
+    $("files").value="";workspaceVault.update();
+    message("Private originals and HUMAN plan discarded from this application state.");
   });
   ["query","severity","endpoint"].forEach(id=>$(id).addEventListener("input",()=>{
     matrixPage=0;refresh();
