@@ -25,7 +25,7 @@ from .private_export_human_revision_source import (
 from .private_export_human_revision_choices import (
     MAX_CHOICES, _apply_choices, _make_choices, _read_private_choices,
 )
-from .private_export_workdesk import MAX_PLAN
+from .private_export_workdesk import MAX_PLAN, _load_resume_bytes, _render
 
 MAGIC_DECISIONS = b"LIGHTUP-PRIVATE-HUMAN-CHOICES-V2\x00"
 DECISION_EXTENSION = ".lud"
@@ -130,6 +130,7 @@ def main(argv: list[str] | None = None) -> int:
         "seal": "encrypt a manually reviewed 0600 JSON choice sheet into NEW .lud",
         "inspect": "inspect bound ciphertext with anonymous HUMAN counts only",
         "apply": "create NEW exact-source encrypted original HUMAN .lun from .lud",
+        "workdesk": "preview approved HUMAN plan as private UNENCRYPTED offline HTML",
         "rotate": "re-encrypt the unchanged selected decisions into NEW .lud",
         "open": "explicitly decrypt approved .lud into NEW UNENCRYPTED 0600 JSON",
     }
@@ -152,6 +153,8 @@ def main(argv: list[str] | None = None) -> int:
             cmd.add_argument("--ack-human-decisions", action="store_true")
         if action == "open":
             cmd.add_argument("--ack-unencrypted-original-ids", action="store_true")
+        if action == "workdesk":
+            cmd.add_argument("--ack-plaintext-html", action="store_true")
     args = parser.parse_args(argv)
 
     try:
@@ -161,10 +164,13 @@ def main(argv: list[str] | None = None) -> int:
             raise ValueError("reviewer consent to HUMAN-only choices is missing")
         if args.action == "open" and not args.ack_unencrypted_original_ids:
             raise ValueError("explicit private plaintext output acknowledgment required")
+        if args.action == "workdesk" and not args.ack_plaintext_html:
+            raise ValueError("unencrypted full original HUMAN workdesk needs recipient acknowledgment")
         destination = None
         if args.action != "inspect":
             ext = (".lun" if args.action == "apply" else
-                   ".json" if args.action == "open" else DECISION_EXTENSION)
+                   ".json" if args.action == "open" else
+                   ".html" if args.action == "workdesk" else DECISION_EXTENSION)
             destination = _output_path(args.output, ext)
         expected, template, new_rows, new_meta, source_binding = _current_source(
             args.earlier_source, args.earlier_plan, args.later_source
@@ -211,6 +217,17 @@ def main(argv: list[str] | None = None) -> int:
             for name, count in summary.items():
                 print(name + ":", count)
             print("Unsigned plan ciphertext SHA256:", hashlib.sha256(encrypted_plan).hexdigest())
+        elif args.action == "workdesk":
+            # Reuse the unchanged original workdesk UI/HTML renderer. The
+            # resulting plaintext may expose all original finding IDs, title,
+            # remedies, HUMAN aliases and notes. Never publish implicitly.
+            annotations = _load_resume_bytes(prepared_plan, new_meta, new_rows)
+            html = _render(new_meta, new_rows, annotations)
+            _require_current_original_ciphertext(args, source_binding)
+            _atomic_private_publish(destination, html)
+            print("Created NEW UNENCRYPTED 0600 PRIVATE original-source HUMAN workdesk.")
+            print("Full original source details and HUMAN notes are PRIVATE; verify actual recipients.")
+            print("The encrypted decisions, earlier plan and finding sources were untouched.")
         elif args.action == "rotate":
             fresh = _passphrase("Rotated HUMAN decision passphrase", confirm=True)
             refreshed = _seal(
