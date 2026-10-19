@@ -20,7 +20,7 @@ Linux/Python 3.11+, no external packages or network required. Make an owner-priv
       --input /home/operator/private-lightup/counts-02.json \
       --output-dir /home/operator/private-lightup/portfolio-20261019
 
-The CLI validates **all inputs before writing**, creates an owner-private staging folder and publishes a new directory exclusively through Linux renameat2 no-replace. Outputs: index.html, summary.json, counts.csv, all 0600 within 0700 directory. Open index.html locally: scriptless, static, offline CSP-pinned dashboard with packet workload and per-stage HUMAN planning. No JS, fetch, scripts, remote assets or paths.
+The CLI validates **all inputs before writing**, creates an owner-private staging folder and publishes a new directory exclusively through Linux renameat2 no-replace. Outputs: index.html, summary.json, counts.csv and human-followup.txt, all 0600 within a 0700 directory. The standalone HUMAN follow-up brief prioritises pending source-owner questions, unassigned planning slots and dated reviews without revealing their identities. Open index.html locally: scriptless, static, offline CSP-pinned dashboard with packet workload and per-stage HUMAN planning. No JS, fetch, scripts, remote assets or private source paths. The browser also shows the HUMAN follow-up recommendations; it does not perform or authorize any action.
 
 Inboxes have no HUMAN planning stage data. Their stage cells are blank (“not provided”), not zero. Summations are **packet appearances**, never unique findings or clients: two files may describe exactly the same material, and local HUMAN “answered” never means a verified fix. A file can be syntactically admitted yet factually false or deceptive; there is NO cryptographic source truth asserted.
 
