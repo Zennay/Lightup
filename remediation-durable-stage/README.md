@@ -359,3 +359,48 @@ can claim a native draft was never published when CURRENT original HUMAN
 records already contain its exact original request identity; independent
 source-owner review is required. These are safeguards against false HUMAN
 work-completion labels, not verified legal or security audit conclusions.
+
+## Guided PRIVATE HUMAN worklist — choose one exact native source/cycle
+
+Interactive `human_console.py` menu item **14** now opens an actual guided
+engagement worklist. After original account/client/engagement authentication,
+current encrypted HUMAN and retention plan admission, and re-reading all
+actual PRIVATE evidence bytes, it displays priority-sorted registered source
+revisions and native HUMAN cycles. Select one numbered row and explicitly type
+`RUN LOCAL HUMAN <command>`; nothing is executed automatically.
+
+The action calls the EXISTING native source-admitted `journal.main` after
+releasing its initial private file lock. The action acquires a new lock,
+authenticates and checks every source/evidence byte again, and applies all
+existing native HUMAN password and confirmation prompts. Current-source
+review/recover/resolve pins `--expected-cycle`. Earlier-source carry-closed
+pins both `--source-ordinal` and `--expected-cycle`, so another cycle or
+source cannot silently be selected after the operator reviewed the queue.
+Nonlatest, contradictory or unsupported historical items remain HUMAN HOLD.
+This is a single trusted workstation convenience aid, NOT an ORIGINAL Apply,
+legal release, signed reviewer, verified finding, scan, grant or consent.
+
+## Original encrypted-input continuity through HUMAN confirmation
+
+Before locally committing new stage, recover, resolve, legacy enrollment or
+cross-source HUMAN closeout, the module now repeats ORIGINAL account/client/
+engagement admission, current HUMAN and encrypted retention-plan admission
+and actual evidence byte checks. The exact AES-encrypted HUMAN workroom and
+retention plan ciphertext are also fingerprint-pinned. If either changed
+during the HUMAN prompts, the local transition HOLDS.
+
+Interrupted encrypted pending drafts keep the exact SHA of the actual native
+ciphertext admitted BEFORE operator confirmation. A different file cannot be
+silently promoted after the confirmation. Historical encrypted original
+drafts also require identical actual ciphertext before enrollment or
+carry-forward. The local journal refuses empty, duplicated or impossible
+state/request/SHA identities. A native HUMAN record with the same original
+request identity but a different request kind cannot count as a closed
+original follow-up request. A pending draft with missing output but already
+observed in CURRENT native HUMAN records is flagged HOLD, not reported
+as never published.
+
+None of these local checks proves separately authenticated action-time
+client/operator consent, legal retention release, native Apply, signed
+identity, correct provenance, or a verified security outcome. Existing strict
+release gates remain fully unchanged; keep this product DRAFT/HOLD.
