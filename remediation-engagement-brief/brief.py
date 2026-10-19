@@ -179,15 +179,42 @@ def revision_brief(previous, current):
 
 
 def save_markdown(args, text):
-    if not args.ack_private_markdown or args.output is None:
-        raise ValueError("Private Markdown output requires explicit acknowledgement")
-    destination = args.output.expanduser().absolute()
-    if destination.suffix.lower() != ".md" or destination == args.input.expanduser().absolute():
-        raise ValueError("Use a new private .md destination")
+    """Emit owner-private literal .md or encrypted .ltv without plaintext disk."""
+    if bool(args.output) == bool(args.sealed_markdown) or not args.ack_private_markdown:
+        raise ValueError("Choose exactly one explicitly acknowledged PRIVATE handoff")
     raw = text.encode("utf-8", "strict")
     if not raw or len(raw) > 4 * 1024 * 1024:
-        raise ValueError("Private Markdown too large")
-    _vault()._exclusive_output(destination, raw)
+        raise ValueError("Invalid PRIVATE handoff size")
+    path = (args.output if args.output is not None else args.sealed_markdown).expanduser().absolute()
+    other = getattr(args, "capture_current", None)
+    if path == args.input.expanduser().absolute() or (
+        other is not None and path == other.expanduser().absolute()
+    ):
+        raise ValueError("Original source and new outputs must be distinct")
+    vault = _vault()
+    if args.sealed_markdown is not None:
+        if path.suffix.lower() != ".ltv":
+            raise ValueError("Encrypted HUMAN handoff requires .ltv")
+        password = vault._password("New PRIVATE human handoff passphrase: ", fresh=True)
+        vault._exclusive_output(path, vault._seal(vault._inner(raw, "text/markdown"), password))
+    else:
+        if path.suffix.lower() != ".md":
+            raise ValueError("PRIVATE plaintext human handoff requires .md")
+        vault._exclusive_output(path, raw)
+
+
+def capture_current_revision(args, source):
+    """Keep old encrypted history and independently encrypt the new original source."""
+    output = args.capture_current.expanduser().absolute()
+    if output.suffix.lower() != ".ltv" or output == args.input.expanduser().absolute():
+        raise ValueError("New .ltv revision must not replace original")
+    if any(v is not None and output == v.expanduser().absolute()
+           for v in (args.output, args.sealed_markdown)):
+        raise ValueError("New revision and HUMAN handoff paths must differ")
+    payload = create_packet(source, args.client_id, args.engagement_id)
+    vault = _vault()
+    password = vault._password("New PRIVATE revision passphrase: ", fresh=True)
+    vault._exclusive_output(output, vault._seal(vault._inner(payload, "application/json"), password))
 
 
 def main(argv=None):
@@ -204,8 +231,10 @@ def main(argv=None):
     for action in (inspect, review, open_now):
         action.add_argument("--input", required=True, type=Path)
     for action in (review, open_now):
-        action.add_argument("--output", type=Path)
+        action.add_argument("--output", type=Path, help="New owner-private 0600 HUMAN .md")
+        action.add_argument("--sealed-markdown", type=Path, help="Encrypted HUMAN .ltv, no plaintext file")
         action.add_argument("--ack-private-markdown", action="store_true")
+    review.add_argument("--capture-current", type=Path, help="Fresh authorized source into NEW encrypted revision .ltv")
     args = ap.parse_args(argv)
     try:
         vault = _vault()
@@ -243,15 +272,18 @@ def main(argv=None):
             if digest != packet["source_sha256"] or count != packet["source_count"]:
                 raise ValueError("Source drift: use review-current instead")
             save_markdown(args, brief(now))
-            print("Owner-private HUMAN action brief created from exact freshly authenticated source.")
+            print("PRIVATE HUMAN action handoff created from exact freshly authenticated source.")
             return 0
         added, absent, changed, _, _ = compare(old, now)
         print("Original-source changes: added", len(added), "absent", len(absent),
               "changed", len(changed), "unchanged", count-len(added)-len(changed))
         print("Exact original snapshot:", digest == packet["source_sha256"])
-        if args.output is not None:
+        if args.output is not None or args.sealed_markdown is not None:
             save_markdown(args, revision_brief(old, now))
-            print("Owner-private HUMAN revision report created. No fix is verified.")
+            print("PRIVATE HUMAN revision handoff created, not verified remediation.")
+        if args.capture_current is not None:
+            capture_current_revision(args, current_source)
+            print("New original-source revision encrypted independently; original history retained.")
         return 0
     except (AccountLockedError, PermissionError, ValueError, KeyError, OSError,
             UnicodeError, sqlite3.DatabaseError, EOFError, KeyboardInterrupt,
