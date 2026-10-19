@@ -52,8 +52,8 @@ function render(){
   ' source-HOLD excluded · '+beyond.length+' beyond 8-week window. Counts are not actual delivery capacity.';
  const groups=new Map();
  for(const r of rows){
-  const key=r.owner.trim()||'UNASSIGNED HUMAN OWNER';
-  if(!groups.has(key))groups.set(key,{name:key,rows:[],weeks:new Map()});
+  const alias=r.owner.trim(),key=alias?'owner:'+alias:'unassigned';
+  if(!groups.has(key))groups.set(key,{name:alias||'UNASSIGNED HUMAN OWNER',rows:[],weeks:new Map()});
   const group=groups.get(key);group.rows.push(r);
   if(r.due&&r.due>=today){const monday=week(r.due);group.weeks.set(monday,(group.weeks.get(monday)||0)+1);}
  }
