@@ -89,3 +89,17 @@ python -m lightup.private_export_history_calendar \
 ```
 
 The standalone foreground history console now includes aggregate calendar **menu 8** and explicit private calendar **menu 9**, separate from the concurrently owned original PR #1647 console. The calendar is NOT automatically encrypted or transmitted, and it cannot assert that a fix is due, done, safe, authorized or tested.
+
+## NEW: independently reconstruct the encrypted HUMAN timeline from exact source files
+
+The encrypted history custody envelope now writes **version 2** source-lineage metadata *inside encrypted ciphertext*: original canonical source CSV SHA-256, exact declared client and engagement, SHA-256 of the original encrypted `.lue` bytes, chronological encrypted `.lun` ciphertext SHA-256 values and the exact as-of UTC date. No client identifier or original source digest is written in the unencrypted file header. Older version-1 `.luh` history files can still be inspected, opened and rotated but have no exact independent rebuild chain: **a v1 source reconstruction is refused rather than claiming new certainty**.
+
+A real recipient possessing *separately obtained copies* of the exact original `.lue` plus all operator-ordered `.lun` snapshots can decrypt each source independently, admit its original tenant/engagement/CSV/schema/finding-ID declarations and recompute the exact HTML report. Differences in ciphertext bytes, source lineage, snapshot order, count, original finding fields, HUMAN follow-up changes or HTML SHA-256 fail closed without changing any file or original HUMAN state.
+
+```sh
+python -m lightup.private_export_history_vault verify /private/human-history-v2.luh \
+  /private/original-source.lue /private/human-v1.lun /private/human-v2.lun \
+  --ack-private-handling
+```
+
+This is the complete **recipient-side local product read/reconstruction**, not a test suite, deploy gate, domain database modification, cryptographic issuer signature, original owner authentication, client/operator consent or proof that work was done. The printed output is limited to counts and an explicit unverified HUMAN warning; no original customer data or notes are echoed. The standalone foreground console exposes the same product as option **10**.
