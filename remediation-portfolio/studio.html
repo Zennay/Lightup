@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-X4813M7q2cX8TGo+UPxsWyDODy3dqTfXobSLCnC2x6o='; style-src 'unsafe-inline'; connect-src 'none'; img-src 'none'; font-src 'none'; object-src 'none'; worker-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-dozpdem0O0/4sNb4bHTYZp5fJvGYjcPJKlCTKa08CfY='; style-src 'unsafe-inline'; connect-src 'none'; img-src 'none'; font-src 'none'; object-src 'none'; worker-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
 <title>LightUp · PRIVATE HUMAN Studio</title>
 <style>
 :root{color-scheme:dark;--bg:#0a1321;--panel:#18263a;--border:#34465e;--text:#eff6fe;--muted:#b5c5d8;--accent:#a6f1d1}
@@ -54,10 +54,18 @@ footer{margin-top:40px;border-top:1px solid var(--border);padding-top:18px}
 <section class="panel"><h2>2 · Private HUMAN question-volume desk</h2>
 <p>Sorted by number of local pending questions only. This is <strong>not</strong> a risk score, vulnerability severity, finding identity, or remediation verification. Browser-only, no hidden persistent storage. <span id="missing">0</span> packets have no planning stage breakdown.</p>
 <div class="scroll"><table><thead><tr><th>Packet ordinal</th><th>Export type</th><th>Slot appearances</th><th>Pending questions</th><th>Planned attention</th><th>Dated slots</th><th>Local action</th></tr></thead><tbody id="rows"></tbody></table></div>
-<div class="actions"><button class="primary" type="button" id="export" disabled>Save anonymous HUMAN question-volume CSV</button></div>
+<div class="actions"><button class="primary" type="button" id="export" disabled>Save anonymous HUMAN question-volume CSV</button>
+<button type="button" id="exportBrief" disabled>Save source-free HUMAN follow-up brief</button></div>
+<h3>Declared HUMAN planning stages (only packets with planning)</h3>
+<div class="grid">
+<article><strong id="stage_unassigned">0</strong><span>Locally unassigned</span></article>
+<article><strong id="stage_assigned">0</strong><span>Locally assigned</span></article>
+<article><strong id="stage_waiting_human">0</strong><span>Awaiting HUMAN action</span></article>
+<article><strong id="stage_locally_answered">0</strong><span>Locally answered (not verified fixes)</span></article>
+</div>
 </section>
 <section class="panel"><h2>3 · Compare two local HUMAN workload moments</h2>
-<p>First import an earlier packet set, then click <strong>Freeze earlier counters</strong>. Clear the current imports and open the later packet set. Only five numeric aggregate counters are kept for the earlier selection; there is no original case/finding matching or persistent storage. A lower number never proves a fix.</p>
+<p>First import an earlier packet set, then click <strong>Freeze earlier counters</strong>. Clear the current imports and open the later packet set. Only aggregate numeric counts are kept for the earlier selection; there is no original case/finding matching or persistent storage. A lower number never proves a fix.</p>
 <div class="actions"><button id="freeze" type="button" disabled>Freeze earlier counters</button>
 <button id="forgetEarlier" type="button" disabled>Forget earlier counters</button>
 <button id="exportDelta" class="primary" type="button" disabled>Save source-free comparison CSV</button></div>
@@ -206,11 +214,13 @@ footer{margin-top:40px;border-top:1px solid var(--border);padding-top:18px}
     row.appendChild(cell);
   };
   const summary = data => {
-    const totals={packets:data.length,slots:0,questions:0,attention:0,dated:0,planned:0};
+    const totals={packets:data.length,slots:0,questions:0,attention:0,dated:0,planned:0,
+      stages:{unassigned:0,assigned:0,waiting_human:0,locally_answered:0}};
     for(const item of data){
       totals.slots+=item.slots;totals.questions+=item.questions;
       if(item.plan){totals.planned++;totals.attention+=item.plan.attention;
-        totals.dated+=item.plan.dated;}
+        totals.dated+=item.plan.dated;
+        for(const stage of STAGES)totals.stages[stage]+=item.plan.stages[stage];}
     }
     return totals;
   };
@@ -242,7 +252,10 @@ footer{margin-top:40px;border-top:1px solid var(--border);padding-top:18px}
     $("freeze").disabled=entries.length===0;
     $("forgetEarlier").disabled=earlier===null;
     $("exportDelta").disabled=earlier===null || entries.length===0;
+    $("exportBrief").disabled=entries.length===0;
     $("missing").textContent=String(total.packets-total.planned);
+    for(const stage of STAGES)$("stage_"+stage).textContent=
+      String(total.stages[stage])+" recorded slot appearances";
     const former=earlier;
     $("earlierLabel").textContent=former===null?"None saved in memory":"Earlier numeric counters held in memory";
     const baselineCells=[["packets","deltaPackets"],["slots","deltaSlots"],
@@ -288,6 +301,38 @@ footer{margin-top:40px;border-top:1px solid var(--border);padding-top:18px}
   });
   $("forgetEarlier").addEventListener("click",()=>{
     earlier=null;render();showStatus("Earlier numeric snapshot forgotten.");
+  });
+  const brief = () => {
+    const t=summary(entries);
+    const lines=[
+      "LIGHTUP | PRIVATE HUMAN FOLLOW-UP BRIEF",
+      "Incubate M3/M7 PLAN-LAB ONLY / DRAFT HOLD",
+      "Source-free anonymous packet appearances; NOT matched cases.",
+      "No original source identity, evidence, consent, verified fix, or authority.",
+      "",
+      "Packet appearances: "+t.packets,
+      "Source-free slot appearances: "+t.slots,
+      "Pending HUMAN questions (not fixes): "+t.questions,
+      "Planning-stage packets: "+t.planned,
+      "Attention slot appearances (only planning packets): "+t.attention,
+      "Locally dated slot appearances (only planning packets): "+t.dated,
+      "",
+      "HUMAN FOLLOW-UP"
+    ];
+    if(t.questions)lines.push("Ask original HUMAN source-owners to review outstanding questions locally.");
+    if(t.stages.unassigned)lines.push("Discuss assignment of unassigned slots in original PRIVATE workrooms.");
+    if(t.stages.waiting_human)lines.push("Review waiting_human stages in original PRIVATE workrooms.");
+    if(t.dated)lines.push("Review date-bearing slots only in original PRIVATE plans; exact dates are not imported.");
+    if(t.packets!==t.planned)lines.push("Some packets lack HUMAN planning states; missing means NOT PROVIDED.");
+    lines.push("Confirm source overlap privately; packet appearance changes are NOT remediation.",
+      "Counts may identify people in small populations; human disclosure approval required.",
+      "");
+    return lines.join("\n");
+  };
+  $("exportBrief").addEventListener("click",()=>{
+    if(!entries.length)return;
+    download("lightup-private-human-followup.txt","text/plain",brief());
+    showStatus("Local PRIVATE HUMAN brief saved; no original evidence or identity included.");
   });
   $("exportDelta").addEventListener("click",()=>{
     if(earlier===null || entries.length===0)return;
