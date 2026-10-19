@@ -24,6 +24,7 @@ import request_handoff as bridge
 import reconcile as native_status
 import report as local_dashboard
 import handoff_review as delivery
+import engagement_index as source_revisions
 
 source = bridge.source
 original = bridge.original
@@ -175,6 +176,12 @@ def _stage(args, vault, folder, journal, current) -> None:
         raise ValueError("Unresolved prior HUMAN draft/pending invocation: HOLD.")
     if any(row["state"] == "reviewed" and not _closed(row, packet) for row in cycles):
         raise ValueError("Earlier original HUMAN closure not in current source: HOLD.")
+    # A new source revision must not silently hide an earlier pending/staged
+    # original-native HUMAN draft for this same actual client/engagement.
+    _, unresolved = source_revisions.inspect(
+        folder, packet, vault, _owned_regular, _read)
+    if unresolved:
+        raise ValueError("Earlier engagement-source HUMAN handoff remains unresolved.")
     candidates, blocked, due = bridge._eligible(packet, items)
     print("Current due original HUMAN findings:", due, "· existing open:", blocked,
           "· available:", len(candidates))
@@ -215,6 +222,10 @@ def _stage(args, vault, folder, journal, current) -> None:
     entry = {"state": "pending", "output": str(out), "sha256": "",
              "requests": [_ref(row) for row in drafts],
              "created": _utc(), "updated": _utc()}
+    # Source-revision registration is persisted under the same local lock
+    # BEFORE the pending intent and BEFORE the encrypted file can be emitted.
+    source_revisions.reserve(
+        folder, packet, key, vault, _owned_regular, _read, _write)
     cycles.append(entry)
     _write(folder, key, journal)  # durable intent BEFORE encrypted output
     vault._exclusive_output(out, vault._seal(vault._inner(workroom, "application/json"), password))
@@ -313,6 +324,10 @@ def main(argv=None) -> int:
             document = _read(folder, key, vault)
             if args.action == "status":
                 _inspect(document, packet)
+                revisions, unresolved = source_revisions.inspect(
+                    folder, packet, vault, _owned_regular, _read)
+                print("Registered original source revisions:", len(revisions["sources"]),
+                      "· revisions with unresolved HUMAN work:", unresolved)
             elif args.action == "report":
                 destination = args.output.expanduser().absolute()
                 if (destination.suffix.lower() != ".html"
