@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-4u1hGb95B+oEejIOyYSZK1j/1kUv6taVRomKctPx2F0='; style-src 'unsafe-inline'; connect-src 'none'; img-src 'none'; font-src 'none'; object-src 'none'; worker-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-yf9g2dhpv6vsqg7HqDNw8Cj0FAzgDVC3SfKa+0KrRXU='; style-src 'unsafe-inline'; connect-src 'none'; img-src 'none'; font-src 'none'; object-src 'none'; worker-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
 <title>LightUp · PRIVATE HUMAN Studio</title>
 <style>
 :root{color-scheme:dark;--bg:#0a1321;--panel:#18263a;--border:#34465e;--text:#eff6fe;--muted:#b5c5d8;--accent:#a6f1d1}
@@ -33,6 +33,7 @@ table{width:100%;min-width:810px;border-collapse:collapse}
 th,td{border-bottom:1px solid var(--border);text-align:left;padding:13px;font-variant-numeric:tabular-nums}
 td button{font-size:12px;padding:6px 10px}
 table th{font-size:13px;color:#d9e8fb}
+select{min-width:180px;max-width:360px;width:100%;padding:10px;border-radius:8px;background:#142539;color:var(--text);border:1px solid #63758b;font:inherit}label{color:var(--muted);font-size:14px}
 svg.trend{display:block;max-width:100%;height:auto;margin:18px auto;background:#122b32;border-radius:12px;border:1px solid var(--border)}
 footer{margin-top:40px;border-top:1px solid var(--border);padding-top:18px}
 </style>
@@ -72,7 +73,16 @@ footer{margin-top:40px;border-top:1px solid var(--border);padding-top:18px}
 <article><strong id="stage_locally_answered">0</strong><span>Locally answered (not verified fixes)</span></article>
 </div>
 </section>
-<section class="panel"><h2>3 · Compare two local HUMAN workload moments</h2>
+<section class="panel"><h2>3 · Plan HUMAN follow-up, per anonymous packet</h2>
+<p>For each local packet ordinal, choose a predefined <strong>HUMAN-only next step</strong> and a local routing status. No customer identifier, evidence, original-case link, personal name, attachment, freeform note, active assessment or consent decision can be entered. This is a local follow-up intention and does <strong>not</strong> change the original source workroom or verify a fix.</p>
+<div class="scroll"><table><thead><tr><th>Local packet ordinal</th><th>Open HUMAN questions</th><th>Suggested HUMAN next action</th><th>Local HUMAN routing state (not original)</th></tr></thead><tbody id="boardRows"></tbody></table></div>
+<div class="actions"><button id="saveBoard" class="primary" type="button" disabled>Save paired private HUMAN action board JSON</button>
+<button id="boardCSV" type="button" disabled>Save anonymous HUMAN action CSV</button>
+<label for="restoreBoard">Restore board for exact current numeric selection: <input type="file" id="restoreBoard" accept=".json,application/json" aria-label="Restore HUMAN routing JSON bound to exact source-free packet selection"></label></div>
+<p id="boardStatus" role="status" aria-live="polite">Local HUMAN routing is available after importing count packets.</p>
+<p>The exported action board is paired by full anonymous per-packet numeric shape and <strong>ordinal only</strong>. Download the matching <strong>resumable numeric session JSON</strong> separately to use <code>action_board.py</code> offline. Matching numbers are not authentication, stable client identities, proof of consent, or release. Keep these unencrypted exports private.</p>
+</section>
+<section class="panel"><h2>4 · Compare two local HUMAN workload moments</h2>
 <p>First import an earlier packet set, then click <strong>Freeze earlier counters</strong>. Clear the current imports and open the later packet set. Only aggregate numeric counts are kept for the earlier selection; there is no original case/finding matching or persistent storage. A lower number never proves a fix.</p>
 <div class="actions"><button id="freeze" type="button" disabled>Freeze earlier counters</button>
 <button id="forgetEarlier" type="button" disabled>Forget earlier counters</button>
@@ -87,7 +97,7 @@ footer{margin-top:40px;border-top:1px solid var(--border);padding-top:18px}
 </tbody></table></div>
 <p>Unchanged or decreasing counts are not evidence of remediation, verified retests, secure systems, customer identity, or matching source packets. The selected cohorts may differ or contain duplicate appearances.</p>
 </section>
-<section class="panel"><h2>4 · Multi-session HUMAN numbered moments (no Python)</h2>
+<section class="panel"><h2>5 · Multi-session HUMAN numbered moments (no Python)</h2>
 <p>Choose 2–12 separately saved <em>source-free browser sessions</em>. This imports only numeric work counters; complete source files are read locally but are never uploaded or saved in browser storage. The initial order follows the browser file picker, <strong>not independently verified dates</strong>. Use the arrows to arrange the moments yourself. No case-matching, source verification, real dates, or verified remediation conclusions.</p>
 <div class="actions"><input id="momentPick" type="file" accept=".json,application/json" multiple aria-label="Choose 2–12 previously saved private numeric HUMAN browser session JSON files"><button id="momentClear" type="button" disabled>Clear numbered moments</button></div>
 <p id="momentStatus" role="status" aria-live="polite">No numbered browser session moments loaded.</p>
@@ -129,6 +139,27 @@ footer{margin-top:40px;border-top:1px solid var(--border);padding-top:18px}
     "possible_same_numeric_shape_appearances","stages"];
   const SAVED_PLAN_FIELDS=["attention","dated","stages"];
   let resumedFromNumericFile=false;
+  let humanActions=[];
+  const BOARD_KIND="lightup.private_human_anonymous_followup_board";
+  const BOARD_DISPOSITION="LOCAL_HUMAN_FOLLOWUP_ONLY_NO_SOURCE_AUTHORITY";
+  const BOARD_WARNING="Anonymous local HUMAN routing choices only. Not unique cases, original source authentication, verified security findings, consent, grant, remediation or action permission.";
+  const BOARD_ACTIONS=[
+    ["none","No next step selected"],
+    ["request_fresh_source_export","Request fresh original-source counts"],
+    ["discuss_open_questions","Discuss open HUMAN questions"],
+    ["clarify_human_assignment","Clarify anonymous HUMAN assignment"],
+    ["reconcile_anonymous_coverage","Reconcile anonymous coverage"],
+    ["request_original_human_review","Request original HUMAN review"]
+  ];
+  const BOARD_STATES=[
+    ["not_triaged","Not yet triaged"],
+    ["needs_human_followup","Needs HUMAN follow-up"],
+    ["waiting_original_owner","Waiting for original HUMAN source owner"],
+    ["locally_discussed","Locally discussed (not verified fix)"]
+  ];
+  const BOARD_FIELDS=["kind","schema_version","disposition","numeric_packets",
+    "assignments","warning",...FLAGS];
+  const BOARD_ASSIGNMENT_FIELDS=["ordinal","action","state"];
   let timelineMoments=[]; // Distinct temporary numeric session previews, NOT original evidence.
 
   const ensure = ok => { if (!ok) throw Error("HOLD"); };
@@ -348,7 +379,8 @@ footer{margin-top:40px;border-top:1px solid var(--border);padding-top:18px}
       button.type="button";button.textContent="Remove packet";
       button.addEventListener("click",()=>{
         entries=entries.filter((_,i)=>i!==packet.ordinal-1);
-        render();showStatus("One anonymous packet removed from memory.");
+        humanActions.splice(packet.ordinal-1,1);
+        render();showStatus("One anonymous packet and its local HUMAN routing choice removed from memory.");
       });
       actions.appendChild(button);tr.appendChild(actions);body.appendChild(tr);
     }
@@ -359,11 +391,14 @@ footer{margin-top:40px;border-top:1px solid var(--border);padding-top:18px}
     $("exportDelta").disabled=earlier===null || entries.length===0;
     $("exportBrief").disabled=entries.length===0;
     $("exportJson").disabled=entries.length===0;
+    $("saveBoard").disabled=entries.length===0;
+    $("boardCSV").disabled=entries.length===0;
     $("saveSession").disabled=entries.length===0;
     $("sourceStatus").textContent=resumedFromNumericFile?
       "Resumed numeric browser summary (NOT freshly source-checked)":
       "Native-shaped count exports declared by their files (NOT independently authenticated)";
     $("missing").textContent=String(total.packets-total.planned);
+    renderBoard();
     $("overlap").textContent=String(total.possible_same_numeric_shape_appearances);
     for(const stage of STAGES)$("stage_"+stage).textContent=
       String(total.stages[stage])+" recorded slot appearances";
@@ -377,6 +412,129 @@ footer{margin-top:40px;border-top:1px solid var(--border);padding-top:18px}
       $(id).textContent=difference;
     }
   };
+
+
+  const browserPacket=x=>({
+    type:x.type,slots:x.slots,questions:x.questions,
+    plan:x.plan===null?null:{attention:x.plan.attention,dated:x.plan.dated,
+      stages:{...x.plan.stages}}
+  });
+  const assignmentDefaults=()=>({action:"none",state:"not_triaged"});
+  const boardPayload=()=>{
+    ensure(entries.length>0 && entries.length<=MAX &&
+      humanActions.length===entries.length);
+    const data={
+      kind:BOARD_KIND,schema_version:1,disposition:BOARD_DISPOSITION,
+      numeric_packets:entries.map(browserPacket),
+      assignments:humanActions.map((entry,i)=>({
+        ordinal:i+1,action:entry.action,state:entry.state
+      })),
+      warning:BOARD_WARNING,
+      ...Object.fromEntries(FLAGS.map(name=>[name,false]))
+    };
+    admitBoard(data);
+    return data;
+  };
+  const admitBoard=data=>{
+    header(data,BOARD_FIELDS,BOARD_KIND,BOARD_DISPOSITION);
+    ensure(data.warning===BOARD_WARNING &&
+      Array.isArray(data.numeric_packets) &&
+      data.numeric_packets.length===entries.length &&
+      Array.isArray(data.assignments) &&
+      data.assignments.length===entries.length &&
+      entries.length>0);
+    const current=entries.map(browserPacket);
+    // Numeric full packet equality is only local binding to the exact browser
+    // selection. Matching numbers cannot authenticate any original case.
+    for(const [i,row] of data.numeric_packets.entries()){
+      ensure(keys(row,PACKET_FIELDS) && JSON.stringify(row)===JSON.stringify(current[i]));
+    }
+    for(const [index,row] of data.assignments.entries()){
+      ensure(keys(row,BOARD_ASSIGNMENT_FIELDS) &&
+        row.ordinal===index+1 &&
+        BOARD_ACTIONS.some(entry=>entry[0]===row.action) &&
+        BOARD_STATES.some(entry=>entry[0]===row.state));
+    }
+    return data.assignments.map(x=>({action:x.action,state:x.state}));
+  };
+  const renderBoard=()=>{
+    const body=$("boardRows");body.replaceChildren();
+    while(humanActions.length<entries.length)
+      humanActions.push(assignmentDefaults());
+    if(humanActions.length>entries.length)
+      humanActions.length=entries.length;
+    for(const [index,packet] of entries.entries()){
+      const row=document.createElement("tr");
+      td(row,String(index+1),"th");
+      td(row,packet.questions);
+      const first=document.createElement("td");
+      const action=document.createElement("select");
+      action.setAttribute("aria-label","Local HUMAN next step for anonymous packet "+(index+1));
+      for(const [code,label] of BOARD_ACTIONS){
+        const option=document.createElement("option");option.value=code;
+        option.textContent=label;action.appendChild(option);
+      }
+      action.value=humanActions[index].action;
+      action.addEventListener("change",()=>{
+        humanActions[index].action=action.value;
+        $("boardStatus").textContent="Local HUMAN routing choice changed in memory; no original workroom modified.";
+      });
+      first.appendChild(action);row.appendChild(first);
+      const second=document.createElement("td");
+      const state=document.createElement("select");
+      state.setAttribute("aria-label","Local HUMAN routing state for anonymous packet "+(index+1));
+      for(const [code,label] of BOARD_STATES){
+        const option=document.createElement("option");option.value=code;
+        option.textContent=label;state.appendChild(option);
+      }
+      state.value=humanActions[index].state;
+      state.addEventListener("change",()=>{
+        humanActions[index].state=state.value;
+        $("boardStatus").textContent="Local HUMAN state changed in memory; not a verified fix or authorization.";
+      });
+      second.appendChild(state);row.appendChild(second);
+      body.appendChild(row);
+    }
+  };
+  $("saveBoard").addEventListener("click",()=>{
+    if(!entries.length)return;
+    try{
+      download("lightup-private-human-followup-board.json","application/json",
+        JSON.stringify(boardPayload(),null,2)+"\n");
+      $("boardStatus").textContent="Local anonymous HUMAN follow-up JSON saved. Pair with numeric browser session when using action_board.py.";
+    }catch(_){$("boardStatus").textContent="HOLD: could not save HUMAN routing board.";}
+  });
+  $("boardCSV").addEventListener("click",()=>{
+    if(!entries.length)return;
+    try{
+      boardPayload();
+      const lines=["packet_ordinal_not_original_case,source_type,slot_appearances,open_human_questions,local_human_action,local_routing_state"];
+      for(const [i,entry] of humanActions.entries()){
+        const packet=entries[i];
+        lines.push([i+1,packet.type,packet.slots,packet.questions,
+          entry.action,entry.state].join(","));
+      }
+      download("lightup-private-human-followup-board.csv","text/csv",
+        lines.join("\r\n")+"\r\n");
+      $("boardStatus").textContent="PRIVATE HUMAN routing CSV saved; original evidence untouched.";
+    }catch(_){$("boardStatus").textContent="HOLD: could not save HUMAN routing CSV.";}
+  });
+  $("restoreBoard").addEventListener("change",async event=>{
+    const files=Array.from(event.target.files??[]);event.target.value="";
+    try{
+      ensure(entries.length>0 && files.length===1 &&
+        files[0].size>0 && files[0].size<=LIMIT);
+      const raw=new TextDecoder("utf-8",{fatal:true}).decode(
+        await files[0].arrayBuffer());
+      ensure(new TextEncoder().encode(raw).length<=LIMIT);
+      const proposed=admitBoard(strictJSON(raw));
+      if(!window.confirm("Replace current local HUMAN routing choices for EXACT matching numeric packet ordinals? This does NOT verify original source or consent."))return;
+      humanActions=proposed;renderBoard();
+      $("boardStatus").textContent="Self-declared HUMAN routing choices restored. No source authenticity or permissions verified.";
+    }catch(_){
+      $("boardStatus").textContent="HOLD: invalid or nonmatching HUMAN board; existing choices unchanged.";
+    }
+  });
 
   const numericTrendRows=()=>{
     const rows=[];
@@ -527,14 +685,16 @@ footer{margin-top:40px;border-top:1px solid var(--border);padding-top:18px}
         ensure(new TextEncoder().encode(raw).length<=LIMIT);
         staged.push(admit(strictJSON(raw)));
       }
-      entries=[...entries,...staged];render();
+      entries=[...entries,...staged];
+      humanActions.push(...staged.map(()=>({action:"none",state:"not_triaged"})));
+      render();
       showStatus(files.length+" PRIVATE HUMAN count packet(s) admitted in memory.");
     }catch(_){
       showStatus("HOLD: selection rejected atomically; no files added.",true);
     }
   });
   $("clear").addEventListener("click",()=>{
-    entries=[];resumedFromNumericFile=false;render();showStatus("Current anonymous imports cleared. Earlier aggregate remains until forgotten.");
+    entries=[];humanActions=[];resumedFromNumericFile=false;render();showStatus("Current anonymous imports cleared. Earlier aggregate remains until forgotten.");
   });
   $("freeze").addEventListener("click",()=>{
     if(!entries.length)return;
@@ -595,7 +755,8 @@ footer{margin-top:40px;border-top:1px solid var(--border);padding-top:18px}
       // private current state is replaced. No partial import or coercion.
       if((entries.length>0 || earlier!==null) &&
           !window.confirm("Replace current in-memory HUMAN counts and earlier numeric baseline with this UNVERIFIED saved browser session?"))return;
-      entries=loaded.packets;earlier=loaded.earlier;
+      entries=loaded.packets;humanActions=loaded.packets.map(()=>
+        ({action:"none",state:"not_triaged"}));earlier=loaded.earlier;
       resumedFromNumericFile=true;render();
       showStatus("Source-free HUMAN numeric browser session restored. No original source, key, or authority was checked.");
     }catch(_){
