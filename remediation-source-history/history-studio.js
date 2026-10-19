@@ -214,15 +214,27 @@ function discardHeldHuman(){
  state.notes.delete(id);state.revision++;render();
  message('Selected held HUMAN note discarded locally; original findings and the separate private decision journal are unchanged.');
 }
-function exportAggregate(){
+function exportAggregate(withProvenance=false){
  if(!state.snapshots.length)throw Error('Load original source history first.');
- const t=timeline(),snaps=state.snapshots;
- const rows=[['revision','user_label','source_rows','source_critical_high','introduced_vs_previous','absent_vs_previous','exact_source_changes','severity_escalations','source_retest_changes','canonical_source_sha256','original_file_sha256']];
- snaps.forEach((s,i)=>{const p=i?new Map(snaps[i-1].findings.map(f=>[f.finding_id,f])):new Map();const now=new Map(s.findings.map(f=>[f.finding_id,f]));let intro=0,absent=0,chg=0,up=0,retest=0;
-  if(i) {for(const f of s.findings){const old=p.get(f.finding_id);if(!old)intro++;else if(!exact(old,f)){chg++;if(severityRank[f.severity]<severityRank[old.severity])up++;if(f.retest_status!==old.retest_status)retest++;}}for(const id of p.keys())if(!now.has(id))absent++;}
-  rows.push([i+1,s.label,s.findings.length,s.findings.filter(f=>severityRank[f.severity]<=1).length,intro,absent,chg,up,retest,s.sourceHash,s.fileHash]);
+ if(withProvenance){requireContext();protect();}
+ const snaps=state.snapshots;
+ const columns=['revision_index','source_rows','source_critical_high','introduced_vs_previous','absent_not_verified_fixed','exact_source_changes','severity_escalations','source_retest_changes'];
+ if(withProvenance)columns.push('PRIVATE_user_revision_label','PRIVATE_canonical_source_sha256','PRIVATE_original_file_sha256');
+ const rows=[columns];
+ snaps.forEach((s,i)=>{
+  const p=i?new Map(snaps[i-1].findings.map(f=>[f.finding_id,f])):new Map();
+  const now=new Map(s.findings.map(f=>[f.finding_id,f]));
+  let intro=0,absent=0,chg=0,up=0,retest=0;
+  if(i){
+   for(const f of s.findings){const old=p.get(f.finding_id);if(!old)intro++;else if(!exact(old,f)){chg++;if(severityRank[f.severity]<severityRank[old.severity])up++;if(f.retest_status!==old.retest_status)retest++;}}
+   for(const id of p.keys())if(!now.has(id))absent++;
+  }
+  const row=[i+1,s.findings.length,s.findings.filter(f=>severityRank[f.severity]<=1).length,intro,absent,chg,up,retest];
+  if(withProvenance)row.push(s.label,s.sourceHash,s.fileHash);
+  rows.push(row);
  });
- download('lightup-remediation-source-history-aggregate.csv','\uFEFF'+rows.map(r=>r.map(csvCell).join(',')).join('\r\n')+'\r\n','text/csv;charset=utf-8');message('Aggregate-only human source delta CSV exported; source field labels are unverified.');
+ download(withProvenance?'lightup-PRIVATE-source-provenance-trends.csv':'lightup-source-trends-anonymous-counts.csv','\uFEFF'+rows.map(r=>r.map(csvCell).join(',')).join('\r\n')+'\r\n','text/csv;charset=utf-8');
+ message(withProvenance?'PRIVATE source provenance trend CSV saved with original file/canonical SHA and operator labels; protect recipients.':'Aggregate-only source counts exported without original IDs, labels or source hashes; small groups can still disclose context. No verified fixes.');
 }
 function exportPrivate() {
  requireContext();protect();if(!state.snapshots.length)throw Error('No original source loaded.');
@@ -248,6 +260,7 @@ $('saveHuman').addEventListener('click',()=>{try{notesFromFields();}catch(e){mes
 $('carryHuman').addEventListener('click',()=>{try{carryHuman();}catch(e){message(e.message,true);}});
 $('discardHuman').addEventListener('click',()=>{try{discardHeldHuman();}catch(e){message(e.message,true);}});
 $('aggregate').addEventListener('click',()=>{try{exportAggregate();}catch(e){message(e.message,true);}});
+$('aggregateProvenance').addEventListener('click',()=>{try{exportAggregate(true);}catch(e){message(e.message,true);}});
 $('privateExport').addEventListener('click',()=>{try{exportPrivate();}catch(e){message(e.message,true);}});
 $('caseworkExport').addEventListener('click',()=>{try{exportCasework();}catch(e){message(e.message,true);}});
 $('decisionExport').addEventListener('click',()=>{try{window.LightUpHistory.exportHumanCarries();}catch(e){message(e.message,true);}});
