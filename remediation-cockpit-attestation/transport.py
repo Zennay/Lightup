@@ -183,13 +183,11 @@ def receive(source: Path, key_file: Path, output_parent: Path) -> tuple[Path, di
         # do not merge, overwrite or touch any existing receiving dossier.
         destination = output_parent / ("lightup-private-cockpit-" + secrets.token_hex(16))
         require(not destination.exists() and not destination.is_symlink())
-        os.rename(stage, destination)
+        # Reuse the original native Linux renameat2(RENAME_NOREPLACE) publisher:
+        # plain os.rename could otherwise replace a concurrently created
+        # empty destination directory (even after the existence check).
+        native.workspace.exclusive_dir_publish(stage, destination)
         promoted = True
-        parent_fd = os.open(output_parent, os.O_RDONLY | os.O_DIRECTORY | os.O_CLOEXEC)
-        try:
-            os.fsync(parent_fd)
-        finally:
-            os.close(parent_fd)
         return destination, admitted
     finally:
         if not promoted:
