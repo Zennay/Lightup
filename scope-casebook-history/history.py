@@ -573,6 +573,8 @@ def html_page(docs: list[dict], delta: list[list[dict]], *, public: bool) -> str
                        'Open exact original engagement queue</a> · '
                        '<a href="private-human-case-transitions.csv">'
                        'Open original HUMAN case transitions</a> · '
+                       '<a href="private-original-case-details.csv">'
+                       'Open original per-engagement grant/risk details</a> · '
                        '<a href="private-source-changes.csv">'
                        'Open original source field changes</a> · '
                        '<a href="human-followup.txt">Read HUMAN next steps</a></p>'
