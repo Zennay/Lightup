@@ -19,6 +19,7 @@ HUMAN_DESK = HERE / "human-casework-desk.js"
 HUMAN_CALENDAR = HERE / "human-workload-calendar.js"
 HUMAN_INTERVENTION = HERE / "human-intervention-brief.js"
 BULK_SOURCE_CARRY = HERE / "bulk-source-carry.js"
+HUMAN_HOLD_REVIEW = HERE / "human-hold-review.js"
 CSS = HERE / "studio.css"
 TEMPLATE = HERE / "index.html"
 OUTPUT = HERE / "standalone.html"
@@ -38,6 +39,7 @@ def main() -> None:
     human_calendar = HUMAN_CALENDAR.read_bytes()
     human_intervention = HUMAN_INTERVENTION.read_bytes()
     bulk_source_carry = BULK_SOURCE_CARRY.read_bytes()
+    human_hold_review = HUMAN_HOLD_REVIEW.read_bytes()
     css = CSS.read_bytes()
     html = TEMPLATE.read_text(encoding="utf-8")
     engine_tag = '<script src="../casework/remediation-engine.js"></script>'
@@ -49,13 +51,14 @@ def main() -> None:
     calendar_tag = '<script src="./human-workload-calendar.js"></script>'
     intervention_tag = '<script src="./human-intervention-brief.js"></script>'
     bulk_carry_tag = '<script src="./bulk-source-carry.js"></script>'
+    hold_review_tag = '<script src="./human-hold-review.js"></script>'
     css_tag = '<link rel="stylesheet" href="./studio.css">'
     csp_start = '<meta http-equiv="Content-Security-Policy" content="'
     start = html.index(csp_start)
     end = html.index('">', start)
     csp = (
         "default-src 'none'; script-src 'sha256-" + sha(engine) +
-        "' 'sha256-" + sha(js) + "' 'sha256-" + sha(checkpoint) + "' 'sha256-" + sha(pair_diff) + "' 'sha256-" + sha(native_casework) + "' 'sha256-" + sha(human_desk) + "' 'sha256-" + sha(human_calendar) + "' 'sha256-" + sha(human_intervention) + "' 'sha256-" + sha(bulk_source_carry) + "'; style-src 'sha256-" +
+        "' 'sha256-" + sha(js) + "' 'sha256-" + sha(checkpoint) + "' 'sha256-" + sha(pair_diff) + "' 'sha256-" + sha(native_casework) + "' 'sha256-" + sha(human_desk) + "' 'sha256-" + sha(human_calendar) + "' 'sha256-" + sha(human_intervention) + "' 'sha256-" + sha(bulk_source_carry) + "' 'sha256-" + sha(human_hold_review) + "'; style-src 'sha256-" +
         sha(css) + "'; img-src 'none'; font-src 'none'; connect-src 'none'; "
         "form-action 'none'; base-uri 'none'; object-src 'none'"
     )
@@ -71,6 +74,7 @@ def main() -> None:
         (calendar_tag, "<script>" + human_calendar.decode("utf-8") + "</script>"),
         (intervention_tag, "<script>" + human_intervention.decode("utf-8") + "</script>"),
         (bulk_carry_tag, "<script>" + bulk_source_carry.decode("utf-8") + "</script>"),
+        (hold_review_tag, "<script>" + human_hold_review.decode("utf-8") + "</script>"),
     ):
         if html.count(search) != 1:
             raise SystemExit("HOLD: original HTML asset reference missing/duplicated")
