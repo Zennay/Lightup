@@ -18,6 +18,12 @@ After assigning self-declared human owners to individual proposed steps, choose 
 
 Full PRIVATE runbooks can exceed the 1 MiB *original source* import ceiling. The standalone editor now permits up to **8 MiB only for exact-schema PRIVATE runbook restore**, with source ID membership and source digest checks unchanged. Full exported files exceeding the allowed restore cap are refused at creation rather than producing an unusable backup.
 
+## Safe original HUMAN context refresh
+
+An operator may re-export the complete original workplan from the existing #1644 app after human owners, stages or private follow-up notes have changed. Reimporting it with the **same exact declared original source contract/SHA/client/engagement and complete original finding IDs** asks explicitly whether to **retain all independently authored PRIVATE runbook steps** while refreshing the read-only original human context. A different source binding instead requires the usual discard warning and starts a clean workspace; there is no cross-source migration or implicit preservation. Either accepted source refresh clears any pending reviewer merge preview and undo, and marks refreshed private steps as unsaved to encourage a current backup.
+
+New steps initially show the original record's **self-declared HUMAN owner alias** as an editable convenience. Neither that alias nor an identical source digest authenticates a recipient, finding or permission. Manually confirm each human recipient and use separate authenticated private delivery.
+
 ## Explicit PRIVATE HUMAN reviewer collaboration
 
 Load the **same complete original workplan** before importing another reviewer's full PRIVATE runbook backup (up to 8 MiB). The editor requires exact declared source contract/SHA/client/engagement, identical full original finding IDs and ordering, bounded canonical per-finding steps, and all 12 false authority flags. It does not infer that the source or reviewer is authenticated.
