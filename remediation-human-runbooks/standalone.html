@@ -519,7 +519,7 @@ function renderHumanActions(){
 function editHumanAction(key,field,v){
  try{
   if(!ACTION_FIELDS.includes(field)||!actionSources().some(x=>actionKey(x.recipient_alias,x.finding_id,x.step_id)===key))fail('stale HUMAN action identity');
-  const next=validateAction({...followup.get(key)||blankAction(),[field]:v});followup.set(key,next);actionRevision++;actionSavedStatus();
+  const next=validateAction({...followup.get(key)||blankAction(),[field]:v});followup.set(key,next);actionRevision++;renderHumanActions();
   message('PRIVATE HUMAN coordination '+field+' saved in browser memory only. No original reply or security status changed.');
  }catch(e){message(e.message,true);renderHumanActions();}
 }
@@ -534,7 +534,7 @@ function actionPacket(){
  warning:'PRIVATE HUMAN coordination only. NOT authenticated source, owner consent, authorized execution, verified remediation, retest or release.'};
 }
 function saveHumanActions(){
- if(!window.confirm('Download FULL PRIVATE HUMAN actions including self-declared source labels, recipient identities, original reply snapshot and local private notes? Store and deliver confidentially.'))return;
+ if(!state||!ownerReturns.size)fail('import current owner HUMAN replies first');if(!window.confirm('Download FULL PRIVATE HUMAN actions including self-declared source labels, recipient identities, original reply snapshot and local private notes? Store and deliver confidentially.'))return;
  const body=JSON.stringify(actionPacket(),null,2)+'\n';if(new TextEncoder().encode(body).byteLength>MAX_BACKUP)fail('PRIVATE human follow-up backup exceeds 8 MiB');
  download('LightUp-PRIVATE-HUMAN-return-followup.json',body,'application/json');actionSavedRevision=actionRevision;actionSavedStatus();
  message('Complete original-source-bound PRIVATE HUMAN follow-up backup exported; original owner replies unmodified.');
@@ -714,7 +714,9 @@ async function importReceivedReply(){
  var replacing=ownerReturns.has(incoming.alias);
  if(!window.confirm((replacing?'REPLACE existing':'Add new')+' PRIVATE reply from self-declared HUMAN alias '+incoming.alias+' ('+incoming.records.length+' exact original steps)? This is not authenticated owner consent, a verified fix or a source mutation.'))return;
  if(before!==revision||source!==binding(state))fail('current original PRIVATE human planning changed during confirmation');
- ownerReturns.set(incoming.alias,incoming);$('returnFile').value='';renderReceivedReplies();
+ if(ownerReturns.has(incoming.alias))guardReviewLoss();
+ for(const key of [...followup.keys()]){try{if(JSON.parse(key)[0]===incoming.alias)followup.delete(key);}catch(_){followup.delete(key);}}
+ ownerReturns.set(incoming.alias,incoming);actionRevision++;$('returnFile').value='';renderReceivedReplies();
  message('PRIVATE HUMAN return imported as READ-ONLY self-declared follow-up; original findings, stages, source evidence and grants unchanged.');
 }
 
@@ -725,7 +727,7 @@ bind('forget','click',function(){if(!confirmDiscard())return;reset();message('Al
 bind('mergePreview','click',previewMerge);bind('mergeCancel','click',function(){pendingMerge=null;clearMerge();message('Other reviewer preview discarded; local HUMAN planning unchanged.');});bind('mergeApply','click',applyMerge);bind('mergeUndo','click',undoMerge);
 bind('mergeFile','change',function(){pendingMerge=null;clearMerge();message('Other-reviewer PRIVATE file changed. Generate a fresh exact-source preview.');});
 bind('returnImport','click',importReceivedReply);
-bind('returnForget','click',function(){clearReceivedReplies();message('All locally imported PRIVATE HUMAN replies forgotten. Original runbook steps and external downloads unchanged.');});
+bind('returnForget','click',function(){guardReviewLoss();clearReceivedReplies();message('All locally imported PRIVATE HUMAN replies forgotten. Original runbook steps and external downloads unchanged.');});
 bind('returnFilter','change',renderReceivedReplies);
 bind('returnAggregate','click',exportTeamHumanCoverage);
 bind('actionFilter','change',renderHumanActions);
