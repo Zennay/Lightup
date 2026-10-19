@@ -25,6 +25,7 @@ FILES = {
     "human-followup.txt", "private-source-inventory.json",
     "private-human-case-queue.csv",
     "private-human-review-template.csv",
+    "anonymous-source-order.csv",
 }
 
 
