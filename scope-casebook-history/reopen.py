@@ -33,10 +33,10 @@ def strictly_read_output(directory: Path, filename: str) -> bytes:
     try:
         info = os.fstat(fd)
         fail(stat.S_ISREG(info.st_mode) and info.st_mode & 0o077 == 0
-             and info.st_size <= 1_500_000, "private output unavailable")
+             and info.st_size <= 8_388_608, "private output unavailable")
         with os.fdopen(fd, "rb", closefd=False) as stream:
-            raw = stream.read(1_500_001)
-        fail(len(raw) <= 1_500_000, "private output exceeds bound")
+            raw = stream.read(8_388_609)
+        fail(len(raw) <= 8_388_608, "private output exceeds bound")
         return raw
     finally:
         os.close(fd)
