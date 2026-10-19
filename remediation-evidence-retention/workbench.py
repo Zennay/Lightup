@@ -173,7 +173,6 @@ def _switch(args, vault):
     if not items:
         raise ValueError("Empty original-source-bound HUMAN retention plan.")
     args.plan = path
-    args._staged_due_this_session = False
     print("Selected distinct encrypted PRIVATE HUMAN plan with original current"
           " source and actual evidence bytes confirmed.")
     print("Current indexed HUMAN review entries:", len(items))
@@ -246,7 +245,6 @@ def _bulk_import(args, vault):
     bulk._import(clone, vault)
     print("NEW PRIVATE encrypted HUMAN bulk review:", clone.output.name)
     args.plan = clone.output
-    args._staged_due_this_session = False
     print("NEW encrypted owner-private HUMAN plan selected in current session."
           " Original plan and evidence remain unchanged.")
 
