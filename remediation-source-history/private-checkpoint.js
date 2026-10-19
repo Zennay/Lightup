@@ -87,7 +87,7 @@ async function open(){
  }
  const ids=new Set(restored.flatMap(s=>s.findings.map(x=>x.finding_id))),notes=[],noted=new Set();
  for(const n of packet.notes){
-  if(!(shape(n,['id','owner','action','due','sourceRecord'])||shape(n,['id','owner','action','due']))||typeof n.id!=='string'||!ids.has(n.id)||noted.has(n.id)||
+  if(!(shape(n,['id','owner','action','due','sourceRecord','caseworkOriginal'])||shape(n,['id','owner','action','due','sourceRecord'])||shape(n,['id','owner','action','due']))||typeof n.id!=='string'||!ids.has(n.id)||noted.has(n.id)||
    typeof n.owner!=='string'||n.owner.length>120||
    typeof n.action!=='string'||n.action.length>1200||
    typeof n.due!=='string'||(n.due&&!/^\d{4}-\d{2}-\d{2}$/.test(n.due)))
@@ -102,8 +102,16 @@ async function open(){
     ['finding_id','title','severity','retest_status','remediation'].every(k=>f[k]===verified[k]))))
      throw Error('Private HUMAN note cites a source row absent from authenticated original exports.');
   }
-  // Legacy v1 archives without exact row binding remain HUMAN HOLD until operator review, never silently carried.
-  noted.add(n.id);notes.push({...n,sourceRecord:n.sourceRecord||null});
+  if(Object.prototype.hasOwnProperty.call(n,'caseworkOriginal')&&n.caseworkOriginal!==null){
+    const c=n.caseworkOriginal;
+    if(!n.sourceRecord||!shape(c,['finding_id','owner','status','due_date','next_action','verification_plan','blocker','note','updated_utc'])||
+      c.finding_id!==n.id)throw Error('Imported HUMAN Casework must retain its exact original source.');
+    const original=LightUpCasework.cleanCase(c,new Set([n.id]));
+    for(const field of ['finding_id','owner','status','due_date','next_action','verification_plan','blocker','note','updated_utc'])
+      if(original[field]!==c[field])throw Error('Non-canonical native HUMAN Casework metadata.');
+  }
+  // Legacy encrypted notes without exact row binding remain HUMAN HOLD until operator review.
+  noted.add(n.id);notes.push({...n,sourceRecord:n.sourceRecord||null,caseworkOriginal:n.caseworkOriginal||null});
  }
  H.restore({context:ctx,snapshots:restored,notes},currentVersion);
  say('Encrypted checkpoint reopened with exact CSV-byte and original canonical source SHA-256 verification. No permission, fix or retest verified.');
