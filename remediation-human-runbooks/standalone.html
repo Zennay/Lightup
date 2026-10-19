@@ -179,7 +179,7 @@ async function read(file,limit){limit=limit||MAX;if(!file||file.size<1||file.siz
 function message(s,bad){$('notice').textContent=s;$('notice').dataset.error=String(!!bad);}
 function dirty(){if(!state){$('dirty').textContent='No local storage. Import an original PRIVATE source first.';return;}
  $('dirty').textContent=revision!==exported?'UNSAVED PRIVATE runbooks: download a complete backup before closing or refreshing.':'PRIVATE runbooks locally unchanged since last export/restore.';}
-function confirmDiscard(){return revision===exported||window.confirm('UNSAVED PRIVATE human runbook content will be lost. Download complete PRIVATE backup first if needed. Continue?');}
+function confirmDiscard(){return (revision===exported&&actionRevision===actionSavedRevision)||window.confirm('UNSAVED PRIVATE runbook / HUMAN follow-up notes will be discarded. Download both PRIVATE backups first if needed. Continue?');}
 function reset(){clearReceivedReplies();$('ownerReplies').hidden=true;pendingMerge=null;mergeUndo=null;clearMerge();$('mergeUndo').disabled=true;$('mergeFile').value='';$('collab').hidden=true;state=null;revision=0;exported=0;$('workFile').value='';$('restoreFile').value='';$('source').textContent='No PRIVATE source loaded.';$('editor').hidden=true;$('io').hidden=true;$('finding').replaceChildren();$('steps').replaceChildren();$('details').replaceChildren();$('summary').textContent='';dirty();}
 function touch(){revision++;pendingMerge=null;mergeUndo=null;clearMerge();$('mergeUndo').disabled=true;clearReceivedReplies();dirty();}
 function binding(s){return JSON.stringify([s.source_contract,s.source_sha256,s.client_reference,s.engagement_reference,s.ids.slice().sort()]);}
@@ -239,7 +239,7 @@ function render(){
   [['Move ↑',function(){swap(index,-1);}],['Move ↓',function(){swap(index,1);}],['Delete proposed step',function(){remove(index);}]].forEach(function(action){
    var b=document.createElement('button');b.textContent=action[0];b.addEventListener('click',action[1]);row.append(b);
   });box.append(row);
-  function update(key,v){var next=Object.assign({},s);next[key]=v;validateStep(next);Object.assign(s,next);touch();render();message('Updated LOCAL HUMAN runbook. No original evidence or verified status changed.');}
+  function update(key,v){var next=Object.assign({},s);next[key]=v;validateStep(next);guardReviewLoss();Object.assign(s,next);touch();render();message('Updated LOCAL HUMAN runbook. No original evidence or verified status changed.');}
   var g=document.createElement('div');g.className='two';
   g.append(field('Human step type',{options:KINDS,current:s.kind},0,function(v){update('kind',v);},'select'));
   g.append(field('HUMAN stage',{options:['draft_human','needs_human_input','await_human_review','human_handoff_prepared'],current:s.human_stage},0,function(v){update('human_stage',v);},'select'));
@@ -255,11 +255,11 @@ function render(){
  renderReceivedReplies();
 }
 function renumber(steps){steps.forEach(function(s,i){s.step_id=i+1;});}
-function add(){var steps=current();if(steps.length>=MAX_STEPS||state.ids.reduce(function(n,id){return n+state.runbooks.get(id).length;},0)>=MAX_TOTAL)fail('HUMAN runbook cap reached');
+function add(){var steps=current();if(steps.length>=MAX_STEPS||state.ids.reduce(function(n,id){return n+state.runbooks.get(id).length;},0)>=MAX_TOTAL)fail('HUMAN runbook cap reached');guardReviewLoss();
  var sourceOwner=state.original.find(function(r){return r.finding_id===selected();});
  steps.push({step_id:steps.length+1,kind:'human_prepare',description:'Describe the proposed HUMAN follow-up',precondition:'',responsible_alias:sourceOwner?sourceOwner.owner_alias:'',rollback_discussion:'',verification_question:'',tentative_date:'',human_stage:'draft_human'});touch();render();message('New draft HUMAN coordination step added (no execution).');}
-function remove(index){var a=current();if(!window.confirm('Delete this LOCAL HUMAN step? Export private backup before destructive editing.'))return;a.splice(index,1);renumber(a);touch();render();}
-function swap(index,d){var a=current(),to=index+d;if(to<0||to>=a.length)return;var temp=a[index];a[index]=a[to];a[to]=temp;renumber(a);touch();render();}
+function remove(index){var a=current();if(!window.confirm('Delete this LOCAL HUMAN step? Export private backup before destructive editing.'))return;guardReviewLoss();a.splice(index,1);renumber(a);touch();render();}
+function swap(index,d){var a=current(),to=index+d;if(to<0||to>=a.length)return;guardReviewLoss();var temp=a[index];a[index]=a[to];a[to]=temp;renumber(a);touch();render();}
 function packet(){return Object.assign({kind:'lightup.private_human_remediation_runbooks',schema_version:1,disposition:'UNVERIFIED_HUMAN_PLANNING_ONLY',source_contract:state.source_contract,source_sha256:state.source_sha256,client_reference:state.client_reference,engagement_reference:state.engagement_reference,source_count:state.ids.length,finding_ids:state.ids.slice(),runbooks:state.ids.map(function(id){return {finding_id:id,steps:state.runbooks.get(id).map(function(s){return Object.assign({},s);})};}),warning:'PRIVATE HUMAN planning ONLY; not authenticated source, customer approval, authorized remediation, verified retest, grant or release.'},Object.fromEntries(FLAGS.map(function(k){return [k,false];})));}
 function download(name,data,type){var u=URL.createObjectURL(new Blob([data],{type:type})),a=document.createElement('a');a.download=name;a.href=u;document.body.append(a);a.click();a.remove();setTimeout(function(){URL.revokeObjectURL(u);},1600);}
 function save(){if(!state)fail('import original source first');if(!window.confirm('Save PRIVATE full original-ID runbook data to this device? Independently verify confidential storage and recipient.'))return;
@@ -277,7 +277,7 @@ async function importWork(){
   retained=true;
  }else if(state&&!confirmDiscard())return;
  if(revision!==prior||(state?binding(state):null)!==priorSource)fail('PRIVATE local HUMAN state changed before source switch confirmation');
- state=next;clearReceivedReplies();if(retained){revision++;}else{revision=0;exported=0;}
+ guardReviewLoss();state=next;clearReceivedReplies();if(retained){revision++;}else{revision=0;exported=0;}
  pendingMerge=null;mergeUndo=null;clearMerge();$('mergeUndo').disabled=true;$('mergeFile').value='';$('filter').value='all';$('restoreFile').value='';
  $('editor').hidden=false;$('io').hidden=false;$('collab').hidden=false;render();dirty();
  message(retained?'Original HUMAN context refreshed for exact DECLARED source binding: all own PRIVATE steps retained, reviewer merge Undo cleared. Independently authenticate source before handoff.':'Opened original source-declared PRIVATE HUMAN workplan. Draft runbooks below; no client authority or security outcome created.');
@@ -293,7 +293,7 @@ async function restore(){
  if(before!==revision||ref!==binding(state)||$('restoreFile').files[0]!==f)fail('PRIVATE source, file or local revision changed while restoring');
  if(!window.confirm('REPLACE all local HUMAN runbooks with the exact-original-source-bound PRIVATE backup? Export current work first. No original evidence, owners or grants will be updated.'))return;
  if(before!==revision||ref!==binding(state))fail('stale local state during confirmation');
- state.runbooks=rows;clearReceivedReplies();revision++;exported=revision;pendingMerge=null;mergeUndo=null;clearMerge();$('mergeUndo').disabled=true;$('restoreFile').value='';render();dirty();message('Restored complete HUMAN-only runbooks for exact original finding set.');
+ guardReviewLoss();state.runbooks=rows;clearReceivedReplies();revision++;exported=revision;pendingMerge=null;mergeUndo=null;clearMerge();$('mergeUndo').disabled=true;$('restoreFile').value='';render();dirty();message('Restored complete HUMAN-only runbooks for exact original finding set.');
 }
 function esc(s){return String(s).replace(/[&<>"']/g,function(ch){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch];});}
 function printOne(){
@@ -436,7 +436,7 @@ function applyMerge(){
  if(!applies.length){pendingMerge=null;clearMerge();message('No HUMAN runbook was overwritten. Local proposals preserved.');return;}
  if(!window.confirm('Replace LOCAL HUMAN steps for '+applies.length+' exact original finding(s) with selected other-reviewer proposals? This is a PRIVATE human edit, not an original source change or approved fix.'))return;
  if(revision!==draft.revision||binding(state)!==draft.source)fail('local HUMAN work changed during confirmation');
- var old=new Map(state.ids.map(function(id){return [id,state.runbooks.get(id).map(function(v){return Object.assign({},v);})];}));
+ guardReviewLoss();var old=new Map(state.ids.map(function(id){return [id,state.runbooks.get(id).map(function(v){return Object.assign({},v);})];}));
  applies.forEach(function(c){state.runbooks.set(c.id,c.other.map(function(v){return Object.assign({},v);}));});
  revision++;clearReceivedReplies();mergeUndo={prior:old,revision:revision,source:draft.source};pendingMerge=null;clearMerge();$('mergeUndo').disabled=false;render();dirty();
  message('Merged '+applies.length+' exact-source HUMAN runbooks. Undo available until another local edit.');
@@ -444,7 +444,7 @@ function applyMerge(){
 function undoMerge(){
  var entry=mergeUndo;if(!entry||entry.revision!==revision||entry.source!==binding(state))fail('last HUMAN merge no longer safe to undo');
  if(!window.confirm('Undo only the last PRIVATE local reviewer runbook merge? External PRIVATE downloads are unaffected.'))return;
- state.runbooks=new Map(Array.from(entry.prior,function(pair){return [pair[0],pair[1].map(function(s){return Object.assign({},s);})];}));
+ guardReviewLoss();state.runbooks=new Map(Array.from(entry.prior,function(pair){return [pair[0],pair[1].map(function(s){return Object.assign({},s);})];}));
  revision++;clearReceivedReplies();mergeUndo=null;pendingMerge=null;clearMerge();$('mergeUndo').disabled=true;render();dirty();message('Previous local HUMAN runbooks restored. No original findings or approvals were changed.');
 }
 
@@ -467,6 +467,10 @@ function actionSnapshot(){return [...ownerReturns].sort((a,b)=>a[0].localeCompar
  recipient_alias,records:p.records.map(x=>({...x}))}));}
 function validateAction(a){if(!exact(a,ACTION_FIELDS)||!ACTION_STAGES.includes(a.human_stage))fail('noncanonical HUMAN operator action');
  string(a.coordinator_alias,120,'human coordinator');date(a.tentative_due);string(a.next_action,1000,'human next action');string(a.private_note,800,'private human note');return {...a};}
+function guardReviewLoss(){
+ if(actionRevision!==actionSavedRevision&&!window.confirm('UNSAVED PRIVATE HUMAN follow-up notes will be lost when original steps/replies change. Export complete PRIVATE follow-up JSON first if needed. Continue and discard?'))
+ fail('Unexported PRIVATE HUMAN notes retained; original source edit cancelled');
+}
 function clearHumanActions(){
  followup=new Map();actionRevision=0;actionSavedRevision=0;
  $('actionRows').replaceChildren();$('actionSummary').textContent='';
@@ -735,7 +739,7 @@ bind('actionForget','click',forgetHumanActions);
 bind('returnFile','change',function(){message('New one-owner PRIVATE HUMAN reply selected. Import validates it against CURRENT exact original plan before displaying anything.');});
 bind('filter','change',render);bind('finding','change',render);
 bind('ownerSelect','change',function(){$('ownerExport').disabled=!$('ownerSelect').value;$('ownerPrint').disabled=!$('ownerSelect').value;});bind('ownerExport','click',ownerHandoff);bind('ownerPrint','click',ownerPrintable);
-window.addEventListener('beforeunload',function(e){if(state&&revision!==exported){e.preventDefault();e.returnValue='';}});
+window.addEventListener('beforeunload',function(e){if(state&&(revision!==exported||actionRevision!==actionSavedRevision)){e.preventDefault();e.returnValue='';}});
 dirty();
 })();
 </script>
