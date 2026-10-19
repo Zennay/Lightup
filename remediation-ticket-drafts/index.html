@@ -81,7 +81,15 @@ pre{background:#081220;color:#dbe9fc;border:1px solid #354760;border-radius:12px
 <div class="field"><label for="workspace-file">Resume existing PRIVATE workspace checkpoint</label>
 <input id="workspace-file" type="file" accept=".json,application/json" disabled>
 <small>All-or-nothing import, up to 4 MiB. Original canonical and byte SHA-256 must match exactly. Rejected/declined files never replace in-memory work.</small></div>
-<div class="actions"><button id="save-workspace" disabled>Download PRIVATE HUMAN workspace (.json)</button></div>
+<div class="actions"><button id="save-workspace" disabled>Download PRIVATE plaintext HUMAN workspace (.json)</button></div>
+<h3>Recommended / Encrypted HUMAN workspace vault</h3>
+<p class="muted">This optional AES-256-GCM vault encrypts the exact source-bound workspace in browser memory using PBKDF2-SHA256 (600,000 rounds), a fresh salt and nonce. It is bound to the two hashes of the imported original CSV but <strong>never proves sender identity, consent, evidence or scope authorization</strong>. Losing the passphrase prevents restore.</p>
+<div class="field"><label for="vault-passphrase">Private passphrase (12–256 characters; never sent or saved)</label>
+<input id="vault-passphrase" type="password" autocomplete="new-password" minlength="12" maxlength="256" placeholder="Enter a long, unique passphrase" disabled></div>
+<div class="field"><label for="vault-file">Resume locally encrypted PRIVATE vault</label>
+<input id="vault-file" type="file" accept=".json,application/json" disabled></div>
+<div class="actions"><button id="seal-vault" disabled>Download encrypted PRIVATE vault</button><button id="open-vault" disabled>Open selected encrypted vault locally</button></div>
+<p class="muted">An encrypted vault can be decrypted only with the original exact CSV bytes and the right passphrase. The contents remain HUMAN-only, never authoritative. No plaintext intermediate file is created when saving or opening the encrypted version.</p>
 </section>
 <section class="panel full">
 <h2>04 / Private release review</h2>
@@ -101,6 +109,7 @@ pre{background:#081220;color:#dbe9fc;border:1px solid #354760;border-radius:12px
 <script src="../casework/remediation-engine.js"></script>
 <script src="./casework-import.js"></script>
 <script src="./ticket-workspace.js"></script>
+<script src="./ticket-vault.js"></script>
 <script src="./ticket-desk.js"></script>
 </body>
 </html>
