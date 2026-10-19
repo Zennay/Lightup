@@ -162,7 +162,7 @@ function update(id,step,field,value){
  let k=stepKey(id,step.step_id),next=Object.assign({},current.edits.get(k)||empty(),{[field]:value});
  if(!ACK.includes(next.human_ack))fail('invalid human acknowledgement');
  str(next.private_human_note,800,'private human note');date(next.tentative_follow_up);
- current.edits.set(k,next);edited++;review=null;render();dirty();
+ current.edits.set(k,next);edited++;review=null;$('review').replaceChildren();$('compareSummary').textContent='Received HUMAN return preview invalidated by local editing.';render();dirty();
  msg('Local HUMAN response updated. No original planning, security status, grant or verified retest changed.');
 }
 function render(){
@@ -206,7 +206,7 @@ function forget(force=false){if(!force&&current&&edited!==saved&&!window.confirm
  for(const x of ['handoffFile','replyFile','search'])$(x).value='';
  $('filter').value='all';for(const x of ['steps','review'])$(x).replaceChildren();
  $('desk').classList.add('hidden');$('out').classList.add('hidden');
- $('source').textContent='No PRIVATE owner packet selected.';$('compareSummary').textContent='No external HUMAN return compared.';dirty();msg('PRIVATE human handoff and received return cleared from browser memory. Prior downloads remain on disk.');return true;
+ $('source').textContent='No PRIVATE owner packet selected.';$('summary').textContent='';$('compareSummary').textContent='No external HUMAN return compared.';dirty();msg('PRIVATE human handoff and received return cleared from browser memory. Prior downloads remain on disk.');return true;
 }
 async function load(){
  let f=$('handoffFile').files[0];if(!f)fail('choose private owner handoff');
@@ -283,7 +283,7 @@ bind('open','click',load);bind('forget','click',()=>forget());bind('search','inp
 bind('save','click',save);bind('brief','click',printable);bind('csv','click',counts);
 bind('preview','click',preview);bind('clearPreview','click',clearPreview);
 bind('handoffFile','change',()=>{if(current){msg('Source file changed. Explicitly open it before it replaces the current PRIVATE owner review.');}});
-bind('replyFile','change',clearPreview);
+bind('replyFile','change',()=>{review=null;$('review').replaceChildren();$('compareSummary').textContent='Selected PRIVATE reply changed; inspect the chosen file to compare its original human source.';});
 window.addEventListener('beforeunload',e=>{if(current&&edited!==saved){e.preventDefault();e.returnValue='';}});
 dirty();
 })();
