@@ -69,7 +69,7 @@ footer{text-align:center;color:#466074;padding:1rem}
  </div>
  <div class="grid">
   <div><label for="ownerSelect">HUMAN recipient alias (unverified)</label><select id="ownerSelect"><option value="">No declared HUMAN owner</option></select></div>
-  <div><label for="ownerExport">PRIVATE HUMAN owner-specific handoff</label><button id="ownerExport" disabled>Download only this owner's HUMAN steps</button></div>
+  <div><label for="ownerExport">PRIVATE HUMAN owner-specific handoff</label><button id="ownerExport" disabled>Download only this owner's HUMAN steps (JSON)</button><button id="ownerPrint" disabled>Readable PRIVATE owner briefing (HTML)</button></div>
  </div>
  <p>PRIVATE exports include declared source and original finding identifiers; transfer only over a separately authenticated confidential channel. Counts-only CSV removes source, finding, recipient and note identifiers; small groups can still be sensitive.</p>
  <label for="restoreFile">Restore previously exported PRIVATE runbooks (max 8 MiB)</label>
@@ -186,6 +186,7 @@ function render(){
  orderedOwners.forEach(function(name){$('ownerSelect').append(opt(name,name));});
  $('ownerSelect').value=orderedOwners.includes(priorOwner)?priorOwner:'';
  $('ownerExport').disabled=!$('ownerSelect').value;
+ $('ownerPrint').disabled=!$('ownerSelect').value;
  var id=$('finding').value;
  $('steps').replaceChildren();
  $('add').disabled=!id||count>=MAX_TOTAL||state.runbooks.get(id).length>=MAX_STEPS;
@@ -200,7 +201,7 @@ function render(){
   [['Move ↑',function(){swap(index,-1);}],['Move ↓',function(){swap(index,1);}],['Delete proposed step',function(){remove(index);}]].forEach(function(action){
    var b=document.createElement('button');b.textContent=action[0];b.addEventListener('click',action[1]);row.append(b);
   });box.append(row);
-  function update(key,v){var next=Object.assign({},s);next[key]=v;validateStep(next);Object.assign(s,next);touch();message('Updated LOCAL HUMAN runbook. No original evidence or verified status changed.');}
+  function update(key,v){var next=Object.assign({},s);next[key]=v;validateStep(next);Object.assign(s,next);touch();render();message('Updated LOCAL HUMAN runbook. No original evidence or verified status changed.');}
   var g=document.createElement('div');g.className='two';
   g.append(field('Human step type',{options:KINDS,current:s.kind},0,function(v){update('kind',v);},'select'));
   g.append(field('HUMAN stage',{options:['draft_human','needs_human_input','await_human_review','human_handoff_prepared'],current:s.human_stage},0,function(v){update('human_stage',v);},'select'));
@@ -284,6 +285,37 @@ function ownerHandoff(){
  download('LightUp-PRIVATE-one-owner-HUMAN-runbooks.json',body,'application/json');
  message('PRIVATE owner-only HUMAN runbooks downloaded; no other owner steps included. Verify recipient independently.');
 }
+function ownerPrintable(){
+ if(!state)fail('load original PRIVATE HUMAN workplan');
+ var alias=$('ownerSelect').value;if(!alias)fail('choose locally declared HUMAN recipient');
+ var owned=state.ids.map(function(id){return {id:id,steps:state.runbooks.get(id).filter(function(s){return s.responsible_alias===alias;})};}).filter(function(x){return x.steps.length;});
+ if(!owned.length)fail('no steps for chosen HUMAN recipient');
+ if(!window.confirm('Download PRIVATE printable briefing for human alias '+alias+' covering '+owned.length+' original findings? Verify recipient identity, local storage and printer confidentiality through separate trusted channels.'))return;
+ var html=['<!doctype html><html lang="en"><head><meta charset="utf-8">',
+ '<meta http-equiv="Content-Security-Policy" content="default-src &#39;none&#39;; script-src &#39;none&#39;; style-src &#39;none&#39;; connect-src &#39;none&#39;; img-src &#39;none&#39;; form-action &#39;none&#39;">',
+ '<title>LightUp PRIVATE one-owner HUMAN runbook brief</title></head><body>',
+ '<h1>LightUp · PRIVATE one-owner HUMAN preparation</h1>',
+ '<p><strong>UNVERIFIED DRAFT/HOLD:</strong> not an authorized scope, verified fix, safe rollback guarantee, authenticated owner reply, grant or retest approval.</p>',
+ '<p>Recipient self-declared HUMAN alias: '+esc(alias)+'</p>',
+ '<p>Declared original source digest: '+esc(state.source_sha256)+'</p>',
+ '<p>Self-declared client: '+esc(state.client_reference)+' / engagement: '+esc(state.engagement_reference)+'</p>'];
+ owned.forEach(function(group){
+  html.push('<article><h2>Original source finding '+esc(group.id)+'</h2><ol>');
+  group.steps.forEach(function(t){
+   html.push('<li><strong>'+esc(t.kind)+'</strong> · '+esc(t.human_stage)+'<dl>'+
+    '<dt>Proposed human work</dt><dd><pre>'+esc(t.description)+'</pre></dd>'+
+    '<dt>Human prerequisites</dt><dd><pre>'+esc(t.precondition)+'</pre></dd>'+
+    '<dt>Self-declared responsible alias</dt><dd>'+esc(t.responsible_alias)+'</dd>'+
+    '<dt>Tentative planning date</dt><dd>'+esc(t.tentative_date)+'</dd>'+
+    '<dt>Rollback preparation discussion</dt><dd><pre>'+esc(t.rollback_discussion)+'</pre></dd>'+
+    '<dt>Human review question (not a verdict)</dt><dd><pre>'+esc(t.verification_question)+'</pre></dd></dl></li>');
+  });html.push('</ol></article>');
+ });
+ html.push('<p>Other self-declared owners and their private steps were excluded. Independently verify source identity and confidential recipient.</p></body></html>\n');
+ var body=html.join('\n');if(new TextEncoder().encode(body).byteLength>MAX_BACKUP)fail('private owner HTML exceeds safe export limit');
+ download('LightUp-PRIVATE-one-owner-HUMAN-readable-runbooks.html',body,'text/html;charset=utf-8');
+ message('Scriptless PRIVATE owner-only HTML downloaded; no other owner steps, active content, grant or verification.');
+}
 function counts(){
  if(!state)fail('load original source');
  if(!window.confirm('Download HUMAN stage counts only (no finding/source/customer/owner/note IDs)? Small groups may still disclose patterns.'))return;
@@ -296,7 +328,7 @@ bind('loadWork','click',importWork);bind('restore','click',restore);bind('save',
 bind('removeAll','click',function(){if(!current().length)return;if(!window.confirm('Delete all LOCAL human steps for this finding?'))return;state.runbooks.set(selected(),[]);touch();render();});
 bind('forget','click',function(){if(!confirmDiscard())return;reset();message('All loaded PRIVATE source and HUMAN planning content cleared from this page. Existing downloads remain on disk.');});
 bind('filter','change',render);bind('finding','change',render);
-bind('ownerSelect','change',function(){$('ownerExport').disabled=!$('ownerSelect').value;});bind('ownerExport','click',ownerHandoff);
+bind('ownerSelect','change',function(){$('ownerExport').disabled=!$('ownerSelect').value;$('ownerPrint').disabled=!$('ownerSelect').value;});bind('ownerExport','click',ownerHandoff);bind('ownerPrint','click',ownerPrintable);
 window.addEventListener('beforeunload',function(e){if(state&&revision!==exported){e.preventDefault();e.returnValue='';}});
 dirty();
 })();
