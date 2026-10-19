@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import sys
 
-from . import private_export_human_revision, private_export_human_revision_workqueue, private_export_human_revision_choices, private_export_human_revision_guided
+from . import private_export_human_revision, private_export_human_revision_workqueue, private_export_human_revision_choices, private_export_human_revision_guided, private_export_human_revision_editor
 
 
 def _ask(label: str) -> str:
@@ -43,13 +43,14 @@ def main() -> int:
         "6. Export FALSE-by-default private per-finding decision sheet (JSON)\n"
         "7. Import verified HUMAN decisions into NEW encrypted source-bound plan\n"
         "8. Guided per-finding terminal approval, directly to NEW encrypted plan\n"
+        "9. PRIVATE offline browser editor for per-finding selection (HTML)\n"
         "0. Exit"
     )
     try:
-        choice = _ask("Choose 0-8")
+        choice = _ask("Choose 0-9")
         if choice == "0":
             return 0
-        if choice not in ("1", "2", "3", "4", "5", "6", "7", "8"):
+        if choice not in ("1", "2", "3", "4", "5", "6", "7", "8", "9"):
             raise ValueError("unknown option")
         before = _ask("Earlier authenticated encrypted original source .lue")
         plan = _ask("Earlier exact-source encrypted HUMAN plan .lun")
@@ -67,6 +68,21 @@ def main() -> int:
             "storage, actual recipient and approved transport; no output establishes "
             "consent, verified fixes or permission to test."
         )
+        if choice == "9":
+            destination = _ask("NEW PRIVATE offline browser editor .html")
+            if not destination.lower().endswith(".html"):
+                raise ValueError("editor output must be .html")
+            _confirm(
+                "The offline HTML embeds original private finding IDs, titles, "
+                "source labels and digests as UNENCRYPTED data. I have independently "
+                "approved its local storage, trusted device and eventual recipient. "
+                "No browser choice can approve scans, client consent or security fixes."
+            )
+            return private_export_human_revision_editor.main([
+                before, plan, after, "--output", destination,
+                "--ack-private-handling", "--ack-same-real-client",
+                "--ack-plaintext-original-ids",
+            ])
         if choice == "8":
             destination = _ask("NEW encrypted source-bound HUMAN plan .lun")
             if not destination.lower().endswith(".lun"):
