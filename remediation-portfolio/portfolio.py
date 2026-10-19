@@ -174,6 +174,53 @@ def aggregate(inputs: list[dict]) -> dict:
             "rows": rows, "warning": WARNING, **{f: False for f in FLAGS}}
 
 
+def recommendations(summary: dict) -> list[str]:
+    """Human-only coordination suggestions; never source truth or automated action."""
+    notes = []
+    if summary["pending_human_questions_not_fixes"]:
+        notes.append("Ask original source-owning HUMAN reviewers to triage pending "
+                     "questions locally; counts do not show whether any fix exists.")
+    if summary["stage_slot_appearances"]["unassigned"]:
+        notes.append("Assign unassigned HUMAN slot appearances in their ORIGINAL "
+                     "encrypted workrooms, not in this anonymous portfolio.")
+    if summary["stage_slot_appearances"]["waiting_human"]:
+        notes.append("Review waiting_human slot appearances with authorized people "
+                     "inside the original private workroom; no automatic escalation.")
+    if summary["due_slot_appearances_with_local_dates"]:
+        notes.append("Check date-bearing slot appearances only in the original "
+                     "PRIVATE local plans; exact dates were intentionally omitted.")
+    if summary["packets_with_local_human_planning"] != summary["packet_count"]:
+        notes.append("Some inbox-only packets have no HUMAN planning breakdown: "
+                     "do not interpret missing fields as zero.")
+    if not notes:
+        notes.append("No pending counters were declared in these packets; this is "
+                     "NOT evidence of completed cases, consent, or verified fixes.")
+    notes.append("Review potential overlap between independent source packets "
+                 "privately before making staffing or completion claims.")
+    return notes
+
+
+def brief_bytes(summary: dict) -> bytes:
+    lines = [
+        "LIGHTUP | PRIVATE HUMAN WORKLOAD FOLLOW-UP",
+        "INCUBATE / M3-M7 PLAN-LAB ONLY / DRAFT HOLD",
+        "No active operation, genuine consent, evidence, fix or security verdict.",
+        "",
+        f"Packets: {summary['packet_count']}",
+        "Slot appearances (not unique): "
+        f"{summary['source_free_slot_appearances_not_unique']}",
+        "Pending HUMAN questions (not fixes): "
+        f"{summary['pending_human_questions_not_fixes']}",
+        "Local HUMAN attention appearances (planning packets only): "
+        f"{summary['pending_local_human_attention_slot_appearances']}",
+        "",
+        "HUMAN FOLLOW-UPS (NO AUTOMATIC ACTION)"
+    ]
+    lines.extend(f"{i}. {note}" for i, note in enumerate(recommendations(summary), 1))
+    lines.extend(("", WARNING, ""))
+    return "\n".join(lines).encode("ascii")
+
+
 def csv_bytes(summary: dict) -> bytes:
     names = ("packet", "kind", "slot_appearances", "questions", "human_attention",
              "dated_slots", *STAGES)
@@ -203,6 +250,8 @@ def html_bytes(summary: dict) -> bytes:
                     (row["packet"], html.escape(row["type"]),
                      row["source_free_slots_not_unique"],
                      row["pending_human_questions_not_fixes"], pending, due))
+    action_rows = "".join("<li><span>%s</span></li>" % html.escape(note)
+                          for note in recommendations(summary))
     bars = "".join("<li><span>%s</span><strong>%d</strong></li>" %
                    (html.escape(k.replace("_", " ")),
                     summary["stage_slot_appearances"][k]) for k in STAGES)
@@ -228,6 +277,7 @@ No browser scripts, network access, original evidence, names, dates, or identifi
 <article><strong>%(pending_human_questions_not_fixes)d</strong><span>Local pending questions (not fixes)</span></article>
 <article><strong>%(pending_local_human_attention_slot_appearances)d</strong><span>Planned HUMAN attention appearances</span></article>
 </div><aside><strong>Non-authorizing / DRAFT HOLD.</strong><p>%(warning)s</p></aside>
+<h2>Human follow-ups (no automated action)</h2><article><ul>%(actions)s</ul></article>
 <h2>Source packets</h2><div class="scroll"><table><thead><tr>
 <th>Packet</th><th>Local export</th><th>Slot appearances</th><th>Questions</th>
 <th>Planned attention</th><th>Locally dated slots</th></tr></thead><tbody>%(rows)s</tbody></table></div>
@@ -238,7 +288,7 @@ Blank does not mean zero.</p></article>
 consent, remediation, severity, a validated retest, or authority to assess targets.</small></p>
 </main></body></html>
 """ % {**summary, "warning": html.escape(WARNING), "rows": "".join(rows),
-       "bars": bars}
+       "bars": bars, "actions": action_rows}
     return page.encode("utf-8")
 
 
@@ -281,6 +331,7 @@ def build(paths: list[Path], destination: Path) -> None:
         exclusive_write(stage / "index.html", html_bytes(summary))
         exclusive_write(stage / "counts.csv", csv_bytes(summary))
         exclusive_write(stage / "summary.json", serialize(summary))
+        exclusive_write(stage / "human-followup.txt", brief_bytes(summary))
         folder_fd = os.open(stage, os.O_RDONLY | os.O_DIRECTORY)
         try:
             os.fsync(folder_fd)
