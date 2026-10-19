@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'unsafe-inline'; connect-src 'none'; img-src 'none'; media-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'">
+<title>LightUp | PRIVATE HUMAN Ticket Vault</title>
+<style>
+:root{font:16px/1.5 ui-sans-serif,system-ui,-apple-system,Segoe UI,sans-serif;color:#e5edf8;background:#0b121f;color-scheme:dark}
+*{box-sizing:border-box}body{margin:0}main{width:min(930px,95vw);margin:3rem auto 5rem}
+header{margin-bottom:1.4rem}.eyebrow{color:#8fb8ff;letter-spacing:.16em;font-weight:800;font-size:.8rem}h1{font-size:clamp(2rem,4vw,3rem);margin:.3rem 0;line-height:1.2}
+.lead{max-width:72ch;color:#b1c2d8}section{background:#152234;border:1px solid #354762;border-radius:17px;padding:1.45rem;margin-bottom:1rem}
+.section-head{display:flex;justify-content:space-between;align-items:center;gap:.8rem;flex-wrap:wrap}
+h2{font-size:1.14rem;margin:0 0 .6rem}p{margin:.5rem 0 1rem}
+.badge{border-radius:100px;border:1px solid #ac8a52;color:#f6d39d;padding:.32rem .7rem;font-size:.76rem;font-weight:750}
+.notice{border-left:3px solid #d6b375;padding:.85rem 1rem;background:#2b2a26;border-radius:8px;color:#f2dba7;font-size:.9rem}
+label{font-weight:650;font-size:.88rem;color:#dbe7f7}input,select,button{font:inherit;color:inherit}
+input:not([type=checkbox]),select{display:block;width:100%;padding:.75rem;background:#0a1523;border:1px solid #52647e;border-radius:9px;margin-top:.35rem}
+input[type=file]{padding:.9rem;border-style:dashed}input[type=checkbox]{margin-right:.5rem;accent-color:#86b9ff;width:1.1rem;height:1.1rem}
+.fields{display:grid;grid-template-columns:1fr 1fr;gap:1rem}.field{margin:1rem 0}small{color:#adc0d5}
+button{cursor:pointer;border-radius:10px;border:1px solid #6d98cd;background:#28415f;padding:.75rem 1rem;font-weight:750}
+button.primary{background:#93c3ff;color:#071526;border:0}button:hover{filter:brightness(1.1)}button:disabled{opacity:.45}
+.actions{display:flex;flex-wrap:wrap;align-items:center;gap:.75rem;margin-top:1.25rem}
+#status{background:#101f30;border-left:4px solid #7fa8e5;border-radius:9px;padding:1rem;white-space:pre-wrap;overflow-wrap:anywhere}
+#status.error{border-color:#ed7a85;background:#39222d}#result{padding:1rem 0}
+.download{color:#0a1421;background:#9ac7ff;text-decoration:none;padding:.75rem 1rem;border-radius:10px;font-weight:780;display:inline-block;margin:.3rem}
+#preview{color:#b6c9dd}.grid{display:grid;grid-template-columns:1fr 1fr;gap:.75rem}.card{background:#0e1a29;border:1px solid #30435e;border-radius:12px;padding:1rem}.card strong{display:block}
+footer{font-size:.82rem;color:#9fb2c9;padding:1rem 0}a{color:#a5c8fa}
+@media(max-width:700px){main{margin-top:1.5rem}.fields,.grid{grid-template-columns:1fr}}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<main>
+<header><div class="eyebrow">LIGHTUP / LOCAL HUMAN PRIVACY</div><div class="section-head"><h1>Private Ticket Vault</h1><span class="badge">INCUBATE · DRAFT/HOLD</span></div>
+<p class="lead">Encrypt, decrypt, inspect and rotate offline HUMAN remediation ticket handoffs. Designed for exported LightUp PRIVATE ticket Markdown and HUMAN workspace JSON. Nothing is uploaded, posted or authorized.</p></header>
+<p class="notice">This vault protects locally selected content; it does <strong>not</strong> authenticate its sender, client, finding or consent, and never authorizes a scan, remediation, retest or public release. A previously exported plaintext file remains on disk until you securely handle it yourself.</p>
+<section>
+<h2>01 / Select private operation</h2>
+<div class="field"><label for="operation">What would you like to do?</label><select id="operation">
+<option value="seal">Encrypt local PRIVATE ticket Markdown/JSON</option>
+<option value="open">Decrypt to PRIVATE local plaintext</option>
+<option value="view">Decrypt and review PRIVATE text only in memory</option>
+<option value="rotate">Rotate passphrase into a NEW encrypted vault</option>
+<option value="inspect">Inspect anonymous vault header only</option>
+</select></div>
+<p id="preview"></p>
+<div class="field"><label for="source">Select local file (max 4 MiB plaintext)</label><input id="source" type="file" accept=".md,.json,.ltv,application/json,text/markdown,application/octet-stream">
+<small>The file must be independently authorized for your review. Browser mode cannot inspect POSIX file permissions; choose a protected private folder.</small></div>
+</section>
+<section>
+<h2>02 / Human-controlled cryptography</h2>
+<div class="fields">
+<div class="field"><label for="old-password">Existing private passphrase</label><input id="old-password" type="password" autocomplete="off" spellcheck="false" maxlength="4096"></div>
+<div class="field"><label for="new-password">New private passphrase (minimum 14 characters)</label><input id="new-password" type="password" autocomplete="new-password" spellcheck="false" maxlength="4096"></div>
+<div class="field"><label for="confirmation">Confirm new private passphrase</label><input id="confirmation" type="password" autocomplete="new-password" spellcheck="false" maxlength="4096"></div>
+</div>
+<label class="field" style="display:block"><input type="checkbox" id="plaintext-ack">I approve creating a sensitive PRIVATE plaintext download in an independently approved local storage location and for approved recipients.</label>
+<div class="actions"><button id="run" class="primary">Perform local operation</button><button id="forget" type="button">Forget input and download</button></div>
+<p class="notice">Strong passphrases must be stored in an approved password manager. A lost passphrase cannot be recovered. No password is sent to a server or persisted by this page.</p>
+</section>
+<section>
+<h2>03 / Local result</h2>
+<p id="status" role="status" aria-live="polite">Choose an operation and local input.</p>
+<div id="result" aria-live="polite"></div>
+<div id="viewer" hidden><p class="notice">PRIVATE HUMAN text is displayed below only in this local tab. Screen sharing, browser plugins and physical observers may disclose it; no proof of client consent, fix, retest or grant is implied. Choose Forget to clear the display.</p><pre id="viewer-content" style="max-height:460px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;background:#081421;border:1px solid #354762;padding:1rem;border-radius:12px" aria-label="Private decrypted HUMAN handoff content"></pre></div>
+</section>
+<section>
+<h2>Trust boundaries</h2>
+<div class="grid">
+<div class="card"><strong>Protected locally</strong>Authenticated AES-256-GCM encrypted HUMAN handoff, PBKDF2-SHA256 (600,000), fresh salt/nonce and integrity-bound metadata.</div>
+<div class="card"><strong>Never inferred</strong>Sender identity, client authorization, evidence verification, source authenticity, real security remediation, retest or release.</div>
+<div class="card"><strong>Not retained here</strong>No localStorage, cookies, database writes, external scripts, GitHub API or network use. Only explicitly selected file downloads.</div>
+<div class="card"><strong>Strict size bounds</strong>4 MiB text; canonical metadata. All decrypted files remain private and need deliberate secure handling.</div>
+</div>
+</section>
+<footer>LightUp HUMAN Ticket Vault v1 · independent offline companion · <a href="README.md">Read complete operator and security instructions</a> · Not production-approved.</footer>
+</main>
+<script src="./vault-web.js"></script>
+</body>
+</html>
