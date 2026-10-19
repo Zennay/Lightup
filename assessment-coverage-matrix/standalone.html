@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="color-scheme" content="dark">
   <title>LightUp · Original Lab Declaration Matrix · PRIVATE</title>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-9Txa3kWLMSmQcdVKdO224gGhVkoW6BCiPH4rxL+c2q0='; style-src 'sha256-fR6+3p7++eImPbtcpWZJqa7zstbBslB9Ppta+5cdZXw='; connect-src 'none'; img-src 'none'; font-src 'none'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-WQYRUjq2kXWc7bi5NHrHMPhfBhGELW6J7xN81RiFL4w='; style-src 'sha256-4W3/canyq4yw2PJxauznx9Dh0LFaUHHF+Eq0r60rQuw='; connect-src 'none'; img-src 'none'; font-src 'none'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
   <style>:root{font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#ecf1f7;background:#0c111a;line-height:1.55;font-size:15px}
 *{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:radial-gradient(ellipse 70% 18% at 64% 0%,#1b3044 0,transparent 80%),#0c111a;min-height:100vh}
 [hidden]{display:none!important}button,input,select{font:inherit}button{cursor:pointer}button:focus-visible,input:focus-visible,select:focus-visible,a:focus-visible{outline:3px solid #89d7df;outline-offset:3px}
@@ -49,6 +49,32 @@ footer{border-top:1px solid #283442;padding:22px clamp(18px,4vw,52px);max-width:
 .source-metrics td:first-child{min-width:280px;color:#c7d7e2}
 .source-metrics .metric-alert{font-weight:780;color:#ffe0ac;background:#443328}
 @media(print){.source-metrics{display:none!important}}
+
+/* Private HUMAN follow-up workroom — source labels are kept on this local page only. */
+.human-panel{padding:23px;margin-bottom:21px;border-color:#4b6a68;background:linear-gradient(155deg,#142c31,#131d2a 48%)}
+.human-intro{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(230px,.9fr);gap:24px;align-items:start}
+.human-intro h3{font-size:1.6rem;letter-spacing:-.045em;color:#d1f4ef;margin:10px 0}
+.human-intro p{font-size:.92rem}.human-intro #humanSummary{background:#0c1c25;border:1px solid #36555a;border-radius:12px;padding:16px;color:#bfece9}
+#humanSummary strong{display:block;margin-bottom:9px}#humanSummary p{font-size:.81rem;margin:5px 0}
+.human-tools{display:flex;flex-wrap:wrap;gap:14px;margin:18px 0}
+.human-tools label{flex:1 1 220px;font-size:.85rem;font-weight:670;color:#d2e4ed}
+.human-tools input,.human-tools select{display:block;margin-top:6px}
+.human-table-scroll{max-height:620px;border:1px solid #2d4651;border-radius:11px}
+#humanTable{min-width:820px}#humanTable td{font-size:.84rem}
+#humanTable td:first-child{max-width:280px;overflow-wrap:anywhere}
+#humanTable select{padding:8px 5px;min-width:130px;border-radius:7px;font-size:.82rem}
+#humanTable td:nth-child(4) select{min-width:210px}
+#humanTable button{width:auto;min-width:120px;padding:8px;font-size:.79rem}
+.human-paging{display:flex;justify-content:space-between;align-items:center;gap:15px;padding:8px 0;color:#b2d7d5;font-size:.84rem}
+.human-paging .buttons{margin:0}
+.human-actions{display:grid;grid-template-columns:minmax(0,1fr) minmax(280px,.8fr);gap:24px;border-top:1px solid #365158;padding-top:20px;margin-top:10px}
+.human-actions strong{color:#d7efec}.human-actions p{font-size:.85rem;margin:9px 0 16px}
+.human-actions label{display:block;font-weight:700;font-size:.83rem}
+.human-actions label input{margin-top:7px}
+.human-actions .buttons{align-content:start;align-items:start}
+@media(max-width:850px){.human-intro,.human-actions{grid-template-columns:1fr}}
+@media(max-width:540px){.human-panel{padding:15px}.human-paging{align-items:flex-start;flex-direction:column}}
+@media print{.human-panel{display:none!important}}
 </style>
 </head>
 <body>
@@ -101,6 +127,38 @@ footer{border-top:1px solid #283442;padding:22px clamp(18px,4vw,52px);max-width:
       <section id="attention" class="panel attention" aria-label="Human attention suggestions">
         <h3>HUMAN attention</h3><p>Loading local literal source differences…</p>
       </section>
+      <section id="humanPanel" class="panel human-panel" aria-label="HUMAN-only follow-up routing board">
+        <div class="human-intro">
+          <div>
+            <span class="eyebrow">PRIVATE / HUMAN FOLLOW-UP</span>
+            <h3>Decide what to discuss next.</h3>
+            <p>Review literal source-declaration groups with predefined HUMAN stage, reviewing group and next question. The local choices cannot change original evidence, authorize scanning, approve a finding or certify remediation. No person names, arbitrary case IDs or external channels are used.</p>
+          </div>
+          <div id="humanSummary" role="status" aria-live="polite">No HUMAN work loaded.</div>
+        </div>
+        <div class="human-tools">
+          <label for="humanSearch">Local source label search <input id="humanSearch" type="search" autocomplete="off" placeholder="Private capability / check"></label>
+          <label for="humanStage">HUMAN stage <select id="humanStage"><option value="all">All HUMAN stages</option><option value="needs_review">Needs review</option><option value="queued">Queued</option><option value="discussing">Discussing</option><option value="documented">Documented (HUMAN only)</option><option value="blocked">Blocked</option></select></label>
+        </div>
+        <div class="table-scroll human-table-scroll"><table id="humanTable"></table></div>
+        <div class="human-paging">
+          <span id="humanPages">No HUMAN work loaded.</span>
+          <div class="buttons"><button id="humanPrev" class="secondary" type="button" disabled>Previous</button><button id="humanNext" class="secondary" type="button" disabled>Next</button></div>
+        </div>
+        <div class="human-actions">
+          <div>
+            <strong>PRIVATE save / exact original bytes required to resume</strong>
+            <p>The downloaded PRIVATE JSON has original SHA-256 digests and anonymous original row ordinals, but never original result bytes or customer names. An unsigned digest is only a byte match, not proof of trusted sources, reviewer identity or consent. Without local WebCrypto you can still plan, but not save or resume this bound plan.</p>
+            <label for="humanResume">Open saved PRIVATE HUMAN plan <input id="humanResume" type="file" accept=".json,application/json"></label>
+          </div>
+          <div class="buttons">
+            <button id="humanSave" class="primary" type="button" disabled>Save PRIVATE plan</button>
+            <button id="humanResumeButton" class="secondary" type="button" disabled>Resume against same source bytes</button>
+            <button id="humanBrief" class="secondary" type="button" disabled>Export counts-only HUMAN brief</button>
+            <button id="humanReset" class="secondary" type="button">Reset HUMAN choices</button>
+          </div>
+        </div>
+      </section>
       <div class="panel filterbar">
         <label for="query">Filter literal capability / check <input id="query" type="search" autocomplete="off" placeholder="Local check or capability label"></label>
         <label for="severity">Source severity <select id="severity"><option value="all">All declared severities</option><option>critical</option><option>high</option><option>medium</option><option>low</option><option>info</option></select></label>
@@ -126,6 +184,219 @@ footer{border-top:1px solid #283442;padding:22px clamp(18px,4vw,52px);max-width:
   </main>
   <footer>LightUp · PRIVATE untrusted original lab declarations · Source-only local HUMAN planning · No persistence</footer>
   <script>"use strict";
+/* PRIVATE local HUMAN routing, never assessment authority or remediation evidence.
+   Consumes only previously admitted original source data from the parent offline app. */
+function createHumanBoard(api) {
+  const { $, node, clear, fail, shape, obj, int, text, parseStrict,
+    download, message, onFocus, getRows, getDigests, FLAGS } = api;
+  const STAGES = ["needs_review","queued","discussing","documented","blocked"];
+  const ROUTES = ["unassigned","scope","findings","evidence","remediation","privacy"];
+  const ACTIONS = ["none","clarify_source","review_scope_policy",
+    "request_evidence_review","discuss_declared_difference",
+    "prepare_private_human_brief","request_independent_human_review"];
+  const DEFAULT = Object.freeze({stage:"needs_review",route:"unassigned",action:"none"});
+  const KINDS = ["stage","route","action"];
+  const MAX_PRIVATE_BYTES = 3 * 1024 * 1024;
+  const PLAN_KEYS = ["ordinal","stage","route","action"];
+  const FILE_KEYS = ["kind","version","disposition","authorized","consent_verified",
+    "dispatch_allowed","release_allowed","source_sha256","ordered_row_count",
+    "row_plans","interpretation"];
+  let plans = [], page = 0, changed = false;
+  const fresh = () => ({...DEFAULT});
+  const isDefault = p => KINDS.every(k=>p[k]===DEFAULT[k]);
+  const strictDigest = s => typeof s==="string"&&/^[0-9a-f]{64}$/.test(s);
+  const exactSet = (a,b) => a.length===b.length&&a.every((item,i)=>item===b[i]);
+  const safeDigests = () => {
+    const d=getDigests();
+    return d.length>=2&&d.length<=8&&d.every(strictDigest);
+  };
+  const counts = () => {
+    const metrics = Object.fromEntries(KINDS.map(k=>[k,Object.create(null)]));
+    for(const kind of KINDS){
+      const allowed=kind==="stage"?STAGES:kind==="route"?ROUTES:ACTIONS;
+      allowed.forEach(value=>{metrics[kind][value]=0;});
+      plans.forEach(p=>{metrics[kind][p[kind]]++;});
+    }
+    return metrics;
+  };
+  function summarize() {
+    const area=$("humanSummary");clear(area);
+    if(!plans.length){area.textContent="No source-bound HUMAN rows loaded.";return;}
+    const total=plans.filter(p=>!isDefault(p)).length;
+    area.append(node("strong",total+" of "+plans.length+" local literal check groups have human planning decisions."));
+    const c=counts();
+    area.append(node("p",STAGES.map(s=>s.replaceAll("_"," ")+": "+c.stage[s]).join(" · ")));
+    const validity=node("p",safeDigests()
+      ? "PRIVATE resume is available only against this exact original source-byte selection, including its order."
+      : "Source fingerprints are unavailable in this browser context. PRIVATE save and restore are disabled; local HUMAN planning and source-free count briefing remain available.");
+    validity.className="hint";area.append(validity);
+    $("humanSave").disabled=!safeDigests();
+    $("humanResumeButton").disabled=!safeDigests();
+    $("humanBrief").disabled=false;
+  }
+  function optionList(select,values,current){
+    for(const value of values) {
+      const option=node("option",value.replaceAll("_"," "));
+      option.value=value;option.selected=value===current;select.append(option);
+    }
+  }
+  function render() {
+    const items=getRows();
+    const phrase=$("humanSearch").value.trim().toLocaleLowerCase();
+    const stage=$("humanStage").value;
+    const candidates=items.map((row,i)=>({row,i})).filter(({row,i})=>
+      (stage==="all"||plans[i]?.stage===stage)&&
+      (row.capability+" "+row.check).toLocaleLowerCase().includes(phrase));
+    const pages=Math.max(1,Math.ceil(candidates.length/64));
+    page=Math.max(0,Math.min(page,pages-1));
+    $("humanPages").textContent="Page "+(page+1)+" of "+pages+" · "+candidates.length+
+      " selected source-declared check groups";
+    $("humanPrev").disabled=page===0;
+    $("humanNext").disabled=page+1>=pages;
+    const table=$("humanTable");clear(table);
+    const header=node("tr");
+    for(const label of ["Source row","HUMAN stage","Review group","Next HUMAN question","Inspect"])header.append(node("th",label));
+    const head=node("thead");head.append(header);table.append(head);
+    const body=node("tbody");
+    candidates.slice(page*64,(page+1)*64).forEach(({row,i})=>{
+      const tr=node("tr"),identity=node("td");
+      identity.append(node("strong","#"+(i+1)+" · "+(row.capability||"(no capability)")));
+      identity.append(node("small",row.check||"(no check)"));tr.append(identity);
+      for(const [kind,choices] of [["stage",STAGES],["route",ROUTES],["action",ACTIONS]]){
+        const td=node("td"),select=node("select");
+        select.setAttribute("aria-label","Row "+(i+1)+" HUMAN "+kind);
+        optionList(select,choices,plans[i][kind]);
+        select.addEventListener("change",()=>{
+          plans[i]={...plans[i],[kind]:select.value};changed=true;
+          summarize();
+          if($("humanStage").value!=="all")render();
+        });
+        td.append(select);tr.append(td);
+      }
+      const inspect=node("td"),button=node("button","Open source declaration","secondary");
+      button.type="button";button.addEventListener("click",()=>onFocus(row));
+      inspect.append(button);tr.append(inspect);body.append(tr);
+    });
+    table.append(body);summarize();
+  }
+  function initialize() {
+    plans=getRows().map(fresh);page=0;changed=false;
+    $("humanSearch").value="";$("humanStage").value="all";
+    render();
+  }
+  function clearAll() {
+    plans=[];page=0;changed=false;
+    clear($("humanTable"));clear($("humanSummary"));
+    $("humanPages").textContent="No HUMAN work loaded.";
+    for(const id of ["humanSave","humanResumeButton","humanBrief","humanPrev","humanNext"])$(id).disabled=true;
+    $("humanResume").value="";
+  }
+  function privatePlan() {
+    fail(safeDigests(),"Browser cannot bind PRIVATE HUMAN plan to original bytes");
+    const rowPlans=plans.flatMap((value,i)=>
+      isDefault(value)?[]:[{ordinal:i+1,...value}]);
+    return {
+      kind:"lightup.private_original_lab_human_matrix_plan",
+      version:1,disposition:"REVIEW_ONLY_DRAFT_HOLD",...FLAGS,
+      source_sha256:getDigests().slice(),ordered_row_count:plans.length,
+      row_plans:rowPlans,
+      interpretation:"Source hashes bind local bytes only. Unsigned PRIVATE human plans are not authenticated client/operator identity, authorization, verified findings, or successful remediation."
+    };
+  }
+  function admitPrivatePlan(source) {
+    fail(shape(source,FILE_KEYS),"Incompatible PRIVATE HUMAN plan envelope");
+    fail(source.kind==="lightup.private_original_lab_human_matrix_plan"&&
+      source.version===1&&source.disposition==="REVIEW_ONLY_DRAFT_HOLD");
+    for(const key of Object.keys(FLAGS))fail(source[key]===false);
+    fail(Array.isArray(source.source_sha256)&&
+      source.source_sha256.length===getDigests().length&&
+      source.source_sha256.every(strictDigest));
+    fail(exactSet(source.source_sha256,getDigests()),
+      "Different or reordered original source bytes; saved plan cannot be applied");
+    fail(int(source.ordered_row_count,16384)&&
+      source.ordered_row_count===getRows().length);
+    fail(Array.isArray(source.row_plans)&&source.row_plans.length<=source.ordered_row_count);
+    fail(text(source.interpretation,1024));
+    const next=getRows().map(fresh);
+    let previous=0;
+    for(const row of source.row_plans) {
+      fail(shape(row,PLAN_KEYS)&&int(row.ordinal,source.ordered_row_count)&&row.ordinal>previous);
+      fail(STAGES.includes(row.stage)&&ROUTES.includes(row.route)&&ACTIONS.includes(row.action));
+      fail(!isDefault(row),"Default entries are not valid in sparse PRIVATE plan");
+      next[row.ordinal-1]={stage:row.stage,route:row.route,action:row.action};
+      previous=row.ordinal;
+    }
+    return next;
+  }
+  function humanBrief() {
+    const c=counts();
+    const lines=[
+      "LIGHTUP · HUMAN DECLARATION DISCUSSION · COUNTS ONLY",
+      "REVIEW_ONLY / DRAFT_HOLD · unsigned offline operator selection",
+      "Source-group count: "+plans.length,
+      "HUMAN decisions recorded: "+plans.filter(p=>!isDefault(p)).length,
+      "",
+      "STAGE COUNTS"
+    ];
+    for(const name of STAGES)lines.push(name+": "+c.stage[name]);
+    lines.push("","HUMAN REVIEW GROUP COUNTS");
+    for(const name of ROUTES)lines.push(name+": "+c.route[name]);
+    lines.push("","HUMAN QUESTION COUNTS");
+    for(const name of ACTIONS)lines.push(name+": "+c.action[name]);
+    lines.push("","No original identifiers, addresses, source text, hashes, finding IDs, run IDs or consent data.",
+      "These are HUMAN planning counts, not unique incidents, risk reduction, verified fixes or authorization.",
+      "Small aggregates may be sensitive. Do not disclose without separate approval.",
+      "No original sources were modified. No scanner, grant, dispatch or live action.");
+    return lines.join("\n")+"\n";
+  }
+  function wire() {
+    $("humanSearch").addEventListener("input",()=>{page=0;render();});
+    $("humanStage").addEventListener("change",()=>{page=0;render();});
+    $("humanPrev").addEventListener("click",()=>{if(page>0){page--;render();}});
+    $("humanNext").addEventListener("click",()=>{page++;render();});
+    $("humanReset").addEventListener("click",()=>{
+      if(!plans.length)return;
+      if(!confirm("Reset ALL local HUMAN planning choices? No original source file changes."))return;
+      plans=getRows().map(fresh);changed=true;page=0;render();message("Local HUMAN routing reset; source declarations unchanged.");
+    });
+    $("humanSave").addEventListener("click",()=>{
+      if(!plans.length||!safeDigests())return;
+      if(!confirm("Download PRIVATE source-byte-bound HUMAN plan? It contains unsalted source SHA-256 digests and should not be publicly shared."))return;
+      const plan=privatePlan();
+      const serialized=JSON.stringify(plan,null,2)+"\n";
+      if(new Blob([serialized]).size>MAX_PRIVATE_BYTES){
+        message("HUMAN plan is too large for private bounded handoff.",true);return;
+      }
+      download("lightup-PRIVATE-human-matrix-plan.json",serialized,"application/json");
+      changed=false;
+      message("PRIVATE source-bound HUMAN plan downloaded. Unsigned hash binding is not identity authentication.");
+    });
+    $("humanResumeButton").addEventListener("click",async()=>{
+      const file=$("humanResume").files[0];
+      if(!safeDigests()||!file){message("Open the original source files, then choose one PRIVATE saved plan.",true);return;}
+      try {
+        fail(file.size>0&&file.size<=MAX_PRIVATE_BYTES,"PRIVATE plan exceeds bounded import size");
+        const raw=new TextDecoder("utf-8",{fatal:true}).decode(await file.arrayBuffer());
+        const candidate=admitPrivatePlan(parseStrict(raw));
+        if(!confirm("Replace ALL local HUMAN notes with this PRIVATE exact-byte-bound plan?"))return;
+        plans=candidate;changed=true;page=0;render();
+        message("Source-byte-bound PRIVATE HUMAN plan restored after whole-document admission. No findings or authority changed.");
+      } catch(error) {
+        message("PRIVATE HUMAN plan HOLD: "+error.message+"; current notes unchanged.",true);
+      } finally {$("humanResume").value="";}
+    });
+    $("humanBrief").addEventListener("click",()=>{
+      if(!plans.length||!confirm("Download counts-only HUMAN follow-up brief? Small numeric groups can be sensitive."))return;
+      download("lightup-human-counts-brief.txt",humanBrief(),"text/plain");
+    });
+  }
+  wire();clearAll();
+  return {initialize,clearAll,render,
+    hasEdits:()=>changed&&plans.some(p=>!isDefault(p)),
+    stageTotals:()=>plans.length?{...counts().stage}:null};
+}
+
+"use strict";
 /* Original-source declaration matrix: offline HUMAN interpretation, never a verifier. */
 (() => {
   const $ = id => document.getElementById(id);
@@ -140,7 +411,7 @@ footer{border-top:1px solid #283442;padding:22px clamp(18px,4vw,52px);max-width:
   const FLAGS = Object.freeze({authorized:false,consent_verified:false,
     dispatch_allowed:false,release_allowed:false});
   const MAX_SOURCE_BYTES = 8 * 1024 * 1024;
-  let sources = [], rows = [], visible = [], selected = null;
+  let sources = [], rows = [], visible = [], selected = null, sourceDigests = [];
   const fail = (ok, message = "Untrusted or incompatible original lab result") => {
     if (!ok) throw new Error(message);
   };
@@ -468,6 +739,21 @@ footer{border-top:1px solid #283442;padding:22px clamp(18px,4vw,52px);max-width:
     rowsData.declared_tuple_rows.forEach(item=>lines.push([item.ordinal,...item.appearances]));
     return lines.map(line=>line.join(",")).join("\r\n")+"\r\n";
   }
+  const humanBoard=createHumanBoard({
+    $,node,clear,fail,shape,obj,int,text,parseStrict,download,message,FLAGS,
+    getRows:()=>rows,getDigests:()=>sourceDigests,
+    onFocus:(row)=>{
+      // HUMAN routing opens the original untrusted declaration; it never executes it.
+      const index=row.bySource.findIndex(items=>items.length>0);
+      if(index>=0){
+        $("query").value=row.capability+" "+row.check;
+        $("severity").value="all";$("endpoint").value="0";
+        refresh();
+        details(row,index,filteredPairs(row)[index]);
+        $("details").scrollIntoView({behavior:"smooth",block:"nearest"});
+      }
+    }
+  });
   async function importFiles() {
     const files=[...$("files").files];
     if(files.length<2||files.length>8){
@@ -475,10 +761,18 @@ footer{border-top:1px solid #283442;padding:22px clamp(18px,4vw,52px);max-width:
     }
     $("load").disabled=true;message("Reading selected local originals. No network or scan.");
     try {
-      const next=[];
+      const next=[],nextDigests=[];
       for(const file of files) {
         fail(file.size>0&&file.size<=MAX_SOURCE_BYTES,"Source file outside the 8 MiB bound");
         const data=new Uint8Array(await file.arrayBuffer());
+        let fingerprint=null;
+        try {
+          if(globalThis.crypto?.subtle){
+            const bytes=await crypto.subtle.digest("SHA-256",data);
+            fingerprint=[...new Uint8Array(bytes)].map(byte=>byte.toString(16).padStart(2,"0")).join("");
+          }
+        } catch {fingerprint=null;}
+        nextDigests.push(fingerprint);
         const decoded=new TextDecoder("utf-8",{fatal:true}).decode(data);
         next.push(admit(parseStrict(decoded)));
       }
@@ -492,8 +786,13 @@ footer{border-top:1px solid #283442;padding:22px clamp(18px,4vw,52px);max-width:
           source.targets.every(t=>sameTargets.has(t)),
           "Different exact declared endpoint set; cannot present one comparison matrix");
       }
+      // Never discard an existing HUMAN plan unless replacement is deliberate.
+      if(sources.length&&!confirm("Replace the current original source set and all unsaved HUMAN routing choices?")){
+        message("New source set not applied. Existing workroom retained.");return;
+      }
       // Only publish after the WHOLE batch has passed strict source admission.
-      sources=next;rows=aggregate(next);selected=null;clear($("details"));
+      sources=next;sourceDigests=nextDigests;rows=aggregate(next);
+      selected=null;clear($("details"));
       clear($("endpoint"));
       $("endpoint").append(new Option("All declared endpoints",0));
       baseline.targets.forEach((_,i)=>$("endpoint").append(new Option("Endpoint ordinal "+(i+1),i+1)));
@@ -503,7 +802,7 @@ footer{border-top:1px solid #283442;padding:22px clamp(18px,4vw,52px);max-width:
       $("sourceSummary").textContent=baseline.targets.length+
         " identical literal declared endpoint slots · "+rows.length+
         " literal capability/check groups · no verification of target, ownership or chronology";
-      renderSourceMetrics();renderAttention();refresh();
+      renderSourceMetrics();renderAttention();refresh();humanBoard.initialize();
       message("Local input admitted structurally. Source statements remain unverified. No original data uploaded.");
     } catch(error) {
       message("Entire selection held: "+error.message+
@@ -515,7 +814,8 @@ footer{border-top:1px solid #283442;padding:22px clamp(18px,4vw,52px);max-width:
   $("load").addEventListener("click",importFiles);
   $("forget").addEventListener("click",()=>{
     if(sources.length&&!confirm("Forget ALL locally opened original PRIVATE result data?"))return;
-    sources=[];rows=[];visible=[];selected=null;
+    sources=[];rows=[];visible=[];selected=null;sourceDigests=[];
+    humanBoard.clearAll();
     clear($("details"));clear($("matrix"));clear($("attention"));clear($("sourceMetrics"));$("query").value="";
     $("workspace").hidden=true;$("intro").hidden=false;
     $("files").value="";message("Private originals discarded from this application state.");
@@ -533,7 +833,7 @@ footer{border-top:1px solid #283442;padding:22px clamp(18px,4vw,52px);max-width:
     }
   });
   addEventListener("beforeunload",event=>{
-    if(sources.length){event.preventDefault();event.returnValue="";}
+    if(sources.length||humanBoard.hasEdits()){event.preventDefault();event.returnValue="";}
   });
 })();</script>
 </body>
