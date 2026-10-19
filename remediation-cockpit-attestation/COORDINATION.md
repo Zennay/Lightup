@@ -145,6 +145,23 @@ python3 remediation-cockpit-attestation/workroom_control.py export-counts \
 
 This contains *only aggregated counts* from the original source-free HUMAN inbox and local encrypted slot plan (stages, pending slots, number with locally entered due dates). It deliberately omits source-free manifesto digests, individual slot rows, dates, operator aliases and notes, and never asserts actual client identity, verified fixes, original consent or authorization. Any release or onward sharing is still a separate authorized HUMAN decision.
 
+## Faster offline workroom: prioritized review queue and one-step encrypted intake
+
+**New complete PRIVATE HUMAN workrooms** open to a source-bound, scriptless local dashboard with local workload totals, pending HUMAN questions, and two navigation links. The HUMAN review board sorts not-locally-answered items by self-declared urgency and local date, with a direct **one-click link to each original native source-free cockpit**. Those links point only into `../inbox/slot-NN/cockpit/index.html` within the same 0700 workroom; there are no network calls. Older workrooms retain and re-admit their original v1 pages unchanged. Standalone PRIVATE coordination HTML exports also retain their original link-free layout, because they do not include the sibling inbox. The new v2 navigation is declared explicitly in the workroom's private board manifest and independently rebuilt during admission.
+
+To **extend an already received complete workroom** without four manual intermediate commands, run:
+
+```sh
+python3 remediation-cockpit-attestation/workroom_control.py extend \
+  --workroom "$HOME/private-incoming/lightup-human-workroom-OLD-ID" \
+  --key-file "$HOME/private-secrets/team-secret.key" \
+  --package "$HOME/private-incoming/arrived-03.ltpack" \
+  --package "$HOME/private-incoming/arrived-04.ltpack" \
+  --output-parent "$HOME/private-incoming"
+```
+
+This composes the existing native `extend.py` encrypted cockpit admission, `carry.py` **exact preserved original source-free slot prefix** and encrypted local HUMAN plan continuation, `workroom.py` complete source-free handoff and independent receive/admission, and exclusive atomic 0700 workroom publication into **one HUMAN operator action**. Existing notes, review dates, local priority, operator labels and statuses are retained only against identical admitted original slots; new slots start unassigned. Original workrooms, previous plan and incoming ciphertext remain unchanged. There is still no original client identity, client consent, authority, verified remediation, security verdict or real retest, and the original DRAFT/HOLD release gates remain in force.
+
 ## Security and release boundaries
 
 These modules handle **local HUMAN scheduling**, not authenticated original customer findings, remediation execution, vulnerability proof, consent, security decision or regulator-approved retention. Shared-key HMAC and AES-GCM prove possession of the separately distributed key, not verified human sender identity. A compromised shared key enables forging alternative locally admitted anonymous cockpit summaries, plan files and portable workrooms. The system provides no network upload, remote revoke, automatic key expiry, identity verification, source validation of real underlying evidence, active test, grant or native Apply action.
