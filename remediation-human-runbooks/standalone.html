@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-0mg4vyV7Rju5sjpuHD9LKiHp9dDgV0ZqG3K3KPfJg9c='; style-src 'sha256-qmlE7woSaKjxGCp3C9x1qVZu4g8mARsOPncintfBTCY='; connect-src 'none'; img-src 'none'; object-src 'none'; frame-src 'none'; form-action 'none'; base-uri 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-OUaPGcNB7ighbYudSS8byrxMCJM+y71SPby5Cr6AJDM='; style-src 'sha256-qmlE7woSaKjxGCp3C9x1qVZu4g8mARsOPncintfBTCY='; connect-src 'none'; img-src 'none'; object-src 'none'; frame-src 'none'; form-action 'none'; base-uri 'none'">
 <title>LightUp — PRIVATE HUMAN Remediation Runbook</title>
 <style>
 :root{font-family:system-ui,-apple-system,sans-serif;color:#162c41;background:#f3f6fa}
@@ -165,7 +165,7 @@ function message(s,bad){$('notice').textContent=s;$('notice').dataset.error=Stri
 function dirty(){if(!state){$('dirty').textContent='No local storage. Import an original PRIVATE source first.';return;}
  $('dirty').textContent=revision!==exported?'UNSAVED PRIVATE runbooks: download a complete backup before closing or refreshing.':'PRIVATE runbooks locally unchanged since last export/restore.';}
 function confirmDiscard(){return revision===exported||window.confirm('UNSAVED PRIVATE human runbook content will be lost. Download complete PRIVATE backup first if needed. Continue?');}
-function reset(){clearReceivedReplies();pendingMerge=null;mergeUndo=null;clearMerge();$('mergeUndo').disabled=true;$('mergeFile').value='';$('collab').hidden=true;state=null;revision=0;exported=0;$('workFile').value='';$('restoreFile').value='';$('source').textContent='No PRIVATE source loaded.';$('editor').hidden=true;$('io').hidden=true;$('finding').replaceChildren();$('steps').replaceChildren();$('details').replaceChildren();$('summary').textContent='';dirty();}
+function reset(){clearReceivedReplies();$('ownerReplies').hidden=true;pendingMerge=null;mergeUndo=null;clearMerge();$('mergeUndo').disabled=true;$('mergeFile').value='';$('collab').hidden=true;state=null;revision=0;exported=0;$('workFile').value='';$('restoreFile').value='';$('source').textContent='No PRIVATE source loaded.';$('editor').hidden=true;$('io').hidden=true;$('finding').replaceChildren();$('steps').replaceChildren();$('details').replaceChildren();$('summary').textContent='';dirty();}
 function touch(){revision++;pendingMerge=null;mergeUndo=null;clearMerge();$('mergeUndo').disabled=true;clearReceivedReplies();dirty();}
 function binding(s){return JSON.stringify([s.source_contract,s.source_sha256,s.client_reference,s.engagement_reference,s.ids.slice().sort()]);}
 function opt(label,value){var el=document.createElement('option');el.value=value;el.textContent=label;return el;}
@@ -449,8 +449,8 @@ function admitReceivedReply(p){
  p.disposition!=='UNVERIFIED_HUMAN_PLANNING_ONLY'||FLAGS.some(k=>p[k]!==false)||p.source_count!==state.ids.length||
  p.source_contract!==state.source_contract||p.source_sha256!==state.source_sha256||
  p.client_reference!==state.client_reference||p.engagement_reference!==state.engagement_reference)fail('PRIVATE HUMAN return source or authority contract differs');
- var alias=str(p.recipient_alias,120,'self-declared human recipient',true);
- str(p.warning,500,'unverified HUMAN warning',true);
+ var alias=string(p.recipient_alias,120,'self-declared human recipient',true);
+ string(p.warning,500,'unverified HUMAN warning',true);
  var original=expectedOwnerSteps(alias);
  if(!original.length||!Array.isArray(p.handoff_rows)||!Array.isArray(p.responses)||
  original.length!==p.handoff_rows.length||p.responses.length!==original.length||
@@ -467,7 +467,7 @@ function admitReceivedReply(p){
       received.step_id!==step.step_id||
       !['not_responded_human','received_human','clarification_needed_human','discussion_prepared_human'].includes(received.human_ack))
       fail('missing, altered or duplicated ORIGINAL owner-specific HUMAN step reply');
-   str(received.private_human_note,800,'private human reply');date(received.tentative_follow_up);
+   string(received.private_human_note,800,'private human reply');date(received.tentative_follow_up);
    records.push({finding_id:source.finding_id,step_id:step.step_id,owner_alias:alias,source_action:step.description,
      human_ack:received.human_ack,private_human_note:received.private_human_note,tentative_follow_up:received.tentative_follow_up});
   }
