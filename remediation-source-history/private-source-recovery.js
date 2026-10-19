@@ -22,7 +22,7 @@ function localHeader(name,size,crc){
  const bytes=utf8.encode(name),d=new Uint8Array(30+bytes.length),v=new DataView(d.buffer);
  v.setUint32(0,0x04034b50,true);v.setUint16(4,20,true);
  v.setUint16(6,0,true);v.setUint16(8,0,true);
- v.setUint16(10,0,true);v.setUint16(12,0,true);
+ v.setUint16(10,0,true);v.setUint16(12,0x0021,true); // fixed 1980-01-01 DOS date
  v.setUint32(14,crc,true);v.setUint32(18,size,true);v.setUint32(22,size,true);
  v.setUint16(26,bytes.length,true);v.setUint16(28,0,true);
  d.set(bytes,30);return d;
@@ -31,7 +31,7 @@ function centralHeader(name,size,crc,offset){
  const bytes=utf8.encode(name),d=new Uint8Array(46+bytes.length),v=new DataView(d.buffer);
  v.setUint32(0,0x02014b50,true);v.setUint16(4,20,true);v.setUint16(6,20,true);
  v.setUint16(8,0,true);v.setUint16(10,0,true);
- v.setUint16(12,0,true);v.setUint16(14,0,true);
+ v.setUint16(12,0,true);v.setUint16(14,0x0021,true); // matching fixed DOS date
  v.setUint32(16,crc,true);v.setUint32(20,size,true);v.setUint32(24,size,true);
  v.setUint16(28,bytes.length,true);v.setUint16(30,0,true);v.setUint16(32,0,true);
  v.setUint16(34,0,true);v.setUint16(36,0,true);v.setUint32(38,0,true);
