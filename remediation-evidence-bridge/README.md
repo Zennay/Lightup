@@ -202,6 +202,8 @@ PYTHONPATH=src python3 remediation-evidence-bridge/complete.py \
   --ack-private-workspace
 ```
 
+The startup view is now built by the independent [`portal.py`](portal.py): a responsive, keyboard-accessible, **zero-JavaScript** offline dashboard with an SHA-256 CSP-pinned in-page stylesheet, literal local file links, and **aggregate-only original source-labelled** finding / critical-high / historical-revision counts. It never prints original IDs, source hashes, client labels or human notes in its landing page; a source severity label is a retrospective **claim**, not a proven security issue. All existing owner apps remain separately SHA-pinned and unchanged.
+
 Open the newly created `index.html` **locally** on a trusted private device. The five views remain separate offline files inside the same private folder to preserve original source ownership. Private HTML deliberately materializes source-labelled findings in plaintext only after explicit operator acknowledgement; do not publish, sync, email or serve the folder. Existing independent original CI, privacy/security/crypto/browser review, exact current separate client/operator consent, source owner review and HUMAN GO gates remain fully intact. A local human review is **not** an authorized scan, verified finding/retest, client approval or production release.
 
 ## Original ownership and enforced gates
