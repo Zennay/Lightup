@@ -196,6 +196,7 @@ function contextDetails(x){
  cell.append(details);return cell;
 }
 function draw(){
+ updateSavedState();
  const all=allRows(),answered=all.filter(x=>x.reply).length,
   ownerResponded=all.filter(x=>x.feedback).length,
   needs=all.filter(x=>x.reply&&x.reply.human_stage==="needs_changes").length;
@@ -230,7 +231,7 @@ function draw(){
   sel.value=x.review.stage;
   sel.addEventListener("change",()=>{
    db.notes[x.request.request_id]={...db.notes[x.request.request_id]||x.review,stage:sel.value};
-   db.revision++;invalidateBulk();invalidateUndo();msg("Local HUMAN triage changed; original request and reply untouched.");
+   db.revision++;updateSavedState();invalidateBulk();invalidateUndo();msg("Local HUMAN triage changed; original request and reply untouched.");
   });
   const stage=document.createElement("td");stage.append(sel);tr.append(stage);
   const input=document.createElement("textarea");input.rows=2;input.maxLength=400;
@@ -514,7 +515,7 @@ async function intake(){
  const next=assemble(db,packets);
  if(!confirm("Import "+packets.length+" PRIVATE human packets? All identities, replies and source labels are UNVERIFIED. No data are sent, no retest or consent is granted."))return;
  if(db.revision!==rev)fail("HOLD: register changed before confirmation");
- db=next;selection.clear();invalidateBulk();invalidateUndo();cancelFeedbackPreview();cancelRegisterMerge();$("files").value="";draw();msg("Reconciled PRIVATE HUMAN owner and reply packets atomically.");
+ db=next;previousRegisterMerge=null;selection.clear();invalidateBulk();invalidateUndo();cancelFeedbackPreview();cancelRegisterMerge();$("files").value="";draw();msg("Reconciled PRIVATE HUMAN owner and reply packets atomically.");
 }
 function snapshot(){
  return {kind:"lightup.private_human_response_reconciliation",schema_version:2,
@@ -580,11 +581,34 @@ function restore(obj,rev){
  if(db.revision!==rev)fail("HOLD: changed register");
  if(!confirm("REPLACE current PRIVATE register and HUMAN notes with this exact source-bound backup? Export current data first."))return;
  if(db.revision!==rev)fail("HOLD: changed register before replace");
- fresh.revision=rev+1;db=fresh;selection.clear();invalidateBulk();invalidateUndo();cancelFeedbackPreview();cancelRegisterMerge();$("files").value="";draw();msg("Restored PRIVATE HUMAN register from original-bound local backup.");
+ fresh.revision=rev+1;db=fresh;lastSavedRevision=db.revision;previousRegisterMerge=null;selection.clear();invalidateBulk();invalidateUndo();cancelFeedbackPreview();cancelRegisterMerge();$("files").value="";draw();msg("Restored PRIVATE HUMAN register from original-bound local backup.");
 }
 /* Source-bound, fail-closed PRIVATE operator register merge. Original source
    packets stay immutable; only HUMAN annotations require human conflict choice. */
 let pendingRegisterMerge=null;
+let previousRegisterMerge=null;
+let lastSavedRevision=0;
+function updateSavedState(){
+ const dirty=!!db.binding&&db.revision!==lastSavedRevision;
+ $("saveState").textContent=dirty?
+  "UNSAVED local HUMAN workspace changes. Export the PRIVATE register JSON to preserve work; no browser storage is used.":
+  (db.binding?"PRIVATE register snapshot exported or restored; new edits will require another export.":"No PRIVATE workspace loaded.");
+ $("saveState").dataset.dirty=dirty?"true":"false";
+ $("mergeUndo").disabled=!previousRegisterMerge||previousRegisterMerge.afterRevision!==db.revision;
+}
+function undoRegisterMerge(){
+ const last=previousRegisterMerge;
+ if(!last||last.afterRevision!==db.revision||
+  !same(last.before.binding,db.binding))
+  fail("HOLD: reviewer merge cannot be undone because local HUMAN workspace changed");
+ if(!confirm("Revert the last PRIVATE reviewer workspace merge in browser memory? This removes any original request packets and HUMAN annotations added only by that merge. Export current data separately before reverting."))return;
+ const prior=last.before;
+ db={...prior,revision:db.revision+1};
+ previousRegisterMerge=null;selection.clear();invalidateBulk();invalidateUndo();
+ cancelFeedbackPreview();cancelRegisterMerge();$("mergeFile").value="";
+ draw();notifyMerge("Last HUMAN reviewer merge reverted locally. No original evidence or authority changed.");
+}
+
 const EMPTY_REVIEW={stage:"not_reviewed",note:""};
 function notifyMerge(message,bad=false){
  $("mergeStatus").textContent=message;$("mergeStatus").dataset.error=bad?"true":"false";
@@ -711,6 +735,7 @@ function applyRegisterMerge(){
  for(const item of p.plan.notes)if(item.choice==="incoming")updated.notes[item.id]={...item.received};
  for(const item of p.plan.followups)if(item.choice==="incoming")updated.ownerFeedback[item.id]={...item.received};
  updated.revision=db.revision+1;
+ previousRegisterMerge={before:db,afterRevision:updated.revision};
  db=updated;selection.clear();invalidateBulk();invalidateUndo();cancelFeedbackPreview();
  cancelRegisterMerge();$("mergeFile").value="";draw();
  notifyMerge("Merged separately reviewed PRIVATE HUMAN annotations. Immutable original requests/responses and security gates unchanged.");
@@ -759,11 +784,14 @@ function listen(id,fn){$(id).addEventListener("click",async()=>{try{await fn();}
 listen("mergePreview",async()=>{try{await previewRegisterMerge();}catch(e){cancelRegisterMerge();notifyMerge(e.message||"PRIVATE reviewer snapshot rejected",true);}});
 listen("mergeApply",()=>{try{applyRegisterMerge();}catch(e){cancelRegisterMerge();notifyMerge(e.message||"PRIVATE merge denied",true);}});
 listen("mergeCancel",()=>{cancelRegisterMerge();notifyMerge("Discarded uncommitted reviewer merge proposal.");});
+listen("mergeUndo",()=>{try{undoRegisterMerge();}catch(e){notifyMerge(e.message||"Review merge undo denied",true);}});
+
 $("mergeFile").addEventListener("change",()=>{cancelRegisterMerge();notifyMerge("Reviewer file changed; preview again.");});
 listen("load",intake);
 listen("download",()=>{if(!db.binding)fail("No PRIVATE register loaded");
  if(!confirm("Download PRIVATE owner identities, original request IDs, unverified replies and HUMAN notes? Confirm secure storage."))return;
- save("LightUp-PRIVATE-response-register.json",JSON.stringify(snapshot(),null,2)+"\n","application/json");});
+ save("LightUp-PRIVATE-response-register.json",JSON.stringify(snapshot(),null,2)+"\n","application/json");
+ lastSavedRevision=db.revision;updateSavedState();});
 listen("csv",exportCSV);listen("summaryCsv",exportAnonymous);
 listen("exportOwner",exportOwnerPrivate);
 $("ownerExport").addEventListener("change",()=>{$("exportOwner").disabled=!$("ownerExport").value;});listen("print",report);
@@ -778,7 +806,7 @@ $("selectShown").addEventListener("change",e=>{for(const x of filteredRows()){
  }invalidateBulk();draw();});
 $("bulkStage").addEventListener("change",invalidateBulk);
 listen("forget",()=>{if(!confirm("Clear ALL in-memory human responses and PRIVATE annotations? Saved downloads remain."))return;
- const rev=db.revision+1;db=blank();db.revision=rev;selection.clear();invalidateBulk();invalidateUndo();cancelFeedbackPreview();cancelRegisterMerge();
+ const rev=db.revision+1;db=blank();db.revision=rev;lastSavedRevision=rev;previousRegisterMerge=null;selection.clear();invalidateBulk();invalidateUndo();cancelFeedbackPreview();cancelRegisterMerge();
  $("files").value="";$("feedbackFile").value="";$("mergeFile").value="";$("search").value="";
  notifyMerge("Private reviewer import file references and merge choices forgotten.");
  feedbackNotice("All selected HUMAN feedback file references and previews forgotten.");
