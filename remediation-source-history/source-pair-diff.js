@@ -57,7 +57,7 @@ function renderComparison(){
 }
 function handleGo(){try{renderComparison();}catch(e){compared=null;$('diffRows').innerHTML='';message(e.message,true);}}
 function verified(){
- const c=compute();if(compared&&compared.before.sourceHash!==c.before.sourceHash)throw Error('Snapshot pair changed; repeat preview before export.');
+ const c=compute();if(!compared||compared.before.sourceHash!==c.before.sourceHash||compared.after.sourceHash!==c.after.sourceHash)throw Error('First preview the exact original snapshot pair before exporting.');
  return c;
 }
 function exportAggregate(){
