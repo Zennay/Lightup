@@ -93,7 +93,6 @@ def rotate(old_workroom: Path, old_secret: Path, new_secret: Path,
         incoming = staging / "inbox"
         incoming.mkdir(mode=0o700)
         rows = []
-        seen = set()
         for index in range(1, original["slot_count"] + 1):
             name = f"slot-{index:02d}"
             new_admission = receive_rotated(
@@ -101,9 +100,9 @@ def rotate(old_workroom: Path, old_secret: Path, new_secret: Path,
                 incoming / name, new_secret, new)
             manifest = review.private_read(incoming / name / "cockpit" / "manifest.json")
             row = inbox.row_from_admission(index, new_admission, manifest)
-            require(row == original["slots"][index-1] and
-                    row["source_free_manifest_sha256"] not in seen)
-            seen.add(row["source_free_manifest_sha256"])
+            # Preserve the exact original source-free slot-by-slot identity;
+            # equal anonymous manifests alone do not prove duplicate clients.
+            require(row == original["slots"][index-1])
             rows.append(row)
         updated_inbox = inbox.summary(rows)
         require(updated_inbox == original)

@@ -141,7 +141,6 @@ def receive(source: Path, keyfile: Path, output_parent: Path) -> tuple[Path, dic
     complete = False
     try:
         rows = []
-        sha_set: set[str] = set()
         for index, packet in enumerate(packets, 1):
             manifest, receipt, files = authenticate(packet, key)
             slot_name = f"slot-{index:02d}"
@@ -151,8 +150,6 @@ def receive(source: Path, keyfile: Path, output_parent: Path) -> tuple[Path, dic
             attest.exclusive_private_write(slot / "receipt.json", receipt)
             admitted = attest.inspect(slot / "cockpit", keyfile, slot / "receipt.json")
             row = inbox.row_from_admission(index, admitted, manifest)
-            require(row["source_free_manifest_sha256"] not in sha_set)
-            sha_set.add(row["source_free_manifest_sha256"])
             rows.append(row)
         document = inbox.summary(rows)
         html = inbox.render(document)
