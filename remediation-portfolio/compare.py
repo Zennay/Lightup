@@ -33,7 +33,7 @@ def check_portfolio(root: Path) -> dict:
     portfolio.private_dir(root)
     portfolio.require({p.name for p in root.iterdir()} ==
                       {"index.html", "summary.json", "counts.csv",
-                       "human-followup.txt"})
+                       "human-volume-queue.csv", "human-followup.txt"})
     raw = portfolio.read_private(root / "summary.json")
     summary = portfolio.parse(raw)
     portfolio.require(set(summary) == FIELDS
@@ -72,6 +72,7 @@ def check_portfolio(root: Path) -> dict:
     portfolio.require(summary == expected and raw == portfolio.serialize(expected))
     for filename, actual in (("index.html", portfolio.html_bytes(expected)),
                              ("counts.csv", portfolio.csv_bytes(expected)),
+                             ("human-volume-queue.csv", portfolio.queue_bytes(expected)),
                              ("human-followup.txt", portfolio.brief_bytes(expected))):
         portfolio.require(portfolio.read_private(root / filename) == actual)
     return expected
