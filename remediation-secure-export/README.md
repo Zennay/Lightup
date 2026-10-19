@@ -41,6 +41,23 @@ The original LightUp account password is requested securely and the existing `Do
 
 Nothing is written until all original authorization/source admission and full HTML bundling finish **in memory**. A new `.ltv` file is published with the original vault `0600` exclusive/no-follow mechanism in a trusted owner-only directory. The original plaintext `findings.csv` and `casework.html` **are never created during this operation**.
 
+### Recommended: recheck current access AND exact original source before restoring
+
+This is a **new stronger opt-in** route. It does not simply trust an older exported report or a passphrase: it uses the original persisted LightUp account authentication again, resolves the current exact tenant/client/engagement through original `render_client_findings_csv`, applies the guarded original exporter and this route's whole-batch checks, recomputes original CSV SHA-256 and count, then decrypts the snapshot and **requires both current source identities and exact current original CSV content to match** the encrypted old snapshot. If the source changed, an account was revoked, or the client/engagement does not match, **no HTML file is published**. This is *not* genuine client consent or approval to assess a target; it checks only the original currently supported account/tenant/source read authority.
+
+```sh
+PYTHONPATH=src python3 remediation-secure-export/secure_export.py open-current \\
+  --db /trusted/private/original-lightup.sqlite \\
+  --email original-operator@example.org \\
+  --client-id EXISTING_AUTHORIZED_CLIENT_ID \\
+  --engagement-id EXISTING_APPROVED_ENGAGEMENT_ID \\
+  --input /trusted/private/lightup/casework-private.ltv \\
+  --output /trusted/private/lightup/casework-current.html \\
+  --ack-private-html
+```
+
+Both original account and ciphertext passphrase are supplied privately on a live terminal. An old encrypted snapshot **is never silently rebased** to changed findings. Use the original fresh `export` workflow to create a new encrypted snapshot when the source changes. This feature does not alter any original grant, consent, scanner or target code.
+
 ### 2. Privately inspect an authenticated encrypted source — no plaintext file
 
 ```sh
