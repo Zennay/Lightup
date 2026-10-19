@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import sys
 
-from . import private_export_human_revision, private_export_human_revision_workqueue, private_export_human_revision_choices
+from . import private_export_human_revision, private_export_human_revision_workqueue, private_export_human_revision_choices, private_export_human_revision_guided
 
 
 def _ask(label: str) -> str:
@@ -42,13 +42,14 @@ def main() -> int:
         "5. PRIVATE original-ID/title source change workqueue (unencrypted HTML)\n"
         "6. Export FALSE-by-default private per-finding decision sheet (JSON)\n"
         "7. Import verified HUMAN decisions into NEW encrypted source-bound plan\n"
+        "8. Guided per-finding terminal approval, directly to NEW encrypted plan\n"
         "0. Exit"
     )
     try:
-        choice = _ask("Choose 0-7")
+        choice = _ask("Choose 0-8")
         if choice == "0":
             return 0
-        if choice not in ("1", "2", "3", "4", "5", "6", "7"):
+        if choice not in ("1", "2", "3", "4", "5", "6", "7", "8"):
             raise ValueError("unknown option")
         before = _ask("Earlier authenticated encrypted original source .lue")
         plan = _ask("Earlier exact-source encrypted HUMAN plan .lun")
@@ -66,6 +67,20 @@ def main() -> int:
             "storage, actual recipient and approved transport; no output establishes "
             "consent, verified fixes or permission to test."
         )
+        if choice == "8":
+            destination = _ask("NEW encrypted source-bound HUMAN plan .lun")
+            if not destination.lower().endswith(".lun"):
+                raise ValueError("new plan must end with .lun")
+            _confirm(
+                "I have a PRIVATE interactive terminal and will review EVERY "
+                "eligible finding ID individually. This is HUMAN coordination "
+                "only, not evidence equality, real consent, a verified fix or retest."
+            )
+            return private_export_human_revision_guided.main([
+                before, plan, after, "--output", destination,
+                "--ack-private-terminal", "--ack-same-real-client",
+                "--ack-human-decisions",
+            ])
         if choice in ("6", "7"):
             if choice == "6":
                 destination = _ask("NEW private, UNENCRYPTED original-ID choice sheet .json")
