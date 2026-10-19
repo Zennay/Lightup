@@ -7,6 +7,7 @@ const FIELDS = ['finding_id','title','severity','retest_status','remediation'];
 const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const severityRank = {critical:0,high:1,medium:2,low:3,info:4};
 const limits = {maxSnapshots:12,maxBytes:1048576,maxRows:350,maxNotes:250};
+const toB64=bytes=>{let s='';for(let i=0;i<bytes.length;i+=32768)s+=String.fromCharCode(...bytes.subarray(i,i+32768));return btoa(s);};
 function message(value, error=false) { $('message').textContent=value; $('message').className=error?'error':'info'; }
 function exact(a,b) { return FIELDS.every(k=>a[k]===b[k]); }
 function csvCell(v) {let s=String(v??''); if (/^[\s\u0000-\u001f\u200b-\u200f\u2060\ufeff]*[=+\-@]/u.test(s)) s="'"+s; return '"'+s.replace(/"/g,'""')+'"';}
@@ -48,7 +49,7 @@ async function ingest(files) {
   if(!hash)throw Error('Original SHA-256 source digest unavailable.');
   if(state.snapshots.some(s=>s.sourceHash===hash)||parsed.some(s=>s.sourceHash===hash))throw Error('Duplicate canonical source snapshot; import only meaningful separate revisions.');
   const name=file.name.slice(0,160);
-  parsed.push({name,label:name.replace(/\.csv$/i,'').slice(0,100),sourceHash:hash,fileHash,findings});
+  parsed.push({name,label:'Revision '+(state.snapshots.length+parsed.length+1),sourceHash:hash,fileHash,findings,csvBase64:toB64(new Uint8Array(buf))});
  }
  // Multiple await boundaries: fail closed on user context switching while files are loading.
  const same=context();
@@ -167,6 +168,26 @@ $('snapshots').addEventListener('click',event=>{
  const move=event.target.closest('button[data-move]'),remove=event.target.closest('button[data-remove]');
  if(move){const i=Number(move.dataset.move),j=i+Number(move.dataset.shift);if(j>=0&&j<state.snapshots.length){[state.snapshots[i],state.snapshots[j]]=[state.snapshots[j],state.snapshots[i]];state.revision++;render();}}
  if(remove){const i=Number(remove.dataset.remove);state.snapshots.splice(i,1);state.revision++;if(!state.snapshots.length){state.active=null;state.notes.clear();state.selected=null;}render();}
+});
+/* Controlled archive bridge: no browser persistence or authority, atomic restoration only. */
+window.LightUpHistory=Object.freeze({
+  capture(){
+    const ctx=requireContext();protect();
+    if(!state.snapshots.length)throw Error('Import original source revisions before saving.');
+    if(state.snapshots.some(s=>!s.csvBase64))throw Error('Original file bytes unavailable; re-import before private checkpoint.');
+    return {revision:state.revision,context:{...ctx},snapshots:state.snapshots.map(s=>({...s})),notes:[...state.notes].map(([id,n])=>({id,...n}))};
+  },
+  empty(){return !state.snapshots.length&&!state.notes.size;},
+  restore(packet,revision){
+    const ctx=requireContext();
+    if(!this.empty()||state.revision!==revision)throw Error('Active session changed; Forget before restore.');
+    if(!packet||packet.context.client!==ctx.client||packet.context.engagement!==ctx.engagement)throw Error('The original client/engagement context must be independently reconfirmed.');
+    state.snapshots=packet.snapshots;
+    state.notes=new Map(packet.notes.map(n=>[n.id,{owner:n.owner,action:n.action,due:n.due}]));
+    state.active={...ctx};state.selected=null;state.revision++;render();
+  },
+  revision(){return state.revision;},
+  limits:Object.freeze({...limits})
 });
 render();
 })();
