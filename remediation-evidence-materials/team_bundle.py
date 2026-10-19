@@ -79,6 +79,7 @@ def admit(raw: bytes, meta: dict, human: dict, indexed: dict) -> list[dict]:
     if type(rows) is not list or not 2<=len(rows)<=team.MAX_ITEMS:
         raise ValueError("Invalid original encrypted HUMAN team rows.")
     packets=set()
+    per_packet=Counter()
     keys=set()
     for row in rows:
         if type(row) is not dict or set(row)!=ITEM:
@@ -89,12 +90,10 @@ def admit(raw: bytes, meta: dict, human: dict, indexed: dict) -> list[dict]:
             raise ValueError("HUMAN team item fields must be exact text.")
         if row["human_stage"] not in reply.STAGES:
             raise ValueError("Unknown HUMAN-only receipt status.")
-        transfer.native._text(row["human_reviewer"],reply.MAX_LABEL)
-        transfer.native._text(row["human_note"],reply.MAX_NOTE)
-        if row["human_reviewer"]!=row["human_reviewer"].strip() or (
-            row["human_note"]!=row["human_note"].strip()
-            or "\r" in row["human_note"] or "\n" in row["human_note"]):
-            raise ValueError("Noncanonical original PRIVATE HUMAN note.")
+        # Preserve the exact original recipient canonical HUMAN text contract.
+        # Escaped HTML alone is not adequate input admission for portable vaults.
+        reply._human_text(row["human_reviewer"],reply.MAX_LABEL,"reviewer")
+        reply._human_text(row["human_note"],reply.MAX_NOTE,"note")
         transfer.native._stamp(row["recorded_utc"])
         key=(row["finding_id"],row["sha256"])
         if key not in indexed:
@@ -104,6 +103,9 @@ def admit(raw: bytes, meta: dict, human: dict, indexed: dict) -> list[dict]:
             raise ValueError("Repeated identical original HUMAN packet/file identity.")
         keys.add(uniqueness)
         packets.add(row["packet"])
+        per_packet[row["packet"]]+=1
+        if per_packet[row["packet"]]>transfer.MAX_FILES:
+            raise ValueError("Encrypted team packet has more HUMAN files than native source allows.")
     if (type(obj["packet_count"]) is not int or not 2<=obj["packet_count"]<=team.MAX_PAIRS
         or sorted(packets)!=list(range(1,obj["packet_count"]+1))):
         raise ValueError("HUMAN team portfolio packet membership not complete.")
