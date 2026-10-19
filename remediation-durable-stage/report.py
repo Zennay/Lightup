@@ -57,8 +57,12 @@ def _timestamp(value: object) -> str:
     return value
 
 
-def build(journal: dict, current_closed: bool) -> bytes:
-    """Generate an offline HTML artifact only from verified local journal data."""
+def build(journal: dict, current_closed: bool, *,
+          source_revisions: int = 0, unresolved_revisions: int = 0) -> bytes:
+    """Render current source chronology plus anonymous cross-source attention."""
+    if (type(source_revisions) is not int or type(unresolved_revisions) is not int
+            or not 0 <= unresolved_revisions <= source_revisions <= 96):
+        raise ValueError("Original engagement source-revision summary invalid.")
     cycles = journal["cycles"]
     latest_state = cycles[-1]["state"] if cycles else "empty"
     total_drafts = sum(len(row["requests"]) for row in cycles)
@@ -91,12 +95,20 @@ or a verified remediation/security finding.</p></header>
 <section class='""" + banner + """'><h2>Next HUMAN action</h2><p>""" + (
         escape(ADVICE[latest_state])) + """</p></section>
 <section><h2>PRIVATE local overview</h2><div class="summary">
-<div>Cycles<strong>""" + str(len(cycles)) + """</strong></div>
+<div>Current source cycles<strong>""" + str(len(cycles)) + """</strong></div>
+<div>Registered source revisions<strong>""" + str(source_revisions) + """</strong></div>
+<div>Revisions with open HUMAN drafts<strong>""" + str(unresolved_revisions) + """</strong></div>
 <div>Staged request references<strong>""" + str(total_drafts) + """</strong></div>
 <div>Unresolved cycles<strong>""" + str(open_cycles) + """</strong></div>
 <div>Current original HUMAN closure observed<strong>""" + (
         "Yes (unverified HUMAN)" if current_closed else "No"
         ) + """</strong></div></div></section>
+<section><h2>Source-revision continuity</h2>
+<p>Open ORIGINAL-human drafts in earlier source revisions can block new local
+staging until their own original-native current HUMAN records are independently
+reviewed and closed. This owner-private overview gives counts only;
+it cannot certify old or new scope, current consent, signed Apply or
+history on other devices.</p></section>
 <section><h2>Local chronology</h2>
 <table><caption>Private HUMAN attempts, no evidence identifiers</caption>
 <thead><tr><th>Cycle</th><th>State</th><th>Created UTC</th>

@@ -344,7 +344,11 @@ def main(argv=None) -> int:
                     raise ValueError("Distinct NEW private HTML output required.")
                 latest = document["cycles"][-1] if document["cycles"] else None
                 closed = _closed(latest, packet) if latest and latest["requests"] else False
-                payload = local_dashboard.build(document, closed)
+                revisions, unresolved = source_revisions.inspect(
+                    folder, packet, vault, _owned_regular, _read)
+                payload = local_dashboard.build(
+                    document, closed, source_revisions=len(revisions["sources"]),
+                    unresolved_revisions=unresolved)
                 source._hold_if_not_private_directory(destination.parent)
                 vault._exclusive_output(destination, payload)
                 print("New owner-private 0600 scriptless offline HUMAN journal created.")
