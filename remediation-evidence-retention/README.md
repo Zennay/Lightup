@@ -63,6 +63,27 @@ python3 remediation-evidence-retention/retention.py renew \
 
 `renew` refuses passphrase reuse against the original HUMAN vault **and** the previous retention plan, requires current native source-and-bytes continuity, and never overwrites the old encrypted plan. A blank decision or note keeps the previous human input; `<clear>` explicitly removes a former human note. An old due date requires selecting a new nonpast date when reissuing. No silent renewal or legal policy determination occurs.
 
+
+## Multi-version PRIVATE HUMAN review history
+
+The new [`history.py`](history.py) integrates the previous commands: it accepts **2–12 existing DISTINCT encrypted HUMAN retention plans**, reauthenticates the original CURRENT LightUp account/tenant/engagement, admits the unchanged encrypted original HUMAN source, checks the **entire actual material receipt and original file bytes**, then opens each encrypted plan with its own private terminal prompt. It refuses modified/duplicate plans, source drift, original inventory changes, malformed authority flags or unauthorized local files before creating output.
+
+The result is a **NEW owner-only 0600 local no-network, no-script HTML reviewer history** with first/current human state, dates, per-file revision change steps, review-due counts and a separately highlighted caution whenever a HUMAN `legal_hold` is changed to another HUMAN status. It does **not** release a legal hold, prove that a legal hold was valid, or delete evidence. Input **ordering is selected by the human**, not an authenticated historical time sequence. No browser storage, private report cloud sync, or original record changes.
+
+```sh
+python3 remediation-evidence-retention/history.py \
+  --db /private/lightup.db --email operator@example.invalid \
+  --client-id <original-client-id> --engagement-id <original-engagement-id> \
+  --human /private/existing-human.ltv \
+  --directory /private/received-material \
+  --plan /private/retention-review-v1.ltv \
+  --plan /private/retention-review-v2.ltv \
+  --output /private/private-retention-history.html \
+  --ack-private-material
+```
+
+Private encrypted plan filenames and source material should not be shared with third parties. Terminal output only contains counts; original finding identities and encrypted-input SHA-256 appear only in the private HTML. This is an independent HUMAN coordination capability, never provenance verification or an action-time grant.
+
 ## Ownership and acceptance posture
 
 **Base:** immutable [#1657](https://github.com/Zennay/Lightup/pull/1657) source snapshot `0c2f2689ad5862eb7372d9bf2ed3aa81831f43c4`, unchanged. Owner's subsequent commits are not silently assimilated. Added paths are independent from `remediation-evidence-materials/`, evidence transfer owners and issue #1182 CSV source owners. Release gates unchanged.
