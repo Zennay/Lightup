@@ -160,6 +160,14 @@ def main() -> int:
         "Inspect a PRIVATE HUMAN team workroom or create the next complete "
         "immutable review assignment version, without source changes"))
     actions = parser.add_subparsers(dest="action", required=True)
+    sending = actions.add_parser("send", help="One-file encrypted send of a fully admitted complete PRIVATE workroom")
+    sending.add_argument("--workroom", required=True, type=Path)
+    sending.add_argument("--key-file", required=True, type=Path)
+    sending.add_argument("--output", required=True, type=Path)
+    receiving = actions.add_parser("receive", help="Open a full encrypted PRIVATE workroom and its HUMAN plan")
+    receiving.add_argument("--input", required=True, type=Path)
+    receiving.add_argument("--key-file", required=True, type=Path)
+    receiving.add_argument("--output-parent", required=True, type=Path)
     creating = actions.add_parser("create", help="Receive encrypted source-free cockpits and open a complete PRIVATE workroom in one command")
     creating.add_argument("--package", action="append", required=True, type=Path)
     creating.add_argument("--key-file", required=True, type=Path)
@@ -208,7 +216,23 @@ def main() -> int:
     editing.add_argument("--clear-note", action="store_true")
     args = parser.parse_args()
     try:
-        if args.action == "create":
+        if args.action == "send":
+            previous = inspect(args.workroom, args.key_file)
+            require(args.output != args.workroom and
+                    args.workroom not in args.output.parents and
+                    args.output != args.key_file)
+            transmitted = workroom.seal(args.workroom / "inbox",
+                                        args.workroom / "plan.ltplan",
+                                        args.key_file, args.output)
+            require(transmitted == previous and inspect(args.workroom, args.key_file) == previous)
+            plan = previous
+            print("One PRIVATE source-free HUMAN workroom encrypted for trusted handoff: " + str(args.output))
+        elif args.action == "receive":
+            destination, plan = workroom.open_workroom(args.input, args.key_file,
+                                                       args.output_parent)
+            require(inspect(destination, args.key_file) == plan)
+            print("Complete source-free PRIVATE HUMAN workroom independently received: " + str(destination))
+        elif args.action == "create":
             result, plan = create_workroom(args.package, args.key_file,
                                            args.output_parent)
             print("PRIVATE HUMAN workroom created from encrypted source-free packets: " + str(result))
