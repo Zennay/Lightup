@@ -255,7 +255,12 @@ def unpack(args, vault) -> None:
     if mime != "application/json":
         raise ValueError("Received file is not a native encrypted JSON transfer.")
     files = parse_transfer(payload, packet, envelope)
-    dest = private_directory(args.output_dir)
+    unpack_parsed(args.output_dir, vault, packet, files)
+
+
+def unpack_parsed(output_dir: Path, vault, packet: dict, files: list) -> None:
+    """Publish already authenticated and original-source-matched raw material."""
+    dest = private_directory(output_dir)
     # No original path is used; create a fresh 0700 directory and 0600 files.
     # Build manifest in memory only and clean partial new output if publication fails.
     metadata = {
