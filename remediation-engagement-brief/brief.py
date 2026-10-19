@@ -314,6 +314,11 @@ def main(argv=None):
     history.add_argument("--ack-sealed-html", action="store_true")
     history.add_argument("--ack-private-html", action="store_true",
                          help="Explicitly acknowledge confidential local HTML output")
+    history.add_argument("--original-ticketdesk-html", type=Path,
+                         help="NEW 0600 unmodified original Ticket Desk preloaded with current authorized source")
+    history.add_argument("--original-ticketdesk-sealed", type=Path,
+                         help="NEW encrypted original Ticket Desk source handoff (no plaintext HTML)")
+    history.add_argument("--ack-original-ticketdesk", action="store_true")
     capture.add_argument("--output", required=True, type=Path)
     for action in (inspect, review, open_now):
         action.add_argument("--input", required=True, type=Path)
@@ -374,6 +379,11 @@ def main(argv=None):
             print("Original source severity escalations (UNVERIFIED):",result["source_escalation_events"])
             print("New original source regression labels (UNVERIFIED):",result["source_regression_label_events"])
             print("Current original IDs flagged for HUMAN source review:",len(result["current_human_focus"]))
+            if args.original_ticketdesk_sealed is not None or args.original_ticketdesk_html is not None:
+                # Historical source documents remain HUMAN-only reference.
+                # Only CURRENT freshly authorized original source reaches the
+                # unmodified original Ticket Desk input.
+                save_original_ticketdesk(args,current)
             if args.output is not None or args.sealed_markdown is not None:
                 args.capture_current=None
                 save_markdown(args, history_markdown(result))
