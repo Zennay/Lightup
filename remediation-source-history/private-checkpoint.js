@@ -31,7 +31,7 @@ async function save(){
  const payload={kind:'lightup.private_human_source_history',version:1,disposition:'UNVERIFIED_LOCAL_HUMAN_PLANNING',
   ...Object.fromEntries(FLAGS.map(x=>[x,false])),context:p.context,
   snapshots:p.snapshots.map(x=>({name:x.name,label:x.label,sourceHash:x.sourceHash,fileHash:x.fileHash,csvBase64:x.csvBase64})),
-  notes:p.notes,decisions:p.decisions};
+  notes:p.notes,decisions:p.decisions,merges:p.merges};
  const salt=crypto.getRandomValues(new Uint8Array(16)),iv=crypto.getRandomValues(new Uint8Array(12));
  const k=await key(password,salt);
  const encrypted=new Uint8Array(await crypto.subtle.encrypt({name:'AES-GCM',iv,additionalData:bytes(KIND+':1')},k,bytes(JSON.stringify(payload))));
@@ -64,13 +64,15 @@ async function open(){
  }catch{throw Error('Passphrase invalid, encrypted archive altered, or AES-GCM authentication failed; no workspace changed.');}
  const packet=JSON.parse(plain);
  if(JSON.stringify(packet)!==plain||
-  !(shape(packet,['kind','version','disposition',...FLAGS,'context','snapshots','notes','decisions'])||
+  !(shape(packet,['kind','version','disposition',...FLAGS,'context','snapshots','notes','decisions','merges'])||
+    shape(packet,['kind','version','disposition',...FLAGS,'context','snapshots','notes','decisions'])||
     shape(packet,['kind','version','disposition',...FLAGS,'context','snapshots','notes']))||
   packet.kind!=='lightup.private_human_source_history'||packet.version!==1||
   packet.disposition!=='UNVERIFIED_LOCAL_HUMAN_PLANNING'||FLAGS.some(k=>packet[k]!==false)||
   !shape(packet.context,['client','engagement'])||packet.context.client!==ctx.client||packet.context.engagement!==ctx.engagement||
   !Array.isArray(packet.snapshots)||!packet.snapshots.length||packet.snapshots.length>H.limits.maxSnapshots||
   !Array.isArray(packet.notes)||packet.notes.length>H.limits.maxNotes||
+  (Object.prototype.hasOwnProperty.call(packet,'merges')&&(!Array.isArray(packet.merges)||packet.merges.length>H.limits.maxMerges))||
   (Object.prototype.hasOwnProperty.call(packet,'decisions')&&(!Array.isArray(packet.decisions)||packet.decisions.length>H.limits.maxDecisions)))
    throw Error('Authenticated archive content has invalid original source/context/non-authority contract.');
  const restored=[],seen=new Set();
@@ -129,7 +131,37 @@ async function open(){
     typeof d.decidedUTC!=='string'||!/^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$/.test(d.decidedUTC)||
     !Number.isFinite(Date.parse(d.decidedUTC)))throw Error('PRIVATE HUMAN carry decision is not bound to authenticated original source history.');
  }
- H.restore({context:ctx,snapshots:restored,notes,decisions},currentVersion);
+ const allowedHumanFields=['owner','status','due_date','next_action','verification_plan','blocker','note','updated_utc'];
+ const merges=packet.merges||[];
+ for(const m of merges){
+   if(!shape(m,['dateUtc','sourceHash','reason','records'])||
+     typeof m.dateUtc!=='string'||!/^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$/.test(m.dateUtc)||
+     !Number.isFinite(Date.parse(m.dateUtc))||
+     typeof m.sourceHash!=='string'||!/^[a-f0-9]{64}$/.test(m.sourceHash)||
+     !restored.some(x=>x.sourceHash===m.sourceHash)||
+     typeof m.reason!=='string'||m.reason.trim().length<8||m.reason.length>500||
+     !Array.isArray(m.records)||!m.records.length||m.records.length>350)
+     throw Error('Source-bound private HUMAN reconciliation metadata invalid.');
+   const original=restored.find(x=>x.sourceHash===m.sourceHash),inSource=new Set(original.findings.map(x=>x.finding_id)),identifiers=new Set();
+   for(const record of m.records){
+     if(!shape(record,['id','fields','previous','accepted'])||
+       typeof record.id!=='string'||!inSource.has(record.id)||identifiers.has(record.id)||
+       !Array.isArray(record.fields)||!record.fields.length||record.fields.length>8||
+       record.fields.some(k=>typeof k!=='string'||!allowedHumanFields.includes(k))||
+       new Set(record.fields).size!==record.fields.length||
+       !shape(record.previous,record.fields)||!shape(record.accepted,record.fields))
+       throw Error('Original HUMAN field merge contains unknown source identity or changed keys.');
+     identifiers.add(record.id);
+     for(const k of record.fields){
+       const before=record.previous[k],after=record.accepted[k];
+       if((before!==null&&typeof before!=='string')||(after!==null&&typeof after!=='string')||
+         (typeof before==='string'&&before.length>6000)||
+         (typeof after==='string'&&after.length>6000))
+         throw Error('Invalid private HUMAN old/new field value in encrypted merge archive.');
+     }
+   }
+ }
+ H.restore({context:ctx,snapshots:restored,notes,decisions,merges},currentVersion);
  say('Encrypted checkpoint reopened with exact CSV-byte and original canonical source SHA-256 verification. No permission, fix or retest verified.');
 }
 $('archiveSave').addEventListener('click',async()=>{try{await save();}catch(e){say(e.message,true);}finally{$('archivePass').value='';}});
