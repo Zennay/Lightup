@@ -71,6 +71,22 @@
           <label for="humanSearch">Local source label search <input id="humanSearch" type="search" autocomplete="off" placeholder="Private capability / check"></label>
           <label for="humanStage">HUMAN stage <select id="humanStage"><option value="all">All HUMAN stages</option><option value="needs_review">Needs review</option><option value="queued">Queued</option><option value="discussing">Discussing</option><option value="documented">Documented (HUMAN only)</option><option value="blocked">Blocked</option></select></label>
         </div>
+        <section class="human-bulk" aria-label="Bulk HUMAN planning for current local filter">
+          <h4>Bulk HUMAN routing · current local search / stage selection</h4>
+          <div class="bulk-fields">
+            <label for="humanBulkStage">Stage <select id="humanBulkStage">
+              <option value="keep">Keep unchanged</option><option value="needs_review">Needs review</option><option value="queued">Queued</option><option value="discussing">Discussing</option><option value="documented">Documented (HUMAN only)</option><option value="blocked">Blocked</option>
+            </select></label>
+            <label for="humanBulkRoute">Review group <select id="humanBulkRoute">
+              <option value="keep">Keep unchanged</option><option value="unassigned">Unassigned</option><option value="scope">Scope</option><option value="findings">Findings</option><option value="evidence">Evidence</option><option value="remediation">Remediation</option><option value="privacy">Privacy</option>
+            </select></label>
+            <label for="humanBulkAction">Next HUMAN question <select id="humanBulkAction">
+              <option value="keep">Keep unchanged</option><option value="none">None</option><option value="clarify_source">Clarify source</option><option value="review_scope_policy">Review scope/policy</option><option value="request_evidence_review">Ask HUMAN evidence review</option><option value="discuss_declared_difference">Discuss source difference</option><option value="prepare_private_human_brief">Prepare private brief</option><option value="request_independent_human_review">Ask independent human review</option>
+            </select></label>
+            <div class="buttons"><button id="humanBulk" class="primary" type="button">Apply to matching HUMAN rows</button><button id="humanUndo" class="secondary" type="button" disabled>Undo last bulk edit</button></div>
+          </div>
+          <p class="hint">At most 512 matching rows per confirmed edit. No original source data or verified finding status is ever edited.</p>
+        </section>
         <div class="table-scroll human-table-scroll"><table id="humanTable"></table></div>
         <div class="human-paging">
           <span id="humanPages">No HUMAN work loaded.</span>
@@ -86,6 +102,7 @@
             <button id="humanSave" class="primary" type="button" disabled>Save PRIVATE plan</button>
             <button id="humanResumeButton" class="secondary" type="button" disabled>Resume against same source bytes</button>
             <button id="humanBrief" class="secondary" type="button" disabled>Export counts-only HUMAN brief</button>
+            <button id="humanHandoff" class="secondary" type="button" disabled>Download PRIVATE read-only HUMAN handoff</button>
             <button id="humanReset" class="secondary" type="button">Reset HUMAN choices</button>
           </div>
         </div>
