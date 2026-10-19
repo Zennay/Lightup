@@ -231,10 +231,21 @@ def _stage(args, vault, folder, journal, current) -> None:
         raise ValueError("Earlier original HUMAN closure not in current source: HOLD.")
     # A new source revision must not silently hide an earlier pending/staged
     # original-native HUMAN draft for this same actual client/engagement.
-    _, unresolved = source_revisions.inspect(
+    revisions, unresolved = source_revisions.inspect(
         folder, packet, vault, _owned_regular, _read)
     if unresolved:
         raise ValueError("Earlier engagement-source HUMAN handoff remains unresolved.")
+    # The engagement inbox already highlights this case as HOLD. The actual
+    # staging gate must not contradict it by permitting a fresh draft.
+    for registered_key in revisions["sources"]:
+        previous = _read(folder, registered_key, vault)
+        for old in previous["cycles"]:
+            if old["state"] == "aborted_unpublished":
+                recorded = Path(old["output"])
+                if recorded.exists() or recorded.is_symlink():
+                    raise ValueError(
+                        "Unexpected native encrypted file at earlier HUMAN"
+                        " aborted-unpublished output: owner review required.")
     candidates, blocked, due = bridge._eligible(packet, items)
     print("Current due original HUMAN findings:", due, "· existing open:", blocked,
           "· available:", len(candidates))
