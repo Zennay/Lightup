@@ -191,7 +191,7 @@ def queue_bytes(summary: dict) -> bytes:
                   p["attention"] if p is not None else "",
                   row["source_free_slots_not_unique"], "human_question_volume_only")
         lines.append(",".join(str(v) for v in fields))
-    return ("\\r\\n".join(lines) + "\\r\\n").encode("ascii")
+    return ("\r\n".join(lines) + "\r\n").encode("ascii")
 
 
 def recommendations(summary: dict) -> list[str]:
