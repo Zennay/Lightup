@@ -87,5 +87,5 @@ function decode(text,current,sourceHash){
  if(drafts.size!==current.length)throw Error('Casework admission incomplete.');
  return {drafts,suggested,resetCompleted};
 }
-global.LightUpTicketIntake=Object.freeze({decode,parsePrivateJSON:(text)=>duplicateSafeJSON(text,4*1024*1024)});
+global.LightUpTicketIntake=Object.freeze({decode,parsePrivateJSON:(text,maxBytes=4*1024*1024)=>duplicateSafeJSON(text,maxBytes)});
 })(window);
