@@ -31,6 +31,20 @@ REQUIRED = {
 }
 
 
+REQUIRED_V2 = REQUIRED | {
+    "source_csv_sha256", "declared_client_id", "declared_engagement_id",
+    "source_archive_ciphertext_sha256", "plan_archive_ciphertext_sha256",
+    "as_of_date_utc",
+}
+
+
+def _digest_file(path: str) -> str:
+    candidate = Path(path).expanduser()
+    if not candidate.is_file() or candidate.stat().st_size > 3 * 1024 * 1024:
+        raise ValueError("original encrypted input missing or oversized")
+    return hashlib.sha256(candidate.read_bytes()).hexdigest()
+
+
 def _read_vault(filename: str, secret: str) -> tuple[dict, bytes]:
     path = Path(filename).expanduser()
     maximum = len(MAGIC) + 16 + 12 + LIMIT + 16
@@ -41,10 +55,28 @@ def _read_vault(filename: str, secret: str) -> tuple[dict, bytes]:
         data = json.loads(raw.decode("utf-8", "strict"), object_pairs_hook=_no_duplicate_keys)
     except (UnicodeError, json.JSONDecodeError) as exc:
         raise ValueError("invalid decrypted HUMAN timeline metadata") from exc
-    if type(data) is not dict or set(data) != REQUIRED:
-        raise ValueError("unexpected HUMAN timeline schema")
-    if data["kind"] != KIND or type(data["version"]) is not int or data["version"] != 1:
+    if type(data) is not dict or type(data.get("version")) is not int:
+        raise ValueError("invalid HUMAN history metadata")
+    version = data["version"]
+    if data.get("kind") != KIND or version not in (1, 2):
         raise ValueError("unrecognized HUMAN history vault version")
+    if set(data) != (REQUIRED if version == 1 else REQUIRED_V2):
+        raise ValueError("unexpected versioned HUMAN timeline schema")
+    if version == 2:
+        for key in ("source_csv_sha256", "source_archive_ciphertext_sha256"):
+            if type(data[key]) is not str or len(data[key]) != 64:
+                raise ValueError("invalid encrypted source revision digest")
+        if type(data["declared_client_id"]) is not str or not data["declared_client_id"].strip():
+            raise ValueError("missing original client declaration")
+        engagement = data["declared_engagement_id"]
+        if engagement is not None and (type(engagement) is not str or not engagement.strip()):
+            raise ValueError("invalid original engagement declaration")
+        revisions = data["plan_archive_ciphertext_sha256"]
+        if (type(revisions) is not list or len(revisions) != data["snapshot_count"] or
+                any(type(d) is not str or len(d) != 64 for d in revisions)):
+            raise ValueError("invalid encrypted HUMAN plan lineage")
+        if _as_of(data["as_of_date_utc"]) != data["as_of_date_utc"]:
+            raise ValueError("invalid HUMAN chronology report date")
     for field in ("authorizes_action", "certifies_remediation",
                   "authenticates_recipient_or_client"):
         if data[field] is not False:
@@ -113,10 +145,14 @@ def main(argv: list[str] | None = None) -> int:
     open_action.add_argument("vault")
     open_action.add_argument("--output", required=True)
     open_action.add_argument("--ack-plaintext-html", action="store_true")
+    verify = sub.add_parser("verify", help="independently rebuild timeline from exact original encrypted source+plans")
+    verify.add_argument("vault")
+    verify.add_argument("source")
+    verify.add_argument("plans", nargs="+")
     rotate = sub.add_parser("rotate", help="change vault encryption passphrase without writing plaintext")
     rotate.add_argument("vault")
     rotate.add_argument("--output", required=True)
-    for action in (create, inspect, open_action, rotate):
+    for action in (create, inspect, open_action, rotate, verify):
         action.add_argument("--ack-private-handling", action="store_true")
     args = parser.parse_args(argv)
     try:
@@ -132,7 +168,13 @@ def main(argv: list[str] | None = None) -> int:
             queue = _priorities(rows, plans[-1], moment)
             html = _html(summary, queue, args.include_private_actions)
             envelope = {
-                "kind": KIND, "version": 1,
+                "kind": KIND, "version": 2,
+                "source_csv_sha256": _manifest["source_csv_sha256"],
+                "declared_client_id": _manifest["declared_client_id"],
+                "declared_engagement_id": _manifest["declared_engagement_id"],
+                "source_archive_ciphertext_sha256": _digest_file(args.source),
+                "plan_archive_ciphertext_sha256": [_digest_file(p) for p in args.plans],
+                "as_of_date_utc": moment,
                 "generated_utc": datetime.now(timezone.utc).isoformat(),
                 "brief_sha256": hashlib.sha256(html).hexdigest(),
                 "html_base64": base64.b64encode(html).decode("ascii"),
@@ -152,7 +194,41 @@ def main(argv: list[str] | None = None) -> int:
         secret = _passphrase("Encrypted PRIVATE HUMAN history passphrase")
         data, html = _read_vault(args.vault, secret)
         del secret
-        if args.action == "inspect":
+        if args.action == "verify":
+            if data["version"] != 2:
+                raise ValueError("v1 HUMAN history has no exact encrypted-source lineage; use a v2 file")
+            if len(args.plans) != data["snapshot_count"]:
+                raise ValueError("HUMAN snapshot count differs from encrypted custody envelope")
+            if _digest_file(args.source) != data["source_archive_ciphertext_sha256"]:
+                raise ValueError("not the exact original encrypted source copy")
+            for original_plan, expected in zip(args.plans, data["plan_archive_ciphertext_sha256"]):
+                if _digest_file(original_plan) != expected:
+                    raise ValueError("HUMAN plan ciphertext missing, different or out of order")
+            original_manifest, original_rows, original_plans = _read_history(
+                args.source, args.plans)
+            if any(original_manifest[key] != data[key] for key in (
+                "source_csv_sha256", "declared_client_id", "declared_engagement_id"
+            )) or len(original_rows) != data["source_record_count"]:
+                raise ValueError("original source declarations do not match HUMAN custody")
+            rebuilt = _summarize(original_manifest, original_rows, original_plans,
+                                 data["as_of_date_utc"])
+            reconstructed = _html(
+                rebuilt, _priorities(original_rows, original_plans[-1],
+                                     data["as_of_date_utc"]),
+                data["includes_private_actions"]
+            )
+            if hashlib.sha256(reconstructed).hexdigest() != data["brief_sha256"]:
+                raise ValueError("HUMAN history cannot be reproduced from exact supplied source")
+            if len(original_plans) != data["snapshot_count"] or (
+                rebuilt["latest_attention"]["original_findings_requiring_human_review"]
+                != data["latest_attention"]
+            ):
+                raise ValueError("HUMAN chronology or aggregate mismatch")
+            print("PRIVATE original source + HUMAN snapshot continuity reconstructed exactly.")
+            print("Original source records:", len(original_rows))
+            print("Original encrypted HUMAN snapshots:", len(original_plans))
+            print("Human record changes remain UNVERIFIED claims, not fixes or consent.")
+        elif args.action == "inspect":
             print("Authenticated local ciphertext, NOT authenticated human owner/client identity.")
             print("Source records:", data["source_record_count"])
             print("Operator-ordered snapshots:", data["snapshot_count"])
