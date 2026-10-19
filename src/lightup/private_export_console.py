@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import sys
 
-from . import private_export_continuity, private_export_handoff, private_export_workdesk, private_export_encrypted, private_export_encrypted_notes, private_export_owner_exchange, private_export_owner_accept, private_export_owner_batch
+from . import private_export_continuity, private_export_handoff, private_export_workdesk, private_export_encrypted, private_export_encrypted_notes, private_export_owner_exchange, private_export_owner_accept, private_export_owner_batch, private_export_owner_pulse
 
 TITLE = "LightUp PRIVATE HUMAN Export & Remediation Desk"
 NOTICE = (
@@ -42,6 +42,7 @@ OPTIONS = (
     ("21", "Operator: inspect bound HUMAN owner reply privately", "owner-review"),
     ("22", "Operator: create new encrypted HUMAN plan from reviewed reply", "owner-accept"),
     ("23", "Reconcile several owner replies into NEW encrypted HUMAN plan", "owner-batch"),
+    ("24", "Private ID-free management pulse from encrypted owner replies", "owner-pulse"),
     ("0", "Exit (no data or state written)", "exit"),
 )
 
@@ -106,6 +107,24 @@ def _same_real_client() -> None:
 
 
 def _perform(action: str) -> int:
+    if action == "owner-pulse":
+        source = _ask("Original encrypted source .lue")
+        plan = _ask("Exact original encrypted HUMAN plan .lun")
+        number = _ask("Number of distinct HUMAN reply pairs (1–32)")
+        if not number.isascii() or not number.isdecimal() or not 1 <= int(number) <= 32:
+            raise ValueError("invalid bounded owner reply count")
+        pairs = []
+        for index in range(int(number)):
+            print("HUMAN owner reply", index + 1, "of", number)
+            pairs.extend(["--pair", _ask("Encrypted brief .luo"),
+                          _ask("Matching encrypted HUMAN reply .lur")])
+        output = _output("NEW ID-free PRIVATE HUMAN management pulse", "html")
+        _same_real_client()
+        _private()
+        return private_export_owner_pulse.main([source, plan] + pairs + [
+            "--output", output, "--ack-human-recipient-verification",
+            "--ack-unencrypted-private-summary"])
+
     if action == "owner-batch":
         source = _ask("Original encrypted source .lue")
         plan = _ask("Exact original encrypted HUMAN workplan .lun")
