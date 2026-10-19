@@ -1,0 +1,228 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-0/9gq2As00WiqjzNSPkecB/XvtoKuOrNIhv3mr/NAEU='; style-src 'unsafe-inline'; connect-src 'none'; img-src 'none'; media-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'">
+<title>LightUp | PRIVATE HUMAN Ticket Vault</title>
+<style>
+:root{font:16px/1.5 ui-sans-serif,system-ui,-apple-system,Segoe UI,sans-serif;color:#e5edf8;background:#0b121f;color-scheme:dark}
+*{box-sizing:border-box}body{margin:0}main{width:min(930px,95vw);margin:3rem auto 5rem}
+header{margin-bottom:1.4rem}.eyebrow{color:#8fb8ff;letter-spacing:.16em;font-weight:800;font-size:.8rem}h1{font-size:clamp(2rem,4vw,3rem);margin:.3rem 0;line-height:1.2}
+.lead{max-width:72ch;color:#b1c2d8}section{background:#152234;border:1px solid #354762;border-radius:17px;padding:1.45rem;margin-bottom:1rem}
+.section-head{display:flex;justify-content:space-between;align-items:center;gap:.8rem;flex-wrap:wrap}
+h2{font-size:1.14rem;margin:0 0 .6rem}p{margin:.5rem 0 1rem}
+.badge{border-radius:100px;border:1px solid #ac8a52;color:#f6d39d;padding:.32rem .7rem;font-size:.76rem;font-weight:750}
+.notice{border-left:3px solid #d6b375;padding:.85rem 1rem;background:#2b2a26;border-radius:8px;color:#f2dba7;font-size:.9rem}
+label{font-weight:650;font-size:.88rem;color:#dbe7f7}input,select,button{font:inherit;color:inherit}
+input:not([type=checkbox]),select{display:block;width:100%;padding:.75rem;background:#0a1523;border:1px solid #52647e;border-radius:9px;margin-top:.35rem}
+input[type=file]{padding:.9rem;border-style:dashed}input[type=checkbox]{margin-right:.5rem;accent-color:#86b9ff;width:1.1rem;height:1.1rem}
+.fields{display:grid;grid-template-columns:1fr 1fr;gap:1rem}.field{margin:1rem 0}small{color:#adc0d5}
+button{cursor:pointer;border-radius:10px;border:1px solid #6d98cd;background:#28415f;padding:.75rem 1rem;font-weight:750}
+button.primary{background:#93c3ff;color:#071526;border:0}button:hover{filter:brightness(1.1)}button:disabled{opacity:.45}
+.actions{display:flex;flex-wrap:wrap;align-items:center;gap:.75rem;margin-top:1.25rem}
+#status{background:#101f30;border-left:4px solid #7fa8e5;border-radius:9px;padding:1rem;white-space:pre-wrap;overflow-wrap:anywhere}
+#status.error{border-color:#ed7a85;background:#39222d}#result{padding:1rem 0}
+.download{color:#0a1421;background:#9ac7ff;text-decoration:none;padding:.75rem 1rem;border-radius:10px;font-weight:780;display:inline-block;margin:.3rem}
+#preview{color:#b6c9dd}.grid{display:grid;grid-template-columns:1fr 1fr;gap:.75rem}.card{background:#0e1a29;border:1px solid #30435e;border-radius:12px;padding:1rem}.card strong{display:block}
+footer{font-size:.82rem;color:#9fb2c9;padding:1rem 0}a{color:#a5c8fa}
+@media(max-width:700px){main{margin-top:1.5rem}.fields,.grid{grid-template-columns:1fr}}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<main>
+<header><div class="eyebrow">LIGHTUP / LOCAL HUMAN PRIVACY</div><div class="section-head"><h1>Private Ticket Vault</h1><span class="badge">INCUBATE · DRAFT/HOLD</span></div>
+<p class="lead">Encrypt, decrypt, inspect and rotate offline HUMAN remediation ticket handoffs. Designed for exported LightUp PRIVATE ticket Markdown and HUMAN workspace JSON. Nothing is uploaded, posted or authorized.</p></header>
+<p class="notice">This vault protects locally selected content; it does <strong>not</strong> authenticate its sender, client, finding or consent, and never authorizes a scan, remediation, retest or public release. A previously exported plaintext file remains on disk until you securely handle it yourself.</p>
+<section>
+<h2>01 / Select private operation</h2>
+<div class="field"><label for="operation">What would you like to do?</label><select id="operation">
+<option value="seal">Encrypt local PRIVATE ticket Markdown/JSON</option>
+<option value="open">Decrypt to PRIVATE local plaintext</option>
+<option value="view">Decrypt and review PRIVATE text only in memory</option>
+<option value="rotate">Rotate passphrase into a NEW encrypted vault</option>
+<option value="inspect">Inspect anonymous vault header only</option>
+</select></div>
+<p id="preview"></p>
+<div class="field"><label for="source">Select local file (max 4 MiB plaintext)</label><input id="source" type="file" accept=".md,.json,.ltv,application/json,text/markdown,application/octet-stream">
+<small>The file must be independently authorized for your review. Browser mode cannot inspect POSIX file permissions; choose a protected private folder.</small></div>
+</section>
+<section>
+<h2>02 / Human-controlled cryptography</h2>
+<div class="fields">
+<div class="field"><label for="old-password">Existing private passphrase</label><input id="old-password" type="password" autocomplete="off" spellcheck="false" maxlength="4096"></div>
+<div class="field"><label for="new-password">New private passphrase (minimum 14 characters)</label><input id="new-password" type="password" autocomplete="new-password" spellcheck="false" maxlength="4096"></div>
+<div class="field"><label for="confirmation">Confirm new private passphrase</label><input id="confirmation" type="password" autocomplete="new-password" spellcheck="false" maxlength="4096"></div>
+</div>
+<label class="field" style="display:block"><input type="checkbox" id="plaintext-ack">I approve creating a sensitive PRIVATE plaintext download in an independently approved local storage location and for approved recipients.</label>
+<div class="actions"><button id="run" class="primary">Perform local operation</button><button id="forget" type="button">Forget input and download</button></div>
+<p class="notice">Strong passphrases must be stored in an approved password manager. A lost passphrase cannot be recovered. No password is sent to a server or persisted by this page.</p>
+</section>
+<section>
+<h2>03 / Local result</h2>
+<p id="status" role="status" aria-live="polite">Choose an operation and local input.</p>
+<div id="result" aria-live="polite"></div>
+<div id="viewer" hidden><p class="notice">PRIVATE HUMAN text is displayed below only in this local tab. Screen sharing, browser plugins and physical observers may disclose it; no proof of client consent, fix, retest or grant is implied. Choose Forget to clear the display.</p><pre id="viewer-content" style="max-height:460px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;background:#081421;border:1px solid #354762;padding:1rem;border-radius:12px" aria-label="Private decrypted HUMAN handoff content"></pre></div>
+</section>
+<section>
+<h2>Trust boundaries</h2>
+<div class="grid">
+<div class="card"><strong>Protected locally</strong>Authenticated AES-256-GCM encrypted HUMAN handoff, PBKDF2-SHA256 (600,000), fresh salt/nonce and integrity-bound metadata.</div>
+<div class="card"><strong>Never inferred</strong>Sender identity, client authorization, evidence verification, source authenticity, real security remediation, retest or release.</div>
+<div class="card"><strong>Not retained here</strong>No localStorage, cookies, database writes, external scripts, GitHub API or network use. Only explicitly selected file downloads.</div>
+<div class="card"><strong>Strict size bounds</strong>4 MiB text; canonical metadata. All decrypted files remain private and need deliberate secure handling.</div>
+</div>
+</section>
+<footer>LightUp HUMAN Ticket Vault v1 · independent offline companion · <a href="README.md">Read complete operator and security instructions</a> · Not production-approved.</footer>
+</main>
+<script>
+/* LightUp HUMAN Ticket Vault: offline WebCrypto interoperable with vault.py v1. */
+(()=>{'use strict';
+const $=id=>document.getElementById(id);
+const e=['operation','source','old-password','new-password','confirmation','plaintext-ack','run','forget','status','result','preview','viewer','viewer-content'];
+const ui=Object.fromEntries(e.map(id=>[id,$(id)]));
+const enc=new TextEncoder(),dec=new TextDecoder('utf-8',{fatal:true});
+const MAGIC=new Uint8Array([76,85,84,75,86,49,0,10]); // LUTKV1\0\n
+const ITERATIONS=600000, LIMIT=4*1024*1024, VAULT_LIMIT=LIMIT+4096;
+const HEADER_KEYS=['kind','schema_version','cipher','kdf','iterations','salt','nonce'];
+const FLAGS=['authenticated','tenant_verified','source_authorized','grant','client_consent','operator_consent','execution','scan','retest_verified','release'];
+const META_KEYS=['kind','schema_version','content_type','content_size','content_sha256',...FLAGS];
+let url=null;
+function clearLink(){if(url)URL.revokeObjectURL(url);url=null;ui.result.replaceChildren();}
+function clearViewer(){ui['viewer-content'].textContent='';ui.viewer.hidden=true;}
+function status(message,bad=false){ui.status.textContent=message;ui.status.classList.toggle('error',bad);}
+function concat(...arrays){const result=new Uint8Array(arrays.reduce((x,b)=>x+b.length,0));let i=0;for(const x of arrays){result.set(x,i);i+=x.length;}return result;}
+function be(n,width){const out=new Uint8Array(width);for(let k=width-1;k>=0;k--){out[k]=n&255;n=Math.floor(n/256);}return out;}
+function fromBe(arr){let v=0;for(const b of arr)v=v*256+b;return v;}
+function binaryEncode(bytes){let v='';for(const x of bytes)v+=String.fromCharCode(x);return btoa(v);}
+function binaryDecode(s){if(typeof s!=='string'||!s||!/^[A-Za-z0-9+/]+={0,2}$/.test(s))throw Error('Invalid authenticated vault base64.');let bin;try{bin=atob(s);}catch(e){throw Error('Invalid authenticated vault base64.');}const arr=Uint8Array.from(bin,ch=>ch.charCodeAt(0));if(binaryEncode(arr)!==s)throw Error('Noncanonical vault base64.');return arr;}
+function canonical(obj){return JSON.stringify(Object.fromEntries(Object.keys(obj).sort().map(key=>[key,obj[key]])));}
+function fieldSet(obj,allowed){return obj&&typeof obj==='object'&&!Array.isArray(obj)&&Object.keys(obj).length===allowed.length&&allowed.every(key=>Object.prototype.hasOwnProperty.call(obj,key));}
+function canonicalParse(bytes,fields){let obj;try{obj=JSON.parse(dec.decode(bytes));}catch(err){throw Error('Invalid or ambiguous vault JSON.');}if(!fieldSet(obj,fields)||canonical(obj)!==dec.decode(bytes))throw Error('Noncanonical or duplicated vault metadata.');return obj;}
+function textUtf8(bytes){try{return dec.decode(bytes);}catch(e){throw Error('Vault contains invalid UTF-8 HUMAN text.');}}
+function hex(bytes){return Array.from(bytes,x=>x.toString(16).padStart(2,'0')).join('');}
+async function sha256(bytes){return hex(new Uint8Array(await crypto.subtle.digest('SHA-256',bytes)));}
+async function key(pass,salt){
+ if(!pass||pass.length>4096||/[\uD800-\uDFFF]/u.test(pass))throw Error('Unsupported or missing passphrase.');
+ let secret=enc.encode(pass);
+ try{
+  const material=await crypto.subtle.importKey('raw',secret,{name:'PBKDF2'},false,['deriveKey']);
+  return await crypto.subtle.deriveKey({name:'PBKDF2',hash:'SHA-256',salt,iterations:ITERATIONS},material,{name:'AES-GCM',length:256},false,['encrypt','decrypt']);
+ }finally{secret.fill(0);}
+}
+function newPass(){
+ const value=ui['new-password'].value;
+ if(value.length<14||value.length>4096||value!==ui.confirmation.value||/[\uD800-\uDFFF]/u.test(value))throw Error('New passphrase must be at least 14 characters and exactly match confirmation.');
+ return value;
+}
+function headerRead(file){
+ if(file.length>VAULT_LIMIT||file.length<MAGIC.length+2+16||!MAGIC.every((b,i)=>file[i]===b))throw Error('Unsupported or oversized PRIVATE ticket vault.');
+ const size=fromBe(file.slice(8,10)),end=10+size;
+ if(size<=0||size>1024||file.length<end+16)throw Error('Invalid bounded vault header.');
+ const headerBytes=file.slice(10,end),header=canonicalParse(headerBytes,HEADER_KEYS);
+ if(header.kind!=='lightup.private_human_ticket_vault'||header.schema_version!==1||header.kdf!=='PBKDF2-HMAC-SHA256'||header.cipher!=='AES-256-GCM'||header.iterations!==ITERATIONS)throw Error('Unsupported crypto parameters.');
+ const salt=binaryDecode(header.salt),nonce=binaryDecode(header.nonce);
+ if(salt.length!==16||nonce.length!==12)throw Error('Invalid salt/nonce size.');
+ return {header,nonce,salt,prefix:file.slice(0,end),cipher:file.slice(end)};
+}
+async function seal(inner,pass){
+ const salt=crypto.getRandomValues(new Uint8Array(16)),nonce=crypto.getRandomValues(new Uint8Array(12));
+ const header={kind:'lightup.private_human_ticket_vault',schema_version:1,cipher:'AES-256-GCM',kdf:'PBKDF2-HMAC-SHA256',iterations:ITERATIONS,salt:binaryEncode(salt),nonce:binaryEncode(nonce)};
+ const h=enc.encode(canonical(header)),prefix=concat(MAGIC,be(h.length,2),h);
+ const auth=await key(pass,salt);
+ const ciphertext=new Uint8Array(await crypto.subtle.encrypt({name:'AES-GCM',iv:nonce,additionalData:prefix,tagLength:128},auth,inner));
+ const out=concat(prefix,ciphertext);if(out.length>VAULT_LIMIT)throw Error('Encrypted file exceeds size limit.');
+ return out;
+}
+async function unpack(file,pass){
+ const v=headerRead(file);const auth=await key(pass,v.salt);let inner;
+ try{inner=new Uint8Array(await crypto.subtle.decrypt({name:'AES-GCM',iv:v.nonce,additionalData:v.prefix,tagLength:128},auth,v.cipher));}
+ catch(err){throw Error('Vault authentication HOLD: wrong passphrase or tampered ciphertext. No plaintext exported.');}
+ if(inner.length<4)throw Error('Decrypted metadata missing.');
+ const mlen=fromBe(inner.slice(0,4));if(mlen<1||mlen>1024||4+mlen>inner.length)throw Error('Invalid decrypted metadata length.');
+ const meta=canonicalParse(inner.slice(4,4+mlen),META_KEYS),plain=inner.slice(4+mlen);
+ if(meta.kind!=='lightup.private_human_ticket_contents'||meta.schema_version!==1||
+   !['text/markdown','application/json'].includes(meta.content_type)||
+   !Number.isSafeInteger(meta.content_size)||meta.content_size!==plain.length||
+   meta.content_sha256!==await sha256(plain)||FLAGS.some(k=>meta[k]!==false)||
+   plain.length===0||plain.length>LIMIT)throw Error('Private HUMAN envelope integrity HOLD.');
+ textUtf8(plain);return {inner,plain,meta};
+}
+function output(data,name,mime){
+ clearLink();
+ url=URL.createObjectURL(new Blob([data],{type:mime}));
+ const a=document.createElement('a');a.href=url;a.download=name;a.textContent='Save new PRIVATE local file';a.className='download';
+ ui.result.appendChild(a);ui.result.append(' · The filename and storage location are your responsibility.');
+}
+function update(){
+ const op=ui.operation.value;
+ for(const id of ['old-password','new-password','confirmation'])ui[id].closest('.field').hidden=(op==='inspect'||(op==='seal'&&id==='old-password')||((op==='open'||op==='view')&&id!=='old-password'));
+ ui['plaintext-ack'].closest('label').hidden=!(op==='open'||op==='view');
+ ui.preview.textContent=op==='seal'?'Encrypt original PRIVATE Markdown/JSON without reading original client authority.':
+ op==='open'?'Decrypt to an explicitly saved PRIVATE plaintext file only.':
+ op==='view'?'Review source HUMAN plaintext in tab memory only, without a new disk file; clear it with Forget.':
+ op==='rotate'?'Re-encrypt into a new vault; old encrypted file stays untouched.':
+ 'Read visible anonymous vault parameters only; authenticity is not verified without passphrase.';
+ clearLink();clearViewer();
+}
+async function run(){
+ const op=ui.operation.value,file=ui.source.files[0];
+ if(!file)throw Error('Select a local file.');
+ if(!crypto?.subtle||!crypto.getRandomValues)throw Error('Secure browser WebCrypto unavailable for this local page.');
+ if(!Number.isSafeInteger(file.size)||file.size<1||file.size>(op==='seal'?LIMIT:VAULT_LIMIT))throw Error('Private file exceeds bounded size.');
+ const raw=new Uint8Array(await file.arrayBuffer());
+ if(op==='inspect'){
+  const h=headerRead(raw);
+  status('Structurally valid anonymous v1 vault header, AES-256-GCM / PBKDF2-SHA256, '+ITERATIONS+' iterations, '+raw.length+' encrypted bytes. Authenticity NOT checked; no identity, authority or retest inferred.');
+  return;
+ }
+ if(op==='seal'){
+  const low=file.name.toLowerCase(),type=low.endsWith('.md')?'text/markdown':low.endsWith('.json')?'application/json':null;
+  if(!type)throw Error('Only original PRIVATE HUMAN Markdown or JSON exports are supported.');
+  textUtf8(raw);const meta={kind:'lightup.private_human_ticket_contents',schema_version:1,
+    content_type:type,content_size:raw.length,content_sha256:await sha256(raw),
+    ...Object.fromEntries(FLAGS.map(k=>[k,false]))};
+  const m=enc.encode(canonical(meta));if(m.length>1024)throw Error('Metadata size exceeded.');
+  const inner=concat(be(m.length,4),m,raw);
+  output(await seal(inner,newPass()),'lightup-PRIVATE-human-handoff.ltv','application/octet-stream');
+  inner.fill(0);status('New authenticated encrypted PRIVATE HUMAN vault ready for local download. Original plaintext was NOT deleted; use approved private storage.');
+  return;
+ }
+ if(!file.name.toLowerCase().endsWith('.ltv'))throw Error('Select a PRIVATE .ltv vault.');
+ const source=await unpack(raw,ui['old-password'].value);
+ if(op==='rotate'){
+  if(ui['old-password'].value===newPass())throw Error('Replacement passphrase must differ from old one.');
+  const encrypted=await seal(source.inner,newPass());
+  output(encrypted,'lightup-PRIVATE-human-rotated.ltv','application/octet-stream');
+  source.inner.fill(0);source.plain.fill(0);
+  status('Separate fresh encrypted vault ready. Old encrypted vault was not modified and no plaintext file was written.');
+  return;
+ }
+ if(op==='view'){
+  if(!ui['plaintext-ack'].checked||!confirm('Display PRIVATE decrypted HUMAN notes on this trusted local screen without writing any plaintext file? Screenshots/screen sharing are your responsibility.'))throw Error('Local private viewing not approved.');
+  if(source.plain.length>262144)throw Error('Private text exceeds safe 256 KiB in-memory viewer limit; use approved private plaintext export instead.');
+  ui['viewer-content'].textContent=textUtf8(source.plain);
+  ui.viewer.hidden=false;
+  source.inner.fill(0);source.plain.fill(0);
+  status('PRIVATE HUMAN content decrypted for this local read-only viewer. No new plaintext file was written. Choose Forget to clear the visible content.');
+  return;
+ }
+ if(!ui['plaintext-ack'].checked||!confirm('Deliberately prepare sensitive PRIVATE plaintext for approved local storage? No authentication, consent, verified fix or authorization is conferred.'))throw Error('Plaintext disclosure not approved.');
+ const suffix=source.meta.content_type==='text/markdown'?'.md':'.json';
+ output(source.plain,'lightup-PRIVATE-human-restored'+suffix,source.meta.content_type+';charset=utf-8');
+ source.inner.fill(0);status('PRIVATE plaintext download ready. Store securely and delete all unneeded copies separately.');
+}
+ui.run.addEventListener('click',async()=>{
+ ui.run.disabled=true;clearLink();clearViewer();status('Local cryptography in progress; no network call is made.');
+ try{await run();}catch(err){status('HOLD: '+err.message,true);}
+ finally{for(const id of ['old-password','new-password','confirmation'])ui[id].value='';ui.run.disabled=false;}
+});
+ui.operation.addEventListener('change',update);
+ui.source.addEventListener('change',()=>{clearLink();clearViewer();});
+ui.forget.addEventListener('click',()=>{clearLink();clearViewer();ui.source.value='';for(const id of ['old-password','new-password','confirmation'])ui[id].value='';ui['plaintext-ack'].checked=false;status('File reference and temporary download forgotten from this page. Previously downloaded copies need separate handling.');});
+update();
+})();
+</script>
+</body>
+</html>
