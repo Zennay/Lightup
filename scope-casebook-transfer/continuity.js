@@ -2,7 +2,8 @@
 /* PRIVATELY compare only source-declared Casebook snapshots. Source continuity is NOT authorization. */
 (() => {
   const KIND = Object.freeze({
-    carry: "ONVERANDERDE BRON — HUMAN-KEUZES OVERGENOMEN",
+    carry: "ONVERANDERDE BRON — OPGESLAGEN HUMAN-KEUZES OVERGENOMEN",
+    unrecorded: "ONVERANDERDE BRON — GEEN EERDER OPGESLAGEN HUMAN-CSV",
     changed: "BRON GEWIJZIGD — HUMAN-KEUZES HEROPEND",
     appeared: "NIEUW BRONDOSSIER — HUMAN-REVIEW NODIG",
     absent: "ONTBREEKT IN NIEUW BRONMOMENT — GEEN BEWIJS VAN INTREKKING"
@@ -46,7 +47,7 @@
     const olderCases=new Map(old.cases.map((c,i)=>[c.id,{case:c,row:old.rows[i]}]));
     const newerCases=new Set(next.cases.map(c=>c.id));
     const updates=[], rows=[];
-    const counts={carry:0,changed:0,appeared:0,absent:0};
+    const counts={carry:0,unrecorded:0,changed:0,appeared:0,absent:0};
     for(const c of next.cases){
       const prior=olderCases.get(c.id);
       let status;
@@ -54,7 +55,7 @@
       else {
         const before=canonicalSourceCase(lastBefore,c.id);
         const after=canonicalSourceCase(lastAfter,c.id);
-        status=before===after ? "carry" : "changed";
+        status=before===after ? (old.hasCSV ? "carry" : "unrecorded") : "changed";
       }
       counts[status]++;
       const human=status==="carry" ? prior.row.slice(3) : ["unreviewed","unassigned","none"];
@@ -88,7 +89,7 @@
         "GEEN opgeslagen eerdere HUMAN-CSV; er kunnen dus geen bewaarde keuzes worden overgenomen. ")+
       "Bronverandering heropent de HUMAN-review; verdwenen dossiers zijn NIET ingetrokken of opgelost."));
     panel.append(make("p",
-      "ONVERANDERD "+counts.carry+" · HEROPEND "+counts.changed+
+      "OVERGENOMEN "+counts.carry+" · ZONDER EERDERE CSV "+counts.unrecorded+" · HEROPEND "+counts.changed+
       " · NIEUW "+counts.appeared+" · NIET MEER IN NIEUWE BRON "+counts.absent));
     const area=document.createElement("div");area.className="human-scroll";
     const table=document.createElement("table"),tr=document.createElement("tr");
