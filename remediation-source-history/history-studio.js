@@ -2,11 +2,11 @@
 (() => {
 "use strict";
 const $ = id => document.getElementById(id);
-const state = { snapshots:[], notes:new Map(), decisions:[], merges:[], active:null, revision:0, importing:false };
+const state = { snapshots:[], notes:new Map(), decisions:[], merges:[], holdReviews:[], active:null, revision:0, importing:false };
 const FIELDS = ['finding_id','title','severity','retest_status','remediation'];
 const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const severityRank = {critical:0,high:1,medium:2,low:3,info:4};
-const limits = {maxSnapshots:12,maxBytes:1048576,maxRows:350,maxNotes:350,maxDecisions:200,maxMerges:50};
+const limits = {maxSnapshots:12,maxBytes:1048576,maxRows:350,maxNotes:350,maxDecisions:200,maxMerges:50,maxHoldReviews:150};
 const toB64=bytes=>{let s='';for(let i=0;i<bytes.length;i+=32768)s+=String.fromCharCode(...bytes.subarray(i,i+32768));return btoa(s);};
 function message(value, error=false) { $('message').textContent=value; $('message').className=error?'error':'info'; }
 function exact(a,b) { return FIELDS.every(k=>a[k]===b[k]); }
@@ -251,7 +251,7 @@ function exportCasework() {
  download('lightup-PRIVATE-original-source-casework-human-v1.json',JSON.stringify(packet,null,2),'application/json;charset=utf-8');
  message('PRIVATE native original Casework v1 HUMAN draft exported; '+status.bound+' exact-row-bound note(s) included, '+status.held+' stale held. All consent/grant/retest/scan authority claims false.');
 }
-function forget(){state.snapshots=[];state.notes.clear();state.decisions=[];state.merges=[];state.active=null;state.selected=null;state.revision++;$('client').value='';$('engagement').value='';$('ack').checked=false;$('privateAck').checked=false;$('files').value='';$('archivePass').value='';$('archiveFile').value='';render();message('Original imported source and private HUMAN notes forgotten from app memory. Previously downloaded exports remain on your device.');}
+function forget(){state.snapshots=[];state.notes.clear();state.decisions=[];state.merges=[];state.holdReviews=[];state.active=null;state.selected=null;state.revision++;$('client').value='';$('engagement').value='';$('ack').checked=false;$('privateAck').checked=false;$('files').value='';$('archivePass').value='';$('archiveFile').value='';render();message('Original imported source and private HUMAN notes forgotten from app memory. Previously downloaded exports remain on your device.');}
 $('load').addEventListener('click',()=>ingest($('files').files).catch(e=>message(e.message,true)));
 $('filter').addEventListener('input',renderGrid);
 $('kind').addEventListener('change',renderGrid);
@@ -280,7 +280,7 @@ $('snapshots').addEventListener('click',event=>{
  if(remove){const i=Number(remove.dataset.remove);const target=state.snapshots[i],referenced=state.decisions.some(d=>
   target.findings.some(f=>(exact(f,d.from)||exact(f,d.to))&&
    !state.snapshots.some((other,j)=>j!==i&&other.findings.some(keep=>exact(keep,f)))));
- if(referenced||state.merges.some(m=>m.sourceHash===target.sourceHash)){message('HOLD: PRIVATE HUMAN carry or Casework field-merge history references this exact original source revision. Preserve the source and its local decisions, or Forget the complete workspace.',true);return;}
+ if(referenced||state.merges.some(m=>m.sourceHash===target.sourceHash)||state.holdReviews.some(x=>x.originalSourceHash===target.sourceHash||x.reviewSourceHash===target.sourceHash)){message('HOLD: PRIVATE HUMAN carry or Casework field-merge history references this exact original source revision. Preserve the source and its local decisions, or Forget the complete workspace.',true);return;}
  state.snapshots.splice(i,1);const remaining=idSet();for(const id of state.notes.keys())if(!remaining.has(id))state.notes.delete(id);state.revision++;if(!state.snapshots.length){state.active=null;state.selected=null;}render();}
 });
 /* Controlled archive bridge: no browser persistence or authority, atomic restoration only. */
@@ -289,7 +289,7 @@ window.LightUpHistory=Object.freeze({
     const ctx=requireContext();protect();
     if(!state.snapshots.length)throw Error('Import original source revisions before saving.');
     if(state.snapshots.some(s=>!s.csvBase64))throw Error('Original file bytes unavailable; re-import before private checkpoint.');
-    return {revision:state.revision,context:{...ctx},snapshots:state.snapshots.map(s=>({...s})),notes:[...state.notes].map(([id,n])=>({id,...n})),decisions:state.decisions.map(d=>({...d,from:{...d.from},to:{...d.to}})),merges:state.merges.map(m=>structuredClone(m))};
+    return {revision:state.revision,context:{...ctx},snapshots:state.snapshots.map(s=>({...s})),notes:[...state.notes].map(([id,n])=>({id,...n})),decisions:state.decisions.map(d=>({...d,from:{...d.from},to:{...d.to}})),merges:state.merges.map(m=>structuredClone(m)),holdReviews:state.holdReviews.map(x=>structuredClone(x))};
   },
   empty(){return !state.snapshots.length&&!state.notes.size;},
   restore(packet,revision){
@@ -300,6 +300,7 @@ window.LightUpHistory=Object.freeze({
     state.notes=new Map(packet.notes.map(n=>[n.id,{owner:n.owner,action:n.action,due:n.due,sourceRecord:n.sourceRecord?{...n.sourceRecord}:null,caseworkOriginal:n.caseworkOriginal?{...n.caseworkOriginal}:null}]));
     state.decisions=(packet.decisions||[]).map(d=>({...d,from:{...d.from},to:{...d.to}}));
     state.merges=(packet.merges||[]).map(m=>structuredClone(m));
+    state.holdReviews=(packet.holdReviews||[]).map(x=>structuredClone(x));
     state.active={...ctx};state.selected=null;state.revision++;render();
   },
   revision(){return state.revision;},
@@ -533,6 +534,49 @@ window.LightUpHistory=Object.freeze({
        owner:n?.owner??'',next_action:n?.action??'',due_date:n?.due||null};
     });
     return LightUpCasework.makePacket(latest.findings,cases,latest.sourceHash);
+  },
+  holdReviewHistory(){
+    return state.holdReviews.map(x=>structuredClone(x));
+  },
+  reviewHeldSources(choices,expectedRevision){
+    const ctx=requireContext();
+    if(state.importing||state.revision!==expectedRevision)
+      throw Error('HOLD: source or private HUMAN workspace changed. Reopen original source review.');
+    if(!Array.isArray(choices)||!choices.length||choices.length>50||
+       new Set(choices.map(x=>x?.id)).size!==choices.length||
+       state.holdReviews.length+choices.length>limits.maxHoldReviews)
+      throw Error('Select 1–50 distinct original source-HOLD notes with available PRIVATE journal capacity.');
+    const allowed=['request_new_source','ask_human_owner','await_separate_evidence','defer_private_discussion'];
+    const latest=state.snapshots.at(-1);
+    if(!latest)throw Error('Load original source before historical HUMAN review.');
+    const journal=state.holdReviews.slice(),reviewedUTC=new Date().toISOString();
+    for(const item of choices){
+      if(!item||typeof item!=='object'||Array.isArray(item)||
+         typeof item.id!=='string'||!allowed.includes(item.disposition)||
+         typeof item.reason!=='string'||item.reason.trim().length<12||item.reason.length>800||
+         typeof item.nextAction!=='string'||item.nextAction.trim().length<8||item.nextAction.length>1200)
+        throw Error('HOLD: every HUMAN review needs a bounded category, 12–800 character rationale and 8–1200 character next discussion action.');
+      const old=state.notes.get(item.id),binding=noteBinding(item.id);
+      if(!old||!old.sourceRecord||!['stale','missing'].includes(binding))
+        throw Error('HOLD: a selected original HUMAN note is no longer held against its exact earlier source.');
+      const original=Object.fromEntries(FIELDS.map(k=>[k,old.sourceRecord[k]]));
+      const source=state.snapshots.find(s=>s.findings.some(f=>exact(f,original)));
+      if(!source||original.finding_id!==item.id)
+        throw Error('HOLD: historical original source row is not independently present in imported revisions.');
+      const current=latestFinding(item.id);
+      journal.push({id:item.id,originalSourceHash:source.sourceHash,
+        reviewSourceHash:latest.sourceHash,oldSource:original,
+        currentSource:current?Object.fromEntries(FIELDS.map(k=>[k,current[k]])):null,
+        binding,disposition:item.disposition,reason:item.reason.trim(),
+        nextAction:item.nextAction.trim(),reviewedUTC});
+    }
+    if(new TextEncoder().encode(JSON.stringify(journal)).length>1048576)
+      throw Error('PRIVATE HUMAN HOLD decision history exceeds 1 MiB; save current private archive and start a separate local workspace.');
+    if(state.revision!==expectedRevision||context().client!==ctx.client||
+       context().engagement!==ctx.engagement)
+      throw Error('Original source/HUMAN context changed during review. No decisions recorded.');
+    state.holdReviews=journal;state.revision++;render();
+    return {recorded:choices.length,remainingHeld:[...state.notes.keys()].filter(id=>noteBinding(id)!=='bound').length};
   },
   carryHumanBatch(choices,expectedRevision,acknowledgedNativeReset=false){
     // Atomic PRIVATE HUMAN-only transfer; original security assertions and imported
