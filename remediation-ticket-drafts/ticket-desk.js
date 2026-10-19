@@ -2,7 +2,7 @@
 (() => {
 'use strict';
 const byId = id => document.getElementById(id);
-const ui = Object.fromEntries(['source-file','casework-file','workspace-file','save-workspace','search','severity','select-visible','clear-visible','select-urgent','findings','forget','chosen','owner','due','stage','action','review','blocker','apply','preview','notice','preview-output','private-ack','export-one','export-all','export-counts','source-diff','historical-holds','export-holds','metric-count','metric-risk','metric-picked','metric-hash'].map(k=>[k,byId(k)]));
+const ui = Object.fromEntries(['source-file','casework-file','workspace-file','save-workspace','vault-passphrase','vault-file','seal-vault','open-vault','search','severity','select-visible','clear-visible','select-urgent','findings','forget','chosen','owner','due','stage','action','review','blocker','apply','preview','notice','preview-output','private-ack','export-one','export-all','export-counts','source-diff','historical-holds','export-holds','metric-count','metric-risk','metric-picked','metric-hash'].map(k=>[k,byId(k)]));
 const engine = window.LightUpCasework;
 if (!engine || typeof engine.parseCSV !== 'function' || typeof engine.digest !== 'function') {
  ui.notice.textContent='Original source-owned Casework engine unavailable. Do not use this page without the complete pinned parent checkout.';
@@ -16,7 +16,7 @@ const todayUTC=()=>new Date().toISOString().slice(0,10);
 let state=null, active='';
 function show(msg, bad=false){ui.notice.textContent=msg;ui.notice.classList.toggle('error',bad);}
 function setControls(ready){
- for(const id of ['search','severity','select-visible','clear-visible','select-urgent','forget','chosen','export-counts','casework-file','workspace-file','private-ack'])ui[id].disabled=!ready;
+ for(const id of ['search','severity','select-visible','clear-visible','select-urgent','forget','chosen','export-counts','casework-file','workspace-file','vault-file','vault-passphrase','private-ack'])ui[id].disabled=!ready;
  updateEditor();
  updateButtons();
 }
@@ -28,6 +28,8 @@ function updateButtons(){
  ui['export-counts'].disabled=!state;
  ui['export-holds'].disabled=!(state&&state.holds.length&&permitted);
  ui['save-workspace'].disabled=!(state&&permitted);
+ ui['seal-vault'].disabled=!(state&&permitted);
+ ui['open-vault'].disabled=!(state&&ui['vault-file'].files.length);
 }
 function byteHex(buf){return Array.from(new Uint8Array(buf),b=>b.toString(16).padStart(2,'0')).join('');}
 async function sha(bytes){if(!crypto?.subtle)throw Error('Secure SHA-256 unavailable in this local browser; source-bound export is disabled.');return byteHex(await crypto.subtle.digest('SHA-256',bytes));}
@@ -37,7 +39,7 @@ function checkText(x,field){
 function draft(){return {owner:'',due:'',stage:'triage',action:'',review:'',blocker:''};}
 function forget(){
  state=null;active='';
- ui['source-file'].value='';ui['casework-file'].value='';ui['workspace-file'].value='';ui.search.value='';ui.severity.value='all';ui['private-ack'].checked=false;
+ ui['source-file'].value='';ui['casework-file'].value='';ui['workspace-file'].value='';ui['vault-file'].value='';ui['vault-passphrase'].value='';ui.search.value='';ui.severity.value='all';ui['private-ack'].checked=false;
  ui.findings.replaceChildren();const row=ui.findings.insertRow();const cell=row.insertCell();cell.colSpan=4;cell.textContent='Import a local source file to begin.';
  ui.chosen.replaceChildren(new Option('No finding selected',''));
  ui['preview-output'].textContent='Nothing selected yet.';
@@ -210,7 +212,7 @@ async function importCSV(file){
   message='Source revision: '+diff.added.length+' added, '+diff.changed.length+' changed, '+diff.missing.length+' missing, '+diff.unchanged.length+' exactly unchanged. '+holds.length+' prior HUMAN draft(s) in historical SOURCE HOLD. No missing/“fixed” source claim proves a resolved issue.';
   if(!confirm('SOURCE REVISION — independently verify this NEW export is the SAME client and engagement. '+message+' Only exact unchanged original five-field findings may keep HUMAN notes. Changed/missing notes are quarantined, never promoted. Continue?'))return;
  }
- state=next;active='';ui['casework-file'].value='';ui['workspace-file'].value='';ui['private-ack'].checked=false;ui.search.value='';ui.severity.value='all';
+ state=next;active='';ui['casework-file'].value='';ui['workspace-file'].value='';ui['vault-file'].value='';ui['vault-passphrase'].value='';ui['private-ack'].checked=false;ui.search.value='';ui.severity.value='all';
  ui['metric-count'].textContent=imported.length;
  ui['metric-risk'].textContent=imported.filter(f=>['critical','high'].includes(f.severity)).length;
  ui['metric-hash'].textContent=canonical.slice(0,10)+'…';
@@ -247,6 +249,38 @@ ui['save-workspace'].addEventListener('click',()=>{
   download(sourceBound,'lightup-PRIVATE-human-ticket-workspace.json','application/json;charset=utf-8');
   show('PRIVATE PLAINTEXT (NOT ENCRYPTED) source-byte-bound HUMAN checkpoint saved locally. Keep only in an approved private location; original CSV required to reopen.');
  }catch(err){show('CHECKPOINT EXPORT HOLD: '+err.message,true);}
+});
+ui['vault-file'].addEventListener('change',updateButtons);
+ui['seal-vault'].addEventListener('click',async()=>{
+ const passphrase=ui['vault-passphrase'].value;
+ try{
+  if(!state||!ui['private-ack'].checked)throw Error('Approve a private recipient/channel first.');
+  if(!confirm('Encrypt a source-bound PRIVATE HUMAN workspace locally. The passphrase will NOT be saved or recoverable. Confirm the private destination and preserve the original CSV securely.'))return;
+  if(!window.LightUpTicketVault||!window.LightUpTicketWorkspace)throw Error('Encrypted workspace modules unavailable.');
+  const plaintext=window.LightUpTicketWorkspace.packet(state);
+  const vault=await window.LightUpTicketVault.seal(plaintext,passphrase,state);
+  download(vault,'lightup-ENCRYPTED-private-human-workspace.json','application/json;charset=utf-8');
+  show('Encrypted source-byte-bound PRIVATE HUMAN workspace saved. No plaintext intermediate written. Passphrase cleared; exact original CSV required to reopen.');
+ }catch(err){show('ENCRYPTED SAVE HOLD: '+err.message,true);}
+ finally{ui['vault-passphrase'].value='';}
+});
+ui['open-vault'].addEventListener('click',async()=>{
+ const file=ui['vault-file'].files[0],passphrase=ui['vault-passphrase'].value;
+ try{
+  if(!state||!file)throw Error('Load the original source CSV and choose a vault first.');
+  if(!Number.isSafeInteger(file.size)||file.size>8*MAX_BYTES)throw Error('Encrypted PRIVATE vault exceeds 8 MiB.');
+  if(!window.LightUpTicketVault||!window.LightUpTicketWorkspace)throw Error('Encrypted workspace modules unavailable.');
+  const blob=await file.arrayBuffer();
+  let vaultText;
+  try{vaultText=new TextDecoder('utf-8',{fatal:true}).decode(blob);}catch{throw Error('Encrypted vault envelope is not UTF-8.');}
+  const plaintext=await window.LightUpTicketVault.open(vaultText,passphrase,state);
+  const admitted=window.LightUpTicketWorkspace.restore(plaintext,state);
+  if(!confirm('Authenticated local AES-GCM decryption succeeded for the entered passphrase and exact original CSV. This does NOT prove a real client identity or authority. Replace ALL current HUMAN notes, selections and historical HOLD with this unverified private checkpoint?'))return;
+  state.selected=admitted.selected;state.drafts=admitted.drafts;state.holds=admitted.holds;active='';
+  ui['private-ack'].checked=false;refresh();
+  show('Encrypted PRIVATE HUMAN workspace opened for exact source bytes: '+admitted.selected.size+' ticket selections and '+admitted.holds.length+' historical HOLD rows. No grant or verified fix inferred.');
+ }catch(err){show('ENCRYPTED OPEN HOLD: '+err.message,true);}
+ finally{ui['vault-passphrase'].value='';ui['vault-file'].value='';updateButtons();}
 });
 ui['casework-file'].addEventListener('change',async event=>{
  const file=event.target.files[0];
