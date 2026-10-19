@@ -234,6 +234,173 @@ No original source labels, evidence, target literals or identifiers are shown. E
         + "</body></html>\n").encode("utf-8")
 
 
+
+def make_browser_resolver() -> bytes:
+    """Offline local-only HUMAN decisions editor; native CLI remains final admission."""
+    import base64
+
+    script = r"""(function () {
+"use strict";
+const KEYSET = ["kind", "version", "input_sha256", "source_sha256",
+  "ordered_row_count", "resolutions"];
+const OPTIONS = {
+  stage: ["needs_review", "queued", "discussing", "documented", "blocked"],
+  route: ["unassigned", "scope", "findings", "evidence", "remediation", "privacy"],
+  action: ["none", "clarify_source", "review_scope_policy", "request_evidence_review",
+    "discuss_declared_difference", "prepare_private_human_brief",
+    "request_independent_human_review"]
+};
+const $ = id => document.getElementById(id);
+let packet = null;
+const hasOnly = (obj, keys) => obj !== null && typeof obj === "object" &&
+  !Array.isArray(obj) && Object.keys(obj).length === keys.length &&
+  keys.every(key => Object.hasOwn(obj, key));
+const hex = value => typeof value === "string" && value.length === 64 &&
+  Array.from(value).every(ch => "0123456789abcdef".includes(ch));
+const digestList = a => Array.isArray(a) && a.length >= 2 && a.length <= 8 &&
+  a.every(hex);
+function message(value, error) {
+  $("status").textContent = value;
+  $("status").setAttribute("role", error ? "alert" : "status");
+}
+function forget() {
+  packet = null;
+  $("save").disabled = true;
+  $("rows").replaceChildren();
+  $("progress").textContent = "No PRIVATE conflict packet loaded.";
+}
+function admit(p) {
+  if (!hasOnly(p, KEYSET) ||
+      p.kind !== "lightup.private_lab_human_conflicts" || p.version !== 1 ||
+      !digestList(p.input_sha256) || !digestList(p.source_sha256) ||
+      !Number.isInteger(p.ordered_row_count) ||
+      p.ordered_row_count < 1 || p.ordered_row_count > 16384 ||
+      !Array.isArray(p.resolutions) || p.resolutions.length > 512)
+    throw Error("Only bounded original PRIVATE conflict packets with at most 512 fields are supported here.");
+  const seen = new Set();
+  let previousOrdinal = 0;
+  let previousField = "";
+  for (const row of p.resolutions) {
+    if (!hasOnly(row, ["ordinal", "field", "choices", "value"]) ||
+        !Number.isInteger(row.ordinal) || row.ordinal < 1 ||
+        row.ordinal > p.ordered_row_count ||
+        !Object.hasOwn(OPTIONS, row.field) ||
+        !Array.isArray(row.choices) || row.choices.length < 2 ||
+        !row.choices.every((choice, i) =>
+          typeof choice === "string" && OPTIONS[row.field].includes(choice) &&
+          (i === 0 || row.choices[i-1] < choice)) ||
+        !(row.value === null || row.choices.includes(row.value)) ||
+        (row.ordinal < previousOrdinal) ||
+        (row.ordinal === previousOrdinal && row.field <= previousField))
+      throw Error("Noncanonical original HUMAN conflict item; use the native CLI.");
+    const marker = String(row.ordinal) + ":" + row.field;
+    if (seen.has(marker)) throw Error("Duplicate PRIVATE conflict field.");
+    seen.add(marker);
+    previousOrdinal = row.ordinal;
+    previousField = row.field;
+  }
+  return p;
+}
+function refresh() {
+  if (!packet) return;
+  const count = packet.resolutions.filter(item => item.value !== null).length;
+  $("progress").textContent = count + " / " + packet.resolutions.length +
+    " HUMAN fields selected; this editor does not authenticate the original inputs.";
+  $("save").disabled = count !== packet.resolutions.length;
+}
+function render(p) {
+  packet = p;
+  const table = $("rows");
+  table.replaceChildren();
+  for (const item of packet.resolutions) {
+    const row = document.createElement("tr");
+    const ordinal = document.createElement("td");
+    ordinal.textContent = String(item.ordinal);
+    const field = document.createElement("td");
+    field.textContent = item.field;
+    const choice = document.createElement("td");
+    const select = document.createElement("select");
+    select.setAttribute("aria-label", "Original row " + item.ordinal + " HUMAN " + item.field);
+    const empty = document.createElement("option");
+    empty.value = "";
+    empty.textContent = "Choose explicitly";
+    select.append(empty);
+    for (const value of item.choices) {
+      const option = document.createElement("option");
+      option.value = value;
+      option.textContent = value.replaceAll("_", " ");
+      select.append(option);
+    }
+    select.value = item.value === null ? "" : item.value;
+    select.addEventListener("change", () => {
+      item.value = select.value || null;
+      refresh();
+    });
+    choice.append(select);
+    row.append(ordinal, field, choice);
+    table.append(row);
+  }
+  refresh();
+}
+$("load").addEventListener("change", async event => {
+  forget();
+  try {
+    const file = event.target.files[0];
+    if (!file || file.size < 1 || file.size > 3 * 1024 * 1024)
+      throw Error("Select one original PRIVATE conflict packet up to 3 MiB.");
+    const text = new TextDecoder("utf-8", {fatal: true}).decode(await file.arrayBuffer());
+    render(admit(JSON.parse(text)));
+    message("PRIVATE packet opened in memory only. Original byte-bound CLI re-admission is still mandatory.", false);
+  } catch (error) {
+    forget();
+    message(error.message || "Cannot open PRIVATE packet.", true);
+  } finally {
+    event.target.value = "";
+  }
+});
+$("save").addEventListener("click", () => {
+  if (!packet || packet.resolutions.some(item => item.value === null)) return;
+  if (!window.confirm("Save only a PRIVATE unsigned HUMAN choice proposal? Revalidate it with the native CLI; this does not authorize anything.")) return;
+  const data = new Blob([JSON.stringify(packet, null, 2) + "\n"],
+    {type: "application/json"});
+  const url = URL.createObjectURL(data);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = "private-completed-human-resolutions.json";
+  link.click();
+  setTimeout(() => URL.revokeObjectURL(url), 5000);
+  message("Saved locally. Restrict the downloaded file to owner-only permissions (chmod 600) before native CLI review.", false);
+});
+})();"""
+    css = """body{font:16px/1.5 system-ui,sans-serif;max-width:1000px;margin:2rem auto;padding:0 1rem;background:#111a2b;color:#f0f4fa}h1{font-size:1.8rem}strong{color:#ffd98b}p{max-width:90ch}section{padding:1.3rem;background:#1c293d;border-radius:12px;margin:1.2rem 0}input,select,button{font:inherit;padding:.5rem;max-width:100%}button{cursor:pointer}button:disabled{opacity:.5}table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:.65rem;border-bottom:1px solid #64748b}a{color:#bfdfff}@media(max-width:700px){body{margin:0}th,td{padding:.35rem;font-size:.9rem}}"""
+    js_hash = base64.b64encode(hashlib.sha256(script.encode("utf-8")).digest()).decode("ascii")
+    css_hash = base64.b64encode(hashlib.sha256(css.encode("utf-8")).digest()).decode("ascii")
+    csp = ("default-src 'none'; script-src 'sha256-" + js_hash +
+        "'; style-src 'sha256-" + css_hash +
+        "'; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'")
+    page = ('<!doctype html><html lang="en"><head><meta charset="utf-8">'
+        '<meta name="viewport" content="width=device-width,initial-scale=1">'
+        '<meta http-equiv="Content-Security-Policy" content="' + csp + '">'
+        '<title>LightUp PRIVATE HUMAN conflict editor</title><style>' + css +
+        '</style></head><body><h1>LightUp · PRIVATE HUMAN conflict editor</h1>'
+        '<p><strong>REVIEW ONLY / DRAFT HOLD. No grant, scanner, authenticated actor, consent, verified finding or remediation.</strong></p>'
+        '<p>Open only an existing PRIVATE conflicts file produced by consensus.py. Choices are local in memory.'
+        ' No HTTP, external scripts, browser storage or background service. This editor DOES NOT establish'
+        ' input validity or source identity: the original native CLI must re-admit exact original plan bytes.</p>'
+        '<section><label for="load">Load PRIVATE conflict JSON</label> '
+        '<input id="load" type="file" accept=".json,application/json">'
+        '<p id="status" role="status">No PRIVATE packet loaded.</p>'
+        '<p id="progress">No PRIVATE conflict packet loaded.</p>'
+        '<button id="save" type="button" disabled>Download completed PRIVATE resolutions</button></section>'
+        '<section><table><thead><tr><th>Original row ordinal</th><th>HUMAN field</th>'
+        '<th>Original reviewer choices</th></tr></thead><tbody id="rows"></tbody></table></section>'
+        '<p>Next: chmod 600 on the downloaded file, then run the original consensus.py --resolutions'
+        ' with unchanged original reviewer plan files in the same order and a NEW --output directory.'
+        ' Small cohort details and source fingerprints are private. Source SHA is not a signature.</p>'
+        '<script>' + script + '</script></body></html>\n')
+    return page.encode("utf-8")
+
+
 def main():
     parser = argparse.ArgumentParser(description="Offline PRIVATE source-bound 2–8 HUMAN reviewer plan reconciliation")
     parser.add_argument("plans", nargs="+", type=Path, help="original LightUp PRIVATE HUMAN plan files (chmod 600)")
@@ -283,6 +450,7 @@ def main():
             "anonymous-counts.json": json_bytes(counts),
             "private-resolutions.json": json_bytes(packet),
             "private-conflicts.html": make_review_html(conflicts, len(sources), n),
+            "private-resolver.html": make_browser_resolver(),
         }
         if not conflicts or len(decisions) == len(conflicts):
             sparse = [{"ordinal": i + 1, **entry} for i, entry in enumerate(merged)
