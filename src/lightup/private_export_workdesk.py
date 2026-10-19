@@ -91,7 +91,7 @@ function exportDraft(){
   declared_engagement_id:DATA.declared_engagement_id,authorizes_action:false,
   certifies_remediation:false,confirms_client_identity:false,
   records:DATA.rows.map(r=>({...draft[r.finding_id]}))};
- const blob=new Blob([JSON.stringify(result,null,2)+"\n"],{type:"application/json"});
+ const blob=new Blob([JSON.stringify(result,null,2)+"\\n"],{type:"application/json"});
  const url=URL.createObjectURL(blob),a=E("a");a.href=url;
  a.download="LightUp-PRIVATE-HUMAN-Workplan.json";document.body.append(a);a.click();a.remove();
  setTimeout(()=>URL.revokeObjectURL(url),60000);
