@@ -8,6 +8,37 @@ The original [Authorization Casebook](../docs/authorization-casebook-20261018.md
 
 This companion does **not** claim to authenticate the bytes of downloaded source packets; a login at producer time is not a transferable signature. All content may be altered after original export. It does not issue authorization or convert copied source data into independent consent, revocation evidence or a verified grant.
 
+## One-command original-account capture with automatic HISTORY
+
+The new \`capture.py\` eliminates the manual export-and-reopen choreography while **reusing the original owner-maintained** \`lightup.auth_casebook.authenticated_casebook\` and its original \`_write_private_json\`. It prompts securely for an **original** operator/client password with \`getpass\`, respects original lockout/current persisted role and tenant selection, checks all pre-existing packets first, then writes exactly one original-source 0600 \`casebook-NN.json\`. It cannot change a grant, issue approval, touch a target, elevate risk or bypass an original revocation decision. **The original authentication routine may update its existing login/lockout counters.** The companion creates no login, session, token, authentication cache or authorization privilege.
+
+Initialize your own trusted PRIVATE (0700) folder through your normal approved local file-management workflow. Do not weaken directory permissions to accommodate LightUp.
+
+On the first original capture (one snapshot; no comparison yet):
+
+```bash
+PYTHONPATH=src python scope-casebook-history/capture.py \
+  --database /private/original-lightup.sqlite \
+  --email actual-operator@example.invalid \
+  --client ORIGINAL_TENANT_ID \
+  --packet-dir /private/casebook-originals
+```
+
+On each later authenticated original capture, also publish a **new** history in a separately private output parent:
+
+```bash
+PYTHONPATH=src python scope-casebook-history/capture.py \
+  --database /private/original-lightup.sqlite \
+  --email actual-operator@example.invalid \
+  --client ORIGINAL_TENANT_ID \
+  --packet-dir /private/casebook-originals \
+  --history-output-dir /private/human-reviews/new-history-02
+```
+
+Use a fresh `new-history-03`, etc., for subsequent moments; no overwrite or automatic deletion. The original producer's published `casebook-NN.json` remains preserved **even if a later HUMAN history export fails**. If that happens, investigate the single cause without weakening permissions and use `history.py --packet-dir /private/casebook-originals --output-dir /private/human-reviews/NEW` to resume without calling login a second time. The tool never silently overwrites or removes previous private snapshots.
+
+These are *operator-selected ordinals*, not independently witnessed times. The output contains unsigned local original source data; only a fresh original authenticated read under current separately verified client/operator consent and action-time revocation can inform an actual authorization decision elsewhere.
+
 ## Original source workflow
 
 First use the original owner command on its held branch, in a trusted private operator environment, to produce each **0600 original Casebook v1 JSON**. See [the original operating guide](../docs/authorization-casebook-20261018.md). Authenticated login is performed by the **original** program, not this companion; no password or credential is requested or handled here.
