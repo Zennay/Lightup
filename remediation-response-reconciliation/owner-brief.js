@@ -9,6 +9,8 @@ const HEAD=["kind","schema_version","disposition","source_contract","source_sha2
 const FIELDS=["request_id","finding_id","request_kind","tentative_human_due","original_instructions",
  "original_issued_utc","unverified_reply_stage","unverified_reply_text",
  "local_human_triage","local_human_note"];
+const V2_FIELDS=[...FIELDS,"received_owner_feedback_stage","received_owner_feedback_note","received_owner_feedback_utc"];
+const FEEDBACK_ACK=["acknowledged_unverified","needs_clarification","cannot_provide"];
 const TYPES=["missing_evidence","patch_change","deployment_record","rollback_plan",
  "retest_request","followup_question","other"];
 const LIMIT=8*1048576;
@@ -65,7 +67,7 @@ function strictJSON(s){
 }
 function validate(p){
  if(!exact(p,HEAD)||p.kind!=="lightup.private_human_owner_review_brief"||
- p.schema_version!==1||p.disposition!=="UNVERIFIED_HUMAN_COORDINATION_ONLY"||
+ ![1,2].includes(p.schema_version)||p.disposition!=="UNVERIFIED_HUMAN_COORDINATION_ONLY"||
  p.source_contract!=="lightup.finding_export._COLUMNS_v1"||
  !/^[0-9a-f]{64}$/.test(p.source_sha256)||FLAGS.some(k=>p[k]!==false)||
  !Array.isArray(p.requests)||!p.requests.length||p.requests.length>800)
@@ -75,7 +77,7 @@ function validate(p){
  text(p.recipient_alias,120,"HUMAN recipient alias",true);
  const seen=new Set();
  for(const r of p.requests){
-  if(!exact(r,FIELDS)||typeof r.request_id!=="string"||!/^[0-9a-f]{32}$/.test(r.request_id)||
+  if(!exact(r,p.schema_version===1?FIELDS:V2_FIELDS)||typeof r.request_id!=="string"||!/^[0-9a-f]{32}$/.test(r.request_id)||
    seen.has(r.request_id))fail("HOLD: malformed or repeated original HUMAN request");
   seen.add(r.request_id);
   text(r.finding_id,160,"original finding",true);
@@ -90,6 +92,19 @@ function validate(p){
   if(!["not_reviewed","needs_human_followup","human_triaged"].includes(r.local_human_triage))
    fail("HOLD: invalid local HUMAN review stage");
   text(r.local_human_note,400,"human-only note");
+  if(p.schema_version===2){
+   const stage=r.received_owner_feedback_stage;
+   if(stage!==""&&!FEEDBACK_ACK.includes(stage))fail("HOLD: invalid stored human feedback status");
+   text(r.received_owner_feedback_note,1000,"stored private HUMAN feedback");
+   if(stage===""){
+    if(r.received_owner_feedback_note!==""||r.received_owner_feedback_utc!=="")
+     fail("HOLD: unexpected previous HUMAN feedback");
+   }else{
+    stamp(r.received_owner_feedback_utc);
+    if(stage!=="acknowledged_unverified"&&!r.received_owner_feedback_note.trim())
+     fail("HOLD: incomplete previous HUMAN feedback explanation");
+   }
+  }
  }
  return p;
 }
@@ -211,6 +226,13 @@ function render(){
    const sec=tag("div","");sec.className="privateDetail";
    sec.append(tag("strong",heading+" : "),tag("span",content));
    detail.append(sec);
+  }
+  if(packet.schema_version===2&&r.received_owner_feedback_stage){
+   const previous=tag("aside","");previous.className="feedbackPrior";
+   previous.append(tag("strong","Previously recorded UNVERIFIED owner feedback: "+r.received_owner_feedback_stage));
+   previous.append(tag("p",r.received_owner_feedback_note||"No HUMAN explanation was supplied."));
+   previous.append(tag("small","Self-declared feedback time "+r.received_owner_feedback_utc));
+   card.append(previous);
   }
   card.append(detail,feedbackEditor(r));box.append(card);
  }
