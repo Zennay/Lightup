@@ -136,6 +136,36 @@ PYTHONPATH=src python3 remediation-evidence-bridge/revision.py carry \
 
 This is **human source-claim continuity**, not scan/verified-fix/retest evidence or authorization. The human must retain the previous original encrypted source separately; the new package is a separate artifact and is never published or applied to production.
 
+## Merge independent encrypted HUMAN workrooms without losing parallel edits
+
+**`merge.py`** combines two independently saved `workspace.py` PRIVATE HUMAN `.ltv` workrooms **only when they both contain exactly the current original authenticated client/engagement five-column source bytes**. It never updates the original database, verifies a fix, grants authorization, approves a retest or runs a target. The existing source/authentication/tenant checks run **before** decrypting and combining the two workrooms.
+
+The operator uses a **private, interactive terminal**. Both vault passphrases are entered locally without command-line/env secrets. `preview` shows only source finding count, how many HUMAN records can be combined and how many human conflicts need decisions. It writes no file, reveals no finding IDs or notes and cannot silently pick a conflict winner.
+
+```sh
+# Read-only anonymous HUMAN merge preview: both original encrypted sources preserved.
+PYTHONPATH=src python3 remediation-evidence-bridge/merge.py preview \
+  --left /trusted/private/lightup/owner-one.ltv \
+  --right /trusted/private/lightup/owner-two.ltv \
+  --db /path/to/existing-lightup.sqlite --email operator@example.invalid \
+  --client-id EXISTING_CLIENT_ID --engagement-id EXISTING_ENGAGEMENT_ID
+
+# New owner-only 0600 private encrypted .ltv, no temporary plaintext:
+PYTHONPATH=src python3 remediation-evidence-bridge/merge.py merge \
+  --left /trusted/private/lightup/owner-one.ltv \
+  --right /trusted/private/lightup/owner-two.ltv \
+  --db /path/to/existing-lightup.sqlite --email operator@example.invalid \
+  --client-id EXISTING_CLIENT_ID --engagement-id EXISTING_ENGAGEMENT_ID \
+  --output /trusted/private/lightup/merged-human-review.ltv \
+  --ack-private-human-review
+```
+
+Original HUMAN Casework, Evidence Review, registered local evidence fingerprints and HUMAN follow-up requests retain their distinct original IDs; independently added source-bound records are kept. For the **same** original HUMAN record, differing owner/date/status/plan/note/fingerprint metadata and other editable fields are shown separately in the private terminal, field by field. The operator explicitly chooses **L** or **R** for each disputed field. An empty choice or **HOLD** stops before creating a merged artifact; there is **no** auto-winner, no overwrite of either encrypted source and no discarded independent change. Original finding membership remains fixed and cannot be reassigned by selecting a side.
+
+The merged original HUMAN envelope is fully re-admitted, encrypted into a **new** 0600 file inside an owner-private directory and can be reopened using `workspace.py open-current`. After opening, the **original unchanged Ledger still requires its own separate preview and explicit HUMAN apply**, even for a conflict-free merge. Any originally source-labelled `fixed` is still just a retrospective, unverified label.
+
+**Operational safeguards:** original source bytes and exact client/engagement require a fresh authorized read; all source and human files must be owner-only single-linked regular files; recipient/offline-browser requirements and original privacy/crypto review still apply. Local terminal shows HUMAN note contents **only in the deliberate conflict-resolution step**, never in the aggregate `preview`. Do not capture that terminal session to shared logs. This feature is subject to the same DRAFT/HOLD release gates as the source owner.
+
 ## Original ownership and enforced gates
 
 This integration is a **child candidate** of the original held [authenticated encrypted Casework PR #1653](https://github.com/Zennay/Lightup/pull/1653), with the [original unchanged Evidence Artifact Ledger PR #1642](https://github.com/Zennay/Lightup/pull/1642) copied as-is. All new feature code resides under `remediation-evidence-bridge/`. It does not alter the original file ownership, existing `src/lightup/`, active scope/authorization, scanner, tool runner, CI workflow or test/QA files.
