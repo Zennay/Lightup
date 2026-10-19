@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="color-scheme" content="dark">
   <title>LightUp · Original Lab Declaration Matrix · PRIVATE</title>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-PPVrcDu9vvMXYXB1XZ4FyWsgc7krfO9j/Gokplj064Y='; style-src 'sha256-zTyx8d8MYSuvbrYC31YZVWAe9KlftHDs0ld1vSpge14='; connect-src 'none'; img-src 'none'; font-src 'none'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-e+C6rsTCcObzXfh7cZePYHtqYXwa9SbIGvlkD+F/Prc='; style-src 'sha256-Jjt26gEygJWUBbeSb0fPNqbz7UoMV8gJ4mb37F76OgI='; connect-src 'none'; img-src 'none'; font-src 'none'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
   <style>:root{font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#ecf1f7;background:#0c111a;line-height:1.55;font-size:15px}
 *{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:radial-gradient(ellipse 70% 18% at 64% 0%,#1b3044 0,transparent 80%),#0c111a;min-height:100vh}
 [hidden]{display:none!important}button,input,select{font:inherit}button{cursor:pointer}button:focus-visible,input:focus-visible,select:focus-visible,a:focus-visible{outline:3px solid #89d7df;outline-offset:3px}
@@ -85,6 +85,10 @@ footer{border-top:1px solid #283442;padding:22px clamp(18px,4vw,52px);max-width:
 .human-bulk .hint{margin:10px 0 0}
 @media(max-width:900px){.bulk-fields{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:600px){.bulk-fields{grid-template-columns:1fr}}
+
+.matrix-paging{padding:10px 15px;border-top:1px solid #2d3c4c;background:#162330}
+.matrix-paging span{font-weight:650;color:#c3dfe3}
+.matrix-paging .buttons button{padding:8px 12px;font-size:.81rem}
 </style>
 </head>
 <body>
@@ -196,6 +200,13 @@ footer{border-top:1px solid #283442;padding:22px clamp(18px,4vw,52px);max-width:
       <div class="grid">
         <section class="panel matrix-pane" aria-label="Check declarations by local file">
           <div class="table-scroll"><table id="matrix"></table></div>
+          <div class="human-paging matrix-paging">
+            <span id="matrixPages">No matrix loaded.</span>
+            <div class="buttons">
+              <button id="matrixPrev" class="secondary" type="button" disabled>Previous 100</button>
+              <button id="matrixNext" class="secondary" type="button" disabled>Next 100</button>
+            </div>
+          </div>
           <p class="legend"><strong>— not declared</strong> is never a verified PASS, valid negative observation, scan coverage, fix or closure. Cell counts are source-reported finding appearances.</p>
         </section>
         <section id="details" class="panel details" tabindex="-1" aria-label="Original PRIVATE source detail">
@@ -522,6 +533,7 @@ function createHumanBoard(api) {
     dispatch_allowed:false,release_allowed:false});
   const MAX_SOURCE_BYTES = 8 * 1024 * 1024;
   let sources = [], rows = [], visible = [], selected = null, sourceDigests = [];
+  let matrixPage = 0;
   const fail = (ok, message = "Untrusted or incompatible original lab result") => {
     if (!ok) throw new Error(message);
   };
@@ -779,8 +791,14 @@ function createHumanBoard(api) {
     head.append(node("th","Original capability · check"));
     sources.forEach((_,i)=>head.append(node("th","Local file "+(i+1))));
     thead.append(head);table.append(thead);
+    const pages=Math.max(1,Math.ceil(visible.length/100));
+    matrixPage=Math.min(Math.max(matrixPage,0),pages-1);
+    $("matrixPages").textContent="Page "+(matrixPage+1)+" of "+pages+
+      " · "+visible.length+" filtered declaration groups";
+    $("matrixPrev").disabled=matrixPage===0;
+    $("matrixNext").disabled=matrixPage+1>=pages;
     const tbody=node("tbody");let noDeclaration=0;
-    visible.forEach((row,index)=>{
+    visible.slice(matrixPage*100,(matrixPage+1)*100).forEach((row,index)=>{
       const tr=node("tr");
       const label=node("td");label.append(node("strong",row.capability||"(empty source capability)"));
       label.append(node("small",row.check||"(empty source check)"));tr.append(label);
@@ -800,13 +818,15 @@ function createHumanBoard(api) {
     });
     table.append(tbody);
     $("visible").textContent=visible.length+" source-declared check groups · "+
-      noDeclaration+" empty cells (not declared, never PASS)";
+      noDeclaration+" empty cells on this page (not declared, never PASS). "+
+      "Counts exports include all filtered groups, not only this page.";
     $("exportCSV").disabled=!sources.length;
     $("exportJSON").disabled=!sources.length;
     if(selected) {
       const row=rows.find(r=>r===selected.row);
-      if(row)details(row,selected.sourceIndex,
+      if(row&&visible.includes(row))details(row,selected.sourceIndex,
         filteredPairs(row)[selected.sourceIndex],false);
+      else {selected=null;clear($("details"));}
     }
   }
   function details(row,index,cell,focus=true) {
@@ -902,7 +922,7 @@ function createHumanBoard(api) {
       }
       // Only publish after the WHOLE batch has passed strict source admission.
       sources=next;sourceDigests=nextDigests;rows=aggregate(next);
-      selected=null;clear($("details"));
+      selected=null;matrixPage=0;clear($("details"));
       clear($("endpoint"));
       $("endpoint").append(new Option("All declared endpoints",0));
       baseline.targets.forEach((_,i)=>$("endpoint").append(new Option("Endpoint ordinal "+(i+1),i+1)));
@@ -924,13 +944,23 @@ function createHumanBoard(api) {
   $("load").addEventListener("click",importFiles);
   $("forget").addEventListener("click",()=>{
     if(sources.length&&!confirm("Forget ALL locally opened original PRIVATE result data?"))return;
-    sources=[];rows=[];visible=[];selected=null;sourceDigests=[];
+    sources=[];rows=[];visible=[];selected=null;sourceDigests=[];matrixPage=0;
     humanBoard.clearAll();
     clear($("details"));clear($("matrix"));clear($("attention"));clear($("sourceMetrics"));$("query").value="";
+    $("matrixPages").textContent="No matrix loaded.";
+    $("matrixPrev").disabled=true;$("matrixNext").disabled=true;
     $("workspace").hidden=true;$("intro").hidden=false;
     $("files").value="";message("Private originals discarded from this application state.");
   });
-  ["query","severity","endpoint"].forEach(id=>$(id).addEventListener("input",refresh));
+  ["query","severity","endpoint"].forEach(id=>$(id).addEventListener("input",()=>{
+    matrixPage=0;refresh();
+  }));
+  $("matrixPrev").addEventListener("click",()=>{
+    if(matrixPage>0){matrixPage--;refresh();}
+  });
+  $("matrixNext").addEventListener("click",()=>{
+    matrixPage++;refresh();
+  });
   $("exportJSON").addEventListener("click",()=>{
     if(sources.length&&confirm("Download anonymized COUNTS ONLY? Small groups can still be sensitive.")){
       download("lightup-private-declaration-counts.json",
