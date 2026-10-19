@@ -72,6 +72,24 @@ python3 remediation-evidence-bundle-integrity/portfolio.py \
 
 Or choose **only** `--counts /ABSOLUTE/NEW/SOURCE-FREE.json` for an aggregate local JSON intended for **private** staffing discussions, not public telemetry. Both options require an unused name in an existing owner-only directory. Source filenames, digests, client references, original finding identifiers and private free-text notes are **never exported** into this portfolio. Private per-slot workload counts may still reveal business-sensitive staffing information, so no online publication or public issue attachment is appropriate. Totals sum *local slots*, not unique customers, proven evidence or complete findings. Repeated packet groups are flagged by slot numbers only; no original identity leaves memory.
 
+## One-command source-owner workroom: original evidence + portable HUMAN cockpit
+
+**New `prepare.py`:** instead of manually exporting every original Evidence Relationship Desk workspace and then running a second composition command, a source owner can take existing PRIVATE original packet files straight through the native original HUMAN proposal/renderers into **one atomically published complete offline workroom**. The workroom includes privately preserved original source-bound desks *and* a separately distributable source-free Cockpit, all using the same existing original interfaces. No external network, subprocess, test suite, scanner, grant, file evidence byte inspection or native Apply path is involved.
+
+The source owner first places already-exported original local input files in separate **existing 0700 folders**, each with `current.json` and optionally `previous.json` / `session.json`, all 0600 regular owner-only files. No other files are allowed in these input directories, and no original evidence bytes or clients may be exported from an unapproved source. Each source must already satisfy the original pinned Evidence Ledger/HUMAN contract. Existing stored HUMAN sessions are admitted, not replaced; without a session, an original human-only `open` review journal is prepared. The original inputs stay unchanged.
+
+```sh
+install -d -m 700 "$HOME/lightup-private/ledger-01"
+# Place existing original current.json, optional previous.json/session.json as 0600 files.
+python3 remediation-evidence-bundle-integrity/prepare.py \
+  --input-dir "$HOME/lightup-private/ledger-01" \
+  --output-dir "$HOME/lightup-private/workroom-001"
+```
+
+For 2–12 sources, repeat `--input-dir`; never duplicate the same source folder. An existing owner-only 0700 parent is mandatory and `--output-dir` must be completely new, outside every input folder. The native original source renderer prepares `original-01/`, etc., preserves original HUMAN source-bound notes and original PRIVATE pages, and then the existing `board.py` creates `cockpit/`. The new root `index.html` is a **ready-to-open local operator navigation desk** linking the original private source-bound reviews and combined anonymous human action/workload brief. The exact workroom directory becomes visible together only via the original exclusive atomic directory rename; before publication, every input source and HUMAN session is re-read for drift. On admission failure no completed destination is published.
+
+**Recipient handoff:** copy **ONLY** `workroom-001/cockpit/` into the recipient's trusted owner-private directory, and run `read_cockpit.py --cockpit /ABSOLUTE/PRIVATE/COPIED_COCKPIT` there. Never transmit `workroom-001/` itself or any `original-XX/` subfolder: those contain original client/source labels, unverified SHA references and private HUMAN notes. The source-free cockpit remains a local human-only workload snapshot, not signed proof, clearance, client/operator consent, evidence authenticity or verified remediation. A crash may leave an owner-private temporary staging directory; do not assume files are safe to share outside the original private location.
+
 ## One-command complete PRIVATE HTML evidence cockpit
 
 **Recommended one-or-more-workspace operator entrypoint:** `board.py` fully integrates the independent original-bundle verifier, cross-source HUMAN workload portfolio, optional same-source revision progress and an advisory follow-up briefing into one **complete new private browser-readable offline folder**. No hand assembly of individual HTML is needed; a source-unchanged bundle is reviewed with the original rendered HTML reconstructed byte-for-byte first.
