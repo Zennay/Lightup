@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-Rt48rvZCwY6GyodNxpviZkixYMFCkB+R48gmMDqUOiM='; style-src 'unsafe-inline'; connect-src 'none'; img-src 'none'; font-src 'none'; object-src 'none'; worker-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-iU8ufq8cVMKr5Z8rsfsqh8lc62RWXHDDwpfiwVBEi+4='; style-src 'unsafe-inline'; connect-src 'none'; img-src 'none'; font-src 'none'; object-src 'none'; worker-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
 <title>LightUp · PRIVATE HUMAN Studio</title>
 <style>
 :root{color-scheme:dark;--bg:#0a1321;--panel:#18263a;--border:#34465e;--text:#eff6fe;--muted:#b5c5d8;--accent:#a6f1d1}
@@ -53,6 +53,7 @@ footer{margin-top:40px;border-top:1px solid var(--border);padding-top:18px}
 </section>
 <section class="panel"><h2>2 · Private HUMAN question-volume desk</h2>
 <p>Sorted by number of local pending questions only. This is <strong>not</strong> a risk score, vulnerability severity, finding identity, or remediation verification. Browser-only, no hidden persistent storage. <span id="missing">0</span> packets have no planning stage breakdown.</p>
+<p><strong id="overlap">0</strong> packet appearances share an indistinguishable numeric profile with another selected packet. This is a caution about possible overlap, <strong>not proof of duplicated cases or identical original sources</strong>; legitimate distinct workrooms can have the same anonymous numbers.</p>
 <div class="scroll"><table><thead><tr><th>Packet ordinal</th><th>Export type</th><th>Slot appearances</th><th>Pending questions</th><th>Planned attention</th><th>Dated slots</th><th>Local action</th></tr></thead><tbody id="rows"></tbody></table></div>
 <div class="actions"><button class="primary" type="button" id="export" disabled>Save anonymous HUMAN question-volume CSV</button>
 <button type="button" id="exportBrief" disabled>Save source-free HUMAN follow-up brief</button>
@@ -216,6 +217,7 @@ footer{margin-top:40px;border-top:1px solid var(--border);padding-top:18px}
   };
   const summary = data => {
     const totals={packets:data.length,slots:0,questions:0,attention:0,dated:0,planned:0,
+      possible_same_numeric_shape_appearances:0,
       stages:{unassigned:0,assigned:0,waiting_human:0,locally_answered:0}};
     for(const item of data){
       totals.slots+=item.slots;totals.questions+=item.questions;
@@ -223,6 +225,15 @@ footer{margin-top:40px;border-top:1px solid var(--border);padding-top:18px}
         totals.dated+=item.plan.dated;
         for(const stage of STAGES)totals.stages[stage]+=item.plan.stages[stage];}
     }
+    const shapes=new Map();
+    for(const item of data){
+      const profile=JSON.stringify([item.type,item.slots,item.questions,
+        item.plan?[item.plan.attention,item.plan.dated,
+          ...STAGES.map(stage=>item.plan.stages[stage])]:null]);
+      shapes.set(profile,(shapes.get(profile)??0)+1);
+    }
+    totals.possible_same_numeric_shape_appearances=
+      Array.from(shapes.values()).filter(n=>n>1).reduce((a,b)=>a+b,0);
     return totals;
   };
   const queue = data => data.map((item,i)=>({...item,ordinal:i+1}))
@@ -256,6 +267,7 @@ footer{margin-top:40px;border-top:1px solid var(--border);padding-top:18px}
     $("exportBrief").disabled=entries.length===0;
     $("exportJson").disabled=entries.length===0;
     $("missing").textContent=String(total.packets-total.planned);
+    $("overlap").textContent=String(total.possible_same_numeric_shape_appearances);
     for(const stage of STAGES)$("stage_"+stage).textContent=
       String(total.stages[stage])+" recorded slot appearances";
     const former=earlier;
@@ -317,6 +329,7 @@ footer{margin-top:40px;border-top:1px solid var(--border);padding-top:18px}
       "Source-free slot appearances: "+t.slots,
       "Pending HUMAN questions (not fixes): "+t.questions,
       "Planning-stage packets: "+t.planned,
+      "Indistinguishable numeric profile appearances (not duplicates): "+t.possible_same_numeric_shape_appearances,
       "Attention slot appearances (only planning packets): "+t.attention,
       "Locally dated slot appearances (only planning packets): "+t.dated,
       "",
@@ -327,6 +340,7 @@ footer{margin-top:40px;border-top:1px solid var(--border);padding-top:18px}
     if(t.stages.waiting_human)lines.push("Review waiting_human stages in original PRIVATE workrooms.");
     if(t.dated)lines.push("Review date-bearing slots only in original PRIVATE plans; exact dates are not imported.");
     if(t.packets!==t.planned)lines.push("Some packets lack HUMAN planning states; missing means NOT PROVIDED.");
+    if(t.possible_same_numeric_shape_appearances)lines.push("Several packets share identical anonymous numeric profiles; this is NOT proof of duplicate source work.");
     lines.push("Confirm source overlap privately; packet appearance changes are NOT remediation.",
       "Counts may identify people in small populations; human disclosure approval required.",
       "");
@@ -343,6 +357,7 @@ footer{margin-top:40px;border-top:1px solid var(--border);padding-top:18px}
       source_free_slot_appearances_not_unique:totals.slots,
       pending_human_questions_not_fixes:totals.questions,
       planning_packet_count:totals.planned,
+      possible_same_numeric_shape_appearances_not_proven_duplicates:totals.possible_same_numeric_shape_appearances,
       human_attention_slot_appearances:totals.attention,
       locally_dated_slot_appearances:totals.dated,
       local_planning_stages:totals.stages,
