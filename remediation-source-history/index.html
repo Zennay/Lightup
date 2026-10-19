@@ -40,6 +40,16 @@
 <label>Original severity<select id="deskSeverity"><option value="all">All original severities</option><option>critical</option><option>high</option><option>medium</option><option>low</option><option>info</option></select></label></div>
 <div class="formrow"><label>Local HUMAN progress<select id="deskStatus"><option value="all">All HUMAN statuses</option><option value="unassigned">Unassigned</option><option value="planned">Planned</option><option value="in_progress">In progress</option><option value="blocked">Blocked</option><option value="deferred">Deferred</option><option value="ready_for_retest">Imported ready_for_retest (unverified)</option><option value="completed">Imported completed (unverified)</option></select></label></div>
 <p id="deskCount" class="help">No source loaded.</p>
+<h3>Multi-finding HUMAN work planning</h3>
+<p class="help">Select exact original finding rows (maximum 100). This is an in-memory HUMAN planning action, not a security mitigation, retest, target authorization, or actual work order. All changes are proposed together or none are saved. Source-HOLD rows are not eligible.</p>
+<div class="load"><button id="deskSelectVisible" class="secondary">Select all visible eligible originals (≤100)</button><button id="deskClearSelection" class="secondary">Clear HUMAN selection</button></div>
+<div class="formrow filters">
+<label><input id="batchApplyOwner" type="checkbox"> Set HUMAN owner alias<input id="batchOwner" maxlength="120" placeholder="May be blank to explicitly unassign"></label>
+<label><input id="batchApplyDue" type="checkbox"> Set tentative HUMAN due date<input id="batchDue" type="date"></label>
+<label><input id="batchApplyStatus" type="checkbox"> Set HUMAN progress<select id="batchStatus"><option value="planned">Planned</option><option value="in_progress">In progress</option><option value="blocked">Blocked</option><option value="deferred">Deferred</option><option value="unassigned">Unassigned</option></select></label>
+</div>
+<label class="check"><input id="batchHumanAck" type="checkbox"> I acknowledge that this batch changes only locally self-declared HUMAN owner/status/date plans, preserves original finding evidence and blockers, and gives no consent, verified fix, grant or approval.</label>
+<button id="deskBatchApply">Apply selected HUMAN planning changes atomically</button>
 <div class="table-wrap"><table><thead><tr><th>Original finding</th><th>Human follow-up</th><th>Human owner / date</th><th>Human blocker / next action</th></tr></thead><tbody id="deskRows"></tbody></table></div>
 <div id="deskEditor" class="snapshot" hidden>
 <h3 id="deskTitle">Selected original finding</h3><p id="deskBinding" class="help"></p>
