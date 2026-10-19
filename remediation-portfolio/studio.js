@@ -49,7 +49,6 @@
   const BOARD_FIELDS=["kind","schema_version","disposition","numeric_packets",
     "assignments","warning",...FLAGS];
   const BOARD_ASSIGNMENT_FIELDS=["ordinal","action","state"];
-  const PACKET_FIELDS=["type","slots","questions","plan"];
   let timelineMoments=[]; // Distinct temporary numeric session previews, NOT original evidence.
 
   const ensure = ok => { if (!ok) throw Error("HOLD"); };
