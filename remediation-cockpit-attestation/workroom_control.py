@@ -115,6 +115,11 @@ def main() -> int:
     batch.add_argument("--key-file", required=True, type=Path)
     batch.add_argument("--edits", required=True, type=Path)
     batch.add_argument("--output-parent", required=True, type=Path)
+    rekey = actions.add_parser("rekey", help="Re-sign all source-free cockpit receipts and re-encrypt the HUMAN plan under a NEW team key")
+    rekey.add_argument("--workroom", required=True, type=Path)
+    rekey.add_argument("--old-key-file", required=True, type=Path)
+    rekey.add_argument("--new-key-file", required=True, type=Path)
+    rekey.add_argument("--output-parent", required=True, type=Path)
     editing = actions.add_parser("revise", help="Publish NEW complete workroom after HUMAN slot edit")
     editing.add_argument("--workroom", required=True, type=Path)
     editing.add_argument("--key-file", required=True, type=Path)
@@ -129,7 +134,14 @@ def main() -> int:
     editing.add_argument("--clear-note", action="store_true")
     args = parser.parse_args()
     try:
-        if args.action == "inspect":
+        if args.action == "rekey":
+            import rekey_workroom
+            destination, plan = rekey_workroom.rotate(
+                args.workroom, args.old_key_file, args.new_key_file,
+                args.output_parent)
+            print("New PRIVATE HUMAN workroom rekeyed and atomically published: " + str(destination))
+            print("Previous key, encrypted source-free copies and receipts are NOT revoked.")
+        elif args.action == "inspect":
             plan = inspect(args.workroom, args.key_file)
             print("REVIEW_ONLY: entire PRIVATE HUMAN workroom and original source-free slots admitted.")
         elif args.action == "export-counts":
