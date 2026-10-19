@@ -25,7 +25,8 @@ from secure_export import (COLUMNS, FALSE, _literal, _strict_summary, _unique_pa
 KIND = "lightup.private_source_bound_browser_handoff"
 VERSION = 1
 ORIGINAL_APP_VERSION = 2
-WORKSPACE_VERSION = 3
+WORKSPACE_COMPAT_VERSION = 3
+WORKSPACE_VERSION = 4
 ORIGINAL_MODES = ("ticketdesk", "casework")
 WORKSPACE_MODES = ("workspace", "workspace_history")
 DISPOSITION = "PRIVATE_HUMAN_OFFLINE_SOURCE_ONLY"
@@ -37,6 +38,7 @@ KEYS = frozenset((
     "historical_original_csv", "authority",
 ))
 ORIGINAL_APP_KEYS = KEYS | frozenset(("original_app_sha256",))
+WORKSPACE_SOURCE_KEYS = ORIGINAL_APP_KEYS | frozenset(("captured_original_csv",))
 MAX_PAYLOAD = 4 * 1024 * 1024 - 8192
 
 
@@ -107,6 +109,10 @@ def pack(current_csv: str, client_id: str, engagement_id: str, *,
         # Future app changes force a fresh human handoff instead of
         # silently swapping implementations.
         packet["schema_version"] = WORKSPACE_VERSION
+        # Preserve exact actual CURRENT source encrypted within the package.
+        # On future changes it can become the prior HUMAN-only historical
+        # revision, without a plaintext file or an invented trusted timestamp.
+        packet["captured_original_csv"] = current_csv
         packet["original_app_sha256"] = {
             name: hashlib.sha256(original_owner_html(
                 name,current_csv,client_id,engagement_id)).hexdigest()
@@ -129,11 +135,20 @@ def unpack(payload: bytes) -> dict:
     # Keep previously issued review/history packets compatible. An original
     # app always needs the newer app-byte content pin. Older app-mode packets
     # are explicitly HOLD and need resealing from currently authorized source.
-    required_version = (WORKSPACE_VERSION if declared_mode in WORKSPACE_MODES
-                        else ORIGINAL_APP_VERSION if declared_mode in ORIGINAL_MODES
-                        else VERSION)
-    required_fields = (ORIGINAL_APP_KEYS if declared_mode in
-                       (*ORIGINAL_MODES,*WORKSPACE_MODES) else KEYS)
+    declared_version=packet.get("schema_version")
+    if declared_mode in WORKSPACE_MODES:
+        if type(declared_version) is not int or declared_version not in (
+            WORKSPACE_COMPAT_VERSION, WORKSPACE_VERSION
+        ):
+            raise ValueError("Unknown source-bound workspace schema")
+        required_version=declared_version
+        required_fields=(WORKSPACE_SOURCE_KEYS if declared_version==WORKSPACE_VERSION
+                         else ORIGINAL_APP_KEYS)
+    else:
+        required_version=(ORIGINAL_APP_VERSION if declared_mode in ORIGINAL_MODES
+                          else VERSION)
+        required_fields=(ORIGINAL_APP_KEYS if declared_mode in ORIGINAL_MODES
+                         else KEYS)
     if set(packet) != required_fields:
         raise ValueError("Missing encrypted original owner app content pin")
     if (
@@ -153,6 +168,14 @@ def unpack(payload: bytes) -> dict:
         or not 1 <= packet["current_original_count"] <= 350):
         raise ValueError("Source hash/count metadata invalid")
     _check_mode(packet["mode"], packet["historical_original_csv"])
+    if declared_mode in WORKSPACE_MODES and declared_version==WORKSPACE_VERSION:
+        captured=packet["captured_original_csv"]
+        if type(captured) is not str:
+            raise ValueError("Stored current workspace source is not canonical")
+        saved_digest,saved_count=_digest(captured)
+        if (saved_digest!=packet["current_original_csv_sha256"] or
+            saved_count!=packet["current_original_count"]):
+            raise ValueError("Encrypted captured workspace source identity mismatch")
     if declared_mode in (*ORIGINAL_MODES,*WORKSPACE_MODES):
         pins = packet["original_app_sha256"]
         if declared_mode in ORIGINAL_MODES:
@@ -302,3 +325,50 @@ def open_current(current_csv: str, client_id: str, engagement_id: str, *,
         document = build_history_desk(history_review(snapshots))
     vault._exclusive_output(destination, document)
     return packet["mode"]
+
+
+def advance_workspace(current_csv: str, client_id: str, engagement_id: str,
+                      source: Path, output: Path) -> int:
+    """Preserve OLD authenticated source as HUMAN history while resealing CURRENT.
+
+    The caller performs an independent fresh original LightUp account and
+    client/engagement authorized source read BEFORE calling this function.
+    This deliberately does NOT require the old CSV SHA to match current:
+    source drift is the explicit human reason for this action. The old data
+    are never promoted to a verified remediation, scan grant, or new ticket.
+    """
+    old_path=source.expanduser().absolute()
+    destination=output.expanduser().absolute()
+    if (old_path.suffix.lower()!=".ltv" or destination.suffix.lower()!=".ltv"
+        or old_path==destination):
+        raise ValueError("Distinct OLD/NEW encrypted workspace paths required")
+    _digest(current_csv)
+    vault=_vault()
+    cipher=vault._private_input(old_path,vault.MAX_VAULT)
+    passphrase=vault._password("Existing PRIVATE workspace passphrase: ",fresh=False)
+    raw,kind,_=vault._open(cipher,passphrase)
+    if kind!="application/json":
+        raise ValueError("Original workspace must be an encrypted source packet")
+    previous=unpack(raw)
+    if (previous["mode"] not in WORKSPACE_MODES
+        or previous["schema_version"]!=WORKSPACE_VERSION):
+        raise ValueError("Only source-carry enabled v4 workspaces can preserve current source history")
+    if (previous["client_id_self_declared"]!=client_id
+        or previous["engagement_id_self_declared"]!=engagement_id):
+        raise ValueError("Historical and current original engagement membership differ")
+    current_digest,current_count=_digest(current_csv)
+    if (current_digest==previous["current_original_csv_sha256"]
+        and current_count==previous["current_original_count"]):
+        raise ValueError("Original current source unchanged; keep old sealed workspace")
+    historical=list(previous["historical_original_csv"])
+    # Previously authenticated source becomes historical text only.
+    # Maximum is 12; never silently discard old evidence to make room.
+    historical.append(previous["captured_original_csv"])
+    if len(historical)>12:
+        raise ValueError("12 historical sources already present: archive before advancing")
+    # seal() invokes the existing owner-app source builders again, binds both
+    # EXACT current original app SHA pins, requests a NEW PRIVATE TTY passphrase,
+    # and writes to a NEW 0600 owner-private file; prior ciphertext survives.
+    seal(current_csv,client_id,engagement_id,mode="workspace_history",
+         history_csv=historical,output=destination)
+    return len(historical)

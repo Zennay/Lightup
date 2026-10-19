@@ -16,7 +16,8 @@ sys.path.insert(0, str(ROOT / "remediation-secure-export"))
 from desk import build_desk
 from history import review as history_review, markdown as history_markdown, anonymous_csv
 from history_desk import build_history_desk
-from sealed_browser import seal as seal_browser, open_current as open_sealed_browser
+from sealed_browser import (seal as seal_browser, open_current as open_sealed_browser,
+                            advance_workspace)
 from workspace_release import open_all as open_sealed_workspace
 from ticketdesk import build_ticketdesk
 from secure_export import (AccountLockedError, COLUMNS, FALSE, SEVERITIES, STATES,
@@ -320,6 +321,16 @@ def _preflight_file_paths(args):
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__)
     cmd = ap.add_subparsers(dest="command", required=True)
+    advance=cmd.add_parser(
+        "advance-sealed-workspace-current",
+        help="Fresh source auth + old encrypted current source -> NEW encrypted rolling HUMAN history"
+    )
+    for key in ("db","email","client-id","engagement-id"):
+        advance.add_argument("--"+key,required=True)
+    advance.add_argument("--input",required=True,type=Path)
+    advance.add_argument("--output",required=True,type=Path)
+    advance.add_argument("--ack-source-carry",action="store_true",
+                         help="Explicitly confirm carry of the old source as UNVERIFIED historical text")
     capture = cmd.add_parser("capture", help="Current original login -> encrypted .ltv only")
     inspect = cmd.add_parser("inspect", help="ID-free historical source aggregates, no current authority")
     review = cmd.add_parser("review-current", help="Fresh original account login + revision review")
@@ -478,6 +489,16 @@ def main(argv=None):
                     raise ValueError("Aggregate output must be .csv")
                 vault._exclusive_output(target,anonymous_csv(result))
                 print("Owner-private identity-free aggregate CSV created")
+            return 0
+        if args.command == "advance-sealed-workspace-current":
+            if not args.ack_source_carry:
+                raise ValueError("Explicit acknowledgment required to carry old source as HISTORY only")
+            current=source_auth(args)
+            count=advance_workspace(current,args.client_id,args.engagement_id,
+                                    source=args.input,output=args.output)
+            print("NEW private encrypted current source workspace with",count,
+                  "HUMAN historical source revisions; previous ciphertext retained.")
+            print("Source differences never verify a fix, retest, grant or execution authority.")
             return 0
         if args.command == "open-sealed-workspace-current":
             if not args.ack_private_html:
