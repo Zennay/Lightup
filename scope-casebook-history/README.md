@@ -106,6 +106,10 @@ The read-only reopener rejects unknown/extra files, unsafe permissions, modified
 
 This branch is a child of unchanged held original #1620, not a merge into `main`. It owns only new files in `scope-casebook-history/`, and does not take over source-owner #1570/#1614/#1620/#1624/#1641, scope #177/#182/#829 or permanent runner configuration. Existing exact-head hosted AND named permanent VPS CI, original source-owner/security/privacy review, real independently authenticated current client/operator consent with action-time revocation, and explicit HUMAN GO remain mandatory. Do not merge or deploy, create a new grant, activate a target, or run any QA/regression/test suite under this deliverable.
 
+## Original source-stated chronology contradictions
+
+The private and anonymous scriptless HTML reports now expose the selected packet ordinal pairs with `HOLD_DECREASED_SOURCE_TIMESTAMP`, `HOLD_REPEATED_SOURCE_TIMESTAMP`, or `INCREASING_DECLARED_ONLY_UNVERIFIED`. An additional `anonymous-source-order.csv` contains only those ordinal pairs and fixed status labels, no source timestamps or client/engagement IDs. A repeating or decreasing **self-declared** snapshot time raises a visible discussion warning; increasing timestamps are not proof that sources are untampered, consent was live, or authorization existed. The tool never automatically rearranges reviewer-selected packet order or treats a chronology label as GO.
+
 ## Bounded complete review semantics
 
 Original inputs are limited to 12 packets × 512 KiB, with at most 200 source records per original family and no more than 3,200 literal changed record appearances across the selected adjacent packet pairs. The browser output contains the **entire** admitted sequence; if that upper bound is exceeded the operation fails closed rather than silently truncating a report. The read-only reopened private artifact size ceiling is 8 MiB per output. Separate small-cell anonymized counts may still be sensitive and are never a green assessment or release.
