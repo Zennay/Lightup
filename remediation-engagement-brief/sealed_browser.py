@@ -22,6 +22,8 @@ from secure_export import (COLUMNS, FALSE, _literal, _strict_summary, _unique_pa
 
 KIND = "lightup.private_source_bound_browser_handoff"
 VERSION = 1
+ORIGINAL_APP_VERSION = 2
+ORIGINAL_MODES = ("ticketdesk", "casework")
 DISPOSITION = "PRIVATE_HUMAN_OFFLINE_SOURCE_ONLY"
 MODES = ("current", "compare", "history", "ticketdesk", "casework")
 KEYS = frozenset((
@@ -29,6 +31,7 @@ KEYS = frozenset((
     "engagement_id_self_declared", "current_original_csv_sha256", "current_original_count",
     "historical_original_csv", "authority",
 ))
+ORIGINAL_APP_KEYS = KEYS | frozenset(("original_app_sha256",))
 MAX_PAYLOAD = 4 * 1024 * 1024 - 8192
 
 
@@ -58,6 +61,17 @@ def _check_mode(mode: str, history: list[str]) -> None:
         _digest(source)
 
 
+def original_owner_html(mode: str, csv_text: str, client_id: str,
+                        engagement_id: str) -> bytes:
+    """Build with ORIGINAL existing owner functions, never clone or rewrite an app."""
+    if mode == "ticketdesk":
+        return build_ticketdesk(csv_text).encode("utf-8","strict")
+    if mode == "casework":
+        return _read_envelope(_make_envelope(csv_text,client_id,engagement_id,
+                                             app="casework"))
+    raise ValueError("Not an original source-owner offline HUMAN application")
+
+
 def pack(current_csv: str, client_id: str, engagement_id: str, *,
          mode: str, history_csv: list[str]) -> bytes:
     """Create strictly non-authorizing encrypted-payload metadata in memory."""
@@ -72,6 +86,15 @@ def pack(current_csv: str, client_id: str, engagement_id: str, *,
         "historical_original_csv": list(history_csv),
         "authority": {flag: False for flag in FALSE},
     }
+    if mode in ORIGINAL_MODES:
+        # Exact SHA of the original source-owner-rendered app WITH the current
+        # original authenticated source, anchored in AES-GCM authenticated data.
+        # An independently updated source-owner builder must not silently
+        # change what an earlier approved PRIVATE browser handoff will show.
+        packet["schema_version"] = ORIGINAL_APP_VERSION
+        packet["original_app_sha256"] = hashlib.sha256(
+            original_owner_html(mode,current_csv,client_id,engagement_id)
+        ).hexdigest()
     payload = _canonical(packet)
     if not 1 <= len(payload) <= MAX_PAYLOAD:
         raise ValueError("Encrypted browser source package exceeds private vault size")
@@ -83,11 +106,21 @@ def unpack(payload: bytes) -> dict:
     if not payload or len(payload) > MAX_PAYLOAD:
         raise ValueError("Encrypted browser packet length invalid")
     packet = json.loads(payload.decode("ascii", "strict"), object_pairs_hook=_unique_pairs)
-    if type(packet) is not dict or set(packet) != KEYS or payload != _canonical(packet):
+    if type(packet) is not dict or payload != _canonical(packet):
         raise ValueError("Unknown/noncanonical encrypted browser source metadata")
+    declared_mode = packet.get("mode")
+    # Keep previously issued review/history packets compatible. An original
+    # app always needs the newer app-byte content pin. Older app-mode packets
+    # are explicitly HOLD and need resealing from currently authorized source.
+    required_version = (ORIGINAL_APP_VERSION if declared_mode in ORIGINAL_MODES
+                        else VERSION)
+    required_fields = (ORIGINAL_APP_KEYS if declared_mode in ORIGINAL_MODES
+                       else KEYS)
+    if set(packet) != required_fields:
+        raise ValueError("Missing encrypted original owner app content pin")
     if (
         packet["kind"] != KIND or type(packet["schema_version"]) is not int
-        or packet["schema_version"] != VERSION or packet["disposition"] != DISPOSITION
+        or packet["schema_version"] != required_version or packet["disposition"] != DISPOSITION
         or type(packet["authority"]) is not dict
         or set(packet["authority"]) != set(FALSE)
         or any(packet["authority"][key] is not False for key in FALSE)
@@ -102,6 +135,11 @@ def unpack(payload: bytes) -> dict:
         or not 1 <= packet["current_original_count"] <= 350):
         raise ValueError("Source hash/count metadata invalid")
     _check_mode(packet["mode"], packet["historical_original_csv"])
+    if declared_mode in ORIGINAL_MODES:
+        marker = packet["original_app_sha256"]
+        if (type(marker) is not str or len(marker) != 64 or
+            any(ch not in "0123456789abcdef" for ch in marker)):
+            raise ValueError("Original source-owner app pin is not a SHA-256 digest")
     return packet
 
 
@@ -175,14 +213,14 @@ def open_current(current_csv: str, client_id: str, engagement_id: str, *,
         document = build_desk(now)
     elif packet["mode"] == "compare":
         document = build_desk(now, old_sources[0])
-    elif packet["mode"] == "ticketdesk":
-        # Invoke unchanged exact-SHA original source owner Ticket Desk.
-        document = build_ticketdesk(current_csv).encode("utf-8", "strict")
-    elif packet["mode"] == "casework":
-        # Delegate BOTH construction and content-digest admission to the
-        # existing original authenticated Casework source-owner module.
-        document = _read_envelope(_make_envelope(current_csv, client_id, engagement_id,
-                                                  app="casework"))
+    elif packet["mode"] in ORIGINAL_MODES:
+        # Both original source HTML bytes and original authorized finding bytes
+        # must match the authenticated ciphertext package before export.
+        # This is integrity of the HUMAN app, NOT security, grant or consent.
+        document = original_owner_html(packet["mode"],current_csv,client_id,
+                                       engagement_id)
+        if hashlib.sha256(document).hexdigest() != packet["original_app_sha256"]:
+            raise ValueError("Original source-owner offline app changed: HUMAN handoff HOLD")
     else:
         snapshots = [(dict(historical_local_only=True), records) for records in old_sources]
         snapshots.append((dict(current_auth_read=True), now))
