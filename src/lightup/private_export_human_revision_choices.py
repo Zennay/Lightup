@@ -8,7 +8,6 @@ authorization, remediation, evidence attestation or client authentication.
 from __future__ import annotations
 
 import argparse
-from collections import Counter
 import hashlib
 import json
 import os
@@ -123,7 +122,9 @@ def _apply_choices(document: dict, expected: dict, template: dict,
                    manifest: dict, rows: list[dict[str, str]]) -> tuple[bytes, dict]:
     """Whole-sheet atomic admission: changed/new rows can never carry."""
     if set(document) != DOCUMENT_FIELDS or any(
-        document[key] != expected[key] for key in DOCUMENT_FIELDS - {"decisions"}
+        type(document[key]) is not type(expected[key]) or
+        document[key] != expected[key]
+        for key in DOCUMENT_FIELDS - {"decisions"}
     ):
         raise ValueError("source revision selection header mismatch or forbidden authority")
     decisions = document["decisions"]
