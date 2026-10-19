@@ -443,6 +443,46 @@
       "application/json");
     status("Only untrusted aggregate counts exported. This is not a permission or risk verdict.");
   });
+  el("countsCsv").addEventListener("click", () => {
+    const d = differences();
+    const lines = [
+      ["metric", "declared_count"],
+      ["current_nodes", documentState.current.nodes.length],
+      ["current_relationships", documentState.current.edges.length],
+      ["proposed_nodes", documentState.proposed.nodes.length],
+      ["proposed_relationships", documentState.proposed.edges.length],
+      ["added_nodes", d.addedNodes.length],
+      ["removed_nodes", d.removedNodes.length],
+      ["edited_nodes", d.editedNodes.length],
+      ["added_relationships", d.addedEdges.length],
+      ["removed_relationships", d.removedEdges.length]
+    ].map(row => row.join(",")).join("\r\n") + "\r\n";
+    download("lightup-anonymous-declared-counts.csv", lines, "text/csv;charset=utf-8");
+    status("Source-free unverified numeric CSV exported. No identity, permission or verdict.");
+  });
+  el("brief").addEventListener("click", () => {
+    const d = differences();
+    const section = (heading, values) =>
+      "\n" + heading + " (" + values.length + ")\n" +
+      (values.length ? values.map(v => "- " + v).join("\n") : "- None declared") + "\n";
+    const content = [
+      "LIGHTUP · PRIVATE HUMAN-ONLY FUTURE STATE DECLARATION",
+      "HOLD: not authenticated, assessed, observed, verified or authorized.",
+      "No changed/missing graph edge proves a security improvement, vulnerability or remediation.",
+      "No scanner, model, tenant lookup, consent, grant, network or target was used.",
+      "Owner question: " + documentState.followup,
+      section("Added nodes", d.addedNodes.map(n => n.id + " [" + n.type + "] " + n.label)),
+      section("Removed nodes", d.removedNodes.map(n => n.id + " [" + n.type + "] " + n.label)),
+      section("Edited nodes", d.editedNodes.map(n => n.id + " [" + n.type + "] " + n.label)),
+      section("Added declared relationships", d.addedEdges.map(humanEdge)),
+      section("Removed declared relationships", d.removedEdges.map(humanEdge)),
+      "PRIVATE: self-declared component names may be sensitive; saved text is not encrypted.",
+      "DRAFT/HOLD: all original security, source-owner, CI, authorization and HUMAN GO gates remain.",
+      ""
+    ].join("\n");
+    download("lightup-PRIVATE-human-change-review.txt", content, "text/plain;charset=utf-8");
+    status("PRIVATE human-only brief saved. It contains component labels; treat as sensitive.");
+  });
   el("import").addEventListener("change", async e => {
     const file = e.target.files && e.target.files[0];
     e.target.value = "";
