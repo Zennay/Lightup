@@ -37,7 +37,7 @@ remain unchanged. Stage INCUBATE M3/M7 PLAN/LAB ONLY. No authorization inferred.
 def main() -> int:
     if len(sys.argv) == 1 or sys.argv[1] in ("-h", "--help", "help"):
         print(USAGE)
-        return 2
+        return 0  # CLI usage only: no import, operation or security verdict.
     kind = sys.argv[1]
     if kind not in ("review", "inbox", "timeline"):
         print("HOLD: Unknown PRIVATE workflow. Use --help.", file=sys.stderr)
