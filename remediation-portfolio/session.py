@@ -149,7 +149,7 @@ def output_summary(sources: list[dict], previous: dict | None) -> dict:
     }
 
 
-def html_report(summary: dict) -> bytes:
+def html_report(summary: dict, has_local_human_board: bool = False) -> bytes:
     cur = summary["current_numeric"]
     previous = summary["earlier_numeric"]
     rows = []
@@ -163,6 +163,14 @@ def html_report(summary: dict) -> bytes:
         f"<li><span>{html.escape(key.replace('_',' '))}</span>"
         f"<strong>{number}</strong></li>"
         for key, number in cur["stages"].items())
+    human_actions_nav = (
+        '<div class="card"><h2>Local HUMAN next-action desk</h2>'
+        '<p>All local packet routing choices remain unverified. '
+        'The selected board was compared with this anonymous numeric '
+        'session, not with any original authenticated cases.</p>'
+        '<p><a href="human-actions.html">Open the paired HUMAN action desk</a></p>'
+        '</div>' if has_local_human_board else
+        '<p>No separate HUMAN action desk attached.</p>')
     page = """<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -175,7 +183,7 @@ table{width:100%%;min-width:620px;border-collapse:collapse}td,th{padding:12px;
 text-align:left;border-bottom:1px solid #425971}aside{padding:16px;background:#342e35;
 border-left:4px solid #f8ca88}ul{list-style:none;padding:0}li{padding:9px 0;
 border-bottom:1px solid #425971;display:flex;justify-content:space-between}
-.scroller{overflow-x:auto}small{color:#9bd7cc}</style></head><body><main>
+.scroller{overflow-x:auto}small{color:#9bd7cc}a{color:#a6f1d1;font-weight:bold}</style></head><body><main>
 <small>LIGHTUP · PRIVATE · SOURCE-FREE · DRAFT/HOLD</small>
 <h1>Resumed HUMAN numeric session</h1>
 <aside><strong>NOT original source verified.</strong><p>%s</p></aside>
@@ -188,10 +196,11 @@ or security progress.</p>
 </tbody></table></div></div>
 <h2>Current locally entered planning stages</h2>
 <div class="card"><ul>%s</ul></div>
+%s
 <p>This browser sheet is scriptless and standalone. No clients, source
 artifacts, original fingerprints, notes, private dates, grant, or active target
 work are included.</p></main></body></html>""" % (
-        html.escape(WARNING), "".join(rows), stage_rows)
+        html.escape(WARNING), "".join(rows), stage_rows, human_actions_nav)
     return page.encode("utf-8")
 
 
@@ -247,7 +256,7 @@ def build(session_file: Path, destination: Path, board_file: Path | None = None)
     os.chmod(stage, 0o700)
     try:
         outputs = [
-            ("index.html", html_report(result)),
+            ("index.html", html_report(result, routing is not None)),
             ("summary.json", portfolio.serialize(result)),
             ("continuity.csv", delta_csv(result)),
             ("human-followup.txt", human_brief(result)),
