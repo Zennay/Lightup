@@ -151,9 +151,13 @@ def adopt_legacy(args, folder, vault, current_packet,
                 and name.stem not in index["sources"]):
             private_file(name)
             old = read_journal(folder, name.stem, vault)
-            if (old["cycles"] and old["cycles"][-1]["state"] == "staged"
-                    and old["cycles"][-1]["sha256"]):
-                available.append((name.stem, old))
+            if old["cycles"]:
+                latest = old["cycles"][-1]
+                can_adopt = (latest["state"] == "staged" and latest["sha256"]) or (
+                    latest["state"] == "pending" and not latest["sha256"]
+                    and Path(latest["output"]).is_file())
+                if can_adopt:
+                    available.append((name.stem, old))
     if not available:
         raise ValueError("No eligible legacy original-native staged HUMAN journal.")
     print("Previously unindexed PRIVATE historical source entries:")
