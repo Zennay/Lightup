@@ -77,29 +77,31 @@ def _key(secret: str, salt: bytes) -> bytes:
     ).derive(secret.encode("utf-8", "strict"))
 
 
-def _seal(contents: bytes, secret: str) -> bytes:
+def _seal(contents: bytes, secret: str, *, magic: bytes = MAGIC,
+          max_plaintext: int = ARCHIVE_LIMIT) -> bytes:
     AESGCM, _, _ = _cryptography()
-    if type(contents) is not bytes or len(contents) > ARCHIVE_LIMIT:
-        raise ValueError("unbounded or invalid original archive bytes")
+    if type(contents) is not bytes or len(contents) > max_plaintext:
+        raise ValueError("unbounded or invalid encrypted payload bytes")
     # Every encryption uses fresh, independent high-entropy nonce and salt.
     salt, nonce = secrets.token_bytes(SALT_SIZE), secrets.token_bytes(NONCE_SIZE)
-    heading = MAGIC + salt + nonce
+    heading = magic + salt + nonce
     envelope = heading + AESGCM(_key(secret, salt)).encrypt(nonce, contents, heading)
-    if len(envelope) > MAX_ENVELOPE_SIZE:
+    if len(envelope) > len(magic) + SALT_SIZE + NONCE_SIZE + max_plaintext + TAG_SIZE:
         raise ValueError("encrypted handoff exceeds offline size budget")
     return envelope
 
 
-def _open_sealed(envelope: bytes, secret: str) -> bytes:
+def _open_sealed(envelope: bytes, secret: str, *, magic: bytes = MAGIC,
+                 max_plaintext: int = ARCHIVE_LIMIT) -> bytes:
     AESGCM, _, InvalidTag = _cryptography()
     if (
         type(envelope) is not bytes or
-        len(envelope) < len(MAGIC) + SALT_SIZE + NONCE_SIZE + TAG_SIZE or
-        len(envelope) > MAX_ENVELOPE_SIZE or
-        not envelope.startswith(MAGIC)
+        len(envelope) < len(magic) + SALT_SIZE + NONCE_SIZE + TAG_SIZE or
+        len(envelope) > len(magic) + SALT_SIZE + NONCE_SIZE + max_plaintext + TAG_SIZE or
+        not envelope.startswith(magic)
     ):
         raise ValueError("unrecognized or invalid encrypted handoff")
-    offset = len(MAGIC)
+    offset = len(magic)
     salt = envelope[offset:offset + SALT_SIZE]
     offset += SALT_SIZE
     nonce = envelope[offset:offset + NONCE_SIZE]
@@ -109,7 +111,7 @@ def _open_sealed(envelope: bytes, secret: str) -> bytes:
         contents = AESGCM(_key(secret, salt)).decrypt(nonce, envelope[offset:], header)
     except InvalidTag as exc:
         raise ValueError("encrypted handoff authentication failed") from exc
-    if len(contents) > ARCHIVE_LIMIT:
+    if len(contents) > max_plaintext:
         raise ValueError("decrypted archive exceeds admission limit")
     return contents
 
