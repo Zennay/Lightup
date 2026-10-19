@@ -525,6 +525,27 @@ def generate(docs: list[dict]) -> dict[str, bytes]:
     }
 
 
+def original_byte_inventory(admitted: list[tuple[dict, bytes]]) -> bytes:
+    """One exact unsigned PRIVATE inventory for either original intake path."""
+    fail(2 <= len(admitted) <= 12, "private original source inventory requires 2–12 packets")
+    result = {
+        "kind": "lightup.casebook_private_source_inventory",
+        "version": 1,
+        "disposition": "HUMAN_REVIEW_ONLY_HOLD",
+        "authority": False,
+        "source_authenticated": False,
+        "snapshots": [
+            {
+                "ordinal": index + 1,
+                "source_sha256": hashlib.sha256(source).hexdigest(),
+                "source_bytes": len(source),
+            }
+            for index, (_, source) in enumerate(admitted)
+        ],
+    }
+    return (json.dumps(result, indent=2, sort_keys=True) + "\n").encode("utf-8")
+
+
 def publish(folder: Path, artifacts: dict[str, bytes]) -> None:
     # User must select a new basename in an already-private parent. Exclusive;
     # never overwrite, follow symlinks or mutate original source packets.
@@ -590,21 +611,7 @@ def main() -> int:
         fail(all(p["client_id"] == client for p in packets),
              "cross-tenant source packets cannot be joined")
         artifacts = generate(packets)
-        private_inventory = {
-            "kind": "lightup.casebook_private_source_inventory",
-            "version": 1,
-            "disposition": "HUMAN_REVIEW_ONLY_HOLD",
-            "authority": False,
-            "source_authenticated": False,
-            "snapshots": [
-                {"ordinal": index + 1, "source_sha256": hashlib.sha256(raw).hexdigest(),
-                 "source_bytes": len(raw)}
-                for index, (_, raw) in enumerate(admitted)
-            ],
-        }
-        artifacts["private-source-inventory.json"] = (
-            json.dumps(private_inventory, indent=2, sort_keys=True) + "\n"
-        ).encode("utf-8")
+        artifacts["private-source-inventory.json"] = original_byte_inventory(admitted)
         publish(args.output_dir, artifacts)
     except (Hold, FileNotFoundError, PermissionError, OSError, ValueError, TypeError):
         print("HOLD: private original source/admission/publication refused; no release "
