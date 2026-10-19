@@ -65,6 +65,17 @@ def proposed(current: dict, previous: dict | None) -> dict:
     return proposed_actions(current, analyze(current, previous))
 
 
+def fresh_original_bytes(args: argparse.Namespace, current_bytes: bytes,
+                         previous_bytes: bytes | None) -> None:
+    """Refuse source edits even if they occurred while an operator was typing."""
+    require(sha(private_read(args.current)) == sha(current_bytes),
+            "Original PRIVATE source bytes changed during HUMAN operation")
+    if args.previous is not None:
+        require(previous_bytes is not None and
+                sha(private_read(args.previous)) == sha(previous_bytes),
+                "Earlier PRIVATE source bytes changed during HUMAN operation")
+
+
 def make_session(current: dict, previous: dict | None, cbytes: bytes,
                  pbytes: bytes | None) -> dict:
     packet = proposed(current, previous)
@@ -250,11 +261,13 @@ def run(args: argparse.Namespace) -> int:
     expected = make_session(current, previous, cbytes, pbytes)
     with single_host_lock(args.session):
         if args.action == "start":
+            fresh_original_bytes(args, cbytes, pbytes)
             private_publish(args.session, canonical(expected))
             print("Created new source-byte-bound PRIVATE HUMAN session. Proposed actions: " +
                   str(len(expected["records"])) + ".")
             return 2
-        session = admit_session(private_read(args.session), expected)
+        session_bytes = private_read(args.session)
+        session = admit_session(session_bytes, expected)
         if args.action == "status":
             print(json.dumps(anonymous(session), indent=2, sort_keys=True))
         elif args.action == "list":
@@ -268,6 +281,8 @@ def run(args: argparse.Namespace) -> int:
                     "Select an existing action ordinal from PRIVATE list")
             item = session["records"][args.ordinal - 1]
             if args.note_prompt:
+                require(sys.stdin.isatty() and sys.stderr.isatty(),
+                        "PRIVATE note prompts require an interactive terminal to prevent echo/log exposure")
                 note = getpass.getpass("PRIVATE HUMAN note (never used as source evidence): ")
                 exact_string(note, 1200, "PRIVATE HUMAN note")
                 item["human_note"] = note
@@ -275,6 +290,9 @@ def run(args: argparse.Namespace) -> int:
                 item["human_note"] = ""
             item["stage"] = args.stage
             item["updated_utc"] = now_utc()
+            fresh_original_bytes(args, cbytes, pbytes)
+            require(private_read(args.session) == session_bytes,
+                    "PRIVATE HUMAN session changed after read; reload to avoid lost edits")
             durable_replace(args.session, canonical(session))
             print("PRIVATE HUMAN action " + str(args.ordinal) + " updated locally. No native Apply.")
         else:
@@ -287,6 +305,9 @@ def run(args: argparse.Namespace) -> int:
             require(args.output is not None and args.output != args.session and
                     args.output != args.current and args.output != args.previous,
                     "Export must have a new separate PRIVATE output destination")
+            fresh_original_bytes(args, cbytes, pbytes)
+            require(private_read(args.session) == session_bytes,
+                    "PRIVATE HUMAN session changed after read; reload before export")
             private_publish(args.output, contents)
             print("PRIVATE HUMAN-only " + args.action + " published; original unchanged.")
     return 2
