@@ -27,7 +27,7 @@
   const BOARD_WARN="Anonymous local HUMAN routing choices only. Not unique cases, original source authentication, verified security findings, consent, grant, remediation or action permission.";
   const HANDOFF_WARN="LOCAL SOURCE-FREE HUMAN PLANNING ONLY. Anonymous numeric packet ordinals do not identify original clients, findings, security issues, fixes or consent. All states are self-declared; there is no scan, grant, authenticated evidence or actual delivery.";
   const $=id=>document.getElementById(id);
-  let session=null, original=null, draft=null, peer=null;
+  let session=null, original=null, draft=null, peer=null, sourceSession=null;
   const fail=()=>{throw Error("HOLD");};
   const ensure=value=>{if(!value)fail();};
   const number=(x,lo,hi)=>Number.isSafeInteger(x)&&x>=lo&&x<=hi;
@@ -197,9 +197,10 @@
     for(const name of ["saveBoard","summary","handoffCsv","handoffTxt","handoffHtml","deltaCsv","reset"])$(name).disabled=off;
     $("actionFilter").disabled=off;
     $("ordinalFilter").disabled=off;
+    $("saveEncrypted").disabled=off || !globalThis.crypto?.subtle;
   };
   const resetState=()=>{
-    session=null;original=null;draft=null;peer=null;
+    session=null;original=null;draft=null;peer=null;sourceSession=null;
     $("rows").replaceChildren();$("counts").textContent="No private session loaded";
     $("sourceStatus").textContent="Not imported";
     const ord=$("ordinalFilter");ord.replaceChildren();
@@ -376,7 +377,7 @@
         read($("boardFile").files[0])]);
       const p=acceptSession(s);
       const a=acceptBoard(b,p);
-      session=p;original=clone(a);draft=clone(a);
+      session=p;original=clone(a);draft=clone(a);sourceSession=clone(s);
       const choice=$("ordinalFilter");
       for(let i=1;i<=session.length;i++){
         const opt=document.createElement("option");opt.value=String(i);
@@ -414,6 +415,184 @@
   $("peerCsv").addEventListener("click",()=>{
     try{download("lightup-private-local-peer-choices.csv",peerDiffCsv(),"text/csv");}
     catch(_){message("HOLD: no admitted anonymous local peer differences.",true);}
+  });
+  // AES-256-GCM with independent random salt/nonce and password-based PBKDF2.
+  // No server, key escrow or persisted browser state. The complete plaintext
+  // is authenticated under a fixed domain and independently re-admitted.
+  const CRYPTO_AAD="LIGHTUP_PRIVATE_HUMAN_LOCAL_WORKSESSION_AES_GCM_V1";
+  const CRYPTO_ITERATIONS=600000;
+  const CRYPTO_FIELDS=["kind","schema_version","disposition","kdf","iterations",
+    "salt_b64","nonce_b64","ciphertext_b64"];
+  const VAULT_FIELDS=["kind","schema_version","disposition","original_session",
+    "original_board","working_board","peer_board","warning",...FLAGS];
+  const VAULT_WARNING="Self-declared encrypted offline HUMAN routing draft. Not original authenticated evidence, client identity, consent, remediation, grant, verified fix or release.";
+  const encoder=new TextEncoder();
+  const decoder=new TextDecoder("utf-8",{fatal:true});
+  const b64=bytes=>{
+    let text="";
+    for(let i=0;i<bytes.length;i+=8192)
+      text+=String.fromCharCode(...bytes.subarray(i,i+8192));
+    return btoa(text);
+  };
+  const fromB64=(s,min,max)=>{
+    ensure(typeof s==="string" && s.length>0 && s.length<=max*2
+      && /^[A-Za-z0-9+/]+={0,2}$/.test(s));
+    const raw=atob(s);
+    ensure(raw.length>=min&&raw.length<=max);
+    const bytes=Uint8Array.from(raw,c=>c.charCodeAt(0));
+    ensure(b64(bytes)===s);
+    return bytes;
+  };
+  const passwordBytes=s=>{
+    ensure(typeof s==="string" && s===s.normalize("NFC")
+      && [...s].length>=14 && [...s].length<=256 && s.trim()===s);
+    const bytes=encoder.encode(s);
+    ensure(bytes.length>=14&&bytes.length<=1024);
+    return bytes;
+  };
+  const aesKey=async(secret,salt)=>{
+    ensure(globalThis.crypto?.subtle&&globalThis.crypto?.getRandomValues);
+    const material=await crypto.subtle.importKey("raw",passwordBytes(secret),
+      {name:"PBKDF2"},false,["deriveKey"]);
+    return crypto.subtle.deriveKey(
+      {name:"PBKDF2",hash:"SHA-256",salt,iterations:CRYPTO_ITERATIONS},
+      material,{name:"AES-GCM",length:256},false,["encrypt","decrypt"]);
+  };
+  const originalBoard=()=>{
+    active();
+    const payload={
+      kind:"lightup.private_human_anonymous_followup_board",
+      schema_version:1,disposition:"LOCAL_HUMAN_FOLLOWUP_ONLY_NO_SOURCE_AUTHORITY",
+      numeric_packets:clone(session),assignments:clone(original),
+      warning:BOARD_WARN,...flags()
+    };
+    acceptBoard(payload,session);
+    return payload;
+  };
+  const peerBoard=()=>{
+    if(peer===null)return null;
+    const payload={...originalBoard(),assignments:clone(peer)};
+    acceptBoard(payload,session);
+    return payload;
+  };
+  const vaultSnapshot=()=>{
+    active();ensure(sourceSession!==null);
+    const payload={
+      kind:"lightup.private_human_encrypted_workspace_payload",
+      schema_version:1,
+      disposition:"SELF_DECLARED_LOCAL_HUMAN_ONLY_DRAFT_HOLD",
+      original_session:clone(sourceSession),
+      original_board:originalBoard(),
+      working_board:updatedBoard(),
+      peer_board:peerBoard(),
+      warning:VAULT_WARNING,
+      ...flags()
+    };
+    vaultAdmit(payload);
+    return payload;
+  };
+  const vaultAdmit=payload=>{
+    header(payload,VAULT_FIELDS,"lightup.private_human_encrypted_workspace_payload",
+      "SELF_DECLARED_LOCAL_HUMAN_ONLY_DRAFT_HOLD",VAULT_WARNING);
+    const p=acceptSession(payload.original_session);
+    const o=acceptBoard(payload.original_board,p);
+    const w=acceptBoard(payload.working_board,p);
+    const peerChoices=payload.peer_board===null?null:acceptBoard(payload.peer_board,p);
+    ensure(p.length===o.length && p.length===w.length);
+    return {packets:p,initial:o,current:w,other:peerChoices,source:payload.original_session};
+  };
+  const seal=async(payload,secret)=>{
+    const plaintext=encoder.encode(JSON.stringify(payload));
+    ensure(plaintext.length>0&&plaintext.length<=65536);
+    const salt=crypto.getRandomValues(new Uint8Array(16));
+    const nonce=crypto.getRandomValues(new Uint8Array(12));
+    const key=await aesKey(secret,salt);
+    const ciphertext=new Uint8Array(await crypto.subtle.encrypt({
+      name:"AES-GCM",iv:nonce,additionalData:encoder.encode(CRYPTO_AAD),
+      tagLength:128
+    },key,plaintext));
+    return {
+      kind:"lightup.private_human_encrypted_workspace_v1",
+      schema_version:1,
+      disposition:"PASSWORD_ENCRYPTED_LOCAL_FILE_NOT_SOURCE_AUTHORITY",
+      kdf:"PBKDF2-HMAC-SHA256-AES256GCM",
+      iterations:CRYPTO_ITERATIONS,
+      salt_b64:b64(salt),
+      nonce_b64:b64(nonce),
+      ciphertext_b64:b64(ciphertext)
+    };
+  };
+  const openSealed=async(envelope,secret)=>{
+    ensure(exact(envelope,CRYPTO_FIELDS)
+      && envelope.kind==="lightup.private_human_encrypted_workspace_v1"
+      && envelope.schema_version===1
+      && envelope.disposition==="PASSWORD_ENCRYPTED_LOCAL_FILE_NOT_SOURCE_AUTHORITY"
+      && envelope.kdf==="PBKDF2-HMAC-SHA256-AES256GCM"
+      && envelope.iterations===CRYPTO_ITERATIONS);
+    const salt=fromB64(envelope.salt_b64,16,16);
+    const nonce=fromB64(envelope.nonce_b64,12,12);
+    const ciphertext=fromB64(envelope.ciphertext_b64,17,65600);
+    const key=await aesKey(secret,salt);
+    const plain=new Uint8Array(await crypto.subtle.decrypt({
+      name:"AES-GCM",iv:nonce,additionalData:encoder.encode(CRYPTO_AAD),
+      tagLength:128
+    },key,ciphertext));
+    ensure(plain.length>0&&plain.length<=65536);
+    return vaultAdmit(strictJSON(decoder.decode(plain)));
+  };
+  const drawRestored=state=>{
+    resetState();
+    session=clone(state.packets);
+    original=clone(state.initial);
+    draft=clone(state.current);
+    peer=state.other===null?null:clone(state.other);
+    sourceSession=clone(state.source);
+    const choice=$("ordinalFilter");
+    for(let i=1;i<=session.length;i++){
+      const opt=document.createElement("option");
+      opt.value=String(i);opt.textContent="Local ordinal "+i+" (NOT case)";
+      choice.appendChild(opt);
+    }
+    disabled(false);render();
+  };
+  $("saveEncrypted").addEventListener("click",async()=>{
+    const secret=$("saveSecret").value;
+    const repeated=$("confirmSecret").value;
+    $("saveSecret").value="";$("confirmSecret").value="";
+    $("saveEncrypted").disabled=true;
+    try{
+      ensure(secret===repeated);
+      const payload=vaultSnapshot();
+      const file=await seal(payload,secret);
+      download("lightup-private-human-encrypted-worksession.lhew",
+        JSON.stringify(file,null,2)+"\n","application/json");
+      message("Encrypted PRIVATE workspace downloaded; retain password separately. No authenticated evidence or client data was verified.");
+    }catch(_){
+      message("HOLD: encryption unavailable, invalid password or source-free local session. No encrypted file saved.",true);
+    }finally{
+      $("saveEncrypted").disabled=session===null || !globalThis.crypto?.subtle;
+    }
+  });
+  $("restoreEncrypted").addEventListener("click",async()=>{
+    const secret=$("unlockSecret").value;
+    $("unlockSecret").value="";
+    $("restoreEncrypted").disabled=true;
+    try{
+      const file=$("encryptedFile").files[0];
+      ensure(file&&file.size>0&&file.size<=131072);
+      const bytes=await file.arrayBuffer();
+      ensure(bytes.byteLength===file.size);
+      const envelope=strictJSON(decoder.decode(bytes));
+      const restored=await openSealed(envelope,secret);
+      ensure(session===null||confirm(
+        "Replace current unsaved LOCAL HUMAN browser choices with the decrypted self-declared private workspace?"));
+      drawRestored(restored);
+      message("Encrypted PRIVATE HUMAN session restored; independently re-admitted entire original numeric and native routing board lineage. No source authority.");
+    }catch(_){
+      message("HOLD: private session not restored. Password, file integrity, schema or local confirmation invalid. Existing choices unchanged.",true);
+    }finally{
+      $("restoreEncrypted").disabled=false;
+    }
   });
   $("load").addEventListener("click",load);
   for(const k of ["sessionFile","boardFile"])$(k).addEventListener("change",()=>{

@@ -91,6 +91,26 @@ footer{margin-top:35px;border-top:1px solid var(--border);padding-top:15px}
 <div class="scroll"><table><thead><tr><th>Local ordinal (not case)</th><th>Original local choices</th><th>Second local suggestions</th><th>Current local proposal</th><th>Explicit HUMAN selection</th></tr></thead><tbody id="peerRows"></tbody></table></div>
 <div class="actions"><button id="peerCsv" type="button" disabled>Download source-free peer change CSV</button></div>
 <p>Missing rows mean no local difference in the compared numeric slot; they do not demonstrate that a finding was fixed or that any review happened. Matching packet ordinals cannot prove the same original case. The current board remains a separate user-controlled draft and can be exported using section 2.</p></section>
+<section aria-labelledby="step5"><h2 id="step5">5 · Encrypted PRIVATE work-session continuity</h2>
+<p>Save your complete current anonymous HUMAN working state (original paired numeric session, original action board, local proposed routing changes, and optional peer board) as <strong>one password-encrypted offline file</strong>. Restore that file later in this browser. The encrypted file has no readable counts, case references or original evidence metadata. This is a local backup, not an authenticated source document, real client evidence or proof that any action was performed.</p>
+<div class="notice"><strong>Only the new work-session backup is encrypted.</strong><p>Existing plaintext exports from the original Studio, native board downloads, handoff HTML/CSV/TXT and separately exported JSON remain unencrypted. Use a long unique passphrase, store it separately, avoid shared Downloads folders, and disclose no files without authorization. Forgotten passphrases cannot be recovered. Offline WebCrypto must be available; unsupported browsers fail closed rather than exporting plaintext.</p></div>
+<div class="grid">
+<label>New passphrase (14–256 characters; private, unique)
+<input id="saveSecret" type="password" autocomplete="new-password" minlength="14" maxlength="256" spellcheck="false" aria-label="Passphrase to protect private workspace backup"></label>
+<label>Confirm new passphrase
+<input id="confirmSecret" type="password" autocomplete="new-password" minlength="14" maxlength="256" spellcheck="false" aria-label="Confirm encrypted workspace passphrase"></label>
+</div>
+<div class="actions"><button id="saveEncrypted" class="primary" type="button" disabled>Download AES-GCM encrypted work-session</button></div>
+<h3>Restore an encrypted PRIVATE work-session</h3>
+<div class="grid">
+<label>Encrypted .lhew workspace file
+<input id="encryptedFile" type="file" accept=".lhew,application/json" aria-label="Choose local encrypted HUMAN session backup"></label>
+<label>Unlock passphrase
+<input id="unlockSecret" type="password" autocomplete="off" spellcheck="false" aria-label="Passphrase for encrypted workspace restoration"></label>
+</div>
+<div class="actions"><button id="restoreEncrypted" type="button">Unlock &amp; restore only after full validation</button></div>
+<p>PBKDF2-HMAC-SHA-256 with 600,000 iterations derives an AES-256-GCM key from a human passphrase. Each backup has an independent random 16-byte salt and 12-byte nonce, an authenticated fixed application domain and a strict versioned encrypted envelope. Restoring verifies the authenticated ciphertext and then validates every original session and board before replacing any current local browser choices. Existing browser data stays unchanged if a file, passphrase, schema or confirmation fails. This is not a claim of independent cryptographic review.</p>
+</section>
 <footer><small>LightUp / strictly local HUMAN planning / no grants / no target access</small>
 <p>This self-contained single-file browser desk uses a pinned inline-script content-security policy, not an independent security audit. It requires no cloud access, scripts from third parties, persistent browser storage, accounts, credentials, scans or installation. Original owner and review gates still apply.</p></footer>
 </main><script>__INLINE_SCRIPT__</script></body></html>

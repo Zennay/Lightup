@@ -4,6 +4,18 @@ This standalone, **offline** companion turns **an existing exact-matched saved a
 
 It solves a practical operator gap: routing choices in a combined private board are not yet individual, reviewable, least-disclosure human handoffs. A human can now prepare just the follow-up needed for a manually chosen original authorized reviewer instead of sharing an entire local numerical dashboard. This feature **does not send anything**, grant authority or update the original source.
 
+## Private encrypted offline HUMAN work-session save / resume
+
+The portable `browser.html` now offers a **single password-encrypted backup** of its complete source-free HUMAN operating state (strict original numeric session, paired original board, edited local board and optional peer proposal). It avoids putting *that particular new resumable backup* on disk in readable JSON. **No original case identity, security proof, consent or authorization is added.**
+
+- Browser-native WebCrypto PBKDF2-HMAC-SHA-256, **600,000 iterations** and a fresh 16-byte cryptographically random salt derives a non-exportable AES-256-GCM key; 12-byte fresh random nonce, 128-bit integrity tag and a pinned application-domain associated-data value bind ciphertext to this format.
+- **Exactly versioned `.lhew` envelope** (schema/kdf/iteration/salt/nonce/ciphertext) with no plaintext numerical metadata. Restore checks bounded UTF-8, recursively rejects duplicate JSON keys, enforces canonical base64 and exact accepted envelope fields/algorithms, verifies AEAD integrity and then *re-admits the entire original native source-free numeric session, original HUMAN board, current edited board and any peer board* before replacing browser state.
+- Password length **14–256 characters** (NFC canonical, no outer whitespace), with a second confirmation on save. Secret input fields are emptied immediately upon button activation. The app keeps no key in localStorage, sessionStorage, IndexedDB, cookies or cloud services. Wrong passwords, malformed/tampered files and canceling a replacement keep the previous valid browser state.
+- Encrypted save is **only available where WebCrypto is exposed in a secure browser context** (typically supported local `file://` contexts, depending on browser). If unsupported, the control remains unavailable; there is no plaintext fallback.
+- **Critical scope:** the new encrypted `.lhew` backup protects *only that new backup*. The original Studio numeric session, prior board and standard HUMAN reports remain plaintext and may still be privacy-sensitive. Neither encryption nor CSP substitutes independent security review, source identity, secure device management or consent. Forgotten passphrases cannot be recovered. A weak or reused passphrase can still be guessed offline.
+
+To use: load the original strict numeric session and matching board as described below, make HUMAN-only edits, enter a strong unique passphrase and confirm it in section 5, then download the encrypted file. To resume, select the `.lhew` file and enter the same passphrase; if the current session has local choices, explicitly confirm replacement *after* all validation succeeds. The offline editor restores your original/local/peer HUMAN routing proposals, not original source authority.
+
 ## No-Python: portable offline HUMAN Return Studio
 
 Open **[browser.html](browser.html)** directly on an offline computer. It is a self-contained HTML file with an embedded SHA-256 CSP-pinned local script, no third-party resources and no server or installation.
