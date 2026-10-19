@@ -96,9 +96,11 @@ def private_read(path: Path) -> bytes:
         os.close(fd)
 
 
-def parse_packet(path: Path) -> dict:
+def parse_packet_data(raw: bytes) -> dict:
+    """Parse exactly the already-read bytes, to prevent different source reads."""
+    require(type(raw) is bytes and len(raw) <= MAX_BYTES, "PRIVATE input exceeds 4 MiB")
     try:
-        data = json.loads(private_read(path).decode("utf-8"),
+        data = json.loads(raw.decode("utf-8"),
                           object_pairs_hook=pairs, parse_constant=reject_constant)
     except (UnicodeError, json.JSONDecodeError, RecursionError) as exc:
         raise Hold("Malformed PRIVATE JSON (HOLD)") from exc
@@ -163,6 +165,10 @@ def parse_packet(path: Path) -> dict:
         require(key not in keys, "Duplicate finding and file fingerprint")
         keys.add(key)
     return data
+
+
+def parse_packet(path: Path) -> dict:
+    return parse_packet_data(private_read(path))
 
 
 def analyze(current: dict, previous: dict | None) -> dict:
