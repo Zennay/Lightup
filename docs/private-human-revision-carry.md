@@ -237,3 +237,15 @@ python -m lightup.private_export_human_revision_resume \
 ```
 
 **Caution:** A local `.lud` is custody of *unverified HUMAN decisions*, not proof of a completed review, valid consent, original finding accuracy, unchanged evidence or technical remediation. Both workflows require separate real source identity/recipient verification. The optional offline visual page is **not encrypted**, and no app can automatically delete older plaintext browser exports. The original M3/M7 Incubate DRAFT/HOLD release gates and no-target/no-scan restrictions remain fully in effect.
+
+## Compare two encrypted HUMAN decision revisions — offline change report
+
+New original-source-only command: **private_export_human_revision_compare**. This creates a local scriptless HTML report showing the HUMAN planning differences between two independently encrypted v2 .lud decision artifacts. Both must match the same exact earlier original encrypted source, earlier encrypted HUMAN plan, and later original encrypted source ciphertext bytes. The original strict admission rejects incomplete, changed or stale decisions. Comparing two revisions does not change a single encrypted input, source finding, consent/grant, or previous HUMAN plan. A mid-review source-ciphertext change causes HOLD.
+
+The default report is **ID-free, owner-private 0600 HTML**, containing aggregate counts and transition descriptions for local HUMAN owner/note and proposed-stage/date decisions, plus affected source-declared severity counts. Small aggregate counts may still be identifiable. The optional **--include-private-ids --ack-plaintext-original-ids** output includes original IDs/titles/severity and individual HUMAN-only transitions but never human notes/aliases, raw source evidence, source remediation details, network targets or real consents. Both report variants are UNENCRYPTED and must be shared only after actual independent human recipient/storage approval.
+
+Usage — ID-free by default:
+
+    python -m lightup.private_export_human_revision_compare /private/earlier.lue /private/earlier.lun /private/later.lue --earlier-choices /private/initial.lud --later-choices /private/amended.lud --output /private/human-change.html --ack-private-handling --ack-same-real-client
+
+For strictly approved original ID detail, append **--include-private-ids --ack-plaintext-original-ids** and select a different NEW private output file. The original interactive HUMAN revision console includes this feature as option **17**, with separate specific privacy acknowledgment when identifying original source fields are requested. No result is an authorization, security fix or retest claim. M3/M7 PLAN/LAB ONLY / DRAFT-HOLD remains unchanged.
