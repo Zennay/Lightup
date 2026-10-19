@@ -428,6 +428,50 @@ def human_case_transitions(docs: list[dict]) -> list[dict]:
     return result
 
 
+CASE_DETAIL_COLUMNS = (
+    "original_engagement_id", "source_record_family", "original_record_id",
+    "source_state", "source_followup", "original_bound_request_id",
+)
+
+
+def private_case_details(docs: list[dict]) -> list[list[object]]:
+    """Private source-linked explanations from the final DECLARED snapshot."""
+    latest = docs[-1]
+    grants = {}
+    risks = {}
+    for row in latest["grants"]:
+        if row["engagement_id"] is not None:
+            grants.setdefault(row["engagement_id"], []).append(row)
+    for row in latest["risk_approvals"]:
+        if row["engagement_id"] is not None:
+            risks.setdefault(row["engagement_id"], []).append(row)
+    lines: list[list[object]] = []
+    for case in sorted(latest["case_overview"], key=lambda row: row["engagement_id"]):
+        engagement_id = case["engagement_id"]
+        lines.append([
+            engagement_id, "ORIGINAL_ENGAGEMENT", engagement_id,
+            case["status"], case["next_review_action"], "",
+        ])
+        for grant in sorted(grants.get(engagement_id, []),
+                            key=lambda row: row["grant_id"]):
+            lines.append([
+                engagement_id, "ORIGINAL_GRANT_SOURCE", grant["grant_id"],
+                grant["request_link_observation"],
+                grant["validity_observation"],
+                grant["approved_request_id"] or "",
+            ])
+        for approval in sorted(risks.get(engagement_id, []),
+                               key=lambda row: row["approval_id"]):
+            lines.append([
+                engagement_id, "ORIGINAL_RISK_SOURCE", approval["approval_id"],
+                approval["status"],
+                approval["decision_provenance_observation"],
+                "",
+            ])
+    fail(len(lines) <= 600, "original case details exceed bounded private review")
+    return lines
+
+
 def csv_text(rows: list[list[object]]) -> str:
     out = io.StringIO(newline="")
     writer = csv.writer(out, lineterminator="\r\n")
@@ -541,6 +585,24 @@ def html_page(docs: list[dict], delta: list[list[dict]], *, public: bool) -> str
                              [[*k, v] for k, v in sorted(counts.items())]))
         summary.append("<p>Anonymous aggregate still may be sensitive for small groups; treat as PRIVATE.</p>")
     else:
+        detail_rows = private_case_details(docs)
+        summary.append("<h2>PRIVATE final-packet per-engagement source explanation</h2>")
+        summary.append("<p>Original grant/request and risk IDs are locally shown only here. "
+                       "The original Casebook's prior source HOLD labels are reproduced "
+                       "for human reconciliation, NEVER elevated to a live grant or consent. "
+                       "Foreign-tenant source identities remain excluded.</p>")
+        by_engagement = {}
+        for row in detail_rows:
+            by_engagement.setdefault(row[0], []).append(row)
+        for engagement_id in sorted(by_engagement):
+            visible = by_engagement[engagement_id]
+            summary.append(
+                "<details><summary><strong>" + safe(engagement_id)
+                + "</strong> · original source rows " + str(len(visible)) +
+                "</summary>" +
+                table(list(CASE_DETAIL_COLUMNS), visible) +
+                "</details>"
+            )
         transitions = human_case_transitions(docs)
         summary.append("<h2>PRIVATE original engagement attention transitions</h2>")
         summary.append("<p>Only source-declared recorded changes; a vanished case "
@@ -657,6 +719,8 @@ def generate(docs: list[dict]) -> dict[str, bytes]:
     transitions_csv = csv_text([list(transition_columns)] +
                                [[row[key] for key in transition_columns]
                                 for row in all_case_transitions])
+    detail_rows = private_case_details(docs)
+    details_csv = csv_text([list(CASE_DETAIL_COLUMNS), *detail_rows])
     private_rows = [["later_ordinal", "family", "source_declaration", "source_record_id",
                      "changed_source_fields"]]
     for i, group in enumerate(delta):
@@ -693,6 +757,7 @@ def generate(docs: list[dict]) -> dict[str, bytes]:
                              [[entry[field] for field in queue_fields] for entry in queue])
     return {
         "private-human-case-transitions.csv": transitions_csv.encode("utf-8"),
+        "private-original-case-details.csv": details_csv.encode("utf-8"),
         "private-human-review-template.csv": human_template(docs),
         "private-human-case-queue.csv": private_queue.encode(),
         "index.html": html_page(docs,delta,public=False).encode("utf-8"),
