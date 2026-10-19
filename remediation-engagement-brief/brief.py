@@ -222,6 +222,18 @@ def capture_current_revision(args, source):
     vault._exclusive_output(output, vault._seal(vault._inner(payload, "application/json"), password))
 
 
+def save_workspace(args, current, history_csv=None):
+    """ONE encrypted, original-auth source-bound HUMAN workspace selection."""
+    if args.workspace_sealed is None or not args.ack_workspace:
+        raise ValueError("A new acknowledged PRIVATE workspace vault is required")
+    previous = list(history_csv or [])
+    mode = "workspace_history" if previous else "workspace"
+    seal_browser(current,args.client_id,args.engagement_id,mode=mode,
+                 history_csv=previous,output=args.workspace_sealed)
+    print("One encrypted original-authenticated workspace created: reviews, original Ticket Desk "
+          "and Casework" + (", source history." if previous else "."))
+
+
 def save_original_casework(args, authenticated_source):
     """Re-use unchanged original source-owning Casework workspace and manifest."""
     if not args.ack_original_casework:
@@ -280,7 +292,7 @@ def _preflight_file_paths(args):
         "output", "sealed_markdown", "private_html", "sealed_html",
         "capture_current", "aggregate_csv", "original_ticketdesk_html",
         "original_ticketdesk_sealed", "original_casework_html",
-        "original_casework_sealed"
+        "original_casework_sealed", "workspace_sealed"
     )]
     source_paths = [path.expanduser().absolute() for path in inputs]
     target_paths = [path.expanduser().absolute() for path in outputs if path is not None]
@@ -300,6 +312,8 @@ def _preflight_file_paths(args):
         getattr(args, "original_casework_sealed", None) is not None
     ) and not args.ack_original_casework:
         raise ValueError("Original Casework source and private device acknowledgement required")
+    if getattr(args, "workspace_sealed", None) is not None and not args.ack_workspace:
+        raise ValueError("Explicit source-bound encrypted HUMAN workspace acknowledgment required")
     return None
 
 def main(argv=None):
@@ -316,6 +330,8 @@ def main(argv=None):
     release.add_argument("--input", required=True, type=Path)
     release.add_argument("--output", required=True, type=Path)
     release.add_argument("--ack-private-html", action="store_true")
+    release.add_argument("--view", choices=("review","history","ticketdesk","casework"),
+                         help="REQUIRED on encrypted multi-view workspaces; one chosen private offline view")
     for action in (capture, review, open_now):
         for key in ("db", "email", "client-id", "engagement-id"):
             action.add_argument("--" + key, required=True)
@@ -344,6 +360,9 @@ def main(argv=None):
     history.add_argument("--original-casework-html", type=Path)
     history.add_argument("--original-casework-sealed", type=Path)
     history.add_argument("--ack-original-casework", action="store_true")
+    history.add_argument("--workspace-sealed", type=Path,
+                         help="NEW SINGLE encrypted original Casework/Ticket Desk/review/history workspace")
+    history.add_argument("--ack-workspace", action="store_true")
     capture.add_argument("--output", required=True, type=Path)
     for action in (inspect, review, open_now):
         action.add_argument("--input", required=True, type=Path)
@@ -369,6 +388,10 @@ def main(argv=None):
         action.add_argument("--original-casework-sealed", type=Path,
                             help="NEW AES-256-GCM source-only original Casework reopening packet")
         action.add_argument("--ack-original-casework", action="store_true")
+    for action in (open_now, review):
+        action.add_argument("--workspace-sealed", type=Path,
+                            help="NEW SINGLE encrypted original Casework/Ticket Desk/review workspace .ltv")
+        action.add_argument("--ack-workspace", action="store_true")
     review.add_argument("--capture-current", type=Path, help="Fresh authorized source into NEW encrypted revision .ltv")
     args = ap.parse_args(argv)
     try:
@@ -409,6 +432,9 @@ def main(argv=None):
             print("Original source severity escalations (UNVERIFIED):",result["source_escalation_events"])
             print("New original source regression labels (UNVERIFIED):",result["source_regression_label_events"])
             print("Current original IDs flagged for HUMAN source review:",len(result["current_human_focus"]))
+            if args.workspace_sealed is not None:
+                save_workspace(args,current,
+                               [old_packet["source_csv"] for old_packet,_ in snapshots[:-1]])
             if args.original_casework_sealed is not None or args.original_casework_html is not None:
                 save_original_casework(args,current)
             if args.original_ticketdesk_sealed is not None or args.original_ticketdesk_html is not None:
@@ -446,7 +472,7 @@ def main(argv=None):
                 raise ValueError("Current source release into local PRIVATE plaintext HTML requires acknowledgement")
             current=source_auth(args)
             mode=open_sealed_browser(current,args.client_id,args.engagement_id,
-                                     source=args.input,output=args.output)
+                                     source=args.input,output=args.output,view=args.view)
             print("Fresh-authenticated, exact-source-bound PRIVATE offline "+mode+
                   " browser regenerated into owner-only HTML. No consent or verified fix inferred.")
             return 0
@@ -486,8 +512,11 @@ def main(argv=None):
             if (args.output is None and args.sealed_markdown is None and
                 args.private_html is None and args.sealed_html is None and
                 args.original_ticketdesk_html is None and args.original_ticketdesk_sealed is None and
-                args.original_casework_html is None and args.original_casework_sealed is None):
+                args.original_casework_html is None and args.original_casework_sealed is None and
+                args.workspace_sealed is None):
                 raise ValueError("No PRIVATE handoff output selected")
+            if args.workspace_sealed is not None:
+                save_workspace(args,current_source)
             if args.original_ticketdesk_html is not None or args.original_ticketdesk_sealed is not None:
                 save_original_ticketdesk(args,current_source)
             if args.original_casework_html is not None or args.original_casework_sealed is not None:
@@ -511,6 +540,8 @@ def main(argv=None):
         if args.output is not None or args.sealed_markdown is not None:
             save_markdown(args, revision_brief(old, now))
             print("PRIVATE HUMAN revision handoff created, not verified remediation.")
+        if args.workspace_sealed is not None:
+            save_workspace(args,current_source,[packet["source_csv"]])
         if args.original_casework_html is not None or args.original_casework_sealed is not None:
             save_original_casework(args,current_source)
         if args.original_ticketdesk_html is not None or args.original_ticketdesk_sealed is not None:

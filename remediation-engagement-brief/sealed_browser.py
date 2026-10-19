@@ -23,9 +23,12 @@ from secure_export import (COLUMNS, FALSE, _literal, _strict_summary, _unique_pa
 KIND = "lightup.private_source_bound_browser_handoff"
 VERSION = 1
 ORIGINAL_APP_VERSION = 2
+WORKSPACE_VERSION = 3
 ORIGINAL_MODES = ("ticketdesk", "casework")
+WORKSPACE_MODES = ("workspace", "workspace_history")
 DISPOSITION = "PRIVATE_HUMAN_OFFLINE_SOURCE_ONLY"
-MODES = ("current", "compare", "history", "ticketdesk", "casework")
+MODES = ("current", "compare", "history", "ticketdesk", "casework",
+         "workspace", "workspace_history")
 KEYS = frozenset((
     "kind", "schema_version", "disposition", "mode", "client_id_self_declared",
     "engagement_id_self_declared", "current_original_csv_sha256", "current_original_count",
@@ -50,10 +53,11 @@ def _digest(source: str) -> tuple[str, int]:
 def _check_mode(mode: str, history: list[str]) -> None:
     if type(mode) is not str or mode not in MODES or type(history) is not list:
         raise ValueError("Unknown original-source browser handoff type")
-    required = {"current": 0, "compare": 1, "ticketdesk": 0, "casework": 0}
+    required = {"current": 0, "compare": 1, "ticketdesk": 0, "casework": 0,
+                "workspace": 0}
     if mode in required and len(history) != required[mode]:
         raise ValueError("Original browser source membership incorrect")
-    if mode == "history" and not 1 <= len(history) <= 12:
+    if mode in ("history", "workspace_history") and not 1 <= len(history) <= 12:
         raise ValueError("Original history must contain 1-12 revisions")
     for source in history:
         if type(source) is not str:
@@ -95,6 +99,17 @@ def pack(current_csv: str, client_id: str, engagement_id: str, *,
         packet["original_app_sha256"] = hashlib.sha256(
             original_owner_html(mode,current_csv,client_id,engagement_id)
         ).hexdigest()
+    if mode in WORKSPACE_MODES:
+        # The same authenticated current source anchors both unchanged
+        # original owner apps. No app bytes/HTML are stored in this package.
+        # Future app changes force a fresh human handoff instead of
+        # silently swapping implementations.
+        packet["schema_version"] = WORKSPACE_VERSION
+        packet["original_app_sha256"] = {
+            name: hashlib.sha256(original_owner_html(
+                name,current_csv,client_id,engagement_id)).hexdigest()
+            for name in ORIGINAL_MODES
+        }
     payload = _canonical(packet)
     if not 1 <= len(payload) <= MAX_PAYLOAD:
         raise ValueError("Encrypted browser source package exceeds private vault size")
@@ -112,10 +127,11 @@ def unpack(payload: bytes) -> dict:
     # Keep previously issued review/history packets compatible. An original
     # app always needs the newer app-byte content pin. Older app-mode packets
     # are explicitly HOLD and need resealing from currently authorized source.
-    required_version = (ORIGINAL_APP_VERSION if declared_mode in ORIGINAL_MODES
+    required_version = (WORKSPACE_VERSION if declared_mode in WORKSPACE_MODES
+                        else ORIGINAL_APP_VERSION if declared_mode in ORIGINAL_MODES
                         else VERSION)
-    required_fields = (ORIGINAL_APP_KEYS if declared_mode in ORIGINAL_MODES
-                       else KEYS)
+    required_fields = (ORIGINAL_APP_KEYS if declared_mode in
+                       (*ORIGINAL_MODES,*WORKSPACE_MODES) else KEYS)
     if set(packet) != required_fields:
         raise ValueError("Missing encrypted original owner app content pin")
     if (
@@ -135,11 +151,18 @@ def unpack(payload: bytes) -> dict:
         or not 1 <= packet["current_original_count"] <= 350):
         raise ValueError("Source hash/count metadata invalid")
     _check_mode(packet["mode"], packet["historical_original_csv"])
-    if declared_mode in ORIGINAL_MODES:
-        marker = packet["original_app_sha256"]
-        if (type(marker) is not str or len(marker) != 64 or
-            any(ch not in "0123456789abcdef" for ch in marker)):
-            raise ValueError("Original source-owner app pin is not a SHA-256 digest")
+    if declared_mode in (*ORIGINAL_MODES,*WORKSPACE_MODES):
+        pins = packet["original_app_sha256"]
+        if declared_mode in ORIGINAL_MODES:
+            markers = (pins,)
+        else:
+            if type(pins) is not dict or set(pins) != set(ORIGINAL_MODES):
+                raise ValueError("Missing original source-owner workspace application pins")
+            markers = pins.values()
+        for marker in markers:
+            if (type(marker) is not str or len(marker) != 64 or
+                any(ch not in "0123456789abcdef" for ch in marker)):
+                raise ValueError("Invalid encrypted original source-owner SHA256 pin")
     return packet
 
 
@@ -178,7 +201,7 @@ def _rows(original_csv: str) -> list[dict[str, str]]:
 
 
 def open_current(current_csv: str, client_id: str, engagement_id: str, *,
-                 source: Path, output: Path) -> str:
+                 source: Path, output: Path, view: str | None = None) -> str:
     """Rebuild trusted local-only HTML only after independent current authorization.
 
     The caller must have already called the original authenticated source reader;
@@ -209,6 +232,33 @@ def open_current(current_csv: str, client_id: str, engagement_id: str, *,
     # never evaluated, served, or copied from an arbitrary encrypted HTML string.
     now = _rows(current_csv)
     old_sources = [_rows(csv_text) for csv_text in packet["historical_original_csv"]]
+    if packet["mode"] in WORKSPACE_MODES:
+        allowed = ("review","ticketdesk","casework","history") if old_sources else (
+            "review","ticketdesk","casework")
+        if view not in allowed:
+            raise ValueError("Select one supported PRIVATE workspace view, not automatic execution")
+        # Verify BOTH original source-owner apps before any workspace view
+        # becomes plaintext; this is content integrity, never a release GO.
+        apps = {name: original_owner_html(name,current_csv,client_id,engagement_id)
+                for name in ORIGINAL_MODES}
+        for name,document in apps.items():
+            if hashlib.sha256(document).hexdigest() != packet["original_app_sha256"][name]:
+                raise ValueError("Original source-owner app changed: PRIVATE workspace HOLD")
+        if view in ORIGINAL_MODES:
+            document = apps[view]
+        elif view == "history":
+            snapshots = [(dict(historical_local_only=True), records)
+                         for records in old_sources]
+            snapshots.append((dict(current_auth_read=True), now))
+            document = build_history_desk(history_review(snapshots))
+        else:
+            # Review shows the immediately preceding original history when
+            # supplied, not a fabricated authenticated finding from the past.
+            document = build_desk(now, old_sources[-1] if old_sources else None)
+        vault._exclusive_output(destination, document)
+        return "workspace/"+view
+    if view is not None:
+        raise ValueError("View selection is only available for sealed original workspaces")
     if packet["mode"] == "current":
         document = build_desk(now)
     elif packet["mode"] == "compare":
