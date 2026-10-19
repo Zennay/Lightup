@@ -101,6 +101,37 @@ def revise(original: Path, key_file: Path, output_parent: Path,
         shutil.rmtree(temporary)
 
 
+
+def extend_workroom(original: Path, key_file: Path, packages: list[Path],
+                    output_parent: Path) -> tuple[Path, dict]:
+    """One HUMAN action: encrypted intake + exact old-plan carry + new workroom.
+
+    Only a new workroom is published. Both original source-free bytes and
+    local HUMAN notes/assignments in the previous workroom remain untouched.
+    """
+    previous = inspect(original, key_file)
+    inbox.strict_private_dir(output_parent)
+    require(original != output_parent and original not in output_parent.parents and
+            1 <= len(packages) <= inbox.MAX - len(previous["slots"]))
+    import extend
+    import carry
+    temporary = Path(tempfile.mkdtemp(prefix=".lightup-workroom-intake-", dir=output_parent))
+    try:
+        new_inbox, _ = extend.extend(original / "inbox", packages, key_file, temporary)
+        carried_path = temporary / "carried.ltplan"
+        carried = carry.carry(original / "inbox", new_inbox, key_file,
+                              original / "plan.ltplan", carried_path)
+        require(len(carried["slots"]) == len(previous["slots"]) + len(packages)
+                and carried["revision"] == previous["revision"] + 1)
+        sealed = temporary / "new.ltworkroom"
+        workroom.seal(new_inbox, carried_path, key_file, sealed)
+        result, _ = workroom.open_workroom(sealed, key_file, output_parent)
+        require(inspect(result, key_file) == carried and
+                inspect(original, key_file) == previous)
+        return result, carried
+    finally:
+        shutil.rmtree(temporary)
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=(
         "Inspect a PRIVATE HUMAN team workroom or create the next complete "
