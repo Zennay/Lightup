@@ -24,7 +24,7 @@ def _ref(row: dict) -> str:
     })).hexdigest()
 
 
-def _old_native_drafts(path: Path, record: dict, args, vault, private_file) -> set[str]:
+def _old_native_drafts(path: Path, record: dict, args, vault, private_file) -> tuple[set[str], str]:
     bridge.source._hold_if_not_private_directory(path.parent)
     private_file(path)
     encrypted = vault._private_input(path, vault.MAX_VAULT)
@@ -62,7 +62,15 @@ def _old_native_drafts(path: Path, record: dict, args, vault, private_file) -> s
         seen.add(identity)
     if seen != expected:
         raise ValueError("Historical staged original-native HUMAN request(s) missing.")
-    return expected
+    return expected, hashlib.sha256(encrypted).hexdigest()
+
+
+def _same_encrypted_file(path: Path, original_sha: str, vault, private_file) -> None:
+    bridge.source._hold_if_not_private_directory(path.parent)
+    private_file(path)
+    current = hashlib.sha256(vault._private_input(path, vault.MAX_VAULT)).hexdigest()
+    if current != original_sha:
+        raise ValueError("Historical encrypted native HUMAN output changed during review.")
 
 
 def carry(args, folder, vault, current_packet, current_key,
@@ -129,7 +137,8 @@ def carry(args, folder, vault, current_packet, current_key,
         raise ValueError("Ambiguous interrupted historical encrypted HUMAN draft.")
     if entry["state"] not in ("pending", "staged"):
         raise ValueError("Earlier source has no eligible native HUMAN draft.")
-    historical = _old_native_drafts(destination, entry, args, vault, private_file)
+    historical, original_cipher_sha = _old_native_drafts(
+        destination, entry, args, vault, private_file)
     now = current_packet.get("human_requests", [])
     if type(now) is not list:
         raise ValueError("Current original HUMAN request list is malformed.")
@@ -148,13 +157,13 @@ def carry(args, folder, vault, current_packet, current_key,
     # Every HUMAN confirmation expires until the exact CURRENT ORIGINAL
     # account, workroom, retention plan and all local evidence are re-admitted.
     re_admit_original()
+    _same_encrypted_file(destination, original_cipher_sha, vault, private_file)
     # Only a local HUMAN journal state transition; no ORIGINAL source mutation.
     if entry["state"] == "pending":
         # For a previously interrupted publication, original-native
         # encrypted identity admission + current reported HUMAN closure
         # precede recording the previously missing local SHA.
-        entry["sha256"] = hashlib.sha256(
-            vault._private_input(destination, vault.MAX_VAULT)).hexdigest()
+        entry["sha256"] = original_cipher_sha
     entry["state"] = "reviewed"
     entry["updated"] = utc()
     write_journal(folder, key, old)
@@ -198,13 +207,15 @@ def adopt_legacy(args, folder, vault, current_packet,
     entry = old["cycles"][-1]
     # Cryptographically decrypt original-native private historical workroom
     # and independently validate its original exact client/engagement binding.
-    accepted = _old_native_drafts(Path(entry["output"]), entry, args, vault, private_file)
+    accepted, original_cipher_sha = _old_native_drafts(
+        Path(entry["output"]), entry, args, vault, private_file)
     if len(accepted) != len(entry["requests"]):
         raise ValueError("Legacy original-human draft identity count changed.")
     if input('Type "ENROLL OLD HUMAN SOURCE ONLY" after private review: ') != (
             "ENROLL OLD HUMAN SOURCE ONLY"):
         raise ValueError("No explicit legacy HUMAN registration acknowledgment.")
     re_admit_original()
+    _same_encrypted_file(Path(entry["output"]), original_cipher_sha, vault, private_file)
     index["sources"].append(key)
     write_journal(folder, history._name(current_packet), index)
     print("Historical owner-private original-native source journal enrolled.")
