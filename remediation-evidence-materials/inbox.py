@@ -113,7 +113,8 @@ def render(rows: list[dict], original: dict[str,dict]) -> bytes:
     chunks += ['<footer>PRIVATE local review only. This file contains potentially identifying original finding labels and HUMAN notes. Do not upload or circulate publicly. No automatic sharing, HTML scripts, browser storage, network, grant, scanner, retest or security verdict.</footer>',
                '</main></body></html>']
     value="".join(chunks).encode("utf-8")
-    if len(value)>MAX_HTML or b"connect-src 'none'" not in value:
+    if (len(value)>MAX_HTML or esc(csp).encode("utf-8") not in value
+            or b"<script" in value.lower()):
         raise ValueError("PRIVATE local HUMAN inbox exceeds offline policy bounds.")
     return value
 
