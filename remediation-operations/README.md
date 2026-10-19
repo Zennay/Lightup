@@ -13,6 +13,10 @@
 
 **Use the packaged ZIP rather than saving the launcher HTML alone:** it contains all four original source-owned standalone apps and their required files. For a checkout, open the launcher at `remediation-operations/index.html` directly; same relative links.
 
+## NEW: source-pinned seven-app vault and local encrypted HUMAN transfer
+
+The original independently owned [Remediation Handoff Vault PR #1640](https://github.com/Zennay/Lightup/pull/1640) at exact `1a1ec2b95db5fdb15716e5c7dde21d22322bbb54` is physically bundled **unchanged** in `remediation-vault/`. Open [seven-app starter](../remediation-vault/START-HERE.html) or the [PRIVATE encrypted vault](../remediation-vault/standalone.html) directly. Existing original Casework Calendar, Evidence Review, Owner Reply, Dependency, Capacity and Funding standalone partner apps remain unchanged and are not merged into proprietary schemas. Original #1640 has its own encrypted PRIVATE selection, recipient handoff, ciphertext receipts and offline revision comparison; labels/hashes never authenticate source, client/operator consent, security findings, fixes or authorization. Its original separate portable ZIP is retained inside this complete combined bundle for exact original reference.
+
 ## NEW: full ORIGINAL-finding human coverage across four applications
 
 Open [PRIVATE Cross-app HUMAN Inbox](triage.html) (also accessible from the main landing page). **Start with the exact original Handoff Inbox / Runbook input `lightup.private_human_original_finding_workplan` JSON** and optionally import the original Ledger's `lightup.private_artifact_ledger`, Runbook Editor's `lightup.private_human_remediation_runbooks`, and Response Register's `lightup.private_human_response_reconciliation` JSON exports. It reads these existing source-owned formats directly and never converts or overwrites them.
@@ -39,6 +43,7 @@ This branch *copies unchanged* the four pre-existing separately-owned product pa
 | [#1643](https://github.com/Zennay/Lightup/pull/1643) | `58ad10f0b8cfb949287d4751b782221fc4ff9948` | `remediation-response-reconciliation/` |
 | [#1644](https://github.com/Zennay/Lightup/pull/1644) | `933a0a4e278c957bbeaa564c3effcab6d1ae8a31` | `remediation-handoff-inbox/` |
 | [#1645](https://github.com/Zennay/Lightup/pull/1645) | `f08fb96f7094d021493a39aa5d1a3eed025509f3` | `remediation-human-runbooks/` |
+| [#1640](https://github.com/Zennay/Lightup/pull/1640) | `1a1ec2b95db5fdb15716e5c7dde21d22322bbb54` | `remediation-vault/` |
 
 The original product paths remain individual sources of truth. Changes upstream require intentional source-owner review and a new pinned integration revision; copying files does not transfer source ownership. The **`MANIFEST.json`** enumerates each packaged file and SHA-256 digest, exact pinned upstream heads, and non-authorizing release status. SHA-256 is an integrity fingerprint, not authenticated provenance, consent, attestation or approval.
 

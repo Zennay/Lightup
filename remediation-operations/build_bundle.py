@@ -23,6 +23,7 @@ APPLICATIONS = (
     "remediation-response-reconciliation",
     "remediation-handoff-inbox",
     "remediation-human-runbooks",
+    "remediation-vault",
 )
 INTEGRATION = "remediation-operations"
 SOURCE_PR_HEADS = {
@@ -30,8 +31,9 @@ SOURCE_PR_HEADS = {
     "1643": "58ad10f0b8cfb949287d4751b782221fc4ff9948",
     "1644": "933a0a4e278c957bbeaa564c3effcab6d1ae8a31",
     "1645": "f08fb96f7094d021493a39aa5d1a3eed025509f3",
+    "1640": "1a1ec2b95db5fdb15716e5c7dde21d22322bbb54",
 }
-PERMITTED_EXTENSIONS = {".html", ".js", ".css", ".py", ".md", ".json"}
+PERMITTED_EXTENSIONS = {".html", ".js", ".css", ".py", ".md", ".json", ".zip"}
 MAX_FILE_BYTES = 8 * 1024 * 1024
 MAX_PACKAGE_BYTES = 32 * 1024 * 1024
 
@@ -54,6 +56,8 @@ def source_files() -> list[tuple[str, bytes]]:
                 continue
             if any(part.startswith(".") or part == "__pycache__" for part in path.relative_to(ROOT).parts):
                 raise ValueError("Refusing private or hidden path")
+            if path.suffix == ".zip" and path != DESTINATION and rel != "remediation-vault/LightUp-Private-Handoff-Vault.zip":
+                raise ValueError(f"Unexpected nested ZIP source: {rel}")
             if path.suffix not in PERMITTED_EXTENSIONS:
                 if path.name in (DESTINATION.name,) or path.suffix == ".pyc":
                     continue

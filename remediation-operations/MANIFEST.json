@@ -199,14 +199,94 @@
       "sha256": "e05fb6a22cbe20e2fea32c8fa0492cd01f7e02305c4a2c99b4e7acc5f41042e2"
     },
     {
-      "bytes": 8738,
-      "path": "remediation-operations/README.md",
-      "sha256": "d81271713f9a5355464624db86b17a37afd59f8c639ec5055875c87407ebfdc0"
+      "bytes": 149290,
+      "path": "remediation-vault/LightUp-Private-Handoff-Vault.zip",
+      "sha256": "22e09bd6b232d94532e2a8d3ccfa9a4c654f6fc641f2304ea8b031771f0abf6e"
     },
     {
-      "bytes": 5275,
+      "bytes": 10114,
+      "path": "remediation-vault/README.md",
+      "sha256": "041e0b6310b669daacbe35e773f62809dbd39f4c14d2d5df0d6713b5a5491398"
+    },
+    {
+      "bytes": 8159,
+      "path": "remediation-vault/START-HERE.html",
+      "sha256": "521152c439840ba70c0c29ec202a1206957666ce1975b0912cc1d83d110e5604"
+    },
+    {
+      "bytes": 6575,
+      "path": "remediation-vault/WORKFLOWS.md",
+      "sha256": "1c7e7886a0f950bff365b32522666e4ed0ec56dc341f9866e631a68a5870e04d"
+    },
+    {
+      "bytes": 24516,
+      "path": "remediation-vault/app.js",
+      "sha256": "dc83a557095e4af7507fc1614e506bc1dfbb86ff4f6c9892d058849ce8a4f743"
+    },
+    {
+      "bytes": 8842,
+      "path": "remediation-vault/index.html",
+      "sha256": "5f9e352ab150a4683b8e21c2a8b440e848d827c81d4aefc4846f552e2a915827"
+    },
+    {
+      "bytes": 1322,
+      "path": "remediation-vault/package.py",
+      "sha256": "3b653270cb86da0b9ab97c1c770a49814957f9a7bc5f8c9b0b73a7e4d89fcfad"
+    },
+    {
+      "bytes": 4332,
+      "path": "remediation-vault/package_kit.py",
+      "sha256": "766341b0c15ae77f34114562a5eefbe57bb64993b7b2d9d4b79b0045e8daf946"
+    },
+    {
+      "bytes": 109203,
+      "path": "remediation-vault/partner-apps/capacity-studio.html",
+      "sha256": "88a8e13ff62915f96a6ef74fccc2fe513e2fc92582a4d48e7fd2cc4fd7ab1659"
+    },
+    {
+      "bytes": 89181,
+      "path": "remediation-vault/partner-apps/casework-calendar.html",
+      "sha256": "d791d1ad92d29027c3837622117210d023a4bf44f79754eb5da6c150657977e6"
+    },
+    {
+      "bytes": 43524,
+      "path": "remediation-vault/partner-apps/dependency-board.html",
+      "sha256": "1f769362ac35ea47417ca35227d624fd7ad510591541cd7e2590e7067df1eafa"
+    },
+    {
+      "bytes": 84711,
+      "path": "remediation-vault/partner-apps/evidence-review.html",
+      "sha256": "a818110f7078aa8a9981ea9857cc898221cd01b9b7490493a8945357d0ee967f"
+    },
+    {
+      "bytes": 60143,
+      "path": "remediation-vault/partner-apps/funding-studio.html",
+      "sha256": "c118071dc2cb5e85ba204113f2f65bcc3e56f419ed9a46b49916477b651f125a"
+    },
+    {
+      "bytes": 44186,
+      "path": "remediation-vault/partner-apps/owner-reply.html",
+      "sha256": "b4d4bb1e1c02f3e0a3ac884e0d5cf05ae0a8a088e97c2ae92a39da9191be742a"
+    },
+    {
+      "bytes": 38845,
+      "path": "remediation-vault/standalone.html",
+      "sha256": "bf8145add3ab201989aaea3deeebdab53abab7cf9b7a78691c0b58a79e457c5b"
+    },
+    {
+      "bytes": 5209,
+      "path": "remediation-vault/style.css",
+      "sha256": "bc272fc44e9dbc3369b982e11066add9dfebf76062be83519bc7e60242ff10e7"
+    },
+    {
+      "bytes": 9847,
+      "path": "remediation-operations/README.md",
+      "sha256": "29d0749695e092d82d4848d7596576e5c220b5816c4adfd8aacb18be70177db1"
+    },
+    {
+      "bytes": 5564,
       "path": "remediation-operations/build_bundle.py",
-      "sha256": "2a2609f1daa7118eb39a6b258a1c900f065c538ff45f035af04f9adf68955efa"
+      "sha256": "a650861339b3d14f7ee05139c6ace0159d683b6036e0ae6f522e84d22e92c83a"
     },
     {
       "bytes": 3627,
@@ -214,19 +294,19 @@
       "sha256": "c9378aa62512a23b23822f8ebb79855e5b5435974b73c1ceb3258263b64aff68"
     },
     {
-      "bytes": 9864,
+      "bytes": 9871,
       "path": "remediation-operations/compare.js",
-      "sha256": "08a3eb4cf1ce5789387c9e02fea354c6759f16cf6cd451abac75c727b72b8cba"
+      "sha256": "4279b854baa3ea8e2c564f765f9f28b403d435aac40548eca6290075f26d5705"
     },
     {
-      "bytes": 10014,
+      "bytes": 10067,
       "path": "remediation-operations/hub.js",
-      "sha256": "c70a1f5ddd01bbe182e81acd30c29272a1f9f3ba2ecea46e8f0b02615ce4971a"
+      "sha256": "b45331f710b40ea59888951b79007b973d72f058195d9b207938c807c9576ef9"
     },
     {
-      "bytes": 7051,
+      "bytes": 7840,
       "path": "remediation-operations/index.html",
-      "sha256": "c7188b76a3a8a1a06c09526769ad7121f51c0352866d2a68b3c76e56ce9d34fe"
+      "sha256": "21e6256f62ad9ae93b2c0e5c5d1c4f4455facde711c9a67e3798ffe3274ba6a6"
     },
     {
       "bytes": 2235,
@@ -249,13 +329,14 @@
       "sha256": "bb08e75bc80044998ff575660e3c4a4d2f51049b28c36b2629d3300e8132e069"
     },
     {
-      "bytes": 8750,
+      "bytes": 8783,
       "path": "remediation-operations/verify_local_bundle.py",
-      "sha256": "1b0ef96885d13e464682edc8bc84ead6ce2c13885200f62b072be93565a0cca7"
+      "sha256": "ded762379c0c21f88ae680b5fb7c5fe34de7fa34a1cf15a9aaf23d6b14127f34"
     }
   ],
   "operator_consent": false,
   "original_source_pr_heads": {
+    "1640": "1a1ec2b95db5fdb15716e5c7dde21d22322bbb54",
     "1642": "6a8cd3baf6535705a7baca77dc3dc5067f862b3d",
     "1643": "58ad10f0b8cfb949287d4751b782221fc4ff9948",
     "1644": "933a0a4e278c957bbeaa564c3effcab6d1ae8a31",

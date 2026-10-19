@@ -3,7 +3,7 @@
 const loaded={before:null,after:null};
 let changes=null,revisionDeltas=null;
 const id=n=>document.getElementById(n);
-const PRS=["1642","1643","1644","1645"];
+const PRS=["1642","1643","1644","1645","1640"];
 const KEYS=["schema","release","authentication","client_consent","operator_consent","active_execution","security_fix_verified","production_release_approved","original_source_pr_heads","privacy","start","files"];
 function setStatus(s){id("compare-status").textContent=s;}
 function exact(o,keys){return o!==null&&typeof o==="object"&&!Array.isArray(o)&&Object.keys(o).length===keys.length&&keys.every(k=>Object.hasOwn(o,k));}
