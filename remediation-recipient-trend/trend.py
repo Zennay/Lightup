@@ -16,7 +16,7 @@ import sys
 
 # Reuse the *original* accepted source-free cockpit admission, not a new
 # approximation of the original verifier. No source-owner file is edited.
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent /
+sys.path.append(str(Path(__file__).resolve().parent.parent /
                        "remediation-evidence-bundle-integrity"))
 import board
 import read_cockpit
