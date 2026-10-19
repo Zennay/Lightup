@@ -369,8 +369,10 @@ def main() -> int:
     try:
         require((args.format == "inspect") == (args.output is None),
                 "Choose --output for html/counts only; inspect writes nothing")
-        current = parse_packet(args.current)
-        previous = parse_packet(args.previous) if args.previous else None
+        current_bytes = private_read(args.current)
+        previous_bytes = private_read(args.previous) if args.previous else None
+        current = parse_packet_data(current_bytes)
+        previous = parse_packet_data(previous_bytes) if previous_bytes is not None else None
         result = analyze(current, previous)
         totals = anonymous(result)
         if args.format == "inspect":
@@ -379,6 +381,17 @@ def main() -> int:
             output = (render(current, result).encode("utf-8") if args.format == "html"
                       else (json.dumps(proposed_actions(current, result) if args.format == "actions"
                                        else totals, sort_keys=True, indent=2) + "\n").encode("utf-8"))
+            # Never publish a report from PRIVATE source bytes that drifted during rendering.
+            import hashlib
+            require(hashlib.sha256(private_read(args.current)).digest() ==
+                    hashlib.sha256(current_bytes).digest(),
+                    "Original PRIVATE packet changed while preparing review")
+            if args.previous is not None:
+                require(hashlib.sha256(private_read(args.previous)).digest() ==
+                        hashlib.sha256(previous_bytes).digest(),
+                        "Earlier PRIVATE packet changed while preparing review")
+            require(args.output not in (args.current, args.previous),
+                    "PRIVATE report must not replace original input")
             private_publish(args.output, output)
             print("PRIVATE " + args.format + " published; no original source modified.")
         return 2  # HOLD / HUMAN only, never authority exit 0
