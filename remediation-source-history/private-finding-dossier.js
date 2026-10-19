@@ -35,7 +35,7 @@ function compose(id){
   warning:'Original five-field source and locally declared HUMAN notes are not independent findings verification, authenticated consent, client identity, grant, remediation, retest or release.'};
 }
 function preview(){
- if(!chosen){$('dossierSummary').textContent='Choose an original finding, including an ID absent from latest source.';$('dossierDetail').hidden=true;return;}
+ if(!chosen){$('dossierSummary').textContent='Choose an original finding, including an ID absent from latest source.';$('dossierDetail').hidden=true;$('dossierDetail').replaceChildren();return;}
  const d=compose(chosen);
  $('dossierDetail').hidden=false;
  const blocks=d.sources.map(r=>'<article class="snapshot"><h4>Original revision '+r.index+' · '+esc(r.label)+'</h4>'+
