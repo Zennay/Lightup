@@ -4,6 +4,8 @@
 function createPrivatePlanCrypto() {
   const MAGIC="lightup.private_human_matrix_aesgcm";
   const MAX_TEXT=3*1024*1024;
+  const WORKSPACE_MAGIC="lightup.private_lab_complete_workspace_aesgcm";
+  const MAX_WORKSPACE_TEXT=48*1024*1024;
   const ITERATIONS=310000;
   const FIELDS=["kind","version","kdf","iterations","cipher",
     "salt_b64","iv_b64","payload_b64"];
@@ -40,17 +42,17 @@ function createPrivatePlanCrypto() {
     return crypto.subtle.deriveKey({name:"PBKDF2",salt,iterations:ITERATIONS,hash:"SHA-256"},
       material,{name:"AES-GCM",length:256},false,["encrypt","decrypt"]);
   }
-  async function encrypt(plaintext,password) {
+  async function encryptBounded(plaintext,password,kind,maxBytes) {
     if(!supported())throw Error("Browser WebCrypto is unavailable for PRIVATE encryption");
     if(typeof plaintext!=="string")throw Error("Only local HUMAN JSON text may be encrypted");
     const bytes=new TextEncoder().encode(plaintext);
-    if(bytes.length===0||bytes.length>MAX_TEXT)throw Error("PRIVATE plan exceeds encryption size bound");
+    if(bytes.length===0||bytes.length>maxBytes)throw Error("PRIVATE content exceeds encryption size bound");
     const salt=crypto.getRandomValues(new Uint8Array(16));
     const iv=crypto.getRandomValues(new Uint8Array(12));
     const derived=await key(password,salt);
     const ciphertext=new Uint8Array(await crypto.subtle.encrypt({name:"AES-GCM",iv},
       derived,bytes));
-    return {kind:MAGIC,version:1,kdf:"PBKDF2-SHA256",iterations:ITERATIONS,
+    return {kind,version:1,kdf:"PBKDF2-SHA256",iterations:ITERATIONS,
       cipher:"AES-256-GCM",salt_b64:toBase64(salt),
       iv_b64:toBase64(iv),payload_b64:toBase64(ciphertext)};
   }
@@ -58,25 +60,34 @@ function createPrivatePlanCrypto() {
     return source!==null&&typeof source==="object"&&!Array.isArray(source)&&
       source.kind===MAGIC;
   }
-  async function decrypt(envelope,password) {
+  async function decryptBounded(envelope,password,kind,maxBytes) {
     if(!supported())throw Error("Browser WebCrypto unavailable for PRIVATE decryption");
     assert(envelope!==null&&typeof envelope==="object"&&!Array.isArray(envelope)&&
       Object.keys(envelope).length===FIELDS.length&&FIELDS.every(k=>Object.hasOwn(envelope,k)));
-    assert(envelope.kind===MAGIC&&envelope.version===1&&
+    assert(envelope.kind===kind&&envelope.version===1&&
       envelope.kdf==="PBKDF2-SHA256"&&envelope.cipher==="AES-256-GCM"&&
       envelope.iterations===ITERATIONS);
     const salt=fromBase64(envelope.salt_b64,16),iv=fromBase64(envelope.iv_b64,12);
     assert(salt.length===16&&iv.length===12);
-    const cipher=fromBase64(envelope.payload_b64,MAX_TEXT+16);
+    const cipher=fromBase64(envelope.payload_b64,maxBytes+16);
     assert(cipher.length>=17);
     try {
       const derived=await key(password,salt);
       const plain=await crypto.subtle.decrypt({name:"AES-GCM",iv},derived,cipher);
-      assert(plain.byteLength>0&&plain.byteLength<=MAX_TEXT);
+      assert(plain.byteLength>0&&plain.byteLength<=maxBytes);
       return new TextDecoder("utf-8",{fatal:true}).decode(plain);
     } catch {
       throw Error("Cannot open PRIVATE encrypted plan: wrong passphrase, changed bytes or incompatible envelope");
     }
   }
-  return Object.freeze({encrypt,decrypt,isEncrypted,supported});
+  const encrypt=(plain,password)=>encryptBounded(plain,password,MAGIC,MAX_TEXT);
+  const decrypt=(envelope,password)=>decryptBounded(envelope,password,MAGIC,MAX_TEXT);
+  const encryptWorkspace=(plain,password)=>
+    encryptBounded(plain,password,WORKSPACE_MAGIC,MAX_WORKSPACE_TEXT);
+  const decryptWorkspace=(envelope,password)=>
+    decryptBounded(envelope,password,WORKSPACE_MAGIC,MAX_WORKSPACE_TEXT);
+  const isWorkspace=source=>source!==null&&typeof source==="object"&&
+    !Array.isArray(source)&&source.kind===WORKSPACE_MAGIC;
+  return Object.freeze({encrypt,decrypt,isEncrypted,supported,
+    encryptWorkspace,decryptWorkspace,isWorkspace});
 }
