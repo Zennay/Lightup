@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import sys
 
-from . import private_export_continuity, private_export_handoff, private_export_workdesk, private_export_encrypted, private_export_encrypted_notes, private_export_owner_exchange, private_export_owner_accept
+from . import private_export_continuity, private_export_handoff, private_export_workdesk, private_export_encrypted, private_export_encrypted_notes, private_export_owner_exchange, private_export_owner_accept, private_export_owner_batch
 
 TITLE = "LightUp PRIVATE HUMAN Export & Remediation Desk"
 NOTICE = (
@@ -41,6 +41,7 @@ OPTIONS = (
     ("20", "Recipient: return encrypted HUMAN-only progress reply", "owner-reply"),
     ("21", "Operator: inspect bound HUMAN owner reply privately", "owner-review"),
     ("22", "Operator: create new encrypted HUMAN plan from reviewed reply", "owner-accept"),
+    ("23", "Reconcile several owner replies into NEW encrypted HUMAN plan", "owner-batch"),
     ("0", "Exit (no data or state written)", "exit"),
 )
 
@@ -105,6 +106,28 @@ def _same_real_client() -> None:
 
 
 def _perform(action: str) -> int:
+    if action == "owner-batch":
+        source = _ask("Original encrypted source .lue")
+        plan = _ask("Exact original encrypted HUMAN workplan .lun")
+        count_text = _ask("Number of independently reviewed owner replies (1–32)")
+        if not count_text.isascii() or not count_text.isdecimal():
+            raise ValueError("invalid owner reply count")
+        count = int(count_text)
+        if not 1 <= count <= 32:
+            raise ValueError("bounded owner reply count required")
+        pairs = []
+        for index in range(count):
+            print("Owner pair", index + 1, "of", count)
+            pairs.extend(["--pair", _ask("Exact encrypted .luo brief"),
+                          _ask("Corresponding encrypted .lur HUMAN reply")])
+        output = _output("NEW encrypted combined HUMAN workplan", "lun")
+        _original()
+        _encrypted()
+        _confirm("All actual owner identities and unverified HUMAN replies were independently reviewed")
+        return private_export_owner_batch.main([source, plan] + pairs + [
+            "--output", output, "--ack-human-reviewed-all",
+            "--ack-independent-owner-identities"])
+
     if action in ("owner-prepare", "owner-read", "owner-reply", "owner-review", "owner-accept"):
         if action in ("owner-prepare", "owner-review", "owner-accept"):
             original_source = _ask("Original encrypted source .lue")
