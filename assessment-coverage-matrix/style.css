@@ -105,3 +105,7 @@ footer{border-top:1px solid #283442;padding:22px clamp(18px,4vw,52px);max-width:
 @media(max-width:920px){.history-actions{grid-template-columns:1fr}}
 @media(max-width:640px){.human-history{padding:16px}.human-history-load{grid-template-columns:1fr}.human-history h3{font-size:1.25rem}}
 @media print{.human-history{display:none!important}}
+
+#historyTable td:last-child label{display:block;margin-top:9px;color:#f2d3b0;font-weight:650}
+#historyTable td:last-child select{display:block;width:100%;min-width:190px;max-width:310px;margin-top:5px;border-color:#8b6e45;background:#2d241f;color:#fff2dc;font-size:.8rem}
+#historyTable td:last-child label+label{border-top:1px solid #74533a;padding-top:9px}
