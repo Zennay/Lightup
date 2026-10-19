@@ -14,6 +14,7 @@
     dispatch_allowed:false,release_allowed:false});
   const MAX_SOURCE_BYTES = 8 * 1024 * 1024;
   let sources = [], rows = [], visible = [], selected = null, sourceDigests = [];
+  let matrixPage = 0;
   const fail = (ok, message = "Untrusted or incompatible original lab result") => {
     if (!ok) throw new Error(message);
   };
@@ -271,8 +272,14 @@
     head.append(node("th","Original capability · check"));
     sources.forEach((_,i)=>head.append(node("th","Local file "+(i+1))));
     thead.append(head);table.append(thead);
+    const pages=Math.max(1,Math.ceil(visible.length/100));
+    matrixPage=Math.min(Math.max(matrixPage,0),pages-1);
+    $("matrixPages").textContent="Page "+(matrixPage+1)+" of "+pages+
+      " · "+visible.length+" filtered declaration groups";
+    $("matrixPrev").disabled=matrixPage===0;
+    $("matrixNext").disabled=matrixPage+1>=pages;
     const tbody=node("tbody");let noDeclaration=0;
-    visible.forEach((row,index)=>{
+    visible.slice(matrixPage*100,(matrixPage+1)*100).forEach((row,index)=>{
       const tr=node("tr");
       const label=node("td");label.append(node("strong",row.capability||"(empty source capability)"));
       label.append(node("small",row.check||"(empty source check)"));tr.append(label);
@@ -292,13 +299,15 @@
     });
     table.append(tbody);
     $("visible").textContent=visible.length+" source-declared check groups · "+
-      noDeclaration+" empty cells (not declared, never PASS)";
+      noDeclaration+" empty cells on this page (not declared, never PASS). "+
+      "Counts exports include all filtered groups, not only this page.";
     $("exportCSV").disabled=!sources.length;
     $("exportJSON").disabled=!sources.length;
     if(selected) {
       const row=rows.find(r=>r===selected.row);
-      if(row)details(row,selected.sourceIndex,
+      if(row&&visible.includes(row))details(row,selected.sourceIndex,
         filteredPairs(row)[selected.sourceIndex],false);
+      else {selected=null;clear($("details"));}
     }
   }
   function details(row,index,cell,focus=true) {
@@ -394,7 +403,7 @@
       }
       // Only publish after the WHOLE batch has passed strict source admission.
       sources=next;sourceDigests=nextDigests;rows=aggregate(next);
-      selected=null;clear($("details"));
+      selected=null;matrixPage=0;clear($("details"));
       clear($("endpoint"));
       $("endpoint").append(new Option("All declared endpoints",0));
       baseline.targets.forEach((_,i)=>$("endpoint").append(new Option("Endpoint ordinal "+(i+1),i+1)));
@@ -416,13 +425,23 @@
   $("load").addEventListener("click",importFiles);
   $("forget").addEventListener("click",()=>{
     if(sources.length&&!confirm("Forget ALL locally opened original PRIVATE result data?"))return;
-    sources=[];rows=[];visible=[];selected=null;sourceDigests=[];
+    sources=[];rows=[];visible=[];selected=null;sourceDigests=[];matrixPage=0;
     humanBoard.clearAll();
     clear($("details"));clear($("matrix"));clear($("attention"));clear($("sourceMetrics"));$("query").value="";
+    $("matrixPages").textContent="No matrix loaded.";
+    $("matrixPrev").disabled=true;$("matrixNext").disabled=true;
     $("workspace").hidden=true;$("intro").hidden=false;
     $("files").value="";message("Private originals discarded from this application state.");
   });
-  ["query","severity","endpoint"].forEach(id=>$(id).addEventListener("input",refresh));
+  ["query","severity","endpoint"].forEach(id=>$(id).addEventListener("input",()=>{
+    matrixPage=0;refresh();
+  }));
+  $("matrixPrev").addEventListener("click",()=>{
+    if(matrixPage>0){matrixPage--;refresh();}
+  });
+  $("matrixNext").addEventListener("click",()=>{
+    matrixPage++;refresh();
+  });
   $("exportJSON").addEventListener("click",()=>{
     if(sources.length&&confirm("Download anonymized COUNTS ONLY? Small groups can still be sensitive.")){
       download("lightup-private-declaration-counts.json",
