@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import sys
 
-from . import private_export_continuity, private_export_handoff, private_export_workdesk, private_export_encrypted, private_export_encrypted_notes
+from . import private_export_continuity, private_export_handoff, private_export_workdesk, private_export_encrypted, private_export_encrypted_notes, private_export_owner_exchange, private_export_owner_accept
 
 TITLE = "LightUp PRIVATE HUMAN Export & Remediation Desk"
 NOTICE = (
@@ -36,6 +36,11 @@ OPTIONS = (
     ("15", "Resume HUMAN Workdesk from encrypted source and encrypted plan", "human-workdesk"),
     ("16", "Inspect encrypted HUMAN plan source binding without note content", "human-inspect"),
     ("17", "Rotate encrypted HUMAN plan passphrase", "human-rotate"),
+    ("18", "Create a one-owner encrypted HUMAN findings brief", "owner-prepare"),
+    ("19", "Recipient: inspect one-owner brief, optionally private HTML", "owner-read"),
+    ("20", "Recipient: return encrypted HUMAN-only progress reply", "owner-reply"),
+    ("21", "Operator: inspect bound HUMAN owner reply privately", "owner-review"),
+    ("22", "Operator: create new encrypted HUMAN plan from reviewed reply", "owner-accept"),
     ("0", "Exit (no data or state written)", "exit"),
 )
 
@@ -100,6 +105,48 @@ def _same_real_client() -> None:
 
 
 def _perform(action: str) -> int:
+    if action in ("owner-prepare", "owner-read", "owner-reply", "owner-review", "owner-accept"):
+        if action in ("owner-prepare", "owner-review", "owner-accept"):
+            original_source = _ask("Original encrypted source .lue")
+            original_plan = _ask("Original exact-source HUMAN plan .lun")
+        command = []
+        if action == "owner-prepare":
+            dest = _output("New single-owner encrypted brief", "luo")
+            _original()
+            _encrypted()
+            _confirm("I independently verified the intended HUMAN recipient; alias alone is NOT authentication")
+            command = ["prepare", original_source, original_plan, "--output", dest, "--ack-recipient-verified"]
+        elif action in ("owner-read", "owner-reply"):
+            owner_brief = _ask("One-owner encrypted .luo brief")
+            if action == "owner-read":
+                command = ["read", owner_brief]
+                if _ask("Write local UNENCRYPTED one-owner HTML? Enter YES", optional=True) == "YES":
+                    dest = _output("Private one-owner HTML", "html")
+                    _private()
+                    command += ["--output", dest, "--ack-plaintext-html"]
+            else:
+                dest = _output("New owner encrypted HUMAN progress reply", "lur")
+                _original()
+                _encrypted()
+                command = ["reply", owner_brief, "--output", dest]
+        else:
+            owner_brief = _ask("Original encrypted single-owner .luo brief")
+            reply = _ask("Encrypted HUMAN owner reply .lur")
+            if action == "owner-review":
+                dest = _output("New PRIVATE owner response review", "html")
+                _private()
+                command = ["review", original_source, original_plan, owner_brief, reply,
+                           "--output", dest, "--ack-plaintext-html"]
+            else:
+                dest = _output("NEW source-bound encrypted HUMAN plan", "lun")
+                _original()
+                _encrypted()
+                _confirm("I have independently reviewed actual sender/source; only UNVERIFIED human notes will append")
+                return private_export_owner_accept.main([original_source, original_plan,
+                    owner_brief, reply, "--output", dest, "--ack-human-reviewed-reply",
+                    "--ack-source-recipient-verified"])
+        return private_export_owner_exchange.main(command + ["--ack-private-handling"])
+
     if action in ("human-seal", "human-workdesk", "human-inspect", "human-rotate"):
         source = _ask("Original encrypted source .lue (same exact export)")
         command = None
