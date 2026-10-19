@@ -63,7 +63,7 @@ async function open(vaultText,passphrase,state){
  if(typeof vaultText!=='string'||te.encode(vaultText).byteLength>MAX_VAULT_BYTES)throw Error('PRIVATE vault exceeds 8 MiB.');
  if(!global.LightUpTicketIntake?.parsePrivateJSON)throw Error('Source-bound duplicate-safe intake unavailable.');
  // The outer envelope is not trusted. Exact keys, algorithm version and bounds precede costly KDF.
- const p=global.LightUpTicketIntake.parsePrivateJSON(vaultText);
+ const p=global.LightUpTicketIntake.parsePrivateJSON(vaultText,MAX_VAULT_BYTES);
  const expected=['kind','schema_version','disposition','kdf','iterations','cipher','tag_bits','salt_b64','iv_b64','ciphertext_b64','warning'];
  if(!p||typeof p!=='object'||Array.isArray(p)||Object.keys(p).length!==expected.length||
  !expected.every(k=>Object.prototype.hasOwnProperty.call(p,k))||
