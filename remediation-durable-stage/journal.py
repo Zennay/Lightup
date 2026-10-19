@@ -311,7 +311,7 @@ def _resolve(args, vault, folder, journal, current) -> None:
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     subs = parser.add_subparsers(dest="action", required=True)
-    for action in ("status", "stage", "report", "review", "review-html", "recover", "resolve", "carry-closed"):
+    for action in ("status", "stage", "report", "review", "review-html", "recover", "resolve", "carry-closed", "adopt-legacy"):
         p = subs.add_parser(action)
         for name in ("db", "email", "client-id", "engagement-id"):
             p.add_argument("--" + name, required=True)
@@ -380,6 +380,10 @@ def main(argv=None) -> int:
                 cross_source_human.carry(
                     args, folder, vault, packet, key, _read, _write,
                     _owned_regular, _utc)
+            elif args.action == "adopt-legacy":
+                cross_source_human.adopt_legacy(
+                    args, folder, vault, packet, _read, _write,
+                    _owned_regular)
             else:
                 _resolve(args, vault, folder, document, current)
         return 0

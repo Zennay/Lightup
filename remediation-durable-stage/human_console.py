@@ -23,6 +23,7 @@ ACTIONS = {
     "6": ("recover", "Recover interrupted encrypted native HUMAN draft"),
     "7": ("resolve", "Resolve original HUMAN stage with separate acknowledgment"),
     "10": ("carry-closed", "Review closure from an earlier ORIGINAL source revision"),
+    "11": ("adopt-legacy", "Enroll previously unindexed original-native HUMAN journal"),
 }
 NAMES = {
     "stage": ("native-human-draft-", ".ltv"),
