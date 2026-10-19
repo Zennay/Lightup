@@ -49,14 +49,14 @@ def _summarize(old: dict[str,dict], new: dict[str,dict]) -> tuple[set[str],dict[
     return identical,diff
 
 
-def _rebuild_human(old_packet: dict, keep: set[str], new_raw: bytes) -> tuple[bytes,dict[str,int]]:
+def _rebuild_human(old_packet: dict, keep: set[str], new_raw: bytes, old_ids: set[str]) -> tuple[bytes,dict[str,int]]:
     new_source=_rows(new_raw)
     source_digest,count=work._native_digest(new_raw)
     old_casework=old_packet["casework"]
     if old_casework is not None:
         old_cases={row["finding_id"]:row for row in old_casework}
-        if len(old_cases)!=len(old_casework):
-            raise ValueError("Duplicate previous HUMAN Casework record.")
+        if len(old_cases)!=len(old_casework) or set(old_cases)!=old_ids:
+            raise ValueError("Original HUMAN Casework source membership incomplete or ambiguous.")
         retained=[]
         for finding_id in new_source:
             if finding_id in keep and finding_id in old_cases:
@@ -72,11 +72,22 @@ def _rebuild_human(old_packet: dict, keep: set[str], new_raw: bytes) -> tuple[by
     attachments=old_packet["attachments"]
     if any(type(row) is not dict or type(row.get("finding_id")) is not str for row in attachments):
         raise ValueError("Malformed previous evidence attachment identity.")
+    if any(row["finding_id"] not in old_ids for row in attachments):
+        raise ValueError("Original PRIVATE artifact references an unknown finding.")
     new_attachments=[row for row in attachments if row["finding_id"] in keep]
     requests=old_packet.get("human_requests",[])
     if type(requests) is not list or any(type(row) is not dict or
                                       type(row.get("finding_id")) is not str for row in requests):
         raise ValueError("Malformed previous HUMAN request identity.")
+    if any(row["finding_id"] not in old_ids for row in requests):
+        raise ValueError("Original PRIVATE HUMAN request references an unknown finding.")
+    old_request_ids=[row.get("request_id") for row in requests]
+    if len(set(old_request_ids))!=len(old_request_ids):
+        raise ValueError("Repeated original HUMAN request identity.")
+    evidence=old_packet["evidence_review"]
+    if evidence is not None and (type(evidence) is not list or
+        {item.get("finding_id") for item in evidence if type(item) is dict}!=old_ids):
+        raise ValueError("Incomplete original Evidence Review membership.")
     kept_requests=[row for row in requests if row["finding_id"] in keep]
     next_packet={
         "kind":"lightup.private_unified_human_evidence_workspace",
@@ -155,7 +166,7 @@ def main(argv: list[str]|None=None) -> int:
         identical,changes=_summarize(old_source,new_source)
         old_packet=work._packet(old_human,source_digest=work._native_digest(old_raw)[0],
                                 count=len(old_source),client=args.client_id,engagement=args.engagement_id)
-        updated,counts=_rebuild_human(old_packet,identical,new_raw)
+        updated,counts=_rebuild_human(old_packet,identical,new_raw,set(old_source))
         # Aggregate-only human review preview; never expose source IDs, names or hashes.
         for label,value in {**changes,**counts}.items():
             print(label.replace("_"," ")+":",value)
