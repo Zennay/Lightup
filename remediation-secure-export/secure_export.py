@@ -129,7 +129,7 @@ def _make_envelope(csv_text: str, client_id: str, engagement_id: str) -> bytes:
     return serialized
 
 
-def _read_envelope(payload: bytes) -> bytes:
+def _read_envelope(payload: bytes, *, include_manifest: bool = False) -> bytes | tuple[bytes, dict]:
     if not payload or len(payload) > MAX_ENVELOPE:
         raise ValueError("PRIVATE handoff JSON is empty or oversized.")
     pairs = lambda vals: _unique_pairs(vals)
@@ -169,7 +169,7 @@ def _read_envelope(payload: bytes) -> bytes:
     # Built from exact original Casework page; never substitute an external page.
     if b"<html" not in html[:512].lower() or b"lightup.authenticated_findings_handoff_v1" not in html:
         raise ValueError("Decrypted document is not an original Casework handoff.")
-    return html
+    return (html, data) if include_manifest else html
 
 
 def _unique_pairs(items: list[tuple[str, object]]) -> dict:
@@ -215,6 +215,11 @@ def main(argv: list[str] | None = None) -> int:
     op.add_argument("--input", required=True, type=Path)
     op.add_argument("--output", required=True, type=Path)
     op.add_argument("--ack-private-html", required=True, action="store_true")
+    inspect = p.add_parser("inspect", help="Authenticate an encrypted source snapshot and show ID-free aggregates in the terminal")
+    inspect.add_argument("--input", required=True, type=Path)
+    rotate = p.add_parser("rotate", help="Rotate source-bound Casework into a NEW encrypted vault without plaintext file")
+    rotate.add_argument("--input", required=True, type=Path)
+    rotate.add_argument("--output", required=True, type=Path)
     args = ap.parse_args(argv)
     try:
         vault = _vault()
@@ -230,19 +235,41 @@ def main(argv: list[str] | None = None) -> int:
             print("New 0600 PRIVATE AES-GCM Casework vault created directly from authenticated export.")
             print("No plaintext file created. No ongoing authorization, current consent or fix/retest inferred.")
         else:
-            if not args.ack_private_html:
-                raise ValueError("--ack-private-html required before sensitive plaintext output.")
-            if args.input.suffix.lower() != ".ltv" or args.output.suffix.lower() != ".html":
-                raise ValueError("Use a .ltv vault input and new .html private output.")
+            if args.input.suffix.lower() != ".ltv":
+                raise ValueError("PRIVATE Casework input must use .ltv.")
+            if args.operation == "open":
+                if not args.ack_private_html or args.output.suffix.lower() != ".html":
+                    raise ValueError("PRIVATE HTML requires --ack-private-html and a new .html destination.")
+            if args.operation == "rotate":
+                if args.output.suffix.lower() != ".ltv":
+                    raise ValueError("Rotated PRIVATE Casework output must use .ltv.")
+            if args.operation in ("open", "rotate") and (
+                args.input.expanduser().absolute() == args.output.expanduser().absolute()
+            ):
+                raise ValueError("Original and new PRIVATE source paths must differ.")
             vault_path = args.input.expanduser().absolute()
-            plaintext = vault._private_input(vault_path, vault.MAX_VAULT)
-            secret = vault._password("Existing PRIVATE Casework vault passphrase: ", fresh=False)
-            content, content_type, _ = vault._open(plaintext, secret)
+            ciphertext = vault._private_input(vault_path, vault.MAX_VAULT)
+            old_passphrase = vault._password("Existing PRIVATE Casework vault passphrase: ", fresh=False)
+            content, content_type, inner = vault._open(ciphertext, old_passphrase)
             if content_type != "application/json":
-                raise ValueError("Vault does not contain authenticated Casework JSON.")
-            html = _read_envelope(content)
-            vault._exclusive_output(args.output.expanduser().absolute(), html)
-            print("New 0600 offline HUMAN Casework HTML restored; sensitive plaintext, never a grant or verified finding.")
+                raise ValueError("Vault does not contain original Casework handoff JSON.")
+            html, manifest = _read_envelope(content, include_manifest=True)
+            if args.operation == "inspect":
+                # No names/IDs/titles/digests/notes/paths are exposed in stdout.
+                print("Authenticated private Casework snapshot (local copy; not current consent or permission).")
+                print("Original source findings:", manifest["original_finding_count"])
+                print("Original HTML size:", manifest["html_bytes"], "bytes")
+                print("No case/finding/owner identifiers or security verdicts disclosed.")
+            elif args.operation == "rotate":
+                replacement = vault._password("Replacement PRIVATE Casework passphrase: ", fresh=True)
+                if replacement == old_passphrase:
+                    raise ValueError("Replacement passphrase must differ from previous.")
+                vault._exclusive_output(args.output.expanduser().absolute(), vault._seal(inner, replacement))
+                print("New owner-private encrypted Casework vault created, original encrypted source preserved.")
+                print("No plaintext file created; no authority/consent/retest state inferred.")
+            else:
+                vault._exclusive_output(args.output.expanduser().absolute(), html)
+                print("New 0600 offline HUMAN Casework HTML restored; sensitive plaintext, never a grant or verified finding.")
         return 0
     except (AccountLockedError, GetPassWarning, PermissionError, ValueError, KeyError, OSError,
             UnicodeError, sqlite3.DatabaseError, EOFError, KeyboardInterrupt) as exc:
