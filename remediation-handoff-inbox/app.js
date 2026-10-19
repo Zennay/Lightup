@@ -10,7 +10,7 @@ const OWNER_ROW=["request_id","finding_id","request_kind","instructions","due_da
 const ATT=["finding_id","file_name","byte_length","sha256","mime","added_utc","human_reviewer","human_stage","human_note"];
 const KINDS=["missing_evidence","patch_change","deployment_record","rollback_plan","retest_request","followup_question","other"];
 const MAX=8*1024*1024,MAX_ROWS=800;
-let current=null,version=0,selected=new Set();
+let current=null,version=0,selected=new Set(),selectedFindings=new Set();
 function fail(s){throw Error("HOLD: "+s);}
 const plain=x=>x&&Object.getPrototypeOf(x)===Object.prototype;
 const exact=(x,fields)=>plain(x)&&Object.keys(x).length===fields.length&&Object.keys(x).every(k=>fields.includes(k));
@@ -53,6 +53,7 @@ function admitLedger(x){
    if(!Array.isArray(x[kind])||x[kind].length!==x.source_count)fail("incomplete native "+kind);
    const ids=x[kind].map(r=>{if(!plain(r))fail("invalid native human record");return value(r.finding_id,160,"native finding ID",true);});
    distinct(ids,"native finding identity");
+   for(const item of x[kind])inspectNativeRow(kind,item);
    const other=kind==="evidence_review"?x.casework:x.evidence_review;
    if(Array.isArray(other)&&other.length===ids.length){const otherIds=new Set(other.map(r=>r.finding_id));if(ids.some(id=>!otherIds.has(id)))fail("Casework and Evidence Review original finding identities differ");}
   }
@@ -155,6 +156,56 @@ function admitRegister(x,l){
  }
  return {originals,answers,reviews,feedback};
 }
+
+const CASE_FIELDS=["finding_id","owner","status","due_date","next_action","verification_plan","blocker","note","updated_utc"];
+const EVIDENCE_FIELDS=["finding_id","stage","reference","reviewer","next_step","evidence"];
+const EVIDENCE_REFERENCE_FIELDS=["change_reference","deployment_reference","rollback_reference","retest_request_reference","review_question"];
+const CASE_STAGES=["unassigned","planned","in_progress","blocked","ready_for_retest","deferred","completed"];
+const EVIDENCE_STAGES=["missing","submitted","needs_changes","ready_for_authorized_retest"];
+function humanDate(v,label){
+ if(v===null||v==="")return;
+ if(typeof v!=="string"||!/^\d{4}-\d\d-\d\d$/.test(v)||!Number.isFinite(Date.parse(v+"T00:00:00Z"))||
+ new Date(v+"T00:00:00Z").toISOString().slice(0,10)!==v)fail("invalid tentative HUMAN "+label);
+}
+function inspectNativeRow(kind,row){
+ if(kind==="casework"){
+  if(!exact(row,CASE_FIELDS)||!CASE_STAGES.includes(row.status))fail("invalid original human Casework record");
+  value(row.finding_id,160,"original finding ID",true);
+  for(const [field,max] of [["owner",120],["next_action",1800],["verification_plan",1600],["blocker",1200],["note",1600]])value(row[field],max,"Casework "+field);
+  humanDate(row.due_date,"Casework due date");
+  if(row.updated_utc!==null)value(row.updated_utc,64,"Casework timestamp",true);
+ }else{
+  if(!exact(row,EVIDENCE_FIELDS)||!EVIDENCE_STAGES.includes(row.stage)||!exact(row.evidence,EVIDENCE_REFERENCE_FIELDS))fail("invalid original human Evidence Review record");
+  value(row.finding_id,160,"original finding ID",true);
+  for(const [field,max] of [["reference",240],["reviewer",120],["next_step",500]])value(row[field],max,"Evidence Review "+field);
+  for(const field of EVIDENCE_REFERENCE_FIELDS)value(row.evidence[field],field==="review_question"?700:240,"Evidence Review "+field);
+ }
+}
+function buildFindingRows(source,requests){
+ const original=source.casework||source.evidence_review;
+ if(!original)return [];
+ const caseById=new Map((source.casework||[]).map(r=>[r.finding_id,r]));
+ const evidenceById=new Map((source.evidence_review||[]).map(r=>[r.finding_id,r]));
+ const filesById=new Map(),requestsById=new Map();
+ for(const f of source.attachments){const a=filesById.get(f.finding_id)||[];a.push(f);filesById.set(f.finding_id,a);}
+ for(const r of requests){const a=requestsById.get(r.finding)||[];a.push(r);requestsById.set(r.finding,a);}
+ const today=new Date().toISOString().slice(0,10);
+ return original.map(item=>{
+  const id=item.finding_id,casework=caseById.get(id)||null,evidence=evidenceById.get(id)||null,
+   files=filesById.get(id)||[],related=requestsById.get(id)||[],signals=[];
+  if(!files.length)signals.push("No LOCAL fingerprint");
+  if(!related.length)signals.push("No original HUMAN request created");
+  if(related.some(r=>!r.answer))signals.push("HUMAN reply awaited");
+  if(casework&&!casework.owner)signals.push("No declared Casework owner");
+  if(casework?.status==="blocked")signals.push("Casework HUMAN blocker");
+  if(casework?.due_date&&casework.due_date<today)signals.push("Tentative Casework date passed");
+  if(evidence&&["missing","needs_changes"].includes(evidence.stage))signals.push("Evidence Review HUMAN follow-up");
+  if(casework?.status==="completed"&&evidence?.stage==="missing")
+   signals.push("HUMAN status disagreement: locally completed vs evidence missing");
+  return {id,casework,evidence,files,requests:related,signals};
+ });
+}
+
 function combine(l,r){
  const source=admitLedger(l),data=admitRegister(r,source),attached=new Map();
  for(const a of source.attachments){if(!attached.has(a.finding_id))attached.set(a.finding_id,[]);attached.get(a.finding_id).push(a);}
@@ -173,7 +224,7 @@ function combine(l,r){
   if(feedback)signals.push("Separate UNVERIFIED HUMAN follow-up exists");
   rows.push({id,finding:x.o.finding_id,kind:x.o.request_kind,owner:x.p.recipient_alias,instructions:x.o.instructions,due:x.o.due_date,answer,feedback,notes,local,signals});
  }
- return {source,rows,version:++version};
+ return {source,rows,findingRows:buildFindingRows(source,rows),version:++version};
 }
 const cell=(tag,content)=>{const e=document.createElement(tag);e.textContent=String(content);return e;};
 const info=(s,error=false)=>{$("notice").textContent=s;$("notice").dataset.error=error?"true":"false";};
@@ -304,11 +355,11 @@ $("load").addEventListener("click",async()=>{
  const rev=++version,ledgerInput=$("ledger").files[0],registerInput=$("register").files[0];info("Reading both PRIVATE snapshots locally…");
  try{const [l,r]=await Promise.all([openFile("ledger"),openFile("register")]);
   if(version!==rev||$("ledger").files[0]!==ledgerInput||$("register").files[0]!==registerInput)fail("workspace or selected original files changed during load");
-  const next=combine(l,r);current=next;selected.clear();$("search").value="";$("filter").value="all";draw();
+  const next=combine(l,r);current=next;selected.clear();selectedFindings.clear();$("search").value="";$("filter").value="all";draw();
   info("Matched and admitted original HUMAN requests and replies within the same DECLARED source. This does not authenticate source, author or permission.");
  }catch(e){info(e.message||String(e),true);}
 });
-$("forget").addEventListener("click",()=>{current=null;version++;selected.clear();
+$("forget").addEventListener("click",()=>{current=null;version++;selected.clear();selectedFindings.clear();
  for(const id of ["ledger","register","search"])$(id).value="";$("filter").value="all";
  $("rows").replaceChildren();$("review").hidden=true;$("out").hidden=true;
  info("PRIVATE working state and file-picker references cleared from this page. Previously downloaded files must be secured or deleted separately.");});
