@@ -79,6 +79,9 @@ def source_files() -> list[tuple[str, bytes]]:
 
 
 def build() -> tuple[int, int]:
+    # Keep complete ready-to-open single HTML synchronized with the ORIGINAL parser and desk sources.
+    from build_triage_standalone import main as publish_triage
+    publish_triage()
     sources = source_files()
     manifest = {
         "schema": "lightup-private-human-evidence-integration-v1",
