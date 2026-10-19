@@ -10,8 +10,6 @@ from collections import Counter
 import hashlib
 from html import escape
 from pathlib import Path
-import stat
-import os
 
 import engagement_index as index
 import request_handoff as handoff
@@ -29,6 +27,7 @@ LABELS = {
     "reviewed_current_closed": ("Locally reviewed, HUMAN still reports closed", "No action inferred: HUMAN state is not native Apply or consent."),
     "aborted_unpublished": ("Locally aborted without published file", "No signed absence proof; retain HUMAN operator record."),
     "staged_file_missing": ("Encrypted stage file missing", "HOLD: restore original private ciphertext or consult source owner."),
+    "reviewed_file_missing": ("Previously reviewed encrypted stage missing", "HOLD: locate original private ciphertext before relying on historical local HUMAN closure."),
     "staged_file_changed": ("Encrypted stage bytes changed", "HOLD: recorded original-native encrypted draft mismatch."),
 }
 CAUTION = ("These are LOCAL HUMAN bookkeeping observations. Current original "
@@ -80,6 +79,8 @@ def _classification(entry: dict, stages: dict[str, str], material: str) -> tuple
     counts = Counter(stages.get(ref, "not_observed") for ref in refs)
     if material == "changed":
         label = "staged_file_changed"
+    elif entry["state"] == "reviewed" and material == "missing":
+        label = "reviewed_file_missing"
     elif entry["state"] == "pending":
         label = "pending_no_file" if material == "missing" else "pending_has_file"
     elif entry["state"] == "staged" and material == "missing":
