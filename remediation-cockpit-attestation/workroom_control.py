@@ -98,6 +98,10 @@ def main() -> int:
     inspector = actions.add_parser("inspect", help="Independently admit the entire private workroom")
     inspector.add_argument("--workroom", required=True, type=Path)
     inspector.add_argument("--key-file", required=True, type=Path)
+    count_export = actions.add_parser("export-counts", help="Export strictly anonymous HUMAN counts without private manifest fingerprints")
+    count_export.add_argument("--workroom", required=True, type=Path)
+    count_export.add_argument("--key-file", required=True, type=Path)
+    count_export.add_argument("--output", required=True, type=Path)
     batch_template = actions.add_parser("bulk-template", help="Create 0600 stale-plan-bound HUMAN batch edit template for a complete workroom")
     batch_template.add_argument("--workroom", required=True, type=Path)
     batch_template.add_argument("--key-file", required=True, type=Path)
@@ -128,6 +132,12 @@ def main() -> int:
         if args.action == "inspect":
             plan = inspect(args.workroom, args.key_file)
             print("REVIEW_ONLY: entire PRIVATE HUMAN workroom and original source-free slots admitted.")
+        elif args.action == "export-counts":
+            plan = inspect(args.workroom, args.key_file)
+            stats = inbox.export_counts(args.workroom / "inbox", args.key_file,
+                                        args.output)
+            require(stats["source_free_workrooms_not_unique_cases"] == len(plan["slots"]))
+            print("PRIVATE counts-only HUMAN JSON exported without linkable manifest digests.")
         elif args.action in ("bulk-template", "bulk-preview"):
             plan = inspect(args.workroom, args.key_file)
             import bulk
