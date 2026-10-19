@@ -17,8 +17,7 @@ import stat
 import sys
 
 from history import (
-    Hold, admit, fail, generate, pairs_no_duplicates, publish,
-    read_private, selected_original_files,
+    Hold, admit, fail, generate, original_byte_inventory, publish, read_private,
 )
 
 OUTPUT_MAX = 12
@@ -59,6 +58,8 @@ def capture(*, database: str, email: str, client: str | None,
              "private history parent not admitted")
         fail(not history_dir.exists() and not history_dir.is_symlink(),
              "private history destination already exists")
+        fail(history_dir.parent.resolve(strict=True) != packet_dir.resolve(strict=True),
+             "private history must be outside original source packet directory")
 
     # Reuse the ORIGINAL source owner's real credential path, lockout behavior,
     # current persisted actor/role and client selection; not our own trusted
@@ -93,23 +94,7 @@ def capture(*, database: str, email: str, client: str | None,
         fail(all(doc["client_id"] == original["client_id"] for doc in all_docs),
              "source tenant drift after original capture")
         artifacts = generate(all_docs)
-        artifacts["private-source-inventory.json"] = (
-            json.dumps({
-                "kind": "lightup.casebook_private_source_inventory",
-                "version": 1,
-                "disposition": "HUMAN_REVIEW_ONLY_HOLD",
-                "authority": False,
-                "source_authenticated": False,
-                "snapshots": [
-                    {
-                        "ordinal": ordinal,
-                        "source_sha256": __import__("hashlib").sha256(raw).hexdigest(),
-                        "source_bytes": len(raw),
-                    }
-                    for ordinal, (_, raw) in enumerate(snapshots, start=1)
-                ],
-            }, indent=2, sort_keys=True) + "\n"
-        ).encode("utf-8")
+        artifacts["private-source-inventory.json"] = original_byte_inventory(snapshots)
         publish(history_dir, artifacts)
 
     # No personal or source IDs / paths, assets or decision content printed.
