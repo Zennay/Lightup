@@ -451,6 +451,149 @@ function undoMerge(){
 
 /* PRIVATE HUMAN return coordination: informational, all sources self-declared.
    This overlay NEVER updates original runbooks, source findings, replies or grants. */
+
+/* PRIVATE, self-declared, HUMAN-only coordination derived from exact local owner returns. */
+const ACTION_STAGES=['untriaged_human','needs_human_input','human_contact_planned','human_review_prepared','human_discussion_closed'];
+const ACTION_FIELDS=['human_stage','coordinator_alias','tentative_due','next_action','private_note'];
+const ACTION_PACKET=['kind','schema_version','disposition','source_contract','source_sha256','client_reference','engagement_reference','source_count','original_ids','owner_return_snapshots','rows','warning',...FLAGS];
+function actionKey(a,id,n){return JSON.stringify([a,id,n]);}
+function blankAction(){return {human_stage:'untriaged_human',coordinator_alias:'',tentative_due:'',next_action:'',private_note:''};}
+function actionSources(){
+ const rows=[];for(const [alias,p] of ownerReturns)for(const item of p.records)rows.push({
+  recipient_alias:alias,finding_id:item.finding_id,step_id:item.step_id,human_ack:item.human_ack});
+ return rows.sort((a,b)=>a.recipient_alias.localeCompare(b.recipient_alias)||state.ids.indexOf(a.finding_id)-state.ids.indexOf(b.finding_id)||a.step_id-b.step_id);
+}
+function actionSnapshot(){return [...ownerReturns].sort((a,b)=>a[0].localeCompare(b[0])).map(([recipient_alias,p])=>({
+ recipient_alias,records:p.records.map(x=>({...x}))}));}
+function validateAction(a){if(!exact(a,ACTION_FIELDS)||!ACTION_STAGES.includes(a.human_stage))fail('noncanonical HUMAN operator action');
+ string(a.coordinator_alias,120,'human coordinator');date(a.tentative_due);string(a.next_action,1000,'human next action');string(a.private_note,800,'private human note');return {...a};}
+function clearHumanActions(){
+ followup=new Map();actionRevision=0;actionSavedRevision=0;
+ $('actionRows').replaceChildren();$('actionSummary').textContent='';
+ $('actionSearch').value='';$('actionFilter').value='all';$('actionRestoreFile').value='';
+ $('humanReviewDesk').hidden=true;actionSavedStatus();
+}
+function actionSavedStatus(){$('actionSaved').textContent=actionRevision!==actionSavedRevision?
+ 'UNSAVED PRIVATE HUMAN follow-up notes · export source-bound JSON before closing or changing original plans. No browser persistence.':
+ 'PRIVATE HUMAN follow-up locally unchanged since last complete export or restore. No browser persistence.';}
+function actionRows(){return actionSources().map(r=>({source:r,action:followup.get(actionKey(r.recipient_alias,r.finding_id,r.step_id))||blankAction()}));}
+function renderHumanActions(){
+ $('humanReviewDesk').hidden=!state||!ownerReturns.size;
+ if(!state||!ownerReturns.size){$('actionRows').replaceChildren();$('actionSummary').textContent='No current HUMAN owner returns.';actionSavedStatus();return;}
+ const all=actionRows(),q=$('actionSearch').value.toLowerCase().trim(),mode=$('actionFilter').value,today=new Date().toISOString().slice(0,10);
+ const filtered=all.filter(({source:r,action:a})=>{
+  if(q&&![r.recipient_alias,r.finding_id,r.human_ack,a.coordinator_alias,a.next_action,a.private_note].join(' ').toLowerCase().includes(q))return false;
+  if(mode==='no_owner')return !a.coordinator_alias;
+  if(mode==='overdue')return !!a.tentative_due&&a.tentative_due<today;
+  return mode==='all'||a.human_stage===mode;
+ });
+ $('actionSummary').textContent=all.length+' unverified human-reply steps · '+filtered.length+' shown · '+
+ all.filter(x=>x.action.human_stage==='needs_human_input').length+' HUMAN clarification assignments · '+
+ all.filter(x=>x.action.tentative_due&&x.action.tentative_due<today).length+' tentative UTC human dates passed (not authorized windows).';
+ const holder=$('actionRows');holder.replaceChildren();
+ for(const {source:r,action:a} of filtered){
+  const key=actionKey(r.recipient_alias,r.finding_id,r.step_id),card=document.createElement('article');card.className='step';
+  card.append(element('h3','ORIGINAL '+r.finding_id+' · HUMAN step '+r.step_id+' · '+r.recipient_alias));
+  card.append(element('p','Original unverified HUMAN reply: '+r.human_ack));
+  const row=document.createElement('div');row.className='two';
+  const status=document.createElement('label');status.textContent='Local HUMAN follow-up stage';
+  const select=document.createElement('select');ACTION_STAGES.forEach(v=>select.append(opt(v.replaceAll('_',' '),v)));select.value=a.human_stage;
+  select.addEventListener('change',()=>editHumanAction(key,'human_stage',select.value));status.append(select);row.append(status);
+  for(const [label,field,type,max] of [['Self-declared HUMAN coordinator','coordinator_alias','text',120],['Tentative HUMAN follow-up date','tentative_due','date',10]]){
+   const box=document.createElement('label');box.textContent=label;const input=document.createElement('input');
+   input.type=type;input.maxLength=max;input.value=a[field];input.addEventListener('change',()=>editHumanAction(key,field,input.value));box.append(input);row.append(box);
+  }card.append(row);
+  for(const [label,field,max] of [['Next HUMAN-only coordination action','next_action',1000],['PRIVATE HUMAN operator note','private_note',800]]){
+   const box=document.createElement('label');box.textContent=label;const input=document.createElement('textarea');input.rows=2;input.maxLength=max;input.value=a[field];
+   input.addEventListener('change',()=>editHumanAction(key,field,input.value));box.append(input);card.append(box);
+  }
+  const go=document.createElement('button');go.textContent='Open original HUMAN finding';go.addEventListener('click',()=>{
+   $('filter').value='all';render();$('finding').value=r.finding_id;render();$('editor').scrollIntoView({block:'start'});
+  });card.append(go);holder.append(card);
+ }actionSavedStatus();
+}
+function editHumanAction(key,field,v){
+ try{
+  if(!ACTION_FIELDS.includes(field)||!actionSources().some(x=>actionKey(x.recipient_alias,x.finding_id,x.step_id)===key))fail('stale HUMAN action identity');
+  const next=validateAction({...followup.get(key)||blankAction(),[field]:v});followup.set(key,next);actionRevision++;actionSavedStatus();
+  message('PRIVATE HUMAN coordination '+field+' saved in browser memory only. No original reply or security status changed.');
+ }catch(e){message(e.message,true);renderHumanActions();}
+}
+function actionPacket(){
+ if(!state||!ownerReturns.size)fail('no original source-bound owner returns');
+ return {kind:'lightup.private_human_owner_return_followup',schema_version:1,disposition:'UNVERIFIED_HUMAN_PLANNING_ONLY',
+ source_contract:state.source_contract,source_sha256:state.source_sha256,client_reference:state.client_reference,
+ engagement_reference:state.engagement_reference,source_count:state.ids.length,original_ids:state.ids.slice(),
+ owner_return_snapshots:actionSnapshot(),
+ rows:actionSources().map(r=>({...r,local_human_action:{...(followup.get(actionKey(r.recipient_alias,r.finding_id,r.step_id))||blankAction())}})),
+ ...Object.fromEntries(FLAGS.map(k=>[k,false])),
+ warning:'PRIVATE HUMAN coordination only. NOT authenticated source, owner consent, authorized execution, verified remediation, retest or release.'};
+}
+function saveHumanActions(){
+ if(!window.confirm('Download FULL PRIVATE HUMAN actions including self-declared source labels, recipient identities, original reply snapshot and local private notes? Store and deliver confidentially.'))return;
+ const body=JSON.stringify(actionPacket(),null,2)+'\n';if(new TextEncoder().encode(body).byteLength>MAX_BACKUP)fail('PRIVATE human follow-up backup exceeds 8 MiB');
+ download('LightUp-PRIVATE-HUMAN-return-followup.json',body,'application/json');actionSavedRevision=actionRevision;actionSavedStatus();
+ message('Complete original-source-bound PRIVATE HUMAN follow-up backup exported; original owner replies unmodified.');
+}
+async function restoreHumanActions(){
+ if(!state||!ownerReturns.size)fail('import original HUMAN source and owner returns first');
+ const file=$('actionRestoreFile').files[0];if(!file)fail('choose PRIVATE human follow-up JSON');
+ const revisionBefore=revision,actionBefore=actionRevision,origin=binding(state),snap=JSON.stringify(actionSnapshot()),p=await read(file,MAX_BACKUP);
+ if(!exact(p,ACTION_PACKET)||p.kind!=='lightup.private_human_owner_return_followup'||p.schema_version!==1||
+ p.disposition!=='UNVERIFIED_HUMAN_PLANNING_ONLY'||FLAGS.some(k=>p[k]!==false)||p.source_count!==state.ids.length||
+ ['source_contract','source_sha256','client_reference','engagement_reference'].some(k=>p[k]!==state[k])||
+ JSON.stringify(p.original_ids)!==JSON.stringify(state.ids)||JSON.stringify(p.owner_return_snapshots)!==snap)
+  fail('PRIVATE HUMAN follow-up not exactly bound to current original source AND unverified original owner replies');
+ string(p.warning,500,'human follow-up warning',true);
+ const expected=actionSources();if(!Array.isArray(p.rows)||p.rows.length!==expected.length)fail('incomplete follow-up records');
+ const rows=new Map();
+ p.rows.forEach((row,i)=>{
+  const base=expected[i];
+  if(!exact(row,['recipient_alias','finding_id','step_id','human_ack','local_human_action'])||
+   row.recipient_alias!==base.recipient_alias||row.finding_id!==base.finding_id||
+   row.step_id!==base.step_id||row.human_ack!==base.human_ack)fail('foreign or stale HUMAN original reply');
+  const key=actionKey(row.recipient_alias,row.finding_id,row.step_id);if(rows.has(key))fail('duplicate HUMAN reply identity');
+  rows.set(key,validateAction(row.local_human_action));
+ });
+ if(revision!==revisionBefore||actionRevision!==actionBefore||binding(state)!==origin||snap!==JSON.stringify(actionSnapshot())||
+ $('actionRestoreFile').files[0]!==file)fail('PRIVATE human source changed while restoring');
+ if(!window.confirm('REPLACE local PRIVATE HUMAN follow-up annotations with this EXACT-source / exact owner-reply snapshot backup? Save unsaved notes before replacement. No original evidence or grants changed.'))return;
+ if(revision!==revisionBefore||actionRevision!==actionBefore||binding(state)!==origin||snap!==JSON.stringify(actionSnapshot()))fail('stale HUMAN restore confirmation');
+ followup=rows;actionRevision++;actionSavedRevision=actionRevision;$('actionRestoreFile').value='';renderHumanActions();
+ message('Complete PRIVATE HUMAN follow-up restored against current original source and owner replies.');
+}
+function humanEsc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function printHumanAgenda(){
+ if(!window.confirm('Download scriptless PRIVATE HUMAN follow-up agenda containing original IDs, owner aliases, tentative dates and notes? Use independently authenticated confidential delivery and printing.'))return;
+ const values=actionRows().filter(x=>x.action.human_stage!=='untriaged_human'||x.action.next_action||x.action.private_note);
+ values.sort((a,b)=>(a.action.tentative_due||'9999').localeCompare(b.action.tentative_due||'9999')||a.source.finding_id.localeCompare(b.source.finding_id));
+ const lines=['<!doctype html><html lang="en"><head><meta charset="utf-8">',
+  '<meta http-equiv="Content-Security-Policy" content="default-src &#39;none&#39;; script-src &#39;none&#39;; style-src &#39;none&#39;; connect-src &#39;none&#39;">',
+  '<title>LightUp PRIVATE HUMAN agenda</title></head><body><h1>LightUp · PRIVATE HUMAN follow-up</h1>',
+  '<p>UNVERIFIED HUMAN COORDINATION ONLY: no execution, client consent, authorization, remediation proof, verified retest or release.</p>',
+  '<p>Declared source SHA '+humanEsc(state.source_sha256)+' · client '+humanEsc(state.client_reference)+' · engagement '+humanEsc(state.engagement_reference)+'</p><ol>'];
+ for(const {source:r,action:a} of values)lines.push('<li><h2>Original '+humanEsc(r.finding_id)+' · HUMAN step '+r.step_id+'</h2>'+
+  '<p>Self-declared recipient '+humanEsc(r.recipient_alias)+' · original unverified reply '+humanEsc(r.human_ack)+'</p>'+
+  '<p>Local HUMAN stage '+humanEsc(a.human_stage)+' · coordinator '+humanEsc(a.coordinator_alias)+' · tentative UTC date '+humanEsc(a.tentative_due)+'</p>'+
+  '<h3>Next HUMAN coordination</h3><pre>'+humanEsc(a.next_action)+'</pre><h3>PRIVATE operator note</h3><pre>'+humanEsc(a.private_note)+'</pre></li>');
+ lines.push('</ol><p>No original HUMAN reply, finding, evidence or grant altered.</p></body></html>\n');
+ const body=lines.join('\n');if(new TextEncoder().encode(body).byteLength>MAX_BACKUP)fail('PRIVATE human agenda too large');
+ download('LightUp-PRIVATE-HUMAN-discussion-agenda.html',body,'text/html;charset=utf-8');
+ message('Scriptless confidential HUMAN agenda exported; this is not authorization or verified remediation.');
+}
+function exportHumanActionCounts(){
+ if(!window.confirm('Export HUMAN follow-up counts only, excluding owner aliases, source, original IDs, notes, names, dates and customer context? Small cohorts may reveal patterns.'))return;
+ const counts=new Map();for(const {action:a} of actionRows())counts.set(a.human_stage,1+(counts.get(a.human_stage)||0));
+ const csv='human_only_followup_stage,count\r\n'+[...counts].sort((a,b)=>a[0].localeCompare(b[0])).map(x=>'"'+x[0]+'",'+x[1]).join('\r\n')+'\r\n';
+ download('LightUp-anonymous-HUMAN-followup-counts.csv',csv,'text/csv;charset=utf-8');
+ message('Anonymous HUMAN-only planning counts exported, no original ID or private note.');
+}
+function forgetHumanActions(){
+ if(actionRevision!==actionSavedRevision&&!window.confirm('Discard UNSAVED PRIVATE operator annotations? Export source-bound JSON first. The original runbooks and owner returns remain unchanged.'))return;
+ followup=new Map();actionRevision++;actionSavedRevision=actionRevision;$('actionRestoreFile').value='';renderHumanActions();
+ message('Local HUMAN follow-up annotations forgotten without changing source, grants or incoming owner replies.');
+}
+
 function clearReceivedReplies(){
  clearHumanActions();
  ownerReturns=new Map();$('returnFile').value='';$('returnFilter').value='all';
