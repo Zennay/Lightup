@@ -30,6 +30,33 @@ Section 7 of the offline Return Studio now provides a **Clear all loaded local H
 
 **Important limits:** clearing references does not securely overwrite garbage-collected browser process memory, OS swap, clipboard contents, previously downloaded plaintext files, existing encrypted backups or anything outside this page. Closing the browser and applying device/disk protections remain the user's responsibility. No claim of secure memory erasure.
 
+## Unlock encrypted .lhew directly into a native PRIVATE CLI workroom
+
+The optional [`encrypted_workflow.py`](encrypted_workflow.py) provides a **direct bridge** from an already AES-256-GCM-protected browser backup to the original native source-free HUMAN CLI pipeline; the operator no longer needs to export/decrypt separate JSON files in the browser first.
+
+It requires a local Python environment with the `cryptography` package. Run entirely offline on an authorized, private Linux account. First place the downloaded `.lhew` into an existing owner-only 0700 folder, with owner-only 0600 permissions:
+
+```bash
+mkdir -m 700 -p "$HOME/lightup-private-human"
+install -m 600 "$HOME/Downloads/lightup-private-human-encrypted-worksession.lhew" \
+  "$HOME/lightup-private-human/source.lhew"
+python3 remediation-human-handoff/encrypted_workflow.py \
+  --encrypted-workspace "$HOME/lightup-private-human/source.lhew" \
+  --output-dir "$HOME/lightup-private-human/native-private-workroom"
+
+# To limit only the outbound HUMAN handoff subset:
+python3 remediation-human-handoff/encrypted_workflow.py \
+  --encrypted-workspace "$HOME/lightup-private-human/source.lhew" \
+  --only request_original_human_review --ordinal 1 \
+  --output-dir "$HOME/lightup-private-human/limited-native-workroom"
+```
+
+The passphrase is requested **interactively** with `getpass`; do not pass it on the command line, in environment variables or logs. The CLI checks the exact encrypted envelope (including canonical base64, 600,000 PBKDF2-SHA256 rounds, salt/nonce sizes, version/kind and AES-GCM associated-data domain), decrypts locally using the standard `cryptography` AESGCM primitive, requires the entire original source-free session/board schema with all twelve false authority flags, and re-admits each extracted native record through the **unchanged original** `session.py` / `action_board.py` private parsers before calling `browser_workflow.py`.
+
+Decrypted intermediates exist only within a fresh owner-private 0700 temporary directory as 0600 files; they are removed when processing finishes or fails. This is **not cryptographic secure deletion** of disk blocks, memory, swap or system backups. The final workroom itself contains plaintext 0600 private HTML/JSON/CSV and must remain owner-only 0700; `--only/--ordinal` restricts only outbound handoff content, **not** the whole workroom. The encrypted source file itself is preserved. A wrong password, modified ciphertext, source mismatch, missing optional dependency or no local HUMAN changes causes a complete HOLD without a final output directory.
+
+Encrypted backups are still **self-declared numeric HUMAN plans**, not proof of authenticated identity, consent, source truth, vulnerability severity or completed remediation. Existing original security and release gates remain mandatory.
+
 ## No-Python: portable offline HUMAN Return Studio
 
 Open **[browser.html](browser.html)** directly on an offline computer. It is a self-contained HTML file with an embedded SHA-256 CSP-pinned local script, no third-party resources and no server or installation.
