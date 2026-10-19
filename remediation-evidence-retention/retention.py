@@ -82,6 +82,13 @@ def _read_material(directory: Path, packet: dict, indexed: dict, vault):
         }:
             raise ValueError("Original native receipt entry shape changed.")
         name = f"material-{ordinal:02d}.bin"
+        if (type(entry["stored_as"]) is not str
+                or type(entry["finding_id"]) is not str
+                or type(entry["original_file_name"]) is not str
+                or type(entry["sha256"]) is not str
+                or type(entry["byte_length"]) is not int
+                or entry["byte_length"] <= 0):
+            raise ValueError("Exact native material receipt identity and byte types required.")
         if entry["stored_as"] != name:
             raise ValueError("Material filename is not the exact native neutral name.")
         key = (entry["finding_id"], entry["sha256"])
@@ -141,9 +148,11 @@ def _new_decisions(files: list[dict], previous: list[dict] | None = None) -> lis
                         + (" (Enter keeps previous if not past): " if old else ": ")).strip()
         day = _review_day(raw_day or (old["review_on"] if old else ""))
         note = input("Optional private HUMAN reason (<=400 characters)"
-                     + (" (Enter keeps previous): " if old else ": ")).strip()
+                     + (" (Enter keeps, <clear> removes): " if old else ": ")).strip()
         if old is not None and not note:
             note = old["note"]
+        elif old is not None and note == "<clear>":
+            note = ""
         if len(note) > MAX_NOTE or any(ord(char) < 32 or ord(char) == 127 for char in note):
             raise ValueError("Invalid private note.")
         selection.append({**row, "decision": decision, "review_on": day, "note": note})
