@@ -412,6 +412,22 @@ def html_page(docs: list[dict], delta: list[list[dict]], *, public: bool) -> str
                "The graph is not a measured security-risk trend.</p>",
                "<h2>Anonymous source record count series</h2>", table(counters, values)]
     if public:
+        summary.append('<nav aria-label="Anonymous local exports">'
+                       '<p><a href="anonymous-counts.csv">Open counts CSV</a> · '
+                       '<a href="anonymous-counts.json">Open counts JSON</a></p>'
+                       '</nav>')
+    else:
+        summary.append('<nav aria-label="PRIVATE local original human workflow">'
+                       '<p><strong>PRIVATE SOURCE IDs BELOW:</strong> '
+                       '<a href="private-human-review-template.csv">'
+                       'Edit original human follow-up sheet</a> · '
+                       '<a href="private-human-case-queue.csv">'
+                       'Open exact original engagement queue</a> · '
+                       '<a href="private-source-changes.csv">'
+                       'Open original source field changes</a> · '
+                       '<a href="human-followup.txt">Read HUMAN next steps</a></p>'
+                       '</nav>')
+    if public:
         summary.append("<h2>Changed source-record appearances by ordinal</h2>")
         counts = Counter((i + 2, row["family"], row["change"]) for i, group in enumerate(delta)
                          for row in group)
