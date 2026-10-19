@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import sys
 
-from . import private_export_history, private_export_history_vault
+from . import private_export_history, private_export_history_vault, private_export_history_calendar
 
 OPTIONS = (
     ("1", "ID-free offline HUMAN history HTML", "html"),
@@ -17,6 +17,8 @@ OPTIONS = (
     ("5", "Inspect encrypted HUMAN history without writing plaintext", "inspect"),
     ("6", "Open encrypted HUMAN history into new PRIVATE HTML", "open"),
     ("7", "Rotate encrypted HUMAN history passphrase", "rotate"),
+    ("8", "ID-free proposed HUMAN follow-up calendar (.ics)", "calendar"),
+    ("9", "Explicit PRIVATE original finding/owner calendar (.ics)", "private-calendar"),
     ("0", "Exit foreground local menu", "exit"),
 )
 WARNING = (
@@ -77,6 +79,29 @@ def _source_plans() -> tuple[str, list[str], str | None]:
 
 
 def _perform(option: str) -> int:
+    if option in ("calendar", "private-calendar"):
+        source = _ask("Original encrypted finding source .lue")
+        plan = _ask("Latest exact-original-source encrypted HUMAN plan .lun")
+        if not source.endswith(".lue") or not plan.endswith(".lun"):
+            raise ValueError("original encrypted source and HUMAN plan required")
+        private = option == "private-calendar"
+        if private:
+            _agree(
+                "This calendar includes ORIGINAL finding IDs, titles and self-declared "
+                "owner aliases in plaintext calendar events. I have independently "
+                "verified the actual recipient and approved private calendar storage."
+            )
+        _agree(
+            "The .ics is UNENCRYPTED and contains only proposed HUMAN follow-up "
+            "dates, NOT approved security fix/change windows. Calendar import is "
+            "manual; repeated imports may duplicate events. I accept the storage risk."
+        )
+        output = _out("ics")
+        command = [source, plan, "--output", output, "--ack-unencrypted-calendar"]
+        if private:
+            command += ["--include-private-events", "--ack-private-records"]
+        return private_export_history_calendar.main(command)
+
     if option in ("html", "private-html", "json", "encrypted"):
         source, snapshots, as_of = _source_plans()
         private = option == "private-html"
