@@ -161,6 +161,27 @@ python3 remediation-evidence-retention/reconcile.py publish \
 
 The later workroom must be legitimately provided by an existing independent original-human collaboration step, and all passphrases entered in a private interactive TTY. Operator-provided ordering and claimed status are never substituted for genuine action-time consent or proof of execution. The source-owner evidence collector, finding export, scanner, grants, and original request handlers remain unmodified.
 
+
+## Unified PRIVATE operator workbench — one original-system HUMAN workflow
+
+The new [`workbench.py`](workbench.py) brings the separate original-source HUMANS together in **one interactive local terminal menu**, without copying or modifying original source owners. It can: inspect current original material source; stage a first owner-private encrypted HUMAN review plan; renew an existing plan with separate legal-hold acknowledgment; publish a scriptless 0600 private Casework/retention desk; preview or stage original-native due `followup_question` drafts; publish encrypted plan revision histories; review separately supplied later original-native HUMAN request statuses; and securely switch between existing source-bound encrypted review plans.
+
+Each action performs a **fresh** original current-account/client/engagement login and decrypts the CURRENT original encrypted HUMAN source and all actual local owner-private indexed evidence bytes. An earlier successful menu action is **not** cached as consent or execution authority. Outputs are exclusively **NEW 0600 files beneath the existing real 0700 owner-private output folder**, with non-identifying random filenames and no plaintext intermediate drafts. The original current-scope validation, native encrypted vault, selected per-file SHA256 and original request admission are reused directly, not reimplemented by a new owner.
+
+```sh
+python3 remediation-evidence-retention/workbench.py \
+  --db /private/lightup.db --email operator@example.invalid \
+  --client-id <original-client-id> --engagement-id <original-engagement-id> \
+  --human /private/existing-human.ltv \
+  --directory /private/received-material \
+  --output-dir /private \
+  --ack-private-material
+```
+
+For an existing plan, add `--plan /private/retention-review-v2.ltv`. Without `--plan` the human may choose the first-stage flow in the menu. Each sensitive action prompts through a real private terminal for the original/passphrase(s) as needed. At each action boundary the original read/source and actual private file fingerprints are checked again. The menu requires a separate HUMAN confirmation for changing an existing `legal_hold` review marker, for staging original-native HUMAN draft requests, and for exporting private Casework notes. One draft Request Desk handoff per interactive session: another attempt is held until the human independently processes the previous original-native draft; this does not claim original Apply. Selecting a different plan also performs a fresh full original-source and actual-material admission.
+
+**Important:** The menu cannot issue valid execution grants, sign reviewer identities, prove native Apply, change original Casework findings, release actual legal holds, authorize deletion, perform scans/retests, or deploy. Neither the original source's read permission nor private passphrases substitute for independently authenticated current client/operator action-time consent and explicit HUMAN GO. All release gates apply to this new workflow too.
+
 ## Ownership and acceptance posture
 
 **Base:** immutable [#1657](https://github.com/Zennay/Lightup/pull/1657) source snapshot `0c2f2689ad5862eb7372d9bf2ed3aa81831f43c4`, unchanged. Owner's subsequent commits are not silently assimilated. Added paths are independent from `remediation-evidence-materials/`, evidence transfer owners and issue #1182 CSV source owners. Release gates unchanged.
