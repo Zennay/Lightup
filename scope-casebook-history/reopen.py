@@ -16,7 +16,7 @@ import stat
 import sys
 
 from history import (
-    Hold, admit, fail, generate, pairs_no_duplicates, read_private,
+    Hold, fail, generate, pairs_no_duplicates, read_private, selected_original_files,
 )
 
 FILES = {
@@ -96,14 +96,18 @@ def inspect(folder: Path, inputs: list[Path]) -> None:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Read-only exact original private Casebook history reopen")
-    parser.add_argument("--input", type=Path, action="append", required=True,
-                        help="Same 2–12 original private source packet files in SAME selected order")
+    selection = parser.add_mutually_exclusive_group(required=True)
+    selection.add_argument("--input", type=Path, action="append",
+                           help="Same original private packets in SAME ordinal order")
+    selection.add_argument("--packet-dir", type=Path,
+                           help="Same exact PRIVATE casebook-01.json...-12.json folder")
     parser.add_argument("--history-dir", type=Path, required=True)
     args = parser.parse_args()
     try:
-        fail(len({str(p.absolute()) for p in args.input}) == len(args.input),
+        paths = selected_original_files(args.input, args.packet_dir)
+        fail(len({str(p.absolute()) for p in paths}) == len(paths),
              "duplicate original packet path")
-        inspect(args.history_dir, args.input)
+        inspect(args.history_dir, paths)
     except (Hold, OSError, ValueError, TypeError, KeyError):
         print("HOLD: original PRIVATE history cannot be reopened from selected bytes; "
               "NO approval or authority.", file=sys.stderr)
