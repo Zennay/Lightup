@@ -115,6 +115,10 @@ def _table(source: list[dict[str, str]], packet: dict | None) -> tuple[list[dict
         x["case"]["due_date"] or "9999-12-31" if x["case"] is not None else "9999-12-31",
         x["finding"]["finding_id"]
     ))
+    # Stable, globally unique in-document navigation across every severity.
+    # A repeated rank per severity silently pointed owners to the wrong finding.
+    for rank, item in enumerate(items, 1):
+        item["rank"] = rank
     counters = {
         "original_findings":len(items),
         "source_critical_high":sum(i["finding"]["severity"] in ("critical","high") for i in items),
@@ -173,12 +177,21 @@ def build_board(original_source: list[dict[str,str]], human_packet: dict | None)
     csp=("default-src 'none'; connect-src 'none'; script-src 'none'; "
          "style-src 'sha256-"+css_hash+"'; img-src 'none'; font-src 'none'; "
          "object-src 'none'; form-action 'none'; frame-src 'none'; base-uri 'none'")
-    by_owner=Counter((i["case"]["owner"].strip() or "Unassigned")
-                     if i["case"] is not None else "Casework not imported" for i in items)
+    by_owner=defaultdict(list)
+    for item in items:
+        owner=(item["case"]["owner"].strip() or "Unassigned") if item["case"] is not None else "Casework not imported"
+        by_owner[owner].append(item)
     by_owner_html="".join(
-        '<div class="owner"><h3>'+_h(name)+'</h3><p>'+
-        str(count)+" original finding references in PRIVATE HUMAN planning; no verified assignment authority.</p></div>"
-        for name,count in sorted(by_owner.items(), key=lambda r:(r[0].lower(),r[0]))
+        '<section class="owner"><h3>'+_h(name)+'</h3><p>'+
+        str(len(group))+' original references in PRIVATE HUMAN planning; no verified assignment authority.</p>'+
+        '<ul class="requests">'+
+        "".join('<li><a href="#finding-'+str(item["rank"])+'">'+
+                _h(_limited(item["finding"]["title"],110))+'</a>'+
+                ' <span class="chip">'+_h(item["finding"]["severity"].upper())+
+                ' · SOURCE LABEL</span> · '+str(len(item["attention"]))+
+                ' LOCAL HUMAN attention signal(s)</li>' for item in group)+
+        '</ul></section>'
+        for name,group in sorted(by_owner.items(), key=lambda r:(r[0].lower(),r[0]))
     )
     summary="".join(
         '<div class="stat"><strong>'+str(counts[key])+'</strong><span>'+label+'</span></div>'
@@ -197,7 +210,7 @@ def build_board(original_source: list[dict[str,str]], human_packet: dict | None)
         sections.append(
             '<section id="severity-'+severity+'"><h2>'+_h(severity.title())+
             ' · '+str(len(rows))+' source-labelled finding(s)</h2>'+
-            ''.join(_row(item,j) for j,item in enumerate(rows,1))+
+            ''.join(_row(item,item["rank"]) for item in rows)+
             '</section>'
         )
     tabs="".join('<a href="#severity-'+s+'">'+s.title()+'</a>'
