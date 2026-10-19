@@ -159,3 +159,23 @@ its own selected path. A rejected candidate leaves the old selected source
 unchanged. This console does not itself invoke native Apply or prove an
 underlying HUMAN answer is true, authorized, signed or legally sufficient.
 It never scans, retests, deletes, grants or deploys.
+
+## Recovery after an independent ORIGINAL HUMAN handoff
+
+If the local process was interrupted *after* writing a new encrypted ORIGINAL
+native draft but *before* finalizing its `pending` journal entry, the draft
+may already have been sent to the independent original HUMAN Request Desk.
+`recover` now opens that recorded exact native encrypted draft with its
+password, validates the CURRENT separately supplied original source,
+complete evidence material and native request metadata, and insists the
+recorded HASHED request identities are present as actual original-compatible
+`draft` records in that encrypted file. It no longer incorrectly demands
+that the CURRENT original HUMAN workroom retain an older pre-handoff request
+prefix: the separately supplied current native workroom can have advanced.
+
+Recovery still requires separate HUMAN confirmation and records the actual
+original encrypted file SHA before the local journal becomes `staged`.
+It does not assert native Apply happened, infer reviewer signatures, accept
+missing/rebound staged request IDs, release an actual legal hold or confirm
+client permission. After a successful recovery, use `review` and later
+`resolve` for independent current HUMAN status inspection.
