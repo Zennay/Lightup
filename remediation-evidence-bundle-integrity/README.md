@@ -86,7 +86,18 @@ python3 remediation-evidence-bundle-integrity/prepare.py \
   --output-dir "$HOME/lightup-private/workroom-001"
 ```
 
-For 2–12 sources, repeat `--input-dir`; never duplicate the same source folder. An existing owner-only 0700 parent is mandatory and `--output-dir` must be completely new, outside every input folder. The native original source renderer prepares `original-01/`, etc., preserves original HUMAN source-bound notes and original PRIVATE pages, and then the existing `board.py` creates `cockpit/`. The new root `index.html` is a **ready-to-open local operator navigation desk** linking the original private source-bound reviews and combined anonymous human action/workload brief. The exact workroom directory becomes visible together only via the original exclusive atomic directory rename; before publication, every input source and HUMAN session is re-read for drift. On admission failure no completed destination is published.
+For 2–12 sources, repeat `--input-dir`; never duplicate the same source folder. An existing owner-only 0700 parent is mandatory and `--output-dir` must be completely new, outside every input folder. The native original source renderer prepares `original-01/`, etc., preserves original HUMAN source-bound notes and original PRIVATE pages, and then the existing `board.py` creates `cockpit/`. The new root `index.html` is a **ready-to-open local operator navigation desk** linking the original private source-bound reviews and combined anonymous human action/workload brief. It also links to **`tasks.html`**, a substantial new original-source-only human work queue produced by `workroom_actions.py`: every original admitted proposed question is grouped into *needs source owner*, *open*, *currently in human review* and *locally answered*, with record-level original claimed finding ID and local SHA label, its exact native reason-specific human prompt, and a link back to the owning original source inbox. Stages are ordered for manual routing, **never** inferred security severity. Free-text HUMAN notes are not duplicated; only a `PRIVATE note present` flag appears. The task queue stays **outside** the source-free `cockpit/`, is scriptless and owner-private 0600, and is never part of receiver transfer.
+
+With an already-created single original workroom, it can also be published independently to a fresh unused file in that workroom root:
+
+```sh
+python3 remediation-evidence-bundle-integrity/workroom_actions.py \
+  --bundle "$HOME/lightup-private/workroom-001/original-01" \
+  --html "$HOME/lightup-private/workroom-001/new-private-actions.html"
+```
+
+When supplying 2–12 originals they must be named `original-01` through `original-12` in the exact same local workroom parent. This local output is PRIVATE, NOT anonymous; never send it to a receiving operator or publish to CI/GitHub. It only helps the original source owner find the precise HUMAN rows needing discussion and does not modify stage, consent, original finding, scan state or review permissions.
+ The exact workroom directory becomes visible together only via the original exclusive atomic directory rename; before publication, every input source and HUMAN session is re-read for drift. On admission failure no completed destination is published.
 
 **Recipient handoff:** copy **ONLY** `workroom-001/cockpit/` into the recipient's trusted owner-private directory, and run `read_cockpit.py --cockpit /ABSOLUTE/PRIVATE/COPIED_COCKPIT` there. Never transmit `workroom-001/` itself or any `original-XX/` subfolder: those contain original client/source labels, unverified SHA references and private HUMAN notes. The source-free cockpit remains a local human-only workload snapshot, not signed proof, clearance, client/operator consent, evidence authenticity or verified remediation. A crash may leave an owner-private temporary staging directory; do not assume files are safe to share outside the original private location.
 

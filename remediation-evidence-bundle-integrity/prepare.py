@@ -16,6 +16,7 @@ import sys
 
 import board
 import verify
+import workroom_actions
 
 review = verify.review
 triage = verify.triage
@@ -110,9 +111,11 @@ def source_files(folder: Path) -> tuple[dict[str, bytes], bytes]:
     input_folder(folder)
     return payloads, workspace.pretty(manifest)
 
-def local_home(number: int, kind: str) -> bytes:
+def local_home(number: int) -> bytes:
     links = ["<li><a href='cockpit/index.html'>Combined PRIVATE HUMAN cockpit</a>"
-             " (aggregate-only receiver export: copy cockpit/ alone)</li>"]
+             " (aggregate-only receiver export: copy cockpit/ alone)</li>",
+             "<li><a href='tasks.html'>Original PRIVATE record-level HUMAN action queue</a>"
+             " (finding IDs / fingerprint references; source-owner machine ONLY)</li>"]
     for idx in range(1, number + 1):
         slot = f"original-{idx:02}"
         links.append("<li><a href='" + slot + "/index.html'>Original PRIVATE workdesk slot " +
@@ -171,7 +174,9 @@ def publish(input_paths: list[Path], output: Path) -> dict:
                 (folder, {key: review.private_read(folder / key)
                           for key in sorted({item.name for item in folder.iterdir()})}))
         summary = board.publish(originals, stage / "cockpit")
-        review.private_publish(stage / "index.html", local_home(len(originals), "source"))
+        actions = workroom_actions.collect(originals)
+        review.private_publish(stage / "tasks.html", workroom_actions.render(actions))
+        review.private_publish(stage / "index.html", local_home(len(originals)))
         # Abort the entire atomic publication if any input was changed concurrently.
         for folder, admitted in input_snapshots:
             review.require({item.name for item in folder.iterdir()} == set(admitted),
