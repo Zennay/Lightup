@@ -160,6 +160,10 @@ def main() -> int:
         "Inspect a PRIVATE HUMAN team workroom or create the next complete "
         "immutable review assignment version, without source changes"))
     actions = parser.add_subparsers(dest="action", required=True)
+    creating = actions.add_parser("create", help="Receive encrypted source-free cockpits and open a complete PRIVATE workroom in one command")
+    creating.add_argument("--package", action="append", required=True, type=Path)
+    creating.add_argument("--key-file", required=True, type=Path)
+    creating.add_argument("--output-parent", required=True, type=Path)
     intake = actions.add_parser("extend", help="Receive new encrypted cockpits and carry existing HUMAN assignments into one new workroom")
     intake.add_argument("--workroom", required=True, type=Path)
     intake.add_argument("--key-file", required=True, type=Path)
@@ -204,7 +208,13 @@ def main() -> int:
     editing.add_argument("--clear-note", action="store_true")
     args = parser.parse_args()
     try:
-        if args.action == "extend":
+        if args.action == "create":
+            result, plan = create_workroom(args.package, args.key_file,
+                                           args.output_parent)
+            print("PRIVATE HUMAN workroom created from encrypted source-free packets: " + str(result))
+            print("All newly received HUMAN coordination slots start unassigned.")
+            print("Original encrypted packages and original source bytes untouched.")
+        elif args.action == "extend":
             result, plan = extend_workroom(args.workroom, args.key_file,
                                            args.package, args.output_parent)
             print("New complete PRIVATE HUMAN workroom after encrypted intake: " + str(result))
