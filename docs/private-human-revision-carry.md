@@ -156,3 +156,52 @@ The local browser editor embeds **private original finding IDs/titles and self-d
 
 After visually editing and saving the choice sheet, run the unchanged **Route A `apply`** command with all three original encrypted inputs, the exported JSON, and a new `.lun` destination. All original source-bound admission, duplicate-key handling, no-follow owner-private JSON input and new encrypted output conditions still apply. The visual editor is also available as separate console option **9**. This visual UI is only an offline human coordination interface — neither the CSP hash nor an original-source checksum authenticates actual clients, verifies findings/fixes, or grants permission.
 
+
+## Encrypted private decision custody: separate AES-256-GCM `.lud` product
+
+The new, fully offline `private_export_human_revision_vault.py` provides a real private custody route for manual selected HUMAN revision decisions. It adds a **distinct** authenticated `.lud` (LightUp HUMAN decisions) format, separate from the original encrypted finding source `.lue`, HUMAN workplan `.lun`, owner exchange and independently owned encrypted history `.luh`. It reuses the pinned parent original AES-256-GCM/scrypt readers and writer; no cloud transport, network, tenant account or new authorization path.
+
+### Why and how
+
+The offline browser editor intentionally downloads a sensitive, plaintext original-ID/title/declared-source JSON selection sheet. Even when saved with owner-only permissions, this remains a plaintext privacy risk for manual human handoffs. After the operator has independently inspected and approved the exact original source and client/recipient handling, **`seal` encrypts the selected JSON** into a new 0600 `.lud` with a different magic/version and separately prompted passphrase. It validates the **entire original ordered decision document against all three original encrypted inputs** before creating ciphertext.
+
+The recipient can later **`inspect`** the same `.lud` against the independently provided original earlier `.lue`, earlier source-bound `.lun`, and later `.lue`, receiving only aggregate HUMAN carry counts. **`apply`** decrypts and verifies the `.lud` entirely in memory and directly produces a NEW original-format, exact-later-source encrypted `.lun`, using a separately entered passphrase, without writing an intermediate plaintext workplan or decision JSON. **`rotate`** independently re-encrypts exactly the same admitted decision bytes with fresh salt, nonce and passphrase into a different, non-overwriting `.lud`. **`open`** is an explicitly acknowledged recovery workflow that writes a NEW unencrypted private `.json` for an independently verified human recipient only; it is never implicit.
+
+The ciphertext reader uses one descriptor with Linux `O_NOFOLLOW`, requires owner-private regular files (0600 or stricter) and enforces the original 256 KiB decisions limit plus authenticated envelope overhead. The original three sources and prior plan undergo their **original existing admission**, and each decision is reconciled against the original complete ordered five-column record list, literal-false authority flags, digest, declared client/engagement and date. An invalid source, passphrase, missing or changed original row, rejected choice, non-private/symlinked file, unknown version, partial file or invalid destination returns HOLD before creating a final output. **A checksum or authenticated ciphertext protects local integrity; it does not authenticate a real source sender, finding truth or actual client consent.**
+
+### Operator commands
+
+Run from the local working Python package on a trusted terminal. Original source passphrases, earlier plan secret, new decision secret and later new plan secret are each entered using the existing interactive passphrase prompts rather than CLI arguments. The three input files are original encrypted earlier source, earlier exact-source HUMAN plan, and later encrypted source in that order.
+
+```sh
+# After reviewing original IDs, fix any browser download permissions first:
+chmod 600 /private/reviewed-decisions.json
+
+# Encrypt the approved ORIGINAL source-bound decisions in a NEW .lud.
+python -m lightup.private_export_human_revision_vault seal \
+  /private/earlier.lue /private/earlier.lun /private/later.lue \
+  --choices /private/reviewed-decisions.json \
+  --output /private/reviewed-decisions.lud \
+  --ack-private-handling --ack-same-real-client --ack-human-decisions
+
+# Reopen and re-admit complete encrypted decisions; no plaintext artifact.
+python -m lightup.private_export_human_revision_vault inspect \
+  /private/earlier.lue /private/earlier.lun /private/later.lue \
+  --encrypted-choices /private/reviewed-decisions.lud \
+  --ack-private-handling --ack-same-real-client
+
+# HUMAN-approved decisions -> directly to NEW encrypted original .lun.
+python -m lightup.private_export_human_revision_vault apply \
+  /private/earlier.lue /private/earlier.lun /private/later.lue \
+  --encrypted-choices /private/reviewed-decisions.lud \
+  --output /private/approved-new-human-plan.lun \
+  --ack-private-handling --ack-same-real-client --ack-human-decisions
+```
+
+A separate `rotate` command accepts `--encrypted-choices SOURCE.lud --output NEW.lud` and both general acknowledgments; an exceptional `open` command accepts `--encrypted-choices SOURCE.lud --output NEW.json --ack-unencrypted-original-ids` as well. Both read and validate the original three sources before any output. All new files use exclusive non-overwriting 0600 atomic private publication; deleting old plaintext or ciphertext is a separate conscious operator decision, never automated.
+
+The isolated revision operator menu exposes the five actions as **10–14**, alongside the original offline browser/terminal HUMAN workflows. The prior original-export console is unchanged.
+
+**Privacy reminder:** Encrypting the approved JSON does not erase the previously downloaded plaintext decision sheet or the unencrypted offline browser page. A secure reviewer must independently handle its retention, deletion, and recipient/transport. The `.lud` ciphertext is still sensitive and does not grant authority, attest fixes, establish authentic client identity, validate missing evidence or permit scans/retests.
+
+**Release posture:** Notion `Incubate`, M3/M7 PLAN/LAB ONLY, DRAFT/HOLD. Parent PR #1647, original source-owner and original hosted + permanent named VPS CI, independent security/privacy/crypto approvals, real distinct authenticated client/operator consent with at-use revocation, original issues #177/#182/#829 and explicit HUMAN GO must be cleared before any main merge or production deployment. No QA/regression/testsuites were introduced or run.
