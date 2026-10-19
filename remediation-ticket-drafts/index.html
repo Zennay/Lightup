@@ -50,6 +50,7 @@ pre{background:#081220;color:#dbe9fc;border:1px solid #354760;border-radius:12px
 <section class="panel" aria-label="Source and tickets">
 <h2>01 / Source & selection</h2>
 <div class="field"><label for="source-file">Original authenticated findings.csv</label><input type="file" id="source-file" accept=".csv,text/csv"><small>Exact columns: finding_id,title,severity,retest_status,remediation · 1 MiB / 350 findings maximum</small></div>
+<div class="field"><label for="casework-file">Optional: original PRIVATE Casework v1 HUMAN draft (.json)</label><input type="file" id="casework-file" accept=".json,application/json" disabled><small>Only after loading the matching original CSV. Exact source hash and all five original fields must match. Prior Casework “completed” is reset to HUMAN triage, never verified.</small></div>
 <div class="field"><label for="search">Filter by source title or finding ID</label><input id="search" type="search" placeholder="Search offline…" disabled></div>
 <div class="field"><label for="severity">Severity</label><select id="severity" disabled><option value="all">All severities</option><option>critical</option><option>high</option><option>medium</option><option>low</option><option>info</option></select></div>
 <div class="actions"><button id="select-visible" disabled>Select visible</button><button id="clear-visible" disabled>Clear visible</button><button id="select-urgent" disabled>Critical + high</button></div>
@@ -85,6 +86,7 @@ pre{background:#081220;color:#dbe9fc;border:1px solid #354760;border-radius:12px
 <footer>Offline only. Authenticated source export remains a separate LightUp operation. Original Casework parser provided by unmodified source-owner PR #1568; this companion never writes to the LightUp database or GitHub.</footer>
 </main>
 <script src="../casework/remediation-engine.js"></script>
+<script src="./casework-import.js"></script>
 <script src="./ticket-desk.js"></script>
 </body>
 </html>
