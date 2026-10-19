@@ -185,6 +185,19 @@ python3 remediation-evidence-bundle-integrity/amend.py \
 
 To add a new PRIVATE source-owner note, place plain UTF-8 note text inside a trusted existing 0600 owner-private file under a 0700 private folder and add `--note-file /ABSOLUTE/PRIVATE/note.txt`. **Never** put HUMAN notes in a shell argument; to clear one in the new version use `--clear-note`. `--stage` may be omitted if only the note changes. The native original source-bound HUMAN journal is admitted before and after the edit. A temporary fresh 0700/0600 plan is internally constructed, and the existing full `revise.py` workroom-publishing path is reused; temporary note/plan material is removed after publication or HOLD. Only original stage and HUMAN note are affected, never the evidence, permission or security decision. For bulk edits across questions, keep using the strict 64-action `revise.py` private plan.
 
+## Original PRIVATE workroom history: before → after HUMAN changes
+
+New `compare_workrooms.py` compares **two FULL native source-owner workrooms** after a `revise.py` / `amend.py` revision (or two separately created complete workrooms). The source-slot count and **every exact original current/previous source packet** must match; otherwise HOLD. Each original HUMAN record is re-admitted with the pinned original native contract, and only actual local stage/note differences are listed. The operator supplies the before/after order; this is **not authenticated chronology**, not an identity claim or a security retest.
+
+```sh
+python3 remediation-evidence-bundle-integrity/compare_workrooms.py \
+  --before "$HOME/lightup-private/workroom-001" \
+  --after "$HOME/lightup-private/workroom-002" \
+  --output-dir "$HOME/lightup-private/receipts/private-human-diff-001"
+```
+
+A **new private atomic directory** contains `index.html` with a readable HUMAN change summary, `details.html` with exact ORIGINAL PRIVATE source slot/ordinal, claimed finding ID, local SHA label and old/new HUMAN stages, and `counts.json` with anonymous counts only. Only a boolean notes-changed signal is shown: the original private free-text HUMAN note is **never exported or repeated** in the comparison page. `details.html` and the entire report directory remain source-owner-only and must **not** be copied into the portable recipient cockpit. Local `answered_human` is still not a verified remediation; reopening is not a confirmed security regression. Before publication both complete original workrooms are re-admitted again, original native browser pages rechecked, and the whole report is exclusively published 0700 with 0600 files; no earlier source is altered.
+
 ## Scope and release
 
 No modifications to `src/`, original Evidence Artifact Ledger, Request Desk, native Apply, auth, scanner, scope, evidence files, CI or QA suites. Never feeds data to targets, issues grants, stages client action, changes HUMAN journals, concludes remediation or bypasses action-time revocation. As with the parent draft, **no main merge, production deploy or live use** until existing original exact-head hosted + permanently registered named VPS CI, original source-owner and independent security/privacy/browser/crypto reviews, #177/#182/#829, true independent revocable current client/operator consent and explicit HUMAN GO have all been satisfied. No new release gate is created by this utility.
