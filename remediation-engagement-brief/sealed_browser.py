@@ -11,6 +11,8 @@ import hashlib
 import json
 import csv
 import io
+import os
+import stat
 from pathlib import Path
 
 from desk import build_desk
@@ -200,6 +202,48 @@ def _rows(original_csv: str) -> list[dict[str, str]]:
     return parsed
 
 
+def _admit_encrypted_source(current_csv: str, client_id: str,
+                            engagement_id: str, source: Path) -> dict:
+    """Authenticate and admit the entire existing encrypted PRIVATE source.
+
+    The original account/tenant authentication is performed by the calling
+    brief.py CLI BEFORE invoking this helper. SHA+count prove source matching,
+    never a current client/operator consent to execute an action.
+    """
+    current_sha,current_count=_digest(current_csv)
+    encrypted=source.expanduser().absolute()
+    if encrypted.suffix.lower() != ".ltv":
+        raise ValueError("Encrypted PRIVATE handoff must be a .ltv file")
+    vault=_vault()
+    raw=vault._private_input(encrypted,vault.MAX_VAULT)
+    password=vault._password("PRIVATE browser handoff passphrase: ",fresh=False)
+    plaintext,kind,_=vault._open(raw,password)
+    if kind!="application/json":
+        raise ValueError("Original PRIVATE browser packet must contain canonical JSON")
+    packet=unpack(plaintext)
+    if (
+        packet["client_id_self_declared"] != client_id
+        or packet["engagement_id_self_declared"] != engagement_id
+        or packet["current_original_csv_sha256"] != current_sha
+        or packet["current_original_count"] != current_count
+    ):
+        raise ValueError("Current original authorized source drift or tenant mismatch: HOLD")
+    return packet
+
+
+def _original_workspace_apps(packet: dict, current_csv: str, client_id: str,
+                             engagement_id: str) -> dict[str, bytes]:
+    """Require BOTH authentic original app content pins before any release."""
+    if packet["mode"] not in WORKSPACE_MODES:
+        raise ValueError("Not a sealed multiview original source workspace")
+    apps={name: original_owner_html(name,current_csv,client_id,engagement_id)
+          for name in ORIGINAL_MODES}
+    for name,bytes_ in apps.items():
+        if hashlib.sha256(bytes_).hexdigest()!=packet["original_app_sha256"][name]:
+            raise ValueError("Original offline owner application changed: HUMAN HOLD")
+    return apps
+
+
 def open_current(current_csv: str, client_id: str, engagement_id: str, *,
                  source: Path, output: Path, view: str | None = None) -> str:
     """Rebuild trusted local-only HTML only after independent current authorization.
@@ -207,27 +251,14 @@ def open_current(current_csv: str, client_id: str, engagement_id: str, *,
     The caller must have already called the original authenticated source reader;
     this module cannot itself authenticate users or issue any permission.
     """
-    current_sha, current_count = _digest(current_csv)
     encrypted_path = source.expanduser().absolute()
     destination = output.expanduser().absolute()
     if encrypted_path.suffix.lower() != ".ltv" or destination.suffix.lower() != ".html":
         raise ValueError("Original encrypted input and new PRIVATE HTML output required")
     if encrypted_path == destination:
         raise ValueError("Encrypted handoff must never be overwritten")
-    vault = _vault()
-    sealed = vault._private_input(encrypted_path, vault.MAX_VAULT)
-    password = vault._password("PRIVATE browser handoff passphrase: ", fresh=False)
-    payload, kind, _ = vault._open(sealed, password)
-    if kind != "application/json":
-        raise ValueError("Not a supported encrypted browser source package")
-    packet = unpack(payload)
-    if (
-        packet["client_id_self_declared"] != client_id
-        or packet["engagement_id_self_declared"] != engagement_id
-        or packet["current_original_csv_sha256"] != current_sha
-        or packet["current_original_count"] != current_count
-    ):
-        raise ValueError("Current original authorization/source differs: browser release HOLD")
+    packet=_admit_encrypted_source(current_csv,client_id,engagement_id,source)
+    vault=_vault()
     # These browser bytes are always regenerated from immutable local app source,
     # never evaluated, served, or copied from an arbitrary encrypted HTML string.
     now = _rows(current_csv)
@@ -237,13 +268,7 @@ def open_current(current_csv: str, client_id: str, engagement_id: str, *,
             "review","ticketdesk","casework")
         if view not in allowed:
             raise ValueError("Select one supported PRIVATE workspace view, not automatic execution")
-        # Verify BOTH original source-owner apps before any workspace view
-        # becomes plaintext; this is content integrity, never a release GO.
-        apps = {name: original_owner_html(name,current_csv,client_id,engagement_id)
-                for name in ORIGINAL_MODES}
-        for name,document in apps.items():
-            if hashlib.sha256(document).hexdigest() != packet["original_app_sha256"][name]:
-                raise ValueError("Original source-owner app changed: PRIVATE workspace HOLD")
+        apps=_original_workspace_apps(packet,current_csv,client_id,engagement_id)
         if view in ORIGINAL_MODES:
             document = apps[view]
         elif view == "history":

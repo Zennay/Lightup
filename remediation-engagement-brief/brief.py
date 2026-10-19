@@ -17,6 +17,7 @@ from desk import build_desk
 from history import review as history_review, markdown as history_markdown, anonymous_csv
 from history_desk import build_history_desk
 from sealed_browser import seal as seal_browser, open_current as open_sealed_browser
+from workspace_release import open_all as open_sealed_workspace
 from ticketdesk import build_ticketdesk
 from secure_export import (AccountLockedError, COLUMNS, FALSE, SEVERITIES, STATES,
                            _authorized_summary, _literal, _strict_summary,
@@ -292,7 +293,7 @@ def _preflight_file_paths(args):
         "output", "sealed_markdown", "private_html", "sealed_html",
         "capture_current", "aggregate_csv", "original_ticketdesk_html",
         "original_ticketdesk_sealed", "original_casework_html",
-        "original_casework_sealed", "workspace_sealed"
+        "original_casework_sealed", "workspace_sealed", "output_dir"
     )]
     source_paths = [path.expanduser().absolute() for path in inputs]
     target_paths = [path.expanduser().absolute() for path in outputs if path is not None]
@@ -332,6 +333,17 @@ def main(argv=None):
     release.add_argument("--ack-private-html", action="store_true")
     release.add_argument("--view", choices=("review","history","ticketdesk","casework"),
                          help="REQUIRED on encrypted multi-view workspaces; one chosen private offline view")
+    workspace_release=cmd.add_parser(
+        "open-sealed-workspace-current",
+        help="ONE fresh original account login + ONE vault password -> new private folder of original HUMAN apps"
+    )
+    for key in ("db","email","client-id","engagement-id"):
+        workspace_release.add_argument("--"+key, required=True)
+    workspace_release.add_argument("--input",required=True,type=Path)
+    workspace_release.add_argument("--output-dir",required=True,type=Path,
+                                   help="New exclusively created 0700 child under trusted owner-private directory")
+    workspace_release.add_argument("--ack-private-html",action="store_true",
+                                   help="Explicitly acknowledge releasing confidential HUMAN source into local HTML")
     for action in (capture, review, open_now):
         for key in ("db", "email", "client-id", "engagement-id"):
             action.add_argument("--" + key, required=True)
@@ -466,6 +478,15 @@ def main(argv=None):
                     raise ValueError("Aggregate output must be .csv")
                 vault._exclusive_output(target,anonymous_csv(result))
                 print("Owner-private identity-free aggregate CSV created")
+            return 0
+        if args.command == "open-sealed-workspace-current":
+            if not args.ack_private_html:
+                raise ValueError("Explicit acknowledgement for PRIVATE local HTML workstation required")
+            current=source_auth(args)
+            views=open_sealed_workspace(current,args.client_id,args.engagement_id,
+                                        source=args.input,output_dir=args.output_dir)
+            print("NEW PRIVATE original-source HUMAN workstation ready in an owner-only directory.")
+            print("Original source only: "+", ".join(views)+". No consent, scanning authority or verified fix.")
             return 0
         if args.command == "open-sealed-browser-current":
             if not args.ack_private_html:
