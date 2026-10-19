@@ -2,11 +2,11 @@
 (() => {
 "use strict";
 const $ = id => document.getElementById(id);
-const state = { snapshots:[], notes:new Map(), active:null, revision:0, importing:false };
+const state = { snapshots:[], notes:new Map(), decisions:[], active:null, revision:0, importing:false };
 const FIELDS = ['finding_id','title','severity','retest_status','remediation'];
 const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const severityRank = {critical:0,high:1,medium:2,low:3,info:4};
-const limits = {maxSnapshots:12,maxBytes:1048576,maxRows:350,maxNotes:250};
+const limits = {maxSnapshots:12,maxBytes:1048576,maxRows:350,maxNotes:250,maxDecisions:200};
 const toB64=bytes=>{let s='';for(let i=0;i<bytes.length;i+=32768)s+=String.fromCharCode(...bytes.subarray(i,i+32768));return btoa(s);};
 function message(value, error=false) { $('message').textContent=value; $('message').className=error?'error':'info'; }
 function exact(a,b) { return FIELDS.every(k=>a[k]===b[k]); }
@@ -154,6 +154,10 @@ function renderDetail() {
    '<p><b>Original HUMAN verification plan:</b> '+esc(c.verification_plan||'none')+'</p>'+
    '<p><b>Original HUMAN note:</b> '+esc(c.note||'none')+'</p>';
  }
+ const priorDecisions=state.decisions.filter(x=>x.id===id);
+ $('carryJournal').innerHTML=priorDecisions.length?'<h4>PRIVATE HUMAN carry decision history (not security approval)</h4>'+priorDecisions.map(d=>
+   '<article class="snapshot"><p><b>Human local time:</b> '+esc(d.decidedUTC)+'</p><p><b>Reason:</b> '+esc(d.reason)+'</p>'+
+   '<p>Previous original: '+esc(d.from.severity)+' / '+esc(d.from.retest_status)+' → current original at human carry: '+esc(d.to.severity)+' / '+esc(d.to.retest_status)+'</p></article>').join(''):'';
  const binding=noteBinding(id),held=binding==='stale'||binding==='missing';
  const original=n.sourceRecord;
  $('sourceChangeReview').hidden=!held;
@@ -169,7 +173,7 @@ function renderDetail() {
  $('saveHuman').disabled=held||!entry.latest;
  $('carryHuman').hidden=!held||!entry.latest;
  $('carryAckLabel').hidden=!held||!entry.latest;
- $('carryAck').checked=false;
+ $('carryAck').checked=false;$('carryReason').value='';
 }
 function render() {renderSnapshots();summary();renderGrid();renderDetail();$('forget').disabled=!state.snapshots.length;window.dispatchEvent(new Event('lightup-history-changed'));}
 function notesFromFields(){
@@ -185,10 +189,15 @@ function notesFromFields(){
 }
 function carryHuman() {
  const id=state.selected,existing=state.notes.get(id),current=latestFinding(id);
- if(!existing||!current||noteBinding(id)!=='stale'||!$('carryAck').checked)
-  throw Error('Source change needs selected current finding and explicit human review acknowledgement.');
+ const reason=$('carryReason').value.trim();
+ if(!existing||!existing.sourceRecord||!current||noteBinding(id)!=='stale'||!$('carryAck').checked||
+  reason.length<8||reason.length>800||state.decisions.length>=limits.maxDecisions)
+  throw Error('HOLD: exact prior/current source, human acknowledgment and a specific 8–800 character rationale are required.');
  if(!window.confirm('PRIVATE HUMAN REVIEW: Carry existing HUMAN notes to the CHANGED original five-field source record? This is NOT a verified fix, consent or authorization.'))return;
- const notes={...existing,sourceRecord:Object.fromEntries(FIELDS.map(k=>[k,current[k]])),caseworkOriginal:null};
+ const prior=Object.fromEntries(FIELDS.map(k=>[k,existing.sourceRecord[k]]));
+ const latest=Object.fromEntries(FIELDS.map(k=>[k,current[k]]));
+ const notes={...existing,sourceRecord:latest,caseworkOriginal:null};
+ state.decisions.push({id,from:prior,to:latest,reason,decidedUTC:new Date().toISOString()});
  state.notes.set(id,notes);state.revision++;renderGrid();renderDetail();
  message('Human note deliberately carried to the exact latest original finding after acknowledgment; no security status or source changed.');
 }
@@ -217,7 +226,7 @@ function exportCasework() {
  download('lightup-PRIVATE-original-source-casework-human-v1.json',JSON.stringify(packet,null,2),'application/json;charset=utf-8');
  message('PRIVATE native original Casework v1 HUMAN draft exported; '+status.bound+' exact-row-bound note(s) included, '+status.held+' stale held. All consent/grant/retest/scan authority claims false.');
 }
-function forget(){state.snapshots=[];state.notes.clear();state.active=null;state.selected=null;state.revision++;$('client').value='';$('engagement').value='';$('ack').checked=false;$('privateAck').checked=false;$('files').value='';$('archivePass').value='';$('archiveFile').value='';render();message('Original imported source and private HUMAN notes forgotten from app memory. Previously downloaded exports remain on your device.');}
+function forget(){state.snapshots=[];state.notes.clear();state.decisions=[];state.active=null;state.selected=null;state.revision++;$('client').value='';$('engagement').value='';$('ack').checked=false;$('privateAck').checked=false;$('files').value='';$('archivePass').value='';$('archiveFile').value='';render();message('Original imported source and private HUMAN notes forgotten from app memory. Previously downloaded exports remain on your device.');}
 $('load').addEventListener('click',()=>ingest($('files').files).catch(e=>message(e.message,true)));
 $('filter').addEventListener('input',renderGrid);
 $('kind').addEventListener('change',renderGrid);
@@ -227,6 +236,7 @@ $('carryHuman').addEventListener('click',()=>{try{carryHuman();}catch(e){message
 $('aggregate').addEventListener('click',()=>{try{exportAggregate();}catch(e){message(e.message,true);}});
 $('privateExport').addEventListener('click',()=>{try{exportPrivate();}catch(e){message(e.message,true);}});
 $('caseworkExport').addEventListener('click',()=>{try{exportCasework();}catch(e){message(e.message,true);}});
+$('decisionExport').addEventListener('click',()=>{try{window.LightUpHistory.exportHumanCarries();}catch(e){message(e.message,true);}});
 $('forget').addEventListener('click',forget);
 $('grid').addEventListener('click',event=>{const button=event.target.closest('button[data-view]');if(button){state.selected=button.dataset.view;renderDetail();$('detail').scrollIntoView({behavior:'smooth',block:'start'});}});
 $('snapshots').addEventListener('change',event=>{
@@ -240,7 +250,11 @@ $('snapshots').addEventListener('change',event=>{
 $('snapshots').addEventListener('click',event=>{
  const move=event.target.closest('button[data-move]'),remove=event.target.closest('button[data-remove]');
  if(move){const i=Number(move.dataset.move),j=i+Number(move.dataset.shift);if(j>=0&&j<state.snapshots.length){[state.snapshots[i],state.snapshots[j]]=[state.snapshots[j],state.snapshots[i]];state.revision++;render();}}
- if(remove){const i=Number(remove.dataset.remove);state.snapshots.splice(i,1);const remaining=idSet();for(const id of state.notes.keys())if(!remaining.has(id))state.notes.delete(id);state.revision++;if(!state.snapshots.length){state.active=null;state.selected=null;}render();}
+ if(remove){const i=Number(remove.dataset.remove);const target=state.snapshots[i],referenced=state.decisions.some(d=>
+  target.findings.some(f=>(exact(f,d.from)||exact(f,d.to))&&
+   !state.snapshots.some((other,j)=>j!==i&&other.findings.some(keep=>exact(keep,f)))));
+ if(referenced){message('PRIVATE HUMAN carry history references original source rows unique to this revision. Save an encrypted checkpoint or Forget all before removing it.',true);return;}
+ state.snapshots.splice(i,1);const remaining=idSet();for(const id of state.notes.keys())if(!remaining.has(id))state.notes.delete(id);state.revision++;if(!state.snapshots.length){state.active=null;state.selected=null;}render();}
 });
 /* Controlled archive bridge: no browser persistence or authority, atomic restoration only. */
 window.LightUpHistory=Object.freeze({
@@ -248,7 +262,7 @@ window.LightUpHistory=Object.freeze({
     const ctx=requireContext();protect();
     if(!state.snapshots.length)throw Error('Import original source revisions before saving.');
     if(state.snapshots.some(s=>!s.csvBase64))throw Error('Original file bytes unavailable; re-import before private checkpoint.');
-    return {revision:state.revision,context:{...ctx},snapshots:state.snapshots.map(s=>({...s})),notes:[...state.notes].map(([id,n])=>({id,...n}))};
+    return {revision:state.revision,context:{...ctx},snapshots:state.snapshots.map(s=>({...s})),notes:[...state.notes].map(([id,n])=>({id,...n})),decisions:state.decisions.map(d=>({...d,from:{...d.from},to:{...d.to}}))};
   },
   empty(){return !state.snapshots.length&&!state.notes.size;},
   restore(packet,revision){
@@ -257,6 +271,7 @@ window.LightUpHistory=Object.freeze({
     if(!packet||packet.context.client!==ctx.client||packet.context.engagement!==ctx.engagement)throw Error('The original client/engagement context must be independently reconfirmed.');
     state.snapshots=packet.snapshots;
     state.notes=new Map(packet.notes.map(n=>[n.id,{owner:n.owner,action:n.action,due:n.due,sourceRecord:n.sourceRecord?{...n.sourceRecord}:null,caseworkOriginal:n.caseworkOriginal?{...n.caseworkOriginal}:null}]));
+    state.decisions=(packet.decisions||[]).map(d=>({...d,from:{...d.from},to:{...d.to}}));
     state.active={...ctx};state.selected=null;state.revision++;render();
   },
   revision(){return state.revision;},
@@ -290,6 +305,14 @@ window.LightUpHistory=Object.freeze({
       throw Error('Original source/context changed during PRIVATE native Casework preparation.');
     state.notes=notes;state.revision++;render();
     return {imported:notes.size,original:last.findings.length};
+  },
+  exportHumanCarries(){
+    requireContext();protect();
+    if(!state.decisions.length)throw Error('No completed HUMAN source-carry decisions to hand off privately.');
+    const hdr=['original_finding_id','human_decision_utc','human_reason','from_source_severity','to_source_severity','from_source_retest','to_source_retest','changed_original_fields'];
+    const rows=state.decisions.map(d=>[d.id,d.decidedUTC,d.reason,d.from.severity,d.to.severity,d.from.retest_status,d.to.retest_status,FIELDS.filter(k=>d.from[k]!==d.to[k]).join(' | ')]);
+    download('lightup-PRIVATE-human-original-source-carry-journal.csv','\uFEFF'+[hdr,...rows].map(row=>row.map(csvCell).join(',')).join('\r\n')+'\r\n','text/csv;charset=utf-8');
+    message(state.decisions.length+' PRIVATE HUMAN source-carry decisions exported, not an authenticated approval or a security verdict.');
   },
   noteSummary(){
     return {bound:[...state.notes.keys()].filter(id=>noteBinding(id)==='bound').length,held:[...state.notes.keys()].filter(id=>noteBinding(id)!=='bound').length};
