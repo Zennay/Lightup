@@ -134,8 +134,13 @@ def seal(args,vault):
     print("No plaintext source data, original evidence file bytes or browser HTML stored.")
 
 
-def rehydrate(args,vault):
-    meta,human,indexed,_=reply._source(args,vault)
+def current_bundle(args,vault) -> tuple:
+    """Source reauthentication and native HUMAN + encrypted team admission once.
+
+    Other tools can consume the admitted HUMAN notes without any original
+    materials or replies, never as a grant, verified fix or signed source.
+    """
+    meta,human,indexed,original_key_hash=reply._source(args,vault)
     originals=team.inbox._source_rows(meta,transfer.ORIGINAL)
     original=transfer.required_private_file(args.input,".ltv",vault,vault.MAX_VAULT)
     password=vault._password("Existing PRIVATE HUMAN team bundle passphrase: ",fresh=False)
@@ -143,6 +148,11 @@ def rehydrate(args,vault):
     if mime!="application/json":
         raise ValueError("Original encrypted PRIVATE team content type invalid.")
     rows=admit(plain,meta,human,indexed)
+    return meta,human,originals,rows,(original_key_hash,transfer.digest(password))
+
+
+def rehydrate(args,vault):
+    meta,human,originals,rows,_=current_bundle(args,vault)
     summary=team.overview(originals,rows)
     print("CURRENT ORIGINAL-SOURCE BOUND PRIVATE HUMAN TEAM BUNDLE")
     print("Human receipt packets:",summary["packet_count"])
