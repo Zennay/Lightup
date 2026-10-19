@@ -24,10 +24,12 @@ import warnings
 from lightup.domain import AccountLockedError, DomainStore
 from lightup.finding_export_service import render_client_findings_csv
 from lightup.remediation_handoff_cli import _bundle_workspace, MAX_CSV_BYTES, MAX_FINDINGS
+from ticketdesk import build_ticketdesk
 
 ROOT = Path(__file__).resolve().parents[1]
 VAULT_PATH = ROOT / "remediation-ticket-vault" / "vault.py"
 KIND = "lightup.encrypted_authenticated_casework_handoff"
+TICKET_KIND = "lightup.encrypted_authenticated_ticketdesk_handoff"
 MAX_ENVELOPE = 3 * 1024 * 1024
 MAX_HTML = 2 * 1024 * 1024
 COLUMNS = ("finding_id", "title", "severity", "retest_status", "remediation")
@@ -100,13 +102,18 @@ def _literal(value: str, field: str) -> str:
     return value
 
 
-def _make_envelope(csv_text: str, client_id: str, engagement_id: str) -> bytes:
+def _make_envelope(csv_text: str, client_id: str, engagement_id: str, *, app: str = "casework") -> bytes:
     csv_sha, count = _strict_summary(csv_text)
-    html = _bundle_workspace(csv_text, root=ROOT).encode("utf-8", "strict")
+    if app not in ("casework", "ticketdesk"):
+        raise ValueError("Unknown original offline HUMAN application.")
+    if app == "ticketdesk":
+        html = build_ticketdesk(csv_text).encode("utf-8", "strict")
+    else:
+        html = _bundle_workspace(csv_text, root=ROOT).encode("utf-8", "strict")
     if not html or len(html) > MAX_HTML:
         raise ValueError("Casework HTML exceeds PRIVATE vault source size bound.")
     metadata = {
-        "kind": KIND,
+        "kind": TICKET_KIND if app == "ticketdesk" else KIND,
         "schema_version": 1,
         "disposition": "PRIVATE_HUMAN_SOURCE_SNAPSHOT",
         "client_id_self_declared": _literal(client_id, "client ID"),
@@ -140,7 +147,7 @@ def _read_envelope(payload: bytes, *, include_manifest: bool = False) -> bytes |
         "original_source_contract", "html_sha256", "html_bytes", "html_base64",
         "instructions", *FALSE
     }
-    if type(data) is not dict or set(data) != expected or data["kind"] != KIND or (
+    if type(data) is not dict or set(data) != expected or data["kind"] not in (KIND, TICKET_KIND) or (
         type(data["schema_version"]) is not int or data["schema_version"] != 1
     ) or data["disposition"] != "PRIVATE_HUMAN_SOURCE_SNAPSHOT" or any(data[k] is not False for k in FALSE):
         raise ValueError("Unsupported or authority-claiming PRIVATE Casework envelope.")
@@ -166,9 +173,15 @@ def _read_envelope(payload: bytes, *, include_manifest: bool = False) -> bytes |
     ):
         raise ValueError("Decrypted PRIVATE Casework HTML integrity HOLD.")
     html.decode("utf-8", "strict")
-    # Built from exact original Casework page; never substitute an external page.
-    if b"<html" not in html[:512].lower() or b"lightup.authenticated_findings_handoff_v1" not in html:
-        raise ValueError("Decrypted document is not an original Casework handoff.")
+    # Original source-owned app, not arbitrary executable HTML from the handoff.
+    if b"<html" not in html[:512].lower() or b"connect-src 'none'" not in html:
+        raise ValueError("Decrypted document is not an approved original offline handoff.")
+    if data["kind"] == KIND and b"lightup.authenticated_findings_handoff_v1" not in html:
+        raise ValueError("Original Casework source marker missing.")
+    if data["kind"] == TICKET_KIND and (
+        b'lightupApprovedSourceCSV' not in html or b'id="source-file"' not in html
+    ):
+        raise ValueError("Original offline Ticket Desk source marker missing.")
     return (html, data) if include_manifest else html
 
 
@@ -208,7 +221,7 @@ def _authenticated_export(args) -> bytes:
     csv_text = _authorized_summary(
         db=args.db, email=args.email, client_id=args.client_id, engagement_id=args.engagement_id
     )
-    return _make_envelope(csv_text, args.client_id, args.engagement_id)
+    return _make_envelope(csv_text, args.client_id, args.engagement_id, app=args.app)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -219,6 +232,8 @@ def main(argv: list[str] | None = None) -> int:
     seal.add_argument("--email", required=True)
     seal.add_argument("--client-id", required=True)
     seal.add_argument("--engagement-id", required=True)
+    seal.add_argument("--app", choices=("casework", "ticketdesk"), default="casework",
+                      help="Original offline Casework or full Ticket Desk, encrypted directly; no plaintext source file")
     seal.add_argument("--output", required=True, type=Path)
     op = p.add_parser("open", help="Decrypt original snapshot into a NEW private offline .html")
     op.add_argument("--input", required=True, type=Path)
@@ -286,6 +301,7 @@ def main(argv: list[str] | None = None) -> int:
             if args.operation == "inspect":
                 # No names/IDs/titles/digests/notes/paths are exposed in stdout.
                 print("Authenticated private Casework snapshot (local copy; not current consent or permission).")
+                print("Original offline app:", "Ticket Desk" if manifest["kind"] == TICKET_KIND else "Casework")
                 print("Original source findings:", manifest["original_finding_count"])
                 print("Original HTML size:", manifest["html_bytes"], "bytes")
                 print("No case/finding/owner identifiers or security verdicts disclosed.")
