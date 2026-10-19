@@ -67,5 +67,103 @@ async function load(){
  status('Imported '+outcome.imported+' HUMAN Casework records for exact current original source ('+outcome.original+' findings). Original Casework statuses and blockers are unverified human statements; no scan/retest/authorization.');
  $('nativeCaseworkFile').value='';$('replaceHumanNotes').checked=false;
 }
+/* Selective, original-source-bound HUMAN collaboration: preview first; no implicit overwrite. */
+let staged=null,stagedRevision=-1,checked=new Set();
+const safe=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const FIELDS=['owner','status','due_date','next_action','verification_plan','blocker','note','updated_utc'];
+function resetStage(){
+ staged=null;stagedRevision=-1;checked.clear();
+ $('mergeReview').hidden=true;$('mergeHumanAck').checked=false;
+ $('mergeSource').textContent='No original source-bound Casework review staged.';
+ $('mergeRows').innerHTML='';$('mergeFields').textContent='';
+ $('mergeAccept').disabled=true;
+}
+function viewReview(){
+ const review=staged&&H.reviewCasework(staged,stagedRevision);
+ if(!review){resetStage();return;}
+ $('mergeReview').hidden=false;
+ const totals=Object.fromEntries(['NEW_HUMAN_NOTES','REVIEW_CONFLICT','IDENTICAL_HUMAN_NOTES','INCOMING_EMPTY','HOLD_SOURCE_CHANGED'].map(k=>[k,review.rows.filter(x=>x.classification===k).length]));
+ $('mergeSource').textContent='Exact original canonical SHA256: '+review.sourceHash.slice(0,18)+'… · '+review.rows.length+
+  ' original source rows · '+totals.NEW_HUMAN_NOTES+' NEW HUMAN · '+totals.REVIEW_CONFLICT+' human conflicts · '+
+  totals.HOLD_SOURCE_CHANGED+' HOLD · '+totals.INCOMING_EMPTY+' blank incoming · '+totals.IDENTICAL_HUMAN_NOTES+' unchanged';
+ $('mergeRows').innerHTML=review.rows.map(row=>{
+  const allowed=['NEW_HUMAN_NOTES','REVIEW_CONFLICT'].includes(row.classification);
+  return '<tr><td><label class="check"><input type="checkbox" data-merge-id="'+safe(row.id)+'" '+(checked.has(row.id)?'checked ':'')+
+   (allowed?'':'disabled ')+'aria-label="Import HUMAN notes from original Casework for finding '+safe(row.id)+'"></label>'+
+   '<button type="button" class="link" data-inspect-id="'+safe(row.id)+'">'+safe(row.id)+'</button><small>'+safe(row.title.slice(0,110))+'</small></td>'+
+   '<td>'+safe(row.classification.replaceAll('_',' '))+'</td>'+
+   '<td>'+safe(row.changedFields.join(', ')||'None')+'</td>'+
+   '<td>'+safe((row.incoming.owner||'unassigned').slice(0,110))+'<small>'+safe(row.incoming.status)+'</small></td>'+
+   '<td>'+safe((row.current.owner||'unassigned').slice(0,110))+'<small>'+safe(row.current.status)+'</small></td></tr>';
+ }).join('');
+ $('mergeCount').textContent=checked.size+' original HUMAN records explicitly selected to import; all other existing notes retained.';
+ $('mergeAccept').disabled=!checked.size;
+ return review;
+}
+function showFields(id){
+ const row=viewReview()?.rows.find(r=>r.id===id);
+ if(!row)throw Error('No current original review row found.');
+ $('mergeFields').innerHTML='<h3>PRIVATE exact HUMAN Casework fields · '+safe(id)+'</h3><p>Source classification: '+safe(row.classification)+'; only HUMAN metadata is compared, never proof of remediation.</p>'+
+ '<div class="revisions"><article class="snapshot"><h4>Incoming original HUMAN draft</h4>'+
+  FIELDS.map(k=>'<p><b>'+safe(k)+':</b> '+safe(row.incoming[k]??'')+'</p>').join('')+'</article>'+
+  '<article class="snapshot"><h4>Existing local HUMAN draft</h4>'+
+  FIELDS.map(k=>'<p><b>'+safe(k)+':</b> '+safe(row.current[k]??'')+'</p>').join('')+'</article></div>';
+}
+async function stageReview(){
+ const file=$('nativeCaseworkFile').files[0];
+ if(!file||!file.size||file.size>MAX)throw Error('Select PRIVATE original native Casework v1 JSON of 2 MiB or less.');
+ H.privateAllowed();
+ resetStage();
+ const revision=H.revision();
+ const packet=uniqueJSON(await file.text());
+ const review=H.reviewCasework(packet,revision);
+ if(H.revision()!==revision)throw Error('Original source or HUMAN notes changed while opening PRIVATE merge review.');
+ staged=packet;stagedRevision=revision;
+ viewReview();
+ status('Original Casework preview opened locally. No notes changed; select exact incoming HUMAN rows and review conflicts before import.');
+ return review;
+}
+function selectNew(){
+ if(!staged)throw Error('Preview original Casework before selecting newly imported HUMAN notes.');
+ const review=H.reviewCasework(staged,stagedRevision);
+ checked=new Set(review.rows.filter(r=>r.classification==='NEW_HUMAN_NOTES').map(r=>r.id));
+ viewReview();
+}
+function applyReview(){
+ if(!staged||stagedRevision!==H.revision())throw Error('Original source or HUMAN notes changed. Re-preview incoming native Casework before import.');
+ H.privateAllowed();
+ if(!checked.size)throw Error('Select at least one exact original incoming HUMAN row.');
+ if(!$('mergeHumanAck').checked)throw Error('Acknowledge that replacing chosen HUMAN notes is a local private planning action, not a security decision.');
+ const review=H.reviewCasework(staged,stagedRevision);
+ const selected=review.rows.filter(r=>checked.has(r.id));
+ if(selected.length!==checked.size||selected.some(r=>!['NEW_HUMAN_NOTES','REVIEW_CONFLICT'].includes(r.classification)))
+  throw Error('Invalid or source-HOLD selection; no HUMAN notes were changed.');
+ const overwrite=selected.filter(r=>r.classification==='REVIEW_CONFLICT').length;
+ if(!window.confirm('Import '+selected.length+' exact-source HUMAN notes, replacing '+overwrite+
+   ' existing conflicting HUMAN notes? All other local notes and original findings remain unchanged. Save encrypted PRIVATE backup before merging. No grants/retests/fixes are confirmed.'))return;
+ const result=H.mergeCasework(staged,stagedRevision,[...checked]);
+ resetStage();
+ $('nativeCaseworkFile').value='';
+ status('Imported '+result.accepted+' explicitly selected exact-source HUMAN records, retained '+result.retained+
+  ' other original source rows. Save encrypted PRIVATE checkpoint/native Casework export to preserve local changes.');
+}
+$('nativePreview').addEventListener('click',()=>stageReview().catch(e=>status(e.message,true)));
+$('mergeSelectNew').addEventListener('click',()=>{try{selectNew();}catch(e){status(e.message,true);}});
+$('mergeClear').addEventListener('click',()=>{checked.clear();if(staged)viewReview();});
+$('mergeRows').addEventListener('click',event=>{
+ const b=event.target.closest('button[data-inspect-id]');
+ if(b)try{showFields(b.dataset.inspectId);}catch(e){status(e.message,true);}
+});
+$('mergeRows').addEventListener('change',event=>{
+ const b=event.target.closest('input[data-merge-id]');if(!b)return;
+ if(b.checked)checked.add(b.dataset.mergeId);else checked.delete(b.dataset.mergeId);
+ try{viewReview();}catch(e){status(e.message,true);resetStage();}
+});
+$('mergeAccept').addEventListener('click',()=>{try{applyReview();}catch(e){status(e.message,true);}});
+$('nativeCaseworkFile').addEventListener('change',resetStage);
+window.addEventListener('lightup-history-changed',()=>{
+ if(staged&&stagedRevision!==H.revision())resetStage();
+});
+
 $('nativeImport').addEventListener('click',()=>load().catch(e=>status(e.message,true)));
 })();
