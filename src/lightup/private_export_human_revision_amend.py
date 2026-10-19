@@ -18,7 +18,7 @@ from .private_export_handoff import _atomic_private_publish, _output_path
 from .private_export_human_revision_choices import MAX_CHOICES
 from .private_export_human_revision_vault import (
     DECISION_EXTENSION, MAGIC_DECISIONS, MAX_BOUND_DECISIONS,
-    BINDING_SIZE, _current_source, _read_decisions, _reconcile,
+    BINDING_SIZE, _current_source, _read_decisions, _reconcile, _require_current_original_ciphertext,
 )
 
 
@@ -116,6 +116,7 @@ def main(argv: list[str] | None = None) -> int:
             magic=MAGIC_DECISIONS, max_plaintext=MAX_BOUND_DECISIONS
         )
         del new_secret
+        _require_current_original_ciphertext(args, source_binding)
         _atomic_private_publish(destination, ciphertext)
         print("Created NEW 0600 v2 original-source-ciphertext-bound HUMAN decisions .lud.")
         print("Original encrypted decisions and sources remain untouched.")
