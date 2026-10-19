@@ -456,6 +456,8 @@ def html_page(docs: list[dict], delta: list[list[dict]], *, public: bool) -> str
 
 def generate(docs: list[dict]) -> dict[str, bytes]:
     delta = [changes(a,b) for a,b in zip(docs, docs[1:])]
+    fail(sum(len(group) for group in delta) <= 3200,
+         "large private source change series requires narrower selected snapshots")
     counts_rows: list[list[object]] = [["packet_ordinal", *COUNTS]]
     for i, doc in enumerate(docs):
         counts_rows.append([i + 1, *(doc["declared_counts"][x] for x in COUNTS)])
