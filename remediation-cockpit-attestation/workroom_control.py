@@ -69,7 +69,6 @@ def revise(original: Path, key_file: Path, output_parent: Path,
     previous = inspect(original, key_file)
     inbox.strict_private_dir(output_parent)
     require(output_parent != original and original not in output_parent.parents and
-            output_parent not in original.parents and
             output_parent not in key_file.parents)
     temporary = Path(tempfile.mkdtemp(prefix=".lightup-workroom-revise-", dir=output_parent))
     try:
