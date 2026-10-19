@@ -166,3 +166,38 @@ python3 remediation-recipient-trend/receiver_desk.py human-reopen \
 The separate receiver checks the exact private folder inventory, original valid-human reason categories, literal non-authorizing flags and count/delta/notes grammar; then **reconstructs the complete HTML and both JSON products byte-for-byte** against the native deterministic renderer and all manifest file SHA256. It does **not** need source/customer/evidence bytes or the original source-free snapshot. As with all checksum-only offline receipts, self-consistency does not establish trust in the author, real client permission, a security fix or actual original case membership.
 
 **All CLI commands intentionally return exit 2 (REVIEW_ONLY)** on an accepted local human-only operation and **3 (HOLD)** on invalid source or private output; never treat either as a security authorization, a green CI check or a verified remediation. This additional product remains **DRAFT/HOLD** until original exact-head hosted and named permanent VPS CI, original source-owner, independent privacy/security/browser review, existing #177/#182/#829, genuine separately authenticated current client/operator consent with action-time revocation where relevant, and explicit HUMAN GO.
+
+## Before opening a received editable HUMAN Studio, verify its complete local product
+
+```sh
+python3 remediation-recipient-trend/receiver_desk.py human-open-studio \
+  --folder "$HOME/lightup-private/human-studio-001"
+```
+
+This original `recipient_studio_receive.py` independently admits exactly the three trusted owner-private 0600 studio files, a canonical false-authority manifest, the expected original reason categories and literal original native human follow-up wording; it reconstructs the entire CSP-pinned HTML and source-free seed byte-for-byte from the trusted code. It does **not** prove a sender's authenticity or a customer's consent. Exit 2 means only internal local byte/render consistency, never a security PASS.
+
+## Compare TWO saved PRIVATE HUMAN journal revisions on the exact same report
+
+For a genuine PRIVATE HUMAN progress workflow (not security remediation), first make two separately published `human-publish` directories, created from *the same unchanged original compare/series source-free receipt*, but different private HUMAN stages/routes/notes. Then compare their original complete readmission, without revealing PRIVATE note bodies:
+
+```sh
+python3 remediation-recipient-trend/receiver_desk.py human-diff \
+  --before "$HOME/lightup-private/human-review-001" \
+  --after "$HOME/lightup-private/human-review-002" \
+  --output-dir "$HOME/lightup-private/human-revision-001"
+```
+
+The native `recipient_journal_history.py` first independently re-admits BOTH original HUMAN follow-up directories via the unchanged current `recipient_journal_receive.inspect`, checks that the journals have the **exact same recorded original source-free report SHA**, identical canonical reason membership, counts and original arithmetic deltas, and rejects unchanged duplicate journals. Neither original source, previous notes, customer identity nor original case records are altered.
+
+The output is an **atomic PRIVATE** 0700 folder containing `index.html` and `private-changes.csv` showing only fixed HUMAN reason codes, before/after stages and proposed routing plus a **note-changed boolean** (never note text). A matching private `summary.json`, separate `anonymous-counts.json` containing only group change totals, and canonical SHA-256 manifest complete the local dossier. This does not reconstruct which customer issues changed or whether any finding was fixed.
+
+After the original journals are no longer present, independently reopen the private comparison receipt:
+
+```sh
+python3 remediation-recipient-trend/receiver_desk.py human-reopen-diff \
+  --folder "$HOME/lightup-private/human-revision-001"
+```
+
+This can reconstruct the private HTML, CSV, JSON and anonymous counts byte-for-byte from the locally admitted changed HUMAN records, and validate the complete original owner-private file inventory. Reopening only proves self-consistent local bytes, not an authenticated source identity, reliable chronology, real assignment, scan authorization, active remediation or an approved retest.
+
+Everything above is offline, HUMAN-only and PRIVATE; do not attach downloaded notes or small-group workload exports to GitHub, Notion, CI, shared drives or public issue comments. Original-release gates remain unchanged.
