@@ -69,9 +69,15 @@ def _canonical(obj: dict) -> bytes:
                       allow_nan=False).encode("ascii")
 
 
+def _require_nofollow() -> int:
+    if not hasattr(os, "O_NOFOLLOW"):
+        raise VaultError("OS lacks required no-follow file admission; cannot safely handle PRIVATE tickets.")
+    return os.O_NOFOLLOW
+
+
 def _private_input(path: Path, limit: int) -> bytes:
     """No-follow, owner-only and regular-file admission before reading confidential bytes."""
-    flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_NONBLOCK", 0)
+    flags = os.O_RDONLY | _require_nofollow() | getattr(os, "O_NONBLOCK", 0)
     fd = os.open(path, flags)
     try:
         info = os.fstat(fd)
@@ -103,7 +109,10 @@ def _exclusive_output(path: Path, payload: bytes) -> None:
     """A new owner-private final file. No overwrite, symlink destination or partial retained output."""
     if not path.parent.is_dir():
         raise VaultError("Destination parent must exist; use a trusted private directory.")
-    flags = os.O_CREAT | os.O_EXCL | os.O_WRONLY | getattr(os, "O_NOFOLLOW", 0)
+    directory = os.lstat(path.parent)
+    if not stat.S_ISDIR(directory.st_mode) or directory.st_uid != os.getuid() or directory.st_mode & 0o077:
+        raise VaultError("Destination must be inside an owner-owned 0700 private directory, not a symlink.")
+    flags = os.O_CREAT | os.O_EXCL | os.O_WRONLY | _require_nofollow()
     fd = os.open(path, flags, 0o600)
     try:
         with os.fdopen(fd, "wb", closefd=True) as output:
