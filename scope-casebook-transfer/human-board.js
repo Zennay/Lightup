@@ -48,8 +48,13 @@
       const priority = c.attention.startsWith("HOLD_") ? 0 :
         c.attention === "RISK_DECISION_PENDING_SOURCE_REVIEW" ? 1 :
         ["EXPIRED_GRANT_SOURCE_REVIEW","FUTURE_GRANT_SOURCE_REVIEW"].includes(c.attention) ? 2 : 3;
+      const prior=snapshots.length>1 ? snapshots.at(-2).value : null;
+      const observation=prior===null ? (last===1 ? "EERSTE BRONMOMENT" : "NIEUW IN BRONREEKS") :
+        prior.attention !== c.attention || prior.next_review_action !== c.next_review_action ?
+        "BRONACTIE/AANDACHT GEWIJZIGD" : prior.status !== c.status ?
+        "BRONSTATUS GEWIJZIGD" : "GEEN LAATSTE BRONWIJZIGING";
       output.push({id,action:c.next_review_action,attention:c.attention,
-        status:c.status,transitions,grantCount:c.grant_count,priority});
+        status:c.status,transitions,grantCount:c.grant_count,priority,observation});
     }
     output.sort((a,b) => a.priority - b.priority || b.transitions - a.transitions ||
       b.grantCount - a.grantCount || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
@@ -130,15 +135,26 @@
     if(!cases.length){root.append(make("p","Geen huidige dossiers in het laatst geselecteerde Casebook-bronmoment."));}
     const counters=make("p","");
     counters.className="metrics";counters.setAttribute("aria-live","polite");root.append(counters);
+    const controls=document.createElement("div");controls.className="human-filters";
+    const search=document.createElement("input");search.type="search";search.placeholder="Zoek PRIVATE dossier-ID of oorspronkelijke bronactie";
+    search.setAttribute("aria-label","Zoek originele bronrecords");
+    const filter=select(["alle-bronrecords","bron-HOLD","bron-veranderd","HUMAN-onbehandeld"],
+      "alle-bronrecords","filter");
+    filter.setAttribute("aria-label","Filter bronwijziging en HUMAN-status");
+    controls.append(search,filter);root.append(controls);
+    const filtered=make("p","");filtered.className="muted";root.append(filtered);
     const scroll=document.createElement("div");scroll.className="human-scroll";
     const table=document.createElement("table"),thead=document.createElement("thead"),tr=document.createElement("tr");
-    for(const label of ["Origineel dossier (PRIVATE)","Bronactie (niet actueel geverifieerd)","Bronlabel","HUMAN-fase","HUMAN-route","HUMAN-blokkade"]){
+    for(const label of ["Origineel dossier (PRIVATE)","Bronactie (niet actueel geverifieerd)","Bronlabel","Laatste bronobservatie (niet geverifieerd)","HUMAN-fase","HUMAN-route","HUMAN-blokkade"]){
       tr.append(make("th",label));
     }thead.append(tr);table.append(thead);
     const tbody=document.createElement("tbody"),inputs=[];
-    rows.forEach(row => {
+    const visible=[];
+    rows.forEach((row,index) => {
       const r=document.createElement("tr");
       for(let i=0;i<3;i++){r.append(make("td",row[i]));}
+      r.append(make("td",cases[index].observation));
+      visible.push(r);
       const controls=[select(STAGES,row[3],"stage"),select(ROUTES,row[4],"route"),select(BLOCKERS,row[5],"blocker")];
       controls.forEach(el=>{const td=document.createElement("td");td.append(el);r.append(td);});
       inputs.push(controls);tbody.append(r);
@@ -155,10 +171,24 @@
       for(const values of inputs){stages[values[0].value]++;blockers[values[2].value]++;}
       counters.textContent=Object.entries(stages).map(([k,n])=>k+": "+n).join(" · ") +
         " · consent/lineage-review: " + ((blockers["needs-independent-consent"]||0)+(blockers["unresolved-tenant-lineage"]||0));
+      const term=search.value.trim().toLocaleLowerCase("nl-NL");
+      let displayed=0;
+      for (let i=0;i<rows.length;i++) {
+        const kind=filter.value,c=cases[i],r=rows[i],stage=inputs[i][0].value;
+        const hit=(!term || r.slice(0,3).some(v=>v.toLocaleLowerCase("nl-NL").includes(term))) &&
+          (kind==="alle-bronrecords" || (kind==="bron-HOLD" && c.attention.startsWith("HOLD_")) ||
+          (kind==="bron-veranderd" && c.observation!=="GEEN LAATSTE BRONWIJZIGING") ||
+          (kind==="HUMAN-onbehandeld" && stage==="unreviewed"));
+        visible[i].hidden=!hit;
+        if(hit)displayed++;
+      }
+      filtered.textContent=displayed+" / "+rows.length+
+        " actuele PRIVATE dossierregels zichtbaar; observaties zijn uitsluitend over de geselecteerde bronmomenten, niet over echte actuele toestemming.";
     };
     for(const values of inputs) for(const el of values) el.addEventListener("change",()=>{
       update();status.textContent="Niet-opgeslagen HUMAN-wijzigingen. Deze wijzigen geen bron of grant.";
     });
+    search.addEventListener("input",update);filter.addEventListener("change",update);
     update();
     save.addEventListener("click",async()=>{
       save.disabled=true;
