@@ -99,3 +99,29 @@ The browser's initial order is the file-picker order, NOT a verified time orderi
 Use **Save numbered HUMAN counts CSV** or **Save separate numeric timeline JSON** to export the selected order. The distinct JSON kind `lightup.private_human_browser_numbered_moments` with all original authority flags false is NOT a native authenticated source receipt. Closing/clearing the page discards the work in memory; the exports are explicit files under your browser's chosen download location. Distinct customers can generate exactly the same numbers and source packets can be counted repeatedly; HUMAN review is still required.
 
 The Python `session_timeline.py` above remains the stricter Linux owner-private, exclusive-publish alternative. Do not feed the exported browser timeline summary back as a native source-owner count file or a resumable browser session: these are deliberately different non-authorizing data contracts.
+
+## NEW: complete anonymous HUMAN follow-up routing desk (not a security authority)
+
+The existing portable `studio.html` now has a real **HUMAN next-action board** under Section 3, separate from all original authenticated source casework. Import up to 12 original source-free native counts, then choose one predefined HUMAN-only routing action and one local routing state per anonymous **packet ordinal**. No free-text, name, case ID, original path, source artifact, date, credential, target, scan, grant, or consent can be entered. This prevents the local workload board from silently becoming a substitute for original evidence or client authorization.
+
+Supported next actions: none; request a new authenticated original source count export; discuss unanswered HUMAN questions; clarify original HUMAN assignment; reconcile possible anonymous coverage overlap; request genuine original HUMAN desk review. Local states: not triaged; needs HUMAN follow-up; waiting original source owner; locally discussed **not a verified fix**.
+
+The operator can filter rows by their local routing state, view live counts, reset choices after HUMAN confirmation, and explicitly export **one private follow-up JSON, anonymous routing CSV, or human-readable next-actions brief**. The board is kept in memory only and never updates original casework. Restoring a previous board accepts only the exact native v1 board format with 12 literally false authority fields and the **complete current numeric packet selection in the same local order**; invalid or nonmatching files leave all existing choices unchanged. Equal anonymous numbers are not unique original case fingerprints.
+
+Pair the downloaded browser follow-up board JSON with the **matching separately downloaded resumable browser numeric session JSON**, created from the same in-memory selection before reordering or removing packets. Both contain unencrypted source-free small-cell counts; keep both in an owner-private folder and do not forward without human disclosure approval.
+
+### Linux PRIVATE offline action report, directly or inside session handoff
+
+An independent production CLI publishes a complete scriptless private HUMAN follow-up desk:
+
+    python3 remediation-portfolio/action_board.py --session /home/operator/private-lightup/lightup-private-human-browser-session.json --board /home/operator/private-lightup/lightup-private-human-followup-board.json --output-dir /home/operator/private-lightup/new-human-action-desk
+
+This validates BOTH original on-disk files under the repository's owner-private 0700/0600 file access, exact v1 kinds/false flags and bounded numeric packet/plan contract, then matches the entire ordinal packet shape before **any** report is published. The all-or-nothing result is a fresh 0700 owner-private directory containing 0600 `index.html`, `summary.json`, `human-followup.csv`, `human-followup.txt`. HTML is offline scriptless CSP. Source-free local HUMAN routing states are not original source-owner task state, legal consent, verified remediation or validated evidence.
+
+To generate **one joined numeric session + HUMAN routing private package** (instead of separate dirs), the existing CLI now accepts optional `--board`:
+
+    python3 remediation-portfolio/session.py --session /home/operator/private-lightup/lightup-private-human-browser-session.json --board /home/operator/private-lightup/lightup-private-human-followup-board.json --output-dir /home/operator/private-lightup/new-joined-human-handoff
+
+This produces the existing private numeric `index.html`, `summary.json`, `continuity.csv`, `human-followup.txt` PLUS `human-actions.html`, `human-actions.json`, `human-actions.csv`, and `human-actions-followup.txt` in the **same atomic exclusive private folder**. The numeric entry page links to the paired HUMAN action desk. If the board is missing or does not match exactly, no joined result is published. Omit `--board` to retain the existing standalone numeric session behavior.
+
+Neither standalone route contacts any network, opens any real target, edits original source evidence, verifies client/operator consent or performs an action. Current independent original owner/CI/security/privacy/browser/HUMAN GO release gates remain in force; DRAFT/HOLD is never changed by a local follow-up status.
