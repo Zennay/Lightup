@@ -13,6 +13,10 @@
 
 **Use the packaged ZIP rather than saving the launcher HTML alone:** it contains the four original source-owned HUMAN applications, the seven-app encrypted Handoff Vault composition, and the full cross-app coordination desk. For a checkout, open the launcher at `remediation-operations/index.html` directly; same relative links.
 
+## NEW: original-source HUMAN change-window / scheduling board
+
+The unchanged source-owned [Change Window &amp; Handoff Board PR #1631](https://github.com/Zennay/Lightup/pull/1631) at exact `b7291f4cf560638509cac414207a5e126b4f07de` is physically integrated as `remediation-change-windows/`. Open [offline fully self-contained standalone board](../remediation-change-windows/standalone.html). It plans up to four HUMAN tentative UTC change discussion windows, supports original-source revision changes, exact-source evidence/Casework binding, owner-specific human follow-ups, confidential private planning JSON/Markdown, identity-free tentative .ics and aggregate-only CSV. All outputs are unverified human coordination only, never authorized deployment/scan/retest. Only the original standalone is linked for full portability; its multi-source developer index may depend on another original-owned sibling.
+
 ## NEW: source-pinned seven-app vault and local encrypted HUMAN transfer
 
 The original independently owned [Remediation Handoff Vault PR #1640](https://github.com/Zennay/Lightup/pull/1640) at exact `1a1ec2b95db5fdb15716e5c7dde21d22322bbb54` is physically bundled **unchanged** in `remediation-vault/`. Open [seven-app starter](../remediation-vault/START-HERE.html) or the [PRIVATE encrypted vault](../remediation-vault/standalone.html) directly. Existing original Casework Calendar, Evidence Review, Owner Reply, Dependency, Capacity and Funding standalone partner apps remain unchanged and are not merged into proprietary schemas. Original #1640 has its own encrypted PRIVATE selection, recipient handoff, ciphertext receipts and offline revision comparison; labels/hashes never authenticate source, client/operator consent, security findings, fixes or authorization. Its original separate portable ZIP is retained inside this complete combined bundle for exact original reference.
@@ -43,7 +47,7 @@ The included [PRIVATE Source Change Review](compare.html) accepts two local `rem
 
 ## Content and integration contract
 
-This branch *copies unchanged* five separately owned PR source directories from **the exact pinned PR heads** below (four HUMAN evidence apps plus the seven-app Vault), then adds only `remediation-operations/` integration/packaging code. No edits to original-owner branches, runtimes, authentication, scanners, CI configurations or QA suites.
+This branch *copies unchanged* six separately owned PR source directories from **the exact pinned PR heads** below (four HUMAN evidence apps plus the seven-app Vault), then adds only `remediation-operations/` integration/packaging code. No edits to original-owner branches, runtimes, authentication, scanners, CI configurations or QA suites.
 
 | Original PR | Original head at integration | Preserved source path |
 | --- | --- | --- |
@@ -52,6 +56,7 @@ This branch *copies unchanged* five separately owned PR source directories from 
 | [#1644](https://github.com/Zennay/Lightup/pull/1644) | `933a0a4e278c957bbeaa564c3effcab6d1ae8a31` | `remediation-handoff-inbox/` |
 | [#1645](https://github.com/Zennay/Lightup/pull/1645) | `f08fb96f7094d021493a39aa5d1a3eed025509f3` | `remediation-human-runbooks/` |
 | [#1640](https://github.com/Zennay/Lightup/pull/1640) | `1a1ec2b95db5fdb15716e5c7dde21d22322bbb54` | `remediation-vault/` |
+| [#1631](https://github.com/Zennay/Lightup/pull/1631) | `b7291f4cf560638509cac414207a5e126b4f07de` | `remediation-change-windows/` |
 
 The original product paths remain individual sources of truth. Changes upstream require intentional source-owner review and a new pinned integration revision; copying files does not transfer source ownership. The **`MANIFEST.json`** enumerates each packaged file and SHA-256 digest, exact pinned upstream heads, and non-authorizing release status. SHA-256 is an integrity fingerprint, not authenticated provenance, consent, attestation or approval.
 

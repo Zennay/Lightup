@@ -24,6 +24,7 @@ APPLICATIONS = (
     "remediation-handoff-inbox",
     "remediation-human-runbooks",
     "remediation-vault",
+    "remediation-change-windows",
 )
 INTEGRATION = "remediation-operations"
 SOURCE_PR_HEADS = {
@@ -32,6 +33,7 @@ SOURCE_PR_HEADS = {
     "1644": "933a0a4e278c957bbeaa564c3effcab6d1ae8a31",
     "1645": "f08fb96f7094d021493a39aa5d1a3eed025509f3",
     "1640": "1a1ec2b95db5fdb15716e5c7dde21d22322bbb54",
+    "1631": "b7291f4cf560638509cac414207a5e126b4f07de",
 }
 PERMITTED_EXTENSIONS = {".html", ".js", ".css", ".py", ".md", ".json", ".zip"}
 MAX_FILE_BYTES = 8 * 1024 * 1024

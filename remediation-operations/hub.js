@@ -17,7 +17,8 @@ const SOURCE_HEADS=Object.freeze({
   "1643":"58ad10f0b8cfb949287d4751b782221fc4ff9948",
   "1644":"933a0a4e278c957bbeaa564c3effcab6d1ae8a31",
   "1645":"f08fb96f7094d021493a39aa5d1a3eed025509f3",
-  "1640":"1a1ec2b95db5fdb15716e5c7dde21d22322bbb54"
+  "1640":"1a1ec2b95db5fdb15716e5c7dde21d22322bbb54",
+  "1631":"b7291f4cf560638509cac414207a5e126b4f07de"
 });
 const VERSION=1;
 let state=STAGES.map(([id])=>({id,status:"not-started",note:""}));

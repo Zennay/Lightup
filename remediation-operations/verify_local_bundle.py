@@ -21,9 +21,9 @@ MAX_MANIFEST = 2 * 1024 * 1024
 APP_DIRECTORIES = {
     "remediation-artifact-ledger", "remediation-response-reconciliation",
     "remediation-handoff-inbox", "remediation-human-runbooks", "remediation-operations",
-    "remediation-vault",
+    "remediation-vault", "remediation-change-windows",
 }
-REQUIRED_HEADS = {"1642", "1643", "1644", "1645", "1640"}
+REQUIRED_HEADS = {"1642", "1643", "1644", "1645", "1640", "1631"}
 FALSE_FLAGS = (
     "authentication", "client_consent", "operator_consent", "active_execution",
     "security_fix_verified", "production_release_approved",
