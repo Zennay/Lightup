@@ -30,7 +30,7 @@ async function save(){
  const p=H.capture(),password=$('archivePass').value;
  const payload={kind:'lightup.private_human_source_history',version:1,disposition:'UNVERIFIED_LOCAL_HUMAN_PLANNING',
   ...Object.fromEntries(FLAGS.map(x=>[x,false])),context:p.context,
-  snapshots:p.snapshots.map(x=>({name:x.name,label:x.label,sourceHash:x.sourceHash,fileHash:x.fileHash,findings:x.findings,csvBase64:x.csvBase64})),
+  snapshots:p.snapshots.map(x=>({name:x.name,label:x.label,sourceHash:x.sourceHash,fileHash:x.fileHash,csvBase64:x.csvBase64})),
   notes:p.notes};
  const salt=crypto.getRandomValues(new Uint8Array(16)),iv=crypto.getRandomValues(new Uint8Array(12));
  const k=await key(password,salt);
@@ -73,15 +73,15 @@ async function open(){
    throw Error('Authenticated archive content has invalid original source/context/non-authority contract.');
  const restored=[],seen=new Set();
  for(const s of packet.snapshots){
-  if(!shape(s,['name','label','sourceHash','fileHash','findings','csvBase64'])||
+  if(!shape(s,['name','label','sourceHash','fileHash','csvBase64'])||
    typeof s.name!=='string'||s.name.length>160||typeof s.label!=='string'||!s.label.trim()||s.label.length>100||
    typeof s.sourceHash!=='string'||!/^[a-f0-9]{64}$/.test(s.sourceHash)||
    typeof s.fileHash!=='string'||!/^[a-f0-9]{64}$/.test(s.fileHash)||
-   !Array.isArray(s.findings)||s.findings.length>H.limits.maxRows)throw Error('Unsupported historical source record.');
+   typeof s.csvBase64!=='string')throw Error('Unsupported historical source record.');
   const originalBytes=decode64(s.csvBase64,H.limits.maxBytes);
   const source=new TextDecoder('utf-8',{fatal:true}).decode(originalBytes);
   const parsed=LightUpCasework.parseCSV(source),sourceDigest=await LightUpCasework.digest(parsed);
-  if(JSON.stringify(parsed)!==JSON.stringify(s.findings)||sourceDigest!==s.sourceHash||
+  if(sourceDigest!==s.sourceHash||
    await hex(originalBytes)!==s.fileHash||seen.has(s.sourceHash))throw Error('Original file bytes or canonical findings mismatch; archive remains unopened.');
   seen.add(s.sourceHash);restored.push({...s,findings:parsed});
  }
