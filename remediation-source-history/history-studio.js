@@ -423,8 +423,10 @@ window.LightUpHistory=Object.freeze({
     const latest=state.snapshots.at(-1);if(!latest)throw Error('Import original source before creating a Casework handoff.');
     const cases=latest.findings.map(f=>{
       const n=boundNote(f.finding_id),row=n?.caseworkOriginal?{...n.caseworkOriginal}:LightUpCasework.newCase(f);
+      // An original source "fixed" label is not HUMAN completion. No source row
+      // may silently acquire a completed Casework status during first export.
       return {...row,status:n?.caseworkOriginal?row.status:(n?'planned':'unassigned'),
-       owner:n?.owner||'',next_action:n?.action||'',due_date:n?.due||null};
+       owner:n?.owner??'',next_action:n?.action??'',due_date:n?.due||null};
     });
     return LightUpCasework.makePacket(latest.findings,cases,latest.sourceHash);
   },
