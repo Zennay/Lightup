@@ -390,6 +390,26 @@ def table(headers: list[str], rows: list[list[object]]) -> str:
     return "<div class=\"scroll\"><table><thead><tr>" + head + "</tr></thead><tbody>" + body + "</tbody></table></div>"
 
 
+def source_order_flags(docs: list[dict]) -> list[dict]:
+    """Only compare unsigned source-stated instants; never attest chronology."""
+    result: list[dict] = []
+    for earlier, later in zip(range(len(docs) - 1), range(1, len(docs))):
+        first = timestamp(docs[earlier]["as_of"])
+        second = timestamp(docs[later]["as_of"])
+        if second < first:
+            label = "HOLD_DECREASED_SOURCE_TIMESTAMP"
+        elif second == first:
+            label = "HOLD_REPEATED_SOURCE_TIMESTAMP"
+        else:
+            label = "INCREASING_DECLARED_ONLY_UNVERIFIED"
+        result.append({
+            "earlier_ordinal": earlier + 1,
+            "later_ordinal": later + 1,
+            "source_chronology_observation": label,
+        })
+    return result
+
+
 def html_page(docs: list[dict], delta: list[list[dict]], *, public: bool) -> str:
     counters = ["Packet ordinal", *COUNTS]
     values = [[i+1, *(doc["declared_counts"][name] for name in COUNTS)]
@@ -411,6 +431,14 @@ def html_page(docs: list[dict], delta: list[list[dict]], *, public: bool) -> str
                "These can refer to overlapping records, and changed coverage can explain deltas. "
                "The graph is not a measured security-risk trend.</p>",
                "<h2>Anonymous source record count series</h2>", table(counters, values)]
+    order = source_order_flags(docs)
+    summary.append("<h2>Original source-declared chronology observations (NOT VERIFIED)</h2>")
+    summary.append("<p>Packet order is entirely selected by the reviewer. A source timestamp "
+                   "moving backward/repeating is a HUMAN HOLD for discussion; increasing "
+                   "timestamps are never signed evidence of chronology or consent.</p>")
+    summary.append(table(["Earlier ordinal", "Later ordinal", "Source chronology claim"],
+                         [[row["earlier_ordinal"], row["later_ordinal"],
+                           row["source_chronology_observation"]] for row in order]))
     if public:
         summary.append('<nav aria-label="Anonymous local exports">'
                        '<p><a href="anonymous-counts.csv">Open counts CSV</a> · '
@@ -527,6 +555,10 @@ def generate(docs: list[dict]) -> dict[str, bytes]:
         "operator_consent_verified": False, "authorization_granted": False,
         "execution_allowed": False, "release_approved": False,
     }
+    chronology_rows = [["earlier_ordinal", "later_ordinal", "source_chronology_observation"]]
+    chronology_rows.extend([[entry["earlier_ordinal"], entry["later_ordinal"],
+                             entry["source_chronology_observation"]]
+                            for entry in source_order_flags(docs)])
     private_rows = [["later_ordinal", "family", "source_declaration", "source_record_id",
                      "changed_source_fields"]]
     for i, group in enumerate(delta):
@@ -568,6 +600,7 @@ def generate(docs: list[dict]) -> dict[str, bytes]:
         "anonymous.html": html_page(docs,delta,public=True).encode("utf-8"),
         "anonymous-counts.json": (json.dumps(aggregate, indent=2,sort_keys=True)+"\n").encode(),
         "anonymous-counts.csv": csv_text(counts_rows).encode(),
+        "anonymous-source-order.csv": csv_text(chronology_rows).encode(),
         "private-source-changes.csv": csv_text(private_rows).encode(),
         "human-followup.txt": "\n".join(human).encode(),
     }
