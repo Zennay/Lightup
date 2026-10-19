@@ -291,6 +291,66 @@ window.LightUpHistory=Object.freeze({
   revision(){return state.revision;},
   view(){return state.snapshots.map(x=>({label:x.label,sourceHash:x.sourceHash,fileHash:x.fileHash,findings:x.findings.map(y=>({...y}))}));},
   privateAllowed(){requireContext();protect();return true;},
+  reviewCasework(packet,expectedRevision){
+    const ctx=requireContext();protect();
+    if(state.importing||expectedRevision!==state.revision)
+      throw Error('HOLD: source or private HUMAN notes changed. Reopen the original Casework review.');
+    const latest=state.snapshots.at(-1);
+    if(!latest)throw Error('Load original source CSV before reviewing private original Casework.');
+    const loaded=LightUpCasework.loadPacket(packet);
+    if(loaded.source_sha256!==latest.sourceHash||loaded.findings.length!==latest.findings.length)
+      throw Error('HOLD: incoming original Casework canonical source SHA256 or row count does not match the latest source.');
+    const actual=new Map(loaded.findings.map(f=>[f.finding_id,f]));
+    for(const f of latest.findings)
+      if(!actual.has(f.finding_id)||!exact(f,actual.get(f.finding_id)))
+        throw Error('HOLD: original five-field finding values disagree with the latest local source.');
+    const records=new Map(loaded.cases.map(c=>[c.finding_id,c]));
+    const keys=['owner','status','due_date','next_action','verification_plan','blocker','note','updated_utc'];
+    const rows=latest.findings.map(f=>{
+      const incoming=records.get(f.finding_id),base=LightUpCasework.newCase(f);
+      if(!incoming)throw Error('HOLD: incomplete original native Casework entries.');
+      const incomingHasValues=keys.some(k=>incoming[k]!==base[k]);
+      const local=state.notes.get(f.finding_id),binding=noteBinding(f.finding_id);
+      const current=local?.caseworkOriginal||{
+        ...base,owner:local?.owner||'',next_action:local?.action||'',due_date:local?.due||null,
+        status:local?'planned':'unassigned'
+      };
+      const differences=keys.filter(k=>incoming[k]!==current[k]);
+      const classification=binding==='stale'||binding==='missing'?'HOLD_SOURCE_CHANGED':
+        !incomingHasValues?'INCOMING_EMPTY':
+        !local?'NEW_HUMAN_NOTES':
+        !differences.length?'IDENTICAL_HUMAN_NOTES':'REVIEW_CONFLICT';
+      return {id:f.finding_id,title:f.title,severity:f.severity,sourceRetest:f.retest_status,
+        classification,localBinding:binding,changedFields:differences,
+        incoming:{...incoming},current:{...current}};
+    });
+    if(state.revision!==expectedRevision||context().client!==ctx.client||context().engagement!==ctx.engagement)
+      throw Error('HOLD: client/engagement or HUMAN source revision changed during review.');
+    return {sourceHash:latest.sourceHash,revision:state.revision,rows};
+  },
+  mergeCasework(packet,expectedRevision,selectedIds){
+    const ctx=requireContext();protect();
+    if(!Array.isArray(selectedIds)||!selectedIds.length||selectedIds.length>350||
+      new Set(selectedIds).size!==selectedIds.length||selectedIds.some(id=>typeof id!=='string'))
+      throw Error('Select 1–350 distinct original HUMAN Casework records.');
+    const review=this.reviewCasework(packet,expectedRevision);
+    const byId=new Map(review.rows.map(r=>[r.id,r]));
+    const proposed=new Map(state.notes);
+    const latest=new Map(state.snapshots.at(-1).findings.map(f=>[f.finding_id,f]));
+    for(const id of selectedIds){
+      const row=byId.get(id),f=latest.get(id);
+      if(!row||!f||!['NEW_HUMAN_NOTES','REVIEW_CONFLICT'].includes(row.classification))
+        throw Error('HOLD: selected original finding has no imported HUMAN notes or has a stale/mismatched source.');
+      const c=LightUpCasework.cleanCase(row.incoming,new Set([id]));
+      proposed.set(id,{owner:c.owner,action:c.next_action,due:c.due_date||'',
+        sourceRecord:Object.fromEntries(FIELDS.map(k=>[k,f[k]])),caseworkOriginal:c});
+    }
+    if(proposed.size>limits.maxNotes||state.importing||state.revision!==expectedRevision||
+       context().client!==ctx.client||context().engagement!==ctx.engagement)
+      throw Error('HOLD: private note limit or original source/context changed. Entire merge rejected.');
+    state.notes=proposed;state.revision++;render();
+    return {accepted:selectedIds.length,retained:review.rows.length-selectedIds.length};
+  },
   importCasework(packet,sourceRevision,replaceNotes){
     const ctx=requireContext();protect();
     if(state.importing||state.revision!==sourceRevision)throw Error('Current source changed while reading original Casework. No changes committed.');
