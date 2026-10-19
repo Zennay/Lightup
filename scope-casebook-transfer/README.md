@@ -13,6 +13,18 @@ Open [standalone.html](standalone.html) **locally in a current secure-context br
 5. Only after manual confirmation, use the per-record **Exporteer exacte bytes** buttons to recover the original selected bytes as downloads. Reopen those files using the **original trusted Casebook/history validators**. This tool never issues a grant or modifies the LightUp database. Its digest is an internal transport continuity check, **not source authentication**.
 6. For a second approved HUMAN recipient, enter a different local password under **Beveiligde dooroverdracht** after loading or restoring a workset. The app performs a fresh AES-GCM encryption **directly from the in-memory original bytes**, with a new salt and nonce, downloading a new encrypted file **without producing extra plaintext exports**. The previous encrypted file and the original source files are not overwritten. Human review of the new recipient and channel remains necessary.
 
+## Integrated source-bound HUMAN follow-up desk
+
+The same offline transport now includes a fourth panel, **Huidige HUMAN dossiers**, automatically populated from the **last selected original Casebook**. It presents the original source-declared engagement ID, original next review action and attention category alongside three editable **HUMAN-only** fields: stage, follow-up route and blocker. Filtering/selection is local and never authorizes execution.
+
+- All current cases are constructed in the **original source `scope-casebook-history/history.py::case_queue` ordering**: HOLD/pending/window source attention categories, recorded attention changes across selected snapshots, declared grant count and stable original engagement ID. No original source owner code is changed, and the sorting is **not a verified risk priority**.
+- If the operator supplies an original `workroom-current-template.csv` from the same source history, the transfer now admits it **against the exact last source**. Its six original columns, complete original current case set, row ordering, recorded original actions/attention and all three HUMAN enum values must match pinned `workroom.js` contract. An older source snapshot's CSV, a different client's snapshot, wrong row order, removed/additional case, edited source label or unknown HUMAN state causes a **whole-batch HOLD before encrypt or workset replacement**.
+- If no HUMAN CSV was supplied, the app shows a new **local HUMAN draft** with default labels; it does **not** pretend this was produced, verified or signed by the original Casebook. Once the operator explicitly chooses **Sla HUMAN-opvolging lokaal ... op**, the app prepares the current exact source-bound `workroom-current-template.csv`, hashes it and stages it atomically *only in its private in-memory workset*. It never edits the original Casebook JSON.
+- When an operator edits a previously selected HUMAN CSV, only that CSV is replaced; the original source bytes are copied before old in-memory references are released. The package/download/rekey controls can then transfer the updated PRIVATE bytes under fresh authenticated encryption. Explicit plaintext recovery remains manual and separate.
+- Reopened encrypted packets must pass exact SHA-256 transport admission **and** the current HUMAN-to-source binding before the user is asked to replace their workset. Failed binding leaves the previously loaded source and HUMAN state untouched. Existing original original Casebook production parser remains authoritative for real source integrity.
+
+The module is contained in [human-board.js](human-board.js); the deterministic portable `standalone.html` now bundles and independently CSP-hash-pins both product scripts plus CSS. It uses no external data, cookies, localStorage, scans, approvals, revocation APIs or network calls. Original IDs and labels may be PRIVATE and are shown only inside the private local page.
+
 ## Design boundary
 
 - Offline WebCrypto `PBKDF2-SHA256` with 310,000 iterations, cryptographically random 16-byte salt, `AES-256-GCM` with a fresh 12-byte nonce for every export. Nonces and salt are chosen by the browser CSPRNG; original files are encrypted **without any lossy text decoding**.
@@ -25,7 +37,7 @@ Open [standalone.html](standalone.html) **locally in a current secure-context br
 
 ## Source / build
 
-Edit `transfer.html`, `transfer.css` and `transfer.js` in this directory only. To regenerate the deterministic one-file artifact with CSS/JS CSP hashes (production packaging, **not QA or tests**):
+Edit `transfer.html`, `transfer.css`, `human-board.js` and `transfer.js` in this directory only. To regenerate the deterministic one-file artifact with CSS/JS CSP hashes (production packaging, **not QA or tests**):
 
 ```bash
 python3 scope-casebook-transfer/build_standalone.py
