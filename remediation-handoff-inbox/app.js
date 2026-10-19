@@ -325,6 +325,14 @@ function visibleFindingRows(){
   if(mode==="overdue"&&!r.signals.includes("Tentative Casework date passed"))return false;
   if(mode==="conflict"&&!r.signals.some(x=>x.startsWith("HUMAN status disagreement")))return false;
   return true;
+ }).sort((a,b)=>{
+  const level=["critical","high","medium","low","info"];
+  const score=r=>r.sourceFinding?level.indexOf(r.sourceFinding.severity):5;
+  const delta=score(a)-score(b);
+  if(delta)return delta;
+  const blocked=(b.casework?.status==="blocked"?1:0)-(a.casework?.status==="blocked"?1:0);
+  if(blocked)return blocked;
+  return a.id.localeCompare(b.id);
  });
 }
 function detailsBlock(title,items){
@@ -558,7 +566,7 @@ $("load").addEventListener("click",async()=>{
  const rev=++version,ledgerInput=$("ledger").files[0],registerInput=$("register").files[0];info("Reading both PRIVATE snapshots locally…");
  try{const [l,r]=await Promise.all([openFile("ledger"),openFile("register")]);
   if(version!==rev||$("ledger").files[0]!==ledgerInput||$("register").files[0]!==registerInput)fail("workspace or selected original files changed during load");
-  const next=combine(l,r);current=next;selected.clear();selectedFindings.clear();$("search").value="";$("filter").value="all";draw();
+  const next=combine(l,r);current=next;selected.clear();selectedFindings.clear();$("sourceCsv").value="";$("sourceNotice").textContent="No original five-column CSV locally matched."; $("search").value="";$("filter").value="all";draw();
   info("Matched and admitted original HUMAN requests and replies within the same DECLARED source. This does not authenticate source, author or permission.");
  }catch(e){info(e.message||String(e),true);}
 });
@@ -577,9 +585,9 @@ $("loadEvidenceOnly").addEventListener("click",async()=>{
  try{
   const l=await openFile("ledger");
   if(version!==rev||$("ledger").files[0]!==ledgerInput)fail("original PRIVATE evidence input changed during reading");
-  const next=evidenceOnly(l);current=next;selected.clear();selectedFindings.clear();
+  const next=evidenceOnly(l);current=next;selected.clear();selectedFindings.clear();$("sourceCsv").value="";$("sourceNotice").textContent="No original five-column CSV locally matched.";
   $("search").value="";$("filter").value="all";$("findingSearch").value="";$("findingFilter").value="all";draw();
-  info("Original-source-declared HUMAN finding coverage opened WITHOUT a response register. No original request created, consent verified or target contacted.");
+  info(next.findingRows.length?"Original-source-declared HUMAN coverage opened WITHOUT a response register. No original request or authorization created.":"Original ledger loaded without complete native HUMAN source records. To enumerate all findings, attach the original five-column CSV and match its exact content SHA; no fake coverage inferred.");
  }catch(e){info(e.message||String(e),true);}
 });
 $("forget").addEventListener("click",()=>{
