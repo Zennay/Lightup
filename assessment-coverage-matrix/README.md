@@ -1,3 +1,15 @@
+## Endpoint declaration distribution — added 19 October 2026
+
+The browser now shows a standalone **source-reported endpoint-appearance table** for the original 1–16 literal target declarations, aligned to **the first operator-selected original file's target order**. Additional original source files may list the exact same targets in different order; counts remain aligned by *exact target literal*, never positional guessing or DNS. An explicit **unmatched original finding target** slot is included. Selecting any endpoint ordinal or unmatched slot filters the private main matrix without contacting a target.
+
+The HUMAN attention board detects **per-literal-check endpoint distribution movement even when the total original check finding count is unchanged**. It also retains warnings for changed source count, declared severity and unmatched reported targets. This is a non-authorizing declaration-diff, not proof of a new vulnerability, fixed problem, target ownership, completeness or risk reduction. Source-declared zero remains **unknown**, not clean.
+
+The explicit anonymous JSON counts export now additionally includes `source_reported_endpoint_appearances`: numeric vectors in original local source-file order, with the final ordinal representing unmatched source target strings. No target names, raw URLs, evidence, original scenario IDs, run IDs, check/capability labels or source file names are exported. **Small-cell counts and source-slot occurrence patterns may still reveal sensitive correlations. Keep exports private.** CSV keeps numeric literal check-group appearance totals without endpoint names.
+
+This addition changes only the separately owned `assessment-coverage-matrix/` browser UI, JS, generated CSP-pinned HTML and this operator README. It does not run any scan, perform DNS resolution, contact client targets, modify original source-owner or add QA/tests/CI changes. Original project posture and independent release gates remain **DRAFT/HOLD**.
+
+---
+
 ## PRIVATE HUMAN workroom and exact-source continuity (19 October 2026)
 
 The same offline [standalone.html](standalone.html) now includes a **real human triage workroom**, not just a check-count table.
