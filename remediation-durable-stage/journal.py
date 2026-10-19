@@ -353,6 +353,8 @@ def main(argv=None) -> int:
             p.add_argument("--" + name, type=Path, required=True)
         if action in ("stage", "report", "review-html", "inbox-html"):
             p.add_argument("--output", type=Path, required=True)
+        if action == "carry-closed":
+            p.add_argument("--source-ordinal", type=int, default=None)
         p.add_argument("--ack-private-material", action="store_true")
     args = parser.parse_args(argv)
     try:

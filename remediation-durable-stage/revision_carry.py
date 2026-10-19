@@ -70,7 +70,7 @@ def carry(args, folder, vault, current_packet, current_key,
           re_admit_original) -> None:
     indexed = history._load(folder, current_packet, vault, private_file)
     available = []
-    for key in indexed["sources"]:
+    for original_ordinal, key in enumerate(indexed["sources"], 1):
         if key == current_key:
             continue
         source_path = folder / (key + ".json")
@@ -78,18 +78,29 @@ def carry(args, folder, vault, current_packet, current_key,
             raise ValueError("Registered historical HUMAN journal is missing.")
         old = read_journal(folder, key, vault)
         if old["cycles"] and old["cycles"][-1]["state"] in ("pending", "staged"):
-            available.append((key, old))
+            available.append((original_ordinal, key, old))
     if not available:
         raise ValueError("No earlier registered HUMAN source handoff awaiting closeout.")
     print("Historical original HUMAN source handoffs awaiting human review:")
-    for ordinal, (_, old) in enumerate(available, 1):
+    for ordinal, (_, _, old) in enumerate(available, 1):
         item = old["cycles"][-1]
         print(ordinal, "·", item["state"], "· original native request count:",
               len(item["requests"]))
-    choice = input("Choose one earlier source ordinal for HUMAN closure (empty HOLD): ").strip()
-    if not choice.isascii() or not choice.isdecimal() or not 1 <= int(choice) <= len(available):
-        raise ValueError("Choose exactly one earlier HUMAN source.")
-    key, old = available[int(choice)-1]
+    selected_source = getattr(args, "source_ordinal", None)
+    if selected_source is not None:
+        matches = [(key, old) for source_ordinal, key, old in available
+                   if source_ordinal == selected_source]
+        if len(matches) != 1:
+            raise ValueError("Selected originally indexed source is not awaiting HUMAN review.")
+        if input('Type "SELECT REGISTERED HUMAN SOURCE" to inspect that source: ') != (
+                "SELECT REGISTERED HUMAN SOURCE"):
+            raise ValueError("Explicit source selection confirmation required.")
+        key, old = matches[0]
+    else:
+        choice = input("Choose one earlier source ordinal for HUMAN closure (empty HOLD): ").strip()
+        if not choice.isascii() or not choice.isdecimal() or not 1 <= int(choice) <= len(available):
+            raise ValueError("Choose exactly one earlier HUMAN source.")
+        _, key, old = available[int(choice)-1]
     entry = old["cycles"][-1]
     destination = Path(entry["output"])
     bridge.source._hold_if_not_private_directory(destination.parent)
