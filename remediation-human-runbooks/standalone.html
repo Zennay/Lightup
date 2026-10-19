@@ -1,0 +1,273 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'nonce-lightup-runbook-local-20261019'; style-src 'nonce-lightup-runbook-local-20261019'; connect-src 'none'; img-src 'none'; object-src 'none'; frame-src 'none'; form-action 'none'; base-uri 'none'">
+<title>LightUp — PRIVATE HUMAN Remediation Runbook</title>
+<style nonce="lightup-runbook-local-20261019">
+:root{font-family:system-ui,-apple-system,sans-serif;color:#162c41;background:#f3f6fa}
+*{box-sizing:border-box}body{margin:0}header{background:#11283d;color:#fff;padding:1.5rem max(1rem,calc((100vw - 1120px)/2))}
+header p{color:#bfcfdc}main{max-width:1120px;margin:auto;padding:1.2rem;display:grid;gap:1.1rem}
+section{background:white;border:1px solid #cbd7e3;padding:1.2rem;border-radius:12px;min-width:0}
+h1,h2,h3{margin:.2rem 0 .8rem}h1{font-size:1.8rem}h2{font-size:1.15rem}
+p,li{line-height:1.48}label{display:block;font-weight:600;margin:.5rem 0 .25rem}
+input,select,textarea,button{font:inherit}input,select,textarea{border:1px solid #95abc0;border-radius:7px;padding:.5rem;max-width:100%;width:100%;background:white;color:#152738}
+input[type=file]{background:#f4f7fa}input[type=checkbox]{width:auto}
+textarea{min-height:75px;resize:vertical}button{border:1px solid #365e82;background:#edf4fb;border-radius:7px;color:#102d49;padding:.55rem .85rem;cursor:pointer;font-weight:600}
+button:disabled{opacity:.45;cursor:default}button.primary{color:white;background:#164c7a}
+button.danger{color:#832521;border-color:#c2aaaa;background:#fff6f3}
+button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible{outline:3px solid #e6a43c;outline-offset:2px}
+.grid{display:grid;gap:1rem;grid-template-columns:repeat(auto-fit,minmax(245px,1fr))}
+.actions{display:flex;flex-wrap:wrap;align-items:center;gap:.5rem;margin:.6rem 0}
+.notice{padding:.7rem;border-left:4px solid #296d97;background:#eef7fa;white-space:pre-wrap}
+.notice[data-error=true]{border-color:#a22c2c;background:#fff0ed}
+.warning{border-left:4px solid #aa6833;padding:.65rem;background:#fff6eb}
+.pill{font-size:.8rem;border:1px solid #8da7bb;border-radius:18px;padding:.25rem .6rem;white-space:nowrap}
+.meta{font-size:.86rem;color:#496278;overflow-wrap:anywhere}
+.step{border:1px solid #d4e0ea;border-left:5px solid #326e96;border-radius:9px;padding:1rem;margin:.8rem 0}
+.step h3{font-size:1rem}.two{display:grid;gap:.7rem;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+.listrow{display:flex;gap:.5rem;justify-content:space-between;align-items:center;padding:.4rem;border-bottom:1px solid #e5edf2}
+ol{padding-left:1.5rem}small{color:#566c7e}
+footer{text-align:center;color:#466074;padding:1rem}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<header>
+ <h1>LightUp · PRIVATE HUMAN remediation runbooks</h1>
+ <p>INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD · Human preparation, never execution or verification.</p>
+ <span class="pill">Offline · no network · no browser storage · no grants</span>
+</header>
+<main>
+<section>
+ <h2>1 · Attach original PRIVATE HUMAN workplan</h2>
+ <p>Import the <strong>complete original-source-bound HUMAN workplan JSON</strong> exported by the held Evidence Handoff Inbox PR #1644. The packet is self-declared: matching source SHA or identity is <strong>not authentication</strong>. Verify the original source and human recipients outside this application.</p>
+ <label for="workFile">Full source-bound human workplan JSON (max 1 MiB)</label>
+ <input id="workFile" type="file" accept=".json,application/json">
+ <div class="actions"><button class="primary" id="loadWork">Open original workplan</button><button class="danger" id="forget">Forget all PRIVATE content</button></div>
+ <p id="source" class="meta">No PRIVATE source loaded.</p><p id="dirty" class="warning">No local storage. Save your PRIVATE work before leaving or refreshing.</p>
+ <p id="notice" class="notice" role="status" aria-live="polite">Choose an original workplan to start.</p>
+</section>
+<section id="editor" hidden>
+ <h2>2 · Draft stepwise HUMAN change runbooks</h2>
+ <p class="warning">These are proposed human coordination steps, not commands to execute. A proposed rollback is NOT proof it was tested. A human review stage is NOT client consent, approval, verified fix, or authority to retest.</p>
+ <p id="summary" class="meta"></p>
+ <div class="grid">
+  <div><label for="finding">Original finding</label><select id="finding"></select></div>
+  <div><label for="filter">View</label><select id="filter"><option value="all">All original findings</option><option value="missing">Without a runbook</option><option value="blocked">Human-input requested</option><option value="handoff">Human handoff prepared</option></select></div>
+ </div>
+ <div class="actions"><button id="add" class="primary">Add HUMAN runbook step</button><button id="removeAll">Clear steps for this finding</button></div>
+ <div id="details" class="meta"></div><div id="steps"></div>
+</section>
+<section id="io" hidden>
+ <h2>3 · Save or privately hand off</h2>
+ <div class="actions">
+ <button id="save" class="primary">Download complete PRIVATE runbook JSON</button>
+ <button id="print">Download selected PRIVATE scriptless HTML</button>
+ <button id="counts">Download counts-only CSV</button>
+ </div>
+ <p>PRIVATE exports include declared source and original finding identifiers; transfer only over a separately authenticated confidential channel. Counts-only CSV removes source, finding, recipient and note identifiers; small groups can still be sensitive.</p>
+ <label for="restoreFile">Restore previously exported PRIVATE runbooks (max 1 MiB)</label>
+ <input type="file" id="restoreFile" accept=".json,application/json">
+ <div class="actions"><button id="restore">Preview and replace local HUMAN runbooks</button></div>
+</section>
+</main>
+<footer>LightUp offline review desk · no scanners, network requests, secret storage, or verified remediation.</footer>
+<script nonce="lightup-runbook-local-20261019">
+(function(){
+'use strict';
+var $=function(id){return document.getElementById(id);};
+var FLAGS=['authenticated','tenant_verified','source_authorized','assessment_authorized','grant','client_consent','operator_consent','execution','scan','audit_verdict','retest_verified','release'];
+var PKEYS=['kind','schema_version','disposition','source_contract','source_sha256','client_reference','engagement_reference','source_count','rows','warning'].concat(FLAGS);
+var RKEYS=['finding_id','stage','owner_alias','tentative_due','next_action','private_note','updated_utc'];
+var STAGES=['unplanned','request_evidence_human','clarify_human_reply','coordinate_human_change','await_human_review','human_handoff_prepared'];
+var KINDS=['human_prepare','human_implementation_discussion','human_dependency_coordination','human_rollback_discussion','human_review_request'];
+var SKEYS=['step_id','kind','description','precondition','responsible_alias','rollback_discussion','verification_question','tentative_date','human_stage'];
+var RBKEYS=['kind','schema_version','disposition','source_contract','source_sha256','client_reference','engagement_reference','source_count','finding_ids','runbooks','warning'].concat(FLAGS);
+var BKEYS=['finding_id','steps'];
+var MAX=1048576, MAX_ROWS=350, MAX_STEPS=8, MAX_TOTAL=1600;
+var state=null, revision=0, exported=0;
+var fail=function(s){throw Error('HOLD: '+s);};
+function exact(obj,keys){return obj!==null&&typeof obj==='object'&&!Array.isArray(obj)&&Object.getPrototypeOf(obj)===Object.prototype&&Object.keys(obj).length===keys.length&&Object.keys(obj).every(function(k){return keys.indexOf(k)>=0;});}
+function string(v,max,label,required){
+ if(typeof v!=='string'||v.length>max||/[\u0000-\u001f\u007f\u202a-\u202e\u2066-\u2069\uD800-\uDFFF]/.test(v)||(required&&!v.trim()))fail('invalid '+label);
+ return v;
+}
+function date(v){if(v==='')return v;if(typeof v!=='string'||! /^\d{4}-\d{2}-\d{2}$/.test(v)||!Number.isFinite(Date.parse(v+'T00:00:00Z'))||new Date(v+'T00:00:00Z').toISOString().slice(0,10)!==v)fail('invalid tentative date');return v;}
+function iso(v){if(typeof v!=='string'||! /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\.\d{3}Z$/.test(v)||!Number.isFinite(Date.parse(v))||new Date(v).toISOString()!==v)fail('invalid original HUMAN update instant');}
+function sourceData(p){
+ if(!exact(p,PKEYS)||p.kind!=='lightup.private_human_original_finding_workplan'||p.schema_version!==1||p.disposition!=='UNVERIFIED_HUMAN_PLANNING_ONLY'||!Array.isArray(p.rows)||p.rows.length!==p.source_count||p.rows.length<1||p.rows.length>MAX_ROWS||!Number.isInteger(p.source_count)||FLAGS.some(function(k){return p[k]!==false;}))fail('original workplan contract or false authority flags');
+ string(p.source_contract,200,'source contract',true);
+ if(typeof p.source_sha256!=='string'||! /^[0-9a-f]{64}$/.test(p.source_sha256))fail('canonical declared source SHA');
+ string(p.client_reference,200,'client label',true);string(p.engagement_reference,200,'engagement label',true);string(p.warning,500,'warning',true);
+ var ids=new Set();
+ p.rows.forEach(function(r){
+  if(!exact(r,RKEYS)||!STAGES.includes(r.stage))fail('noncanonical original finding row');
+  var id=string(r.finding_id,200,'original finding ID',true);if(ids.has(id))fail('duplicate original finding ID');ids.add(id);
+  string(r.owner_alias,120,'original owner alias');date(r.tentative_due);
+  string(r.next_action,1000,'original next action');string(r.private_note,600,'original note');iso(r.updated_utc);
+ });
+ return {source_contract:p.source_contract,source_sha256:p.source_sha256,client_reference:p.client_reference,engagement_reference:p.engagement_reference,ids:Array.from(ids),original:p.rows,runbooks:new Map(p.rows.map(function(r){return [r.finding_id,[]];}))};
+}
+// Reject duplicate JSON keys, including escaped aliases, before built-in JSON decoding.
+function parseStrict(text){
+ if(text.length>MAX||!text.length)fail('JSON empty or oversized');
+ var i=0;
+ function white(){while(i<text.length&&/\s/.test(text[i]))i++;}
+ function qstr(){var start=i;if(text[i]!=='"')fail('JSON string expected');i++;var esc=false;
+  while(i<text.length){var c=text[i++];if(c==='"'&&!esc){return JSON.parse(text.slice(start,i));}if(c==='\\'&&!esc){esc=true;continue;}if(c.charCodeAt(0)<32&&!esc)fail('raw control in JSON string');esc=false;}
+  fail('unfinished JSON string');
+ }
+ function value(depth){
+  if(depth>16)fail('nested JSON beyond safe limit');white();var c=text[i];
+  if(c==='{'){i++;white();var keys=new Set();if(text[i]==='}'){i++;return;}while(true){
+   white();var key=qstr();if(keys.has(key))fail('duplicate JSON key '+key);keys.add(key);white();if(text[i++]!==':')fail('missing key separator');
+   value(depth+1);white();if(text[i]==='}'){i++;return;}if(text[i++]!==',')fail('invalid object separator');
+  }}
+  if(c==='['){i++;white();if(text[i]===']'){i++;return;}while(true){value(depth+1);white();if(text[i]===']'){i++;return;}if(text[i++]!==',')fail('invalid array separator');}}
+  if(c==='"'){qstr();return;}
+  var rest=text.slice(i),m=/^(true|false|null|-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?)/.exec(rest);
+  if(!m)fail('invalid JSON value');i+=m[0].length;
+ }
+ value(0);white();if(i!==text.length)fail('trailing JSON text');
+ return JSON.parse(text);
+}
+async function read(file){if(!file||file.size<1||file.size>MAX)fail('select a nonempty JSON <= 1 MiB');return parseStrict(new TextDecoder('utf-8',{fatal:true}).decode(await file.arrayBuffer()));}
+function message(s,bad){$('notice').textContent=s;$('notice').dataset.error=String(!!bad);}
+function dirty(){if(!state){$('dirty').textContent='No local storage. Import an original PRIVATE source first.';return;}
+ $('dirty').textContent=revision!==exported?'UNSAVED PRIVATE runbooks: download a complete backup before closing or refreshing.':'PRIVATE runbooks locally unchanged since last export/restore.';}
+function confirmDiscard(){return revision===exported||window.confirm('UNSAVED PRIVATE human runbook content will be lost. Download complete PRIVATE backup first if needed. Continue?');}
+function reset(){state=null;revision=0;exported=0;$('workFile').value='';$('restoreFile').value='';$('source').textContent='No PRIVATE source loaded.';$('editor').hidden=true;$('io').hidden=true;$('finding').replaceChildren();$('steps').replaceChildren();$('details').replaceChildren();$('summary').textContent='';dirty();}
+function touch(){revision++;dirty();}
+function binding(s){return JSON.stringify([s.source_contract,s.source_sha256,s.client_reference,s.engagement_reference,s.ids.slice().sort()]);}
+function opt(label,value){var el=document.createElement('option');el.value=value;el.textContent=label;return el;}
+function element(tag,text){var el=document.createElement(tag);el.textContent=String(text);return el;}
+function field(title,value,max,onChange,kind){
+ var box=document.createElement('label');box.textContent=title;
+ var inp=document.createElement(kind==='area'?'textarea':kind==='select'?'select':'input');
+ if(kind==='date')inp.type='date';if(kind==='select'){value.options.forEach(function(x){inp.append(opt(x.replaceAll('_',' '),x));});inp.value=value.current;}
+ else {inp.value=value;inp.maxLength=max;}
+ inp.addEventListener('change',function(){try{onChange(inp.value);}catch(e){message(e.message,true);render();}});
+ box.append(inp);return box;
+}
+function selected(){if(!state)fail('original PRIVATE source not loaded');var id=$('finding').value;if(!state.runbooks.has(id))fail('select exact original finding');return id;}
+function current(){return state.runbooks.get(selected());}
+function validateStep(s){if(!exact(s,SKEYS)||!Number.isInteger(s.step_id)||s.step_id<1||s.step_id>MAX_STEPS||!KINDS.includes(s.kind)||!['draft_human','needs_human_input','await_human_review','human_handoff_prepared'].includes(s.human_stage))fail('invalid HUMAN step shape or stage');
+ string(s.description,1000,'human step description',true);string(s.precondition,600,'human precondition');string(s.responsible_alias,120,'self-declared owner');string(s.rollback_discussion,750,'rollback discussion');string(s.verification_question,600,'human verification question');date(s.tentative_date);
+}
+function validateBooks(books,ctx){if(!Array.isArray(books)||books.length!==ctx.ids.length)fail('incomplete exact original finding set');var seen=new Set(),out=new Map(),total=0;
+ books.forEach(function(book){if(!exact(book,BKEYS)||!ctx.ids.includes(book.finding_id)||seen.has(book.finding_id)||!Array.isArray(book.steps)||book.steps.length>MAX_STEPS)fail('noncanonical or duplicate original runbook');
+  seen.add(book.finding_id);var nums=new Set();book.steps.forEach(function(s){validateStep(s);if(nums.has(s.step_id))fail('duplicate human step ID');nums.add(s.step_id);});total+=book.steps.length;out.set(book.finding_id,book.steps.map(function(s){return Object.assign({},s);}));});
+ if(total>MAX_TOTAL)fail('too many human steps');return out;
+}
+function render(){
+ if(!state)return;
+ var old=$('finding').value,filter=$('filter').value,ids=state.ids.filter(function(id){
+  var steps=state.runbooks.get(id);
+  if(filter==='missing')return steps.length===0;
+  if(filter==='blocked')return steps.some(function(s){return s.human_stage==='needs_human_input';});
+  if(filter==='handoff')return steps.some(function(s){return s.human_stage==='human_handoff_prepared';});
+  return true;
+ });
+ $('finding').replaceChildren();ids.forEach(function(id){$('finding').append(opt(id+' ('+state.runbooks.get(id).length+' steps)',id));});
+ if(ids.includes(old))$('finding').value=old;
+ var count=state.ids.reduce(function(n,id){return n+state.runbooks.get(id).length;},0);
+ $('summary').textContent=state.ids.length+' original finding IDs · '+count+' HUMAN steps · '+state.ids.filter(function(id){return state.runbooks.get(id).length===0;}).length+' without runbook · All security/authority flags false.';
+ $('source').textContent='DECLARED ORIGINAL SHA: '+state.source_sha256+' · client: '+state.client_reference+' · engagement: '+state.engagement_reference+' · '+state.ids.length+' original HUMAN findings. No authenticity verification.';
+ var id=$('finding').value;
+ $('steps').replaceChildren();
+ $('add').disabled=!id||count>=MAX_TOTAL||state.runbooks.get(id).length>=MAX_STEPS;
+ $('removeAll').disabled=!id||!state.runbooks.get(id).length;
+ $('print').disabled=!id;
+ if(!id){$('details').textContent='No findings match the filter.';return;}
+ var r=state.original.find(function(x){return x.finding_id===id;});
+ $('details').textContent='ORIGINAL (UNVERIFIED) HUMAN plan: stage '+r.stage+', declared owner '+(r.owner_alias||'none')+', tentative date '+(r.tentative_due||'none')+'. Original next action: '+(r.next_action||'none')+'.';
+ state.runbooks.get(id).forEach(function(s,index){
+  var box=document.createElement('article');box.className='step';box.append(element('h3','Step '+s.step_id+' · proposed HUMAN work'));
+  var row=document.createElement('div');row.className='actions';
+  [['Move ↑',function(){swap(index,-1);}],['Move ↓',function(){swap(index,1);}],['Delete proposed step',function(){remove(index);}]].forEach(function(action){
+   var b=document.createElement('button');b.textContent=action[0];b.addEventListener('click',action[1]);row.append(b);
+  });box.append(row);
+  function update(key,v){var next=Object.assign({},s);next[key]=v;validateStep(next);Object.assign(s,next);touch();message('Updated LOCAL HUMAN runbook. No original evidence or verified status changed.');}
+  var g=document.createElement('div');g.className='two';
+  g.append(field('Human step type',{options:KINDS,current:s.kind},0,function(v){update('kind',v);},'select'));
+  g.append(field('HUMAN stage',{options:['draft_human','needs_human_input','await_human_review','human_handoff_prepared'],current:s.human_stage},0,function(v){update('human_stage',v);},'select'));
+  g.append(field('Self-declared human owner',s.responsible_alias,120,function(v){update('responsible_alias',v);}));
+  g.append(field('Tentative planning date',s.tentative_date,10,function(v){update('tentative_date',v);},'date'));
+  box.append(g);
+  box.append(field('Proposed HUMAN coordination step (not a command)',s.description,1000,function(v){update('description',v);},'area'));
+  box.append(field('Preconditions to discuss with authenticated humans',s.precondition,600,function(v){update('precondition',v);},'area'));
+  box.append(field('Rollback preparation discussion (not executed)',s.rollback_discussion,750,function(v){update('rollback_discussion',v);},'area'));
+  box.append(field('Human evidence/retest question (not a verified result)',s.verification_question,600,function(v){update('verification_question',v);},'area'));
+  $('steps').append(box);
+ });
+}
+function renumber(steps){steps.forEach(function(s,i){s.step_id=i+1;});}
+function add(){var steps=current();if(steps.length>=MAX_STEPS||state.ids.reduce(function(n,id){return n+state.runbooks.get(id).length;},0)>=MAX_TOTAL)fail('HUMAN runbook cap reached');
+ steps.push({step_id:steps.length+1,kind:'human_prepare',description:'Describe the proposed HUMAN follow-up',precondition:'',responsible_alias:'',rollback_discussion:'',verification_question:'',tentative_date:'',human_stage:'draft_human'});touch();render();message('New draft HUMAN coordination step added (no execution).');}
+function remove(index){var a=current();if(!window.confirm('Delete this LOCAL HUMAN step? Export private backup before destructive editing.'))return;a.splice(index,1);renumber(a);touch();render();}
+function swap(index,d){var a=current(),to=index+d;if(to<0||to>=a.length)return;var temp=a[index];a[index]=a[to];a[to]=temp;renumber(a);touch();render();}
+function packet(){return Object.assign({kind:'lightup.private_human_remediation_runbooks',schema_version:1,disposition:'UNVERIFIED_HUMAN_PLANNING_ONLY',source_contract:state.source_contract,source_sha256:state.source_sha256,client_reference:state.client_reference,engagement_reference:state.engagement_reference,source_count:state.ids.length,finding_ids:state.ids.slice(),runbooks:state.ids.map(function(id){return {finding_id:id,steps:state.runbooks.get(id).map(function(s){return Object.assign({},s);})};}),warning:'PRIVATE HUMAN planning ONLY; not authenticated source, customer approval, authorized remediation, verified retest, grant or release.'},Object.fromEntries(FLAGS.map(function(k){return [k,false];})));}
+function download(name,data,type){var u=URL.createObjectURL(new Blob([data],{type:type})),a=document.createElement('a');a.download=name;a.href=u;document.body.append(a);a.click();a.remove();setTimeout(function(){URL.revokeObjectURL(u);},1600);}
+function save(){if(!state)fail('import original source first');if(!window.confirm('Save PRIVATE full original-ID runbook data to this device? Independently verify confidential storage and recipient.'))return;
+ download('LightUp-PRIVATE-HUMAN-runbooks.json',JSON.stringify(packet(),null,2)+'\n','application/json');exported=revision;dirty();message('Full PRIVATE HUMAN runbook saved. No original source/authorization changed.');}
+async function importWork(){
+ var f=$('workFile').files[0];if(!f)fail('choose ORIGINAL PRIVATE HUMAN workplan first');
+ if(state&&!confirmDiscard())return;
+ var old=f, data=await read(f), next=sourceData(data);
+ if($('workFile').files[0]!==old)fail('original workplan picker changed while loading');
+ state=next;revision=0;exported=0;$('filter').value='all';$('restoreFile').value='';$('editor').hidden=false;$('io').hidden=false;render();dirty();
+ message('Opened original source-declared PRIVATE HUMAN workplan. Draft runbooks below; no client authority or security outcome created.');
+}
+async function restore(){
+ if(!state)fail('load original workplan first');var f=$('restoreFile').files[0];if(!f)fail('choose exported PRIVATE runbooks JSON');
+ var before=revision,ref=binding(state),p=await read(f);
+ if(!exact(p,RBKEYS)||p.kind!=='lightup.private_human_remediation_runbooks'||p.schema_version!==1||p.disposition!=='UNVERIFIED_HUMAN_PLANNING_ONLY'||FLAGS.some(function(k){return p[k]!==false;})||p.source_count!==state.ids.length)fail('invalid PRIVATE runbook envelope or authority flags');
+ ['source_contract','source_sha256','client_reference','engagement_reference'].forEach(function(k){if(p[k]!==state[k])fail('private runbook '+k+' mismatches original');});
+ string(p.warning,500,'warning',true);
+ if(!Array.isArray(p.finding_ids)||JSON.stringify(p.finding_ids)!==JSON.stringify(state.ids))fail('original finding IDs/order mismatch');
+ var rows=validateBooks(p.runbooks,state);
+ if(before!==revision||ref!==binding(state)||$('restoreFile').files[0]!==f)fail('PRIVATE source, file or local revision changed while restoring');
+ if(!window.confirm('REPLACE all local HUMAN runbooks with the exact-original-source-bound PRIVATE backup? Export current work first. No original evidence, owners or grants will be updated.'))return;
+ if(before!==revision||ref!==binding(state))fail('stale local state during confirmation');
+ state.runbooks=rows;revision++;exported=revision;$('restoreFile').value='';render();dirty();message('Restored complete HUMAN-only runbooks for exact original finding set.');
+}
+function esc(s){return String(s).replace(/[&<>"']/g,function(ch){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch];});}
+function printOne(){
+ var id=selected(),steps=current();if(!window.confirm('Download PRIVATE scriptless HUMAN briefing for original finding '+id+'? Check independently authenticated confidential recipient, storage and printer.'))return;
+ var html=['<!doctype html><html lang="en"><head><meta charset="utf-8">',
+ '<meta http-equiv="Content-Security-Policy" content="default-src &#39;none&#39;; connect-src &#39;none&#39;; script-src &#39;none&#39;; style-src &#39;none&#39;; img-src &#39;none&#39;">',
+ '<title>LightUp PRIVATE HUMAN runbook</title></head><body><h1>LightUp · PRIVATE HUMAN runbook</h1>',
+ '<p><strong>HUMAN DRAFT/HOLD:</strong> no client consent, scope permission, verified fix, approved change, retest or release.</p>',
+ '<p>Self-declared source SHA '+esc(state.source_sha256)+'</p>',
+ '<p>Self-declared client '+esc(state.client_reference)+' / engagement '+esc(state.engagement_reference)+'</p>',
+ '<h2>Original finding '+esc(id)+' (unverified)</h2><ol>'];
+ steps.forEach(function(s){html.push('<li><strong>'+esc(s.kind)+'</strong> · '+esc(s.human_stage)+'<dl>'+
+ '<dt>Human proposal</dt><dd><pre>'+esc(s.description)+'</pre></dd>'+
+ '<dt>Human preconditions</dt><dd><pre>'+esc(s.precondition)+'</pre></dd>'+
+ '<dt>Declared human owner</dt><dd>'+esc(s.responsible_alias)+'</dd>'+
+ '<dt>Tentative date</dt><dd>'+esc(s.tentative_date)+'</dd>'+
+ '<dt>Rollback discussion</dt><dd><pre>'+esc(s.rollback_discussion)+'</pre></dd>'+
+ '<dt>Human verification question (not a verdict)</dt><dd><pre>'+esc(s.verification_question)+'</pre></dd></dl></li>');});
+ html.push('</ol><p>No scripts, external resources, active actions or source changes.</p></body></html>\n');
+ download('LightUp-PRIVATE-HUMAN-runbook.html',html.join('\n'),'text/html;charset=utf-8');
+ message('Scriptless PRIVATE human briefing downloaded; no grant or actual remediation.');
+}
+function counts(){
+ if(!state)fail('load original source');
+ if(!window.confirm('Download HUMAN stage counts only (no finding/source/customer/owner/note IDs)? Small groups may still disclose patterns.'))return;
+ var c=new Map();state.ids.forEach(function(id){var steps=state.runbooks.get(id);if(!steps.length)c.set('unplanned_human',1+(c.get('unplanned_human')||0));steps.forEach(function(s){c.set(s.human_stage,1+(c.get(s.human_stage)||0));});});
+ var csv='human_stage,count\r\n'+Array.from(c.keys()).sort().map(function(k){return '"'+k+'",'+c.get(k);}).join('\r\n')+'\r\n';
+ download('LightUp-HUMAN-runbook-counts.csv',csv,'text/csv;charset=utf-8');message('Anonymous stage counts exported; no verified remediation assertions.');
+}
+var bind=function(id,event,fn){$(id).addEventListener(event,function(){try{Promise.resolve(fn()).catch(function(e){message(e.message,true);});}catch(e){message(e.message,true);}});};
+bind('loadWork','click',importWork);bind('restore','click',restore);bind('save','click',save);bind('print','click',printOne);bind('counts','click',counts);bind('add','click',add);
+bind('removeAll','click',function(){if(!current().length)return;if(!window.confirm('Delete all LOCAL human steps for this finding?'))return;state.runbooks.set(selected(),[]);touch();render();});
+bind('forget','click',function(){if(!confirmDiscard())return;reset();message('All loaded PRIVATE source and HUMAN planning content cleared from this page. Existing downloads remain on disk.');});
+bind('filter','change',render);bind('finding','change',render);
+window.addEventListener('beforeunload',function(e){if(state&&revision!==exported){e.preventDefault();e.returnValue='';}});
+dirty();
+})();
+</script>
+</body></html>
