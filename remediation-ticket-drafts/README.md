@@ -12,6 +12,14 @@
 6. Preview GitHub-flavoured Markdown **locally**. Each human ticket includes exact unsigned source canonical and byte hashes, original labels, proposed owner and next action, and explicit non-authorization notices. Markdown punctuation and HTML delimiters are escaped before plaintext export. Nothing is posted or created automatically.
 7. With independent private-channel/recipient review and a separate download confirmation, save a **PRIVATE plaintext** selected ticket or selected multi-ticket Markdown bundle. It contains original finding identifiers, titles, proposals and HUMAN notes and is sensitive. Do **not** post publicly or treat any copied file as authenticated authority. A **separate anonymous JSON counts export** contains severity/retest label counts only, no IDs/titles/owner/hashes. Use **Forget** to discard in-tab private content; previously downloaded copies require separate handling.
 
+## Local PRIVATE checkpoint / exact-source resume
+
+The ticket desk can now explicitly download **a PRIVATE, UNENCRYPTED, plaintext JSON** HUMAN workspace checkpoint (up to 4 MiB) with the exact original CSV byte + canonical hashes, selected finding IDs, HUMAN owner/stage/plan fields and retained historical source HOLD rows. This is **not** an encrypted archive. Never save or transmit it in a public or unapproved location. Unlike the original Casework draft, this checkpoint never authenticates client identity and explicitly stores every authority flag as literal false.
+
+After closing the browser, re-open the complete standalone app, **first import the exact same original authorized five-column CSV bytes** and then import the workspace checkpoint. The reader fails closed on duplicate-key/unknown-field JSON, malformed records, source hash mismatch (both original bytes and canonical records), unknown selected IDs, too many notes, tampered authority flags and oversized files, **before replacing any current in-memory HUMAN work**. A separate explicit HUMAN confirmation is required to replace an existing local workspace. Subsequent source revisions must be handled through the normal source-compare flow and historical HOLD inbox, never by laundering an unrelated checkpoint into new findings.
+
+No automatic localStorage, cookies, database writes, GitHub API activity, cryptographic sender authenticity or real authorization is introduced. The user must protect and later manually remove downloaded plaintext checkpoints.
+
 ## Portable build
 
 From a checkout based on the **immutable** original Casework owner PR #1568, plus this ticket-desk branch:
