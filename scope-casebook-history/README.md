@@ -10,7 +10,7 @@ This companion does **not** claim to authenticate the bytes of downloaded source
 
 ## One-command original-account capture with automatic HISTORY
 
-The new \`capture.py\` eliminates the manual export-and-reopen choreography while **reusing the original owner-maintained** \`lightup.auth_casebook.authenticated_casebook\` and its original \`_write_private_json\`. It prompts securely for an **original** operator/client password with \`getpass\`, respects original lockout/current persisted role and tenant selection, checks all pre-existing packets first, then writes exactly one original-source 0600 \`casebook-NN.json\`. It cannot change a grant, issue approval, touch a target, elevate risk or bypass an original revocation decision. **The original authentication routine may update its existing login/lockout counters.** The companion creates no login, session, token, authentication cache or authorization privilege.
+The new `capture.py` eliminates the manual export-and-reopen choreography while **reusing the original owner-maintained** `lightup.auth_casebook.authenticated_casebook` and its original `_write_private_json`. It prompts securely for an **original** operator/client password with `getpass`, respects original lockout/current persisted role and tenant selection, checks all pre-existing packets first, then writes exactly one original-source 0600 `casebook-NN.json`. It cannot change a grant, issue approval, touch a target, elevate risk or bypass an original revocation decision. **The original authentication routine may update its existing login/lockout counters.** The companion creates no login, session, token, authentication cache or authorization privilege.
 
 Initialize your own trusted PRIVATE (0700) folder through your normal approved local file-management workflow. Do not weaken directory permissions to accommodate LightUp.
 
@@ -71,6 +71,11 @@ The one new PRIVATE folder contains:
 - `human-followup.txt`: original counts and human follow-up questions; contains no raw evidence, customer names, passwords, hostnames, grant references or source record IDs.
 - `private-source-inventory.json`: exact original-input byte length and SHA-256 by private ordinal, **unsigned/untrusted** and excluded entirely from anonymous handoffs.
 - `private-human-case-queue.csv`: all original engagement IDs from the selected packet series, the most recently **declared** HUMAN next action, recorded status, first-party original attention category, number of snapshot appearances and attention transitions. The accompanying private HTML displays the same ranked queue. This ranking describes HUMAN source reconciliation workload, **not** verified security risk or real authorization priority.
+- `private-human-review-template.csv`: editable original-ID-private HUMAN collaboration sheet with source columns pinned and human-only stage/route/blocker choices; it does not automatically submit or change grants.
+- `private-human-case-transitions.csv`: exact per-original-engagement recorded HUMAN action/attention changes between adjacent reviewer-selected snapshots; never a verified revocation.
+- `private-original-case-details.csv`: original source-linked engagement/grant/risk dossier rows without raw assets, credentials, notes or evidence.
+- `anonymous-source-order.csv`: ordinal-only comparisons of unsigned source-declared timestamps with explicit HOLD labels, not an authenticated timeline.
+- `anonymous-human-actions.csv`: latest original HUMAN action category counts only; potentially sensitive small-cell aggregates.
 
 The browser is HTML+CSS only: strict default-deny CSP with one pinned local style hash, no script, network, forms, external resources or dependency. Source record values are escaped as text. All original identity matching is exact within the same selected original tenant; a cross-tenant imported file refuses the **entire batch**. Duplicate JSON keys, altered source structure, unknown authority, invalid count consistency, duplicate IDs, non-regular/symlink files and unsafe directory permissions are rejected.
 
@@ -78,13 +83,13 @@ The browser is HTML+CSS only: strict default-deny CSP with one pinned local styl
 
 ## Offline HUMAN follow-up workroom, directly from report
 
-Open the generated private \`index.html\` locally. Its navigation now links the PRIVATE original engagement queue, original recorded changed fields, human summary and an editable **PRIVATE human follow-up CSV template**. The anonymous \`anonymous.html\` links only source-free count exports. Everything is local, without scripts, model calls, uploads or live source access.
+Open the generated private `index.html` locally. Its navigation now links the PRIVATE original engagement queue, original recorded changed fields, human summary and an editable **PRIVATE human follow-up CSV template**. The anonymous `anonymous.html` links only source-free count exports. Everything is local, without scripts, model calls, uploads or live source access.
 
 The editable sheet contains **exact original engagement ID**, unchanged source-declared next action and attention category, followed by three human-only editable fields. Retain the first three columns unchanged. Human reviewers may choose:
 
-- \`human_stage\`: \`unreviewed\`, \`investigating\`, \`awaiting-owner\`, \`documented\`.
-- \`human_followup_route\`: \`unassigned\`, \`original-scope-owner\`, \`client-clarification\`, \`independent-security-review\`, \`operator-followup\`.
-- \`human_blocker\`: \`none\`, \`missing-source\`, \`missing-owner\`, \`needs-independent-consent\`, \`requires-revocation-review\`, \`unresolved-tenant-lineage\`.
+- `human_stage`: `unreviewed`, `investigating`, `awaiting-owner`, `documented`.
+- `human_followup_route`: `unassigned`, `original-scope-owner`, `client-clarification`, `independent-security-review`, `operator-followup`.
+- `human_blocker`: `none`, `missing-source`, `missing-owner`, `needs-independent-consent`, `requires-revocation-review`, `unresolved-tenant-lineage`.
 
 This is a portable, non-authorizing human collaboration sheet. The initial sheet comes from real original source-owner Casebook records; the **human selections are not authenticated**, do not change the original database, and never create/close a genuine risk approval, engagement or authorization grant. Treat the sheet as private: it contains original engagement IDs and original source action labels. The built-in report never treats "documented" as a verified remediation or allows a PASS.
 
