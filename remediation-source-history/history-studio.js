@@ -534,6 +534,43 @@ window.LightUpHistory=Object.freeze({
     });
     return LightUpCasework.makePacket(latest.findings,cases,latest.sourceHash);
   },
+  carryHumanBatch(choices,expectedRevision){
+    // Atomic PRIVATE HUMAN-only transfer; original security assertions and imported
+    // native Casework statuses are never carried onto changed source fields.
+    const ctx=requireContext();
+    if(state.importing||state.revision!==expectedRevision)
+      throw Error('HOLD: original source or HUMAN workspace changed before batch decision. Review again.');
+    if(!Array.isArray(choices)||!choices.length||choices.length>50||
+       new Set(choices.map(x=>x?.id)).size!==choices.length||
+       choices.some(x=>!x||typeof x!=='object'||Array.isArray(x)||
+         typeof x.id!=='string'||typeof x.reason!=='string'||
+         x.reason.trim().length<8||x.reason.length>800))
+      throw Error('Choose 1–50 distinct original source-HOLD findings, each with a human reason (8–800 characters).');
+    if(state.decisions.length+choices.length>limits.maxDecisions)
+      throw Error('PRIVATE human source-carry journal is full. Save your current encrypted workspace before continuing.');
+    const pendingNotes=new Map(state.notes),decisions=state.decisions.slice(),utc=new Date().toISOString();
+    for(const x of choices){
+      const previous=state.notes.get(x.id),current=latestFinding(x.id);
+      if(!previous||!previous.sourceRecord||!current||noteBinding(x.id)!=='stale')
+        throw Error('HOLD: one chosen historical HUMAN note does not match a changed original finding in the current source.');
+      const old=Object.fromEntries(FIELDS.map(k=>[k,previous.sourceRecord[k]]));
+      const now=Object.fromEntries(FIELDS.map(k=>[k,current[k]]));
+      if(FIELDS.some(k=>typeof old[k]!=='string'||typeof now[k]!=='string')||
+         exact(old,now)||
+         !state.snapshots.some(s=>s.findings.some(f=>exact(f,old))))
+        throw Error('HOLD: an original before/after five-field source row is missing or unbound from imported history.');
+      pendingNotes.set(x.id,{...previous,sourceRecord:now,caseworkOriginal:null});
+      decisions.push({id:x.id,from:old,to:now,reason:x.reason.trim(),decidedUTC:utc});
+    }
+    if(state.revision!==expectedRevision||context().client!==ctx.client||
+       context().engagement!==ctx.engagement)
+      throw Error('HOLD: original context or source revised during batch decision; no notes moved.');
+    state.notes=pendingNotes;
+    state.decisions=decisions;
+    state.revision++;
+    render();
+    return {carried:choices.length,held:[...state.notes.keys()].filter(id=>noteBinding(id)!=='bound').length};
+  },
   heldHumanRows(){
     // PRIVATE read-only quarantine. A reused original finding ID never binds stale
     // HUMAN metadata to a different original five-field source record.
