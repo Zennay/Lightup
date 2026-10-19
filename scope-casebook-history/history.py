@@ -562,7 +562,8 @@ def html_page(docs: list[dict], delta: list[list[dict]], *, public: bool) -> str
         summary.append('<nav aria-label="Anonymous local exports">'
                        '<p><a href="anonymous-counts.csv">Open counts CSV</a> · '
                        '<a href="anonymous-counts.json">Open counts JSON</a> · '
-                       '<a href="anonymous-source-order.csv">Source chronology HOLD labels</a></p>'
+                       '<a href="anonymous-source-order.csv">Source chronology HOLD labels</a> · '
+                       '<a href="anonymous-human-actions.csv">Original HUMAN action counts</a></p>'
                        '</nav>')
     else:
         summary.append('<nav aria-label="PRIVATE local original human workflow">'
