@@ -69,8 +69,9 @@ def agenda(plan: dict) -> dict:
     }
 
 
-def render_ical(summary: dict, root_secret: bytes) -> bytes:
-    require(type(root_secret) is bytes and len(root_secret) == 32)
+def render_ical(summary: dict, root_secret: bytes, inbox_binding: str) -> bytes:
+    require(type(root_secret) is bytes and len(root_secret) == 32 and
+            type(inbox_binding) is str and coordination.HEX.fullmatch(inbox_binding) is not None)
     lines = [
         "BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//LightUp//PRIVATE HUMAN review agenda//EN",
         "CALSCALE:GREGORIAN", "METHOD:PUBLISH",
@@ -79,7 +80,8 @@ def render_ical(summary: dict, root_secret: bytes) -> bytes:
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     for item in summary["due_dates"]:
         day = date.fromisoformat(item["date"])
-        uid = hmac.new(root_secret, DOMAIN + day.isoformat().encode("ascii"),
+        uid = hmac.new(root_secret, DOMAIN + bytes.fromhex(inbox_binding) +
+                       day.isoformat().encode("ascii"),
                        hashlib.sha256).hexdigest()[:32] + "@lightup-local-human"
         lines += [
             "BEGIN:VEVENT",
@@ -106,7 +108,7 @@ def emit(folder: Path, secret_file: Path, plan_file: Path, output: Path,
             output != folder and folder not in output.parents and
             not output.exists() and not output.is_symlink())
     if output_format == "ics":
-        output_bytes = render_ical(summary, attest.key_bytes(secret_file))
+        output_bytes = render_ical(summary, attest.key_bytes(secret_file), inbox_sha)
     elif output_format == "json":
         output_bytes = native.workspace.pretty(summary)
     else:
