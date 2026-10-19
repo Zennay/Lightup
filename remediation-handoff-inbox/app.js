@@ -258,6 +258,7 @@ function filtered(){
 function summary(number,label){const e=cell("div","");e.className="number";e.append(cell("strong",number),cell("span",label));return e;}
 function draw(){
  if(!current)return;
+ window.LightUpHandoffHumanPlan?.render();
  $("sourceEnrichment").hidden=false;
  $("attachOriginal").disabled=false;
  $("detachOriginal").disabled=!current.originalFindings;
@@ -555,6 +556,7 @@ function detachOriginalCSV(){
 }
 function clearAllPrivateView(){
  current=null;version++;selected.clear();selectedFindings.clear();
+ window.LightUpHandoffHumanPlan?.reset();
  for(const id of ["rows","findingRows","numbers","findingStats"])$(id).replaceChildren();
  $("sourceCsv").value="";$("sourceNotice").textContent="No locally content-matched original CSV loaded.";
  for(const id of ["binding","findingBinding","selection","findingSelection"])$(id).textContent="";
@@ -562,11 +564,29 @@ function clearAllPrivateView(){
  for(const id of ["review","findingDesk","out","sourceEnrichment"])$(id).hidden=true;
  for(const id of ["downloadPrivate","downloadOwner","downloadAgenda","exportFindingPrivate","exportFindingCounts","selectRequestsForFindings","attachOriginal","detachOriginal"])$(id).disabled=true;
 }
+/* Read-only local ORIGINAL finding context used by the independent HUMAN planning sidecar.
+   No runtime authorization, original source edit, scanner or evidence verification. */
+window.LightUpHandoffBridge=Object.freeze({
+ context(){
+  if(!current)return null;
+  const findings=current.findingRows.map(x=>({
+   id:x.id,source_severity:x.sourceFinding?.severity||"",
+   casework_stage:x.casework?.status||"",
+   human_owner_declared:x.casework?.owner||"",
+   local_fingerprint_count:x.files.length
+  }));
+  return {source_contract:current.source.source_contract,
+   source_sha256:current.source.source_sha256,client_reference:current.source.client_reference,
+   engagement_reference:current.source.engagement_reference,
+   ids:findings.map(x=>x.id),findings};
+ },
+ strictJSON
+});
 $("load").addEventListener("click",async()=>{
  const rev=++version,ledgerInput=$("ledger").files[0],registerInput=$("register").files[0];info("Reading both PRIVATE snapshots locally…");
  try{const [l,r]=await Promise.all([openFile("ledger"),openFile("register")]);
   if(version!==rev||$("ledger").files[0]!==ledgerInput||$("register").files[0]!==registerInput)fail("workspace or selected original files changed during load");
-  const next=combine(l,r);current=next;selected.clear();selectedFindings.clear();$("sourceCsv").value="";$("sourceNotice").textContent="No original five-column CSV locally matched."; $("search").value="";$("filter").value="all";draw();
+  const next=combine(l,r);current=next;selected.clear();selectedFindings.clear();window.LightUpHandoffHumanPlan?.reset();$("sourceCsv").value="";$("sourceNotice").textContent="No original five-column CSV locally matched."; $("search").value="";$("filter").value="all";draw();
   info("Matched and admitted original HUMAN requests and replies within the same DECLARED source. This does not authenticate source, author or permission.");
  }catch(e){info(e.message||String(e),true);}
 });
@@ -585,7 +605,7 @@ $("loadEvidenceOnly").addEventListener("click",async()=>{
  try{
   const l=await openFile("ledger");
   if(version!==rev||$("ledger").files[0]!==ledgerInput)fail("original PRIVATE evidence input changed during reading");
-  const next=evidenceOnly(l);current=next;selected.clear();selectedFindings.clear();$("sourceCsv").value="";$("sourceNotice").textContent="No original five-column CSV locally matched.";
+  const next=evidenceOnly(l);current=next;selected.clear();selectedFindings.clear();window.LightUpHandoffHumanPlan?.reset();$("sourceCsv").value="";$("sourceNotice").textContent="No original five-column CSV locally matched.";
   $("search").value="";$("filter").value="all";$("findingSearch").value="";$("findingFilter").value="all";draw();
   info(next.findingRows.length?"Original-source-declared HUMAN coverage opened WITHOUT a response register. No original request or authorization created.":"Original ledger loaded without complete native HUMAN source records. To enumerate all findings, attach the original five-column CSV and match its exact content SHA; no fake coverage inferred.");
  }catch(e){info(e.message||String(e),true);}
