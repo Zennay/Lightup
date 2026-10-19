@@ -24,6 +24,7 @@ FILES = {
     "anonymous-counts.csv", "private-source-changes.csv",
     "human-followup.txt", "private-source-inventory.json",
     "private-human-case-queue.csv",
+    "private-human-review-template.csv",
 }
 
 
