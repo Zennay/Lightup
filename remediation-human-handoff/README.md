@@ -57,6 +57,14 @@ Decrypted intermediates exist only within a fresh owner-private 0700 temporary d
 
 Encrypted backups are still **self-declared numeric HUMAN plans**, not proof of authenticated identity, consent, source truth, vulnerability severity or completed remediation. Existing original security and release gates remain mandatory.
 
+## Independent PRIVATE peer proposal retained in the native workroom
+
+An encrypted browser work-session may contain an independently authored **anonymous local peer HUMAN board**. The native `encrypted_workflow.py` now forwards that board to `browser_workflow.py` instead of discarding it after decryption. Every peer board is independently admitted against the exact same original source-free numeric session and all 12 literal false authority flags.
+
+If the peer proposes genuinely different local action/state enums compared with the original HUMAN board, the output workroom contains a separate 0700 `peer/` directory with 0600 scriptless HTML, CSV and JSON numeric change reports. The top-level offline index links the peer desk, and `summary.json` records the **number of locally different anonymous ordinal appearances, never authenticated reviews**. An identical peer board is not turned into false progress; its empty difference is simply omitted.
+
+A source-free peer board can also be supplied directly to the plaintext `browser_workflow.py` with `--peer-board /absolute/0700/peer.json`, in addition to the unchanged `--session`, `--original-board`, `--proposed-board` and `--output-dir` arguments. This is a *PRIVATE operator workspace feature*, not minimum-disclosure peer correspondence. Do not share the complete native workroom with a recipient who was authorized to receive only one selected HUMAN handoff.
+
 ## No-Python: portable offline HUMAN Return Studio
 
 Open **[browser.html](browser.html)** directly on an offline computer. It is a self-contained HTML file with an embedded SHA-256 CSP-pinned local script, no third-party resources and no server or installation.

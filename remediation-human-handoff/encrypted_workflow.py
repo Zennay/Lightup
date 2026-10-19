@@ -178,7 +178,8 @@ def create(cipher_path: Path, destination: Path, passphrase: str,
         # source-free return + HUMAN handoff + local delta workroom.
         return browser_workflow.create(
             session_path, temp / "original.json", temp / "proposed.json",
-            destination, only, ordinal
+            destination, only, ordinal,
+            temp / "peer.json" if "peer.json" in names else None
         )
     finally:
         if temp.exists():

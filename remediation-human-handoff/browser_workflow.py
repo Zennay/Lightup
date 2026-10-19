@@ -76,7 +76,8 @@ original source edit.</p></article>
 
 
 def create(session_path: Path, original_path: Path, proposed_path: Path,
-           destination: Path, only: str | None = None, ordinal: int | None = None) -> dict:
+           destination: Path, only: str | None = None, ordinal: int | None = None,
+           peer_board: Path | None = None) -> dict:
     portfolio.require(destination.is_absolute())
     portfolio.private_dir(destination.parent)
     portfolio.require(not destination.exists() and not destination.is_symlink())
@@ -108,6 +109,21 @@ def create(session_path: Path, original_path: Path, proposed_path: Path,
         portfolio.require(
             changed == diff["ordinal_appearances_with_local_changes"]
         )
+        peer_delta = 0
+        if peer_board is not None:
+            # Source-free peer candidate is independently admitted using the
+            # original strict native parser. It is not an authentic reviewer.
+            previous_rows = action_board.board_import(original_path, session_path)
+            candidate_rows = action_board.board_import(peer_board, session_path)
+            changed_peer = any(
+                before["local_followup_action_code"] != candidate["local_followup_action_code"]
+                or before["local_planning_state_code"] != candidate["local_planning_state_code"]
+                for before, candidate in zip(previous_rows, candidate_rows)
+            )
+            if changed_peer:
+                peer_report = compare_returns.build(
+                    session_path, original_path, peer_board, stage / "peer")
+                peer_delta = peer_report["ordinal_appearances_with_local_changes"]
         groups = [g["action"] for g in actions["groups"]
                   if g["packet_appearances_not_unique"] > 0]
         result = {
@@ -118,11 +134,12 @@ def create(session_path: Path, original_path: Path, proposed_path: Path,
             "locally_changed_action_appearances": diff["ordinals_with_action_changes"],
             "locally_changed_state_appearances": diff["ordinals_with_state_changes"],
             "selected_human_action_groups": groups,
+            "peer_local_differences_not_authenticated_reviews": peer_delta,
             "warning": workflow.DISCLAIMER,
             **{flag: False for flag in portfolio.FLAGS},
         }
         portfolio.exclusive_write(stage / "index.html",
-                                  workflow.landing(changed, len(groups)))
+                                  workflow.landing(changed, len(groups), peer_delta > 0))
         portfolio.exclusive_write(stage / "summary.json",
                                   portfolio.serialize(result))
         return_to_studio.sync_dir(stage)
@@ -149,10 +166,12 @@ def main() -> int:
                         help="Limit HUMAN follow-up handoffs to one action")
     parser.add_argument("--ordinal", type=int,
                         help="With --only, disclose one exact local anonymous ordinal")
+    parser.add_argument("--peer-board", type=Path,
+                        help="Optional same-session anonymous peer HUMAN board; no identity claim")
     args = parser.parse_args()
     try:
         result = create(args.session, args.original_board,
-                        args.proposed_board, args.output_dir, args.only, args.ordinal)
+                        args.proposed_board, args.output_dir, args.only, args.ordinal, args.peer_board)
     except (ValueError, OSError, RecursionError):
         print("HOLD: no complete private browser-to-native HUMAN workroom published.",
               file=sys.stderr)

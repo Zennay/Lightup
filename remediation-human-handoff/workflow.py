@@ -32,7 +32,7 @@ DISCLAIMER = (
 )
 
 
-def landing(changes: int, selected: int) -> bytes:
+def landing(changes: int, selected: int, peer_diff: bool = False) -> bytes:
     page = """<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'">
@@ -55,13 +55,16 @@ original cases, verified fixes or performed source-owner decisions.</p>
 <p><a href="handoff/index.html">2. Open action-specific offline HUMAN handoffs</a></p>
 <p><a href="difference/index.html">3. Review local action/state differences</a></p>
 <p><a href="summary.json">4. Inspect source-free non-authorizing workflow counts</a></p>
+%s
 </article>
 <p>The old original board was never overwritten. Manually use
 <code>return/board.json</code> with the same source-free numeric session in
 the unchanged original offline HUMAN Studio. All files may still be sensitive
 small-cell numbers, are PRIVATE and are not encrypted at rest. No file in
 this workroom proves client identity, authorization or delivery.</p>
-</main></body></html>""" % (html.escape(DISCLAIMER), changes, selected)
+</main></body></html>""" % (html.escape(DISCLAIMER), changes, selected,
+        '<p><a href="peer/index.html">5. Compare separate local peer routing proposal</a></p>'
+        if peer_diff else "")
     return page.encode("utf-8")
 
 
