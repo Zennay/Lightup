@@ -8,7 +8,7 @@ One deliberate private-terminal operation performs the complete existing authent
 
 **Current original LightUp account sign-in → original tenant/client and exact engagement selectors → original five-column redacted findings CSV → strict whole-batch Unicode and size admission → original unchanged standalone Casework HTML builder → encrypted in-memory JSON envelope → AES-256-GCM → one new exclusive owner-private `.ltv` file.**
 
-The restored HTML is the original full self-contained [Casework application from #1568](https://github.com/Zennay/Lightup/pull/1568). Its existing original Casework capabilities (owners, deadlines, bulk changes, source refresh, offline planning) remain untouched. The encryption implementation comes from the existing complete [PRIVATE HUMAN Ticket Vault #1652](https://github.com/Zennay/Lightup/pull/1652) copied byte-for-byte into this **separate branch** above the independently frozen [Ticket Desk #1651](https://github.com/Zennay/Lightup/pull/1651) commit `8b09b7d19da90664092d8e0301aa88408ccdb014`. Neither upstream branch is modified or claimed.
+The default restored HTML is the original full self-contained [Casework application from #1568](https://github.com/Zennay/Lightup/pull/1568). Its existing original Casework capabilities (owners, deadlines, bulk changes, source refresh, offline planning) remain untouched. The encryption implementation comes from the existing complete [PRIVATE HUMAN Ticket Vault #1652](https://github.com/Zennay/Lightup/pull/1652) copied byte-for-byte into this **separate branch** above the independently frozen [Ticket Desk #1651](https://github.com/Zennay/Lightup/pull/1651) commit `8b09b7d19da90664092d8e0301aa88408ccdb014`. Neither upstream branch is modified or claimed.
 
 This code adds **only** `remediation-secure-export/` and retains the six original `remediation-ticket-vault/` artifacts copied unchanged. It does not modify `src/lightup/`, existing tests, existing CI, finding evidence, scopes, scanner, tenant data, original Casework files or any other active worker scope.
 
@@ -57,6 +57,32 @@ PYTHONPATH=src python3 remediation-secure-export/secure_export.py open-current \
 ```
 
 Both original account and ciphertext passphrase are supplied privately on a live terminal. An old encrypted snapshot **is never silently rebased** to changed findings. Use the original fresh `export` workflow to create a new encrypted snapshot when the source changes. This feature does not alter any original grant, consent, scanner or target code.
+
+### Optional: encrypt the fully populated original Ticket Desk instead
+
+The same authenticated and exact engagement-scoped export can now produce the **complete original source-owned Ticket Desk browser application** with the original summary already loaded (inert base64, opened locally in browser memory). This does not call any new API or bypass the original export. It uses the exact byte-pinned standalone product from held [Ticket Desk PR #1651](https://github.com/Zennay/Lightup/pull/1651) at SHA256 `c5e8c7bd97ba4384fb63e443bd2f9bc155fe39f562633274af071e927122ac3d`, verifies the original embedded CSP hashes, and appends only one separately hash-pinned local source-import bootstrap without weakening `connect-src 'none'`. Unknown original source updates fail closed until reviewed.
+
+```sh
+PYTHONPATH=src python3 remediation-secure-export/secure_export.py export \\
+  --db /trusted/private/original-lightup.sqlite \\
+  --email original-operator@example.org \\
+  --client-id EXISTING_AUTHORIZED_CLIENT_ID \\
+  --engagement-id EXISTING_APPROVED_ENGAGEMENT_ID \\
+  --app ticketdesk \\
+  --output /trusted/private/lightup/ticketdesk-private.ltv
+
+# The same open / open-current / inspect / rotate commands also handle Ticket Desk.
+PYTHONPATH=src python3 remediation-secure-export/secure_export.py open-current \\
+  --db /trusted/private/original-lightup.sqlite \\
+  --email original-operator@example.org \\
+  --client-id EXISTING_AUTHORIZED_CLIENT_ID \\
+  --engagement-id EXISTING_APPROVED_ENGAGEMENT_ID \\
+  --input /trusted/private/lightup/ticketdesk-private.ltv \\
+  --output /trusted/private/lightup/ticketdesk-private.html \\
+  --ack-private-html
+```
+
+After approved decryption, open the private HTML locally in a modern browser. The original Ticket Desk source parser then applies its normal full CSV and SHA checks to the memory-loaded source, and the HUMAN ticket editor, private checkpoint, historical HOLD and offline ticket exports work as in the original unchanged app. The decrypted HTML is **not** an authenticated live dashboard: original credentials, consent, token and session are not carried into it. This workflow only avoids an intermediate plaintext export at encryption time; a human-confirmed `open` deliberately creates a sensitive plaintext HTML on disk. Generic standalone Vault browser readers may show an internal JSON envelope instead of the reconstructed original HTML; use this secure-export CLI.
 
 ### 2. Privately inspect an authenticated encrypted source — no plaintext file
 
