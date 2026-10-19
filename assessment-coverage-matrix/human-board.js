@@ -17,7 +17,7 @@ function createHumanBoard(api) {
     "dispatch_allowed","release_allowed","source_sha256","ordered_row_count",
     "row_plans","interpretation"];
   let plans = [], page = 0, changed = false, lastBulk = null;
-  let history = null, historyPage = 0;
+  let history = null, historyPage = 0, historyResolutions = new Map();
   const fresh = () => ({...DEFAULT});
   const isDefault = p => KINDS.every(k=>p[k]===DEFAULT[k]);
   const strictDigest = s => typeof s==="string"&&/^[0-9a-f]{64}$/.test(s);
@@ -221,25 +221,36 @@ function createHumanBoard(api) {
     return results;
   }
   function historyDisposition(change) {
-    let needs=0,already=0,conflicts=0;
+    let needs=0,already=0,conflicts=0,resolvedKeep=0,resolvedUse=0;
     for(const kind of change.fields) {
-      if(plans[change.ordinal-1][kind]===change.before[kind])needs++;
-      else if(plans[change.ordinal-1][kind]===change.after[kind])already++;
-      else conflicts++;
+      const current=plans[change.ordinal-1][kind];
+      if(current===change.before[kind])needs++;
+      else if(current===change.after[kind])already++;
+      else {
+        const resolution=historyResolutions.get(change.ordinal)?.[kind];
+        if(resolution==="keep")resolvedKeep++;
+        else if(resolution==="later")resolvedUse++;
+        else conflicts++;
+      }
     }
-    return {needs,already,conflicts,label:conflicts?"CONFLICT / HUMAN":needs?"HUMAN APPLY PROPOSED":"ALREADY MATCHES LATER"};
+    return {needs,already,conflicts,resolvedKeep,resolvedUse,
+      label:conflicts?"UNRESOLVED / HOLD":
+        needs||resolvedUse?"HUMAN APPLY PROPOSED":
+        resolvedKeep?"HUMAN CHOICE: KEEP CURRENT":"ALREADY MATCHES LATER"};
   }
   function historyStats() {
-    if(!history)return {changed:0,needs:0,already:0,conflicts:0};
-    const stats={changed:history.changes.length,needs:0,already:0,conflicts:0};
+    if(!history)return {changed:0,needs:0,already:0,conflicts:0,resolvedKeep:0,resolvedUse:0};
+    const stats={changed:history.changes.length,needs:0,already:0,conflicts:0,
+      resolvedKeep:0,resolvedUse:0};
     for(const item of history.changes) {
       const d=historyDisposition(item);
       stats.needs+=d.needs;stats.already+=d.already;stats.conflicts+=d.conflicts;
+      stats.resolvedKeep+=d.resolvedKeep;stats.resolvedUse+=d.resolvedUse;
     }
     return stats;
   }
   function clearHistory() {
-    history=null;historyPage=0;
+    history=null;historyPage=0;historyResolutions.clear();
     clear($("historyTable"));
     $("historySummary").textContent="No PRIVATE source-bound snapshots loaded.";
     $("historyPagination").textContent="No snapshots loaded.";
@@ -281,20 +292,41 @@ function createHumanBoard(api) {
       const newText=item.fields.map(k=>k+": "+item.after[k]).join("\n");
       tr.append(node("td",oldText),node("td",newText));
       const state=historyDisposition(item);
-      tr.append(node("td",state.label+(state.conflicts?" ("+state.conflicts+" incompatible field(s))":""),
-        state.conflicts?"metric-alert":""));
-      body.append(tr);
+      const td=node("td",state.label+(state.conflicts?" ("+state.conflicts+" unresolved field(s))":""),
+        state.conflicts?"metric-alert":"");
+      for(const kind of item.fields) {
+        const current=plans[item.ordinal-1][kind];
+        if(current===item.before[kind]||current===item.after[kind])continue;
+        const caption=node("label","Conflict in "+kind+" (current "+current+")");
+        const choice=node("select");
+        choice.setAttribute("aria-label","Original row "+item.ordinal+" HUMAN conflict "+kind);
+        for(const [value,label] of [["","Hold — choose explicitly"],
+          ["keep","Keep current HUMAN value"],["later","Use later HUMAN proposal"]]) {
+          const option=node("option",label);
+          option.value=value;option.selected=(historyResolutions.get(item.ordinal)?.[kind]||"")===value;
+          choice.append(option);
+        }
+        choice.addEventListener("change",()=>{
+          const existing=historyResolutions.get(item.ordinal)||{};
+          const updated={...existing,[kind]:choice.value};
+          historyResolutions.set(item.ordinal,updated);
+          renderHistory();
+        });
+        caption.append(choice);td.append(caption);
+      }
+      tr.append(td);body.append(tr);
     });
     table.append(body);
     const stats=historyStats();
     clear($("historySummary"));
     $("historySummary").append(node("strong",stats.changed+
       " changed HUMAN rows across the two manually ordered PRIVATE plans."));
-    $("historySummary").append(node("p",stats.needs+" locally applicable field changes · "+
-      stats.already+" already matching fields · "+stats.conflicts+
-      " conflicting fields (all-or-nothing HOLD)"));
+    $("historySummary").append(node("p",stats.needs+" directly compatible field proposals · "+
+      stats.already+" already matching · "+stats.conflicts+" unresolved HOLD conflicts · "+
+      stats.resolvedKeep+" explicit keep-current choices · "+
+      stats.resolvedUse+" explicit use-later choices."));
     $("historySummary").append(node("p","Selection order is not a verified time series. A later HUMAN stage is not evidence of a resolved security finding.","hint"));
-    $("historyApply").disabled=!stats.needs||stats.conflicts>0;
+    $("historyApply").disabled=!(stats.needs+stats.resolvedUse)||stats.conflicts>0;
     $("historyCounts").disabled=false;
     $("historyPrivate").disabled=results.length===0||results.length>512;
   }
@@ -314,7 +346,8 @@ function createHumanBoard(api) {
       version:1,disposition:"REVIEW_ONLY_DRAFT_HOLD",
       ...FLAGS,original_local_row_slots:plans.length,changed_human_rows:stats.changed,
       pending_human_field_proposals:stats.needs,already_matching_fields:stats.already,
-      conflicting_human_fields:stats.conflicts,transitions:dimensions,
+      unresolved_human_conflicts:stats.conflicts,explicit_keep_current:stats.resolvedKeep,
+      explicit_use_later:stats.resolvedUse,transitions:dimensions,
       interpretation:"Unsigned unverified manual earlier/later order. HUMAN choices only: never a verified remediation, authentic date, vulnerability, client consent, permission, or scan."};
   }
   function historyCSV(result) {
@@ -353,7 +386,7 @@ function createHumanBoard(api) {
       const newPlan=await readHistoryFile(later);
       const next={earlier:oldPlan,later:newPlan,changes:historyChanges(oldPlan,newPlan)};
       // Entire two-file source-byte admission completed BEFORE any active comparison changes.
-      history=next;historyPage=0;
+      history=next;historyPage=0;historyResolutions.clear();
       $("historySearch").value="";$("historyState").value="all";
       renderHistory();
       message("Both PRIVATE snapshots admitted against exact current original bytes. Chronology and reviewer authenticity remain unverified.");
@@ -371,17 +404,26 @@ function createHumanBoard(api) {
     if(stats.conflicts) {
       message("HUMAN history merge HOLD: "+stats.conflicts+" field conflicts. Current plan unchanged.",true);return;
     }
-    if(!stats.needs)return;
-    if(!confirm("Apply "+stats.needs+
-      " nonconflicting categorical HUMAN proposal fields from the manually designated later snapshot? No source facts, findings, grants, client authorization or scanner execution will change."))return;
+    if(!(stats.needs+stats.resolvedUse))return;
+    if(!confirm("Apply "+(stats.needs+stats.resolvedUse)+
+      " explicitly compatible or human-chosen use-later categorical proposals; preserve "+
+      stats.resolvedKeep+" human-confirmed keep-current decisions? This is only a HUMAN plan edit, never a finding, grant, consent, authorization or scan."))return;
     // Reassess every field and refuse all changes if any concurrent HUMAN decision conflicts.
     if(historyStats().conflicts)return;
     const next=plans.map(p=>({...p}));
     for(const item of history.changes)for(const kind of item.fields) {
-      if(next[item.ordinal-1][kind]===item.before[kind])
+      const current=next[item.ordinal-1][kind];
+      if(current===item.before[kind])next[item.ordinal-1][kind]=item.after[kind];
+      else if(current===item.after[kind])continue;
+      else if(historyResolutions.get(item.ordinal)?.[kind]==="later")
         next[item.ordinal-1][kind]=item.after[kind];
+      else if(historyResolutions.get(item.ordinal)?.[kind]==="keep")continue;
+      else {
+        message("A HUMAN conflict changed before application; entire merge held.",true);
+        return;
+      }
     }
-    plans=next;changed=true;lastBulk=null;
+    plans=next;changed=true;lastBulk=null;historyResolutions.clear();
     $("humanUndo").disabled=true;
     page=0;render();renderHistory();
     message("Applied only nonconflicting HUMAN categorical proposals. No original finding or authorization was changed.");
