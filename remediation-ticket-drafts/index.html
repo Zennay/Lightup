@@ -71,7 +71,14 @@ pre{background:#081220;color:#dbe9fc;border:1px solid #354760;border-radius:12px
 <p id="notice" class="status" role="status" aria-live="polite">All edits stay only in this tab until an explicitly approved private download. Refreshing loses unsaved work.</p>
 </section>
 <section class="panel full">
-<h2>03 / Private release review</h2>
+<h2>03 / Revision safety & historical HUMAN SOURCE HOLD</h2>
+<p class="muted">Import a newer original CSV in the same file input above. The unchanged five-field original source findings may retain local HUMAN drafts only after your explicit same-client/engagement review. Changed or missing source findings never auto-carry; they enter a separate read-only historical HOLD.</p>
+<p id="source-diff" class="status">No source revision imported.</p>
+<div class="scroll"><table><thead><tr><th>Prior finding</th><th>Reason</th><th>Historical HUMAN planning</th></tr></thead><tbody id="historical-holds"><tr><td colspan="3" class="muted">No historical source HOLD records.</td></tr></tbody></table></div>
+<div class="actions"><button id="export-holds" disabled>Download PRIVATE historical HOLD register</button></div>
+</section>
+<section class="panel full">
+<h2>04 / Private release review</h2>
 <p class="muted">Review before copying text into your own approved private tracker. The ticket content includes source finding IDs, titles and remediation suggestions. It may be confidential. No generated ticket is sent anywhere automatically.</p>
 <div class="field"><label for="preview-output">Private GitHub-flavored Markdown preview</label><pre id="preview-output">Nothing selected yet.</pre></div>
 <label class="checkbox"><input type="checkbox" id="private-ack" disabled><span>I have independently checked the intended recipients, channel and source-client context, and approve handling these plaintext ticket drafts privately. This is not authorization to scan, release or claim a verified fix.</span></label>
