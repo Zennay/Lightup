@@ -147,16 +147,22 @@ def local_home(number: int) -> bytes:
         "location. No part of this product authenticates consent, findings or fixes."
         "</p></section></main></html>\n").encode("utf-8")
 
-def publish(input_paths: list[Path], output: Path) -> dict:
-    review.require(1 <= len(input_paths) <= 12 and len(set(input_paths)) == len(input_paths),
-                   "Require 1–12 distinct original PRIVATE input directories")
+def publish(input_paths: list[Path], output: Path,
+            existing_bundles: list[Path] | None = None) -> dict:
+    existing_bundles = existing_bundles or []
+    sources = input_paths + existing_bundles
+    review.require(1 <= len(sources) <= 12 and len(set(sources)) == len(sources),
+                   "Require 1–12 distinct raw inputs and/or original PRIVATE desks")
     review.require(output.is_absolute() and output.parent == output.parent.resolve(strict=True)
                    and not output.exists() and not output.is_symlink(),
                    "Output is a completely NEW absolute literal PRIVATE directory")
-    for original in input_paths:
+    for original in sources:
         review.require(original != output and original not in output.parents and
-                       output not in original.parents, "Output must not enter original input directory")
+                       output not in original.parents, "Output must not enter original source directory")
+    for original in input_paths:
         input_folder(original)
+    for original in existing_bundles:
+        verify.inspect(original)
     parent = triage.private_parent(output)
     stage = parent / (".lightup-private-workroom-" + secrets.token_hex(12))
     os.mkdir(stage, 0o700)
@@ -164,11 +170,15 @@ def publish(input_paths: list[Path], output: Path) -> dict:
     try:
         originals = []
         input_snapshots = []
-        for index, folder in enumerate(input_paths, 1):
-            files, manifest = source_files(folder)
+        for index, folder in enumerate(sources, 1):
+            if index <= len(input_paths):
+                files, manifest = source_files(folder)
+            else:
+                _, files = verify.inspect(folder)
+                manifest = review.private_read(folder / "manifest.json")
             target = stage / f"original-{index:02}"
             workspace.publish_bundle(target, files, manifest)
-            verify.inspect(target)  # direct native source product admission, not QA suite
+            verify.inspect(target)  # native owner-source product admission
             originals.append(target)
             input_snapshots.append(
                 (folder, {key: review.private_read(folder / key)
@@ -203,15 +213,16 @@ def publish(input_paths: list[Path], output: Path) -> dict:
 def main() -> int:
     parser = argparse.ArgumentParser(description=(
         "Build a PRIVATE source-owner workroom and separate source-free cockpit "
-        "atomically from preexisting local original ledger/HUMAN input folders"))
-    parser.add_argument("--input-dir", type=Path, action="append", required=True,
-                        help="Owner-only 0700 directory containing current.json, optional "
-                             "previous.json and optional session.json (1–12)")
+        "atomically from raw PRIVATE ledgers and/or completed original native desks"))
+    parser.add_argument("--input-dir", type=Path, action="append", default=[],
+                        help="Original raw current.json + optional previous/session; raw sources first")
+    parser.add_argument("--bundle", type=Path, action="append", default=[],
+                        help="Complete original PRIVATE workdesk; follows raw inputs (1–12 total)")
     parser.add_argument("--output-dir", type=Path, required=True,
                         help="NEW absolute workroom directory inside owner-only 0700 parent")
     args = parser.parse_args()
     try:
-        summary = publish(args.input_dir, args.output_dir)
+        summary = publish(args.input_dir, args.output_dir, args.bundle)
         print("PRIVATE original + HUMAN workroom published atomically.")
         print("Original slots: " + str(summary["source_slots"]) +
               "; locally pending proposed questions: " + str(summary["human_pending"]) +

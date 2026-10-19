@@ -86,6 +86,14 @@ python3 remediation-evidence-bundle-integrity/prepare.py \
   --output-dir "$HOME/lightup-private/workroom-001"
 ```
 
+**Reuse already completed original Evidence Relationship Desks:** the same atomic workroom command now also accepts `--bundle /ABSOLUTE/ORIGINAL-DESK` for a **fully existing**, original source-owner PRIVATE Evidence Relationship Desk (with original complete source/workspace manifest, immutable originals and HUMAN session already present). This is admitted in full by the existing `verify.py` and then copied *byte-for-byte* through the original atomic workspace publisher; it never discards completed HUMAN notes and needs no manual re-export to an artificial raw input folder. Use `--bundle` alone or mix with repeated `--input-dir` for up to 12 original workspaces. Raw `--input-dir` folders occupy initial slot numbers; full `--bundle` folders follow in CLI order. Both original inputs must be completely owner-private and remain unchanged. Duplicate identical source+session snapshots HOLD to avoid false double-counted workload.
+
+```sh
+python3 remediation-evidence-bundle-integrity/prepare.py \
+  --bundle "$HOME/lightup-private/desk-001" \
+  --output-dir "$HOME/lightup-private/workroom-from-original-001"
+```
+
 For 2–12 sources, repeat `--input-dir`; never duplicate the same source folder. An existing owner-only 0700 parent is mandatory and `--output-dir` must be completely new, outside every input folder. The native original source renderer prepares `original-01/`, etc., preserves original HUMAN source-bound notes and original PRIVATE pages, and then the existing `board.py` creates `cockpit/`. The new root `index.html` is a **ready-to-open local operator navigation desk** linking the original private source-bound reviews and combined anonymous human action/workload brief. It also links to **`tasks.html`**, a substantial new original-source-only human work queue produced by `workroom_actions.py`: every original admitted proposed question is grouped into *needs source owner*, *open*, *currently in human review* and *locally answered*, with record-level original claimed finding ID and local SHA label, its exact native reason-specific human prompt, and a link back to the owning original source inbox. Stages are ordered for manual routing, **never** inferred security severity. Free-text HUMAN notes are not duplicated; only a `PRIVATE note present` flag appears. The task queue stays **outside** the source-free `cockpit/`, is scriptless and owner-private 0600, and is never part of receiver transfer.
 
 With an already-created single original workroom, it can also be published independently to a fresh unused file in that workroom root:
