@@ -52,6 +52,10 @@ python3 remediation-cockpit-attestation/attest.py verify \
 
 New full PRIVATE workrooms now open a **source-free HUMAN workload home screen**, a locally prioritized and review-date-ordered HUMAN queue, and **direct links to the exact original native source-free cockpit** for each assigned slot. Old workroom bytes and standalone boards are still admitted with their old read-only renderer. The existing `workroom_control.py extend` command can accept several additional AES-256-GCM `.ltpack` files in one call, preserving all exact-original existing HUMAN assignments in a fully NEW complete owner-private workroom. [Details and command examples](COORDINATION.md). No source evidence, consent, grants, verified fixes, active scanning or deploy are created.
 
+## Full workroom send/receive from one operator console
+
+The existing full [PRIVATE HUMAN coordination workflow](COORDINATION.md) now uses `workroom_control.py send` and `workroom_control.py receive` for entire native source-free inbox + AES-256-GCM HUMAN plan handoff. The same console also includes one-command `create`, `extend`, complete `inspect`, batch assignment, count-only export, ordinary revisions and `rekey`. Only fresh owner-private material is published; no original evidence, original client consent or verified security outcome is created.
+
 ## Rotate an existing trusted shared-key receipt without changing the cockpit
 
 After generating a separate NEW 32-byte key in a different private keyfile, rotate only an already-authenticated cockpit. Rotation authenticates the **old** receipt with the original secret and native reader first, then binds the **same manifest bytes** to the new key with a new exclusive detached receipt. It refuses identical old/new key material and never overwrites the old receipt. The old key/receipt remain available for prior devices until a human separately revokes them. This procedure does **not** itself revoke a leaked key or invalidate previously copied receipts.

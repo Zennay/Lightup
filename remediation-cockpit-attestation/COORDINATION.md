@@ -159,6 +159,24 @@ python3 remediation-cockpit-attestation/workroom_control.py create \
 
 All original encrypted packets must already be under the same **separately human-approved key** and contain only source-free native cockpits. The operation authenticates and admits every original signed manifest and HTML/JSON, creates a new encrypted owner-private **unassigned HUMAN coordination plan**, seals/reopens the complete package, and publishes **one fully constructed 0700 PRIVATE workroom** with the v2 local workload dashboard and clickable original source-free cockpit links. The original ciphertexts and source remain untouched. It cannot authenticate the actual human sender, original case evidence, client consent or a verified fix. No network upload, grant, Apply, scan or CI change occurs.
 
+## One PRIVATE HUMAN operator CLI for full encrypted team handoff
+
+The same [workroom_control.py](workroom_control.py) now exposes both complete-workroom **send** and **receive**, in addition to first-time create, later extend, inspect, batch edits, privacy aggregate export, and team-key rotation. Operators no longer need to manually extract the original source-free inbox and encrypted plan just to hand off the whole source-free HUMAN workroom.
+
+```sh
+python3 remediation-cockpit-attestation/workroom_control.py send \
+  --workroom "$HOME/private-incoming/lightup-human-workroom-EXACT-ID" \
+  --key-file "$HOME/private-secrets/team-secret.key" \
+  --output "$HOME/private-incoming/whole-human-workroom.ltworkroom"
+
+python3 remediation-cockpit-attestation/workroom_control.py receive \
+  --input "$HOME/private-incoming/whole-human-workroom.ltworkroom" \
+  --key-file "$HOME/private-secrets/team-secret.key" \
+  --output-parent "$HOME/private-incoming"
+```
+
+The sending CLI fully admits the old original source-free inbox, native individual HMAC receipts, encrypted plan and browser page before creating **one fresh owner-private encrypted file**. It forbids accidentally placing the resulting ciphertext inside the source workroom. The receiving CLI rebuilds the source-free original cockpit slots, their original HMAC receipts, encrypted private HUMAN plan and complete PRIVATE browser dashboard, then independently admits the whole new workroom. Keep the shared key separate through an approved PRIVATE HUMAN channel. Neither operation identifies actual senders or customers, verifies fixes, grants access or contacts any target/network.
+
 ## Faster offline workroom: prioritized review queue and one-step encrypted intake
 
 **New complete PRIVATE HUMAN workrooms** open to a source-bound, scriptless local dashboard with local workload totals, pending HUMAN questions, and two navigation links. The HUMAN review board sorts not-locally-answered items by self-declared urgency and local date, with a direct **one-click link to each original native source-free cockpit**. Those links point only into `../inbox/slot-NN/cockpit/index.html` within the same 0700 workroom; there are no network calls. Older workrooms retain and re-admit their original v1 pages unchanged. Standalone PRIVATE coordination HTML exports also retain their original link-free layout, because they do not include the sibling inbox. The new v2 navigation is declared explicitly in the workroom's private board manifest and independently rebuilt during admission.
