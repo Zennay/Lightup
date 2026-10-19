@@ -77,3 +77,7 @@ footer{border-top:1px solid #283442;padding:22px clamp(18px,4vw,52px);max-width:
 .human-bulk .hint{margin:10px 0 0}
 @media(max-width:900px){.bulk-fields{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:600px){.bulk-fields{grid-template-columns:1fr}}
+
+.matrix-paging{padding:10px 15px;border-top:1px solid #2d3c4c;background:#162330}
+.matrix-paging span{font-weight:650;color:#c3dfe3}
+.matrix-paging .buttons button{padding:8px 12px;font-size:.81rem}
