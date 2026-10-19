@@ -22,6 +22,7 @@ HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parent / "remediation-evidence-retention"))
 import request_handoff as bridge
 import reconcile as native_status
+import report as local_dashboard
 
 source = bridge.source
 original = bridge.original
@@ -284,13 +285,13 @@ def _resolve(args, vault, folder, journal, packet, key) -> None:
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     subs = parser.add_subparsers(dest="action", required=True)
-    for action in ("status", "stage", "recover", "resolve"):
+    for action in ("status", "stage", "report", "recover", "resolve"):
         p = subs.add_parser(action)
         for name in ("db", "email", "client-id", "engagement-id"):
             p.add_argument("--" + name, required=True)
         for name in ("human", "directory", "plan", "journal-dir"):
             p.add_argument("--" + name, type=Path, required=True)
-        if action == "stage":
+        if action in ("stage", "report"):
             p.add_argument("--output", type=Path, required=True)
         p.add_argument("--ack-private-material", action="store_true")
     args = parser.parse_args(argv)
@@ -304,6 +305,20 @@ def main(argv=None) -> int:
             document = _read(folder, key, vault)
             if args.action == "status":
                 _inspect(document, packet)
+            elif args.action == "report":
+                destination = args.output.expanduser().absolute()
+                if (destination.suffix.lower() != ".html"
+                        or destination in {
+                            args.human.expanduser().absolute(),
+                            args.plan.expanduser().absolute()}
+                        or destination.exists() or destination.is_symlink()):
+                    raise ValueError("Distinct NEW private HTML output required.")
+                latest = document["cycles"][-1] if document["cycles"] else None
+                closed = _closed(latest, packet) if latest and latest["requests"] else False
+                payload = local_dashboard.build(document, closed)
+                vault._exclusive_output(destination, payload)
+                print("New owner-private 0600 scriptless offline HUMAN journal created.")
+                print("Only anonymous local cycle states, timestamps and counts included.")
             elif args.action == "stage":
                 _stage(args, vault, folder, document, current)
             elif args.action == "recover":
