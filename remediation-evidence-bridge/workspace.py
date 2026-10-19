@@ -116,8 +116,8 @@ def _unb64(value: str, limit: int) -> bytes:
 
 
 def _make_workspace(csv_raw: bytes, human_raw: bytes, client: str, engagement: str) -> bytes:
-    bridge.original._literal(client,"client")
-    bridge.original._literal(engagement,"engagement")
+    bridge._text_label(client,"client")
+    bridge._text_label(engagement,"engagement")
     sha,count=bridge.original._strict_summary(csv_raw.decode("utf-8","strict"))
     digest,num=_native_digest(csv_raw)
     if count!=num:
@@ -148,8 +148,8 @@ def _admit_workspace(raw: bytes) -> tuple[dict,bytes,bytes]:
         obj.get("source_contract")!="lightup.finding_export._COLUMNS_v1"
     ) or any(obj[flag] is not False for flag in FLAGS):
         raise ValueError("Noncanonical or authorizing PRIVATE HUMAN container.")
-    bridge.original._literal(obj.get("client_reference"),"client")
-    bridge.original._literal(obj.get("engagement_reference"),"engagement")
+    bridge._text_label(obj.get("client_reference"),"client")
+    bridge._text_label(obj.get("engagement_reference"),"engagement")
     original=_unb64(obj["original_csv_base64"],bridge.original.MAX_CSV_BYTES)
     human=_unb64(obj["workspace_base64"],LIMIT)
     if (type(obj["workspace_bytes"]) is not int or obj["workspace_bytes"]!=len(human) or
