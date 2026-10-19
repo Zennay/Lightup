@@ -49,7 +49,7 @@ def main(argv: list[str] | None = None) -> int:
         # Capture explicit HUMAN choices before creating any private output.
         rows=reply._human_rows(files)
         reply.seal_reply(reply_path,vault,envelope,packet,plain,files,
-                         material_password,original_key_hash,rows)
+                         material_password,original_key_hash,rows,announce=False)
         created_reply=reply_path
         try:
             # Original exclusive 0600 publication with its own all-or-nothing
