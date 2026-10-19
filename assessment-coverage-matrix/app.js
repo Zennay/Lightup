@@ -13,7 +13,7 @@
   const FLAGS = Object.freeze({authorized:false,consent_verified:false,
     dispatch_allowed:false,release_allowed:false});
   const MAX_SOURCE_BYTES = 8 * 1024 * 1024;
-  let sources = [], rows = [], visible = [], selected = null;
+  let sources = [], rows = [], visible = [], selected = null, sourceDigests = [];
   const fail = (ok, message = "Untrusted or incompatible original lab result") => {
     if (!ok) throw new Error(message);
   };
@@ -341,6 +341,21 @@
     rowsData.declared_tuple_rows.forEach(item=>lines.push([item.ordinal,...item.appearances]));
     return lines.map(line=>line.join(",")).join("\r\n")+"\r\n";
   }
+  const humanBoard=createHumanBoard({
+    $,node,clear,fail,shape,obj,int,text,parseStrict,download,message,FLAGS,
+    getRows:()=>rows,getDigests:()=>sourceDigests,
+    onFocus:(row)=>{
+      // HUMAN routing opens the original untrusted declaration; it never executes it.
+      const index=row.bySource.findIndex(items=>items.length>0);
+      if(index>=0){
+        $("query").value=row.capability+" "+row.check;
+        $("severity").value="all";$("endpoint").value="0";
+        refresh();
+        details(row,index,filteredPairs(row)[index]);
+        $("details").scrollIntoView({behavior:"smooth",block:"nearest"});
+      }
+    }
+  });
   async function importFiles() {
     const files=[...$("files").files];
     if(files.length<2||files.length>8){
@@ -348,10 +363,18 @@
     }
     $("load").disabled=true;message("Reading selected local originals. No network or scan.");
     try {
-      const next=[];
+      const next=[],nextDigests=[];
       for(const file of files) {
         fail(file.size>0&&file.size<=MAX_SOURCE_BYTES,"Source file outside the 8 MiB bound");
         const data=new Uint8Array(await file.arrayBuffer());
+        let fingerprint=null;
+        try {
+          if(globalThis.crypto?.subtle){
+            const bytes=await crypto.subtle.digest("SHA-256",data);
+            fingerprint=[...new Uint8Array(bytes)].map(byte=>byte.toString(16).padStart(2,"0")).join("");
+          }
+        } catch {fingerprint=null;}
+        nextDigests.push(fingerprint);
         const decoded=new TextDecoder("utf-8",{fatal:true}).decode(data);
         next.push(admit(parseStrict(decoded)));
       }
@@ -365,8 +388,13 @@
           source.targets.every(t=>sameTargets.has(t)),
           "Different exact declared endpoint set; cannot present one comparison matrix");
       }
+      // Never discard an existing HUMAN plan unless replacement is deliberate.
+      if(sources.length&&!confirm("Replace the current original source set and all unsaved HUMAN routing choices?")){
+        message("New source set not applied. Existing workroom retained.");return;
+      }
       // Only publish after the WHOLE batch has passed strict source admission.
-      sources=next;rows=aggregate(next);selected=null;clear($("details"));
+      sources=next;sourceDigests=nextDigests;rows=aggregate(next);
+      selected=null;clear($("details"));
       clear($("endpoint"));
       $("endpoint").append(new Option("All declared endpoints",0));
       baseline.targets.forEach((_,i)=>$("endpoint").append(new Option("Endpoint ordinal "+(i+1),i+1)));
@@ -376,7 +404,7 @@
       $("sourceSummary").textContent=baseline.targets.length+
         " identical literal declared endpoint slots · "+rows.length+
         " literal capability/check groups · no verification of target, ownership or chronology";
-      renderSourceMetrics();renderAttention();refresh();
+      renderSourceMetrics();renderAttention();refresh();humanBoard.initialize();
       message("Local input admitted structurally. Source statements remain unverified. No original data uploaded.");
     } catch(error) {
       message("Entire selection held: "+error.message+
@@ -388,7 +416,8 @@
   $("load").addEventListener("click",importFiles);
   $("forget").addEventListener("click",()=>{
     if(sources.length&&!confirm("Forget ALL locally opened original PRIVATE result data?"))return;
-    sources=[];rows=[];visible=[];selected=null;
+    sources=[];rows=[];visible=[];selected=null;sourceDigests=[];
+    humanBoard.clearAll();
     clear($("details"));clear($("matrix"));clear($("attention"));clear($("sourceMetrics"));$("query").value="";
     $("workspace").hidden=true;$("intro").hidden=false;
     $("files").value="";message("Private originals discarded from this application state.");
@@ -406,6 +435,6 @@
     }
   });
   addEventListener("beforeunload",event=>{
-    if(sources.length){event.preventDefault();event.returnValue="";}
+    if(sources.length||humanBoard.hasEdits()){event.preventDefault();event.returnValue="";}
   });
 })();
