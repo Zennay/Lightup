@@ -38,12 +38,20 @@ def inspect(root: Path, secret: Path) -> dict:
             {"index.html", "anonymous-counts.json", "manifest.json"})
     source, digest = coordination.admitted_inbox(root / "inbox", secret)
     plan, encrypted = coordination.decrypt(root / "plan.ltplan", secret, source, digest)
-    original_browser = coordination.render(plan)
     anonymous = native.workspace.pretty(coordination.overview(plan))
     manifest = native.verify.json_obj(review.private_read(root / "board" / "manifest.json"))
-    require(type(manifest) is dict and set(manifest) ==
-            {"kind", "schema_version", "files", "source_inbox_manifest_sha256",
-             "encrypted_plan_sha256", "warning"} and
+    original_fields = {"kind", "schema_version", "files", "source_inbox_manifest_sha256",
+                       "encrypted_plan_sha256", "warning"}
+    require(type(manifest) is dict and set(manifest) in
+            (original_fields, original_fields | {"navigation"}))
+    if "navigation" in manifest:
+        import linked_board
+        require(manifest["navigation"] == linked_board.MODE)
+        original_browser = linked_board.render(plan)
+    else:
+        # Keep every previously published original PRIVATE workroom readable.
+        original_browser = coordination.render(plan)
+    require(
             manifest["kind"] == "lightup.private_human_coordination_browser" and
             type(manifest["schema_version"]) is int and
             manifest["schema_version"] == 1 and
