@@ -30,7 +30,8 @@
 <div id="carryJournal" class="revisions" aria-label="Human source-carry decisions"></div>
 <label id="carryAckLabel" class="check" hidden><input id="carryAck" type="checkbox">I have independently compared the previous and latest original five-field source, and deliberately approve carrying this unverified HUMAN note to the new source row. This is not a fix/retest, grant or client authorization.</label>
 <label id="carryReasonLabel">Human decision rationale (PRIVATE, 8–800 characters)<textarea id="carryReason" rows="3" minlength="8" maxlength="800" placeholder="Specify what changed in the original finding and why these HUMAN planning notes may follow the new version."></textarea></label>
-<button id="carryHuman" class="secondary" hidden>Carry HUMAN note with retained private rationale</button></section>
+<button id="carryHuman" class="secondary" hidden>Carry HUMAN note with retained private rationale</button>
+<button id="discardHuman" class="danger" hidden>Discard this held HUMAN note (after private backup)</button></section>
 <section class="card"><div class="heading"><span class="step">05</span><div><h2>Local handoff &amp; clean-up</h2><p>The aggregate export omits original IDs, titles, remedies and HUMAN notes. Finding-level handoff is PRIVATE and requires separate confirmation.</p></div></div>
 <div class="actions"><button id="aggregate" class="secondary">Export aggregate source trends CSV</button><label class="check"><input id="privateAck" type="checkbox">I have approved a PRIVATE destination and verified recipients for original IDs, titles, human owner/action details.</label><button id="privateExport">Export currently filtered PRIVATE HUMAN CSV</button>
 <button id="caseworkExport" class="secondary">Export original Casework v1 PRIVATE human draft</button>
