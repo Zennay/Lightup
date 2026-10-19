@@ -96,7 +96,9 @@ def _make_choices(old_meta: dict, old_rows: list[dict[str, str]],
 
 def _read_private_choices(path: str) -> dict:
     """No-follow and owner-private: never admit a shared/public selection sheet."""
-    flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_CLOEXEC", 0)
+    if not hasattr(os, "O_NOFOLLOW"):
+        raise ValueError("private no-follow HUMAN selection admission unavailable")
+    flags = os.O_RDONLY | os.O_NOFOLLOW | getattr(os, "O_CLOEXEC", 0)
     fd = os.open(Path(path).expanduser(), flags)
     try:
         info = os.fstat(fd)
