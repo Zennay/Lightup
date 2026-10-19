@@ -60,3 +60,45 @@ No model, remote URL, target interaction, scan, grant, issue of remediation exec
 ## Release and integration
 
 The companion stays separate and **DRAFT/HOLD**, stacked on original #1661; it does not claim its parent is released. Do not merge into `main` or deploy until all **original** exact-head hosted plus permanently registered named VPS CI, source-owner and independent security/privacy/browser review, #177/#182/#829, separately authenticated *current* client/operator consent with at-use revocation when actually required, and explicit HUMAN GO are met. No gate is bypassed, no extra gate is introduced.
+
+
+## Multi-moment PRIVATE recipient workload studio (2–12 handoffs)
+
+The new `timeline.py` accepts **2–12 completely received original source-free cockpit folders**. Each complete input is independently admitted via the **existing native** `read_cockpit.inspect` (owner/private file modes, exact original manifest, original native schema and HTML reconstruction). Exact duplicate incoming complete packets are rejected rather than pretending another revision. Original packet bytes are re-admitted before the new output is published.
+
+The generated entirely OFFLINE private `index.html` is a navigable scriptless HTML dashboard with a native accessible pending-workload progress view for every operator-selected packet, and adjacent count-only deltas. It includes a current-count HUMAN reason brief, not source data. The newly published PRIVATE directory contains canonical `series.json`, `series.csv`, original-owned `human-followup.md` discussion prompts and its own unsigned SHA-256 manifest. Neither original client/finding IDs, source hashes, evidence, free-text case notes nor confidential original file paths are included. Owner-only 0700/0600 permissions, exclusive no-overwrite atomic directory publication and zero network activity continue to apply.
+
+Use **one native receiver operator command** for the entire new product, always choosing an unused destination inside an existing private 0700 folder:
+
+```sh
+python3 remediation-recipient-trend/operator.py series \
+  --cockpit "$HOME/lightup-private/received-01" \
+  --cockpit "$HOME/lightup-private/received-02" \
+  --cockpit "$HOME/lightup-private/received-03" \
+  --output-dir "$HOME/lightup-private/recipient-series-001"
+```
+
+The standalone `timeline.py` CLI accepts identical `--cockpit` and `--output-dir` parameters. On a receiving machine that no longer has these original source-free packets, **independently re-open the entire private report**:
+
+```sh
+python3 remediation-recipient-trend/operator.py reopen-series \
+  --receipt "$HOME/lightup-private/recipient-series-001"
+```
+
+The standalone `timeline_receive.py` accepts `--receipt` as well. It reconstructs HTML, CSV, JSON and HUMAN follow-up text byte-for-byte, enforces exact schema and nonnegative original aggregate counts, exact integer-only signed per-ordinal differences, original false-only authority flags and the full 0700/0600 inventory. No original source, client account, evidence, consent or target is contacted, and no action is sent back to any source system.
+
+For simple two-snapshot comparisons the equivalent unified commands are:
+
+```sh
+python3 remediation-recipient-trend/operator.py compare \
+  --left "$HOME/lightup-private/received-01" \
+  --right "$HOME/lightup-private/received-02" \
+  --output-dir "$HOME/lightup-private/two-moment-review-001"
+
+python3 remediation-recipient-trend/operator.py reopen-compare \
+  --receipt "$HOME/lightup-private/two-moment-review-001"
+```
+
+**Important interpretation:** packet ordinals are a HUMAN-selected order, not authenticated timestamps. Original source/client case membership across handoffs is unknowable in the source-free recipient packets. A rising/falling total cannot be labeled a security improvement, new vulnerability, verified remediation or clinical/contractual SLA. Local checksums never authenticate the original producer. The recipient must contact the authenticated original private source owner for actual evidence, retest, client/operator consent and any real activation decisions.
+
+Every successful command returns exit **2 / REVIEW_ONLY**; invalid or unsafe packets return **3 / HOLD**. No QA suites or release gates are modified. Do not treat these values as green CI.
