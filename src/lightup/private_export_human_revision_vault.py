@@ -131,6 +131,14 @@ def _current_source(earlier: str, plan: str, later: str) -> tuple[dict, dict, li
     return expected, output, new_rows, new_meta, before_binding
 
 
+def _require_current_original_ciphertext(args: argparse.Namespace, binding: bytes) -> None:
+    """Refuse private publication if an original encrypted input has changed."""
+    if binding != _source_binding(
+        args.earlier_source, args.earlier_plan, args.later_source
+    ):
+        raise ValueError("original source ciphertext changed before HUMAN publication")
+
+
 def _reconcile(document: dict, expected: dict, output: dict,
                new_meta: dict, new_rows: list[dict[str, str]]) -> tuple[bytes, dict]:
     # Exact original source + all choices are checked together; a late mismatch
@@ -207,6 +215,7 @@ def main(argv: list[str] | None = None) -> int:
                 magic=MAGIC_DECISIONS, max_plaintext=MAX_BOUND_DECISIONS,
             )
             del new_secret
+            _require_current_original_ciphertext(args, source_binding)
             _atomic_private_publish(destination, package)
             print("Created NEW 0600 encrypted, original-source-bound HUMAN choices .lud.")
             print("Original plaintext choices remain; secure or retire them manually.")
@@ -231,6 +240,7 @@ def main(argv: list[str] | None = None) -> int:
                 prepared_plan, fresh, magic=MAGIC_PLAN, max_plaintext=MAX_PLAN,
             )
             del fresh
+            _require_current_original_ciphertext(args, source_binding)
             _atomic_private_publish(destination, encrypted_plan)
             print("Created NEW source-bound original-format encrypted HUMAN workplan .lun.")
             for name, count in summary.items():
@@ -242,12 +252,14 @@ def main(argv: list[str] | None = None) -> int:
                 original, fresh, magic=MAGIC_DECISIONS, max_plaintext=MAX_BOUND_DECISIONS
             )
             del fresh
+            _require_current_original_ciphertext(args, source_binding)
             _atomic_private_publish(destination, refreshed)
             print("Created NEW private encrypted HUMAN choice artifact with unchanged choices.")
             print("Unsigned ciphertext SHA256:", hashlib.sha256(refreshed).hexdigest())
         else:
             # Private original IDs/titles and self-declared source identities will
             # become plaintext ONLY after a distinct explicit recipient approval.
+            _require_current_original_ciphertext(args, source_binding)
             _atomic_private_publish(destination, original[BINDING_SIZE:])
             print("Created NEW UNENCRYPTED PRIVATE source-bound HUMAN choices JSON.")
             print("Manually verify storage and recipient; no source or plan was changed.")
