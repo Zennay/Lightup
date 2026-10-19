@@ -112,6 +112,32 @@
       body.append(row);
     }
     table.append(body);area.append(table);panel.append(area);
+    const exportButton=document.createElement("button");
+    exportButton.type="button";exportButton.className="subtle";
+    exportButton.textContent="Exporteer afzonderlijke PRIVATE HUMAN-continuïteitslijst (CSV)";
+    const warning=make("p",
+      "OPTIONELE plaintext-download met PRIVATE dossieridentiteiten. De lijst heeft GEEN bron-signatuur, permission-, consent-, grant-, revocation- of veiligheidsverdict. Nooit anoniem/publiceren.");
+    panel.append(warning,exportButton);
+    exportButton.addEventListener("click",()=>{
+      if(!window.confirm("Download een afzonderlijke ONVERSLEUTELDE PRIVATE HUMAN-continuïteitslijst inclusief oorspronkelijke dossier-ID's? Gebruik uitsluitend een eigen vertrouwde lokale opslag; niet delen als onafhankelijke toestemming."))return;
+      const header=["original_engagement_id","human_only_source_class","prior_human_stage",
+        "proposed_human_stage","source_authenticated","consent_verified","authorization_granted"];
+      const rows=[header,...updates.map(u=>[u.id,u.status,u.priorStage,u.nextStage,
+        "false","false","false"])];
+      const cell=value=>{
+        const text=String(value);
+        if(/[\r\n]/.test(text)||/^[=+@\-]/.test(text))
+          deny("Onveilig PRIVATE CSV-veld; export geweigerd.");
+        return /[",]/.test(text) ? '"'+text.replace(/"/g,'""')+'"' : text;
+      };
+      const output=rows.map(row=>row.map(cell).join(",")).join("\r\n")+"\r\n";
+      const blob=new Blob([output],{type:"application/octet-stream"});
+      const url=URL.createObjectURL(blob);
+      const a=document.createElement("a");
+      a.href=url;a.download="lightup-PRIVATE-human-continuity-review.csv";
+      document.body.append(a);a.click();a.remove();
+      setTimeout(()=>URL.revokeObjectURL(url),30000);
+    });
   }
   window.LightUpCasebookContinuity=Object.freeze({prepare,render});
 })();
