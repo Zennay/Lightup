@@ -150,6 +150,24 @@ After human review, run `carry` with the exact same arguments **plus** `--output
 
 The return packet is **encrypted notes from a human**, not third-party identity proof, client consent, signed custody or a verified remediation.
 
+## 7. Ready-to-open PRIVATE offline receipt inbox
+
+`inbox.py` closes the receiver-to-owner HUMAN communication loop with a readable, responsive **single-file scriptless HTML** generated only after real original-current account/client/engagement read, exact source-bound native attachment admission, and decrypted original-material and recipient-reply matching. It groups private HUMAN replies as **HOLD**, **needs HUMAN follow-up**, or **received but unverified**, highlights original **source-claimed** critical/high severity and retest labels without upgrading them to facts, and shows private notes only inside the explicitly chosen 0600 local HTML file. It includes a restrictive CSP (`default-src 'none'`, `script-src 'none'`, `connect-src 'none'` and SHA-256-pinned local CSS), no external resources, no active scripts, no data uploads, and no browser persistence. It never opens evidence bytes or applies original HUMAN actions.
+
+```bash
+PYTHONPATH=src python3 remediation-evidence-materials/inbox.py \
+  --db /private/lightup/existing.sqlite \
+  --email operator@example.invalid \
+  --client-id CURRENT_CLIENT --engagement-id CURRENT_ENGAGEMENT \
+  --human /private/lightup/current-original-human.ltv \
+  --transfer /private/lightup/sent-evidence-materials.ltv \
+  --reply /private/lightup/received-recipient-human-return.ltv \
+  --output /private/lightup/NEW-private-human-receipt-inbox.html \
+  --ack-private-html
+```
+
+Open the new HTML **locally on a trusted owner-only workstation**. It contains confidential original finding titles, IDs, hash references and HUMAN notes; never place it in a webserver, cloud-synced or publicly accessible folder. Source identity was authenticated **only at the moment this private HTML was created**; it is not ongoing access, approved scope or a security verdict.
+
 ## Operational posture
 
 The output is **human-supplied local file bytes matched against source-reported HUMANS**, **not** signed chain of custody, verified scanner evidence, validated security impact, remediation success, or consent. Treat any original severity or retest text as unverified source labels. Existing mandatory original exact-head hosted + permanently registered named VPS CI, source-owner review, independent privacy/security/crypto review, original #177/#182/#829, current independent client/operator consent with action-time revocation for future active work and explicit HUMAN GO remain necessary. This independent feature must stay **DRAFT/HOLD**, without main merge or production deployment, until actual release gates are satisfied.
