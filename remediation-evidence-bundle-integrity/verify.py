@@ -103,6 +103,21 @@ def inspect(folder: Path) -> tuple[dict, dict[str, bytes]]:
               "attention": focus.summarize(session)}
     review.require(contents["counts.json"] == workspace.pretty(counts),
                    "Counts do not match original source-bound HUMAN state")
+    # A locally rewritten checksum manifest can still point to malicious HTML.
+    # Reconstruct EVERY browser page from the admitted original source and the
+    # pinned independent source-owner renderers, not the mutable manifest.
+    expected_html = {
+        "index.html": workspace.operator_portal(source, analysis, session),
+        "fingerprints.html": review.render(source, analysis).encode("utf-8"),
+        "attention.html": focus.render(session),
+        "inbox.html": triage.private_report(session),
+    }
+    for name, expected in expected_html.items():
+        review.require(contents[name] == expected,
+                       "Original PRIVATE browser page differs from native source renderer")
+    # Exact original unkeyed manifest serialization is also canonical.
+    review.require(raw_manifest == workspace.pretty(m),
+                   "PRIVATE manifest must use original canonical source serialization")
     # A file swapped during local inspection must never generate a current report.
     review.require(review.private_read(folder / "manifest.json") == raw_manifest,
                    "Manifest changed during local reading")
