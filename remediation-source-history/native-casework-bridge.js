@@ -180,5 +180,6 @@ window.addEventListener('lightup-history-changed',()=>{
  if(staged&&stagedRevision!==H.revision())resetStage();
 });
 
+$('mergeHistoryExport').addEventListener('click',()=>{try{H.exportMergeHistory();}catch(e){status(e.message,true);}});
 $('nativeImport').addEventListener('click',()=>load().catch(e=>status(e.message,true)));
 })();
