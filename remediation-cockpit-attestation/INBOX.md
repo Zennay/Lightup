@@ -2,7 +2,7 @@
 
 **LightUp Incubate · M3/M7 PLAN/LAB ONLY · DRAFT/HOLD.** This tool is an offline, non-authorizing companion to the original source-free Evidence Cockpit on held PR #1661 and keyed/encrypted companion PR #1662. It **does not import source evidence, customer names, client authorization, findings, private notes or verified remediation state**. All reported totals are local HUMAN follow-up counts, *not unique cases or proven fixes*.
 
-The product is useful when a HUMAN coordinator receives multiple independently prepared `.ltpack` ciphertexts, rather than one existing combined original cockpit. It validates every encrypted delivery, constructs each original cockpit separately, and publishes **one index.html** linking to every separately admitted original source-free cockpit. No finding rows are merged across clients or source revisions. Exact repeated source-free manifests fail closed instead of double-counting identical delivered summaries.
+The product is useful when a HUMAN coordinator receives multiple independently prepared `.ltpack` ciphertexts, rather than one existing combined original cockpit. It validates every encrypted delivery, constructs each original cockpit separately, and publishes **one index.html** linking to every separately admitted original source-free cockpit. No finding rows are merged across clients or source revisions. Equal anonymous source-free manifest hashes are allowed when separately submitted packets pass their own native/HMAC admission: they are workroom slots, NOT verified unique original clients or cases.
 
 ## Receive 1–12 encrypted packets as one private workroom
 
@@ -32,7 +32,7 @@ Inspection checks all original HMAC/native receipts, every individual original c
 
 ## Add later packets without ever editing the earlier workroom
 
-When 1–11 further packets arrive, create a **new** complete workroom snapshot. All prior slot members are separately reopened, admitted and copied into a fresh private staging directory; newly arrived encrypted packets are also independently admitted. The old directory is read-only to this workflow, never deleted or overwritten. New and old input contents must fit the total **12-slot limit**. Duplicate exact source-free manifests are rejected to prevent a fake duplicated workload count.
+When 1–11 further packets arrive, create a **new** complete workroom snapshot. All prior slot members are separately reopened, admitted and copied into a fresh private staging directory; newly arrived encrypted packets are also independently admitted. The old directory is read-only to this workflow, never deleted or overwritten. New and old input contents must fit the total **12-slot limit**. Equal anonymous source-free manifests do not establish duplicate original cases; each separately supplied encrypted delivery is one HUMAN workroom slot, never a unique client/finding count.
 
 ```sh
 python3 remediation-cockpit-attestation/extend.py \
@@ -54,7 +54,7 @@ For human follow-up coordination against an **already admitted original inbox**,
 
 ## PRIVACY: internal manifest inventory is not an anonymous export
 
-The workroom's private `summary.json` **contains linkable SHA-256 digests of source-free manifests** for native local duplicate detection, exact source-free slot continuity and original inbox admission. It is **PRIVATE integrity inventory**, not safe to describe as a fully anonymous external report. Keep it inside the trusted owner-only workroom. For a fresh true **counts-only** 0600 JSON that contains *no* slot digests, owner names, original source references, notes, due dates or per-case links, use:
+The workroom's private `summary.json` **contains linkable SHA-256 digests of source-free manifests** for local possible-overlap review, exact source-free slot continuity and original inbox admission. It is **PRIVATE integrity inventory**, not safe to describe as a fully anonymous external report. Keep it inside the trusted owner-only workroom. For a fresh true **counts-only** 0600 JSON that contains *no* slot digests, owner names, original source references, notes, due dates or per-case links, use:
 
 ```sh
 python3 remediation-cockpit-attestation/inbox.py export-counts \
