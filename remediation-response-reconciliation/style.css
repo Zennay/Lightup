@@ -34,3 +34,15 @@ td details summary{cursor:pointer;color:#87dcbf;font-weight:650}
   #briefIdentity,#briefCount,.briefCard h3,.briefCard p{color:black!important}
   .briefCard details:not([open]){display:block}
 }
+
+/* Separate PRIVATE owner feedback preparation and approved HUMAN preview */
+.feedbackEditor{border:1px solid #425975;border-radius:10px;background:#10283a;margin-top:1rem;padding:.9rem}
+.feedbackEditor h4{margin:.15rem 0 .75rem;color:#b4f7dd;font-size:.93rem}
+.feedbackEditor label{display:block;margin:.65rem 0;font-size:.89rem;line-height:1.55}
+.feedbackEditor select,.feedbackEditor textarea{display:block;width:100%;margin-top:.25rem}
+.feedbackPrior{border-left:3px solid #86b9d1;padding:.5rem .75rem;margin:.85rem 0;background:#122738;border-radius:6px}
+.feedbackPrior p{margin:.35rem 0;color:#d2e5fa;overflow-wrap:anywhere}
+.feedbackPrior small{color:#b6cddd}
+#feedbackStatus{border-left:3px solid #66cfaa;padding:.45rem .7rem;min-height:2.2rem}
+#feedbackStatus[data-error=true]{border-color:#f7a2a2;color:#ffb9b4}
+@media print {.feedbackEditor,#feedbackExport,#feedbackClear,#draftCount{display:none!important}}
