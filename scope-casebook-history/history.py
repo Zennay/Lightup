@@ -260,6 +260,49 @@ def admit(data: object) -> dict:
     fail(count["case_attention_hold"] ==
          sum(c["attention"].startswith("HOLD_") for c in cases),
          "invalid case HOLD count")
+    # Treat original packet labels as untrusted declarations. Never let a
+    # syntactically valid but internally contradictory "compatible" record
+    # appear coherent in a human review. This is not a substitute for the
+    # original request/grant authority check or independent consent.
+    req_index = indexes["requests"]
+    engagement_index = indexes["engagements"]
+    for grant in doc["grants"]:
+        label = grant["request_link_observation"]
+        binding = grant["approved_request_id"]
+        engagement = grant["engagement_id"]
+        if label == "REQUEST_SCOPE_COMPATIBLE_UNVERIFIED":
+            fail(engagement in engagement_index
+                 and binding in req_index
+                 and req_index[binding]["status"] == "approved",
+                 "contradictory unverified source request/grant declaration")
+        elif label == "HOLD_NO_REQUEST_BINDING":
+            fail(binding is None, "contradictory unbound grant label")
+        elif label == "HOLD_REQUEST_SOURCE_MISSING":
+            fail(binding is not None and binding not in req_index,
+                 "contradictory missing request label")
+        elif label == "HOLD_REQUEST_NOT_APPROVED":
+            fail(binding in req_index and
+                 req_index[binding]["status"] != "approved",
+                 "contradictory request approval label")
+    for decision in doc["risk_approvals"]:
+        label = decision["decision_provenance_observation"]
+        if label == "RISK_DECISION_PENDING_REVIEW":
+            fail(decision["status"] == "pending"
+                 and decision["decision_recorded"] is False,
+                 "contradictory pending risk source declaration")
+        elif label == "RISK_DECISION_RECORDED_UNVERIFIED":
+            fail(decision["status"] in ("approved", "denied")
+                 and decision["decision_recorded"] is True,
+                 "contradictory recorded risk source declaration")
+        if decision["engagement_id"] is None:
+            fail(decision["source_tenant_matches"] is False,
+                 "contradictory source engagement lineage declaration")
+    for case in doc["case_overview"]:
+        label = case["attention"]
+        if label == "NO_GRANT_RECORDED":
+            fail(case["grant_count"] == 0, "contradictory original caseboard grant label")
+        if label == "REVIEW_ONLY_UNVERIFIED_GRANT_LINK":
+            fail(case["grant_count"] > 0, "source-linked caseboard without grant")
     return doc
 
 
