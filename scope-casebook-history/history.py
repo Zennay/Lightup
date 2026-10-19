@@ -448,11 +448,28 @@ def main() -> int:
         fail(len({str(p.absolute()) for p in args.input}) == len(args.input),
              "duplicate source path")
         # Admission is whole-batch BEFORE creating any destination.
-        packets = [read_private(p)[0] for p in args.input]
+        admitted = [read_private(p) for p in args.input]
+        packets = [doc for doc, _ in admitted]
         client = packets[0]["client_id"]
         fail(all(p["client_id"] == client for p in packets),
              "cross-tenant source packets cannot be joined")
-        publish(args.output_dir, generate(packets))
+        artifacts = generate(packets)
+        private_inventory = {
+            "kind": "lightup.casebook_private_source_inventory",
+            "version": 1,
+            "disposition": "HUMAN_REVIEW_ONLY_HOLD",
+            "authority": False,
+            "source_authenticated": False,
+            "snapshots": [
+                {"ordinal": index + 1, "source_sha256": hashlib.sha256(raw).hexdigest(),
+                 "source_bytes": len(raw)}
+                for index, (_, raw) in enumerate(admitted)
+            ],
+        }
+        artifacts["private-source-inventory.json"] = (
+            json.dumps(private_inventory, indent=2, sort_keys=True) + "\n"
+        ).encode("utf-8")
+        publish(args.output_dir, artifacts)
     except (Hold, FileNotFoundError, PermissionError, OSError, ValueError, TypeError):
         print("HOLD: private original source/admission/publication refused; no release "
               "or authorization claimed.", file=sys.stderr)
