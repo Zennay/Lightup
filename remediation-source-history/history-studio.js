@@ -267,7 +267,7 @@ $('snapshots').addEventListener('click',event=>{
  if(remove){const i=Number(remove.dataset.remove);const target=state.snapshots[i],referenced=state.decisions.some(d=>
   target.findings.some(f=>(exact(f,d.from)||exact(f,d.to))&&
    !state.snapshots.some((other,j)=>j!==i&&other.findings.some(keep=>exact(keep,f)))));
- if(referenced){message('PRIVATE HUMAN carry history references original source rows unique to this revision. Save an encrypted checkpoint or Forget all before removing it.',true);return;}
+ if(referenced||state.merges.some(m=>m.sourceHash===target.sourceHash)){message('HOLD: PRIVATE HUMAN carry or Casework field-merge history references this exact original source revision. Preserve the source and its local decisions, or Forget the complete workspace.',true);return;}
  state.snapshots.splice(i,1);const remaining=idSet();for(const id of state.notes.keys())if(!remaining.has(id))state.notes.delete(id);state.revision++;if(!state.snapshots.length){state.active=null;state.selected=null;}render();}
 });
 /* Controlled archive bridge: no browser persistence or authority, atomic restoration only. */
