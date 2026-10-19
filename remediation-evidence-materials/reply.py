@@ -63,8 +63,10 @@ def _local_contents(folder: Path, files: list, packet: dict, vault) -> None:
     info = os.lstat(target)
     if not stat.S_ISDIR(info.st_mode) or info.st_uid != os.getuid() or info.st_mode & 0o077:
         raise ValueError("Received evidence folder is not original owner-private 0700.")
-    receipt = transfer.human._json(
-        vault._private_input(target / "PRIVATE-receipt.json", MAX_REPLY), MAX_REPLY)
+    receipt_bytes = vault._private_input(target / "PRIVATE-receipt.json", MAX_REPLY)
+    receipt = transfer.human._json(receipt_bytes, MAX_REPLY)
+    if transfer.canonical(receipt) != receipt_bytes:
+        raise ValueError("Received original PRIVATE receipt is not byte-canonical.")
     expected_fields = {"kind", "schema_version", "disposition", "source_sha256",
                        "files", "warning", *transfer.human.FLAGS}
     if (set(receipt) != expected_fields
