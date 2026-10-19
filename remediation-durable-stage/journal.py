@@ -239,14 +239,14 @@ def _recover(args, vault, folder, journal, current) -> None:
     draft_path = Path(entry["output"])
     source._hold_if_not_private_directory(draft_path.parent)
     _owned_regular(draft_path)
-    original_csv = original.human._unb64(
-        envelope["original_csv_base64"], original.ORIGINAL.MAX_CSV_BYTES)
-    staged = native_status._private_workroom(
-        draft_path, args, vault, envelope, packet, original_csv)
-    fresh = native_status._admit_staged(packet, staged, items)
-    if (len(fresh) != len(entry["requests"])
-            or set(_ref(row) for row in fresh) != set(entry["requests"])):
-        raise ValueError("Interrupted encrypted draft is not the recorded HUMAN selection.")
+    # The CURRENT native HUMAN source may legitimately contain the staged
+    # request by now. Never require a stale baseline prefix for recovery.
+    # Re-admit exact encrypted native source/attachment/request identities
+    # against the pending journal, including after a separate HUMAN handoff.
+    rows, totals = delivery.collect(
+        entry, args, vault, envelope, packet, pending_recovery=True)
+    if totals["selected"] != len(entry["requests"]):
+        raise ValueError("Interrupted original-native HUMAN selection incomplete.")
     if input('Type "RECOVER ENCRYPTED HUMAN DRAFT" after private inspection: ') != (
             "RECOVER ENCRYPTED HUMAN DRAFT"):
         raise ValueError("No HUMAN recovery acknowledgment.")

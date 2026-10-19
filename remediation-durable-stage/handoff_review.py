@@ -25,9 +25,13 @@ def _request_ref(row: dict) -> str:
         "request_id": row["request_id"],
     })).hexdigest()
 
-def collect(record: dict, args, vault, envelope: dict, current: dict) -> tuple[list[dict], dict]:
-    """Admit the original encrypted stage and match it to a CURRENT source read."""
-    if record["state"] not in STAGES:
+def collect(record: dict, args, vault, envelope: dict, current: dict,
+            *, pending_recovery: bool = False) -> tuple[list[dict], dict]:
+    """Admit native encrypted stage against CURRENT source, including crash recovery."""
+    if pending_recovery:
+        if record["state"] != "pending" or record["sha256"]:
+            raise ValueError("Only a genuinely interrupted pending HUMAN intent can recover.")
+    elif record["state"] not in STAGES:
         raise ValueError("Only a completed staged or reviewed HUMAN packet can be reconciled.")
     destination = Path(record["output"])
     # Reject symlinks/hardlinks and unsafe private path before reading ciphertext.
@@ -38,7 +42,8 @@ def collect(record: dict, args, vault, envelope: dict, current: dict) -> tuple[l
             or info.st_mode & 0o077 or info.st_nlink != 1):
         raise ValueError("Native original encrypted HUMAN draft is not owner-private.")
     encrypted = vault._private_input(destination, vault.MAX_VAULT)
-    if hashlib.sha256(encrypted).hexdigest() != record["sha256"]:
+    if (not pending_recovery
+            and hashlib.sha256(encrypted).hexdigest() != record["sha256"]):
         raise ValueError("Original native HUMAN stage ciphertext changed.")
     csv = original.human._unb64(
         envelope["original_csv_base64"], original.ORIGINAL.MAX_CSV_BYTES)
