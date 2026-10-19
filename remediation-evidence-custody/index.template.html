@@ -24,7 +24,7 @@
 </div>
 <p id="context" class="detail"></p></section>
 <section class="card"><h2>2 · Reconcile local evidence bytes in bulk</h2>
-<p>Select up to 240 local files (max 16 MiB each). The browser hashes each file and checks SHA-256 <em>and exact byte length</em>. A renamed file with identical bytes gets a separate HUMAN review warning; missing matches only mean matching bytes were not selected here.</p>
+<p>Select up to 240 local files (max 16 MiB each). The browser hashes each file and checks SHA-256 <em>and exact byte length</em>. HUMAN attention is ordered by local discrepancy then by severity labels from the verified original CSV, never by an independently proven risk rating. A renamed file with identical bytes gets a separate HUMAN review warning; missing matches only mean matching bytes were not selected here.</p>
 <label>Local files to compare (never uploaded)
 <input type="file" id="localFiles" multiple></label>
 <label>Optional folder picker (only if supported by your browser)
@@ -36,16 +36,17 @@
 <section class="card"><h2>3 · HUMAN-only results</h2>
 <p id="summary" aria-live="polite"></p>
 <div class="filters"><label>Find original finding ID or local filename<input id="resultSearch" type="search" maxlength="160" placeholder="Search local comparison"></label>
-<label>Show HUMAN status<select id="resultStatus"><option value="all">All results</option><option value="match">Same bytes and label</option><option value="rename">Same bytes, different label</option><option value="missing">Not in local selection</option><option value="unindexed">Unindexed local file</option><option value="rejected">Oversize/unreadable</option></select></label></div>
+<label>Show HUMAN status<select id="resultStatus"><option value="all">All results</option><option value="match">Same bytes and label</option><option value="rename">Same bytes, different label</option><option value="missing">Not in local selection</option><option value="unlinked">Original source has no LOCAL artifact index</option><option value="duplicate">Additional local copy of indexed bytes</option><option value="unindexed">Unindexed local file</option><option value="rejected">Oversize/unreadable</option></select></label>
+<label>Original severity claim (NOT verified)<select id="severityFilter"><option value="all">All original labels</option><option value="critical">Original critical</option><option value="high">Original high</option><option value="medium">Original medium</option><option value="low">Original low</option><option value="info">Original info</option></select></label></div>
 <div class="table-scroll" id="results"></div>
 <div class="export"><h3>Export carefully</h3>
-<p><strong>Anonymous counts:</strong> only five local counters; no client context, IDs, filenames or SHA values.</p>
+<p><strong>Anonymous counts:</strong> only local-category and high/critical attention counters; no client context, IDs, filenames or SHA values.</p>
 <button id="anonymous" type="button" disabled>Export anonymous counts CSV</button>
 <p><strong>PRIVATE comparison:</strong> exact original ID, indexed/local names and digests, context source hash and HUMAN local result. Not a chain-of-custody signature.</p>
 <label class="check"><input id="confirmPrivate" type="checkbox"> I independently verified the intended recipient and PRIVATE storage. I understand this includes sensitive metadata and makes no security/authorization claim.</label>
 <button id="private" type="button" disabled>Export PRIVATE HUMAN reconciliation CSV</button>
 <h3>Native LightUp HUMAN follow-up merge (preserves earlier work)</h3>
-<p>New local-file questions are merged with the existing PRIVATE HUMAN request list, never substituted without preview. An imported Unified HUMAN v2 index already carries original requests. If you imported Artifact Ledger v1, optionally select the separate original Evidence Request Desk v1 PRIVATE JSON. Conflicting two original baselines cause HOLD. Original outstanding questions are preserved unchanged, and fresh duplicate questions for the same finding are skipped.</p>
+<p>Missing local source-finding index references and selected-file discrepancies can become HUMAN draft questions. New local-file questions are merged with the existing PRIVATE HUMAN request list, never substituted without preview. An imported Unified HUMAN v2 index already carries original requests. If you imported Artifact Ledger v1, optionally select the separate original Evidence Request Desk v1 PRIVATE JSON. Conflicting two original baselines cause HOLD. Original outstanding questions are preserved unchanged, and fresh duplicate questions for the same finding are skipped.</p>
 <label>Optional original PRIVATE HUMAN request packet<input id="requestInput" type="file" accept=".json,application/json"></label>
 <label class="check"><input id="noExistingRequests" type="checkbox"> Only when no requests were supplied: I checked separately that the original owner desk has no HUMAN requests to preserve. This is not permission to overwrite an existing list.</label>
 <button id="requestDraft" type="button" disabled>Preview preserve-first HUMAN request merge</button>

@@ -4,7 +4,7 @@
 const $=id=>document.getElementById(id),MAX_FILE=16*1024*1024,MAX_INDEX=2*1024*1024;
 const FLAGS=["authenticated","tenant_verified","source_authorized","assessment_authorized","grant","client_consent","operator_consent","execution","scan","audit_verdict","retest_verified","release"];
 const FIELDS=["finding_id","file_name","byte_length","sha256","mime","added_utc","human_reviewer","human_stage","human_note"];
-let current=null,results=[],busy=false,revision=0,sourceVerified=false,sourceIds=new Set();
+let current=null,results=[],busy=false,revision=0,sourceVerified=false,sourceIds=new Set(),sourceMeta=new Map();
 function fail(s){throw Error(s);}
 function announce(s,bad){$("notice").textContent=s;$("notice").className=bad?"alert":"notice";}
 function clean(s,max,label,required=false){if(typeof s!=="string"||s.length>max||/[\u0000-\u001f\u007f]/u.test(s)||(required&&!s.trim()))fail("Invalid "+label);return s;}
@@ -61,7 +61,8 @@ function refresh(){
  $("import").disabled=busy;$("verifySource").disabled=busy||!current;$("run").disabled=busy||!current||!sourceVerified;
  $("private").disabled=busy||!sourceVerified||!results.length;$("anonymous").disabled=busy||!sourceVerified||!results.length;
  $("forget").disabled=busy;$("confirmPrivate").disabled=busy;
- $("requestDraft").disabled=busy||!current||!sourceVerified||!results.some(r=>r.finding_id&&(r.status==="missing"||r.status==="rename"));
+ $("requestDraft").disabled=busy||!current||!sourceVerified||!results.some(r=>r.finding_id&&
+  (r.status==="unlinked"||r.status==="missing"||r.status==="rename"));
  $("context").textContent=current?
   "PRIVATE self-declared context: "+current.client_reference+" / "+current.engagement_reference+
   " · source SHA-256 "+current.source_sha256+" · "+current.source_count+" original finding rows · "+current.rows.length+" fingerprints. No live authentication or client consent.":
@@ -75,30 +76,38 @@ function node(tag,value){const e=document.createElement(tag);if(value!==undefine
 function render(){
  const root=$("results");root.replaceChildren();
  if(!results.length){$("summary").textContent="No local comparison yet.";return;}
- const counts={match:0,rename:0,missing:0,unindexed:0,rejected:0};
+ const counts={match:0,rename:0,missing:0,unindexed:0,rejected:0,duplicate:0,unlinked:0};
  results.forEach(x=>counts[x.status]++);
+ const sourceAttention=results.filter(r=>(r.status==="missing"||r.status==="rename"||r.status==="unlinked")&&
+  (r.source_severity_claim==="critical"||r.source_severity_claim==="high")).length;
  $("summary").textContent="Indexed: "+current.rows.length+" · same bytes and label: "+counts.match+
  " · same bytes, different label: "+counts.rename+" · not selected: "+counts.missing+
- " · unindexed local files: "+counts.unindexed+" · oversized files: "+counts.rejected+
- ". Local comparison is not verification of evidence origin or actual remediation.";
+ " · original findings with no LOCAL index: "+counts.unlinked+
+ " · unindexed local files: "+counts.unindexed+" · additional indexed local copies: "+counts.duplicate+
+ " · oversized files: "+counts.rejected+
+ " · high/critical ORIGINAL labels with local attention: "+sourceAttention+
+ ". All severities/retest values are only original SOURCE claims, not verified risk or remediation.";
  const term=$("resultSearch").value.trim().toLowerCase(),category=$("resultStatus").value;
+ const severity=$("severityFilter").value;
  const visible=results.filter(r=>(category==="all"||r.status===category)&&
+  (severity==="all"||r.source_severity_claim===severity)&&
   (!term||(r.finding_id+" "+r.indexed_name+" "+r.local_name).toLowerCase().includes(term)));
  const counter=node("p","Showing "+visible.length+" / "+results.length+" HUMAN local comparisons.");root.append(counter);
  const table=node("table"),thead=node("thead"),h=node("tr");
- ["Original finding / local file label","Indexed digest","Local digest","Length","HUMAN local check"].forEach(x=>h.append(node("th",x)));
+ ["Original finding / local file label","Original severity / retest labels (unverified)","Indexed digest","Local digest","Length","HUMAN local check"].forEach(x=>h.append(node("th",x)));
  thead.append(h);table.append(thead);
  const body=node("tbody");
  visible.forEach(r=>{
   const tr=node("tr");tr.className=r.status==="match"?"match":r.status==="rename"?"warn":"unknown";
   [r.finding_id?r.finding_id+" / "+r.indexed_name:r.local_name,
+   r.source_severity_claim?r.source_severity_claim+" · "+r.source_retest_claim:"Not linked to an original source finding",
    r.indexed_sha?r.indexed_sha.slice(0,16)+"…":"—",r.local_sha?r.local_sha.slice(0,16)+"…":"—",r.byte_length,r.reason]
    .forEach(v=>tr.append(node("td",String(v))));
   body.append(tr);
  });
  table.append(body);root.append(table);
 }
-function evaluate(index,files){
+function evaluate(index,files,meta){
  const byDigest=new Map(),byName=new Map(),used=new Set(),output=[];
  for(const f of files){
   const k=f.sha+"|"+f.size;if(!byDigest.has(k))byDigest.set(k,[]);byDigest.get(k).push(f);
@@ -113,20 +122,41 @@ function evaluate(index,files){
    status==="rename"?"Bytes match; filename differs — HUMAN review":
    (byName.get(r.file_name)||[]).length?"Same label with other bytes/size — HUMAN HOLD":
    "Not in this selection (NOT evidence globally missing)";
+  const source=meta.get(r.finding_id);
+  if(!source)fail("Original finding label lost after source verification.");
   output.push({finding_id:r.finding_id,indexed_name:r.file_name,local_name:hit?hit.name:"",
-   indexed_sha:r.sha256,local_sha:hit?hit.sha:"",byte_length:r.byte_length,status,reason});
+   indexed_sha:r.sha256,local_sha:hit?hit.sha:"",byte_length:r.byte_length,status,reason,
+   source_severity_claim:source.severity,source_retest_claim:source.retest});
  }
- for(const f of files)if(!used.has(f.n))output.push({finding_id:"",indexed_name:"",local_name:f.name,
-  indexed_sha:"",local_sha:f.sha,byte_length:f.size,status:f.error?"rejected":"unindexed",
-  reason:f.error||"Local file bytes not in selected private index — HUMAN review"});
- return output;
+ const indexedIDs=new Set(index.rows.map(r=>r.finding_id));
+ for(const [fid,source] of meta)if(!indexedIDs.has(fid)){
+  output.push({finding_id:fid,indexed_name:"(no local fingerprint)",local_name:"",
+   indexed_sha:"",local_sha:"",byte_length:0,status:"unlinked",
+   reason:"No LOCAL original-finding artifact fingerprint indexed. HUMAN lookup needed; not proof of global absence.",
+   source_severity_claim:source.severity,source_retest_claim:source.retest});
+ }
+ const referenced=new Set(index.rows.map(r=>r.sha256+"|"+r.byte_length));
+ for(const f of files)if(!used.has(f.n)){
+  const duplicated=!f.error&&referenced.has(f.sha+"|"+f.size);
+  output.push({finding_id:"",indexed_name:"",local_name:f.name,
+   indexed_sha:"",local_sha:f.sha,byte_length:f.size,
+   status:f.error?"rejected":duplicated?"duplicate":"unindexed",
+   reason:f.error||(duplicated?"Additional LOCAL copy of indexed bytes (not an unindexed artifact).":
+   "Local file bytes not in selected private index — HUMAN review"),
+   source_severity_claim:"",source_retest_claim:""});
+ }
+ const stage={unlinked:0,missing:1,rename:2,rejected:3,unindexed:4,duplicate:5,match:6};
+ const rank={critical:0,high:1,medium:2,low:3,info:4};
+ return output.sort((a,b)=>(stage[a.status]-stage[b.status])||
+  ((rank[a.source_severity_claim]??5)-(rank[b.source_severity_claim]??5))||
+  a.finding_id.localeCompare(b.finding_id)||a.indexed_name.localeCompare(b.indexed_name));
 }
 async function loadIndex(){
  if(busy)return;const f=$("manifest").files[0];if(!f)return announce("Select a PRIVATE JSON manifest.",true);
  busy=true;refresh();
  try{
   if(f.size>MAX_INDEX)fail("Index exceeds 2 MiB.");const item=validate(strictJSON(await f.text()));
-  current=item;sourceVerified=false;sourceIds=new Set();revision++;results=[];$("localFiles").value="";$("folderFiles").value="";$("sourceCSV").value="";$("confirmPrivate").checked=false;
+  current=item;sourceVerified=false;sourceIds=new Set();sourceMeta=new Map();revision++;results=[];$("localFiles").value="";$("folderFiles").value="";$("sourceCSV").value="";$("confirmPrivate").checked=false;
   render();announce("Private index loaded in memory. No source or account authentication has occurred.");
  }catch(e){announce("Index refused: "+e.message,true);}
  finally{busy=false;refresh();}
@@ -152,7 +182,7 @@ async function verifyOriginalSource(){
    fail("PRIVATE attachment references an original finding absent from selected original source.");
   if(current!==snapshot||revision!==start)
    fail("Private source or manifest changed during source verification.");
-  sourceVerified=true;sourceIds=ids;
+  sourceVerified=true;sourceIds=ids;sourceMeta=new Map(source.map(r=>[r.finding_id,{severity:r.severity,retest:r.retest_status}]));
   $("sourceCSV").value="";
   announce("Original source fields, count, canonical SHA-256 and every artifact finding ID matched. No authorization, consent, security or provenance claims.");
  }catch(e){sourceVerified=false;announce("HUMAN HOLD: "+e.message,true);}
@@ -160,7 +190,8 @@ async function verifyOriginalSource(){
 }
 async function run(){
  if(busy||!current||!sourceVerified)return announce("Original source not matched; HUMAN HOLD.",true);const list=[...$("localFiles").files,...$("folderFiles").files];
- if(!list.length)return announce("Select local files.",true);
+ // A zero-file local selection still produces a valuable human-only
+ // source-coverage review; it never implies evidence absent on other systems.
  if(list.length>240)return announce("Maximum 240 local files per comparison.",true);
  busy=true;refresh();announce("Hashing selected local files in browser memory.");
  const candidate=[],token=revision,initial=current;
@@ -175,7 +206,7 @@ async function run(){
    if((n+1)%12===0){announce("Processed "+(n+1)+" of "+list.length+" local files.");await new Promise(ok=>setTimeout(ok,0));}
   }
   if(current!==initial||token!==revision)fail("Index changed during file read.");
-  results=evaluate(initial,candidate);revision++;$("confirmPrivate").checked=false;render();
+  results=evaluate(initial,candidate,sourceMeta);revision++;$("confirmPrivate").checked=false;render();
   announce("Local comparison available. This is a HUMAN-only file byte check, not a security or consent decision.");
  }catch(e){announce("Comparison refused: "+e.message,true);}
  finally{busy=false;refresh();}
@@ -195,9 +226,12 @@ function download(name,data){
 }
 function anonymous(){
  if(!sourceVerified||busy||!results.length)return announce("Original source not matched; HUMAN HOLD.",true);
- const counts={match:0,rename:0,missing:0,unindexed:0,rejected:0};
+ const counts={match:0,rename:0,missing:0,unindexed:0,rejected:0,duplicate:0,unlinked:0};
  results.forEach(x=>counts[x.status]++);
- download("LightUp-local-custody-anonymous-counts.csv",csv([["local_human_category","count"],...Object.entries(counts)]));
+ const humanAttention=results.filter(r=>(r.status==="missing"||r.status==="rename"||r.status==="unlinked")&&
+  (r.source_severity_claim==="critical"||r.source_severity_claim==="high")).length;
+ download("LightUp-local-custody-anonymous-counts.csv",csv([["local_human_category","count"],...Object.entries(counts),
+  ["original_high_critical_source_label_local_attention",humanAttention]]));
  announce("Counts-only CSV exported, without names, source IDs, digests or client context.");
 }
 function privateReport(){
@@ -205,10 +239,10 @@ function privateReport(){
  if(!$("confirmPrivate").checked)return announce("Confirm private recipient and storage before exporting.",true);
  if(!confirm("Export PRIVATE HUMAN file reconciliation? Includes original IDs, filenames and local file digests. No permission, provenance signature, or verified remediation."))return;
  download("LightUp-PRIVATE-local-custody.csv",csv([
- ["private_source_sha256","original_finding_id","indexed_file_name","local_file_name",
- "indexed_sha256","local_sha256","byte_length","human_local_result","human_note"],
- ...results.map(r=>[current.source_sha256,r.finding_id,r.indexed_name,r.local_name,
- r.indexed_sha,r.local_sha,r.byte_length,r.status,r.reason])]));
+ ["private_source_sha256","original_finding_id","original_severity_claim","original_retest_label_claim",
+ "indexed_file_name","local_file_name","indexed_sha256","local_sha256","byte_length","human_local_result","human_note"],
+ ...results.map(r=>[current.source_sha256,r.finding_id,r.source_severity_claim,r.source_retest_claim,
+ r.indexed_name,r.local_name,r.indexed_sha,r.local_sha,r.byte_length,r.status,r.reason])]));
  $("confirmPrivate").checked=false;announce("PRIVATE local HUMAN report downloaded. Handle through an independently approved secure channel.");
 }
 function nativeDraft(){
@@ -225,7 +259,7 @@ window.LightUpCustodyState=Object.freeze({
 });
 function forget(){
  if(!confirm("Forget all PRIVATE index and local comparison data in this tab? Existing downloads are NOT removed."))return;
- current=null;sourceVerified=false;sourceIds=new Set();revision++;results=[];$("sourceCSV").value="";$("manifest").value="";$("localFiles").value="";$("folderFiles").value="";$("confirmPrivate").checked=false;
+ current=null;sourceVerified=false;sourceIds=new Set();sourceMeta=new Map();revision++;results=[];$("sourceCSV").value="";$("manifest").value="";$("localFiles").value="";$("folderFiles").value="";$("confirmPrivate").checked=false;
  render();refresh();announce("Private memory cleared; previously downloaded files are unaffected.");
 }
 $("import").addEventListener("click",()=>loadIndex().catch(e=>announce(e.message,true)));
@@ -237,16 +271,17 @@ $("forget").addEventListener("click",forget);
 $("verifySource").addEventListener("click",()=>verifyOriginalSource().catch(e=>announce("HUMAN HOLD: "+e.message,true)));
 $("resultSearch").addEventListener("input",render);
 $("resultStatus").addEventListener("change",render);
+$("severityFilter").addEventListener("change",render);
 for(const input of ["localFiles","folderFiles"]){$(input).addEventListener("change",()=>{
  revision++;results=[];$("confirmPrivate").checked=false;render();refresh();
  announce("Local selection changed; previous comparisons were discarded. Rehash the selected files.");
 });}
 $("manifest").addEventListener("change",()=>{
- current=null;sourceVerified=false;sourceIds=new Set();revision++;results=[];$("confirmPrivate").checked=false;
+ current=null;sourceVerified=false;sourceIds=new Set();sourceMeta=new Map();revision++;results=[];$("confirmPrivate").checked=false;
  render();refresh();announce("Manifest selection changed. Import the new PRIVATE index before comparison.");
 });
 $("sourceCSV").addEventListener("change",()=>{
- sourceVerified=false;sourceIds=new Set();revision++;results=[];$("confirmPrivate").checked=false;
+ sourceVerified=false;sourceIds=new Set();sourceMeta=new Map();revision++;results=[];$("confirmPrivate").checked=false;
  render();refresh();announce("Source selection changed; re-verify original findings and SHA-256.");
 });
 refresh();render();

@@ -109,7 +109,7 @@ async function preview(){
  const originals=new Set(old.map(r=>r.request_id)),open=new Set(
   old.filter(r=>r.human_stage!=="closed_human").map(r=>r.finding_id));
  const focus=new Set(context.results.filter(r=>r.finding_id&&
-  (r.status==="missing"||r.status==="rename")).map(r=>r.finding_id));
+  (r.status==="unlinked"||r.status==="missing"||r.status==="rename")).map(r=>r.finding_id));
  const newIds=[...focus].filter(id=>!open.has(id));
  if(old.length+newIds.length>200)fail("Native original HUMAN request maximum of 200 would be exceeded; no silent trimming.");
  if(!globalThis.crypto||!crypto.getRandomValues)fail("Secure local HUMAN request ID generator unavailable.");
@@ -119,14 +119,16 @@ async function preview(){
        x=>x.toString(16).padStart(2,"0")).join("");}while(originals.has(id32));
   originals.add(id32);
   const related=context.results.filter(x=>x.finding_id===id&&
-   (x.status==="missing"||x.status==="rename"));
+   (x.status==="unlinked"||x.status==="missing"||x.status==="rename"));
+  const unlinked=related.some(x=>x.status==="unlinked");
   const renamed=related.some(x=>x.status==="rename");
   const missing=related.some(x=>x.status==="missing");
   const instructions=[
+    unlinked?"The original finding has no LOCAL artifact fingerprint indexed; HUMAN search/clarification needed, not evidence absent elsewhere or a proven security issue.":"",
     missing?"Matching original indexed file bytes were NOT in this local selection; HUMAN clarification needed, not proof of absent evidence or a resolved finding.":"",
     renamed?"Some locally selected SHA-256 bytes match the original file index under a different filename; HUMAN context/label review requested.":""
   ].filter(Boolean).join(" ");
-  newRows.push(row({request_id:id32,finding_id:id,request_kind:"followup_question",
+  newRows.push(row({request_id:id32,finding_id:id,request_kind:unlinked?"missing_evidence":"followup_question",
    assignee:"",due_date:"",instructions,linked_sha256:"",human_stage:"draft",
    human_response:"",created_utc:now,updated_utc:now},ids));
  }
