@@ -568,6 +568,7 @@ def html_page(docs: list[dict], delta: list[list[dict]], *, public: bool) -> str
     else:
         summary.append('<nav aria-label="PRIVATE local original human workflow">'
                        '<p><strong>PRIVATE SOURCE IDs BELOW:</strong> '
+                       '<a href="workroom.html">Open interactive HUMAN Workroom</a> · '
                        '<a href="private-human-review-template.csv">'
                        'Edit original human follow-up sheet</a> · '
                        '<a href="private-human-case-queue.csv">'
@@ -774,11 +775,26 @@ def generate(docs: list[dict]) -> dict[str, bytes]:
     )
     private_queue = csv_text([list(queue_fields)] +
                              [[entry[field] for field in queue_fields] for entry in queue])
+    # The browser workroom exposes only cases from the LAST source-declared
+    # original snapshot; old/absent records stay available in private history
+    # but cannot masquerade as present work items.
+    from workroom import render as render_workroom
+    workroom_source = [
+        item for item in queue
+        if item["latest_observed_ordinal"] == len(docs)
+    ]
+    workroom_html = render_workroom(
+        source_queue=workroom_source,
+        human_stages=tuple(sorted(HUMAN_STAGES)),
+        human_routes=tuple(sorted(HUMAN_ROUTES)),
+        human_blockers=tuple(sorted(HUMAN_BLOCKERS)),
+    )
     return {
         "private-human-case-transitions.csv": transitions_csv.encode("utf-8"),
         "private-original-case-details.csv": details_csv.encode("utf-8"),
         "private-human-review-template.csv": human_template(docs),
         "private-human-case-queue.csv": private_queue.encode(),
+        "workroom.html": workroom_html,
         "index.html": html_page(docs,delta,public=False).encode("utf-8"),
         "anonymous.html": html_page(docs,delta,public=True).encode("utf-8"),
         "anonymous-counts.json": (json.dumps(aggregate, indent=2,sort_keys=True)+"\n").encode(),
