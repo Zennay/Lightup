@@ -174,6 +174,8 @@ function renderDetail() {
  $('carryHuman').hidden=!held||!entry.latest;
  $('carryAckLabel').hidden=!held||!entry.latest;
  $('carryAck').checked=false;$('carryReason').value='';
+ $('carryReasonLabel').hidden=!held||!entry.latest;
+ $('discardHuman').hidden=!held;
 }
 function render() {renderSnapshots();summary();renderGrid();renderDetail();$('forget').disabled=!state.snapshots.length;window.dispatchEvent(new Event('lightup-history-changed'));}
 function notesFromFields(){
@@ -200,6 +202,13 @@ function carryHuman() {
  state.decisions.push({id,from:prior,to:latest,reason,decidedUTC:new Date().toISOString()});
  state.notes.set(id,notes);state.revision++;renderGrid();renderDetail();
  message('Human note deliberately carried to the exact latest original finding after acknowledgment; no security status or source changed.');
+}
+function discardHeldHuman(){
+ const id=state.selected;
+ if(!id||!state.notes.has(id)||noteBinding(id)==='bound')throw Error('Only an explicitly selected held HUMAN note can be discarded.');
+ if(!window.confirm('Discard the currently held PRIVATE HUMAN note? This does not affect original source findings, prior private downloads or HUMAN carry decisions. Preserve a separate encrypted checkpoint if necessary.'))return;
+ state.notes.delete(id);state.revision++;renderGrid();renderDetail();
+ message('Selected held HUMAN note discarded locally; original findings and the separate private decision journal are unchanged.');
 }
 function exportAggregate(){
  if(!state.snapshots.length)throw Error('Load original source history first.');
@@ -233,6 +242,7 @@ $('kind').addEventListener('change',renderGrid);
 $('severity').addEventListener('change',renderGrid);
 $('saveHuman').addEventListener('click',()=>{try{notesFromFields();}catch(e){message(e.message,true);}});
 $('carryHuman').addEventListener('click',()=>{try{carryHuman();}catch(e){message(e.message,true);}});
+$('discardHuman').addEventListener('click',()=>{try{discardHeldHuman();}catch(e){message(e.message,true);}});
 $('aggregate').addEventListener('click',()=>{try{exportAggregate();}catch(e){message(e.message,true);}});
 $('privateExport').addEventListener('click',()=>{try{exportPrivate();}catch(e){message(e.message,true);}});
 $('caseworkExport').addEventListener('click',()=>{try{exportCasework();}catch(e){message(e.message,true);}});
