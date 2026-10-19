@@ -33,6 +33,7 @@ table{width:100%;min-width:810px;border-collapse:collapse}
 th,td{border-bottom:1px solid var(--border);text-align:left;padding:13px;font-variant-numeric:tabular-nums}
 td button{font-size:12px;padding:6px 10px}
 table th{font-size:13px;color:#d9e8fb}
+svg.trend{display:block;max-width:100%;height:auto;margin:18px auto;background:#122b32;border-radius:12px;border:1px solid var(--border)}
 footer{margin-top:40px;border-top:1px solid var(--border);padding-top:18px}
 </style>
 </head><body><main>
@@ -85,6 +86,16 @@ footer{margin-top:40px;border-top:1px solid var(--border);padding-top:18px}
 <tr><th>Locally dated slot appearances</th><td id="deltaDated">No baseline</td></tr>
 </tbody></table></div>
 <p>Unchanged or decreasing counts are not evidence of remediation, verified retests, secure systems, customer identity, or matching source packets. The selected cohorts may differ or contain duplicate appearances.</p>
+</section>
+<section class="panel"><h2>4 · Multi-session HUMAN numbered moments (no Python)</h2>
+<p>Choose 2–12 separately saved <em>source-free browser sessions</em>. This imports only numeric work counters; complete source files are read locally but are never uploaded or saved in browser storage. The initial order follows the browser file picker, <strong>not independently verified dates</strong>. Use the arrows to arrange the moments yourself. No case-matching, source verification, real dates, or verified remediation conclusions.</p>
+<div class="actions"><input id="momentPick" type="file" accept=".json,application/json" multiple aria-label="Choose 2–12 previously saved private numeric HUMAN browser session JSON files"><button id="momentClear" type="button" disabled>Clear numbered moments</button></div>
+<p id="momentStatus" role="status" aria-live="polite">No numbered browser session moments loaded.</p>
+<div class="grid"><article><strong id="momentCount">0</strong><span>Numbered moments in browser memory · not verified dates</span></article></div>
+<svg id="momentPlot" role="img" viewBox="0 0 820 240" aria-label="No HUMAN moments selected yet" class="trend"></svg>
+<div class="scroll"><table><thead><tr><th>Selected ordinal</th><th>Packets</th><th>Slots</th><th>Pending HUMAN questions</th><th>Attention</th><th>Change in question appearances</th><th>Coverage warning</th><th>Reorder</th></tr></thead><tbody id="momentRows"></tbody></table></div>
+<div class="actions"><button id="momentExportCSV" class="primary" type="button" disabled>Save numbered HUMAN counts CSV</button><button id="momentExportJSON" type="button" disabled>Save separate numeric timeline JSON</button></div>
+<p><strong>Interpretation:</strong> a decline can reflect different or missing packet sources. Identical values do not prove the same cases. Use original authenticated HUMAN workrooms to make real decisions.</p>
 </section>
 <aside><strong>Non-authorizing source-free preview.</strong><p>Separate packets might describe the same work. An anonymous summary cannot prove real source authenticity, client identity, consent, a verified security finding, a completed fix, or readiness to scan. Tiny aggregates can still be sensitive: retain files privately and approve any onward disclosure as a human.</p></aside>
 <footer><p>Everything in memory disappears when this file/tab closes. No scripts, analytics, links, background jobs, network requests, localStorage, service workers or active security operations outside the one embedded audited script. The original hosted and named-VPS CI, source-owner/privacy/security review, #177/#182/#829, separate action-time client/operator consent and HUMAN GO remain mandatory before release.</p></footer>
