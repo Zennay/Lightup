@@ -24,6 +24,8 @@ PYTHONPATH=src python scope-casebook-history/history.py \
   --output-dir /private/lightup-reviews/new-human-history
 ```
 
+**Alternative exact-folder bulk intake:** when handling a complete owner-private original export batch, place only the consecutive source files `casebook-01.json` through `casebook-NN.json` (2–12, 0600 each) into a private 0700 folder, then use `--packet-dir /private/original-casebooks` **instead of** repeated `--input`. Any unknown file, gap, symlink, insufficient privacy permissions or extra hidden member makes the whole selection HOLD. The same exact `--packet-dir` mode works on `reopen.py` with `--history-dir`.
+
 The operator-selected **ordinal** order is not independently verified calendar chronology. CLI exits **2** on `REVIEW_ONLY` and **3** on `HOLD`, never exit 0 as an approval. Run only on a trusted Linux environment with original inputs in 0700 parent directory and original files 0600. Source admission is whole-batch and fail-closed before any output is created. Existing destination refuses overwrite; outputs are placed into a newly created 0700 directory with exclusively created 0600 files.
 
 ## Complete product outputs
@@ -60,3 +62,7 @@ The read-only reopener rejects unknown/extra files, unsafe permissions, modified
 ## Mandatory release gate and ownership
 
 This branch is a child of unchanged held original #1620, not a merge into `main`. It owns only new files in `scope-casebook-history/`, and does not take over source-owner #1570/#1614/#1620/#1624/#1641, scope #177/#182/#829 or permanent runner configuration. Existing exact-head hosted AND named permanent VPS CI, original source-owner/security/privacy review, real independently authenticated current client/operator consent with action-time revocation, and explicit HUMAN GO remain mandatory. Do not merge or deploy, create a new grant, activate a target, or run any QA/regression/test suite under this deliverable.
+
+## Bounded complete review semantics
+
+Original inputs are limited to 12 packets × 512 KiB, with at most 200 source records per original family and no more than 3,200 literal changed record appearances across the selected adjacent packet pairs. The browser output contains the **entire** admitted sequence; if that upper bound is exceeded the operation fails closed rather than silently truncating a report. The read-only reopened private artifact size ceiling is 8 MiB per output. Separate small-cell anonymized counts may still be sensitive and are never a green assessment or release.
