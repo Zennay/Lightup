@@ -24,12 +24,14 @@ def main() -> None:
     css = source("transfer.css")
     script = source("transfer.js")
     human_script = source("human-board.js")
-    if "</style" in css.lower() or "</script" in script.lower() or "</script" in human_script.lower():
+    continuation_script = source("continuity.js")
+    if "</style" in css.lower() or "</script" in script.lower() or "</script" in human_script.lower() or "</script" in continuation_script.lower():
         raise ValueError("Unsafe inline HTML closing tag in source")
     html = replace_exact(html, "script-src 'self'; style-src 'self'",
-                         "script-src " + sha256_csp(script) + " " + sha256_csp(human_script) + "; style-src " + sha256_csp(css))
+                         "script-src " + sha256_csp(script) + " " + sha256_csp(human_script) + " " + sha256_csp(continuation_script) + "; style-src " + sha256_csp(css))
     html = replace_exact(html, '<link rel="stylesheet" href="transfer.css">', "<style>" + css + "</style>")
     html = replace_exact(html, '<script src="human-board.js" defer></script>', "<script>" + human_script + "</script>")
+    html = replace_exact(html, '<script src="continuity.js" defer></script>', "<script>" + continuation_script + "</script>")
     html = replace_exact(html, '<script src="transfer.js" defer></script>', "<script>" + script + "</script>")
     dest = ROOT / "standalone.html"
     dest.write_text(html, encoding="utf-8", newline="\n")
