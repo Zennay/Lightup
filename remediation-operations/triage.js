@@ -16,7 +16,7 @@ const artifactKeys=["finding_id","file_name","byte_length","sha256","mime","adde
 const stepKeys=["step_id","kind","description","precondition","responsible_alias","rollback_discussion","verification_question","tentative_date","human_stage"];
 const stepKinds=["human_prepare","human_implementation_discussion","human_dependency_coordination","human_rollback_discussion","human_review_request"];
 const OWNER_STAGES=["acknowledged_unverified","needs_clarification","cannot_provide"];
-const entries={workplan:null,artifact:null,runbook:null,response:null};
+const entries={workplan:null,csv:null,artifact:null,runbook:null,response:null};
 let rendered=[],revision=0;
 const fail=reason=>{throw Error(reason);};
 const exact=(o,fields)=>o!==null&&typeof o==="object"&&!Array.isArray(o)&&Object.keys(o).length===fields.length&&fields.every(k=>Object.hasOwn(o,k));
@@ -205,9 +205,17 @@ async function importFile(kind,e){
  const current=revision;
  try{
   const text=new TextDecoder("utf-8",{fatal:true}).decode(await f.arrayBuffer());
-  const raw=parseStrict(text);
+  const raw=kind==="csv"?null:parseStrict(text);
   let next;
-  if(kind==="workplan"){next=validatePlan(raw);
+  if(kind==="csv"){
+    if(!window.LightUpCasework)fail("Original source-owned Casework CSV parser unavailable");
+    const findings=window.LightUpCasework.parseCSV(text);
+    const sourceDigest=await window.LightUpCasework.digest(findings);
+    const base=entries.workplan;
+    if(!sourceDigest||sourceDigest!==base.source.source_sha256||findings.length!==base.ids.size||
+       findings.some(f=>!base.ids.has(f.finding_id)))fail("Original CSV source SHA or membership disagrees with imported HUMAN workplan");
+    next={byId:new Map(findings.map(f=>[f.finding_id,f]))};
+  }else if(kind==="workplan"){next=validatePlan(raw);
     if(loaded()&&!confirm("Replace original HUMAN source and FORGET all imported PRIVATE companion packets? Export external human notes independently. Nothing will be retained."))return;
   }else{
     const base=entries.workplan;
@@ -216,8 +224,8 @@ async function importFile(kind,e){
   }
   if(revision!==current)fail("Another PRIVATE import changed local state during selection");
   if(kind==="workplan"){
-    entries.workplan=next;entries.artifact=null;entries.runbook=null;entries.response=null;
-    for(const key of ["artifact","runbook","response"])stateLabel(key,"Not imported (previous local data forgotten)");
+    entries.workplan=next;entries.csv=null;entries.artifact=null;entries.runbook=null;entries.response=null;
+    for(const key of ["csv","artifact","runbook","response"])stateLabel(key,"Not imported (previous local data forgotten)");
   }else entries[kind]=next;
   revision++;stateLabel(kind,"Imported locally · source-bound · unverified");
   $("source").textContent=sourceLabel();draw();
@@ -226,7 +234,7 @@ async function importFile(kind,e){
 }
 function records(){
  if(!loaded())return [];
- const work=entries.workplan,docs=entries.artifact?.byId,books=entries.runbook?.byId,responses=entries.response?.byId;
+ const work=entries.workplan,source=entries.csv?.byId,docs=entries.artifact?.byId,books=entries.runbook?.byId,responses=entries.response?.byId;
  return [...work.ids].map(id=>{
   const plan=work.rows.get(id),files=docs?.get(id)||[],steps=books?.get(id)||[],requests=responses?.get(id)||[];
   const needsReply=requests.some(r=>!r.reply);
@@ -235,13 +243,14 @@ function records(){
      r.review?.human_stage==="needs_human_followup"||r.feedback?.stage==="needs_clarification")||
     steps.some(s=>s.human_stage==="needs_human_input");
   const today=new Date().toISOString().slice(0,10),due=Boolean(plan.tentative_due&&plan.tentative_due<=today);
-  return {id,plan,files,steps,requests,needsReply,needsHuman,due,hasDocs:!!docs,hasBooks:!!books,hasResponse:!!responses};
+  return {id,plan,source:source?.get(id)||null,files,steps,requests,needsReply,needsHuman,due,hasDocs:!!docs,hasBooks:!!books,hasResponse:!!responses};
  });
 }
 function summary(rows){
  const counts=[
   [String(rows.length),"Original HUMAN findings"],
   [String(rows.filter(r=>!r.plan.owner_alias).length),"No locally declared owner"],
+  [entries.csv?String(rows.filter(r=>["critical","high"].includes(r.source?.severity)).length):"unknown","Original source CLAIM: critical/high"],
   [entries.artifact?String(rows.filter(r=>!r.files.length).length):"unknown","Zero listed fingerprints"],
   [entries.runbook?String(rows.filter(r=>!r.steps.length).length):"unknown","No HUMAN runbook steps"],
   [entries.response?String(rows.filter(r=>r.needsReply).length):"unknown","Unanswered HUMAN requests"],
@@ -260,6 +269,7 @@ function filtered(rows){
  return rows.filter(r=>{
   if(owner&&r.plan.owner_alias!==owner)return false;
   if(q&&![r.id,r.plan.owner_alias,r.plan.next_action,r.plan.private_note].join(" ").toLowerCase().includes(q))return false;
+  if(mode==="critical_high"&&(!r.source||!["critical","high"].includes(r.source.severity)))return false;
   if(mode==="missing_docs"&&(!r.hasDocs||r.files.length))return false;
   if(mode==="no_owner"&&r.plan.owner_alias)return false;
   if(mode==="no_steps"&&(!r.hasBooks||r.steps.length))return false;
@@ -273,6 +283,8 @@ function filtered(rows){
    Number(b.needsReply)-Number(a.needsReply)||
    Number(b.due)-Number(a.due)||
    Number(!b.plan.owner_alias)-Number(!a.plan.owner_alias)||
+   (a.source?["critical","high","medium","low","info"].indexOf(a.source.severity):5)-
+    (b.source?["critical","high","medium","low","info"].indexOf(b.source.severity):5)||
    a.id.localeCompare(b.id)
  );
 }
@@ -289,6 +301,7 @@ function draw(){
  for(const row of rendered.slice(0,350)){
   const article=document.createElement("article");article.className="inbox-item";
   const h=document.createElement("h3");h.textContent=row.id;article.append(h);
+  tag(article,row.source?"SOURCE CLAIM: "+row.source.severity+" / "+row.source.retest_status:"ORIGINAL findings CSV not imported",row.source?"":"unknown");
   tag(article,"HUMAN: "+row.plan.stage);
   tag(article,row.plan.owner_alias?"Self-declared owner: "+row.plan.owner_alias:"No locally declared owner",row.plan.owner_alias?"":"alert");
   tag(article,row.hasDocs?row.files.length+" artifact fingerprints":"Artifact inventory not imported",row.hasDocs?"":"unknown");
@@ -299,6 +312,8 @@ function draw(){
   if(row.due)tag(article,"Tentative date reached","alert");
   const detail=document.createElement("div");detail.className="detail";
   for(const [label,value] of [
+   ["SOURCE-reported title",row.source?.title||"Unknown (source CSV not imported)"],
+   ["SOURCE-reported remediation",row.source?.remediation||"Unknown (source CSV not imported)"],
    ["HUMAN tentative date",row.plan.tentative_due||"Unscheduled"],
    ["HUMAN next action",row.plan.next_action||"Not specified"],
    ["PRIVATE original HUMAN note",row.plan.private_note||"None"],
@@ -319,7 +334,7 @@ function download(name,content,mime){
 }
 function printable(rows,ownerOnly=false){
  const source=entries.workplan.source;
- const tr=rows.map(r=>"<tr><td>"+htmlEsc(r.id)+"</td><td>"+htmlEsc(r.plan.owner_alias||"unassigned")+"</td><td>"+
+ const tr=rows.map(r=>"<tr><td>"+htmlEsc(r.id)+"</td><td>"+htmlEsc(r.source?.severity||"unknown")+"</td><td>"+htmlEsc(r.source?.title||"unknown")+"</td><td>"+htmlEsc(r.plan.owner_alias||"unassigned")+"</td><td>"+
   htmlEsc(r.plan.stage)+"</td><td>"+htmlEsc(r.plan.tentative_due)+"</td><td>"+
   htmlEsc(r.plan.next_action)+"</td><td>"+htmlEsc(r.plan.private_note)+"</td><td>"+
   (r.hasDocs?String(r.files.length):"unknown")+"</td><td>"+(r.hasBooks?String(r.steps.length):"unknown")+
@@ -331,7 +346,7 @@ function printable(rows,ownerOnly=false){
  "<p>Self-declared original source SHA: "+htmlEsc(source.source_sha256)+
  " · client: "+htmlEsc(source.client_reference)+" · engagement: "+htmlEsc(source.engagement_reference)+
  " · source finding count: "+source.source_count+"</p>"+
- "<table><thead><tr><th>Original finding ID</th><th>Self-declared HUMAN owner</th><th>HUMAN stage</th><th>Tentative date</th><th>PRIVATE proposed next action</th><th>PRIVATE local HUMAN note</th><th>Listed artifacts</th><th>Runbook steps</th><th>Unanswered requests</th></tr></thead><tbody>"+
+ "<table><thead><tr><th>Original finding ID</th><th>SOURCE CLAIM severity</th><th>SOURCE CLAIM title</th><th>Self-declared HUMAN owner</th><th>HUMAN stage</th><th>Tentative date</th><th>PRIVATE proposed next action</th><th>PRIVATE local HUMAN note</th><th>Listed artifacts</th><th>Runbook steps</th><th>Unanswered requests</th></tr></thead><tbody>"+
  tr+"</tbody></table><p>Source-only and non-authorizing. PRIVATE: verify recipient, custody, printer and delivery channel. No execution or verified security fix.</p></html>";
 }
 function exportTeam(){
@@ -372,14 +387,14 @@ function receipt(){
   original_source_sha256:s.source_sha256,source_contract:s.source_contract,
   client_reference:s.client_reference,engagement_reference:s.engagement_reference,
   original_finding_ids:[...entries.workplan.ids].sort(),
-  included:{original_human_workplan:true,private_artifact_index:!!entries.artifact,
+  included:{original_human_workplan:true,original_csv_sha_matched:!!entries.csv,private_artifact_index:!!entries.artifact,
    original_human_runbooks:!!entries.runbook,private_response_register:!!entries.response},
   warning:"PRIVATE read-only HUMAN coordination snapshot. Hashes and labels do NOT authenticate sources, consent, fixes or release."};
  if(!confirm("Export PRIVATE declared-source membership receipt with ALL original finding IDs? Recipient and source identities remain unverified."))return;
  download("LightUp-PRIVATE-human-cross-app-source-receipt.json",JSON.stringify(detail,null,2)+"\n","application/json");
  announce("PRIVATE original-source membership receipt exported without transmitting data.");
 }
-for(const key of ["workplan","artifact","runbook","response"])
+for(const key of ["workplan","csv","artifact","runbook","response"])
  $(key).addEventListener("change",e=>importFile(key,e));
 for(const key of ["query","mode","owner"])
  $(key).addEventListener(key==="query"?"input":"change",()=>{if(loaded())draw();});
