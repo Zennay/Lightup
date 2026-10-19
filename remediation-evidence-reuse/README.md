@@ -99,3 +99,19 @@ The private **scriptless HTML** shows per-slot original finding × local file SH
 An absent later LOCAL fingerprint, archived HUMAN stage, low severity source label or evidence reuse never proves a fix. The outputs never claim custody, chronology, authenticated owner, true vulnerability, consent, grant or security approval. Every output is new, exclusively published 0600 in an owner-only folder and original source bytes are re-read before publication to prevent stale snapshots. No background monitoring, scanners, active target requests, testsuites, CI bypass or deployment.
 
 The longitudinal timeline is deliberately independent of the durable triage session. A new snapshot requires a fresh human review session if review actions are needed; existing local status must not be silently carried to a new packet.
+
+
+## Offline HUMAN bulk worklist: export → edit → preview → apply
+
+The unified `desk.py bulk` command makes a **complete owner-private 0600 JSON worksheet** of every existing source-byte-bound local HUMAN question in `triage.py`, so an authorized local human can edit *several* stage and note fields with a trusted local editor rather than running many individual commands.
+
+The worksheet exports each original `ordinal`, original finding ID and SHA-256, question reasons, unchanged previous HUMAN stage/note and editable `new_stage` / `new_human_note`. Only those **two new fields** may change; all exact original context, full current/previous PRIVATE source-byte digests, entire original HUMAN session-byte digest and every baseline row must remain identical. This is a PRIVATE local manual draft, not a file for public spreadsheets, untrusted editors, web services, CI artifacts or original native LightUp Apply.
+
+    python3 remediation-evidence-reuse/desk.py bulk export --current "$HOME/lightup-private-review/current.json" --session "$HOME/lightup-private-review/reuse-inbox.json" --worksheet "$HOME/lightup-private-review/PRIVATE-bulk-edit.json"
+    # Edit ONLY new_stage / new_human_note, using a trusted OFFLINE private text editor.
+    python3 remediation-evidence-reuse/desk.py bulk preview --current "$HOME/lightup-private-review/current.json" --session "$HOME/lightup-private-review/reuse-inbox.json" --worksheet "$HOME/lightup-private-review/PRIVATE-bulk-edit.json"
+    python3 remediation-evidence-reuse/desk.py bulk apply --current "$HOME/lightup-private-review/current.json" --session "$HOME/lightup-private-review/reuse-inbox.json" --worksheet "$HOME/lightup-private-review/PRIVATE-bulk-edit.json"
+
+If the original triage inbox was started with `--previous`, supply the **identical previous PRIVATE original JSON** to all commands. No prior inbox gets overwritten if the source, session, worksheet, reasons, row ordering or baseline HUMAN notes have changed. `preview` is strictly read-only and outputs only changed ordinal/stage and note-changed yes/no (never private note text). `apply` requires an interactive terminal to type the literal human acknowledgement, silently, before re-reading the exact original packet and comparing the current session and worksheet. It applies only changed proposed HUMAN statuses and notes in a single fsynced atomic local 0600 session replacement.
+
+An operator can mark `answered_human` to track **local human communication**, not security closure, validated repair, confirmed evidence, legal retention, original LightUp Apply or authorized retest. Never treat bulk edits as cross-device distributed locking; the private lock protects one local session path on one machine only. No customer/target file bytes are read or sent.
