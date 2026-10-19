@@ -22,7 +22,7 @@ function render(){
   const value=selected.get(r.id),before=r.sourceRecord,after=r.currentSource;
   const options=kinds.map(([v,n])=>'<option value="'+v+'" '+(value?.disposition===v?'selected':'')+'>'+esc(n)+'</option>').join('');
   const changed=after?['finding_id','title','severity','retest_status','remediation'].filter(k=>before[k]!==after[k]).join(', '):'ABSENT from newest original source';
-  return '<tr><td><label class="check"><input type="checkbox" data-hold-select="'+esc(r.id)+'" '+(value?'checked':'')+'>Review original HUMAN HOLD</label><strong>'+esc(r.id)+'</strong><small>'+esc(r.binding)+' · earlier original '+esc(r.lastMatchingSource.label)+'</small><small>PRIVATE owner '+esc(r.owner||'unassigned')+'</small></td>'+
+  return '<tr><td><label class="check"><input type="checkbox" data-hold-select="'+esc(r.id)+'" '+(value?'checked':'')+'>Review original HUMAN HOLD</label><strong>'+esc(r.id)+'</strong><small>'+esc(r.binding)+' · earlier original '+esc(r.lastMatchingSource.label)+'</small><small>PRIVATE owner '+esc(r.owner||'unassigned')+'</small><button type="button" class="link" data-hold-dossier="'+esc(r.id)+'">Open complete original finding dossier</button></td>'+
     '<td>'+esc(before.title)+'<small>Original fields changed: '+esc(changed)+'</small><details><summary>Show entire original before/after source</summary><pre>'+esc(JSON.stringify({originalBefore:before,latestOriginal:after},null,2))+'</pre></details></td>'+
     '<td><label>HUMAN follow-up category<select data-hold-kind="'+esc(r.id)+'">'+options+'</select></label><label>PRIVATE HUMAN rationale (12–800 chars)<textarea data-hold-reason="'+esc(r.id)+'" rows="3" maxlength="800">'+esc(value?.reason||'')+'</textarea></label><label>PRIVATE next HUMAN discussion action (8–1200 chars)<textarea data-hold-action="'+esc(r.id)+'" rows="3" maxlength="1200">'+esc(value?.nextAction||'')+'</textarea></label></td></tr>';
  }).join('')||'<tr><td colspan="3">No original source-bound historical HUMAN notes are currently on HOLD.</td></tr>';
@@ -37,6 +37,12 @@ $('holdReviewQuery').addEventListener('input',()=>{page=0;render();});
 $('holdReviewPrev').addEventListener('click',()=>{page--;render();});
 $('holdReviewNext').addEventListener('click',()=>{page++;render();});
 $('holdReviewClear').addEventListener('click',()=>{selected.clear();$('holdReviewAck').checked=false;render();});
+$('holdReviewRows').addEventListener('click',e=>{
+ const button=e.target.closest('button[data-hold-dossier]');
+ if(!button)return;
+ try{window.LightUpDossier.open(button.dataset.holdDossier);}
+ catch(err){note(err.message,true);}
+});
 $('holdReviewRows').addEventListener('change',e=>{
  const target=e.target,id=target.dataset.holdSelect||target.dataset.holdKind;if(!id)return;
  if(target.dataset.holdSelect){
