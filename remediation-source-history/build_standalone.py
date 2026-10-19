@@ -14,6 +14,7 @@ EXPECTED_ENGINE_SHA256 = "c293c564ecb11434e45423d244b7beba599b6afe3ebbc85121882e
 SCRIPT = HERE / "history-studio.js"
 CHECKPOINT = HERE / "private-checkpoint.js"
 PAIR_DIFF = HERE / "source-pair-diff.js"
+NATIVE_CASEWORK = HERE / "native-casework-bridge.js"
 CSS = HERE / "studio.css"
 TEMPLATE = HERE / "index.html"
 OUTPUT = HERE / "standalone.html"
@@ -28,19 +29,21 @@ def main() -> None:
     js = SCRIPT.read_bytes()
     checkpoint = CHECKPOINT.read_bytes()
     pair_diff = PAIR_DIFF.read_bytes()
+    native_casework = NATIVE_CASEWORK.read_bytes()
     css = CSS.read_bytes()
     html = TEMPLATE.read_text(encoding="utf-8")
     engine_tag = '<script src="../casework/remediation-engine.js"></script>'
     script_tag = '<script src="./history-studio.js"></script>'
     checkpoint_tag = '<script src="./private-checkpoint.js"></script>'
     pair_tag = '<script src="./source-pair-diff.js"></script>'
+    native_tag = '<script src="./native-casework-bridge.js"></script>'
     css_tag = '<link rel="stylesheet" href="./studio.css">'
     csp_start = '<meta http-equiv="Content-Security-Policy" content="'
     start = html.index(csp_start)
     end = html.index('">', start)
     csp = (
         "default-src 'none'; script-src 'sha256-" + sha(engine) +
-        "' 'sha256-" + sha(js) + "' 'sha256-" + sha(checkpoint) + "' 'sha256-" + sha(pair_diff) + "'; style-src 'sha256-" +
+        "' 'sha256-" + sha(js) + "' 'sha256-" + sha(checkpoint) + "' 'sha256-" + sha(pair_diff) + "' 'sha256-" + sha(native_casework) + "'; style-src 'sha256-" +
         sha(css) + "'; img-src 'none'; font-src 'none'; connect-src 'none'; "
         "form-action 'none'; base-uri 'none'; object-src 'none'"
     )
@@ -51,6 +54,7 @@ def main() -> None:
         (script_tag, "<script>" + js.decode("utf-8") + "</script>"),
         (checkpoint_tag, "<script>" + checkpoint.decode("utf-8") + "</script>"),
         (pair_tag, "<script>" + pair_diff.decode("utf-8") + "</script>"),
+        (native_tag, "<script>" + native_casework.decode("utf-8") + "</script>"),
     ):
         if html.count(search) != 1:
             raise SystemExit("HOLD: original HTML asset reference missing/duplicated")
