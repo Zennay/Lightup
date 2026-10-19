@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-__SCRIPT_HASH__'; style-src 'sha256-__STYLE_HASH__'; connect-src 'none'; img-src 'none'; font-src 'none'; object-src 'none'; media-src 'none'; frame-src 'none'; worker-src 'none'; form-action 'none'; base-uri 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-__SCRIPT_HASH__' 'sha256-__ORIGINAL_HASH__'; style-src 'sha256-__STYLE_HASH__'; connect-src 'none'; img-src 'none'; font-src 'none'; object-src 'none'; media-src 'none'; frame-src 'none'; worker-src 'none'; form-action 'none'; base-uri 'none'">
 <title>LightUp · PRIVATE Evidence Custody Reconciliation</title>
 <style>__STYLE__</style></head>
 <body>
@@ -16,6 +16,12 @@
 <label>Original PRIVATE artifact ledger / Unified HUMAN JSON
 <input type="file" id="manifest" accept=".json,application/json"></label>
 <button id="import" type="button">Import PRIVATE index</button>
+<div class="source-verification"><h3>Bind to exact original findings source</h3>
+<p>Select the separately obtained original five-column LightUp findings CSV for the same client and engagement. The unmodified original Casework parser checks all source rows and produces the same canonical SHA-256 as the Artifact Ledger. No imported labels or hashes authenticate a person or grant permission.</p>
+<label>Original independently obtained findings CSV<input id="sourceCSV" type="file" accept=".csv,text/csv"></label>
+<button id="verifySource" type="button" disabled>Verify source membership + SHA-256</button>
+<p id="sourceState" class="detail">HUMAN HOLD — source not yet matched.</p>
+</div>
 <p id="context" class="detail"></p></section>
 <section class="card"><h2>2 · Reconcile local evidence bytes in bulk</h2>
 <p>Select up to 240 local files (max 16 MiB each). The browser hashes each file and checks SHA-256 <em>and exact byte length</em>. A renamed file with identical bytes gets a separate HUMAN review warning; missing matches only mean matching bytes were not selected here.</p>
@@ -47,4 +53,4 @@
 <button id="forget" type="button">Forget PRIVATE workspace</button></section>
 <p id="notice" class="notice" role="status" aria-live="polite">Load original PRIVATE manifest to begin. No source identity authenticated.</p>
 <footer>HUMAN observations only · local byte agreement is not independent provenance, source authenticity, client/operator consent, a verified retest, a fixed vulnerability, or HUMAN GO.</footer>
-</main><script>__SCRIPT__</script></body></html>
+</main><script>__ORIGINAL_JS__</script><script>__SCRIPT__</script></body></html>
