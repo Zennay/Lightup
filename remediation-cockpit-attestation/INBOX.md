@@ -65,6 +65,10 @@ python3 remediation-cockpit-attestation/inbox.py export-counts \
 
 When working from a **complete PRIVATE HUMAN workroom** with encrypted slot planning, `workroom_control.py export-counts` additionally aggregates anonymous stage and due-slot totals without revealing dates/aliases/notes. Even source-free aggregate counts remain PRIVATE unless an authorized human decides they may be shared; these counts prove no customer consent, fix or source evidence identity.
 
+## Whole workroom in one operator command
+
+For first-time encrypted packet intake **plus** an immediately usable encrypted HUMAN plan, rather than this standalone inbox-only workflow, use [**COORDINATION.md**](COORDINATION.md) `workroom_control.py create`. When new packets arrive later, use `workroom_control.py extend` to preserve exact original prior slot identities and LOCAL HUMAN owner/due/note assignments while publishing an entirely **new** PRIVATE workroom. Both commands reuse the unchanged native cockpit reader, HMAC receipts and exclusive Linux private directory publisher.
+
 ## Absolute boundaries
 
 This capability is private **HUMAN workflow bookkeeping** only. It does not infer unique clients, original finding identities, real evidence validity, remediation quality, active test permission, grant, current client consent, review approval, retest, release readiness or risk. A copied shared secret can authenticate alternate packages; HMAC/AEAD do not establish independently authenticated human sender identity. Unencrypted HTML only exists in already owner-private `0700` folders with `0600` files; keep devices trusted and secrets distributed via an independent human-approved channel. There is no archive/network/upload/scan target functionality or deletion of original material.

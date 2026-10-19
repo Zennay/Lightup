@@ -145,6 +145,20 @@ python3 remediation-cockpit-attestation/workroom_control.py export-counts \
 
 This contains *only aggregated counts* from the original source-free HUMAN inbox and local encrypted slot plan (stages, pending slots, number with locally entered due dates). It deliberately omits source-free manifesto digests, individual slot rows, dates, operator aliases and notes, and never asserts actual client identity, verified fixes, original consent or authorization. Any release or onward sharing is still a separate authorized HUMAN decision.
 
+## One-command start from freshly received encrypted source-free cockpits
+
+For a first-time LOCAL PRIVATE HUMAN operator, it is no longer necessary to separately run `inbox.py receive-many`, `coordination.py start`, `workroom.py send`, and `workroom.py receive`. Use one source-bound original native workflow:
+
+```sh
+python3 remediation-cockpit-attestation/workroom_control.py create \
+  --package "$HOME/private-incoming/operator-01.ltpack" \
+  --package "$HOME/private-incoming/operator-02.ltpack" \
+  --key-file "$HOME/private-secrets/team-secret.key" \
+  --output-parent "$HOME/private-incoming"
+```
+
+All original encrypted packets must already be under the same **separately human-approved key** and contain only source-free native cockpits. The operation authenticates and admits every original signed manifest and HTML/JSON, creates a new encrypted owner-private **unassigned HUMAN coordination plan**, seals/reopens the complete package, and publishes **one fully constructed 0700 PRIVATE workroom** with the v2 local workload dashboard and clickable original source-free cockpit links. The original ciphertexts and source remain untouched. It cannot authenticate the actual human sender, original case evidence, client consent or a verified fix. No network upload, grant, Apply, scan or CI change occurs.
+
 ## Faster offline workroom: prioritized review queue and one-step encrypted intake
 
 **New complete PRIVATE HUMAN workrooms** open to a source-bound, scriptless local dashboard with local workload totals, pending HUMAN questions, and two navigation links. The HUMAN review board sorts not-locally-answered items by self-declared urgency and local date, with a direct **one-click link to each original native source-free cockpit**. Those links point only into `../inbox/slot-NN/cockpit/index.html` within the same 0700 workroom; there are no network calls. Older workrooms retain and re-admit their original v1 pages unchanged. Standalone PRIVATE coordination HTML exports also retain their original link-free layout, because they do not include the sibling inbox. The new v2 navigation is declared explicitly in the workroom's private board manifest and independently rebuilt during admission.
