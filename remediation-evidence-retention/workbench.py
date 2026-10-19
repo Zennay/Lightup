@@ -100,7 +100,8 @@ def _stage_first(args, vault):
     clone = SimpleNamespace(**vars(args), output=target, action="stage")
     retention._seal_review(clone, vault, packet, indexed, old_sha)
     args.plan = target
-    print("New PRIVATE encrypted original-linked plan is now selected in this session.")
+    print("Created private encrypted original-linked plan:", target.name)
+    print("NEW plan selected in this session; keep its passphrase separately.")
     print("Existing HUMAN evidence and original source remain unchanged.")
 
 
@@ -111,7 +112,8 @@ def _renew(args, vault):
     retention._seal_review(clone, vault, packet, indexed, original_sha,
                            previous=old_items, previous_key_hash=plan_sha)
     args.plan = target
-    print("New private encrypted plan selected. All previous plans are preserved.")
+    print("New encrypted HUMAN plan:", target.name)
+    print("NEW private plan selected; all earlier plans remain intact.")
 
 
 def _desk(args, vault):
@@ -154,6 +156,7 @@ def _due_requests(args, vault):
     # local actual bytes and encrypted HUMAN data at the action boundary.
     followup.operate(clone, vault)
     if action:
+        print("NEW native HUMAN draft artifact:", clone.output.name)
         args._staged_due_this_session = True
 
 
@@ -218,6 +221,7 @@ def _bulk_export(args, vault):
     clone = SimpleNamespace(**vars(args), output=_new(args, "bulk-review-editor", ".tsv"),
                             action="export")
     bulk._export(clone, vault)
+    print("NEW PRIVATE editable TSV:", clone.output.name)
     print("PRIVATE neutral editor: edit only decision, review_on, note_edit.")
     print("NEVER use a synced spreadsheet or upload private review material.")
 
@@ -240,6 +244,7 @@ def _bulk_import(args, vault):
     # New passphrase and any HUMAN legal-hold changes are explicitly admitted
     # inside the original-source-bound bulk sealing function.
     bulk._import(clone, vault)
+    print("NEW PRIVATE encrypted HUMAN bulk review:", clone.output.name)
     args.plan = clone.output
     args._staged_due_this_session = False
     print("NEW encrypted owner-private HUMAN plan selected in current session."
@@ -264,6 +269,8 @@ def _request_reconciliation(args, vault):
     # Native original code always rechecks current original source and every
     # real private material byte, even when earlier menu actions succeeded.
     reconcile.operate(clone, vault)
+    if response:
+        print("NEW PRIVATE HUMAN continuity report:", clone.output.name)
 
 
 def main(argv: list[str] | None = None) -> int:
