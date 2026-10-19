@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-8fj3IsO781kNF1m6FEd8lYkiWATrCWiTOAYGJSFm5a0='; style-src 'sha256-peguHx6DyjlbxVxNl+hSc/lETjyAgwUrGWmhhIwOXBQ='; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-szqgwnoYBSrTFYuqyGNH+gTmI5ZAdAMdVbXzrOiTwQA='; style-src 'sha256-peguHx6DyjlbxVxNl+hSc/lETjyAgwUrGWmhhIwOXBQ='; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <title>LightUp · PRIVATE HUMAN Reviewer Studio</title><style>:root{color-scheme:dark;font-family:system-ui,-apple-system,sans-serif}*{box-sizing:border-box}body{background:#0b1725;color:#eef5ff;margin:0;line-height:1.5}main{max-width:1190px;margin:0 auto;padding:26px 20px 65px}header{padding:28px 0;border-bottom:1px solid #405369}h1{font-size:clamp(1.65rem,4vw,2.5rem);margin:8px 0}h2{font-size:1.3rem}h3{font-size:1.1rem}p{max-width:90ch}small,.muted{color:#bac9d8}.eyebrow{text-transform:uppercase;letter-spacing:.12em;color:#aacff3;font-size:.78rem;font-weight:700}.panel{background:#17263a;border:1px solid #3b556b;padding:20px;margin-top:18px;border-radius:12px}.warning{border-left:4px solid #ebc46e;padding:12px 16px;background:#2b2b2c}label{display:block;font-weight:600;margin:10px 0}input,select,button{font:inherit;padding:10px;background:#102033;border:1px solid #89a5bb;color:#f3f7ff;border-radius:7px;max-width:100%}input[type=file]{width:100%}button{cursor:pointer;background:#dbeafb;color:#081321;font-weight:700;border:0;margin:5px 6px 5px 0}button:disabled{opacity:.4;cursor:not-allowed}.actions{display:flex;flex-wrap:wrap;gap:10px;align-items:center}.toolbar{display:flex;flex-wrap:wrap;gap:12px;align-items:center}.toolbar label{margin:0}.toolbar input{min-width:130px}table{border-collapse:collapse;width:100%}th,td{border-bottom:1px solid #43556c;text-align:left;vertical-align:top;padding:10px}th{color:#c7dced}.scroll{overflow:auto}.small{font-size:.82rem;min-width:270px;color:#d3e0ee}.bad{color:#ffb3b5}.good{color:#b2ebcb}#status{min-height:1.6em}select:focus,button:focus,input:focus{outline:3px solid #8cd4ff;outline-offset:2px}@media(max-width:700px){main{padding:12px}th,td{font-size:.82rem;padding:7px}.panel{padding:13px}}</style></head><body>
 <main><header><div class="eyebrow">LIGHTUP · ASSESSMENT RUNTIME · OFFLINE / PRIVATE</div>
 <h1>Reviewer Consensus Studio</h1>
@@ -22,10 +22,11 @@
 <p class="muted">Defaults indicate no proposal. A single non-default selection is only an uncontested HUMAN suggestion, never an authenticated agreement. Conflicting non-defaults remain on HOLD until explicitly resolved.</p></section>
 <section class="panel" aria-labelledby="exportHeading"><h2 id="exportHeading">3 · Export, resume or hand off</h2>
 <div class="actions"><button id="export" type="button" disabled>Download merged PRIVATE original-format plan</button>
+<button id="encryptedExport" type="button" disabled>Download ENCRYPTED PRIVATE merged plan</button>
 <button id="saveDraft" type="button" disabled>Save PRIVATE session decisions</button>
 <button id="counts" type="button" disabled>Download counts only</button></div>
 <label for="loadDraft">Reopen saved PRIVATE reviewer decisions (must match exact ordered plan bytes)</label><input id="loadDraft" type="file" accept=".json,application/json">
-<p class="muted">The original LightUp coverage workroom must independently re-admit the exported original-format plan against the exact same original completed lab source bytes and request a human confirmation. This app does not issue a scan, grant, verified finding, authenticated reviewer attribution or release approval. Locally downloaded files are your responsibility to protect.</p></section>
+<p class="muted">The original LightUp coverage workroom must independently re-admit the exported original-format plan against the exact same original completed lab source bytes and request a human confirmation. This app does not issue a scan, grant, verified finding, authenticated reviewer attribution or release approval. Use the optional ENCRYPTED export to avoid a plaintext merged plan download. The original app accepts the authenticated AES-GCM PRIVATE HUMAN v1 plan envelope. Locally downloaded files remain your responsibility to protect.</p></section>
 </main><script>"use strict";
 /* READ-ONLY compatibility with original PR #1667 encrypted PRIVATE HUMAN v1 plans.
  * This is not source authentication, client permission or an execution capability.
@@ -72,6 +73,39 @@ async function decryptOriginalHumanPlan(envelope, passphrase) {
   } catch {
     throw Error("HOLD: wrong PRIVATE plan passphrase, changed bytes or unsupported source");
   }
+}
+
+"use strict";
+/* Original LightUp PRIVATE HUMAN v1 plan envelope writer (local only).
+ * Compatible with unmodified original #1667 private-plan-crypto.js.
+ * Encryption provides confidentiality/integrity relative to a local password,
+ * NOT original-source authentication, independent review or permission. */
+async function encryptOriginalHumanPlan(plain, passphrase) {
+  const fail=ok=>{if(!ok)throw Error("HOLD: invalid PRIVATE encrypted HUMAN plan export");};
+  fail(globalThis.crypto&&crypto.subtle&&crypto.getRandomValues);
+  fail(typeof plain==="string");
+  fail(typeof passphrase==="string"&&passphrase.length>=12&&passphrase.length<=256&&
+    !/[\u0000-\u001f\u007f]/.test(passphrase));
+  const bytes=new TextEncoder().encode(plain);
+  fail(bytes.length>0&&bytes.length<=3*1024*1024);
+  const salt=crypto.getRandomValues(new Uint8Array(16));
+  const iv=crypto.getRandomValues(new Uint8Array(12));
+  const material=await crypto.subtle.importKey("raw",new TextEncoder().encode(passphrase),
+    "PBKDF2",false,["deriveKey"]);
+  const key=await crypto.subtle.deriveKey({name:"PBKDF2",salt,iterations:310000,hash:"SHA-256"},
+    material,{name:"AES-GCM",length:256},false,["encrypt"]);
+  const ciphertext=new Uint8Array(await crypto.subtle.encrypt({name:"AES-GCM",iv},key,bytes));
+  const base64 = arr => {
+    let raw="";
+    for(let i=0;i<arr.length;i+=16384)
+      raw+=String.fromCharCode(...arr.subarray(i,i+16384));
+    return btoa(raw);
+  };
+  return {
+    kind:"lightup.private_human_matrix_aesgcm",
+    version:1,kdf:"PBKDF2-SHA256",iterations:310000,cipher:"AES-256-GCM",
+    salt_b64:base64(salt),iv_b64:base64(iv),payload_b64:base64(ciphertext)
+  };
 }
 
 "use strict";
@@ -228,6 +262,7 @@ async function decryptOriginalHumanPlan(envelope, passphrase) {
       " uncontested field proposals · "+c.conflicting_human_field_slots+
       " conflicting fields · "+c.unresolved_slots+" still HOLD.";
     $("export").disabled=c.unresolved_slots!==0;
+    $("encryptedExport").disabled=c.unresolved_slots!==0;
     $("saveDraft").disabled=false;
     $("counts").disabled=false;
   }
@@ -277,7 +312,8 @@ async function decryptOriginalHumanPlan(envelope, passphrase) {
   function reset() {
     state=null;decisions=new Map();page=0;
     $("reviewRows").replaceChildren();$("search").value="";
-    $("export").disabled=true;$("counts").disabled=true;$("saveDraft").disabled=true;
+    $("export").disabled=true;$("encryptedExport").disabled=true;
+    $("counts").disabled=true;$("saveDraft").disabled=true;
     $("summary").textContent="No PRIVATE reviewer plans loaded.";
     $("pages").textContent="No HUMAN conflicts.";
   }
@@ -386,6 +422,19 @@ async function decryptOriginalHumanPlan(envelope, passphrase) {
       if(!window.confirm("Download an unsigned PRIVATE HUMAN proposal? The ORIGINAL LightUp workroom must still re-admit unchanged source bytes; this is NOT authorization."))return;
       jsonFile("private-lightup-merged-original-human-plan.json",p);
     }catch(err){msg("HOLD · "+err.message,true);}
+  });
+  $("encryptedExport").addEventListener("click",async()=>{
+    try {
+      const plan=outputPlan();
+      const first=window.prompt("Choose a NEW 12–256 character LOCAL passphrase for the original-format encrypted HUMAN plan. No password recovery.");
+      if(first===null){msg("Encrypted export cancelled; current HUMAN review unchanged.");return;}
+      const second=window.prompt("Confirm that local PRIVATE HUMAN export passphrase:");
+      if(second===null){msg("Encrypted export cancelled; current HUMAN review unchanged.");return;}
+      guard(first===second,"Private encryption passphrases do not match");
+      if(!window.confirm("Encrypt the original-format HUMAN plan locally using AES-256-GCM? Original source authenticity, permission and security findings remain unverified."))return;
+      const encrypted=await encryptOriginalHumanPlan(JSON.stringify(plan)+"\\n",first);
+      jsonFile("private-lightup-merged-original-human-plan-encrypted.json",encrypted);
+    }catch(err){msg("HOLD · "+(err.message||"Private encryption unavailable"),true);}
   });
   $("saveDraft").addEventListener("click",()=>{if(state)jsonFile("private-reviewer-studio-resume.json",exportDraft());});
   $("counts").addEventListener("click",()=>{
