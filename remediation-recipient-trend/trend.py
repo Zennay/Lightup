@@ -156,10 +156,61 @@ def csv_view(result: dict) -> bytes:
     return buf.getvalue().encode("utf-8")
 
 
+def followup_view(result: dict) -> bytes:
+    """Recipient-only count-based HUMAN questions, never original-source tasks."""
+    left, right, delta = (result["left"], result["right"],
+                          result["delta_right_minus_left"])
+    lines = [
+        "# PRIVATE HUMAN recipient follow-up (not a source task order)",
+        "",
+        WARNING,
+        "",
+        "## Count-based discussion prompts",
+        "",
+        "This recipient handoff contains no original client, finding, owner or",
+        "evidence identity. Do not action a remediation or infer any fix.",
+        "Ask the trusted original private source owner to reconcile original",
+        "cohort membership and HUMAN stages before interpreting changes.",
+        "",
+        "Left: " + str(left["slots"]) + " local slots / " +
+        str(left["pending"]) + " locally pending HUMAN questions.",
+        "Right: " + str(right["slots"]) + " local slots / " +
+        str(right["pending"]) + " locally pending HUMAN questions.",
+        "",
+        "### Follow-up reasons with local pending occurrences",
+        "",
+    ]
+    active = [key for key in triage.REASONS if right["reasons"][key] > 0]
+    active.sort(key=lambda key: (-max(delta["reasons"][key], 0),
+                                 -right["reasons"][key], key))
+    if not active:
+        lines.append("- None locally reported in this right-hand snapshot; "
+                     "this does NOT mean security issues are fixed.")
+    for key in active:
+        review.require(key in board.ADVICE,
+                       "Unknown native original human reason")
+        lines.append("- " + key + ": " + str(right["reasons"][key]) +
+                     " right-hand local occurrences, delta " +
+                     ("%+d" % delta["reasons"][key]) + ". " + board.ADVICE[key])
+    lines += [
+        "",
+        "### Human handoff boundaries",
+        "",
+        "- Verify whether original source populations/slot orders truly match.",
+        "- Ask original owner who should review the evidence PRIVATE-side.",
+        "- Keep source-free counters PRIVATE; small groups may reveal workload.",
+        "- Original source authorization and independent retest remain separate.",
+        "- No authenticated chronology, grant, consent, fix or scan is issued.",
+        "",
+    ]
+    return ("\n".join(lines)).encode("utf-8")
+
+
 def artifacts(result: dict) -> dict[str, bytes]:
     return {"index.html": html_view(result),
             "counts.json": workspace.pretty(result),
-            "counts.csv": csv_view(result)}
+            "counts.csv": csv_view(result),
+            "recipient-actions.md": followup_view(result)}
 
 
 def publish(left_dir: Path, right_dir: Path, output: Path) -> dict:
