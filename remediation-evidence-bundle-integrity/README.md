@@ -44,6 +44,21 @@ This second output includes only anonymous stage and open question-reason counts
 
 Private exports must never enter public GitHub PRs, Notion pages, third-party tools or CI artifacts. If any byte fails, re-export from the original trusted source; do not patch `manifest.json` to force a local match. A manifest is **not signed**, a locally modified manifest and contents can agree, and private SHA hashes cannot authenticate who produced the original packet or prove the evidence file bytes exist. Source reference, original owner, client or engagement labels and HUMAN notes are self-declared; this is solely a local *internal-consistency* assistant.
 
+## Original-source PRIVATE HUMAN progression across complete workspaces
+
+`progression.py` compares **2–12 already completed, independently admitted owner-private workspace directories**, with strict same-actual-original-PACKET-BYTES (both current and previous when present), exact original HUMAN proposal membership, no duplicated session bytes, and no claimed authenticated chronology. It never modifies the earlier workspace or interprets a disappearing evidence link as fixed.
+
+```sh
+python3 remediation-evidence-bundle-integrity/progression.py \
+  --bundle "$HOME/lightup-private/desk-001" \
+  --bundle "$HOME/lightup-private/desk-002" \
+  --html "$HOME/lightup-private/receipts/private-historical-review.html"
+```
+
+Instead of `--html`, choose **only** `--counts /ABSOLUTE/NEW/ANONYMOUS.json` for an aggregate-only JSON. Both outputs contain ordered **slot numbers**, local stages, reopened HUMAN questions, locally answered questions, changed stages, and a count of notes that changed (never free text, original IDs, source hashes, individual fingerprint labels, or paths). The operation deliberately refuses duplicate identical HUMAN sessions; slot order is user-supplied **not authenticated time order**. Verify all source and HUMAN bytes again before publication. Unmatched original source/client, changed HUMAN proposed-question identity, or any invalid bundle results in complete HOLD and no output.
+
+This is useful to hand over an offline readable status progression while keeping original report files and PRIVATE HUMAN notes on their own owner-controlled machine. Even an increase in locally answered questions says nothing about verified remediation, retesting, consent or actual authorization.
+
 ## Scope and release
 
 No modifications to `src/`, original Evidence Artifact Ledger, Request Desk, native Apply, auth, scanner, scope, evidence files, CI or QA suites. Never feeds data to targets, issues grants, stages client action, changes HUMAN journals, concludes remediation or bypasses action-time revocation. As with the parent draft, **no main merge, production deploy or live use** until existing original exact-head hosted + permanently registered named VPS CI, original source-owner and independent security/privacy/browser/crypto reviews, #177/#182/#829, true independent revocable current client/operator consent and explicit HUMAN GO have all been satisfied. No new release gate is created by this utility.
