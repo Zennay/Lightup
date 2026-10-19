@@ -293,6 +293,9 @@ def run(args: argparse.Namespace) -> int:
             fresh_original_bytes(args, cbytes, pbytes)
             require(private_read(args.session) == session_bytes,
                     "PRIVATE HUMAN session changed after read; reload to avoid lost edits")
+            if args.backup_to is not None:
+                from history import envelope
+                private_publish(args.backup_to, canonical(envelope(expected, session_bytes)))
             durable_replace(args.session, canonical(session))
             print("PRIVATE HUMAN action " + str(args.ordinal) + " updated locally. No native Apply.")
         else:
@@ -320,6 +323,8 @@ def main() -> int:
     p.add_argument("--previous", type=Path, help="Optional earlier same-source PRIVATE JSON (0600)")
     p.add_argument("--session", type=Path, required=True, help="PRIVATE local state JSON (0600)")
     p.add_argument("--output", type=Path, help="New PRIVATE report output (not for status/list/mark)")
+    p.add_argument("--backup-to", type=Path,
+                   help="Optional exclusive 0600 previous HUMAN checkpoint before mark")
     p.add_argument("--ordinal", type=int, help="1-based item index for mark")
     p.add_argument("--stage", choices=STAGES, help="New HUMAN-only stage for mark")
     notes = p.add_mutually_exclusive_group()
@@ -333,6 +338,12 @@ def main() -> int:
                 "mark requires --ordinal and --stage")
         require(args.action == "mark" or (not args.note_prompt and not args.clear_note),
                 "PRIVATE note options only apply to mark")
+        require(args.action == "mark" or args.backup_to is None,
+                "Only mark accepts an optional PRIVATE HUMAN checkpoint")
+        if args.backup_to is not None:
+            require(args.backup_to not in
+                    (args.current, args.previous, args.session, args.output),
+                    "New PRIVATE checkpoint must not replace a source, session or export")
         return run(args)
     except (Hold, OSError, ValueError) as exc:
         print("HOLD: " + str(exc), file=sys.stderr)
