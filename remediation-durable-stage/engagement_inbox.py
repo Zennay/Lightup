@@ -194,6 +194,7 @@ def html(rows: list[dict], totals: dict) -> bytes:
                    str(row["cycle_ordinal"]) + "</td><td>" +
                    ("Current" if row["current_revision"] else "Earlier") +
                    "</td><td>" + e(label) + "</td><td>" +
+                   str(row["elapsed_days"]) + "</td><td>" +
                    str(row["draft_count"]) + "</td><td>" +
                    str(row["reported_closed"]) + "</td><td>" +
                    str(row["reported_unobserved"]) + "</td><td>" +
