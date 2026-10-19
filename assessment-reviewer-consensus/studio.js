@@ -199,7 +199,89 @@
     $("pages").textContent="Page "+(page+1)+" / "+(last+1)+" · "+entries.length+" matching HUMAN conflicts";
     $("previous").disabled=page===0;$("next").disabled=page===last;
     updateSummary();
+    renderMatrix();
   }
+  let matrixPage=0;
+  function renderMatrix() {
+    const tbody=$("matrixRows");
+    tbody.replaceChildren();
+    if(!state) {
+      $("matrixSummary").textContent="Load an original PRIVATE reviewer batch to inspect its complete HUMAN row set.";
+      $("matrixPages").textContent="No original row inventory";
+      $("matrixPrevious").disabled=true;$("matrixNext").disabled=true;
+      return;
+    }
+    const mode=$("matrixFilter").value,needle=$("matrixSearch").value.trim();
+    const conflictRows=new Set(state.conflicts.map(c=>c.ordinal));
+    const indices=[];
+    let allSuggested=0,allNeutral=0;
+    for(let i=0;i<state.n;i++) {
+      const hasConflict=conflictRows.has(i+1);
+      const hasProposal=FIELDS.some(k=>state.merged[i][k]!==DEFAULT[k])||hasConflict;
+      if(hasProposal)allSuggested++;else allNeutral++;
+      if((mode==="all" || mode==="conflicts"&&hasConflict ||
+          mode==="proposals"&&hasProposal&&!hasConflict ||
+          mode==="neutral"&&!hasProposal) &&
+          (!needle||String(i+1).includes(needle)))indices.push(i);
+    }
+    matrixPage=Math.min(matrixPage,Math.max(0,Math.ceil(indices.length/80)-1));
+    for(const i of indices.slice(matrixPage*80,matrixPage*80+80)){
+      const ordinal=i+1,tr=document.createElement("tr");
+      const original=state.merged[i];
+      const holdFields=state.conflicts.filter(c=>c.ordinal===ordinal);
+      const stillHeld=holdFields.some(x=>!decisions.has(keyOf(x)));
+      const human={...original};
+      for(const x of holdFields){
+        const v=decisions.get(keyOf(x));
+        if(v!==undefined)human[x.field]=v;
+      }
+      tr.append(makeCell(ordinal));
+      tr.append(makeCell(stillHeld?"HOLD / unresolved":holdFields.length?"HUMAN resolved draft":
+        FIELDS.some(k=>human[k]!==DEFAULT[k])?"HUMAN suggestion":"No proposal"));
+      const output=makeCell(FIELDS.map(k=>k+": "+human[k]).join(" · "));
+      output.className="small";tr.append(output);
+      const source=document.createElement("td");
+      const details=document.createElement("details");
+      const summary=document.createElement("summary");
+      summary.textContent=state.inputs.length+" input plan slots";
+      details.append(summary);
+      for(let j=0;j<state.inputs.length;j++){
+        const line=document.createElement("div");
+        const record=state.inputs[j].parsed.rows[i];
+        line.textContent="Reviewer slot "+(j+1)+": "+FIELDS.map(k=>record[k]===DEFAULT[k]?
+          k+" (no proposal)":k+" "+record[k]).join(" · ");
+        details.append(line);
+      }
+      source.append(details);tr.append(source);
+      const action=document.createElement("td");
+      if(holdFields.length){
+        const button=document.createElement("button");
+        button.type="button";
+        button.textContent="Open "+holdFields.length+" HUMAN conflict(s)";
+        button.addEventListener("click",()=>{
+          $("filter").value="all";filter="all";$("search").value=String(ordinal);
+          page=0;render();
+          $("resolveHeading").scrollIntoView({behavior:"smooth",block:"start"});
+        });
+        action.append(button);
+      } else {
+        const note=document.createElement("span");note.textContent="—";action.append(note);
+      }
+      tr.append(action);tbody.append(tr);
+    }
+    $("matrixSummary").textContent=state.n+" source-bound original HUMAN rows · "+
+      allSuggested+" with any proposal or conflict · "+allNeutral+
+      " default-only. Every reviewer slot shown is positional, NOT authenticated identity.";
+    const totalPages=Math.max(1,Math.ceil(indices.length/80));
+    $("matrixPages").textContent="Page "+(matrixPage+1)+" / "+totalPages+
+      " · "+indices.length+" matching original row(s)";
+    $("matrixPrevious").disabled=matrixPage===0;
+    $("matrixNext").disabled=matrixPage===totalPages-1;
+  }
+  $("matrixFilter").addEventListener("change",()=>{matrixPage=0;renderMatrix();});
+  $("matrixSearch").addEventListener("input",()=>{matrixPage=0;renderMatrix();});
+  $("matrixPrevious").addEventListener("click",()=>{matrixPage=Math.max(0,matrixPage-1);renderMatrix();});
+  $("matrixNext").addEventListener("click",()=>{matrixPage++;renderMatrix();});
   function reset() {
     state=null;decisions=new Map();page=0;
     $("reviewRows").replaceChildren();$("search").value="";
@@ -208,6 +290,7 @@
     $("saveWorkspace").disabled=true;
     $("summary").textContent="No PRIVATE reviewer plans loaded.";
     $("pages").textContent="No HUMAN conflicts.";
+    matrixPage=0;renderMatrix();
   }
   function jsonFile(name,obj,privateData=true) {
     const payload=JSON.stringify(obj,null,2)+"\n";
