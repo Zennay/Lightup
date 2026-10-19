@@ -41,6 +41,19 @@ The standalone [Reviewer Studio](reviewer-studio.html) has a new **portable encr
 
 ---
 
+## Complete original HUMAN row explorer and reviewer proposal transparency
+
+Besides the conflict resolver, the Studio has a **source-bound original row matrix** that displays *all* original row positions (up to 16,384), including rows that only one reviewer made a non-default HUMAN suggestion about and rows where nobody made a proposal. The matrix shows exactly how the neutral original proposal/defaults would appear in the prospective merged HUMAN plan, whether a conflict remains HOLD, and per-reviewer-position submitted original `stage`, `route` and `action` (or explicit no-proposal defaults).
+
+- Filter by **all original rows**, **conflicting rows**, **uncontested proposals**, or **neutral/no proposal**; search by exact/source-local ordinal substring; paginate in bounded groups of 80 without displaying original target/evidence/asset data.
+- Expand **N reviewer input positions** to inspect every original selection; positions are not claimed authenticated identities, and a single suggested value is never falsely labelled unanimous.
+- For rows with conflicting fields, click **Open HUMAN conflict(s)** to jump directly to the existing strict option-only human resolver; final export stays HOLD until every conflicting field is deliberately chosen.
+- Every original reviewer row remains read-only here; the matrix offers insight and review navigation without silently rewriting contributors' original plans. The exported exact original v1 merged plan remains a separate explicitly confirmed HUMAN-only act.
+
+The complete portable [offline Reviewer Studio](reviewer-studio.html) includes this row explorer and the original source-bound encrypted workspace transfer. No external dependencies, scan, grant, browser persistence or remote endpoints.
+
+---
+
 ## Operator workflow
 
 1. Open the **original 2–8 PRIVATE completed lab-result files** in the existing offline workroom. Each person locally downloads their **plaintext PRIVATE HUMAN plan JSON** from that original workroom. **The native Python CLI** accepts original plaintext v1 plans only; the standalone Reviewer Studio can additionally decrypt the original encrypted HUMAN plan envelope on the same trusted local device. Neither accepts a complete encrypted original+HUMAN workroom file as a reviewer plan. For encrypted reviewer plans use the browser Studio directly, or if the native CLI is required reopen inside the approved original app and export plaintext with owner-private file permissions. Never share original customer data to an unapproved machine.
