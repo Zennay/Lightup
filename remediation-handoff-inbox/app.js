@@ -66,7 +66,7 @@ function admitLedger(x){
   value(a.finding_id,160,"attachment finding",true);
   if(nativeIds&&!nativeIds.has(a.finding_id))fail("local fingerprint references a finding absent from complete original HUMAN overlays");
   value(a.file_name,240,"file name",true);
-  if(/[\/\\]/.test(a.file_name))fail("path-bearing file name");
+  if(/[\/\\\u0000-\u001f]/.test(a.file_name))fail("path-bearing or control-containing local file name");
   value(a.mime,160,"file MIME");value(a.added_utc,70,"file time");
   value(a.human_reviewer,120,"human reviewer");value(a.human_stage,70,"human file stage");value(a.human_note,1200,"human file note");
   fp.push(a.finding_id+"|"+a.sha256);
@@ -195,8 +195,10 @@ function buildFindingRows(source,requests){
    files=filesById.get(id)||[],related=requestsById.get(id)||[],signals=[];
   if(!files.length)signals.push("No LOCAL fingerprint");
   if(!related.length)signals.push("No original HUMAN request created");
-  if(related.some(r=>!r.answer))signals.push("HUMAN reply awaited");
+  if(related.some(r=>!r.answer&&!r.ledgerOnly))signals.push("HUMAN reply awaited");
   if(related.some(r=>r.ledgerOnly))signals.push("Ledger HUMAN request not imported into original response register");
+  if(related.some(r=>r.ledgerOnly&&["submitted_unverified","needs_changes"].includes(r.ledgerStatus)))
+   signals.push("Unverified ledger HUMAN reply is not independently reconciled");
   if(casework&&!casework.owner)signals.push("No declared Casework owner");
   if(casework?.status==="blocked")signals.push("Casework HUMAN blocker");
   if(casework?.due_date&&casework.due_date<today)signals.push("Tentative Casework date passed");
@@ -211,7 +213,7 @@ function sourceFindingRequests(source,registerRows){
  const matched=new Set(registerRows.map(r=>r.id));
  const pending=source.human_requests.filter(r=>!matched.has(r.request_id)).map(r=>({
   id:r.request_id,finding:r.finding_id,owner:r.assignee,kind:r.request_kind,ledgerOnly:true,
-  instructions:r.instructions,due:r.due_date,answer:null,signals:[]
+  instructions:r.instructions,due:r.due_date,answer:null,ledgerStatus:r.human_stage,signals:[]
  }));
  return [...registerRows,...pending];
 }
@@ -361,6 +363,7 @@ function drawFindingBoard(){
  $("selectFindingsVisible").indeterminate=visible.some(x=>selectedFindings.has(x.id))&&!$("selectFindingsVisible").checked;
  $("findingSelection").textContent=visible.length+" original findings shown · "+selectedFindings.size+" selected for PRIVATE human action.";
  for(const id of ["selectRequestsForFindings","exportFindingPrivate"])$(id).disabled=!selectedFindings.size;
+ $("selectRequestsForFindings").disabled=current.mode==="ledger_only"||!selectedFindings.size;
  $("exportFindingCounts").disabled=!data.length;
 }
 function chosenFindingRows(){
