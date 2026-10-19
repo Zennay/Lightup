@@ -1,0 +1,16 @@
+:root{font:15px/1.6 system-ui,-apple-system,sans-serif;color:#182e3b;background:#f3f7f8}
+*{box-sizing:border-box}body{margin:0}header{background:#0d2932;color:#f3fafb;padding:44px 0}
+.shell{max-width:1040px;margin:auto;padding:0 20px}.eyebrow{font-size:.72rem;font-weight:800;letter-spacing:.16em;color:#65d8c7}
+h1{font-size:clamp(1.9rem,4vw,3rem);line-height:1.15;margin:10px 0}h2{font-size:1.32rem;margin:0 0 10px}h3{margin:10px 0}
+.lead{max-width:790px;font-size:1.07rem;color:#d6e7e8}.chip{display:inline-block;border:1px solid #4e867f;border-radius:90px;padding:4px 12px;font-size:.74rem;letter-spacing:.04em}
+main{padding-top:26px;padding-bottom:46px}.card{background:#fff;border:1px solid #d8e3e5;border-radius:14px;padding:23px;margin-bottom:20px;box-shadow:0 2px 12px #152d3a09}
+label{font-weight:650;display:block;margin:15px 0 10px}input[type=file]{display:block;width:100%;margin-top:7px;padding:16px;border:1px dashed #829ba2;border-radius:9px;background:#f6fbfa}
+button{padding:11px 17px;border-radius:9px;border:0;background:#086c67;color:white;font-weight:700;cursor:pointer;margin:8px 8px 8px 0}
+button:disabled{opacity:.4;cursor:not-allowed}button:hover:not(:disabled){background:#074c48}button:focus-visible,input:focus-visible{outline:3px solid #e0a528;outline-offset:2px}
+.detail,.small{font-size:.87rem;color:#49636c;overflow-wrap:anywhere}.check{font-size:.91rem;font-weight:500}.check input{margin-right:8px}
+.table-scroll{overflow:auto;max-height:570px}table{width:100%;border-collapse:collapse;font-size:.81rem;min-width:760px}
+td,th{padding:11px 9px;text-align:left;border-bottom:1px solid #dce7e8;overflow-wrap:anywhere}th{position:sticky;top:0;background:#eaf4f3;color:#173c3a}
+.match{background:#eef9f1}.warn{background:#fff6dc}.unknown{background:#faf1ed}
+.export{margin-top:20px;border-top:1px solid #d8e3e5;padding-top:14px}.notice,.alert{padding:15px;border-radius:8px;background:#e3f0ee;overflow-wrap:anywhere}
+.alert{background:#fce8e6;color:#852419}footer{color:#516a71;font-size:.82rem;text-align:center;padding-top:14px}
+@media(max-width:550px){header{padding:28px 0}.card{padding:16px}button{width:100%;margin-right:0}}

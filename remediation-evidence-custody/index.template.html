@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-__SCRIPT_HASH__'; style-src 'sha256-__STYLE_HASH__'; connect-src 'none'; img-src 'none'; font-src 'none'; object-src 'none'; media-src 'none'; frame-src 'none'; worker-src 'none'; form-action 'none'; base-uri 'none'">
+<title>LightUp · PRIVATE Evidence Custody Reconciliation</title>
+<style>__STYLE__</style></head>
+<body>
+<header><div class="shell">
+<p class="eyebrow">LIGHTUP / EVIDENCE–REMEDIATION / PRIVATE OFFLINE WORKBENCH</p>
+<h1>Evidence Custody Reconciliation</h1>
+<p class="lead">Compare local evidence files against the original PRIVATE LightUp Artifact Ledger or Unified HUMAN workspace. SHA-256 runs in this browser; no evidence bytes are uploaded, retained, or transmitted.</p>
+<p class="chip">INCUBATE · M3/M7 PLAN/LAB ONLY · DRAFT/HOLD</p>
+</div></header>
+<main class="shell">
+<section class="card"><h2>1 · Load PRIVATE source-bound local index</h2>
+<p>Import the original private JSON produced by the Evidence Artifact Ledger. Private data such as client labels, human notes and hashes must stay on a trusted local device. The claimed source SHA and labels are <strong>not</strong> authenticated or granted here.</p>
+<label>Original PRIVATE artifact ledger / Unified HUMAN JSON
+<input type="file" id="manifest" accept=".json,application/json"></label>
+<button id="import" type="button">Import PRIVATE index</button>
+<p id="context" class="detail"></p></section>
+<section class="card"><h2>2 · Reconcile local evidence bytes in bulk</h2>
+<p>Select up to 240 local files (max 16 MiB each). The browser hashes each file and checks SHA-256 <em>and exact byte length</em>. A renamed file with identical bytes gets a separate HUMAN review warning; missing matches only mean matching bytes were not selected here.</p>
+<label>Local files to compare (never uploaded)
+<input type="file" id="localFiles" multiple></label>
+<button id="run" type="button" disabled>Calculate local SHA-256 and compare</button>
+<p class="small">Nothing here contacts a target, scans, accepts consent, approves action, verifies remediation or signs provenance.</p>
+</section>
+<section class="card"><h2>3 · HUMAN-only results</h2>
+<p id="summary" aria-live="polite"></p>
+<div class="table-scroll" id="results"></div>
+<div class="export"><h3>Export carefully</h3>
+<p><strong>Anonymous counts:</strong> only five local counters; no client context, IDs, filenames or SHA values.</p>
+<button id="anonymous" type="button" disabled>Export anonymous counts CSV</button>
+<p><strong>PRIVATE comparison:</strong> exact original ID, indexed/local names and digests, context source hash and HUMAN local result. Not a chain-of-custody signature.</p>
+<label class="check"><input id="confirmPrivate" type="checkbox"> I independently verified the intended recipient and PRIVATE storage. I understand this includes sensitive metadata and makes no security/authorization claim.</label>
+<button id="private" type="button" disabled>Export PRIVATE HUMAN reconciliation CSV</button></div>
+</section>
+<section class="card"><h2>4 · Clear sensitive working memory</h2>
+<p>Forget discards imported index and local comparison results in this tab. Previously downloaded files remain on disk.</p>
+<button id="forget" type="button">Forget PRIVATE workspace</button></section>
+<p id="notice" class="notice" role="status" aria-live="polite">Load original PRIVATE manifest to begin. No source identity authenticated.</p>
+<footer>HUMAN observations only · local byte agreement is not independent provenance, source authenticity, client/operator consent, a verified retest, a fixed vulnerability, or HUMAN GO.</footer>
+</main><script>__SCRIPT__</script></body></html>
