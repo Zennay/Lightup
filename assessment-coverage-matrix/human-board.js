@@ -16,7 +16,7 @@ function createHumanBoard(api) {
   const FILE_KEYS = ["kind","version","disposition","authorized","consent_verified",
     "dispatch_allowed","release_allowed","source_sha256","ordered_row_count",
     "row_plans","interpretation"];
-  let plans = [], page = 0, changed = false;
+  let plans = [], page = 0, changed = false, lastBulk = null;
   const fresh = () => ({...DEFAULT});
   const isDefault = p => KINDS.every(k=>p[k]===DEFAULT[k]);
   const strictDigest = s => typeof s==="string"&&/^[0-9a-f]{64}$/.test(s);
@@ -55,13 +55,15 @@ function createHumanBoard(api) {
       option.value=value;option.selected=value===current;select.append(option);
     }
   }
-  function render() {
-    const items=getRows();
+  function matching() {
     const phrase=$("humanSearch").value.trim().toLocaleLowerCase();
     const stage=$("humanStage").value;
-    const candidates=items.map((row,i)=>({row,i})).filter(({row,i})=>
+    return getRows().map((row,i)=>({row,i})).filter(({row,i})=>
       (stage==="all"||plans[i]?.stage===stage)&&
       (row.capability+" "+row.check).toLocaleLowerCase().includes(phrase));
+  }
+  function render() {
+    const candidates=matching();
     const pages=Math.max(1,Math.ceil(candidates.length/64));
     page=Math.max(0,Math.min(page,pages-1));
     $("humanPages").textContent="Page "+(page+1)+" of "+pages+" · "+candidates.length+
@@ -82,7 +84,8 @@ function createHumanBoard(api) {
         select.setAttribute("aria-label","Row "+(i+1)+" HUMAN "+kind);
         optionList(select,choices,plans[i][kind]);
         select.addEventListener("change",()=>{
-          plans[i]={...plans[i],[kind]:select.value};changed=true;
+          plans[i]={...plans[i],[kind]:select.value};changed=true;lastBulk=null;
+          $("humanUndo").disabled=true;
           summarize();
           if($("humanStage").value!=="all")render();
         });
@@ -95,12 +98,14 @@ function createHumanBoard(api) {
     table.append(body);summarize();
   }
   function initialize() {
-    plans=getRows().map(fresh);page=0;changed=false;
+    plans=getRows().map(fresh);page=0;changed=false;lastBulk=null;
+    $("humanUndo").disabled=true;
     $("humanSearch").value="";$("humanStage").value="all";
     render();
   }
   function clearAll() {
-    plans=[];page=0;changed=false;
+    plans=[];page=0;changed=false;lastBulk=null;
+    $("humanUndo").disabled=true;
     clear($("humanTable"));clear($("humanSummary"));
     $("humanPages").textContent="No HUMAN work loaded.";
     for(const id of ["humanSave","humanResumeButton","humanBrief","humanPrev","humanNext"])$(id).disabled=true;
@@ -169,10 +174,43 @@ function createHumanBoard(api) {
     $("humanStage").addEventListener("change",()=>{page=0;render();});
     $("humanPrev").addEventListener("click",()=>{if(page>0){page--;render();}});
     $("humanNext").addEventListener("click",()=>{page++;render();});
+    $("humanBulk").addEventListener("click",()=>{
+      if(!plans.length)return;
+      const rows=matching();
+      if(!rows.length){message("No HUMAN rows match the current local search and stage filter.",true);return;}
+      if(rows.length>512){
+        message("Bulk HUMAN change HOLD: narrow the selection to at most 512 literal groups; nothing changed.",true);return;
+      }
+      const modifications={stage:$("humanBulkStage").value,
+        route:$("humanBulkRoute").value,action:$("humanBulkAction").value};
+      if(Object.values(modifications).every(v=>v==="keep")){
+        message("Choose at least one HUMAN planning field for the bulk edit.",true);return;
+      }
+      const proposal=rows.filter(({i})=>Object.entries(modifications).some(([kind,value])=>
+        value!=="keep"&&plans[i][kind]!==value));
+      if(!proposal.length){message("No matching HUMAN planning values need changing.");return;}
+      if(!confirm("Change "+proposal.length+" matching local HUMAN planning rows? This changes no original finding, scanner state, grant or remediation. You may undo this one bulk edit."))return;
+      lastBulk=proposal.map(({i})=>({i,before:{...plans[i]}}));
+      proposal.forEach(({i})=>{
+        const current={...plans[i]};
+        for(const kind of KINDS)if(modifications[kind]!=="keep")current[kind]=modifications[kind];
+        plans[i]=current;
+      });
+      changed=true;$("humanUndo").disabled=false;page=0;render();
+      message("Changed "+proposal.length+" HUMAN planning rows only; last bulk edit is undoable.");
+    });
+    $("humanUndo").addEventListener("click",()=>{
+      if(!lastBulk)return;
+      const snapshot=lastBulk;lastBulk=null;
+      snapshot.forEach(({i,before})=>{plans[i]={...before};});
+      changed=true;$("humanUndo").disabled=true;render();
+      message("Restored "+snapshot.length+" HUMAN planning rows from last bulk edit; original sources unchanged.");
+    });
     $("humanReset").addEventListener("click",()=>{
       if(!plans.length)return;
       if(!confirm("Reset ALL local HUMAN planning choices? No original source file changes."))return;
-      plans=getRows().map(fresh);changed=true;page=0;render();message("Local HUMAN routing reset; source declarations unchanged.");
+      plans=getRows().map(fresh);changed=true;lastBulk=null;
+      $("humanUndo").disabled=true;page=0;render();message("Local HUMAN routing reset; source declarations unchanged.");
     });
     $("humanSave").addEventListener("click",()=>{
       if(!plans.length||!safeDigests())return;
@@ -194,7 +232,8 @@ function createHumanBoard(api) {
         const raw=new TextDecoder("utf-8",{fatal:true}).decode(await file.arrayBuffer());
         const candidate=admitPrivatePlan(parseStrict(raw));
         if(!confirm("Replace ALL local HUMAN notes with this PRIVATE exact-byte-bound plan?"))return;
-        plans=candidate;changed=true;page=0;render();
+        plans=candidate;changed=true;lastBulk=null;
+        $("humanUndo").disabled=true;page=0;render();
         message("Source-byte-bound PRIVATE HUMAN plan restored after whole-document admission. No findings or authority changed.");
       } catch(error) {
         message("PRIVATE HUMAN plan HOLD: "+error.message+"; current notes unchanged.",true);
