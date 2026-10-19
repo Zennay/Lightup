@@ -152,6 +152,7 @@
       " uncontested field proposals · "+c.conflicting_human_field_slots+
       " conflicting fields · "+c.unresolved_slots+" still HOLD.";
     $("export").disabled=c.unresolved_slots!==0;
+    $("encryptedExport").disabled=c.unresolved_slots!==0;
     $("saveDraft").disabled=false;
     $("counts").disabled=false;
   }
@@ -201,7 +202,8 @@
   function reset() {
     state=null;decisions=new Map();page=0;
     $("reviewRows").replaceChildren();$("search").value="";
-    $("export").disabled=true;$("counts").disabled=true;$("saveDraft").disabled=true;
+    $("export").disabled=true;$("encryptedExport").disabled=true;
+    $("counts").disabled=true;$("saveDraft").disabled=true;
     $("summary").textContent="No PRIVATE reviewer plans loaded.";
     $("pages").textContent="No HUMAN conflicts.";
   }
@@ -310,6 +312,19 @@
       if(!window.confirm("Download an unsigned PRIVATE HUMAN proposal? The ORIGINAL LightUp workroom must still re-admit unchanged source bytes; this is NOT authorization."))return;
       jsonFile("private-lightup-merged-original-human-plan.json",p);
     }catch(err){msg("HOLD · "+err.message,true);}
+  });
+  $("encryptedExport").addEventListener("click",async()=>{
+    try {
+      const plan=outputPlan();
+      const first=window.prompt("Choose a NEW 12–256 character LOCAL passphrase for the original-format encrypted HUMAN plan. No password recovery.");
+      if(first===null){msg("Encrypted export cancelled; current HUMAN review unchanged.");return;}
+      const second=window.prompt("Confirm that local PRIVATE HUMAN export passphrase:");
+      if(second===null){msg("Encrypted export cancelled; current HUMAN review unchanged.");return;}
+      guard(first===second,"Private encryption passphrases do not match");
+      if(!window.confirm("Encrypt the original-format HUMAN plan locally using AES-256-GCM? Original source authenticity, permission and security findings remain unverified."))return;
+      const encrypted=await encryptOriginalHumanPlan(JSON.stringify(plan)+"\\n",first);
+      jsonFile("private-lightup-merged-original-human-plan-encrypted.json",encrypted);
+    }catch(err){msg("HOLD · "+(err.message||"Private encryption unavailable"),true);}
   });
   $("saveDraft").addEventListener("click",()=>{if(state)jsonFile("private-reviewer-studio-resume.json",exportDraft());});
   $("counts").addEventListener("click",()=>{
