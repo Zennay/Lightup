@@ -48,6 +48,10 @@ The recipient authenticates the AEAD envelope, canonical schema and HMAC receipt
 
 The command prints the resulting private directory; it contains `cockpit/index.html` and sibling `receipt.json`. The receipt never enters the strict native cockpit inventory. The offline index may then be opened locally by the authorized human recipient. A rejected incomplete staged directory is cleaned and no previous workroom is modified. Successful work returns exit code **2**; HOLD returns **3**.
 
+## Optional: receive several separately encrypted cockpits together
+
+When several PRIVATE HUMAN operators independently send `.ltpack` deliveries encrypted under the same already distributed team key, use the [private HUMAN Inbox workflow](INBOX.md). It produces one owner-private offline browser index with individual native source-free cockpit links; prior inbox snapshots can be preserved while adding a later delivery through `extend.py`. All original source contexts and HUMAN workloads remain separate and unverified.
+
 ## Boundaries
 
 - The `cryptography` package must be deliberately installed in an approved environment. This companion deliberately does not modify core package dependencies or download anything.

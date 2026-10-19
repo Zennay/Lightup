@@ -32,6 +32,10 @@ python3 remediation-cockpit-attestation/attest.py verify \
 
 [**Complete send/receive guide**](TRANSPORT.md) documents the new offline AES-256-GCM transport, including separate out-of-band key delivery, original manifest/HMAC verification, native fail-closed HTML/JSON re-admission and exclusive atomic owner-private recipient publication. Use `transport.py send` (one command), or `pack` with an existing detached receipt, followed by `transport.py receive`; original standalone HMAC flow above remains available. This companion requires an approved local `cryptography` installation on Linux; **no network install or runtime dependency is added**.
 
+## Encrypted HUMAN team inbox and immutable history
+
+[**INBOX.md**](INBOX.md) describes `inbox.py receive-many` (atomic private review workroom for 1–12 encrypted source-free HUMAN cockpits), `inbox.py inspect` (original native admission of every source-free member), and `extend.py` (append new encrypted deliveries as an entirely NEW immutable inbox snapshot, preserving original source and prior snapshots). The local browser `index.html` links each separately authenticated slot without blending client identities, evidence, findings or verified fixes. All files remain offline, owner-private and non-authorizing. One previously distributed 32-byte team key is required for all included packets.
+
 ## Rotate an existing trusted shared-key receipt without changing the cockpit
 
 After generating a separate NEW 32-byte key in a different private keyfile, rotate only an already-authenticated cockpit. Rotation authenticates the **old** receipt with the original secret and native reader first, then binds the **same manifest bytes** to the new key with a new exclusive detached receipt. It refuses identical old/new key material and never overwrites the old receipt. The old key/receipt remain available for prior devices until a human separately revokes them. This procedure does **not** itself revoke a leaked key or invalidate previously copied receipts.
