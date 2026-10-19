@@ -271,7 +271,43 @@ function exportCasework() {
  download('lightup-PRIVATE-original-source-casework-human-v1.json',JSON.stringify(packet,null,2),'application/json;charset=utf-8');
  message('PRIVATE native original Casework v1 HUMAN draft exported; '+status.bound+' exact-row-bound note(s) included, '+status.held+' stale held. All consent/grant/retest/scan authority claims false.');
 }
-function forget(){state.snapshots=[];state.notes.clear();state.decisions=[];state.merges=[];state.holdReviews=[];state.archivePreparedRevision=null;state.active=null;state.selected=null;state.revision++;$('client').value='';$('engagement').value='';$('ack').checked=false;$('privateAck').checked=false;$('files').value='';$('archivePass').value='';$('archiveFile').value='';render();message('Original imported source and private HUMAN notes forgotten from app memory. Previously downloaded exports remain on your device.');}
+function clearPrivateBrowserForms(){
+ // Privacy boundary: Forget must clear hidden editor fields as well as model state.
+ // It cannot erase downloads, browser history, OS swap or external copies.
+ const textFields=[
+  'client','engagement','filter','humanOwner','humanAction','humanDue','carryReason',
+  'deskSearch','deskOwner','deskAction','deskBlocker','deskVerification','deskNote','deskDue',
+  'holdReviewQuery','bulkCarryQuery','mergeReason','archivePass',
+  'files','archiveFile','nativeCaseworkFile','recoverImportFile'
+ ];
+ const checkFields=[
+  'ack','privateAck','carryAck','mergeHumanAck','replaceHumanNotes',
+  'holdReviewAck','bulkCarryAck','bulkNativeBackupAck','recoverImportAck'
+ ];
+ for(const id of textFields){const node=$(id);if(node)node.value='';}
+ for(const id of checkFields){const node=$(id);if(node)node.checked=false;}
+ for(const id of ['detailTitle','detailSource','caseworkNative','carryJournal',
+    'sourceChangeReview','humanBinding','deskTitle','deskBinding','mergeSource',
+    'mergeRows','mergeFields','mergeCount']){
+   const node=$(id);if(node)node.replaceChildren();
+ }
+ for(const id of ['detail','deskEditor','mergeReview','sourceChangeReview','caseworkNative']){
+   const node=$(id);if(node)node.hidden=true;
+ }
+}
+function forget(){
+ if(state.snapshots.length||state.notes.size){
+  const warning=state.archivePreparedRevision!==state.revision
+    ?'UNSAVED PRIVATE HUMAN/SOURCE CHANGES: no current encrypted checkpoint has been prepared. '
+    :'PRIVATE checkpoint preparation cannot confirm that a download is safely stored. ';
+  if(!window.confirm(warning+'Forget ALL original sources, HUMAN notes and local decisions from this browser workspace, clearing hidden PRIVATE editor contents? Previously downloaded files are NOT deleted.'))return;
+ }
+ state.snapshots=[];state.notes.clear();state.decisions=[];state.merges=[];state.holdReviews=[];
+ state.archivePreparedRevision=null;state.active=null;state.selected=null;state.revision++;
+ clearPrivateBrowserForms();render();
+ message('Local original source history, HUMAN notes, decisions and hidden editor contents cleared from app memory and the visible DOM. Previously downloaded PRIVATE files and OS/browser traces cannot be recalled or erased here.');
+}
+
 $('load').addEventListener('click',()=>ingest($('files').files).catch(e=>message(e.message,true)));
 $('filter').addEventListener('input',renderGrid);
 $('kind').addEventListener('change',renderGrid);
