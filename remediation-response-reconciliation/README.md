@@ -43,6 +43,20 @@ The private operator→owner→operator **non-authorizing** roundtrip is now imp
 
 **Scope / release posture is unchanged:** the files are all in this PR's own offline companion path, not authentic grant issuance or original Evidence Review. No real security finding is certified, and no new permission to scan or retest exists. Do not merge or deploy until original exact-head hosted and named permanent VPS CI, original source-owner/security/privacy review, genuine current separately authenticated client and operator consent with action-time revocation, original #177/#182/#829 and explicit HUMAN GO have been satisfied.
 
+## Private cross-reviewer workspace merge
+
+The earlier **Load PRIVATE Register** action restores and replaces an entire local workspace. The new **Merge PRIVATE reviewer workspaces** operator panel is a separate additive HUMAN collaboration workflow:
+
+1. Each independent HUMAN reviewer explicitly exports their own source-bound v1 or v2 register backup. An operator opens one PRIVATE register, then selects another export under **Merge PRIVATE reviewer workspaces** and chooses **Preview**. No browser storage, server, network, live targets or automatic upload is involved.
+2. Both workspaces must match the **exact original immutable evidence source SHA-256, self-declared client and engagement**. Existing source-bound original owner-request and original unverified response packets are admitted only through the original strict packet parser; changed, ambiguous or reused original request IDs or different response text **HOLD the entire merge** rather than replacing originals.
+3. New, independently acquired original packets can be appended. Separate local HUMAN review notes and owner HUMAN feedback are combined without overwriting existing nonblank values. When both reviewers recorded **different** HUMAN annotations on the same original request ID, the interface shows each text value side by side and requires an explicit **KEEP local** or **APPLY incoming** decision for every conflict. Missing/blank incoming reviews never erase completed local annotations.
+4. Human feedback history from both source-bound registers is retained as PRIVATE non-authorizing annotations. A bounded historical record cap and exact row admission remain enforced.
+5. The operator must confirm the summarized merge. Before applying, source binding, original request coverage, current local revision and selected PRIVATE import file are rechecked. If the local HUMAN register changed since the preview, the merge HOLDS. Nothing is sent or interpreted as authentic client consent, authorized scanning, verified remediation or executable permission.
+6. The latest successful merge has a guarded **Undo last reviewer merge** action while no later local reviewer edit has changed the workspace revision. This restores the entire prior local work area, including all original packets and annotations present before the merge, without modifying files already downloaded to disk. Reopening/importing any other register invalidates that undo.
+7. The operator's visible **UNSAVED local HUMAN workspace** marker stays lit after any local change or merge until a complete PRIVATE register JSON is exported. The browser has no persistent storage. **Forget** clears imported file references, temporary merge choices, previous undo memory, private source and HUMAN history; saved downloads remain the operator's responsibility.
+
+**Important:** snapshots from different original evidence/source SHA values are not merged. This is **offline human coordination only**, not a mechanism to reconcile changed grants, sources or assessment authority. Do not treat the merge as an approval.
+
 ## Workflow
 
 1. Open `index.html` with `app.js` and `style.css` alongside it, without an internet connection. No credentials, server, account, installation or internet access required.
