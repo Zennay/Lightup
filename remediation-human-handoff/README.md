@@ -24,6 +24,12 @@ A recipient can open `browser.html` locally, choose the encrypted handoff in sec
 
 The envelope is explicitly **separate** from the full `.lhew` work-session backup: `.lheh` has its own fixed AEAD associated-data domain, kind, encrypted schema and strict row limits, so neither can be substituted for the other. PBKDF2-HMAC-SHA-256 (600,000 iterations, independent 16-byte salt) and AES-256-GCM (independent 12-byte nonce) protect confidentiality and tamper detection *only to the extent that the recipient keeps the password secret and their device/browser are trustworthy*. There is no identity signature, recovery service, recipient authentication or proof of actual delivery. Never send the password in the same message as the file. Encrypted files are still subject to the project's original HUMAN disclosure authorization and privacy requirements.
 
+## Explicit clearing of displayed PRIVATE HUMAN data
+
+Section 7 of the offline Return Studio now provides a **Clear all loaded local HUMAN data** action. After a confirm prompt, the browser drops in-memory references to the admitted numeric session, original/edited/peer boards, clears the currently unlocked encrypted HUMAN handoff table, the selected original/peer/encrypted file inputs, local selection filters and all save/unlock passphrase fields. Changing the original files and restoring a separate encrypted session also clears any formerly decrypted handoff view. This reduces the chance of the next local operator seeing the last person's HUMAN numbers.
+
+**Important limits:** clearing references does not securely overwrite garbage-collected browser process memory, OS swap, clipboard contents, previously downloaded plaintext files, existing encrypted backups or anything outside this page. Closing the browser and applying device/disk protections remain the user's responsibility. No claim of secure memory erasure.
+
 ## No-Python: portable offline HUMAN Return Studio
 
 Open **[browser.html](browser.html)** directly on an offline computer. It is a self-contained HTML file with an embedded SHA-256 CSP-pinned local script, no third-party resources and no server or installation.

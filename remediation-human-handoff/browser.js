@@ -204,6 +204,8 @@
     session=null;original=null;draft=null;peer=null;sourceSession=null;
     $("rows").replaceChildren();$("counts").textContent="No private session loaded";
     $("sourceStatus").textContent="Not imported";
+    $("unlockedHandoffRows").replaceChildren();
+    $("unlockedHandoffStatus").textContent="No encrypted handoff opened.";
     const ord=$("ordinalFilter");ord.replaceChildren();
     const opt=document.createElement("option");opt.value="all";
     opt.textContent="All anonymous local ordinals";ord.appendChild(opt);
@@ -694,6 +696,17 @@
     }catch(_){
       message("HOLD: encrypted HUMAN handoff not opened. Wrong passphrase, altered file, invalid schema or unsupported browser.",true);
     }finally{$("openEncryptedHandoff").disabled=false;}
+  });
+  $("wipe").addEventListener("click",()=>{
+    if(!confirm("Clear all loaded LOCAL HUMAN session/board references, peer proposals, unlocked handoff display, file selections and password fields in this tab? Previously downloaded files will NOT be deleted."))return;
+    resetState();
+    for(const name of ["sessionFile","boardFile","peerFile","encryptedFile",
+      "handoffEncryptedFile","saveSecret","confirmSecret","unlockSecret",
+      "handoffSecret","handoffConfirm","handoffUnlock"])
+      $(name).value="";
+    $("actionFilter").value="all";
+    $("ordinalFilter").value="all";
+    message("Local HUMAN browser interface cleared. Previously downloaded files remain on disk.");
   });
   $("load").addEventListener("click",load);
   for(const k of ["sessionFile","boardFile"])$(k).addEventListener("change",()=>{
