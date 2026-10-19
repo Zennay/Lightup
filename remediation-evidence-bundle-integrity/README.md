@@ -198,6 +198,31 @@ python3 remediation-evidence-bundle-integrity/compare_workrooms.py \
 
 A **new private atomic directory** contains `index.html` with a readable HUMAN change summary, `details.html` with exact ORIGINAL PRIVATE source slot/ordinal, claimed finding ID, local SHA label and old/new HUMAN stages, and `counts.json` with anonymous counts only. Only a boolean notes-changed signal is shown: the original private free-text HUMAN note is **never exported or repeated** in the comparison page. `details.html` and the entire report directory remain source-owner-only and must **not** be copied into the portable recipient cockpit. Local `answered_human` is still not a verified remediation; reopening is not a confirmed security regression. Before publication both complete original workrooms are re-admitted again, original native browser pages rechecked, and the whole report is exclusively published 0700 with 0600 files; no earlier source is altered.
 
+## Unified offline operator application: one entrypoint
+
+Run `python3 remediation-evidence-bundle-integrity/lightup.py --help` for the nine **native, fully offline, source-bound** product actions, without shell subprocess wrappers or new permission paths: `workroom` (raw or existing original source to atomic PRIVATE workroom), `cockpit` (source-free PRIVATE dashboard), `questions` (owner-only per-record HUMAN action list), `draft` (private session-bound batch edit plan), `revise` (apply 1–64 original HUMAN stage/note edits to NEW workroom), `amend` (one record changed in NEW workroom), `diff` (two complete original workrooms before/after), `handoff` (safe separate source-free-only 0700 recipient folder), `receive` (read-only source-free re-admission). The specialized scripts remain usable, but the same original implementations are shared without duplicating their evidence/consent policies.
+
+Practical offline operator sequence:
+
+```sh
+python3 remediation-evidence-bundle-integrity/lightup.py workroom \
+  --bundle "$HOME/lightup-private/desk-001" \
+  --output-dir "$HOME/lightup-private/workroom-001"
+python3 remediation-evidence-bundle-integrity/lightup.py amend \
+  --workroom "$HOME/lightup-private/workroom-001" \
+  --slot 1 --ordinal 2 --stage needs_source_owner \
+  --output-dir "$HOME/lightup-private/workroom-002"
+python3 remediation-evidence-bundle-integrity/lightup.py diff \
+  --before "$HOME/lightup-private/workroom-001" \
+  --after "$HOME/lightup-private/workroom-002" \
+  --output-dir "$HOME/lightup-private/receipts/human-diff-001"
+python3 remediation-evidence-bundle-integrity/lightup.py handoff \
+  --workroom "$HOME/lightup-private/workroom-002" \
+  --output-dir "$HOME/lightup-private/receipts/source-free-001"
+```
+
+On a separately authorized trusted receiving machine, run `lightup.py receive --cockpit /ABSOLUTE/PRIVATE/RECEIVED`. The `lightup.py` product entrypoint never transfers private files over a network, executes user-supplied commands, changes native LightUp authorizations, contacts assessment targets or asserts signed proof. In every command, an incomplete/changed source or unmet original native private-file constraint returns HOLD rather than a partial output.
+
 ## Scope and release
 
 No modifications to `src/`, original Evidence Artifact Ledger, Request Desk, native Apply, auth, scanner, scope, evidence files, CI or QA suites. Never feeds data to targets, issues grants, stages client action, changes HUMAN journals, concludes remediation or bypasses action-time revocation. As with the parent draft, **no main merge, production deploy or live use** until existing original exact-head hosted + permanently registered named VPS CI, original source-owner and independent security/privacy/browser/crypto reviews, #177/#182/#829, true independent revocable current client/operator consent and explicit HUMAN GO have all been satisfied. No new release gate is created by this utility.
