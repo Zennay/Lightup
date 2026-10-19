@@ -98,6 +98,20 @@ python3 remediation-human-handoff/bulk_return.py \
 
 Every selected ordinal must be distinct, within the original numeric session and match **both** the expected old action and expected old state. Empty, duplicate, no-op, malformed, unauthorized or inconsistent batches fully HOLD. It then creates one new private scriptless HUMAN review page, structured local change summary and a native v1 `board.json` which the original parser must re-admit against the unchanged entire numeric session before the atomic publication. This **never** asserts verified remediation or sends a reply. All inputs are separately private and must be shared by a HUMAN only after an appropriate disclosure decision.
 
+## Offline local HUMAN before/after desk (not verified progress)
+
+After returning a native board, a HUMAN can inspect **only the local routing differences** between the earlier and later source-free boards bound to the SAME exact numeric browser session:
+
+```bash
+python3 remediation-human-handoff/compare_returns.py \
+  --session "$HOME/lightup-private-human/session.json" \
+  --earlier-board "$HOME/lightup-private-human/board.json" \
+  --later-board "$HOME/lightup-private-human/batch-return-01/board.json" \
+  --output-dir "$HOME/lightup-private-human/local-routing-diff-01"
+```
+
+The result is a fresh private 0700 folder with scriptless `index.html`, local ordinals and action/state differences in `changes.csv`, and counts-only `changes.json`, all 0600. The original parser independently validates each board and all local ordinals against the SAME current PRIVATE session; no locally changed action/state means HOLD rather than claiming positive progress. No original clients, sources, case IDs, case continuity, timestamps, verified fixes or consent are inferred. Multiple numeric ordinal appearances are **not** unique records.
+
 ## Hard boundaries
 
 - The existing owner-controlled `remediation-portfolio/action_board.py` is the **sole** import contract: original producer format, bounded/private no-follow file admission, duplicate-key rejection, **exact** numeric packet shape and ordinal matching, all literal false authority flags. A mismatching board or input rejects the whole operation before any final publication. We do not rewrite, fork or relax the original parser.
