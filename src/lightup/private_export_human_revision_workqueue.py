@@ -9,7 +9,8 @@ import argparse
 from html import escape
 import sys
 
-from .private_export_human_revision import _read_inputs, _review_revision, _COLUMNS
+from .private_export_human_revision import _review_revision, _COLUMNS
+from .private_export_human_revision_source import _read_with_binding, _require_same_originals
 from .private_export_handoff import _atomic_private_publish, _output_path
 
 _SEVERITY_ORDER = {"critical": 0, "high": 1, "medium": 2, "low": 3, "info": 4}
@@ -132,13 +133,14 @@ def main(argv: list[str] | None = None) -> int:
                 and args.ack_original_ids_plaintext):
             raise ValueError("real-client and unencrypted original identifier acknowledgment required")
         output = _output_path(args.output, ".html")
-        before, old_rows, old_notes, later, new_rows = _read_inputs(
+        before, old_rows, old_notes, later, new_rows, binding = _read_with_binding(
             args.earlier_source, args.earlier_plan, args.later_source
         )
         _, summary = _review_revision(
             before, old_rows, old_notes, later, new_rows, carry_stage=False
         )
         items = _queue(old_rows, new_rows, old_notes)
+        _require_same_originals(args.earlier_source, args.earlier_plan, args.later_source, binding)
         _atomic_private_publish(output, _html(items, summary))
         print("Created PRIVATE unencrypted HUMAN reconciliation workqueue.",
               "Original findings:", len(items), ". No fix or consent established.")
