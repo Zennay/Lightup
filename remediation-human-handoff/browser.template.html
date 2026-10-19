@@ -111,6 +111,25 @@ footer{margin-top:35px;border-top:1px solid var(--border);padding-top:15px}
 <div class="actions"><button id="restoreEncrypted" type="button">Unlock &amp; restore only after full validation</button></div>
 <p>PBKDF2-HMAC-SHA-256 with 600,000 iterations derives an AES-256-GCM key from a human passphrase. Each backup has an independent random 16-byte salt and 12-byte nonce, an authenticated fixed application domain and a strict versioned encrypted envelope. Restoring verifies the authenticated ciphertext and then validates every original session and board before replacing any current local browser choices. Existing browser data stays unchanged if a file, passphrase, schema or confirmation fails. This is not a claim of independent cryptographic review.</p>
 </section>
+<section aria-labelledby="step6"><h2 id="step6">6 · Encrypted HUMAN handoff: only selected local rows</h2>
+<p>Share only the locally selected HUMAN follow-up from section 3 as a password-encrypted `.lheh` capsule. Unlike the encrypted full-session backup above, this capsule contains <strong>no complete numeric session, peer board or original board</strong>; only the exact selected anonymous rows with predefined HUMAN action and routing state codes. An independent recipient may open it here without loading a saved work-session. The recipient is not thereby authenticated.</p>
+<div class="grid">
+<label>New private handoff passphrase (14–256 characters)
+<input id="handoffSecret" type="password" autocomplete="new-password" minlength="14" maxlength="256" spellcheck="false" aria-label="Passphrase to encrypt only selected HUMAN follow-up rows"></label>
+<label>Confirm handoff passphrase
+<input id="handoffConfirm" type="password" autocomplete="new-password" minlength="14" maxlength="256" spellcheck="false" aria-label="Confirm selected HUMAN handoff encryption passphrase"></label>
+</div>
+<div class="actions"><button id="saveEncryptedHandoff" class="primary" type="button" disabled>Encrypt selected HUMAN action only (.lheh)</button></div>
+<h3>Read an encrypted LOCAL HUMAN handoff</h3>
+<div class="grid">
+<label>Encrypted selected handoff file<input id="handoffEncryptedFile" type="file" accept=".lheh,application/json" aria-label="Open received encrypted source-free HUMAN handoff"></label>
+<label>Unlock passphrase<input id="handoffUnlock" type="password" autocomplete="off" spellcheck="false" aria-label="Unlock password for selected HUMAN handoff"></label>
+</div>
+<div class="actions"><button id="openEncryptedHandoff" type="button">Unlock selected HUMAN handoff locally</button></div>
+<p id="unlockedHandoffStatus" role="status" aria-live="polite">No encrypted handoff opened.</p>
+<div class="scroll"><table><thead><tr><th>Local ordinal, NOT case</th><th>Count type</th><th>Slot appearances</th><th>HUMAN question appearances</th><th>Proposed HUMAN next action</th><th>Unverified local state</th></tr></thead><tbody id="unlockedHandoffRows"></tbody></table></div>
+<p>Saving and opening use independently versioned AES-256-GCM envelopes with separate cryptographic domain separation for HANDOFF vs WORKSESSION. A full-session backup cannot be opened as a handoff or vice versa. The encrypted capsule is not an authenticated identity, evidence signature, delivery receipt, approval or actual client case. Deliberate HUMAN consent and proper privacy controls remain necessary before any disclosure.</p>
+</section>
 <footer><small>LightUp / strictly local HUMAN planning / no grants / no target access</small>
 <p>This self-contained single-file browser desk uses a pinned inline-script content-security policy, not an independent security audit. It requires no cloud access, scripts from third parties, persistent browser storage, accounts, credentials, scans or installation. Original owner and review gates still apply.</p></footer>
 </main><script>__INLINE_SCRIPT__</script></body></html>

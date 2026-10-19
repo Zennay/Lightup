@@ -16,6 +16,14 @@ The portable `browser.html` now offers a **single password-encrypted backup** of
 
 To use: load the original strict numeric session and matching board as described below, make HUMAN-only edits, enter a strong unique passphrase and confirm it in section 5, then download the encrypted file. To resume, select the `.lhew` file and enter the same passphrase; if the current session has local choices, explicitly confirm replacement *after* all validation succeeds. The offline editor restores your original/local/peer HUMAN routing proposals, not original source authority.
 
+## Encrypted least-disclosure HUMAN handoff capsule
+
+The offline browser now also encrypts **only the selected source-free HUMAN handoff**, without wrapping the complete internal workroom or original numeric session. In the source-free Studio, choose a HUMAN action plus optional *one local ordinal* in section 3, then enter a separate strong passphrase in section 6 and click **Encrypt selected HUMAN action only**. The produced `.lheh` file contains one strictly bounded source-free payload with only the selected ordinal(s), numerical slot/question appearances, action, unverified local state and all 12 literal false authority flags **inside** ciphertext. The clear envelope only identifies the encryption format and KDF parameters.
+
+A recipient can open `browser.html` locally, choose the encrypted handoff in section 6, and decrypt into a **read-only HUMAN table** without any original numeric session, full private workroom or account credentials. No original case ID, verified security finding, authentic approval, client consent, action authority or authenticated sender is inferred. A wrong password, tampered file, unexpected fields, duplicated JSON key, mismatched cryptographic purpose or malformed selected rows HOLD; a failed open clears the previous displayed recipient handoff.
+
+The envelope is explicitly **separate** from the full `.lhew` work-session backup: `.lheh` has its own fixed AEAD associated-data domain, kind, encrypted schema and strict row limits, so neither can be substituted for the other. PBKDF2-HMAC-SHA-256 (600,000 iterations, independent 16-byte salt) and AES-256-GCM (independent 12-byte nonce) protect confidentiality and tamper detection *only to the extent that the recipient keeps the password secret and their device/browser are trustworthy*. There is no identity signature, recovery service, recipient authentication or proof of actual delivery. Never send the password in the same message as the file. Encrypted files are still subject to the project's original HUMAN disclosure authorization and privacy requirements.
+
 ## No-Python: portable offline HUMAN Return Studio
 
 Open **[browser.html](browser.html)** directly on an offline computer. It is a self-contained HTML file with an embedded SHA-256 CSP-pinned local script, no third-party resources and no server or installation.

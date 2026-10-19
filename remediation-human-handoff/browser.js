@@ -197,6 +197,7 @@
     for(const name of ["saveBoard","summary","handoffCsv","handoffTxt","handoffHtml","deltaCsv","reset"])$(name).disabled=off;
     $("actionFilter").disabled=off;
     $("ordinalFilter").disabled=off;
+    $("saveEncryptedHandoff").disabled=off || !globalThis.crypto?.subtle;
     $("saveEncrypted").disabled=off || !globalThis.crypto?.subtle;
   };
   const resetState=()=>{
@@ -248,6 +249,7 @@
       " locally edited routing choices";
     $("selectionCount").textContent=String(count);
     const found=count>0;
+    $("saveEncryptedHandoff").disabled=!found || !globalThis.crypto?.subtle;
     for(const k of ["handoffCsv","handoffTxt","handoffHtml"])$(k).disabled=!found;
     $("deltaCsv").disabled=changes===0;
     $("saveBoard").disabled=changes===0;
@@ -419,7 +421,16 @@
   // AES-256-GCM with independent random salt/nonce and password-based PBKDF2.
   // No server, key escrow or persisted browser state. The complete plaintext
   // is authenticated under a fixed domain and independently re-admitted.
-  const CRYPTO_AAD="LIGHTUP_PRIVATE_HUMAN_LOCAL_WORKSESSION_AES_GCM_V1";
+  const CRYPTO_MODES={
+    workspace:{
+      aad:"LIGHTUP_PRIVATE_HUMAN_LOCAL_WORKSESSION_AES_GCM_V1",
+      kind:"lightup.private_human_encrypted_workspace_v1"
+    },
+    handoff:{
+      aad:"LIGHTUP_PRIVATE_HUMAN_LOCAL_HANDOFF_AES_GCM_V1",
+      kind:"lightup.private_human_encrypted_handoff_v1"
+    }
+  };
   const CRYPTO_ITERATIONS=600000;
   const CRYPTO_FIELDS=["kind","schema_version","disposition","kdf","iterations",
     "salt_b64","nonce_b64","ciphertext_b64"];
@@ -501,18 +512,19 @@
     ensure(p.length===o.length && p.length===w.length);
     return {packets:p,initial:o,current:w,other:peerChoices,source:payload.original_session};
   };
-  const seal=async(payload,secret)=>{
+  const seal=async(payload,secret,scope="workspace")=>{
+    ensure(Object.hasOwn(CRYPTO_MODES,scope));
     const plaintext=encoder.encode(JSON.stringify(payload));
     ensure(plaintext.length>0&&plaintext.length<=65536);
     const salt=crypto.getRandomValues(new Uint8Array(16));
     const nonce=crypto.getRandomValues(new Uint8Array(12));
     const key=await aesKey(secret,salt);
     const ciphertext=new Uint8Array(await crypto.subtle.encrypt({
-      name:"AES-GCM",iv:nonce,additionalData:encoder.encode(CRYPTO_AAD),
+      name:"AES-GCM",iv:nonce,additionalData:encoder.encode(CRYPTO_MODES[scope].aad),
       tagLength:128
     },key,plaintext));
     return {
-      kind:"lightup.private_human_encrypted_workspace_v1",
+      kind:CRYPTO_MODES[scope].kind,
       schema_version:1,
       disposition:"PASSWORD_ENCRYPTED_LOCAL_FILE_NOT_SOURCE_AUTHORITY",
       kdf:"PBKDF2-HMAC-SHA256-AES256GCM",
@@ -522,9 +534,10 @@
       ciphertext_b64:b64(ciphertext)
     };
   };
-  const openSealed=async(envelope,secret)=>{
+  const openSealed=async(envelope,secret,scope="workspace")=>{
+    ensure(Object.hasOwn(CRYPTO_MODES,scope));
     ensure(exact(envelope,CRYPTO_FIELDS)
-      && envelope.kind==="lightup.private_human_encrypted_workspace_v1"
+      && envelope.kind===CRYPTO_MODES[scope].kind
       && envelope.schema_version===1
       && envelope.disposition==="PASSWORD_ENCRYPTED_LOCAL_FILE_NOT_SOURCE_AUTHORITY"
       && envelope.kdf==="PBKDF2-HMAC-SHA256-AES256GCM"
@@ -534,11 +547,12 @@
     const ciphertext=fromB64(envelope.ciphertext_b64,17,65600);
     const key=await aesKey(secret,salt);
     const plain=new Uint8Array(await crypto.subtle.decrypt({
-      name:"AES-GCM",iv:nonce,additionalData:encoder.encode(CRYPTO_AAD),
+      name:"AES-GCM",iv:nonce,additionalData:encoder.encode(CRYPTO_MODES[scope].aad),
       tagLength:128
     },key,ciphertext));
     ensure(plain.length>0&&plain.length<=65536);
-    return vaultAdmit(strictJSON(decoder.decode(plain)));
+    const payload=strictJSON(decoder.decode(plain));
+    return scope==="workspace"?vaultAdmit(payload):handoffAdmit(payload);
   };
   const drawRestored=state=>{
     resetState();
@@ -593,6 +607,93 @@
     }finally{
       $("restoreEncrypted").disabled=false;
     }
+  });
+  const HANDOFF_FIELDS=["kind","schema_version","disposition","rows",
+    "warning",...FLAGS];
+  const HANDOFF_ROW_FIELDS=["ordinal","type","slots","questions","action","state"];
+  const HANDOFF_CAP_WARNING="Encrypted locally selected HUMAN follow-up counts only. An ordinal is NOT an authenticated case, recipient, finding, consent, original evidence, reviewer decision, remediation, scan authority or release.";
+  const handoffAdmit=packet=>{
+    header(packet,HANDOFF_FIELDS,"lightup.private_human_encrypted_handoff_payload",
+      "LOCAL_SELECTED_HUMAN_COUNTS_DRAFT_HOLD",HANDOFF_CAP_WARNING);
+    ensure(Array.isArray(packet.rows)&&packet.rows.length>=1&&packet.rows.length<=12);
+    let lastOrdinal=0;
+    return packet.rows.map(row=>{
+      ensure(exact(row,HANDOFF_ROW_FIELDS)
+        &&number(row.ordinal,lastOrdinal+1,12)
+        &&(row.type==="inbox"||row.type==="workroom")
+        &&number(row.slots,1,12)
+        &&number(row.questions,0,1000000)
+        &&typeof row.action==="string"&&Object.hasOwn(ACTIONS,row.action)
+        &&row.action!=="none"
+        &&typeof row.state==="string"&&Object.hasOwn(STATES,row.state));
+      lastOrdinal=row.ordinal;
+      return clone(row);
+    });
+  };
+  const handoffSnapshot=()=>{
+    const selected=chosen().sort((a,b)=>a.ordinal-b.ordinal)
+      .map(r=>({ordinal:r.ordinal,type:r.type,slots:r.slots,
+        questions:r.questions,action:r.action,state:r.state}));
+    const packet={
+      kind:"lightup.private_human_encrypted_handoff_payload",
+      schema_version:1,
+      disposition:"LOCAL_SELECTED_HUMAN_COUNTS_DRAFT_HOLD",
+      rows:selected,warning:HANDOFF_CAP_WARNING,...flags()
+    };
+    handoffAdmit(packet);
+    return packet;
+  };
+  const displayUnlockedHandoff=rows=>{
+    const body=$("unlockedHandoffRows");
+    body.replaceChildren();
+    for(const r of rows){
+      const tr=document.createElement("tr");
+      td(tr,r.ordinal,"th");td(tr,r.type);
+      td(tr,r.slots);td(tr,r.questions);
+      td(tr,ACTIONS[r.action]);td(tr,STATES[r.state]);body.appendChild(tr);
+    }
+    $("unlockedHandoffStatus").textContent=
+      rows.length+" locally selected anonymous HUMAN appearances. NOT sent, authenticated or verified.";
+  };
+  $("saveEncryptedHandoff").addEventListener("click",async()=>{
+    const secret=$("handoffSecret").value;
+    const confirmSecret=$("handoffConfirm").value;
+    $("handoffSecret").value="";$("handoffConfirm").value="";
+    $("saveEncryptedHandoff").disabled=true;
+    try{
+      ensure(secret===confirmSecret);
+      const selected=handoffSnapshot();
+      const file=await seal(selected,secret,"handoff");
+      download("lightup-encrypted-selected-human-handoff.lheh",
+        JSON.stringify(file,null,2)+"\n","application/json");
+      message("Encrypted selected HUMAN handoff saved; no whole numeric session or original case data included.");
+    }catch(_){
+      message("HOLD: selected HUMAN handoff not encrypted. Check selected action, password and local WebCrypto.",true);
+    }finally{
+      const available=session!==null&&globalThis.crypto?.subtle;
+      let count=0;
+      if(available){try{count=chosen().length;}catch(_){count=0;}}
+      $("saveEncryptedHandoff").disabled=!count;
+    }
+  });
+  $("openEncryptedHandoff").addEventListener("click",async()=>{
+    $("unlockedHandoffRows").replaceChildren();
+    $("unlockedHandoffStatus").textContent="No authenticated handoff loaded.";
+    const secret=$("handoffUnlock").value;
+    $("handoffUnlock").value="";
+    $("openEncryptedHandoff").disabled=true;
+    try{
+      const file=$("handoffEncryptedFile").files[0];
+      ensure(file && file.size>0 && file.size<=131072);
+      const bytes=await file.arrayBuffer();
+      ensure(bytes.byteLength===file.size);
+      const sealed=strictJSON(decoder.decode(bytes));
+      const selected=await openSealed(sealed,secret,"handoff");
+      displayUnlockedHandoff(selected);
+      message("Encrypted selected HUMAN handoff opened locally. File proves no original source identity or authorization.");
+    }catch(_){
+      message("HOLD: encrypted HUMAN handoff not opened. Wrong passphrase, altered file, invalid schema or unsupported browser.",true);
+    }finally{$("openEncryptedHandoff").disabled=false;}
   });
   $("load").addEventListener("click",load);
   for(const k of ["sessionFile","boardFile"])$(k).addEventListener("change",()=>{
