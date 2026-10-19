@@ -35,6 +35,9 @@ button{cursor:pointer;background:#234c58;border-color:#80cbb6;font-weight:700}
 button:hover,button:focus-visible{background:#356674}
 #search{min-width:min(400px,85vw)}
 .data{overflow:auto;border:1px solid #3b516e;border-radius:12px}
+.detail{border-top:1px solid #3b516e;padding-top:8px;font-size:.82rem}
+details{max-width:320px}summary{cursor:pointer;color:#9eeddc}
+details p{margin:7px 0;font-size:.83rem}
 table{width:100%;border-collapse:collapse;min-width:1000px;font-size:.88rem}
 th,td{padding:10px;border-bottom:1px solid #374d68;text-align:left;vertical-align:top;word-break:break-word}
 th{background:#233851;position:sticky;top:0}
@@ -63,11 +66,18 @@ def _select(name: str, options: tuple[str, ...], initial: str) -> str:
     return f'<select class="{escape(name)}" aria-label="{escape(name)} HUMAN selection">' + "".join(rows) + "</select>"
 
 
-def render(*, source_queue: list[dict], human_stages: tuple[str, ...],
-           human_routes: tuple[str, ...], human_blockers: tuple[str, ...]) -> bytes:
+def render(*, source_queue: list[dict], source_details: list[list[object]],
+           human_stages: tuple[str, ...], human_routes: tuple[str, ...],
+           human_blockers: tuple[str, ...]) -> bytes:
     """Portable, locally editable PRIVATE app, never an original grant handler."""
-    if len(source_queue) > 200:
-        raise ValueError("original current Casebook source queue exceeds private workroom bound")
+    if len(source_queue) > 200 or len(source_details) > 600:
+        raise ValueError("original current Casebook source records exceed private workroom bound")
+    original_ids = {str(row["local_original_engagement_id"]) for row in source_queue}
+    if any(len(detail) != 6 or str(detail[0]) not in original_ids for detail in source_details):
+        raise ValueError("original source-detail lineage does not match source workroom")
+    detail_map: dict[str, list[list[object]]] = {}
+    for detail in source_details:
+        detail_map.setdefault(str(detail[0]), []).append(detail)
 
     file = Path(__file__).with_name("workroom.js")
     javascript = file.read_text(encoding="utf-8")
@@ -82,6 +92,21 @@ def render(*, source_queue: list[dict], human_stages: tuple[str, ...],
         action = str(record["source_next_human_action"])
         attention = str(record["source_attention"])
         status = str(record["source_status"])
+        source_context = detail_map.get(ident, [])
+        case_details = [
+            '<details><summary>Original recorded grants / risks</summary>'
+            '<p>Recorded source only; NEVER a verified grant or current consent.</p>'
+        ]
+        for item in source_context:
+            case_details.append(
+                '<p class="detail"><strong>' + escape(str(item[1])) + '</strong><br>'
+                + 'Record: ' + escape(str(item[2]))
+                + '<br>Recorded source state: ' + escape(str(item[3]))
+                + '<br>Original HUMAN action: ' + escape(str(item[4]))
+                + ('<br>Original request: ' + escape(str(item[5])) if item[5] else '')
+                + '</p>'
+            )
+        case_details.append('</details>')
         cells = [
             f'<td><strong>{escape(ident)}</strong><small>Source only, never a target</small></td>',
             f'<td>{escape(status)}</td>',
@@ -90,6 +115,7 @@ def render(*, source_queue: list[dict], human_stages: tuple[str, ...],
             f'<td>{_select("stage", human_stages, "unreviewed")}</td>',
             f'<td>{_select("route", human_routes, "unassigned")}</td>',
             f'<td>{_select("blocker", human_blockers, "none")}</td>',
+            '<td>' + "".join(case_details) + '</td>',
         ]
         sheet.append(
             f'<tr data-case="{escape(ident, quote=True)}"'
@@ -133,6 +159,7 @@ def render(*, source_queue: list[dict], human_stages: tuple[str, ...],
         '<th scope="col">Original status</th><th scope="col">Original attention</th>'
         '<th scope="col">Original next HUMAN action</th><th scope="col">Local HUMAN stage</th>'
         '<th scope="col">Local follow-up route</th><th scope="col">Local blocker</th>'
+        '<th scope="col">PRIVATE original dossier</th>'
         '</tr></thead><tbody id="cases">' + "".join(sheet) + '</tbody></table></div>'
         '<h2>Keep your private HUMAN selections</h2>'
         '<p>This browser tab does not save anything automatically. '
