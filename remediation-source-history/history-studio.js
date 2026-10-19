@@ -366,7 +366,10 @@ window.LightUpHistory=Object.freeze({
     if(proposed.size>limits.maxNotes||state.importing||state.revision!==expectedRevision||
        context().client!==ctx.client||context().engagement!==ctx.engagement)
       throw Error('HOLD: private note limit or original source/context changed. Entire merge rejected.');
-    state.notes=proposed;state.merges.push({dateUtc:new Date().toISOString(),sourceHash:review.sourceHash,reason:reason.trim(),records:receiptRows});state.revision++;render();
+    const receipt={dateUtc:new Date().toISOString(),sourceHash:review.sourceHash,reason:reason.trim(),records:receiptRows};
+    if(new TextEncoder().encode(JSON.stringify([...state.merges,receipt])).byteLength>2097152)
+      throw Error('Private HUMAN merge journal exceeds 2 MiB; archive the current source-bound workspace before importing more.');
+    state.notes=proposed;state.merges.push(receipt);state.revision++;render();
     return {accepted:selectedDecisions.length,fieldsMerged,retained:review.rows.length-selectedDecisions.length};
   },
   importCasework(packet,sourceRevision,replaceNotes){
