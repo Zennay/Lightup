@@ -196,6 +196,7 @@ function buildFindingRows(source,requests){
   if(!files.length)signals.push("No LOCAL fingerprint");
   if(!related.length)signals.push("No original HUMAN request created");
   if(related.some(r=>!r.answer))signals.push("HUMAN reply awaited");
+  if(related.some(r=>r.ledgerOnly))signals.push("Ledger HUMAN request not imported into original response register");
   if(casework&&!casework.owner)signals.push("No declared Casework owner");
   if(casework?.status==="blocked")signals.push("Casework HUMAN blocker");
   if(casework?.due_date&&casework.due_date<today)signals.push("Tentative Casework date passed");
@@ -206,6 +207,19 @@ function buildFindingRows(source,requests){
  });
 }
 
+function sourceFindingRequests(source,registerRows){
+ const matched=new Set(registerRows.map(r=>r.id));
+ const pending=source.human_requests.filter(r=>!matched.has(r.request_id)).map(r=>({
+  id:r.request_id,finding:r.finding_id,owner:r.assignee,kind:r.request_kind,ledgerOnly:true,
+  instructions:r.instructions,due:r.due_date,answer:null,signals:[]
+ }));
+ return [...registerRows,...pending];
+}
+function evidenceOnly(l){
+ const source=admitLedger(l),findingRows=buildFindingRows(source,sourceFindingRequests(source,[]));
+ if(!findingRows.length)fail("a complete native Casework or Evidence Review overlay is required to display all original finding IDs; export one from the original Evidence Artifact Ledger");
+ return {source,rows:[],findingRows,mode:"ledger_only",version:++version};
+}
 function combine(l,r){
  const source=admitLedger(l),data=admitRegister(r,source),attached=new Map();
  for(const a of source.attachments){if(!attached.has(a.finding_id))attached.set(a.finding_id,[]);attached.get(a.finding_id).push(a);}
@@ -224,7 +238,7 @@ function combine(l,r){
   if(feedback)signals.push("Separate UNVERIFIED HUMAN follow-up exists");
   rows.push({id,finding:x.o.finding_id,kind:x.o.request_kind,owner:x.p.recipient_alias,instructions:x.o.instructions,due:x.o.due_date,answer,feedback,notes,local,signals});
  }
- return {source,rows,findingRows:buildFindingRows(source,rows),version:++version};
+ return {source,rows,findingRows:buildFindingRows(source,sourceFindingRequests(source,rows)),mode:"paired",version:++version};
 }
 const cell=(tag,content)=>{const e=document.createElement(tag);e.textContent=String(content);return e;};
 const info=(s,error=false)=>{$("notice").textContent=s;$("notice").dataset.error=error?"true":"false";};
@@ -242,7 +256,8 @@ function filtered(){
 function summary(number,label){const e=cell("div","");e.className="number";e.append(cell("strong",number),cell("span",label));return e;}
 function draw(){
  if(!current)return;
- $("review").hidden=false;$("out").hidden=false;
+ $("review").hidden=current.mode==="ledger_only";$("out").hidden=current.mode==="ledger_only";
+ if(current.mode==="ledger_only"){drawFindingBoard();return;}
  const r=current.rows;
  $("binding").textContent="DECLARED original SHA: "+current.source.source_sha256+" · client: "+current.source.client_reference+" · engagement: "+current.source.engagement_reference+" · "+current.source.source_count+" original findings reported. Not authenticated.";
  $("numbers").replaceChildren(summary(r.length,"Matched HUMAN requests"),
@@ -357,7 +372,7 @@ function chosenFindingRows(){
 function chooseOriginalRequestsForFindings(){
  const findingRows=chosenFindingRows(),ids=new Set(findingRows.map(f=>f.id));
  const requests=current.rows.filter(r=>ids.has(r.finding));
- if(!requests.length){info("These original findings have no original HUMAN requests. Create any new request inside the separate source-owning Evidence Artifact Ledger; nothing was fabricated.");return;}
+ if(!requests.length){info(current.mode==="ledger_only"?"No original Response Register is loaded; use paired mode to select existing source-authored requests for human handoff. The evidence-only board never creates original requests.":"These original findings have no original HUMAN requests. Create any new request inside the separate source-owning Evidence Artifact Ledger; nothing was fabricated.");return;}
  if(!confirm("Select "+requests.length+" EXISTING original HUMAN requests across "+findingRows.length+" selected original findings? This selects only; no messages or actions are sent."))return;
  for(const r of requests)selected.add(r.id);
  draw();info(requests.length+" pre-existing original HUMAN requests selected in the request board. No new request or authorization issued.");
@@ -474,6 +489,17 @@ $("load").addEventListener("click",async()=>{
   if(version!==rev||$("ledger").files[0]!==ledgerInput||$("register").files[0]!==registerInput)fail("workspace or selected original files changed during load");
   const next=combine(l,r);current=next;selected.clear();selectedFindings.clear();$("search").value="";$("filter").value="all";draw();
   info("Matched and admitted original HUMAN requests and replies within the same DECLARED source. This does not authenticate source, author or permission.");
+ }catch(e){info(e.message||String(e),true);}
+});
+$("loadEvidenceOnly").addEventListener("click",async()=>{
+ const rev=++version,ledgerInput=$("ledger").files[0];
+ info("Reading original PRIVATE evidence workspace for HUMAN-only coverage…");
+ try{
+  const l=await openFile("ledger");
+  if(version!==rev||$("ledger").files[0]!==ledgerInput)fail("original PRIVATE evidence input changed during reading");
+  const next=evidenceOnly(l);current=next;selected.clear();selectedFindings.clear();
+  $("search").value="";$("filter").value="all";$("findingSearch").value="";$("findingFilter").value="all";draw();
+  info("Original-source-declared HUMAN finding coverage opened WITHOUT a response register. No original request created, consent verified or target contacted.");
  }catch(e){info(e.message||String(e),true);}
 });
 $("forget").addEventListener("click",()=>{current=null;version++;selected.clear();selectedFindings.clear();
