@@ -59,6 +59,19 @@ def _source(args, vault):
     return envelope, packet, indexed, items, old_hash, plan_hash, _key(packet, receipt_sha)
 
 
+def _new_private_output(args, folder: Path, suffix: str) -> Path:
+    """Do not poison the exact original evidence-folder inventory or journal."""
+    out = args.output.expanduser().absolute()
+    material = args.directory.expanduser().absolute()
+    if (out.suffix.lower() != suffix or out.parent in (folder, material)
+            or out in {args.human.expanduser().absolute(),
+                       args.plan.expanduser().absolute()}
+            or out.exists() or out.is_symlink()):
+        raise ValueError("Distinct NEW PRIVATE output outside material/journal folders required.")
+    source._hold_if_not_private_directory(out.parent)
+    return out
+
+
 def _owned_regular(path: Path) -> None:
     info = path.lstat()
     if (not stat.S_ISREG(info.st_mode) or info.st_uid != os.getuid()
@@ -192,14 +205,7 @@ def _stage(args, vault, folder, journal, current) -> None:
     if input('Type "STAGE DURABLE HUMAN DRAFT" to prepare a LOCAL-only draft: ') != (
             "STAGE DURABLE HUMAN DRAFT"):
         raise ValueError("No deliberate HUMAN draft acknowledgment.")
-    out = args.output.expanduser().absolute()
-    if (out.suffix.lower() != ".ltv" or out in {
-            args.human.expanduser().absolute(), args.plan.expanduser().absolute()}
-            or out.exists() or out.is_symlink()):
-        raise ValueError("Distinct unoccupied encrypted HUMAN .ltv output required.")
-    # Keep confidential original-native draft paths under a real private owner
-    # directory; source material and journal paths have the same no-symlink rule.
-    source._hold_if_not_private_directory(out.parent)
+    out = _new_private_output(args, folder, ".ltv")
     # A fresh ORIGINAL authenticated read after the human interaction. If current
     # source/requests/plan/bytes drift, there is no journal or encrypted output.
     newer = _source(args, vault)
@@ -336,13 +342,7 @@ def main(argv=None) -> int:
                 print("Registered original source revisions:", len(revisions["sources"]),
                       "· revisions with unresolved HUMAN work:", unresolved)
             elif args.action == "report":
-                destination = args.output.expanduser().absolute()
-                if (destination.suffix.lower() != ".html"
-                        or destination in {
-                            args.human.expanduser().absolute(),
-                            args.plan.expanduser().absolute()}
-                        or destination.exists() or destination.is_symlink()):
-                    raise ValueError("Distinct NEW private HTML output required.")
+                destination = _new_private_output(args, folder, ".html")
                 latest = document["cycles"][-1] if document["cycles"] else None
                 closed = _closed(latest, packet) if latest and latest["requests"] else False
                 revisions, unresolved = source_revisions.inspect(
@@ -362,13 +362,7 @@ def main(argv=None) -> int:
                 if args.action == "review":
                     delivery.print_review(records, totals)
                 else:
-                    destination = args.output.expanduser().absolute()
-                    if (destination.suffix.lower() != ".html"
-                            or destination in {
-                                args.human.expanduser().absolute(),
-                                args.plan.expanduser().absolute()}
-                            or destination.exists() or destination.is_symlink()):
-                        raise ValueError("Distinct NEW private review HTML required.")
+                    destination = _new_private_output(args, folder, ".html")
                     source._hold_if_not_private_directory(destination.parent)
                     vault._exclusive_output(destination, delivery.html_review(records, totals))
                     print("NEW PRIVATE scriptless original HUMAN delivery review published.")
