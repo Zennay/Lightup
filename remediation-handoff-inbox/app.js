@@ -181,11 +181,12 @@ function inspectNativeRow(kind,row){
   for(const field of EVIDENCE_REFERENCE_FIELDS)value(row.evidence[field],field==="review_question"?700:240,"Evidence Review "+field);
  }
 }
-function buildFindingRows(source,requests){
- const original=source.casework||source.evidence_review;
+function buildFindingRows(source,requests,originalFindings=null){
+ const original=originalFindings||source.casework||source.evidence_review;
  if(!original)return [];
  const caseById=new Map((source.casework||[]).map(r=>[r.finding_id,r]));
  const evidenceById=new Map((source.evidence_review||[]).map(r=>[r.finding_id,r]));
+ const sourceById=new Map((originalFindings||[]).map(r=>[r.finding_id,r]));
  const filesById=new Map(),requestsById=new Map();
  for(const f of source.attachments){const a=filesById.get(f.finding_id)||[];a.push(f);filesById.set(f.finding_id,a);}
  for(const r of requests){const a=requestsById.get(r.finding)||[];a.push(r);requestsById.set(r.finding,a);}
@@ -205,7 +206,7 @@ function buildFindingRows(source,requests){
   if(evidence&&["missing","needs_changes"].includes(evidence.stage))signals.push("Evidence Review HUMAN follow-up");
   if(casework?.status==="completed"&&evidence?.stage==="missing")
    signals.push("HUMAN status disagreement: locally completed vs evidence missing");
-  return {id,casework,evidence,files,requests:related,signals};
+  return {id,sourceFinding:sourceById.get(id)||null,casework,evidence,files,requests:related,signals};
  });
 }
 
@@ -219,8 +220,7 @@ function sourceFindingRequests(source,registerRows){
 }
 function evidenceOnly(l){
  const source=admitLedger(l),findingRows=buildFindingRows(source,sourceFindingRequests(source,[]));
- if(!findingRows.length)fail("a complete native Casework or Evidence Review overlay is required to display all original finding IDs; export one from the original Evidence Artifact Ledger");
- return {source,rows:[],findingRows,mode:"ledger_only",version:++version};
+ return {source,rows:[],findingRows,originalFindings:null,mode:"ledger_only",version:++version};
 }
 function combine(l,r){
  const source=admitLedger(l),data=admitRegister(r,source),attached=new Map();
@@ -240,7 +240,7 @@ function combine(l,r){
   if(feedback)signals.push("Separate UNVERIFIED HUMAN follow-up exists");
   rows.push({id,finding:x.o.finding_id,kind:x.o.request_kind,owner:x.p.recipient_alias,instructions:x.o.instructions,due:x.o.due_date,answer,feedback,notes,local,signals});
  }
- return {source,rows,findingRows:buildFindingRows(source,sourceFindingRequests(source,rows)),mode:"paired",version:++version};
+ return {source,rows,findingRows:buildFindingRows(source,sourceFindingRequests(source,rows)),originalFindings:null,mode:"paired",version:++version};
 }
 const cell=(tag,content)=>{const e=document.createElement(tag);e.textContent=String(content);return e;};
 const info=(s,error=false)=>{$("notice").textContent=s;$("notice").dataset.error=error?"true":"false";};
@@ -258,6 +258,9 @@ function filtered(){
 function summary(number,label){const e=cell("div","");e.className="number";e.append(cell("strong",number),cell("span",label));return e;}
 function draw(){
  if(!current)return;
+ $("sourceEnrichment").hidden=false;
+ $("attachOriginal").disabled=false;
+ $("detachOriginal").disabled=!current.originalFindings;
  $("review").hidden=current.mode==="ledger_only";$("out").hidden=current.mode==="ledger_only";
  if(current.mode==="ledger_only"){drawFindingBoard();return;}
  const r=current.rows;
@@ -310,8 +313,10 @@ function draw(){
 function visibleFindingRows(){
  const q=$("findingSearch").value.trim().toLowerCase(),mode=$("findingFilter").value;
  return (current?.findingRows||[]).filter(r=>{
-  if(q&&![r.id,r.casework?.owner||"",r.casework?.blocker||"",r.evidence?.next_step||""].join(" ").toLowerCase().includes(q))return false;
+  if(q&&![r.id,r.sourceFinding?.title||"",r.sourceFinding?.remediation||"",r.casework?.owner||"",r.casework?.blocker||"",r.evidence?.next_step||""].join(" ").toLowerCase().includes(q))return false;
   if(mode==="no_request"&&r.requests.length)return false;
+  if(mode==="critical_high"&&!["critical","high"].includes(r.sourceFinding?.severity))return false;
+  if(mode==="source_regression"&&r.sourceFinding?.retest_status!=="regression")return false;
   if(mode==="missing_local"&&r.files.length)return false;
   if(mode==="no_owner"&&(!r.casework||r.casework.owner))return false;
   if(mode==="blocked"&&r.casework?.status!=="blocked")return false;
@@ -334,6 +339,7 @@ function drawFindingBoard(){
  $("findingBinding").textContent="DECLARED original source SHA-256: "+current.source.source_sha256+" · client: "+current.source.client_reference+" · engagement: "+current.source.engagement_reference+" · original finding count "+current.source.source_count+" (not authenticated)";
  const stats=$("findingStats");
  stats.replaceChildren(summary(data.length,"Original source-bound HUMAN finding IDs"),
+  summary(data.filter(x=>["critical","high"].includes(x.sourceFinding?.severity)).length,"Source-claimed critical/high (only matched CSV)"),
   summary(data.filter(x=>!x.requests.length).length,"No original HUMAN request"),
   summary(data.filter(x=>!x.files.length).length,"No LOCAL fingerprint"),
   summary(data.filter(x=>x.casework?.status==="blocked").length,"Casework HUMAN blocked"),
@@ -346,12 +352,17 @@ function drawFindingBoard(){
   check.addEventListener("change",()=>{check.checked?selectedFindings.add(row.id):selectedFindings.delete(row.id);drawFindingBoard();});
   td.append(check);tr.append(td);
   tr.append(cell("td",row.id));
+  tr.append(cell("td",row.sourceFinding?row.sourceFinding.severity+" · source: "+row.sourceFinding.retest_status:"Original CSV not matched"));
   tr.append(cell("td",row.casework?row.casework.status+" · "+(row.casework.owner||"no declared owner"):"No native Casework overlay"));
   tr.append(cell("td",row.evidence?row.evidence.stage+" · "+(row.evidence.reviewer||"no HUMAN reviewer"):"No native Evidence Review overlay"));
   tr.append(cell("td",row.files.length+" LOCAL labels"));
   tr.append(cell("td",row.requests.length+" requests · "+row.requests.filter(r=>r.answer).length+" received UNVERIFIED replies"));
   tr.append(cell("td",row.signals.join(" · ")||"No local HUMAN signal"));
   const cellDetails=document.createElement("td");
+  if(row.sourceFinding)cellDetails.append(detailsBlock("PRIVATE ORIGINAL source claims (not verified)",[
+   ["Original finding title",row.sourceFinding.title],["Original source severity",row.sourceFinding.severity],
+   ["Original retest status claim",row.sourceFinding.retest_status],["Original source remediation description",row.sourceFinding.remediation]
+  ]));
   if(row.casework)cellDetails.append(detailsBlock("PRIVATE Casework HUMAN notes",[
    ["Owner",row.casework.owner],["HUMAN status",row.casework.status],["Tentative date",row.casework.due_date],
    ["Blocker",row.casework.blocker],["Next human action",row.casework.next_action],
@@ -399,7 +410,7 @@ function exportOriginalFindingPrivate(){
  engagement_reference:source.engagement_reference,...Object.fromEntries(FLAGS.map(k=>[k,false])),
  original_finding_count_reported:source.source_count,
  findings:entries.map(r=>({original_finding_id:r.id,
- original_casework_human_only:r.casework,
+ original_five_column_source_claims:r.sourceFinding,original_casework_human_only:r.casework,
  original_evidence_review_human_only:r.evidence,
  local_file_labels_only:r.files.map(f=>({file_name:f.file_name,sha256:f.sha256,byte_length:f.byte_length,human_stage:f.human_stage,human_reviewer:f.human_reviewer,human_note:f.human_note})),
  original_human_request_ids:r.requests.map(q=>q.id),
