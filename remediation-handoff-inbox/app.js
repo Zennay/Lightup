@@ -486,6 +486,14 @@ function agendaExport(){
  download("LightUp-PRIVATE-human-followup-agenda.txt",body.join("\n"),"text/plain;charset=utf-8");
  info("PRIVATE HUMAN agenda exported. Operator approval or execution is not implied.");
 }
+function clearAllPrivateView(){
+ current=null;version++;selected.clear();selectedFindings.clear();
+ for(const id of ["rows","findingRows","numbers","findingStats"])$(id).replaceChildren();
+ for(const id of ["binding","selection","findingSelection"])$(id).textContent="";
+ $("ownerRecipient").replaceChildren(new Option("Choose one original owner alias",""));
+ for(const id of ["review","findingDesk","out"])$(id).hidden=true;
+ for(const id of ["downloadPrivate","downloadOwner","downloadAgenda","exportFindingPrivate","exportFindingCounts","selectRequestsForFindings"])$(id).disabled=true;
+}
 $("load").addEventListener("click",async()=>{
  const rev=++version,ledgerInput=$("ledger").files[0],registerInput=$("register").files[0];info("Reading both PRIVATE snapshots locally…");
  try{const [l,r]=await Promise.all([openFile("ledger"),openFile("register")]);
@@ -505,13 +513,15 @@ $("loadEvidenceOnly").addEventListener("click",async()=>{
   info("Original-source-declared HUMAN finding coverage opened WITHOUT a response register. No original request created, consent verified or target contacted.");
  }catch(e){info(e.message||String(e),true);}
 });
-$("forget").addEventListener("click",()=>{current=null;version++;selected.clear();selectedFindings.clear();
- for(const id of ["ledger","register","search","findingSearch"])$(id).value="";$("filter").value="all";$("findingFilter").value="all";
- $("rows").replaceChildren();$("findingRows").replaceChildren();$("review").hidden=true;$("findingDesk").hidden=true;$("out").hidden=true;
- info("PRIVATE working state and file-picker references cleared from this page. Previously downloaded files must be secured or deleted separately.");});
+$("forget").addEventListener("click",()=>{
+ clearAllPrivateView();
+ for(const id of ["ledger","register","search","findingSearch"])$(id).value="";
+ $("filter").value="all";$("findingFilter").value="all";
+ info("All PRIVATE working state, visible/hidden detail text, owner choices and file-picker references cleared. Previous downloads must be secured or deleted separately.");
+});
 for(const id of ["ledger","register"])$(id).addEventListener("change",()=>{
- current=null;version++;selected.clear();selectedFindings.clear();$("rows").replaceChildren();$("findingRows").replaceChildren();$("review").hidden=true;$("findingDesk").hidden=true;$("out").hidden=true;
- info("PRIVATE source file selection changed: old human review and export controls cleared. Inspect both selected sources again.");
+ clearAllPrivateView();
+ info("PRIVATE source selection changed. All prior HUMAN details, owner choices, summaries and exports were cleared. Inspect the new sources again.");
 });
 $("ownerRecipient").addEventListener("change",draw);
 $("search").addEventListener("input",draw);$("filter").addEventListener("change",draw);
