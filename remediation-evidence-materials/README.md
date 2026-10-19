@@ -14,6 +14,22 @@ The original Evidence Artifact Ledger deliberately records **SHA-256 fingerprint
 - **Maximum 12 files; 2 MiB per file; 2.5 MiB aggregate; 4 MiB original vault envelope.** Larger material should stay with the original trusted owner under a separately approved transfer process. The original Ledger itself allows bigger individual local fingerprints, but this companion intentionally fails closed rather than streaming unreviewed sensitive data.
 - This is **private raw evidence**, unlike the fingerprint-only ledger. Extracted files remain potentially dangerous/untrusted. Do not execute or render extracted bytes automatically. Only anonymous counts are printed to the terminal; filename, original finding references and hashes appear only **inside encrypted output** and the **private extracted receipt**. All original filenames are replaced with neutral `material-01.bin` paths on disk.
 
+## Faster source-index selection (no manual SHA transcription)
+
+The added source-authenticated **interactive selection assistant** reads the current original encrypted HUMAN Ledger under the same real account/tenant/engagement check and prints an escaped, PRIVATE terminal index of the original registered attachments. Choose one to twelve ordinal numbers and manually provide each existing owner-private 0600 absolute local file. Before writing a new exclusive 0600 selection, it verifies **each actual file byte size and SHA-256 against the current native original ledger record**; any mismatch holds the whole output. The `pack` command independently checks again after the selection is saved, so changed material cannot silently slip into a later transfer.
+
+```bash
+PYTHONPATH=src python3 remediation-evidence-materials/selection.py \
+  --db /private/lightup/existing.sqlite \
+  --email operator@example.invalid \
+  --client-id CURRENT_CLIENT --engagement-id CURRENT_ENGAGEMENT \
+  --human /private/lightup/current-original-human.ltv \
+  --output /private/lightup/NEW-selection.json \
+  --ack-private-selection
+```
+
+The operator does not need to copy SHA fields manually. Terminal output is confidential source-associated HUMAN metadata and must not be captured in public logs. This tool never downloads, discovers or scans endpoints and never changes the original HUMAN record or its stage.
+
 ## 1. Select actual local indexed material
 
 Create an explicit **owner-only 0600** `/private/lightup/selection.json` using the *existing exact-original HUMAN Ledger* record's `finding_id` and `sha256`. Paths must be absolute files chosen manually by the legitimate evidence owner; the tool does not search folders or contact endpoints.
