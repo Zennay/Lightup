@@ -29,3 +29,16 @@ Each open authenticates and decrypts strictly in memory, then reuses the origina
 The existing interactive `python -m lightup.private_export_console` now offers these six ciphertext workflows as menu options 8–13 alongside its original seven offline source-bound options. Console confirmation and ZIP labels are **not** proof of authorization or independent client consent. Operators must independently verify the correct recipient, transport, client and engagement, and protect every generated plaintext HTML/JSON.
 
 **Still HOLD:** Notion `Incubate` / M3/M7 PLAN/LAB ONLY DRAFT/HOLD; original parent PR #1611 hosted CI RED from outdated unchecked-export expectations; exact-head hosted and permanently registered VPS CI, original source owners, independent security/privacy, authentic separate current client/operator consent and at-use revocation, #177/#182/#829, and explicit HUMAN GO remain mandatory before any merge or production use. No real customer data, targets, scans, retests, remedial executions or new QA suites were performed.
+
+## NEW: encrypt and resume original-source HUMAN workplan JSON (separate .lun format)
+
+The browser Workdesk deliberately exports a PRIVATE HUMAN JSON draft by explicit user action. That downloaded original JSON is readable until the human securely disposes of/protects it. New `private_export_encrypted_notes.py` allows a human to separately encrypt only a strictly validated workplan for its **exact** original encrypted source; it is not permission or a verified owner identity. It requires two independent interactive passphrases (source `.lue`, HUMAN note `.lun`) and uses the same scrypt/AES-256-GCM algorithm with a **different authenticated format magic**. The source and workplan formats cannot be confused.
+
+```sh
+python -m lightup.private_export_encrypted_notes seal /private/source.lue /private/LightUp-PRIVATE-HUMAN-Workplan.json --output /private/notes.lun --ack-private-handling
+python -m lightup.private_export_encrypted_notes inspect /private/source.lue /private/notes.lun --ack-private-handling
+python -m lightup.private_export_encrypted_notes workdesk /private/source.lue /private/notes.lun --output /private/resumed-workdesk.html --ack-private-handling --ack-plaintext-html
+python -m lightup.private_export_encrypted_notes rotate /private/source.lue /private/notes.lun --output /private/notes-rotated.lun --ack-private-handling
+```
+
+The HUMAN note source validation is the unchanged strict parser: duplicate-key JSON is rejected; exact five-column original finding set, source SHA/client/engagement declaration, false-only authority fields, bounded owner/date/note and non-authorizing stage are mandatory. `seal` only publishes the new 0600 ciphertext; it **does not delete** the already saved plaintext JSON. `inspect` prints counts but never notes, original IDs or aliases. `workdesk` decrypts both packages in RAM, rechecks their source binding, and produces one explicitly **UNENCRYPTED** private 0600 HTML for actual local editing. Rotation changes only ciphertext/passphrase and does not write the original notes to disk. The unified console contains these four flows in menu actions 14–17. No claims of browser-native encryption, real owner authentication, client consent, verified remediation, live authorization or cryptographic source signatures.
