@@ -97,7 +97,8 @@ def identity(value: object, nullable: bool = False) -> str | None:
         return None
     fail(type(value) is str and 1 <= len(value) <= 180
          and value.strip() == value
-         and value[0] in "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_"\n         and all(32 < ord(c) < 127 for c in value), "invalid source identifier")
+         and value[0] in "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_"
+         and all(32 < ord(c) < 127 for c in value), "invalid source identifier")
     return value
 
 
