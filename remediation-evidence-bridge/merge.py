@@ -207,7 +207,13 @@ def _merge_preflight(a: dict, b: dict, ids: set[str]) -> tuple[dict, list]:
     for collection in ("casework", "evidence_review", "attachments", "human_requests"):
         x, y = left[collection], right[collection]
         if x is None or y is None:
-            merged[collection] = x if y is None else y
+            if x is y:
+                merged[collection] = None
+            else:
+                # An absent complete HUMAN view is ambiguous, never assume
+                # preservation/deletion without independent operator choice.
+                merged[collection] = None
+                conflicts.append((collection, "__collection_presence__", x, y))
             continue
         result = {}
         for identifier in list(dict.fromkeys((*x, *y))):
@@ -232,6 +238,16 @@ def _resolve(collection: str, identifier: object, left: dict, right: dict) -> di
     if left.get("finding_id") != right.get("finding_id"):
         raise ValueError("Same HUMAN record key has conflicting ORIGINAL finding membership.")
     print("\nLOCAL PRIVATE HUMAN CONFLICT | " + collection + " | original record " + repr(identifier))
+    if identifier == "__collection_presence__":
+        print("One complete original HUMAN view is absent; the other contains private records.")
+        print("LEFT:", "absent" if left is None else str(len(left))+" HUMAN records")
+        print("RIGHT:", "absent" if right is None else str(len(right))+" HUMAN records")
+        chosen = input("Preserve [L]eft or [R]ight view / [H]OLD (default): ").strip().upper()
+        if chosen in ("", "H"):
+            raise ValueError("Ambiguous original HUMAN view; no merge output.")
+        if chosen not in ("L", "R"):
+            raise ValueError("Invalid original HUMAN view decision.")
+        return left if chosen == "L" else right
     combined = json.loads(json.dumps(left, ensure_ascii=False))
     for field in sorted(left):
         if field in ("finding_id", "request_id", "sha256") or left[field] == right[field]:
@@ -335,7 +351,11 @@ def main(argv: list[str] | None = None) -> int:
         if not args.ack_private_human_review:
             raise ValueError("Explicit independent HUMAN merge approval required.")
         for collection, identifier, v, w in conflicts:
-            merged[collection][identifier] = _resolve(collection, identifier, v, w)
+            selected = _resolve(collection, identifier, v, w)
+            if identifier == "__collection_presence__":
+                merged[collection] = selected
+            else:
+                merged[collection][identifier] = selected
         answer = _assemble(left, merged, ids)
         # Re-admit the entire composed HUMAN schema before requesting a new password;
         # selection cannot silently create a dangling request or duplicate finding.
