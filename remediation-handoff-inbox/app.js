@@ -274,6 +274,14 @@ function draw(){
   cb.addEventListener("change",()=>{cb.checked?selected.add(x.id):selected.delete(x.id);draw();});td.append(cb);tr.append(td);
   const original=cell("td",x.finding);original.append(cell("small",x.id));tr.append(original);
   tr.append(cell("td",x.owner),cell("td",x.kind),cell("td",x.answer?.human_stage||"NOT RECEIVED"),cell("td",x.local.length+" LOCAL files"),cell("td",x.signals.join(" · ")||"No local HUMAN follow-up signal"));
+  if(current.findingRows?.some(f=>f.id===x.finding)){
+   const go=cell("button","Inspect source-bound finding");go.type="button";go.className="secondary";
+   go.addEventListener("click",()=>{
+    $("findingSearch").value=x.finding;$("findingFilter").value="all";drawFindingBoard();
+    $("findingDesk").scrollIntoView({behavior:"smooth",block:"start"});
+   });
+   const target=document.createElement("td");target.append(go);tr.append(target);
+  }else tr.append(cell("td","No complete native finding overlay"));
   const details=document.createElement("details"),summary=cell("summary","Read original HUMAN context (PRIVATE)");details.append(summary);
   for(const [label,val] of [
    ["Original HUMAN instructions",x.instructions],["Unverified owner reply",x.answer?.human_response||"Not received"],
@@ -323,12 +331,13 @@ function drawFindingBoard(){
  const data=current?.findingRows||[],available=!!data.length;
  $("findingDesk").hidden=!available;
  if(!available)return;
+ $("findingBinding").textContent="DECLARED original source SHA-256: "+current.source.source_sha256+" · client: "+current.source.client_reference+" · engagement: "+current.source.engagement_reference+" · original finding count "+current.source.source_count+" (not authenticated)";
  const stats=$("findingStats");
  stats.replaceChildren(summary(data.length,"Original source-bound HUMAN finding IDs"),
   summary(data.filter(x=>!x.requests.length).length,"No original HUMAN request"),
   summary(data.filter(x=>!x.files.length).length,"No LOCAL fingerprint"),
   summary(data.filter(x=>x.casework?.status==="blocked").length,"Casework HUMAN blocked"),
-  summary(data.filter(x=>x.requests.some(r=>!r.answer)).length,"Awaiting HUMAN reply"));
+  summary(data.filter(x=>x.requests.some(r=>!r.answer&&!r.ledgerOnly || r.ledgerOnly&&!["submitted_unverified","needs_changes"].includes(r.ledgerStatus))).length,"Human replies not yet reported locally"));
  const body=$("findingRows"),visible=visibleFindingRows();body.replaceChildren();
  for(const row of visible){
   const tr=document.createElement("tr"),td=document.createElement("td"),check=document.createElement("input");
@@ -489,7 +498,7 @@ function agendaExport(){
 function clearAllPrivateView(){
  current=null;version++;selected.clear();selectedFindings.clear();
  for(const id of ["rows","findingRows","numbers","findingStats"])$(id).replaceChildren();
- for(const id of ["binding","selection","findingSelection"])$(id).textContent="";
+ for(const id of ["binding","findingBinding","selection","findingSelection"])$(id).textContent="";
  $("ownerRecipient").replaceChildren(new Option("Choose one original owner alias",""));
  for(const id of ["review","findingDesk","out"])$(id).hidden=true;
  for(const id of ["downloadPrivate","downloadOwner","downloadAgenda","exportFindingPrivate","exportFindingCounts","selectRequestsForFindings"])$(id).disabled=true;
