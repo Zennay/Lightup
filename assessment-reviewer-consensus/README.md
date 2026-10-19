@@ -54,6 +54,18 @@ The complete portable [offline Reviewer Studio](reviewer-studio.html) includes t
 
 ---
 
+## Rebuild the standalone PRIVATE Reviewer Studio from owned product sources
+
+The checked-in `reviewer-studio.html` is directly openable offline. When changing the independently owned browser sources, the production [build_standalone.py](build_standalone.py) packages the existing static HTML shell and the four source modules into one independent **network-free** HTML file, calculates new SHA-256 CSP pins directly from the bundled JS and CSS bytes, and atomically writes an owner-private output in an existing destination folder:
+
+```sh
+python3 assessment-reviewer-consensus/build_standalone.py --output /private/location/reviewer-studio.html
+```
+
+This only builds local static HTML from the existing owned source directory; it does **not** connect to targets, inspect evidence, scan, run tests, replace original #1667, or approve deployment. Source bundle order is: original HUMAN-plan decrypt, original HUMAN-plan encrypt, independent complete reviewer-workspace encryption, and complete Studio application. The generator is optional for simply opening the prebuilt committed HTML, and is not a CI approval or substitute for an independent browser/security/privacy review.
+
+---
+
 ## Operator workflow
 
 1. Open the **original 2–8 PRIVATE completed lab-result files** in the existing offline workroom. Each person locally downloads their **plaintext PRIVATE HUMAN plan JSON** from that original workroom. **The native Python CLI** accepts original plaintext v1 plans only; the standalone Reviewer Studio can additionally decrypt the original encrypted HUMAN plan envelope on the same trusted local device. Neither accepts a complete encrypted original+HUMAN workroom file as a reviewer plan. For encrypted reviewer plans use the browser Studio directly, or if the native CLI is required reopen inside the approved original app and export plaintext with owner-private file permissions. Never share original customer data to an unapproved machine.
