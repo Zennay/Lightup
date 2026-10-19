@@ -8,6 +8,7 @@ Linux renameat2(RENAME_NOREPLACE) is required: fail closed on unsupported hosts.
 from __future__ import annotations
 
 import argparse
+from contextlib import nullcontext
 import ctypes
 import errno
 import hashlib
@@ -89,10 +90,15 @@ def operator_portal(source: dict, results: dict, session: dict) -> bytes:
         "<p>Each output file has a SHA-256 checksum in PRIVATE manifest.json "
         "for accidental modification detection. Manifest checksums are not "
         "cryptographic signatures or proof of original source authenticity.</p>"
-        "<p>Run `desk.py inbox mark`, `desk.py bulk` or `desk.py history` "
-        "in your trusted private terminal to make HUMAN-only local changes, "
-        "then publish a new separate workspace directory. This report is static "
-        "and never modifies a HUMAN session.</p></main></html>\n"
+        "<p>This owner-private folder contains <code>current.json</code>, optional "
+        "<code>previous.json</code>, and <code>session.json</code> original "
+        "metadata/HUMAN-only copies. From a trusted local terminal call "
+        "<code>desk.py inbox mark --current /ABSOLUTE/FOLDER/current.json "
+        "--session /ABSOLUTE/FOLDER/session.json</code> (also specify previous "
+        "when present). These are PRIVATE source claims, not evidence-file bytes. "
+        "The browser HTML cannot edit any files. After local changes, publish a "
+        "NEW workspace directory; existing HTML and checksums show a prior "
+        "point-in-time snapshot.</p></main></html>\n"
     ).encode("utf-8")
 
 
@@ -136,7 +142,7 @@ def publish_bundle(target: Path, files: dict[str, bytes], manifest: bytes) -> No
         exclusive_dir_publish(temporary, target)
         complete = True
     finally:
-        if not complete:
+        if not complete and temporary.exists():
             # Never clean a caller-owned destination; only our own random staging dir.
             for item in temporary.iterdir():
                 item.unlink()
@@ -148,7 +154,8 @@ def main() -> int:
         description="Create one complete immutable, owner-private offline HUMAN relationship desk folder")
     parser.add_argument("--current", type=Path, required=True, help="Original owner-private Evidence Ledger export")
     parser.add_argument("--previous", type=Path, help="Earlier exact same-source PRIVATE original export")
-    parser.add_argument("--session", type=Path, required=True, help="PRIVATE HUMAN triage session from exact inputs")
+    parser.add_argument("--session", type=Path,
+                        help="Optional existing PRIVATE HUMAN triage session; otherwise create new local inbox")
     parser.add_argument("--output-dir", type=Path, required=True, help="NEW absolute owner-private output directory")
     args = parser.parse_args()
     try:
@@ -157,9 +164,13 @@ def main() -> int:
         source, previous, current_bytes, previous_bytes = triage.selected_sources(args.current, args.previous)
         results = review.analyze(source, previous)
         expected = triage.make_session(source, previous, current_bytes, previous_bytes)
-        with triage.single_host_lock(args.session):
-            session_bytes = review.private_read(args.session)
-            session = triage.admit_session(session_bytes, expected)
+        with (triage.single_host_lock(args.session) if args.session is not None else nullcontext()):
+            if args.session is None:
+                session = expected
+                session_bytes = triage.canonical(session)
+            else:
+                session_bytes = review.private_read(args.session)
+                session = triage.admit_session(session_bytes, expected)
             files = {
                 "fingerprints.html": review.render(source, results).encode("utf-8"),
                 "attention.html": focus.render(session),
@@ -175,6 +186,11 @@ def main() -> int:
                 "questions.json": pretty(review.proposed_actions(source, results)),
             }
             files["index.html"] = operator_portal(source, results, session)
+            # Portable original HUMAN metadata/session copies, without evidence file bytes.
+            files["current.json"] = current_bytes
+            if previous_bytes is not None:
+                files["previous.json"] = previous_bytes
+            files["session.json"] = session_bytes
             manifest = {
                 "kind": KIND, "schema_version": 1,
                 "disposition": "PRIVATE_UNVERIFIED_HUMAN_DESK_ONLY",
@@ -191,8 +207,9 @@ def main() -> int:
                 "warning": "Self-declared PRIVATE original source, local HUMAN notes only. Checksums are not signatures, grants, consent, evidence proofs or security verdicts.",
             }
             triage.fresh_original_bytes(args, current_bytes, previous_bytes)
-            review.require(review.private_read(args.session) == session_bytes,
-                           "HUMAN session changed during private bundle preparation")
+            if args.session is not None:
+                review.require(review.private_read(args.session) == session_bytes,
+                               "HUMAN session changed during private bundle preparation")
             publish_bundle(args.output_dir, files, pretty(manifest))
             print("PRIVATE offline HUMAN workspace published: " + str(args.output_dir))
             print("Open index.html only in a trusted LOCAL browser; all inputs unchanged.")
