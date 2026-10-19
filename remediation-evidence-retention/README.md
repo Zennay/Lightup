@@ -200,6 +200,40 @@ python3 remediation-evidence-retention/human_calendar.py \
 
 The unified operator workbench exposes the same current-source read and calendar generator through its **menu item 9**, producing a new randomized owner-private 0600 filename. A reminder is only a HUMAN cue to review separately approved retention policies and any real legal-hold obligations; it never certifies expiry, permission to remove a file, or authorized remediation.
 
+
+## Complete offline bulk HUMAN review editor → NEW encrypted plan
+
+The [`bulk_review.py`](bulk_review.py) companion solves the multi-file private edit workflow without encouraging edits to raw encrypted JSON or modifying any original LightUp domain records. **`export`** authenticates via the ORIGINAL current account/client/engagement read, opens the matching original encrypted HUMAN source and selected previous encrypted retention plan, reopens the complete original private material receipt and rehashes **every actual file byte**. It then creates a **NEW owner-private 0600 tab-separated offline edit sheet** containing *only* exact source/receipt/previous-plan SHA-256 identities, neutral material filenames, source-file hashes, byte counts, editable HUMAN status/date and a **blank** optional note edit column. Original private human notes, freeform finding IDs, customer/tenant identifiers, URLs and actual private material bytes are **not exported** to the edit sheet.
+
+Edit locally using an **offline, non-synchronizing** text or spreadsheet editor. Do **not** send it to a cloud spreadsheet provider or configure auto-upload. Change only the columns **`decision`**, **`review_on`**, **`note_edit`**; preserve every row/order and all immutable columns, header and UTF-8 LF line endings. Blank `note_edit` preserves the previous encrypted private note; `<clear>` removes it; another bounded safe value replaces the old note. Valid decisions remain only `retain_pending_review`, `legal_hold`, `review_for_deletion`. An edited next-review date must be today or later, not over 10 years away. Expired dates must be reissued when creating a new plan.
+
+**`import`** repeats all ORIGINAL current authentication and actual private material admissions independently, decrypts the actual previous private plan with its passphrase, and requires **every** header, identity column, row count, row order, source SHA, original file SHA, receipt hash, and previous encrypted-plan SHA to match exactly. Even one omitted row, a changed file, stale plan, reordered material or modified identity causes full HUMAN HOLD. Every prior HUMAN `legal_hold` label downgraded to something else requires an **additional explicit human phrase**; after all fields have passed native original admission, a distinct typed bulk acknowledgement and **NEW private encryption passphrase**, different from the original and previous plan, produce a separate 0600 encrypted review .ltv. Nothing overwrites old .ltv, actual source material or original HUMAN source.
+
+```sh
+python3 remediation-evidence-retention/bulk_review.py export \
+  --db /private/lightup.db --email operator@example.invalid \
+  --client-id <original-client-id> --engagement-id <original-engagement-id> \
+  --human /private/existing-human.ltv \
+  --directory /private/received-material \
+  --plan /private/retention-review-v2.ltv \
+  --output /private/neutral-edit-retention.tsv \
+  --ack-private-material
+
+# Edit the file OFFLINE; do not change identity columns or the row order.
+
+python3 remediation-evidence-retention/bulk_review.py import \
+  --db /private/lightup.db --email operator@example.invalid \
+  --client-id <original-client-id> --engagement-id <original-engagement-id> \
+  --human /private/existing-human.ltv \
+  --directory /private/received-material \
+  --plan /private/retention-review-v2.ltv \
+  --edited /private/neutral-edit-retention.tsv \
+  --output /private/retention-review-v3.ltv \
+  --ack-private-material
+```
+
+Unified `workbench.py` menu item **10** creates the private neutral edit file in its existing 0700 output folder; menu item **11** accepts the revised exact TSV and selects the resulting NEW encrypted review plan within that same interactive session. Neither operation imports human policy as legal truth, creates or approves real requests, performs native Apply, deletes data or modifies scanner/grant/authorization behavior.
+
 ## Ownership and acceptance posture
 
 **Base:** immutable [#1657](https://github.com/Zennay/Lightup/pull/1657) source snapshot `0c2f2689ad5862eb7372d9bf2ed3aa81831f43c4`, unchanged. Owner's subsequent commits are not silently assimilated. Added paths are independent from `remediation-evidence-materials/`, evidence transfer owners and issue #1182 CSV source owners. Release gates unchanged.
