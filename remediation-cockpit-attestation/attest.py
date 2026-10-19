@@ -102,12 +102,14 @@ def mac(key: bytes, manifest_bytes: bytes) -> str:
                     manifest_bytes, hashlib.sha256).hexdigest()
 
 
-def seal(cockpit: Path, secret: Path, receipt: Path) -> dict:
+def seal(cockpit: Path, secret: Path, receipt: Path,
+         expected_manifest: bytes | None = None) -> dict:
     private_parent(receipt)
     require(receipt != secret and receipt != cockpit and
             cockpit not in receipt.parents and receipt not in cockpit.parents)
     key = key_bytes(secret)
     first = manifest(cockpit)
+    require(expected_manifest is None or first == expected_manifest)
     data = {
         "kind": KIND,
         "schema_version": 1,
@@ -117,7 +119,8 @@ def seal(cockpit: Path, secret: Path, receipt: Path) -> dict:
     }
     # Reject any moving original evidence/HTML before publishing the detached
     # receipt. The final receiver must still inspect its *own* copy.
-    require(manifest(cockpit) == first)
+    require(manifest(cockpit) == first and
+            (expected_manifest is None or first == expected_manifest))
     encoded = (json.dumps(data, sort_keys=True, separators=(",", ":")) +
                "\n").encode("ascii")
     exclusive_private_write(receipt, encoded)
@@ -149,6 +152,23 @@ def inspect(cockpit: Path, secret: Path, receipt: Path) -> dict:
     return admitted
 
 
+def rotate(cockpit: Path, old_key: Path, old_receipt: Path,
+           new_key: Path, new_receipt: Path) -> dict:
+    # A rotation must preserve *exactly* the originally authenticated cockpit.
+    require(old_key != new_key and old_receipt != new_receipt and
+            old_receipt != new_key and new_receipt != old_key)
+    a = key_bytes(old_key)
+    b = key_bytes(new_key)
+    require(not hmac.compare_digest(a, b))
+    inspect(cockpit, old_key, old_receipt)
+    baseline = review.private_read(cockpit / "manifest.json")
+    return seal(cockpit, new_key, new_receipt, expected_manifest=baseline)
+
+def key_fingerprint(path: Path) -> str:
+    # A short independent comparison hint, NOT sender identity or MAC proof.
+    return hashlib.sha256(DOMAIN + b"KEY-FINGERPRINT\x00" +
+                          key_bytes(path)).hexdigest()[:20]
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=(
         "Offline detached shared-key receipt for canonical PRIVATE HUMAN "
@@ -156,6 +176,14 @@ def main() -> int:
     actions = parser.add_subparsers(dest="action", required=True)
     init = actions.add_parser("new-key", help="Generate 32 random key bytes in a NEW owner-private 0600 file")
     init.add_argument("--key-file", required=True, type=Path)
+    fingerprint = actions.add_parser("key-fingerprint",
+        help="Show a short shared-key pairing hint, not user identity")
+    fingerprint.add_argument("--key-file", required=True, type=Path)
+    rotate_cmd = actions.add_parser("rotate",
+        help="Admit old signed cockpit and re-sign exact same bytes with new key")
+    rotate_cmd.add_argument("--cockpit", required=True, type=Path)
+    for label in ("old-key-file", "old-receipt", "new-key-file", "new-receipt"):
+        rotate_cmd.add_argument("--" + label, required=True, type=Path)
     for name in ("seal", "verify"):
         p = actions.add_parser(name, help="Create or validate a detached keyed manifest receipt")
         p.add_argument("--cockpit", required=True, type=Path)
@@ -166,6 +194,14 @@ def main() -> int:
         if args.action == "new-key":
             new_key(args.key_file)
             print("PRIVATE 0600 key generated. Distribute it out of band only.")
+        elif args.action == "key-fingerprint":
+            print("Shared-key pairing hint: " + key_fingerprint(args.key_file))
+            print("NOT proof of operator identity or consent.")
+            return 2
+        elif args.action == "rotate":
+            rotate(args.cockpit, args.old_key_file, args.old_receipt,
+                   args.new_key_file, args.new_receipt)
+            print("PRIVATE keyed receipt rotated for unchanged original cockpit.")
         elif args.action == "seal":
             seal(args.cockpit, args.key_file, args.receipt)
             print("PRIVATE detached keyed cockpit receipt created (not client consent).")
