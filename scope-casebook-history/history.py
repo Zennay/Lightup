@@ -783,6 +783,16 @@ def generate(docs: list[dict]) -> dict[str, bytes]:
         item for item in queue
         if item["latest_observed_ordinal"] == len(docs)
     ]
+    workroom_template = csv_text(
+        [list(HUMAN_TEMPLATE_COLUMNS)] + [
+            [
+                item["local_original_engagement_id"],
+                item["source_next_human_action"],
+                item["source_attention"],
+                "unreviewed", "unassigned", "none",
+            ] for item in workroom_source
+        ]
+    ).encode("utf-8")
     workroom_html = render_workroom(
         source_queue=workroom_source,
         source_details=detail_rows,
@@ -795,6 +805,7 @@ def generate(docs: list[dict]) -> dict[str, bytes]:
         "private-original-case-details.csv": details_csv.encode("utf-8"),
         "private-human-review-template.csv": human_template(docs),
         "private-human-case-queue.csv": private_queue.encode(),
+        "workroom-current-template.csv": workroom_template,
         "workroom.html": workroom_html,
         "index.html": html_page(docs,delta,public=False).encode("utf-8"),
         "anonymous.html": html_page(docs,delta,public=True).encode("utf-8"),
