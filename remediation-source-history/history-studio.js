@@ -277,7 +277,7 @@ function clearPrivateBrowserForms(){
  const textFields=[
   'client','engagement','filter','humanOwner','humanAction','humanDue','carryReason',
   'deskSearch','deskOwner','deskAction','deskBlocker','deskVerification','deskNote','deskDue',
-  'holdReviewQuery','bulkCarryQuery','mergeReason','archivePass',
+  'holdReviewQuery','bulkCarryQuery','mergeReason','ledgerQuery','dossierQuery','archivePass',
   'files','archiveFile','nativeCaseworkFile','recoverImportFile'
  ];
  const checkFields=[
@@ -288,10 +288,10 @@ function clearPrivateBrowserForms(){
  for(const id of checkFields){const node=$(id);if(node)node.checked=false;}
  for(const id of ['detailTitle','detailSource','caseworkNative','carryJournal',
     'sourceChangeReview','humanBinding','deskTitle','deskBinding','mergeSource',
-    'mergeRows','mergeFields','mergeCount']){
+    'mergeRows','mergeFields','mergeCount','ledgerDetail','dossierDetail']){
    const node=$(id);if(node)node.replaceChildren();
  }
- for(const id of ['detail','deskEditor','mergeReview','sourceChangeReview','caseworkNative']){
+ for(const id of ['detail','deskEditor','mergeReview','sourceChangeReview','caseworkNative','ledgerDetail','dossierDetail']){
    const node=$(id);if(node)node.hidden=true;
  }
 }
