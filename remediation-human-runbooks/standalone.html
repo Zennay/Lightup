@@ -67,6 +67,10 @@ footer{text-align:center;color:#466074;padding:1rem}
  <button id="print">Download selected PRIVATE scriptless HTML</button>
  <button id="counts">Download counts-only CSV</button>
  </div>
+ <div class="grid">
+  <div><label for="ownerSelect">HUMAN recipient alias (unverified)</label><select id="ownerSelect"><option value="">No declared HUMAN owner</option></select></div>
+  <div><label for="ownerExport">PRIVATE HUMAN owner-specific handoff</label><button id="ownerExport" disabled>Download only this owner's HUMAN steps</button></div>
+ </div>
  <p>PRIVATE exports include declared source and original finding identifiers; transfer only over a separately authenticated confidential channel. Counts-only CSV removes source, finding, recipient and note identifiers; small groups can still be sensitive.</p>
  <label for="restoreFile">Restore previously exported PRIVATE runbooks (max 8 MiB)</label>
  <input type="file" id="restoreFile" accept=".json,application/json">
@@ -175,6 +179,13 @@ function render(){
  var count=state.ids.reduce(function(n,id){return n+state.runbooks.get(id).length;},0);
  $('summary').textContent=state.ids.length+' original finding IDs · '+count+' HUMAN steps · '+state.ids.filter(function(id){return state.runbooks.get(id).length===0;}).length+' without runbook · All security/authority flags false.';
  $('source').textContent='DECLARED ORIGINAL SHA: '+state.source_sha256+' · client: '+state.client_reference+' · engagement: '+state.engagement_reference+' · '+state.ids.length+' original HUMAN findings. No authenticity verification.';
+ var priorOwner=$('ownerSelect').value;
+ var owners=new Set();state.ids.forEach(function(f){state.runbooks.get(f).forEach(function(step){if(step.responsible_alias.trim())owners.add(step.responsible_alias);});});
+ var orderedOwners=Array.from(owners).sort(function(a,b){return a.localeCompare(b);});
+ $('ownerSelect').replaceChildren(opt('Choose self-declared HUMAN recipient',''));
+ orderedOwners.forEach(function(name){$('ownerSelect').append(opt(name,name));});
+ $('ownerSelect').value=orderedOwners.includes(priorOwner)?priorOwner:'';
+ $('ownerExport').disabled=!$('ownerSelect').value;
  var id=$('finding').value;
  $('steps').replaceChildren();
  $('add').disabled=!id||count>=MAX_TOTAL||state.runbooks.get(id).length>=MAX_STEPS;
@@ -255,6 +266,24 @@ function printOne(){
  download('LightUp-PRIVATE-HUMAN-runbook.html',html.join('\n'),'text/html;charset=utf-8');
  message('Scriptless PRIVATE human briefing downloaded; no grant or actual remediation.');
 }
+function ownerHandoff(){
+ if(!state)fail('load original HUMAN source first');
+ var owner=$('ownerSelect').value;if(!owner)fail('choose an existing declared HUMAN owner');
+ var rows=state.ids.map(function(id){return {finding_id:id,steps:state.runbooks.get(id).filter(function(s){return s.responsible_alias===owner;}).map(function(s){return Object.assign({},s);})};}).filter(function(r){return r.steps.length>0;});
+ if(!rows.length)fail('no HUMAN steps for chosen declared recipient');
+ if(!window.confirm('Download PRIVATE HUMAN step packet for only '+owner+' ('+rows.length+' original finding(s))? Identity and transport are NOT authenticated. All other declared owners and their steps will be excluded.'))return;
+ var out=Object.assign({kind:'lightup.private_human_owner_runbook_handoff',schema_version:1,
+ disposition:'UNVERIFIED_HUMAN_PLANNING_ONLY',
+ source_contract:state.source_contract,source_sha256:state.source_sha256,
+ client_reference:state.client_reference,engagement_reference:state.engagement_reference,
+ source_count:state.ids.length,recipient_alias:owner,rows:rows,
+ warning:'PRIVATE HUMAN proposal only, not an original owner reply, current consent, grant, approved fix or verified retest.'},
+ Object.fromEntries(FLAGS.map(function(k){return [k,false];})));
+ var body=JSON.stringify(out,null,2)+'\n';
+ if(new TextEncoder().encode(body).byteLength>MAX_BACKUP)fail('PRIVATE owner handoff exceeds safe export limit');
+ download('LightUp-PRIVATE-one-owner-HUMAN-runbooks.json',body,'application/json');
+ message('PRIVATE owner-only HUMAN runbooks downloaded; no other owner steps included. Verify recipient independently.');
+}
 function counts(){
  if(!state)fail('load original source');
  if(!window.confirm('Download HUMAN stage counts only (no finding/source/customer/owner/note IDs)? Small groups may still disclose patterns.'))return;
@@ -267,6 +296,7 @@ bind('loadWork','click',importWork);bind('restore','click',restore);bind('save',
 bind('removeAll','click',function(){if(!current().length)return;if(!window.confirm('Delete all LOCAL human steps for this finding?'))return;state.runbooks.set(selected(),[]);touch();render();});
 bind('forget','click',function(){if(!confirmDiscard())return;reset();message('All loaded PRIVATE source and HUMAN planning content cleared from this page. Existing downloads remain on disk.');});
 bind('filter','change',render);bind('finding','change',render);
+bind('ownerSelect','change',function(){$('ownerExport').disabled=!$('ownerSelect').value;});bind('ownerExport','click',ownerHandoff);
 window.addEventListener('beforeunload',function(e){if(state&&revision!==exported){e.preventDefault();e.returnValue='';}});
 dirty();
 })();
