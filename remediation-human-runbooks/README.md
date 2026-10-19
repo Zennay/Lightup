@@ -39,6 +39,22 @@ The original [Runbook Editor](standalone.html) now has section **5 · Combined r
 
 No imported owner response can authenticate the sender, promote any finding into a verified fix, approve a live retest, change original evidence, write to the independently owned #1643 response register, or grant current customer/operator consent. The original main draft, current issues and mandatory release HOLD remain separate.
 
+## NEW — source-bound PRIVATE HUMAN operator follow-up register
+
+After receiving one or more original-source-matched owner returns in the **Combined HUMAN Owner Return Desk** (section 5 of [standalone.html](standalone.html)), section **6 · PRIVATE HUMAN follow-up action register** appears. Every displayed row is tied to the **current exact original finding ID, step ordinal, self-declared owner and unverified owner reply**, not merely to a client name or source SHA.
+
+The operator can assign only HUMAN planning annotations: untriaged; needs human input; human contact planned; human review prepared; human discussion closed (**not** a verified fix); a separately declared local coordinator; a tentative human follow-up date; next human action and private operator note. Search/filter on local human annotations and show tentatively overdue dates. These dates are NEVER actual authorization, grant, scan or execution windows.
+
+Save the **full PRIVATE HUMAN follow-up JSON** to an approved confidential device. Its complete original IDs, exact current one-owner-return snapshots, source binding and all twelve literal false authority flags are included to prevent casual cross-source mixing. After loading the identical original workplan and the identical full set of original owner return packets again, **Restore** uses strict bounded atomic import to match every row and snapshot exactly before asking permission to replace annotations. Changed, missing, foreign or reordered replies HOLD rather than silently transferring human coordinator notes. The full JSON can be up to 8 MiB. It includes PRIVATE identifying material and human notes, and it is NOT suitable for public issue attachments.
+
+For human coordination there is also a **scriptless HTML discussion agenda** with only locally triaged steps (still confidential, HTML escaped, no active resources), and a **counts-only CSV** free of original IDs, names, clients, source hashes, notes and dates. Tiny cohorts may still disclose information. The human-only stage of "discussion closed" says absolutely nothing about whether the original security problem is fixed.
+
+Unsaved operator annotations trigger a browser-leave warning and a confirm-before-discard warning on relevant original step edits, source switching, plan restoration, or reviewer merge. Original step edits invalidate previously imported owner returns and human follow-up notes. Importing an updated owner return for an existing alias discards only that alias's stale operator notes after a warning for unsaved data, while preserving other owners' local work. Downloaded files are never silently altered, and nothing is persisted in browser storage.
+
+### Limits and boundaries
+
+The tool **cannot independently authenticate** the original owner, a customer asset, current scope, consent, human reply or remediation; it never issues authority, performs a scan, sends a message or changes a security verdict. The unverified source owner's original Evidence Artifact Ledger, Casework and #1643 evidence reply owner are untouched. Use authenticated private human channels for any external exchange; source SHA agreement is not identity verification.
+
 ## Owner-specific human handoffs
 
 After assigning self-declared human owners to individual proposed steps, choose an alias in the recipient menu. Export **only** that owner's steps across original findings as PRIVATE JSON, or download a scriptless, HTML-escaped, printable **one-owner readable briefing**. These packets omit other owners' proposed steps, original private workplan notes, and raw evidence. Neither export verifies the recipient, source, fix, consent or grant; use a separately authenticated confidential human channel. Preserve the full PRIVATE runbook JSON independently as a backup: owner packets are intentionally partial handoffs, not restorable full runbooks.
