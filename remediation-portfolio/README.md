@@ -66,4 +66,16 @@ Open [studio.html](studio.html) locally in a modern browser on the **operator's 
 
 The browser is a **privacy-minimal count-preview tool**, not a substitute for the original native source/key admission. JSON self-declarations or local browser byte checks do not authenticate sender/source identity, grant, consent, verified evidence, real-world security results or fix outcomes. No automatic remedial or scanning actions occur. Private small-cell aggregates can still reveal sensitive patterns; onward release remains a separate human decision.
 
+### Resume and create a private browser-to-CLI HUMAN handoff
+
+Use **Save resumable numeric session** after importing 1–12 native-shaped count exports. This downloads one distinct source-free `lightup.private_human_browser_numeric_session` v1 document with numeric packet descriptions, four-stage HUMAN counts and optional earlier numeric aggregate only. No client identity, source paths, case notes, hashes, timestamps, original evidence or secrets. Twelve authorization flags remain literal FALSE.
+
+Use **Restore private session** to reopen that document on a trusted device. Whole-file admission requires exact schema, limited size, duplicate-key-free nested JSON, bounded count consistency and all false flags. Existing in-memory counts/baseline are replaced only after explicit human confirmation. The UI keeps an explicit restored-numeric-not-original-source warning.
+
+For an owner-private offline briefing independent of the browser, use the NEW CLI:
+
+    python3 remediation-portfolio/session.py --session /home/operator/private-lightup/lightup-private-human-browser-session.json --output-dir /home/operator/private-lightup/restored-human-brief
+
+The CLI reads ONLY the private self-declared browser-session document from a 0700 owner-private folder containing a 0600 input. It regenerates numeric counts and optional previous-baseline deltas, then exclusively publishes a NEW 0700 folder with 0600 `index.html`, `summary.json`, `continuity.csv` and `human-followup.txt`. HTML is standalone scriptless CSP; no network or shared secret. It never calls a restored session an authenticated original native export, verified finding, permission or verified fix. To refresh original provenance, rerun the original owner-pinned source exporter instead.
+
 The complete offline Python portfolio and historical compare CLI remain available above for exclusive 0600/0700 private folder publication and independent exact reconstruction. When separate original count packets have identical **numeric profiles**, the browser flags an overlap caution. It never suppresses either packet or asserts duplicate original clients: independent legitimate workrooms can report the same anonymous numbers. The caution is included in the optional numeric browser snapshot JSON and operator briefing.\n\nBrowser exports are **not** interchangeable with original source-owner native attestations, and nothing from this Studio bypasses LightUp's existing HOLD gates.
