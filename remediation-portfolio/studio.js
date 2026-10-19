@@ -295,7 +295,7 @@
         ensure(new TextEncoder().encode(raw).length<=LIMIT);
         staged.push(admit(strictJSON(raw)));
       }
-      entries=[...entries,...staged];resumedFromNumericFile=false;render();
+      entries=[...entries,...staged];render();
       showStatus(files.length+" PRIVATE HUMAN count packet(s) admitted in memory.");
     }catch(_){
       showStatus("HOLD: selection rejected atomically; no files added.",true);
