@@ -99,11 +99,19 @@ def main() -> int:
     parser.add_argument("--previous", type=Path)
     parser.add_argument("--session", type=Path, required=True)
     parser.add_argument("--worksheet", type=Path, required=True)
+    parser.add_argument("--backup-to", type=Path,
+                        help="Optional exclusive 0600 HUMAN recovery checkpoint before apply")
     args = parser.parse_args()
     try:
         require(args.worksheet != args.current and args.worksheet != args.previous and
                 args.worksheet != args.session,
                 "PRIVATE worksheet and actual source/session paths must differ")
+        require(args.action == "apply" or args.backup_to is None,
+                "Only apply can create a PRIVATE HUMAN backup checkpoint")
+        if args.backup_to is not None:
+            require(args.backup_to not in (args.current, args.previous, args.session,
+                                           args.worksheet),
+                    "Backup must use an unused independent PRIVATE destination")
         current, previous, current_bytes, previous_bytes = selected_sources(
             args.current, args.previous)
         expected = make_session(current, previous, current_bytes, previous_bytes)
@@ -151,9 +159,14 @@ def main() -> int:
             final_rows, final_changes = read_worksheet(args.worksheet, reference)
             require(final_rows == rows and final_changes == changed,
                     "Worksheet changed while awaiting operator confirmation")
+            if args.backup_to is not None:
+                from history import envelope
+                private_publish(args.backup_to, canonical(envelope(expected, session_bytes)))
             durable_replace(args.session, canonical(session))
             print("Published " + str(len(changed)) +
-                  " PRIVATE HUMAN-only changes atomically; original evidence unchanged.")
+                  " PRIVATE HUMAN-only changes atomically; original evidence unchanged." +
+                  (" Previous local HUMAN state saved in exclusive PRIVATE checkpoint."
+                   if args.backup_to is not None else ""))
             return 2
     except (Hold, OSError, ValueError) as exc:
         print("HOLD: " + str(exc), file=sys.stderr)
