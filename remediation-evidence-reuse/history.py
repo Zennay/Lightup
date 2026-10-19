@@ -171,11 +171,13 @@ def main() -> int:
         inputs = (args.current, args.previous, args.session, args.checkpoint)
         require(args.action != "capture" or args.checkpoint not in inputs[:-1],
                 "Cannot checkpoint over source or live HUMAN session")
-        for path in (args.output, args.backup_to):
-            if path is not None:
-                require(path not in inputs and path != args.output if path == args.backup_to
-                        else path not in inputs,
-                        "Output/backup must be a distinct new PRIVATE path")
+        for destination in (args.output, args.backup_to):
+            if destination is not None:
+                require(destination not in inputs,
+                        "PRIVATE output/backup must not overlap source, session or checkpoint")
+        if args.output is not None and args.backup_to is not None:
+            require(args.output != args.backup_to,
+                    "HTML report and recovery backup must use different PRIVATE files")
         current, previous, current_bytes, previous_bytes = selected_sources(
             args.current, args.previous)
         expected = make_session(current, previous, current_bytes, previous_bytes)
