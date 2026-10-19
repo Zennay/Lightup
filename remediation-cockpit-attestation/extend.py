@@ -82,19 +82,14 @@ def extend(original: Path, packages: list[Path], secret: Path,
     complete = False
     try:
         rows = []
-        sha_set: set[str] = set()
         for index in range(1, original_size + 1):
             slot = f"slot-{index:02d}"
             row = admit_existing_slot(original / slot, temporary / slot, secret, index)
             attest.require(row == previous["slots"][index - 1])
-            attest.require(row["source_free_manifest_sha256"] not in sha_set)
-            sha_set.add(row["source_free_manifest_sha256"])
             rows.append(row)
         for index, path in enumerate(packages, original_size + 1):
             slot = f"slot-{index:02d}"
             row = accept_new_packet(path, temporary / slot, key, secret, index)
-            attest.require(row["source_free_manifest_sha256"] not in sha_set)
-            sha_set.add(row["source_free_manifest_sha256"])
             rows.append(row)
         # A changed original workroom cannot be absorbed into a new snapshot.
         attest.require(inbox.inspect(original, secret) == previous)

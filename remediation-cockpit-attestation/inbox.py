@@ -171,7 +171,6 @@ def inspect(folder: Path, key_file: Path) -> dict:
             type(manifest.get("files")) is dict and
             set(manifest["files"]) == {"index.html", "summary.json"})
     rows = []
-    sha_set: set[str] = set()
     for index, name in enumerate(names, 1):
         slot = folder / name
         strict_private_dir(slot)
@@ -180,8 +179,6 @@ def inspect(folder: Path, key_file: Path) -> dict:
         admitted = attest.inspect(cockpit, key_file, slot / "receipt.json")
         original_manifest = review.private_read(cockpit / "manifest.json")
         row = row_from_admission(index, admitted, original_manifest)
-        require(row["source_free_manifest_sha256"] not in sha_set)
-        sha_set.add(row["source_free_manifest_sha256"])
         rows.append(row)
     document = summary(rows)
     require(set(document) == FIELDS and all(document[f] is False for f in review.FLAGS))
@@ -205,7 +202,6 @@ def receive_many(packages: list[Path], key_file: Path, target_parent: Path) -> t
     complete = False
     try:
         rows = []
-        sha_set: set[str] = set()
         names = []
         for index, path in enumerate(packages, 1):
             raw = attest.private_file(path, transport.MAX_ENCRYPTED)
@@ -220,8 +216,6 @@ def receive_many(packages: list[Path], key_file: Path, target_parent: Path) -> t
             attest.exclusive_private_write(slot / "receipt.json", receipt)
             admitted = attest.inspect(slot / "cockpit", key_file, slot / "receipt.json")
             row = row_from_admission(index, admitted, manifest)
-            require(row["source_free_manifest_sha256"] not in sha_set)
-            sha_set.add(row["source_free_manifest_sha256"])
             rows.append(row)
         counts = summary(rows)
         html_raw = render(counts)
