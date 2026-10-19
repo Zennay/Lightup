@@ -196,11 +196,15 @@
   const disabled=off=>{
     for(const name of ["saveBoard","summary","handoffCsv","handoffTxt","handoffHtml","deltaCsv","reset"])$(name).disabled=off;
     $("actionFilter").disabled=off;
+    $("ordinalFilter").disabled=off;
   };
   const resetState=()=>{
     session=null;original=null;draft=null;peer=null;
     $("rows").replaceChildren();$("counts").textContent="No private session loaded";
     $("sourceStatus").textContent="Not imported";
+    const ord=$("ordinalFilter");ord.replaceChildren();
+    const opt=document.createElement("option");opt.value="all";
+    opt.textContent="All anonymous local ordinals";ord.appendChild(opt);
     disabled(true);renderPeer();
   };
   const render=()=>{
@@ -234,12 +238,15 @@
       states.appendChild(selectS);rows.appendChild(tr);
     });
     const action=$("actionFilter").value;
-    const count=action==="all"?draft.length:filters.get(action)||0;
+    const ordinal=$("ordinalFilter").value;
+    const count=draft.filter((row,i)=>row.action!=="none" &&
+      (action==="all"||row.action===action) &&
+      (ordinal==="all"||String(i+1)===ordinal)).length;
     $("counts").textContent=String(draft.length)+" anonymous packet appearances · "+
       String(questions)+" HUMAN question appearances · "+String(changes)+
       " locally edited routing choices";
     $("selectionCount").textContent=String(count);
-    const found=action==="all"?draft.some(a=>a.action!=="none"):count>0;
+    const found=count>0;
     for(const k of ["handoffCsv","handoffTxt","handoffHtml"])$(k).disabled=!found;
     $("deltaCsv").disabled=changes===0;
     $("saveBoard").disabled=changes===0;
@@ -299,9 +306,11 @@
   const chosen=()=>{
     active();
     const filter=$("actionFilter").value;
+    const ordinal=$("ordinalFilter").value;
     const rows=draft.map((r,i)=>({ordinal:i+1,action:r.action,state:r.state,
       type:session[i].type,slots:session[i].slots,questions:session[i].questions}))
-      .filter(row=>row.action!=="none"&&(filter==="all"||filter===row.action));
+      .filter(row=>row.action!=="none"&&(filter==="all"||filter===row.action)
+        &&(ordinal==="all"||String(row.ordinal)===ordinal));
     ensure(rows.length>0);
     return rows.sort((a,b)=>b.questions-a.questions||a.ordinal-b.ordinal);
   };
@@ -368,6 +377,12 @@
       const p=acceptSession(s);
       const a=acceptBoard(b,p);
       session=p;original=clone(a);draft=clone(a);
+      const choice=$("ordinalFilter");
+      for(let i=1;i<=session.length;i++){
+        const opt=document.createElement("option");opt.value=String(i);
+        opt.textContent="Local ordinal "+i+" (NOT case)";
+        choice.appendChild(opt);
+      }
       disabled(false);render();
       message("Private local pair admitted. HUMAN-only self-declared numbers; no original authority.");
     }catch(_){
@@ -409,6 +424,7 @@
     draft=clone(original);render();message("Local choices reset; original files unchanged.");
   });
   $("actionFilter").addEventListener("change",()=>{if(session)render();});
+  $("ordinalFilter").addEventListener("change",()=>{if(session)render();});
   $("saveBoard").addEventListener("click",()=>{
     try{const board=updatedBoard();download("lightup-private-human-board-return.json",
       JSON.stringify(board,null,2)+"\n","application/json");message("Native private board downloaded; manually restore against same numeric Studio session.");}

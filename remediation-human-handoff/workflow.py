@@ -66,11 +66,14 @@ this workroom proves client identity, authorization or delivery.</p>
 
 
 def create(session_path: Path, original_board: Path, changes_path: Path,
-           destination: Path, only: str | None = None) -> dict:
+           destination: Path, only: str | None = None, ordinal: int | None = None) -> dict:
     portfolio.require(destination.is_absolute())
     portfolio.private_dir(destination.parent)
     portfolio.require(not destination.exists() and not destination.is_symlink())
     portfolio.require(only is None or only in handoff.ACTIONS)
+    portfolio.require(ordinal is None or
+                      (type(ordinal) is int and only in handoff.ACTIONS and
+                       1 <= ordinal <= 12))
 
     stage = Path(tempfile.mkdtemp(prefix=".lightup-private-human-workflow-",
                                   dir=destination.parent))
@@ -83,7 +86,7 @@ def create(session_path: Path, original_board: Path, changes_path: Path,
         change = bulk_return.build(session_path, original_board, changes_path,
                                    stage / "return")
         new_board = stage / "return" / "board.json"
-        action = handoff.build(session_path, new_board, stage / "handoff", only)
+        action = handoff.build(session_path, new_board, stage / "handoff", only, ordinal)
         difference = compare_returns.build(
             session_path, original_board, new_board, stage / "difference")
         portfolio.require(
@@ -133,10 +136,12 @@ def main() -> int:
                         help="Fresh owner-private directory, never overwrite")
     parser.add_argument("--only", choices=handoff.ACTIONS,
                         help="Limit action handoff to one non-authorizing HUMAN group")
+    parser.add_argument("--ordinal", type=int,
+                        help="With --only, disclose one exact local anonymous ordinal")
     args = parser.parse_args()
     try:
         receipt = create(args.session, args.board, args.changes,
-                         args.output_dir, args.only)
+                         args.output_dir, args.only, args.ordinal)
     except (OSError, ValueError, RecursionError):
         print("HOLD: no complete private HUMAN workflow was published.",
               file=sys.stderr)

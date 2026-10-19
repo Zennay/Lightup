@@ -61,7 +61,7 @@ footer{margin-top:35px;border-top:1px solid var(--border);padding-top:15px}
 <p>The downloaded board uses the *same exact numeric session* and the original v1 board format. The existing Studio independently rechecks all packet ordinals before you can restore it. A local state of "discussed" does not verify any real fix.</p></section>
 
 <section aria-labelledby="step3"><h2 id="step3">3 · Prepare least-disclosure HUMAN handoff</h2>
-<p>Choose one local action category or all non-empty categories. Export scriptless HTML, private-human TXT or CSV. Every packet remains only an anonymous appearance; this is a locally prepared message, never sent to an actual recipient.</p>
+<p>Choose one local action category or all non-empty categories. To minimize disclosure further, choose exactly one local ordinal (never a case ID). Export scriptless HTML, private-human TXT or CSV. Every packet remains only an anonymous appearance; this is a locally prepared message, never sent to an actual recipient.</p>
 <div class="actions"><label>HUMAN action to include
 <select id="actionFilter" disabled><option value="all">All actionable HUMAN appearances</option>
 <option value="request_fresh_source_export">Ask original owner for source export</option>
@@ -70,6 +70,8 @@ footer{margin-top:35px;border-top:1px solid var(--border);padding-top:15px}
 <option value="reconcile_anonymous_coverage">Clarify possible coverage overlap</option>
 <option value="request_original_human_review">Request original HUMAN review</option>
 </select></label>
+<label>Optional exact LOCAL packet ordinal
+<select id="ordinalFilter" disabled><option value="all">All anonymous local ordinals</option></select></label>
 <p><strong id="selectionCount">0</strong> local packet appearances in selection</p></div>
 <div class="actions">
 <button id="handoffHtml" class="primary" type="button" disabled>Download offline HTML handoff</button>

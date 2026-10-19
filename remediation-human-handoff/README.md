@@ -187,6 +187,23 @@ Use `install -m 600` to place both browser-downloaded board files into the same 
 
 This route does NOT turn a browser download into authenticated evidence, identify a human reviewer, prove a real client case, accept consent, perform a fix or grant target access. The original source records never change. Full release HOLD remains as below.
 
+## Restrict an individual HUMAN handoff to exactly one local ordinal
+
+The browser HUMAN handoff panel now has two independent controls: selected next-action category and **one exact local anonymous ordinal** (or all). The HTML, CSV and TXT handoff downloads include only the selected actionable row(s); other packet rows are not included. The native Studio return and the separate counts-only planning summary still contain their own entire numeric session context; **do not distribute those** when only a limited HUMAN handoff was approved.
+
+Both one-command CLI workrooms also accept `--only ACTION --ordinal N`. This passes the original strictly admitted session/board through the existing `handoff.py` exact action+ordinal selector, so `handoff/` contains only the chosen local packet appearance. A mismatching action, nonexistent ordinal or unpaired `--ordinal` makes the whole new workroom HOLD.
+
+```bash
+python3 remediation-human-handoff/browser_workflow.py \
+  --session "$HOME/lightup-private-human/session.json" \
+  --original-board "$HOME/lightup-private-human/board.json" \
+  --proposed-board "$HOME/lightup-private-human/browser-return.json" \
+  --only request_original_human_review --ordinal 1 \
+  --output-dir "$HOME/lightup-private-human/limited-private-workroom"
+```
+
+**Critical privacy distinction:** `--ordinal` filters **only the outbound `handoff/` artifacts**, not the internal complete native `return/` board, original-session-derived workroom-wide summary, or `difference/` report. The complete workroom remains PRIVATE operator material, *not* a minimum-disclosure transfer package. If authorized to disclose one anonymized HUMAN follow-up, share **only** the selected `handoff/handoff-ACTION.html` (or its CSV/TXT), not the whole workroom or the original saved session. Ordinal is never a real case identifier.
+
 ## Hard boundaries
 
 - The existing owner-controlled `remediation-portfolio/action_board.py` is the **sole** import contract: original producer format, bounded/private no-follow file admission, duplicate-key rejection, **exact** numeric packet shape and ordinal matching, all literal false authority flags. A mismatching board or input rejects the whole operation before any final publication. We do not rewrite, fork or relax the original parser.

@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-U53i22y+JNYR0/aK0WQc1oljxFM6hXmavfL11XN4I68='; style-src 'unsafe-inline'; connect-src 'none'; img-src 'none'; font-src 'none'; object-src 'none'; frame-src 'none'; worker-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-U23ah8UwZyh4+TE53lDtedQO8XFfDq9vFY6lgF4mcf4='; style-src 'unsafe-inline'; connect-src 'none'; img-src 'none'; font-src 'none'; object-src 'none'; frame-src 'none'; worker-src 'none'; base-uri 'none'; form-action 'none'">
 <title>LightUp · PRIVATE HUMAN Return Studio</title>
 <style>
 :root{color-scheme:dark;--bg:#0b1423;--panel:#1a2a40;--border:#3a526a;--ink:#f0f8fe;--muted:#bbcede;--mint:#a7f4d4;--warn:#f5c57a}
@@ -61,7 +61,7 @@ footer{margin-top:35px;border-top:1px solid var(--border);padding-top:15px}
 <p>The downloaded board uses the *same exact numeric session* and the original v1 board format. The existing Studio independently rechecks all packet ordinals before you can restore it. A local state of "discussed" does not verify any real fix.</p></section>
 
 <section aria-labelledby="step3"><h2 id="step3">3 · Prepare least-disclosure HUMAN handoff</h2>
-<p>Choose one local action category or all non-empty categories. Export scriptless HTML, private-human TXT or CSV. Every packet remains only an anonymous appearance; this is a locally prepared message, never sent to an actual recipient.</p>
+<p>Choose one local action category or all non-empty categories. To minimize disclosure further, choose exactly one local ordinal (never a case ID). Export scriptless HTML, private-human TXT or CSV. Every packet remains only an anonymous appearance; this is a locally prepared message, never sent to an actual recipient.</p>
 <div class="actions"><label>HUMAN action to include
 <select id="actionFilter" disabled><option value="all">All actionable HUMAN appearances</option>
 <option value="request_fresh_source_export">Ask original owner for source export</option>
@@ -70,6 +70,8 @@ footer{margin-top:35px;border-top:1px solid var(--border);padding-top:15px}
 <option value="reconcile_anonymous_coverage">Clarify possible coverage overlap</option>
 <option value="request_original_human_review">Request original HUMAN review</option>
 </select></label>
+<label>Optional exact LOCAL packet ordinal
+<select id="ordinalFilter" disabled><option value="all">All anonymous local ordinals</option></select></label>
 <p><strong id="selectionCount">0</strong> local packet appearances in selection</p></div>
 <div class="actions">
 <button id="handoffHtml" class="primary" type="button" disabled>Download offline HTML handoff</button>
@@ -289,11 +291,15 @@ footer{margin-top:35px;border-top:1px solid var(--border);padding-top:15px}
   const disabled=off=>{
     for(const name of ["saveBoard","summary","handoffCsv","handoffTxt","handoffHtml","deltaCsv","reset"])$(name).disabled=off;
     $("actionFilter").disabled=off;
+    $("ordinalFilter").disabled=off;
   };
   const resetState=()=>{
     session=null;original=null;draft=null;peer=null;
     $("rows").replaceChildren();$("counts").textContent="No private session loaded";
     $("sourceStatus").textContent="Not imported";
+    const ord=$("ordinalFilter");ord.replaceChildren();
+    const opt=document.createElement("option");opt.value="all";
+    opt.textContent="All anonymous local ordinals";ord.appendChild(opt);
     disabled(true);renderPeer();
   };
   const render=()=>{
@@ -327,12 +333,15 @@ footer{margin-top:35px;border-top:1px solid var(--border);padding-top:15px}
       states.appendChild(selectS);rows.appendChild(tr);
     });
     const action=$("actionFilter").value;
-    const count=action==="all"?draft.length:filters.get(action)||0;
+    const ordinal=$("ordinalFilter").value;
+    const count=draft.filter((row,i)=>row.action!=="none" &&
+      (action==="all"||row.action===action) &&
+      (ordinal==="all"||String(i+1)===ordinal)).length;
     $("counts").textContent=String(draft.length)+" anonymous packet appearances · "+
       String(questions)+" HUMAN question appearances · "+String(changes)+
       " locally edited routing choices";
     $("selectionCount").textContent=String(count);
-    const found=action==="all"?draft.some(a=>a.action!=="none"):count>0;
+    const found=count>0;
     for(const k of ["handoffCsv","handoffTxt","handoffHtml"])$(k).disabled=!found;
     $("deltaCsv").disabled=changes===0;
     $("saveBoard").disabled=changes===0;
@@ -392,9 +401,11 @@ footer{margin-top:35px;border-top:1px solid var(--border);padding-top:15px}
   const chosen=()=>{
     active();
     const filter=$("actionFilter").value;
+    const ordinal=$("ordinalFilter").value;
     const rows=draft.map((r,i)=>({ordinal:i+1,action:r.action,state:r.state,
       type:session[i].type,slots:session[i].slots,questions:session[i].questions}))
-      .filter(row=>row.action!=="none"&&(filter==="all"||filter===row.action));
+      .filter(row=>row.action!=="none"&&(filter==="all"||filter===row.action)
+        &&(ordinal==="all"||String(row.ordinal)===ordinal));
     ensure(rows.length>0);
     return rows.sort((a,b)=>b.questions-a.questions||a.ordinal-b.ordinal);
   };
@@ -461,6 +472,12 @@ footer{margin-top:35px;border-top:1px solid var(--border);padding-top:15px}
       const p=acceptSession(s);
       const a=acceptBoard(b,p);
       session=p;original=clone(a);draft=clone(a);
+      const choice=$("ordinalFilter");
+      for(let i=1;i<=session.length;i++){
+        const opt=document.createElement("option");opt.value=String(i);
+        opt.textContent="Local ordinal "+i+" (NOT case)";
+        choice.appendChild(opt);
+      }
       disabled(false);render();
       message("Private local pair admitted. HUMAN-only self-declared numbers; no original authority.");
     }catch(_){
@@ -502,6 +519,7 @@ footer{margin-top:35px;border-top:1px solid var(--border);padding-top:15px}
     draft=clone(original);render();message("Local choices reset; original files unchanged.");
   });
   $("actionFilter").addEventListener("change",()=>{if(session)render();});
+  $("ordinalFilter").addEventListener("change",()=>{if(session)render();});
   $("saveBoard").addEventListener("click",()=>{
     try{const board=updatedBoard();download("lightup-private-human-board-return.json",
       JSON.stringify(board,null,2)+"\n","application/json");message("Native private board downloaded; manually restore against same numeric Studio session.");}
