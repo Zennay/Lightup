@@ -8,3 +8,12 @@
 #planNotice[data-error=true]{color:#ffb4b4}
 #workplan h3{margin-top:30px;border-top:1px solid #3a626d;padding-top:20px}
 #workplan .grid button{align-self:end}
+
+/* Source-bound PRIVATE reviewer merge decisions: readable conflicts without implying authority. */
+#planMergePanel{border:1px solid #7c9eae;border-radius:12px;padding:16px;background:#0b202b;margin:14px 0}
+#planMergeChoices{max-height:460px;margin:14px 0}
+.planMergeItem{margin:8px 0;padding:14px;border:1px solid #365766;border-radius:10px;background:#142d39;overflow-wrap:anywhere}
+.planMergeItem p{margin:8px 0;line-height:1.35}
+.planMergeItem strong{color:#d1f4ec}
+.planMergeItem label{max-width:440px;margin:12px 0 0}
+#planMergePanel button:disabled{opacity:.4}
