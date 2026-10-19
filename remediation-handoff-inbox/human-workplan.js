@@ -189,7 +189,7 @@ function mergePreviewRows(incoming){
  for(const row of incoming){
   const old=store.rows.get(row.finding_id);
   if(!old)fail("incoming PRIVATE HUMAN review references a foreign original ID");
-  if(same(old,row))continue;
+  if(FIELDS.filter(k=>k!=="updated_utc").every(k=>old[k]===row[k]))continue;
   if(defaultPlan(row))continue; // an empty other-reviewer row cannot erase local planning
   const conflict=!defaultPlan(old);
   changes.push({id:row.finding_id,old:{...old},incoming:{...row},
@@ -280,6 +280,10 @@ for(const [id,event,fn] of [
 window.addEventListener("beforeunload",e=>{
  if(store.binding&&store.revision!==store.saved){e.preventDefault();e.returnValue="";}
 });
-window.LightUpHandoffHumanPlan=Object.freeze({reset,render});
+function canDiscard(){
+ return !store.binding||store.revision===store.saved||
+  confirm("This PRIVATE HUMAN workplan has UNSAVED local changes. Export the complete PRIVATE JSON first if you want to keep them. Discard the current local HUMAN annotations and switch source?");
+}
+window.LightUpHandoffHumanPlan=Object.freeze({reset,render,canDiscard});
 reset();
 })();
