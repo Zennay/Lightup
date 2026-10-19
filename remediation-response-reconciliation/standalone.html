@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-yJr0O4Fb5vy6qpRuhy9xtMjpGY49hIeZYxNMP7R9x4c='; style-src 'sha256-6i7FJiJry5Xnkn38B4IwCAhWEMAjFnj8DpdAJwdtZxI='; connect-src 'none'; object-src 'none'; form-action 'none'; base-uri 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-cvXYtE3dzgpo3xt11OIATPkU1L/L6o/WeWq6Ft3aj2k='; style-src 'sha256-JCtgzgKVtYNLvija5Da5m7cBct/mNJSXIcy0QOkARng='; connect-src 'none'; object-src 'none'; form-action 'none'; base-uri 'none'">
 <title>LightUp · PRIVATE Human Response Register</title><style>:root{font-family:Inter,system-ui,-apple-system,Segoe UI,sans-serif;color-scheme:dark;color:#e8edf5;background:#0b1422;font-size:15px}*{box-sizing:border-box}body{margin:0}main{max-width:1380px;margin:auto;padding:2.4rem 1.4rem}header{max-width:900px;margin-bottom:2rem}h1{font-size:clamp(2rem,5vw,3.2rem);letter-spacing:-.04em;margin:.2rem 0}h2{font-size:1.2rem;margin-top:0}p{color:#c0d0e1;line-height:1.6}strong{color:#f2f8ff}.eyebrow{color:#6ee7bb;font-weight:800;letter-spacing:.11em;font-size:.75rem}section{border:1px solid #273b53;border-radius:14px;background:#112136;padding:1.4rem;margin:1.5rem 0;box-shadow:0 8px 32px #0003}.actions,.filters{display:flex;align-items:end;flex-wrap:wrap;gap:1rem;margin:1rem 0}.filters>label{flex:1;min-width:210px}label{display:block;color:#d5e1f0;font-weight:650}input,select,textarea,button{font:inherit;color:inherit;border-radius:8px}input[type=file],input[type=search],select,textarea{width:100%;background:#091726;border:1px solid #435971;padding:.7rem}input[type=file]{max-width:550px;margin-top:.7rem}input:focus-visible,select:focus-visible,textarea:focus-visible,button:focus-visible{outline:3px solid #84e6bd;outline-offset:3px}button{border:1px solid #25a881;background:#19876d;padding:.75rem 1rem;font-weight:750;cursor:pointer}button:hover:not(:disabled){background:#21a083}.secondary{background:#192b40;border-color:#465d72}button:disabled{opacity:.45;cursor:not-allowed}#message{border-left:3px solid #58c8a6;padding:.5rem .75rem;min-height:2.5rem}#message[data-error=true]{border-color:#f6a18c;color:#ffbcaf}.tablewrap{overflow:auto;max-height:580px}table{width:100%;min-width:1050px;border-collapse:collapse}th{text-align:left;color:#a9c5e0;font-size:.8rem;position:sticky;top:0;background:#18304b}td,th{border-bottom:1px solid #2a4259;padding:.7rem;vertical-align:top}td{overflow-wrap:anywhere;max-width:240px}td select,td textarea{min-width:125px}tr:hover td{background:#1b3147}code{background:#0b1829;padding:.12rem .3rem;border-radius:4px;overflow-wrap:anywhere}footer{border-top:1px solid #273b53;padding-top:1.4rem;color:#aabfd4;font-size:.89rem;line-height:1.8}@media(max-width:600px){main{padding:1.1rem .75rem}section{padding:.95rem}.actions button{width:100%}}
 /* Local HUMAN review and explicit bulk proposal, never an authorization control */
 .bulk{display:flex;flex-wrap:wrap;align-items:end;gap:1rem;border:1px solid #3a526a;background:#0d1d31;border-radius:10px;padding:1rem;margin:1rem 0}
@@ -20,6 +20,35 @@ td details summary{cursor:pointer;color:#87dcbf;font-weight:650}
 .ownerHandoff select{max-width:500px;margin-top:.4rem}
 .ownerHandoff button{min-width:220px}
 @media(max-width:650px){.ownerHandoff button{width:100%}}
+
+/* PRIVATE self-declared HUMAN recipient brief, no browser-side execution actions */
+.briefItems{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr));gap:1rem}
+.briefCard{border:1px solid #41576c;background:#0c1c2d;border-radius:12px;padding:1rem;min-width:0}
+.briefCard h3{font-size:1.1rem;overflow-wrap:anywhere;margin:.15rem 0;color:#b0efd6}
+.briefCard p{margin:.5rem 0;overflow-wrap:anywhere}
+.briefCard details{border-top:1px solid #2d465e;padding-top:.65rem;margin-top:.8rem}
+.briefCard summary{cursor:pointer;color:#91ead0;font-weight:650}
+@media print {
+  header .eyebrow,#briefFile,#briefLoad,#briefForget,#briefPrint,#briefSearch,#briefFilter,
+  label[for=briefFile],.filters,footer{display:none!important}
+  :root{color-scheme:light;background:white;color:black}
+  body,main,section,.briefCard{background:white!important;color:black!important;box-shadow:none;border-color:#999}
+  .briefCard{break-inside:avoid}
+  #briefIdentity,#briefCount,.briefCard h3,.briefCard p{color:black!important}
+  .briefCard details:not([open]){display:block}
+}
+
+/* Separate PRIVATE owner feedback preparation and approved HUMAN preview */
+.feedbackEditor{border:1px solid #425975;border-radius:10px;background:#10283a;margin-top:1rem;padding:.9rem}
+.feedbackEditor h4{margin:.15rem 0 .75rem;color:#b4f7dd;font-size:.93rem}
+.feedbackEditor label{display:block;margin:.65rem 0;font-size:.89rem;line-height:1.55}
+.feedbackEditor select,.feedbackEditor textarea{display:block;width:100%;margin-top:.25rem}
+.feedbackPrior{border-left:3px solid #86b9d1;padding:.5rem .75rem;margin:.85rem 0;background:#122738;border-radius:6px}
+.feedbackPrior p{margin:.35rem 0;color:#d2e5fa;overflow-wrap:anywhere}
+.feedbackPrior small{color:#b6cddd}
+#feedbackStatus{border-left:3px solid #66cfaa;padding:.45rem .7rem;min-height:2.2rem}
+#feedbackStatus[data-error=true]{border-color:#f7a2a2;color:#ffb9b4}
+@media print {.feedbackEditor,#feedbackExport,#feedbackClear,#draftCount{display:none!important}}
 </style></head>
 <body><main>
 <header><p class="eyebrow">LIGHTUP · REMEDIATION · OFFLINE · HUMAN ONLY</p>
@@ -28,12 +57,19 @@ td details summary{cursor:pointer;color:#87dcbf;font-weight:650}
 <label for="files">PRIVATE JSON packets</label><input id="files" type="file" multiple accept=".json,application/json">
 <div class="actions"><button id="load">Import / reconcile</button><button id="forget" class="secondary">Forget all memory</button></div>
 <p id="message" role="status" aria-live="polite"></p></section>
-<section><h2>2 · HUMAN follow-up board</h2><p id="binding">No source loaded.</p><p id="summary"></p>
-<div class="filters"><label>Find original ID, alias or request<input id="search" type="search" placeholder="Search PRIVATE rows"></label><label>Status<select id="filter"><option value="all">All</option><option value="unanswered">Unanswered</option><option value="replied">Reply received (UNVERIFIED)</option><option value="needs_changes">Needs changes</option><option value="triage">Not human-triaged</option></select></label><label>HUMAN due<select id="dueFilter"><option value="all">Any tentative date</option><option value="overdue">Tentatively overdue</option><option value="week">Next 7 days</option><option value="undated">Unscheduled</option></select></label><label>Ordering<select id="sort"><option value="original">Original packet order</option><option value="due">Tentative HUMAN due first</option><option value="owner">Self-declared owner</option><option value="triage">Local HUMAN triage</option></select></label></div>
+<section><h2>2 · Independently review owner HUMAN feedback</h2>
+<p>Import only the separate <code>lightup.private_human_owner_followup</code> statement exported by the owner brief reader. No automatic changes to original request or reply records. Compare exact original source, owner, issue time, original instructions and current unverified reply before allowing explicit review.</p>
+<label for="feedbackFile">PRIVATE source-bound HUMAN owner feedback JSON</label><input id="feedbackFile" type="file" accept=".json,application/json">
+<div class="actions"><button id="feedbackPreview">Preview exact HUMAN feedback changes</button><button id="feedbackApply" disabled>Apply to PRIVATE human register</button><button id="feedbackCancel" class="secondary">Cancel preview</button></div>
+<pre id="feedbackPreviewText" class="bulkpreview" hidden aria-live="polite"></pre>
+<p id="feedbackStatus" role="status" aria-live="polite">No HUMAN owner feedback imported.</p>
+</section>
+<section><h2>3 · HUMAN follow-up board</h2><p id="binding">No source loaded.</p><p id="summary"></p>
+<div class="filters"><label>Find original ID, alias or request<input id="search" type="search" placeholder="Search PRIVATE rows"></label><label>Status<select id="filter"><option value="all">All</option><option value="unanswered">Unanswered</option><option value="replied">Reply received (UNVERIFIED)</option><option value="needs_changes">Needs changes</option><option value="triage">Not human-triaged</option><option value="feedback">Owner HUMAN feedback received</option><option value="no_feedback">Owner HUMAN feedback missing</option></select></label><label>HUMAN due<select id="dueFilter"><option value="all">Any tentative date</option><option value="overdue">Tentatively overdue</option><option value="week">Next 7 days</option><option value="undated">Unscheduled</option></select></label><label>Ordering<select id="sort"><option value="original">Original packet order</option><option value="due">Tentative HUMAN due first</option><option value="owner">Self-declared owner</option><option value="triage">Local HUMAN triage</option></select></label></div>
 <div class="bulk"><label><input id="selectShown" type="checkbox"> Select all currently filtered requests</label><label>HUMAN stage for selected requests<select id="bulkStage"><option value="not_reviewed">Not reviewed</option><option value="needs_human_followup">Needs HUMAN follow-up</option><option value="human_triaged">HUMAN triaged (not verified)</option></select></label><button id="bulkPreview" class="secondary" disabled>Preview selected HUMAN change</button><button id="bulkApply" disabled>Apply reviewed HUMAN changes</button><button id="bulkUndo" class="secondary" disabled>Undo last HUMAN bulk</button><button id="exportSelected" class="secondary" disabled>Export selected PRIVATE action brief</button></div>
 <pre id="bulkDetails" class="bulkpreview" hidden aria-live="polite"></pre>
-<p id="count"></p><div class="tablewrap"><table><thead><tr><th>Select</th><th>Batch</th><th>Self-declared owner</th><th>Original finding</th><th>Request</th><th>HUMAN due</th><th>Reply</th><th>Original request / HUMAN response</th><th>Human triage</th><th>Private follow-up note</th></tr></thead><tbody id="rows"></tbody></table></div></section>
-<section><h2>3 · Explicit PRIVATE handoff</h2><p>Exports contain original IDs and HUMAN metadata. Independently confirm the actual recipient and approved channel. No export grants execution authority or proves delivery.</p>
+<p id="count"></p><div class="tablewrap"><table><thead><tr><th>Select</th><th>Batch</th><th>Self-declared owner</th><th>Original finding</th><th>Request</th><th>HUMAN due</th><th>Original reply</th><th>New owner HUMAN feedback</th><th>Original request / HUMAN response</th><th>Human triage</th><th>Private follow-up note</th></tr></thead><tbody id="rows"></tbody></table></div></section>
+<section><h2>4 · Explicit PRIVATE handoff</h2><p>Exports contain original IDs and HUMAN metadata. Independently confirm the actual recipient and approved channel. No export grants execution authority or proves delivery.</p>
 <div class="actions"><button id="summaryCsv" disabled>Export anonymous HUMAN counts</button><button id="download" disabled>Download PRIVATE register JSON</button><button id="csv" disabled>Download PRIVATE CSV</button><button id="print" disabled>Print PRIVATE human brief</button></div>
 <div class="ownerHandoff"><h3>Owner-specific PRIVATE HUMAN review handoff</h3>
 <p>Choose one self-declared owner and export only that owner's original request/reply context and local HUMAN follow-up notes. This is a review brief, <strong>not</strong> an authenticated message or a packet accepted by the original owner-reply app.</p>
@@ -49,7 +85,8 @@ const ROW=["request_id","finding_id","request_kind","instructions","due_date","h
 const KINDS=["missing_evidence","patch_change","deployment_record","rollback_plan","retest_request","followup_question","other"];
 const STAGES=["not_reviewed","needs_human_followup","human_triaged"];
 const LIMIT=1048576,MAX_SNAPSHOT=8*1048576,MAX_PACKETS=24,MAX_ROWS=800;
-const blank=()=>({binding:null,requestPackets:[],replyPackets:[],notes:{},revision:0});
+const blank=()=>({binding:null,requestPackets:[],replyPackets:[],notes:{},ownerFeedback:{},feedbackHistory:[],revision:0});
+const OWNER_FEEDBACK_STAGES=["acknowledged_unverified","needs_clarification","cannot_provide"];
 let db=blank();
 function fail(m){throw Error(m);}
 function same(a,b){return JSON.stringify(a)===JSON.stringify(b);}
@@ -127,7 +164,8 @@ const sourceId=p=>[p.source_contract,p.source_sha256,p.client_reference,p.engage
 const requestId=(p,r)=>[p.recipient_alias,p.issued_utc,r.request_id,r.finding_id,r.request_kind,r.instructions,r.due_date];
 function assemble(current,packets){
  const next={binding:current.binding&&[...current.binding],requestPackets:[...current.requestPackets],
-  replyPackets:[...current.replyPackets],notes:{...current.notes},revision:current.revision+1};
+  replyPackets:[...current.replyPackets],notes:{...current.notes},
+  ownerFeedback:{...current.ownerFeedback},feedbackHistory:[...current.feedbackHistory],revision:current.revision+1};
  const validated=packets.map(admit);
  if(!validated.length)fail("No PRIVATE packets selected");
  const binding=next.binding||sourceId(validated[0]);
@@ -165,6 +203,7 @@ function allRows(store=db){
  const replied=new Map(store.replyPackets.flatMap(p=>p.requests.map(r=>[r.request_id,r])));
  return store.requestPackets.flatMap((p,i)=>p.requests.map(r=>({slot:i+1,packet:p,request:r,
   reply:replied.get(r.request_id)||null,
+  feedback:store.ownerFeedback[r.request_id]||null,
   review:store.notes[r.request_id]||{stage:"not_reviewed",note:""}})));
 }
 function msg(m,err=false){$("message").textContent=m;$("message").dataset.error=err?"true":"false";}
@@ -187,6 +226,8 @@ function filteredRows(){
   if(filter==="replied"&&!x.reply)return false;
   if(filter==="needs_changes"&&(!x.reply||x.reply.human_stage!=="needs_changes"))return false;
   if(filter==="triage"&&x.review.stage==="human_triaged")return false;
+  if(filter==="feedback"&&!x.feedback)return false;
+  if(filter==="no_feedback"&&x.feedback)return false;
   const d=x.request.due_date;
   if(dateMode==="overdue"&&(!d||d>=today))return false;
   if(dateMode==="week"&&(!d||d<today||d>week))return false;
@@ -208,18 +249,34 @@ function contextDetails(x){
   ["Issued UTC (self-declared)",x.packet.issued_utc],
   ["ORIGINAL HUMAN instructions",x.request.instructions],
   ["HUMAN reply status",x.reply?x.reply.human_stage:"unanswered"],
-  ["Unverified owner response",x.reply?x.reply.human_response:"Not received; no fix inferred."]
+  ["Unverified owner response",x.reply?x.reply.human_response:"Not received; no fix inferred."],
+  ["Separate UNVERIFIED owner follow-up",x.feedback?x.feedback.stage:"Not submitted"],
+  ["Owner HUMAN follow-up text",x.feedback?x.feedback.note:"No separate HUMAN feedback."],
+  ["Owner self-declared follow-up time",x.feedback?x.feedback.submitted_utc:"Not submitted"]
  ]){
   const row=document.createElement("div"),strong=node("strong",label+": "),
    content=node("span",value);
   row.className="privateDetail";row.append(strong,content);details.append(row);
  }
+ const history=db.feedbackHistory.filter(h=>h.request_id===x.request.request_id);
+ if(history.length){
+  const previous=node("summary","Earlier local HUMAN follow-up versions ("+history.length+")");
+  const archive=document.createElement("details");archive.className="feedbackHistory";archive.append(previous);
+  for(const past of history){
+   const block=document.createElement("div");block.className="privateDetail";
+   block.append(node("strong",past.stage+" · self-declared submitted "+past.submitted_utc+
+    " · locally superseded "+past.superseded_utc+" : "));
+   block.append(node("span",past.note||"(no HUMAN explanation)"));archive.append(block);
+  }
+  details.append(archive);
+ }
  cell.append(details);return cell;
 }
 function draw(){
  const all=allRows(),answered=all.filter(x=>x.reply).length,
+  ownerResponded=all.filter(x=>x.feedback).length,
   needs=all.filter(x=>x.reply&&x.reply.human_stage==="needs_changes").length;
- $("summary").textContent=all.length+" HUMAN requests · "+answered+" UNVERIFIED replies · "+(all.length-answered)+" unanswered · "+needs+" need changes · "+db.requestPackets.length+" owner packets";
+ $("summary").textContent=all.length+" HUMAN requests · "+answered+" UNVERIFIED replies · "+(all.length-answered)+" unanswered · "+needs+" need changes · "+ownerResponded+" HUMAN owner follow-ups · "+db.requestPackets.length+" owner packets";
  $("binding").textContent=db.binding?"DECLARED source SHA "+db.binding[1]+" · client "+db.binding[2]+" · engagement "+db.binding[3]:"No source loaded.";
  for(const id of ["download","csv","print","summaryCsv"])$(id).disabled=!all.length;
  refreshOwnerExportOptions();
@@ -241,7 +298,7 @@ function draw(){
    invalidateBulk();draw();
   });
   choice.append(check);tr.append(choice);
-  for(const v of [x.slot,x.packet.recipient_alias,x.request.finding_id,x.request.request_kind,x.request.due_date||"—",x.reply?x.reply.human_stage:"unanswered"])
+  for(const v of [x.slot,x.packet.recipient_alias,x.request.finding_id,x.request.request_kind,x.request.due_date||"—",x.reply?x.reply.human_stage:"unanswered",x.feedback?x.feedback.stage:"not submitted"])
    tr.append(node("td",v));
   tr.append(contextDetails(x));
   const sel=document.createElement("select");
@@ -277,7 +334,7 @@ function exportOwnerPrivate(){
  const matching=allRows().filter(x=>x.packet.recipient_alias===alias);
  if(!matching.length)fail("No ORIGINAL HUMAN records for this owner");
  const declared=db.binding;
- const envelope={kind:"lightup.private_human_owner_review_brief",schema_version:1,
+ const envelope={kind:"lightup.private_human_owner_review_brief",schema_version:2,
   disposition:"UNVERIFIED_HUMAN_COORDINATION_ONLY",
   source_contract:declared[0],source_sha256:declared[1],
   client_reference:declared[2],engagement_reference:declared[3],
@@ -288,7 +345,10 @@ function exportOwnerPrivate(){
     original_issued_utc:x.packet.issued_utc,
     unverified_reply_stage:x.reply?x.reply.human_stage:"unanswered",
     unverified_reply_text:x.reply?x.reply.human_response:"",
-    local_human_triage:x.review.stage,local_human_note:x.review.note}))};
+    local_human_triage:x.review.stage,local_human_note:x.review.note,
+    received_owner_feedback_stage:x.feedback?x.feedback.stage:"",
+    received_owner_feedback_note:x.feedback?x.feedback.note:"",
+    received_owner_feedback_utc:x.feedback?x.feedback.submitted_utc:""}))};
  if(!confirm("Export "+matching.length+" PRIVATE ORIGINAL HUMAN request/reply records for ONLY self-declared owner '"+alias+"'? Independently verify the actual recipient and confidential handoff channel. This DOES NOT send messages, authenticate identity, verify remediation, authorize testing or work in the original owner reply app."))return;
  const payload=JSON.stringify(envelope,null,2)+"\n";
  if(new TextEncoder().encode(payload).length>MAX_SNAPSHOT)
@@ -361,7 +421,10 @@ function exportSelectedPrivate(){
    tentative_human_due:x.request.due_date,original_instructions:x.request.instructions,
    unverified_reply_stage:x.reply?x.reply.human_stage:"unanswered",
    unverified_reply_text:x.reply?x.reply.human_response:"",
-   local_human_stage:x.review.stage,local_human_note:x.review.note}))};
+   local_human_stage:x.review.stage,local_human_note:x.review.note,
+   received_owner_feedback_stage:x.feedback?x.feedback.stage:"",
+   received_owner_feedback_note:x.feedback?x.feedback.note:"",
+   received_owner_feedback_utc:x.feedback?x.feedback.submitted_utc:""}))};
  if(!confirm("Export only "+chosen.length+" SELECTED original HUMAN requests, private response text and local notes? Verify authorized recipient/channel. Nothing is authenticated, sent, repaired or consented to."))return;
  const json=JSON.stringify(envelope,null,2)+"\n";
  if(new TextEncoder().encode(json).length>MAX_SNAPSHOT)fail("Selected PRIVATE action brief exceeds 8 MiB");
@@ -371,10 +434,10 @@ function exportSelectedPrivate(){
 function anonymousCounts(){
  const groups=new Map();
  for(const x of allRows()){
-  const key=[x.request.request_kind,x.reply?x.reply.human_stage:"unanswered",x.review.stage];
+  const key=[x.request.request_kind,x.reply?x.reply.human_stage:"unanswered",x.feedback?x.feedback.stage:"not submitted",x.review.stage];
   const text=JSON.stringify(key);groups.set(text,(groups.get(text)||0)+1);
  }
- const table=[["human_request_kind","unverified_reply_status","local_human_triage","count"]];
+ const table=[["human_request_kind","unverified_reply_status","unverified_owner_feedback","local_human_triage","count"]];
  for(const [key,count] of [...groups.entries()].sort((a,b)=>a[0].localeCompare(b[0])))
   table.push([...JSON.parse(key),count]);
  return table;
@@ -385,6 +448,130 @@ function exportAnonymous(){
  save("LightUp-anonymous-human-response-counts.csv",
   anonymousCounts().map(row=>row.map(csv).join(",")).join("\r\n")+"\r\n","text/csv");
 }
+/* Separate UNVERIFIED HUMAN owner feedback, never an original owner reply,
+   finding status, security approval or scan/retest action. */
+let pendingOwnerFeedback=null;
+const HUMAN_FEEDBACK_HEADER=["kind","schema_version","disposition","source_contract","source_sha256",
+ "client_reference","engagement_reference","recipient_alias","created_utc",...FLAGS,"feedback"];
+const HUMAN_FEEDBACK_ROW=["request_id","finding_id","request_kind","original_issued_utc",
+ "original_instructions","tentative_human_due","observed_unverified_reply_stage",
+ "observed_unverified_reply_text","human_feedback_stage","human_feedback_note"];
+function feedbackNotice(message,error=false){
+ $("feedbackStatus").textContent=message;$("feedbackStatus").dataset.error=error?"true":"false";
+}
+function cancelFeedbackPreview(){
+ pendingOwnerFeedback=null;$("feedbackApply").disabled=true;
+ $("feedbackPreviewText").hidden=true;$("feedbackPreviewText").textContent="";
+}
+function validateOwnerFeedback(p){
+ if(!exact(p,HUMAN_FEEDBACK_HEADER)||p.kind!=="lightup.private_human_owner_followup"||
+   p.schema_version!==1||p.disposition!=="UNVERIFIED_HUMAN_COORDINATION_ONLY"||
+   p.source_contract!=="lightup.finding_export._COLUMNS_v1"||
+   !/^[0-9a-f]{64}$/.test(p.source_sha256)||FLAGS.some(k=>p[k]!==false)||
+   !Array.isArray(p.feedback)||!p.feedback.length||p.feedback.length>MAX_ROWS)
+  fail("HOLD: not a strict non-authorizing HUMAN owner follow-up statement");
+ clean(p.client_reference,120,"feedback client",true);
+ clean(p.engagement_reference,120,"feedback engagement",true);
+ clean(p.recipient_alias,120,"self-declared owner",true);
+ timestamp(p.created_utc);
+ const seen=new Set();
+ for(const r of p.feedback){
+  if(!exact(r,HUMAN_FEEDBACK_ROW)||typeof r.request_id!=="string"||
+     !/^[0-9a-f]{32}$/.test(r.request_id)||seen.has(r.request_id))
+   fail("HOLD: duplicate or malformed original HUMAN request in feedback");
+  seen.add(r.request_id);clean(r.finding_id,160,"original finding",true);
+  if(!KINDS.includes(r.request_kind))fail("HOLD: unknown original request kind");
+  timestamp(r.original_issued_utc);
+  clean(r.original_instructions,1400,"original HUMAN instructions",true);
+  due(r.tentative_human_due);
+  if(!["unanswered","submitted_unverified","needs_changes"].includes(r.observed_unverified_reply_stage))
+   fail("HOLD: invalid snapshot of unverified HUMAN reply stage");
+  clean(r.observed_unverified_reply_text,1800,"prior unverified HUMAN reply");
+  if((r.observed_unverified_reply_stage==="unanswered")!==(r.observed_unverified_reply_text===""))
+   fail("HOLD: original request-reply stage/text snapshot inconsistent");
+  if(!OWNER_FEEDBACK_STAGES.includes(r.human_feedback_stage))
+   fail("HOLD: forbidden owner HUMAN feedback status");
+  clean(r.human_feedback_note,1000,"human feedback note");
+  if(r.human_feedback_stage!=="acknowledged_unverified"&&!r.human_feedback_note.trim())
+   fail("HOLD: human clarification requires an explanation");
+ }
+ return p;
+}
+function incomingFeedbackChanges(packet){
+ if(!db.binding||!same(sourceId(packet),db.binding))
+  fail("HOLD: source SHA, client or engagement does not match original HUMAN register");
+ const originals=new Map(allRows().map(x=>[x.request.request_id,x]));
+ const changes=[];
+ for(const item of packet.feedback){
+  const original=originals.get(item.request_id);
+  if(!original||original.packet.recipient_alias!==packet.recipient_alias||
+    original.packet.issued_utc!==item.original_issued_utc||
+    original.request.finding_id!==item.finding_id||
+    original.request.request_kind!==item.request_kind||
+    original.request.instructions!==item.original_instructions||
+    original.request.due_date!==item.tentative_human_due)
+   fail("HOLD: HUMAN owner feedback refers to an absent or altered ORIGINAL request/owner");
+  const replyStage=original.reply?original.reply.human_stage:"unanswered";
+  const replyText=original.reply?original.reply.human_response:"";
+  if(replyStage!==item.observed_unverified_reply_stage||replyText!==item.observed_unverified_reply_text)
+   fail("HOLD: original owner brief has a stale unverified HUMAN reply baseline");
+  const previous=original.feedback;
+  const proposed={stage:item.human_feedback_stage,note:item.human_feedback_note,
+    submitted_utc:packet.created_utc};
+  if(previous&&same(previous,proposed))continue; // replay is idempotent, never promotes authority
+  changes.push({request_id:item.request_id,finding_id:item.finding_id,
+    owner:packet.recipient_alias,previous:previous?{...previous}:null,next:proposed});
+ }
+ if(db.feedbackHistory.length+changes.filter(c=>c.previous).length>1600)
+  fail("HOLD: PRIVATE owner feedback history capacity exceeded; export & create a fresh register");
+ return changes;
+}
+async function previewOwnerFeedback(){
+ if(!db.binding)fail("Load original source-bound HUMAN request packets first");
+ const file=$("feedbackFile").files[0];
+ if(!file||file.size>MAX_SNAPSHOT)fail("PRIVATE HUMAN follow-up file must be at most 8 MiB");
+ const revision=db.revision;
+ const data=new TextDecoder("utf-8",{fatal:true}).decode(await file.arrayBuffer());
+ const packet=validateOwnerFeedback(strictJSON(data,MAX_SNAPSHOT));
+ if(revision!==db.revision)fail("HOLD: original private register changed while reading owner reply");
+ const changes=incomingFeedbackChanges(packet);
+ if(!changes.length){
+  cancelFeedbackPreview();
+  feedbackNotice("Exact HUMAN statement already present: no changes, no new authority.");
+  return;
+ }
+ const source=JSON.stringify(db.binding);
+ pendingOwnerFeedback={revision,source,packet,changes};
+ $("feedbackPreviewText").textContent=[
+  "PRIVATE HUMAN feedback PREVIEW · "+changes.length+" proposed human-only annotations",
+  "Declared owner alias: "+packet.recipient_alias,
+  "Original SHA-256: "+packet.source_sha256,
+  "Owner-supplied created UTC: "+packet.created_utc+" (NOT authenticated)",
+  "Original evidence, findings, existing HUMAN replies, grants and retests stay unchanged.",
+  ...changes.map(c=>c.finding_id+" · "+c.request_id+" · "+(c.previous?c.previous.stage:"no feedback")+
+   " → "+c.next.stage+" · "+c.owner+" · "+c.next.note)
+ ].join("\n");
+ $("feedbackPreviewText").hidden=false;$("feedbackApply").disabled=false;
+ feedbackNotice("Inspect original HUMAN request context and each pending change; nothing applied yet.");
+}
+function applyOwnerFeedback(){
+ const p=pendingOwnerFeedback;
+ if(!p||p.revision!==db.revision||p.source!==JSON.stringify(db.binding))
+  fail("HOLD: original HUMAN register or local review changed since feedback preview");
+ const current=incomingFeedbackChanges(p.packet);
+ if(!same(current,p.changes))fail("HOLD: HUMAN reply or annotation changed after preview");
+ if(!confirm("Apply "+p.changes.length+" UNVERIFIED HUMAN owner feedback annotation(s) to this PRIVATE local register? Existing original request/answer and security status will remain unchanged; identity and delivery are NOT verified."))return;
+ const revised={...db.ownerFeedback},history=[...db.feedbackHistory];
+ for(const change of p.changes){
+  if(change.previous)history.push({request_id:change.request_id,...change.previous,
+    superseded_utc:new Date().toISOString()});
+  revised[change.request_id]={...change.next};
+ }
+ db.ownerFeedback=revised;db.feedbackHistory=history;db.revision++;
+ cancelFeedbackPreview();invalidateBulk();invalidateUndo();$("feedbackFile").value="";draw();
+ feedbackNotice("Applied "+p.changes.length+" LOCAL HUMAN follow-up annotation(s). Original replies, findings and all authority unchanged.");
+}
+
 async function intake(){
  const files=[...$("files").files];
  if(!files.length||files.length>MAX_PACKETS)fail("Select 1–24 PRIVATE JSON files");
@@ -404,20 +591,23 @@ async function intake(){
  const next=assemble(db,packets);
  if(!confirm("Import "+packets.length+" PRIVATE human packets? All identities, replies and source labels are UNVERIFIED. No data are sent, no retest or consent is granted."))return;
  if(db.revision!==rev)fail("HOLD: register changed before confirmation");
- db=next;selection.clear();invalidateBulk();invalidateUndo();$("files").value="";draw();msg("Reconciled PRIVATE HUMAN owner and reply packets atomically.");
+ db=next;selection.clear();invalidateBulk();invalidateUndo();cancelFeedbackPreview();$("files").value="";draw();msg("Reconciled PRIVATE HUMAN owner and reply packets atomically.");
 }
 function snapshot(){
- return {kind:"lightup.private_human_response_reconciliation",schema_version:1,
+ return {kind:"lightup.private_human_response_reconciliation",schema_version:2,
  disposition:"UNVERIFIED_HUMAN_COORDINATION_ONLY",source_contract:db.binding[0],
  source_sha256:db.binding[1],client_reference:db.binding[2],engagement_reference:db.binding[3],
  ...Object.fromEntries(FLAGS.map(k=>[k,false])),
  request_packets:db.requestPackets,reply_packets:db.replyPackets,
- human_reviews:allRows().map(x=>({request_id:x.request.request_id,human_stage:x.review.stage,note:x.review.note}))};
+ human_reviews:allRows().map(x=>({request_id:x.request.request_id,human_stage:x.review.stage,note:x.review.note})),
+ owner_feedback:allRows().filter(x=>x.feedback).map(x=>({request_id:x.request.request_id,...x.feedback})),
+ feedback_history:db.feedbackHistory.map(x=>({...x}))};
 }
 function restore(obj,rev){
  const keys=["kind","schema_version","disposition","source_contract","source_sha256","client_reference","engagement_reference",
  ...FLAGS,"request_packets","reply_packets","human_reviews"];
- if(!exact(obj,keys)||obj.schema_version!==1||
+ const v2=[...keys,"owner_feedback","feedback_history"];
+ if(!((obj?.schema_version===1&&exact(obj,keys))||(obj?.schema_version===2&&exact(obj,v2)))||
  obj.disposition!=="UNVERIFIED_HUMAN_COORDINATION_ONLY"||
  obj.source_contract!=="lightup.finding_export._COLUMNS_v1"||
  !/^[0-9a-f]{64}$/.test(obj.source_sha256)||FLAGS.some(k=>obj[k]!==false)||
@@ -436,10 +626,34 @@ function restore(obj,rev){
   fresh.notes[r.request_id]={stage:r.human_stage,note:r.note};
  }
  if(seen.size!==allowed.size)fail("HOLD: incomplete HUMAN review backup");
+ if(obj.schema_version===2){
+  if(!Array.isArray(obj.owner_feedback)||obj.owner_feedback.length>MAX_ROWS||
+     !Array.isArray(obj.feedback_history)||obj.feedback_history.length>1600)
+   fail("HOLD: invalid feedback history collection");
+  const included=new Set();
+  for(const item of obj.owner_feedback){
+   if(!exact(item,["request_id","stage","note","submitted_utc"])||
+      !allowed.has(item.request_id)||included.has(item.request_id)||
+      !OWNER_FEEDBACK_STAGES.includes(item.stage))fail("HOLD: invalid owner HUMAN feedback record");
+   clean(item.note,1000,"owner feedback note");timestamp(item.submitted_utc);
+   if(item.stage!=="acknowledged_unverified"&&!item.note.trim())fail("HOLD: missing owner HUMAN explanation");
+   included.add(item.request_id);
+   fresh.ownerFeedback[item.request_id]={stage:item.stage,note:item.note,submitted_utc:item.submitted_utc};
+  }
+  for(const item of obj.feedback_history){
+   if(!exact(item,["request_id","stage","note","submitted_utc","superseded_utc"])||
+      !allowed.has(item.request_id)||!OWNER_FEEDBACK_STAGES.includes(item.stage))
+    fail("HOLD: invalid prior HUMAN feedback entry");
+   clean(item.note,1000,"historical private HUMAN response");timestamp(item.submitted_utc);
+   timestamp(item.superseded_utc);
+   if(item.stage!=="acknowledged_unverified"&&!item.note.trim())fail("HOLD: missing historical human explanation");
+   fresh.feedbackHistory.push({...item});
+  }
+ }
  if(db.revision!==rev)fail("HOLD: changed register");
  if(!confirm("REPLACE current PRIVATE register and HUMAN notes with this exact source-bound backup? Export current data first."))return;
  if(db.revision!==rev)fail("HOLD: changed register before replace");
- fresh.revision=rev+1;db=fresh;selection.clear();invalidateBulk();invalidateUndo();$("files").value="";draw();msg("Restored PRIVATE HUMAN register from original-bound local backup.");
+ fresh.revision=rev+1;db=fresh;selection.clear();invalidateBulk();invalidateUndo();cancelFeedbackPreview();$("files").value="";draw();msg("Restored PRIVATE HUMAN register from original-bound local backup.");
 }
 function save(filename,body,mime){
  const url=URL.createObjectURL(new Blob([body],{type:mime}));
@@ -456,8 +670,8 @@ function exportCSV(){
  if(!db.binding)fail("Load original HUMAN packets first");
  if(!confirm("Export PRIVATE original IDs and self-declared HUMAN aliases? Confirm secure recipient and channel."))return;
  const table=[["batch","original_request_id","original_finding_id","human_owner_alias","request_kind","tentative_due",
- "unverified_reply","local_human_triage"],...allRows().map(x=>[x.slot,x.request.request_id,x.request.finding_id,
- x.packet.recipient_alias,x.request.request_kind,x.request.due_date,x.reply?x.reply.human_stage:"unanswered",x.review.stage])];
+ "unverified_reply","owner_human_feedback","local_human_triage"],...allRows().map(x=>[x.slot,x.request.request_id,x.request.finding_id,
+ x.packet.recipient_alias,x.request.request_kind,x.request.due_date,x.reply?x.reply.human_stage:"unanswered",x.feedback?x.feedback.stage:"not submitted",x.review.stage])];
  save("LightUp-PRIVATE-response-register.csv",table.map(row=>row.map(csv).join(",")).join("\r\n")+"\r\n","text/csv");
 }
 function report(){
@@ -472,11 +686,11 @@ function report(){
  main.append(cell("p","No identity verification, consent, remediation certification, scan or execution authority."));
  main.append(cell("p",db.binding.join(" · ")));
  const t=d.createElement("table"),headers=d.createElement("tr");
- for(const v of ["Owner alias","Original finding","Request","UNVERIFIED reply","Local HUMAN triage","PRIVATE note"])headers.append(cell("th",v));
+ for(const v of ["Owner alias","Original finding","Request","UNVERIFIED reply","UNVERIFIED owner feedback","Local HUMAN triage","PRIVATE note"])headers.append(cell("th",v));
  t.append(headers);
  for(const x of allRows()){const tr=d.createElement("tr");
   for(const v of [x.packet.recipient_alias,x.request.finding_id,x.request.request_kind,
-   x.reply?x.reply.human_stage:"unanswered",x.review.stage,x.review.note])tr.append(cell("td",v));
+   x.reply?x.reply.human_stage:"unanswered",x.feedback?x.feedback.stage:"not submitted",x.review.stage,x.review.note])tr.append(cell("td",v));
   t.append(tr);}
  main.append(t);msg("Opened PRIVATE scriptless print brief in a local window.");
 }
@@ -489,13 +703,17 @@ listen("csv",exportCSV);listen("summaryCsv",exportAnonymous);
 listen("exportOwner",exportOwnerPrivate);
 $("ownerExport").addEventListener("change",()=>{$("exportOwner").disabled=!$("ownerExport").value;});listen("print",report);
 listen("bulkPreview",previewBulk);listen("bulkApply",applyBulk);
+listen("feedbackPreview",async()=>{try{await previewOwnerFeedback();}catch(e){cancelFeedbackPreview();feedbackNotice(e.message||"PRIVATE feedback rejected",true);}});
+listen("feedbackApply",()=>{try{applyOwnerFeedback();}catch(e){cancelFeedbackPreview();feedbackNotice(e.message||"PRIVATE feedback application rejected",true);}});
+listen("feedbackCancel",()=>{cancelFeedbackPreview();feedbackNotice("Discarded uncommitted HUMAN feedback preview.");});
+$("feedbackFile").addEventListener("change",()=>{cancelFeedbackPreview();feedbackNotice("New PRIVATE input selected; preview before applying.");});
 listen("bulkUndo",undoLastBulk);listen("exportSelected",exportSelectedPrivate);
 $("selectShown").addEventListener("change",e=>{for(const x of filteredRows()){
  if(e.target.checked)selection.add(x.request.request_id);else selection.delete(x.request.request_id);
  }invalidateBulk();draw();});
 $("bulkStage").addEventListener("change",invalidateBulk);
 listen("forget",()=>{if(!confirm("Clear ALL in-memory human responses and PRIVATE annotations? Saved downloads remain."))return;
- const rev=db.revision+1;db=blank();db.revision=rev;selection.clear();invalidateBulk();invalidateUndo();$("files").value="";$("search").value="";draw();msg("All locally held PRIVATE HUMAN data forgotten.");});
+ const rev=db.revision+1;db=blank();db.revision=rev;selection.clear();invalidateBulk();invalidateUndo();cancelFeedbackPreview();$("files").value="";$("search").value="";draw();msg("All locally held PRIVATE HUMAN data forgotten.");});
 $("search").addEventListener("input",draw);$("filter").addEventListener("change",draw);
 $("dueFilter").addEventListener("change",draw);$("sort").addEventListener("change",draw);
 draw();msg("Load original PRIVATE owner-request and partial-reply files. Everything stays in memory.");
