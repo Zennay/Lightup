@@ -90,6 +90,10 @@
  </div>
  <div class="actions"><button class="primary" id="actionBatchApply">Preview and apply selected HUMAN changes</button></div>
  <div class="actions"><button id="actionSave" class="primary">Download complete PRIVATE HUMAN follow-up JSON</button><button id="actionBrief">Download scriptless PRIVATE human discussion agenda</button><button id="actionCounts">Download anonymous HUMAN action counts</button></div>
+ <div class="grid">
+  <div><label for="actionCoordinator">Locally declared HUMAN coordinator for private one-recipient handoff</label><select id="actionCoordinator"><option value="">Choose locally declared coordinator</option></select></div>
+  <div><label for="actionCoordinatorBrief">Confidential coordinator-only HUMAN work brief</label><button id="actionCoordinatorBrief" disabled>Download PRIVATE one-coordinator HUMAN HTML</button></div>
+ </div>
  <label for="actionRestoreFile">Restore full PRIVATE HUMAN follow-up JSON, exact current original source + reply snapshots only (8 MiB)</label>
  <input id="actionRestoreFile" type="file" accept=".json,application/json">
  <div class="actions"><button id="actionRestore">Restore source-matched PRIVATE HUMAN action register</button><button id="actionForget">Forget only local HUMAN action notes</button></div>
