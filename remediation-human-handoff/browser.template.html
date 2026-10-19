@@ -78,6 +78,17 @@ footer{margin-top:35px;border-top:1px solid var(--border);padding-top:15px}
 </div>
 <p>The export has no original client names, targeting, findings, timestamps or original evidence. Deliberate HUMAN disclosure is required for all files, including counts-only files. Do not confuse a prepared handoff with a delivered or independently reviewed request.</p>
 </section>
+<section aria-labelledby="step4"><h2 id="step4">4 · Compare a second LOCAL HUMAN board (manual only)</h2>
+<p>Two offline HUMAN operators can independently propose different local routing choices for the *same saved anonymous numeric session*. Select a second board made from the exact same packet descriptions. Only validated source-free ordinal differences are shown. Click **Use peer choice locally** on one row at a time after explicitly confirming that self-declared suggestion. There is no automatic merge or actual source-owner identity check.</p>
+<div class="actions">
+<label>Second source-free HUMAN board JSON<input id="peerFile" type="file" accept=".json,application/json" aria-label="Choose an alternate local HUMAN action board"></label>
+<button id="loadPeer" type="button">Load second board</button>
+<button id="clearPeer" type="button">Clear second board</button>
+</div>
+<p id="peerSummary" role="status" aria-live="polite">No second HUMAN board admitted.</p>
+<div class="scroll"><table><thead><tr><th>Local ordinal (not case)</th><th>Original local choices</th><th>Second local suggestions</th><th>Current local proposal</th><th>Explicit HUMAN selection</th></tr></thead><tbody id="peerRows"></tbody></table></div>
+<div class="actions"><button id="peerCsv" type="button" disabled>Download source-free peer change CSV</button></div>
+<p>Missing rows mean no local difference in the compared numeric slot; they do not demonstrate that a finding was fixed or that any review happened. Matching packet ordinals cannot prove the same original case. The current board remains a separate user-controlled draft and can be exported using section 2.</p></section>
 <footer><small>LightUp / strictly local HUMAN planning / no grants / no target access</small>
 <p>This self-contained single-file browser desk uses a pinned inline-script content-security policy, not an independent security audit. It requires no cloud access, scripts from third parties, persistent browser storage, accounts, credentials, scans or installation. Original owner and review gates still apply.</p></footer>
 </main><script>__INLINE_SCRIPT__</script></body></html>

@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-MU5KQwoRzzz0c+9HN7HHmf9GFtahrGxoLbiq1GUJBbo='; style-src 'unsafe-inline'; connect-src 'none'; img-src 'none'; font-src 'none'; object-src 'none'; frame-src 'none'; worker-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-U53i22y+JNYR0/aK0WQc1oljxFM6hXmavfL11XN4I68='; style-src 'unsafe-inline'; connect-src 'none'; img-src 'none'; font-src 'none'; object-src 'none'; frame-src 'none'; worker-src 'none'; base-uri 'none'; form-action 'none'">
 <title>LightUp · PRIVATE HUMAN Return Studio</title>
 <style>
 :root{color-scheme:dark;--bg:#0b1423;--panel:#1a2a40;--border:#3a526a;--ink:#f0f8fe;--muted:#bbcede;--mint:#a7f4d4;--warn:#f5c57a}
@@ -78,6 +78,17 @@ footer{margin-top:35px;border-top:1px solid var(--border);padding-top:15px}
 </div>
 <p>The export has no original client names, targeting, findings, timestamps or original evidence. Deliberate HUMAN disclosure is required for all files, including counts-only files. Do not confuse a prepared handoff with a delivered or independently reviewed request.</p>
 </section>
+<section aria-labelledby="step4"><h2 id="step4">4 · Compare a second LOCAL HUMAN board (manual only)</h2>
+<p>Two offline HUMAN operators can independently propose different local routing choices for the *same saved anonymous numeric session*. Select a second board made from the exact same packet descriptions. Only validated source-free ordinal differences are shown. Click **Use peer choice locally** on one row at a time after explicitly confirming that self-declared suggestion. There is no automatic merge or actual source-owner identity check.</p>
+<div class="actions">
+<label>Second source-free HUMAN board JSON<input id="peerFile" type="file" accept=".json,application/json" aria-label="Choose an alternate local HUMAN action board"></label>
+<button id="loadPeer" type="button">Load second board</button>
+<button id="clearPeer" type="button">Clear second board</button>
+</div>
+<p id="peerSummary" role="status" aria-live="polite">No second HUMAN board admitted.</p>
+<div class="scroll"><table><thead><tr><th>Local ordinal (not case)</th><th>Original local choices</th><th>Second local suggestions</th><th>Current local proposal</th><th>Explicit HUMAN selection</th></tr></thead><tbody id="peerRows"></tbody></table></div>
+<div class="actions"><button id="peerCsv" type="button" disabled>Download source-free peer change CSV</button></div>
+<p>Missing rows mean no local difference in the compared numeric slot; they do not demonstrate that a finding was fixed or that any review happened. Matching packet ordinals cannot prove the same original case. The current board remains a separate user-controlled draft and can be exported using section 2.</p></section>
 <footer><small>LightUp / strictly local HUMAN planning / no grants / no target access</small>
 <p>This self-contained single-file browser desk uses a pinned inline-script content-security policy, not an independent security audit. It requires no cloud access, scripts from third parties, persistent browser storage, accounts, credentials, scans or installation. Original owner and review gates still apply.</p></footer>
 </main><script>"use strict";
@@ -109,7 +120,7 @@ footer{margin-top:35px;border-top:1px solid var(--border);padding-top:15px}
   const BOARD_WARN="Anonymous local HUMAN routing choices only. Not unique cases, original source authentication, verified security findings, consent, grant, remediation or action permission.";
   const HANDOFF_WARN="LOCAL SOURCE-FREE HUMAN PLANNING ONLY. Anonymous numeric packet ordinals do not identify original clients, findings, security issues, fixes or consent. All states are self-declared; there is no scan, grant, authenticated evidence or actual delivery.";
   const $=id=>document.getElementById(id);
-  let session=null, original=null, draft=null;
+  let session=null, original=null, draft=null, peer=null;
   const fail=()=>{throw Error("HOLD");};
   const ensure=value=>{if(!value)fail();};
   const number=(x,lo,hi)=>Number.isSafeInteger(x)&&x>=lo&&x<=hi;
@@ -280,10 +291,10 @@ footer{margin-top:35px;border-top:1px solid var(--border);padding-top:15px}
     $("actionFilter").disabled=off;
   };
   const resetState=()=>{
-    session=null;original=null;draft=null;
+    session=null;original=null;draft=null;peer=null;
     $("rows").replaceChildren();$("counts").textContent="No private session loaded";
     $("sourceStatus").textContent="Not imported";
-    disabled(true);
+    disabled(true);renderPeer();
   };
   const render=()=>{
     active();const rows=$("rows");rows.replaceChildren();
@@ -326,6 +337,57 @@ footer{margin-top:35px;border-top:1px solid var(--border);padding-top:15px}
     $("deltaCsv").disabled=changes===0;
     $("saveBoard").disabled=changes===0;
     $("sourceStatus").textContent="Self-declared PRIVATE numeric session + exactly matched board; NOT source authenticated";
+    renderPeer();
+  };
+  const renderPeer=()=>{
+    const body=$("peerRows");body.replaceChildren();
+    $("peerCsv").disabled=true;
+    if(peer===null){
+      $("peerSummary").textContent="No second HUMAN board admitted.";
+      return;
+    }
+    if(session===null){peer=null;return;}
+    let divergent=0,adopted=0;
+    peer.forEach((candidate,i)=>{
+      const base=original[i],current=draft[i];
+      if(same(candidate,base))return;
+      divergent++;
+      if(same(candidate,current))adopted++;
+      const tr=document.createElement("tr");
+      td(tr,i+1,"th");
+      td(tr,ACTIONS[base.action]+" / "+STATES[base.state]);
+      td(tr,ACTIONS[candidate.action]+" / "+STATES[candidate.state]);
+      td(tr,ACTIONS[current.action]+" / "+STATES[current.state]);
+      const cell=td(tr,"");
+      const button=document.createElement("button");
+      button.type="button";button.textContent="Use peer choice locally";
+      button.disabled=same(candidate,current);
+      button.setAttribute("aria-label","Adopt self-declared peer choice for local ordinal "+(i+1));
+      button.addEventListener("click",()=>{
+        if(!confirm("Use the anonymous peer-suggested HUMAN choice for local ordinal "+
+          (i+1)+"? It does not identify original cases or authenticate a reviewer."))return;
+        draft[i]={ordinal:i+1,action:candidate.action,state:candidate.state};
+        render();
+        message("One locally suggested peer choice adopted; no real source record changed.");
+      });
+      cell.appendChild(button);body.appendChild(tr);
+    });
+    $("peerSummary").textContent=divergent+" anonymous peer-vs-base routing differences; "+
+      adopted+" currently match the local draft. Same ordinals are NOT case identity.";
+    $("peerCsv").disabled=divergent===0;
+  };
+  const peerDiffCsv=()=>{
+    active();ensure(peer!==null);
+    const diffs=[];
+    peer.forEach((candidate,i)=>{
+      const base=original[i],current=draft[i];
+      if(same(candidate,base))return;
+      diffs.push([i+1,base.action,candidate.action,current.action,
+        base.state,candidate.state,current.state]);
+    });
+    ensure(diffs.length>0);
+    return csvText([["local_ordinal_not_case","base_action","peer_action",
+      "current_local_action","base_state","peer_state","current_local_state"],...diffs]);
   };
   const chosen=()=>{
     active();
@@ -406,6 +468,31 @@ footer{margin-top:35px;border-top:1px solid var(--border);padding-top:15px}
       message("HOLD: no private session/board loaded. Check original export schema, size, flags and exact paired ordinals.",true);
     }
   };
+  const loadPeer=async()=>{
+    peer=null;renderPeer();
+    try{
+      active();
+      const incoming=await read($("peerFile").files[0]);
+      const imported=acceptBoard(incoming,session);
+      peer=clone(imported);renderPeer();
+      message("Second source-free local board admitted. Changes are proposed, not authentic owner decisions.");
+    }catch(_){
+      peer=null;renderPeer();
+      message("HOLD: peer board not admitted; existing local HUMAN choices unchanged.",true);
+    }
+  };
+  $("peerFile").addEventListener("change",()=>{
+    peer=null;renderPeer();message("Second board changed: click Load second board for exact session admission.");
+  });
+  $("loadPeer").addEventListener("click",loadPeer);
+  $("clearPeer").addEventListener("click",()=>{
+    peer=null;$("peerFile").value="";renderPeer();
+    message("Second local board cleared without changing current HUMAN choices.");
+  });
+  $("peerCsv").addEventListener("click",()=>{
+    try{download("lightup-private-local-peer-choices.csv",peerDiffCsv(),"text/csv");}
+    catch(_){message("HOLD: no admitted anonymous local peer differences.",true);}
+  });
   $("load").addEventListener("click",load);
   for(const k of ["sessionFile","boardFile"])$(k).addEventListener("change",()=>{
     resetState();message("Inputs changed: both files must be admitted together again.");

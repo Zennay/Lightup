@@ -24,6 +24,13 @@ python3 remediation-human-handoff/build_browser.py
 
 The resulting `browser.html` is a static private offline product, **not** an independent browser/security audit or permission to release. Existing release HOLD is unchanged.
 
+### Comparing two LOCAL HUMAN routing proposals in the browser
+
+The standalone Studio now includes a second, explicitly imported `peerFile` board selector. A second HUMAN reviewer may submit their local source-free routing draft **for the identical current numeric packet selection**; this does not prove real reviewer identity or cases. All pair fields, exact enum codes and 12 literal false flags are independently admitted before any peer difference appears. For every locally different anonymous ordinal, the operator sees original local action/state, peer-proposed action/state, and their current draft; **each** adoption requires its own explicit HUMAN confirmation. Changes are never automatically merged or sent.
+
+The `peerCsv` export contains only the numeric ordinal and these local action/state enum differences, no original client/evidence/target identity or dates. A change of file clears prior peer candidates. Switching the original numeric session clears the entire browser state (including peer), and failed peer admission leaves the current HUMAN draft untouched. Download the ordinary native v1 board after manually deciding which suggestions to retain; the unchanged original Studio still independently re-admits it.
+
+
 ## Use (offline Linux, stdlib Python)
 
 Open the original `remediation-portfolio/studio.html` in an offline browser. Import the original native anonymized counts-only exports, save the numeric private session, make HUMAN-only next-action choices and export the matching action board. Save **both** downloads inside one folder owned by the same local account, with mode 0700 for the parent and 0600 for both files.
