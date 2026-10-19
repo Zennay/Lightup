@@ -139,6 +139,30 @@ python3 remediation-human-handoff/compare_returns.py \
 
 The result is a fresh private 0700 folder with scriptless `index.html`, local ordinals and action/state differences in `changes.csv`, and counts-only `changes.json`, all 0600. The original parser independently validates each board and all local ordinals against the SAME current PRIVATE session; no locally changed action/state means HOLD rather than claiming positive progress. No original clients, sources, case IDs, case continuity, timestamps, verified fixes or consent are inferred. Multiple numeric ordinal appearances are **not** unique records.
 
+## One-command PRIVATE HUMAN workflow (complete atomic workroom)
+
+The existing individual CLI products are now **physically integrated**, without modifying any source-owner files, by [`workflow.py`](workflow.py): it performs one complete offline edit-to-return-to-handoff cycle using the strict original local source-free numeric session and the unchanged current local HUMAN board.
+
+```bash
+python3 remediation-human-handoff/workflow.py \
+  --session "$HOME/lightup-private-human/session.json" \
+  --board "$HOME/lightup-private-human/board.json" \
+  --changes "$HOME/lightup-private-human/change-worksheet/updates.json" \
+  --output-dir "$HOME/lightup-private-human/complete-workroom"
+
+# Optional least-disclosure action group:
+python3 remediation-human-handoff/workflow.py \
+  --session "$HOME/lightup-private-human/session.json" \
+  --board "$HOME/lightup-private-human/board.json" \
+  --changes "$HOME/lightup-private-human/change-worksheet/updates.json" \
+  --only request_original_human_review \
+  --output-dir "$HOME/lightup-private-human/limited-workroom"
+```
+
+The private `index.html` links to three independently source-bound modules, all inside the same *fresh, owner-only* 0700 directory: `return/` (native Studio-v1 `board.json` plus scriptless change brief), `handoff/` (HTML/CSV/TXT local HUMAN follow-up actions) and `difference/` (earlier/later local action/state difference desk). A separate `summary.json` documents source-free counts and all 12 literally false original authority flags. Output file modes are 0600; subfolders 0700. Each existing original local validation boundary remains intact and the new native board is re-admitted before any publication. Crucially, these subfolders are built inside one **unpublished private staging directory**; if any phase fails, the entire stage is discarded and the requested final folder never appears. Final publication uses the existing Linux exclusive no-replace rename.
+
+The human-written change worksheet must have at least one real local proposal change; a default no-op worksheet cannot produce a fictional progression. This is a portable operator workroom, not an actual client remediation pipeline, delivered correspondence or approval. A HUMAN must still manually restore the native JSON in the original offline Studio and separately consult authentic original evidence and current permissions.
+
 ## Hard boundaries
 
 - The existing owner-controlled `remediation-portfolio/action_board.py` is the **sole** import contract: original producer format, bounded/private no-follow file admission, duplicate-key rejection, **exact** numeric packet shape and ordinal matching, all literal false authority flags. A mismatching board or input rejects the whole operation before any final publication. We do not rewrite, fork or relax the original parser.
