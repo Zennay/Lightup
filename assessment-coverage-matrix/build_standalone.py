@@ -22,7 +22,7 @@ def _hash(text: str) -> str:
 def build() -> str:
     template = TEMPLATE.read_text(encoding="utf-8")
     css = STYLE.read_text(encoding="utf-8")
-    js = (ROOT / "human-board.js").read_text(encoding="utf-8") + "\n" + SCRIPT.read_text(encoding="utf-8")
+    js = ("\n".join((ROOT / name).read_text(encoding="utf-8")\n                    for name in ("private-plan-crypto.js", "human-board.js", "app.js")))
     for placeholder in ("<!--LIGHTUP_CSP-->", "<!--LIGHTUP_STYLE-->", "<!--LIGHTUP_SCRIPT-->"):
         if template.count(placeholder) != 1:
             raise ValueError(f"Expected exactly one {placeholder}")
