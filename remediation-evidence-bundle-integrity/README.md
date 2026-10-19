@@ -172,6 +172,19 @@ python3 remediation-evidence-bundle-integrity/revise.py \
 
 Every original input workroom source, local HUMAN journal, native task view, standalone cockpit, private edit plan and resulting source files must be consistent with unchanged native original parsers. Re-read immediately before exclusive atomic publication; if changed or incomplete the new destination is not published. Original source-owner files are never overwritten. Review stages remain HUMAN bookkeeping only, not verified remediation, source authenticity or approval. Use `handoff.py` separately to prepare ONLY the recipient's source-free standalone `cockpit/`.
 
+## Fast single-question PRIVATE HUMAN amendment
+
+For one source-owner question, use **`amend.py`** rather than manually editing a JSON batch plan. Select the existing slot and ordinal from `tasks.html`, choose an original HUMAN stage, and publish a completely **NEW** original workroom in one command:
+
+```sh
+python3 remediation-evidence-bundle-integrity/amend.py \
+  --workroom "$HOME/lightup-private/workroom-001" \
+  --slot 1 --ordinal 2 --stage needs_source_owner \
+  --output-dir "$HOME/lightup-private/workroom-002"
+```
+
+To add a new PRIVATE source-owner note, place plain UTF-8 note text inside a trusted existing 0600 owner-private file under a 0700 private folder and add `--note-file /ABSOLUTE/PRIVATE/note.txt`. **Never** put HUMAN notes in a shell argument; to clear one in the new version use `--clear-note`. `--stage` may be omitted if only the note changes. The native original source-bound HUMAN journal is admitted before and after the edit. A temporary fresh 0700/0600 plan is internally constructed, and the existing full `revise.py` workroom-publishing path is reused; temporary note/plan material is removed after publication or HOLD. Only original stage and HUMAN note are affected, never the evidence, permission or security decision. For bulk edits across questions, keep using the strict 64-action `revise.py` private plan.
+
 ## Scope and release
 
 No modifications to `src/`, original Evidence Artifact Ledger, Request Desk, native Apply, auth, scanner, scope, evidence files, CI or QA suites. Never feeds data to targets, issues grants, stages client action, changes HUMAN journals, concludes remediation or bypasses action-time revocation. As with the parent draft, **no main merge, production deploy or live use** until existing original exact-head hosted + permanently registered named VPS CI, original source-owner and independent security/privacy/browser/crypto reviews, #177/#182/#829, true independent revocable current client/operator consent and explicit HUMAN GO have all been satisfied. No new release gate is created by this utility.
