@@ -1,17 +1,25 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-qix2S5bwjGzODQdehoduVLte5BTyvqHNm1KIrJvkyXY='; style-src 'sha256-lR0KwGLG+r0ivdAqngp/skkenu1EpJWrp5F1ih1Q8qQ='; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-sZCOyHmeLxZK2tduOmdxMpWAhabQEsezF9UACSjlM84='; style-src 'sha256-lR0KwGLG+r0ivdAqngp/skkenu1EpJWrp5F1ih1Q8qQ='; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <title>LightUp — Private Evidence Handoff Inbox</title><style>:root{font-family:ui-sans-serif,system-ui,sans-serif;color-scheme:dark;color:#e3f7f4;background:#081923}*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 10% 0%,#21546a,transparent 44%),#081923}main{max-width:1150px;margin:auto;padding:42px 20px 70px}header{max-width:830px;padding-bottom:14px}.eyebrow{color:#73efd4;font-weight:900;font-size:.8rem;letter-spacing:.23em}h1{font-size:clamp(2.3rem,6vw,4.2rem);letter-spacing:-.065em;margin:12px 0 14px}h2{margin-top:0;font-size:1.4rem}p{line-height:1.6;color:#b3d0d7}.hold{display:inline-block;padding:10px 15px;color:#f0d490;border:1px solid #c4a354;border-radius:9px;font-size:.85rem}section{border:1px solid #355f6d;background:#132b36;padding:25px;border-radius:17px;margin:18px 0}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:15px}label{font-weight:700;font-size:.87rem;display:grid;gap:7px}input:not([type=checkbox]),select{font:inherit;color:#fff;background:#0b202b;border:1px solid #73919b;border-radius:9px;padding:10px;margin:8px 0 16px;width:100%}button{padding:12px 17px;margin:5px 7px 5px 0;border:0;border-radius:9px;background:#72efd1;color:#072328;font-weight:900;cursor:pointer}.secondary{background:#315664;color:#e5ffff}button:disabled{opacity:.38;cursor:not-allowed}button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #e8ca85;outline-offset:3px}.numbers{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:12px;margin:18px 0}.number{background:#0d212a;border:1px solid #356071;border-radius:11px;padding:16px}.number strong{display:block;font-size:1.8rem;color:#78f4d5}.number span{font-size:.81rem;color:#b5cbd4}.warn{border-left:4px solid #d9ae5a;color:#f1d8a6;background:#24343a;padding:11px 14px;font-size:.87rem}.tableWrap{overflow:auto;max-height:660px}table{width:100%;border-collapse:collapse;font-size:.85rem}td,th{border-bottom:1px solid #315865;text-align:left;vertical-align:top;padding:11px 9px;overflow-wrap:anywhere}th{position:sticky;top:0;background:#1b3946}small{display:block;color:#95bac4}#binding{overflow-wrap:anywhere}#notice[data-error=true]{color:#ffb4b4}footer{text-align:center;font-size:.83rem;color:#98b9c2;margin-top:35px}</style></head>
 <body><main><header><span class="eyebrow">LIGHTUP / EVIDENCE REMEDIATION</span><h1>Private Evidence Handoff Inbox</h1>
 <p>Bring original-source-bound local evidence and unverified human replies together for a human handoff. This page does not authenticate sources, grant access, contact systems or certify a fix.</p><strong class="hold">INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD</strong></header>
-<section><h2>1. Load two PRIVATE source-bound exports</h2><p>Use the Unified HUMAN Evidence Workspace v2 JSON from Evidence Artifact Ledger (#1642) and the PRIVATE Human Response Register backup v1/v2 from #1643. They must match on original source SHA-256 and declared client and engagement.</p>
+<section><h2>1. Load two PRIVATE source-bound exports</h2><p>Use the Unified HUMAN Evidence Workspace v2 JSON from Evidence Artifact Ledger (#1642) and the PRIVATE Human Response Register backup v1/v2 from #1643. They must match on original source SHA-256 and declared client and engagement. <b>Evidence-only mode</b> also works without any HUMAN request/reply register, provided the original evidence workspace has a complete native Casework or Evidence Review overlay. It never creates requests.</p>
 <div class="grid"><label>Evidence workspace JSON<input id="ledger" type="file" accept=".json,application/json"></label><label>Response register JSON<input id="register" type="file" accept=".json,application/json"></label></div>
-<button id="load">Inspect human handoff</button><button class="secondary" id="forget">Forget everything</button><p id="notice" role="status" aria-live="polite">No private files loaded. Both exports may contain sensitive human metadata.</p></section>
+<button id="load">Match evidence + HUMAN responses</button><button class="secondary" id="loadEvidenceOnly">Inspect evidence-only finding coverage</button><button class="secondary" id="forget">Forget everything</button><p id="notice" role="status" aria-live="polite">No private files loaded. Both exports may contain sensitive human metadata.</p></section>
 <section id="review" hidden><h2>2. Original-linked review and HUMAN follow-up</h2><p id="binding"></p><div id="numbers" class="numbers"></div>
 <div class="grid"><label>Search original ID, declared owner, or kind<input id="search" type="search" autocomplete="off"></label>
 <label>Human signal<select id="filter"><option value="all">All human requests</option><option value="unanswered">No reply received</option><option value="missing">No LOCAL file fingerprint</option><option value="changed">HUMAN reply needs changes</option><option value="sha">Linked LOCAL SHA not present</option><option value="late">Tentative HUMAN date passed</option></select></label></div>
 <p class="warn">A missing LOCAL file does not prove evidence is absent; a source digest or human response cannot establish identity, permission, an actual fix or retest verification.</p>
 <div class="tableWrap"><table><thead><tr><th><input id="selectVisible" type="checkbox" aria-label="Select all visible requests"></th><th>Original finding / request</th><th>Declared owner</th><th>Kind</th><th>Unverified reply</th><th>Local files</th><th>Human follow-up</th><th>PRIVATE request details</th></tr></thead><tbody id="rows"></tbody></table></div><p id="selection"></p></section>
-<section id="out" hidden><h2>3. Explicit human handoffs</h2><p>PRIVATE export includes selected original request IDs, local fingerprint labels, human replies and notes. Counts-only CSV never includes original identifiers, source/client hashes, owner aliases, notes, filenames, dates or file SHA values.</p>
+<section id="findingDesk" hidden><h2>3. Complete ORIGINAL finding coverage · HUMAN only</h2>
+<p>When the original unified workspace contains a complete Casework or Evidence Review overlay, <b>all original finding IDs</b> can be viewed here, including findings with no human evidence request. This board does not have the independently authenticated five-column source; severity, exploitability and verified remediation are NOT inferred.</p>
+<div id="findingStats" class="numbers"></div>
+<div class="grid"><label>Find original finding, declared owner or HUMAN blocker<input id="findingSearch" type="search" autocomplete="off"></label>
+<label>Human coverage signal<select id="findingFilter"><option value="all">All original source-bound findings</option><option value="no_request">No original HUMAN request</option><option value="missing_local">No LOCAL file fingerprint</option><option value="no_owner">No declared Casework owner</option><option value="blocked">Casework HUMAN blocked</option><option value="waiting">Original HUMAN reply pending</option><option value="review">Evidence Review follow-up needed</option><option value="overdue">Tentative Casework date passed</option><option value="conflict">Human status disagreement</option></select></label></div>
+<div class="tableWrap"><table><thead><tr><th><input id="selectFindingsVisible" type="checkbox" aria-label="Select all visible original findings"></th><th>ORIGINAL finding ID</th><th>HUMAN Casework / owner</th><th>HUMAN Evidence Review</th><th>Local fingerprint labels</th><th>Human requests / replies</th><th>Follow-up prompts</th><th>PRIVATE source notes</th></tr></thead><tbody id="findingRows"></tbody></table></div>
+<p id="findingSelection"></p><div class="actions"><button id="selectRequestsForFindings" class="secondary">Select existing HUMAN requests for chosen findings</button><button id="exportFindingPrivate">PRIVATE selected-finding action JSON</button><button id="exportFindingCounts" class="secondary">Counts-only finding coverage CSV</button></div>
+<p class="warn">The board creates NO new original owner requests. For a finding without an original request, open the original Evidence Artifact Ledger to create one. Selecting existing requests never sends anything or authorizes a retest.</p></section>
+<section id="out" hidden><h2>4. Explicit human handoffs</h2><p>PRIVATE export includes selected original request IDs, local fingerprint labels, human replies and notes. Counts-only CSV never includes original identifiers, source/client hashes, owner aliases, notes, filenames, dates or file SHA values.</p>
 <button id="downloadPrivate">PRIVATE selected-human review JSON</button><div class="grid"><label>Recipient-specific PRIVATE handoff (declared HUMAN owner)<select id="ownerRecipient"><option value="">Choose one original owner alias</option></select></label><div><button class="secondary" id="downloadOwner">PRIVATE one-owner selected handoff</button></div></div><button class="secondary" id="downloadAgenda">PRIVATE human follow-up text</button><button class="secondary" id="downloadAggregate">Anonymous counts CSV</button>
 <p class="warn">Verify recipient, transport, actual separately authenticated client/operator consent and revocation independently. Do not upload PRIVATE files to public issues or treat this page as HUMAN GO, authorized scope or remediation approval.</p></section>
 <footer>Browser-only. No network, server, browser persistence, scanner, model calls, source mutation or production activation. All existing review and release gates remain required.</footer></main><script>/* LightUp PRIVATE Human Evidence Handoff Inbox. No network or authorizing behavior. */
@@ -26,7 +34,7 @@ const OWNER_ROW=["request_id","finding_id","request_kind","instructions","due_da
 const ATT=["finding_id","file_name","byte_length","sha256","mime","added_utc","human_reviewer","human_stage","human_note"];
 const KINDS=["missing_evidence","patch_change","deployment_record","rollback_plan","retest_request","followup_question","other"];
 const MAX=8*1024*1024,MAX_ROWS=800;
-let current=null,version=0,selected=new Set();
+let current=null,version=0,selected=new Set(),selectedFindings=new Set();
 function fail(s){throw Error("HOLD: "+s);}
 const plain=x=>x&&Object.getPrototypeOf(x)===Object.prototype;
 const exact=(x,fields)=>plain(x)&&Object.keys(x).length===fields.length&&Object.keys(x).every(k=>fields.includes(k));
@@ -69,6 +77,7 @@ function admitLedger(x){
    if(!Array.isArray(x[kind])||x[kind].length!==x.source_count)fail("incomplete native "+kind);
    const ids=x[kind].map(r=>{if(!plain(r))fail("invalid native human record");return value(r.finding_id,160,"native finding ID",true);});
    distinct(ids,"native finding identity");
+   for(const item of x[kind])inspectNativeRow(kind,item);
    const other=kind==="evidence_review"?x.casework:x.evidence_review;
    if(Array.isArray(other)&&other.length===ids.length){const otherIds=new Set(other.map(r=>r.finding_id));if(ids.some(id=>!otherIds.has(id)))fail("Casework and Evidence Review original finding identities differ");}
   }
@@ -81,7 +90,7 @@ function admitLedger(x){
   value(a.finding_id,160,"attachment finding",true);
   if(nativeIds&&!nativeIds.has(a.finding_id))fail("local fingerprint references a finding absent from complete original HUMAN overlays");
   value(a.file_name,240,"file name",true);
-  if(/[\/\\]/.test(a.file_name))fail("path-bearing file name");
+  if(/[\/\\\u0000-\u001f]/.test(a.file_name))fail("path-bearing or control-containing local file name");
   value(a.mime,160,"file MIME");value(a.added_utc,70,"file time");
   value(a.human_reviewer,120,"human reviewer");value(a.human_stage,70,"human file stage");value(a.human_note,1200,"human file note");
   fp.push(a.finding_id+"|"+a.sha256);
@@ -171,6 +180,72 @@ function admitRegister(x,l){
  }
  return {originals,answers,reviews,feedback};
 }
+
+const CASE_FIELDS=["finding_id","owner","status","due_date","next_action","verification_plan","blocker","note","updated_utc"];
+const EVIDENCE_FIELDS=["finding_id","stage","reference","reviewer","next_step","evidence"];
+const EVIDENCE_REFERENCE_FIELDS=["change_reference","deployment_reference","rollback_reference","retest_request_reference","review_question"];
+const CASE_STAGES=["unassigned","planned","in_progress","blocked","ready_for_retest","deferred","completed"];
+const EVIDENCE_STAGES=["missing","submitted","needs_changes","ready_for_authorized_retest"];
+function humanDate(v,label){
+ if(v===null||v==="")return;
+ if(typeof v!=="string"||!/^\d{4}-\d\d-\d\d$/.test(v)||!Number.isFinite(Date.parse(v+"T00:00:00Z"))||
+ new Date(v+"T00:00:00Z").toISOString().slice(0,10)!==v)fail("invalid tentative HUMAN "+label);
+}
+function inspectNativeRow(kind,row){
+ if(kind==="casework"){
+  if(!exact(row,CASE_FIELDS)||!CASE_STAGES.includes(row.status))fail("invalid original human Casework record");
+  value(row.finding_id,160,"original finding ID",true);
+  for(const [field,max] of [["owner",120],["next_action",1800],["verification_plan",1600],["blocker",1200],["note",1600]])value(row[field],max,"Casework "+field);
+  humanDate(row.due_date,"Casework due date");
+  if(row.updated_utc!==null)value(row.updated_utc,64,"Casework timestamp",true);
+ }else{
+  if(!exact(row,EVIDENCE_FIELDS)||!EVIDENCE_STAGES.includes(row.stage)||!exact(row.evidence,EVIDENCE_REFERENCE_FIELDS))fail("invalid original human Evidence Review record");
+  value(row.finding_id,160,"original finding ID",true);
+  for(const [field,max] of [["reference",240],["reviewer",120],["next_step",500]])value(row[field],max,"Evidence Review "+field);
+  for(const field of EVIDENCE_REFERENCE_FIELDS)value(row.evidence[field],field==="review_question"?700:240,"Evidence Review "+field);
+ }
+}
+function buildFindingRows(source,requests){
+ const original=source.casework||source.evidence_review;
+ if(!original)return [];
+ const caseById=new Map((source.casework||[]).map(r=>[r.finding_id,r]));
+ const evidenceById=new Map((source.evidence_review||[]).map(r=>[r.finding_id,r]));
+ const filesById=new Map(),requestsById=new Map();
+ for(const f of source.attachments){const a=filesById.get(f.finding_id)||[];a.push(f);filesById.set(f.finding_id,a);}
+ for(const r of requests){const a=requestsById.get(r.finding)||[];a.push(r);requestsById.set(r.finding,a);}
+ const today=new Date().toISOString().slice(0,10);
+ return original.map(item=>{
+  const id=item.finding_id,casework=caseById.get(id)||null,evidence=evidenceById.get(id)||null,
+   files=filesById.get(id)||[],related=requestsById.get(id)||[],signals=[];
+  if(!files.length)signals.push("No LOCAL fingerprint");
+  if(!related.length)signals.push("No original HUMAN request created");
+  if(related.some(r=>!r.answer&&!r.ledgerOnly))signals.push("HUMAN reply awaited");
+  if(related.some(r=>r.ledgerOnly))signals.push("Ledger HUMAN request not imported into original response register");
+  if(related.some(r=>r.ledgerOnly&&["submitted_unverified","needs_changes"].includes(r.ledgerStatus)))
+   signals.push("Unverified ledger HUMAN reply is not independently reconciled");
+  if(casework&&!casework.owner)signals.push("No declared Casework owner");
+  if(casework?.status==="blocked")signals.push("Casework HUMAN blocker");
+  if(casework?.due_date&&casework.due_date<today)signals.push("Tentative Casework date passed");
+  if(evidence&&["missing","needs_changes"].includes(evidence.stage))signals.push("Evidence Review HUMAN follow-up");
+  if(casework?.status==="completed"&&evidence?.stage==="missing")
+   signals.push("HUMAN status disagreement: locally completed vs evidence missing");
+  return {id,casework,evidence,files,requests:related,signals};
+ });
+}
+
+function sourceFindingRequests(source,registerRows){
+ const matched=new Set(registerRows.map(r=>r.id));
+ const pending=source.human_requests.filter(r=>!matched.has(r.request_id)).map(r=>({
+  id:r.request_id,finding:r.finding_id,owner:r.assignee,kind:r.request_kind,ledgerOnly:true,
+  instructions:r.instructions,due:r.due_date,answer:null,ledgerStatus:r.human_stage,signals:[]
+ }));
+ return [...registerRows,...pending];
+}
+function evidenceOnly(l){
+ const source=admitLedger(l),findingRows=buildFindingRows(source,sourceFindingRequests(source,[]));
+ if(!findingRows.length)fail("a complete native Casework or Evidence Review overlay is required to display all original finding IDs; export one from the original Evidence Artifact Ledger");
+ return {source,rows:[],findingRows,mode:"ledger_only",version:++version};
+}
 function combine(l,r){
  const source=admitLedger(l),data=admitRegister(r,source),attached=new Map();
  for(const a of source.attachments){if(!attached.has(a.finding_id))attached.set(a.finding_id,[]);attached.get(a.finding_id).push(a);}
@@ -189,7 +264,7 @@ function combine(l,r){
   if(feedback)signals.push("Separate UNVERIFIED HUMAN follow-up exists");
   rows.push({id,finding:x.o.finding_id,kind:x.o.request_kind,owner:x.p.recipient_alias,instructions:x.o.instructions,due:x.o.due_date,answer,feedback,notes,local,signals});
  }
- return {source,rows,version:++version};
+ return {source,rows,findingRows:buildFindingRows(source,sourceFindingRequests(source,rows)),mode:"paired",version:++version};
 }
 const cell=(tag,content)=>{const e=document.createElement(tag);e.textContent=String(content);return e;};
 const info=(s,error=false)=>{$("notice").textContent=s;$("notice").dataset.error=error?"true":"false";};
@@ -207,7 +282,8 @@ function filtered(){
 function summary(number,label){const e=cell("div","");e.className="number";e.append(cell("strong",number),cell("span",label));return e;}
 function draw(){
  if(!current)return;
- $("review").hidden=false;$("out").hidden=false;
+ $("review").hidden=current.mode==="ledger_only";$("out").hidden=current.mode==="ledger_only";
+ if(current.mode==="ledger_only"){drawFindingBoard();return;}
  const r=current.rows;
  $("binding").textContent="DECLARED original SHA: "+current.source.source_sha256+" · client: "+current.source.client_reference+" · engagement: "+current.source.engagement_reference+" · "+current.source.source_count+" original findings reported. Not authenticated.";
  $("numbers").replaceChildren(summary(r.length,"Matched HUMAN requests"),
@@ -244,7 +320,125 @@ function draw(){
  picker.value=owners.includes(prior)?prior:"";
  $("downloadOwner").disabled=!r.some(x=>x.owner===picker.value&&selected.has(x.id));
  $("downloadPrivate").disabled=!selected.size;$("downloadAgenda").disabled=!selected.size;
+ drawFindingBoard();
 }
+
+function visibleFindingRows(){
+ const q=$("findingSearch").value.trim().toLowerCase(),mode=$("findingFilter").value;
+ return (current?.findingRows||[]).filter(r=>{
+  if(q&&![r.id,r.casework?.owner||"",r.casework?.blocker||"",r.evidence?.next_step||""].join(" ").toLowerCase().includes(q))return false;
+  if(mode==="no_request"&&r.requests.length)return false;
+  if(mode==="missing_local"&&r.files.length)return false;
+  if(mode==="no_owner"&&(!r.casework||r.casework.owner))return false;
+  if(mode==="blocked"&&r.casework?.status!=="blocked")return false;
+  if(mode==="waiting"&&!r.requests.some(x=>!x.answer))return false;
+  if(mode==="review"&&(!r.evidence||!["missing","needs_changes"].includes(r.evidence.stage)))return false;
+  if(mode==="overdue"&&!r.signals.includes("Tentative Casework date passed"))return false;
+  if(mode==="conflict"&&!r.signals.some(x=>x.startsWith("HUMAN status disagreement")))return false;
+  return true;
+ });
+}
+function detailsBlock(title,items){
+ const e=document.createElement("details");e.append(cell("summary",title));
+ for(const [label,body] of items){const p=document.createElement("p");p.append(cell("strong",label+": "),cell("span",body||"Not declared"));e.append(p);}
+ return e;
+}
+function drawFindingBoard(){
+ const data=current?.findingRows||[],available=!!data.length;
+ $("findingDesk").hidden=!available;
+ if(!available)return;
+ const stats=$("findingStats");
+ stats.replaceChildren(summary(data.length,"Original source-bound HUMAN finding IDs"),
+  summary(data.filter(x=>!x.requests.length).length,"No original HUMAN request"),
+  summary(data.filter(x=>!x.files.length).length,"No LOCAL fingerprint"),
+  summary(data.filter(x=>x.casework?.status==="blocked").length,"Casework HUMAN blocked"),
+  summary(data.filter(x=>x.requests.some(r=>!r.answer)).length,"Awaiting HUMAN reply"));
+ const body=$("findingRows"),visible=visibleFindingRows();body.replaceChildren();
+ for(const row of visible){
+  const tr=document.createElement("tr"),td=document.createElement("td"),check=document.createElement("input");
+  check.type="checkbox";check.checked=selectedFindings.has(row.id);
+  check.setAttribute("aria-label","Select ORIGINAL finding "+row.id);
+  check.addEventListener("change",()=>{check.checked?selectedFindings.add(row.id):selectedFindings.delete(row.id);drawFindingBoard();});
+  td.append(check);tr.append(td);
+  tr.append(cell("td",row.id));
+  tr.append(cell("td",row.casework?row.casework.status+" · "+(row.casework.owner||"no declared owner"):"No native Casework overlay"));
+  tr.append(cell("td",row.evidence?row.evidence.stage+" · "+(row.evidence.reviewer||"no HUMAN reviewer"):"No native Evidence Review overlay"));
+  tr.append(cell("td",row.files.length+" LOCAL labels"));
+  tr.append(cell("td",row.requests.length+" requests · "+row.requests.filter(r=>r.answer).length+" received UNVERIFIED replies"));
+  tr.append(cell("td",row.signals.join(" · ")||"No local HUMAN signal"));
+  const cellDetails=document.createElement("td");
+  if(row.casework)cellDetails.append(detailsBlock("PRIVATE Casework HUMAN notes",[
+   ["Owner",row.casework.owner],["HUMAN status",row.casework.status],["Tentative date",row.casework.due_date],
+   ["Blocker",row.casework.blocker],["Next human action",row.casework.next_action],
+   ["Human verification PLAN",row.casework.verification_plan],["Human note",row.casework.note]
+  ]));
+  if(row.evidence)cellDetails.append(detailsBlock("PRIVATE Evidence Review HUMAN notes",[
+   ["HUMAN evidence stage",row.evidence.stage],["Human reviewer",row.evidence.reviewer],
+   ["Human next step",row.evidence.next_step],["Reference",row.evidence.reference],
+   ["Change reference",row.evidence.evidence.change_reference],
+   ["Deployment reference",row.evidence.evidence.deployment_reference],
+   ["Rollback reference",row.evidence.evidence.rollback_reference],
+   ["HUMAN retest REQUEST reference",row.evidence.evidence.retest_request_reference],
+   ["Human review question",row.evidence.evidence.review_question]
+  ]));
+  tr.append(cellDetails);body.append(tr);
+ }
+ $("selectFindingsVisible").checked=!!visible.length&&visible.every(x=>selectedFindings.has(x.id));
+ $("selectFindingsVisible").indeterminate=visible.some(x=>selectedFindings.has(x.id))&&!$("selectFindingsVisible").checked;
+ $("findingSelection").textContent=visible.length+" original findings shown · "+selectedFindings.size+" selected for PRIVATE human action.";
+ for(const id of ["selectRequestsForFindings","exportFindingPrivate"])$(id).disabled=!selectedFindings.size;
+ $("selectRequestsForFindings").disabled=current.mode==="ledger_only"||!selectedFindings.size;
+ $("exportFindingCounts").disabled=!data.length;
+}
+function chosenFindingRows(){
+ if(!current||!selectedFindings.size)fail("select original finding IDs first");
+ const arr=current.findingRows.filter(x=>selectedFindings.has(x.id));
+ if(arr.length!==selectedFindings.size)fail("original finding selection stale");
+ return arr;
+}
+function chooseOriginalRequestsForFindings(){
+ const findingRows=chosenFindingRows(),ids=new Set(findingRows.map(f=>f.id));
+ const requests=current.rows.filter(r=>ids.has(r.finding));
+ if(!requests.length){info(current.mode==="ledger_only"?"No original Response Register is loaded; use paired mode to select existing source-authored requests for human handoff. The evidence-only board never creates original requests.":"These original findings have no original HUMAN requests. Create any new request inside the separate source-owning Evidence Artifact Ledger; nothing was fabricated.");return;}
+ if(!confirm("Select "+requests.length+" EXISTING original HUMAN requests across "+findingRows.length+" selected original findings? This selects only; no messages or actions are sent."))return;
+ for(const r of requests)selected.add(r.id);
+ draw();info(requests.length+" pre-existing original HUMAN requests selected in the request board. No new request or authorization issued.");
+}
+function exportOriginalFindingPrivate(){
+ const entries=chosenFindingRows();
+ if(!confirm("Download PRIVATE human Casework/Evidence Review notes, original finding IDs and LOCAL fingerprints for "+entries.length+" selected original findings? The source, recipient and consent remain UNVERIFIED."))return;
+ const source=current.source;
+ const packet={kind:"lightup.private_original_finding_human_action_desk",schema_version:1,
+ disposition:"UNVERIFIED_HUMAN_COORDINATION_ONLY",source_contract:CONTRACT,
+ source_sha256:source.source_sha256,client_reference:source.client_reference,
+ engagement_reference:source.engagement_reference,...Object.fromEntries(FLAGS.map(k=>[k,false])),
+ original_finding_count_reported:source.source_count,
+ findings:entries.map(r=>({original_finding_id:r.id,
+ original_casework_human_only:r.casework,
+ original_evidence_review_human_only:r.evidence,
+ local_file_labels_only:r.files.map(f=>({file_name:f.file_name,sha256:f.sha256,byte_length:f.byte_length,human_stage:f.human_stage,human_reviewer:f.human_reviewer,human_note:f.human_note})),
+ original_human_request_ids:r.requests.map(q=>q.id),
+ received_unverified_human_reply_count:r.requests.filter(q=>q.answer).length,
+ human_followup_signals:r.signals})),
+ warning:"PRIVATE source-declared human follow-up only. Finding visibility and local labels never establish complete external evidence, authorization, retest result or remediation."};
+ download("LightUp-PRIVATE-original-finding-action-board.json",JSON.stringify(packet,null,2)+"\n","application/json");
+ info("PRIVATE source-bound selected-finding HUMAN action board exported. No original source records changed.");
+}
+function exportOriginalFindingCounts(){
+ if(!current?.findingRows.length)fail("no full original HUMAN overlay available");
+ if(!confirm("Export counts-only HUMAN finding coverage without original IDs, source SHA, owners, individual notes, filenames, or client metadata? Small-cohort aggregates can still be sensitive."))return;
+ const buckets=new Map();
+ for(const f of current.findingRows){
+  const key=JSON.stringify([f.casework?.status||"no_casework",f.evidence?.stage||"no_evidence_review",
+   f.files.length?"some_local_labels":"no_local_label",f.requests.length?"some_human_requests":"no_human_request"]);
+  buckets.set(key,(buckets.get(key)||0)+1);
+ }
+ const rows=[["human_casework_stage","human_evidence_review_stage","local_fingerprint_label","human_request_presence","count"]];
+ for(const [key,value] of [...buckets].sort((a,b)=>a[0].localeCompare(b[0])))rows.push([...JSON.parse(key),value]);
+ download("LightUp-anonymous-original-finding-HUMAN-coverage.csv",rows.map(r=>r.map(csvCell).join(",")).join("\r\n")+"\r\n","text/csv;charset=utf-8");
+ info("Anonymous aggregate original-finding HUMAN coverage exported. These are local labels only.");
+}
+
 function download(name,content,type){
  const blob=new Blob([content],{type}),url=URL.createObjectURL(blob),a=document.createElement("a");
  a.href=url;a.download=name;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
@@ -320,20 +514,34 @@ $("load").addEventListener("click",async()=>{
  const rev=++version,ledgerInput=$("ledger").files[0],registerInput=$("register").files[0];info("Reading both PRIVATE snapshots locally…");
  try{const [l,r]=await Promise.all([openFile("ledger"),openFile("register")]);
   if(version!==rev||$("ledger").files[0]!==ledgerInput||$("register").files[0]!==registerInput)fail("workspace or selected original files changed during load");
-  const next=combine(l,r);current=next;selected.clear();$("search").value="";$("filter").value="all";draw();
+  const next=combine(l,r);current=next;selected.clear();selectedFindings.clear();$("search").value="";$("filter").value="all";draw();
   info("Matched and admitted original HUMAN requests and replies within the same DECLARED source. This does not authenticate source, author or permission.");
  }catch(e){info(e.message||String(e),true);}
 });
-$("forget").addEventListener("click",()=>{current=null;version++;selected.clear();
- for(const id of ["ledger","register","search"])$(id).value="";$("filter").value="all";
- $("rows").replaceChildren();$("review").hidden=true;$("out").hidden=true;
+$("loadEvidenceOnly").addEventListener("click",async()=>{
+ const rev=++version,ledgerInput=$("ledger").files[0];
+ info("Reading original PRIVATE evidence workspace for HUMAN-only coverage…");
+ try{
+  const l=await openFile("ledger");
+  if(version!==rev||$("ledger").files[0]!==ledgerInput)fail("original PRIVATE evidence input changed during reading");
+  const next=evidenceOnly(l);current=next;selected.clear();selectedFindings.clear();
+  $("search").value="";$("filter").value="all";$("findingSearch").value="";$("findingFilter").value="all";draw();
+  info("Original-source-declared HUMAN finding coverage opened WITHOUT a response register. No original request created, consent verified or target contacted.");
+ }catch(e){info(e.message||String(e),true);}
+});
+$("forget").addEventListener("click",()=>{current=null;version++;selected.clear();selectedFindings.clear();
+ for(const id of ["ledger","register","search","findingSearch"])$(id).value="";$("filter").value="all";$("findingFilter").value="all";
+ $("rows").replaceChildren();$("findingRows").replaceChildren();$("review").hidden=true;$("findingDesk").hidden=true;$("out").hidden=true;
  info("PRIVATE working state and file-picker references cleared from this page. Previously downloaded files must be secured or deleted separately.");});
 for(const id of ["ledger","register"])$(id).addEventListener("change",()=>{
- current=null;version++;selected.clear();$("rows").replaceChildren();$("review").hidden=true;$("out").hidden=true;
+ current=null;version++;selected.clear();selectedFindings.clear();$("rows").replaceChildren();$("findingRows").replaceChildren();$("review").hidden=true;$("findingDesk").hidden=true;$("out").hidden=true;
  info("PRIVATE source file selection changed: old human review and export controls cleared. Inspect both selected sources again.");
 });
 $("ownerRecipient").addEventListener("change",draw);
 $("search").addEventListener("input",draw);$("filter").addEventListener("change",draw);
+$("findingSearch").addEventListener("input",drawFindingBoard);$("findingFilter").addEventListener("change",drawFindingBoard);
+$("selectFindingsVisible").addEventListener("change",e=>{for(const f of visibleFindingRows())e.target.checked?selectedFindings.add(f.id):selectedFindings.delete(f.id);drawFindingBoard();});
+for(const [id,handler] of [["selectRequestsForFindings",chooseOriginalRequestsForFindings],["exportFindingPrivate",exportOriginalFindingPrivate],["exportFindingCounts",exportOriginalFindingCounts]])$(id).addEventListener("click",()=>{try{handler();}catch(e){info(e.message||String(e),true);}});
 $("selectVisible").addEventListener("change",e=>{for(const x of filtered())e.target.checked?selected.add(x.id):selected.delete(x.id);draw();});
 for(const [id,handler] of [["downloadPrivate",privateExport],["downloadOwner",oneOwnerExport],["downloadAggregate",aggregateExport],["downloadAgenda",agendaExport]]){
  $(id).addEventListener("click",()=>{try{handler();}catch(e){info(e.message||String(e),true);}});
