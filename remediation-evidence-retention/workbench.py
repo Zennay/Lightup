@@ -9,7 +9,6 @@ Original Source/HUMAN Apply, actual legal-hold release and file deletion absent.
 from __future__ import annotations
 
 import argparse
-from dataclasses import replace
 from datetime import date, datetime, timezone
 from pathlib import Path
 from types import SimpleNamespace
@@ -31,6 +30,7 @@ MENU = (
     ("5", "Preview/stage due questions into ORIGINAL HUMAN Request Desk"),
     ("6", "Publish encrypted HUMAN retention revision history"),
     ("7", "Inspect/publish later original HUMAN Request Desk continuity"),
+    ("8", "Switch to an existing PRIVATE encrypted retention plan"),
     ("0", "Exit — no material changed"),
 )
 MAX_INPUT_PATH = 1024
@@ -130,6 +130,11 @@ def _desk(args, vault):
 
 
 def _due_requests(args, vault):
+    if getattr(args, "_staged_due_this_session", False):
+        print("HUMAN HOLD: A new original-native encrypted due draft has already been "
+              "staged this session. Import and independently review the previous "
+              "draft in the original HUMAN app before preparing another.")
+        return
     if args.plan is None:
         raise ValueError("Stage or select an existing private review plan first.")
     action = input("PREVIEW only [Enter], or explicitly type STAGE to prepare new "
@@ -142,6 +147,27 @@ def _due_requests(args, vault):
     # Original collaborator reauthenticates and validates full current source,
     # local actual bytes and encrypted HUMAN data at the action boundary.
     followup.operate(clone, vault)
+    if action:
+        args._staged_due_this_session = True
+
+
+def _switch(args, vault):
+    path = _private_existing_path("Select existing encrypted HUMAN retention plan", ".ltv")
+    current = args.plan
+    # A selected plan is not admitted just because its name or bytes exist.
+    # Authenticate original again and check the actual original source + all
+    # extracted material fingerprints against this candidate plan.
+    clone = SimpleNamespace(**vars(args), plan=path)
+    _, packet, indexed, _ = original.current_human(
+        clone, vault, keep_passphrase_fingerprint=True)
+    items, _ = retention._load_current_plan(clone, vault, packet, indexed)
+    if not items:
+        raise ValueError("Empty original-source-bound HUMAN retention plan.")
+    args.plan = path
+    args._staged_due_this_session = False
+    print("Selected distinct encrypted PRIVATE HUMAN plan with original current"
+          " source and actual evidence bytes confirmed.")
+    print("Current indexed HUMAN review entries:", len(items))
 
 
 def _history(args, vault):
@@ -212,7 +238,7 @@ def main(argv: list[str] | None = None) -> int:
         choices = {
             "1": _inspect, "2": _stage_first, "3": _renew,
             "4": _desk, "5": _due_requests, "6": _history,
-            "7": _request_reconciliation,
+            "7": _request_reconciliation, "8": _switch,
         }
         while True:
             print("\n" + " | ".join(num + ": " + label for num,label in MENU))
