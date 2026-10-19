@@ -229,22 +229,38 @@ def human_brief(summary: dict) -> bytes:
     return "\n".join(lines).encode("ascii")
 
 
-def build(session_file: Path, destination: Path) -> dict:
+def build(session_file: Path, destination: Path, board_file: Path | None = None) -> dict:
     require(destination.is_absolute())
     portfolio.private_dir(destination.parent)
     require(not destination.exists() and not destination.is_symlink())
     sources, previous = read_session(session_file)
     result = output_summary(sources, previous)
+    # Optional exact numeric-session bound HUMAN-only routing, validated
+    # before creating any new output. Never imbue session or board with grant.
+    routing = None
+    if board_file is not None:
+        import action_board
+        routing = action_board.summary(
+            action_board.board_import(board_file, session_file))
     stage = Path(tempfile.mkdtemp(dir=destination.parent,
                                   prefix=".lightup-private-session-"))
     os.chmod(stage, 0o700)
     try:
-        for name, raw in (
+        outputs = [
             ("index.html", html_report(result)),
             ("summary.json", portfolio.serialize(result)),
             ("continuity.csv", delta_csv(result)),
             ("human-followup.txt", human_brief(result)),
-        ):
+        ]
+        if routing is not None:
+            import action_board
+            outputs.extend([
+                ("human-actions.html", action_board.html_report(routing)),
+                ("human-actions.json", portfolio.serialize(routing)),
+                ("human-actions.csv", action_board.export_csv(routing)),
+                ("human-actions-followup.txt", action_board.human_brief(routing)),
+            ])
+        for name, raw in outputs:
             portfolio.exclusive_write(stage / name, raw)
         fd = os.open(stage, os.O_RDONLY | os.O_DIRECTORY)
         try:
@@ -271,9 +287,12 @@ def main() -> int:
                         help="Absolute 0600 self-declared source-free browser session JSON")
     parser.add_argument("--output-dir", required=True, type=Path,
                         help="Fresh absolute 0700 private output directory")
+    parser.add_argument("--board", type=Path,
+                        help="Optional 0600 exact-numeric-match HUMAN routing JSON; "
+                             "adds four private HUMAN-only action files")
     args = parser.parse_args()
     try:
-        result = build(args.session, args.output_dir)
+        result = build(args.session, args.output_dir, args.board)
     except (ValueError, OSError, RecursionError):
         print("HOLD: no complete PRIVATE HUMAN numeric session report published.",
               file=sys.stderr)
