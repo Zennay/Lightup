@@ -19,6 +19,7 @@ OPTIONS = (
     ("7", "Rotate encrypted HUMAN history passphrase", "rotate"),
     ("8", "ID-free proposed HUMAN follow-up calendar (.ics)", "calendar"),
     ("9", "Explicit PRIVATE original finding/owner calendar (.ics)", "private-calendar"),
+    ("10", "Rebuild encrypted HUMAN timeline from exact original source+plans", "verify"),
     ("0", "Exit foreground local menu", "exit"),
 )
 WARNING = (
@@ -79,6 +80,21 @@ def _source_plans() -> tuple[str, list[str], str | None]:
 
 
 def _perform(option: str) -> int:
+    if option == "verify":
+        vault = _ask("Encrypted private HUMAN timeline .luh")
+        if not vault.endswith(".luh"):
+            raise ValueError("encrypted history .luh required")
+        source, plans, _unused_asof = _source_plans()
+        _agree(
+            "This action decrypts the original PRIVATE finding source and every "
+            "HUMAN snapshot to independently reconstruct the local report. "
+            "Exact SHA/labels and identical HTML bytes are NOT real-world "
+            "client/owner authenticity, consent, remediated findings or fixes."
+        )
+        return private_export_history_vault.main(
+            ["verify", vault, source] + plans + ["--ack-private-handling"]
+        )
+
     if option in ("calendar", "private-calendar"):
         source = _ask("Original encrypted finding source .lue")
         plan = _ask("Latest exact-original-source encrypted HUMAN plan .lun")
