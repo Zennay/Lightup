@@ -11,7 +11,7 @@ USAGE = """LightUp PRIVATE Evidence Relationship Desk · HUMAN ONLY · DRAFT/HOL
 
 Choose one offline operator workflow:
 
-    python3 remediation-evidence-reuse/desk.py review --help
+    python3 remediation-evidence-reuse/desk.py workspace --help\n        Publish a complete private offline browser desk directory in one\n        operation, with original-source binding and output checksums.\n\n    python3 remediation-evidence-reuse/desk.py review --help
         Original v1/unified v2 local-fingerprint reuse, two-snapshot drift,
         privacy-minimal count export, PRIVATE HTML or advisory action packet.
 
@@ -39,10 +39,12 @@ def main() -> int:
         print(USAGE)
         return 0  # CLI usage only: no import, operation or security verdict.
     kind = sys.argv[1]
-    if kind not in ("review", "inbox", "timeline", "bulk", "carry", "history", "history-timeline", "focus"):
+    if kind not in ("review", "inbox", "timeline", "bulk", "carry", "history", "history-timeline", "focus", "workspace"):
         print("HOLD: Unknown PRIVATE workflow. Use --help.", file=sys.stderr)
         return 3
-    if kind == "review":
+    if kind == "workspace":
+        import workspace as implementation
+    elif kind == "review":
         import review as implementation
     elif kind == "bulk":
         import bulk as implementation
