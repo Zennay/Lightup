@@ -8,9 +8,9 @@
 <p class="warning"><strong>REVIEW ONLY · DRAFT/HOLD</strong> — No network, scanner, source verification, authorization, customer consent, independent reviewer authentication or verified security findings. Hashes alone are not evidence or signatures.</p></header>
 <section class="panel" aria-labelledby="loadHeading">
 <h2 id="loadHeading">1 · Open existing PRIVATE reviewer plans</h2>
-<label for="files">Select 2–8 original plaintext HUMAN matrix JSON files (maximum 3 MiB each)</label>
+<label for="files">Select 2–8 original plaintext (≤3 MiB) or encrypted (≤5 MiB) HUMAN matrix JSON plans</label>
 <input id="files" type="file" multiple accept=".json,application/json">
-<p class="muted">Each plan must correspond to exactly the same original selected lab source file bytes, in the same order. The original sources themselves are not loaded, needed or modified here. Encrypted plans must first be opened in their original workroom.</p>
+<p class="muted">Each plan must correspond to exactly the same original selected lab source file bytes, in the same order. The original sources themselves are not loaded, needed or modified here. The original #1667 PRIVATE HUMAN AES-GCM envelope is decrypted locally after prompting individually for each encrypted file. Passwords are not exported or stored by this page.</p>
 <p id="status" role="status" aria-live="polite">No PRIVATE plans loaded.</p>
 <div class="actions"><button type="button" id="forget">Clear all local in-memory choices</button></div></section>
 <section class="panel" aria-labelledby="resolveHeading"><h2 id="resolveHeading">2 · Human review and resolution</h2>
