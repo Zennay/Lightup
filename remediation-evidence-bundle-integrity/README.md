@@ -59,6 +59,19 @@ Instead of `--html`, choose **only** `--counts /ABSOLUTE/NEW/ANONYMOUS.json` for
 
 This is useful to hand over an offline readable status progression while keeping original report files and PRIVATE HUMAN notes on their own owner-controlled machine. Even an increase in locally answered questions says nothing about verified remediation, retesting, consent or actual authorization.
 
+## Separate-source PRIVATE HUMAN portfolio board
+
+`portfolio.py` now accepts 2–12 separately admitted, complete PRIVATE Evidence Relationship workspaces from **different original sources or contexts**. Each original workspace independently passes the exact same file/manifest/HUMAN session review as `verify.py`. It never merges source records, invents shared client identities, extracts evidence-byte contents or touches native LightUp requests. The operator gets a source-ID-free, scriptless private workload board with per-slot local HUMAN question counts, pending stages, outstanding follow-up reason groupings, and aggregate **slot workload** totals. It detects identical repeated source+HUMAN snapshots (HOLD) and highlights repeated original source packet identities across different human sessions to warn against double-counting. This is not an organization-wide set of authenticated distinct cases.
+
+```sh
+python3 remediation-evidence-bundle-integrity/portfolio.py \
+  --bundle "$HOME/lightup-private/desk-client-A" \
+  --bundle "$HOME/lightup-private/desk-client-B" \
+  --html "$HOME/lightup-private/receipts/private-workload.html"
+```
+
+Or choose **only** `--counts /ABSOLUTE/NEW/SOURCE-FREE.json` for an aggregate local JSON intended for **private** staffing discussions, not public telemetry. Both options require an unused name in an existing owner-only directory. Source filenames, digests, client references, original finding identifiers and private free-text notes are **never exported** into this portfolio. Private per-slot workload counts may still reveal business-sensitive staffing information, so no online publication or public issue attachment is appropriate. Totals sum *local slots*, not unique customers, proven evidence or complete findings. Repeated packet groups are flagged by slot numbers only; no original identity leaves memory.
+
 ## Scope and release
 
 No modifications to `src/`, original Evidence Artifact Ledger, Request Desk, native Apply, auth, scanner, scope, evidence files, CI or QA suites. Never feeds data to targets, issues grants, stages client action, changes HUMAN journals, concludes remediation or bypasses action-time revocation. As with the parent draft, **no main merge, production deploy or live use** until existing original exact-head hosted + permanently registered named VPS CI, original source-owner and independent security/privacy/browser/crypto reviews, #177/#182/#829, true independent revocable current client/operator consent and explicit HUMAN GO have all been satisfied. No new release gate is created by this utility.
