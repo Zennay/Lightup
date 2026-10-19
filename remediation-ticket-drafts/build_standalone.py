@@ -18,10 +18,12 @@ ENGINE = ROOT / "casework" / "remediation-engine.js"
 INDEX = HERE / "index.html"
 APP = HERE / "ticket-desk.js"
 INTAKE = HERE / "casework-import.js"
+WORKSPACE = HERE / "ticket-workspace.js"
 PINNED_ENGINE_SHA256 = "c293c564ecb11434e45423d244b7beba599b6afe3ebbc85121882e91b8aa1225"
 ORIGINAL_ENGINE = '<script src="../casework/remediation-engine.js"></script>'
 ORIGINAL_APP = '<script src="./ticket-desk.js"></script>'
 ORIGINAL_INTAKE = '<script src="./casework-import.js"></script>'
+ORIGINAL_WORKSPACE = '<script src="./ticket-workspace.js"></script>'
 
 
 def _sha(data: bytes) -> str:
@@ -33,16 +35,17 @@ def build() -> bytes:
     if _sha(engine) != PINNED_ENGINE_SHA256:
         raise ValueError("Original source-owner Casework parser changed: fail closed; do not rebase silently.")
     intake = INTAKE.read_bytes()
+    workspace = WORKSPACE.read_bytes()
     app = APP.read_bytes()
     page = INDEX.read_bytes().decode("utf-8")
-    if page.count(ORIGINAL_ENGINE) != 1 or page.count(ORIGINAL_APP) != 1 or page.count(ORIGINAL_INTAKE) != 1:
+    if page.count(ORIGINAL_ENGINE) != 1 or page.count(ORIGINAL_APP) != 1 or page.count(ORIGINAL_INTAKE) != 1 or page.count(ORIGINAL_WORKSPACE) != 1:
         raise ValueError("Unexpected source script references, refusing standalone build.")
-    for name, data in [("Original engine", engine), ("Casework intake", intake), ("Ticket desk", app)]:
+    for name, data in [("Original engine", engine), ("Casework intake", intake), ("Workspace checkpoint", workspace), ("Ticket desk", app)]:
         if b"</script" in data.lower():
             raise ValueError(name + " contains inline-script end delimiter; refusing build.")
         data.decode("utf-8")
     hashes = []
-    for item in (engine, intake, app):
+    for item in (engine, intake, workspace, app):
         exact_inline = b"\\n" + item + b"\\n"
         hashes.append("'sha256-" + base64.b64encode(hashlib.sha256(exact_inline).digest()).decode("ascii") + "'")
     if page.count("script-src 'self'") != 1:
@@ -50,8 +53,9 @@ def build() -> bytes:
     page = page.replace("script-src 'self'", "script-src " + " ".join(hashes))
     page = page.replace(ORIGINAL_ENGINE, "<script>\n" + engine.decode("utf-8") + "\n</script>")
     page = page.replace(ORIGINAL_INTAKE, "<script>\n" + intake.decode("utf-8") + "\n</script>")
+    page = page.replace(ORIGINAL_WORKSPACE, "<script>\n" + workspace.decode("utf-8") + "\n</script>")
     page = page.replace(ORIGINAL_APP, "<script>\n" + app.decode("utf-8") + "\n</script>")
-    if ORIGINAL_ENGINE in page or ORIGINAL_INTAKE in page or ORIGINAL_APP in page or "connect-src 'none'" not in page:
+    if ORIGINAL_ENGINE in page or ORIGINAL_INTAKE in page or ORIGINAL_WORKSPACE in page or ORIGINAL_APP in page or "connect-src 'none'" not in page:
         raise ValueError("Offline security policy or bundle script replacement failed.")
     return page.encode("utf-8")
 
