@@ -27,6 +27,7 @@
   const pick = document.getElementById("import-file");
   const btnImport = document.getElementById("import");
   const btnExport = document.getElementById("export");
+  const btnSummary = document.getElementById("export-summary");
   const btnReset = document.getElementById("reset");
 
   // The private source columns in the HTML are always read-only.
@@ -116,6 +117,22 @@
     ])];
     download(csv(records), "lightup-PRIVATE-human-case-followup.csv");
     showStatus("PRIVATE HUMAN CSV saved locally. This cannot authorize work or prove consent.");
+  }
+  function exportSummary() {
+    const source = [["dimension", "human_label", "count", "authority"]];
+    const dimensions = [
+      ["human_stage", STAGES, 0],
+      ["human_followup_route", ROUTES, 1],
+      ["human_blocker", BLOCKERS, 2]
+    ];
+    for (const [field, labels, fieldIndex] of dimensions) {
+      for (const label of labels) {
+        const count = rows.filter(row => selections(row)[fieldIndex] === label).length;
+        source.push([field, label, count, "HUMAN_REVIEW_ONLY_HOLD"]);
+      }
+    }
+    download(csv(source), "lightup-PRIVATE-id-free-human-workload.csv");
+    showStatus("ID-free HUMAN counts exported; SMALL GROUP COUNTS MAY STILL BE SENSITIVE. No approval.");
   }
 
   // Strict RFC-4180-style CSV reader, rejecting malformed framing.
@@ -222,6 +239,7 @@
   });
   btnImport.addEventListener("click", importSelected);
   btnExport.addEventListener("click", exportCurrent);
+  btnSummary.addEventListener("click", exportSummary);
   btnReset.addEventListener("click", () => {
     if (!window.confirm("Clear local HUMAN stages? Original source rows stay unchanged.")) return;
     rows.forEach(row => {
