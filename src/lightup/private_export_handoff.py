@@ -61,10 +61,17 @@ def _rows(data: bytes) -> list[dict[str, str]]:
         if tuple(heading) != HEADERS:
             raise ValueError("unexpected CSV columns")
         records = []
+        identifiers: set[str] = set()
         for record in reader:
             if len(record) != len(HEADERS) or len(records) >= 128:
                 raise ValueError("invalid CSV row shape or batch size")
             fields = dict(zip(HEADERS, record))
+            identity = fields["finding_id"]
+            if not identity.strip() or identity in identifiers:
+                raise ValueError("invalid or duplicate original finding ID")
+            identifiers.add(identity)
+            if not fields["title"].strip() or not fields["remediation"].strip():
+                raise ValueError("blank original finding description")
             if fields["severity"] not in {level.value for level in Severity}:
                 raise ValueError("unknown source severity")
             if fields["retest_status"] not in {status.value for status in RetestStatus}:
