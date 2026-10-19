@@ -209,7 +209,7 @@ function draw(){
    invalidateBulk();draw();
   });
   choice.append(check);tr.append(choice);
-  for(const v of [x.slot,x.packet.recipient_alias,x.request.finding_id,x.request.request_kind,x.request.due_date||"—",x.reply?x.reply.human_stage:"unanswered"])
+  for(const v of [x.slot,x.packet.recipient_alias,x.request.finding_id,x.request.request_kind,x.request.due_date||"—",x.reply?x.reply.human_stage:"unanswered",x.feedback?x.feedback.stage:"not submitted"])
    tr.append(node("td",v));
   tr.append(contextDetails(x));
   const sel=document.createElement("select");
@@ -245,7 +245,7 @@ function exportOwnerPrivate(){
  const matching=allRows().filter(x=>x.packet.recipient_alias===alias);
  if(!matching.length)fail("No ORIGINAL HUMAN records for this owner");
  const declared=db.binding;
- const envelope={kind:"lightup.private_human_owner_review_brief",schema_version:1,
+ const envelope={kind:"lightup.private_human_owner_review_brief",schema_version:2,
   disposition:"UNVERIFIED_HUMAN_COORDINATION_ONLY",
   source_contract:declared[0],source_sha256:declared[1],
   client_reference:declared[2],engagement_reference:declared[3],
@@ -256,7 +256,10 @@ function exportOwnerPrivate(){
     original_issued_utc:x.packet.issued_utc,
     unverified_reply_stage:x.reply?x.reply.human_stage:"unanswered",
     unverified_reply_text:x.reply?x.reply.human_response:"",
-    local_human_triage:x.review.stage,local_human_note:x.review.note}))};
+    local_human_triage:x.review.stage,local_human_note:x.review.note,
+    received_owner_feedback_stage:x.feedback?x.feedback.stage:"",
+    received_owner_feedback_note:x.feedback?x.feedback.note:"",
+    received_owner_feedback_utc:x.feedback?x.feedback.submitted_utc:""}))};
  if(!confirm("Export "+matching.length+" PRIVATE ORIGINAL HUMAN request/reply records for ONLY self-declared owner '"+alias+"'? Independently verify the actual recipient and confidential handoff channel. This DOES NOT send messages, authenticate identity, verify remediation, authorize testing or work in the original owner reply app."))return;
  const payload=JSON.stringify(envelope,null,2)+"\n";
  if(new TextEncoder().encode(payload).length>MAX_SNAPSHOT)
@@ -329,7 +332,10 @@ function exportSelectedPrivate(){
    tentative_human_due:x.request.due_date,original_instructions:x.request.instructions,
    unverified_reply_stage:x.reply?x.reply.human_stage:"unanswered",
    unverified_reply_text:x.reply?x.reply.human_response:"",
-   local_human_stage:x.review.stage,local_human_note:x.review.note}))};
+   local_human_stage:x.review.stage,local_human_note:x.review.note,
+   received_owner_feedback_stage:x.feedback?x.feedback.stage:"",
+   received_owner_feedback_note:x.feedback?x.feedback.note:"",
+   received_owner_feedback_utc:x.feedback?x.feedback.submitted_utc:""}))};
  if(!confirm("Export only "+chosen.length+" SELECTED original HUMAN requests, private response text and local notes? Verify authorized recipient/channel. Nothing is authenticated, sent, repaired or consented to."))return;
  const json=JSON.stringify(envelope,null,2)+"\n";
  if(new TextEncoder().encode(json).length>MAX_SNAPSHOT)fail("Selected PRIVATE action brief exceeds 8 MiB");
@@ -339,10 +345,10 @@ function exportSelectedPrivate(){
 function anonymousCounts(){
  const groups=new Map();
  for(const x of allRows()){
-  const key=[x.request.request_kind,x.reply?x.reply.human_stage:"unanswered",x.review.stage];
+  const key=[x.request.request_kind,x.reply?x.reply.human_stage:"unanswered",x.feedback?x.feedback.stage:"not submitted",x.review.stage];
   const text=JSON.stringify(key);groups.set(text,(groups.get(text)||0)+1);
  }
- const table=[["human_request_kind","unverified_reply_status","local_human_triage","count"]];
+ const table=[["human_request_kind","unverified_reply_status","unverified_owner_feedback","local_human_triage","count"]];
  for(const [key,count] of [...groups.entries()].sort((a,b)=>a[0].localeCompare(b[0])))
   table.push([...JSON.parse(key),count]);
  return table;
@@ -575,8 +581,8 @@ function exportCSV(){
  if(!db.binding)fail("Load original HUMAN packets first");
  if(!confirm("Export PRIVATE original IDs and self-declared HUMAN aliases? Confirm secure recipient and channel."))return;
  const table=[["batch","original_request_id","original_finding_id","human_owner_alias","request_kind","tentative_due",
- "unverified_reply","local_human_triage"],...allRows().map(x=>[x.slot,x.request.request_id,x.request.finding_id,
- x.packet.recipient_alias,x.request.request_kind,x.request.due_date,x.reply?x.reply.human_stage:"unanswered",x.review.stage])];
+ "unverified_reply","owner_human_feedback","local_human_triage"],...allRows().map(x=>[x.slot,x.request.request_id,x.request.finding_id,
+ x.packet.recipient_alias,x.request.request_kind,x.request.due_date,x.reply?x.reply.human_stage:"unanswered",x.feedback?x.feedback.stage:"not submitted",x.review.stage])];
  save("LightUp-PRIVATE-response-register.csv",table.map(row=>row.map(csv).join(",")).join("\r\n")+"\r\n","text/csv");
 }
 function report(){
@@ -591,11 +597,11 @@ function report(){
  main.append(cell("p","No identity verification, consent, remediation certification, scan or execution authority."));
  main.append(cell("p",db.binding.join(" · ")));
  const t=d.createElement("table"),headers=d.createElement("tr");
- for(const v of ["Owner alias","Original finding","Request","UNVERIFIED reply","Local HUMAN triage","PRIVATE note"])headers.append(cell("th",v));
+ for(const v of ["Owner alias","Original finding","Request","UNVERIFIED reply","UNVERIFIED owner feedback","Local HUMAN triage","PRIVATE note"])headers.append(cell("th",v));
  t.append(headers);
  for(const x of allRows()){const tr=d.createElement("tr");
   for(const v of [x.packet.recipient_alias,x.request.finding_id,x.request.request_kind,
-   x.reply?x.reply.human_stage:"unanswered",x.review.stage,x.review.note])tr.append(cell("td",v));
+   x.reply?x.reply.human_stage:"unanswered",x.feedback?x.feedback.stage:"not submitted",x.review.stage,x.review.note])tr.append(cell("td",v));
   t.append(tr);}
  main.append(t);msg("Opened PRIVATE scriptless print brief in a local window.");
 }
