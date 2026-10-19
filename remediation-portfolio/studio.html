@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-dozpdem0O0/4sNb4bHTYZp5fJvGYjcPJKlCTKa08CfY='; style-src 'unsafe-inline'; connect-src 'none'; img-src 'none'; font-src 'none'; object-src 'none'; worker-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-Rt48rvZCwY6GyodNxpviZkixYMFCkB+R48gmMDqUOiM='; style-src 'unsafe-inline'; connect-src 'none'; img-src 'none'; font-src 'none'; object-src 'none'; worker-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
 <title>LightUp · PRIVATE HUMAN Studio</title>
 <style>
 :root{color-scheme:dark;--bg:#0a1321;--panel:#18263a;--border:#34465e;--text:#eff6fe;--muted:#b5c5d8;--accent:#a6f1d1}
@@ -55,7 +55,8 @@ footer{margin-top:40px;border-top:1px solid var(--border);padding-top:18px}
 <p>Sorted by number of local pending questions only. This is <strong>not</strong> a risk score, vulnerability severity, finding identity, or remediation verification. Browser-only, no hidden persistent storage. <span id="missing">0</span> packets have no planning stage breakdown.</p>
 <div class="scroll"><table><thead><tr><th>Packet ordinal</th><th>Export type</th><th>Slot appearances</th><th>Pending questions</th><th>Planned attention</th><th>Dated slots</th><th>Local action</th></tr></thead><tbody id="rows"></tbody></table></div>
 <div class="actions"><button class="primary" type="button" id="export" disabled>Save anonymous HUMAN question-volume CSV</button>
-<button type="button" id="exportBrief" disabled>Save source-free HUMAN follow-up brief</button></div>
+<button type="button" id="exportBrief" disabled>Save source-free HUMAN follow-up brief</button>
+<button type="button" id="exportJson" disabled>Save numeric JSON snapshot</button></div>
 <h3>Declared HUMAN planning stages (only packets with planning)</h3>
 <div class="grid">
 <article><strong id="stage_unassigned">0</strong><span>Locally unassigned</span></article>
@@ -197,7 +198,7 @@ footer{margin-top:40px;border-top:1px solid var(--border);padding-top:18px}
         fail();
       }
       const rest=source.slice(p);
-      const m=/^(?:true|false|null|-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?)/.exec(rest);
+      const m=/^(?:true|false|null|(?:0|[1-9]\d*))/.exec(rest);
       if(!m) fail();
       p+=m[0].length;
     };
@@ -253,6 +254,7 @@ footer{margin-top:40px;border-top:1px solid var(--border);padding-top:18px}
     $("forgetEarlier").disabled=earlier===null;
     $("exportDelta").disabled=earlier===null || entries.length===0;
     $("exportBrief").disabled=entries.length===0;
+    $("exportJson").disabled=entries.length===0;
     $("missing").textContent=String(total.packets-total.planned);
     for(const stage of STAGES)$("stage_"+stage).textContent=
       String(total.stages[stage])+" recorded slot appearances";
@@ -271,7 +273,8 @@ footer{margin-top:40px;border-top:1px solid var(--border);padding-top:18px}
     const url=URL.createObjectURL(blob);
     const anchor=document.createElement("a");
     anchor.download=name;anchor.href=url;anchor.textContent="Save "+name;
-    anchor.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+    document.body.appendChild(anchor);anchor.click();anchor.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),1000);
   };
   $("pick").addEventListener("change",async event=>{
     const files=Array.from(event.target.files??[]);
@@ -329,6 +332,32 @@ footer{margin-top:40px;border-top:1px solid var(--border);padding-top:18px}
       "");
     return lines.join("\n");
   };
+  $("exportJson").addEventListener("click",()=>{
+    if(!entries.length)return;
+    const totals=summary(entries);
+    const payload={
+      kind:"lightup.private_human_studio_numeric_snapshot",
+      schema_version:1,
+      disposition:"LOCAL_BROWSER_SOURCE_FREE_COUNTERS_NOT_ORIGINAL_ATTESTATION",
+      packet_count:totals.packets,
+      source_free_slot_appearances_not_unique:totals.slots,
+      pending_human_questions_not_fixes:totals.questions,
+      planning_packet_count:totals.planned,
+      human_attention_slot_appearances:totals.attention,
+      locally_dated_slot_appearances:totals.dated,
+      local_planning_stages:totals.stages,
+      packets_in_original_local_selection_order:entries.map((x,i)=>({
+        packet:i+1,source_type:x.type,slot_appearances:x.slots,
+        pending_human_questions_not_fixes:x.questions,
+        human_attention_slot_appearances:x.plan?.attention??null
+      })),
+      warning:"Self-reported source-free packet appearances only. No unique cases, authenticated source, verified findings/fixes, consent, grant or authority.",
+      ...Object.fromEntries(FLAGS.map(key=>[key,false]))
+    };
+    download("lightup-human-browser-numeric-snapshot.json","application/json",
+      JSON.stringify(payload,null,2)+"\n");
+    showStatus("One source-free browser snapshot downloaded, not an original verified export.");
+  });
   $("exportBrief").addEventListener("click",()=>{
     if(!entries.length)return;
     download("lightup-private-human-followup.txt","text/plain",brief());
