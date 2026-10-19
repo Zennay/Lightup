@@ -63,6 +63,7 @@ The operator-selected **ordinal** order is not independently verified calendar c
 
 The one new PRIVATE folder contains:
 
+- `workroom.html`: separately generated, CSP-pinned, one-file local interactive HUMAN review workroom with strict original-source-locked private CSV resume/export.
 - `index.html`: responsive **scriptless** offline private browser report with exact per-original-ID appearing/absent/field-changed review, source HOLD trend, original declared counts. Names/identifiers may be sensitive.
 - `anonymous.html`: separately scriptless local HTML briefing excluding all original source IDs, client, request/grant/risk identities and source timestamps. Aggregate appearance counts may remain privacy-sensitive.
 - `anonymous-counts.json`: exact ordinal counts and between-ordinal change quantities only; literal authority flags are all false.
@@ -80,6 +81,19 @@ The one new PRIVATE folder contains:
 The browser is HTML+CSS only: strict default-deny CSP with one pinned local style hash, no script, network, forms, external resources or dependency. Source record values are escaped as text. All original identity matching is exact within the same selected original tenant; a cross-tenant imported file refuses the **entire batch**. Duplicate JSON keys, altered source structure, unknown authority, invalid count consistency, duplicate IDs, non-regular/symlink files and unsafe directory permissions are rejected.
 
 **Classification is strictly observational:** Missing grant ≠ revocation, approved request record ≠ separate present client/operator consent, same source row ≠ durable live authorization, fewer HOLD categories ≠ safer system, no difference ≠ PASS. Never use to authorize active targets. A reviewer must return to the **original current authenticated domain state** with all original scope/approval/revocation and independent client/operator permission checks.
+
+## Interactive one-file PRIVATE HUMAN Casebook Workroom
+
+New generated `workroom.html` is ready to open as a **single local HTML file**. The PRIVATE original `index.html` links to it. It presents exactly the **last selected original Casebook snapshot** (not old absent records) in a responsive, filterable HUMAN review workspace:
+
+- Search the original engagement ID, original request-linked action, or original HOLD label; filter by current human stage or whether the original source attention was HOLD.
+- Update three HUMAN-only dropdown fields per original case: `human_stage`, `human_followup_route`, `human_blocker`. Original engagement ID, source next action, source attention and source status remain **read-only** and are not changed in the original database.
+- Live in-tab HUMAN workload counts (under investigation, awaiting owner, documented and blockers) and a bounded local `Export PRIVATE HUMAN CSV` action; that CSV uses the exact same columns and row order as `private-human-review-template.csv`.
+- Choose a previously exported PRIVATE HUMAN CSV and use **Restore**. Before changing any dropdown, the local app requires exact case count, matching original IDs, immutable original action/HOLD values in the original order, strict header and column counts, valid enumerated stage/route/blocker options, bounded file size and explicit human confirmation. Invalid or cancelled restore preserves all existing dropdowns.
+- Confirmed reset affects only the local tab. No localStorage, cookies, indexedDB, credential collection, upload, scanner, target/network connection, external resource, source grant, consent or authorization action.
+- Offline CSP pins both standalone inline JavaScript and CSS to SHA-256. The browser app uses only DOM text/attributes escaped from already admitted original-source declarations; no source data is interpolated into executable JavaScript. The original signed-off source boundaries, role/tenant checks and release requirements are unchanged.
+
+**Important:** This workroom is a PRIVATE local HUMAN editor for already selected source declarations, not an approved source update or evidence of a valid grant. An exported CSV can contain sensitive original engagement IDs. No local HUMAN stage (including `documented`) means a security fix was verified or an assessment may proceed. Current separate authenticated client/operator consent and at-action revocation remain outside this offline product.
 
 ## Offline HUMAN follow-up workroom, directly from report
 
