@@ -36,10 +36,25 @@ The one new PRIVATE folder contains:
 - `anonymous-counts.csv`: separate source-free count series for human spreadsheet viewing.
 - `private-source-changes.csv`: original record IDs and changed field names in private report only; CSV formula-spoofing is escaped.
 - `human-followup.txt`: original counts and human follow-up questions; contains no raw evidence, customer names, passwords, hostnames, grant references or source record IDs.
+- `private-source-inventory.json`: exact original-input byte length and SHA-256 by private ordinal, **unsigned/untrusted** and excluded entirely from anonymous handoffs.
 
 The browser is HTML+CSS only: strict default-deny CSP with one pinned local style hash, no script, network, forms, external resources or dependency. Source record values are escaped as text. All original identity matching is exact within the same selected original tenant; a cross-tenant imported file refuses the **entire batch**. Duplicate JSON keys, altered source structure, unknown authority, invalid count consistency, duplicate IDs, non-regular/symlink files and unsafe directory permissions are rejected.
 
 **Classification is strictly observational:** Missing grant ≠ revocation, approved request record ≠ separate present client/operator consent, same source row ≠ durable live authorization, fewer HOLD categories ≠ safer system, no difference ≠ PASS. Never use to authorize active targets. A reviewer must return to the **original current authenticated domain state** with all original scope/approval/revocation and independent client/operator permission checks.
+
+## PRIVATE exact-source reopening
+
+After transfer or operator handoff, reopen the existing history against the **same original source bytes in the same chosen order**:
+
+```bash
+PYTHONPATH=src python scope-casebook-history/reopen.py \
+  --input /private/original-casebook-moment-01.json \
+  --input /private/original-casebook-moment-02.json \
+  --input /private/original-casebook-moment-03.json \
+  --history-dir /private/lightup-reviews/new-human-history
+```
+
+The read-only reopener rejects unknown/extra files, unsafe permissions, modified source JSON bytes, mismatched source ordinal, malformed/duplicated private inventory keys and any changed generated HTML, CSV, JSON or follow-up content. It **recreates the original results in memory** and compares each full output byte sequence. No source input or output is modified by reopen; exit 2 means REVIEW_ONLY data consistency, never a passing security release. SHA-256 is an unsigned local integrity hint and cannot authenticate the originating account, original source truth, permission, consent, legitimate chronology or human go-ahead.
 
 ## Mandatory release gate and ownership
 
