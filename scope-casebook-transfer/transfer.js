@@ -423,8 +423,8 @@
       const c=pending.report.counts;
       if(!window.confirm(
         "Maak een NIEUW versleuteld PRIVATE bestand met de volledige bronreeks? "+
-        "Ongewijzigd en meegenomen: "+c.carry+"; heropend: "+c.changed+
-        "; nieuw: "+c.appeared+"; ontbreekt in laatste bron: "+c.absent+
+        "Ongewijzigd en meegenomen: "+c.carry+"; heropend: "+c.changed+"; bronverzoek-HOLD: "+c.source_hold+
+        "; zonder oude HUMAN-CSV: "+c.unrecorded+"; nieuw: "+c.appeared+"; ontbreekt in laatste bron: "+c.absent+
         ". Ontbrekende records bewijzen GEEN intrekking, risicoreductie of toestemming."
       )) return;
       await encryptPrivateRecords(pending.candidate,password);
