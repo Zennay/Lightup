@@ -601,6 +601,67 @@ window.LightUpHistory=Object.freeze({
     });
     return LightUpCasework.makePacket(latest.findings,cases,latest.sourceHash);
   },
+  journalEvents(){
+    // A compact immutable index; full PRIVATE before/after fields remain in
+    // original encrypted journal records until individually opened/exported.
+    const revision=state.revision;
+    const events=[];
+    const sourcesFor=record=>state.snapshots.filter(s=>
+      s.findings.some(f=>exact(f,record))).map(s=>s.sourceHash);
+    state.decisions.forEach((d,index)=>events.push({
+      kind:'HUMAN_SOURCE_CARRY',index,time:d.decidedUTC,
+      ids:[d.id],sourceHashes:[...new Set([...sourcesFor(d.from),...sourcesFor(d.to)])],
+      summary:d.reason,changedCount:FIELDS.filter(k=>d.from[k]!==d.to[k]).length
+    }));
+    state.merges.forEach((m,index)=>events.push({
+      kind:'HUMAN_CASEWORK_MERGE',index,time:m.dateUtc,
+      ids:m.records.map(r=>r.id),sourceHashes:[m.sourceHash],
+      summary:m.reason,changedCount:m.records.reduce((n,r)=>n+r.fields.length,0)
+    }));
+    state.holdReviews.forEach((h,index)=>events.push({
+      kind:'HUMAN_SOURCE_HOLD_REVIEW',index,time:h.reviewedUTC,
+      ids:[h.id],sourceHashes:[h.originalSourceHash,h.reviewSourceHash],
+      summary:h.nextAction,changedCount:0
+    }));
+    const chronology=events.sort((a,b)=>b.time.localeCompare(a.time)||
+      a.kind.localeCompare(b.kind)||b.index-a.index);
+    const labels=new Map(state.snapshots.map((s,i)=>[s.sourceHash,{
+      sequence:i+1,label:s.label,canonicalSHA256:s.sourceHash,fileSHA256:s.fileHash
+    }]));
+    return {revision,events:chronology,labels:Object.fromEntries(labels)};
+  },
+  journalDetail(kind,index,expectedRevision){
+    if(state.importing||state.revision!==expectedRevision)
+      throw Error('HOLD: original source/HUMAN work changed; reopen the decision ledger.');
+    if(!Number.isSafeInteger(index)||index<0)
+      throw Error('Invalid PRIVATE HUMAN decision selector.');
+    const sourcesFor=record=>state.snapshots.filter(s=>
+      s.findings.some(f=>exact(f,record))).map(s=>({
+        label:s.label,sourceSHA256:s.sourceHash,fileSHA256:s.fileHash
+      }));
+    if(kind==='HUMAN_SOURCE_CARRY'){
+      const d=state.decisions[index];if(!d)throw Error('Unknown original source-carry decision.');
+      return {kind,index,decision:structuredClone(d),
+        fromOriginalSources:sourcesFor(d.from),toOriginalSources:sourcesFor(d.to)};
+    }
+    if(kind==='HUMAN_CASEWORK_MERGE'){
+      const m=state.merges[index];if(!m)throw Error('Unknown original Casework human reconciliation.');
+      const s=state.snapshots.find(x=>x.sourceHash===m.sourceHash);
+      if(!s)throw Error('HOLD: original Casework merge source is no longer loaded.');
+      return {kind,index,decision:structuredClone(m),
+        exactOriginalSource:{label:s.label,canonicalSHA256:s.sourceHash,fileSHA256:s.fileHash}};
+    }
+    if(kind==='HUMAN_SOURCE_HOLD_REVIEW'){
+      const h=state.holdReviews[index];if(!h)throw Error('Unknown historical HUMAN HOLD decision.');
+      const before=state.snapshots.find(x=>x.sourceHash===h.originalSourceHash);
+      const after=state.snapshots.find(x=>x.sourceHash===h.reviewSourceHash);
+      if(!before||!after)throw Error('HOLD: historical source revision was removed.');
+      return {kind,index,decision:structuredClone(h),
+        originalSource:{label:before.label,canonicalSHA256:before.sourceHash,fileSHA256:before.fileHash},
+        reviewedSource:{label:after.label,canonicalSHA256:after.sourceHash,fileSHA256:after.fileHash}};
+    }
+    throw Error('Unsupported original PRIVATE HUMAN journal category.');
+  },
   holdReviewHistory(){
     return state.holdReviews.map(x=>structuredClone(x));
   },
