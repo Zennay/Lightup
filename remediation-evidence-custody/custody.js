@@ -56,6 +56,7 @@ function refresh(){
  $("import").disabled=busy;$("run").disabled=busy||!current;
  $("private").disabled=busy||!results.length;$("anonymous").disabled=busy||!results.length;
  $("forget").disabled=busy;$("confirmPrivate").disabled=busy;
+ $("requestDraft").disabled=busy||!current||!results.some(r=>r.finding_id&&(r.status==="missing"||r.status==="rename"));
  $("context").textContent=current?
   "PRIVATE self-declared context: "+current.client_reference+" / "+current.engagement_reference+
   " · source SHA-256 "+current.source_sha256+" · "+current.source_count+" original finding rows · "+current.rows.length+" fingerprints. No live authentication or client consent.":
@@ -145,7 +146,9 @@ async function run(){
 }
 function escapeCell(value){
  let s=String(value??"");
- if(/^[\s\uFEFF\u200B-\u200F\u202A-\u202E\u2060-\u206F]*[=+\-@]/u.test(s))s="'"+s;
+ // NFKC exposes fullwidth formula operators; bidi/zero-width prefixes cannot mask them.
+ const visible=s.normalize("NFKC").replace(/^[\s\p{Cf}\p{Zs}\uFEFF]*/u,"");
+ if(/^[=+\-@\t\r]/u.test(visible))s="'"+s;
  return '"'+s.replaceAll('"','""')+'"';
 }
 function csv(rows){return rows.map(r=>r.map(escapeCell).join(",")).join("\r\n")+"\r\n";}
@@ -170,6 +173,43 @@ function privateReport(){
  r.indexed_sha,r.local_sha,r.byte_length,r.status,r.reason])]));
  $("confirmPrivate").checked=false;announce("PRIVATE local HUMAN report downloaded. Handle through an independently approved secure channel.");
 }
+function nativeDraft(){
+ if(busy||!current||!results.length)return;
+ if(!$("confirmPrivate").checked)return announce("A PRIVATE recipient/storage acknowledgement is required for native draft export.",true);
+ const byFinding=new Map();
+ for(const r of results){
+  if(!r.finding_id||(r.status!=="missing"&&r.status!=="rename"))continue;
+  if(!byFinding.has(r.finding_id))byFinding.set(r.finding_id,[]);
+  byFinding.get(r.finding_id).push(r);
+ }
+ if(!byFinding.size)return announce("No local selection differences need HUMAN follow-up.",true);
+ if(byFinding.size>200)return announce("Native HUMAN Request Desk supports a maximum of 200 drafts.",true);
+ if(typeof crypto==="undefined"||!crypto.getRandomValues)return announce("Secure local request ID generator unavailable.",true);
+ if(!confirm("Export "+byFinding.size+" PRIVATE original-source-bound HUMAN follow-up draft(s)? The owner app will separately require the identical original authenticated source, preview and manual import confirmation. Existing requests may be replaced there, so protect the old PRIVATE request packet first."))return;
+ const timestamp=new Date().toISOString();
+ const nonce=()=>Array.from(crypto.getRandomValues(new Uint8Array(16)),v=>v.toString(16).padStart(2,"0")).join("");
+ const requests=[];
+ for(const [id,rows] of byFinding){
+  const reasons=rows.slice(0,8).map(r=>r.status==="rename"?
+   "Local hash matches indexed bytes under a different local filename; HUMAN review of naming/context needed.":
+   "No matching bytes were selected locally; do not assume evidence absent elsewhere or remediated.");
+  const summary=[...new Set(reasons)].join(" ");
+  requests.push({request_id:nonce(),finding_id:id,request_kind:"followup_question",assignee:"",due_date:"",
+   instructions:summary.slice(0,1400),linked_sha256:"",human_stage:"draft",human_response:"",
+   created_utc:timestamp,updated_utc:timestamp});
+ }
+ const draft={kind:"lightup.private_human_evidence_requests",schema_version:1,
+  disposition:"UNVERIFIED_HUMAN_FOLLOW_UP_ONLY",source_contract:"lightup.finding_export._COLUMNS_v1",
+  source_sha256:current.source_sha256,client_reference:current.client_reference,
+  engagement_reference:current.engagement_reference,
+  ...Object.fromEntries(FLAGS.map(flag=>[flag,false])),requests,
+  warning:"Self-declared private source context; HUMAN selection-only file comparison. No client grant, execution, verified retest, evidence authenticity, or automatically applied owner decision."};
+ const blob=new Blob([JSON.stringify(draft,null,2)+"\n"],{type:"application/json"});
+ const url=URL.createObjectURL(blob),a=node("a");a.href=url;a.download="LightUp-PRIVATE-native-HUMAN-custody-followups.json";
+ document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1500);
+ $("confirmPrivate").checked=false;
+ announce("Native PRIVATE HUMAN request drafts exported. Only import manually against the same original authenticated current source; import replaces the native local human request set after separate confirmation.");
+}
 function forget(){
  if(!confirm("Forget all PRIVATE index and local comparison data in this tab? Existing downloads are NOT removed."))return;
  current=null;revision++;results=[];$("manifest").value="";$("localFiles").value="";$("folderFiles").value="";$("confirmPrivate").checked=false;
@@ -179,6 +219,7 @@ $("import").addEventListener("click",()=>loadIndex().catch(e=>announce(e.message
 $("run").addEventListener("click",()=>run().catch(e=>announce(e.message,true)));
 $("anonymous").addEventListener("click",anonymous);
 $("private").addEventListener("click",privateReport);
+$("requestDraft").addEventListener("click",nativeDraft);
 $("forget").addEventListener("click",forget);
 $("resultSearch").addEventListener("input",render);
 $("resultStatus").addEventListener("change",render);
