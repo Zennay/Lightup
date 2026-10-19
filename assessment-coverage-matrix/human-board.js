@@ -131,21 +131,21 @@ function createHumanBoard(api) {
       interpretation:"Source hashes bind local bytes only. Unsigned PRIVATE human plans are not authenticated client/operator identity, authorization, verified findings, or successful remediation."
     };
   }
-  function admitPrivatePlan(source) {
+  function admitPrivatePlan(source, expectedRows=getRows(), expectedDigests=getDigests()) {
     fail(shape(source,FILE_KEYS),"Incompatible PRIVATE HUMAN plan envelope");
     fail(source.kind==="lightup.private_original_lab_human_matrix_plan"&&
       source.version===1&&source.disposition==="REVIEW_ONLY_DRAFT_HOLD");
     for(const key of Object.keys(FLAGS))fail(source[key]===false);
     fail(Array.isArray(source.source_sha256)&&
-      source.source_sha256.length===getDigests().length&&
+      source.source_sha256.length===expectedDigests.length&&
       source.source_sha256.every(strictDigest));
-    fail(exactSet(source.source_sha256,getDigests()),
+    fail(exactSet(source.source_sha256,expectedDigests),
       "Different or reordered original source bytes; saved plan cannot be applied");
     fail(int(source.ordered_row_count,16384)&&
-      source.ordered_row_count===getRows().length);
+      source.ordered_row_count===expectedRows.length);
     fail(Array.isArray(source.row_plans)&&source.row_plans.length<=source.ordered_row_count);
     fail(text(source.interpretation,1024));
-    const next=getRows().map(fresh);
+    const next=expectedRows.map(fresh);
     let previous=0;
     for(const row of source.row_plans) {
       fail(shape(row,PLAN_KEYS)&&int(row.ordinal,source.ordered_row_count)&&row.ordinal>previous);
@@ -587,6 +587,14 @@ function createHumanBoard(api) {
   }
   wire();clearAll();
   return {initialize,clearAll,render,
+    exportVaultPlan:()=>privatePlan(),
+    validateVaultPlan:(candidate,rows,digests)=>admitPrivatePlan(candidate,rows,digests),
+    commitVaultPlan:(prepared)=>{
+      fail(Array.isArray(prepared)&&prepared.length===getRows().length,
+        "Prepared PRIVATE workspace notes not bound to active local source rows");
+      plans=prepared.map(note=>({...note}));changed=false;lastBulk=null;
+      historyResolutions.clear();clearHistory();page=0;render();
+    },
     hasEdits:()=>changed&&plans.some(p=>!isDefault(p)),
     stageTotals:()=>plans.length?{...counts().stage}:null};
 }
