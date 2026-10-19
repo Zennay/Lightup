@@ -76,8 +76,6 @@ def rotate(old_workroom: Path, old_secret: Path, new_secret: Path,
     inbox.strict_private_dir(output_parent)
     require(old_workroom != output_parent and
             old_workroom not in output_parent.parents and
-            output_parent not in old_secret.parents and
-            output_parent not in new_secret.parents and
             old_workroom != old_secret and old_workroom != new_secret and
             old_secret != new_secret)
     old = attest.key_bytes(old_secret)
