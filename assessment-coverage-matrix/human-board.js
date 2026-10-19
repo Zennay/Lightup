@@ -17,6 +17,7 @@ function createHumanBoard(api) {
     "dispatch_allowed","release_allowed","source_sha256","ordered_row_count",
     "row_plans","interpretation"];
   let plans = [], page = 0, changed = false, lastBulk = null;
+  let history = null, historyPage = 0;
   const fresh = () => ({...DEFAULT});
   const isDefault = p => KINDS.every(k=>p[k]===DEFAULT[k]);
   const strictDigest = s => typeof s==="string"&&/^[0-9a-f]{64}$/.test(s);
@@ -87,7 +88,7 @@ function createHumanBoard(api) {
         select.addEventListener("change",()=>{
           plans[i]={...plans[i],[kind]:select.value};changed=true;lastBulk=null;
           $("humanUndo").disabled=true;
-          summarize();
+          summarize();if(history)renderHistory();
           if($("humanStage").value!=="all")render();
         });
         td.append(select);tr.append(td);
@@ -101,12 +102,14 @@ function createHumanBoard(api) {
   function initialize() {
     plans=getRows().map(fresh);page=0;changed=false;lastBulk=null;
     $("humanUndo").disabled=true;
+    clearHistory();
     $("humanSearch").value="";$("humanStage").value="all";
     render();
   }
   function clearAll() {
     plans=[];page=0;changed=false;lastBulk=null;
     $("humanUndo").disabled=true;
+    clearHistory();
     clear($("humanTable"));clear($("humanSummary"));
     $("humanPages").textContent="No HUMAN work loaded.";
     for(const id of ["humanSave","humanResumeButton","humanBrief","humanHandoff","humanPrev","humanNext"])$(id).disabled=true;
@@ -201,7 +204,225 @@ function createHumanBoard(api) {
 <p>Signed identity, authorization, consent, independent ground truth, remediation and subsequent scan results have NOT been established. Missing declarations never imply safe or fixed.</p>
 </body></html>\n`;
   }
+
+  // The two user-selected PRIVATE snapshots are plans, NOT attested events or chronology.
+  // Strict admission always reuses the original byte-bound private-plan contract.
+  async function readHistoryFile(file) {
+    fail(file&&file.size>0&&file.size<=MAX_PRIVATE_BYTES,"PRIVATE HUMAN snapshot must be 1–3 MiB or smaller");
+    const raw=new TextDecoder("utf-8",{fatal:true}).decode(await file.arrayBuffer());
+    return admitPrivatePlan(parseStrict(raw));
+  }
+  function historyChanges(earlier,later) {
+    const results=[];
+    for(let i=0;i<earlier.length;i++) {
+      const fields=KINDS.filter(kind=>earlier[i][kind]!==later[i][kind]);
+      if(fields.length)results.push({ordinal:i+1,fields,before:earlier[i],after:later[i]});
+    }
+    return results;
+  }
+  function historyDisposition(change) {
+    let needs=0,already=0,conflicts=0;
+    for(const kind of change.fields) {
+      if(plans[change.ordinal-1][kind]===change.before[kind])needs++;
+      else if(plans[change.ordinal-1][kind]===change.after[kind])already++;
+      else conflicts++;
+    }
+    return {needs,already,conflicts,label:conflicts?"CONFLICT / HUMAN":needs?"HUMAN APPLY PROPOSED":"ALREADY MATCHES LATER"};
+  }
+  function historyStats() {
+    if(!history)return {changed:0,needs:0,already:0,conflicts:0};
+    const stats={changed:history.changes.length,needs:0,already:0,conflicts:0};
+    for(const item of history.changes) {
+      const d=historyDisposition(item);
+      stats.needs+=d.needs;stats.already+=d.already;stats.conflicts+=d.conflicts;
+    }
+    return stats;
+  }
+  function clearHistory() {
+    history=null;historyPage=0;
+    clear($("historyTable"));
+    $("historySummary").textContent="No PRIVATE source-bound snapshots loaded.";
+    $("historyPagination").textContent="No snapshots loaded.";
+    for(const key of ["historyPrev","historyNext","historyApply","historyCounts","historyPrivate"])
+      $(key).disabled=true;
+    $("historyEarlier").value="";$("historyLater").value="";
+    $("historySearch").value="";$("historyState").value="all";
+  }
+  function renderHistory() {
+    if(!history){clearHistory();return;}
+    const all=history.changes;
+    const phrase=$("historySearch").value.trim().toLocaleLowerCase();
+    const status=$("historyState").value;
+    const results=all.filter(item=>{
+      const d=historyDisposition(item);
+      const row=getRows()[item.ordinal-1];
+      return (status==="all"||(status==="conflict"&&d.conflicts>0)||
+        (status==="pending"&&d.needs>0&&!d.conflicts)||
+        (status==="matched"&&!d.needs&&!d.conflicts))&&
+        (row.capability+" "+row.check).toLocaleLowerCase().includes(phrase);
+    });
+    const pages=Math.max(1,Math.ceil(results.length/60));
+    historyPage=Math.max(0,Math.min(historyPage,pages-1));
+    $("historyPagination").textContent="Page "+(historyPage+1)+" / "+pages+
+      " · "+results.length+" selected HUMAN-only changed groups";
+    $("historyPrev").disabled=historyPage===0;
+    $("historyNext").disabled=historyPage+1>=pages;
+    const table=$("historyTable");clear(table);
+    const headings=node("tr");
+    ["Original local group","Changed HUMAN fields","Earlier declared choices","Later declared choices","Current local reconciliation"].forEach(v=>headings.append(node("th",v)));
+    const head=node("thead");head.append(headings);table.append(head);
+    const body=node("tbody");
+    results.slice(historyPage*60,(historyPage+1)*60).forEach(item=>{
+      const row=getRows()[item.ordinal-1],tr=node("tr");
+      const identity=node("td");identity.append(node("strong","#"+item.ordinal+" · "+(row.capability||"(blank label)")));
+      identity.append(node("small",row.check||"(blank check)"));tr.append(identity);
+      tr.append(node("td",item.fields.join(" · ")));
+      const oldText=item.fields.map(k=>k+": "+item.before[k]).join("\n");
+      const newText=item.fields.map(k=>k+": "+item.after[k]).join("\n");
+      tr.append(node("td",oldText),node("td",newText));
+      const state=historyDisposition(item);
+      tr.append(node("td",state.label+(state.conflicts?" ("+state.conflicts+" incompatible field(s))":""),
+        state.conflicts?"metric-alert":""));
+      body.append(tr);
+    });
+    table.append(body);
+    const stats=historyStats();
+    clear($("historySummary"));
+    $("historySummary").append(node("strong",stats.changed+
+      " changed HUMAN rows across the two manually ordered PRIVATE plans."));
+    $("historySummary").append(node("p",stats.needs+" locally applicable field changes · "+
+      stats.already+" already matching fields · "+stats.conflicts+
+      " conflicting fields (all-or-nothing HOLD)"));
+    $("historySummary").append(node("p","Selection order is not a verified time series. A later HUMAN stage is not evidence of a resolved security finding.","hint"));
+    $("historyApply").disabled=!stats.needs||stats.conflicts>0;
+    $("historyCounts").disabled=false;
+    $("historyPrivate").disabled=results.length===0||results.length>512;
+  }
+  function historyCountRows() {
+    const stats=historyStats(),transitions=Object.create(null);
+    const dimensions=[];
+    for(const kind of KINDS) {
+      const options=kind==="stage"?STAGES:kind==="route"?ROUTES:ACTIONS;
+      for(const before of options)for(const after of options) {
+        if(before===after)continue;
+        const count=history.changes.filter(item=>
+          item.fields.includes(kind)&&item.before[kind]===before&&item.after[kind]===after).length;
+        if(count)dimensions.push({dimension:kind,earlier:before,later:after,source_declared_human_row_appearances:count});
+      }
+    }
+    return {kind:"lightup.offline_private_human_matrix_numeric_history",
+      version:1,disposition:"REVIEW_ONLY_DRAFT_HOLD",
+      ...FLAGS,original_local_row_slots:plans.length,changed_human_rows:stats.changed,
+      pending_human_field_proposals:stats.needs,already_matching_fields:stats.already,
+      conflicting_human_fields:stats.conflicts,transitions:dimensions,
+      interpretation:"Unsigned unverified manual earlier/later order. HUMAN choices only: never a verified remediation, authentic date, vulnerability, client consent, permission, or scan."};
+  }
+  function historyCSV(result) {
+    const lines=[["dimension","earlier_choice","later_choice","HUMAN_row_appearances"]];
+    for(const row of result.transitions)lines.push([row.dimension,row.earlier,row.later,row.source_declared_human_row_appearances]);
+    return lines.map(row=>row.join(",")).join("\r\n")+"\r\n";
+  }
+  function historyPrivateHTML(items) {
+    fail(items.length>0&&items.length<=512,"PRIVATE handoff requires 1–512 selected HUMAN changes");
+    const rows=items.map(item=>{
+      const source=getRows()[item.ordinal-1],state=historyDisposition(item);
+      return "<tr><td>"+item.ordinal+"</td><td>"+escaped(source.capability)+"</td><td>"+
+        escaped(source.check)+"</td><td>"+escaped(item.fields.join(" / "))+"</td><td>"+
+        escaped(item.fields.map(k=>k+"="+item.before[k]).join(" / "))+"</td><td>"+
+        escaped(item.fields.map(k=>k+"="+item.after[k]).join(" / "))+"</td><td>"+
+        escaped(state.label)+"</td></tr>";
+    }).join("\n");
+    return '<!doctype html><html lang="en"><head><meta charset="utf-8">'+
+      '<meta name="viewport" content="width=device-width,initial-scale=1">'+
+      '<meta http-equiv="Content-Security-Policy" content="default-src &#39;none&#39;; script-src &#39;none&#39;; style-src &#39;none&#39;; connect-src &#39;none&#39;; img-src &#39;none&#39;; object-src &#39;none&#39;; base-uri &#39;none&#39;">'+
+      '<title>LightUp PRIVATE HUMAN snapshot differences</title></head><body>'+
+      '<h1>PRIVATE HUMAN-only snapshot differences</h1>'+
+      '<p>REVIEW_ONLY / DRAFT_HOLD. Manually ordered original BYTE-bound private plans are NOT authenticated chronology. These are local HUMAN planning changes, NEVER verified vulnerabilities, fixes, risk reduction, consent, permission or source authorization. Source labels are confidential.</p>'+
+      '<table border="1" cellpadding="7"><thead><tr><th>Local row</th><th>Original capability</th><th>Original check</th><th>HUMAN fields</th><th>Earlier</th><th>Later</th><th>Current reconciliation</th></tr></thead><tbody>'+
+      rows+'</tbody></table><p>PRIVATE unverified labels may identify clients or systems. Separate protected HUMAN distribution only; original source bytes, targets, evidence, private plan source hashes and run IDs are excluded. No network, scripts or grants.</p></body></html>\n';
+  }
+  async function loadHistory() {
+    const earlier=$("historyEarlier").files[0],later=$("historyLater").files[0];
+    if(!safeDigests()||!plans.length) {
+      message("Open the original PRIVATE lab batch with WebCrypto before loading its HUMAN snapshot history.",true);return;
+    }
+    $("historyOpen").disabled=true;
+    try {
+      fail(earlier&&later,"Choose an earlier and a later PRIVATE saved plan explicitly");
+      const oldPlan=await readHistoryFile(earlier);
+      const newPlan=await readHistoryFile(later);
+      const next={earlier:oldPlan,later:newPlan,changes:historyChanges(oldPlan,newPlan)};
+      // Entire two-file source-byte admission completed BEFORE any active comparison changes.
+      history=next;historyPage=0;
+      $("historySearch").value="";$("historyState").value="all";
+      renderHistory();
+      message("Both PRIVATE snapshots admitted against exact current original bytes. Chronology and reviewer authenticity remain unverified.");
+    } catch(error) {
+      message("Entire PRIVATE HUMAN history HOLD: "+error.message+
+        ". Existing in-memory HUMAN plan and previous comparison remain unchanged.",true);
+    } finally {
+      $("historyOpen").disabled=false;
+      $("historyEarlier").value="";$("historyLater").value="";
+    }
+  }
+  function applyHistory() {
+    if(!history)return;
+    const stats=historyStats();
+    if(stats.conflicts) {
+      message("HUMAN history merge HOLD: "+stats.conflicts+" field conflicts. Current plan unchanged.",true);return;
+    }
+    if(!stats.needs)return;
+    if(!confirm("Apply "+stats.needs+
+      " nonconflicting categorical HUMAN proposal fields from the manually designated later snapshot? No source facts, findings, grants, client authorization or scanner execution will change."))return;
+    // Reassess every field and refuse all changes if any concurrent HUMAN decision conflicts.
+    if(historyStats().conflicts)return;
+    const next=plans.map(p=>({...p}));
+    for(const item of history.changes)for(const kind of item.fields) {
+      if(next[item.ordinal-1][kind]===item.before[kind])
+        next[item.ordinal-1][kind]=item.after[kind];
+    }
+    plans=next;changed=true;lastBulk=null;
+    $("humanUndo").disabled=true;
+    page=0;render();renderHistory();
+    message("Applied only nonconflicting HUMAN categorical proposals. No original finding or authorization was changed.");
+  }
+
   function wire() {
+    $("historyOpen").addEventListener("click",loadHistory);
+    $("historyApply").addEventListener("click",applyHistory);
+    $("historyForget").addEventListener("click",()=>{
+      if(history&&!confirm("Forget only the two PRIVATE HUMAN comparison snapshots? Current HUMAN plan stays as is."))return;
+      clearHistory();message("Private HUMAN comparison discarded; current local HUMAN choices retained.");
+    });
+    $("historySearch").addEventListener("input",()=>{historyPage=0;if(history)renderHistory();});
+    $("historyState").addEventListener("change",()=>{historyPage=0;if(history)renderHistory();});
+    $("historyPrev").addEventListener("click",()=>{if(history&&historyPage>0){historyPage--;renderHistory();}});
+    $("historyNext").addEventListener("click",()=>{if(history){historyPage++;renderHistory();}});
+    $("historyCounts").addEventListener("click",()=>{
+      if(!history)return;
+      if(!confirm("Download anonymous HUMAN change COUNTS only? Small numeric groups can remain sensitive."))return;
+      const report=historyCountRows();
+      download("lightup-human-change-counts.csv",historyCSV(report),"text/csv");
+      download("lightup-human-change-counts.json",JSON.stringify(report,null,2)+"\n","application/json");
+    });
+    $("historyPrivate").addEventListener("click",()=>{
+      if(!history)return;
+      try {
+        const phrase=$("historySearch").value.trim().toLocaleLowerCase();
+        const state=$("historyState").value;
+        const chosen=history.changes.filter(item=>{
+          const d=historyDisposition(item),row=getRows()[item.ordinal-1];
+          return (state==="all"||(state==="conflict"&&d.conflicts>0)||
+            (state==="pending"&&d.needs>0&&!d.conflicts)||
+            (state==="matched"&&!d.needs&&!d.conflicts))&&
+            (row.capability+" "+row.check).toLocaleLowerCase().includes(phrase);
+        });
+        const pageHTML=historyPrivateHTML(chosen);
+        fail(new Blob([pageHTML]).size<=MAX_PRIVATE_BYTES,"PRIVATE HTML comparison exceeds output limit");
+        if(!confirm("Download PRIVATE HUMAN change handoff with ORIGINAL capability/check labels? Independent protected sharing approval is required."))return;
+        download("lightup-PRIVATE-human-changes.html",pageHTML,"text/html");
+      } catch(error){message("PRIVATE HUMAN comparison HOLD: "+error.message,true);}
+    });
     $("humanSearch").addEventListener("input",()=>{page=0;render();});
     $("humanStage").addEventListener("change",()=>{page=0;render();});
     $("humanPrev").addEventListener("click",()=>{if(page>0){page--;render();}});
@@ -228,21 +449,21 @@ function createHumanBoard(api) {
         for(const kind of KINDS)if(modifications[kind]!=="keep")current[kind]=modifications[kind];
         plans[i]=current;
       });
-      changed=true;$("humanUndo").disabled=false;page=0;render();
+      changed=true;$("humanUndo").disabled=false;page=0;render();if(history)renderHistory();
       message("Changed "+proposal.length+" HUMAN planning rows only; last bulk edit is undoable.");
     });
     $("humanUndo").addEventListener("click",()=>{
       if(!lastBulk)return;
       const snapshot=lastBulk;lastBulk=null;
       snapshot.forEach(({i,before})=>{plans[i]={...before};});
-      changed=true;$("humanUndo").disabled=true;render();
+      changed=true;$("humanUndo").disabled=true;render();if(history)renderHistory();
       message("Restored "+snapshot.length+" HUMAN planning rows from last bulk edit; original sources unchanged.");
     });
     $("humanReset").addEventListener("click",()=>{
       if(!plans.length)return;
       if(!confirm("Reset ALL local HUMAN planning choices? No original source file changes."))return;
       plans=getRows().map(fresh);changed=true;lastBulk=null;
-      $("humanUndo").disabled=true;page=0;render();message("Local HUMAN routing reset; source declarations unchanged.");
+      $("humanUndo").disabled=true;page=0;render();if(history)renderHistory();message("Local HUMAN routing reset; source declarations unchanged.");
     });
     $("humanSave").addEventListener("click",()=>{
       if(!plans.length||!safeDigests())return;
@@ -265,7 +486,7 @@ function createHumanBoard(api) {
         const candidate=admitPrivatePlan(parseStrict(raw));
         if(!confirm("Replace ALL local HUMAN notes with this PRIVATE exact-byte-bound plan?"))return;
         plans=candidate;changed=true;lastBulk=null;
-        $("humanUndo").disabled=true;page=0;render();
+        $("humanUndo").disabled=true;page=0;render();if(history)renderHistory();
         message("Source-byte-bound PRIVATE HUMAN plan restored after whole-document admission. No findings or authority changed.");
       } catch(error) {
         message("PRIVATE HUMAN plan HOLD: "+error.message+"; current notes unchanged.",true);
