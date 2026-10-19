@@ -65,6 +65,21 @@ If the peer proposes genuinely different local action/state enums compared with 
 
 A source-free peer board can also be supplied directly to the plaintext `browser_workflow.py` with `--peer-board /absolute/0700/peer.json`, in addition to the unchanged `--session`, `--original-board`, `--proposed-board` and `--output-dir` arguments. This is a *PRIVATE operator workspace feature*, not minimum-disclosure peer correspondence. Do not share the complete native workroom with a recipient who was authorized to receive only one selected HUMAN handoff.
 
+## Direct encrypted work-session → selected encrypted HUMAN capsule
+
+Use [`repack_encrypted_handoff.py`](repack_encrypted_handoff.py) to turn an owner-private encrypted `.lhew` work-session **directly** into an independently password-encrypted `.lheh` selected handoff, without publishing a permanently decrypted HTML/CSV/JSON workroom. Only the current native HUMAN action choices are eligible, never actual original case or permission assertions.
+
+```bash
+python3 remediation-human-handoff/repack_encrypted_handoff.py \
+  --encrypted-workspace "$HOME/lightup-private-human/source.lhew" \
+  --only request_original_human_review --ordinal 1 \
+  --output-file "$HOME/lightup-private-human/selected-recipient.lheh"
+```
+
+The CLI prompts for the original workspace passphrase and a **different, newly confirmed** recipient handoff passphrase. The original encrypted workspace is authenticated by the existing AES-GCM reader. Temporary 0700/0600 decrypted files are created only to let the **unchanged original Studio session/board parser** independently re-admit the saved numeric session, original, edited and optional peer HUMAN proposals. Only the deliberately chosen current HUMAN action/ordinal enters the freshly encrypted `.lheh`; all temporary plaintext files are unlinked afterward. This does **not** securely overwrite disk, memory, backups or swap. A wrong password, missing action/ordinal, invalid peer or incompatible native board makes publication HOLD. The output capsule remains a self-declared numeric HUMAN proposal with no authenticated sender, evidence, actual consent, grant, fix or delivery.
+
+This direct route requires Python's optional local `cryptography` package, an existing private 0700 parent directory and fresh 0600 output file. Its output can be independently opened with [`encrypted_handoff.py`](encrypted_handoff.py) or the offline browser section 6. The original `.lhew` remains encrypted and intact.
+
 ## One command: native PRIVATE workroom AND encrypted selected recipient capsule
 
 Every complete CLI operator path now accepts an optional **`--encrypt-selected-handoff`** switch, but **only together with an explicit `--only ACTION` selector** and optionally `--ordinal N`. The program prompts for a *new separate recipient passphrase* twice and produces an additional `handoff-selected.lheh` file inside the *unpublished* 0700 PRIVATE workroom staging folder. The same exact original-parser-bound session/board is used for the normal local HTML/CSV/TXT output and for the separately encrypted, action-scoped recipient payload. Encryption failure means the whole requested workroom is HOLD: the final folder is not published, and there is no plaintext fallback in lieu of requested encryption.
