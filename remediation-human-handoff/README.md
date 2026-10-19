@@ -4,6 +4,26 @@ This standalone, **offline** companion turns **an existing exact-matched saved a
 
 It solves a practical operator gap: routing choices in a combined private board are not yet individual, reviewable, least-disclosure human handoffs. A human can now prepare just the follow-up needed for a manually chosen original authorized reviewer instead of sharing an entire local numerical dashboard. This feature **does not send anything**, grant authority or update the original source.
 
+## No-Python: portable offline HUMAN Return Studio
+
+Open **[browser.html](browser.html)** directly on an offline computer. It is a self-contained HTML file with an embedded SHA-256 CSP-pinned local script, no third-party resources and no server or installation.
+
+1. In the **unchanged original** `remediation-portfolio/studio.html`, download the paired saved PRIVATE numeric session JSON and local HUMAN action-board JSON.
+2. In the new Return Studio choose those **two** files and click **Load both PRIVATE files**. The entire selection is admitted together or HOLD: bounded UTF-8, complete original exact schemas, recursive duplicate JSON-key rejection, literal false authority flags and positional equality across **all** local numeric packets.
+3. Change HUMAN-only routing action/state from the accessible per-ordinal table; do not infer case identity or a verified fix.
+4. Download an **original Studio-compatible board** with the new HUMAN choices. It can be restored manually in the original Studio **only against the same numeric session**; the native Python CLI can also read it without alteration.
+5. Restrict the HUMAN handoff to one action category or all actionable local appearances, then download its standalone *scriptless* print-friendly HTML, CSV or text brief. The browser also exports source-free aggregate planning JSON and an action/state change CSV.
+
+All original input is read only into transient browser memory: no fetch, IndexedDB, localStorage, cookies, analytics, network, external images, model, background worker or target access. Downloads are **not** encrypted at rest and anonymous small-group numbers can be sensitive. A HUMAN must decide when to disclose anything. The new standalone browser does **not** show original evidence or authenticate actual original human replies.
+
+For auditability of the deliverable's SHA-pinned script and to reproduce the distributable HTML using the checked-in source (not a QA suite):
+
+```bash
+python3 remediation-human-handoff/build_browser.py
+```
+
+The resulting `browser.html` is a static private offline product, **not** an independent browser/security audit or permission to release. Existing release HOLD is unchanged.
+
 ## Use (offline Linux, stdlib Python)
 
 Open the original `remediation-portfolio/studio.html` in an offline browser. Import the original native anonymized counts-only exports, save the numeric private session, make HUMAN-only next-action choices and export the matching action board. Save **both** downloads inside one folder owned by the same local account, with mode 0700 for the parent and 0600 for both files.
