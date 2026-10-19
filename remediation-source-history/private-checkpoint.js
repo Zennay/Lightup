@@ -40,7 +40,8 @@ async function save(){
  const wrapper={kind:KIND,version:1,kdf:'PBKDF2-SHA256',rounds:ROUNDS,cipher:'AES-256-GCM',
   salt:b64(salt),iv:b64(iv),ciphertext:b64(encrypted),authority:false};
  saveFile('lightup-PRIVATE-source-history.encrypted.json',JSON.stringify(wrapper));
- say('Encrypted PRIVATE source-history checkpoint saved. Passphrase and approved private destination remain your responsibility; not identity, consent or a security verdict.');
+ H.checkpointPrepared(p.revision);
+ say('Encrypted PRIVATE checkpoint download prepared. Independently verify the browser really saved it at an approved secure destination; the application cannot confirm disk storage, sender identity, consent or a security verdict.');
 }
 async function open(){
  secure();
