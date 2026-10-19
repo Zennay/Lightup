@@ -1,7 +1,7 @@
 /* LightUp HUMAN Ticket Vault: offline WebCrypto interoperable with vault.py v1. */
 (()=>{'use strict';
 const $=id=>document.getElementById(id);
-const e=['operation','source','old-password','new-password','confirmation','plaintext-ack','run','forget','status','result','preview'];
+const e=['operation','source','old-password','new-password','confirmation','plaintext-ack','run','forget','status','result','preview','viewer','viewer-content'];
 const ui=Object.fromEntries(e.map(id=>[id,$(id)]));
 const enc=new TextEncoder(),dec=new TextDecoder('utf-8',{fatal:true});
 const MAGIC=new Uint8Array([76,85,84,75,86,49,0,10]); // LUTKV1\0\n
@@ -11,6 +11,7 @@ const FLAGS=['authenticated','tenant_verified','source_authorized','grant','clie
 const META_KEYS=['kind','schema_version','content_type','content_size','content_sha256',...FLAGS];
 let url=null;
 function clearLink(){if(url)URL.revokeObjectURL(url);url=null;ui.result.replaceChildren();}
+function clearViewer(){ui['viewer-content'].textContent='';ui.viewer.hidden=true;}
 function status(message,bad=false){ui.status.textContent=message;ui.status.classList.toggle('error',bad);}
 function concat(...arrays){const result=new Uint8Array(arrays.reduce((x,b)=>x+b.length,0));let i=0;for(const x of arrays){result.set(x,i);i+=x.length;}return result;}
 function be(n,width){const out=new Uint8Array(width);for(let k=width-1;k>=0;k--){out[k]=n&255;n=Math.floor(n/256);}return out;}
@@ -77,13 +78,14 @@ function output(data,name,mime){
 }
 function update(){
  const op=ui.operation.value;
- for(const id of ['old-password','new-password','confirmation'])ui[id].closest('.field').hidden=(op==='inspect'||(op==='seal'&&id==='old-password')||(op==='open'&&id!=='old-password'));
- ui['plaintext-ack'].closest('label').hidden=(op!=='open');
+ for(const id of ['old-password','new-password','confirmation'])ui[id].closest('.field').hidden=(op==='inspect'||(op==='seal'&&id==='old-password')||((op==='open'||op==='view')&&id!=='old-password'));
+ ui['plaintext-ack'].closest('label').hidden=!(op==='open'||op==='view');
  ui.preview.textContent=op==='seal'?'Encrypt original PRIVATE Markdown/JSON without reading original client authority.':
  op==='open'?'Decrypt to an explicitly saved PRIVATE plaintext file only.':
+ op==='view'?'Review source HUMAN plaintext in tab memory only, without a new disk file; clear it with Forget.':
  op==='rotate'?'Re-encrypt into a new vault; old encrypted file stays untouched.':
  'Read visible anonymous vault parameters only; authenticity is not verified without passphrase.';
- clearLink();
+ clearLink();clearViewer();
 }
 async function run(){
  const op=ui.operation.value,file=ui.source.files[0];
@@ -118,17 +120,27 @@ async function run(){
   status('Separate fresh encrypted vault ready. Old encrypted vault was not modified and no plaintext file was written.');
   return;
  }
+ if(op==='view'){
+  if(!ui['plaintext-ack'].checked||!confirm('Display PRIVATE decrypted HUMAN notes on this trusted local screen without writing any plaintext file? Screenshots/screen sharing are your responsibility.'))throw Error('Local private viewing not approved.');
+  if(source.plain.length>262144)throw Error('Private text exceeds safe 256 KiB in-memory viewer limit; use approved private plaintext export instead.');
+  ui['viewer-content'].textContent=textUtf8(source.plain);
+  ui.viewer.hidden=false;
+  source.inner.fill(0);source.plain.fill(0);
+  status('PRIVATE HUMAN content decrypted for this local read-only viewer. No new plaintext file was written. Choose Forget to clear the visible content.');
+  return;
+ }
  if(!ui['plaintext-ack'].checked||!confirm('Deliberately prepare sensitive PRIVATE plaintext for approved local storage? No authentication, consent, verified fix or authorization is conferred.'))throw Error('Plaintext disclosure not approved.');
  const suffix=source.meta.content_type==='text/markdown'?'.md':'.json';
  output(source.plain,'lightup-PRIVATE-human-restored'+suffix,source.meta.content_type+';charset=utf-8');
  source.inner.fill(0);status('PRIVATE plaintext download ready. Store securely and delete all unneeded copies separately.');
 }
 ui.run.addEventListener('click',async()=>{
- ui.run.disabled=true;clearLink();status('Local cryptography in progress; no network call is made.');
+ ui.run.disabled=true;clearLink();clearViewer();status('Local cryptography in progress; no network call is made.');
  try{await run();}catch(err){status('HOLD: '+err.message,true);}
  finally{for(const id of ['old-password','new-password','confirmation'])ui[id].value='';ui.run.disabled=false;}
 });
 ui.operation.addEventListener('change',update);
-ui.forget.addEventListener('click',()=>{clearLink();ui.source.value='';for(const id of ['old-password','new-password','confirmation'])ui[id].value='';ui['plaintext-ack'].checked=false;status('File reference and temporary download forgotten from this page. Previously downloaded copies need separate handling.');});
+ui.source.addEventListener('change',()=>{clearLink();clearViewer();});
+ui.forget.addEventListener('click',()=>{clearLink();clearViewer();ui.source.value='';for(const id of ['old-password','new-password','confirmation'])ui[id].value='';ui['plaintext-ack'].checked=false;status('File reference and temporary download forgotten from this page. Previously downloaded copies need separate handling.');});
 update();
 })();
