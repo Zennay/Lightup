@@ -1,0 +1,220 @@
+# LightUp · Authenticated PRIVATE Evidence Ledger Bridge
+
+**Release posture: INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD.** This product is a source-bound, **human-only offline evidence coordination** interface, not an authority decision, a test of any third-party system, confirmation of any vulnerability, remediation proof, client consent, an authorization grant or permission to execute anything.
+
+## Delivered product
+
+The branch combines **unchanged original owner products**, not forks:
+
+1. Original authenticated client-and-exact-engagement findings CSV from `remediation-secure-export/secure_export.py` using the normal `DomainStore` account/role, tenant and engagement checks. The existing original source-owner Unicode and batch CSV guard is retained. No direct SQLite bypass.
+2. Unchanged original `remediation-artifact-ledger/` files copied from the original Artifact Ledger draft, including the original Casework parser SHA pin, offline Evidence Artifact Ledger, human artifact SHA-256 tracking, original Evidence Review/Casework context, human owner request board and offline owner response.
+3. New standalone `remediation-evidence-bridge/bridge.py`. The secure source is never written as a temporary CSV or unencrypted HTML during **export**, and the complete original current-source CSV is carried inside one owner-only 0600 AES-GCM `.ltv`. The original immutable ledger HTML is **rebuilt on every export/open** and checked against its pinned SHA-256. Only one CSP-SHA-pinned, no-network local preload script is appended; the original human features, original source and original CSS/JS are left intact.
+4. **Private human workflow:** `open` explicitly decrypts into a newly created owner-only offline HTML; the browser locally imports the original CSV and the self-declared context; users then link their own *local* evidence files by byte SHA-256, add human reviewer notes, request clarifications and prepare PRIVATE source-bound handoffs. Evidence bytes are not sent to the app or stored in the ledger; only local fingerprints and human metadata are remembered in browser memory.
+5. **Extra sensitive reopening:** `open-current` requires a new real original LightUp login, read permission for the exact client and engagement, and **exact CSV byte SHA-256 and finding-count match** before creating HTML. It does not grant action permission or obtain client consent.
+6. `inspect` decrypts and displays only total finding count without names, IDs or artifacts; `rotate` securely re-encrypts to a new owner-private `.ltv` without ever materializing plaintext. Existing vault `seal/open` implementation is reused unchanged.
+
+All archive metadata flags `authenticated, source_authorized, assessment_authorized, grant, client_consent, operator_consent, execution, scan, retest_verified, release` are explicitly **false**. Export-time authenticated source selection is documented separately from authority claims. A human stage/attachment hash is not evidence that anything has been fixed or retested.
+
+## Usage on an already authorized local LightUp workstation
+
+Prerequisites: the pinned original candidate branch, Python and its existing dependencies (including `cryptography`), a real existing LightUp account, a client/engagement to which that account has original read access, and an owner-owned 0700 **private destination directory**. Passwords and passphrases are entered interactively on a real private TTY only. Never put client credentials or secret material in shell arguments, chat, environment variables, CI variables or documentation.
+
+```sh
+# Existing and already-authorized local LightUp data; no network discovery, no scanning.
+PYTHONPATH=src python3 remediation-evidence-bridge/bridge.py export \
+  --db /path/to/already-existing-lightup.sqlite \
+  --email operator@example.invalid \
+  --client-id EXISTING_CLIENT_ID --engagement-id EXISTING_ENGAGEMENT_ID \
+  --output /trusted/private/lightup/evidence-ledger-original.ltv
+
+# Inspect encrypted original source without writing any decrypted file.
+PYTHONPATH=src python3 remediation-evidence-bridge/bridge.py inspect \
+  --input /trusted/private/lightup/evidence-ledger-original.ltv
+
+# Human-approved PRIVATE plaintext on disk (sensitive, 0600, never public):
+PYTHONPATH=src python3 remediation-evidence-bridge/bridge.py open \
+  --input /trusted/private/lightup/evidence-ledger-original.ltv \
+  --output /trusted/private/lightup/evidence-ledger-review.html \
+  --ack-private-html
+
+# Stronger fresh-source gate: re-authenticate and require exact CURRENT original CSV.
+PYTHONPATH=src python3 remediation-evidence-bridge/bridge.py open-current \
+  --db /path/to/already-existing-lightup.sqlite \
+  --email operator@example.invalid \
+  --client-id EXISTING_CLIENT_ID --engagement-id EXISTING_ENGAGEMENT_ID \
+  --input /trusted/private/lightup/evidence-ledger-original.ltv \
+  --output /trusted/private/lightup/evidence-ledger-current-review.html \
+  --ack-private-html
+
+# Rotate existing ciphertext without writing a plaintext intermediate.
+PYTHONPATH=src python3 remediation-evidence-bridge/bridge.py rotate \
+  --input /trusted/private/lightup/evidence-ledger-original.ltv \
+  --output /trusted/private/lightup/evidence-ledger-rotated.ltv
+```
+
+Open the private HTML only on a trusted workstation without browser extensions or cloud file synchronization that could exfiltrate file contents. Browser import occurs from the local original CSV embedded into the **explicitly decrypted** HTML, without network requests, DNS, browser persistence, grants or scanner invocations. The main ledger remains unchanged: the original source is imported as **unverified source-reported findings**, and all local evidence fingerprints and follow-ups are HUMAN-only records. Private exports in the browser require their original separate human confirmation and recipient checks.
+
+## New: privacy-minimal encrypted source-claim briefing
+
+The companion `brief.py` reads the existing encrypted authenticated Evidence Ledger `.ltv`, admits the original source and the pinned original HTML, and produces only **aggregate original severity × source retest-label counts**. No original finding ID, title, remediation instructions, client, engagement, account, digest or attachment details are included. This is human workload planning, **not a verified vulnerability or remediation statistic**.
+
+```sh
+# View anonymous original reported severity/retest-count Markdown only, no plaintext output file.
+PYTHONPATH=src python3 remediation-evidence-bridge/brief.py \
+  --input /trusted/private/lightup/evidence-ledger-original.ltv \
+  --format markdown
+
+# Re-authenticated current-source counts-only CSV directly to new 0600 file.
+PYTHONPATH=src python3 remediation-evidence-bridge/brief.py \
+  --input /trusted/private/lightup/evidence-ledger-original.ltv \
+  --current --db /path/to/already-existing-lightup.sqlite \
+  --email operator@example.invalid \
+  --client-id EXISTING_CLIENT_ID --engagement-id EXISTING_ENGAGEMENT_ID \
+  --format csv --output /trusted/private/lightup/source-claim-counts.csv
+```
+
+Both paths require an interactive private vault passphrase. `--current` additionally requires fresh authentic LightUp account and exact original client/engagement source access; it cannot imply permission to scan, client consent, acceptance of a remediation claim or proof of a retest. The CSV contains only fixed safe enum labels and positive integer counts; the `--output` writer uses the original owner-only no-follow/0600 writer and never overwrites a destination.
+
+## Full encrypted HUMAN collaboration with manual original-app restore
+
+The new **`workspace.py`** carries an operator's already exported PRIVATE original Ledger **unified HUMAN workspace JSON** and the exact previously exported **authenticated encrypted Evidence Ledger `.ltv`** as one new encrypted collaboration handoff. Only original HUMAN drafts are transported; no original evidence file bytes, scan targets, grants or proof of verified fixes are included. The source and human packet must have the exact original canonical source SHA, the same real client/engagement labels, literal false authority flags and bounded original shapes.
+
+**Seal** requires a **fresh original LightUp login and exact current authorized source** before any handoff is accepted; the selected unified-human packet must be a pre-existing owner-private regular 0600 file in a 0700 private directory. Both the original source passphrase and a new collaboration passphrase are entered privately via TTY. The old encrypted source file remains untouched.
+
+```sh
+PYTHONPATH=src python3 remediation-evidence-bridge/workspace.py seal \
+  --source /trusted/private/lightup/evidence-ledger-original.ltv \
+  --workspace /trusted/private/lightup/original-unified-human-workspace.json \
+  --db /path/to/existing-lightup.sqlite --email operator@example.invalid \
+  --client-id EXISTING_CLIENT_ID --engagement-id EXISTING_ENGAGEMENT_ID \
+  --output /trusted/private/lightup/human-collaboration.ltv
+```
+
+**Open** creates a new private offline HTML file only after explicit `--ack-private-html`. It locally imports the original source and provides a **new Preview encrypted HUMAN workspace button**. A human must click the button to trigger the unchanged original Ledger's canonical-source-bound **preview**, inspect what would change, and then separately click the original **Confirm atomic PRIVATE human restore** action; the new code never calls the apply action. Nothing is automatically committed to original human records or external data.
+
+```sh
+PYTHONPATH=src python3 remediation-evidence-bridge/workspace.py open \
+  --input /trusted/private/lightup/human-collaboration.ltv \
+  --output /trusted/private/lightup/PRIVATE-human-review.html --ack-private-html
+
+# Additional fresh-login and exact-current-source gate before local plaintext output:
+PYTHONPATH=src python3 remediation-evidence-bridge/workspace.py open-current \
+  --input /trusted/private/lightup/human-collaboration.ltv \
+  --db /path/to/existing-lightup.sqlite --email operator@example.invalid \
+  --client-id EXISTING_CLIENT_ID --engagement-id EXISTING_ENGAGEMENT_ID \
+  --output /trusted/private/lightup/PRIVATE-human-current.html --ack-private-html
+
+# Anonymous count-only inspect; or passphrase rotation to a NEW .ltv:
+PYTHONPATH=src python3 remediation-evidence-bridge/workspace.py inspect \
+  --input /trusted/private/lightup/human-collaboration.ltv
+PYTHONPATH=src python3 remediation-evidence-bridge/workspace.py rotate \
+  --input /trusted/private/lightup/human-collaboration.ltv \
+  --output /trusted/private/lightup/human-collaboration-rotated.ltv
+```
+
+The browser's original source importer, local SHA-256 content binding, original Casework/Evidence Review import checks, stale-preview guard and explicit confirmation remain the ultimate HUMAN-only admission; encryption is **not** security evidence, identity attestation, consent, current release permission, or verified remediation.
+
+## Source-revision continuity without silently carrying changed findings
+
+**`revision.py`** adds a complete private *human-only* source revision workflow. When an authenticated client/engagement findings export changes, **only findings with all five original source fields literally identical** retain local HUMAN file fingerprints, optional original Casework fields and pending human requests. A changed/absent original finding is **NOT** an automatically fixed finding. All other prior HUMAN notes remain **only in the unchanged old encrypted source** and are not copied to the new source. Every new or changed finding in the revised original Casework starts at `unassigned` with blank human notes; old complete original Evidence Review is always detached because its membership is source-wide. The original file must be retained for historical human audit and re-evaluation.
+
+```sh
+# Private TTY original LightUp login required; aggregate-only preview, no new file:
+PYTHONPATH=src python3 remediation-evidence-bridge/revision.py preview \
+  --input /trusted/private/lightup/human-collaboration.ltv \
+  --db /path/to/existing-lightup.sqlite --email operator@example.invalid \
+  --client-id EXISTING_CLIENT_ID --engagement-id EXISTING_ENGAGEMENT_ID
+
+# On deliberate approval, create one NEW 0600 encrypted, updated-original-source HUMAN workroom:
+PYTHONPATH=src python3 remediation-evidence-bridge/revision.py carry \
+  --input /trusted/private/lightup/human-collaboration.ltv \
+  --db /path/to/existing-lightup.sqlite --email operator@example.invalid \
+  --client-id EXISTING_CLIENT_ID --engagement-id EXISTING_ENGAGEMENT_ID \
+  --output /trusted/private/lightup/new-original-human-workroom.ltv \
+  --ack-preserve-original
+```
+
+This is **human source-claim continuity**, not scan/verified-fix/retest evidence or authorization. The human must retain the previous original encrypted source separately; the new package is a separate artifact and is never published or applied to production.
+
+## Merge independent encrypted HUMAN workrooms without losing parallel edits
+
+**`merge.py`** combines two independently saved `workspace.py` PRIVATE HUMAN `.ltv` workrooms **only when they both contain exactly the current original authenticated client/engagement five-column source bytes**. It never updates the original database, verifies a fix, grants authorization, approves a retest or runs a target. The existing source/authentication/tenant checks run **before** decrypting and combining the two workrooms.
+
+The operator uses a **private, interactive terminal**. Both vault passphrases are entered locally without command-line/env secrets. `preview` shows only source finding count, how many HUMAN records can be combined and how many human conflicts need decisions. It writes no file, reveals no finding IDs or notes and cannot silently pick a conflict winner.
+
+```sh
+# Read-only anonymous HUMAN merge preview: both original encrypted sources preserved.
+PYTHONPATH=src python3 remediation-evidence-bridge/merge.py preview \
+  --left /trusted/private/lightup/owner-one.ltv \
+  --right /trusted/private/lightup/owner-two.ltv \
+  --db /path/to/existing-lightup.sqlite --email operator@example.invalid \
+  --client-id EXISTING_CLIENT_ID --engagement-id EXISTING_ENGAGEMENT_ID
+
+# New owner-only 0600 private encrypted .ltv, no temporary plaintext:
+PYTHONPATH=src python3 remediation-evidence-bridge/merge.py merge \
+  --left /trusted/private/lightup/owner-one.ltv \
+  --right /trusted/private/lightup/owner-two.ltv \
+  --db /path/to/existing-lightup.sqlite --email operator@example.invalid \
+  --client-id EXISTING_CLIENT_ID --engagement-id EXISTING_ENGAGEMENT_ID \
+  --output /trusted/private/lightup/merged-human-review.ltv \
+  --ack-private-human-review
+```
+
+Original HUMAN Casework, Evidence Review, registered local evidence fingerprints and HUMAN follow-up requests retain their distinct original IDs; independently added source-bound records are kept. For the **same** original HUMAN record, differing owner/date/status/plan/note/fingerprint metadata and other editable fields are shown separately in the private terminal, field by field. The operator explicitly chooses **L** or **R** for each disputed field. An empty choice or **HOLD** stops before creating a merged artifact; there is **no** auto-winner, no overwrite of either encrypted source and no discarded independent change. Original finding membership remains fixed and cannot be reassigned by selecting a side. If one source has an entire Casework or Evidence Review view detached while the other retains it, even that **view-level presence conflict** requires a separate explicit local HUMAN retain/discard choice. No implicit preservation or deletion.
+
+The merged original HUMAN envelope is fully re-admitted, encrypted into a **new** 0600 file inside an owner-private directory and can be reopened using `workspace.py open-current`. After opening, the **original unchanged Ledger still requires its own separate preview and explicit HUMAN apply**, even for a conflict-free merge. Any originally source-labelled `fixed` is still just a retrospective, unverified label.
+
+**Operational safeguards:** original source bytes and exact client/engagement require a fresh authorized read; all source and human files must be owner-only single-linked regular files; recipient/offline-browser requirements and original privacy/crypto review still apply. Local terminal shows HUMAN note contents **only in the deliberate conflict-resolution step**, never in the aggregate `preview`. Do not capture that terminal session to shared logs. This feature is subject to the same DRAFT/HOLD release gates as the source owner.
+
+## Unified original-authenticated offline workstation (integrated source owners)
+
+**`complete.py`** is the complete operational integration of **unchanged original [Authenticated Engagement Brief / Source History PR #1654](https://github.com/Zennay/Lightup/pull/1654)** into this candidate's original Evidence Artifact Ledger, original Casework and original Ticket Desk. No original owner source was rewritten. One genuine existing LightUp sign-in plus exact client+engagement read and one pre-existing original `workspace` / `workspace_history` encrypted source `.ltv` creates a **new owner-only 0700 offline folder** with 0600 separate original browser views:
+
+- `index.html`: source-only private navigation and unverified-source/HUMAN HOLD notice.
+- `01-review.html`: original source findings and optional previous-revision comparison.
+- `02-ticketdesk.html`: unchanged original source-bound HUMAN Ticket Desk.
+- `03-casework.html`: unchanged original source-bound HUMAN Casework.
+- `04-history.html` (when original historical snapshots are actually provided): original source-history review.
+- `05-evidence-ledger.html`: unchanged original Artifact Ledger and optionally a separate already encrypted, exactly current-source-bound HUMAN collaboration packet. **The HUMAN packet is only staged for original native user-driven preview**, never silently applied.
+- `06-human-actions.html`: **new source-bound HUMAN attention board** with original unverified severity/retest labels, original finding navigation, tentative Casework due dates, local file fingerprint coverage, outstanding HUMAN requests and per-owner workload links. No scanning, execution, consent or verification is inferred.
+
+All five/six HTML files and the navigation are built **completely in memory before a single output directory is created**. The original owner validates original source-app SHA pins and historical membership; the Evidence Bridge validates its original app/source pin. On any output failure the newly created directory's partial outputs are removed. No source/HTML bytes are uploaded or fetched from the network.
+
+```sh
+# First obtain an existing legitimate original encrypted workspace source by
+# using the original #1654 tooling on a trusted LightUp workstation.
+# Then create one complete private offline dashboard and original HUMAN views:
+PYTHONPATH=src python3 remediation-evidence-bridge/complete.py \
+  --db /path/to/existing-lightup.sqlite \
+  --email operator@example.invalid \
+  --client-id EXISTING_CLIENT_ID --engagement-id EXISTING_ENGAGEMENT_ID \
+  --source /trusted/private/lightup/original-workspace-source.ltv \
+  --output-dir /trusted/private/lightup/new-private-five-view-workroom \
+  --ack-private-workspace
+
+# Optional already encrypted HUMAN follow-up packet (no plaintext intermediary):
+PYTHONPATH=src python3 remediation-evidence-bridge/complete.py \
+  --db /path/to/existing-lightup.sqlite \
+  --email operator@example.invalid \
+  --client-id EXISTING_CLIENT_ID --engagement-id EXISTING_ENGAGEMENT_ID \
+  --source /trusted/private/lightup/original-workspace-source.ltv \
+  --human /trusted/private/lightup/merged-human-review.ltv \
+  --output-dir /trusted/private/lightup/new-private-human-workroom \
+  --ack-private-workspace
+```
+
+**New source-revision awareness:** When the original authenticated encrypted Engagement Brief workspace includes previous original snapshots, both the static PRIVATE `index.html` and `06-human-actions.html` now compare the latest previous PRIVATE original five-column records with the currently authenticated source. The navigation dashboard shows **aggregate-only changed, added and absent original-source counts**, and links into the detailed HUMAN action board. The action board marks exact changed/added current finding rows as **HUMAN re-review required**, next to their owner/notes/LOCAL evidence flags. Historical absent rows are counted but are **not** silently treated as resolved, fixed, absent externally, or retest-verified. Historical input is source-versioned PRIVATE provenance only, never authenticated as current. All old sources are admitted with strict full five-field/unique-ID contracts before comparison; original source apps remain unchanged. No live target and no additional user/security entitlement is involved.
+
+**New cross-view HUMAN action board:** The [`triage.py`](triage.py) standalone `06-human-actions.html` is built from the exact same original authenticated five-column source as the rest of the workroom. It admits a **separately encrypted original HUMAN workspace** only through the existing `workspace.py` source digest/client/engagement gates and the current exact original Casework/Evidence Review/attachment/request membership contracts. It supports read-only owner-specific jump links, original finding priority groupings, local evidence fingerprint gaps, human blockers, tentative due dates **compared only with the workstation's UTC calendar date** and outstanding request summaries. Source-reported severity/fixed and HUMAN completed or due status remain **unverified labels**; missing LOCAL fingerprints do not prove missing external evidence. All original data and human notes are rendered only inside the owner's existing 0600 private HTML, with HTML escaping and CSP-SHA-pinned local CSS; the global `index.html` still shows only anonymous aggregate counts and no private names or finding IDs. Without a HUMAN handoff, the board displays only original unverified source details and LOCAL information explicitly unavailable. It never edits any record or triggers the original Ledger's manual Apply, sends requests or contacts targets.
+
+The startup view is now built by the independent [`portal.py`](portal.py): a responsive, keyboard-accessible, **zero-JavaScript** offline dashboard with an SHA-256 CSP-pinned in-page stylesheet, literal local file links, and **aggregate-only original source-labelled** finding / critical-high / historical-revision counts. It never prints original IDs, source hashes, client labels or human notes in its landing page; a source severity label is a retrospective **claim**, not a proven security issue. All existing owner apps remain separately SHA-pinned and unchanged.
+
+Open the newly created `index.html` **locally** on a trusted private device. The original views and new read-only HUMAN action board remain separate offline files inside the same private folder to preserve original source ownership. Private HTML deliberately materializes source-labelled findings in plaintext only after explicit operator acknowledgement; do not publish, sync, email or serve the folder. Existing independent original CI, privacy/security/crypto/browser review, exact current separate client/operator consent, source owner review and HUMAN GO gates remain fully intact. A local human review is **not** an authorized scan, verified finding/retest, client approval or production release.
+
+## Original ownership and enforced gates
+
+This integration is a **child candidate** of the original held [authenticated encrypted Casework PR #1653](https://github.com/Zennay/Lightup/pull/1653), with the [original unchanged Evidence Artifact Ledger PR #1642](https://github.com/Zennay/Lightup/pull/1642) copied as-is. All new feature code resides under `remediation-evidence-bridge/`. It does not alter the original file ownership, existing `src/lightup/`, active scope/authorization, scanner, tool runner, CI workflow or test/QA files.
+
+Both original hosted and permanently registered named VPS **exact-head mandatory CI**, source-owner acceptance, independent security/privacy/crypto/browser review, issues #177/#182/#829, **real separate authenticated client/operator consent and action-time revocation**, and explicit **HUMAN GO** remain separate prerequisites before any merge to main, deployment or client-facing activation. The protected development draft is intentionally not a release.
+
+No QA, regression or test suites are added or run. Native syntax, offline builder and CLI entrypoint are available for brief build/functional inspection only.
