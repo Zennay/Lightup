@@ -50,10 +50,39 @@ def review(snapshots):
                                 unchanged=len(common)-len(changed),unverified_fixed=sorted(fixed),
                                 source_severity_escalations=escalated,
                                 source_retest_regressions=regressions))
+    # The focus inbox is a derived current-source view, not a durable verdict
+    # or newly authenticated owner assignment. It never carries prior IDs
+    # absent from the latest original source into a false current work order.
+    escalated_ids={ident for t in transitions for ident in t["source_severity_escalations"]}
+    regression_ids={ident for t in transitions for ident in t["source_retest_regressions"]}
+    changed_last=set(transitions[-1]["changed"]) if transitions else set()
+    present=sequence[-1]
+    inbox=[]
+    for ident,item in present.items():
+        attention=[]
+        if item["severity"] in ("critical","high"):
+            attention.append("current_original_high_severity_label")
+        if ident in escalated_ids:
+            attention.append("historical_original_severity_escalation")
+        if ident in regression_ids:
+            attention.append("historical_original_regression_label")
+        if ident in reappeared:
+            attention.append("original_id_reappeared_after_absence")
+        if ident in changed_last:
+            attention.append("original_record_changed_in_latest_transition")
+        if attention:
+            inbox.append(dict(original_id=ident,
+                              original_severity=item["severity"],
+                              original_retest=item["retest_status"],
+                              attention=tuple(attention)))
+    inbox.sort(key=lambda entry: (
+        SEVERITY_ORDER.index(entry["original_severity"]),-len(entry["attention"]),
+        entry["original_id"],
+    ))
     return dict(snapshots=sequence,transitions=transitions,
                 historical=len(sequence)-1,source_ids=len(seen),
                 current=len(sequence[-1]),currently_absent=sorted(seen-sequence[-1].keys()),
-                reappeared=sorted(reappeared),
+                reappeared=sorted(reappeared),current_human_focus=inbox,
                 source_escalation_events=sum(len(t["source_severity_escalations"]) for t in transitions),
                 source_regression_label_events=sum(len(t["source_retest_regressions"]) for t in transitions))
 
@@ -79,8 +108,19 @@ def markdown(info):
         "- Currently absent historically observed IDs: "+str(len(info["currently_absent"])),
         "- Original IDs that reappeared after absence: "+str(len(info["reappeared"])),
         "- Source-only severity escalation events (UNVERIFIED): "+str(info["source_escalation_events"]),
-        "- Source-only new regression-label events (UNVERIFIED): "+str(info["source_regression_label_events"]), "",
+        "- Source-only new regression-label events (UNVERIFIED): "+str(info["source_regression_label_events"]),
+        "- Current original finding IDs with HUMAN attention prompts: "+str(len(info["current_human_focus"])), "",
+        "## Current source-only HUMAN follow-up inbox (UNVERIFIED)", "",
+        "Entries derive from the current original source and prior source text only.",
+        "A suggested attention flag is NOT an authenticated priority or evidence of risk.", "",
     ]
+    for item in info["current_human_focus"]:
+        lines.append("- "+safe(item["original_id"])+" · original "+safe(item["original_severity"])+
+                     " / "+safe(item["original_retest"])+" · "+
+                     ", ".join(safe(reason.replace("_"," ")) for reason in item["attention"]))
+    if not info["current_human_focus"]:
+        lines.append("- No source-label attention triggers in current original snapshot.")
+    lines.append("")
     snapshots=info["snapshots"]
     for t in info["transitions"]:
         lines.extend([

@@ -86,6 +86,26 @@ def build_history_desk(info):
             '<p class="muted">'+str(len(source))+' original source IDs (not verified vulnerabilities)</p>'+
             bars+"</section>"
         )
+    # A single actionable local HUMAN inbox before chronological detail;
+    # source-only labels never become factual vulnerability or fix assertions.
+    focus_cards=[]
+    for item in info["current_human_focus"]:
+        description=", ".join(reason.replace("_"," ") for reason in item["attention"])
+        focus_cards.append(
+            '<article data-severity="'+_html(item["original_severity"])+'">'
+            '<h3>'+_html(item["original_id"])+'</h3>'
+            '<p>Current original severity: '+_html(item["original_severity"])+
+            ' · original retest label: '+_html(item["original_retest"])+'</p>'
+            '<p>HUMAN conversation prompts: '+_html(description)+'</p>'
+            '<p>Original source labels ONLY; no verified security outcome.</p></article>'
+        )
+    focus_section=(
+        '<section><h2>Current source-only HUMAN attention inbox ('+
+        str(len(focus_cards))+')</h2><p>These are suggestions based on unverified '
+        'original text, NOT permission to scan or a validated security priority.</p>'
+        '<div class="cards">'+("".join(focus_cards) if focus_cards else
+        '<p>No current source-label triggers observed.</p>')+'</div></section>'
+    )
     transitions=[]
     for t in info["transitions"]:
         old=snapshots[t["index"]-1]
@@ -152,7 +172,7 @@ def build_history_desk(info):
         '</p></div></header><main>'
         '<section><h2>Original severity distribution per local snapshot</h2>'
         '<p class="muted">Counts track original source labels, not actual security risk.</p>'+
-        "".join(content)+"</section>"+
+        "".join(content)+"</section>"+focus_section+
         '<section><h2>Original finding transitions</h2>'+
         "".join(transitions)+"</section>"+
         '<section><h2>HUMAN source ambiguity and follow-up</h2>'+
