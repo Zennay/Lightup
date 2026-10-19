@@ -134,10 +134,26 @@ def main() -> int:
             print("REVIEW_ONLY: entire PRIVATE HUMAN workroom and original source-free slots admitted.")
         elif args.action == "export-counts":
             plan = inspect(args.workroom, args.key_file)
-            stats = inbox.export_counts(args.workroom / "inbox", args.key_file,
-                                        args.output)
+            original = inbox.inspect(args.workroom / "inbox", args.key_file)
+            stats = inbox.anonymous_counts(original)
             require(stats["source_free_workrooms_not_unique_cases"] == len(plan["slots"]))
-            print("PRIVATE counts-only HUMAN JSON exported without linkable manifest digests.")
+            planning = coordination.overview(plan)
+            payload = {
+                "kind": "lightup.private_human_workroom_anonymous_counts",
+                "schema_version": 1,
+                "disposition": "COUNTS_ONLY_NO_AUTHORITY",
+                "source_free_inbox": stats,
+                "local_human_planning": planning,
+                "warning": ("Anonymous aggregate HUMAN workload only: no original "
+                            "source truth, client identity, consent, or verified fix."),
+                **{flag: False for flag in review.FLAGS},
+            }
+            require(args.output != args.key_file and args.output != args.workroom and
+                    args.workroom not in args.output.parents and
+                    inspect(args.workroom, args.key_file) == plan)
+            attest.exclusive_private_write(args.output, inbox.pretty(payload))
+            print("PRIVATE aggregated HUMAN counts exported without operator aliases,"
+                  " private notes, due dates or linkable manifest hashes.")
         elif args.action in ("bulk-template", "bulk-preview"):
             plan = inspect(args.workroom, args.key_file)
             import bulk
