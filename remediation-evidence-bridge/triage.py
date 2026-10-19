@@ -31,7 +31,7 @@ a{color:#9cf6e4}nav a{text-decoration:none;font-weight:700}h1{font-size:clamp(1.
 h2{font-size:1.3rem}h3{font-size:1.05rem;margin:.25rem 0}.lede{color:#b6ccd6;max-width:910px}
 .kicker{font-size:.79rem;letter-spacing:.13em;text-transform:uppercase;color:#79dacc;font-weight:760}
 .notice{background:#212a35;border-left:4px solid #d0ad75;padding:1rem 1.3rem;border-radius:0 10px 10px 0;margin:1.5rem 0}
-.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.8rem}
+.stats{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:.8rem}
 .stat{padding:1rem;border-radius:14px;border:1px solid #344e5e;background:#152c3a}
 .stat strong{display:block;font-size:2rem}.stat span{font-size:.82rem;color:#b1c6d0}
 .pills{display:flex;gap:.5rem;flex-wrap:wrap;margin:1.3rem 0}.pills a{padding:.5rem .8rem;border-radius:999px;text-decoration:none;background:#183746;border:1px solid #3a5966;font-size:.82rem}
@@ -208,6 +208,7 @@ def build_board(original_source: list[dict[str,str]], human_packet: dict | None)
             ("source_critical_high","Source-labelled critical/high · unverified"),
             ("local_unlinked","No LOCAL file fingerprints · external unknown"),
             ("open_human_requests","OPEN local HUMAN requests · not sent"),
+            ("passed_human_due","Tentative HUMAN dates earlier than UTC today · not permission"),
         )
     )
     sections=[]

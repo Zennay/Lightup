@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Five-view PRIVATE LightUp original-source + HUMAN evidence workbench.
+"""Unified PRIVATE LightUp original-source + HUMAN evidence workbench.
 
 Compose unchanged original Casework/Ticket Desk and Engagement Brief builders
 with the existing original Evidence Artifact Ledger and optional encrypted HUMAN
