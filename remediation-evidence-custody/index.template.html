@@ -21,11 +21,16 @@
 <p>Select up to 240 local files (max 16 MiB each). The browser hashes each file and checks SHA-256 <em>and exact byte length</em>. A renamed file with identical bytes gets a separate HUMAN review warning; missing matches only mean matching bytes were not selected here.</p>
 <label>Local files to compare (never uploaded)
 <input type="file" id="localFiles" multiple></label>
+<label>Optional folder picker (only if supported by your browser)
+<input type="file" id="folderFiles" webkitdirectory multiple></label>
+<p class="small">The folder path is deliberately ignored; only each local file label, length and bytes are inspected. Selected files and selected folder entries are combined.</p>
 <button id="run" type="button" disabled>Calculate local SHA-256 and compare</button>
 <p class="small">Nothing here contacts a target, scans, accepts consent, approves action, verifies remediation or signs provenance.</p>
 </section>
 <section class="card"><h2>3 · HUMAN-only results</h2>
 <p id="summary" aria-live="polite"></p>
+<div class="filters"><label>Find original finding ID or local filename<input id="resultSearch" type="search" maxlength="160" placeholder="Search local comparison"></label>
+<label>Show HUMAN status<select id="resultStatus"><option value="all">All results</option><option value="match">Same bytes and label</option><option value="rename">Same bytes, different label</option><option value="missing">Not in local selection</option><option value="unindexed">Unindexed local file</option><option value="rejected">Oversize/unreadable</option></select></label></div>
 <div class="table-scroll" id="results"></div>
 <div class="export"><h3>Export carefully</h3>
 <p><strong>Anonymous counts:</strong> only five local counters; no client context, IDs, filenames or SHA values.</p>

@@ -71,11 +71,15 @@ function render(){
  " · same bytes, different label: "+counts.rename+" · not selected: "+counts.missing+
  " · unindexed local files: "+counts.unindexed+" · oversized files: "+counts.rejected+
  ". Local comparison is not verification of evidence origin or actual remediation.";
+ const term=$("resultSearch").value.trim().toLowerCase(),category=$("resultStatus").value;
+ const visible=results.filter(r=>(category==="all"||r.status===category)&&
+  (!term||(r.finding_id+" "+r.indexed_name+" "+r.local_name).toLowerCase().includes(term)));
+ const counter=node("p","Showing "+visible.length+" / "+results.length+" HUMAN local comparisons.");root.append(counter);
  const table=node("table"),thead=node("thead"),h=node("tr");
  ["Original finding / local file label","Indexed digest","Local digest","Length","HUMAN local check"].forEach(x=>h.append(node("th",x)));
  thead.append(h);table.append(thead);
  const body=node("tbody");
- results.forEach(r=>{
+ visible.forEach(r=>{
   const tr=node("tr");tr.className=r.status==="match"?"match":r.status==="rename"?"warn":"unknown";
   [r.finding_id?r.finding_id+" / "+r.indexed_name:r.local_name,
    r.indexed_sha?r.indexed_sha.slice(0,16)+"…":"—",r.local_sha?r.local_sha.slice(0,16)+"…":"—",r.byte_length,r.reason]
@@ -112,13 +116,13 @@ async function loadIndex(){
  busy=true;refresh();
  try{
   if(f.size>MAX_INDEX)fail("Index exceeds 2 MiB.");const item=validate(strictJSON(await f.text()));
-  current=item;revision++;results=[];$("localFiles").value="";$("confirmPrivate").checked=false;
+  current=item;revision++;results=[];$("localFiles").value="";$("folderFiles").value="";$("confirmPrivate").checked=false;
   render();announce("Private index loaded in memory. No source or account authentication has occurred.");
  }catch(e){announce("Index refused: "+e.message,true);}
  finally{busy=false;refresh();}
 }
 async function run(){
- if(busy||!current)return;const list=[...$("localFiles").files];
+ if(busy||!current)return;const list=[...$("localFiles").files,...$("folderFiles").files];
  if(!list.length)return announce("Select local files.",true);
  if(list.length>240)return announce("Maximum 240 local files per comparison.",true);
  busy=true;refresh();announce("Hashing selected local files in browser memory.");
@@ -168,7 +172,7 @@ function privateReport(){
 }
 function forget(){
  if(!confirm("Forget all PRIVATE index and local comparison data in this tab? Existing downloads are NOT removed."))return;
- current=null;revision++;results=[];$("manifest").value="";$("localFiles").value="";$("confirmPrivate").checked=false;
+ current=null;revision++;results=[];$("manifest").value="";$("localFiles").value="";$("folderFiles").value="";$("confirmPrivate").checked=false;
  render();refresh();announce("Private memory cleared; previously downloaded files are unaffected.");
 }
 $("import").addEventListener("click",()=>loadIndex().catch(e=>announce(e.message,true)));
@@ -176,5 +180,15 @@ $("run").addEventListener("click",()=>run().catch(e=>announce(e.message,true)));
 $("anonymous").addEventListener("click",anonymous);
 $("private").addEventListener("click",privateReport);
 $("forget").addEventListener("click",forget);
+$("resultSearch").addEventListener("input",render);
+$("resultStatus").addEventListener("change",render);
+for(const input of ["localFiles","folderFiles"]){$(input).addEventListener("change",()=>{
+ revision++;results=[];$("confirmPrivate").checked=false;render();refresh();
+ announce("Local selection changed; previous comparisons were discarded. Rehash the selected files.");
+});}
+$("manifest").addEventListener("change",()=>{
+ current=null;revision++;results=[];$("confirmPrivate").checked=false;
+ render();refresh();announce("Manifest selection changed. Import the new PRIVATE index before comparison.");
+});
 refresh();render();
 })();
