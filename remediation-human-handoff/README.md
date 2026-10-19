@@ -163,6 +163,30 @@ The private `index.html` links to three independently source-bound modules, all 
 
 The human-written change worksheet must have at least one real local proposal change; a default no-op worksheet cannot produce a fictional progression. This is a portable operator workroom, not an actual client remediation pipeline, delivered correspondence or approval. A HUMAN must still manually restore the native JSON in the original offline Studio and separately consult authentic original evidence and current permissions.
 
+## Direct browser-export → complete PRIVATE CLI workroom (no edit manifest)
+
+The browser can edit both HUMAN action and state. Operators can now download the resulting original-native v1 routing board and feed it **directly** to [`browser_workflow.py`](browser_workflow.py), without manually preparing a JSON `changes` manifest:
+
+```bash
+python3 remediation-human-handoff/browser_workflow.py \
+  --session "$HOME/lightup-private-human/session.json" \
+  --original-board "$HOME/lightup-private-human/board.json" \
+  --proposed-board "$HOME/lightup-private-human/browser-return.json" \
+  --output-dir "$HOME/lightup-private-human/browser-workroom-01"
+
+# Optional: only hand off locally proposed original HUMAN review actions
+python3 remediation-human-handoff/browser_workflow.py \
+  --session "$HOME/lightup-private-human/session.json" \
+  --original-board "$HOME/lightup-private-human/board.json" \
+  --proposed-board "$HOME/lightup-private-human/browser-return.json" \
+  --only request_original_human_review \
+  --output-dir "$HOME/lightup-private-human/browser-workroom-02"
+```
+
+Use `install -m 600` to place both browser-downloaded board files into the same owner-private 0700 directory as the session. **Both** independently pass the original source-free native Studio session+board parser. A no-op edited board is HOLD; actual action/state changes are counted by ordinal only (not identity or chronology), and do **not** require identical actions across before/after. It builds one private, exclusively published workroom containing `return/board.json` (fully source-bound native v1 format), `handoff/` (action-selected HUMAN follow-ups), `difference/` (all anonymous local routing differences), root navigable scriptless `index.html`, and counts-only `summary.json`. Each stage is private 0700; files 0600. A downstream failure discards the entire staging workroom without publishing partial output.
+
+This route does NOT turn a browser download into authenticated evidence, identify a human reviewer, prove a real client case, accept consent, perform a fix or grant target access. The original source records never change. Full release HOLD remains as below.
+
 ## Hard boundaries
 
 - The existing owner-controlled `remediation-portfolio/action_board.py` is the **sole** import contract: original producer format, bounded/private no-follow file admission, duplicate-key rejection, **exact** numeric packet shape and ordinal matching, all literal false authority flags. A mismatching board or input rejects the whole operation before any final publication. We do not rewrite, fork or relax the original parser.
