@@ -57,9 +57,12 @@
 <section class="card" id="new-artifact-section"><h2>4 · Add new LOCAL fingerprints to the original PRIVATE index</h2>
 <p>Only local files whose SHA-256 bytes are not in the selected index can be attached to an <strong>existing</strong> original finding. Select the finding for each file, then preview an append-only PRIVATE manifest. Existing evidence notes, Casework, Evidence Review and HUMAN requests are preserved verbatim. Every newly attached file starts as <strong>unreviewed</strong>: a hash is not provenance, source authenticity, remediation, or a verified retest.</p>
 <p id="intakeCount" class="detail">Compare local files and the ORIGINAL source before assigning new evidence.</p>
+<div class="intake-bulk"><label>Assign all currently unassigned local files to one ORIGINAL finding
+<select id="intakeBulkFinding" aria-label="Bulk assign local evidence to original finding"><option value="">Choose existing original finding</option></select></label>
+<button id="intakeBulkAssign" type="button" disabled>Assign all unassigned file fingerprints</button></div>
 <div id="intakeFiles" class="table-scroll"></div>
-<label>Optional HUMAN reviewer alias (shared for newly assigned files)<input id="intakeReviewer" type="text" maxlength="120" autocomplete="off"></label>
-<label>Optional HUMAN note (applies only to new records)<textarea id="intakeNote" maxlength="1200" rows="3"></textarea></label>
+<label>Default HUMAN reviewer alias (each file may override)<input id="intakeReviewer" type="text" maxlength="120" autocomplete="off"></label>
+<label>Default HUMAN note (each file may override)<textarea id="intakeNote" maxlength="1200" rows="3"></textarea></label>
 <button id="intakePreviewButton" type="button" disabled>Preview append-only PRIVATE artifact intake</button>
 <p id="intakePreview" class="detail">No append-only preview.</p>
 <label class="check"><input type="checkbox" id="intakeAck"> I inspected all original and newly assigned file references, confirmed the PRIVATE storage/recipient and retained a secure backup. Native LightUp import will still require a separate exact-source preview and HUMAN Apply.</label>

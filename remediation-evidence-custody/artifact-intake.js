@@ -31,6 +31,8 @@ function incoming(snapshot){
 function enable(){
  const s=state.snapshot();
  $("intakePreviewButton").disabled=!s.verified||s.busy||!incoming(s).length;
+ $("intakeBulkAssign").disabled=!s.verified||s.busy||!incoming(s).length||
+  !s.ids.includes($("intakeBulkFinding").value);
  $("intakeExportButton").disabled=!preview||!s.verified||s.busy||
   preview.revision!==s.revision||!$("intakeAck").checked||!$("confirmPrivate").checked;
 }
@@ -39,9 +41,15 @@ function draw(){
  if(snapshot.revision===shownRevision){enable();return;}
  shownRevision=snapshot.revision;reset();
  const root=$("intakeFiles");root.replaceChildren();
+ const bulk=$("intakeBulkFinding");bulk.replaceChildren();
+ const empty=document.createElement("option");empty.value="";
+ empty.textContent="Choose an existing original finding";bulk.append(empty);
  const candidates=incoming(snapshot);
  if(!snapshot.verified||snapshot.busy||!snapshot.results.length){
   $("intakeCount").textContent="HUMAN HOLD — original source and local byte comparison required.";enable();return;
+ }
+ for(const id of [...snapshot.ids].sort((a,b)=>a.localeCompare(b))){
+  const option=document.createElement("option");option.value=id;option.textContent=id.slice(0,140);bulk.append(option);
  }
  const original=snapshot.context?.rows.length??0;
  $("intakeCount").textContent=original+" original PRIVATE fingerprints will be preserved; "+
@@ -49,7 +57,8 @@ function draw(){
   " New additions may not exceed "+MAX_ARTIFACTS+" total. Unlinked findings are not automatically assigned.";
  if(!candidates.length){enable();return;}
  const table=document.createElement("table"),heading=document.createElement("tr");
- for(const title of ["Selected local file (bytes only)","SHA-256 prefix / length","HUMAN original finding assignment"]){
+ for(const title of ["Selected local file (bytes only)","SHA-256 prefix / length",
+  "HUMAN original finding assignment","HUMAN reviewer override","HUMAN note override"]){
   const th=document.createElement("th");th.textContent=title;heading.append(th);
  }
  const head=document.createElement("thead");head.append(heading);table.append(head);
@@ -65,7 +74,14 @@ function draw(){
    const option=document.createElement("option");option.value=id;option.textContent=id.slice(0,125);select.append(option);
   }
   select.addEventListener("change",()=>{reset();enable();});
-  td.append(select);body.append(tr);
+  td.append(select);
+  const rv=document.createElement("input");rv.type="text";rv.maxLength=120;rv.autocomplete="off";
+  rv.dataset.intakeReviewer="";rv.setAttribute("aria-label","Reviewer alias for "+record.local_name);
+  rv.placeholder="Use default";rv.addEventListener("input",()=>{reset();enable();});cell(tr).append(rv);
+  const note=document.createElement("textarea");note.maxLength=1200;note.rows=2;
+  note.dataset.intakeNote="";note.setAttribute("aria-label","HUMAN note for "+record.local_name);
+  note.placeholder="Use default";note.addEventListener("input",()=>{reset();enable();});
+  cell(tr).append(note);body.append(tr);
  });
  table.append(body);root.append(table);enable();
 }
@@ -79,12 +95,19 @@ function assignment(snapshot){
   if(!fid)continue;
   if(!ids.has(fid))fail("Original selected finding was not in the admitted exact source.");
   const r=candidates[n];
+  const tr=choice.closest("tr");
+  if(!tr)fail("Original file-to-finding assignment row disappeared.");
+  const reviewer=tr.querySelector("input[data-intake-reviewer]");
+  const humanNote=tr.querySelector("textarea[data-intake-note]");
+  if(!reviewer||!humanNote)fail("HUMAN note/reviewer input is missing.");
+  const alias=clean(reviewer.value.trim(),120,"per-file HUMAN reviewer");
+  const explanation=clean(humanNote.value.trim(),1200,"per-file HUMAN note");
   clean(r.local_name,240,"local filename",true);
   if(/[\/\\]/u.test(r.local_name))fail("Local file name has a path: HUMAN HOLD.");
   clean(r.local_mime??"",120,"browser MIME label");
   out.push({finding_id:fid,file_name:r.local_name,
     byte_length:r.byte_length,sha256:r.local_sha,mime:r.local_mime??"",
-    added_utc:"",human_reviewer:"",human_stage:"unreviewed",human_note:""});
+    added_utc:"",human_reviewer:alias,human_stage:"unreviewed",human_note:explanation});
  }
  return out;
 }
@@ -107,7 +130,8 @@ function prepare(){
  const reviewer=clean($("intakeReviewer").value.trim(),120,"HUMAN reviewer alias");
  const humanNote=clean($("intakeNote").value.trim(),1200,"HUMAN attachment note");
  const stamp=new Date().toISOString();
- const actual=added.map(r=>({...r,added_utc:stamp,human_reviewer:reviewer,human_note:humanNote}));
+ const actual=added.map(r=>({...r,added_utc:stamp,
+  human_reviewer:r.human_reviewer||reviewer,human_note:r.human_note||humanNote}));
  const copy=JSON.parse(start.context.originalPacketJSON);
  if(!Array.isArray(copy.attachments)||copy.attachments.length!==start.context.rows.length)
   fail("Original PRIVATE index baseline is not available.");
@@ -160,6 +184,17 @@ function exportFile(){
 }
 window.LightUpCustodyIntake=Object.freeze({draw});
 window.addEventListener("lightup-custody-updated",draw);
+$("intakeBulkFinding").addEventListener("change",()=>{reset();enable();});
+$("intakeBulkAssign").addEventListener("click",()=>{
+ const context=state.snapshot(),fid=$("intakeBulkFinding").value;
+ if(!context.verified||context.busy||!context.ids.includes(fid)||context.revision!==shownRevision)
+  return note("Original source/local file selection mismatch: HUMAN HOLD.",true);
+ let changed=0;
+ for(const input of $("intakeFiles").querySelectorAll("select[data-local-index]")){
+  if(!input.value){input.value=fid;changed++;}
+ }
+ reset();enable();note("Assigned "+changed+" formerly unassigned local fingerprints to the selected ORIGINAL finding. Review every row before staging the PRIVATE native export.");
+});
 $("intakePreviewButton").addEventListener("click",()=>{try{prepare();}catch(e){reset();note("HUMAN HOLD: "+e.message,true);}});
 $("intakeExportButton").addEventListener("click",()=>{try{exportFile();}catch(e){reset();note("HUMAN HOLD: "+e.message,true);}});
 for(const id of ["intakeNote","intakeReviewer"]){
