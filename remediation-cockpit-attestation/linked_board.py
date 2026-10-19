@@ -10,7 +10,7 @@ from __future__ import annotations
 import html
 import coordination
 
-MODE = "complete_workroom_source_free_inbox_v2"
+MODE = "complete_workroom_source_free_inbox_v3"
 
 
 def render(plan: dict) -> bytes:

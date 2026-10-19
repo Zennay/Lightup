@@ -11,7 +11,7 @@ import html
 from collections import Counter
 import coordination
 
-MODE = "complete_workroom_source_free_inbox_v2"
+MODE = "complete_workroom_source_free_inbox_v3"
 
 
 def render(plan: dict) -> bytes:
