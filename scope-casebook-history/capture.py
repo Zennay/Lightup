@@ -20,9 +20,6 @@ from history import (
     Hold, admit, fail, generate, pairs_no_duplicates, publish,
     read_private, selected_original_files,
 )
-from lightup.auth_casebook import (
-    CasebookHold, _write_private_json, authenticated_casebook,
-)
 
 OUTPUT_MAX = 12
 
@@ -66,9 +63,17 @@ def capture(*, database: str, email: str, client: str | None,
     # Reuse the ORIGINAL source owner's real credential path, lockout behavior,
     # current persisted actor/role and client selection; not our own trusted
     # AccessContext, cookie, password store, or authorization reimplementation.
+    try:
+        from lightup.auth_casebook import _write_private_json, authenticated_casebook
+    except ImportError as exc:
+        raise Hold("original LightUp Casebook implementation unavailable") from exc
+
     password = getpass("Original LightUp account password: ")
-    original = authenticated_casebook(database, email=email, password=password,
-                                      client_id=client)
+    try:
+        original = authenticated_casebook(database, email=email, password=password,
+                                          client_id=client)
+    except ValueError as exc:
+        raise Hold("original Casebook authority source did not admit input") from exc
     admit(original)
     fail(tenant is None or original["client_id"] == tenant,
          "authenticated original tenant differs from existing source series")
@@ -140,7 +145,7 @@ def main() -> int:
             database=args.database, email=args.email, client=args.client,
             packet_dir=args.packet_dir, history_dir=args.history_output_dir,
         )
-    except (CasebookHold, Hold, OSError, sqlite3.Error,
+    except (Hold, OSError, sqlite3.Error,
             ValueError, TypeError, EOFError, KeyboardInterrupt):
         print("HOLD: original authenticated Casebook capture or local private history refused. "
               "Existing captures are not erased. No consent or authority.", file=sys.stderr)
