@@ -112,6 +112,55 @@ python3 remediation-evidence-retention/request_handoff.py stage \
 
 The original HUMAN application must still perform its **own current source-bound Preview and explicit manual Apply**. This helper writes only a different, owner-private encrypted file, not an original database row or original workspace in-place. Even where an operator later decides a retention entry is reviewed, this workflow **does not delete, release legal holds, certify evidence/retests, verify client consent or issue scanner authority**.
 
+
+## Complete PRIVATE retention + original Casework desk
+
+Use [`desk.py`](desk.py) when an operator needs more than a spreadsheet-like retention queue. It performs **one original current-account/tenant/engagement source read**, decrypts the existing original HUMAN workroom, checks the complete original extracted 0600 evidence receipt and every real file hash, opens the latest encrypted HUMAN retention plan and creates **one entirely new owner-private 0600 local scriptless HTML desk**. The desk combines due/soon/later retention attention, human-marked legal holds, original HUMAN Casework status, original Evidence Review state, existing open HUMAN request counts and safe eligibility for fresh manual follow-up questions. It groups all actual material by original finding and links to private sections using scriptless local anchors.
+
+Optional **`--include-private-casework`** deliberately includes existing unverified original HUMAN Casework notes and the new plan's private notes inside that PRIVATE HTML; omitted by default. This is *offline static presentation*, never a signed audit record, original restoration, data deletion or proof that a hold/permission applies.
+
+```sh
+python3 remediation-evidence-retention/desk.py \
+  --db /private/lightup.db --email operator@example.invalid \
+  --client-id <original-client-id> --engagement-id <original-engagement-id> \
+  --human /private/existing-human.ltv \
+  --directory /private/received-material \
+  --plan /private/retention-review-v2.ltv \
+  --output /private/retention-operations-desk.html \
+  --ack-private-material
+```
+
+## Original HUMAN Request Desk return reconciliation
+
+[`reconcile.py`](reconcile.py) completes the operator's **human-only status tracking** once an original native staged follow-up exists. It freshly reauthenticates original client/engagement access and checks the original complete actual evidence byte inventory and encrypted retention plan. It then decrypts both the **staged original-compatible encrypted HUMAN draft** created by `request_handoff.py stage` and a **separately supplied later native HUMAN workroom**. It rejects source drift, malformed native HUMAN collections, re-bound request identities, changed original fingerprint inventory and altered original draft baseline. New staged request IDs are checked against genuine due original indexed evidence; any later packet is matched by the exact original request UUID, finding, fingerprint and type.
+
+`inspect` only prints anonymous counts; `publish` emits a new 0600 offline no-network HTML, showing each source-reported HUMAN status transition, missing stage records and changed human text (without exporting the complete private response text). A supplied later HUMAN file is **not proof of native Apply**, verified consent, record provenance, client signoff, actual deletion, legal-hold release or remediation success.
+
+```sh
+python3 remediation-evidence-retention/reconcile.py inspect \
+  --db /private/lightup.db --email operator@example.invalid \
+  --client-id <original-client-id> --engagement-id <original-engagement-id> \
+  --human /private/existing-human.ltv \
+  --directory /private/received-material \
+  --plan /private/retention-review-v2.ltv \
+  --drafts /private/retention-native-human-drafts.ltv \
+  --later /private/later-original-human-workroom.ltv \
+  --ack-private-review
+
+python3 remediation-evidence-retention/reconcile.py publish \
+  --db /private/lightup.db --email operator@example.invalid \
+  --client-id <original-client-id> --engagement-id <original-engagement-id> \
+  --human /private/existing-human.ltv \
+  --directory /private/received-material \
+  --plan /private/retention-review-v2.ltv \
+  --drafts /private/retention-native-human-drafts.ltv \
+  --later /private/later-original-human-workroom.ltv \
+  --output /private/retention-human-followup-continuity.html \
+  --ack-private-review
+```
+
+The later workroom must be legitimately provided by an existing independent original-human collaboration step, and all passphrases entered in a private interactive TTY. Operator-provided ordering and claimed status are never substituted for genuine action-time consent or proof of execution. The source-owner evidence collector, finding export, scanner, grants, and original request handlers remain unmodified.
+
 ## Ownership and acceptance posture
 
 **Base:** immutable [#1657](https://github.com/Zennay/Lightup/pull/1657) source snapshot `0c2f2689ad5862eb7372d9bf2ed3aa81831f43c4`, unchanged. Owner's subsequent commits are not silently assimilated. Added paths are independent from `remediation-evidence-materials/`, evidence transfer owners and issue #1182 CSV source owners. Release gates unchanged.
