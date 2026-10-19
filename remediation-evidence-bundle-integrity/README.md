@@ -6,7 +6,7 @@
 
 The original one-command `remediation-evidence-reuse/desk.py workspace` produces one owner-private snapshot directory with original `current.json`, optional `previous.json`, the complete HUMAN `session.json`, the private static browser pages, `questions.json`, `counts.json`, and a SHA-256 `manifest.json`. A copied or edited folder may no longer correspond to the original snapshot. **This tool admits the complete folder atomically for a LOCAL read-only human check** before it is handed to the original operator. No single-file cherry-picking or partial success.
 
-The verifier requires a real owner-private `0700` directory and `0600` regular single-link files; it refuses symlinks, extra/missing objects, unlisted contents, duplicate JSON property keys, unexpected manifest claims, ambiguous original schema, forged authority booleans, oversized artifacts, incomplete/renumbered HUMAN action rows, changed original source digests, and altered JSON/counts. It verifies every manifest-declared filename, exact bytes and SHA-256, checks the original ledger v1/unified HUMAN v2 packet with existing source-owner-pinned parsers, reruns the exact HUMAN proposal/session admission and independently recalculates the private `questions.json` and anonymous `counts.json`. Finally it rereads files before publishing to reduce stale local reports. No network/active target/subprocess or database path exists.
+The verifier requires a real owner-private `0700` directory and `0600` regular single-link files; it refuses symlinks, extra/missing objects, unlisted contents, duplicate JSON property keys, unexpected manifest claims, ambiguous original schema, forged authority booleans, oversized artifacts, incomplete/renumbered HUMAN action rows, changed original source digests, and altered JSON/counts. It verifies every manifest-declared filename, exact bytes and SHA-256, checks the original ledger v1/unified HUMAN v2 packet with existing source-owner-pinned parsers, reruns the exact HUMAN proposal/session admission and independently recalculates the private `questions.json` and anonymous `counts.json`. It also **reconstructs all four original HTML pages** byte-for-byte with the pinned original renderers (not merely matching an editable checksum manifest): locally altered scripts, remote links, fake dashboard text and modified HUMAN views fail closed even when an attacker updates the unsigned manifest checksums. The original manifest itself must match canonical serialization. Finally it rereads files before publishing to reduce stale local reports. No network/active target/subprocess or database path exists.
 
 The readable output is a **new standalone CSP-locked, no-script, owner-private HTML brief** containing only aggregate local counts and local HUMAN stage totals — not file names, paths, source/client IDs, SHA digests, plaintext evidence, free-text HUMAN notes or per-finding identities. The verifier also prints a minimal counts-only local console summary. Original files are never rewritten.
 
@@ -71,6 +71,21 @@ python3 remediation-evidence-bundle-integrity/portfolio.py \
 ```
 
 Or choose **only** `--counts /ABSOLUTE/NEW/SOURCE-FREE.json` for an aggregate local JSON intended for **private** staffing discussions, not public telemetry. Both options require an unused name in an existing owner-only directory. Source filenames, digests, client references, original finding identifiers and private free-text notes are **never exported** into this portfolio. Private per-slot workload counts may still reveal business-sensitive staffing information, so no online publication or public issue attachment is appropriate. Totals sum *local slots*, not unique customers, proven evidence or complete findings. Repeated packet groups are flagged by slot numbers only; no original identity leaves memory.
+
+## One-command complete PRIVATE HTML evidence cockpit
+
+**Recommended multi-workspace operator entrypoint:** `board.py` fully integrates the independent original-bundle verifier, cross-source HUMAN workload portfolio, optional same-source revision progress and an advisory follow-up briefing into one **complete new private browser-readable offline folder**. No hand assembly of individual HTML is needed; a source-unchanged bundle is reviewed with the original rendered HTML reconstructed byte-for-byte first.
+
+```sh
+python3 remediation-evidence-bundle-integrity/board.py \
+  --bundle "$HOME/lightup-private/desk-client-A" \
+  --bundle "$HOME/lightup-private/desk-client-B" \
+  --output-dir "$HOME/lightup-private/receipts/cockpit-001"
+```
+
+Open `cockpit-001/index.html` locally. The new private 0700 folder is created **atomically and exclusively** using the original parent workbench's Linux `renameat2(RENAME_NOREPLACE)` directory publisher, with fsynced 0600 files, scriptless Content Security Policy, source-free anonymous `portfolio.json`, `portfolio.html`, `actions.html` and its own unsigned output `manifest.json`. If every original input packet has identical source bytes and the HUMAN sessions are distinct, it also publishes `history.html` and `history.json` with only ordinal-local progression; otherwise it provides the multi-source workload and HUMAN action summary without pretending cross-client history exists.
+
+The `actions.html` summary translates the original source-proposed reason codes into local HUMAN-only next steps and keeps each original owner slot separated. The cockpit **never** copies original source JSON, evidence bytes, filenames, source hashes, HUMAN notes or client IDs into its generated files. Nonetheless aggregate operational workload remains private. A changed original byte during preparation causes HOLD without publishing a final directory; an interrupted crash may leave an owner-private staging directory. `--output-dir` must be unused and its parent must already be owner-only 0700. This is a local advisory product: no task dispatch, native Apply, client grant, operator consent, verified fix or active assessment.
 
 ## Scope and release
 
