@@ -41,3 +41,29 @@ footer{border-top:1px solid #283442;padding:22px clamp(18px,4vw,52px);max-width:
 .source-metrics td:first-child{min-width:280px;color:#c7d7e2}
 .source-metrics .metric-alert{font-weight:780;color:#ffe0ac;background:#443328}
 @media(print){.source-metrics{display:none!important}}
+
+/* Private HUMAN follow-up workroom — source labels are kept on this local page only. */
+.human-panel{padding:23px;margin-bottom:21px;border-color:#4b6a68;background:linear-gradient(155deg,#142c31,#131d2a 48%)}
+.human-intro{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(230px,.9fr);gap:24px;align-items:start}
+.human-intro h3{font-size:1.6rem;letter-spacing:-.045em;color:#d1f4ef;margin:10px 0}
+.human-intro p{font-size:.92rem}.human-intro #humanSummary{background:#0c1c25;border:1px solid #36555a;border-radius:12px;padding:16px;color:#bfece9}
+#humanSummary strong{display:block;margin-bottom:9px}#humanSummary p{font-size:.81rem;margin:5px 0}
+.human-tools{display:flex;flex-wrap:wrap;gap:14px;margin:18px 0}
+.human-tools label{flex:1 1 220px;font-size:.85rem;font-weight:670;color:#d2e4ed}
+.human-tools input,.human-tools select{display:block;margin-top:6px}
+.human-table-scroll{max-height:620px;border:1px solid #2d4651;border-radius:11px}
+#humanTable{min-width:820px}#humanTable td{font-size:.84rem}
+#humanTable td:first-child{max-width:280px;overflow-wrap:anywhere}
+#humanTable select{padding:8px 5px;min-width:130px;border-radius:7px;font-size:.82rem}
+#humanTable td:nth-child(4) select{min-width:210px}
+#humanTable button{width:auto;min-width:120px;padding:8px;font-size:.79rem}
+.human-paging{display:flex;justify-content:space-between;align-items:center;gap:15px;padding:8px 0;color:#b2d7d5;font-size:.84rem}
+.human-paging .buttons{margin:0}
+.human-actions{display:grid;grid-template-columns:minmax(0,1fr) minmax(280px,.8fr);gap:24px;border-top:1px solid #365158;padding-top:20px;margin-top:10px}
+.human-actions strong{color:#d7efec}.human-actions p{font-size:.85rem;margin:9px 0 16px}
+.human-actions label{display:block;font-weight:700;font-size:.83rem}
+.human-actions label input{margin-top:7px}
+.human-actions .buttons{align-content:start;align-items:start}
+@media(max-width:850px){.human-intro,.human-actions{grid-template-columns:1fr}}
+@media(max-width:540px){.human-panel{padding:15px}.human-paging{align-items:flex-start;flex-direction:column}}
+@media print{.human-panel{display:none!important}}
