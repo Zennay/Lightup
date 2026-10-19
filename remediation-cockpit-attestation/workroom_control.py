@@ -102,6 +102,29 @@ def revise(original: Path, key_file: Path, output_parent: Path,
 
 
 
+
+def create_workroom(packages: list[Path], key_file: Path,
+                    output_parent: Path) -> tuple[Path, dict]:
+    """Complete first-time HUMAN workroom directly from encrypted packets.
+
+    Staging is owner-private; publish only the completed original native
+    source-free inbox plus fresh encrypted unassigned HUMAN coordination plan.
+    """
+    inbox.strict_private_dir(output_parent)
+    require(1 <= len(packages) <= inbox.MAX)
+    temporary = Path(tempfile.mkdtemp(prefix=".lightup-workroom-create-", dir=output_parent))
+    try:
+        private_inbox, _ = inbox.receive_many(packages, key_file, temporary)
+        initial_plan = temporary / "initial.ltplan"
+        plan = coordination.start(private_inbox, key_file, initial_plan)
+        sealed = temporary / "initial.ltworkroom"
+        workroom.seal(private_inbox, initial_plan, key_file, sealed)
+        complete, admitted = workroom.open_workroom(sealed, key_file, output_parent)
+        require(admitted == plan and inspect(complete, key_file) == plan)
+        return complete, plan
+    finally:
+        shutil.rmtree(temporary)
+
 def extend_workroom(original: Path, key_file: Path, packages: list[Path],
                     output_parent: Path) -> tuple[Path, dict]:
     """One HUMAN action: encrypted intake + exact old-plan carry + new workroom.
