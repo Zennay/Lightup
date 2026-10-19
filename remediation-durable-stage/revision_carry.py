@@ -66,7 +66,8 @@ def _old_native_drafts(path: Path, record: dict, args, vault, private_file) -> s
 
 
 def carry(args, folder, vault, current_packet, current_key,
-          read_journal, write_journal, private_file, utc) -> None:
+          read_journal, write_journal, private_file, utc,
+          re_admit_original) -> None:
     indexed = history._load(folder, current_packet, vault, private_file)
     available = []
     for key in indexed["sources"]:
@@ -104,6 +105,7 @@ def carry(args, folder, vault, current_packet, current_key,
         if input('Type "CONFIRM HISTORICAL NO DRAFT PUBLISHED" after HUMAN review: ') != (
                 "CONFIRM HISTORICAL NO DRAFT PUBLISHED"):
             raise ValueError("Missing ORIGINAL source requires separate HUMAN attention.")
+        re_admit_original()
         entry["state"] = "aborted_unpublished"
         entry["updated"] = utc()
         write_journal(folder, key, old)
@@ -127,6 +129,9 @@ def carry(args, folder, vault, current_packet, current_key,
     confirm = input('Type "CARRY HUMAN CLOSED LABELS ONLY" to archive this local source handoff: ')
     if confirm != "CARRY HUMAN CLOSED LABELS ONLY":
         raise ValueError("Separate original HUMAN continuity acknowledgment required.")
+    # Every HUMAN confirmation expires until the exact CURRENT ORIGINAL
+    # account, workroom, retention plan and all local evidence are re-admitted.
+    re_admit_original()
     # Only a local HUMAN journal state transition; no ORIGINAL source mutation.
     if entry["state"] == "pending":
         # For a previously interrupted publication, original-native
@@ -143,7 +148,8 @@ def carry(args, folder, vault, current_packet, current_key,
 
 
 def adopt_legacy(args, folder, vault, current_packet,
-                 read_journal, write_journal, private_file) -> None:
+                 read_journal, write_journal, private_file,
+                 re_admit_original) -> None:
     """Explicitly enroll one older nonindexed staged source under this engagement."""
     import re
     index = history._load(folder, current_packet, vault, private_file)
@@ -182,6 +188,7 @@ def adopt_legacy(args, folder, vault, current_packet,
     if input('Type "ENROLL OLD HUMAN SOURCE ONLY" after private review: ') != (
             "ENROLL OLD HUMAN SOURCE ONLY"):
         raise ValueError("No explicit legacy HUMAN registration acknowledgment.")
+    re_admit_original()
     index["sources"].append(key)
     write_journal(folder, history._name(current_packet), index)
     print("Historical owner-private original-native source journal enrolled.")

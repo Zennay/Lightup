@@ -409,11 +409,13 @@ def main(argv=None) -> int:
             elif args.action == "carry-closed":
                 cross_source_human.carry(
                     args, folder, vault, packet, key, _read, _write,
-                    _owned_regular, _utc)
+                    _owned_regular, _utc,
+                    lambda: _source_still_current(args, vault, current))
             elif args.action == "adopt-legacy":
                 cross_source_human.adopt_legacy(
                     args, folder, vault, packet, _read, _write,
-                    _owned_regular)
+                    _owned_regular,
+                    lambda: _source_still_current(args, vault, current))
             else:
                 _resolve(args, vault, folder, document, current)
         return 0
