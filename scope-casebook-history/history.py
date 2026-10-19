@@ -36,6 +36,48 @@ FAMILIES = (
                                       "source_tenant_matches", "decision_recorded",
                                       "decision_provenance_observation")),
 )
+# Exact categories emitted by the pinned original source owner's Casebook.
+# Unrecognized user-provided review labels are never adopted as source truth.
+SOURCE_ENUMS = {
+    ("requests", "status"): {"submitted", "under_review", "approved", "rejected"},
+    ("requests", "requested_mode"): {
+        "analysis_only", "passive_discovery", "lab_autonomous", "authorized_assessment"
+    },
+    ("engagements", "status"): {
+        "draft", "authorization_pending", "authorized", "running",
+        "remediation", "retest", "closed"
+    },
+    ("grants", "request_link_observation"): {
+        "HOLD_TENANT_OR_ENGAGEMENT_MISMATCH", "HOLD_NO_REQUEST_BINDING",
+        "HOLD_REQUEST_SOURCE_MISSING", "HOLD_REQUEST_NOT_APPROVED",
+        "REQUEST_SCOPE_COMPATIBLE_UNVERIFIED",
+        "HOLD_REQUEST_SCOPE_OR_PROVENANCE_MISMATCH",
+    },
+    ("grants", "validity_observation"): {
+        "EXPIRED_RECORDED_WINDOW", "FUTURE_RECORDED_WINDOW",
+        "HOLD_INVALID_RECORDED_WINDOW", "WITHIN_RECORDED_WINDOW_NOT_AUTHORITY",
+    },
+    ("risk_approvals", "status"): {"pending", "approved", "denied"},
+    ("risk_approvals", "decision_provenance_observation"): {
+        "HOLD_RISK_SOURCE_IDENTITY_OR_STATUS", "RISK_DECISION_PENDING_REVIEW",
+        "HOLD_RISK_PENDING_WITH_DECISION", "HOLD_RISK_DECIDER_PROVENANCE",
+        "RISK_DECISION_RECORDED_UNVERIFIED",
+    },
+    ("case_overview", "attention"): {
+        "HOLD_SOURCE_PROVENANCE", "RISK_DECISION_PENDING_SOURCE_REVIEW",
+        "HOLD_CLOSED_ENGAGEMENT_WITH_GRANTS", "EXPIRED_GRANT_SOURCE_REVIEW",
+        "FUTURE_GRANT_SOURCE_REVIEW", "REVIEW_ONLY_UNVERIFIED_GRANT_LINK",
+        "NO_GRANT_RECORDED",
+    },
+    ("case_overview", "next_review_action"): {
+        "RECONCILE_PERSISTED_PROVENANCE",
+        "REVIEW_OUTSTANDING_ORIGINAL_RISK_REQUEST", "REVIEW_CLOSED_ENGAGEMENT",
+        "REVIEW_ORIGINAL_GRANT_WINDOW", "CHECK_ORIGINAL_GRANT_WINDOW",
+        "CONFIRM_SEPARATE_CONSENT_AND_AT_USE_REVOCATION",
+        "REVIEW_REQUEST_BEFORE_ANY_GRANT",
+    },
+}
+
 AUTH_FLAGS = (
     "source_authenticated", "client_consent_verified", "operator_consent_verified",
     "authorization_granted", "execution_allowed", "release_approved",
@@ -166,6 +208,10 @@ def admit(data: object) -> dict:
                 elif field not in ("requested_risk", "max_risk", "decision_recorded",
                                    "source_tenant_matches"):
                     source_text(val)
+                expected = SOURCE_ENUMS.get((family, field))
+                if expected is not None:
+                    fail(type(val) is str and val in expected,
+                         "unknown original source category")
             index[key] = row
         indexes[family] = index
     cases = doc["case_overview"]
@@ -180,6 +226,10 @@ def admit(data: object) -> dict:
         seen.add(key)
         for value in ("status", "attention", "next_review_action"):
             source_text(row[value])
+            categories = SOURCE_ENUMS.get(("case_overview", value))
+            if categories is None:
+                categories = SOURCE_ENUMS.get(("engagements", value))
+            fail(row[value] in categories, "unknown original HUMAN case category")
         for value in ("grant_count", "risk_record_count"):
             strict_number(row[value])
         fail(row["status"] == indexes["engagements"][key]["status"],
