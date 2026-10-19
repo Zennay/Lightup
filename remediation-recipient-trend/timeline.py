@@ -127,6 +127,7 @@ def render(data: dict) -> bytes:
         str(total) + " HUMAN questions. Reasons may overlap and "
         "must be followed up ONLY through the trusted original private owner.</p>"
         "<ul>" + "".join(reason_list) + "</ul></section>"
+        full_stage_reason_matrix(data) +
         "<section><h2>Separate authentic sources required for real progress</h2>"
         "<ol><li>Ask the source owner whether each packet represents the same "
         "original client/cohort and unchanged case membership.</li>"
@@ -136,6 +137,30 @@ def render(data: dict) -> bytes:
         "retesting. This report never verifies remediation.</li></ol></section>"
     )
     return board.shell(body, "LightUp PRIVATE HUMAN Multi-Packet Workload")
+
+
+def full_stage_reason_matrix(data: dict) -> str:
+    """Readable all-packet HUMAN-only stage/reason grid, no joined cases."""
+    packets = data["snapshots"]
+    headers = "".join("<th scope='col'>Packet " + str(row["ordinal"]) +
+                      "</th>" for row in packets)
+    def section(kind: str, names: tuple[str, ...]) -> str:
+        lines = []
+        for name in names:
+            cell = "".join("<td>" + str(row["counts"][kind][name]) + "</td>"
+                           for row in packets)
+            lines.append("<tr><th scope='row'>" + board.safe(name) +
+                         "</th>" + cell + "</tr>")
+        return "<table><thead><tr><th>HUMAN " + board.safe(kind) +                "</th>" + headers +                "</tr></thead><tbody>" + "".join(lines) + "</tbody></table>"
+    return ("<section><h2>All selected packets: local HUMAN stages</h2>"
+            "<p>Slots may represent different source/client populations. "
+            "Each cell is a local category count only, not the same underlying cases.</p>"
+            "<div style='overflow-x:auto'>" +
+            section("stages", tuple(sorted(triage.STAGES))) + "</div></section>"
+            "<section><h2>All selected packets: pending HUMAN reason occurrences</h2>"
+            "<p>A single original HUMAN question can contain multiple reasons.</p>"
+            "<div style='overflow-x:auto'>" +
+            section("reasons", tuple(sorted(triage.REASONS))) + "</div></section>")
 
 
 def csv_view(data: dict) -> bytes:
