@@ -186,7 +186,8 @@ def prepare(args, vault) -> None:
 
 def seal_reply(output: Path, vault, envelope: dict, packet: dict,
                raw: bytes, files: list, material_password: bytes,
-               original_key_hash: str, rows: list[dict]) -> None:
+               original_key_hash: str, rows: list[dict],
+               announce: bool = True) -> None:
     """Seal a separately HUMAN-acknowledged original-source-bound private reply."""
     obj = {
         "kind": KIND, "schema_version": 1,
@@ -210,9 +211,10 @@ def seal_reply(output: Path, vault, envelope: dict, packet: dict,
         raise ValueError("HUMAN return passphrase must differ from original and received transfer.")
     result = vault._seal(vault._inner(serialized, "application/json"), replacement)
     vault._exclusive_output(output.expanduser().absolute(), result)
-    print("Created NEW encrypted PRIVATE HUMAN receipt reply. No original attachment state updated.")
-    print("Human labels: ", dict(Counter(r["human_stage"] for r in rows)))
-    print("No client consent, scan, verified remediation, signed proof or grant.")
+    if announce:
+        print("Created NEW encrypted PRIVATE HUMAN receipt reply. No original attachment state updated.")
+        print("Human labels: ", dict(Counter(r["human_stage"] for r in rows)))
+        print("No client consent, scan, verified remediation, signed proof or grant.")
 
 
 def inspect(args, vault) -> None:
