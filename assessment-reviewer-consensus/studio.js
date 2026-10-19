@@ -154,6 +154,7 @@
     $("export").disabled=c.unresolved_slots!==0;
     $("encryptedExport").disabled=c.unresolved_slots!==0;
     $("saveDraft").disabled=false;
+    $("saveWorkspace").disabled=false;
     $("counts").disabled=false;
   }
   function makeCell(value,tag="td") {
@@ -204,6 +205,7 @@
     $("reviewRows").replaceChildren();$("search").value="";
     $("export").disabled=true;$("encryptedExport").disabled=true;
     $("counts").disabled=true;$("saveDraft").disabled=true;
+    $("saveWorkspace").disabled=true;
     $("summary").textContent="No PRIVATE reviewer plans loaded.";
     $("pages").textContent="No HUMAN conflicts.";
   }
@@ -240,16 +242,20 @@
       const file=files[index];
       const item=await fileBytes(file,5*1024*1024);
       const envelope=strictParse(item.raw);
-      let original=envelope;
+      let original=envelope,planText=item.raw;
       if(envelope&&envelope.kind===LIGHTUP_ORIGINAL_ENCRYPTED_PLAN_KIND) {
         const pass=window.prompt("Original PRIVATE HUMAN encrypted plan "+(index+1)+
           ": enter its local passphrase (no network; cancel holds all imported plans)");
         guard(pass!==null,"Encrypted HUMAN plan import cancelled; original selection retained");
-        original=strictParse(await decryptOriginalHumanPlan(envelope,pass));
+        planText=await decryptOriginalHumanPlan(envelope,pass);
+        original=strictParse(planText);
       } else {
         guard(file.size<=MAX,"Unencrypted PRIVATE HUMAN plan exceeds 3 MiB");
       }
-      prepared.push({digest:item.digest,parsed:admitPlan(original)});
+      const planBytes=new TextEncoder().encode(planText);
+      guard(planBytes.length>0&&planBytes.length<=MAX,"Unsealed PRIVATE HUMAN plan exceeds byte limit");
+      const plainDigest=hex(await crypto.subtle.digest("SHA-256",planBytes));
+      prepared.push({digest:item.digest,parsed:admitPlan(original),plainText:planText,plainDigest});
     }
     guard(new Set(prepared.map(p=>p.digest)).size===prepared.length,
       "Duplicate exact reviewer packet bytes are not independent submissions");
@@ -264,19 +270,19 @@
       resolutions:state.conflicts.filter(x=>decisions.has(keyOf(x))).map(x=>({
         ordinal:x.ordinal,field:x.field,value:decisions.get(keyOf(x))}))};
   }
-  function admitDraft(obj) {
-    guard(state && exact(obj,DRAFT_KEYS) &&
+  function admitDraft(obj,against=state) {
+    guard(against && exact(obj,DRAFT_KEYS) &&
       obj.kind==="lightup.private_human_reviewer_studio_draft" &&
       obj.version===1 && obj.disposition==="REVIEW_ONLY_DRAFT_HOLD" &&
-      equal(obj.source_sha256,state.hashes) && obj.ordered_row_count===state.n &&
-      equal(obj.reviewer_plan_sha256,state.inputs.map(x=>x.digest)),
+      equal(obj.source_sha256,against.hashes) && obj.ordered_row_count===against.n &&
+      equal(obj.reviewer_plan_sha256,against.inputs.map(x=>x.digest)),
       "PRIVATE session draft not bound to these exact ordered original reviewer bytes");
-    guard(Array.isArray(obj.resolutions) && obj.resolutions.length<=state.conflicts.length,
+    guard(Array.isArray(obj.resolutions) && obj.resolutions.length<=against.conflicts.length,
       "Invalid review choices array");
-    const proposed=new Map(),allowed=new Map(state.conflicts.map(x=>[keyOf(x),x]));
+    const proposed=new Map(),allowed=new Map(against.conflicts.map(x=>[keyOf(x),x]));
     let previous=-1;
     for(const x of obj.resolutions) {
-      guard(exact(x,DRAFT_ENTRY) && isInt(x.ordinal,1,state.n) &&
+      guard(exact(x,DRAFT_ENTRY) && isInt(x.ordinal,1,against.n) &&
         FIELDS.includes(x.field), "Invalid HUMAN decision record");
       const key=keyOf(x),item=allowed.get(key);
       const sort=(x.ordinal-1)*3+FIELDS.indexOf(x.field);
@@ -286,6 +292,77 @@
     }
     return proposed;
   }
+  function exportWholeWorkspace() {
+    guard(state && state.inputs.every(x=>typeof x.plainText==="string"&&validDigest(x.plainDigest)),
+      "Re-import originals before saving a complete PRIVATE encrypted reviewer workspace");
+    const reviewerPackets=state.inputs.map(x=>({
+      original_input_sha256:x.digest,
+      decrypted_human_plan_sha256:x.plainDigest,
+      private_human_plan_json:x.plainText
+    }));
+    return {kind:"lightup.private_reviewer_consensus_workspace",version:1,
+      disposition:"REVIEW_ONLY_DRAFT_HOLD",source_sha256:state.hashes.slice(),
+      ordered_row_count:state.n,reviewer_packets:reviewerPackets,
+      human_review_draft:exportDraft()};
+  }
+  async function admitWholeWorkspace(packet){
+    const fields=["kind","version","disposition","source_sha256","ordered_row_count",
+      "reviewer_packets","human_review_draft"];
+    guard(exact(packet,fields)&&packet.kind==="lightup.private_reviewer_consensus_workspace"&&
+      packet.version===1&&packet.disposition==="REVIEW_ONLY_DRAFT_HOLD" &&
+      Array.isArray(packet.reviewer_packets)&&packet.reviewer_packets.length>=2&&
+      packet.reviewer_packets.length<=8, "Wrong PRIVATE reviewer workspace payload");
+    const prepared=[];
+    for(const value of packet.reviewer_packets){
+      guard(exact(value,["original_input_sha256","decrypted_human_plan_sha256",
+        "private_human_plan_json"])&&validDigest(value.original_input_sha256)&&
+        validDigest(value.decrypted_human_plan_sha256)&&
+        typeof value.private_human_plan_json==="string",
+        "Invalid source-bound PRIVATE workspace reviewer inventory");
+      const bytes=new TextEncoder().encode(value.private_human_plan_json);
+      guard(bytes.length>0&&bytes.length<=MAX,"Decrypted original HUMAN plan exceeds 3 MiB");
+      const fresh=hex(await crypto.subtle.digest("SHA-256",bytes));
+      guard(fresh===value.decrypted_human_plan_sha256,
+        "PRIVATE HUMAN inner bytes differ from sealed reviewer inventory");
+      prepared.push({digest:value.original_input_sha256,plainDigest:fresh,
+        plainText:value.private_human_plan_json,
+        parsed:admitPlan(strictParse(value.private_human_plan_json))});
+    }
+    guard(new Set(prepared.map(x=>x.digest)).size===prepared.length,
+      "Duplicate claimed original reviewer packets in PRIVATE workspace");
+    const proposed=chooseRow(prepared);
+    guard(equal(proposed.hashes,packet.source_sha256)&&proposed.n===packet.ordered_row_count,
+      "PRIVATE workspace does not bind to the exact original source vector and row set");
+    const restored=admitDraft(packet.human_review_draft,proposed);
+    return {proposed,restored};
+  }
+  $("saveWorkspace").addEventListener("click",async()=>{
+    try{
+      const payload=JSON.stringify(exportWholeWorkspace())+"\\n";
+      const pass=window.prompt("Choose NEW local passphrase for the complete PRIVATE HUMAN reviewer workspace (12–256 characters). No recovery.");
+      if(pass===null)return;
+      const repeat=window.prompt("Confirm PRIVATE reviewer workspace passphrase:");
+      if(repeat===null)return;
+      guard(pass===repeat,"Private workspace passwords do not match");
+      if(!window.confirm("Encrypt all admitted original HUMAN plan content and current conflicts into one PRIVATE offline workspace? Source hashes and human choices remain sensitive. NO scan authority."))return;
+      const sealed=await sealReviewerWorkspace(payload,pass);
+      jsonFile("private-lightup-reviewer-workspace-encrypted.json",sealed);
+    }catch(err){msg("HOLD · "+(err.message||"Could not seal PRIVATE reviewer workspace"),true);}
+  });
+  $("loadWorkspace").addEventListener("change",async ev=>{
+    try {
+      const file=ev.target.files[0],{raw}=await fileBytes(file,40*1024*1024);
+      const envelope=strictParse(raw);
+      const pass=window.prompt("PRIVATE reviewer workspace LOCAL decryption passphrase:");
+      guard(pass!==null,"PRIVATE reviewer workspace restore cancelled");
+      const plaintext=await unsealReviewerWorkspace(envelope,pass);
+      const revived=await admitWholeWorkspace(strictParse(plaintext));
+      if(!window.confirm("Replace this tab's in-memory HUMAN review with the fully admitted original-plan inventory and choices from the encrypted workspace?"))return;
+      state=revived.proposed;decisions=revived.restored;page=0;render();
+      msg("Complete source-bound PRIVATE HUMAN reviewer workspace reopened locally. No authorization implied.");
+    }catch(err){msg("HOLD · "+(err.message||"Cannot admit encrypted PRIVATE reviewer workspace"),true);}
+    finally{ev.target.value="";}
+  });
   $("files").addEventListener("change",async ev=>{
     const selected=Array.from(ev.target.files);
     try {
