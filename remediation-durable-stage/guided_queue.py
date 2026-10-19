@@ -69,6 +69,10 @@ def run(args, human: Path, plan: Path, build_common) -> int:
         return 2
     item = rows[int(raw) - 1]
     command = item["suggested_operator_action"]
+    if command == "status" and not item["current_revision"]:
+        print("Historical completed local status is read-only in this worklist;"
+              " inspect the private engagement inbox for its chronology.")
+        return 0
     if command not in EXECUTABLE:
         print("This registered original HUMAN entry requires independent owner"
               " review; it cannot safely be auto-dispatched.")

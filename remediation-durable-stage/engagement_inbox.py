@@ -18,6 +18,7 @@ import request_handoff as handoff
 original = handoff.original
 MAX_HTML = 192 * 1024
 LABELS = {
+    "pending_missing_but_recorded": ("Pending file missing, HUMAN still lists request", "HOLD: a missing local file cannot establish non-publication because CURRENT native HUMAN records already include the request."),
     "pending_no_file": ("Pending, no encrypted file", "Check whether the interrupted local intent truly published nothing; independently confirm before resolving."),
     "pending_has_file": ("Pending, encrypted file exists", "Reopen native encrypted draft with the original password and perform explicit HUMAN recovery/closeout."),
     "staged_wrong_kind": ("Current HUMAN request kind changed", "HOLD: current native request kind does not match original follow-up; review with source owner."),
@@ -35,6 +36,7 @@ LABELS = {
     "staged_file_changed": ("Encrypted stage bytes changed", "HOLD: recorded original-native encrypted draft mismatch."),
 }
 PRIORITY = {
+    "pending_missing_but_recorded": 0,
     "staged_wrong_kind": 0, "reviewed_wrong_kind": 0,
     "staged_file_changed": 0, "staged_file_missing": 0,
     "reviewed_file_missing": 0, "aborted_file_present": 0,
@@ -117,7 +119,10 @@ def _classification(entry: dict, stages: dict[str, str], material: str) -> tuple
     elif entry["state"] == "reviewed" and material == "missing":
         label = "reviewed_file_missing"
     elif entry["state"] == "pending":
-        label = "pending_no_file" if material == "missing" else "pending_has_file"
+        label = ("pending_missing_but_recorded"
+                 if material == "missing" and counts["not_observed"] != len(refs)
+                 else "pending_no_file" if material == "missing"
+                 else "pending_has_file")
     elif entry["state"] == "staged" and material == "missing":
         label = "staged_file_missing"
     elif entry["state"] == "staged":
