@@ -97,6 +97,21 @@ footer{text-align:center;color:#466074;padding:1rem}
  <p id="returnSummary" class="meta">No owner returns imported.</p><div id="returnCoverage"></div><div class="actions"><button id="returnAggregate">Download anonymous HUMAN team coverage counts</button></div><div id="returnRows"></div>
  <p class="warning">All received replies are ephemeral, private and UNVERIFIED. Any edit of the local authored runbooks invalidates imported replies; re-import exact-current owner returns after an edit. Original issue/evidence/source-owner/grant data are never mutated.</p>
 </section>
+<section id="humanReviewDesk" hidden>
+ <h2>6 · PRIVATE HUMAN follow-up action register</h2>
+ <p>Prepare individual, locally editable HUMAN coordination actions against exact currently imported owner returns. Notes, aliases and tentative dates are unverified private operator planning: they never modify original casework, security verdicts, consent, grants or source owner packets.</p>
+ <div class="grid">
+  <div><label for="actionFilter">HUMAN follow-up view</label><select id="actionFilter"><option value="all">All received HUMAN steps</option><option value="needs_human_input">Needs HUMAN clarification</option><option value="human_contact_planned">Human contact planned</option><option value="human_review_prepared">Human review prepared</option><option value="human_discussion_closed">HUMAN discussion closed (not a fix)</option><option value="no_owner">Without local coordinator</option><option value="overdue">Tentative HUMAN date passed (UTC)</option></select></div>
+  <div><label for="actionSearch">Search original ID / owner / HUMAN next action</label><input id="actionSearch" maxlength="150" placeholder="Search PRIVATE human actions"></div>
+ </div>
+ <p id="actionSaved" class="warning">No browser persistence. Save PRIVATE actions separately.</p>
+ <p id="actionSummary" class="meta"></p>
+ <div class="actions"><button id="actionSave" class="primary">Download complete PRIVATE HUMAN follow-up JSON</button><button id="actionBrief">Download scriptless PRIVATE human discussion agenda</button><button id="actionCounts">Download anonymous HUMAN action counts</button></div>
+ <label for="actionRestoreFile">Restore full PRIVATE HUMAN follow-up JSON, exact current original source + reply snapshots only (8 MiB)</label>
+ <input id="actionRestoreFile" type="file" accept=".json,application/json">
+ <div class="actions"><button id="actionRestore">Restore source-matched PRIVATE HUMAN action register</button><button id="actionForget">Forget only local HUMAN action notes</button></div>
+ <div id="actionRows"></div>
+</section>
 </main>
 <footer>LightUp offline review desk · no scanners, network requests, secret storage, or verified remediation.</footer>
 <script>
@@ -112,7 +127,7 @@ var SKEYS=['step_id','kind','description','precondition','responsible_alias','ro
 var RBKEYS=['kind','schema_version','disposition','source_contract','source_sha256','client_reference','engagement_reference','source_count','finding_ids','runbooks','warning'].concat(FLAGS);
 var BKEYS=['finding_id','steps'];
 var MAX=1048576, MAX_BACKUP=8388608, MAX_ROWS=350, MAX_STEPS=8, MAX_TOTAL=1600;
-var state=null, revision=0, exported=0, pendingMerge=null, mergeUndo=null, ownerReturns=new Map();
+var state=null, revision=0, exported=0, pendingMerge=null, mergeUndo=null, ownerReturns=new Map(), followup=new Map(), actionRevision=0, actionSavedRevision=0;
 var fail=function(s){throw Error('HOLD: '+s);};
 function exact(obj,keys){return obj!==null&&typeof obj==='object'&&!Array.isArray(obj)&&Object.getPrototypeOf(obj)===Object.prototype&&Object.keys(obj).length===keys.length&&Object.keys(obj).every(function(k){return keys.indexOf(k)>=0;});}
 function string(v,max,label,required){
@@ -437,6 +452,7 @@ function undoMerge(){
 /* PRIVATE HUMAN return coordination: informational, all sources self-declared.
    This overlay NEVER updates original runbooks, source findings, replies or grants. */
 function clearReceivedReplies(){
+ clearHumanActions();
  ownerReturns=new Map();$('returnFile').value='';$('returnFilter').value='all';
  $('returnRows').replaceChildren();$('returnCoverage').replaceChildren();$('returnSummary').textContent='No owner returns imported.';
  $('ownerReplies').hidden=!state;
@@ -477,6 +493,7 @@ function admitReceivedReply(p){
  return {alias,records};
 }
 function renderReceivedReplies(){
+ renderHumanActions();
  $('ownerReplies').hidden=!state;if(!state)return;
  var selected=$('returnFilter').value,view=[],groups=[];
  var humanExpected=new Map();
@@ -564,6 +581,14 @@ bind('returnImport','click',importReceivedReply);
 bind('returnForget','click',function(){clearReceivedReplies();message('All locally imported PRIVATE HUMAN replies forgotten. Original runbook steps and external downloads unchanged.');});
 bind('returnFilter','change',renderReceivedReplies);
 bind('returnAggregate','click',exportTeamHumanCoverage);
+bind('actionFilter','change',renderHumanActions);
+bind('actionSearch','input',renderHumanActions);
+bind('actionSave','click',saveHumanActions);
+bind('actionBrief','click',printHumanAgenda);
+bind('actionCounts','click',exportHumanActionCounts);
+bind('actionRestore','click',()=>restoreHumanActions().catch(e=>message(e.message,true)));
+bind('actionForget','click',forgetHumanActions);
+
 bind('returnFile','change',function(){message('New one-owner PRIVATE HUMAN reply selected. Import validates it against CURRENT exact original plan before displaying anything.');});
 bind('filter','change',render);bind('finding','change',render);
 bind('ownerSelect','change',function(){$('ownerExport').disabled=!$('ownerSelect').value;$('ownerPrint').disabled=!$('ownerSelect').value;});bind('ownerExport','click',ownerHandoff);bind('ownerPrint','click',ownerPrintable);
