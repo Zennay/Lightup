@@ -355,6 +355,8 @@ def main(argv=None) -> int:
             p.add_argument("--output", type=Path, required=True)
         if action == "carry-closed":
             p.add_argument("--source-ordinal", type=int, default=None)
+        if action in ("carry-closed", "review", "recover", "resolve"):
+            p.add_argument("--expected-cycle", type=int, default=None)
         p.add_argument("--ack-private-material", action="store_true")
     args = parser.parse_args(argv)
     try:
@@ -365,6 +367,10 @@ def main(argv=None) -> int:
             current = _source(args, vault)
             packet, key = current[1], current[6]
             document = _read(folder, key, vault)
+            if (args.action in ("review", "recover", "resolve")
+                    and args.expected_cycle is not None
+                    and len(document["cycles"]) != args.expected_cycle):
+                raise ValueError("Selected current HUMAN cycle changed after operator review.")
             if args.action == "status":
                 _inspect(document, packet)
                 revisions, unresolved = source_revisions.inspect(

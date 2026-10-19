@@ -101,6 +101,9 @@ def carry(args, folder, vault, current_packet, current_key,
         if not choice.isascii() or not choice.isdecimal() or not 1 <= int(choice) <= len(available):
             raise ValueError("Choose exactly one earlier HUMAN source.")
         _, key, old = available[int(choice)-1]
+    if (getattr(args, "expected_cycle", None) is not None
+            and len(old["cycles"]) != args.expected_cycle):
+        raise ValueError("Registered historical HUMAN cycle changed after operator choice.")
     entry = old["cycles"][-1]
     destination = Path(entry["output"])
     bridge.source._hold_if_not_private_directory(destination.parent)
