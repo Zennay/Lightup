@@ -213,6 +213,11 @@ function draw(){
  $("selectVisible").checked=!!visible.length&&visible.every(x=>selected.has(x.id));
  $("selectVisible").indeterminate=visible.some(x=>selected.has(x.id))&&!$("selectVisible").checked;
  $("selection").textContent=visible.length+" shown · "+selected.size+" selected for PRIVATE export.";
+ const picker=$("ownerRecipient"),prior=picker.value;const owners=[...new Set(r.map(x=>x.owner))].filter(Boolean).sort((a,b)=>a.localeCompare(b));
+ picker.replaceChildren(new Option("Choose one original owner alias",""));
+ for(const alias of owners)picker.append(new Option(alias,alias));
+ picker.value=owners.includes(prior)?prior:"";
+ $("downloadOwner").disabled=!selected.size||!picker.value;
  $("downloadPrivate").disabled=!selected.size;$("downloadAgenda").disabled=!selected.size;
 }
 function download(name,content,type){
@@ -237,6 +242,28 @@ function privateExport(){
   warning:"PRIVATE HUMAN draft only. Not authenticated original source, grant, consent, verified retest, remediation certification or release approval."};
  download("LightUp-PRIVATE-selected-HUMAN-handoff.json",JSON.stringify(data,null,2)+"\n","application/json");
  info("Selected PRIVATE human handoff downloaded. No original source or security status was modified.");
+}
+function oneOwnerExport(){
+ const alias=$("ownerRecipient").value,all=chosen();
+ if(!alias)fail("choose a declared HUMAN owner first");
+ const own=all.filter(x=>x.owner===alias),other=all.length-own.length;
+ if(!own.length)fail("no selected original HUMAN request belongs to this declared owner");
+ if(!confirm("Export only "+own.length+" original HUMAN requests for declared owner "+alias+"? "+other+" selected requests from other owners will be EXCLUDED. Recipient identity is NOT authenticated."))return;
+ const s=current.source;
+ const data={kind:"lightup.private_human_single_owner_disclosure",schema_version:1,
+  disposition:"UNVERIFIED_HUMAN_COORDINATION_ONLY",source_contract:CONTRACT,
+  source_sha256:s.source_sha256,client_reference:s.client_reference,engagement_reference:s.engagement_reference,
+  recipient_alias:alias,...Object.fromEntries(FLAGS.map(k=>[k,false])),
+  requests:own.map(x=>({request_id:x.id,original_finding_id:x.finding,
+   request_kind:x.kind,original_instructions:x.instructions,tentative_human_due_date:x.due,
+   unverified_human_response:x.answer?.human_response||"",unverified_reply_stage:x.answer?.human_stage||"not_received",
+   local_human_review_stage:x.notes.human_stage,local_human_review_note:x.notes.note,
+   separate_unverified_owner_feedback:x.feedback,
+   local_file_labels_only:x.local.map(f=>({file_name:f.file_name,sha256:f.sha256,byte_length:f.byte_length,human_stage:f.human_stage,human_note:f.human_note}))})),
+  warning:"One self-declared owner only. This is NOT an original owner reply/request packet, no identity verification, no actual consent, no execution or remediation authority."};
+ if(current.rows.filter(x=>x.owner===alias&&selected.has(x.id)).length!==own.length)fail("owner selection changed");
+ download("LightUp-PRIVATE-one-owner-HUMAN-handoff.json",JSON.stringify(data,null,2)+"\n","application/json");
+ info("PRIVATE one-owner handoff exported. "+other+" other owner selections were not included. Original security states remain untouched.");
 }
 function csvCell(v){return '"'+String(v).replaceAll('"','""')+'"';}
 function aggregateExport(){
@@ -278,7 +305,7 @@ $("forget").addEventListener("click",()=>{current=null;version++;selected.clear(
  info("PRIVATE working state and file-picker references cleared from this page. Previously downloaded files must be secured or deleted separately.");});
 $("search").addEventListener("input",draw);$("filter").addEventListener("change",draw);
 $("selectVisible").addEventListener("change",e=>{for(const x of filtered())e.target.checked?selected.add(x.id):selected.delete(x.id);draw();});
-for(const [id,handler] of [["downloadPrivate",privateExport],["downloadAggregate",aggregateExport],["downloadAgenda",agendaExport]]){
+for(const [id,handler] of [["downloadPrivate",privateExport],["downloadOwner",oneOwnerExport],["downloadAggregate",aggregateExport],["downloadAgenda",agendaExport]]){
  $(id).addEventListener("click",()=>{try{handler();}catch(e){info(e.message||String(e),true);}});
 }
 })();
