@@ -785,6 +785,7 @@ def generate(docs: list[dict]) -> dict[str, bytes]:
     ]
     workroom_html = render_workroom(
         source_queue=workroom_source,
+        source_details=detail_rows,
         human_stages=tuple(sorted(HUMAN_STAGES)),
         human_routes=tuple(sorted(HUMAN_ROUTES)),
         human_blockers=tuple(sorted(HUMAN_BLOCKERS)),
