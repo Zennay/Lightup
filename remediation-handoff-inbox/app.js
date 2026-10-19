@@ -506,13 +506,53 @@ function agendaExport(){
  download("LightUp-PRIVATE-human-followup-agenda.txt",body.join("\n"),"text/plain;charset=utf-8");
  info("PRIVATE HUMAN agenda exported. Operator approval or execution is not implied.");
 }
+async function attachOriginalCSV(){
+ if(!current)fail("load PRIVATE unified evidence first");
+ const originalFile=$("sourceCsv").files[0];
+ if(!originalFile||originalFile.size===0||originalFile.size>1048576)fail("choose a non-empty original CSV no larger than 1 MiB");
+ const before=current.version,context=current.source;
+ const parser=window.LightUpCasework;
+ if(!parser||typeof parser.parseCSV!=="function"||typeof parser.digest!=="function")fail("exact original Casework source parser is unavailable");
+ const bytes=await originalFile.arrayBuffer();
+ const csv=new TextDecoder("utf-8",{fatal:true}).decode(bytes);
+ const findings=parser.parseCSV(csv);
+ const originalSHA=await parser.digest(findings);
+ if(!originalSHA||originalSHA!==context.source_sha256)fail("ORIGINAL CSV digest differs from selected PRIVATE evidence source; no enrichment applied");
+ if(findings.length!==context.source_count)fail("ORIGINAL CSV row count differs from evidence workspace");
+ const expected=context.casework||context.evidence_review;
+ if(expected){
+  const fromCSV=new Set(findings.map(r=>r.finding_id));
+  if(expected.some(r=>!fromCSV.has(r.finding_id)))fail("source-native HUMAN findings do not match original CSV member IDs");
+ }
+ if(!current||current.version!==before||current.source!==context||$("sourceCsv").files[0]!==originalFile)
+  fail("PRIVATE source/input changed during original CSV digest computation");
+ const rows=buildFindingRows(context,sourceFindingRequests(context,current.rows),findings);
+ if(rows.length!==context.source_count)fail("complete original source count disagrees with HUMAN finding coverage");
+ current={...current,originalFindings:findings,findingRows:rows,version:++version};
+ selectedFindings.clear();$("findingFilter").value="all";$("findingSearch").value="";
+ draw();
+ $("sourceNotice").textContent="Exact original CSV content SHA-256 matches the current DECLARED evidence source. "+findings.length+" source findings available for HUMAN review; origin, identity and actual fixes are NOT authenticated.";
+ info("Local original CSV is content-bound to evidence source SHA-256. Original severity, title, retest claims and remediation descriptions displayed as UNVERIFIED source statements.");
+}
+function detachOriginalCSV(){
+ if(!current)return;
+ const old=current.originalFindings;
+ if(old&&!confirm("Detach the original five-column CSV from the current HUMAN session? This clears severity, title, source retest and remediation text locally but keeps the originally selected evidence/response snapshots."))return;
+ current={...current,originalFindings:null,
+  findingRows:buildFindingRows(current.source,sourceFindingRequests(current.source,current.rows)),
+  version:++version};
+ selectedFindings.clear();$("sourceCsv").value="";$("findingSearch").value="";$("findingFilter").value="all";
+ $("sourceNotice").textContent="No local original CSV attached. Source severity and remediation content remain unavailable without exact original content matching.";
+ draw();info("Detached original five-column findings content from PRIVATE human review. No original source files were modified.");
+}
 function clearAllPrivateView(){
  current=null;version++;selected.clear();selectedFindings.clear();
  for(const id of ["rows","findingRows","numbers","findingStats"])$(id).replaceChildren();
+ $("sourceCsv").value="";$("sourceNotice").textContent="No locally content-matched original CSV loaded.";
  for(const id of ["binding","findingBinding","selection","findingSelection"])$(id).textContent="";
  $("ownerRecipient").replaceChildren(new Option("Choose one original owner alias",""));
- for(const id of ["review","findingDesk","out"])$(id).hidden=true;
- for(const id of ["downloadPrivate","downloadOwner","downloadAgenda","exportFindingPrivate","exportFindingCounts","selectRequestsForFindings"])$(id).disabled=true;
+ for(const id of ["review","findingDesk","out","sourceEnrichment"])$(id).hidden=true;
+ for(const id of ["downloadPrivate","downloadOwner","downloadAgenda","exportFindingPrivate","exportFindingCounts","selectRequestsForFindings","attachOriginal","detachOriginal"])$(id).disabled=true;
 }
 $("load").addEventListener("click",async()=>{
  const rev=++version,ledgerInput=$("ledger").files[0],registerInput=$("register").files[0];info("Reading both PRIVATE snapshots locally…");
@@ -521,6 +561,15 @@ $("load").addEventListener("click",async()=>{
   const next=combine(l,r);current=next;selected.clear();selectedFindings.clear();$("search").value="";$("filter").value="all";draw();
   info("Matched and admitted original HUMAN requests and replies within the same DECLARED source. This does not authenticate source, author or permission.");
  }catch(e){info(e.message||String(e),true);}
+});
+$("attachOriginal").addEventListener("click",()=>{attachOriginalCSV().catch(e=>{info(e.message||String(e),true);$("sourceNotice").textContent=e.message||String(e);});});
+$("detachOriginal").addEventListener("click",()=>{try{detachOriginalCSV();}catch(e){info(e.message||String(e),true);}});
+$("sourceCsv").addEventListener("change",()=>{
+ if(current?.originalFindings){
+  current={...current,originalFindings:null,findingRows:buildFindingRows(current.source,sourceFindingRequests(current.source,current.rows)),version:++version};
+  selectedFindings.clear();draw();
+ }
+ $("sourceNotice").textContent="Changed ORIGINAL CSV selection. Previous source details were detached; match exact original SHA-256 again before interpreting any severity.";
 });
 $("loadEvidenceOnly").addEventListener("click",async()=>{
  const rev=++version,ledgerInput=$("ledger").files[0];
