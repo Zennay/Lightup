@@ -334,3 +334,28 @@ This inbox can see only registered private journals in this one folder;
 legacy unindexed journals and other devices remain outside its scope.
 This dashboard never contacts a target, issues grants, changes evidence,
 performs scans, signs off a client, or starts release.
+
+### Prioritized, actionable HUMAN triage
+
+The engagement inbox sorts safety-critical local HOLDs first (missing/changed
+encrypted original-native files, contradictory CURRENT HUMAN statuses, or a
+previously aborted stage whose recorded output appeared later), followed by
+pending or not-yet-delivered stages, HUMAN follow-up, and closed history.
+Within a priority tier, older local HUMAN draft timestamps appear first.
+
+Each row shows **elapsed UTC days from its PRIVATE local journal timestamp**
+(not an evidence collection timestamp, legal retention deadline or guaranteed
+response SLA). The no-script HTML and terminal both suggest the *name* of the
+next explicit local command such as `recover`, `review`, `resolve` or
+`carry-closed`, or say independent owner review. Suggestions NEVER run the
+command, silently restore an original native draft, close a real legal hold,
+prove client consent, or issue authorization. Each actual command separately
+prompts and performs new original account, tenant and actual evidence checks.
+
+An unexpected actual encrypted file after a past `aborted_unpublished` state
+is now visibly marked HOLD rather than silently ignored. Conversely, neither
+the current-source nor the cross-source `pending`-without-output closeout
+can claim a native draft was never published when CURRENT original HUMAN
+records already contain its exact original request identity; independent
+source-owner review is required. These are safeguards against false HUMAN
+work-completion labels, not verified legal or security audit conclusions.
