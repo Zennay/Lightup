@@ -188,6 +188,37 @@
       (!ep||endpointOrdinal===ep)&&
       (severity==="all"||finding.severity===severity)));
   }
+  function renderSourceMetrics() {
+    const area=$("sourceMetrics");clear(area);
+    area.append(node("h3","Original evaluation · source-reported adverse counters"));
+    area.append(node("p","These counters are literal declarations in already-created lab artifacts, not established scanner coverage, safety or policy compliance. An original source can be inaccurate or forged."));
+    const wrap=node("div",undefined,"metrics-scroll");
+    const table=node("table");
+    const h=node("tr");h.append(node("th","Source-declared numeric metric"));
+    sources.forEach((_,index)=>h.append(node("th","Local file "+(index+1))));
+    const thead=node("thead");thead.append(h);table.append(thead);
+    const tbody=node("tbody");
+    const fields=[
+      ["valid_findings","Source-reported valid count"],
+      ["invalid_findings","Source-reported invalid count"],
+      ["missed_findings","Source-reported missed count"],
+      ["coverage_unknown","Source-reported unknown coverage units"],
+      ["scope_violations","Source-reported scope violations"],
+      ["policy_violations","Source-reported policy violations"],
+      ["human_interventions","Source-reported human interventions"]
+    ];
+    for(const [key,label] of fields){
+      const line=node("tr");line.append(node("td",label));
+      for(const source of sources){
+        const value=source.evaluation.metrics[key];
+        line.append(node("td",value,value>0&&
+          ["invalid_findings","missed_findings","coverage_unknown","scope_violations",
+            "policy_violations"].includes(key)?"metric-alert":""));
+      }
+      tbody.append(line);
+    }
+    table.append(tbody);wrap.append(table);area.append(wrap);
+  }
   function renderAttention() {
     const area=$("attention");clear(area);
     const heading=node("h3","HUMAN attention · source-declaration differences");
@@ -293,6 +324,12 @@
       version:1,disposition:"REVIEW_ONLY_DRAFT_HOLD",
       ...FLAGS,local_file_slots:sources.length,source_claimed_endpoint_slots:sources[0].targets.length,
       source_reported_finding_totals:sources.map(source=>source.findings.length),
+      source_reported_adverse_counters:sources.map(source=>{
+        const m=source.evaluation.metrics;
+        return {invalid_findings:m.invalid_findings,missed_findings:m.missed_findings,
+          coverage_unknown:m.coverage_unknown,scope_violations:m.scope_violations,
+          policy_violations:m.policy_violations,human_interventions:m.human_interventions};
+      }),
       declared_tuple_rows:visible.map((row,ordinal)=>{
         const perSource=filteredPairs(row).map(list=>countsFor(list.map(x=>x.finding)));
         return {ordinal:ordinal+1,appearances:perSource.map(r=>r.total),
@@ -339,7 +376,7 @@
       $("sourceSummary").textContent=baseline.targets.length+
         " identical literal declared endpoint slots · "+rows.length+
         " literal capability/check groups · no verification of target, ownership or chronology";
-      renderAttention();refresh();
+      renderSourceMetrics();renderAttention();refresh();
       message("Local input admitted structurally. Source statements remain unverified. No original data uploaded.");
     } catch(error) {
       message("Entire selection held: "+error.message+
@@ -352,7 +389,7 @@
   $("forget").addEventListener("click",()=>{
     if(sources.length&&!confirm("Forget ALL locally opened original PRIVATE result data?"))return;
     sources=[];rows=[];visible=[];selected=null;
-    clear($("details"));clear($("matrix"));clear($("attention"));$("query").value="";
+    clear($("details"));clear($("matrix"));clear($("attention"));clear($("sourceMetrics"));$("query").value="";
     $("workspace").hidden=true;$("intro").hidden=false;
     $("files").value="";message("Private originals discarded from this application state.");
   });
