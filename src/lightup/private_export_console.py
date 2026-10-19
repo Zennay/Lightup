@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import sys
 
-from . import private_export_continuity, private_export_handoff, private_export_workdesk, private_export_encrypted
+from . import private_export_continuity, private_export_handoff, private_export_workdesk, private_export_encrypted, private_export_encrypted_notes
 
 TITLE = "LightUp PRIVATE HUMAN Export & Remediation Desk"
 NOTICE = (
@@ -32,6 +32,10 @@ OPTIONS = (
     ("11", "Encrypted source → private HUMAN Workdesk", "encrypt-workdesk"),
     ("12", "Compare two encrypted private source versions", "encrypt-compare"),
     ("13", "Rotate encrypted source passphrase without disk plaintext", "encrypt-rotate"),
+    ("14", "Encrypt exact-source PRIVATE HUMAN workplan JSON", "human-seal"),
+    ("15", "Resume HUMAN Workdesk from encrypted source and encrypted plan", "human-workdesk"),
+    ("16", "Inspect encrypted HUMAN plan source binding without note content", "human-inspect"),
+    ("17", "Rotate encrypted HUMAN plan passphrase", "human-rotate"),
     ("0", "Exit (no data or state written)", "exit"),
 )
 
@@ -96,6 +100,31 @@ def _same_real_client() -> None:
 
 
 def _perform(action: str) -> int:
+    if action in ("human-seal", "human-workdesk", "human-inspect", "human-rotate"):
+        source = _ask("Original encrypted source .lue (same exact export)")
+        command = None
+        if action == "human-seal":
+            original_json = _ask("Original source-bound PRIVATE HUMAN plaintext JSON")
+            destination = _output("New encrypted HUMAN plan", "lun")
+            _original()
+            _encrypted()
+            command = ["seal", source, original_json, "--output", destination]
+        else:
+            plan = _ask("Existing encrypted source-bound HUMAN .lun")
+            if action == "human-workdesk":
+                dest = _output("New locally decrypted PRIVATE HUMAN HTML", "html")
+                _original()
+                _private()
+                command = ["workdesk", source, plan, "--output", dest, "--ack-plaintext-html"]
+            elif action == "human-inspect":
+                _encrypted()
+                command = ["inspect", source, plan]
+            else:
+                dest = _output("New separately encrypted HUMAN plan", "lun")
+                _encrypted()
+                command = ["rotate", source, plan, "--output", dest]
+        return private_export_encrypted_notes.main(command + ["--ack-private-handling"])
+
     if action == "encrypt-create":
         database = _ask("Existing local DomainStore database path")
         email = _ask("Existing original account email")
