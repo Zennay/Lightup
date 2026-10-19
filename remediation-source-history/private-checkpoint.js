@@ -87,14 +87,23 @@ async function open(){
  }
  const ids=new Set(restored.flatMap(s=>s.findings.map(x=>x.finding_id))),notes=[],noted=new Set();
  for(const n of packet.notes){
-  if(!shape(n,['id','owner','action','due'])||typeof n.id!=='string'||!ids.has(n.id)||noted.has(n.id)||
+  if(!(shape(n,['id','owner','action','due','sourceRecord'])||shape(n,['id','owner','action','due']))||typeof n.id!=='string'||!ids.has(n.id)||noted.has(n.id)||
    typeof n.owner!=='string'||n.owner.length>120||
    typeof n.action!=='string'||n.action.length>1200||
    typeof n.due!=='string'||(n.due&&!/^\d{4}-\d{2}-\d{2}$/.test(n.due)))
    throw Error('Unknown/ambiguous original finding HUMAN note.');
   if(n.due&&(!Number.isFinite(Date.parse(n.due+'T00:00:00Z'))||
    new Date(n.due+'T00:00:00Z').toISOString().slice(0,10)!==n.due))throw Error('Invalid tentative HUMAN due date.');
-  noted.add(n.id);notes.push({...n});
+  if(Object.prototype.hasOwnProperty.call(n,'sourceRecord')){
+   if(!shape(n.sourceRecord,['finding_id','title','severity','retest_status','remediation'])||
+    n.sourceRecord.finding_id!==n.id)throw Error('Invalid original five-field HUMAN note binding.');
+   const verified=LightUpCasework.normalizeSource([n.sourceRecord])[0];
+   if(!restored.some(snapshot=>snapshot.findings.some(f=>
+    ['finding_id','title','severity','retest_status','remediation'].every(k=>f[k]===verified[k]))))
+     throw Error('Private HUMAN note cites a source row absent from authenticated original exports.');
+  }
+  // Legacy v1 archives without exact row binding remain HUMAN HOLD until operator review, never silently carried.
+  noted.add(n.id);notes.push({...n,sourceRecord:n.sourceRecord||null});
  }
  H.restore({context:ctx,snapshots:restored,notes},currentVersion);
  say('Encrypted checkpoint reopened with exact CSV-byte and original canonical source SHA-256 verification. No permission, fix or retest verified.');
