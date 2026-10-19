@@ -220,6 +220,23 @@ The operator gets **NEW 0700 directory** containing a **0600 `index.html`** (pri
 
 This is private collaboration with source-specific HUMAN notes, not a third-party security certification or a release approval.
 
+## 9. Native ORIGINAL HUMAN follow-up from several encrypted replies
+
+The multi-recipient collaboration desk also has a **separate, explicitly acknowledged native HUMAN Request Desk staging flow**. `team_followup.py preview` opens the exact original CURRENT tenant/engagement, native encrypted HUMAN source and 2–12 exact encrypted material/reply pairs, then reports only **anonymous** proposal counts. A finding receives at most one new native `followup_question` draft if one or more recipients explicitly request follow-up or if separate recipients disagree about HUMAN status. It preserves **all divergent notes/statuses per packet** instead of voting on the truth. Existing original HUMAN requests that are still open are never duplicated; any note too long for the original native 1,400-character limit, native record mismatch or full original request capacity causes complete HOLD, never a partially truncated or silently resolved note.
+
+```bash
+PYTHONPATH=src python3 remediation-evidence-materials/team_followup.py preview \
+  --db /private/lightup/existing.sqlite \
+  --email operator@example.invalid \
+  --client-id CURRENT_CLIENT --engagement-id CURRENT_ENGAGEMENT \
+  --human /private/lightup/current-original-human.ltv \
+  --transfer /private/lightup/transfer-one.ltv --reply /private/lightup/reply-one.ltv \
+  --transfer /private/lightup/transfer-two.ltv --reply /private/lightup/reply-two.ltv \
+  --ack-private-team-followup
+```
+
+Only after separate HUMAN review, run `team_followup.py stage` with the **same** source/pair flags and `--output /private/lightup/NEW-private-team-human-drafts.ltv`. The operator must enter `STAGE TEAM FOLLOWUP` and a new private passphrase. This writes a **new exclusive 0600 encrypted original-compatible Unified HUMAN workspace**, preserving every original Casework/Evidence/attachment and old request unchanged and appending only `human_stage=draft` questions. No note, document or original app is silently applied. The original source-bound Ledger still requires its **separate native Preview and manual HUMAN Apply**. A conflicting review is a human question, **not** a verified vulnerability, remediation, cryptographic recipient identity or client authorization.
+
 ## Operational posture
 
 The output is **human-supplied local file bytes matched against source-reported HUMANS**, **not** signed chain of custody, verified scanner evidence, validated security impact, remediation success, or consent. Treat any original severity or retest text as unverified source labels. Existing mandatory original exact-head hosted + permanently registered named VPS CI, source-owner review, independent privacy/security/crypto review, original #177/#182/#829, current independent client/operator consent with action-time revocation for future active work and explicit HUMAN GO remain necessary. This independent feature must stay **DRAFT/HOLD**, without main merge or production deployment, until actual release gates are satisfied.
