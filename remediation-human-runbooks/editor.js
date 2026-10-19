@@ -358,7 +358,7 @@ function guardReviewLoss(){
 function clearHumanActions(){
  followup=new Map();actionRevision=0;actionSavedRevision=0;actionSelected=new Set();actionBatchUndo=null;$('actionUndoBatch').disabled=true;
  $('actionRows').replaceChildren();$('actionSummary').textContent='';
- $('actionSearch').value='';$('actionFilter').value='all';$('actionRestoreFile').value='';
+ $('actionSearch').value='';$('actionFilter').value='all';$('actionRestoreFile').value='';$('actionCoordinator').replaceChildren(opt('Choose locally declared coordinator',''));$('actionCoordinatorBrief').disabled=true;
  $('humanReviewDesk').hidden=true;actionSavedStatus();
 }
 function actionSavedStatus(){$('actionSaved').textContent=actionRevision!==actionSavedRevision?
@@ -382,6 +382,12 @@ function renderHumanActions(){
  $('actionSummary').textContent=all.length+' unverified human-reply steps · '+filtered.length+' shown · '+
  all.filter(x=>x.action.human_stage==='needs_human_input').length+' HUMAN clarification assignments · '+
  all.filter(x=>x.action.tentative_due&&x.action.tentative_due<today).length+' tentative UTC human dates passed (not authorized windows).';
+ const coordinatorSelect=$('actionCoordinator'),previousCoordinator=coordinatorSelect.value;
+ const localCoordinators=[...new Set(all.map(x=>x.action.coordinator_alias).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
+ coordinatorSelect.replaceChildren(opt('Choose locally declared coordinator',''));
+ localCoordinators.forEach(alias=>coordinatorSelect.append(opt(alias,alias)));
+ coordinatorSelect.value=localCoordinators.includes(previousCoordinator)?previousCoordinator:'';
+ $('actionCoordinatorBrief').disabled=!coordinatorSelect.value;
  const holder=$('actionRows');holder.replaceChildren();
  $('actionSelection').textContent=actionSelected.size+' exact-current HUMAN steps selected. Selection is local, not an execution request.';
  $('actionBatchApply').disabled=!actionSelected.size;
@@ -523,6 +529,35 @@ function printHumanAgenda(){
  download('LightUp-PRIVATE-HUMAN-discussion-agenda.html',body,'text/html;charset=utf-8');
  message('Scriptless confidential HUMAN agenda exported; this is not authorization or verified remediation.');
 }
+
+function exportOneCoordinatorBrief(){
+ if(!state||!ownerReturns.size)fail('load source-bound HUMAN owner replies first');
+ const coordinator=$('actionCoordinator').value;if(!coordinator)fail('choose a locally declared HUMAN coordinator');
+ const rows=actionRows().filter(x=>x.action.coordinator_alias===coordinator);
+ if(!rows.length)fail('no private HUMAN follow-ups assigned to coordinator');
+ if(!window.confirm('Create PRIVATE scriptless HUMAN coordination brief for locally declared '+coordinator+' only ('+rows.length+' original HUMAN steps)? Other coordinators and their actions/notes are excluded. Verify recipient identity, transport and confidential printing separately.'))return;
+ const lines=['<!doctype html><html lang="en"><head><meta charset="utf-8">',
+ '<meta http-equiv="Content-Security-Policy" content="default-src &#39;none&#39;; script-src &#39;none&#39;; style-src &#39;none&#39;; connect-src &#39;none&#39;; form-action &#39;none&#39;">',
+ '<title>LightUp PRIVATE HUMAN coordinator briefing</title></head><body>',
+ '<h1>LightUp · PRIVATE one-coordinator HUMAN follow-up</h1>',
+ '<p><strong>INCUBATE DRAFT/HOLD · UNVERIFIED HUMAN-ONLY.</strong> No authenticated source/recipient, client consent, grant, authorized execution, verified remediation, retest or release.</p>',
+ '<p>Locally declared coordinator '+humanEsc(coordinator)+'</p>',
+ '<p>Self-declared original source SHA '+humanEsc(state.source_sha256)+
+ ' · client '+humanEsc(state.client_reference)+' · engagement '+humanEsc(state.engagement_reference)+'</p><ol>'];
+ rows.sort((a,b)=>(a.action.tentative_due||'9999').localeCompare(b.action.tentative_due||'9999')||a.source.finding_id.localeCompare(b.source.finding_id));
+ for(const {source:r,action:a} of rows){
+  lines.push('<li><h2>Original '+humanEsc(r.finding_id)+' · HUMAN step '+r.step_id+'</h2>'+
+   '<p>Original declared HUMAN recipient '+humanEsc(r.recipient_alias)+' · human reply '+humanEsc(r.human_ack)+'</p>'+
+   '<p>Local HUMAN follow-up stage '+humanEsc(a.human_stage)+' · tentative human date '+humanEsc(a.tentative_due||'not set')+'</p>'+
+   '<h3>Proposed human next action</h3><pre>'+humanEsc(a.next_action)+'</pre>'+
+   '<h3>PRIVATE coordinator-specific note</h3><pre>'+humanEsc(a.private_note)+'</pre></li>');
+ }
+ lines.push('</ol><p>All other local HUMAN coordinators, their notes and actions are deliberately excluded. No original evidence or grant is changed.</p></body></html>\n');
+ const body=lines.join('\n');if(new TextEncoder().encode(body).byteLength>MAX_BACKUP)fail('PRIVATE HUMAN one-recipient briefing exceeds 8 MiB');
+ download('LightUp-PRIVATE-one-coordinator-HUMAN-followup.html',body,'text/html;charset=utf-8');
+ message('Scriptless PRIVATE one-coordinator HUMAN follow-up brief exported, with other coordinators excluded. Recipient remains unverified.');
+}
+
 function exportHumanActionCounts(){
  if(!window.confirm('Export HUMAN follow-up counts only, excluding owner aliases, source, original IDs, notes, names, dates and customer context? Small cohorts may reveal patterns.'))return;
  const counts=new Map();for(const {action:a} of actionRows())counts.set(a.human_stage,1+(counts.get(a.human_stage)||0));
@@ -677,6 +712,8 @@ bind('actionUndoBatch','click',undoHumanActionBatch);
 bind('actionSave','click',saveHumanActions);
 bind('actionBrief','click',printHumanAgenda);
 bind('actionCounts','click',exportHumanActionCounts);
+bind('actionCoordinator','change',()=>{$('actionCoordinatorBrief').disabled=!$('actionCoordinator').value;});
+bind('actionCoordinatorBrief','click',exportOneCoordinatorBrief);
 bind('actionRestore','click',()=>restoreHumanActions().catch(e=>message(e.message,true)));
 bind('actionForget','click',forgetHumanActions);
 
