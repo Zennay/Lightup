@@ -31,7 +31,7 @@ async function save(){
  const payload={kind:'lightup.private_human_source_history',version:1,disposition:'UNVERIFIED_LOCAL_HUMAN_PLANNING',
   ...Object.fromEntries(FLAGS.map(x=>[x,false])),context:p.context,
   snapshots:p.snapshots.map(x=>({name:x.name,label:x.label,sourceHash:x.sourceHash,fileHash:x.fileHash,csvBase64:x.csvBase64})),
-  notes:p.notes,decisions:p.decisions,merges:p.merges};
+  notes:p.notes,decisions:p.decisions,merges:p.merges,holdReviews:p.holdReviews};
  const salt=crypto.getRandomValues(new Uint8Array(16)),iv=crypto.getRandomValues(new Uint8Array(12));
  const k=await key(password,salt);
  const encrypted=new Uint8Array(await crypto.subtle.encrypt({name:'AES-GCM',iv,additionalData:bytes(KIND+':1')},k,bytes(JSON.stringify(payload))));
@@ -64,7 +64,8 @@ async function open(){
  }catch{throw Error('Passphrase invalid, encrypted archive altered, or AES-GCM authentication failed; no workspace changed.');}
  const packet=JSON.parse(plain);
  if(JSON.stringify(packet)!==plain||
-  !(shape(packet,['kind','version','disposition',...FLAGS,'context','snapshots','notes','decisions','merges'])||
+  !(shape(packet,['kind','version','disposition',...FLAGS,'context','snapshots','notes','decisions','merges','holdReviews'])||
+    shape(packet,['kind','version','disposition',...FLAGS,'context','snapshots','notes','decisions','merges'])||
     shape(packet,['kind','version','disposition',...FLAGS,'context','snapshots','notes','decisions'])||
     shape(packet,['kind','version','disposition',...FLAGS,'context','snapshots','notes']))||
   packet.kind!=='lightup.private_human_source_history'||packet.version!==1||
@@ -73,7 +74,8 @@ async function open(){
   !Array.isArray(packet.snapshots)||!packet.snapshots.length||packet.snapshots.length>H.limits.maxSnapshots||
   !Array.isArray(packet.notes)||packet.notes.length>H.limits.maxNotes||
   (Object.prototype.hasOwnProperty.call(packet,'merges')&&(!Array.isArray(packet.merges)||packet.merges.length>H.limits.maxMerges))||
-  (Object.prototype.hasOwnProperty.call(packet,'decisions')&&(!Array.isArray(packet.decisions)||packet.decisions.length>H.limits.maxDecisions)))
+  (Object.prototype.hasOwnProperty.call(packet,'decisions')&&(!Array.isArray(packet.decisions)||packet.decisions.length>H.limits.maxDecisions))||
+  (Object.prototype.hasOwnProperty.call(packet,'holdReviews')&&(!Array.isArray(packet.holdReviews)||packet.holdReviews.length>H.limits.maxHoldReviews)))
    throw Error('Authenticated archive content has invalid original source/context/non-authority contract.');
  const restored=[],seen=new Set();
  for(const s of packet.snapshots){
@@ -161,7 +163,33 @@ async function open(){
      }
    }
  }
- H.restore({context:ctx,snapshots:restored,notes,decisions,merges},currentVersion);
+ const holdReviews=packet.holdReviews||[];
+ for(const entry of holdReviews){
+   if(!shape(entry,['id','originalSourceHash','reviewSourceHash','oldSource','currentSource','binding','disposition','reason','nextAction','reviewedUTC'])||
+      typeof entry.id!=='string'||typeof entry.originalSourceHash!=='string'||!/^[a-f0-9]{64}$/.test(entry.originalSourceHash)||
+      typeof entry.reviewSourceHash!=='string'||!/^[a-f0-9]{64}$/.test(entry.reviewSourceHash)||
+      !['stale','missing'].includes(entry.binding)||
+      !['request_new_source','ask_human_owner','await_separate_evidence','defer_private_discussion'].includes(entry.disposition)||
+      typeof entry.reason!=='string'||entry.reason.trim().length<12||entry.reason.length>800||
+      typeof entry.nextAction!=='string'||entry.nextAction.trim().length<8||entry.nextAction.length>1200||
+      typeof entry.reviewedUTC!=='string'||!/^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$/.test(entry.reviewedUTC)||
+      !Number.isFinite(Date.parse(entry.reviewedUTC)))
+     throw Error('PRIVATE historical HUMAN source-HOLD review is malformed; archive remains unopened.');
+   const old=restored.find(x=>x.sourceHash===entry.originalSourceHash);
+   const reviewed=restored.find(x=>x.sourceHash===entry.reviewSourceHash);
+   if(!old||!reviewed||!validSource(entry.oldSource)||entry.oldSource.finding_id!==entry.id||
+      !old.findings.some(f=>['finding_id','title','severity','retest_status','remediation'].every(k=>f[k]===entry.oldSource[k])))
+     throw Error('HOLD: historical HUMAN review original source does not match authenticated archive.');
+   const current=reviewed.findings.find(x=>x.finding_id===entry.id)||null;
+   if((current===null)!==(entry.currentSource===null)||
+      (current&&(!validSource(entry.currentSource)||!['finding_id','title','severity','retest_status','remediation'].every(k=>current[k]===entry.currentSource[k])))||
+      (entry.binding==='missing'&&current!==null)||
+      (entry.binding==='stale'&&(!current||['finding_id','title','severity','retest_status','remediation'].every(k=>current[k]===entry.oldSource[k]))))
+     throw Error('HOLD: reviewed original source changed or the HUMAN hold type is inconsistent.');
+ }
+ if(new TextEncoder().encode(JSON.stringify(holdReviews)).length>1048576)
+   throw Error('PRIVATE historical HUMAN source-HOLD journal exceeds 1 MiB.');
+ H.restore({context:ctx,snapshots:restored,notes,decisions,merges,holdReviews},currentVersion);
  say('Encrypted checkpoint reopened with exact CSV-byte and original canonical source SHA-256 verification. No permission, fix or retest verified.');
 }
 $('archiveSave').addEventListener('click',async()=>{try{await save();}catch(e){say(e.message,true);}finally{$('archivePass').value='';}});
