@@ -116,8 +116,6 @@ def _unb64(value: str, limit: int) -> bytes:
 
 
 def _make_workspace(csv_raw: bytes, human_raw: bytes, client: str, engagement: str) -> bytes:
-    bridge._text_label if False else None
-    bridge._literal if False else None
     bridge.original._literal(client,"client")
     bridge.original._literal(engagement,"engagement")
     sha,count=bridge.original._strict_summary(csv_raw.decode("utf-8","strict"))
@@ -212,7 +210,7 @@ area.append(heading,info,button);host.insertBefore(area,host.firstChild);
         raise ValueError("Original offline CSP changed.")
     before,closing,after=page.rpartition("</body>")
     result=(before+"<script>"+js+"</script>"+closing+after).encode("utf-8")
-    if len(result)>bridge.MAX_RENDERED if hasattr(bridge,"MAX_RENDERED") else len(result)>4*1024*1024:
+    if len(result)>4*1024*1024:
         raise ValueError("Private HUMAN offline HTML exceeds limit.")
     if b"connect-src 'none'" not in result:
         raise ValueError("Original no-network policy missing.")
@@ -248,11 +246,6 @@ def main(argv: list[str] | None=None) -> int:
             source,mime,_=vault._open(saved,secret)
             if mime!="application/json":
                 raise ValueError("Invalid source vault MIME.")
-            manifest,_=bridge._read_envelope(source,include_manifest=True) if False else (None,None)
-            html,manifest=bridge._read_envelope(source) if False else (None,None)
-            # Bridge returns (data, rendered) only through manifest-enabled source parser.
-            _html,manifest=bridge.original._read_envelope(source,include_manifest=True) if False else (None,None)
-            # The actual original Evidence Bridge's source parser returns a dict plus rendered HTML.
             manifest,_rendered=bridge._read_envelope(source)
             if (manifest["client_reference"]!=opts.client_id or
                     manifest["engagement_reference"]!=opts.engagement_id or
