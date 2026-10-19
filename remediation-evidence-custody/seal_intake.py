@@ -26,16 +26,27 @@ def canonical(obj: object) -> bytes:
     return json.dumps(obj, sort_keys=True, ensure_ascii=True,
                       separators=(",", ":"), allow_nan=False).encode("ascii")
 
-def _admit_delta(old: dict, candidate: dict, ids: set[str]) -> int:
+def _admit_delta(old: dict, candidate: dict, ids: set[str]) -> dict:
     """An immutable full original HUMAN baseline plus genuinely appended files."""
     if old.get("schema_version") != 2 or candidate.get("schema_version") != 2:
         raise ValueError("Original Unified HUMAN v2 is required for append-only encrypted sealing.")
-    # Keep the ENTIRE native HUMAN workspace untouched, including original
-    # warning text, exact source binding and every false authority flag.
-    before=dict(old);after=dict(candidate)
-    before.pop("attachments",None);after.pop("attachments",None)
-    if canonical(before)!=canonical(after):
-        raise ValueError("Original non-artifact HUMAN content or source claims changed.")
+    # The original authenticated PRIVATE browser deliberately strips HUMAN
+    # Casework/Evidence Review notes; never expand the browser to hold them.
+    # Carry ALL non-attachment data from the encrypted original baseline.
+    fields=("kind","schema_version","disposition","source_contract",
+            "source_sha256","source_count","client_reference",
+            "engagement_reference","human_requests")
+    if any(canonical(old.get(key))!=canonical(candidate.get(key)) for key in fields):
+        raise ValueError("Original source identity or HUMAN request baseline changed.")
+    for key in ("casework","evidence_review"):
+        if candidate.get(key) is not None and canonical(candidate[key])!=canonical(old[key]):
+            raise ValueError("PRIVATE original Casework/Evidence Review was modified.")
+    limited_warning=(
+        "PRIVATE local human file comparisons. Original authenticated READ at build-time only; "
+        "no client consent, grants, verified remediation, retest or current authorization."
+    )
+    if candidate.get("warning") not in (old.get("warning"),limited_warning):
+        raise ValueError("Unrecognized privacy-minimized browser HUMAN warning.")
     if type(old.get("attachments")) is not list or type(candidate.get("attachments")) is not list:
         raise ValueError("Original artifact record arrays are required.")
     retained = len(old["attachments"])
@@ -52,7 +63,13 @@ def _admit_delta(old: dict, candidate: dict, ids: set[str]) -> int:
     # Original schema admission validates every native record, limit, request,
     # casework and fingerprint, including duplicates per finding and SHA-256.
     native._records(candidate, ids)
-    return len(fresh)
+    # The NEW trusted native packet is the old decrypted PRIVATE object with
+    # appended fingerprints only. Casework/Evidence Review/requests/warnings
+    # come from encrypted original, NEVER from a redacted browser projection.
+    restored=dict(old)
+    restored["attachments"]=[*old["attachments"],*fresh]
+    native._records(restored, ids)
+    return restored
 
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(description=__doc__)
@@ -102,8 +119,9 @@ def main(argv: list[str] | None = None) -> int:
         requested = vault._private_input(b,MAX_LOCAL_DRAFT)
         candidate = human._packet(requested,source_digest=digest,count=count,
                                    client=opt.client_id,engagement=opt.engagement_id)
-        appended = _admit_delta(old,candidate,original_ids)
-        packed = human._make_workspace(original_csv, requested,
+        restored = _admit_delta(old,candidate,original_ids)
+        appended = len(restored["attachments"]) - len(old["attachments"])
+        packed = human._make_workspace(original_csv, canonical(restored),
                                       opt.client_id,opt.engagement_id)
         replacement = vault._password("New PRIVATE HUMAN intake vault passphrase: ",fresh=True)
         if replacement == original_password:
