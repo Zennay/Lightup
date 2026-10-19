@@ -54,6 +54,50 @@ A fresh private 0700 folder contains `board.json` (native Studio-compatible v1),
 
 The local return does not prove that an authentic original HUMAN reviewer replied. In particular, `locally_discussed` is **never** a verified fix or original-source decision; no native evidence or ticket workflow is modified. A new file is not a delivery receipt or consent.
 
+## Multiple HUMAN status changes in one atomic return
+
+Create the PRIVATE complete human-editable update worksheet **without hand-writing any schema fields**:
+
+```bash
+python3 remediation-human-handoff/prepare_updates.py \
+  --session "$HOME/lightup-private-human/session.json" \
+  --board "$HOME/lightup-private-human/board.json" \
+  --output-dir "$HOME/lightup-private-human/change-worksheet"
+```
+
+The new owner-only directory contains 0600 `updates.json` plus `HOW_TO_EDIT.txt`. Every local packet is prefilled with the exact source-free ordinal, current HUMAN action/state and all 12 false authority flags. `new_state` is deliberately **identical to the original state**, so the template cannot accidentally change any status. In a local private editor, remove all unwanted change rows and explicitly change `new_state` in the remaining rows. Apply the edited 0600 file with the CLI below. The filename and fields are HUMAN-only, not source identity.
+
+For a full 1–12-row human-only offline return, `bulk_return.py` reads an explicitly authored PRIVATE 0600 strict manifest of local proposed transitions. The manifest must contain **exactly** these top-level fields: `kind`, `schema_version`, `disposition`, `changes`, `warning` and the 12 original literal false authority flags. Values for the first five:
+
+```json
+{
+  "kind": "lightup.private_local_human_routing_changes",
+  "schema_version": 1,
+  "disposition": "HUMAN_ONLY_UNVERIFIED_LOCAL_ROUTING_PROPOSALS",
+  "changes": [
+    {
+      "ordinal": 1,
+      "expect_action": "request_original_human_review",
+      "expect_state": "needs_human_followup",
+      "new_state": "waiting_original_owner"
+    }
+  ],
+  "warning": "Self-declared proposed LOCAL HUMAN routing states only. Not an authentic reviewer reply, source observation, authorization, remediation, retest, client consent, finding, grant, scan or release."
+}
+```
+
+The remaining **12 false authority fields** are required exactly, and can be copied from the *already provided original Studio v1* action-board export only after locally checking they are all literal JSON `false`. Do not replace authentic source records with this manifest.
+
+```bash
+python3 remediation-human-handoff/bulk_return.py \
+  --session "$HOME/lightup-private-human/session.json" \
+  --board "$HOME/lightup-private-human/board.json" \
+  --changes "$HOME/lightup-private-human/updates.json" \
+  --output-dir "$HOME/lightup-private-human/batch-return-01"
+```
+
+Every selected ordinal must be distinct, within the original numeric session and match **both** the expected old action and expected old state. Empty, duplicate, no-op, malformed, unauthorized or inconsistent batches fully HOLD. It then creates one new private scriptless HUMAN review page, structured local change summary and a native v1 `board.json` which the original parser must re-admit against the unchanged entire numeric session before the atomic publication. This **never** asserts verified remediation or sends a reply. All inputs are separately private and must be shared by a HUMAN only after an appropriate disclosure decision.
+
 ## Hard boundaries
 
 - The existing owner-controlled `remediation-portfolio/action_board.py` is the **sole** import contract: original producer format, bounded/private no-follow file admission, duplicate-key rejection, **exact** numeric packet shape and ordinal matching, all literal false authority flags. A mismatching board or input rejects the whole operation before any final publication. We do not rewrite, fork or relax the original parser.
