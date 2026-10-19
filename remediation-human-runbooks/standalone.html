@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-g5Pf3hLKTWF3QlSXr0K1pvn7tXSI6+XgaGx03GKC0co='; style-src 'sha256-qmlE7woSaKjxGCp3C9x1qVZu4g8mARsOPncintfBTCY='; connect-src 'none'; img-src 'none'; object-src 'none'; frame-src 'none'; form-action 'none'; base-uri 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-0mg4vyV7Rju5sjpuHD9LKiHp9dDgV0ZqG3K3KPfJg9c='; style-src 'sha256-qmlE7woSaKjxGCp3C9x1qVZu4g8mARsOPncintfBTCY='; connect-src 'none'; img-src 'none'; object-src 'none'; frame-src 'none'; form-action 'none'; base-uri 'none'">
 <title>LightUp — PRIVATE HUMAN Remediation Runbook</title>
 <style>
 :root{font-family:system-ui,-apple-system,sans-serif;color:#162c41;background:#f3f6fa}
@@ -87,6 +87,16 @@ footer{text-align:center;color:#466074;padding:1rem}
  <div id="mergePanel" hidden><div id="mergeChoices"></div>
  <div class="actions"><button class="primary" id="mergeApply" disabled>Apply manually resolved HUMAN differences</button></div></div>
 </section>
+
+<section id="ownerReplies" hidden>
+ <h2>5 · Combined read-only HUMAN owner-return desk</h2>
+ <p>Import PRIVATE HUMAN owner returns created in the separate owner-return.html recipient desk. This reads several self-declared owners against the current exact local runbooks. It cannot authenticate a person, change original plans, execute remediation or verify a fix.</p>
+ <label for="returnFile">Source-bound one-owner HUMAN return JSON (max 8 MiB)</label><input type="file" id="returnFile" accept=".json,application/json">
+ <div class="actions"><button id="returnImport" class="primary">Add exact-source HUMAN reply to dashboard</button><button id="returnForget">Forget all received PRIVATE replies</button></div>
+ <label for="returnFilter">Human-only status view</label><select id="returnFilter"><option value="all">All received human steps</option><option value="clarification_needed_human">Needs HUMAN clarification</option><option value="not_responded_human">Unanswered HUMAN steps</option><option value="received_human">HUMAN receipt acknowledged</option><option value="discussion_prepared_human">HUMAN discussion prepared</option></select>
+ <p id="returnSummary" class="meta">No owner returns imported.</p><div id="returnRows"></div>
+ <p class="warning">All received replies are ephemeral, private and UNVERIFIED. Any edit of the local authored runbooks invalidates imported replies; re-import exact-current owner returns after an edit. Original issue/evidence/source-owner/grant data are never mutated.</p>
+</section>
 </main>
 <footer>LightUp offline review desk · no scanners, network requests, secret storage, or verified remediation.</footer>
 <script>
@@ -102,7 +112,7 @@ var SKEYS=['step_id','kind','description','precondition','responsible_alias','ro
 var RBKEYS=['kind','schema_version','disposition','source_contract','source_sha256','client_reference','engagement_reference','source_count','finding_ids','runbooks','warning'].concat(FLAGS);
 var BKEYS=['finding_id','steps'];
 var MAX=1048576, MAX_BACKUP=8388608, MAX_ROWS=350, MAX_STEPS=8, MAX_TOTAL=1600;
-var state=null, revision=0, exported=0, pendingMerge=null, mergeUndo=null;
+var state=null, revision=0, exported=0, pendingMerge=null, mergeUndo=null, ownerReturns=new Map();
 var fail=function(s){throw Error('HOLD: '+s);};
 function exact(obj,keys){return obj!==null&&typeof obj==='object'&&!Array.isArray(obj)&&Object.getPrototypeOf(obj)===Object.prototype&&Object.keys(obj).length===keys.length&&Object.keys(obj).every(function(k){return keys.indexOf(k)>=0;});}
 function string(v,max,label,required){
@@ -155,8 +165,8 @@ function message(s,bad){$('notice').textContent=s;$('notice').dataset.error=Stri
 function dirty(){if(!state){$('dirty').textContent='No local storage. Import an original PRIVATE source first.';return;}
  $('dirty').textContent=revision!==exported?'UNSAVED PRIVATE runbooks: download a complete backup before closing or refreshing.':'PRIVATE runbooks locally unchanged since last export/restore.';}
 function confirmDiscard(){return revision===exported||window.confirm('UNSAVED PRIVATE human runbook content will be lost. Download complete PRIVATE backup first if needed. Continue?');}
-function reset(){pendingMerge=null;mergeUndo=null;clearMerge();$('mergeUndo').disabled=true;$('mergeFile').value='';$('collab').hidden=true;state=null;revision=0;exported=0;$('workFile').value='';$('restoreFile').value='';$('source').textContent='No PRIVATE source loaded.';$('editor').hidden=true;$('io').hidden=true;$('finding').replaceChildren();$('steps').replaceChildren();$('details').replaceChildren();$('summary').textContent='';dirty();}
-function touch(){revision++;pendingMerge=null;mergeUndo=null;clearMerge();$('mergeUndo').disabled=true;dirty();}
+function reset(){clearReceivedReplies();pendingMerge=null;mergeUndo=null;clearMerge();$('mergeUndo').disabled=true;$('mergeFile').value='';$('collab').hidden=true;state=null;revision=0;exported=0;$('workFile').value='';$('restoreFile').value='';$('source').textContent='No PRIVATE source loaded.';$('editor').hidden=true;$('io').hidden=true;$('finding').replaceChildren();$('steps').replaceChildren();$('details').replaceChildren();$('summary').textContent='';dirty();}
+function touch(){revision++;pendingMerge=null;mergeUndo=null;clearMerge();$('mergeUndo').disabled=true;clearReceivedReplies();dirty();}
 function binding(s){return JSON.stringify([s.source_contract,s.source_sha256,s.client_reference,s.engagement_reference,s.ids.slice().sort()]);}
 function opt(label,value){var el=document.createElement('option');el.value=value;el.textContent=label;return el;}
 function element(tag,text){var el=document.createElement(tag);el.textContent=String(text);return el;}
@@ -251,7 +261,7 @@ async function importWork(){
   retained=true;
  }else if(state&&!confirmDiscard())return;
  if(revision!==prior||(state?binding(state):null)!==priorSource)fail('PRIVATE local HUMAN state changed before source switch confirmation');
- state=next;if(retained){revision++;}else{revision=0;exported=0;}
+ state=next;clearReceivedReplies();if(retained){revision++;}else{revision=0;exported=0;}
  pendingMerge=null;mergeUndo=null;clearMerge();$('mergeUndo').disabled=true;$('mergeFile').value='';$('filter').value='all';$('restoreFile').value='';
  $('editor').hidden=false;$('io').hidden=false;$('collab').hidden=false;render();dirty();
  message(retained?'Original HUMAN context refreshed for exact DECLARED source binding: all own PRIVATE steps retained, reviewer merge Undo cleared. Independently authenticate source before handoff.':'Opened original source-declared PRIVATE HUMAN workplan. Draft runbooks below; no client authority or security outcome created.');
@@ -267,7 +277,7 @@ async function restore(){
  if(before!==revision||ref!==binding(state)||$('restoreFile').files[0]!==f)fail('PRIVATE source, file or local revision changed while restoring');
  if(!window.confirm('REPLACE all local HUMAN runbooks with the exact-original-source-bound PRIVATE backup? Export current work first. No original evidence, owners or grants will be updated.'))return;
  if(before!==revision||ref!==binding(state))fail('stale local state during confirmation');
- state.runbooks=rows;revision++;exported=revision;pendingMerge=null;mergeUndo=null;clearMerge();$('mergeUndo').disabled=true;$('restoreFile').value='';render();dirty();message('Restored complete HUMAN-only runbooks for exact original finding set.');
+ state.runbooks=rows;clearReceivedReplies();revision++;exported=revision;pendingMerge=null;mergeUndo=null;clearMerge();$('mergeUndo').disabled=true;$('restoreFile').value='';render();dirty();message('Restored complete HUMAN-only runbooks for exact original finding set.');
 }
 function esc(s){return String(s).replace(/[&<>"']/g,function(ch){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch];});}
 function printOne(){
@@ -412,14 +422,93 @@ function applyMerge(){
  if(revision!==draft.revision||binding(state)!==draft.source)fail('local HUMAN work changed during confirmation');
  var old=new Map(state.ids.map(function(id){return [id,state.runbooks.get(id).map(function(v){return Object.assign({},v);})];}));
  applies.forEach(function(c){state.runbooks.set(c.id,c.other.map(function(v){return Object.assign({},v);}));});
- revision++;mergeUndo={prior:old,revision:revision,source:draft.source};pendingMerge=null;clearMerge();$('mergeUndo').disabled=false;render();dirty();
+ revision++;clearReceivedReplies();mergeUndo={prior:old,revision:revision,source:draft.source};pendingMerge=null;clearMerge();$('mergeUndo').disabled=false;render();dirty();
  message('Merged '+applies.length+' exact-source HUMAN runbooks. Undo available until another local edit.');
 }
 function undoMerge(){
  var entry=mergeUndo;if(!entry||entry.revision!==revision||entry.source!==binding(state))fail('last HUMAN merge no longer safe to undo');
  if(!window.confirm('Undo only the last PRIVATE local reviewer runbook merge? External PRIVATE downloads are unaffected.'))return;
  state.runbooks=new Map(Array.from(entry.prior,function(pair){return [pair[0],pair[1].map(function(s){return Object.assign({},s);})];}));
- revision++;mergeUndo=null;pendingMerge=null;clearMerge();$('mergeUndo').disabled=true;render();dirty();message('Previous local HUMAN runbooks restored. No original findings or approvals were changed.');
+ revision++;clearReceivedReplies();mergeUndo=null;pendingMerge=null;clearMerge();$('mergeUndo').disabled=true;render();dirty();message('Previous local HUMAN runbooks restored. No original findings or approvals were changed.');
+}
+
+
+/* PRIVATE HUMAN return coordination: informational, all sources self-declared.
+   This overlay NEVER updates original runbooks, source findings, replies or grants. */
+function clearReceivedReplies(){
+ ownerReturns=new Map();$('returnFile').value='';$('returnFilter').value='all';
+ $('returnRows').replaceChildren();$('returnSummary').textContent='No owner returns imported.';
+ $('ownerReplies').hidden=!state;
+}
+function expectedOwnerSteps(alias){
+ return state.ids.map(id=>({finding_id:id,steps:state.runbooks.get(id).filter(s=>s.responsible_alias===alias).map(s=>({...s}))})).filter(r=>r.steps.length);
+}
+function admitReceivedReply(p){
+ var fields=['kind','schema_version','disposition','source_contract','source_sha256','client_reference','engagement_reference','source_count','recipient_alias','handoff_rows','responses','warning',...FLAGS];
+ if(!exact(p,fields)||p.kind!=='lightup.private_human_owner_runbook_return'||p.schema_version!==1||
+ p.disposition!=='UNVERIFIED_HUMAN_PLANNING_ONLY'||FLAGS.some(k=>p[k]!==false)||p.source_count!==state.ids.length||
+ p.source_contract!==state.source_contract||p.source_sha256!==state.source_sha256||
+ p.client_reference!==state.client_reference||p.engagement_reference!==state.engagement_reference)fail('PRIVATE HUMAN return source or authority contract differs');
+ var alias=str(p.recipient_alias,120,'self-declared human recipient',true);
+ str(p.warning,500,'unverified HUMAN warning',true);
+ var original=expectedOwnerSteps(alias);
+ if(!original.length||!Array.isArray(p.handoff_rows)||!Array.isArray(p.responses)||
+ original.length!==p.handoff_rows.length||p.responses.length!==original.length||
+ JSON.stringify(original)!==JSON.stringify(p.handoff_rows))fail('PRIVATE owner return differs from CURRENT exact original HUMAN steps (stale plan or wrong recipient)');
+ var seen=new Set(),records=[];
+ for(var i=0;i<original.length;i++){
+  var source=original[i],reply=p.responses[i];
+  if(!exact(reply,['finding_id','steps'])||reply.finding_id!==source.finding_id||
+   seen.has(reply.finding_id)||!Array.isArray(reply.steps)||reply.steps.length!==source.steps.length)
+   fail('missing or repeated original finding HUMAN reply');seen.add(reply.finding_id);
+  for(var j=0;j<reply.steps.length;j++){
+   var received=reply.steps[j],step=source.steps[j];
+   if(!exact(received,['step_id','human_ack','private_human_note','tentative_follow_up'])||
+      received.step_id!==step.step_id||
+      !['not_responded_human','received_human','clarification_needed_human','discussion_prepared_human'].includes(received.human_ack))
+      fail('missing, altered or duplicated ORIGINAL owner-specific HUMAN step reply');
+   str(received.private_human_note,800,'private human reply');date(received.tentative_follow_up);
+   records.push({finding_id:source.finding_id,step_id:step.step_id,owner_alias:alias,source_action:step.description,
+     human_ack:received.human_ack,private_human_note:received.private_human_note,tentative_follow_up:received.tentative_follow_up});
+  }
+ }
+ if(records.length>1600)fail('oversized PRIVATE human reply dataset');
+ return {alias,records};
+}
+function renderReceivedReplies(){
+ $('ownerReplies').hidden=!state;if(!state)return;
+ var selected=$('returnFilter').value,view=[],groups=[];
+ for(const [alias,data] of ownerReturns){
+  groups.push(alias+': '+data.records.length+' HUMAN steps');
+  view.push(...data.records.filter(row=>selected==='all'||row.human_ack===selected));
+ }
+ view.sort((a,b)=>state.ids.indexOf(a.finding_id)-state.ids.indexOf(b.finding_id)||a.step_id-b.step_id);
+ $('returnSummary').textContent=ownerReturns.size+' PRIVATE self-declared HUMAN recipients · '+view.length+' matching response steps · '+groups.join(' / ')+'. ALL UNVERIFIED. Original runbooks untouched.';
+ var dest=$('returnRows');dest.replaceChildren();
+ for(const row of view){
+  var item=document.createElement('article');item.className='step';
+  item.append(element('h3','ORIGINAL '+row.finding_id+' · HUMAN step '+row.step_id+' · '+row.human_ack));
+  item.append(element('p','Self-declared HUMAN owner: '+row.owner_alias+' (NOT authenticated)'));
+  item.append(element('p','Original proposed HUMAN work: '+row.source_action));
+  item.append(element('p','PRIVATE HUMAN response: '+(row.private_human_note||'(no private reply note)')));
+  item.append(element('p','Tentative HUMAN follow-up: '+(row.tentative_follow_up||'not set')));
+  var button=document.createElement('button');button.textContent='Open original HUMAN finding in runbook editor';
+  button.addEventListener('click',()=>{$('filter').value='all';render();$('finding').value=row.finding_id;render();$('editor').scrollIntoView({block:'start'});});
+  item.append(button);dest.append(item);
+ }
+}
+async function importReceivedReply(){
+ if(!state)fail('load the complete original HUMAN workplan first');
+ var f=$('returnFile').files[0];if(!f)fail('choose a one-owner HUMAN return packet');
+ var before=revision,source=binding(state);
+ var packet=await read(f,MAX_BACKUP);
+ var incoming=admitReceivedReply(packet);
+ if(before!==revision||source!==binding(state)||$('returnFile').files[0]!==f)fail('PRIVATE source, local plan or reply input changed while importing');
+ var replacing=ownerReturns.has(incoming.alias);
+ if(!window.confirm((replacing?'REPLACE existing':'Add new')+' PRIVATE reply from self-declared HUMAN alias '+incoming.alias+' ('+incoming.records.length+' exact original steps)? This is not authenticated owner consent, a verified fix or a source mutation.'))return;
+ if(before!==revision||source!==binding(state))fail('current original PRIVATE human planning changed during confirmation');
+ ownerReturns.set(incoming.alias,incoming);$('returnFile').value='';renderReceivedReplies();
+ message('PRIVATE HUMAN return imported as READ-ONLY self-declared follow-up; original findings, stages, source evidence and grants unchanged.');
 }
 
 var bind=function(id,event,fn){$(id).addEventListener(event,function(){try{Promise.resolve(fn()).catch(function(e){message(e.message,true);});}catch(e){message(e.message,true);}});};
@@ -428,6 +517,10 @@ bind('removeAll','click',function(){if(!current().length)return;if(!window.confi
 bind('forget','click',function(){if(!confirmDiscard())return;reset();message('All loaded PRIVATE source and HUMAN planning content cleared from this page. Existing downloads remain on disk.');});
 bind('mergePreview','click',previewMerge);bind('mergeCancel','click',function(){pendingMerge=null;clearMerge();message('Other reviewer preview discarded; local HUMAN planning unchanged.');});bind('mergeApply','click',applyMerge);bind('mergeUndo','click',undoMerge);
 bind('mergeFile','change',function(){pendingMerge=null;clearMerge();message('Other-reviewer PRIVATE file changed. Generate a fresh exact-source preview.');});
+bind('returnImport','click',importReceivedReply);
+bind('returnForget','click',function(){clearReceivedReplies();message('All locally imported PRIVATE HUMAN replies forgotten. Original runbook steps and external downloads unchanged.');});
+bind('returnFilter','change',renderReceivedReplies);
+bind('returnFile','change',function(){message('New one-owner PRIVATE HUMAN reply selected. Import validates it against CURRENT exact original plan before displaying anything.');});
 bind('filter','change',render);bind('finding','change',render);
 bind('ownerSelect','change',function(){$('ownerExport').disabled=!$('ownerSelect').value;$('ownerPrint').disabled=!$('ownerSelect').value;});bind('ownerExport','click',ownerHandoff);bind('ownerPrint','click',ownerPrintable);
 window.addEventListener('beforeunload',function(e){if(state&&revision!==exported){e.preventDefault();e.returnValue='';}});
