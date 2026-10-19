@@ -281,3 +281,56 @@ match, the current separate original HUMAN workroom must report every
 matching request closed, and the human must acknowledge. A truly absent
 pending output can be marked locally aborted only by explicit separate HUMAN
 confirmation. No historical source/current consent claim is made.
+
+## Engagement-wide ORIGINAL HUMAN inbox (offline, no execution)
+
+Use `inbox` to inspect the FULL registered local HUMAN draft handoff
+queue for the CURRENT authenticated client/engagement and its earlier
+registered source revisions. Use `inbox-html` to publish an exclusive NEW
+private 0600, CSP-locked scriptless browser dashboard in a **separate**
+real owner-private 0700 output folder. The interactive console exposes
+these as menu items **12** and **13**.
+
+```sh
+python3 remediation-durable-stage/journal.py inbox \
+ --db /private/lightup.db --email operator@example.invalid \
+ --client-id ORIGINAL_CLIENT --engagement-id ORIGINAL_ENGAGEMENT \
+ --human /private/current-original-human.ltv \
+ --directory /private/current-extracted-material \
+ --plan /private/current-retention.ltv \
+ --journal-dir /private/my-human-journal --ack-private-material
+
+python3 remediation-durable-stage/journal.py inbox-html \
+ --db /private/lightup.db --email operator@example.invalid \
+ --client-id ORIGINAL_CLIENT --engagement-id ORIGINAL_ENGAGEMENT \
+ --human /private/current-original-human.ltv \
+ --directory /private/current-extracted-material \
+ --plan /private/current-retention.ltv \
+ --journal-dir /private/my-human-journal \
+ --output /private/private-reports/engagement-inbox.html \
+ --ack-private-material
+```
+
+Each call first performs the original current account/client/engagement login,
+opens the current original AES-encrypted HUMAN source and retention plan, and
+validates ALL current real private material bytes and the original native
+request schema. It then reads all canonically indexed LOCAL source journals
+under their one-machine private lock. Without silently decrypting earlier
+passphrases, the inbox compares hashed ORIGINAL request identity to the
+independently supplied CURRENT native HUMAN statuses and checks whether
+their owner-private encrypted staged file is present and matches its stored
+ciphertext fingerprint. The displayed source/cycle ordinals, human-only
+reported states, missing current replies and explicit next steps are
+privacy-minimal; no original source, tenant, request, finding, path, SHA,
+password, notes, material bytes, or reviewer identity is exported. Missing
+or changed locally encrypted staged files are marked HOLD even where an older
+LOCAL `reviewed` flag exists.
+
+Pending stages with an actual encrypted file remain unverified until the
+operator separately decrypts that ORIGINAL native workroom using `recover`
+or `carry-closed` as permitted. Closed-human markers in a CURRENT file are
+not authenticated Apply, consent, verified remediation or legal obligations.
+This inbox can see only registered private journals in this one folder;
+legacy unindexed journals and other devices remain outside its scope.
+This dashboard never contacts a target, issues grants, changes evidence,
+performs scans, signs off a client, or starts release.
