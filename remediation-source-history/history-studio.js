@@ -344,6 +344,45 @@ window.LightUpHistory=Object.freeze({
         note:n?row.note:'',updatedUTC:n?row.updated_utc:null};
     });
   },
+  batchHumanPlan(ids,changes,expectedRevision){
+    const ctx=requireContext();protect();
+    if(state.importing||expectedRevision!==state.revision)throw Error('Original source/HUMAN state changed before bulk operation. Reopen the batch.');
+    if(!Array.isArray(ids)||!ids.length||ids.length>100||new Set(ids).size!==ids.length)
+      throw Error('Select 1–100 unique original findings in a single explicit HUMAN batch.');
+    if(!changes||typeof changes!=='object'||Array.isArray(changes))throw Error('Unsupported HUMAN batch action.');
+    const canOwner=changes.applyOwner===true,canDate=changes.applyDue===true,canStatus=changes.applyStatus===true;
+    if(!canOwner&&!canDate&&!canStatus)throw Error('Choose which HUMAN planning fields you intend to update.');
+    if(typeof changes.owner!=='string'||changes.owner.length>120||
+       typeof changes.due!=='string'||changes.due.length>10||
+       typeof changes.status!=='string')throw Error('Malformed HUMAN batch planning fields.');
+    const owner=changes.owner.trim(),due=changes.due,status=changes.status;
+    if(canStatus&&!['unassigned','planned','in_progress','blocked','deferred'].includes(status))
+      throw Error('Cannot assert completed remediation or verified retest in HUMAN batch planning.');
+    if(canDate&&due&&(!/^\d{4}-\d{2}-\d{2}$/.test(due)||
+      !Number.isFinite(Date.parse(due+'T00:00:00Z'))||
+      new Date(due+'T00:00:00Z').toISOString().slice(0,10)!==due))
+      throw Error('Invalid tentative HUMAN batch due date.');
+    const proposed=new Map(state.notes),now=new Date().toISOString();
+    for(const id of ids){
+      if(typeof id!=='string')throw Error('Invalid original finding selection.');
+      const f=latestFinding(id);
+      if(!f||['stale','missing'].includes(noteBinding(id)))
+        throw Error('HOLD: original finding absent or has a stale HUMAN source binding; no rows changed.');
+      const n=boundNote(id),row=n?.caseworkOriginal||LightUpCasework.newCase(f);
+      const updated={...row,owner:canOwner?owner:n?.owner||row.owner,
+        due_date:canDate?(due||null):(n?.due||row.due_date),
+        status:canStatus?status:(n?.caseworkOriginal?row.status:(n?'planned':'unassigned')),
+        next_action:n?.action||row.next_action,updated_utc:now};
+      const normalized=LightUpCasework.cleanCase(updated,new Set([id]));
+      proposed.set(id,{owner:normalized.owner,action:normalized.next_action,due:normalized.due_date||'',
+        sourceRecord:Object.fromEntries(FIELDS.map(k=>[k,f[k]])),caseworkOriginal:normalized});
+    }
+    if(proposed.size>limits.maxNotes)throw Error('Private HUMAN note capacity exceeded. Select a smaller batch.');
+    if(state.revision!==expectedRevision||context().client!==ctx.client||context().engagement!==ctx.engagement)
+      throw Error('Original source/context changed before batch commit; no rows changed.');
+    state.notes=proposed;state.revision++;render();
+    return {changed:ids.length};
+  },
   saveCaseworkEdit(id,form,expectedRevision){
     const ctx=requireContext();protect();
     if(state.importing||expectedRevision!==state.revision)throw Error('Original source or HUMAN workspace changed: refresh the current work item.');
