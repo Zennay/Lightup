@@ -224,6 +224,12 @@ def _stage(args, vault, folder, journal, current) -> None:
              "created": _utc(), "updated": _utc()}
     # Source-revision registration is persisted under the same local lock
     # BEFORE the pending intent and BEFORE the encrypted file can be emitted.
+    # Make the initial EMPTY source journal durable first. If the process
+    # crashes after engagement registration but before the pending intent,
+    # this empty journal proves no encrypted output was yet attempted.
+    record_path = folder / (key + ".json")
+    if not record_path.exists() and not record_path.is_symlink():
+        _write(folder, key, journal)
     source_revisions.reserve(
         folder, packet, key, vault, _owned_regular, _read, _write)
     cycles.append(entry)

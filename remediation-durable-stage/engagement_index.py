@@ -68,10 +68,9 @@ def inspect(folder: Path, packet: dict, vault, private_file,
         if not path.exists() or path.is_symlink():
             raise ValueError("Registered original HUMAN source journal missing.")
         history = read_journal(folder, name, vault)
-        # An index entry without a durable source journal means a stage
-        # might have been interrupted between intent and original publication.
-        if not history["cycles"]:
-            raise ValueError("Incomplete registered HUMAN source reservation.")
+        # An existing valid EMPTY source journal can result only from a
+        # crash before the pending intent and BEFORE native encrypted output.
+        # A missing source journal still HOLDs as possible tampering.
         if any(row["state"] in ("pending", "staged") for row in history["cycles"]):
             unresolved += 1
     return data, unresolved
