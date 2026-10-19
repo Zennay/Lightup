@@ -180,6 +180,14 @@ def prepare(args, vault) -> None:
     raw, files, material_password = _transfer(args, vault, envelope, packet)
     _local_contents(args.folder, files, packet, vault)
     rows = _human_rows(files)
+    seal_reply(args.output, vault, envelope, packet, raw, files,
+               material_password, original_key_hash, rows)
+
+
+def seal_reply(output: Path, vault, envelope: dict, packet: dict,
+               raw: bytes, files: list, material_password: bytes,
+               original_key_hash: str, rows: list[dict]) -> None:
+    """Seal a separately HUMAN-acknowledged original-source-bound private reply."""
     obj = {
         "kind": KIND, "schema_version": 1,
         "disposition": "PRIVATE_HUMAN_RECEIPT_NOT_VERIFIED",
@@ -201,7 +209,7 @@ def prepare(args, vault) -> None:
     if transfer.digest(replacement) in (original_key_hash, transfer.digest(material_password)):
         raise ValueError("HUMAN return passphrase must differ from original and received transfer.")
     result = vault._seal(vault._inner(serialized, "application/json"), replacement)
-    vault._exclusive_output(args.output.expanduser().absolute(), result)
+    vault._exclusive_output(output.expanduser().absolute(), result)
     print("Created NEW encrypted PRIVATE HUMAN receipt reply. No original attachment state updated.")
     print("Human labels: ", dict(Counter(r["human_stage"] for r in rows)))
     print("No client consent, scan, verified remediation, signed proof or grant.")
