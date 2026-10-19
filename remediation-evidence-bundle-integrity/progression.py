@@ -15,6 +15,8 @@ review = verify.review
 triage = verify.triage
 workspace = verify.workspace
 
+WARNING = "User-selected slot order is NOT independently authenticated chronology. Local HUMAN stages or checksums never prove source identity, consent, evidence, remediation or security clearance."
+
 def digest(value: bytes) -> str:
     return hashlib.sha256(value).hexdigest()
 
@@ -99,7 +101,7 @@ def assemble(paths: list[Path]) -> dict:
         "schema_version": 1, "disposition": "UNVERIFIED_HUMAN_REVIEW_ONLY",
         **{f: False for f in review.FLAGS},
         "snapshots": slots, "adjacent_user_order_transitions": changes,
-        "warning": "User-selected slot order is NOT independently authenticated chronology. Local HUMAN stages or checksums never prove source identity, consent, evidence, remediation or security clearance."
+        "warning": WARNING
     }
 
 def render(value: dict) -> bytes:

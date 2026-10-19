@@ -18,6 +18,8 @@ review = verify.review
 triage = verify.triage
 workspace = verify.workspace
 
+WARNING = "Counts are per local PRIVATE source SLOT, not unique clients, verified findings, authenticated chronology or remediation. Same original packet may appear in multiple slots; check duplicate groups before staffing decisions. No live execution, consent, review approval or security verdict."
+
 def sha(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
@@ -76,7 +78,7 @@ def plan(folders: list[Path]) -> dict:
             k: stage_totals.get(k, 0) for k in triage.STAGES},
         "slot_pending_human_reason_totals_not_unique_cases": {
             k: reason_totals.get(k, 0) for k in sorted(triage.REASONS)},
-        "warning": "Counts are per local PRIVATE source SLOT, not unique clients, verified findings, authenticated chronology or remediation. Same original packet may appear in multiple slots; check duplicate groups before staffing decisions. No live execution, consent, review approval or security verdict.",
+        "warning": WARNING,
     }
 
 def render(report: dict) -> bytes:

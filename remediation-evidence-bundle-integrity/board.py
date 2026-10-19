@@ -20,6 +20,8 @@ import verify
 review = verify.review
 workspace = verify.workspace
 triage = verify.triage
+WARNING = "This is an unsigned PRIVATE owner-only HTML and JSON snapshot with NO original source identities, grants, client consent, or security/retest/remediation authority."
+
 KIND = "lightup.private_human_evidence_operating_cockpit"
 ADVICE = {
     "VERIFY_INTENTIONAL_CROSS_FINDING_REUSE":
@@ -186,7 +188,7 @@ def publish(folders: list[Path], destination: Path) -> dict:
         "original_packet_context_repeated": one_source,
         "files": {k: {"bytes": len(v), "sha256": hash_bytes(v)}
                   for k, v in sorted(artifacts.items())},
-        "warning": "This is an unsigned PRIVATE owner-only HTML and JSON snapshot with NO original source identities, grants, client consent, or security/retest/remediation authority.",
+        "warning": WARNING,
     }
 
     # Fresh complete source admission directly before final atomic bundle publication.

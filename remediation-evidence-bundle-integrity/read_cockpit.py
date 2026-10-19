@@ -67,7 +67,8 @@ def admit_portfolio(data: dict, slot_count: int) -> None:
                    data.get("disposition") == "UNVERIFIED_HUMAN_COUNTS_ONLY" and
                    all(data.get(f) is False for f in review.FLAGS),
                    "Unknown source-free private workload schema or authority claim")
-    review.exact_string(data.get("warning"), 1000, "anonymous warning", True)
+    review.require(data.get("warning") == portfolio.WARNING,
+                   "Source-free portfolio warning changed")
     rows = data.get("source_slots")
     review.require(type(rows) is list and len(rows) == slot_count,
                    "Incomplete source-free original slot list")
@@ -119,7 +120,8 @@ def admit_history(data: dict, portfolio_data: dict) -> None:
                    data.get("disposition") == "UNVERIFIED_HUMAN_REVIEW_ONLY" and
                    all(data.get(f) is False for f in review.FLAGS),
                    "Unsupported original-source HUMAN progression envelope")
-    review.exact_string(data.get("warning"), 1000, "source-order warning", True)
+    review.require(data.get("warning") == progression.WARNING,
+                   "Source-free chronology warning changed")
     slots = data.get("snapshots")
     originals = portfolio_data["source_slots"]
     review.require(type(slots) is list and len(slots) == len(originals),
@@ -164,7 +166,8 @@ def inspect(path: Path) -> dict:
                    m.get("disposition") == "PRIVATE_HUMAN_REVIEW_ONLY_NO_AUTHORITY" and
                    all(m.get(f) is False for f in review.FLAGS),
                    "Unrecognized original PRIVATE operating cockpit manifest")
-    review.exact_string(m.get("warning"), 1000, "PRIVATE manifest warning", True)
+    review.require(m.get("warning") == board.WARNING,
+                   "Offline cockpit disclaimer changed")
     total = nonnegative(m.get("slot_count"), "PRIVATE slot count", 12)
     review.require(2 <= total <= 12 and type(m.get("original_packet_context_repeated")) is bool,
                    "Invalid original source-slot metadata")
@@ -189,6 +192,8 @@ def inspect(path: Path) -> dict:
                    "Noncanonical output manifest was supplied")
 
     portfolio_doc = verify.json_obj(payloads["portfolio.json"])
+    review.require(payloads["portfolio.json"] == workspace.pretty(portfolio_doc),
+                   "Source-free original portfolio JSON must be canonical")
     admit_portfolio(portfolio_doc, total)
     review.require(payloads["portfolio.html"] == portfolio.render(portfolio_doc) and
                    payloads["actions.html"] == board.action_brief(portfolio_doc) and
@@ -196,6 +201,8 @@ def inspect(path: Path) -> dict:
                    "Offline HUMAN browser content differs from native deterministic renderer")
     if hist:
         history_doc = verify.json_obj(payloads["history.json"])
+        review.require(payloads["history.json"] == workspace.pretty(history_doc),
+                       "Source-free original history JSON must be canonical")
         admit_history(history_doc, portfolio_doc)
         review.require(payloads["history.html"] == progression.render(history_doc),
                        "Human history page differs from original source-free renderer")

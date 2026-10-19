@@ -58,7 +58,10 @@ def inspect(folder: Path) -> tuple[dict, dict[str, bytes]]:
                    "Unknown PRIVATE source workdesk manifest")
     review.require(all(m.get(flag) is False for flag in review.FLAGS),
                    "Forbidden authority claim")
-    review.exact_string(m.get("warning"), 2000, "manifest warning", True)
+    review.require(m.get("warning") ==
+                   "Self-declared PRIVATE original source, local HUMAN notes only. "
+                   "Checksums are not signatures, grants, consent, evidence proofs or security verdicts.",
+                   "Original PRIVATE source disclaimer changed")
     prev_sha = m.get("previous_packet_sha256")
     review.require(prev_sha is None or
                    (type(prev_sha) is str and review.HEX.fullmatch(prev_sha) is not None),
