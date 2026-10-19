@@ -46,3 +46,14 @@ td details summary{cursor:pointer;color:#87dcbf;font-weight:650}
 #feedbackStatus{border-left:3px solid #66cfaa;padding:.45rem .7rem;min-height:2.2rem}
 #feedbackStatus[data-error=true]{border-color:#f7a2a2;color:#ffb9b4}
 @media print {.feedbackEditor,#feedbackExport,#feedbackClear,#draftCount{display:none!important}}
+
+/* Exact-original-source multi-reviewer PRIVATE human conflict merge */
+.mergeConflicts{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,460px),1fr));gap:1rem;max-height:670px;overflow:auto;margin:1rem 0}
+.mergeConflict{border:1px solid #698298;border-radius:11px;padding:1rem;background:#091e31;min-width:0}
+.mergeConflict h3{font-size:1rem;color:#a8e8d0;margin:.1rem 0 .85rem;overflow-wrap:anywhere}
+.mergeConflict label{display:block;margin:.75rem 0 0;color:#ebf4ff}
+.mergeConflict select{margin-top:.5rem}
+.mergeValue{white-space:pre-wrap;overflow-wrap:anywhere;max-height:200px;overflow:auto;background:#071323;padding:.8rem;border-radius:7px;color:#d9e7f8;border:1px solid #334b61;font-size:.8rem;line-height:1.5}
+#mergeStatus{border-left:3px solid #67d3ad;padding:.6rem .8rem;min-height:2.2rem;overflow-wrap:anywhere}
+#mergeStatus[data-error=true]{border-color:#e9a0a0;color:#ffc0b9}
+@media(max-width:650px){.mergeConflicts{display:block;max-height:none}.mergeConflict{margin-bottom:.8rem}}
