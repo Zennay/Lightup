@@ -548,20 +548,41 @@ def publish(folder: Path, artifacts: dict[str, bytes]) -> None:
         raise
 
 
+def selected_original_files(inputs: list[Path] | None, packet_dir: Path | None) -> list[Path]:
+    """One strict private directory, or explicitly chosen private original files."""
+    if packet_dir is None:
+        fail(inputs is not None and 2 <= len(inputs) <= 12,
+             "require 2-12 original source packets")
+        return inputs
+    metadata = packet_dir.lstat()
+    fail(stat.S_ISDIR(metadata.st_mode) and not stat.S_ISLNK(metadata.st_mode)
+         and metadata.st_mode & 0o077 == 0, "private packet directory refused")
+    children = sorted(packet_dir.iterdir(), key=lambda item: item.name)
+    fail(2 <= len(children) <= 12, "private packet batch must contain 2-12 originals")
+    expected = [f"casebook-{ordinal:02d}.json"
+                for ordinal in range(1, len(children) + 1)]
+    fail([item.name for item in children] == expected,
+         "private packet directory contains unknown or missing originals")
+    return children
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(
         description="HUMAN-only private casebook history from 2–12 ORIGINAL v1 exports; no authority")
-    parser.add_argument("--input", type=Path, action="append", required=True,
-                        help="Owner-private 0600 original Casebook JSON in explicitly selected order")
+    selection = parser.add_mutually_exclusive_group(required=True)
+    selection.add_argument("--input", type=Path, action="append",
+                           help="Owner-private 0600 original Casebook JSON in selected order")
+    selection.add_argument("--packet-dir", type=Path,
+                           help="PRIVATE 0700 directory containing exactly casebook-01.json...-12.json")
     parser.add_argument("--output-dir", type=Path, required=True,
                         help="NEW folder under owner-private parent (never overwrite)")
     args = parser.parse_args()
     try:
-        fail(2 <= len(args.input) <= 12, "require 2–12 original source packets")
-        fail(len({str(p.absolute()) for p in args.input}) == len(args.input),
+        paths = selected_original_files(args.input, args.packet_dir)
+        fail(len({str(p.absolute()) for p in paths}) == len(paths),
              "duplicate source path")
         # Admission is whole-batch BEFORE creating any destination.
-        admitted = [read_private(p) for p in args.input]
+        admitted = [read_private(p) for p in paths]
         packets = [doc for doc, _ in admitted]
         client = packets[0]["client_id"]
         fail(all(p["client_id"] == client for p in packets),
