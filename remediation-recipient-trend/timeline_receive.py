@@ -13,7 +13,7 @@ from pathlib import Path
 import stat
 import sys
 
-import timeline
+import recipient_workload_series as timeline
 import receive
 
 review = timeline.review
