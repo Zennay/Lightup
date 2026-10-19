@@ -5,7 +5,8 @@ optional separately decrypted HUMAN packet. No grants, retests or actions occur.
 """
 from __future__ import annotations
 
-from collections import Counter, defaultdict
+from collections import defaultdict
+from datetime import date, datetime, timezone
 import base64
 import hashlib
 from html import escape
@@ -58,7 +59,7 @@ def _limited(value: str, n: int) -> str:
     return value if len(value) <= n else value[:n] + " … [source excerpt; open original review]"
 
 
-def _table(source: list[dict[str, str]], packet: dict | None) -> tuple[list[dict], dict]:
+def _table(source: list[dict[str, str]], packet: dict | None, utc_today: date) -> tuple[list[dict], dict]:
     if type(source) is not list or not 1 <= len(source) <= 350:
         raise ValueError("Current original five-column source required.")
     ids = set()
@@ -96,6 +97,8 @@ def _table(source: list[dict[str, str]], packet: dict | None) -> tuple[list[dict
             attention.append("No LOCAL HUMAN owner")
         if c is not None and c["blocker"].strip():
             attention.append("HUMAN Casework blocker")
+        if c is not None and c["due_date"] and date.fromisoformat(c["due_date"]) < utc_today:
+            attention.append("Tentative HUMAN due date has passed (UTC clock, NOT authority)")
         if not attached:
             attention.append("No LOCAL evidence fingerprint")
         if open_reqs:
@@ -124,6 +127,10 @@ def _table(source: list[dict[str, str]], packet: dict | None) -> tuple[list[dict
         "source_critical_high":sum(i["finding"]["severity"] in ("critical","high") for i in items),
         "local_unlinked":sum(not i["artifacts"] for i in items),
         "open_human_requests":sum(len(i["open_requests"]) for i in items),
+        "passed_human_due":sum(
+            i["case"] is not None and i["case"]["due_date"] is not None
+            and date.fromisoformat(i["case"]["due_date"]) < utc_today
+            for i in items),
         "human_packet_present":packet is not None
     }
     return items, counters
@@ -172,7 +179,8 @@ def _row(item: dict, n: int) -> str:
 
 
 def build_board(original_source: list[dict[str,str]], human_packet: dict | None) -> bytes:
-    items, counts = _table(original_source,human_packet)
+    utc_today = datetime.now(timezone.utc).date()
+    items, counts = _table(original_source,human_packet,utc_today)
     css_hash=base64.b64encode(hashlib.sha256(CSS.encode("utf-8")).digest()).decode("ascii")
     csp=("default-src 'none'; connect-src 'none'; script-src 'none'; "
          "style-src 'sha256-"+css_hash+"'; img-src 'none'; font-src 'none'; "
@@ -223,12 +231,13 @@ def build_board(original_source: list[dict[str,str]], human_packet: dict | None)
         '<style>'+CSS+'</style></head><body><header><nav>'
         '<strong>LIGHTUP / PRIVATE HUMAN ACTION BOARD</strong>'
         '<a href="index.html">← Workroom home</a></nav></header><main>'
-        '<p class="kicker">Original source + optional locally decrypted HUMAN notes · offline</p>'
+        '<p class="kicker">Original source + optional locally decrypted HUMAN notes · offline · generated '+utc_today.isoformat()+' UTC</p>'
         '<h1>Remediation follow-up, organised by original source.</h1>'
         '<p class="lede">This is a human coordination view of source-reported findings, local file '
         'fingerprints and optional PRIVATE notes. It is not a security verdict, verified fix, '
         'authorized retest, scan plan, grant or client consent.</p>'
         '<aside class="notice" role="note"><strong>DRAFT/HOLD · INCUBATE M3/M7</strong><br>'
+        "Tentative HUMAN dates are compared to this export's UTC calendar date only. "
         'LOCAL absence is NOT missing external evidence. Completed and fixed are unverified '
         'source/HUMAN labels. No finding is confirmed resolved or ready to scan by this screen.'
         '</aside><section class="stats" aria-label="Source and LOCAL attention counts">'+summary+'</section>'
