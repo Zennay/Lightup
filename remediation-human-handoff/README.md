@@ -65,6 +65,39 @@ If the peer proposes genuinely different local action/state enums compared with 
 
 A source-free peer board can also be supplied directly to the plaintext `browser_workflow.py` with `--peer-board /absolute/0700/peer.json`, in addition to the unchanged `--session`, `--original-board`, `--proposed-board` and `--output-dir` arguments. This is a *PRIVATE operator workspace feature*, not minimum-disclosure peer correspondence. Do not share the complete native workroom with a recipient who was authorized to receive only one selected HUMAN handoff.
 
+## One command: native PRIVATE workroom AND encrypted selected recipient capsule
+
+Every complete CLI operator path now accepts an optional **`--encrypt-selected-handoff`** switch, but **only together with an explicit `--only ACTION` selector** and optionally `--ordinal N`. The program prompts for a *new separate recipient passphrase* twice and produces an additional `handoff-selected.lheh` file inside the *unpublished* 0700 PRIVATE workroom staging folder. The same exact original-parser-bound session/board is used for the normal local HTML/CSV/TXT output and for the separately encrypted, action-scoped recipient payload. Encryption failure means the whole requested workroom is HOLD: the final folder is not published, and there is no plaintext fallback in lieu of requested encryption.
+
+```bash
+# A. Continue from a locally edited HUMAN worksheet:
+python3 remediation-human-handoff/workflow.py \
+  --session "$HOME/lightup-private-human/session.json" \
+  --board "$HOME/lightup-private-human/board.json" \
+  --changes "$HOME/lightup-private-human/change-worksheet/updates.json" \
+  --only request_original_human_review --ordinal 1 \
+  --encrypt-selected-handoff \
+  --output-dir "$HOME/lightup-private-human/complete-workroom"
+
+# B. Continue from a native browser-exported HUMAN board:
+python3 remediation-human-handoff/browser_workflow.py \
+  --session "$HOME/lightup-private-human/session.json" \
+  --original-board "$HOME/lightup-private-human/board.json" \
+  --proposed-board "$HOME/lightup-private-human/browser-return.json" \
+  --only request_original_human_review --ordinal 1 \
+  --encrypt-selected-handoff \
+  --output-dir "$HOME/lightup-private-human/native-workroom"
+
+# C. Continue from the full password-encrypted browser .lhew backup:
+python3 remediation-human-handoff/encrypted_workflow.py \
+  --encrypted-workspace "$HOME/lightup-private-human/source.lhew" \
+  --only request_original_human_review --ordinal 1 \
+  --encrypt-selected-handoff \
+  --output-dir "$HOME/lightup-private-human/encrypted-internal-workroom"
+```
+
+All three routes place the **recipient capsule** under `handoff-selected.lheh` (mode 0600), linked from the private HTML index; a real HUMAN must intentionally transfer *only the selected file*, not the entire workroom. The workroom still contains plaintext private numeric `return/`, `difference/`, other HUMAN handoff files, optional `peer/` and planning JSON. The recipient uses the existing independent strict `encrypted_handoff.py` or offline browser section 6 to read `.lheh`, and is not thereby authenticated. Both passwords for the encrypted-workspace route have distinct roles; the original `.lhew` password is never reused implicitly as the outbound handoff password. No sender identity, consent, original evidence, actual delivery, review or fix is established.
+
 ## Create encrypted minimal HUMAN handoff directly from original Studio CLI
 
 Use [`encrypt_handoff.py`](encrypt_handoff.py) when operating entirely through Linux/Python with an original, **self-declared numeric** Studio session and its native source-free HUMAN board. No browser, recipient credentials, live network, original evidence, approved request, original case identity, real consent or active target is required or implied.

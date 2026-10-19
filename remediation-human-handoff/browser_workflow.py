@@ -7,6 +7,7 @@ Neither snapshot can authorize real work or identify a real original case.
 from __future__ import annotations
 
 import argparse
+import getpass
 import os
 from pathlib import Path
 import shutil
@@ -18,6 +19,7 @@ import action_board
 import portfolio
 
 import handoff
+import encrypt_handoff
 import compare_returns
 import return_to_studio
 import workflow
@@ -77,11 +79,13 @@ original source edit.</p></article>
 
 def create(session_path: Path, original_path: Path, proposed_path: Path,
            destination: Path, only: str | None = None, ordinal: int | None = None,
-           peer_board: Path | None = None) -> dict:
+           peer_board: Path | None = None,
+           handoff_password: str | None = None) -> dict:
     portfolio.require(destination.is_absolute())
     portfolio.private_dir(destination.parent)
     portfolio.require(not destination.exists() and not destination.is_symlink())
     portfolio.require(only is None or only in handoff.ACTIONS)
+    portfolio.require(handoff_password is None or only in handoff.ACTIONS)
     portfolio.require(ordinal is None or
                       (type(ordinal) is int and only in handoff.ACTIONS and
                        1 <= ordinal <= 12))
@@ -104,6 +108,10 @@ def create(session_path: Path, original_path: Path, proposed_path: Path,
 
         own_board = proposed_stage / "board.json"
         actions = handoff.build(session_path, own_board, stage / "handoff", only, ordinal)
+        if handoff_password is not None:
+            encrypt_handoff.create(
+                session_path, own_board, stage / "handoff-selected.lheh",
+                handoff_password, only, ordinal)
         diff = compare_returns.build(session_path, original_path, own_board,
                                      stage / "difference")
         portfolio.require(
@@ -134,12 +142,15 @@ def create(session_path: Path, original_path: Path, proposed_path: Path,
             "locally_changed_action_appearances": diff["ordinals_with_action_changes"],
             "locally_changed_state_appearances": diff["ordinals_with_state_changes"],
             "selected_human_action_groups": groups,
+            "encrypted_selected_human_capsule_private_not_sent":
+                handoff_password is not None,
             "peer_local_differences_not_authenticated_reviews": peer_delta,
             "warning": workflow.DISCLAIMER,
             **{flag: False for flag in portfolio.FLAGS},
         }
         portfolio.exclusive_write(stage / "index.html",
-                                  workflow.landing(changed, len(groups), peer_delta > 0))
+                                  workflow.landing(changed, len(groups), peer_delta > 0,
+                                                   handoff_password is not None))
         portfolio.exclusive_write(stage / "summary.json",
                                   portfolio.serialize(result))
         return_to_studio.sync_dir(stage)
@@ -168,10 +179,20 @@ def main() -> int:
                         help="With --only, disclose one exact local anonymous ordinal")
     parser.add_argument("--peer-board", type=Path,
                         help="Optional same-session anonymous peer HUMAN board; no identity claim")
+    parser.add_argument("--encrypt-selected-handoff", action="store_true",
+                        help="Also create password-protected selected .lheh")
     args = parser.parse_args()
+    if args.encrypt_selected_handoff and args.only is None:
+        parser.error("--encrypt-selected-handoff requires explicit --only ACTION")
     try:
+        password = None
+        if args.encrypt_selected_handoff:
+            password = getpass.getpass("New PRIVATE HUMAN handoff passphrase: ")
+            confirm = getpass.getpass("Confirm PRIVATE handoff passphrase: ")
+            portfolio.require(password == confirm)
         result = create(args.session, args.original_board,
-                        args.proposed_board, args.output_dir, args.only, args.ordinal, args.peer_board)
+                        args.proposed_board, args.output_dir, args.only,
+                        args.ordinal, args.peer_board, password)
     except (ValueError, OSError, RecursionError):
         print("HOLD: no complete private browser-to-native HUMAN workroom published.",
               file=sys.stderr)

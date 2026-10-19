@@ -7,6 +7,7 @@ remediation, permission or real service update.
 from __future__ import annotations
 
 import argparse
+import getpass
 import html
 import os
 from pathlib import Path
@@ -19,6 +20,7 @@ import portfolio
 import action_board
 
 import bulk_return
+import encrypt_handoff
 import handoff
 import compare_returns
 import return_to_studio
@@ -32,7 +34,8 @@ DISCLAIMER = (
 )
 
 
-def landing(changes: int, selected: int, peer_diff: bool = False) -> bytes:
+def landing(changes: int, selected: int, peer_diff: bool = False,
+            encrypted: bool = False) -> bytes:
     page = """<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'">
@@ -56,6 +59,7 @@ original cases, verified fixes or performed source-owner decisions.</p>
 <p><a href="difference/index.html">3. Review local action/state differences</a></p>
 <p><a href="summary.json">4. Inspect source-free non-authorizing workflow counts</a></p>
 %s
+%s
 </article>
 <p>The old original board was never overwritten. Manually use
 <code>return/board.json</code> with the same source-free numeric session in
@@ -64,16 +68,20 @@ small-cell numbers, are PRIVATE and are not encrypted at rest. No file in
 this workroom proves client identity, authorization or delivery.</p>
 </main></body></html>""" % (html.escape(DISCLAIMER), changes, selected,
         '<p><a href="peer/index.html">5. Compare separate local peer routing proposal</a></p>'
-        if peer_diff else "")
+        if peer_diff else "",
+        '<p><a href="handoff-selected.lheh">6. Encrypted selected HUMAN capsule (not sent)</a></p>'
+        if encrypted else "")
     return page.encode("utf-8")
 
 
 def create(session_path: Path, original_board: Path, changes_path: Path,
-           destination: Path, only: str | None = None, ordinal: int | None = None) -> dict:
+           destination: Path, only: str | None = None, ordinal: int | None = None,
+           handoff_password: str | None = None) -> dict:
     portfolio.require(destination.is_absolute())
     portfolio.private_dir(destination.parent)
     portfolio.require(not destination.exists() and not destination.is_symlink())
     portfolio.require(only is None or only in handoff.ACTIONS)
+    portfolio.require(handoff_password is None or only in handoff.ACTIONS)
     portfolio.require(ordinal is None or
                       (type(ordinal) is int and only in handoff.ACTIONS and
                        1 <= ordinal <= 12))
@@ -90,6 +98,10 @@ def create(session_path: Path, original_board: Path, changes_path: Path,
                                    stage / "return")
         new_board = stage / "return" / "board.json"
         action = handoff.build(session_path, new_board, stage / "handoff", only, ordinal)
+        if handoff_password is not None:
+            encrypt_handoff.create(
+                session_path, new_board, stage / "handoff-selected.lheh",
+                handoff_password, only, ordinal)
         difference = compare_returns.build(
             session_path, original_board, new_board, stage / "difference")
         portfolio.require(
@@ -110,12 +122,15 @@ def create(session_path: Path, original_board: Path, changes_path: Path,
                 group["action"] for group in action["groups"]
                 if group["packet_appearances_not_unique"] > 0
             ],
+            "encrypted_selected_human_capsule_private_not_sent":
+                handoff_password is not None,
             "warning": DISCLAIMER,
             **{flag: False for flag in portfolio.FLAGS},
         }
         portfolio.exclusive_write(stage / "index.html",
                                   landing(summary["local_human_state_changes_not_original_cases"],
-                                          len(summary["selected_human_action_groups"])))
+                                          len(summary["selected_human_action_groups"]),
+                                          encrypted=handoff_password is not None))
         portfolio.exclusive_write(stage / "summary.json",
                                   portfolio.serialize(summary))
         return_to_studio.sync_dir(stage)
@@ -141,10 +156,19 @@ def main() -> int:
                         help="Limit action handoff to one non-authorizing HUMAN group")
     parser.add_argument("--ordinal", type=int,
                         help="With --only, disclose one exact local anonymous ordinal")
+    parser.add_argument("--encrypt-selected-handoff", action="store_true",
+                        help="Prompt for a separate handoff secret and emit .lheh")
     args = parser.parse_args()
+    if args.encrypt_selected_handoff and args.only is None:
+        parser.error("--encrypt-selected-handoff requires explicit --only ACTION")
     try:
+        password = None
+        if args.encrypt_selected_handoff:
+            password = getpass.getpass("New PRIVATE HUMAN handoff passphrase: ")
+            confirm = getpass.getpass("Confirm PRIVATE handoff passphrase: ")
+            portfolio.require(password == confirm)
         receipt = create(args.session, args.board, args.changes,
-                         args.output_dir, args.only, args.ordinal)
+                         args.output_dir, args.only, args.ordinal, password)
     except (OSError, ValueError, RecursionError):
         print("HOLD: no complete private HUMAN workflow was published.",
               file=sys.stderr)

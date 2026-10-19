@@ -144,11 +144,13 @@ def unlock(path: Path, passphrase: str) -> dict:
 
 
 def create(cipher_path: Path, destination: Path, passphrase: str,
-           only: str | None = None, ordinal: int | None = None) -> dict:
+           only: str | None = None, ordinal: int | None = None,
+           handoff_password: str | None = None) -> dict:
     portfolio.require(destination.is_absolute())
     portfolio.private_dir(destination.parent)
     portfolio.require(not destination.exists() and not destination.is_symlink())
     portfolio.require(only is None or only in handoff.ACTIONS)
+    portfolio.require(handoff_password is None or only in handoff.ACTIONS)
     portfolio.require(ordinal is None or
                       (type(ordinal) is int and only in handoff.ACTIONS and
                        1 <= ordinal <= 12))
@@ -184,7 +186,8 @@ def create(cipher_path: Path, destination: Path, passphrase: str,
         return browser_workflow.create(
             session_path, temp / "original.json", temp / "proposed.json",
             destination, only, ordinal,
-            temp / "peer.json" if "peer.json" in names else None
+            temp / "peer.json" if "peer.json" in names else None,
+            handoff_password
         )
     finally:
         if temp.exists():
@@ -205,11 +208,20 @@ def main() -> int:
                         help="Limit outbound HUMAN handoff to one action group")
     parser.add_argument("--ordinal", type=int,
                         help="With --only, one exact local ordinal, not a case ID")
+    parser.add_argument("--encrypt-selected-handoff", action="store_true",
+                        help="Also write selected encrypted .lheh in private workroom")
     args = parser.parse_args()
+    if args.encrypt_selected_handoff and args.only is None:
+        parser.error("--encrypt-selected-handoff requires explicit --only ACTION")
     try:
         password = getpass.getpass("PRIVATE HUMAN workspace passphrase: ")
+        outgoing = None
+        if args.encrypt_selected_handoff:
+            outgoing = getpass.getpass("New selected HUMAN handoff passphrase: ")
+            confirmed = getpass.getpass("Confirm handoff passphrase: ")
+            portfolio.require(outgoing == confirmed)
         result = create(args.encrypted_workspace, args.output_dir,
-                        password, args.only, args.ordinal)
+                        password, args.only, args.ordinal, outgoing)
     except (ValueError, OSError, RecursionError, EOFError, KeyboardInterrupt):
         print("HOLD: No PRIVATE encrypted HUMAN workroom published.",
               file=sys.stderr)
