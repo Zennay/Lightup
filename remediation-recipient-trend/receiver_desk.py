@@ -15,6 +15,9 @@ import receive
 import recipient_workload_series as timeline
 import timeline_receive
 import trend
+import recipient_studio
+import recipient_journal
+import recipient_journal_receive
 
 
 def parser() -> argparse.ArgumentParser:
@@ -40,6 +43,23 @@ def parser() -> argparse.ArgumentParser:
     p = cmds.add_parser("reopen-series",
                         help="Reopen multi-packet series without original snapshots")
     p.add_argument("--receipt", type=Path, required=True)
+
+    p = cmds.add_parser("human-studio",
+                        help="Build offline interactive PRIVATE HUMAN follow-up workroom")
+    p.add_argument("--receipt", type=Path, required=True)
+    p.add_argument("--kind", choices=("compare", "series"), required=True)
+    p.add_argument("--output-dir", type=Path, required=True)
+
+    p = cmds.add_parser("human-publish",
+                        help="Publish native source-bound PRIVATE HUMAN local journal handoff")
+    p.add_argument("--receipt", type=Path, required=True)
+    p.add_argument("--kind", choices=("compare", "series"), required=True)
+    p.add_argument("--journal", type=Path, required=True)
+    p.add_argument("--output-dir", type=Path, required=True)
+
+    p = cmds.add_parser("human-reopen",
+                        help="Reopen previously published PRIVATE HUMAN handoff without source")
+    p.add_argument("--folder", type=Path, required=True)
     return top
 
 
@@ -65,6 +85,21 @@ def execute(args: argparse.Namespace) -> None:
         result = timeline_receive.inspect(args.receipt)
         print("Original HUMAN series internally consistent: " +
               str(result["packet_count"]) + " locally selected packets.")
+    elif args.action == "human-studio":
+        result = recipient_studio.publish(args.receipt, args.kind, args.output_dir)
+        print("PRIVATE networkless HUMAN reason workroom created; " +
+              str(result["human_reason_groups"]) + " local reason groups. "
+              "Open private index.html in a trusted offline browser.")
+    elif args.action == "human-publish":
+        result = recipient_journal.publish(args.receipt, args.kind,
+                                           args.journal, args.output_dir)
+        print("PRIVATE original-receipt-bound HUMAN review published; " +
+              str(result["local_human_open"]) +
+              " unanswered aggregate reason groups. No original owner writeback.")
+    elif args.action == "human-reopen":
+        result = recipient_journal_receive.inspect(args.folder)
+        print("PRIVATE human review locally reproduced; " +
+              str(result["human_reason_groups"]) + " local aggregate reason groups.")
     else:
         raise trend.review.Hold("Unrecognized HUMAN-only private action")
     print("REVIEW_ONLY: unsigned owner-selected counts, NOT verified source identity, "
@@ -76,7 +111,7 @@ def main() -> int:
     try:
         execute(args)
         return 2
-    except (trend.review.Hold, ValueError, OSError):
+    except (trend.review.Hold, ValueError, UnicodeError, OSError):
         print("HOLD: original PRIVATE source-free HUMAN input or output invalid. "
               "No authorization or verified remediation.", file=sys.stderr)
         return 3
