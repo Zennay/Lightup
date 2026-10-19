@@ -173,12 +173,12 @@ def _make_archive(csv_text: str, client_id: str, engagement_id: str | None) -> b
     return blob
 
 
-def _read_archive(filename: str) -> tuple[dict, list[dict[str, str]]]:
-    path = Path(filename)
-    if not path.is_file() or path.stat().st_size > ARCHIVE_LIMIT:
-        raise ValueError("archive missing or exceeds import limit")
+def _read_archive_bytes(contents: bytes) -> tuple[dict, list[dict[str, str]]]:
+    """Admit a bounded private archive directly from memory, never writing cleartext."""
+    if type(contents) is not bytes or len(contents) > ARCHIVE_LIMIT:
+        raise ValueError("invalid PRIVATE archive contents or size")
     try:
-        with zipfile.ZipFile(path, "r") as archive:
+        with zipfile.ZipFile(io.BytesIO(contents), "r") as archive:
             infos = archive.infolist()
             if len(infos) != 3 or {i.filename for i in infos} != {CSV_NAME, MANIFEST_NAME, NOTICE_NAME}:
                 raise ValueError("unexpected, duplicate or missing archive entries")
@@ -223,6 +223,13 @@ def _read_archive(filename: str) -> tuple[dict, list[dict[str, str]]]:
     if type(manifest["source_row_count"]) is not int or manifest["source_row_count"] != len(rows):
         raise ValueError("private source count mismatch")
     return manifest, rows
+
+
+def _read_archive(filename: str) -> tuple[dict, list[dict[str, str]]]:
+    path = Path(filename)
+    if not path.is_file() or path.stat().st_size > ARCHIVE_LIMIT:
+        raise ValueError("archive missing or exceeds import limit")
+    return _read_archive_bytes(path.read_bytes())
 
 
 def _report_html(rows: list[dict[str, str]]) -> str:
