@@ -13,7 +13,7 @@ This working offline human-coordination companion reads two existing source-owne
 
 Development source remains split into three editable files. Obtain the three product files together from this directory: [index.html](index.html), [app.js](app.js), and [style.css](style.css). Open index.html locally in a browser; no installation, credentials, server or network connection is required. Choose both privately obtained JSON files and click **Inspect human handoff**.
 
-The inbox matches the *declared* original source SHA-256, exact source contract, self-declared client and engagement labels, all-twelve-false non-authority flags, and complete original HUMAN request identity. It refuses ambiguous JSON duplicate keys, invalid UTF-8, oversized files, duplicate or orphan owner replies, stale original human instructions/kinds/dates/assignee and incomplete review records. Rejection does not replace already imported in-memory HUMAN state.
+The inbox matches the *declared* original source SHA-256, exact source contract, self-declared client and engagement labels, all-twelve-false non-authority flags, and complete original HUMAN request identity. It refuses ambiguous JSON duplicate keys, invalid UTF-8, oversized files, duplicate or orphan owner replies, stale original human instructions/kinds/dates/assignee and incomplete review records. Where complete original Casework/Evidence Review overlays are present, original finding IDs in local attachments and request rows must belong to those overlays. Discordant unverified answers between existing human snapshots are shown as follow-up prompts, not silently resolved. Rejection does not replace already imported in-memory HUMAN state; selecting a different file clears the previous review and export controls.
 
 **Important:** Matching self-declared source labels does not independently verify the original exported five-column CSV, real client/recipient identity, provenance, fresh consent, active scope or remediation. Original source and sender must be separately authenticated through the approved channel. No original source migration is performed.
 
@@ -24,12 +24,13 @@ The integrated table shows exact original finding/request IDs; declared owner; o
 Outputs require explicit human confirmation and are deliberately separated:
 
 - **PRIVATE selected reviewer JSON:** selected original HUMAN request/finding IDs, original instructions, unverified response text, human notes and only locally recorded SHA/size/name metadata. All twelve authority flags remain false. File contents are never included.
+- **PRIVATE one-owner HUMAN handoff JSON:** choose the exact self-declared owner alias and export only selected original HUMAN requests belonging to that one owner. Other owners' selected requests are explicitly excluded from that file. No recipient authentication or permission is implied.
 - **PRIVATE human discussion agenda:** selected original HUMAN request IDs and unverified local human context, as plain text.
 - **Anonymous aggregate CSV:** counts grouped only by original HUMAN request kind, unverified HUMAN reply stage and LOCAL fingerprint presence. It excludes original IDs, SHA fingerprints, declared client/engagement, notes, names, local file names and individual date stamps.
 
 An apparently anonymized small cohort can still be sensitive. The receiving person, channel, storage policy and disclosure must be checked separately. Missing LOCAL evidence does not prove evidence absent globally. A response, file hash or human review is not proof a fix occurred or a retest passed.
 
-**Forget** clears imported private source objects, selections and file-picker references in browser memory. It cannot erase files already downloaded to disk.
+**Forget** clears imported private source objects, selections and file-picker references in browser memory. Choosing a different input file also clears the previous data/export view until the new pair is admitted. It cannot erase files already downloaded to disk.
 
 ### Security and release boundaries
 
