@@ -8,7 +8,8 @@ const ROW=["request_id","finding_id","request_kind","instructions","due_date","h
 const KINDS=["missing_evidence","patch_change","deployment_record","rollback_plan","retest_request","followup_question","other"];
 const STAGES=["not_reviewed","needs_human_followup","human_triaged"];
 const LIMIT=1048576,MAX_SNAPSHOT=8*1048576,MAX_PACKETS=24,MAX_ROWS=800;
-const blank=()=>({binding:null,requestPackets:[],replyPackets:[],notes:{},revision:0});
+const blank=()=>({binding:null,requestPackets:[],replyPackets:[],notes:{},ownerFeedback:{},feedbackHistory:[],revision:0});
+const OWNER_FEEDBACK_STAGES=["acknowledged_unverified","needs_clarification","cannot_provide"];
 let db=blank();
 function fail(m){throw Error(m);}
 function same(a,b){return JSON.stringify(a)===JSON.stringify(b);}
@@ -86,7 +87,8 @@ const sourceId=p=>[p.source_contract,p.source_sha256,p.client_reference,p.engage
 const requestId=(p,r)=>[p.recipient_alias,p.issued_utc,r.request_id,r.finding_id,r.request_kind,r.instructions,r.due_date];
 function assemble(current,packets){
  const next={binding:current.binding&&[...current.binding],requestPackets:[...current.requestPackets],
-  replyPackets:[...current.replyPackets],notes:{...current.notes},revision:current.revision+1};
+  replyPackets:[...current.replyPackets],notes:{...current.notes},
+  ownerFeedback:{...current.ownerFeedback},feedbackHistory:[...current.feedbackHistory],revision:current.revision+1};
  const validated=packets.map(admit);
  if(!validated.length)fail("No PRIVATE packets selected");
  const binding=next.binding||sourceId(validated[0]);
@@ -124,6 +126,7 @@ function allRows(store=db){
  const replied=new Map(store.replyPackets.flatMap(p=>p.requests.map(r=>[r.request_id,r])));
  return store.requestPackets.flatMap((p,i)=>p.requests.map(r=>({slot:i+1,packet:p,request:r,
   reply:replied.get(r.request_id)||null,
+  feedback:store.ownerFeedback[r.request_id]||null,
   review:store.notes[r.request_id]||{stage:"not_reviewed",note:""}})));
 }
 function msg(m,err=false){$("message").textContent=m;$("message").dataset.error=err?"true":"false";}
@@ -146,6 +149,8 @@ function filteredRows(){
   if(filter==="replied"&&!x.reply)return false;
   if(filter==="needs_changes"&&(!x.reply||x.reply.human_stage!=="needs_changes"))return false;
   if(filter==="triage"&&x.review.stage==="human_triaged")return false;
+  if(filter==="feedback"&&!x.feedback)return false;
+  if(filter==="no_feedback"&&x.feedback)return false;
   const d=x.request.due_date;
   if(dateMode==="overdue"&&(!d||d>=today))return false;
   if(dateMode==="week"&&(!d||d<today||d>week))return false;
@@ -167,7 +172,10 @@ function contextDetails(x){
   ["Issued UTC (self-declared)",x.packet.issued_utc],
   ["ORIGINAL HUMAN instructions",x.request.instructions],
   ["HUMAN reply status",x.reply?x.reply.human_stage:"unanswered"],
-  ["Unverified owner response",x.reply?x.reply.human_response:"Not received; no fix inferred."]
+  ["Unverified owner response",x.reply?x.reply.human_response:"Not received; no fix inferred."],
+  ["Separate UNVERIFIED owner follow-up",x.feedback?x.feedback.stage:"Not submitted"],
+  ["Owner HUMAN follow-up text",x.feedback?x.feedback.note:"No separate HUMAN feedback."],
+  ["Owner self-declared follow-up time",x.feedback?x.feedback.submitted_utc:"Not submitted"]
  ]){
   const row=document.createElement("div"),strong=node("strong",label+": "),
    content=node("span",value);
@@ -177,8 +185,9 @@ function contextDetails(x){
 }
 function draw(){
  const all=allRows(),answered=all.filter(x=>x.reply).length,
+  ownerResponded=all.filter(x=>x.feedback).length,
   needs=all.filter(x=>x.reply&&x.reply.human_stage==="needs_changes").length;
- $("summary").textContent=all.length+" HUMAN requests · "+answered+" UNVERIFIED replies · "+(all.length-answered)+" unanswered · "+needs+" need changes · "+db.requestPackets.length+" owner packets";
+ $("summary").textContent=all.length+" HUMAN requests · "+answered+" UNVERIFIED replies · "+(all.length-answered)+" unanswered · "+needs+" need changes · "+ownerResponded+" HUMAN owner follow-ups · "+db.requestPackets.length+" owner packets";
  $("binding").textContent=db.binding?"DECLARED source SHA "+db.binding[1]+" · client "+db.binding[2]+" · engagement "+db.binding[3]:"No source loaded.";
  for(const id of ["download","csv","print","summaryCsv"])$(id).disabled=!all.length;
  refreshOwnerExportOptions();
@@ -366,17 +375,20 @@ async function intake(){
  db=next;selection.clear();invalidateBulk();invalidateUndo();$("files").value="";draw();msg("Reconciled PRIVATE HUMAN owner and reply packets atomically.");
 }
 function snapshot(){
- return {kind:"lightup.private_human_response_reconciliation",schema_version:1,
+ return {kind:"lightup.private_human_response_reconciliation",schema_version:2,
  disposition:"UNVERIFIED_HUMAN_COORDINATION_ONLY",source_contract:db.binding[0],
  source_sha256:db.binding[1],client_reference:db.binding[2],engagement_reference:db.binding[3],
  ...Object.fromEntries(FLAGS.map(k=>[k,false])),
  request_packets:db.requestPackets,reply_packets:db.replyPackets,
- human_reviews:allRows().map(x=>({request_id:x.request.request_id,human_stage:x.review.stage,note:x.review.note}))};
+ human_reviews:allRows().map(x=>({request_id:x.request.request_id,human_stage:x.review.stage,note:x.review.note})),
+ owner_feedback:allRows().filter(x=>x.feedback).map(x=>({request_id:x.request.request_id,...x.feedback})),
+ feedback_history:db.feedbackHistory.map(x=>({...x}))};
 }
 function restore(obj,rev){
  const keys=["kind","schema_version","disposition","source_contract","source_sha256","client_reference","engagement_reference",
  ...FLAGS,"request_packets","reply_packets","human_reviews"];
- if(!exact(obj,keys)||obj.schema_version!==1||
+ const v2=[...keys,"owner_feedback","feedback_history"];
+ if(!((obj?.schema_version===1&&exact(obj,keys))||(obj?.schema_version===2&&exact(obj,v2)))||
  obj.disposition!=="UNVERIFIED_HUMAN_COORDINATION_ONLY"||
  obj.source_contract!=="lightup.finding_export._COLUMNS_v1"||
  !/^[0-9a-f]{64}$/.test(obj.source_sha256)||FLAGS.some(k=>obj[k]!==false)||
@@ -395,6 +407,30 @@ function restore(obj,rev){
   fresh.notes[r.request_id]={stage:r.human_stage,note:r.note};
  }
  if(seen.size!==allowed.size)fail("HOLD: incomplete HUMAN review backup");
+ if(obj.schema_version===2){
+  if(!Array.isArray(obj.owner_feedback)||obj.owner_feedback.length>MAX_ROWS||
+     !Array.isArray(obj.feedback_history)||obj.feedback_history.length>1600)
+   fail("HOLD: invalid feedback history collection");
+  const included=new Set();
+  for(const item of obj.owner_feedback){
+   if(!exact(item,["request_id","stage","note","submitted_utc"])||
+      !allowed.has(item.request_id)||included.has(item.request_id)||
+      !OWNER_FEEDBACK_STAGES.includes(item.stage))fail("HOLD: invalid owner HUMAN feedback record");
+   clean(item.note,1000,"owner feedback note");timestamp(item.submitted_utc);
+   if(item.stage!=="acknowledged_unverified"&&!item.note.trim())fail("HOLD: missing owner HUMAN explanation");
+   included.add(item.request_id);
+   fresh.ownerFeedback[item.request_id]={stage:item.stage,note:item.note,submitted_utc:item.submitted_utc};
+  }
+  for(const item of obj.feedback_history){
+   if(!exact(item,["request_id","stage","note","submitted_utc","superseded_utc"])||
+      !allowed.has(item.request_id)||!OWNER_FEEDBACK_STAGES.includes(item.stage))
+    fail("HOLD: invalid prior HUMAN feedback entry");
+   clean(item.note,1000,"historical private HUMAN response");timestamp(item.submitted_utc);
+   timestamp(item.superseded_utc);
+   if(item.stage!=="acknowledged_unverified"&&!item.note.trim())fail("HOLD: missing historical human explanation");
+   fresh.feedbackHistory.push({...item});
+  }
+ }
  if(db.revision!==rev)fail("HOLD: changed register");
  if(!confirm("REPLACE current PRIVATE register and HUMAN notes with this exact source-bound backup? Export current data first."))return;
  if(db.revision!==rev)fail("HOLD: changed register before replace");
