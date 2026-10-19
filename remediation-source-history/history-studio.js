@@ -2,7 +2,7 @@
 (() => {
 "use strict";
 const $ = id => document.getElementById(id);
-const state = { snapshots:[], notes:new Map(), decisions:[], merges:[], holdReviews:[], active:null, revision:0, importing:false };
+const state = { snapshots:[], notes:new Map(), decisions:[], merges:[], holdReviews:[], active:null, revision:0,archivePreparedRevision:null, importing:false };
 const FIELDS = ['finding_id','title','severity','retest_status','remediation'];
 const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const severityRank = {critical:0,high:1,medium:2,low:3,info:4};
@@ -189,7 +189,15 @@ function renderDetail() {
  $('carryReasonLabel').hidden=!held||!entry.latest;
  $('discardHuman').hidden=!held;
 }
-function render() {renderSnapshots();summary();renderGrid();renderDetail();$('forget').disabled=!state.snapshots.length;window.dispatchEvent(new Event('lightup-history-changed'));}
+function renderPreservation(){
+ const element=$('workspacePreservation');if(!element)return;
+ const hasData=state.snapshots.length>0,needsPrivateSave=hasData&&state.archivePreparedRevision!==state.revision;
+ element.hidden=!hasData;
+ if(!hasData)return;
+ element.textContent=needsPrivateSave?'LOCAL PRIVATE CHANGES: Workspace exists in volatile browser memory. Save a new AES-GCM encrypted PRIVATE checkpoint before closing, refreshing or forgetting this tab.':'ENCRYPTED PRIVATE CHECKPOINT PREPARED: No changes since latest checkpoint preparation. Independently verify the downloaded checkpoint was actually saved securely; browser downloads can be blocked.';
+ element.className=needsPrivateSave?'notice warning':'notice';
+}
+function render() {renderSnapshots();summary();renderGrid();renderDetail();$('forget').disabled=!state.snapshots.length;renderPreservation();window.dispatchEvent(new Event('lightup-history-changed'));}
 function notesFromFields(){
  const id=state.selected;
  if(!id)throw Error('Select an exact original finding.');
@@ -263,7 +271,7 @@ function exportCasework() {
  download('lightup-PRIVATE-original-source-casework-human-v1.json',JSON.stringify(packet,null,2),'application/json;charset=utf-8');
  message('PRIVATE native original Casework v1 HUMAN draft exported; '+status.bound+' exact-row-bound note(s) included, '+status.held+' stale held. All consent/grant/retest/scan authority claims false.');
 }
-function forget(){state.snapshots=[];state.notes.clear();state.decisions=[];state.merges=[];state.holdReviews=[];state.active=null;state.selected=null;state.revision++;$('client').value='';$('engagement').value='';$('ack').checked=false;$('privateAck').checked=false;$('files').value='';$('archivePass').value='';$('archiveFile').value='';render();message('Original imported source and private HUMAN notes forgotten from app memory. Previously downloaded exports remain on your device.');}
+function forget(){state.snapshots=[];state.notes.clear();state.decisions=[];state.merges=[];state.holdReviews=[];state.archivePreparedRevision=null;state.active=null;state.selected=null;state.revision++;$('client').value='';$('engagement').value='';$('ack').checked=false;$('privateAck').checked=false;$('files').value='';$('archivePass').value='';$('archiveFile').value='';render();message('Original imported source and private HUMAN notes forgotten from app memory. Previously downloaded exports remain on your device.');}
 $('load').addEventListener('click',()=>ingest($('files').files).catch(e=>message(e.message,true)));
 $('filter').addEventListener('input',renderGrid);
 $('kind').addEventListener('change',renderGrid);
@@ -294,6 +302,13 @@ $('snapshots').addEventListener('click',event=>{
  state.snapshots.splice(i,1);const remaining=idSet();for(const id of state.notes.keys())if(!remaining.has(id))state.notes.delete(id);state.revision++;if(!state.snapshots.length){state.active=null;state.selected=null;}render();}
 });
 /* Controlled archive bridge: no browser persistence or authority, atomic restoration only. */
+// This browser warning only protects local unsaved work. It does not send
+// any PRIVATE data or store source material in browser persistence.
+window.addEventListener('beforeunload',e=>{
+ if(state.snapshots.length&&state.archivePreparedRevision!==state.revision){
+   e.preventDefault();e.returnValue='';
+ }
+});
 window.LightUpHistory=Object.freeze({
   capture(){
     const ctx=requireContext();protect();
@@ -311,9 +326,14 @@ window.LightUpHistory=Object.freeze({
     state.decisions=(packet.decisions||[]).map(d=>({...d,from:{...d.from},to:{...d.to}}));
     state.merges=(packet.merges||[]).map(m=>structuredClone(m));
     state.holdReviews=(packet.holdReviews||[]).map(x=>structuredClone(x));
-    state.active={...ctx};state.selected=null;state.revision++;render();
+    state.active={...ctx};state.selected=null;state.revision++;state.archivePreparedRevision=state.revision;render();
   },
   revision(){return state.revision;},
+  checkpointPrepared(expectedRevision){
+    if(state.importing||!state.snapshots.length||state.revision!==expectedRevision)
+      throw Error('PRIVATE source changed during encrypted checkpoint preparation; save again.');
+    state.archivePreparedRevision=state.revision;renderPreservation();
+  },
   view(){return state.snapshots.map(x=>({label:x.label,sourceHash:x.sourceHash,fileHash:x.fileHash,findings:x.findings.map(y=>({...y}))}));},
   privateAllowed(){requireContext();protect();return true;},
   reviewCasework(packet,expectedRevision){
