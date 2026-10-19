@@ -19,6 +19,7 @@ from .private_export_encrypted import _passphrase, _seal
 from .private_export_encrypted_notes import MAGIC_PLAN
 from .private_export_handoff import _atomic_private_publish, _no_duplicate_keys, _output_path
 from .private_export_workdesk import MAX_PLAN, _load_resume_bytes
+from .private_export_human_revision_source import _read_with_binding, _require_same_originals
 from .private_export_human_revision import (
     _COLUMNS, _DEFAULT, _read_inputs, _review_revision,
 )
@@ -207,7 +208,7 @@ def main(argv: list[str] | None = None) -> int:
             if not args.ack_manual_human_decisions:
                 raise ValueError("manual human decision verification required")
             output = _output_path(args.output, ".lun")
-        old_meta, old_rows, notes, new_meta, new_rows = _read_inputs(
+        old_meta, old_rows, notes, new_meta, new_rows, binding = _read_with_binding(
             args.earlier_source, args.earlier_plan, args.later_source
         )
         expected = _make_choices(old_meta, old_rows, notes, new_meta, new_rows)
@@ -216,6 +217,7 @@ def main(argv: list[str] | None = None) -> int:
                               allow_nan=False).encode("utf-8", "strict")
             if len(data) > MAX_CHOICES:
                 raise ValueError("original-ID HUMAN selection file exceeds limit")
+            _require_same_originals(args.earlier_source, args.earlier_plan, args.later_source, binding)
             _atomic_private_publish(output, data)
             print("NEW private, UNENCRYPTED, FALSE-by-default per-finding selection sheet.")
             print("Original new-source rows:", len(new_rows))
@@ -230,6 +232,7 @@ def main(argv: list[str] | None = None) -> int:
             secret = _passphrase("NEW encrypted HUMAN selection plan passphrase", confirm=True)
             ciphertext = _seal(blob, secret, magic=MAGIC_PLAN, max_plaintext=MAX_PLAN)
             del secret
+            _require_same_originals(args.earlier_source, args.earlier_plan, args.later_source, binding)
             _atomic_private_publish(output, ciphertext)
             print("NEW original-compatible AES-256-GCM source-bound HUMAN .lun published.")
             for label, count in summary.items():
