@@ -275,6 +275,11 @@ for(const [id,event,fn] of [
  ["planSave","click",exportPrivate],["planRestore","click",()=>importPrivate().catch(e=>msg(e.message,true))],
  ["planOwnerBrief","click",ownerBrief],["planAggregate","click",aggregate],["planOwner","change",()=>{$("planOwnerBrief").disabled=!$("planOwner").value;}]
 ])$(id).addEventListener(event,e=>{try{fn(e)}catch(err){msg(err.message,true);}});
+/* Native browser warning is best-effort; users must explicitly export PRIVATE
+   source-bound workplan JSON to preserve local HUMAN annotations. */
+window.addEventListener("beforeunload",e=>{
+ if(store.binding&&store.revision!==store.saved){e.preventDefault();e.returnValue="";}
+});
 window.LightUpHandoffHumanPlan=Object.freeze({reset,render});
 reset();
 })();
