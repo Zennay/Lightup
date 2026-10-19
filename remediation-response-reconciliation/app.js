@@ -181,6 +181,18 @@ function contextDetails(x){
    content=node("span",value);
   row.className="privateDetail";row.append(strong,content);details.append(row);
  }
+ const history=db.feedbackHistory.filter(h=>h.request_id===x.request.request_id);
+ if(history.length){
+  const previous=node("summary","Earlier local HUMAN follow-up versions ("+history.length+")");
+  const archive=document.createElement("details");archive.className="feedbackHistory";archive.append(previous);
+  for(const past of history){
+   const block=document.createElement("div");block.className="privateDetail";
+   block.append(node("strong",past.stage+" · self-declared submitted "+past.submitted_utc+
+    " · locally superseded "+past.superseded_utc+" : "));
+   block.append(node("span",past.note||"(no HUMAN explanation)"));archive.append(block);
+  }
+  details.append(archive);
+ }
  cell.append(details);return cell;
 }
 function draw(){
