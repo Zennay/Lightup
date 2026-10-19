@@ -243,6 +243,7 @@ def make_browser_resolver() -> bytes:
 "use strict";
 const KEYSET = ["kind", "version", "input_sha256", "source_sha256",
   "ordered_row_count", "resolutions"];
+const FIELD_ORDER = ["stage", "route", "action"];
 const OPTIONS = {
   stage: ["needs_review", "queued", "discussing", "documented", "blocked"],
   route: ["unassigned", "scope", "findings", "evidence", "remediation", "privacy"],
@@ -291,7 +292,8 @@ function admit(p) {
           (i === 0 || row.choices[i-1] < choice)) ||
         !(row.value === null || row.choices.includes(row.value)) ||
         (row.ordinal < previousOrdinal) ||
-        (row.ordinal === previousOrdinal && row.field <= previousField))
+        (row.ordinal === previousOrdinal &&
+          FIELD_ORDER.indexOf(row.field) <= FIELD_ORDER.indexOf(previousField)))
       throw Error("Noncanonical original HUMAN conflict item; use the native CLI.");
     const marker = String(row.ordinal) + ":" + row.field;
     if (seen.has(marker)) throw Error("Duplicate PRIVATE conflict field.");
