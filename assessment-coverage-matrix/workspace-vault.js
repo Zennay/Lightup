@@ -2,7 +2,7 @@
 /* Complete PRIVATE HUMAN workroom vault: original bytes + HUMAN notes, encrypted offline.
  * No assessment execution, no grant, no network, no browser persistence. */
 function createPrivateWorkspaceVault(api) {
-  const {$,fail,shape,int,parseStrict,message,download,getRawFiles,
+  const {$,fail,shape,int,parseStrict,message,download,getRawFiles,getOriginalCount,getOriginalByteTotal,
     getPrivatePlan,prepareFullWorkspace,commitFullWorkspace} = api;
   const cryptoBox=createPrivatePlanCrypto();
   const MAX_SOURCE_TOTAL=24*1024*1024; // bounded, intentionally smaller than the 8x8MiB import limit
@@ -40,13 +40,13 @@ function createPrivateWorkspaceVault(api) {
       originals.every(x=>x.length>0&&x.length<=8*1024*1024);
   }
   function update() {
-    const sources=getRawFiles(),total=sources.reduce((sum,b)=>sum+b.length,0);
+    const sources=getRawFiles(),total=getOriginalByteTotal();
     const allowed=available()&&total<=MAX_SOURCE_TOTAL;
     $("vaultSave").disabled=!allowed;
     $("vaultOpen").disabled=!cryptoBox.supported();
     $("vaultAvailable").textContent=!cryptoBox.supported()
       ?"Browser WebCrypto is unavailable. Encrypted PRIVATE workspace import/export disabled."
-      :!sources.length
+      :getOriginalCount()===0
       ?"No ORIGINAL PRIVATE source files opened. You can still open an existing encrypted workspace."
       :total>MAX_SOURCE_TOTAL
       ?"Current original batch exceeds the 24 MiB total encrypted workspace export limit. The ordinary source+plan workflow still works. Importing a smaller batch is optional."
