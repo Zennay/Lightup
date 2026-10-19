@@ -231,16 +231,27 @@
       interpretation:"Offline unsigned human-only multi-reviewer draft. Exact original source hashes do not authenticate reviewer identity, findings, authority, client consent or remediation."};
   }
   async function readPlans(files){
-    guard(crypto && crypto.subtle,"Private local SHA-256 support is unavailable");
+    guard(globalThis.crypto && crypto.subtle,"Private local WebCrypto SHA-256 is unavailable");
     guard(files.length>=2 && files.length<=8, "Choose 2–8 original PRIVATE reviewer plans");
     const prepared=[];
-    for(const file of files) {
-      const item=await fileBytes(file);
-      prepared.push({...item,parsed:admitPlan(strictParse(item.raw))});
+    for(let index=0;index<files.length;index++) {
+      const file=files[index];
+      const item=await fileBytes(file,5*1024*1024);
+      const envelope=strictParse(item.raw);
+      let original=envelope;
+      if(envelope&&envelope.kind===LIGHTUP_ORIGINAL_ENCRYPTED_PLAN_KIND) {
+        const pass=window.prompt("Original PRIVATE HUMAN encrypted plan "+(index+1)+
+          ": enter its local passphrase (no network; cancel holds all imported plans)");
+        guard(pass!==null,"Encrypted HUMAN plan import cancelled; original selection retained");
+        original=strictParse(await decryptOriginalHumanPlan(envelope,pass));
+      } else {
+        guard(file.size<=MAX,"Unencrypted PRIVATE HUMAN plan exceeds 3 MiB");
+      }
+      prepared.push({digest:item.digest,parsed:admitPlan(original)});
     }
     guard(new Set(prepared.map(p=>p.digest)).size===prepared.length,
       "Duplicate exact reviewer packet bytes are not independent submissions");
-    return chooseRow(prepared.map(({digest,parsed})=>({digest,parsed})));
+    return chooseRow(prepared);
   }
   function exportDraft() {
     guard(state,"No originals loaded");
