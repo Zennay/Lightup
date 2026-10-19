@@ -654,7 +654,7 @@ async function importReceivedReply(){
  if(before!==revision||source!==binding(state))fail('current original PRIVATE human planning changed during confirmation');
  if(ownerReturns.has(incoming.alias))guardReviewLoss();
  for(const key of [...followup.keys()]){try{if(JSON.parse(key)[0]===incoming.alias)followup.delete(key);}catch(_){followup.delete(key);}}
- ownerReturns.set(incoming.alias,incoming);actionRevision++;$('returnFile').value='';renderReceivedReplies();
+ ownerReturns.set(incoming.alias,incoming);actionRevision++;actionBatchUndo=null;$('actionUndoBatch').disabled=true;actionSelected.clear();$('returnFile').value='';renderReceivedReplies();
  message('PRIVATE HUMAN return imported as READ-ONLY self-declared follow-up; original findings, stages, source evidence and grants unchanged.');
 }
 
