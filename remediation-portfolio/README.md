@@ -20,6 +20,18 @@ Linux/Python 3.11+, no external packages or network required. Make an owner-priv
       --input /home/operator/private-lightup/counts-02.json \
       --output-dir /home/operator/private-lightup/portfolio-20261019
 
+### One-command private packet folder
+
+Instead of repeating 12 input flags, create a dedicated 0700 owner-private folder containing **only** consecutively named native exporter files packet-01.json, packet-02.json, ... packet-12.json (no gaps, symlinks, extra hidden files, or any other directory contents). Every member must still be an authentic original-export-shaped 0600 counts-only JSON, not a client evidence file.
+
+    mkdir -m 700 /home/operator/private-lightup/native-count-packets
+    # Place the existing original native counts exports at packet-01.json, etc.
+    python3 remediation-portfolio/portfolio.py \
+      --packet-dir /home/operator/private-lightup/native-count-packets \
+      --output-dir /home/operator/private-lightup/complete-human-portfolio
+
+This path is purely **local**, does no file discovery outside the explicitly selected directory, reads all native counters, rejects an unexpected name before creating the output, and inherits whole-batch all-or-nothing admission. It never asks for or opens an original encrypted source key.
+
 The CLI validates **all inputs before writing**, creates an owner-private staging folder and publishes a new directory exclusively through Linux renameat2 no-replace. Outputs: index.html, summary.json, counts.csv and human-followup.txt, all 0600 within a 0700 directory. The standalone HUMAN follow-up brief prioritises pending source-owner questions, unassigned planning slots and dated reviews without revealing their identities. Open index.html locally: scriptless, static, offline CSP-pinned dashboard with packet workload and per-stage HUMAN planning. No JS, fetch, scripts, remote assets or private source paths. The browser also shows the HUMAN follow-up recommendations; it does not perform or authorize any action.
 
 Inboxes have no HUMAN planning stage data. Their stage cells are blank (“not provided”), not zero. Summations are **packet appearances**, never unique findings or clients: two files may describe exactly the same material, and local HUMAN “answered” never means a verified fix. A file can be syntactically admitted yet factually false or deceptive; there is NO cryptographic source truth asserted.
