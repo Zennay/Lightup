@@ -7,6 +7,7 @@ read-only desk observes LOCAL HUMAN statuses, not native Apply or consent.
 from __future__ import annotations
 
 from collections import Counter
+from datetime import datetime, timezone
 import hashlib
 from html import escape
 from pathlib import Path
@@ -46,6 +47,19 @@ CAUTION = ("These are LOCAL HUMAN bookkeeping observations. Current original "
            "authentication and material bytes do not prove historical native "
            "Apply, independent reviewer identity, signed consent, legal holds, "
            "actual remediation, verified finding, retest, or authorization.")
+
+
+def _human_age(created: object) -> tuple[str, int]:
+    """Operator-facing elapsed UTC days, never a policy or retention deadline."""
+    if type(created) is not str or len(created) != 20 or not created.endswith("Z"):
+        raise ValueError("Noncanonical original local HUMAN chronology timestamp.")
+    parsed = datetime.strptime(created, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
+    if parsed.strftime("%Y-%m-%dT%H:%M:%SZ") != created:
+        raise ValueError("Noncanonical HUMAN chronology UTC datetime.")
+    elapsed = int((datetime.now(timezone.utc) - parsed).total_seconds() // 86400)
+    if elapsed < 0:
+        raise ValueError("Original local HUMAN date lies in the future.")
+    return created, min(elapsed, 999999)
 
 
 def _ref(row: dict) -> str:
@@ -124,6 +138,7 @@ def collect(folder: Path, packet: dict, vault, private_file,
         doc = read_journal(folder, key, vault)
         for cycle_ordinal, entry in enumerate(doc["cycles"], 1):
             material = _material_indicator(entry, vault, private_file)
+            created, elapsed = _human_age(entry["created"])
             label, counts = _classification(entry, live, material)
             rows.append({
                 "source_ordinal": source_ordinal,
@@ -132,6 +147,8 @@ def collect(folder: Path, packet: dict, vault, private_file,
                 "local_state": entry["state"],
                 "attention": label,
                 "priority": PRIORITY[label],
+                "created_utc": created,
+                "elapsed_days": elapsed,
                 "draft_count": len(entry["requests"]),
                 "reported_closed": counts["closed_human"],
                 "reported_unobserved": counts["not_observed"],
@@ -141,7 +158,9 @@ def collect(folder: Path, packet: dict, vault, private_file,
             })
             totals[label] += 1
             totals["draft_references"] += len(entry["requests"])
-    rows.sort(key=lambda row: (row["priority"], row["source_ordinal"], row["cycle_ordinal"]))
+    # Older unresolved HUMAN work comes first within the same priority.
+    rows.sort(key=lambda row: (row["priority"], -row["elapsed_days"],
+                                row["source_ordinal"], row["cycle_ordinal"]))
     totals["source_revisions"] = len(keys)
     totals["cycles"] = len(rows)
     totals["human_attention"] = sum(1 for row in rows if row["attention"] not in (
@@ -159,7 +178,8 @@ def show(rows: list[dict], totals: dict) -> None:
         print(PRIORITY_NAME[row["priority"]], "· Source", row["source_ordinal"],
               "· cycle", row["cycle_ordinal"],
               "·", "CURRENT" if row["current_revision"] else "historical",
-              "·", label, "· drafts", row["draft_count"])
+              "·", label, "· drafts", row["draft_count"],
+              "· days since local HUMAN draft:", row["elapsed_days"])
         print("  HUMAN next step:", next_step)
     print(CAUTION)
 
@@ -198,13 +218,15 @@ Local cycles: <b>""" + str(totals["cycles"]) + """</b> ·
 HUMAN attention: <b>""" + str(totals["human_attention"]) + """</b></p></section>
 <section><h2>Current and earlier local HUMAN handoffs</h2>
 <table><thead><tr><th>Attention priority</th><th>Source/cycle</th><th>Revision</th><th>HUMAN situation</th>
-<th>Drafts</th><th>Currently HUMAN-closed</th><th>Not observed</th>
+<th>Elapsed days*</th><th>Drafts</th><th>Currently HUMAN-closed</th><th>Not observed</th>
 <th>Next HUMAN action</th></tr></thead><tbody>""" + "".join(out) + """</tbody></table></section>
 <footer><p>""" + e(CAUTION) + """ This 0600 offline scriptless file has no
 customer names, original source SHA, native request IDs, finding fingerprints,
 private notes, encrypted file paths, evidence content or provider links.
 No network, browsing scripts or automatic Apply. Not an audit certificate,
 a grant, or authorization to scan, publish, delete, close a legal hold or retest.
+*Elapsed days are local journal timestamps, NOT independent evidence
+timestamps, retention deadlines, legal obligations or guaranteed SLAs.
 Local journals elsewhere and older unindexed work remain outside this view.
 </p></footer></body></html>"""
     payload = content.encode("utf-8", "strict")
