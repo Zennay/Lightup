@@ -48,6 +48,10 @@ The command prints a **new** privately published inbox path with a new HTML inde
 
 Once a complete source-free HUMAN inbox has been independently admitted, it can be transferred as **one encrypted `.ltinbox` ciphertext** with [PORTABLE.md](PORTABLE.md) using `portable_inbox.py send` and `portable_inbox.py receive`. The receiving operator must have the same separately trusted 32-byte team key. The original per-slot source-free HMAC receipts and native HTML/JSON files are reconstructed into a brand-new independent private 0700 folder before new index publication. No original source evidence or client identity is forwarded. The old team inbox stays intact.
 
+## Operator assignments and due dates for this inbox
+
+For human follow-up coordination against an **already admitted original inbox**, use [COORDINATION.md](COORDINATION.md). It creates new encrypted 0600 per-slot owner, stage, urgency, date and local note snapshots, an offline private HTML board, anonymous tentative calendar and exact-original-prefix carry when this inbox is extended. A complete private inbox plus its HUMAN plan can also be sealed and reopened together as a portable workroom, never modifying these original source-free cockpit files.
+
 ## Absolute boundaries
 
 This capability is private **HUMAN workflow bookkeeping** only. It does not infer unique clients, original finding identities, real evidence validity, remediation quality, active test permission, grant, current client consent, review approval, retest, release readiness or risk. A copied shared secret can authenticate alternate packages; HMAC/AEAD do not establish independently authenticated human sender identity. Unencrypted HTML only exists in already owner-private `0700` folders with `0600` files; keep devices trusted and secrets distributed via an independent human-approved channel. There is no archive/network/upload/scan target functionality or deletion of original material.
