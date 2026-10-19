@@ -197,6 +197,17 @@ function draw(){
   cb.addEventListener("change",()=>{cb.checked?selected.add(x.id):selected.delete(x.id);draw();});td.append(cb);tr.append(td);
   const original=cell("td",x.finding);original.append(cell("small",x.id));tr.append(original);
   tr.append(cell("td",x.owner),cell("td",x.kind),cell("td",x.answer?.human_stage||"NOT RECEIVED"),cell("td",x.local.length+" LOCAL files"),cell("td",x.signals.join(" · ")||"No local HUMAN follow-up signal"));
+  const details=document.createElement("details"),summary=cell("summary","Read original HUMAN context (PRIVATE)");details.append(summary);
+  for(const [label,val] of [
+   ["Original HUMAN instructions",x.instructions],["Unverified owner reply",x.answer?.human_response||"Not received"],
+   ["Local HUMAN reviewer stage",x.notes.human_stage],["Local HUMAN reviewer note",x.notes.note||"None"],
+   ["Separate UNVERIFIED owner feedback",x.feedback?x.feedback.stage+": "+x.feedback.note:"No separate HUMAN feedback"],
+   ["Tentative HUMAN date",x.due||"Not supplied"]]){
+    const line=document.createElement("p");line.append(cell("strong",label+": "),cell("span",val));details.append(line);
+  }
+  if(x.local.length){const nested=document.createElement("details");nested.append(cell("summary","LOCAL file metadata ("+x.local.length+")"));
+   for(const file of x.local){const line=document.createElement("p");line.append(cell("strong",file.file_name+": "),cell("span",file.sha256+" · "+file.byte_length+" bytes · "+file.human_stage+" · "+file.human_note));nested.append(line);}details.append(nested);}
+  const detailCell=document.createElement("td");detailCell.append(details);tr.append(detailCell);
   body.append(tr);
  }
  $("selectVisible").checked=!!visible.length&&visible.every(x=>selected.has(x.id));
