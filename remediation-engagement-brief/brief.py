@@ -14,6 +14,7 @@ import sys
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "remediation-secure-export"))
 from desk import build_desk
+from history import review as history_review, markdown as history_markdown, anonymous_csv
 from secure_export import (AccountLockedError, COLUMNS, FALSE, SEVERITIES, STATES,
                            _authorized_summary, _literal, _strict_summary,
                            _unique_pairs, _vault)
@@ -244,6 +245,17 @@ def main(argv=None):
     for action in (capture, review, open_now):
         for key in ("db", "email", "client-id", "engagement-id"):
             action.add_argument("--" + key, required=True)
+    history = cmd.add_parser("history-current", help="Fresh original authentication + 1-12 encrypted historical sources in operator order")
+    for key in ("db","email","client-id","engagement-id"):
+        history.add_argument("--"+key, required=True)
+    history.add_argument("--inputs", nargs="+", required=True, type=Path,
+                         help="Historical encrypted original source revisions in explicit earliest-first order")
+    history.add_argument("--ack-source-order", action="store_true",
+                         help="Human independently confirms historical order and same client/engagement")
+    history.add_argument("--output", type=Path, help="NEW 0600 confidential full original history .md")
+    history.add_argument("--sealed-markdown", type=Path, help="Direct encrypted original history report .ltv")
+    history.add_argument("--ack-private-markdown", action="store_true")
+    history.add_argument("--aggregate-csv", type=Path, help="NEW 0600 identity-free numeric source churn .csv")
     capture.add_argument("--output", required=True, type=Path)
     for action in (inspect, review, open_now):
         action.add_argument("--input", required=True, type=Path)
@@ -258,6 +270,48 @@ def main(argv=None):
     args = ap.parse_args(argv)
     try:
         vault = _vault()
+        if args.command == "history-current":
+            if not args.ack_source_order or not 1 <= len(args.inputs) <= 12:
+                raise ValueError("Historical source order and bounded membership acknowledgement required")
+            sources=[v.expanduser().absolute() for v in args.inputs]
+            if len(set(sources))!=len(sources) or any(v.suffix.lower()!=".ltv" for v in sources):
+                raise ValueError("Historical encrypted sources must be unique .ltv paths")
+            destinations=[v.expanduser().absolute() for v in
+                          (args.output,args.sealed_markdown,args.aggregate_csv) if v is not None]
+            if len(set(destinations))!=len(destinations) or set(destinations)&set(sources):
+                raise ValueError("Historical source and HUMAN output paths must be distinct")
+            if args.output is not None and args.sealed_markdown is not None:
+                raise ValueError("Choose either plaintext or encrypted private history handoff")
+            if (args.output is not None or args.sealed_markdown is not None) and not args.ack_private_markdown:
+                raise ValueError("Private historical HUMAN handoff acknowledgement required")
+            current=source_auth(args)
+            _strict_summary(current)
+            present=rows(current)
+            snapshots=[]
+            for source_path in sources:
+                args.input=source_path
+                packet,earlier=read_encrypted(source_path)
+                if packet["client"]!=args.client_id or packet["engagement"]!=args.engagement_id:
+                    raise ValueError("Original historical engagement membership differs")
+                snapshots.append((packet,earlier))
+            snapshots.append((dict(current=True),present))
+            result=history_review(snapshots)
+            print("Human-ordered historical original source snapshots:",result["historical"])
+            print("Original finding IDs seen:",result["source_ids"])
+            print("Currently original IDs:",result["current"])
+            print("Previously seen but now absent (NOT fixed):",len(result["currently_absent"]))
+            print("Original source reappearances (not verified):",len(result["reappeared"]))
+            if args.output is not None or args.sealed_markdown is not None:
+                args.capture_current=None
+                save_markdown(args, history_markdown(result))
+                print("PRIVATE HUMAN source continuity handoff created")
+            if args.aggregate_csv is not None:
+                target=args.aggregate_csv.expanduser().absolute()
+                if target.suffix.lower()!=".csv":
+                    raise ValueError("Aggregate output must be .csv")
+                vault._exclusive_output(target,anonymous_csv(result))
+                print("Owner-private identity-free aggregate CSV created")
+            return 0
         if args.command == "capture":
             if args.output.suffix.lower() != ".ltv":
                 raise ValueError("Encrypted snapshot must use .ltv")
