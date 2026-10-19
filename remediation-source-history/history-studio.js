@@ -6,7 +6,7 @@ const state = { snapshots:[], notes:new Map(), decisions:[], active:null, revisi
 const FIELDS = ['finding_id','title','severity','retest_status','remediation'];
 const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const severityRank = {critical:0,high:1,medium:2,low:3,info:4};
-const limits = {maxSnapshots:12,maxBytes:1048576,maxRows:350,maxNotes:250,maxDecisions:200};
+const limits = {maxSnapshots:12,maxBytes:1048576,maxRows:350,maxNotes:350,maxDecisions:200};
 const toB64=bytes=>{let s='';for(let i=0;i<bytes.length;i+=32768)s+=String.fromCharCode(...bytes.subarray(i,i+32768));return btoa(s);};
 function message(value, error=false) { $('message').textContent=value; $('message').className=error?'error':'info'; }
 function exact(a,b) { return FIELDS.every(k=>a[k]===b[k]); }
@@ -369,10 +369,10 @@ window.LightUpHistory=Object.freeze({
       if(!f||['stale','missing'].includes(noteBinding(id)))
         throw Error('HOLD: original finding absent or has a stale HUMAN source binding; no rows changed.');
       const n=boundNote(id),row=n?.caseworkOriginal||LightUpCasework.newCase(f);
-      const updated={...row,owner:canOwner?owner:n?.owner||row.owner,
-        due_date:canDate?(due||null):(n?.due||row.due_date),
+      const updated={...row,owner:canOwner?owner:(n?n.owner:row.owner),
+        due_date:canDate?(due||null):(n?(n.due||null):row.due_date),
         status:canStatus?status:(n?.caseworkOriginal?row.status:(n?'planned':'unassigned')),
-        next_action:n?.action||row.next_action,updated_utc:now};
+        next_action:n?n.action:row.next_action,updated_utc:now};
       const normalized=LightUpCasework.cleanCase(updated,new Set([id]));
       proposed.set(id,{owner:normalized.owner,action:normalized.next_action,due:normalized.due_date||'',
         sourceRecord:Object.fromEntries(FIELDS.map(k=>[k,f[k]])),caseworkOriginal:normalized});
