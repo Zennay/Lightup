@@ -1,3 +1,25 @@
+## PRIVATE HUMAN workroom and exact-source continuity (19 October 2026)
+
+The same offline [standalone.html](standalone.html) now includes a **real human triage workroom**, not just a check-count table.
+
+- Select per literal source-declared capability/check group: HUMAN-only **stage** (needs review, queued, discussing, documented as a human note, blocked), **review group** (unassigned, scope, findings, evidence, remediation, privacy), and next proposed **HUMAN question**. None is a verified finding state, engagement authority, risk reduction, remediation or client consent. Source fields and source bytes are immutable.
+- Search and page the private workroom (64 work items/page), filter on local HUMAN status, and open the original untrusted declaration on demand. The main comparison matrix independently renders **100 rows/page**, to avoid a large file set freezing the interface with thousands of DOM rows. Count exports still include **every currently filtered row**, not merely the visible page.
+- **Bulk HUMAN routing** applies chosen stage/group/action to up to 512 locally filtered groups after an explicit human confirmation. A complete group larger than 512 is refused, never silently truncated. **Undo last bulk change** restores those local choices; manual updates, reset or private resume invalidate bulk undo.
+- **Save PRIVATE plan** downloads original SHA-256-byte-bound source-slot fingerprints, the exact anonymous original sorted matrix row count, and only non-default categorical HUMAN choices indexed by source-local row ordinal. It contains no target addresses, raw findings, source labels, evidence, tenant/client or file path. **It is private and not encrypted**: SHA digests may be identifying; do not publish. File contents are neither encrypted nor signed, and matching the bytes is not proof of authentic original producer, operator identity, ownership or consent.
+- To **resume**, first manually re-open the **same original source files in the same selection order**. Then select the saved PRIVATE plan. Every original input hash must match byte-for-byte; the entire plan must have the exact bounded schema, false authority flags, sorted unique canonical row ordinals and enum values. If not, the whole restoration is held and current HUMAN choices remain intact. Even when valid, an explicit second human confirmation is required before replacement. Browser environments without WebCrypto continue to allow in-memory HUMAN planning and source-free briefing but disable byte-bound save/resume rather than inventing a digest.
+- **Counts-only HUMAN briefing** produces a self-contained `.txt` with stage/group/question totals **without original source labels, SHA hashes or targets**. A separate human-confirmed **PRIVATE read-only HTML handoff** includes up to 512 explicitly filtered HUMAN-planned source capability/check labels, local row ordinals and categorical choices. That scriptless document uses a restrictive no-network CSP, escapes source-supplied text, excludes target/evidence/raw result bytes and is not source-authenticated or an executable instruction. It **is PRIVATE** because original check labels may reveal sensitive information; exchange separately using an approved protected channel. Missing declarations never imply a fix or clearance.
+- **Forget local data** clears the in-memory original files, fingerprints, human notes and selected views. No user accounts, localStorage, browser persistence, cloud sync or networking were added. The application warns on navigation away from a loaded workroom.
+
+### Standalone packaging
+
+`build_standalone.py` now embeds both `human-board.js` and `app.js` (in that order) plus `style.css` into the one-file offline HTML, pinning the **combined** JavaScript and CSS with SHA-256 Content Security Policy hashes. The generated `standalone.html` is committed in this held draft branch. This integrity convenience is **not an independent security audit, review verdict or provenance signature**.
+
+### Non-negotiable posture
+
+**Incubate · M3/M7 PLAN/LAB ONLY · DRAFT/HOLD** remains unchanged. Original source owner, independently reviewed privacy/security/browser source, complete exact-head hosted AND named permanent VPS CI, #177/#182/#829, separate genuinely authenticated current client/operator consent including revocation at action time, and explicit HUMAN GO still remain mandatory before any main merge, live scan, grant, client action, deploy or release. No QA, regression or test suite created or executed as part of this implementation; only production JavaScript syntax and source packaging were inspected directly. No real lab result or target was used.
+
+---
+
 # LightUp · PRIVATE Original Lab Declaration Matrix
 
 **INCUBATE · M3/M7 PLAN/LAB ONLY · DRAFT/HOLD — human source-declaration review only.**
