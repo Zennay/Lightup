@@ -261,6 +261,48 @@ def changes(previous: dict, later: dict) -> list[dict]:
     return out
 
 
+def case_queue(docs: list[dict]) -> list[dict]:
+    """PRIVATE HUMAN original Casebook source queue. Never a live grant status."""
+    by_id: dict[str, list[tuple[int, dict]]] = {}
+    for ordinal, doc in enumerate(docs, start=1):
+        for row in doc["case_overview"]:
+            by_id.setdefault(row["engagement_id"], []).append((ordinal, row))
+    queue = []
+    for key, appearances in by_id.items():
+        ordinal, latest = appearances[-1]
+        changes = sum(
+            a["attention"] != b["attention"] or
+            a["next_review_action"] != b["next_review_action"]
+            for (_, a), (_, b) in zip(appearances, appearances[1:])
+        )
+        if latest["attention"].startswith("HOLD_"):
+            priority = 0
+        elif latest["attention"] == "RISK_DECISION_PENDING_SOURCE_REVIEW":
+            priority = 1
+        elif latest["attention"] in ("EXPIRED_GRANT_SOURCE_REVIEW",
+                                      "FUTURE_GRANT_SOURCE_REVIEW"):
+            priority = 2
+        else:
+            priority = 3
+        queue.append({
+            "local_original_engagement_id": key,
+            "latest_observed_ordinal": ordinal,
+            "source_status": latest["status"],
+            "source_attention": latest["attention"],
+            "source_next_human_action": latest["next_review_action"],
+            "observed_packet_appearances": len(appearances),
+            "human_attention_transitions": changes,
+            "latest_grant_count": latest["grant_count"],
+            "latest_risk_record_count": latest["risk_record_count"],
+            "source_only_priority_group": priority,
+        })
+    queue.sort(key=lambda item: (
+        item["source_only_priority_group"], -item["human_attention_transitions"],
+        -item["latest_grant_count"], item["local_original_engagement_id"]
+    ))
+    return queue
+
+
 def csv_text(rows: list[list[object]]) -> str:
     out = io.StringIO(newline="")
     writer = csv.writer(out, lineterminator="\r\n")
@@ -334,6 +376,17 @@ def html_page(docs: list[dict], delta: list[list[dict]], *, public: bool) -> str
             "customer names, notes or execution tokens appear.</p>",
             table(["Later packet ordinal", "Source family", "Change", "Original source ID",
                    "Changed source fields"], all_changes),
+            "<h2>PRIVATE original per-engagement HUMAN next-action queue</h2>",
+            "<p>This is a source-reported human attention ranking, NOT risk or authorization priority. "
+            "Identifiers and original human actions never enter anonymous handoffs.</p>",
+            table(["Original engagement ID", "Latest ordinal", "Original attention",
+                   "Original recommended human action", "Source status",
+                   "Packet appearances", "Attention changes"],
+                  [[row["local_original_engagement_id"],
+                    row["latest_observed_ordinal"], row["source_attention"],
+                    row["source_next_human_action"], row["source_status"],
+                    row["observed_packet_appearances"], row["human_attention_transitions"]]
+                   for row in case_queue(docs)]),
         ])
     digest = hashlib.sha256(("\n"+CSS+"\n").encode("utf-8")).digest()
     import base64
@@ -400,7 +453,17 @@ def generate(docs: list[dict]) -> dict[str, bytes]:
                  "permissions, verify independent client/operator consent and at-use "
                  "revocation, and resolve any source HOLD with the original owner. "
                  "No authority is derived from this document.\n")
+    queue = case_queue(docs)
+    queue_fields = (
+        "local_original_engagement_id", "latest_observed_ordinal",
+        "source_status", "source_attention", "source_next_human_action",
+        "observed_packet_appearances", "human_attention_transitions",
+        "latest_grant_count", "latest_risk_record_count", "source_only_priority_group",
+    )
+    private_queue = csv_text([list(queue_fields)] +
+                             [[entry[field] for field in queue_fields] for entry in queue])
     return {
+        "private-human-case-queue.csv": private_queue.encode(),
         "index.html": html_page(docs,delta,public=False).encode("utf-8"),
         "anonymous.html": html_page(docs,delta,public=True).encode("utf-8"),
         "anonymous-counts.json": (json.dumps(aggregate, indent=2,sort_keys=True)+"\n").encode(),
