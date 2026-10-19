@@ -31,7 +31,7 @@ async function save(){
  const payload={kind:'lightup.private_human_source_history',version:1,disposition:'UNVERIFIED_LOCAL_HUMAN_PLANNING',
   ...Object.fromEntries(FLAGS.map(x=>[x,false])),context:p.context,
   snapshots:p.snapshots.map(x=>({name:x.name,label:x.label,sourceHash:x.sourceHash,fileHash:x.fileHash,csvBase64:x.csvBase64})),
-  notes:p.notes};
+  notes:p.notes,decisions:p.decisions};
  const salt=crypto.getRandomValues(new Uint8Array(16)),iv=crypto.getRandomValues(new Uint8Array(12));
  const k=await key(password,salt);
  const encrypted=new Uint8Array(await crypto.subtle.encrypt({name:'AES-GCM',iv,additionalData:bytes(KIND+':1')},k,bytes(JSON.stringify(payload))));
@@ -64,12 +64,14 @@ async function open(){
  }catch{throw Error('Passphrase invalid, encrypted archive altered, or AES-GCM authentication failed; no workspace changed.');}
  const packet=JSON.parse(plain);
  if(JSON.stringify(packet)!==plain||
-  !shape(packet,['kind','version','disposition',...FLAGS,'context','snapshots','notes'])||
+  !(shape(packet,['kind','version','disposition',...FLAGS,'context','snapshots','notes','decisions'])||
+    shape(packet,['kind','version','disposition',...FLAGS,'context','snapshots','notes']))||
   packet.kind!=='lightup.private_human_source_history'||packet.version!==1||
   packet.disposition!=='UNVERIFIED_LOCAL_HUMAN_PLANNING'||FLAGS.some(k=>packet[k]!==false)||
   !shape(packet.context,['client','engagement'])||packet.context.client!==ctx.client||packet.context.engagement!==ctx.engagement||
   !Array.isArray(packet.snapshots)||!packet.snapshots.length||packet.snapshots.length>H.limits.maxSnapshots||
-  !Array.isArray(packet.notes)||packet.notes.length>H.limits.maxNotes)
+  !Array.isArray(packet.notes)||packet.notes.length>H.limits.maxNotes||
+  (Object.prototype.hasOwnProperty.call(packet,'decisions')&&(!Array.isArray(packet.decisions)||packet.decisions.length>H.limits.maxDecisions)))
    throw Error('Authenticated archive content has invalid original source/context/non-authority contract.');
  const restored=[],seen=new Set();
  for(const s of packet.snapshots){
@@ -113,7 +115,21 @@ async function open(){
   // Legacy encrypted notes without exact row binding remain HUMAN HOLD until operator review.
   noted.add(n.id);notes.push({...n,sourceRecord:n.sourceRecord||null,caseworkOriginal:n.caseworkOriginal||null});
  }
- H.restore({context:ctx,snapshots:restored,notes},currentVersion);
+ const allOriginal=restored.flatMap(snapshot=>snapshot.findings);
+ const validSource=row=>{
+   if(!shape(row,['finding_id','title','severity','retest_status','remediation']))return false;
+   const record=LightUpCasework.normalizeSource([row])[0];
+   return allOriginal.some(f=>['finding_id','title','severity','retest_status','remediation'].every(k=>f[k]===record[k]));
+ };
+ const decisions=packet.decisions||[];
+ for(const d of decisions){
+   if(!shape(d,['id','from','to','reason','decidedUTC'])||typeof d.id!=='string'||
+    !validSource(d.from)||!validSource(d.to)||d.from.finding_id!==d.id||d.to.finding_id!==d.id||
+    typeof d.reason!=='string'||d.reason.trim().length<8||d.reason.length>800||
+    typeof d.decidedUTC!=='string'||!/^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$/.test(d.decidedUTC)||
+    !Number.isFinite(Date.parse(d.decidedUTC)))throw Error('PRIVATE HUMAN carry decision is not bound to authenticated original source history.');
+ }
+ H.restore({context:ctx,snapshots:restored,notes,decisions},currentVersion);
  say('Encrypted checkpoint reopened with exact CSV-byte and original canonical source SHA-256 verification. No permission, fix or retest verified.');
 }
 $('archiveSave').addEventListener('click',async()=>{try{await save();}catch(e){say(e.message,true);}finally{$('archivePass').value='';}});
