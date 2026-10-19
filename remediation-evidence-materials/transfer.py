@@ -55,7 +55,7 @@ def required_private_file(path: Path, suffix: str, vault, limit: int) -> bytes:
     return vault._private_input(path.expanduser().absolute(), limit)
 
 
-def current_human(args, vault) -> tuple[dict, dict, dict]:
+def current_human(args, vault, *, keep_passphrase_fingerprint: bool = False) -> tuple:
     # Original DomainStore authentication and current exact tenant + engagement
     # are performed every time, before any material is accepted or disclosed.
     current = ORIGINAL._authorized_summary(db=args.db, email=args.email,
@@ -81,6 +81,9 @@ def current_human(args, vault) -> tuple[dict, dict, dict]:
                            count=count, client=args.client_id,
                            engagement=args.engagement_id)
     indexed = native._records(packet, _current_rows(raw))
+    # Return only a one-way passphrase digest for caller-side separation.
+    if keep_passphrase_fingerprint:
+        return envelope, packet, indexed["attachments"], digest(password)
     return envelope, packet, indexed["attachments"]
 
 
@@ -110,7 +113,8 @@ def parse_selection(raw: bytes) -> list[dict]:
 
 
 def pack(args, vault) -> None:
-    envelope, packet, indexed = current_human(args, vault)
+    envelope, packet, indexed, old_key_digest = current_human(
+        args, vault, keep_passphrase_fingerprint=True)
     selection = parse_selection(required_private_file(
         args.selection, ".json", vault, MAX_SELECTION))
     all_material = []
@@ -151,6 +155,8 @@ def pack(args, vault) -> None:
     if len(payload) > vault.MAX_PLAIN:
         raise ValueError("Original vault capacity exceeded; use a smaller material selection.")
     replacement = vault._password("NEW private transfer passphrase: ", fresh=True)
+    if digest(replacement) == old_key_digest:
+        raise ValueError("New transfer passphrase must differ from original HUMAN source passphrase.")
     ciphertext = vault._seal(vault._inner(payload, "application/json"), replacement)
     out = args.output.expanduser().absolute()
     if out.suffix.lower() != ".ltv" or out == args.human.expanduser().absolute():
