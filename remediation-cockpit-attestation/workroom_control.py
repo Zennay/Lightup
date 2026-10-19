@@ -46,13 +46,16 @@ def inspect(root: Path, secret: Path) -> dict:
             (original_fields, original_fields | {"navigation"}))
     if "navigation" in manifest:
         import linked_board
+        import linked_board_v2
         import workroom_home
         import workroom_home_v2
-        require(manifest["navigation"] in (linked_board.MODE, workroom_home_v2.MODE))
-        original_browser = linked_board.render(plan)
-        expected_home = (workroom_home.render(plan) if
-                         manifest["navigation"] == linked_board.MODE else
-                         workroom_home_v2.render(plan))
+        require(manifest["navigation"] in (linked_board.MODE, linked_board_v2.MODE))
+        if manifest["navigation"] == linked_board.MODE:
+            original_browser = linked_board.render(plan)
+            expected_home = workroom_home.render(plan)
+        else:
+            original_browser = linked_board_v2.render(plan)
+            expected_home = workroom_home_v2.render(plan)
     else:
         # Keep every previously published original PRIVATE workroom readable.
         original_browser = coordination.render(plan)
