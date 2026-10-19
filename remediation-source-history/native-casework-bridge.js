@@ -73,7 +73,7 @@ const safe=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'
 const FIELDS=['owner','status','due_date','next_action','verification_plan','blocker','note','updated_utc'];
 function resetStage(){
  staged=null;stagedRevision=-1;checked.clear();fieldChoices.clear();
- $('mergeReview').hidden=true;$('mergeHumanAck').checked=false;
+ $('mergeReview').hidden=true;$('mergeHumanAck').checked=false;$('mergeReason').value='';
  $('mergeSource').textContent='No original source-bound Casework review staged.';
  $('mergeRows').innerHTML='';$('mergeFields').textContent='';
  $('mergeAccept').disabled=true;
@@ -147,7 +147,7 @@ function applyReview(){
    ' existing conflicting HUMAN notes? All other local notes and original findings remain unchanged. Save encrypted PRIVATE backup before merging. No grants/retests/fixes are confirmed.'))return;
  const decisions=[...checked].map(id=>({id,fields:[...(fieldChoices.get(id)||new Set())]}));
  if(decisions.some(d=>!d.fields.length))throw Error('Choose at least one changed incoming HUMAN field for every selected original record.');
- const result=H.mergeCasework(staged,stagedRevision,decisions);
+ const result=H.mergeCasework(staged,stagedRevision,decisions,$('mergeReason').value);
  resetStage();
  $('nativeCaseworkFile').value='';
  status('Reconciled '+result.fieldsMerged+' selected HUMAN fields on '+result.accepted+' exact-source records, retained '+result.retained+
