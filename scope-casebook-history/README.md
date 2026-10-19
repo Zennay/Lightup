@@ -76,6 +76,18 @@ The browser is HTML+CSS only: strict default-deny CSP with one pinned local styl
 
 **Classification is strictly observational:** Missing grant ≠ revocation, approved request record ≠ separate present client/operator consent, same source row ≠ durable live authorization, fewer HOLD categories ≠ safer system, no difference ≠ PASS. Never use to authorize active targets. A reviewer must return to the **original current authenticated domain state** with all original scope/approval/revocation and independent client/operator permission checks.
 
+## Offline HUMAN follow-up workroom, directly from report
+
+Open the generated private \`index.html\` locally. Its navigation now links the PRIVATE original engagement queue, original recorded changed fields, human summary and an editable **PRIVATE human follow-up CSV template**. The anonymous \`anonymous.html\` links only source-free count exports. Everything is local, without scripts, model calls, uploads or live source access.
+
+The editable sheet contains **exact original engagement ID**, unchanged source-declared next action and attention category, followed by three human-only editable fields. Retain the first three columns unchanged. Human reviewers may choose:
+
+- \`human_stage\`: \`unreviewed\`, \`investigating\`, \`awaiting-owner\`, \`documented\`.
+- \`human_followup_route\`: \`unassigned\`, \`original-scope-owner\`, \`client-clarification\`, \`independent-security-review\`, \`operator-followup\`.
+- \`human_blocker\`: \`none\`, \`missing-source\`, \`missing-owner\`, \`needs-independent-consent\`, \`requires-revocation-review\`, \`unresolved-tenant-lineage\`.
+
+This is a portable, non-authorizing human collaboration sheet. The initial sheet comes from real original source-owner Casebook records; the **human selections are not authenticated**, do not change the original database, and never create/close a genuine risk approval, engagement or authorization grant. Treat the sheet as private: it contains original engagement IDs and original source action labels. The built-in report never treats "documented" as a verified remediation or allows a PASS.
+
 ## PRIVATE exact-source reopening
 
 After transfer or operator handoff, reopen the existing history against the **same original source bytes in the same chosen order**:
