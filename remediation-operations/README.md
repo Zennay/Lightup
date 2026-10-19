@@ -13,6 +13,14 @@
 
 **Use the packaged ZIP rather than saving the launcher HTML alone:** it contains all four original source-owned standalone apps and their required files. For a checkout, open the launcher at `remediation-operations/index.html` directly; same relative links.
 
+## NEW: full ORIGINAL-finding human coverage across four applications
+
+Open [PRIVATE Cross-app HUMAN Inbox](triage.html) (also accessible from the main landing page). **Start with the exact original Handoff Inbox / Runbook input `lightup.private_human_original_finding_workplan` JSON** and optionally import the original Ledger's `lightup.private_artifact_ledger`, Runbook Editor's `lightup.private_human_remediation_runbooks`, and Response Register's `lightup.private_human_response_reconciliation` JSON exports. It reads these existing source-owned formats directly and never converts or overwrites them.
+
+The all-finding desk shows listed evidence fingerprints, original response requests/replies, human runbook step counts, unassigned human owners, tentative HUMAN due dates and clarification-needed markers. Choose the original-finding/user-search, missing-file/runbook, unanswered and owner filters. Source join **refuses** mismatched canonical original source SHA, client/engagement labels, source counts, unknown/duplicate finding IDs or non-false authority flags; every optional import is admitted atomically. An unimported optional dataset appears as **unknown**, not as an evidence/fix gap. A full workplan replacement forgets all linked optional records.
+
+Export a scriptless PRIVATE printable HUMAN team agenda, owner-minimized HUMAN brief (requires selected declared owner), source-binding membership receipt, or anonymous counts-only CSV. Browser processes in memory only: do not close before exporting source files from their original apps. Original owner identities, findings, evidence, authorization, exact-source authenticity and client/operator consent remain **UNVERIFIED**. The human inbox never marks a security issue fixed or authorizes an action.
+
 ## Offline package integrity check
 
 The included `remediation-operations/verify_local_bundle.py` is a human-operator utility, not a QA or regression suite: it can check local extracted source files against the bundled SHA-256 inventory or inspect the archive in-place without extracting or running source. Run `python3 remediation-operations/verify_local_bundle.py` from your extracted workspace, or `python3 remediation-operations/verify_local_bundle.py --zip remediation-operations/LightUp-PRIVATE-Evidence-Hub.zip`. It rejects duplicate/unsafe archive entries, invalid JSON identities, missing source applications, changed source bytes, incorrect source lengths and non-false release assertions; it performs no network calls or source execution. Matching content integrity does NOT authenticate GitHub ownership, signatures, CI, permission or human approval.
