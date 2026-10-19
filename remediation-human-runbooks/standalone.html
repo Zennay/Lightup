@@ -239,11 +239,20 @@ function save(){if(!state)fail('import original source first');if(!window.confir
  download('LightUp-PRIVATE-HUMAN-runbooks.json',body,'application/json');exported=revision;dirty();message('Full PRIVATE HUMAN runbook saved. No original source/authorization changed.');}
 async function importWork(){
  var f=$('workFile').files[0];if(!f)fail('choose ORIGINAL PRIVATE HUMAN workplan first');
- if(state&&!confirmDiscard())return;
  var old=f,prior=revision,priorSource=state?binding(state):null,data=await read(f), next=sourceData(data);
  if($('workFile').files[0]!==old||revision!==prior||(state?binding(state):null)!==priorSource)fail('original workplan picker or UNSAVED local work changed while importing');
- state=next;revision=0;exported=0;pendingMerge=null;mergeUndo=null;clearMerge();$('mergeUndo').disabled=true;$('mergeFile').value='';$('filter').value='all';$('restoreFile').value='';$('editor').hidden=false;$('io').hidden=false;$('collab').hidden=false;render();dirty();
- message('Opened original source-declared PRIVATE HUMAN workplan. Draft runbooks below; no client authority or security outcome created.');
+ var retained=false;
+ if(state&&binding(next)===binding(state)){
+  if(!window.confirm('The NEW ORIGINAL HUMAN workplan claims the SAME exact source SHA/client/engagement and original finding IDs. KEEP existing PRIVATE local runbook steps and refresh original self-declared owner/stage context? Verify both source documents independently. The merge Undo will reset. Cancel to retain everything untouched.'))return;
+  if(revision!==prior||binding(state)!==priorSource)fail('local HUMAN planning changed before safe context refresh');
+  next.runbooks=new Map(state.ids.map(function(id){return [id,state.runbooks.get(id).map(function(step){return Object.assign({},step);})];}));
+  retained=true;
+ }else if(state&&!confirmDiscard())return;
+ if(revision!==prior||(state?binding(state):null)!==priorSource)fail('PRIVATE local HUMAN state changed before source switch confirmation');
+ state=next;if(retained){revision++;}else{revision=0;exported=0;}
+ pendingMerge=null;mergeUndo=null;clearMerge();$('mergeUndo').disabled=true;$('mergeFile').value='';$('filter').value='all';$('restoreFile').value='';
+ $('editor').hidden=false;$('io').hidden=false;$('collab').hidden=false;render();dirty();
+ message(retained?'Original HUMAN context refreshed for exact DECLARED source binding: all own PRIVATE steps retained, reviewer merge Undo cleared. Independently authenticate source before handoff.':'Opened original source-declared PRIVATE HUMAN workplan. Draft runbooks below; no client authority or security outcome created.');
 }
 async function restore(){
  if(!state)fail('load original workplan first');var f=$('restoreFile').files[0];if(!f)fail('choose exported PRIVATE runbooks JSON');
