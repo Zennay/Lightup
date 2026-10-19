@@ -76,6 +76,16 @@ footer{text-align:center;color:#466074;padding:1rem}
  <input type="file" id="restoreFile" accept=".json,application/json">
  <div class="actions"><button id="restore">Preview and replace local HUMAN runbooks</button></div>
 </section>
+<section id="collab" hidden>
+ <h2>4 · PRIVATE HUMAN reviewer collaboration</h2>
+ <p>Open another complete exported runbook from the same self-declared original source. Nonempty changes are previewed; conflicting HUMAN planning for the same finding must be resolved explicitly. This never verifies findings or changes the original evidence.</p>
+ <label for="mergeFile">Other reviewer PRIVATE complete runbook JSON (max 8 MiB)</label>
+ <input type="file" id="mergeFile" accept=".json,application/json">
+ <div class="actions"><button id="mergePreview" class="primary">Preview exact-source HUMAN differences</button><button id="mergeCancel">Discard preview</button><button id="mergeUndo" disabled>Undo last local HUMAN merge</button></div>
+ <p id="mergeSummary" class="meta"></p>
+ <div id="mergePanel" hidden><div id="mergeChoices"></div>
+ <div class="actions"><button class="primary" id="mergeApply" disabled>Apply manually resolved HUMAN differences</button></div></div>
+</section>
 </main>
 <footer>LightUp offline review desk · no scanners, network requests, secret storage, or verified remediation.</footer>
 <script nonce="TGlnaHRVcFJ1bmJvb2tMb2NhbDIwMjY=">
@@ -91,7 +101,7 @@ var SKEYS=['step_id','kind','description','precondition','responsible_alias','ro
 var RBKEYS=['kind','schema_version','disposition','source_contract','source_sha256','client_reference','engagement_reference','source_count','finding_ids','runbooks','warning'].concat(FLAGS);
 var BKEYS=['finding_id','steps'];
 var MAX=1048576, MAX_BACKUP=8388608, MAX_ROWS=350, MAX_STEPS=8, MAX_TOTAL=1600;
-var state=null, revision=0, exported=0;
+var state=null, revision=0, exported=0, pendingMerge=null, mergeUndo=null;
 var fail=function(s){throw Error('HOLD: '+s);};
 function exact(obj,keys){return obj!==null&&typeof obj==='object'&&!Array.isArray(obj)&&Object.getPrototypeOf(obj)===Object.prototype&&Object.keys(obj).length===keys.length&&Object.keys(obj).every(function(k){return keys.indexOf(k)>=0;});}
 function string(v,max,label,required){
@@ -142,8 +152,8 @@ function message(s,bad){$('notice').textContent=s;$('notice').dataset.error=Stri
 function dirty(){if(!state){$('dirty').textContent='No local storage. Import an original PRIVATE source first.';return;}
  $('dirty').textContent=revision!==exported?'UNSAVED PRIVATE runbooks: download a complete backup before closing or refreshing.':'PRIVATE runbooks locally unchanged since last export/restore.';}
 function confirmDiscard(){return revision===exported||window.confirm('UNSAVED PRIVATE human runbook content will be lost. Download complete PRIVATE backup first if needed. Continue?');}
-function reset(){state=null;revision=0;exported=0;$('workFile').value='';$('restoreFile').value='';$('source').textContent='No PRIVATE source loaded.';$('editor').hidden=true;$('io').hidden=true;$('finding').replaceChildren();$('steps').replaceChildren();$('details').replaceChildren();$('summary').textContent='';dirty();}
-function touch(){revision++;dirty();}
+function reset(){pendingMerge=null;mergeUndo=null;clearMerge();$('mergeUndo').disabled=true;$('mergeFile').value='';$('collab').hidden=true;state=null;revision=0;exported=0;$('workFile').value='';$('restoreFile').value='';$('source').textContent='No PRIVATE source loaded.';$('editor').hidden=true;$('io').hidden=true;$('finding').replaceChildren();$('steps').replaceChildren();$('details').replaceChildren();$('summary').textContent='';dirty();}
+function touch(){revision++;pendingMerge=null;mergeUndo=null;clearMerge();$('mergeUndo').disabled=true;dirty();}
 function binding(s){return JSON.stringify([s.source_contract,s.source_sha256,s.client_reference,s.engagement_reference,s.ids.slice().sort()]);}
 function opt(label,value){var el=document.createElement('option');el.value=value;el.textContent=label;return el;}
 function element(tag,text){var el=document.createElement(tag);el.textContent=String(text);return el;}
@@ -230,7 +240,7 @@ async function importWork(){
  if(state&&!confirmDiscard())return;
  var old=f, data=await read(f), next=sourceData(data);
  if($('workFile').files[0]!==old)fail('original workplan picker changed while loading');
- state=next;revision=0;exported=0;$('filter').value='all';$('restoreFile').value='';$('editor').hidden=false;$('io').hidden=false;render();dirty();
+ state=next;revision=0;exported=0;pendingMerge=null;mergeUndo=null;clearMerge();$('mergeUndo').disabled=true;$('mergeFile').value='';$('filter').value='all';$('restoreFile').value='';$('editor').hidden=false;$('io').hidden=false;$('collab').hidden=false;render();dirty();
  message('Opened original source-declared PRIVATE HUMAN workplan. Draft runbooks below; no client authority or security outcome created.');
 }
 async function restore(){
@@ -244,7 +254,7 @@ async function restore(){
  if(before!==revision||ref!==binding(state)||$('restoreFile').files[0]!==f)fail('PRIVATE source, file or local revision changed while restoring');
  if(!window.confirm('REPLACE all local HUMAN runbooks with the exact-original-source-bound PRIVATE backup? Export current work first. No original evidence, owners or grants will be updated.'))return;
  if(before!==revision||ref!==binding(state))fail('stale local state during confirmation');
- state.runbooks=rows;revision++;exported=revision;$('restoreFile').value='';render();dirty();message('Restored complete HUMAN-only runbooks for exact original finding set.');
+ state.runbooks=rows;revision++;exported=revision;pendingMerge=null;mergeUndo=null;clearMerge();$('mergeUndo').disabled=true;$('restoreFile').value='';render();dirty();message('Restored complete HUMAN-only runbooks for exact original finding set.');
 }
 function esc(s){return String(s).replace(/[&<>"']/g,function(ch){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch];});}
 function printOne(){
@@ -323,10 +333,88 @@ function counts(){
  var csv='human_stage,count\r\n'+Array.from(c.keys()).sort().map(function(k){return '"'+k+'",'+c.get(k);}).join('\r\n')+'\r\n';
  download('LightUp-HUMAN-runbook-counts.csv',csv,'text/csv;charset=utf-8');message('Anonymous stage counts exported; no verified remediation assertions.');
 }
+
+/* Exact-source independent human-reviewer runbook collaboration.
+   No source/admission/provenance authority or original records are modified. */
+function clearMerge(){
+ $('mergePanel').hidden=true;$('mergeChoices').replaceChildren();$('mergeSummary').textContent='';$('mergeApply').disabled=true;
+}
+function verifyMergePacket(p,ctx){
+ if(!exact(p,RBKEYS)||p.kind!=='lightup.private_human_remediation_runbooks'||p.schema_version!==1||
+ p.disposition!=='UNVERIFIED_HUMAN_PLANNING_ONLY'||p.source_count!==ctx.ids.length||
+ FLAGS.some(function(k){return p[k]!==false;}))fail('other reviewer packet is not an exact original-source HUMAN runbook');
+ ['source_contract','source_sha256','client_reference','engagement_reference'].forEach(function(k){if(p[k]!==ctx[k])fail('other reviewer '+k+' mismatches original');});
+ if(!Array.isArray(p.finding_ids)||JSON.stringify(p.finding_ids)!==JSON.stringify(ctx.ids))fail('other reviewer original finding-ID membership/order differs');
+ string(p.warning,500,'other reviewer private warning',true);
+ return validateBooks(p.runbooks,ctx);
+}
+function compareMerge(incoming){
+ var changes=[];
+ state.ids.forEach(function(id){
+  var old=state.runbooks.get(id),other=incoming.get(id);
+  if(JSON.stringify(old)===JSON.stringify(other)||other.length===0)return; // Blank incoming must not erase private local work
+  changes.push({id:id,local:old.map(function(s){return Object.assign({},s);}),other:other.map(function(s){return Object.assign({},s);}),
+   conflict:old.length>0,choice:old.length>0?'':'incoming'});
+ });
+ return changes;
+}
+function refreshMergeChoices(){
+ if(!pendingMerge)return;var panel=$('mergeChoices');panel.replaceChildren();$('mergePanel').hidden=false;
+ var ch=pendingMerge.changes,conflicts=ch.filter(function(x){return x.conflict;});
+ $('mergeSummary').textContent=ch.length+' nonempty proposed HUMAN changes · '+conflicts.length+
+ ' conflicting original findings. Resolve every conflict; no verified fix or authority is involved.';
+ ch.forEach(function(change){
+  var box=document.createElement('article');box.className='step';box.append(element('h3','Original finding '+change.id+(change.conflict?' · HUMAN conflict':' · new HUMAN proposal')));
+  box.append(element('p','LOCAL steps ('+change.local.length+'): '+change.local.map(function(s){return s.description+' ['+s.human_stage+']';}).join(' | ')));
+  box.append(element('p','OTHER REVIEWER proposed steps ('+change.other.length+'): '+change.other.map(function(s){return s.description+' ['+s.human_stage+']';}).join(' | ')));
+  if(change.conflict){
+   var label=document.createElement('label');label.textContent='Resolve HUMAN-only change for original '+change.id;
+   var sel=document.createElement('select');sel.append(opt('Choose an explicit HUMAN resolution',''),opt('KEEP current local HUMAN steps','local'),opt('APPLY other reviewer HUMAN steps','incoming'));
+   sel.value=change.choice;sel.addEventListener('change',function(){change.choice=sel.value;$('mergeApply').disabled=ch.some(function(c){return c.conflict&&!['local','incoming'].includes(c.choice);});});
+   label.append(sel);box.append(label);
+  }
+  panel.append(box);
+ });
+ $('mergeApply').disabled=!ch.length||conflicts.some(function(c){return !c.choice;});
+}
+async function previewMerge(){
+ if(!state)fail('load original full HUMAN source');
+ var file=$('mergeFile').files[0];if(!file)fail('choose other reviewer complete PRIVATE runbook');
+ var prior=revision,anchor=binding(state),parsed=await read(file,MAX_BACKUP);
+ var incoming=verifyMergePacket(parsed,state);
+ if(prior!==revision||anchor!==binding(state)||$('mergeFile').files[0]!==file)fail('PRIVATE HUMAN reviewer file or local state changed while importing');
+ pendingMerge={revision:prior,source:anchor,file:file,packet:parsed,changes:compareMerge(incoming)};
+ refreshMergeChoices();message(pendingMerge.changes.length?'Other reviewer HUMAN plan differences ready for explicit local review.':'No new nonblank HUMAN proposals to merge.');
+}
+function applyMerge(){
+ var draft=pendingMerge;if(!draft)fail('preview another exact-source PRIVATE HUMAN runbook first');
+ if(revision!==draft.revision||binding(state)!==draft.source||$('mergeFile').files[0]!==draft.file)fail('reviewer merge preview stale');
+ var input=verifyMergePacket(draft.packet,state),fresh=compareMerge(input);
+ if(JSON.stringify(fresh.map(function(c){return [c.id,c.local,c.other,c.conflict];}))!==
+ JSON.stringify(draft.changes.map(function(c){return [c.id,c.local,c.other,c.conflict];})))fail('PRIVATE runbook differences changed since preview');
+ if(draft.changes.some(function(c){return c.conflict&&!['local','incoming'].includes(c.choice);}))fail('unresolved HUMAN conflict');
+ var applies=draft.changes.filter(function(c){return c.choice==='incoming';});
+ if(!applies.length){pendingMerge=null;clearMerge();message('No HUMAN runbook was overwritten. Local proposals preserved.');return;}
+ if(!window.confirm('Replace LOCAL HUMAN steps for '+applies.length+' exact original finding(s) with selected other-reviewer proposals? This is a PRIVATE human edit, not an original source change or approved fix.'))return;
+ if(revision!==draft.revision||binding(state)!==draft.source)fail('local HUMAN work changed during confirmation');
+ var old=new Map(state.ids.map(function(id){return [id,state.runbooks.get(id).map(function(v){return Object.assign({},v);})];}));
+ applies.forEach(function(c){state.runbooks.set(c.id,c.other.map(function(v){return Object.assign({},v);}));});
+ revision++;mergeUndo={prior:old,revision:revision,source:draft.source};pendingMerge=null;clearMerge();$('mergeUndo').disabled=false;render();dirty();
+ message('Merged '+applies.length+' exact-source HUMAN runbooks. Undo available until another local edit.');
+}
+function undoMerge(){
+ var entry=mergeUndo;if(!entry||entry.revision!==revision||entry.source!==binding(state))fail('last HUMAN merge no longer safe to undo');
+ if(!window.confirm('Undo only the last PRIVATE local reviewer runbook merge? External PRIVATE downloads are unaffected.'))return;
+ state.runbooks=new Map(Array.from(entry.prior,function(pair){return [pair[0],pair[1].map(function(s){return Object.assign({},s);})];}));
+ revision++;mergeUndo=null;pendingMerge=null;clearMerge();$('mergeUndo').disabled=true;render();dirty();message('Previous local HUMAN runbooks restored. No original findings or approvals were changed.');
+}
+
 var bind=function(id,event,fn){$(id).addEventListener(event,function(){try{Promise.resolve(fn()).catch(function(e){message(e.message,true);});}catch(e){message(e.message,true);}});};
 bind('loadWork','click',importWork);bind('restore','click',restore);bind('save','click',save);bind('print','click',printOne);bind('counts','click',counts);bind('add','click',add);
 bind('removeAll','click',function(){if(!current().length)return;if(!window.confirm('Delete all LOCAL human steps for this finding?'))return;state.runbooks.set(selected(),[]);touch();render();});
 bind('forget','click',function(){if(!confirmDiscard())return;reset();message('All loaded PRIVATE source and HUMAN planning content cleared from this page. Existing downloads remain on disk.');});
+bind('mergePreview','click',previewMerge);bind('mergeCancel','click',function(){pendingMerge=null;clearMerge();message('Other reviewer preview discarded; local HUMAN planning unchanged.');});bind('mergeApply','click',applyMerge);bind('mergeUndo','click',undoMerge);
+bind('mergeFile','change',function(){pendingMerge=null;clearMerge();message('Other-reviewer PRIVATE file changed. Generate a fresh exact-source preview.');});
 bind('filter','change',render);bind('finding','change',render);
 bind('ownerSelect','change',function(){$('ownerExport').disabled=!$('ownerSelect').value;$('ownerPrint').disabled=!$('ownerSelect').value;});bind('ownerExport','click',ownerHandoff);bind('ownerPrint','click',ownerPrintable);
 window.addEventListener('beforeunload',function(e){if(state&&revision!==exported){e.preventDefault();e.returnValue='';}});
