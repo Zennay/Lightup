@@ -51,11 +51,91 @@
       if (originals[i] !== "casebook-" + String(i + 1).padStart(2, "0") + ".json")
         fail("Casebook-bronbestanden moeten beginnen bij 01 zonder hiaten.");
   }
+  function parseCasebookJson(bytes) {
+    // Strict offline source-shape intake only. Does not authenticate producer or authorization.
+    let text;
+    try { text = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(bytes); }
+    catch { fail("Casebook-bronbestand bevat ongeldig UTF-8."); }
+    let document;
+    try { document = JSON.parse(text); }
+    catch { fail("Casebook-bronbestand is geen geldig JSON."); }
+    let i = 0;
+    const skip = () => { while (i < text.length && /[\u0020\u0009\u000A\u000D]/.test(text[i])) i++; };
+    function string() {
+      if (text[i] !== '"') fail("Ongeldige JSON-bronstructuur.");
+      const start = i++;
+      while (i < text.length) {
+        if (text[i] === "\\") { i += 2; continue; }
+        if (text[i++] === '"') return JSON.parse(text.slice(start, i));
+      }
+      fail("Ongeldige JSON-brontekst.");
+    }
+    function value(depth) {
+      if (depth > 32) fail("Casebook-bronstructuur te diep.");
+      skip();
+      if (text[i] === "{") {
+        i++; skip();
+        const keys = new Set();
+        if (text[i] === "}") { i++; return; }
+        while (i < text.length) {
+          const key = string();
+          if (keys.has(key)) fail("Dubbele JSON-sleutel in oorspronkelijk Casebook-bestand.");
+          keys.add(key); skip();
+          if (text[i++] !== ":") fail("Ongeldige JSON-bronstructuur.");
+          value(depth + 1); skip();
+          if (text[i] === "}") { i++; return; }
+          if (text[i++] !== ",") fail("Ongeldige JSON-bronstructuur.");
+          skip();
+        }
+        fail("Onvolledige JSON-bronstructuur.");
+      }
+      if (text[i] === "[") {
+        i++; skip();
+        if (text[i] === "]") { i++; return; }
+        while (i < text.length) {
+          value(depth + 1); skip();
+          if (text[i] === "]") { i++; return; }
+          if (text[i++] !== ",") fail("Ongeldige JSON-bronstructuur.");
+        }
+        fail("Onvolledige JSON-bronlijst.");
+      }
+      if (text[i] === '"') { string(); return; }
+      const start = i;
+      while (i < text.length && !/[\u0020\u0009\u000A\u000D,\]}]/.test(text[i])) i++;
+      if (i === start) fail("Ongeldige JSON-bronwaarde.");
+    }
+    value(0); skip();
+    if (i !== text.length) fail("Extra niet-toegelaten Casebook-brondata.");
+    if (!document || typeof document !== "object" || Array.isArray(document))
+      fail("Geen geldig oorspronkelijk Casebook-object.");
+    const expected = ["schema", "status", "source", "as_of", "client_id",
+      "requests", "engagements", "grants", "risk_approvals", "case_overview",
+      "declared_counts", "source_authenticated", "client_consent_verified",
+      "operator_consent_verified", "authorization_granted", "execution_allowed",
+      "release_approved"];
+    if (Object.keys(document).length !== expected.length ||
+        expected.some(key => !Object.prototype.hasOwnProperty.call(document, key)) ||
+        document.schema !== "lightup.auth_casebook.v1" ||
+        document.status !== "REVIEW_ONLY" ||
+        document.source !== "original_persisted_domain_unverified" ||
+        typeof document.client_id !== "string" ||
+        !/^[\x21-\x7e]{1,180}$/.test(document.client_id) ||
+        ["requests", "engagements", "grants", "risk_approvals", "case_overview"]
+          .some(key => !Array.isArray(document[key])) ||
+        !document.declared_counts || typeof document.declared_counts !== "object" ||
+        Array.isArray(document.declared_counts) ||
+        ["source_authenticated", "client_consent_verified", "operator_consent_verified",
+         "authorization_granted", "execution_allowed", "release_approved"]
+          .some(key => document[key] !== false))
+      fail("Oorspronkelijke Casebook-v1 bronvorm/HUMAN-only authority-declaraties zijn niet compatibel.");
+    return document.client_id;
+  }
   async function collectSources(fileList) {
     const files = Array.from(fileList).sort((a, b) => a.name < b.name ? -1 : a.name > b.name ? 1 : 0);
     checkNames(files);
     let total = 0;
     const records = [];
+    let sourceClient = null;
     for (const f of files) {
       if (!Number.isSafeInteger(f.size) || f.size < 1 || f.size > MAX_EACH)
         fail("Elk geselecteerd bestand moet 1 byte tot 4 MiB groot zijn.");
@@ -63,6 +143,12 @@
       if (total > MAX_TOTAL) fail("De totale ongecodeerde bronset mag niet groter zijn dan 12 MiB.");
       const bytes = new Uint8Array(await f.arrayBuffer());
       if (bytes.length !== f.size) fail("Bronbestand wijzigde tijdens het lezen.");
+      if (f.name.endsWith(".json")) {
+        const declaredClient = parseCasebookJson(bytes);
+        if (sourceClient !== null && sourceClient !== declaredClient)
+          fail("Casebook-bundel mengt verschillende oorspronkelijke client-ID's.");
+        sourceClient = declaredClient;
+      }
       records.push({ name: f.name, size: bytes.length, sha256: await sha(bytes), bytes });
     }
     return records;
@@ -212,7 +298,7 @@
           body.schema !== SCHEMA || body.version !== 1 || !Array.isArray(body.files))
         fail("Niet-herkende overdrachtsinhoud.");
       checkNames(body.files);
-      const candidate = []; let total = 0;
+      const candidate = []; let total = 0; let sourceClient = null;
       for (const r of body.files) {
         if (!exactKeys(r, ["name", "size", "sha256", "content_b64"]) ||
             !Number.isSafeInteger(r.size) || r.size < 1 || r.size > MAX_EACH ||
@@ -223,6 +309,12 @@
         const bytes = from64(r.content_b64);
         if (bytes.length !== r.size || await sha(bytes) !== r.sha256)
           fail("Oorspronkelijke bronbytes/digest komen niet overeen met de inhoud.");
+        if (r.name.endsWith(".json")) {
+          const declaredClient = parseCasebookJson(bytes);
+          if (sourceClient !== null && sourceClient !== declaredClient)
+            fail("Ontsleutelde bronset mengt verschillende oorspronkelijke client-ID's.");
+          sourceClient = declaredClient;
+        }
         candidate.push({ name: r.name, size: r.size, sha256: r.sha256, bytes });
       }
       if (!window.confirm("Alle " + candidate.length +
