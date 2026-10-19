@@ -131,11 +131,13 @@
     row.appendChild(cell);
   };
   const summary = data => {
-    const totals={packets:data.length,slots:0,questions:0,attention:0,dated:0,planned:0};
+    const totals={packets:data.length,slots:0,questions:0,attention:0,dated:0,planned:0,
+      stages:{unassigned:0,assigned:0,waiting_human:0,locally_answered:0}};
     for(const item of data){
       totals.slots+=item.slots;totals.questions+=item.questions;
       if(item.plan){totals.planned++;totals.attention+=item.plan.attention;
-        totals.dated+=item.plan.dated;}
+        totals.dated+=item.plan.dated;
+        for(const stage of STAGES)totals.stages[stage]+=item.plan.stages[stage];}
     }
     return totals;
   };
@@ -167,7 +169,10 @@
     $("freeze").disabled=entries.length===0;
     $("forgetEarlier").disabled=earlier===null;
     $("exportDelta").disabled=earlier===null || entries.length===0;
+    $("exportBrief").disabled=entries.length===0;
     $("missing").textContent=String(total.packets-total.planned);
+    for(const stage of STAGES)$("stage_"+stage).textContent=
+      String(total.stages[stage])+" recorded slot appearances";
     const former=earlier;
     $("earlierLabel").textContent=former===null?"None saved in memory":"Earlier numeric counters held in memory";
     const baselineCells=[["packets","deltaPackets"],["slots","deltaSlots"],
@@ -213,6 +218,38 @@
   });
   $("forgetEarlier").addEventListener("click",()=>{
     earlier=null;render();showStatus("Earlier numeric snapshot forgotten.");
+  });
+  const brief = () => {
+    const t=summary(entries);
+    const lines=[
+      "LIGHTUP | PRIVATE HUMAN FOLLOW-UP BRIEF",
+      "Incubate M3/M7 PLAN-LAB ONLY / DRAFT HOLD",
+      "Source-free anonymous packet appearances; NOT matched cases.",
+      "No original source identity, evidence, consent, verified fix, or authority.",
+      "",
+      "Packet appearances: "+t.packets,
+      "Source-free slot appearances: "+t.slots,
+      "Pending HUMAN questions (not fixes): "+t.questions,
+      "Planning-stage packets: "+t.planned,
+      "Attention slot appearances (only planning packets): "+t.attention,
+      "Locally dated slot appearances (only planning packets): "+t.dated,
+      "",
+      "HUMAN FOLLOW-UP"
+    ];
+    if(t.questions)lines.push("Ask original HUMAN source-owners to review outstanding questions locally.");
+    if(t.stages.unassigned)lines.push("Discuss assignment of unassigned slots in original PRIVATE workrooms.");
+    if(t.stages.waiting_human)lines.push("Review waiting_human stages in original PRIVATE workrooms.");
+    if(t.dated)lines.push("Review date-bearing slots only in original PRIVATE plans; exact dates are not imported.");
+    if(t.packets!==t.planned)lines.push("Some packets lack HUMAN planning states; missing means NOT PROVIDED.");
+    lines.push("Confirm source overlap privately; packet appearance changes are NOT remediation.",
+      "Counts may identify people in small populations; human disclosure approval required.",
+      "");
+    return lines.join("\n");
+  };
+  $("exportBrief").addEventListener("click",()=>{
+    if(!entries.length)return;
+    download("lightup-private-human-followup.txt","text/plain",brief());
+    showStatus("Local PRIVATE HUMAN brief saved; no original evidence or identity included.");
   });
   $("exportDelta").addEventListener("click",()=>{
     if(earlier===null || entries.length===0)return;
