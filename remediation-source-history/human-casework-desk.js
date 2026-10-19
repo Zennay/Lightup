@@ -2,7 +2,8 @@
 (()=>{
 'use strict';
 const H=window.LightUpHistory,$=id=>document.getElementById(id);
-let selected='',seenRevision=-1;
+let selected='',seenRevision=-1,checkRevision=-1;
+const checked=new Set();
 const ranking={critical:0,high:1,medium:2,low:3,info:4};
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const csv=s=>{let t=String(s??'');const p=t.replace(/^[\u0000-\u0020\u007f-\u009f\u00a0\u1680\u2000-\u200f\u2028-\u202e\u205f\u2060-\u206f\u3000\ufeff]*/u,'').normalize('NFKC');if(/^[=+\-@]/u.test(p))t="'"+t;return '"'+t.replace(/"/g,'""')+'"';};
@@ -17,7 +18,10 @@ function humanRank(row,today){
  if(row.status==='unassigned')return 4;
  return 5;
 }
-const todayUTC=()=>new Date().toISOString().slice(0,10);
+const todayUTC=()=>{
+ const now=new Date(),pad=x=>String(x).padStart(2,'0');
+ return now.getFullYear()+'-'+pad(now.getMonth()+1)+'-'+pad(now.getDate());
+};
 function filtered(rows){
  const text=$('deskQuery').value.trim().toLowerCase(),severity=$('deskSeverity').value,status=$('deskStatus').value,filter=$('deskFocus').value;
  const today=todayUTC();
@@ -35,6 +39,7 @@ function filtered(rows){
 }
 function render(){
  const all=H.caseworkRows(),rows=filtered(all),today=todayUTC();
+ if(checkRevision!==H.revision()){checked.clear();checkRevision=H.revision();}
  $('deskSummary').textContent=all.length+' original-source findings · '+all.filter(x=>ranking[x.severity]<=1).length+
   ' source-labelled critical/high · '+all.filter(x=>x.status==='blocked').length+' HUMAN blocked · '+
   all.filter(x=>deadline(x,today)).length+' HUMAN overdue · '+
@@ -42,12 +47,12 @@ function render(){
  $('deskRows').innerHTML=rows.map(row=>{
   const held=['stale','missing'].includes(row.binding),late=deadline(row,today);
   const tags=[row.severity,row.status,held?'SOURCE HOLD':row.binding==='bound'?'ORIGINAL ROW':'NO HUMAN NOTES',late?'HUMAN overdue':''].filter(Boolean);
-  return '<tr><td><button class="link" type="button" data-case="'+esc(row.id)+'">'+esc(row.id)+'</button><small>'+esc(row.title.slice(0,130))+'</small></td>'+
+  return '<tr><td><label class="check"><input type="checkbox" data-check="'+esc(row.id)+'" '+(checked.has(row.id)?'checked ':'')+(held?'disabled ':'')+'aria-label="Select original finding for HUMAN batch"></label><button class="link" type="button" data-case="'+esc(row.id)+'">'+esc(row.id)+'</button><small>'+esc(row.title.slice(0,130))+'</small></td>'+
     '<td>'+tags.map(t=>'<small>'+esc(t)+'</small>').join('')+'</td>'+
     '<td>'+esc(row.owner||'Human owner unassigned')+'<small>'+esc(row.due||'No HUMAN due date')+'</small></td>'+
     '<td>'+esc((row.blocker||row.action||'No HUMAN action').slice(0,150))+'</td></tr>';
  }).join('');
- $('deskCount').textContent='Human queue showing '+rows.length+' original finding rows';
+ $('deskCount').textContent='Human queue showing '+rows.length+' original finding rows · '+checked.size+' selected for HUMAN batch';
  if(selected&&seenRevision!==H.revision()){
    // Reject silently reusing an edit form after a source revision or another HUMAN edit.
    selected='';$('deskEditor').hidden=true;
@@ -96,6 +101,39 @@ function download(){
  const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='lightup-PRIVATE-source-bound-human-casework-queue.csv';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
  notice('PRIVATE HUMAN worklist exported. Source-HOLD note contents remain excluded; recipient must be separately approved.');
 }
+function markVisible(){
+ const rows=filtered(H.caseworkRows()).filter(row=>!['stale','missing'].includes(row.binding));
+ if(rows.length>100)throw Error('HUMAN bulk plan is limited to 100 original source rows. Filter the queue more narrowly.');
+ checked.clear();for(const row of rows)checked.add(row.id);
+ checkRevision=H.revision();render();
+}
+function batch(){
+ H.privateAllowed();
+ if(checkRevision!==H.revision())throw Error('Source changed since selection; choose the original finding rows again.');
+ const ids=[...checked];if(!ids.length)throw Error('Select at least one eligible exact-source original finding.');
+ if(ids.length>100)throw Error('A HUMAN batch may change at most 100 original findings.');
+ const changes={
+  applyOwner:$('batchApplyOwner').checked,owner:$('batchOwner').value,
+  applyDue:$('batchApplyDue').checked,due:$('batchDue').value,
+  applyStatus:$('batchApplyStatus').checked,status:$('batchStatus').value
+ };
+ if(!changes.applyOwner&&!changes.applyDue&&!changes.applyStatus)
+  throw Error('Choose at least one specific HUMAN owner/status/date field to change.');
+ if(!$('batchHumanAck').checked)throw Error('Confirm that these are HUMAN-only tentative planning edits and not actual remediation/authorization.');
+ if(!window.confirm('Apply HUMAN-only planning edits to '+ids.length+' exact original source findings? This replaces the selected HUMAN fields only, leaves source and blockers untouched, and does NOT verify fixes or authorize targets.'))return;
+ const result=H.batchHumanPlan(ids,changes,checkRevision);
+ checked.clear();$('batchHumanAck').checked=false;render();
+ notice('Updated '+result.changed+' source-bound original HUMAN Casework rows atomically. Save an encrypted PRIVATE checkpoint or native Casework v1 handoff to retain the plan.');
+}
+$('deskRows').addEventListener('change',event=>{
+ const box=event.target.closest('input[data-check]');if(!box)return;
+ if(checkRevision!==H.revision()){checked.clear();render();return;}
+ if(box.checked)checked.add(box.dataset.check);else checked.delete(box.dataset.check);
+ $('deskCount').textContent=checked.size+' HUMAN original findings selected';
+});
+$('deskSelectVisible').addEventListener('click',()=>{try{markVisible();}catch(e){notice(e.message,true);}});
+$('deskClearSelection').addEventListener('click',()=>{checked.clear();render();});
+$('deskBatchApply').addEventListener('click',()=>{try{batch();}catch(e){notice(e.message,true);}});
 $('deskRows').addEventListener('click',event=>{
  const button=event.target.closest('button[data-case]');if(!button)return;
  try{open(button.dataset.case);}catch(e){notice(e.message,true);}
