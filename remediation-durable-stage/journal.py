@@ -315,7 +315,10 @@ def _recover(args, vault, folder, journal, current) -> None:
             "RECOVER ENCRYPTED HUMAN DRAFT"):
         raise ValueError("No HUMAN recovery acknowledgment.")
     _source_still_current(args, vault, current)
-    entry["sha256"] = _digest(vault._private_input(draft_path, vault.MAX_VAULT))
+    final_cipher_sha = _digest(vault._private_input(draft_path, vault.MAX_VAULT))
+    if final_cipher_sha != totals["_admitted_encrypted_sha256"]:
+        raise ValueError("Interrupted ORIGINAL HUMAN encrypted draft changed since admission.")
+    entry["sha256"] = final_cipher_sha
     entry["state"] = "staged"
     entry["updated"] = _utc()
     _write(folder, key, journal)

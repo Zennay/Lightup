@@ -101,6 +101,11 @@ def collect(record: dict, args, vault, envelope: dict, current: dict,
     totals["closed_human"] += 0
     totals["not_observed"] += 0
     totals["remaining_unclosed"] = sum(row["status"] != "closed_human" for row in rows)
+    if pending_recovery:
+        # This hash is internal to one CLI operation, never published in
+        # terminal reports or PRIVATE HTML. It pins the admitted ciphertext
+        # so no different file can be promoted after HUMAN password prompts.
+        totals["_admitted_encrypted_sha256"] = hashlib.sha256(encrypted).hexdigest()
     # Unverified human status, never native Apply or legal/consent outcome.
     return rows, dict(totals)
 
