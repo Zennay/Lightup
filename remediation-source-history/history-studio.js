@@ -534,7 +534,7 @@ window.LightUpHistory=Object.freeze({
     });
     return LightUpCasework.makePacket(latest.findings,cases,latest.sourceHash);
   },
-  carryHumanBatch(choices,expectedRevision){
+  carryHumanBatch(choices,expectedRevision,acknowledgedNativeReset=false){
     // Atomic PRIVATE HUMAN-only transfer; original security assertions and imported
     // native Casework statuses are never carried onto changed source fields.
     const ctx=requireContext();
@@ -553,6 +553,8 @@ window.LightUpHistory=Object.freeze({
       const previous=state.notes.get(x.id),current=latestFinding(x.id);
       if(!previous||!previous.sourceRecord||!current||noteBinding(x.id)!=='stale')
         throw Error('HOLD: one chosen historical HUMAN note does not match a changed original finding in the current source.');
+      if(previous.caseworkOriginal&&acknowledgedNativeReset!==true)
+        throw Error('HOLD: imported historical HUMAN Casework metadata would be cleared. Privately preserve an encrypted checkpoint and explicitly acknowledge this loss first.');
       const old=Object.fromEntries(FIELDS.map(k=>[k,previous.sourceRecord[k]]));
       const now=Object.fromEntries(FIELDS.map(k=>[k,current[k]]));
       if(FIELDS.some(k=>typeof old[k]!=='string'||typeof now[k]!=='string')||
@@ -582,6 +584,7 @@ window.LightUpHistory=Object.freeze({
       const matching=historical?state.snapshots.filter(s=>
         s.findings.some(f=>exact(f,historical))).map(s=>({label:s.label,sourceHash:s.sourceHash})):[];
       return [{id,binding,owner:n.owner||'',action:n.action||'',due:n.due||'',
+        hasNativeCasework:!!n.caseworkOriginal,
         status:n.caseworkOriginal?.status||'unassigned',
         blocker:n.caseworkOriginal?.blocker||'',verification_plan:n.caseworkOriginal?.verification_plan||'',
         note:n.caseworkOriginal?.note||'',sourceRecord:historical,
