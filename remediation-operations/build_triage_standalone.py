@@ -16,7 +16,7 @@ HUB = Path(__file__).resolve().parent
 ROOT = HUB.parent
 ORIGINAL = ROOT / "remediation-handoff-inbox" / "original-casework.js"
 TARGET = HUB / "triage-standalone.html"
-SOURCES = (ORIGINAL, HUB / "triage.js", HUB / "custody.js")
+SOURCES = (ORIGINAL, HUB / "triage.js", HUB / "custody.js", HUB / "windows-overlay.js")
 STYLES = (HUB / "theme.css", HUB / "triage.css")
 HTML = HUB / "triage.html"
 
@@ -42,7 +42,7 @@ def build() -> bytes:
         if html.count(tag) != 1:
             raise ValueError("Original CSS link changed; HOLD")
         html = html.replace(tag, "<style>" + stylesheet + "</style>" if name == "theme.css" else "", 1)
-    for name in ("../remediation-handoff-inbox/original-casework.js", "triage.js", "custody.js"):
+    for name in ("../remediation-handoff-inbox/original-casework.js", "triage.js", "custody.js", "windows-overlay.js"):
         tag = '<script src="' + name + '" defer></script>'
         if html.count(tag) != 1:
             raise ValueError("Original script dependency changed; HOLD")

@@ -17,7 +17,7 @@ const stepKeys=["step_id","kind","description","precondition","responsible_alias
 const stepKinds=["human_prepare","human_implementation_discussion","human_dependency_coordination","human_rollback_discussion","human_review_request"];
 const OWNER_STAGES=["acknowledged_unverified","needs_clarification","cannot_provide"];
 const entries={workplan:null,csv:null,artifact:null,runbook:null,response:null};
-let rendered=[],revision=0,custodyCoverage=null;
+let rendered=[],revision=0,custodyCoverage=null,humanWindows=null;
 const fail=reason=>{throw Error(reason);};
 const exact=(o,fields)=>o!==null&&typeof o==="object"&&!Array.isArray(o)&&Object.keys(o).length===fields.length&&fields.every(k=>Object.hasOwn(o,k));
 const canonical=(s,max=120,required=false)=>typeof s==="string"&&s.length<=max&&(!required||s.trim().length>0)&&!/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f\u202a-\u202e\u2066-\u2069\ud800-\udfff]/.test(s);
@@ -238,13 +238,14 @@ function records(){
  const work=entries.workplan,source=entries.csv?.byId,docs=entries.artifact?.byId,books=entries.runbook?.byId,responses=entries.response?.byId;
  return [...work.ids].map(id=>{
   const plan=work.rows.get(id),files=docs?.get(id)||[],steps=books?.get(id)||[],requests=responses?.get(id)||[];
+  const proposed=(humanWindows?.revision===revision?humanWindows.byFinding.get(id):null)||null;
   const needsReply=requests.some(r=>!r.reply);
   const needsHuman=plan.stage==="request_evidence_human"||plan.stage==="clarify_human_reply"||
     requests.some(r=>r.reply?.human_stage==="needs_changes"||
      r.review?.human_stage==="needs_human_followup"||r.feedback?.stage==="needs_clarification")||
     steps.some(s=>s.human_stage==="needs_human_input");
   const today=new Date().toISOString().slice(0,10),due=Boolean(plan.tentative_due&&plan.tentative_due<=today);
-  return {id,plan,source:source?.get(id)||null,files,steps,requests,needsReply,needsHuman,due,
+  return {id,plan,source:source?.get(id)||null,files,steps,requests,needsReply,needsHuman,due,proposed,
    custody:(!custodyCoverage||custodyCoverage.revision!==revision)?null:custodyCoverage.byFinding.get(id)||null,
    hasDocs:!!docs,hasBooks:!!books,hasResponse:!!responses};
  });
@@ -261,6 +262,8 @@ function summary(rows){
     String(rows.filter(r=>r.custody?.attention>0).length):"unknown",
     "Local SHA comparisons needing HUMAN review"],
   [String(rows.filter(r=>r.needsHuman).length),"Human input/clarification"],
+  [humanWindows&&humanWindows.revision===revision?
+    String(rows.filter(r=>r.proposed?.proposed_window>0).length):"unknown","Tentative HUMAN slot allocations"],
   [String(rows.filter(r=>r.due).length),"Tentative dates reached"],
   [String(rows.filter(r=>r.plan.stage==="human_handoff_prepared").length),"Human handoffs prepared"]
  ];
@@ -282,6 +285,8 @@ function filtered(rows){
   if(mode==="needs_reply"&&(!r.hasResponse||!r.needsReply))return false;
   if(mode==="custody_attention"&&(!r.custody||r.custody.attention===0))return false;
   if(mode==="needs_input"&&!r.needsHuman)return false;
+  if(mode==="unscheduled_window"&&(!r.proposed||r.proposed.proposed_window!==0))return false;
+  if(mode==="window_human_hold"&&(!r.proposed||!r.proposed.needs_human_review))return false;
   if(mode==="due"&&!r.due)return false;
   if(mode==="handoff"&&r.plan.stage!=="human_handoff_prepared")return false;
   return true;
@@ -318,6 +323,12 @@ function draw(){
     tag(article,"Local SHA matches: "+row.custody.matched+"/"+row.custody.listed+" Ledger rows");
     if(row.custody.attention>0)tag(article,row.custody.attention+" local SHA comparisons need HUMAN review","alert");
   }else if(row.hasDocs)tag(article,"Local file bytes not compared","unknown");
+  if(row.proposed){
+    tag(article,row.proposed.proposed_window>0?
+      "Proposed HUMAN UTC slot "+row.proposed.proposed_window+" · "+row.proposed.slot_start:
+      "No tentative HUMAN change window",row.proposed.proposed_window>0?"":"unknown");
+    if(row.proposed.needs_human_review)tag(article,"Change-window source reports HUMAN HOLD","alert");
+  }
   if(row.needsReply)tag(article,"Unanswered HUMAN requests","alert");
   if(row.needsHuman)tag(article,"Needs HUMAN input","alert");
   if(row.due)tag(article,"Tentative date reached","alert");
@@ -325,6 +336,13 @@ function draw(){
   for(const [label,value] of [
    ["SOURCE-reported title",row.source?.title||"Unknown (source CSV not imported)"],
    ["SOURCE-reported remediation",row.source?.remediation||"Unknown (source CSV not imported)"],
+   ["Tentative change-window discussion",row.proposed?
+      (row.proposed.proposed_window?
+       "Self-declared slot "+row.proposed.proposed_window+" / "+row.proposed.slot_start+" UTC":
+       "Unscheduled local HUMAN slot"):"Unknown (change-window plan not imported)"],
+   ["Change-window HUMAN follow-up",row.proposed?
+     row.proposed.human_followup_status+" · "+row.proposed.human_followup_due+" · "+row.proposed.human_followup_note:
+     "Unknown"],
    ["HUMAN tentative date",row.plan.tentative_due||"Unscheduled"],
    ["HUMAN next action",row.plan.next_action||"Not specified"],
    ["PRIVATE original HUMAN note",row.plan.private_note||"None"],
@@ -352,7 +370,10 @@ function printable(rows,ownerOnly=false){
   htmlEsc(r.plan.stage)+"</td><td>"+htmlEsc(r.plan.tentative_due)+"</td><td>"+
   htmlEsc(r.plan.next_action)+"</td><td>"+htmlEsc(r.plan.private_note)+"</td><td>"+
   (r.hasDocs?String(r.files.length):"unknown")+"</td><td>"+(r.hasBooks?String(r.steps.length):"unknown")+
-  "</td><td>"+(r.hasResponse?String(r.requests.filter(x=>!x.reply).length):"unknown")+"</td></tr>").join("");
+  "</td><td>"+(r.hasResponse?String(r.requests.filter(x=>!x.reply).length):"unknown")+
+  "</td><td>"+htmlEsc(r.proposed?(r.proposed.proposed_window?
+    "Tentative HUMAN UTC slot "+r.proposed.proposed_window+" · "+r.proposed.slot_start:
+    "Unscheduled HUMAN discussion"):"unknown")+"</td></tr>").join("");
  return "<!doctype html><html lang='en'><meta charset='utf-8'><meta http-equiv='Content-Security-Policy' content=\"default-src 'none'; style-src 'unsafe-inline'; connect-src 'none'; form-action 'none'\"><title>LightUp PRIVATE HUMAN team brief</title>"+
  "<style>body{font:15px system-ui;max-width:1100px;margin:40px auto;padding:0 20px;color:#111}table{border-collapse:collapse;width:100%;table-layout:fixed}td,th{border:1px solid #777;padding:8px;overflow-wrap:anywhere;vertical-align:top}p{line-height:1.5}</style>"+
  "<h1>PRIVATE HUMAN "+(ownerOnly?"one-owner":"team")+" coordination brief</h1>"+
@@ -360,7 +381,7 @@ function printable(rows,ownerOnly=false){
  "<p>Self-declared original source SHA: "+htmlEsc(source.source_sha256)+
  " · client: "+htmlEsc(source.client_reference)+" · engagement: "+htmlEsc(source.engagement_reference)+
  " · source finding count: "+source.source_count+"</p>"+
- "<table><thead><tr><th>Original finding ID</th><th>SOURCE CLAIM severity</th><th>SOURCE CLAIM title</th><th>Self-declared HUMAN owner</th><th>HUMAN stage</th><th>Tentative date</th><th>PRIVATE proposed next action</th><th>PRIVATE local HUMAN note</th><th>Listed artifacts</th><th>Runbook steps</th><th>Unanswered requests</th></tr></thead><tbody>"+
+ "<table><thead><tr><th>Original finding ID</th><th>SOURCE CLAIM severity</th><th>SOURCE CLAIM title</th><th>Self-declared HUMAN owner</th><th>HUMAN stage</th><th>Tentative date</th><th>PRIVATE proposed next action</th><th>PRIVATE local HUMAN note</th><th>Listed artifacts</th><th>Runbook steps</th><th>Unanswered requests</th><th>Human UTC change-window (not approved)</th></tr></thead><tbody>"+
  tr+"</tbody></table><p>Source-only and non-authorizing. PRIVATE: verify recipient, custody, printer and delivery channel. No execution or verified security fix.</p></html>";
 }
 function exportTeam(){
@@ -385,10 +406,11 @@ function anonymous(){
   const key=[r.plan.stage,r.plan.owner_alias?"assigned":"unassigned",
    r.hasDocs?(r.files.length?"listed":"none"):"unknown",
    r.hasBooks?(r.steps.length?"planned":"none"):"unknown",
-   r.hasResponse?(r.needsReply?"unanswered":"no_unanswered"):"unknown"].join("|");
+   r.hasResponse?(r.needsReply?"unanswered":"no_unanswered"):"unknown",
+   r.proposed?(r.proposed.proposed_window?"tentatively_assigned":"unscheduled"):"unknown"].join("|");
   groups.set(key,(groups.get(key)||0)+1);
  }
- const lines=["human_stage,owner_alias_presence,artifact_list_presence,runbook_presence,request_reply_presence,original_finding_count"];
+ const lines=["human_stage,owner_alias_presence,artifact_list_presence,runbook_presence,request_reply_presence,human_window_presence,original_finding_count"];
  for(const [key,n] of [...groups].sort(([a],[b])=>a.localeCompare(b)))lines.push(key.split("|").join(",")+","+n);
  if(!confirm("Export HUMAN-only anonymous group counts? Small groups can still allow inference, so check recipient and privacy context."))return;
  download("LightUp-anonymous-HUMAN-cross-app-coverage.csv",lines.join("\r\n")+"\r\n","text/csv");
@@ -432,7 +454,23 @@ window.addEventListener("lightup:local-custody",event=>{
     }]))}:null;
   if(loaded())draw();
 });
-window.LightUpHumanTriageBridge=Object.freeze({snapshot:()=>{
+window.addEventListener("lightup:human-change-windows",event=>{
+  const detail=event.detail;
+  if(detail&&detail.revision!==revision)return;
+  humanWindows=detail?{revision:detail.revision,
+    byFinding:new Map(detail.byFinding.map(row=>[row.finding_id,row]))}:null;
+  if(loaded())draw();
+});
+window.LightUpHumanTriageBridge=Object.freeze({sourceSnapshot:()=>{
+ if(!entries.workplan||!entries.csv)return null;
+ const base=entries.workplan.source;
+ return {revision,source_contract:base.source_contract,source_sha256:base.source_sha256,
+ client_reference:base.client_reference,engagement_reference:base.engagement_reference,
+ source_count:base.source_count,
+ original_findings:[...entries.csv.byId.values()].map(row=>({
+ finding_id:row.finding_id,severity:row.severity,retest_status:row.retest_status
+ }))};
+},parseHumanJSON:text=>parseStrict(text),snapshot:()=>{
  if(!entries.workplan||!entries.artifact)return null;
  const base=entries.workplan.source;return {revision,source_sha256:base.source_sha256,
  source_contract:base.source_contract,client_reference:base.client_reference,

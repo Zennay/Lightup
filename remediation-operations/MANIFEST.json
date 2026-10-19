@@ -304,9 +304,9 @@
       "sha256": "db0c347e1a05645ca54cb85be67ea64da37904570d6bd281ac463889edd9f7df"
     },
     {
-      "bytes": 14054,
+      "bytes": 15693,
       "path": "remediation-operations/README.md",
-      "sha256": "5f7a89f81d2a14b045fe652e89f7f548f98e0bdcd651515295426469bb5c1fe5"
+      "sha256": "139910f82b7b3a647e67e7f234567e84deddd640a7e1f60f8269abeed9c5d339"
     },
     {
       "bytes": 5840,
@@ -314,9 +314,9 @@
       "sha256": "81bb14defca2512ddf611d4bab34acd05ad86b8cf47cce3279ae492d421dbeeb"
     },
     {
-      "bytes": 3765,
+      "bytes": 3815,
       "path": "remediation-operations/build_triage_standalone.py",
-      "sha256": "035cb61867143daabc77929aba2c156b8ff5a113198e77239125fac9396f9dd8"
+      "sha256": "6c876535fc9e2d35288887f7a636ef064bfd4f9527c2813b479fd289a8e6fa4d"
     },
     {
       "bytes": 3627,
@@ -349,9 +349,9 @@
       "sha256": "e01f6e9258d80d37ef7bffe245a9eaf52602ffaca60dd21d6ee5072202058d60"
     },
     {
-      "bytes": 68360,
+      "bytes": 80218,
       "path": "remediation-operations/triage-standalone.html",
-      "sha256": "e22750629c4f214863a8f82ff1cd364b475b32cc9f8be560d4bd5bcee71526b7"
+      "sha256": "83dcec1a98a7374e24ac6ee9e8654b0cc6d3a970f1b6136acad0856297ef961e"
     },
     {
       "bytes": 1701,
@@ -359,19 +359,24 @@
       "sha256": "1e29205bd4c661415a4fc83ebd29521d1ba917a83361e83a766d6216b8a6d391"
     },
     {
-      "bytes": 8439,
+      "bytes": 8965,
       "path": "remediation-operations/triage.html",
-      "sha256": "234e554752655eb2413d7d535300223dab95f04ccbbba4a8e1ed6e5636af5e90"
+      "sha256": "54c8bfab1a4ba59e456e28eee25d7bda762cad887bfd8ec0f1012e430cc956e8"
     },
     {
-      "bytes": 32294,
+      "bytes": 34744,
       "path": "remediation-operations/triage.js",
-      "sha256": "24a2781ee6b659e59c67dc238b0b6220da140fd0b14aa790c8f6f6e78fca2e0a"
+      "sha256": "0d7a53613de137442aa90c77da028ec71180799180d9035b55a3ae207f4ce8da"
     },
     {
       "bytes": 8821,
       "path": "remediation-operations/verify_local_bundle.py",
       "sha256": "6f336229bd88142e48f321c1a0854be5eb10ea0b0132d783fba0252224c5d1ee"
+    },
+    {
+      "bytes": 8855,
+      "path": "remediation-operations/windows-overlay.js",
+      "sha256": "8fab32b16b3155efa8d9d3ba308e19ef6f9ff19130c6508832348a7fce5ce029"
     }
   ],
   "operator_consent": false,

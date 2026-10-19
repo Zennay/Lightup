@@ -1,5 +1,5 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-eYcj0E4oPbLtslLiD5Q5Z1gegJHXBozdidZXGr7elH8='; style-src 'sha256-K0Yn0zH9/W+duRiM6RqBDC6qaVcCGX+vXe3ydreE61o='; connect-src 'none'; img-src 'none'; font-src 'none'; object-src 'none'; frame-src 'none'; form-action 'none'; base-uri 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-+l0ha8OG2SjYp+mOGc/547U9LDP9JGwqH8gCyO9Ln1o='; style-src 'sha256-K0Yn0zH9/W+duRiM6RqBDC6qaVcCGX+vXe3ydreE61o='; connect-src 'none'; img-src 'none'; font-src 'none'; object-src 'none'; frame-src 'none'; form-action 'none'; base-uri 'none'">
 <title>LightUp · PRIVATE cross-app HUMAN triage</title><style>/* original bundle source: remediation-operations/theme.css */
 :root{color-scheme:dark;font-family:Inter,ui-sans-serif,system-ui,-apple-system,Segoe UI,sans-serif;background:#081221;color:#e9f1ff}*{box-sizing:border-box}body{margin:0}header,main,footer{max-width:1130px;margin:auto;padding:28px 24px}header{padding-top:54px}h1{font-size:clamp(2.3rem,6vw,4.5rem);letter-spacing:-.055em;line-height:1.1;margin:.25em 0}h2{font-size:1.5rem;letter-spacing:-.03em}h3{font-size:1.12rem}p{line-height:1.62;color:#b9c7d8}header>p{max-width:790px}.kicker,.step{font-size:.74rem;font-weight:800;letter-spacing:.13em;color:#70c8fb}nav{display:flex;gap:18px;flex-wrap:wrap;padding-top:22px}a{color:#85d9ff;text-underline-offset:4px}section{margin:0 0 34px;padding:24px 0}.intro{border-top:1px solid #33465c}.notice{padding:18px 22px;background:#15283b;border-left:4px solid #82c6ed;line-height:1.6;border-radius:5px}.cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}.cards article,.row{background:#102238;border:1px solid #2f4762;border-radius:12px;padding:22px}.cards article{display:flex;flex-direction:column;align-items:flex-start}.cards article p{flex:1}.cards a{margin-top:10px;font-weight:700}.cards a.secondary{font-size:.9rem;color:#b4cadc}.rows{display:grid;gap:12px}.row{display:grid;grid-template-columns:minmax(0,1fr) minmax(190px,240px);gap:14px}.row h3{margin:0}.row label{display:block;margin:6px 0;font-size:.82rem;color:#c9dcf1}.row textarea,.row select{width:100%;border:1px solid #476078;background:#08172b;color:white;border-radius:7px;padding:10px;font:inherit}.row textarea{resize:vertical;min-height:62px}.actions{display:flex;flex-wrap:wrap;gap:10px;margin:21px 0}button,.file-label{cursor:pointer;border-radius:8px;border:1px solid #77cbfd;background:#a2defe;color:#092139;padding:11px 14px;font:inherit;font-weight:700}.quiet{background:transparent;color:#9fd5f1}.file-label{display:inline-block}.small{font-size:.84rem}.counter{font-weight:750;color:#8fd3f9}#message{min-height:1.5rem;color:#b8eaff}footer{border-top:1px solid #283a50}code{font-family:ui-monospace,monospace;color:#e1eafe}@media(max-width:720px){.cards{grid-template-columns:1fr}.row{grid-template-columns:1fr}header{padding-top:25px}header,main,footer{padding-left:17px;padding-right:17px}}
 /* original bundle source: remediation-operations/triage.css */
@@ -13,11 +13,17 @@
 <article><h3>Original findings CSV (optional)</h3><label for="csv">Import exact five-column ORIGINAL findings export; locally compare canonical SHA-256 to original workplan</label><input type="file" id="csv" accept=".csv,text/csv"><p id="csv-state" class="intake-state">Not imported · source severity unknown</p></article>
 <article><h3>PRIVATE evidence artifact inventory</h3><label for="artifact">Import `lightup.private_artifact_ledger`</label><input type="file" id="artifact" accept=".json,application/json"><p id="artifact-state" class="intake-state">Not imported</p></article>
 <article><h3>PRIVATE HUMAN runbooks</h3><label for="runbook">Import `lightup.private_human_remediation_runbooks`</label><input type="file" id="runbook" accept=".json,application/json"><p id="runbook-state" class="intake-state">Not imported</p></article>
+<article><h3>PRIVATE HUMAN change-window plan</h3>
+<label for="human-windows">Import original Source Change Window Board JSON; requires source-matched findings CSV</label>
+<input type="file" id="human-windows" accept=".json,application/json">
+<p id="human-windows-state" class="intake-state">Not imported</p></article>
 <article><h3>PRIVATE response register</h3><label for="response">Import `lightup.private_human_response_reconciliation`</label><input type="file" id="response" accept=".json,application/json"><p id="response-state" class="intake-state">Not imported</p></article></div>
 <p id="source" class="source-line">No ORIGINAL HUMAN workplan loaded. Import that first.</p><div class="actions"><button id="forget" class="quiet" type="button">Forget all imported PRIVATE data</button></div><p role="status" id="notice" aria-live="polite"></p></section>
 <section id="workqueue" hidden><h2>2 · Whole-finding HUMAN coordination queue</h2><div class="stats" id="stats" aria-live="polite"></div><p class="small">A missing optional import is <strong>unknown</strong>, not zero or proof of missing evidence, rejected owner consent, completed retest or genuine severity. Original report/source labels are self-declared; urgency is advisory for HUMAN coordination only.</p>
 <div class="filters"><label>Find exact ID / declared owner / note<input id="query" type="search" placeholder="Search local HUMAN work"></label>
-<label>Human follow-up filter<select id="mode"><option value="all">All ORIGINAL findings</option><option value="critical_high">Original source CLAIM: critical/high</option><option value="missing_docs">No listed artifact (inventory imported)</option><option value="no_owner">No HUMAN owner alias</option><option value="no_steps">No runbook steps (runbooks imported)</option><option value="needs_reply">Unanswered original HUMAN request (register imported)</option><option value="custody_attention">Local SHA checks needing HUMAN review</option><option value="needs_input">HUMAN clarification/input flagged</option><option value="due">Tentative HUMAN due date reached</option><option value="handoff">Human handoff prepared</option></select></label>
+<label>Human follow-up filter<select id="mode"><option value="all">All ORIGINAL findings</option><option value="critical_high">Original source CLAIM: critical/high</option><option value="missing_docs">No listed artifact (inventory imported)</option><option value="no_owner">No HUMAN owner alias</option><option value="no_steps">No runbook steps (runbooks imported)</option><option value="needs_reply">Unanswered original HUMAN request (register imported)</option><option value="custody_attention">Local SHA checks needing HUMAN review</option>
+<option value="unscheduled_window">Unscheduled HUMAN change-window allocations</option>
+<option value="window_human_hold">Tentative window HUMAN HOLD</option><option value="needs_input">HUMAN clarification/input flagged</option><option value="due">Tentative HUMAN due date reached</option><option value="handoff">Human handoff prepared</option></select></label>
 <label>Self-declared human owner<select id="owner"><option value="">All owners</option></select></label></div>
 <p id="count" class="counter"></p><div id="items" class="inbox-items"></div>
 <div class="actions"><button type="button" id="brief">Export PRIVATE team discussion brief</button><button type="button" id="ownerBrief" class="quiet">Export PRIVATE one-owner handoff</button><button type="button" id="anonymous" class="quiet">Export anonymous coverage counts CSV</button><button type="button" id="binding" class="quiet">Export PRIVATE source-binding receipt</button></div>
@@ -259,7 +265,7 @@ const stepKeys=["step_id","kind","description","precondition","responsible_alias
 const stepKinds=["human_prepare","human_implementation_discussion","human_dependency_coordination","human_rollback_discussion","human_review_request"];
 const OWNER_STAGES=["acknowledged_unverified","needs_clarification","cannot_provide"];
 const entries={workplan:null,csv:null,artifact:null,runbook:null,response:null};
-let rendered=[],revision=0,custodyCoverage=null;
+let rendered=[],revision=0,custodyCoverage=null,humanWindows=null;
 const fail=reason=>{throw Error(reason);};
 const exact=(o,fields)=>o!==null&&typeof o==="object"&&!Array.isArray(o)&&Object.keys(o).length===fields.length&&fields.every(k=>Object.hasOwn(o,k));
 const canonical=(s,max=120,required=false)=>typeof s==="string"&&s.length<=max&&(!required||s.trim().length>0)&&!/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f\u202a-\u202e\u2066-\u2069\ud800-\udfff]/.test(s);
@@ -480,13 +486,14 @@ function records(){
  const work=entries.workplan,source=entries.csv?.byId,docs=entries.artifact?.byId,books=entries.runbook?.byId,responses=entries.response?.byId;
  return [...work.ids].map(id=>{
   const plan=work.rows.get(id),files=docs?.get(id)||[],steps=books?.get(id)||[],requests=responses?.get(id)||[];
+  const proposed=(humanWindows?.revision===revision?humanWindows.byFinding.get(id):null)||null;
   const needsReply=requests.some(r=>!r.reply);
   const needsHuman=plan.stage==="request_evidence_human"||plan.stage==="clarify_human_reply"||
     requests.some(r=>r.reply?.human_stage==="needs_changes"||
      r.review?.human_stage==="needs_human_followup"||r.feedback?.stage==="needs_clarification")||
     steps.some(s=>s.human_stage==="needs_human_input");
   const today=new Date().toISOString().slice(0,10),due=Boolean(plan.tentative_due&&plan.tentative_due<=today);
-  return {id,plan,source:source?.get(id)||null,files,steps,requests,needsReply,needsHuman,due,
+  return {id,plan,source:source?.get(id)||null,files,steps,requests,needsReply,needsHuman,due,proposed,
    custody:(!custodyCoverage||custodyCoverage.revision!==revision)?null:custodyCoverage.byFinding.get(id)||null,
    hasDocs:!!docs,hasBooks:!!books,hasResponse:!!responses};
  });
@@ -503,6 +510,8 @@ function summary(rows){
     String(rows.filter(r=>r.custody?.attention>0).length):"unknown",
     "Local SHA comparisons needing HUMAN review"],
   [String(rows.filter(r=>r.needsHuman).length),"Human input/clarification"],
+  [humanWindows&&humanWindows.revision===revision?
+    String(rows.filter(r=>r.proposed?.proposed_window>0).length):"unknown","Tentative HUMAN slot allocations"],
   [String(rows.filter(r=>r.due).length),"Tentative dates reached"],
   [String(rows.filter(r=>r.plan.stage==="human_handoff_prepared").length),"Human handoffs prepared"]
  ];
@@ -524,6 +533,8 @@ function filtered(rows){
   if(mode==="needs_reply"&&(!r.hasResponse||!r.needsReply))return false;
   if(mode==="custody_attention"&&(!r.custody||r.custody.attention===0))return false;
   if(mode==="needs_input"&&!r.needsHuman)return false;
+  if(mode==="unscheduled_window"&&(!r.proposed||r.proposed.proposed_window!==0))return false;
+  if(mode==="window_human_hold"&&(!r.proposed||!r.proposed.needs_human_review))return false;
   if(mode==="due"&&!r.due)return false;
   if(mode==="handoff"&&r.plan.stage!=="human_handoff_prepared")return false;
   return true;
@@ -560,6 +571,12 @@ function draw(){
     tag(article,"Local SHA matches: "+row.custody.matched+"/"+row.custody.listed+" Ledger rows");
     if(row.custody.attention>0)tag(article,row.custody.attention+" local SHA comparisons need HUMAN review","alert");
   }else if(row.hasDocs)tag(article,"Local file bytes not compared","unknown");
+  if(row.proposed){
+    tag(article,row.proposed.proposed_window>0?
+      "Proposed HUMAN UTC slot "+row.proposed.proposed_window+" · "+row.proposed.slot_start:
+      "No tentative HUMAN change window",row.proposed.proposed_window>0?"":"unknown");
+    if(row.proposed.needs_human_review)tag(article,"Change-window source reports HUMAN HOLD","alert");
+  }
   if(row.needsReply)tag(article,"Unanswered HUMAN requests","alert");
   if(row.needsHuman)tag(article,"Needs HUMAN input","alert");
   if(row.due)tag(article,"Tentative date reached","alert");
@@ -567,6 +584,13 @@ function draw(){
   for(const [label,value] of [
    ["SOURCE-reported title",row.source?.title||"Unknown (source CSV not imported)"],
    ["SOURCE-reported remediation",row.source?.remediation||"Unknown (source CSV not imported)"],
+   ["Tentative change-window discussion",row.proposed?
+      (row.proposed.proposed_window?
+       "Self-declared slot "+row.proposed.proposed_window+" / "+row.proposed.slot_start+" UTC":
+       "Unscheduled local HUMAN slot"):"Unknown (change-window plan not imported)"],
+   ["Change-window HUMAN follow-up",row.proposed?
+     row.proposed.human_followup_status+" · "+row.proposed.human_followup_due+" · "+row.proposed.human_followup_note:
+     "Unknown"],
    ["HUMAN tentative date",row.plan.tentative_due||"Unscheduled"],
    ["HUMAN next action",row.plan.next_action||"Not specified"],
    ["PRIVATE original HUMAN note",row.plan.private_note||"None"],
@@ -594,7 +618,10 @@ function printable(rows,ownerOnly=false){
   htmlEsc(r.plan.stage)+"</td><td>"+htmlEsc(r.plan.tentative_due)+"</td><td>"+
   htmlEsc(r.plan.next_action)+"</td><td>"+htmlEsc(r.plan.private_note)+"</td><td>"+
   (r.hasDocs?String(r.files.length):"unknown")+"</td><td>"+(r.hasBooks?String(r.steps.length):"unknown")+
-  "</td><td>"+(r.hasResponse?String(r.requests.filter(x=>!x.reply).length):"unknown")+"</td></tr>").join("");
+  "</td><td>"+(r.hasResponse?String(r.requests.filter(x=>!x.reply).length):"unknown")+
+  "</td><td>"+htmlEsc(r.proposed?(r.proposed.proposed_window?
+    "Tentative HUMAN UTC slot "+r.proposed.proposed_window+" · "+r.proposed.slot_start:
+    "Unscheduled HUMAN discussion"):"unknown")+"</td></tr>").join("");
  return "<!doctype html><html lang='en'><meta charset='utf-8'><meta http-equiv='Content-Security-Policy' content=\"default-src 'none'; style-src 'unsafe-inline'; connect-src 'none'; form-action 'none'\"><title>LightUp PRIVATE HUMAN team brief</title>"+
  "<style>body{font:15px system-ui;max-width:1100px;margin:40px auto;padding:0 20px;color:#111}table{border-collapse:collapse;width:100%;table-layout:fixed}td,th{border:1px solid #777;padding:8px;overflow-wrap:anywhere;vertical-align:top}p{line-height:1.5}</style>"+
  "<h1>PRIVATE HUMAN "+(ownerOnly?"one-owner":"team")+" coordination brief</h1>"+
@@ -602,7 +629,7 @@ function printable(rows,ownerOnly=false){
  "<p>Self-declared original source SHA: "+htmlEsc(source.source_sha256)+
  " · client: "+htmlEsc(source.client_reference)+" · engagement: "+htmlEsc(source.engagement_reference)+
  " · source finding count: "+source.source_count+"</p>"+
- "<table><thead><tr><th>Original finding ID</th><th>SOURCE CLAIM severity</th><th>SOURCE CLAIM title</th><th>Self-declared HUMAN owner</th><th>HUMAN stage</th><th>Tentative date</th><th>PRIVATE proposed next action</th><th>PRIVATE local HUMAN note</th><th>Listed artifacts</th><th>Runbook steps</th><th>Unanswered requests</th></tr></thead><tbody>"+
+ "<table><thead><tr><th>Original finding ID</th><th>SOURCE CLAIM severity</th><th>SOURCE CLAIM title</th><th>Self-declared HUMAN owner</th><th>HUMAN stage</th><th>Tentative date</th><th>PRIVATE proposed next action</th><th>PRIVATE local HUMAN note</th><th>Listed artifacts</th><th>Runbook steps</th><th>Unanswered requests</th><th>Human UTC change-window (not approved)</th></tr></thead><tbody>"+
  tr+"</tbody></table><p>Source-only and non-authorizing. PRIVATE: verify recipient, custody, printer and delivery channel. No execution or verified security fix.</p></html>";
 }
 function exportTeam(){
@@ -627,10 +654,11 @@ function anonymous(){
   const key=[r.plan.stage,r.plan.owner_alias?"assigned":"unassigned",
    r.hasDocs?(r.files.length?"listed":"none"):"unknown",
    r.hasBooks?(r.steps.length?"planned":"none"):"unknown",
-   r.hasResponse?(r.needsReply?"unanswered":"no_unanswered"):"unknown"].join("|");
+   r.hasResponse?(r.needsReply?"unanswered":"no_unanswered"):"unknown",
+   r.proposed?(r.proposed.proposed_window?"tentatively_assigned":"unscheduled"):"unknown"].join("|");
   groups.set(key,(groups.get(key)||0)+1);
  }
- const lines=["human_stage,owner_alias_presence,artifact_list_presence,runbook_presence,request_reply_presence,original_finding_count"];
+ const lines=["human_stage,owner_alias_presence,artifact_list_presence,runbook_presence,request_reply_presence,human_window_presence,original_finding_count"];
  for(const [key,n] of [...groups].sort(([a],[b])=>a.localeCompare(b)))lines.push(key.split("|").join(",")+","+n);
  if(!confirm("Export HUMAN-only anonymous group counts? Small groups can still allow inference, so check recipient and privacy context."))return;
  download("LightUp-anonymous-HUMAN-cross-app-coverage.csv",lines.join("\r\n")+"\r\n","text/csv");
@@ -674,7 +702,23 @@ window.addEventListener("lightup:local-custody",event=>{
     }]))}:null;
   if(loaded())draw();
 });
-window.LightUpHumanTriageBridge=Object.freeze({snapshot:()=>{
+window.addEventListener("lightup:human-change-windows",event=>{
+  const detail=event.detail;
+  if(detail&&detail.revision!==revision)return;
+  humanWindows=detail?{revision:detail.revision,
+    byFinding:new Map(detail.byFinding.map(row=>[row.finding_id,row]))}:null;
+  if(loaded())draw();
+});
+window.LightUpHumanTriageBridge=Object.freeze({sourceSnapshot:()=>{
+ if(!entries.workplan||!entries.csv)return null;
+ const base=entries.workplan.source;
+ return {revision,source_contract:base.source_contract,source_sha256:base.source_sha256,
+ client_reference:base.client_reference,engagement_reference:base.engagement_reference,
+ source_count:base.source_count,
+ original_findings:[...entries.csv.byId.values()].map(row=>({
+ finding_id:row.finding_id,severity:row.severity,retest_status:row.retest_status
+ }))};
+},parseHumanJSON:text=>parseStrict(text),snapshot:()=>{
  if(!entries.workplan||!entries.artifact)return null;
  const base=entries.workplan.source;return {revision,source_sha256:base.source_sha256,
  source_contract:base.source_contract,client_reference:base.client_reference,
@@ -885,4 +929,165 @@ $("custody-forget").addEventListener("click",()=>{
 $("custody-export").addEventListener("click",exportJson);
 $("custody-brief").addEventListener("click",exportBrief);
 sync();
+})();
+;
+/* original bundle source: remediation-operations/windows-overlay.js */
+/* Read-only local original-source HUMAN change-window overlay.
+   Imported tentative schedules NEVER authorize execution, deployment or retesting. */
+(() => {
+"use strict";
+const $=id=>document.getElementById(id),BRIDGE=window.LightUpHumanTriageBridge;
+const FIELDS=["kind","schema_version","disposition","source_contract","source_sha256","warning",
+"windows","meeting_note","assignments","source_refresh","casework_sha256","casework_update",
+"casework_packet_hashless"];
+const FLAGS=["authenticated","tenant_verified","source_authorized","assessment_authorized","grant",
+"client_consent","operator_consent","execution","scan","audit_verdict","retest_verified","release"];
+const ROW=["finding_id","original_severity","original_retest_status","human_stage","human_reviewer",
+"human_next_step","human_review_sha256","human_reference_gaps","proposed_window","casework_row_sha256",
+"human_followup_status","human_followup_due","human_followup_note"];
+const GAPS=["change_reference","deployment_reference","rollback_reference","retest_request_reference"];
+const STAGES=["missing","submitted","needs_changes","ready_for_authorized_retest"];
+const FOLLOWUPS=["untriaged","awaiting_owner","awaiting_evidence","needs_discussion","discussion_logged"];
+let epoch=0,admitted=null;
+const fail=()=>{throw Error("Invalid or unbound private HUMAN change-window packet");};
+function exact(x,k){
+ return !!x&&typeof x==="object"&&!Array.isArray(x)&&
+ Object.keys(x).length===k.length&&k.every(field=>Object.hasOwn(x,field));
+}
+function str(s,max,required=false){
+ return typeof s==="string"&&s.length<=max&&(!required||s.trim()!=="")&&
+ !/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f\u202a-\u202e\u2066-\u2069\ud800-\udfff]/.test(s);
+}
+function sha(s){return typeof s==="string"&&/^[0-9a-f]{64}$/.test(s);}
+function utc(v){
+ return typeof v==="string"&&/^\d{4}-\d\d-\d\dT\d\d:\d\d:00\.000Z$/.test(v)&&
+ Number.isFinite(Date.parse(v))&&new Date(v).toISOString()===v;
+}
+function date(v){
+ return v===""||typeof v==="string"&&/^\d{4}-\d\d-\d\d$/.test(v)&&
+ Number.isFinite(Date.parse(v+"T00:00:00Z"))&&new Date(v+"T00:00:00Z").toISOString().slice(0,10)===v;
+}
+function int(n,max){return Number.isSafeInteger(n)&&n>=0&&n<=max;}
+function parsed(p,context){
+ if(!exact(p,FIELDS.concat(FLAGS))||
+  p.kind!=="lightup.remediation_human_change_windows"||p.schema_version!==1||
+  p.disposition!=="DRAFT_UNVERIFIED_HUMAN_COORDINATION"||
+  p.source_contract!==context.source_contract||p.source_sha256!==context.source_sha256||
+  FLAGS.some(k=>p[k]!==false)||!str(p.warning,800,true)||!str(p.meeting_note,600)||
+  !(p.casework_sha256===null||sha(p.casework_sha256))||
+  typeof p.casework_packet_hashless!=="boolean")fail();
+ if(p.source_refresh!==null){
+  const r=p.source_refresh;
+  if(!exact(r,["from_sha256","to_sha256","added","changed","absent_unverified","unchanged"])||
+   !sha(r.from_sha256)||r.from_sha256===r.to_sha256||r.to_sha256!==context.source_sha256||
+   !["added","changed","absent_unverified","unchanged"].every(k=>int(r[k],350))||
+   r.added+r.changed+r.unchanged!==context.source_count)fail();
+ }
+ if(p.casework_update!==null){
+  const keys=["from_sha256","to_sha256","source_sha256","total","owner","status",
+   "deadline","blocker","action","urgent"];
+  const u=p.casework_update;
+  if(!exact(u,keys)||!sha(u.from_sha256)||!sha(u.to_sha256)||
+    u.to_sha256!==p.casework_sha256||u.from_sha256===u.to_sha256||
+    u.source_sha256!==context.source_sha256||
+    !keys.slice(3).every(k=>int(u[k],350)))fail();
+ }
+ if(!Array.isArray(p.windows)||p.windows.length!==4||
+    !Array.isArray(p.assignments)||p.assignments.length!==context.source_count)fail();
+ const slots=[],active=[];
+ for(const [index,entry] of p.windows.entries()){
+  const k=["slot","window","findings","critical_high","local_review_holds",
+   "local_casework_blocked","locally_past_due","proposed_after_local_due"];
+  if(!exact(entry,k)||entry.slot!==index+1||
+    !k.slice(2).every(prop=>int(entry[prop],context.source_count))||
+    entry.critical_high>entry.findings||entry.local_review_holds>entry.findings||
+    entry.local_casework_blocked>entry.findings||entry.locally_past_due>entry.findings||
+    entry.proposed_after_local_due>entry.findings)fail();
+  if(entry.window===null){slots.push(null);continue;}
+  const w=entry.window;
+  if(!exact(w,["slot","label","start_utc","minutes"])||
+    w.slot!==index+1||!str(w.label,70,true)||!utc(w.start_utc)||
+    !int(w.minutes,480)||w.minutes<30)fail();
+  active.push(w);slots.push({...w});
+ }
+ active.sort((a,b)=>a.start_utc.localeCompare(b.start_utc));
+ for(let i=1;i<active.length;i++)
+  if(Date.parse(active[i].start_utc)<Date.parse(active[i-1].start_utc)+active[i-1].minutes*60000)fail();
+ const ids=new Map(context.original_findings.map(f=>[f.finding_id,f])),seen=new Set(),rows=[];
+ const actual=Array.from({length:4},()=>({findings:0,critical_high:0,local_review_holds:0}));
+ for(const a of p.assignments){
+  if(!exact(a,ROW)||!ids.has(a.finding_id)||seen.has(a.finding_id))fail();
+  seen.add(a.finding_id);
+  const f=ids.get(a.finding_id);
+  if(a.original_severity!==f.severity||a.original_retest_status!==f.retest_status||
+   !STAGES.includes(a.human_stage)||!str(a.human_reviewer,160)||
+   !str(a.human_next_step,1800)||!sha(a.human_review_sha256)||
+   !(a.casework_row_sha256===null||sha(a.casework_row_sha256))||
+   !Array.isArray(a.human_reference_gaps)||
+   a.human_reference_gaps.length>4||
+   new Set(a.human_reference_gaps).size!==a.human_reference_gaps.length||
+   a.human_reference_gaps.some(k=>!GAPS.includes(k))||
+   !int(a.proposed_window,4)||a.proposed_window>0&&!slots[a.proposed_window-1]||
+   !FOLLOWUPS.includes(a.human_followup_status)||!date(a.human_followup_due)||
+   !str(a.human_followup_note,600))fail();
+  if(a.human_followup_status==="discussion_logged"&&!a.human_followup_note.trim())fail();
+  const needs_human_review=a.human_stage==="missing"||a.human_stage==="needs_changes"||
+   a.human_reference_gaps.length>0;
+  if(a.proposed_window){
+   const slot=actual[a.proposed_window-1];slot.findings++;
+   if(["critical","high"].includes(f.severity))slot.critical_high++;
+   if(needs_human_review)slot.local_review_holds++;
+  }
+  rows.push({finding_id:a.finding_id,proposed_window:a.proposed_window,
+    slot_start:a.proposed_window?slots[a.proposed_window-1].start_utc:"",needs_human_review,
+    human_followup_status:a.human_followup_status,human_followup_due:a.human_followup_due,
+    human_followup_note:a.human_followup_note,
+    human_review_stage:a.human_stage,human_reference_gaps:[...a.human_reference_gaps]});
+ }
+ if(seen.size!==ids.size)fail();
+ for(let i=0;i<4;i++){
+  for(const k of ["findings","critical_high","local_review_holds"])
+   if(actual[i][k]!==p.windows[i][k])fail();
+ }
+ return {byFinding:rows,windows:slots};
+}
+function clear(){
+ epoch++;admitted=null;
+ $("human-windows").value="";
+ $("human-windows").disabled=!BRIDGE?.sourceSnapshot();
+ $("human-windows-state").textContent=$("human-windows").disabled?
+  "Import original workplan + SHA-matched ORIGINAL findings CSV first":
+  "No HUMAN window plan imported · scheduled status UNKNOWN";
+ window.dispatchEvent(new CustomEvent("lightup:human-change-windows",{detail:null}));
+}
+async function read(e){
+ const file=e.target.files[0];e.target.value="";
+ if(!file)return;
+ const source=BRIDGE?.sourceSnapshot();
+ if(!source){clear();return;}
+ if(file.size<1||file.size>2097152){
+  $("human-windows-state").textContent="HOLD: HUMAN plan outside 2 MiB bound";return;
+ }
+ const change=++epoch;
+ try{
+  const text=new TextDecoder("utf-8",{fatal:true}).decode(await file.arrayBuffer());
+  if(change!==epoch||BRIDGE.sourceSnapshot()?.revision!==source.revision)fail();
+  const payload=BRIDGE.parseHumanJSON(text);
+  const candidate=parsed(payload,source);
+  if(change!==epoch||BRIDGE.sourceSnapshot()?.revision!==source.revision)fail();
+  if(admitted&&!confirm("Replace existing PRIVATE HUMAN change-window overlay? It is a human-only source declaration; no original plan or permission is altered."))return;
+  admitted={revision:source.revision,...candidate};
+  window.dispatchEvent(new CustomEvent("lightup:human-change-windows",{detail:admitted}));
+  const assigned=candidate.byFinding.filter(x=>x.proposed_window>0).length;
+  const holds=candidate.byFinding.filter(x=>x.needs_human_review).length;
+  $("human-windows-state").textContent="Imported locally: "+assigned+" tentative HUMAN window allocations / "+
+    candidate.byFinding.length+" original findings; "+holds+
+    " original review notes report HUMAN attention. No deployment or retest authority.";
+ }catch(_){
+  $("human-windows-state").textContent="HOLD: invalid, source-drifted or ambiguous HUMAN window plan; existing local overlay unchanged.";
+ }
+}
+$("human-windows").addEventListener("change",read);
+window.addEventListener("lightup:human-sources-changed",clear);
+clear();
 })();</script></body></html>
