@@ -104,7 +104,7 @@ function filtered() {
  });
 }
 function renderSnapshots() {
- $('snapshots').innerHTML=state.snapshots.map((s,i)=>'<li><div><strong>'+esc((i+1)+'. '+s.label)+'</strong><small>'+s.findings.length+' original rows · canonical '+esc(s.sourceHash.slice(0,12))+'… · file '+esc(s.fileHash.slice(0,12))+'…</small></div><div class="tools"><button data-move="'+i+'" data-shift="-1" '+(i===0?'disabled':'')+'>↑</button><button data-move="'+i+'" data-shift="1" '+(i===state.snapshots.length-1?'disabled':'')+'>↓</button><button data-remove="'+i+'">Remove</button></div></li>').join('');
+ $('snapshots').innerHTML=state.snapshots.map((s,i)=>'<li><div><label>Revision '+(i+1)+' label<input data-label="'+i+'" maxlength="100" value="'+esc(s.label)+'" aria-label="Revision '+(i+1)+' label"></label><small>'+s.findings.length+' original rows · canonical '+esc(s.sourceHash.slice(0,12))+'… · file '+esc(s.fileHash.slice(0,12))+'…</small></div><div class="tools"><button data-move="'+i+'" data-shift="-1" '+(i===0?'disabled':'')+'>↑</button><button data-move="'+i+'" data-shift="1" '+(i===state.snapshots.length-1?'disabled':'')+'>↓</button><button data-remove="'+i+'">Remove</button></div></li>').join('');
 }
 function renderGrid() {
  const rows=filtered();
@@ -154,7 +154,7 @@ function exportPrivate() {
  download('lightup-PRIVATE-source-history-human-handoff.csv','\uFEFF'+[headers,...rows].map(r=>r.map(csvCell).join(',')).join('\r\n')+'\r\n','text/csv;charset=utf-8');
  message('PRIVATE original-ID handoff exported; verify destination and recipients. Never a grant, verified fix or retest.');
 }
-function forget(){state.snapshots=[];state.notes.clear();state.active=null;state.selected=null;state.revision++;$('client').value='';$('engagement').value='';$('ack').checked=false;$('privateAck').checked=false;$('files').value='';render();message('Original imported source and private HUMAN notes forgotten from app memory. Previously downloaded exports remain on your device.');}
+function forget(){state.snapshots=[];state.notes.clear();state.active=null;state.selected=null;state.revision++;$('client').value='';$('engagement').value='';$('ack').checked=false;$('privateAck').checked=false;$('files').value='';$('archivePass').value='';$('archiveFile').value='';render();message('Original imported source and private HUMAN notes forgotten from app memory. Previously downloaded exports remain on your device.');}
 $('load').addEventListener('click',()=>ingest($('files').files).catch(e=>message(e.message,true)));
 $('filter').addEventListener('input',renderGrid);
 $('kind').addEventListener('change',renderGrid);
@@ -164,6 +164,14 @@ $('aggregate').addEventListener('click',()=>{try{exportAggregate();}catch(e){mes
 $('privateExport').addEventListener('click',()=>{try{exportPrivate();}catch(e){message(e.message,true);}});
 $('forget').addEventListener('click',forget);
 $('grid').addEventListener('click',event=>{const button=event.target.closest('button[data-view]');if(button){state.selected=button.dataset.view;renderDetail();$('detail').scrollIntoView({behavior:'smooth',block:'start'});}});
+$('snapshots').addEventListener('change',event=>{
+ const el=event.target.closest('input[data-label]');
+ if(!el)return;
+ const i=Number(el.dataset.label),label=el.value.trim();
+ if(!Number.isSafeInteger(i)||i<0||i>=state.snapshots.length)return;
+ if(!label||label.length>100){el.value=state.snapshots[i].label;message('A private local revision label must contain 1–100 characters.',true);return;}
+ if(state.snapshots[i].label!==label){state.snapshots[i].label=label;state.revision++;render();message('Revision label updated locally. Aggregate exports include these human-chosen labels; avoid client-identifying text.');}
+});
 $('snapshots').addEventListener('click',event=>{
  const move=event.target.closest('button[data-move]'),remove=event.target.closest('button[data-remove]');
  if(move){const i=Number(move.dataset.move),j=i+Number(move.dataset.shift);if(j>=0&&j<state.snapshots.length){[state.snapshots[i],state.snapshots[j]]=[state.snapshots[j],state.snapshots[i]];state.revision++;render();}}
