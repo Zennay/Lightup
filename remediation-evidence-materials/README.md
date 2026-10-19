@@ -237,6 +237,45 @@ PYTHONPATH=src python3 remediation-evidence-materials/team_followup.py preview \
 
 Only after separate HUMAN review, run `team_followup.py stage` with the **same** source/pair flags and `--output /private/lightup/NEW-private-team-human-drafts.ltv`. The operator must enter `STAGE TEAM FOLLOWUP` and a new private passphrase. This writes a **new exclusive 0600 encrypted original-compatible Unified HUMAN workspace**, preserving every original Casework/Evidence/attachment and old request unchanged and appending only `human_stage=draft` questions. No note, document or original app is silently applied. The original source-bound Ledger still requires its **separate native Preview and manual HUMAN Apply**. A conflicting review is a human question, **not** a verified vulnerability, remediation, cryptographic recipient identity or client authorization.
 
+## 10. Encrypted portable multi-recipient HUMAN desk with present-source reopening
+
+The dedicated **`team_bundle.py`** offers a secure handoff for the HUMAN collaboration result itself. Instead of exporting private original findings and notes directly to an HTML file, **`seal`** performs the same real current LightUp account/client/engagement read and 2–12 independently decrypted source-bound transfer/reply validations as `team.py`, then stores only the **bounded original finding + local fingerprint + HUMAN status/note metadata** into a **NEW exclusive owner-private 0600 AES-256-GCM `.ltv`** with the original protected vault. Actual evidence file bytes are **never** included. There is no plaintext intermediate, no shell credentials/passphrases and the new password **must differ from every original HUMAN source, transfer and recipient reply passphrase**.
+
+```bash
+PYTHONPATH=src python3 remediation-evidence-materials/team_bundle.py seal \
+  --db /private/lightup/existing.sqlite \
+  --email operator@example.invalid \
+  --client-id CURRENT_CLIENT --engagement-id CURRENT_ENGAGEMENT \
+  --human /private/lightup/current-original-human.ltv \
+  --transfer /private/lightup/transfer-one.ltv --reply /private/lightup/reply-one.ltv \
+  --transfer /private/lightup/transfer-two.ltv --reply /private/lightup/reply-two.ltv \
+  --output /private/lightup/NEW-encrypted-human-team.ltv \
+  --ack-private-team
+```
+
+A receiving operator with their **own permitted current account/tenant/engagement READ** and **their own currently source-matched encrypted original HUMAN workspace** may reopen the team handoff **without receiving the original evidence bytes or each previous encrypted reply**. `open-current` decrypts the team bundle, enforces exact original source CSV digest, client+engagement, COMPLETE original SHA attachment inventory, native original file membership, bounded canonical HUMAN records, no duplicate source packet/file and literally false authority flags, then builds the same scriptless offline private team desk only in a **new owner-only 0700** directory. An independent `inspect` command displays only source-bound anonymous HUMAN packet/conflict counts without plaintext HTML publication.
+
+```bash
+PYTHONPATH=src python3 remediation-evidence-materials/team_bundle.py inspect \
+  --db /private/lightup/existing.sqlite \
+  --email recipient@example.invalid \
+  --client-id CURRENT_CLIENT --engagement-id CURRENT_ENGAGEMENT \
+  --human /private/lightup/current-original-human.ltv \
+  --input /private/lightup/received-encrypted-human-team.ltv \
+  --ack-private-team
+
+PYTHONPATH=src python3 remediation-evidence-materials/team_bundle.py open-current \
+  --db /private/lightup/existing.sqlite \
+  --email recipient@example.invalid \
+  --client-id CURRENT_CLIENT --engagement-id CURRENT_ENGAGEMENT \
+  --human /private/lightup/current-original-human.ltv \
+  --input /private/lightup/received-encrypted-human-team.ltv \
+  --output-dir /private/lightup/NEW-human-team-view \
+  --ack-private-team
+```
+
+The team bundle authenticates its encryption and exact original **source and file index continuity**, not external reporter identity or actual provenance: HUMAN alias, timestamp and conclusions remain unverified reviewer claims. Once original finding source or attachment inventory changes, `open-current` fails closed until a legitimately source-matched original workspace is available. No client permission, scope grant, vulnerability proof, verified repair, authorized retest, scan or original native HUMAN Apply is conferred.
+
 ## Operational posture
 
 The output is **human-supplied local file bytes matched against source-reported HUMANS**, **not** signed chain of custody, verified scanner evidence, validated security impact, remediation success, or consent. Treat any original severity or retest text as unverified source labels. Existing mandatory original exact-head hosted + permanently registered named VPS CI, source-owner review, independent privacy/security/crypto review, original #177/#182/#829, current independent client/operator consent with action-time revocation for future active work and explicit HUMAN GO remain necessary. This independent feature must stay **DRAFT/HOLD**, without main merge or production deployment, until actual release gates are satisfied.
