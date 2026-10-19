@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="color-scheme" content="dark">
   <title>LightUp · Original Lab Declaration Matrix · PRIVATE</title>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-e+C6rsTCcObzXfh7cZePYHtqYXwa9SbIGvlkD+F/Prc='; style-src 'sha256-Jjt26gEygJWUBbeSb0fPNqbz7UoMV8gJ4mb37F76OgI='; connect-src 'none'; img-src 'none'; font-src 'none'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-sG7pyCSakAr0FwqoY4r1BpwJY61IiuDMJCnvAthIEDg='; style-src 'sha256-Jjt26gEygJWUBbeSb0fPNqbz7UoMV8gJ4mb37F76OgI='; connect-src 'none'; img-src 'none'; font-src 'none'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
   <style>:root{font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#ecf1f7;background:#0c111a;line-height:1.55;font-size:15px}
 *{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:radial-gradient(ellipse 70% 18% at 64% 0%,#1b3044 0,transparent 80%),#0c111a;min-height:100vh}
 [hidden]{display:none!important}button,input,select{font:inherit}button{cursor:pointer}button:focus-visible,input:focus-visible,select:focus-visible,a:focus-visible{outline:3px solid #89d7df;outline-offset:3px}
@@ -137,6 +137,10 @@ footer{border-top:1px solid #283442;padding:22px clamp(18px,4vw,52px);max-width:
       </div>
       <section id="sourceMetrics" class="panel source-metrics" aria-label="Source-reported adverse metrics">
         <h3>Unverified source metric declarations</h3><p>No metric is an independent lab or safety observation.</p>
+      </section>
+      <section id="endpointCounts" class="panel source-metrics" aria-label="Original source-declared endpoint distribution">
+        <h3>Endpoint appearance distribution</h3>
+        <p>Only unverified literal source reports, never assessment coverage or verified findings.</p>
       </section>
       <section id="attention" class="panel attention" aria-label="Human attention suggestions">
         <h3>HUMAN attention</h3><p>Loading local literal source differences…</p>
@@ -702,10 +706,11 @@ function createHumanBoard(api) {
     setTimeout(()=>URL.revokeObjectURL(url),1500);
   }
   function filteredPairs(row) {
-    const ep=Number($("endpoint").value);
+    const ep=$("endpoint").value;
     const severity=$("severity").value;
     return row.bySource.map(list=>list.filter(({finding,endpointOrdinal})=>
-      (!ep||endpointOrdinal===ep)&&
+      (ep==="0"||(ep==="unmatched"?endpointOrdinal===null:
+        endpointOrdinal===Number(ep)))&&
       (severity==="all"||finding.severity===severity)));
   }
   function renderSourceMetrics() {
@@ -739,6 +744,44 @@ function createHumanBoard(api) {
     }
     table.append(tbody);wrap.append(table);area.append(wrap);
   }
+  function endpointHistogram(source) {
+    const buckets=Array(sources[0].targets.length+1).fill(0);
+    for(const f of source.findings){
+      const index=sources[0].targets.indexOf(f.target);
+      buckets[index<0?buckets.length-1:index]++;
+    }
+    return buckets;
+  }
+  function renderEndpointCounts() {
+    const area=$("endpointCounts");clear(area);
+    area.append(node("h3","Source-declared finding appearances by endpoint slot"));
+    area.append(node("p","All source-declared endpoints are aligned to first-source ordinals. These raw source appearances are not unique vulnerabilities, scan coverage, successful checks or proven asset scope. Zero is NOT a security result."));
+    const histograms=sources.map(endpointHistogram),table=node("table"),header=node("tr");
+    header.append(node("th","First-source endpoint ordinal"));
+    sources.forEach((_,i)=>header.append(node("th","Local file "+(i+1))));
+    const head=node("thead");head.append(header);table.append(head);
+    const tbody=node("tbody");
+    for(let i=0;i<=sources[0].targets.length;i++){
+      const tr=node("tr"),label=node("td");
+      const button=node("button",i===sources[0].targets.length?
+        "Unmatched source target":"Endpoint "+(i+1),"secondary");
+      button.type="button";
+      button.title="Filter local source-declarations only, no network";
+      button.addEventListener("click",()=>{
+        $("endpoint").value=i===sources[0].targets.length?"unmatched":String(i+1);
+        matrixPage=0;refresh();$("matrix").scrollIntoView({behavior:"smooth",block:"start"});
+      });
+      label.append(button);tr.append(label);
+      const values=histograms.map(bucket=>bucket[i]);
+      const changed=new Set(values).size>1;
+      for(const value of values)tr.append(node("td",value,changed?"metric-alert":""));
+      tbody.append(tr);
+    }
+    table.append(tbody);
+    const wrap=node("div",undefined,"metrics-scroll");
+    wrap.append(table);area.append(wrap);
+    area.append(node("p","Source endpoint movement or zero appearances NEVER prove new vulnerabilities, fixed issues, verified negative checks or permitted scanning.","hint"));
+  }
   function renderAttention() {
     const area=$("attention");clear(area);
     const heading=node("h3","HUMAN attention · source-declaration differences");
@@ -750,10 +793,16 @@ function createHumanBoard(api) {
       const changedCount=new Set(counts).size>1;
       const changedSeverity=new Set(worst.filter(Boolean)).size>1;
       const unmatched=row.bySource.some(items=>items.some(item=>item.endpointOrdinal===null));
+      const endpointLayouts=row.bySource.map(items=>{
+        const bins=Array(sources[0].targets.length+1).fill(0);
+        items.forEach(item=>bins[item.endpointOrdinal===null?bins.length-1:item.endpointOrdinal-1]++);
+        return JSON.stringify(bins);
+      });
+      const endpointMovement=new Set(endpointLayouts).size>1;
       const priority=(unmatched?5:0)+(changedSeverity?3:0)+(changedCount?2:0)+
-        (row.bySource.some(list=>list.some(x=>x.finding.severity==="critical"))?1:0);
-      return {row,counts,changedCount,changedSeverity,unmatched,priority};
-    }).filter(item=>item.changedCount||item.changedSeverity||item.unmatched)
+        (endpointMovement?2:0)+(row.bySource.some(list=>list.some(x=>x.finding.severity==="critical"))?1:0);
+      return {row,counts,changedCount,changedSeverity,unmatched,endpointMovement,priority};
+    }).filter(item=>item.changedCount||item.changedSeverity||item.unmatched||item.endpointMovement)
       .sort((a,b)=>b.priority-a.priority||
         a.row.capability.localeCompare(b.row.capability)||
         a.row.check.localeCompare(b.row.check));
@@ -777,6 +826,7 @@ function createHumanBoard(api) {
       const descriptions=[
         item.changedCount?"reported counts vary ("+item.counts.join(" / ")+")":null,
         item.changedSeverity?"source severity labels differ":null,
+        item.endpointMovement?"source-declared endpoint distribution differs":null,
         item.unmatched?"at least one reported target is not an exact declared endpoint":null
       ].filter(Boolean).join(" · ");
       li.append(button,node("small",descriptions));list.append(li);
@@ -852,6 +902,7 @@ function createHumanBoard(api) {
       version:1,disposition:"REVIEW_ONLY_DRAFT_HOLD",
       ...FLAGS,local_file_slots:sources.length,source_claimed_endpoint_slots:sources[0].targets.length,
       source_reported_finding_totals:sources.map(source=>source.findings.length),
+      source_reported_endpoint_appearances:sources.map(endpointHistogram),
       source_reported_adverse_counters:sources.map(source=>{
         const m=source.evaluation.metrics;
         return {invalid_findings:m.invalid_findings,missed_findings:m.missed_findings,
@@ -926,13 +977,14 @@ function createHumanBoard(api) {
       clear($("endpoint"));
       $("endpoint").append(new Option("All declared endpoints",0));
       baseline.targets.forEach((_,i)=>$("endpoint").append(new Option("Endpoint ordinal "+(i+1),i+1)));
+      $("endpoint").append(new Option("Unmatched source-declared target","unmatched"));
       $("workspace").hidden=false;
       $("intro").hidden=true;
       $("sourceCount").textContent=sources.length+" original PRIVATE source files";
       $("sourceSummary").textContent=baseline.targets.length+
         " identical literal declared endpoint slots · "+rows.length+
         " literal capability/check groups · no verification of target, ownership or chronology";
-      renderSourceMetrics();renderAttention();refresh();humanBoard.initialize();
+      renderSourceMetrics();renderEndpointCounts();renderAttention();refresh();humanBoard.initialize();
       message("Local input admitted structurally. Source statements remain unverified. No original data uploaded.");
     } catch(error) {
       message("Entire selection held: "+error.message+
@@ -946,7 +998,7 @@ function createHumanBoard(api) {
     if(sources.length&&!confirm("Forget ALL locally opened original PRIVATE result data?"))return;
     sources=[];rows=[];visible=[];selected=null;sourceDigests=[];matrixPage=0;
     humanBoard.clearAll();
-    clear($("details"));clear($("matrix"));clear($("attention"));clear($("sourceMetrics"));$("query").value="";
+    clear($("details"));clear($("matrix"));clear($("attention"));clear($("sourceMetrics"));clear($("endpointCounts"));$("query").value="";
     $("matrixPages").textContent="No matrix loaded.";
     $("matrixPrev").disabled=true;$("matrixNext").disabled=true;
     $("workspace").hidden=true;$("intro").hidden=false;
