@@ -174,6 +174,26 @@ def aggregate(inputs: list[dict]) -> dict:
             "rows": rows, "warning": WARNING, **{f: False for f in FLAGS}}
 
 
+def human_queue_rows(summary: dict) -> list[dict]:
+    """Volume-order PRIVATE anonymous packets, never security-risk priority."""
+    return sorted(summary["rows"],
+                  key=lambda r: (-r["pending_human_questions_not_fixes"],
+                                 -(r["planning"]["attention"]
+                                   if r["planning"] is not None else 0),
+                                 r["packet"]))
+
+
+def queue_bytes(summary: dict) -> bytes:
+    lines = ["volume_rank,packet,questions_not_fixes,local_human_attention,slot_appearances,ordering"]
+    for rank, row in enumerate(human_queue_rows(summary), 1):
+        p = row["planning"]
+        fields = (rank, row["packet"], row["pending_human_questions_not_fixes"],
+                  p["attention"] if p is not None else "",
+                  row["source_free_slots_not_unique"], "human_question_volume_only")
+        lines.append(",".join(str(v) for v in fields))
+    return ("\\r\\n".join(lines) + "\\r\\n").encode("ascii")
+
+
 def recommendations(summary: dict) -> list[str]:
     """Human-only coordination suggestions; never source truth or automated action."""
     notes = []
@@ -252,6 +272,11 @@ def html_bytes(summary: dict) -> bytes:
                      row["pending_human_questions_not_fixes"], pending, due))
     action_rows = "".join("<li><span>%s</span></li>" % html.escape(note)
                           for note in recommendations(summary))
+    queue_rows = "".join(
+        "<tr><th>%d</th><td>Packet %02d</td><td>%d</td><td>%s</td></tr>" %
+        (rank, row["packet"], row["pending_human_questions_not_fixes"],
+         str(row["planning"]["attention"]) if row["planning"] else "Not provided")
+        for rank, row in enumerate(human_queue_rows(summary), 1))
     bars = "".join("<li><span>%s</span><strong>%d</strong></li>" %
                    (html.escape(k.replace("_", " ")),
                     summary["stage_slot_appearances"][k]) for k in STAGES)
@@ -278,6 +303,7 @@ No browser scripts, network access, original evidence, names, dates, or identifi
 <article><strong>%(pending_local_human_attention_slot_appearances)d</strong><span>Planned HUMAN attention appearances</span></article>
 </div><aside><strong>Non-authorizing / DRAFT HOLD.</strong><p>%(warning)s</p></aside>
 <h2>Human follow-ups (no automated action)</h2><article><ul>%(actions)s</ul></article>
+<h2>HUMAN question-volume routing (not security severity)</h2><div class="scroll"><table><thead><tr><th>Volume rank</th><th>Private packet ordinal</th><th>Questions</th><th>Planned attention</th></tr></thead><tbody>%(queue)s</tbody></table></div>
 <h2>Source packets</h2><div class="scroll"><table><thead><tr>
 <th>Packet</th><th>Local export</th><th>Slot appearances</th><th>Questions</th>
 <th>Planned attention</th><th>Locally dated slots</th></tr></thead><tbody>%(rows)s</tbody></table></div>
@@ -288,7 +314,7 @@ Blank does not mean zero.</p></article>
 consent, remediation, severity, a validated retest, or authority to assess targets.</small></p>
 </main></body></html>
 """ % {**summary, "warning": html.escape(WARNING), "rows": "".join(rows),
-       "bars": bars, "actions": action_rows}
+       "bars": bars, "actions": action_rows, "queue": queue_rows}
     return page.encode("utf-8")
 
 
@@ -340,6 +366,7 @@ def build(paths: list[Path], destination: Path) -> None:
     try:
         exclusive_write(stage / "index.html", html_bytes(summary))
         exclusive_write(stage / "counts.csv", csv_bytes(summary))
+        exclusive_write(stage / "human-volume-queue.csv", queue_bytes(summary))
         exclusive_write(stage / "summary.json", serialize(summary))
         exclusive_write(stage / "human-followup.txt", brief_bytes(summary))
         folder_fd = os.open(stage, os.O_RDONLY | os.O_DIRECTORY)
