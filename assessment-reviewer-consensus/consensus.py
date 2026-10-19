@@ -173,7 +173,7 @@ def interactive_decisions(conflicts):
     print("Select each original submitted choice; Ctrl-C cancels without publication.")
     result = {}
     for item in conflicts:
-        print("\\nSource-local row", item["ordinal"], "| HUMAN", item["field"])
+        print("\nSource-local row", item["ordinal"], "| HUMAN", item["field"])
         for i, choice in enumerate(item["choices"], 1):
             print(" ", i, "—", choice)
         try:
