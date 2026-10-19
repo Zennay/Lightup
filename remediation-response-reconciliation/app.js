@@ -636,7 +636,10 @@ $("selectShown").addEventListener("change",e=>{for(const x of filteredRows()){
  }invalidateBulk();draw();});
 $("bulkStage").addEventListener("change",invalidateBulk);
 listen("forget",()=>{if(!confirm("Clear ALL in-memory human responses and PRIVATE annotations? Saved downloads remain."))return;
- const rev=db.revision+1;db=blank();db.revision=rev;selection.clear();invalidateBulk();invalidateUndo();cancelFeedbackPreview();$("files").value="";$("search").value="";draw();msg("All locally held PRIVATE HUMAN data forgotten.");});
+ const rev=db.revision+1;db=blank();db.revision=rev;selection.clear();invalidateBulk();invalidateUndo();cancelFeedbackPreview();
+ $("files").value="";$("feedbackFile").value="";$("search").value="";
+ feedbackNotice("All selected HUMAN feedback file references and previews forgotten.");
+ draw();msg("All locally held PRIVATE HUMAN data and input file references forgotten.");});
 $("search").addEventListener("input",draw);$("filter").addEventListener("change",draw);
 $("dueFilter").addEventListener("change",draw);$("sort").addEventListener("change",draw);
 draw();msg("Load original PRIVATE owner-request and partial-reply files. Everything stays in memory.");
