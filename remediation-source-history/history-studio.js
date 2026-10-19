@@ -398,6 +398,16 @@ window.LightUpHistory=Object.freeze({
     state.notes=notes;state.revision++;render();
     return {imported:notes.size,original:last.findings.length};
   },
+  exportMergeHistory(){
+    requireContext();protect();
+    if(!state.merges.length)throw Error('No private original-source HUMAN merge decisions to export.');
+    const hdr=['human_decision_utc','original_source_sha256','human_rationale','original_finding_id','chosen_human_field','previous_local_human_value','accepted_incoming_human_value'];
+    const rows=state.merges.flatMap(m=>m.records.flatMap(rec=>rec.fields.map(field=>[
+      m.dateUtc,m.sourceHash,m.reason,rec.id,field,rec.previous[field]??'',rec.accepted[field]??''
+    ])));
+    download('lightup-PRIVATE-human-casework-field-reconciliation.csv','\uFEFF'+[hdr,...rows].map(row=>row.map(csvCell).join(',')).join('\r\n')+'\r\n','text/csv;charset=utf-8');
+    message('PRIVATE HUMAN Casework field choices exported; this is self-declared local planning, never audit certification or consent.');
+  },
   exportHumanCarries(){
     requireContext();protect();
     if(!state.decisions.length)throw Error('No completed HUMAN source-carry decisions to hand off privately.');
