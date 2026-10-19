@@ -1,5 +1,5 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-a0kj/4pHd55CzU98pSQ5okI7lVLHHatx5RyaUU7rBCU='; style-src 'sha256-lR0KwGLG+r0ivdAqngp/skkenu1EpJWrp5F1ih1Q8qQ='; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-qix2S5bwjGzODQdehoduVLte5BTyvqHNm1KIrJvkyXY='; style-src 'sha256-lR0KwGLG+r0ivdAqngp/skkenu1EpJWrp5F1ih1Q8qQ='; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <title>LightUp — Private Evidence Handoff Inbox</title><style>:root{font-family:ui-sans-serif,system-ui,sans-serif;color-scheme:dark;color:#e3f7f4;background:#081923}*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 10% 0%,#21546a,transparent 44%),#081923}main{max-width:1150px;margin:auto;padding:42px 20px 70px}header{max-width:830px;padding-bottom:14px}.eyebrow{color:#73efd4;font-weight:900;font-size:.8rem;letter-spacing:.23em}h1{font-size:clamp(2.3rem,6vw,4.2rem);letter-spacing:-.065em;margin:12px 0 14px}h2{margin-top:0;font-size:1.4rem}p{line-height:1.6;color:#b3d0d7}.hold{display:inline-block;padding:10px 15px;color:#f0d490;border:1px solid #c4a354;border-radius:9px;font-size:.85rem}section{border:1px solid #355f6d;background:#132b36;padding:25px;border-radius:17px;margin:18px 0}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:15px}label{font-weight:700;font-size:.87rem;display:grid;gap:7px}input:not([type=checkbox]),select{font:inherit;color:#fff;background:#0b202b;border:1px solid #73919b;border-radius:9px;padding:10px;margin:8px 0 16px;width:100%}button{padding:12px 17px;margin:5px 7px 5px 0;border:0;border-radius:9px;background:#72efd1;color:#072328;font-weight:900;cursor:pointer}.secondary{background:#315664;color:#e5ffff}button:disabled{opacity:.38;cursor:not-allowed}button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #e8ca85;outline-offset:3px}.numbers{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:12px;margin:18px 0}.number{background:#0d212a;border:1px solid #356071;border-radius:11px;padding:16px}.number strong{display:block;font-size:1.8rem;color:#78f4d5}.number span{font-size:.81rem;color:#b5cbd4}.warn{border-left:4px solid #d9ae5a;color:#f1d8a6;background:#24343a;padding:11px 14px;font-size:.87rem}.tableWrap{overflow:auto;max-height:660px}table{width:100%;border-collapse:collapse;font-size:.85rem}td,th{border-bottom:1px solid #315865;text-align:left;vertical-align:top;padding:11px 9px;overflow-wrap:anywhere}th{position:sticky;top:0;background:#1b3946}small{display:block;color:#95bac4}#binding{overflow-wrap:anywhere}#notice[data-error=true]{color:#ffb4b4}footer{text-align:center;font-size:.83rem;color:#98b9c2;margin-top:35px}</style></head>
 <body><main><header><span class="eyebrow">LIGHTUP / EVIDENCE REMEDIATION</span><h1>Private Evidence Handoff Inbox</h1>
 <p>Bring original-source-bound local evidence and unverified human replies together for a human handoff. This page does not authenticate sources, grant access, contact systems or certify a fix.</p><strong class="hold">INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD</strong></header>
@@ -73,10 +73,14 @@ function admitLedger(x){
    if(Array.isArray(other)&&other.length===ids.length){const otherIds=new Set(other.map(r=>r.finding_id));if(ids.some(id=>!otherIds.has(id)))fail("Casework and Evidence Review original finding identities differ");}
   }
  }
+ const nativeRows=Array.isArray(x.casework)?x.casework:(Array.isArray(x.evidence_review)?x.evidence_review:null);
+ const nativeIds=nativeRows?new Set(nativeRows.map(r=>r.finding_id)):null;
  const fp=[];
  for(const a of x.attachments){
   if(!exact(a,ATT)||!hex(a.sha256)||!Number.isSafeInteger(a.byte_length)||a.byte_length<0||a.byte_length>16*1024*1024)fail("malformed local file fingerprint");
-  value(a.finding_id,160,"attachment finding",true);value(a.file_name,240,"file name",true);
+  value(a.finding_id,160,"attachment finding",true);
+  if(nativeIds&&!nativeIds.has(a.finding_id))fail("local fingerprint references a finding absent from complete original HUMAN overlays");
+  value(a.file_name,240,"file name",true);
   if(/[\/\\]/.test(a.file_name))fail("path-bearing file name");
   value(a.mime,160,"file MIME");value(a.added_utc,70,"file time");
   value(a.human_reviewer,120,"human reviewer");value(a.human_stage,70,"human file stage");value(a.human_note,1200,"human file note");
@@ -86,7 +90,9 @@ function admitLedger(x){
  const seen=[];
  for(const r of x.human_requests){
   if(!exact(r,HUMAN_ROW)||typeof r.request_id!=="string"||!/^[0-9a-f]{32}$/.test(r.request_id))fail("native request identity");
-  seen.push(r.request_id);value(r.finding_id,160,"finding",true);value(r.assignee,120,"declared owner");
+  seen.push(r.request_id);value(r.finding_id,160,"finding",true);
+  if(nativeIds&&!nativeIds.has(r.finding_id))fail("original HUMAN request references finding absent from complete source-bound HUMAN overlays");
+  value(r.assignee,120,"declared owner");
   if(!KINDS.includes(r.request_kind))fail("native request type");
   value(r.instructions,1400,"instructions",true);value(r.due_date,12,"tentative HUMAN date");
   value(r.human_stage,48,"human stage",true);value(r.human_response,1800,"unverified HUMAN reply");
@@ -174,6 +180,9 @@ function combine(l,r){
   const signals=[];
   if(!answer)signals.push("No HUMAN reply received");
   if(answer?.human_stage==="needs_changes")signals.push("HUMAN reply needs changes");
+  if(answer&&x.source.human_response&&
+     (x.source.human_stage!==answer.human_stage||x.source.human_response!==answer.human_response))
+    signals.push("Two HUMAN exports disagree about unverified response; reconcile with original owner");
   if(!local.length)signals.push("No LOCAL file fingerprint");
   if(x.source.linked_sha256&&!local.some(a=>a.sha256===x.source.linked_sha256))signals.push("Linked LOCAL SHA not in this snapshot");
   if(x.o.due_date&&/^\d{4}-\d\d-\d\d$/.test(x.o.due_date)&&x.o.due_date<today)signals.push("Tentative HUMAN date passed");
@@ -233,7 +242,7 @@ function draw(){
  picker.replaceChildren(new Option("Choose one original owner alias",""));
  for(const alias of owners)picker.append(new Option(alias,alias));
  picker.value=owners.includes(prior)?prior:"";
- $("downloadOwner").disabled=!selected.size||!picker.value;
+ $("downloadOwner").disabled=!r.some(x=>x.owner===picker.value&&selected.has(x.id));
  $("downloadPrivate").disabled=!selected.size;$("downloadAgenda").disabled=!selected.size;
 }
 function download(name,content,type){
@@ -319,6 +328,11 @@ $("forget").addEventListener("click",()=>{current=null;version++;selected.clear(
  for(const id of ["ledger","register","search"])$(id).value="";$("filter").value="all";
  $("rows").replaceChildren();$("review").hidden=true;$("out").hidden=true;
  info("PRIVATE working state and file-picker references cleared from this page. Previously downloaded files must be secured or deleted separately.");});
+for(const id of ["ledger","register"])$(id).addEventListener("change",()=>{
+ current=null;version++;selected.clear();$("rows").replaceChildren();$("review").hidden=true;$("out").hidden=true;
+ info("PRIVATE source file selection changed: old human review and export controls cleared. Inspect both selected sources again.");
+});
+$("ownerRecipient").addEventListener("change",draw);
 $("search").addEventListener("input",draw);$("filter").addEventListener("change",draw);
 $("selectVisible").addEventListener("change",e=>{for(const x of filtered())e.target.checked?selected.add(x.id):selected.delete(x.id);draw();});
 for(const [id,handler] of [["downloadPrivate",privateExport],["downloadOwner",oneOwnerExport],["downloadAggregate",aggregateExport],["downloadAgenda",agendaExport]]){
