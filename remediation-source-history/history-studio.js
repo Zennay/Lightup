@@ -521,6 +521,23 @@ window.LightUpHistory=Object.freeze({
     });
     return LightUpCasework.makePacket(latest.findings,cases,latest.sourceHash);
   },
+  heldHumanRows(){
+    // PRIVATE read-only quarantine. A reused original finding ID never binds stale
+    // HUMAN metadata to a different original five-field source record.
+    return [...state.notes].flatMap(([id,n])=>{
+      const binding=noteBinding(id);
+      if(binding==='bound')return [];
+      const current=latestFinding(id);
+      const historical=n.sourceRecord?Object.fromEntries(FIELDS.map(k=>[k,n.sourceRecord[k]])):null;
+      const matching=historical?state.snapshots.filter(s=>
+        s.findings.some(f=>exact(f,historical))).map(s=>({label:s.label,sourceHash:s.sourceHash})):[];
+      return [{id,binding,owner:n.owner||'',action:n.action||'',due:n.due||'',
+        status:n.caseworkOriginal?.status||'unassigned',
+        blocker:n.caseworkOriginal?.blocker||'',verification_plan:n.caseworkOriginal?.verification_plan||'',
+        note:n.caseworkOriginal?.note||'',sourceRecord:historical,
+        lastMatchingSource:matching.at(-1)||null,currentSource:current?{...current}:null}];
+    }).sort((a,b)=>a.id.localeCompare(b.id));
+  },
   limits:Object.freeze({...limits})
 });
 render();
