@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-LC9DDjyYaP2Lwhk35CUBt+cIewPjHLuT3bF641ub4JI=' 'sha256-aRN6QvOi6JAh1L0DPhzTQ3DyaRifmnmVjyldZkVK86M=' 'sha256-KvM+UlbC4G1DSvvaFY+cJGbbiSpep51/etEqGFigBdg='; style-src 'unsafe-inline'; img-src 'none'; connect-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-LC9DDjyYaP2Lwhk35CUBt+cIewPjHLuT3bF641ub4JI=' 'sha256-aRN6QvOi6JAh1L0DPhzTQ3DyaRifmnmVjyldZkVK86M=' 'sha256-3//Y675o+ghxJOQxowVNTFZgkI9dj+JSbtZP53OC6BI='; style-src 'unsafe-inline'; img-src 'none'; connect-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'">
 <title>LightUp | Private Remediation Ticket Desk</title>
 <style>
 :root{font-family:Inter,ui-sans-serif,system-ui,-apple-system,sans-serif;color:#eaf0f9;background:#090f1b;line-height:1.5;color-scheme:dark}
@@ -71,7 +71,14 @@ pre{background:#081220;color:#dbe9fc;border:1px solid #354760;border-radius:12px
 <p id="notice" class="status" role="status" aria-live="polite">All edits stay only in this tab until an explicitly approved private download. Refreshing loses unsaved work.</p>
 </section>
 <section class="panel full">
-<h2>03 / Private release review</h2>
+<h2>03 / Revision safety & historical HUMAN SOURCE HOLD</h2>
+<p class="muted">Import a newer original CSV in the same file input above. The unchanged five-field original source findings may retain local HUMAN drafts only after your explicit same-client/engagement review. Changed or missing source findings never auto-carry; they enter a separate read-only historical HOLD.</p>
+<p id="source-diff" class="status">No source revision imported.</p>
+<div class="scroll"><table><thead><tr><th>Prior finding</th><th>Reason</th><th>Historical HUMAN planning</th></tr></thead><tbody id="historical-holds"><tr><td colspan="3" class="muted">No historical source HOLD records.</td></tr></tbody></table></div>
+<div class="actions"><button id="export-holds" disabled>Download PRIVATE historical HOLD register</button></div>
+</section>
+<section class="panel full">
+<h2>04 / Private release review</h2>
 <p class="muted">Review before copying text into your own approved private tracker. The ticket content includes source finding IDs, titles and remediation suggestions. It may be confidential. No generated ticket is sent anywhere automatically.</p>
 <div class="field"><label for="preview-output">Private GitHub-flavored Markdown preview</label><pre id="preview-output">Nothing selected yet.</pre></div>
 <label class="checkbox"><input type="checkbox" id="private-ack" disabled><span>I have independently checked the intended recipients, channel and source-client context, and approve handling these plaintext ticket drafts privately. This is not authorization to scan, release or claim a verified fix.</span></label>
@@ -386,7 +393,7 @@ global.LightUpTicketIntake=Object.freeze({decode});
 (() => {
 'use strict';
 const byId = id => document.getElementById(id);
-const ui = Object.fromEntries(['source-file','casework-file','search','severity','select-visible','clear-visible','select-urgent','findings','forget','chosen','owner','due','stage','action','review','blocker','apply','preview','notice','preview-output','private-ack','export-one','export-all','export-counts','metric-count','metric-risk','metric-picked','metric-hash'].map(k=>[k,byId(k)]));
+const ui = Object.fromEntries(['source-file','casework-file','search','severity','select-visible','clear-visible','select-urgent','findings','forget','chosen','owner','due','stage','action','review','blocker','apply','preview','notice','preview-output','private-ack','export-one','export-all','export-counts','source-diff','historical-holds','export-holds','metric-count','metric-risk','metric-picked','metric-hash'].map(k=>[k,byId(k)]));
 const engine = window.LightUpCasework;
 if (!engine || typeof engine.parseCSV !== 'function' || typeof engine.digest !== 'function') {
  ui.notice.textContent='Original source-owned Casework engine unavailable. Do not use this page without the complete pinned parent checkout.';
@@ -410,6 +417,7 @@ function updateButtons(){
  ui['export-one'].disabled=!(chosen&&permitted);
  ui['export-all'].disabled=!(state&&state.selected.size&&permitted);
  ui['export-counts'].disabled=!state;
+ ui['export-holds'].disabled=!(state&&state.holds.length&&permitted);
 }
 function byteHex(buf){return Array.from(new Uint8Array(buf),b=>b.toString(16).padStart(2,'0')).join('');}
 async function sha(bytes){if(!crypto?.subtle)throw Error('Secure SHA-256 unavailable in this local browser; source-bound export is disabled.');return byteHex(await crypto.subtle.digest('SHA-256',bytes));}
@@ -423,6 +431,8 @@ function forget(){
  ui.findings.replaceChildren();const row=ui.findings.insertRow();const cell=row.insertCell();cell.colSpan=4;cell.textContent='Import a local source file to begin.';
  ui.chosen.replaceChildren(new Option('No finding selected',''));
  ui['preview-output'].textContent='Nothing selected yet.';
+ ui['source-diff'].textContent='No source revision imported.';
+ ui['historical-holds'].replaceChildren();const hrow=ui['historical-holds'].insertRow(),hcell=hrow.insertCell();hcell.colSpan=3;hcell.textContent='No historical source HOLD records.';
  ui['metric-count'].textContent='—';ui['metric-risk'].textContent='—';ui['metric-picked'].textContent='—';ui['metric-hash'].textContent='—';
  setControls(false);show('Private source and HUMAN notes forgotten from this tab. Any previously downloaded files require separate secure deletion.');
 }
@@ -450,7 +460,19 @@ function refresh(){
  for(const f of state.rows.filter(x=>state.selected.has(x.finding_id))) ui.chosen.add(new Option(f.finding_id+' · '+f.title.slice(0,65),f.finding_id));
  if(chosen&&state.selected.has(chosen)){ui.chosen.value=chosen;}else{active='';}
  ui['metric-picked'].textContent=state.selected.size;
- updateEditor();updateButtons();
+ renderHolds();updateEditor();updateButtons();
+}
+function renderHolds(){
+ if(!state)return;
+ const frag=document.createDocumentFragment();
+ for(const h of state.holds){
+  const tr=document.createElement('tr');tr.insertCell().textContent=h.finding.finding_id+' · '+h.finding.title;
+  tr.insertCell().textContent=h.reason.toUpperCase()+' (never transferred)';
+  tr.insertCell().textContent=(h.draft.owner||'Unassigned')+' · '+(h.draft.action||'No HUMAN action')+' · '+h.draft.stage;
+  frag.appendChild(tr);
+ }
+ if(!state.holds.length){const tr=document.createElement('tr'),td=tr.insertCell();td.colSpan=3;td.textContent='No historical HUMAN source HOLD records.';frag.appendChild(tr);}
+ ui['historical-holds'].replaceChildren(frag);
 }
 function updateEditor(){
  const enabled=!!(state&&active&&state.selected.has(active));
@@ -525,7 +547,7 @@ function counts(){
  for(const f of state.rows){severities[f.severity]++;retests[f.retest_status]++;if(state.selected.has(f.finding_id))picked[f.severity]++;}
  return {kind:'lightup.anonymous_human_ticket_counts',schema_version:1,disposition:'PRIVATE_REVIEW_ONLY',
   authenticated:false,source_authorized:false,assessment_authorized:false,grant:false,client_consent:false,operator_consent:false,execution:false,scan:false,retest_verified:false,release:false,
-  findings:state.rows.length,selected:state.selected.size,severities,source_retest_labels:retests,selected_severities:picked,
+  findings:state.rows.length,selected:state.selected.size,historical_human_source_hold:state.holds.length,severities,source_retest_labels:retests,selected_severities:picked,
   warning:'Aggregates count unverified source labels and human selections only. Not a verified fix, retest, grant, consent or authority.'};
 }
 function download(text,name,type){
@@ -538,9 +560,12 @@ function canDownload(){
  if(!confirm('This PRIVATE plaintext draft contains original findings and HUMAN notes. Confirm independently authorized local storage and recipients. No remote issue will be created.'))return false;
  return true;
 }
+function hasHumanWork(d){
+ return !!(d&&(d.owner||d.due||d.action||d.review||d.blocker||d.stage!=='triage'));
+}
 async function importCSV(file){
- if(!file){return;}
- if(!Number.isSafeInteger(file.size)||file.size>MAX_BYTES)throw Error('Source exceeds the original 1 MiB limit.');
+ if(!file)return;
+ if(!Number.isSafeInteger(file.size)||file.size>MAX_BYTES)throw Error('Source exceeds original 1 MiB.');
  const bytes=await file.arrayBuffer();
  if(bytes.byteLength>MAX_BYTES)throw Error('CSV too large.');
  let text;
@@ -549,17 +574,41 @@ async function importCSV(file){
  for(const f of imported)for(const col of ['finding_id','title','severity','retest_status','remediation'])checkText(f[col],col);
  const [canonical,bytesHash]=await Promise.all([engine.digest(imported),sha(bytes)]);
  if(!canonical||!/^[0-9a-f]{64}$/.test(canonical))throw Error('Canonical SHA-256 unavailable; import blocked.');
- // All validations and both fingerprints finish before mutating visible state.
  const byId=new Map(imported.map(f=>[f.finding_id,f]));
- const next={rows:imported,byId,selected:new Set(),drafts:new Map(),canonical,bytesHash};
- if(state&&!confirm('A new source replaces and forgets all unsaved previous HUMAN plans. Continue?'))return;
+ const previous=state;
+ const next={rows:imported,byId,selected:new Set(),drafts:new Map(),canonical,bytesHash,holds:[]};
+ let message='First original source imported. No source revision compared.';
+ if(previous){
+  if(previous.bytesHash===bytesHash){show('Identical source bytes: prior HUMAN work remains untouched.');return;}
+  const diff=engine.compareSource(previous.rows,imported);
+  const same=new Set(diff.unchanged),holdIds=new Set([...diff.missing,...diff.changed.map(x=>x.finding_id)]);
+  const holds=previous.holds.slice();
+  for(const f of previous.rows){
+   if(!holdIds.has(f.finding_id))continue;
+   const d=previous.drafts.get(f.finding_id)||draft();
+   if(hasHumanWork(d)||previous.selected.has(f.finding_id))
+    holds.push({finding:{...f},draft:{...d},canonical:previous.canonical,bytesHash:previous.bytesHash,
+     reason:diff.missing.includes(f.finding_id)?'missing':'changed'});
+  }
+  if(holds.length>MAX_DRAFTS)throw Error('Historical HUMAN source HOLD inbox would exceed 350. Export/archive existing holds privately before changing source.');
+  // Original five-field unchanged classification is the only basis for HUMAN carry.
+  for(const id of same){
+   if(previous.drafts.has(id))next.drafts.set(id,previous.drafts.get(id));
+   if(previous.selected.has(id))next.selected.add(id);
+  }
+  next.holds=holds;
+  message='Source revision: '+diff.added.length+' added, '+diff.changed.length+' changed, '+diff.missing.length+' missing, '+diff.unchanged.length+' exactly unchanged. '+holds.length+' prior HUMAN draft(s) in historical SOURCE HOLD. No missing/“fixed” source claim proves a resolved issue.';
+  if(!confirm('SOURCE REVISION — independently verify this NEW export is the SAME client and engagement. '+message+' Only exact unchanged original five-field findings may keep HUMAN notes. Changed/missing notes are quarantined, never promoted. Continue?'))return;
+ }
  state=next;active='';ui['casework-file'].value='';ui['private-ack'].checked=false;ui.search.value='';ui.severity.value='all';
  ui['metric-count'].textContent=imported.length;
  ui['metric-risk'].textContent=imported.filter(f=>['critical','high'].includes(f.severity)).length;
  ui['metric-hash'].textContent=canonical.slice(0,10)+'…';
+ ui['source-diff'].textContent=message;
  setControls(true);refresh();
- show('Imported '+imported.length+' original source rows. Canonical '+canonical.slice(0,16)+'…; original byte '+bytesHash.slice(0,16)+'…. Select findings and explicitly compose HUMAN-only tickets.');
+ show('Original CSV source bound to canonical '+canonical.slice(0,16)+'… and bytes '+bytesHash.slice(0,16)+'…. '+message);
 }
+
 ui['source-file'].addEventListener('change',async event=>{
  try{await importCSV(event.target.files[0]);}catch(err){show('IMPORT HOLD: '+err.message,true);}
 });
@@ -612,6 +661,33 @@ ui['export-all'].addEventListener('click',()=>{
   download(body,'lightup-PRIVATE-human-ticket-bundle.md','text/markdown;charset=utf-8');
   show(selected.length+' PRIVATE HUMAN ticket drafts downloaded in one local Markdown bundle. They have NOT been posted to GitHub.');
  }catch(err){show('BUNDLE HOLD: '+err.message,true);}
+});
+ui['export-holds'].addEventListener('click',()=>{
+ try{
+  if(!canDownload())return;
+  if(!state.holds.length)throw Error('No historical source HOLD notes.');
+  const md=state.holds.map((h,i)=>
+   '# HISTORICAL HUMAN SOURCE HOLD '+(i+1)+' / '+state.holds.length+'\n\n'+
+   '> OLD SOURCE: '+h.reason.toUpperCase()+' — not current finding; never resolved by absence.\n\n'+
+   '- Old original finding ID: '+escapeMarkdown(h.finding.finding_id)+'\n'+
+   '- Old original title: '+escapeMarkdown(h.finding.title)+'\n'+
+   '- Old original severity: '+escapeMarkdown(h.finding.severity)+'\n'+
+   '- Old original source retest label: '+escapeMarkdown(h.finding.retest_status)+'\n'+
+   '- Old original proposed remediation: '+escapeMarkdown(h.finding.remediation)+'\n'+
+   '- Old source canonical SHA-256 (unsigned): '+h.canonical+'\n'+
+   '- Old CSV bytes SHA-256 (unsigned): '+h.bytesHash+'\n'+
+   '- OLD HUMAN owner: '+escapeMarkdown(h.draft.owner)+'\n'+
+   '- OLD HUMAN stage (unverified): '+escapeMarkdown(h.draft.stage)+'\n'+
+   '- OLD HUMAN tentative due: '+escapeMarkdown(h.draft.due)+'\n'+
+   '- OLD HUMAN next action: '+escapeMarkdown(h.draft.action)+'\n'+
+   '- OLD HUMAN verification plan: '+escapeMarkdown(h.draft.review)+'\n'+
+   '- OLD HUMAN blocker: '+escapeMarkdown(h.draft.blocker)+'\n'+
+   '- HOLD does not establish authenticity, retest, fix, grant, consent or action permission.\n'
+  ).join('\n---\n\n');
+  if(new TextEncoder().encode(md).length>5*MAX_BYTES)throw Error('Historical private HOLD handoff exceeds size limit.');
+  download(md,'lightup-PRIVATE-historical-source-HOLD.md','text/markdown;charset=utf-8');
+  show('PRIVATE historical source-HOLD snapshot downloaded; not an active ticket or verified resolution.');
+ }catch(err){show('HISTORICAL HOLD EXPORT: '+err.message,true);}
 });
 ui.forget.addEventListener('click',()=>{if(!state||confirm('Forget all source findings, selections and HUMAN drafts in this tab?'))forget();});
 window.addEventListener('beforeunload',e=>{if(state){e.preventDefault();e.returnValue='';}});
