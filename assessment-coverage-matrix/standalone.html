@@ -1,0 +1,434 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>LightUp · Original Lab Declaration Matrix · PRIVATE</title>
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-sJanbYyvx75gQ8Eh/tvQ9q6ggqETopxH7eEfTXqqYpc='; style-src 'sha256-rimt7wgtBaV1x8k4qhOgrode9Lp2WmNAdjIuMz+zeWw='; connect-src 'none'; img-src 'none'; font-src 'none'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
+  <style>:root{font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#ecf1f7;background:#0c111a;line-height:1.55;font-size:15px}
+*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:radial-gradient(ellipse 70% 18% at 64% 0%,#1b3044 0,transparent 80%),#0c111a;min-height:100vh}
+[hidden]{display:none!important}button,input,select{font:inherit}button{cursor:pointer}button:focus-visible,input:focus-visible,select:focus-visible,a:focus-visible{outline:3px solid #89d7df;outline-offset:3px}
+.skip{position:absolute;left:-10000px;top:0}.skip:focus{left:10px;z-index:10;background:#12283a;padding:12px;color:#fff}
+.top{max-width:1600px;margin:0 auto;padding:24px clamp(18px,4vw,52px);display:flex;justify-content:space-between;align-items:center;gap:16px;border-bottom:1px solid #2e3949}
+.brand{font-weight:740;letter-spacing:-.03em}.mark{display:inline-grid;place-items:center;border:1px solid #58b5bf;color:#8de8e3;border-radius:8px;width:34px;height:34px;margin-right:8px}.mark span{color:#7ef3c7}.slash{color:#788a9c;margin:0 8px}.posture{border:1px solid #896a40;background:#2c241b;color:#ffd9a0;padding:6px 11px;border-radius:22px;font-size:.7rem;letter-spacing:.07em;font-weight:750}
+.shell{max-width:1600px;padding:24px clamp(18px,4vw,52px) 70px;margin:auto}
+.hero{padding:52px 0 34px;max-width:1050px}.eyebrow{font-size:.73rem;color:#72bfc7;letter-spacing:.2em;font-weight:750}.hero h1{font-size:clamp(2.5rem,5vw,5rem);line-height:1.12;letter-spacing:-.062em;margin:18px 0 20px;font-weight:740}.hero h1 em{color:#91dfd7;font-style:normal}.lead{color:#b9c5d4;font-size:1.1rem;max-width:790px}.lead strong{color:#ecf1f7}
+.panel{border:1px solid #304054;border-radius:16px;background:#141d2a;box-shadow:0 12px 32px #05090f30}.load{display:grid;grid-template-columns:1fr minmax(310px,.78fr);gap:30px;padding:28px}
+h2{font-size:1.35rem;letter-spacing:-.035em;line-height:1.35;margin:0 0 11px}p{margin:0 0 12px;color:#b8c6d6}.load label{display:block;font-size:.88rem;font-weight:720;margin-bottom:8px}.load-actions{background:#111824;border-radius:12px;padding:18px}
+input[type=file],input[type=search],select{width:100%;color:#f6f9fc;background:#0d1522;border:1px solid #415269;border-radius:9px;padding:11px;min-width:0}
+input[type=file]::file-selector-button{border:1px solid #83bcc1;color:#d7f5f5;background:#263b48;padding:8px;border-radius:7px;margin-right:9px;cursor:pointer}
+.buttons{display:flex;flex-wrap:wrap;gap:10px;margin-top:14px}button.primary,button.secondary{border:1px solid #547787;padding:11px 16px;border-radius:9px;font-weight:700}button.primary{background:#82dbcf;color:#10232a;border-color:#82dbcf}button.primary:hover{background:#a9f6e8}button.secondary{background:#213343;color:#e4f0f5}button.secondary:hover{background:#2a4356}button:disabled{opacity:.5;cursor:default}
+#message{margin:18px 0;color:#9edcd6;background:#12282d;padding:13px 16px;border:1px solid #355b60;border-radius:10px}#message[data-error=true]{color:#ffd7c3;background:#332521;border-color:#775244}
+.note{border-left:3px solid #60b8c5;background:#121f2a;margin:22px 0 38px;padding:22px;border-radius:0 12px 12px 0}.note h2{margin-bottom:8px}.note p:last-child{margin:0}
+.workspace-heading{display:flex;justify-content:space-between;align-items:start;gap:18px;margin:44px 0 18px}.workspace-heading .buttons{margin:0}.workspace-heading p{margin-bottom:0}
+.filterbar{display:grid;grid-template-columns:minmax(200px,2fr) 1fr 1.3fr;align-items:end;gap:14px;padding:20px}.filterbar label{display:grid;gap:6px;color:#c4d6df;font-size:.8rem;font-weight:650}.hint{grid-column:1/-1;font-size:.82rem;margin:0}
+.summary{color:#d8e3e8;font-size:.9rem;margin:20px 0 12px}.grid{display:grid;grid-template-columns:minmax(0,1.8fr) minmax(270px,.9fr);gap:18px;align-items:start}
+.matrix-pane{overflow:hidden}.table-scroll{overflow:auto;max-height:650px}table{width:100%;border-collapse:separate;border-spacing:0;font-size:.88rem;min-width:640px}th,td{padding:13px 11px;vertical-align:middle;text-align:left;border-bottom:1px solid #2d3c4c}th{position:sticky;top:0;z-index:1;background:#263746;color:#ebf7f9;font-size:.79rem;white-space:nowrap}td:first-child{min-width:180px;max-width:290px;overflow-wrap:anywhere}td small{display:block;color:#a7bccb;margin-top:3px}td button{width:100%;min-width:90px;text-align:center;border:1px solid #405769;background:#1c3440;padding:8px 6px;border-radius:7px;color:#c4f3ec;font-size:.83rem;font-weight:670}td button:hover{background:#244656}td button.empty-cell{background:transparent;border:1px dashed #485362;color:#a9b2c0;font-weight:450}td button.critical,td button.high{border-color:#a47070;color:#ffd3cc}td button.medium{border-color:#b4a56d;color:#f4dfb2}
+.legend{padding:14px 18px;font-size:.82rem;margin:0;color:#b0c0cb}.details{padding:22px;max-height:750px;overflow:auto}.details h3{font-size:1.1rem;margin:0 0 10px}.details article{background:#0e1721;border:1px solid #2a3b4a;border-radius:10px;padding:14px;margin:12px 0;overflow-wrap:anywhere}.details article strong{color:#a0e8e2}.details article p{font-size:.88rem;margin:9px 0}.details details{border-top:1px solid #2e3949;padding-top:9px}.details summary{cursor:pointer;color:#c6d7df}.details details p{white-space:pre-wrap}
+.hold{padding:20px 24px;margin-top:32px;border-color:#746047;background:#241f1c}.hold strong{letter-spacing:.09em;color:#f7d2a8}.hold p{color:#d9c7b5;margin:8px 0 0}
+footer{border-top:1px solid #283442;padding:22px clamp(18px,4vw,52px);max-width:1600px;margin:auto;color:#91a8ba;font-size:.8rem}
+@media(max-width:1000px){.grid{grid-template-columns:1fr}.details{max-height:unset}.load{grid-template-columns:1fr}.filterbar{grid-template-columns:1fr 1fr}.filterbar label:first-child{grid-column:1/-1}}
+@media(max-width:620px){.top{align-items:flex-start;flex-direction:column}.hero{padding-top:32px}.workspace-heading{flex-direction:column}.filterbar{grid-template-columns:1fr}.filterbar label:first-child{grid-column:auto}.load{padding:18px}.hero h1{font-size:2.3rem}}
+@media(print){body{background:white;color:black}.top,.load,.filterbar,.buttons,#details,.hold,.note,footer{display:none!important}.shell{padding:0}.panel{border:1px solid #aaa;box-shadow:none}th,td{background:white;color:black!important;border-bottom:1px solid #aaa}.matrix-pane{overflow:visible}.table-scroll{overflow:visible;max-height:none}.hero{display:none}td button{color:black!important;background:white!important}}
+</style>
+</head>
+<body>
+  <a class="skip" href="#main">Skip to workspace</a>
+  <header class="top">
+    <div class="brand"><span class="mark">L<span>●</span></span> LightUp <span class="slash">/</span> Lab declarations</div>
+    <span class="posture">INCUBATE · HUMAN ONLY · DRAFT/HOLD</span>
+  </header>
+  <main id="main" class="shell">
+    <section class="hero">
+      <span class="eyebrow">OFFLINE REVIEW WORKSPACE / 01</span>
+      <h1>See what your lab results <em>declare.</em><br>Never mistake absence for safety.</h1>
+      <p class="lead">Compare the literal capability/check labels in <strong>2–8 previously produced PRIVATE isolated-lab result files</strong>. Rows are source declarations, not vulnerability verification or evidence of coverage. Nothing is assessed, contacted, dispatched or authorized here.</p>
+    </section>
+    <section class="load panel" aria-labelledby="load-title">
+      <div>
+        <h2 id="load-title">Choose existing PRIVATE original result files</h2>
+        <p>All files must declare the <strong>same exact scenario and endpoint set</strong>, with distinct original run IDs. You decide their display order; it is <em>not verified chronology</em>. Whole-batch structural admission; no partial import, storage, tracker or network.</p>
+      </div>
+      <div class="load-actions">
+        <label for="files">Local original .json files · 2–8 · ≤8 MiB each</label>
+        <input id="files" type="file" accept=".json,application/json" multiple aria-describedby="privacy">
+        <div class="buttons">
+          <button class="primary" id="load" type="button">Open PRIVATE batch</button>
+          <button class="secondary" id="forget" type="button">Forget local data</button>
+        </div>
+      </div>
+    </section>
+    <p id="message" role="status" aria-live="polite" data-error="false">Nothing loaded. This app has no network calls or scan operations.</p>
+    <aside id="intro" class="note" aria-label="Privacy and interpretation" >
+      <h2>Important boundaries</h2>
+      <p>PRIVATE source fields may contain customer names, target addresses, sensitive findings and evidence. Only open files on a trusted offline device. No identity, grant, consent or original source authenticity is established by this tool.</p>
+      <p id="privacy"><strong>An empty cell means not declared under the selected filter.</strong> It never means scanned, safe, fixed, remediated, covered or approved. This is not a ground-truth or release report.</p>
+    </aside>
+    <section id="workspace" hidden aria-label="PRIVATE declared check workspace">
+      <div class="workspace-heading">
+        <div>
+          <span class="eyebrow">PRIVATE / SOURCE-DECLARED MATRIX</span>
+          <h2 id="sourceCount">0 original PRIVATE files</h2>
+          <p id="sourceSummary"></p>
+        </div>
+        <div class="buttons">
+          <button id="exportJSON" class="secondary" type="button">Export counts JSON</button>
+          <button id="exportCSV" class="secondary" type="button">Export counts CSV</button>
+        </div>
+      </div>
+      <div class="panel filterbar">
+        <label for="query">Filter literal capability / check <input id="query" type="search" autocomplete="off" placeholder="Local check or capability label"></label>
+        <label for="severity">Source severity <select id="severity"><option value="all">All declared severities</option><option>critical</option><option>high</option><option>medium</option><option>low</option><option>info</option></select></label>
+        <label for="endpoint">Declared endpoint ordinal <select id="endpoint"><option value="0">All declared endpoints</option></select></label>
+        <p class="hint">Endpoint ordinals come from the first locally opened source; exact target literals stay private in memory.</p>
+      </div>
+      <p id="visible" class="summary"></p>
+      <div class="grid">
+        <section class="panel matrix-pane" aria-label="Check declarations by local file">
+          <div class="table-scroll"><table id="matrix"></table></div>
+          <p class="legend"><strong>— not declared</strong> is never a verified PASS, valid negative observation, scan coverage, fix or closure. Cell counts are source-reported finding appearances.</p>
+        </section>
+        <section id="details" class="panel details" tabindex="-1" aria-label="Original PRIVATE source detail">
+          <h3>Inspect a declared cell</h3>
+          <p>Click a cell to see the source’s unverified human-readable statement and proposed mitigation without changing the source file.</p>
+        </section>
+      </div>
+    </section>
+    <section class="hold panel">
+      <strong>REVIEW_ONLY · NOT AUTHORIZED</strong>
+      <p>No live targets, DNS, requests, grant issuance, scanning, consent claim, retesting, remediation verification or publication to main. The original hosted and permanent named VPS CI, owner/security/privacy reviews, #177/#182/#829, genuinely separate current client/operator consent including action-time revocation and explicit HUMAN GO remain required for any release.</p>
+    </section>
+  </main>
+  <footer>LightUp · PRIVATE untrusted original lab declarations · Source-only local HUMAN planning · No persistence</footer>
+  <script>"use strict";
+/* Original-source declaration matrix: offline HUMAN interpretation, never a verifier. */
+(() => {
+  const $ = id => document.getElementById(id);
+  const SEVERITIES = ["critical", "high", "medium", "low", "info"];
+  const METRICS = ["valid_findings","invalid_findings","missed_findings","coverage_assessed",
+    "coverage_unknown","scope_violations","policy_violations","human_interventions",
+    "tool_calls","evidence_quality","reproducibility","remediation_quality",
+    "retest_correctness","runtime_seconds","compute_cost_usd","false_positive_rate"];
+  const NUMERIC_COUNTS = new Set(METRICS.slice(0,9));
+  const SCORES = new Set(["evidence_quality","reproducibility","remediation_quality",
+    "retest_correctness","false_positive_rate"]);
+  const FLAGS = Object.freeze({authorized:false,consent_verified:false,
+    dispatch_allowed:false,release_allowed:false});
+  const MAX_SOURCE_BYTES = 8 * 1024 * 1024;
+  let sources = [], rows = [], visible = [], selected = null;
+  const fail = (ok, message = "Untrusted or incompatible original lab result") => {
+    if (!ok) throw new Error(message);
+  };
+  const obj = value => value !== null && typeof value === "object" && !Array.isArray(value);
+  const shape = (value, names) => obj(value) &&
+    Object.keys(value).length === names.length && names.every(name => Object.hasOwn(value,name));
+  const text = (value,max=8192) => typeof value === "string" && value.length <= max &&
+    !/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/.test(value);
+  const int = (value,max=1e9) => Number.isSafeInteger(value) && value>=0 && value<=max;
+
+  // JSON.parse silently accepts repeated keys. This bounded reader rejects them at all depths.
+  function parseStrict(raw) {
+    let pos=0, nodes=0;
+    const ws=()=>{while(pos<raw.length && /[ \t\r\n]/.test(raw[pos]))pos++;};
+    function stringValue() {
+      fail(raw[pos] === '"'); const start=pos++; let escaped=false;
+      while(pos<raw.length) {
+        const c=raw[pos++];
+        if(c === '"' && !escaped) return JSON.parse(raw.slice(start,pos));
+        if(c === "\\" && !escaped) escaped=true; else escaped=false;
+      }
+      fail(false);
+    }
+    function read(depth) {
+      fail(depth<32 && ++nodes<=160000,"Input structure exceeds private source limits");
+      ws();const c=raw[pos];
+      if(c === '"')return stringValue();
+      if(c === "{") {
+        pos++;const result=Object.create(null),seen=new Set();ws();
+        if(raw[pos] === "}"){pos++;return result;}
+        while(true) {
+          ws();const key=stringValue();fail(!seen.has(key),"Repeated JSON key");
+          seen.add(key);ws();fail(raw[pos++] === ":");
+          result[key]=read(depth+1);ws();
+          if(raw[pos] === "}"){pos++;return result;}
+          fail(raw[pos++] === ",");
+        }
+      }
+      if(c === "[") {
+        pos++;const values=[];ws();
+        if(raw[pos] === "]"){pos++;return values;}
+        while(true){
+          fail(values.length<160000);
+          values.push(read(depth+1));ws();
+          if(raw[pos] === "]"){pos++;return values;}
+          fail(raw[pos++] === ",");
+        }
+      }
+      for(const [literal,value] of [["true",true],["false",false],["null",null]]) {
+        if(raw.startsWith(literal,pos)){pos+=literal.length;return value;}
+      }
+      const m=raw.slice(pos).match(/^-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?/);
+      fail(Boolean(m));pos+=m[0].length;
+      const value=Number(m[0]);fail(Number.isFinite(value));return value;
+    }
+    const value=read(0);ws();fail(pos===raw.length,"Trailing source data");
+    return value;
+  }
+  function admitRecord(record,runId,scenarioId) {
+    fail(shape(record,["record_id","scenario_id","run_id","engine_version",
+      "model_bindings","metrics","created_at","notes"]));
+    fail(text(record.record_id,256)&&record.record_id.length>0&&
+      record.run_id===runId&&record.scenario_id===scenarioId&&
+      text(record.engine_version,256)&&record.engine_version.length>0&&
+      text(record.created_at,128)&&text(record.notes,32768));
+    fail(Array.isArray(record.model_bindings)&&record.model_bindings.length<=64&&
+      record.model_bindings.every(pair=>Array.isArray(pair)&&pair.length===2&&
+        pair.every(item=>text(item,1024))));
+    const m=record.metrics;fail(shape(m,METRICS));
+    for(const name of METRICS) {
+      const number=m[name];
+      fail(typeof number==="number"&&Number.isFinite(number)&&number>=0);
+      if(NUMERIC_COUNTS.has(name))fail(int(number));
+      if(SCORES.has(name))fail(number<=1);
+      if(name==="runtime_seconds"||name==="compute_cost_usd")fail(number<=1e12);
+    }
+    const total=m.valid_findings+m.invalid_findings;
+    fail(Math.abs(m.false_positive_rate-(total?m.invalid_findings/total:0))<=1e-8);
+  }
+  function admit(source) {
+    const required=["run_id","scenario_id","targets","plan","denied",
+      "elevation_requests","findings","coverage","evaluation","report_markdown"];
+    fail(obj(source)&&!Object.hasOwn(source,"mode")&&
+      (shape(source,required)||shape(source,[...required,"benchmark_case"])));
+    fail(text(source.run_id,256)&&source.run_id.length>0&&
+      text(source.scenario_id,256)&&source.scenario_id.length>0);
+    fail(Array.isArray(source.targets)&&source.targets.length>=1&&source.targets.length<=16&&
+      source.targets.every(item=>text(item,2048)&&item.length>0)&&
+      new Set(source.targets).size===source.targets.length);
+    fail(Array.isArray(source.findings)&&source.findings.length<=2048);
+    fail(Array.isArray(source.plan)&&source.plan.length<=512&&
+      Array.isArray(source.denied)&&source.denied.length<=512&&
+      Array.isArray(source.elevation_requests)&&source.elevation_requests.length<=512);
+    fail(obj(source.coverage)&&text(source.report_markdown,MAX_SOURCE_BYTES));
+    for(const step of source.plan) {
+      fail(shape(step,["tool_id","asset","arguments"])&&
+        text(step.tool_id,256)&&text(step.asset,2048)&&obj(step.arguments)&&
+        Object.keys(step.arguments).length<=64);
+    }
+    for(const denial of source.denied) {
+      fail(shape(denial,["tool_id","reason"])&&
+        text(denial.tool_id,256)&&text(denial.reason,8192));
+    }
+    admitRecord(source.evaluation,source.run_id,source.scenario_id);
+    if(Object.hasOwn(source,"benchmark_case")) {
+      fail(shape(source.benchmark_case,["record","context"])&&
+        obj(source.benchmark_case.context)&&
+        source.benchmark_case.context.is_lab===true&&
+        source.benchmark_case.context.authorization===null&&
+        source.benchmark_case.context.run_id===source.run_id);
+      admitRecord(source.benchmark_case.record,source.run_id,source.scenario_id);
+      fail(JSON.stringify(source.benchmark_case.record)===JSON.stringify(source.evaluation));
+    }
+    const ids=new Set();
+    for(const finding of source.findings) {
+      fail(shape(finding,["finding","finding_id","severity","impact","fix","retest",
+        "check_id","capability_id","target","evidence_ids","evidence_summary"]));
+      fail(text(finding.finding_id,256)&&finding.finding_id.length>0&&
+        !ids.has(finding.finding_id));ids.add(finding.finding_id);
+      fail(SEVERITIES.includes(finding.severity)&&
+        ["finding","impact","fix","retest","check_id","capability_id","target",
+          "evidence_summary"].every(key=>text(finding[key]))&&
+        finding.finding.length>0&&finding.target.length>0&&
+        Array.isArray(finding.evidence_ids)&&finding.evidence_ids.length<=64&&
+        finding.evidence_ids.every(id=>text(id,1024)));
+    }
+    return source;
+  }
+  function countsFor(items) {
+    const severity=Object.fromEntries(SEVERITIES.map(s=>[s,0]));
+    for(const item of items) severity[item.severity]++;
+    return {total:items.length,severity,
+      worst:SEVERITIES.find(s=>severity[s]>0)||null};
+  }
+  function aggregate(data) {
+    const map=new Map();
+    data.forEach((source,sourceIndex)=>{
+      source.findings.forEach((f,sourceOrdinal)=>{
+        // Structural JSON tuples, not evidence of the same vulnerable asset.
+        const key=JSON.stringify([f.capability_id,f.check_id]);
+        if(!map.has(key))map.set(key,{capability:f.capability_id,check:f.check_id,
+          bySource:data.map(()=>[])});
+        const endpointIndex=source.targets.indexOf(f.target);
+        map.get(key).bySource[sourceIndex].push({finding:f,sourceOrdinal,
+          endpointOrdinal:endpointIndex<0?null:endpointIndex+1});
+      });
+    });
+    return [...map.values()].sort((a,b)=>
+      a.capability.localeCompare(b.capability)||a.check.localeCompare(b.check));
+  }
+  function node(tag,word,className) {
+    const item=document.createElement(tag);
+    if(word!==undefined)item.textContent=String(word);
+    if(className)item.className=className;
+    return item;
+  }
+  function clear(target){target.replaceChildren();}
+  function message(value,isError=false){
+    $("message").textContent=value;$("message").dataset.error=String(isError);
+  }
+  function download(name,body,type) {
+    const blob=new Blob([body],{type});const url=URL.createObjectURL(blob);
+    const anchor=node("a");anchor.href=url;anchor.download=name;
+    document.body.append(anchor);anchor.click();anchor.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),1500);
+  }
+  function filteredPairs(row) {
+    const ep=Number($("endpoint").value);
+    const severity=$("severity").value;
+    return row.bySource.map(list=>list.filter(({finding,endpointOrdinal})=>
+      (!ep||endpointOrdinal===ep)&&
+      (severity==="all"||finding.severity===severity)));
+  }
+  function refresh() {
+    const needle=$("query").value.trim().toLocaleLowerCase();
+    visible=rows.filter(row=>(row.capability+" "+row.check).toLocaleLowerCase().includes(needle));
+    const table=$("matrix");clear(table);
+    const thead=node("thead"),head=node("tr");
+    head.append(node("th","Original capability · check"));
+    sources.forEach((_,i)=>head.append(node("th","Local file "+(i+1))));
+    thead.append(head);table.append(thead);
+    const tbody=node("tbody");let noDeclaration=0;
+    visible.forEach((row,index)=>{
+      const tr=node("tr");
+      const label=node("td");label.append(node("strong",row.capability||"(empty source capability)"));
+      label.append(node("small",row.check||"(empty source check)"));tr.append(label);
+      const pairs=filteredPairs(row);
+      pairs.forEach((cell,sourceIndex)=>{
+        const evidence=countsFor(cell.map(item=>item.finding));
+        const td=node("td"),button=node("button",
+          evidence.total ? evidence.total+" · "+evidence.worst : "— not declared",
+          evidence.total?"count "+evidence.worst:"empty-cell");
+        button.type="button";
+        button.title=evidence.total?"View local source declarations":"Not declared ≠ safe, fixed, assessed or authorized";
+        button.addEventListener("click",()=>details(row,sourceIndex,cell));
+        td.append(button);tr.append(td);
+        if(!evidence.total)noDeclaration++;
+      });
+      tbody.append(tr);
+    });
+    table.append(tbody);
+    $("visible").textContent=visible.length+" source-declared check groups · "+
+      noDeclaration+" empty cells (not declared, never PASS)";
+    $("exportCSV").disabled=!sources.length;
+    $("exportJSON").disabled=!sources.length;
+    if(selected) {
+      const row=rows.find(r=>r===selected.row);
+      if(row)details(row,selected.sourceIndex,
+        filteredPairs(row)[selected.sourceIndex],false);
+    }
+  }
+  function details(row,index,cell,focus=true) {
+    selected={row,sourceIndex:index};const pane=$("details");clear(pane);
+    pane.append(node("h3","Local file "+(index+1)+" · source-declared items"));
+    pane.append(node("p","Capability: "+row.capability+" · check: "+row.check));
+    if(!cell.length)pane.append(node("p","This source does not declare a matching finding under the current filters. This says nothing about assessment coverage or remediation."));
+    for(const {finding,sourceOrdinal,endpointOrdinal} of cell) {
+      const article=node("article");
+      article.append(node("strong","#"+(sourceOrdinal+1)+" · "+finding.severity+
+        " · endpoint "+(endpointOrdinal??"unmatched")));
+      article.append(node("p",finding.finding));
+      article.append(node("p","Source mitigation: "+finding.fix));
+      article.append(node("p","Source retest proposal: "+finding.retest));
+      const evidence=node("details"),summary=node("summary","PRIVATE unverified evidence summary");
+      evidence.append(summary,node("p",finding.evidence_summary||"(none declared)"));
+      article.append(evidence);pane.append(article);
+    }
+    if(focus)pane.focus({preventScroll:true});
+  }
+  function privateExport() {
+    return {kind:"lightup.offline_lab_declared_check_matrix",
+      version:1,disposition:"REVIEW_ONLY_DRAFT_HOLD",
+      ...FLAGS,local_file_slots:sources.length,source_claimed_endpoint_slots:sources[0].targets.length,
+      source_reported_finding_totals:sources.map(source=>source.findings.length),
+      declared_tuple_rows:visible.map((row,ordinal)=>{
+        const perSource=filteredPairs(row).map(list=>countsFor(list.map(x=>x.finding)));
+        return {ordinal:ordinal+1,appearances:perSource.map(r=>r.total),
+          source_reported_severities:perSource.map(r=>r.severity)};
+      }),interpretation:"Unsigned source claims only; absent is not assessed, safe or fixed. Source order is operator-selected, not verified chronology."};
+  }
+  function csv(rowsData) {
+    const lines=[["tuple_ordinal",...sources.map((_,i)=>"source_"+(i+1)+"_reported")]];
+    rowsData.declared_tuple_rows.forEach(item=>lines.push([item.ordinal,...item.appearances]));
+    return lines.map(line=>line.join(",")).join("\r\n")+"\r\n";
+  }
+  async function importFiles() {
+    const files=[...$("files").files];
+    if(files.length<2||files.length>8){
+      message("Select 2–8 existing original PRIVATE lab JSON files in your chosen display order.",true);return;
+    }
+    $("load").disabled=true;message("Reading selected local originals. No network or scan.");
+    try {
+      const next=[];
+      for(const file of files) {
+        fail(file.size>0&&file.size<=MAX_SOURCE_BYTES,"Source file outside the 8 MiB bound");
+        const data=new Uint8Array(await file.arrayBuffer());
+        const decoded=new TextDecoder("utf-8",{fatal:true}).decode(data);
+        next.push(admit(parseStrict(decoded)));
+      }
+      const baseline=next[0],sameTargets=new Set(baseline.targets);
+      fail(new Set(next.map(s=>s.run_id)).size===next.length,
+        "Repeated original run IDs; mixed source set held");
+      for(const source of next.slice(1)) {
+        fail(source.scenario_id===baseline.scenario_id,
+          "Different source-declared scenario; cannot present one comparison matrix");
+        fail(source.targets.length===baseline.targets.length&&
+          source.targets.every(t=>sameTargets.has(t)),
+          "Different exact declared endpoint set; cannot present one comparison matrix");
+      }
+      // Only publish after the WHOLE batch has passed strict source admission.
+      sources=next;rows=aggregate(next);selected=null;clear($("details"));
+      clear($("endpoint"));
+      $("endpoint").append(new Option("All declared endpoints",0));
+      baseline.targets.forEach((_,i)=>$("endpoint").append(new Option("Endpoint ordinal "+(i+1),i+1)));
+      $("workspace").hidden=false;
+      $("intro").hidden=true;
+      $("sourceCount").textContent=sources.length+" original PRIVATE source files";
+      $("sourceSummary").textContent=baseline.targets.length+
+        " identical literal declared endpoint slots · "+rows.length+
+        " literal capability/check groups · no verification of target, ownership or chronology";
+      refresh();
+      message("Local input admitted structurally. Source statements remain unverified. No original data uploaded.");
+    } catch(error) {
+      message("Entire selection held: "+error.message+
+        ". Previously opened selection, if any, was not replaced.",true);
+    } finally {
+      $("load").disabled=false;$("files").value="";
+    }
+  }
+  $("load").addEventListener("click",importFiles);
+  $("forget").addEventListener("click",()=>{
+    if(sources.length&&!confirm("Forget ALL locally opened original PRIVATE result data?"))return;
+    sources=[];rows=[];visible=[];selected=null;
+    clear($("details"));clear($("matrix"));$("query").value="";
+    $("workspace").hidden=true;$("intro").hidden=false;
+    $("files").value="";message("Private originals discarded from this application state.");
+  });
+  ["query","severity","endpoint"].forEach(id=>$(id).addEventListener("input",refresh));
+  $("exportJSON").addEventListener("click",()=>{
+    if(sources.length&&confirm("Download anonymized COUNTS ONLY? Small groups can still be sensitive.")){
+      download("lightup-private-declaration-counts.json",
+        JSON.stringify(privateExport(),null,2)+"\n","application/json");
+    }
+  });
+  $("exportCSV").addEventListener("click",()=>{
+    if(sources.length&&confirm("Download anonymous COUNTS ONLY CSV? This is not a security report.")){
+      download("lightup-private-declaration-counts.csv",csv(privateExport()),"text/csv");
+    }
+  });
+  addEventListener("beforeunload",event=>{
+    if(sources.length){event.preventDefault();event.returnValue="";}
+  });
+})();</script>
+</body>
+</html>
