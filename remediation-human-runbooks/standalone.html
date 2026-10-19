@@ -136,7 +136,7 @@ function parseStrict(text,limit){
  function value(depth){
   if(depth>16)fail('nested JSON beyond safe limit');white();var c=text[i];
   if(c==='{'){i++;white();var keys=new Set();if(text[i]==='}'){i++;return;}while(true){
-   white();var key=qstr();if(keys.has(key))fail('duplicate JSON key '+key);keys.add(key);white();if(text[i++]!==':')fail('missing key separator');
+   white();var key=qstr();if(keys.has(key))fail('duplicate JSON member');keys.add(key);white();if(text[i++]!==':')fail('missing key separator');
    value(depth+1);white();if(text[i]==='}'){i++;return;}if(text[i++]!==',')fail('invalid object separator');
   }}
   if(c==='['){i++;white();if(text[i]===']'){i++;return;}while(true){value(depth+1);white();if(text[i]===']'){i++;return;}if(text[i++]!==',')fail('invalid array separator');}}
@@ -147,7 +147,9 @@ function parseStrict(text,limit){
  value(0);white();if(i!==text.length)fail('trailing JSON text');
  return JSON.parse(text);
 }
-async function read(file,limit){limit=limit||MAX;if(!file||file.size<1||file.size>limit)fail('select a nonempty JSON within configured size limit');return parseStrict(new TextDecoder('utf-8',{fatal:true}).decode(await file.arrayBuffer()),limit);}
+async function read(file,limit){limit=limit||MAX;if(!file||file.size<1||file.size>limit)fail('select a nonempty JSON within configured size limit');
+ try{return parseStrict(new TextDecoder('utf-8',{fatal:true}).decode(await file.arrayBuffer()),limit);}
+ catch(e){if(e.message&&e.message.startsWith('HOLD:'))throw e;fail('invalid JSON syntax or UTF-8 (private source content withheld)');}}
 function message(s,bad){$('notice').textContent=s;$('notice').dataset.error=String(!!bad);}
 function dirty(){if(!state){$('dirty').textContent='No local storage. Import an original PRIVATE source first.';return;}
  $('dirty').textContent=revision!==exported?'UNSAVED PRIVATE runbooks: download a complete backup before closing or refreshing.':'PRIVATE runbooks locally unchanged since last export/restore.';}
@@ -238,8 +240,8 @@ function save(){if(!state)fail('import original source first');if(!window.confir
 async function importWork(){
  var f=$('workFile').files[0];if(!f)fail('choose ORIGINAL PRIVATE HUMAN workplan first');
  if(state&&!confirmDiscard())return;
- var old=f, data=await read(f), next=sourceData(data);
- if($('workFile').files[0]!==old)fail('original workplan picker changed while loading');
+ var old=f,prior=revision,priorSource=state?binding(state):null,data=await read(f), next=sourceData(data);
+ if($('workFile').files[0]!==old||revision!==prior||(state?binding(state):null)!==priorSource)fail('original workplan picker or UNSAVED local work changed while importing');
  state=next;revision=0;exported=0;pendingMerge=null;mergeUndo=null;clearMerge();$('mergeUndo').disabled=true;$('mergeFile').value='';$('filter').value='all';$('restoreFile').value='';$('editor').hidden=false;$('io').hidden=false;$('collab').hidden=false;render();dirty();
  message('Opened original source-declared PRIVATE HUMAN workplan. Draft runbooks below; no client authority or security outcome created.');
 }
