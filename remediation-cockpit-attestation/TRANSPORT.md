@@ -8,6 +8,19 @@ On trusted Linux devices: Python 3.11+ and a locally approved `cryptography` ins
 
 Prepare the original source-free `cockpit/` through the original source owner's workflow. Create a separate 32-byte secret with `attest.py new-key`, then use `attest.py seal` to produce its owner-private detached `cockpit-receipt.json`. All parent directories must exist and be owned by the local operator with `0700` permissions. Key, receipt and encrypted output must be unique owner-private `0600` regular files. Supply literal absolute paths.
 
+## One-command sender (no detached receipt file needed)
+
+If no prior detached HMAC receipt exists, the preferred direct command takes the already-generated original native anonymous cockpit and creates the HMAC receipt **inside the authenticated encrypted package**, without writing an extra plaintext receipt to disk:
+
+```sh
+python3 remediation-cockpit-attestation/transport.py send \
+  --cockpit "$HOME/private-lightup-workroom/cockpit" \
+  --key-file "$HOME/private-lightup-handoff/team-secret.key" \
+  --output "$HOME/private-lightup-handoff/operator-cockpit.ltpack"
+```
+
+Native admission occurs twice around file reads. The receiver uses the exact same `receive` command. This does NOT add sender identity, authorization or trusted client evidence. Use `pack` below only when reusing a previously signed detached receipt; that path verifies the existing receipt before wrapping it.
+
 ## Sender — validated cockpit to one encrypted file
 
 ```sh

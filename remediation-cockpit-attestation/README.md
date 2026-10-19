@@ -30,7 +30,7 @@ python3 remediation-cockpit-attestation/attest.py verify \
 
 ## Encrypted one-file cockpit transfer (recommended for PRIVATE handoff)
 
-[**Complete send/receive guide**](TRANSPORT.md) documents the new offline AES-256-GCM transport, including separate out-of-band key delivery, original manifest/HMAC verification, native fail-closed HTML/JSON re-admission and exclusive atomic owner-private recipient publication. Use `transport.py pack` and `transport.py receive`; original standalone HMAC flow above remains available. This companion requires an approved local `cryptography` installation on Linux; **no network install or runtime dependency is added**.
+[**Complete send/receive guide**](TRANSPORT.md) documents the new offline AES-256-GCM transport, including separate out-of-band key delivery, original manifest/HMAC verification, native fail-closed HTML/JSON re-admission and exclusive atomic owner-private recipient publication. Use `transport.py send` (one command), or `pack` with an existing detached receipt, followed by `transport.py receive`; original standalone HMAC flow above remains available. This companion requires an approved local `cryptography` installation on Linux; **no network install or runtime dependency is added**.
 
 ## Rotate an existing trusted shared-key receipt without changing the cockpit
 

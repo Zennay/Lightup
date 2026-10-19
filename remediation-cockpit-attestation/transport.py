@@ -8,6 +8,7 @@ grants authority. Requires the separately distributed 32-byte attestation key.
 from __future__ import annotations
 
 import argparse
+import binascii
 import base64
 import hashlib
 import hmac
@@ -241,7 +242,7 @@ def main() -> int:
         print("No client consent, sender identity, original evidence, remediation or retest verified.")
         return 2
     except (OSError, ValueError, TypeError, UnicodeError, OverflowError,
-            InvalidTag, review.Hold):
+            InvalidTag, binascii.Error, RecursionError, review.Hold):
         print("HOLD: PRIVATE encrypted cockpit rejected; nothing authorized.",
               file=sys.stderr)
         return 3
