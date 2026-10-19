@@ -17,6 +17,18 @@
   const $ = id => document.getElementById(id);
   let entries = [];
   let earlier = null; // Source-free NUMERIC aggregate snapshot only, never raw inputs.
+
+  const SESSION_KIND="lightup.private_human_browser_numeric_session";
+  const SESSION_DISPOSITION="LOCAL_BROWSER_ONLY_NO_ORIGINAL_SOURCE_ATTESTATION";
+  const SESSION_WARNING="Self-declared private HUMAN counts only; does not authenticate original source, consent, findings, fixes, grants, or users.";
+  const SESSION_FIELDS=["kind","schema_version","disposition","packets",
+    "earlier_numeric_aggregate","warning",...FLAGS];
+  const PACKET_FIELDS=["type","slots","questions","plan"];
+  const SUMMARY_FIELDS=["packets","slots","questions","attention","dated","planned",
+    "possible_same_numeric_shape_appearances","stages"];
+  const SAVED_PLAN_FIELDS=["attention","dated","stages"];
+  let resumedFromNumericFile=false;
+
   const ensure = ok => { if (!ok) throw Error("HOLD"); };
   const integer = (v,min,max) => Number.isSafeInteger(v) && v >= min && v <= max;
   const keys = (o,expected) => o !== null && typeof o === "object" &&
@@ -57,6 +69,70 @@
       "COUNTS_ONLY_NO_AUTHORITY");
     const packet = inbox(o.source_free_inbox);
     return {...packet,type:"workroom",plan:plan(o.local_human_planning,packet.slots)};
+  };
+
+
+  const savedPlan = (data,slots) => {
+    ensure(keys(data,SAVED_PLAN_FIELDS) &&
+      integer(data.attention,0,slots) && integer(data.dated,0,slots) &&
+      keys(data.stages,STAGES));
+    const counts=STAGES.map(stage=>data.stages[stage]);
+    ensure(counts.every(n=>integer(n,0,slots)) &&
+      counts.reduce((a,b)=>a+b,0)===slots &&
+      data.attention===slots-data.stages.locally_answered);
+    return {attention:data.attention,dated:data.dated,stages:{...data.stages}};
+  };
+  const savedAggregate=(obj)=>{
+    ensure(keys(obj,SUMMARY_FIELDS) &&
+      integer(obj.packets,1,MAX) &&
+      integer(obj.slots,obj.packets,MAX*12) &&
+      integer(obj.questions,0,MAX*1000000) &&
+      integer(obj.planned,0,obj.packets) &&
+      integer(obj.attention,0,obj.slots) &&
+      integer(obj.dated,0,obj.slots) &&
+      integer(obj.possible_same_numeric_shape_appearances,0,obj.packets) &&
+      keys(obj.stages,STAGES));
+    const stages=STAGES.map(key=>obj.stages[key]);
+    ensure(stages.every(value=>integer(value,0,obj.slots)) &&
+      stages.reduce((a,b)=>a+b,0)<=obj.slots &&
+      (obj.planned!==0 || (obj.attention===0 && obj.dated===0 &&
+        stages.every(n=>n===0))));
+    return {...obj,stages:{...obj.stages}};
+  };
+  const savedSession=(obj)=>{
+    header(obj,SESSION_FIELDS,SESSION_KIND,SESSION_DISPOSITION);
+    ensure(obj.warning===SESSION_WARNING &&
+      Array.isArray(obj.packets) && obj.packets.length>=1 &&
+      obj.packets.length<=MAX);
+    const files=obj.packets.map(data=>{
+      ensure(keys(data,PACKET_FIELDS) &&
+        (data.type==="inbox" || data.type==="workroom") &&
+        integer(data.slots,1,12) && integer(data.questions,0,1000000));
+      if(data.type==="inbox"){ensure(data.plan===null);}
+      const plan=data.type==="inbox"?null:savedPlan(data.plan,data.slots);
+      return {type:data.type,slots:data.slots,questions:data.questions,plan};
+    });
+    if(obj.earlier_numeric_aggregate!==null)
+      savedAggregate(obj.earlier_numeric_aggregate);
+    return {packets:files,earlier:obj.earlier_numeric_aggregate===null?null:
+      savedAggregate(obj.earlier_numeric_aggregate)};
+  };
+  const exportableSession=()=>{
+    ensure(entries.length>0 && entries.length<=MAX);
+    const snapshot={
+      kind:SESSION_KIND,schema_version:1,disposition:SESSION_DISPOSITION,
+      packets:entries.map(x=>({
+        type:x.type,slots:x.slots,questions:x.questions,
+        plan:x.plan===null?null:{attention:x.plan.attention,dated:x.plan.dated,
+          stages:{...x.plan.stages}}
+      })),
+      earlier_numeric_aggregate:earlier===null?null:{...earlier,
+        stages:{...earlier.stages}},
+      warning:SESSION_WARNING,
+      ...Object.fromEntries(FLAGS.map(key=>[key,false]))
+    };
+    savedSession(snapshot);
+    return JSON.stringify(snapshot,null,2)+"\n";
   };
 
   /* JSON scanner rejects duplicates at every nesting level BEFORE JSON.parse.
@@ -181,6 +257,10 @@
     $("exportDelta").disabled=earlier===null || entries.length===0;
     $("exportBrief").disabled=entries.length===0;
     $("exportJson").disabled=entries.length===0;
+    $("saveSession").disabled=entries.length===0;
+    $("sourceStatus").textContent=resumedFromNumericFile?
+      "Resumed numeric browser summary (NOT freshly source-checked)":
+      "Native-shaped count exports declared by their files (NOT independently authenticated)";
     $("missing").textContent=String(total.packets-total.planned);
     $("overlap").textContent=String(total.possible_same_numeric_shape_appearances);
     for(const stage of STAGES)$("stage_"+stage).textContent=
@@ -215,14 +295,14 @@
         ensure(new TextEncoder().encode(raw).length<=LIMIT);
         staged.push(admit(strictJSON(raw)));
       }
-      entries=[...entries,...staged];render();
+      entries=[...entries,...staged];resumedFromNumericFile=false;render();
       showStatus(files.length+" PRIVATE HUMAN count packet(s) admitted in memory.");
     }catch(_){
       showStatus("HOLD: selection rejected atomically; no files added.",true);
     }
   });
   $("clear").addEventListener("click",()=>{
-    entries=[];render();showStatus("Current anonymous imports cleared. Earlier aggregate remains until forgotten.");
+    entries=[];resumedFromNumericFile=false;render();showStatus("Current anonymous imports cleared. Earlier aggregate remains until forgotten.");
   });
   $("freeze").addEventListener("click",()=>{
     if(!entries.length)return;
@@ -261,6 +341,36 @@
       "");
     return lines.join("\n");
   };
+
+  $("saveSession").addEventListener("click",()=>{
+    if(!entries.length)return;
+    try{
+      download("lightup-private-human-browser-session.json","application/json",
+        exportableSession());
+      showStatus("Private source-free numeric session saved; it is NOT an original authenticated export.");
+    }catch(_){showStatus("HOLD: session could not be exported.",true);}
+  });
+  $("resumeSession").addEventListener("change",async event=>{
+    const files=Array.from(event.target.files??[]);
+    event.target.value="";
+    try{
+      ensure(files.length===1 && files[0].size>0 && files[0].size<=LIMIT);
+      const raw=new TextDecoder("utf-8",{fatal:true}).decode(
+        await files[0].arrayBuffer());
+      ensure(new TextEncoder().encode(raw).length<=LIMIT);
+      const loaded=savedSession(strictJSON(raw));
+      // The new complete numeric state is accepted before any existing
+      // private current state is replaced. No partial import or coercion.
+      if((entries.length>0 || earlier!==null) &&
+          !window.confirm("Replace current in-memory HUMAN counts and earlier numeric baseline with this UNVERIFIED saved browser session?"))return;
+      entries=loaded.packets;earlier=loaded.earlier;
+      resumedFromNumericFile=true;render();
+      showStatus("Source-free HUMAN numeric browser session restored. No original source, key, or authority was checked.");
+    }catch(_){
+      showStatus("HOLD: saved browser session rejected. Existing selections unchanged.",true);
+    }
+  });
+
   $("exportJson").addEventListener("click",()=>{
     if(!entries.length)return;
     const totals=summary(entries);
