@@ -118,3 +118,44 @@ Never send this report or any decrypted HUMAN workroom to a shared/cloud
 service. The comparison reports only what the separately supplied current
 original HUMAN workroom *says*, not authenticated execution or third-party
 approval. Every report is a distinct new private file, not an overwrite.
+
+## One-terminal PRIVATE original HUMAN operator console
+
+A cohesive **interactive HUMAN operations menu** is now available, wrapping
+the same original source-admitted `journal.main` actions. Each selection
+performs a **new** original current account/tenant/engagement read, reopens
+the current native encrypted HUMAN workroom + retention plan with individual
+private passphrase prompts and checks all actual PRIVATE evidence bytes.
+It does not cache earlier admission as a later grant.
+
+```sh
+mkdir -m 700 /private/local-human-console-output
+python3 remediation-durable-stage/human_console.py \
+  --db /private/lightup.db --email operator@example.invalid \
+  --client-id ORIGINAL_CLIENT --engagement-id ORIGINAL_ENGAGEMENT \
+  --human /private/current-original-human.ltv \
+  --plan /private/current-retention-plan.ltv \
+  --directory /private/extracted-material \
+  --journal-dir /private/my-human-journal \
+  --output-dir /private/local-human-console-output \
+  --ack-private-material
+```
+
+The console provides original source/journal status, native encrypted draft
+staging, encrypted-draft recovery, ORIGINAL HUMAN delivery comparison, private
+delivery HTML, private chronology HTML, source-checked reported-human closeout,
+and verified switching between separately supplied original-native HUMAN
+workrooms or retention-plan revisions without leaving the terminal. New
+PRIVATE outputs are exclusive, randomly named 0600 files in a **separate**
+0700 owner-private output directory. No original material files or journal
+entries may share that output directory.
+
+An additional within-session fence refuses a second staging after a completed
+stage in the same interactive console, even if a different plan/workroom is
+chosen. This is not a distributed or cross-device queue; other local tools
+remain outside it. For current original HUMAN workroom switching, the console
+first performs an entire fresh original source admission **before** changing
+its own selected path. A rejected candidate leaves the old selected source
+unchanged. This console does not itself invoke native Apply or prove an
+underlying HUMAN answer is true, authorized, signed or legally sufficient.
+It never scans, retests, deletes, grants or deploys.
