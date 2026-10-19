@@ -57,10 +57,14 @@ function admitLedger(x){
    if(Array.isArray(other)&&other.length===ids.length){const otherIds=new Set(other.map(r=>r.finding_id));if(ids.some(id=>!otherIds.has(id)))fail("Casework and Evidence Review original finding identities differ");}
   }
  }
+ const nativeRows=Array.isArray(x.casework)?x.casework:(Array.isArray(x.evidence_review)?x.evidence_review:null);
+ const nativeIds=nativeRows?new Set(nativeRows.map(r=>r.finding_id)):null;
  const fp=[];
  for(const a of x.attachments){
   if(!exact(a,ATT)||!hex(a.sha256)||!Number.isSafeInteger(a.byte_length)||a.byte_length<0||a.byte_length>16*1024*1024)fail("malformed local file fingerprint");
-  value(a.finding_id,160,"attachment finding",true);value(a.file_name,240,"file name",true);
+  value(a.finding_id,160,"attachment finding",true);
+  if(nativeIds&&!nativeIds.has(a.finding_id))fail("local fingerprint references a finding absent from complete original HUMAN overlays");
+  value(a.file_name,240,"file name",true);
   if(/[\/\\]/.test(a.file_name))fail("path-bearing file name");
   value(a.mime,160,"file MIME");value(a.added_utc,70,"file time");
   value(a.human_reviewer,120,"human reviewer");value(a.human_stage,70,"human file stage");value(a.human_note,1200,"human file note");
@@ -70,7 +74,9 @@ function admitLedger(x){
  const seen=[];
  for(const r of x.human_requests){
   if(!exact(r,HUMAN_ROW)||typeof r.request_id!=="string"||!/^[0-9a-f]{32}$/.test(r.request_id))fail("native request identity");
-  seen.push(r.request_id);value(r.finding_id,160,"finding",true);value(r.assignee,120,"declared owner");
+  seen.push(r.request_id);value(r.finding_id,160,"finding",true);
+  if(nativeIds&&!nativeIds.has(r.finding_id))fail("original HUMAN request references finding absent from complete source-bound HUMAN overlays");
+  value(r.assignee,120,"declared owner");
   if(!KINDS.includes(r.request_kind))fail("native request type");
   value(r.instructions,1400,"instructions",true);value(r.due_date,12,"tentative HUMAN date");
   value(r.human_stage,48,"human stage",true);value(r.human_response,1800,"unverified HUMAN reply");
@@ -158,6 +164,9 @@ function combine(l,r){
   const signals=[];
   if(!answer)signals.push("No HUMAN reply received");
   if(answer?.human_stage==="needs_changes")signals.push("HUMAN reply needs changes");
+  if(answer&&x.source.human_response&&
+     (x.source.human_stage!==answer.human_stage||x.source.human_response!==answer.human_response))
+    signals.push("Two HUMAN exports disagree about unverified response; reconcile with original owner");
   if(!local.length)signals.push("No LOCAL file fingerprint");
   if(x.source.linked_sha256&&!local.some(a=>a.sha256===x.source.linked_sha256))signals.push("Linked LOCAL SHA not in this snapshot");
   if(x.o.due_date&&/^\d{4}-\d\d-\d\d$/.test(x.o.due_date)&&x.o.due_date<today)signals.push("Tentative HUMAN date passed");
@@ -217,7 +226,7 @@ function draw(){
  picker.replaceChildren(new Option("Choose one original owner alias",""));
  for(const alias of owners)picker.append(new Option(alias,alias));
  picker.value=owners.includes(prior)?prior:"";
- $("downloadOwner").disabled=!selected.size||!picker.value;
+ $("downloadOwner").disabled=!r.some(x=>x.owner===picker.value&&selected.has(x.id));
  $("downloadPrivate").disabled=!selected.size;$("downloadAgenda").disabled=!selected.size;
 }
 function download(name,content,type){
@@ -303,6 +312,11 @@ $("forget").addEventListener("click",()=>{current=null;version++;selected.clear(
  for(const id of ["ledger","register","search"])$(id).value="";$("filter").value="all";
  $("rows").replaceChildren();$("review").hidden=true;$("out").hidden=true;
  info("PRIVATE working state and file-picker references cleared from this page. Previously downloaded files must be secured or deleted separately.");});
+for(const id of ["ledger","register"])$(id).addEventListener("change",()=>{
+ current=null;version++;selected.clear();$("rows").replaceChildren();$("review").hidden=true;$("out").hidden=true;
+ info("PRIVATE source file selection changed: old human review and export controls cleared. Inspect both selected sources again.");
+});
+$("ownerRecipient").addEventListener("change",draw);
 $("search").addEventListener("input",draw);$("filter").addEventListener("change",draw);
 $("selectVisible").addEventListener("change",e=>{for(const x of filtered())e.target.checked?selected.add(x.id):selected.delete(x.id);draw();});
 for(const [id,handler] of [["downloadPrivate",privateExport],["downloadOwner",oneOwnerExport],["downloadAggregate",aggregateExport],["downloadAgenda",agendaExport]]){
