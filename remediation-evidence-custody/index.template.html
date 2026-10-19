@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-__SCRIPT_HASH__' 'sha256-__ORIGINAL_HASH__'; style-src 'sha256-__STYLE_HASH__'; connect-src 'none'; img-src 'none'; font-src 'none'; object-src 'none'; media-src 'none'; frame-src 'none'; worker-src 'none'; form-action 'none'; base-uri 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-__SCRIPT_HASH__' 'sha256-__ORIGINAL_HASH__' 'sha256-__MERGE_HASH__'; style-src 'sha256-__STYLE_HASH__'; connect-src 'none'; img-src 'none'; font-src 'none'; object-src 'none'; media-src 'none'; frame-src 'none'; worker-src 'none'; form-action 'none'; base-uri 'none'">
 <title>LightUp · PRIVATE Evidence Custody Reconciliation</title>
 <style>__STYLE__</style></head>
 <body>
@@ -44,13 +44,18 @@
 <p><strong>PRIVATE comparison:</strong> exact original ID, indexed/local names and digests, context source hash and HUMAN local result. Not a chain-of-custody signature.</p>
 <label class="check"><input id="confirmPrivate" type="checkbox"> I independently verified the intended recipient and PRIVATE storage. I understand this includes sensitive metadata and makes no security/authorization claim.</label>
 <button id="private" type="button" disabled>Export PRIVATE HUMAN reconciliation CSV</button>
-<h3>Native LightUp HUMAN follow-up handoff</h3>
-<p>Prepare original Evidence Request Desk v1 draft questions for findings that were not selected locally or whose bytes match under a different filename. Only one tentative HUMAN question per original finding; no automatic apply, remediation verdict or authority. Reopen the original source in the owner application and use its separate preview and explicit import confirmation.</p>
-<button id="requestDraft" type="button" disabled>Export PRIVATE native HUMAN request drafts JSON</button></div>
+<h3>Native LightUp HUMAN follow-up merge (preserves earlier work)</h3>
+<p>New local-file questions are merged with the existing PRIVATE HUMAN request list, never substituted without preview. An imported Unified HUMAN v2 index already carries original requests. If you imported Artifact Ledger v1, optionally select the separate original Evidence Request Desk v1 PRIVATE JSON. Conflicting two original baselines cause HOLD. Original outstanding questions are preserved unchanged, and fresh duplicate questions for the same finding are skipped.</p>
+<label>Optional original PRIVATE HUMAN request packet<input id="requestInput" type="file" accept=".json,application/json"></label>
+<label class="check"><input id="noExistingRequests" type="checkbox"> Only when no requests were supplied: I checked separately that the original owner desk has no HUMAN requests to preserve. This is not permission to overwrite an existing list.</label>
+<button id="requestDraft" type="button" disabled>Preview preserve-first HUMAN request merge</button>
+<p id="requestPreview" class="detail">No request merge preview.</p>
+<label class="check"><input id="mergeAck" type="checkbox"> I reviewed the preview and will retain an independent backup before importing into the original owner desk. The native desk requires its own source-bound preview and manual replace-all confirmation.</label>
+<button id="exportMerged" type="button" disabled>Export PRIVATE merged original HUMAN requests</button></div>
 </section>
 <section class="card"><h2>4 · Clear sensitive working memory</h2>
 <p>Forget discards imported index and local comparison results in this tab. Previously downloaded files remain on disk.</p>
 <button id="forget" type="button">Forget PRIVATE workspace</button></section>
 <p id="notice" class="notice" role="status" aria-live="polite">Load original PRIVATE manifest to begin. No source identity authenticated.</p>
 <footer>HUMAN observations only · local byte agreement is not independent provenance, source authenticity, client/operator consent, a verified retest, a fixed vulnerability, or HUMAN GO.</footer>
-</main><script>__ORIGINAL_JS__</script><script>__SCRIPT__</script></body></html>
+</main><script>__ORIGINAL_JS__</script><script>__SCRIPT__</script><script>__MERGE_JS__</script></body></html>

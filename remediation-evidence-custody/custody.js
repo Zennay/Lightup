@@ -4,7 +4,7 @@
 const $=id=>document.getElementById(id),MAX_FILE=16*1024*1024,MAX_INDEX=2*1024*1024;
 const FLAGS=["authenticated","tenant_verified","source_authorized","assessment_authorized","grant","client_consent","operator_consent","execution","scan","audit_verdict","retest_verified","release"];
 const FIELDS=["finding_id","file_name","byte_length","sha256","mime","added_utc","human_reviewer","human_stage","human_note"];
-let current=null,results=[],busy=false,revision=0,sourceVerified=false;
+let current=null,results=[],busy=false,revision=0,sourceVerified=false,sourceIds=new Set();
 function fail(s){throw Error(s);}
 function announce(s,bad){$("notice").textContent=s;$("notice").className=bad?"alert":"notice";}
 function clean(s,max,label,required=false){if(typeof s!=="string"||s.length>max||/[\u0000-\u001f\u007f]/u.test(s)||(required&&!s.trim()))fail("Invalid "+label);return s;}
@@ -36,6 +36,8 @@ function validate(p){
  clean(p.client_reference,120,"client label",true);clean(p.engagement_reference,120,"engagement label",true);
  if(FLAGS.some(f=>p[f]!==false))fail("All authority/consent/verified fields must literally be false.");
  if(!Array.isArray(p.attachments)||p.attachments.length>120)fail("Artifact index must contain 0–120 records.");
+ if(unified&&(!Array.isArray(p.human_requests)||p.human_requests.length>200))
+  fail("Original Unified HUMAN v2 request baseline is malformed or missing.");
  const seen=new Set(),rows=[];
  for(const row of p.attachments){
   if(!row||typeof row!=="object"||Array.isArray(row)||Object.keys(row).length!==FIELDS.length||FIELDS.some(k=>!Object.hasOwn(row,k)))fail("Unexpected record shape.");
@@ -50,7 +52,10 @@ function validate(p){
   rows.push(Object.freeze({...row}));
  }
  return Object.freeze({source_sha256:p.source_sha256,source_count:p.source_count,
- client_reference:p.client_reference,engagement_reference:p.engagement_reference,rows:Object.freeze(rows)});
+ client_reference:p.client_reference,engagement_reference:p.engagement_reference,rows:Object.freeze(rows),
+  hasNativeRequests:p.kind==="lightup.private_unified_human_evidence_workspace",
+  nativeRequests:Object.freeze(p.kind==="lightup.private_unified_human_evidence_workspace"&&Array.isArray(p.human_requests)?
+  p.human_requests.map(r=>Object.freeze({...r})):[])});
 }
 function refresh(){
  $("import").disabled=busy;$("verifySource").disabled=busy||!current;$("run").disabled=busy||!current||!sourceVerified;
@@ -61,6 +66,7 @@ function refresh(){
   "PRIVATE self-declared context: "+current.client_reference+" / "+current.engagement_reference+
   " · source SHA-256 "+current.source_sha256+" · "+current.source_count+" original finding rows · "+current.rows.length+" fingerprints. No live authentication or client consent.":
   "No PRIVATE original evidence index loaded.";
+ if(window.LightUpCustodyMerge)window.dispatchEvent(new Event("lightup-custody-updated"));
  $("sourceState").textContent=sourceVerified?
  "MATCHED — original Casework source SHA-256, original finding count and indexed IDs all match. Not an authorization or security verdict.":
  "HUMAN HOLD — original five-column findings source not matched. Local comparison, reports and follow-up handoffs disabled.";
@@ -120,7 +126,7 @@ async function loadIndex(){
  busy=true;refresh();
  try{
   if(f.size>MAX_INDEX)fail("Index exceeds 2 MiB.");const item=validate(strictJSON(await f.text()));
-  current=item;sourceVerified=false;revision++;results=[];$("localFiles").value="";$("folderFiles").value="";$("sourceCSV").value="";$("confirmPrivate").checked=false;
+  current=item;sourceVerified=false;sourceIds=new Set();revision++;results=[];$("localFiles").value="";$("folderFiles").value="";$("sourceCSV").value="";$("confirmPrivate").checked=false;
   render();announce("Private index loaded in memory. No source or account authentication has occurred.");
  }catch(e){announce("Index refused: "+e.message,true);}
  finally{busy=false;refresh();}
@@ -140,11 +146,13 @@ async function verifyOriginalSource(){
   if(!sha||sha!==snapshot.source_sha256||source.length!==snapshot.source_count)
    fail("Exact original source SHA-256/count differs from PRIVATE human index.");
   const ids=new Set(source.map(x=>x.finding_id));
+  if(snapshot.nativeRequests.some(x=>!x||!ids.has(x.finding_id)))
+   fail("PRIVATE HUMAN requests refer to a missing original finding.");
   if(snapshot.rows.some(x=>!ids.has(x.finding_id)))
    fail("PRIVATE attachment references an original finding absent from selected original source.");
   if(current!==snapshot||revision!==start)
    fail("Private source or manifest changed during source verification.");
-  sourceVerified=true;
+  sourceVerified=true;sourceIds=ids;
   $("sourceCSV").value="";
   announce("Original source fields, count, canonical SHA-256 and every artifact finding ID matched. No authorization, consent, security or provenance claims.");
  }catch(e){sourceVerified=false;announce("HUMAN HOLD: "+e.message,true);}
@@ -167,7 +175,7 @@ async function run(){
    if((n+1)%12===0){announce("Processed "+(n+1)+" of "+list.length+" local files.");await new Promise(ok=>setTimeout(ok,0));}
   }
   if(current!==initial||token!==revision)fail("Index changed during file read.");
-  results=evaluate(initial,candidate);$("confirmPrivate").checked=false;render();
+  results=evaluate(initial,candidate);revision++;$("confirmPrivate").checked=false;render();
   announce("Local comparison available. This is a HUMAN-only file byte check, not a security or consent decision.");
  }catch(e){announce("Comparison refused: "+e.message,true);}
  finally{busy=false;refresh();}
@@ -204,45 +212,20 @@ function privateReport(){
  $("confirmPrivate").checked=false;announce("PRIVATE local HUMAN report downloaded. Handle through an independently approved secure channel.");
 }
 function nativeDraft(){
- if(busy||!current||!sourceVerified||!results.length)return;
- if(!$("confirmPrivate").checked)return announce("A PRIVATE recipient/storage acknowledgement is required for native draft export.",true);
- const byFinding=new Map();
- for(const r of results){
-  if(!r.finding_id||(r.status!=="missing"&&r.status!=="rename"))continue;
-  if(!byFinding.has(r.finding_id))byFinding.set(r.finding_id,[]);
-  byFinding.get(r.finding_id).push(r);
- }
- if(!byFinding.size)return announce("No local selection differences need HUMAN follow-up.",true);
- if(byFinding.size>200)return announce("Native HUMAN Request Desk supports a maximum of 200 drafts.",true);
- if(typeof crypto==="undefined"||!crypto.getRandomValues)return announce("Secure local request ID generator unavailable.",true);
- if(!confirm("Export "+byFinding.size+" PRIVATE original-source-bound HUMAN follow-up draft(s)? The owner app will separately require the identical original authenticated source, preview and manual import confirmation. Existing requests may be replaced there, so protect the old PRIVATE request packet first."))return;
- const timestamp=new Date().toISOString();
- const nonce=()=>Array.from(crypto.getRandomValues(new Uint8Array(16)),v=>v.toString(16).padStart(2,"0")).join("");
- const requests=[];
- for(const [id,rows] of byFinding){
-  const reasons=rows.slice(0,8).map(r=>r.status==="rename"?
-   "Local hash matches indexed bytes under a different local filename; HUMAN review of naming/context needed.":
-   "No matching bytes were selected locally; do not assume evidence absent elsewhere or remediated.");
-  const summary=[...new Set(reasons)].join(" ");
-  requests.push({request_id:nonce(),finding_id:id,request_kind:"followup_question",assignee:"",due_date:"",
-   instructions:summary.slice(0,1400),linked_sha256:"",human_stage:"draft",human_response:"",
-   created_utc:timestamp,updated_utc:timestamp});
- }
- const draft={kind:"lightup.private_human_evidence_requests",schema_version:1,
-  disposition:"UNVERIFIED_HUMAN_FOLLOW_UP_ONLY",source_contract:"lightup.finding_export._COLUMNS_v1",
-  source_sha256:current.source_sha256,client_reference:current.client_reference,
-  engagement_reference:current.engagement_reference,
-  ...Object.fromEntries(FLAGS.map(flag=>[flag,false])),requests,
-  warning:"Self-declared private source context; HUMAN selection-only file comparison. No client grant, execution, verified retest, evidence authenticity, or automatically applied owner decision."};
- const blob=new Blob([JSON.stringify(draft,null,2)+"\n"],{type:"application/json"});
- const url=URL.createObjectURL(blob),a=node("a");a.href=url;a.download="LightUp-PRIVATE-native-HUMAN-custody-followups.json";
- document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1500);
- $("confirmPrivate").checked=false;
- announce("Native PRIVATE HUMAN request drafts exported. Only import manually against the same original authenticated current source; import replaces the native local human request set after separate confirmation.");
+ if(!window.LightUpCustodyMerge)return announce("PRIVATE request merge component unavailable; HUMAN HOLD.",true);
+ return window.LightUpCustodyMerge.preview().catch(e=>announce("HUMAN HOLD: "+e.message,true));
 }
+window.LightUpCustodyState=Object.freeze({
+ snapshot(){return Object.freeze({
+  context:current?Object.freeze({...current,nativeRequests:current.nativeRequests.map(x=>({...x}))}):null,
+  revision,verified:sourceVerified,busy,
+  ids:[...sourceIds],results:results.map(r=>({...r}))
+ });},
+ strictJSON
+});
 function forget(){
  if(!confirm("Forget all PRIVATE index and local comparison data in this tab? Existing downloads are NOT removed."))return;
- current=null;sourceVerified=false;revision++;results=[];$("sourceCSV").value="";$("manifest").value="";$("localFiles").value="";$("folderFiles").value="";$("confirmPrivate").checked=false;
+ current=null;sourceVerified=false;sourceIds=new Set();revision++;results=[];$("sourceCSV").value="";$("manifest").value="";$("localFiles").value="";$("folderFiles").value="";$("confirmPrivate").checked=false;
  render();refresh();announce("Private memory cleared; previously downloaded files are unaffected.");
 }
 $("import").addEventListener("click",()=>loadIndex().catch(e=>announce(e.message,true)));
@@ -259,11 +242,11 @@ for(const input of ["localFiles","folderFiles"]){$(input).addEventListener("chan
  announce("Local selection changed; previous comparisons were discarded. Rehash the selected files.");
 });}
 $("manifest").addEventListener("change",()=>{
- current=null;sourceVerified=false;revision++;results=[];$("confirmPrivate").checked=false;
+ current=null;sourceVerified=false;sourceIds=new Set();revision++;results=[];$("confirmPrivate").checked=false;
  render();refresh();announce("Manifest selection changed. Import the new PRIVATE index before comparison.");
 });
 $("sourceCSV").addEventListener("change",()=>{
- sourceVerified=false;revision++;results=[];$("confirmPrivate").checked=false;
+ sourceVerified=false;sourceIds=new Set();revision++;results=[];$("confirmPrivate").checked=false;
  render();refresh();announce("Source selection changed; re-verify original findings and SHA-256.");
 });
 refresh();render();

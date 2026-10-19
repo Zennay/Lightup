@@ -57,15 +57,18 @@ def _render(csv_raw: bytes, human_packet: dict) -> bytes:
     if human_packet["source_sha256"] != current_digest or human_packet["source_count"] != count:
         raise ValueError("HUMAN source changed before private HTML rendering.")
     view = {
-        "kind": "lightup.private_artifact_ledger",
-        "schema_version": 1,
-        "disposition": "PRIVATE_HUMAN_EVIDENCE_INDEX_ONLY",
+        "kind": "lightup.private_unified_human_evidence_workspace",
+        "schema_version": 2,
+        "disposition": "PRIVATE_HUMAN_REVIEW_ONLY",
         "source_contract": "lightup.finding_export._COLUMNS_v1",
         "source_sha256": current_digest,
         "source_count": count,
         "client_reference": human_packet["client_reference"],
         "engagement_reference": human_packet["engagement_reference"],
         "attachments": human_packet["attachments"],
+        "casework": None,
+        "evidence_review": None,
+        "human_requests": human_packet.get("human_requests", []),
         "warning": "PRIVATE local human file comparisons. Original authenticated READ at build-time only; no client consent, grants, verified remediation, retest or current authorization.",
         **{flag: False for flag in FLAGS},
     }
