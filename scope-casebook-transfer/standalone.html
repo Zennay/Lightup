@@ -1,10 +1,10 @@
 <!doctype html>
 <html lang="nl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-6ggSAim8GDEd9YQF4gKX7B9iwHu+ANHCDRSa/2dHFqg='; style-src 'sha256-ZmJsN+3F7MmXHXc4yYXwLQ6rjUwLFOE9SYNKM6sX3qY='; connect-src 'none'; img-src 'none'; base-uri 'none'; form-action 'none'; object-src 'none'; frame-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-SgEVdHuOBPFPJnw/TOvOZEttErNSBbQFfSR3HJV5BDg='; style-src 'sha256-ZmJsN+3F7MmXHXc4yYXwLQ6rjUwLFOE9SYNKM6sX3qY='; connect-src 'none'; img-src 'none'; base-uri 'none'; form-action 'none'; object-src 'none'; frame-src 'none'">
 <title>LightUp · PRIVATE Casebook Transport</title><style>:root{color-scheme:dark;--bg:#07121d;--card:#122335;--line:#30475a;--text:#edf6fa;--muted:#b3c5cf;--accent:#91dbcf;--warn:#ffe1ab}*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at top right,#163247,var(--bg) 65%);font:16px/1.6 system-ui,-apple-system,sans-serif;color:var(--text)}main{max-width:960px;padding:2rem 1rem 5rem;margin:auto}header{margin:1rem 0 2rem}h1{font-size:clamp(2.4rem,6vw,4.4rem);letter-spacing:-.06em;line-height:1.1;margin:.25rem 0 1rem}h2{font-size:1.25rem;margin:0 0 1rem}p{max-width:80ch}section{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:clamp(1.25rem,3vw,2rem);margin:1rem 0}header>p{color:var(--muted)}.eyebrow{font-size:.83rem;font-weight:800;letter-spacing:.16em;color:var(--accent)}.notice{padding:1rem 1.2rem;border:1px solid #967b49;border-radius:12px;background:#2d2b22;color:var(--warn)}.field{display:block;margin:1.1rem 0;font-weight:650}.field input{display:block;width:100%;margin-top:.4rem;background:#071726;border:1px solid #577081;color:var(--text);padding:.78rem;border-radius:9px;font:inherit}.field input[type=file]{cursor:pointer}.check{display:flex;align-items:start;gap:.6rem;font-size:.95rem;margin:1.2rem 0;color:var(--muted)}.check input{flex:none;margin-top:.35rem}button{background:var(--accent);border:0;border-radius:10px;padding:.8rem 1.2rem;font:700 .96rem system-ui;cursor:pointer;color:#062a30}button:hover{filter:brightness(1.08)}button:disabled{opacity:.52;cursor:wait}.subtle{background:transparent;border:1px solid #6d8899;color:var(--text)}.section-heading{display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap}.row{border-top:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:1rem 0;flex-wrap:wrap}.row strong{display:block;overflow-wrap:anywhere}.row small{color:var(--muted);display:block;overflow-wrap:anywhere}.status{padding:1.2rem;border-left:4px solid var(--accent);background:#193046;min-height:4rem;white-space:pre-wrap}.status.error{border-color:#ff9a9a;color:#ffc7c7}code{background:#071826;border-radius:5px;padding:.1rem .25rem;overflow-wrap:anywhere}footer{font-size:.9rem;color:var(--muted);margin-top:2rem}button:focus-visible,input:focus-visible{outline:3px solid #f5d289;outline-offset:3px}@media(max-width:520px){main{padding:1rem .7rem 3rem}.row button{width:100%}}.rekey{margin-top:1.5rem;padding:1.2rem;border-radius:14px;border:1px solid #567783;background:#0a2231}.rekey h3{font-size:1.05rem;margin:0 0 .4rem}.rekey p{color:var(--muted);margin:.2rem 0 1rem}
 </style></head>
 <body><main><header><p class="eyebrow">LIGHTUP · SCOPE · PRIVATE / HUMAN ONLY</p><h1>Casebook Transfer</h1><p>Versleutel oorspronkelijke Casebook-bronbestanden en de huidige HUMAN-review-CSV tot één lokaal overdrachtsbestand. Heropen en herstel exact die bytes offline. Geen verzoeken naar het netwerk, accounts, browseropslag, grants of scans.</p><div class="notice"><strong>INCUBATE · PLAN/LAB ONLY · DRAFT/HOLD.</strong> Dit is versleuteld transport, geen verificatie van bron, toestemming, bevoegdheid, actueel risico of intrekking. Alleen de originele, actuele geauthenticeerde controles kunnen daarover beslissen.</div></header>
-<section aria-labelledby="pack-title"><h2 id="pack-title">1 · PRIVATE bronbestanden inpakken</h2><p>Kies <code>casebook-01.json</code> … <code>casebook-12.json</code> zonder hiaten, eventueel <code>workroom-current-template.csv</code>. Maximaal 12 MiB totaal, 4 MiB per bestand. De broninhoud wordt niet geïnterpreteerd.</p><label class="field">Lokale bestanden<input id="source-files" type="file" multiple accept=".json,.csv"></label><label class="field">Lokaal geheim (minimaal 12 tekens)<input id="new-password" type="password" autocomplete="new-password" minlength="12" spellcheck="false"></label><label class="check"><input id="ack" type="checkbox"> Ik begrijp dat dit geen onafhankelijke bronverificatie of uitvoeringsautorisatie is en dat ik het wachtwoord apart veilig moet delen.</label><button id="encrypt" type="button">Maak versleutelde PRIVATE overdracht</button></section>
+<section aria-labelledby="pack-title"><h2 id="pack-title">1 · PRIVATE bronbestanden inpakken</h2><p>Kies <code>casebook-01.json</code> … <code>casebook-12.json</code> zonder hiaten, eventueel <code>workroom-current-template.csv</code>. Maximaal 12 MiB totaal, 4 MiB per bestand. Broncontrole weigert dubbele JSON-sleutels, ongeldige originele v1-vorm, gezagclaims en gemengde opgegeven client-ID’s. Geen echte autorisatie.</p><label class="field">Lokale bestanden<input id="source-files" type="file" multiple accept=".json,.csv"></label><label class="field">Lokaal geheim (minimaal 12 tekens)<input id="new-password" type="password" autocomplete="new-password" minlength="12" spellcheck="false"></label><label class="check"><input id="ack" type="checkbox"> Ik begrijp dat dit geen onafhankelijke bronverificatie of uitvoeringsautorisatie is en dat ik het wachtwoord apart veilig moet delen.</label><button id="encrypt" type="button">Maak versleutelde PRIVATE overdracht</button></section>
 <section aria-labelledby="open-title"><h2 id="open-title">2 · PRIVATE overdracht heropenen</h2><p>Het ontsleutelen vervangt de huidige lokale werkset pas na volledige bestands- en hashcontrole én jouw bevestiging.</p><label class="field">Versleuteld bestand (.lupt)<input id="vault-file" type="file" accept=".lupt"></label><label class="field">Wachtwoord<input id="open-password" type="password" autocomplete="off" spellcheck="false"></label><button id="decrypt" type="button">Ontsleutel en controleer</button></section>
 <section aria-labelledby="files-title"><div class="section-heading"><h2 id="files-title">3 · Lokale werkset</h2><button type="button" id="clear" class="subtle">Wis werkgeheugen</button></div><p>Private originelen: exporteer afzonderlijk als bytes, nooit als uitvoerbare HTML. Hercontroleer alle bronnen daarna met de oorspronkelijke Casebook-software en actuele echte toestemmingsstatus.</p><p id="summary" aria-live="polite">Nog geen bronbestanden geladen.</p><div id="records" role="list"></div><div class="rekey"><h3>Beveiligde dooroverdracht, zonder extra plaintext-download</h3><p>Versleutel de volledige huidige werkset opnieuw met een ander lokaal wachtwoord. Dit verandert het oorspronkelijke overdrachtsbestand niet en geeft geen toestemming voor actief werk.</p><label class="field">Nieuw lokaal wachtwoord voor volgende ontvanger<input id="rekey-password" type="password" autocomplete="new-password" spellcheck="false" minlength="12"></label><button id="rekey" type="button">Maak nieuwe versleutelde overdracht</button></div></section>
 <p class="status" id="status" role="status" aria-live="polite"></p><footer>Offline HUMAN overdrachtsfunctie · AES-256-GCM / PBKDF2-SHA256 · wachtwoord uitsluitend in lokaal browsergeheugen · geen opslag zonder expliciete download · verlies van wachtwoord betekent onherstelbare gegevens.</footer></main><script>(() => {
@@ -60,11 +60,91 @@
       if (originals[i] !== "casebook-" + String(i + 1).padStart(2, "0") + ".json")
         fail("Casebook-bronbestanden moeten beginnen bij 01 zonder hiaten.");
   }
+  function parseCasebookJson(bytes) {
+    // Strict offline source-shape intake only. Does not authenticate producer or authorization.
+    let text;
+    try { text = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(bytes); }
+    catch { fail("Casebook-bronbestand bevat ongeldig UTF-8."); }
+    let document;
+    try { document = JSON.parse(text); }
+    catch { fail("Casebook-bronbestand is geen geldig JSON."); }
+    let i = 0;
+    const skip = () => { while (i < text.length && /[\u0020\u0009\u000A\u000D]/.test(text[i])) i++; };
+    function string() {
+      if (text[i] !== '"') fail("Ongeldige JSON-bronstructuur.");
+      const start = i++;
+      while (i < text.length) {
+        if (text[i] === "\\") { i += 2; continue; }
+        if (text[i++] === '"') return JSON.parse(text.slice(start, i));
+      }
+      fail("Ongeldige JSON-brontekst.");
+    }
+    function value(depth) {
+      if (depth > 32) fail("Casebook-bronstructuur te diep.");
+      skip();
+      if (text[i] === "{") {
+        i++; skip();
+        const keys = new Set();
+        if (text[i] === "}") { i++; return; }
+        while (i < text.length) {
+          const key = string();
+          if (keys.has(key)) fail("Dubbele JSON-sleutel in oorspronkelijk Casebook-bestand.");
+          keys.add(key); skip();
+          if (text[i++] !== ":") fail("Ongeldige JSON-bronstructuur.");
+          value(depth + 1); skip();
+          if (text[i] === "}") { i++; return; }
+          if (text[i++] !== ",") fail("Ongeldige JSON-bronstructuur.");
+          skip();
+        }
+        fail("Onvolledige JSON-bronstructuur.");
+      }
+      if (text[i] === "[") {
+        i++; skip();
+        if (text[i] === "]") { i++; return; }
+        while (i < text.length) {
+          value(depth + 1); skip();
+          if (text[i] === "]") { i++; return; }
+          if (text[i++] !== ",") fail("Ongeldige JSON-bronstructuur.");
+        }
+        fail("Onvolledige JSON-bronlijst.");
+      }
+      if (text[i] === '"') { string(); return; }
+      const start = i;
+      while (i < text.length && !/[\u0020\u0009\u000A\u000D,\]}]/.test(text[i])) i++;
+      if (i === start) fail("Ongeldige JSON-bronwaarde.");
+    }
+    value(0); skip();
+    if (i !== text.length) fail("Extra niet-toegelaten Casebook-brondata.");
+    if (!document || typeof document !== "object" || Array.isArray(document))
+      fail("Geen geldig oorspronkelijk Casebook-object.");
+    const expected = ["schema", "status", "source", "as_of", "client_id",
+      "requests", "engagements", "grants", "risk_approvals", "case_overview",
+      "declared_counts", "source_authenticated", "client_consent_verified",
+      "operator_consent_verified", "authorization_granted", "execution_allowed",
+      "release_approved"];
+    if (Object.keys(document).length !== expected.length ||
+        expected.some(key => !Object.prototype.hasOwnProperty.call(document, key)) ||
+        document.schema !== "lightup.auth_casebook.v1" ||
+        document.status !== "REVIEW_ONLY" ||
+        document.source !== "original_persisted_domain_unverified" ||
+        typeof document.client_id !== "string" ||
+        !/^[\x21-\x7e]{1,180}$/.test(document.client_id) ||
+        ["requests", "engagements", "grants", "risk_approvals", "case_overview"]
+          .some(key => !Array.isArray(document[key])) ||
+        !document.declared_counts || typeof document.declared_counts !== "object" ||
+        Array.isArray(document.declared_counts) ||
+        ["source_authenticated", "client_consent_verified", "operator_consent_verified",
+         "authorization_granted", "execution_allowed", "release_approved"]
+          .some(key => document[key] !== false))
+      fail("Oorspronkelijke Casebook-v1 bronvorm/HUMAN-only authority-declaraties zijn niet compatibel.");
+    return document.client_id;
+  }
   async function collectSources(fileList) {
     const files = Array.from(fileList).sort((a, b) => a.name < b.name ? -1 : a.name > b.name ? 1 : 0);
     checkNames(files);
     let total = 0;
     const records = [];
+    let sourceClient = null;
     for (const f of files) {
       if (!Number.isSafeInteger(f.size) || f.size < 1 || f.size > MAX_EACH)
         fail("Elk geselecteerd bestand moet 1 byte tot 4 MiB groot zijn.");
@@ -72,6 +152,12 @@
       if (total > MAX_TOTAL) fail("De totale ongecodeerde bronset mag niet groter zijn dan 12 MiB.");
       const bytes = new Uint8Array(await f.arrayBuffer());
       if (bytes.length !== f.size) fail("Bronbestand wijzigde tijdens het lezen.");
+      if (f.name.endsWith(".json")) {
+        const declaredClient = parseCasebookJson(bytes);
+        if (sourceClient !== null && sourceClient !== declaredClient)
+          fail("Casebook-bundel mengt verschillende oorspronkelijke client-ID's.");
+        sourceClient = declaredClient;
+      }
       records.push({ name: f.name, size: bytes.length, sha256: await sha(bytes), bytes });
     }
     return records;
@@ -221,7 +307,7 @@
           body.schema !== SCHEMA || body.version !== 1 || !Array.isArray(body.files))
         fail("Niet-herkende overdrachtsinhoud.");
       checkNames(body.files);
-      const candidate = []; let total = 0;
+      const candidate = []; let total = 0; let sourceClient = null;
       for (const r of body.files) {
         if (!exactKeys(r, ["name", "size", "sha256", "content_b64"]) ||
             !Number.isSafeInteger(r.size) || r.size < 1 || r.size > MAX_EACH ||
@@ -232,6 +318,12 @@
         const bytes = from64(r.content_b64);
         if (bytes.length !== r.size || await sha(bytes) !== r.sha256)
           fail("Oorspronkelijke bronbytes/digest komen niet overeen met de inhoud.");
+        if (r.name.endsWith(".json")) {
+          const declaredClient = parseCasebookJson(bytes);
+          if (sourceClient !== null && sourceClient !== declaredClient)
+            fail("Ontsleutelde bronset mengt verschillende oorspronkelijke client-ID's.");
+          sourceClient = declaredClient;
+        }
         candidate.push({ name: r.name, size: r.size, sha256: r.sha256, bytes });
       }
       if (!window.confirm("Alle " + candidate.length +
