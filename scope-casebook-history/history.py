@@ -527,6 +527,8 @@ def html_page(docs: list[dict], delta: list[list[dict]], *, public: bool) -> str
                        'Edit original human follow-up sheet</a> · '
                        '<a href="private-human-case-queue.csv">'
                        'Open exact original engagement queue</a> · '
+                       '<a href="private-human-case-transitions.csv">'
+                       'Open original HUMAN case transitions</a> · '
                        '<a href="private-source-changes.csv">'
                        'Open original source field changes</a> · '
                        '<a href="human-followup.txt">Read HUMAN next steps</a></p>'
