@@ -185,7 +185,11 @@ function notesFromFields(){
  if(!current||['stale','missing'].includes(noteBinding(id)))throw Error('HOLD: existing HUMAN note requires explicit source-change review; cannot silently overwrite.');
  const owner=$('humanOwner').value.trim(),action=$('humanAction').value.trim(),due=$('humanDue').value;
  if(owner.length>120||action.length>1200|| (due && (new Date(due+'T00:00:00Z').toISOString().slice(0,10)!==due)))throw Error('Invalid HUMAN plan fields.');
- if(!owner&&!action&&!due)state.notes.delete(id);
+ const previous=state.notes.get(id);
+ const retainNative=previous?.caseworkOriginal && ['blocker','verification_plan','note','status'].some(k=>{
+   const base=LightUpCasework.newCase(current);return previous.caseworkOriginal[k]!==base[k];
+ });
+ if(!owner&&!action&&!due&&!retainNative)state.notes.delete(id);
  else {if(state.notes.size>=limits.maxNotes&&!state.notes.has(id))throw Error('Local HUMAN notes limit reached.');state.notes.set(id,{owner,action,due,sourceRecord:Object.fromEntries(FIELDS.map(k=>[k,current[k]])),caseworkOriginal:state.notes.get(id)?.caseworkOriginal||null});}
  state.revision++;renderGrid();renderDetail();message('Private HUMAN coordination note saved in memory only; no source finding, grant or retest changed.');
 }
@@ -335,7 +339,7 @@ window.LightUpHistory=Object.freeze({
       const row=n?.caseworkOriginal||LightUpCasework.newCase(f);
       return {id:f.finding_id,title:f.title,severity:f.severity,sourceRetest:f.retest_status,
         binding,hasNote:!!n,owner:n?.owner||'',
-        action:n?.action||'',due:n?.due||'',status:n?row.status:'unassigned',
+        action:n?.action||'',due:n?.due||'',status:n?.caseworkOriginal?row.status:(n?'planned':'unassigned'),
         blocker:n?row.blocker:'',verification_plan:n?row.verification_plan:'',
         note:n?row.note:'',updatedUTC:n?row.updated_utc:null};
     });
