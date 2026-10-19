@@ -21,6 +21,7 @@ import uuid
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parent / "remediation-evidence-retention"))
 import request_handoff as bridge
+import reconcile as native_status
 
 source = bridge.source
 original = bridge.original
@@ -223,6 +224,34 @@ def _stage(args, vault, folder, journal, current) -> None:
           " HUMAN workroom review. No Apply performed here.")
 
 
+def _recover(args, vault, folder, journal, current) -> None:
+    """Complete a crash-interrupted local entry only from an admitted encrypted original draft."""
+    envelope, packet, indexed, items, _, _, key = current
+    cycles = journal["cycles"]
+    if not cycles or cycles[-1]["state"] != "pending":
+        raise ValueError("No interrupted pending HUMAN draft.")
+    entry = cycles[-1]
+    draft_path = Path(entry["output"])
+    _owned_regular(draft_path)
+    original_csv = original.human._unb64(
+        envelope["original_csv_base64"], original.ORIGINAL.MAX_CSV_BYTES)
+    staged = native_status._private_workroom(
+        draft_path, args, vault, envelope, packet, original_csv)
+    fresh = native_status._admit_staged(packet, staged, items)
+    if (len(fresh) != len(entry["requests"])
+            or set(_ref(row) for row in fresh) != set(entry["requests"])):
+        raise ValueError("Interrupted encrypted draft is not the recorded HUMAN selection.")
+    if input('Type "RECOVER ENCRYPTED HUMAN DRAFT" after private inspection: ') != (
+            "RECOVER ENCRYPTED HUMAN DRAFT"):
+        raise ValueError("No HUMAN recovery acknowledgment.")
+    entry["sha256"] = _digest(vault._private_input(draft_path, vault.MAX_VAULT))
+    entry["state"] = "staged"
+    entry["updated"] = _utc()
+    _write(folder, key, journal)
+    print("Interrupted original-native encrypted HUMAN draft recovered in LOCAL journal.")
+    print("It is still HUMAN-only, not an applied or consented original request.")
+
+
 def _resolve(args, vault, folder, journal, packet, key) -> None:
     cycles = journal["cycles"]
     if not cycles or cycles[-1]["state"] not in ("pending", "staged"):
@@ -255,7 +284,7 @@ def _resolve(args, vault, folder, journal, packet, key) -> None:
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     subs = parser.add_subparsers(dest="action", required=True)
-    for action in ("status", "stage", "resolve"):
+    for action in ("status", "stage", "recover", "resolve"):
         p = subs.add_parser(action)
         for name in ("db", "email", "client-id", "engagement-id"):
             p.add_argument("--" + name, required=True)
@@ -277,6 +306,8 @@ def main(argv=None) -> int:
                 _inspect(document, packet)
             elif args.action == "stage":
                 _stage(args, vault, folder, document, current)
+            elif args.action == "recover":
+                _recover(args, vault, folder, document, current)
             else:
                 _resolve(args, vault, folder, document, packet, key)
         return 0
