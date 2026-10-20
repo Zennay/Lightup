@@ -35,7 +35,13 @@
 </section>
 <section id="agenda" class="panel" hidden aria-labelledby="agendaHeading"><h2 id="agendaHeading">3 · Upcoming HUMAN agenda</h2>
 <p>Human-proposed dates only, ordered by local scheduled time. Past-due does not prove an unresolved vulnerability. Select any event to edit the original ordinal in the private planning desk.</p>
-<div class="toolbar"><label>View <select id="agendaHorizon"><option value="all">All scheduled</option><option value="7" selected>Next 7 days</option><option value="30">Next 30 days</option><option value="overdue">Past due</option></select></label><label>Search HUMAN group / action <input type="search" id="agendaQuery" maxlength="120" placeholder="Local only"></label></div>
+<div class="toolbar"><label>View <select id="agendaHorizon"><option value="all">All scheduled</option><option value="7" selected>Next 7 days</option><option value="30">Next 30 days</option><option value="overdue">Past due</option><option value="conflicts">Colliding plans</option></select></label><label>Search HUMAN group / action <input type="search" id="agendaQuery" maxlength="120" placeholder="Local only"></label></div>
+<div class="notice" id="conflictPanel" hidden>
+<strong>HUMAN scheduling collisions</strong>
+<p id="conflictSummary" role="status" aria-live="polite"></p>
+<div class="row"><button type="button" id="conflictFocus" class="ghost">Show conflicts in agenda</button>
+<button type="button" id="resolveConflicts">Propose non-overlapping weekdays (confirmation required)</button></div>
+<p class="subtle">This only edits proposed HUMAN reminder times in memory. It never executes an assessment or decides technical risk; verify resource availability in your real calendar.</p></div>
 <p id="agendaSummary" class="subtle"></p><div class="tablebox"><table><thead><tr><th>Local date &amp; time</th><th>Original ordinal</th><th>Source-reported severity</th><th>HUMAN stage / group</th><th>HUMAN action</th><th>Edit</th></tr></thead><tbody id="agendaRows"></tbody></table></div>
 <div class="row"><button id="agendaPrev" class="ghost" type="button">Previous</button><button id="agendaNext" class="ghost" type="button">Next</button></div>
 </section>
@@ -44,7 +50,7 @@
 <div class="row"><label class="file">Restore your PRIVATE plan CSV <input id="restore" type="file" accept=".csv,text/csv"></label><button id="savePlan" type="button">Save private plan CSV</button></div>
 <div class="row"><label><input id="includeAction" type="checkbox"> Include HUMAN next-action text in calendar descriptions (more disclosure)</label></div>
 <div class="row"><button id="calendar" type="button">Export PRIVATE calendar (.ics)</button><button id="summaryExport" type="button" class="ghost">Export counts only (.json)</button></div>
-<p class="subtle">Plans bind to the exact bytes of this worksheet using an <em>unsigned</em> SHA-256 fingerprint; this does not authenticate its producer. Calendar entries are tentative reminders. Restoring a plan NEVER changes worksheet fields, source risk, permissions or a scan. No browser storage, fetch, tracking, local server, model, or network.</p>
+<p class="subtle">Save the PRIVATE plan <strong>before each calendar export</strong> to preserve opaque, stable event IDs on re-import, reducing duplicates in calendar clients that honor UID. Legacy plans can be imported but need saving in the new format. Calendar software may still duplicate events or ignore updates.<br>Plans bind to the exact bytes of this worksheet using an <em>unsigned</em> SHA-256 fingerprint; this does not authenticate its producer. Calendar entries are tentative reminders. Restoring a plan NEVER changes worksheet fields, source risk, permissions or a scan. No browser storage, fetch, tracking, local server, model, or network.</p>
 </section>
 </main><footer>LightUp · PRIVATE HUMAN operations companion · Not an execution endpoint. All release, review, consent, revocation and HUMAN GO gates remain unchanged.</footer>
 </body></html>
