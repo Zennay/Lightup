@@ -14,7 +14,7 @@ import sys
 from offline_signatures import Hold
 from inbox import inbox
 from inbox_reopen import inspect
-from trust_registry import _owner_private, init, listing, register, revoke
+from trust_registry import _owner_private, init, listing, register, require_two, revoke
 
 
 def _read(message: str) -> str:
@@ -80,10 +80,11 @@ def main() -> int:
             "\n4  Receive signed original software package(s) into private offline inbox"
             "\n5  Re-open inbox against CURRENT local trust and original source"
             "\n6  Permanently revoke local trust for one signer"
+            "\n7  Irreversibly require two distinct locally trusted signers"
             "\n0  End foreground session"
         )
         try:
-            choice = _read("Choose 0–6: ")
+            choice = _read("Choose 0–7: ")
             if choice == "0":
                 print("REVIEW_ONLY desk ended; existing local private files remain.")
                 return 2
@@ -114,8 +115,12 @@ def main() -> int:
                 if not _confirm("Permanently revoke this specific local signer (no restore)?"):
                     raise Hold("local revocation not confirmed")
                 revoke(registry, fingerprint)
+            elif choice == "7":
+                if not _confirm("Permanently require TWO non-revoked custody keys for every future intake and reopen?"):
+                    raise Hold("local two-key minimum not confirmed")
+                require_two(registry)
             else:
-                print("Unknown choice; enter 0–6.")
+                print("Unknown choice; enter 0–7.")
         except (ValueError, OSError) as exc:
             print("HOLD:", exc, file=sys.stderr)
             print("Only this foreground operation was refused; no authority was granted.")
