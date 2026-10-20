@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Foreground PRIVATE HUMAN LightUp curation console; never runs assessments.
 
-Nine existing offline source-bound workflows in one accessible user menu.
+Ten existing offline source-bound workflows in one accessible user menu.
 Only explicit local paths, no subprocess, network, browser automation, consent,
 source mutation, active target operation, or grant.
 """
@@ -16,6 +16,7 @@ from history import history
 from response import prepare_reply, return_reply
 from response_triage import prepare as prepare_triage, finish as return_triage
 from next_round import propose as propose_next_round
+from review_hub import build as build_human_overview
 
 WORKFLOWS = {
     "1": ("Prepare PRIVATE offline HUMAN browser selection studio",
@@ -36,6 +37,8 @@ WORKFLOWS = {
           "same source, response, triage binding and HUMAN routing worksheet"),
     "9": ("Prepare PRIVATE next HUMAN questions from original sender triage",
           "same original source, response, triage binding and explicit HUMAN proposed next question"),
+    "10": ("Create PRIVATE consolidated HUMAN assessment workroom dashboard",
+           "original selection and optionally source-bound recipient response and sender HUMAN triage"),
 }
 
 
@@ -79,7 +82,7 @@ def run_workflow(choice: str) -> None:
         after = ask_path("Current HUMAN selection CSV")
     elif choice == "4":
         series = ask_history()
-    elif choice in ("5", "6", "7", "8", "9"):
+    elif choice in ("5", "6", "7", "8", "9", "10"):
         selection = ask_path("EXISTING PRIVATE original HUMAN selection CSV")
     response_binding = None
     recipient_response = None
@@ -91,6 +94,16 @@ def run_workflow(choice: str) -> None:
     if choice in ("8", "9"):
         triage_binding = ask_path("EXISTING original reply-bound PRIVATE sender triage binding JSON")
         triage_csv = ask_path("Completed PRIVATE sender HUMAN triage CSV")
+    if choice == "10":
+        document_phase = input("Available HUMAN document stage: selection / recipient / triage [selection]: ").strip() or "selection"
+        if document_phase not in ("selection", "recipient", "triage"):
+            raise Hold("Unsupported PRIVATE HUMAN document phase")
+        if document_phase in ("recipient", "triage"):
+            response_binding = ask_path("Original source-bound recipient response binding")
+            recipient_response = ask_path("Original recipient HUMAN reply CSV")
+        if document_phase == "triage":
+            triage_binding = ask_path("Original source/recipient-bound sender HUMAN triage binding")
+            triage_csv = ask_path("Original source/recipient-bound sender HUMAN triage CSV")
     output = ask_path("EXCLUSIVE NEW PRIVATE output directory (must not already exist)")
     print("\nPRIVATE disclosure profile:")
     if choice == "1":
@@ -109,8 +122,10 @@ def run_workflow(choice: str) -> None:
         print("  PRIVATE sender browser shows original HUMAN questions and recipient replies; potential client identifiers.")
     elif choice == "8":
         print("  PRIVATE HUMAN sender triage shows original recipient replies and owner-group follow-up proposals.")
-    else:
+    elif choice == "9":
         print("  Generates a new PRIVATE selection CSV with explicitly HUMAN proposed follow-up questions; NO dispatch.")
+    else:
+        print("  Builds source-identifier-minimized PRIVATE HUMAN workroom overview and priority-specific reports.")
     print("This is NOT a completed assessment, release, authorization or evidence authenticity check.")
     confirmation = input("Enter exactly REVIEW ONLY to create a NEW PRIVATE package: ")
     if confirmation != "REVIEW ONLY":
@@ -135,10 +150,14 @@ def run_workflow(choice: str) -> None:
         return_triage(source, manifest, worksheet, receipt, selection,
                       response_binding, recipient_response, triage_binding,
                       triage_csv, output)
-    else:
+    elif choice == "9":
         propose_next_round(source, manifest, worksheet, receipt, selection,
                            response_binding, recipient_response, triage_binding,
                            triage_csv, output)
+    else:
+        build_human_overview(source, manifest, worksheet, receipt, selection,
+                             response_binding, recipient_response, triage_binding,
+                             triage_csv, output)
 
 
 def main() -> int:
@@ -150,7 +169,7 @@ def main() -> int:
         print(number + ". " + label)
     print("0. Quit without action")
     try:
-        choice = input("PRIVATE workflow [0–9]: ").strip()
+        choice = input("PRIVATE workflow [0–10]: ").strip()
         if choice == "0":
             print("No operation performed")
             return 0
