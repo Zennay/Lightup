@@ -38,7 +38,7 @@ UNVERIFIED = {
     "human_identity_authenticated": False, "client_consent_verified": False,
     "operator_consent_verified": False, **DENIAL_FLAGS,
 }
-SAFE_TEXT = re.compile(r"[\\x00-\\x1f\\x7f]")
+SAFE_TEXT = re.compile(r"[\x00-\x1f\x7f]")
 FORMULA = set("=+-@")
 
 def digest(raw: bytes) -> str:
@@ -52,7 +52,7 @@ def human_text_ok(s: object) -> bool:
         return False
     if any(unicodedata.category(c) in ("Cf", "Cs", "Co", "Cn") for c in s):
         return False
-    first = s.lstrip(" \\t\\r\\n")
+    first = s.lstrip(" \t\r\n")
     return not first or first[0] not in FORMULA
 
 def read_original(source_path: str, manifest_path: str, worksheet_path: str):
@@ -65,7 +65,7 @@ def read_original(source_path: str, manifest_path: str, worksheet_path: str):
 
 def make_template(source: dict) -> bytes:
     file = io.StringIO(newline="")
-    out = csv.writer(file, lineterminator="\\r\\n")
+    out = csv.writer(file, lineterminator="\r\n")
     out.writerow(HEADER)
     for ordinal, record in enumerate(source["findings"], 1):
         out.writerow((ordinal, record["severity"], len(record["evidence_ids"]),
@@ -100,7 +100,7 @@ def prepare(source_path: str, manifest_path: str, worksheet_path: str,
         "retest, fix, reviewer identity or source authenticity.</p>"
         "<p>Spreadsheet software may sync data externally. Export UTF-8 CSV privately."
         " Never publish the private generated dossier without a separate HUMAN review.</p>"
-        "</body></html>\\n"
+        "</body></html>\n"
     ).encode("utf-8")
     publish_new(destination, {
         "selection-template.csv": template, "selection-receipt.json": json_bytes(receipt),
@@ -110,7 +110,7 @@ def prepare(source_path: str, manifest_path: str, worksheet_path: str,
 def read_selection(raw: bytes, source: dict) -> list[dict]:
     try:
         text = raw.decode("utf-8-sig")
-        require("\\x00" not in text and "\\r" not in text.replace("\\r\\n", ""))
+        require("\x00" not in text and "\r" not in text.replace("\r\n", ""))
         reader = csv.reader(io.StringIO(text, newline=""), strict=True)
         require(tuple(next(reader)) == HEADER)
         records = list(reader)
@@ -214,7 +214,7 @@ def page(source: dict, original_digest: str, worksheet_digest: str,
         "</code><br>HUMAN worksheet SHA-256 (UNSIGNED): <code>" + h(worksheet_digest) +
         "</code></p></header>"
     )
-    return (start + "".join(cards) + "</body></html>\\n").encode("utf-8")
+    return (start + "".join(cards) + "</body></html>\n").encode("utf-8")
 
 def publish(source_path: str, manifest_path: str, worksheet_path: str,
             receipt_path: str, selection_path: str, destination: str) -> None:
