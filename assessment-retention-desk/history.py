@@ -89,6 +89,15 @@ def read_receipt(path):
             os.close(fd)
     except OSError as exc:
         raise Hold("could not securely read a private receipt") from exc
+    return parse_receipt_bytes(raw)
+
+
+def parse_receipt_bytes(raw):
+    """Validate the unchanged original browser source-bound HUMAN receipt in memory.
+
+    Also used when original canonical plaintext comes from authenticated local
+    AES-GCM decryption. No plaintext is written by this function.
+    """
     if not raw or len(raw) > MAX_RECEIPT_BYTES:
         raise Hold("empty or oversized private receipt")
     try:
