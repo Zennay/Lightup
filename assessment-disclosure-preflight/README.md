@@ -39,6 +39,34 @@ python3 assessment-disclosure-preflight/preflight.py \
 
 Exit **2 = REVIEW_ONLY** after files are privately produced. Exit **3 = HOLD** and no approval; exit 0 is never a release signal. Minimum source cohort defaults to five and can only be raised via --minimum-cohort (up to twelve).
 
+## Manual PRIVATE local receiving record — no authority
+
+The current [single-file offline HUMAN workroom](./reconcile-standalone.html)
+also provides **Export PRIVATE local receiving record (.html)** after a saved
+plaintext or encrypted result **and its entire suppressed-counts handoff**
+have been admitted against the exact original PRIVATE receipt, both independent
+HUMAN input files and all current original source-bound A/B/HOLD decisions.
+
+This explicit local export contains only the SHA-256 byte identities of the
+unsigned original PRIVATE receipt, each separately provided original reviewer
+CSV, the actually reopened result and its counts file, together with the
+declared mode, an appropriately suppressed source count and literal false
+authority flags. It has **no reviewer note, question, next-action, reason or
+original lab finding content**. It is scriptless with a restrictive offline
+CSP. The receipt remains PRIVATE; hashes can correlate data and establish no
+client/operator identity, signature, consent, reviewer independence,
+independent validation, fixed vulnerability, release or recipient rights.
+
+If a HUMAN selection changes, a fresh source is loaded or the browser session
+ends, the prior local receiving record becomes unavailable: the operator must
+export the new complete decision CSV, reopen the original result and suppressed
+counts, then explicitly request a new receiving record. A failed admission
+never issues such a record. Normal browser downloads may not inherit 0600
+permissions; move all PRIVATE records into owner-controlled storage and
+continue to rely on the separate original native source-bound reopener for
+local trusted-machine custody. This is **not** a signed audit certificate and
+has not passed independent browser/cryptographic security review.
+
 ## Standalone-to-native PRIVATE handoff receiving
 
 The original [single-file offline HUMAN desk](./reconcile-standalone.html) now
