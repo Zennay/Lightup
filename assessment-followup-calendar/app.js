@@ -159,14 +159,79 @@
     });
     renderAgenda();
   }
+  function eventIntervals(from=plan){
+    return items.filter(r=>from.has(r.ordinal)).map(r=>{
+      const slot=from.get(r.ordinal),start=eventDate(slot.day,slot.time).getTime();
+      return {ordinal:r.ordinal,start,end:start+Number(slot.duration)*60000};
+    }).sort((a,b)=>a.start-b.start || a.ordinal-b.ordinal);
+  }
+  function collisionIds(from=plan){
+    const active=[],found=new Set();
+    for(const event of eventIntervals(from)){
+      for(let i=active.length-1;i>=0;i--){if(active[i].end<=event.start)active.splice(i,1);}
+      if(active.length){found.add(event.ordinal);for(const old of active)found.add(old.ordinal);}
+      active.push(event);
+    }
+    return found;
+  }
+  function resolveConflicts(){
+    hold(active);
+    const existing=eventIntervals();
+    if(!collisionIds().size){inform("No overlaps within this PRIVATE follow-up workroom.");return;}
+    const occupied=[],proposal=new Map();
+    const startToday=nowToday(),now=Date.now();
+    for(const event of existing){
+      const previous=plan.get(event.ordinal);
+      let target=event;
+      if(occupied.some(o=>target.start<o.end && o.start<target.end)){
+        let selected=null;
+        const base=eventDate(previous.day,"12:00");
+        if(previous.day<startToday)base.setTime(eventDate(startToday,"12:00").getTime());
+        for(let day=0;day<90 && !selected;day++){
+          const current=new Date(base.getTime());current.setDate(base.getDate()+day);
+          if(current.getDay()===0||current.getDay()===6)continue;
+          const y=current.getFullYear(),m=String(current.getMonth()+1).padStart(2,"0"),
+            d=String(current.getDate()).padStart(2,"0"),date=y+"-"+m+"-"+d;
+          for(let minute=9*60;minute<=18*60-Number(previous.duration);minute+=15){
+            const hh=String(Math.floor(minute/60)).padStart(2,"0");
+            const mm=String(minute%60).padStart(2,"0");
+            const time=hh+":"+mm;
+            const candidate=eventDate(date,time).getTime(),end=candidate+Number(previous.duration)*60000;
+            if(candidate<now || occupied.some(o=>candidate<o.end && o.start<end))continue;
+            // Protect all other original HUMAN reservations, not only those seen so far.
+            if(existing.some(o=>o.ordinal!==event.ordinal && !proposal.has(o.ordinal) &&
+                candidate<o.end && o.start<end))continue;
+            selected={slot:{day:date,time,duration:previous.duration,reminder:previous.reminder},
+              event:{ordinal:event.ordinal,start:candidate,end}};
+            break;
+          }
+        }
+        hold(selected!==null);
+        proposal.set(event.ordinal,selected.slot);
+        target=selected.event;
+      }
+      occupied.push(target);
+    }
+    if(!proposal.size){inform("No schedule changes required.");return;}
+    const preview=Array.from(proposal).slice(0,5).map(([ordinal,slot])=>
+      "#"+ordinal+" → "+slot.day+" "+slot.time).join("\\n");
+    if(!confirm("Propose "+proposal.size+" changes to overlapping PRIVATE HUMAN reminder dates? First existing appointment retains its slot. Proposed times are weekdays 09:00–18:00, non-overlapping within THIS LOCAL WORKROOM only. No external calendar has been checked or changed.\\n\\n"+preview))return;
+    for(const [ordinal,slot] of proposal)plan.set(ordinal,slot);
+    changed=true;exportedPlan=false;agendaPage=0;render();
+    inform("Rescheduled "+proposal.size+" HUMAN-only reminder proposals; save the updated PRIVATE plan before calendar export.");
+  }
   function renderAgenda(){
     if(!active)return;
     const now=new Date(),days=$("agendaHorizon").value;
     const q=$("agendaQuery").value.trim().toLocaleLowerCase();
+    const colliding=collisionIds();
+    $("conflictPanel").hidden=colliding.size===0;
+    $("conflictSummary").textContent=colliding.size+" HUMAN reminders overlap in this workroom. These are timing clashes only; not a security or authorization verdict.";
     let upcoming=items.filter(r=>{
       const p=plan.get(r.ordinal);if(!p)return false;
       const at=eventDate(p.day,p.time);
       if(days==="overdue" && at>=now)return false;
+      if(days==="conflicts" && !colliding.has(r.ordinal))return false;
       if(days==="7"||days==="30"){
         const limit=new Date(now.getTime()+Number(days)*86400000);
         if(at<now||at>limit)return false;
@@ -273,7 +338,8 @@
     hold(active && plan.size>0);
     if(!exportedPlan){inform("Save or restore the PRIVATE v2 plan before exporting. It preserves stable calendar event IDs on future reopen.",true);return;}
     const include=$("includeAction").checked;
-    if(!confirm(`Export ${plan.size} PRIVATE tentative HUMAN calendar events? ${include?"Your HUMAN next-action texts WILL be included.":"No HUMAN next-action texts will be included."} Only import into an authorized private calendar; cloud calendars may synchronize.`))return;
+    const conflicts=collisionIds().size;
+    if(!confirm(`Export ${plan.size} PRIVATE tentative HUMAN calendar events? ${include?"Your HUMAN next-action texts WILL be included.":"No HUMAN next-action texts will be included."} ${conflicts?conflicts+" overlapping HUMAN reminders remain; calendar export retains those overlaps. ":""} Only import into an authorized private calendar; cloud calendars may synchronize.`))return;
     const now=icsTime(new Date()),lines=["BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//LightUp//PRIVATE HUMAN Followup Calendar//EN","CALSCALE:GREGORIAN","METHOD:PUBLISH","X-WR-CALNAME:LightUp PRIVATE HUMAN Follow-ups"];
     for(const r of items){
       const p=plan.get(r.ordinal);if(!p)continue;
@@ -319,6 +385,8 @@
   hook("agendaQuery","input",()=>{agendaPage=0;renderAgenda();});
   hook("agendaPrev","click",()=>{agendaPage--;renderAgenda();});
   hook("agendaNext","click",()=>{agendaPage++;renderAgenda();});
+  hook("conflictFocus","click",()=>{$("agendaHorizon").value="conflicts";agendaPage=0;renderAgenda();$("agenda").scrollIntoView({behavior:"smooth",block:"start"});});
+  hook("resolveConflicts","click",()=>{try{resolveConflicts();}catch(err){inform(err.message,true);}});
   function bulk(clear=false){
     const candidates=filtered();
     if(!candidates.length){inform("No matching rows to schedule.",true);return;}
