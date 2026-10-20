@@ -14,7 +14,7 @@ locally from a trusted checkout:
 
     python3 assessment-workspace-ledger/console.py
 
-Twenty-one console actions provide original kit capture, exact-byte reopen, original-bound
+Twenty-two console actions provide original kit capture, exact-byte reopen, original-bound
 HUMAN CSV finalization, historical change review with private file-level
 drilldown, unchanged-source HUMAN continuity, a separate source-free
 single-file browser editor export, a native same-source HUMAN revision desk,
@@ -562,3 +562,46 @@ history_actions.py and history_actions_browser.py. The ZIP contains NO
 human data, customer material, generated private HTML, client kit, consent
 or active-target software invocation. It is not a security-reviewed release
 or live operator authorization. No QA/test suites were authored or run.
+
+ 
+## NEW v15 — minimum-necessary owner-specific PRIVATE HUMAN handoff
+
+The complete offline action plan may include PRIVATE human questions and
+names belonging to different team members. The new native
+[history_owner_brief.py](history_owner_brief.py) prepares a deliberately
+selected **single-human** brief without disclosing other owners' proposed
+work or PRIVATE questions. This is not a transport or recipient-authentication
+service: it never mails, uploads, publishes, assigns or dispatches a task.
+
+The operator selects the ORIGINAL native `PRIVATE-action-context.json`,
+the ORIGINAL native completed `PRIVATE-HUMAN-actions.json`, and its exact
+source-bound owner-private `HUMAN-action-plan.csv`. The native reader
+reopens the underlying exact ORIGINAL archived ledger chain and original
+HUMAN reviewer packets and checks the finalized team choice and action CSV
+using the original strict native admission code. Every row must be from
+the actual unchanged source-bound original human plan. Unknown or changed
+originals fail without output. This is NOT current physical kit-file
+revalidation; original kits still require a separate `ledger.py reopen`.
+The owner label is just a local human string, not verified identity or
+distribution consent.
+
+    python3 assessment-workspace-ledger/history_owner_brief.py --action-context /private/actions/PRIVATE-action-context.json --actions /private/final-actions/PRIVATE-HUMAN-actions.json --plan /private/final-actions/HUMAN-action-plan.csv --owner "EXACT local proposed HUMAN" --private-parent /private/private-ledgers
+
+The command refuses an unknown/empty owner, mismatching original source,
+legacy malformed or noncanonical authority fields and original actions with
+no explicit HUMAN work. It reopens all the same native originals once more
+before publication and creates a NEW 0700/0600 private package containing
+`PRIVATE-HUMAN-owner-brief.json`, printable
+`PRIVATE-HUMAN-owner-brief.html` and `OPEN-PRIVATE.html`. These contain
+**only the manually selected owner's** proposals, source ordinal, proposed
+priority/day and next manual action. No original customer source paths,
+other owners' HUMAN questions, automatic work acceptance, security-grade
+severity, verified remediation, active target, scope authority or
+authenticated recipient is included. All output remains HUMAN-only HOLD (3).
+
+Native foreground console option **22** guides this entire minimum-necessary
+owner handoff. Fixed v15 software-only ZIP packaging includes the real
+native owner-brief CLI; it never bundles generated private workrooms.
+Any actual disclosure still needs independent verified recipient identity,
+client consent and applicable privacy/security authorization. No QA
+or test suites created or run and no live scan or deploy.
