@@ -34,6 +34,31 @@ Native Python independently re-admits the bounded original ledger and re-hashes 
 
 Limits: 1–12 kits, <=256 files per kit, <=64 MiB each kit, <=32 MiB per individual file, <=256 MiB combined, max depth 5, <=1 MiB ledger JSON, <=64 KiB HUMAN CSV. Existing owner-private input folders, owner-only 0700 output parent, 0700 exclusive generated folders and 0600 output files. No implicit scans, no original source modification and no overwrites.
 
+## Historical comparison when source kits are no longer present
+
+The self-contained companion command compares two previously stored original
+private ledger.json snapshots **without reopening the original source kits**.
+It is useful for private human handoff or archival review after moving to another
+trusted machine:
+
+    python3 assessment-workspace-ledger/compare.py --before /private/ledger-before/ledger.json --after /private/ledger-after/ledger.json --private-parent /private/private-ledgers
+
+The original slot paths and ordinal ordering must match exactly, so unrelated
+packages cannot be compared as if they were revisions. It produces a fresh
+owner-only 0700 package with PRIVATE-historical-comparison.json, a printable
+OPEN-PRIVATE.html and a separate PRIVATE-HUMAN-comparison-template.csv. The
+comparison displays only counts of added, removed, changed and unchanged kit
+files, not source filenames, file contents or target identifiers in its HTML.
+Its source ledger SHA-256s are **unsigned** and remain PRIVATE. No original
+source files are reopened or authenticated; the report never claims they
+still exist or were remediated. Changes => HOLD 3, no differences => REVIEW_ONLY 2,
+never PASS.
+
+A browser-exported CSV often lands in a Downloads folder with permissive
+filesystem permissions. **Before** passing it to native finalize, move the file
+to an owner-only (0700) local folder and ensure the CSV itself is mode 0600;
+native input admission intentionally rejects public-readable files.
+
 ## Trust and release
 
 SHA-256 inventories are unsigned. They do not authenticate the producer, source client, original data, reviewer, verified finding, remediation or current consent. A person who can modify both input and unsigned manifest may forge a mutually consistent statement. Removed artifacts do **not** prove a fix or retest. Small counts can identify confidential matters and must remain PRIVATE.
