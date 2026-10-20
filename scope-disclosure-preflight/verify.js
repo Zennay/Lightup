@@ -24,6 +24,10 @@
       ["Bearer",/\bBearer\s+[a-z0-9._~+/-]{8,}/gi],
       ["credential-like",/\b(?:password|passwd|api[_-]?key|secret|token)\s*[:=]\s*[^\s,;}]{3,}/gi],
       ["private key",/-----BEGIN [A-Z ]*PRIVATE KEY-----/g],
+      ["JWT-like",/\beyJ[A-Za-z0-9_-]{8,}\.eyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\b/g],
+      ["GitHub token",/\b(?:gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,})\b/g],
+      ["AWS access key",/\bAKIA[A-Z0-9]{16}\b/g],
+      ["API token prefix",/\bsk-[A-Za-z0-9_-]{20,}\b/g],
       ["IPv4-like",/\b(?:\d{1,3}\.){3}\d{1,3}\b/g]
     ];
     return expressions.map(([label,re])=>{
@@ -78,9 +82,9 @@
         !FALSE_KEYS.every(k=>val[k]===false)) throw Error("receipt semantic boundary");
     const hints=val.residual_hints;
     if (!hints || Array.isArray(hints) || typeof hints!=="object") throw Error("hints");
-    const allowed=["email","URL","Bearer","credential-like","private key","IPv4-like"];
+    const allowed=["email","URL","Bearer","credential-like","private key","JWT-like","GitHub token","AWS access key","API token prefix","IPv4-like"];
     const keys=Object.keys(hints);
-    if (keys.length>6 || keys.some(k=>!allowed.includes(k)) ||
+    if (keys.length>10 || keys.some(k=>!allowed.includes(k)) ||
         keys.some(k=>!Number.isSafeInteger(hints[k]) || hints[k]<1 || hints[k]>1000)) {
       throw Error("bad counts");
     }
@@ -153,12 +157,12 @@
         hold("HOLD: privacy hint counts differ from the actual matched bytes.");return;
       }
       receivedText=received;viewedPages=new Set();
-      matched={hash:sha,bytes:bytes.length,highRisk:["Bearer","credential-like","private key"].some(k=>observed[k]>0)};
+      matched={hash:sha,bytes:bytes.length,highRisk:["Bearer","credential-like","private key","JWT-like","GitHub token","AWS access key","API token prefix"].some(k=>observed[k]>0)};
       showPage(0);
-      const risky=["Bearer","credential-like","private key"].some(k=>observed[k]>0);
+      const risky=["Bearer","credential-like","private key","JWT-like","GitHub token","AWS access key","API token prefix"].some(k=>observed[k]>0);
       e("recipientHints").className=risky||Object.keys(observed).length?"warnings warn":"warnings good";
       e("recipientHints").textContent=risky?
-        "HOLD: possible credential, Bearer token or private key marker remains. Matching bytes cannot clear this. Request a corrected private handoff.":
+        "HOLD: possible credential, JWT, API token or private key material remains. Matching bytes cannot clear this. Request a corrected private handoff.":
         Object.keys(observed).length?
           "Possible sensitive references remain: "+Object.entries(observed).map(([k,v])=>k+" "+v).join("; ")+". Independently review all pages.":
           "No pattern hints matched. This NEVER proves safe disclosure.";
