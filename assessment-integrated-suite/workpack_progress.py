@@ -104,8 +104,32 @@ def _changes(snapshots: list[tuple[str, list[dict]]]) -> list[dict]:
     return changes
 
 
+
+def _latest_attention(snapshots: list[tuple[str, list[dict]]]) -> list[dict]:
+    """Last HUMAN HOLD/NEEDS_INPUT, never an inferred security severity."""
+    result = []
+    for index, row in enumerate(snapshots[-1][1]):
+        if row["human_stage"] not in ("HOLD", "NEEDS_INPUT"):
+            continue
+        streak = 0
+        for _, earlier in reversed(snapshots):
+            if earlier[index]["human_stage"] not in ("HOLD", "NEEDS_INPUT"):
+                break
+            streak += 1
+        result.append({
+            "workflow_key": row["workflow_key"],
+            "workflow_title": row["title"],
+            "declared_stage": row["human_stage"],
+            "declared_team": row["review_team"],
+            "declared_followup": row["followup_date"],
+            "consecutive_attention_snapshots": streak,
+            "first_continuous_declared_position": len(snapshots) - streak + 1,
+        })
+    return result
+
+
 def _html(snapshots: list[tuple[str, list[dict]]], metrics: list[dict],
-          changes: list[dict]) -> bytes:
+          changes: list[dict], attention: list[dict]) -> bytes:
     esc = lambda value: html.escape(str(value), quote=True)
     snap_rows = []
     for number, ((date, _), counts) in enumerate(zip(snapshots, metrics), 1):
@@ -134,6 +158,16 @@ def _html(snapshots: list[tuple[str, list[dict]]], metrics: list[dict],
             "<br>Proposed follow-up: " + esc(change["previous_review_date"] or "none") +
             " → " + esc(change["current_review_date"] or "none") + "</li>"
         )
+    attention_rows = [
+        "<li><strong>" + esc(row["workflow_title"]) + "</strong> · " +
+        esc(row["declared_stage"]) + " · " +
+        esc(row["declared_team"] or "Team not assigned") +
+        "<br>Proposed follow-up: " + esc(row["declared_followup"] or "none") +
+        "<br>Consecutive declared snapshots needing attention: " +
+        str(row["consecutive_attention_snapshots"]) + " (since position #" +
+        str(row["first_continuous_declared_position"]) + ")</li>"
+        for row in attention
+    ]
     document = """<!doctype html><html lang="en"><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; connect-src 'none'; form-action 'none'; base-uri 'none'">
@@ -152,6 +186,12 @@ not verified chronology, actual deadlines or appointments.</p></header>
 <thead><tr><th>Snapshot</th><th>Declared date</th><th>UNASSESSED</th><th>HOLD / NEEDS INPUT</th>
 <th>HUMAN REVIEW</th><th>HUMAN FOLLOWUP</th><th>Declared team workload</th></tr></thead>
 <tbody>""" + "".join(snap_rows) + """</tbody></table></div></section>
+<section><h2>Still-declared HUMAN attention in the latest snapshot</h2>
+<p>""" + str(len(attention)) + """ HUMAN tasks marked HOLD or NEEDS_INPUT.
+Streaks count *consecutive declared snapshots*, not actual days,
+incident duration, risk severity or priority.</p><ol>""" + (
+        "".join(attention_rows) or "<li>No latest HUMAN HOLD / NEEDS_INPUT.</li>"
+    ) + """</ol></section>
 <section><h2>Manually recorded differences</h2><ol>""" + (
         "".join(timeline) or "<li>No changes in HUMAN metadata.</li>"
     ) + """</ol></section><footer><p class="warn">DRAFT/HOLD · NO AUTHORIZATION OR SCAN</p>
@@ -188,7 +228,8 @@ def build(session, workpacks: list[str], parent_name: str, name: str) -> Path:
     snapshots = [_read_workpack(folder, base) for folder in workpacks]
     metrics = [_counts(rows) for _, rows in snapshots]
     changes = _changes(snapshots)
-    page = _html(snapshots, metrics, changes)
+    attention = _latest_attention(snapshots)
+    page = _html(snapshots, metrics, changes, attention)
     metadata = {
         "schema": SCHEMA, "status": "REVIEW_ONLY", "authority": privacy.AUTHORITY,
         "human_order_declared_not_authenticated": True,
@@ -203,6 +244,10 @@ def build(session, workpacks: list[str], parent_name: str, name: str) -> Path:
         "transitions": [
             {key: value for key, value in change.items() if key != "workflow_title"}
             for change in changes
+        ],
+        "latest_declared_attention": [
+            {key: value for key, value in item.items() if key != "workflow_title"}
+            for item in attention
         ],
     }
     data = (json.dumps(metadata, sort_keys=True, ensure_ascii=True,
@@ -224,6 +269,20 @@ def build(session, workpacks: list[str], parent_name: str, name: str) -> Path:
         if not privacy.private(destination, True):
             raise privacy.Hold("HOLD: new progress folder not owner-private")
         privacy.private_write(destination, "OPEN-PRIVATE.html", page)
+        attention_csv = io.StringIO(newline="")
+        attention_writer = csv.writer(attention_csv, lineterminator="\r\n")
+        attention_writer.writerow((
+            "workflow_key", "human_stage", "human_team", "proposed_followup",
+            "consecutive_declared_attention_snapshots", "first_continuous_snapshot"))
+        for item in attention:
+            attention_writer.writerow((
+                item["workflow_key"], item["declared_stage"],
+                item["declared_team"], item["declared_followup"],
+                item["consecutive_attention_snapshots"],
+                item["first_continuous_declared_position"]))
+        privacy.private_write(
+            destination, "PRIVATE-HUMAN-ATTENTION.csv",
+            attention_csv.getvalue().encode("utf-8"))
         privacy.private_write(destination, "PRIVATE-HUMAN-PROGRESS.json", data)
         privacy.private_write(
             destination, "PRIVATE-HUMAN-TRANSITIONS.csv", stream.getvalue().encode("utf-8"))

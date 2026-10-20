@@ -390,7 +390,12 @@ A newly created owner-only 0700 result contains 0600
 UNASSESSED/HOLD/NEEDS_INPUT, HUMAN_REVIEW and HUMAN_FOLLOWUP counts and
 team workload per declared snapshot, then highlights changed original
 workflow stage/team/declared follow-up and whether a PRIVATE question
-changed **without copying its text**. Even original local filenames,
+changed **without copying its text**. A second latest-snapshot HUMAN
+attention board shows all still-declared HOLD/NEEDS_INPUT workflows and
+how many consecutive selected original workpacks they remain marked for
+attention; the extra 0600 `PRIVATE-HUMAN-ATTENTION.csv` allows a local
+manual HUMAN handoff without original filenames, source paths, hashes,
+questions, or any implied chronological elapsed time. Even original local filenames,
 directory paths and SHA digests stay out of this output. Dates are
 **human declarations**, not genuine chronology, due dates, client
 appointments, investigation results, authenticated evidence or consent.
