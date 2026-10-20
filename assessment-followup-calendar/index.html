@@ -54,8 +54,34 @@
 <table><thead><tr><th>HUMAN owner group</th><th>Rows</th><th>Unscheduled</th><th>Past planned time</th><th>HUMAN blocked</th><th>Overlapping</th><th>Nearest next reminder</th><th>Open in planner</th><th>Private calendar handoff</th></tr></thead><tbody id="workloadRows"></tbody></table></div>
 <div class="row"><button type="button" id="workloadPrev" class="ghost">Previous</button><button type="button" id="workloadNext" class="ghost">Next</button></div>
 </section>
+<section id="capacity" class="panel" hidden aria-labelledby="capacityHeading">
+<h2 id="capacityHeading">5 · PRIVATE HUMAN capacity and blackout planner</h2>
+<p>Set source-free operational availability for each self-reported HUMAN owner group. A group is <strong>not</strong> an authenticated person or authorization role. Rules determine suggested HUMAN appointments only; no workload, risk or availability is independently verified.</p>
+<div class="toolbar"><label>HUMAN group <select id="capacityGroup"></select></label>
+<label>Maximum proposed appointments/day <select id="capacityDaily"><option>1</option><option>2</option><option selected>4</option><option>6</option><option>8</option><option>12</option></select></label>
+<label>From <input id="capacityStart" type="time" value="09:00"></label>
+<label>Until <input id="capacityEnd" type="time" value="17:00"></label></div>
+<div class="toolbar" id="capacityDays"><label><input type="checkbox" value="1" checked>Monday</label>
+<label><input type="checkbox" value="2" checked>Tuesday</label>
+<label><input type="checkbox" value="3" checked>Wednesday</label>
+<label><input type="checkbox" value="4" checked>Thursday</label>
+<label><input type="checkbox" value="5" checked>Friday</label>
+<label><input type="checkbox" value="6">Saturday</label><label><input type="checkbox" value="0">Sunday</label></div>
+<label>Unavailable local dates, comma-separated (YYYY-MM-DD; maximum 60)
+<textarea id="capacityBlackout" rows="2" maxlength="660" placeholder="2026-12-25, 2026-12-26"></textarea></label>
+<div class="row"><button id="capacityStore" type="button">Save local HUMAN group availability</button><button id="capacityDefault" type="button" class="ghost">Reset selected group to defaults</button></div>
+<div class="row"><label>First date for proposals <input id="capacityFirst" type="date"></label>
+<label>Horizon in local calendar days <select id="capacityHorizon"><option value="14">14</option><option value="30" selected>30</option><option value="60">60</option><option value="90">90</option></select></label>
+<button id="capacityPreview" type="button">Preview group-aware open HUMAN reminders</button>
+<button id="capacityApply" type="button" disabled>Apply preview to local plan (confirm)</button></div>
+<p id="capacityMessage" role="status" aria-live="polite">Rules are local only. Save them explicitly before leaving this page.</p>
+<div class="tablebox"><table><thead><tr><th>HUMAN group</th><th>Availability</th><th>Unavailable dates</th><th>Unscheduled HUMAN rows</th></tr></thead><tbody id="capacityRows"></tbody></table></div>
+<div class="row"><button id="capacityDownload" type="button" class="ghost">Download PRIVATE group rules (.csv)</button>
+<label class="file">Restore PRIVATE group rules <input id="capacityImport" type="file" accept=".csv,text/csv"></label></div>
+<p class="subtle">An optional PRIVATE rules CSV is bound to the exact original worksheet bytes, local timezone and private calendar series. Do not share externally. Human-confirmed suggestions never overwrite scheduled ordinals, alter the original lab source, execute scans, prove severity or grant access. Available slots are suggestions, not external calendar availability.</p>
+</section>
 <section id="brief" class="panel" hidden aria-labelledby="briefHeading">
-<h2 id="briefHeading">5 · Offline HUMAN weekly coordinator brief</h2>
+<h2 id="briefHeading">6 · Offline HUMAN weekly coordinator brief</h2>
 <p>Build a self-contained scriptless PRIVATE print-friendly human work agenda from this current worksheet and your proposed scheduling only. A human stage or source-reported severity is <strong>never</strong> a verified vulnerability or grant. No network or calendar connection.</p>
 <div class="row"><label>Any day of week <input type="date" id="briefDate"></label>
 <label>Source-free HUMAN scope <select id="briefScope"><option value="all">All original HUMAN groups</option><option value="focused">Only currently focused HUMAN group</option></select></label>
@@ -63,7 +89,7 @@
 <button type="button" id="exportBrief">Download PRIVATE weekly briefing (.html)</button></div>
 <p class="subtle">Choose a valid local date; output covers Monday–Sunday in the displayed timezone. Includes original anonymous ordinals and HUMAN self-reported fields, not original lab findings/evidence/targets. HTML has a deny-all CSP and no JavaScript or external resources. Use an authorized private device and printer only.</p>
 </section>
-<section id="out" class="panel" hidden aria-labelledby="outputHeading"><h2 id="outputHeading">6 · Save / resume or export calendar</h2>
+<section id="out" class="panel" hidden aria-labelledby="outputHeading"><h2 id="outputHeading">7 · Save / resume or export calendar</h2>
 <p>Scheduled events use original anonymous ordinals and source-reported severity, with your own HUMAN next-action text only when explicitly opted in. <strong>Original lab-source fields are never imported here, but HUMAN notes can themselves mention private targets, clients or evidence. Review before exporting.</strong> Each calendar export is an explicit PRIVATE local download. Dates are interpreted in <strong id="tz"></strong>; re-import rejects a different timezone.</p>
 <div class="row"><label class="file">Restore your PRIVATE plan CSV <input id="restore" type="file" accept=".csv,text/csv"></label><button id="savePlan" type="button">Save private plan CSV</button></div>
 <div class="notice">
