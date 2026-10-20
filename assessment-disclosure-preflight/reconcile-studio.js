@@ -657,7 +657,6 @@
     const current = source, capturedEpoch = epoch, revision = decisionRevision;
     const password = byId("receivePassword");
     receivingRecord = null;
-    exportedDecisionHash = null;
     byId("exportReceiving").disabled = true;
     try {
       admitted(current && exportedRevision === revision &&
@@ -838,6 +837,7 @@ evidence, successful scan, verified finding or disclosure approval.</p>
     if (source && source.receipt) new Uint8Array(source.receipt).fill(0);
     source = null; decisions = []; dirty = false;
     receivingRecord = null;
+    exportedDecisionHash = null;
     byId("exportReceiving").disabled = true;
     discardHistory();
     decisionRevision++;
