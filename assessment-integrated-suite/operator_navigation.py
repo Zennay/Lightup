@@ -59,6 +59,9 @@ ACTIONS: dict[str, str] = {
     '49': 'Resume complete PRIVATE HUMAN workpack from ORIGINAL saved session',
     '50': 'Review 2-8 original PRIVATE HUMAN workpack snapshots (saved session)',
     '51': 'Continue an original PRIVATE HUMAN workpack with a new declared date',
+    '52': 'Prepare original isolated-lab numeric URL proposal (NO SCAN)',
+    '53': 'Reopen original owner-private isolated lab proposal (NO SCAN)',
+    '54': 'Compare two original owner-private isolated lab proposals (NO SCAN)',
 }
 
 CATEGORIES = (
@@ -70,6 +73,7 @@ CATEGORIES = (
     ("Owner-private session continuity", tuple(str(x) for x in range(37, 42))),
     ("HUMAN task queues", tuple(str(x) for x in range(42, 48))),
     ("Integrated HUMAN workpacks", tuple(str(x) for x in range(48, 52))),
+    ("Isolated lab offline planning", tuple(str(x) for x in range(52, 55))),
 )
 
 
@@ -79,7 +83,7 @@ def overview() -> None:
     for name, ids in CATEGORIES:
         print("  " + ids[0] + "–" + ids[-1] + "   " + name)
     print("Suggested safe HUMAN-only workflow: 37 → 49 → manual editor →")
-    print("  50 (compare) → 51 (continue). Each step needs original admission.")
+    print("  50 (compare) → 51 (continue). Lab-only: 52 → 53 → 54.")
     print("Enter an action number, ALL for full catalog, ?keyword to search,")
     print("HELP for a HUMAN walkthrough or 0 to exit. No action is automatic.")
 
@@ -123,6 +127,9 @@ def help_flow() -> None:
     print("    Search and filter the source-minimal offline Progress Cockpit.")
     print("51. Continue an admitted original workpack at a NEW manually declared")
     print("    review date, preserving its previous HUMAN choices and questions.")
+    print("52. Prepare original numeric isolated-lab proposal (not target execution).")
+    print("53. Reopen the original source-bound owner-private proposal.")
+    print("54. Compare two original private proposals; missing URL is NOT a fix.")
     print("Every step remains PRIVATE and REVIEW_ONLY. No scan, grant, report")
     print("verification, real scheduling, recipient dispatch or consent.")
     print("Original current authenticated client+operator consent, revocation")
