@@ -204,8 +204,25 @@
     (teamFilter.value === "all" || item.team === teamFilter.value) &&
     (!searchFilter.value.trim() || item.file.name.normalize("NFC").toLowerCase().includes(
       searchFilter.value.trim().normalize("NFC").toLowerCase()));
+  // Disclosure preview is made only from counts and fixed local labels;
+  // no original filename, hash or PRIVATE note is copied into the preview.
+  const renderDisclosurePreview = () => {
+    const groups = Object.entries(teams).filter(([key]) => items.some(i => i.team===key))
+      .map(([,label]) => label);
+    const noteCount = items.filter(i => i.note.length>0).length;
+    const optedIn = el("shelf-all-private-notes").checked;
+    el("shelf-disclosure-preview").textContent = items.length
+      ? "PRIVATE EXPORT INZAGE · " + items.length + " originele bestandsnamen + SHA-256 uit " +
+        groups.length + " HUMAN teams (" + groups.join(", ") + "). " +
+        "Bronbytes worden nooit ingesloten. HUMAN privé-notitieteksten: " +
+        (optedIn ? "BEWUST AAN ("+noteCount+" ingevuld; in beide ALLE-TEAMS exports)" :
+          "UIT ("+noteCount+" ingevulde notities niet verspreid)") +
+        ". Geen geauthenticeerde ontvanger, consent of grant."
+      : "Nog geen oorspronkelijke lokale bronbestanden geselecteerd. ALLE-TEAMS exports bevatten altijd originele namen en SHA-256, maar PRIVATE notities staan standaard UIT.";
+  };
   function render() {
     rows.replaceChildren();
+    renderDisclosurePreview();
     el("shelf-return-receipt").disabled = lastReturnReceipt === null;
     el("shelf-review-undo").disabled = reviewUndo.length === 0;
     el("shelf-review-redo").disabled = reviewRedo.length === 0;
@@ -374,6 +391,7 @@
     report("REVIEW_ONLY — " + selected.length + " gefilterde HUMAN dossiers bewust gerouteerd; geen bron, grant of toestemming gewijzigd.");
   });
   searchFilter.addEventListener("input", render);
+  el("shelf-all-private-notes").addEventListener("change", renderDisclosurePreview);
   input.addEventListener("change", async () => {
     const chosen = Array.from(input.files || []);
     input.value = "";
