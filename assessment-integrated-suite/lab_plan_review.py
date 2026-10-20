@@ -73,15 +73,18 @@ def _html_editor(rows: list[dict]) -> bytes:
             '<tr data-review-row data-source="' + row["source_snapshot_sha256"] +
             '" data-slot="' + slot + '"><th scope="row">Original packet #' +
             slot + '</th><td><select aria-label="HUMAN stage packet ' + slot +
-            '">' + "".join('<option value="' + esc(stage) + '">' +
+            '">' + "".join('<option value="' + esc(stage) + '"' +
+                           (' selected' if row["human_stage"] == stage else '') + '>' +
                            esc(stage.replace("_", " ")) + '</option>'
                            for stage in route_queue.STAGES) +
             '</select></td><td><select aria-label="HUMAN team packet ' + slot +
-            '">' + "".join('<option value="' + esc(team) + '">' +
+            '">' + "".join('<option value="' + esc(team) + '"' +
+                           (' selected' if row["human_team"] == team else '') + '>' +
                            esc(team or "Unassigned") + '</option>'
                            for team in route_queue.TEAMS) +
             '</select></td><td><input maxlength="' + str(NOTE_MAX) +
             '" aria-label="Private HUMAN question for packet ' + slot +
+            '" value="' + esc(row["human_question"]) +
             '" placeholder="Optional HUMAN review question"></td></tr>'
         )
     js = r"""'use strict';
@@ -169,7 +172,7 @@ def _html_editor(rows: list[dict]) -> bytes:
         "questions only; do not add client identifiers, passwords, credentials, "
         "finding claims or assessment approvals.</p></header>"
         "<main><h2>Draft HUMAN decisions</h2><p>Every row starts UNASSESSED. "
-        "No automatic decision; select a HUMAN stage and optional HUMAN team/question.</p>"
+        "First-use rows start UNASSESSED; native source-revalidated HUMAN choices can be reopened.</p>"
         "<label>Filter packet number <input id='packet-search' type='search' inputmode='numeric' "
         "autocomplete='off' placeholder='Packet slot'></label> "
         "<label>Filter HUMAN stage <select id='stage-filter'><option value=''>All stages</option>" +
