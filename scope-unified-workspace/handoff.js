@@ -1108,6 +1108,10 @@
       human_team:row.human_team, human_stage:row.human_stage,
       human_route:row.human_route, private_note_included:row.private_note_included
     } : null;
+    // Original filenames are untrusted. JSON string escapes must prevent
+    // literal Markdown code-fence markers from becoming active markup.
+    // JSON backslash-u0060 represents the original backtick character.
+    const agendaJSON = value => JSON.stringify(value,null,2).replace(/\x60/gu,"\\u0060");
     const agenda = [
       "# LightUp — PRIVATE HUMAN review-bespreekagenda",
       "",
@@ -1124,13 +1128,13 @@
       "## Ontvangen ongetekende HUMAN pakketten (lokale volgorde)",
       "",
       "```json",
-      JSON.stringify(plan.packetBytes,null,2),
+      agendaJSON(plan.packetBytes),
       "```",
       "",
       "## Bronvrije triageaantallen",
       "",
       "```json",
-      JSON.stringify(plan.counts,null,2),
+      agendaJSON(plan.counts),
       "```",
       "",
       "## Alle oorspronkelijke dossiers op bespreekprioriteit",
@@ -1161,7 +1165,7 @@
         no_execution_authority:true
       };
       agenda.push("### Dossier "+(idx+1)+" — "+d.state,"",
-        "```json",JSON.stringify(entry,null,2),"```","");
+        "```json",agendaJSON(entry),"```","");
     }
     agenda.push("## HUMAN afhandelpunten", "",
       "1. Leg apart de ontvanger en oorspronkelijke broneigenaar vast; hashes tonen alleen bytes.",
