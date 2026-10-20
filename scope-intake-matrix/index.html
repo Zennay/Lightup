@@ -59,6 +59,7 @@
 <button id="export-encrypted" class="primary" type="button">Save encrypted PRIVATE workroom</button>
 <button id="choose-import-encrypted" type="button">Open encrypted workroom</button>
 <button id="choose-compare-encrypted" type="button">Compare encrypted older workroom</button>
+<button id="choose-rekey" type="button">Re-encrypt PRIVATE file for new recipient</button>
 <button id="receipt" type="button">Export anonymous counts</button>
 <button id="print" type="button">Print private human brief</button>
 <button id="clear" class="danger" type="button">Clear memory</button>
@@ -75,6 +76,7 @@
 <input id="file-compare" type="file" accept=".json,application/json" hidden>
 <input id="file-import-encrypted" type="file" accept=".luie,application/json" hidden>
 <input id="file-compare-encrypted" type="file" accept=".luie,application/json" hidden>
+<input id="file-rekey" type="file" accept=".luie,application/json" hidden>
 <div class="privacy"><b>Privacy / release boundary:</b> Encrypted workrooms use local AES-256-GCM and PBKDF2 but do not authenticate the actual client, operator, consent or grant. Strong passwords and separate authenticated delivery are necessary. Legacy JSON, printed pages and agenda HTML remain UNENCRYPTED. Export only to an approved private location; recipient delivery requires a separate human privacy and identity decision. Counts omit labels/targets but small groups can still disclose context. Nothing is uploaded or retained by this page; there is no browser storage or remote call. Never treat a saved file or receipt as consent.</div>
 </section>
 <section class="section" id="agenda-section" aria-labelledby="agenda-heading">
