@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'unsafe-inline'; img-src 'none'; connect-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'">
+<title>LightUp — Scope Intake Matrix (draft only)</title>
+<style>
+:root{color-scheme:dark;--bg:#0c1322;--panel:#151f32;--panel2:#1b2940;--line:#35455d;--ink:#eef4ff;--dim:#aebed0;--accent:#75e0c2;--warning:#ffcd7c;--danger:#ff8e99}*{box-sizing:border-box}body{margin:0;background:radial-gradient(1000px 460px at 65% -20%,#214b5a,transparent),var(--bg);font:15px/1.5 system-ui,-apple-system,Segoe UI,sans-serif;color:var(--ink)}header{padding:24px clamp(18px,5vw,72px);border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;gap:20px;flex-wrap:wrap}.brand{font-size:13px;letter-spacing:.15em;color:var(--accent);font-weight:800}.brand strong{display:block;font-size:29px;letter-spacing:-.035em;color:var(--ink)}.fence{border:1px solid #936d38;background:#392c1c;color:#ffe1ad;border-radius:40px;padding:8px 15px;font-weight:750;font-size:12px}main{max-width:1460px;margin:auto;padding:28px clamp(18px,5vw,72px) 80px}.intro{max-width:900px;color:var(--dim);margin:0 0 24px}h2{font-size:18px;margin:0 0 17px}h3{font-size:15px;margin:0 0 12px}.section{border:1px solid var(--line);border-radius:16px;background:var(--panel);padding:22px;margin-bottom:21px}.grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}.wide{grid-column:span 2}label{display:block;font-weight:650;font-size:13px;color:#dce6f1}input,select,textarea{background:var(--panel2);border:1px solid #4b5c74;border-radius:8px;color:var(--ink);font:inherit;padding:9px 10px;min-width:0;width:100%;margin-top:6px}textarea{min-height:73px;resize:vertical}input:focus,select:focus,textarea:focus{outline:2px solid var(--accent);outline-offset:1px}button{font:inherit;cursor:pointer;border-radius:9px;padding:10px 14px;border:1px solid #647792;background:#25364e;color:var(--ink);font-weight:700}button.primary{background:var(--accent);border-color:var(--accent);color:#091e24}button.danger{color:#ffc5cd;border-color:#9b5363}button:hover{filter:brightness(1.16)}button:focus-visible{outline:3px solid var(--warning)}.actions{display:flex;flex-wrap:wrap;gap:9px;margin:15px 0}.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}.stat{padding:12px;border-radius:10px;background:#22314a;border:1px solid var(--line)}.stat strong{display:block;font-size:25px}.stat span{font-size:12px;color:var(--dim)}.muted{color:var(--dim)}.warning{color:var(--warning)}.danger-text{color:var(--danger)}.table-wrap{overflow-x:auto}table{border-collapse:separate;border-spacing:0;width:100%;min-width:960px}th{text-align:left;font-size:12px;color:var(--dim);border-bottom:1px solid var(--line);padding:10px 7px}td{vertical-align:top;border-bottom:1px solid #2c3e56;padding:7px}td input,td select{font-size:13px;margin:0;padding:8px}th:nth-child(1){width:25%}th:nth-child(2){width:12%}th:nth-child(3){width:19%}th:nth-child(4){width:11%}th:nth-child(5){width:14%}th:nth-child(6){width:13%}.row-tools{display:flex;gap:4px}.row-tools button{font-size:12px;padding:7px}.privacy{padding:13px;border-left:3px solid var(--warning);background:#3c3025;margin-top:16px}.notice{padding:12px;border-radius:9px;border:1px solid var(--line);background:var(--panel2);margin:12px 0;white-space:pre-wrap}.notice[hidden],section[hidden],div[hidden]{display:none!important}.compare-items{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.compare-items pre{overflow-wrap:anywhere;white-space:pre-wrap;background:#0e192a;border:1px solid var(--line);border-radius:8px;padding:12px;font:12px/1.5 ui-monospace,monospace;max-height:220px;overflow:auto}.small{font-size:12px}.right{margin-left:auto}.filter{max-width:290px}.footer{margin-top:20px;font-size:12px;color:var(--dim)}@media(max-width:800px){.grid{grid-template-columns:1fr}.wide{grid-column:auto}.stats{grid-template-columns:repeat(2,1fr)}.compare-items{grid-template-columns:1fr}.section{padding:16px}}@media print{body{background:white;color:black}header,.actions,.privacy,.footer,#compare-section,#file-import,#file-compare,.row-tools,.filter{display:none!important}main{padding:0}.section{break-inside:avoid;border:1px solid #ccc;background:white}input,select,textarea{border:0;background:white;color:black;padding:3px}th,td,.muted,.stat span{color:black}.stat{background:white;color:black}.table-wrap{overflow:visible}table{min-width:unset}}
+</style>
+<script src="./app.js" defer></script>
+</head>
+<body>
+<header><div class="brand">LIGHTUP <strong>Scope Intake Matrix</strong></div><div class="fence">PREPARATION ONLY · NOT AUTHORIZED</div></header>
+<main>
+<p class="intro">Prepare a human-readable, offline scope request and compare local revisions. This tool <b>does not issue or verify consent, approvals, grants, findings, revocation, or permission to scan</b>. Every item remains an untrusted human proposal until the original authenticated LightUp workflow independently validates it.</p>
+<section class="section" aria-labelledby="project-heading">
+<h2 id="project-heading">01 / Proposed engagement</h2>
+<div class="grid">
+<label>Internal draft name <input id="project" maxlength="80" placeholder="e.g. October lab baseline" autocomplete="off"></label>
+<label>Client-provided label (unverified) <input id="client" maxlength="100" placeholder="Organisation label" autocomplete="off"></label>
+<label>Human review contact (alias) <input id="contact" maxlength="80" placeholder="Reviewer alias, no credentials" autocomplete="off"></label>
+<label>Requested window start (local, unverified) <input id="start" type="datetime-local"></label>
+<label>Requested window end (local, unverified) <input id="end" type="datetime-local"></label>
+<label>Requested ceiling (descriptive only) <select id="risk"><option value="informational">Informational</option><option value="low">Low</option><option value="medium">Medium</option><option value="high">High — HOLD for review</option></select></label>
+<label class="wide">Proposed purpose / explicit human review questions <textarea id="purpose" maxlength="1800" placeholder="What are we asking reviewers to assess?"></textarea></label>
+<label>Evidence reference label (not verified) <input id="evidence" maxlength="120" placeholder="Do not paste a secret or token" autocomplete="off"></label>
+</div>
+<p class="small muted">Date/time is a requested local planning window, not a trusted authorization clock or approval. Keep real client details PRIVATE.</p>
+</section>
+<section class="section" aria-labelledby="assets-heading">
+<div class="actions"><h2 id="assets-heading">02 / Proposed boundaries</h2><button id="add" type="button" class="primary right">+ Add proposed asset</button></div>
+<p class="muted small">Up to 32 exact DNS hostnames, canonical IPv4 addresses or IPv4 CIDRs of /24–/32. No schemes, ports, paths, wildcards or implied subnet expansion. Each asset is a literal proposal only. Excluded rows are never silently treated as covered.</p>
+<div class="actions"><label class="filter">Find local rows <input id="filter" aria-label="Filter proposed rows" placeholder="Filter by asset or question"></label><label class="filter">Show status <select id="status-filter"><option value="all">All</option><option value="draft">Draft</option><option value="needs-client-review">Needs client review</option><option value="blocked">Blocked</option></select></label></div>
+<div class="table-wrap"><table><thead><tr><th>Asset (literal)</th><th>Boundary</th><th>Requested capability</th><th>Ownership evidence</th><th>Human status</th><th>Actions</th></tr></thead><tbody id="rows"></tbody></table></div>
+<p id="empty-rows" class="muted">No proposed assets yet.</p>
+<div class="actions"><button id="add-bottom" type="button">+ Add row</button></div>
+</section>
+<section class="section" aria-labelledby="result-heading">
+<h2 id="result-heading">03 / Local completeness & handoff</h2>
+<div class="stats"><div class="stat"><strong id="total-count">0</strong><span>Proposed rows</span></div><div class="stat"><strong id="excluded-count">0</strong><span>Explicit exclusions</span></div><div class="stat"><strong id="review-count">0</strong><span>Needs human review</span></div><div class="stat"><strong id="blocked-count">0</strong><span>Blocked proposals</span></div></div>
+<div id="notice" role="status" class="notice">Add and review draft details. Nothing is saved automatically.</div>
+<div class="actions">
+<button id="export" class="primary" type="button">Export PRIVATE draft JSON</button>
+<button id="receipt" type="button">Export anonymous counts</button>
+<button id="print" type="button">Print private human brief</button>
+<button id="choose-import" type="button">Open PRIVATE draft</button>
+<button id="choose-compare" type="button">Compare to older PRIVATE draft</button>
+<button id="clear" class="danger" type="button">Clear memory</button>
+</div>
+<input id="file-import" type="file" accept=".json,application/json" hidden>
+<input id="file-compare" type="file" accept=".json,application/json" hidden>
+<div class="privacy"><b>Privacy / release boundary:</b> Draft JSON and printouts can contain private client/asset details and are unencrypted. Export only to an approved private location; recipient delivery requires a separate human privacy and identity decision. Counts omit labels/targets but small groups can still disclose context. Nothing is uploaded or retained by this page; there is no browser storage or remote call. Never treat a saved file or receipt as consent.</div>
+</section>
+<section class="section" id="compare-section" hidden aria-labelledby="compare-heading"><h2 id="compare-heading">04 / Exact local revision comparison</h2><p class="muted">Compares literal draft data only. Added or removed asset ≠ authorized or revoked asset. Comparisons are not a safety verdict.</p><div class="compare-items"><div><h3>Added proposals</h3><pre id="added"></pre></div><div><h3>Removed proposals</h3><pre id="removed"></pre></div><div><h3>Changed human fields</h3><pre id="changed"></pre></div></div><button id="close-compare" type="button">Close comparison</button></section>
+<p class="footer">LightUp • independent offline preparation companion • INCUBATE M3/M7 PLAN/LAB ONLY • no scans, network, grants, bypasses, approvals, deployment or main release.</p>
+</main>
+</body>
+</html>
