@@ -17,7 +17,18 @@ import sys
 
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent
-NATIVE_INSTALLER = ROOT / "remediation-integrated-workspace" / "install.py"
+# When this companion is copied into an installed standalone PRIVATE suite,
+# its original integrated native installer lives in the sibling original-suite.
+# Never silently replace it with an external tool or skip original admission.
+def native_installer():
+    candidates = (
+        ROOT / "remediation-integrated-workspace" / "install.py",
+        ROOT / "original-suite" / "remediation-integrated-workspace" / "install.py",
+    )
+    for candidate in candidates:
+        if candidate.is_file() and not candidate.is_symlink():
+            return candidate
+    raise Hold("original native installer not present in this source/installed bundle")
 COMPANION_FILES = (
     "vault.py", "browser.js", "index.html", "standalone.html",
     "build_browser.py", "integrate.py", "README.md",
@@ -140,12 +151,12 @@ def create(dest: Path):
     private_directory(dest.parent)
     insist(ROOT not in dest.parents and dest != ROOT,
            "suite destination must be outside the checkout")
-    insist(NATIVE_INSTALLER.is_file(), "original source-owned installer unavailable")
+    original_installer = native_installer()
     stage = dest.parent / (".lightup-composed-" + secrets.token_hex(12))
     os.mkdir(stage, 0o700)
     try:
         native_destination = stage / "original-suite"
-        run = subprocess.run([sys.executable, str(NATIVE_INSTALLER), "build",
+        run = subprocess.run([sys.executable, str(original_installer), "build",
                               "--output-dir", str(native_destination)],
                              cwd=str(ROOT), shell=False, timeout=180,
                              stdin=subprocess.DEVNULL, capture_output=True, text=True)
@@ -251,7 +262,7 @@ def inspect(workspace: Path):
     # Reuse original native source-lock verification unchanged: never promote an
     # unsigned companion inventory over original source-owner admission.
     original = subprocess.run(
-        [sys.executable, str(NATIVE_INSTALLER), "inspect", "--workspace",
+        [sys.executable, str(native_installer()), "inspect", "--workspace",
          str(workspace / "original-suite")],
         cwd=str(ROOT), shell=False, timeout=180, stdin=subprocess.DEVNULL,
         capture_output=True, text=True)
