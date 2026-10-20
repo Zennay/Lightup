@@ -240,7 +240,7 @@ def seal(handoff: Path, response: Path, signing_key: Path, output: Path) -> None
     print("No actual sender identity, client consent, finding, fix, grant, release or HUMAN GO.")
 
 
-def admit_courier(path: Path, expected_fingerprint: str) -> tuple[bytes, bytes, str]:
+def admit_courier(path: Path, expected_fingerprint: str) -> tuple[bytes, bytes, str, bytes]:
     if len(expected_fingerprint) != 64 or any(c not in "0123456789abcdef" for c in expected_fingerprint):
         raise Hold("recipient MUST independently confirm 64 lowercase-hex public fingerprint")
     raw = private_bytes(path, MAX_COURIER)
@@ -250,6 +250,8 @@ def admit_courier(path: Path, expected_fingerprint: str) -> tuple[bytes, bytes, 
         raise Hold("corrupt signed HUMAN courier JSON") from exc
     if type(obj) is not dict or set(obj) != RECEIPT_KEYS:
         raise Hold("unknown signed private courier format")
+    if raw != canonical(obj) + b"\n":
+        raise Hold("private signed HUMAN courier has noncanonical byte encoding")
     if (
         obj["kind"] != KIND or type(obj["version"]) is not int or obj["version"] != 1
         or obj["purpose"] != PURPOSE
@@ -279,7 +281,7 @@ def admit_courier(path: Path, expected_fingerprint: str) -> tuple[bytes, bytes, 
         pub.verify(signature, DOMAIN + canonical(unsigned))
     except InvalidSignature as exc:
         raise Hold("signed private HUMAN courier authenticity failed") from exc
-    return source_bytes, reply_bytes, actual_fp
+    return source_bytes, reply_bytes, actual_fp, raw
 
 
 def receive(courier: Path, fingerprint: str, destination: Path, *, resume: bool) -> None:
@@ -288,7 +290,7 @@ def receive(courier: Path, fingerprint: str, destination: Path, *, resume: bool)
     if not destination.is_absolute() or destination.exists() or destination.is_symlink():
         raise Hold("received output must be a new absolute private directory")
     owner_dir(destination.parent)
-    original_bytes, response_bytes, verified_fp = admit_courier(courier, fingerprint)
+    original_bytes, response_bytes, verified_fp, original_courier_bytes = admit_courier(courier, fingerprint)
     if destination == ROOT or ROOT in destination.parents:
         raise Hold("do not publish private HUMAN data under the source checkout")
     stage = destination.parent / (".lightup-human-courier-" + secrets.token_hex(12))
@@ -303,7 +305,7 @@ def receive(courier: Path, fingerprint: str, destination: Path, *, resume: bool)
         reply.open_reply(answer, handoff, stage / "native-human-report", editable=resume)
         if private_bytes(handoff, MAX_SOURCE) != original_bytes or private_bytes(answer, MAX_REPLY) != response_bytes:
             raise Hold("source or reply changed after original native admission")
-        if private_bytes(courier, MAX_COURIER) != _courier_bytes(courier):
+        if private_bytes(courier, MAX_COURIER) != original_courier_bytes:
             raise Hold("source courier changed during private receive")
         warning = (
             "REVIEW_ONLY · INCUBATE M3/M7 PLAN/LAB ONLY · DRAFT/HOLD. "
@@ -340,10 +342,6 @@ def receive(courier: Path, fingerprint: str, destination: Path, *, resume: bool)
     print("Neither signature nor HUMAN text authorizes repairs, grants, scans or release.")
 
 
-def _courier_bytes(path: Path) -> bytes:
-    return private_bytes(path, MAX_COURIER)
-
-
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest="action", required=True)
@@ -371,7 +369,7 @@ def main() -> int:
         elif args.action == "receive":
             receive(args.courier, args.trusted_fingerprint, args.output_dir, resume=args.resume)
         else:
-            _, _, fingerprint = admit_courier(args.courier, args.trusted_fingerprint)
+            _, _, fingerprint, _ = admit_courier(args.courier, args.trusted_fingerprint)
             print("REVIEW_ONLY: encrypted ORIGINAL source + HUMAN reply bytes signed by trusted key", fingerprint)
             print("NOT VERIFIED: original decrypted admission, real signer identity, authorization, consent or release.")
     except (Hold, OSError, ValueError, KeyError, TypeError, RuntimeError) as exc:
