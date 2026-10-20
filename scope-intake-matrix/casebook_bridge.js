@@ -478,6 +478,8 @@
   const HANDOFF_KEYS = ["schema", "posture", "cipher", "kdf", "iterations", "salt_b64",
     "nonce_b64", "ciphertext_b64"];
   const CONTENT_KEYS = ["schema", "posture", "source_raw", "source_sha256", "human_stages",
+    "request_stages", ...FALSE_AUTHORITY];
+  const LEGACY_CONTENT_KEYS = ["schema", "posture", "source_raw", "source_sha256", "human_stages",
     ...FALSE_AUTHORITY];
 
   function mustHavePrivateCrypto() {
@@ -561,6 +563,9 @@
         source_raw: rawPrivateSource,
         source_sha256: await digestOfRaw(rawPrivateSource),
         human_stages: humanStages,
+        request_stages: source.requests.map(req => ({
+          request_id: req.request_id, stage: requestHuman.get(req.request_id) || "unreviewed"
+        })),
         ...Object.fromEntries(FALSE_AUTHORITY.map(x => [x,false]))
       };
       const plain = new TextEncoder().encode(JSON.stringify(payload, null, 2) + "\n");
@@ -635,7 +640,7 @@
         throw Error("Decrypted original Casebook handoff is not canonical UTF-8.");
       }
       const payload = parseDuplicateSafeJson(payloadText);
-      if (!sameKeys(payload,CONTENT_KEYS) ||
+      if (!(sameKeys(payload,CONTENT_KEYS) || sameKeys(payload,LEGACY_CONTENT_KEYS)) ||
           payloadText !== JSON.stringify(payload,null,2) + "\n" ||
           payload.schema !== HANDOFF_SCHEMA || payload.posture !== "REVIEW_ONLY" ||
           FALSE_AUTHORITY.some(k => payload[k] !== false) ||
@@ -669,7 +674,25 @@
         restored.set(record.engagement_id,record.stage);
         if (record.note?.trim()) restoredNotes.set(record.engagement_id,record.note);
       }
-      return {parsed:original,fingerprint:payload.source_sha256,raw:payload.source_raw,stages:restored,notes:restoredNotes};
+      const restoredRequests = new Map();
+      if (payload.request_stages !== undefined) {
+        if (!Array.isArray(payload.request_stages) ||
+            payload.request_stages.length !== original.requests.length) {
+          throw Error("HOLD: original request HUMAN follow-up is incomplete.");
+        }
+        for (let i = 0; i < payload.request_stages.length; i++) {
+          const record = payload.request_stages[i];
+          if (!sameKeys(record, ["request_id","stage"]) ||
+              record.request_id !== original.requests[i].request_id ||
+              !Object.hasOwn(VALID_HUMAN,record.stage) ||
+              restoredRequests.has(record.request_id)) {
+            throw Error("HOLD: original request HUMAN stage identity/order mismatch.");
+          }
+          restoredRequests.set(record.request_id,record.stage);
+        }
+      }
+      return {parsed:original,fingerprint:payload.source_sha256,raw:payload.source_raw,
+        stages:restored,notes:restoredNotes,requestStages:restoredRequests};
     } finally {
       salt.fill(0); iv.fill(0); ciphertext.fill(0); opened?.fill(0); encryptedBytes.fill(0);
     }
@@ -680,12 +703,18 @@
     if (!confirm("Export only source-free aggregate counts and local HUMAN stage totals? Small-cohort totals remain sensitive. No original client/record IDs, assets or timestamp included. This is never authorization.")) return;
     const stages = Object.fromEntries(Object.keys(VALID_HUMAN).map(k => [k, 0]));
     for (const c of source.case_overview) stages[human.get(c.engagement_id) || "unreviewed"]++;
+    const requestStages = Object.fromEntries(Object.keys(VALID_HUMAN).map(k => [k, 0]));
+    for (const r of source.requests) requestStages[requestHuman.get(r.request_id) || "unreviewed"]++;
+    const unlinkedApproved = sourceRequests().filter(v =>
+      v.req.status === "approved" && !v.linked.length).length;
     const data = {
       schema: "lightup.scope_intake.casebook_human_counts.v1",
       posture: "REVIEW_ONLY",
       authority: Object.fromEntries(FALSE_AUTHORITY.map(x => [x, false])),
       original_source_counts: {...source.declared_counts},
       local_human_stages: stages,
+      local_original_request_stages: requestStages,
+      approved_requests_without_stored_link_count: unlinkedApproved,
       original_source_authenticated_by_this_browser: false,
       consent_or_permission_granted_by_this_browser: false
     };
@@ -714,8 +743,11 @@
         rawPrivateSource = result.raw;
         human = result.stages;
         privateNotes = result.notes;
+        requestHuman = result.requestStages;
         $("casebook-filter").value = "";
         $("casebook-category").value = "all";
+        $("request-filter").value = "";
+        $("request-category").value = "all";
         $("casebook-selected").hidden = true;
         $("casebook-selected").textContent = "";
         renderCases();
