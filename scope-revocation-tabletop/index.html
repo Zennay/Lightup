@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="nl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'none'; connect-src 'none'; font-src 'none'; media-src 'none'; object-src 'none'; frame-src 'none'; form-action 'none'; base-uri 'none'">
+  <meta name="referrer" content="no-referrer">
+  <title>LightUp · Scope & intrekking | Offline oefenruimte</title>
+  <link rel="stylesheet" href="style.css">
+  <script defer src="app.js"></script>
+</head>
+<body>
+  <div class="shell">
+    <header class="top">
+      <div class="brand"><div class="mark" aria-hidden="true">L<span>U</span></div><div><div class="eyebrow">LIGHTUP / SCOPE LAB</div><h1>Autorisatie & intrekking</h1><p>Offline oefenruimte met fictieve scenario’s. Geen werkelijke toestemming of toegang.</p></div></div>
+      <div class="posture" role="status"><span class="dot"></span> INCUBATE · DRAFT / HOLD</div>
+    </header>
+    <section class="alert" aria-labelledby="guard-title">
+      <div><strong id="guard-title">Dit is een oefensimulatie, geen autorisatiesysteem.</strong><p>Alle deelnemers, gebeurtenissen en beslissingen zijn fictief. De echte LightUp-grants, client-/operatoridentiteit, risico- en revocatiestatus worden niet gelezen, gecontroleerd of aangepast. <b>Geen enkele uitkomst mag worden gebruikt om een scan, tool, release of deployment te starten.</b></p></div>
+    </section>
+    <main class="grid">
+      <section class="card builder" aria-labelledby="builder-title">
+        <div class="section-top"><div><p class="kicker">01 / SCENARIO</p><h2 id="builder-title">Bouw een beslisverloop</h2></div><span class="pill">MAX 64 stappen</span></div>
+        <label for="preset">Startscenario</label>
+        <div class="preset-group"><select id="preset"><option value="empty">Leeg scenario</option><option value="happy">Fictieve complete voorwaarden</option><option value="revoke">Toestemming wordt ingetrokken</option><option value="scope">Scope verandert na toestemming</option><option value="stop">Noodstop vóór uitvoerpoging</option></select><button type="button" class="button minor" id="load-preset">Laden</button></div>
+        <label for="event-type">Volgende gebeurtenis</label>
+        <div class="preset-group"><select id="event-type"><option value="CLIENT_CONSENT">Fictieve client verklaart toestemming</option><option value="OPERATOR_CONSENT">Fictieve operator verklaart toestemming</option><option value="SCOPE_CHANGED">Scope wijzigt (verklaringen vervallen)</option><option value="RISK_CHANGED">Risico stijgt (verklaringen vervallen)</option><option value="CLIENT_REVOKED">Client trekt verklaring in</option><option value="OPERATOR_REVOKED">Operator trekt verklaring in</option><option value="WINDOW_EXPIRED">Geldigheidsvenster verloopt</option><option value="NEW_WINDOW">Nieuw fictief venster (nieuwe verklaringen nodig)</option><option value="EMERGENCY_STOP">Noodstop blijft actief</option><option value="DISPATCH_ATTEMPT">Gesimuleerde poging tot uitvoering</option></select><button type="button" class="button primary" id="add-event">+ Voeg toe</button></div>
+        <div class="quick"><button type="button" id="undo" class="button minor">↶ Laatste ongedaan</button><button type="button" id="clear" class="button danger">Scenario wissen</button></div>
+        <div class="section-top log-title"><h3>Gebeurtenissen</h3><span id="step-count" class="count">0 / 64</span></div>
+        <ol id="timeline" class="timeline" aria-live="polite"></ol>
+        <p class="muted" id="empty">Nog geen stappen. Kies een fictief startscenario of voeg een gebeurtenis toe.</p>
+      </section>
+      <section class="card output" aria-labelledby="output-title">
+        <div class="section-top"><div><p class="kicker">02 / INTERPRETATIE</p><h2 id="output-title">Wat verandert er?</h2></div><span class="pill">HUMAN REVIEW ONLY</span></div>
+        <div class="verdict"><span id="status-icon" class="status-icon">!</span><div><p class="eyebrow">FICTIEVE PRECONDITIES</p><h3 id="status-title">Wacht op scenario</h3><p id="status-reason">De simulatie beoordeelt alleen handmatig ingevoerde gebeurtenissen.</p></div></div>
+        <h3 class="subheading">Fictieve toestand</h3>
+        <dl class="facts"><div><dt>Clientverklaring</dt><dd id="client-state">Niet aanwezig</dd></div><div><dt>Operatorverklaring</dt><dd id="operator-state">Niet aanwezig</dd></div><div><dt>Scope & risico</dt><dd id="scope-state">Startversie</dd></div><div><dt>Geldigheidsvenster</dt><dd id="window-state">Open (fictief)</dd></div><div><dt>Noodstop</dt><dd id="stop-state">Niet gesimuleerd</dd></div><div><dt>Laatste uitvoerpoging</dt><dd id="attempt-state">Geen</dd></div></dl>
+        <h3 class="subheading">Human review: benodigde verificatie</h3>
+        <ul class="needs" id="needs"><li>Actueel onafhankelijk geauthenticeerd bewijs van beide echte partijen.</li><li>Exacte actuele assets, capability, risico en geldigheidsvenster.</li><li>Actuele brongebonden intrekkingscontrole vlak vóór uitvoering.</li><li>Onafhankelijke privacy/security-goedkeuring en expliciete HUMAN GO.</li></ul>
+        <div class="export"><h3>PRIVATE lokaal bewaren</h3><p>Bestanden bevatten uitsluitend vaste fictieve gebeurteniscodes, geen echte klantgegevens, targets, credentials of geauthenticeerde claims.</p><div class="buttons"><button type="button" id="save-json" class="button primary">Scenario opslaan (.json)</button><button type="button" id="save-md" class="button minor">Beslisbrief (.md)</button><button type="button" id="import-btn" class="button minor">Scenario openen</button><input id="import-file" type="file" accept=".json,application/json" hidden><button type="button" id="print" class="button minor">Afdrukken</button></div><p class="muted" id="feedback" role="status" aria-live="polite"></p></div>
+      </section>
+    </main>
+    <footer>SCENARIO ≠ SCOPE · HASH ≠ AUTHENTICATIE · REVIEW ≠ TOESTEMMING · NO NETWORK / NO STORAGE / NO DISPATCH<br>Originele LightUp M3/M7-bronnen, autorisatie- en releasevoorwaarden blijven ongewijzigd.</footer>
+  </div>
+</body>
+</html>
