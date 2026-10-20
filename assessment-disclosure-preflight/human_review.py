@@ -198,14 +198,24 @@ def main(argv: list[str] | None = None) -> int:
         sub.add_argument("--receipt", required=True, help="preflight PRIVATE-receipt.json")
         sub.add_argument("--private-output-dir", required=True, help="existing owner-only 0700 directory")
         if name == "render":
-            sub.add_argument("--answers", required=True, help="completed PRIVATE-human-template.csv")
+            inputs = sub.add_mutually_exclusive_group(required=True)
+            inputs.add_argument("--answers", help="completed PRIVATE HUMAN plaintext CSV")
+            inputs.add_argument("--vault", help="sealed PRIVATE HUMAN .luhd; prompt for password")
     args = parser.parse_args(argv)
     try:
         digest, rows = receipt(args.receipt)
         if args.action == "prepare":
             publish(args.private_output_dir, TEMPLATE, template(digest, rows))
         else:
-            answers = admitted_answers(source_bytes(args.answers), digest, rows)
+            if args.vault:
+                try:
+                    from vault_native import VaultHold, decrypt_vault
+                    source = decrypt_vault(args.vault, digest)
+                except (ImportError, VaultHold):
+                    raise Hold("HOLD: encrypted HUMAN packet refused") from None
+            else:
+                source = source_bytes(args.answers)
+            answers = admitted_answers(source, digest, rows)
             publish(args.private_output_dir, REPORT, render(answers))
     except Hold:
         print("HOLD: PRIVATE HUMAN follow-up refused; no authority or release", file=sys.stderr)
