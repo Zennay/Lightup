@@ -17,16 +17,112 @@ SCRIPT = r"""
   const rows = document.getElementById('rows');
   const exportButton = document.getElementById('export');
   const carryInput = document.getElementById('carry');
+  const csvInput = document.getElementById('resume');
+  const queryInput = document.getElementById('query');
+  const stageFilter = document.getElementById('stage-filter');
+  const summary = document.getElementById('summary');
+  let dirty = false;
   let current = [];
   let currentDigest = null;
   const STAGES = ['needs_review', 'owner_followup', 'hold', 'reference_only'];
   const hex = value => typeof value === 'string' && /^[a-f0-9]{64}$/.test(value);
   const escCsv = value => '"' + String(value).replace(/"/g, '""') + '"';
+  function confirmOverwrite() {
+    return !dirty || window.confirm(
+      'Your PRIVATE HUMAN edits have not been exported. Discard these local changes?'
+    );
+  }
+  function validHuman(row) {
+    return STAGES.includes(row.stage) && typeof row.owner === 'string' &&
+      typeof row.question === 'string' && row.owner.length <= 80 &&
+      row.question.length <= 500 && !/[\x00-\x1f]/.test(row.owner + row.question) &&
+      !/^\s*[=+\-@]/.test(row.owner) && !/^\s*[=+\-@]/.test(row.question);
+  }
+  function updateView() {
+    const q = queryInput.value.trim().toLocaleLowerCase();
+    const chosen = stageFilter.value;
+    let shown = 0;
+    const counts = Object.fromEntries(STAGES.map(x => [x, 0]));
+    for (const row of current) {
+      const stage = row.stage.value;
+      counts[stage] = (counts[stage] || 0) + 1;
+      const matches = (!q || (row.label + ' ' + row.ordinal + ' ' +
+        row.owner.value + ' ' + row.question.value).toLocaleLowerCase().includes(q)) &&
+        (chosen === 'all' || chosen === stage);
+      row.article.hidden = !matches;
+      if (matches) shown++;
+    }
+    summary.textContent = current.length
+      ? shown + ' of ' + current.length + ' PRIVATE kits visible. ' +
+        STAGES.map(x => x.replaceAll('_',' ') + ': ' + counts[x]).join(' · ') +
+        (dirty ? ' · UNSAVED HUMAN EDITS' : '')
+      : 'No PRIVATE ledger loaded.';
+  }
+  function markDirty() { dirty = true; updateView(); }
+  rows.addEventListener('input', markDirty);
+  rows.addEventListener('change', markDirty);
+  queryInput.addEventListener('input', updateView);
+  stageFilter.addEventListener('change', updateView);
+
+  // Strict finite single-pass CSV parser for native ledger.py HUMAN-review.csv.
+  // No formula evaluation, multiline cells, partial import, or implicit row repair.
+  function parseHumanCsv(text) {
+    if (text.length > 65536 || text.includes('\r') || text.includes('\0'))
+      throw new Error('Oversized or control-containing CSV');
+    const table = [];
+    let row = [], field = '', quoted = false, closed = false, started = false;
+    for (let i = 0; i < text.length; i++) {
+      const ch = text[i];
+      if (quoted) {
+        if (ch === '"') {
+          if (text[i+1] === '"') { field += '"'; i++; }
+          else { quoted = false; closed = true; }
+        } else {
+          if (ch === '\n') throw new Error('Multiline HUMAN value');
+          field += ch;
+        }
+      } else if (ch === ',') {
+        row.push(field); field = ''; closed = false; started = false;
+      } else if (ch === '\n') {
+        row.push(field);
+        table.push(row);
+        row = []; field = ''; closed = false; started = false;
+      } else if (ch === '"' && !started && !closed && field === '') {
+        quoted = true; started = true;
+      } else if (ch === '"' || closed) {
+        throw new Error('Malformed quoting in HUMAN CSV');
+      } else {
+        field += ch; started = true;
+      }
+      if (table.length > 13 || field.length > 700) throw new Error('HUMAN CSV limits');
+    }
+    if (quoted) throw new Error('Unterminated HUMAN CSV');
+    if (started || closed || field !== '' || row.length) {
+      row.push(field); table.push(row);
+    }
+    if (!table.length || table[0].join(',') !== 'ordinal,kit_digest,stage,owner,question')
+      throw new Error('Unexpected HUMAN CSV header');
+    if (table.length !== current.length + 1)
+      throw new Error('Wrong number of HUMAN rows');
+    const result = table.slice(1).map((r, i) => {
+      if (r.length !== 5 || r[0] !== String(current[i].ordinal) ||
+          r[1] !== current[i].digest)
+        throw new Error('HUMAN CSV source ordinal/byte identity mismatch');
+      const obj = {stage:r[2],owner:r[3],question:r[4]};
+      if (!validHuman(obj)) throw new Error('Invalid HUMAN status or text');
+      return obj;
+    });
+    return result;
+  }
+
   function refuse(msg) {
     current = [];
     currentDigest = null;
     carryInput.disabled = true;
+    csvInput.disabled = true;
+    dirty = false;
     rows.replaceChildren();
+    updateView();
     exportButton.disabled = true;
     status.textContent = 'HOLD — ' + msg + '. Existing edits discarded; no export.';
   }
@@ -58,9 +154,13 @@ SCRIPT = r"""
       Number.isSafeInteger(kit.bytes) && kit.bytes >= 0);
   }
   input.addEventListener('change', async () => {
-    refuse('Choose an original PRIVATE ledger.json');
     const file = input.files && input.files[0];
-    if (!file || file.size < 8 || file.size > 1048576 || file.name !== 'ledger.json') return;
+    if (!file) return;
+    if (!confirmOverwrite()) { input.value = ''; return; }
+    if (file.size < 8 || file.size > 1048576 || file.name !== 'ledger.json') {
+      status.textContent = 'HOLD — invalid source filename/size; current decisions kept.';
+      return;
+    }
     let data, hexDigest = null;
     try {
       const buffer = await file.arrayBuffer();
@@ -69,8 +169,12 @@ SCRIPT = r"""
         const bytes = new Uint8Array(await crypto.subtle.digest('SHA-256', buffer));
         hexDigest = Array.from(bytes, b => b.toString(16).padStart(2,'0')).join('');
       }
-    } catch (_) { refuse('Malformed or unreadable JSON'); return; }
-    if (!isPrivateDraft(data)) { refuse('Invalid or authority-claiming ledger'); return; }
+    } catch (_) {
+      status.textContent = 'HOLD — unreadable PRIVATE ledger; current edits preserved.'; return;
+    }
+    if (!isPrivateDraft(data)) {
+      status.textContent = 'HOLD — invalid or authority-claiming ledger; current edits preserved.'; return;
+    }
     const fragment = document.createDocumentFragment();
     const entries = [];
     for (const kit of data.kits) {
@@ -94,12 +198,16 @@ SCRIPT = r"""
       questionLabel.append(question);
       article.append(heading, subtitle, stageLabel, ownerLabel, questionLabel);
       fragment.appendChild(article);
-      entries.push({ordinal:kit.ordinal, digest:kit.digest, stage, owner, question});
+      entries.push({ordinal:kit.ordinal, digest:kit.digest, label:kit.label,
+                    article, stage, owner, question});
     }
     current = entries;
     currentDigest = hexDigest;
     carryInput.disabled = !hexDigest;
+    csvInput.disabled = false;
+    dirty = false;
     rows.replaceChildren(fragment);
+    updateView();
     status.textContent = 'PRIVATE HUMAN draft loaded. No client identity, original verification or consent established.';
     exportButton.disabled = false;
   });
@@ -152,14 +260,59 @@ SCRIPT = r"""
       status.textContent = 'HOLD — carried HUMAN data does not match source bytes/ordinals. Existing edits kept.';
       return;
     }
+    if (!confirmOverwrite()) {
+      status.textContent = 'PRIVATE prior edits retained; continuation not applied.';
+      return;
+    }
     for (const [i,row] of packet.rows.entries()) {
       const target = current[i];
       target.stage.value = row.stage;
       target.owner.value = row.owner;
       target.question.value = row.question;
     }
+    dirty = true;
+    updateView();
     status.textContent = 'PRIVATE HUMAN proposals restored against EXACT ledger bytes; ' +
       'reconfirm every stage and export a NEW decision CSV. No permission or approval inherited.';
+  });
+
+  csvInput.addEventListener('change', async () => {
+    if (!current.length) {
+      status.textContent = 'HOLD — load original ledger.json before CSV restore.';
+      return;
+    }
+    const file = csvInput.files && csvInput.files[0];
+    if (!file || file.name !== 'HUMAN-review.csv' || file.size < 16 ||
+        file.size > 65536) {
+      status.textContent = 'HOLD — choose original PRIVATE HUMAN-review.csv <= 64KiB.';
+      return;
+    }
+    let imported;
+    try {
+      imported = parseHumanCsv(
+        new TextDecoder('utf-8', {fatal:true}).decode(await file.arrayBuffer())
+      );
+    } catch (_) {
+      status.textContent = 'HOLD — HUMAN CSV invalid, incomplete or bound to different kit bytes. Edits retained.';
+      return;
+    }
+    if (!confirmOverwrite()) {
+      status.textContent = 'Previous unsaved HUMAN decisions retained.';
+      return;
+    }
+    for (const [i,row] of imported.entries()) {
+      current[i].stage.value = row.stage;
+      current[i].owner.value = row.owner;
+      current[i].question.value = row.question;
+    }
+    dirty = true;
+    updateView();
+    status.textContent = 'PRIVATE HUMAN CSV restored for matching ORIGINAL kit byte digests. ' +
+      'Reconfirm manually; native finalize will re-read all source files. No authority inferred.';
+  });
+
+  window.addEventListener('beforeunload', event => {
+    if (dirty) { event.preventDefault(); event.returnValue = ''; }
   });
 
   exportButton.addEventListener('click', () => {
@@ -183,7 +336,9 @@ SCRIPT = r"""
     link.click();
     link.remove();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
-    status.textContent = 'PRIVATE CSV downloaded locally. Run native ledger.py finalize with unchanged source ledger; browser edits NEVER confer authority.';
+    dirty = false;
+    updateView();
+    status.textContent = 'PRIVATE CSV download requested locally. Run native ledger.py finalize with unchanged source ledger; browser edits NEVER confer authority.';
   });
 })();
 """
@@ -214,10 +369,19 @@ def render_studio():
             "the source producer, identify a tenant, certify findings, prove fixes, grant access, "
             "verify consent, release or execute an assessment. All artifacts are PRIVATE.</p>"
             "<label>Choose your native ledger.json <input type='file' id='source' accept='.json,application/json'></label>"
-            "<label>Optionally restore previously proposed HUMAN stages from a source-bound "
+            "<label>Optionally restore previously proposed HUMAN stages from source-bound "
             "HUMAN-carry.json <input type='file' id='carry' accept='.json,application/json' disabled></label>"
+            "<label>Or resume an exact-source locally saved HUMAN-review.csv "
+            "<input type='file' id='resume' accept='.csv,text/csv' disabled></label>"
+            "<p>Resume/import never verifies current source bytes. All decisions remain HUMAN-only.</p>"
             "<p id='status' role='status' aria-live='polite'>Choose only an original locally generated "
             "PRIVATE ledger.json. Nothing is uploaded or persisted by this browser.</p></section>"
+            "<section><label>Find kits by label, ordinal, proposed owner or question"
+            "<input id='query' type='search' placeholder='Search locally, never uploaded'></label>"
+            "<label>Filter current HUMAN stage<select id='stage-filter'><option value='all'>All statuses</option>"
+            "<option value='needs_review'>Needs review</option><option value='owner_followup'>Owner follow-up</option>"
+            "<option value='hold'>HOLD</option><option value='reference_only'>Reference only</option>"
+            "</select></label><p id='summary' role='status'>No PRIVATE ledger loaded.</p></section>"
             "<section id='rows' aria-label='Kit HUMAN stages'></section>"
             "<section><button id='export' disabled>Save PRIVATE HUMAN-review.csv</button>"
             "<p>Export contains local unsigned kit byte fingerprints and HUMAN proposals. "
