@@ -313,7 +313,7 @@
       }, "Declared ownership evidence for " + row.id));
       const status = cell(tr);
       status.append(optionSelect(STATUS, row.status, value => {
-        row.status = value; refresh();
+        row.status = value; renderRows(); refresh();
       }, "Human preparation status for " + row.id));
       const tools = cell(tr); tools.className = "row-tools";
       tools.append(rowButton("Copy " + row.id, () => duplicateRow(row.id)));
