@@ -154,5 +154,32 @@ def render_studio():
             "<script>" + SCRIPT + "</script></main></html>")
 
 
+def main():
+    """Produce a standalone source-free single-file browser studio, never overwrite."""
+    import argparse
+    import os
+    from pathlib import Path
+    parser = argparse.ArgumentParser(description="Build source-free offline HUMAN review browser (no original kits needed)")
+    parser.add_argument("--output", required=True, help="Absolute filename for NEW browser-only HTML")
+    args = parser.parse_args()
+    path = Path(args.output)
+    if not path.is_absolute() or path.suffix.lower() != ".html":
+        parser.error("--output must be an absolute .html file path")
+    # No source/customer/assessment bytes in the software itself.
+    payload = render_studio().encode("utf-8")
+    fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
+    try:
+        os.fchmod(fd, 0o600)
+        position = 0
+        while position < len(payload):
+            position += os.write(fd, payload[position:])
+        os.fsync(fd)
+    finally:
+        os.close(fd)
+    print("OFFLINE software-only HTML created; human and source review still HOLD")
+    print(path)
+    return 2
+
+
 if __name__ == "__main__":
-    print("This is a software module. Run ledger.py capture to generate its PRIVATE HTML.")
+    raise SystemExit(main())
