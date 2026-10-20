@@ -109,3 +109,21 @@ PYTHONPATH=src python3 assessment-launchpad/compare.py \
 The new `compare.py` first reopens each entire private packet through `reopen.py`: original source fingerprint, 0700 directory / 0600 no-follow file checks, original lab-policy admission, strict Studio validation if present and full original hash map. It then compares **exact original user-entered URL strings only**: added proposals, proposals absent in the later selected packet and unchanged proposals. The before/after labels are *user-selected*, not a trusted sequence, audit timeline or same-customer identity proof.
 
 The output is a new exclusive 0700 private directory with four owner-only 0600 files: a portable **scriptless human change brief** (full private URLs), a confidential original-source-fingerprint-bound JSON diff, an identity-free count-only JSON, and a START-HERE privacy/review note. This is useful for private handoff between lab operators, not a source verification of remediation. There is no implicit network, grant, runtime, CI, approval or deployment. A missing proposed URL is explicitly **not** verified remediation, revocation, client permission withdrawal, closure or a safety clearance. The new source/revision artifacts exit only 2 for human review or 3 HOLD, never authorization exit 0.
+
+
+## Combine 2–12 already-prepared PRIVATE lab batches (new)
+
+When multiple operators have **separately prepared original PRIVATE Launchpad packets** for the *same independently established isolated lab*, it is no longer necessary to manually copy endpoint text between packets. The product can create a fresh, review-only proposal from their selected order:
+
+```sh
+PYTHONPATH=src python3 assessment-launchpad/combine.py \
+  --packet ./PRIVATE-PACKET-A \
+  --packet ./PRIVATE-PACKET-B \
+  --output-dir ./NEW-PRIVATE-COMBINED-PLAN
+```
+
+The new `combine.py` admits **2–12 separate** existing original packets using `reopen.py` and its original owner-private 0700/0600, unsigned full-artifact hashes, original URL and `LabScenario` policy. It reads their exact ordered proposed endpoints, rejects overlaps instead of silently de-duplicating them, and enforces the original maximum of **16** distinct URLs over the complete combined proposal. It re-opens every original before publication to reject intervening manifest changes. **Studio scenario-bound packets are deliberately excluded**: joining their exact original IP-to-scenario declarations would invent a new scenario relation. Make a separate plain proposal if the source is only an independently prepared batch.
+
+On success the existing original builder publishes one **new** 0700 directory with original-private 0600 files, a scriptless `private-launchpad.html`, exact combined `targets.txt`, a source-hash-bound `private-plan.json` and `START-HERE.txt`. That final private note contains the **ordered original unsigned manifest SHA-256 values** for human provenance discussion; it is also bound by the final packet hash map. Original sources are not edited or removed. `reopen.py --packet ./NEW-PRIVATE-COMBINED-PLAN` can re-open the combined packet through its unchanged original admission rules.
+
+A successfully composed packet is **REVIEW_ONLY (exit 2)**, invalid or changed source is **HOLD (exit 3)**. The source digests and selected order do not authenticate a producer, relate different customer engagements, prove ownership/current consent, or authorize a scan. The software itself does no execution, DNS, network, model, grant or active assessment. Keep every source and output owner-private and seek separate current client and operator consent, source owner/security/privacy review, canonical CI and HUMAN GO before any possible active usage.
