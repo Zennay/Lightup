@@ -28,9 +28,10 @@
 <label for="csv">PRIVATE plaintext HUMAN CSV (optional)<input id="csv" type="file" accept=".csv,text/csv" aria-describedby="loadHelp"></label>
 <label for="vault">OR encrypted PRIVATE HUMAN vault (.luhd)<input id="vault" type="file" accept=".luhd,application/octet-stream" aria-describedby="loadHelp"></label>
 <label for="openPassword">Encrypted vault password, if selected<input id="openPassword" type="password" autocomplete="off" minlength="14" maxlength="256" aria-describedby="loadHelp"></label>
+<label for="bundle">OR complete encrypted PRIVATE HUMAN handoff (.luhb): no separate receipt needed<input id="bundle" type="file" accept=".luhb,application/octet-stream" aria-describedby="loadHelp"></label>
 <button id="load" type="button">Open matching pair</button>
 </div>
-<p id="loadHelp" class="muted">First use the native original preflight and human_review.py prepare. Select the exact PRIVATE receipt and EITHER a matching CSV OR an encrypted HUMAN .luhd file with password, never both. A changed receipt, wrong ordinal, unsupported stage or unexpected source-kind fails closed without replacing your current in-memory edits. A modern offline browser with Web Crypto is required.</p>
+<p id="loadHelp" class="muted">First use the native original preflight and human_review.py prepare. Select EITHER the exact PRIVATE receipt and one matching HUMAN CSV/.luhd, OR a single fully encrypted HUMAN .luhb handoff and password, never both. The bundle encrypts receipt plus notes. A changed receipt, wrong ordinal, unsupported stage or unexpected source-kind fails closed without replacing your current in-memory edits. A modern offline browser with Web Crypto is required.</p>
 <p id="notice" role="status" aria-live="polite">Select your source-free PRIVATE receipt and CSV to begin. No file has been opened.</p>
 </section>
 <section id="editor" hidden aria-labelledby="editTitle">
@@ -77,11 +78,12 @@
 <div class="controls"><label for="newPassword">New encrypted vault passphrase (14–256 characters)<input id="newPassword" type="password" autocomplete="new-password" minlength="14" maxlength="256"></label>
 <label for="confirmPassword">Repeat new encrypted vault passphrase<input id="confirmPassword" type="password" autocomplete="new-password" minlength="14" maxlength="256"></label></div>
 <p class="muted">Recommended private continuity: seal your HUMAN notes with AES-256-GCM and PBKDF2-SHA256 (600,000 iterations) using a fresh salt and nonce. This only encrypts HUMAN CSV bytes, bound to the exact unsignable PRIVATE receipt digest. Keep the passphrase separately. An incorrect password or different receipt causes HOLD. There is no password recovery.</p>
-<div class="controls"><button id="exportEncrypted" type="button" disabled>Export encrypted PRIVATE HUMAN vault (.luhd)</button>
+<div class="controls"><button id="exportBundle" type="button" disabled>Export complete encrypted PRIVATE HUMAN handoff (.luhb)</button>
+<button id="exportEncrypted" type="button" disabled>Export encrypted PRIVATE HUMAN vault (.luhd)</button>
 <button id="export" type="button" disabled>Export plaintext PRIVATE HUMAN CSV (explicit warning)</button>
 <button id="exportCounts" type="button" disabled>Export suppressed PRIVATE HUMAN counts only</button>
 <button id="exportPrint" type="button" disabled>Export printable PRIVATE HUMAN report</button></div>
-<p class="muted">The counts-only option never includes HUMAN note text, original artifact names, targets, findings, evidence or receipt hash. It still reveals summary categories for sufficiently large groups and is not guaranteed anonymous or approved for public sharing.</p>
+<p class="muted">The complete encrypted handoff includes both unsigned source-free PRIVATE receipt and HUMAN notes under one new password-derived authenticated encryption envelope; no original lab evidence is embedded. The older .luhd format still requires the separate exact receipt. The counts-only option never includes HUMAN note text, original artifact names, targets, findings, evidence or receipt hash. It still reveals summary categories for sufficiently large groups and is not guaranteed anonymous or approved for public sharing.</p>
 </section>
 </main>
 <footer>LightUp · Incubate / M3-M7 PLAN/LAB ONLY · DRAFT/HOLD · No permission, verification, grant or release</footer>
