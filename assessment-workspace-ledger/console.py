@@ -41,6 +41,7 @@ import portfolio_inbox_owner_return
 import portfolio_inbox_owner_return_studio
 import portfolio_inbox_owner_reconcile
 import portfolio_owner_inbox_viewer
+import portfolio_owner_followup
 import portfolio_owner_studio
 import portfolio_focus_studio
 import browser_intake
@@ -97,6 +98,8 @@ MENU = (
     ("46", "Build source-free offline PRIVATE HUMAN owner reply Studio"),
     ("47", "Reconcile 1–8 source-bound PRIVATE HUMAN owner replies into operator inbox"),
     ("48", "Build portable source-free PRIVATE HUMAN reply operator inbox viewer"),
+    ("49", "Prepare original-source PRIVATE HUMAN operator follow-up template"),
+    ("50", "Receive original-source PRIVATE HUMAN operator follow-up"),
     ("0", "Exit"),
 )
 
@@ -245,6 +248,15 @@ def handle_action(action):
         return history_progress.run(argparse.Namespace(
             action_context=prompt("ORIGINAL PRIVATE-action-context.json"),
             actions=actions, plan=plans, private_parent=private_parent()
+        ))
+    if action in ("49", "50"):
+        return portfolio_owner_followup.run(argparse.Namespace(
+            mode="prepare" if action == "49" else "receive",
+            inbox=prompt("Original PRIVATE-HUMAN-owner-inbox.json"),
+            history=prompt("Original PRIVATE-HUMAN-inbox-history.json"),
+            followup_csv=prompt("Complete HUMAN-operator-followup-template.csv")
+            if action == "50" else None,
+            private_parent=private_parent()
         ))
     if action == "48":
         return portfolio_owner_inbox_viewer.build(argparse.Namespace(

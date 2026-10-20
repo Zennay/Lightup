@@ -1721,3 +1721,53 @@ and preserves read-only inventory compatibility with original v16–v41 bundles.
 Release status remains Notion Incubate M3/M7 PLAN/LAB ONLY DRAFT/HOLD; no
 active scans, grants, client data processing, external communication,
 authenticated operator/client consent, HUMAN GO or production deployment.
+
+## v43 — source-bound operator HUMAN follow-up after owner replies
+
+New [portfolio_owner_followup.py](portfolio_owner_followup.py) closes
+the final HUMAN-only operator follow-up step after console 47 reconciles
+independently received human owner replies. A reviewer must explicitly
+select one original `PRIVATE-HUMAN-owner-inbox.json` **and** its original
+`PRIVATE-HUMAN-inbox-history.json`. The native reader rejects foreign
+history hashes, noncanonical/duplicate JSON keys, changed original owner
+group identities, repeated original source slots, missing or unexpected
+false-authority declarations, or malformed original HUMAN reply notes.
+
+Preparation generates a new 0700/0600 HUMAN follow-up CSV containing
+**every original reply slot** in unchanged native order, original source
+inbox SHA, owner, original selected HUMAN stage and owner HUMAN reply
+stage. The only operator-editable cells are proposed HUMAN follow-up
+stage and bounded PRIVATE HUMAN note:
+
+    python3 assessment-workspace-ledger/portfolio_owner_followup.py prepare \
+      --inbox /private/inbox/PRIVATE-HUMAN-owner-inbox.json \
+      --history /private/history/PRIVATE-HUMAN-inbox-history.json \
+      --private-parent /private/operator-only
+
+After editing the complete private HUMAN CSV without changing source
+identity/order, receive it using the same original inputs:
+
+    python3 assessment-workspace-ledger/portfolio_owner_followup.py receive \
+      --inbox /private/inbox/PRIVATE-HUMAN-owner-inbox.json \
+      --history /private/history/PRIVATE-HUMAN-inbox-history.json \
+      --followup-csv /private/review/HUMAN-operator-followup-template.csv \
+      --private-parent /private/operator-only
+
+Native receive rejects any original owner/slot/received HUMAN stage drift,
+foreign source SHA, missing/extra/out-of-order cases, invalid HUMAN
+follow-up statuses, formula-like notes, line breaks or oversized values.
+It re-admits both original PRIVATE source bytes before creating a fresh
+exclusive 0700/0600 room. A source-minimal scriptless HTML count-only summary
+omits owner identities, source slots, hashes and all PRIVATE note texts.
+Detailed owner/source HUMAN proposals remain inside 0600 PRIVATE HTML,
+canonical JSON and original HUMAN CSV. No actual task, verified finding,
+grant, scan, recipient approval, consent or notification results from a
+human-only proposal.
+
+Foreground console **49** prepares; **50** receives. Fixed source-only
+software **v43** includes the native workflow while retaining original
+unsigned software inventory compatibility v16–v42. Release stays Notion
+Incubate M3/M7 PLAN/LAB ONLY DRAFT/HOLD, subject to original exact-head
+hosted/named VPS CI, source-owner and independent security/privacy/browser
+review, scope/consent #177/#182/#829, true separate current client/operator
+consent with action-time revocation, and explicit HUMAN GO.
