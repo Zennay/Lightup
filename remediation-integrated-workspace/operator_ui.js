@@ -68,6 +68,22 @@
         !vals("--archive").length && !vals("--encrypted-archive").length) {
       throw Error("Selecteer minstens één daadwerkelijk ontvangen oorspronkelijk archief.");
     }
+    if (chosen.name === "archives" &&
+        Boolean(vals("--archive").length) === Boolean(vals("--encrypted-archive").length)) {
+      throw Error("Kies originele .luhz OF versleutelde .luhx, niet beide: de native ontvangst weigert gemengde invoer.");
+    }
+    if (chosen.name === "archives" &&
+        (vals("--archive").some(x => !x.endsWith(".luhz")) ||
+         vals("--encrypted-archive").some(x => !x.endsWith(".luhx")))) {
+      throw Error("Gebruik de oorspronkelijke .luhz of .luhx bronvrije bestandstypen.");
+    }
+    if (["fingerprint-create", "fingerprint-compare"].includes(chosen.name)) {
+      const packets = vals("--packet");
+      if (packets.length > 8 || new Set(packets).size !== packets.length ||
+          packets.some(path => ![".luhx", ".luhz", ".luhp"].some(ext => path.endsWith(ext)))) {
+        throw Error("Gebruik 1–8 verschillende oorspronkelijke .luhx/.luhz/.luhp bronvrije bestanden.");
+      }
+    }
     if (chosen.name === "recipient" && vals("--cockpit").length > 12) {
       throw Error("Maximaal 12 echte source-free Cockpits.");
     }

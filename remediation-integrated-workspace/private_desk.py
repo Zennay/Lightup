@@ -204,6 +204,12 @@ def dispatch(name: str, values: dict) -> None:
         raise ValueError("Select actual original private evidence inputs")
     if name == "archives" and not (values.get("--archive") or values.get("--encrypted-archive")):
         raise ValueError("Select actual received original archive(s)")
+    if name == "archives" and bool(values.get("--archive")) == bool(values.get("--encrypted-archive")):
+        raise ValueError("Choose exactly one original source-free archive type; original native CLI rejects mixed modes")
+    if name in ("fingerprint-create", "fingerprint-compare"):
+        packets = values.get("--packet") or []
+        if not 1 <= len(packets) <= 8 or len(set(packets)) != len(packets):
+            raise ValueError("Choose 1–8 distinct original PRIVATE packet files")
     if name == "pack-review" and bool(values.get("--journal")) == bool(values.get("--journal-vault")):
         raise ValueError("Choose exactly one original source-bound HUMAN journal form")
     if name in ("owner-package", "owner-encrypted", "owner-encrypted-receipt"):

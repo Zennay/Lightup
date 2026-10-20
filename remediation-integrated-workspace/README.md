@@ -441,3 +441,18 @@ ciphertext bytes are compared BEFORE original decryption, and the original
 native source-free admission and HUMAN recipient workroom retain all their
 separate checks. A fingerprint is NOT a signature or authenticated sender,
 client consent, valid assessment scope, remediated finding or HUMAN GO.
+
+### Clearer native/browser operator paths for actual source-free packets
+
+The original native archives action admits exactly one original transport
+mode: genuinely received .luhz OR .luhx, never both. The integrated native
+operator menu and the offline browser now clearly surface this existing
+native requirement before a private command is prepared. Private native
+fingerprint commands show the original 1–8 distinct-packet bound; the
+browser file-picker now refuses arbitrary ZIP, JSON or original client files
+instead of merely relying on an HTML accept suggestion. This does not grant
+permission to open any packet or prove that a renamed packet is source-free:
+original native recipient admission and separate genuine disclosure approval
+remain required. The complete offline owner encrypted + unsigned receipt,
+recipient original byte match before decrypt, and original HUMAN review flow
+remain separately operated and offline.

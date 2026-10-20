@@ -93,7 +93,7 @@ gebeurt uitsluitend na afzonderlijke echte toestemming, nooit automatisch.</p>
 bronvrije Cockpit wordt lokaal versleuteld naar een nieuw .luhx-bestand plus apart privé, niet-ondertekend JSON-fingerprintbewijs.</p>
 <button type="button" data-workflow="owner-encrypted-receipt">Bereid originele eigenaarsoverdracht voor</button></article>
 <article><span>02 · PRIVATE RECIPIENT</span><h3>Open de werkelijk ontvangen overdracht</h3>
-<p>Gebruik uitsluitend een afzonderlijk en rechtmatig ontvangen oorspronkelijk .luhx-bestand.
+<p>Gebruik uitsluitend het apart geautoriseerd ontvangen .luhx-bestand én bijbehorend privé unsigned .json-fingerprintbewijs; controleer bytes vóór decryptie.
 De ontvanger maakt lokaal een PRIVATE HUMAN-werkruimte, geen scan of fix.</p>
 <button type="button" data-workflow="archives">Bereid ontvangst en HUMAN-review voor</button></article>
 <article><span>03 · HUMAN FOLLOW-UP</span><h3>Bewaar menselijke antwoorden versleuteld</h3>
@@ -107,7 +107,7 @@ lokaal worden verzegeld. Bronidentiteit, toestemming en retest blijven extern.</
 overdrachtspakketten. Gelijke fingerprints tonen uitsluitend byte-identiteit,
 NOOIT echte bronherkomst, afzender, consent of bewezen fixes.</p>
 <label for="packet-files">Kies lokale bronvrije .luhx / .luhz / .luhp bestanden en eventuele ontvangen kopieën</label>
-<input type="file" id="packet-files" multiple accept=".luhx,.luhz,.luhp,application/json,application/zip">
+<input type="file" id="packet-files" multiple accept=".luhx,.luhz,.luhp">
 <div class="tools">
 <button type="button" id="packet-analyze">Bereken lokaal SHA-256</button>
 <button type="button" id="packet-export" disabled>Download PRIVATE unsigned hashreceipt</button>

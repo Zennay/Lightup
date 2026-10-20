@@ -95,6 +95,11 @@
       message("Kies eerst 1 tot 8 oorspronkelijke lokale bestanden.");
       return;
     }
+    if (files.some(f => !/\.(luhx|luhz|luhp)$/.test(f.name))) {
+      picker.value = "";
+      message("HOLD: kies uitsluitend daadwerkelijk ontvangen bronvrije .luhx, .luhz of .luhp overdrachtspakketten. Geen originele cliënt-evidence of generieke ZIP/JSON.");
+      return;
+    }
     if (files.length > limitCount ||
         files.some(f => !Number.isSafeInteger(f.size) || f.size <= 0 || f.size > limitItem) ||
         files.reduce((sum, f) => sum + f.size, 0) > limitTotal) {
