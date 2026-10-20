@@ -288,6 +288,41 @@
       actions.append(save,load,erase);tr.append(label,cell,actions);root.append(tr);
     });
     updateSlotSelectors();
+    renderCoverage();
+  }
+  function renderCoverage() {
+    const root=$("coverage-rows");
+    root.replaceChildren();
+    let filled=0,existingHolds=0,blockedAttempts=0;
+    slots.forEach((slot,i)=>{
+      const tr=el("tr");
+      tr.append(el("th","",String(i+1)));
+      if(slot===null) {
+        for(let k=0;k<5;k++) tr.append(el("td","", "—"));
+      } else {
+        filled++;
+        const state=play(slot.events).state;
+        const count=blockers(state).length;
+        const earlier=slotSummary(slot).attemptHolds;
+        existingHolds+=count;blockedAttempts+=earlier;
+        const cells=[
+          [state.client,"Fictief ja","Ontbreekt"],
+          [state.operator,"Fictief ja","Ontbreekt"],
+          [state.window,"Open (fictief)","Verlopen"],
+          [!state.stop,"Niet actief","Actief"],
+          [earlier===0,"Geen geregistreerd",earlier+" oefen-HOLD"]
+        ];
+        cells.forEach(([ok,yes,no])=>{
+          const td=el("td");
+          td.append(el("span","matrix-tag "+(ok?"matrix-illustrative":"matrix-attention"),ok?yes:no));
+          tr.append(td);
+        });
+      }
+      root.append(tr);
+    });
+    write("coverage-summary",filled+" van 8 fictieve scenario's opgeslagen; "+
+      existingHolds+" huidige oefenblokkades en "+blockedAttempts+
+      " historische fictieve geblokkeerde pogingen in totaal. Dit is nooit toestemming of scanbewijs.");
   }
   function updateSlotSelectors() {
     const filled=slots.flatMap((x,i)=>x===null?[]:[i]);
