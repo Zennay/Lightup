@@ -1363,3 +1363,48 @@ operator consent or HUMAN GO. Original CI/security/privacy/browser and
 #177/#182/#829 HOLD gates remain mandatory, as do revocation-at-use and
 original separate authenticated client/operator authorization. No testsuites,
 scans, grants, retests, recipient transmission or unattended tasks created.
+
+## Original multi-team HUMAN Lab return → one complete PRIVATE candidate (option 62)
+
+Instead of hand-merging separately reviewed team drafts, the operator can
+now admit **1–4 distinct, original assigned HUMAN team** replies together.
+First prepare the original FINAL HUMAN Lab result (option 57) and the original
+source-bound team workroom (option 60). Edit each team's full seven-column
+PRIVATE response CSV offline, stored owner-only 0600 in its own trusted room.
+Then choose **option 62** or use the native command:
+
+```bash
+python3 assessment-integrated-suite/lab_review_team_batch.py \
+  --packet ORIGINAL_LAUNCHPAD_0700 \
+  --final-room ORIGINAL_FINAL_0700 \
+  --handoff-room ORIGINAL_TEAM_HANDOFF_0700 \
+  --team-return 'Security=/OWNER_PRIVATE/security.csv' \
+  --team-return 'Privacy=/OWNER_PRIVATE/privacy.csv' \
+  --private-parent ORIGINAL_PRIVATE_PARENT_0700 \
+  --folder NEW-PRIVATE-HUMAN-BATCH \
+  --human-confirm 'ADMIT MULTIPLE PRIVATE LAB TEAM RETURNS'
+```
+
+Strict original source admission reopens original Launchpad packets, source-bound
+FINAL HUMAN result, complete original team handoff, original assigned team
+CSV bytes and every separate response. Duplicate teams, unassigned teams,
+missing/reordered rows, unbounded private questions or changed original source
+identity cause a complete HOLD before output creation. A HUMAN batch is
+**not** an independently authenticated recipient or reviewer.
+
+One new exclusive 0700 room contains four owner-0600 artifacts:
+`OPEN-PRIVATE.html` (scriptless stage/ordinal review without private questions),
+`PRIVATE-HUMAN-CANDIDATE.csv` (the FULL original seven-column order with
+only assigned selected team decisions replaced),
+`PRIVATE-HUMAN-MULTITEAM-DIFF.csv` (ordinal/team/stage and private-question
+change Boolean, no question content), and
+`PRIVATE-HUMAN-MULTITEAM-RECEIPT.json` (private unsigned original source
+fingerprint and all authority flags false). Unreturned teams remain unchanged:
+**absence is not consent or approval**. The native original HUMAN Studio
+option 58 must be used for fresh manual finalization. No automatic task send,
+scan, auth, lab action, grant, source approval or deploy occurs.
+
+Incubate M3/M7 PLAN/LAB ONLY DRAFT/HOLD; original CI, independent security,
+privacy, source-owner/browser review, real separately authenticated current
+client/operator consent and at-action revocation, #177/#182/#829 and HUMAN GO
+remain mandatory. No QA/tests/real client data.
