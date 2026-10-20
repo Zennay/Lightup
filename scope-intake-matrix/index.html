@@ -59,6 +59,11 @@
 <div class="table-wrap"><table id="overlap-table"><thead><tr><th>Proposed literal A</th><th>Proposed literal B</th><th>Relationship</th><th>Human follow-up</th></tr></thead><tbody id="overlap-rows"></tbody></table></div>
 <h3>Literal address classifications — not network discovery</h3>
 <div id="address-classification" class="notice"></div>
+<div class="actions"><h3>Read-only proposed target membership preview</h3><button type="button" id="preview-membership" class="right">Preview literal membership</button><button type="button" id="download-membership">PRIVATE human preview handoff</button></div>
+<p class="small muted">Enter up to 16 exact literal IPv4 hosts or lowercase DNS names, one per line. Strictly local numeric/literal comparison with the proposed rows only. No DNS resolution, external contact, permission, exception resolution or original-policy invocation. Every result remains NOT AUTHORIZED.</p>
+<label>PRIVATE target literals (never contacted)<textarea id="membership-lines" maxlength="4096" rows="4" placeholder="192.168.10.22&#10;example.internal"></textarea></label>
+<div id="membership-status" class="notice" aria-live="polite">No target membership preview. The app never checks actual target reachability.</div>
+<div class="table-wrap"><table><thead><tr><th>Human-entered target</th><th>Proposed included rows</th><th>Explicit exclusions</th><th>Human-only conclusion</th></tr></thead><tbody id="membership-result"></tbody></table></div>
 </section>
 <section class="section" aria-labelledby="result-heading">
 <h2 id="result-heading">04 / Local completeness & handoff</h2>
