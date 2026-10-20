@@ -464,28 +464,49 @@
     const stage = $("bulk-status").value;
     const due = $("bulk-date").value;
     const action = $("bulk-action").value;
-    if (!Object.hasOwn(STATES, stage) || !validDate(due) || !safeHuman(action, 400)) {
-      return status("HOLD: ongeldige voorgestelde status, reviewdatum of menselijke actie.", true);
+    const custodian = $("bulk-custodian").value;
+    const classification = $("bulk-classification").value;
+    const hold = $("bulk-hold").value;
+    if ((stage!=="__keep__" && !Object.hasOwn(STATES,stage)) ||
+        (classification!=="__keep__" && !Object.hasOwn(CLASSIFICATIONS,classification)) ||
+        (hold!=="__keep__" && !Object.hasOwn(HOLD_FLAGS,hold)) ||
+        !validDate(due) || !safeHuman(action,400) || !safeHuman(custodian,80)) {
+      return status("HOLD: ongeldige HUMAN bulkstatus, datum, houder of metadata.",true);
     }
-    if (stage === "propose_delete" && (
-      !action.trim() || candidates.some(e=>!e.custodian.trim() || e.hold_flag!=="human_declared_clear"))) {
-      return status("HOLD: HUMAN verwijderen-voorstel vereist actie, dossierhouder en expliciete onbevestigde bewaarbeperkingcontrole op elke zichtbare rij.", true);
+    if (stage==="__keep__" && !due && !action && !custodian &&
+        classification==="__keep__" && hold==="__keep__") {
+      return status("Geen HUMAN-bulkwijzigingen gekozen.",true);
     }
-    if (!window.confirm("Je staat op het punt de HUMAN-planning van " + candidates.length +
-      " zichtbaar gefilterde bronrij(en) lokaal te wijzigen naar '" + STATES[stage] +
-      "'. Dit voert GEEN scan, retentie- of wisactie uit. Doorgaan?")) {
-      return status("Bulkvoorstel geannuleerd; oorspronkelijke rijen onveranderd.");
+    const preview = candidates.map(e=>({...e,
+      status:stage==="__keep__"?e.status:stage,
+      review_date:due||e.review_date,
+      action:action||e.action,
+      custodian:custodian||e.custodian,
+      classification:classification==="__keep__"?e.classification:classification,
+      hold_flag:hold==="__keep__"?e.hold_flag:hold
+    }));
+    if (preview.some(e=>!removalProposalReady(e))) {
+      return status("HOLD: één of meer nieuwe HUMAN verwijdervoorstellen missen houder/actie of verklaarde check op bewaarbeperking. Niets aangepast.",true);
     }
-    const before = candidates.map(e => record(e));
-    for (const e of candidates) {
-      e.status = stage;
-      if (due) e.review_date = due;
-      if (action) e.action = action;
-    }
-    lastBulk = {before, after: candidates.map(e => record(e))};
-    $("bulk-undo").disabled = false;
+    const count = candidates.length;
+    const summary = "HUMAN werkpakket voor "+count+" zichtbare bronrij(en). "+
+      "Status: "+(stage==="__keep__"?"ongewijzigd":STATES[stage])+
+      "; Houder: "+(custodian?"aangepast":"ongewijzigd")+
+      "; Gevoeligheid: "+(classification==="__keep__"?"ongewijzigd":CLASSIFICATIONS[classification])+
+      "; Bewaarbeperking: "+(hold==="__keep__"?"ongewijzigd":HOLD_FLAGS[hold])+
+      "; datum/actie: "+(due||action?"aangepast waar ingevuld":"ongewijzigd")+
+      ". Dit is nooit een grant, juridische vrijgave of wisopdracht. Doorgaan?";
+    if (!window.confirm(summary)) return status("HUMAN-bulkvoorstel geannuleerd; geen bronwijziging.");
+    const before=candidates.map(record);
+    for(let n=0;n<count;n++) Object.assign(candidates[n],{
+      status:preview[n].status,review_date:preview[n].review_date,
+      action:preview[n].action,custodian:preview[n].custodian,
+      classification:preview[n].classification,hold_flag:preview[n].hold_flag
+    });
+    lastBulk={before,after:candidates.map(record)};
+    $("bulk-undo").disabled=false;
     render();
-    status("HUMAN bulkvoorstel voor " + candidates.length + " rijen toegepast; één brongebonden ongedaanmaking beschikbaar.");
+    status("HUMAN brongebonden bulkwijziging voor "+count+" rijen toegepast; directe éénstaps-undo beschikbaar.");
   }
   function undoBulk() {
     if (!lastBulk || processing) return status("Geen geldige directe bulkstap om terug te draaien.", true);
