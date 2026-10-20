@@ -194,7 +194,8 @@
           !/^[a-f0-9]{64}$/.test(row.sha256) || !Number.isSafeInteger(row.bytes) ||
           row.bytes < 1 || row.bytes > MAX_FILE_BYTES || !safeHuman(row.alias, 80) ||
           !Object.hasOwn(STATES, row.status) || !validDate(row.review_date) ||
-          !safeHuman(row.action, 400) || proposed.has(row.sha256)) {
+          !safeHuman(row.action, 400) ||
+          (row.status === "propose_delete" && !row.action.trim()) || proposed.has(row.sha256)) {
         throw new Error("Onbekende, herhaalde of ambigue oorspronkelijke bron/HUMAN-rij.");
       }
       proposed.set(row.sha256, row);
