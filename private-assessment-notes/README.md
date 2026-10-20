@@ -137,3 +137,21 @@ python3 private-assessment-notes/notes.py select \
 ~~~
 
 Both entrypoints use exactly the same native fail-closed selection function.
+
+## Resume a browser HUMAN draft without changing original sources
+
+The offline browser editor can now reopen its own previously exported
+`PRIVATE-HUMAN-decisions-completed.csv` before invoking native `finalize`.
+Choose the local file in the **Resume PRIVATE draft** control. Import is
+entirely local and capped at 64 KiB: exact header, UTF-8 bytes, all original
+source ordinals and unsigned original-source digests in the same order, valid
+HUMAN stages, permitted small note text and the full source count must match
+first. Invalid, incomplete, noncanonical, reordered or mismatched files leave
+**every current browser choice untouched**. A full match still requires
+explicit human confirmation before overwriting local draft selections.
+
+Only browser-produced complete canonical CSV drafts are accepted by that UI.
+The separate native `finalize` remains the authoritative source-bound
+PRIVATE step. Neither reopening a draft nor an unsigned SHA authenticates
+its author, establishes a grant/consent or authorizes a recipient. No browser
+storage, server transmission, network, scan or background submission occurs.
