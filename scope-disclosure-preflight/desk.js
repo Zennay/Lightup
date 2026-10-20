@@ -23,7 +23,7 @@
   }
   function gate() {
     const total = prepared ? Math.max(1,Math.ceil(prepared.text.length/8000)) : 0;
-    const ok = prepared && seen.size === total && e.readAll.checked && e.accept.checked &&
+    const ok = prepared && !prepared.highRisk && seen.size === total && e.readAll.checked && e.accept.checked &&
       e.confirm.value === "EXPORT REDACTED" && source && source.hash === prepared.originalHash;
     e.exportText.disabled = e.exportReceipt.disabled = !ok;
   }
@@ -138,7 +138,8 @@
       const sha=await hash(bytes);
       if(current!==ticket || !source)return;
       const remaining=hints(text);
-      prepared={text,sha,bytes:bytes.length,count,remaining,originalHash:source.hash};
+      const highRisk=remaining.some(([kind])=>["private key","Bearer","credential-like"].includes(kind));
+      prepared={text,sha,bytes:bytes.length,count,remaining,highRisk,originalHash:source.hash};
       message("matches",String(count));
       message("residual",String(remaining.reduce((n,r)=>n+r[1],0)));
       message("outputHash",sha.slice(0,12)+"…");
@@ -147,7 +148,7 @@
         "Potential sensitive patterns remain: "+remaining.map(x=>x[0]+" "+x[1]+(x[1]===1000?"+":"")).join("; ")+". Not exhaustive.":
         "No heuristic pattern matches; this does not imply safe sharing. Inspect the entire file.");
       seen=new Set();showPage(0);
-      message("exportStatus","Review every page, then confirm privately.");
+      message("exportStatus",highRisk ? "HOLD: possible key, Bearer token or credential remains. Mask it and prepare a new preview before export." : "Review every page, then confirm privately.");
     }catch(err){
       if(current!==ticket)return;
       e.warnings.className="warnings warn";
