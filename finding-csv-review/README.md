@@ -1,0 +1,27 @@
+# LightUp Finding CSV → PRIVATE HUMAN Review Desk
+
+**INCUBATE · M3/M7 PLAN/LAB ONLY · DRAFT/HOLD.** Complete independent offline review interface for the **existing tenant-authorized** five-column LightUp finding CSV export. This is an isolated new-only companion, not an export endpoint, assessment runner, evidence acquisition flow, security verdict or authorization system.
+
+Open **[index.html](./index.html)** on a **trusted private machine**, alongside adjacent app.js and style.css, with a current browser. No installation, server, third-party asset, cookie, localStorage, fetch/XHR, telemetry, worker, permission or network call. Content-Security-Policy denies connections, frames and objects. Controls are keyboard accessible and usable on smaller screens.
+
+## Actual product flow
+
+1. Obtain an already authorized finding summary from the **original authenticated client/engagement selection service**; the tool never selects a tenant or authenticates the export. Existing exporter source-owner branch [#1611](https://github.com/Zennay/Lightup/pull/1611), the Unicode preflight stack and authorization fences remain unchanged.
+2. In a trusted private browser open index.html and choose the canonical UTF-8 CSV. Import is **atomic**: reject >2 MiB, >128 findings, malformed quoted CRLF/column shape, invalid fields/enums, duplicate exact or NFKC-equivalent IDs, Unicode control/format/private/unassigned/separator characters and compatibility-obscured formula prefixes. Validate **all rows before showing any**. An invalid second import preserves the existing workroom. No external URLs or target information are imported.
+3. Review in source severity order, search or filter by severity and HUMAN stage, and stage optional human-only contact, due date and note. Those choices never update original CSV, retest status, durable findings or original source. The human_reviewed stage means only that a person marked local follow-up; **it does not mean fixed, approved, retested or securely closed**.
+4. Export a **PRIVATE HUMAN journal JSON** after explicit confirmation; it includes finding IDs and local contacts/notes, so it belongs in controlled storage. It binds to the exact raw imported CSV byte SHA-256, complete row count and exact ordered ID sequence. Reopen the same tool-generated canonical journal on identical source to atomically restore HUMAN choices. A different source, malformed/overlarge field, swapped IDs or unknown authority claims reject. SHA-256 is **unsigned** and does **not** authenticate source, author, consent or confidentiality. JSON is **not encrypted**: keep private; never send as anonymous handoff.
+5. If separately approved, export **counts-only JSON**: severity/stage totals and tentative overdue counts, without original finding IDs, title, remediation, source hash or HUMAN owner/notes. **Small cohort counts can be identifying/sensitive.** Neither a counts file nor button press creates actual disclosure approval.
+
+Browser memory is the only application runtime state; closing the page drops the in-memory session in ordinary operation, and unsaved HUMAN changes request confirmation before navigation. Clear local workspace clears the app-managed state; no browser GC or memory erasure guarantee is made. Downloads and browser history are outside tool control.
+
+## Source and release boundaries
+
+This branch is based on the **unmerged** tenant export integration [PR #1611](https://github.com/Zennay/Lightup/pull/1611), exact original head 7e667173c0b2653600c51d4f0a6c6f56230acf2e, modifying **only new finding-csv-review/ files**. No source-owner, original exporter, preflight, tenant auth, scope, scanner, model, persistence, tests, CI or other active worker branches are touched.
+
+The validator is **defensive offline display admission**, not a complete spreadsheet-client exploit defense, substitute for original checked exporter or proof that external data is genuine. Source values never reach a model or verifier. Existing Unicode/retention/privacy limits in earlier exporters persist pending original source approval; CSV format is deliberately strict and older exports may be refused rather than repaired.
+
+**DRAFT/HOLD release fence:** original exact-head hosted and permanently registered named VPS CI, original source-owner acceptance, independent privacy/security/browser review, #177/#182/#829, genuine separately authenticated current client/operator consent with at-use revocation, and explicit HUMAN GO are required before any main merge, production deploy, real client disclosure, active target, grant or scanner use. Build/syntax inspection is not proof. No QA, regression or test suite is created or run by this companion.
+
+## Local source-only inspection (not QA)
+
+Run node --check finding-csv-review/app.js for production JavaScript syntax; view index.html locally in an allowed browser. This companion does not ship sample finding data; its actual data workflow requires a separately authorized, already-exported source. No client data is bundled.
