@@ -33,7 +33,13 @@
 <div class="tablebox"><table><thead><tr><th>Original ordinal</th><th>Source severity</th><th>HUMAN stage / group</th><th>HUMAN action</th><th>Local date</th><th>Time</th><th>Duration</th><th>Reminder</th></tr></thead><tbody id="rows"></tbody></table></div>
 <div class="row"><button id="prev" type="button" class="ghost">Previous</button><button id="next" type="button" class="ghost">Next</button></div>
 </section>
-<section id="out" class="panel" hidden aria-labelledby="outputHeading"><h2 id="outputHeading">3 · Save / resume or export calendar</h2>
+<section id="agenda" class="panel" hidden aria-labelledby="agendaHeading"><h2 id="agendaHeading">3 · Upcoming HUMAN agenda</h2>
+<p>Human-proposed dates only, ordered by local scheduled time. Past-due does not prove an unresolved vulnerability. Select any event to edit the original ordinal in the private planning desk.</p>
+<div class="toolbar"><label>View <select id="agendaHorizon"><option value="all">All scheduled</option><option value="7" selected>Next 7 days</option><option value="30">Next 30 days</option><option value="overdue">Past due</option></select></label><label>Search HUMAN group / action <input type="search" id="agendaQuery" maxlength="120" placeholder="Local only"></label></div>
+<p id="agendaSummary" class="subtle"></p><div class="tablebox"><table><thead><tr><th>Local date &amp; time</th><th>Original ordinal</th><th>Source-reported severity</th><th>HUMAN stage / group</th><th>HUMAN action</th><th>Edit</th></tr></thead><tbody id="agendaRows"></tbody></table></div>
+<div class="row"><button id="agendaPrev" class="ghost" type="button">Previous</button><button id="agendaNext" class="ghost" type="button">Next</button></div>
+</section>
+<section id="out" class="panel" hidden aria-labelledby="outputHeading"><h2 id="outputHeading">4 · Save / resume or export calendar</h2>
 <p>Scheduled events use original anonymous ordinals and source-reported severity, with your own HUMAN next-action text only when explicitly opted in. <strong>Original lab-source fields are never imported here, but HUMAN notes can themselves mention private targets, clients or evidence. Review before exporting.</strong> Each calendar export is an explicit PRIVATE local download. Dates are interpreted in <strong id="tz"></strong>; re-import rejects a different timezone.</p>
 <div class="row"><label class="file">Restore your PRIVATE plan CSV <input id="restore" type="file" accept=".csv,text/csv"></label><button id="savePlan" type="button">Save private plan CSV</button></div>
 <div class="row"><label><input id="includeAction" type="checkbox"> Include HUMAN next-action text in calendar descriptions (more disclosure)</label></div>
