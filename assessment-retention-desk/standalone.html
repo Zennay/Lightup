@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-+zcrLE6TdMjsa9B1oY/DkkK38iFqyKw8K1jONPwD9bc=' 'sha256-7RXN0GbOa9eA7uqe91ugbLe5JTORA8ZSNQG0mewKHnU='; style-src 'sha256-AGLR2P3Rpp1kodN3I0OATal4UlrSMVp80NHK8liFp7s='; img-src 'none'; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-8MnavAoAbIDe0t8yYL+Pvy5uKlce0p6buqtXuV7ck/0=' 'sha256-7RXN0GbOa9eA7uqe91ugbLe5JTORA8ZSNQG0mewKHnU='; style-src 'sha256-RFvcgvCNk2kvH5Fixwmv1eFTuTzZNJcjR2qkHfBpQ90='; img-src 'none'; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <title>LightUp | PRIVATE Assessment Retention Desk</title>
 <style>:root { color-scheme:dark; font: 16px/1.55 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; background:#0a1220; color:#f1f6fc; }
 * { box-sizing:border-box }
@@ -29,7 +29,7 @@ input[type=text] { width:100%; min-width:175px }
 .filters label { display:grid; gap:3px; color:#b8cadb; font-size:.85rem }
 button:focus-visible,input:focus-visible,select:focus-visible,.filelabel:focus-visible { outline:3px solid #fed483; outline-offset:2px }
 .scroll { width:100%; overflow-x:auto; border:1px solid #31475d; border-radius:11px }
-table { border-collapse:collapse; width:100%; min-width:1010px; font-size:.9rem }
+table { border-collapse:collapse; width:100%; min-width:1710px; font-size:.9rem }
 th { color:#bbd5e7; text-align:left; font-size:.79rem; letter-spacing:.03em; background:#1c3047 }
 td,th { padding:12px; border-bottom:1px solid #34485e; vertical-align:top; }
 tbody tr:hover { background:#1a3046 }
@@ -69,7 +69,11 @@ input,select{background:white!important;color:black!important;border:0!important
 table{min-width:0;font-size:10px}
 td,th{border:1px solid #aaa;padding:5px;color:black;background:white}
 .stat{background:white;color:black;border:1px solid #aaa}
-}</style>
+}
+/* HUMAN custody/sensitivity/hold fields are visible and always private; none denotes a verified legal decision. */
+td select { max-width: 225px; width: 100%; }
+td input[type=text] { max-width: 255px; }
+</style>
 
 
 </head>
@@ -89,7 +93,7 @@ td,th{border:1px solid #aaa;padding:5px;color:black;background:white}
 </section>
 <section class="panel">
 <h2>2. Menselijke opvolging en beslissingen</h2>
-<p>De naam is een <strong>zelfgekozen lokaal alias</strong>, geen bewijs van herkomst. "Voorgesteld verwijderen" voert nooit een verwijdering uit. Elke rij blijft expliciet onbeoordeeld totdat een mens haar invult.</p>
+<p>De naam is een <strong>zelfgekozen lokaal alias</strong>, geen bewijs van herkomst. Dossierhouder, gevoeligheid en bewaarbeperking zijn uitsluitend <strong>onbevestigde HUMAN-indicaties</strong>, geen geauthenticeerd wettelijk besluit. Onbekende bewaarbeperkingen blijven een HOLD voor verwijderingsvoorstellen. "Voorgesteld verwijderen" voert nooit een verwijdering uit. Elke rij blijft expliciet onbeoordeeld totdat een mens haar invult.</p>
 <div class="filters"><label>Zoeken <input type="search" id="query" placeholder="Alias of SHA-prefix"></label><label>Status <select id="status-filter"><option value="">Alle voorstellen</option><option value="needs_review">Nog beoordelen</option><option value="retain">Behouden</option><option value="quarantine">Afzonderen</option><option value="propose_delete">Verwijdering voorstellen</option></select></label>
 <label>HUMAN reviewdatum <select id="due-filter">
 <option value="">Alle reviewmomenten</option>
@@ -97,6 +101,14 @@ td,th{border:1px solid #aaa;padding:5px;color:black;background:white}
 <option value="soon">Binnen 7 dagen inclusief vandaag</option>
 <option value="no_date">Geen reviewdatum</option>
 <option value="no_action">Geen vervolgactie</option>
+</select></label>
+<label>HUMAN bewaarbeperking <select id="hold-filter">
+<option value="">Alle onbevestigde controles</option>
+<option value="unknown">HUMAN nog niet beoordeeld</option>
+<option value="human_claim_active">HUMAN meldt actieve beperking</option>
+<option value="human_declared_clear">HUMAN meldt geen bekende beperking (niet geverifieerd)</option>
+<option value="unassigned">Dossierhouder ontbreekt</option>
+<option value="decision_hold">Verwijdervoorstel nog HOLD</option>
 </select></label>
 <label>Weergavevolgorde <select id="sort-order"><option value="source">Oorspronkelijke invoer</option><option value="due">Reviewdatum eerst</option><option value="stage">HUMAN fase</option></select></label>
 </div>
@@ -112,7 +124,7 @@ td,th{border:1px solid #aaa;padding:5px;color:black;background:white}
 <p class="muted">Alleen zichtbaar gefilterde bronrijen worden aangepast. Bron-SHA en bestandsgrootte blijven altijd onveranderd. Dit is een lokale niet-bevoegdheidsplanning.</p>
 </div>
 <div id="stats" class="stats" aria-live="polite"></div>
-<div class="scroll"><table><thead><tr><th>Bronidentiteit</th><th>Privé-alias</th><th>Menselijke status</th><th>Reviewdatum</th><th>HUMAN actie / toelichting</th><th></th></tr></thead><tbody id="rows"><tr><td colspan="6">Selecteer eerst bestanden.</td></tr></tbody></table></div>
+<div class="scroll"><table><thead><tr><th>Bronidentiteit</th><th>Privé-alias</th><th>HUMAN dossierhouder</th><th>HUMAN gevoeligheid</th><th>Bewaarbeperking (onbevestigd)</th><th>Menselijke status</th><th>Reviewdatum</th><th>HUMAN actie / toelichting</th><th></th></tr></thead><tbody id="rows"><tr><td colspan="9">Selecteer eerst bestanden.</td></tr></tbody></table></div>
 </section>
 <section class="panel">
 <h2>3. Brongebonden plan hervatten / exporteren</h2>
@@ -153,6 +165,19 @@ td,th{border:1px solid #aaa;padding:5px;color:black;background:white}
     quarantine: "Afzonderen (voorstel)",
     propose_delete: "Verwijdering voorstellen — GEEN wisopdracht"
   });
+  const CLASSIFICATIONS = Object.freeze({
+    unknown:"Onbekend (HUMAN)",
+    internal:"Intern (HUMAN)",
+    confidential:"Vertrouwelijk (HUMAN)",
+    restricted:"Beperkt gevoelig (HUMAN)"
+  });
+  const HOLD_FLAGS = Object.freeze({
+    unknown:"Onbekend / nog bespreken",
+    human_claim_active:"HUMAN meldt actieve bewaarbeperking",
+    human_declared_clear:"HUMAN meldt geen bekende beperking — NIET geverifieerd"
+  });
+  const V2_COLUMNS = ["sha256","bytes","alias","status","review_date","action","custodian","classification","hold_flag"];
+  const HUMAN_FIELDS = ["alias","status","review_date","action","custodian","classification","hold_flag"];
   const AUTHORITY = Object.freeze({
     authorizes_scan: false, authorizes_delete: false, verifies_finding: false,
     verifies_remediation: false, proves_consent: false, authenticates_source: false
@@ -222,6 +247,9 @@ td,th{border:1px solid #aaa;padding:5px;color:black;background:white}
     const overdue = entries.filter(e => e.review_date && e.review_date < today).length;
     const dueSoon = entries.filter(e => e.review_date && e.review_date >= today && e.review_date <= soon).length;
     const noDate = entries.filter(e => !e.review_date).length;
+    const humanHolds = entries.filter(e=>e.hold_flag==="human_claim_active").length;
+    const unassigned = entries.filter(e=>!e.custodian.trim()).length;
+    const decisionHolds = entries.filter(e=>e.status==="propose_delete" && !removalProposalReady(e)).length;
     const target = $("stats");
     target.replaceChildren();
     for (const [key, label] of Object.entries(STATES)) {
@@ -231,14 +259,21 @@ td,th{border:1px solid #aaa;padding:5px;color:black;background:white}
     target.append(text("div", overdue + " · voorlopige HUMAN reviews verstreken", "stat attention"));
     target.append(text("div", dueSoon + " · voorlopige HUMAN reviews komende 7 dagen", "stat"));
     target.append(text("div", noDate + " · zonder voorlopige reviewdatum", "stat"));
+    target.append(text("div", unassigned + " · HUMAN dossierhouder onbekend", "stat attention"));
+    target.append(text("div", humanHolds + " · HUMAN meldt mogelijke bewaarbeperking", "stat attention"));
+    target.append(text("div", decisionHolds + " · verwijdervoorstellen onvolledig (HOLD)", "stat attention"));
   }
   function visibleEntries() {
     const q = $("query").value.trim().toLowerCase();
     const filter = $("status-filter").value;
     const dueFilter = $("due-filter").value;
+    const holdFilter = $("hold-filter").value;
     const {today, soon} = humanReviewWindow();
     const items = entries.filter(e => (!filter || e.status === filter) &&
-      (!q || e.alias.toLowerCase().includes(q) || e.sha256.includes(q)) &&
+      (!q || e.alias.toLowerCase().includes(q) || e.custodian.toLowerCase().includes(q) || e.sha256.includes(q)) &&
+      (!holdFilter || (holdFilter==="unassigned" && !e.custodian.trim()) ||
+        (holdFilter==="decision_hold" && e.status==="propose_delete" && !removalProposalReady(e)) ||
+        e.hold_flag===holdFilter) &&
       (!dueFilter || (dueFilter === "overdue" && e.review_date && e.review_date < today) ||
         (dueFilter === "soon" && e.review_date && e.review_date >= today && e.review_date <= soon) ||
         (dueFilter === "no_date" && !e.review_date) ||
@@ -259,6 +294,20 @@ td,th{border:1px solid #aaa;padding:5px;color:black;background:white}
         text("small", item.bytes.toLocaleString("nl-NL") + " bytes"));
       const alias = document.createElement("td");
       alias.append(input(item.alias, 80, "Vrij alias", value => { item.alias = value; }));
+      const custodian = document.createElement("td");
+      custodian.append(input(item.custodian, 80, "HUMAN dossierhouder of team", value => { item.custodian=value; }));
+      const sensitivity = document.createElement("td");
+      const cls = document.createElement("select");
+      for(const [key,label] of Object.entries(CLASSIFICATIONS))cls.add(new Option(label,key));
+      cls.value = item.classification;
+      cls.addEventListener("change",()=>{item.classification=cls.value;invalidateUndo();updateCounts();});
+      sensitivity.append(cls);
+      const hold = document.createElement("td");
+      const holdSelect=document.createElement("select");
+      for(const [key,label] of Object.entries(HOLD_FLAGS))holdSelect.add(new Option(label,key));
+      holdSelect.value=item.hold_flag;
+      holdSelect.addEventListener("change",()=>{item.hold_flag=holdSelect.value;invalidateUndo();updateCounts();});
+      hold.append(holdSelect);
       const stage = document.createElement("td");
       const select = document.createElement("select");
       for (const [value, label] of Object.entries(STATES)) {
@@ -291,12 +340,12 @@ td,th{border:1px solid #aaa;padding:5px;color:black;background:white}
         render();
       });
       remove.append(btn);
-      row.append(identity, alias, stage, due, action, remove);
+      row.append(identity, alias, custodian, sensitivity, hold, stage, due, action, remove);
       body.append(row);
     }
     if (!shown.length) {
       const tr = document.createElement("tr"); const td = document.createElement("td");
-      td.colSpan = 6; td.textContent = entries.length ? "Geen rijen voor dit filter." : "Selecteer eerst bestanden.";
+      td.colSpan = 9; td.textContent = entries.length ? "Geen rijen voor dit filter." : "Selecteer eerst bestanden.";
       tr.append(td); body.append(tr);
     }
     updateCounts();
@@ -320,11 +369,12 @@ td,th{border:1px solid #aaa;padding:5px;color:black;background:white}
         if (seen.has(sha256)) throw new Error("Dubbel identiek bestand; geen herhaalde bronidentiteiten.");
         seen.add(sha256);
         staged.push({sha256, bytes:file.size, alias:"Bron " + (entries.length + staged.length + 1),
-          status:"needs_review", review_date:"", action:""});
+          status:"needs_review", review_date:"", action:"",
+          custodian:"", classification:"unknown", hold_flag:"unknown"});
       }
       // Atomic: no selected source is installed before every new source has been admitted.
       entries = entries.concat(staged); invalidateUndo(); resetDrift();
-      $("query").value = ""; $("status-filter").value = ""; $("due-filter").value = ""; $("sort-order").value = "source";
+      $("query").value = ""; $("status-filter").value = ""; $("due-filter").value = ""; $("sort-order").value = "source"; $("hold-filter").value = "";
       render(); status(staged.length + " echte lokale bestandsidentiteiten gecontroleerd en toegevoegd. Geen bytes geüpload.");
     } catch (e) {
       status("HOLD: " + e.message + " Er is niets uit deze selectie toegevoegd.", true);
@@ -334,13 +384,23 @@ td,th{border:1px solid #aaa;padding:5px;color:black;background:white}
   }
   function record(e) {
     return {sha256:e.sha256, bytes:e.bytes, alias:e.alias,
-      status:e.status, review_date:e.review_date, action:e.action};
+      status:e.status, review_date:e.review_date, action:e.action,
+      custodian:e.custodian, classification:e.classification, hold_flag:e.hold_flag};
+  }
+  function removalProposalReady(e) {
+    return e.status!=="propose_delete" || (
+      Boolean(e.action.trim()) && Boolean(e.custodian.trim()) &&
+      e.hold_flag==="human_declared_clear"
+    );
+  }
+  function requireCompleteHumanProposals() {
+    if(entries.some(e=>!removalProposalReady(e)))
+      throw Error("Verwijdervoorstel-HOLD: dossierhouder, HUMAN-actie en expliciete (onbevestigde) check op bewaarbeperking nodig. Dit verleent NOOIT wisbevoegdheid.");
   }
   function sourcePlan() {
     if (!entries.length || processing) throw Error("Selecteer eerst privébronnen.");
-    if (entries.some(e => e.status === "propose_delete" && !e.action.trim()))
-      throw Error("Verwijderingsvoorstel heeft een HUMAN vervolgactie nodig.");
-    return {kind:"lightup.private.assessment.retention.plan",version:1,authority:AUTHORITY,
+    requireCompleteHumanProposals();
+    return {kind:"lightup.private.assessment.retention.plan",version:2,authority:AUTHORITY,
       rows:entries.map(record).sort((a,b)=>a.sha256.localeCompare(b.sha256))};
   }
   function restoreOriginal(raw, label) {
@@ -351,7 +411,7 @@ td,th{border:1px solid #aaa;padding:5px;color:black;background:white}
     }
     entries = entries.map(e=>({...e,...record(rows.get(e.sha256))}));
     invalidateUndo(); resetDrift();
-    $("query").value = ""; $("status-filter").value = ""; $("due-filter").value = ""; $("sort-order").value = "source";
+    $("query").value = ""; $("status-filter").value = ""; $("due-filter").value = ""; $("sort-order").value = "source"; $("hold-filter").value = "";
     render(); status("Gehele brongebonden PRIVATE HUMAN-planning overgenomen zonder autorisatieclaim.");
   }
   function compareVaultPlan(raw) {
@@ -362,7 +422,7 @@ td,th{border:1px solid #aaa;padding:5px;color:black;background:white}
     for (const e of entries) {
       const before = earlier.get(e.sha256);
       stageCounts[before.status] += 1;
-      const fields = ["alias","status","review_date","action"].filter(k=>e[k]!==before[k]);
+      const fields = HUMAN_FIELDS.filter(k=>e[k]!==before[k]);
       if (fields.length) changed.push({sha:e.sha256.slice(0,16),fields});
     }
     target.replaceChildren(text("strong","PRIVATE AES-GCM HUMAN-planning vergelijking — zelfde originele bytes"));
@@ -389,11 +449,9 @@ td,th{border:1px solid #aaa;padding:5px;color:black;background:white}
   });
   function exportReceipt() {
     if (!entries.length || processing) return status("Selecteer eerst privébronnen.", true);
-    if (entries.some(e => e.status === "propose_delete" && !e.action.trim())) {
-      return status("HOLD: bij elk voorstel tot verwijderen is een HUMAN reden/vervolgactie vereist. Dit is nooit toestemming tot wissen.", true);
-    }
+    try {requireCompleteHumanProposals();} catch(e) {return status("HOLD: "+e.message,true);}
     const obj = {
-      kind:"lightup.private.assessment.retention.plan", version:1,
+      kind:"lightup.private.assessment.retention.plan", version:2,
       authority:AUTHORITY,
       rows:entries.map(record).sort((a,b) => a.sha256.localeCompare(b.sha256))
     };
@@ -409,7 +467,7 @@ td,th{border:1px solid #aaa;padding:5px;color:black;background:white}
     // JSON.stringify roundtrip rejects duplicate-key JSON, alternative/ambiguous encodings and noncanonical input.
     if (JSON.stringify(obj) !== raw.trim()) throw new Error("Niet-canonieke of mogelijk ambigue JSON.");
     if (!keysAre(obj, ["kind","version","authority","rows"]) ||
-        obj.kind !== "lightup.private.assessment.retention.plan" || obj.version !== 1 ||
+        obj.kind !== "lightup.private.assessment.retention.plan" || ![1,2].includes(obj.version) ||
         !keysAre(obj.authority, Object.keys(AUTHORITY)) ||
         Object.keys(AUTHORITY).some(key => obj.authority[key] !== false) ||
         !Array.isArray(obj.rows) || !obj.rows.length || obj.rows.length > MAX_FILES) {
@@ -417,15 +475,22 @@ td,th{border:1px solid #aaa;padding:5px;color:black;background:white}
     }
     const proposed = new Map();
     for (const row of obj.rows) {
-      if (!keysAre(row, ["sha256","bytes","alias","status","review_date","action"]) ||
+      if (!keysAre(row, obj.version === 2 ? V2_COLUMNS : ["sha256","bytes","alias","status","review_date","action"]) ||
           !/^[a-f0-9]{64}$/.test(row.sha256) || !Number.isSafeInteger(row.bytes) ||
           row.bytes < 1 || row.bytes > MAX_FILE_BYTES || !safeHuman(row.alias, 80) ||
           !Object.hasOwn(STATES, row.status) || !validDate(row.review_date) ||
           !safeHuman(row.action, 400) ||
-          (row.status === "propose_delete" && !row.action.trim()) || proposed.has(row.sha256)) {
+          (row.status === "propose_delete" && !row.action.trim()) ||
+          (obj.version === 2 && (!safeHuman(row.custodian,80) ||
+            !Object.hasOwn(CLASSIFICATIONS,row.classification) ||
+            !Object.hasOwn(HOLD_FLAGS,row.hold_flag) ||
+            (row.status === "propose_delete" && !removalProposalReady(row)))) ||
+          proposed.has(row.sha256)) {
         throw new Error("Onbekende, herhaalde of ambigue oorspronkelijke bron/HUMAN-rij.");
       }
-      proposed.set(row.sha256, row);
+      // Older v1 has no custody assertions. Missing fields are UNKNOWN, not cleared.
+      proposed.set(row.sha256, obj.version===1 ?
+        {...row,custodian:"",classification:"unknown",hold_flag:"unknown"} : row);
     }
     if (requireExactMembership && (proposed.size !== entries.length ||
         entries.some(e => !proposed.has(e.sha256) || proposed.get(e.sha256).bytes !== e.bytes))) {
@@ -447,7 +512,7 @@ td,th{border:1px solid #aaa;padding:5px;color:black;background:white}
         status("Overname geannuleerd. De huidige werkruimte blijft intact."); return;
       }
       entries = entries.map(e => ({...e, ...record(rows.get(e.sha256))})); invalidateUndo();
-      $("query").value = ""; $("status-filter").value = ""; $("due-filter").value = ""; $("sort-order").value = "source";
+      $("query").value = ""; $("status-filter").value = ""; $("due-filter").value = ""; $("sort-order").value = "source"; $("hold-filter").value = "";
       render(); status("Volledige exact-brongebonden PRIVATE HUMAN-planning heropend. Bronbestanden ongewijzigd.");
     } catch (e) {
       status("HOLD: " + e.message + " Huidige planning ongewijzigd.", true);
@@ -482,8 +547,7 @@ td,th{border:1px solid #aaa;padding:5px;color:black;background:white}
         "… (geen claim dat de bron verwijderd, hersteld of ingetrokken is)"));
       const humanChanged = same.filter(e => {
         const before = plan.get(e.sha256);
-        return e.alias !== before.alias || e.status !== before.status ||
-          e.review_date !== before.review_date || e.action !== before.action;
+        return HUMAN_FIELDS.some(key=>e[key]!==before[key]);
       });
       target.append(text("p", "Gewijzigde menselijke voorstellen bij ongewijzigde bytes: " +
         humanChanged.length + ". Er wordt niets samengevoegd of geautoriseerd."));
@@ -541,6 +605,10 @@ td,th{border:1px solid #aaa;padding:5px;color:black;background:white}
     for (const key of Object.keys(STATES)) {
       rows.push(key + "," + entries.filter(e => e.status === key).length);
     }
+    rows.push("human_custodian_unassigned,"+entries.filter(e=>!e.custodian.trim()).length);
+    rows.push("human_claim_active_hold,"+entries.filter(e=>e.hold_flag==="human_claim_active").length);
+    rows.push("human_unknown_hold,"+entries.filter(e=>e.hold_flag==="unknown").length);
+    rows.push("human_proposal_blocked,"+entries.filter(e=>e.status==="propose_delete" && !removalProposalReady(e)).length);
     download("lightup-private-human-retention-counts.csv", "text/csv;charset=utf-8",
       "\ufeff" + rows.join("\r\n") + "\r\n");
     status("Alleen conservatieve HUMAN-aantallen geëxporteerd; bij kleine groepen nog steeds PRIVATE.");
@@ -555,8 +623,9 @@ td,th{border:1px solid #aaa;padding:5px;color:black;background:white}
     if (!Object.hasOwn(STATES, stage) || !validDate(due) || !safeHuman(action, 400)) {
       return status("HOLD: ongeldige voorgestelde status, reviewdatum of menselijke actie.", true);
     }
-    if (stage === "propose_delete" && !action.trim()) {
-      return status("HOLD: voor een nieuw verwijderingsvoorstel is een duidelijke HUMAN vervolgactie vereist; geen wisopdracht.", true);
+    if (stage === "propose_delete" && (
+      !action.trim() || candidates.some(e=>!e.custodian.trim() || e.hold_flag!=="human_declared_clear"))) {
+      return status("HOLD: HUMAN verwijderen-voorstel vereist actie, dossierhouder en expliciete onbevestigde bewaarbeperkingcontrole op elke zichtbare rij.", true);
     }
     if (!window.confirm("Je staat op het punt de HUMAN-planning van " + candidates.length +
       " zichtbaar gefilterde bronrij(en) lokaal te wijzigen naar '" + STATES[stage] +
@@ -605,6 +674,7 @@ td,th{border:1px solid #aaa;padding:5px;color:black;background:white}
   $("status-filter").addEventListener("change", render);
   $("due-filter").addEventListener("change", render);
   $("sort-order").addEventListener("change", render);
+  $("hold-filter").addEventListener("change", render);
   $("print").addEventListener("click", () => {
     if (!entries.length) return status("Geen overzicht om te printen.", true);
     if (window.confirm("Dit is een PRIVATE, ongetekend overzicht. Afdrukken kan lokale printsporen maken. Alleen op een vertrouwde printer doorgaan?")) window.print();
@@ -612,7 +682,7 @@ td,th{border:1px solid #aaa;padding:5px;color:black;background:white}
   $("clear").addEventListener("click", () => {
     if (entries.length && !window.confirm("Alle niet-opgeslagen HUMAN-keuzes uit dit tabblad wissen? Eerder gedownloade privébestanden worden niet gewist.")) return;
     entries = []; invalidateUndo(); resetDrift(); $("sources").value = ""; $("receipt").value = ""; $("compare").value = "";
-    $("query").value = ""; $("status-filter").value = ""; $("due-filter").value = ""; $("sort-order").value = "source";
+    $("query").value = ""; $("status-filter").value = ""; $("due-filter").value = ""; $("sort-order").value = "source"; $("hold-filter").value = "";
     render(); status("Lokale werkruimte leeggemaakt (geen garantie op veilig geheugenwissen).");
   });
   window.addEventListener("beforeunload", event => {
