@@ -1,5 +1,19 @@
 # LightUp integrated PRIVATE assessment handoff
 
+## New offline software-only Toolkit v17 · native Lab HUMAN guide
+
+[Open source-only Toolkit v17](LightUp-Assessment-Offline-Toolkit-v17.zip).
+The ZIP contains **15 unchanged original offline browser studios**,
+a locally navigable entry, README, a newly bundled complete
+[Lab Planning → source-bound HUMAN review guide](LAB-PLANNING.md),
+and a byte-digest manifest for both original software and guide.
+No private generated HUMAN decisions, source packets, local session,
+customer evidence or native Python executable is included. Native
+console actions **52–58** and strict original source-owner review still
+require an authorized trusted checkout and owner-only 0700/0600 custody.
+This is unsigned original software, **not** authenticated release/consent.
+
+
 **Incubate M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD**. This is an integrated **source-only release candidate**, not an authorization, active scanner, security finding certification or production deploy.
 
 ## What is really integrated

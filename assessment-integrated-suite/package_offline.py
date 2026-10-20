@@ -35,7 +35,7 @@ Avoid uploading private sources, reviewer notes or generated receipts.
 Some studios need previously generated original LightUp artifacts.
 Native checkout users can additionally prepare an original-source PRIVATE
 casebook and source-byte ledger with assessment-integrated-suite/console.py
-options 21/22. The same console now has 51 actions, including original
+options 21/22. The same console now has 58 actions, including original
 source-bound PRIVATE HUMAN finding selection, reply and sender triage
 (options 23-31), exact-receipt PRIVATE disclosure HUMAN decisions and
 suppressed HUMAN counts (32-34), and original HUMAN retention plan timeline
@@ -67,6 +67,15 @@ Native option 50 and suite.py workpack-progress can produce a separate
 owner-private offline HUMAN stage/team/declared-date progression from 2-8
 original exact-session workpack snapshots without copying question text.
 This remains NATIVE-ONLY and is not bundled in browser-only software.
+Original Lab Launchpad console 52-54 invokes ONLY the pre-existing source
+owner offline build/reopen/compare; 55 joins 3-8 exact original proposals in
+one PRIVATE HUMAN portfolio. 56-57 prepare/finalize strict source-bound
+PRIVATE HUMAN lab proposal reviews. 58 re-admits original sources and prior
+HUMAN CSV to reopen all choices in a new owner-private offline editor. Full
+instructions accompany this kit as GUIDE-LAB-PLANNING.md. None of those
+native functions or PRIVATE source files are executable in this browser-only
+ZIP, and none conveys active target consent, scanning or release authority.
+
 Native option 51 and suite.py workpack-continue re-admit an existing
 original owner-only workpack from a strict unchanged saved session and
 generate a fresh completely editable HUMAN workpack with a new explicitly
@@ -182,7 +191,8 @@ These studios accept only separately obtained local files. A hash or encrypted
 document is not proof of authentic origin or current authorization. Before any
 external release, independently establish source ownership, privacy constraints,
 current authenticated client/operator consent and revocation at use.
-INCUBATE M3/M7 PLAN/LAB ONLY · DRAFT/HOLD. Open README.txt for requirements.</footer>
+INCUBATE M3/M7 PLAN/LAB ONLY · DRAFT/HOLD. Open README.txt for requirements.
+<a href="GUIDE-LAB-PLANNING.md">Read the original offline Lab HUMAN workflow guide</a>.</footer>
 </html>""").encode("utf-8")
 
 def build(destination: Path) -> int:
@@ -207,6 +217,9 @@ def build(destination: Path) -> int:
             "filename": destination_name, "source_path": str(source.relative_to(ROOT)),
             "bytes": len(raw), "sha256_unsigned": hashlib.sha256(raw).hexdigest(),
         })
+    guide_path = ROOT / "assessment-integrated-suite/LAB-PLANNING.md"
+    read_safe(guide_path, 262_144)
+    guide = guide_path.read_bytes()
     files = [(name, target) for name, target, _ in originals]
     opening = front_page(files)
     inventory = json.dumps({
@@ -214,6 +227,10 @@ def build(destination: Path) -> int:
         "status": "REVIEW_ONLY",
         "software_only": True, "sources_or_client_data_included": False,
         "original_app_count": len(files), "files": manifest,
+        "operator_guide": {
+            "filename": "GUIDE-LAB-PLANNING.md", "bytes": len(guide),
+            "sha256_unsigned": hashlib.sha256(guide).hexdigest(),
+        },
         **{flag: False for flag in FALSE_FLAGS},
     }, indent=2, ensure_ascii=False, sort_keys=True).encode("utf-8") + b"\n"
     fd = os.open(destination, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
@@ -223,6 +240,7 @@ def build(destination: Path) -> int:
             with ZipFile(output, mode="w", compression=ZIP_DEFLATED, compresslevel=9) as package:
                 package.writestr(zip_info("START-HERE.html"), opening)
                 package.writestr(zip_info("README.txt"), README.encode("utf-8"))
+                package.writestr(zip_info("GUIDE-LAB-PLANNING.md"), guide)
                 package.writestr(zip_info("manifest.json"), inventory)
                 for _, name, raw in originals:
                     package.writestr(zip_info(name), raw)
