@@ -53,7 +53,7 @@
     return typeof value === "string" && value.length <= limit &&
       textBytes(value) <= limit * 4 && value === value.trim() &&
       (!required || value.length > 0) &&
-      !/[\u0000-\u001f\u007f-\u009f]/u.test(value) &&
+      !/[\u0000-\u0009\u000b-\u001f\u007f-\u009f]/u.test(value) &&
       !/\p{Cf}|\p{Cs}|\p{Co}|\p{Cn}/u.test(value);
   }
 
@@ -262,6 +262,7 @@
     $("review-count").textContent = state.rows.filter(row => row.status === "needs-client-review").length;
     $("blocked-count").textContent = state.rows.filter(row => row.status === "blocked").length;
     const issues = validate(state);
+    renderAgenda();
     announce(issues.length ? "DRAFT INCOMPLETE (" + issues.length + "): " +
       issues.slice(0, 5).join(" ") + (issues.length > 5 ? " …" : "") :
       "Locally complete PREPARATION ONLY. No consent, grant, authority, scanning right, verified finding or release has been established.",
@@ -306,6 +307,77 @@
     download("lightup-scope-intake-COUNTS.json", JSON.stringify(receipt, null, 2) + "\n");
     announce("Counts-only receipt prepared. No target, client, identity or scope evidence included; still not an authorization.");
   }
+  function humanAgenda() {
+    const items = [];
+    items.push("Confirm the authentic current client and independently authenticated operator outside this offline draft.");
+    items.push("Obtain original request/grant/risk decisions and check current action-time revocation through the source-owned LightUp process.");
+    items.push("Confirm the requested LOCAL planning window with a trusted reference clock; local input is not a signed validity interval.");
+    if (state.risk === "high") items.push("HIGH proposed ceiling: independent human risk decision needed; do not infer permission.");
+    for (const row of state.rows) {
+      const name = row.asset || "(missing proposed asset)";
+      if (row.excluded) {
+        items.push("EXCLUDED " + name + ": keep excluded from any future reviewed authorization; no revocation is proven.");
+      } else {
+        items.push("PROPOSED " + name + ": request independent ownership, exact scope and " +
+          (CAPABILITIES[row.capability] || "unknown capability") + " decisions.");
+      }
+      if (row.ownership === "claimed") {
+        items.push(name + ": human ownership CLAIM is not independently authenticated.");
+      } else if (row.ownership === "docs_requested") {
+        items.push(name + ": gather the requested independent ownership documents.");
+      } else {
+        items.push(name + ": no ownership evidence was declared.");
+      }
+      if (row.status === "blocked") items.push(name + ": BLOCKED — clear only through external independent human review.");
+      if (row.status === "needs-client-review") items.push(name + ": explicitly pending client review.");
+      if (row.question) items.push(name + ": PRIVATE human question — " + row.question);
+    }
+    items.push("Before any real work: original owner/security/privacy approvals, #177/#182/#829, exact-head hosted and named VPS CI, authentic consent plus action-time revocation and explicit HUMAN GO remain mandatory.");
+    return items;
+  }
+
+  function renderAgenda() {
+    const items = humanAgenda();
+    const list = $("agenda-items"); list.replaceChildren();
+    for (const item of items) {
+      const li = document.createElement("li"); li.textContent = item; list.append(li);
+    }
+    $("agenda-count").textContent = items.length + " self-declared HUMAN follow-up items — zero verified approvals";
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, c =>
+      ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+  }
+
+  function exportAgenda() {
+    const problems = validate(state);
+    if (problems.length) {
+      announce("Complete all draft fields before exporting a PRIVATE agenda: " + problems[0], true);
+      return;
+    }
+    if (!confirm("This PRIVATE agenda includes original client labels, proposed targets and human questions. It is UNENCRYPTED and NOT authorization. Download to a trusted private location?")) return;
+    const lines = humanAgenda().map(x => "<li>" + escapeHtml(x) + "</li>").join("\n");
+    const html = '<!doctype html><html lang="en"><head><meta charset="utf-8">' +
+      '<meta name="viewport" content="width=device-width, initial-scale=1">' +
+      '<meta http-equiv="Content-Security-Policy" content="default-src \'none\'; style-src \'unsafe-inline\'; base-uri \'none\'; form-action \'none\'">' +
+      '<title>LightUp PRIVATE human preparation agenda</title>' +
+      '<style>body{font:16px/1.55 system-ui,sans-serif;max-width:850px;margin:40px auto;padding:0 20px;color:#1d2734}li{padding:7px 0}header{border-bottom:2px solid #3e665d;padding-bottom:16px}strong{color:#9b2020}aside{border-left:4px solid #9b2020;padding:12px;background:#fff3f3}footer{margin-top:35px;color:#555;font-size:12px}</style>' +
+      '</head><body><header><h1>PRIVATE human scope follow-up</h1><p><strong>PREPARATION ONLY · NO VERIFIED CONSENT / GRANT / PERMISSION</strong></p>' +
+      '<p>Internal draft: ' + escapeHtml(state.project) + ' · Client-declared label: ' + escapeHtml(state.client) + '</p>' +
+      '<p>Requested local window: ' + escapeHtml(state.start) + ' → ' + escapeHtml(state.end) +
+      ' · Proposed ceiling: ' + escapeHtml(state.risk) + '</p></header>' +
+      '<aside>This is untrusted human-entered preparation. No real-world execution, activation, scanning, revocation or release is authorized.</aside>' +
+      '<ol>' + lines + '</ol><footer>LightUp Incubate M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD · This unsigned PRIVATE paper does not prove any named person, client, source, risk decision or consent.</footer>' +
+      '</body></html>';
+    if (textBytes(html) > MAX_BYTES) {
+      announce("Agenda exceeds the 64 KiB PRIVATE export cap.", true);
+      return;
+    }
+    download("lightup-scope-human-agenda-PRIVATE.html", html, "text/html");
+    announce("Standalone scriptless PRIVATE human agenda prepared for local download — still not authorized.");
+  }
+
   async function readFile(file) {
     if (!file || file.size > MAX_BYTES) throw Error("Select a JSON file no larger than 64 KiB.");
     return decodeOwnExport(await file.text());
@@ -363,6 +435,7 @@
     $("status-filter").addEventListener("change", renderRows);
     $("export").addEventListener("click", exportDraft);
     $("receipt").addEventListener("click", exportCounts);
+    $("export-agenda").addEventListener("click", exportAgenda);
     $("print").addEventListener("click", () => {
       const problems = validate(state);
       if (problems.length) { announce("Complete draft before printing: " + problems[0], true); return; }
