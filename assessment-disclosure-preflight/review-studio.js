@@ -172,6 +172,8 @@
       records = rows;
       receiptDigest = digest;
       dirty = false;
+      byId("compareSection").hidden = true;
+      byId("compareRows").replaceChildren();
       byId("editor").hidden = false;
       byId("export").disabled = false;
       byId("exportEncrypted").disabled = false;
@@ -232,9 +234,47 @@
       notice("HOLD: encrypted HUMAN export refused. Check notes and matching passphrase; previous edits retained.", true);
     } finally { pass.value = ""; repeated.value = ""; }
   }
+  async function comparePrevious() {
+    const password = byId("comparePassword");
+    try {
+      ensure(records.length > 0 && /^[a-f0-9]{64}$/u.test(receiptDigest));
+      ensure(globalThis.LightUpHumanVault);
+      const selected = byId("compareVault").files[0];
+      ensure(selected && selected.size <= LightUpHumanVault.maxVaultBytes);
+      const previous = await LightUpHumanVault.open(
+        await selected.arrayBuffer(), password.value, receiptDigest);
+      const earlier = validateRows(parseCsv(previous.replace(/^\uFEFF/u, "")),
+                                   records.map(row => ({kind:row.kind})), receiptDigest);
+      const changes = [];
+      let same = 0;
+      for (let i = 0; i < earlier.length; ++i) {
+        const before = earlier[i], after = records[i];
+        const different = ["stage", "question", "action"].filter(key => before[key] !== after[key]);
+        if (!different.length) { same++; continue; }
+        changes.push({ordinal:after.ordinal,kind:after.kind,before,after,different});
+      }
+      const target = byId("compareRows");
+      target.replaceChildren();
+      for (const change of changes) {
+        const tr = element("tr",undefined,target);
+        element("th",String(change.ordinal),tr).scope = "row";
+        element("td",change.kind.replaceAll("_"," "),tr);
+        element("td",change.different.join(", "),tr);
+        element("td",change.before.stage + "; " + change.before.question + "; " + change.before.action,tr);
+        element("td",change.after.stage + "; " + change.after.question + "; " + change.after.action,tr);
+      }
+      byId("compareCounts").textContent = changes.length + " changed HUMAN row(s); " +
+        same + " literal matches. Text equality never authenticates reviewers or source.";
+      byId("compareSection").hidden = false;
+      notice("REVIEW_ONLY: encrypted older HUMAN round compared in memory against current receipt; no decisions copied.");
+    } catch (_) {
+      notice("HOLD: older vault, passphrase or exact receipt mismatch. Current edits and comparison retained.", true);
+    } finally { password.value = ""; }
+  }
   byId("load").addEventListener("click", load);
   byId("export").addEventListener("click", exportCsv);
   byId("exportEncrypted").addEventListener("click", exportEncrypted);
+  byId("compare").addEventListener("click", comparePrevious);
   byId("stageFilter").addEventListener("change", refresh);
   byId("query").addEventListener("input", refresh);
   window.addEventListener("beforeunload", event => {
