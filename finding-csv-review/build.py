@@ -43,25 +43,28 @@ def build() -> bytes:
     page = asset("index.html")
     script = asset("app.js")
     vault = asset("vault.js")
+    revision = asset("revision.js")
     css = asset("style.css")
-    if "</script" in script.lower() or "</script" in vault.lower() or "</style" in css.lower():
+    if "</script" in script.lower() or "</script" in vault.lower() or "</script" in revision.lower() or "</style" in css.lower():
         raise ValueError("Inline asset contains forbidden closing tag")
     css_ref = '<link rel="stylesheet" href="./style.css">'
     js_ref = '<script defer src="./app.js"></script>'
     vault_ref = '<script defer src="./vault.js"></script>'
+    revision_ref = '<script defer src="./revision.js"></script>'
     csp_ref = "script-src 'self'; style-src 'self'"
-    for marker in (css_ref, js_ref, vault_ref, csp_ref):
+    for marker in (css_ref, js_ref, vault_ref, revision_ref, csp_ref):
         if page.count(marker) != 1:
             raise ValueError("Source HTML marker changed")
     page = page.replace(css_ref, "<style>" + css + "</style>")
     page = page.replace(js_ref, "<script>" + script + "</script>")
     page = page.replace(vault_ref, "<script>" + vault + "</script>")
+    page = page.replace(revision_ref, "<script>" + revision + "</script>")
     page = page.replace('<a href="./README.md">Local operator instructions</a>',
         "Standalone local PRIVATE software · see source README for operator guidance")
     page = page.replace(csp_ref,
         "script-src 'sha256-" + source_hash(script) + "' 'sha256-" +
-        source_hash(vault) + "'; style-src 'sha256-" + source_hash(css) + "'")
-    if css_ref in page or js_ref in page or vault_ref in page or csp_ref in page:
+        source_hash(vault) + "' 'sha256-" + source_hash(revision) + "'; style-src 'sha256-" + source_hash(css) + "'")
+    if css_ref in page or js_ref in page or vault_ref in page or revision_ref in page or csp_ref in page:
         raise ValueError("Unexpected unbundled source")
     # It is still unsigned software: local hashes cannot authenticate authorship.
     return page.encode("utf-8")
