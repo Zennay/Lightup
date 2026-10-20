@@ -243,6 +243,16 @@ is merely a HUMAN opinion and never a completed remediation, approval,
 authentication or scan authorization. Exit 2 = no differences / REVIEW_ONLY,
 exit 3 = changed proposal / HOLD. The same action is console menu 8.
 
+## Original file read privacy rechecked at the actual descriptor
+
+The original kit inventory now rechecks **actual opened** descriptor owner UID,
+group/other mode bits, exact single-link identity, size, mtime and ctime against
+the earlier no-follow directory-entry metadata **before hashing any file
+bytes**. A metadata or permission change between directory traversal and file
+open therefore causes PRIVATE HOLD, not silent acceptance. The existing
+post-read descriptor change check still applies. This is a local byte/privacy
+admission invariant, never producer authentication or customer consent.
+
 ## Human dossier context changes are first-class HOLD
 
 Source kit equality is not merely equal file bytes. The original HUMAN
