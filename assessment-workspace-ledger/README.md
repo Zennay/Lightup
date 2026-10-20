@@ -1602,3 +1602,50 @@ grant, consent, verified remediation, task creation, action or security PASS.
 Every original release gate remains mandatory; PR stays DRAFT/HOLD at Notion
 Incubate M3/M7 PLAN/LAB ONLY. Source-only software bundle v39 maintains
 read-only unsigned v16–v38 software inventory inspection.
+
+## v40 — source-free PRIVATE HUMAN owner reply browser (complete round-trip)
+
+The v39 original HUMAN owner reply prepare/receive command now includes
+a ready-to-open **PRIVATE-HUMAN-owner-reply-studio.html** in every new 0700
+owner-private preparation room. The same source-free, CSP/SHA-pinned app ships
+as [portable software](portfolio-inbox-owner-return-studio.html).
+
+The HUMAN operator explicitly selects one original private
+`PRIVATE-HUMAN-history-selection.json`; the browser checks the bounded
+offline JSON fields, literal all-false authority flags, one original proposed
+owner, the original source slots and proposed stage, then computes the SHA-256
+of the original exact local input bytes. No real client, recipient or
+PRIVATE review data is embedded in the software ZIP.
+
+Per original owner slot the offline app shows original selected-human stage,
+case/transition/kit, HUMAN stage-change numbers and note-changed flags. HUMAN
+can propose one of three HUMAN-only stages and a bounded PRIVATE reply note;
+filter/search never drops hidden original rows from the **complete** CSV.
+The app exports a whole original-selection-SHA-bound
+`HUMAN-owner-history-reply-template.csv` compatible with v39 native
+`portfolio_inbox_owner_return.py receive`. An older COMPLETE HUMAN draft
+can be locally reopened only if original byte SHA, row order, stage and note
+values agree for every original source slot, after a separate HUMAN
+confirmation. Invalid/foreign drafts never overwrite existing local choices.
+Duplicate original JSON keys are refused before any preview. Browser
+memory is not persistent and there are no network requests.
+
+The independent native receiving step still requires the original private
+history, native selection and original CSV and re-admits every owner-only
+slot, source hash, review round, complete proposed reply and safety flag.
+Browser local SHA is unsigned and **never authenticates a HUMAN recipient**.
+
+To build additional portable source-only copies inside an existing PRIVATE
+software folder:
+
+    python3 assessment-workspace-ledger/portfolio_inbox_owner_return_studio.py \
+      --output /private/software/NEW-ORIGINAL-owner-reply-studio.html
+
+Console **46** exposes the source-only offline builder; 44→46→45 is the
+complete private HUMAN-only response workflow. Software package v40 includes
+all modules and prior fixed unsigned v16–v39 inventory inspection. No sending,
+grants, scans, actual tasks, verified security findings, consent or approval.
+Notion Incubate M3/M7 PLAN/LAB ONLY DRAFT/HOLD, source-owner and independent
+security/privacy/browser reviews, exact hosted/named VPS CI, #177/#182/#829,
+separate authenticated current client/operator consent with action-time
+revocation and explicit HUMAN GO remain mandatory before any main release.

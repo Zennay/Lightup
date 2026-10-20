@@ -187,8 +187,10 @@ def run(args):
     if response_data is not None and read_owner_file(args.reply_csv,MAX_MANIFEST)!=response_data:
         reject("PRIVATE HOLD: HUMAN owner response changed before publication")
     if args.mode=="prepare":
+        from portfolio_inbox_owner_return_studio import render as render_owner_studio
         exports={
             "OPEN-PRIVATE.html":minimal(result),
+            "PRIVATE-HUMAN-owner-reply-studio.html":render_owner_studio(),
             "HUMAN-owner-history-reply-template.csv":template(digest(source),rows),
             "PRIVATE-HUMAN-owner-reply-instructions.html":html_page(
                 "LightUp original PRIVATE HUMAN owner reply instructions",
