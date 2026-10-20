@@ -68,9 +68,10 @@
 <label><input type="checkbox" value="5" checked>Friday</label>
 <label><input type="checkbox" value="6">Saturday</label><label><input type="checkbox" value="0">Sunday</label></div>
 <label>Unavailable local dates, comma-separated (YYYY-MM-DD; maximum 60)
-<textarea id="capacityBlackout" rows="2" maxlength="660" placeholder="2026-12-25, 2026-12-26"></textarea></label>
+<textarea id="capacityBlackout" rows="2" maxlength="850" placeholder="2026-12-25, 2026-12-26"></textarea></label>
 <div class="row"><button id="capacityStore" type="button">Save local HUMAN group availability</button><button id="capacityDefault" type="button" class="ghost">Reset selected group to defaults</button></div>
 <div class="row"><label>First date for proposals <input id="capacityFirst" type="date"></label>
+<label>Scheduling scope <select id="capacityMode"><option value="unscheduled" selected>Only unscheduled HUMAN rows</option><option value="overdue">Only past-due HUMAN reminders</option><option value="combined">Both unscheduled and past-due</option></select></label>
 <label>Horizon in local calendar days <select id="capacityHorizon"><option value="14">14</option><option value="30" selected>30</option><option value="60">60</option><option value="90">90</option></select></label>
 <button id="capacityPreview" type="button">Preview group-aware open HUMAN reminders</button>
 <button id="capacityApply" type="button" disabled>Apply preview to local plan (confirm)</button></div>
@@ -82,7 +83,7 @@
 <div class="tablebox"><table><thead><tr><th>HUMAN group</th><th>Availability</th><th>Unavailable dates</th><th>Unscheduled HUMAN rows</th></tr></thead><tbody id="capacityRows"></tbody></table></div>
 <div class="row"><button id="capacityDownload" type="button" class="ghost">Download PRIVATE group rules (.csv)</button>
 <label class="file">Restore PRIVATE group rules <input id="capacityImport" type="file" accept=".csv,text/csv"></label></div>
-<p class="subtle">An optional PRIVATE rules CSV is bound to the exact original worksheet bytes, local timezone and private calendar series. Do not share externally. Human-confirmed suggestions never overwrite scheduled ordinals, alter the original lab source, execute scans, prove severity or grant access. Available slots are suggestions, not external calendar availability.</p>
+<p class="subtle">An optional PRIVATE rules CSV is bound to the exact original worksheet bytes, local timezone and private calendar series. Do not share externally. The default mode never overwrites scheduled ordinals. A separately selected **past-due** mode can propose replacing only HUMAN reminders whose planned start time is already in the past, after explicit human confirmation; past due never means an unresolved finding or an authorization change. Original lab source is never altered and no scans/grants occur. Available slots are suggestions, not external calendar availability.</p>
 </section>
 <section id="brief" class="panel" hidden aria-labelledby="briefHeading">
 <h2 id="briefHeading">6 · Offline HUMAN weekly coordinator brief</h2>
