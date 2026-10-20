@@ -17,6 +17,7 @@ import human_revisions
 import history
 import history_human
 import history_team
+import history_actions
 import browser_intake
 import package
 from browser_studio import render_studio
@@ -41,6 +42,9 @@ MENU = (
     ("16", "Prepare PRIVATE source-bound two-to-eight HUMAN reviewer conflict workroom"),
     ("17", "Finalize explicit original HUMAN reviewer choices in native PRIVATE custody"),
     ("18", "Finalize browser-downloaded original HUMAN reviewer choices in PRIVATE custody"),
+    ("19", "Prepare source-exact PRIVATE HUMAN action planning after finalized team choices"),
+    ("20", "Finalize owner-private source-exact HUMAN action planning CSV"),
+    ("21", "Finalize explicit browser-downloaded PRIVATE HUMAN action CSV"),
     ("0", "Exit"),
 )
 
@@ -146,6 +150,23 @@ def handle_action(action):
             csv=prompt("Original PRIVATE HUMAN-team-review.csv") if action == "17" else None,
             browser_csv=prompt("Explicit browser Downloads HUMAN-team-review.csv")
             if action == "18" else None,
+            private_parent=private_parent()
+        ))
+    if action == "19":
+        return history_actions.prepare(argparse.Namespace(
+            context=prompt("Original PRIVATE-team-context.json"),
+            team_choice=prompt("Original PRIVATE-HUMAN-team-choice.json"),
+            team_csv=prompt("Original native HUMAN-team-review.csv"),
+            private_parent=private_parent()
+        ))
+    if action in ("20", "21"):
+        original = prompt("Original PRIVATE-action-context.json")
+        selected = prompt("Owner-private HUMAN-action-plan.csv" if action == "20" else
+                          "Explicit browser Downloads HUMAN-action-plan.csv")
+        return history_actions.finalize(argparse.Namespace(
+            action_context=original,
+            plan=selected if action == "20" else None,
+            browser_csv=selected if action == "21" else None,
             private_parent=private_parent()
         ))
     if action == "5":
