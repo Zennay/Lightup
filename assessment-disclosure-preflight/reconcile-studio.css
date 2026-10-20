@@ -24,3 +24,12 @@ button:hover{background:#074d72}.secondary{background:#566579}.secondary:hover{b
 footer{text-align:center;color:#516579;padding:1.2rem;font-size:.85rem}
 @media(max-width:720px){.comparison,.controls{grid-template-columns:1fr}.sticky{flex-direction:column;align-items:stretch}}
 @media print{body{background:white}.warning,.case,section{break-inside:avoid}.sticky,button,input,select,textarea{display:none!important}header{background:white;color:#000;padding:0}.comparison{grid-template-columns:1fr 1fr}}
+
+/* Confidential native-compatible finalization stays visually separate from review. */
+.finalize{margin-top:1.2rem;padding:1.2rem;border:1px solid #8aa9ba;border-radius:.6rem;background:#f0f6fa}
+.finalize h3{font-size:1.15rem;margin:0 0 .6rem}
+.finalize code{overflow-wrap:anywhere}
+#sealStatus{margin-top:.9rem;border-left:3px solid #58778b;padding:.6rem .8rem;background:#fff}
+.finalize .grid{margin-top:1rem}
+.resume{border-top:1px solid #cad6df;margin-top:1rem;padding-top:1rem}
+@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important}}
