@@ -14,7 +14,7 @@ locally from a trusted checkout:
 
     python3 assessment-workspace-ledger/console.py
 
-Twenty-three console actions provide original kit capture, exact-byte reopen, original-bound
+Twenty-four console actions provide original kit capture, exact-byte reopen, original-bound
 HUMAN CSV finalization, historical change review with private file-level
 drilldown, unchanged-source HUMAN continuity, a separate source-free
 single-file browser editor export, a native same-source HUMAN revision desk,
@@ -660,3 +660,52 @@ portfolio report or live operations task queue. Use the native
 No QA, regression or testing suite is added. The fixed v16 source-only
 software ZIP adds the original history_progress.py implementation, but
 no customer/PRIVATE source content or generated workroom.
+
+
+## PRIVATE cross-case HUMAN portfolio · independent original cases (console 24)
+
+The native [portfolio.py](portfolio.py) assembles **2–8 distinct**, originally
+finalized owner-private historical HUMAN action cases into one practical
+offline follow-up dashboard. Each case must have its own complete original
+`PRIVATE-action-context.json`, `PRIVATE-HUMAN-actions.json`, and matching
+`HUMAN-action-plan.csv`. These are **three corresponding original files per
+case**, not interchangeable exports. Original native source-chain admission
+runs for each case separately; duplicate case contexts, mismatched source
+records and malformed/changed inputs fail closed. It does not reinterpret
+different-case proposals as a single actual security finding.
+
+Run from a trusted local checkout (repeat each option once per case):
+
+    python3 assessment-workspace-ledger/portfolio.py \
+      --context /private/case-A/PRIVATE-action-context.json \
+      --actions /private/case-A/PRIVATE-HUMAN-actions.json \
+      --plan /private/case-A/HUMAN-action-plan.csv \
+      --context /private/case-B/PRIVATE-action-context.json \
+      --actions /private/case-B/PRIVATE-HUMAN-actions.json \
+      --plan /private/case-B/HUMAN-action-plan.csv \
+      --private-parent /private/portfolio-output
+
+Console option **24** offers the same guided workflow with no shell or automatic
+action. The destination must already be a private owner-only 0700 directory
+outside the checkout and outside every original source kit. Private source
+files remain untouched; original chain admission is repeated before any new
+output is written.
+
+A **new** exclusive 0700 folder contains:
+- `OPEN-PRIVATE.html`: source-minimal per-case status and proposal counts,
+  without original hashes, personal names or next-step text.
+- `PRIVATE-HUMAN-portfolio.html`: sensitive, HTML-escaped local worklist
+  sorted by manually proposed day/priority with **case ordinal preserved**.
+- `PRIVATE-HUMAN-portfolio.csv`: human-only proposed steps, explicitly bound
+  to each case context SHA and its original action-packet SHA.
+- `PRIVATE-HUMAN-portfolio.json`: private canonical original-byte-bound
+  source identities, local status counts and suggested HUMAN steps.
+
+All output files use 0600 permissions; the operator console and CLI always
+return **HOLD (3)**. These are historic, unsigned human suggestions, not
+executed work, authenticated recipients, deadlines, independent evidence,
+verified vulnerabilities, release clearance, source re-opening, consent,
+authorization, scan output, dispatch, or remediation. Do not share original
+customer data or these PRIVATE files without a separate authorized disclosure
+process. The v17 offline software ZIP adds `portfolio.py`; it contains
+no customer data. No QA/regression/test suite is created or executed.
