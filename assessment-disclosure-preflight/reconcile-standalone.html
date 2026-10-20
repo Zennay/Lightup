@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-Ogs/me2VAKCqc6T4pySFi/N+6LoKlOMwOhMoYLe1meY=' 'sha256-89y2Wlu3uXATo/hrRoXSeZrUffeyp+N/YbdbLtCJaGs='; style-src 'sha256-Uz0QsralgXsz1y3tz3ehKAvOYuFLcb86bZt8IUM1qKk='; connect-src 'none'; img-src 'none'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-Ogs/me2VAKCqc6T4pySFi/N+6LoKlOMwOhMoYLe1meY=' 'sha256-yqTxIPMWQMPgx+n8UFn0N59Jp6TVD80sL6ySLIwD20M='; style-src 'sha256-Uz0QsralgXsz1y3tz3ehKAvOYuFLcb86bZt8IUM1qKk='; connect-src 'none'; img-src 'none'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
 <title>LightUp · PRIVATE HUMAN reconciliation desk</title>
 <style>
 :root{font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#192735;background:#f3f5f9;color-scheme:light}
@@ -123,6 +123,7 @@ footer{text-align:center;color:#516579;padding:1.2rem;font-size:.85rem}
 <div class="actions">
 <button id="seal" type="button" disabled>Seal PRIVATE selected HUMAN result (.luhb)</button>
 <button id="counts" type="button" class="secondary" disabled>Export suppressed counts only</button>
+<button id="cover" type="button" class="secondary" disabled>Export PRIVATE no-notes HUMAN handoff cover (.html)</button>
 </div>
 <p id="sealStatus" role="status" aria-live="polite">No HUMAN result sealed. Neither encryption nor SHA-256 authenticates the reviewers, verifies source evidence, authorizes a disclosure or confers release.</p>
 <p class="hint">The encrypted file uses the original LightUp AES-256-GCM/PBKDF2 implementation and can be opened locally with the existing HUMAN studio or native <code>human_review.py render --bundle</code>. It contains the unsigned receipt and selected HUMAN stage/question/next-action text, not the A/B justification; retain the separately exported exact decision CSV. The source-free counts download suppresses small cohorts/groups and is not automatically anonymous. Browser download files may initially have default filesystem permissions. No automatic recipient dispatch, scan, grant, deployment or network access.</p>
@@ -746,6 +747,7 @@ footer{text-align:center;color:#516579;padding:1.2rem;font-size:.85rem}
                   Boolean(source.receipt) && globalThis.LightUpHumanVault;
     byId("seal").disabled = !ready;
     byId("counts").disabled = !ready;
+    byId("cover").disabled = !ready;
   }
   async function restoreDecisions() {
     const sequence = epoch;
@@ -905,6 +907,66 @@ footer{text-align:center;color:#516579;padding:1.2rem;font-size:.85rem}
       notice("HOLD: counts were not generated or operator cancelled; no disclosure approval.", true);
     }
   }
+  function escapeMarkup(value) {
+    return String(value).replace(/[&<>"']/gu, c =>
+      ({"&":"&amp;", "<":"&lt;", ">":"&gt;",
+        '"':"&quot;", "'":"&#39;"}[c]));
+  }
+  function exportCover() {
+    try {
+      admitted(source && exportedRevision === decisionRevision &&
+               decisions.length === source.rows.length);
+      const rows = nativeSelectedRows();
+      admitted(confirm("Create a PRIVATE scriptless HANDOFF COVER without reviewer questions, actions, or HUMAN reasons? This is NOT anonymous, client consent, source authentication or release approval."));
+      const selectedCount = decisions.filter(item => item.choice !== "HOLD").length;
+      const sourceCount = source.rows.length;
+      const body = rows.map((row, i) => {
+        const selection = decisions[i].choice;
+        return "<tr><th scope='row'>" + escapeMarkup(row.ordinal) +
+          "</th><td>" + escapeMarkup(row.kind) +
+          "</td><td>" + escapeMarkup(selection === "HOLD" ?
+            "HOLD / no reviewer selected" : "HUMAN reviewer " + selection) +
+          "</td><td>" + escapeMarkup(row.stage) + "</td></tr>";
+      }).join("");
+      const html = `<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'none'; style-src 'unsafe-inline'; connect-src 'none'; img-src 'none'; object-src 'none'; form-action 'none'">
+<title>LightUp PRIVATE HUMAN handoff cover</title>
+<style>body{font:16px/1.5 system-ui;max-width:980px;margin:2rem auto;padding:1rem;color:#192535}
+h1{font-size:1.55rem}.warning{padding:1rem;border:2px solid #9c5c1c;background:#fff8eb}
+table{border-collapse:collapse;width:100%;overflow-wrap:anywhere}
+td,th{padding:.65rem;border:1px solid #9daebc;text-align:left;vertical-align:top}
+thead{background:#eef3f7}code{overflow-wrap:anywhere}
+@media print{body{margin:0}.warning{border-color:#444}}</style></head><body>
+<h1>PRIVATE source-free HUMAN review handoff cover</h1>
+<p class="warning"><strong>REVIEW ONLY · HOLD FOR RELEASE.</strong>
+This contains only unsigned receipt/reviewer CSV byte SHA-256 identities,
+original local ordinals, declared kinds and manually chosen HUMAN stages.
+No reviewer PRIVATE question/action/reason text is in this document.
+Even hashes, original ordinal metadata and declared stages may reveal
+PRIVATE context. Do not share or treat as anonymous without independent
+recipient, client, operator, privacy and authorization checks.
+No evidence authenticity, reviewer independence, consent, grant or release.</p>
+<p>Source-free receipt SHA-256: <code>${escapeMarkup(source.digest[0])}</code></p>
+<p>Reviewer A original HUMAN CSV SHA-256: <code>${escapeMarkup(source.digest[1])}</code></p>
+<p>Reviewer B original HUMAN CSV SHA-256: <code>${escapeMarkup(source.digest[2])}</code></p>
+<p>Source-free local ordinals: ${sourceCount};
+explicit HUMAN selections: ${selectedCount};
+HOLD without inherited notes: ${sourceCount - selectedCount}.</p>
+<table><thead><tr><th>Ordinal</th><th>Original declared kind</th>
+<th>Explicit HUMAN decision</th><th>Chosen non-authorizing stage</th>
+</tr></thead><tbody>${body}</tbody></table>
+<p>Only the separately stored PRIVATE seven-column decision CSV contains
+the original A/B choice reasons. This cover is not an authorization, original
+evidence, successful scan, verified finding or disclosure approval.</p>
+</body></html>`;
+      localDownload(html, "PRIVATE-browser-HUMAN-handoff-cover.html",
+                    "text/html;charset=utf-8");
+      notice("REVIEW_ONLY: locally exported PRIVATE scriptless HUMAN handoff cover, without reviewer notes. Not anonymization, verification, or release.");
+    } catch (_) {
+      notice("HOLD: no source-bound current HUMAN decisions available for private handoff cover.", true);
+    }
+  }
   function clear() {
     if (source && dirty && !confirm("Discard unexported PRIVATE HUMAN decisions?")) return;
     epoch++;
@@ -925,6 +987,7 @@ footer{text-align:center;color:#516579;padding:1.2rem;font-size:.85rem}
   byId("save").addEventListener("click", exportDecisions);
   byId("seal").addEventListener("click", sealResult);
   byId("counts").addEventListener("click", exportCounts);
+  byId("cover").addEventListener("click", exportCover);
   byId("restore").addEventListener("click", restoreDecisions);
   byId("undo").addEventListener("click", () => navigateHistory("undo"));
   byId("redo").addEventListener("click", () => navigateHistory("redo"));
