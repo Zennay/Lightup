@@ -19,4 +19,20 @@
 <textarea id="receivedPreview" readonly spellcheck="false" rows="12" aria-label="Matched received text"></textarea>
 <div class="actions"><button id="receivedPrev" type="button" class="secondary" disabled>Previous page</button><span id="receivedPage" role="status">No pages</span><button id="receivedNext" type="button" class="secondary" disabled>Next page</button></div>
 </div>
+<div class="recipient-review">
+<h3>PRIVATE HUMAN follow-up (non-authorizing)</h3>
+<p>After reading every received page, you may prepare a separate PRIVATE response bound to the exact redacted file bytes. It is unauthenticated human feedback, never consent, security clearance or permission to execute anything.</p>
+<label for="humanOutcome">Human follow-up proposal</label>
+<select id="humanOutcome">
+<option value="">Select a human-only outcome</option>
+<option value="needs_more_masking">Request more masking</option>
+<option value="needs_context">Request clarification</option>
+<option value="read_only_notes">Return review notes (no approval)</option>
+</select>
+<label for="humanNote">PRIVATE optional reply notes (maximum 800 characters)</label>
+<textarea id="humanNote" maxlength="800" rows="4" placeholder="Do not include credentials or secrets. The recipient may share this PRIVATE file."></textarea>
+<label class="tick"><input id="humanAck" type="checkbox"> I viewed every page; this is PRIVATE HUMAN feedback, not verified actor identity or client/operator authorization.</label>
+<div class="actions"><button id="exportHuman" type="button" disabled>Export PRIVATE human reply .json</button></div>
+<div id="humanStatus" class="status" role="status" aria-live="polite">Read and compare a PRIVATE file before responding.</div>
+</div>
 </section></main><footer>Offline local-only verification · no network, accounts, source inspection, grants, targets or deployment.</footer></body></html>
