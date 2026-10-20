@@ -32,7 +32,7 @@ label{display:block;font-weight:600}label span{display:block;margin:5px 0}
 SCRIPT = r"""
 (function () {
 "use strict";
-const rows = JSON.parse(document.getElementById("source-rows").textContent);
+const rows = JSON.parse(document.getElementById("source-rows").content.textContent);
 const states = rows.map(() => ({yes:false, priority:"routine", question:""}));
 const maxSelected = 64, pageSize = 40;
 let currentPage = 0;
@@ -360,7 +360,7 @@ def source_free_studio(source: dict) -> bytes:
         "<main id='entries'></main><nav class='panel page'>"
         "<button id='prev' class='secondary' type='button'>Previous</button>"
         "<span id='page-info'></span><button id='next' class='secondary' type='button'>Next</button>"
-        "</nav><script id='source-rows' type='application/json'>" + source_json +
-        "</script><script>" + SCRIPT + "</script></body></html>\n"
+        "</nav><template id='source-rows'>" + source_json +
+        "</template><script>" + SCRIPT + "</script></body></html>\n"
     )
     return result.encode("utf-8")
