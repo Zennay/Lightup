@@ -246,6 +246,34 @@ def rotate(args):
     private_write(target, seal(document, ask(confirm=True)))
     print(f"PRIVATE DRAFT/HOLD: new encrypted archive {target}; old archive unchanged")
 
+def compare(args):
+    # Both independently encrypted archives must authenticate completely first.
+    # The caller must provide each password interactively; the result stays local.
+    print("Opening first PRIVATE snapshot")
+    _, left = unseal(args.before)
+    print("Opening second PRIVATE snapshot")
+    _, right = unseal(args.after)
+    old = {name.casefold(): (name, raw, digest) for name, raw, digest in left}
+    new = {name.casefold(): (name, raw, digest) for name, raw, digest in right}
+    counts = {"ADDED": 0, "REMOVED": 0, "CHANGED": 0, "UNCHANGED": 0}
+    print("PRIVATE HUMAN file comparison only; no chronological or fix proof")
+    for key in sorted(old.keys() | new.keys()):
+        if key not in old:
+            state, display = "ADDED", new[key][0]
+        elif key not in new:
+            state, display = "REMOVED", old[key][0]
+        else:
+            old_name, old_data, old_digest = old[key]
+            new_name, new_data, new_digest = new[key]
+            display = new_name
+            state = ("UNCHANGED" if old_name == new_name and old_digest == new_digest
+                     and len(old_data) == len(new_data) else "CHANGED")
+        counts[state] += 1
+        print(f"{state:9s} {display}")
+    print(" | ".join(f"{state}={counts[state]}" for state in counts))
+    print("HOLD: file differences are not verified remediation, identity, consent or release")
+
+
 def main():
     parser = argparse.ArgumentParser(description="PRIVATE offline HUMAN backup, never action authority")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -260,10 +288,13 @@ def main():
     p = sub.add_parser("rotate", help="Re-encrypt to a NEW private archive without plaintext output")
     p.add_argument("vault")
     p.add_argument("--output", required=True)
+    p = sub.add_parser("compare", help="PRIVATE differences between two authenticated snapshots")
+    p.add_argument("before")
+    p.add_argument("after")
     args = parser.parse_args()
     try:
         {"create": create, "inventory": inventory, "restore": restore,
-         "rotate": rotate}[args.command](args)
+         "rotate": rotate, "compare": compare}[args.command](args)
     except (Hold, OSError) as err:
         print(f"HOLD: {err}", file=sys.stderr)
         return 3
