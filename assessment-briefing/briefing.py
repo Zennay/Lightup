@@ -48,6 +48,9 @@ p,li{line-height:1.6}small,.muted{color:#596779}.notice{font-weight:700;color:#7
 pre{white-space:pre-wrap;overflow-wrap:anywhere}details{margin:1rem 0}
 dl{display:grid;grid-template-columns:150px 1fr;gap:8px}dt{font-weight:bold}
 .worksheet{border:2px dashed #cad4dd;margin-top:1rem;padding:1rem}
+.scroll-table{overflow-x:auto;max-width:100%}table{width:100%;border-collapse:collapse;min-width:840px}
+th,td{border-bottom:1px solid #d5dfea;text-align:left;padding:.7rem .65rem;vertical-align:top}
+th{background:#e7eff5;font-size:.88rem}a{color:#195f89}
 @media print{body{max-width:none;padding:0;background:#fff}article{break-inside:avoid;border:1px solid #bbb}
 details>div{display:block!important}header{border:0}.no-print{display:none}
 .worksheet{break-inside:avoid}a{text-decoration:none;color:inherit}}
