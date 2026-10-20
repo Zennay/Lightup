@@ -372,8 +372,8 @@
       new Set(rule.days).size===rule.days.length);
     const start=rule.start,end=rule.end;
     hold(typeof start==="string"&&typeof end==="string");
-    hold(/^([01]\\d|2[0-3]):[0-5]\\d$/.test(start) &&
-      /^([01]\\d|2[0-3]):[0-5]\\d$/.test(end));
+    hold(/^([01]\d|2[0-3]):[0-5]\d$/.test(start) &&
+      /^([01]\d|2[0-3]):[0-5]\d$/.test(end));
     const minutes=t=>Number(t.slice(0,2))*60+Number(t.slice(3,5));
     hold(minutes(end)-minutes(start)>=30 && minutes(start)%15===0 &&
       minutes(end)%15===0);
@@ -462,7 +462,7 @@
     hold(active && capacityGroups().length<=256);
     const currentHash=hash,currentSeries=seriesId,currentPlan=plan;
     const raw=decoder.decode(await bytes(file));
-    hold(!raw.startsWith("\\uFEFF"));
+    hold(raw.charCodeAt(0)!==0xFEFF);
     const parsed=csv(raw,CAP_HEAD.length);
     hold(JSON.stringify(parsed[0])===JSON.stringify(CAP_HEAD));
     const groups=capacityGroups();
