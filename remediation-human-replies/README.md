@@ -46,6 +46,20 @@ Resume performs the **same** two-password original admission and exact source-re
 
 The new 0700 private report directory contains scriptless index.html and source-identity-free anonymous-counts.json, both 0600 via the unchanged original atomic exclusive directory publisher. Outputs never overwrite prior documents. Exit 2 = REVIEW_ONLY; exit 3 = HOLD. No positive authorization exit or claims.
 
+## Independent PRIVATE multi-recipient HUMAN reply comparison
+
+A separate new native reconcile.py consumes **the same exact originally selected private encrypted .luhq** and 2–8 separate locally received encrypted .luhr responses. It invokes unchanged original source-redacted selection admission once and the shared strict native response decoder for every reply, prompting separately per encrypted return. Every reply must match the exact redacted source digest, complete original selected ordinal/reason membership and valid HUMAN-only response shape. An identical encrypted reply file cannot be counted twice.
+
+It publishes only after **all** returned files and the original redacted handoff are admitted and rechecked against the same source bytes. A NEW private 0700 output contains scriptless side-by-side review grouped by selected original ordinal, an anonymous counts-only JSON and PRIVATE handling instructions, all 0600. Reviewers see literal differences between local file slots in claimed HUMAN stages, replies and questions. This is not automatic remediation or evidence; a matching answer may be from the same person twice. The tool does not assert number of independent humans, identity, chronology, signed claims, verified findings or actual consent. Free-form HUMAN responses and original action text are PRIVATE; the anonymous summary may identify small cohorts.
+
+    python3 remediation-human-replies/reconcile.py \
+      --handoff "$HOME/lightup-private/selected-private-human.luhq" \
+      --reply "$HOME/lightup-private/selected-reply-A.luhr" \
+      --reply "$HOME/lightup-private/selected-reply-B.luhr" \
+      --output-dir "$HOME/lightup-private/private-human-comparison-01"
+
+Repeat --reply for 2–8 different locally received encrypted response files. It rejects duplicate file paths, identical ciphertext packages, missing or changed original, malformed passwords or any replied claim of authority without partial publication. Exit 2=REVIEW_ONLY; 3=HOLD. There is no automatic selection of a winning opinion or assertion of consensus.
+
 ## Portable complete software-only distribution and strict receiving
 
 The independent new distribution.py composes the original held pinned native evidence-remediation suite, the unchanged source-free scheduler, and all new recipient reply sources into one complete offline runnable software-only tree. No evidence, client files, private notes or passwords are packaged. No original/source-owner files or active branches are edited. The original native bundle.build, bundle.inspect and bundle_receive.admission are reused unchanged for independent exact native source admission.
@@ -65,7 +79,7 @@ A recipient with separately trusted matching source code and the four separately
       --parent-manifest "$HOME/lightup-private/software-human-replies-01/original-scheduler-manifest.json" \
       --output-dir "$HOME/lightup-private/software-received-01"
 
-The receiver applies unchanged original native source/asset admission, checks all original scheduler files byte-for-byte against independently held trusted source code, checks all four additive reply files and its generated portal, requires exact complete ZIP inventory/modes/digests/bounds, rechecks the four original received files immediately before atomic non-overwriting publication and never invents actual sender identity or human consent. Open software-received-01/index.html offline.
+The receiver applies unchanged original native source/asset admission, checks all original scheduler files byte-for-byte against independently held trusted source code, checks all five additive reply files and its generated portal, requires exact complete ZIP inventory/modes/digests/bounds, rechecks the four original received files immediately before atomic non-overwriting publication and never invents actual sender identity or human consent. Open software-received-01/index.html offline.
 
 The optional distribution.py inspect --workspace ABSOLUTE_PATH operation is for a *complete locally built* distribution directory, not the smaller received runnable subset. All operations exit 2=REVIEW_ONLY or 3=HOLD, never grant security authority. Syntax/manifest checks are not client authorization, independent security/crypto review, actual owner acceptance or real release.
 
