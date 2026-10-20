@@ -153,7 +153,8 @@ const LightUpPrivateSourceInspector = (() => {
 
     if (data.format === "lightup.scope_handoff_PRIVATE_inventory.v1" ||
         data.format === "lightup.scope_handoff_PRIVATE_inventory.v2" ||
-        data.format === "lightup.scope_handoff_anonymous_counts.v1") {
+        data.format === "lightup.scope_handoff_anonymous_counts.v1" ||
+        data.format === "lightup.scope_PRIVATE_human_proposal_draft.v1") {
       return { kind: "SELF_REPORTED_INVENTORY", route: "none",
         label: "HUMAN inventaris; geen oorspronkelijke bron" };
     }
@@ -222,5 +223,57 @@ const LightUpPrivateSourceInspector = (() => {
     // V1 always carries the note. V2 explicitly distinguishes redaction from an empty note.
     return doc.entries.map(row => ({...row, private_note_included: v2 ? row.private_note_included : true}));
   }
-  return Object.freeze({ inspect, readHumanInventory });
+  // Private HUMAN draft choices are not an authorization schema. Validate
+  // with the existing bounded duplicate-key-refusing JSON reader.
+  async function readHumanProposalDraft(file) {
+    if (!file || file.size < 10 || file.size > 64 * 1024) {
+      throw Error("PRIVATE HUMAN draft outside bounded size");
+    }
+    const text = new TextDecoder("utf-8",{fatal:true}).decode(await file.arrayBuffer());
+    const doc = parse(text);
+    if (!exact(doc, ["format","status","authority","packets","sources","warning"]) ||
+        doc.format !== "lightup.scope_PRIVATE_human_proposal_draft.v1" ||
+        doc.status !== "REVIEW_ONLY" ||
+        !exact(doc.authority, ["client_consent","operator_consent","grant","scan","deploy","release"]) ||
+        !Object.values(doc.authority).every(v => v === false) ||
+        !Array.isArray(doc.packets) || doc.packets.length < 2 || doc.packets.length > 8 ||
+        !Array.isArray(doc.sources) || doc.sources.length < 1 || doc.sources.length > 16 ||
+        !bounded(doc.warning,300)) {
+      throw Error("Untrusted PRIVATE HUMAN proposal draft structure");
+    }
+    const packetHashes = new Set();
+    for (let i=0;i<doc.packets.length;i++) {
+      const packet = doc.packets[i];
+      if (!exact(packet, ["local_packet_number","original_packet_byte_length",
+                          "unsigned_original_packet_sha256"]) ||
+          packet.local_packet_number !== i + 1 ||
+          !count(packet.original_packet_byte_length,96*1024) ||
+          packet.original_packet_byte_length < 10 ||
+          !sha(packet.unsigned_original_packet_sha256) ||
+          packetHashes.has(packet.unsigned_original_packet_sha256)) {
+        throw Error("Untrusted duplicate or invalid HUMAN reviewer packet binding");
+      }
+      packetHashes.add(packet.unsigned_original_packet_sha256);
+    }
+    const names = new Set(), hashes = new Set();
+    for (const row of doc.sources) {
+      if (!exact(row, ["original_name","byte_length","unsigned_sha256",
+                       "structural_kind_unverified","packet_choice"]) ||
+          !bounded(row.original_name,220) || !row.original_name ||
+          !count(row.byte_length,8*1024*1024) || row.byte_length < 1 ||
+          !sha(row.unsigned_sha256) ||
+          !bounded(row.structural_kind_unverified,80) ||
+          !Number.isInteger(row.packet_choice) ||
+          !(row.packet_choice === -1 || row.packet_choice >= 1 &&
+            row.packet_choice <= doc.packets.length)) {
+        throw Error("Invalid source binding or nonexplicit HUMAN packet choice");
+      }
+      const key=row.original_name.normalize("NFC").toLowerCase();
+      if(names.has(key) || hashes.has(row.unsigned_sha256))
+        throw Error("Ambiguous original HUMAN draft source");
+      names.add(key);hashes.add(row.unsigned_sha256);
+    }
+    return doc;
+  }
+  return Object.freeze({ inspect, readHumanInventory, readHumanProposalDraft });
 })();
