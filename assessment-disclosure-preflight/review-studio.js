@@ -11,7 +11,7 @@
                        "operator_consent_verified", "authorization_granted", "dispatch_allowed", "release_allowed"];
   const MAX = 256 * 1024;
   const byId = id => document.getElementById(id);
-  let records = [], receiptDigest = "", dirty = false;
+  let records = [], receiptDigest = "", dirty = false, revision = 0;
 
   function notice(message, isError = false) {
     const box = byId("notice");
@@ -110,7 +110,7 @@
         option.value = stage;
       }
       select.value = row.stage;
-      select.addEventListener("change", () => { row.stage = select.value; dirty = true; refresh(); });
+      select.addEventListener("change", () => { row.stage = select.value; dirty = true; revision++; refresh(); });
     } else {
       const input = element("textarea", undefined, td);
       input.rows = 2;
@@ -120,6 +120,7 @@
       input.addEventListener("input", () => {
         row[field] = input.value;
         dirty = true;
+        revision++;
         byId("unsaved").textContent = "Unsaved HUMAN changes (memory only)";
       });
     }
@@ -172,6 +173,7 @@
       records = rows;
       receiptDigest = digest;
       dirty = false;
+      revision++;
       byId("compareSection").hidden = true;
       byId("compareRows").replaceChildren();
       byId("editor").hidden = false;
@@ -224,14 +226,17 @@
     try {
       ensure(globalThis.LightUpHumanVault);
       const csv = serializedCsv();
+      const capturedRevision = revision;
       ensure(pass.value === repeated.value && pass.value.length >= 14 &&
              pass.value.length <= 256 && !/[\u0000-\u001f\u007f]/u.test(pass.value));
       ensure(confirm("Create a new locally encrypted PRIVATE HUMAN .luhd file? Keep a separately authenticated receipt and passphrase. Password encryption does not prove client authority, source authenticity or consent."));
       const encrypted = await LightUpHumanVault.seal(csv, pass.value, receiptDigest);
       download(encrypted, "PRIVATE-human-reviewed.luhd", "application/octet-stream");
-      dirty = false;
+      if (revision === capturedRevision) dirty = false;
       refresh();
-      notice("REVIEW_ONLY: encrypted HUMAN vault exported. Reopen with exact receipt bytes and password.");
+      notice(revision === capturedRevision
+        ? "REVIEW_ONLY: encrypted HUMAN vault exported. Reopen with exact receipt bytes and password."
+        : "REVIEW_ONLY: encrypted earlier snapshot exported; additional HUMAN edits remain unsaved.");
     } catch (_) {
       notice("HOLD: encrypted HUMAN export refused. Check notes and matching passphrase; previous edits retained.", true);
     } finally { pass.value = ""; repeated.value = ""; }
@@ -304,6 +309,8 @@
       notice("HOLD: older vault, passphrase or exact receipt mismatch. Current edits and comparison retained.", true);
     } finally { password.value = ""; }
   }
+  byId("csv").addEventListener("change", () => { if (byId("csv").files.length) byId("vault").value = ""; });
+  byId("vault").addEventListener("change", () => { if (byId("vault").files.length) byId("csv").value = ""; });
   byId("load").addEventListener("click", load);
   byId("export").addEventListener("click", exportCsv);
   byId("exportEncrypted").addEventListener("click", exportEncrypted);
