@@ -31,6 +31,15 @@
     <p>Choose the existing seven-column <code>human-followup.csv</code> generated from an independently obtained original lab report. Only ordinals, declared severities, source evidence-reference counts and HUMAN fields enter this editor. No original report is required here.</p>
     <div class="fileRow"><input id="fileInput" type="file" accept=".csv,text/csv" aria-label="PRIVATE original human-followup CSV"><button id="load" type="button" class="primary">Open PRIVATE worksheet</button></div>
     <p class="small muted">Maximum 1 MiB / 2,048 rows · strict UTF-8 and CSV · no browser storage, no uploads. Existing in-memory edits are not replaced without confirmation.</p>
+    <details class="vaultPanel">
+      <summary>Open optional encrypted PRIVATE HUMAN worksheet (.luhw)</summary>
+      <p class="small">This is a separate locally encrypted file containing the HUMAN CSV only—not original lab evidence or consent. WebCrypto must be available; an incorrect password, altered envelope or changed data fails closed.</p>
+      <div class="vaultForm">
+        <label>PRIVATE encrypted file<input id="encryptedInput" type="file" accept=".luhw,application/json"></label>
+        <label>Decryption passphrase<input id="decryptPass" type="password" minlength="12" maxlength="256" autocomplete="off" placeholder="Never stored or transmitted"></label>
+        <button id="loadEncrypted" type="button">Open ENCRYPTED PRIVATE CSV</button>
+      </div>
+    </details>
     <div id="message" class="message" role="status" aria-live="polite">Select a PRIVATE file to begin.</div>
   </section>
 
@@ -100,6 +109,15 @@
     <section class="panel finish">
       <div><div class="eyebrow">06 / PRIVATE FILE HANDOFF</div><h2>Save an immutable-source worksheet</h2><p>Download the updated PRIVATE seven-column CSV, preserving all original ordinal/severity/evidence-count cells. To produce a source-verified-by-digest PRIVATE report, run the existing local <code>human_return.py</code> with the actual unchanged original lab JSON and its original manifest. This editor cannot authenticate either.</p></div>
       <div class="actions"><button id="saveCsv" type="button" class="primary">Download PRIVATE human CSV</button><button id="saveCounts" type="button">Download counts-only JSON</button><button id="forget" type="button" class="danger">Forget local workroom</button></div>
+      <details class="vaultPanel vaultExport">
+        <summary>Optional ENCRYPTED PRIVATE worksheet for offline handoff</summary>
+        <p class="small">Encrypt only your current original-format HUMAN CSV locally with a fresh PBKDF2/AES-GCM password. The passphrase and HUMAN notes are not uploaded or stored by this app. Cryptographic protection is not producer authenticity, identity, source consent or release approval. This feature has not received independent cryptographic review.</p>
+        <div class="vaultForm">
+          <label>Private passphrase (12–256 characters)<input id="encryptPass" type="password" minlength="12" maxlength="256" autocomplete="new-password"></label>
+          <label>Repeat the passphrase<input id="encryptPassConfirm" type="password" minlength="12" maxlength="256" autocomplete="new-password"></label>
+          <button id="saveEncrypted" type="button" class="primary">Download ENCRYPTED PRIVATE CSV (.luhw)</button>
+        </div>
+      </details>
       <div class="small muted">The CSV includes private HUMAN notes. The anonymous-count JSON omits notes and targets but can still be sensitive. No data is saved to a server, localStorage or browser cache by this app. Browser process memory and downloaded files are separate responsibilities.</div>
     </section>
   </div>
