@@ -197,7 +197,8 @@ does not mean remediated. Never share this packet as a client security report.</
 
 
 def build(endpoints: tuple[str, ...], output_dir: str,
-          studio: dict | None = None, studio_raw: bytes | None = None) -> Path:
+          studio: dict | None = None, studio_raw: bytes | None = None,
+          human_handoff_note: str | None = None) -> Path:
     target = Path(output_dir)
     if target.name in ("", ".", "..") or not target.parent.is_dir():
         raise Hold("invalid output parent")
@@ -243,7 +244,8 @@ def build(endpoints: tuple[str, ...], output_dir: str,
                 "Read-only source-bound reopen from the repository (not executed here):\n"
                 "  PYTHONPATH=<LightUp_repo>/src python3 "
                 "<LightUp_repo>/assessment-launchpad/reopen.py --packet .\n"
-                "Unsigned integrity cannot authenticate a source or grant permission.\n"
+                "Unsigned integrity cannot authenticate a source or grant permission.\n" +
+                (human_handoff_note or "")
             ).encode("utf-8")),
         )
         if studio is not None:
