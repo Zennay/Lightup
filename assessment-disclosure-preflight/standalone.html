@@ -299,7 +299,7 @@ thead{background:#edf1f5}th{text-align:left}tbody tr:nth-child(even){background:
         stringToken();
       } else {
         const remainder = source.slice(offset);
-        const token = /^(?:true|false|null|-?(?:0|[1-9][0-9]*)(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?)/u.exec(remainder);
+        const token=[REDACTED]\.[0-9]+)?(?:[eE][+-]?[0-9]+)?)/u.exec(remainder);
         ensure(token);
         offset += token[0].length;
       }
@@ -609,7 +609,7 @@ thead{background:#edf1f5}th{text-align:left}tbody tr:nth-child(even){background:
     }
   }
   async function comparePrevious() {
-    const password = byId("comparePassword");
+    const password=[REDACTED]"comparePassword");
     try {
       ensure(records.length > 0 && /^[a-f0-9]{64}$/u.test(receiptDigest));
       ensure(globalThis.LightUpHumanVault);
@@ -755,6 +755,11 @@ thead{background:#edf1f5}th{text-align:left}tbody tr:nth-child(even){background:
 <button id="exportCounts" type="button" disabled>Export suppressed PRIVATE HUMAN counts only</button>
 <button id="exportPrint" type="button" disabled>Export printable PRIVATE HUMAN report</button></div>
 <p class="muted">The complete encrypted handoff includes both unsigned source-free PRIVATE receipt and HUMAN notes under one new password-derived authenticated encryption envelope; no original lab evidence is embedded. The older .luhd format still requires the separate exact receipt. The counts-only option never includes HUMAN note text, original artifact names, targets, findings, evidence or receipt hash. It still reveals summary categories for sufficiently large groups and is not guaranteed anonymous or approved for public sharing.</p>
+</section>
+<section aria-labelledby="reconcileTitle">
+<h2 id="reconcileTitle">5. Combine two completed HUMAN reviews — explicit HOLD/A/B</h2>
+<p>Already have two separately completed PRIVATE HUMAN CSV rounds for the <strong>same exact unsigned PRIVATE receipt</strong>? Open the independent <a href="./reconcile-standalone.html">offline two-reviewer reconciliation studio</a> in this local folder. It shows stages, questions and follow-up actions side by side, requires a deliberate per-ordinal HUMAN choice and reason, defaults everything to HOLD, and exports a source-bound decision worksheet for the original Python finalizer.</p>
+<p class="muted">Keep the exact receipt and both reviewer CSVs. The reconciliation workroom does not authenticate either reviewer or original source, infer consent, grant authority, approve disclosures or replace native original admission. For encrypted sources use the native reconcile.py CLI without decrypting to an extra browser CSV. Links work only when the software-only files have been downloaded together into a trusted offline directory; there is no hosted endpoint.</p>
 </section>
 </main>
 <footer>LightUp · Incubate / M3-M7 PLAN/LAB ONLY · DRAFT/HOLD · No permission, verification, grant or release</footer>
