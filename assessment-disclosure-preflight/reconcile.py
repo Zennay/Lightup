@@ -14,7 +14,7 @@ import io
 import sys
 
 from human_review import (
-    FIELDS, Hold, admitted_answers, human_counts, publish, receipt_content, require, safe_note,
+    FIELDS, Hold, admitted_answers, human_counts, publish, publish_many, receipt_content, require, safe_note,
     source_bytes,
 )
 
@@ -254,13 +254,13 @@ def main(argv: list[str] | None = None) -> int:
                 first_name = SEALED_RESULT
                 second_name = COUNTS
                 second_content = counts_content
-        # Each artifact is independently exclusive+private. If the second
-        # publication fails, an already completed first output remains PRIVATE;
-        # never overwrite it or claim that the paired handoff finished.
-        publish(args.private_output_dir, first_name, first_content)
-        publish(args.private_output_dir, second_name, second_content)
+        # Prepare every PRIVATE output before exposing the first final name.
+        # Ordinary failure rolls back all new names; a crash is not a filesystem
+        # transaction and no output grants source/recipient authority.
+        artifacts = [(first_name, first_content), (second_name, second_content)]
         if args.action == "finalize" and not args.encrypt_result:
-            publish(args.private_output_dir, COUNTS, counts_content)
+            artifacts.append((COUNTS, counts_content))
+        publish_many(args.private_output_dir, artifacts)
     except (Hold, OSError, TypeError, ValueError, MemoryError):
         print("HOLD: PRIVATE HUMAN reconciliation not completed; no authority", file=sys.stderr)
         return 3
