@@ -14,11 +14,11 @@ locally from a trusted checkout:
 
     python3 assessment-workspace-ledger/console.py
 
-Ten console actions provide original kit capture, exact-byte reopen, original-bound
+Twelve console actions provide original kit capture, exact-byte reopen, original-bound
 HUMAN CSV finalization, historical change review with private file-level
 drilldown, unchanged-source HUMAN continuity, a separate source-free
 single-file browser editor export, a native same-source HUMAN revision desk,
-an in-memory status-only local action summary, and local offline software ZIP build/inspection. Every user-selected action runs **once, synchronously**, with no
+an in-memory status-only local action summary, local offline software ZIP build/inspection, and two explicit browser-download-to-private HUMAN CSV import/finalize actions. Every user-selected action runs **once, synchronously**, with no
 subprocess/shell, service, queue, background job, network, model, scan,
 consent grant, scheduled activity or source deletion. A HOLD (3) keeps the
 foreground console accessible so the operator can choose a different safe
@@ -103,6 +103,34 @@ the exact original snapshot in the native CLI.
 Native Python independently re-admits the bounded original ledger and re-hashes every original kit file before accepting the HUMAN decision CSV. Malformed or duplicate JSON keys, mismatched source ordinals or hashes, unexpected CSV fields, unknown stages, formula-prefixed spreadsheet entries, source changes, symlinks and public-permission files fail closed. Browser-local editing is a convenience only, never an original-source verifier.
 
 Limits: 1–12 kits, <=256 files per kit, <=64 MiB each kit, <=32 MiB per individual file, <=256 MiB combined, max depth 5, <=1 MiB ledger JSON, <=64 KiB HUMAN CSV. Existing owner-private input folders, owner-only 0700 output parent, 0700 exclusive generated folders and 0600 output files. No implicit scans, no original source modification and no overwrites.
+
+## Owner-private ingress from a browser Downloads HUMAN-review.csv
+
+Browsers normally save the HUMAN-review.csv into Downloads using local
+filesystem defaults; it may be readable by other users and intentionally
+fails the native 0600 PRIVATE finalizer. The new browser_intake.py explicitly
+accepts ONLY the HUMAN-review.csv chosen by the operator, does not follow its
+final symlink, requires owner-owned ordinary single-link regular <=64KiB
+source, and reads stable original bytes before parsing all source-bound HUMAN
+rows and exact current source-kit hashes. Its private output is a NEW
+exclusive 0700 directory containing 0600 unchanged HUMAN-review.csv and an
+offline custody note. Original Downloads file stays untouched, un-chmodded,
+undeleted and may remain visible to other local users: the importer DOES NOT
+retroactively make the original download private. The operator should review
+and privately dispose of the old browser copy according to their own policy.
+
+    python3 assessment-workspace-ledger/browser_intake.py --ledger /private/original-ledger/ledger.json --csv /home/operator/Downloads/HUMAN-review.csv --private-parent /private/owner-private
+
+To complete the next native step as one explicit foreground action, add
+--finalize. The importer then delegates to UNCHANGED native ledger.finalize()
+against the newly staged owner-private CSV. That finalizer independently
+re-reads the exact original kit source files and emits a separate HOLD-only
+human packet; no verification, customer grant or security approval is inferred.
+Return code 2 means REVIEW_ONLY import without finalization; --finalize
+always remains HOLD 3, even after preparing a PRIVATE HUMAN packet.
+
+Foreground console actions 11 and 12 run these two variants. No network,
+shell, scanning, privileged filesystem changes or browser automation.
 
 ## Complete resuming, triage and offline HUMAN browser usability
 
