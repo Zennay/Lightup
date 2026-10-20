@@ -432,3 +432,35 @@ underlying complete original metric reports still require owner-approved
 PRIVATE handling. File SHA-256 labels bind bytes but do not attest owner,
 truth, permission or original chronology. Neither worksheet changes any
 original benchmark or authentic review system. Source is DRAFT/HOLD.
+
+## New original #1575 HUMAN Benchmark Review Desk, unified CLI → browser
+
+Original held #1575 [PR #1576](https://github.com/Zennay/Lightup/pull/1576)
+at exact original HEAD `bb5c2299d3697781db7093aaea79ed418f1cc07c`
+was physically added as six unchanged existing product/doc files under
+`assessment-review/` and `docs/assessment-review-desk.md`. No other
+worker sources, QA suites, gates or authorization were modified.
+
+The native `benchmark_room.py` now creates the original canonical single
+or cohort JSON **plus an immediately available complete original HUMAN
+Benchmark Review Desk HTML**. Choose that original canonical JSON locally
+in its file chooser to triage adverse source-declared metrics, prepare HUMAN
+follow-ups, and export native PRIVATE review handoffs. The `trajectory.py`
+private multi-revision kit also includes the complete original Review Desk.
+Nothing automatically approves, schedules, authenticates or scans anything.
+
+**New software-only standalone ZIP V2:**
+[LightUp-Assessment-Offline-Toolkit-v2.zip](LightUp-Assessment-Offline-Toolkit-v2.zip)
+bundles **12 complete unchanged original local HTML studios**, a generated
+scriptless 4-section launchpad, the original source-byte SHA inventory and
+operator cautions. Native `package_offline.py` was updated to reflect the
+actual included tool count dynamically. The **prior 11-app V1 ZIP remains
+unchanged**, so users can still open earlier software snapshots.
+
+The new V2 ZIP does not contain original assessment data, passwords, grant
+materials, targets, scanners or executable native benchmark processors.
+A SHA-256 checksum is unsigned file identity only. The whole composed source,
+native HUMAN workflows and browser suite remain held pending original
+source-owner signoff, independent privacy/security/browser review, original
+exact-head CI and permanent named VPS CI, #177/#182/#829, actual separate
+current client and operator authorization with at-use revocation and HUMAN GO.

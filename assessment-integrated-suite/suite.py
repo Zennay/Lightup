@@ -27,6 +27,7 @@ APPS = {
     "benchmark-candidates.html": ROOT / "assessment-candidates/standalone.html",
     "multi-reviewer-consensus.html": ROOT / "assessment-reviewer-consensus/reviewer-studio.html",
     "lab-longitudinal-trends.html": ROOT / "assessment-trends/standalone.html",
+    "human-benchmark-triage.html": ROOT / "assessment-review/standalone.html",
 }
 
 class Hold(Exception):
@@ -94,6 +95,7 @@ def write_html(destination: Path, detail: bool, count: int) -> None:
         ("Explore original candidate tradeoffs", "workrooms/benchmark-candidates.html"),
         ("Reconcile separate HUMAN reviewer plans", "workrooms/multi-reviewer-consensus.html"),
         ("Explore 3-12 original benchmark trajectories", "workrooms/lab-longitudinal-trends.html"),
+        ("Triage original canonical benchmark findings with HUMAN review", "workrooms/human-benchmark-triage.html"),
     ]
     if detail:
         links = [

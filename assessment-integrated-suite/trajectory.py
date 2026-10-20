@@ -22,6 +22,7 @@ from suite import Hold, ROOT, parent_dir, read_safe, copy_app
 ORIGINAL_STUDIOS = {
     "PRIVATE-original-trend-studio.html": ROOT / "assessment-trends/standalone.html",
     "PRIVATE-original-candidate-studio.html": ROOT / "assessment-candidates/standalone.html",
+    "PRIVATE-original-review-desk.html": ROOT / "assessment-review/standalone.html",
 }
 FALSE = ("authorized", "consent_verified", "dispatch_allowed", "release_allowed")
 
@@ -154,7 +155,9 @@ The original input files are not copied to this kit.</p>
 <ul><li><a href="PRIVATE-original-trend-studio.html">Original Lab Trajectory Studio</a>
  (select each numbered canonical cohort JSON below, in this order)</li>
 <li><a href="PRIVATE-original-candidate-studio.html">Original Candidate Tradeoff Matrix</a>
- (import the same numbered canonical cohort JSON files)</li></ul>
+ (import the same numbered canonical cohort JSON files)</li>
+<li><a href="PRIVATE-original-review-desk.html">Original Benchmark HUMAN Review Desk</a>
+ (triage original HOLD/review observations in any numbered canonical cohort)</li></ul>
 <h2>Canonical original comparator results — selected order</h2>
 <ol>""" + "".join(navigation) + """</ol>
 <p><a href="PRIVATE-trajectory-receipt.json">PRIVATE unsigned source-byte receipt</a>;

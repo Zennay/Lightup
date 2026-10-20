@@ -17,7 +17,7 @@ import subprocess
 import sys
 import tempfile
 
-from suite import Hold, ROOT, parent_dir, read_safe
+from suite import Hold, ROOT, parent_dir, read_safe, copy_app
 
 ORIGINAL = {
     "single": (ROOT / "scripts/assessment_runtime_compare_cli_1513.py", 65_536),
@@ -238,6 +238,8 @@ def private_file(path: Path, content: bytes) -> None:
 
 def prepare(args: argparse.Namespace) -> int:
     parent = parent_dir(args.private_parent)
+    review_studio = ROOT / "assessment-review/standalone.html"
+    read_safe(review_studio, 2 * 1024 * 1024)
     data = original_compare(args.kind, args.before, args.after)
     kit = Path(tempfile.mkdtemp(prefix="PRIVATE-lightup-benchmark-", dir=parent))
     os.chmod(kit, 0o700)
@@ -247,6 +249,12 @@ def prepare(args: argparse.Namespace) -> int:
         private_file(kit / "PRIVATE-original-comparison.json", (
             json.dumps(data, indent=2, sort_keys=True, ensure_ascii=False) + "\n"
         ).encode("utf-8"))
+        private_file(
+            kit / "PRIVATE-original-canonical-comparison.json",
+            (json.dumps(data["original_canonical_output"], sort_keys=True,
+                        separators=(",", ":"), ensure_ascii=False) + "\n").encode("utf-8"),
+        )
+        copy_app(review_studio, kit / "PRIVATE-original-benchmark-triage.html")
         # This is the unchanged native owner-compatible comparison JSON, so
         # original assessment-candidates and assessment-trends can import it.
         if args.kind in ("cohort", "scored"):
@@ -299,7 +307,9 @@ li{padding:.5rem}a{color:#175e88}.hold{font-weight:700;color:#833a1c}</style>
 <ul><li><a href="PRIVATE-original-benchmark.html">Detailed PRIVATE original metric comparison</a></li>
 <li><a href="PRIVATE-original-comparison.json">PRIVATE unsigned source-bound result JSON</a></li>
 <li><a href="PRIVATE-numeric-review.csv">PRIVATE numeric original metric summary</a></li>
-<li><a href="PRIVATE-human-benchmark-followup.csv">Original SHA-bound blank HUMAN follow-up for adverse metrics</a></li>""" + canonical_link + """</ul>
+<li><a href="PRIVATE-human-benchmark-followup.csv">Original SHA-bound blank HUMAN follow-up for adverse metrics</a></li>
+<li><a href="PRIVATE-original-canonical-comparison.json">Original canonical benchmark JSON for HUMAN triage</a></li>
+<li><a href="PRIVATE-original-benchmark-triage.html">Open the complete original offline HUMAN Benchmark Review Desk</a></li>""" + canonical_link + """</ul>
 <p>Review on a trusted local computer. No client data was sent to a server,
 no scanner/model/target was called, and no consent or release granted.
 INCUBATE M3/M7 PLAN/LAB ONLY DRAFT/HOLD.</p></html>""")

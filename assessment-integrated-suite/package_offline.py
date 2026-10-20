@@ -99,7 +99,7 @@ footer{margin:22px 0;padding:18px;border-left:4px solid #efcd91;background:#1927
 </style>
 <header><p class="flag">LIGHTUP / SOFTWARE-ONLY / REVIEW_ONLY</p>
 <h1>Private Assessment Studio</h1>
-<p>Eleven independent original offline HUMAN and lab planning workrooms, delivered together.
+<p>""" + str(len(files)) + """ independent original offline HUMAN and lab planning workrooms, delivered together.
 Every original source remains DRAFT/HOLD. All files open locally with no server.</p>
 <p class="flag">No scan, security approval, verified finding, original source authentication,
 client or operator consent, grant, deployment, or automatic task execution.</p></header>
