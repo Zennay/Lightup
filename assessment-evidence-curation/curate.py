@@ -218,6 +218,52 @@ def page(source: dict, original_digest: str, worksheet_digest: str,
     )
     return (start + "".join(cards) + "</body></html>\n").encode("utf-8")
 
+
+def private_question_handoff(source: dict, selected: list[dict]) -> bytes:
+    """Small source-minimized PRIVATE agenda; human questions can contain secrets.
+
+    Unlike the full dossier, this does not copy original finding IDs, target
+    strings, source hashes, evidence bodies, HUMAN owner labels or other notes.
+    Still PRIVATE: original severity distributions + human questions can reveal
+    source/customer identity. No claim of true anonymization is made.
+    """
+    pin = base64.b64encode(hashlib.sha256(CSS.encode()).digest()).decode("ascii")
+    csp = ("default-src 'none'; style-src 'sha256-" + pin +
+           "'; script-src 'none'; img-src 'none'; connect-src 'none'; "
+           "form-action 'none'; base-uri 'none'; object-src 'none'")
+    elements = []
+    for item in selected:
+        ordinal = item["ordinal"]
+        finding = source["findings"][ordinal-1]
+        elements.append(
+            "<article><h2>Original ordinal #" + str(ordinal) + "</h2>"
+            "<p><strong>Source-reported severity (UNVERIFIED):</strong> " +
+            h(finding["severity"]) + " · original evidence reference count: " +
+            str(len(finding["evidence_ids"])) + "</p>"
+            "<p><strong>HUMAN priority:</strong> " + h(item["priority"]) + "</p>"
+            "<p><strong>PRIVATE HUMAN question:</strong></p><pre>" +
+            h(item["question"]) + "</pre>"
+            "<div class='worksheet'>Independent HUMAN reviewer: __________ &nbsp; "
+            "Review date: __________ &nbsp; Source evidence checked: __________</div>"
+            "</article>"
+        )
+    document = (
+        "<!doctype html><html lang='en'><head><meta charset='utf-8'>"
+        "<meta http-equiv='Content-Security-Policy' content=\"" + h(csp) + "\">"
+        "<meta name='viewport' content='width=device-width,initial-scale=1'>"
+        "<title>PRIVATE source-minimized HUMAN questions</title><style>" + CSS +
+        "</style></head><body><header><h1>LightUp · PRIVATE HUMAN question handoff</h1>"
+        "<p class='notice'>REVIEW ONLY — not source authenticated, not an "
+        "independent finding, consent, grant, approved scope, retest or remediation. "
+        "Human questions may embed confidential client names or targets. "
+        "This is source-minimized, NOT certified anonymous or public-safe.</p>"
+        "<p>Original lab finding IDs, targets, run/scenario IDs, original evidence "
+        "summaries and source hashes are deliberately absent. Selected rows: " +
+        str(len(selected)) + ".</p></header>" + "".join(elements) +
+        "</body></html>\n"
+    )
+    return document.encode("utf-8")
+
 def publish(source_path: str, manifest_path: str, worksheet_path: str,
             receipt_path: str, selection_path: str, destination: str) -> None:
     source, original_digest, human_raw, notes = read_original(
@@ -227,6 +273,7 @@ def publish(source_path: str, manifest_path: str, worksheet_path: str,
     selection_raw = read_limited_file(selection_path, MAX_CSV_BYTES)
     selected = read_selection(selection_raw, source)
     private_report = page(source, original_digest, digest(human_raw), selected, notes)
+    limited_handoff = private_question_handoff(source, selected)
     counts = {s: sum(source["findings"][i["ordinal"]-1]["severity"] == s
                      for i in selected) for s in SEVERITIES}
     priorities = {p: sum(i["priority"] == p for i in selected) for p in PRIORITIES}
@@ -247,11 +294,13 @@ def publish(source_path: str, manifest_path: str, worksheet_path: str,
         "human_worksheet_sha256_unsigned": digest(human_raw),
         "human_selection_sha256_unsigned": digest(selection_raw),
         "private_curated_dossier_sha256_unsigned": digest(private_report),
+        "source_minimized_human_handoff_sha256_unsigned": digest(limited_handoff),
         "selected_original_ordinals": [i["ordinal"] for i in selected],
         **UNVERIFIED,
     }
     publish_new(destination, {
         "PRIVATE-curated-dossier.html": private_report,
+        "PRIVATE-source-minimized-HUMAN-handoff.html": limited_handoff,
         "PRIVATE-curation-receipt.json": json_bytes(private_receipt),
         "anonymous-counts-PRIVATE.json": json_bytes(aggregate),
     })
