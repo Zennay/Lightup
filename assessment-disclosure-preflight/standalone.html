@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-YqOYHqBllZyJWh7P9o16E8ZpYecKl8sUxbzyt4X7Wzo=' 'sha256-Wzr2DE+ae1RnO4iYuWovAlq5ZoZ+EBaaEdszc8dcPV0='; style-src 'sha256-ryTjUguWPmGlNuOqPk3nfGQe4WDUkIML0aubgBYycaI='; connect-src 'none'; img-src 'none'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-YqOYHqBllZyJWh7P9o16E8ZpYecKl8sUxbzyt4X7Wzo=' 'sha256-6KQl4cF/B/BanrqshUTgA0QKYeRW5Bei4dBP9VmWpgs='; style-src 'sha256-ryTjUguWPmGlNuOqPk3nfGQe4WDUkIML0aubgBYycaI='; connect-src 'none'; img-src 'none'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
 <title>LightUp PRIVATE HUMAN disclosure studio</title>
 <style>
 :root{font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color-scheme:light}
@@ -176,6 +176,74 @@ thead{background:#edf1f5}th{text-align:left}tbody tr:nth-child(even){background:
     ensure(rows[0].length === FIELDS.length && rows[0].every((x, i) => x === FIELDS[i]));
     return rows.slice(1);
   }
+  function parseUnambiguousJson(source) {
+    // JSON.parse silently accepts duplicate keys. PRIVATE receipt authority
+    // declarations and original ordinals must reject *all* ambiguous names.
+    let offset = 0;
+    const whitespace = () => {
+      while (offset < source.length && /[\u0009\u000a\u000d\u0020]/u.test(source[offset])) ++offset;
+    };
+    const stringToken = () => {
+      ensure(source[offset] === '"');
+      const start = offset++;
+      while (offset < source.length) {
+        if (source[offset] === "\\") { offset += 2; continue; }
+        if (source[offset++] === '"') {
+          const raw = source.slice(start, offset);
+          return JSON.parse(raw); // decode escaped property names canonically
+        }
+      }
+      ensure(false);
+    };
+    const parseValue = depth => {
+      ensure(depth <= 32);
+      whitespace();
+      const c = source[offset];
+      if (c === "{") {
+        ++offset;
+        const keys = new Set();
+        whitespace();
+        if (source[offset] === "}") { ++offset; return; }
+        while (offset < source.length) {
+          whitespace();
+          const key = stringToken();
+          ensure(!keys.has(key));
+          keys.add(key);
+          whitespace();
+          ensure(source[offset++] === ":");
+          parseValue(depth + 1);
+          whitespace();
+          if (source[offset] === "}") { ++offset; return; }
+          ensure(source[offset++] === ",");
+        }
+        ensure(false);
+      } else if (c === "[") {
+        ++offset;
+        whitespace();
+        if (source[offset] === "]") { ++offset; return; }
+        while (offset < source.length) {
+          parseValue(depth + 1);
+          whitespace();
+          if (source[offset] === "]") { ++offset; return; }
+          ensure(source[offset++] === ",");
+        }
+        ensure(false);
+      } else if (c === '"') {
+        stringToken();
+      } else {
+        const remainder = source.slice(offset);
+        const token = /^(?:true|false|null|-?(?:0|[1-9][0-9]*)(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?)/u.exec(remainder);
+        ensure(token);
+        offset += token[0].length;
+      }
+    };
+    parseValue(0);
+    whitespace();
+    ensure(offset === source.length);
+    const parsed = JSON.parse(source);
+    ensure(parsed && typeof parsed === "object" && !Array.isArray(parsed));
+    return parsed;
+  }
   function safeText(value) {
     return typeof value === "string" && value.length <= 1200 && !/[\u0000-\u001f\u007f]/u.test(value) &&
            !/^[\s]*[=+\-@]/u.test(value);
@@ -263,7 +331,7 @@ thead{background:#edf1f5}th{text-align:left}tbody tr:nth-child(even){background:
       const raw = await bounded(byId("receipt").files[0]);
       const digest = hex(await crypto.subtle.digest("SHA-256", raw));
       const decoded = new TextDecoder("utf-8", {fatal: true}).decode(raw);
-      const sourceRows = validateReceipt(JSON.parse(decoded));
+      const sourceRows = validateReceipt(parseUnambiguousJson(decoded));
       const csvFile = byId("csv").files[0];
       const vaultFile = byId("vault").files[0];
       ensure(Boolean(csvFile) !== Boolean(vaultFile));
