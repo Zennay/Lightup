@@ -14,6 +14,7 @@ import ledger
 import compare
 import continuity
 import human_revisions
+import browser_intake
 import package
 from browser_studio import render_studio
 
@@ -29,6 +30,8 @@ MENU = (
     ("8", "Review historical HUMAN stage/owner/question changes on unchanged kit bytes"),
     ("9", "Build a NEW source-only offline software ZIP"),
     ("10", "Inspect unsigned software ZIP file inventory locally"),
+    ("11", "Import browser-downloaded HUMAN CSV safely into PRIVATE native custody"),
+    ("12", "Import PRIVATE browser CSV and immediately prepare original HUMAN follow-up packet"),
     ("0", "Exit"),
 )
 
@@ -95,6 +98,13 @@ def handle_action(action):
             human=prompt("Native old HUMAN-only.json from finalize"),
             current=prompt("Original current ledger.json from capture --previous"),
             private_parent=private_parent()
+        ))
+    if action in ("11", "12"):
+        return browser_intake.import_browser(argparse.Namespace(
+            ledger=prompt("Original owner-private ledger.json"),
+            csv=prompt("Explicit original browser download HUMAN-review.csv"),
+            private_parent=private_parent(),
+            finalize=(action == "12")
         ))
     if action == "9":
         return package.build(argparse.Namespace(
