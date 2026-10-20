@@ -13,6 +13,7 @@ import sys
 
 from change_brief import AUTHORITY, source, require_fresh_private_directory, write_private
 from human_followup import FIELDS, STAGES, expected_files, human_text, worksheet
+from privacy_counts import suppressed_counts
 
 MAX_ROWS = 256
 
@@ -97,17 +98,17 @@ def main(argv):
         "format": "lightup.private_human_revision_counts.v1",
         "posture": "INCUBATE_M3_M7_DRAFT_HOLD",
         "authority": {k: False for k in sorted(AUTHORITY)},
-        "changed_human_rows": len(changes),
-        "requiring_human_attention_rows": len(attention),
-        # Private counts-only is not formal anonymity. Suppress categories of
-        # one/two source rows to reduce small-cohort singling-out.
-        "human_stage_transitions": {
-            f"{a}->{b}": count for a in sorted(STAGES) for b in sorted(STAGES)
-            if (count := sum(1 for prev, cur in zip(before, latest)
-                             if prev[4] == a and cur[4] == b)) >= 3
-        } if len(latest) >= 5 else {},
-        "small_cohort": len(latest) < 5,
-        "low_frequency_transitions_suppressed": True,
+        "human_review_activity": suppressed_counts(
+            {"changed_human_rows": len(changes),
+             "requiring_human_attention_rows": len(attention)},
+            len(latest)),
+        "human_stage_transitions": suppressed_counts({
+            f"{a}->{b}": sum(
+                1 for prev, cur in zip(before, latest)
+                if prev[4] == a and cur[4] == b
+            )
+            for a in sorted(STAGES) for b in sorted(STAGES)
+        }, len(latest)),
         "note": "Source-minimized aggregate only; a small cohort is NOT anonymous. Not validated security progress, fix proof, consent or client authority."
     }
     path = Path(argv[5])
