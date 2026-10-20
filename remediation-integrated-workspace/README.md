@@ -136,3 +136,40 @@ The full installed suite now contains `journal_vault.py` and `JOURNAL_VAULT.md`.
 ## Portable complete source-free HUMAN reviewer handoff
 
 This installed offline suite includes **review_package.py** and [REVIEW_PACKAGE.md](remediation-integrated-workspace/REVIEW_PACKAGE.md). A trusted HUMAN owner can independently combine one admitted anonymous source-free Cockpit and the exact originally hash-bound local HUMAN journal into one AES-GCM encrypted portable `.luhp`, with native support for taking an already encrypted `.luhj` without a plaintext intermediate. The authorized recipient decrypts it and obtains a new private original source-free Cockpit plus a populated editable local HUMAN reviewer. It always enforces complete original native source-free admission and source-session-bound HUMAN notes. Decrypted resulting PRIVATE HTML/JSON contains plaintext sensitive HUMAN notes; this is not client consent or authority to act. All source-owner/HUMAN GO/CI/security/privacy/crypto gates remain unchanged.
+
+
+## Central native PRIVATE operator launcher
+
+Instead of composing the individual original scripts by hand, start the
+[offline PRIVATE HUMAN desk](private_desk.py) **locally**, in a private terminal:
+
+    python3 remediation-integrated-workspace/private_desk.py list
+    python3 remediation-integrated-workspace/private_desk.py menu
+
+For scripts or manual repeatability, the same fixed original-native operations
+have non-interactive subcommands:
+
+    python3 remediation-integrated-workspace/private_desk.py owner --input-dir /absolute/private/ledger --output-dir /absolute/private/new-owner-workroom
+    python3 remediation-integrated-workspace/private_desk.py archives --archive /absolute/private/original.luhz --output-dir /absolute/private/new-recipient-review
+    python3 remediation-integrated-workspace/private_desk.py review --cockpit /absolute/private/original-source-free-cockpit --output-dir /absolute/private/new-single-review
+    python3 remediation-integrated-workspace/private_desk.py pack-review --cockpit /absolute/private/original-source-free-cockpit --journal-vault /absolute/private/encrypted.luhj --output-file /absolute/private/new-review.luhp
+
+The launcher delegates via the current Python interpreter directly to a
+**fixed allowlist** of original native software modules (no shell, no arbitrary
+executable, no added network service). It supports original owner intake,
+1–12 original source-free recipients/archives, a single source moment,
+source-bound HUMAN journals and encrypted continuity, and software-only
+installation or local inspection. Interactive selections require a private
+TTY, one deliberate YES before execution, and **never ask for secret
+passphrases**: native existing vault commands handle these independently.
+Original input byte/identity and owner-only private destination requirements
+are all enforced by the original native receiving modules. Missing or changed
+inputs HOLD, never silently generate synthetic cohorts or claim an approved fix.
+The output of every native tool remains REVIEW_ONLY or HOLD, not approval.
+
+The software-only installer/receiver now carry this launcher's exact bytes;
+previous portable ZIP editions are NOT compatible with the new software
+inventory and should not be silently relabelled. Source hashes are unsigned.
+No actual client/operator permission, original producer identity, #177/#182/
+#829 closure, source-owner/security/privacy review, mandatory CI or HUMAN GO
+is implied. No main merge, deploy, scan, native Apply, verified fix or retest.

@@ -163,6 +163,9 @@ small{display:block;line-height:1.5}</style>
 <p>Unkeyed package checksums establish local file consistency only. Owner permissions, current authenticated client/operator consent, revocation-at-use, exact-head CI, source-owner and independent privacy/security review, and explicit HUMAN GO remain independent requirements for any genuine release.</p></section>
 <section><h2>Operator quick-start · HUMAN only</h2>
 <p>Run these locally on an authorized private Linux machine with existing 0700 folders. Enter secret passphrases interactively: never in commands, URLs or logs. These examples <strong>do not</strong> create a grant, scan, verified fix or consent.</p>
+<h3>One native guided PRIVATE operator menu</h3>
+<pre>python3 remediation-integrated-workspace/private_desk.py menu</pre>
+<p>This offline launcher has only explicit original read/admit/HUMAN operations; it forwards input to the existing native policy and security checks. Choose literal absolute paths and new owner-only output folders. No target execution, scope authorization, consent or fix status is inferred.</p>
 <h3>Original evidence owner → separated source-free packet</h3>
 <pre>python3 remediation-integrated-workspace/workflow.py owner-start \
   --input-dir "$HOME/lightup-private/original-ledger" \
@@ -235,6 +238,7 @@ def build(dest: Path) -> None:
         # Make the archive independently inspectable on a second offline
         # authorized device: carry this CLI and its operator guide too.
         for name in ("remediation-integrated-workspace/install.py",
+                     "remediation-integrated-workspace/private_desk.py",
                      "remediation-integrated-workspace/receiver.py",
                      "remediation-integrated-workspace/workflow.py",
                      "remediation-integrated-workspace/portable_cockpit.py",
@@ -325,6 +329,7 @@ def verify(folder: Path) -> None:
     for name, descriptor in files.items():
         require(safe_name(name) or name in ("index.html", "software-only.zip", "source-lock.json",
                                              "remediation-integrated-workspace/install.py",
+                     "remediation-integrated-workspace/private_desk.py",
                                              "remediation-integrated-workspace/receiver.py",
                                              "remediation-integrated-workspace/workflow.py",
                                              "remediation-integrated-workspace/portable_cockpit.py",
