@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-GnJpkcDNXSj3yh+5oQ+5jKS0qQLIgfY6jT0lOI15+yo=' 'sha256-Jy852yurFXWrtSh50aol1DvQ4ooyvbgJH3noO0R4ymk=' 'sha256-ZJzVvwKHoFQ5Hlhmr0UrefGgjPup4TAZMDIO4TnEU48='; style-src 'sha256-AtqUCUIVc2TMPrwVVWguLTy77Xv7UWdNb2eDD4+16AM='; img-src 'none'; connect-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'; frame-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-kntcfUMlw/J3xv2IC04j8Ldz5gaiDWZGUM0L0794D4Q=' 'sha256-Jy852yurFXWrtSh50aol1DvQ4ooyvbgJH3noO0R4ymk=' 'sha256-ZJzVvwKHoFQ5Hlhmr0UrefGgjPup4TAZMDIO4TnEU48='; style-src 'sha256-Ra1dOCd0uu0StgcUUD0OtHs5kyn/+iChcRJ6o8Zg7GI='; img-src 'none'; connect-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'; frame-src 'none'">
 <meta name="referrer" content="no-referrer">
 <title>LightUp · PRIVATE finding follow-up</title>
 <style>:root { color-scheme: dark; --ink:#edf5f3; --muted:#91aca9; --bg:#091513; --panel:#102421; --panel2:#142d29; --line:#28504a; --accent:#80e5c0; --danger:#ffd1ba; font: 15px/1.5 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
@@ -72,7 +72,7 @@ footer { max-width:1280px; padding:0 22px 32px; margin:auto; font-size:.72rem; c
 .revision .minor { color:var(--muted); font-size:.78rem; }
 .revision input[type=file] { padding:9px 0; }
 .revision-option { border:1px solid var(--line); border-radius:9px; padding:14px; background:var(--panel2); margin:18px 0; }
-.revision-groups { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; margin-bottom:20px; }
+.revision-groups { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:14px; margin-bottom:20px; }
 .revision-groups>div { min-width:0; border:1px solid var(--line); border-radius:9px; padding:12px 14px; }
 .revision-groups h4 { color:var(--accent); margin:0 0 12px; font-size:.9rem; }
 .revision-list { overflow:auto; max-height:260px; }
@@ -81,6 +81,8 @@ footer { max-width:1280px; padding:0 22px 32px; margin:auto; font-size:.72rem; c
 .revision-archive p:not(.eyebrow) { font-size:.85rem; }
 #revisionDigest { overflow-wrap:anywhere; }
 @media(max-width:700px) { .revision-groups { grid-template-columns:1fr; } .revision { padding:16px; } }
+
+@media(min-width:701px) and (max-width:1050px) { .revision-groups { grid-template-columns:1fr 1fr; } }
 </style>
 <script>"use strict";
 /* PRIVATE encrypted HUMAN journal transport, memory-only decrypted source.
@@ -477,6 +479,7 @@ footer { max-width:1280px; padding:0 22px 32px; margin:auto; font-size:.72rem; c
     $("revisionFile").value = "";
     $("revisionChangedList").replaceChildren();
     $("revisionAbsentList").replaceChildren();
+    $("revisionAddedList").replaceChildren();
   }
   function refreshRevisionArchive() {
     $("revisionHistoryDownload").disabled = state.revisionHistory.length === 0;
@@ -508,18 +511,56 @@ footer { max-width:1280px; padding:0 22px 32px; margin:auto; font-size:.72rem; c
       $("revisionCounts").textContent = plan.stats.unchanged + " unchanged · " +
         plan.stats.changed + " source-edited · " + plan.stats.added +
         " new · " + plan.stats.absent + " absent (NOT fixed)";
+      const previous = new Map(state.rows.map(row => [row.id, row]));
       for (const item of plan.affected) {
-        const row = document.createElement("p");
-        row.textContent = item.id + " · prior " + item.source_severity.toUpperCase() +
-          " · " + item.source_title +
-          (item.human.stage !== "unreviewed" ? " · PRIVATE HUMAN: " + stageText(item.human.stage) : "");
-        (item.type === "changed" ? $("revisionChangedList") : $("revisionAbsentList")).append(row);
+        const entry = document.createElement("p");
+        const current = plan.incomingRows.find(row => row.id === item.id);
+        let change = "";
+        if (item.type === "changed" && current) {
+          const original = previous.get(item.id);
+          const columns = ["title", "severity", "retest", "remediation"]
+            .filter(name => original[name] !== current[name]);
+          change = " · source fields changed: " + columns.join(", ");
+          if (columns.includes("severity")) change +=
+            " · severity " + original.severity + " → " + current.severity;
+          if (columns.includes("retest")) change +=
+            " · retest " + original.retest + " → " + current.retest;
+        }
+        entry.textContent = item.id + " · PRIOR " + item.source_severity.toUpperCase() +
+          " · " + item.source_title + change +
+          (item.human.stage !== "unreviewed" ? " · PRIVATE HUMAN: " + stageText(item.human.stage) : "") +
+          (item.type === "absent" ? " · MISSING IS NOT FIXED" : " · NEW REVIEW REQUIRED");
+        (item.type === "changed" ? $("revisionChangedList") : $("revisionAbsentList")).append(entry);
+      }
+      for (let i = 0; i < plan.incomingRows.length; i++) {
+        if (plan.kinds[i] !== "added") continue;
+        const row = plan.incomingRows[i];
+        const entry = document.createElement("p");
+        entry.textContent = row.id + " · source-declared " + row.severity.toUpperCase() +
+          " · " + row.title + " · NEW HUMAN REVIEW";
+        $("revisionAddedList").append(entry);
       }
       status("New source fully admitted for local comparison. Current source and HUMAN choices remain intact.", false);
     } catch (error) {
       clearRevisionCandidate();
       status("Incoming source rejected without changing the current workspace: " + error.message, true);
     }
+  }
+  function exportRevisionCounts() {
+    const plan = state.revisionCandidate;
+    if (!plan || plan.fromDigest !== state.digest) return;
+    if (!confirm("Download source-free comparison counts? Tiny cohorts can still be sensitive. " +
+        "Only a separately approved disclosure may leave this PRIVATE device. No source identity " +
+        "or actual chronological, security, consent or remediation verdict is provided.")) return;
+    const data = {
+      schema: "lightup.anonymous_csv_human_delta_counts.v1",
+      classification: "ANONYMOUS_COUNTS_ONLY", authority: NO_AUTHORITY,
+      declared_temporal_order: false, verified_fix: false,
+      unchanged: plan.stats.unchanged, source_changed: plan.stats.changed,
+      newly_present: plan.stats.added, absent_not_fixed: plan.stats.absent
+    };
+    download(JSON.stringify(data, null, 2) + "\n", "lightup-source-free-human-delta-counts.json", "application/json");
+    status("Source-free delta totals offered, without source hashes, original IDs, text or HUMAN notes.", false);
   }
   function commitRevision() {
     const plan = state.revisionCandidate;
@@ -1093,6 +1134,7 @@ footer { max-width:1280px; padding:0 22px 32px; margin:auto; font-size:.72rem; c
       e.target.value = "";
     });
     $("revisionCommit").addEventListener("click", commitRevision);
+    $("revisionCountsExport").addEventListener("click", exportRevisionCounts);
     $("revisionCancel").addEventListener("click", () => {
       clearRevisionCandidate(); status("Source candidate discarded; original workspace remains unchanged.", false);
     });
@@ -1216,9 +1258,11 @@ footer { max-width:1280px; padding:0 22px 32px; margin:auto; font-size:.72rem; c
       <div class="revision-groups">
         <div><h4>Changed source records</h4><div id="revisionChangedList" class="revision-list"></div></div>
         <div><h4>No longer present (NOT fixed)</h4><div id="revisionAbsentList" class="revision-list"></div></div>
+        <div><h4>New in selected source (UNREVIEWED)</h4><div id="revisionAddedList" class="revision-list"></div></div>
       </div>
       <p class="warning"><strong>Migration is not a source merge or verification.</strong> Unchanged means literal five-field equality only. Changed source labels are never a confirmed fix; absent means missing in the selected next CSV, never resolved. HUMAN notes from changed or absent rows remain in the PRIVATE revision archive inside the encrypted workroom if saved.</p>
       <div class="actions">
+        <button id="revisionCountsExport" type="button">Download source-free delta totals</button>
         <button id="revisionCommit" type="button" class="primary">Review &amp; move to incoming snapshot</button>
         <button id="revisionCancel" type="button" class="subtle">Discard candidate</button>
       </div>
