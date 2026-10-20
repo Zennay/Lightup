@@ -43,3 +43,13 @@ The printable HTML and any exported files are **PRIVATE** even if the CSV omits 
 This branch adds only `assessment-briefing/`. No existing source-owner, parallel PR, default webapp, original DomainStore, CLI entrypoint, execution policy, scan worker, security gate, CI, tests or deployment file is modified. No new QA or regression suites were authored or run.
 
 The source stays **DRAFT/HOLD**. No merge to `main`, deployment or live target use without the original exact-head hosted and permanent named VPS CI gates, source-owner sign-off, independent privacy/security review, original #177/#182/#829 closure, actual separately authenticated client/operator consent including at-use revocation, and explicit HUMAN GO. This module cannot satisfy any of those requirements.
+
+## New: privacy-minimal human briefing (without original source identifiers)
+
+For a separate private human conversation that should **not** include original target URLs, finding names, scenario/run IDs, evidence or original file hashes, use:
+
+```bash
+python3 assessment-briefing/aggregate.py --source ./original-private-lab.json --output-dir ./NEW-PRIVATE-AGGREGATE
+```
+
+This prepares a scriptless printable `private-human-aggregate.html` and the corresponding `private-human-aggregate.json`, using only original **source-declared totals**: endpoint/finding counts, severity distribution, records with an evidence-reference list and records with an evidence-summary. Neither file carries original finding names, IDs, targets, run labels, scenario labels, evidence text or source hashes. All permission and validity flags are explicitly false, and actionable human questions are supplied without inferring fixes or execution. Success exit code is 2 (REVIEW_ONLY). **Aggregate counts can still reveal sensitive information**, so use only a separately approved private channel. Not a release, not a source authenticity signature, and not a public safe-to-share certification.
