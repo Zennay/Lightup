@@ -718,9 +718,14 @@
       for (const item of items) {
         const key = item.file.name.normalize("NFC").toLowerCase();
         const rawA = a.get(key), rawB = b.get(key);
-        const x = sourceEqual(rawA,item) ? rawA : null;
-        const y = sourceEqual(rawB,item) ? rawB : null;
-        if ((rawA && !x) || (rawB && !y)) changed++;
+        const exactA = sourceEqual(rawA,item) ? rawA : null;
+        const exactB = sourceEqual(rawB,item) ? rawB : null;
+        // Different original bytes in EITHER packet fence both reviewers:
+        // do not cherry-pick one proposal from an incoherent paired source.
+        const mismatchedSource = !!((rawA && !exactA) || (rawB && !exactB));
+        const x = mismatchedSource ? null : exactA;
+        const y = mismatchedSource ? null : exactB;
+        if (mismatchedSource) changed++;
         const partialNote = !!(x && y && humanRouteEqual(x,y) &&
           x.private_note_included !== y.private_note_included);
         const conflicting = !!(x && y && !partialNote && !humanEqual(x,y));
@@ -732,7 +737,7 @@
         decisions.push(entry);
         const tr = document.createElement("tr");
         cell(tr,item.file.name,"file-name");
-        cell(tr,(rawA&&!x)||(rawB&&!y) ? "CHANGED / NO COPY" :
+        cell(tr,mismatchedSource ? "BRON AFWIJKEND / GEEN VAN BEIDE" :
           conflicting ? "CONFLICT / HUMAN KEUZE" :
           partialNote ? "NOTITIE-DEKKING ONBEKEND / HUMAN KEUZE" :
           x&&y ? "EENSGEZIND / ONGETEKEND" :
