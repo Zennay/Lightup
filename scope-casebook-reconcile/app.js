@@ -121,9 +121,11 @@ async function admit(file,password){
  try {plaintext=new Uint8Array(await crypto.subtle.decrypt(
   {name:"AES-GCM",iv},await keyFor(password,salt,"decrypt"),cipher));}
  catch{deny("Ontsleutelen geweigerd; wachtwoord of bytes gewijzigd.");}
- if(plaintext.length>20*1024*1024)deny("Ontsleutelde inhoud te groot.");
- const body=canonical(dec.decode(plaintext),"PRIVATE inhoud");
- plaintext.fill(0);
+ let body;
+ try{
+  if(plaintext.length>20*1024*1024)deny("Ontsleutelde inhoud te groot.");
+  body=canonical(dec.decode(plaintext),"PRIVATE inhoud");
+ }finally{plaintext.fill(0);}
  if(!keys(body,["schema","version","files"])||body.schema!==SCHEMA||
   body.version!==1)deny("PRIVATE body heeft onbekend formaat.");
  checkNames(body.files);
@@ -270,12 +272,14 @@ async function publish(){
  const items=[...orig,newHuman].map(x=>({
   name:x.name,size:x.size,sha256:x.sha256,content_b64:b64(x.bytes)}));
  const content=enc.encode(JSON.stringify({schema:SCHEMA,version:1,files:items}));
- if(content.length>20*1024*1024)deny("Nieuwe PRIVATE bundel te groot.");
- const salt=crypto.getRandomValues(new Uint8Array(16)),
+ let ciphertext,salt,iv;
+ try{
+  if(content.length>20*1024*1024)deny("Nieuwe PRIVATE bundel te groot.");
+  salt=crypto.getRandomValues(new Uint8Array(16));
   iv=crypto.getRandomValues(new Uint8Array(12));
- const ciphertext=new Uint8Array(await crypto.subtle.encrypt({name:"AES-GCM",iv},
-  await keyFor(password,salt,"encrypt"),content));
- content.fill(0);csv.fill(0);
+  ciphertext=new Uint8Array(await crypto.subtle.encrypt({name:"AES-GCM",iv},
+   await keyFor(password,salt,"encrypt"),content));
+ }finally{content.fill(0);csv.fill(0);}
  const envelope={schema:SCHEMA,version:1,kdf:"PBKDF2-SHA256",iterations:ITER,
   cipher:"AES-256-GCM",salt_b64:b64(salt),iv_b64:b64(iv),ciphertext_b64:b64(ciphertext)};
  const bytes=enc.encode(JSON.stringify(envelope));

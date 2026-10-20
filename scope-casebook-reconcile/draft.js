@@ -112,7 +112,9 @@ $("draft-open").addEventListener("click",async()=>{
     await keyFor(password,salt,"decrypt"),cipher));}
   catch{fail("Wachtwoord of checkpoint-ciphertext onjuist.");}
   if(bytes.length>MAX_BODY)fail("Checkpoint-plaintext te groot.");
-  const body=parse(dec.decode(bytes));bytes.fill(0);
+  let body;
+  try{body=parse(dec.decode(bytes));}
+  finally{bytes.fill(0);}
   const mandatory=["schema","version","sources","human","choices"];
   const authority=["source_authenticated","client_consent_verified","operator_consent_verified",
     "authorization_granted","execution_allowed","release_approved"];

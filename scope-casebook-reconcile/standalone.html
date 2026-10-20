@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="nl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; base-uri 'none'; object-src 'none'; frame-src 'none'; form-action 'none'; connect-src 'none'; img-src 'none'; style-src 'sha256-c/nCpZd/HTN0lTDb3brYXHhPzUN1lr9xOQZCQE4jtrQ='; script-src 'sha256-Kr9De1LDISprNhkEFR1HqXkaCTyuyibpfF+tmDN2+uM='">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; base-uri 'none'; object-src 'none'; frame-src 'none'; form-action 'none'; connect-src 'none'; img-src 'none'; style-src 'sha256-c/nCpZd/HTN0lTDb3brYXHhPzUN1lr9xOQZCQE4jtrQ='; script-src 'sha256-q7BH0vKocZBkTvshVW/pycurSLWDSftQiC5eQDfnEE8='">
 <title>LightUp · PRIVATE HUMAN reconciliatie</title><style>:root{color-scheme:dark;font-family:Inter,system-ui,-apple-system,Segoe UI,sans-serif;background:#0b111c;color:#eaf1ff;font-size:15px}
 *{box-sizing:border-box}body{margin:0}header,main,footer{max-width:1180px;margin:auto;padding:28px 20px}
 header{padding-top:50px}.mark{letter-spacing:.16em;font-weight:900;color:#86bbff}.mark span{font-size:.7em;color:#b1c3d9;background:#25334b;padding:7px 12px;border-radius:30px;margin-left:10px}
@@ -478,9 +478,11 @@ async function admit(file,password){
  try {plaintext=new Uint8Array(await crypto.subtle.decrypt(
   {name:"AES-GCM",iv},await keyFor(password,salt,"decrypt"),cipher));}
  catch{deny("Ontsleutelen geweigerd; wachtwoord of bytes gewijzigd.");}
- if(plaintext.length>20*1024*1024)deny("Ontsleutelde inhoud te groot.");
- const body=canonical(dec.decode(plaintext),"PRIVATE inhoud");
- plaintext.fill(0);
+ let body;
+ try{
+  if(plaintext.length>20*1024*1024)deny("Ontsleutelde inhoud te groot.");
+  body=canonical(dec.decode(plaintext),"PRIVATE inhoud");
+ }finally{plaintext.fill(0);}
  if(!keys(body,["schema","version","files"])||body.schema!==SCHEMA||
   body.version!==1)deny("PRIVATE body heeft onbekend formaat.");
  checkNames(body.files);
@@ -627,12 +629,14 @@ async function publish(){
  const items=[...orig,newHuman].map(x=>({
   name:x.name,size:x.size,sha256:x.sha256,content_b64:b64(x.bytes)}));
  const content=enc.encode(JSON.stringify({schema:SCHEMA,version:1,files:items}));
- if(content.length>20*1024*1024)deny("Nieuwe PRIVATE bundel te groot.");
- const salt=crypto.getRandomValues(new Uint8Array(16)),
+ let ciphertext,salt,iv;
+ try{
+  if(content.length>20*1024*1024)deny("Nieuwe PRIVATE bundel te groot.");
+  salt=crypto.getRandomValues(new Uint8Array(16));
   iv=crypto.getRandomValues(new Uint8Array(12));
- const ciphertext=new Uint8Array(await crypto.subtle.encrypt({name:"AES-GCM",iv},
-  await keyFor(password,salt,"encrypt"),content));
- content.fill(0);csv.fill(0);
+  ciphertext=new Uint8Array(await crypto.subtle.encrypt({name:"AES-GCM",iv},
+   await keyFor(password,salt,"encrypt"),content));
+ }finally{content.fill(0);csv.fill(0);}
  const envelope={schema:SCHEMA,version:1,kdf:"PBKDF2-SHA256",iterations:ITER,
   cipher:"AES-256-GCM",salt_b64:b64(salt),iv_b64:b64(iv),ciphertext_b64:b64(ciphertext)};
  const bytes=enc.encode(JSON.stringify(envelope));
@@ -1019,7 +1023,9 @@ $("draft-open").addEventListener("click",async()=>{
     await keyFor(password,salt,"decrypt"),cipher));}
   catch{fail("Wachtwoord of checkpoint-ciphertext onjuist.");}
   if(bytes.length>MAX_BODY)fail("Checkpoint-plaintext te groot.");
-  const body=parse(dec.decode(bytes));bytes.fill(0);
+  let body;
+  try{body=parse(dec.decode(bytes));}
+  finally{bytes.fill(0);}
   const mandatory=["schema","version","sources","human","choices"];
   const authority=["source_authenticated","client_consent_verified","operator_consent_verified",
     "authorization_granted","execution_allowed","release_approved"];
@@ -1220,11 +1226,14 @@ window.LightUpCasebookReceiptLibrary=Object.freeze({
 async function encryptMemo(memo,pw,filename){
  checkPassword(pw);
   const plaintext=enc.encode(JSON.stringify(memo));
-  if(plaintext.length>MAX_BODY)fail("PRIVATE memo te groot.");
-  const salt=crypto.getRandomValues(new Uint8Array(16)),iv=crypto.getRandomValues(new Uint8Array(12));
-  const encrypted=new Uint8Array(await crypto.subtle.encrypt({name:"AES-GCM",iv},
-    await keyFor(pw,salt,"encrypt"),plaintext));
-  plaintext.fill(0);
+  let encrypted,salt,iv;
+  try{
+   if(plaintext.length>MAX_BODY)fail("PRIVATE memo te groot.");
+   salt=crypto.getRandomValues(new Uint8Array(16));
+   iv=crypto.getRandomValues(new Uint8Array(12));
+   encrypted=new Uint8Array(await crypto.subtle.encrypt({name:"AES-GCM",iv},
+     await keyFor(pw,salt,"encrypt"),plaintext));
+  }finally{plaintext.fill(0);}
   const envelope={schema:SCHEMA,version:1,kdf:"PBKDF2-SHA256",
     iterations:ITER,cipher:"AES-256-GCM",salt_b64:base64(salt),
     iv_b64:base64(iv),ciphertext_b64:base64(encrypted)};

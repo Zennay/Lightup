@@ -181,11 +181,14 @@ window.LightUpCasebookReceiptLibrary=Object.freeze({
 async function encryptMemo(memo,pw,filename){
  checkPassword(pw);
   const plaintext=enc.encode(JSON.stringify(memo));
-  if(plaintext.length>MAX_BODY)fail("PRIVATE memo te groot.");
-  const salt=crypto.getRandomValues(new Uint8Array(16)),iv=crypto.getRandomValues(new Uint8Array(12));
-  const encrypted=new Uint8Array(await crypto.subtle.encrypt({name:"AES-GCM",iv},
-    await keyFor(pw,salt,"encrypt"),plaintext));
-  plaintext.fill(0);
+  let encrypted,salt,iv;
+  try{
+   if(plaintext.length>MAX_BODY)fail("PRIVATE memo te groot.");
+   salt=crypto.getRandomValues(new Uint8Array(16));
+   iv=crypto.getRandomValues(new Uint8Array(12));
+   encrypted=new Uint8Array(await crypto.subtle.encrypt({name:"AES-GCM",iv},
+     await keyFor(pw,salt,"encrypt"),plaintext));
+  }finally{plaintext.fill(0);}
   const envelope={schema:SCHEMA,version:1,kdf:"PBKDF2-SHA256",
     iterations:ITER,cipher:"AES-256-GCM",salt_b64:base64(salt),
     iv_b64:base64(iv),ciphertext_b64:base64(encrypted)};
