@@ -26,6 +26,7 @@ MAX_TEXT = 1200
 MAX_BYTES = 256 * 1024
 TEMPLATE = "PRIVATE-human-template.csv"
 REPORT = "PRIVATE-human-followup.html"
+SUMMARY = "PRIVATE-human-summary.csv"
 
 
 def source_bytes(name: str) -> bytes:
@@ -152,6 +153,33 @@ outside this file. Original #177/#182/#829 and mandatory hosted/named VPS CI rem
 </body></html>"""
 
 
+def human_counts(answers: list[dict], minimum: int) -> str:
+    """Source- and note-free, deliberately small-cohort-suppressed HUMAN counts."""
+    require(type(minimum) is int and 5 <= minimum <= 12)
+    require(type(answers) is list and 1 <= len(answers) <= 12)
+    totals = {stage: sum(item["stage"] == stage for item in answers) for stage in STAGES}
+    show_source_count = len(answers) >= minimum
+    show_breakdown = show_source_count and all(
+        n == 0 or n >= minimum for n in totals.values())
+    stream = io.StringIO(newline="")
+    writer = csv.writer(stream, lineterminator="\n")
+    writer.writerow(("field", "value"))
+    writer.writerow(("status", "REVIEW_ONLY"))
+    writer.writerow(("original_source_authenticated", "FALSE"))
+    writer.writerow(("current_consent_verified", "FALSE"))
+    writer.writerow(("release_allowed", "FALSE"))
+    writer.writerow(("not_anonymity_guarantee", "TRUE"))
+    writer.writerow(("HUMAN_receipt_identity", "UNSIGNED_BYTES_ONLY"))
+    writer.writerow(("source_count", len(answers) if show_source_count else "SUPPRESSED_SMALL_COHORT"))
+    writer.writerow(("human_stages", "DECLARED_NON_AUTHORITATIVE"))
+    if show_breakdown:
+        for stage in STAGES:
+            writer.writerow(("HUMAN_" + stage, totals[stage]))
+    else:
+        writer.writerow(("HUMAN_stage_breakdown", "SUPPRESSED_SMALL_GROUP"))
+    return stream.getvalue()
+
+
 def publish(output_dir: str, filename: str, text: str) -> None:
     """Publish only complete PRIVATE output; never replace an old handoff."""
     directory = Path(output_dir)
@@ -193,14 +221,17 @@ def publish(output_dir: str, filename: str, text: str) -> None:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="PRIVATE receipt-bound HUMAN disclosure notes, never release")
     commands = parser.add_subparsers(dest="action", required=True)
-    for name in ("prepare", "render"):
+    for name in ("prepare", "render", "summarize"):
         sub = commands.add_parser(name)
         sub.add_argument("--receipt", required=True, help="preflight PRIVATE-receipt.json")
         sub.add_argument("--private-output-dir", required=True, help="existing owner-only 0700 directory")
-        if name == "render":
+        if name != "prepare":
             inputs = sub.add_mutually_exclusive_group(required=True)
             inputs.add_argument("--answers", help="completed PRIVATE HUMAN plaintext CSV")
             inputs.add_argument("--vault", help="sealed PRIVATE HUMAN .luhd; prompt for password")
+        if name == "summarize":
+            sub.add_argument("--minimum-cohort", type=int, default=5,
+                             help="privacy floor for aggregate HUMAN stage counts (5-12)")
     args = parser.parse_args(argv)
     try:
         digest, rows = receipt(args.receipt)
@@ -216,7 +247,11 @@ def main(argv: list[str] | None = None) -> int:
             else:
                 source = source_bytes(args.answers)
             answers = admitted_answers(source, digest, rows)
-            publish(args.private_output_dir, REPORT, render(answers))
+            if args.action == "summarize":
+                publish(args.private_output_dir, SUMMARY,
+                        human_counts(answers, args.minimum_cohort))
+            else:
+                publish(args.private_output_dir, REPORT, render(answers))
     except Hold:
         print("HOLD: PRIVATE HUMAN follow-up refused; no authority or release", file=sys.stderr)
         return 3
