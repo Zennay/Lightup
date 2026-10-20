@@ -7,6 +7,8 @@ Does not install the signer into the original suite or relax its DRAFT/HOLD.
 from __future__ import annotations
 
 import argparse
+import os
+import tempfile
 from pathlib import Path
 import sys
 
@@ -28,13 +30,29 @@ def receive(
     # owner-only parent and no-overwrite atomic publication as a separate gate.
     if not fresh_output_dir.is_absolute() or fresh_output_dir.exists() or fresh_output_dir.is_symlink():
         raise Hold("recipient output must be a fresh absolute directory")
-    verify(archive, receipt, trusted_public_key, trusted_fingerprint)
+    verified_archive_bytes = verify(archive, receipt, trusted_public_key, trusted_fingerprint)
     sys.path.insert(0, str(original))
     import receiver  # original source-owner's native ZIP admission and publication
     import install  # original source-owner's source-lock / receipt inspector
 
-    receiver.receive(archive, fresh_output_dir)
-    install.verify(fresh_output_dir)
+    # Native receiver must read precisely the signed bytes, not re-open the
+    # original user-controlled archive after verification (TOCTOU boundary).
+    install.owner_dir(fresh_output_dir.parent)
+    fd, captured_path = tempfile.mkstemp(
+        prefix=".lightup-signed-capture-", suffix=".zip",
+        dir=str(fresh_output_dir.parent),
+    )
+    captured = Path(captured_path)
+    try:
+        os.fchmod(fd, 0o600)
+        with os.fdopen(fd, "wb") as out:
+            out.write(verified_archive_bytes)
+            out.flush()
+            os.fsync(out.fileno())
+        receiver.receive(captured, fresh_output_dir)
+        install.verify(fresh_output_dir)
+    finally:
+        captured.unlink(missing_ok=True)
     print("SIGNED-CUSTODY + SOURCE-LOCK REVIEW_ONLY: PRIVATE local suite received.")
     print("This is NOT release approval, identity proof, consent, or permission to run scans.")
 
