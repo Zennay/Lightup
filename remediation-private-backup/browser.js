@@ -121,6 +121,7 @@
     const label = index === 0 ? "a" : "b";
     if (resetInput) el(label + "-file").value = "";
     el(label + "-pass").value = "";
+    el(label + "-open").disabled = false;
     status(label + "-status", "No decrypted source retained.");
     render();
   }
@@ -176,7 +177,9 @@
     return btoa(chunks.join(""));
   }
   async function encryptSubset() {
-    const active = slots[Number(el("source-select").value)];
+    const activeIndex = Number(el("source-select").value);
+    const active = slots[activeIndex];
+    const originalGeneration = generations[activeIndex];
     const pass = el("subset-pass"), verify = el("subset-confirm");
     const secret = pass.value, confirmed = verify.value;
     pass.value = ""; verify.value = "";
@@ -210,6 +213,8 @@
         ciphertext: asBase64(cipher), authority: FLAGS };
       const output = encoder.encode(asJsonAscii(envelope) + "\n");
       demand(output.length <= MAX_ARCHIVE, "Encrypted backup exceeds 38 MiB browser budget");
+      demand(generations[activeIndex] === originalGeneration && slots[activeIndex] === active,
+        "Original PRIVATE source was cleared or changed during encryption; no export");
       const blob = new Blob([output], { type: "application/octet-stream" });
       const url = URL.createObjectURL(blob), anchor = document.createElement("a");
       anchor.href = url; anchor.download = "LightUp-PRIVATE-HUMAN-selected-DRAFT-HOLD.lupb";
