@@ -13,6 +13,7 @@ import argparse
 import csv
 import io
 import os
+import re
 from pathlib import Path
 import shutil
 import stat
@@ -25,7 +26,7 @@ MAX_BROWSER_CSV = ledger.MAX_CSV
 
 def read_explicit_browser_csv(path):
     p = Path(path)
-    if not p.is_absolute() or p.name != "HUMAN-review.csv":
+    if not p.is_absolute() or not re.fullmatch(r"HUMAN-review(?: ?\\([1-9][0-9]{0,3}\\))?\\.csv", p.name):
         ledger.reject("PRIVATE HOLD: choose exact absolute HUMAN-review.csv path")
     fd = os.open(p, os.O_RDONLY | os.O_NOFOLLOW | os.O_CLOEXEC | os.O_NONBLOCK)
     try:
