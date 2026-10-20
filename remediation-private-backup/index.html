@@ -12,6 +12,7 @@ section{border:1px solid #384b65;background:#101e30;border-radius:12px;padding:1
 section.wide{grid-column:1/-1}.warning{font-weight:700;color:#ffe3a5}
 label{display:block;margin:.7rem 0 .25rem}input[type=file],input[type=password],select{background:#071322;color:#fff;border:1px solid #61778d;border-radius:8px;width:100%;padding:.6rem;min-width:0}
 button{border-radius:7px;background:#1d638a;border:1px solid #6db8d7;color:#fff;padding:.55rem .8rem;cursor:pointer;margin:.45rem .35rem .25rem 0}
+textarea{background:#071322;color:#fff;border:1px solid #61778d;border-radius:8px;width:100%;padding:.7rem;resize:vertical;line-height:1.5}
 button:disabled{opacity:.44;cursor:not-allowed}button:focus-visible,input:focus-visible{outline:3px solid #a6e6ff;outline-offset:2px}
 output{display:block;white-space:pre-wrap;word-break:break-word;font-size:.84rem;line-height:1.5;padding:.6rem;border:1px solid #334d61;border-radius:7px;min-height:3rem;margin-top:.7rem}
 table{border-collapse:collapse;width:100%;font-size:.88rem}th,td{border-bottom:1px solid #40566b;text-align:left;padding:.6rem .4rem;vertical-align:top;overflow-wrap:anywhere}
@@ -69,6 +70,15 @@ footer{font-size:.8rem;margin:1rem 0;color:#bed0df}
 <button type="button" id="difference-hide" class="subtle">Hide PRIVATE text review</button>
 <div class="review-columns"><div><strong>Archive A original</strong><pre id="difference-a"></pre></div><div><strong>Archive B original</strong><pre id="difference-b"></pre></div></div>
 </div>
+<h2>Owner-only HUMAN comparison notes</h2>
+<p>Write an explicit local, unverified reviewer note for the currently unlocked A/B snapshots. The note is linked only to their literal file-name, size and SHA-256 inventories—not to trusted source ownership, chronology, remediation or customer consent. Export creates ONE new separately password-encrypted PRIVATE note archive; original evidence bytes are never automatically included.</p>
+<label for="human-note">PRIVATE HUMAN review text (maximum 10,000 characters)</label>
+<textarea id="human-note" maxlength="10000" rows="6" placeholder="My own unverified observation. Required HUMAN follow-up and remaining unknowns..." aria-label="Local PRIVATE reviewer notes"></textarea>
+<label for="human-note-pass">New independent note archive password</label><input id="human-note-pass" type="password" autocomplete="new-password">
+<label for="human-note-confirm">Confirm new note archive password</label><input id="human-note-confirm" type="password" autocomplete="new-password">
+<button type="button" id="human-note-save">Encrypt HUMAN review note locally</button>
+<button type="button" id="human-note-clear" class="subtle">Clear PRIVATE review note</button>
+<output id="human-note-status" role="status" aria-live="polite">Unlock both sources, enter human-only observations, and explicitly save under a new password.</output>
 <button type="button" id="clear-all" class="subtle">Clear all selected PRIVATE sources and passwords</button></section>
 </main>
 <footer><p>Only a local operation of unreviewed PRIVATE bytes. Plaintext downloads must be stored in an appropriately protected folder, and are never automatically uploaded. This browser application is a separate user-interface companion to <code>vault.py</code>; cryptographic authenticity is limited to knowledge of the password used for the file. Existing LightUp security and HUMAN GO gates are unchanged.</p></footer>
