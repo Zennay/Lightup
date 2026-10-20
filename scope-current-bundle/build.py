@@ -20,10 +20,20 @@ DEST = Path(__file__).resolve().parent
 SOURCE = ROOT / "scope-unified-workspace"
 PARENT = "0f76f2f90a89f5b64bc8033aa2e2ee6ec2fc49cc"
 SOURCE_PINS = {
+    "README.md": "63b105f91f7f9db217bf617baf6007cabd6bfed5225f415d442971991cc66437",
+    "hub.template.html": "7804ab186a3d0126350f33fcad7e2de35dd0e871656645bf64b30a8eb3523d8d",
+    "style.css": "8d7f1d4bfa415c8c1903d125a8fb6d3b19bf6fd5c979426dbf30bbebabe88ed2",
+    "build.py": "48efc4c471f18378d6f7856464226e202debe06235c6f760b8712212295bebc8",
+    "check_bundle.py": "669913683a25f68f86732faae477dbd46ecc7c65748cd3b2c230995e0103a85d",
+    "verify-local.js": "8d9e857a807c3a29685002030b06bd3d270b78d6d27b5e77cd7e8d18d7e4dd10",
+    "verify.template.html": "3f8707ac434f078569ac33cbacc47699f964a9a173e05765017b6ad39c6cb81f",
+    "extra-cards.html": "8fc95348f13e16285d4028f26f720a475c4daac7a27dc5d1a92ebdbf94017991",
+    "handoff.js": "4bdc774d6020e83dc4ae9cc7a4b90cc68a8d22bceb875eab4494fd4ab578e6c3",
+    "handoff.template.html": "a935f563d8d4066e11a77bdba98b4eefb289194388374cc9f2980c8eeaf87416",
     "source-inspector.js": "a530524e5fe3e372373e8f16ede88c2fa008bc0e4e33f5ba8713239a29ed2c92",
     "source-drift.js": "7f71fedd841e1a1bc3eb9d4957e8bcbc73f84e947d33641093bf045691964d95",
-    "handoff.js": "4bdc774d6020e83dc4ae9cc7a4b90cc68a8d22bceb875eab4494fd4ab578e6c3",
-    "build.py": "48efc4c471f18378d6f7856464226e202debe06235c6f760b8712212295bebc8",
+    "source_pins.py": "781631ce17f454ef53f8ed5748428c85dcc5b9b8e211bf09df821baa64154a97",
+    "PINNED-ORIGINALS.json": "884b0e38eb5d712653d042215abd733749b901c3c85e4ff90ef6187ab5e2ec1e",
 }
 WORKROOMS = ("scope-intake-matrix", "scope-casebook-history",
              "scope-casebook-transfer", "scope-casebook-reconcile",
