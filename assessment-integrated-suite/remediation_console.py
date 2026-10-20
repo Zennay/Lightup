@@ -71,3 +71,53 @@ def prepare(session, path_prompt, ask, cohorts=False):
             session.original_comparison = source_flags[1]
         print("Manual mapping does not prove the sources belong to the same client or engagement.")
         print("Any private recipient ZIP remains confidential and is NOT sent or released.")
+
+
+def prepare_casebook(session, path_prompt, ask, cohorts=False):
+    """One foreground original remediation + exact-byte PRIVATE HUMAN workroom."""
+    parent = path_prompt("Existing owner-only 0700 PRIVATE parent", session.parent)
+    flags = []
+    if cohorts:
+        flags += ["--baseline", path_prompt("Previously completed original baseline cohort JSON")]
+        flags += ["--candidate", path_prompt("Previously completed original candidate cohort JSON")]
+    else:
+        flags += ["--comparison", path_prompt("Previously completed original canonical comparison JSON",
+                                               session.original_comparison)]
+    source = path_prompt("Original separately authenticated five-column findings CSV",
+                         session.findings_csv)
+    flags += ["--findings-csv", source]
+    links = ask("Optional unchanged original source-bound HUMAN links JSON")
+    if links:
+        if len(links) > 4096 or any(c in links for c in "\x00\r\n"):
+            raise ValueError("HOLD: invalid PRIVATE links input")
+        flags += ["--links", links]
+    prefix = ask("Unique private casebook prefix", "human-casebook")
+    bundle = ask("Also create confidential local original review ZIP? yes/no", "no").lower()
+    if bundle not in ("yes", "no"):
+        raise ValueError("HOLD: choose yes or no")
+    if bundle == "yes":
+        flags += ["--bundle"]
+    try:
+        output = subprocess.run(
+            [sys.executable, "-P", str(ROOT / "remediation_casebook.py"), *flags,
+             "--private-parent", parent, "--prefix", prefix],
+            cwd=ROOT.parent, capture_output=True, timeout=300, check=False,
+            env={**os.environ, "PYTHONNOUSERSITE": "1", "PYTHONDONTWRITEBYTECODE": "1"})
+        if (output.returncode not in (2, 3) or len(output.stdout) > 4096
+                or len(output.stderr) > 4096):
+            raise ValueError("original private casebook rejected")
+        rows = output.stdout.decode("utf-8", "strict").strip().splitlines()
+        if (len(rows) != 3 or not rows[0].startswith("PRIVATE ")
+                or not rows[1].startswith("OPEN LOCALLY: ")):
+            raise ValueError("original source output not confirmed")
+        page = Path(rows[1][len("OPEN LOCALLY: "):])
+        if not page.is_file() or len(str(page)) > 4096:
+            raise ValueError("original local casebook page unavailable")
+        print("PRIVATE HOLD: source requires HUMAN review; never verified consent or fix." if
+              output.returncode == 3 else "PRIVATE REVIEW_ONLY: original casebook + ledger ready.")
+        print("Open locally: " + str(page))
+        session.parent, session.findings_csv, session.remediation_kit = parent, source, str(page.parent)
+        if not cohorts:
+            session.original_comparison = flags[1]
+    except (OSError, ValueError, UnicodeError, subprocess.TimeoutExpired):
+        print("HOLD: PRIVATE original source casebook refused; inspect any original-only output locally.")
