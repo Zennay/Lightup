@@ -27,6 +27,7 @@ MAX_BYTES = 256 * 1024
 TEMPLATE = "PRIVATE-human-template.csv"
 REPORT = "PRIVATE-human-followup.html"
 SUMMARY = "PRIVATE-human-summary.csv"
+VAULT = "PRIVATE-human-reviewed.luhd"
 
 
 def source_bytes(name: str) -> bytes:
@@ -180,7 +181,7 @@ def human_counts(answers: list[dict], minimum: int) -> str:
     return stream.getvalue()
 
 
-def publish(output_dir: str, filename: str, text: str) -> None:
+def publish(output_dir: str, filename: str, content: str | bytes) -> None:
     """Publish only complete PRIVATE output; never replace an old handoff."""
     directory = Path(output_dir)
     stage = None
@@ -192,7 +193,7 @@ def publish(output_dir: str, filename: str, text: str) -> None:
         fd, tempname = tempfile.mkstemp(prefix=".lightup-human-private-", dir=directory)
         stage = Path(tempname)
         with os.fdopen(fd, "wb") as stream:
-            stream.write(text.encode("utf-8"))
+            stream.write(content if type(content) is bytes else content.encode("utf-8"))
             stream.flush()
             os.fsync(stream.fileno())
         target = directory / filename
@@ -221,11 +222,13 @@ def publish(output_dir: str, filename: str, text: str) -> None:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="PRIVATE receipt-bound HUMAN disclosure notes, never release")
     commands = parser.add_subparsers(dest="action", required=True)
-    for name in ("prepare", "render", "summarize"):
+    for name in ("prepare", "render", "summarize", "seal"):
         sub = commands.add_parser(name)
         sub.add_argument("--receipt", required=True, help="preflight PRIVATE-receipt.json")
         sub.add_argument("--private-output-dir", required=True, help="existing owner-only 0700 directory")
-        if name != "prepare":
+        if name == "seal":
+            sub.add_argument("--answers", required=True, help="source-free PRIVATE HUMAN CSV to seal in memory")
+        elif name != "prepare":
             inputs = sub.add_mutually_exclusive_group(required=True)
             inputs.add_argument("--answers", help="completed PRIVATE HUMAN plaintext CSV")
             inputs.add_argument("--vault", help="sealed PRIVATE HUMAN .luhd; prompt for password")
@@ -237,6 +240,15 @@ def main(argv: list[str] | None = None) -> int:
         digest, rows = receipt(args.receipt)
         if args.action == "prepare":
             publish(args.private_output_dir, TEMPLATE, template(digest, rows))
+        elif args.action == "seal":
+            original = source_bytes(args.answers)
+            admitted_answers(original, digest, rows)
+            try:
+                from vault_native import VaultHold, encrypt_vault
+                packet = encrypt_vault(original, digest)
+            except (ImportError, VaultHold):
+                raise Hold("HOLD: PRIVATE HUMAN vault encryption refused") from None
+            publish(args.private_output_dir, VAULT, packet)
         else:
             if args.vault:
                 try:
