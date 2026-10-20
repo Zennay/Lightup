@@ -376,9 +376,34 @@
       root.append(row);
     }
   }
+  function hideDifferenceReview() {
+    el("difference-review").classList.add("hide");
+    el("difference-a").textContent = "";
+    el("difference-b").textContent = "";
+  }
+  function showDifferenceReview(name) {
+    demand(slots[0] && slots[1], "Both original PRIVATE archives must remain unlocked");
+    demand(/\.(txt|md|csv|json|log)$/i.test(name),
+      "Only local text-origin files can be displayed; binary preview withheld");
+    if (!confirm("Reveal PRIVATE original source text from operator-selected A/B " +
+      "for " + name + "? This is NOT a trusted timeline, sanitized disclosure or remediation review.")) return;
+    function textFor(source) {
+      const file = source.byName.get(name);
+      if (!file) return "[Original file not present in this operator-chosen archive]";
+      try {
+        const content = decoder.decode(file.bytes.subarray(0, Math.min(file.size, 8192)));
+        return content + (file.size > 8192 ? "\n[PRIVATE source truncated to 8192 bytes]" : "");
+      } catch (_) { return "[Non-UTF-8 original source: text preview withheld]"; }
+    }
+    el("difference-a").textContent = textFor(slots[0]);
+    el("difference-b").textContent = textFor(slots[1]);
+    el("difference-review").classList.remove("hide");
+    el("difference-review").scrollIntoView({ block: "nearest" });
+  }
   function renderComparison() {
     const root = el("compare-rows");
     root.replaceChildren();
+    hideDifferenceReview(); // Never retain a PRIVATE preview across source changes.
     if (!slots[0] || !slots[1]) {
       status("compare-status", "Unlock both independent encrypted archives to compare.");
       return;
@@ -393,6 +418,16 @@
       totals[kind]++;
       const tr = document.createElement("tr");
       cell(tr, kind); cell(tr, name); cell(tr, a?.size ?? "—"); cell(tr, b?.size ?? "—");
+      const review = document.createElement("td");
+      if (/\.(txt|md|csv|json|log)$/i.test(name)) {
+        review.append(button("Review source text", () => {
+          try { showDifferenceReview(name); }
+          catch (error) { status("compare-status", "HOLD: " + (error?.message || "Unable to show PRIVATE text")); }
+        }));
+      } else {
+        review.textContent = "Binary: no text preview";
+      }
+      tr.append(review);
       root.append(tr);
     }
     status("compare-status", Object.entries(totals).map(([key, value]) => key + ": " + value).join(" · ") +
@@ -438,6 +473,7 @@
   el("capture-files").addEventListener("change", () => clearCapture(false));
   el("capture-create").addEventListener("click", createCapture);
   el("capture-clear").addEventListener("click", () => clearCapture(true));
+  el("difference-hide").addEventListener("click", hideDifferenceReview);
   el("compare-select-b").addEventListener("click", () => {
     try { chooseChangedFromB(); }
     catch (error) { status("compare-status", "HOLD: " + (error?.message || "Unable to select B changes")); }
