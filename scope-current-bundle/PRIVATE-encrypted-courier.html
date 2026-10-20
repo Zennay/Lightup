@@ -1,4 +1,4 @@
-<!doctype html><html lang='en'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><meta name='referrer' content='no-referrer'><meta http-equiv='Content-Security-Policy' content="default-src &#x27;none&#x27;; script-src &#x27;sha256-Z9aPv8wwtr9GdAxCu4j44F5i3obhIOMKS41wrfzTgJo=&#x27;; style-src &#x27;sha256-KDWbvwf4oUlmiiF6hZ7HJV4qX3qoU/x5XP+7Kesono4=&#x27;; connect-src &#x27;none&#x27;; img-src &#x27;none&#x27;; object-src &#x27;none&#x27;; frame-src &#x27;none&#x27;; base-uri &#x27;none&#x27;; form-action &#x27;none&#x27;"><title>LightUp PRIVATE encrypted HUMAN courier · DRAFT/HOLD</title><style>*{box-sizing:border-box}:root{color-scheme:dark}body{font:16px/1.55 system-ui,sans-serif;max-width:940px;margin:0 auto;padding:28px;background:#0f192a;color:#eff6ff}h1{font-size:clamp(1.7rem,4vw,2.5rem)}section{background:#1b3049;border-radius:12px;padding:20px;margin:20px 0}p{line-height:1.6}.hold{border:1px solid #ab8652;background:#342817;padding:16px;border-radius:9px;color:#ffdfae}label{display:block;margin:12px 0}label span{display:block;margin:4px 0}input,button{font:inherit;background:#2a4869;color:#fff;border:1px solid #8295b5;border-radius:7px;padding:10px;max-width:100%}input[type=password]{width:100%;max-width:480px}button{cursor:pointer;background:#376999;font-weight:700;margin:10px 0}button:hover{background:#4981b3}button:disabled{opacity:.55;cursor:not-allowed}button:focus-visible,input:focus-visible{outline:3px solid #85d4ff}output{display:block;margin:18px 0;padding:12px;border:1px solid #55708f;border-radius:8px;white-space:pre-wrap}small{color:#c0d3ea}</style></head><body><main><h1>LightUp · PRIVATE encrypted HUMAN courier</h1><p class='hold'><strong>INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD.</strong> This local utility encrypts/decrypts one PRIVATE review HTML/CSV/JSON file only. It does not sign the original record, authenticate an actor, authorize an assessment, grant permission, revoke authority, contact a target or launch an active scan. Encrypted content is not automatically displayed or executed.</p><p>Use a locally trusted modern browser with offline WebCrypto. Transfer the recipient's own encrypted packet through an authorized channel; give its unique strong passphrase separately to the authenticated intended recipient. Do not share the private owner receipt or files belonging to another team. The password is not stored on disk or in browser localStorage by this tool.</p><section><h2>1. Lock a local HUMAN file</h2><label><span>One original PRIVATE .html / .csv / .json (max 2 MiB)</span><input id='plainInput' type='file' accept='.html,.csv,.json'></label><label><span>Unique strong private passphrase, at least 12 UTF-8 bytes</span><input id='secret' type='password' autocomplete='off' maxlength='1024'></label><label><span>Confirm passphrase</span><input id='secretConfirm' type='password' autocomplete='off' maxlength='1024'></label><button type='button' id='seal'>Encrypt as PRIVATE .luhr</button><small>Uses PBKDF2-SHA-256 (310,000 iterations) and AES-256-GCM with a new random 16-byte salt and 12-byte nonce for each envelope. The exact binary envelope header is authenticated. Original file bytes are not changed.</small></section><section><h2>2. Unlock an encrypted PRIVATE handoff</h2><label><span>One encrypted .luhr file</span><input id='vaultInput' type='file' accept='.luhr'></label><p>Enter the matching passphrase above and click decrypt. The original contained filename and bytes are recovered locally without auto-opening them. Do not trust or execute unknown HTML, even if decryption succeeds.</p><button type='button' id='open'>Decrypt to local original file</button></section><output id='message' role='status' aria-live='polite'>No files have been selected or transmitted. PRIVATE bytes stay in this browser.</output><p>Confidentiality does NOT establish sender trust, source provenance, tenant membership, client consent, operator consent, grant, revocation or security clearance. All original LightUp authorization/release gates remain mandatory.</p></main><script>"use strict";
+<!doctype html><html lang='en'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><meta name='referrer' content='no-referrer'><meta http-equiv='Content-Security-Policy' content="default-src &#x27;none&#x27;; script-src &#x27;sha256-xnMBkJ7vsNaUSxm7r18ZI6YzqVOxz42JrN8Mykk/xp0=&#x27;; style-src &#x27;sha256-KDWbvwf4oUlmiiF6hZ7HJV4qX3qoU/x5XP+7Kesono4=&#x27;; connect-src &#x27;none&#x27;; img-src &#x27;none&#x27;; object-src &#x27;none&#x27;; frame-src &#x27;none&#x27;; base-uri &#x27;none&#x27;; form-action &#x27;none&#x27;"><title>LightUp PRIVATE encrypted HUMAN courier · DRAFT/HOLD</title><style>*{box-sizing:border-box}:root{color-scheme:dark}body{font:16px/1.55 system-ui,sans-serif;max-width:940px;margin:0 auto;padding:28px;background:#0f192a;color:#eff6ff}h1{font-size:clamp(1.7rem,4vw,2.5rem)}section{background:#1b3049;border-radius:12px;padding:20px;margin:20px 0}p{line-height:1.6}.hold{border:1px solid #ab8652;background:#342817;padding:16px;border-radius:9px;color:#ffdfae}label{display:block;margin:12px 0}label span{display:block;margin:4px 0}input,button{font:inherit;background:#2a4869;color:#fff;border:1px solid #8295b5;border-radius:7px;padding:10px;max-width:100%}input[type=password]{width:100%;max-width:480px}button{cursor:pointer;background:#376999;font-weight:700;margin:10px 0}button:hover{background:#4981b3}button:disabled{opacity:.55;cursor:not-allowed}button:focus-visible,input:focus-visible{outline:3px solid #85d4ff}output{display:block;margin:18px 0;padding:12px;border:1px solid #55708f;border-radius:8px;white-space:pre-wrap}small{color:#c0d3ea}</style></head><body><main><h1>LightUp · PRIVATE encrypted HUMAN courier</h1><p class='hold'><strong>INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD.</strong> This local utility encrypts/decrypts one PRIVATE review HTML/CSV/JSON or pinned offline ZIP file only. It does not sign the original record, authenticate an actor, authorize an assessment, grant permission, revoke authority, contact a target or launch an active scan. Encrypted content is not automatically displayed or executed.</p><p>Use a locally trusted modern browser with offline WebCrypto. Transfer the recipient's own encrypted packet through an authorized channel; give its unique strong passphrase separately to the authenticated intended recipient. Do not share the private owner receipt or files belonging to another team. The password is not stored on disk or in browser localStorage by this tool.</p><section><h2>1. Lock a local HUMAN file</h2><label><span>One original PRIVATE .html / .csv / .json / .zip (max 2 MiB)</span><input id='plainInput' type='file' accept='.html,.csv,.json,.zip'></label><label><span>Unique strong private passphrase, at least 12 UTF-8 bytes</span><input id='entryA' type='password' autocomplete='off' maxlength='1024'></label><label><span>Confirm passphrase</span><input id='entryB' type='password' autocomplete='off' maxlength='1024'></label><button type='button' id='seal'>Encrypt as PRIVATE .luhr</button><small>Uses PBKDF2-SHA-256 (310,000 iterations) and AES-256-GCM with a new random 16-byte salt and 12-byte nonce for each envelope. The exact binary envelope header is authenticated. Original file bytes are not changed.</small></section><section><h2>2. Unlock an encrypted PRIVATE handoff</h2><label><span>One encrypted .luhr file</span><input id='vaultInput' type='file' accept='.luhr'></label><p>Enter the matching passphrase above and click decrypt. The original contained filename and bytes are recovered locally without auto-opening them. Do not trust or execute unknown HTML, even if decryption succeeds.</p><button type='button' id='open'>Decrypt to local original file</button></section><output id='message' role='status' aria-live='polite'>No files have been selected or transmitted. PRIVATE bytes stay in this browser.</output><p>Confidentiality does NOT establish sender trust, source provenance, tenant membership, client consent, operator consent, grant, revocation or security clearance. All original LightUp authorization/release gates remain mandatory.</p></main><script>"use strict";
 /*
  * LightUp PRIVATE offline courier, non-authorizing transport only.
  * AES-256-GCM with fresh per-envelope nonce and salt; PBKDF2-SHA-256 310k.
@@ -12,8 +12,8 @@
   const HEADER = 40;
   const sealInput = document.getElementById("plainInput");
   const openInput = document.getElementById("vaultInput");
-  const secret=[REDACTED]"secret");
-  const confirmSecret = document.getElementById("secretConfirm");
+  const pwBox = document.getElementById("entryA");
+  const confirmBox = document.getElementById("entryB");
   const message = document.getElementById("message");
   const lockBtn = document.getElementById("seal");
   const unlockBtn = document.getElementById("open");
@@ -22,7 +22,7 @@
   const decoder = new TextDecoder("utf-8", {fatal: true});
   const validName = name => typeof name === "string" &&
     /^[A-Za-z0-9][A-Za-z0-9_.-]{0,119}$/.test(name) &&
-    !name.includes("..") && /\.(?:html|csv|json)$/i.test(name);
+    !name.includes("..") && /\.(?:html|csv|json|zip)$/i.test(name);
   function say(value) { message.textContent = value; }
   function exclusive(f) {
     return async () => {
@@ -72,8 +72,8 @@
   async function seal() {
     if (!crypto?.subtle || !crypto.getRandomValues) throw Error("WebCrypto unavailable");
     const file = choose(sealInput.files?.[0], MAX_BYTES);
-    const pass = acceptPass(secret.value);
-    if (pass !== confirmSecret.value) throw Error("password confirmation mismatch");
+    const pass = acceptPass(pwBox.value);
+    if (pass !== confirmBox.value) throw Error("password confirmation mismatch");
     const name = encoder.encode(file.name);
     if (!validName(file.name) || name.length > 120) throw Error("unsafe private filename");
     const sourceBytes = await bytesForFile(file);
@@ -96,14 +96,14 @@
     if (!confirm("Save an encrypted PRIVATE handoff? Share the passphrase through a different authenticated channel. Encryption alone is NOT client/operator authorization.")) return;
     save("LightUp-PRIVATE-HUMAN-handoff.luhr", out, "application/octet-stream");
     say("Encrypted PRIVATE courier file prepared. Confirm the download was saved safely; no recipient/source authority was established.");
-    secret.value = ""; confirmSecret.value = "";
+    pwBox.value = ""; confirmBox.value = "";
     sealInput.value = "";
   }
   async function open() {
     if (!crypto?.subtle) throw Error("WebCrypto unavailable");
     const file = choose(openInput.files?.[0], MAX_ENVELOPE);
     if (!file.name.toLowerCase().endsWith(".luhr")) throw Error("not a courier envelope");
-    const pass = acceptPass(secret.value);
+    const pass = acceptPass(pwBox.value);
     const blob = new Uint8Array(await file.arrayBuffer());
     if (blob.length < HEADER + 16) throw Error("short envelope");
     if (!MAGIC.every((v, i) => v === blob[i])) throw Error("wrong envelope version");
@@ -129,7 +129,7 @@
     if (!confirm("Decrypt this locally authenticated AES-GCM payload? The content and sender are NOT independently trusted. Save privately; do not open HTML from unknown people.")) return;
     save(originalName, data, "application/octet-stream");
     say("PRIVATE original file downloaded without automatic execution. The sender, reviewer, source, consent and grant are not authenticated.");
-    secret.value = ""; confirmSecret.value = ""; openInput.value = "";
+    pwBox.value = ""; confirmBox.value = ""; openInput.value = "";
     plain.fill(0);
   }
   lockBtn.addEventListener("click", exclusive(seal));
