@@ -42,11 +42,21 @@
 </section>
 <section class="panel">
 <h2>3. Brongebonden plan hervatten / exporteren</h2>
+<div class="vault">
+<h3>Versleuteld PRIVATE HUMAN-plan (standaard overdracht)</h3>
+<p>Beveilig de gevoelige HUMAN-aliassen, bronhashes en acties lokaal met een afzonderlijk wachtwoord. AES-256-GCM met PBKDF2-SHA256 (310.000 iteraties, verse willekeurige salt en nonce). Encryptie bewijst <strong>geen bronherkomst of toestemming</strong>.</p>
+<div class="actions">
+<label>Privéwachtwoord (12–128 tekens) <input id="vault-password" type="password" minlength="12" maxlength="128" autocomplete="off" placeholder="Wordt niet opgeslagen"></label>
+<button id="export-vault" type="button">Versleuteld plan exporteren (.lurt)</button>
+<label for="vault-import" class="filelabel secondary">Versleuteld plan openen (.lurt)</label><input id="vault-import" type="file" accept=".lurt,application/json">
+</div>
+<p class="muted">Wachtwoordverlies betekent geen herstel van versleutelde HUMAN-keuzes. De actuele originele bronbestanden moeten opnieuw zijn geselecteerd; bij mismatch wordt geen enkele HUMAN-rij overgenomen.</p>
+</div>
 <p>Een bestaand plan wordt uitsluitend in zijn geheel geaccepteerd wanneer de <em>actueel geselecteerde</em> bestandsbytes exact dezelfde SHA-256 en grootte hebben. Geen gedeeltelijke overname, geen automatische carry van gewijzigde bronnen. Het plan is <strong>PRIVATE en ongetekend</strong>: hashes alleen bewijzen bytegelijkheid.</p>
 <div class="actions">
 <label for="receipt" class="filelabel">Bestaand privéplan openen</label><input id="receipt" type="file" accept=".json,application/json">
 <label for="compare" class="filelabel secondary">Vergelijk ander privéplan (geen overname)</label><input id="compare" type="file" accept=".json,application/json">
-<button id="export-plan" type="button">Privéplan exporteren (.json)</button>
+<button id="export-plan" class="secondary" type="button">Onversleuteld PRIVATE JSON exporteren (expliciet)</button>
 <button id="export-counts" class="secondary" type="button">Alleen statusaantallen (.csv)</button>
 <button id="print" class="secondary" type="button">Privé-overzicht afdrukken</button>
 </div>
