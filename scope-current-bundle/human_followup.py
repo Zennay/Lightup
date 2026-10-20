@@ -15,6 +15,7 @@ from pathlib import Path
 import sys
 
 from change_brief import AUTHORITY, source, require_fresh_private_directory, write_private
+from privacy_counts import suppressed_counts
 
 MAX_CSV = 400_000
 FIELDS = ("previous_manifest_sha256", "current_manifest_sha256",
@@ -102,13 +103,15 @@ def main(argv):
     counts = {"posture": "INCUBATE_M3_M7_DRAFT_HOLD",
               "authority": {key: False for key in sorted(AUTHORITY)},
               "heads_changed": old_heads != new_heads,
-              "human_stage_counts": {stage: sum(1 for row in enriched if row[4] == stage)
-                                     for stage in sorted(STAGES)},
-              "source_change_counts": {kind: sum(1 for row in enriched if row[1] == kind)
-                                        for kind in sorted(STATUSES)}}
+              "human_stage_counts": suppressed_counts(
+                  {stage: sum(1 for row in enriched if row[4] == stage)
+                   for stage in sorted(STAGES)}, len(enriched)),
+              "source_change_counts": suppressed_counts(
+                  {kind: sum(1 for row in enriched if row[1] == kind)
+                   for kind in sorted(STATUSES)}, len(enriched))}
     require_fresh_private_directory(output)
     write_private(output / "human-review.html", page)
-    write_private(output / "anonymous-counts.json", (json.dumps(counts, sort_keys=True, indent=2) + "\n").encode("utf-8"))
+    write_private(output / "source-minimized-counts.json", (json.dumps(counts, sort_keys=True, indent=2) + "\n").encode("utf-8"))
     print("Private HUMAN read-only review:", output / "human-review.html")
 
 
