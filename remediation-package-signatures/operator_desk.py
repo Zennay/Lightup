@@ -11,7 +11,8 @@ from pathlib import Path
 import secrets
 import sys
 
-from offline_signatures import Hold
+from offline_signatures import Hold, keygen, sign
+from portable_handoff import pack as pack_source_only
 from inbox import inbox
 from inbox_reopen import inspect
 from software_revision_desk import build as build_revision_desk
@@ -85,10 +86,13 @@ def main() -> int:
             "\n7  Irreversibly require two distinct locally trusted signers"
             "\n8  Compare 2–12 original separately received PRIVATE software inboxes"
             "\n9  Show LOCAL revoked-key impact across earlier PRIVATE software inboxes"
+            "\n10 Generate new encrypted offline Ed25519 signing keys"
+            "\n11 Sign an existing original offline software-only ZIP"
+            "\n12 Pack the original signed ZIP for one-file PRIVATE handoff"
             "\n0  End foreground session"
         )
         try:
-            choice = _read("Choose 0–9: ")
+            choice = _read("Choose 0–12: ")
             if choice == "0":
                 print("REVIEW_ONLY desk ended; existing local private files remain.")
                 return 2
@@ -144,8 +148,37 @@ def main() -> int:
                         break
                 dest = args.workdir / ("private-key-impact-" + secrets.token_hex(6))
                 build_revocation_impact(registry, affected, dest)
+            elif choice == "10":
+                destination = args.workdir / ("sender-keys-" + secrets.token_hex(6))
+                keygen(destination)
+                print("Private signing keys only in:", destination)
+                print("Independently confirm the displayed public key fingerprint before any recipient trust.")
+            elif choice == "11":
+                archive = _path("Existing original software-only ZIP (absolute): ")
+                private_key = _path("Owner PRIVATE Ed25519 encrypted key file (absolute): ")
+                receipt = args.workdir / ("source-only-signature-" + secrets.token_hex(6) + ".lusig.json")
+                sign(archive, private_key, receipt)
+                print("New PRIVATE signed package receipt:", receipt)
+            elif choice == "12":
+                archive = _path("Existing original source-only ZIP (absolute): ")
+                receipt = _path("Existing signed source-only receipt (absolute): ")
+                public_key = _path("Original signer public Ed25519 PEM (absolute): ")
+                fingerprint = _read("Original independently checked 64-character lowercase key fingerprint: ")
+                second = None
+                if _confirm("Add second independently trusted signer for the same original ZIP?"):
+                    second = (
+                        _path("Second signed software receipt (absolute): "),
+                        _path("Second signer public Ed25519 PEM (absolute): "),
+                        _read("Second independently checked fingerprint: "),
+                    )
+                destination = args.workdir / ("source-only-portable-" + secrets.token_hex(6) + ".zip")
+                pack_source_only(
+                    archive, receipt, public_key, fingerprint, destination,
+                    secondary=second,
+                )
+                print("New PRIVATE original source-only portable handoff:", destination)
             else:
-                print("Unknown choice; enter 0–9.")
+                print("Unknown choice; enter 0–12.")
         except (ValueError, OSError) as exc:
             print("HOLD:", exc, file=sys.stderr)
             print("Only this foreground operation was refused; no authority was granted.")
