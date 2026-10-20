@@ -10,6 +10,7 @@ import evidence_dialogue_console
 import disclosure_console
 import retention_console
 import session_console
+import route_console
 import os
 from pathlib import Path
 import subprocess
@@ -364,6 +365,7 @@ def main() -> int:
         "37": lambda x: session_console.save(x, path_prompt, ask),
         "38": lambda x: session_console.reopen(x, path_prompt, ask),
         "39": lambda x: session_console.history(x, path_prompt, ask),
+        "40": lambda x: route_console.prepare(x, path_prompt, ask),
     }
     while True:
         print("\n1. Prepare PRIVATE original briefing + 15 offline HUMAN workrooms")
@@ -405,6 +407,7 @@ def main() -> int:
         print("37. Save owner-private PATH-ONLY session + offline workroom bookmarks")
         print("38. Resume PRIVATE operator paths manually (no source execution)")
         print("39. Compare 2-8 original PRIVATE operator snapshots (HUMAN-only)")
+        print("40. Build one owner-private assessment route board from current original workrooms")
         print("0. Exit without scheduling or executing anything")
         try:
             choice = ask("Choice", "0")
@@ -412,7 +415,7 @@ def main() -> int:
                 print("Exited. No external tasks were scheduled or executed.")
                 return 0
             if choice not in menu:
-                print("Choose a number from 0 to 39.")
+                print("Choose a number from 0 to 40.")
                 continue
             menu[choice](session)
         except (KeyboardInterrupt, EOFError):

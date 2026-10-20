@@ -8,6 +8,30 @@ This branch carries the original held lab inspector/CLI from #1610, original PRI
 
 The operator can take **already-produced** original PRIVATE lab JSON, generate both original-source-admitted PRIVATE disclosure review and optional detailed finding-level PRIVATE briefing with **one command**, and receive an offline entry page linking the original generated artifacts plus **five actual existing offline HUMAN browser workrooms**. This joins previously isolated product capabilities without scanning.
 
+## NEW: Owner-private assessment route board (native console option 40)
+
+Run `python3 assessment-integrated-suite/console.py` in a trusted **interactive
+foreground** terminal. After manually producing original offline workrooms,
+choose **40**. Supply an EXISTING owner-only 0700 output parent outside the
+checkout, an unused simple folder name, and explicitly type
+`BUILD PRIVATE BOARD`. This writes only a new exclusive owner-private 0700
+folder with `OPEN-PRIVATE.html` and `PRIVATE-ROUTE-SUMMARY.json`, both 0600.
+
+The static, scriptless file: dashboard groups original workrooms by intake,
+benchmarks, select-only evidence, human remediation and retention. Each row
+shows **LOCAL PAGE PRESENT / REVIEW ONLY**, **NOT PREPARED**, or
+**HOLD: PREVIOUS PATH UNAVAILABLE**, followed by a concrete manual next
+action. It links only directly to already existing, owner-owned 0600 original
+PRIVATE offline entry pages; never loads sources, passwords or notes, and
+never runs a stage. The JSON is minimal: field names, status and all-false
+authority flags, without paths, original evidence or client content. The
+**HTML contains PRIVATE local file paths** in links and must remain on the
+same trusted owner device. Deleting or moving a source after board creation
+makes bookmarks stale; open the original workflow and re-admit original
+bytes/authorization afresh. Presence of a page is **not** correctness,
+readiness, approval or proof of identity. Existing review/CI/consent HOLD
+still applies; never send or publish this board.
+
 ## Run completely locally in a trusted checkout
 
 Prepare a separate, empty or existing **owner-owned mode 0700** parent folder *outside the repository*. Never use a repository or a public web root for customer data.
