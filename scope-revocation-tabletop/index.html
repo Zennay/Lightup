@@ -47,6 +47,10 @@
             <thead><tr><th>Scenario</th><th>Fictieve toestand</th><th>Acties</th></tr></thead><tbody id="bank-rows"></tbody></table></div>
         </section>
         <div class="section-top log-title"><h3>Gebeurtenissen</h3><span id="step-count" class="count">0 / 64</span></div>
+        <label for="timeline-filter">Tijdlijn filteren</label><select id="timeline-filter" class="timeline-filter">
+          <option value="all">Alle gebeurtenissen</option><option value="attempts">Alleen fictieve uitvoerpogingen</option>
+          <option value="holds">Alleen uitvoerpogingen met oefen-HOLD</option><option value="revisions">Alleen scope-, risico- en intrekkingswijzigingen</option>
+        </select>
         <ol id="timeline" class="timeline" aria-live="polite"></ol>
         <p class="muted" id="empty">Nog geen stappen. Kies een fictief startscenario of voeg een gebeurtenis toe.</p>
       </section>
@@ -55,6 +59,11 @@
         <div class="verdict"><span id="status-icon" class="status-icon">!</span><div><p class="eyebrow">FICTIEVE PRECONDITIES</p><h3 id="status-title">Wacht op scenario</h3><p id="status-reason">De simulatie beoordeelt alleen handmatig ingevoerde gebeurtenissen.</p></div></div>
         <h3 class="subheading">Fictieve toestand</h3>
         <dl class="facts"><div><dt>Clientverklaring</dt><dd id="client-state">Niet aanwezig</dd></div><div><dt>Operatorverklaring</dt><dd id="operator-state">Niet aanwezig</dd></div><div><dt>Scope & risico</dt><dd id="scope-state">Startversie</dd></div><div><dt>Geldigheidsvenster</dt><dd id="window-state">Open (fictief)</dd></div><div><dt>Noodstop</dt><dd id="stop-state">Niet gesimuleerd</dd></div><div><dt>Laatste uitvoerpoging</dt><dd id="attempt-state">Geen</dd></div></dl>
+        <section class="attempt-history" aria-labelledby="attempt-history-title">
+          <h3 id="attempt-history-title">Historische uitvoerpogingen — alleen oefening</h3>
+          <p id="attempt-history-summary" class="muted">Geen fictieve uitvoerpogingen.</p>
+          <ul id="attempt-history-details" class="needs"></ul>
+        </section>
         <h3 class="subheading">Human review: benodigde verificatie</h3>
         <ul class="needs" id="needs"><li>Actueel onafhankelijk geauthenticeerd bewijs van beide echte partijen.</li><li>Exacte actuele assets, capability, risico en geldigheidsvenster.</li><li>Actuele brongebonden intrekkingscontrole vlak vóór uitvoering.</li><li>Onafhankelijke privacy/security-goedkeuring en expliciete HUMAN GO.</li></ul>
         <section class="comparison" aria-labelledby="comparison-title"><h3 id="comparison-title">Fictieve wijzigingsimpact</h3><p id="compare-summary" class="muted">Leg links een nulmeting vast om veranderingen te vergelijken.</p><ul id="compare-deltas" class="needs"></ul></section>
