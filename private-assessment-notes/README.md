@@ -205,3 +205,20 @@ If you change a HUMAN stage after exporting a plan, export a new plan after
 the whole-source CSV is updated; old plans cannot override the final original
 HUMAN decision. The native completed-original SHA and stage accounting remain
 mandatory even when a browser selection appears valid.
+
+### Reopening a selected-only PRIVATE plan
+
+The offline HUMAN browser editor can **also reopen** one of its own canonical
+`PRIVATE-HUMAN-selected-plan.json` files using **Reopen original PRIVATE
+selected discussion plan**. If you saved complete HUMAN CSV choices separately,
+restore those choices first; the plan will not set any HUMAN stage or free note.
+
+The plan restore requires exact canonical UTF-8 JSON format, the same complete
+source count and original unsigned per-position SHA identities, distinct
+strictly ascending original ordinals, literal false authority flags and all
+selected sources currently individually marked `INTERNAL_REVIEW_ONLY`. It
+refuses modified or malformed plans atomically, without replacing any current
+checkbox selections. Even a matching plan requires a separate HUMAN
+confirmation. It restores only the selected UI checkboxes, not original
+evidence, external approval, real recipient identity, authorization or
+revocation status. This is entirely in-memory/offline; no upload or storage.
