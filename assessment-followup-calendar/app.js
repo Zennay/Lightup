@@ -216,11 +216,12 @@
     const parsed=original(csv(raw,HEAD.length));
     const h=Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256",buffer)),b=>b.toString(16).padStart(2,"0")).join("");
     if(active && changed && !confirm("Discard the current unsaved PRIVATE calendar workroom?"))return;
-    items=parsed;hash=h;plan=new Map();active=true;changed=false;page=0;
+    items=parsed;hash=h;plan=new Map();active=true;changed=false;page=0;agendaPage=0;
     $("desk").hidden=false;$("agenda").hidden=false;$("out").hidden=false;$("reset").disabled=false;
     $("identity").textContent=`${items.length} HUMAN rows · unsigned worksheet digest ${hash.slice(0,12)}…`;
     $("severity").value="";$("stage").value="";$("status").value="";$("query").value="";
     $("restore").value="";$("tz").textContent=zone;
+    $("agendaHorizon").value="7";$("agendaQuery").value="";
     render();inform("Original HUMAN worksheet admitted in memory. No actual source authentication or grant verified.");
   }
   async function onRestore(file){
@@ -229,7 +230,7 @@
     hold(!raw.startsWith("\uFEFF"));
     const imported=restore(csv(raw,PLAN_HEAD.length));
     if(changed && !confirm("Replace all current unsaved reminder dates with this exact-source PRIVATE plan?"))return;
-    plan=imported;page=0;changed=false;render();
+    plan=imported;page=0;agendaPage=0;changed=false;render();
     inform(`Restored ${plan.size} HUMAN-only reminders matched to the exact original worksheet and timezone.`);
   }
   function planExport(){
@@ -295,7 +296,7 @@
   hook("restore","change",async e=>{try{if(e.target.files[0])await onRestore(e.target.files[0]);}catch(err){inform(err.message,true);}finally{e.target.value="";}});
   hook("reset","click",()=>{
     if(changed&&!confirm("Discard all unsaved PRIVATE workroom changes?"))return;
-    items=[];plan=new Map();hash="";active=false;changed=false;
+    items=[];plan=new Map();hash="";active=false;changed=false;agendaPage=0;
     $("desk").hidden=true;$("agenda").hidden=true;$("out").hidden=true;$("reset").disabled=true;
     $("identity").textContent="No worksheet loaded";inform("PRIVATE workroom discarded from application state.");
   });
