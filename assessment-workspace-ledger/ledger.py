@@ -40,6 +40,13 @@ FLAGS = {
 }
 
 
+def literal_false_authority(value, fields=FLAGS):
+    """The native permission denial is EXACT JSON boolean false, never 0."""
+    return type(value) is dict and set(value) == set(fields) and all(
+        value[key] is False for key in fields
+    )
+
+
 class Hold(Exception):
     pass
 
@@ -217,7 +224,7 @@ def manifest_from_source(raw):
         raise Hold("PRIVATE HOLD: malformed ledger") from exc
     if not isinstance(doc, dict) or set(doc) != {"schema", "authority", "kits", "previous_sha256"}:
         reject("PRIVATE HOLD: ledger schema")
-    if doc["schema"] != "lightup.private.workspace-ledger.v1" or doc["authority"] != FLAGS:
+    if doc["schema"] != "lightup.private.workspace-ledger.v1" or not literal_false_authority(doc["authority"]):
         reject("PRIVATE HOLD: ledger is not a permission")
     kits = doc["kits"]
     if not isinstance(kits, list) or not 1 <= len(kits) <= MAX_KITS:
