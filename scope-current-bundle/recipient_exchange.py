@@ -25,6 +25,7 @@ from review_history import admit_human
 from recipient_browser import render_recipient
 from owner_decision import original_owner_desk
 from privacy_counts import suppressed_counts
+from private_courier import render_courier
 
 FORMAT = "lightup.source_minimized_human_exchange.v1"
 RECEIPT_LIMIT = 256_000
@@ -140,6 +141,9 @@ def make_exchange(argv: list[str]):
         "note": "Private unsigned self-reported review routing, not identity, client/operator permission, or authorization."
     }
     receipt_blob = (json.dumps(receipt, indent=2, sort_keys=True) + "\n").encode("utf-8")
+    # Compile the courier before any source-owner output is created.
+    # Encryption is a deliberately separate HUMAN action with distinct secrets.
+    courier_html = render_courier()
     groups = []
     for group in receipt["groups"]:
         result = [ASSIGN_FIELDS]
@@ -154,11 +158,13 @@ def make_exchange(argv: list[str]):
     # All content is computed before any private output is created.
     require_fresh_private_directory(output)
     write_private(output / "PRIVATE-owner-receipt.json", receipt_blob)
+    write_private(output / "PRIVATE-encrypted-courier.html", courier_html)
     for name, content in groups:
         write_private(output / name, content)
     print("Created PRIVATE non-authorizing team reply templates:", output)
     print("Share only the intended team's own source-minimized recipient-XX.csv.")
     print("Keep PRIVATE-owner-receipt.json secret in the source owner's custody.")
+    print("The offline encrypted courier is PRIVATE-encrypted-courier.html (send it as a tool, not an authentication guarantee).")
 
 
 def admit_receipt(path: Path, original_hashes, original_rows):
