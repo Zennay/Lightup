@@ -113,9 +113,12 @@
   // Special-case whole multiline blocks, never partial short-value replacement.
   // The parser requires matching literal PEM BEGIN and END labels and refuses nested blocks.
   const privateKeyStart = /-----BEGIN ((?:[A-Z0-9]+ )?PRIVATE KEY|PGP PRIVATE KEY BLOCK)-----/g;
+  const sourcePrivateMarkers = /-----BEGIN [A-Z0-9 ]*PRIVATE KEY(?: BLOCK)?-----/g;
   const privateKeyWhole = /-----BEGIN ((?:[A-Z0-9]+ )?PRIVATE KEY|PGP PRIVATE KEY BLOCK)-----[\s\S]{1,262144}?-----END \1-----/g;
   function privateBlocksRedacted(text) {
     const starts = text.match(privateKeyStart) || [];
+    const allMarkers = text.match(sourcePrivateMarkers) || [];
+    if(starts.length!==allMarkers.length) throw Error("Unrecognized private-key header");
     if (starts.length===0) throw Error("No recognized private-key block present");
     if (starts.length>16) throw Error("Too many private-key blocks");
     let replaced=0, ambiguous=false;
@@ -271,6 +274,9 @@
       // Full PEM/PGP block masking happens first, preventing short literals from
       // breaking the key-block structural integrity check.
       let text=source.text, count=0;
+      const originalKeyMarkers=source.text.match(sourcePrivateMarkers) || [];
+      if(originalKeyMarkers.length && !e.maskPrivateBlocks.checked)
+        throw Error("Whole private-key block removal required before any partial masks");
       if(e.maskPrivateBlocks.checked){
         const whole=privateBlocksRedacted(text);
         text=whole.text;count+=whole.count;
@@ -302,7 +308,9 @@
     }catch(err){
       if(current!==ticket)return;
       e.warnings.className="warnings warn";
-      message("warnings","HOLD: failed to prepare a bounded full-file redacted preview.");
+      message("warnings",e.maskPrivateBlocks.checked || source?.text.match(sourcePrivateMarkers)?.length ?
+        "HOLD: entire private-key block removal is mandatory for any PRIVATE KEY header. Incomplete, nested, oversized or unsupported blocks cannot be partially disclosed." :
+        "HOLD: failed to prepare a bounded full-file redacted preview.");
     }finally{if(current===ticket)e.review.disabled=!source || (!rules.length && !e.maskPrivateBlocks.checked);}
   };
   ["readAll","accept","confirm"].forEach(id=>{
