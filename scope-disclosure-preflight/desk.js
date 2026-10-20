@@ -51,6 +51,7 @@
     message("filename","None");message("filesize","—");message("originalHash","—");
     message("openStatus","Session cleared from application state. Previously downloaded files remain on disk.");
     message("suggestStatus","Suggestions have not been requested.");
+    message("pemStatus","Open a PRIVATE source before enabling block removal.");
     showRules();invalidate();
   }
   function showRules() {
@@ -88,6 +89,7 @@
       message("openStatus","PRIVATE original loaded into memory; original bytes are not modified.");
       e.file.value=""; invalidate();
       message("suggestStatus","Choose detection categories and request suggestions.");
+      message("pemStatus","A complete PEM/PGP block can be masked by explicit opt-in. Unrecognized or incomplete keys remain HOLD.");
     }catch(err){
       if(current!==ticket)return;
       message("openStatus","HOLD: invalid UTF-8, binary data, unreadable file or unavailable cryptography.");
@@ -237,10 +239,10 @@
     if(!prepared){updateSearchNav();return;}
     const needle=e.reviewSearch.value;
     if(needle.length<2 || needle.length>120 || /[\x00-\x1f]/.test(needle)){updateSearchNav();return;}
-    const haystack=prepared.text.toLowerCase(), lower=needle.toLowerCase();
+    const haystack=prepared.text; // preserve exact UTF-16 offsets for precise page highlighting
     let offset=0,next;
-    while((next=haystack.indexOf(lower,offset))!==-1){
-      searchMatches.push(next);offset=next+Math.max(1,lower.length);
+    while((next=haystack.indexOf(needle,offset))!==-1){
+      searchMatches.push(next);offset=next+needle.length;
       if(searchMatches.length>=500){
         searchMatches=[];message("reviewFindStatus","HOLD: too many private matches. Narrow the search.");return;
       }
