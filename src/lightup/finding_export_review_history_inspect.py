@@ -15,7 +15,7 @@ import stat
 import sys
 
 from .finding_export_review import _RETESTS, _SEVERITIES
-from .finding_export_review_history import _HISTORY_HOLD, _html, _load_file
+from .finding_export_review_history import _HISTORY_HOLD, _STAGES, _html, _load_file
 from .finding_export_review_publish import _SAFE_NAME, _private_parent
 
 _NAMES = ("history.html", "history.json", "REVIEW_ONLY.txt")
@@ -68,6 +68,7 @@ def _admit_history(data: object) -> dict:
     for i, step in enumerate(steps, 1):
         if type(step) is not dict or set(step) != {
             "from_ordinal", "to_ordinal", "counts", "items",
+            "reported_stage_movements",
         }:
             raise ValueError("invalid native selected transition")
         if (type(step["from_ordinal"]) is not int or step["from_ordinal"] != i
@@ -83,6 +84,8 @@ def _admit_history(data: object) -> dict:
             raise ValueError("invalid native private transition counts")
         seen_ids: set[str] = set()
         observed = dict.fromkeys(_KINDS, 0)
+        movements = {before: {after: 0 for after in _STAGES}
+                     for before in _STAGES}
         for item in rows:
             if type(item) is not dict or set(item) != {
                 "finding_id", "change_kind", "changed_display_fields",
@@ -135,8 +138,11 @@ def _admit_history(data: object) -> dict:
                     and bool(fields))
             if not valid:
                 raise ValueError("invalid reported native change semantics")
+            movements[prior_stage or "not_in_selection"][later_stage or "not_in_selection"] += 1
         if totals != observed:
             raise ValueError("private history counts do not match HUMAN records")
+        if step["reported_stage_movements"] != movements:
+            raise ValueError("private history reported stage matrix does not match rows")
     return data
 
 
