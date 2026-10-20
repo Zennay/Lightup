@@ -65,6 +65,16 @@
 <button id="encryptPlan" type="button">Save encrypted PRIVATE plan</button></div>
 <div class="row"><label class="file">Restore encrypted plan (.luhc) <input id="restoreEncrypted" type="file" accept=".luhc,application/octet-stream"></label><span class="subtle">Enter the passphrase before opening this file. Files never leave this browser.</span></div>
 </div>
+<div class="notice" id="changeDesk">
+<strong>PRIVATE calendar change desk · comparing two exact-sheet HUMAN plans</strong>
+<p>To reconcile a calendar previously imported by a HUMAN, load a separate copy of that previously published <strong>v2 PRIVATE plan CSV</strong>. It must match this exact worksheet byte digest, timezone and private calendar series ID. No network, attendee, grant or source authentication. Compare before export; changed plan dates never prove any target's risk changed.</p>
+<div class="row"><label class="file">Previously published PRIVATE v2 plan <input id="baselinePlan" type="file" accept=".csv,text/csv"></label><span id="baselineStatus" class="subtle">No previous publication loaded.</span><button type="button" id="clearBaseline" class="ghost" disabled>Clear previous snapshot</button></div>
+<p id="changesSummary" role="status" aria-live="polite">Load a previous PRIVATE plan to see what changed.</p>
+<div class="tablebox"><table><thead><tr><th>Ordinal</th><th>Change</th><th>Previously planned</th><th>Current HUMAN plan</th></tr></thead><tbody id="changesRows"></tbody></table></div>
+<div class="row"><button id="changePrev" type="button" class="ghost">Previous</button><button id="changeNext" type="button" class="ghost">Next</button></div>
+<div class="row"><button type="button" id="exportUpdated">Download added/changed event updates (.ics)</button><button type="button" id="exportCancelled" class="ghost">Download separate cancelled events (.ics)</button></div>
+<p class="subtle">Calendar updates and cancellations are <strong>separate explicit PRIVATE downloads</strong>. Import them into the same authorized local/private calendar as the original; some providers may ignore updates or cancellations. No sync confirmation or automatic calendar deletion exists. Baseline is never overwritten by current changes. Repeated multi-revision sync is NOT guaranteed.</p>
+</div>
 <div class="row"><label><input id="includeAction" type="checkbox"> Include HUMAN next-action text in calendar descriptions (more disclosure)</label></div>
 <div class="row"><button id="calendar" type="button">Export PRIVATE calendar (.ics)</button><button id="summaryExport" type="button" class="ghost">Export counts only (.json)</button></div>
 <p class="subtle">Save the PRIVATE plan <strong>before each calendar export</strong> to preserve opaque, stable event IDs on re-import, reducing duplicates in calendar clients that honor UID. Legacy plans can be imported but need saving in the new format. Calendar software may still duplicate events or ignore updates.<br>Plans bind to the exact bytes of this worksheet using an <em>unsigned</em> SHA-256 fingerprint; this does not authenticate its producer. Calendar entries are tentative reminders. Restoring a plan NEVER changes worksheet fields, source risk, permissions or a scan. No browser storage, fetch, tracking, local server, model, or network.</p>
