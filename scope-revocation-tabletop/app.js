@@ -76,6 +76,8 @@
   // Eight fixed slots; no names, external identifiers or automatic persistence.
   let slots = Array(8).fill(null);
   let replayCursor = null; // null follows the current final fictitious step.
+  const HISTORY_MAX=48;
+  let undoFrames=[],redoFrames=[];
   let activeDrill = null;
   let selectedDrill = 0;
   let drillAnswers = Array(DRILLS.length).fill(null);
@@ -213,21 +215,24 @@
       const up=el("button","small-button","↑");
       up.type="button";up.disabled=i===0;
       up.setAttribute("aria-label","Verplaats stap "+(i+1)+" omhoog");
-      up.addEventListener("click",()=>{[events[i-1],events[i]]=[events[i],events[i-1]];feedback("Stap verplaatst; simulatie volledig herberekend.");render();});
+      up.addEventListener("click",()=>mutateWorkspace(()=>{[events[i-1],events[i]]=[events[i],events[i-1]];},"Stap verplaatst; fictieve beslisvolgorde opnieuw berekend."));
       const down=el("button","small-button","↓");
       down.type="button";down.disabled=i===events.length-1;
       down.setAttribute("aria-label","Verplaats stap "+(i+1)+" omlaag");
-      down.addEventListener("click",()=>{[events[i],events[i+1]]=[events[i+1],events[i]];feedback("Stap verplaatst; simulatie volledig herberekend.");render();});
+      down.addEventListener("click",()=>mutateWorkspace(()=>{[events[i],events[i+1]]=[events[i+1],events[i]];},"Stap verplaatst; fictieve beslisvolgorde opnieuw berekend."));
       const remove=el("button","small-button remove-button","×");
       remove.type="button";remove.setAttribute("aria-label","Verwijder stap "+(i+1));
-      remove.addEventListener("click",()=>{events.splice(i,1);feedback("Stap verwijderd; simulatie volledig herberekend.");render();});
+      remove.addEventListener("click",()=>mutateWorkspace(()=>{events.splice(i,1);},"Fictieve stap verwijderd; herstel via ongedaan maken mogelijk."));
       actions.append(up,down,remove);
       item.append(actions);
       holder.append(item);
     });
     write("step-count",events.length+" / "+MAX);
     $("empty").hidden=events.length>0;
-    $("undo").disabled=events.length===0;
+    $("undo").disabled=undoFrames.length===0;
+    $("redo").disabled=redoFrames.length===0;
+    write("undo-hint",undoFrames.length+" herstelbare lokale wijzigingen · "+redoFrames.length+
+      " opnieuw uitvoerbaar. Bounded history, alleen in browsergeheugen.");
     $("add-event").disabled=events.length>=MAX;
     write("client-state",s.client ? "Fictief aanwezig" : "Ontbreekt / vervallen");
     write("operator-state",s.operator ? "Fictief aanwezig" : "Ontbreekt / vervallen");
@@ -330,7 +335,7 @@
       save.type="button";save.setAttribute("aria-label","Bewaar huidig scenario in slot "+(i+1));
       save.addEventListener("click",()=>{
         if(slot && !window.confirm("Scenario "+(i+1)+" in lokaal geheugen vervangen?")) return;
-        slots[i]=slotEntry(events,baseline);feedback("Fictief scenario "+(i+1)+" bewaard; geen automatische opslag.");render();
+        mutateWorkspace(()=>{slots[i]=slotEntry(events,baseline);},"Fictief scenario "+(i+1)+" in browsergeheugen bewaard.");
       });
       const load=el("button","small-button bank-button","Openen");
       load.type="button";load.disabled=!slot;
@@ -338,16 +343,17 @@
       load.addEventListener("click",()=>{
         if (!slots[i])return;
         if ((events.length || baseline!==null) && !window.confirm("Editor vervangen door scenario "+(i+1)+"?"))return;
-        events=slots[i].events.slice();
-        baseline=slots[i].baseline_events===null?null:slots[i].baseline_events.slice();
-        feedback("Scenario "+(i+1)+" lokaal geopend.");render();
+        mutateWorkspace(()=>{
+          events=slots[i].events.slice();
+          baseline=slots[i].baseline_events===null?null:slots[i].baseline_events.slice();
+        },"Scenario "+(i+1)+" lokaal geopend; vorige editorversie via ongedaan maken herstelbaar.");
       });
       const erase=el("button","small-button remove-button bank-button","Wissen");
       erase.type="button";erase.disabled=!slot;
       erase.setAttribute("aria-label","Wis scenario uit slot "+(i+1));
       erase.addEventListener("click",()=>{
         if(!slots[i] || !window.confirm("Slot "+(i+1)+" uit lokaal geheugen wissen?"))return;
-        slots[i]=null;feedback("Slot "+(i+1)+" gewist.");render();
+        mutateWorkspace(()=>{slots[i]=null;},"Fictief slot "+(i+1)+" uit lokaal geheugen gewist.");
       });
       actions.append(save,load,erase);tr.append(label,cell,actions);root.append(tr);
     });
@@ -486,7 +492,7 @@
         if(!scenarioMatchesDrill()) {
           write("drill-feedback","Deze kaart is niet langer exact geladen. Herstart hem zonder andere scenario's aan te passen.");return;
         }
-        drillAnswers[selectedDrill]=i;
+        mutateWorkspace(()=>{drillAnswers[selectedDrill]=i;},"Didactische keuze lokaal onthouden.");
         write("drill-feedback",(i===card.correct?"Didactisch passende keuze. ":"Didactisch aandachtspunt. ")+card.explain+
           " Alleen HUMAN oefenfeedback; nooit echte toestemming.");
         refreshDrillStatus();
@@ -529,13 +535,14 @@
       const card=DRILLS[selectedDrill];
       if((events.length || baseline!==null) &&
          !window.confirm("Huidige oefentijdlijn en nulmeting vervangen? Opgeslagen scenario-slots blijven bestaan."))return;
-      events=card.events.slice();baseline=null;activeDrill=selectedDrill;
-      feedback("Fictieve oefenkaart "+(selectedDrill+1)+" geladen. Geen externe uitvoer.");
-      render();selectDrill(selectedDrill);
+      mutateWorkspace(()=>{events=card.events.slice();baseline=null;activeDrill=selectedDrill;},
+        "Fictieve oefenkaart "+(selectedDrill+1)+" geladen. Geen externe uitvoer.");
+      selectDrill(selectedDrill);
     });
     $("drill-clear").addEventListener("click",()=>{
       if(!window.confirm("Alleen didactische antwoordvoortgang uit dit browsergeheugen wissen?"))return;
-      drillAnswers=Array(DRILLS.length).fill(null);
+      mutateWorkspace(()=>{drillAnswers=Array(DRILLS.length).fill(null);},
+        "Lokale didactische antwoordvoortgang gewist; herstelbaar via ongedaan maken.");
       selectDrill(selectedDrill);
     });
     $("drill-print-pack").addEventListener("click",()=>{
@@ -547,7 +554,7 @@
   function feedback(t) { write("feedback",t); }
   function add(e) {
     if (events.length>=MAX || !Object.hasOwn(TYPES,e)) { feedback("Geen gebeurtenis toegevoegd: maximum of onbekende code.");return; }
-    events.push(e); feedback("");render();
+    mutateWorkspace(()=>{events.push(e);},"Fictieve gebeurtenis toegevoegd.");
   }
   function data() {
     return {schema:"lightup.fictional.scope-tabletop.v4",title:"Fictief scope-/intrekkingsoefenscenario",events:events.slice(),
@@ -556,6 +563,36 @@
       drill_answers:drillAnswers.slice(),
       authority:{authenticated_client:false,authenticated_operator:false,consent_verified:false,
         dispatch_allowed:false,release_allowed:false,deploy_allowed:false}};
+  }
+  function applyFrame(frame) {
+    events=frame.events.slice();
+    baseline=frame.baseline_events===null?null:frame.baseline_events.slice();
+    slots=frame.slots.map(x=>x===null?null:slotEntry(x.events,x.baseline_events));
+    drillAnswers=frame.drill_answers.slice();
+    activeDrill=null;replayCursor=null;
+  }
+  function mutateWorkspace(fn,msg) {
+    const old=data(),before=JSON.stringify(old);
+    fn();
+    if(JSON.stringify(data())!==before) {
+      undoFrames.push(old);
+      if(undoFrames.length>HISTORY_MAX)undoFrames.shift();
+      redoFrames=[];
+    }
+    feedback(msg||"");
+    render();
+  }
+  function historyStep(backward) {
+    const from=backward?undoFrames:redoFrames;
+    if(!from.length)return;
+    const current=data(),restore=from.pop(),other=backward?redoFrames:undoFrames;
+    other.push(current);
+    if(other.length>HISTORY_MAX)other.shift();
+    applyFrame(restore);
+    selectDrill(selectedDrill);
+    feedback(backward?"Laatste wijziging in de lokale fictieve werkruimte hersteld.":
+      "Fictieve wijziging opnieuw toegepast.");
+    render();
   }
   function bytesDownload(filename,text,mime) {
     const blob = new Blob([text],{type:mime});
