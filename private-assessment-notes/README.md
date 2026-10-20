@@ -314,3 +314,16 @@ Nothing is sent, granted, scanned or scheduled. This is a HUMAN planning
 product only; it deliberately returns HOLD (3) after generating the new local
 workspace, preserving the original release gates and preventing accidental
 success-as-authorization.
+
+### Visual HUMAN follow-up grouping (offline only)
+
+In the source-minimal `PRIVATE-HUMAN-board.html`, the **Local presentation
+order** control can arrange the same original source cards by original ordinal,
+by *already-declared* HUMAN stage, or by count of declared HUMAN changes.
+This is **only a temporary on-screen arrangement**: it never rewrites source
+ordinals, native decisions, historical packet order, underlying files or CSVs.
+The stage grouping uses `WITHHOLD`, `SOURCE_OWNER_REQUIRED`,
+`NEEDS_HUMAN_REVIEW`, then `INTERNAL_REVIEW_ONLY` for easier local HUMAN
+discussion; it is explicitly not a risk score, urgency claim, security verdict,
+assignment, consent, or notification. All original entries remain included in
+the unchanged source-bound outputs irrespective of visual filters or sorting.
