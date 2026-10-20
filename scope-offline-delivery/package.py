@@ -25,12 +25,14 @@ FILES = {
     "workspace/LightUp-Scope-Offline-DRAFT-HOLD.zip": "LightUp-Scope-Offline-DRAFT-HOLD.zip",
     "workspace/SOURCE-MANIFEST.json": "SOURCE-MANIFEST.json",
     "workspace/DIST-MANIFEST.json": "DIST-MANIFEST.json",
+    "workspace/verify.html": "verify.html",
     "courier/PRIVATE-encrypted-courier.html": "PRIVATE-encrypted-courier.html",
 }
 README = """LightUp PRIVATE HUMAN scope delivery — INCUBATE M3/M7 DRAFT/HOLD
 1. Extract this complete outer ZIP to a local private folder.
 2. Verify the entire ZIP: python3 package.py inspect ORIGINAL.zip
 3. Open START-HERE.html locally; never host it publicly.
+   Portable inspector: python3 tools/package.py inspect ORIGINAL.zip
 4. Extract the original inner workspace ZIP; open its index.html.
 5. Open the separate encrypted courier to encrypt the original ZIP or HUMAN notes.
 6. Check recipient identity and exchange passwords through another trusted channel.
@@ -48,7 +50,7 @@ a{color:#9addff}section{padding:1.2rem;margin:1rem 0;border:1px solid #64748b;bo
 <p>Extract this entire ZIP locally. All companion applications work offline and cannot authorize work or verify consent.</p>
 <section><h2>1 · Original scope workspace</h2><p><a href="workspace/LightUp-Scope-Offline-DRAFT-HOLD.zip" download>Save current complete original scope workspace ZIP</a></p><p>Extract that ZIP separately, then open its original index.html.</p></section>
 <section><h2>2 · Encrypted human courier</h2><p><a href="courier/PRIVATE-encrypted-courier.html">Open offline PRIVATE encryption courier</a></p><p>Choose original workspace ZIP or reviewer notes. Recipient and current permissions must be verified independently. Exchange the password separately.</p></section>
-<section><h2>3 · Source byte records</h2><p><a href="manifest.json">Unsigned integrated byte receipt</a> · <a href="workspace/DIST-MANIFEST.json">Original workspace distribution receipt</a></p></section>
+<section><h2>3 · Source byte records</h2><p><a href="workspace/verify.html">Open original offline ZIP-byte verifier</a> · <a href="manifest.json">Unsigned integrated byte receipt</a> · <a href="workspace/DIST-MANIFEST.json">Original workspace distribution receipt</a></p></section>
 <p>No scans, network requests, browser storage, client approval, grants, automatic execution or deployment. Original source-owner + security/privacy review, exact-head hosted and named-VPS CI, real separately authenticated current client/operator consent with action-time revocation, and explicit HUMAN GO remain mandatory for any release.</p>
 </body></html>"""
 
@@ -74,13 +76,17 @@ def strict_json(data: bytes) -> dict:
         raise ValueError("Expected JSON object")
     return obj
 
+def no_authority(obj: dict) -> bool:
+    a = obj.get("authority")
+    return type(a) is dict and set(a) == set(AUTHORITY) and all(a[k] is False for k in AUTHORITY)
+
 def original_admission(workspace: bytes, source: bytes, dist: bytes) -> None:
     a, b = strict_json(source), strict_json(dist)
     if a.get("format") != "lightup.scope_offline_bundle.v1" or a.get("posture") != STATUS:
         raise ValueError("Original workspace format/posture drift")
     if b.get("format") != "lightup.scope_offline_distribution.v1" or b.get("posture") != STATUS:
         raise ValueError("Original distribution format/posture drift")
-    if a.get("authority") != AUTHORITY or b.get("authority") != AUTHORITY:
+    if not no_authority(a) or not no_authority(b):
         raise ValueError("Original scope source asserts authority")
     if b.get("authenticated_release") is not False or b.get("source_parent_sha") != PARENT_SHA:
         raise ValueError("Original source/release pin mismatch")
@@ -114,7 +120,7 @@ def receipt(blobs: dict[str, bytes]) -> bytes:
 def inspect(path: Path) -> dict:
     if path.is_symlink() or not path.is_file() or path.stat().st_size > 2_500_000:
         raise ValueError("Unsafe or oversized transfer")
-    expected = set(FILES) | {"START-HERE.html", "README.txt", "manifest.json"}
+    expected = set(FILES) | {"tools/package.py", "START-HERE.html", "README.txt", "manifest.json"}
     with zipfile.ZipFile(path) as z:
         infos = z.infolist()
         if len(infos) != len(expected) or {x.filename for x in infos} != expected:
@@ -128,10 +134,10 @@ def inspect(path: Path) -> dict:
                    "authenticated_release", "authority", "files", "note"} or
         m["format"] != "lightup.scope_private_delivery.v1" or m["posture"] != STATUS or
         m["original_source_sha"] != PARENT_SHA or m["authenticated_release"] is not False or
-        m["authority"] != AUTHORITY or m["files"] != [
+        not no_authority(m) or m["files"] != [
             {"path": n, "bytes": len(v), "sha256": digest(v)} for n, v in sorted(data.items())]):
         raise ValueError("Original delivery file receipt / HOLD flags mismatch")
-    if data["START-HERE.html"] != HOME.encode() or data["README.txt"] != README.encode():
+    if data["START-HERE.html"] != HOME.encode() or data["README.txt"] != README.encode() or data["tools/package.py"] != read(Path(__file__)):
         raise ValueError("Built-in operator instructions changed")
     if digest(data["courier/PRIVATE-encrypted-courier.html"]) != COURIER_SHA:
         raise ValueError("Original courier bytes changed")
@@ -152,7 +158,8 @@ def build() -> Path:
                        blobs["workspace/DIST-MANIFEST.json"])
     if digest(blobs["courier/PRIVATE-encrypted-courier.html"]) != COURIER_SHA:
         raise ValueError("Original encrypted courier drift")
-    blobs.update({"START-HERE.html": HOME.encode(), "README.txt": README.encode()})
+    blobs.update({"START-HERE.html": HOME.encode(), "README.txt": README.encode(),
+                  "tools/package.py": read(Path(__file__))})
     blobs["manifest.json"] = receipt(blobs)
     fd, temp = tempfile.mkstemp(prefix=".scope-private-", suffix=".zip", dir=HERE)
     try:

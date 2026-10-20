@@ -10,6 +10,8 @@
 2. **PRIVATE HUMAN courier** — the independently owned #1682 standalone browser application, embedded byte-for-byte. Choose the original ZIP or selected HUMAN-only files, encrypt locally, and send only to a recipient authenticated separately. Passwords must be exchanged via a separate trusted channel.
 3. **Recipient byte review** — `manifest.json` binds all exact package file bytes, sizes and original source-parent SHA. Independently supplied receipt checks are advisable. A matching SHA proves equality of bytes, **never** original operator identity, client consent, HUMAN GO or security review.
 
+The outer ZIP also embeds the original self-contained offline ZIP-byte verification page at `workspace/verify.html` and the current standalone `tools/package.py` inspector. After extracting, run `python3 tools/package.py inspect /path/to/original-outer-zip` if desired. A script obtained from the same untrusted ZIP must not be mistaken for independently authenticated release evidence. The inspector strictly requires actual JSON `false` authority fields; numeric 0 and truthy/falsy surrogates cannot substitute.
+
 The package retains both source products unchanged and packages only separately owned original bytes. The new `scope-offline-delivery/` folder is an additive companion; existing owners' directories, domain authorization, scanner, live handlers, CI and tests were not edited.
 
 ## Build / inspect without tests or network
