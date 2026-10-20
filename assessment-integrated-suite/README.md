@@ -64,6 +64,11 @@ formula prefixes, and no original source data, passwords, assessor identities
 or real consent should be entered. Keep this CSV 0600 in an owner-only 0700
 directory, never email/share it.
 
+Choosing an output folder for either option **42** or **43** does not
+mutate the currently held console path references: this preserves the
+original PATH-only digest when operators store revisions under a different
+owner-only directory.
+
 Option **43** admits a manually edited ORIGINAL queue CSV only against the
 **same unchanged console PATH reference snapshot** (SHA-256 is an unsigned
 local equality marker, NOT proof of source-byte identity or authentication).
@@ -89,6 +94,20 @@ path hashes, and original lab/recipient bytes are not reproduced. There is
 no auto-send. Only after a separate genuine authenticated recipient/channel
 and privacy review may a HUMAN decide how to handle this still-PRIVATE file.
 A team dropdown cannot establish identity or consent. No PASS or grant.
+
+## NEW: PRIVATE HUMAN work-queue revision timeline (option 45)
+
+Option **45** reads **2–8 distinct existing owner-only 0600 HUMAN queue
+CSV revisions**, all re-admitted against the **same unchanged current
+PATH-ONLY console snapshot** and exact fixed workflow order. The user
+declares the order; no timestamp, authority, review completion, actual source
+change or validated fix is inferred. An exclusive 0700 folder contains a
+scriptless 0600 historical HTML, private machine-readable JSON and minimal
+CSV. The report shows per-workflow HUMAN status/team/deadline changes and
+whether question presence/text changed; it intentionally **omits all
+confidential HUMAN question text**, original source bytes, saved machine paths
+and snapshot path digest. Unmodified original input CSVs remain untouched.
+This is HUMAN planning continuity only, not a security or privacy approval.
 
 ## Portable 15-original-studio software kit v9
 
