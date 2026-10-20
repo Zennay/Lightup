@@ -17,7 +17,13 @@ button:disabled{opacity:.5;cursor:not-allowed}
 button:focus-visible,input:focus-visible{outline:3px solid #ffdc90}
 table{width:100%;border-collapse:collapse}th,td{padding:12px;text-align:left;
 border-bottom:1px solid #546d7d}input{width:20px;height:20px}
-div.table{overflow:auto}p.notice{color:#ffdfaa}"""
+div.table{overflow:auto}p.notice{color:#ffdfaa}
+.filters{display:flex;flex-wrap:wrap;gap:12px;margin:12px 0}
+.filters label{display:flex;flex-direction:column;gap:4px}
+.filters input,.filters select{padding:9px;min-width:150px;
+border:1px solid #9cbacf;border-radius:7px;font:inherit;
+background:#142f42;color:#fff}.actions{display:flex;flex-wrap:wrap;gap:10px}
+tr[hidden]{display:none}"""
 
 
 def render(rows: list[dict]) -> bytes:
@@ -48,6 +54,22 @@ object-src 'none';form-action 'none';base-uri 'none'">
 authenticated reviewer, grant, PASS, client consent or security result.</p></header>
 <main><p id="feedback" role="status" aria-live="polite">
 Reading original private source-bound choices...</p>
+<div class="filters" role="group" aria-label="Filter original HUMAN choices">
+<label>Assigned HUMAN team<select id="filter-team"><option value="">All teams</option></select></label>
+<label>Earlier or new stage<select id="filter-stage"><option value="">All HUMAN stages</option></select></label>
+<label>PRIVATE question changed<select id="filter-question">
+<option value="">All</option><option value="YES">Yes</option><option value="NO">No</option></select></label>
+<label>Original proposal ordinal<input id="filter-ordinal" type="search"
+maxlength="10" placeholder="e.g. 4"></label></div>
+<div class="actions" role="group" aria-label="Deliberate HUMAN choice actions">
+<button id="apply-visible" type="button">Apply only visible</button>
+<button id="keep-visible" type="button">Keep previous for visible</button>
+<button id="undo-choice" type="button" disabled>Undo</button>
+<button id="redo-choice" type="button" disabled>Redo</button>
+</div>
+<p class="notice">Filtering NEVER removes original rows from the complete
+source-bound CSV; all original ordinals are always exported. Undo and redo
+remain local to this tab. Applying visible choices requires your confirmation.</p>
 <div class="table"><table><thead><tr><th>Source ordinal</th><th>HUMAN team</th>
 <th>Earlier stage</th><th>Returned stage</th><th>PRIVATE question changed</th>
 <th>Deliberate HUMAN choice</th></tr></thead><tbody id="choices"></tbody></table></div>
