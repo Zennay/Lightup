@@ -14,7 +14,7 @@ locally from a trusted checkout:
 
     python3 assessment-workspace-ledger/console.py
 
-Fifteen console actions provide original kit capture, exact-byte reopen, original-bound
+Eighteen console actions provide original kit capture, exact-byte reopen, original-bound
 HUMAN CSV finalization, historical change review with private file-level
 drilldown, unchanged-source HUMAN continuity, a separate source-free
 single-file browser editor export, a native same-source HUMAN revision desk,
@@ -401,3 +401,78 @@ source-only revision; the v12 source-only ZIP now includes the actual native
 historical HUMAN finalizer and CSP-pinned browser renderer. No new QA/tests,
 authorization, client handling, verified security claim, network, active
 scan, external publication or deployment was added.
+
+
+## NEW v13: complete PRIVATE two-to-eight HUMAN reviewer conflict desk
+
+When 2–8 humans have independently completed ORIGINAL native
+`PRIVATE-HUMAN-history.json` packets against precisely the same **2–12**
+original source-ledger snapshots, [history_team.py](history_team.py) opens
+all explicitly chosen archived ledgers/packets and refuses changed,
+duplicate, inconsistent or misordered original full-ledger SHA identities.
+It also re-admits **every original per-step/per-kit digest and literal file
+change count**, original HUMAN status/owner/question bounds, and six literal
+no-authority flags. These packets have **UNSIGNED** hashes; matching opinions
+do **not** establish actual human identity or independent trust.
+
+**Prepare an actual owner-private HUMAN coordination workroom:**
+
+    python3 assessment-workspace-ledger/history_team.py prepare --ledger /private/one/ledger.json --ledger /private/two/ledger.json --reviewer /private/team-A/PRIVATE-HUMAN-history.json --reviewer /private/team-B/PRIVATE-HUMAN-history.json --private-parent /private/private-ledgers
+
+Repeat `--ledger` for each originally chained source snapshot and
+`--reviewer` for 2–8 distinct original native HUMAN history packets.
+A NEW 0700 workroom with 0600 `PRIVATE-team-context.json`,
+`OPEN-PRIVATE.html`, `HUMAN-team-review-template.csv`, and
+`REVIEW-TEAM-IN-BROWSER.html` is created without modifying old packets.
+The overview shows only numeric counts of HUMAN disagreement/identical
+opinions; the separate offline CSP-hash-pinned review browser contains
+PRIVATE HUMAN owners/questions and unsigned source fingerprints. It must
+**not** be shared or served publicly.
+
+The complete [history_team_browser.py](history_team_browser.py) native renderer
+shows reviewers side by side per original kit/transition, highlights HUMAN
+opinion disagreement, supports local search and filtering, explicit
+reviewer selection per item, and all-NONE by default. There is an explicit
+human-confirmed convenience action to select reviewer 1 **only when HUMAN
+opinions match**; it does not constitute approval. Exact-original CSV drafts
+can be reloaded without changing local edits on a failed admission; leaving
+with unsaved selections warns. Browser export creates a local
+`HUMAN-team-review.csv` in Downloads, potentially accessible by other
+local users. No network, HTML import, local storage, grant or scan.
+
+**Native source-bound finalization from an owner-private 0600 CSV:**
+
+    python3 assessment-workspace-ledger/history_team.py finalize --context /private/new-team-room/PRIVATE-team-context.json --csv /private/private/HUMAN-team-review.csv --private-parent /private/private-ledgers
+
+**Or explicitly ingest the original browser download without chmod, renaming,
+or deleting it:**
+
+    python3 assessment-workspace-ledger/history_team.py finalize --context /private/new-team-room/PRIVATE-team-context.json --browser-csv /home/operator/Downloads/HUMAN-team-review.csv --private-parent /private/private-ledgers
+
+The native finalizer re-opens the **EXACT original archived private source-ledger
+bytes and all original native HUMAN packet bytes**, validates their recorded
+SHA-256 against the stored owner-private context (including rechecking before
+publication), and admits one CSV choice per original transition/kit. Every
+selected status, HUMAN owner and HUMAN question must literally match the
+original unchanged selected packet SHA-256 for that exact row. NONE is always
+needs_review with empty owner/question. Unknown/spliced/reordered source,
+stale reviewer packet, altered fields, unknown CSV columns or formula-like
+original HUMAN inputs cause HOLD. There is no automatic decision from
+matching reviewer opinions and no arbitrary synthesis of reviewer statements.
+
+The NEW owner-only 0700/0600 output has `PRIVATE-HUMAN-team-choice.json`,
+`PRIVATE-HUMAN-team-choice.html`, `HUMAN-team-review.csv` and
+`OPEN-PRIVATE.html`. This is a PRIVATE HUMAN selection ledger only. It does
+not authenticate individual reviewers, check current original kit files,
+validate a vulnerability, approve remediation, grant scope/consent or authorize
+live work. For current physical kit-byte admission use the unchanged original
+`ledger.py reopen` explicitly and separately. The native operation ALWAYS
+returns **HOLD 3**. Console actions **16, 17 and 18** expose preparation,
+PRIVATE owner-only CSV finalization, and browser-download custody.
+
+**Software distribution:** source-only manifest schema v13 adds
+`history_team.py` and `history_team_browser.py` to the existing exact
+portable offline ZIP allowlist. The shipped ZIP includes no original HUMAN
+packet, source ledger, actual client material, browser-generated private
+review HTML or real human workroom. Do not treat a software byte digest as
+publisher authentication, a security gate, verified consent or HUMAN GO.
