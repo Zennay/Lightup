@@ -77,7 +77,8 @@ def csv_out(rows: list[dict]) -> bytes:
     return out.getvalue().encode("utf-8")
 
 
-def page(rows: list[dict], kind: str, topic: str | None) -> bytes:
+def page(rows: list[dict], kind: str, topic: str | None,
+         identical_decisions: bool = False) -> bytes:
     tr = []
     for row in rows:
         tr.append(
@@ -109,6 +110,7 @@ source filename/digest or free-human-note text is embedded in this page.</p></as
 <p>Explicit selection: """ + html.escape(kind) + """;
 latest HUMAN category: """ + html.escape(topic if topic else "ANY") +
            """ · selected original positions: """ + str(len(rows)) + """.</p>
+<p>These two separate review packets have """ + ("byte-identical HUMAN decisions; identical content is NOT evidence of independent authors or clearance." if identical_decisions else "different HUMAN decision bytes; this is NOT proof of distinct authenticated authors.") + """</p>
 <div class="scroll"><table><thead><tr><th>Original #</th>
 <th>Earlier → later HUMAN label</th><th>Earlier → later declared categories</th>
 <th>Labels changed?</th><th>PRIVATE note changed?</th>
@@ -128,8 +130,12 @@ def create(original: str, earlier: str, later: str, kind: str,
     sources, manifest_sha, decisions_sha = completed_packet(original)
     left = load_round(earlier, sources, manifest_sha, decisions_sha)
     right = load_round(later, sources, manifest_sha, decisions_sha)
-    if left["csv_sha256_unsigned"] == right["csv_sha256_unsigned"]:
-        raise Hold("HOLD: identical HUMAN CSV bytes are not a changed review")
+    identical_decisions = (
+        left["csv_sha256_unsigned"] == right["csv_sha256_unsigned"]
+    )
+    # Genuine distinct completed packets may repeat unchanged HUMAN labels.
+    # CHANGES_ONLY naturally finds no work and HOLDs, but CURRENT_WITHHOLD
+    # still has legitimate, explicitly chosen PRIVATE HUMAN discussion work.
     positions = candidates(left["rows"], right["rows"], kind, topic)
     if not positions:
         raise Hold("HOLD: this explicit HUMAN conversation has no selected originals")
@@ -151,6 +157,7 @@ def create(original: str, earlier: str, later: str, kind: str,
             "original_count": len(sources),
             "selected_original_positions": [r["original_ordinal"] for r in positions],
             "selected_count": len(positions),
+            "identical_human_csv_not_independent_confirmation": identical_decisions,
             "explicit_kind": kind,
             "explicit_latest_topic": topic,
             "recipient_authenticated": False,
@@ -158,7 +165,7 @@ def create(original: str, earlier: str, later: str, kind: str,
         }
         save_json(kit / "PRIVATE-HUMAN-attention-bindings.json", packet)
         file_new(kit / "PRIVATE-HUMAN-attention-only.csv", csv_out(positions))
-        file_new(kit / "OPEN-PRIVATE.html", page(positions, kind, topic))
+        file_new(kit / "OPEN-PRIVATE.html", page(positions, kind, topic, identical_decisions))
         done = True
         print("HOLD: source-bound PRIVATE HUMAN attention-only handoff prepared; never a release")
         print("OPEN LOCALLY: " + str(kit / "OPEN-PRIVATE.html"))
