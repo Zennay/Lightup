@@ -1099,24 +1099,54 @@
     }
   });
 
-  peerAgenda.addEventListener("click", () => {
+  const exportPeerAgenda = teamOnly => {
     const plan = peerPreview;
     if (!plan || busy) return report("HOLD — er is geen actuele bronexacte HUMAN bespreeklijst.");
     if (plan.epoch !== generation || plan.revision !== humanRevision) {
       discardPeerPreview();
       return report("HOLD — HUMAN bron/reviewrevisie gewijzigd; agenda niet gemaakt.");
     }
-    const attention = plan.decisions.filter(d => d.mismatch || d.conflicting ||
+    const selectedTeam = peerAgendaTeam.value;
+    if (teamOnly && !["security","privacy","client_ops","platform"].includes(selectedTeam)) {
+      return report("HOLD — kies één concreet HUMAN ontvangend team.");
+    }
+    const scope = teamOnly ? plan.decisions.filter(d=>d.item.team===selectedTeam) : plan.decisions;
+    if (teamOnly && !scope.length) return report("HOLD — dit team heeft geen eigen brongebonden HUMAN dossiers.");
+    // Do not disclose any reviewer packet digest unrelated to this team's
+    // original source references. Never apply active UI table filters.
+    const packetSlots = teamOnly
+      ? new Set(scope.flatMap(d=>d.presentPacketSlots)) : null;
+    const includedPacketBytes = teamOnly
+      ? plan.packetBytes.filter(p=>packetSlots.has(p.local_packet_number))
+      : plan.packetBytes;
+    const counts = teamOnly
+      ? {
+          source_scope_count:scope.length, reviewer_packet_slots_total:plan.counts.packets,
+          referenced_packet_slots:includedPacketBytes.length,
+          source_mismatches:scope.filter(d=>d.mismatch).length,
+          human_conflicts:scope.filter(d=>d.conflicting).length,
+          redacted_note_uncertainty:scope.filter(d=>d.noteUncertain).length,
+          partial_participation:scope.filter(d=>d.proposalCount>0 &&
+            d.proposalCount<plan.counts.packets).length,
+          unreviewed_sources:scope.filter(d=>d.proposalCount===0).length
+        } : plan.counts;
+    const attention = scope.filter(d => d.mismatch || d.conflicting ||
       d.noteUncertain || d.proposalCount < plan.counts.packets);
-    if (!confirm("Download PRIVATE HUMAN bespreekagenda voor ALLE "+plan.decisions.length+
-      " oorspronkelijke bronnen, inclusief "+attention.length+" aandachtspunten, originele bestandsnamen, SHA-256 en alle packet-digests? "+
-      "Dit bevat geen originele bronbytes of PRIVATE notitietekst. Filters worden niet stilzwijgend toegepast. "+
-      "Verifieer de vertrouwelijke ontvanger en het kanaal zelf; nooit consent of grant.")) return;
+    if (!confirm("Download " + (teamOnly ? "ALLEEN de "+scope.length+
+      " oorspronkelijke PRIVATE HUMAN dossiers van team "+teams[selectedTeam] :
+      "de VOLLEDIGE PRIVATE HUMAN bespreekagenda voor "+scope.length+" oorspronkelijke bronnen")+
+      ", inclusief "+attention.length+" aandachtspunten? "+
+      (teamOnly ? "Alleen SHA-256 van de "+includedPacketBytes.length+
+        " reviewpakketten met voorstellen voor dit team worden opgenomen. " :
+        "Ook oorspronkelijke reviewer-pakketdigests voor de volledige selectie worden opgenomen. ")+
+      "De agenda bevat vertrouwelijke oorspronkelijke namen, hashes en HUMAN keuzes, "+
+      "geen bronbytes of PRIVATE notitieteksten. UI filters gelden NIET voor dit document. "+
+      "Controleer ontvangende mens en kanaal apart; geen echte toestemming of grant.")) return;
     // Unfiltered, source-bound private HUMAN meeting docket. All entries are
     // serialized via JSON inside Markdown code fences, not rendered as active HTML.
     const rank = d => d.mismatch ? 0 : d.conflicting ? 1 :
       d.noteUncertain ? 2 : d.proposalCount < plan.counts.packets ? 3 : 4;
-    const order = [...plan.decisions].sort((a,b) => rank(a)-rank(b));
+    const order = [...scope].sort((a,b) => rank(a)-rank(b));
     const humanRecord = row => row ? {
       human_team:row.human_team, human_stage:row.human_stage,
       human_route:row.human_route, private_note_included:row.private_note_included
@@ -1126,7 +1156,7 @@
     // JSON backslash-u0060 represents the original backtick character.
     const agendaJSON = value => JSON.stringify(value,null,2).replace(/\x60/gu,"\\u0060");
     const agenda = [
-      "# LightUp — PRIVATE HUMAN review-bespreekagenda",
+      teamOnly ? "# LightUp — PRIVATE HUMAN TEAM-reviewbespreekagenda" : "# LightUp — PRIVATE HUMAN review-bespreekagenda",
       "",
       "**REVIEW_ONLY · INCUBATE M3/M7 · DRAFT/HOLD · geen autorisatie of scannerrecht.**",
       "",
@@ -1136,21 +1166,21 @@
       "Deze export bevat vertrouwelijke oorspronkelijke namen, SHA-256 en menschlijke team/route/fase-keuzes.",
       "PRIVATE notitieteksten en oorspronkelijke bronbytes ontbreken. "+
         "Gelijke ongetekende voorstellen bewijzen geen onafhankelijke revieweridentiteit of consent.",
-      "Tabel- en zoekfilters zijn NIET op deze complete agenda toegepast.",
+      teamOnly ? "ALLEEN team "+teams[selectedTeam]+" en bijhorende originele bronnen. Andere teamdossiers en niet-gerelateerde reviewer-digests zijn uitgesloten." : "Tabel- en zoekfilters zijn NIET op deze complete agenda toegepast.",
       "",
       "## Ontvangen ongetekende HUMAN pakketten (lokale volgorde)",
       "",
       "```json",
-      agendaJSON(plan.packetBytes),
+      agendaJSON(includedPacketBytes),
       "```",
       "",
       "## Bronvrije triageaantallen",
       "",
       "```json",
-      agendaJSON(plan.counts),
+      agendaJSON(counts),
       "```",
       "",
-      "## Alle oorspronkelijke dossiers op bespreekprioriteit",
+      teamOnly ? "## Alleen oorspronkelijke dossiers van team "+teams[selectedTeam]+" op bespreekprioriteit" : "## Alle oorspronkelijke dossiers op bespreekprioriteit",
       ""
     ];
     for (const [idx,d] of order.entries()) {
@@ -1172,7 +1202,7 @@
         },
         human_packets:d.allowed.map((row,index) => ({
           local_packet_number:index+1,review:humanRecord(row)
-        })),
+        })).filter(p=>!teamOnly || d.presentPacketSlots.includes(p.local_packet_number)),
         explicit_choice:d.choice < 0 ? "NIETS OVERNEMEN" : "PAKKET "+(d.choice+1),
         chosen_human_after:humanRecord(originallySelected),
         no_execution_authority:true
@@ -1188,10 +1218,14 @@
       "5. Bestaande echte toestemming, grant, revocation, security review en CI blijven gescheiden.",
       "");
     download(new Blob([agenda.join("\n")],{type:"text/markdown;charset=utf-8"}),
-      "lightup-scope-PRIVATE-HUMAN-multi-peer-review-agenda.md");
-    report("REVIEW_ONLY — PRIVATE brongebonden HUMAN bespreekagenda met "+
+      teamOnly ? "lightup-scope-PRIVATE-HUMAN-"+selectedTeam+"-peer-review-agenda.md" :
+        "lightup-scope-PRIVATE-HUMAN-multi-peer-review-agenda.md");
+    report("REVIEW_ONLY — PRIVATE HUMAN bespreekagenda van "+
+      (teamOnly ? "uitsluitend team "+teams[selectedTeam]+" met " : "alle teams met ")+
       order.length+" oorspronkelijke dossiers lokaal gedownload. Geen bronbytes, notitietekst of toestemming.");
-  });
+  };
+  peerAgenda.addEventListener("click",()=>exportPeerAgenda(false));
+  peerTeamAgenda.addEventListener("click",()=>exportPeerAgenda(true));
 
   el("shelf-peer-summary-export").addEventListener("click", () => {
     const plan = peerPreview;
