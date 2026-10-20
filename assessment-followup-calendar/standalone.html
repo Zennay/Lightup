@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-hp5+wdGNS5u9baZd+I9JUnYkaFXSqDdAs0u92kfZrWc='; style-src 'sha256-HUlm6aqEChCFyhlqqnwAML8DEcKWrxeYmb62wHptVvw='; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-8/TX4mmC7h8GBMp0/lgFIIZbKxGrc6C08b8g0mfPg4k='; style-src 'sha256-HUlm6aqEChCFyhlqqnwAML8DEcKWrxeYmb62wHptVvw='; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <title>LightUp PRIVATE Human Follow-up Calendar</title>
 <style>
 :root{color-scheme:dark;font:16px/1.5 system-ui,sans-serif;background:#0d1524;color:#e9eef8}*{box-sizing:border-box}body{margin:0}header,main,footer{width:min(1300px,96vw);margin:auto}header{padding:38px 8px 14px}.eyebrow{font-size:12px;letter-spacing:.15em;color:#75b9ec;font-weight:bold}h1{font-size:clamp(1.75rem,4vw,3.2rem);margin:.3rem 0}h2{margin:0 0 10px;color:#f6f8ff}header p{max-width:80ch;color:#abb8c9}a{color:#9ed4ff}.panel,.notice{background:#172439;border:1px solid #30435e;border-radius:14px;padding:22px;margin:18px 0}.notice{border-left:5px solid #ffd67a;background:#242b38}.row,.toolbar,.bulk{display:flex;flex-wrap:wrap;align-items:end;gap:12px;margin:15px 0}label{display:inline-flex;flex-direction:column;gap:5px;font-size:13px;font-weight:600;color:#cad8eb}label:has(input[type=checkbox]){flex-direction:row;align-items:center}input,select,button{font:inherit;border:1px solid #526a88;border-radius:6px;background:#0c1b2d;color:#eef7ff;padding:8px;max-width:100%}input[type=date],input[type=time]{color-scheme:dark}button{background:#2672ac;border-color:#2672ac;cursor:pointer;font-weight:600}button:hover{filter:brightness(1.22)}button:disabled{opacity:.4;cursor:not-allowed}.ghost{background:#22334d;border-color:#526a88}.subtle,p{color:#b7c5d5}.subtle{font-size:13px}code{color:#a5defe}.tablebox{max-width:100%;overflow:auto;border:1px solid #415a75;border-radius:8px}table{border-collapse:collapse;width:100%;font-size:14px}th,td{padding:10px;border-bottom:1px solid #324761;text-align:left;vertical-align:middle}th{background:#25344d;position:sticky;top:0;white-space:nowrap}td:nth-child(4){max-width:270px;overflow-wrap:anywhere}td input[type=date]{min-width:160px}td select{min-width:86px}td .severity{font-weight:700}.bulk{background:#0e1b2b;padding:14px;border-radius:8px}#notice[data-error=true]{color:#ffaaa1}footer{padding:24px 8px 52px;color:#8fa2b9;font-size:13px}[hidden]{display:none!important}@media(max-width:700px){.panel{padding:14px}header{padding-top:24px}th,td{padding:7px}.toolbar label{width:100%}.toolbar input,.toolbar select{width:100%}}
@@ -18,6 +18,7 @@
     "human_stage","human_owner_group","human_next_action","human_blocker"];
   const PLAN_HEAD = ["worksheet_sha256_unsigned","original_ordinal","local_date",
     "local_time","duration_minutes","reminder_minutes","time_zone"];
+  const PLAN_HEAD_V2 = [...PLAN_HEAD, "private_calendar_series_id"];
   const SEVERITY = new Set(["critical","high","medium","low","info"]);
   const STAGE = new Set(["","needs_review","discussing","blocked","documented"]);
   const DURATION = new Set(["15","30","60","90"]);
@@ -26,6 +27,7 @@
   const zone = Intl.DateTimeFormat().resolvedOptions().timeZone || "";
   const $ = id => document.getElementById(id);
   let items = [], plan = new Map(), hash = "", active = false, changed = false, page = 0, agendaPage = 0;
+  let seriesId = "", exportedPlan = false, selectedGroup = null, workloadPage = 0;
   const decoder = new TextDecoder("utf-8", {fatal:true});
   const control = /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/;
   const unsafeText = s => /^[=+\-@\t\r\n]/u.test(
@@ -105,14 +107,16 @@
     hold(Number.isFinite(date.getTime()+Number(duration)*60000));
     return {day,time,duration,reminder};
   }
+  function newSeriesId(){const raw=new Uint8Array(16);crypto.getRandomValues(raw);return Array.from(raw,x=>x.toString(16).padStart(2,"0")).join("");}
   function applySlot(ordinal,slot){
     if(slot)plan.set(ordinal,slot);else plan.delete(ordinal);
-    changed=true;render();
+    changed=true;exportedPlan=false;render();
   }
   function filtered(){
     const severity=$("severity").value,stage=$("stage").value,status=$("status").value;
     const q=$("query").value.trim().toLocaleLowerCase();
     return items.filter(r=>{
+      if(selectedGroup!==null && r.group!==selectedGroup)return false;
       if(severity && r.severity!==severity)return false;
       if(stage && r.stage !== (stage==="(blank)"?"":stage))return false;
       const p=plan.get(r.ordinal);
@@ -166,15 +170,82 @@
       body.append(tr);
     });
     renderAgenda();
+    renderWorkload();
+  }
+  function eventIntervals(from=plan){
+    return items.filter(r=>from.has(r.ordinal)).map(r=>{
+      const slot=from.get(r.ordinal),start=eventDate(slot.day,slot.time).getTime();
+      return {ordinal:r.ordinal,start,end:start+Number(slot.duration)*60000};
+    }).sort((a,b)=>a.start-b.start || a.ordinal-b.ordinal);
+  }
+  function collisionIds(from=plan){
+    const active=[],found=new Set();
+    for(const event of eventIntervals(from)){
+      for(let i=active.length-1;i>=0;i--){if(active[i].end<=event.start)active.splice(i,1);}
+      if(active.length){found.add(event.ordinal);for(const old of active)found.add(old.ordinal);}
+      active.push(event);
+    }
+    return found;
+  }
+  function resolveConflicts(){
+    hold(active);
+    const existing=eventIntervals();
+    if(!collisionIds().size){inform("No overlaps within this PRIVATE follow-up workroom.");return;}
+    const occupied=[],proposal=new Map();
+    const startToday=nowToday(),now=Date.now();
+    for(const event of existing){
+      const previous=plan.get(event.ordinal);
+      let target=event;
+      if(occupied.some(o=>target.start<o.end && o.start<target.end)){
+        if(proposal.size>=32){occupied.push(target);continue;}
+        let selected=null;
+        const base=eventDate(previous.day,"12:00");
+        if(previous.day<startToday)base.setTime(eventDate(startToday,"12:00").getTime());
+        for(let day=0;day<90 && !selected;day++){
+          const current=new Date(base.getTime());current.setDate(base.getDate()+day);
+          if(current.getDay()===0||current.getDay()===6)continue;
+          const y=current.getFullYear(),m=String(current.getMonth()+1).padStart(2,"0"),
+            d=String(current.getDate()).padStart(2,"0"),date=y+"-"+m+"-"+d;
+          for(let minute=9*60;minute<=18*60-Number(previous.duration);minute+=15){
+            const hh=String(Math.floor(minute/60)).padStart(2,"0");
+            const mm=String(minute%60).padStart(2,"0");
+            const time=hh+":"+mm;
+            const candidate=eventDate(date,time).getTime(),end=candidate+Number(previous.duration)*60000;
+            if(candidate<now || occupied.some(o=>candidate<o.end && o.start<end))continue;
+            // Protect all other original HUMAN reservations, not only those seen so far.
+            if(existing.some(o=>o.ordinal!==event.ordinal && !proposal.has(o.ordinal) &&
+                candidate<o.end && o.start<end))continue;
+            selected={slot:{day:date,time,duration:previous.duration,reminder:previous.reminder},
+              event:{ordinal:event.ordinal,start:candidate,end}};
+            break;
+          }
+        }
+        hold(selected!==null);
+        proposal.set(event.ordinal,selected.slot);
+        target=selected.event;
+      }
+      occupied.push(target);
+    }
+    if(!proposal.size){inform("No schedule changes required.");return;}
+    const preview=Array.from(proposal).slice(0,5).map(([ordinal,slot])=>
+      "#"+ordinal+" → "+slot.day+" "+slot.time).join("\\n");
+    if(!confirm("Propose "+proposal.size+" changes (maximum 32 per confirmation) to overlapping PRIVATE HUMAN reminder dates? First existing appointment retains its slot. Proposed times are weekdays 09:00–18:00, non-overlapping within THIS LOCAL WORKROOM only. No external calendar has been checked or changed.\\n\\n"+preview))return;
+    for(const [ordinal,slot] of proposal)plan.set(ordinal,slot);
+    changed=true;exportedPlan=false;agendaPage=0;render();
+    inform("Rescheduled "+proposal.size+" HUMAN-only reminder proposals. Remaining overlaps are shown; review and repeat if needed. Save the PRIVATE plan before calendar export.");
   }
   function renderAgenda(){
     if(!active)return;
     const now=new Date(),days=$("agendaHorizon").value;
     const q=$("agendaQuery").value.trim().toLocaleLowerCase();
+    const colliding=collisionIds();
+    $("conflictPanel").hidden=colliding.size===0;
+    $("conflictSummary").textContent=colliding.size+" HUMAN reminders overlap in this workroom. These are timing clashes only; not a security or authorization verdict.";
     let upcoming=items.filter(r=>{
       const p=plan.get(r.ordinal);if(!p)return false;
       const at=eventDate(p.day,p.time);
       if(days==="overdue" && at>=now)return false;
+      if(days==="conflicts" && !colliding.has(r.ordinal))return false;
       if(days==="7"||days==="30"){
         const limit=new Date(now.getTime()+Number(days)*86400000);
         if(at<now||at>limit)return false;
@@ -209,16 +280,65 @@
       body.append(tr);
     }
   }
+  function renderWorkload(){
+    if(!active)return;
+    const colliding=collisionIds(),now=Date.now(),groups=new Map();
+    for(const r of items){
+      const name=r.group||"",slot=plan.get(r.ordinal),g=groups.get(name)||{
+        name,rows:0,unscheduled:0,past:0,blocked:0,collisions:0,next:Infinity
+      };
+      g.rows++;
+      if(!slot)g.unscheduled++;
+      if(r.stage==="blocked")g.blocked++;
+      if(colliding.has(r.ordinal))g.collisions++;
+      if(slot){
+        const at=eventDate(slot.day,slot.time).getTime();
+        if(at<now)g.past++;else g.next=Math.min(g.next,at);
+      }
+      groups.set(name,g);
+    }
+    const q=$("workloadQuery").value.trim().toLocaleLowerCase();
+    const visible=Array.from(groups.values()).filter(g=>!q||g.name.toLocaleLowerCase().includes(q))
+      .sort((a,b)=>b.unscheduled-a.unscheduled || b.collisions-a.collisions || b.rows-a.rows || a.name.localeCompare(b.name));
+    const pages=Math.max(1,Math.ceil(visible.length/40));
+    workloadPage=Math.max(0,Math.min(workloadPage,pages-1));
+    $("workloadPrev").disabled=workloadPage===0;$("workloadNext").disabled=workloadPage>=pages-1;
+    $("workloadSummary").textContent=visible.length+" HUMAN groups in this view · "+items.length+" original HUMAN rows · page "+(workloadPage+1)+" of "+pages+".";
+    $("focusedGroup").textContent=selectedGroup===null?"All HUMAN groups":"Filtering planner by HUMAN group: "+(selectedGroup||"(unassigned)");
+    const tbody=$("workloadRows");tbody.replaceChildren();
+    for(const g of visible.slice(workloadPage*40,workloadPage*40+40)){
+      const tr=dom("tr"),cell=dom("td"),button=dom("button","Focus group","ghost");
+      button.type="button";
+      button.addEventListener("click",()=>{
+        selectedGroup=g.name;page=0;
+        $("severity").value="";$("stage").value="";$("status").value="";$("query").value="";
+        render();$("desk").scrollIntoView({behavior:"smooth",block:"start"});
+      });
+      cell.append(button);
+      tr.append(dom("td",g.name||"(unassigned)"),dom("td",String(g.rows)),
+        dom("td",String(g.unscheduled)),dom("td",String(g.past)),
+        dom("td",String(g.blocked)),dom("td",String(g.collisions)),
+        dom("td",Number.isFinite(g.next)?new Date(g.next).toLocaleString():"—"),cell);
+      tbody.append(tr);
+    }
+  }
   function restore(parsed){
-    hold(JSON.stringify(parsed[0])===JSON.stringify(PLAN_HEAD));
+    const v2=JSON.stringify(parsed[0])===JSON.stringify(PLAN_HEAD_V2);
+    hold(v2 || JSON.stringify(parsed[0])===JSON.stringify(PLAN_HEAD));
     hold(parsed.length===items.length+1);
     const next=new Map();
+    let restoredSeries="";
     parsed.slice(1).forEach((r,i)=>{
-      hold(r.length===7 && r[0]===hash && r[1]===String(i+1) && r[6]===zone);
+      hold(r.length===(v2?8:7) && r[0]===hash && r[1]===String(i+1) && r[6]===zone);
+      if(v2){
+        hold(/^[0-9a-f]{32}$/.test(r[7]));
+        if(i===0)restoredSeries=r[7];
+        hold(r[7]===restoredSeries);
+      }
       const slot=admitSlot(r[2],r[3],r[4],r[5]);
       if(slot)next.set(i+1,slot);
     });
-    return next;
+    return {schedule:next,series:v2?(restoredSeries||newSeriesId()):newSeriesId(),legacy:!v2};
   }
   async function onOriginal(file){
     const buffer=await bytes(file);
@@ -227,31 +347,34 @@
     const parsed=original(csv(raw,HEAD.length));
     const h=Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256",buffer)),b=>b.toString(16).padStart(2,"0")).join("");
     if(active && changed && !confirm("Discard the current unsaved PRIVATE calendar workroom?"))return;
-    items=parsed;hash=h;plan=new Map();active=true;changed=false;page=0;agendaPage=0;
-    $("desk").hidden=false;$("agenda").hidden=false;$("out").hidden=false;$("reset").disabled=false;
+    items=parsed;hash=h;plan=new Map();seriesId=newSeriesId();exportedPlan=false;active=true;changed=false;page=0;agendaPage=0;workloadPage=0;selectedGroup=null;
+    $("desk").hidden=false;$("agenda").hidden=false;$("workload").hidden=false;$("out").hidden=false;$("reset").disabled=false;
     $("identity").textContent=`${items.length} HUMAN rows · unsigned worksheet digest ${hash.slice(0,12)}…`;
     $("severity").value="";$("stage").value="";$("status").value="";$("query").value="";
     $("restore").value="";$("tz").textContent=zone;
-    $("agendaHorizon").value="7";$("agendaQuery").value="";
+    $("agendaHorizon").value="7";$("agendaQuery").value="";$("workloadQuery").value="";
     render();inform("Original HUMAN worksheet admitted in memory. No actual source authentication or grant verified.");
   }
   async function onRestore(file){
     hold(active);
     const raw=decoder.decode(await bytes(file));
     hold(!raw.startsWith("\uFEFF"));
-    const imported=restore(csv(raw,PLAN_HEAD.length));
+    const legacyHeader=PLAN_HEAD.join(","),modernHeader=PLAN_HEAD_V2.join(",");
+    const first=raw.split(/\r?\n/,1)[0];
+    hold(first===legacyHeader || first===modernHeader);
+    const imported=restore(csv(raw,first===modernHeader?8:7));
     if(changed && !confirm("Replace all current unsaved reminder dates with this exact-source PRIVATE plan?"))return;
-    plan=imported;page=0;agendaPage=0;changed=false;render();
-    inform(`Restored ${plan.size} HUMAN-only reminders matched to the exact original worksheet and timezone.`);
+    plan=imported.schedule;seriesId=imported.series;exportedPlan=!imported.legacy;page=0;agendaPage=0;changed=false;render();
+    inform(`Restored ${plan.size} HUMAN reminders. ${imported.legacy?"Legacy plan: save the new v2 plan before repeatable calendar export.":"Stable private calendar identities restored."}`);
   }
   function planExport(){
-    const rows=[PLAN_HEAD,...items.map(r=>{
+    const rows=[PLAN_HEAD_V2,...items.map(r=>{
       const p=plan.get(r.ordinal);
       return [hash,String(r.ordinal),p?.day||"",p?.time||"",
-        p?.duration||"",p?.reminder||"",zone];
+        p?.duration||"",p?.reminder||"",zone,seriesId];
     })];
     download(makeCsv(rows),"lightup-private-human-followups.csv","text/csv;charset=utf-8");
-    changed=false;render();inform("PRIVATE exact-worksheet-bound plan downloaded; original worksheet unchanged.");
+    changed=false;exportedPlan=true;render();inform("PRIVATE v2 plan downloaded with stable opaque calendar identities; original worksheet unchanged.");
   }
   const icsText=s=>String(s).replaceAll("\\","\\\\").replace(/\r\n|\r|\n/g,"\\n").replaceAll(";","\\;").replaceAll(",","\\,");
   const icsTime=date=>[date.getUTCFullYear(),String(date.getUTCMonth()+1).padStart(2,"0"),
@@ -269,14 +392,15 @@
   }
   function calendarExport(){
     hold(active && plan.size>0);
+    if(!exportedPlan){inform("Save or restore the PRIVATE v2 plan before exporting. It preserves stable calendar event IDs on future reopen.",true);return;}
     const include=$("includeAction").checked;
-    if(!confirm(`Export ${plan.size} PRIVATE tentative HUMAN calendar events? ${include?"Your HUMAN next-action texts WILL be included.":"No HUMAN next-action texts will be included."} Only import into an authorized private calendar; cloud calendars may synchronize.`))return;
+    const conflicts=collisionIds().size;
+    if(!confirm(`Export ${plan.size} PRIVATE tentative HUMAN calendar events? ${include?"Your HUMAN next-action texts WILL be included.":"No HUMAN next-action texts will be included."} ${conflicts?conflicts+" overlapping HUMAN reminders remain; calendar export retains those overlaps. ":""} Only import into an authorized private calendar; cloud calendars may synchronize.`))return;
     const now=icsTime(new Date()),lines=["BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//LightUp//PRIVATE HUMAN Followup Calendar//EN","CALSCALE:GREGORIAN","METHOD:PUBLISH","X-WR-CALNAME:LightUp PRIVATE HUMAN Follow-ups"];
     for(const r of items){
       const p=plan.get(r.ordinal);if(!p)continue;
       const start=eventDate(p.day,p.time),end=new Date(start.getTime()+Number(p.duration)*60000);
-      const random=new Uint8Array(16);crypto.getRandomValues(random);
-      const uid=Array.from(random,b=>b.toString(16).padStart(2,"0")).join("")+"@lightup-private.invalid";
+      const uid=seriesId+"-"+r.ordinal+"@lightup-private.invalid";
       lines.push("BEGIN:VEVENT","UID:"+uid,"DTSTAMP:"+now,"DTSTART:"+icsTime(start),"DTEND:"+icsTime(end),
         "STATUS:TENTATIVE","TRANSP:TRANSPARENT",
         "SUMMARY:"+icsText("PRIVATE HUMAN follow-up #"+r.ordinal),
@@ -307,16 +431,22 @@
   hook("restore","change",async e=>{try{if(e.target.files[0])await onRestore(e.target.files[0]);}catch(err){inform(err.message,true);}finally{e.target.value="";}});
   hook("reset","click",()=>{
     if(changed&&!confirm("Discard all unsaved PRIVATE workroom changes?"))return;
-    items=[];plan=new Map();hash="";active=false;changed=false;agendaPage=0;
-    $("desk").hidden=true;$("agenda").hidden=true;$("out").hidden=true;$("reset").disabled=true;
+    items=[];plan=new Map();hash="";seriesId="";exportedPlan=false;active=false;changed=false;agendaPage=0;selectedGroup=null;workloadPage=0;
+    $("desk").hidden=true;$("agenda").hidden=true;$("workload").hidden=true;$("out").hidden=true;$("reset").disabled=true;
     $("identity").textContent="No worksheet loaded";inform("PRIVATE workroom discarded from application state.");
   });
   ["severity","stage","status","query"].forEach(id=>hook(id,id==="query"?"input":"change",()=>{page=0;render();}));
   hook("prev","click",()=>{page--;render();});hook("next","click",()=>{page++;render();});
   hook("agendaHorizon","change",()=>{agendaPage=0;renderAgenda();});
   hook("agendaQuery","input",()=>{agendaPage=0;renderAgenda();});
+  hook("workloadQuery","input",()=>{workloadPage=0;renderWorkload();});
+  hook("workloadPrev","click",()=>{workloadPage--;renderWorkload();});
+  hook("workloadNext","click",()=>{workloadPage++;renderWorkload();});
+  hook("clearGroup","click",()=>{selectedGroup=null;page=0;render();$("desk").scrollIntoView({behavior:"smooth",block:"start"});});
   hook("agendaPrev","click",()=>{agendaPage--;renderAgenda();});
   hook("agendaNext","click",()=>{agendaPage++;renderAgenda();});
+  hook("conflictFocus","click",()=>{$("agendaHorizon").value="conflicts";agendaPage=0;renderAgenda();$("agenda").scrollIntoView({behavior:"smooth",block:"start"});});
+  hook("resolveConflicts","click",()=>{try{resolveConflicts();}catch(err){inform(err.message,true);}});
   function bulk(clear=false){
     const candidates=filtered();
     if(!candidates.length){inform("No matching rows to schedule.",true);return;}
@@ -326,7 +456,7 @@
     }catch(err){inform(err.message,true);return;}
     if(!confirm(`${clear?"Clear dates on":"Schedule"} exactly ${candidates.length} filtered HUMAN rows? Existing dates in this selection will be ${clear?"removed":"replaced"}. This does not change source worksheets.`))return;
     for(const row of candidates){if(clear)plan.delete(row.ordinal);else plan.set(row.ordinal,{...slot});}
-    changed=true;render();inform(candidates.length+" HUMAN reminder dates changed in local memory only.");
+    changed=true;exportedPlan=false;render();inform(candidates.length+" HUMAN reminder dates changed in local memory only.");
   }
   function suggestDates(){
     hold(active);
@@ -366,7 +496,7 @@
     hold(index===unscheduled.length);
     if(!confirm("Propose "+proposal.size+" PRIVATE HUMAN-only weekday reminders? This sorts solely by UNVERIFIED source-reported severity, skips HUMAN blocked rows, respects existing plans, and never changes the original worksheet. No verified urgency or permission is implied."))return;
     for(const [ordinal,slot] of proposal)plan.set(ordinal,slot);
-    changed=true;page=0;render();
+    changed=true;exportedPlan=false;page=0;render();
     inform("Proposed "+proposal.size+" LOCAL HUMAN follow-ups. Review each date before exporting; no calendar was updated.");
   }
   hook("suggest","click",()=>{try{suggestDates();}catch(err){inform(err.message,true);}});
@@ -407,16 +537,31 @@
 </section>
 <section id="agenda" class="panel" hidden aria-labelledby="agendaHeading"><h2 id="agendaHeading">3 · Upcoming HUMAN agenda</h2>
 <p>Human-proposed dates only, ordered by local scheduled time. Past-due does not prove an unresolved vulnerability. Select any event to edit the original ordinal in the private planning desk.</p>
-<div class="toolbar"><label>View <select id="agendaHorizon"><option value="all">All scheduled</option><option value="7" selected>Next 7 days</option><option value="30">Next 30 days</option><option value="overdue">Past due</option></select></label><label>Search HUMAN group / action <input type="search" id="agendaQuery" maxlength="120" placeholder="Local only"></label></div>
+<div class="toolbar"><label>View <select id="agendaHorizon"><option value="all">All scheduled</option><option value="7" selected>Next 7 days</option><option value="30">Next 30 days</option><option value="overdue">Past due</option><option value="conflicts">Colliding plans</option></select></label><label>Search HUMAN group / action <input type="search" id="agendaQuery" maxlength="120" placeholder="Local only"></label></div>
+<div class="notice" id="conflictPanel" hidden>
+<strong>HUMAN scheduling collisions</strong>
+<p id="conflictSummary" role="status" aria-live="polite"></p>
+<div class="row"><button type="button" id="conflictFocus" class="ghost">Show conflicts in agenda</button>
+<button type="button" id="resolveConflicts">Propose non-overlapping weekdays (confirmation required)</button></div>
+<p class="subtle">This only edits proposed HUMAN reminder times in memory. It never executes an assessment or decides technical risk; verify resource availability in your real calendar.</p></div>
 <p id="agendaSummary" class="subtle"></p><div class="tablebox"><table><thead><tr><th>Local date &amp; time</th><th>Original ordinal</th><th>Source-reported severity</th><th>HUMAN stage / group</th><th>HUMAN action</th><th>Edit</th></tr></thead><tbody id="agendaRows"></tbody></table></div>
 <div class="row"><button id="agendaPrev" class="ghost" type="button">Previous</button><button id="agendaNext" class="ghost" type="button">Next</button></div>
 </section>
-<section id="out" class="panel" hidden aria-labelledby="outputHeading"><h2 id="outputHeading">4 · Save / resume or export calendar</h2>
+<section id="workload" class="panel" hidden aria-labelledby="workloadHeading">
+<h2 id="workloadHeading">4 · HUMAN owner workload</h2>
+<p>PRIVATE human group names from the original worksheet, not verified personnel or assigned authority. Counts are appointment planning, never proof of remediation or accepted scope.</p>
+<div class="toolbar"><label>Filter HUMAN groups <input type="search" id="workloadQuery" maxlength="120" placeholder="Private group name"></label>
+<button type="button" id="clearGroup" class="ghost">Clear group focus</button><span id="focusedGroup" class="subtle">All groups</span></div>
+<p id="workloadSummary" class="subtle"></p><div class="tablebox">
+<table><thead><tr><th>HUMAN owner group</th><th>Rows</th><th>Unscheduled</th><th>Past planned time</th><th>HUMAN blocked</th><th>Overlapping</th><th>Nearest next reminder</th><th>Open in planner</th></tr></thead><tbody id="workloadRows"></tbody></table></div>
+<div class="row"><button type="button" id="workloadPrev" class="ghost">Previous</button><button type="button" id="workloadNext" class="ghost">Next</button></div>
+</section>
+<section id="out" class="panel" hidden aria-labelledby="outputHeading"><h2 id="outputHeading">5 · Save / resume or export calendar</h2>
 <p>Scheduled events use original anonymous ordinals and source-reported severity, with your own HUMAN next-action text only when explicitly opted in. <strong>Original lab-source fields are never imported here, but HUMAN notes can themselves mention private targets, clients or evidence. Review before exporting.</strong> Each calendar export is an explicit PRIVATE local download. Dates are interpreted in <strong id="tz"></strong>; re-import rejects a different timezone.</p>
 <div class="row"><label class="file">Restore your PRIVATE plan CSV <input id="restore" type="file" accept=".csv,text/csv"></label><button id="savePlan" type="button">Save private plan CSV</button></div>
 <div class="row"><label><input id="includeAction" type="checkbox"> Include HUMAN next-action text in calendar descriptions (more disclosure)</label></div>
 <div class="row"><button id="calendar" type="button">Export PRIVATE calendar (.ics)</button><button id="summaryExport" type="button" class="ghost">Export counts only (.json)</button></div>
-<p class="subtle">Plans bind to the exact bytes of this worksheet using an <em>unsigned</em> SHA-256 fingerprint; this does not authenticate its producer. Calendar entries are tentative reminders. Restoring a plan NEVER changes worksheet fields, source risk, permissions or a scan. No browser storage, fetch, tracking, local server, model, or network.</p>
+<p class="subtle">Save the PRIVATE plan <strong>before each calendar export</strong> to preserve opaque, stable event IDs on re-import, reducing duplicates in calendar clients that honor UID. Legacy plans can be imported but need saving in the new format. Calendar software may still duplicate events or ignore updates.<br>Plans bind to the exact bytes of this worksheet using an <em>unsigned</em> SHA-256 fingerprint; this does not authenticate its producer. Calendar entries are tentative reminders. Restoring a plan NEVER changes worksheet fields, source risk, permissions or a scan. No browser storage, fetch, tracking, local server, model, or network.</p>
 </section>
 </main><footer>LightUp · PRIVATE HUMAN operations companion · Not an execution endpoint. All release, review, consent, revocation and HUMAN GO gates remain unchanged.</footer>
 </body></html>
