@@ -46,7 +46,7 @@ Parent [#1195](https://github.com/Zennay/Lightup/pull/1195), tenant wiring [#161
 
 ## Actually reopen and compare 2–12 original private HUMAN review snapshots
 
-[`src/lightup/finding_export_review_history.py`](../src/lightup/finding_export_review_history.py) adds an offline HUMAN operator route that **re-admits each native original** four-file `publish_client_findings_review` output. It rejects missing/extra files, symlinks, non-private ownership/modes, altered native scriptless HTML, changed original HOLD notice, noncanonical/native CSV bytes, duplicated displayed IDs, unbound native summary JSON and repeated byte-identical selected snapshots. All original input files remain untouched.
+[`src/lightup/finding_export_review_history.py`](../src/lightup/finding_export_review_history.py) adds an offline HUMAN operator route that **re-admits each native original** four-file `publish_client_findings_review` output. It rejects missing/extra files, symlinks, non-private ownership/modes, altered native scriptless HTML, changed original HOLD notice, noncanonical/native CSV bytes, **unescaped CSV formula leaders**, duplicate displayed IDs, cross-packet NFKC-equivalent but byte-different identities, unbound native summary JSON and repeated byte-identical selected snapshots. All original input files remain untouched.
 
 The user selects 2–12 *actually available* private reviews, and explicitly attests that these locally selected files concern the same work scope. Source identity and selection order cannot be independently verified from the deliberately minimized CSV packet. Output is therefore an **operator-selected comparison, not an authenticated chronology or tenant match**.
 
@@ -56,7 +56,7 @@ For each neighboring original selection, the fully native comparison shows:
 - `changed`: reported title/severity/retest-stage/remediation field differs; no independent remediation or risk verification.
 - `unchanged`: exact five source-selected CSV display columns match. Same ID still does not authenticate the same underlying client finding.
 
-The scriptless `history.html` summarizes differences and previous/later **reported** severity/retest labels without raw target, raw evidence, title or remediation text. `history.json` preserves full private ID-level change classification and SHA-256 of every original CSV. `REVIEW_ONLY.txt` remains mandatory. These are all **PRIVATE** 0600 files in one NEW 0700 folder, created by original Linux atomic NOREPLACE publication after all inputs have been admitted. No network requests, scanner calls, edits to originals or shared workspace promotion.
+The scriptless `history.html` groups *changed*, *added*, and *absent* records in human-oriented collapsible priority lists (reported critical/high first); unchanged rows are collapsed by default. It summarizes differences and previous/later **reported** severity/retest labels without raw target, raw evidence, title or remediation text. `history.json` preserves full private ID-level change classification and SHA-256 of every original CSV. `REVIEW_ONLY.txt` remains mandatory. These are all **PRIVATE** 0600 files in one NEW 0700 folder, created by original Linux atomic NOREPLACE publication after all inputs have been admitted. No network requests, scanner calls, edits to originals or shared workspace promotion.
 
 Example for a locally authorized operator, with an existing owner-private `/home/operator/lightup-private` mode 0700:
 
@@ -72,3 +72,14 @@ PYTHONPATH=src python3 -m lightup.finding_export_review_history \
 Original review directory inputs are full native four-file packages, not arbitrary CSVs. The operator must explicitly verify matching tenant/context outside this helper; `--human-confirm-same-scope` records a human claim only and never substitutes for a permission check. When a review source or destination is unsafe, the tool exits **HOLD = 3**. A locally published PRIVATE result exits **REVIEW_ONLY = 2**. There is no release/authorized-execution success code.
 
 These standalone native products are still on a dependent unmerged branch. No QA/regression/tests are authored or run, nor is a real client or browser end-to-end use asserted. Genuine original source owners, exact-head hosted plus permanently named VPS CI, independent privacy/browser/security review, #177/#182/#829, separately authenticated current client/operator consent and use-time revocation, and explicit HUMAN GO remain release gates.
+
+### Independently reopen a previously produced private history
+
+The companion [`finding_export_review_history_inspect.py`](../src/lightup/finding_export_review_history_inspect.py) gives a practical receiver/operator a separate **read-only** command for existing `history.html`, `history.json`, and `REVIEW_ONLY.txt`. It checks exact original inventory, owner-only 0700/0600 one-link nofollow entries, bounded native history schema, distinct original CSV hashes, claimed transition ordinals and item classifications, exact derived counters, strict JSON serialization, scriptless page reconstruction, and the mandatory HOLD notice. No source-client authentication is manufactured and there is no database query, retest, network or grant.
+
+```bash
+PYTHONPATH=src python3 -m lightup.finding_export_review_history_inspect \
+  --workspace /home/operator/lightup-private/comparison-001
+```
+
+An unchanged native local representation returns **2=REVIEW_ONLY** and prints only a local unsigned JSON SHA and count, with no private finding titles, target or source evidence on stdout. A changed, nonprivate, unexpected, incomplete or malformed workroom returns **3=HOLD**. This does not establish that the sender, packet order, cross-scope declaration or source findings are authentic. Independently protect original exported data and require genuine external disclosure approval before sharing even summary-only information.
