@@ -11,6 +11,7 @@ import csv
 import html
 import io
 import json
+from hashlib import sha256
 import os
 from pathlib import Path
 import shutil
@@ -217,14 +218,19 @@ def build(packets: list[str], final_room: str, handoff_room: str,
     withheld_writer.writerow(fields)
     for item in withheld_changes:
         withheld_writer.writerow([item[k] for k in fields])
-    docs = (
+    artifacts = (
         ("OPEN-PRIVATE.html", _private_html(changes, overview, missing, withheld_overview)),
         ("PRIVATE-HUMAN-CANDIDATE.csv", lab_plan_review._csv(next_rows)),
         ("PRIVATE-HUMAN-MULTITEAM-DIFF.csv", diff_stream.getvalue().encode("utf-8")),
         ("PRIVATE-HUMAN-WITHHELD-DIFF.csv", withheld_csv.getvalue().encode("utf-8")),
-        ("PRIVATE-HUMAN-MULTITEAM-RECEIPT.json",
-         (json.dumps(receipt, sort_keys=True, separators=(",", ":")) + "\n").encode("ascii")),
     )
+    # This is only a same-room UNSIGNED byte-consistency inventory, never
+    # recipient authentication, original client consent or source authenticity.
+    receipt["private_artifact_digests_unsigned"] = {
+        name: sha256(data).hexdigest() for name, data in artifacts
+    }
+    docs = (*artifacts, ("PRIVATE-HUMAN-MULTITEAM-RECEIPT.json",
+         (json.dumps(receipt, sort_keys=True, separators=(",", ":")) + "\n").encode("ascii")))
     target.mkdir(mode=0o700)
     try:
         if not privacy.private(target, True):
