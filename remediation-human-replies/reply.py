@@ -120,11 +120,11 @@ def admit_reply(obj: dict, packet: dict, digest: str) -> list[dict]:
 def hash_csp(raw: bytes) -> str:
     return "'sha256-" + base64.b64encode(hashlib.sha256(raw).digest()).decode("ascii") + "'"
 
-def editable_page(packet: dict, digest: str) -> bytes:
+def editable_page(packet: dict, digest: str, previous: list[dict] | None = None) -> bytes:
     script = (HERE / "reply.js").read_bytes()
     require(len(script) < 32000 and b"</script" not in script.lower(),
             "Unsafe local recipient source script")
-    seed = payload(packet, digest, responses_default(packet["items"]))
+    seed = payload(packet, digest, previous if previous is not None else responses_default(packet["items"]))
     seed_json = json.dumps(seed, ensure_ascii=True, separators=(",", ":")).replace(
         "<", "\\u003c")
     policy = ("default-src 'none'; script-src " + hash_csp(script) +
@@ -230,7 +230,7 @@ def prepare(archive: Path, output: Path) -> None:
     })
     print("REVIEW_ONLY: PRIVATE source-redacted HUMAN recipient reply:", output / "index.html")
 
-def open_reply(reply_file: Path, archive: Path, output: Path) -> None:
+def open_reply(reply_file: Path, archive: Path, output: Path, editable: bool = False) -> None:
     require(reply_file.is_absolute() and archive.is_absolute() and reply_file != archive,
             "Original .luhq and reply .luhr must be separate private inputs")
     packet, digest, source_bytes = source(archive)
@@ -274,23 +274,33 @@ def open_reply(reply_file: Path, archive: Path, output: Path) -> None:
                    "source_authenticated": False, "remediation_verified": False,
                    "selected_human_tasks": len(replies),
                    "warning": WARNING})
-    exclusive_output(output, [archive, reply_file], {
-        "index.html": printable(packet, replies),
+    contents = {
+        "index.html": (editable_page(packet, digest, replies) if editable
+                       else printable(packet, replies)),
         "anonymous-counts.json": schedule.canonical(counts),
-    })
-    print("REVIEW_ONLY: PRIVATE source-redacted HUMAN response:", output / "index.html")
+    }
+    if editable:
+        contents["README.txt"] = (
+            "PRIVATE editable resumed HUMAN reply; same exact original redacted "
+            "selection and previous encrypted response. This HTML intentionally "
+            "contains plaintext PRIVATE self-declared recipient answers. Export "
+            "a NEW encrypted .luhr; do not treat HUMAN state as verified.\n"
+        ).encode("utf-8")
+    exclusive_output(output, [archive, reply_file], contents)
+    print("REVIEW_ONLY: PRIVATE source-redacted HUMAN " +
+          ("editable resume:" if editable else "response:"), output / "index.html")
     print("No original findings, verified fixes or client/operator consent implied.")
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     options = parser.add_subparsers(dest="action", required=True)
-    for name in ("prepare", "open"):
+    for name in ("prepare", "open", "resume"):
         p = options.add_parser(name)
         p.add_argument("--handoff", type=Path, required=True,
                        help="Original encrypted source-redacted .luhq HUMAN handoff")
         p.add_argument("--output-dir", type=Path, required=True,
                        help="NEW absolute owner-private 0700 output folder")
-        if name == "open":
+        if name in ("open", "resume"):
             p.add_argument("--reply", type=Path, required=True,
                            help="Received browser-encrypted PRIVATE HUMAN .luhr response")
     args = parser.parse_args()
@@ -298,7 +308,8 @@ def main() -> int:
         if args.action == "prepare":
             prepare(args.handoff, args.output_dir)
         else:
-            open_reply(args.reply, args.handoff, args.output_dir)
+            open_reply(args.reply, args.handoff, args.output_dir,
+                       editable=args.action == "resume")
         return 2
     except (single_review.review.Hold, OSError, ValueError, KeyError, TypeError,
             UnicodeError, RuntimeError, ImportError, OverflowError) as exc:
