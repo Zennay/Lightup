@@ -71,7 +71,7 @@
     source=null;rules=[];e.maskPrivateBlocks.checked=false;showRules();invalidate();
     message("filename","None");message("filesize","—");message("originalHash","—");
     if (!file) return;
-    if (!/^[^/\x00-\x1f]{1,120}\.(txt|csv|json|md|log)$/i.test(file.name) ||
+    if (!/^[^/\x00-\x1f]{1,120}\.(txt|csv|json|md|log|pem|key|asc)$/i.test(file.name) ||
         file.size===0 || file.size>2*1024*1024) {
       message("openStatus","HOLD: choose nonempty UTF-8 text with a safe filename, maximum 2 MiB.");
       e.file.value="";return;
