@@ -103,6 +103,11 @@ def _read_packet(path: Path) -> tuple[dict[str, tuple[str, ...]], str]:
             ("remediation", row[4], 16384),
         ):
             _checked_text(value, field, ceiling)
+            # A native source renderer apostrophe-prefixes literal ASCII
+            # spreadsheet formula leaders. A forged standalone CSV may not
+            # skip that presentation boundary during offline re-admission.
+            if value.lstrip().startswith(("=", "+", "-", "@")):
+                raise ValueError("unescaped spreadsheet formula in PRIVATE packet")
         identity = unicodedata.normalize("NFKC", row[0])
         if identity in normalized_ids:
             raise ValueError("ambiguous private finding presentation identity")
@@ -224,6 +229,15 @@ def publish_private_review_history(
         hashes.append(digest)
     transitions = []
     for index in range(1, len(originals)):
+        previous_ids = {unicodedata.normalize("NFKC", key): key
+                        for key in originals[index - 1]}
+        current_ids = {unicodedata.normalize("NFKC", key): key
+                       for key in originals[index]}
+        # Visually equivalent but byte-distinct identifiers in separate
+        # moments cannot silently masquerade as a stable original finding.
+        if any(previous_ids[key] != current_ids[key]
+               for key in previous_ids.keys() & current_ids.keys()):
+            raise ValueError("cross-packet compatibility identity drift: HUMAN HOLD")
         items, counts = _difference(originals[index - 1], originals[index])
         transitions.append({
             "from_ordinal": index,
