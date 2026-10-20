@@ -1814,3 +1814,52 @@ a local SHA authenticates recipients/consent, verifies findings, authorizes
 scans, creates real tasks or issues security PASS. The v44 source-only ZIP
 retains fixed unsigned v16–v43 software inventory reads and original
 Incubate M3/M7 PLAN/LAB ONLY DRAFT/HOLD CI/review/HUMAN GO boundaries.
+
+## v45 — ORIGINAL HUMAN owner-proposal change briefs · console 52
+
+New [portfolio_owner_change_briefs.py](portfolio_owner_change_briefs.py)
+turns one original 0600 `PRIVATE-HUMAN-owner-inbox.json` and an independently
+finalized `PRIVATE-HUMAN-operator-followup.json` into a set of
+**separate, source-bound, owner-private HUMAN coordination briefs**.
+
+Input is intentionally complete: `--history` ORIGINAL
+`PRIVATE-HUMAN-inbox-history.json`; `--inbox` original native
+`PRIVATE-HUMAN-owner-inbox.json`; `--followup` native operator follow-up
+receipt; `--operator-csv` its exact full HUMAN CSV;
+`--private-parent` existing 0700 operator-only folder. Optional
+`--changed-only` includes only proposals whose stage changed since the
+received HUMAN owner response, or contain a new human-only operator note.
+An unchanged/empty selection is **NOT** proof of a verified fix.
+
+All three original JSON objects and exact unchanged HUMAN CSV are admitted
+using existing native source validators: canonical bytes and exact SHA-256,
+duplicate-key refusal, all explicit false authority fields, complete
+original owner/source identity and each original HUMAN stage/note. The entire
+input chain is checked again before any output allocation; source inputs
+are never overwritten. All-or-nothing output is a new 0700 root with
+separate 0700 PRIVATE rooms per proposed original HUMAN owner. Each room has
+0600 source-bound JSON, source-specific HTML and CSV and anonymous
+counts-only HTML. The root operator index uses only owner packet ordinals,
+selected proposal counts and local private links; original owner names,
+source IDs, input hashes and free-text HUMAN notes are withheld from the
+root index. A root 0600 PRIVATE manifest preserves the proposed owner/room
+mapping; no automatic recipient delivery exists.
+
+    python3 assessment-workspace-ledger/portfolio_owner_change_briefs.py \
+      --history /private/history/PRIVATE-HUMAN-inbox-history.json \
+      --inbox /private/operator/PRIVATE-HUMAN-owner-inbox.json \
+      --followup /private/followup/PRIVATE-HUMAN-operator-followup.json \
+      --operator-csv /private/followup/PRIVATE-HUMAN-original-operator-followup.csv \
+      --private-parent /private/operator-only --changed-only
+
+Console **52** exposes the offline foreground HUMAN flow.
+**These labels are not authenticated recipients**, stage proposals are not
+verified remediation, and no scans, grants, sharing, appointments, actual
+tasks, client consent or security approvals occur. Exact native original
+source provenance remains the sole offline input gate, not authorization
+to disclose. Fixed source-only software v45 includes this command and
+preserves unsigned software inventories v16–v44 for read-only inspection.
+Incubate M3/M7 PLAN/LAB ONLY DRAFT/HOLD and the existing hosted and named VPS
+CI, original owner/browser/security/privacy reviews, authenticated current
+operator/client consent with action-time revocation, and HUMAN GO still gate
+any real release.

@@ -43,6 +43,7 @@ import portfolio_inbox_owner_reconcile
 import portfolio_owner_inbox_viewer
 import portfolio_owner_followup
 import portfolio_owner_followup_studio
+import portfolio_owner_change_briefs
 import portfolio_owner_studio
 import portfolio_focus_studio
 import browser_intake
@@ -102,6 +103,7 @@ MENU = (
     ("49", "Prepare original-source PRIVATE HUMAN operator follow-up template"),
     ("50", "Receive original-source PRIVATE HUMAN operator follow-up"),
     ("51", "Build standalone PRIVATE HUMAN operator follow-up Studio"),
+    ("52", "Create source-bound per-owner PRIVATE HUMAN follow-up change briefs"),
     ("0", "Exit"),
 )
 
@@ -250,6 +252,15 @@ def handle_action(action):
         return history_progress.run(argparse.Namespace(
             action_context=prompt("ORIGINAL PRIVATE-action-context.json"),
             actions=actions, plan=plans, private_parent=private_parent()
+        ))
+    if action == "52":
+        return portfolio_owner_change_briefs.run(argparse.Namespace(
+            history=prompt("Original PRIVATE-HUMAN-inbox-history.json"),
+            inbox=prompt("Original PRIVATE-HUMAN-owner-inbox.json"),
+            followup=prompt("Original native PRIVATE-HUMAN-operator-followup.json"),
+            operator_csv=prompt("Matching original PRIVATE-HUMAN-original-operator-followup.csv"),
+            private_parent=private_parent(),
+            changed_only=prompt("Only changed HUMAN proposals or private notes? y/n").strip().lower() == "y"
         ))
     if action == "51":
         return portfolio_owner_followup_studio.build(argparse.Namespace(
