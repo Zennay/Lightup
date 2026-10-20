@@ -21,6 +21,7 @@ def receive(
     trusted_public_key: Path,
     trusted_fingerprint: str,
     fresh_output_dir: Path,
+    secondary: tuple[Path, Path, str] | None = None,
 ) -> None:
     root = Path(__file__).resolve().parent.parent
     original = root / "remediation-integrated-workspace"
@@ -31,6 +32,16 @@ def receive(
     if not fresh_output_dir.is_absolute() or fresh_output_dir.exists() or fresh_output_dir.is_symlink():
         raise Hold("recipient output must be a fresh absolute directory")
     verified_archive_bytes = verify(archive, receipt, trusted_public_key, trusted_fingerprint)
+    if secondary is not None:
+        second_receipt, second_public_key, second_fingerprint = secondary
+        if second_fingerprint == trusted_fingerprint:
+            raise Hold("a second signature must use a distinct independently trusted key")
+        second_archive_bytes = verify(
+            archive, second_receipt, second_public_key, second_fingerprint,
+        )
+        if second_archive_bytes != verified_archive_bytes:
+            raise Hold("two trusted signatures must bind exactly the same archive bytes")
+        print("REVIEW_ONLY: two distinct trusted Ed25519 key fingerprints matched.")
     sys.path.insert(0, str(original))
     import receiver  # original source-owner's native ZIP admission and publication
     import install  # original source-owner's source-lock / receipt inspector
@@ -64,14 +75,27 @@ def main() -> int:
     parser.add_argument("--trusted-public-key", required=True, type=Path)
     parser.add_argument("--trusted-fingerprint", required=True)
     parser.add_argument("--output-dir", required=True, type=Path)
+    parser.add_argument("--second-receipt", type=Path)
+    parser.add_argument("--second-trusted-public-key", type=Path)
+    parser.add_argument("--second-trusted-fingerprint")
     args = parser.parse_args()
+    secondary_values = (
+        args.second_receipt,
+        args.second_trusted_public_key,
+        args.second_trusted_fingerprint,
+    )
     try:
+        if any(value is not None for value in secondary_values) and not all(
+            value is not None for value in secondary_values
+        ):
+            raise Hold("second signer requires receipt, public key AND trusted fingerprint")
         receive(
             args.archive,
             args.receipt,
             args.trusted_public_key,
             args.trusted_fingerprint,
             args.output_dir,
+            secondary=secondary_values if all(value is not None for value in secondary_values) else None,
         )
     except (OSError, ValueError) as exc:
         print("HOLD:", exc, file=sys.stderr)
