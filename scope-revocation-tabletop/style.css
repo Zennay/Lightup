@@ -68,3 +68,20 @@
 .matrix-illustrative{border:1px solid #598388;color:#d8f0f1;background:#27474f}
 .matrix-attention{border:1px solid #a1784b;color:#ffddac;background:#4b3929}
 @media print{.coverage-table th,.coverage-table td{background:white;color:black;border:1px solid #aaa}.matrix-tag{border:1px solid #777;background:white;color:black}}
+
+/* Stepwise fictional scope decision replay. The active step is not a real grant state. */
+.replay-panel{margin:18px 0;padding:19px;border:1px solid #547484;background:#172d3b;border-radius:12px}
+.replay-panel h3{margin:0 0 7px;font-size:1.12rem}.replay-panel p{line-height:1.52}
+.replay-panel label{display:block;margin:13px 0 8px;font-weight:770}
+.replay-panel output{font-variant-numeric:tabular-nums;color:#f6e1ad}
+.replay-panel input[type=range]{width:100%;margin:5px 0 12px;accent-color:#81d6da;cursor:pointer}
+.replay-buttons{display:flex;flex-wrap:wrap;gap:7px;margin:8px 0 13px}
+.replay-buttons .button{min-height:37px;padding:7px 10px;font-size:.8rem}
+.replay-facts{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0 18px}
+.replay-facts div{min-width:0;border:1px solid #3a5969;padding:9px;border-radius:8px}
+.replay-facts dt{font-size:.72rem;color:#bed5e0}
+.replay-facts dd{margin:6px 0 0;font-size:.82rem;font-weight:730;overflow-wrap:anywhere}
+.timeline li.replay-future{opacity:.48}
+.timeline li.replay-picked{outline:2px solid #78c4d6;outline-offset:-1px;background:#173548}
+@media(max-width:580px){.replay-facts{grid-template-columns:1fr}.replay-panel{padding:13px}.replay-buttons .button{flex:1}}
+@media print{.replay-panel{background:white;color:black;border:1px solid #999}.replay-panel .muted,.replay-facts dt,.replay-facts dd{color:black}.replay-panel input,.replay-buttons{display:none}.timeline li.replay-future{opacity:1}.timeline li.replay-picked{outline:1px solid black;background:white}}
