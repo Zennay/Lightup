@@ -14,6 +14,14 @@ def prepare(session, path_prompt, ask) -> None:
     final = path_prompt("Original 0700 FINAL HUMAN Lab review")
     handoff = path_prompt("Original 0700 source-bound HUMAN team handoff")
     prior = path_prompt("Previously saved 0700 original HUMAN team BATCH")
+    rounds = ask("Existing additional HUMAN continuation rooms to retain (0–6)", "0")
+    if rounds not in tuple(map(str, range(7))):
+        print("HOLD: choose at most six previous privately saved HUMAN rounds.")
+        return
+    prior_continuations = [
+        path_prompt(f"Existing source-bound PRIVATE continuation #{i} (oldest first)")
+        for i in range(1, int(rounds) + 1)
+    ]
     count = ask("Distinct newly returned HUMAN teams (1–4)", "1")
     if count not in ("1", "2", "3", "4"):
         print("HOLD: provide 1–4 distinct returned HUMAN teams.")
@@ -47,7 +55,8 @@ def prepare(session, path_prompt, ask) -> None:
     try:
         page = lab_review_team_continue.build(
             packets, final, handoff, prior, replies, parent, folder,
-            withhold_teams=tuple(withheld))
+            withhold_teams=tuple(withheld),
+            prior_continuations=tuple(prior_continuations))
     except Exception:
         print("HOLD: original HUMAN continuation source or custody refused.")
         return
