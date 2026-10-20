@@ -113,3 +113,20 @@ python3 assessment-disclosure-preflight/human_review.py summarize \
 ~~~
 
 The visual browser workspace also offers **Export suppressed PRIVATE HUMAN counts only**, using the same stage/category suppression logic and requiring a separate explicit confidentiality confirmation. Neither aggregate is automatically anonymous, a client deliverable, an approved report, consent, a grant or source-authenticated data. They are strictly PRIVATE HUMAN planning materials.
+
+
+## Complete native bidirectional encrypted HUMAN workflow (without a browser)
+
+Native human_review.py now also has **seal**. It first re-admits the exact full PRIVATE receipt and every plaintext source-free HUMAN ordinal/type/stage/note, requests a new password twice through a non-echoed interactive TTY, then encrypts the *same unchanged source-free CSV bytes* in memory using the exact same LUHUM001 / PBKDF2-SHA256 600k / AES-256-GCM header+AAD format as the browser. The resulting PRIVATE-human-reviewed.luhd is an exclusive new owner-only 0600 file, with complete ciphertext staging before final publication. No decrypted or extra plaintext CSV staging is created. Existing original source files and source-owner validation are not altered.
+
+~~~sh
+mkdir -m 700 ./another-private-sealed
+python3 assessment-disclosure-preflight/human_review.py seal \
+  --receipt ./private-disclosure-desk/PRIVATE-receipt.json \
+  --answers ./private-disclosure-desk/PRIVATE-human-template.csv \
+  --private-output-dir ./another-private-sealed
+~~~
+
+Later the original browser may open that .luhd file against precisely the same original receipt bytes, or the native render/summarize commands may decrypt it with the non-echoed password. Passphrases do not authenticate the original producer, reviewer, owner, client or consent. Required optional dependency and HOLD handling are the same as for native decryption. Incorrect source, invalid CSV, password mismatch or missing TTY aborts without publishing new final ciphertext.
+
+Native and browser generate newly salted ciphertext for each deliberate export; neither changes the original receipt, creates an assessment, contacts a target, grants scope nor signals release readiness.
