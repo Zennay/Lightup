@@ -63,3 +63,28 @@ def finalize(session, path_prompt, ask) -> None:
         print("HOLD: changed original source, HUMAN CSV, or private room refused.")
         return
     print("PRIVATE REVIEW_ONLY: original HUMAN lab review: " + str(page))
+
+
+def resume(session, path_prompt, ask) -> None:
+    packets = _packets(path_prompt, ask)
+    if packets is None:
+        return
+    prior = path_prompt("EXISTING original 0700 HUMAN Lab Review Studio")
+    csv_file = path_prompt("Completed original-bound 0600 HUMAN Lab Review CSV")
+    parent = path_prompt("EXISTING 0700 PRIVATE new review parent", session.parent)
+    folder = ask("UNUSED PRIVATE continued Lab HUMAN Studio name",
+                 "private-lab-human-resumed")
+    print("This re-admits ALL unchanged original Lab Launchpad packet identities.")
+    print("All original HUMAN stages/teams/private questions are loaded for editing.")
+    print("Previous Studio, original source packets and live console stay unchanged.")
+    print("This does not authenticate a reviewer, client, finding or consent.")
+    if ask("Confirm exactly RESUME PRIVATE LAB HUMAN REVIEW", "") != "RESUME PRIVATE LAB HUMAN REVIEW":
+        print("HOLD: no original HUMAN Lab Review resumed.")
+        return
+    try:
+        page = lab_plan_review.prepare(
+            packets, parent, folder, prior_room=prior, prior_csv=csv_file)
+    except Exception:
+        print("HOLD: exact original HUMAN Lab source, CSV or private custody refused.")
+        return
+    print("PRIVATE REVIEW_ONLY: continued HUMAN Lab Review Studio: " + str(page))
