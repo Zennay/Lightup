@@ -41,10 +41,30 @@
 <label for="shelf-peer-files">Kies 2–8 PRIVATE HUMAN-reviewpakketten (max. 96 KiB per pakket)</label>
 <input id="shelf-peer-files" type="file" accept=".json,application/json" multiple aria-describedby="shelf-peer-status">
 <p id="shelf-peer-status" class="shelf-status" role="status" aria-live="polite">Nog geen reviewportfolio geladen. Bronafwijkingen blokkeren alle voorstellen met dezelfde oorspronkelijke bestandsnaam; voor samenhangende bronnen blijft overname altijd per rij een expliciete HUMAN keuze.</p>
+<div class="shelf-peer-toolbar" role="group" aria-label="Filter de lokale PRIVATE HUMAN bespreekdesk">
+<label for="shelf-peer-filter">Toon HUMAN vervolgwerk
+<select id="shelf-peer-filter">
+<option value="all">Alle oorspronkelijke bronnen</option>
+<option value="attention">Alle menselijke aandacht nodig</option>
+<option value="conflicts">Tegenstrijdige voorstellen</option>
+<option value="redacted">Onbekende PRIVATE notitiedekking</option>
+<option value="partial">Ontbrekende reviewpakketten</option>
+<option value="mismatch">Oorspronkelijke bronblokkades</option>
+<option value="selected">Expliciet gekozen overnames</option>
+</select></label>
+<label for="shelf-peer-search">Zoek binnen oorspronkelijke PRIVÉ bestandsnamen
+<input id="shelf-peer-search" type="search" autocomplete="off" spellcheck="false" placeholder="Zoeken blijft in deze lokale browser"></label>
+<p id="shelf-peer-filter-count" class="shelf-status" aria-live="polite">Selecteer eerst reviewpakketten. De filters wijzigen geen HUMAN-keuzes.</p>
+</div>
 <div class="table-scroller"><table class="shelf-table" aria-label="Alle lokale reviewvoorstellen bronexact vergeleken">
 <thead><tr><th scope="col">Originele PRIVATE bron</th><th scope="col">Menselijke consensus / conflict</th><th scope="col">Voorstellen per reviewpakket (NOOIT geauthenticeerd)</th><th scope="col">Bewust per bron kiezen</th></tr></thead>
 <tbody id="shelf-peer-rows"></tbody></table></div>
+<details class="shelf-peer-preview" open>
+<summary>HUMAN keuzevoorvertoning · huidige lokale stand tegenover bewust gekozen pakket</summary>
+<div id="shelf-peer-decision-preview" class="shelf-status" aria-live="polite">Nog geen bronexacte menselijke overname gekozen. Niets wordt automatisch toegepast.</div>
+</details>
 <div class="shelf-actions">
+<button type="button" id="shelf-peer-agenda" class="action muted" disabled>Download PRIVATE HUMAN bespreekagenda (.md) — géén autorisatie</button>
 <button type="button" id="shelf-peer-apply" class="action muted" disabled>Pas alleen apart gekozen bronexacte HUMAN voorstellen toe</button>
 <button type="button" id="shelf-peer-summary-export" class="action muted" disabled>Download bronvrije PRIVÉ consensus- en conflictaantallen (.json)</button>
 <button type="button" id="shelf-peer-receipt" class="action muted" disabled>Download brongebonden PRIVÉ HUMAN-returnbon (.json)</button>
