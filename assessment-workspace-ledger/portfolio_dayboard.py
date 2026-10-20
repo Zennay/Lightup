@@ -199,7 +199,7 @@ def capacity_csv(capacity):
     columns = ("proposed_human_owner", "historical_human_proposals",
                *BUCKETS, "human_urgent", "near_term", "routine", "unset")
     file = io.StringIO(newline="")
-    writer = csv.writer(file, lineterminator="\\n")
+    writer = csv.writer(file, lineterminator="\n")
     writer.writerow(columns)
     for row in capacity:
         writer.writerow([row[column] for column in columns])
