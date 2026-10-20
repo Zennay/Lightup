@@ -178,15 +178,19 @@ function tally(){
 function show(){
  $("cases").replaceChildren();
  if(!work)return;
- const search=$("search").value.trim().toLowerCase(),only=$("conflicts").checked;
+ const search=$("search").value.trim().toLowerCase(),only=$("conflicts").checked,
+  unresolvedOnly=$("unresolved-only").checked;
  let shown=0;
  work.cases.forEach((c,i)=>{
   const ra=work.a.rows[i],rb=work.b.rows[i];
   const diff=ra.slice(3).some((v,j)=>v!==rb[j+3]);
-  if(only&&!diff)return;
+  const pending=ra.slice(3).some((v,j)=>v!==rb[j+3]&&!resolved(work.choices[i][j],j));
+  if(only&&!diff||unresolvedOnly&&!pending)return;
   if(search&&![c.id,c.action,c.attention].some(s=>s.toLowerCase().includes(search)))return;
   shown++;
   const card=node("article","");card.className="case"+(diff?" differing":"");
+  card.dataset.caseIndex=String(i);
+  card.tabIndex=-1;
   card.append(node("h3",c.id),
    node("p","Originele bronactie: "+c.action+" · aandacht: "+c.attention+" (niet actueel geverifieerd)"));
   const table=node("table",""),header=node("tr","");
@@ -215,12 +219,13 @@ function show(){
     extra.hidden=select.value!=="custom";
     extra.addEventListener("change",()=>{
       work.choices[i][j]="custom:"+extra.value;tally();
+      if(unresolvedOnly&&resolved(work.choices[i][j],j))show();
     });
     select.addEventListener("change",()=>{
       extra.hidden=select.value!=="custom";
       extra.value="";
       work.choices[i][j]=select.value==="custom"?"custom:":select.value;
-      tally();
+      tally();if(unresolvedOnly&&resolved(work.choices[i][j],j))show();
     });
     td.append(select,extra);
    }
@@ -311,6 +316,26 @@ $("publish").addEventListener("click",async()=>{
 });
 $("search").addEventListener("input",show);
 $("conflicts").addEventListener("change",show);
+$("unresolved-only").addEventListener("change",show);
+$("next-unresolved").addEventListener("click",()=>{
+ if(!work)return;
+ const pending=[];
+ work.a.rows.forEach((r,i)=>{
+  if(r.slice(3).some((v,j)=>v!==work.b.rows[i][j+3]&&!resolved(work.choices[i][j],j)))
+   pending.push(i);
+ });
+ if(!pending.length){status("Alle HUMAN-conflicten zijn expliciet beslist.");return;}
+ $("search").value="";$("unresolved-only").checked=true;
+ $("conflicts").checked=false;
+ const visible=Array.from($("cases").querySelectorAll("[data-case-index]"))
+  .map(n=>Number(n.dataset.caseIndex));
+ const selected=visible.filter(i=>pending.includes(i));
+ const target=selected.length ? selected[0] : pending[0];
+ show();
+ const node=$("cases").querySelector('[data-case-index="'+target+'"]');
+ node?.scrollIntoView({behavior:"smooth",block:"start"});
+ node?.focus({preventScroll:true});
+});
 function anonymousReport(){
  if(!work||$("publish").disabled)deny("HOLD: los eerst alle HUMAN-verschillen op.");
  const c={cases:work.cases.length,conflicting_cases:0,changed_fields:0,
