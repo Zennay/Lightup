@@ -265,19 +265,23 @@ interactive local terminal.
 **Finalize** re-opens both original HUMAN submissions and the exact receipt.
 Any changed byte, absent reviewer, reordered, duplicated or extra choice,
 mismatched SHA-256, altered ordinal/kind, unexpected CSV field, unsupported
-selection, unsafe/fomula-like reason, or no justification for A/B produces
+selection, unsafe/formula-like reason, or no justification for A/B produces
 HOLD (exit 3) without claiming approval. Accepted choices create an original
-native-importable `PRIVATE-reconciled-human.csv` and scriptless
-`PRIVATE-reconciled-report.html`; *unselected* rows always reset to
+native-importable `PRIVATE-reconciled-human.csv`, scriptless
+`PRIVATE-reconciled-report.html` and independent
+`PRIVATE-reconciled-counts.csv` (minimum cohort defaults to five, optional
+`--minimum-cohort 5..12`; small/sparse groups are suppressed using the
+unchanged native HUMAN counts formatter). This aggregate file contains no
+reviewer notes or source identifiers but is **not guaranteed anonymous**; *unselected* rows always reset to
 `unreviewed` with empty notes, even if the reviewers agree. No source
 finding, consent, evidence or remediation state changes. The resulting
 CSV may be opened by the existing `human_review.py render` command for
 its unchanged additional admission; it is still PRIVATE and review-only.
 
-Each of the two output files in each command is independently atomically
+Each of the two prepare files and three finalize files is independently atomically
 published with existing owner-owned 0700 directory / 0600 file rules.
 Pair publication itself is not one filesystem transaction: after an
-interrupted second publish, the first may remain. Inspect filenames and use
+interrupted later publish, earlier PRIVATE files may remain. Inspect filenames and use
 a **fresh PRIVATE output directory** for a new attempt, never weaken custody,
 replace a report silently, or treat a partial pair as completion.
 A plaintext browser download elsewhere remains exposed until a HUMAN
