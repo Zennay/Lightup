@@ -11,6 +11,7 @@ from dataclasses import dataclass
 import hashlib
 from html import escape
 import io
+import json
 
 from .domain import AccessContext, DomainStore
 from .finding_export_service import render_client_findings_csv
@@ -33,6 +34,7 @@ class PrivateFindingReview:
 
     csv_text: str
     html_text: str
+    summary_json: str
     csv_sha256: str
     finding_count: int
 
@@ -70,6 +72,28 @@ def _table(rows: list[tuple[str, ...]]) -> str:
         cells.append("</tr>")
     cells.append("</tbody></table>")
     return "".join(cells)
+
+
+def _summary(rows: list[tuple[str, ...]], digest: str) -> str:
+    """PRIVATE machine-readable statistics; never data-free or anonymized."""
+    severities = Counter(row[2] for row in rows)
+    stages = Counter(row[3] for row in rows)
+    return json.dumps({
+        "schema": "lightup.private.finding-review.v1",
+        "classification": "PRIVATE_HUMAN_REVIEW_ONLY",
+        "finding_count": len(rows),
+        "original_csv_sha256": digest,
+        "reported_severity_counts": {
+            value: severities[value] for value in _SEVERITIES
+        },
+        "reported_retest_stage_counts": {
+            value: stages[value] for value in _RETESTS
+        },
+        "source_authenticated": False,
+        "client_consent_verified": False,
+        "remediation_verified": False,
+        "release_approved": False,
+    }, ensure_ascii=False, sort_keys=True, indent=2) + "\n"
 
 
 def _render(rows: list[tuple[str, ...]], digest: str) -> str:
@@ -120,4 +144,5 @@ def render_client_findings_review(
         store, ctx, client_id, engagement_id=engagement_id)
     rows, digest = _admit_export(csv_text)
     html_text = _render(rows, digest)
-    return PrivateFindingReview(csv_text, html_text, digest, len(rows))
+    return PrivateFindingReview(csv_text, html_text, _summary(rows, digest),
+                                digest, len(rows))
