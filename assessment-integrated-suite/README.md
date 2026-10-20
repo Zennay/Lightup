@@ -518,3 +518,51 @@ no main merge or production deploy without exact-head original GitHub-hosted
 and registered named VPS CI, source-owner, independent privacy/security/browser
 approval, #177/#182/#829, current separate authenticated client/operator
 consent with action-time revocation, and explicit HUMAN GO.
+
+## Original PRIVATE assessment → HUMAN remediation workflow (20 October)
+
+Integrated exactly the original 17-file `assessment-remediation/` source from
+[held owner PR #1628](https://github.com/Zennay/Lightup/pull/1628), pinned at
+`ab3ee5002ef78d7d4cb909faddab4522c8790485`, and its missing unchanged
+`scripts/lightup_review.py` comparator. A complete repository merge was aborted
+because original labrun.py and lab CLI documentation conflict with current
+integrated work. This strictly source-only import preserves the original owner
+branch and shared runtime/auth/scanner/consent files unchanged.
+
+The existing operator console now exposes **20** private, foreground workflows:
+
+- **16**: given already-completed ORIGINAL canonical lab comparison JSON and
+  separately authenticated original five-column client finding CSV, create
+  owner-private exact-source-bound manual finding mapping, private human
+  briefing and follow-up. Optional confidential room ZIP stays local.
+- **17**: given two original completed lab cohorts and separate original client
+  findings, invoke the original offline comparator before native mapping;
+  never create/fabricate a benchmark result from targets or models.
+- **18**: prepare a privately scoped manual-human team handoff and matching
+  offline review room from unchanged original source-bound links.
+- **19**: admit one returned HUMAN annotation with its exact original team
+  scope/baseline and produce a separate private before/after packet.
+- **20**: reconcile 2–12 disjoint original team assignments and returned
+  annotations against unchanged original source identities. All conflicts,
+  overlaps, source drift or malformed returns HOLD before human merge.
+
+Equivalent explicit native commands use `remediation_handoff.py bridge/cohorts`
+and `remediation_team.py prepare/receive/reconcile`, both in
+`assessment-integrated-suite/`. Inputs and private outputs are strictly local;
+all original native admission, source/row/metric classification and confidential
+publication remain in original scripts, not copied into adapters.
+
+The browser-only offline software ZIP now includes **15 original HTML studios**,
+including the original lab→finding Mapping Studio and human Team Room. It does
+not include private assessment data or grant authority. The native 20-function
+console and human publisher require an appropriate trusted checkout and actual
+original PRIVATE source files; the browser ZIP alone does not validate them.
+
+Human links are NOT evidence of shared client/engagement identity, verified fix,
+authenticated team sender, current consent, lawful recipient or permission.
+No scan, tool, model, network, grant, broker, retest, deletion, external
+sharing or deployment is executed. The independent original source-owner,
+privacy/security/browser review, exact-head hosted + permanently registered
+VPS CI, #177/#182/#829, separately authenticated client and operator consent
+with action-time revocation and explicit HUMAN GO remain mandatory release
+gates. Posture stays Incubate M3/M7 PLAN/LAB ONLY DRAFT/HOLD.
