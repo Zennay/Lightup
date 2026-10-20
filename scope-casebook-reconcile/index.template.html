@@ -61,6 +61,11 @@
 <label for="receipt-file">Ontvangen .lurm-bestand</label><input id="receipt-file" type="file" accept=".lurm" autocomplete="off">
 <label for="receipt-open-pass">Memo-wachtwoord</label><input id="receipt-open-pass" type="password" autocomplete="off">
 <button id="receipt-open" type="button">Open memo lokaal, alleen lezen</button></div></div>
+<div class="panel"><h3>Versleutel ontvangen PRIVATE memo opnieuw voor menselijke ontvanger</h3>
+<label for="receipt-rekey-pass">Nieuw onafhankelijk memo-overdrachtswachtwoord (min. 12 tekens)</label>
+<input id="receipt-rekey-pass" type="password" autocomplete="new-password">
+<button id="receipt-rekey" type="button">Nieuwe AES-256-GCM PRIVATE memo-overdracht</button>
+<p class="muted">Behoudt exact dezelfde eerder geaccepteerde HUMAN-memo-inhoud in een nieuw lokaal versleuteld bestand. Geen bronvalidatie, nieuwe grant, toestemming of scan.</p></div>
 <div class="panel"><h3>Verifieer lokale resultaatbytehash (geen autorisatie)</h3>
 <label for="receipt-check-file">Ontvangen oorspronkelijke versleutelde .lupt-resultaat</label>
 <input id="receipt-check-file" type="file" accept=".lupt" autocomplete="off">

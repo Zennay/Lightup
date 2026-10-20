@@ -122,7 +122,7 @@ function download(name,bytes){
 }
 function setWorking(v){
  working=v;$("receipt-save").disabled=v;$("receipt-open").disabled=v;
- $("receipt-verify").disabled=v;
+ $("receipt-verify").disabled=v;$("receipt-rekey").disabled=v;
 }
 const el=(tag,t)=>{const e=document.createElement(tag);e.textContent=t;return e;};
 function render(body){
@@ -170,21 +170,17 @@ async function decodeMemo(file,pw){
     await keyFor(pw,salt,"decrypt"),cipher));}
   catch{fail("Wachtwoord of memo-body onjuist.");}
   if(clear.length>MAX_BODY)fail("PRIVATE memo te groot.");
-  const candidate=admit(parse(dec.decode(clear)));clear.fill(0);
+  let candidate;
+  try{candidate=admit(parse(dec.decode(clear)));}
+  finally{clear.fill(0);}
   return candidate;
  }
 window.LightUpCasebookReceiptLibrary=Object.freeze({
  decodeMemo,current:()=>opened
 });
-$("receipt-save").addEventListener("click",async()=>{
- if(!window.isSecureContext||!crypto?.subtle){status("WebCrypto secure context vereist.",true);return;}
- if(working)return;setWorking(true);
- try{
-  if(!$("ack").checked)fail("Bevestig eerst PRIVATE HUMAN-only gebruik.");
-  const snapshot=produce(API.snapshot()),pw=$("receipt-save-pass").value;
-  checkPassword(pw);
-  if(!window.confirm("Maak afzonderlijk NIEUW versleuteld PRIVATE memo met oorspronkelijke dossier-IDs, HUMAN-opvolgnotities en ongetekende SHA-256-resultaatbinding? Dit is GEEN autorisatie."))return;
-  const plaintext=enc.encode(JSON.stringify(snapshot));
+async function encryptMemo(memo,pw,filename){
+ checkPassword(pw);
+  const plaintext=enc.encode(JSON.stringify(memo));
   if(plaintext.length>MAX_BODY)fail("PRIVATE memo te groot.");
   const salt=crypto.getRandomValues(new Uint8Array(16)),iv=crypto.getRandomValues(new Uint8Array(12));
   const encrypted=new Uint8Array(await crypto.subtle.encrypt({name:"AES-GCM",iv},
@@ -195,7 +191,17 @@ $("receipt-save").addEventListener("click",async()=>{
     iv_b64:base64(iv),ciphertext_b64:base64(encrypted)};
   const bytes=enc.encode(JSON.stringify(envelope));
   if(bytes.length>MAX_FILE)fail("Versleuteld PRIVATE memo te groot.");
-  download("lightup-PRIVATE-human-review-memo.lurm",bytes);
+  download(filename,bytes);
+}
+$("receipt-save").addEventListener("click",async()=>{
+ if(!window.isSecureContext||!crypto?.subtle){status("WebCrypto secure context vereist.",true);return;}
+ if(working)return;setWorking(true);
+ try{
+  if(!$("ack").checked)fail("Bevestig eerst PRIVATE HUMAN-only gebruik.");
+  const snapshot=produce(API.snapshot()),pw=$("receipt-save-pass").value;
+  checkPassword(pw);
+  if(!window.confirm("Maak afzonderlijk NIEUW versleuteld PRIVATE memo met oorspronkelijke dossier-IDs, HUMAN-opvolgnotities en ongetekende SHA-256-resultaatbinding? Dit is GEEN autorisatie."))return;
+  await encryptMemo(snapshot,pw,"lightup-PRIVATE-human-review-memo.lurm");
   status("Nieuw afzonderlijk PRIVATE HUMAN-memo aangeboden; niet in oorspronkelijke Casebook/HUMAN CSV opgenomen.");
  }catch(e){status(e instanceof Error?e.message:"Versleuteld memo geweigerd.",true);}
  finally{$("receipt-save-pass").value="";setWorking(false);}
@@ -212,6 +218,19 @@ $("receipt-open").addEventListener("click",async()=>{
   status("PRIVATE HUMAN-memo lokaal heropend, intern consistent maar zonder echte oorspronkelijke producent-, consent- of grant-verificatie.");
  }catch(e){status(e instanceof Error?e.message:"Ongeldig memo.",true);}
  finally{$("receipt-open-pass").value="";$("receipt-file").value="";setWorking(false);}
+});
+$("receipt-rekey").addEventListener("click",async()=>{
+ if(!window.isSecureContext||!crypto?.subtle){status("Veilige WebCrypto-context vereist.",true);return;}
+ if(working)return;setWorking(true);
+ try{
+  if(!opened)fail("Open eerst een bestaande PRIVATE reviewmemo.");
+  if(!$("ack").checked)fail("PRIVATE HUMAN-only erkenning ontbreekt.");
+  const pw=$("receipt-rekey-pass").value;checkPassword(pw);
+  if(!window.confirm("Versleutel exact dezelfde intern geaccepteerde PRIVATE HUMAN-reviewmemo opnieuw onder een nieuw onafhankelijk wachtwoord, verse salt en nonce? Geen bron of consent is geverifieerd."))return;
+  await encryptMemo(opened,pw,"lightup-PRIVATE-human-review-memo-rekey.lurm");
+  status("Bestaand PRIVATE HUMAN-reviewmemo met nieuwe AES-GCM salt/nonce opnieuw versleuteld, zonder oorspronkelijke plaintext bronbestanden te downloaden.");
+ }catch(e){status(e instanceof Error?e.message:"Dooroverdracht geweigerd.",true);}
+ finally{$("receipt-rekey-pass").value="";setWorking(false);}
 });
 $("receipt-verify").addEventListener("click",async()=>{
  if(working)return;setWorking(true);
