@@ -13,3 +13,10 @@
 .recipient-review textarea{margin-top:9px;min-height:250px}
 .recipient-review .actions{align-items:center}
 .recipient-review .actions span{font-size:.87rem;color:#3b506f}
+
+/* Human-only recipient return and source-bound owner feedback. */
+select{width:100%;font:inherit;border:1px solid #aebdd1;border-radius:9px;padding:11px;background:#fbfcff;color:#18243b}
+select:focus{outline:3px solid #3a82db;outline-offset:2px}
+#humanReturnOutcome{font-weight:700;color:#315582;overflow-wrap:anywhere}
+#humanReturnNote,#humanNote{min-height:105px}
+#humanReturnStatus,#humanStatus{margin-top:12px}
