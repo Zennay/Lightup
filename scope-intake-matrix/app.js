@@ -303,6 +303,8 @@
     $("notice").classList.toggle("danger-text", isError);
   }
   function refresh() {
+    // Any actual proposal mutation makes the previously rendered comparison stale.
+    $("compare-section").hidden = true;
     $("total-count").textContent = state.rows.length;
     $("excluded-count").textContent = state.rows.filter(row => row.excluded).length;
     $("review-count").textContent = state.rows.filter(row => row.status === "needs-client-review").length;
@@ -426,7 +428,14 @@
 
   async function readFile(file) {
     if (!file || file.size > MAX_BYTES) throw Error("Select a JSON file no larger than 64 KiB.");
-    return decodeOwnExport(await file.text());
+    // Decode original file bytes strictly: File.text() can silently replace invalid UTF-8.
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    if (bytes.byteLength > MAX_BYTES) throw Error("PRIVATE draft file exceeds 64 KiB.");
+    let raw;
+    try { raw = new TextDecoder("utf-8", {fatal: true, ignoreBOM: true}).decode(bytes); }
+    catch (_) { throw Error("PRIVATE draft is not valid UTF-8."); }
+    if (textBytes(raw) !== bytes.byteLength) throw Error("Noncanonical UTF-8 bytes refused.");
+    return decodeOwnExport(raw);
   }
   async function importDraft(file) {
     try {
