@@ -25,6 +25,7 @@ from briefing import (CSS, DENIAL_FLAGS, Hold, h, json_bytes, open_source,
                       publish_new, require, SEVERITIES, strict_pairs)
 from human_return import (MAX_CSV_BYTES, MAX_MANIFEST_BYTES, read_human_csv,
                           read_limited_file, source_manifest)
+from browser import source_free_studio
 
 SCHEMA = "lightup.private_lab_curated_selection.v1"
 HEADER = ("original_ordinal", "source_reported_severity", "evidence_reference_count",
@@ -105,6 +106,7 @@ def prepare(source_path: str, manifest_path: str, worksheet_path: str,
     publish_new(destination, {
         "selection-template.csv": template, "selection-receipt.json": json_bytes(receipt),
         "PRIVATE-selection-instructions.html": instructions,
+        "PRIVATE-source-free-selection-studio.html": source_free_studio(source),
     })
 
 def read_selection(raw: bytes, source: dict) -> list[dict]:
