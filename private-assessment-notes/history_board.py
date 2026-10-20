@@ -15,9 +15,27 @@ JS = r"""
   const search=document.getElementById("ordinal");
   const changes=document.getElementById("changed");
   const count=document.getElementById("count");
+  const order=document.getElementById("order");
+  const deck=document.getElementById("history-cards");
   const cards=Array.from(document.querySelectorAll("article[data-ordinal]"));
+  const humanGroup={"WITHHOLD":0,"SOURCE_OWNER_REQUIRED":1,
+    "NEEDS_HUMAN_REVIEW":2,"INTERNAL_REVIEW_ONLY":3};
   const stageCounts=document.getElementById("stage-counts");
   function refresh() {
+    // Reorder only existing source-minimal DOM cards. This is a local visual
+    // grouping of declared HUMAN stages, never an urgency/security verdict.
+    const sorted=cards.slice().sort((a,b)=>{
+      if(order.value==="STAGE_GROUP") {
+        const delta=(humanGroup[a.dataset.stage]??9)-(humanGroup[b.dataset.stage]??9);
+        if(delta) return delta;
+      }
+      if(order.value==="MOST_CHANGES") {
+        const delta=Number(b.dataset.events)-Number(a.dataset.events);
+        if(delta) return delta;
+      }
+      return Number(a.dataset.ordinal)-Number(b.dataset.ordinal);
+    });
+    sorted.forEach(card=>deck.appendChild(card));
     const term=search.value.trim();
     let shown=0, shownEvents=0;
     const counts=new Map();
@@ -39,6 +57,7 @@ JS = r"""
   select.addEventListener("change",refresh);
   search.addEventListener("input",refresh);
   changes.addEventListener("change",refresh);
+  order.addEventListener("change",refresh);
   document.getElementById("open-visible").addEventListener("click",()=>{
     for(const card of cards) if(!card.hidden) card.querySelector("details").open=true;
   });
@@ -46,7 +65,7 @@ JS = r"""
     for(const card of cards) if(!card.hidden) card.querySelector("details").open=false;
   });
   document.addEventListener("visibilitychange",()=>{
-    if(document.hidden){search.value="";select.value="ALL";changes.checked=false;refresh();}
+    if(document.hidden){search.value="";select.value="ALL";changes.checked=false;order.value="ORDINAL";refresh();}
   });
   refresh();
 })();
@@ -145,13 +164,18 @@ placeholder="Original position, e.g. 2"></label>
 <label>Current HUMAN stage<select id="state"><option value="ALL">All stages</option>""" +
                 options + """</select></label>
 <label><input id="changed" type="checkbox">Only original sources with a declared HUMAN change</label>
+<label>Local presentation order<select id="order">
+<option value="ORDINAL">Original source position</option>
+<option value="STAGE_GROUP">Group by declared HUMAN follow-up stage (not urgency)</option>
+<option value="MOST_CHANGES">Most declared HUMAN change events first</option>
+</select></label>
 </div><p id="count" role="status" aria-live="polite"></p>
 <p id="stage-counts"></p>
 <button id="open-visible" type="button">Expand visible timelines</button>
 <button id="close-visible" type="button">Collapse visible timelines</button>
 <p>Filtering changes only the visible local source-minimal view, never
 an original PRIVATE decision, source identity or review status.</p></section>
-<main>""" + "".join(cards) + """</main>
+<main id="history-cards">""" + "".join(cards) + """</main>
 <footer><p>All data were generated offline from original completed PRIVATE HUMAN
 packets. There is no browser upload, storage, network, target scanning,
 model invocation, grant or client assessment. This report does not replace
