@@ -1,0 +1,604 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-8CuFinA5Irax7y3+gJM+R1yDKnywWPfSwzmiI5iV6oM='; style-src 'sha256-gXOjPoRsp+vQKp7TyXAAnbxwcEMOguVZDKc0WLHFpe8='; img-src 'none'; connect-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'; frame-src 'none'">
+<meta name="referrer" content="no-referrer">
+<title>LightUp · PRIVATE finding follow-up</title>
+<style>:root { color-scheme: dark; --ink:#edf5f3; --muted:#91aca9; --bg:#091513; --panel:#102421; --panel2:#142d29; --line:#28504a; --accent:#80e5c0; --danger:#ffd1ba; font: 15px/1.5 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
+* { box-sizing:border-box; }
+body { margin:0; background:radial-gradient(ellipse at 75% 0%,#17392f 0%,transparent 43%),var(--bg); color:var(--ink); }
+.top { display:flex; justify-content:space-between; align-items:center; gap:16px; padding:18px max(22px,calc((100vw - 1280px)/2)); border-bottom:1px solid var(--line); }
+.identity { font-weight:800; letter-spacing:.17em; font-size:.95rem; } .identity-light { color:var(--muted); font-weight:500; font-size:.77rem; }
+.mark { color:var(--accent); font-size:1.4em; } .pill { border:1px solid var(--line); border-radius:30px; padding:6px 12px; font-size:.7rem; letter-spacing:.1em; font-weight:700; color:var(--accent); }
+main { max-width:1280px; padding:30px 22px 60px; margin:auto; }
+.intro { max-width:900px; padding:26px 0 20px; }
+.eyebrow { color:var(--accent); letter-spacing:.19em; font-size:.68rem; font-weight:800; }
+h1 { margin:0 0 15px; font-size:clamp(2.4rem,5vw,4.5rem); line-height:1.07; letter-spacing:-.04em; }
+h1 em { font-style:normal; color:var(--accent); } h2 { margin:0 0 9px; font-size:1.25rem; line-height:1.25; } p { color:#bbceca; }
+.intro>p:not(.eyebrow):not(.warning) { font-size:1.1rem; max-width:720px; }
+.warning { background:#29251c; border-left:3px solid #d8bd78; padding:12px 16px; color:#eadbc0; font-size:.9rem; border-radius:0 10px 10px 0; }
+.import { display:grid; grid-template-columns:1fr 1fr; gap:20px; background:var(--panel); border:1px solid var(--line); padding:22px; border-radius:14px; }
+.label { display:block; margin-bottom:9px; font-size:.75rem; letter-spacing:.15em; color:var(--accent); font-weight:800; }
+small { display:block; color:var(--muted); margin-top:10px; }
+input,textarea,select,button { font:inherit; }
+input:not([type="file"]),textarea,select { width:100%; background:#0a1b19; border:1px solid #36615a; border-radius:8px; color:var(--ink); padding:10px 12px; min-width:0; }
+input[type="file"] { max-width:100%; color:var(--ink); } input[type="file"]::file-selector-button { padding:9px 14px; margin-right:12px; border:1px solid var(--accent); border-radius:8px; background:#1b4437; color:var(--ink); cursor:pointer; }
+input:focus-visible,textarea:focus-visible,select:focus-visible,button:focus-visible,a:focus-visible { outline:3px solid #b8eeca; outline-offset:2px; }
+button { background:#203e38; border:1px solid #436f62; border-radius:9px; color:var(--ink); padding:10px 14px; cursor:pointer; font-weight:650; }
+button:disabled,input:disabled,select:disabled { opacity:.4; cursor:not-allowed; }
+button:not(:disabled):hover { border-color:var(--accent); background:#2a4e43; }
+button.primary { background:var(--accent); color:#0b1e18; border-color:var(--accent); margin-top:14px; }
+button.primary:hover { background:#bcf5dc; } button.subtle { background:transparent; }
+.mono { font-family:ui-monospace,SFMono-Regular,Consolas,monospace; font-size:.76rem; overflow-wrap:anywhere; color:var(--muted); }
+.provenance { padding:0 12px; border-left:1px solid var(--line); } .provenance p:first-child { font-weight:750; color:var(--ink); }
+.status { margin:12px 0 22px; padding:12px 16px; border:1px solid var(--line); border-radius:8px; font-size:.83rem; color:var(--muted); }
+.status.ok { color:var(--accent); } .status.error { border-color:#9b5546; color:var(--danger); background:#2f1e1a; }
+.toolbar { display:grid; grid-template-columns:2fr 1fr 1fr; gap:15px; margin:0 0 14px; }
+label:not(.label) { display:block; font-size:.76rem; font-weight:750; margin:0 0 7px; color:#d9e9e5; }
+.workroom { display:grid; grid-template-columns:minmax(280px, 430px) minmax(0,1fr); gap:18px; min-height:480px; }
+.queue,.detail-panel,.exports>div { border:1px solid var(--line); background:var(--panel); border-radius:14px; }
+.panel-head { padding:18px 20px; border-bottom:1px solid var(--line); }
+.panel-head p { color:var(--muted); margin:0; font-size:.8rem; }
+.list { padding:10px; max-height:665px; overflow:auto; }
+.case { width:100%; padding:14px 13px; border:1px solid transparent; background:transparent; border-radius:8px; text-align:left; margin-bottom:4px; }
+.case strong,.case span { display:block; overflow-wrap:anywhere; } .case strong { font-size:.86rem; line-height:1.3; } .case span { color:var(--muted); font-size:.72rem; margin-top:5px; }
+.case.active { border-color:var(--accent); background:#1d4439; }
+.detail-panel { padding:24px; } .empty-state { text-align:center; padding:80px 10px; color:var(--muted); } .empty-state span { color:var(--accent); font-size:3rem; }
+.detail-header { display:flex; justify-content:space-between; flex-wrap:wrap; gap:10px; }
+#findingTitle,#remediation { overflow-wrap:anywhere; white-space:pre-wrap; } .meta { font-size:.86rem; color:var(--accent); }
+.remediation { margin:22px 0; padding:16px; background:var(--panel2); border-radius:9px; }
+.remediation strong { font-size:.77rem; } .remediation p { margin-bottom:0; }
+.formgrid { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+.detail-panel input,.detail-panel textarea,.detail-panel select { margin-bottom:14px; }
+.exports { display:grid; grid-template-columns:1fr 1fr; gap:18px; margin-top:20px; } .exports>div { padding:24px; } .actions { display:flex; flex-wrap:wrap; gap:10px; margin-top:20px; }
+footer { max-width:1280px; padding:0 22px 32px; margin:auto; font-size:.72rem; color:var(--muted); } a { color:var(--accent); }
+@media(max-width:860px) { .workroom,.import,.exports { grid-template-columns:1fr; } .provenance { border:0; border-top:1px solid var(--line); padding-top:10px; } .toolbar { grid-template-columns:1fr 1fr; } .toolbar-search { grid-column:1/-1; } .list { max-height:280px; } }
+@media(max-width:520px) { .toolbar,.formgrid { grid-template-columns:1fr; } .toolbar-search { grid-column:auto; } .top { padding:14px; } .identity-light { display:none; } main { padding:15px; } .detail-panel { padding:15px; } }
+@media(prefers-reduced-motion:no-preference) { button { transition:background-color .15s ease,border-color .15s ease; } }
+
+.bulk { margin-top:14px; display:grid; grid-template-columns:1fr 1fr; gap:8px; } .bulk label { grid-column:1/-1; } .bulk select { grid-column:1/-1; } .bulk button { font-size:.78rem; min-height:38px; padding:8px; }
+@media(max-width:520px) { .bulk { grid-template-columns:1fr; } }
+
+.brief-actions { border-top:1px solid var(--line); margin-top:18px; padding-top:16px; } .brief-actions .brief-toggle { display:flex; align-items:center; gap:9px; font-size:.8rem; margin-bottom:12px; } .brief-actions .brief-toggle input { width:auto; margin:0; } .brief-actions .minor { font-size:.75rem; color:var(--muted); }
+</style>
+<script>"use strict";
+
+/* Offline HUMAN workflow for already-exported LightUp CSV summaries.
+ * No original source mutation, persistence, network, authentication or grant. */
+(function () {
+  const HEADER = ["finding_id", "title", "severity", "retest_status", "remediation"];
+  const SEVERITIES = ["critical", "high", "medium", "low", "info"];
+  const RETEST = ["not_tested", "fix_pending", "fixed", "regression"];
+  const STAGES = ["unreviewed", "triage", "queued", "waiting_owner", "needs_evidence", "followup_requested", "human_reviewed"];
+  const MAX_FILE = 2 * 1024 * 1024;
+  const MAX_ROWS = 128;
+  const MAX_CELL_BYTES = 32768;
+  const MAX_JOURNAL_BYTES = 512 * 1024;
+  const DECODER = new TextDecoder("utf-8", {fatal: true});
+  const SCHEMA = "lightup.offline_human_csv_review.v1";
+  const AGGREGATE = "lightup.anonymous_human_csv_counts.v1";
+  const NO_AUTHORITY = Object.freeze({
+    verified_findings: false, verified_remediation: false,
+    authenticated_source: false, authenticated_consent: false,
+    authorization_grant: false, permission_to_scan: false
+  });
+  const $ = (id) => document.getElementById(id);
+  const enc = new TextEncoder();
+  const state = {rows: [], digest: "", journal: [], selected: -1, dirty: false, pending: false, filename: "", bulkUndo: null};
+
+  function fail(message) { throw new Error(message); }
+  function exactObject(obj, keys) {
+    return obj !== null && typeof obj === "object" && !Array.isArray(obj) &&
+      Object.keys(obj).length === keys.length &&
+      keys.every((key) => Object.prototype.hasOwnProperty.call(obj, key));
+  }
+  function textOK(value, maxBytes, allowEmpty) {
+    return typeof value === "string" &&
+      (allowEmpty || value.trim().length > 0) &&
+      enc.encode(value).length <= maxBytes &&
+      !/[\p{Cc}\p{Cf}\p{Cs}\p{Co}\p{Cn}\p{Zl}\p{Zp}]/u.test(value);
+  }
+  function safeDisplay(value, maxBytes, allowEmpty) {
+    if (!textOK(value, maxBytes, allowEmpty)) return false;
+    if (!value) return !!allowEmpty;
+    const normalized = value.normalize("NFKC");
+    if (!textOK(normalized, maxBytes * 4, allowEmpty)) return false;
+    // The existing LightUp exporter prefixes a real ASCII formula with "'".
+    // Never interpret an invisible or compatibility-disguised expression.
+    let prefix = normalized.replace(/^[\p{Zs}\p{M}]+/gu, "");
+    if (/^[=+\-@]/u.test(prefix)) return false;
+    if (/^[\p{M}]+$/u.test(normalized)) return false;
+    return true;
+  }
+  function csvRows(input) {
+    // Require the exact all-quoted CRLF shape of the existing CSV serializer.
+    // Reject partial/malformed records before touching any displayed state.
+    const rows = [];
+    let i = 0;
+    if (!input || input.charCodeAt(0) === 0xFEFF) fail("Unexpected CSV encoding or BOM");
+    while (i < input.length) {
+      const cells = [];
+      for (let col = 0; col < 5; col++) {
+        if (input[i++] !== '"') fail("Expected quoted CSV cell");
+        let value = "";
+        let closed = false;
+        while (i < input.length) {
+          const ch = input[i++];
+          if (ch === '"') {
+            if (input[i] === '"') { i++; value += '"'; continue; }
+            closed = true; break;
+          }
+          value += ch;
+          if (value.length > MAX_CELL_BYTES) fail("CSV field exceeds limit");
+        }
+        if (!closed) fail("Unterminated CSV cell");
+        if (enc.encode(value).length > MAX_CELL_BYTES) fail("CSV field exceeds UTF-8 limit");
+        cells.push(value);
+        if (col < 4 && input[i++] !== ",") fail("Incorrect CSV column count");
+      }
+      if (input.slice(i, i + 2) !== "\r\n") fail("Expected canonical CSV record boundary");
+      i += 2;
+      rows.push(cells);
+      if (rows.length > MAX_ROWS + 1) fail("CSV row limit exceeded");
+    }
+    if (rows.length === 0 || rows[0].some((v, j) => v !== HEADER[j])) fail("Unexpected CSV header");
+    return rows.slice(1);
+  }
+  function admitCsv(input) {
+    const rows = csvRows(input);
+    const seen = new Set();
+    const displaySeen = new Set();
+    return rows.map((cells) => {
+      if (!cells.every((v, idx) => safeDisplay(v, MAX_CELL_BYTES, idx === 4))) {
+        fail("Invalid source display text or unsafe formula prefix");
+      }
+      const [id, title, severity, retest, remediation] = cells;
+      if (!id || id !== id.trim() || !title || !remediation ||
+          !SEVERITIES.includes(severity) || !RETEST.includes(retest)) {
+        fail("Invalid canonical finding fields");
+      }
+      if (seen.has(id) || displaySeen.has(id.normalize("NFKC"))) fail("Duplicate or ambiguous finding identity");
+      seen.add(id);
+      displaySeen.add(id.normalize("NFKC"));
+      return Object.freeze({id, title, severity, retest, remediation});
+    });
+  }
+  async function digest(bytes) {
+    if (!crypto || !crypto.subtle) fail("Local SHA-256 is unavailable in this browser");
+    const result = await crypto.subtle.digest("SHA-256", bytes);
+    return Array.from(new Uint8Array(result), b => b.toString(16).padStart(2, "0")).join("");
+  }
+  function todayValid(value) {
+    if (value === "") return true;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+    const d = new Date(value + "T00:00:00Z");
+    return Number.isFinite(d.valueOf()) && d.toISOString().slice(0, 10) === value;
+  }
+  function blankEntry(id) { return {id, stage: STAGES[0], owner: "", due: "", note: ""}; }
+  function admitEntry(entry, id) {
+    if (!exactObject(entry, ["id", "stage", "owner", "due", "note"]) || entry.id !== id ||
+        !STAGES.includes(entry.stage) || !textOK(entry.owner, 160, true) ||
+        !textOK(entry.note, 2048, true) || !todayValid(entry.due) ||
+        !safeDisplay(entry.owner, 160, true) || !safeDisplay(entry.note, 2048, true)) {
+      fail("Human journal contains invalid or mismatched fields");
+    }
+    return {id, stage: entry.stage, owner: entry.owner, due: entry.due, note: entry.note};
+  }
+  function localDate() {
+    const d = new Date();
+    return [d.getFullYear(), String(d.getMonth() + 1).padStart(2, "0"), String(d.getDate()).padStart(2, "0")].join("-");
+  }
+  function status(message, error) {
+    $("status").textContent = message;
+    $("status").className = "status " + (error ? "error" : "ok");
+  }
+  function setEnabled(yes) {
+    ["search", "severityFilter", "stageFilter", "bulkStage", "bulkApply", "saveJournal", "loadJournal", "saveBrief", "saveCounts", "clearAll"].forEach((id) => {
+      $(id).disabled = !yes;
+    });
+  }
+  function stageText(s) { return s.replaceAll("_", " "); }
+  function wipe() {
+    state.rows = []; state.digest = ""; state.journal = []; state.selected = -1;
+    state.dirty = false; state.pending = false; state.filename = ""; state.bulkUndo = null;
+    $("sourceFile").value = ""; $("journalFile").value = "";
+    $("summary").textContent = "No source CSV loaded.";
+    $("sourceId").textContent = "";
+    $("list").replaceChildren();
+    $("detail").hidden = true;
+    $("noneSelected").hidden = false;
+    setEnabled(false);
+  }
+  function selectedIndices() {
+    const query = $("search").value.trim().toLocaleLowerCase();
+    const severity = $("severityFilter").value;
+    const stage = $("stageFilter").value;
+    return state.rows.map((_, i) => i).filter((i) => {
+      const r = state.rows[i];
+      const j = state.journal[i];
+      return (!severity || severity === r.severity) &&
+        (!stage || stage === j.stage) &&
+        (!query || [r.id, r.title, r.remediation].some(v => v.toLocaleLowerCase().includes(query)));
+    }).sort((a, b) => SEVERITIES.indexOf(state.rows[a].severity) - SEVERITIES.indexOf(state.rows[b].severity)
+      || state.rows[a].id.localeCompare(state.rows[b].id));
+  }
+  function renderList() {
+    const list = $("list");
+    list.replaceChildren();
+    const indices = selectedIndices();
+    $("counts").textContent = indices.length + " visible / " + state.rows.length + " total; " +
+      state.journal.filter(j => j.stage !== "unreviewed").length + " human-updated; " +
+      state.journal.filter(j => j.due && j.due < localDate()).length +
+      " tentative overdue.";
+    for (const index of indices) {
+      const row = state.rows[index], journal = state.journal[index];
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "case" + (index === state.selected ? " active" : "");
+      btn.setAttribute("aria-pressed", index === state.selected ? "true" : "false");
+      const strong = document.createElement("strong");
+      strong.textContent = row.severity.toUpperCase() + " · " + row.title;
+      const small = document.createElement("span");
+      small.textContent = row.id + " · " + stageText(journal.stage) + (journal.due ? " · due " + journal.due : "");
+      btn.append(strong, small);
+      btn.addEventListener("click", () => selectCase(index));
+      list.append(btn);
+    }
+  }
+  function selectCase(index) {
+    if (state.pending && !confirm("Discard unapplied edits to the current HUMAN form?")) return;
+    state.pending = false;
+    state.selected = index;
+    const row = state.rows[index], journal = state.journal[index];
+    $("noneSelected").hidden = true; $("detail").hidden = false;
+    $("findingId").textContent = row.id;
+    $("findingTitle").textContent = row.title;
+    $("findingMeta").textContent = "Source-declared " + row.severity + " · source retest " + row.retest +
+      " (not independently verified)";
+    $("remediation").textContent = row.remediation;
+    $("humanStage").value = journal.stage;
+    $("humanOwner").value = journal.owner;
+    $("humanDue").value = journal.due;
+    $("humanNote").value = journal.note;
+    renderList();
+  }
+  function writeEntry() {
+    if (state.selected < 0) return;
+    const row = state.rows[state.selected];
+    let entry;
+    try {
+      entry = admitEntry({
+        id: row.id, stage: $("humanStage").value,
+        owner: $("humanOwner").value.trim(), due: $("humanDue").value,
+        note: $("humanNote").value
+      }, row.id);
+    } catch (error) { status(error.message, true); return; }
+    if (JSON.stringify(entry) !== JSON.stringify(state.journal[state.selected])) {
+      state.journal[state.selected] = entry;
+      state.dirty = true;
+      state.bulkUndo = null;
+      $("bulkUndo").disabled = true;
+    }
+    state.pending = false;
+    renderList();
+    status("HUMAN note updated in memory only. Download a PRIVATE draft to keep it.", false);
+  }
+  async function readFile(file, limit) {
+    if (!file || file.size < 1 || file.size > limit) fail("File absent or exceeds the bounded upload size");
+    const bytes = await file.arrayBuffer();
+    return {bytes, value: DECODER.decode(bytes)};
+  }
+  async function loadSource(file) {
+    if ((state.dirty || state.pending) && !confirm("Discard unsaved or unapplied PRIVATE HUMAN changes and open a new source?")) return;
+    try {
+      const {bytes, value} = await readFile(file, MAX_FILE);
+      const stagedRows = admitCsv(value);
+      const sha = await digest(bytes);
+      // No mutation until the complete source has been admitted.
+      state.rows = stagedRows;
+      state.digest = sha;
+      state.journal = stagedRows.map(r => blankEntry(r.id));
+      state.filename = file.name;
+      state.selected = -1;
+      state.dirty = false;
+      state.pending = false;
+      state.bulkUndo = null;
+      $("bulkUndo").disabled = true;
+      $("detail").hidden = true; $("noneSelected").hidden = false;
+      $("sourceId").textContent = "Exact file SHA-256: " + sha + " (unsigned; NOT sender authentication)";
+      $("summary").textContent = stagedRows.length + " original CSV finding(s), loaded into this local browser only.";
+      setEnabled(true); renderList();
+      status("CSV admitted. Source claims are not proof of a finding, fix or consent.", false);
+    } catch (error) {
+      status("CSV rejected without changing the existing workspace: " + error.message, true);
+    }
+  }
+  function journalDocument() {
+    return {
+      schema: SCHEMA, classification: "PRIVATE_HUMAN_ONLY", authority: NO_AUTHORITY,
+      csv_sha256: state.digest, count: state.rows.length,
+      entries: state.journal.map(j => ({...j}))
+    };
+  }
+  function download(content, name, mime) {
+    const blob = new Blob([content], {type: mime});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = name;
+    document.body.append(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 2500);
+  }
+  function saveJournal() {
+    if (state.pending) { status("Apply or discard the current HUMAN form before exporting a journal.", true); return; }
+    if (!confirm("PRIVATE export includes finding IDs, HUMAN owners and notes. Save only into a protected location. Continue?")) return;
+    download(JSON.stringify(journalDocument(), null, 2) + "\n", "lightup-private-human-review.json", "application/json");
+    state.dirty = false;
+    status("PRIVATE HUMAN draft offered for local download. Confirm actual file storage yourself.", false);
+  }
+  async function loadJournal(file) {
+    if (state.pending && !confirm("Discard unapplied HUMAN form edits before reopening a saved draft?")) return;
+    try {
+      const {value} = await readFile(file, MAX_JOURNAL_BYTES);
+      const parsed = JSON.parse(value);
+      if (value !== JSON.stringify(parsed, null, 2) + "\n") {
+        fail("Only this tool's exact canonical journal format is accepted");
+      }
+      if (!exactObject(parsed, ["schema", "classification", "authority", "csv_sha256", "count", "entries"]) ||
+          parsed.schema !== SCHEMA || parsed.classification !== "PRIVATE_HUMAN_ONLY" ||
+          !exactObject(parsed.authority, Object.keys(NO_AUTHORITY)) ||
+          Object.keys(NO_AUTHORITY).some(k => parsed.authority[k] !== false) ||
+          parsed.csv_sha256 !== state.digest || parsed.count !== state.rows.length ||
+          !Array.isArray(parsed.entries) || parsed.entries.length !== state.rows.length) {
+        fail("PRIVATE HUMAN draft is not bound to this exact original CSV");
+      }
+      const staged = parsed.entries.map((e, i) => admitEntry(e, state.rows[i].id));
+      if (!confirm("Replace the in-memory HUMAN notes with the exact-source PRIVATE draft?")) return;
+      state.journal = staged; state.dirty = false; state.pending = false; state.selected = -1;
+      state.bulkUndo = null; $("bulkUndo").disabled = true;
+      $("detail").hidden = true; $("noneSelected").hidden = false;
+      renderList();
+      status("Original CSV byte-bound HUMAN journal restored locally (not an authenticated review).", false);
+    } catch(error) {
+      status("Draft rejected without changing the workspace: " + error.message, true);
+    }
+  }
+  function htmlEscape(v) {
+    return String(v).replace(/[&<>"']/g, ch => ({
+      "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+    })[ch]);
+  }
+  async function saveBrief() {
+    if (state.pending) {
+      status("Apply or discard the current HUMAN form before preparing a PRIVATE brief.", true);
+      return;
+    }
+    const onlyUpdated = $("briefFollowups").checked;
+    const positions = selectedIndices().filter(i =>
+      !onlyUpdated || state.journal[i].stage !== STAGES[0]);
+    if (!positions.length) {
+      status("No visible HUMAN findings match the PRIVATE brief selection.", true);
+      return;
+    }
+    if (!confirm("PRIVATE printable brief for " + positions.length +
+      " finding(s): includes original IDs, titles, remediation and HUMAN owner/notes. " +
+      "This is not anonymous or an authorization. Save on a protected device only. Continue?")) return;
+    // Scriptless, hash-pinned portable HTML. Source and HUMAN strings are escaped
+    // as text and never interpreted as markup, attributes, CSS or JavaScript.
+    const css = "html{font:15px/1.55 system-ui,sans-serif;color:#172522;max-width:880px;margin:auto;padding:20px}h1{font-size:2rem}header{border-bottom:2px solid #384b44;padding-bottom:14px}small{color:#52655f}article{page-break-inside:avoid;border:1px solid #abbab2;border-radius:9px;padding:15px;margin:16px 0}h2{margin:0;font-size:1.2rem}p{white-space:pre-wrap;overflow-wrap:anywhere}dt{font-weight:700}dd{margin:0 0 8px}strong{font-weight:800}.hold{padding:12px;border-left:4px solid #ab813e;background:#fcf1d9}@media print{html{padding:0}article{border-color:#777}a{color:inherit}}";
+    let key;
+    try {
+      const hash = new Uint8Array(await crypto.subtle.digest("SHA-256", enc.encode(css)));
+      key = btoa(String.fromCharCode(...hash));
+    } catch (error) {
+      status("Browser cannot create a hash-pinned PRIVATE HTML brief.", true);
+      return;
+    }
+    const rows = positions.map(i => {
+      const source = state.rows[i], human = state.journal[i];
+      const field = (label, v) => "<dt>" + htmlEscape(label) + "</dt><dd>" +
+        htmlEscape(v || "—") + "</dd>";
+      return "<article><h2>" + htmlEscape(source.title) + "</h2><small>Original finding ID: " +
+        htmlEscape(source.id) + " · source-declared severity: " + htmlEscape(source.severity) +
+        " · source-declared retest: " + htmlEscape(source.retest) +
+        "</small><dl>" + field("Original proposed remediation (not verified)", source.remediation) +
+        field("HUMAN stage", stageText(human.stage)) +
+        field("HUMAN contact / owner", human.owner) +
+        field("Tentative HUMAN review date", human.due) +
+        field("HUMAN note", human.note) +
+        "</dl></article>";
+    }).join("\n");
+    const csp = "default-src 'none'; style-src 'sha256-" + key +
+      "'; img-src 'none'; connect-src 'none'; object-src 'none'; base-uri 'none'; " +
+      "script-src 'none'; form-action 'none'";
+    const markup = "<!doctype html>\n<html lang=\"en\"><head><meta charset=\"utf-8\">" +
+      "<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">" +
+      "<meta http-equiv=\"Content-Security-Policy\" content=\"" + csp + "\">" +
+      "<meta name=\"referrer\" content=\"no-referrer\">" +
+      "<title>PRIVATE LightUp HUMAN follow-up brief</title><style>" + css +
+      "</style></head><body><header><small>LIGHTUP · PRIVATE / HUMAN FOLLOW-UP</small>" +
+      "<h1>Human next-action brief</h1><p class=\"hold\">PRIVATE, locally authored HUMAN-only work. " +
+      "Original severity/remediation/retest values are unverified source claims. " +
+      "NOT a client authentication, finding verification, remediation, grant, " +
+      "retirement, consent or permission to act.</p></header>" +
+      "<p>Exact imported source CSV SHA-256 (unsigned): <strong>" + htmlEscape(state.digest) +
+      "</strong><br>Local preparation day (not authenticated chronology): " +
+      htmlEscape(localDate()) + "<br>Included visible source items: " +
+      positions.length + "</p>" + rows +
+      "<footer><small>Self-contained offline PRIVATE human artifact. No script, storage, network, " +
+      "client authorization or verified security result. Explicit disclosure approval required.</small></footer>" +
+      "</body></html>\n";
+    download(markup, "lightup-private-human-next-actions.html", "text/html");
+    status("PRIVATE scriptless HUMAN brief offered; original source and local workroom remain unchanged.", false);
+  }
+  function saveCounts() {
+    if (!confirm("Counts may reveal sensitive cohort sizes. Have you separately approved this disclosure?")) return;
+    const severity = Object.fromEntries(SEVERITIES.map(s => [s, state.rows.filter(r => r.severity === s).length]));
+    const human_stage = Object.fromEntries(STAGES.map(s => [s, state.journal.filter(r => r.stage === s).length]));
+    const counts = {
+      schema: AGGREGATE, classification: "ANONYMOUS_COUNTS_ONLY",
+      authority: NO_AUTHORITY, total: state.rows.length, severity, human_stage,
+      human_overdue_proposed: state.journal.filter(j => j.due && j.due < localDate()).length
+    };
+    download(JSON.stringify(counts, null, 2) + "\n", "lightup-anonymous-review-counts.json", "application/json");
+    status("Counts-only file offered; no original IDs, title, source digest or HUMAN notes exported.", false);
+  }
+  function applyBulk() {
+    if (state.pending) { status("Apply or discard individual HUMAN form edits before bulk staging.", true); return; }
+    const selected = selectedIndices();
+    const stage = $("bulkStage").value;
+    if (!STAGES.includes(stage) || !selected.length) {
+      status("No canonical HUMAN stage or visible findings were selected.", true);
+      return;
+    }
+    const changed = selected.filter(i => state.journal[i].stage !== stage);
+    if (!changed.length) { status("Visible records already have this HUMAN stage.", false); return; }
+    if (!confirm("HUMAN-ONLY proposal: set " + changed.length +
+      " visible finding(s) to '" + stageText(stage) +
+      "'? This does NOT change original source, retest or remediation. Unfiltered rows stay unchanged.")) return;
+    const previous = changed.map(i => ({index: i, stage: state.journal[i].stage}));
+    for (const i of changed) state.journal[i] = {...state.journal[i], stage};
+    state.bulkUndo = previous;
+    state.dirty = true;
+    $("bulkUndo").disabled = false;
+    if (state.selected >= 0) $("humanStage").value = state.journal[state.selected].stage;
+    renderList();
+    status(changed.length + " visible HUMAN stage(s) updated in memory. Original CSV unchanged. Undo available.", false);
+  }
+  function undoBulk() {
+    if (state.pending) { status("Apply or discard individual HUMAN form edits first.", true); return; }
+    const previous = state.bulkUndo;
+    if (!previous || !previous.length) return;
+    for (const item of previous) {
+      state.journal[item.index] = {...state.journal[item.index], stage: item.stage};
+    }
+    state.bulkUndo = null;
+    $("bulkUndo").disabled = true;
+    state.dirty = true;
+    if (state.selected >= 0) $("humanStage").value = state.journal[state.selected].stage;
+    renderList();
+    status("Last bulk HUMAN stage changes reversed in memory only.", false);
+  }
+  function init() {
+    STAGES.forEach(v => {
+      for (const id of ["humanStage", "stageFilter", "bulkStage"]) {
+        const opt = document.createElement("option"); opt.value = v; opt.textContent = stageText(v);
+        $(id).append(opt);
+      }
+    });
+    SEVERITIES.forEach(v => {
+      const opt = document.createElement("option"); opt.value = v; opt.textContent = v;
+      $("severityFilter").append(opt);
+    });
+    $("sourceFile").addEventListener("change", e => {
+      if (e.target.files[0]) loadSource(e.target.files[0]);
+    });
+    $("journalFile").addEventListener("change", e => {
+      if (e.target.files[0]) loadJournal(e.target.files[0]);
+      e.target.value = "";
+    });
+    ["search", "severityFilter", "stageFilter"].forEach(id =>
+      $(id).addEventListener("input", renderList));
+    ["humanStage", "humanOwner", "humanDue", "humanNote"].forEach(id => {
+      $(id).addEventListener("input", () => { state.pending = true; status("Unapplied HUMAN form edits — click Apply before switching findings or exporting a PRIVATE draft.", true); });
+    });
+    $("applyHuman").addEventListener("click", writeEntry);
+    $("bulkApply").addEventListener("click", applyBulk);
+    $("bulkUndo").addEventListener("click", undoBulk);
+    $("saveJournal").addEventListener("click", saveJournal);
+    $("loadJournal").addEventListener("click", () => $("journalFile").click());
+    $("saveCounts").addEventListener("click", saveCounts);
+    $("saveBrief").addEventListener("click", saveBrief);
+    $("clearAll").addEventListener("click", () => {
+      if ((state.dirty || state.pending) && !confirm("Discard unsaved or unapplied PRIVATE HUMAN notes?")) return;
+      wipe(); status("All loaded application state released from the interface.", false);
+    });
+    window.addEventListener("beforeunload", e => {
+      if (state.dirty || state.pending) { e.preventDefault(); e.returnValue = ""; }
+    });
+    wipe();
+  }
+  document.addEventListener("DOMContentLoaded", init);
+})();
+</script>
+</head>
+<body>
+<header class="top">
+  <div class="identity"><span class="mark" aria-hidden="true">◆</span> LIGHTUP <span class="identity-light">/ PRIVATE HUMAN DESK</span></div>
+  <div class="pill">OFFLINE · REVIEW ONLY</div>
+</header>
+<main>
+  <section class="intro" aria-labelledby="title">
+    <p class="eyebrow">SOURCE-BOUND FOLLOW-UP / M3·M7 INCUBATE</p>
+    <h1 id="title">Evidence to <em>human action.</em></h1>
+    <p>Open an <strong>already authorized and exported</strong> LightUp finding-summary CSV. Prioritize proposed work, annotate HUMAN ownership and dates, and keep private draft notes bound to the exact source file.</p>
+    <p class="warning"><strong>Not a security decision.</strong> Imported severity, remediation and retest values are source claims. No verified finding, verified fix, consent, tenant identity, permission to scan or remediation authority is established here. This tool never contacts a service.</p>
+  </section>
+
+  <section class="import" aria-label="Private source">
+    <div class="file-widget">
+      <label for="sourceFile" class="label">1 · LOAD SOURCE CSV</label>
+      <input type="file" id="sourceFile" accept=".csv,text/csv">
+      <small>Existing five-column, canonical all-quoted LightUp CSV only · UTF-8 · max 128 findings / 2 MiB. Do not upload actual client records into a shared device.</small>
+    </div>
+    <div class="provenance" aria-live="polite">
+      <p id="summary">No source CSV loaded.</p>
+      <p id="sourceId" class="mono"></p>
+    </div>
+  </section>
+  <div id="status" class="status" role="status" aria-live="polite">Local-only. No data loaded.</div>
+
+  <div class="toolbar" aria-label="Offline review controls">
+    <div class="toolbar-search">
+      <label for="search">Search source findings</label>
+      <input id="search" type="search" placeholder="Search ID, title or remediation" disabled>
+    </div>
+    <div class="toolbar-select">
+      <label for="severityFilter">Severity</label>
+      <select id="severityFilter" disabled><option value="">All severities</option></select>
+    </div>
+    <div class="toolbar-select">
+      <label for="stageFilter">HUMAN status</label>
+      <select id="stageFilter" disabled><option value="">All statuses</option></select>
+    </div>
+  </div>
+
+  <div class="workroom">
+    <section class="queue" aria-labelledby="queueTitle">
+      <div class="panel-head"><h2 id="queueTitle">Review queue</h2><p id="counts" aria-live="polite">Open a source CSV to begin.</p><div class="bulk"><label for="bulkStage">HUMAN stage for visible queue only</label><select id="bulkStage" disabled></select><button type="button" id="bulkApply" disabled>Preview &amp; apply to visible</button><button type="button" id="bulkUndo" disabled>Undo last bulk edit</button></div></div>
+      <div id="list" class="list"></div>
+    </section>
+    <section class="detail-panel" aria-labelledby="detailTitle">
+      <div id="noneSelected" class="empty-state">
+        <span aria-hidden="true">↗</span><h2>Choose a finding</h2><p>The queue is ordered by source-declared severity. HUMAN decisions never change the source CSV.</p>
+      </div>
+      <div id="detail" hidden>
+        <p class="eyebrow">LOCAL PRIVATE HUMAN ANNOTATION</p>
+        <div class="detail-header"><h2 id="detailTitle"><span id="findingTitle"></span></h2><span id="findingId" class="mono"></span></div>
+        <p id="findingMeta" class="meta"></p>
+        <div class="remediation">
+          <strong>Original suggested remediation — unverified</strong>
+          <p id="remediation"></p>
+        </div>
+        <div class="formgrid">
+          <div><label for="humanStage">Human follow-up stage</label><select id="humanStage"></select></div>
+          <div><label for="humanDue">Tentative follow-up date</label><input id="humanDue" type="date"></div>
+        </div>
+        <label for="humanOwner">HUMAN contact / owner (PRIVATE)</label>
+        <input id="humanOwner" maxlength="160" autocomplete="off" placeholder="Only if a person has actually agreed">
+        <label for="humanNote">HUMAN note (PRIVATE; do not paste secrets)</label>
+        <textarea id="humanNote" rows="5" maxlength="2048" placeholder="Next question, dependency or operator-supplied context. No automated evidence or fix claims."></textarea>
+        <button id="applyHuman" class="primary" type="button">Apply HUMAN note in memory</button>
+      </div>
+    </section>
+  </div>
+
+  <section class="exports" aria-label="Private local exports">
+    <div><p class="eyebrow">2 · HUMAN CONTINUITY</p><h2>Save your private work.</h2><p>Export a PRIVATE JSON with finding IDs, HUMAN owner, stage, date and notes. Resume it only against <strong>exactly the same CSV bytes</strong>. Your browser does not autosave.</p><div class="actions"><button id="saveJournal" disabled>Download PRIVATE draft</button><button id="loadJournal" disabled>Open PRIVATE draft</button><input type="file" id="journalFile" accept=".json,application/json" hidden></div><div class="brief-actions"><label class="brief-toggle" for="briefFollowups"><input id="briefFollowups" type="checkbox" checked> Only HUMAN-updated findings in visible queue</label><button id="saveBrief" disabled>Download printable PRIVATE HUMAN brief</button><p class="minor">Local scriptless HTML for a trusted private recipient. Includes IDs, source-declared remediation, owners and HUMAN notes; NEVER an anonymous handoff.</p></div></div>
+    <div><p class="eyebrow">3 · SEPARATE DISCLOSURE</p><h2>Counts only, if authorized.</h2><p>The optional anonymous aggregate contains totals by original severity and HUMAN stage, without finding IDs, titles, notes, source hash or target. Even small counts can be sensitive.</p><div class="actions"><button id="saveCounts" disabled>Download counts-only JSON</button><button id="clearAll" disabled class="subtle">Clear local workspace</button></div></div>
+  </section>
+</main>
+<footer>LightUp / PRIVATE HUMAN DESK · No network · No cookies · No persistent browser storage · No active target · No release approval. Standalone local PRIVATE software · see source README for operator guidance</footer>
+</body>
+</html>
