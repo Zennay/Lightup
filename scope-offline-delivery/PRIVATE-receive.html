@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-i9xpUKgpMYRxg8HtBlzGZl8PjGRolTBwzyoyTMtlTNw='; style-src 'sha256-1Qk4cCfWuvGOXwIazCMDveA4n/GNkVQ6QsLAZ/BjKOI='; connect-src 'none'; form-action 'none'; object-src 'none'; base-uri 'none'; img-src 'none'; frame-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-Zw+dgTVRZMUZARF4Ot6jtjeCWEL2EdHIxJVTRhPLz0I='; style-src 'sha256-1Qk4cCfWuvGOXwIazCMDveA4n/GNkVQ6QsLAZ/BjKOI='; connect-src 'none'; form-action 'none'; object-src 'none'; base-uri 'none'; img-src 'none'; frame-src 'none'">
 <title>LightUp · PRIVATE recipient byte comparison</title>
 <style>:root{color-scheme:dark}*{box-sizing:border-box}body{margin:0;padding:2.5rem 1rem;background:#0b1422;color:#ebf1fa;font:1rem/1.65 system-ui,sans-serif}main{max-width:750px;margin:auto}h1{font-size:clamp(1.8rem,5vw,2.7rem);line-height:1.15}h2{font-size:1.15rem}.tag{font-size:.76rem;letter-spacing:.12em;color:#9ec6ff;font-weight:750}section{padding:1.4rem;margin:1.25rem 0;border:1px solid #52647f;border-radius:14px;background:#16243a}label{display:block;font-weight:650;margin:1rem 0 .3rem}input{width:100%;border-radius:7px;border:1px solid #a5bad4;padding:.75rem;background:#0b1422;color:#fff;font:inherit}input:focus,button:focus{outline:3px solid #95d6fa;outline-offset:2px}button{margin-top:.85rem;cursor:pointer;border:0;border-radius:8px;padding:.8rem 1.25rem;font:inherit;font-weight:750;background:#93dbfd;color:#082235}button:disabled{opacity:.6;cursor:wait}p{overflow-wrap:anywhere}strong{color:#ffdb9a}#status{font-weight:750;padding:.8rem;border-left:4px solid #9ec6ff}#status[data-state="hold"]{border-color:#f2a0a8;color:#ffc4c9}#status[data-state="match"]{border-color:#97edbc;color:#b2ffce}a{color:#92d9ff}.mono,code{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:.89rem;overflow-wrap:anywhere}footer{font-size:.82rem;color:#b6c6db;margin:2.5rem 0}
 .download-choices{display:flex;flex-wrap:wrap;gap:.6rem}.download-choices button{margin:.35rem 0}details{border:1px solid #64748b;border-radius:8px;padding:.75rem}summary{cursor:pointer}ol{max-height:14rem;overflow:auto;padding-left:1.6rem}li{margin:.35rem 0}section[hidden]{display:none}
@@ -37,6 +37,18 @@
 <div id="safe-downloads" class="download-choices"></div>
 <button id="save-inspection-receipt" type="button" hidden>Save PRIVATE role inspection receipt (unsigned JSON)</button>
 <p>A saved receipt contains original source filenames, byte digests and the received whole-ZIP digest. Treat it as PRIVATE metadata. It proves no sender identity, consent or permission, and cannot replace independent human disclosure review.</p>
+</section>
+<section id="received-handoff-panel" hidden>
+<h2>Receive a source-bound PRIVATE HUMAN sender note</h2>
+<p>After a separately authenticated SHA-256 comparison and original native role-package inspection, you may compare the sender's independently obtained note against this *exact* original role, complete ZIP SHA-256, original source SHA, file bytes and all source fingerprints. Nothing is uploaded or granted; the note is UNSIGNED.</p>
+<label for="received-handoff-note">Choose the separate HUMAN sender note (.txt, 4 KiB maximum)</label>
+<input id="received-handoff-note" type="file" accept=".txt,text/plain">
+<label><input id="handoff-separate-channel" type="checkbox"> I separately obtained this note through a channel whose sender I checked outside LightUp. This checkbox does not prove identity or permission.</label>
+<button id="compare-handoff" type="button" disabled>Compare exact role ZIP with independent HUMAN note</button>
+<p id="handoff-status" role="status" aria-live="polite" data-state="idle"></p>
+<p id="handoff-digest" class="mono"></p>
+<button id="save-handoff-ack" type="button" hidden>Save UNSIGNED PRIVATE recipient review receipt (JSON)</button>
+<p>Even a byte match cannot establish consent, recipient identity, confidentiality, release permission or a valid scope grant. Never use a note supplied only alongside the same untrusted ZIP as independent authentication.</p>
 </section>
 <section id="role-builder-panel" hidden>
 <h2>Prepare a minimum-disclosure recipient ZIP · locally</h2>
@@ -350,7 +362,7 @@ button.addEventListener("click", async () => {
         throw Error("Unrecognized role inspector source bytes");
       }
     }
-    return receipt.files; // Receipt coherence ONLY; never sender identity or consent.
+    return {files: receipt.files, sourceOuterSha256: receipt.source_outer_sha256}; // NO identity/consent.
   }
 
   // Two-way local admission: use the same strict ZIP and role receipt
@@ -371,7 +383,7 @@ button.addEventListener("click", async () => {
         throw Error("New role member set differs from native profile");
       }
       const receipt = await validateRoleReceipt(rows, candidate.role);
-      if (receipt.length !== required.length - 1) throw Error("New role receipt incomplete");
+      if (receipt.files.length !== required.length - 1) throw Error("New role receipt incomplete");
       for (const desc of selections.filter(x => profiles[candidate.role].includes(x.path))) {
         if (await sha(rows.get(desc.path).bytes) !== desc.sha) {
           throw Error("Locally created role changed a pinned original source");
@@ -482,7 +494,7 @@ button.addEventListener("click", async () => {
         "workspace/verify.html", "courier/PRIVATE-encrypted-courier.html",
         "privacy/disclosure-preflight.html", "privacy/disclosure-recipient-verify.html",
         "PRIVATE-receive.html", "tools/recipient.js", "tools/recipient.css",
-        "tools/recipient_zip.js", "tools/role_builder.js", "tools/role_pack.py",
+        "tools/recipient_zip.js", "tools/role_builder.js", "tools/handoff_review.js", "tools/role_pack.py",
         "tools/recipient.template.html", "tools/package.py", "tools/unpack.py",
         "START-HERE.html", "README.txt", "manifest.json"
       ];
@@ -494,8 +506,14 @@ button.addEventListener("click", async () => {
           {detail:{entries,sha256:acceptedSha}}));
       }
       if (role && roleFiles && acceptedSha) {
-        localInspection = {generation: current, profile: role, files: roleFiles};
+        localInspection = {generation: current, profile: role, files: roleFiles.files};
         saveInspection.hidden = false;
+      }
+      if (role && roleFiles && acceptedSha) {
+        document.dispatchEvent(new CustomEvent("lightup:received-role-admitted", {
+          detail: {profile: role, sha256: acceptedSha, size: accepted.byteLength,
+            sourceOuterSha256: roleFiles.sourceOuterSha256, files: roleFiles.files}
+        }));
       }
       sourceInfo.textContent = "REVIEW ONLY · " + (role ? "private role " + role : "full original scope kit") +
         " · " + entries.size + " canonical members; " + admissible.length +
@@ -786,6 +804,144 @@ button.addEventListener("click", async () => {
     if (!built || !currentSource) return;
     if (!window.confirm("SAVE a SOURCE-ONLY unsigned role ZIP? This does NOT grant consent, prove identity or encrypt confidential material.")) return;
     save(built.bytes,"PRIVATE-" + built.role + "-DRAFT-HOLD.zip");
+  });
+})();
+
+"use strict";
+// Offline HUMAN sender-note reconciliation against a separately SHA-verified,
+// fully source-admitted ORIGINAL role ZIP. No grants, identity or consent.
+(() => {
+  const el = id => document.getElementById(id);
+  const panel = el("received-handoff-panel"), input = el("received-handoff-note");
+  const separate = el("handoff-separate-channel"), compare = el("compare-handoff");
+  const feedback = el("handoff-status"), acknowledgment = el("save-handoff-ack");
+  const digestOutput = el("handoff-digest");
+  const knownOriginals = new Set([
+    "workspace/LightUp-Scope-Offline-DRAFT-HOLD.zip",
+    "workspace/SOURCE-MANIFEST.json", "workspace/DIST-MANIFEST.json",
+    "workspace/verify.html", "courier/PRIVATE-encrypted-courier.html",
+    "privacy/disclosure-preflight.html", "privacy/disclosure-recipient-verify.html"
+  ]);
+  let admitted = null, accepted = null, generation = 0;
+
+  function clearAll() {
+    generation++;
+    admitted = null; accepted = null; input.value = ""; separate.checked = false;
+    panel.hidden = true; acknowledgment.hidden = true; compare.disabled = true;
+    feedback.textContent = ""; feedback.dataset.state = "idle";
+    digestOutput.textContent = "";
+  }
+  function invalidate() {
+    generation++; accepted = null; acknowledgment.hidden = true;
+    feedback.dataset.state = "idle";
+    digestOutput.textContent = "";
+    feedback.textContent = "Unsigned sender note not yet compared; no identity, consent or authority established.";
+    compare.disabled = !admitted;
+  }
+  document.addEventListener("lightup:selection-reset", clearAll);
+  document.addEventListener("lightup:received-role-admitted", event => {
+    clearAll();
+    const detail = event.detail;
+    if (!detail || !["privacy-recipient","privacy-editor","scope-reviewer"].includes(detail.profile) ||
+        !/^[0-9a-f]{64}$/.test(detail.sha256) ||
+        !/^[0-9a-f]{64}$/.test(detail.sourceOuterSha256) ||
+        !Number.isSafeInteger(detail.size) || detail.size < 1 ||
+        !Array.isArray(detail.files)) return;
+    // Source admission and byte validation occurred in the original receiver.
+    admitted = {profile: detail.profile, sha256: detail.sha256,
+      sourceOuterSha256: detail.sourceOuterSha256, size: detail.size,
+      files: detail.files.map(row => ({path:row.path,bytes:row.bytes,sha256:row.sha256}))};
+    panel.hidden = false;
+    invalidate();
+  });
+  input.addEventListener("change", invalidate);
+  separate.addEventListener("change", invalidate);
+
+  function expectedNote(item) {
+    const original = item.files.filter(row => knownOriginals.has(row.path));
+    const lines = [
+      "LIGHTUP PRIVATE HUMAN ROLE HANDOFF — REVIEW ONLY / DRAFT HOLD",
+      "format: lightup.scope_private_human_sender_note.v1",
+      "role: " + item.profile,
+      "original-source-zip-sha256: " + item.sourceOuterSha256,
+      "role-zip-sha256: " + item.sha256,
+      "role-zip-bytes: " + item.size,
+      "original-source-components: " + original.length,
+      "",
+      "Included unchanged original source components:"
+    ];
+    for (const row of original) {
+      lines.push(row.path + " | " + row.bytes + " bytes | sha256=" + row.sha256);
+    }
+    lines.push("", "UNSIGNED. No consent, authorization, origin, grant, release or approval.",
+      "Independently authenticate the recipient and a SEPARATE trusted channel.",
+      "Share the expected ZIP digest through that channel, NOT as self-proof",
+      "attached to the same untrusted archive. Encrypt private material with",
+      "the separately sourced original HUMAN courier before transferring.",
+      "Manual review and original LightUp authorization/release gates remain.", "");
+    return new TextEncoder().encode(lines.join("\n"));
+  }
+  const hex = bytes => Array.from(new Uint8Array(bytes), x => x.toString(16).padStart(2,"0")).join("");
+  function save(bytes, filename) {
+    const url = URL.createObjectURL(new Blob([bytes], {type: "application/octet-stream"}));
+    const a = document.createElement("a");
+    a.href = url; a.download = filename; a.rel = "noopener";
+    document.body.append(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 30000);
+  }
+  compare.addEventListener("click", async () => {
+    const current = ++generation;
+    const hold = () => {
+      if (current !== generation) return;
+      accepted = null; acknowledgment.hidden = true;
+      feedback.dataset.state = "hold";
+      feedback.textContent = "HOLD — original role bytes and received HUMAN note do not agree, or note is not separately sourced. No handoff accepted.";
+      compare.disabled = false;
+    };
+    accepted = null; acknowledgment.hidden = true; compare.disabled = true;
+    digestOutput.textContent = ""; feedback.dataset.state = "idle";
+    try {
+      const f = input.files && input.files[0];
+      if (!admitted || !separate.checked || !f || input.files.length !== 1 ||
+          !/\.txt$/i.test(f.name) || !Number.isSafeInteger(f.size) ||
+          f.size < 200 || f.size > 4096 || !crypto?.subtle) {
+        hold(); return;
+      }
+      feedback.textContent = "Comparing exact source-bound note bytes locally...";
+      const snapshot = await f.arrayBuffer();
+      if (current !== generation) return;
+      if (snapshot.byteLength !== f.size) {hold();return;}
+      const wanted = expectedNote(admitted);
+      const got = new Uint8Array(snapshot);
+      if (wanted.byteLength !== got.byteLength ||
+          wanted.some((byte, index) => byte !== got[index])) {hold();return;}
+      const noteSha = hex(await crypto.subtle.digest("SHA-256",snapshot));
+      if (current !== generation) return;
+      accepted = {generation: current, received: admitted, noteSha};
+      feedback.dataset.state = "match";
+      feedback.textContent = "SOURCE+NOTE MATCH / REVIEW ONLY — exact role and original byte receipt agree. Sender/recipient identities, separate-channel authenticity and legal permission remain UNVERIFIED.";
+      digestOutput.textContent = "Role ZIP SHA-256 " + admitted.sha256 +
+        " · unsigned HUMAN note SHA-256 " + noteSha;
+      acknowledgment.hidden = false;
+    } catch (_) {hold();}
+    finally {if (current === generation) compare.disabled = false;}
+  });
+  acknowledgment.addEventListener("click", () => {
+    if (!accepted || accepted.generation !== generation || !separate.checked || !admitted) return;
+    if (!window.confirm("Save PRIVATE, UNSIGNED local recipient byte-match acknowledgement? This is NOT authorization, sender identity or consent.")) return;
+    const out = {
+      format:"lightup.scope_private_human_recipient_review.v1",
+      posture:"INCUBATE_M3_M7_DRAFT_HOLD",decision:"REVIEW_ONLY",
+      authenticated_sender:false,authenticated_recipient:false,
+      client_consent:false,operator_consent:false,grant:false,release:false,
+      role:admitted.profile,received_zip_sha256:admitted.sha256,
+      received_zip_bytes:admitted.size,original_source_sha256:admitted.sourceOuterSha256,
+      human_sender_note_sha256:accepted.noteSha,
+      files:admitted.files.map(row=>({...row})),
+      note:"UNSIGNED local offline equality only. HUMAN must independently authenticate recipient, sender, consent and transfer."
+    };
+    save(new TextEncoder().encode(JSON.stringify(out,null,2)+"\n"),
+      "LightUp-PRIVATE-role-receipt-REVIEW-ONLY.json");
   });
 })();
 </script>

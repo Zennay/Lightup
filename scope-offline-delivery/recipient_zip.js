@@ -200,7 +200,7 @@
         throw Error("Unrecognized role inspector source bytes");
       }
     }
-    return receipt.files; // Receipt coherence ONLY; never sender identity or consent.
+    return {files: receipt.files, sourceOuterSha256: receipt.source_outer_sha256}; // NO identity/consent.
   }
 
   // Two-way local admission: use the same strict ZIP and role receipt
@@ -221,7 +221,7 @@
         throw Error("New role member set differs from native profile");
       }
       const receipt = await validateRoleReceipt(rows, candidate.role);
-      if (receipt.length !== required.length - 1) throw Error("New role receipt incomplete");
+      if (receipt.files.length !== required.length - 1) throw Error("New role receipt incomplete");
       for (const desc of selections.filter(x => profiles[candidate.role].includes(x.path))) {
         if (await sha(rows.get(desc.path).bytes) !== desc.sha) {
           throw Error("Locally created role changed a pinned original source");
@@ -332,7 +332,7 @@
         "workspace/verify.html", "courier/PRIVATE-encrypted-courier.html",
         "privacy/disclosure-preflight.html", "privacy/disclosure-recipient-verify.html",
         "PRIVATE-receive.html", "tools/recipient.js", "tools/recipient.css",
-        "tools/recipient_zip.js", "tools/role_builder.js", "tools/role_pack.py",
+        "tools/recipient_zip.js", "tools/role_builder.js", "tools/handoff_review.js", "tools/role_pack.py",
         "tools/recipient.template.html", "tools/package.py", "tools/unpack.py",
         "START-HERE.html", "README.txt", "manifest.json"
       ];
@@ -344,8 +344,14 @@
           {detail:{entries,sha256:acceptedSha}}));
       }
       if (role && roleFiles && acceptedSha) {
-        localInspection = {generation: current, profile: role, files: roleFiles};
+        localInspection = {generation: current, profile: role, files: roleFiles.files};
         saveInspection.hidden = false;
+      }
+      if (role && roleFiles && acceptedSha) {
+        document.dispatchEvent(new CustomEvent("lightup:received-role-admitted", {
+          detail: {profile: role, sha256: acceptedSha, size: accepted.byteLength,
+            sourceOuterSha256: roleFiles.sourceOuterSha256, files: roleFiles.files}
+        }));
       }
       sourceInfo.textContent = "REVIEW ONLY · " + (role ? "private role " + role : "full original scope kit") +
         " · " + entries.size + " canonical members; " + admissible.length +

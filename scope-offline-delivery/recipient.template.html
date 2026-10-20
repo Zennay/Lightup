@@ -36,6 +36,18 @@
 <button id="save-inspection-receipt" type="button" hidden>Save PRIVATE role inspection receipt (unsigned JSON)</button>
 <p>A saved receipt contains original source filenames, byte digests and the received whole-ZIP digest. Treat it as PRIVATE metadata. It proves no sender identity, consent or permission, and cannot replace independent human disclosure review.</p>
 </section>
+<section id="received-handoff-panel" hidden>
+<h2>Receive a source-bound PRIVATE HUMAN sender note</h2>
+<p>After a separately authenticated SHA-256 comparison and original native role-package inspection, you may compare the sender's independently obtained note against this *exact* original role, complete ZIP SHA-256, original source SHA, file bytes and all source fingerprints. Nothing is uploaded or granted; the note is UNSIGNED.</p>
+<label for="received-handoff-note">Choose the separate HUMAN sender note (.txt, 4 KiB maximum)</label>
+<input id="received-handoff-note" type="file" accept=".txt,text/plain">
+<label><input id="handoff-separate-channel" type="checkbox"> I separately obtained this note through a channel whose sender I checked outside LightUp. This checkbox does not prove identity or permission.</label>
+<button id="compare-handoff" type="button" disabled>Compare exact role ZIP with independent HUMAN note</button>
+<p id="handoff-status" role="status" aria-live="polite" data-state="idle"></p>
+<p id="handoff-digest" class="mono"></p>
+<button id="save-handoff-ack" type="button" hidden>Save UNSIGNED PRIVATE recipient review receipt (JSON)</button>
+<p>Even a byte match cannot establish consent, recipient identity, confidentiality, release permission or a valid scope grant. Never use a note supplied only alongside the same untrusted ZIP as independent authentication.</p>
+</section>
 <section id="role-builder-panel" hidden>
 <h2>Prepare a minimum-disclosure recipient ZIP · locally</h2>
 <p>Available only after the complete original source ZIP matches the SHA-256 you obtained through a separate authenticated channel and all original source components match exact immutable fingerprints. Nothing is uploaded, run or sent. A role never authenticates a recipient or grants permission.</p>

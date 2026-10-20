@@ -117,7 +117,7 @@ def no_authority(obj: dict) -> bool:
 
 def render_receiver() -> bytes:
     template = read(HERE / "recipient.template.html", 10000).decode("utf-8")
-    js = read(HERE / "recipient.js", 10000).decode("utf-8") + "\n" + read(HERE / "recipient_zip.js", 22000).decode("utf-8") + "\n" + read(HERE / "role_builder.js", 22000).decode("utf-8")
+    js = read(HERE / "recipient.js", 10000).decode("utf-8") + "\n" + read(HERE / "recipient_zip.js", 22000).decode("utf-8") + "\n" + read(HERE / "role_builder.js", 22000).decode("utf-8") + "\n" + read(HERE / "handoff_review.js", 12000).decode("utf-8")
     css = read(HERE / "recipient.css", 10000).decode("utf-8")
     for token in ("__SCRIPT_HASH__", "__STYLE_HASH__", "__SCRIPT__", "__STYLE__"):
         if template.count(token) != 1:
@@ -185,7 +185,7 @@ def verify_out_of_band(actual: str, expected: str | None) -> bool:
 def inspect(path: Path, expected_sha256: str | None = None) -> dict:
     if path.is_symlink() or not path.is_file() or path.stat().st_size > 2_500_000:
         raise ValueError("Unsafe or oversized transfer")
-    expected = set(FILES) | set(PRIVACY_FILES) | {"PRIVATE-receive.html", "tools/recipient.js", "tools/recipient.css", "tools/recipient_zip.js", "tools/role_builder.js", "tools/role_pack.py", "tools/recipient.template.html","tools/package.py", "tools/unpack.py", "START-HERE.html", "README.txt", "manifest.json"}
+    expected = set(FILES) | set(PRIVACY_FILES) | {"PRIVATE-receive.html", "tools/recipient.js", "tools/recipient.css", "tools/recipient_zip.js", "tools/role_builder.js", "tools/handoff_review.js", "tools/role_pack.py", "tools/recipient.template.html","tools/package.py", "tools/unpack.py", "START-HERE.html", "README.txt", "manifest.json"}
     with zipfile.ZipFile(path) as z:
         infos = z.infolist()
         if len(infos) != len(expected) or {x.filename for x in infos} != expected:
@@ -207,6 +207,7 @@ def inspect(path: Path, expected_sha256: str | None = None) -> dict:
         data["tools/recipient.css"] != read(HERE / "recipient.css") or
         data["tools/recipient_zip.js"] != read(HERE / "recipient_zip.js") or
         data["tools/role_builder.js"] != read(HERE / "role_builder.js") or
+        data["tools/handoff_review.js"] != read(HERE / "handoff_review.js") or
         data["tools/role_pack.py"] != read(HERE / "role_pack.py", 25000) or
         data["tools/recipient.template.html"] != read(HERE / "recipient.template.html")):
         raise ValueError("Standalone recipient browser is not byte-identical to pinned source build")
@@ -260,6 +261,7 @@ def build() -> Path:
                   "tools/recipient.css": read(HERE / "recipient.css"),
                   "tools/recipient_zip.js": read(HERE / "recipient_zip.js"),
                   "tools/role_builder.js": read(HERE / "role_builder.js", 22000),
+                  "tools/handoff_review.js": read(HERE / "handoff_review.js", 12000),
                   "tools/role_pack.py": read(HERE / "role_pack.py", 25000),
                   "tools/recipient.template.html": read(HERE / "recipient.template.html"),
                   "START-HERE.html": HOME.encode(), "README.txt": README.encode(),

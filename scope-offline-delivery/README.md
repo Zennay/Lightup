@@ -69,11 +69,11 @@ After separately authenticated receiver byte comparison, the optional standalone
 
 ### Directly available role ZIPs (original source-only; no real client data)
 
-The following READY offline source-only packages were physically produced by the same role CLI from the exact complete outer ZIP digest `aceec369c9a840e593fcc2fe47cf556ad0224d7183e3cba22e353af2bc7848d2`. They are separate deliverables; the full outer source kit does not silently include or transmit them.
+The following READY offline source-only packages were physically produced by the same role CLI from the exact complete outer ZIP digest `e2e37494bfe9c26ab09db316db763c28ec513a00854de8e602aa37c036fc00a4`. They are separate deliverables; the full outer source kit does not silently include or transmit them.
 
-- [PRIVATE-privacy-recipient-DRAFT-HOLD.zip](PRIVATE-privacy-recipient-DRAFT-HOLD.zip) — 55,564 bytes; SHA256 `5ec306abe2dcf639c93978ed81a45128dd3d6d65cea217eab94b6f8b2dbf1118`.
-- [PRIVATE-privacy-editor-DRAFT-HOLD.zip](PRIVATE-privacy-editor-DRAFT-HOLD.zip) — 91,212 bytes; SHA256 `46b6dadfc8e6f3a07837304084d6880dc0200991d6b5d711eb8bac51cdc5bf59`.
-- [PRIVATE-scope-reviewer-DRAFT-HOLD.zip](PRIVATE-scope-reviewer-DRAFT-HOLD.zip) — 538,114 bytes; SHA256 `30d88b0145c820a770321b0c4883668c45818c53c249884b87e09c3f5ed4c9d2`.
+- [PRIVATE-privacy-recipient-DRAFT-HOLD.zip](PRIVATE-privacy-recipient-DRAFT-HOLD.zip) — 55,564 bytes; SHA256 `8bb65c4e2d0f706cbd78031d82d4feed9e7fe4baa285959b0e3262a47b94aa58`.
+- [PRIVATE-privacy-editor-DRAFT-HOLD.zip](PRIVATE-privacy-editor-DRAFT-HOLD.zip) — 91,212 bytes; SHA256 `bf356f9f0bb8f34698c78bf04159e2e4a041959467046798a09b9ff4016c9c78`.
+- [PRIVATE-scope-reviewer-DRAFT-HOLD.zip](PRIVATE-scope-reviewer-DRAFT-HOLD.zip) — 538,114 bytes; SHA256 `9d65fc9615e14193fadc4003b8ab387ae31d1997f750dc25294e2ba7f3d2fecf`.
 
 SHA-256 values on this same public page are **not** separately authenticated when copied from the downloaded ZIP. Obtain the exact expected digest by an independent trusted channel before recipient inspection, and encrypt any confidential role packet before sharing. No automatically generated signer, consent record or authority is asserted.
 
@@ -112,6 +112,12 @@ After the browser's native-compatible ZIP builder and its independent ZIP/receip
 ### Clear local PRIVATE intake and stop stale browser handoffs
 
 The standalone browser receiver has a **Clear selected file, SHA-256 and local review** action. It clears the file input and expected out-of-band digest, invalidates the prior source byte-match, drops original ZIP/role inventory and role-builder source references and pending downloads, and restores the non-authorizing idle state. It also clears this state when navigating away (`pagehide`) and after browser back/forward cache restoration (`pageshow.persisted`). Any temporary browser Blob URLs made for explicitly downloaded original components or role ZIPs are revoked on page exit. This is a best-effort browser-reference reset, **not** secure physical wiping of browser/OS memory or files already downloaded by the HUMAN.
+
+### Receive exact HUMAN sender note and produce private acknowledgment (browser only)
+
+A HUMAN recipient who has already independently SHA-matched and source-admitted one of the three original source-only role ZIPs can now import a separate, original sender-produced `.txt` note (maximum 4 KiB). The browser compares the **exact canonical original human-note bytes**, including role, full original source ZIP hash, actual received role ZIP SHA-256 and length, and the complete ordered set of original role-component names, byte lengths and SHA-256 fingerprints. No note or ZIP bytes leave the browser. Any incomplete, altered, ambiguous or differently ordered note remains **HOLD**, without stale success or download.
+
+After explicit HUMAN acknowledgement that the note came from a **separately authenticated channel**, a source+note byte-equality result can be saved as an **UNSIGNED PRIVATE recipient review receipt**. It lists exact source-only references, original note digest, whole received ZIP digest and explicit `false` fields for sender/recipient authentication, grant, consent and release. It NEVER creates genuine identity verification, client/operator consent, authority, encrypted transfer, or permission. Every source, expected digest, note or separate-channel indication change clears the admitted note and disables any previous receipt.
 
 ### Role unpack stability under local file replacement
 
