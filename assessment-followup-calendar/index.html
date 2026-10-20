@@ -54,7 +54,16 @@
 <table><thead><tr><th>HUMAN owner group</th><th>Rows</th><th>Unscheduled</th><th>Past planned time</th><th>HUMAN blocked</th><th>Overlapping</th><th>Nearest next reminder</th><th>Open in planner</th><th>Private calendar handoff</th></tr></thead><tbody id="workloadRows"></tbody></table></div>
 <div class="row"><button type="button" id="workloadPrev" class="ghost">Previous</button><button type="button" id="workloadNext" class="ghost">Next</button></div>
 </section>
-<section id="out" class="panel" hidden aria-labelledby="outputHeading"><h2 id="outputHeading">5 · Save / resume or export calendar</h2>
+<section id="brief" class="panel" hidden aria-labelledby="briefHeading">
+<h2 id="briefHeading">5 · Offline HUMAN weekly coordinator brief</h2>
+<p>Build a self-contained scriptless PRIVATE print-friendly human work agenda from this current worksheet and your proposed scheduling only. A human stage or source-reported severity is <strong>never</strong> a verified vulnerability or grant. No network or calendar connection.</p>
+<div class="row"><label>Any day of week <input type="date" id="briefDate"></label>
+<label>Source-free HUMAN scope <select id="briefScope"><option value="all">All original HUMAN groups</option><option value="focused">Only currently focused HUMAN group</option></select></label>
+<label><input type="checkbox" id="briefNotes"> Include HUMAN next-action / blocker text (private disclosure)</label>
+<button type="button" id="exportBrief">Download PRIVATE weekly briefing (.html)</button></div>
+<p class="subtle">Choose a valid local date; output covers Monday–Sunday in the displayed timezone. Includes original anonymous ordinals and HUMAN self-reported fields, not original lab findings/evidence/targets. HTML has a deny-all CSP and no JavaScript or external resources. Use an authorized private device and printer only.</p>
+</section>
+<section id="out" class="panel" hidden aria-labelledby="outputHeading"><h2 id="outputHeading">6 · Save / resume or export calendar</h2>
 <p>Scheduled events use original anonymous ordinals and source-reported severity, with your own HUMAN next-action text only when explicitly opted in. <strong>Original lab-source fields are never imported here, but HUMAN notes can themselves mention private targets, clients or evidence. Review before exporting.</strong> Each calendar export is an explicit PRIVATE local download. Dates are interpreted in <strong id="tz"></strong>; re-import rejects a different timezone.</p>
 <div class="row"><label class="file">Restore your PRIVATE plan CSV <input id="restore" type="file" accept=".csv,text/csv"></label><button id="savePlan" type="button">Save private plan CSV</button></div>
 <div class="notice">
