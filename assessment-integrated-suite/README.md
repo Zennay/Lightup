@@ -233,6 +233,27 @@ removes **only its new never-before-existing incomplete output folder**,
 leaving all originals and older HUMAN workrooms intact. All pages remain
 PRIVATE. Nothing is sent, scheduled, approved or released.
 
+## NEW: complete saved-session PRIVATE HUMAN workpack (option 49)
+
+Menu **49** is the continuation of the integrated full HUMAN workpack,
+rather than an independent new storage format. The operator deliberately
+provides a trusted original 0600 `PRIVATE-SESSION.json`, the matching
+original owner-only 0600 HUMAN queue CSV, an existing owner-only output
+parent, review date and unused workpack name. The original strict session
+reader returns PATH-only fields; those are installed in an **isolated
+in-memory copy only**, and its `saved_session` property is then pointed
+to that original checkpoint, matching the original native post-save
+operator context. The original integrated workpack builder still fully
+re-admits the unchanged CSV session digest, fixed HUMAN workflow fields
+and all source-free output privacy gates. On success, the operator gets
+a complete new 0700 locally indexed HUMAN workpack with a full offline
+browser editor, priorities and matching team decks. On any HOLD the
+current active console, original saved session, CSV and previous workpacks
+remain unmodified. A prior HUMAN CSV generated before checkpoint save
+may have a different PATH-only digest; that is **HOLD**, not an invitation
+to override the original saved-session admission. This route grants no
+security authority, authenticated client/operator consent or execution.
+
 ## Portable 15-original-studio software kit v11
 
 [Portable source-only LightUp Assessment Offline Toolkit v11](LightUp-Assessment-Offline-Toolkit-v11.zip)

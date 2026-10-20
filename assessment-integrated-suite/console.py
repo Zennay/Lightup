@@ -17,6 +17,7 @@ import route_queue_history_console
 import saved_queue_console
 import human_priorities_console
 import human_workpack_console
+import saved_workpack_console
 import private_session
 import os
 from pathlib import Path
@@ -415,6 +416,7 @@ def main() -> int:
         "46": lambda x: saved_queue_console.prepare(x, path_prompt, ask),
         "47": lambda x: human_priorities_console.prepare(x, path_prompt, ask),
         "48": lambda x: human_workpack_console.prepare(x, path_prompt, ask),
+        "49": lambda x: saved_workpack_console.prepare(x, path_prompt, ask),
     }
     while True:
         print("\n1. Prepare PRIVATE original briefing + 15 offline HUMAN workrooms")
@@ -465,6 +467,7 @@ def main() -> int:
         print("46. Resume saved PRIVATE HUMAN queue without replacing current session")
         print("47. Create PRIVATE HUMAN follow-up priorities and team workload desk")
         print("48. Build complete PRIVATE HUMAN assessment workpack from original queue")
+        print("49. Resume complete PRIVATE HUMAN workpack from ORIGINAL saved session")
         print("0. Exit without scheduling or executing anything")
         try:
             choice = ask("Choice", "0")
@@ -472,7 +475,7 @@ def main() -> int:
                 print("Exited. No external tasks were scheduled or executed.")
                 return 0
             if choice not in menu:
-                print("Choose a number from 0 to 48.")
+                print("Choose a number from 0 to 49.")
                 continue
             menu[choice](session)
         except (KeyboardInterrupt, EOFError):
