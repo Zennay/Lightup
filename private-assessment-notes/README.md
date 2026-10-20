@@ -459,17 +459,17 @@ successfully created local private packet.
 ## PRIVATE credential-masking improvements and manual second pass
 
 Original source admission in this self-contained notes workroom now **layers**
-\`private_masking.mask_private_notes()\` over the existing unchanged original
-\`lightup.redaction.redact_text()\` producer. The additional **bounded local
+`private_masking.mask_private_notes()` over the existing unchanged original
+`lightup.redaction.redact_text()` producer. The additional **bounded local
 heuristics** mask commonly missed literal credential **shapes**: URL user-info
-(\`protocol://user:password@\`), token-bearing URL query/fragment values,
+(`protocol://user:password@`), token-bearing URL query/fragment values,
 Cookie/Set-Cookie and common authorization/custom auth headers, JSON-quoted
 password/client-secret/access-token members, upper-case environment secrets,
 common private-key PEM blocks, JWT-shaped values and selected known provider
 token shapes. This is only extra local pattern masking: **never a promise of
 complete credential removal, PII anonymization, safe publication, or privacy
 clearance**. Previously created packets are not silently rewritten; new
-\`notes.py prepare\` operations use the enhanced masking.
+`notes.py prepare` operations use the enhanced masking.
 
 ### Manually mask remaining sensitive text without changing original packets
 
@@ -490,18 +490,18 @@ python3 private-assessment-notes/notes.py mask-template \
 The command independently reopens the full native completed original packet,
 with its original masked notes, COMPLETE original HUMAN CSV and unsigned
 manifest SHA bindings. It creates a fresh owner-only 0700 folder containing
-\`OPEN-PRIVATE.html\` and owner-only 0600
-\`PRIVATE-manual-mask-rules.json\`. The JSON initially contains a blank
-\`literal_to_mask\` for each real original source position plus exact original
+`OPEN-PRIVATE.html` and owner-only 0600
+`PRIVATE-manual-mask-rules.json`. The JSON initially contains a blank
+`literal_to_mask` for each real original source position plus exact original
 SHA identities. No secret text is included in the blank template.
 
 **2. Fill in chosen literals and remove unwanted original entries.**
 
 Edit the template locally. For every selected original note, replace the
-empty \`literal_to_mask\` value with the exact UTF-8 phrase (3–256 characters)
+empty `literal_to_mask` value with the exact UTF-8 phrase (3–256 characters)
 to redact; delete unused entries. To mask multiple separate phrases in the
 same original source, duplicate that source's JSON rule entry and set its
-\`literal_to_mask\` accordingly. Do NOT alter the original source ordinal,
+`literal_to_mask` accordingly. Do NOT alter the original source ordinal,
 SHA identities, false-authority fields, or completed HUMAN manifest/CSV
 digests. The edited JSON **contains the actual sensitive literals**;
 keep it owner-only mode 0600, out of git, Notion, public systems, emails,
@@ -517,7 +517,7 @@ python3 private-assessment-notes/notes.py mask-copy \
   --private-parent /private/operator-lightup-work
 ~~~
 
-\`mask-copy\` admits only owner-private original files, one complete already
+`mask-copy` admits only owner-private original files, one complete already
 finalized original HUMAN packet, its exact original manifest + complete HUMAN
 CSV and 1–24 bounded original-source-matched HUMAN literal rules. Every
 original selected phrase must be present in the ALREADY masked note and every
@@ -528,8 +528,8 @@ Rule text is never printed, persisted in the output, or sent.
 
 The output is a **separate** exclusive owner-private 0700 directory containing
 only explicitly selected additional masked originals, each in owner-only 0600
-files, a readable local scriptless \`OPEN-PRIVATE.html\` and
-\`PRIVATE-extra-mask-bindings.json\` with original source/decisions SHA
+files, a readable local scriptless `OPEN-PRIVATE.html` and
+`PRIVATE-extra-mask-bindings.json` with original source/decisions SHA
 references, replaced-occurrence counts and unsigned output digests.
 Original PRIVATE HUMAN free-text notes, raw literal rules, and unselected
 source notes are withheld. Neither previously completed HUMAN decisions nor
@@ -540,20 +540,20 @@ bypass lineage or release checks.
 **Always HOLD:** no model, network, scan, actual client/customer evidence,
 authentication, grant, communication, signature, implicit team assignment,
 recipient verification, or public sharing. New manual template returns
-REVIEW_ONLY (2); \`mask-copy\` returns HOLD (3) even after correctly writing
+REVIEW_ONLY (2); `mask-copy` returns HOLD (3) even after correctly writing
 the selected-only private local result. All original independent source-owner,
 security/privacy reviews, CI, client/operator separate active consent,
 action-time revocation and explicit HUMAN GO remain mandatory.
 
 ### Offline guided source-by-source manual masking editor
 
-The native \`mask-template\` command now also generates
-\`PRIVATE-manual-mask-editor.html\`, linked from the private
-\`OPEN-PRIVATE.html\` workroom. This is a SHA-256-CSP-pinned **fully offline**
+The native `mask-template` command now also generates
+`PRIVATE-manual-mask-editor.html`, linked from the private
+`OPEN-PRIVATE.html` workroom. This is a SHA-256-CSP-pinned **fully offline**
 HUMAN interface: expand only the pattern-masked original you want to review,
 click **Add original-specific PRIVATE literal**, type the exact remaining
 sensitive phrase, add/remove up to 24 original-source-bound rules, and
-explicitly export \`PRIVATE-manual-mask-rules-completed.json\`.
+explicitly export `PRIVATE-manual-mask-rules-completed.json`.
 
 All original SHA identities and exact completed HUMAN manifest/CSV digests
 come from the completed packet, not a user-supplied claim. The interface
@@ -562,12 +562,12 @@ contain real secrets), and the typed literal is itself SECRET, so never put
 the HTML or downloaded JSON on a shared drive or in a pull request. It has no
 network, persistence, upload, model or external recipient. The operator
 must immediately move the downloaded JSON to an ordinary owner-only 0600
-private file, then explicitly invoke \`notes.py mask-copy\`. A browser
+private file, then explicitly invoke `notes.py mask-copy`. A browser
 download alone does **not** enforce the 0600 filesystem requirement.
 
-The original blank \`PRIVATE-manual-mask-rules.json\` remains available for
+The original blank `PRIVATE-manual-mask-rules.json` remains available for
 manual text editing without JavaScript; its empty placeholders must be filled
-or removed before native processing. \`mask-copy\` still rejects all unsafe,
+or removed before native processing. `mask-copy` still rejects all unsafe,
 overlapping, stale, unmatched, ambiguous or unauthorized inputs.
 
 ### Reopen an unfinished manual-masking request, without retyping secrets
@@ -580,7 +580,7 @@ source positions, source SHA identities, source-by-source short literal rules
 and all false-authority fields intact. It first validates every row and
 requires a separate HUMAN confirmation, then replaces only the unsaved local
 browser editor fields. On any mismatch or cancellation, the current unsaved
-fields remain intact. The native \`mask-copy\` command still independently
+fields remain intact. The native `mask-copy` command still independently
 reopens the original completed source packet; a browser resume is **not**
 trusted source, verified masking, file authorization or consent. Imported and
 exported rule JSON contains original sensitive literal strings and must remain
@@ -595,10 +595,10 @@ The original completed credential-masked HUMAN note packet now also supports thr
 
 ## Source-bound PRIVATE HUMAN sensitivity continuity
 
-The existing private HUMAN sensitivity workflow now includes **\`notes.py sensitivity-history\`**, a genuinely offline original-bound 2–8 completed HUMAN review chronology. Each round is admitted against the original completed masked-note packet, complete original HUMAN CSV, original source byte SHA manifest, exact round CSV digest, status/topic counts and literal-false authority fields. A repeated identical draft or a single mismatched round refuses the entire history.
+The existing private HUMAN sensitivity workflow now includes **`notes.py sensitivity-history`**, a genuinely offline original-bound 2–8 completed HUMAN review chronology. Each round is admitted against the original completed masked-note packet, complete original HUMAN CSV, original source byte SHA manifest, exact round CSV digest, status/topic counts and literal-false authority fields. A repeated identical draft or a single mismatched round refuses the entire history.
 
-The local owner-private workspace provides an interactive CSP hash-pinned \`PRIVATE-HUMAN-timeline.html\`, printable scriptless full change history, full original-position change CSV, private per-round aggregate counts, unsigned source-bound receipts and the previous full private HUMAN CSV. Its browser does not embed source bytes, SHA identifiers, original filenames or human free-note content.
+The local owner-private workspace provides an interactive CSP hash-pinned `PRIVATE-HUMAN-timeline.html`, printable scriptless full change history, full original-position change CSV, private per-round aggregate counts, unsigned source-bound receipts and the previous full private HUMAN CSV. Its browser does not embed source bytes, SHA identifiers, original filenames or human free-note content.
 
-The same kit also includes a brand-new blank exact-original-bound sensitivity editor/template, so an operator can intentionally prepare the next review round with the **existing** \`sensitivity-finalize\` command. Nothing implicitly carries forward a supposed privacy clearance. An optional explicit restore of the previous CSV requires original-source matching and HUMAN confirmation.
+The same kit also includes a brand-new blank exact-original-bound sensitivity editor/template, so an operator can intentionally prepare the next review round with the **existing** `sensitivity-finalize` command. Nothing implicitly carries forward a supposed privacy clearance. An optional explicit restore of the previous CSV requires original-source matching and HUMAN confirmation.
 
 [Full source-bound sensitivity history and next-round instructions](PRIVATE-SENSITIVITY-TRIAGE.md). All locally generated private materials remain HOLD/REVIEW_ONLY; neither a changed HUMAN label nor a reduced concern count verifies masking, effective remediation, consent, identity, recipient clearance or permission to release.
