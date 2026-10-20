@@ -9,6 +9,7 @@ from compare import create_comparison
 from aggregate import create as create_aggregate
 from human_return import create as create_human_return
 from human_revision import create as create_human_revision
+from paged_review import make_paged_package
 
 MENU = (
     ("Create PRIVATE full source briefing + editable HUMAN worksheet",
@@ -25,6 +26,9 @@ MENU = (
      ("Original PRIVATE lab result JSON", "Original briefing manifest.json",
       "Filled original human-followup.csv", "NEW PRIVATE output directory"),
      create_human_return),
+    ("Build paged PRIVATE original finding library (up to 52 local pages)",
+     ("Original PRIVATE lab result JSON", "NEW PRIVATE output directory"),
+     make_paged_package),
     ("Compare two source-bound original HUMAN worksheet revisions",
      ("Original PRIVATE lab result JSON", "Original briefing manifest.json",
       "Older human-followup.csv", "Newer human-followup.csv",
@@ -47,7 +51,7 @@ def main() -> int:
     for number, (title, _, _) in enumerate(MENU, 1):
         print(str(number) + ". " + title)
     try:
-        selection = input("Choose 1-5 (or anything else to cancel): ").strip()
+        selection = input("Choose 1-" + str(len(MENU)) + " (or anything else to cancel): ").strip()
         if selection not in {str(i) for i in range(1, len(MENU) + 1)}:
             print("Cancelled; no operation performed.")
             return 3
