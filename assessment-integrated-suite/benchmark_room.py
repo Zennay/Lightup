@@ -142,6 +142,7 @@ def parse_output(raw: bytes, exit_code: int, kind: str) -> dict:
                             else "REVIEW_ONLY"):
         raise Hold("HOLD: ambiguous original aggregate regression status")
     return {"status": result["status"], "groups": groups, "kind": kind,
+            "original_canonical_output": result,
             **{key: False for key in FALSE}}
 
 
@@ -246,6 +247,14 @@ def prepare(args: argparse.Namespace) -> int:
         private_file(kit / "PRIVATE-original-comparison.json", (
             json.dumps(data, indent=2, sort_keys=True, ensure_ascii=False) + "\n"
         ).encode("utf-8"))
+        # This is the unchanged native owner-compatible comparison JSON, so
+        # original assessment-candidates and assessment-trends can import it.
+        if args.kind in ("cohort", "scored"):
+            private_file(
+                kit / "PRIVATE-original-canonical-cohort.json",
+                (json.dumps(data["original_canonical_output"], sort_keys=True,
+                            separators=(",", ":"), ensure_ascii=False) + "\n").encode("utf-8"),
+            )
         csvio = io.StringIO(newline="")
         writer = csv.writer(csvio)
         writer.writerow(("original_scenario_ordinal", "metric", "baseline", "candidate",
@@ -256,6 +265,11 @@ def prepare(args: argparse.Namespace) -> int:
                                  row["candidate"], row["delta"],
                                  "HOLD" if row["regression"] else ""))
         private_file(kit / "PRIVATE-numeric-review.csv", csvio.getvalue().encode("utf-8"))
+        canonical_link = (
+            '<li><a href="PRIVATE-original-canonical-cohort.json">Exact original cohort comparison '
+            'for offline trend / candidate studios</a></li>'
+            if args.kind in ("cohort", "scored") else ""
+        )
         status = data["status"]
         page = ("""<!doctype html><html lang="en"><meta charset="utf-8">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; connect-src 'none'; form-action 'none'; base-uri 'none'">
@@ -267,7 +281,7 @@ li{padding:.5rem}a{color:#175e88}.hold{font-weight:700;color:#833a1c}</style>
 <p class="hold">""" + html.escape(status) + """ — ALWAYS NON-AUTHORIZING, source claims only.</p>
 <ul><li><a href="PRIVATE-original-benchmark.html">Detailed PRIVATE original metric comparison</a></li>
 <li><a href="PRIVATE-original-comparison.json">PRIVATE unsigned source-bound result JSON</a></li>
-<li><a href="PRIVATE-numeric-review.csv">PRIVATE numeric HUMAN follow-up worksheet (ordinal-only)</a></li></ul>
+<li><a href="PRIVATE-numeric-review.csv">PRIVATE numeric HUMAN follow-up worksheet (ordinal-only)</a></li>""" + canonical_link + """</ul>
 <p>Review on a trusted local computer. No client data was sent to a server,
 no scanner/model/target was called, and no consent or release granted.
 INCUBATE M3/M7 PLAN/LAB ONLY DRAFT/HOLD.</p></html>""")

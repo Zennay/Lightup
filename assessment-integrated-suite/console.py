@@ -16,6 +16,7 @@ SCRIPTS = {
     "archive": ROOT / "archive_room.py",
     "portfolio": ROOT / "portfolio_room.py",
     "benchmark": ROOT / "benchmark_room.py",
+    "trajectory": ROOT / "trajectory.py",
 }
 MAX_REPLY = 8192
 
@@ -31,6 +32,7 @@ class Session:
     archive_kit: str = ""
     portfolio_kit: str = ""
     benchmark_kit: str = ""
+    trajectory_kit: str = ""
 
 
 def ask(label: str, default: str = "") -> str:
@@ -65,8 +67,10 @@ def run_native(script: str, flags: list[str]) -> tuple[bool, str]:
     # A complete, source-admitted benchmark regression is HOLD (exit 3),
     # but still has a useful original PRIVATE HUMAN comparison to inspect.
     answer = result.stdout.decode("utf-8", errors="replace")
-    adverse = (script == "benchmark" and result.returncode == 3
-               and answer.startswith("ORIGINAL DECLARATION: HOLD;"))
+    adverse = (result.returncode == 3 and (
+        (script == "benchmark" and answer.startswith("ORIGINAL DECLARATION: HOLD;"))
+        or (script == "trajectory" and answer.startswith("ORIGINAL TRAJECTORY: HOLD;"))
+    ))
     if result.returncode != 2 and not adverse:
         # Never echo native stderr or private source details.
         print("HOLD: original private admission refused; existing source remains unchanged.")
@@ -213,6 +217,31 @@ def benchmark(session: Session) -> None:
         print("A source-declared no-regression result is REVIEW_ONLY, not PASS.")
 
 
+def trajectory(session: Session) -> None:
+    parent = path_prompt("Existing owner-only 0700 PRIVATE parent", session.parent)
+    kind = ask("Original cohort type: cohort / scored", "cohort").lower()
+    if kind not in ("cohort", "scored"):
+        raise ValueError("HOLD: choose cohort or scored")
+    baseline = path_prompt("Original already-produced PRIVATE baseline cohort")
+    candidates = [path_prompt(f"Original PRIVATE candidate cohort {n}") for n in range(1, 4)]
+    while len(candidates) < 12:
+        next_source = ask("Further original cohort (empty to finish)")
+        if not next_source:
+            break
+        if len(next_source) > 4096:
+            raise ValueError("HOLD: source path exceeds bounded length")
+        candidates.append(next_source)
+    flags = sum((["--candidate", name] for name in candidates), [])
+    ok, kit = run_native("trajectory", [
+        "--kind", kind, "--baseline", baseline,
+        *flags, "--private-parent", parent,
+    ])
+    if ok:
+        session.parent, session.trajectory_kit = parent, kit
+        print("Open the private cohort series locally in the original Trend and Candidate Studios.")
+        print("Selection order is HUMAN-only, not verified assessment chronology.")
+
+
 def last_packages(session: Session) -> None:
     for label, value in (
         ("PRIVATE full briefing", session.initial_kit),
@@ -222,6 +251,7 @@ def last_packages(session: Session) -> None:
         ("Original PRIVATE source archive", session.archive_kit),
         ("Original HUMAN agenda portfolio", session.portfolio_kit),
         ("Original PRIVATE lab benchmark comparison", session.benchmark_kit),
+        ("Original PRIVATE lab cohort trajectory", session.trajectory_kit),
     ):
         print(f"{label}: {value or 'not prepared this session'}")
     print("REVIEW_ONLY. Package directories are not customer permission, approval or security proof.")
@@ -237,7 +267,7 @@ def main() -> int:
     print("No scan, model, network, grant, deletion, retest, source verification or release.")
     menu = {
         "1": prepare, "2": curate, "3": dossier, "4": drift, "5": last_packages,
-        "6": archive, "7": portfolio, "8": benchmark,
+        "6": archive, "7": portfolio, "8": benchmark, "9": trajectory,
     }
     while True:
         print("\n1. Prepare PRIVATE original briefing + 10 offline HUMAN workrooms")
@@ -248,6 +278,7 @@ def main() -> int:
         print("6. Prepare original multi-artifact PRIVATE source archive")
         print("7. Prepare original PRIVATE HUMAN agenda portfolio")
         print("8. Compare already-recorded lab benchmark originals (single/cohort/scored)")
+        print("9. Generate 3-12 original benchmark cohorts for native offline trends")
         print("0. Exit without scheduling or executing anything")
         try:
             choice = ask("Choice", "0")
@@ -255,7 +286,7 @@ def main() -> int:
                 print("Exited. No external tasks were scheduled or executed.")
                 return 0
             if choice not in menu:
-                print("Choose a number from 0 to 8.")
+                print("Choose a number from 0 to 9.")
                 continue
             menu[choice](session)
         except (KeyboardInterrupt, EOFError):

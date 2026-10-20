@@ -319,3 +319,54 @@ source-owner + independent privacy/security/browser review, existing
 exact-head hosted/permanently registered named VPS CI, original #177/#182/#829,
 current separate authenticated client/operator consent with action-time
 revocation and explicit HUMAN GO remain mandatory. DRAFT/HOLD.
+
+## Canonical original cohort export + complete multi-revision HUMAN trajectory
+
+A single `benchmark_room.py --kind cohort` or `--kind scored` now also
+exports `PRIVATE-original-canonical-cohort.json`: the **exact unchanged
+original #1513 native cohort output shape**, with no wrapper-only keys.
+It is directly accepted by existing independently held #1592 Candidate
+Studio and #1584 Lab Trajectory Studio. Exact original baseline/candidate
+SHA-256 bindings and operator-facing local markup remain only in the
+separate PRIVATE handoff files; neither pollutes the canonical format.
+
+A complete new workflow composes **3–12 source-declared candidate cohorts**
+against one *identical* already-produced lab baseline, using only the
+unchanged source-owner CLI comparator:
+
+~~~sh
+python3 assessment-integrated-suite/trajectory.py \
+  --kind cohort \
+  --baseline /private/original-baseline-cohort.json \
+  --candidate /private/first-original-candidate-cohort.json \
+  --candidate /private/second-original-candidate-cohort.json \
+  --candidate /private/third-original-candidate-cohort.json \
+  --private-parent /private/owner-0700
+~~~
+
+Use `--kind scored` for the original ground-truth scenario cohort comparison.
+The native engine individually validates exact lab source, unchanged
+scenario/metric baselines, canonical metrics, authority flags and correct
+adverse-change HOLD semantics. A changed original baseline hash, repeated
+candidate original bytes, malformed scenario, missing cohort or unsupported
+source refuses the **whole** preparation, not a misleading partial trend.
+
+A successful original-source admission produces one *new* 0700 PRIVATE
+folder with 3–12 numbered canonical original-source-compatible cohort JSON
+files, SHA/position/status PRIVATE unsigned receipt and scriptless index.
+The complete original standalone **Lab Trajectory** and **Candidate Matrix**
+apps are copied unchanged into the kit. Open the HTML locally, then
+manually import the numbered canonical JSONs with the original apps'
+file chooser. User-chosen candidate ordering is not independently verified
+chronology. Regression HOLD still produces a PRIVATE HUMAN-only report and
+remains exit code 3; admitted source-declared non-adverse comparison is
+REVIEW_ONLY (2), never PASS.
+
+The interactive `console.py` exposes this as option 9. Neither the
+interactive original browser tools nor the new native orchestration scan,
+schedule, execute, grant, retest, call models, authenticate customer
+identity or externally publish data. Strict original full-project hosted +
+permanently named VPS CI, original source-owner, independent security/privacy/
+browser review, actual separate client and operator consent including
+revocation at use and explicit HUMAN GO are still necessary before any
+production merge/deploy. DRAFT/HOLD.
