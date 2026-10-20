@@ -120,7 +120,7 @@ def receipt(blobs: dict[str, bytes]) -> bytes:
 def inspect(path: Path) -> dict:
     if path.is_symlink() or not path.is_file() or path.stat().st_size > 2_500_000:
         raise ValueError("Unsafe or oversized transfer")
-    expected = set(FILES) | {"tools/package.py", "START-HERE.html", "README.txt", "manifest.json"}
+    expected = set(FILES) | {"tools/package.py", "tools/unpack.py", "START-HERE.html", "README.txt", "manifest.json"}
     with zipfile.ZipFile(path) as z:
         infos = z.infolist()
         if len(infos) != len(expected) or {x.filename for x in infos} != expected:
@@ -137,7 +137,7 @@ def inspect(path: Path) -> dict:
         not no_authority(m) or m["files"] != [
             {"path": n, "bytes": len(v), "sha256": digest(v)} for n, v in sorted(data.items())]):
         raise ValueError("Original delivery file receipt / HOLD flags mismatch")
-    if data["START-HERE.html"] != HOME.encode() or data["README.txt"] != README.encode() or data["tools/package.py"] != read(Path(__file__)):
+    if data["START-HERE.html"] != HOME.encode() or data["README.txt"] != README.encode() or data["tools/package.py"] != read(Path(__file__)) or data["tools/unpack.py"] != read(HERE / "unpack.py"):
         raise ValueError("Built-in operator instructions changed")
     if digest(data["courier/PRIVATE-encrypted-courier.html"]) != COURIER_SHA:
         raise ValueError("Original courier bytes changed")
@@ -159,7 +159,8 @@ def build() -> Path:
     if digest(blobs["courier/PRIVATE-encrypted-courier.html"]) != COURIER_SHA:
         raise ValueError("Original encrypted courier drift")
     blobs.update({"START-HERE.html": HOME.encode(), "README.txt": README.encode(),
-                  "tools/package.py": read(Path(__file__))})
+                  "tools/package.py": read(Path(__file__)),
+                  "tools/unpack.py": read(HERE / "unpack.py")})
     blobs["manifest.json"] = receipt(blobs)
     fd, temp = tempfile.mkstemp(prefix=".scope-private-", suffix=".zip", dir=HERE)
     try:
