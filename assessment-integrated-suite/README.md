@@ -156,6 +156,30 @@ confidential HUMAN question text**, original source bytes, saved machine paths
 and snapshot path digest. Unmodified original input CSVs remain untouched.
 This is HUMAN planning continuity only, not a security or privacy approval.
 
+## NEW: restart HUMAN Queue Studio from an ORIGINAL saved session (46)
+
+Native foreground menu **46** admits an ORIGINAL owner-only 0600
+`PRIVATE-SESSION.json` using the **unchanged strict** source-native session
+reader. A separate in-memory copy restores all PATH-only fields and binds
+`saved_session` to the original saved checkpoint, as the existing console
+option 38 would, **without replacing a single field in the current live
+console**. Choose optionally an earlier exact-checkpoint owner-only 0600
+HUMAN queue CSV: all original workflow keys, full fixed column schema,
+original PATH digest, HUMAN dates, stages, teams and question constraints
+are re-admitted before a **new** exclusive 0700 output kit is created.
+The output is the complete interactive CSP-pinned `OPEN-PRIVATE.html`, the
+scriptless fallback, the original verified CSV revision and minimal JSON.
+
+For reliable continuity, use menu **37 to save** the original private
+session, then menu **42 to create** the HUMAN queue from that session
+before closing the console; menu 46 can independently recreate its original
+PATH context after restart. If you deliberately changed any referenced
+session field after saving and before generating the old CSV, its digest
+must fail closed: save a fresh checkpoint, manually reopen original files
+through native admission, and prepare a new queue. Old CSV/source paths are
+never silently relinked to an unrelated session. No source file or target
+is read, scanned, sent or authorized by this operation.
+
 ## Portable 15-original-studio software kit v10
 
 [Portable source-only LightUp Assessment Offline Toolkit v10](LightUp-Assessment-Offline-Toolkit-v10.zip)
