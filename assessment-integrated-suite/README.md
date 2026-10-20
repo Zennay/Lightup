@@ -109,12 +109,14 @@ confidential HUMAN question text**, original source bytes, saved machine paths
 and snapshot path digest. Unmodified original input CSVs remain untouched.
 This is HUMAN planning continuity only, not a security or privacy approval.
 
-## Portable 15-original-studio software kit v9
+## Portable 15-original-studio software kit v10
 
-[Portable source-only LightUp Assessment Offline Toolkit v9](LightUp-Assessment-Offline-Toolkit-v9.zip)
-contains 15 **unchanged** original offline HTML studios and a current software-only
-operator guide. Build artifact size: **249,151 bytes**; unsigned SHA-256:
-`40c41907bdf1ca4ea03c34b287974ccf8419be8c484565b3efce87f5e0687ac3`.
+[Portable source-only LightUp Assessment Offline Toolkit v10](LightUp-Assessment-Offline-Toolkit-v10.zip)
+contains 15 **unchanged** original offline HTML studios and an updated
+software-only operator guide covering native PRIVATE HUMAN queue 42-45.
+Its source-only ZIP manifest is unsigned and does not authenticate release.
+Build artifact size: **249,349 bytes**; unsigned SHA-256:
+`0d9f74c411afc5f4da3ce44931fb54e94fb260fa7886f37cc481abe3c06df5fe`.
 The native-only route board (options 40/41) is deliberately NOT shipped
 inside this browser-only ZIP: its file: bookmarks necessarily reference real
 original owner-private workroom paths. The ZIP contains no PRIVATE client
