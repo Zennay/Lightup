@@ -58,8 +58,21 @@
 </table>
 </div>
 </section>
+<section aria-labelledby="compareTitle">
+<h2 id="compareTitle">3. Compare earlier encrypted HUMAN review (read-only)</h2>
+<p>Choose an older PRIVATE .luhd HUMAN round, sealed against the <strong>identical receipt bytes</strong>. Review literal differences in stage, question and next action. Earlier answers are display-only; they never replace current HUMAN choices, make a finding valid, prove independent reviewers or authorize release.</p>
+<div class="controls">
+<label for="compareVault">Older encrypted PRIVATE HUMAN .luhd file<input id="compareVault" type="file" accept=".luhd,application/octet-stream"></label>
+<label for="comparePassword">Older vault passphrase<input id="comparePassword" type="password" autocomplete="off" minlength="14" maxlength="256"></label>
+<button id="compare" type="button" disabled>Compare HUMAN rounds locally</button></div>
+<div id="compareSection" hidden>
+<p id="compareCounts" role="status" aria-live="polite"></p>
+<div class="tablewrap" role="region" aria-label="Read-only prior HUMAN review differences" tabindex="0">
+<table><thead><tr><th scope="col">Ordinal</th><th scope="col">Kind</th><th scope="col">Literal fields changed</th><th scope="col">Earlier HUMAN text</th><th scope="col">Current HUMAN text</th></tr></thead><tbody id="compareRows"></tbody></table></div>
+</div>
+</section>
 <section aria-labelledby="exportTitle">
-<h2 id="exportTitle">3. Export PRIVATE HUMAN CSV</h2>
+<h2 id="exportTitle">4. Export PRIVATE HUMAN choices</h2>
 <p>Exports full ordinal order, even when the table is filtered. No source IDs, targets, evidence, model responses or credentials are included by this app unless a human manually types them into notes. Keep PRIVATE. Reopen with the existing native human_review.py render command for a new scriptless PRIVATE human report.</p>
 <div class="controls"><label for="newPassword">New encrypted vault passphrase (14–256 characters)<input id="newPassword" type="password" autocomplete="new-password" minlength="14" maxlength="256"></label>
 <label for="confirmPassword">Repeat new encrypted vault passphrase<input id="confirmPassword" type="password" autocomplete="new-password" minlength="14" maxlength="256"></label></div>
