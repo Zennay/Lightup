@@ -140,3 +140,27 @@ All files are written exclusively inside one new 0700 directory as 0600 regular 
 The original `human_return.py` and `human_revision.py` now admit up to 64 KiB of **PRIVATE paged manifest** while maintaining the original exact source-byte SHA, finding/endpoint counts and HUMAN-row membership boundaries. The extra manifest size only accommodates the paged file inventory; it does not establish source authenticity or independent client consent. The HTML remains scriptless, Content Security Policy pinned, locally linked only and with original PRIVATE text HTML-escaped.
 
 **PRIVATE file hygiene:** these pages intentionally contain potentially confidential original target URLs, finding titles, evidence and source descriptions, unlike the source-free browser ordinal Studio. Keep the *entire* directory private and within separately approved human controls; none of the pages contacts a target or resolves DNS. No production rollout is justified, and all original M3/M7 DRAFT/HOLD gates remain in force.
+
+
+## Original-source-bound PRIVATE HUMAN attention matrix (seventh offline menu workflow)
+
+An independently obtained original lab result and its original SHA-manifest can now be joined with a completed HUMAN review CSV **without modifying original evidence or assuming review-stage truth**.
+
+```bash
+python3 assessment-briefing/human_matrix.py \
+  --source ./original-private-lab.json \
+  --manifest ./NEW-PRIVATE-BRIEFING/manifest.json \
+  --worksheet ./human-filled-followup.csv \
+  --output-dir ./NEW-PRIVATE-HUMAN-MATRIX
+```
+
+Or select **Produce PRIVATE severity × HUMAN attention matrix and ordinal queue** in the shared `console.py` menu. The existing original source-byte fingerprint, exact original source endpoint/finding totals and all original CSV row/ordinal/severity/evidence-reference membership are checked before publishing any output.
+
+The NEW 0700 directory contains the following 0600 PRIVATE artifacts:
+
+- `private-human-matrix.html`: a scriptless offline and printable source-declared **severity × HUMAN stage** table with HUMAN missing owner/action, blocker and source-evidence-reference counts by source severity. Original target, ID, finding title, evidence and HUMAN comments are not in this matrix view. Original source SHA stays PRIVATE in the report.
+- `private-human-matrix.json`: corresponding count-only machine-readable matrix and literal-false identity/consent/auth/release flags; no original names, target details, evidence or human comments.
+- `private-ordinal-followup.csv`: original source ordinal, declared severity and evidence-ref count plus booleans for missing HUMAN group, action, blocker and the current self-reported stage. Rows are ordered by source-reported severity and HUMAN blockers for a **human convenience queue**, not a derived verified risk priority. Original ordinals remain immutable, but the output is not a replacement for the original seven-column HUMAN CSV.
+- `manifest.json`: unsigned original source hash and output digest references, NEVER producer authentication.
+
+Even counts-only results are PRIVATE and may re-identify a small cohort. This is a HUMAN coordination report only: stage `documented` cannot prove a fix, source severity is not independently verified, and an explicit HUMAN blocker does not establish permission or incident status. **No active scanning, source mutation, verified verdict, consent or grant is performed.**
