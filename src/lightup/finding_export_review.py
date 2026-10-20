@@ -89,6 +89,14 @@ def _summary(rows: list[tuple[str, ...]], digest: str) -> str:
         "reported_retest_stage_counts": {
             value: stages[value] for value in _RETESTS
         },
+        "reported_severity_by_retest_stage": {
+            severity: {
+                stage: sum(1 for row in rows
+                           if row[2] == severity and row[3] == stage)
+                for stage in _RETESTS
+            }
+            for severity in _SEVERITIES
+        },
         "source_authenticated": False,
         "client_consent_verified": False,
         "remediation_verified": False,
@@ -117,9 +125,21 @@ def _render(rows: list[tuple[str, ...]], digest: str) -> str:
     summary.extend(("</ul><h2>Reported retest stage (not verified)</h2><ul>",))
     for value in _RETESTS:
         summary.extend(("<li>", escape(value), ": ", str(stage_counts[value]), "</li>"))
-    summary.extend(("</ul>", _table(rows) if rows else
-                    "<p>No exported findings in this authorized selection.</p>",
-                    "<h2>Local representation binding</h2><p>SHA-256 of the original ",
+    summary.append("</ul><h2>Reported severity worklists</h2>")
+    if rows:
+        # Present reported critical/high first for HUMAN attention only. No
+        # incident chronology or verified risk is inferred from this order.
+        summary.append("<p>Grouped for HUMAN navigation, not event chronology. "
+                       "Original CSV row order remains unchanged.</p>")
+        for severity in reversed(_SEVERITIES):
+            group = [row for row in rows if row[2] == severity]
+            if group:
+                summary.extend(("<details open><summary>", escape(severity),
+                                " (", str(len(group)), " reported)</summary>",
+                                _table(group), "</details>"))
+    else:
+        summary.append("<p>No exported findings in this authorized selection.</p>")
+    summary.extend(("<h2>Local representation binding</h2><p>SHA-256 of the original ",
                     "UTF-8 CSV bytes: <code>", escape(digest), "</code></p>",
                     "<p>SHA-256 here detects local representation drift only: ",
                     "it is not a signature, source authentication, review approval, ",
