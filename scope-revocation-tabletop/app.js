@@ -158,6 +158,25 @@
         ". Vertakking bewaart het geselecteerde voortraject en houdt het oorspronkelijke volledige scenario als nulmeting."
       : "Alle acht scenario-slots zijn gevuld. Wis eerst bewust een eigen slot om veilig te kunnen vertakken.");
   }
+  function focusHistoricalAttempt(step){
+    if(!Number.isSafeInteger(step) || step<1 || step>events.length ||
+        events[step-1]!=="DISPATCH_ATTEMPT")return;
+    momentFrom=step-1;
+    momentTo=step;
+    replayCursor=step;
+    render();
+    $("replay-step").focus();
+    $("moment-title").scrollIntoView({block:"nearest"});
+    feedback("Historische fictieve poging bij stap "+step+" geopend. "+
+      "Vergelijk de oorspronkelijke situatie vóór en direct na de poging; nooit echte toestemming.");
+  }
+  function focusNextHistoricalHold(){
+    const history=play(events).steps.flatMap((step,index)=>
+      step.event==="DISPATCH_ATTEMPT" && step.missing.length?[index+1]:[]);
+    if(!history.length){feedback("Geen historische fictieve HOLD-pogingen.");return;}
+    const current=replayPosition();
+    focusHistoricalAttempt(history.find(step=>step>current)||history[0]);
+  }
   function momentComparison() {
     const start=Math.min(events.length,Math.max(0,momentFrom));
     const finish=Math.min(events.length,Math.max(0,momentTo===null?events.length:momentTo));
@@ -310,10 +329,18 @@
     const historicList=$("attempt-history-details");
     historicList.replaceChildren();
     history.forEach(entry=>{
-      historicList.append(el("li","", "Stap "+entry.number+": "+(entry.missing.length
+      const item=el("li");
+      item.append(document.createTextNode("Stap "+entry.number+": "+(entry.missing.length
         ? "OEFEN-HOLD — "+entry.missing.join("; ")
-        : "Geen fictieve blokkade op dit moment; NOOIT echte toestemming.")));
+        : "Geen fictieve blokkade op dit moment; NOOIT echte toestemming.")+" "));
+      const jump=el("button","small-button",entry.missing.length?"Bekijk HOLD":"Bekijk poging");
+      jump.type="button";
+      jump.setAttribute("aria-label","Bekijk fictieve uitvoerpoging bij stap "+entry.number);
+      jump.addEventListener("click",()=>focusHistoricalAttempt(entry.number));
+      item.append(jump);
+      historicList.append(item);
     });
+    $("next-hold").disabled=blocked===0;
     if (!events.length) {
       write("status-title","Wacht op scenario");
       write("status-reason","Voeg gebeurtenissen toe of laad een fictief voorbeeld. Geen echte autorisatiecontrole.");
@@ -785,6 +812,7 @@
     } catch(_) {feedback("HOLD: alleen exact door deze tool geproduceerde, ongewijzigde fictieve JSON is toegestaan.");}
   });
   $("timeline-filter").addEventListener("change",render);
+  $("next-hold").addEventListener("click",focusNextHistoricalHold);
   $("moment-from").addEventListener("change",event=>{
     momentFrom=Number(event.target.value);renderMomentComparison();
   });

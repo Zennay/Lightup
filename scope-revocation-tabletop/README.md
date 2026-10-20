@@ -47,3 +47,7 @@ No user-provided names/text in the workspace; no real timestamp, actor identity,
 ## Twee fictieve beslismomenten vergelijken
 
 De sectie **Vergelijk twee fictieve beslismomenten** toont voor elk gekozen tijdlijnpaar afzonderlijk de zelf ingevoerde client-/operatorverklaringen, geldigheidsvenster, permanente noodstop, scope-/risicoversies, historische uitvoerpogingen en toegevoegde/verdwenen fictieve HOLD-redenen. De tussenliggende gebeurtenislijst is altijd gebaseerd op de actuele eigen oefentijdlijn. Bij aanpassen, laden of herstellen worden momenten tot bestaande stappen begrensd. Via **PRIVATE momentvergelijking (.md)** wordt dezelfde uitleg zonder echte asset-, persoon- of tenantgegevens lokaal gedownload. Deze vergelijking bewijst geen echte autorisatie, identiteitscontrole of veilige uitvoering.
+
+## Historische fictieve HOLD-navigatie
+
+De historische pogingen zijn nu interactieve momenten: **Bekijk HOLD** of **Bekijk poging** springt naar de originele stap, stelt de nieuwe tweemomentenvergelijking exact in op de stap ervóór en de poging zelf, en toont het destijds geldende oefen-HOLD-resultaat. **Volgende historische oefen-HOLD bekijken** loopt alleen over daadwerkelijk destijds geblokkeerde fictieve pogingen en keert na het einde terug naar de eerste. Het overzicht blijft zichtbaar nadat later oefenverklaringen zijn toegevoegd. Geen uitvoering, grant of netwerkactie wordt gestart; de app gebruikt uitsluitend huidige lokale fictieve gebeurteniscodes.
