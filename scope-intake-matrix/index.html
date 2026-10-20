@@ -51,8 +51,17 @@
 </details>
 <div class="actions"><button id="add-bottom" type="button">+ Add row</button></div>
 </section>
+<section class="section" id="overlap-section" aria-labelledby="overlap-heading">
+<div class="actions"><h2 id="overlap-heading">03 / Local IPv4 scope boundaries &amp; exceptions</h2><button type="button" id="export-overlap" class="right">Export PRIVATE boundary brief</button></div>
+<p class="muted">Deterministic comparisons of human-declared IPv4 addresses and narrow CIDRs only. No DNS lookup, reachability check or authority inference. A host inside an included subnet is not automatically approved, and exclusions must be resolved by the original source-owned policy.</p>
+<div class="stats"><div class="stat"><strong id="overlap-count">0</strong><span>Overlapping literal pairs</span></div><div class="stat"><strong id="cross-boundary-count">0</strong><span>Inclusion/exclusion pairs for HUMAN review</span></div><div class="stat"><strong id="overlap-include-count">0</strong><span>Overlapping proposed inclusions</span></div><div class="stat"><strong id="special-address-count">0</strong><span>Numeric nonordinary ranges to review</span></div></div>
+<div id="overlap-notice" class="notice" role="status">Add literal IPv4/CIDR proposals to see boundary review.</div>
+<div class="table-wrap"><table id="overlap-table"><thead><tr><th>Proposed literal A</th><th>Proposed literal B</th><th>Relationship</th><th>Human follow-up</th></tr></thead><tbody id="overlap-rows"></tbody></table></div>
+<h3>Literal address classifications — not network discovery</h3>
+<div id="address-classification" class="notice"></div>
+</section>
 <section class="section" aria-labelledby="result-heading">
-<h2 id="result-heading">03 / Local completeness & handoff</h2>
+<h2 id="result-heading">04 / Local completeness & handoff</h2>
 <div class="stats"><div class="stat"><strong id="total-count">0</strong><span>Proposed rows</span></div><div class="stat"><strong id="excluded-count">0</strong><span>Explicit exclusions</span></div><div class="stat"><strong id="review-count">0</strong><span>Explicit client-review requests</span></div><div class="stat"><strong id="blocked-count">0</strong><span>Blocked proposals</span></div></div>
 <div id="notice" role="status" class="notice">Add and review draft details. Nothing is saved automatically.</div>
 <div class="actions">
@@ -80,12 +89,12 @@
 <div class="privacy"><b>Privacy / release boundary:</b> Encrypted workrooms use local AES-256-GCM and PBKDF2 but do not authenticate the actual client, operator, consent or grant. Strong passwords and separate authenticated delivery are necessary. Legacy JSON, printed pages and agenda HTML remain UNENCRYPTED. Export only to an approved private location; recipient delivery requires a separate human privacy and identity decision. Counts omit labels/targets but small groups can still disclose context. Nothing is uploaded or retained by this page; there is no browser storage or remote call. Never treat a saved file or receipt as consent.</div>
 </section>
 <section class="section" id="agenda-section" aria-labelledby="agenda-heading">
-<div class="actions"><h2 id="agenda-heading">04 / PRIVATE human follow-up agenda</h2><button id="export-agenda" type="button" class="right">Export standalone PRIVATE agenda</button></div>
+<div class="actions"><h2 id="agenda-heading">05 / PRIVATE human follow-up agenda</h2><button id="export-agenda" type="button" class="right">Export standalone PRIVATE agenda</button></div>
 <p class="muted">Human review questions inferred only from this self-declared proposal. These are reminders, not validation, permission, or compliance evidence. Original authenticated operators and clients must still make their own decisions.</p>
 <p id="agenda-count" class="small warning" role="status"></p>
 <ol id="agenda-items"></ol>
 </section>
-<section class="section" id="compare-section" hidden aria-labelledby="compare-heading"><h2 id="compare-heading">05 / Exact local revision comparison</h2><p class="muted">Compares literal draft data only. Added or removed asset ≠ authorized or revoked asset. Comparisons are not a safety verdict.</p><div class="compare-items"><div><h3>Added proposals</h3><pre id="added"></pre></div><div><h3>Removed proposals</h3><pre id="removed"></pre></div><div><h3>Changed HUMAN fields</h3><pre id="changed"></pre></div></div><h3 class="warning">Potential requested scope widening — HUMAN HOLD</h3><pre class="notice" id="expansions"></pre><h3>Potential reduction — NOT proven revocation</h3><pre class="notice" id="restrictions"></pre><div class="actions"><button id="export-change-brief" type="button">Export PRIVATE scriptless change brief</button><button id="close-compare" type="button">Close comparison</button></div></section>
+<section class="section" id="compare-section" hidden aria-labelledby="compare-heading"><h2 id="compare-heading">06 / Exact local revision comparison</h2><p class="muted">Compares literal draft data only. Added or removed asset ≠ authorized or revoked asset. Comparisons are not a safety verdict.</p><div class="compare-items"><div><h3>Added proposals</h3><pre id="added"></pre></div><div><h3>Removed proposals</h3><pre id="removed"></pre></div><div><h3>Changed HUMAN fields</h3><pre id="changed"></pre></div></div><h3 class="warning">Potential requested scope widening — HUMAN HOLD</h3><pre class="notice" id="expansions"></pre><h3>Potential reduction — NOT proven revocation</h3><pre class="notice" id="restrictions"></pre><div class="actions"><button id="export-change-brief" type="button">Export PRIVATE scriptless change brief</button><button id="close-compare" type="button">Close comparison</button></div></section>
 <p class="footer">LightUp • independent offline preparation companion • INCUBATE M3/M7 PLAN/LAB ONLY • no scans, network, grants, bypasses, approvals, deployment or main release.</p>
 </main>
 </body>
