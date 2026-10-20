@@ -33,7 +33,8 @@ README = """LightUp PRIVATE HUMAN scope delivery — INCUBATE M3/M7 DRAFT/HOLD
 2. Verify the entire ZIP: python3 package.py inspect ORIGINAL.zip
 3. Open START-HERE.html locally; never host it publicly.
    Portable inspector: python3 tools/package.py inspect ORIGINAL.zip
-4. Extract the original inner workspace ZIP; open its index.html.
+4. Or run: python3 tools/unpack.py ORIGINAL.zip PRIVATE_PARENT/NEW_DIR
+   Then open NEW_DIR/original-workspace/scope-unified-workspace/index.html.
 5. Open the separate encrypted courier to encrypt the original ZIP or HUMAN notes.
 6. Check recipient identity and exchange passwords through another trusted channel.
 All hashes are unsigned. NO active target, authorization, grant, revoke, deployment,
@@ -48,9 +49,10 @@ a{color:#9addff}section{padding:1.2rem;margin:1rem 0;border:1px solid #64748b;bo
 </style></head><body><h1>LightUp · PRIVATE HUMAN scope delivery</h1>
 <p><strong>INCUBATE · M3/M7 PLAN/LAB ONLY · DRAFT/HOLD</strong></p>
 <p>Extract this entire ZIP locally. All companion applications work offline and cannot authorize work or verify consent.</p>
-<section><h2>1 · Original scope workspace</h2><p><a href="workspace/LightUp-Scope-Offline-DRAFT-HOLD.zip" download>Save current complete original scope workspace ZIP</a></p><p>Extract that ZIP separately, then open its original index.html.</p></section>
+<section><h2>1 · Original scope workspace</h2><p><a href="workspace/LightUp-Scope-Offline-DRAFT-HOLD.zip" download>Save current complete original scope workspace ZIP</a></p><p>Extract that ZIP separately, then open its original index.html.</p><p>Using the PRIVATE CLI unpacker instead? <a href="original-workspace/scope-unified-workspace/index.html">Open the already-unpacked original workspace here</a> (available only after CLI unpack). No auto-launch.</p></section>
 <section><h2>2 · Encrypted human courier</h2><p><a href="courier/PRIVATE-encrypted-courier.html">Open offline PRIVATE encryption courier</a></p><p>Choose original workspace ZIP or reviewer notes. Recipient and current permissions must be verified independently. Exchange the password separately.</p></section>
-<section><h2>3 · Source byte records</h2><p><a href="workspace/verify.html">Open original offline ZIP-byte verifier</a> · <a href="manifest.json">Unsigned integrated byte receipt</a> · <a href="workspace/DIST-MANIFEST.json">Original workspace distribution receipt</a></p></section>
+<section><h2>3 · Bounded private unpack</h2><p>In a terminal with Python 3.11+, run <code>python3 tools/unpack.py /path/to/outer.zip /private-parent/new-workroom</code>. The parent folder must already be mode 0700, owned by you, and the destination must not exist. This command checks original bytes and opens source entries locally without scans or grants.</p></section>
+<section><h2>4 · Source byte records</h2><p><a href="workspace/verify.html">Open original offline ZIP-byte verifier</a> · <a href="manifest.json">Unsigned integrated byte receipt</a> · <a href="workspace/DIST-MANIFEST.json">Original workspace distribution receipt</a></p></section>
 <p>No scans, network requests, browser storage, client approval, grants, automatic execution or deployment. Original source-owner + security/privacy review, exact-head hosted and named-VPS CI, real separately authenticated current client/operator consent with action-time revocation, and explicit HUMAN GO remain mandatory for any release.</p>
 </body></html>"""
 
