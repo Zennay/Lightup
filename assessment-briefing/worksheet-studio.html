@@ -73,8 +73,32 @@
       <p class="muted small">Leave the group field blank to preserve the current group, enter <code>__CLEAR__</code> to explicitly clear it, or type a new HUMAN-only group name. A row-level edit invalidates bulk Undo to avoid rolling back later individual work.</p>
     </section>
 
+    <section class="panel" aria-labelledby="replyTitle">
+      <div class="panelHeading"><div><div class="eyebrow">05 / PRIVATE PEER PROPOSALS</div><h2 id="replyTitle">Reconcile another HUMAN worksheet</h2></div><span class="tag">MANUAL CHOICE · NO IDENTITY CLAIM</span></div>
+      <p>Open a second seven-column original-format PRIVATE CSV returned by another human. Every original ordinal, declared severity and evidence-reference count must match this already loaded worksheet in exactly the same order. Only HUMAN fields are eligible for review; original source identity, consent and reviewer identity remain unauthenticated here.</p>
+      <div class="fileRow"><input id="replyInput" type="file" accept=".csv,text/csv" aria-label="PRIVATE incoming human worksheet CSV"><button id="previewReply" type="button">Preview incoming HUMAN proposals</button></div>
+      <div id="replyStatus" class="message">No incoming HUMAN proposal loaded.</div>
+      <div id="replyBoard" hidden>
+        <p class="small muted">Nothing is imported automatically. Select individual proposed HUMAN fields, then explicitly accept only those proposals. Any intervening local edit cancels the pending comparison; re-open the incoming file to compare it to your latest worksheet.</p>
+        <div class="tableOverflow">
+          <table class="replyTable">
+            <caption class="srOnly">Unverified incoming PRIVATE HUMAN proposals: choose each field explicitly</caption>
+            <thead><tr><th scope="col">Accept?</th><th scope="col">Original ordinal</th><th scope="col">HUMAN field</th><th scope="col">Your current value</th><th scope="col">Incoming proposed value</th></tr></thead>
+            <tbody id="replyRows"></tbody>
+          </table>
+        </div>
+        <div class="pager"><button id="replyPrev" type="button">← Previous</button><span id="replyPage" class="muted"></span><button id="replyNext" type="button">Next →</button></div>
+        <div class="actionsRow">
+          <button id="selectVisibleReply" type="button">Select visible proposal fields</button>
+          <button id="clearReplySelections" type="button">Clear selections</button>
+          <button id="acceptReply" type="button" class="primary">Apply selected HUMAN proposals</button>
+          <button id="discardReply" type="button">Discard incoming proposal</button>
+        </div>
+      </div>
+    </section>
+
     <section class="panel finish">
-      <div><div class="eyebrow">05 / PRIVATE FILE HANDOFF</div><h2>Save an immutable-source worksheet</h2><p>Download the updated PRIVATE seven-column CSV, preserving all original ordinal/severity/evidence-count cells. To produce a source-verified-by-digest PRIVATE report, run the existing local <code>human_return.py</code> with the actual unchanged original lab JSON and its original manifest. This editor cannot authenticate either.</p></div>
+      <div><div class="eyebrow">06 / PRIVATE FILE HANDOFF</div><h2>Save an immutable-source worksheet</h2><p>Download the updated PRIVATE seven-column CSV, preserving all original ordinal/severity/evidence-count cells. To produce a source-verified-by-digest PRIVATE report, run the existing local <code>human_return.py</code> with the actual unchanged original lab JSON and its original manifest. This editor cannot authenticate either.</p></div>
       <div class="actions"><button id="saveCsv" type="button" class="primary">Download PRIVATE human CSV</button><button id="saveCounts" type="button">Download counts-only JSON</button><button id="forget" type="button" class="danger">Forget local workroom</button></div>
       <div class="small muted">The CSV includes private HUMAN notes. The anonymous-count JSON omits notes and targets but can still be sensitive. No data is saved to a server, localStorage or browser cache by this app. Browser process memory and downloaded files are separate responsibilities.</div>
     </section>
