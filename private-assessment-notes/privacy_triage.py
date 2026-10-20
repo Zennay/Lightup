@@ -201,17 +201,23 @@ def finalize(original: str, kit: str, completed: str, parent_string: str) -> int
                          for name in STATUSES}
         topic_counts = {name: sum(name in row["privacy_topics"].split("|")
                                   for row in rows) for name in TOPICS}
+        # The locally completed browser/manual input can use different valid
+        # CSV quoting from the canonical DictWriter serialization stored in
+        # this PRIVATE packet. Bind the receipt to the EXACT SAVED bytes:
+        # downstream original-round readers verify the stored 0600 CSV, not
+        # the temporary pre-canonicalization upload. Never claim authorship.
+        recorded_csv = csv_bytes(rows)
         manifest = {
             "schema": SCHEMA, "claimed_status": "HOLD", "human_review_only": True,
             "original_manifest_sha256_unsigned": manifest_sha,
             "original_human_csv_sha256_unsigned": decision_sha,
-            "sensitivity_human_csv_sha256_unsigned": sha256(raw).hexdigest(),
+            "sensitivity_human_csv_sha256_unsigned": sha256(recorded_csv).hexdigest(),
             "original_count": len(sources), "status_counts": status_counts,
             "topic_counts": topic_counts,
             **{field: False for field in FALSE_FLAGS}
         }
         save_json(destination / "PRIVATE-HUMAN-sensitivity-receipt.json", manifest)
-        file_new(destination / "PRIVATE-HUMAN-sensitivity.csv", csv_bytes(rows))
+        file_new(destination / "PRIVATE-HUMAN-sensitivity.csv", recorded_csv)
         file_new(destination / "OPEN-PRIVATE.html", render(rows, prepared=False))
         finished = True
         print("HOLD: source-bound HUMAN sensitivity discussion produced; never a clearance")
