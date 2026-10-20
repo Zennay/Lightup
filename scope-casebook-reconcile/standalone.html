@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="nl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; base-uri 'none'; object-src 'none'; frame-src 'none'; form-action 'none'; connect-src 'none'; img-src 'none'; style-src 'sha256-bRyYd6sd6exnl3XSatJk0vZDsqEd5OOLpMURTbS6Inw='; script-src 'sha256-2BrCLBFUtIIG5ZxzlQoz0I89iQH0Doi92Lp+7xsORRw='">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; base-uri 'none'; object-src 'none'; frame-src 'none'; form-action 'none'; connect-src 'none'; img-src 'none'; style-src 'sha256-bRyYd6sd6exnl3XSatJk0vZDsqEd5OOLpMURTbS6Inw='; script-src 'sha256-75L38j/BsR4BWR0dVs1FQgjIEQBY23ltuYETn/PXJu8='">
 <title>LightUp · PRIVATE HUMAN reconciliatie</title><style>:root{color-scheme:dark;font-family:Inter,system-ui,-apple-system,Segoe UI,sans-serif;background:#0b111c;color:#eaf1ff;font-size:15px}
 *{box-sizing:border-box}body{margin:0}header,main,footer{max-width:1180px;margin:auto;padding:28px 20px}
 header{padding-top:50px}.mark{letter-spacing:.16em;font-weight:900;color:#86bbff}.mark span{font-size:.7em;color:#b1c3d9;background:#25334b;padding:7px 12px;border-radius:30px;margin-left:10px}
@@ -56,6 +56,8 @@ td select{min-width:170px}.muted,footer{font-size:.85rem;color:#9bb0cd}footer{pa
 <label for="new-password">Nieuw zelfstandig overdrachtswachtwoord (minimaal 12 tekens)</label>
 <input id="new-password" type="password" autocomplete="new-password">
 <button id="publish" type="button" disabled>Maak versleuteld samengevoegd .lupt-bestand</button>
+<button id="aggregate" type="button" disabled>Exporteer bronvrij HUMAN-overzicht (JSON)</button>
+<p class="muted">Dit aggregaat bevat geen originele IDs of hashes, maar kleine aantallen kunnen nog gevoelig zijn. Beoordeel distributie menselijk.</p>
 <p class="muted">Alle input en keuzes leven alleen in dit browsertabblad. Geen opslag, netwerkverkeer, grant, scan, CI-wijziging of bronmutatie. Sluiten wist de lokale werkruimte waar de browser dit toestaat.</p>
 </section>
 </main><footer>LightUp · oorspronkelijke bronlabels en SHA-256 zijn géén onafhankelijke producentauthenticatie. Alleen menselijk brongebonden opvolgwerk.</footer>
@@ -444,6 +446,7 @@ function tally(){
  $("summary").textContent=work.cases.length+" brondossiers · "+changed+
   " met HUMAN-verschil · "+unresolved+" onbesliste velden. De bron blijft ongeverifieerd.";
  $("publish").disabled=busy||unresolved!==0;
+ $("aggregate").disabled=busy||unresolved!==0;
 }
 function show(){
  $("cases").replaceChildren();
@@ -532,6 +535,7 @@ async function publish(){
 }
 function setBusy(v){
  busy=v;$("open").disabled=v;$("publish").disabled=v||!work;
+ $("aggregate").disabled=v||!work;
 }
 $("open").addEventListener("click",async()=>{
  if(!window.crypto?.subtle||!window.isSecureContext){status("HOLD: WebCrypto secure context vereist.",true);return;}
@@ -563,6 +567,40 @@ $("publish").addEventListener("click",async()=>{
 });
 $("search").addEventListener("input",show);
 $("conflicts").addEventListener("change",show);
+function anonymousReport(){
+ if(!work||$("publish").disabled)deny("HOLD: los eerst alle HUMAN-verschillen op.");
+ const c={cases:work.cases.length,conflicting_cases:0,changed_fields:0,
+   selected_a:0,selected_b:0,reopened:0,identical:0};
+ work.a.rows.forEach((row,i)=>{
+  let different=false;
+  for(let j=0;j<3;j++){
+   if(row[j+3]===work.b.rows[i][j+3]){c.identical++;continue;}
+   different=true;c.changed_fields++;
+   const selected=work.choices[i][j];
+   if(selected==="A")c.selected_a++;
+   else if(selected==="B")c.selected_b++;
+   else if(selected==="reset")c.reopened++;
+   else deny("HOLD: onbesliste HUMAN-keuze in rapport.");
+  }
+  if(different)c.conflicting_cases++;
+ });
+ if(!window.confirm("Exporteer uitsluitend PRIVATE-geaggregeerde HUMAN-aantallen zonder bron-IDs of hashes? Kleine groepen kunnen toch gevoelige informatie verraden."))return;
+ const out={schema:"lightup.casebook.human_reconciliation_aggregate.v1",
+  status:"REVIEW_ONLY",authority:"NONE",...c,
+  source_authenticated:false,client_consent_verified:false,
+  operator_consent_verified:false,authorization_granted:false,
+  execution_allowed:false,release_approved:false};
+ const bytes=enc.encode(JSON.stringify(out)+"\n");
+ const url=URL.createObjectURL(new Blob([bytes],{type:"application/octet-stream"}));
+ const link=document.createElement("a");link.href=url;
+ link.download="lightup-casebook-HUMAN-aggregate.json";
+ document.body.append(link);link.click();link.remove();
+ setTimeout(()=>URL.revokeObjectURL(url),2000);
+ status("Bronvrije HUMAN-aggregaatontvangst aangeboden; geen controle, consent of autorisatie.");
+}
+$("aggregate").addEventListener("click",()=>{
+ try{anonymousReport();}catch(e){status("HOLD: "+e.message,true);}
+});
 window.addEventListener("pagehide",()=>{if(work){zero(work.a);zero(work.b);}});
-$("publish").disabled=true;
+$("publish").disabled=true;$("aggregate").disabled=true;
 })();</script></body></html>

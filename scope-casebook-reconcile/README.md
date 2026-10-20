@@ -12,6 +12,8 @@ This standalone add-only companion uses original held [Casebook PRIVATE transfer
 4. For each current case, equal HUMAN fields carry forward. Every conflicting **stage, route, or blocker** stays on HOLD until the operator explicitly chooses A, B, or resets that field to its original 'unreviewed / unassigned / none' value. Source IDs and original actions remain unmodified and private.
 5. Choose a new secret of at least twelve characters, acknowledge limitations, then explicitly download a fresh AES-256-GCM encrypted `.lupt` source+HUMAN package. This retains exact original historical Casebook bytes and changes only the current HUMAN CSV. The normal original Casebook validator and separate real, current consent checks remain necessary.
 
+After every HUMAN field is resolved, an optional **source-free, count-only HUMAN reconciliation JSON** can also be exported with identical/changed case and field counts, A/B/reset selection totals and all six authority flags literally false. It contains no original source IDs, paths, hashes or individual choices. **Small group counts may still be sensitive** and require explicit human distribution review.
+
 Private original case IDs, action text and HUMAN choices remain entirely in browser memory, never in exported aggregate logs or servers. New ciphertext has a fresh random salt and nonce, PBKDF2-SHA256 310,000 iterations and AES-256-GCM. No account, localStorage, remote network, grant, API, scan or active-target support is present. Incorrect input does not replace the previous workset. A compromised browser can reveal locally displayed PRIVATE information; choose a trusted computer and exchange the new secret separately.
 
 ## Admission, bounded execution and source relationship

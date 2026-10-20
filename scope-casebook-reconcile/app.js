@@ -164,6 +164,7 @@ function tally(){
  $("summary").textContent=work.cases.length+" brondossiers · "+changed+
   " met HUMAN-verschil · "+unresolved+" onbesliste velden. De bron blijft ongeverifieerd.";
  $("publish").disabled=busy||unresolved!==0;
+ $("aggregate").disabled=busy||unresolved!==0;
 }
 function show(){
  $("cases").replaceChildren();
@@ -252,6 +253,7 @@ async function publish(){
 }
 function setBusy(v){
  busy=v;$("open").disabled=v;$("publish").disabled=v||!work;
+ $("aggregate").disabled=v||!work;
 }
 $("open").addEventListener("click",async()=>{
  if(!window.crypto?.subtle||!window.isSecureContext){status("HOLD: WebCrypto secure context vereist.",true);return;}
@@ -283,6 +285,40 @@ $("publish").addEventListener("click",async()=>{
 });
 $("search").addEventListener("input",show);
 $("conflicts").addEventListener("change",show);
+function anonymousReport(){
+ if(!work||$("publish").disabled)deny("HOLD: los eerst alle HUMAN-verschillen op.");
+ const c={cases:work.cases.length,conflicting_cases:0,changed_fields:0,
+   selected_a:0,selected_b:0,reopened:0,identical:0};
+ work.a.rows.forEach((row,i)=>{
+  let different=false;
+  for(let j=0;j<3;j++){
+   if(row[j+3]===work.b.rows[i][j+3]){c.identical++;continue;}
+   different=true;c.changed_fields++;
+   const selected=work.choices[i][j];
+   if(selected==="A")c.selected_a++;
+   else if(selected==="B")c.selected_b++;
+   else if(selected==="reset")c.reopened++;
+   else deny("HOLD: onbesliste HUMAN-keuze in rapport.");
+  }
+  if(different)c.conflicting_cases++;
+ });
+ if(!window.confirm("Exporteer uitsluitend PRIVATE-geaggregeerde HUMAN-aantallen zonder bron-IDs of hashes? Kleine groepen kunnen toch gevoelige informatie verraden."))return;
+ const out={schema:"lightup.casebook.human_reconciliation_aggregate.v1",
+  status:"REVIEW_ONLY",authority:"NONE",...c,
+  source_authenticated:false,client_consent_verified:false,
+  operator_consent_verified:false,authorization_granted:false,
+  execution_allowed:false,release_approved:false};
+ const bytes=enc.encode(JSON.stringify(out)+"\n");
+ const url=URL.createObjectURL(new Blob([bytes],{type:"application/octet-stream"}));
+ const link=document.createElement("a");link.href=url;
+ link.download="lightup-casebook-HUMAN-aggregate.json";
+ document.body.append(link);link.click();link.remove();
+ setTimeout(()=>URL.revokeObjectURL(url),2000);
+ status("Bronvrije HUMAN-aggregaatontvangst aangeboden; geen controle, consent of autorisatie.");
+}
+$("aggregate").addEventListener("click",()=>{
+ try{anonymousReport();}catch(e){status("HOLD: "+e.message,true);}
+});
 window.addEventListener("pagehide",()=>{if(work){zero(work.a);zero(work.b);}});
-$("publish").disabled=true;
+$("publish").disabled=true;$("aggregate").disabled=true;
 })();
