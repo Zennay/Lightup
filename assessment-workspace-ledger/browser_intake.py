@@ -55,7 +55,7 @@ def read_explicit_browser_csv(path):
         os.close(fd)
 
 
-def admit_rows(payload, document):
+def admit_rows(payload, document, exact_ledger_sha256):
     try:
         text = payload.decode("utf-8", errors="strict")
         if "\x00" in text or "\r" in text:
@@ -66,13 +66,14 @@ def admit_rows(payload, document):
     if len(data) != len(document["kits"]) + 1 or not data or tuple(data[0]) != ledger.CSV_HEADERS:
         ledger.reject("PRIVATE HOLD: HUMAN CSV columns or count")
     for row, kit in zip(data[1:], document["kits"]):
-        if len(row) != 5 or row[0] != str(kit["ordinal"]) or row[1] != kit["digest"]:
+        if (len(row) != 6 or row[0] != str(kit["ordinal"]) or
+                row[1] != exact_ledger_sha256 or row[2] != kit["digest"]):
             ledger.reject("PRIVATE HOLD: HUMAN CSV does not match original exact kit")
-        if row[2] not in ledger.STAGES:
+        if row[3] not in ledger.STAGES:
             ledger.reject("PRIVATE HOLD: HUMAN stage outside original source-bound schema")
-        ledger.safe_human(row[3], 80)
-        ledger.safe_human(row[4], 500)
-        if "\n" in row[3] or "\n" in row[4]:
+        ledger.safe_human(row[4], 80)
+        ledger.safe_human(row[5], 500)
+        if "\n" in row[4] or "\n" in row[5]:
             ledger.reject("PRIVATE HOLD: multiline HUMAN value")
     return len(data) - 1
 
@@ -85,7 +86,7 @@ def import_browser(args):
     # ORIGINAL source kit files must still be present with unchanged byte identity.
     ledger.verify_snapshot(document)
     payload, was_exposed = read_explicit_browser_csv(args.csv)
-    count = admit_rows(payload, document)
+    count = admit_rows(payload, document, ledger.digest(original))
     if not count:
         ledger.reject("PRIVATE HOLD: no human rows")
     path = ledger.new_private(args.private_parent)
@@ -97,7 +98,7 @@ def import_browser(args):
             "owner-private location. The original browser file was NOT modified, chmodded, "
             "published, uploaded, deleted or renamed. Its original filesystem access flags "
             "may still expose it to other local users, which this import CANNOT reverse.</p>"
-            "<p>All source-bound HUMAN rows and original current kit file bytes matched "
+            "<p>All EXACT FULL-ledger SHA and kit-bound HUMAN rows plus current kit bytes matched "
             "the original ledger at intake. This is an unsigned local consistency check, "
             "NOT identity, client consent, review or clearance. "
             "The staged HUMAN-review.csv can now be passed to native ledger.py finalize "
