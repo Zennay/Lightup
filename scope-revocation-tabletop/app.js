@@ -27,6 +27,8 @@
   const $ = id => document.getElementById(id);
   let events = [];
   let baseline = null;
+  // Eight fixed slots; no names, external identifiers or automatic persistence.
+  let slots = Array(8).fill(null);
 
   function fresh() {
     return {client:false,operator:false,scope:0,risk:0,window:true,stop:false,attempts:0,lastAttempt:null};
@@ -170,7 +172,69 @@
       ];
       details.forEach(t=>delta.append(el("li","",t)));
     }
+    renderBank();
     return {s,steps,missing};
+  }
+  function slotEntry(seq,base) {
+    return {events:seq.slice(),baseline_events:base===null?null:base.slice()};
+  }
+  function slotSummary(slot) {
+    const state=play(slot.events).state;
+    const holds=blockers(state).length;
+    return {steps:slot.events.length,holds,attempts:state.attempts,
+      stop:state.stop,client:state.client,operator:state.operator,
+      scope:state.scope+1,risk:state.risk+1};
+  }
+  function renderBank() {
+    const root=$("bank-rows");
+    root.replaceChildren();
+    slots.forEach((slot,i)=>{
+      const tr=el("tr");
+      const label=el("td","slot-name","Scenario "+(i+1));
+      const cell=el("td","slot-state",slot
+        ? slot.events.length+" stappen · "+slotSummary(slot).holds+" fictieve HOLD-redenen · "+slotSummary(slot).attempts+" pogingen"
+        : "Leeg");
+      const actions=el("td","bank-buttons");
+      const save=el("button","small-button bank-button",slot ? "Bijwerken":"Bewaren");
+      save.type="button";save.setAttribute("aria-label","Bewaar huidig scenario in slot "+(i+1));
+      save.addEventListener("click",()=>{
+        if(slot && !window.confirm("Scenario "+(i+1)+" in lokaal geheugen vervangen?")) return;
+        slots[i]=slotEntry(events,baseline);feedback("Fictief scenario "+(i+1)+" bewaard; geen automatische opslag.");render();
+      });
+      const load=el("button","small-button bank-button","Openen");
+      load.type="button";load.disabled=!slot;
+      load.setAttribute("aria-label","Open scenario uit slot "+(i+1));
+      load.addEventListener("click",()=>{
+        if (!slots[i])return;
+        if ((events.length || baseline!==null) && !window.confirm("Editor vervangen door scenario "+(i+1)+"?"))return;
+        events=slots[i].events.slice();
+        baseline=slots[i].baseline_events===null?null:slots[i].baseline_events.slice();
+        feedback("Scenario "+(i+1)+" lokaal geopend.");render();
+      });
+      const erase=el("button","small-button remove-button bank-button","Wissen");
+      erase.type="button";erase.disabled=!slot;
+      erase.setAttribute("aria-label","Wis scenario uit slot "+(i+1));
+      erase.addEventListener("click",()=>{
+        if(!slots[i] || !window.confirm("Slot "+(i+1)+" uit lokaal geheugen wissen?"))return;
+        slots[i]=null;feedback("Slot "+(i+1)+" gewist.");render();
+      });
+      actions.append(save,load,erase);tr.append(label,cell,actions);root.append(tr);
+    });
+  }
+  function boardBrief() {
+    const lines=["# LightUp — fictieve scenario-workshop","",
+      "**Alle scenario's zijn uitsluitend zelf ingevoerde oefengegevens. Geen echte autorisatie, consent, scan, grant of release.**","",
+      "| Slot | Stappen | Fictieve HOLD-redenen | Oefenpogingen | Noodstop |",
+      "| ---: | ---: | ---: | ---: | --- |"];
+    slots.forEach((slot,i)=>{
+      if(!slot){lines.push("| "+(i+1)+" | — | — | — | Leeg |");return;}
+      const r=slotSummary(slot);
+      lines.push("| "+(i+1)+" | "+r.steps+" | "+r.holds+" | "+r.attempts+
+        " | "+(r.stop?"Actief":"Niet actief")+" |");
+    });
+    lines.push("","## Menselijke vervolgvragen","Welke originele actuele, apart geauthenticeerde client- en operatorconsent zijn aantoonbaar?","Welke exacte goedgekeurde assets/capabilities en risico's zijn gebonden?","Hoe wordt revocation bij daadwerkelijk I/O-gebruik onafhankelijk gecontroleerd?","Is originele hosted plus permanente named-VPS CI op juiste SHA en HUMAN GO aanwezig?","",
+      "**AUTHENTICATED=false · CONSENT_VERIFIED=false · DISPATCH_ALLOWED=false · RELEASE_ALLOWED=false**");
+    return lines.join("\n")+"\n";
   }
   function feedback(t) { write("feedback",t); }
   function add(e) {
@@ -178,8 +242,9 @@
     events.push(e); feedback("");render();
   }
   function data() {
-    return {schema:"lightup.fictional.scope-tabletop.v2",title:"Fictief scope-/intrekkingsoefenscenario",events:events.slice(),
+    return {schema:"lightup.fictional.scope-tabletop.v3",title:"Fictief scope-/intrekkingsoefenscenario",events:events.slice(),
       baseline_events:baseline===null?null:baseline.slice(),
+      slots:slots.map(x=>x===null?null:slotEntry(x.events,x.baseline_events)),
       authority:{authenticated_client:false,authenticated_operator:false,consent_verified:false,
         dispatch_allowed:false,release_allowed:false,deploy_allowed:false}};
   }
@@ -237,18 +302,25 @@
       x.every(e=>typeof e==="string" && Object.hasOwn(TYPES,e));
     if (!validSeq(parsed.events)) throw new Error("Ongeldige fictieve gebeurtenissen.");
     if (parsed.title!=="Fictief scope-/intrekkingsoefenscenario") throw new Error("Onbekende titel.");
-    if (parsed.schema!=="lightup.fictional.scope-tabletop.v1" && parsed.schema!=="lightup.fictional.scope-tabletop.v2")
+    if (!["lightup.fictional.scope-tabletop.v1","lightup.fictional.scope-tabletop.v2","lightup.fictional.scope-tabletop.v3"].includes(parsed.schema))
       throw new Error("Onbekend scenarioformaat.");
-    const v2=parsed.schema==="lightup.fictional.scope-tabletop.v2";
+    const v3=parsed.schema==="lightup.fictional.scope-tabletop.v3";
+    const v2=v3||parsed.schema==="lightup.fictional.scope-tabletop.v2";
     if(v2 && parsed.baseline_events!==null && !validSeq(parsed.baseline_events))
       throw new Error("Ongeldige fictieve nulmeting.");
+    if(v3 && (!Array.isArray(parsed.slots) || parsed.slots.length!==8 || parsed.slots.some(x=>
+      x!==null && (!x || typeof x!=="object" || !validSeq(x.events) ||
+        (x.baseline_events!==null && !validSeq(x.baseline_events))))))
+      throw new Error("Ongeldige fictieve verzameling.");
     const normalized={schema:parsed.schema,title:parsed.title,events:parsed.events};
     if(v2) normalized.baseline_events=parsed.baseline_events;
+    if(v3) normalized.slots=parsed.slots;
     normalized.authority={authenticated_client:false,authenticated_operator:false,consent_verified:false,
       dispatch_allowed:false,release_allowed:false,deploy_allowed:false};
     // Exact own-export bytes only. Duplicate keys, unknown fields and authority changes fail closed.
     if (JSON.stringify(normalized,null,2)!==text) throw new Error("Niet-canoniek of gewijzigd exportbestand.");
-    return {events:parsed.events.slice(),baseline:v2 && parsed.baseline_events!==null ? parsed.baseline_events.slice() : null};
+    return {events:parsed.events.slice(),baseline:v2 && parsed.baseline_events!==null ? parsed.baseline_events.slice() : null,
+      slots:v3?parsed.slots.map(x=>x===null?null:slotEntry(x.events,x.baseline_events)):Array(8).fill(null)};
   }
   $("load-preset").addEventListener("click",()=>{
     const key=$("preset").value;
@@ -261,7 +333,9 @@
   $("clear-baseline").addEventListener("click",()=>{baseline=null;feedback("Nulmeting uit geheugen gewist.");render();});
   $("undo").addEventListener("click",()=>{events.pop();feedback("Laatste gebeurtenis verwijderd.");render();});
   $("clear").addEventListener("click",()=>{if (events.length && !window.confirm("Alle fictieve stappen wissen?")) return;events=[];feedback("Scenario gewist.");render();});
-  $("save-json").addEventListener("click",()=>{bytesDownload("lightup-fictional-scope-tabletop.json",JSON.stringify(data(),null,2),"application/json");feedback("Fictief scenario lokaal aangeboden voor opslag.");});
+  $("save-json").addEventListener("click",()=>{bytesDownload("lightup-fictional-scope-tabletop.json",JSON.stringify(data(),null,2),"application/json");feedback("Fictief scenario inclusief slotverzameling lokaal aangeboden.");});
+  $("save-board").addEventListener("click",()=>{bytesDownload("lightup-fictional-workshop.json",JSON.stringify(data(),null,2),"application/json");feedback("PRIVATE fictieve workshop inclusief editor en slots lokaal aangeboden.");});
+  $("save-board-brief").addEventListener("click",()=>{bytesDownload("lightup-fictional-workshop.md",boardBrief(),"text/markdown");feedback("Fictieve groepsbrief voor PRIVATE HUMAN review aangeboden.");});
   $("save-md").addEventListener("click",()=>{bytesDownload("lightup-fictional-scope-tabletop.md",md(),"text/markdown");feedback("PRIVATE, niet-autoriseren­de beslisbrief lokaal aangeboden.");});
   $("import-btn").addEventListener("click",()=>$("import-file").click());
   $("import-file").addEventListener("change",async event=>{
@@ -271,8 +345,8 @@
       const text=await file.text();
       const next=validateImport(text);
       if (events.length && !window.confirm("Bestaand fictief scenario vervangen door dit bestand?")) return;
-      events=next.events;baseline=next.baseline;
-      feedback("Fictieve JSON en optionele nulmeting exact hersteld.");render();
+      events=next.events;baseline=next.baseline;slots=next.slots;
+      feedback("Fictief scenario en acht-slotsverzameling atomair hersteld.");render();
     } catch(_) {feedback("HOLD: alleen exact door deze tool geproduceerde, ongewijzigde fictieve JSON is toegestaan.");}
   });
   $("print").addEventListener("click",()=>window.print());
