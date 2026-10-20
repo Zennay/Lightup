@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-0vtEeQCOKYhJYQRVn2HCRORiO/MpgZ+tlcPpr572RsU='; style-src 'sha256-Lbq3GFwKdJWiTbGq8MmBgNgPX8QMdhf12YPzpKhEKSM='; img-src 'none'; connect-src 'none'; font-src 'none'; media-src 'none'; object-src 'none'; frame-src 'none'; form-action 'none'; base-uri 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-gE+IZsmGOO+O0lNjCaip9VynHHiT6QPRQmkt3zls6J8='; style-src 'sha256-dWXOCsycFmTmwdFBBv1DoEsHcazC6id22MjEntqac/U='; img-src 'none'; connect-src 'none'; font-src 'none'; media-src 'none'; object-src 'none'; frame-src 'none'; form-action 'none'; base-uri 'none'">
   <meta name="referrer" content="no-referrer">
   <title>LightUp · Scope & intrekking | Offline oefenruimte</title>
   <style>:root{color-scheme:dark;--bg:#0b1220;--surface:#121e30;--surface2:#19283a;--border:#31445c;--text:#f3f7fc;--muted:#adbed1;--aqua:#5ee5cf;--warn:#ffd07d;--red:#ff9b9b;font-family:system-ui,-apple-system,"Segoe UI",sans-serif}
@@ -11,6 +11,9 @@
 
 /* Direct step correction without recreating an entire fictional timeline. */
 .timeline li{flex-wrap:wrap}.timeline li>span:nth-child(2){flex:1;min-width:160px}.event-actions{display:flex;gap:5px;margin-left:auto}.small-button{min-width:32px;height:32px;border:1px solid #627c91;border-radius:7px;background:#243b50;color:#f3f7fc;font-weight:900;cursor:pointer}.small-button:focus-visible{outline:3px solid var(--aqua);outline-offset:2px}.small-button:disabled{opacity:.38;cursor:not-allowed}.remove-button{background:#4b2b39;border-color:#985b6c}@media print{.event-actions{display:none}}
+
+/* Side-by-side hypothetical timeline changes. No real authority state is represented. */
+.baseline-controls{border-top:1px solid var(--border);padding:15px 0 4px;margin-top:10px}.baseline-controls h3,.comparison h3{margin:0 0 6px;font-size:1rem}.baseline-controls p{margin:5px 0 13px}.baseline-controls .buttons{margin-top:10px}.comparison{margin-top:22px;padding:15px;border:1px solid #385970;background:#182b3a;border-radius:12px}.comparison .needs{margin-bottom:0}.comparison .needs li{margin-bottom:4px}@media print{.baseline-controls .buttons{display:none}.comparison{border:1px solid #bbb;background:white;color:black}}
 </style>
   <script>"use strict";
 /**
@@ -40,6 +43,7 @@
   const MAX = 64;
   const $ = id => document.getElementById(id);
   let events = [];
+  let baseline = null;
 
   function fresh() {
     return {client:false,operator:false,scope:0,risk:0,window:true,stop:false,attempts:0,lastAttempt:null};
@@ -153,6 +157,36 @@
     ];
     missing.forEach(m=>messages.unshift("Fictief: "+m+"."));
     messages.forEach(t=>needs.append(el("li","",t)));
+    const delta=$("compare-deltas");
+    delta.replaceChildren();
+    $("clear-baseline").disabled=baseline===null;
+    if (baseline === null) {
+      write("baseline-hint","Geen nulmeting vastgelegd.");
+      write("compare-summary","Leg links een fictieve nulmeting vast om veranderingen te vergelijken.");
+    } else {
+      const base=play(baseline).state;
+      const baseMissing=blockers(base);
+      write("baseline-hint","Nulmeting met "+baseline.length+" vaste fictieve stappen vastgelegd; alleen in geheugen.");
+      const countChange=events.length-baseline.length;
+      const first=Math.min(events.length,baseline.length);
+      let divergence=first;
+      for (let i=0;i<first;i++) {if(events[i]!==baseline[i]){divergence=i;break;}}
+      const same=events.length===baseline.length && divergence===first;
+      write("compare-summary",same
+        ? "Huidig scenario is gebeurtenis-voor-gebeurtenis identiek aan de nulmeting."
+        : "Scenario is gewijzigd. Dit is alleen een vergelijking van eigen fictieve invoer, geen claim over echte autorisatie.");
+      const details=[
+        "Verschil aantal gebeurtenissen: "+(countChange>0?"+":"")+countChange,
+        same ? "Geen gewijzigde gebeurtenissen." : "Eerste andere of afwezige gebeurtenis: stap "+(divergence+1),
+        "Oefen-HOLD-punten: nulmeting "+baseMissing.length+" → huidig "+missing.length,
+        "Noodstop: "+(base.stop?"actief":"niet actief")+" → "+(s.stop?"actief":"niet actief"),
+        "Fictieve clientverklaring: "+(base.client?"aanwezig":"ontbreekt")+" → "+(s.client?"aanwezig":"ontbreekt"),
+        "Fictieve operatorverklaring: "+(base.operator?"aanwezig":"ontbreekt")+" → "+(s.operator?"aanwezig":"ontbreekt"),
+        "Scope-/risicoversies: "+(base.scope+1)+"/"+(base.risk+1)+" → "+(s.scope+1)+"/"+(s.risk+1),
+        "Fictieve uitvoerpogingen: "+base.attempts+" → "+s.attempts
+      ];
+      details.forEach(t=>delta.append(el("li","",t)));
+    }
     return {s,steps,missing};
   }
   function feedback(t) { write("feedback",t); }
@@ -161,7 +195,8 @@
     events.push(e); feedback("");render();
   }
   function data() {
-    return {schema:"lightup.fictional.scope-tabletop.v1",title:"Fictief scope-/intrekkingsoefenscenario",events:events.slice(),
+    return {schema:"lightup.fictional.scope-tabletop.v2",title:"Fictief scope-/intrekkingsoefenscenario",events:events.slice(),
+      baseline_events:baseline===null?null:baseline.slice(),
       authority:{authenticated_client:false,authenticated_operator:false,consent_verified:false,
         dispatch_allowed:false,release_allowed:false,deploy_allowed:false}};
   }
@@ -186,6 +221,15 @@
       const info=x.event==="DISPATCH_ATTEMPT" ? (x.missing.length?"OEFEN-HOLD":"Alleen fictieve precondities aanwezig, nooit uitvoeren") : TYPES[x.event][1];
       lines.push("| "+(i+1)+" | "+TYPES[x.event][0]+" | "+info+" |");
     });
+    if (baseline!==null) {
+      const before=play(baseline).state;
+      lines.push("","## Wat-als vergelijking (uitsluitend fictief)",
+        "Nulmetingstappen: "+baseline.length+"; actuele stappen: "+events.length,
+        "Oefen-HOLD-aandachtspunten: "+blockers(before).length+" → "+missing.length,
+        "Noodstop: "+(before.stop?"actief":"inactief")+" → "+(s.stop?"actief":"inactief"),
+        "Clientverklaring: "+(before.client?"aanwezig":"ontbreekt")+" → "+(s.client?"aanwezig":"ontbreekt"),
+        "Operatorverklaring: "+(before.operator?"aanwezig":"ontbreekt")+" → "+(s.operator?"aanwezig":"ontbreekt"));
+    }
     lines.push("","## Samenvatting (uitsluitend fictief)",
       "Clientverklaring: "+(s.client?"ingevoerd":"niet geldig"),
       "Operatorverklaring: "+(s.operator?"ingevoerd":"niet geldig"),
@@ -203,16 +247,25 @@
     return lines.join("\n")+"\n";
   }
   function validateImport(text) {
-    if (text.length > 32768 || !text.length) throw new Error("Bestand buiten de toegestane limiet (32 KiB).");
+    if (text.length > 32768 || !text.length) throw new Error("Bestand buiten de 32 KiB limiet.");
     const parsed=JSON.parse(text);
-    if (!parsed || typeof parsed!=="object" || Array.isArray(parsed)) throw new Error("Geen object.");
-    if (!Array.isArray(parsed.events) || parsed.events.length>MAX || parsed.events.some(e=>typeof e!=="string" || !Object.hasOwn(TYPES,e))) throw new Error("Ongeldige fictieve gebeurtenislijst.");
-    if (parsed.schema!=="lightup.fictional.scope-tabletop.v1" || parsed.title!=="Fictief scope-/intrekkingsoefenscenario") throw new Error("Onbekende of niet-fictieve inhoud.");
-    const normalized={schema:parsed.schema,title:parsed.title,events:parsed.events,
-      authority:{authenticated_client:false,authenticated_operator:false,consent_verified:false,dispatch_allowed:false,release_allowed:false,deploy_allowed:false}};
-    // Byte-canonical own-file-only import: rejects duplicate JSON keys, unknown fields, altered authority flags and malformed formatting.
+    if (!parsed || typeof parsed!=="object" || Array.isArray(parsed)) throw new Error("Geen scenario-object.");
+    const validSeq=x=>Array.isArray(x) && x.length<=MAX &&
+      x.every(e=>typeof e==="string" && Object.hasOwn(TYPES,e));
+    if (!validSeq(parsed.events)) throw new Error("Ongeldige fictieve gebeurtenissen.");
+    if (parsed.title!=="Fictief scope-/intrekkingsoefenscenario") throw new Error("Onbekende titel.");
+    if (parsed.schema!=="lightup.fictional.scope-tabletop.v1" && parsed.schema!=="lightup.fictional.scope-tabletop.v2")
+      throw new Error("Onbekend scenarioformaat.");
+    const v2=parsed.schema==="lightup.fictional.scope-tabletop.v2";
+    if(v2 && parsed.baseline_events!==null && !validSeq(parsed.baseline_events))
+      throw new Error("Ongeldige fictieve nulmeting.");
+    const normalized={schema:parsed.schema,title:parsed.title,events:parsed.events};
+    if(v2) normalized.baseline_events=parsed.baseline_events;
+    normalized.authority={authenticated_client:false,authenticated_operator:false,consent_verified:false,
+      dispatch_allowed:false,release_allowed:false,deploy_allowed:false};
+    // Exact own-export bytes only. Duplicate keys, unknown fields and authority changes fail closed.
     if (JSON.stringify(normalized,null,2)!==text) throw new Error("Niet-canoniek of gewijzigd exportbestand.");
-    return parsed.events.slice();
+    return {events:parsed.events.slice(),baseline:v2 && parsed.baseline_events!==null ? parsed.baseline_events.slice() : null};
   }
   $("load-preset").addEventListener("click",()=>{
     const key=$("preset").value;
@@ -221,6 +274,8 @@
     events=presets[key].slice(); feedback("Fictief voorbeeld geladen.");render();
   });
   $("add-event").addEventListener("click",()=>add($("event-type").value));
+  $("set-baseline").addEventListener("click",()=>{baseline=events.slice();feedback("Fictieve nulmeting in geheugen vastgelegd.");render();});
+  $("clear-baseline").addEventListener("click",()=>{baseline=null;feedback("Nulmeting uit geheugen gewist.");render();});
   $("undo").addEventListener("click",()=>{events.pop();feedback("Laatste gebeurtenis verwijderd.");render();});
   $("clear").addEventListener("click",()=>{if (events.length && !window.confirm("Alle fictieve stappen wissen?")) return;events=[];feedback("Scenario gewist.");render();});
   $("save-json").addEventListener("click",()=>{bytesDownload("lightup-fictional-scope-tabletop.json",JSON.stringify(data(),null,2),"application/json");feedback("Fictief scenario lokaal aangeboden voor opslag.");});
@@ -233,7 +288,8 @@
       const text=await file.text();
       const next=validateImport(text);
       if (events.length && !window.confirm("Bestaand fictief scenario vervangen door dit bestand?")) return;
-      events=next;feedback("Oorspronkelijke fictieve JSON-indeling exact hersteld.");render();
+      events=next.events;baseline=next.baseline;
+      feedback("Fictieve JSON en optionele nulmeting exact hersteld.");render();
     } catch(_) {feedback("HOLD: alleen exact door deze tool geproduceerde, ongewijzigde fictieve JSON is toegestaan.");}
   });
   $("print").addEventListener("click",()=>window.print());
@@ -258,6 +314,12 @@
         <label for="event-type">Volgende gebeurtenis</label>
         <div class="preset-group"><select id="event-type"><option value="CLIENT_CONSENT">Fictieve client verklaart toestemming</option><option value="OPERATOR_CONSENT">Fictieve operator verklaart toestemming</option><option value="SCOPE_CHANGED">Scope wijzigt (verklaringen vervallen)</option><option value="RISK_CHANGED">Risico stijgt (verklaringen vervallen)</option><option value="CLIENT_REVOKED">Client trekt verklaring in</option><option value="OPERATOR_REVOKED">Operator trekt verklaring in</option><option value="WINDOW_EXPIRED">Geldigheidsvenster verloopt</option><option value="NEW_WINDOW">Nieuw fictief venster (nieuwe verklaringen nodig)</option><option value="EMERGENCY_STOP">Noodstop blijft actief</option><option value="DISPATCH_ATTEMPT">Gesimuleerde poging tot uitvoering</option></select><button type="button" class="button primary" id="add-event">+ Voeg toe</button></div>
         <div class="quick"><button type="button" id="undo" class="button minor">↶ Laatste ongedaan</button><button type="button" id="clear" class="button danger">Scenario wissen</button></div>
+        <section class="baseline-controls" aria-labelledby="baseline-title">
+          <h3 id="baseline-title">Wat-als vergelijking</h3>
+          <p class="muted">Leg de huidige fictieve situatie vast en verander daarna de gebeurtenissen. De nulmeting blijft alleen in dit browsergeheugen totdat je deze bewust wist of een opgeslagen scenario vervangt.</p>
+          <div class="buttons"><button type="button" id="set-baseline" class="button minor">Huidige situatie vastleggen</button><button type="button" id="clear-baseline" class="button minor">Nulmeting wissen</button></div>
+          <p class="muted" id="baseline-hint">Geen nulmeting vastgelegd.</p>
+        </section>
         <div class="section-top log-title"><h3>Gebeurtenissen</h3><span id="step-count" class="count">0 / 64</span></div>
         <ol id="timeline" class="timeline" aria-live="polite"></ol>
         <p class="muted" id="empty">Nog geen stappen. Kies een fictief startscenario of voeg een gebeurtenis toe.</p>
@@ -269,6 +331,7 @@
         <dl class="facts"><div><dt>Clientverklaring</dt><dd id="client-state">Niet aanwezig</dd></div><div><dt>Operatorverklaring</dt><dd id="operator-state">Niet aanwezig</dd></div><div><dt>Scope & risico</dt><dd id="scope-state">Startversie</dd></div><div><dt>Geldigheidsvenster</dt><dd id="window-state">Open (fictief)</dd></div><div><dt>Noodstop</dt><dd id="stop-state">Niet gesimuleerd</dd></div><div><dt>Laatste uitvoerpoging</dt><dd id="attempt-state">Geen</dd></div></dl>
         <h3 class="subheading">Human review: benodigde verificatie</h3>
         <ul class="needs" id="needs"><li>Actueel onafhankelijk geauthenticeerd bewijs van beide echte partijen.</li><li>Exacte actuele assets, capability, risico en geldigheidsvenster.</li><li>Actuele brongebonden intrekkingscontrole vlak vóór uitvoering.</li><li>Onafhankelijke privacy/security-goedkeuring en expliciete HUMAN GO.</li></ul>
+        <section class="comparison" aria-labelledby="comparison-title"><h3 id="comparison-title">Fictieve wijzigingsimpact</h3><p id="compare-summary" class="muted">Leg links een nulmeting vast om veranderingen te vergelijken.</p><ul id="compare-deltas" class="needs"></ul></section>
         <div class="export"><h3>PRIVATE lokaal bewaren</h3><p>Bestanden bevatten uitsluitend vaste fictieve gebeurteniscodes, geen echte klantgegevens, targets, credentials of geauthenticeerde claims.</p><div class="buttons"><button type="button" id="save-json" class="button primary">Scenario opslaan (.json)</button><button type="button" id="save-md" class="button minor">Beslisbrief (.md)</button><button type="button" id="import-btn" class="button minor">Scenario openen</button><input id="import-file" type="file" accept=".json,application/json" hidden><button type="button" id="print" class="button minor">Afdrukken</button></div><p class="muted" id="feedback" role="status" aria-live="polite"></p></div>
       </section>
     </main>
