@@ -43,8 +43,9 @@ def read_reviews(original: str, reviews: list[str]):
     sources, source_sha, decisions_sha = completed_packet(original)
     packets = [load_round(name, sources, source_sha, decisions_sha)
                for name in names]
-    if len({r["csv_sha256_unsigned"] for r in packets}) != len(packets):
-        raise Hold("HOLD: identical HUMAN decision files cannot imply independent reviewers")
+    # Two real people can arrive at byte-identical local HUMAN decisions.
+    # Keep each separately selected packet; explicitly flag exact copies rather
+    # than claiming two independent authenticated reviewers or rejecting consensus.
     return sources, source_sha, decisions_sha, packets
 
 
@@ -151,7 +152,8 @@ masked notes, original filenames/byte hashes or free HUMAN note contents
 are embedded in this printable page. Never publish this private packet.</p>
 <h1>Original-bound HUMAN sensitivity reconciliation</h1>
 <p>Manually selected HUMAN review packets: """ + str(reviewers) +
-            """ · original source positions: """ + str(len(summaries)) +
+            """ · declared exact-copy reviewer CSV pairs are not independently authenticated. Never treat a source-identical review as extra confidence.
+Original source positions: """ + str(len(summaries)) +
             """ · literal disagreement positions: """ + str(conflict_count) +
             """ · proposed conversation positions: """ + str(action_count) +
             """. No consensus is automatically adopted. All next-round HUMAN
@@ -231,6 +233,12 @@ def build(original: str, reviews: list[str], parent_string: str) -> int:
     parent = private_directory(parent_string)
     sources, manifest_sha, decisions_sha, packets = read_reviews(original, reviews)
     records, summaries = matrix(packets)
+    identical_pairs = [
+        [first + 1, second + 1]
+        for first in range(len(packets))
+        for second in range(first + 1, len(packets))
+        if packets[first]["csv_sha256_unsigned"] == packets[second]["csv_sha256_unsigned"]
+    ]
     kit = Path(tempfile.mkdtemp(prefix="PRIVATE-lightup-sensitivity-reconcile-", dir=parent))
     os.chmod(kit, 0o700)
     finished = False
@@ -243,6 +251,7 @@ def build(original: str, reviews: list[str], parent_string: str) -> int:
             "original_manifest_sha256_unsigned": manifest_sha,
             "original_human_csv_sha256_unsigned": decisions_sha,
             "original_count": len(sources),
+            "identical_human_csv_slot_pairs_not_identity_evidence": identical_pairs,
             "manual_reviewers": [
                 {"human_slot": slot,
                  "original_receipt_sha256_unsigned": item["receipt_sha256_unsigned"],
