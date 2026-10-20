@@ -43,3 +43,18 @@ The native finalizer reopens the complete **original completed packet** through 
 A status, SHA digest, masked note or category reflects HUMAN-local proposals; it is not verified absence/presence of a secret, safe anonymization, true source provenance or independently authenticated HUMAN identity. Do not circulate these PRIVATE files. No automatic deletion or cryptographic identity/signature is claimed.
 
 All original exact-head hosted and permanently registered named VPS CI, source-owner acceptance, independent security/privacy/browser review, existing #177/#182/#829, separately authenticated current client and operator consent with action-time revocation and explicit HUMAN GO remain mandatory before any eventual main merge, deploy, disclosure or active assessment. This draft adds no QA/test suite and does not change the underlying scanner, authenticator, authorization policy, grant, or original producer.
+
+## Minimum-necessary HUMAN concern follow-up (optional)
+
+After a native `sensitivity-finalize` has created its complete original-bound PRIVATE review, an operator can choose **exactly one** topic and **exactly one** HUMAN review status for a separate internal meeting preparation. No actual team identity or audience is authenticated.
+
+```sh
+python3 private-assessment-notes/notes.py sensitivity-focus \
+  --completed-packet /private/owner/PRIVATE-lightup-human-handoff-ORIGINAL \
+  --triage-review /private/owner/PRIVATE-lightup-sensitivity-review-ORIGINAL \
+  --topic PERSONAL_DATA \
+  --status REVIEW_REQUIRED \
+  --private-parent /private/owner
+```
+
+The new exclusive owner-only `PRIVATE-lightup-sensitivity-focus-*` contains a scriptless PRIVATE HTML agenda and selected-only CSV with original ordinal, local HUMAN status, concerned category and local HUMAN question; it contains **no original or masked note text, original filename, individual SHA digest or unselected row**. Its separate PRIVATE receipt binds the original full manifest, original completed HUMAN decisions and complete sensitivity receipt/CSV by unsigned SHA-256, with literal-false authorization/disclosure flags. Before emitting anything, the original native completed source roster and decisions are independently re-admitted, every original triage row/category and aggregate count is rechecked, and the selected subset is taken only from that exact complete review. Empty match or mismatch is HOLD without an agenda. A local choice of category/status is not proof of the identity, access level, consent or clearance of any potential recipient. No packet is sent automatically; outcome is always **HOLD (3)**.
