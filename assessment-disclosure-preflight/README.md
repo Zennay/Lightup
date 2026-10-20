@@ -27,6 +27,33 @@ python3 assessment-disclosure-preflight/preflight.py \
 
 Exit **2 = REVIEW_ONLY** after files are privately produced. Exit **3 = HOLD** and no approval; exit 0 is never a release signal. Minimum source cohort defaults to five and can only be raised via --minimum-cohort (up to twelve).
 
+## Complete two-reviewer publication (PRIVATE, no release)
+
+The native `reconcile.py prepare` and `reconcile.py finalize` paths now use
+`human_review.publish_many` to assemble their entire PRIVATE deliverable set
+before exposing any final filenames. The original reviewer receipt and two
+submitted review byte hashes remain bound to every decision; this does not
+authenticate either reviewer or original assessment evidence.
+
+- **Prepare** stages the exact decision template and the scriptless private
+  comparison together; either both finish or normal publish failure removes
+  both newly created final names.
+- **Finalize plaintext** stages the selected complete HUMAN CSV, comparison
+  report, and small-cohort-suppressed PRIVATE counts together.
+- **Finalize encrypted** stages the encrypted HUMAN bundle and its distinct
+  small-cohort-suppressed PRIVATE counts together. Decrypted output is never
+  separately staged in that path.
+- Any existing final name refuses the entire new handoff rather than
+  overwriting it. Stage files and outputs use one pinned owner-only 0700
+  directory descriptor and exclusive 0600 file creation.
+
+A hard crash/power loss may leave incomplete final sets or hidden PRIVATE
+staging files: this is **rollback on normal failure, not a filesystem-wide
+transaction**. Recipients must not infer completeness or approval from partial
+files. Always inspect the complete intended set, original HUMAN source binding
+and actual transfer authorization. PRIVATE counts are not automatically anonymous,
+and REVIEW_ONLY/HOLD remain the only outcomes.
+
 ## HUMAN disclosure checklist
 
 Before any external handoff, check the genuine origin of each private source, current client/operator rights and action-time revocation, confidentiality/retention conditions, whether aggregated counts could re-identify a customer or laboratory, and the intended recipient. A source ordinal is *not* a durable identifier. The receipt is **not byte bound or signed**, and identical aggregates can arise from different source bytes. The PRIVATE CSV is not by definition anonymous or safe to publish. Unverified findings remain unverified.
