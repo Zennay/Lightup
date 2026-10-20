@@ -81,6 +81,7 @@ MENU = (
     ("37", "Build source-free offline multi-owner HUMAN Inbox Studio"),
     ("38", "Export source-bound one-owner PRIVATE HUMAN discussion brief"),
     ("39", "Compare 2–8 original source-exact PRIVATE HUMAN inbox discussions"),
+    ("40", "Export one original proposed HUMAN owner's PRIVATE discussion history"),
     ("0", "Exit"),
 )
 
@@ -230,7 +231,7 @@ def handle_action(action):
             action_context=prompt("ORIGINAL PRIVATE-action-context.json"),
             actions=actions, plan=plans, private_parent=private_parent()
         ))
-    if action == "39":
+    if action in ("39", "40"):
         print("Choose 2–8 original inbox HUMAN discussions and their matching CSVs.")
         rounds, original_csvs = [], []
         while len(rounds) < 8:
@@ -243,7 +244,10 @@ def handle_action(action):
             original_csvs.append(csv_path)
         return portfolio_inbox_history.run(argparse.Namespace(
             inbox=prompt("ORIGINAL PRIVATE-HUMAN-owner-inbox.json"),
-            discussion=rounds, review_csv=original_csvs, private_parent=private_parent()
+            discussion=rounds, review_csv=original_csvs,
+            owner=prompt("EXACT original proposed HUMAN owner (minimum-necessary)", True)
+            if action == "40" else None,
+            private_parent=private_parent()
         ))
     if action == "38":
         return portfolio_owner_attention.run(argparse.Namespace(

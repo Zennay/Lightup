@@ -17,7 +17,7 @@ import sys
 
 from ledger import (
     FLAGS, Hold, MAX_MANIFEST, canonical, digest, html_page, new_private,
-    private_parent, read_owner_file, reject, write_private,
+    private_parent, read_owner_file, reject, safe_human, write_private,
 )
 from portfolio_focus import local_path
 from portfolio_owner_attention import read_discussion
@@ -171,6 +171,22 @@ def as_csv(rows):
 def run(args):
     original_raw, original_doc, original_rows, rounds = admit(args)
     rows, counts = summarize(original_rows, rounds)
+    owner = getattr(args, "owner", None)
+    if owner is not None:
+        if type(owner) is not str or not owner or owner != owner.strip():
+            reject("PRIVATE HOLD: explicit exact original HUMAN owner required")
+        safe_human(owner, 80)
+        scoped = [row for row in rows if row["original_proposed_human_owner"] == owner]
+        if not scoped:
+            reject("PRIVATE HOLD: proposed HUMAN owner absent from original inbox")
+        rows = scoped
+        counts = Counter()
+        for row in rows:
+            if row["stage_changed_rounds"] or row["private_note_changed_rounds"]:
+                counts["changed_rows"] += 1
+            counts["stage_changes"] += len(row["stage_changed_rounds"])
+            counts["note_changes"] += len(row["private_note_changed_rounds"])
+            counts["latest_" + row["latest_human_triage_stage"]] += 1
     # Exact original native admissions are repeated BEFORE PRIVATE publication.
     # If any owner-controlled input drifted, publish nothing.
     if read_inbox(args.inbox)[0] != original_raw:
@@ -191,6 +207,8 @@ def run(args):
         "consent_assumed": False, "actions_dispatched": False,
         "appointments_booked": False, "verified_remediation": False,
         "original_inbox_sha256": digest(original_raw),
+        "selected_original_proposed_human_owner_label": owner,
+        "owner_scoped_private_export": owner is not None,
         "original_human_discussion_rounds": [
             {"round": ordinal, "original_discussion_sha256": round_["digest"],
              "original_review_csv_sha256": round_["csv_digest"]}
@@ -228,6 +246,8 @@ def main():
                         help="Original finalized PRIVATE-HUMAN-inbox-review.json; repeat 2–8")
     parser.add_argument("--review-csv", required=True, action="append",
                         help="Corresponding unchanged HUMAN-inbox-review-template.csv; repeat 2–8")
+    parser.add_argument("--owner", required=False,
+                        help="Optional EXACT original proposed HUMAN owner; export only own slots")
     parser.add_argument("--private-parent", required=True,
                         help="Existing private owner-only 0700 parent outside repository")
     args = parser.parse_args()

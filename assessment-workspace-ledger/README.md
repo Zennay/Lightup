@@ -1357,3 +1357,28 @@ compatibility. No scanner, actual client, network, auth, grant, notification,
 worker, recipient transfer, scheduling, real remediation proof or security PASS.
 The original stage stays **INCUBATE M3/M7 PLAN/LAB ONLY · DRAFT/HOLD**; release
 gates remain unchanged.
+
+## v33 — minimum-necessary proposed HUMAN owner history · console 40
+
+For a single explicitly proposed original HUMAN owner, v33 adds optional
+`--owner 'Exact original owner label'` to the original
+`portfolio_inbox_history.py` command (also console **40**). The same strict
+native input chain admits EVERY original owner and HUMAN round before export.
+The output filters to only this exactly matching owner; if missing, HOLD,
+never an implicit fallback to all owners.
+
+Creates a separate 0700 PRIVATE room with 0600 scriptless detailed HTML,
+CSV, canonical JSON and source-minimal count-only OPEN-PRIVATE.html. Only the
+selected owner's source slots, stages and note-changed flags appear; private
+free-text note content is never copied. Original complete source/round
+SHA-256 references are recorded as unsigned provenance, not authentication
+or permission to send. Neither selecting an owner label nor reviewing these
+private discussions constitutes actual identity, consent, authorization,
+remediation, real tasks, notification or scan.
+
+Usage: repeat the original v32 `--discussion` and `--review-csv` pairs,
+append `--owner 'Exact proposed HUMAN owner'`, then choose one existing
+owner-private 0700 `--private-parent`. No output is written on original
+owner/source mismatch. The v33 source-only software ZIP retains read-only
+inspection of historical fixed software v16–v32. All release, source-owner,
+security, privacy, and CI/HUMAN GO gates remain intact.
