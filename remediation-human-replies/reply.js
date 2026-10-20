@@ -135,6 +135,11 @@
       notice("HOLD: invalid recipient HUMAN reply. No file created.");
       return;
     }
+    if (rows.some(row => (row.status === "answered_human_only" && !row.answer.trim()) ||
+        (row.status === "need_clarification_human" && !row.question.trim()))) {
+      notice("HOLD: answered HUMAN status requires an actual answer; clarification status needs an actual question.");
+      return;
+    }
     if (!window.crypto || !crypto.subtle || !crypto.getRandomValues) {
       notice("HOLD: local secure Web Crypto is unavailable. There is no plaintext fallback.");
       return;
