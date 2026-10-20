@@ -29,9 +29,9 @@ Open the downloaded ZIP **locally**. No web hosting, external API, account, or t
 
 ## Original-source revision brief — HUMAN follow-up product
 
-The second offline product `change_brief.py` accepts two actual original `SOURCE-MANIFEST.json` files (an earlier separately exported package and the newer package). It rejects ambiguous duplicate JSON keys, malformed or oversized records, unexpected authorization flags, unsafe paths, and duplicate file entries. The result is an **owner-only scriptless HTML decision brief** (`index.html`) with added / changed / unchanged / absent *original package files*, original unsigned byte fingerprints and original companion source HEAD drift. It also emits a separately **source-minimized aggregate-counts JSON** without file names, hashes, or targets.
+The second offline product `change_brief.py` accepts two actual original `SOURCE-MANIFEST.json` files (an earlier separately exported package and the newer package). It rejects ambiguous duplicate JSON keys, malformed or oversized records, unexpected authorization flags, unsafe paths, and duplicate file entries. The result is an **owner-only scriptless HTML decision brief** (`index.html`) with added / changed / unchanged / absent *original package files*, original unsigned byte fingerprints and original companion source HEAD drift. It also emits a separately **source-minimized category-counts JSON** without file names, hashes, or targets.
 
-**New PRIVATE interactive HUMAN desk:** `workroom.html` is an actual standalone offline browser application containing a source-bound row for each original file, filters for source status/HUMAN stage, local team and notes editors, full-batch RFC4180 CSV import of existing original HUMAN review and explicit confidential CSV download. A **CSP SHA-256 fingerprint pins the exact embedded offline script and stylesheet**, no network/storage/cookies. It rejects an imported worksheet if even one original filename, SHA, source revision, row order, change category, stage or HUMAN value is ambiguous or invalid. Failed import leaves the entire in-memory desk untouched. The passive `index.html` and separate source-minimized source counts remain independent.
+**New PRIVATE interactive HUMAN desk:** `workroom.html` is an actual standalone offline browser application containing a source-bound row for each original file, filters for source status/HUMAN stage, local team and notes editors, full-batch RFC4180 CSV import of existing original HUMAN review and explicit confidential CSV download. A **CSP SHA-256 fingerprint pins the exact embedded offline script and stylesheet**, no network/storage/cookies. It rejects an imported worksheet if even one original filename, SHA, source revision, row order, change category, stage or HUMAN value is ambiguous or invalid. Failed import leaves the entire in-memory desk untouched. The passive `index.html` and separate source-minimized source counts remain independent. Small cohorts and low-frequency categories are redacted rather than falsely advertised as anonymous.
 
 ```sh
 python3 scope-current-bundle/change_brief.py \
@@ -56,7 +56,7 @@ python3 scope-current-bundle/human_followup.py \
   NEW-PRIVATE-HUMAN-OUTPUT-DIRECTORY
 ```
 
-Output is a fresh owner-only directory containing a **scriptless printable private HUMAN follow-up report** (`human-review.html`) and separate **source-minimized HUMAN stage/source change counts** (`anonymous-counts.json`) with no paths, hashes, team names or freeform notes. No form executes a scan or changes original grants.
+Output is a fresh owner-only directory containing a **scriptless printable private HUMAN follow-up report** (`human-review.html`) and separate **source-minimized HUMAN stage/source change counts** (`source-minimized-counts.json`) with no paths, hashes, team names or freeform notes. No form executes a scan or changes original grants.
 
 ## PRIVATE multi-revision HUMAN attention and progress history
 
@@ -77,7 +77,7 @@ It produces a scriptless PRIVATE HTML comparison of human review stage/team/note
 
 Use this when reviewers should **not** receive every original file name, SHA-256 fingerprint, private source record or all other reviewers' HUMAN notes.
 
-Prepare PRIVATE per-team replies from the exact two **original** `SOURCE-MANIFEST.json` bytes and a fully re-admitted source-exact HUMAN worksheet. The worksheet's `human_team` values select recipient groups; assigned team IDs are local labels `[a-z][a-z0-9_-]{0,39}` (up to 16 groups), **not authenticated identities**. Leave `human_team` empty for records intentionally not routed.
+Prepare PRIVATE per-team replies from the exact two **original** `SOURCE-MANIFEST.json` bytes and a fully re-admitted source-exact HUMAN worksheet. The worksheet's `human_team` values select recipient groups; assigned HUMAN team names reuse the original source-bound worksheet values (1–80 characters, without control characters, spreadsheet formulas or surrounding whitespace), up to 16 groups; these are **not authenticated identities**. The recipient files are numbered safely by group slot rather than by team name. Leave `human_team` empty for records intentionally not routed.
 
 ```sh
 python3 scope-current-bundle/recipient_exchange.py prepare \
@@ -112,6 +112,10 @@ The CLI also produces the PRIVATE original-path-specific response CSV and an ind
 `build.py` checks **all 14 original offline builder source byte digests** of the original packager, HUMAN handoff and JSON inspector, copies eight original app directories without symlinks, reruns original **60-file pinned source verification**, validates the original DRAFT/HOLD manifest and its six literal false authority flags, and checks every output destination for collisions before writing. Output uses no-follow exclusive create, 0600 file mode, and fsync. If existing distributed files differ, the build **refuses replacement**; publish a newly named revision after legitimate source review instead.
 
 SHA-256 here is **only byte matching**, never authenticated operator/client identity, signed producer authenticity, fresh consent, tenant permission or scanner authorization. The generated distribution is a local review tool with PRIVATE source-sensitive content.
+
+### Privacy of numerical handoffs
+
+The category exports are **source-minimized, not guaranteed anonymous**. The shared `privacy_counts.py` suppresses all category figures for cohorts below five original rows and suppresses 1–2 observations in larger cohorts. Private HTML and source-bound worksheets still contain identifiers and must remain with authorized people. Counts are never consent, authenticated evidence, security findings or grants.
 
 ## Source-only proof / known delivery boundary (20 October 2026)
 
