@@ -185,13 +185,18 @@
     },
     {
       "path": "scope-unified-workspace/README.md",
-      "sha256": "cab3c38c457f16514dcd2a8b9e4caab80ddf19cfad988ef379c13f94dc662131",
-      "size": 4934
+      "sha256": "d837cc8303c6d3c1b0fce1f22d77b06b75e399df13366671c430301b820c326c",
+      "size": 6000
     },
     {
       "path": "scope-unified-workspace/build.py",
-      "sha256": "e3a4e591e0687e570d64450644178bc89ad1b74581629b9f1dde7c26a4e12a63",
-      "size": 5083
+      "sha256": "fa69be5863aa103452b0c67fd5021a366d4d5c5a7d469bb92c0c6b35273facbc",
+      "size": 5102
+    },
+    {
+      "path": "scope-unified-workspace/check_bundle.py",
+      "sha256": "71b16e33cee3e5bf2e6cd7d295a737f19eee2c3836c4c5357dc73de930110493",
+      "size": 9174
     },
     {
       "path": "scope-unified-workspace/hub.template.html",

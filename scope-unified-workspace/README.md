@@ -35,6 +35,16 @@ python3 scope-unified-workspace/build.py
 
 This deterministic Python-stdlib build generates `index.html`, `SOURCE-MANIFEST.json` and `LightUp-Scope-Offline-DRAFT-HOLD.zip`. The manifest lists file sizes, SHA-256 digests and original parent commits for **transport comparison only**. It is **unsigned**, not an independent proof of original authorship, authorized source, tenant identity, runtime behavior or security correctness. The ZIP has fixed metadata and is assembled atomically. It contains no data provided by an operator, browser session, account, customer or database.
 
+## Inspect a received package without extracting it
+
+On a trusted local machine with Python 3, the independent non-authorizing read-only tool checks the complete ZIP or a **freshly extracted** bundle against its unsigned inventory and exact pinned source-head declarations:
+
+    python3 scope-unified-workspace/check_bundle.py --zip scope-unified-workspace/LightUp-Scope-Offline-DRAFT-HOLD.zip
+
+    python3 scope-unified-workspace/check_bundle.py --directory /path/to/newly-extracted-bundle-root
+
+Successful byte-level transport comparison explicitly returns **REVIEW_ONLY (exit 3)**, never authorization or exit 0. Malformed, incomplete, modified, unexpected, symlinked or unbounded input yields **HOLD (exit 2)**. This cannot authenticate the source: the inventory is unsigned, so an adversary could change both package bytes and manifest. Treat any received package as untrusted until original channel/source and intended recipients are independently verified. This CLI does not extract files, run scripts from the archive, contact anything or read client data.
+
 ## Safety and release fence
 
 - Incubate M3/M7 **DRAFT/HOLD**; no merge to main or production deployment.

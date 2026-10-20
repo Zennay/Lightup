@@ -23,7 +23,7 @@ SOURCES = (
     ("scope-casebook-transfer", "f40b0d2cf626e49bbd8f764968df132ba9d4365a", True),
     ("scope-casebook-reconcile", "7de3f5a5549c738eeb90f81c687c9a7d9c7cab3a", True),
 )
-HUB_INPUTS = ("README.md", "hub.template.html", "style.css", "build.py")
+HUB_INPUTS = ("README.md", "hub.template.html", "style.css", "build.py", "check_bundle.py")
 ARCHIVE = HUB / "LightUp-Scope-Offline-DRAFT-HOLD.zip"
 MAX_FILE = 8 * 1024 * 1024
 MAX_ALL = 30 * 1024 * 1024
