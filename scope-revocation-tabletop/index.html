@@ -56,6 +56,14 @@
           </div>
           <div class="bank-scroll"><table class="bank-table"><caption class="sr-only">Acht uitsluitend fictieve scenario-slots</caption>
             <thead><tr><th>Scenario</th><th>Fictieve toestand</th><th>Acties</th></tr></thead><tbody id="bank-rows"></tbody></table></div>
+          <section class="coverage-board" aria-labelledby="coverage-title">
+            <div class="section-top"><h4 id="coverage-title">Matrix van fictieve voorwaarden</h4><span class="pill">GEEN ECHTE MACHTIGING</span></div>
+            <p class="muted">Per opgeslagen scenario toont deze matrix uitsluitend de lokaal ingevoerde oefenstatus. Een groene oefencel is nooit geauthenticeerd bronbewijs.</p>
+            <div class="bank-scroll"><table class="coverage-table"><caption class="sr-only">Fictieve huidige voorwaarden en eerdere HOLD-pogingen per scenario</caption>
+              <thead><tr><th>Slot</th><th>Client</th><th>Operator</th><th>Venster</th><th>Noodstop</th><th>Eerdere HOLD</th></tr></thead>
+              <tbody id="coverage-rows"></tbody></table></div>
+            <p class="muted" id="coverage-summary">Alle scenario-slots zijn leeg.</p>
+          </section>
         </section>
         <div class="section-top log-title"><h3>Gebeurtenissen</h3><span id="step-count" class="count">0 / 64</span></div>
         <label for="timeline-filter">Tijdlijn filteren</label><select id="timeline-filter" class="timeline-filter">
