@@ -18,7 +18,7 @@ import sys
 
 from inbox_reopen import inspect as inspect_original
 from inbox import _import_original_install
-from offline_signatures import Hold, _canonical, _write_new_private
+from offline_signatures import Hold, _canonical, _pairs_no_duplicates, _regular_file_bytes, _write_new_private
 from trust_registry import _json_file, _owner_private, minimum_signers
 
 KIND = "lightup.offline.software_revision_desk.v1"
@@ -35,7 +35,21 @@ def _entry(keyring: Path, inbox: Path, need_two: bool, ordinal: int) -> dict:
     if type(rows) is not list or len(rows) != 1:
         raise Hold("revision desk requires exactly one original software package per inbox")
     row = rows[0]
-    installed = _json_file(inbox / row["slot"] / "manifest.json")
+    # The original native software inventory is already independently
+    # source-verified, but can exceed the 16-KiB local keyring-record ceiling.
+    # Read it with its own bounded original source-only ceiling, still rejecting
+    # duplicate JSON keys and never admitting private client evidence.
+    try:
+        installed = json.loads(
+            _regular_file_bytes(
+                inbox / row["slot"] / "manifest.json", 128 * 1024
+            ).decode("utf-8"),
+            object_pairs_hook=_pairs_no_duplicates,
+        )
+    except (ValueError, UnicodeError, TypeError) as exc:
+        raise Hold("original source-locked manifest is not unambiguous JSON") from exc
+    if type(installed) is not dict:
+        raise Hold("original installed software manifest must be an object")
     source = installed["files"]
     if type(source) is not dict or not 1 <= len(source) <= MAX_PATHS:
         raise Hold("unrecognized native source-lock file inventory")
