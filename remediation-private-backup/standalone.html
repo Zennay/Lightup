@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-n6GJn+04F0AJw/RJ2s6vbJsmfhPvjUURuFTeZIZxfrk='; style-src 'unsafe-inline'; connect-src 'none'; form-action 'none'; frame-src 'none'; object-src 'none'; base-uri 'none'; img-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-yNM9/kblLiBHFaAst6CG2bKElmj/AoJ9BnrShvviYqE='; style-src 'unsafe-inline'; connect-src 'none'; form-action 'none'; frame-src 'none'; object-src 'none'; base-uri 'none'; img-src 'none'">
 <title>LightUp · PRIVATE offline backup recovery · DRAFT/HOLD</title>
 <style>
 :root{color-scheme:dark;font-family:system-ui,-apple-system,sans-serif;background:#0a1420;color:#edf5fc}
@@ -12,11 +12,14 @@ section{border:1px solid #384b65;background:#101e30;border-radius:12px;padding:1
 section.wide{grid-column:1/-1}.warning{font-weight:700;color:#ffe3a5}
 label{display:block;margin:.7rem 0 .25rem}input[type=file],input[type=password],select{background:#071322;color:#fff;border:1px solid #61778d;border-radius:8px;width:100%;padding:.6rem;min-width:0}
 button{border-radius:7px;background:#1d638a;border:1px solid #6db8d7;color:#fff;padding:.55rem .8rem;cursor:pointer;margin:.45rem .35rem .25rem 0}
+textarea{background:#071322;color:#fff;border:1px solid #61778d;border-radius:8px;width:100%;padding:.7rem;resize:vertical;line-height:1.5}
 button:disabled{opacity:.44;cursor:not-allowed}button:focus-visible,input:focus-visible{outline:3px solid #a6e6ff;outline-offset:2px}
 output{display:block;white-space:pre-wrap;word-break:break-word;font-size:.84rem;line-height:1.5;padding:.6rem;border:1px solid #334d61;border-radius:7px;min-height:3rem;margin-top:.7rem}
 table{border-collapse:collapse;width:100%;font-size:.88rem}th,td{border-bottom:1px solid #40566b;text-align:left;padding:.6rem .4rem;vertical-align:top;overflow-wrap:anywhere}
 tbody tr:hover{background:#1b334b}button.subtle{background:#234258}code{overflow-wrap:anywhere;color:#a7e9fe}
 .status{font-weight:600}.hide{display:none}#file-meta{font-size:.9rem}pre{white-space:pre-wrap;word-break:break-word;max-height:20rem;overflow:auto;padding:.75rem;background:#071322;border-radius:7px}
+.review-columns{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,330px),1fr));gap:1rem}
+.review-columns > div{min-width:0}.review-columns pre{min-height:5rem}
 footer{font-size:.8rem;margin:1rem 0;color:#bed0df}
 </style></head>
 <body><header><small>LIGHTUP / EVIDENCE-REMEDIATION / HUMAN-ONLY</small><h1>PRIVATE encrypted recovery desk</h1>
@@ -60,7 +63,22 @@ footer{font-size:.8rem;margin:1rem 0;color:#bed0df}
 <p>A and B are independently password-authenticated. Local byte differences do not prove real chronology, verified remediation, or a resolved security finding. The operator must deliberately choose which archive is B; it is not necessarily newer, safer or approved.</p>
 <button type="button" id="compare-select-b">Prepare encrypted recovery of B's added/changed files</button>
 <output id="compare-status" role="status" aria-live="polite">Unlock both archives to compare.</output>
-<div style="overflow-x:auto"><table><thead><tr><th>Change</th><th>Source basename</th><th>Archive A bytes</th><th>Archive B bytes</th></tr></thead><tbody id="compare-rows"></tbody></table></div>
+<div style="overflow-x:auto"><table><thead><tr><th>Change</th><th>Source basename</th><th>Archive A bytes</th><th>Archive B bytes</th><th>PRIVATE human review</th></tr></thead><tbody id="compare-rows"></tbody></table></div>
+<div id="difference-review" class="hide" aria-live="polite">
+<h2>Selected original PRIVATE text · A/B (operator-selected order)</h2>
+<p>Only explicitly opened local text is shown, truncated to 8 KiB per source. A/B is <strong>not</strong> an authenticated timeline or evidence of a verified fix. Browser previews cannot sanitize secrets.</p>
+<button type="button" id="difference-hide" class="subtle">Hide PRIVATE text review</button>
+<div class="review-columns"><div><strong>Archive A original</strong><pre id="difference-a"></pre></div><div><strong>Archive B original</strong><pre id="difference-b"></pre></div></div>
+</div>
+<h2>Owner-only HUMAN comparison notes</h2>
+<p>Write an explicit local, unverified reviewer note for the currently unlocked A/B snapshots. The note is linked only to their literal file-name, size and SHA-256 inventories—not to trusted source ownership, chronology, remediation or customer consent. Export creates ONE new separately password-encrypted PRIVATE note archive; original evidence bytes are never automatically included.</p>
+<label for="human-note">PRIVATE HUMAN review text (maximum 10,000 characters)</label>
+<textarea id="human-note" maxlength="10000" rows="6" placeholder="My own unverified observation. Required HUMAN follow-up and remaining unknowns..." aria-label="Local PRIVATE reviewer notes"></textarea>
+<label for="human-note-pass">New independent note archive password</label><input id="human-note-pass" type="password" autocomplete="new-password">
+<label for="human-note-confirm">Confirm new note archive password</label><input id="human-note-confirm" type="password" autocomplete="new-password">
+<button type="button" id="human-note-save">Encrypt HUMAN review note locally</button>
+<button type="button" id="human-note-clear" class="subtle">Clear PRIVATE review note</button>
+<output id="human-note-status" role="status" aria-live="polite">Unlock both sources, enter human-only observations, and explicitly save under a new password.</output>
 <button type="button" id="clear-all" class="subtle">Clear all selected PRIVATE sources and passwords</button></section>
 </main>
 <footer><p>Only a local operation of unreviewed PRIVATE bytes. Plaintext downloads must be stored in an appropriately protected folder, and are never automatically uploaded. This browser application is a separate user-interface companion to <code>vault.py</code>; cryptographic authenticity is limited to knowledge of the password used for the file. Existing LightUp security and HUMAN GO gates are unchanged.</p></footer>
@@ -442,9 +460,34 @@ footer{font-size:.8rem;margin:1rem 0;color:#bed0df}
       root.append(row);
     }
   }
+  function hideDifferenceReview() {
+    el("difference-review").classList.add("hide");
+    el("difference-a").textContent = "";
+    el("difference-b").textContent = "";
+  }
+  function showDifferenceReview(name) {
+    demand(slots[0] && slots[1], "Both original PRIVATE archives must remain unlocked");
+    demand(/\.(txt|md|csv|json|log)$/i.test(name),
+      "Only local text-origin files can be displayed; binary preview withheld");
+    if (!confirm("Reveal PRIVATE original source text from operator-selected A/B " +
+      "for " + name + "? This is NOT a trusted timeline, sanitized disclosure or remediation review.")) return;
+    function textFor(source) {
+      const file = source.byName.get(name);
+      if (!file) return "[Original file not present in this operator-chosen archive]";
+      try {
+        const content = decoder.decode(file.bytes.subarray(0, Math.min(file.size, 8192)));
+        return content + (file.size > 8192 ? "\n[PRIVATE source truncated to 8192 bytes]" : "");
+      } catch (_) { return "[Non-UTF-8 original source: text preview withheld]"; }
+    }
+    el("difference-a").textContent = textFor(slots[0]);
+    el("difference-b").textContent = textFor(slots[1]);
+    el("difference-review").classList.remove("hide");
+    el("difference-review").scrollIntoView({ block: "nearest" });
+  }
   function renderComparison() {
     const root = el("compare-rows");
     root.replaceChildren();
+    hideDifferenceReview(); // Never retain a PRIVATE preview across source changes.
     if (!slots[0] || !slots[1]) {
       status("compare-status", "Unlock both independent encrypted archives to compare.");
       return;
@@ -459,6 +502,16 @@ footer{font-size:.8rem;margin:1rem 0;color:#bed0df}
       totals[kind]++;
       const tr = document.createElement("tr");
       cell(tr, kind); cell(tr, name); cell(tr, a?.size ?? "—"); cell(tr, b?.size ?? "—");
+      const review = document.createElement("td");
+      if (/\.(txt|md|csv|json|log)$/i.test(name)) {
+        review.append(button("Review source text", () => {
+          try { showDifferenceReview(name); }
+          catch (error) { status("compare-status", "HOLD: " + (error?.message || "Unable to show PRIVATE text")); }
+        }));
+      } else {
+        review.textContent = "Binary: no text preview";
+      }
+      tr.append(review);
       root.append(tr);
     }
     status("compare-status", Object.entries(totals).map(([key, value]) => key + ": " + value).join(" · ") +
@@ -493,6 +546,68 @@ footer{font-size:.8rem;margin:1rem 0;color:#bed0df}
       "No chronology, fix, source identity, grant or approval implied.");
     el("subset-pass").focus();
   }
+  function clearHumanNote() {
+    el("human-note").value = "";
+    el("human-note-pass").value = "";
+    el("human-note-confirm").value = "";
+    status("human-note-status", "PRIVATE HUMAN note input cleared.");
+  }
+  async function encryptHumanNote() {
+    const a = slots[0], b = slots[1];
+    const aTicket = generations[0], bTicket = generations[1];
+    const originalText = el("human-note").value;
+    const pass = el("human-note-pass"), confirmPass = el("human-note-confirm");
+    const secret = pass.value, confirmed = confirmPass.value;
+    pass.value = ""; confirmPass.value = "";
+    el("human-note-save").disabled = true;
+    let bytes = null, output = null;
+    try {
+      demand(a && b, "Unlock both independent PRIVATE snapshots first");
+      demand(originalText.trim() && originalText.length <= 10000,
+        "Write a nonempty HUMAN review note (up to 10,000 characters)");
+      demand(secret === confirmed, "Independent note passwords differ");
+      demand(confirm("Encrypt a NEW owner-only PRIVATE HUMAN note, source-linked to local " +
+        "A/B filename and SHA-256 inventories? No original evidence files will be bundled. " +
+        "A/B is NOT an authoritative chronology or verified remediation."),
+        "Human operator cancelled independent note creation");
+      function sourceInventory(archive) {
+        return archive.files.map(f => ({ name: f.name, size: f.size, sha256: f.sha256 }));
+      }
+      const note = {
+        kind: "lightup-private-human-difference-note/v1",
+        disposition: "DRAFT_HOLD",
+        authority: FLAGS,
+        provenance: "local operator-selected archive inventories only; never third-party source authentication",
+        chronologyVerified: false,
+        remediationVerified: false,
+        clientConsentVerified: false,
+        comparison: { A: sourceInventory(a), B: sourceInventory(b) },
+        humanNote: originalText
+      };
+      bytes = encoder.encode(asJsonAscii(note) + "\n");
+      demand(bytes.length <= MAX_FILE, "HUMAN note payload exceeded private file budget");
+      const digest = hex(await crypto.subtle.digest("SHA-256", bytes));
+      output = await sealedArchive([{
+        name: "human-review-notes.json", size: bytes.length,
+        sha256: digest, bytes: asBase64(bytes)
+      }], secret);
+      demand(slots[0] === a && slots[1] === b &&
+        generations[0] === aTicket && generations[1] === bTicket,
+        "A/B original source selection changed while encrypting note; no download");
+      localDownload(new Blob([output], { type: "application/octet-stream" }),
+        "LightUp-PRIVATE-HUMAN-review-note-DRAFT-HOLD.lupb");
+      el("human-note").value = "";
+      status("human-note-status", "PRIVATE DRAFT/HOLD: one separately encrypted reviewer note saved. " +
+        "Contains locally selected source names/hashes and an unverified HUMAN observation, " +
+        "NO original source evidence bytes, permissions or source authenticity.");
+    } catch (error) {
+      status("human-note-status", "HOLD: " + (error?.message || "Cannot encrypt HUMAN note"));
+    } finally {
+      if (bytes) bytes.fill(0);
+      if (output) output.fill(0);
+      el("human-note-save").disabled = false;
+    }
+  }
   function render() { renderInventory(); renderComparison(); }
   el("a-file").addEventListener("change", () => clear(0, false));
   el("b-file").addEventListener("change", () => clear(1, false));
@@ -504,13 +619,16 @@ footer{font-size:.8rem;margin:1rem 0;color:#bed0df}
   el("capture-files").addEventListener("change", () => clearCapture(false));
   el("capture-create").addEventListener("click", createCapture);
   el("capture-clear").addEventListener("click", () => clearCapture(true));
+  el("human-note-save").addEventListener("click", encryptHumanNote);
+  el("human-note-clear").addEventListener("click", clearHumanNote);
+  el("difference-hide").addEventListener("click", hideDifferenceReview);
   el("compare-select-b").addEventListener("click", () => {
     try { chooseChangedFromB(); }
     catch (error) { status("compare-status", "HOLD: " + (error?.message || "Unable to select B changes")); }
   });
   el("subset-export").addEventListener("click", encryptSubset);
   el("clear-all").addEventListener("click", () => {
-    clear(0); clear(1); clearCapture(true); expireDownloads();
+    clear(0); clear(1); clearCapture(true); clearHumanNote(); expireDownloads();
     el("subset-pass").value = "";
     el("subset-confirm").value = "";
     status("subset-status", "All selected PRIVATE data and passwords cleared from the workroom UI.");
@@ -523,6 +641,7 @@ footer{font-size:.8rem;margin:1rem 0;color:#bed0df}
     el("subset-pass").value = ""; el("subset-confirm").value = "";
     el("a-file").value = ""; el("b-file").value = "";
     clearCapture(true);
+    clearHumanNote();
     render(); // Do not leave filenames, digests or preview in bfcache DOM.
   });
   window.addEventListener("pageshow", event => {
