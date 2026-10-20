@@ -40,6 +40,22 @@ python3 scope-current-bundle/change_brief.py \
 
 The destination directory must **not exist**; the tool creates a private 0700 folder and exclusive 0600 outputs. It does not scan, approve, reconcile actual client data, claim a removed source is fixed, or reinterpret source hashes as authentic provenance. Human owners explicitly review changes and must still obtain real fresh permissions independently.
 
+## Edit and return the actual HUMAN review
+
+`change_brief.py` also creates `human-review-template.csv` containing the **exact** original old/current SHA-256, source path, change class and old/new file digests for each original package file. A reviewer may fill **only** `human_stage` (`unreviewed`, `investigating`, `escalated`, `documented`; never a verified/fixed state), `human_team`, and `human_notes`. This is PRIVATE source-sensitive material, not anonymous.
+
+After edits, the separate independent handoff CLI strictly admits the **same two original manifest bytes** and the filled CSV. The entire worksheet must retain identical file list, original hashes, row count, ordering, change classes and supported HUMAN stages. Any source drift or malformed return rejects the whole import without partial status promotion.
+
+```sh
+python3 scope-current-bundle/human_followup.py \
+  PREVIOUS/SOURCE-MANIFEST.json \
+  CURRENT/SOURCE-MANIFEST.json \
+  REVIEW/human-review-template.csv \
+  NEW-PRIVATE-HUMAN-OUTPUT-DIRECTORY
+```
+
+Output is a fresh owner-only directory containing a **scriptless printable private HUMAN follow-up report** (`human-review.html`) and separate **anonymous HUMAN stage/source change counts** (`anonymous-counts.json`) with no paths, hashes, team names or freeform notes. No form executes a scan or changes original grants.
+
 ## Fail-closed build and immutability
 
 `build.py` checks the **exact four original source byte digests** of the original packager, HUMAN handoff and JSON inspector, copies eight original app directories without symlinks, reruns original **60-file pinned source verification**, validates the original DRAFT/HOLD manifest and its six literal false authority flags, and checks every output destination for collisions before writing. Output uses no-follow exclusive create, 0600 file mode, and fsync. If existing distributed files differ, the build **refuses replacement**; publish a newly named revision after legitimate source review instead.
