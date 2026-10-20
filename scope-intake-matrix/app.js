@@ -75,6 +75,9 @@
       return true;
     }
     if (value.includes("/") || value.length > 253 || !value.includes(".")) return false;
+    // A dotted numeric address that failed canonical IPv4 admission cannot be
+    // reclassified as a hostname and silently remain in the proposed scope.
+    if (/^[0-9.]+$/.test(value)) return false;
     if (!/^[a-z0-9.-]+$/.test(value) || value.endsWith(".") || value.startsWith(".")) return false;
     return value.split(".").every(part => part.length > 0 && part.length <= 63 &&
       /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/.test(part));
@@ -256,8 +259,7 @@
   function refresh() {
     $("total-count").textContent = state.rows.length;
     $("excluded-count").textContent = state.rows.filter(row => row.excluded).length;
-    $("review-count").textContent = state.rows.filter(row => row.status === "needs-client-review" ||
-      row.ownership !== "claimed").length;
+    $("review-count").textContent = state.rows.filter(row => row.status === "needs-client-review").length;
     $("blocked-count").textContent = state.rows.filter(row => row.status === "blocked").length;
     const issues = validate(state);
     announce(issues.length ? "DRAFT INCOMPLETE (" + issues.length + "): " +
@@ -298,7 +300,7 @@
       authority: {...FENCE},
       proposed_count: state.rows.length,
       excluded_count: state.rows.filter(r => r.excluded).length,
-      declared_ownership_unverified_count: state.rows.filter(r => r.ownership !== "claimed").length,
+      ownership_claimed_unverified_count: state.rows.filter(r => r.ownership === "claimed").length,
       human_status_counts: counts, proposed_capability_counts: categories
     };
     download("lightup-scope-intake-COUNTS.json", JSON.stringify(receipt, null, 2) + "\n");
