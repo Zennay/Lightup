@@ -462,6 +462,68 @@
       "No chronology, fix, source identity, grant or approval implied.");
     el("subset-pass").focus();
   }
+  function clearHumanNote() {
+    el("human-note").value = "";
+    el("human-note-pass").value = "";
+    el("human-note-confirm").value = "";
+    status("human-note-status", "PRIVATE HUMAN note input cleared.");
+  }
+  async function encryptHumanNote() {
+    const a = slots[0], b = slots[1];
+    const aTicket = generations[0], bTicket = generations[1];
+    const originalText = el("human-note").value;
+    const pass = el("human-note-pass"), confirmPass = el("human-note-confirm");
+    const secret = pass.value, confirmed = confirmPass.value;
+    pass.value = ""; confirmPass.value = "";
+    el("human-note-save").disabled = true;
+    let bytes = null, output = null;
+    try {
+      demand(a && b, "Unlock both independent PRIVATE snapshots first");
+      demand(originalText.trim() && originalText.length <= 10000,
+        "Write a nonempty HUMAN review note (up to 10,000 characters)");
+      demand(secret === confirmed, "Independent note passwords differ");
+      demand(confirm("Encrypt a NEW owner-only PRIVATE HUMAN note, source-linked to local " +
+        "A/B filename and SHA-256 inventories? No original evidence files will be bundled. " +
+        "A/B is NOT an authoritative chronology or verified remediation."),
+        "Human operator cancelled independent note creation");
+      function sourceInventory(archive) {
+        return archive.files.map(f => ({ name: f.name, size: f.size, sha256: f.sha256 }));
+      }
+      const note = {
+        kind: "lightup-private-human-difference-note/v1",
+        disposition: "DRAFT_HOLD",
+        authority: FLAGS,
+        provenance: "local operator-selected archive inventories only; never third-party source authentication",
+        chronologyVerified: false,
+        remediationVerified: false,
+        clientConsentVerified: false,
+        comparison: { A: sourceInventory(a), B: sourceInventory(b) },
+        humanNote: originalText
+      };
+      bytes = encoder.encode(asJsonAscii(note) + "\n");
+      demand(bytes.length <= MAX_FILE, "HUMAN note payload exceeded private file budget");
+      const digest = hex(await crypto.subtle.digest("SHA-256", bytes));
+      output = await sealedArchive([{
+        name: "human-review-notes.json", size: bytes.length,
+        sha256: digest, bytes: asBase64(bytes)
+      }], secret);
+      demand(slots[0] === a && slots[1] === b &&
+        generations[0] === aTicket && generations[1] === bTicket,
+        "A/B original source selection changed while encrypting note; no download");
+      localDownload(new Blob([output], { type: "application/octet-stream" }),
+        "LightUp-PRIVATE-HUMAN-review-note-DRAFT-HOLD.lupb");
+      el("human-note").value = "";
+      status("human-note-status", "PRIVATE DRAFT/HOLD: one separately encrypted reviewer note saved. " +
+        "Contains locally selected source names/hashes and an unverified HUMAN observation, " +
+        "NO original source evidence bytes, permissions or source authenticity.");
+    } catch (error) {
+      status("human-note-status", "HOLD: " + (error?.message || "Cannot encrypt HUMAN note"));
+    } finally {
+      if (bytes) bytes.fill(0);
+      if (output) output.fill(0);
+      el("human-note-save").disabled = false;
+    }
+  }
   function render() { renderInventory(); renderComparison(); }
   el("a-file").addEventListener("change", () => clear(0, false));
   el("b-file").addEventListener("change", () => clear(1, false));
@@ -473,6 +535,8 @@
   el("capture-files").addEventListener("change", () => clearCapture(false));
   el("capture-create").addEventListener("click", createCapture);
   el("capture-clear").addEventListener("click", () => clearCapture(true));
+  el("human-note-save").addEventListener("click", encryptHumanNote);
+  el("human-note-clear").addEventListener("click", clearHumanNote);
   el("difference-hide").addEventListener("click", hideDifferenceReview);
   el("compare-select-b").addEventListener("click", () => {
     try { chooseChangedFromB(); }
@@ -480,7 +544,7 @@
   });
   el("subset-export").addEventListener("click", encryptSubset);
   el("clear-all").addEventListener("click", () => {
-    clear(0); clear(1); clearCapture(true); expireDownloads();
+    clear(0); clear(1); clearCapture(true); clearHumanNote(); expireDownloads();
     el("subset-pass").value = "";
     el("subset-confirm").value = "";
     status("subset-status", "All selected PRIVATE data and passwords cleared from the workroom UI.");
@@ -493,6 +557,7 @@
     el("subset-pass").value = ""; el("subset-confirm").value = "";
     el("a-file").value = ""; el("b-file").value = "";
     clearCapture(true);
+    clearHumanNote();
     render(); // Do not leave filenames, digests or preview in bfcache DOM.
   });
   window.addEventListener("pageshow", event => {
