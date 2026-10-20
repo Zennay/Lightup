@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="referrer" content="no-referrer"><title>LightUp · Scope Portfolio</title>
+<style>
+:root{font:15px/1.55 system-ui,Segoe UI,sans-serif;color:#eff7ff;background:#0b1423;--mint:#84e8d0;--muted:#b5c6d8;--line:#415670}
+*{box-sizing:border-box}body{margin:0}header{padding:25px max(18px,calc((100vw - 1190px)/2));background:#122039;border-bottom:1px solid var(--line)}header h1{margin:0;font-size:clamp(27px,3vw,40px);letter-spacing:-.035em}.brand{color:var(--mint);font-size:.8rem;letter-spacing:.12em;font-weight:850}.wrap{max-width:1210px;margin:auto;padding:24px 18px 65px}.card{background:#142139;border:1px solid var(--line);border-radius:15px;padding:19px;margin:0 0 16px;min-width:0}.two{display:grid;grid-template-columns:2fr 1fr;gap:16px}.two>*{min-width:0}.summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px}.metric{background:#1a3143;padding:14px;border:1px solid #3e6074;border-radius:10px}.metric strong{display:block;font-size:2rem;color:var(--mint);line-height:1.25}h2{font-size:1.2rem;margin:0 0 9px}h3{font-size:1rem}p,small{color:var(--muted)}input,select{width:100%;font:inherit;color:#f4fbff;background:#0a1628;border:1px solid #637c96;padding:11px 12px;border-radius:9px}input[type=file]{margin:8px 0}button{font:inherit;font-weight:750;color:#e9fff9;border:1px solid #61758b;border-radius:8px;background:#233c52;padding:10px 14px;cursor:pointer}button:hover:not(:disabled){filter:brightness(1.13)}button:disabled{opacity:.4;cursor:not-allowed}.primary{color:#092527;background:var(--mint);border-color:var(--mint)}.tools{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}.tools input{flex:1;min-width:200px}.pill{display:inline-block;font-size:.75rem;border:1px solid #7991a9;border-radius:30px;padding:2px 8px;font-weight:750}.amber{color:#ffe0a6}.red{color:#ffc6bd}.entry{background:#1b2e45;border:1px solid #3e5670;border-radius:11px;padding:13px;margin:9px 0;overflow-wrap:anywhere}.entry h3{margin:3px 0}.entry .meta{font-size:.86rem;color:#c5d5e5}.entry p{margin:4px 0}.warning{background:#372b21;border-left:3px solid #dca769;color:#fff0d5;padding:10px;margin:8px 0;overflow-wrap:anywhere}.critical{border-color:#ef9797;background:#37242b}.banner{padding:13px;border:1px solid #ad8e50;background:#2c271e;border-radius:9px;margin-bottom:17px;color:#ffe8bd}pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#081525;border:1px solid #3d526f;border-radius:8px;padding:13px;max-height:440px;overflow:auto;font:12px/1.5 Consolas,monospace}@media(max-width:800px){.two{grid-template-columns:1fr}header{padding:23px}}@media print{body{background:#fff;color:#000}header,.actions,.inputs{display:none}.wrap{padding:0}.card{color:#000;background:#fff;border:0}.metric{color:#000;background:#eee}.metric strong{color:#000}.entry,.warning{color:#000;background:#eee}pre{color:#000;background:white;max-height:none}}
+</style></head>
+<body>
+<header><div class="brand">LIGHTUP / LOCAL PLANNING</div><h1>Scope Portfolio</h1><p>Compare multiple proposed engagements without contacting targets. Understand workstreams, possible shared assets, risky scope changes and planning conflicts before authenticated review.</p></header>
+<main class="wrap">
+<div class="banner"><strong>NON-AUTHORIZING PLANNER:</strong> all input is supplied by the user and remains unverified. This is not the real authorization inbox. Labels are not authenticated tenants; reported IP overlaps and time conflicts are planning hints only. No permission, consent, grant, scanning or release can be inferred.</div>
+<section class="card inputs">
+<h2>Import local proposals</h2>
+<p>Select up to 20 LightUp v1 proposal-draft JSON exports (64 KiB each; total ≤ 1 MiB). Data stays in this browser tab only. Duplicate scope revision fingerprints are grouped; existing imported entries are not removed until you clear them.</p>
+<input id="files" type="file" multiple accept=".json,application/json" aria-label="Choose proposal JSON files">
+<p id="importStatus" role="status" aria-live="polite">No proposals imported yet.</p>
+<div class="tools actions"><button id="clear">Clear imported portfolio</button><button id="jsonExport" class="primary" disabled>Export portfolio summary</button><button id="csvExport" disabled>Export CSV manifest</button><button id="print" disabled>Print overview</button></div>
+</section>
+<div class="summary" aria-label="Summary statistics">
+<div class="metric"><strong id="count">0</strong>Proposals loaded</div>
+<div class="metric"><strong id="assets">0</strong>Asset declarations</div>
+<div class="metric"><strong id="risk4">0</strong>High-risk proposals</div>
+<div class="metric"><strong id="overlaps">0</strong>Asset/time conflict pairs</div>
+</div>
+<section class="card"><h2>Filter portfolio</h2>
+<div class="tools"><input id="filter" placeholder="Search proposal name, client label or asset" aria-label="Search portfolio"><select id="riskFilter" aria-label="Filter by requested risk" style="max-width:230px"><option value="">Any risk</option><option value="1">Risk 1</option><option value="2">Risk 2</option><option value="3">Risk 3</option><option value="4">Risk 4</option></select></div>
+</section>
+<div class="two">
+<section class="card"><h2>Engagement planning board <span class="pill">DRAFT ONLY</span></h2>
+<div id="board">Import proposals to begin.</div></section>
+<section class="card">
+<h2>Conflicts and review attention</h2><p>Cross-proposal CIDR comparisons subtract proposed exclusions before looking for overlap; DNS and actual ownership are never checked.</p>
+<div id="warnings">No comparisons yet.</div>
+</section>
+</div>
+<section class="card"><h2>Read-only planning manifest</h2><p>The exported summary excludes free-text safety notes, contact details, credentials and uploaded raw JSON. This summary does not convey operational authority.</p><pre id="json">Import proposals to view.</pre></section>
+<p>Everything remains local in memory. Nothing is stored in browser storage or sent to any server. Use only authorized internal sharing paths for exported plans.</p>
+</main>
+<script src="./scope-network.js"></script><script src="./scope-fingerprint.js"></script><script src="./planning-window.js"></script>
+<script>
+(function(){
+'use strict';
+const $=id=>document.getElementById(id);
+const LIMIT=20,FILE_MAX=65536,TOTAL_MAX=1048576;
+let portfolio=[],summary=null;
+function valid(d){
+ return d&&!Array.isArray(d)&&d.schema_version===1&&d.kind==='lightup.scope_proposal_draft'&&d.state==='DRAFT_ONLY'&&
+ d.authorization===false&&d.client_consent===false&&d.operator_consent===false&&d.grant===false&&d.execution===false&&
+ typeof d.proposal_name==='string'&&d.proposal_name.length<=120&&typeof d.client_label==='string'&&d.client_label.length<=100&&
+ typeof d.notes==='string'&&d.notes.length<=3000&&
+ Number.isInteger(d.requested_risk)&&d.requested_risk>=1&&d.requested_risk<=4&&
+ ['authorized_assessment','analysis_only'].includes(d.requested_mode)&&
+ Array.isArray(d.requested_assets)&&d.requested_assets.length>0&&d.requested_assets.length<=80&&
+ Array.isArray(d.excluded_assets)&&d.excluded_assets.length<=80&&
+ [...d.requested_assets,...d.excluded_assets].every(x=>typeof x==='string'&&x.length<=253&&LightUpScopeNetwork.parse(x)!==null)&&
+ d.proposed_activities&&typeof d.proposed_activities==='object'&&
+ ['passive_analysis','configuration_review','private_lab_network_checks'].every(k=>typeof d.proposed_activities[k]==='boolean')&&
+ d.proposed_window_local&&typeof d.proposed_window_local==='object'&&
+ ['start','end'].every(k=>d.proposed_window_local[k]===null||(typeof d.proposed_window_local[k]==='string'&&/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(d.proposed_window_local[k])));
+}
+function string(s){return String(s??'');}
+function appendText(parent,tag,text,classes){
+ const elem=document.createElement(tag);elem.textContent=text;
+ if(classes)elem.className=classes;
+ parent.append(elem);return elem;
+}
+function scheduleConflict(a,b) {
+ return LightUpPlanningWindow.overlaps(a.proposed_window_utc,b.proposed_window_utc);
+}
+function portfolioSummary(){
+ const conflicts=[],inventory=[];
+ for(const entry of portfolio){
+  const d=entry.draft;
+  const own=LightUpScopeNetwork.inspect(d.requested_assets,d.excluded_assets).filter(w=>w.code==='global_range'||w.code==='exclusion_overlap'||w.code==='included_overlap');
+  inventory.push({
+   revision_sha256:entry.hash,proposal:d.proposal_name,unverified_client_label:d.client_label,
+   requested_mode:d.requested_mode,requested_risk:d.requested_risk,
+   asset_count:d.requested_assets.length,excluded_count:d.excluded_assets.length,
+   proposed_window_local:d.proposed_window_local,
+   proposed_window_utc:d.proposed_window_utc||null,scope_warnings:own.map(w=>w.code)
+  });
+ }
+ for(let i=0;i<portfolio.length;i++)for(let j=i+1;j<portfolio.length;j++){
+  const a=portfolio[i],b=portfolio[j], da=a.draft,db=b.draft;
+  const effectiveA=LightUpScopeNetwork.effectiveCoverage(da.requested_assets,da.excluded_assets);
+  const effectiveB=LightUpScopeNetwork.effectiveCoverage(db.requested_assets,db.excluded_assets);
+  const shared=LightUpScopeNetwork.coverageOverlap(effectiveA,effectiveB);
+  const matched=[];
+  if(shared)outer:for(const av of da.requested_assets)for(const bv of db.requested_assets){
+   if(LightUpScopeNetwork.overlaps(LightUpScopeNetwork.parse(av),LightUpScopeNetwork.parse(bv))){
+     matched.push(av+' ↔ '+bv);if(matched.length===3)break outer;
+   }
+  }
+  const windowOverlap=scheduleConflict(da,db);
+  if(matched.length||windowOverlap)conflicts.push({
+   first_revision_sha256:a.hash,second_revision_sha256:b.hash,
+   first_proposal:da.proposal_name,second_proposal:db.proposal_name,
+   overlapping_proposed_asset_examples:matched,effective_nonexcluded_scope_overlap:shared,utc_window_overlap:windowOverlap,
+   explanation:'Human review of actual client ownership and canonical scope is required; this is not a permission or verified booking.'
+  });
+ }
+ const out={
+  kind:'lightup.scope_portfolio_review',schema_version:1,disposition:'REVIEW_ONLY',
+  source:'USER_SUPPLIED_LOCAL_DRAFTS',authenticated:false,client_consent:false,operator_consent:false,
+  authorization:false,scope_approved:false,risk_approved:false,grant:false,execution:false,scan:false,release:false,
+  total_proposals:inventory.length,total_asset_declarations:inventory.reduce((n,i)=>n+i.asset_count,0),
+  missing_resolved_utc_windows:inventory.filter(i=>i.proposed_window_utc?.status!=='resolved').length,
+  high_risk_proposals:inventory.filter(i=>i.requested_risk===4).length,
+  overlapping_or_window_conflict_pairs:conflicts.length,
+  proposals:inventory,possible_conflicts:conflicts,
+  limitations:'No target interaction, DNS, authoritative CIDR/exclusion enforcement, identity verification, tenant access, signature, consent or authorization. Only supplied resolved UTC windows are comparable.'
+ };
+ return out;
+}
+function render(){
+ const r=portfolioSummary();summary=r;
+ $('count').textContent=r.total_proposals;
+ $('assets').textContent=r.total_asset_declarations;
+ $('risk4').textContent=r.high_risk_proposals;
+ $('overlaps').textContent=r.overlapping_or_window_conflict_pairs;
+ $('json').textContent=JSON.stringify(r,null,2);
+ const have=portfolio.length>0;
+ for(const id of ['jsonExport','csvExport','print'])$(id).disabled=!have;
+ const board=$('board');board.replaceChildren();
+ const search=$('filter').value.toLowerCase().trim(),risk=$('riskFilter').value;
+ const shown=portfolio.filter(p=>{
+  const d=p.draft;
+  return(!risk||String(d.requested_risk)===risk)&&
+    (!search||(d.proposal_name+' '+d.client_label+' '+d.requested_assets.join(' ')).toLowerCase().includes(search));
+ }).sort((a,b)=>b.draft.requested_risk-a.draft.requested_risk || a.draft.proposal_name.localeCompare(b.draft.proposal_name));
+ if(!shown.length)appendText(board,'p',have?'No proposals match the filter.':'Import proposals to begin.');
+ for(const entry of shown){
+  const d=entry.draft, box=document.createElement('article');box.className='entry';board.append(box);
+  appendText(box,'div','RISK '+d.requested_risk+' · '+d.requested_mode,'pill');
+  appendText(box,'h3',d.proposal_name||'Untitled proposal');
+  appendText(box,'p','Client label (unverified): '+(d.client_label||'—'),'meta');
+  appendText(box,'p',d.requested_assets.length+' proposed / '+d.excluded_assets.length+' excluded assets','meta');
+  appendText(box,'p','Window (UTC, unverified): '+(d.proposed_window_utc?.start||'?')+' → '+(d.proposed_window_utc?.end||'?'),'meta');
+  appendText(box,'p','Unsigned scope SHA-256: '+(entry.hash||'unavailable'),'meta');
+  appendText(box,'p','Requires independently authenticated consent, current revocation, grant and explicit authorization.','meta');
+ }
+ const warnings=$('warnings');warnings.replaceChildren();
+ if(r.missing_resolved_utc_windows)appendText(warnings,'p',r.missing_resolved_utc_windows+' draft(s) lack resolved UTC windows; those schedule conflicts cannot be excluded.');
+ if(!r.possible_conflicts.length)appendText(warnings,'p','No shared non-excluded numeric/host scope or raw local-time overlap detected. That does not prove scopes are distinct or permitted.');
+ for(const c of r.possible_conflicts){
+  const box=document.createElement('div');box.className='warning';warnings.append(box);
+  appendText(box,'strong',c.first_proposal+' ↔ '+c.second_proposal);
+  if(c.overlapping_proposed_asset_examples.length)appendText(box,'p','Potential shared non-excluded scope (review exclusions): '+c.overlapping_proposed_asset_examples.join('; '));
+  if(c.utc_window_overlap)appendText(box,'p','Proposed UTC time windows intersect. Separate scheduling verification and human approval required.');
+ }
+ const high=portfolio.filter(p=>p.draft.requested_risk===4);
+ if(high.length){const box=document.createElement('div');box.className='warning critical';warnings.prepend(box);appendText(box,'strong',high.length+' high-risk proposal(s) need separate risk approval.');}
+}
+async function parseFile(file){
+ if(!file || file.size>FILE_MAX)throw Error('too large');
+ const draft=JSON.parse(await file.text(),(k,v)=>['__proto__','constructor','prototype'].includes(k)?undefined:v);
+ if(!valid(draft)||!LightUpPlanningWindow.validateStored(draft.proposed_window_local,draft.proposed_window_utc))throw Error('invalid draft');
+ const hash=await LightUpScopeDigest.fingerprint(draft);
+ if(draft.scope_fingerprint_sha256!==undefined && (!hash||hash!==draft.scope_fingerprint_sha256))throw Error('fingerprint mismatch');
+ return {file:file.name.slice(0,160),draft,hash};
+}
+$('files').addEventListener('change',async event=>{
+ const files=[...event.target.files];event.target.value='';
+ if(!files.length)return;
+ if(files.length>LIMIT || portfolio.length+files.length>LIMIT || files.reduce((n,f)=>n+f.size,0)>TOTAL_MAX){
+  $('importStatus').textContent='Import refused: maximum 20 proposals and 1 MiB per import.';return;
+ }
+ let added=0,rejected=0,duplicates=0;
+ for(const file of files){
+  try{
+   const item=await parseFile(file);
+   const duplicate=portfolio.some(existing=>item.hash&&existing.hash===item.hash) ||
+     portfolio.some(existing=>JSON.stringify(LightUpScopeDigest.canonicalObject(existing.draft))===JSON.stringify(LightUpScopeDigest.canonicalObject(item.draft)));
+   if(duplicate){duplicates++;continue;}
+   portfolio.push(item);added++;
+  }catch(_){rejected++;}
+ }
+ $('importStatus').textContent=added+' imported; '+duplicates+' duplicate draft revision(s) skipped; '+rejected+' invalid file(s) rejected. No data uploaded.';
+ render();
+});
+$('filter').addEventListener('input',render);
+$('riskFilter').addEventListener('change',render);
+$('clear').addEventListener('click',()=>{
+ if(!portfolio.length)return;
+ if(!window.confirm('Clear all imported proposals from this local tab?'))return;
+ portfolio=[];summary=null;$('importStatus').textContent='All imported proposals cleared.';render();
+});
+function download(name,mime,value){
+ const blob=new Blob([value],{type:mime}),url=URL.createObjectURL(blob),a=document.createElement('a');
+ a.href=url;a.download=name;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),500);
+}
+$('jsonExport').addEventListener('click',()=>{if(portfolio.length)download('lightup-scope-portfolio.json','application/json',JSON.stringify(portfolioSummary(),null,2)+'\n');});
+function csv(s){
+ let v=string(s).replace(/\r?\n/g,' ');
+ if(/^[\s]*[=+\-@]/.test(v))v="'"+v;
+ return '"'+v.replace(/"/g,'""')+'"';
+}
+$('csvExport').addEventListener('click',()=>{
+ if(!portfolio.length)return;
+ const header=['Proposal','Unverified client label','Mode','Risk','Proposed assets','Excluded assets','Local start','Local end','Unsigned SHA256'];
+ const rows=portfolio.map(item=>{
+  const d=item.draft;
+  return[d.proposal_name,d.client_label,d.requested_mode,String(d.requested_risk),
+   String(d.requested_assets.length),String(d.excluded_assets.length),
+   d.proposed_window_local.start||'',d.proposed_window_local.end||'',item.hash||''];
+ });
+ download('lightup-scope-portfolio.csv','text/csv',String.fromCharCode(0xFEFF)+[header,...rows].map(row=>row.map(csv).join(',')).join('\r\n')+'\r\n');
+});
+$('print').addEventListener('click',()=>{if(portfolio.length)window.print();});
+render();
+})();
+</script></body></html>
