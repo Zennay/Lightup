@@ -57,3 +57,16 @@ footer{padding:25px 0 10px;border-top:1px solid var(--line);color:var(--muted);f
 .actionsRow{display:flex;gap:11px;align-items:center;flex-wrap:wrap;margin:18px 0 6px}
 .actionsRow button{flex:0 1 auto}
 @media(max-width:700px){.actionsRow button{flex:1 1 160px}}
+
+
+/* Optional encrypted, PRIVATE HUMAN-only offline handoff controls. */
+.vaultPanel{border:1px solid #3b5e73;background:#091e2c;border-radius:10px;padding:15px 18px;margin-top:18px}
+.vaultPanel summary{color:#b3f3ed;font-weight:750;cursor:pointer;line-height:1.6}
+.vaultPanel[open] summary{margin-bottom:12px}
+.vaultPanel .small{max-width:960px;line-height:1.6}
+.vaultForm{display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end;margin-top:14px}
+.vaultForm label{flex:1 1 220px;min-width:0}
+.vaultForm input{width:100%}.vaultForm button{flex:0 1 auto;max-width:100%}
+.vaultExport{grid-column:1/-1;margin-top:0}
+.vaultPanel input[type=password]{letter-spacing:.08em}
+@media(max-width:700px){.vaultForm button{width:100%}}
