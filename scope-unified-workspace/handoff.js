@@ -29,6 +29,13 @@
   let generation = 0;
   // Changes to HUMAN choices must also invalidate an in-flight PRIVATE restore.
   let humanRevision = 0;
+  let lastReturnReceipt = null;
+  const invalidateReturnReceipt = () => {
+    if (lastReturnReceipt === null) return;
+    lastReturnReceipt = null;
+    el("shelf-return-receipt").disabled = true;
+    el("shelf-return-receipt-note").textContent = "PRIVATE HUMAN review/bronselectie gewijzigd sinds de laatste retourimport. De vorige ontvangstbon mag niet opnieuw als actuele staat worden uitgegeven.";
+  };
   const el = (id) => document.getElementById(id);
   const input = el("shelf-files");
   const rows = el("shelf-rows");
@@ -59,9 +66,11 @@
   const clearReviewHistory = () => {
     reviewUndo.length = 0; reviewRedo.length = 0; humanRevision++;
     discardSelectivePreview();
+    invalidateReturnReceipt();
   };
   const recordReviewEdit = () => {
     discardSelectivePreview();
+    invalidateReturnReceipt();
     reviewUndo.push(captureReview());
     if (reviewUndo.length > HISTORY_LIMIT) reviewUndo.shift();
     reviewRedo.length = 0;
@@ -91,6 +100,7 @@
     if (next.length > HISTORY_LIMIT) next.shift();
     restoreReview(snapshot);
     discardSelectivePreview();
+    invalidateReturnReceipt();
     render();
     report("REVIEW_ONLY — PRIVATE HUMAN wijziging " + verb + ". Bronbestanden en werkelijke autorisatie niet veranderd.");
   };
@@ -150,6 +160,7 @@
       searchFilter.value.trim().normalize("NFC").toLowerCase()));
   function render() {
     rows.replaceChildren();
+    el("shelf-return-receipt").disabled = lastReturnReceipt === null;
     el("shelf-review-undo").disabled = reviewUndo.length === 0;
     el("shelf-review-redo").disabled = reviewRedo.length === 0;
     el("shelf-review-history-status").textContent = reviewUndo.length + " lokale HUMAN wijzigingen terug te draaien · " + reviewRedo.length + " opnieuw. Alleen tabgeheugen; nieuwe bronselectie wist deze geschiedenis.";
@@ -549,6 +560,18 @@
       " gewijzigde, " + plan.newer + " nieuwe en " + plan.absent +
       " niet opnieuw geselecteerde bronnen blijven ongewijzigd. Voorgaande lokale keuzes van de aangevinkte rij worden vervangen; undo blijft beschikbaar. GEEN echte bevoegdheid.")) return;
     if (plan.epoch !== generation || plan.humanAtStart !== humanRevision) return;
+    // Only the actually selected original-byte-bound HUMAN transitions enter this private receipt.
+    const originalReviewChanges = chosen.map(({item, previous, conflict}) => ({
+      original_name: item.file.name,
+      byte_length: item.file.size,
+      unsigned_sha256: item.hash,
+      structural_kind_unverified: item.inspection.kind,
+      had_local_review: conflict,
+      before: {human_route:item.route, human_stage:item.stage, human_team:item.team},
+      after: {human_route:previous.human_route, human_stage:previous.human_stage,
+        human_team:previous.human_team},
+      private_note_changed: item.note !== previous.private_human_note
+    }));
     recordReviewEdit();
     for (const {item, previous} of chosen) {
       item.route = previous.human_route;
@@ -559,6 +582,23 @@
     humanRevision++;
     pendingSelective = null;
     selectiveApply.disabled = true;
+    lastReturnReceipt = {
+      format: "lightup.scope_PRIVATE_human_return_receipt.v1",
+      status: "REVIEW_ONLY",
+      posture: "INCUBATE_M3_M7_DRAFT_HOLD",
+      authority: {client_consent:false, operator_consent:false, grant:false, scan:false, deploy:false, release:false},
+      selected_private_human_changes: originalReviewChanges,
+      original_source_selection_counts: {
+        chosen_for_human_return: chosen.length,
+        existing_local_review_explicitly_replaced: explicitConflicts,
+        exact_but_not_selected: plan.matches.length - chosen.length,
+        changed_not_copied: plan.changed, new_not_copied: plan.newer,
+        absent_from_local_selection: plan.absent
+      },
+      warning: "LOCAL unsigned HUMAN decisions, not authenticated source, reviewer or recipient. No proof of grant, scope, revocation, fixed issue, CI, security approval or release."
+    };
+    el("shelf-return-receipt-note").textContent = "PRIVATE HUMAN ontvangstbon voor " + chosen.length +
+      " bewust geselecteerde bronexacte menselijke wijzigingen beschikbaar. Bevat geen oorspronkelijke broninhoud en geen PRIVATE notitieteksten.";
     render();
     selectiveStatus.textContent = "REVIEW_ONLY — " + chosen.length +
       " bewust geselecteerde brongebonden HUMAN-keuzes toegepast (" + explicitConflicts +
@@ -566,6 +606,12 @@
       plan.newer + " nieuw en " + plan.absent +
       " niet opnieuw geselecteerd bleven zonder overname. Ongedaan maken is beschikbaar.";
     report("REVIEW_ONLY — " + chosen.length + " expliciet geselecteerde PRIVATE HUMAN-rijen overgenomen; lokale conflicten niet stilzwijgend vervangen.");
+  });
+  el("shelf-return-receipt").addEventListener("click", () => {
+    if (!lastReturnReceipt) return report("HOLD — geen actuele PRIVATE HUMAN ontvangstbon. Importeer eerst bewust bronexacte HUMAN-keuzes.");
+    if (!confirm("Download PRIVATE ontvangstbon met oorspronkelijke bestandsnamen, ongetekende SHA-256 en oude/nieuwe HUMAN team/fase (zonder oorspronkelijke bronbytes of notitieteksten)? Deze informatie kan vertrouwelijk zijn. Ontvanger en kanaal afzonderlijk verifiëren. Geen echte toestemming, bewijs of security-vrijgave.")) return;
+    exportJSON("lightup-scope-PRIVATE-HUMAN-return-receipt.json", lastReturnReceipt);
+    report("REVIEW_ONLY — ontvangstbon lokaal gedownload voor de laatste daadwerkelijk gekozen HUMAN statusovername. Geen originele bron, grant of toestemming gewijzigd.");
   });
   const restoreInput = el("shelf-review-reopen");
   restoreInput.addEventListener("change", async () => {
