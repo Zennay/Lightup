@@ -16,7 +16,7 @@ import sys
 import tempfile
 
 from offline_signatures import Hold, MAX_ARCHIVE_BYTES, _regular_file_bytes, _write_new_private, verify
-from inbox import KIND, MAX_PACKAGES, _admit_signers, _import_original_install
+from inbox import KIND, MAX_PACKAGES, _admit_signers, _html, _import_original_install
 from portable_handoff import (
     ARCHIVE_NAME, PUBLIC_NAME, RECEIPT_NAME, SECOND_PUBLIC_NAME,
     SECOND_RECEIPT_NAME, _unpack_bytes,
@@ -111,8 +111,8 @@ def inspect(keyring: Path, workspace: Path, require_two: bool) -> None:
             trusted(keyring, signer["fingerprint"])
         print(f"PRIVATE custody #{ordinal:02d} CURRENT KEY + ORIGINAL SOURCE ACCEPTED — REVIEW_ONLY")
     html_file = _regular_file_bytes(workspace / "index.html", 32768)
-    if b"<script" in html_file.lower() or b"REVIEW_ONLY" not in html_file:
-        raise Hold("local read-only inbox dashboard changed unexpectedly")
+    if html_file != _html(records):
+        raise Hold("local dashboard differs from exact original scriptless view of signed receipt")
     # Static HTML does not enforce current keyring checks by itself. This command
     # is the explicit local fresh re-admission before manually opening the file.
     print("CURRENT LOCAL CUSTODY REVIEW_ONLY:", workspace / "index.html")
