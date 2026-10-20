@@ -117,7 +117,13 @@ Do not load unapproved client data. After export, use the native fail-closed
 <option value="needs_discussion">needs discussion</option>
 <option value="proposed_followup">proposed follow-up</option>
 <option value="hold">hold</option></select></label>
-</div><p id="visibility"></p><div class="actions">
+</div><p id="visibility"></p>
+<label for="restore">Optional: restore original same-meeting HUMAN-review.csv
+<input id="restore" type="file" accept=".csv,text/csv"></label>
+<p><small>The whole original CSV must match source SHA and EVERY original
+row in order; otherwise no local edits are applied. No native authentication
+is claimed by this browser-only convenience.</small></p>
+<div class="actions">
 <button id="download" type="button">Export ALL rows as source-bound HUMAN CSV</button>
 <button class="secondary" id="clear" type="button">Clear original local data</button></div>
 <p><small>All original historical HUMAN entries export even when filtered

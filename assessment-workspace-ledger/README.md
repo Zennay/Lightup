@@ -987,3 +987,19 @@ Console option **30** offers this software-only foreground export. Original
 software package v23 includes standalone app, its immutable software sources,
 both HUMAN meeting steps, and backwards-compatible v16–v22 archive inspection.
 Original browser input is never authenticated consent or verified security.
+
+### Source-exact in-memory HUMAN draft resume
+
+The existing standalone offline Focus Studio now has a second explicit local
+file picker for a previously exported HUMAN-meeting-review-template.csv.
+After the ORIGINAL meeting JSON is selected, the app admits the candidate
+CSV as a complete source-exact local proposal: **every** original case /
+transition / kit ordinal, row order, exact full-meeting unsigned SHA-256,
+allowed human review state and bounded private note must match. Invalid or
+partial imports keep current local decisions untouched. A separate HUMAN
+confirmation is required before all selections are restored. The original
+unsigned browser session never becomes authentication, security evidence,
+consent or an authorized decision. The native original source-bound importer
+still independently performs all strict admission and creates HOLD-only
+PRIVATE returns. The published v23 browser + software ZIP has been refreshed
+with these source-only improvements; no PRIVATE input is bundled.

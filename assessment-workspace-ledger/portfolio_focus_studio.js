@@ -154,6 +154,80 @@
       " always included in the source-exact export. Filtering never discards rows.";
     updateSummary();
   }
+  function parseCsv(input) {
+    const result = [], row = [];
+    let field = "", quoted = false, closed = false;
+    for (let i = 0; i < input.length; i++) {
+      const c = input[i];
+      if (quoted) {
+        if (c === '"') {
+          if (input[i + 1] === '"') { field += '"'; i++; }
+          else { quoted = false; closed = true; }
+        } else { field += c; }
+      } else if (c === '"' && field === "" && !closed) {
+        quoted = true;
+      } else if (c === '"') {
+        throw new Error("Unexpected quote in review CSV");
+      } else if (c === "," || c === "\n" || c === "\r") {
+        row.push(field); field = ""; closed = false;
+        if (c !== ",") {
+          if (c === "\r") {
+            if (input[i + 1] !== "\n") throw new Error("Invalid CSV newline");
+            i++;
+          }
+          result.push(row.splice(0));
+        }
+      } else if (closed) {
+        throw new Error("Invalid bytes after CSV quote");
+      } else { field += c; }
+    }
+    if (quoted) throw new Error("Unclosed review CSV quote");
+    if (field !== "" || row.length) { row.push(field); result.push(row); }
+    return result;
+  }
+  async function importReview(file) {
+    if (!meeting || !meetingHash || !snapshot.length)
+      return error("Open the exact original meeting before restoring private HUMAN draft");
+    if (!file || !file.size || file.size > MAX)
+      return error("Review CSV must be a bounded original human export");
+    try {
+      const content = new TextDecoder("utf-8", {fatal: true}).decode(await file.arrayBuffer());
+      const data = parseCsv(content);
+      const names = ["local_case", "historical_transition", "original_kit",
+        "meeting_sha256", "human_meeting_stage", "human_decision_note"];
+      if (data.length !== snapshot.length + 1 ||
+        data[0].length !== names.length ||
+        !data[0].every((value, index) => value === names[index])) {
+        throw new Error("CSV row population/schema differs");
+      }
+      const proposals = [];
+      for (let i = 0; i < snapshot.length; i++) {
+        const original = snapshot[i];
+        const row = data[i + 1];
+        if (row.length !== names.length ||
+          row[0] !== String(original.local_case) ||
+          row[1] !== String(original.historical_transition) ||
+          row[2] !== String(original.original_kit) ||
+          row[3] !== meetingHash || !STAGES.includes(row[4]) ||
+          !human(row[5], 240)) {
+          throw new Error("Original HUMAN row/sha/decision mismatch");
+        }
+        proposals.push({reviewStage: row[4], note: row[5]});
+      }
+      if (!confirm("Replace current in-memory HUMAN draft with the exact-source CSV? " +
+        "Native finalizer still must independently admit all original bytes.")) return;
+      proposals.forEach((row, i) => {
+        snapshot[i].reviewStage = row.reviewStage;
+        snapshot[i].note = row.note;
+      });
+      dirty = true;
+      render();
+      $("status").textContent = "PRIVATE REVIEW_ONLY: entire original meeting-bound " +
+        "HUMAN CSV loaded into memory. NOT source-authenticated or finalized.";
+    } catch (_e) {
+      error("HUMAN draft restore refused; all prior in-memory decisions preserved");
+    }
+  }
   function field(value) {
     const text = String(value);
     return '"' + text.replaceAll('"', '""') + '"';
@@ -224,17 +298,22 @@
     const file = event.target.files && event.target.files[0];
     void load(file);
   });
+  $("restore").addEventListener("change", event => {
+    const file = event.target.files && event.target.files[0];
+    void importReview(file);
+    event.target.value = "";
+  });
   $("query").addEventListener("input", render);
   $("priority").addEventListener("change", render);
   $("stage").addEventListener("change", render);
   $("download").addEventListener("click", download);
   $("clear").addEventListener("click", () => {
     if (dirty && !confirm("Discard unsaved LOCAL HUMAN notes and selections?")) return;
-    $("source").value = ""; clear();
+    $("source").value = ""; $("restore").value = ""; clear();
   });
   window.addEventListener("beforeunload", event => {
     if (dirty) { event.preventDefault(); event.returnValue = ""; }
   });
-  window.addEventListener("pagehide", () => { $("source").value = ""; clear(); });
+  window.addEventListener("pagehide", () => { $("source").value = ""; $("restore").value = ""; clear(); });
   clear();
 })();
