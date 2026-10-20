@@ -65,6 +65,7 @@ class Session:
     retention_last_plan: str = ""
     retention_workroom: str = ""
     saved_session: str = ""
+    session_history: str = ""
 
 
 def ask(label: str, default: str = "") -> str:
@@ -316,6 +317,7 @@ def last_packages(session: Session) -> None:
         ("Original source-free PRIVATE HUMAN disclosure report", session.disclosure_review),
         ("Original PRIVATE HUMAN retention history/drift", session.retention_workroom),
         ("Owner-private restorable local operator session", session.saved_session),
+        ("PRIVATE operator workspace continuity", session.session_history),
     ):
         print(f"{label}: {value or 'not prepared this session'}")
     print("REVIEW_ONLY. Package directories are not customer permission, approval or security proof.")
@@ -361,6 +363,7 @@ def main() -> int:
         "36": lambda x: retention_console.prepare(x, path_prompt, ask, "drift"),
         "37": lambda x: session_console.save(x, path_prompt, ask),
         "38": lambda x: session_console.reopen(x, path_prompt, ask),
+        "39": lambda x: session_console.history(x, path_prompt, ask),
     }
     while True:
         print("\n1. Prepare PRIVATE original briefing + 15 offline HUMAN workrooms")
@@ -401,6 +404,7 @@ def main() -> int:
         print("36. Show original PRIVATE HUMAN retention source-drift (no deletion)")
         print("37. Save owner-private PATH-ONLY session + offline workroom bookmarks")
         print("38. Resume PRIVATE operator paths manually (no source execution)")
+        print("39. Compare 2-8 original PRIVATE operator snapshots (HUMAN-only)")
         print("0. Exit without scheduling or executing anything")
         try:
             choice = ask("Choice", "0")
@@ -408,7 +412,7 @@ def main() -> int:
                 print("Exited. No external tasks were scheduled or executed.")
                 return 0
             if choice not in menu:
-                print("Choose a number from 0 to 38.")
+                print("Choose a number from 0 to 39.")
                 continue
             menu[choice](session)
         except (KeyboardInterrupt, EOFError):

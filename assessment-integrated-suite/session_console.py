@@ -48,3 +48,33 @@ def reopen(session, path_prompt, ask) -> None:
     except (OSError, ValueError):
         print("HOLD: original private path-only session unavailable or changed;")
         print("existing console session was NOT replaced.")
+
+
+def history(session, path_prompt, ask) -> None:
+    """Compare existing local operator checkpoints without disclosing saved paths."""
+    import session_history
+    parent = path_prompt("Existing owner-only 0700 PRIVATE output parent", session.parent)
+    source = [path_prompt("First ORIGINAL PRIVATE-SESSION.json", session.saved_session)]
+    source.append(path_prompt("Second ORIGINAL PRIVATE-SESSION.json"))
+    while len(source) < 8:
+        next_path = ask("Optional next saved PRIVATE session in declared order (empty to finish)")
+        if not next_path:
+            break
+        if len(next_path) > 4096 or any(c in next_path for c in "\x00\r\n"):
+            raise ValueError("HOLD: invalid PRIVATE session path")
+        source.append(next_path)
+    print("PRIVATE HUMAN-only snapshot chronology: ordering is operator-declared.")
+    print("Changes in saved paths are NOT source-byte changes or permission.")
+    if ask("Confirm exactly REVIEW ONLY", "") != "REVIEW ONLY":
+        print("HOLD: no original PRIVATE history produced.")
+        return
+    name = ask("Unique unused private history folder", "private-operator-history")
+    try:
+        page = session_history.prepare(session, parent, name, source)
+        session.parent = parent
+        session.session_history = str(page.parent)
+        print("PRIVATE REVIEW_ONLY: local operator workspace timeline generated.")
+        print("Open privately on the same trusted device: " + str(page))
+        print("No source, findings or reviewer identities have been verified.")
+    except (OSError, ValueError):
+        print("HOLD: original PRIVATE session history refused. No session changed.")
