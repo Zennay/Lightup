@@ -6,7 +6,7 @@
  * No network, persistent storage, grants, scans, execution or HTML rendering.
  */
 const LightUpPrivateSourceInspector = (() => {
-  const MAX_JSON_BYTES = 512 * 1024;
+  const MAX_JSON_BYTES = 2 * 1024 * 1024;
   const OPAQUE = Object.freeze({
     ".lucb": { kind: "ENCRYPTED_CASEBOOK", route: "intake", label: "Versleutelde Casebook: inhoud niet gecontroleerd" },
     ".luie": { kind: "ENCRYPTED_INTAKE", route: "intake", label: "Versleutelde intake: inhoud niet gecontroleerd" },
@@ -45,7 +45,7 @@ const LightUpPrivateSourceInspector = (() => {
       return JSON.parse(m[0]);
     };
     const visit = (depth) => {
-      if (depth > 28 || ++nodes > 30000) throw Error("unbounded JSON structure");
+      if (depth > 30 || ++nodes > 150000) throw Error("unbounded JSON structure");
       ws(); const ch = text[i];
       if (ch === '"') return quoted();
       if (ch === "{") {
@@ -85,10 +85,11 @@ const LightUpPrivateSourceInspector = (() => {
     return data;
   }
 
-  function classifyJSON(data) {
+  function classifyJSON(data, size) {
     if (!asObject(data)) return { kind: "UNKNOWN_JSON", route: "none", label: "Onbekende JSON: handmatige review vereist" };
 
     if (data.kind === "lightup.scope_proposal_draft") {
+      if (size > 65536) throw Error("oversized original Studio draft");
       const valid = data.schema_version === 1 && data.state === "DRAFT_ONLY" &&
         FALSE_SCOPE.every((key) => data[key] === false) &&
         Array.isArray(data.requested_assets) && data.requested_assets.length <= 80 &&
@@ -107,6 +108,7 @@ const LightUpPrivateSourceInspector = (() => {
     }
 
     if (data.schema === "lightup.auth_casebook.v1") {
+      if (size > 512 * 1024) throw Error("oversized original Casebook source");
       const counts = data.declared_counts;
       const top = ["schema", "status", "source", "as_of", "client_id", "requests", "engagements",
         "grants", "risk_approvals", "case_overview", "declared_counts", ...CASEBOOK_AUTH];
@@ -129,6 +131,7 @@ const LightUpPrivateSourceInspector = (() => {
     }
 
     if (data.format === "lightup.authorization_readiness_operator_v1") {
+      if (size > 2000000) throw Error("oversized original operator-readiness report");
       const keys = ["format", "disposition", "request_binding_schema_present",
         "scope_fingerprint", "scope_description", "authority", "limitations",
         "summary", "engagements", "review_queue", "request_history"];
@@ -170,7 +173,7 @@ const LightUpPrivateSourceInspector = (() => {
         throw Error("untrusted source asserts authorization");
       }
     }
-    return classifyJSON(data);
+    return classifyJSON(data, file.size);
   }
   async function readHumanInventory(file) {
     if (!file || file.size < 10 || file.size > 96 * 1024) {
