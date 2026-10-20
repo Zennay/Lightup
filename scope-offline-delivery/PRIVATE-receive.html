@@ -1,0 +1,1471 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-tWsQ+TAx/gwoI5nRcKslHTtsvX6hLmpUmmV8OctR4ug='; style-src 'sha256-1Qk4cCfWuvGOXwIazCMDveA4n/GNkVQ6QsLAZ/BjKOI='; connect-src 'none'; form-action 'none'; object-src 'none'; base-uri 'none'; img-src 'none'; frame-src 'none'">
+<title>LightUp · PRIVATE recipient byte comparison</title>
+<style>:root{color-scheme:dark}*{box-sizing:border-box}body{margin:0;padding:2.5rem 1rem;background:#0b1422;color:#ebf1fa;font:1rem/1.65 system-ui,sans-serif}main{max-width:750px;margin:auto}h1{font-size:clamp(1.8rem,5vw,2.7rem);line-height:1.15}h2{font-size:1.15rem}.tag{font-size:.76rem;letter-spacing:.12em;color:#9ec6ff;font-weight:750}section{padding:1.4rem;margin:1.25rem 0;border:1px solid #52647f;border-radius:14px;background:#16243a}label{display:block;font-weight:650;margin:1rem 0 .3rem}input{width:100%;border-radius:7px;border:1px solid #a5bad4;padding:.75rem;background:#0b1422;color:#fff;font:inherit}input:focus,button:focus{outline:3px solid #95d6fa;outline-offset:2px}button{margin-top:.85rem;cursor:pointer;border:0;border-radius:8px;padding:.8rem 1.25rem;font:inherit;font-weight:750;background:#93dbfd;color:#082235}button:disabled{opacity:.6;cursor:wait}p{overflow-wrap:anywhere}strong{color:#ffdb9a}#status{font-weight:750;padding:.8rem;border-left:4px solid #9ec6ff}#status[data-state="hold"]{border-color:#f2a0a8;color:#ffc4c9}#status[data-state="match"]{border-color:#97edbc;color:#b2ffce}a{color:#92d9ff}.mono,code{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:.89rem;overflow-wrap:anywhere}footer{font-size:.82rem;color:#b6c6db;margin:2.5rem 0}
+.download-choices{display:flex;flex-wrap:wrap;gap:.6rem}.download-choices button{margin:.35rem 0}details{border:1px solid #64748b;border-radius:8px;padding:.75rem}summary{cursor:pointer}ol{max-height:14rem;overflow:auto;padding-left:1.6rem}li{margin:.35rem 0}section[hidden]{display:none}
+</style>
+</head>
+<body>
+<main>
+<p class="tag">LIGHTUP / OFFLINE PRIVATE HANDOFF</p>
+<h1>Recipient byte comparison</h1>
+<p><strong>DRAFT / HOLD · REVIEW ONLY.</strong> This page hashes your selected local file in browser memory. It makes no network requests, opens no accounts, issues no grants and stores nothing.</p>
+<section>
+<h2>Compare an independently received digest</h2>
+<label for="selected">Choose one received local ZIP or encrypted HUMAN file</label>
+<input id="selected" type="file" aria-describedby="limit">
+<p id="limit">Maximum 2.5 MB per file. No file contents are displayed or uploaded.</p>
+<label for="expected">Expected SHA-256 from an independently authenticated sender channel</label>
+<input id="expected" type="text" inputmode="latin" autocomplete="off" autocapitalize="off" spellcheck="false" maxlength="64" placeholder="64 lowercase hexadecimal characters" aria-describedby="digest-help">
+<p id="digest-help">Do not copy the digest from the SAME untrusted archive and call that authenticated proof.</p>
+<button id="verify" type="button">Compare local bytes</button>
+<button id="forget-local-review" type="button">Clear selected file, SHA-256 and local review</button>
+<p>This clears the browser UI and held source references, including any pending role ZIP. Already-downloaded files and copies held by your browser or operating system are not securely erased.</p>
+<p id="status" role="status" aria-live="polite" data-state="idle">No comparison performed. Do not treat this as permission.</p>
+<p id="details" class="mono" aria-live="polite"></p>
+</section>
+<section id="archive-panel" hidden>
+<h2>Inspect a matched original offline ZIP locally</h2>
+<p>Only after BYTE MATCH above, inspect bounded stored ZIP members in the full kit or one of the three role-specific source-only packs. Selected original source components must match their exact pinned LightUp SHA-256 values. For role ZIPs, the unsigned receipt must additionally be byte-canonical, have no duplicate JSON keys, list every exact stored file hash/size and assert literal false for all authority fields before any component can be saved. Nothing is executed, installed, unzipped to disk, or uploaded automatically.</p>
+<button id="examine-archive" type="button" disabled>Inspect known original ZIP sources</button>
+<p id="archive-summary" role="status" aria-live="polite"></p>
+<details><summary>Original ZIP member inventory (paths and sizes only)</summary><ol id="archive-inventory" class="mono"></ol></details>
+<div id="safe-downloads" class="download-choices"></div>
+<button id="save-inspection-receipt" type="button" hidden>Save PRIVATE role inspection receipt (unsigned JSON)</button>
+<p>A saved receipt contains original source filenames, byte digests and the received whole-ZIP digest. Treat it as PRIVATE metadata. It proves no sender identity, consent or permission, and cannot replace independent human disclosure review.</p>
+</section>
+<section id="batch-role-panel">
+<h2>Prepare source-only packages for all three HUMAN roles</h2>
+<p>Once the full original offline ZIP is SHA-matched and its pinned original source components have been admitted, the browser can prepare three least-disclosure role ZIPs together. Every role remains separate and requires its own conscious download. No multi-recipient archive, client data, consent, encryption or transfers are created.</p>
+<button id="build-all-roles" type="button" disabled>Prepare all three roles locally</button>
+<p id="batch-role-status" role="status" aria-live="polite"></p>
+<div id="batch-role-choices"></div>
+<button id="save-batch-digests" type="button" hidden>Save one unsigned PRIVATE role digest handoff sheet</button>
+<p>The digest sheet is for independently authenticated HUMAN delivery, not evidence of identity, permission or confidentiality. Each role ZIP is the same original-source-bounded format as the single-role builder.</p>
+</section>
+<section id="batch-return-panel" hidden>
+<h2>PRIVATE HUMAN three-role return overview</h2>
+<p>After preparing all three original role ZIPs in one browser batch, this local in-memory board shows for each source-only role when a HUMAN sender note was prepared and when the corresponding separately returned receipt was matched byte-for-byte. It cannot determine whether anyone actually received, reviewed, approved, or consented to work.</p>
+<p id="batch-return-status" role="status" aria-live="polite"></p>
+<ol id="batch-return-rows" class="mono"></ol>
+<button id="save-batch-return" type="button" hidden>Save PRIVATE UNSIGNED three-role return-status JSON</button>
+<p>No original source bytes, unredacted HUMAN notes, recipient identifiers, passwords or grants are included. Changing the original source or rebuilding a batch clears these observations.</p>
+</section>
+<section id="version-delta-panel" hidden>
+<h2>Compare a previous source-only toolkit with this one</h2>
+<p>The currently admitted complete original toolkit is the source-of-truth for the NEW side. Choose an earlier separate original toolkit ZIP and supply its whole SHA-256 through an independently authenticated channel. This compares local source filenames, byte sizes and SHA-256 only. No source content is executed, scanned or uploaded.</p>
+<label for="version-delta-file">Earlier source-only offline toolkit ZIP</label>
+<input id="version-delta-file" type="file" accept=".zip,application/zip">
+<label for="version-delta-sha">Separately authenticated earlier ZIP SHA-256 (64 lowercase hex)</label>
+<input id="version-delta-sha" type="text" maxlength="64" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="64 lowercase hex characters">
+<button id="version-delta-compare" type="button" disabled>Compare exact local source bytes</button>
+<p id="version-delta-status" role="status" aria-live="polite" data-state="idle"></p>
+<details><summary>Source changes (paths and digests, no source content)</summary>
+<ol id="version-delta-inventory" class="mono"></ol></details>
+<button id="version-delta-save" type="button" hidden>Save PRIVATE unsigned JSON source-delta report</button>
+<p>Even a perfect match is not a signature, content safety proof, owner review, valid consent, authorization or release. Treat the source inventory and filenames as PRIVATE metadata.</p>
+</section>
+<section id="received-handoff-panel" hidden>
+<h2>Receive a source-bound PRIVATE HUMAN sender note</h2>
+<p>After a separately authenticated SHA-256 comparison and original native role-package inspection, you may compare the sender's independently obtained note against this *exact* original role, complete ZIP SHA-256, original source SHA, file bytes and all source fingerprints. Nothing is uploaded or granted; the note is UNSIGNED.</p>
+<label for="received-handoff-note">Choose the separate HUMAN sender note (.txt, 4 KiB maximum)</label>
+<input id="received-handoff-note" type="file" accept=".txt,text/plain">
+<label><input id="handoff-separate-channel" type="checkbox"> I separately obtained this note through a channel whose sender I checked outside LightUp. This checkbox does not prove identity or permission.</label>
+<button id="compare-handoff" type="button" disabled>Compare exact role ZIP with independent HUMAN note</button>
+<p id="handoff-status" role="status" aria-live="polite" data-state="idle"></p>
+<p id="handoff-digest" class="mono"></p>
+<button id="save-handoff-ack" type="button" hidden>Save UNSIGNED PRIVATE recipient review receipt (JSON)</button>
+<p>Even a byte match cannot establish consent, recipient identity, confidentiality, release permission or a valid scope grant. Never use a note supplied only alongside the same untrusted ZIP as independent authentication.</p>
+</section>
+<section id="role-builder-panel" hidden>
+<h2>Prepare a minimum-disclosure recipient ZIP · locally</h2>
+<p>Available only after the complete original source ZIP matches the SHA-256 you obtained through a separate authenticated channel and all original source components match exact immutable fingerprints. Nothing is uploaded, run or sent. A role never authenticates a recipient or grants permission.</p>
+<label for="role-profile">Only include source files needed for this HUMAN role</label>
+<select id="role-profile">
+<option value="privacy-recipient">Privacy recipient · courier + redacted-text receiver</option>
+<option value="privacy-editor">Privacy editor · courier + redaction + receiver</option>
+<option value="scope-reviewer">Scope reviewer · original workspace + manifests + verifier</option>
+</select>
+<button id="build-role" type="button" disabled>Build source-only role ZIP locally</button>
+<p id="role-build-status" role="status" aria-live="polite"></p>
+<p id="role-build-digest" class="mono"></p>
+<details><summary>Review every original component included in this role</summary>
+<ol id="role-original-preview" class="mono"></ol></details>
+<button id="save-built-role" type="button" hidden>Save role ZIP (unsigned · not encrypted)</button>
+<button id="save-role-handoff" type="button" hidden>Save PRIVATE HUMAN sender digest and checklist</button>
+<p>The sender note lists only original file names/sizes/hashes and new/original ZIP checksums. It is UNSIGNED and must not be used as proof attached to the same untrusted file. Independently verify the recipient and use a separate authenticated channel.</p>
+<p>Verify the intended reviewer, approval and transfer channel independently. A matching original digest proves byte equality, not consent; encrypt any confidential transfer separately with the original HUMAN courier.</p>
+</section>
+<section id="return-ack-panel" hidden>
+<h2>Review the HUMAN recipient's returned PRIVATE receipt</h2>
+<p>Only available after you locally produced a valid source-only role ZIP and manually saved its original HUMAN sender note. Compare a separately received return receipt to those exact local bytes. Nothing is transmitted or authorized.</p>
+<label for="return-ack-file">Choose the recipient's separate PRIVATE review receipt (.json; up to 12 KiB)</label>
+<input id="return-ack-file" type="file" accept=".json,application/json">
+<label><input id="return-ack-separate-channel" type="checkbox"> I obtained this return receipt through a separate channel. I understand this does NOT authenticate a person or approve a scan.</label>
+<button id="compare-return-ack" type="button" disabled>Compare exact returned source/role/note bytes</button>
+<p id="return-ack-status" role="status" aria-live="polite" data-state="idle"></p>
+<button id="save-return-review" type="button" hidden>Save UNSIGNED HUMAN return summary (source-only JSON)</button>
+<p>Always independently authenticate client and operator identities, consent and recipient/channel; unsigned receipts are never real grant, revocation, release, or proof of security.</p>
+</section>
+<section>
+<h2>After a BYTE MATCH</h2>
+<p>Independently verify the sender, intended recipient and lawful scope. Open the original <a href="START-HERE.html">PRIVATE workflow home</a> for manual redaction, encrypted HUMAN courier and explicit receiver review. A matching SHA proves equal bytes only: <strong>not identity, consent, approval, content safety or remediation.</strong></p>
+<p>If this page cannot hash a local file, use the <code>tools/package.py inspect</code> command with <code>--expected-sha256</code> received separately.</p>
+</section>
+<footer>Incubate M3/M7 PLAN/LAB ONLY. No live target, scanning, deployment, active authorization, or release.</footer>
+</main>
+<script>"use strict";
+// Byte equality only; NEVER origin, safety, consent, identity or authorization.
+const pick = id => document.getElementById(id);
+const selected = pick("selected");
+const expected = pick("expected");
+const status = pick("status");
+const details = pick("details");
+const button = pick("verify");
+let revision = 0;
+
+function reset() {
+  revision += 1;
+  document.dispatchEvent(new Event("lightup:selection-reset"));
+  status.textContent = "No comparison performed. Do not treat this as permission.";
+  status.dataset.state = "idle";
+  details.textContent = "";
+  button.disabled = false;
+}
+
+// HUMAN-controlled privacy reset, plus navigation / BFCache clearing.
+function forgetLocalReview() {
+  selected.value = "";
+  expected.value = "";
+  reset();  // Also clears original ZIP inventory and browser-built role bytes.
+}
+pick("forget-local-review").addEventListener("click", forgetLocalReview);
+window.addEventListener("pagehide", forgetLocalReview);
+window.addEventListener("pageshow", event => {
+  if (event.persisted) forgetLocalReview();
+});
+
+selected.addEventListener("change", reset);
+expected.addEventListener("input", reset);
+
+button.addEventListener("click", async () => {
+  const current = ++revision;
+  button.disabled = true;
+  status.dataset.state = "idle";
+  details.textContent = "";
+  const fail = (reason) => {
+    if (revision !== current) return;
+    status.dataset.state = "hold";
+    status.textContent = "HOLD — " + reason;
+    button.disabled = false;
+  };
+  try {
+    const file = selected.files && selected.files[0];
+    if (!file) { fail("Select exactly one local file first."); return; }
+    if (selected.files.length !== 1) { fail("Ambiguous file selection."); return; }
+    const claim = expected.value.trim();
+    if (!/^[0-9a-f]{64}$/.test(claim)) {
+      fail("Enter the full lowercase SHA-256 received through a separate authenticated channel.");
+      return;
+    }
+    if (!Number.isSafeInteger(file.size) || file.size < 1 || file.size > 2500000) {
+      fail("File is empty or exceeds the 2.5 MB local review limit.");
+      return;
+    }
+    status.textContent = "Locally reading and hashing bytes; no upload...";
+    const bytes = await file.arrayBuffer();
+    if (revision !== current) return;
+    if (bytes.byteLength !== file.size) { fail("Selected bytes changed during review."); return; }
+    if (!globalThis.crypto || !crypto.subtle) {
+      fail("This browser context lacks local WebCrypto SHA-256. Use the Python inspector.");
+      return;
+    }
+    const digest = await crypto.subtle.digest("SHA-256", bytes);
+    if (revision !== current) return;
+    const actual = Array.from(new Uint8Array(digest), b => b.toString(16).padStart(2, "0")).join("");
+    details.textContent = "File: " + file.name + " · " + file.size.toLocaleString() +
+      " bytes · computed local SHA-256: " + actual;
+    if (actual !== claim) {
+      fail("The computed file bytes do not match your separately supplied digest.");
+      return;
+    }
+    document.dispatchEvent(new CustomEvent("lightup:byte-match", {detail: {bytes, name: file.name, sha256: actual}}));
+    status.dataset.state = "match";
+    status.textContent = "BYTE MATCH / REVIEW ONLY — still no sender identity, client consent, grant, confidentiality approval or release.";
+    button.disabled = false;
+  } catch (_) {
+    fail("Local read or hash unavailable. Nothing has been verified.");
+  }
+});
+
+"use strict";
+/* Original bytes only: bounded ZIP browser and explicit local saves after independent SHA match.
+   This is not source authentication, client consent, scope approval or safe-to-execute inspection. */
+(() => {
+  const el = id => document.getElementById(id);
+  const examine = el("examine-archive"), inventory = el("archive-inventory");
+  const panel = el("archive-panel"), saveRow = el("safe-downloads");
+  const sourceInfo = el("archive-summary");
+  const selections = [
+    { path: "workspace/LightUp-Scope-Offline-DRAFT-HOLD.zip", title: "Original offline scope workspace (ZIP)",
+      sha: "60f9086490ecb00d725ae00da173ee6eb843de9d346d4c39b5f4a51a359703de",
+      name: "LightUp-Scope-Offline-DRAFT-HOLD.zip" },
+    { path: "workspace/SOURCE-MANIFEST.json", title: "Original source-bound scope manifest (JSON)",
+      sha: "dc1aa82f9d335e07e142466b1e144b31f97239af4339b5b56279ee1a28235f63",
+      name: "LightUp-Scope-SOURCE-MANIFEST.json" },
+    { path: "workspace/DIST-MANIFEST.json", title: "Original offline delivery manifest (JSON)",
+      sha: "c8cb4d972d4822939bc542c6b292f72e5e246d772ed32587d3a9ed4fed1f629d",
+      name: "LightUp-Scope-DIST-MANIFEST.json" },
+    { path: "workspace/verify.html", title: "Original offline source byte verifier (HTML)",
+      sha: "d1d0d2ca5a53599d2dc85589c58a4af6eddf7528cb519498185943a5718723c5",
+      name: "LightUp-Scope-Source-Verify.html" },
+    { path: "courier/PRIVATE-encrypted-courier.html", title: "Original encrypted HUMAN courier (offline HTML)",
+      sha: "55cbef56f7ca0df32ad5fe65ea6868efc4c7ac2f1abf01ecb1e4d97b7e327edf",
+      name: "PRIVATE-encrypted-courier.html" },
+    { path: "privacy/disclosure-preflight.html", title: "Original manual PRIVATE disclosure desk (offline HTML)",
+      sha: "d23b51b73b39c994edbb681e20b7e501bd037be366488870470bfe68ef34bb24",
+      name: "PRIVATE-disclosure-preflight.html" },
+    { path: "privacy/disclosure-recipient-verify.html", title: "Original recipient redacted-text review (offline HTML)",
+      sha: "a3b48236e0b297f1a903f2d02ba8fdedf4ea63b03109089a96f116cab1011483",
+      name: "PRIVATE-disclosure-recipient-verify.html" },
+  ];
+  const roleBase = ["PRIVATE-ROLE-START-HERE.html", "PRIVATE-ROLE-README.txt",
+    "PRIVATE-ROLE-RECEIPT.json", "tools/role_pack.py"];
+  const profiles = {
+    "privacy-recipient": ["courier/PRIVATE-encrypted-courier.html", "privacy/disclosure-recipient-verify.html"],
+    "privacy-editor": ["courier/PRIVATE-encrypted-courier.html", "privacy/disclosure-preflight.html", "privacy/disclosure-recipient-verify.html"],
+    "scope-reviewer": ["workspace/LightUp-Scope-Offline-DRAFT-HOLD.zip", "workspace/SOURCE-MANIFEST.json", "workspace/DIST-MANIFEST.json", "workspace/verify.html"],
+  };
+  let accepted = null, acceptedSha = null, generation = 0, extracted = new Map();
+  const saveInspection = el("save-inspection-receipt");
+  let localInspection = null;
+
+  function clear() {
+    generation++;
+    accepted = null;
+    acceptedSha = null;
+    localInspection = null;
+    saveInspection.hidden = true;
+    extracted.clear();
+    inventory.replaceChildren();
+    saveRow.replaceChildren();
+    sourceInfo.textContent = "";
+    panel.hidden = true;
+    examine.disabled = true;
+  }
+  document.addEventListener("lightup:selection-reset", clear);
+  document.addEventListener("lightup:byte-match", event => {
+    clear();
+    const detail = event.detail;
+    if (!detail || !(detail.bytes instanceof ArrayBuffer) ||
+        detail.bytes.byteLength > 2500000 || !detail.name ||
+        !/\.zip$/i.test(detail.name)) return;
+    accepted = detail.bytes;
+    acceptedSha = detail.sha256;
+    panel.hidden = false;
+    examine.disabled = false;
+    sourceInfo.textContent = "Source bytes matched an independently supplied SHA-256. Inspect the local ZIP directory before saving files; this remains REVIEW ONLY.";
+  });
+
+  const view = bytes => new DataView(bytes);
+  const text = (bytes, offset, length) => {
+    try {
+      return new TextDecoder("utf-8", {fatal: true}).decode(new Uint8Array(bytes, offset, length));
+    } catch (_) {
+      throw Error("Non-canonical ZIP UTF-8 name");
+    }
+  };
+  function checkName(name) {
+    if (!name || name.startsWith("/") || name.includes("\\") ||
+        name.includes(":") || /[\x00-\x1f\x7f]/.test(name) ||
+        name.split("/").some(part => !part || part === "." || part === "..")) {
+      throw Error("Unsafe file name in archive");
+    }
+  }
+
+  function parseStoredZip(bytes) {
+    const dv = view(bytes);
+    if (dv.byteLength < 22 || dv.byteLength > 2500000) throw Error("Archive size outside supported bounds");
+    // Builder uses deterministic comment-free, single-disk and ZIP64-free stored ZIP.
+    const eocd = dv.byteLength - 22;
+    if (dv.getUint32(eocd, true) !== 0x06054b50 || dv.getUint16(eocd + 20, true) !== 0 ||
+        dv.getUint16(eocd + 4, true) !== 0 || dv.getUint16(eocd + 6, true) !== 0) {
+      throw Error("Unsupported ZIP central-directory footer");
+    }
+    const count = dv.getUint16(eocd + 10, true);
+    const countDisk = dv.getUint16(eocd + 8, true);
+    const dirBytes = dv.getUint32(eocd + 12, true);
+    const dirStart = dv.getUint32(eocd + 16, true);
+    if (count !== countDisk || count < 1 || count > 64 ||
+        dirStart + dirBytes !== eocd || dirStart > eocd) {
+      throw Error("Invalid, multi-disk, oversized or incomplete ZIP directory");
+    }
+    let cursor = dirStart;
+    const seen = new Set(), entries = new Map(), regions = [];
+    for (let i = 0; i < count; ++i) {
+      if (cursor + 46 > eocd || dv.getUint32(cursor, true) !== 0x02014b50) {
+        throw Error("Malformed ZIP directory entry");
+      }
+      const flags = dv.getUint16(cursor + 8, true), method = dv.getUint16(cursor + 10, true);
+      const compressed = dv.getUint32(cursor + 20, true), size = dv.getUint32(cursor + 24, true);
+      const nameLen = dv.getUint16(cursor + 28, true), extraLen = dv.getUint16(cursor + 30, true);
+      const commentLen = dv.getUint16(cursor + 32, true), startDisk = dv.getUint16(cursor + 34, true);
+      const outerType = dv.getUint32(cursor + 38, true);
+      const local = dv.getUint32(cursor + 42, true);
+      const end = cursor + 46 + nameLen + extraLen + commentLen;
+      if (end > eocd || !nameLen || nameLen > 180 || compressed !== size ||
+          compressed > 2000000 || flags !== 0 || method !== 0 ||
+          extraLen || commentLen || startDisk || (outerType >>> 16 & 0xf000) === 0xa000) {
+        throw Error("Unsupported ZIP entry encoding, permission or size");
+      }
+      const name = text(bytes, cursor + 46, nameLen);
+      checkName(name);
+      if (seen.has(name)) throw Error("Duplicate original member name");
+      seen.add(name);
+      if (local + 30 > dirStart || dv.getUint32(local, true) !== 0x04034b50 ||
+          dv.getUint16(local + 6, true) !== flags || dv.getUint16(local + 8, true) !== method ||
+          dv.getUint32(local + 18, true) !== compressed || dv.getUint32(local + 22, true) !== size ||
+          dv.getUint16(local + 26, true) !== nameLen || dv.getUint16(local + 28, true) !== 0 ||
+          text(bytes, local + 30, nameLen) !== name) {
+        throw Error("ZIP local header does not match central-directory identity");
+      }
+      const dataStart = local + 30 + nameLen;
+      const dataEnd = dataStart + size;
+      if (dataEnd > dirStart) throw Error("ZIP member overlaps central directory");
+      regions.push([local, dataEnd]);
+      entries.set(name, {name, size, bytes: new Uint8Array(bytes, dataStart, size)});
+      cursor = end;
+    }
+    if (cursor !== eocd) throw Error("ZIP directory contains unexpected padding");
+    regions.sort((a, b) => a[0] - b[0]);
+    if (regions[0][0] !== 0 || regions[regions.length - 1][1] !== dirStart ||
+        regions.slice(1).some((range, i) => range[0] !== regions[i][1])) {
+      throw Error("Unexpected unreferenced or overlapping ZIP payload bytes");
+    }
+    return entries;
+  }
+
+
+  // Read-only strict original source member inventory for offline version diff.
+  // A caller must independently verify the earlier outer ZIP SHA-256.
+  document.addEventListener("lightup:strict-zip-read", event => {
+    const detail = event.detail;
+    if (!detail || !accepted || !acceptedSha ||
+        !(detail.bytes instanceof ArrayBuffer) ||
+        detail.bytes.byteLength > 2500000) return;
+    detail.entries = parseStoredZip(detail.bytes);
+  });
+
+  // Match the actual deterministic Python role receipt, rather than assuming
+  // that matching ZIP member names and source SHA pins authenticate a handoff.
+  // Byte-canonical JSON rejects duplicate fields and alternate encodings.
+  const ROLE_SCRIPT_SHA = "43d9b6e915ba991dea63572f01750ef7661261c8b505c5198609029da0894e43";
+  const ROLE_HEAD = "0f76f2f90a89f5b64bc8033aa2e2ee6ec2fc49cc";
+  const ROLE_AUTHORITY = ["client_consent", "deploy", "grant", "operator_consent", "release", "scan"];
+  const exactKeys = (obj, keys) => obj && typeof obj === "object" && !Array.isArray(obj) &&
+    Object.keys(obj).sort().join("|") === [...keys].sort().join("|");
+  const validDigest = value => typeof value === "string" && /^[0-9a-f]{64}$/.test(value);
+  function canonicalJSON(value, depth = 0) {
+    if (value === null || typeof value !== "object") return JSON.stringify(value);
+    const names = Array.isArray(value) ? value.map((_v, i) => i) : Object.keys(value).sort();
+    if (!names.length) return Array.isArray(value) ? "[]" : "{}";
+    const pad = "  ".repeat(depth + 1);
+    const rows = names.map(key => pad + (Array.isArray(value) ? "" : JSON.stringify(key) + ": ") +
+      canonicalJSON(value[key], depth + 1));
+    return (Array.isArray(value) ? "[" : "{") + "\n" + rows.join(",\n") +
+      "\n" + "  ".repeat(depth) + (Array.isArray(value) ? "]" : "}");
+  }
+  async function validateRoleReceipt(entries, profile) {
+    const entry = entries.get("PRIVATE-ROLE-RECEIPT.json");
+    if (!entry || entry.size < 100 || entry.size > 12000) throw Error("Role receipt is missing or too large");
+    const source = new TextDecoder("utf-8", {fatal: true}).decode(entry.bytes);
+    const receipt = JSON.parse(source);
+    if (source !== canonicalJSON(receipt) + "\n" ||
+        !exactKeys(receipt, ["format", "posture", "profile", "source_head",
+          "source_outer_sha256", "authenticated_sender", "release", "authority", "files", "note"]) ||
+        receipt.format !== "lightup.scope_private_role_handoff.v1" ||
+        receipt.posture !== "INCUBATE_M3_M7_DRAFT_HOLD" ||
+        receipt.profile !== profile || receipt.source_head !== ROLE_HEAD ||
+        !validDigest(receipt.source_outer_sha256) ||
+        receipt.authenticated_sender !== false || receipt.release !== false ||
+        !exactKeys(receipt.authority, ROLE_AUTHORITY) ||
+        !ROLE_AUTHORITY.every(field => receipt.authority[field] === false) ||
+        receipt.note !== "UNSIGNED PRIVATE REVIEW ONLY; no client or operator consent or release.") {
+      throw Error("Role receipt is noncanonical or contains authority claims");
+    }
+    const records = [...entries.values()].filter(item => item.name !== "PRIVATE-ROLE-RECEIPT.json")
+      .sort((a, b) => a.name < b.name ? -1 : a.name > b.name ? 1 : 0);
+    if (!Array.isArray(receipt.files) || receipt.files.length !== records.length) {
+      throw Error("Role file inventory is incomplete");
+    }
+    for (let i = 0; i < records.length; i++) {
+      const row = receipt.files[i], item = records[i];
+      if (!exactKeys(row, ["path", "bytes", "sha256"]) ||
+          row.path !== item.name || !Number.isSafeInteger(row.bytes) ||
+          row.bytes !== item.size || !validDigest(row.sha256) ||
+          row.sha256 !== await sha(item.bytes)) {
+        throw Error("Original role file differs from unsigned byte receipt");
+      }
+      if (item.name === "tools/role_pack.py" && row.sha256 !== ROLE_SCRIPT_SHA) {
+        throw Error("Unrecognized role inspector source bytes");
+      }
+    }
+    return {files: receipt.files, sourceOuterSha256: receipt.source_outer_sha256}; // NO identity/consent.
+  }
+
+  // Two-way local admission: use the same strict ZIP and role receipt
+  // boundary before permitting a freshly browser-created role download.
+  document.addEventListener("lightup:role-build-inspection", event => {
+    const candidate = event.detail;
+    if (!candidate || !accepted || !acceptedSha ||
+        !(candidate.bytes instanceof Uint8Array) ||
+        candidate.sourceSha256 !== acceptedSha ||
+        !Object.hasOwn(profiles,candidate.role) ||
+        !/^[0-9a-f]{64}$/.test(candidate.sha256 || "")) return;
+    const revision = generation;
+    candidate.check = (async () => {
+      if (await sha(candidate.bytes) !== candidate.sha256) throw Error("New role SHA mismatch");
+      const rows = parseStoredZip(candidate.bytes.buffer);
+      const required = [...roleBase, ...profiles[candidate.role]];
+      if (rows.size !== required.length || required.some(name => !rows.has(name))) {
+        throw Error("New role member set differs from native profile");
+      }
+      const receipt = await validateRoleReceipt(rows, candidate.role);
+      if (receipt.files.length !== required.length - 1) throw Error("New role receipt incomplete");
+      for (const desc of selections.filter(x => profiles[candidate.role].includes(x.path))) {
+        if (await sha(rows.get(desc.path).bytes) !== desc.sha) {
+          throw Error("Locally created role changed a pinned original source");
+        }
+      }
+      if (generation !== revision || !accepted || acceptedSha !== candidate.sourceSha256) {
+        throw Error("Original source selection changed");
+      }
+      return true;
+    })();
+  });
+
+  const sha = async bytes => Array.from(new Uint8Array(
+    await crypto.subtle.digest("SHA-256", bytes))).map(x => x.toString(16).padStart(2,"0")).join("");
+
+  // Explicitly revoke temporary local download URLs on navigation.
+  const activeDownloadURLs = new Set();
+  window.addEventListener("pagehide", () => {
+    for (const url of activeDownloadURLs) URL.revokeObjectURL(url);
+    activeDownloadURLs.clear();
+  });
+
+  function save(bytes, filename) {
+    // Opaque local download: no auto-open or evaluation of HTML, scripts or ZIP contents.
+    const url = URL.createObjectURL(new Blob([bytes], {type:"application/octet-stream"}));
+    activeDownloadURLs.add(url);
+    const link = document.createElement("a");
+    link.href = url; link.download = filename; link.rel = "noopener";
+    document.body.append(link); link.click(); link.remove();
+    setTimeout(() => { URL.revokeObjectURL(url); activeDownloadURLs.delete(url); }, 30000);
+  }
+
+  saveInspection.addEventListener("click", () => {
+    if (!localInspection || !accepted || !acceptedSha || localInspection.generation !== generation) return;
+    // Private byte receipt, never proof of identity, legal consent or disclosure clearance.
+    const payload = {
+      format: "lightup.scope_private_local_inspection.v1",
+      posture: "INCUBATE_M3_M7_DRAFT_HOLD",
+      decision: "REVIEW_ONLY",
+      authenticated_sender: false,
+      consent_granted: false,
+      release_approved: false,
+      profile: localInspection.profile,
+      received_zip_sha256: acceptedSha,
+      received_zip_bytes: accepted.byteLength,
+      files: localInspection.files,
+      note: "UNSIGNED PRIVATE source-byte inspection only; independently verify recipient and channel."
+    };
+    const bytes = new TextEncoder().encode(JSON.stringify(payload, null, 2) + "\n");
+    save(bytes, "LightUp-PRIVATE-role-inspection-REVIEW-ONLY.json");
+  });
+  examine.addEventListener("click", async () => {
+    const current = ++generation;
+    inventory.replaceChildren(); saveRow.replaceChildren(); extracted.clear();
+    localInspection = null; saveInspection.hidden = true;
+    examine.disabled = true;
+    sourceInfo.textContent = "Inspecting ZIP member layout and pinned original artifact SHA-256 locally...";
+    try {
+      if (!accepted) throw Error("No independently matched archive is loaded");
+      if (!crypto?.subtle) throw Error("Local WebCrypto is unavailable");
+      const entries = parseStoredZip(accepted);
+      // The full integrated kit has all seven original sources. Smaller role
+      // packets must match one exact allowlisted role inventory, not mere names.
+      let role = null;
+      let admittedPaths = selections.map(s => s.path);
+      if (entries.has("PRIVATE-ROLE-RECEIPT.json")) {
+        const found = Object.entries(profiles).filter(([_name, paths]) => {
+          const expected = [...roleBase, ...paths];
+          return expected.length === entries.size && expected.every(name => entries.has(name));
+        });
+        if (found.length !== 1) throw Error("Unknown or mixed private recipient role");
+        role = found[0][0];
+        admittedPaths = found[0][1];
+      }
+      const admissible = [];
+      for (const descriptor of selections.filter(s => admittedPaths.includes(s.path))) {
+        const candidate = entries.get(descriptor.path);
+        if (!candidate) throw Error("Missing expected source product: " + descriptor.path);
+        const hash = await sha(candidate.bytes);
+        if (current !== generation) return;
+        if (hash !== descriptor.sha) throw Error("Original source-pinned byte mismatch: " + descriptor.path);
+        admissible.push({descriptor, candidate});
+      }
+      const roleFiles = role ? await validateRoleReceipt(entries, role) : null;
+      if (current !== generation) return;
+      for (const name of Array.from(entries.keys()).sort()) {
+        const item = document.createElement("li");
+        const row = entries.get(name);
+        item.textContent = name + " · " + row.size.toLocaleString() + " bytes";
+        inventory.append(item);
+      }
+      for (const {descriptor, candidate} of admissible) {
+        const button = document.createElement("button");
+        button.textContent = "Save " + descriptor.title;
+        button.type = "button";
+        // Retain only immutable Uint8Array referencing matched local copy; never execute it.
+        button.addEventListener("click", () => {
+          if (current !== generation || !accepted) return;
+          save(candidate.bytes, descriptor.name);
+        });
+        saveRow.append(button);
+      }
+      // Browser sender may build a smaller source-only package ONLY from the
+      // complete known original outer kit, never from an arbitrary role/mixed ZIP.
+      const knownOuter = [
+        "workspace/LightUp-Scope-Offline-DRAFT-HOLD.zip",
+        "workspace/SOURCE-MANIFEST.json", "workspace/DIST-MANIFEST.json",
+        "workspace/verify.html", "courier/PRIVATE-encrypted-courier.html",
+        "privacy/disclosure-preflight.html", "privacy/disclosure-recipient-verify.html",
+        "PRIVATE-receive.html", "tools/recipient.js", "tools/recipient.css",
+        "tools/recipient_zip.js", "tools/role_builder.js", "tools/handoff_review.js", "tools/ack_return.js", "tools/version_delta.js", "tools/batch_return.js", "tools/role_pack.py",
+        "tools/recipient.template.html", "tools/package.py", "tools/unpack.py",
+        "START-HERE.html", "README.txt", "manifest.json"
+      ];
+      if (!role && entries.size === knownOuter.length &&
+          knownOuter.every(path => entries.has(path)) &&
+          await sha(entries.get("tools/role_pack.py").bytes) === ROLE_SCRIPT_SHA) {
+        if (current !== generation) return;
+        document.dispatchEvent(new CustomEvent("lightup:full-kit-admitted",
+          {detail:{entries,sha256:acceptedSha}}));
+      }
+      if (role && roleFiles && acceptedSha) {
+        localInspection = {generation: current, profile: role, files: roleFiles.files};
+        saveInspection.hidden = false;
+      }
+      if (role && roleFiles && acceptedSha) {
+        document.dispatchEvent(new CustomEvent("lightup:received-role-admitted", {
+          detail: {profile: role, sha256: acceptedSha, size: accepted.byteLength,
+            sourceOuterSha256: roleFiles.sourceOuterSha256, files: roleFiles.files}
+        }));
+      }
+      sourceInfo.textContent = "REVIEW ONLY · " + (role ? "private role " + role : "full original scope kit") +
+        " · " + entries.size + " canonical members; " + admissible.length +
+        " original component file(s) match pinned SHA-256. Role receipts remain unsigned; " +
+        "Choose exactly the components you need to save. This does not authenticate the sender or approve any disclosure.";
+    } catch (_) {
+      if (current !== generation) return;
+      inventory.replaceChildren(); saveRow.replaceChildren();
+      localInspection = null; saveInspection.hidden = true;
+      sourceInfo.textContent = "HOLD — ZIP structure, role membership, size or original source identity not admitted. " +
+        "Nothing can be extracted from this browser tool. Use the Python source inspector on an independently authenticated copy.";
+    } finally {
+      if (current === generation) examine.disabled = false;
+    }
+  });
+})();
+
+"use strict";
+/* Build native-compatible, source-only private role ZIPs in local browser memory.
+   No network, recipient authentication, real consent, scan, authorization or release. */
+(() => {
+  const el = id => document.getElementById(id);
+  const panel = el("role-builder-panel"), profile = el("role-profile");
+  const buildButton = el("build-role"), saveButton = el("save-built-role");
+  const status = el("role-build-status"), digestOutput = el("role-build-digest");
+  const originalPreview = el("role-original-preview"), saveHandoff = el("save-role-handoff");
+  const batchButton = el("build-all-roles"), batchList = el("batch-role-choices");
+  const batchStatus = el("batch-role-status"), saveBatchDigests = el("save-batch-digests");
+  const profiles = Object.freeze({
+    "privacy-recipient": ["courier/PRIVATE-encrypted-courier.html", "privacy/disclosure-recipient-verify.html"],
+    "privacy-editor": ["courier/PRIVATE-encrypted-courier.html", "privacy/disclosure-preflight.html", "privacy/disclosure-recipient-verify.html"],
+    "scope-reviewer": ["workspace/LightUp-Scope-Offline-DRAFT-HOLD.zip", "workspace/SOURCE-MANIFEST.json", "workspace/DIST-MANIFEST.json", "workspace/verify.html"]
+  });
+  const sourceScript = "tools/role_pack.py", name = "PRIVATE-ROLE-START-HERE.html";
+  const doc = "PRIVATE-ROLE-README.txt", receiptName = "PRIVATE-ROLE-RECEIPT.json";
+  const sourceHead = "0f76f2f90a89f5b64bc8033aa2e2ee6ec2fc49cc";
+  const scriptHash = "43d9b6e915ba991dea63572f01750ef7661261c8b505c5198609029da0894e43";
+  const pin = Object.freeze({
+    "workspace/LightUp-Scope-Offline-DRAFT-HOLD.zip": "60f9086490ecb00d725ae00da173ee6eb843de9d346d4c39b5f4a51a359703de",
+    "workspace/SOURCE-MANIFEST.json": "dc1aa82f9d335e07e142466b1e144b31f97239af4339b5b56279ee1a28235f63",
+    "workspace/DIST-MANIFEST.json": "c8cb4d972d4822939bc542c6b292f72e5e246d772ed32587d3a9ed4fed1f629d",
+    "workspace/verify.html": "d1d0d2ca5a53599d2dc85589c58a4af6eddf7528cb519498185943a5718723c5",
+    "courier/PRIVATE-encrypted-courier.html": "55cbef56f7ca0df32ad5fe65ea6868efc4c7ac2f1abf01ecb1e4d97b7e327edf",
+    "privacy/disclosure-preflight.html": "d23b51b73b39c994edbb681e20b7e501bd037be366488870470bfe68ef34bb24",
+    "privacy/disclosure-recipient-verify.html": "a3b48236e0b297f1a903f2d02ba8fdedf4ea63b03109089a96f116cab1011483"
+  });
+  const encode = value => new TextEncoder().encode(value);
+  const authority = {client_consent: false, operator_consent: false, grant: false,
+    scan: false, deploy: false, release: false};
+  const sha = async bytes => Array.from(new Uint8Array(
+    await crypto.subtle.digest("SHA-256", bytes))).map(v => v.toString(16).padStart(2, "0")).join("");
+  let currentSource = null, revision = 0, built = null, batchRoles = null;
+  const clear = () => {
+    revision++; currentSource = null; built = null; batchRoles = null;
+    batchList.replaceChildren(); batchStatus.textContent = "";
+    batchButton.disabled = true; saveBatchDigests.hidden = true;
+    buildButton.disabled = true; saveButton.hidden = true; saveHandoff.hidden = true; originalPreview.replaceChildren(); panel.hidden = true;
+    document.dispatchEvent(new Event("lightup:sender-note-revoked"));
+    status.textContent = ""; digestOutput.textContent = "";
+  };
+  document.addEventListener("lightup:selection-reset", clear);
+  document.addEventListener("lightup:full-kit-admitted", event => {
+    clear();
+    const detail = event.detail;
+    if (!detail || !(detail.entries instanceof Map) ||
+        typeof detail.sha256 !== "string" || !/^[0-9a-f]{64}$/.test(detail.sha256)) return;
+    currentSource = detail;
+    panel.hidden = false;
+    buildButton.disabled = false; batchButton.disabled = false;
+    status.textContent = "FULL SOURCE MATCH / REVIEW ONLY. Choose a least-disclosure role; no person or permission is authenticated.";
+  });
+  profile.addEventListener("change", () => {
+    revision++; built = null; batchRoles = null;
+    batchList.replaceChildren(); batchStatus.textContent = ""; saveBatchDigests.hidden = true;
+    saveButton.hidden = true; saveHandoff.hidden = true; originalPreview.replaceChildren(); digestOutput.textContent = "";
+    document.dispatchEvent(new Event("lightup:sender-note-revoked"));
+    status.textContent = "Selection changed. Build a fresh PRIVATE role file.";
+  });
+  const note = role => [
+    "LightUp PRIVATE HUMAN scope handoff — " + role,
+    "INCUBATE M3/M7 PLAN/LAB ONLY — DRAFT/HOLD — REVIEW ONLY.",
+    "This bundle contains unchanged ORIGINAL source tools for exactly one human role,",
+    "not access credentials, a signed receipt, proof of privacy, or permission.",
+    "No bundled tool automatically contacts assets, grants work or performs scans.",
+    "First verify this ENTIRE original ZIP against a SHA-256 you obtained through an",
+    "authenticated, independent channel: python3 tools/role_pack.py inspect",
+    "  /path/to/received.zip --expected-sha256 <64-lowercase-hex>",
+    "Only then run: python3 tools/role_pack.py unpack RECEIVED.zip",
+    "  PRIVATE_PARENT/NEW_DIR --expected-sha256 ROLE-ZIP-SHA256",
+    "Use only a user-owned private parent; open the offline start page manually.",
+    "The encrypted HUMAN courier needs a strong unique passphrase exchanged separately.",
+    "A matching digest and encryption do not authenticate a sender or recipient.",
+    "Human review, consent and all LightUp original release/CI/security gates remain.",
+    ""
+  ].join("\n");
+  const landing = role => {
+    const items = profiles[role].map(path => "<li><a href='" + path + "'>" + path + "</a></li>").join("");
+    return "<!doctype html><html lang='en'><head><meta charset='utf-8'>" +
+      "<meta name='viewport' content='width=device-width,initial-scale=1'>" +
+      "<meta http-equiv='Content-Security-Policy' content=\"default-src 'none';" +
+      "style-src 'unsafe-inline';connect-src 'none';object-src 'none';" +
+      "frame-src 'none';form-action 'none';base-uri 'none'\">" +
+      "<title>LightUp PRIVATE role handoff · DRAFT/HOLD</title>" +
+      "<style>body{font:1rem/1.65 system-ui,sans-serif;max-width:760px;" +
+      "margin:3rem auto;padding:1rem;background:#101b2a;color:#f2f6ff}" +
+      "section{padding:1rem;border:1px solid #75839a;border-radius:10px}" +
+      "a{color:#8fdaff}strong{color:#ffd09a}</style></head><body>" +
+      "<h1>LightUp PRIVATE HUMAN handoff — " + role + "</h1>" +
+      "<p><strong>INCUBATE · M3/M7 PLAN/LAB ONLY · DRAFT/HOLD.</strong></p>" +
+      "<p>Verify the entire package against a separately authenticated expected " +
+      "SHA-256 before extracting anything. This receipt is unsigned and proves " +
+      "no sender identity, client/operator approval, recipient access or authority.</p>" +
+      "<section><h2>Source-pinned original components</h2><ul>" + items + "</ul>" +
+      "<p>The original files are not modified or executed automatically. " +
+      "Share each only with its independently authenticated, intended reviewer.</p></section>" +
+      "<p>Manual private sharing, independent client/operator consent, original " +
+      "security reviews, approved scope and HUMAN GO are required before any real assessment.</p>" +
+      "</body></html>";
+  };
+  const canonical = (value, depth = 0) => {
+    if (value === null || typeof value !== "object") return JSON.stringify(value);
+    const keys = Array.isArray(value) ? value.map((_v,i) => i) : Object.keys(value).sort();
+    if (!keys.length) return Array.isArray(value) ? "[]" : "{}";
+    const pad = "  ".repeat(depth + 1);
+    const lines = keys.map(k => pad + (Array.isArray(value) ? "" : JSON.stringify(k) + ": ") +
+      canonical(value[k], depth + 1));
+    return (Array.isArray(value) ? "[" : "{") + "\n" + lines.join(",\n") +
+      "\n" + "  ".repeat(depth) + (Array.isArray(value) ? "]" : "}");
+  };
+  function crc32(bytes) {
+    let crc = 0xffffffff;
+    for (const byte of bytes) {
+      crc ^= byte;
+      for (let k=0; k<8; k++) crc = (crc >>> 1) ^ (crc & 1 ? 0xedb88320 : 0);
+    }
+    return (crc ^ 0xffffffff) >>> 0;
+  }
+  function storedZip(parts) {
+    const items = [...parts].sort((a,b) => a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0);
+    if (!items.length || items.length > 8) throw Error("Invalid role member count");
+    const dosDate = ((2026 - 1980) << 9) | (10 << 5) | 20;
+    const encoder = new TextEncoder();
+    let offset = 0;
+    const locals = [], central = [];
+    const u16 = (dv,pos,n) => dv.setUint16(pos,n,true);
+    const u32 = (dv,pos,n) => dv.setUint32(pos,n>>>0,true);
+    for (const [path,bytes] of items) {
+      if (!/^[A-Za-z0-9_.-]+(?:\/[A-Za-z0-9_.-]+)*$/.test(path) ||
+          !(bytes instanceof Uint8Array) || bytes.byteLength > 1_000_000) {
+        throw Error("Unsafe role ZIP member");
+      }
+      const filename = encoder.encode(path), checksum = crc32(bytes);
+      const local = new Uint8Array(30 + filename.length + bytes.byteLength);
+      const lv = new DataView(local.buffer);
+      u32(lv,0,0x04034b50); u16(lv,4,20); u16(lv,10,0); u16(lv,12,dosDate);
+      u32(lv,14,checksum); u32(lv,18,bytes.byteLength); u32(lv,22,bytes.byteLength);
+      u16(lv,26,filename.length);
+      local.set(filename,30); local.set(bytes,30+filename.length);
+      locals.push(local);
+      const dir = new Uint8Array(46 + filename.length), dv = new DataView(dir.buffer);
+      u32(dv,0,0x02014b50); u16(dv,4,0x0314); u16(dv,6,20);
+      u16(dv,12,0); u16(dv,14,dosDate);
+      u32(dv,16,checksum); u32(dv,20,bytes.byteLength); u32(dv,24,bytes.byteLength);
+      u16(dv,28,filename.length); u32(dv,38,(0o100600 << 16)>>>0);
+      u32(dv,42,offset); dir.set(filename,46); central.push(dir);
+      offset += local.length;
+    }
+    const centralSize = central.reduce((sum,x)=>sum+x.length,0);
+    const total = offset + centralSize + 22;
+    if (total > 2_000_000) throw Error("Role ZIP exceeds private limit");
+    const eocd = new Uint8Array(22), ev = new DataView(eocd.buffer);
+    u32(ev,0,0x06054b50); u16(ev,8,items.length); u16(ev,10,items.length);
+    u32(ev,12,centralSize); u32(ev,16,offset);
+    const zip = new Uint8Array(total);
+    let cursor = 0;
+    for (const chunk of [...locals,...central,eocd]) {
+      zip.set(chunk,cursor); cursor+=chunk.length;
+    }
+    return zip;
+  }
+  // Explicitly revoke temporary local download URLs on navigation.
+  const activeDownloadURLs = new Set();
+  window.addEventListener("pagehide", () => {
+    for (const url of activeDownloadURLs) URL.revokeObjectURL(url);
+    activeDownloadURLs.clear();
+  });
+
+  const save = (bytes, filename) => {
+    const url = URL.createObjectURL(new Blob([bytes], {type:"application/octet-stream"}));
+    activeDownloadURLs.add(url);
+    const anchor = document.createElement("a");
+    anchor.href = url; anchor.download = filename; anchor.rel = "noopener";
+    document.body.append(anchor); anchor.click(); anchor.remove();
+    setTimeout(() => { URL.revokeObjectURL(url); activeDownloadURLs.delete(url); }, 30000);
+  };
+  // One admission path for both a single HUMAN role and complete local batches.
+  async function makeRole(role, current) {
+      if (!currentSource || !crypto?.subtle) throw Error("No verified local original kit");
+      if (!Object.hasOwn(profiles, role)) throw Error("Unsupported role");
+      const entries = currentSource.entries, outerSha = currentSource.sha256;
+      const required = Object.keys(pin);
+      if (required.some(key => !entries.has(key)) || !entries.has(sourceScript)) {
+        throw Error("Original source set incomplete");
+      }
+      const original = new Map();
+      for (const path of profiles[role]) {
+        const bytes = entries.get(path).bytes;
+        if (await sha(bytes) !== pin[path]) throw Error("Pinned original source drift: " + path);
+        if (current !== revision) return;
+        original.set(path,bytes);
+      }
+      const script = entries.get(sourceScript).bytes;
+      if (await sha(script) !== scriptHash) throw Error("Unknown original native role inspector");
+      if (current !== revision) return;
+      const parts = new Map(original);
+      parts.set(name,encode(landing(role)));
+      parts.set(doc,encode(note(role)));
+      parts.set(sourceScript,script);
+      const rows = [];
+      for (const [path,bytes] of [...parts].sort((a,b)=>a[0]<b[0]?-1:a[0]>b[0]?1:0)) {
+        rows.push({path,bytes:bytes.byteLength,sha256:await sha(bytes)});
+        if (current !== revision) return;
+      }
+      const receipt = {
+        format:"lightup.scope_private_role_handoff.v1",
+        posture:"INCUBATE_M3_M7_DRAFT_HOLD",
+        profile:role,source_head:sourceHead,source_outer_sha256:outerSha,
+        authenticated_sender:false,release:false,authority,files:rows,
+        note:"UNSIGNED PRIVATE REVIEW ONLY; no client or operator consent or release."
+      };
+      parts.set(receiptName,encode(canonical(receipt)+"\n"));
+      const archive = storedZip(parts);
+      const digest = await sha(archive);
+      if (current !== revision) return;
+      // The SAME browser intake parser must admit every locally created role
+      // before the file can be saved. Never advertise unchecked ZIP bytes.
+      const handoff = {bytes:archive,role,sha256:digest,sourceSha256:outerSha,check:null};
+      document.dispatchEvent(new CustomEvent("lightup:role-build-inspection", {detail:handoff}));
+      if (!handoff.check || await handoff.check !== true) {
+        throw Error("Locally produced role ZIP did not pass original receiver admission");
+      }
+      if (current !== revision) return;
+      const originalRows = rows.filter(row => Object.hasOwn(pin,row.path));
+      return {archive,role,digest,outerSha,rows,originalRows};
+  }
+
+  buildButton.addEventListener("click", async () => {
+    const current = ++revision;
+    built = null; batchRoles = null; batchList.replaceChildren();
+    batchStatus.textContent = ""; saveBatchDigests.hidden = true;
+    saveButton.hidden = true; saveHandoff.hidden = true; originalPreview.replaceChildren();
+    document.dispatchEvent(new Event("lightup:sender-note-revoked"));
+    buildButton.disabled = true; digestOutput.textContent = "";
+    try {
+      const result = await makeRole(profile.value,current);
+      if (!result) return;
+      const {archive,role,digest,outerSha,rows,originalRows} = result;
+      built = {bytes:archive,role,digest,sourceSha256:outerSha,originalRows,
+        allRows:rows.map(row => ({path:row.path,bytes:row.bytes,sha256:row.sha256}))};
+      for (const row of originalRows) {
+        const li = document.createElement("li");
+        li.textContent = row.path + " · " + row.bytes.toLocaleString() + " bytes · SHA-256 " + row.sha256;
+        originalPreview.append(li);
+      }
+      digestOutput.textContent = "NEW local " + role + " ZIP · " + archive.length +
+        " bytes · SHA-256: " + digest +
+        " · source-only / unsigned / REVIEW ONLY. Exchange the digest through a separately authenticated channel.";
+      status.textContent = "Private role built in local memory. Save manually; encrypt confidential handoffs in the separate original courier.";
+      saveButton.hidden = false; saveHandoff.hidden = false;
+    } catch (_) {
+      if (current === revision) {
+        status.textContent = "HOLD — original source identity or browser role packaging unavailable.";
+      }
+    } finally {
+      if (current === revision) buildButton.disabled = false;
+    }
+  });
+  batchButton.addEventListener("click", async () => {
+    const current = ++revision;
+    built = null; batchRoles = null;
+    saveButton.hidden = true; saveHandoff.hidden = true;
+    originalPreview.replaceChildren(); digestOutput.textContent = "";
+    batchList.replaceChildren(); saveBatchDigests.hidden = true;
+    document.dispatchEvent(new Event("lightup:sender-note-revoked"));
+    buildButton.disabled = true; batchButton.disabled = true;
+    batchStatus.textContent = "Preparing all three least-disclosure source roles locally...";
+    try {
+      if (!currentSource || !crypto?.subtle) throw Error("No admitted source");
+      const results = [];
+      for (const role of Object.keys(profiles)) {
+        const item = await makeRole(role, current);
+        if (!item || current !== revision) return;
+        results.push({bytes:item.archive,role:item.role,digest:item.digest,
+          sourceSha256:item.outerSha,originalRows:item.originalRows,
+          allRows:item.rows.map(row=>({...row}))});
+      }
+      if (current !== revision || results.length !== 3) return;
+      batchRoles = results;
+      document.dispatchEvent(new CustomEvent("lightup:batch-roles-prepared",{detail:{
+        sourceSha256:currentSource.sha256,
+        roles:results.map(row=>({profile:row.role,sha256:row.digest,bytes:row.bytes.length}))
+      }}));
+      for (const item of results) {
+        const row = document.createElement("div");
+        const description = document.createElement("p");
+        description.textContent = item.role + " · " + item.bytes.length.toLocaleString() +
+          " bytes · SHA-256 " + item.digest + " · DRAFT/HOLD";
+        const download = document.createElement("button");
+        download.type = "button";
+        download.textContent = "Save ONLY " + item.role + " source ZIP";
+        download.addEventListener("click", () => {
+          if (current !== revision || batchRoles !== results || !currentSource) return;
+          if (!window.confirm("Download only this SOURCE ZIP? Unsigned, unencrypted and NOT consent.")) return;
+          save(item.bytes, "PRIVATE-" + item.role + "-DRAFT-HOLD.zip");
+        });
+        const noteButton = document.createElement("button");
+        noteButton.type = "button";
+        noteButton.textContent = "Save separate HUMAN note for " + item.role;
+        noteButton.addEventListener("click", async () => {
+          if (current !== revision || batchRoles !== results || !currentSource) return;
+          if (!window.confirm("Save UNSIGNED sender note for only " + item.role +
+              "? Authenticate the recipient and channel independently.")) return;
+          const bytes = makeSenderNote(item), noteSha256 = await sha(bytes);
+          if (current !== revision || batchRoles !== results || !currentSource) return;
+          document.dispatchEvent(new CustomEvent("lightup:sender-note-ready",{detail:{
+            profile:item.role,sha256:item.digest,size:item.bytes.length,
+            sourceOuterSha256:item.sourceSha256,noteSha256,
+            files:item.allRows.map(row=>({...row}))
+          }}));
+          save(bytes,"LightUp-PRIVATE-" + item.role + "-HUMAN-HANDOFF.txt");
+        });
+        row.append(description,download,noteButton);batchList.append(row);
+      }
+      batchStatus.textContent = "Three original-source packages ready separately. Review each recipient before any transfer.";
+      saveBatchDigests.hidden = false;
+    } catch (_) {
+      if (current === revision) {
+        batchRoles = null; batchList.replaceChildren(); saveBatchDigests.hidden = true;
+        batchStatus.textContent = "HOLD — role packaging failed original byte admission. Nothing can be downloaded.";
+      }
+    } finally {
+      if (current === revision) {buildButton.disabled = false;batchButton.disabled = false;}
+    }
+  });
+
+  saveBatchDigests.addEventListener("click", () => {
+    if (!batchRoles || batchRoles.length !== 3 || !currentSource) return;
+    if (!window.confirm("Save UNSIGNED source-only role SHA digests? Use a separate authenticated HUMAN channel.")) return;
+    const lines = [
+      "LIGHTUP PRIVATE ROLE DIGEST SHEET — UNSIGNED REVIEW ONLY",
+      "format: lightup.scope_private_role_digest_sheet.v1",
+      "source-zip-sha256: " + currentSource.sha256,
+      "posture: INCUBATE_M3_M7_DRAFT_HOLD",
+      "authenticated_sender: false",
+      "client_consent: false", "operator_consent: false",
+      "grant: false", "release: false", ""
+    ];
+    for (const row of batchRoles) {
+      lines.push("role: " + row.role,
+        "source-only-zip-bytes: " + row.bytes.length,
+        "source-only-zip-sha256: " + row.digest,
+        "original-components: " + row.originalRows.length, "");
+    }
+    lines.push("No credentials, customer data, or original content are included.",
+      "Sender and recipient identity, source, confidentiality, authorization",
+      "and consent require independent HUMAN review.", "");
+    save(encode(lines.join("\n")),"LightUp-PRIVATE-role-digests-REVIEW-ONLY.txt");
+  });
+
+  // A HUMAN checksum handoff note for a separately authenticated channel.
+  // Never embed this unsigned note as self-authentication inside the ZIP.
+  // Exact original HUMAN note bytes for one role; shared by single/batch sender.
+  function makeSenderNote(pkg) {
+    const lines = [
+      "LIGHTUP PRIVATE HUMAN ROLE HANDOFF — REVIEW ONLY / DRAFT HOLD",
+      "format: lightup.scope_private_human_sender_note.v1",
+      "role: " + pkg.role,
+      "original-source-zip-sha256: " + pkg.sourceSha256,
+      "role-zip-sha256: " + pkg.digest,
+      "role-zip-bytes: " + pkg.bytes.length,
+      "original-source-components: " + pkg.originalRows.length,
+      "",
+      "Included unchanged original source components:"
+    ];
+    for (const row of pkg.originalRows) {
+      lines.push(row.path + " | " + row.bytes + " bytes | sha256=" + row.sha256);
+    }
+    lines.push("", "UNSIGNED. No consent, authorization, origin, grant, release or approval.",
+      "Independently authenticate the recipient and a SEPARATE trusted channel.",
+      "Share the expected ZIP digest through that channel, NOT as self-proof",
+      "attached to the same untrusted archive. Encrypt private material with",
+      "the separately sourced original HUMAN courier before transferring.",
+      "Manual review and original LightUp authorization/release gates remain.", "");
+    return encode(lines.join("\n"));
+  }
+
+  saveHandoff.addEventListener("click", async () => {
+    if (!built || !currentSource) return;
+    if (!window.confirm("Save an UNSIGNED HUMAN handoff note? Sender/recipient identity and consent are NOT verified.")) return;
+    const pending = built, current = revision;
+    const noteBytes = makeSenderNote(pending);
+    const noteSha256 = await sha(noteBytes);
+    if (current !== revision || pending !== built || !currentSource) return;
+    document.dispatchEvent(new CustomEvent("lightup:sender-note-ready", {detail: {
+      profile: pending.role, sha256: pending.digest, size: pending.bytes.length,
+      sourceOuterSha256: pending.sourceSha256, noteSha256,
+      files: pending.allRows.map(row => ({...row}))
+    }}));
+    save(noteBytes, "LightUp-PRIVATE-" + pending.role + "-HUMAN-HANDOFF.txt");
+  });
+
+  saveButton.addEventListener("click", () => {
+    if (!built || !currentSource) return;
+    if (!window.confirm("SAVE a SOURCE-ONLY unsigned role ZIP? This does NOT grant consent, prove identity or encrypt confidential material.")) return;
+    save(built.bytes,"PRIVATE-" + built.role + "-DRAFT-HOLD.zip");
+  });
+})();
+
+"use strict";
+// Offline HUMAN sender-note reconciliation against a separately SHA-verified,
+// fully source-admitted ORIGINAL role ZIP. No grants, identity or consent.
+(() => {
+  const el = id => document.getElementById(id);
+  const panel = el("received-handoff-panel"), input = el("received-handoff-note");
+  const separate = el("handoff-separate-channel"), compare = el("compare-handoff");
+  const feedback = el("handoff-status"), acknowledgment = el("save-handoff-ack");
+  const digestOutput = el("handoff-digest");
+  const knownOriginals = new Set([
+    "workspace/LightUp-Scope-Offline-DRAFT-HOLD.zip",
+    "workspace/SOURCE-MANIFEST.json", "workspace/DIST-MANIFEST.json",
+    "workspace/verify.html", "courier/PRIVATE-encrypted-courier.html",
+    "privacy/disclosure-preflight.html", "privacy/disclosure-recipient-verify.html"
+  ]);
+  let admitted = null, accepted = null, generation = 0;
+
+  function clearAll() {
+    generation++;
+    admitted = null; accepted = null; input.value = ""; separate.checked = false;
+    panel.hidden = true; acknowledgment.hidden = true; compare.disabled = true;
+    feedback.textContent = ""; feedback.dataset.state = "idle";
+    digestOutput.textContent = "";
+  }
+  function invalidate() {
+    generation++; accepted = null; acknowledgment.hidden = true;
+    feedback.dataset.state = "idle";
+    digestOutput.textContent = "";
+    feedback.textContent = "Unsigned sender note not yet compared; no identity, consent or authority established.";
+    compare.disabled = !admitted;
+  }
+  document.addEventListener("lightup:selection-reset", clearAll);
+  document.addEventListener("lightup:received-role-admitted", event => {
+    clearAll();
+    const detail = event.detail;
+    if (!detail || !["privacy-recipient","privacy-editor","scope-reviewer"].includes(detail.profile) ||
+        !/^[0-9a-f]{64}$/.test(detail.sha256) ||
+        !/^[0-9a-f]{64}$/.test(detail.sourceOuterSha256) ||
+        !Number.isSafeInteger(detail.size) || detail.size < 1 ||
+        !Array.isArray(detail.files)) return;
+    // Source admission and byte validation occurred in the original receiver.
+    admitted = {profile: detail.profile, sha256: detail.sha256,
+      sourceOuterSha256: detail.sourceOuterSha256, size: detail.size,
+      files: detail.files.map(row => ({path:row.path,bytes:row.bytes,sha256:row.sha256}))};
+    panel.hidden = false;
+    invalidate();
+  });
+  input.addEventListener("change", invalidate);
+  separate.addEventListener("change", invalidate);
+
+  function expectedNote(item) {
+    const original = item.files.filter(row => knownOriginals.has(row.path));
+    const lines = [
+      "LIGHTUP PRIVATE HUMAN ROLE HANDOFF — REVIEW ONLY / DRAFT HOLD",
+      "format: lightup.scope_private_human_sender_note.v1",
+      "role: " + item.profile,
+      "original-source-zip-sha256: " + item.sourceOuterSha256,
+      "role-zip-sha256: " + item.sha256,
+      "role-zip-bytes: " + item.size,
+      "original-source-components: " + original.length,
+      "",
+      "Included unchanged original source components:"
+    ];
+    for (const row of original) {
+      lines.push(row.path + " | " + row.bytes + " bytes | sha256=" + row.sha256);
+    }
+    lines.push("", "UNSIGNED. No consent, authorization, origin, grant, release or approval.",
+      "Independently authenticate the recipient and a SEPARATE trusted channel.",
+      "Share the expected ZIP digest through that channel, NOT as self-proof",
+      "attached to the same untrusted archive. Encrypt private material with",
+      "the separately sourced original HUMAN courier before transferring.",
+      "Manual review and original LightUp authorization/release gates remain.", "");
+    return new TextEncoder().encode(lines.join("\n"));
+  }
+  const hex = bytes => Array.from(new Uint8Array(bytes), x => x.toString(16).padStart(2,"0")).join("");
+  function save(bytes, filename) {
+    const url = URL.createObjectURL(new Blob([bytes], {type: "application/octet-stream"}));
+    const a = document.createElement("a");
+    a.href = url; a.download = filename; a.rel = "noopener";
+    document.body.append(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 30000);
+  }
+  compare.addEventListener("click", async () => {
+    const current = ++generation;
+    const hold = () => {
+      if (current !== generation) return;
+      accepted = null; acknowledgment.hidden = true;
+      feedback.dataset.state = "hold";
+      feedback.textContent = "HOLD — original role bytes and received HUMAN note do not agree, or note is not separately sourced. No handoff accepted.";
+      compare.disabled = false;
+    };
+    accepted = null; acknowledgment.hidden = true; compare.disabled = true;
+    digestOutput.textContent = ""; feedback.dataset.state = "idle";
+    try {
+      const f = input.files && input.files[0];
+      if (!admitted || !separate.checked || !f || input.files.length !== 1 ||
+          !/\.txt$/i.test(f.name) || !Number.isSafeInteger(f.size) ||
+          f.size < 200 || f.size > 4096 || !crypto?.subtle) {
+        hold(); return;
+      }
+      feedback.textContent = "Comparing exact source-bound note bytes locally...";
+      const snapshot = await f.arrayBuffer();
+      if (current !== generation) return;
+      if (snapshot.byteLength !== f.size) {hold();return;}
+      const wanted = expectedNote(admitted);
+      const got = new Uint8Array(snapshot);
+      if (wanted.byteLength !== got.byteLength ||
+          wanted.some((byte, index) => byte !== got[index])) {hold();return;}
+      const noteSha = hex(await crypto.subtle.digest("SHA-256",snapshot));
+      if (current !== generation) return;
+      accepted = {generation: current, received: admitted, noteSha};
+      feedback.dataset.state = "match";
+      feedback.textContent = "SOURCE+NOTE MATCH / REVIEW ONLY — exact role and original byte receipt agree. Sender/recipient identities, separate-channel authenticity and legal permission remain UNVERIFIED.";
+      digestOutput.textContent = "Role ZIP SHA-256 " + admitted.sha256 +
+        " · unsigned HUMAN note SHA-256 " + noteSha;
+      acknowledgment.hidden = false;
+    } catch (_) {hold();}
+    finally {if (current === generation) compare.disabled = false;}
+  });
+  acknowledgment.addEventListener("click", () => {
+    if (!accepted || accepted.generation !== generation || !separate.checked || !admitted) return;
+    if (!window.confirm("Save PRIVATE, UNSIGNED local recipient byte-match acknowledgement? This is NOT authorization, sender identity or consent.")) return;
+    const out = {
+      format:"lightup.scope_private_human_recipient_review.v1",
+      posture:"INCUBATE_M3_M7_DRAFT_HOLD",decision:"REVIEW_ONLY",
+      authenticated_sender:false,authenticated_recipient:false,
+      client_consent:false,operator_consent:false,grant:false,release:false,
+      role:admitted.profile,received_zip_sha256:admitted.sha256,
+      received_zip_bytes:admitted.size,original_source_sha256:admitted.sourceOuterSha256,
+      human_sender_note_sha256:accepted.noteSha,
+      files:admitted.files.map(row=>({...row})),
+      note:"UNSIGNED local offline equality only. HUMAN must independently authenticate recipient, sender, consent and transfer."
+    };
+    save(new TextEncoder().encode(JSON.stringify(out,null,2)+"\n"),
+      "LightUp-PRIVATE-role-receipt-REVIEW-ONLY.json");
+  });
+})();
+
+"use strict";
+// Offline PRIVATE return-receipt comparison for the original HUMAN sender.
+// Canonical byte equality only, never identity, permission or release.
+(() => {
+  const el = id => document.getElementById(id);
+  const panel = el("return-ack-panel"), input = el("return-ack-file");
+  const separate = el("return-ack-separate-channel"), button = el("compare-return-ack");
+  const status = el("return-ack-status"), saveButton = el("save-return-review");
+  let prepared = null, accepted = null, generation = 0;
+  function clear() {
+    generation++; prepared = null; accepted = null; input.value = "";
+    separate.checked = false; panel.hidden = true;
+    button.disabled = true; saveButton.hidden = true;
+    status.textContent = ""; status.dataset.state = "idle";
+  }
+  function invalidate() {
+    generation++; accepted = null; saveButton.hidden = true;
+    status.dataset.state = "idle";
+    status.textContent = "No returned HUMAN recipient acknowledgement compared.";
+    button.disabled = !prepared;
+  }
+  document.addEventListener("lightup:selection-reset", clear);
+  document.addEventListener("lightup:sender-note-revoked", clear);
+  document.addEventListener("lightup:sender-note-ready", event => {
+    clear();
+    const d = event.detail;
+    if (!d || !["privacy-recipient","privacy-editor","scope-reviewer"].includes(d.profile) ||
+        !Number.isSafeInteger(d.size) || d.size < 1 ||
+        !Array.isArray(d.files) || d.files.length < 4 || d.files.length > 7 ||
+        ![d.sha256,d.sourceOuterSha256,d.noteSha256].every(v =>
+          typeof v === "string" && /^[0-9a-f]{64}$/.test(v))) return;
+    prepared = {profile:d.profile,size:d.size,sha256:d.sha256,
+      sourceOuterSha256:d.sourceOuterSha256,noteSha256:d.noteSha256,
+      files:d.files.map(row=>({path:row.path,bytes:row.bytes,sha256:row.sha256}))};
+    panel.hidden = false; invalidate();
+  });
+  input.addEventListener("change",invalidate);
+  separate.addEventListener("change",invalidate);
+
+  function expectedAcknowledgment(item) {
+    // Exact canonical output of the original browser's recipient handoff desk.
+    return new TextEncoder().encode(JSON.stringify({
+      format:"lightup.scope_private_human_recipient_review.v1",
+      posture:"INCUBATE_M3_M7_DRAFT_HOLD",decision:"REVIEW_ONLY",
+      authenticated_sender:false,authenticated_recipient:false,
+      client_consent:false,operator_consent:false,grant:false,release:false,
+      role:item.profile,received_zip_sha256:item.sha256,
+      received_zip_bytes:item.size,original_source_sha256:item.sourceOuterSha256,
+      human_sender_note_sha256:item.noteSha256,
+      files:item.files.map(row=>({...row})),
+      note:"UNSIGNED local offline equality only. HUMAN must independently authenticate recipient, sender, consent and transfer."
+    },null,2)+"\n");
+  }
+  const sha = async bytes => Array.from(new Uint8Array(
+    await crypto.subtle.digest("SHA-256",bytes)), b=>b.toString(16).padStart(2,"0")).join("");
+  button.addEventListener("click",async () => {
+    const current = ++generation;
+    accepted = null; saveButton.hidden = true; button.disabled = true;
+    status.dataset.state = "idle";
+    const hold = () => {
+      if (current !== generation) return;
+      accepted = null; saveButton.hidden = true; button.disabled = false;
+      status.dataset.state = "hold";
+      status.textContent = "HOLD — returned unsigned review does not match the original locally built role ZIP and HUMAN sender note.";
+    };
+    try {
+      const f = input.files && input.files[0];
+      if (!prepared || !separate.checked || !f || input.files.length !== 1 ||
+          !/\.json$/i.test(f.name) || !Number.isSafeInteger(f.size) ||
+          f.size < 200 || f.size > 12000 || !crypto?.subtle) {hold();return;}
+      status.textContent = "Comparing exact original role and HUMAN note fingerprints locally...";
+      const received = new Uint8Array(await f.arrayBuffer());
+      if (current !== generation) return;
+      const reference = expectedAcknowledgment(prepared);
+      if (received.byteLength !== f.size || received.byteLength !== reference.byteLength ||
+          reference.some((byte,i) => byte !== received[i])) {hold();return;}
+      const receiptSha256 = await sha(received);
+      if (current !== generation) return;
+      accepted = {generation:current,receiptSha256,prepared};
+      document.dispatchEvent(new CustomEvent("lightup:return-ack-admitted",{detail:{
+        profile:prepared.profile,roleSha256:prepared.sha256,
+        sourceSha256:prepared.sourceOuterSha256,
+        senderNoteSha256:prepared.noteSha256,receiptSha256
+      }}));
+      status.dataset.state = "match";
+      status.textContent = "RETURN RECEIPT BYTE MATCH / REVIEW ONLY — exact original ZIP, HUMAN note and source fingerprints agree. No sender/recipient identity, consent or authorization has been established.";
+      saveButton.hidden = false;
+    } catch (_) {hold();}
+    finally {if (current === generation) button.disabled = false;}
+  });
+  saveButton.addEventListener("click", () => {
+    if (!accepted || accepted.generation !== generation || !prepared || !separate.checked) return;
+    if (!window.confirm("Save an UNSIGNED source-only HUMAN return summary? This does not authorize actions.")) return;
+    const out = {
+      format:"lightup.scope_private_human_return_summary.v1",
+      status:"REVIEW_ONLY",posture:"INCUBATE_M3_M7_DRAFT_HOLD",
+      verified_identity:false,client_consent:false,operator_consent:false,
+      grant:false,release:false,
+      profile:prepared.profile,original_zip_sha256:prepared.sha256,
+      original_source_sha256:prepared.sourceOuterSha256,
+      original_human_note_sha256:prepared.noteSha256,
+      received_human_ack_sha256:accepted.receiptSha256,
+      note:"UNSIGNED byte-equality only. All HUMAN consent and release gates remain."
+    };
+    const blob = new Blob([JSON.stringify(out,null,2)+"\n"], {type:"application/octet-stream"});
+    const url = URL.createObjectURL(blob), a = document.createElement("a");
+    a.href=url; a.download="LightUp-PRIVATE-HUMAN-return-REVIEW-ONLY.json";
+    a.rel="noopener"; document.body.append(a); a.click(); a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),30000);
+  });
+})();
+
+"use strict";
+/* Offline source-only original-kit version comparison. Never grants authority. */
+(() => {
+  const el = id => document.getElementById(id);
+  const panel = el("version-delta-panel"), oldFile = el("version-delta-file");
+  const oldDigest = el("version-delta-sha"), inspect = el("version-delta-compare");
+  const status = el("version-delta-status"), inventory = el("version-delta-inventory");
+  const saveReport = el("version-delta-save");
+  const mandatory = [
+    "workspace/LightUp-Scope-Offline-DRAFT-HOLD.zip",
+    "workspace/SOURCE-MANIFEST.json","workspace/DIST-MANIFEST.json",
+    "workspace/verify.html","courier/PRIVATE-encrypted-courier.html",
+    "privacy/disclosure-preflight.html","privacy/disclosure-recipient-verify.html"
+  ];
+  let current = null, result = null, revision = 0;
+  const digest = async bytes => Array.from(new Uint8Array(
+    await crypto.subtle.digest("SHA-256",bytes)),
+    b => b.toString(16).padStart(2,"0")).join("");
+  const validHex = value => typeof value === "string" && /^[0-9a-f]{64}$/.test(value);
+  function reset(hide = true) {
+    revision++; result = null;
+    status.dataset.state = "idle"; status.textContent = "";
+    inventory.replaceChildren(); saveReport.hidden = true;
+    inspect.disabled = !current;
+    if (hide) {
+      current = null; panel.hidden = true; oldFile.value = ""; oldDigest.value = "";
+    }
+  }
+  document.addEventListener("lightup:selection-reset", () => reset());
+  document.addEventListener("lightup:full-kit-admitted", event => {
+    reset();
+    const detail = event.detail;
+    if (!detail || !(detail.entries instanceof Map) ||
+        !validHex(detail.sha256) || mandatory.some(name=>!detail.entries.has(name))) return;
+    current = {entries:detail.entries,sha256:detail.sha256};
+    panel.hidden = false; inspect.disabled = false;
+    status.textContent = "Current original source-only kit admitted. Supply a separate authenticated SHA-256 for the earlier kit.";
+  });
+  for (const node of [oldFile, oldDigest]) {
+    node.addEventListener(node === oldFile ? "change" : "input", () => reset(false));
+  }
+  const sorted = items => items.sort((a,b) => a.path < b.path ? -1 : a.path > b.path ? 1 : 0);
+  async function inventoryOf(entries, revisionAtStart) {
+    if (!(entries instanceof Map) || entries.size < mandatory.length ||
+        mandatory.some(name => !entries.has(name)) || entries.size > 64) {
+      throw Error("Source-only ZIP missing original scope members");
+    }
+    const rows = [];
+    for (const [path, entry] of entries) {
+      if (revision !== revisionAtStart) return null;
+      if (!entry || !(entry.bytes instanceof Uint8Array) ||
+          !Number.isSafeInteger(entry.size) || entry.size !== entry.bytes.length) {
+        throw Error("Malformed member identity");
+      }
+      rows.push({path, bytes:entry.size, sha256:await digest(entry.bytes)});
+    }
+    return sorted(rows);
+  }
+  inspect.addEventListener("click", async () => {
+    const token = ++revision;
+    inspect.disabled = true; result = null;
+    saveReport.hidden = true; inventory.replaceChildren();
+    status.dataset.state = "idle";
+    const hold = () => {
+      if (token !== revision) return;
+      result = null; inventory.replaceChildren();
+      saveReport.hidden = true; status.dataset.state = "hold";
+      status.textContent = "HOLD — earlier source-only ZIP or separately supplied digest was not admitted. Nothing compared.";
+    };
+    try {
+      const file = oldFile.files && oldFile.files[0];
+      const expected = oldDigest.value.trim();
+      if (!current || !crypto?.subtle || !validHex(expected) ||
+          !file || oldFile.files.length !== 1 || !/\.zip$/i.test(file.name) ||
+          !Number.isSafeInteger(file.size) || file.size < 100 ||
+          file.size > 2500000) {hold();return;}
+      status.textContent = "Reading two local source inventories; no uploads...";
+      const bytes = await file.arrayBuffer();
+      if (token !== revision) return;
+      if (bytes.byteLength !== file.size || await digest(bytes) !== expected) {hold();return;}
+      if (token !== revision) return;
+      const request = {bytes,entries:null};
+      document.dispatchEvent(new CustomEvent("lightup:strict-zip-read",{detail:request}));
+      const previous = await inventoryOf(request.entries,token);
+      const next = await inventoryOf(current.entries,token);
+      if (token !== revision || !previous || !next) return;
+      const oldMap = new Map(previous.map(row => [row.path,row]));
+      const nextMap = new Map(next.map(row => [row.path,row]));
+      const added = next.filter(row => !oldMap.has(row.path));
+      const removed = previous.filter(row => !nextMap.has(row.path));
+      const changed = next.filter(row => oldMap.has(row.path) &&
+        (oldMap.get(row.path).sha256 !== row.sha256 || oldMap.get(row.path).bytes !== row.bytes))
+        .map(row=>({path:row.path,before:oldMap.get(row.path),after:row}));
+      const unchanged = next.length - added.length - changed.length;
+      result = {
+        format:"lightup.scope_offline_source_delta.v1",
+        posture:"INCUBATE_M3_M7_DRAFT_HOLD",decision:"REVIEW_ONLY",
+        signed:false,authenticated_sender:false,client_consent:false,
+        operator_consent:false,grant:false,release:false,
+        earlier_zip_sha256:expected,current_zip_sha256:current.sha256,
+        earlier_members:previous.length,current_members:next.length,
+        unchanged,added,removed,changed,
+        note:"UNSIGNED exact local source-byte comparison; no identity, consent, security review or authorization."
+      };
+      for (const [type,rows] of [["Added",added],["Removed",removed],["Changed",changed]]) {
+        for (const row of rows) {
+          const line = document.createElement("li");
+          line.textContent = type + ": " + row.path + (type === "Changed" ?
+            " · before " + row.before.sha256 + " · after " + row.after.sha256 :
+            " · " + row.bytes + " bytes · SHA-256 " + row.sha256);
+          inventory.append(line);
+        }
+      }
+      if (token !== revision) return;
+      status.dataset.state = "match";
+      status.textContent = "SOURCE BYTE DELTA / REVIEW ONLY · " + added.length +
+        " added, " + changed.length + " changed, " + removed.length +
+        " removed, " + unchanged + " unchanged. Independent sender identity and original release gates remain.";
+      saveReport.hidden = false;
+    } catch (_) {hold();}
+    finally {if (token === revision) inspect.disabled = false;}
+  });
+  saveReport.addEventListener("click", () => {
+    if (!result || !current || result.current_zip_sha256 !== current.sha256) return;
+    if (!window.confirm("Save unsigned PRIVATE source-only difference metadata? No security approval is implied.")) return;
+    const blob = new Blob([JSON.stringify(result,null,2)+"\n"],{type:"application/octet-stream"});
+    const url = URL.createObjectURL(blob), a = document.createElement("a");
+    a.href=url;a.download="LightUp-PRIVATE-source-delta-REVIEW-ONLY.json";
+    a.rel="noopener";document.body.append(a);a.click();a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),30000);
+  });
+})();
+
+"use strict";
+/* PRIVATE in-memory multi-role HUMAN byte-reconciliation board. No delivery/consent claims. */
+(() => {
+  const el = id => document.getElementById(id);
+  const panel = el("batch-return-panel"), list = el("batch-return-rows");
+  const headline = el("batch-return-status"), save = el("save-batch-return");
+  let sourceSha = null, records = new Map(), generation = 0;
+  const sha = x => typeof x === "string" && /^[0-9a-f]{64}$/.test(x);
+  function reset() {
+    generation++; sourceSha = null; records.clear();
+    list.replaceChildren(); save.hidden = true; panel.hidden = true;
+    headline.textContent = "";
+  }
+  document.addEventListener("lightup:selection-reset",reset);
+  document.addEventListener("lightup:sender-note-revoked",reset);
+
+  function render() {
+    if (!sourceSha || records.size !== 3) return;
+    list.replaceChildren();
+    let notes = 0, matches = 0;
+    for (const record of records.values()) {
+      const item = document.createElement("li");
+      const prepared = sha(record.noteSha);
+      const matched = prepared && sha(record.returnSha);
+      if (prepared) notes++;
+      if (matched) matches++;
+      item.textContent = record.profile + " · source ZIP " + record.roleSha +
+        " · HUMAN note " + (prepared ? "source bytes prepared" : "not prepared") +
+        " · returned receipt " + (matched ? "exact byte match" : "not matched") +
+        " · NEVER proof of delivery, recipient identity, consent or grant.";
+      list.append(item);
+    }
+    headline.textContent = notes + "/3 separate HUMAN notes prepared · " +
+      matches + "/3 exact returned byte receipts matched. All remain UNSIGNED / REVIEW ONLY.";
+    save.hidden = false;
+  }
+
+  document.addEventListener("lightup:batch-roles-prepared", event => {
+    reset();
+    const d = event.detail;
+    const expected = ["privacy-recipient","privacy-editor","scope-reviewer"];
+    if (!d || !sha(d.sourceSha256) || !Array.isArray(d.roles) ||
+        d.roles.length !== 3 ||
+        new Set(d.roles.map(r => r.profile)).size !== 3 ||
+        expected.some(name => !d.roles.some(row=>row.profile===name)) ||
+        d.roles.some(row=>!sha(row.sha256) || !Number.isSafeInteger(row.bytes) ||
+          row.bytes < 1 || row.bytes > 1500000)) return;
+    sourceSha = d.sourceSha256;
+    for (const row of d.roles) {
+      records.set(row.profile,{
+        profile:row.profile,roleSha:row.sha256,bytes:row.bytes,
+        noteSha:null,returnSha:null
+      });
+    }
+    panel.hidden = false;render();
+  });
+  document.addEventListener("lightup:sender-note-ready", event => {
+    if (!sourceSha) return;
+    const d = event.detail, row = d && records.get(d.profile);
+    if (!row || d.sourceOuterSha256 !== sourceSha ||
+        d.sha256 !== row.roleSha || d.size !== row.bytes ||
+        !sha(d.noteSha256)) return;
+    if (row.noteSha !== d.noteSha256) row.returnSha = null;
+    row.noteSha = d.noteSha256;render();
+  });
+  document.addEventListener("lightup:return-ack-admitted", event => {
+    if (!sourceSha) return;
+    const d = event.detail, row = d && records.get(d.profile);
+    if (!row || d.sourceSha256 !== sourceSha ||
+        d.roleSha256 !== row.roleSha ||
+        d.senderNoteSha256 !== row.noteSha ||
+        !sha(d.receiptSha256)) return;
+    row.returnSha = d.receiptSha256;render();
+  });
+  save.addEventListener("click", () => {
+    if (!sourceSha || records.size !== 3) return;
+    if (!window.confirm("Save an UNSIGNED source-only HUMAN status sheet? No receipt proves identity, actual delivery, consent or permission.")) return;
+    const rows = [...records.values()].map(row=>({
+      role:row.profile,role_zip_sha256:row.roleSha,role_zip_bytes:row.bytes,
+      unsigned_sender_note_sha256:row.noteSha,
+      unsigned_return_receipt_sha256:row.returnSha,
+      result:row.returnSha ? "BYTE_MATCH_REVIEW_ONLY" :
+        row.noteSha ? "AWAITING_UNVERIFIED_RECEIPT" : "HUMAN_NOTE_NOT_PREPARED"
+    }));
+    const out = {
+      format:"lightup.scope_private_role_return_board.v1",
+      posture:"INCUBATE_M3_M7_DRAFT_HOLD",decision:"REVIEW_ONLY",
+      authenticated_sender:false,authenticated_recipient:false,
+      client_consent:false,operator_consent:false,grant:false,release:false,
+      full_source_sha256:sourceSha,rows,
+      note:"UNSIGNED source-only byte observations. This is not proof of HUMAN delivery or approval."
+    };
+    const blob = new Blob([JSON.stringify(out,null,2)+"\n"],{type:"application/octet-stream"});
+    const url = URL.createObjectURL(blob), link=document.createElement("a");
+    link.href=url;link.download="LightUp-PRIVATE-role-return-status-REVIEW-ONLY.json";
+    link.rel="noopener";document.body.append(link);link.click();link.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),30000);
+  });
+})();
+</script>
+</body>
+</html>
