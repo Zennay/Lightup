@@ -113,3 +113,6 @@ footer { max-width:1280px; padding:0 22px 32px; margin:auto; font-size:.72rem; c
 #bulkPreview,#bulkApply,#bulkUndo { grid-column:1/-1; }
 #bulkSummary { white-space:pre-wrap; overflow-wrap:anywhere; }
 @media(max-width:780px) { .owner-board-heading { flex-direction:column; } .owner-picker { width:100%; max-width:none; } }
+
+#saveReceipt { grid-column:1/-1; white-space:pre-wrap; overflow-wrap:anywhere; margin:5px 0 12px; padding:9px 10px; background:var(--panel2); border-left:2px solid var(--line); }
+#ackWorkroom { border-color:#6dba91; }
