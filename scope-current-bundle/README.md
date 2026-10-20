@@ -29,9 +29,9 @@ Open the downloaded ZIP **locally**. No web hosting, external API, account, or t
 
 ## Original-source revision brief — HUMAN follow-up product
 
-The second offline product `change_brief.py` accepts two actual original `SOURCE-MANIFEST.json` files (an earlier separately exported package and the newer package). It rejects ambiguous duplicate JSON keys, malformed or oversized records, unexpected authorization flags, unsafe paths, and duplicate file entries. The result is an **owner-only scriptless HTML decision brief** (`index.html`) with added / changed / unchanged / absent *original package files*, original unsigned byte fingerprints and original companion source HEAD drift. It also emits a separately **anonymous aggregate-counts JSON** without file names, hashes, or targets.
+The second offline product `change_brief.py` accepts two actual original `SOURCE-MANIFEST.json` files (an earlier separately exported package and the newer package). It rejects ambiguous duplicate JSON keys, malformed or oversized records, unexpected authorization flags, unsafe paths, and duplicate file entries. The result is an **owner-only scriptless HTML decision brief** (`index.html`) with added / changed / unchanged / absent *original package files*, original unsigned byte fingerprints and original companion source HEAD drift. It also emits a separately **source-minimized aggregate-counts JSON** without file names, hashes, or targets.
 
-**New PRIVATE interactive HUMAN desk:** `workroom.html` is an actual standalone offline browser application containing a source-bound row for each original file, filters for source status/HUMAN stage, local team and notes editors, full-batch RFC4180 CSV import of existing original HUMAN review and explicit confidential CSV download. A **CSP SHA-256 fingerprint pins the exact embedded offline script and stylesheet**, no network/storage/cookies. It rejects an imported worksheet if even one original filename, SHA, source revision, row order, change category, stage or HUMAN value is ambiguous or invalid. Failed import leaves the entire in-memory desk untouched. The passive `index.html` and separate anonymous source counts remain independent.
+**New PRIVATE interactive HUMAN desk:** `workroom.html` is an actual standalone offline browser application containing a source-bound row for each original file, filters for source status/HUMAN stage, local team and notes editors, full-batch RFC4180 CSV import of existing original HUMAN review and explicit confidential CSV download. A **CSP SHA-256 fingerprint pins the exact embedded offline script and stylesheet**, no network/storage/cookies. It rejects an imported worksheet if even one original filename, SHA, source revision, row order, change category, stage or HUMAN value is ambiguous or invalid. Failed import leaves the entire in-memory desk untouched. The passive `index.html` and separate source-minimized source counts remain independent.
 
 ```sh
 python3 scope-current-bundle/change_brief.py \
@@ -56,7 +56,7 @@ python3 scope-current-bundle/human_followup.py \
   NEW-PRIVATE-HUMAN-OUTPUT-DIRECTORY
 ```
 
-Output is a fresh owner-only directory containing a **scriptless printable private HUMAN follow-up report** (`human-review.html`) and separate **anonymous HUMAN stage/source change counts** (`anonymous-counts.json`) with no paths, hashes, team names or freeform notes. No form executes a scan or changes original grants.
+Output is a fresh owner-only directory containing a **scriptless printable private HUMAN follow-up report** (`human-review.html`) and separate **source-minimized HUMAN stage/source change counts** (`anonymous-counts.json`) with no paths, hashes, team names or freeform notes. No form executes a scan or changes original grants.
 
 ## PRIVATE multi-revision HUMAN attention and progress history
 
@@ -73,9 +73,41 @@ python3 scope-current-bundle/review_history.py \
 
 It produces a scriptless PRIVATE HTML comparison of human review stage/team/notes changes, plus a prioritised **HUMAN attention** table for any latest human stage not documented OR any original source file that changed, was added or is absent from local selection. A separate file contains only unsigned stage-transition and attention counts; original paths, human team names, source hashes and notes stay in the PRIVATE report. The same source-byte identity and row order is rechecked separately for **both** human worksheets before any output. No stage can become `fixed`, `authorized`, `revoked`, or a verified security verdict.
 
+## Least-disclosure multi-team HUMAN recipient exchange
+
+Use this when reviewers should **not** receive every original file name, SHA-256 fingerprint, private source record or all other reviewers' HUMAN notes.
+
+Prepare PRIVATE per-team replies from the exact two **original** `SOURCE-MANIFEST.json` bytes and a fully re-admitted source-exact HUMAN worksheet. The worksheet's `human_team` values select recipient groups; assigned team IDs are local labels `[a-z][a-z0-9_-]{0,39}` (up to 16 groups), **not authenticated identities**. Leave `human_team` empty for records intentionally not routed.
+
+```sh
+python3 scope-current-bundle/recipient_exchange.py prepare \
+  PREVIOUS/SOURCE-MANIFEST.json \
+  CURRENT/SOURCE-MANIFEST.json \
+  PRIVATE/current-human.csv \
+  NEW-PRIVATE-RECIPIENT-PACKET-DIR
+```
+
+This creates **private 0700 directory / 0600 files** with one confidential, source-minimized `recipient-XX.html` **offline browser editor** per team and an optional exact-row `recipient-XX.csv` template. Each team receives only its own local ordinal slots, declared source-change class, prior HUMAN stage and proposed HUMAN stage/note fields. No original source paths/hashes, source-owner private notes or other teams' assignments are included in the recipient outputs. The HTML has **CSP SHA-256 pinned embedded JavaScript and CSS**, no external requests/storage and explicit editable HUMAN replies with atomic source-row-bound CSV restore/export.
+
+**Do not distribute** `PRIVATE-owner-receipt.json`, other teams' files or the original source and HUMAN CSV. Privately deliver exactly the intended recipient's own `recipient-XX.html`, and receive its edited `LightUp-PRIVATE-HUMAN-recipient-XX.csv`. The session/row tokens are **not cryptographic actor authentication or client consent**; a trusted distribution channel and independently authenticated participants remain the owner's responsibility.
+
+Reconcile from the exact original bytes, the PRIVATE owner receipt and one to sixteen complete recipient responses. Missing teams are recorded as awaiting rather than interpreted as a review PASS. Every supplied team response is checked atomically for original session, team slot, row ordinals, random source-minimized row references, ordering and unmodified original HUMAN status; proposed fields remain **unverified HUMAN self-reports**.
+
+```sh
+python3 scope-current-bundle/recipient_exchange.py reconcile \
+  PREVIOUS/SOURCE-MANIFEST.json \
+  CURRENT/SOURCE-MANIFEST.json \
+  PRIVATE/current-human.csv \
+  PRIVATE/PRIVATE-owner-receipt.json \
+  NEW-PRIVATE-TRIAGE-DIR \
+  PRIVATE/reply-team-1.csv [PRIVATE/reply-team-2.csv ...]
+```
+
+Output is a PRIVATE scriptless source-owner triage HTML and a PRIVATE proposed-response CSV including original paths for **owner-only manual decisions**. There is a separate **source-minimized count report**; it can still reveal membership in small cohorts and must not be treated as formally anonymous. **Nothing is auto-accepted into the original HUMAN worksheet**, original review history, domain/grants, target state, real recipient identity, actual consent or revocation. Use the unchanged local HUMAN workflow to explicitly review and record any subsequent human state decisions.
+
 ## Fail-closed build and immutability
 
-`build.py` checks the **all 14 original offline builder source byte digests** of the original packager, HUMAN handoff and JSON inspector, copies eight original app directories without symlinks, reruns original **60-file pinned source verification**, validates the original DRAFT/HOLD manifest and its six literal false authority flags, and checks every output destination for collisions before writing. Output uses no-follow exclusive create, 0600 file mode, and fsync. If existing distributed files differ, the build **refuses replacement**; publish a newly named revision after legitimate source review instead.
+`build.py` checks **all 14 original offline builder source byte digests** of the original packager, HUMAN handoff and JSON inspector, copies eight original app directories without symlinks, reruns original **60-file pinned source verification**, validates the original DRAFT/HOLD manifest and its six literal false authority flags, and checks every output destination for collisions before writing. Output uses no-follow exclusive create, 0600 file mode, and fsync. If existing distributed files differ, the build **refuses replacement**; publish a newly named revision after legitimate source review instead.
 
 SHA-256 here is **only byte matching**, never authenticated operator/client identity, signed producer authenticity, fresh consent, tenant permission or scanner authorization. The generated distribution is a local review tool with PRIVATE source-sensitive content.
 
