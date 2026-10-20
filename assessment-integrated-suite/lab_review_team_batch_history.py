@@ -189,11 +189,19 @@ def build(packets: list[str], final_room: str, handoff_room: str,
     writer.writerow(fields)
     for item in movements:
         writer.writerow([item[x] for x in fields])
+    participation_csv = io.StringIO(newline="")
+    participation_fields = ("previous_position", "current_position", "team",
+                            "previous_disposition", "current_disposition")
+    participation_writer = csv.writer(participation_csv, lineterminator="\r\n")
+    participation_writer.writerow(participation_fields)
+    for item in transitions:
+        participation_writer.writerow([item[x] for x in participation_fields])
     output = (
         ("OPEN-PRIVATE.html", _page(rooms, teams, movements, transitions)),
         ("PRIVATE-HUMAN-BATCH-HISTORY.json",
          (json.dumps(summary, sort_keys=True, separators=(",", ":")) + "\n").encode("utf-8")),
         ("PRIVATE-HUMAN-BATCH-CHANGES.csv", out_csv.getvalue().encode("utf-8")),
+        ("PRIVATE-HUMAN-TEAM-TRANSITIONS.csv", participation_csv.getvalue().encode("utf-8")),
     )
     target.mkdir(mode=0o700)
     try:
