@@ -142,6 +142,7 @@
     $("revisionFile").value = "";
     $("revisionChangedList").replaceChildren();
     $("revisionAbsentList").replaceChildren();
+    $("revisionAddedList").replaceChildren();
   }
   function refreshRevisionArchive() {
     $("revisionHistoryDownload").disabled = state.revisionHistory.length === 0;
@@ -173,18 +174,56 @@
       $("revisionCounts").textContent = plan.stats.unchanged + " unchanged · " +
         plan.stats.changed + " source-edited · " + plan.stats.added +
         " new · " + plan.stats.absent + " absent (NOT fixed)";
+      const previous = new Map(state.rows.map(row => [row.id, row]));
       for (const item of plan.affected) {
-        const row = document.createElement("p");
-        row.textContent = item.id + " · prior " + item.source_severity.toUpperCase() +
-          " · " + item.source_title +
-          (item.human.stage !== "unreviewed" ? " · PRIVATE HUMAN: " + stageText(item.human.stage) : "");
-        (item.type === "changed" ? $("revisionChangedList") : $("revisionAbsentList")).append(row);
+        const entry = document.createElement("p");
+        const current = plan.incomingRows.find(row => row.id === item.id);
+        let change = "";
+        if (item.type === "changed" && current) {
+          const original = previous.get(item.id);
+          const columns = ["title", "severity", "retest", "remediation"]
+            .filter(name => original[name] !== current[name]);
+          change = " · source fields changed: " + columns.join(", ");
+          if (columns.includes("severity")) change +=
+            " · severity " + original.severity + " → " + current.severity;
+          if (columns.includes("retest")) change +=
+            " · retest " + original.retest + " → " + current.retest;
+        }
+        entry.textContent = item.id + " · PRIOR " + item.source_severity.toUpperCase() +
+          " · " + item.source_title + change +
+          (item.human.stage !== "unreviewed" ? " · PRIVATE HUMAN: " + stageText(item.human.stage) : "") +
+          (item.type === "absent" ? " · MISSING IS NOT FIXED" : " · NEW REVIEW REQUIRED");
+        (item.type === "changed" ? $("revisionChangedList") : $("revisionAbsentList")).append(entry);
+      }
+      for (let i = 0; i < plan.incomingRows.length; i++) {
+        if (plan.kinds[i] !== "added") continue;
+        const row = plan.incomingRows[i];
+        const entry = document.createElement("p");
+        entry.textContent = row.id + " · source-declared " + row.severity.toUpperCase() +
+          " · " + row.title + " · NEW HUMAN REVIEW";
+        $("revisionAddedList").append(entry);
       }
       status("New source fully admitted for local comparison. Current source and HUMAN choices remain intact.", false);
     } catch (error) {
       clearRevisionCandidate();
       status("Incoming source rejected without changing the current workspace: " + error.message, true);
     }
+  }
+  function exportRevisionCounts() {
+    const plan = state.revisionCandidate;
+    if (!plan || plan.fromDigest !== state.digest) return;
+    if (!confirm("Download source-free comparison counts? Tiny cohorts can still be sensitive. " +
+        "Only a separately approved disclosure may leave this PRIVATE device. No source identity " +
+        "or actual chronological, security, consent or remediation verdict is provided.")) return;
+    const data = {
+      schema: "lightup.anonymous_csv_human_delta_counts.v1",
+      classification: "ANONYMOUS_COUNTS_ONLY", authority: NO_AUTHORITY,
+      declared_temporal_order: false, verified_fix: false,
+      unchanged: plan.stats.unchanged, source_changed: plan.stats.changed,
+      newly_present: plan.stats.added, absent_not_fixed: plan.stats.absent
+    };
+    download(JSON.stringify(data, null, 2) + "\n", "lightup-source-free-human-delta-counts.json", "application/json");
+    status("Source-free delta totals offered, without source hashes, original IDs, text or HUMAN notes.", false);
   }
   function commitRevision() {
     const plan = state.revisionCandidate;
@@ -758,6 +797,7 @@
       e.target.value = "";
     });
     $("revisionCommit").addEventListener("click", commitRevision);
+    $("revisionCountsExport").addEventListener("click", exportRevisionCounts);
     $("revisionCancel").addEventListener("click", () => {
       clearRevisionCandidate(); status("Source candidate discarded; original workspace remains unchanged.", false);
     });
