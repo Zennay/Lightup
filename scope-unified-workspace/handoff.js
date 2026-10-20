@@ -56,8 +56,12 @@
   const sameReviewSources = snapshot => snapshot.length === items.length &&
     snapshot.every((saved, i) => saved.original_name === items[i].file.name &&
       saved.unsigned_sha256 === items[i].hash);
-  const clearReviewHistory = () => { reviewUndo.length = 0; reviewRedo.length = 0; humanRevision++; };
+  const clearReviewHistory = () => {
+    reviewUndo.length = 0; reviewRedo.length = 0; humanRevision++;
+    discardSelectivePreview();
+  };
   const recordReviewEdit = () => {
+    discardSelectivePreview();
     reviewUndo.push(captureReview());
     if (reviewUndo.length > HISTORY_LIMIT) reviewUndo.shift();
     reviewRedo.length = 0;
@@ -86,6 +90,7 @@
     next.push(current);
     if (next.length > HISTORY_LIMIT) next.shift();
     restoreReview(snapshot);
+    discardSelectivePreview();
     render();
     report("REVIEW_ONLY — PRIVATE HUMAN wijziging " + verb + ". Bronbestanden en werkelijke autorisatie niet veranderd.");
   };
@@ -417,9 +422,22 @@
   });
   const selectiveInput = el("shelf-selective-reopen");
   const selectiveStatus = el("shelf-selective-status");
+  const selectiveRows = el("shelf-selective-rows");
+  const selectiveApply = el("shelf-selective-apply");
+  let pendingSelective = null;
+  const discardSelectivePreview = () => {
+    if (!pendingSelective) return;
+    pendingSelective = null;
+    selectiveApply.disabled = true;
+    selectiveRows.replaceChildren();
+    selectiveStatus.textContent = "Bron-/HUMAN werkset gewijzigd na preview; kies het vorige PRIVATE plan opnieuw. Geen overname toegepast.";
+  };
   selectiveInput.addEventListener("change", async () => {
     const priorFile = selectiveInput.files && selectiveInput.files[0];
     selectiveInput.value = "";
+    pendingSelective = null;
+    selectiveApply.disabled = true;
+    selectiveRows.replaceChildren();
     if (!priorFile || busy) return;
     if (!items.length) return void (selectiveStatus.textContent = "HOLD — selecteer eerst de huidige oorspronkelijke bronbestanden.");
     busy = true;
@@ -444,39 +462,76 @@
         } else changed++;
       }
       const absent = priorRows.filter(row => !currentNames.has(row.original_name.normalize("NFC").toLowerCase())).length;
-      if (!matches.length) {
-        selectiveStatus.textContent = "HOLD — geen exact gelijke bronnen. " + changed +
-          " gewijzigd, " + newer + " nieuw geselecteerd, " + absent +
-          " niet opnieuw geselecteerd. Geen HUMAN status overgenomen.";
-        return;
+      for (const item of items) {
+        const previous = priorByName.get(item.file.name.normalize("NFC").toLowerCase());
+        const exact = matches.some(entry => entry.item === item);
+        const tr = document.createElement("tr");
+        cell(tr, item.file.name, "file-name");
+        cell(tr, exact ? "EXACT / zelfde naam, bytes, grootte en type" : previous ? "CHANGED / NIEUWE HUMAN REVIEW" : "NEW / GEEN EERDERE HUMAN REVIEW");
+        cell(tr, exact ? "Alleen na aparte HUMAN bevestiging" : "Geen eerdere HUMAN besluiten meenemen");
+        selectiveRows.append(tr);
       }
-      selectiveStatus.textContent = "VOORSTEL / NIET TOEGEPAST — " + matches.length +
-        " exact ongewijzigd, " + changed + " gewijzigde bron, " + newer +
-        " nieuw geselecteerd, " + absent + " niet opnieuw geselecteerd. Niet gekozen is geen intrekking of fix.";
-      if (!confirm("Neem voor precies " + matches.length + " exact ongewijzigde oorspronkelijke bronnen eerdere PRIVATE HUMAN-keuzes over? " +
-          changed + " gewijzigde, " + newer + " nieuwe en " + absent +
-          " afwezige bronnen krijgen GEEN overgenomen besluiten. Alle overige bestaande lokale HUMAN statussen blijven intact. Nooit echte toestemming.")) return;
-      if (epoch !== generation || humanAtStart !== humanRevision) throw Error("source or HUMAN state changed before import");
-      recordReviewEdit();
-      for (const {item, previous} of matches) {
-        item.route = previous.human_route;
-        item.stage = previous.human_stage;
-        item.team = previous.human_team;
-        item.note = previous.private_human_note;
+      for (const previous of priorRows) {
+        if (currentNames.has(previous.original_name.normalize("NFC").toLowerCase())) continue;
+        const tr = document.createElement("tr");
+        cell(tr, previous.original_name, "file-name");
+        cell(tr, "ABSENT IN LOKALE SELECTIE");
+        cell(tr, "Geen automatische intrekking, fix of lagere risicostatus");
+        selectiveRows.append(tr);
       }
-      humanRevision++;
-      render();
-      selectiveStatus.textContent = "REVIEW_ONLY — " + matches.length +
-        " bronexacte PRIVATE HUMAN-keuzes overgenomen; gewijzigde/nieuwe/afwezige bronnen niet gemuteerd. Geen bronbevoegdheid of revocation.";
-      report("REVIEW_ONLY — selectieve HUMAN broncontinuïteit op " + matches.length +
-        " exact gelijke bronbestanden; via undo herstelbaar.");
+      selectiveStatus.textContent = "VOORSTEL / NOG NIET TOEGEPAST — " + matches.length +
+        " ongewijzigd, " + changed + " gewijzigd, " + newer + " nieuw, " + absent +
+        " afwezig. Inspecteer elke bronregel vóór de aparte bevestiging.";
+      if (!matches.length) return;
+      pendingSelective = {matches, changed, newer, absent, epoch, humanAtStart};
+      selectiveApply.disabled = false;
     } catch (_) {
+      pendingSelective = null;
+      selectiveApply.disabled = true;
+      selectiveRows.replaceChildren();
       selectiveStatus.textContent = "HOLD — ongeldig PRIVATE plan, bron-/HUMAN-state gewijzigd of ambiguë bron; niets toegepast.";
     } finally {
       busy = false;
       selectiveInput.disabled = false;
       input.disabled = false;
     }
+  });
+  selectiveApply.addEventListener("click", () => {
+    if (!pendingSelective || busy) return;
+    const plan = pendingSelective;
+    if (plan.epoch !== generation || plan.humanAtStart !== humanRevision ||
+        !plan.matches.every(({item, previous}) => items.includes(item) &&
+          item.file.name === previous.original_name &&
+          item.file.size === previous.byte_length &&
+          item.hash === previous.unsigned_sha256 &&
+          item.inspection.kind === previous.structural_kind_unverified)) {
+      pendingSelective = null;
+      selectiveApply.disabled = true;
+      selectiveRows.replaceChildren();
+      selectiveStatus.textContent = "HOLD — bron of HUMAN-keuzes gewijzigd na de preview; kies opnieuw het eerdere PRIVATE plan.";
+      return;
+    }
+    if (!confirm("Neem ALLEEN de " + plan.matches.length +
+      " exact ongewijzigde PRIVATE HUMAN-rijen over? " + plan.changed +
+      " gewijzigd, " + plan.newer + " nieuw, " + plan.absent +
+      " niet opnieuw geselecteerd blijven ongewijzigd. Dit authenticeert geen bron, klant, operator of grant.")) return;
+    if (plan.epoch !== generation || plan.humanAtStart !== humanRevision) return;
+    recordReviewEdit();
+    for (const {item, previous} of plan.matches) {
+      item.route = previous.human_route;
+      item.stage = previous.human_stage;
+      item.team = previous.human_team;
+      item.note = previous.private_human_note;
+    }
+    humanRevision++;
+    pendingSelective = null;
+    selectiveApply.disabled = true;
+    render();
+    selectiveStatus.textContent = "REVIEW_ONLY — " + plan.matches.length +
+      " exact brongebonden HUMAN-keuzes toegepast; " + plan.changed + " gewijzigd, " +
+      plan.newer + " nieuw en " + plan.absent +
+      " niet opnieuw geselecteerd bleven zonder overname. Ongedaan maken is beschikbaar.";
+    report("REVIEW_ONLY — selectieve PRIVATE HUMAN voortzetting alleen op exact gelijke bronbytes; geen echte toestemming.");
   });
   const restoreInput = el("shelf-review-reopen");
   restoreInput.addEventListener("change", async () => {
