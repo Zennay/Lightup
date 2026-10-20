@@ -175,7 +175,8 @@ This workroom contains unsent, owner-private HUMAN proposals and source
 hashes. Local review history never proves risk reduction or recipient authority.</aside>
 <p>Original source positions: """ + str(originals) + """ · manually ordered
 PRIVATE completed review rounds: """ + str(n) + """</p>
-<ul><li><a href="PRIVATE-HUMAN-history.html">View original-bound HUMAN timeline</a></li>
+<ul><li><a href="PRIVATE-HUMAN-timeline.html">Explore interactive offline HUMAN timeline</a></li>
+<li><a href="PRIVATE-HUMAN-history.html">Read printable HUMAN history</a></li>
 <li><a href="PRIVATE-HUMAN-transitions.csv">Read full PRIVATE change table</a></li>
 <li><a href="PRIVATE-HUMAN-history-bindings.json">Read PRIVATE unsigned history receipt</a></li>
 <li><a href="PRIVATE-HUMAN-last-round.csv">Review previous full PRIVATE HUMAN draft</a></li>
@@ -246,6 +247,9 @@ def build(original: str, review_paths: list[str], parent_string: str) -> int:
         })
         file_new(destination / "PRIVATE-HUMAN-history.html",
                  history_html(rounds, transitions))
+        from privacy_triage_timeline import render as interactive_timeline
+        file_new(destination / "PRIVATE-HUMAN-timeline.html",
+                 interactive_timeline(rounds))
         file_new(destination / "PRIVATE-HUMAN-transitions.csv",
                  changes_csv(transitions))
         file_new(destination / "PRIVATE-HUMAN-last-round.csv",
