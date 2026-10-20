@@ -253,3 +253,22 @@ The offline operatorstudio mirrors these warnings, but the native Python
 path checks remain authoritative. Original native source read/ownership/
 link, package admission, private output and cryptographic validators remain
 unchanged. Files are never sent by either command.
+
+### Guided offline original-owner to recipient HUMAN journey
+
+The offline operatorstudio now has a three-stage guide on the same static page:
+original evidence owner produces a source-free AES-GCM handoff; a separately
+approved and physically independent recipient can open the genuinely received
+encrypted .luhx with the original archive_workflow; and a HUMAN operator can
+seal actually authored original source-bound follow-up journal notes. Each
+button only selects the exact corresponding native command form, with fresh
+blank paths and no cross-machine state, network, target access or transfer.
+No source identity, real consent, signed evidence, fix or verified retest is
+inferred from completing those local HUMAN steps.
+
+The two composed owner packet commands now also preflight the distinct
+transfer destination before creating the original private workroom. An
+already-existing packet path, symlinked output parent or non-owner-private
+destination HOLDs immediately, instead of first producing a private original
+workroom that cannot be safely paired with its recipient packet. The unchanged
+native owner, recipient and encryption validators remain authoritative.

@@ -185,6 +185,16 @@
     option.textContent = name;
     category.append(option);
   }
+  for (const button of document.querySelectorAll("[data-workflow]")) {
+    button.addEventListener("click", () => {
+      const name = button.dataset.workflow;
+      if (!byName.has(name)) return;
+      category.value = "Alles";
+      select(name);
+      const first = fields.querySelector("input,textarea");
+      if (first) first.focus();
+    });
+  }
   category.addEventListener("change", renderNav);
   search.addEventListener("input", renderNav);
   reset.addEventListener("click", () => {

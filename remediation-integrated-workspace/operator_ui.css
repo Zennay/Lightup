@@ -43,3 +43,14 @@ footer{font-size:.83rem;color:#586d7d;line-height:1.6;margin-top:24px}
 a{color:#146578}button:focus-visible,a:focus-visible{outline:3px solid #8ad6d7;outline-offset:2px}
 @media(max-width:850px){.shell{padding:14px 12px 45px}.layout{grid-template-columns:1fr}.nav{position:static;max-height:none}.content{padding:22px 17px}.action-list{grid-template-columns:repeat(auto-fit,minmax(180px,1fr))}header{padding:24px 20px}}
 @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important}}
+.journey{margin:20px 0;padding:23px;border:1px solid #dae2eb;border-radius:16px;background:white}
+.journey h2{font-size:1.4rem;letter-spacing:-.02em;margin:0 0 8px}
+.journey>p{color:#526579;line-height:1.5;margin:0 0 19px}
+.journey-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.journey article{border:1px solid #dae5ed;background:#f7fafc;border-radius:12px;padding:17px;display:flex;flex-direction:column;gap:11px}
+.journey article span{font-size:.72rem;font-weight:850;letter-spacing:.08em;color:#14757d}
+.journey article h3{font-size:1.05rem;margin:0;line-height:1.35}
+.journey article p{font-size:.87rem;line-height:1.55;color:#50667b;margin:0;flex:1}
+.journey button{background:#1b6972;color:white;border:0;border-radius:8px;font-weight:750;padding:10px 12px;text-align:left}
+.journey button:hover,.journey button:focus-visible{background:#11535d}
+@media(max-width:1000px){.journey-grid{grid-template-columns:1fr}}

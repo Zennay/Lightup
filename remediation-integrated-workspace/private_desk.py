@@ -215,6 +215,15 @@ def dispatch(name: str, values: dict) -> None:
         if any(packet_dest == source or source in packet_dest.parents
                or packet_dest in source.parents for source in original_sources):
             raise ValueError("SOURCE-FREE packet cannot overwrite or enter original PRIVATE input evidence")
+        # Check the separate native destination BEFORE original-owner creation.
+        # This avoids creating a complete owner workroom when the intended
+        # transfer destination was already occupied or is not owner-private.
+        from install import owner_dir as original_owner_dir
+        if packet_dest.exists() or packet_dest.is_symlink():
+            raise ValueError("Choose a NEW, nonexistent private recipient packet path")
+        if packet_dest.parent != packet_dest.parent.resolve(strict=True):
+            raise ValueError("Recipient output parent must be literal, not a symlink")
+        original_owner_dir(packet_dest.parent)
         print("Preparing private ORIGINAL owner workroom. No packet transmitted.", flush=True)
         owner_start(original_dirs, original_bundles, owner_dest)
         print("Re-admitting the separate native SOURCE-FREE folder.", flush=True)

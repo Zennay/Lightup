@@ -77,6 +77,24 @@ De browser leest geen bestanden en voert geen commando's uit.
 Alleen de bestaande native Python-tools kunnen na expliciete operatoractie
 bronbestanden controleren en nieuwe private lokale output publiceren.
 Versleuteling en checksums bewijzen geen identiteit, echte toestemming of fix.</div>
+<section class="journey" aria-label="Gids voor echte PRIVATE bronvrije overdracht">
+<h2>Van oorspronkelijke evidence naar menselijke opvolging</h2>
+<p>Drie onafhankelijke lokale HUMAN-stappen. De pakketoverdracht tussen machines
+gebeurt uitsluitend na afzonderlijke echte toestemming, nooit automatisch.</p>
+<div class="journey-grid">
+<article><span>01 · ORIGINAL OWNER</span><h3>Maak versleutelde bronvrije overdracht</h3>
+<p>Oorspronkelijke privé-evidence blijft bij de bronhouder; alleen de afzonderlijke native
+bronvrije Cockpit wordt lokaal versleuteld naar een nieuw .luhx-bestand.</p>
+<button type="button" data-workflow="owner-encrypted">Bereid originele eigenaarsoverdracht voor</button></article>
+<article><span>02 · PRIVATE RECIPIENT</span><h3>Open de werkelijk ontvangen overdracht</h3>
+<p>Gebruik uitsluitend een afzonderlijk en rechtmatig ontvangen oorspronkelijk .luhx-bestand.
+De ontvanger maakt lokaal een PRIVATE HUMAN-werkruimte, geen scan of fix.</p>
+<button type="button" data-workflow="archives">Bereid ontvangst en HUMAN-review voor</button></article>
+<article><span>03 · HUMAN FOLLOW-UP</span><h3>Bewaar menselijke antwoorden versleuteld</h3>
+<p>Na handmatige brongebonden beoordeling kunnen bestaande echte HUMAN-journalantwoorden
+lokaal worden verzegeld. Bronidentiteit, toestemming en retest blijven extern.</p>
+<button type="button" data-workflow="seal-journal">Bereid versleuteld HUMAN-journal voor</button></article>
+</div></section>
 <div class="layout">
 <aside class="nav"><h2>Werkstappen</h2>
 <p>Kies een opdracht. Alles blijft in browsergeheugen; er is geen netwerk,
