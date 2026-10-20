@@ -603,3 +603,52 @@ Original hosted + permanently registered named-VPS CI, owner, independent
 security/privacy/browser review, #177/#182/#829, genuine separate current
 authenticated client/operator consent with revocation-at-use and explicit
 HUMAN GO are still required before any main merge/deploy or real target action.
+
+## Original PRIVATE evidence curation and HUMAN recipient replies (20 Oct)
+
+The entire original source from held owner [PR #1679](https://github.com/Zennay/Lightup/pull/1679)
+is **already present unchanged** under `assessment-evidence-curation/`.
+The integrated [original_evidence.py](original_evidence.py) and
+[original_evidence_reply.py](original_evidence_reply.py) now delegate only to
+that source, with bounded foreground output, exclusive NEW 0700 owner-private
+folders OUTSIDE the checkout, original publisher 0600 files, strict original
+REVIEW_ONLY receipt admission and no private content echoed to the terminal.
+The 31-action [operator console](console.py) adds nine complete local steps:
+
+- **23:** admit existing original lab JSON, matching original PRIVATE manifest
+  and exact seven-column HUMAN CSV; produce source-minimized selection studio,
+  template and unsigned exact-original preparation receipt. The generated UI
+  uses original ordinal, source-reported severity and evidence count only.
+- **24:** re-admit same original bytes, matching preparation receipt and a
+  separately completed HUMAN selection CSV; publish a **selected-only original
+  PRIVATE evidence dossier**, per-priority HUMAN review questions, source-
+  minimized but still PRIVATE recipient questions and small counts.
+- **25:** view 2–12 separately saved source-bound HUMAN selection revisions.
+  Their supplied order is a HUMAN ordering, not verified timestamps.
+- **26:** make one consolidated privately held interactive HUMAN selection
+  review, with unsigned source binding, unverified recipient work proposals.
+- **27/28:** create an exact-source PRIVATE recipient question workroom, then
+  separately re-admit a returned HUMAN response with the unchanged original
+  selection, source and response binding; no recipient is contacted by LightUp.
+- **29/30:** create a local PRIVATE sender triage browser from original reply,
+  then re-admit sender HUMAN routing and proposed next actions; no actual
+  technical remediation/retest or identity proof is performed.
+- **31:** create the next HUMAN question selection proposal from the exact
+  original returned recipient response and sender triage. Never dispatch it.
+
+All operations explicitly request **REVIEW ONLY**. Confidential human questions,
+original target details, and manually returned replies may disclose clients:
+these outputs are not anonymous or approved to send. Never treat a source label,
+unsigned hash, encryption, HUMAN answer, absence from selection, proposed
+closure or HUMAN priority as verified security fact or permission. Original
+current authenticated client/operator consent and real recipient approval,
+with action-time revocation, remain distinct. These are strictly local source
+review tools: no scanner, target work, model, grant, network, delete, retest or
+external transmission occurs. Original independent owner, privacy/security/
+browser and CI/VPS reviews, #177/#182/#829 and explicit HUMAN GO still apply.
+
+The 15-studio **browser-only** source ZIP is not advertised as including these
+native or source-specific generated selection/recipient studios: those are
+created privately from the actual original source by the native workflow.
+The portable software ZIP does NOT contain client records, any generated
+source-bound HUMAN selection UI, or a native executable.
