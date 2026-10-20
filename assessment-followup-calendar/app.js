@@ -364,7 +364,8 @@
     hold(active && crypto.subtle);
     const password=$("handoffPassword").value,confirmation=$("handoffConfirm").value;
     hold(password.length>=16 && password.length<=256 && password===confirmation);
-    const plain=new TextEncoder().encode(privatePlanCSV());
+    const snapshotCSV=privatePlanCSV();
+    const plain=new TextEncoder().encode(snapshotCSV);
     const salt=new Uint8Array(16),iv=new Uint8Array(12);
     crypto.getRandomValues(salt);crypto.getRandomValues(iv);
     try{
@@ -375,6 +376,7 @@
       result.set(ENC_MAGIC,0);result.set(salt,ENC_MAGIC.length);
       result.set(iv,ENC_MAGIC.length+16);result.set(cipher,ENC_MAGIC.length+28);
       hold(result.length<=MAX_BYTES);
+      hold(active && privatePlanCSV()===snapshotCSV);
       if(!confirm("Download a separate encrypted PRIVATE plan? Save the passphrase out of band. This authenticates only the encrypted bytes, NOT their original producer, permission or client/operator identity."))return;
       download(result,"lightup-private-human-calendar.luhc","application/octet-stream");
       changed=false;exportedPlan=true;render();
