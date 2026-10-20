@@ -11,6 +11,7 @@ import csv
 from hashlib import sha256
 import html
 import io
+import json
 import os
 from pathlib import Path
 import shutil
@@ -82,8 +83,8 @@ Full original source-bound reviewer packets remain owner-private and mandatory.
 </footer></html>""").encode("utf-8")
 
 
-def create(original: str, reviews: list[str], received_room: str,
-           final_rooms: list[str], parent_name: str) -> int:
+def source_state(original: str, reviews: list[str], received_room: str,
+                 final_rooms: list[str]):
     if not MIN_ROUNDS <= len(final_rooms) <= MAX_ROUNDS:
         raise Hold("HOLD: choose two to eight completed PRIVATE HUMAN action rooms")
     path_ids = [str(private_directory(path).resolve()) for path in final_rooms]
@@ -131,28 +132,42 @@ def create(original: str, reviews: list[str], received_room: str,
          "private_question_changed": s["question_changed"]}
         for s in summaries
     ]
+    return (sources, manifest, decisions, packets, selected_raw, selected, action_rounds, summaries, round_csv_sha, copies, export)
+
+
+def history_receipt(sources, manifest, decisions, packets, selected_raw,
+                    selected, action_rounds, round_csv_sha, copies) -> dict:
+    return {
+        "schema": SCHEMA, "claimed_status": "HOLD", "human_only": True,
+        "original_count": len(sources), "selected_count": len(selected),
+        "human_rounds": len(action_rounds),
+        "selected_original_ordinals": [ordinal for ordinal, _ in selected],
+        "original_manifest_sha256_unsigned": manifest,
+        "original_human_csv_sha256_unsigned": decisions,
+        "received_selected_csv_sha256_unsigned": sha256(selected_raw).hexdigest(),
+        "original_reviewer_csv_sha256_unsigned": [
+            packet["csv_sha256_unsigned"] for packet in packets],
+        "manually_ordered_action_csv_sha256_unsigned": round_csv_sha,
+        "identical_human_action_round_pairs": copies,
+        "independent_reviewer_identities_not_verified": True,
+        "human_stages_are_not_remediation_evidence": True,
+        **{flag: False for flag in FALSE_FLAGS},
+    }
+
+
+def create(original: str, reviews: list[str], received_room: str,
+           final_rooms: list[str], parent_name: str) -> int:
+    (sources, manifest, decisions, packets, selected_raw, selected, action_rounds, summaries, round_csv_sha, copies, export) = source_state(original, reviews, received_room, final_rooms)
     parent = private_directory(parent_name)
     output = Path(tempfile.mkdtemp(prefix="PRIVATE-lightup-human-action-history-",
                                   dir=parent))
     os.chmod(output, 0o700)
     finished = False
     try:
-        save_json(output / "PRIVATE-HUMAN-action-history-receipt.json", {
-            "schema": SCHEMA, "claimed_status": "HOLD", "human_only": True,
-            "original_count": len(sources), "selected_count": len(selected),
-            "human_rounds": len(action_rounds),
-            "selected_original_ordinals": [ordinal for ordinal, _ in selected],
-            "original_manifest_sha256_unsigned": manifest,
-            "original_human_csv_sha256_unsigned": decisions,
-            "received_selected_csv_sha256_unsigned": sha256(selected_raw).hexdigest(),
-            "original_reviewer_csv_sha256_unsigned": [
-                packet["csv_sha256_unsigned"] for packet in packets],
-            "manually_ordered_action_csv_sha256_unsigned": round_csv_sha,
-            "identical_human_action_round_pairs": copies,
-            "independent_reviewer_identities_not_verified": True,
-            "human_stages_are_not_remediation_evidence": True,
-            **{flag: False for flag in FALSE_FLAGS},
-        })
+        save_json(output / "PRIVATE-HUMAN-action-history-receipt.json",
+                  history_receipt(sources, manifest, decisions, packets,
+                                  selected_raw, selected, action_rounds,
+                                  round_csv_sha, copies))
         file_new(output / "PRIVATE-HUMAN-action-history.csv", csv_history(export))
         file_new(output / "PRIVATE-HUMAN-action-history.html",
                  overview(summaries, len(selected), copies))
@@ -165,3 +180,33 @@ def create(original: str, reviews: list[str], received_room: str,
     finally:
         if not finished:
             shutil.rmtree(output)
+
+
+
+def reopen_history(original: str, reviews: list[str], received_room: str,
+                   final_rooms: list[str], history_room: str) -> int:
+    """Read-only exact-original history re-admission, no new output."""
+    (sources, manifest, decisions, packets, selected_raw, selected,
+     action_rounds, summaries, round_csv_sha, copies, export) = source_state(
+        original, reviews, received_room, final_rooms)
+    room = private_directory(history_room)
+    binding = history_receipt(sources, manifest, decisions, packets,
+                              selected_raw, selected, action_rounds,
+                              round_csv_sha, copies)
+    original_receipt = (
+        json.dumps(binding, indent=2, sort_keys=True, ensure_ascii=False)
+        + "\n").encode("utf-8")
+    required = (
+        ("PRIVATE-HUMAN-action-history-receipt.json", original_receipt),
+        ("PRIVATE-HUMAN-action-history.csv", csv_history(export)),
+        ("PRIVATE-HUMAN-action-history.html",
+         overview(summaries, len(selected), copies)),
+        ("PRIVATE-HUMAN-action-history-studio.html",
+         history_studio(summaries, len(selected), len(action_rounds))),
+    )
+    for filename, original_bytes in required:
+        if private_input(str(room / filename), 65536) != original_bytes:
+            raise Hold("HOLD: original PRIVATE HUMAN chronology artifact changed")
+    print("HOLD: original-bound PRIVATE HUMAN action chronology reopened read-only")
+    print("OPEN LOCALLY: " + str(room / "PRIVATE-HUMAN-action-history-studio.html"))
+    return 3

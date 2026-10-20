@@ -126,6 +126,30 @@ certificate: statuses and questions may change for reasons unrelated to
 the actual security/privacy of an asset. Successful local creation
 still returns **HOLD (exit 3)**. Nothing is sent or granted.
 
+### Read-only original HUMAN chronology reopening
+
+Use the same manually ordered **original** finalized rounds as the previous
+history creation and supply the 0700 history output directory:
+
+```sh
+python3 private-assessment-notes/notes.py sensitivity-discussion-actions-history-reopen \
+  --completed-packet /private/work/ORIGINAL-completed-packet \
+  --review /private/work/FIRST-completed-review \
+  --review /private/work/SECOND-completed-review \
+  --room /private/work/PRIVATE-lightup-human-discussion-ROOM \
+  --final-room /private/work/PRIVATE-lightup-human-action-final-ROUND-1 \
+  --final-room /private/work/PRIVATE-lightup-human-action-final-ROUND-2 \
+  --history-room /private/work/PRIVATE-lightup-human-action-history-ROOM
+```
+
+The command re-admits the **actual original completed packet**, every source
+review, every complete received action room and original manually ordered
+round; then requires exact bytes for saved receipt, full source-ordinal CSV,
+printable chronology and CSP-pinned browser Studio. It performs **no writes**
+and always returns **HOLD (3)**. Any missing, reordered, changed or stale
+artifact refuses reopening. Reopening does not authenticate a reviewer,
+prove chronology, verify a security fix or grant disclosure.
+
 ## Fixed boundaries
 
 Preparation exits **REVIEW_ONLY (2)**. Finalization and reopening always
