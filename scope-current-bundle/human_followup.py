@@ -14,8 +14,7 @@ import os
 from pathlib import Path
 import sys
 
-from change_brief import AUTHORITY, read_regular as _unused_read  # import bounded admission below
-from change_brief import source, require_fresh_private_directory, write_private
+from change_brief import AUTHORITY, source, require_fresh_private_directory, write_private
 
 MAX_CSV = 400_000
 FIELDS = ("previous_manifest_sha256", "current_manifest_sha256",
