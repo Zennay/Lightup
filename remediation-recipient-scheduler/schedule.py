@@ -135,6 +135,7 @@ def render(sources: list[dict], tasks: list[dict]) -> bytes:
 <button id="bulk">Preview and apply to currently visible tasks</button><button id="undo" disabled>Undo previous batch</button></div>
 <div class="controls"><button id="save">Save encrypted PRIVATE plan</button>
 <button id="open">Open encrypted plan</button><input id="openfile" type="file" accept=".lurp,application/json" hidden>
+<button id="carry">Carry unchanged source-bound HUMAN plan forward</button><input id="carryfile" type="file" accept=".lurp,application/json" hidden>
 <button id="agenda">Export printable PRIVATE HUMAN agenda (visible tasks)</button>
 <button id="calendar">Export tentative PRIVATE calendar (.ics)</button>
 <button id="counts">Export anonymous counts</button></div>
