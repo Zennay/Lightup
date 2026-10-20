@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; base-uri 'none'; object-src 'none'; frame-src 'none'; form-action 'none'; connect-src 'none'; img-src 'none'; style-src 'sha256-CSP_STYLE_HASH'; script-src 'sha256-CSP_SCRIPT_HASH';">
+<title>LightUp — PRIVATE handoff-shelf</title>
+<!-- EMBED_STYLE -->
+</head>
+<body>
+<a class="skip" href="#main">Ga naar inhoud</a>
+<div class="shell">
+<header class="topbar"><span class="logo"><span class="logo-mark" aria-hidden="true">✦</span> LIGHTUP <span class="logo-muted">/ HANDOFF</span></span><span class="toplabel">PRIVATE TAB · GEEN NETWERK · GEEN TOESTEMMING</span></header>
+<main id="main">
+<section class="hero compact">
+<div class="kicker"><span class="dot" aria-hidden="true"></span> HUMAN WORKFLOW / IN MEMORY / REVIEW ONLY</div>
+<h1>Één lokale plek voor je <em>bestands­overdracht.</em></h1>
+<p>Breng lokale bronbestanden tijdelijk bijeen, bekijk hun exacte SHA-256, kies naar welk bestaand LightUp-onderdeel je ze handmatig wilt overdragen en bewaar ongewijzigde originele bytes. Je oorspronkelijke bestanden blijven op schijf; de gekozen werkset wordt niet persistent opgeslagen.</p>
+<div class="hold" role="note"><strong>GEEN BRONAUTHENTICATIE.</strong> Bestandsnamen, extensies, digests, HUMAN-routering en ingebouwde importknoppen verlenen nooit toestemming, grants of bevoegdheid. De ontvangende originele werkruimte moet elk bestand onafhankelijk opnieuw controleren. Gebruik deze pagina alleen offline met privégegevens op een vertrouwd apparaat.</div>
+<p class="verify-cta"><a href="index.html">← Terug naar volledige offline scopewerkruimte</a></p>
+</section>
+<section class="section">
+<div class="section-heading"><div><p class="eyebrow">01 / PRIVATE FILE SHELF</p><h2 id="shelf-heading">Voeg bestanden toe</h2></div><p>Maximaal 16 bestanden, 8 MiB per bestand en 32 MiB totale geselecteerde omvang. Nieuwe bestanden worden als hele batch opgenomen of helemaal niet.</p></div>
+<div class="shelf-upload">
+<label for="shelf-files">Kies 1–16 originele lokale bronbestanden</label>
+<input id="shelf-files" type="file" multiple aria-describedby="shelf-privacy">
+<p id="shelf-privacy">Geen upload, cookies, externe services of browseropslag. Alleen filehandles en digests in dit tabblad. Een naamhint is slechts een voorstel; kies bestemming bewust.</p>
+</div>
+<p id="shelf-status" class="shelf-status" aria-live="polite" role="status">REVIEW_ONLY — nog geen PRIVATE bestanden geselecteerd.</p>
+<p id="shelf-summary" class="shelf-summary">Nog geen PRIVATE bestanden ingeladen.</p>
+<div class="table-scroller"><table class="shelf-table" aria-label="Private bronoverdracht">
+<thead><tr><th scope="col">Originele naam (PRIVATE)</th><th scope="col">Bytes</th><th scope="col">Ongetekende SHA-256</th><th scope="col">HUMAN route</th><th scope="col">Bewust openen / behouden / verwijderen</th></tr></thead>
+<tbody id="shelf-rows"></tbody></table></div>
+<div class="shelf-actions">
+<button type="button" id="counts-copy" class="action">Alleen anonieme ROUTE-aantallen exporteren <span aria-hidden="true">↗</span></button>
+<button type="button" id="private-copy" class="action muted">PRIVATE bestandsinventaris exporteren <span aria-hidden="true">↗</span></button>
+<button type="button" id="shelf-clear" class="action danger-solid">Werkset uit tabblad wissen <span aria-hidden="true">×</span></button>
+</div>
+</section>
+<section class="section">
+<div class="section-heading"><div><p class="eyebrow">02 / ACTUELE TOESTEMMING</p><h2>Het echte systeem blijft de bron.</h2></div><p>Een ingelezen bestand is nooit een originele goedgekeurde assessmentaanvraag, current client/operator-authenticatie of permit.</p></div>
+<div class="flow">
+<div class="step"><span>1</span><div><h3>Kies een bestemming</h3><p>De voorgestelde route is uitsluitend gebaseerd op de lokale bestandsnaam. Controleer de oorspronkelijke producent en het vereiste schema in de specifieke app-handleiding.</p></div></div>
+<div class="step"><span>2</span><div><h3>Open de app apart</h3><p>Open een werkruimte in een nieuw tabblad. Laat deze PRIVATE shelf open; de andere app leest niets automatisch uit dit tabblad.</p></div></div>
+<div class="step"><span>3</span><div><h3>Selecteer het origineel</h3><p>Kies in de originele app expliciet hetzelfde lokale bestand. Optioneel kan de shelf de originele File-bytes opnieuw opslaan; er vindt geen conversie plaats.</p></div></div>
+<div class="step"><span>4</span><div><h3>Beoordeel en verwijder</h3><p>Alleen de echte bronhouder, geauthenticeerde klant/operator en actuele revocation-gates kunnen een vervolgbesluit ondersteunen. Wis deze tijdelijke werkset na afloop.</p></div></div>
+</div>
+</section>
+</main>
+<footer><span>LIGHTUP · PRIVATE LOCAL HANDOFF</span><span>NO SCAN · NO GRANT · DRAFT/HOLD</span></footer>
+</div>
+<!-- EMBED_SCRIPT -->
+</body></html>

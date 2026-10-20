@@ -27,7 +27,7 @@ SOURCES = (
     ("scope-vault", "49a569b2125a80dcaac21655febc07861afa0df2", True),
     ("studio", "71d9e5f760ef2bff46a72b979173bb3181179afb", False),
 )
-HUB_INPUTS = ("README.md", "hub.template.html", "style.css", "build.py", "check_bundle.py", "verify-local.js", "verify.template.html", "extra-cards.html")
+HUB_INPUTS = ("README.md", "hub.template.html", "style.css", "build.py", "check_bundle.py", "verify-local.js", "verify.template.html", "extra-cards.html", "handoff.js", "handoff.template.html")
 ARCHIVE = HUB / "LightUp-Scope-Offline-DRAFT-HOLD.zip"
 MAX_FILE = 8 * 1024 * 1024
 MAX_ALL = 30 * 1024 * 1024
@@ -72,6 +72,19 @@ def package():
         .replace("<!-- EMBED_STYLE -->", "<style>" + css.decode("utf-8", "strict") + "</style>")
         .replace("<!-- EMBED_SCRIPT -->", "<script>" + verifier_js.decode("utf-8", "strict") + "</script>"))
     (HUB / "verify.html").write_bytes(verifier_html.encode("utf-8"))
+    handoff_js = raw(HUB / "handoff.js")
+    handoff_template = raw(HUB / "handoff.template.html").decode("utf-8", "strict")
+    if any(handoff_template.count(marker) != 1 for marker in (
+        "CSP_STYLE_HASH", "CSP_SCRIPT_HASH", "<!-- EMBED_STYLE -->", "<!-- EMBED_SCRIPT -->"
+    )):
+        raise ValueError("Ambiguous private handoff template")
+    handoff_digest = base64.b64encode(hashlib.sha256(handoff_js).digest()).decode("ascii")
+    handoff_html = (handoff_template
+        .replace("CSP_STYLE_HASH", style_digest)
+        .replace("CSP_SCRIPT_HASH", handoff_digest)
+        .replace("<!-- EMBED_STYLE -->", "<style>" + css.decode("utf-8", "strict") + "</style>")
+        .replace("<!-- EMBED_SCRIPT -->", "<script>" + handoff_js.decode("utf-8", "strict") + "</script>"))
+    (HUB / "handoff.html").write_bytes(handoff_html.encode("utf-8"))
 
     candidates = []
     for dirname, _, standalone in SOURCES:
@@ -89,6 +102,7 @@ def package():
         candidates.append(HUB / name)
     candidates.append(HUB / "index.html")
     candidates.append(HUB / "verify.html")
+    candidates.append(HUB / "handoff.html")
 
     files = {}
     for path in candidates:

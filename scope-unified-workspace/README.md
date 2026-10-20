@@ -49,6 +49,12 @@ This deterministic Python-stdlib build generates `index.html`, `SOURCE-MANIFEST.
 
 The original standalone products' file contracts remain independent; the hub is navigation, not an undisclosed auto-import or invisible bridge. A second app does not automatically see a first app's memory: HUMAN must choose and separately re-import the appropriate locally exported file.
 
+## PRIVATE multi-workroom handoff shelf
+
+Open `scope-unified-workspace/handoff.html` on a trusted offline browser. Import up to 16 local files (max 8 MiB/file, 32 MiB total), calculate SHA-256 in memory, choose a destination workroom and optionally download the unchanged original bytes. Filename-based route suggestions are never source or consent verification. The destination app receives no automatic transfer: the HUMAN operator must explicitly select the original file again in that app. No network, cookies or persistent browser storage.
+
+Two separately confirmed exports are available: an anonymous route-counts JSON without source identifiers; and a PRIVATE original filename+size+unsigned-digest handoff containing potentially sensitive filenames, to be transferred only to authenticated recipients. Browser memory wiping is not guaranteed. No grants, dispatch or revocation are performed.
+
 ## Browser-only package digest (no Python required)
 
 Open **scope-unified-workspace/verify.html** locally, select the received ZIP, and optionally paste its expected SHA-256 from a **separately authenticated, independent source**. The browser calculates SHA-256 with Web Crypto in memory, never uploads any bytes, and never saves data. A digest match is **REVIEW_ONLY**, not the original source, consent or authorization proof. For an actual per-file inventory check use the separate offline Python checker below. The browser falls back to a HOLD notice when Web Crypto is unavailable.

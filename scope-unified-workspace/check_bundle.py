@@ -33,6 +33,7 @@ AUTHORITY_KEYS = {"client_consent", "operator_consent", "grant", "scan", "deploy
 MANDATORY = {
     "scope-unified-workspace/index.html",
     "scope-unified-workspace/verify.html",
+    "scope-unified-workspace/handoff.html",
     "scope-unified-workspace/README.md",
     "scope-unified-workspace/check_bundle.py",
     "scope-intake-matrix/standalone.html",
