@@ -259,3 +259,58 @@ privacy clearance, client consent, remediation, absence of findings, or security
 risk. This is only a PRIVATE HUMAN recommendation history. The command
 deliberately exits HOLD (3), including after writing a valid private
 history; it performs no scan, network, grant, communication or deployment.
+
+## Complete PRIVATE HUMAN longitudinal history (2–16 finished revisions)
+
+A local operator may now inspect **an entire explicitly selected consecutive
+native HUMAN revision chain** without reproducing the original source material
+or disseminating every PRIVATE note. Starting with two completed owner-private
+packets and continuing with each directly completed native revision, pass the
+paths in chronological order:
+
+~~~sh
+python3 private-assessment-notes/notes.py history \
+  --packet /private/operator-lightup-work/PRIVATE-lightup-human-handoff-<first-id> \
+  --packet /private/operator-lightup-work/PRIVATE-lightup-human-handoff-<second-id> \
+  --packet /private/operator-lightup-work/PRIVATE-lightup-human-handoff-<third-id> \
+  --private-parent /private/operator-lightup-work
+~~~
+
+All selected packets must be completed original native HUMAN packets in private
+0700 directories with intact 0600 manifests, original masked source bytes, and
+complete original HUMAN decisions CSV. The native reader enforces sequential
+`revision_level`, exact prior manifest and prior decisions SHA-256 references,
+and an unchanged complete original source roster and pattern-masked bytes.
+Any missing level, fork, reordered packet, edited HUMAN manifest or source
+drift is a whole-chain HOLD before publishing the derived workspace. No
+permission, human identity, redaction completeness or security authenticity is
+inferred from these **unsigned** local digests.
+
+The command creates a *new* exclusive owner-private workspace with:
+
+- `OPEN-PRIVATE.html`: printable scriptless overview and source-position-only
+  declared stage/note change history, current per-original HUMAN follow-up
+  summary and confidential local file links.
+- `PRIVATE-HUMAN-board.html`: **interactive, entirely offline** HUMAN history
+  board. Filter by original source ordinal, current HUMAN status, or sources
+  with declared changes; expand/collapse a given source's revision timeline.
+  Browser JavaScript is pinned to its SHA-256 CSP and has no remote resources,
+  fetch, upload or persistent browser storage.
+- `PRIVATE-HUMAN-events.csv`: original position/revision/old and new HUMAN
+  stage and note-changed BOOLEAN only, no PRIVATE note contents.
+- `PRIVATE-HUMAN-current-review.csv`: per-original latest HUMAN stage,
+  number of stage/note changes, last changed revision and whether an explicit
+  HUMAN follow-up remains indicated.
+- `PRIVATE-HUMAN-history.json`: PRIVATE unsigned original packet digest
+  lineage plus source-minimal HUMAN stage/event summary, all authority flags
+  false.
+
+All CSV/HTML exports omit original source filenames, SHA identities, text,
+masked text and free-text HUMAN notes. The JSON includes **unsigned hashes of
+the original PRIVATE packet manifests/CSV** and must remain owner-private.
+Never treat an unchanged stage as verified remediation, a changed note as
+investigation evidence, or `INTERNAL_REVIEW_ONLY` as consent to share.
+Nothing is sent, granted, scanned or scheduled. This is a HUMAN planning
+product only; it deliberately returns HOLD (3) after generating the new local
+workspace, preserving the original release gates and preventing accidental
+success-as-authorization.
