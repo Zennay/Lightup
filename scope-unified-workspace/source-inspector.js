@@ -185,7 +185,7 @@ const LightUpPrivateSourceInspector = (() => {
     const raw = new TextDecoder("utf-8", { fatal: true }).decode(await file.arrayBuffer());
     const doc = parse(raw);
     if (!exact(doc, ["format", "status", "authority", "entries", "warning"]) ||
-        doc.format !== "lightup.scope_handoff_PRIVATE_inventory.v1" ||
+        !["lightup.scope_handoff_PRIVATE_inventory.v1", "lightup.scope_handoff_PRIVATE_inventory.v2"].includes(doc.format) ||
         doc.status !== "REVIEW_ONLY" ||
         !exact(doc.authority, ["client_consent", "operator_consent", "grant", "scan", "deploy", "release"]) ||
         !Object.values(doc.authority).every((v) => v === false) ||
@@ -195,12 +195,16 @@ const LightUpPrivateSourceInspector = (() => {
     }
     const fields = ["original_name", "byte_length", "unsigned_sha256", "structural_kind_unverified",
       "human_route", "human_stage", "human_team", "private_human_note"];
+    const v2 = doc.format === "lightup.scope_handoff_PRIVATE_inventory.v2";
+    const rowFields = v2 ? [...fields, "private_note_included"] : fields;
     const names = new Set(), hashes = new Set();
     const routes = ["none", "studio", "intake", "casebook", "reconcile", "risk", "stop", "vault"];
     const stages = ["unreviewed", "preparing", "escalated", "documented"];
     const teams = ["unassigned", "security", "privacy", "client_ops", "platform"];
     for (const row of doc.entries) {
-      if (!exact(row, fields) || !bounded(row.original_name, 220) || !row.original_name ||
+      if (!exact(row, rowFields) || (v2 && (typeof row.private_note_included !== "boolean" ||
+          (!row.private_note_included && row.private_human_note !== ""))) ||
+          !bounded(row.original_name, 220) || !row.original_name ||
           !count(row.byte_length, 8 * 1024 * 1024) || row.byte_length < 1 ||
           !sha(row.unsigned_sha256) || !bounded(row.structural_kind_unverified, 80) ||
           !routes.includes(row.human_route) || !stages.includes(row.human_stage) ||
@@ -214,7 +218,8 @@ const LightUpPrivateSourceInspector = (() => {
       }
       names.add(key); hashes.add(row.unsigned_sha256);
     }
-    return doc.entries;
+    // V1 always carries the note. V2 explicitly distinguishes redaction from an empty note.
+    return doc.entries.map(row => ({...row, private_note_included: v2 ? row.private_note_included : true}));
   }
   return Object.freeze({ inspect, readHumanInventory });
 })();

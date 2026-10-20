@@ -570,14 +570,17 @@
       before: {human_route:item.route, human_stage:item.stage, human_team:item.team},
       after: {human_route:previous.human_route, human_stage:previous.human_stage,
         human_team:previous.human_team},
-      private_note_changed: item.note !== previous.private_human_note
+      private_note_transferred: previous.private_note_included,
+      private_note_changed: previous.private_note_included &&
+        item.note !== previous.private_human_note
     }));
     recordReviewEdit();
     for (const {item, previous} of chosen) {
       item.route = previous.human_route;
       item.stage = previous.human_stage;
       item.team = previous.human_team;
-      item.note = previous.private_human_note;
+      // Redacted V2 packet means "note not supplied", NEVER "erase local note".
+      if (previous.private_note_included) item.note = previous.private_human_note;
     }
     humanRevision++;
     pendingSelective = null;
@@ -653,7 +656,7 @@
         items[i].route = rows[i].human_route;
         items[i].stage = rows[i].human_stage;
         items[i].team = rows[i].human_team;
-        items[i].note = rows[i].private_human_note;
+        if (rows[i].private_note_included) items[i].note = rows[i].private_human_note;
       }
       render();
       report("REVIEW_ONLY — exacte originele source-bytes en volgorde herkend; uitsluitend PRIVATE HUMAN-reviewkeuzes hersteld. Nooit toestemming of revocation.");
@@ -718,11 +721,14 @@
       return report("HOLD — kies een concreet HUMAN ontvangend team. Een niet-toegewezen werkset mag niet als teampakket worden verstuurd.");
     }
     const scoped = items.filter(e => e.team === selectedTeam);
+    const includeNotes = el("shelf-team-private-notes").checked;
     if (!scoped.length) return report("HOLD — het gekozen team heeft geen expliciet geselecteerde PRIVATE dossiers.");
     if (!confirm("PRIVATE bronexact JSON-teampakket met uitsluitend " + scoped.length +
-      " aan " + teams[selectedTeam] + " toegewezen dossiers exporteren? Het bevat oorspronkelijke namen, SHA-256 en menselijke PRIVATE notities. Controleer de ontvanger afzonderlijk; deze app verifieert GEEN identiteit, bronhouder, consent of toestemming.")) return;
+      " aan " + teams[selectedTeam] + " toegewezen dossiers exporteren? Het bevat oorspronkelijke namen en SHA-256. PRIVATE notitieteksten: " +
+      (includeNotes ? "BEWUST INBEGREPEN" : "UITGESLOTEN") +
+      ". Controleer de ontvanger afzonderlijk; deze app verifieert GEEN identiteit, bronhouder, consent of toestemming.")) return;
     exportJSON("lightup-scope-PRIVATE-sourcebound-human-" + selectedTeam + ".json", {
-      format: "lightup.scope_handoff_PRIVATE_inventory.v1",
+      format: "lightup.scope_handoff_PRIVATE_inventory.v2",
       status: "REVIEW_ONLY",
       authority: {
         client_consent: false, operator_consent: false, grant: false,
@@ -736,7 +742,8 @@
         human_route: e.route,
         human_stage: e.stage,
         human_team: e.team,
-        private_human_note: e.note
+        private_note_included: includeNotes,
+        private_human_note: includeNotes ? e.note : ""
       })),
       warning: "PRIVATE HUMAN review subset only; no source bytes or original authenticity. Separate recipient verification mandatory. Use selective source-exact import; no grant, scan, revocation or release."
     });
@@ -747,6 +754,7 @@
     const team = el("shelf-recipient-team").value;
     if (!Object.hasOwn(teams, team)) return report("HOLD — kies expliciet precies één HUMAN team.");
     const chosen = items.filter(e => e.team === team);
+    const includeNotes = el("shelf-team-private-notes").checked;
     if (!chosen.length) return report("HOLD — voor het gekozen HUMAN team bestaan geen geselecteerde dossiers.");
     if (!confirm("Maak een PRIVATE teambrief met ALLEEN " + chosen.length + " bronverwijzingen voor " +
       teams[team] + "? Bevat mogelijk vertrouwelijke oorspronkelijke namen, SHA-256 en notities. Deze keuze authenticeert de ontvanger niet: controleer die apart en gebruik een passend privé-kanaal.")) return;
@@ -773,7 +781,7 @@
           "  - Bronbytes: " + e.file.size + ", ongetekende SHA-256: " + e.hash,
           "  - Onbevestigde structurele hint: " + JSON.stringify(e.inspection.label),
           "  - Handmatig voorgestelde HUMAN route: " + JSON.stringify(routes[e.route][0]),
-          "  - PRIVATE opvolgnotitie: " + JSON.stringify(e.note || "(geen)"),
+          "  - PRIVATE opvolgnotitie: " + (includeNotes ? JSON.stringify(e.note || "(geen)") : "(bewust niet meegestuurd)"),
           "  - Actie: verifieer onafhankelijk authentieke bronhouder, echte scope, klant/operator en actuele intrekking voordat enige oorspronkelijke actie wordt overwogen.",
           "");
       }

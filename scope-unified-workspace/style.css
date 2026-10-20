@@ -37,3 +37,6 @@ a{color:inherit}a:focus-visible{outline:3px solid #83deb6;outline-offset:4px}.sk
 .shelf-review-history .action{flex:1 1 220px;cursor:pointer;border:1px solid #587788;font-size:12px;font-weight:700}
 .shelf-review-history .action:disabled{opacity:.45;cursor:not-allowed}
 .shelf-review-history .action:focus-visible{outline:3px solid #a9f0e3;outline-offset:3px}
+
+.shelf-private-choice{display:flex!important;align-items:center;gap:10px;line-height:1.6;font-size:13px}
+.shelf-private-choice input{width:20px;height:20px;accent-color:#a8e9d7;flex:none}
