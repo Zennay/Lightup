@@ -21,7 +21,7 @@
   });
   const $ = (id) => document.getElementById(id);
   const enc = new TextEncoder();
-  const state = {rows: [], digest: "", journal: [], selected: -1, dirty: false, pending: false, filename: ""};
+  const state = {rows: [], digest: "", journal: [], selected: -1, dirty: false, pending: false, filename: "", bulkUndo: null};
 
   function fail(message) { throw new Error(message); }
   function exactObject(obj, keys) {
@@ -126,14 +126,14 @@
     $("status").className = error ? "error" : "ok";
   }
   function setEnabled(yes) {
-    ["search", "severityFilter", "stageFilter", "saveJournal", "loadJournal", "saveCounts", "clearAll"].forEach((id) => {
+    ["search", "severityFilter", "stageFilter", "bulkStage", "bulkApply", "saveJournal", "loadJournal", "saveCounts", "clearAll"].forEach((id) => {
       $(id).disabled = !yes;
     });
   }
   function stageText(s) { return s.replaceAll("_", " "); }
   function wipe() {
     state.rows = []; state.digest = ""; state.journal = []; state.selected = -1;
-    state.dirty = false; state.pending = false; state.filename = "";
+    state.dirty = false; state.pending = false; state.filename = ""; state.bulkUndo = null;
     $("sourceFile").value = ""; $("journalFile").value = "";
     $("summary").textContent = "No source CSV loaded.";
     $("sourceId").textContent = "";
@@ -209,6 +209,8 @@
     if (JSON.stringify(entry) !== JSON.stringify(state.journal[state.selected])) {
       state.journal[state.selected] = entry;
       state.dirty = true;
+      state.bulkUndo = null;
+      $("bulkUndo").disabled = true;
     }
     state.pending = false;
     renderList();
@@ -233,6 +235,8 @@
       state.selected = -1;
       state.dirty = false;
       state.pending = false;
+      state.bulkUndo = null;
+      $("bulkUndo").disabled = true;
       $("detail").hidden = true; $("noneSelected").hidden = false;
       $("sourceId").textContent = "Exact file SHA-256: " + sha + " (unsigned; NOT sender authentication)";
       $("summary").textContent = stagedRows.length + " original CSV finding(s), loaded into this local browser only.";
@@ -283,6 +287,7 @@
       const staged = parsed.entries.map((e, i) => admitEntry(e, state.rows[i].id));
       if (!confirm("Replace the in-memory HUMAN notes with the exact-source PRIVATE draft?")) return;
       state.journal = staged; state.dirty = false; state.pending = false; state.selected = -1;
+      state.bulkUndo = null; $("bulkUndo").disabled = true;
       $("detail").hidden = true; $("noneSelected").hidden = false;
       renderList();
       status("Original CSV byte-bound HUMAN journal restored locally (not an authenticated review).", false);
@@ -302,9 +307,45 @@
     download(JSON.stringify(counts, null, 2) + "\n", "lightup-anonymous-review-counts.json", "application/json");
     status("Counts-only file offered; no original IDs, title, source digest or HUMAN notes exported.", false);
   }
+  function applyBulk() {
+    if (state.pending) { status("Apply or discard individual HUMAN form edits before bulk staging.", true); return; }
+    const selected = selectedIndices();
+    const stage = $("bulkStage").value;
+    if (!STAGES.includes(stage) || !selected.length) {
+      status("No canonical HUMAN stage or visible findings were selected.", true);
+      return;
+    }
+    const changed = selected.filter(i => state.journal[i].stage !== stage);
+    if (!changed.length) { status("Visible records already have this HUMAN stage.", false); return; }
+    if (!confirm("HUMAN-ONLY proposal: set " + changed.length +
+      " visible finding(s) to '" + stageText(stage) +
+      "'? This does NOT change original source, retest or remediation. Unfiltered rows stay unchanged.")) return;
+    const previous = changed.map(i => ({index: i, stage: state.journal[i].stage}));
+    for (const i of changed) state.journal[i] = {...state.journal[i], stage};
+    state.bulkUndo = previous;
+    state.dirty = true;
+    $("bulkUndo").disabled = false;
+    if (state.selected >= 0) $("humanStage").value = state.journal[state.selected].stage;
+    renderList();
+    status(changed.length + " visible HUMAN stage(s) updated in memory. Original CSV unchanged. Undo available.", false);
+  }
+  function undoBulk() {
+    if (state.pending) { status("Apply or discard individual HUMAN form edits first.", true); return; }
+    const previous = state.bulkUndo;
+    if (!previous || !previous.length) return;
+    for (const item of previous) {
+      state.journal[item.index] = {...state.journal[item.index], stage: item.stage};
+    }
+    state.bulkUndo = null;
+    $("bulkUndo").disabled = true;
+    state.dirty = true;
+    if (state.selected >= 0) $("humanStage").value = state.journal[state.selected].stage;
+    renderList();
+    status("Last bulk HUMAN stage changes reversed in memory only.", false);
+  }
   function init() {
     STAGES.forEach(v => {
-      for (const id of ["humanStage", "stageFilter"]) {
+      for (const id of ["humanStage", "stageFilter", "bulkStage"]) {
         const opt = document.createElement("option"); opt.value = v; opt.textContent = stageText(v);
         $(id).append(opt);
       }
@@ -326,6 +367,8 @@
       $(id).addEventListener("input", () => { state.pending = true; status("Unapplied HUMAN form edits — click Apply before switching findings or exporting a PRIVATE draft.", true); });
     });
     $("applyHuman").addEventListener("click", writeEntry);
+    $("bulkApply").addEventListener("click", applyBulk);
+    $("bulkUndo").addEventListener("click", undoBulk);
     $("saveJournal").addEventListener("click", saveJournal);
     $("loadJournal").addEventListener("click", () => $("journalFile").click());
     $("saveCounts").addEventListener("click", saveCounts);
