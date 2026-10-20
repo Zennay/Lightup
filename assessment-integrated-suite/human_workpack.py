@@ -106,6 +106,10 @@ def build(session, source_csv: str, parent_name: str, name: str,
     if not source_csv:
         raise privacy.Hold("HOLD: original exact-session HUMAN CSV required")
     rows = route_queue.admit_human_edits(base, source_csv)
+    # Capture the fully read original HUMAN draft once more under its
+    # existing owner-only file boundary. Refuse if the competing original
+    # version disagrees with the already-admitted view.
+    source_bytes = route_queue.read_owner_csv(source_csv)
     teams = [(team, sum(row["review_team"] == team and
                         row["human_stage"] != "UNASSESSED" for row in rows))
              for team in TEAM_FOLDERS]
@@ -117,6 +121,7 @@ def build(session, source_csv: str, parent_name: str, name: str,
         "authority": privacy.AUTHORITY,
         "declared_review_date": review_date,
         "original_client_source_included": False,
+        "pinned_private_human_csv_included": True,
         "original_session_paths_included": False,
         "external_recipient_authenticated": False,
         "review_verified": False,
@@ -134,13 +139,20 @@ def build(session, source_csv: str, parent_name: str, name: str,
     try:
         if not privacy.private(root, True):
             raise privacy.Hold("PRIVATE HUMAN workpack not owner-controlled")
+        # Freeze an owner-private HUMAN draft for EVERY child view.
+        # The original input remains untouched, even if it changes later.
+        pinned = root / "PINNED-HUMAN-QUEUE.csv"
+        privacy.private_write(root, pinned.name, source_bytes)
+        pinned_rows = route_queue.admit_human_edits(base, str(pinned))
+        if route_queue.csv_bytes(pinned_rows) != route_queue.csv_bytes(rows):
+            raise privacy.Hold("HOLD: original HUMAN CSV changed during workpack intake")
         # Original suite producers own all inner HTML, JSON, CSV bytes,
         # ownership and mode admission. No custom bypass of those gates.
-        route_queue.build(session, str(root), "queue", imported_csv=source_csv)
-        human_priorities.build(session, source_csv, str(root),
+        route_queue.build(session, str(root), "queue", imported_csv=str(pinned))
+        human_priorities.build(session, str(pinned), str(root),
                                "priorities", review_date)
         for team, _ in teams:
-            route_team.build(session, source_csv, team, str(root),
+            route_team.build(session, str(pinned), team, str(root),
                              TEAM_FOLDERS[team])
         privacy.private_write(root, "OPEN-PRIVATE.html", index)
         privacy.private_write(root, "PRIVATE-WORKPACK-RECEIPT.json", receipt_bytes)

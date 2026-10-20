@@ -264,7 +264,17 @@ and an operator-declared review date, the software creates one **new**
 Original `route_queue`, `human_priorities` and `route_team` builders are
 reused directly; the workpack does **not** replace any source owner logic,
 skip the existing HUMAN CSV admission, weaken owner-only 0700/0600 modes,
-authenticate a real HUMAN identity or execute a target. A failed assembly
+authenticate a real HUMAN identity or execute a target. All views of one
+complete workpack now use the **same owner-private pinned 0600
+`PINNED-HUMAN-QUEUE.csv`** written into its new 0700 folder: the initial
+original CSV is checked under the strict native owner-only file gate,
+re-read and compared to the pinned strict-admitted view before publication.
+Any mismatch aborts the entire NEW workpack; all original CSV files remain
+unchanged. The pinned file contains confidential **HUMAN question text and
+planning selections**, not original client source artifacts. Treat the
+entire workpack as PRIVATE; never distribute the pinned file. This prevents
+the team worklists and overview from silently reflecting different CSV
+versions when an operator edits the original during composition. A failed assembly
 removes **only its new never-before-existing incomplete output folder**,
 leaving all originals and older HUMAN workrooms intact. All pages remain
 PRIVATE. Nothing is sent, scheduled, approved or released.
