@@ -21,7 +21,7 @@
   });
   const $ = (id) => document.getElementById(id);
   const enc = new TextEncoder();
-  const state = {rows: [], digest: "", journal: [], selected: -1, dirty: false, filename: ""};
+  const state = {rows: [], digest: "", journal: [], selected: -1, dirty: false, pending: false, filename: ""};
 
   function fail(message) { throw new Error(message); }
   function exactObject(obj, keys) {
@@ -133,7 +133,7 @@
   function stageText(s) { return s.replaceAll("_", " "); }
   function wipe() {
     state.rows = []; state.digest = ""; state.journal = []; state.selected = -1;
-    state.dirty = false; state.filename = "";
+    state.dirty = false; state.pending = false; state.filename = "";
     $("sourceFile").value = ""; $("journalFile").value = "";
     $("summary").textContent = "No source CSV loaded.";
     $("sourceId").textContent = "";
@@ -179,6 +179,8 @@
     }
   }
   function selectCase(index) {
+    if (state.pending && !confirm("Discard unapplied edits to the current HUMAN form?")) return;
+    state.pending = false;
     state.selected = index;
     const row = state.rows[index], journal = state.journal[index];
     $("noneSelected").hidden = true; $("detail").hidden = false;
@@ -208,6 +210,7 @@
       state.journal[state.selected] = entry;
       state.dirty = true;
     }
+    state.pending = false;
     renderList();
     status("HUMAN note updated in memory only. Download a PRIVATE draft to keep it.", false);
   }
@@ -217,7 +220,7 @@
     return {bytes, value: DECODER.decode(bytes)};
   }
   async function loadSource(file) {
-    if (state.dirty && !confirm("Discard unsaved PRIVATE HUMAN changes and open a new source?")) return;
+    if ((state.dirty || state.pending) && !confirm("Discard unsaved or unapplied PRIVATE HUMAN changes and open a new source?")) return;
     try {
       const {bytes, value} = await readFile(file, MAX_FILE);
       const stagedRows = admitCsv(value);
@@ -229,6 +232,7 @@
       state.filename = file.name;
       state.selected = -1;
       state.dirty = false;
+      state.pending = false;
       $("detail").hidden = true; $("noneSelected").hidden = false;
       $("sourceId").textContent = "Exact file SHA-256: " + sha + " (unsigned; NOT sender authentication)";
       $("summary").textContent = stagedRows.length + " original CSV finding(s), loaded into this local browser only.";
@@ -254,12 +258,14 @@
     setTimeout(() => URL.revokeObjectURL(url), 2500);
   }
   function saveJournal() {
+    if (state.pending) { status("Apply or discard the current HUMAN form before exporting a journal.", true); return; }
     if (!confirm("PRIVATE export includes finding IDs, HUMAN owners and notes. Save only into a protected location. Continue?")) return;
     download(JSON.stringify(journalDocument(), null, 2) + "\n", "lightup-private-human-review.json", "application/json");
     state.dirty = false;
     status("PRIVATE HUMAN draft offered for local download. Confirm actual file storage yourself.", false);
   }
   async function loadJournal(file) {
+    if (state.pending && !confirm("Discard unapplied HUMAN form edits before reopening a saved draft?")) return;
     try {
       const {value} = await readFile(file, MAX_JOURNAL_BYTES);
       const parsed = JSON.parse(value);
@@ -276,7 +282,7 @@
       }
       const staged = parsed.entries.map((e, i) => admitEntry(e, state.rows[i].id));
       if (!confirm("Replace the in-memory HUMAN notes with the exact-source PRIVATE draft?")) return;
-      state.journal = staged; state.dirty = false; state.selected = -1;
+      state.journal = staged; state.dirty = false; state.pending = false; state.selected = -1;
       $("detail").hidden = true; $("noneSelected").hidden = false;
       renderList();
       status("Original CSV byte-bound HUMAN journal restored locally (not an authenticated review).", false);
@@ -316,16 +322,19 @@
     });
     ["search", "severityFilter", "stageFilter"].forEach(id =>
       $(id).addEventListener("input", renderList));
+    ["humanStage", "humanOwner", "humanDue", "humanNote"].forEach(id => {
+      $(id).addEventListener("input", () => { state.pending = true; status("Unapplied HUMAN form edits — click Apply before switching findings or exporting a PRIVATE draft.", true); });
+    });
     $("applyHuman").addEventListener("click", writeEntry);
     $("saveJournal").addEventListener("click", saveJournal);
     $("loadJournal").addEventListener("click", () => $("journalFile").click());
     $("saveCounts").addEventListener("click", saveCounts);
     $("clearAll").addEventListener("click", () => {
-      if (state.dirty && !confirm("Discard unsaved PRIVATE HUMAN notes?")) return;
+      if ((state.dirty || state.pending) && !confirm("Discard unsaved or unapplied PRIVATE HUMAN notes?")) return;
       wipe(); status("All loaded application state released from the interface.", false);
     });
     window.addEventListener("beforeunload", e => {
-      if (state.dirty) { e.preventDefault(); e.returnValue = ""; }
+      if (state.dirty || state.pending) { e.preventDefault(); e.returnValue = ""; }
     });
     wipe();
   }
