@@ -26,7 +26,7 @@ from portable_handoff import (
     ARCHIVE_NAME, PUBLIC_NAME, SECOND_PUBLIC_NAME,
     MAX_PORTABLE_BYTES, _unpack_bytes, receive,
 )
-from trust_registry import trusted
+from trust_registry import minimum_signers, trusted
 
 MAX_PACKAGES = 12
 KIND = "lightup.software.offline_custody_inbox.v1"
@@ -124,6 +124,7 @@ def _admit_signers(keyring: Path, members: dict[str, bytes], two_required: bool)
 
 
 def inbox(keyring: Path, paths: list[Path], output: Path, require_two: bool) -> None:
+    require_two = require_two or minimum_signers(keyring) == 2
     if not 1 <= len(paths) <= MAX_PACKAGES:
         raise Hold("choose 1–12 source-only portable packages")
     if not output.is_absolute() or output.exists() or output.is_symlink():
@@ -174,6 +175,7 @@ def inbox(keyring: Path, paths: list[Path], output: Path, require_two: bool) -> 
             "scan_authorized": False,
             "deployment_authorized": False,
             "human_go": False,
+            "local_minimum_signers": 2 if require_two else 1,
             "entries": records,
         }
         _write_new_private(stage / "index.html", _html(records))
