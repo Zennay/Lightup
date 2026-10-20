@@ -118,6 +118,8 @@
     Number.isSafeInteger(v) && v >= 0 && v <= max;
   const riskField = v => Number.isSafeInteger(v) && v >= 0 && v <= 5;
   const linkedId = v => v === null || textField(v);
+  const sourceText = (v,max = 80) => typeof v === "string" && v.length <= max &&
+    !/[\u0000-\u001f\u007f]/u.test(v);
   const storedTimestamp = v => typeof v === "string" && v.length <= 80 &&
     !/[\u0000-\u001f\u007f]/u.test(v);
   const safeArray = v => Array.isArray(v) && v.length <= ROW_LIMIT;
@@ -159,7 +161,7 @@
     }
     for (const r of doc.engagements) {
       if (!sameKeys(r, ["engagement_id", "status", "created_at"]) ||
-          !textField(r.status, 80) || !textField(r.created_at, 80)) {
+          !sourceText(r.status, 80) || !textField(r.created_at, 80)) {
         throw Error("HOLD: invalid original engagement fields.");
       }
       accept("engagements", r.engagement_id);
@@ -194,7 +196,7 @@
     for (const r of doc.risk_approvals) {
       if (!sameKeys(r, ["approval_id", "engagement_id", "status", "requested_risk",
         "source_tenant_matches", "decision_recorded", "decision_provenance_observation"]) ||
-          !linkedId(r.engagement_id) || !textField(r.status, 80) ||
+          !linkedId(r.engagement_id) || !sourceText(r.status, 80) ||
           !riskField(r.requested_risk) ||
           typeof r.source_tenant_matches !== "boolean" ||
           typeof r.decision_recorded !== "boolean" ||
@@ -213,7 +215,7 @@
     const seenCases = new Set();
     for (const c of doc.case_overview) {
       if (!sameKeys(c, CASE_FIELDS) || !ids.get("engagements").has(c.engagement_id) ||
-          seenCases.has(c.engagement_id) || !textField(c.status, 80) ||
+          seenCases.has(c.engagement_id) || !sourceText(c.status, 80) ||
           !textField(c.attention, 120) || !textField(c.next_review_action, 160) ||
           !countField(c.grant_count) || !countField(c.risk_record_count)) {
         throw Error("HOLD: malformed or duplicated original case overview.");
@@ -299,7 +301,7 @@
           c.attention.includes("RISK_"))) continue;
       const tr = document.createElement("tr");
       for (const value of [
-        c.engagement_id, c.status,
+        c.engagement_id, c.status || "(empty stored state · HUMAN HOLD)",
         c.grant_count + " stored / " + c.risk_record_count + " risk",
         c.attention, c.next_review_action
       ]) {
@@ -433,7 +435,7 @@
       const tr = document.createElement("tr");
       for (const value of [
         req.request_id,
-        req.status + (req.decision_recorded ? " / decision recorded (UNVERIFIED)" : " / no stored decision"),
+        (req.status || "(empty source status)") + (req.decision_recorded ? " / decision recorded (UNVERIFIED)" : " / no stored decision"),
         req.requested_mode + " / " + req.requested_risk,
         String(linked.length) + " stored links (NOT AUTHORITY)",
         attention
