@@ -70,7 +70,11 @@ def carry(old_raw, old_human_raw, current_raw):
     for old_kit, new_kit, older in zip(previous["kits"], current["kits"], original_rows):
         if old_kit["ordinal"] != new_kit["ordinal"] or old_kit["path"] != new_kit["path"]:
             reject("PRIVATE HOLD: original kit ordinal/path identity changed")
-        unchanged = old_kit["digest"] == new_kit["digest"] and old_kit["files"] == new_kit["files"]
+        unchanged = (
+            old_kit["digest"] == new_kit["digest"]
+            and old_kit["files"] == new_kit["files"]
+            and old_kit["label"] == new_kit["label"]
+        )
         if unchanged:
             stage, owner, question = older["stage"], older["owner"], older["question"]
             carried += 1
