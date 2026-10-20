@@ -323,8 +323,12 @@ The tool creates an exclusive owner-only 0700 workroom with 0600
 `OPEN-PRIVATE.html` (local source-minimal per-kit/per-step change table),
 `PRIVATE-history.json` (bounded multi-step counters),
 `PRIVATE-relative-file-hotspots.json` (sensitive original relative filenames
-and file-churn frequency), and `PRIVATE-HUMAN-history-template.csv` (numeric
-HUMAN-only action worksheet). Every step distinguishes label/context drift
+and file-churn frequency), separate scriptless `PRIVATE-hotspots.html` with
+up to 500 HTML-escaped highest-churn original relative path records and a
+link back to the source-minimal overview, and `PRIVATE-HUMAN-history-template.csv`
+(numeric HUMAN-only action worksheet). The full bounded original path history
+remains in owner-private JSON, not a public anonymous export. A historical
+review workroom is never created inside any original source kit directory. Every step distinguishes label/context drift
 from added, removed or changed original file bytes. Even a zero-change step
 is merely **REVIEW_ONLY**, and any drift returns **HOLD**. A missing historical
 source file never implies a fixed issue. These inventories say NOTHING about
