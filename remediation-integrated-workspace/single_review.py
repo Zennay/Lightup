@@ -32,6 +32,9 @@ WARNING = ("HUMAN-only private local follow-up. Anonymous reason occurrences "
            "client/operator consent, grants, sender identity or security approval.")
 STAGES = frozenset(("open_human", "ask_source_owner",
                     "in_discussion_human", "answered_human_only"))
+VAULT_WARNING = ("PRIVATE encrypted self-declared HUMAN notes. No client/operator "
+                 "identity, authenticated sender, consent, remediation, retest, "
+                 "security finding, grant, scan or release approval. DRAFT/HOLD.")
 STYLE = """
 body{font:16px/1.5 system-ui,sans-serif;background:#f3f6fa;color:#142940;margin:0}
 main{max-width:920px;margin:2rem auto;padding:1rem}
@@ -122,14 +125,19 @@ def hash_csp(b: bytes) -> str:
 
 def report(entries: list[dict], source_key: str) -> bytes:
     js = (Path(__file__).with_name("single_review.js")).read_bytes()
+    cipher_js = (Path(__file__).with_name("journal_encrypt.js")).read_bytes()
+    require(b"</script" not in cipher_js.lower() and len(cipher_js) <= 16000,
+            "Local source-bound encrypted browser component unsafe")
     require(b"</script" not in js.lower() and len(js) <= 16000,
             "Local HUMAN reviewer script unsafe")
     css = STYLE.encode("utf-8")
     seed = journal_payload(entries, source_key)
+    seed["vault_warning"] = VAULT_WARNING
     seed["items"] = entries
     json_body = json.dumps(seed, sort_keys=True, ensure_ascii=True,
                            separators=(",", ":")).replace("<", chr(92) + "u003c")
     policy = ("default-src 'none'; script-src " + hash_csp(js) +
+              " " + hash_csp(cipher_js) +
               "; style-src " + hash_csp(css) +
               "; img-src 'none'; connect-src 'none'; form-action 'none'; "
               "object-src 'none'; base-uri 'none'")
@@ -158,7 +166,20 @@ No browser storage, network, account login, auto-handoff or irreversible deletio
 <option value="answered_human_only">Answered HUMAN (NOT verified fix)</option></select></label>
 <p id="overview" aria-live="polite">Original HUMAN group totals loading offline.</p></section>
 <section id="reasons"></section>
-<button type="button" id="save">Save PRIVATE HUMAN journal as JSON</button>
+<section class="filters" aria-label="Encrypted HUMAN journal">
+<h2>Prefer encrypted PRIVATE journal</h2>
+<p>The optional browser Web Crypto action downloads a password-protected <code>.luhj</code>
+without first writing a plaintext JSON journal. Enter a unique passphrase
+(14–256 NFC characters) twice. This is NOT authenticated source identity,
+client consent, or permission to share any private data. Store the passphrase
+separately and securely; it cannot be recovered.</p>
+<label>New private journal passphrase <input id="journal-password" type="password"
+minlength="14" maxlength="256" autocomplete="new-password"></label>
+<label>Confirm new passphrase <input id="journal-confirm" type="password"
+minlength="14" maxlength="256" autocomplete="new-password"></label>
+<button type="button" id="encrypt-journal">Download encrypted PRIVATE journal (.luhj)</button>
+</section>
+<button type="button" id="save">Download unencrypted PRIVATE JSON (less safe)</button>
 <button type="button" id="clear">Clear current in-memory HUMAN edits</button>
 <p id="status" role="status" aria-live="polite">No browser edits sent anywhere.</p>
 <small>Use the native single_review.py resume command with the SAME complete
@@ -166,6 +187,7 @@ original Cockpit plus the downloaded 0600 journal to continue in a fresh 0700
 private folder. Answered HUMAN does NOT mean fixed, retested or approved.</small>
 <script type="application/json" id="seed">""" + json_body +
             """</script><script>""" + js.decode("utf-8") +
+            """</script><script>""" + cipher_js.decode("utf-8") +
             """</script></main></html>\n""").encode("utf-8")
 
 def publish(cockpit: Path, dest: Path, journal: Path | None,

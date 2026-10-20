@@ -21,9 +21,7 @@ import single_brief
 
 review = single_review.review
 KIND = "lightup.private_sourcebound_human_journal_vault"
-WARNING = ("PRIVATE encrypted self-declared HUMAN notes. No client/operator "
-           "identity, authenticated sender, consent, remediation, retest, "
-           "security finding, grant, scan or release approval. DRAFT/HOLD.")
+WARNING = single_review.VAULT_WARNING
 DISPOSITION = "ENCRYPTED_HUMAN_JOURNAL_NOT_ACTION_AUTHORITY"
 AAD = b"LIGHTUP_PRIVATE_SOURCEBOUND_HUMAN_JOURNAL_AES_GCM_V1"
 MAX_JOURNAL = 262144
