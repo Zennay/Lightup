@@ -29,6 +29,8 @@ APPS = {
     "lab-longitudinal-trends.html": ROOT / "assessment-trends/standalone.html",
     "human-benchmark-triage.html": ROOT / "assessment-review/standalone.html",
     "human-workspace-ledger.html": ROOT / "assessment-workspace-ledger/standalone.html",
+    "human-lab-to-remediation.html": ROOT / "assessment-remediation/standalone.html",
+    "human-remediation-team-room.html": ROOT / "assessment-remediation/team-room.html",
 }
 
 class Hold(Exception):
@@ -98,6 +100,8 @@ def write_html(destination: Path, detail: bool, count: int) -> None:
         ("Explore 3-12 original benchmark trajectories", "workrooms/lab-longitudinal-trends.html"),
         ("Triage original canonical benchmark findings with HUMAN review", "workrooms/human-benchmark-triage.html"),
         ("Review exact original PRIVATE workspace ledger with HUMAN decisions", "workrooms/human-workspace-ledger.html"),
+        ("Map original lab benchmarks to authenticated client findings (HUMAN only)", "workrooms/human-lab-to-remediation.html"),
+        ("Coordinate original PRIVATE HUMAN follow-up with separate teams", "workrooms/human-remediation-team-room.html"),
     ]
     if detail:
         links = [
