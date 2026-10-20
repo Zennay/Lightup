@@ -103,6 +103,40 @@
     const teamCounts = Object.fromEntries(Object.keys(teams).map(k => [k, 0]));
     for (const item of items) teamCounts[item.team] += 1;
     workload.textContent = items.length ? "HUMAN teamlast · " + Object.entries(teamCounts).filter(([,n]) => n).map(([k,n]) => teams[k] + ": " + n).join(" · ") + " · Geen geverifieerde autoriteit" : "Geen teamopvolging geselecteerd. HUMAN-only en nooit uitvoerautoriteit.";
+
+    const teamBoard = el("shelf-team-board");
+    teamBoard.replaceChildren();
+    for (const [teamId, teamLabel] of Object.entries(teams)) {
+      const assigned = items.filter(item => item.team === teamId);
+      if (!assigned.length) continue;
+      const card = document.createElement("article");
+      card.className = "shelf-team-card";
+      const heading = document.createElement("strong");
+      heading.textContent = teamLabel + " · " + assigned.length;
+      const stats = document.createElement("p");
+      stats.textContent = "Escalatie: " + assigned.filter(e => e.stage === "escalated").length +
+        " · Nog te beoordelen: " + assigned.filter(e => e.stage === "unreviewed").length +
+        " · Onderzoek: " + assigned.filter(e => e.stage === "preparing").length +
+        " · Gedocumenteerd (NIET opgelost): " + assigned.filter(e => e.stage === "documented").length;
+      const focus = document.createElement("button");
+      focus.type = "button";
+      focus.textContent = "Bekijk HUMAN dossierlijst";
+      focus.setAttribute("aria-label", "Bekijk uitsluitend de HUMAN dossiers van " + teamLabel);
+      focus.addEventListener("click", () => {
+        teamFilter.value = teamId;
+        stageFilter.value = "all";
+        searchFilter.value = "";
+        render();
+        report("REVIEW_ONLY — alleen het PRIVATE HUMAN teamfilter ingesteld; geen bron of autorisatie gewijzigd.");
+      });
+      card.append(heading, stats, focus);
+      teamBoard.append(card);
+    }
+    if (!teamBoard.childElementCount) {
+      const empty = document.createElement("p");
+      empty.textContent = "Nog geen PRIVATE HUMAN bronbestanden in deze werkruimte geselecteerd.";
+      teamBoard.append(empty);
+    }
     for (const item of items) {
       if (!visibleHumanRow(item)) continue;
       const tr = document.createElement("tr");

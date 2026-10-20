@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="dark">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; base-uri 'none'; object-src 'none'; frame-src 'none'; form-action 'none'; connect-src 'none'; img-src 'none'; style-src 'sha256-jX8dS/pBXIwZA9ElqPttOxm/b9XJeUJtvzC766vojtI='; script-src 'sha256-4Psl/lgJQNcUnK+TIcjy5CoMgIt9dNfolprWvSXjiqM=';">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; base-uri 'none'; object-src 'none'; frame-src 'none'; form-action 'none'; connect-src 'none'; img-src 'none'; style-src 'sha256-WnV23+7pNggwghs59FUD2SbrDnWZh/o51ErVhpn+eys='; script-src 'sha256-M7RfXoSI3Ote5htSWhOvxLeHCu9vYsnE6f7gnkEaohs=';">
 <title>LightUp — PRIVATE handoff-shelf</title>
 <style>/* Embedded by build.py and locked to its exact SHA-256 CSP digest. */
 :root{font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#e8edf2;background:#0a1018;font-synthesis:none;-webkit-font-smoothing:antialiased}
@@ -27,6 +27,18 @@ a{color:inherit}a:focus-visible{outline:3px solid #83deb6;outline-offset:4px}.sk
 .shelf-filter{display:grid;grid-template-columns:1fr 1fr;gap:15px;margin:18px 0 12px}.shelf-filter label{display:flex;flex-direction:column;gap:7px;font-size:12px;font-weight:750;color:#c4d9df}.shelf-filter input,.shelf-filter select{width:100%;min-width:0;background:#182b39;border:1px solid #4d6a7b;border-radius:7px;color:#e3eee9;font:inherit;padding:11px}@media(max-width:750px){.shelf-filter{grid-template-columns:1fr}}
 
 .shelf-drift{margin:30px 0 20px;padding:23px;background:#162532;border:1px solid #476070;border-radius:12px;display:flex;flex-direction:column;gap:14px}.shelf-drift h3{font-size:20px;color:#d5ebeb}.shelf-drift label{font-size:13px;font-weight:750;color:#bfd7db}.shelf-drift input{color:#cee7e0;min-height:45px;border:1px solid #526b7b;border-radius:7px;padding:9px}.shelf-drift p{font-size:12px;line-height:1.7;color:#b4c8cb;margin:0}.shelf-drift button{align-self:start;border:0;cursor:pointer}.shelf-drift button:disabled{opacity:.45;cursor:not-allowed}
+
+/* PRIVATE HUMAN queue cards; never an authorization, approval or security score. */
+.shelf-board{margin:20px 0 26px;padding:16px;border:1px solid #355164;border-radius:12px;background:#111e2b}
+.shelf-board h3{font-size:16px;color:#d5f0e4;margin:0 0 6px}.shelf-board p{font-size:12px;color:#b5c9d0}
+.shelf-board-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(185px,1fr));gap:12px;margin-top:13px}
+.shelf-team-card{background:#182b3b;border:1px solid #415a69;border-radius:10px;padding:13px}
+.shelf-team-card strong{color:#e0f8f0;display:block;font-size:14px;min-height:36px}
+.shelf-team-card p{font-size:12px;line-height:1.8;min-height:72px;margin:9px 0}
+.shelf-team-card button{border:1px solid #749eae;background:#203e50;color:#eaf9f6;border-radius:8px;padding:9px 11px;min-height:44px;cursor:pointer;width:100%;font:inherit;font-size:12px}
+.shelf-team-card button:focus-visible{outline:3px solid #a1e8d3;outline-offset:3px}
+.shelf-team-card button:disabled{cursor:not-allowed;opacity:.5}
+@media print{.shelf-board button{display:none}}
 </style>
 </head>
 <body>
@@ -72,6 +84,11 @@ a{color:inherit}a:focus-visible{outline:3px solid #83deb6;outline-offset:4px}.sk
 <p class="shelf-status">Uitsluitend lokale menselijke routering. Bulkacties zijn geen bronverificatie, oplossing, grant of consent. Kies vooraf bewust het filter en controleer het aantal in het bevestigingsvenster.</p>
 <p id="shelf-summary" class="shelf-summary">Nog geen PRIVATE bestanden ingeladen.</p>
 <p id="shelf-workload" class="shelf-summary" aria-live="polite">Geen teamopvolging geselecteerd. HUMAN-only en nooit uitvoerautoriteit.</p>
+<section class="shelf-board" aria-labelledby="shelf-board-heading">
+<h3 id="shelf-board-heading">HUMAN teamoverzicht (lokale concepten)</h3>
+<p>Niet geauthenticeerde voorgestelde reviewteams. Escalatie, open onderzoek en documentatie zijn geen PASS, intrekking, toestemming of oplossing.</p>
+<div id="shelf-team-board" class="shelf-board-grid"></div>
+</section>
 <div class="table-scroller"><table class="shelf-table" aria-label="Private bronoverdracht">
 <thead><tr><th scope="col">Originele naam (PRIVATE)</th><th scope="col">Bytes</th><th scope="col">Ongetekende SHA-256</th><th scope="col">Bronformaat (niet geauthenticeerd)</th><th scope="col">HUMAN route</th><th scope="col">HUMAN opvolging (uitsluitend lokaal)</th><th scope="col">Bewust openen / behouden / verwijderen</th></tr></thead>
 <tbody id="shelf-rows"></tbody></table></div>
@@ -490,6 +507,40 @@ const LightUpPrivateDrift = (() => {
     const teamCounts = Object.fromEntries(Object.keys(teams).map(k => [k, 0]));
     for (const item of items) teamCounts[item.team] += 1;
     workload.textContent = items.length ? "HUMAN teamlast · " + Object.entries(teamCounts).filter(([,n]) => n).map(([k,n]) => teams[k] + ": " + n).join(" · ") + " · Geen geverifieerde autoriteit" : "Geen teamopvolging geselecteerd. HUMAN-only en nooit uitvoerautoriteit.";
+
+    const teamBoard = el("shelf-team-board");
+    teamBoard.replaceChildren();
+    for (const [teamId, teamLabel] of Object.entries(teams)) {
+      const assigned = items.filter(item => item.team === teamId);
+      if (!assigned.length) continue;
+      const card = document.createElement("article");
+      card.className = "shelf-team-card";
+      const heading = document.createElement("strong");
+      heading.textContent = teamLabel + " · " + assigned.length;
+      const stats = document.createElement("p");
+      stats.textContent = "Escalatie: " + assigned.filter(e => e.stage === "escalated").length +
+        " · Nog te beoordelen: " + assigned.filter(e => e.stage === "unreviewed").length +
+        " · Onderzoek: " + assigned.filter(e => e.stage === "preparing").length +
+        " · Gedocumenteerd (NIET opgelost): " + assigned.filter(e => e.stage === "documented").length;
+      const focus = document.createElement("button");
+      focus.type = "button";
+      focus.textContent = "Bekijk HUMAN dossierlijst";
+      focus.setAttribute("aria-label", "Bekijk uitsluitend de HUMAN dossiers van " + teamLabel);
+      focus.addEventListener("click", () => {
+        teamFilter.value = teamId;
+        stageFilter.value = "all";
+        searchFilter.value = "";
+        render();
+        report("REVIEW_ONLY — alleen het PRIVATE HUMAN teamfilter ingesteld; geen bron of autorisatie gewijzigd.");
+      });
+      card.append(heading, stats, focus);
+      teamBoard.append(card);
+    }
+    if (!teamBoard.childElementCount) {
+      const empty = document.createElement("p");
+      empty.textContent = "Nog geen PRIVATE HUMAN bronbestanden in deze werkruimte geselecteerd.";
+      teamBoard.append(empty);
+    }
     for (const item of items) {
       if (!visibleHumanRow(item)) continue;
       const tr = document.createElement("tr");
