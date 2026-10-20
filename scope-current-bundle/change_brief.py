@@ -6,6 +6,7 @@ them as signatures or authorization. No execution/network/scan/test framework.
 """
 from __future__ import annotations
 import csv
+import io
 import hashlib
 import html
 import json
@@ -101,6 +102,16 @@ def main(argv):
         raise ValueError("Fresh output must have an existing ordinary parent directory")
     require_fresh_private_directory(output)
     write_private(output / "index.html", render_page(rows, old_hash, new_hash, old_heads != new_heads))
+    # Fully source-byte-bound PRIVATE human assignment template, not permission.
+    template = io.StringIO(newline="")
+    writer = csv.writer(template, lineterminator="\\n")
+    writer.writerow(("previous_manifest_sha256", "current_manifest_sha256",
+                     "source_file_path", "change_status", "previous_sha256",
+                     "current_sha256", "human_stage", "human_team", "human_notes"))
+    for name, state, previous, current in rows:
+        writer.writerow((old_hash, new_hash, name, state, previous, current,
+                         "unreviewed", "", ""))
+    write_private(output / "human-review-template.csv", template.getvalue().encode("utf-8"))
     # Intentionally path-free anonymous count export (no source names or hashes).
     counts = {kind: sum(1 for row in rows if row[1] == kind) for kind in ("unchanged", "changed", "added", "absent")}
     counts["original_heads_changed"] = old_heads != new_heads
