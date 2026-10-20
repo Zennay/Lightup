@@ -45,6 +45,7 @@ import portfolio_owner_followup
 import portfolio_owner_followup_studio
 import portfolio_owner_change_briefs
 import portfolio_owner_change_board
+import portfolio_owner_change_history
 import portfolio_owner_studio
 import portfolio_focus_studio
 import browser_intake
@@ -106,6 +107,7 @@ MENU = (
     ("51", "Build standalone PRIVATE HUMAN operator follow-up Studio"),
     ("52", "Create source-bound per-owner PRIVATE HUMAN follow-up change briefs"),
     ("53", "Build portable offline PRIVATE HUMAN operator change board"),
+    ("54", "Compare 2–8 original HUMAN operator versions per private owner"),
     ("0", "Exit"),
 )
 
@@ -254,6 +256,21 @@ def handle_action(action):
         return history_progress.run(argparse.Namespace(
             action_context=prompt("ORIGINAL PRIVATE-action-context.json"),
             actions=actions, plan=plans, private_parent=private_parent()
+        ))
+    if action == "54":
+        originals, csvs = [], []
+        while len(originals) < 8:
+            packet = prompt("ORIGINAL HUMAN operator reply " + str(len(originals)+1),
+                            required=len(originals)<2)
+            if not packet:
+                break
+            originals.append(packet)
+            csvs.append(prompt("Matching complete original HUMAN operator CSV"))
+        return portfolio_owner_change_history.run(argparse.Namespace(
+            history=prompt("Original PRIVATE-HUMAN-inbox-history.json"),
+            inbox=prompt("Original PRIVATE-HUMAN-owner-inbox.json"),
+            followup=originals, operator_csv=csvs,
+            private_parent=private_parent()
         ))
     if action == "53":
         return portfolio_owner_change_board.build(argparse.Namespace(

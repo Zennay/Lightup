@@ -1899,3 +1899,45 @@ Incubate M3/M7 PLAN/LAB ONLY DRAFT/HOLD: genuine current operator/client
 consent, named VPS and hosted exact-head CI, original source-owner and
 independent browser/security/privacy review and explicit HUMAN GO continue
 to gate any merge or live release.
+
+## v47 — compare 2–8 exact original HUMAN operator proposal versions
+
+[portfolio_owner_change_history.py](portfolio_owner_change_history.py)
+adds a longitudinal PRIVATE HUMAN-only proposal view for one original
+`PRIVATE-HUMAN-owner-inbox.json` and original native
+`PRIVATE-HUMAN-inbox-history.json`. An operator explicitly supplies 2–8
+distinct already-finalized original
+`PRIVATE-HUMAN-operator-followup.json` receipts with their exact full
+`PRIVATE-HUMAN-original-operator-followup.csv` files, in human-selected
+comparison order. This order does **not** claim actual meeting timestamps.
+
+The tool invokes the unchanged native original source-bound admission for
+EVERY original pair: canonical JSON with duplicate-key refusal, all false
+authority flags, original owner-inbox and history byte digests, complete
+unchanged owner identities/ordinal order/stages and exact source-bound CSV.
+It rejects duplicate identical receipts or changed original HUMAN slot sets
+and stages. Original inputs are admitted again immediately before writing
+anything. Only one fresh 0700/0600 root and separate 0700 PRIVATE HUMAN owner
+subrooms are created. Each source-minimal `OPEN-PRIVATE.html` omits original
+owner labels, case IDs, source hashes and private note text. Separate
+owner-private scriptless detailed HTML, canonical JSON and CSV show 2–8
+operator-proposed HUMAN stage progressions and the round numbers where
+PRIVATE note texts changed, but **never copy the actual note contents**.
+Absence of changes does not prove a fix or any real task completion.
+
+    python3 assessment-workspace-ledger/portfolio_owner_change_history.py \
+      --history /private/history/PRIVATE-HUMAN-inbox-history.json \
+      --inbox /private/operator/PRIVATE-HUMAN-owner-inbox.json \
+      --followup /private/review1/PRIVATE-HUMAN-operator-followup.json \
+      --operator-csv /private/review1/PRIVATE-HUMAN-original-operator-followup.csv \
+      --followup /private/review2/PRIVATE-HUMAN-operator-followup.json \
+      --operator-csv /private/review2/PRIVATE-HUMAN-original-operator-followup.csv \
+      --private-parent /private/operator-only
+
+Console **54** exposes the full offline HUMAN-only comparison. The source
+only software package v47 retains unsigned fixed source inventory
+compatibility v16–v46. Original source review, current authenticated
+client/operator consent with revocation-at-use, independent security/privacy/
+browser review, original exact-head hosted+named VPS CI and explicit HUMAN GO
+remain mandatory. Notion Incubate M3/M7 PLAN/LAB ONLY DRAFT/HOLD; no real
+targets, scans, dispatch, grants, live deployment, approval or merge.
