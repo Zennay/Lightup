@@ -1533,3 +1533,20 @@ Foreground console **43** exposes this original HUMAN-only batch workflow.
 Fixed source-only package **v37** retains v16–v36 inventory reads.
 Incubate M3/M7 PLAN/LAB ONLY DRAFT/HOLD and all exact original CI, owner,
 security/privacy/browser review and HUMAN GO gates remain unchanged.
+
+## v38 — refuse duplicate source JSON keys in HUMAN history browser
+
+The complete standalone offline HUMAN history viewer now recursively rejects
+repeated original JSON keys before showing any timeline, including duplicate
+keys with different Unicode escape spellings. This prevents a locally edited
+PRIVATE import from silently replacing earlier keys in the browser preview.
+Noncanonical or corrupted inputs still require the separate native source
+reader; the browser is never permission, signature validation, true
+authentication or provenance proof.
+
+Fixed source-only bundle **v38** replaces the source-free HTML and JS viewer,
+and maintains v16–v37 unsigned software inventory inspection. No original
+PRIVATE input, target, client, grant, scan, model, network, action or
+authorization was activated. All original Incubate M3/M7 HUMAN GO and exact
+hosted/named VPS CI plus independent owner/security/privacy/browser gates
+remain unchanged.

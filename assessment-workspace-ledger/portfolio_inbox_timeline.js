@@ -20,6 +20,62 @@
  function label(s){return typeof s==="string" && s.length>0 && s.length<=80 && s.trim()===s && !/[\u0000-\u001f\u007f]/.test(s) && !/^\s*[=+@-]/.test(s);}
  function id(r){return r.local_case+"/"+r.historical_transition+"/"+r.original_kit;}
  function changes(a,seq){return a.filter((n,i)=>Number.isInteger(n)&&n>=2&&n<=seq&& (i===0||n>a[i-1]));}
+ function parseUniqueJSON(source) {
+   // Mirror the original native duplicate-key refusal in the offline preview.
+   // This is only parse hygiene; the native PRIVATE admission is authoritative.
+   let pos=0;
+   const number=/-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?/y;
+   const literal=/(?:true|false|null)/y;
+   function space(){while(pos<source.length&&/[ \t\n\r]/.test(source[pos]))pos++;}
+   function quoted(){
+     if(source[pos]!=='"')throw Error("Malformed source JSON key");
+     const start=pos++;
+     while(pos<source.length){
+       const ch=source[pos++];
+       if(ch==='"')return JSON.parse(source.slice(start,pos));
+       if(ch==="\\"){if(pos===source.length)throw Error("Malformed JSON escape");pos++;}
+     }
+     throw Error("Unterminated original source JSON string");
+   }
+   function value(depth){
+     if(depth>60)throw Error("Original HUMAN history JSON too deeply nested");
+     space();
+     if(source[pos]==='{'){
+       pos++;space();const seen=new Set();
+       if(source[pos]==='}'){pos++;return;}
+       while(true){
+         space();const key=quoted();
+         if(seen.has(key))throw Error("Duplicate original PRIVATE JSON key");
+         seen.add(key);space();
+         if(source[pos++]!==':')throw Error("Malformed JSON object");
+         value(depth+1);space();
+         const end=source[pos++];
+         if(end==='}')return;
+         if(end!==',')throw Error("Malformed original JSON object delimiter");
+       }
+     }
+     if(source[pos]==='['){
+       pos++;space();
+       if(source[pos]===']'){pos++;return;}
+       while(true){
+         value(depth+1);space();const end=source[pos++];
+         if(end===']')return;
+         if(end!==',')throw Error("Malformed original JSON array delimiter");
+       }
+     }
+     if(source[pos]==='"'){quoted();return;}
+     number.lastIndex=pos;
+     const n=number.exec(source);
+     if(n){pos=number.lastIndex;return;}
+     literal.lastIndex=pos;
+     const l=literal.exec(source);
+     if(l){pos=literal.lastIndex;return;}
+     throw Error("Malformed PRIVATE HUMAN history JSON token");
+   }
+   value(0);space();
+   if(pos!==source.length)throw Error("Trailing original PRIVATE history JSON data");
+   return JSON.parse(source);
+ }
  function verify(doc){
    if(!exact(doc,ROOT)||doc.schema!==HISTORY||!exact(doc.authority,AUTH)||!AUTH.every(k=>doc.authority[k]===false)||
      doc.historical_only!==true||!["sources_reopened","recipient_authenticated","consent_assumed","actions_dispatched","appointments_booked","verified_remediation"].every(k=>doc[k]===false)||
@@ -158,7 +214,7 @@
      const raw=await file.arrayBuffer();
      if(raw.byteLength!==file.size||!raw.byteLength||raw.byteLength>MAX_BYTES)throw Error("Source byte limit");
      const source=new TextDecoder("utf-8",{fatal:true}).decode(raw);
-     const doc=JSON.parse(source), parsed=verify(doc);
+     const doc=parseUniqueJSON(source), parsed=verify(doc);
      if(!crypto.subtle)throw Error("No local Web Crypto digest");
      const data=await crypto.subtle.digest("SHA-256",raw);
      const digest=Array.from(new Uint8Array(data),n=>n.toString(16).padStart(2,"0")).join("");
