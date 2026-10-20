@@ -192,7 +192,7 @@ CSV to resume after complete source matching and manual confirmation.</p>
 network, publishing, grants, deletion or external recipients.</p></html>""").encode("utf-8")
 
 
-def landing(n: int, originals: int) -> bytes:
+def landing(n: int, originals: int, identical_pairs: list[list[int]]) -> bytes:
     return ("""<!doctype html><html lang="en"><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none';style-src 'unsafe-inline';connect-src 'none';base-uri 'none'">
@@ -205,7 +205,8 @@ li{padding:.3rem}</style>
 This workroom contains unsent, owner-private HUMAN proposals and source
 hashes. Local review history never proves risk reduction or recipient authority.</aside>
 <p>Original source positions: """ + str(originals) + """ · manually ordered
-PRIVATE completed review rounds: """ + str(n) + """</p>
+PRIVATE completed review rounds: """ + str(n) + """; byte-identical HUMAN decision round pairs: """ + str(len(identical_pairs)) + """.
+Matching review CSV bytes are declared duplicate content, not validated author identities, independent reviewer opinions, chronological evidence, or privacy PASS.</p>
 <ul><li><a href="PRIVATE-HUMAN-timeline.html">Explore interactive offline HUMAN timeline</a></li>
 <li><a href="PRIVATE-HUMAN-history.html">Read printable HUMAN history</a></li>
 <li><a href="PRIVATE-HUMAN-transitions.csv">Read full PRIVATE change table</a></li>
@@ -234,9 +235,16 @@ def build(original: str, review_paths: list[str], parent_string: str) -> int:
         load_round(value, sources, manifest_sha, decision_sha)
         for value in normalized
     ]
+    # Distinct completed review packets may contain unchanged HUMAN decisions.
+    # Keep all manually ordered rounds, but never treat matching bytes as proof
+    # of independent authors or additional security/privacy confidence.
     digests = [entry["csv_sha256_unsigned"] for entry in rounds]
-    if len(set(digests)) != len(digests):
-        raise Hold("HOLD: repeated byte-identical HUMAN decisions are not a new round")
+    identical_pairs = [
+        [earlier + 1, later + 1]
+        for earlier in range(len(digests))
+        for later in range(earlier + 1, len(digests))
+        if digests[earlier] == digests[later]
+    ]
     transitions = change_rows(rounds)
     destination = Path(tempfile.mkdtemp(
         prefix="PRIVATE-lightup-sensitivity-history-", dir=parent))
@@ -275,6 +283,7 @@ def build(original: str, review_paths: list[str], parent_string: str) -> int:
             "original_manifest_sha256_unsigned": manifest_sha,
             "original_human_csv_sha256_unsigned": decision_sha,
             "review_rounds": previous, "literal_change_counts": change_counts,
+            "identical_human_csv_round_pairs_not_independent_proof": identical_pairs,
             **{flag: False for flag in FALSE_FLAGS},
         })
         file_new(destination / "PRIVATE-HUMAN-history.html",
@@ -309,7 +318,7 @@ def build(original: str, review_paths: list[str], parent_string: str) -> int:
         file_new(destination / "PRIVATE-HUMAN-sensitivity-editor.html",
                  browser_editor(default_rows(sources)))
         file_new(destination / "OPEN-PRIVATE.html",
-                 landing(len(rounds), len(sources)))
+                 landing(len(rounds), len(sources), identical_pairs))
         done = True
         print("REVIEW_ONLY: source-exact PRIVATE HUMAN history and blank next round created")
         print("OPEN LOCALLY: " + str(destination / "OPEN-PRIVATE.html"))
