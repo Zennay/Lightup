@@ -169,8 +169,15 @@ def file_inventory(kit_path):
             file_fd = os.open(name, os.O_RDONLY | os.O_NOFOLLOW | os.O_CLOEXEC | os.O_NONBLOCK, dir_fd=fd)
             try:
                 before = os.fstat(file_fd)
-                if not stat.S_ISREG(before.st_mode) or before.st_ino != s.st_ino or before.st_dev != s.st_dev:
-                    reject("PRIVATE HOLD: file changed during inspection")
+                if (not stat.S_ISREG(before.st_mode)
+                        or before.st_uid != os.geteuid()
+                        or before.st_mode & 0o077
+                        or before.st_nlink != 1
+                        or (before.st_dev, before.st_ino, before.st_size,
+                            before.st_mtime_ns, before.st_ctime_ns) !=
+                           (s.st_dev, s.st_ino, s.st_size,
+                            s.st_mtime_ns, s.st_ctime_ns)):
+                    reject("PRIVATE HOLD: opened original kit file identity or privacy changed")
                 h = hashlib.sha256()
                 amount = 0
                 while True:
