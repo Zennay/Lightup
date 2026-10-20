@@ -199,8 +199,11 @@
       authority:AUTHORITY,
       rows:entries.map(record).sort((a,b) => a.sha256.localeCompare(b.sha256))
     };
+    if (!window.confirm("Dit is een ONVERSLEUTELD PRIVATE JSON-plan met volledige SHA-256 bronidentiteiten, menselijke aliassen, reviewdatums en acties. Alleen bewust exporteren naar een vertrouwde privéopslag. Doorgaan?")) {
+      return status("PRIVATE plaintext export geannuleerd; geen bestand aangemaakt.");
+    }
     download("lightup-private-assessment-retention.json", "application/json", JSON.stringify(obj));
-    status("PRIVATE ongetekend menselijk plan geëxporteerd. Geen broninhoud, bestandsnaam of scanpermissie inbegrepen.");
+    status("PRIVATE ongetekend en bewust onversleuteld JSON-plan geëxporteerd. Vertrouwelijk bewaren.");
   }
   function validateReceipt(raw, requireExactMembership = true) {
     let obj;
