@@ -289,6 +289,45 @@ all release and active actions.
   people approved the package; independent external identity verification and
   release reviews remain outside this tool.
 
+## Compare 2–12 independently admitted ORIGINAL software inboxes
+
+This is a separate user-facing offline source-difference desk. It helps the
+operator understand **what software bytes and local signer fingerprints
+differ**, without claiming that a new package is approved, fixes a
+vulnerability, is chronologically newer or carries current consent.
+
+Choose 2–12 existing PRIVATE inbox folders, each containing exactly one
+previously received, source-locked original LightUp software-only ZIP. Each
+input is independently re-admitted using the **current** local non-revoked
+keyring, its original native receipt, both signers where required, the
+byte-identical scriptless HTML, and the original native source inspector.
+Only then is an independent PRIVATE, scriptless source-change report
+published atomically with a bounded locally derived JSON receipt:
+
+    python3 remediation-package-signatures/software_revision_desk.py \
+      --keyring /ABSOLUTE/PRIVATE/PATH/local-trust-registry \
+      --inbox /ABSOLUTE/PRIVATE/PATH/first-admitted-inbox \
+      --inbox /ABSOLUTE/PRIVATE/PATH/second-admitted-inbox \
+      --output-dir /ABSOLUTE/PRIVATE/PATH/new-software-difference-desk
+
+The HUMAN operator may provide more --inbox arguments, up to twelve, or choose
+**option 8** in operator_desk.py. The input order means ONLY the order the
+operator selected; it is NOT verified chronology or proof that any proposed
+package supersedes a prior one. The report shows exact software ZIP digests,
+file counts, the source inventory digest, each original source file path whose
+signed-installed bytes are added/removed/changed, and selected old/new local
+signing-key fingerprints. It neither copies private evidence/credentials nor
+compares customer vulnerabilities. New human decisions remain external.
+
+An existing native software source-lock version must be available to inspect
+each selected original inbox. A historical package that the CURRENT installed
+original source owner cannot re-admit is HOLD; this desk will NOT bypass the
+original pin and will NOT invent a diff. An existing diff is a static private
+snapshot. Generate a new diff after key revocation or input change; a saved
+HTML file cannot enforce current trust or remote revocation by itself.
+Original CI, independent reviews, client/operator consent, and HUMAN GO
+remain mandatory for any actual release.
+
 ## Limits and operational risks
 
 - Password/key loss cannot be recovered; do not store the private PEM in Git.
