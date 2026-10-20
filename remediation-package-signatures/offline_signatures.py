@@ -41,7 +41,7 @@ class Hold(ValueError):
 
 def _regular_file_bytes(path: Path, ceiling: int) -> bytes:
     """Read a bounded regular file without following a symlink."""
-    flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
+    flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_NONBLOCK", 0) | getattr(os, "O_CLOEXEC", 0)
     try:
         fd = os.open(path, flags)
     except OSError as exc:
@@ -202,7 +202,7 @@ def verify(
     receipt_path: Path,
     trusted_public_key: Path,
     expected_fingerprint: str,
-) -> None:
+) -> bytes:
     if len(expected_fingerprint) != 64 or any(c not in "0123456789abcdef" for c in expected_fingerprint):
         raise Hold("trusted fingerprint must be 64 lowercase hex characters")
     public = _public_key(trusted_public_key)
@@ -226,7 +226,8 @@ def verify(
         or type(receipt["signature_b64"]) is not str
     ):
         raise Hold("receipt format/type/purpose differs")
-    if signed != _manifest(_archive(archive_path)):
+    verified_archive_bytes = _archive(archive_path)
+    if signed != _manifest(verified_archive_bytes):
         raise Hold("archive bytes differ from the signed manifest")
     try:
         signature = base64.b64decode(receipt["signature_b64"], validate=True)
@@ -239,6 +240,7 @@ def verify(
     print("REVIEW_ONLY — original native receiver must still admit the archive.")
     print("NOT VERIFIED: original source identity, security review, client/operator")
     print("consent, authorization, remediation, deployment or HUMAN GO.")
+    return verified_archive_bytes  # immutable captured bytes for native receiver handoff
 
 
 def main() -> int:
