@@ -17,6 +17,21 @@ import zipfile
 
 from briefing import DENIAL_FLAGS, Hold, json_bytes, publish_new, require, strict_pairs
 
+START_HERE_PRIVATE = (
+                "LIGHTUP PRIVATE OFFLINE PAGED BRIEFING — REVIEW ONLY\n\n"
+                "This ZIP is UNENCRYPTED and includes sensitive ORIGINAL lab "
+                "target literals, finding descriptions, summaries and evidence "
+                "references. Store privately; only transport via independently "
+                "approved confidential means.\n"
+                "Open index.html LOCALLY after extracting into a private folder. "
+                "Do not publish via a website.\n"
+                "The included unsigned manifest checks exact original source "
+                "declarations; it NEVER proves authenticated source producer, "
+                "consent, current revocation, valid findings, remediation, "
+                "grants, authorization, scan permission or production release.\n"
+                "INCUBATE M3/M7 PLAN/LAB ONLY — DRAFT/HOLD.\n"
+).encode("utf-8")
+
 MAX_MEMBERS = 55
 MAX_MANIFEST = 64 * 1024
 MAX_MEMBER = 24 * 1024 * 1024
@@ -127,20 +142,7 @@ def assemble_from_existing(private_dir: str) -> tuple[bytes, dict]:
                 info.external_attr = 0o100600 << 16
                 info.create_system = 3
                 archive.writestr(info, content)
-            instructions = (
-                "LIGHTUP PRIVATE OFFLINE PAGED BRIEFING — REVIEW ONLY\n\n"
-                "This ZIP is UNENCRYPTED and includes sensitive ORIGINAL lab "
-                "target literals, finding descriptions, summaries and evidence "
-                "references. Store privately; only transport via independently "
-                "approved confidential means.\n"
-                "Open index.html LOCALLY after extracting into a private folder. "
-                "Do not publish via a website.\n"
-                "The included unsigned manifest checks exact original source "
-                "declarations; it NEVER proves authenticated source producer, "
-                "consent, current revocation, valid findings, remediation, "
-                "grants, authorization, scan permission or production release.\n"
-                "INCUBATE M3/M7 PLAN/LAB ONLY — DRAFT/HOLD.\n"
-            ).encode("utf-8")
+            instructions = START_HERE_PRIVATE
             extra = zipfile.ZipInfo("START-HERE-PRIVATE.txt", date_time=(1980,1,1,0,0,0))
             extra.compress_type = zipfile.ZIP_DEFLATED
             extra.external_attr = 0o100600 << 16
