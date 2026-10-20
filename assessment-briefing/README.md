@@ -191,3 +191,29 @@ python3 assessment-briefing/private_paged_restore.py \
 The receiver first admits the bounded ZIP and its exact manifest and original page inventory. It rejects duplicate/ambiguous ZIP member names, arbitrary paths/traversal, directories, symlinks, altered content/checksums, encrypted ZIP entries, unexpected compression, appended files and modified operator instructions. **Only after every original member is admitted and complete** are known relative artifacts extracted into one entirely NEW 0700 protected directory as 0600 files, with an explicit private local restore-receipt and retained original manifest. The recipient opens the resulting `index.html` LOCALLY; links reach the original source-ordinal pages. The original `human-followup.csv` can enter the existing browser HUMAN Studio or `human_return.py`. A source digest remains an **UNSIGNED identifier**; matching it is not source producer, client/operator identity, consent, authorization, verified findings, remediation or release.
 
 Both tools are also in the foreground `console.py` menu. Neither performs a background operation. **Do not publish the ZIP or restored directory to a public host.** No production deployment or active target activity is allowed under the current M3/M7 DRAFT/HOLD phase.
+
+
+## Safe HUMAN follow-up continuity across TWO original lab runs
+
+A new product flow now drafts HUMAN review continuity when an operator has *already* obtained a newer original PRIVATE lab result. **Nothing runs or contacts a target**, and a changed or missing source declaration NEVER becomes a verified fix or a newly proven vulnerability. All new HUMAN stages are deliberately reset to `needs_review` even for identical original source descriptions.
+
+```bash
+python3 assessment-briefing/human_source_continuity.py \
+  --before ./earlier-original-lab.json \
+  --before-manifest ./EARLIER-PRIVATE-BRIEFING/manifest.json \
+  --before-worksheet ./human-earlier.csv \
+  --after ./newer-original-lab.json \
+  --output-dir ./NEW-PRIVATE-HUMAN-CONTINUITY
+```
+
+The program first strictly admits the earlier original lab JSON, exact SHA-bound earlier manifest and complete original seven-column HUMAN worksheet. It independently admits the **newer already-produced** lab JSON. The two original results must have **different original run IDs**, identical scenario literal and identical set of declared original target strings. They remain unverified source declarations. It uses the original literal target + capability ID + check ID strictly as a heuristic candidate-key, not verified identity or finding truth; duplicate keys on either side remain ambiguous and get no carryover.
+
+Per newest original finding ordinal, the resulting PRIVATE human **PROPOSAL** CSV is a complete original seven-column format with the new source-reported severity and evidence-reference count. Every HUMAN stage is always reset to `needs_review`. Only an exact one-to-one original literal key can suggest copying the former generic HUMAN group; old HUMAN next action and blocker suggestions are copied **only if all original described source fields, original evidence references and original finding ID are byte-exact-equal**. If the finding ID, evidence references or other description changed, the old action and blocker are cleared instead of implying present validity. No old remediation, approval, source authenticity, finding validity, client/operator consent, actual recency or current permissions can be carried. Potential spreadsheet-formula-leading HUMAN fields are rejected, not silently exported.
+
+The new protected PRIVATE output folder contains:
+
+- `PRIVATE-next-human-review-PROPOSAL.csv` — proposed HUMAN-only values using **the newest original source ordinals**. No original target URLs, check/asset IDs or finding descriptions in CSV. It is deliberately **not automatically adopted or applied**.
+- `PRIVATE-human-source-continuity.html` — scriptless, CSP-pinned PRIVATE per-source-row explanation of which previous ordinal (if uniquely matched) informed a proposed HUMAN group/action, with original newest titles, descriptions and target text behind a PRIVATE detail disclosure. Reported absence is NEVER "fixed".
+- `PRIVATE-proposal-manifest.json` — old/new UNSIGNED original source SHA-256, source-declaration category counts, private output hashes and literal false security/permission/release flags.
+
+A HUMAN should inspect and edit this proposed CSV in the [PRIVATE browser Studio](worksheet-studio-standalone.html), then run the **original** `briefing.py` or `paged_review.py` for the NEW original lab JSON and use its NEW manifest together with the reviewed CSV in `human_return.py`. This ensures the true new source byte-binding gate remains separate and compulsory. Source similarity never pre-approves any human action. This operator workflow is also available in the shared foreground console. Like all other LightUp modules, it remains DRAFT/HOLD pending original full release gates.
