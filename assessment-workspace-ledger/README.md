@@ -22,6 +22,20 @@ Requires Python 3 standard library. Operate on a trusted machine with explicit o
 
 **Exit 2 = PRIVATE REVIEW_ONLY** when no differences are observed. **Exit 3 = HOLD** on any input refusal, HUMAN finalization, or observed changes. A changed snapshot still creates a *new* exclusively private inventory to support follow-up; previous snapshots are not deleted or overwritten.
 
+## Portable browser-only software build
+
+The independent HUMAN editor is also usable without creating any inventory
+first. Produce one standalone source-free HTML file, exclusively without
+overwriting a previous copy:
+
+    python3 assessment-workspace-ledger/browser_studio.py --output /private/new-ledger-studio.html
+
+Open it offline with no Python/server/browser storage, and choose an existing
+original PRIVATE ledger.json in the local file picker. The output HTML itself
+contains no source/customer data or local paths. Keep chosen source files
+and exported HUMAN CSVs in owner-only private storage; finalize re-checks
+the exact original snapshot in the native CLI.
+
 ## Product artifacts
 
 - ledger.json: PRIVATE original absolute paths, bounded file inventory, size and SHA-256 per file, per-kit digest, previous snapshot SHA and literal all-false authority flags; this contains sensitive paths and MUST NOT be shared as an anonymous export.
