@@ -2,7 +2,7 @@
 
 **CURRENT SOURCE DELIVERY — DRAFT/HOLD:** The up-to-date portable PRIVATE
 two-reviewer workroom is [reconcile-standalone.html](./reconcile-standalone.html)
-(rebuilt source-only at commit `e43cbec`). It supports original
+(rebuilt source-only at commit `9d3e561`). It supports original
 HUMAN selection, encrypted native-compatible continuation, read-only receipt
 and complete counts reopening, plus explicit privacy-minimal PRIVATE local
 receiving records with unsigned byte identities. [The Python native receiver](./reconcile.py)
