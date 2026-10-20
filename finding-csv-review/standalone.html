@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-8CuFinA5Irax7y3+gJM+R1yDKnywWPfSwzmiI5iV6oM='; style-src 'sha256-gXOjPoRsp+vQKp7TyXAAnbxwcEMOguVZDKc0WLHFpe8='; img-src 'none'; connect-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'; frame-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-6PxAsgGQQ0cgQeFGGpNaXqYtSZzGsJnhWEcQitsr9+0=' 'sha256-8uAHjgFSggtHgPEFLHd6tHK4zZSwgwZNh3t30Z9S0O4='; style-src 'sha256-gyI8MUdLfiH7HQAoM0djxKnnYP06zv+qiwgq+LmmmfE='; img-src 'none'; connect-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'; frame-src 'none'">
 <meta name="referrer" content="no-referrer">
 <title>LightUp · PRIVATE finding follow-up</title>
 <style>:root { color-scheme: dark; --ink:#edf5f3; --muted:#91aca9; --bg:#091513; --panel:#102421; --panel2:#142d29; --line:#28504a; --accent:#80e5c0; --danger:#ffd1ba; font: 15px/1.5 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
@@ -62,7 +62,121 @@ footer { max-width:1280px; padding:0 22px 32px; margin:auto; font-size:.72rem; c
 @media(max-width:520px) { .bulk { grid-template-columns:1fr; } }
 
 .brief-actions { border-top:1px solid var(--line); margin-top:18px; padding-top:16px; } .brief-actions .brief-toggle { display:flex; align-items:center; gap:9px; font-size:.8rem; margin-bottom:12px; } .brief-actions .brief-toggle input { width:auto; margin:0; } .brief-actions .minor { font-size:.75rem; color:var(--muted); }
+
+.vault-controls { border-top:1px solid var(--line); padding-top:18px; margin-top:18px; } .vault-controls input[type="password"] { width:100%; background:#0a1b19; color:var(--ink); border:1px solid #36615a; border-radius:8px; padding:10px 12px; } .vault-controls .minor { font-size:.78rem; color:var(--muted); }
 </style>
+<script>"use strict";
+/* PRIVATE encrypted HUMAN journal transport, memory-only decrypted source.
+ * A passphrase authenticates ciphertext, NOT original source/client/consent.
+ * Standalone companion; no target, network, persistence or grant.
+ */
+(function () {
+  const SCHEMA = "lightup.offline_human_csv_encrypted_journal.v1";
+  const TYPE = "PRIVATE_HUMAN_ONLY";
+  const KDF = "PBKDF2-SHA256";
+  const CIPHER = "AES-256-GCM";
+  const ITERATIONS = 600000;
+  const MAX_PLAIN = 512 * 1024;
+  const MAX_FILE = 1024 * 1024;
+  const enc = new TextEncoder();
+  const dec = new TextDecoder("utf-8", {fatal: true});
+
+  function reject() { throw new Error("Encrypted PRIVATE journal could not be admitted or opened"); }
+  function exact(value, fields) {
+    return value !== null && typeof value === "object" &&
+      !Array.isArray(value) &&
+      Object.keys(value).length === fields.length &&
+      fields.every(field => Object.prototype.hasOwnProperty.call(value, field));
+  }
+  function to64(data) {
+    let chars = "";
+    for (const byte of data) chars += String.fromCharCode(byte);
+    return btoa(chars);
+  }
+  function from64(input, len) {
+    if (typeof input !== "string" || input.length > MAX_FILE * 2 ||
+        !/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(input)) reject();
+    let bytes;
+    try {
+      bytes = Uint8Array.from(atob(input), character => character.charCodeAt(0));
+    } catch (_) { reject(); }
+    if ((len !== null && bytes.length !== len) ||
+        bytes.length > MAX_FILE || to64(bytes) !== input) reject();
+    return bytes;
+  }
+  async function derive(passphrase, salt, operations) {
+    if (typeof passphrase !== "string" || passphrase.length < 12 ||
+        enc.encode(passphrase).length > 1024) {
+      throw new Error("Private passphrase must contain 12–1024 UTF-8 bytes");
+    }
+    if (!globalThis.crypto?.subtle || !globalThis.crypto.getRandomValues) {
+      throw new Error("This local browser cannot provide required WebCrypto");
+    }
+    const raw = enc.encode(passphrase);
+    try {
+      const material = await crypto.subtle.importKey("raw", raw, "PBKDF2", false, ["deriveKey"]);
+      return await crypto.subtle.deriveKey(
+        {name: "PBKDF2", salt, iterations: ITERATIONS, hash: "SHA-256"}, material,
+        {name: "AES-GCM", length: 256}, false, operations);
+    } finally {
+      raw.fill(0);
+    }
+  }
+  function admittedPlain(value) {
+    const bytes = enc.encode(JSON.stringify(value, null, 2) + "\n");
+    if (!bytes.length || bytes.length > MAX_PLAIN) {
+      throw new Error("PRIVATE journal exceeds supported size");
+    }
+    return bytes;
+  }
+  async function seal(document, passphrase) {
+    const data = admittedPlain(document);
+    try {
+      const salt = crypto.getRandomValues(new Uint8Array(16));
+      const nonce = crypto.getRandomValues(new Uint8Array(12));
+      const key = await derive(passphrase, salt, ["encrypt"]);
+      const cipher = await crypto.subtle.encrypt({name: "AES-GCM", iv: nonce}, key, data);
+      const obj = {
+        schema: SCHEMA, classification: TYPE,
+        kdf: KDF, iterations: ITERATIONS, cipher: CIPHER,
+        salt: to64(salt), nonce: to64(nonce), ciphertext: to64(new Uint8Array(cipher))
+      };
+      return JSON.stringify(obj, null, 2) + "\n";
+    } finally {
+      data.fill(0);
+    }
+  }
+  async function unseal(text, passphrase) {
+    if (typeof text !== "string" || enc.encode(text).length > MAX_FILE) reject();
+    let obj;
+    try { obj = JSON.parse(text); } catch (_) { reject(); }
+    if (!exact(obj, ["schema", "classification", "kdf", "iterations",
+                     "cipher", "salt", "nonce", "ciphertext"]) ||
+        obj.schema !== SCHEMA || obj.classification !== TYPE ||
+        obj.kdf !== KDF || obj.iterations !== ITERATIONS ||
+        obj.cipher !== CIPHER || text !== JSON.stringify(obj, null, 2) + "\n") reject();
+    const salt = from64(obj.salt, 16);
+    const nonce = from64(obj.nonce, 12);
+    const ciphertext = from64(obj.ciphertext, null);
+    if (ciphertext.length < 17 || ciphertext.length > MAX_PLAIN + 16) reject();
+    let plain;
+    try {
+      const key = await derive(passphrase, salt, ["decrypt"]);
+      plain = new Uint8Array(await crypto.subtle.decrypt({name: "AES-GCM", iv: nonce}, key, ciphertext));
+      if (plain.length > MAX_PLAIN) reject();
+      const raw = dec.decode(plain);
+      const result = JSON.parse(raw);
+      if (raw !== JSON.stringify(result, null, 2) + "\n") reject();
+      return result;
+    } catch (_) {
+      reject();
+    } finally {
+      if (plain) plain.fill(0);
+    }
+  }
+  globalThis.LightUpEncryptedJournal = Object.freeze({seal, unseal});
+})();
+</script>
 <script>"use strict";
 
 /* Offline HUMAN workflow for already-exported LightUp CSV summaries.
@@ -195,7 +309,7 @@ footer { max-width:1280px; padding:0 22px 32px; margin:auto; font-size:.72rem; c
     $("status").className = "status " + (error ? "error" : "ok");
   }
   function setEnabled(yes) {
-    ["search", "severityFilter", "stageFilter", "bulkStage", "bulkApply", "saveJournal", "loadJournal", "saveBrief", "saveCounts", "clearAll"].forEach((id) => {
+    ["search", "severityFilter", "stageFilter", "bulkStage", "bulkApply", "saveJournal", "loadJournal", "saveVault", "loadVault", "saveBrief", "saveCounts", "clearAll"].forEach((id) => {
       $(id).disabled = !yes;
     });
   }
@@ -337,6 +451,17 @@ footer { max-width:1280px; padding:0 22px 32px; margin:auto; font-size:.72rem; c
     state.dirty = false;
     status("PRIVATE HUMAN draft offered for local download. Confirm actual file storage yourself.", false);
   }
+  function admitJournalDocument(parsed) {
+    if (!exactObject(parsed, ["schema", "classification", "authority", "csv_sha256", "count", "entries"]) ||
+        parsed.schema !== SCHEMA || parsed.classification !== "PRIVATE_HUMAN_ONLY" ||
+        !exactObject(parsed.authority, Object.keys(NO_AUTHORITY)) ||
+        Object.keys(NO_AUTHORITY).some(k => parsed.authority[k] !== false) ||
+        parsed.csv_sha256 !== state.digest || parsed.count !== state.rows.length ||
+        !Array.isArray(parsed.entries) || parsed.entries.length !== state.rows.length) {
+      fail("PRIVATE HUMAN draft is not bound to this exact original CSV");
+    }
+    return parsed.entries.map((e, i) => admitEntry(e, state.rows[i].id));
+  }
   async function loadJournal(file) {
     if (state.pending && !confirm("Discard unapplied HUMAN form edits before reopening a saved draft?")) return;
     try {
@@ -345,15 +470,7 @@ footer { max-width:1280px; padding:0 22px 32px; margin:auto; font-size:.72rem; c
       if (value !== JSON.stringify(parsed, null, 2) + "\n") {
         fail("Only this tool's exact canonical journal format is accepted");
       }
-      if (!exactObject(parsed, ["schema", "classification", "authority", "csv_sha256", "count", "entries"]) ||
-          parsed.schema !== SCHEMA || parsed.classification !== "PRIVATE_HUMAN_ONLY" ||
-          !exactObject(parsed.authority, Object.keys(NO_AUTHORITY)) ||
-          Object.keys(NO_AUTHORITY).some(k => parsed.authority[k] !== false) ||
-          parsed.csv_sha256 !== state.digest || parsed.count !== state.rows.length ||
-          !Array.isArray(parsed.entries) || parsed.entries.length !== state.rows.length) {
-        fail("PRIVATE HUMAN draft is not bound to this exact original CSV");
-      }
-      const staged = parsed.entries.map((e, i) => admitEntry(e, state.rows[i].id));
+      const staged = admitJournalDocument(parsed);
       if (!confirm("Replace the in-memory HUMAN notes with the exact-source PRIVATE draft?")) return;
       state.journal = staged; state.dirty = false; state.pending = false; state.selected = -1;
       state.bulkUndo = null; $("bulkUndo").disabled = true;
@@ -362,6 +479,47 @@ footer { max-width:1280px; padding:0 22px 32px; margin:auto; font-size:.72rem; c
       status("Original CSV byte-bound HUMAN journal restored locally (not an authenticated review).", false);
     } catch(error) {
       status("Draft rejected without changing the workspace: " + error.message, true);
+    }
+  }
+  async function saveVault() {
+    if (state.pending) { status("Apply or discard the HUMAN form edits before encrypting.", true); return; }
+    const pass = $("vaultPass").value;
+    if (!confirm("Encrypt an owner-private HUMAN journal, using a unique passphrase you must remember? No client identity, consent, or source authentication is established.")) return;
+    $("saveVault").disabled = true;
+    try {
+      const blob = await LightUpEncryptedJournal.seal(journalDocument(), pass);
+      download(blob, "lightup-private-human-review.luej", "application/json");
+      state.dirty = false;
+      status("Encrypted PRIVATE HUMAN journal offered for local save; confirm actual file storage.", false);
+    } catch (error) {
+      status("PRIVATE encryption HOLD: " + error.message, true);
+    } finally {
+      $("vaultPass").value = "";
+      $("saveVault").disabled = !state.rows.length;
+    }
+  }
+  async function loadVault(file) {
+    if (state.pending && !confirm("Discard unapplied HUMAN form edits before encrypted restore?")) return;
+    let pass = $("vaultPass").value;
+    $("loadVault").disabled = true;
+    try {
+      const {value} = await readFile(file, 1024 * 1024);
+      if (!pass) fail("Enter the PRIVATE passphrase before opening the encrypted journal");
+      const document = await LightUpEncryptedJournal.unseal(value, pass);
+      const staged = admitJournalDocument(document);
+      if (!confirm("Original CSV SHA-256 and all HUMAN IDs match. Replace current in-memory HUMAN notes?")) return;
+      state.journal = staged;
+      state.dirty = false; state.pending = false; state.selected = -1;
+      state.bulkUndo = null; $("bulkUndo").disabled = true;
+      $("detail").hidden = true; $("noneSelected").hidden = false;
+      renderList();
+      status("Encrypted source-bound PRIVATE HUMAN journal opened in memory; not an authenticated source or permission.", false);
+    } catch (error) {
+      status("Encrypted journal rejected with current work unchanged: " + error.message, true);
+    } finally {
+      pass = "";
+      $("vaultPass").value = "";
+      $("loadVault").disabled = !state.rows.length;
     }
   }
   function htmlEscape(v) {
@@ -509,6 +667,12 @@ footer { max-width:1280px; padding:0 22px 32px; margin:auto; font-size:.72rem; c
     $("saveJournal").addEventListener("click", saveJournal);
     $("loadJournal").addEventListener("click", () => $("journalFile").click());
     $("saveCounts").addEventListener("click", saveCounts);
+    $("saveVault").addEventListener("click", saveVault);
+    $("loadVault").addEventListener("click", () => $("vaultFile").click());
+    $("vaultFile").addEventListener("change", e => {
+      if (e.target.files[0]) loadVault(e.target.files[0]);
+      e.target.value = "";
+    });
     $("saveBrief").addEventListener("click", saveBrief);
     $("clearAll").addEventListener("click", () => {
       if ((state.dirty || state.pending) && !confirm("Discard unsaved or unapplied PRIVATE HUMAN notes?")) return;
@@ -595,7 +759,7 @@ footer { max-width:1280px; padding:0 22px 32px; margin:auto; font-size:.72rem; c
   </div>
 
   <section class="exports" aria-label="Private local exports">
-    <div><p class="eyebrow">2 · HUMAN CONTINUITY</p><h2>Save your private work.</h2><p>Export a PRIVATE JSON with finding IDs, HUMAN owner, stage, date and notes. Resume it only against <strong>exactly the same CSV bytes</strong>. Your browser does not autosave.</p><div class="actions"><button id="saveJournal" disabled>Download PRIVATE draft</button><button id="loadJournal" disabled>Open PRIVATE draft</button><input type="file" id="journalFile" accept=".json,application/json" hidden></div><div class="brief-actions"><label class="brief-toggle" for="briefFollowups"><input id="briefFollowups" type="checkbox" checked> Only HUMAN-updated findings in visible queue</label><button id="saveBrief" disabled>Download printable PRIVATE HUMAN brief</button><p class="minor">Local scriptless HTML for a trusted private recipient. Includes IDs, source-declared remediation, owners and HUMAN notes; NEVER an anonymous handoff.</p></div></div>
+    <div><p class="eyebrow">2 · HUMAN CONTINUITY</p><h2>Save your private work.</h2><p>Export a PRIVATE JSON with finding IDs, HUMAN owner, stage, date and notes. Resume it only against <strong>exactly the same CSV bytes</strong>. Your browser does not autosave.</p><div class="actions"><button id="saveJournal" disabled>Download PRIVATE draft</button><button id="loadJournal" disabled>Open PRIVATE draft</button><input type="file" id="journalFile" accept=".json,application/json" hidden></div><div class="vault-controls"><p class="eyebrow">ENCRYPTED PRIVATE JOURNAL</p><label for="vaultPass">Private local passphrase (minimum 12 characters; not a login or client authentication)</label><input id="vaultPass" type="password" autocomplete="new-password" maxlength="1024" placeholder="Unique strong passphrase; never sent anywhere"><div class="actions"><button id="saveVault" disabled>Save encrypted PRIVATE journal (.luej)</button><button id="loadVault" disabled>Open encrypted PRIVATE journal</button><input type="file" id="vaultFile" accept=".luej,.json" hidden></div><p class="minor">Only HUMAN journal details are encrypted. WebCrypto AES-256-GCM / PBKDF2-SHA256 600k; random salt and nonce. A correct passphrase decrypts a private file but proves nothing about consent or source authenticity. Forgetting it prevents recovery.</p></div><div class="brief-actions"><label class="brief-toggle" for="briefFollowups"><input id="briefFollowups" type="checkbox" checked> Only HUMAN-updated findings in visible queue</label><button id="saveBrief" disabled>Download printable PRIVATE HUMAN brief</button><p class="minor">Local scriptless HTML for a trusted private recipient. Includes IDs, source-declared remediation, owners and HUMAN notes; NEVER an anonymous handoff.</p></div></div>
     <div><p class="eyebrow">3 · SEPARATE DISCLOSURE</p><h2>Counts only, if authorized.</h2><p>The optional anonymous aggregate contains totals by original severity and HUMAN stage, without finding IDs, titles, notes, source hash or target. Even small counts can be sensitive.</p><div class="actions"><button id="saveCounts" disabled>Download counts-only JSON</button><button id="clearAll" disabled class="subtle">Clear local workspace</button></div></div>
   </section>
 </main>
