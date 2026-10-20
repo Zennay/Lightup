@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Foreground PRIVATE HUMAN LightUp curation console; never runs assessments.
 
-Six existing offline source-bound workflows in one accessible user menu.
+Eight existing offline source-bound workflows in one accessible user menu.
 Only explicit local paths, no subprocess, network, browser automation, consent,
 source mutation, active target operation, or grant.
 """
@@ -14,6 +14,7 @@ from curate import Hold, prepare, publish
 from revision import compare
 from history import history
 from response import prepare_reply, return_reply
+from response_triage import prepare as prepare_triage, finish as return_triage
 
 WORKFLOWS = {
     "1": ("Prepare PRIVATE offline HUMAN browser selection studio",
@@ -28,6 +29,10 @@ WORKFLOWS = {
           "same original source/receipt; original selected HUMAN questions"),
     "6": ("Reopen a returned PRIVATE recipient HUMAN answer package",
           "same original selection and a source/selection-bound human reply"),
+    "7": ("Prepare HUMAN sender reply triage workroom",
+          "original source-bound recipient response and NEW private triage editor"),
+    "8": ("Reopen a finished HUMAN sender triage response",
+          "same source, response, triage binding and HUMAN routing worksheet"),
 }
 
 
@@ -71,13 +76,18 @@ def run_workflow(choice: str) -> None:
         after = ask_path("Current HUMAN selection CSV")
     elif choice == "4":
         series = ask_history()
-    elif choice in ("5", "6"):
+    elif choice in ("5", "6", "7", "8"):
         selection = ask_path("EXISTING PRIVATE original HUMAN selection CSV")
     response_binding = None
     recipient_response = None
-    if choice == "6":
+    if choice in ("6", "7", "8"):
         response_binding = ask_path("EXISTING original selection-bound PRIVATE recipient response binding JSON")
         recipient_response = ask_path("Returned HUMAN recipient response CSV")
+    triage_binding = None
+    triage_csv = None
+    if choice == "8":
+        triage_binding = ask_path("EXISTING original reply-bound PRIVATE sender triage binding JSON")
+        triage_csv = ask_path("Completed PRIVATE sender HUMAN triage CSV")
     output = ask_path("EXCLUSIVE NEW PRIVATE output directory (must not already exist)")
     print("\nPRIVATE disclosure profile:")
     if choice == "1":
@@ -90,8 +100,12 @@ def run_workflow(choice: str) -> None:
         print("  Timeline contains original ordinals and HUMAN questions, potentially confidential.")
     elif choice == "5":
         print("  PRIVATE template contains original HUMAN questions and source counts, no original target evidence.")
-    else:
+    elif choice == "6":
         print("  PRIVATE response report contains HUMAN replies, which may be client-identifying; identities not verified.")
+    elif choice == "7":
+        print("  PRIVATE sender browser shows original HUMAN questions and recipient replies; potential client identifiers.")
+    else:
+        print("  PRIVATE HUMAN sender triage shows original recipient replies and owner-group follow-up proposals.")
     print("This is NOT a completed assessment, release, authorization or evidence authenticity check.")
     confirmation = input("Enter exactly REVIEW ONLY to create a NEW PRIVATE package: ")
     if confirmation != "REVIEW ONLY":
@@ -106,9 +120,16 @@ def run_workflow(choice: str) -> None:
         history(source, manifest, worksheet, receipt, series, output)
     elif choice == "5":
         prepare_reply(source, manifest, worksheet, receipt, selection, output)
-    else:
+    elif choice == "6":
         return_reply(source, manifest, worksheet, receipt, selection,
                      response_binding, recipient_response, output)
+    elif choice == "7":
+        prepare_triage(source, manifest, worksheet, receipt, selection,
+                       response_binding, recipient_response, output)
+    else:
+        return_triage(source, manifest, worksheet, receipt, selection,
+                      response_binding, recipient_response, triage_binding,
+                      triage_csv, output)
 
 
 def main() -> int:
@@ -120,7 +141,7 @@ def main() -> int:
         print(number + ". " + label)
     print("0. Quit without action")
     try:
-        choice = input("PRIVATE workflow [0–6]: ").strip()
+        choice = input("PRIVATE workflow [0–8]: ").strip()
         if choice == "0":
             print("No operation performed")
             return 0
