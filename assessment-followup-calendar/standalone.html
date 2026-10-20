@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-Or9cvI24z/DfeWgRiPxK3PQ5lDnLZ3O7B+42AaFOCrk='; style-src 'sha256-JnUGLKJgFQOWL8Irho1YuW4jsGOaQ8hT/x6gQr7pXZA='; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-dbWHrEw0bpsYg2EXmLj6dZde3ZYI6dt5yrwPV7U7sAM='; style-src 'sha256-JnUGLKJgFQOWL8Irho1YuW4jsGOaQ8hT/x6gQr7pXZA='; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <title>LightUp PRIVATE Human Follow-up Calendar</title>
 <style>
 :root{color-scheme:dark;font:16px/1.5 system-ui,sans-serif;background:#0d1524;color:#e9eef8}*{box-sizing:border-box}body{margin:0}header,main,footer{width:min(1300px,96vw);margin:auto}header{padding:38px 8px 14px}.eyebrow{font-size:12px;letter-spacing:.15em;color:#75b9ec;font-weight:bold}h1{font-size:clamp(1.75rem,4vw,3.2rem);margin:.3rem 0}h2{margin:0 0 10px;color:#f6f8ff}header p{max-width:80ch;color:#abb8c9}a{color:#9ed4ff}.panel,.notice{background:#172439;border:1px solid #30435e;border-radius:14px;padding:22px;margin:18px 0}.notice{border-left:5px solid #ffd67a;background:#242b38}.row,.toolbar,.bulk{display:flex;flex-wrap:wrap;align-items:end;gap:12px;margin:15px 0}label{display:inline-flex;flex-direction:column;gap:5px;font-size:13px;font-weight:600;color:#cad8eb}label:has(input[type=checkbox]){flex-direction:row;align-items:center}input,select,textarea,button{font:inherit;border:1px solid #526a88;border-radius:6px;background:#0c1b2d;color:#eef7ff;padding:8px;max-width:100%}input[type=date],input[type=time]{color-scheme:dark}button{background:#2672ac;border-color:#2672ac;cursor:pointer;font-weight:600}button:hover{filter:brightness(1.22)}button:disabled{opacity:.4;cursor:not-allowed}.ghost{background:#22334d;border-color:#526a88}.subtle,p{color:#b7c5d5}.subtle{font-size:13px}code{color:#a5defe}.tablebox{max-width:100%;overflow:auto;border:1px solid #415a75;border-radius:8px}table{border-collapse:collapse;width:100%;font-size:14px}th,td{padding:10px;border-bottom:1px solid #324761;text-align:left;vertical-align:middle}th{background:#25344d;position:sticky;top:0;white-space:nowrap}td:nth-child(4){max-width:270px;overflow-wrap:anywhere}td input[type=date]{min-width:160px}td select{min-width:86px}td .severity{font-weight:700}.bulk{background:#0e1b2b;padding:14px;border-radius:8px}#notice[data-error=true]{color:#ffaaa1}footer{padding:24px 8px 52px;color:#8fa2b9;font-size:13px}[hidden]{display:none!important}@media(max-width:700px){.panel{padding:14px}header{padding-top:24px}th,td{padding:7px}.toolbar label{width:100%}.toolbar input,.toolbar select{width:100%}}
@@ -417,7 +417,7 @@ textarea{display:block;width:min(720px,100%);resize:vertical;min-height:66px}det
       select.value=groups[0];capacityLoadEditor();
     }
     $("capacityFirst").value=nowToday();
-    $("capacityHorizon").value="30";
+    $("capacityHorizon").value="30";$("capacityMode").value="unscheduled";
     capacityMessage("Original HUMAN group availability defaults loaded into local memory; no calendar or operator has been contacted.");
     renderCapacity();
   }
@@ -442,7 +442,7 @@ textarea{display:block;width:min(720px,100%);resize:vertical;min-height:66px}det
     return JSON.stringify([hash,seriesId,zone,
       Array.from(plan.entries()).sort((a,b)=>a[0]-b[0]),
       Array.from(capacityRules.entries()).sort((a,b)=>a[0].localeCompare(b[0])),
-      $("capacityFirst").value,$("capacityHorizon").value]);
+      $("capacityFirst").value,$("capacityHorizon").value,$("capacityMode").value]);
   }
   function renderCapacityProposal(){
     const tbody=$("capacityPreviewRows");
@@ -458,8 +458,11 @@ textarea{display:block;width:min(720px,100%);resize:vertical;min-height:66px}det
       "All original ordinals remain unchanged until explicit HUMAN confirmation.";
     for(const [ordinal,slot] of rows){
       const source=items[ordinal-1],row=dom("tr");
+      const previous=capacityProposal.previous.get(ordinal);
       row.append(dom("td","#"+ordinal),dom("td",source.group||"(unassigned)"),
-        dom("td",source.severity),dom("td",slot.day+" "+slot.time),
+        dom("td",source.severity),
+        dom("td",previous?previous.day+" "+previous.time+" · "+previous.duration+" min":"(previously unscheduled)"),
+        dom("td",slot.day+" "+slot.time),
         dom("td",slot.duration+" min"));
       tbody.append(row);
     }
@@ -528,15 +531,31 @@ textarea{display:block;width:min(720px,100%);resize:vertical;min-height:66px}det
     hold([14,30,60,90].includes(horizon));
     const rules=capacityGroups().map(group=>({group,rule:capacityRules.get(group)||capacityDefaultRule()}));
     const ranks={critical:0,high:1,medium:2,low:3,info:4};
-    const candidates=items.filter(row=>!plan.has(row.ordinal) && row.stage!=="blocked")
-      .sort((a,b)=>ranks[a.severity]-ranks[b.severity] || a.ordinal-b.ordinal);
+    const mode=$("capacityMode").value;
+    hold(["unscheduled","overdue","combined"].includes(mode));
+    const now=Date.now();
+    const candidates=items.filter(row=>{
+      if(row.stage==="blocked")return false;
+      const existing=plan.get(row.ordinal);
+      const hasOverdue=existing && eventDate(existing.day,existing.time).getTime()<now;
+      return (mode!=="overdue" && !existing)||(mode!=="unscheduled" && hasOverdue);
+    }).sort((a,b)=>{
+      // Human date order, not a finding/urgency inference, when moving past HUMAN appointments.
+      const ap=plan.get(a.ordinal),bp=plan.get(b.ordinal);
+      const ao=ap?eventDate(ap.day,ap.time).getTime():Infinity;
+      const bo=bp?eventDate(bp.day,bp.time).getTime():Infinity;
+      if(ao!==bo)return ao-bo;
+      return ranks[a.severity]-ranks[b.severity] || a.ordinal-b.ordinal;
+    });
     const byGroup=new Map();
     for(const row of candidates){
       if(!byGroup.has(row.group))byGroup.set(row.group,[]);
       byGroup.get(row.group).push(row);
     }
     const taken=new Map(),daily=new Map();
-    for(const event of eventIntervals()){
+    const eligibleOld=new Set(candidates.filter(row=>plan.has(row.ordinal)).map(row=>row.ordinal));
+    // The past-due HUMAN proposals are being moved, not double-booked into a new date.
+    for(const event of eventIntervals().filter(event=>!eligibleOld.has(event.ordinal))){
       const date=plan.get(event.ordinal).day;
       if(!taken.has(date))taken.set(date,[]);
       taken.get(date).push(event);
@@ -569,13 +588,13 @@ textarea{display:block;width:min(720px,100%);resize:vertical;min-height:66px}det
         }
       }
     }
-    capacityProposal={slots:proposed,snapshot:capacitySnapshot()};
+    capacityProposal={slots:proposed,snapshot:capacitySnapshot(),mode,previous:new Map(Array.from(proposed.keys()).map(ordinal=>[ordinal,plan.get(ordinal)||null]))};
     $("capacityApply").disabled=proposed.size===0;
     renderCapacityProposal();
     $("capacityProposalDetails").open=proposed.size>0;
     const pending=candidates.length-proposed.size;
     capacityMessage("Proposed "+proposed.size+" source-ordinal HUMAN reminders, "+
-      pending+" remain without new dates in this 14–90-day bounded preview. "+
+      pending+" eligible original HUMAN reminders remain without new dates in this bounded preview. "+
       "No existing appointments changed; 128 proposed changes maximum per confirmation. "+
       (pending?"Extend horizon/availability or repeat after saving this batch.":"Review dates before applying."));
   }
@@ -583,15 +602,27 @@ textarea{display:block;width:min(720px,100%);resize:vertical;min-height:66px}det
     hold(active && capacityProposal && capacityProposal.snapshot===capacitySnapshot());
     const preview=capacityProposal.slots;
     hold(preview.size>0 && preview.size<=128);
-    hold(Array.from(preview).every(([ordinal])=>!plan.has(ordinal) &&
-      items[ordinal-1] && items[ordinal-1].stage!=="blocked"));
-    if(!confirm("Apply "+preview.size+" proposed HUMAN-only dates in local memory? Original lab assessment, current source worksheet, already scheduled ordinals and any external calendars are NOT modified. Group hours and blackout dates are only self-reported planning hints."))return;
+    const now=Date.now(),mode=capacityProposal.mode;
+    hold(Array.from(preview).every(([ordinal])=>{
+      const old=plan.get(ordinal),source=items[ordinal-1];
+      if(!source || source.stage==="blocked")return false;
+      if(old && mode==="unscheduled")return false;
+      if(!old && mode==="overdue")return false;
+      if(old && eventDate(old.day,old.time).getTime()>=now)return false;
+      return capacityProposal.previous.get(ordinal)===old ||
+        (!old && capacityProposal.previous.get(ordinal)===null);
+    }));
+    const replaced=Array.from(preview.keys()).filter(ordinal=>plan.has(ordinal)).length;
+    if(!confirm("Apply "+preview.size+" proposed HUMAN-only dates in local memory? "+
+      (replaced?replaced+" previously scheduled but PAST-DUE HUMAN reminder dates will be replaced (after this confirmation). ":"")+
+      "No future-dated HUMAN reminder, original lab assessment, source worksheet or external calendar will be changed. "+
+      "PAST DUE does not mean a verified unresolved vulnerability or authorization to execute."))return;
     hold(capacityProposal.snapshot===capacitySnapshot());
     for(const [ordinal,slot] of preview)plan.set(ordinal,slot);
     changed=true;exportedPlan=false;
     capacityProposal=null;$("capacityApply").disabled=true;
     page=0;render();
-    capacityMessage("Applied PRIVATE HUMAN capacity proposals locally. Save the full v2 plan before calendar export.");
+    capacityMessage("Applied "+preview.size+" PRIVATE HUMAN capacity proposals locally; "+replaced+" past-due reminder dates replaced. Save the full v2 plan before calendar export.");
   }
   function slotEquals(a,b){
     return !!a && !!b && a.day===b.day && a.time===b.time &&
@@ -1038,7 +1069,7 @@ textarea{display:block;width:min(720px,100%);resize:vertical;min-height:66px}det
     catch(_){capacityMessage("PRIVATE rules source binding or content invalid (HOLD). Original capacity rules and current plan unchanged.",true);}
     finally{e.target.value="";}
   });
-  ["capacityFirst","capacityHorizon"].forEach(id=>hook(id,"change",()=>{
+  ["capacityFirst","capacityHorizon","capacityMode"].forEach(id=>hook(id,"change",()=>{
     capacityProposal=null;$("capacityApply").disabled=true;
     capacityMessage("HUMAN availability preview cleared after date/horizon change.");
   }));
@@ -1222,21 +1253,22 @@ textarea{display:block;width:min(720px,100%);resize:vertical;min-height:66px}det
 <label><input type="checkbox" value="5" checked>Friday</label>
 <label><input type="checkbox" value="6">Saturday</label><label><input type="checkbox" value="0">Sunday</label></div>
 <label>Unavailable local dates, comma-separated (YYYY-MM-DD; maximum 60)
-<textarea id="capacityBlackout" rows="2" maxlength="660" placeholder="2026-12-25, 2026-12-26"></textarea></label>
+<textarea id="capacityBlackout" rows="2" maxlength="850" placeholder="2026-12-25, 2026-12-26"></textarea></label>
 <div class="row"><button id="capacityStore" type="button">Save local HUMAN group availability</button><button id="capacityDefault" type="button" class="ghost">Reset selected group to defaults</button></div>
 <div class="row"><label>First date for proposals <input id="capacityFirst" type="date"></label>
+<label>Scheduling scope <select id="capacityMode"><option value="unscheduled" selected>Only unscheduled HUMAN rows</option><option value="overdue">Only past-due HUMAN reminders</option><option value="combined">Both unscheduled and past-due</option></select></label>
 <label>Horizon in local calendar days <select id="capacityHorizon"><option value="14">14</option><option value="30" selected>30</option><option value="60">60</option><option value="90">90</option></select></label>
 <button id="capacityPreview" type="button">Preview group-aware open HUMAN reminders</button>
 <button id="capacityApply" type="button" disabled>Apply preview to local plan (confirm)</button></div>
 <p id="capacityMessage" role="status" aria-live="polite">Rules are local only. Save them explicitly before leaving this page.</p>
 <details id="capacityProposalDetails"><summary>Inspect exact pending HUMAN proposed appointments before applying</summary>
 <p id="capacityPreviewSummary" class="subtle">No HUMAN capacity proposal prepared.</p>
-<div class="tablebox"><table><thead><tr><th>Original ordinal</th><th>HUMAN group</th><th>Unverified source severity</th><th>Proposed local date &amp; time</th><th>Duration</th></tr></thead><tbody id="capacityPreviewRows"></tbody></table></div>
+<div class="tablebox"><table><thead><tr><th>Original ordinal</th><th>HUMAN group</th><th>Unverified source severity</th><th>Current / previous local HUMAN date</th><th>Proposed local date &amp; time</th><th>Duration</th></tr></thead><tbody id="capacityPreviewRows"></tbody></table></div>
 </details>
 <div class="tablebox"><table><thead><tr><th>HUMAN group</th><th>Availability</th><th>Unavailable dates</th><th>Unscheduled HUMAN rows</th></tr></thead><tbody id="capacityRows"></tbody></table></div>
 <div class="row"><button id="capacityDownload" type="button" class="ghost">Download PRIVATE group rules (.csv)</button>
 <label class="file">Restore PRIVATE group rules <input id="capacityImport" type="file" accept=".csv,text/csv"></label></div>
-<p class="subtle">An optional PRIVATE rules CSV is bound to the exact original worksheet bytes, local timezone and private calendar series. Do not share externally. Human-confirmed suggestions never overwrite scheduled ordinals, alter the original lab source, execute scans, prove severity or grant access. Available slots are suggestions, not external calendar availability.</p>
+<p class="subtle">An optional PRIVATE rules CSV is bound to the exact original worksheet bytes, local timezone and private calendar series. Do not share externally. The default mode never overwrites scheduled ordinals. A separately selected **past-due** mode can propose replacing only HUMAN reminders whose planned start time is already in the past, after explicit human confirmation; past due never means an unresolved finding or an authorization change. Original lab source is never altered and no scans/grants occur. Available slots are suggestions, not external calendar availability.</p>
 </section>
 <section id="brief" class="panel" hidden aria-labelledby="briefHeading">
 <h2 id="briefHeading">6 · Offline HUMAN weekly coordinator brief</h2>
