@@ -251,6 +251,36 @@
     if(dirty&&!confirm("Replace unsaved HUMAN schedule edits with the admitted encrypted plan?"))return;
     rows=candidate;dirty=false;lastBatch=null;el("undo").disabled=true;render();status("Original source-bound PRIVATE HUMAN schedule reopened. This is not authenticated sender or consent proof.");
   }
+  // Separate scriptless PRIVATE operator handoff, not a source finding report.
+  function exportPrivateAgenda() {
+    const selected=visibleIndices().map(i=>rows[i]);
+    if(!selected.length)fatal("No visible HUMAN follow-ups to include");
+    validate(rows);
+    if(!confirm(`Export ${selected.length} visible HUMAN task(s) into a PRIVATE printable HTML agenda? Owner labels, actions, status and tentative deadlines are sensitive. No source identities, findings or evidence are included.`))return;
+    const withNotes=confirm("INCLUDE HUMAN PRIVATE notes? Choose Cancel to exclude all notes (recommended for narrower recipients).");
+    const escape = s => String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+    const order=[...selected].sort((a,b)=>(a.due||"9999-12-31").localeCompare(b.due||"9999-12-31")||
+      a.owner.localeCompare(b.owner)||a.packet-b.packet);
+    const styles="body{font:15px/1.5 system-ui,sans-serif;color:#1e2b3a;max-width:960px;margin:2rem auto;padding:1rem}h1{font-size:1.6rem}article{break-inside:avoid;border:1px solid #aab8c6;padding:1rem;margin:1rem 0;border-radius:8px}aside{border:2px solid #956828;background:#fff8e8;padding:1rem}dt{font-weight:bold}dd{margin:0 0 .5rem;white-space:pre-wrap}small{color:#435366}@media print{body{margin:0}article{page-break-inside:avoid}}";
+    const doc=['<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><meta http-equiv="Content-Security-Policy" content="default-src \'none\'; base-uri \'none\'; connect-src \'none\'; img-src \'none\'; script-src \'none\'; style-src \'unsafe-inline\'"><title>PRIVATE HUMAN follow-up agenda</title><style>',styles,'</style></head><body><h1>PRIVATE HUMAN follow-up agenda</h1>',
+      '<aside>HUMAN-only self-declared scheduling. Not verified findings, fixes, retests, client consent, authority, recipient identity or release approval. Source-free reason labels and HUMAN notes can still be sensitive. Share only after real separate approval.</aside>',
+      '<p>Locally prepared ',new Date().toISOString().slice(0,10),' · ',String(order.length),' selected HUMAN task groups. Dates and owner assignments are tentative; missing source item does not prove remediation.</p>'];
+    for(const t of order){
+      doc.push('<article><h2>HUMAN follow-up · packet ',String(t.packet),'</h2><dl>',
+        '<dt>Reason (anonymous source-free category)</dt><dd>',escape(t.reason),'</dd>',
+        '<dt>HUMAN stage</dt><dd>',escape(t.stage),'</dd>',
+        '<dt>Owner (self-declared)</dt><dd>',escape(t.owner||"Unassigned"),'</dd>',
+        '<dt>Proposed due date</dt><dd>',escape(t.due||"Not scheduled"),'</dd>',
+        '<dt>Next HUMAN action</dt><dd>',escape(t.next_action||"Not recorded"),'</dd>');
+      if(withNotes)doc.push('<dt>Additional PRIVATE HUMAN note</dt><dd>',escape(t.human_note||"Not recorded"),'</dd>');
+      doc.push('</dl><small>No original evidence/target, signed provenance, actual consent or security verdict.</small></article>');
+    }
+    doc.push('</body></html>');
+    const data=textEncoder.encode(doc.join(""));
+    if(data.length>4194304)fatal("PRIVATE printable agenda outside bounded size");
+    dl(data,"lightup-private-human-followup-agenda.html","text/html");
+    status("PRIVATE scriptless agenda created locally; no network or recipient delivery occurred.");
+  }
   function exportCalendar() {
     const due=validate(rows).filter(x=>x.due);
     if(!due.length)fatal("No tentative HUMAN deadlines entered");
@@ -291,6 +321,7 @@
   el("save").addEventListener("click",()=>saveEncrypted().catch(e=>status("HOLD: "+e.message)));
   el("open").addEventListener("click",()=>el("openfile").click());
   el("openfile").addEventListener("change",e=>{openEncrypted(e.target.files[0]).catch(err=>status("HOLD: "+err.message));e.target.value="";});
+  el("agenda").addEventListener("click",()=>{try{exportPrivateAgenda();}catch(e){status("HOLD: "+e.message);}});
   el("calendar").addEventListener("click",()=>{try{exportCalendar();}catch(e){status("HOLD: "+e.message);}});
   el("counts").addEventListener("click",exportCounts);
   window.addEventListener("beforeunload",e=>{if(dirty){e.preventDefault();e.returnValue="";}});
