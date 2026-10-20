@@ -75,6 +75,7 @@
   let baseline = null;
   // Eight fixed slots; no names, external identifiers or automatic persistence.
   let slots = Array(8).fill(null);
+  let replayCursor = null; // null follows the current final fictitious step.
   let activeDrill = null;
   let selectedDrill = 0;
   let drillAnswers = Array(DRILLS.length).fill(null);
@@ -119,6 +120,66 @@
     }
     return {state:s,steps};
   }
+  function replayPosition() {
+    return replayCursor===null ? events.length : Math.max(0,Math.min(events.length,replayCursor));
+  }
+  function replayContext(position) {
+    const upto=events.slice(0,position);
+    const view=play(upto),state=view.state;
+    return {position,upto,state,missing:blockers(state),
+      attempts:view.steps.filter(x=>x.event==="DISPATCH_ATTEMPT").length,
+      last:position ? TYPES[events[position-1]][0] : "Begin van fictief scenario"};
+  }
+  function renderReplay() {
+    const step=replayPosition(),preview=replayContext(step);
+    const field=$("replay-step");
+    field.max=String(events.length);
+    field.value=String(step);
+    write("replay-step-count",step+" / "+events.length);
+    write("replay-description","Stap "+step+" van "+events.length+": "+preview.last+
+      ". Dit is een fictieve momentopname, geen origineel bronbewijs of toestemming.");
+    write("replay-client",preview.state.client?"Oefenverklaring aanwezig":"Ontbreekt / vervallen");
+    write("replay-operator",preview.state.operator?"Oefenverklaring aanwezig":"Ontbreekt / vervallen");
+    write("replay-window",preview.state.window?"Fictief open":"Verlopen");
+    write("replay-stop",preview.state.stop?"ACTIEF (oefening)":"Niet actief");
+    write("replay-version","v"+(preview.state.scope+1)+" / v"+(preview.state.risk+1));
+    write("replay-holds",preview.missing.length+" — "+(preview.missing.length?
+      preview.missing.join("; "):"geen in uitsluitend het oefenscenario"));
+    $("replay-prev").disabled=step===0;
+    $("replay-next").disabled=step===events.length;
+    $("replay-end").disabled=step===events.length;
+    $("replay-fork").disabled=!slots.some(x=>x===null);
+    write("replay-hint",slots.some(x=>x===null)
+      ? "Vrije fictieve scenario-slots: "+slots.filter(x=>x===null).length+
+        ". Vertakking bewaart het geselecteerde voortraject en houdt het oorspronkelijke volledige scenario als nulmeting."
+      : "Alle acht scenario-slots zijn gevuld. Wis eerst bewust een eigen slot om veilig te kunnen vertakken.");
+  }
+  function replayBrief() {
+    const moment=replayContext(replayPosition()),final=replayContext(events.length);
+    const lines=["# LightUp — fictieve stapbeslisbrief","",
+      "**Dit is geen echte scope-, grant-, consent-, CI-, scan- of releasebeslissing.**",
+      "",
+      "Geselecteerde oefenstap: "+moment.position+" / "+events.length,
+      "Laatste fictieve gebeurtenis: "+moment.last,
+      "Client-oefenverklaring: "+(moment.state.client?"aanwezig":"ontbreekt"),
+      "Operator-oefenverklaring: "+(moment.state.operator?"aanwezig":"ontbreekt"),
+      "Venster: "+(moment.state.window?"fictief open":"verlopen"),
+      "Noodstop: "+(moment.state.stop?"actief":"niet actief"),
+      "Scope-/risicoversie: "+(moment.state.scope+1)+"/"+(moment.state.risk+1),
+      "Fictieve blokkades bij deze stap: "+(moment.missing.length?moment.missing.join("; "):"geen in het speelgoedmodel"),
+      "",
+      "## Afzonderlijke volledige afloop",
+      "Oefenstappen: "+final.position,
+      "Fictieve eindblokkades: "+(final.missing.length?final.missing.join("; "):"geen in het speelgoedmodel"),
+      "Fictieve eindnoodstop: "+(final.state.stop?"actief":"niet actief"),
+      "",
+      "## Origineel verplicht menselijk vervolg buiten de oefening",
+      "Actuele onafhankelijke geauthenticeerde client- en operatorconsent; brongebonden exacte assets, capabilities, risico en tijd; oorspronkelijke duurzame revocation bij iedere I/O; source-owner en onafhankelijke security/privacy/browserreview; originele exact-head hosted plus permanently registered named VPS CI en expliciete HUMAN GO.",
+      "",
+      "AUTHENTICATED=false · CONSENT_VERIFIED=false · DISPATCH_ALLOWED=false · RELEASE_ALLOWED=false · DEPLOY_ALLOWED=false",
+      ""];
+    return lines.join("\n");
+  }
   function el(tag,cls,content) {
     const node = document.createElement(tag);
     if (cls) node.className = cls;
@@ -136,6 +197,8 @@
       if(filter==="holds" && (step.event!=="DISPATCH_ATTEMPT" || !step.missing.length))return;
       if(filter==="revisions" && !["SCOPE_CHANGED","RISK_CHANGED","CLIENT_REVOKED","OPERATOR_REVOKED","WINDOW_EXPIRED","NEW_WINDOW","EMERGENCY_STOP"].includes(step.event))return;
       const item=el("li");
+      if(i+1>replayPosition())item.classList.add("replay-future");
+      if(i+1===replayPosition()){item.classList.add("replay-picked");item.setAttribute("aria-current","step");}
       item.append(el("span","number",String(i+1)));
       const inner=el("span");
       inner.append(el("span","event-name",TYPES[step.event][0]));
@@ -238,6 +301,7 @@
       details.forEach(t=>delta.append(el("li","",t)));
     }
     renderBank();
+    renderReplay();
     refreshDrillStatus();
     return {s,steps,missing};
   }
@@ -612,6 +676,25 @@
     } catch(_) {feedback("HOLD: alleen exact door deze tool geproduceerde, ongewijzigde fictieve JSON is toegestaan.");}
   });
   $("timeline-filter").addEventListener("change",render);
+  $("replay-step").addEventListener("input",event=>{replayCursor=Number(event.target.value);render();});
+  $("replay-prev").addEventListener("click",()=>{replayCursor=Math.max(0,replayPosition()-1);render();});
+  $("replay-next").addEventListener("click",()=>{replayCursor=Math.min(events.length,replayPosition()+1);render();});
+  $("replay-end").addEventListener("click",()=>{replayCursor=null;render();});
+  $("replay-fork").addEventListener("click",()=>{
+    const first=slots.findIndex(x=>x===null);
+    if(first<0){feedback("HOLD: alle acht fictieve scenario-slots bezet. Bestaande slots niet overschreven.");return;}
+    const selected=replayPosition();
+    if(!window.confirm("Fictief traject t/m stap "+selected+" als alternatieve vertakking in leeg slot "+
+      (first+1)+" bewaren? Bestaande editor blijft intact."))return;
+    slots[first]=slotEntry(events.slice(0,selected),events.slice());
+    feedback("Vertakking van stap "+selected+" in lokaal scenario-slot "+(first+1)+
+      " opgeslagen. Oorspronkelijke volledige afloop is de bijbehorende nulmeting.");
+    render();
+  });
+  $("replay-brief").addEventListener("click",()=>{
+    bytesDownload("lightup-fictional-step-review.md",replayBrief(),"text/markdown");
+    feedback("Fictieve stapbeslisbrief lokaal aangeboden. Geen echte toestemming of bronbewijs.");
+  });
   $("print").addEventListener("click",()=>window.print());
   initDrills();
   render();
