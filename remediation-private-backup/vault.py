@@ -65,7 +65,8 @@ def decode(value, limit=MAX_VAULT):
 
 def name_safe(name):
     return (isinstance(name, str) and 1 <= len(name.encode("utf-8")) <= 160
-            and name not in (".", "..") and name == Path(name).name
+            and name not in (".", "..") and name.casefold() != "review-only.txt"
+            and name == Path(name).name
             and "/" not in name and "\\" not in name
             and all(32 <= ord(c) < 127 or ord(c) > 159 for c in name))
 
@@ -77,8 +78,9 @@ def read_file(path, limit):
     try:
         before = os.fstat(fd)
         if (not stat.S_ISREG(before.st_mode) or before.st_nlink != 1
+                or before.st_uid != os.getuid() or before.st_mode & 0o077
                 or before.st_size > limit):
-            raise Hold("nonregular, linked, or oversized file")
+            raise Hold("only owner-private 0600, single-link, regular bounded files accepted")
         with os.fdopen(fd, "rb", closefd=False) as handle:
             data = handle.read(limit + 1)
         after = os.fstat(fd)
@@ -227,10 +229,9 @@ def restore(args):
         os.chmod(temporary, 0o700)
         for name, raw, _ in files:
             private_write(temporary / name, raw)
-        if not any(name.casefold() == "review-only.txt" for name, _, _ in files):
-            private_write(temporary / "REVIEW-ONLY.txt",
-                          b"PRIVATE DRAFT/HOLD. Unverified operator-selected files. "
-                          b"No consent, real source proof, permission, remediation verification or release.\n")
+        private_write(temporary / "REVIEW-ONLY.txt",
+                      b"PRIVATE DRAFT/HOLD. Unverified operator-selected files. "
+                      b"No consent, real source proof, permission, remediation verification or release.\n")
         target_free(destination)
         os.rename(temporary, destination)
     except BaseException:
