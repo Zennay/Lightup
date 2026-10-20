@@ -130,7 +130,7 @@
     $("status").className = "status " + (error ? "error" : "ok");
   }
   function setEnabled(yes) {
-    ["search", "severityFilter", "stageFilter", "bulkStage", "bulkApply", "saveJournal", "loadJournal", "saveCounts", "clearAll"].forEach((id) => {
+    ["search", "severityFilter", "stageFilter", "bulkStage", "bulkApply", "saveJournal", "loadJournal", "saveBrief", "saveCounts", "clearAll"].forEach((id) => {
       $(id).disabled = !yes;
     });
   }
@@ -299,6 +299,74 @@
       status("Draft rejected without changing the workspace: " + error.message, true);
     }
   }
+  function htmlEscape(v) {
+    return String(v).replace(/[&<>"']/g, ch => ({
+      "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+    })[ch]);
+  }
+  async function saveBrief() {
+    if (state.pending) {
+      status("Apply or discard the current HUMAN form before preparing a PRIVATE brief.", true);
+      return;
+    }
+    const onlyUpdated = $("briefFollowups").checked;
+    const positions = selectedIndices().filter(i =>
+      !onlyUpdated || state.journal[i].stage !== STAGES[0]);
+    if (!positions.length) {
+      status("No visible HUMAN findings match the PRIVATE brief selection.", true);
+      return;
+    }
+    if (!confirm("PRIVATE printable brief for " + positions.length +
+      " finding(s): includes original IDs, titles, remediation and HUMAN owner/notes. " +
+      "This is not anonymous or an authorization. Save on a protected device only. Continue?")) return;
+    // Scriptless, hash-pinned portable HTML. Source and HUMAN strings are escaped
+    // as text and never interpreted as markup, attributes, CSS or JavaScript.
+    const css = "html{font:15px/1.55 system-ui,sans-serif;color:#172522;max-width:880px;margin:auto;padding:20px}h1{font-size:2rem}header{border-bottom:2px solid #384b44;padding-bottom:14px}small{color:#52655f}article{page-break-inside:avoid;border:1px solid #abbab2;border-radius:9px;padding:15px;margin:16px 0}h2{margin:0;font-size:1.2rem}p{white-space:pre-wrap;overflow-wrap:anywhere}dt{font-weight:700}dd{margin:0 0 8px}strong{font-weight:800}.hold{padding:12px;border-left:4px solid #ab813e;background:#fcf1d9}@media print{html{padding:0}article{border-color:#777}a{color:inherit}}";
+    let key;
+    try {
+      const hash = new Uint8Array(await crypto.subtle.digest("SHA-256", enc.encode(css)));
+      key = btoa(String.fromCharCode(...hash));
+    } catch (error) {
+      status("Browser cannot create a hash-pinned PRIVATE HTML brief.", true);
+      return;
+    }
+    const rows = positions.map(i => {
+      const source = state.rows[i], human = state.journal[i];
+      const field = (label, v) => "<dt>" + htmlEscape(label) + "</dt><dd>" +
+        htmlEscape(v || "—") + "</dd>";
+      return "<article><h2>" + htmlEscape(source.title) + "</h2><small>Original finding ID: " +
+        htmlEscape(source.id) + " · source-declared severity: " + htmlEscape(source.severity) +
+        " · source-declared retest: " + htmlEscape(source.retest) +
+        "</small><dl>" + field("Original proposed remediation (not verified)", source.remediation) +
+        field("HUMAN stage", stageText(human.stage)) +
+        field("HUMAN contact / owner", human.owner) +
+        field("Tentative HUMAN review date", human.due) +
+        field("HUMAN note", human.note) +
+        "</dl></article>";
+    }).join("\n");
+    const csp = "default-src 'none'; style-src 'sha256-" + key +
+      "'; img-src 'none'; connect-src 'none'; object-src 'none'; base-uri 'none'; " +
+      "script-src 'none'; form-action 'none'";
+    const markup = "<!doctype html>\n<html lang=\"en\"><head><meta charset=\"utf-8\">" +
+      "<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">" +
+      "<meta http-equiv=\"Content-Security-Policy\" content=\"" + csp + "\">" +
+      "<meta name=\"referrer\" content=\"no-referrer\">" +
+      "<title>PRIVATE LightUp HUMAN follow-up brief</title><style>" + css +
+      "</style></head><body><header><small>LIGHTUP · PRIVATE / HUMAN FOLLOW-UP</small>" +
+      "<h1>Human next-action brief</h1><p class=\"hold\">PRIVATE, locally authored HUMAN-only work. " +
+      "Original severity/remediation/retest values are unverified source claims. " +
+      "NOT a client authentication, finding verification, remediation, grant, " +
+      "retirement, consent or permission to act.</p></header>" +
+      "<p>Exact imported source CSV SHA-256 (unsigned): <strong>" + htmlEscape(state.digest) +
+      "</strong><br>Local preparation day (not authenticated chronology): " +
+      htmlEscape(localDate()) + "<br>Included visible source items: " +
+      positions.length + "</p>" + rows +
+      "<footer><small>Self-contained offline PRIVATE human artifact. No script, storage, network, " +
+      "client authorization or verified security result. Explicit disclosure approval required.</small></footer>" +
+      "</body></html>\n";
+    download(markup, "lightup-private-human-next-actions.html", "text/html");
+    status("PRIVATE scriptless HUMAN brief offered; original source and local workroom remain unchanged.", false);
+  }
   function saveCounts() {
     if (!confirm("Counts may reveal sensitive cohort sizes. Have you separately approved this disclosure?")) return;
     const severity = Object.fromEntries(SEVERITIES.map(s => [s, state.rows.filter(r => r.severity === s).length]));
@@ -376,6 +444,7 @@
     $("saveJournal").addEventListener("click", saveJournal);
     $("loadJournal").addEventListener("click", () => $("journalFile").click());
     $("saveCounts").addEventListener("click", saveCounts);
+    $("saveBrief").addEventListener("click", saveBrief);
     $("clearAll").addEventListener("click", () => {
       if ((state.dirty || state.pending) && !confirm("Discard unsaved or unapplied PRIVATE HUMAN notes?")) return;
       wipe(); status("All loaded application state released from the interface.", false);
