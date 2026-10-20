@@ -445,8 +445,11 @@
       "All original ordinals remain unchanged until explicit HUMAN confirmation.";
     for(const [ordinal,slot] of rows){
       const source=items[ordinal-1],row=dom("tr");
+      const previous=capacityProposal.previous.get(ordinal);
       row.append(dom("td","#"+ordinal),dom("td",source.group||"(unassigned)"),
-        dom("td",source.severity),dom("td",slot.day+" "+slot.time),
+        dom("td",source.severity),
+        dom("td",previous?previous.day+" "+previous.time+" · "+previous.duration+" min":"(previously unscheduled)"),
+        dom("td",slot.day+" "+slot.time),
         dom("td",slot.duration+" min"));
       tbody.append(row);
     }
