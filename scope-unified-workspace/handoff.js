@@ -792,7 +792,10 @@
     const files = Array.from(peerInput.files || []);
     peerInput.value = "";
     peerPreview = null; peerRows.replaceChildren();
-    peerApply.disabled = true; peerSummaryExport.disabled = true;
+    peerApply.disabled = true; peerSummaryExport.disabled = true; peerAgenda.disabled = true;
+    peerPreviewText.textContent = "Geen actuele HUMAN-keuze.";
+    peerFilterCount.textContent = "Geen actuele PRIVATE reviewpakketten.";
+    peerFilter.value = "all"; peerSearch.value = "";
     if (busy || !items.length || files.length < 2 || files.length > MAX_PEER_PACKETS ||
         files.some(f => f.size < 10 || f.size > 96 * 1024)) {
       peerStatus.textContent = "HOLD — selecteer originele bronnen en 2–8 PRIVATE reviewpakketten (maximaal 96 KiB per pakket).";
@@ -863,13 +866,15 @@
           }
           if (proposals.length < files.length) counts.partial_reviewer_coverage++;
         }
-        const entry = {item,allowed,choice:-1,mismatch,
+        const entry = {item,allowed,choice:-1,mismatch,state,
+          proposalCount:proposals.length,
           conflicting:state==="TEGENSTRIJDIGE HUMAN-KEUZES",
           noteUncertain:state==="PRIVATE NOTITIEDEKKING ONBEKEND"};
         decisions.push(entry);
         const tr = document.createElement("tr");
         cell(tr,item.file.name,"file-name");
-        cell(tr,state + " · " + proposals.length + "/" + files.length + " pakketten");
+        cell(tr,state + " · " + proposals.length + "/" + files.length + " pakketten" +
+          (proposals.length > 0 && proposals.length < files.length ? " · ONVOLLEDIGE DEKKING" : ""));
         const proposalsCell = document.createElement("td");
         const list = document.createElement("ol");
         list.className = "shelf-peer-list";
@@ -902,14 +907,17 @@
             entry.choice = Number.isInteger(selected) && (selected===-1 || allowed[selected])
               ? selected : -1;
             peerApply.disabled = !peerPending();
+            refreshPeerDesk();
           });
           td.append(select);
         } else td.textContent = "Niet mogelijk";
-        tr.append(td); peerRows.append(tr);
+        tr.append(td); entry.row = tr; peerRows.append(tr);
       }
       if (epoch !== generation || revision !== humanRevision) throw Error("stale review");
       peerPreview = {decisions,epoch,revision,counts,packetBytes};
       peerSummaryExport.disabled = false;
+      peerAgenda.disabled = false;
+      refreshPeerDesk();
       peerStatus.textContent = "REVIEW_ONLY / NIETS AUTOMATISCH TOEGEPAST — " +
         files.length + " ongetekende pakketten, " + counts.consensus +
         " menselijke overeenkomsten, " + counts.divergent_human_choices +
@@ -918,7 +926,9 @@
         " inconsistente originele bronnen. Zelfs consensus verleent NOOIT toestemming.";
     } catch (_) {
       peerPreview = null; peerRows.replaceChildren();
-      peerSummaryExport.disabled = true; peerApply.disabled = true;
+      peerSummaryExport.disabled = true; peerApply.disabled = true; peerAgenda.disabled = true;
+      peerFilterCount.textContent = "Geen geldige reviewpakketten.";
+      peerPreviewText.textContent = "Geen menselijke keuze mogelijk.";
       peerStatus.textContent =
         "HOLD — ongeldige, byte-identieke, ambigue of stale PRIVATE reviewpakketten. Bestaande HUMAN-keuzes behouden.";
     } finally {
@@ -1012,6 +1022,9 @@
     peerStatus.textContent="REVIEW_ONLY — "+chosen.length+
       " individueel gekozen HUMAN voorstellen uit "+plan.counts.packets+
       " pakketten overgenomen; de overige lokale reviews behouden.";
+    // The existing preview cannot be replayed against the changed HUMAN workset.
+    peerPreviewText.textContent = "Toegepaste HUMAN keuzes: "+chosen.length+
+      ". Kies opnieuw originele reviewpakketten voor een nieuwe vóór/na-vergelijking.";
     report("REVIEW_ONLY — alleen expliciete bronexacte PRIVATE HUMAN-keuzes toegepast.");
   });
 
