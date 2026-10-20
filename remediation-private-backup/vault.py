@@ -347,6 +347,47 @@ def encrypted_subset(args):
     print(f"PRIVATE DRAFT/HOLD: separate encrypted subset at {target}; NOT disclosure approval")
 
 
+def encrypted_delta(args):
+    """From two authenticated operator-chosen snapshots, re-encrypt B-only/changed bytes.
+
+    The caller chooses A/B order; neither archive is independently time-authenticated.
+    Missing A->B sources are recorded only as an anonymous count, never as a fix.
+    """
+    target = Path(args.output)
+    target_free(target)
+    if Path(args.before).resolve() == Path(args.after).resolve():
+        raise Hold("select two distinct original PRIVATE snapshot files")
+    print("Decrypt the operator-selected original A snapshot")
+    _, before = unseal(args.before)
+    print("Decrypt the operator-selected original B snapshot")
+    _, after = unseal(args.after)
+    originals = {name.casefold(): (name, data, digest) for name, data, digest in before}
+    selected = []
+    unchanged = 0
+    for name, data, digest in after:
+        previous = originals.get(name.casefold())
+        if (previous is None or previous[0] != name or previous[2] != digest
+                or len(previous[1]) != len(data)):
+            selected.append((name, data, digest))
+        else:
+            unchanged += 1
+    missing = len(set(originals) - {name.casefold() for name, _, _ in after})
+    if not selected:
+        raise Hold("no B-only or byte-changed files. No new archive published.")
+    print(f"Operator-ordered snapshot selection: {len(selected)} B added/changed PRIVATE files, "
+          f"{unchanged} matching, {missing} A-only records.")
+    print("No authenticated chronology, fix, source authenticity or recipient disclosure.")
+    if input("Write a NEW separately encrypted PRIVATE changed-files archive? [type YES]: ").strip() != "YES":
+        raise Hold("operator did not confirm encrypted B-difference export")
+    rows = [{"name": name, "size": len(raw), "sha256": digest, "bytes": b64(raw)}
+            for name, raw, digest in selected]
+    check_rows(rows)
+    inner = {"version": VERSION, "authority": FLAGS, "files": rows}
+    private_write(target, seal(inner, ask(confirm=True)))
+    print(f"PRIVATE DRAFT/HOLD: {len(selected)} selected files encrypted into {target}")
+    print("This is a snapshot file subset, not verified remediation or consent.")
+
+
 def compare(args):
     # Both independently encrypted archives must authenticate completely first.
     # The caller must provide each password interactively; the result stays local.
@@ -401,10 +442,15 @@ def main():
     p = sub.add_parser("wizard", help="Interactive opt-in source selection from ONE PRIVATE folder")
     p.add_argument("directory")
     p.add_argument("--output", required=True)
+    p = sub.add_parser("delta", help="Encrypt B-only and changed files from two unlocked PRIVATE snapshots")
+    p.add_argument("before")
+    p.add_argument("after")
+    p.add_argument("--output", required=True)
     args = parser.parse_args()
     try:
         {"create": create, "inventory": inventory, "restore": restore,
-         "rotate": rotate, "compare": compare, "subset": encrypted_subset, "wizard": wizard}[args.command](args)
+         "rotate": rotate, "compare": compare, "subset": encrypted_subset, "wizard": wizard,
+         "delta": encrypted_delta}[args.command](args)
     except (Hold, OSError) as err:
         print(f"HOLD: {err}", file=sys.stderr)
         return 3
