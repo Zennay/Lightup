@@ -32,6 +32,62 @@ a{color:#15577c}a:focus-visible{outline:3px solid #bf7c22}
 @media print{pre{color:black;background:white;border:1px solid #999}}"""
 
 
+def template(completed_packet: str, parent: str) -> int:
+    """Create an original-bound, owner-only editable masking request shell."""
+    target = private_directory(parent)
+    _, manifest, decisions_csv, sources, _, _ = admit_completed(completed_packet)
+    output = Path(tempfile.mkdtemp(prefix="PRIVATE-lightup-mask-plan-", dir=target))
+    os.chmod(output, 0o700)
+    complete = False
+    try:
+        rules = {
+            "schema": SCHEMA, "claimed_status": "HOLD",
+            "completed_manifest_sha256_unsigned": sha256(manifest).hexdigest(),
+            "completed_human_csv_sha256_unsigned": sha256(decisions_csv).hexdigest(),
+            "rules": [
+                {
+                    "original_source_ordinal": item["ordinal"],
+                    "original_source_sha256_unsigned": item["source_sha256_unsigned"],
+                    "literal_to_mask": "",
+                } for item in sources
+            ],
+            **{flag: False for flag in FALSE_FLAGS},
+        }
+        save_json(output / "PRIVATE-manual-mask-rules.json", rules)
+        notice = ("""<!doctype html><html lang="en"><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; connect-src 'none'; base-uri 'none'; form-action 'none'">
+<title>LightUp PRIVATE original HUMAN manual masking</title><style>""" + STYLE +
+        """</style><header><p class="warn"><b>PRIVATE HUMAN MASKING REQUEST · HOLD</b>
+<br>Contains original source SHA identities but no original text or requested
+secret literal yet. This local file is not permission to disclose.</p>
+<h1>Manually redact remaining PRIVATE content</h1>
+<p>Edit the <code>PRIVATE-manual-mask-rules.json</code> file within this
+owner-private directory. Replace each chosen <code>literal_to_mask</code> blank
+with its exact secret phrase, and REMOVE all unneeded rule entries.
+You may duplicate a source entry for multiple distinct secret phrases.
+The edited file itself is HIGHLY SENSITIVE: it contains secret literal text.
+Keep it mode 0600, local and never post/send/upload it.</p>
+<p>At least one valid HUMAN literal is required; each is 3–256 Unicode
+characters with no control characters, duplicates or overlapping matches.
+The original completed HUMAN source and complete HUMAN CSV SHA bindings must
+remain unchanged. An unmatched phrase or unsafe value rejects the complete
+operation without creating a derived packet.</p><p>Then invoke native
+<code>notes.py mask-copy --completed-packet ... --rules-json ... --private-parent ...</code>.
+The result contains only selected extra-masked originals (never raw rule
+literals), remains owner-private/HOLD and is NOT cleared for sharing.
+No network, external action, source edit or authorization occurs.</p>
+</header></html>""")
+        file_new(output / "OPEN-PRIVATE.html", notice.encode("utf-8"))
+        complete = True
+        print("REVIEW_ONLY: original-bound editable PRIVATE manual masking template prepared.")
+        print("OPEN LOCALLY: " + str(output / "OPEN-PRIVATE.html"))
+        return 2
+    finally:
+        if not complete:
+            shutil.rmtree(output)
+
+
 def prepare(completed_packet: str, rules_file: str, parent: str) -> int:
     target = private_directory(parent)
     _, original_manifest, original_csv, sources, rows, decisions = admit_completed(
