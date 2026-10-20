@@ -72,3 +72,31 @@ studio, complete HUMAN selection CSV, unsigned selection receipt and instruction
 It refuses a different source or unmatched original manifest/worksheet. No
 findings are selected, published or disclosed automatically. Exit code 2 is
 REVIEW_ONLY, 3 is HOLD, never authority to scan or release.
+
+## Complete optional ORIGINAL selected-only evidence dossier (third stage)
+
+After a human has privately edited and saved the original source-free selection
+CSV from the HUMAN studio prepared by `curation.py`, it can be admitted by the
+**unchanged original** `assessment-evidence-curation/curate.py publish` through
+one explicit local command:
+
+~~~sh
+python3 assessment-integrated-suite/publish.py \
+  --source /private/original-lab-a.json \
+  --original-kit /private-parent/PRIVATE-lightup-kit-EXAMPLE \
+  --curation-kit /private-parent/PRIVATE-lightup-curation-EXAMPLE \
+  --selection /private/PRIVATE-human-selection.csv \
+  --private-parent /private-parent
+~~~
+
+This third stage revalidates the exact original source, briefing manifest,
+HUMAN worksheet, original selection receipt and full completed HUMAN selection
+through original source code. It prepares a NEW owner-private 0700 local kit
+containing **only the selected** original finding dossier, a **separate**
+identifier-minimized PRIVATE HUMAN handoff, the original unsigned curation
+receipt and source-free numeric counts. Present priority-group pages are linked
+when the native source emits them. The original source/worksheet and browser
+studio are never modified; no network publication is performed. Even the
+minimal handoff is PRIVATE and may be disclosed only after independent real
+owner/client/operator permission and privacy checks. Exit 2 = REVIEW_ONLY,
+not approval. Exit 3 = HOLD and removes only the failed new kit.
