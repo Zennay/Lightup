@@ -34,6 +34,7 @@
   let source = null;
   let human = new Map();
   let privateNotes = new Map();
+  let requestHuman = new Map();
   let digestHex = null;
   let rawPrivateSource = null;
 
@@ -262,6 +263,7 @@
     rawPrivateSource = null;
     human.clear();
     privateNotes.clear();
+    requestHuman.clear();
     $("casebook-selected").hidden = true;
     $("casebook-selected").textContent = "";
     renderCases();
@@ -282,6 +284,7 @@
     $("casebook-risk-review-count").textContent = source ?
       source.declared_counts.risk_provenance_hold + source.declared_counts.pending_risk_review : 0;
     $("casebook-case-attention-count").textContent = source?.declared_counts.case_attention_hold ?? 0;
+    renderRequestInbox();
     const query = $("casebook-filter").value.trim().toLowerCase();
     const category = $("casebook-category").value;
     const tbody = $("casebook-cases"); tbody.replaceChildren();
@@ -320,6 +323,70 @@
       tr.append(tools);
       tbody.append(tr);
     }
+  }
+
+  function sourceRequests() {
+    if (!source) return [];
+    return source.requests.map(req => {
+      const linked = source.grants.filter(g => g.approved_request_id === req.request_id);
+      let attention;
+      if (req.status === "approved" && !req.decision_recorded) {
+        attention = "HOLD_APPROVED_BUT_DECISION_ABSENT";
+      } else if (linked.some(g => g.request_link_observation.startsWith("HOLD_"))) {
+        attention = "HOLD_ORIGINAL_GRANT_LINK";
+      } else if (req.status === "approved" && !linked.length) {
+        attention = "HUMAN_APPROVED_REQUEST_NO_GRANT_RECORD";
+      } else if (req.status === "approved") {
+        attention = "ORIGINAL_LINKS_RECORDED_UNVERIFIED";
+      } else if (req.status === "under_review" || req.status === "submitted") {
+        attention = "ORIGINAL_REQUEST_NOT_REVIEWED_TO_APPROVAL";
+      } else {
+        attention = "ORIGINAL_REQUEST_REJECTED_UNVERIFIED";
+      }
+      return {req, linked, attention};
+    });
+  }
+
+  function renderRequestInbox() {
+    const tbody = $("casebook-requests"); tbody.replaceChildren();
+    const query = $("request-filter").value.trim().toLowerCase();
+    const category = $("request-category").value;
+    const lines = sourceRequests();
+    let shown = 0;
+    for (const line of lines) {
+      const {req,linked,attention} = line;
+      if (query && !(req.request_id + " " + req.status + " " + attention).toLowerCase().includes(query)) continue;
+      if (category === "unbound" && !(req.status === "approved" && !linked.length)) continue;
+      if (category === "hold" && !attention.startsWith("HOLD_")) continue;
+      if (category === "pending" && !["under_review","submitted","rejected"].includes(req.status)) continue;
+      const tr = document.createElement("tr");
+      for (const value of [
+        req.request_id,
+        req.status + (req.decision_recorded ? " / decision recorded (UNVERIFIED)" : " / no stored decision"),
+        req.requested_mode + " / " + req.requested_risk,
+        String(linked.length) + " stored links (NOT AUTHORITY)",
+        attention
+      ]) {
+        const td = document.createElement("td");td.textContent=value;tr.append(td);
+      }
+      const td = document.createElement("td");
+      const sel = document.createElement("select");
+      sel.setAttribute("aria-label","Local HUMAN stage for original request " + req.request_id);
+      for (const [value,label] of Object.entries(VALID_HUMAN)) {
+        const opt = document.createElement("option"); opt.value=value; opt.textContent=label; sel.append(opt);
+      }
+      sel.value = requestHuman.get(req.request_id) || "unreviewed";
+      sel.addEventListener("change",event => {
+        requestHuman.set(req.request_id,event.target.value);
+        show("Original request HUMAN stage updated only in browser memory — no approval or source mutation.");
+      });
+      td.append(sel);tr.append(td);tbody.append(tr);shown++;
+    }
+    $("casebook-request-status").textContent = source ?
+      shown + " original request rows shown. " + lines.filter(x =>
+        x.req.status === "approved" && !x.linked.length).length +
+      " approved-looking original request(s) have no stored grant binding in this source; this is NOT permission or proof of absent grants." :
+      "No original request source is loaded. This is NOT an authorization.";
   }
 
   function inspectCase(id) {
@@ -631,6 +698,8 @@
     $("clear-casebook").addEventListener("click", () => clearOriginal(true));
     $("casebook-filter").addEventListener("input", renderCases);
     $("casebook-category").addEventListener("change", renderCases);
+    $("request-filter").addEventListener("input", renderRequestInbox);
+    $("request-category").addEventListener("change", renderRequestInbox);
     $("casebook-aggregate").addEventListener("click", exportAggregate);
     $("save-casebook-secure").addEventListener("click", saveEncryptedHandoff);
     $("open-casebook-secure").addEventListener("click", () => $("casebook-secure-file").click());
@@ -670,6 +739,7 @@
         rawPrivateSource = result.raw;
         human.clear();
         privateNotes.clear();
+        requestHuman.clear();
         $("casebook-selected").hidden = true;
         $("casebook-selected").textContent = "";
         $("casebook-filter").value = "";
