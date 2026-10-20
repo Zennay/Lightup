@@ -14,7 +14,7 @@ locally from a trusted checkout:
 
     python3 assessment-workspace-ledger/console.py
 
-Twelve console actions provide original kit capture, exact-byte reopen, original-bound
+Thirteen console actions provide original kit capture, exact-byte reopen, original-bound
 HUMAN CSV finalization, historical change review with private file-level
 drilldown, unchanged-source HUMAN continuity, a separate source-free
 single-file browser editor export, a native same-source HUMAN revision desk,
@@ -301,3 +301,38 @@ native input admission intentionally rejects public-readable files.
 SHA-256 inventories are unsigned. They do not authenticate the producer, source client, original data, reviewer, verified finding, remediation or current consent. A person who can modify both input and unsigned manifest may forge a mutually consistent statement. Removed artifacts do **not** prove a fix or retest. Small counts can identify confidential matters and must remain PRIVATE.
 
 Notion posture remains **Incubate M3/M7 PLAN/LAB ONLY**. Draft/HOLD software only: no main merge, deploy, scans, live targets or automatic external handoff. Exact-head GitHub-hosted and permanently registered named VPS CI, original source-owner approval, independent privacy/security/browser review, original #177/#182/#829, separate authenticated current client and operator consent with action-time revocation, and explicit HUMAN GO remain mandatory. No QA, regression or test suites are added or invoked.
+
+
+## Chained PRIVATE inventory history — 2–12 original snapshots
+
+The new [history.py](history.py) and foreground console action **13** create a
+single human-readable history from an explicitly selected ordered series of
+original **owner-private ledger.json** files, without reopening customer kit
+contents or sending anything to a server. Each entry after the first MUST have
+been generated using the original `ledger.py capture --previous` pointing to
+exactly the preceding ledger bytes. Native admission requires its exact
+`previous_sha256` to match, all original kit paths/ordinals to remain fixed,
+private ordinary files, distinct exact bytes, bounded original JSON and all
+literal non-authority fields. A missing, reordered or mismatched historical
+source produces HOLD; **the chain is unsigned and its chronology is not
+cryptographically proven**.
+
+    python3 assessment-workspace-ledger/history.py --ledger /private/one/ledger.json --ledger /private/two/ledger.json --ledger /private/three/ledger.json --private-parent /private/private-ledgers
+
+The tool creates an exclusive owner-only 0700 workroom with 0600
+`OPEN-PRIVATE.html` (local source-minimal per-kit/per-step change table),
+`PRIVATE-history.json` (bounded multi-step counters),
+`PRIVATE-relative-file-hotspots.json` (sensitive original relative filenames
+and file-churn frequency), and `PRIVATE-HUMAN-history-template.csv` (numeric
+HUMAN-only action worksheet). Every step distinguishes label/context drift
+from added, removed or changed original file bytes. Even a zero-change step
+is merely **REVIEW_ONLY**, and any drift returns **HOLD**. A missing historical
+source file never implies a fixed issue. These inventories say NOTHING about
+actual current source bytes until the latest ledger is separately admitted
+using the original `ledger.py reopen` command. No scan, live target,
+sharing, owner-authentication, real consent, grant or verified finding.
+
+The fixed allowlist source-only ZIP packaging schema is now v11 and includes
+this timeline CLI. A prior committed v10 ZIP remains a **previous software
+revision**, not a representation of these new committed sources: build a new
+software-only ZIP with `package.py build` from the current source tree.
