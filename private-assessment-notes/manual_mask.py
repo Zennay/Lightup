@@ -17,6 +17,7 @@ import tempfile
 
 from notes import FALSE_FLAGS, Hold, file_new, private_directory, read_json, save_json
 from revision_changes import admit_completed
+from manual_mask_board import render as render_mask_board
 
 SCHEMA = "lightup.private_human_extra_mask_rules.v1"
 OUT_SCHEMA = "lightup.private_human_extra_masked_selection.v1"
@@ -35,7 +36,7 @@ a{color:#15577c}a:focus-visible{outline:3px solid #bf7c22}
 def template(completed_packet: str, parent: str) -> int:
     """Create an original-bound, owner-only editable masking request shell."""
     target = private_directory(parent)
-    _, manifest, decisions_csv, sources, _, _ = admit_completed(completed_packet)
+    _, manifest, decisions_csv, sources, source_rows, _ = admit_completed(completed_packet)
     output = Path(tempfile.mkdtemp(prefix="PRIVATE-lightup-mask-plan-", dir=target))
     os.chmod(output, 0o700)
     complete = False
@@ -54,6 +55,9 @@ def template(completed_packet: str, parent: str) -> int:
             **{flag: False for flag in FALSE_FLAGS},
         }
         save_json(output / "PRIVATE-manual-mask-rules.json", rules)
+        file_new(output / "PRIVATE-manual-mask-editor.html",
+                 render_mask_board(source_rows, sha256(manifest).hexdigest(),
+                                   sha256(decisions_csv).hexdigest()))
         notice = ("""<!doctype html><html lang="en"><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; connect-src 'none'; base-uri 'none'; form-action 'none'">
@@ -62,7 +66,12 @@ def template(completed_packet: str, parent: str) -> int:
 <br>Contains original source SHA identities but no original text or requested
 secret literal yet. This local file is not permission to disclose.</p>
 <h1>Manually redact remaining PRIVATE content</h1>
-<p>Edit the <code>PRIVATE-manual-mask-rules.json</code> file within this
+<p><a href="PRIVATE-manual-mask-editor.html">Open offline PRIVATE HUMAN
+manual masking editor</a> to inspect the pattern-masked original and enter
+exact remaining phrases. The downloaded JSON contains the sensitive literal;
+protect it immediately with mode 0600. The HTML itself also contains already
+masked PRIVATE source content and must remain owner-private.</p>
+<p>Alternatively, edit the <code>PRIVATE-manual-mask-rules.json</code> file within this
 owner-private directory. Replace each chosen <code>literal_to_mask</code> blank
 with its exact secret phrase, and REMOVE all unneeded rule entries.
 You may duplicate a source entry for multiple distinct secret phrases.
