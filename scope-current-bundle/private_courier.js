@@ -22,7 +22,7 @@
   const decoder = new TextDecoder("utf-8", {fatal: true});
   const validName = name => typeof name === "string" &&
     /^[A-Za-z0-9][A-Za-z0-9_.-]{0,119}$/.test(name) &&
-    !name.includes("..") && /\.(?:html|csv|json)$/i.test(name);
+    !name.includes("..") && /\.(?:html|csv|json|zip)$/i.test(name);
   function say(value) { message.textContent = value; }
   function exclusive(f) {
     return async () => {
