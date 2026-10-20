@@ -1408,3 +1408,61 @@ Incubate M3/M7 PLAN/LAB ONLY DRAFT/HOLD; original CI, independent security,
 privacy, source-owner/browser review, real separately authenticated current
 client/operator consent and at-action revocation, #177/#182/#829 and HUMAN GO
 remain mandatory. No QA/tests/real client data.
+
+## NEW: deliberately withhold returned team edits (option 62)
+
+The original 1–4 team return import remains original-source-admitted. After each
+complete PRIVATE CSV is selected, the foreground operator now chooses
+**yes/no per team** whether to include that team's edits in the NEW unfinalized
+HUMAN candidate. Default is **no**. A separate `--withhold-team 'Privacy'`
+(repeatable) in native `lab_review_team_batch.py` implements the same
+source-checked withholding. Every returned team is still admitted against
+the exact original Launchpad source, finalized HUMAN review and original
+team handoff. Refusing/withholding any team never waives source validation.
+
+- **Included response:** existing original HUMAN team/source/ordinal positions
+  are copied into a complete seven-column draft, without automatic FINALIZE.
+- **Returned but withheld:** all original decisions remain unchanged in the
+  candidate. The 0600 scriptless operator page visibly distinguishes withheld
+  replies from teams that never returned; neither implies approval.
+- **Not returned:** original rows remain unchanged, with no implied consent.
+
+The output now contains an additional owner-0600
+`PRIVATE-HUMAN-WITHHELD-DIFF.csv` of **source ordinal, HUMAN team, old/new
+stage and private-question-changed Boolean only**. Human private question
+text never enters the HTML or either diff. The PRIVATE receipt records the
+deliberately withheld source team's counts separately, and exact SHA-256
+of every created PRIVATE report byte. **These hashes are unsigned local
+integrity checks and do not prove actor identity or authorization.**
+
+## NEW: reopen saved original multi-team proposal, source-bound (option 63)
+
+```bash
+python3 assessment-integrated-suite/lab_review_team_batch_reopen.py \
+  --packet ORIGINAL_LAUNCHPAD_0700 \
+  --final-room ORIGINAL_FINAL_0700 \
+  --handoff-room ORIGINAL_TEAM_HANDOFF_0700 \
+  --batch-room EXISTING_MULTI_TEAM_BATCH_0700 \
+  --human-confirm 'REOPEN ORIGINAL PRIVATE LAB TEAM BATCH'
+```
+
+The read-only offline original-source reopener checks the **unchanged original**
+Launchpad packets, exact original FINAL HUMAN rows and team handoff again;
+requires original owner-only 0700 directory and direct 0600 single-linked
+files; rejects duplicate receipt JSON keys and wrong authority flags through
+the existing original strict native receipt reader; admits all four existing
+PRIVATE output file descriptors and SHA byte inventory. The complete candidate
+CSV is revalidated against original source ordinals, team assignments and
+HUMAN stage/question schema. It recomputes included original stage/question
+changes, distinguishes deliberately withheld from never-returned teams, and
+checks the stage/ordinal diff and receipt counts before printing a minimal
+PRIVATE REVIEW_ONLY summary. Nothing is regenerated or silently finalized;
+if the original source is missing or any receipt or output file changed, it
+returns HOLD instead of claiming success.
+
+No target, browser-network, model, scan, callback, credentials, grant, sending
+or production activation. Existing M3/M7 PLAN/LAB ONLY DRAFT/HOLD, original
+exact-head named-VPS + hosted CI, source-owner and independent security/
+privacy/browser review, authenticated current separate client/operator
+consent with revocation-at-use, #177/#182/#829 and explicit HUMAN GO gates
+remain in force. No QA/regression/test suites have been added or run.
