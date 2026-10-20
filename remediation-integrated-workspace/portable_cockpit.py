@@ -81,16 +81,13 @@ def pack(cockpit: Path, outfile: Path) -> None:
     print("REVIEW_ONLY: original canonical source-free Cockpit packed privately:", outfile)
     print("This .luhz is UNENCRYPTED. Share only with separately authorized recipient.")
 
-def unpack(archive: Path, output: Path) -> None:
-    require(archive.is_absolute() and archive.parent == archive.parent.resolve(strict=True),
-            "Incoming handoff requires a literal private archive path")
-    install.owner_dir(archive.parent)
-    require(output.is_absolute() and output.parent == output.parent.resolve(strict=True)
-            and not output.is_symlink() and not output.exists() and
-            output != archive.parent and output not in archive.parents,
-            "New recipient folder must not enter incoming archive's path")
+def unpack_bytes(raw: bytes, output: Path, unchanged=None) -> None:
+    """Native source-free receipt directly from memory (no plaintext ZIP on disk)."""
+    require(type(raw) is bytes and output.is_absolute() and
+            output.parent == output.parent.resolve(strict=True)
+            and not output.exists() and not output.is_symlink(),
+            "New private receiver folder required")
     install.owner_dir(output.parent)
-    raw = install.read_owner_file(archive)
     require(len(raw) <= MAX_ZIP, "Incoming private handoff too large")
     with zipfile.ZipFile(io.BytesIO(raw)) as zip_reader:
         names = zip_reader.namelist()
@@ -116,15 +113,26 @@ def unpack(archive: Path, output: Path) -> None:
         # This invokes original unchanged source-free admission, including
         # native HTML reconstruction, original human COUNT schema and disclaimers.
         read_cockpit.inspect(stage)
-        require(install.read_owner_file(archive) == raw,
-                "Incoming handoff bytes changed while receiving")
+        if unchanged is not None:
+            require(unchanged(), "Original received handoff changed during acceptance")
         require(not output.exists(), "Another recipient directory appeared")
         workspace.exclusive_dir_publish(stage, output)
     finally:
         if stage.exists():
             shutil.rmtree(stage)
     print("REVIEW_ONLY: complete original source-free Cockpit received:", output)
-    print("Unkeyed manifest does not authenticate sender/client, consent, fix or retest.")
+    print("No signed source/client, real consent, verified fix or authority.")
+
+
+def unpack(archive: Path, output: Path) -> None:
+    require(archive.is_absolute() and archive.parent == archive.parent.resolve(strict=True),
+            "Incoming source-free handoff needs a literal private path")
+    install.owner_dir(archive.parent)
+    require(output != archive.parent and output not in archive.parents,
+            "A received Cockpit cannot overwrite original archive ancestors")
+    raw = install.read_owner_file(archive)
+    unpack_bytes(raw, output, lambda: install.read_owner_file(archive) == raw)
+
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Offline single-file source-free HUMAN Cockpit transport")
