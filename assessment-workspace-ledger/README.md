@@ -1771,3 +1771,46 @@ Incubate M3/M7 PLAN/LAB ONLY DRAFT/HOLD, subject to original exact-head
 hosted/named VPS CI, source-owner and independent security/privacy/browser
 review, scope/consent #177/#182/#829, true separate current client/operator
 consent with action-time revocation, and explicit HUMAN GO.
+
+## v44 — complete source-free PRIVATE HUMAN operator follow-up browser Studio
+
+The original v43 native HUMAN follow-up `prepare` now includes a ready-to-open
+`PRIVATE-HUMAN-operator-followup-studio.html` in its new 0700/0600 private
+room. The same [standalone viewer/editor](portfolio-owner-followup-studio.html)
+is included without client, original source, HUMAN owner or PRIVATE note bytes
+in the v44 software-only package.
+
+An operator explicitly chooses one original local
+`PRIVATE-HUMAN-owner-inbox.json`. The CSP/SHA-pinned browser performs
+a strict bounded duplicate-key rejecting preview, computes the exact original
+whole-source SHA-256, and displays original proposed HUMAN owner labels,
+source case/transition/kit, original human-stage and independently returned
+HUMAN owner stages. Each original source slot gets an editable HUMAN-only
+operator proposed stage and bounded PRIVATE note; filters and local search
+never discard hidden source rows from the complete export. Only explicitly
+proposed HUMAN stage and PRIVATE note may change.
+
+The browser exports a complete
+`HUMAN-operator-followup-template.csv` with exact original source-byte SHA
+and every original source identity, owner and received original HUMAN stage
+unchanged. Previously saved COMPLETE draft CSVs can be re-opened only with
+the same original source SHA, original row order/identity and unchanged
+original received stages, after a separate HUMAN confirmation. A rejected
+foreign/partial/edited draft never alters the in-memory local HUMAN edits.
+All private content remains in browser memory without network/persistence;
+a private Downloads folder and the original native
+`portfolio_owner_followup.py receive` are still required.
+
+The source-free HTML may be built independently in an operator-private 0700
+directory using:
+
+    python3 assessment-workspace-ledger/portfolio_owner_followup_studio.py \
+      --output /private/software/NEW-PRIVATE-HUMAN-operator-studio.html
+
+Foreground console **51** exposes the source-only renderer; console 49 creates
+the source-bound original HUMAN draft and same offline UI, and console 50
+performs the distinct original native re-admission. Neither the browser nor
+a local SHA authenticates recipients/consent, verifies findings, authorizes
+scans, creates real tasks or issues security PASS. The v44 source-only ZIP
+retains fixed unsigned v16–v43 software inventory reads and original
+Incubate M3/M7 PLAN/LAB ONLY DRAFT/HOLD CI/review/HUMAN GO boundaries.

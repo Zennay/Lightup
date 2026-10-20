@@ -218,8 +218,10 @@ def run(args):
     if data is not None and read_owner_file(args.followup_csv,MAX_MANIFEST)!=data:
         reject("PRIVATE HOLD: original HUMAN follow-up CSV changed")
     if args.mode=="prepare":
+        from portfolio_owner_followup_studio import render as render_operator_studio
         outputs={
             "OPEN-PRIVATE.html":counts_html(rows),
+            "PRIVATE-HUMAN-operator-followup-studio.html":render_operator_studio(),
             "HUMAN-operator-followup-template.csv":template(digest(inbox_raw),items),
         }
     else:
