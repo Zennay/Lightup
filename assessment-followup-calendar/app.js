@@ -431,8 +431,29 @@
       Array.from(capacityRules.entries()).sort((a,b)=>a[0].localeCompare(b[0])),
       $("capacityFirst").value,$("capacityHorizon").value]);
   }
+  function renderCapacityProposal(){
+    const tbody=$("capacityPreviewRows");
+    tbody.replaceChildren();
+    if(!capacityProposal || !capacityProposal.slots.size){
+      $("capacityPreviewSummary").textContent="No HUMAN proposal; load rules and preview.";
+      return;
+    }
+    const rows=Array.from(capacityProposal.slots.entries())
+      .sort((a,b)=>(a[1].day+"T"+a[1].time).localeCompare(b[1].day+"T"+b[1].time) || a[0]-b[0]);
+    $("capacityPreviewSummary").textContent=rows.length+" local HUMAN-only appointment proposals "+
+      "(source-reported severity is not independently validated). "+
+      "All original ordinals remain unchanged until explicit HUMAN confirmation.";
+    for(const [ordinal,slot] of rows){
+      const source=items[ordinal-1],row=dom("tr");
+      row.append(dom("td","#"+ordinal),dom("td",source.group||"(unassigned)"),
+        dom("td",source.severity),dom("td",slot.day+" "+slot.time),
+        dom("td",slot.duration+" min"));
+      tbody.append(row);
+    }
+  }
   function renderCapacity(){
     if(!active)return;
+    renderCapacityProposal();
     const unscheduled=new Map();
     for(const row of items)if(!plan.has(row.ordinal)&&row.stage!=="blocked")
       unscheduled.set(row.group,(unscheduled.get(row.group)||0)+1);
@@ -537,6 +558,8 @@
     }
     capacityProposal={slots:proposed,snapshot:capacitySnapshot()};
     $("capacityApply").disabled=proposed.size===0;
+    renderCapacityProposal();
+    $("capacityProposalDetails").open=proposed.size>0;
     const pending=candidates.length-proposed.size;
     capacityMessage("Proposed "+proposed.size+" source-ordinal HUMAN reminders, "+
       pending+" remain without new dates in this 14–90-day bounded preview. "+
