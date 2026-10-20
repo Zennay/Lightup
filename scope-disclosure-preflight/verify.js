@@ -3,7 +3,7 @@
 (() => {
   const e=id=>document.getElementById(id), enc=new TextDecoder("utf-8",{fatal:true});
 
-  let operation=0, receivedText=null, viewPage=0, viewedPages=new Set();
+  let operation=0, receivedText=null, viewPage=0, viewedPages=new Set(), matched=null;
   function showPage(target){
     if(receivedText===null)return;
     const total=Math.max(1,Math.ceil(receivedText.length/8000));
@@ -13,6 +13,7 @@
     e("receivedPrev").disabled=viewPage===0;
     e("receivedNext").disabled=viewPage===total-1;
     e("receivedPage").textContent="Page "+(viewPage+1)+" / "+total+" · "+viewedPages.size+" viewed";
+    humanGate();
   }
   e("receivedPrev").addEventListener("click",()=>showPage(viewPage-1));
   e("receivedNext").addEventListener("click",()=>showPage(viewPage+1));
@@ -33,6 +34,10 @@
   }
 
   function hold(msg) {
+    matched=null;
+    e("humanOutcome").value="";e("humanNote").value="";e("humanAck").checked=false;
+    e("exportHuman").disabled=true;
+    e("humanStatus").textContent="No matched received file is available for human feedback.";
     receivedText=null;viewPage=0;viewedPages=new Set();
     e("receivedPreview").value="";
     e("receivedPrev").disabled=e("receivedNext").disabled=true;
@@ -81,6 +86,45 @@
     }
     return val;
   }
+
+  const HUMAN_OUTCOMES=["needs_more_masking","needs_context","read_only_notes"];
+  function humanGate() {
+    const total=receivedText===null?0:Math.max(1,Math.ceil(receivedText.length/8000));
+    const cleanNote=e("humanNote").value.length<=800 &&
+      !/[\x00-\x08\x0b\x0c\x0e-\x1f]/.test(e("humanNote").value);
+    const stage=e("humanOutcome").value;
+    const ok=!!matched && viewedPages.size===total && e("humanAck").checked &&
+      HUMAN_OUTCOMES.includes(stage) && cleanNote &&
+      (!matched.highRisk || stage==="needs_more_masking");
+    e("exportHuman").disabled=!ok;
+  }
+  for(const id of ["humanOutcome","humanNote","humanAck"]) {
+    e(id).addEventListener("input",humanGate);
+    e(id).addEventListener("change",humanGate);
+  }
+  e("exportHuman").addEventListener("click",()=>{
+    humanGate();if(e("exportHuman").disabled)return;
+    const feedback={
+      schema:"lightup-private-disclosure-return-v1",
+      redacted_sha256:matched.hash,
+      redacted_bytes:matched.bytes,
+      human_followup:e("humanOutcome").value,
+      human_note:e("humanNote").value,
+      all_pages_displayed:true,
+      sender_authenticated:false,
+      client_consent:false,
+      operator_consent:false,
+      revocation_at_use_verified:false,
+      scanning_permitted:false,
+      release_approved:false
+    };
+    const uri=URL.createObjectURL(new Blob([JSON.stringify(feedback,null,2)+"\n"],{type:"application/json"}));
+    const a=document.createElement("a");a.href=uri;a.download="lightup-private-human-return.json";
+    document.body.append(a);a.click();a.remove();
+    setTimeout(()=>URL.revokeObjectURL(uri),30000);
+    e("humanAck").checked=false;humanGate();
+    e("humanStatus").textContent="PRIVATE HUMAN reply downloaded. It is unauthenticated and grants no permission.";
+  });
   e("compare").addEventListener("click",async()=>{
     const own=++operation;
     hold("Reading private files locally; no network request.");
@@ -108,7 +152,9 @@
          Object.keys(observed).some(k=>observed[k]!==listed[k])){
         hold("HOLD: privacy hint counts differ from the actual matched bytes.");return;
       }
-      receivedText=received;viewedPages=new Set();showPage(0);
+      receivedText=received;viewedPages=new Set();
+      matched={hash:sha,bytes:bytes.length,highRisk:["Bearer","credential-like","private key"].some(k=>observed[k]>0)};
+      showPage(0);
       const risky=["Bearer","credential-like","private key"].some(k=>observed[k]>0);
       e("recipientHints").className=risky||Object.keys(observed).length?"warnings warn":"warnings good";
       e("recipientHints").textContent=risky?
@@ -117,6 +163,7 @@
           "Possible sensitive references remain: "+Object.entries(observed).map(([k,v])=>k+" "+v).join("; ")+". Independently review all pages.":
           "No pattern hints matched. This NEVER proves safe disclosure.";
       e("status").textContent=risky?"HOLD / CONTENT ATTENTION":"MATCH / REVIEW ONLY";
+      e("humanStatus").textContent=risky?"HOLD: only a request for more masking may be exported.":"Read every page, select HUMAN follow-up and explicitly confirm.";
       e("bytes").textContent=String(bytes.length);
       e("hash").textContent=sha.slice(0,12)+"…";
       e("result").textContent="Local file bytes match the declared redacted digest and length. HUMAN identity and disclosure clearance are still unknown.";
