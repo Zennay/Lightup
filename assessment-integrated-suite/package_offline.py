@@ -35,7 +35,7 @@ Avoid uploading private sources, reviewer notes or generated receipts.
 Some studios need previously generated original LightUp artifacts.
 Native checkout users can additionally prepare an original-source PRIVATE
 casebook and source-byte ledger with assessment-integrated-suite/console.py
-options 21/22. The same console now has 45 actions, including original
+options 21/22. The same console now has 47 actions, including original
 source-bound PRIVATE HUMAN finding selection, reply and sender triage
 (options 23-31), exact-receipt PRIVATE disclosure HUMAN decisions and
 suppressed HUMAN counts (32-34), and original HUMAN retention plan timeline
@@ -50,6 +50,12 @@ The native console also supports a source-PATH-snapshot-bound HUMAN work
 queue CSV and offline owner-private HTML (42), strict HUMAN CSV reopen
 against the exact unchanged session (43), a minimum-necessary single-team
 PRIVATE HUMAN task deck (44) and a redacted 2-8 revision history (45).
+An original saved 0600 session may resume the native offline HUMAN
+browser workroom without replacing current paths (46), and a source-free
+priority/declared-date/team workload board can be created locally (47).
+The original queue editor supports a CSP SHA256-pinned source-bound
+interactive PRIVATE browser UI, HUMAN bulk HOLD/NEEDS INPUT, undo/redo and
+explicit custody acknowledgement after a requested browser CSV download.
 No HUMAN stage ever means PASS or authorization. These owner-private native
 functions contain sensitive local file: bookmarks and HUMAN question text,
 and are deliberately NOT included in this browser-only software ZIP.

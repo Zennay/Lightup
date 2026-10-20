@@ -202,14 +202,17 @@ No calendar appointment, reviewer identity, source integrity, scope
 approval, security verdict, notification, scan, grant, target, retest,
 deletion or external distribution is created.
 
-## Portable 15-original-studio software kit v10
+## Portable 15-original-studio software kit v11
 
-[Portable source-only LightUp Assessment Offline Toolkit v10](LightUp-Assessment-Offline-Toolkit-v10.zip)
-contains 15 **unchanged** original offline HTML studios and an updated
-software-only operator guide covering native PRIVATE HUMAN queue 42-45.
+[Portable source-only LightUp Assessment Offline Toolkit v11](LightUp-Assessment-Offline-Toolkit-v11.zip)
+contains 15 **unchanged** original offline HTML studios and the current
+software-only operator guide covering native PRIVATE HUMAN queue 42-47,
+the interactive source-bound browser editor, filtered bulk HUMAN triage,
+reopen-after-restart and local HUMAN priorities. The original owner-only
+generated HUMAN Studio is deliberately **native-only**, not in this ZIP.
 Its source-only ZIP manifest is unsigned and does not authenticate release.
-Build artifact size: **249,349 bytes**; unsigned SHA-256:
-`0d9f74c411afc5f4da3ce44931fb54e94fb260fa7886f37cc481abe3c06df5fe`.
+Build artifact size: **249,539 bytes**; unsigned SHA-256:
+`3d2608835d4b3cf9cd999d1509955086b8fed50e0dd7eda074125c95ef9e2bdf`.
 The native-only route board (options 40/41) is deliberately NOT shipped
 inside this browser-only ZIP: its file: bookmarks necessarily reference real
 original owner-private workroom paths. The ZIP contains no PRIVATE client
