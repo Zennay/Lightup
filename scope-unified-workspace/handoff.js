@@ -661,6 +661,7 @@
   const discardPeerPreview = () => {
     peerPreview = null;
     peerApply.disabled = true;
+    el("shelf-peer-summary-export").disabled = true;
     peerRows.replaceChildren();
     peerStatus.textContent = "PRIVATE bron-/HUMAN-state gewijzigd. Kies beide teampakketten opnieuw voor een actuele vergelijking.";
   };
@@ -669,11 +670,11 @@
     row.byte_length === item.file.size &&
     row.unsigned_sha256 === item.hash &&
     row.structural_kind_unverified === item.inspection.kind;
-  const humanEqual = (a, b) => a.human_route === b.human_route &&
-    a.human_stage === b.human_stage && a.human_team === b.human_team &&
-    // A redacted note is UNKNOWN, not an agreement to erase anything.
-    (!a.private_note_included || !b.private_note_included ||
-      a.private_human_note === b.private_human_note);
+  const humanRouteEqual = (a, b) => a.human_route === b.human_route &&
+    a.human_stage === b.human_stage && a.human_team === b.human_team;
+  const humanEqual = (a, b) => humanRouteEqual(a, b) &&
+    a.private_note_included === b.private_note_included &&
+    (!a.private_note_included || a.private_human_note === b.private_human_note);
   const peerLabel = (entry) => entry
     ? teams[entry.human_team] + " / " + stages[entry.human_stage] +
       " / " + routes[entry.human_route][0] +
@@ -683,6 +684,7 @@
     const files = Array.from(peerInput.files || []);
     peerInput.value = "";
     peerPreview = null; peerRows.replaceChildren(); peerApply.disabled = true;
+    el("shelf-peer-summary-export").disabled = true;
     if (busy || !items.length || files.length !== 2 ||
         files.some(f => f.size < 10 || f.size > 96 * 1024)) {
       peerStatus.textContent = "HOLD — kies eerst originele bronbestanden en precies twee begrensde PRIVATE HUMAN-inventarissen.";
@@ -704,23 +706,27 @@
       const absent = [...a.keys(),...b.keys()].filter((key,i,all) =>
         !current.has(key) && all.indexOf(key) === i).length;
       const decisions = [];
-      let conflicts = 0, changed = 0, agreed = 0, single = 0;
+      let conflicts = 0, partialNotes = 0, changed = 0, agreed = 0, single = 0;
       for (const item of items) {
         const key = item.file.name.normalize("NFC").toLowerCase();
         const rawA = a.get(key), rawB = b.get(key);
         const x = sourceEqual(rawA,item) ? rawA : null;
         const y = sourceEqual(rawB,item) ? rawB : null;
         if ((rawA && !x) || (rawB && !y)) changed++;
-        const conflicting = !!(x && y && !humanEqual(x,y));
+        const partialNote = !!(x && y && humanRouteEqual(x,y) &&
+          x.private_note_included !== y.private_note_included);
+        const conflicting = !!(x && y && !partialNote && !humanEqual(x,y));
         if (conflicting) conflicts++;
+        else if (partialNote) partialNotes++;
         else if (x && y) agreed++;
         else if (x || y) single++;
-        const entry = {item, x, y, rawA, rawB, choice: "none", conflicting};
+        const entry = {item, x, y, choice: "none", conflicting, partialNote};
         decisions.push(entry);
         const tr = document.createElement("tr");
         cell(tr,item.file.name,"file-name");
         cell(tr,(rawA&&!x)||(rawB&&!y) ? "CHANGED / NO COPY" :
           conflicting ? "CONFLICT / HUMAN KEUZE" :
+          partialNote ? "NOTITIE-DEKKING ONBEKEND / HUMAN KEUZE" :
           x&&y ? "EENSGEZIND / ONGETEKEND" :
           x||y ? "ENKEL VOORSTEL" : "NEW / GEEN VOORSTEL");
         cell(tr,peerLabel(x));
@@ -746,18 +752,41 @@
         tr.append(td); peerRows.append(tr);
       }
       if (generation !== epoch || humanRevision !== revision) throw Error("stale selection");
-      peerPreview = {decisions, epoch, revision};
+      peerPreview = {decisions, epoch, revision, counts: {agreed, conflicts,
+        partial_note_disclosure:partialNotes, single_source:single,
+        changed_source:changed, absent_from_local_selection:absent,
+        local_source_count:items.length}};
+      el("shelf-peer-summary-export").disabled = false;
       peerStatus.textContent = "ALLEEN VOORSTEL: " + agreed + " gelijke voorstellen, " +
-        conflicts + " HUMAN-conflicten, " + single + " enkelzijdig, " +
+        conflicts + " HUMAN-conflicten, " + partialNotes + " onbekende notitiedekkingen, " +
+        single + " enkelzijdig, " +
         changed + " afwijkende oorspronkelijke bronverwijzingen, " +
         absent + " niet lokaal geselecteerd. Standaard wordt NIETS overgenomen. " +
         "Zelfs gelijke ongetekende voorstellen zijn geen echte autorisatie.";
     } catch (_) {
       peerPreview = null; peerRows.replaceChildren();
+      el("shelf-peer-summary-export").disabled = true;
       peerStatus.textContent = "HOLD — ongeldig of veranderd PRIVATE teampakket; geen HUMAN review of originele bron gewijzigd.";
     } finally {
       busy = false; peerInput.disabled = false; input.disabled = false;
     }
+  });
+  el("shelf-peer-summary-export").addEventListener("click", () => {
+    if (!peerPreview) return report("HOLD — maak eerst een actuele vergelijking.");
+    if (peerPreview.epoch !== generation || peerPreview.revision !== humanRevision) {
+      discardPeerPreview();
+      return report("HOLD — bron/HUMAN gegevens veranderd; maak eerst een nieuwe vergelijking.");
+    }
+    if (!confirm("Alleen bronvrije, ongetekende HUMAN vergelijkingsaantallen delen? Kleine aantallen kunnen alsnog gevoelig zijn. Geen namen, notitieteksten, bestands-hashes, routes of bronbytes exporteren.")) return;
+    exportJSON("lightup-scope-PRIVATE-HUMAN-peer-counts.json", {
+      format:"lightup.scope_PRIVATE_human_peer_counts.v1",
+      status:"REVIEW_ONLY", posture:"INCUBATE_M3_M7_DRAFT_HOLD",
+      authority:{client_consent:false,operator_consent:false,grant:false,
+        scan:false,deploy:false,release:false},
+      comparison_counts:peerPreview.counts,
+      warning:"Unsigned private reviewer counts only; never source authenticity, identity, current consent, revocation, scan, grant or release. Small counts can remain identifying."
+    });
+    report("REVIEW_ONLY — uitsluitend anonieme HUMAN vergelijktellingen lokaal gedownload.");
   });
   peerApply.addEventListener("click", () => {
     if (!peerPreview || busy) return;
