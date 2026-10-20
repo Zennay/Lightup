@@ -232,6 +232,48 @@
       "No rows match the local filter." : "No proposed assets yet.";
   }
 
+  function bulkAdd() {
+    const raw = $("bulk-lines").value;
+    if (raw.length > 4096 || !raw.trim()) {
+      announce("HOLD: paste 1–32 bounded literal proposal lines.", true); return;
+    }
+    const lines = raw.split(/\r?\n/);
+    const distinct = new Set(state.rows.map(row => row.asset));
+    const staging = [];
+    for (let i = 0; i < lines.length; i++) {
+      const value = lines[i].trim();
+      if (!value) {
+        announce("HOLD: blank bulk line " + (i + 1) + " — no rows added.", true); return;
+      }
+      const excluded = value.startsWith("!");
+      const asset = excluded ? value.slice(1).trim() : value;
+      if (!validAsset(asset) || distinct.has(asset)) {
+        announce("HOLD: invalid or duplicate literal on line " + (i + 1) + " — no rows added.", true); return;
+      }
+      distinct.add(asset);
+      staging.push({asset, excluded});
+    }
+    if (staging.length > 32 || staging.length + state.rows.length > 32) {
+      announce("HOLD: the draft cannot exceed 32 total proposed assets. No rows added.", true); return;
+    }
+    const exclusions = staging.filter(row => row.excluded).length;
+    if (!confirm("Add " + staging.length + " unverified proposed DRAFT assets (" + exclusions +
+      " explicit exclusions)? No approval, permission, grant or scan is issued.")) return;
+    for (const proposed of staging) {
+      rowNumber++;
+      state.rows.push({
+        id: "r" + rowNumber, asset: proposed.asset, excluded: proposed.excluded,
+        capability: proposed.excluded ? "none" : "inventory",
+        ownership: "unverified", status: "draft", question: ""
+      });
+    }
+    $("bulk-lines").value = "";
+    $("filter").value = ""; $("status-filter").value = "all";
+    renderRows(); refresh();
+    announce("Atomic local bulk draft: " + staging.length +
+      " literals added for HUMAN review, not authorized.");
+  }
+
   function addRow() {
     if (state.rows.length >= 32) { announce("Maximum 32 proposed assets.", true); return; }
     rowNumber++;
@@ -435,6 +477,7 @@
     }
     $("add").addEventListener("click", addRow);
     $("add-bottom").addEventListener("click", addRow);
+    $("bulk-add").addEventListener("click", bulkAdd);
     $("filter").addEventListener("input", renderRows);
     $("status-filter").addEventListener("change", renderRows);
     $("export").addEventListener("click", exportDraft);
