@@ -8,8 +8,8 @@ from __future__ import annotations
 
 import argparse
 import sys
-from briefing import Hold, SEVERITIES, h, json_bytes, publish_new
 from curate import UNVERIFIED, digest, PRIORITIES
+from briefing import Hold, SEVERITIES, h, json_bytes, publish_new
 from revision import admit_revision_inputs, change_records, private_frame
 
 MIN_VERSIONS = 2
@@ -38,7 +38,6 @@ def history(source_path: str, manifest_path: str, worksheet_path: str,
     source, original_sha, worksheet_sha, versions = admit_revision_inputs(
         source_path, manifest_path, worksheet_path, receipt_path, selection_paths)
 
-    seen = {}
     snapshots = []
     transitions = []
     changed_html = []
