@@ -36,19 +36,21 @@
 <div class="table-scroller"><table class="shelf-table" aria-label="Bronexact voorstel HUMAN voortzetting"><thead><tr><th scope="col">PRIVATE bronverwijzing</th><th scope="col">Vergelijking oorspronkelijke bytes</th><th scope="col">Gevolg voor HUMAN review</th><th scope="col">Overnemen?</th></tr></thead><tbody id="shelf-selective-rows"></tbody></table></div>
 <button id="shelf-selective-apply" type="button" class="action muted" disabled>Pas alleen exact ongewijzigde HUMAN-keuzes toe (na bevestiging)</button>
 <section class="shelf-board" aria-labelledby="shelf-peer-heading">
-<h3 id="shelf-peer-heading">Vergelijk twee PRIVATE HUMAN teampakketten · bronexact</h3>
-<p>Voor twee onafhankelijk ontvangen lokale HUMAN-inventarissen (v1/v2). Dezelfde originele bestanden hierboven moeten vooraf zijn gekozen. Controleer per bron de twee voorstellen en mogelijke conflicten. Beide bestanden zijn <strong>ONGETEKEND</strong> en bewijzen geen identiteit, toestemming, intrekking of uitvoerrecht. Standaard wordt niets overgenomen.</p>
-<label for="shelf-peer-files">Kies precies twee PRIVATE HUMAN-teampakketten om lokaal te vergelijken (max. 96 KiB per bestand)</label>
+<h3 id="shelf-peer-heading">HUMAN reviewportfolio · 2–8 PRIVATE pakketten bronexact vergelijken</h3>
+<p>Selecteer 2–8 afzonderlijk ontvangen lokale menselijke reviewinventarissen (v1/v2) voor de hierboven bewust gekozen oorspronkelijke bronbestanden. De app weigert byte-identieke duplicaten: kopieën zijn geen extra onafhankelijke reviewers. Er is <strong>geen geauthenticeerde revieweridentiteit</strong>. Een mening van meerdere pakketten is geen echte consent, grant, intrekking, onderzoeksresultaat of security PASS.</p>
+<label for="shelf-peer-files">Kies 2–8 PRIVATE HUMAN-reviewpakketten (max. 96 KiB per pakket)</label>
 <input id="shelf-peer-files" type="file" accept=".json,application/json" multiple aria-describedby="shelf-peer-status">
-<p id="shelf-peer-status" class="shelf-status" role="status" aria-live="polite">Nog geen twee PRIVÉ HUMAN-reviewpakketten vergeleken. Een afwijkende oorspronkelijke SHA, bestandsnaam, grootte of structureel type blokkeert overname.</p>
-<div class="table-scroller"><table class="shelf-table" aria-label="Bronexacte privé reviewvoorstellen van twee reviewers">
-<thead><tr><th scope="col">Originele PRIVATE bron</th><th scope="col">Verschil / status</th><th scope="col">HUMAN voorstel 1</th><th scope="col">HUMAN voorstel 2</th><th scope="col">Bewust kiezen</th></tr></thead>
+<p id="shelf-peer-status" class="shelf-status" role="status" aria-live="polite">Nog geen reviewportfolio geladen. Bronafwijkingen blokkeren alle voorstellen met dezelfde oorspronkelijke bestandsnaam; voor samenhangende bronnen blijft overname altijd per rij een expliciete HUMAN keuze.</p>
+<div class="table-scroller"><table class="shelf-table" aria-label="Alle lokale reviewvoorstellen bronexact vergeleken">
+<thead><tr><th scope="col">Originele PRIVATE bron</th><th scope="col">Menselijke consensus / conflict</th><th scope="col">Voorstellen per reviewpakket (NOOIT geauthenticeerd)</th><th scope="col">Bewust per bron kiezen</th></tr></thead>
 <tbody id="shelf-peer-rows"></tbody></table></div>
-<button type="button" id="shelf-peer-apply" class="action muted" disabled>Pas uitsluitend expliciet gekozen bronexacte HUMAN-reviewvoorstellen toe</button>
-<button type="button" id="shelf-peer-summary-export" class="action muted" disabled>Download bronvrije PRIVATE HUMAN conflict- en reviewtellingen (.json)</button>
-<button type="button" id="shelf-peer-receipt" class="action muted" disabled>Download brongebonden PRIVATE HUMAN peer-retourbon (.json)</button>
-<p id="shelf-peer-receipt-note" class="shelf-status">Peer-retourbon pas beschikbaar na expliciete overname. PRIVATE namen en SHA-256; geen originele bronbytes, notitietekst, bron-authenticatie of echte toestemming.</p>
-<p>PRIVATE notities worden nooit weergegeven in dit vergelijkingsoverzicht. Bij een afgeschermde notitie blijft de lokale notitie behouden; alleen een expliciet aangeleverde notitie kan worden overgenomen. Bestaande lokale HUMAN-geschiedenis ondersteunt undo. Bewaar en verstuur vertrouwelijke bestanden alleen via een apart vertrouwd kanaal.</p>
+<div class="shelf-actions">
+<button type="button" id="shelf-peer-apply" class="action muted" disabled>Pas alleen apart gekozen bronexacte HUMAN voorstellen toe</button>
+<button type="button" id="shelf-peer-summary-export" class="action muted" disabled>Download bronvrije PRIVÉ consensus- en conflictaantallen (.json)</button>
+<button type="button" id="shelf-peer-receipt" class="action muted" disabled>Download brongebonden PRIVÉ HUMAN-returnbon (.json)</button>
+</div>
+<p id="shelf-peer-receipt-note" class="shelf-status">Retourbon pas na bewuste overname; oorspronkelijke namen/hash en handmatige keuzes, nooit originele bronbytes of privé-notitieteksten. Bij latere lokale wijzigingen ongeldig.</p>
+<p>Zelfs overeenstemmende menselijke beoordelingen blijven standaard <strong>NIETS OVERNEMEN</strong>. Afgeschermde notities zijn onbekend, nooit een opdracht tot wissen. De bestaande undo behoudt bronbestanden. Gebruik deze pagina uitsluitend offline op een vertrouwd apparaat; verifieer iedere externe ontvanger apart.</p>
 </section>
 <button id="shelf-return-receipt" type="button" class="action muted" disabled>Download PRIVATE HUMAN retourontvangstbon (.json)</button>
 <p id="shelf-return-receipt-note" class="shelf-status">Een ontvangstbon wordt pas na bewuste bronexacte HUMAN-statusovername beschikbaar. De bon is privé, ongetekend en geen bron-/toestemmings- of revocatiebewijs.</p>
