@@ -180,6 +180,128 @@ async function reopen(file){
   render();error("");
  }catch(e){error("HOLD: Invalid recipient HUMAN CSV; current local replies preserved.");}
 }
+
+const ENCRYPTED_SCHEMA="lightup.private_recipient_human_reply_encrypted.v1";
+const PRIVATE_FLAGS=["source_authenticated","human_identity_authenticated",
+"client_consent_verified","operator_consent_verified",
+"authorized","consent_verified","dispatch_allowed","release_allowed"];
+const encoder=new TextEncoder();
+function assertCrypto(){
+ if(!globalThis.isSecureContext||!globalThis.crypto||!crypto.subtle||!crypto.getRandomValues)
+  throw Error("WebCrypto secure browser context required; no plaintext fallback.");
+}
+function clearPassphrases(){
+ document.getElementById("password").value="";
+ document.getElementById("confirm-password").value="";
+}
+function readPassphrase(confirmation){
+ const p=document.getElementById("password").value;
+ if(p.length<12||p.length>120)throw Error("PRIVATE passphrase must contain 12–120 characters.");
+ if(confirmation&&document.getElementById("confirm-password").value!==p)
+  throw Error("PRIVATE passphrase confirmation does not match.");
+ return p;
+}
+function to64(bytes){
+ let text="";for(const b of new Uint8Array(bytes))text+=String.fromCharCode(b);
+ return btoa(text);
+}
+function from64(value,length){
+ if(typeof value!=="string"||!value||value.length>1500000||
+    !/^[A-Za-z0-9+/]+={0,2}$/.test(value))
+  throw Error("Malformed private ciphertext encoding.");
+ const encoded=atob(value);
+ const bytes=Uint8Array.from(encoded,ch=>ch.charCodeAt(0));
+ if(to64(bytes)!==value||(length&&bytes.length!==length))
+  throw Error("Noncanonical private ciphertext bytes.");
+ return bytes;
+}
+async function derive(password,salt){
+ const raw=await crypto.subtle.importKey("raw",encoder.encode(password),"PBKDF2",
+  false,["deriveKey"]);
+ return crypto.subtle.deriveKey({name:"PBKDF2",salt,iterations:310000,
+  hash:"SHA-256"},raw,{name:"AES-GCM",length:256},false,["encrypt","decrypt"]);
+}
+async function sourceKey(){
+ const hash=new Uint8Array(await crypto.subtle.digest("SHA-256",encoder.encode(JSON.stringify(rows))));
+ return Array.from(hash,b=>b.toString(16).padStart(2,"0")).join("");
+}
+function fromHex(hex){
+ if(typeof hex!=="string"||!/^[a-f0-9]{64}$/.test(hex))throw Error("Invalid original rows SHA.");
+ return Uint8Array.from(hex.match(/../g),b=>parseInt(b,16));
+}
+function purposeAAD(originalHash){
+ const head=encoder.encode(ENCRYPTED_SCHEMA+"|REVIEW_ONLY|");
+ const key=fromHex(originalHash);
+ const aad=new Uint8Array(head.length+key.length);
+ aad.set(head);aad.set(key,head.length);return aad;
+}
+async function saveEncrypted(){
+ let pass="";
+ try{
+  assertCrypto();const csv=serialize(states);
+  pass=readPassphrase(true);
+  if(!window.confirm("Export encrypted PRIVATE HUMAN reply workroom? This does NOT authenticate the respondent, producer, finding or consent."))return;
+  const sourceHash=await sourceKey();
+  const salt=crypto.getRandomValues(new Uint8Array(16));
+  const nonce=crypto.getRandomValues(new Uint8Array(12));
+  const key=await derive(pass,salt);
+  const ciphertext=await crypto.subtle.encrypt({
+   name:"AES-GCM",iv:nonce,additionalData:purposeAAD(sourceHash),tagLength:128
+  },key,encoder.encode(csv));
+  const doc={
+   schema:ENCRYPTED_SCHEMA,status:"REVIEW_ONLY",
+   original_human_question_rows_sha256_unsigned:sourceHash,
+   kdf:{algorithm:"PBKDF2-SHA256",iterations:310000,salt_b64:to64(salt)},
+   cipher:{algorithm:"AES-256-GCM",nonce_b64:to64(nonce),ciphertext_b64:to64(ciphertext)}
+  };
+  for(const flag of PRIVATE_FLAGS)doc[flag]=false;
+  const file=new Blob([JSON.stringify(doc)+"\n"],{type:"application/octet-stream"});
+  const url=URL.createObjectURL(file),a=document.createElement("a");
+  a.href=url;a.download="PRIVATE-recipient-human-workroom.luer";a.click();
+  setTimeout(()=>URL.revokeObjectURL(url),2500);error("");
+ }catch(e){error("HOLD: "+String(e.message||"Private encrypted save failed"));}
+ finally{pass="";clearPassphrases();}
+}
+async function openEncrypted(file){
+ let pass="";
+ if(!file)return;
+ if(file.size<1||file.size>1500000){error("HOLD: Encrypted recipient file exceeds admission bounds.");return;}
+ try{
+  assertCrypto();pass=readPassphrase(false);
+  const text=new TextDecoder("utf-8",{fatal:true}).decode(await file.arrayBuffer());
+  const doc=JSON.parse(text);
+  if(JSON.stringify(doc)+"\n"!==text||!doc||Array.isArray(doc)||
+    Object.keys(doc).length!==13||doc.schema!==ENCRYPTED_SCHEMA||
+    doc.status!=="REVIEW_ONLY"||
+    Object.keys(doc.kdf||{}).join(",")!=="algorithm,iterations,salt_b64"||
+    Object.keys(doc.cipher||{}).join(",")!=="algorithm,nonce_b64,ciphertext_b64"||
+    doc.kdf.algorithm!=="PBKDF2-SHA256"||doc.kdf.iterations!==310000||
+    doc.cipher.algorithm!=="AES-256-GCM"||
+    PRIVATE_FLAGS.some(key=>doc[key]!==false))
+    throw Error("Invalid or unrecognized encrypted PRIVATE recipient envelope.");
+  const hash=await sourceKey();
+  if(doc.original_human_question_rows_sha256_unsigned!==hash)
+   throw Error("Wrong original HUMAN question rows.");
+  const salt=from64(doc.kdf.salt_b64,16),nonce=from64(doc.cipher.nonce_b64,12);
+  const cipher=from64(doc.cipher.ciphertext_b64);
+  if(cipher.length<16||cipher.length>1024*1024)throw Error("Private ciphertext size refused.");
+  const key=await derive(pass,salt);
+  const plaintext=await crypto.subtle.decrypt({
+   name:"AES-GCM",iv:nonce,additionalData:purposeAAD(hash),tagLength:128
+  },key,cipher);
+  if(plaintext.byteLength>1024*1024)throw Error("Oversize decrypted HUMAN CSV.");
+  // Full original ordinal/priority/source-count membership and every HUMAN
+  // response stage is re-admitted by the existing atomic browser reopen path.
+  await reopen(new Blob([plaintext],{type:"text/csv;charset=utf-8"}));
+ }catch(e){error("HOLD: Wrong password, source rows or invalid encrypted PRIVATE package. Current replies kept.");}
+ finally{pass="";clearPassphrases();}
+}
+document.getElementById("save-encrypted").addEventListener("click",()=>{void saveEncrypted();});
+document.getElementById("load-encrypted").addEventListener("change",event=>{
+ const file=event.target.files&&event.target.files[0];event.target.value="";
+ void openEncrypted(file);
+});
+
 function dispose(){
  if(!window.confirm("Discard unsaved recipient HUMAN replies in this browser? Existing downloads are NOT erased."))return;
  for(let i=0;i<states.length;i++)states[i]={stage:"",reply:"",followup:""};
@@ -245,6 +367,10 @@ def render_studio(source: dict, selected: list[dict]) -> bytes:
         "<div class='toolbar'><button type='button' id='export'>Export PRIVATE reply CSV</button>"
         "<label>Resume exact PRIVATE reply CSV <input type='file' id='restore' accept='.csv,text/csv'></label>"
         "<button class='secondary' type='button' id='dispose'>Discard unsaved replies</button></div>"
+        "<div class='toolbar'><label>PRIVATE passphrase (12+ characters) <input type='password' id='password' autocomplete='off'></label>"
+        "<label>Confirm passphrase to save <input type='password' id='confirm-password' autocomplete='off'></label>"
+        "<button type='button' id='save-encrypted'>Save encrypted PRIVATE workroom</button>"
+        "<label>Open encrypted PRIVATE workroom <input type='file' id='load-encrypted' accept='.luer,application/octet-stream'></label></div>"
         "<p id='feedback' class='warning' role='alert' hidden></p></section>"
         "<main id='cards'></main>"
         "<nav><button id='prev' type='button' class='secondary'>Previous</button>"
