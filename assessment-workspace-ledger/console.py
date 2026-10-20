@@ -14,6 +14,7 @@ import ledger
 import compare
 import continuity
 import human_revisions
+import history
 import browser_intake
 import package
 from browser_studio import render_studio
@@ -32,6 +33,7 @@ MENU = (
     ("10", "Inspect unsigned software ZIP file inventory locally"),
     ("11", "Import browser-downloaded HUMAN CSV safely into PRIVATE native custody"),
     ("12", "Import PRIVATE browser CSV and immediately prepare original HUMAN follow-up packet"),
+    ("13", "Review 2-12 ORIGINAL capture-linked inventory snapshots as PRIVATE HUMAN history"),
     ("0", "Exit"),
 )
 
@@ -91,6 +93,18 @@ def handle_action(action):
             before=prompt("Original previous PRIVATE ledger.json"),
             after=prompt("Original current PRIVATE ledger.json"),
             private_parent=private_parent()
+        ))
+    if action == "13":
+        print("Enter 2-12 original 0600 ledger.json files in explicit capture --previous order.")
+        paths = []
+        while len(paths) < 12:
+            entry = prompt("Original ledger snapshot " + str(len(paths) + 1),
+                           required=len(paths) < 2)
+            if not entry:
+                break
+            paths.append(entry)
+        return history.run(argparse.Namespace(
+            ledger=paths, private_parent=private_parent()
         ))
     if action == "5":
         return continuity.run(argparse.Namespace(
