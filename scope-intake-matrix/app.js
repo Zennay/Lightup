@@ -37,7 +37,6 @@
   const MAX_BYTES = 65536;
   const textBytes = value => new TextEncoder().encode(value).length;
   const $ = id => document.getElementById(id);
-  let rowNumber = 0;
   let state = blankDocument();
   let pendingTriage = null;
   let humanUndo = [];
@@ -355,9 +354,8 @@
     if (!confirm("Add " + staging.length + " unverified proposed DRAFT assets (" + exclusions +
       " explicit exclusions)? No approval, permission, grant or scan is issued.")) return;
     for (const proposed of staging) {
-      rowNumber++;
       state.rows.push({
-        id: "r" + rowNumber, asset: proposed.asset, excluded: proposed.excluded,
+        id: nextRowId(), asset: proposed.asset, excluded: proposed.excluded,
         capability: proposed.excluded ? "none" : "inventory",
         ownership: "unverified", status: "draft", question: ""
       });
@@ -369,11 +367,19 @@
       " literals added for HUMAN review, not authorized.");
   }
 
+  function nextRowId() {
+    const existing = new Set(state.rows.map(row => row.id));
+    for (let i = 1; i <= 33; i++) {
+      const candidate = "r" + i;
+      if (!existing.has(candidate)) return candidate;
+    }
+    throw Error("HOLD: no available canonical row identity.");
+  }
+
   function addRow() {
     if (state.rows.length >= 32) { announce("Maximum 32 proposed assets.", true); return; }
-    rowNumber++;
     state.rows.push({
-      id: "r" + rowNumber, asset: "", excluded: false, capability: "inventory",
+      id: nextRowId(), asset: "", excluded: false, capability: "inventory",
       ownership: "unverified", status: "draft", question: ""
     });
     $("filter").value = ""; $("status-filter").value = "all";
@@ -383,8 +389,7 @@
     if (state.rows.length >= 32) { announce("Maximum 32 proposed assets.", true); return; }
     const source = state.rows.find(row => row.id === id);
     if (!source) return;
-    rowNumber++;
-    state.rows.push({...source, id: "r" + rowNumber, asset: ""});
+    state.rows.push({...source, id: nextRowId(), asset: ""});
     $("filter").value = ""; $("status-filter").value = "all";
     renderRows(); refresh();
   }
@@ -1028,7 +1033,6 @@
       const next = encrypted ? await decryptWorkroom(file) : await readFile(file);
       if (!confirm("Replace all current unsaved PRIVATE draft data with the selected validated file?")) return;
       state = next;
-      rowNumber = Math.max(0, ...state.rows.map(row => Number(row.id.slice(1))));
       $("filter").value = ""; $("status-filter").value = "all";
       $("compare-section").hidden = true;
       syncForm(); updateTriageValues(); renderRows(); refresh();
@@ -1224,7 +1228,7 @@
     $("close-compare").addEventListener("click", () => $("compare-section").hidden = true);
     $("clear").addEventListener("click", () => {
       if (!confirm("Discard all current PRIVATE draft state in this page? This cannot be undone.")) return;
-      state = blankDocument(); rowNumber = 0;
+      state = blankDocument();
       $("filter").value = ""; $("status-filter").value = "all";
       $("compare-section").hidden = true;
       syncForm(); renderRows(); refresh();
