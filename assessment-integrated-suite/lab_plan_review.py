@@ -237,9 +237,44 @@ def _rows_admit(original: list[dict], source: str) -> list[dict]:
         raise privacy.Hold("HOLD: unreadable PRIVATE HUMAN Lab Plan CSV") from None
 
 
-def prepare(packets: list[str], parent: str, folder: str) -> Path:
+def _admit_existing_review_room(room: str, fingerprint: str,
+                                expected_count: int) -> Path:
+    """Admit the unchanged ORIGINAL private review receipt, not an approval."""
+    source = lab_plans._packet(room)
+    receipt = workpack_progress._private_receipt(source / "PRIVATE-LAB-HUMAN-RECEIPT.json")
+    if (set(receipt) != {
+            "schema", "status", "source_snapshot_sha256_unsigned",
+            "source_count", "source_bytes_included", "verified_source",
+            "verified_consent", "authority"}
+            or receipt["schema"] != SCHEMA or receipt["status"] != "DRAFT_HOLD"
+            or receipt["source_snapshot_sha256_unsigned"] != fingerprint
+            or type(receipt["source_count"]) is not int
+            or receipt["source_count"] != expected_count
+            or receipt["source_bytes_included"] is not False
+            or receipt["verified_source"] is not False
+            or receipt["verified_consent"] is not False
+            or type(receipt["authority"]) is not dict
+            or set(receipt["authority"]) != set(privacy.AUTHORITY)
+            or any(type(receipt["authority"][key]) is not bool
+                   or receipt["authority"][key] is not False
+                   for key in privacy.AUTHORITY)):
+        raise privacy.Hold("HOLD: original HUMAN review receipt/session changed")
+    return source
+
+
+def prepare(packets: list[str], parent: str, folder: str,
+            *, prior_room: str = "", prior_csv: str = "") -> Path:
     output = lab_plans._new_path(parent, folder)
     rows, fingerprint = _source_rows(packets)
+    if bool(prior_room) != bool(prior_csv):
+        raise privacy.Hold("HOLD: original review room and HUMAN CSV must be paired")
+    if prior_room:
+        source = _admit_existing_review_room(prior_room, fingerprint, len(rows))
+        if source == output or source in output.parents:
+            raise privacy.Hold("HOLD: continued HUMAN room cannot be inside original")
+        # Re-admit the SAME original source identity and all prior HUMAN rows
+        # before opening any new output folder.
+        rows = _rows_admit(rows, prior_csv)
     receipt = {
         "schema": SCHEMA, "status": "DRAFT_HOLD",
         "source_snapshot_sha256_unsigned": fingerprint,
@@ -274,26 +309,10 @@ def prepare(packets: list[str], parent: str, folder: str) -> Path:
 def finalize(packets: list[str], room: str, edited_csv: str, parent: str,
              folder: str) -> Path:
     output = lab_plans._new_path(parent, folder)
-    source = lab_plans._packet(room)
-    receipt = workpack_progress._private_receipt(source / "PRIVATE-LAB-HUMAN-RECEIPT.json")
     original, fingerprint = _source_rows(packets)
-    if (set(receipt) != {
-            "schema", "status", "source_snapshot_sha256_unsigned",
-            "source_count", "source_bytes_included", "verified_source",
-            "verified_consent", "authority"}
-            or receipt["schema"] != SCHEMA or receipt["status"] != "DRAFT_HOLD"
-            or receipt["source_snapshot_sha256_unsigned"] != fingerprint
-            or type(receipt["source_count"]) is not int
-            or receipt["source_count"] != len(original)
-            or receipt["source_bytes_included"] is not False
-            or receipt["verified_source"] is not False
-            or receipt["verified_consent"] is not False
-            or type(receipt["authority"]) is not dict
-            or set(receipt["authority"]) != set(privacy.AUTHORITY)
-            or any(type(receipt["authority"][key]) is not bool
-                   or receipt["authority"][key] is not False
-                   for key in privacy.AUTHORITY)):
-        raise privacy.Hold("HOLD: original HUMAN review receipt/session changed")
+    source = _admit_existing_review_room(room, fingerprint, len(original))
+    if source == output or source in output.parents:
+        raise privacy.Hold("HOLD: final review cannot be inside original room")
     rows = _rows_admit(original, edited_csv)
     summary = {
         "schema": SCHEMA, "status": "REVIEW_ONLY",
