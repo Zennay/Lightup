@@ -130,6 +130,21 @@ The committed [fully bundled offline browser](standalone.html) is a complete own
 
 Both Python CLI and browser use the **same `lightup-private-human-backup/v1`** canonical archive format and PBKDF2-HMAC-SHA256/AES-256-GCM authenticated format with 600,000 rounds. No network, browser IndexedDB, localStorage, cookies, external libraries or remote static assets.
 
+## Native password-authenticated A/B delta archive — no plaintext reconstruction
+
+For a PRIVATE owner who has TWO independently password-encrypted workroom snapshots, the new `delta` command combines *literal* source-byte differences into a **third NEW independently password-encrypted archive**. It does not decrypt to a directory or overwrite the original snapshots. Use this when a human wants only selected workroom changes from the chosen second archive, not the full private originals.
+
+```sh
+python3 remediation-private-backup/vault.py delta \
+  "$HOME/lightup-private/reviewer-backup-001.lupb" \
+  "$HOME/lightup-private/reviewer-backup-002.lupb" \
+  --output "$HOME/lightup-private/reviewer-changed-only-003.lupb"
+```
+
+Enter the independently required original A password and B password, type literal `YES` to deliberately choose the PRIVATE B-only/changed bytes, and confirm a **third new** password for the result. Both original snapshots must authenticate their entire canonical schema and original file hashes first. The archive contains only original B files that have no matching original A filename or whose **bytes or original filename case** differ. Unchanged B files are not included. Files that exist only in A are **not** translated into deleted, fixed, resolved or authorized cases; the local CLI merely displays an anonymous A-only file count. If there are no B-only/changed files the CLI refuses to create an empty/fabricated new snapshot.
+
+The A/B order is selected by the operator and does **not** establish real-world chronology or legitimate disclosure to the B recipient. The new encrypted delta retains full original PRIVATE material for those selected files. All original source-owner, consent and security review HOLD gates still apply.
+
 ## Immutable output & restore boundary
 
 - The backup contains at most 32 explicitly selected files, each ≤2 MiB and ≤16 MiB combined. Symlink or hardlinked input, files not owned by the current user or with group/other permissions, the reserved REVIEW-ONLY.txt name, unsafe names, duplicate names including case-insensitive collisions, mutation during read, malformed/duplicate JSON keys, unknown envelopes, wrong passwords, altered ciphertext, changed payload bytes, oversized content and noncanonical inner JSON are HOLD. No directory traversal, autodiscovery or recursive collection.
