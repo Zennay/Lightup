@@ -31,6 +31,7 @@ import lab_review_team_batch_console
 import lab_review_team_batch_reopen_console
 import lab_review_team_batch_history_console
 import lab_review_team_continue_console
+import lab_review_team_continue_reopen_console
 import private_session
 import os
 from pathlib import Path
@@ -446,6 +447,7 @@ def main() -> int:
         "63": lambda x: lab_review_team_batch_reopen_console.prepare(x, path_prompt, ask),
         "64": lambda x: lab_review_team_batch_history_console.prepare(x, path_prompt, ask),
         "65": lambda x: lab_review_team_continue_console.prepare(x, path_prompt, ask),
+        "66": lambda x: lab_review_team_continue_reopen_console.prepare(x, path_prompt, ask),
     }
     while True:
         operator_navigation.overview()
@@ -473,7 +475,7 @@ def main() -> int:
                 print("Exited. No external tasks were scheduled or executed.")
                 return 0
             if choice not in menu:
-                print("Choose a number from 0 to 65.")
+                print("Choose a number from 0 to 66.")
                 continue
             menu[choice](session)
         except (KeyboardInterrupt, EOFError):
