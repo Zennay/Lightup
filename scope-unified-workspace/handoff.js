@@ -712,12 +712,15 @@
       // Reject byte-identical packages: copying the same document must not be
       // represented as several independently proposed HUMAN decisions.
       const fingerprints = new Set();
+      const packetBytes = [];
       const inventories = [];
       for (const f of files) {
         const bytes = await f.arrayBuffer();
         const fingerprint = await SHA(bytes);
         if (fingerprints.has(fingerprint)) throw Error("duplicate peer document");
         fingerprints.add(fingerprint);
+        packetBytes.push({local_packet_number:packetBytes.length+1,
+          original_packet_byte_length:f.size, unsigned_original_packet_sha256:fingerprint});
         inventories.push(await LightUpPrivateSourceInspector.readHumanInventory(f));
         if (epoch !== generation || revision !== humanRevision) throw Error("stale source");
       }
@@ -806,7 +809,7 @@
         tr.append(td); peerRows.append(tr);
       }
       if (epoch !== generation || revision !== humanRevision) throw Error("stale review");
-      peerPreview = {decisions,epoch,revision,counts};
+      peerPreview = {decisions,epoch,revision,counts,packetBytes};
       peerSummaryExport.disabled = false;
       peerStatus.textContent = "REVIEW_ONLY / NIETS AUTOMATISCH TOEGEPAST — " +
         files.length + " ongetekende pakketten, " + counts.consensus +
@@ -894,11 +897,12 @@
       authority:{client_consent:false,operator_consent:false,grant:false,
         scan:false,deploy:false,release:false},
       reviewed_packet_count:plan.counts.packets,
+      original_private_reviewer_packets:plan.packetBytes,
       original_source_bound_human_choices:changes,
       conflicting_human_choices_explicitly_selected:conflicts,
       unverified_note_disclosures_explicitly_selected:uncertain,
       local_human_reviews_replaced:replacing,
-      warning:"Unsigned local HUMAN return only; never authenticated reviewer, grant, live source, client consent, revocation, scan or release."
+      warning:"Unsigned SHA-256 on PRIVATE packet bytes binds only the local reviewed copies, never reviewer identity, origin trust, consent, grant, revocation, scan or release."
     };
     el("shelf-peer-receipt").disabled=false;
     el("shelf-peer-receipt-note").textContent=
