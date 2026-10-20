@@ -231,25 +231,115 @@
     status("Encrypted PRIVATE plan downloaded. Verify that it is stored in a protected location; source/consent not authenticated.");
     renderStats();
   }
-  async function openEncrypted(file) {
-    if(!file || file.size>LIMIT || file.size<100)fatal("Encrypted plan file missing or oversized");
-    const raw=await file.arrayBuffer(),doc=JSON.parse(textDecoder.decode(raw));
-    if(!sameKeys(doc,["kind","disposition","authority_granted","consent_verified","remediation_verified","kdf","iterations","algorithm","salt_b64","nonce_b64","ciphertext_b64","warning"]) ||
+  async function decryptSealedPlan(file) {
+    if(!file || file.size>LIMIT || file.size<100)fatal("Encrypted source-bound HUMAN plan missing or oversized");
+    const raw=textDecoder.decode(await file.arrayBuffer()),doc=JSON.parse(raw);
+    // Original software emits JSON.stringify exactly; reject duplicate-key or
+    // structurally alternate envelopes before requesting a private password.
+    if(raw!==JSON.stringify(doc) ||
+        !sameKeys(doc,["kind","disposition","authority_granted","consent_verified","remediation_verified","kdf","iterations","algorithm","salt_b64","nonce_b64","ciphertext_b64","warning"]) ||
         doc.kind!=="lightup.source_free_human_schedule_encrypted.v1" ||
         doc.disposition!=="PRIVATE_HUMAN_ONLY_NO_AUTHORITY" ||
         doc.authority_granted!==false || doc.consent_verified!==false ||
         doc.remediation_verified!==false || doc.warning!==model.warning ||
         doc.kdf!=="PBKDF2-HMAC-SHA256" || doc.iterations!==KDF ||
-        doc.algorithm!=="AES-256-GCM")fatal("Encrypted plan format/authority mismatch");
+        doc.algorithm!=="AES-256-GCM") fatal("Noncanonical encrypted HUMAN plan or elevated authority");
     const salt=unb64(doc.salt_b64),iv=unb64(doc.nonce_b64),cipher=unb64(doc.ciphertext_b64);
-    if(salt.length!==16 || iv.length!==12 || cipher.length<17)fatal("Invalid encrypted plan salt or nonce");
-    const password=prompt("Password for this PRIVATE plan:");if(password===null)return;
-    const plain=await crypto.subtle.decrypt(
+    if(salt.length!==16 || iv.length!==12 || cipher.length<17)fatal("Invalid encrypted HUMAN salt or nonce");
+    const password=prompt("Password for this PRIVATE HUMAN plan:");
+    if(password===null)return null;
+    const plaintext=await crypto.subtle.decrypt(
       {name:"AES-GCM",iv,additionalData:textEncoder.encode(AAD)},
       await keyFor(password,salt,["decrypt"]),cipher);
-    const candidate=admitPlan(JSON.parse(textDecoder.decode(plain)));
+    const body=textDecoder.decode(plaintext),plan=JSON.parse(body);
+    if(body!==JSON.stringify(plan))fatal("Noncanonical HUMAN plan or ambiguous JSON members");
+    return plan;
+  }
+  async function openEncrypted(file) {
+    const plan=await decryptSealedPlan(file);
+    if(plan===null)return;
+    const candidate=admitPlan(plan);
     if(dirty&&!confirm("Replace unsaved HUMAN schedule edits with the admitted encrypted plan?"))return;
-    rows=candidate;dirty=false;lastBatch=null;el("undo").disabled=true;render();status("Original source-bound PRIVATE HUMAN schedule reopened. This is not authenticated sender or consent proof.");
+    rows=candidate;dirty=false;lastBatch=null;el("undo").disabled=true;
+    render();status("Original source-bound PRIVATE HUMAN schedule reopened. This is not authenticated sender or consent proof.");
+  }
+  function legacyPlanForCarry(plan) {
+    if(!sameKeys(plan,["kind","version","disposition","authority_granted","consent_verified","remediation_verified","warning","sources","tasks"]) ||
+        plan.kind!==model.kind || plan.version!==1 ||
+        plan.disposition!=="PRIVATE_HUMAN_ONLY_NO_AUTHORITY" ||
+        plan.authority_granted!==false || plan.consent_verified!==false ||
+        plan.remediation_verified!==false || plan.warning!==model.warning ||
+        !Array.isArray(plan.sources) || plan.sources.length<1 || plan.sources.length>12 ||
+        !Array.isArray(plan.tasks) || plan.tasks.length>864)
+      fatal("Unknown previous HUMAN-only planning schema or authority");
+    const previousByPacket=new Map(),shaSet=new Set(),tasksByPacket=new Map();
+    for(const [i,s] of plan.sources.entries()){
+      if(!sameKeys(s,["packet","source_sha256","reason_groups"]) ||
+          s.packet!==i+1 || !Number.isInteger(s.reason_groups) ||
+          s.reason_groups<0 || s.reason_groups>72 ||
+          typeof s.source_sha256!=="string" ||
+          !/^[0-9a-f]{64}$/.test(s.source_sha256) || shaSet.has(s.source_sha256))
+        fatal("Ambiguous prior original source-free packet identity");
+      shaSet.add(s.source_sha256);previousByPacket.set(s.packet,s);
+      tasksByPacket.set(s.packet,new Map());
+    }
+    for(const t of plan.tasks){
+      if(!sameKeys(t,["packet","slot","reason","count","stage","human_note","owner","due","next_action"]) ||
+          !Number.isInteger(t.packet) || !previousByPacket.has(t.packet) ||
+          !Number.isInteger(t.slot) || t.slot<0 || t.slot>2048 ||
+          !Number.isInteger(t.count) || t.count<1 || t.count>100000000 ||
+          !validText(t.reason,128,512) || !t.reason ||
+          !STAGES.includes(t.stage) || !validText(t.human_note,240,960) ||
+          !validText(t.owner,64,256) || !validText(t.next_action,240,960) ||
+          !validDate(t.due))fatal("Invalid or incomplete previous HUMAN task");
+      const packet=tasksByPacket.get(t.packet),key=String(t.slot)+"|"+t.reason;
+      if(packet.has(key))fatal("Duplicate previous HUMAN task in source-free packet");
+      packet.set(key,t);
+    }
+    for(const s of plan.sources) {
+      if(tasksByPacket.get(s.packet).size!==s.reason_groups)
+        fatal("Missing or extra prior source-free HUMAN groups");
+    }
+    return {sourceByDigest:new Map(plan.sources.map(s=>[s.source_sha256,s])),
+            tasksByPacket};
+  }
+  async function carryEncrypted(file) {
+    const old=await decryptSealedPlan(file);
+    if(old===null)return;
+    const carried=legacyPlanForCarry(old);
+    const previous=model.sources.map(s=>carried.sourceByDigest.get(s.source_sha256));
+    const candidate=rows.map(t=>({...t}));
+    let matching=0,carriedTasks=0;
+    for(let i=0;i<previous.length;i++){
+      const oldSource=previous[i];
+      if(!oldSource)continue; // Never infer old absent or newer changed == fixed.
+      const targetIndex=i+1,older=carried.tasksByPacket.get(oldSource.packet);
+      const current=candidate.filter(t=>t.packet===targetIndex);
+      // Source digest match alone is unsigned. Require the entire previously
+      // saved HUMAN ordinal, reason, count membership to match again.
+      if(older.size!==current.length)
+        fatal("Previous HUMAN task membership changed despite a claimed identical source");
+      for(const task of current){
+        const prior=older.get(String(task.slot)+"|"+task.reason);
+        if(!prior || prior.count!==task.count)
+          fatal("Previous plan cannot bind exactly to this original HUMAN group");
+      }
+      for(const task of current){
+        const prior=older.get(String(task.slot)+"|"+task.reason);
+        for(const key of ["stage","human_note","owner","due","next_action"])
+          task[key]=prior[key];
+      }
+      matching++;carriedTasks+=current.length;
+    }
+    if(!matching)fatal("No byte-identical original source-free packets to carry. New or changed packets stay HUMAN HOLD.");
+    validate(candidate);
+    const untouched=model.sources.length-matching;
+    if(!confirm(
+      `Source-exact HUMAN continuity preview: ${matching} identical packet(s), ${carriedTasks} HUMAN task(s) eligible. `+
+      `${untouched} new/changed source-free packet(s) remain untouched and NOT FIXED. `+
+      "Carry previously self-declared HUMAN fields into matching original packets? No sender or consent authentication is implied."))return;
+    rows=candidate;dirty=true;lastBatch=null;el("undo").disabled=true;
+    render();status(`HUMAN-only carry completed for ${matching} source-identical packet(s). ${untouched} new or changed packets unchanged. Save a NEW encrypted PRIVATE plan before leaving.`);
   }
   // Separate scriptless PRIVATE operator handoff, not a source finding report.
   function exportPrivateAgenda() {
@@ -321,6 +411,8 @@
   el("save").addEventListener("click",()=>saveEncrypted().catch(e=>status("HOLD: "+e.message)));
   el("open").addEventListener("click",()=>el("openfile").click());
   el("openfile").addEventListener("change",e=>{openEncrypted(e.target.files[0]).catch(err=>status("HOLD: "+err.message));e.target.value="";});
+  el("carry").addEventListener("click",()=>el("carryfile").click());
+  el("carryfile").addEventListener("change",e=>{carryEncrypted(e.target.files[0]).catch(err=>status("HOLD: "+err.message));e.target.value="";});
   el("agenda").addEventListener("click",()=>{try{exportPrivateAgenda();}catch(e){status("HOLD: "+e.message);}});
   el("calendar").addEventListener("click",()=>{try{exportCalendar();}catch(e){status("HOLD: "+e.message);}});
   el("counts").addEventListener("click",exportCounts);
