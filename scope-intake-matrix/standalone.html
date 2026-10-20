@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-cXqnOtjzVLPprm4kySt86qFK5acz6PXLu2CUN74+xlE='; style-src 'unsafe-inline'; img-src 'none'; connect-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-XRfulof+GmPqHHIkSfUlHoiy23hGUloHrFjrHl8G60M='; style-src 'unsafe-inline'; img-src 'none'; connect-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'">
 <title>LightUp — Scope Intake Matrix (draft only)</title>
 <style>
 :root{color-scheme:dark;--bg:#0c1322;--panel:#151f32;--panel2:#1b2940;--line:#35455d;--ink:#eef4ff;--dim:#aebed0;--accent:#75e0c2;--warning:#ffcd7c;--danger:#ff8e99}*{box-sizing:border-box}body{margin:0;background:radial-gradient(1000px 460px at 65% -20%,#214b5a,transparent),var(--bg);font:15px/1.5 system-ui,-apple-system,Segoe UI,sans-serif;color:var(--ink)}header{padding:24px clamp(18px,5vw,72px);border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;gap:20px;flex-wrap:wrap}.brand{font-size:13px;letter-spacing:.15em;color:var(--accent);font-weight:800}.brand strong{display:block;font-size:29px;letter-spacing:-.035em;color:var(--ink)}.fence{border:1px solid #936d38;background:#392c1c;color:#ffe1ad;border-radius:40px;padding:8px 15px;font-weight:750;font-size:12px}main{max-width:1460px;margin:auto;padding:28px clamp(18px,5vw,72px) 80px}.intro{max-width:900px;color:var(--dim);margin:0 0 24px}h2{font-size:18px;margin:0 0 17px}h3{font-size:15px;margin:0 0 12px}.section{border:1px solid var(--line);border-radius:16px;background:var(--panel);padding:22px;margin-bottom:21px}.grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}.wide{grid-column:span 2}label{display:block;font-weight:650;font-size:13px;color:#dce6f1}input,select,textarea{background:var(--panel2);border:1px solid #4b5c74;border-radius:8px;color:var(--ink);font:inherit;padding:9px 10px;min-width:0;width:100%;margin-top:6px}textarea{min-height:73px;resize:vertical}input:focus,select:focus,textarea:focus{outline:2px solid var(--accent);outline-offset:1px}button{font:inherit;cursor:pointer;border-radius:9px;padding:10px 14px;border:1px solid #647792;background:#25364e;color:var(--ink);font-weight:700}button.primary{background:var(--accent);border-color:var(--accent);color:#091e24}button.danger{color:#ffc5cd;border-color:#9b5363}button:hover{filter:brightness(1.16)}button:focus-visible{outline:3px solid var(--warning)}.actions{display:flex;flex-wrap:wrap;gap:9px;margin:15px 0}.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}.stat{padding:12px;border-radius:10px;background:#22314a;border:1px solid var(--line)}.stat strong{display:block;font-size:25px}.stat span{font-size:12px;color:var(--dim)}.muted{color:var(--dim)}.warning{color:var(--warning)}.danger-text{color:var(--danger)}.table-wrap{overflow-x:auto}table{border-collapse:separate;border-spacing:0;width:100%;min-width:960px}th{text-align:left;font-size:12px;color:var(--dim);border-bottom:1px solid var(--line);padding:10px 7px}td{vertical-align:top;border-bottom:1px solid #2c3e56;padding:7px}td input,td select{font-size:13px;margin:0;padding:8px}th:nth-child(1){width:25%}th:nth-child(2){width:12%}th:nth-child(3){width:19%}th:nth-child(4){width:11%}th:nth-child(5){width:14%}th:nth-child(6){width:13%}.row-tools{display:flex;gap:4px}.row-tools button{font-size:12px;padding:7px}.privacy{padding:13px;border-left:3px solid var(--warning);background:#3c3025;margin-top:16px}.notice{padding:12px;border-radius:9px;border:1px solid var(--line);background:var(--panel2);margin:12px 0;white-space:pre-wrap}.notice[hidden],section[hidden],div[hidden]{display:none!important}.compare-items{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.compare-items pre{overflow-wrap:anywhere;white-space:pre-wrap;background:#0e192a;border:1px solid var(--line);border-radius:8px;padding:12px;font:12px/1.5 ui-monospace,monospace;max-height:220px;overflow:auto}.small{font-size:12px}.right{margin-left:auto}.filter{max-width:290px}.footer{margin-top:20px;font-size:12px;color:var(--dim)}@media(max-width:800px){.grid{grid-template-columns:1fr}.wide{grid-column:auto}.stats{grid-template-columns:repeat(2,1fr)}.compare-items{grid-template-columns:1fr}.section{padding:16px}}@media print{body{background:white;color:black}header,.actions,.privacy,.footer,#compare-section,#file-import,#file-compare,.row-tools,.filter{display:none!important}main{padding:0}.section{break-inside:avoid;border:1px solid #ccc;background:white}input,select,textarea{border:0;background:white;color:black;padding:3px}th,td,.muted,.stat span{color:black}.stat{background:white;color:black}.table-wrap{overflow:visible}table{min-width:unset}}
@@ -51,6 +51,7 @@
   let pendingTriage = null;
   let humanUndo = [];
   let lastComparison = null;
+  let membershipPreview = null;
 
   function blankDocument() {
     return {
@@ -410,6 +411,7 @@
     // Any actual proposal mutation makes the previously rendered comparison stale.
     $("compare-section").hidden = true;
     lastComparison = null;
+    clearMembershipPreview();
     $("total-count").textContent = state.rows.length;
     $("excluded-count").textContent = state.rows.filter(row => row.excluded).length;
     $("review-count").textContent = state.rows.filter(row => row.status === "needs-client-review").length;
@@ -775,6 +777,123 @@
     announce("PRIVATE IPv4/CIDR human exception brief exported; no permission asserted.");
   }
 
+
+  function clearMembershipPreview() {
+    membershipPreview = null;
+    $("membership-result").replaceChildren();
+    $("membership-status").textContent =
+      "Local membership preview is empty or stale. Never treat this as an authorization.";
+  }
+
+  function proposedMembership(query, rows = state.rows) {
+    const queryRange = parseIpv4Literal(query);
+    const exactHost = queryRange && queryRange.prefix === 32;
+    const included = [], excluded = [];
+    for (const row of rows) {
+      if (!validAsset(row.asset)) continue;
+      const proposed = parseIpv4Literal(row.asset);
+      const match = exactHost && proposed ?
+        queryRange.start >= proposed.start && queryRange.start <= proposed.end :
+        !queryRange && !proposed && query === row.asset;
+      if (!match) continue;
+      (row.excluded ? excluded : included).push(row);
+    }
+    let status;
+    if (excluded.length) {
+      status = included.length ?
+        "HUMAN HOLD: inclusion AND exclusion declarations intersect. NOT AUTHORIZED." :
+        "Explicit HUMAN exclusion only. NOT AUTHORIZED.";
+    } else if (included.length) {
+      status = "Matches HUMAN proposed inclusion, NOT AUTHORIZED.";
+    } else {
+      status = "No matching declared row. NOT AUTHORIZED.";
+    }
+    return {target: query, included: included.map(row => ({asset: row.asset, capability: row.capability,
+      human_status: row.status})), excluded: excluded.map(row => row.asset), status};
+  }
+
+  function previewMembership() {
+    clearMembershipPreview();
+    const raw = $("membership-lines").value;
+    if (raw.length > 4096 || !raw.trim()) {
+      announce("Enter 1–16 exact target literals for a local HUMAN-only preview.", true); return;
+    }
+    const lines = raw.trim().split(/\r?\n/);
+    if (lines.length > 16 || !lines.length) {
+      announce("HOLD: at most 16 exact candidate target literals per preview.", true); return;
+    }
+    const seen = new Set();
+    const targets = [];
+    for (let i = 0; i < lines.length; i++) {
+      const target = lines[i].trim();
+      const ip = parseIpv4Literal(target);
+      if (!validAsset(target) || target.includes("/") || (ip && ip.prefix !== 32) ||
+          !target || seen.has(target)) {
+        announce("HOLD: invalid, duplicate or non-host literal on preview line " + (i + 1) +
+          ". No partial preview produced.", true);
+        return;
+      }
+      seen.add(target);
+      targets.push(target);
+    }
+    const result = targets.map(value => proposedMembership(value));
+    membershipPreview = {
+      client: state.client, draft: state.project, entries: result
+    };
+    const body = $("membership-result");
+    for (const entry of result) {
+      const tr = document.createElement("tr");
+      const columns = [
+        entry.target,
+        entry.included.map(item => item.asset + " [" + item.capability + "; " + item.human_status + "]").join("\n") || "(none)",
+        entry.excluded.join("\n") || "(none)",
+        entry.status
+      ];
+      for (const value of columns) {
+        const td = document.createElement("td");
+        td.textContent = value; td.style.whiteSpace = "pre-line";
+        tr.append(td);
+      }
+      body.append(tr);
+    }
+    const cross = result.filter(item => item.included.length && item.excluded.length).length;
+    $("membership-status").textContent = result.length + " wholly local proposed membership previews; " +
+      cross + " conflicting inclusion/exclusion literal(s). Zero authorizations or DNS queries.";
+    announce("Local human-declared membership preview complete. All targets remain NOT AUTHORIZED.");
+  }
+
+  function exportMembershipPreview() {
+    if (!membershipPreview || !membershipPreview.entries.length) {
+      announce("Create a fresh private HUMAN membership preview first.", true); return;
+    }
+    if (validate(state).length) {
+      announce("Complete the original proposed draft before exporting private membership preview.", true); return;
+    }
+    if (!confirm("Download UNENCRYPTED PRIVATE scriptless proposed-target membership preview? It contains literal targets and declared rows. This is NOT a policy decision or permission.")) return;
+    const rows = membershipPreview.entries.map(entry => {
+      const includes = entry.included.map(item => item.asset + " [" + item.capability + "]").join("; ") || "(none)";
+      return "<tr><td>" + escapeHtml(entry.target) + "</td><td>" + escapeHtml(includes) +
+        "</td><td>" + escapeHtml(entry.excluded.join("; ") || "(none)") +
+        "</td><td>" + escapeHtml(entry.status) + "</td></tr>";
+    }).join("\n");
+    const html = '<!doctype html><html lang="en"><head><meta charset="utf-8">' +
+      '<meta http-equiv="Content-Security-Policy" content="default-src \'none\'; style-src \'unsafe-inline\'; base-uri \'none\'; form-action \'none\'">' +
+      '<meta name="viewport" content="width=device-width, initial-scale=1">' +
+      '<title>LightUp PRIVATE proposed membership preview</title>' +
+      '<style>body{font:15px/1.5 system-ui,sans-serif;max-width:1040px;margin:35px auto;padding:0 18px;color:#24344b}table{width:100%;border-collapse:collapse}th,td{padding:10px;text-align:left;border-bottom:1px solid #ccd}aside{padding:15px;background:#fff1ee;border-left:4px solid #ad5050}</style>' +
+      '</head><body><h1>PRIVATE proposed membership preview</h1>' +
+      '<aside>UNTRUSTED LOCAL INPUT · NO DNS OR NETWORK · NO AUTHENTICATION, PERMISSION, REVOCATION OR GRANT. Every result is NOT AUTHORIZED regardless of rows.</aside>' +
+      '<p>Human-declared client label: ' + escapeHtml(membershipPreview.client) +
+      ' · PRIVATE draft: ' + escapeHtml(membershipPreview.draft) + '</p>' +
+      '<table><thead><tr><th>Literal target</th><th>Proposed inclusion</th><th>Explicit exclusion</th><th>HUMAN-only status</th></tr></thead><tbody>' +
+      rows + '</tbody></table></body></html>';
+    if (textBytes(html) > MAX_ENCRYPTED) {
+      announce("PRIVATE membership handoff exceeds 100 KiB.", true); return;
+    }
+    download("lightup-proposed-membership-PRIVATE.html", html, "text/html");
+    announce("PRIVATE HUMAN membership report downloaded; still no target permission.");
+  }
+
   function humanAgenda() {
     const items = [];
     items.push("Confirm the authentic current client and independently authenticated operator outside this offline draft.");
@@ -1030,6 +1149,9 @@
     $("receipt").addEventListener("click", exportCounts);
     $("export-agenda").addEventListener("click", exportAgenda);
     $("export-overlap").addEventListener("click", exportCoverageBrief);
+    $("preview-membership").addEventListener("click", previewMembership);
+    $("download-membership").addEventListener("click", exportMembershipPreview);
+    $("membership-lines").addEventListener("input", clearMembershipPreview);
     $("print").addEventListener("click", () => {
       const problems = validate(state);
       if (problems.length) { announce("Complete draft before printing: " + problems[0], true); return; }
@@ -1121,6 +1243,11 @@
 <div class="table-wrap"><table id="overlap-table"><thead><tr><th>Proposed literal A</th><th>Proposed literal B</th><th>Relationship</th><th>Human follow-up</th></tr></thead><tbody id="overlap-rows"></tbody></table></div>
 <h3>Literal address classifications — not network discovery</h3>
 <div id="address-classification" class="notice"></div>
+<div class="actions"><h3>Read-only proposed target membership preview</h3><button type="button" id="preview-membership" class="right">Preview literal membership</button><button type="button" id="download-membership">PRIVATE human preview handoff</button></div>
+<p class="small muted">Enter up to 16 exact literal IPv4 hosts or lowercase DNS names, one per line. Strictly local numeric/literal comparison with the proposed rows only. No DNS resolution, external contact, permission, exception resolution or original-policy invocation. Every result remains NOT AUTHORIZED.</p>
+<label>PRIVATE target literals (never contacted)<textarea id="membership-lines" maxlength="4096" rows="4" placeholder="192.168.10.22&#10;example.internal"></textarea></label>
+<div id="membership-status" class="notice" aria-live="polite">No target membership preview. The app never checks actual target reachability.</div>
+<div class="table-wrap"><table><thead><tr><th>Human-entered target</th><th>Proposed included rows</th><th>Explicit exclusions</th><th>Human-only conclusion</th></tr></thead><tbody id="membership-result"></tbody></table></div>
 </section>
 <section class="section" aria-labelledby="result-heading">
 <h2 id="result-heading">04 / Local completeness & handoff</h2>
