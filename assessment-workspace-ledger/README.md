@@ -22,6 +22,17 @@ Requires Python 3 standard library. Operate on a trusted machine with explicit o
 
 **Exit 2 = PRIVATE REVIEW_ONLY** when no differences are observed. **Exit 3 = HOLD** on any input refusal, HUMAN finalization, or observed changes. A changed snapshot still creates a *new* exclusively private inventory to support follow-up; previous snapshots are not deleted or overwritten.
 
+## Ready-to-use actual offline HUMAN browser application
+
+A complete source-free one-file production artifact has been **built from the
+current browser_studio.py renderer and committed**:
+[standalone.html](standalone.html). Save a copy in a trusted owner-private
+local folder and open it with the browser offline; there is no Python/runtime
+dependency for the interactive reviewer interface itself. Explicitly select
+your locally generated original private ledger.json using the browser's file
+chooser; no user data is embedded in this shipped HTML. All HUMAN decisions
+still require the native fail-closed original-snapshot finalize.
+
 ## Portable browser-only software build
 
 The independent HUMAN editor is also usable without creating any inventory
