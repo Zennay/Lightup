@@ -123,3 +123,23 @@ python3 remediation-recipient-scheduler/schedule_vault.py \
 
 Other supported filters: `--unassigned`, `--overdue`, `--due-next-days 7`, or `--stage ask_source_owner`. A due-next-day range is limited to 0–90 days and excludes already answered HUMAN-only tasks; overdue applies only to self-reported still-open tasks. Conflicting date/owner filter pairs HOLD; an empty matching work queue does not generate a misleading empty report. Use `--calendar` only if the selected tasks have tentative dates; optional `--include-notes` adds sensitive HUMAN text and needs actual independent recipient approval. Output remains owner-only PRIVATE; filtering is not authenticated disclosure permission.
 
+
+## Atomic receipt of the complete software-only bundle (no unsafe unzip)
+
+The new `bundle_receive.py` reconstructs the **merged runnable original + scheduler software-only ZIP** on an independently trusted, offline Linux host, in a newly created PRIVATE 0700 directory with 0600 files. Unlike a generic unzip, receipt applies an exact original pinned source inventory, **closed original-native runtime file list**, exact locally trusted companion file bytes, exact portal/source lock, safe ZIP member types and modes, bounded uncompressed member sizes and manifest SHA-256 matching. Duplicate, extra, changed or malformed entries HOLD without final output. This is only local software consistency, never cryptographic sender provenance, original owner permission, security review or release authority.
+
+The trusted source-only `bundle_receive.py` + original installer/companion code and `bundle-manifest.json` must be obtained via a **separately trusted authenticated distribution channel**; never execute or trust code merely because it arrived in the same unverified ZIP being inspected. Keep both the `remediation-scheduler-software-only.zip` and separately obtained `bundle-manifest.json` in an existing owner-only 0700 folder as 0600 regular one-link files, then from the separately trusted original source checkout:
+
+```bash
+python3 remediation-recipient-scheduler/bundle_receive.py \
+  --archive "$HOME/lightup-private/remediation-scheduler-software-only.zip" \
+  --manifest "$HOME/lightup-private/bundle-manifest.json" \
+  --output-dir "$HOME/lightup-private/received-complete-scheduler-01"
+```
+
+Open the new private `index.html`; the resulting tree contains executable **software source only**, not any personal/customer/evidence packets. The generated owner-private launch page explains how to hand off genuine separately permitted source-free original `.luhz/.luhx` Cockpits through the unchanged original native receiver and into the new HUMAN planner. No remote code, consent, scanning, grant, test, QA workflow or native Apply is invoked. A software package is not production-releasable until ALL original release gates have actually been passed.
+
+## PRIVATE password interaction
+
+The source-free HUMAN browser now requires an accessible, **masked** offline `type=password` modal for new encrypted `.lurp` saves, exact-source resume, and change-aware source-bound carry. The previous visible browser `prompt` text entry was replaced. Password entry is kept only in the current browser dialog's in-memory state, not persisted to cookies, localStorage, URL or telemetry. Downloading an encrypted checkpoint no longer silently marks the HUMAN plan safely persisted: the operator must separately confirm that the private download is stored in a protected local location. A declined confirmation preserves the unsaved-change warning. Neither this acknowledgment nor a password proves actual sender, recipient, client authority or consent.
+
