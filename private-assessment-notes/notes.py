@@ -432,6 +432,16 @@ def main() -> int:
     extra.add_argument("--rules-json", required=True,
                        help="owner-only 0600 secret-containing HUMAN literal masking rules")
     extra.add_argument("--private-parent", required=True, help="owner-only 0700 directory")
+    sensitivity = commands.add_parser(
+        "sensitivity-prepare", help="source-bound PRIVATE HUMAN privacy concern worksheet")
+    sensitivity.add_argument("--completed-packet", required=True)
+    sensitivity.add_argument("--private-parent", required=True)
+    sensitivity_end = commands.add_parser(
+        "sensitivity-finalize", help="source-bound HUMAN sensitivity review; always HOLD")
+    sensitivity_end.add_argument("--completed-packet", required=True)
+    sensitivity_end.add_argument("--triage-kit", required=True)
+    sensitivity_end.add_argument("--completed-csv", required=True)
+    sensitivity_end.add_argument("--private-parent", required=True)
     original_mask = commands.add_parser(
         "mask-template", help="prepare original-source-bound HUMAN extra masking request template")
     original_mask.add_argument("--completed-packet", required=True,
@@ -466,6 +476,13 @@ def main() -> int:
         if args.action == "mask-template":
             from manual_mask import template as prepare_mask_template
             return prepare_mask_template(args.completed_packet, args.private_parent)
+        if args.action == "sensitivity-prepare":
+            from privacy_triage import prepare as prepare_sensitivity
+            return prepare_sensitivity(args.completed_packet, args.private_parent)
+        if args.action == "sensitivity-finalize":
+            from privacy_triage import finalize as finalize_sensitivity
+            return finalize_sensitivity(args.completed_packet, args.triage_kit,
+                                        args.completed_csv, args.private_parent)
         from selective_handoff import prepare_selected
         return prepare_selected(args.completed_packet, args.position or [],
                                 args.private_parent, args.plan)
