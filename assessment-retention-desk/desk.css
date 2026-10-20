@@ -29,6 +29,12 @@ tbody tr:hover { background:#1a3046 }
 td small { display:block; color:#a8c0d2; font-size:.77rem; margin-top:2px; }
 .stats { display:flex; flex-wrap:wrap; gap:12px; margin:12px 0 19px; }
 .stat { background:#20354b; border:1px solid #355672; border-radius:12px; padding:12px 15px; min-width:175px; flex:1; font-size:.87rem; }
+.bulk { border:1px solid #49647c; border-radius:12px; background:#182940; padding:14px; margin-bottom:15px; }
+.bulk h3 { font-size:1rem; margin:0 0 10px; }
+.bulk .actions label { display:grid; gap:3px; font-size:.82rem; color:#bfd6e7; }
+.bulk .actions label:has(#bulk-action) { flex:1; min-width:240px; }
+.bulk .actions input[type=text] { width:100%; max-width:none; }
+button:disabled { opacity:.43; cursor:not-allowed; }
 .muted { color:#a7bed0; font-size:.88rem }
 #message { background:#213751; border-left:4px solid #85c8eb; padding:14px 18px; border-radius:8px; margin:20px 0; }
 #message.error { background:#44292f; border-left-color:#f7a5a8; }
