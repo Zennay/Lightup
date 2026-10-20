@@ -15,6 +15,8 @@ from pathlib import Path
 import re
 import sys
 
+from review_studio import compile_private_workroom
+
 MAX_INPUT = 1_000_000
 MAX_ENTRIES = 256
 HEX = re.compile(r"^[0-9a-f]{64}$")
@@ -100,8 +102,12 @@ def main(argv):
     output = Path(argv[3])
     if not output.parent.is_dir() or output.parent.is_symlink():
         raise ValueError("Fresh output must have an existing ordinary parent directory")
+    # Compile full local-only browser workroom before touching private destination.
+    # The original text-only read report remains available separately.
+    interactive = compile_private_workroom(rows, old_hash, new_hash, old_heads != new_heads)
     require_fresh_private_directory(output)
     write_private(output / "index.html", render_page(rows, old_hash, new_hash, old_heads != new_heads))
+    write_private(output / "workroom.html", interactive)
     # Fully source-byte-bound PRIVATE human assignment template, not permission.
     template = io.StringIO(newline="")
     writer = csv.writer(template, lineterminator="\n")
