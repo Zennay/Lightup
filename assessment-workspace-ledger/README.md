@@ -707,5 +707,31 @@ executed work, authenticated recipients, deadlines, independent evidence,
 verified vulnerabilities, release clearance, source re-opening, consent,
 authorization, scan output, dispatch, or remediation. Do not share original
 customer data or these PRIVATE files without a separate authorized disclosure
-process. The v17 offline software ZIP adds `portfolio.py`; it contains
-no customer data. No QA/regression/test suite is created or executed.
+process. The **source checkout** includes `portfolio.py`; the native
+`package.py build` now produces a complete v17 offline software ZIP with
+this module included, using only installed original trusted software bytes.
+The **previously checked-in v16 binary ZIP is historical and has NOT
+been rebuilt or replaced in this run**. The native local inspector remains
+able to inspect that original v16 artifact and differentiates it from v17.
+Do not claim a v17 downloadable ZIP until its new binary is actually committed.
+Neither software archive contains original customer data.
+
+For minimum-necessary casework, specify an optional exact proposed owner:
+
+    python3 assessment-workspace-ledger/portfolio.py \
+      --context /private/case-A/PRIVATE-action-context.json \
+      --actions /private/case-A/PRIVATE-HUMAN-actions.json \
+      --plan /private/case-A/HUMAN-action-plan.csv \
+      --context /private/case-B/PRIVATE-action-context.json \
+      --actions /private/case-B/PRIVATE-HUMAN-actions.json \
+      --plan /private/case-B/HUMAN-action-plan.csv \
+      --owner "LOCAL PROPOSED HUMAN OWNER" \
+      --private-parent /private/portfolio-output
+
+Owner filtering excludes all other owners' proposed actions and their
+source-context identifiers from the filtered portfolio output. The
+source-chain admission still covers every explicitly selected original
+case before private export. An owner string is **not authenticated identity**
+or disclosure consent. Only exact matching manual proposals appear; zero
+matches is HOLD. Console option 24 supports the same optional filter.
+No QA/regression/test suite is created or executed.
