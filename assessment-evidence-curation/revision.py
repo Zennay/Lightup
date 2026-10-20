@@ -11,9 +11,9 @@ import base64
 import hashlib
 import sys
 
-from briefing import CSS, DENIAL_FLAGS, Hold, SEVERITIES, h, json_bytes, publish_new
 from curate import (MAX_CSV_BYTES, MAX_RECEIPT_BYTES, PRIORITIES, UNVERIFIED,
                     digest, read_original, read_receipt, read_selection)
+from briefing import CSS, Hold, SEVERITIES, h, json_bytes, publish_new
 from human_return import read_limited_file
 
 
