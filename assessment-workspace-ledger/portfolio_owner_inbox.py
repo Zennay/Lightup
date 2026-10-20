@@ -52,6 +52,26 @@ OUTPUT_COLUMNS = (
     "private_human_reply_text",
 )
 MAX_OWNERS = 8
+INBOX_REVIEW_HEADERS = (
+    "local_case", "historical_transition", "original_kit",
+    "original_inbox_sha256", "human_triage_stage", "private_human_triage_note",
+)
+
+
+def inbox_review_template(packets, inbox_sha):
+    """Original-inbox-bound HUMAN discussion draft. No actual task creation."""
+    out = io.StringIO(newline="")
+    writer = csv.writer(out, lineterminator="\n")
+    writer.writerow(INBOX_REVIEW_HEADERS)
+    for packet in packets:
+        for row in packet["human_rows"]:
+            writer.writerow((
+                row["local_case"], row["historical_transition"],
+                row["original_kit"], inbox_sha, "needs_discussion", ""
+            ))
+    return out.getvalue()
+
+
 
 
 def expected_original_packet(owner, rows, source_sha, meeting_sha, review_sha):
@@ -266,6 +286,9 @@ def run(args):
         "PRIVATE-HUMAN-owner-inbox.html": detailed_html(packets),
         "PRIVATE-HUMAN-owner-inbox.csv": original_csv(packets),
         "PRIVATE-HUMAN-owner-inbox.json": canonical(document),
+        "HUMAN-inbox-review-template.csv": inbox_review_template(
+            packets, digest(canonical(document))
+        ),
     }
     if any(len(raw if isinstance(raw, bytes) else raw.encode("utf-8")) >
            MAX_MANIFEST for raw in outputs.values()):

@@ -1209,3 +1209,30 @@ are never changed. Only after an explicit HUMAN confirmation are those
 unapplied local choices restored. No reviewer identity is verified, and native
 `portfolio_owner_reply.py` source re-admission remains required before
 private HUMAN return creation. No customer data is embedded in software.
+
+## ORIGINAL owner inbox → PRIVATE HUMAN discussion · software v29
+
+The original multiple-owner inbox also writes an owner-private 0600
+`HUMAN-inbox-review-template.csv`. Every original case/transition/kit
+row is bound to the SHA-256 of the whole unchanged canonical
+`PRIVATE-HUMAN-owner-inbox.json`; no human draft is automatically sent.
+
+`portfolio_owner_inbox_review.py` provides a complete local HUMAN
+discussion return. It re-admits the original canonical unsigned inbox
+file, checks all original owner groups, row population and ordering,
+exact inbox source digest in each CSV row, safe proposed discussion stages
+and private bounded notes. Any drift rejects the whole submission.
+
+    python3 assessment-workspace-ledger/portfolio_owner_inbox_review.py \
+      --inbox /private/inbox/PRIVATE-HUMAN-owner-inbox.json \
+      --review /private/inbox/HUMAN-inbox-review-template.csv \
+      --private-parent /private/operator-only
+
+The native producer writes a NEW 0700 directory with scriptless counts-only
+PRIVATE HTML, detailed PRIVATE HUMAN discussion HTML, source-bound JSON and
+unchanged original HUMAN CSV, each 0600. The original source client/owner
+packets are not reopened or independently authenticated; this is unsigned
+HUMAN discussion, NEVER verified security, recipient, consent, grant,
+scan, real assigned task or remediation. Console foreground option **36**.
+Software-only v29 includes the original new native module and maintains
+fixed source-only software inventory reads v16–v28. No QA suite involved.
