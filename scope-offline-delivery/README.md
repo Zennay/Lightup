@@ -69,11 +69,11 @@ After separately authenticated receiver byte comparison, the optional standalone
 
 ### Directly available role ZIPs (original source-only; no real client data)
 
-The following READY offline source-only packages were physically produced by the same role CLI from the exact complete outer ZIP digest `0a0c3eae73db0a6dab387cb816f1fa7523541ee175f5a72c39c6204870fcfe9d`. They are separate deliverables; the full outer source kit does not silently include or transmit them.
+The following READY offline source-only packages were physically produced by the same role CLI from the exact complete outer ZIP digest `a53f12e2ff1d50d2b8691b8a4c57ca3f7d518a130bc980bc57275d1cfeef6264`. They are separate deliverables; the full outer source kit does not silently include or transmit them.
 
-- [PRIVATE-privacy-recipient-DRAFT-HOLD.zip](PRIVATE-privacy-recipient-DRAFT-HOLD.zip) — 55,564 bytes; SHA256 `77887b6d0a6981901660b3deab463989b436cc8c3b3499833df11f5e22af9acf`.
-- [PRIVATE-privacy-editor-DRAFT-HOLD.zip](PRIVATE-privacy-editor-DRAFT-HOLD.zip) — 91,212 bytes; SHA256 `a1b3a543d322278c6c7dc46cb275e0a751cfd4ed85fa203b1e464effa3cb7a09`.
-- [PRIVATE-scope-reviewer-DRAFT-HOLD.zip](PRIVATE-scope-reviewer-DRAFT-HOLD.zip) — 538,114 bytes; SHA256 `d549bd30840cf9e6a6fbf057b42ede7901f79d436b7d907c5f75a53bb2d153ec`.
+- [PRIVATE-privacy-recipient-DRAFT-HOLD.zip](PRIVATE-privacy-recipient-DRAFT-HOLD.zip) — 55,564 bytes; SHA256 `34efc9f6620dcbf7b49b9690aace3d9b366125157220826f1d5c7fda33f2d22b`.
+- [PRIVATE-privacy-editor-DRAFT-HOLD.zip](PRIVATE-privacy-editor-DRAFT-HOLD.zip) — 91,212 bytes; SHA256 `cc09465e59dac207d0906f6cb38b12952e08d6868f62a1ec52dd087a991ceb98`.
+- [PRIVATE-scope-reviewer-DRAFT-HOLD.zip](PRIVATE-scope-reviewer-DRAFT-HOLD.zip) — 538,114 bytes; SHA256 `0618781448892f736566dc7efabb442faa5e3768a3302e810aa49c835edbb383`.
 
 SHA-256 values on this same public page are **not** separately authenticated when copied from the downloaded ZIP. Obtain the exact expected digest by an independent trusted channel before recipient inspection, and encrypt any confidential role packet before sharing. No automatically generated signer, consent record or authority is asserted.
 
@@ -136,6 +136,12 @@ A separately downloaded **PRIVATE unsigned three-role digest sheet** includes on
 After a HUMAN independently hashes and admits the current complete original source-only outer ZIP, the browser also accepts an **earlier separate ZIP** (maximum 2.5 MB), with its own SHA-256 obtained from a **separately authenticated channel**. The new offline **Compare a previous source-only toolkit** workbench reuses the existing strict stored-ZIP parser and requires all seven original scope/courier/privacy source members in both bundles. It compares original local source filenames, SHA-256 and exact bytes counts, reporting added, removed, modified and unchanged components without displaying or executing any original source content.
 
 The HUMAN can explicitly download a **PRIVATE unsigned JSON source-delta report**, recording both full outer ZIP digests and each changed path with before/after sizes and hashes, no code or unredacted content. Every source ZIP or expected digest change clears previous comparisons, and malformed or mismatched source files fail closed as HOLD. This is **not** owner authentication, signed provenance, review approval, security evidence, client/operator consent or release permission. The report is source inventory metadata for an independently authorized recipient only.
+
+### Private three-role HUMAN return progress board (source-byte status only)
+
+When a complete three-role browser batch is prepared, the new **PRIVATE HUMAN three-role return overview** appears. Each role starts with the original source ZIP fingerprint and shows **HUMAN sender note prepared** only after a matching source-bound role note was locally prepared. After a separately received original recipient review JSON has passed the existing **exact local byte-match** against that specific original note, role ZIP and all original source fingerprints, that ONE role changes to **exact returned receipt byte match**. Other roles remain independently pending.
+
+The dashboard remains wholly local in memory, never contacts a server and never persists or invents personal identities. Source re-selection or batch rebuild clears the board. A HUMAN can deliberately export a source-only **unsigned PRIVATE three-role return-status JSON** with exact package/note/return byte hashes and explicit false fields for authentication, legal consent, scope grants and releases. These are observations of local bytes only, **not evidence that someone received or approved a message, nor permission to execute a security assessment**.
 
 ### Role unpack stability under local file replacement
 

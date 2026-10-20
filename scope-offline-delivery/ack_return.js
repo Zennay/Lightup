@@ -77,6 +77,11 @@
       const receiptSha256 = await sha(received);
       if (current !== generation) return;
       accepted = {generation:current,receiptSha256,prepared};
+      document.dispatchEvent(new CustomEvent("lightup:return-ack-admitted",{detail:{
+        profile:prepared.profile,roleSha256:prepared.sha256,
+        sourceSha256:prepared.sourceOuterSha256,
+        senderNoteSha256:prepared.noteSha256,receiptSha256
+      }}));
       status.dataset.state = "match";
       status.textContent = "RETURN RECEIPT BYTE MATCH / REVIEW ONLY — exact original ZIP, HUMAN note and source fingerprints agree. No sender/recipient identity, consent or authorization has been established.";
       saveButton.hidden = false;

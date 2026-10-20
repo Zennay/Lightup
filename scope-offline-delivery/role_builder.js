@@ -279,6 +279,10 @@
       }
       if (current !== revision || results.length !== 3) return;
       batchRoles = results;
+      document.dispatchEvent(new CustomEvent("lightup:batch-roles-prepared",{detail:{
+        sourceSha256:currentSource.sha256,
+        roles:results.map(row=>({profile:row.role,sha256:row.digest,bytes:row.bytes.length}))
+      }}));
       for (const item of results) {
         const row = document.createElement("div");
         const description = document.createElement("p");

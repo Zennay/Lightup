@@ -45,6 +45,14 @@
 <button id="save-batch-digests" type="button" hidden>Save one unsigned PRIVATE role digest handoff sheet</button>
 <p>The digest sheet is for independently authenticated HUMAN delivery, not evidence of identity, permission or confidentiality. Each role ZIP is the same original-source-bounded format as the single-role builder.</p>
 </section>
+<section id="batch-return-panel" hidden>
+<h2>PRIVATE HUMAN three-role return overview</h2>
+<p>After preparing all three original role ZIPs in one browser batch, this local in-memory board shows for each source-only role when a HUMAN sender note was prepared and when the corresponding separately returned receipt was matched byte-for-byte. It cannot determine whether anyone actually received, reviewed, approved, or consented to work.</p>
+<p id="batch-return-status" role="status" aria-live="polite"></p>
+<ol id="batch-return-rows" class="mono"></ol>
+<button id="save-batch-return" type="button" hidden>Save PRIVATE UNSIGNED three-role return-status JSON</button>
+<p>No original source bytes, unredacted HUMAN notes, recipient identifiers, passwords or grants are included. Changing the original source or rebuilding a batch clears these observations.</p>
+</section>
 <section id="version-delta-panel" hidden>
 <h2>Compare a previous source-only toolkit with this one</h2>
 <p>The currently admitted complete original toolkit is the source-of-truth for the NEW side. Choose an earlier separate original toolkit ZIP and supply its whole SHA-256 through an independently authenticated channel. This compares local source filenames, byte sizes and SHA-256 only. No source content is executed, scanned or uploaded.</p>

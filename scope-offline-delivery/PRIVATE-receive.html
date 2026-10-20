@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-zJGcgy1f+nzc/1qo3qH6MobgLCE+8s4ICUye+FPAqj0='; style-src 'sha256-1Qk4cCfWuvGOXwIazCMDveA4n/GNkVQ6QsLAZ/BjKOI='; connect-src 'none'; form-action 'none'; object-src 'none'; base-uri 'none'; img-src 'none'; frame-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-tWsQ+TAx/gwoI5nRcKslHTtsvX6hLmpUmmV8OctR4ug='; style-src 'sha256-1Qk4cCfWuvGOXwIazCMDveA4n/GNkVQ6QsLAZ/BjKOI='; connect-src 'none'; form-action 'none'; object-src 'none'; base-uri 'none'; img-src 'none'; frame-src 'none'">
 <title>LightUp · PRIVATE recipient byte comparison</title>
 <style>:root{color-scheme:dark}*{box-sizing:border-box}body{margin:0;padding:2.5rem 1rem;background:#0b1422;color:#ebf1fa;font:1rem/1.65 system-ui,sans-serif}main{max-width:750px;margin:auto}h1{font-size:clamp(1.8rem,5vw,2.7rem);line-height:1.15}h2{font-size:1.15rem}.tag{font-size:.76rem;letter-spacing:.12em;color:#9ec6ff;font-weight:750}section{padding:1.4rem;margin:1.25rem 0;border:1px solid #52647f;border-radius:14px;background:#16243a}label{display:block;font-weight:650;margin:1rem 0 .3rem}input{width:100%;border-radius:7px;border:1px solid #a5bad4;padding:.75rem;background:#0b1422;color:#fff;font:inherit}input:focus,button:focus{outline:3px solid #95d6fa;outline-offset:2px}button{margin-top:.85rem;cursor:pointer;border:0;border-radius:8px;padding:.8rem 1.25rem;font:inherit;font-weight:750;background:#93dbfd;color:#082235}button:disabled{opacity:.6;cursor:wait}p{overflow-wrap:anywhere}strong{color:#ffdb9a}#status{font-weight:750;padding:.8rem;border-left:4px solid #9ec6ff}#status[data-state="hold"]{border-color:#f2a0a8;color:#ffc4c9}#status[data-state="match"]{border-color:#97edbc;color:#b2ffce}a{color:#92d9ff}.mono,code{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:.89rem;overflow-wrap:anywhere}footer{font-size:.82rem;color:#b6c6db;margin:2.5rem 0}
 .download-choices{display:flex;flex-wrap:wrap;gap:.6rem}.download-choices button{margin:.35rem 0}details{border:1px solid #64748b;border-radius:8px;padding:.75rem}summary{cursor:pointer}ol{max-height:14rem;overflow:auto;padding-left:1.6rem}li{margin:.35rem 0}section[hidden]{display:none}
@@ -46,6 +46,14 @@
 <div id="batch-role-choices"></div>
 <button id="save-batch-digests" type="button" hidden>Save one unsigned PRIVATE role digest handoff sheet</button>
 <p>The digest sheet is for independently authenticated HUMAN delivery, not evidence of identity, permission or confidentiality. Each role ZIP is the same original-source-bounded format as the single-role builder.</p>
+</section>
+<section id="batch-return-panel" hidden>
+<h2>PRIVATE HUMAN three-role return overview</h2>
+<p>After preparing all three original role ZIPs in one browser batch, this local in-memory board shows for each source-only role when a HUMAN sender note was prepared and when the corresponding separately returned receipt was matched byte-for-byte. It cannot determine whether anyone actually received, reviewed, approved, or consented to work.</p>
+<p id="batch-return-status" role="status" aria-live="polite"></p>
+<ol id="batch-return-rows" class="mono"></ol>
+<button id="save-batch-return" type="button" hidden>Save PRIVATE UNSIGNED three-role return-status JSON</button>
+<p>No original source bytes, unredacted HUMAN notes, recipient identifiers, passwords or grants are included. Changing the original source or rebuilding a batch clears these observations.</p>
 </section>
 <section id="version-delta-panel" hidden>
 <h2>Compare a previous source-only toolkit with this one</h2>
@@ -538,7 +546,7 @@ button.addEventListener("click", async () => {
         "workspace/verify.html", "courier/PRIVATE-encrypted-courier.html",
         "privacy/disclosure-preflight.html", "privacy/disclosure-recipient-verify.html",
         "PRIVATE-receive.html", "tools/recipient.js", "tools/recipient.css",
-        "tools/recipient_zip.js", "tools/role_builder.js", "tools/handoff_review.js", "tools/ack_return.js", "tools/version_delta.js", "tools/role_pack.py",
+        "tools/recipient_zip.js", "tools/role_builder.js", "tools/handoff_review.js", "tools/ack_return.js", "tools/version_delta.js", "tools/batch_return.js", "tools/role_pack.py",
         "tools/recipient.template.html", "tools/package.py", "tools/unpack.py",
         "START-HERE.html", "README.txt", "manifest.json"
       ];
@@ -856,6 +864,10 @@ button.addEventListener("click", async () => {
       }
       if (current !== revision || results.length !== 3) return;
       batchRoles = results;
+      document.dispatchEvent(new CustomEvent("lightup:batch-roles-prepared",{detail:{
+        sourceSha256:currentSource.sha256,
+        roles:results.map(row=>({profile:row.role,sha256:row.digest,bytes:row.bytes.length}))
+      }}));
       for (const item of results) {
         const row = document.createElement("div");
         const description = document.createElement("p");
@@ -1189,6 +1201,11 @@ button.addEventListener("click", async () => {
       const receiptSha256 = await sha(received);
       if (current !== generation) return;
       accepted = {generation:current,receiptSha256,prepared};
+      document.dispatchEvent(new CustomEvent("lightup:return-ack-admitted",{detail:{
+        profile:prepared.profile,roleSha256:prepared.sha256,
+        sourceSha256:prepared.sourceOuterSha256,
+        senderNoteSha256:prepared.noteSha256,receiptSha256
+      }}));
       status.dataset.state = "match";
       status.textContent = "RETURN RECEIPT BYTE MATCH / REVIEW ONLY — exact original ZIP, HUMAN note and source fingerprints agree. No sender/recipient identity, consent or authorization has been established.";
       saveButton.hidden = false;
@@ -1346,6 +1363,106 @@ button.addEventListener("click", async () => {
     const url = URL.createObjectURL(blob), a = document.createElement("a");
     a.href=url;a.download="LightUp-PRIVATE-source-delta-REVIEW-ONLY.json";
     a.rel="noopener";document.body.append(a);a.click();a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),30000);
+  });
+})();
+
+"use strict";
+/* PRIVATE in-memory multi-role HUMAN byte-reconciliation board. No delivery/consent claims. */
+(() => {
+  const el = id => document.getElementById(id);
+  const panel = el("batch-return-panel"), list = el("batch-return-rows");
+  const headline = el("batch-return-status"), save = el("save-batch-return");
+  let sourceSha = null, records = new Map(), generation = 0;
+  const sha = x => typeof x === "string" && /^[0-9a-f]{64}$/.test(x);
+  function reset() {
+    generation++; sourceSha = null; records.clear();
+    list.replaceChildren(); save.hidden = true; panel.hidden = true;
+    headline.textContent = "";
+  }
+  document.addEventListener("lightup:selection-reset",reset);
+  document.addEventListener("lightup:sender-note-revoked",reset);
+
+  function render() {
+    if (!sourceSha || records.size !== 3) return;
+    list.replaceChildren();
+    let notes = 0, matches = 0;
+    for (const record of records.values()) {
+      const item = document.createElement("li");
+      const prepared = sha(record.noteSha);
+      const matched = prepared && sha(record.returnSha);
+      if (prepared) notes++;
+      if (matched) matches++;
+      item.textContent = record.profile + " · source ZIP " + record.roleSha +
+        " · HUMAN note " + (prepared ? "source bytes prepared" : "not prepared") +
+        " · returned receipt " + (matched ? "exact byte match" : "not matched") +
+        " · NEVER proof of delivery, recipient identity, consent or grant.";
+      list.append(item);
+    }
+    headline.textContent = notes + "/3 separate HUMAN notes prepared · " +
+      matches + "/3 exact returned byte receipts matched. All remain UNSIGNED / REVIEW ONLY.";
+    save.hidden = false;
+  }
+
+  document.addEventListener("lightup:batch-roles-prepared", event => {
+    reset();
+    const d = event.detail;
+    const expected = ["privacy-recipient","privacy-editor","scope-reviewer"];
+    if (!d || !sha(d.sourceSha256) || !Array.isArray(d.roles) ||
+        d.roles.length !== 3 ||
+        new Set(d.roles.map(r => r.profile)).size !== 3 ||
+        expected.some(name => !d.roles.some(row=>row.profile===name)) ||
+        d.roles.some(row=>!sha(row.sha256) || !Number.isSafeInteger(row.bytes) ||
+          row.bytes < 1 || row.bytes > 1500000)) return;
+    sourceSha = d.sourceSha256;
+    for (const row of d.roles) {
+      records.set(row.profile,{
+        profile:row.profile,roleSha:row.sha256,bytes:row.bytes,
+        noteSha:null,returnSha:null
+      });
+    }
+    panel.hidden = false;render();
+  });
+  document.addEventListener("lightup:sender-note-ready", event => {
+    if (!sourceSha) return;
+    const d = event.detail, row = d && records.get(d.profile);
+    if (!row || d.sourceOuterSha256 !== sourceSha ||
+        d.sha256 !== row.roleSha || d.size !== row.bytes ||
+        !sha(d.noteSha256)) return;
+    if (row.noteSha !== d.noteSha256) row.returnSha = null;
+    row.noteSha = d.noteSha256;render();
+  });
+  document.addEventListener("lightup:return-ack-admitted", event => {
+    if (!sourceSha) return;
+    const d = event.detail, row = d && records.get(d.profile);
+    if (!row || d.sourceSha256 !== sourceSha ||
+        d.roleSha256 !== row.roleSha ||
+        d.senderNoteSha256 !== row.noteSha ||
+        !sha(d.receiptSha256)) return;
+    row.returnSha = d.receiptSha256;render();
+  });
+  save.addEventListener("click", () => {
+    if (!sourceSha || records.size !== 3) return;
+    if (!window.confirm("Save an UNSIGNED source-only HUMAN status sheet? No receipt proves identity, actual delivery, consent or permission.")) return;
+    const rows = [...records.values()].map(row=>({
+      role:row.profile,role_zip_sha256:row.roleSha,role_zip_bytes:row.bytes,
+      unsigned_sender_note_sha256:row.noteSha,
+      unsigned_return_receipt_sha256:row.returnSha,
+      result:row.returnSha ? "BYTE_MATCH_REVIEW_ONLY" :
+        row.noteSha ? "AWAITING_UNVERIFIED_RECEIPT" : "HUMAN_NOTE_NOT_PREPARED"
+    }));
+    const out = {
+      format:"lightup.scope_private_role_return_board.v1",
+      posture:"INCUBATE_M3_M7_DRAFT_HOLD",decision:"REVIEW_ONLY",
+      authenticated_sender:false,authenticated_recipient:false,
+      client_consent:false,operator_consent:false,grant:false,release:false,
+      full_source_sha256:sourceSha,rows,
+      note:"UNSIGNED source-only byte observations. This is not proof of HUMAN delivery or approval."
+    };
+    const blob = new Blob([JSON.stringify(out,null,2)+"\n"],{type:"application/octet-stream"});
+    const url = URL.createObjectURL(blob), link=document.createElement("a");
+    link.href=url;link.download="LightUp-PRIVATE-role-return-status-REVIEW-ONLY.json";
+    link.rel="noopener";document.body.append(link);link.click();link.remove();
     setTimeout(()=>URL.revokeObjectURL(url),30000);
   });
 })();

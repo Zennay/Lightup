@@ -99,7 +99,7 @@ def publish(archive: Path, destination: Path, expected_sha256: str | None = None
                     "tools/package.py", "tools/unpack.py", "README.txt",
                     "START-HERE.html", "manifest.json",
                     "PRIVATE-receive.html", "tools/recipient.js",
-                    "tools/recipient.css", "tools/recipient_zip.js", "tools/role_builder.js", "tools/handoff_review.js", "tools/ack_return.js", "tools/version_delta.js", "tools/role_pack.py", "tools/recipient.template.html"}):
+                    "tools/recipient.css", "tools/recipient_zip.js", "tools/role_builder.js", "tools/handoff_review.js", "tools/ack_return.js", "tools/version_delta.js", "tools/batch_return.js", "tools/role_pack.py", "tools/recipient.template.html"}):
                     put(name, outside.read(name))
                 for entry in entries:
                     if not entry.is_dir():
