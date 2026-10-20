@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-Yl+O2qnZETk+ZKB3TCva1V/y3+0moffr/HXBu/XZmgM=' 'sha256-6nhiz7Gchd7KIxUNMVFvim+TpXpQ8a5nSjj4tsC6CIU='; style-src 'unsafe-inline'; img-src 'none'; connect-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-Yl+O2qnZETk+ZKB3TCva1V/y3+0moffr/HXBu/XZmgM=' 'sha256-/5s5roou6VqZ8Il0VitdfORZcwhBIbr7OLZ0oC9hhoo='; style-src 'unsafe-inline'; img-src 'none'; connect-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'">
 <title>LightUp — Scope Intake Matrix (draft only)</title>
 <style>
 :root{color-scheme:dark;--bg:#0c1322;--panel:#151f32;--panel2:#1b2940;--line:#35455d;--ink:#eef4ff;--dim:#aebed0;--accent:#75e0c2;--warning:#ffcd7c;--danger:#ff8e99}*{box-sizing:border-box}body{margin:0;background:radial-gradient(1000px 460px at 65% -20%,#214b5a,transparent),var(--bg);font:15px/1.5 system-ui,-apple-system,Segoe UI,sans-serif;color:var(--ink)}header{padding:24px clamp(18px,5vw,72px);border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;gap:20px;flex-wrap:wrap}.brand{font-size:13px;letter-spacing:.15em;color:var(--accent);font-weight:800}.brand strong{display:block;font-size:29px;letter-spacing:-.035em;color:var(--ink)}.fence{border:1px solid #936d38;background:#392c1c;color:#ffe1ad;border-radius:40px;padding:8px 15px;font-weight:750;font-size:12px}main{max-width:1460px;margin:auto;padding:28px clamp(18px,5vw,72px) 80px}.intro{max-width:900px;color:var(--dim);margin:0 0 24px}h2{font-size:18px;margin:0 0 17px}h3{font-size:15px;margin:0 0 12px}.section{border:1px solid var(--line);border-radius:16px;background:var(--panel);padding:22px;margin-bottom:21px}.grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}.wide{grid-column:span 2}label{display:block;font-weight:650;font-size:13px;color:#dce6f1}input,select,textarea{background:var(--panel2);border:1px solid #4b5c74;border-radius:8px;color:var(--ink);font:inherit;padding:9px 10px;min-width:0;width:100%;margin-top:6px}textarea{min-height:73px;resize:vertical}input:focus,select:focus,textarea:focus{outline:2px solid var(--accent);outline-offset:1px}button{font:inherit;cursor:pointer;border-radius:9px;padding:10px 14px;border:1px solid #647792;background:#25364e;color:var(--ink);font-weight:700}button.primary{background:var(--accent);border-color:var(--accent);color:#091e24}button.danger{color:#ffc5cd;border-color:#9b5363}button:hover{filter:brightness(1.16)}button:focus-visible{outline:3px solid var(--warning)}.actions{display:flex;flex-wrap:wrap;gap:9px;margin:15px 0}.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}.stat{padding:12px;border-radius:10px;background:#22314a;border:1px solid var(--line)}.stat strong{display:block;font-size:25px}.stat span{font-size:12px;color:var(--dim)}.muted{color:var(--dim)}.warning{color:var(--warning)}.danger-text{color:var(--danger)}.table-wrap{overflow-x:auto}table{border-collapse:separate;border-spacing:0;width:100%;min-width:960px}th{text-align:left;font-size:12px;color:var(--dim);border-bottom:1px solid var(--line);padding:10px 7px}td{vertical-align:top;border-bottom:1px solid #2c3e56;padding:7px}td input,td select{font-size:13px;margin:0;padding:8px}th:nth-child(1){width:25%}th:nth-child(2){width:12%}th:nth-child(3){width:19%}th:nth-child(4){width:11%}th:nth-child(5){width:14%}th:nth-child(6){width:13%}.row-tools{display:flex;gap:4px}.row-tools button{font-size:12px;padding:7px}.privacy{padding:13px;border-left:3px solid var(--warning);background:#3c3025;margin-top:16px}.notice{padding:12px;border-radius:9px;border:1px solid var(--line);background:var(--panel2);margin:12px 0;white-space:pre-wrap}.notice[hidden],section[hidden],div[hidden]{display:none!important}.compare-items{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.compare-items pre{overflow-wrap:anywhere;white-space:pre-wrap;background:#0e192a;border:1px solid var(--line);border-radius:8px;padding:12px;font:12px/1.5 ui-monospace,monospace;max-height:220px;overflow:auto}.small{font-size:12px}.right{margin-left:auto}.filter{max-width:290px}.footer{margin-top:20px;font-size:12px;color:var(--dim)}@media(max-width:800px){.grid{grid-template-columns:1fr}.wide{grid-column:auto}.stats{grid-template-columns:repeat(2,1fr)}.compare-items{grid-template-columns:1fr}.section{padding:16px}}@media print{body{background:white;color:black}header,.actions,.privacy,.footer,#compare-section,#file-import,#file-compare,.row-tools,.filter{display:none!important}main{padding:0}.section{break-inside:avoid;border:1px solid #ccc;background:white}input,select,textarea{border:0;background:white;color:black;padding:3px}th,td,.muted,.stat span{color:black}.stat{background:white;color:black}.table-wrap{overflow:visible}table{min-width:unset}}
@@ -1283,6 +1283,7 @@
   let source = null;
   let human = new Map();
   let digestHex = null;
+  let rawPrivateSource = null;
 
   // Fully recursive bounded parser: unlike a JSON.parse + stringify roundtrip,
   // each object's duplicate-key check is independent of key order and original
@@ -1506,6 +1507,7 @@
     if (confirmHuman && source && !confirm("Discard the PRIVATE original Casebook source and local HUMAN labels from browser memory? Your proposed scope draft will remain untouched.")) return;
     source = null;
     digestHex = null;
+    rawPrivateSource = null;
     human.clear();
     $("casebook-selected").hidden = true;
     $("casebook-selected").textContent = "";
@@ -1620,7 +1622,7 @@
     const hash = globalThis.crypto?.subtle ?
       await globalThis.crypto.subtle.digest("SHA-256", bytes) : null;
     const fingerprint = hash ? Array.from(new Uint8Array(hash), b => b.toString(16).padStart(2, "0")).join("") : null;
-    return {parsed, fingerprint};
+    return {parsed, fingerprint, raw};
   }
 
   function download(name, payload) {
@@ -1628,6 +1630,203 @@
     const url = URL.createObjectURL(blob), a = document.createElement("a");
     a.href = url; a.download = name; document.body.append(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 30000);
+  }
+
+  const HANDOFF_SCHEMA = "lightup.scope_intake.casebook_private_handoff.v1";
+  const HANDOFF_BYTES = 1150000;
+  const HANDOFF_ROUNDS = 600000;
+  const HANDOFF_PURPOSE = "lightup.scope_intake.casebook_private_handoff.v1;REVIEW_ONLY";
+  const HANDOFF_KEYS = ["schema", "posture", "cipher", "kdf", "iterations", "salt_b64",
+    "nonce_b64", "ciphertext_b64"];
+  const CONTENT_KEYS = ["schema", "posture", "source_raw", "source_sha256", "human_stages",
+    ...FALSE_AUTHORITY];
+
+  function mustHavePrivateCrypto() {
+    if (!globalThis.isSecureContext || !globalThis.crypto?.subtle ||
+        typeof globalThis.crypto.getRandomValues !== "function") {
+      throw Error("Secure offline WebCrypto unavailable; plaintext fallback is forbidden.");
+    }
+  }
+  function userPassword(isNew) {
+    const value = prompt(isNew ?
+      "Enter NEW private Casebook handoff password (14–256 UTF-8 bytes). Never send it with the file." :
+      "Enter PRIVATE Casebook handoff password:");
+    if (value === null) return null;
+    const bytes = new TextEncoder().encode(value);
+    if (bytes.length < 14 || bytes.length > 256 ||
+        /[\u0000-\u001f\u007f]/u.test(value) || !value.trim()) {
+      bytes.fill(0);
+      throw Error("Casebook password must be 14–256 noncontrol UTF-8 bytes.");
+    }
+    bytes.fill(0);
+    if (isNew) {
+      const again = prompt("Confirm NEW PRIVATE Casebook handoff password:");
+      if (again === null) return null;
+      if (again !== value) throw Error("Passwords do not match.");
+    }
+    return value;
+  }
+
+  async function privateKey(password, salt) {
+    const raw = new TextEncoder().encode(password);
+    try {
+      const imported = await globalThis.crypto.subtle.importKey(
+        "raw", raw, "PBKDF2", false, ["deriveKey"]);
+      return await globalThis.crypto.subtle.deriveKey(
+        {name:"PBKDF2", salt, iterations:HANDOFF_ROUNDS, hash:"SHA-256"},
+        imported, {name:"AES-GCM", length:256}, false, ["encrypt", "decrypt"]);
+    } finally { raw.fill(0); }
+  }
+
+  function encode64(bytes) {
+    let binary = "";
+    for (let i = 0; i < bytes.length; i += 4096) {
+      binary += String.fromCharCode(...bytes.subarray(i, i + 4096));
+    }
+    return btoa(binary);
+  }
+  function decode64(value, length = null) {
+    if (typeof value !== "string" || value.length > HANDOFF_BYTES ||
+        !/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(value)) {
+      throw Error("HOLD: invalid original Casebook transfer encoding.");
+    }
+    let result;
+    try { result = Uint8Array.from(atob(value), c => c.charCodeAt(0)); }
+    catch (_) { throw Error("HOLD: invalid original Casebook transfer encoding."); }
+    if (encode64(result) !== value || (length !== null && result.length !== length)) {
+      result.fill(0); throw Error("HOLD: noncanonical original Casebook transfer bytes.");
+    }
+    return result;
+  }
+  async function digestOfRaw(raw) {
+    const bytes = new TextEncoder().encode(raw);
+    try {
+      const sha = await globalThis.crypto.subtle.digest("SHA-256", bytes);
+      return Array.from(new Uint8Array(sha), b => b.toString(16).padStart(2, "0")).join("");
+    } finally { bytes.fill(0); }
+  }
+
+  async function saveEncryptedHandoff() {
+    try {
+      mustHavePrivateCrypto();
+      if (!source || !rawPrivateSource) throw Error("Import an original PRIVATE Casebook first.");
+      const pwd = userPassword(true);
+      if (pwd === null) return;
+      if (!confirm("Encrypt original PRIVATE source plus your own HUMAN follow-up labels locally? This file is confidential and does not authenticate the producer, client/operator consent or authority. Keep its password separately.")) return;
+      const humanStages = source.case_overview.map(c => ({
+        engagement_id: c.engagement_id, stage: human.get(c.engagement_id) || "unreviewed"
+      }));
+      const payload = {
+        schema: HANDOFF_SCHEMA, posture:"REVIEW_ONLY",
+        source_raw: rawPrivateSource,
+        source_sha256: await digestOfRaw(rawPrivateSource),
+        human_stages: humanStages,
+        ...Object.fromEntries(FALSE_AUTHORITY.map(x => [x,false]))
+      };
+      const plain = new TextEncoder().encode(JSON.stringify(payload, null, 2) + "\n");
+      if (plain.length > LIMIT + 100000) {
+        plain.fill(0); throw Error("Bounded Casebook private handoff data too large.");
+      }
+      const salt = globalThis.crypto.getRandomValues(new Uint8Array(16));
+      const iv = globalThis.crypto.getRandomValues(new Uint8Array(12));
+      let sealed;
+      try {
+        const key = await privateKey(pwd, salt);
+        const ciphertext = await globalThis.crypto.subtle.encrypt(
+          {name:"AES-GCM", iv, additionalData:new TextEncoder().encode(HANDOFF_PURPOSE), tagLength:128},
+          key, plain);
+        sealed = new Uint8Array(ciphertext);
+        const packet = {
+          schema: HANDOFF_SCHEMA, posture:"REVIEW_ONLY", cipher:"AES-256-GCM",
+          kdf:"PBKDF2-SHA256", iterations:HANDOFF_ROUNDS,
+          salt_b64:encode64(salt), nonce_b64:encode64(iv), ciphertext_b64:encode64(sealed)
+        };
+        const text = JSON.stringify(packet, null, 2) + "\n";
+        if (new TextEncoder().encode(text).length > HANDOFF_BYTES) {
+          throw Error("Encrypted original Casebook packet exceeds private size limit.");
+        }
+        download("lightup-original-casebook-PRIVATE-encrypted.lucb", text);
+        show("Encrypted PRIVATE Casebook source + HUMAN follow-up downloaded. No original authority or consent granted.");
+      } finally { plain.fill(0); salt.fill(0); iv.fill(0); sealed?.fill(0); }
+    } catch (e) {
+      show("PRIVATE encrypted handoff refused: " + e.message + " Existing original source retained.", true);
+    }
+  }
+
+  async function openEncryptedHandoff(file) {
+    mustHavePrivateCrypto();
+    if (!file || !file.size || file.size > HANDOFF_BYTES) throw Error("Encrypted source handoff too large.");
+    const encryptedBytes = new Uint8Array(await file.arrayBuffer());
+    if (encryptedBytes.length > HANDOFF_BYTES) throw Error("Encrypted original source exceeded limit.");
+    let envelopeText;
+    try { envelopeText = new TextDecoder("utf-8", {fatal:true,ignoreBOM:true}).decode(encryptedBytes); }
+    catch (_) { throw Error("Original encrypted handoff has invalid UTF-8."); }
+    if (new TextEncoder().encode(envelopeText).length !== encryptedBytes.length) {
+      throw Error("Noncanonical encrypted source UTF-8.");
+    }
+    const packet = parseDuplicateSafeJson(envelopeText);
+    if (!sameKeys(packet, HANDOFF_KEYS) ||
+        envelopeText !== JSON.stringify(packet,null,2) + "\n" ||
+        packet.schema !== HANDOFF_SCHEMA || packet.posture !== "REVIEW_ONLY" ||
+        packet.cipher !== "AES-256-GCM" || packet.kdf !== "PBKDF2-SHA256" ||
+        packet.iterations !== HANDOFF_ROUNDS) {
+      throw Error("HOLD: unsupported or noncanonical original Casebook encryption packet.");
+    }
+    const salt = decode64(packet.salt_b64,16);
+    const iv = decode64(packet.nonce_b64,12);
+    const ciphertext = decode64(packet.ciphertext_b64);
+    let opened;
+    try {
+      const pwd = userPassword(false);
+      if (pwd === null) throw Error("Password entry canceled.");
+      const key = await privateKey(pwd,salt);
+      try {
+        opened = new Uint8Array(await globalThis.crypto.subtle.decrypt(
+          {name:"AES-GCM",iv,additionalData:new TextEncoder().encode(HANDOFF_PURPOSE),tagLength:128},
+          key,ciphertext));
+      } catch (_) {
+        throw Error("Wrong password, changed bytes or PRIVATE source authentication failed.");
+      }
+      if (opened.length > LIMIT + 100000) throw Error("Decrypted source exceeds human packet limit.");
+      let payloadText;
+      try { payloadText = new TextDecoder("utf-8",{fatal:true,ignoreBOM:true}).decode(opened); }
+      catch (_) { throw Error("Decrypted source is not UTF-8."); }
+      if (new TextEncoder().encode(payloadText).length !== opened.length) {
+        throw Error("Decrypted original Casebook handoff is not canonical UTF-8.");
+      }
+      const payload = parseDuplicateSafeJson(payloadText);
+      if (!sameKeys(payload,CONTENT_KEYS) ||
+          payloadText !== JSON.stringify(payload,null,2) + "\n" ||
+          payload.schema !== HANDOFF_SCHEMA || payload.posture !== "REVIEW_ONLY" ||
+          FALSE_AUTHORITY.some(k => payload[k] !== false) ||
+          typeof payload.source_raw !== "string" ||
+          new TextEncoder().encode(payload.source_raw).length > LIMIT ||
+          !/^[0-9a-f]{64}$/.test(payload.source_sha256) ||
+          !Array.isArray(payload.human_stages)) {
+        throw Error("HOLD: source or HUMAN metadata structure violates original private contract.");
+      }
+      if (await digestOfRaw(payload.source_raw) !== payload.source_sha256) {
+        throw Error("HOLD: original source byte fingerprint mismatch.");
+      }
+      const original = inspectOriginal(parseDuplicateSafeJson(payload.source_raw));
+      if (payload.human_stages.length !== original.case_overview.length) {
+        throw Error("HOLD: incomplete HUMAN source-bound cases.");
+      }
+      const restored = new Map();
+      for (let i = 0; i < payload.human_stages.length; i++) {
+        const record = payload.human_stages[i];
+        if (!sameKeys(record,["engagement_id","stage"]) ||
+            record.engagement_id !== original.case_overview[i].engagement_id ||
+            !Object.hasOwn(VALID_HUMAN,record.stage) ||
+            restored.has(record.engagement_id)) {
+          throw Error("HOLD: HUMAN labels do not belong to the exact original source cases.");
+        }
+        restored.set(record.engagement_id,record.stage);
+      }
+      return {parsed:original,fingerprint:payload.source_sha256,raw:payload.source_raw,stages:restored};
+    } finally {
+      salt.fill(0); iv.fill(0); ciphertext.fill(0); opened?.fill(0); encryptedBytes.fill(0);
+    }
   }
 
   function exportAggregate() {
@@ -1654,6 +1853,30 @@
     $("casebook-filter").addEventListener("input", renderCases);
     $("casebook-category").addEventListener("change", renderCases);
     $("casebook-aggregate").addEventListener("click", exportAggregate);
+    $("save-casebook-secure").addEventListener("click", saveEncryptedHandoff);
+    $("open-casebook-secure").addEventListener("click", () => $("casebook-secure-file").click());
+    $("casebook-secure-file").addEventListener("change", async event => {
+      const file = event.target.files[0]; event.target.value = "";
+      if (!file) return;
+      try {
+        const result = await openEncryptedHandoff(file);
+        if (!confirm("Replace original PRIVATE Casebook and local HUMAN labels with this decrypted, byte-bound package? This does NOT grant authorization or change your separate proposed scope.")) return;
+        source = result.parsed;
+        digestHex = result.fingerprint;
+        rawPrivateSource = result.raw;
+        human = result.stages;
+        $("casebook-filter").value = "";
+        $("casebook-category").value = "all";
+        $("casebook-selected").hidden = true;
+        $("casebook-selected").textContent = "";
+        renderCases();
+        show("Encrypted ORIGINAL Casebook + local HUMAN stages restored. SHA-256 " + digestHex +
+          ". No present-tense origin/consent/grant reauthenticated.");
+      } catch (e) {
+        show("PRIVATE ENCRYPTED SOURCE HOLD: " + e.message +
+          " Existing Casebook and human stages retained.", true);
+      }
+    });
     $("casebook-file").addEventListener("change", async (event) => {
       const file = event.target.files[0]; event.target.value = "";
       if (!file) return;
@@ -1664,6 +1887,7 @@
         }
         source = result.parsed;
         digestHex = result.fingerprint;
+        rawPrivateSource = result.raw;
         human.clear();
         $("casebook-selected").hidden = true;
         $("casebook-selected").textContent = "";
@@ -1740,9 +1964,10 @@
 <div class="table-wrap"><table><thead><tr><th>Human-entered target</th><th>Proposed included rows</th><th>Explicit exclusions</th><th>Human-only conclusion</th></tr></thead><tbody id="membership-result"></tbody></table></div>
 </section>
 <section class="section" id="source-casebook-section" aria-labelledby="casebook-heading">
-<div class="actions"><h2 id="casebook-heading">04 / Original Casebook source review — PRIVATE / read-only</h2><button id="choose-casebook" class="primary right" type="button">Open original PRIVATE Casebook JSON</button><button id="clear-casebook" type="button">Clear source from memory</button></div>
+<div class="actions"><h2 id="casebook-heading">04 / Original Casebook source review — PRIVATE / read-only</h2><button id="choose-casebook" class="primary right" type="button">Open original PRIVATE Casebook JSON</button><button id="save-casebook-secure" type="button">Save encrypted PRIVATE source + HUMAN stages</button><button id="open-casebook-secure" type="button">Open encrypted PRIVATE source + HUMAN stages</button><button id="clear-casebook" type="button">Clear source from memory</button></div>
 <p class="muted">Independent offline view of an existing <code>lightup.auth_casebook.v1</code> exported through the original credential-backed, read-only Casebook CLI. Importing a file here does NOT reauthenticate the source producer, original tenant, client consent, operator consent or revocation. All six source authority flags must remain false. No original database, network, scanner or grant is accessed.</p>
 <input id="casebook-file" type="file" accept=".json,application/json" hidden>
+<input id="casebook-secure-file" type="file" accept=".lucb,application/json" hidden>
 <div id="casebook-import-status" class="notice" role="status">No original source loaded. Your proposed scope is independent and NOT AUTHORIZED.</div>
 <div class="stats"><div class="stat"><strong id="casebook-engagement-count">0</strong><span>Source engagements</span></div><div class="stat"><strong id="casebook-grant-hold-count">0</strong><span>Grant linkage HOLDs</span></div><div class="stat"><strong id="casebook-risk-review-count">0</strong><span>Risk source reviews</span></div><div class="stat"><strong id="casebook-case-attention-count">0</strong><span>HOLD case overviews</span></div></div>
 <div class="actions"><label class="filter">Filter source cases <input id="casebook-filter" placeholder="Search local source case ID or attention" autocomplete="off"></label><label class="filter">Source attention <select id="casebook-category"><option value="all">All</option><option value="hold">HOLD only</option><option value="risk">Risk-review cases</option><option value="other">Other review</option></select></label><button id="casebook-aggregate" type="button">Export source-free HUMAN counts</button></div>
