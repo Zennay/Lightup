@@ -103,7 +103,9 @@ python3 scope-current-bundle/recipient_exchange.py reconcile \
   PRIVATE/reply-team-1.csv [PRIVATE/reply-team-2.csv ...]
 ```
 
-Output is a PRIVATE scriptless source-owner triage HTML and a PRIVATE proposed-response CSV including original paths for **owner-only manual decisions**. There is a separate **source-minimized count report**; it can still reveal membership in small cohorts and must not be treated as formally anonymous. **Nothing is auto-accepted into the original HUMAN worksheet**, original review history, domain/grants, target state, real recipient identity, actual consent or revocation. Use the unchanged local HUMAN workflow to explicitly review and record any subsequent human state decisions.
+Output now includes **two complete PRIVATE source-owner interfaces**: `PRIVATE-HUMAN-proposals.html` is scriptless source-rich triage; `PRIVATE-HUMAN-owner-decisions.html` is a **CSP SHA-256 pinned standalone interactive original-owner workroom**. The owner can filter all original source rows or only replies, inspect source-rich proposed stage/PRIVATE note, independently **retain or explicitly adopt** each recipient's *HUMAN stage only*, edit their own original PRIVATE notes and export a new complete original-manifest-byte-bound `LightUp-PRIVATE-owner-selected-HUMAN-draft.csv`. The recipient note is shown for review but **not silently copied into** the original HUMAN notes; existing original source bytes and permission fields remain untouched. No automatic acceptance on import.
+
+The CLI also produces the PRIVATE original-path-specific response CSV and an independent **source-minimized count report**; counts can still reveal membership in small cohorts and must not be called formally anonymous. **Nothing is auto-accepted into the original HUMAN worksheet**, original review history, domain/grants, target state, real recipient identity, actual consent or revocation. The owner must explicitly export the new HUMAN draft (and may subsequently use the unchanged `human_followup.py` or `review_history.py` workflows). The owner stage decision is not a LightUp authorization or security clearance.
 
 ## Fail-closed build and immutability
 
