@@ -417,6 +417,25 @@ The existing original owner/private read guards and 0700/0600 write guards
 are reused; no tests/QA or actual scans, grants, scheduling, dispatch or
 deployment are part of this workflow.
 
+## NEW: original Lab HUMAN review history and team feedback (console 59–61)
+
+See [the complete PRIVATE original Lab HUMAN operator journey](LAB-HUMAN-CONTINUITY.md).
+New **59** compares 2–8 distinct original finalized HUMAN review rooms against
+the same original source-owning Lab Launchpad packets, showing exact declared
+stage/team transitions, continuous HUMAN HOLD/NEEDS_INPUT and
+private-question-changed flags, never original free-text question content or
+lab URLs. New **60** prepares private **team-only** scriptless workrooms plus
+separately editable source-bound 0600 HUMAN CSV per manually assigned team,
+and a local operator-only directory. New **61** admits exactly one assigned
+team's 0600 returned CSV after re-admitting the original Lab Launchpad
+source/Studio, FINAL HUMAN rows and strict handoff manifest. Its full
+PRIVATE HUMAN candidate may be manually reopened in existing **58** for
+subsequent deliberate review; original FINAL state and other teams remain
+unchanged. No recipient authenticated, no silent auto-merge, scan, grant,
+incident verification, client permission, network, model, real appointment,
+deployment, source-owner acceptance, independent privacy/security/browser
+approval or HUMAN GO implied. Original 0700/0600 custody mandatory.
+
 ## NEW: original-policy Lab Launchpad integrated into the foreground console
 
 **Original source-owner feature issue #1633 / PR #1634, without duplicating
