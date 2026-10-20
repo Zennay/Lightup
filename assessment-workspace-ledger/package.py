@@ -22,9 +22,10 @@ ROOT = Path(__file__).resolve().parent
 PREFIX = "LightUp-Workspace-Ledger/"
 NAMES = (
     "README.md", "ledger.py", "browser_studio.py", "compare.py", "continuity.py",
-    "console.py", "human_revisions.py", "browser_intake.py", "history.py", "history_human.py", "history_studio.py", "package.py", "standalone.html",
+    "console.py", "human_revisions.py", "browser_intake.py", "history.py", "history_human.py", "history_studio.py",
+    "history_team.py", "history_team_browser.py", "package.py", "standalone.html",
 )
-SCHEMA = "lightup.private.workspace-ledger-software.v12"
+SCHEMA = "lightup.private.workspace-ledger-software.v13"
 FLAGS = {
     "authorization": False, "consent": False,
     "verified_finding": False, "release_approval": False,
