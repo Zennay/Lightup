@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="dark">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; base-uri 'none'; object-src 'none'; frame-src 'none'; form-action 'none'; connect-src 'none'; img-src 'none'; style-src 'sha256-kmqAcMTIRRi/9LZerTbMpPVJR1xIS1sDERjWT4GkvWI='; script-src 'sha256-bd3Q1SFyvIai20FMPzDzrucP27+jFHpNmB43umKdvyA=';">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; base-uri 'none'; object-src 'none'; frame-src 'none'; form-action 'none'; connect-src 'none'; img-src 'none'; style-src 'sha256-kmqAcMTIRRi/9LZerTbMpPVJR1xIS1sDERjWT4GkvWI='; script-src 'sha256-WRDJi2Wgc2DYCd31WJZhBzrA3zyGhU76vNL1BYqxGoA=';">
 <title>LightUp — PRIVATE handoff-shelf</title>
 <style>/* Embedded by build.py and locked to its exact SHA-256 CSP digest. */
 :root{font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#e8edf2;background:#0a1018;font-synthesis:none;-webkit-font-smoothing:antialiased}
@@ -1189,9 +1189,14 @@ const LightUpPrivateDrift = (() => {
       for (const item of items) {
         const key = item.file.name.normalize("NFC").toLowerCase();
         const rawA = a.get(key), rawB = b.get(key);
-        const x = sourceEqual(rawA,item) ? rawA : null;
-        const y = sourceEqual(rawB,item) ? rawB : null;
-        if ((rawA && !x) || (rawB && !y)) changed++;
+        const exactA = sourceEqual(rawA,item) ? rawA : null;
+        const exactB = sourceEqual(rawB,item) ? rawB : null;
+        // Different original bytes in EITHER packet fence both reviewers:
+        // do not cherry-pick one proposal from an incoherent paired source.
+        const mismatchedSource = !!((rawA && !exactA) || (rawB && !exactB));
+        const x = mismatchedSource ? null : exactA;
+        const y = mismatchedSource ? null : exactB;
+        if (mismatchedSource) changed++;
         const partialNote = !!(x && y && humanRouteEqual(x,y) &&
           x.private_note_included !== y.private_note_included);
         const conflicting = !!(x && y && !partialNote && !humanEqual(x,y));
@@ -1203,7 +1208,7 @@ const LightUpPrivateDrift = (() => {
         decisions.push(entry);
         const tr = document.createElement("tr");
         cell(tr,item.file.name,"file-name");
-        cell(tr,(rawA&&!x)||(rawB&&!y) ? "CHANGED / NO COPY" :
+        cell(tr,mismatchedSource ? "BRON AFWIJKEND / GEEN VAN BEIDE" :
           conflicting ? "CONFLICT / HUMAN KEUZE" :
           partialNote ? "NOTITIE-DEKKING ONBEKEND / HUMAN KEUZE" :
           x&&y ? "EENSGEZIND / ONGETEKEND" :
