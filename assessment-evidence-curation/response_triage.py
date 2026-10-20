@@ -20,6 +20,7 @@ from response import (accepted_original, admit_response_binding,
                       admit_returned_reply, csv_template)
 from recipient_studio import render_studio
 from revision import private_frame
+from triage_studio import render_studio
 
 SCHEMA = "lightup.private_human_recipient_triage.v1"
 HEADER = (
@@ -66,7 +67,7 @@ def triage_template(notes: list[dict]) -> bytes:
 
 def binding_fields(source_sha: str, worksheet_sha: str,
                    selection_sha: str, response_sha: str,
-                   template_sha: str, note_count: int) -> dict:
+                   template_sha: str, note_count: int, studio_sha: str) -> dict:
     return {
         "schema": SCHEMA, "status": "REVIEW_ONLY",
         "original_source_sha256_unsigned": source_sha,
@@ -75,6 +76,7 @@ def binding_fields(source_sha: str, worksheet_sha: str,
         "original_recipient_response_sha256_unsigned": response_sha,
         "original_blank_triage_template_sha256_unsigned": template_sha,
         "human_recipient_question_count": note_count,
+        "private_sender_triage_studio_sha256_unsigned": studio_sha,
         **UNVERIFIED,
     }
 
@@ -173,10 +175,12 @@ def prepare(source: str, manifest: str, worksheet: str, receipt: str,
         source, manifest, worksheet, receipt, selection, binding, reply
     )
     template = triage_template(notes)
+    browser = render_studio(notes)
     metadata = binding_fields(source_sha, worksheet_sha, selection_sha,
-                              digest(reply_raw), digest(template), len(notes))
+                              digest(reply_raw), digest(template), len(notes), digest(browser))
     publish_new(destination, {
         "PRIVATE-sender-triage-template.csv": template,
+        "PRIVATE-sender-triage-browser.html": browser,
         "PRIVATE-sender-triage-binding.json": json_bytes(metadata),
         "PRIVATE-sender-triage-instructions.html": private_frame(
             "PRIVATE HUMAN sender triage instructions",
@@ -204,7 +208,8 @@ def finish(source: str, manifest: str, worksheet: str, receipt: str,
     )
     template = triage_template(notes)
     expected = binding_fields(source_sha, worksheet_sha, selection_sha,
-                              digest(reply_raw), digest(template), len(notes))
+                              digest(reply_raw), digest(template), len(notes),
+                              digest(render_studio(notes)))
     read_binding(read_limited_file(triage_binding, MAX_RECEIPT_BYTES), expected)
     triage_bytes = read_limited_file(triage_csv, MAX_CSV_BYTES)
     final = read_triage(triage_bytes, notes)
