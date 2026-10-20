@@ -67,7 +67,8 @@
     return rows.slice(1);
   }
   function safeText(value) {
-    return typeof value === "string" && value.length <= 1200 && !/[\u0000-\u001f\u007f]/u.test(value);
+    return typeof value === "string" && value.length <= 1200 && !/[\u0000-\u001f\u007f]/u.test(value) &&
+           !/^[\s]*[=+\-@]/u.test(value);
   }
   function validateReceipt(value) {
     ensure(value && typeof value === "object" && !Array.isArray(value));
