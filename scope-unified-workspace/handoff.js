@@ -935,6 +935,96 @@
       busy = false; peerInput.disabled = false; input.disabled = false;
     }
   });
+  peerAgenda.addEventListener("click", () => {
+    const plan = peerPreview;
+    if (!plan || busy) return report("HOLD — er is geen actuele bronexacte HUMAN bespreeklijst.");
+    if (plan.epoch !== generation || plan.revision !== humanRevision) {
+      discardPeerPreview();
+      return report("HOLD — HUMAN bron/reviewrevisie gewijzigd; agenda niet gemaakt.");
+    }
+    const attention = plan.decisions.filter(d => d.mismatch || d.conflicting ||
+      d.noteUncertain || d.proposalCount < plan.counts.packets);
+    if (!confirm("Download PRIVATE HUMAN bespreekagenda voor ALLE "+plan.decisions.length+
+      " oorspronkelijke bronnen, inclusief "+attention.length+" aandachtspunten, originele bestandsnamen, SHA-256 en alle packet-digests? "+
+      "Dit bevat geen originele bronbytes of PRIVATE notitietekst. Filters worden niet stilzwijgend toegepast. "+
+      "Verifieer de vertrouwelijke ontvanger en het kanaal zelf; nooit consent of grant.")) return;
+    // Unfiltered, source-bound private HUMAN meeting docket. All entries are
+    // serialized via JSON inside Markdown code fences, not rendered as active HTML.
+    const rank = d => d.mismatch ? 0 : d.conflicting ? 1 :
+      d.noteUncertain ? 2 : d.proposalCount < plan.counts.packets ? 3 : 4;
+    const order = [...plan.decisions].sort((a,b) => rank(a)-rank(b));
+    const humanRecord = row => row ? {
+      human_team:row.human_team, human_stage:row.human_stage,
+      human_route:row.human_route, private_note_included:row.private_note_included
+    } : null;
+    const agenda = [
+      "# LightUp — PRIVATE HUMAN review-bespreekagenda",
+      "",
+      "**REVIEW_ONLY · INCUBATE M3/M7 · DRAFT/HOLD · geen autorisatie of scannerrecht.**",
+      "",
+      "Vereist: afzonderlijk gecontroleerde bronhouder, echte actuele client/operatorconsent, "+
+        "revocation-at-use, originele CI/review en expliciete HUMAN GO; dit document vervangt niets daarvan.",
+      "",
+      "Deze export bevat vertrouwelijke oorspronkelijke namen, SHA-256 en menschlijke team/route/fase-keuzes.",
+      "PRIVATE notitieteksten en oorspronkelijke bronbytes ontbreken. "+
+        "Gelijke ongetekende voorstellen bewijzen geen onafhankelijke revieweridentiteit of consent.",
+      "Tabel- en zoekfilters zijn NIET op deze complete agenda toegepast.",
+      "",
+      "## Ontvangen ongetekende HUMAN pakketten (lokale volgorde)",
+      "",
+      "```json",
+      JSON.stringify(plan.packetBytes,null,2),
+      "```",
+      "",
+      "## Bronvrije triageaantallen",
+      "",
+      "```json",
+      JSON.stringify(plan.counts,null,2),
+      "```",
+      "",
+      "## Alle oorspronkelijke dossiers op bespreekprioriteit",
+      ""
+    ];
+    for (const [idx,d] of order.entries()) {
+      const originallySelected = d.choice >= 0 ? d.allowed[d.choice] : null;
+      const entry = {
+        original_source:{
+          name:d.item.file.name,
+          byte_length:d.item.file.size,
+          unsigned_sha256:d.item.hash,
+          structural_kind_unverified:d.item.inspection.kind
+        },
+        human_status:d.state,
+        present_proposals:d.proposalCount,
+        reviewed_packet_count:plan.counts.packets,
+        fenced_all_reviewers:d.mismatch,
+        local_human_before:{
+          human_team:d.item.team,human_stage:d.item.stage,human_route:d.item.route,
+          private_note_present:d.item.note.length>0
+        },
+        human_packets:d.allowed.map((row,index) => ({
+          local_packet_number:index+1,review:humanRecord(row)
+        })),
+        explicit_choice:d.choice < 0 ? "NIETS OVERNEMEN" : "PAKKET "+(d.choice+1),
+        chosen_human_after:humanRecord(originallySelected),
+        no_execution_authority:true
+      };
+      agenda.push("### Dossier "+(idx+1)+" — "+d.state,"",
+        "```json",JSON.stringify(entry,null,2),"```","");
+    }
+    agenda.push("## HUMAN afhandelpunten", "",
+      "1. Leg apart de ontvanger en oorspronkelijke broneigenaar vast; hashes tonen alleen bytes.",
+      "2. Los conflicten en afgeschermde notities afzonderlijk buiten dit document op.",
+      "3. Bepaal per bron opnieuw de handmatige HUMAN keuze; geen bulkautorisatie.",
+      "4. Deel alleen via vertrouwd PRIVATE kanaal. Geen oorspronkelijke bronbestandbytes opgenomen.",
+      "5. Bestaande echte toestemming, grant, revocation, security review en CI blijven gescheiden.",
+      "");
+    download(new Blob([agenda.join("\n")],{type:"text/markdown;charset=utf-8"}),
+      "lightup-scope-PRIVATE-HUMAN-multi-peer-review-agenda.md");
+    report("REVIEW_ONLY — PRIVATE brongebonden HUMAN bespreekagenda met "+
+      order.length+" oorspronkelijke dossiers lokaal gedownload. Geen bronbytes, notitietekst of toestemming.");
+  });
+
   el("shelf-peer-summary-export").addEventListener("click", () => {
     const plan = peerPreview;
     if (!plan) return report("HOLD — eerst een actuele PRIVATE vergelijking maken.");
