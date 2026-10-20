@@ -81,8 +81,9 @@ def private_page(source: dict, fingerprint: str, start: int, end: int,
         "<p class='notice'>REVIEW ONLY: source declarations are not authenticated " +
         "findings, genuine client/operator permission, verified remediation, " +
         "executed work or an approved release.</p>" +
-        "<p><strong>Original ordinal interval:</strong> #" + str(start+1) +
-        "–#" + str(end) + " of " + str(len(source["findings"])) +
+        "<p><strong>Original ordinal interval:</strong> " +
+        (("#" + str(start+1) + "–#" + str(end)) if end > start else "none") +
+        " of " + str(len(source["findings"])) +
         "</p><p><strong>Original PRIVATE source SHA-256 (UNSIGNED):</strong> <code>" +
         fingerprint + "</code></p>" +
         "<p>Source target strings, evidence and finding descriptions in this page " +
