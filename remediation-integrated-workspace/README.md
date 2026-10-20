@@ -478,3 +478,15 @@ page and installed start page are software/UI only: linked original modules
 require the complete, separately installed, pinned PRIVATE suite to exist.
 No release/authorization decision, CI bypass or original source-owner code
 change is implied by this delivery.
+
+### Context-aware local links, without external dependencies
+
+The standalone start.html lives in the checked-out integration source
+folder and uses repo-relative links to original modules one directory up;
+the embedded operator.html remains in the same folder. The installed
+software-only suite publishes the same scriptless landing through its
+root-level index.html and uses installed-suite-relative links instead.
+Both layouts retain an exact local native user guide link; neither attempts
+remote fallback or silently assumes source checkout has been installed.
+Original native installed-software receiver always compares its root
+index.html against the exact locally bundled default rendering.

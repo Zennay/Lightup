@@ -34,18 +34,21 @@ DOCS = (
     ("Oorspronkelijke ontvanger en tijdlijn", "remediation-recipient-trend/README.md"),
 )
 
-def render() -> bytes:
+def render(standalone: bool = False) -> bytes:
+    # Standalone start.html lives one directory BELOW the installed root layout.
+    prefix = "../" if standalone else ""
+    docs_link = "README.md" if standalone else "remediation-integrated-workspace/README.md"
     cards = "\n".join(
         '<article class="module"><div class="no">' + html.escape(num) +
-        '</div><h3><a href="' + html.escape(link, quote=True) + '">' +
+        '</div><h3><a href="' + html.escape(link if link == "operator.html" else prefix + link, quote=True) + '">' +
         html.escape(title) + '</a></h3><p class="topic">' +
         html.escape(topic) + '</p><p>' + html.escape(description) +
-        '</p><a class="textlink" href="' + html.escape(link, quote=True) +
+        '</p><a class="textlink" href="' + html.escape(link if link == "operator.html" else prefix + link, quote=True) +
         '">Open lokale module <span aria-hidden="true">↗</span></a></article>'
         for num, title, link, topic, description in MODULES
     )
     links = "\n".join(
-        '<li><a href="' + html.escape(link, quote=True) +
+        '<li><a href="' + html.escape(link if link == "operator.html" else prefix + link, quote=True) +
         '">' + html.escape(title) + '</a></li>'
         for title, link in DOCS
     )
@@ -108,7 +111,7 @@ h2{font-size:1.7rem;letter-spacing:-.04em;margin:0 0 16px}
 <p>Een volledige offline werkruimte voor oorspronkelijke bewijsvoering, handmatige herstelplanning,
 bronvrije overdracht en privé HUMAN-opvolging. Er worden geen klanten, targets of netwerken benaderd.</p>
 <div class="hero-actions"><a class="primary" href="operator.html">Open offline operatorstudio →</a>
-<a class="secondary" href="remediation-integrated-workspace/README.md">Bekijk de native handleiding</a></div>
+<a class="secondary" href='""" + docs_link + """'>Bekijk de native handleiding</a></div>
 </div>
 <aside class="hold" role="note"><strong>INCUBATE · M3/M7 PLAN/LAB ONLY · DRAFT/HOLD</strong>
 Dit is uitsluitend broncode/software voor PRIVATE HUMAN-opvolging, geen werkende assessmentdienst en
@@ -145,4 +148,4 @@ Deze pagina gebruikt geen scripts, cookies, opslag, externe lettertypen, netwerk
 
 if __name__ == "__main__":
     import sys
-    sys.stdout.buffer.write(render())
+    sys.stdout.buffer.write(render(standalone=True))
