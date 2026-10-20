@@ -375,6 +375,110 @@
     lastBulk=null;dirty=true;page=0;render();
     message("Selected HUMAN proposals applied locally only. No original source, grant or evidence changed.");
   }
+  /* Optional PRIVATE local encrypted HUMAN-only CSV. No source/auth/consent claims. */
+  const VAULT_SCHEMA="lightup.private_human_ordinal_csv_v1";
+  const VAULT_CONTEXT=new TextEncoder().encode("LIGHTUP PRIVATE HUMAN ORDINAL CSV v1 / REVIEW ONLY");
+  const VAULT_FIELDS=["schema","status","kdf","iterations","cipher","salt_b64",
+    "nonce_b64","encrypted_csv_b64","source_authenticated","human_identity_authenticated",
+    "consent_verified","authorization_granted","dispatch_allowed","release_allowed"];
+  function cryptoReady() {
+    need(!!(globalThis.crypto&&crypto.subtle&&crypto.getRandomValues));
+  }
+  function toB64(bytes) {
+    let str="";
+    for(let i=0;i<bytes.length;i+=8192)
+      str+=String.fromCharCode(...bytes.subarray(i,i+8192));
+    return btoa(str);
+  }
+  function fromB64(text,max) {
+    need(typeof text==="string" && text.length<=Math.ceil(max/3)*4+4 &&
+      /^[A-Za-z0-9+/]*={0,2}$/.test(text) && text.length%4===0);
+    let raw;
+    try{raw=atob(text);}catch(_){need(false);}
+    need(raw.length<=max);
+    const bytes=Uint8Array.from(raw,c=>c.charCodeAt(0));
+    need(toB64(bytes)===text);
+    return bytes;
+  }
+  async function deriveKey(password,salt) {
+    cryptoReady();
+    need(typeof password==="string" && password.length>=12&&password.length<=256);
+    const base=await crypto.subtle.importKey("raw",new TextEncoder().encode(password),
+      "PBKDF2",false,["deriveKey"]);
+    return crypto.subtle.deriveKey({name:"PBKDF2",salt,iterations:310000,hash:"SHA-256"},
+      base,{name:"AES-GCM",length:256},false,["encrypt","decrypt"]);
+  }
+  async function saveEncrypted() {
+    if (!rows.length) {message("Open a PRIVATE human worksheet first.",true);return;}
+    const pass=$("encryptPass").value,repeated=$("encryptPassConfirm").value;
+    try {
+      cryptoReady();
+      need(pass===repeated && pass.length>=12 && pass.length<=256);
+      const originalBytes=new TextEncoder().encode(csvOut());
+      need(originalBytes.byteLength<=MAX_BYTES);
+      if (!confirm("Encrypt the current PRIVATE HUMAN worksheet locally? Password loss means permanent loss of access. This encryption does NOT authenticate original findings or grant authority.")) return;
+      const salt=crypto.getRandomValues(new Uint8Array(16));
+      const nonce=crypto.getRandomValues(new Uint8Array(12));
+      const key=await deriveKey(pass,salt);
+      const encrypted=new Uint8Array(await crypto.subtle.encrypt(
+        {name:"AES-GCM",iv:nonce,additionalData:VAULT_CONTEXT,tagLength:128},
+        key,originalBytes));
+      const packet={schema:VAULT_SCHEMA,status:"REVIEW_ONLY",kdf:"PBKDF2-HMAC-SHA256",
+        iterations:310000,cipher:"AES-256-GCM",salt_b64:toB64(salt),
+        nonce_b64:toB64(nonce),encrypted_csv_b64:toB64(encrypted),
+        source_authenticated:false,human_identity_authenticated:false,
+        consent_verified:false,authorization_granted:false,
+        dispatch_allowed:false,release_allowed:false};
+      download("lightup-private-human-worksheet.luhw",JSON.stringify(packet,null,2)+"\n",
+        "application/json");
+      dirty=false;render();
+      message("Encrypted HUMAN-only CSV downloaded. PRIVATE passphrase is not recoverable. Original lab source is NOT included.");
+    } catch(_){message("Encrypted export unavailable or refused (HOLD). No output published.",true);}
+    finally {$("encryptPass").value="";$("encryptPassConfirm").value="";}
+  }
+  async function loadEncrypted() {
+    const input=$("encryptedInput"),file=input.files[0],pass=$("decryptPass").value;
+    try{
+      cryptoReady();
+      need(file&&file.size>0&&file.size<=2*1024*1024);
+      need(pass.length>=12&&pass.length<=256);
+      const outer=new TextDecoder("utf-8",{fatal:true}).decode(await file.arrayBuffer());
+      const envelope=JSON.parse(outer);
+      need(envelope&&typeof envelope==="object"&&!Array.isArray(envelope) &&
+        Object.keys(envelope).sort().join(",")===VAULT_FIELDS.slice().sort().join(","));
+      // Strict canonical serializer also rejects duplicate top-level keys and
+      // all unrecognized/alternate JSON representations before cryptography.
+      need(outer===JSON.stringify(envelope,null,2)+"\n");
+      need(envelope.schema===VAULT_SCHEMA&&envelope.status==="REVIEW_ONLY"&&
+        envelope.kdf==="PBKDF2-HMAC-SHA256"&&envelope.iterations===310000&&
+        envelope.cipher==="AES-256-GCM");
+      need(["source_authenticated","human_identity_authenticated","consent_verified",
+        "authorization_granted","dispatch_allowed","release_allowed"]
+        .every(flag=>envelope[flag]===false));
+      const salt=fromB64(envelope.salt_b64,16),
+            nonce=fromB64(envelope.nonce_b64,12),
+            encrypted=fromB64(envelope.encrypted_csv_b64,MAX_BYTES+16);
+      need(salt.length===16&&nonce.length===12&&encrypted.length>=16);
+      const key=await deriveKey(pass,salt);
+      const raw=await crypto.subtle.decrypt(
+        {name:"AES-GCM",iv:nonce,additionalData:VAULT_CONTEXT,tagLength:128},
+        key,encrypted);
+      need(raw.byteLength>0&&raw.byteLength<=MAX_BYTES);
+      const plaintext=new TextDecoder("utf-8",{fatal:true}).decode(raw);
+      const admitted=admit(parseCSV(plaintext));
+      if (dirty && !confirm("Replace unsaved PRIVATE HUMAN edits with decrypted worksheet?"))return;
+      discardReply("Incoming proposal cleared for newly opened encrypted original HUMAN worksheet.");
+      rows=admitted;originalName=file.name;sourceSize=file.size;dirty=false;lastBulk=null;page=0;
+      $("severityFilter").value="all";$("stageFilter").value="all";
+      $("query").value="";$("groupFilter").value="all";
+      $("workroom").hidden=false;
+      $("sourceName").textContent=file.name;
+      $("sourceStatus").textContent=rows.length+
+        " ordinal HUMAN entries decrypted in browser memory. Original targets/evidence not included. Producer and consent not authenticated.";
+      render();message("PRIVATE encrypted HUMAN worksheet admitted in memory. No source, client or operator authority proved.");
+    }catch(_){message("Encrypted file refused (HOLD): wrong password, unsupported envelope, invalid original format or crypto unavailable. Existing local data retained.",true);}
+    finally{$("decryptPass").value="";input.value="";}
+  }
   $("load").addEventListener("click",async()=>{
     try{await importFile($("fileInput").files[0]);}
     catch(_){message("PRIVATE worksheet rejected (HOLD); existing in-memory work retained.",true);}
@@ -410,6 +514,8 @@
   });
   $("acceptReply").addEventListener("click",applyReply);
   $("discardReply").addEventListener("click",()=>discardReply());
+  $("saveEncrypted").addEventListener("click",saveEncrypted);
+  $("loadEncrypted").addEventListener("click",loadEncrypted);
   addEventListener("beforeunload",e=>{if (dirty){e.preventDefault();e.returnValue="";}});
   message("Load an existing PRIVATE original ordinal worksheet. Nothing is uploaded or stored by this application.");
 })();
