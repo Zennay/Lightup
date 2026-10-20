@@ -70,17 +70,31 @@ def _read_diff(raw: bytes) -> list[dict]:
 
 
 def inspect(packets: list[str], final_room: str, handoff_room: str,
-            prior_batch: str, continued_room: str) -> dict:
-    # Original source and the PRIOR saved batch must still fully re-admit.
+            prior_batch: str, continued_room: str,
+            *, prior_continuations: tuple[str, ...] = ()) -> dict:
+    if (type(prior_continuations) is not tuple or len(prior_continuations) > 6
+            or len(set(prior_continuations)) != len(prior_continuations)
+            or continued_room in prior_continuations):
+        raise privacy.Hold("HOLD: 0–6 distinct earlier original HUMAN continuations required")
+    # Re-admit the entire immutable source lineage, earliest first.
     original_reopen.inspect(packets, final_room, handoff_room, prior_batch)
-    parent = lab_plans._packet(prior_batch)
+    if prior_continuations:
+        for index, earlier in enumerate(prior_continuations):
+            inspect(packets, final_room, handoff_room, prior_batch, earlier,
+                    prior_continuations=prior_continuations[:index])
+    parent = lab_plans._packet(
+        prior_continuations[-1] if prior_continuations else prior_batch)
     current = lab_plans._packet(continued_room)
     if parent == current or parent in current.parents or current in parent.parents:
         raise privacy.Hold("HOLD: saved original HUMAN rooms must remain distinct")
     originals, fingerprint = lab_plan_review._source_rows(packets)
     final = lab_review_history._admit_final(final_room, originals, fingerprint)
+    prior_name = ("PRIVATE-HUMAN-CONTINUED-CANDIDATE.csv"
+                  if prior_continuations else "PRIVATE-HUMAN-CANDIDATE.csv")
+    prior_receipt = ("PRIVATE-HUMAN-CONTINUATION-RECEIPT.json"
+                     if prior_continuations else "PRIVATE-HUMAN-MULTITEAM-RECEIPT.json")
     existing = lab_plan_review._rows_admit(
-        originals, str(parent / "PRIVATE-HUMAN-CANDIDATE.csv"))
+        originals, str(parent / prior_name))
     available = batch._selected_manifest(lab_plans._packet(handoff_room),
                                          final, fingerprint)
     receipt = workpack_progress._private_receipt(
@@ -104,9 +118,8 @@ def inspect(packets: list[str], final_room: str, handoff_room: str,
             or any(type(receipt["authority"][k]) is not bool or
                    receipt["authority"][k] is not False for k in privacy.AUTHORITY)):
         raise privacy.Hold("HOLD: original PRIVATE HUMAN continuation receipt rejected")
-    old_receipt = original_reopen._read(
-        parent, "PRIVATE-HUMAN-MULTITEAM-RECEIPT.json")
-    old_candidate = original_reopen._read(parent, "PRIVATE-HUMAN-CANDIDATE.csv")
+    old_receipt = original_reopen._read(parent, prior_receipt)
+    old_candidate = original_reopen._read(parent, prior_name)
     if (receipt["prior_receipt_sha256_unsigned"] != sha256(old_receipt).hexdigest()
             or receipt["prior_candidate_sha256_unsigned"] !=
             sha256(old_candidate).hexdigest()):
@@ -232,13 +245,16 @@ def main(argv: list[str] | None = None) -> int:
     cli.add_argument("--handoff-room", required=True)
     cli.add_argument("--prior-batch", required=True)
     cli.add_argument("--continued-room", required=True)
+    cli.add_argument("--prior-continuation", action="append", default=[])
+
     cli.add_argument("--human-confirm", required=True)
     args = cli.parse_args(argv)
     try:
         if args.human_confirm != "REOPEN PRIVATE LAB HUMAN CONTINUATION":
             raise privacy.Hold("HOLD: manual original-source read-only reopen required")
         data = inspect(args.packet, args.final_room, args.handoff_room,
-                       args.prior_batch, args.continued_room)
+                       args.prior_batch, args.continued_room,
+                       prior_continuations=tuple(args.prior_continuation))
         print("PRIVATE REVIEW_ONLY: original prior HUMAN source and continuation re-admitted")
         print("NEW REPLIES:", data["new_team_replies"])
         print("CONFLICT-WITHHELD TEAMS:", data["conflict_withheld_team_replies"])
