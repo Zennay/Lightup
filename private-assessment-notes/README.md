@@ -569,3 +569,19 @@ The original blank \`PRIVATE-manual-mask-rules.json\` remains available for
 manual text editing without JavaScript; its empty placeholders must be filled
 or removed before native processing. \`mask-copy\` still rejects all unsafe,
 overlapping, stale, unmatched, ambiguous or unauthorized inputs.
+
+### Reopen an unfinished manual-masking request, without retyping secrets
+
+The fully offline masking board now also supports **Reopen original locally
+exported PRIVATE masking rules (.json)**. It accepts only its OWN canonical
+complete browser-exported JSON (up to 64 KiB), with the exact previously
+completed original packet manifest SHA, original complete HUMAN decisions SHA,
+source positions, source SHA identities, source-by-source short literal rules
+and all false-authority fields intact. It first validates every row and
+requires a separate HUMAN confirmation, then replaces only the unsaved local
+browser editor fields. On any mismatch or cancellation, the current unsaved
+fields remain intact. The native \`mask-copy\` command still independently
+reopens the original completed source packet; a browser resume is **not**
+trusted source, verified masking, file authorization or consent. Imported and
+exported rule JSON contains original sensitive literal strings and must remain
+owner-private; never upload or share it.
