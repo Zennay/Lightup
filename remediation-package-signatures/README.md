@@ -175,6 +175,94 @@ All CLI successes intentionally exit 2 (**REVIEW_ONLY**), not 0. Run the pack
 and receive commands separately; a shell chain with && will stop at the pack's
 2 even though the handoff file was created. Failures HOLD with exit 3.
 
+## Complete HUMAN operator desk: trusted keys → PRIVATE software inbox
+
+The previous workflows can now be operated through one foreground, offline
+menu. This is **review-only** and has no scanner, model, HTTP, login, consent,
+grant, remediation or deploy capability.
+
+First prepare your own *new* 0700 directory (private, not inside Git). Any
+keys used in the earlier synthetic VPS example are disposable and do not
+establish trustworthy real-world identity.
+
+    mkdir -m 700 /ABSOLUTE/OWNER/PRIVATE/custody-workroom
+
+Then launch the local operator console:
+
+    python3 remediation-package-signatures/operator_desk.py \
+      --workdir /ABSOLUTE/OWNER/PRIVATE/custody-workroom
+
+The six menu actions create an owner-only local trust registry, register an
+Ed25519 public key ONLY after manual out-of-band fingerprint confirmation,
+list local trust with revoked markers, admit 1–12 selected source-only
+portable ZIPs, reopen an existing inbox against **current** key state and the
+original LightUp source-lock inspector, and permanently revoke a registered
+signer. Everything runs in the **foreground**; the menu never automatically
+browses, executes software or sends a file.
+
+Equivalent direct commands are available for scripting an explicitly human
+approved **offline** workflow. Success always exits 2 REVIEW_ONLY:
+
+    python3 remediation-package-signatures/trust_registry.py init \
+      --directory /ABSOLUTE/OWNER/PRIVATE/custody-workroom/local-trust-registry
+
+    python3 remediation-package-signatures/trust_registry.py register \
+      --directory /ABSOLUTE/OWNER/PRIVATE/custody-workroom/local-trust-registry \
+      --public-key /ABSOLUTE/OWNER/PRIVATE/signer-public.pem \
+      --trusted-fingerprint 64-lowercase-hex-verified-out-of-band \
+      --label "Source-only custody key A"
+
+    python3 remediation-package-signatures/trust_registry.py list \
+      --directory /ABSOLUTE/OWNER/PRIVATE/custody-workroom/local-trust-registry
+
+    python3 remediation-package-signatures/inbox.py \
+      --keyring /ABSOLUTE/OWNER/PRIVATE/custody-workroom/local-trust-registry \
+      --bundle /ABSOLUTE/OWNER/PRIVATE/first.portable.zip \
+      --bundle /ABSOLUTE/OWNER/PRIVATE/second.portable.zip \
+      --require-two-signers \
+      --output-dir /ABSOLUTE/OWNER/PRIVATE/custody-workroom/fresh-inbox
+
+Each accepted original source-only software ZIP is received with the existing
+native receiver into a separate private suite folder. **Only after all
+original source-lock admissions** succeed is the entire inbox published
+atomically without replacing existing output. The resulting scriptless
+private index.html links to each original installed offline suite and displays
+only signer label, truncated fingerprint, package byte digest and REVIEW_ONLY.
+Input order is NEVER represented as validated release chronology.
+
+To re-admit an earlier inbox using the latest locally registered and
+non-revoked keys and current ORIGINAL pinned software:
+
+    python3 remediation-package-signatures/inbox_reopen.py \
+      --keyring /ABSOLUTE/OWNER/PRIVATE/custody-workroom/local-trust-registry \
+      --workspace /ABSOLUTE/OWNER/PRIVATE/custody-workroom/fresh-inbox \
+      --require-two-signers
+
+To permanently revoke a local key (no automatic previously downloaded file
+retraction, no unilateral return to trusted state):
+
+    python3 remediation-package-signatures/trust_registry.py revoke \
+      --directory /ABSOLUTE/OWNER/PRIVATE/custody-workroom/local-trust-registry \
+      --trusted-fingerprint 64-lowercase-hex-fingerprint-to-revoke
+
+**Security and privacy limits of this HUMAN workflow:**
+- Registration relies on the HUMAN already having independently authenticated
+  the *correct* out-of-band fingerprint. A signature does not establish the
+  signer is a given customer, source author, approver or other person.
+- This is a **LOCAL** trust list, not a PKI, certificate authority, client
+  consent database, authentication login or remote revocation service.
+- The local static HTML viewer cannot query current revocation state.
+  Foreground **inbox_reopen.py** is required for a fresh local decision.
+  Even this cannot retract copies or prevent a user opening old local HTML.
+- Only original source-only software ZIP archives are admitted; not arbitrary
+  private evidence bundles, client files, remediation claims or HUMAN notes.
+- An invalid current key/receipt/source or duplicate original archive identity
+  refuses the entire fresh inbox before publication. No partial product is
+  described as admitted.
+- Merely having two local signatures does not mean two separately authenticated
+  people approved the package; independent external identity verification and
+  release reviews remain outside this tool.
+
 ## Limits and operational risks
 
 - Password/key loss cannot be recovered; do not store the private PEM in Git.
