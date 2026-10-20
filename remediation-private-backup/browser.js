@@ -8,7 +8,13 @@
   const FLAGS = Object.freeze({ consent_verified: false, authorized: false,
     remediation_verified: false, release_approved: false });
   const slots = [null, null];
+  const generations = [0, 0];
   const el = id => document.getElementById(id);
+  function release(index) {
+    const prior = slots[index];
+    slots[index] = null;
+    if (prior?.files) for (const file of prior.files) file.bytes.fill(0);
+  }
   const encoder = new TextEncoder();
   const decoder = new TextDecoder("utf-8", { fatal: true });
   const expectedKeys = (value, keys) =>
@@ -108,10 +114,12 @@
     return { filename: source.name, files, byName: new Map(files.map(file => [file.name, file])) };
   }
   function status(id, message) { el(id).textContent = message; }
-  function clear(index) {
-    slots[index] = null;
+  function clear(index, resetInput = true) {
+    // Every explicit clear or changed file invalidates pending async decrypts.
+    generations[index]++;
+    release(index);
     const label = index === 0 ? "a" : "b";
-    el(label + "-file").value = "";
+    if (resetInput) el(label + "-file").value = "";
     el(label + "-pass").value = "";
     status(label + "-status", "No decrypted source retained.");
     render();
@@ -122,22 +130,28 @@
     // Failure never leaves old state or a partially authenticated replacement.
     const source = input.files && input.files[0];
     const secret = pass.value;
+    const ticket = ++generations[index];
     pass.value = "";
     el(label + "-open").disabled = true;
     status(label + "-status", "Authenticating selected encrypted bytes locally…");
     try {
       const item = await admit(source, secret);
+      if (generations[index] !== ticket || input.files?.[0] !== source) {
+        for (const file of item.files) file.bytes.fill(0);
+        return; // User selected another file or cleared while PBKDF2 was running.
+      }
+      release(index);
       slots[index] = item;
       status(label + "-status", "PRIVATE DRAFT/HOLD: " + item.files.length +
         " authenticated local files; original selected archive untouched.");
     } catch (error) {
-      // A rejected new archive must not leave the previous decrypted archive visible
-      // under the same A/B label: fail closed, no accidental recovery of stale bytes.
-      slots[index] = null;
-      status(label + "-status", "HOLD: " + (error?.message || "Unable to admit archive") +
-        " · old decrypted state was cleared.");
+      if (generations[index] === ticket) {
+        release(index);
+        status(label + "-status", "HOLD: " + (error?.message || "Unable to admit archive") +
+          " · previous decrypted state cleared.");
+      }
     } finally {
-      el(label + "-open").disabled = false;
+      if (generations[index] === ticket) el(label + "-open").disabled = false;
       render();
     }
   }
@@ -286,6 +300,8 @@
       ". Source byte differences are NOT remediation proof or chronology.");
   }
   function render() { renderInventory(); renderComparison(); }
+  el("a-file").addEventListener("change", () => clear(0, false));
+  el("b-file").addEventListener("change", () => clear(1, false));
   el("a-open").addEventListener("click", () => open(0));
   el("b-open").addEventListener("click", () => open(1));
   el("a-clear").addEventListener("click", () => clear(0));
@@ -293,6 +309,9 @@
   el("source-select").addEventListener("change", renderInventory);
   el("subset-export").addEventListener("click", encryptSubset);
   el("clear-all").addEventListener("click", () => { clear(0); clear(1); });
-  window.addEventListener("pagehide", () => { slots[0] = null; slots[1] = null; });
+  window.addEventListener("pagehide", () => {
+    generations[0]++; generations[1]++;
+    release(0); release(1);
+  });
   render();
 })();
