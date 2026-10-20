@@ -39,9 +39,10 @@ article,aside{background:white;border:1px solid #d5dfe8;border-radius:12px;paddi
 aside{border-left:6px solid #a96c18}
 h1{font-size:1.8rem}h3{margin:.1rem 0}p{margin:.45rem 0}
 label{display:block;font-weight:600;margin-top:.65rem}
-select,textarea{display:block;box-sizing:border-box;width:100%;max-width:720px;background:white;color:#17283e;border:1px solid #8092a7;border-radius:8px;padding:.6rem;font:inherit}
+select,textarea,input[type=search]{display:block;box-sizing:border-box;width:100%;max-width:720px;background:white;color:#17283e;border:1px solid #8092a7;border-radius:8px;padding:.6rem;font:inherit}
+input[type=search]{max-width:450px}
 button{padding:.75rem 1rem;font:inherit;margin:.3rem .6rem .5rem 0;background:white;color:#174269;border:1px solid #56718c;border-radius:8px;cursor:pointer}
-button:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid #be8a35}
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid #be8a35}
 small{display:block;line-height:1.5;color:#495e72}
 """
 
@@ -146,6 +147,16 @@ not an invented comparison, authenticated moment or verified customer cohort.</p
 No browser storage, network, account login, auto-handoff or irreversible deletion.</p></aside>
 <p>Source-free HUMAN reason groups: """ + str(len(entries)) +
             """. Source identity and permission remain UNKNOWN.</p>
+<section class="filters" aria-label="Filter HUMAN cases">
+<label>Find original source-free slot or HUMAN reason
+<input id="query" type="search" maxlength="120" placeholder="e.g. slot 1, changed local metadata" autocomplete="off"></label>
+<label>Show by HUMAN state
+<select id="stage-filter"><option value="all">All HUMAN statuses</option>
+<option value="open_human">Open for HUMAN review</option>
+<option value="ask_source_owner">Ask original source owner</option>
+<option value="in_discussion_human">In local HUMAN discussion</option>
+<option value="answered_human_only">Answered HUMAN (NOT verified fix)</option></select></label>
+<p id="overview" aria-live="polite">Original HUMAN group totals loading offline.</p></section>
 <section id="reasons"></section>
 <button type="button" id="save">Save PRIVATE HUMAN journal as JSON</button>
 <button type="button" id="clear">Clear current in-memory HUMAN edits</button>

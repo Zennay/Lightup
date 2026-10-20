@@ -27,3 +27,9 @@ An original source-free HUMAN journal can now become an actionable **HUMAN discu
     python3 remediation-integrated-workspace/single_brief.py --cockpit "$HOME/lightup-private/received-01" --journal "$HOME/lightup-private/lightup-human-single-review-private.json" --output-dir "$HOME/lightup-private/human-single-brief-01"
 
 **Privacy:** the brief contains plaintext HUMAN notes, potentially sensitive, even though source-free aggregate counts have no original finding IDs. It is intended only for a separately approved trusted recipient, not public hosting or publication. Local SHA files and HUMAN stage labels are not sender signatures, authenticated consent, approval, security verdicts, verified repair, revocation or release authority. Original LightUp HOLD requirements still apply.
+
+## More useful offline HUMAN dashboard
+
+The source-bound one-Cockpit browser now has real-time HUMAN group counts (locally open, needs original owner and HUMAN answered **NOT FIXED**), private search by original anonymous ordinal/reason and a HUMAN stage filter. Filtering changes display only, never omits hidden HUMAN rows from an explicitly downloaded complete journal. Unsaved local edits trigger a standard browser exit warning, and resetting a page requires explicit confirmation; saved files are not erased.
+
+Importantly, before allowing a plaintext private JSON download, the browser now mirrors the original native journal's note constraints: maximum 240 Unicode code points, maximum 960 UTF-8 bytes, and no Unicode control/format characters except newline. Invalid pasted/invisible Unicode or excessive notes produce an explicit local **HOLD** message and focus the affected note instead of falsely claiming a resumable journal was saved. The original Python `single_review.py` stays the final source-bound authority for admitting any saved journal. None of these HUMAN-only labels grants original client access, verifies fixes, authorizes a scan or transmits data.
