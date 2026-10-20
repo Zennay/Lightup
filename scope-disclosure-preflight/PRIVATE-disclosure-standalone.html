@@ -3,9 +3,17 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-xDxH/nvfAHvwRAb32wuRIBJS5OE6TysJ5L6MpboSbXk='; style-src 'sha256-BFLVIhn+jdqUXFAlGyRgOxnsDPR6bBhNzd6Chys28Ns='; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-057tsEyiUkalCKkrPT/zKL00pu9jgp7rmr47nwjvlc0='; style-src 'sha256-SsAD0ME86wUm5MB7ORxX3Xgu4DBhZfL5OeRh+c+oSfE='; connect-src 'none'; img-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-src 'none'">
 <title>LightUp · PRIVATE Scope Disclosure Desk</title>
-<style>:root{font-family:Inter,system-ui,-apple-system,Segoe UI,sans-serif;color:#18243b;background:#eef2f8;line-height:1.5}*{box-sizing:border-box}body{margin:0}header{background:linear-gradient(125deg,#101a30,#263e66);color:#fff;padding:2.5rem max(24px,calc((100vw - 1060px)/2)) 2rem}.brand{font-size:1.12rem;font-weight:800;letter-spacing:.05em}.brand span{font-size:.66rem;color:#9db7e0;vertical-align:middle;margin-left:12px}h1{font-size:clamp(2rem,4vw,3.2rem);line-height:1.1;margin:.9rem 0}header p{max-width:780px;color:#dce6f5}main{max-width:1110px;padding:24px;margin:auto}.banner,.card{border-radius:16px;box-shadow:0 8px 28px #14284910;margin-bottom:18px}.banner{background:#fff5e9;border:1px solid #dcb878;padding:18px 24px}.banner strong{color:#8b4309}.banner p{margin:.4rem 0 0}.card{padding:25px;background:white;border:1px solid #dde5ef}h2{display:flex;align-items:center;font-size:1.32rem;margin:0 0 12px;gap:12px}h2 span{font-size:.76rem;border:1px solid #98abc7;border-radius:9px;color:#2c568b;padding:4px 8px}p{margin-top:0;color:#41516a}label{display:block;font-size:.91rem;font-weight:650;margin:14px 0 7px}input[type=file],input[type=text],input[type=password],textarea{font:inherit;width:100%;border:1px solid #aebdd1;border-radius:9px;background:#fbfcff;padding:11px}input:focus,textarea:focus,button:focus-visible{outline:3px solid #3a82db;outline-offset:2px}textarea{resize:vertical;font-family:ui-monospace,Menlo,monospace;font-size:.85rem}.grid{display:grid;gap:13px;margin:15px 0}.grid.three{grid-template-columns:repeat(3,minmax(0,1fr))}.metric{background:#f4f7fc;border-radius:10px;padding:15px;min-width:0}.metric b{display:block;font-size:1.1rem;overflow-wrap:anywhere}.metric small{color:#687892}.ruleform{display:grid;grid-template-columns:1fr 180px;gap:10px;align-items:end}.ruleform label{grid-column:1/-1;margin-bottom:-3px}.ruleform input{grid-column:1}.ruleform button{grid-column:2}.rules{border:1px dashed #b1c0d4;border-radius:10px;margin:16px 0;padding:14px;color:#455773}.rule{display:flex;justify-content:space-between;align-items:center;gap:10px;border-bottom:1px solid #e5e9f0;padding:8px 0}.rule:last-child{border:0}.rule button{padding:6px 11px}.actions{display:flex;gap:12px;flex-wrap:wrap;margin:16px 0}button{border:0;border-radius:9px;background:#205ea7;color:white;font-weight:700;font:inherit;cursor:pointer;padding:11px 17px}button.secondary{background:#e4ebf5;color:#163457}button:disabled{cursor:not-allowed;opacity:.5}.status,.warnings{padding:11px 14px;border-radius:9px;background:#ecf3fb;border:1px solid #c7d7ed;color:#26466a;font-size:.91rem;overflow-wrap:anywhere}.warnings.warn{background:#fff3e5;border-color:#e8c294;color:#79400b}.warnings.good{background:#eff8f2;border-color:#add5b8;color:#27593a}.tick{display:flex;align-items:flex-start;gap:10px;font-weight:500}.tick input{margin-top:6px}code{background:#e9eef6;border-radius:4px;padding:2px 4px}footer{text-align:center;color:#71809a;padding:22px;font-size:.84rem}@media(max-width:700px){header{padding:26px 19px}.grid.three{grid-template-columns:1fr}.ruleform{display:block}.ruleform button{margin-top:9px;width:100%}.card{padding:18px}.actions button{width:100%}}</style>
+<style>:root{font-family:Inter,system-ui,-apple-system,Segoe UI,sans-serif;color:#18243b;background:#eef2f8;line-height:1.5}*{box-sizing:border-box}body{margin:0}header{background:linear-gradient(125deg,#101a30,#263e66);color:#fff;padding:2.5rem max(24px,calc((100vw - 1060px)/2)) 2rem}.brand{font-size:1.12rem;font-weight:800;letter-spacing:.05em}.brand span{font-size:.66rem;color:#9db7e0;vertical-align:middle;margin-left:12px}h1{font-size:clamp(2rem,4vw,3.2rem);line-height:1.1;margin:.9rem 0}header p{max-width:780px;color:#dce6f5}main{max-width:1110px;padding:24px;margin:auto}.banner,.card{border-radius:16px;box-shadow:0 8px 28px #14284910;margin-bottom:18px}.banner{background:#fff5e9;border:1px solid #dcb878;padding:18px 24px}.banner strong{color:#8b4309}.banner p{margin:.4rem 0 0}.card{padding:25px;background:white;border:1px solid #dde5ef}h2{display:flex;align-items:center;font-size:1.32rem;margin:0 0 12px;gap:12px}h2 span{font-size:.76rem;border:1px solid #98abc7;border-radius:9px;color:#2c568b;padding:4px 8px}p{margin-top:0;color:#41516a}label{display:block;font-size:.91rem;font-weight:650;margin:14px 0 7px}input[type=file],input[type=text],input[type=password],textarea{font:inherit;width:100%;border:1px solid #aebdd1;border-radius:9px;background:#fbfcff;padding:11px}input:focus,textarea:focus,button:focus-visible{outline:3px solid #3a82db;outline-offset:2px}textarea{resize:vertical;font-family:ui-monospace,Menlo,monospace;font-size:.85rem}.grid{display:grid;gap:13px;margin:15px 0}.grid.three{grid-template-columns:repeat(3,minmax(0,1fr))}.metric{background:#f4f7fc;border-radius:10px;padding:15px;min-width:0}.metric b{display:block;font-size:1.1rem;overflow-wrap:anywhere}.metric small{color:#687892}.ruleform{display:grid;grid-template-columns:1fr 180px;gap:10px;align-items:end}.ruleform label{grid-column:1/-1;margin-bottom:-3px}.ruleform input{grid-column:1}.ruleform button{grid-column:2}.rules{border:1px dashed #b1c0d4;border-radius:10px;margin:16px 0;padding:14px;color:#455773}.rule{display:flex;justify-content:space-between;align-items:center;gap:10px;border-bottom:1px solid #e5e9f0;padding:8px 0}.rule:last-child{border:0}.rule button{padding:6px 11px}.actions{display:flex;gap:12px;flex-wrap:wrap;margin:16px 0}button{border:0;border-radius:9px;background:#205ea7;color:white;font-weight:700;font:inherit;cursor:pointer;padding:11px 17px}button.secondary{background:#e4ebf5;color:#163457}button:disabled{cursor:not-allowed;opacity:.5}.status,.warnings{padding:11px 14px;border-radius:9px;background:#ecf3fb;border:1px solid #c7d7ed;color:#26466a;font-size:.91rem;overflow-wrap:anywhere}.warnings.warn{background:#fff3e5;border-color:#e8c294;color:#79400b}.warnings.good{background:#eff8f2;border-color:#add5b8;color:#27593a}.tick{display:flex;align-items:flex-start;gap:10px;font-weight:500}.tick input{margin-top:6px}code{background:#e9eef6;border-radius:4px;padding:2px 4px}footer{text-align:center;color:#71809a;padding:22px;font-size:.84rem}@media(max-width:700px){header{padding:26px 19px}.grid.three{grid-template-columns:1fr}.ruleform{display:block}.ruleform button{margin-top:9px;width:100%}.card{padding:18px}.actions button{width:100%}}
+/* Opt-in private source suggestions; keep warnings and inputs readable on mobile. */
+.assisted{margin:22px 0 6px;padding:20px;border-radius:12px;border:1px solid #c4d4e9;background:#f5f8fe}
+.assisted h3{font-size:1.08rem;margin:0 0 9px}
+.assisted .suggest-options{display:grid;gap:4px;margin:8px 0 16px}
+.assisted .suggest-options label{margin:3px 0;font-weight:550}
+.assisted .status{background:#fff}
+@media(max-width:700px){.assisted{padding:14px}}
+</style>
 
 </head>
 <body>
@@ -24,6 +32,17 @@
 <p>Type a sensitive literal as it appears in the source. Each rule replaces <em>every exact case-sensitive occurrence</em> with <code>[REDACTED]</code>. No fuzzy matching or automatic safety guarantee. Never share the original.</p>
 <div class="ruleform"><label for="rule">Sensitive literal to mask (3–128 characters, single line)</label><input id="rule" type="password" maxlength="128" autocomplete="off" spellcheck="false" placeholder="Exact text to mask"><button id="addRule" type="button">Add mask rule</button></div>
 <div id="rules" class="rules" aria-live="polite">No masking rules yet.</div>
+<div class="assisted">
+<h3>Local sensitive-value suggestions</h3>
+<p>Optional human-triggered discovery only. The source is examined <strong>in browser memory</strong>; detected literal values are not shown or exported as a list. Suggested masks are not a guarantee that disclosure is safe.</p>
+<div class="suggest-options">
+<label class="tick"><input id="suggestCredentials" type="checkbox" checked> Bearer, credentials, API tokens and JWT-like values</label>
+<label class="tick"><input id="suggestEmail" type="checkbox"> Email addresses</label>
+<label class="tick"><input id="suggestNetwork" type="checkbox"> HTTP(S) URLs and IPv4-like addresses</label>
+</div>
+<div class="actions"><button id="stageSuggestions" type="button" disabled>Add all selected suggestions as masks</button></div>
+<div id="suggestStatus" class="status" role="status" aria-live="polite">Suggestions have not been requested.</div>
+</div>
 <div class="actions"><button id="review" type="button" disabled>Prepare redacted preview</button><button id="clear" type="button" class="secondary">Clear local session</button></div>
 </section>
 <section class="card" aria-labelledby="review-title">
@@ -45,7 +64,7 @@
 <script>"use strict";
 (() => {
   const $ = id => document.getElementById(id);
-  const ids = ["file","filename","filesize","originalHash","openStatus","rule","addRule","rules","review","clear","matches","residual","outputHash","warnings","preview","prevPage","nextPage","pageInfo","readAll","accept","confirm","exportText","exportReceipt","exportStatus"];
+  const ids = ["file","filename","filesize","originalHash","openStatus","rule","addRule","rules","suggestCredentials","suggestEmail","suggestNetwork","stageSuggestions","suggestStatus","review","clear","matches","residual","outputHash","warnings","preview","prevPage","nextPage","pageInfo","readAll","accept","confirm","exportText","exportReceipt","exportStatus"];
   const e = Object.fromEntries(ids.map(id => [id,$(id)]));
   const encoder = new TextEncoder();
   let source = null, rules = [], prepared = null, page = 0, seen = new Set(), ticket = 0;
@@ -79,6 +98,7 @@
     message("pageInfo","No pages");
     e.prevPage.disabled=e.nextPage.disabled=true;
     e.review.disabled = !source || rules.length===0;
+    e.stageSuggestions.disabled = !source;
     lock();
   }
   function clear() {
@@ -86,6 +106,7 @@
     e.file.value=e.rule.value="";
     message("filename","None");message("filesize","—");message("originalHash","—");
     message("openStatus","Session cleared from application state. Previously downloaded files remain on disk.");
+    message("suggestStatus","Suggestions have not been requested.");
     showRules();invalidate();
   }
   function showRules() {
@@ -122,6 +143,7 @@
       message("originalHash",sha.slice(0,12)+"…");
       message("openStatus","PRIVATE original loaded into memory; original bytes are not modified.");
       e.file.value=""; invalidate();
+      message("suggestStatus","Choose detection categories and request suggestions.");
     }catch(err){
       if(current!==ticket)return;
       message("openStatus","HOLD: invalid UTF-8, binary data, unreadable file or unavailable cryptography.");
@@ -140,7 +162,59 @@
     rules.push(raw);showRules();invalidate();
     message("openStatus","Exact literal mask added. Rule content is never rendered in the list.");
   };
-  const quote = text => text.replace(/[-/\\^$*+?.()|[\]{}]/g,"\\</body>");
+
+  // Optional HUMAN-triggered in-memory suggestions, never an automatic privacy verdict.
+  const suggestionFamilies = Object.freeze({
+    credentials: [
+      /\bBearer\s+[A-Za-z0-9._~+\/-]{8,}/g,
+      /\b(?:password|passwd|api[_-]?key|secret|access[_-]?token|token)\s*[:=]\s*(?:"[^"\r\n]{3,}"|'[^'\r\n]{3,}'|[^\s,;}]{3,})/gi,
+      /\b(?:gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|AKIA[A-Z0-9]{16})\b/g,
+      /\beyJ[A-Za-z0-9_-]{8,}\.eyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\b/g
+    ],
+    email: [/\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/gi],
+    network: [/\bhttps?:\/\/[^\s"'<>]+/gi, /\b(?:\d{1,3}\.){3}\d{1,3}\b/g]
+  });
+  e.stageSuggestions.addEventListener("click",()=>{
+    if(!source){
+      message("suggestStatus","HOLD: open a PRIVATE source first.");return;
+    }
+    const groups=[
+      e.suggestCredentials.checked && "credentials",
+      e.suggestEmail.checked && "email",
+      e.suggestNetwork.checked && "network"
+    ].filter(Boolean);
+    if(!groups.length){
+      message("suggestStatus","Select at least one category.");return;
+    }
+    const proposed=new Set();
+    let hold=false;
+    for(const category of groups){
+      for(const regexp of suggestionFamilies[category]){
+        regexp.lastIndex=0;
+        let match;
+        while((match=regexp.exec(source.text))!==null){
+          const literal=match[0], n=chars(literal);
+          if(n<3 || n>128 || literal.length>512 || literal.includes("[REDACTED]") ||
+             /[\x00-\x1f]/.test(literal)){hold=true;break;}
+          if(!rules.includes(literal)) proposed.add(literal);
+          if(proposed.size>30-rules.length){hold=true;break;}
+        }
+        if(hold)break;
+      }
+      if(hold)break;
+    }
+    if(hold){
+      message("suggestStatus","HOLD: candidates are oversized, invalid or over the 30-mask limit. No partial rules added. Narrow the categories or mask manually.");
+      return;
+    }
+    if(!proposed.size){
+      message("suggestStatus","No new candidate literals found in selected categories. This does NOT establish safe sharing.");return;
+    }
+    const count=proposed.size;
+    rules.push(...proposed);showRules();invalidate();
+    message("suggestStatus",count+" suggested literal masks added by HUMAN request, without displaying their values. Check the full redacted output.");
+  });
+  const quote = text => text.replace(/[-/\\^$*+?.()|[\]{}]/g,"\\$&");
   function hints(text){
     const expressions=[
       ["email",/\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/gi],
