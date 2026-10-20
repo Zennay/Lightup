@@ -74,6 +74,13 @@ def _write_new_private(path: Path, data: bytes) -> None:
             out.write(data)
             out.flush()
             os.fsync(fd)
+        # Durable directory-entry publication matters for local revocation
+        # tombstones and trusted key records: fsyncing data alone is insufficient.
+        parent_fd = os.open(path.parent, os.O_RDONLY | getattr(os, "O_DIRECTORY", 0))
+        try:
+            os.fsync(parent_fd)
+        finally:
+            os.close(parent_fd)
     except Exception:
         try:
             path.unlink()
